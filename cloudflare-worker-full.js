@@ -49,6 +49,7 @@ const EBAY_SCOPES = [
   'https://api.ebay.com/oauth/api_scope/sell.fulfillment',
   'https://api.ebay.com/oauth/api_scope/sell.analytics.readonly',
   'https://api.ebay.com/oauth/api_scope/sell.finances',
+  'https://api.ebay.com/oauth/api_scope/sell.marketing.readonly',
 ].join(' ');
 
 const CORS = {
@@ -4374,6 +4375,153 @@ export default {
         });
       } catch (e) {
         return json({ ok: false, error: 'eBay finances lookup failed: ' + e.message }, 502);
+      }
+    }
+
+    // GET /ebay/returns?days=90 -- surfaces buyer return requests from the
+    // (legacy, OAuth-enabled) Post-Order API so a refund/return shows up in
+    // the dashboard instead of only being visible on ebay.com. Uses the same
+    // user token as every other eBay route here; if the account never
+    // granted a scope this call needs, needsReconnect tells the frontend to
+    // send the seller through CONNECT EBAY again.
+    if (url.pathname === '/ebay/returns') {
+      if (request.method !== 'GET') return json({ error: 'GET only' }, 405);
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId, ['owner','admin']);
+      if (auth.error) return auth.error;
+      let ebayToken = '';
+      try { ebayToken = await getEbayUserAccessToken(env); }
+      catch (tokenErr) { return json({ needsToken: true, error: tokenErr.message }, 401); }
+      if (!ebayToken) return json({ needsToken: true, error: 'Connect eBay first: missing user access/refresh token' }, 401);
+
+      try {
+        const days = Math.min(180, Math.max(1, Number(url.searchParams.get('days')) || 90));
+        const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+        const qs = new URLSearchParams({
+          creation_date_range_from: since,
+          creation_date_range_to: new Date().toISOString(),
+          limit: '50',
+        });
+        const res = await fetch('https://api.ebay.com/post-order/v2/return/search?' + qs.toString(), {
+          headers: { 'Authorization': 'Bearer ' + ebayToken, 'Accept': 'application/json' },
+        });
+        const txt = await res.text();
+        let data; try { data = JSON.parse(txt); } catch (_) { data = { raw: txt }; }
+        if (!res.ok) {
+          const msg = errorMessageFromApi(data, txt.substring(0, 300));
+          const scopeIssue = res.status === 403 || /scope|insufficient permission/i.test(msg);
+          return json({ ok: false, needsReconnect: scopeIssue, error: 'eBay returns lookup failed (' + res.status + '): ' + msg }, res.status);
+        }
+        const members = data.members || data.returns || [];
+        const returns = members.map(r => ({
+          returnId: r.returnId || '',
+          state: r.state || r.status || '',
+          type: r.currentType || r.creationInfo?.type || '',
+          reason: r.creationInfo?.reason || r.reason || '',
+          creationDate: r.creationInfo?.creationDate || r.creationDate || '',
+          itemId: r.creationInfo?.item?.itemId || '',
+          transactionId: r.creationInfo?.item?.transactionId || '',
+          quantity: Number(r.creationInfo?.item?.returnQuantity || 1),
+          buyerLoginName: r.buyerLoginName || '',
+          refundAmount: Number(r.buyerTotalRefund?.estimatedRefundAmount?.value ?? r.refundAmount?.value ?? 0),
+          refundCurrency: r.buyerTotalRefund?.estimatedRefundAmount?.currency || r.refundAmount?.currency || 'USD',
+        }));
+        return json({ ok: true, days, total: Number(data.total || returns.length), returns });
+      } catch (e) {
+        return json({ ok: false, error: 'eBay returns lookup failed: ' + e.message }, 502);
+      }
+    }
+
+    // GET /ebay/cancellations?days=90 -- same idea as /ebay/returns but for
+    // buyer/seller order-cancellation requests via the Post-Order API.
+    if (url.pathname === '/ebay/cancellations') {
+      if (request.method !== 'GET') return json({ error: 'GET only' }, 405);
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId, ['owner','admin']);
+      if (auth.error) return auth.error;
+      let ebayToken = '';
+      try { ebayToken = await getEbayUserAccessToken(env); }
+      catch (tokenErr) { return json({ needsToken: true, error: tokenErr.message }, 401); }
+      if (!ebayToken) return json({ needsToken: true, error: 'Connect eBay first: missing user access/refresh token' }, 401);
+
+      try {
+        const days = Math.min(180, Math.max(1, Number(url.searchParams.get('days')) || 90));
+        const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+        const qs = new URLSearchParams({
+          creation_date_range_from: since,
+          creation_date_range_to: new Date().toISOString(),
+          limit: '50',
+        });
+        const res = await fetch('https://api.ebay.com/post-order/v2/cancellation/search?' + qs.toString(), {
+          headers: { 'Authorization': 'Bearer ' + ebayToken, 'Accept': 'application/json' },
+        });
+        const txt = await res.text();
+        let data; try { data = JSON.parse(txt); } catch (_) { data = { raw: txt }; }
+        if (!res.ok) {
+          const msg = errorMessageFromApi(data, txt.substring(0, 300));
+          const scopeIssue = res.status === 403 || /scope|insufficient permission/i.test(msg);
+          return json({ ok: false, needsReconnect: scopeIssue, error: 'eBay cancellations lookup failed (' + res.status + '): ' + msg }, res.status);
+        }
+        const members = data.members || data.cancellations || [];
+        const cancellations = members.map(c => ({
+          cancelId: c.cancelId || '',
+          orderId: c.legacyOrderId || c.orderId || '',
+          state: c.cancelState || c.state || '',
+          status: c.cancelStatus || '',
+          reason: c.cancelReason || '',
+          requestDate: c.cancelRequestDate || '',
+          closeDate: c.cancelCloseDate || '',
+          refundAmount: Number(c.requestRefundAmount?.value ?? 0),
+          refundCurrency: c.requestRefundAmount?.currency || 'USD',
+        }));
+        return json({ ok: true, days, total: Number(data.total || cancellations.length), cancellations });
+      } catch (e) {
+        return json({ ok: false, error: 'eBay cancellations lookup failed: ' + e.message }, 502);
+      }
+    }
+
+    // GET /ebay/marketing/campaigns -- read-only view of Promoted Listings
+    // campaigns via the Marketing API. Deliberately read-only: creating or
+    // editing a campaign spends real ad budget and needs a funding
+    // strategy/inventory reference setup that's a seller judgment call, not
+    // something to build without the user watching it happen. Needs the
+    // sell.marketing.readonly scope -- a store connected before this shipped
+    // gets needsReconnect and should hit CONNECT EBAY again.
+    if (url.pathname === '/ebay/marketing/campaigns') {
+      if (request.method !== 'GET') return json({ error: 'GET only' }, 405);
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId, ['owner','admin']);
+      if (auth.error) return auth.error;
+      let ebayToken = '';
+      try { ebayToken = await getEbayUserAccessToken(env); }
+      catch (tokenErr) { return json({ needsToken: true, error: tokenErr.message }, 401); }
+      if (!ebayToken) return json({ needsToken: true, error: 'Connect eBay first: missing user access/refresh token' }, 401);
+
+      try {
+        const res = await fetch('https://api.ebay.com/sell/marketing/v1/ad_campaign?limit=50', {
+          headers: { 'Authorization': 'Bearer ' + ebayToken, 'Accept': 'application/json', 'X-EBAY-C-MARKETPLACE-ID': 'EBAY_US' },
+        });
+        const txt = await res.text();
+        let data; try { data = JSON.parse(txt); } catch (_) { data = { raw: txt }; }
+        if (!res.ok) {
+          const msg = errorMessageFromApi(data, txt.substring(0, 300));
+          const scopeIssue = res.status === 403 || /scope|insufficient permission/i.test(msg);
+          return json({ ok: false, needsReconnect: scopeIssue, error: 'eBay campaigns lookup failed (' + res.status + '): ' + msg }, res.status);
+        }
+        const campaigns = (data.campaigns || []).map(c => ({
+          campaignId: c.campaignId || '',
+          name: c.campaignName || '',
+          status: c.campaignStatus || '',
+          targetingType: c.campaignTargetingType || '',
+          fundingModel: c.fundingStrategy?.fundingModel || '',
+          bidPercentage: c.fundingStrategy?.bidPercentage || '',
+          startDate: c.startDate || '',
+          endDate: c.endDate || '',
+          marketplaceId: c.marketplaceId || '',
+        }));
+        return json({ ok: true, total: Number(data.total || campaigns.length), campaigns });
+      } catch (e) {
+        return json({ ok: false, error: 'eBay campaigns lookup failed: ' + e.message }, 502);
       }
     }
 
