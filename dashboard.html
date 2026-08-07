@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.07.10-comic-qty-grouping">
+<meta name="version" content="2026.08.07.11-remove-push-notifications">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1542,13 +1542,13 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.07.10-comic-qty-grouping"></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.07.10-comic-qty-grouping"></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.07.10-comic-qty-grouping"></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.07.10-comic-qty-grouping"></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.07.10-comic-qty-grouping"></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.07.10-comic-qty-grouping"></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.07.10-comic-qty-grouping"></script>
+<script src="scripts/query-routing.js?v=2026.08.07.11-remove-push-notifications"></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.07.11-remove-push-notifications"></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.07.11-remove-push-notifications"></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.07.11-remove-push-notifications"></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.07.11-remove-push-notifications"></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.07.11-remove-push-notifications"></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.07.11-remove-push-notifications"></script>
 </head>
 <body>
 
@@ -1598,11 +1598,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.07.10-comic-qty-grouping</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.07.11-remove-push-notifications</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.07.10-comic-qty-grouping</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.07.11-remove-push-notifications</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1624,7 +1624,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.07.10-comic-qty-grouping</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.07.11-remove-push-notifications</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -1946,11 +1946,6 @@ body.show-mode .inv-sync-badge{display:none;}
     <div id="ebay-promoted-campaigns" style="display:grid;grid-template-columns:minmax(0,1fr);gap:6px;margin-bottom:14px">Loading...</div>
     <div style="font-family:monospace;font-size:9px;color:var(--purple);letter-spacing:.05em;margin-bottom:6px">SEND OFFERS TO BUYERS <span style="color:var(--dim);text-transform:none;letter-spacing:normal">— listings with an interested buyer who hasn't bought yet</span></div>
     <div id="ebay-negotiation-eligible" style="display:grid;grid-template-columns:minmax(0,1fr);gap:6px;margin-bottom:14px">Loading...</div>
-    <div style="font-family:monospace;font-size:9px;color:var(--purple);letter-spacing:.05em;margin-bottom:6px">PUSH NOTIFICATIONS <span style="color:var(--dim);text-transform:none;letter-spacing:normal">— eBay pushes events here instead of waiting for REFRESH</span></div>
-    <div style="font-family:monospace;font-size:9px;color:var(--dim);margin-bottom:8px">Available topics depend on what eBay allows this app -- some are partner-gated and won't show up, and eBay doesn't currently offer an "item sold"/order-paid topic to standard seller apps at all. Subscribing here doesn't change anything else; it just starts a feed you can watch below.</div>
-    <div id="ebay-notif-topics" style="display:grid;grid-template-columns:minmax(0,1fr);gap:6px;margin-bottom:10px">Loading...</div>
-    <div style="font-family:monospace;font-size:9px;color:var(--purple);letter-spacing:.05em;margin-bottom:6px">RECENT PUSHED EVENTS</div>
-    <div id="ebay-notif-events" style="display:grid;grid-template-columns:minmax(0,1fr);gap:6px">No events received yet.</div>
   </div>
 
   <div class="panel" id="backoffice-ebay-panel" style="margin-top:4px;margin-bottom:14px">
@@ -3161,7 +3156,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.07.10-comic-qty-grouping';
+const APP_VERSION = '2026.08.07.11-remove-push-notifications';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -14316,83 +14311,7 @@ async function loadEbayOrderHistory(){
 // itself, so a seller can always see "everything eBay has" even for orders
 // still in progress, unpaid, or otherwise not yet reflected as a sale here.
 async function renderEbayAccountPanel(){
-  await Promise.all([loadEbaySellingLimit(), loadEbayFinances(), loadEbayAllOrders(), loadEbayReturnsAndCancellations(), loadEbayPromotedCampaigns(), loadEbayNegotiationEligible(), loadEbayNotificationTopics(), loadEbayNotificationEvents()]);
-}
-
-// Push notifications: shows whatever topics eBay's API actually returns for
-// this app (never hardcoded -- some topics are gated to approved partners
-// and simply won't appear) with a subscribe/unsubscribe toggle per topic.
-async function loadEbayNotificationTopics(){
-  const host = document.getElementById('ebay-notif-topics');
-  if(!host) return;
-  host.textContent = 'Loading...';
-  try{
-    const [topicsRes, subsRes] = await Promise.all([
-      storeWorkerFetch('/ebay/notifications/topics', { cache:'no-store' }),
-      storeWorkerFetch('/ebay/notifications/subscriptions', { cache:'no-store' }),
-    ]);
-    const topicsData = await topicsRes.json().catch(()=>({}));
-    const subsData = await subsRes.json().catch(()=>({}));
-    if(!topicsData.ok){
-      host.innerHTML = '<span style="color:var(--red)">'+escHtml(topicsData.error||'Could not load notification topics')+'</span>';
-      return;
-    }
-    // eBay's app-level topic list includes things with zero relevance to a
-    // card shop (loan-application events, generic account-deletion
-    // compliance topics) mixed in with the few that are actually about
-    // items/listings -- filtered out here rather than shown as noise.
-    const irrelevantTopic = t => /^LOAN_/i.test(t.topicId) || t.topicId === 'MARKETPLACE_ACCOUNT_DELETION';
-    const topics = (topicsData.topics || []).filter(t => !irrelevantTopic(t));
-    const subsByTopic = Object.fromEntries((subsData.ok ? subsData.subscriptions : []).filter(s=>s.status==='ENABLED').map(s=>[s.topicId, s.subscriptionId]));
-    if(!topics.length){ host.innerHTML = '<div style="font-family:monospace;font-size:10px;color:var(--dim)">eBay isn\'t offering this app any listing-related notification topics right now -- nothing to subscribe to.</div>'; return; }
-    host.innerHTML = topics.map(t => {
-      const subId = subsByTopic[t.topicId];
-      return `<div style="display:flex;align-items:center;gap:8px;padding:8px;border:1px solid var(--border);border-radius:6px">
-        <div style="flex:1;min-width:0">
-          <div style="font-size:11px">${escHtml(t.topicId)}</div>
-          <div style="font-family:monospace;font-size:9px;color:var(--dim)">${escHtml(t.description||'')}</div>
-        </div>
-        ${subId
-          ? `<button class="hbtn" style="padding:5px 10px;font-size:9px;color:var(--g)" onclick="toggleEbayNotificationSub('${escHtml(subId)}',null,this)">SUBSCRIBED</button>`
-          : `<button class="hbtn" style="padding:5px 10px;font-size:9px" onclick="toggleEbayNotificationSub(null,'${escHtml(t.topicId)}',this)">SUBSCRIBE</button>`}
-      </div>`;
-    }).join('');
-  }catch(e){ host.textContent = e.message; }
-}
-
-async function toggleEbayNotificationSub(subscriptionId, topicId, btn){
-  if(btn){ btn.disabled = true; btn.textContent = '...'; }
-  try{
-    if(subscriptionId){
-      const res = await storeWorkerFetch('/ebay/notifications/unsubscribe', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ subscriptionId }) });
-      const d = await res.json().catch(()=>({}));
-      if(!d.ok) throw new Error(d.error || 'Unsubscribe failed');
-      toast_dash('Unsubscribed');
-    }else{
-      const res = await storeWorkerFetch('/ebay/notifications/subscribe', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ topicId }) });
-      const d = await res.json().catch(()=>({}));
-      if(!d.ok) throw new Error(d.error || 'Subscribe failed');
-      toast_dash('Subscribed to ' + topicId);
-    }
-  }catch(e){ toast_dash(e.message); }
-  loadEbayNotificationTopics();
-}
-
-async function loadEbayNotificationEvents(){
-  const host = document.getElementById('ebay-notif-events');
-  if(!host) return;
-  try{
-    const res = await storeWorkerFetch('/ebay/notifications/events', { cache:'no-store' });
-    const d = await res.json().catch(()=>({}));
-    if(!d.ok) return;
-    const events = d.events || [];
-    if(!events.length){ host.innerHTML = '<div style="font-family:monospace;font-size:10px;color:var(--dim)">No events received yet -- subscribe to a topic above, then this fills in as eBay pushes them.</div>'; return; }
-    host.innerHTML = events.map(e => `
-      <div style="padding:8px;border:1px solid var(--border);border-radius:6px">
-        <div style="font-size:11px">${escHtml(e.topic||'event')} ${e.verified?'<span class="data-pill">verified</span>':'<span class="data-pill warn">unverified</span>'}</div>
-        <div style="font-family:monospace;font-size:9px;color:var(--dim);margin-top:2px">${e.receivedAt?new Date(e.receivedAt).toLocaleString():''}</div>
-      </div>`).join('');
-  }catch(e){ /* best-effort */ }
+  await Promise.all([loadEbaySellingLimit(), loadEbayFinances(), loadEbayAllOrders(), loadEbayReturnsAndCancellations(), loadEbayPromotedCampaigns(), loadEbayNegotiationEligible()]);
 }
 
 // Shows the account's current site-wide selling limit -- this is the CAP
@@ -38246,7 +38165,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.07.10-comic-qty-grouping"></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.07.11-remove-push-notifications"></script>
 </body>
 </html>
 
