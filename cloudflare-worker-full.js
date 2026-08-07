@@ -1426,10 +1426,22 @@ function buildEbayInventoryItemBody(b) {
   const {
     title, description, conditionId = '3000', conditionDescription = '', conditionDescriptors = [],
     quantity = 1, imageUrl = null, imageUrls = [],
+    packageType = '', weightValue = 0.1, weightUnit = 'POUND',
+    dimLength = 6.5, dimWidth = 4, dimHeight = 0.1, dimUnit = 'INCH',
   } = b;
   const allImgUrls = [];
   if (imageUrl) allImgUrls.push(imageUrl);
   (imageUrls || []).forEach(u => { if (u && !allImgUrls.includes(u)) allImgUrls.push(u); });
+  const packageWeightAndSize = {
+    dimensions: {
+      length: Number(dimLength) || 6.5,
+      width: Number(dimWidth) || 4,
+      height: Number(dimHeight) || 0.1,
+      unit: dimUnit || 'INCH',
+    },
+    weight: { value: Number(weightValue) || 0.1, unit: weightUnit || 'POUND' },
+  };
+  if (packageType) packageWeightAndSize.packageType = packageType;
   return {
     product: {
       title: String(title || '').substring(0, 80),
@@ -1446,10 +1458,7 @@ function buildEbayInventoryItemBody(b) {
       return cleaned.length ? cleaned : undefined;
     })(),
     availability: { shipToLocationAvailability: { quantity: parseInt(quantity) || 1 } },
-    packageWeightAndSize: {
-      dimensions: { height: 0.1, length: 6.5, width: 4, unit: 'INCH' },
-      weight: { value: 0.1, unit: 'POUND' },
-    },
+    packageWeightAndSize,
   };
 }
 
@@ -4068,6 +4077,13 @@ export default {
             conditionDescription: item.conditionDescription || '',
             conditionDescriptors: item.conditionDescriptors || [],
             quantity: item.availability?.shipToLocationAvailability?.quantity != null ? Number(item.availability.shipToLocationAvailability.quantity) : null,
+            packageType: item.packageWeightAndSize?.packageType || '',
+            weightValue: item.packageWeightAndSize?.weight?.value ?? '',
+            weightUnit: item.packageWeightAndSize?.weight?.unit || '',
+            dimLength: item.packageWeightAndSize?.dimensions?.length ?? '',
+            dimWidth: item.packageWeightAndSize?.dimensions?.width ?? '',
+            dimHeight: item.packageWeightAndSize?.dimensions?.height ?? '',
+            dimUnit: item.packageWeightAndSize?.dimensions?.unit || '',
           } : null,
         });
       } catch (e) {

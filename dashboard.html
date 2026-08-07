@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.07.04-returns-promoted-listings">
+<meta name="version" content="2026.08.07.05-package-shipping-info">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1542,13 +1542,13 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.07.04-returns-promoted-listings"></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.07.04-returns-promoted-listings"></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.07.04-returns-promoted-listings"></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.07.04-returns-promoted-listings"></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.07.04-returns-promoted-listings"></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.07.04-returns-promoted-listings"></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.07.04-returns-promoted-listings"></script>
+<script src="scripts/query-routing.js?v=2026.08.07.05-package-shipping-info"></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.07.05-package-shipping-info"></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.07.05-package-shipping-info"></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.07.05-package-shipping-info"></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.07.05-package-shipping-info"></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.07.05-package-shipping-info"></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.07.05-package-shipping-info"></script>
 </head>
 <body>
 
@@ -1598,11 +1598,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.07.04-returns-promoted-listings</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.07.05-package-shipping-info</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.07.04-returns-promoted-listings</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.07.05-package-shipping-info</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1624,7 +1624,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.07.04-returns-promoted-listings</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.07.05-package-shipping-info</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3150,7 +3150,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.07.04-returns-promoted-listings';
+const APP_VERSION = '2026.08.07.05-package-shipping-info';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -18266,6 +18266,16 @@ async function openEbayFromDash(id){
   const autoAcceptVal = (liveOk && live.offer?.autoAcceptPrice) || '';
   const aspects = live?.item?.aspects || {};
   const aspectVal = (key, fallback) => (Array.isArray(aspects[key]) && aspects[key][0]) || fallback;
+  // Packaging defaults: a single card ships in a thin bubble mailer/toploader;
+  // a sealed box needs a real box. Both are just starting points -- fully
+  // editable below, same as picking package/weight/dims in the eBay app.
+  const packageTypeVal = (liveOk && live.item?.packageType) || '';
+  const weightVal = (liveOk && live.item?.weightValue) || (isSealed ? 1 : 0.1);
+  const weightUnitVal = (liveOk && live.item?.weightUnit) || 'POUND';
+  const dimLengthVal = (liveOk && live.item?.dimLength) || (isSealed ? 8 : 6.5);
+  const dimWidthVal = (liveOk && live.item?.dimWidth) || (isSealed ? 6 : 4);
+  const dimHeightVal = (liveOk && live.item?.dimHeight) || (isSealed ? 3 : 0.1);
+  const dimUnitVal = (liveOk && live.item?.dimUnit) || 'INCH';
 
   document.getElementById('dash-ebay-modal')?.remove();
   const modal=document.createElement('div');
@@ -18332,6 +18342,45 @@ async function openEbayFromDash(id){
         </div>
         <div id="dash-eb-dynamic-aspects" style="margin-top:10px"></div>
       </details>
+      <details style="margin:10px 0">
+        <summary style="font-family:monospace;font-size:9px;color:var(--gold);cursor:pointer;margin-bottom:8px">PACKAGE &amp; SHIPPING LABEL INFO</summary>
+        <div style="font-family:monospace;font-size:9px;color:var(--dim);margin:4px 0 8px">Feeds eBay's calculated shipping cost and whatever label you print for this listing -- same as PACKAGE WEIGHT AND DIMENSIONS in the eBay app.</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <div><label style="font-family:monospace;font-size:8px;color:var(--dim)">PACKAGE TYPE</label>
+            <select id="dash-eb-pkg-type" style="width:100%;margin-top:3px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:7px;border-radius:6px">
+              <option value="" ${packageTypeVal===''?'selected':''}>Let eBay infer from dimensions</option>
+              <option value="PACKAGE_THICK_ENVELOPE" ${packageTypeVal==='PACKAGE_THICK_ENVELOPE'?'selected':''}>Thick envelope</option>
+              <option value="PADDED_BAGS" ${packageTypeVal==='PADDED_BAGS'?'selected':''}>Padded envelope / bubble mailer</option>
+              <option value="LARGE_ENVELOPE" ${packageTypeVal==='LARGE_ENVELOPE'?'selected':''}>Large envelope</option>
+              <option value="MAILING_BOX" ${packageTypeVal==='MAILING_BOX'?'selected':''}>Mailing box</option>
+              <option value="USPS_LARGE_PACK" ${packageTypeVal==='USPS_LARGE_PACK'?'selected':''}>Large box (USPS Large Pack)</option>
+              <option value="VERY_LARGE_PACK" ${packageTypeVal==='VERY_LARGE_PACK'?'selected':''}>Very large box</option>
+            </select>
+          </div>
+          <div><label style="font-family:monospace;font-size:8px;color:var(--dim)">WEIGHT</label>
+            <div style="display:flex;gap:6px;margin-top:3px">
+              <input id="dash-eb-weight" type="number" step="0.01" min="0" value="${weightVal}" style="width:100%;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:7px;border-radius:6px;box-sizing:border-box">
+              <select id="dash-eb-weight-unit" style="background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:7px;border-radius:6px">
+                <option value="POUND" ${weightUnitVal==='POUND'?'selected':''}>lb</option>
+                <option value="OUNCE" ${weightUnitVal==='OUNCE'?'selected':''}>oz</option>
+                <option value="KILOGRAM" ${weightUnitVal==='KILOGRAM'?'selected':''}>kg</option>
+                <option value="GRAM" ${weightUnitVal==='GRAM'?'selected':''}>g</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;margin-top:8px">
+          <div><label style="font-family:monospace;font-size:8px;color:var(--dim)">LENGTH</label><input id="dash-eb-dim-l" type="number" step="0.01" min="0" value="${dimLengthVal}" style="width:100%;margin-top:3px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:7px;border-radius:6px;box-sizing:border-box"></div>
+          <div><label style="font-family:monospace;font-size:8px;color:var(--dim)">WIDTH</label><input id="dash-eb-dim-w" type="number" step="0.01" min="0" value="${dimWidthVal}" style="width:100%;margin-top:3px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:7px;border-radius:6px;box-sizing:border-box"></div>
+          <div><label style="font-family:monospace;font-size:8px;color:var(--dim)">HEIGHT</label><input id="dash-eb-dim-h" type="number" step="0.01" min="0" value="${dimHeightVal}" style="width:100%;margin-top:3px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:7px;border-radius:6px;box-sizing:border-box"></div>
+          <div><label style="font-family:monospace;font-size:8px;color:var(--dim)">UNIT</label>
+            <select id="dash-eb-dim-unit" style="width:100%;margin-top:3px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:7px;border-radius:6px">
+              <option value="INCH" ${dimUnitVal==='INCH'?'selected':''}>in</option>
+              <option value="CENTIMETER" ${dimUnitVal==='CENTIMETER'?'selected':''}>cm</option>
+            </select>
+          </div>
+        </div>
+      </details>
       <div style="display:flex;justify-content:space-between;align-items:center">
         <label style="font-family:monospace;font-size:9px;color:var(--dim)">DESCRIPTION</label>
         <button class="hbtn" style="padding:4px 8px;font-size:9px" onclick="generateAiEbayDescriptionForModal('${id}')">✨ AI DESCRIPTION</button>
@@ -18380,6 +18429,13 @@ async function refreshDashboardEbayListingForm(id){
   setVal('dash-eb-min-offer', live.offer?.autoDeclinePrice);
   setVal('dash-eb-auto-accept', live.offer?.autoAcceptPrice);
   if(live.item?.conditionDescription) setVal('dash-eb-cond-desc', live.item.conditionDescription);
+  setVal('dash-eb-pkg-type', live.item?.packageType);
+  setVal('dash-eb-weight', live.item?.weightValue);
+  setVal('dash-eb-weight-unit', live.item?.weightUnit);
+  setVal('dash-eb-dim-l', live.item?.dimLength);
+  setVal('dash-eb-dim-w', live.item?.dimWidth);
+  setVal('dash-eb-dim-h', live.item?.dimHeight);
+  setVal('dash-eb-dim-unit', live.item?.dimUnit);
   await refreshEbayConditionUi('dash-eb', item, live.item?.conditionId);
   if(live.item?.conditionDescriptors?.length) applyLiveEbayConditionDescriptors('dash-eb', live.item.conditionDescriptors);
   document.getElementById('dash-eb-title-count').textContent=(document.getElementById('dash-eb-title')?.value||'').length+'/80';
@@ -18560,6 +18616,13 @@ function collectDashboardEbayFormPayload(item){
     features:document.getElementById('dash-eb-features')?.value.trim() || '',
     productType:document.getElementById('dash-eb-product-type')?.value || '',
     configuration:document.getElementById('dash-eb-config')?.value.trim() || '',
+    packageType:document.getElementById('dash-eb-pkg-type')?.value || '',
+    weightValue:parseFloat(document.getElementById('dash-eb-weight')?.value) || 0.1,
+    weightUnit:document.getElementById('dash-eb-weight-unit')?.value || 'POUND',
+    dimLength:parseFloat(document.getElementById('dash-eb-dim-l')?.value) || 6.5,
+    dimWidth:parseFloat(document.getElementById('dash-eb-dim-w')?.value) || 4,
+    dimHeight:parseFloat(document.getElementById('dash-eb-dim-h')?.value) || 0.1,
+    dimUnit:document.getElementById('dash-eb-dim-unit')?.value || 'INCH',
     customAspects:{
       'Product':document.getElementById('dash-eb-product-type')?.value === 'sealed' ? 'Box' : '',
       'Configuration':document.getElementById('dash-eb-config')?.value.trim() || (document.getElementById('dash-eb-product-type')?.value === 'sealed' ? 'Box' : ''),
@@ -37729,7 +37792,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.07.04-returns-promoted-listings"></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.07.05-package-shipping-info"></script>
 </body>
 </html>
 
