@@ -46,6 +46,7 @@ const EBAY_SCOPES = [
   'https://api.ebay.com/oauth/api_scope/sell.inventory',
   'https://api.ebay.com/oauth/api_scope/sell.account',
   'https://api.ebay.com/oauth/api_scope/sell.fulfillment.readonly',
+  'https://api.ebay.com/oauth/api_scope/sell.fulfillment',
   'https://api.ebay.com/oauth/api_scope/sell.analytics.readonly',
   'https://api.ebay.com/oauth/api_scope/sell.finances',
 ].join(' ');
@@ -4428,6 +4429,56 @@ export default {
         return json({ ok: true, itemId: invRow.id, saleId, salePrice, feeAmount, profit, depleted, channel });
       } catch (e) {
         return json({ ok: false, error: 'Failed to record external sale: ' + e.message }, 500);
+      }
+    }
+
+    // POST /ebay/orders/ship -- pushes tracking back to eBay so a seller who
+    // buys/prints their shipping label somewhere other than eBay's own
+    // integrated label flow (and would otherwise have to remember to paste
+    // the tracking number into eBay by hand) can do it from here instead.
+    // Body: { orderId, lineItemIds: [string], trackingNumber, carrierCode, shippedDate? }
+    // Needs the (non-readonly) sell.fulfillment scope -- a store connected
+    // before this shipped gets needsReconnect and should hit CONNECT EBAY again.
+    if (url.pathname === '/ebay/orders/ship' && request.method === 'POST') {
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId, ['owner','admin']);
+      if (auth.error) return auth.error;
+      let ebayToken = '';
+      try { ebayToken = await getEbayUserAccessToken(env); }
+      catch (tokenErr) { return json({ needsToken: true, error: tokenErr.message }, 401); }
+      if (!ebayToken) return json({ needsToken: true, error: 'Connect eBay first: missing user access/refresh token' }, 401);
+
+      try {
+        const body = await request.json().catch(() => ({}));
+        const orderId = String(body.orderId || '').trim();
+        const trackingNumber = String(body.trackingNumber || '').trim();
+        const carrierCode = String(body.carrierCode || '').trim().toUpperCase();
+        const lineItemIds = Array.isArray(body.lineItemIds) ? body.lineItemIds.filter(Boolean) : [];
+        if (!orderId) return json({ ok: false, error: 'orderId is required' }, 400);
+        if (!trackingNumber || !carrierCode) return json({ ok: false, error: 'trackingNumber and carrierCode are both required (eBay requires them together)' }, 400);
+
+        const payload = {
+          shippingCarrierCode: carrierCode,
+          trackingNumber,
+          shippedDate: body.shippedDate || new Date().toISOString(),
+        };
+        if (lineItemIds.length) payload.lineItems = lineItemIds.map(id => ({ lineItemId: id }));
+
+        const res = await fetch('https://api.ebay.com/sell/fulfillment/v1/order/' + encodeURIComponent(orderId) + '/shipping_fulfillment', {
+          method: 'POST',
+          headers: { 'Authorization': 'Bearer ' + ebayToken, 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        const txt = await res.text();
+        let data; try { data = JSON.parse(txt); } catch (_) { data = { raw: txt }; }
+        if (!res.ok) {
+          const msg = data?.errors?.[0]?.longMessage || data?.errors?.[0]?.message || txt.substring(0, 300);
+          const scopeIssue = res.status === 403 || /scope|insufficient permission/i.test(msg);
+          return json({ ok: false, needsReconnect: scopeIssue, error: 'eBay ship update failed (' + res.status + '): ' + msg }, res.status);
+        }
+        return json({ ok: true, orderId, trackingNumber, carrierCode });
+      } catch (e) {
+        return json({ ok: false, error: 'eBay ship update failed: ' + e.message }, 502);
       }
     }
 
