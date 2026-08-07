@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.07.07-notification-webhooks">
+<meta name="version" content="2026.08.07.08-recommendations-catalog-marketing">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1542,13 +1542,13 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.07.07-notification-webhooks"></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.07.07-notification-webhooks"></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.07.07-notification-webhooks"></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.07.07-notification-webhooks"></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.07.07-notification-webhooks"></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.07.07-notification-webhooks"></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.07.07-notification-webhooks"></script>
+<script src="scripts/query-routing.js?v=2026.08.07.08-recommendations-catalog-marketing"></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.07.08-recommendations-catalog-marketing"></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.07.08-recommendations-catalog-marketing"></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.07.08-recommendations-catalog-marketing"></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.07.08-recommendations-catalog-marketing"></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.07.08-recommendations-catalog-marketing"></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.07.08-recommendations-catalog-marketing"></script>
 </head>
 <body>
 
@@ -1598,11 +1598,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.07.07-notification-webhooks</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.07.08-recommendations-catalog-marketing</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.07.07-notification-webhooks</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.07.08-recommendations-catalog-marketing</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1624,7 +1624,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.07.07-notification-webhooks</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.07.08-recommendations-catalog-marketing</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -1939,7 +1939,10 @@ body.show-mode .inv-sync-badge{display:none;}
     <div id="ebay-all-orders" style="display:grid;gap:6px;margin-bottom:14px">Loading...</div>
     <div style="font-family:monospace;font-size:9px;color:var(--purple);letter-spacing:.05em;margin-bottom:6px">RETURNS &amp; CANCELLATIONS <span style="color:var(--dim);text-transform:none;letter-spacing:normal">— last 90 days</span></div>
     <div id="ebay-returns-cancellations" style="display:grid;gap:6px;margin-bottom:14px">Loading...</div>
-    <div style="font-family:monospace;font-size:9px;color:var(--purple);letter-spacing:.05em;margin-bottom:6px">PROMOTED LISTINGS <span style="color:var(--dim);text-transform:none;letter-spacing:normal">— view only; set up/edit budgets on eBay</span></div>
+    <div style="font-family:monospace;font-size:9px;color:var(--purple);letter-spacing:.05em;margin-bottom:6px">PROMOTED LISTINGS <span style="color:var(--dim);text-transform:none;letter-spacing:normal">— spends real eBay ad budget when a promoted listing sells</span></div>
+    <div style="display:flex;gap:8px;margin-bottom:8px">
+      <button class="hbtn" style="color:var(--gold)" onclick="openCreateCampaignModal()">CREATE CAMPAIGN</button>
+    </div>
     <div id="ebay-promoted-campaigns" style="display:grid;gap:6px;margin-bottom:14px">Loading...</div>
     <div style="font-family:monospace;font-size:9px;color:var(--purple);letter-spacing:.05em;margin-bottom:6px">SEND OFFERS TO BUYERS <span style="color:var(--dim);text-transform:none;letter-spacing:normal">— listings with an interested buyer who hasn't bought yet</span></div>
     <div id="ebay-negotiation-eligible" style="display:grid;gap:6px;margin-bottom:14px">Loading...</div>
@@ -3158,7 +3161,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.07.07-notification-webhooks';
+const APP_VERSION = '2026.08.07.08-recommendations-catalog-marketing';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -14199,10 +14202,12 @@ async function renderEbayHubPanel(){
             <div style="font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(i.name)}</div>
             <div style="font-family:monospace;font-size:9px;color:var(--dim)">${i.market?fd$(i.market):''} · <a href="https://www.ebay.com/itm/${escHtml(i.ebayListingId)}" target="_blank" style="color:var(--g)">view live</a></div>
             <div id="ebay-perf-${escHtml(i.ebayListingId)}" style="font-family:monospace;font-size:9px;color:var(--dim);margin-top:2px">Loading views...</div>
+            <div id="ebay-reco-${escHtml(i.ebayListingId)}" style="font-family:monospace;font-size:9px;margin-top:2px"></div>
           </div>
           <button class="hbtn" style="padding:4px 8px;font-size:9px" onclick="openEbayFromDash('${i.id}')">MANAGE</button>
         </div>`).join('');
       loadEbayListingPerformance(listed.map(i => i.ebayListingId)).catch(()=>{});
+      loadEbayListingRecommendations(listed.map(i => i.ebayListingId)).catch(()=>{});
     }
   }
   loadEbayOrderHistory().catch(()=>{});
@@ -14232,6 +14237,27 @@ async function loadEbayListingPerformance(listingIds){
   }catch(e){
     for(const id of listingIds){ const el = document.getElementById('ebay-perf-' + id); if(el) el.textContent = 'Could not load stats'; }
   }
+}
+
+// eBay's own read on whether a listing is a good candidate for a Promoted
+// Listings campaign, and at roughly what bid -- via the Recommendation API.
+// Purely informational; doesn't create or change any campaign itself.
+async function loadEbayListingRecommendations(listingIds){
+  if(!listingIds?.length) return;
+  try{
+    const res = await storeWorkerFetch('/ebay/recommendations?listingIds=' + encodeURIComponent(listingIds.join(',')), { cache:'no-store' });
+    const d = await res.json().catch(()=>({}));
+    if(!d.ok) return;
+    const byId = Object.fromEntries((d.recommendations || []).map(r => [String(r.listingId), r]));
+    for(const id of listingIds){
+      const el = document.getElementById('ebay-reco-' + id);
+      if(!el) continue;
+      const r = byId[String(id)];
+      if(r && r.promoteWithAd === 'RECOMMENDED'){
+        el.innerHTML = '<span style="color:var(--gold)">eBay recommends Promoted Listings' + (r.bidPercentage?' at ~'+r.bidPercentage+'% bid':'') + '</span>';
+      }
+    }
+  }catch(e){ /* purely informational, fail silently */ }
 }
 
 // Every eBay sale this app has ever recorded (via /ebay/orders/sync), matched
@@ -14494,8 +14520,118 @@ async function loadEbayPromotedCampaigns(){
           <div style="font-size:11px;color:var(--dim)">${escHtml(c.bidPercentage?c.bidPercentage+'%':'')}</div>
         </div>
         <div style="font-family:monospace;font-size:9px;color:var(--dim);margin-top:2px"><span class="data-pill ${c.status==='RUNNING'?'':'warn'}">${escHtml(c.status||'')}</span> · ${escHtml(c.fundingModel||'')} · ${escHtml(c.targetingType||'')}${c.startDate?' · started '+new Date(c.startDate).toLocaleDateString():''}</div>
+        ${c.status==='RUNNING'?`<div style="display:flex;gap:6px;margin-top:6px">
+          <button class="hbtn" style="padding:3px 8px;font-size:9px" onclick="openAddListingsToCampaignModal('${escHtml(c.campaignId)}','${escHtml(c.name||c.campaignId)}')">ADD MY LISTINGS</button>
+          <button class="hbtn" style="padding:3px 8px;font-size:9px;color:var(--red)" onclick="endEbayCampaign('${escHtml(c.campaignId)}')">END CAMPAIGN</button>
+        </div>`:''}
       </div>`).join('') : '<div style="font-family:monospace;font-size:10px;color:var(--dim)">No Promoted Listings campaigns on this account.</div>';
   }catch(e){ host.textContent = e.message; }
+}
+
+// Creating a campaign spends real eBay ad budget the moment a promoted
+// listing sells -- this is the one eBay feature in this dashboard that
+// costs money on its own once running, so it gets an explicit
+// understand-the-cost checkbox nothing else here requires.
+function openCreateCampaignModal(){
+  document.getElementById('ebay-campaign-modal')?.remove();
+  const modal = document.createElement('div');
+  modal.id = 'ebay-campaign-modal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px';
+  modal.innerHTML = `
+    <div style="width:100%;max-width:420px;background:var(--surf);border:1px solid var(--border);border-radius:10px;padding:16px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <div style="font-family:'Orbitron',monospace;color:var(--gold);font-size:13px;letter-spacing:2px">CREATE CAMPAIGN</div>
+        <button onclick="document.getElementById('ebay-campaign-modal').remove()" style="background:none;border:none;color:var(--dim);font-size:22px;cursor:pointer">×</button>
+      </div>
+      <label style="font-family:monospace;font-size:9px;color:var(--dim)">CAMPAIGN NAME</label>
+      <input id="ebay-campaign-name" maxlength="80" placeholder="e.g. Sports Cards - General" style="width:100%;margin:4px 0 10px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:9px;border-radius:6px;box-sizing:border-box">
+      <label style="font-family:monospace;font-size:9px;color:var(--dim)">AD RATE (BID %) <span style="text-transform:none">-- higher = more visibility, more fee on sale</span></label>
+      <input id="ebay-campaign-bid" type="number" step="1" min="1" max="100" value="5" style="width:100%;margin:4px 0 10px;background:var(--surf2);border:1px solid var(--border);color:var(--gold);padding:9px;border-radius:6px;box-sizing:border-box">
+      <div style="font-family:monospace;font-size:9px;color:var(--dim);margin-bottom:10px">Cost Per Sale: eBay charges this % of the item's sale price ONLY when a promoted listing sells. No cost while a listing just sits unsold.</div>
+      <label style="display:flex;align-items:flex-start;gap:8px;font-family:monospace;font-size:10px;cursor:pointer;margin-bottom:12px">
+        <input id="ebay-campaign-confirm" type="checkbox" style="margin-top:2px" onchange="document.getElementById('ebay-campaign-submit').disabled=!this.checked">
+        <span>I understand this creates a real eBay ad campaign that charges the ad rate above when a promoted listing sells.</span>
+      </label>
+      <div id="ebay-campaign-status" style="display:none;margin-bottom:10px;padding:8px;border-radius:6px;font-family:monospace;font-size:10px;text-align:center"></div>
+      <div style="display:flex;gap:8px">
+        <button id="ebay-campaign-submit" class="hbtn" style="flex:1;color:var(--gold)" disabled onclick="submitCreateCampaign()">CREATE CAMPAIGN</button>
+        <button class="hbtn" onclick="document.getElementById('ebay-campaign-modal').remove()">CANCEL</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+  document.getElementById('ebay-campaign-name')?.focus();
+}
+
+async function submitCreateCampaign(){
+  const campaignName = document.getElementById('ebay-campaign-name')?.value.trim();
+  const bidPercentage = parseFloat(document.getElementById('ebay-campaign-bid')?.value);
+  const status = document.getElementById('ebay-campaign-status');
+  if(!campaignName){ toast_dash('Enter a campaign name'); return; }
+  if(!(bidPercentage > 0)){ toast_dash('Enter a valid ad rate'); return; }
+  if(status){ status.style.display='block'; status.style.color='var(--gold)'; status.style.border='1px solid rgba(255,209,102,.25)'; status.style.background='rgba(255,209,102,.06)'; status.textContent='Creating campaign...'; }
+  try{
+    const res = await storeWorkerFetch('/ebay/marketing/campaign/create', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ campaignName, bidPercentage }) });
+    const d = await res.json().catch(()=>({}));
+    if(!d.ok) throw new Error(d.error || 'Campaign create failed');
+    if(status){ status.style.color='var(--g)'; status.style.border='1px solid rgba(0,255,179,.25)'; status.style.background='rgba(0,255,179,.06)'; status.textContent='Campaign created.'; }
+    setTimeout(()=>{ document.getElementById('ebay-campaign-modal')?.remove(); loadEbayPromotedCampaigns(); }, 1000);
+  }catch(e){
+    if(status){ status.style.color='var(--red)'; status.style.border='1px solid rgba(255,77,109,.25)'; status.style.background='rgba(255,77,109,.06)'; status.textContent=e.message; }
+  }
+}
+
+async function endEbayCampaign(campaignId){
+  if(!confirm('End this campaign? It will stop being promoted -- this cannot be undone from here.')) return;
+  try{
+    const res = await storeWorkerFetch('/ebay/marketing/campaign/end', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ campaignId }) });
+    const d = await res.json().catch(()=>({}));
+    if(!d.ok) throw new Error(d.error || 'End campaign failed');
+    toast_dash('Campaign ended');
+  }catch(e){ toast_dash(e.message); }
+  loadEbayPromotedCampaigns();
+}
+
+function openAddListingsToCampaignModal(campaignId, campaignName){
+  const listed = (all||[]).filter(i => i.ebayListingId && i.status === 'in_stock');
+  document.getElementById('ebay-campaign-listings-modal')?.remove();
+  const modal = document.createElement('div');
+  modal.id = 'ebay-campaign-listings-modal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:9999;display:flex;align-items:flex-start;justify-content:center;overflow-y:auto;padding:24px 12px';
+  modal.innerHTML = `
+    <div style="width:100%;max-width:480px;background:var(--surf);border:1px solid var(--border);border-radius:10px;padding:16px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <div style="font-family:'Orbitron',monospace;color:var(--gold);font-size:13px;letter-spacing:2px">ADD LISTINGS</div>
+        <button onclick="document.getElementById('ebay-campaign-listings-modal').remove()" style="background:none;border:none;color:var(--dim);font-size:22px;cursor:pointer">×</button>
+      </div>
+      <div style="font-family:monospace;font-size:10px;color:var(--dim);margin-bottom:10px">Add to "${escHtml(campaignName)}" -- each starts showing as promoted immediately, and pays the campaign's ad rate on sale.</div>
+      <div style="display:grid;gap:6px;max-height:45vh;overflow-y:auto;margin-bottom:12px">
+        ${listed.length ? listed.map(i => `
+          <label style="display:flex;align-items:center;gap:8px;padding:6px;border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:11px">
+            <input type="checkbox" class="ebay-campaign-listing-cb" value="${escHtml(i.ebayListingId)}">
+            ${escHtml(i.name||'Item')}
+          </label>`).join('') : '<div style="font-family:monospace;font-size:10px;color:var(--dim)">No active eBay listings to add.</div>'}
+      </div>
+      <div id="ebay-campaign-listings-status" style="display:none;margin-bottom:10px;padding:8px;border-radius:6px;font-family:monospace;font-size:10px;text-align:center"></div>
+      <button class="hbtn" style="width:100%;color:var(--gold)" onclick="submitAddListingsToCampaign('${escHtml(campaignId)}')">ADD SELECTED</button>
+    </div>`;
+  document.body.appendChild(modal);
+}
+
+async function submitAddListingsToCampaign(campaignId){
+  const listingIds = [...document.querySelectorAll('.ebay-campaign-listing-cb:checked')].map(cb => cb.value);
+  const status = document.getElementById('ebay-campaign-listings-status');
+  if(!listingIds.length){ toast_dash('Select at least one listing'); return; }
+  if(status){ status.style.display='block'; status.style.color='var(--gold)'; status.style.border='1px solid rgba(255,209,102,.25)'; status.style.background='rgba(255,209,102,.06)'; status.textContent='Adding...'; }
+  try{
+    const res = await storeWorkerFetch('/ebay/marketing/campaign/add-listings', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ campaignId, listingIds }) });
+    const d = await res.json().catch(()=>({}));
+    if(!d.ok) throw new Error(d.error || 'Add listings failed');
+    const failed = (d.results||[]).filter(r=>!r.ok);
+    if(status){ status.style.color = failed.length ? 'var(--gold)' : 'var(--g)'; status.style.border='1px solid rgba(0,255,179,.25)'; status.style.background='rgba(0,255,179,.06)'; status.textContent = failed.length ? (listingIds.length-failed.length)+' added, '+failed.length+' failed' : 'Added to campaign.'; }
+    setTimeout(()=>{ document.getElementById('ebay-campaign-listings-modal')?.remove(); }, 1500);
+  }catch(e){
+    if(status){ status.style.color='var(--red)'; status.style.border='1px solid rgba(255,77,109,.25)'; status.style.background='rgba(255,77,109,.06)'; status.textContent=e.message; }
+  }
 }
 
 // Returns and cancellations sit in a legacy eBay API (Post-Order) totally
@@ -18481,6 +18617,11 @@ async function openEbayFromDash(id){
           <label style="font-family:monospace;font-size:9px;color:var(--dim)">TITLE</label>
           <input id="dash-eb-title" maxlength="80" value="${esc(title)}" style="width:100%;margin-top:4px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:9px;border-radius:6px;font-size:12px;box-sizing:border-box">
           <div id="dash-eb-title-count" style="font-family:monospace;font-size:8px;color:var(--dim);text-align:right;margin-top:3px">${title.length}/80</div>
+          <input type="hidden" id="dash-eb-epid" value="${esc((live?.item?.epid) || '')}">
+          <div style="display:flex;align-items:center;gap:6px;margin-top:4px">
+            <button type="button" class="hbtn" style="padding:2px 6px;font-size:8px" onclick="openEbayCatalogMatchModal('${id}')">MATCH EBAY CATALOG</button>
+            <span id="dash-eb-epid-status" style="font-family:monospace;font-size:8px;color:var(--dim)">${(live?.item?.epid) ? 'Matched to eBay catalog' : 'optional -- not required to list'}</span>
+          </div>
         </div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px">
@@ -18614,6 +18755,7 @@ async function refreshDashboardEbayListingForm(id){
   setVal('dash-eb-min-offer', live.offer?.autoDeclinePrice);
   setVal('dash-eb-auto-accept', live.offer?.autoAcceptPrice);
   if(live.item?.conditionDescription) setVal('dash-eb-cond-desc', live.item.conditionDescription);
+  if(live.item?.epid){ setVal('dash-eb-epid', live.item.epid); const st=document.getElementById('dash-eb-epid-status'); if(st) st.textContent='Matched to eBay catalog'; }
   setVal('dash-eb-pkg-type', live.item?.packageType);
   setVal('dash-eb-weight', live.item?.weightValue);
   setVal('dash-eb-weight-unit', live.item?.weightUnit);
@@ -18801,6 +18943,7 @@ function collectDashboardEbayFormPayload(item){
     features:document.getElementById('dash-eb-features')?.value.trim() || '',
     productType:document.getElementById('dash-eb-product-type')?.value || '',
     configuration:document.getElementById('dash-eb-config')?.value.trim() || '',
+    epid:document.getElementById('dash-eb-epid')?.value || '',
     packageType:document.getElementById('dash-eb-pkg-type')?.value || '',
     weightValue:parseFloat(document.getElementById('dash-eb-weight')?.value) || 0.1,
     weightUnit:document.getElementById('dash-eb-weight-unit')?.value || 'POUND',
@@ -18824,6 +18967,65 @@ function collectDashboardEbayFormPayload(item){
     if(v) payload.customAspects[el.dataset.dynAspect] = v;
   });
   return { payload };
+}
+
+// Optional eBay Catalog (ePID) match -- CardSight already identifies the
+// card, so this isn't relied on for correctness, it's just an extra
+// catalog-match signal some buyers filter by. Searches using the current
+// title field so it reflects whatever the seller has actually typed.
+async function openEbayCatalogMatchModal(id){
+  const titleVal = document.getElementById('dash-eb-title')?.value.trim() || '';
+  document.getElementById('ebay-catalog-modal')?.remove();
+  const modal = document.createElement('div');
+  modal.id = 'ebay-catalog-modal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.94);z-index:10000;display:flex;align-items:flex-start;justify-content:center;overflow-y:auto;padding:24px 12px';
+  modal.innerHTML = `
+    <div style="width:100%;max-width:480px;background:var(--surf);border:1px solid var(--border);border-radius:10px;padding:16px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <div style="font-family:'Orbitron',monospace;color:var(--gold);font-size:13px;letter-spacing:2px">MATCH EBAY CATALOG</div>
+        <button onclick="document.getElementById('ebay-catalog-modal').remove()" style="background:none;border:none;color:var(--dim);font-size:22px;cursor:pointer">×</button>
+      </div>
+      <div style="font-family:monospace;font-size:9px;color:var(--dim);margin-bottom:10px">Optional -- links this listing to an eBay catalog product. Not required to list.</div>
+      <div style="display:flex;gap:6px;margin-bottom:10px">
+        <input id="ebay-catalog-q" value="${escHtml(titleVal)}" style="flex:1;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:8px;border-radius:6px;box-sizing:border-box">
+        <button class="hbtn" onclick="runEbayCatalogSearch('${id}')">SEARCH</button>
+      </div>
+      <div id="ebay-catalog-results" style="display:grid;gap:6px;max-height:50vh;overflow-y:auto"></div>
+      <button class="hbtn" style="width:100%;margin-top:10px" onclick="clearEbayCatalogMatch()">CLEAR MATCH</button>
+    </div>`;
+  document.body.appendChild(modal);
+  runEbayCatalogSearch(id);
+}
+
+async function runEbayCatalogSearch(id){
+  const q = document.getElementById('ebay-catalog-q')?.value.trim();
+  const host = document.getElementById('ebay-catalog-results');
+  if(!host) return;
+  if(!q){ host.innerHTML = '<div style="font-family:monospace;font-size:10px;color:var(--dim)">Type a keyword to search.</div>'; return; }
+  host.innerHTML = '<div style="font-family:monospace;font-size:10px;color:var(--dim)">Searching...</div>';
+  try{
+    const res = await storeWorkerFetch('/ebay/catalog/search?q=' + encodeURIComponent(q));
+    const d = await res.json();
+    if(!d.ok || !d.products?.length){ host.innerHTML = '<div style="font-family:monospace;font-size:10px;color:var(--dim)">No catalog matches -- try different keywords, or skip this.</div>'; return; }
+    host.innerHTML = d.products.map(p => `
+      <button class="hbtn" style="width:100%;text-align:left;padding:8px;min-height:auto;display:flex;gap:8px;align-items:center" data-epid="${escHtml(p.epid)}" data-title="${escHtml(p.title)}" onclick="pickEbayCatalogMatch(this.dataset.epid,this.dataset.title)">
+        ${p.image?`<img src="${escHtml(p.image)}" style="width:36px;height:44px;object-fit:contain;background:#050507;border-radius:4px">`:''}
+        <div style="font-size:11px">${escHtml(p.title)}</div>
+      </button>`).join('');
+  }catch(e){ host.innerHTML = '<div style="color:var(--red);font-family:monospace;font-size:10px">Search failed: '+escHtml(e.message)+'</div>'; }
+}
+
+function pickEbayCatalogMatch(epid, title){
+  document.getElementById('ebay-catalog-modal')?.remove();
+  const el = document.getElementById('dash-eb-epid'); if(el) el.value = epid;
+  const st = document.getElementById('dash-eb-epid-status'); if(st) st.textContent = 'Matched: ' + title;
+  toast_dash('Catalog match set');
+}
+
+function clearEbayCatalogMatch(){
+  document.getElementById('ebay-catalog-modal')?.remove();
+  const el = document.getElementById('dash-eb-epid'); if(el) el.value = '';
+  const st = document.getElementById('dash-eb-epid-status'); if(st) st.textContent = 'optional -- not required to list';
 }
 
 async function submitDashboardEbayListing(id){
@@ -37977,7 +38179,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.07.07-notification-webhooks"></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.07.08-recommendations-catalog-marketing"></script>
 </body>
 </html>
 

@@ -50,6 +50,7 @@ const EBAY_SCOPES = [
   'https://api.ebay.com/oauth/api_scope/sell.analytics.readonly',
   'https://api.ebay.com/oauth/api_scope/sell.finances',
   'https://api.ebay.com/oauth/api_scope/sell.marketing.readonly',
+  'https://api.ebay.com/oauth/api_scope/sell.marketing',
 ].join(' ');
 
 const CORS = {
@@ -1428,6 +1429,7 @@ function buildEbayInventoryItemBody(b) {
     quantity = 1, imageUrl = null, imageUrls = [],
     packageType = '', weightValue = 0.1, weightUnit = 'POUND',
     dimLength = 6.5, dimWidth = 4, dimHeight = 0.1, dimUnit = 'INCH',
+    epid = '',
   } = b;
   const allImgUrls = [];
   if (imageUrl) allImgUrls.push(imageUrl);
@@ -1448,6 +1450,7 @@ function buildEbayInventoryItemBody(b) {
       description: description || title,
       aspects: buildEbayAspects(b),
       imageUrls: allImgUrls.slice(0, 12),
+      epid: epid || undefined,
     },
     conditionId: String(conditionId),
     conditionDescription: conditionDescription || undefined,
@@ -4168,6 +4171,7 @@ export default {
             dimWidth: item.packageWeightAndSize?.dimensions?.width ?? '',
             dimHeight: item.packageWeightAndSize?.dimensions?.height ?? '',
             dimUnit: item.packageWeightAndSize?.dimensions?.unit || '',
+            epid: item.product?.epid || '',
           } : null,
         });
       } catch (e) {
@@ -4341,6 +4345,92 @@ export default {
         return json({ ok: true, startDate: data.startDate, endDate: data.endDate, listings });
       } catch (e) {
         return json({ ok: false, error: 'eBay traffic report failed: ' + e.message }, 502);
+      }
+    }
+
+    // GET /ebay/recommendations?listingIds=111,222,333
+    // eBay's own read on whether a listing should be in a Promoted Listings
+    // campaign, and at roughly what bid -- via the Recommendation API. Uses
+    // the existing sell.inventory scope, no reconnect needed. Pairs with the
+    // read-only PROMOTED LISTINGS panel: this is the "should I" signal, that
+    // panel is the "what's currently running" view.
+    if (url.pathname === '/ebay/recommendations') {
+      if (request.method !== 'GET') return json({ error: 'GET only' }, 405);
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId, ['owner','admin']);
+      if (auth.error) return auth.error;
+      const listingIds = (url.searchParams.get('listingIds') || '').split(',').map(s => s.trim()).filter(Boolean).slice(0, 500);
+      if (!listingIds.length) return json({ ok: true, recommendations: [] });
+      let ebayToken = '';
+      try { ebayToken = await getEbayUserAccessToken(env); }
+      catch (tokenErr) { return json({ needsToken: true, error: tokenErr.message }, 401); }
+      if (!ebayToken) return json({ needsToken: true, error: 'Connect eBay first: missing user access/refresh token' }, 401);
+
+      try {
+        const res = await fetch('https://api.ebay.com/sell/recommendation/v1/find?recommendation_types=AD', {
+          method: 'POST',
+          headers: { 'Authorization': 'Bearer ' + ebayToken, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ listingIds }),
+        });
+        const txt = await res.text();
+        let data; try { data = JSON.parse(txt); } catch (_) { data = { raw: txt }; }
+        if (!res.ok) {
+          const msg = errorMessageFromApi(data, txt.substring(0, 300));
+          const scopeIssue = res.status === 403 || /scope|insufficient permission/i.test(msg);
+          return json({ ok: false, needsReconnect: scopeIssue, error: 'eBay recommendations lookup failed (' + res.status + '): ' + msg }, res.status);
+        }
+        const recommendations = (data.listingRecommendations || []).map(r => {
+          const ad = (r.recommendations || []).find(x => x.adRecommendation)?.adRecommendation || {};
+          return {
+            listingId: r.listingId || '',
+            promoteWithAd: ad.promoteWithAd || '',
+            bidPercentage: ad.bidPercentage || '',
+          };
+        });
+        return json({ ok: true, recommendations });
+      } catch (e) {
+        return json({ ok: false, error: 'eBay recommendations lookup failed: ' + e.message }, 502);
+      }
+    }
+
+    // GET /ebay/catalog/search?q=keywords -- searches eBay's own product
+    // catalog for a match (Commerce Catalog API). Matching a listing to an
+    // ePID is optional and purely additive -- CardSight already identifies
+    // the card itself, so this isn't relied on for correctness, just an
+    // extra "eBay catalog match" signal some buyers filter/search by. Uses
+    // the existing sell.inventory scope, no reconnect needed.
+    if (url.pathname === '/ebay/catalog/search') {
+      if (request.method !== 'GET') return json({ error: 'GET only' }, 405);
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId, ['owner','admin']);
+      if (auth.error) return auth.error;
+      const q = (url.searchParams.get('q') || '').trim().slice(0, 200);
+      if (!q) return json({ ok: true, products: [] });
+      let ebayToken = '';
+      try { ebayToken = await getEbayUserAccessToken(env); }
+      catch (tokenErr) { return json({ needsToken: true, error: tokenErr.message }, 401); }
+      if (!ebayToken) return json({ needsToken: true, error: 'Connect eBay first: missing user access/refresh token' }, 401);
+
+      try {
+        const res = await fetch('https://api.ebay.com/commerce/catalog/v1_beta/product_summary/search?q=' + encodeURIComponent(q) + '&limit=10', {
+          headers: { 'Authorization': 'Bearer ' + ebayToken, 'Accept': 'application/json', 'X-EBAY-C-MARKETPLACE-ID': 'EBAY_US' },
+        });
+        const txt = await res.text();
+        let data; try { data = JSON.parse(txt); } catch (_) { data = { raw: txt }; }
+        if (!res.ok) {
+          const msg = errorMessageFromApi(data, txt.substring(0, 300));
+          const scopeIssue = res.status === 403 || /scope|insufficient permission/i.test(msg);
+          return json({ ok: false, needsReconnect: scopeIssue, error: 'eBay catalog search failed (' + res.status + '): ' + msg }, res.status);
+        }
+        const products = (data.productSummaries || []).map(p => ({
+          epid: p.epid || '',
+          title: p.title || '',
+          image: p.image?.imageUrl || '',
+          aspects: p.aspects || {},
+        }));
+        return json({ ok: true, products });
+      } catch (e) {
+        return json({ ok: false, error: 'eBay catalog search failed: ' + e.message }, 502);
       }
     }
 
@@ -4580,13 +4670,9 @@ export default {
       }
     }
 
-    // GET /ebay/marketing/campaigns -- read-only view of Promoted Listings
-    // campaigns via the Marketing API. Deliberately read-only: creating or
-    // editing a campaign spends real ad budget and needs a funding
-    // strategy/inventory reference setup that's a seller judgment call, not
-    // something to build without the user watching it happen. Needs the
-    // sell.marketing.readonly scope -- a store connected before this shipped
-    // gets needsReconnect and should hit CONNECT EBAY again.
+    // GET /ebay/marketing/campaigns -- view of Promoted Listings campaigns
+    // via the Marketing API. Needs the sell.marketing.readonly scope -- a
+    // store connected before this shipped gets needsReconnect.
     if (url.pathname === '/ebay/marketing/campaigns') {
       if (request.method !== 'GET') return json({ error: 'GET only' }, 405);
       const storeId = requestStoreId(request, url);
@@ -4622,6 +4708,123 @@ export default {
         return json({ ok: true, total: Number(data.total || campaigns.length), campaigns });
       } catch (e) {
         return json({ ok: false, error: 'eBay campaigns lookup failed: ' + e.message }, 502);
+      }
+    }
+
+    // POST /ebay/marketing/campaign/create -- creates a real Promoted
+    // Listings (Cost Per Sale) campaign that spends actual ad budget the
+    // moment a listing sells while promoted. Nothing here runs unless the
+    // seller explicitly submits this from the dashboard; the frontend
+    // requires an extra confirmation before calling it. Body:
+    // { campaignName, bidPercentage }. Needs the (write) sell.marketing
+    // scope -- a store connected before this shipped gets needsReconnect.
+    if (url.pathname === '/ebay/marketing/campaign/create' && request.method === 'POST') {
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId, ['owner','admin']);
+      if (auth.error) return auth.error;
+      let ebayToken = '';
+      try { ebayToken = await getEbayUserAccessToken(env); }
+      catch (tokenErr) { return json({ needsToken: true, error: tokenErr.message }, 401); }
+      if (!ebayToken) return json({ needsToken: true, error: 'Connect eBay first: missing user access/refresh token' }, 401);
+
+      try {
+        const body = await request.json().catch(() => ({}));
+        const campaignName = String(body.campaignName || '').trim().slice(0, 80);
+        const bidPercentage = Math.min(100, Math.max(1, Number(body.bidPercentage) || 0));
+        if (!campaignName) return json({ ok: false, error: 'campaignName is required' }, 400);
+        if (!(bidPercentage > 0)) return json({ ok: false, error: 'bidPercentage must be greater than 0' }, 400);
+
+        const res = await fetch('https://api.ebay.com/sell/marketing/v1/ad_campaign', {
+          method: 'POST',
+          headers: { 'Authorization': 'Bearer ' + ebayToken, 'Content-Type': 'application/json', 'X-EBAY-C-MARKETPLACE-ID': 'EBAY_US' },
+          body: JSON.stringify({
+            campaignName,
+            marketplaceId: 'EBAY_US',
+            fundingStrategy: { fundingModel: 'COST_PER_SALE', bidPercentage: String(bidPercentage) },
+            startDate: new Date().toISOString(),
+          }),
+        });
+        if (!res.ok && res.status !== 201) {
+          const txt = await res.text();
+          let data; try { data = JSON.parse(txt); } catch (_) { data = { raw: txt }; }
+          const msg = errorMessageFromApi(data, txt.substring(0, 300));
+          const scopeIssue = res.status === 403 || /scope|insufficient permission/i.test(msg);
+          return json({ ok: false, needsReconnect: scopeIssue, error: 'Campaign create failed (' + res.status + '): ' + msg }, res.status);
+        }
+        const location = res.headers.get('Location') || '';
+        const campaignId = location.split('/').filter(Boolean).pop() || '';
+        return json({ ok: true, campaignId, campaignName, bidPercentage });
+      } catch (e) {
+        return json({ ok: false, error: 'Campaign create failed: ' + e.message }, 502);
+      }
+    }
+
+    // POST /ebay/marketing/campaign/add-listings -- body { campaignId,
+    // listingIds: [] }. Adds already-published listings to an existing
+    // campaign (Cost Per Sale only) so they start showing as promoted.
+    if (url.pathname === '/ebay/marketing/campaign/add-listings' && request.method === 'POST') {
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId, ['owner','admin']);
+      if (auth.error) return auth.error;
+      let ebayToken = '';
+      try { ebayToken = await getEbayUserAccessToken(env); }
+      catch (tokenErr) { return json({ needsToken: true, error: tokenErr.message }, 401); }
+      if (!ebayToken) return json({ needsToken: true, error: 'Connect eBay first: missing user access/refresh token' }, 401);
+
+      try {
+        const body = await request.json().catch(() => ({}));
+        const campaignId = String(body.campaignId || '');
+        const listingIds = (Array.isArray(body.listingIds) ? body.listingIds : []).map(String).filter(Boolean).slice(0, 500);
+        if (!campaignId) return json({ ok: false, error: 'campaignId is required' }, 400);
+        if (!listingIds.length) return json({ ok: false, error: 'at least one listingId is required' }, 400);
+
+        const res = await fetch('https://api.ebay.com/sell/marketing/v1/ad_campaign/' + encodeURIComponent(campaignId) + '/bulk_create_ads_by_listing_id', {
+          method: 'POST',
+          headers: { 'Authorization': 'Bearer ' + ebayToken, 'Content-Type': 'application/json', 'X-EBAY-C-MARKETPLACE-ID': 'EBAY_US' },
+          body: JSON.stringify({ requests: listingIds.map(listingId => ({ listingId })) }),
+        });
+        const txt = await res.text();
+        let data; try { data = JSON.parse(txt); } catch (_) { data = { raw: txt }; }
+        if (!res.ok) {
+          const msg = errorMessageFromApi(data, txt.substring(0, 300));
+          return json({ ok: false, error: 'Add listings to campaign failed (' + res.status + '): ' + msg }, res.status);
+        }
+        const results = (data.responses || []).map(r => ({ listingId: r.listingId || '', ok: !r.errors?.length, error: r.errors?.[0]?.message || '' }));
+        return json({ ok: true, campaignId, results });
+      } catch (e) {
+        return json({ ok: false, error: 'Add listings to campaign failed: ' + e.message }, 502);
+      }
+    }
+
+    // POST /ebay/marketing/campaign/end -- body { campaignId }. The safety
+    // valve for the two routes above: stops a campaign from spending any
+    // further ad budget.
+    if (url.pathname === '/ebay/marketing/campaign/end' && request.method === 'POST') {
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId, ['owner','admin']);
+      if (auth.error) return auth.error;
+      let ebayToken = '';
+      try { ebayToken = await getEbayUserAccessToken(env); }
+      catch (tokenErr) { return json({ needsToken: true, error: tokenErr.message }, 401); }
+      if (!ebayToken) return json({ needsToken: true, error: 'Connect eBay first: missing user access/refresh token' }, 401);
+
+      try {
+        const body = await request.json().catch(() => ({}));
+        const campaignId = String(body.campaignId || '');
+        if (!campaignId) return json({ ok: false, error: 'campaignId is required' }, 400);
+        const res = await fetch('https://api.ebay.com/sell/marketing/v1/ad_campaign/' + encodeURIComponent(campaignId) + '/end', {
+          method: 'POST',
+          headers: { 'Authorization': 'Bearer ' + ebayToken, 'X-EBAY-C-MARKETPLACE-ID': 'EBAY_US' },
+        });
+        if (!res.ok && res.status !== 204) {
+          const txt = await res.text();
+          let data; try { data = JSON.parse(txt); } catch (_) { data = { raw: txt }; }
+          const msg = errorMessageFromApi(data, txt.substring(0, 300));
+          return json({ ok: false, error: 'End campaign failed (' + res.status + '): ' + msg }, res.status);
+        }
+        return json({ ok: true, campaignId });
+      } catch (e) {
+        return json({ ok: false, error: 'End campaign failed: ' + e.message }, 502);
       }
     }
 
