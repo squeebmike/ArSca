@@ -643,6 +643,21 @@ function cardLensCacheableResponse(body, status, maxAgeSeconds) {
   });
 }
 
+function cardLensNormalizeIdentificationText(raw) {
+  let payload;
+  try { payload = JSON.parse(raw); } catch (_) { return raw; }
+  for (const detection of Array.isArray(payload?.detections) ? payload.detections : []) {
+    const card = detection?.card;
+    if (!card || typeof card !== 'object') continue;
+    const catalogSetName = String(card.setName || '').trim();
+    const releaseName = String(card.releaseName || '').trim();
+    const genericSet = /^(base\s+)?checklist$/i.test(catalogSetName);
+    card.catalogSetName = catalogSetName || null;
+    card.displaySetName = genericSet && releaseName ? releaseName : (catalogSetName || releaseName || null);
+  }
+  return JSON.stringify(payload);
+}
+
 function stripeMode(env, requested) {
   const configured = String(env.STRIPE_PLATFORM_MODE || 'test').toLowerCase() === 'live' ? 'live' : 'test';
   const wanted = String(requested || configured).toLowerCase();
@@ -3124,7 +3139,8 @@ export default {
         headers:{ 'X-API-Key':env.CARDSIGHTAI_API_KEY },
         body:identifyForm,
       });
-      const data = await res.text();
+      const rawIdentification = await res.text();
+      const data = res.ok ? cardLensNormalizeIdentificationText(rawIdentification) : rawIdentification;
       // Cache a same-frame catalog miss briefly too. CardSight counts identify
       // attempts even when no card is matched, so an unchanged difficult view
       // must not consume another provider call every few seconds.

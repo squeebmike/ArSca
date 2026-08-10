@@ -27,6 +27,9 @@ assert.match(source, /crypto\.getRandomValues/, 'Mobile bearer tokens must use c
 assert.match(source, /\/card-lens\/mobile\/billing\/google-play\/verify/, 'Google Play verification route must exist.');
 assert.match(source, /purchases\/subscriptionsv2\/tokens/, 'Subscriptions must be verified against the Google Play Developer API.');
 assert.match(source, /GOOGLE_PLAY_PRIVATE_KEY/, 'Google Play signing credentials must come from Worker secrets.');
+assert.match(source, /cardLensNormalizeIdentificationText/, 'Mobile identification should normalize provider display metadata.');
+assert.match(source, /displaySetName/, 'Mobile cards should expose a useful display set name.');
+assert.match(source, /catalogSetName/, 'Raw CardSight catalog set names must remain available for review.');
 assert.doesNotMatch(source, /purchaseToken\s*[,}]\s*\)/, 'Raw purchase tokens must not be stored in KV records.');
 const accessStart = source.indexOf("if (url.pathname === '/card-lens/mobile/access/redeem')");
 assert.ok(accessStart >= 0 && accessStart < mobileStart, 'S-rank access routes must be declared before protected mobile routes.');
