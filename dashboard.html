@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.07.15-pokemon-category-fix">
+<meta name="version" content="2026.08.07.16-bad-internet-hardening">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1542,13 +1542,13 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.07.15-pokemon-category-fix"></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.07.15-pokemon-category-fix"></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.07.15-pokemon-category-fix"></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.07.15-pokemon-category-fix"></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.07.15-pokemon-category-fix"></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.07.15-pokemon-category-fix"></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.07.15-pokemon-category-fix"></script>
+<script src="scripts/query-routing.js?v=2026.08.07.16-bad-internet-hardening"></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.07.16-bad-internet-hardening"></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.07.16-bad-internet-hardening"></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.07.16-bad-internet-hardening"></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.07.16-bad-internet-hardening"></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.07.16-bad-internet-hardening"></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.07.16-bad-internet-hardening"></script>
 </head>
 <body>
 
@@ -1598,11 +1598,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.07.15-pokemon-category-fix</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.07.16-bad-internet-hardening</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.07.15-pokemon-category-fix</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.07.16-bad-internet-hardening</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1624,7 +1624,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.07.15-pokemon-category-fix</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.07.16-bad-internet-hardening</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3156,7 +3156,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.07.15-pokemon-category-fix';
+const APP_VERSION = '2026.08.07.16-bad-internet-hardening';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -20119,7 +20119,8 @@ async function createBuiltInInventoryItem(item, updates, sourceLabel='built_in')
       .from('inventory_items')
       .insert({ store_id:storeId, data, status:'in_stock' })
       .select('id')
-      .single();
+      .single()
+      .abortSignal(AbortSignal.timeout(8000));
     if(error) throw new Error('Built-in inventory save ' + error.message);
     return row?.id || id;
   }
@@ -33533,7 +33534,13 @@ function buyItemToInventoryUpdates(item){
   };
 }
 
+let buyInventoryFinalizing = false;
 async function bulkAddBuyListToInventory(skipConfirm, allowDirectInventory=false){
+  // Guards against a double-tap on the ACCEPT/ADD-TO-INVENTORY button (common
+  // on laggy connections where the UI doesn't visibly respond right away) --
+  // without this, two overlapping calls both see the same not-yet-added items
+  // as "pending" and create duplicate inventory rows for every card.
+  if(buyInventoryFinalizing) { toast_dash('Already adding items to inventory'); return; }
   const pending = buyList.filter(i => !i.inventoryId);
   if(!pending.length){ toast_dash('No buy offer items to add'); return; }
   if(getActiveBuySession()?.status !== 'accepted' && !allowDirectInventory) {
@@ -33541,24 +33548,29 @@ async function bulkAddBuyListToInventory(skipConfirm, allowDirectInventory=false
     return;
   }
   if(!skipConfirm && !confirm('Add all buy offer cards to inventory?')) return;
-  let ok = 0, fail = 0, firstError = '';
-  for(const item of pending) {
-    try {
-      const productId = await createBuyItemInventoryRecord(item);
-      if(productId) ok++; else fail++;
-    } catch(e) {
-      item.inventoryError = e.message || 'Inventory add failed';
-      enqueueSync('inventory-create', 'Create buy inventory item: ' + (item.name || 'Buy item'), { item:item.scan || item, updates:buyItemToInventoryUpdates(item), inventorySource:getInventorySource() }, item.inventoryError);
-      if(!firstError) firstError = item.inventoryError;
-      fail++;
+  buyInventoryFinalizing = true;
+  try {
+    let ok = 0, fail = 0, firstError = '';
+    for(const item of pending) {
+      try {
+        const productId = await createBuyItemInventoryRecord(item);
+        if(productId) ok++; else fail++;
+      } catch(e) {
+        item.inventoryError = e.message || 'Inventory add failed';
+        enqueueSync('inventory-create', 'Create buy inventory item: ' + (item.name || 'Buy item'), { item:item.scan || item, updates:buyItemToInventoryUpdates(item), inventorySource:getInventorySource() }, item.inventoryError);
+        if(!firstError) firstError = item.inventoryError;
+        fail++;
+      }
     }
+    saveBuyList();
+    renderBuyList();
+    logBuyOffer(ok, fail);
+    logOpsEvent('inventory_bulk_add', 'Bulk inventory add from buy offer', { added: ok, failed: fail });
+    toast_dash('Inventory add complete: ' + ok + ' added' + (fail ? ', ' + fail + ' failed: ' + firstError : ''));
+    if(ok) loadInventory();
+  } finally {
+    buyInventoryFinalizing = false;
   }
-  saveBuyList();
-  renderBuyList();
-  logBuyOffer(ok, fail);
-  logOpsEvent('inventory_bulk_add', 'Bulk inventory add from buy offer', { added: ok, failed: fail });
-  toast_dash('Inventory add complete: ' + ok + ' added' + (fail ? ', ' + fail + ' failed: ' + firstError : ''));
-  if(ok) loadInventory();
 }
 
 async function createBuyItemInventoryRecord(item){
@@ -34476,7 +34488,13 @@ function MoneyLedgerService(){
         safeBundle.drawerMovements = [];
         console.warn('[LEDGER] Removed incompatible legacy drawer from queued sale', safeBundle.sale.id);
       }
-      const { data:atomicResult, error:atomicError } = await sb.rpc('complete_pos_sale', { p_bundle:safeBundle });
+      // Every other network call in the app fails fast (2-4s AbortSignal
+      // timeout) and falls back to the offline queue. This is the one that
+      // actually moves money/inventory, so give it more headroom than a
+      // simple KV read -- but it must still fail fast rather than hang
+      // indefinitely on a slow-but-connected line, leaving the payment
+      // screen stuck and checkoutFinalizing permanently true.
+      const { data:atomicResult, error:atomicError } = await sb.rpc('complete_pos_sale', { p_bundle:safeBundle }).abortSignal(AbortSignal.timeout(8000));
       if(!atomicError) return { ok:true, atomic:true, result:atomicResult };
       console.error('[LEDGER] Atomic sale rejected', { code:atomicError.code, message:atomicError.message, details:atomicError.details, hint:atomicError.hint, saleId:safeBundle?.sale?.id });
       const rpcMissing = atomicError.code === 'PGRST202' || /complete_pos_sale|schema cache|function.*not found/i.test(atomicError.message || '');
@@ -38220,7 +38238,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.07.15-pokemon-category-fix"></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.07.16-bad-internet-hardening"></script>
 </body>
 </html>
 
