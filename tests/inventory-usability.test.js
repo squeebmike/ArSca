@@ -19,4 +19,13 @@ assert.match(dashboard,/Cost basis stays unchanged/);
 const priceSyncApply = dashboard.match(/async function applySelectedPriceSyncUpdates\(\)[\s\S]*?function updatePriceAlertBanner/)?.[0] || '';
 assert.ok(priceSyncApply, 'price sync apply function exists');
 assert.doesNotMatch(priceSyncApply, /\bcost\s*:/, 'price sync must not update cost basis');
+
+// Inventory aging report -- days in stock, distinct from price staleness.
+assert.match(dashboard,/function inventoryDaysInStock/, 'inventory aging needs a days-in-stock helper');
+assert.match(dashboard,/function inventoryIsAgedStock/, 'inventory aging needs an aged-stock threshold check');
+assert.match(dashboard,/function inventoryAgingBuckets/, 'inventory aging needs a bucket breakdown');
+assert.match(dashboard,/id="inventory-aging-panel"/, 'inventory aging report needs a mounted panel');
+assert.match(dashboard,/function renderInventoryAgingPanel/, 'inventory aging report needs a render function');
+assert.match(dashboard,/renderInventoryAgingPanel\(\);\s*renderTable\(\);/, 'inventory aging report must refresh whenever the table filters/re-renders');
+assert.match(dashboard,/activeF==='age_0_30'\|\|activeF==='age_31_90'\|\|activeF==='age_91_180'\|\|activeF==='age_181_plus'/, 'aging buckets must be filterable from the inventory table');
 console.log('Inventory usability contract checks passed');

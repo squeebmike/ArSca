@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.10.04-retire-dead-topps-code-and-legacy-panel">
+<meta name="version" content="2026.08.10.05-inventory-aging-report">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1542,13 +1542,13 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.10.04-retire-dead-topps-code-and-legacy-panel" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.10.04-retire-dead-topps-code-and-legacy-panel" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.10.04-retire-dead-topps-code-and-legacy-panel" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.10.04-retire-dead-topps-code-and-legacy-panel" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.10.04-retire-dead-topps-code-and-legacy-panel" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.10.04-retire-dead-topps-code-and-legacy-panel" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.10.04-retire-dead-topps-code-and-legacy-panel" defer></script>
+<script src="scripts/query-routing.js?v=2026.08.10.05-inventory-aging-report" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.10.05-inventory-aging-report" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.10.05-inventory-aging-report" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.10.05-inventory-aging-report" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.10.05-inventory-aging-report" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.10.05-inventory-aging-report" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.10.05-inventory-aging-report" defer></script>
 </head>
 <body>
 
@@ -1598,11 +1598,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.10.04-retire-dead-topps-code-and-legacy-panel</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.10.05-inventory-aging-report</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.10.04-retire-dead-topps-code-and-legacy-panel</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.10.05-inventory-aging-report</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1624,7 +1624,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.10.04-retire-dead-topps-code-and-legacy-panel</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.10.05-inventory-aging-report</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -1768,6 +1768,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <select class="tsi" aria-label="Sort comic inventory" onchange="setComicInventorySort(this.value)"><option value="name">Sort: title</option><option value="issueNumber">Issue number</option><option value="market">Market value</option><option value="numericGrade">Grade</option><option value="lastPriceUpdate">Last updated</option><option value="cost">Cost</option><option value="location">Location</option></select>
   </div>
   <div id="inventory-health-panel"></div>
+  <div id="inventory-aging-panel" style="margin-top:14px"></div>
   <!-- Card grid view — hidden in table mode -->
   <div id="inv-card-grid-container" style="display:none">
     <div class="inv-card-grid" id="inv-card-grid"></div>
@@ -3156,7 +3157,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.10.04-retire-dead-topps-code-and-legacy-panel';
+const APP_VERSION = '2026.08.10.05-inventory-aging-report';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -16174,6 +16175,59 @@ function inventoryIsPriceStale(item={}){
   if(!Number.isFinite(t)) return true;
   return (Date.now() - t) > 14 * 24 * 60 * 60 * 1000;
 }
+// Days the item has actually sat unsold, not to be confused with price
+// staleness (inventoryIsPriceStale) -- a $0-cost item added yesterday with
+// week-old pricing is "stale priced," not "aged stock," and vice versa.
+function inventoryDaysInStock(item={}){
+  const added = item.addedAt || item.raw?.addedAt || item.createdAt;
+  if(!added) return null;
+  const t = new Date(added).getTime();
+  if(!Number.isFinite(t)) return null;
+  return Math.max(0, Math.floor((Date.now() - t) / (24 * 60 * 60 * 1000)));
+}
+function inventoryIsAgedStock(item={}){
+  const days = inventoryDaysInStock(item);
+  return days !== null && days >= 90;
+}
+function inventoryAgingBucket(item={}){
+  const days = inventoryDaysInStock(item);
+  if(days === null) return null;
+  if(days <= 30) return 'age_0_30';
+  if(days <= 90) return 'age_31_90';
+  if(days <= 180) return 'age_91_180';
+  return 'age_181_plus';
+}
+function inventoryAgingBuckets(items=all){
+  const buckets = {
+    age_0_30:{ label:'0-30 days', count:0, value:0 },
+    age_31_90:{ label:'31-90 days', count:0, value:0 },
+    age_91_180:{ label:'91-180 days', count:0, value:0 },
+    age_181_plus:{ label:'180+ days', count:0, value:0 },
+  };
+  (items || []).filter(i=>i.status==='in_stock' && i.lifecycle!=='archived').forEach(i=>{
+    const key = inventoryAgingBucket(i);
+    if(!key) return;
+    buckets[key].count++;
+    buckets[key].value += inventoryListPrice(i) * (Number(i.qty || 1) || 1);
+  });
+  return buckets;
+}
+function renderInventoryAgingPanel(){
+  const el = document.getElementById('inventory-aging-panel');
+  if(!el) return;
+  const buckets = inventoryAgingBuckets(all);
+  const order = ['age_0_30','age_31_90','age_91_180','age_181_plus'];
+  el.innerHTML = `<div class="ph">INVENTORY AGING <span style="font-size:9px;color:var(--dim)">days in stock, based on when each item was added</span></div>
+    <div class="inv-health-grid">${order.map(key=>{
+      const b = buckets[key];
+      const isOld = key === 'age_181_plus';
+      return `<div class="inv-health-card" style="${isOld && b.count ? 'border-color:rgba(255,77,109,.4)' : ''}" onclick="setInventoryHealthFilter('${key}')">
+        <div class="inv-health-label">${b.label}</div>
+        <div class="inv-health-value" style="${isOld && b.count ? 'color:var(--red)' : ''}">${b.count}</div>
+        <div class="inv-health-sub">${fd$(b.value)} at list</div>
+      </div>`;
+    }).join('')}</div>`;
+}
 function inventoryIsListed(item={}){
   const lifecycle = item.lifecycle || item.status || '';
   return lifecycle === 'listed_online' || !!(item.listingUrl || item.ebayListingId || item.webflowSlug || item.raw?.listingUrl || item.raw?.ebayListingId);
@@ -16314,6 +16368,7 @@ function filterTable(){
     if(activeF==='listed_online') return mq&&i.status==='in_stock'&&inventoryIsListed(i);
     if(activeF==='below_cost') return mq&&i.status==='in_stock'&&inventoryProfitStats(i).cost>0&&inventoryProfitStats(i).list>0&&inventoryProfitStats(i).list<inventoryProfitStats(i).cost;
     if(activeF==='high_value') return mq&&i.status==='in_stock'&&inventoryListPrice(i)>=100;
+    if(activeF==='age_0_30'||activeF==='age_31_90'||activeF==='age_91_180'||activeF==='age_181_plus') return mq&&i.status==='in_stock'&&inventoryAgingBucket(i)===activeF;
     // Grading is a cross-category attribute (any category can be graded), not
     // a category of its own -- match on the actual grading fields instead of
     // requiring category==='Graded'.
@@ -16336,6 +16391,7 @@ function filterTable(){
   }
   document.getElementById('tbl-count').textContent=filtered.length+' items';
   renderInventoryHealthPanel();
+  renderInventoryAgingPanel();
   renderTable();
 }
 function renderTable(){
@@ -16356,6 +16412,8 @@ function renderTable(){
     const margin=money.list>0?money.margin.toFixed(0)+'%':(money.cost>0?((pft/money.cost)*100).toFixed(0)+'%':'—');
     const thumbSrc = inventoryImageUrl(i);
     const stale = inventoryIsPriceStale(i);
+    const daysInStock = ins ? inventoryDaysInStock(i) : null;
+    const aged = ins && inventoryIsAgedStock(i);
     const comicPeople = inventoryComicPeopleLine(i);
     const researchClick = `openInventoryItemInResearch('${i.id}')`;
     const thumbCell = thumbSrc
@@ -16370,7 +16428,7 @@ function renderTable(){
       <td class="pp pm">${money.list>0?fd$(money.list):(money.market>0?fd$(money.market):'—')}<br>${money.list>0&&money.market>0?`<span style="font-family:var(--font-mono);font-size:8px;color:var(--dim)">MKT ${fd$(money.market)}</span><br>`:''}${priceSourceBadge(i.priceSource, i.category)}${stale?'<br><span class="inv-warning-pill">STALE</span>':''}</td>
       <td class="pp pd">${money.cost>0?fd$(money.cost):'<span class="inv-warning-pill">NO COST</span>'}</td>
       <td class="${ppc}">${money.cost>0||i.profit?(pft>=0?'+':'')+fd$(pft)+(money.list>0||money.cost>0?' ('+margin+')':''):'—'}</td>
-      <td><span style="font-family:var(--font-mono);font-size:9px;color:${ins?'var(--g)':'var(--dim)'}">${ins?'IN STOCK':'SOLD'+(i.channel?' · '+i.channel:'')}</span></td>
+      <td><span style="font-family:var(--font-mono);font-size:9px;color:${ins?'var(--g)':'var(--dim)'}">${ins?'IN STOCK':'SOLD'+(i.channel?' · '+i.channel:'')}</span>${ins&&daysInStock!==null?`<div style="font-family:var(--font-mono);font-size:8px;color:${aged?'var(--red)':'var(--dim)'};margin-top:3px">${daysInStock}d in stock</div>`:''}${aged?'<span class="inv-warning-pill" style="margin-top:3px">AGED</span>':''}</td>
       <td><div class="row-act-v2">
         ${ins?`<button class="rab rab-cart" onclick="dashAddToCart('${i.id}')">ADD TO CART</button>`:''}
         <button class="rab rab-edit" onclick="openEditModal('${i.id}')">EDIT</button>
@@ -36825,7 +36883,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.10.04-retire-dead-topps-code-and-legacy-panel" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.10.05-inventory-aging-report" defer></script>
 </body>
 </html>
 
