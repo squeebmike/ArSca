@@ -19,6 +19,12 @@ assert.match(dashboard, /function reloadIntoAppVersion/, 'update banner should n
 
 assert.match(dashboard, /let checkoutFinalizing = false;/, 'checkout finalization lock should exist');
 assert.match(dashboard, /if\(checkoutFinalizing\) return toast_dash\('Checkout is already finalizing'\);/, 'checkout should ignore duplicate finalization attempts');
+assert.match(dashboard, /let buyInventoryFinalizing = false;/, 'buy-side finalization lock should exist');
+assert.match(dashboard, /if\(buyInventoryFinalizing\) \{ toast_dash\('Already adding items to inventory'\); return; \}/, 'bulk buy-to-inventory should ignore duplicate finalization attempts (double-tap on a laggy connection must not create duplicate inventory rows)');
+assert.match(dashboard, /buyInventoryFinalizing = true;/, 'buy-side finalization lock should be set before the bulk add runs');
+assert.match(dashboard, /\} finally \{\s*buyInventoryFinalizing = false;\s*\}/, 'buy-side finalization lock should reset in a finally block so a failed bulk add cannot leave it stuck on');
+assert.match(dashboard, /sb\.rpc\('complete_pos_sale', \{ p_bundle:safeBundle \}\)\.abortSignal\(AbortSignal\.timeout\(8000\)\)/, 'the atomic sale RPC must fail fast into the offline queue instead of hanging on a slow connection');
+assert.match(dashboard, /\.insert\(\{ store_id:storeId, data, status:'in_stock' \}\)[\s\S]{0,120}\.abortSignal\(AbortSignal\.timeout\(8000\)\)/, 'the built-in inventory create insert must fail fast into the offline queue instead of hanging on a slow connection');
 assert.match(dashboard, /\.eq\('store_id', storeId\)/, 'built-in inventory updates should include store_id filter');
 assert.match(dashboard, /function inventoryItemIsSellable\(item\)/, 'all sale entry points should share an availability guard');
 assert.match(dashboard, /quantity \+ alreadyInCart > available/, 'cart should block inventory overselling');
