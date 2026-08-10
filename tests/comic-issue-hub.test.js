@@ -108,7 +108,7 @@ assert.doesNotMatch(dashboard,/id="qpl-comic-issue"/,'comic research should use 
 assert.doesNotMatch(dashboard,/function searchComicsOfflineCache|function saveComicsCacheResults/,'comic catalog searches must not use device cache');
 assert.match(dashboard,/No device comic catalog is searched/);
 assert.match(dashboard,/if\(qplCategoryKey\(document\.getElementById\('qpl-cat'\)/,'comic typing should not auto-fire provider calls');
-assert.match(dashboard,/BOOK INFO · METRON/);
+assert.match(dashboard,/BOOK DETAILS, STORY & CREATORS/);
 assert.match(dashboard,/METRON RECORD/);
 assert.match(dashboard,/GCD RECORD/);
 assert.match(dashboard,/PRICECHARTING/);
