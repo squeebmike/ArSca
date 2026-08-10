@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.07.16-bad-internet-hardening">
+<meta name="version" content="2026.08.07.17-defer-scripts-deadcode-sweep">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1542,13 +1542,13 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.07.16-bad-internet-hardening"></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.07.16-bad-internet-hardening"></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.07.16-bad-internet-hardening"></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.07.16-bad-internet-hardening"></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.07.16-bad-internet-hardening"></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.07.16-bad-internet-hardening"></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.07.16-bad-internet-hardening"></script>
+<script src="scripts/query-routing.js?v=2026.08.07.17-defer-scripts-deadcode-sweep" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.07.17-defer-scripts-deadcode-sweep" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.07.17-defer-scripts-deadcode-sweep" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.07.17-defer-scripts-deadcode-sweep" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.07.17-defer-scripts-deadcode-sweep" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.07.17-defer-scripts-deadcode-sweep" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.07.17-defer-scripts-deadcode-sweep" defer></script>
 </head>
 <body>
 
@@ -1598,11 +1598,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.07.16-bad-internet-hardening</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.07.17-defer-scripts-deadcode-sweep</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.07.16-bad-internet-hardening</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.07.17-defer-scripts-deadcode-sweep</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1624,7 +1624,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.07.16-bad-internet-hardening</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.07.17-defer-scripts-deadcode-sweep</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3156,7 +3156,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.07.16-bad-internet-hardening';
+const APP_VERSION = '2026.08.07.17-defer-scripts-deadcode-sweep';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -3422,7 +3422,6 @@ function getAccountContext(){
 //
 // DO NOT claim client-side filtering is subscription-secure.
 // RLS is required before paid isolation can be guaranteed.
-function resolveAccountContextFromAuth(){ return getAccountContext(); }
 
 const SUBSCRIPTION_PLANS = {
   research:{ name:'Research', price:19, features:['Live + offline pricing','Barcode and cover research','Sets and want lists'], capabilities:['research'] },
@@ -4633,17 +4632,6 @@ function repairDemoSessionIfNeeded(){
   return true;  // Caller can show a toast if desired
 }
 
-// ─── Real-data assertion guard ───────────────────────────────────────────────
-// Call before any Supabase read/write that must never run in demo mode.
-// Throws a clearly-labelled error so the call stack aborts cleanly.
-function assertRealDataAllowed(operationName){
-  if(getAccountContext().isDemo){
-    const msg = '[DEMO] Real-data operation "' + (operationName||'?') + '" blocked in demo mode.';
-    console.error(msg);
-    throw new Error(msg);
-  }
-  return true;
-}
 
 // Every new store starts on this until they set their own — must stay a
 // generic placeholder. This previously hardcoded the original developer's
@@ -6821,7 +6809,6 @@ async function updateSelectedOfflineCatalogs(){
   toast_dash(failures.length?'Offline update completed with issues':'Selected offline catalogs are ready');
   await renderOfflineCatalogManagerPanel();
 }
-async function updateAllOfflineCatalogs(){return updateSelectedOfflineCatalogs();}
 
 async function syncToppsOffline(force=false){
   try{await navigator.storage?.persist?.().catch(()=>false);await window.ArsCaToppsOffline.sync({worker:WORKER,force});TOPPS.loaded=false;await toppsRefresh(true);toast_dash('Topps offline catalog ready');}
@@ -6901,10 +6888,6 @@ async function syncPokemonQueries(queries = [], label = 'Pokemon cache'){
   renderOfflineCachePanel(label + ' complete. Cached ' + saved + ' Pokemon rows.');
 }
 
-function syncPokemonCacheSeeds(){
-  const seeds = ['pikachu 151','charizard 199/165','alakazam ex 201/165','bulbasaur 151','umbreon vmax evolving skies','mew ex 151','squirtle 151'];
-  syncPokemonQueries(seeds, 'Top Pokemon sync');
-}
 
 function syncRecentPokemonSearches(){
   syncPokemonQueries((qplHistory || []).map(h => h.q).filter(q => isPokemonLookupIntent(q, 'Pokemon TCG')), 'Recent Pokemon sync');
@@ -7630,10 +7613,6 @@ async function pstSyncLatest(){
   await pstSyncSets(_pstSets.slice(0, 8), 'Latest 8 sets');
 }
 
-async function pstSyncAll(){
-  if(!confirm('Sync ALL Pokémon sets? This consumes significant API credits and may take many minutes.')) return;
-  await pstSyncSets([..._pstSets], 'All sets');
-}
 
 async function pstClearSetCache(){
   if(!confirm('Clear all set-synced price data from IndexedDB? Image cache is kept. You can re-sync any time.')) return;
@@ -9565,7 +9544,7 @@ function applyBetaHelpAnnotations(){
     ['button[onclick*="openQplChartModal"],button[onclick*="chart"],button[onclick*="Graph"]','graph'],
     ['button[onclick*="openQuickExternal"],button[onclick*="tcg"],button[onclick*="TCG"]','tcg'], ['.pop-panel,button[onclick*="fetchPopCount"]','pop'],
     ['button[onclick*="addQuickLookupToSaleCart"],button[onclick*="addSelectedQuickLookupToSaleCart"]','addCart'],
-    ['button[onclick*="addSelectedResearchResultToInventory"],button[onclick*="addQuickLookupToInventory"],button[onclick*="bulkAddBuyListToInventory"]','addInventory'],
+    ['button[onclick*="addQuickLookupToInventory"],button[onclick*="bulkAddBuyListToInventory"]','addInventory'],
     ['button[onclick*="addToBuy"],button[onclick*="buy"],#register-buy-panel','addBuy'],
     ['#sync-prices-btn,button[onclick*="openPriceSyncModal"],button[onclick*="manualSyncInventoryNow"]','syncPrices'],
     ['#research-queue-panel,button[onclick*="Scanner"],button[onclick*="scanner"],button[onclick*="importScannerQueue"]','scannerQueue'],
@@ -9621,7 +9600,7 @@ document.addEventListener('click', e => {
       ['button[onclick*="openQplChartModal"]','graph'],
       ['button[onclick*="openQuickExternal"]','tcg'],
       ['button[onclick*="addQuickLookupToSaleCart"],button[onclick*="addSelectedQuickLookupToSaleCart"]','addCart'],
-      ['button[onclick*="addSelectedResearchResultToInventory"],button[onclick*="addQuickLookupToInventory"],button[onclick*="bulkAddBuyListToInventory"]','addInventory'],
+      ['button[onclick*="addQuickLookupToInventory"],button[onclick*="bulkAddBuyListToInventory"]','addInventory'],
       ['button[onclick*="openPriceSyncModal"],button[onclick*="manualSyncInventoryNow"]','syncPrices'],
       ['button[onclick*="completeSale"],button[onclick*="stripeQrComplete"]','completeSale'],
       ['button[onclick*="dashAddToCart"]','quickSell'],
@@ -10415,34 +10394,6 @@ function invSyncBadgeHtml(localId){
   return `<span class="inv-sync-badge ${status}" title="Sync status: ${status}">${label}</span>`;
 }
 
-// ── Local-first save wrapper ──────────────────────────────────────
-// Applies change to in-memory all[] FIRST, then attempts Supabase write.
-// If offline, write lands in walkoff_universal_inventory and a queue entry is created.
-// Callers don't need to wait for network — returns after local apply.
-async function saveInventoryLocalFirst(item, updates, options={}){
-  // 1. Apply to in-memory array immediately (instant UI feedback)
-  const idx = all.findIndex(i => i.id === item.id);
-  if(idx >= 0) Object.assign(all[idx], updates);
-  // 2. Stamp device + time
-  const stamped = {...updates, lastLocalChangeAt:new Date().toISOString(), deviceId:getDealerDeviceId()};
-  // 3. Mark pending sync
-  markItemPending(item.id);
-  // 4. Attempt Supabase write (updateBuiltInInventoryItem now enqueues on offline)
-  try{
-    if(item.source === 'built_in'){
-      const ok = await updateBuiltInInventoryItem({...item}, stamped);
-      if(ok !== false) markItemSynced(item.id, item.supabaseRowId || item.id);
-    } else {
-      updateUniversalInventoryItem(item.id, stamped);
-      markItemSynced(item.id, null);
-    }
-  }catch(e){
-    console.warn('[INV LOCAL-FIRST] queued for retry:', item.id, e.message);
-    markItemFailed(item.id, e.message);
-  }
-  // 5. Re-render
-  if(!options.skipRender) renderAll();
-}
 
 // ── Pull from Supabase ────────────────────────────────────────────
 // Fetches inventory_items, merges into in-memory all[] without overwriting pending local changes.
@@ -11794,7 +11745,6 @@ async function toggleAppFullscreen(targetElement){
   }
 }
 
-function enterAppFullscreen(){ return toggleAppFullscreen(document.documentElement); }
 
 function syncFullscreenButtons(){
   const full = !!getFullscreenElement();
@@ -12272,12 +12222,6 @@ async function joinShowSession(id){
   toast_dash('Joined show: '+show.eventName);
 }
 
-function leaveShowSession(){
-  if(drawerState){drawerState=null;localStorage.removeItem('pos_drawer');}
-  localStorage.removeItem('pos_show_mode');
-  renderShowMode();renderDrawer();renderCashBagSwitcher();
-  toast_dash('Left the shared show on this device');
-}
 
 // ── Trade-in store credit ledger ──────────────────────────────────────────
 // A "Trade Credit" buy payout (see payCustomerForBuySession) is never
@@ -16646,97 +16590,6 @@ function previewSellProfit(){
   el.textContent=sale>0?`Profit: ${profit>=0?'+':''}${fd$(profit)} (${item.cost>0?((profit/item.cost)*100).toFixed(0)+'% ROI':'no cost'})`: '';
   el.style.color=profit>=0?'var(--g)':'var(--red)';
 }
-// ── Shared sale finalization — called by every sale path that completes a sale ───
-// Records a transaction in pos_transactions (localStorage) + Supabase pos_sales ledger.
-// Updates the cash drawer when the tender is cash.
-// Falls back to offline queue ('pos-ledger-transaction') when Supabase is unavailable.
-// This is the single source of truth for all quick-sell transaction recording.
-async function recordQuickSellTransaction(item, salePrice, channel, soldAt){
-  // Phase 5 (cart unification): this function used to be the shared direct-finalize
-  // engine for confirmQuickSell() and confirmOneOffSell(). Both now route through
-  // the cart and finalize exclusively via lockCheckoutForPayment -> ... ->
-  // finishLockedCheckout, so this should no longer be reachable from any live UI
-  // path. Left in place (not deleted) in case an offline-queue retry or other
-  // legacy caller still references it — but its invocation is now unexpected.
-  console.warn('Deprecated direct sale path called — sales must route through cart', { item:item?.name, salePrice, channel });
-  const saleId  = makeUuid('sale');
-  const storeId = getActiveStoreId();
-  const drawerId = drawerState?.id || null;
-  const tenderType = normalizeTenderType(channel || 'In-Store');
-
-  // ── 1. pos_transactions localStorage — immediate, never fails ──
-  const txLog = safeLocalJson('pos_transactions', []);
-  txLog.unshift({
-    id: saleId,
-    date: soldAt,
-    method: channel || 'In-Store',
-    tenderType,
-    total: salePrice,
-    items: [{ name:item.name||'', price:salePrice, cost:item.cost||0, category:item.category||'', soldAt }],
-    source: 'quick-sell',
-    drawerSessionId: drawerId || '',
-    storeId,
-    appVersion: APP_VERSION,
-  });
-  localStorage.setItem('pos_transactions', JSON.stringify(txLog.slice(0,1000)));
-
-  // ── 2. Drawer expected-cash update ──
-  const cashSettings = getPaymentSettings()?.cash;
-  if(tenderType === 'cash' && drawerState && cashSettings?.trackCashDrawer !== false) {
-    drawerState.cashSales    = Number(drawerState.cashSales    || 0) + salePrice;
-    drawerState.expectedCash = Number(drawerState.expectedCash ?? drawerState.startingCash ?? drawerState.float ?? 0) + salePrice;
-    saveDrawer();
-    renderDrawer();
-  }
-
-  // ── 3. Supabase ledger bundle — same tables as locked checkout ──
-  const drawerMovements = (tenderType === 'cash' && drawerId) ? [{
-    id:makeUuid('move'), drawer_session_id:drawerId, store_id:storeId, sale_id:saleId,
-    movement_type:'cash_sale', amount:salePrice,
-    note:'Quick sell: ' + (item.name||'item'),
-    created_by:getCurrentUserId(), created_at:soldAt,
-  }] : [];
-
-  const supabaseBundle = {
-    sale: {
-      id:saleId, store_id:storeId,
-      show_session_id:getShowSessionId(getShowMode())||null,
-      drawer_session_id:drawerId, checkout_snapshot_id:null,
-      subtotal:salePrice, discount_total:0, tax_total:0, total:salePrice,
-      status:'completed',
-      created_by:getCurrentUserId(), created_at:soldAt, completed_at:soldAt,
-    },
-    saleLines: [{
-      id:makeUuid('line'), sale_id:saleId, store_id:storeId,
-      item_id:item.supabaseRowId||item.id||'',
-      title:item.name||'Item', category:item.category||'',
-      quantity:1, unit_price:salePrice, original_price:salePrice,
-      adjusted_price:salePrice, discount_amount:0,
-      cost_basis:item.cost||0, profit:salePrice-(item.cost||0),
-      condition:item.condition||'', finish:'',
-      source_id:item.id||'', image_url:item.thumbnail||'',
-    }],
-    payments: [{
-      id:makeUuid('pay'), sale_id:saleId, store_id:storeId,
-      drawer_session_id:drawerId,
-      method:channel||'In-Store', amount:salePrice, reference:'',
-      status:'confirmed', confirmed_by:getCurrentUserId(),
-      confirmed_at:soldAt, created_at:soldAt,
-    }],
-    drawerMovements,
-    audit: [],
-    snapshot: {},
-  };
-
-  try {
-    await MoneyLedgerService().commitTransactionBundle(supabaseBundle);
-  } catch(e) {
-    // Queue for retry — same handler as locked-checkout offline path
-    enqueueOrReplaceSync('pos-ledger-transaction', saleId,
-      'Quick sell ledger: ' + (item.name||'item'),
-      supabaseBundle, e.message || 'Supabase write failed');
-  }
-}
 
 // Show Operations v1: fast path for "Sell as one-off item" — for items not cleanly in inventory.
 // Records a transaction (and drawer movement when cash) WITHOUT touching inventory records.
@@ -17360,11 +17213,6 @@ function clearResearchLookup(){
   focusResearchSearch();
 }
 
-async function importScannerQueueToResearch(){
-  switchTab('research');
-  await renderResearchQueue();
-  focusResearchSearch();
-}
 
 function scanMatchToQuickLookupResult(match, scan){
   const m = match || {};
@@ -17888,21 +17736,7 @@ function qplItemToAuth(idx){
   return item;
 }
 
-function sendQuickLookupToAuthCheck(idx){
-  const item = qplItemToAuth(idx);
-  if(!item) return toast_dash('Select a research result first');
-  logOpsEvent('auth_queue_added', 'Sent research result to Auth Check: ' + (item.identity?.title || 'item'), { itemId:item.itemId });
-  openItemInAuthCheck(item.itemId);
-}
 
-function sendSelectedResearchResultToAuthCheck(){
-  const idx = selectedResearchIndex();
-  if(idx < 0) return setResearchActionStatus('Select a research result first.', 'var(--gold)');
-  const item = qplItemToAuth(idx);
-  if(!item) return setResearchActionStatus('Could not send item to Auth Check.', 'var(--red)');
-  setResearchActionStatus('Sent selected item to Auth Check.', 'var(--blue)');
-  openItemInAuthCheck(item.itemId);
-}
 
 function sendInventoryItemToAuthCheck(id){
   const inv = all.find(x => String(x.id) === String(id));
@@ -17920,17 +17754,6 @@ function sendInventoryItemToAuthCheck(id){
   openItemInAuthCheck(item.itemId);
 }
 
-function createManualAuthItem(){
-  const title = prompt('Item title for Auth Check?');
-  if(!title) return;
-  const category = prompt('Category? Pokemon, Magic, MTG, Slab, etc.', 'Pokemon') || 'Pokemon';
-  const item = upsertDealerItem({
-    identity:{ category, title, setName:'', cardNumber:'', printing:'', language:'English' },
-    workflow:{ stage:'auth_pending', queueMembership:['authQueue'] },
-  }, 'manual_auth_item_created');
-  enqueueDealerItem(item.itemId, 'authQueue', 'auth_pending');
-  openItemInAuthCheck(item.itemId);
-}
 
 function authBlocksDestination(itemId){
   const item = getDealerItem(itemId);
@@ -19334,37 +19157,6 @@ async function loadWantListFromWorker() {
   } catch(e) {}
 }
 
-async function syncWantListToWebflow(){
-  // Store want list as a JSON blob in a dedicated Webflow CMS item
-  // Uses the lba_inventory collection with a special id 'pos-wantlist-sync'
-  try {
-    const payload = { key: 'wantlist', value: JSON.stringify(wantList), updated: new Date().toISOString() };
-    await storeWorkerFetch('/proxy/collections/65eb45a28ff6bf3fe4f17b14/items/pos-wantlist-sync', {
-      method: 'PATCH',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ fieldData: { name:'pos-wantlist-sync', 'card-description': JSON.stringify(wantList) } })
-    }).catch(()=>{});
-  } catch(e) {}
-}
-
-async function loadWantListFromWebflow(){
-  // Try to load from Worker KV first (fastest cross-device sync)
-  try {
-    const r = await storeWorkerFetch(scopedWorkerPath('/kv/wantlist'), {signal: AbortSignal.timeout(3000)});
-    if(r.ok) {
-      const d = await r.json();
-      if(d && d.value) {
-        const remote = JSON.parse(d.value);
-        if(Array.isArray(remote) && remote.length > wantList.length) {
-          wantList = remote;
-          localStorage.setItem('pos_wantlist', JSON.stringify(wantList));
-          renderWantList();
-          toast_dash('Want list loaded from cloud (' + wantList.length + ' items)');
-        }
-      }
-    }
-  } catch(e) {}
-}
 
 function addWantItem(){
   const item = document.getElementById('wl-item').value.trim();
@@ -20279,15 +20071,6 @@ async function restoreInventoryItem(id){
   toast_dash('Restored item');
 }
 
-async function hardDeleteInventoryItem(id){
-  const item = all.find(i => i.id === id);
-  if(!item) return toast_dash('Item not found');
-  const deleteBlockReason = inventoryDeleteBlockReason(item);
-  const warning = deleteBlockReason ? 'This item has '+deleteBlockReason+'. ' : (item.buySessionId ? 'Its separate Buy-session history will be preserved. ' : '');
-  if(prompt(warning + 'Type DELETE to permanently remove this item. Archive is safer.') !== 'DELETE') return;
-  const ok = await deleteInventoryRecord(id);
-  if(ok) logOpsEvent('inventory_hard_deleted', 'Hard deleted inventory item: ' + (item.name || id), { id, deleteBlockReason, source:item.source || getInventorySource() });
-}
 
 function removeUniversalInventoryItem(id){
   const inv = safeLocalJson('walkoff_universal_inventory', []);
@@ -23453,44 +23236,6 @@ function isComicLookupIntent(q = '', cat = ''){
 }
 
 
-// ── Comic inline price panel (shown in result card instead of slab controls) ─
-function qplComicPricePanel(r, idx){
-  const pc = r.pricecharting || {};
-  const cp = pc.comicPrices || {};
-  const demand = pc.demand || {};
-  const grades = [
-    { key:'ungraded', label:'Raw / Ungraded' },
-    { key:'grade4',   label:'Graded 4.0 / 4.5 estimate' },
-    { key:'grade6',   label:'Graded 6.0 / 6.5 estimate' },
-    { key:'grade8',   label:'Graded 8.0 / 8.5 estimate' },
-    { key:'grade9_2', label:'Graded 9.2 estimate' },
-    { key:'grade9_4', label:'Graded 9.4 estimate' },
-    { key:'grade9_8', label:'Graded 9.8 estimate' },
-    { key:'grade10',  label:'Graded 10.0 estimate' },
-  ];
-  const rows = grades.map(g => {
-    const v = Number(cp[g.key] || 0);
-    return `<tr style="border-top:1px solid rgba(255,255,255,.05)">
-      <td style="padding:4px 8px;color:var(--dim)">${g.label}</td>
-      <td style="padding:4px 8px;text-align:right;color:${v?'var(--text)':'var(--dim)'};font-weight:${g.key==='ungraded'?'700':'400'}">${v ? '$'+v.toFixed(2) : '—'}</td>
-    </tr>`;
-  }).join('');
-  const anyPrice = grades.some(g => Number(cp[g.key] || 0) > 0);
-  const pcUrl = pc.url || pc.productUrl || '';
-  const vol = demand.salesVolume;
-  const genre = demand.genre || pc.genre || '';
-  return `<div style="margin-top:12px;border:1px solid rgba(199,125,255,.22);border-radius:10px;padding:12px;background:rgba(199,125,255,.04)">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;flex-wrap:wrap;gap:6px">
-      <div style="font-family:'Orbitron',monospace;font-size:10px;color:var(--purple);letter-spacing:.04em">PRICECHARTING GUIDE</div>
-      ${pcUrl ? `<a href="${escHtml(pcUrl)}" target="_blank" style="font-size:10px;color:var(--blue)">View →</a>` : ''}
-    </div>
-    ${anyPrice ? `<table style="width:100%;border-collapse:collapse;font-size:11px">${rows}</table>` : '<div style="color:var(--dim);font-size:11px">No guide pricing on PriceCharting yet for this comic.</div>'}
-    <div style="margin-top:8px;font-family:monospace;font-size:10px;color:var(--dim);line-height:1.5">
-      ${vol ? `Sales vol: ${vol} &nbsp;·&nbsp; ` : ''}${genre ? `Genre: ${escHtml(genre)} &nbsp;·&nbsp; ` : ''}Source: PriceCharting${pc.confidence ? ' · ' + escHtml(pc.confidence) + ' confidence' : ''}
-    </div>
-  </div>`;
-}
-
 const COMIC_GRADE_BUCKETS = [
   {key:'grade4',grade:4.25},{key:'grade6',grade:6.25},{key:'grade8',grade:8.25},
   {key:'grade9_2',grade:9.2},{key:'grade9_4',grade:9.4},{key:'grade9_8',grade:9.8},{key:'grade10',grade:10}
@@ -24048,38 +23793,6 @@ async function clearPokemonExport(type){
   toast_dash(`${type} export cache cleared`);
 }
 
-function mtgNormalizeBulkCard(c = {}, downloadedAt = new Date().toISOString()){
-  const img = c.image_uris || c.card_faces?.[0]?.image_uris || {};
-  const colors = c.colors || c.card_faces?.[0]?.colors || [];
-  return {
-    id:c.id || '',
-    oracle_id:c.oracle_id || '',
-    name:c.name || '',
-    set:c.set || '',
-    set_name:c.set_name || '',
-    collector_number:c.collector_number || '',
-    rarity:c.rarity || '',
-    artist:c.artist || '',
-    mana_cost:c.mana_cost || c.card_faces?.[0]?.mana_cost || '',
-    type_line:c.type_line || c.card_faces?.[0]?.type_line || '',
-    colors,
-    image_uris:c.image_uris || null,
-    card_faces:c.card_faces || null,
-    prices:c.prices || {},
-    released_at:c.released_at || '',
-    scryfall_uri:c.scryfall_uri || '',
-    purchase_uris:c.purchase_uris || null,
-    tcgplayer_id:c.tcgplayer_id || '',
-    finishes:c.finishes || [],
-    searchText:[c.name, c.set_name, c.set, c.collector_number, c.artist, c.rarity, c.type_line, colors.join(' ')].filter(Boolean).join(' ').toLowerCase(),
-    imageSmall:img.small || '',
-    imageNormal:img.normal || '',
-    provider:'Scryfall',
-    catalogSource:'Scryfall default_cards bulk',
-    downloadedAt,
-    raw:c,
-  };
-}
 
 async function mtgCatalogMeta(){
   const [status, remote] = await Promise.all([
@@ -24423,25 +24136,6 @@ async function searchPokemonCatalogExport(query){
   } catch(e){ return []; }
 }
 
-async function getPokemonCatalogByTcgPlayerId(tcgPlayerId){
-  if(!tcgPlayerId) return null;
-  return catalogDbGet('ppt_cards', String(tcgPlayerId)).catch(() => null);
-}
-
-async function getPokemonSealedCatalogByTcgPlayerId(tcgPlayerId){
-  if(!tcgPlayerId) return null;
-  return catalogDbGet('ppt_sealed', String(tcgPlayerId)).catch(() => null);
-}
-
-async function getPokemonEbayByTcgPlayerId(tcgPlayerId){
-  if(!tcgPlayerId) return null;
-  return catalogDbGet('ppt_ebay', String(tcgPlayerId)).catch(() => null);
-}
-
-async function getPokemonPopulationByTcgPlayerId(tcgPlayerId){
-  if(!tcgPlayerId) return null;
-  return catalogDbGet('ppt_population', String(tcgPlayerId)).catch(() => null);
-}
 
 async function searchPokemonSealedCatalogLocal(query){
   if(!query) return [];
@@ -24492,28 +24186,6 @@ async function cachePokemonImage(cardKey, imageUrl){
   }
 }
 
-function normalizePokemonCacheRecord(row = {}, query = ''){
-  const cardKey = pokemonCardKey(row, query);
-  const updatedAt = row.cache?.updatedAt || row.updatedAt || new Date().toISOString();
-  const normalizedQuery = normalizePokemonText(query);
-  const searchText = normalizePokemonText([
-    query, row.name, row.set, row.setName, row.card_number, row.cardNumber, row.variant, row.rarity, row.selectedFinish, row.language,
-    ...(row.availableVariants || []).map(v => [v.condition, v.finish, v.language].join(' '))
-  ].join(' '));
-  return {
-    cardKey,
-    storeId:getActiveStoreId(),
-    query,
-    normalizedQuery,
-    cacheVersion:POKEMON_SEARCH_CACHE_VERSION,
-    queryCardNumber:pokemonQueryCardNumber(query),
-    searchText,
-    card:{ ...row, cache:{ state:'cached', updatedAt, source:row.priceSource || row.source || 'Pokemon cache' } },
-    updatedAt,
-    source:row.priceSource || row.source || 'Pokemon cache',
-    imageUrl:row.imageUrl || ''
-  };
-}
 
 async function savePokemonCacheResults(query, rows = [], source = 'Live lookup'){
   const pokemonRows = (rows || []).filter(r => qplResultCategoryKey(r) === 'pokemon' || isPokemonLookupIntent(query, r.category));
@@ -24590,28 +24262,6 @@ async function getPokemonComps(cardKey){
   return (await pokemonDbAll('comps').catch(() => [])).filter(c => c.storeId === getActiveStoreId() && c.cardKey === cardKey).sort((a,b) => new Date(b.capturedAt || 0) - new Date(a.capturedAt || 0));
 }
 
-// ── MTG IDB cache (walkoff_mtg_cache_v1) ──────────────────────────────────────
-const MTG_CACHE_VERSION = 1;
-function mtgDb(){
-  return new Promise((resolve, reject) => {
-    const req = indexedDB.open('walkoff_mtg_cache_v1', 1);
-    req.onupgradeneeded = e => {
-      const db = e.target.result;
-      if(!db.objectStoreNames.contains('cards')) { const s = db.createObjectStore('cards', { keyPath:'cacheKey' }); s.createIndex('query','query',{unique:false}); s.createIndex('updatedAt','updatedAt',{unique:false}); }
-      if(!db.objectStoreNames.contains('meta')) db.createObjectStore('meta', { keyPath:'key' });
-    };
-    req.onsuccess = e => resolve(e.target.result);
-    req.onerror = e => reject(e.target.error);
-  });
-}
-async function mtgDbPut(store, record){ const db = await mtgDb(); return new Promise((res,rej)=>{ const tx = db.transaction(store,'readwrite'); tx.objectStore(store).put(record).onsuccess = () => res(); tx.onerror = e => rej(e.target.error); }); }
-async function mtgDbAll(store){ const db = await mtgDb(); return new Promise((res,rej)=>{ const tx = db.transaction(store,'readonly'); const req = tx.objectStore(store).getAll(); req.onsuccess = e => res(e.target.result || []); req.onerror = e => rej(e.target.error); }); }
-
-async function saveMtgCacheResults(query, rows = [], source = 'Scryfall'){
-  // MTG is a full versioned catalog. Per-query result caches would duplicate records
-  // and can become stale independently of the daily R2 snapshot.
-  return;
-}
 
 async function searchMtgOfflineCache(query, cat = ''){
   if(!isMtgLookupIntent(query, cat) || mtgOfflineSearchMode() === 'online_only') return [];
@@ -25026,26 +24676,6 @@ function priceChartingProductToQplRow(product = {}, query = ''){
   };
 }
 
-function parseMtgSealedProductIntent(raw = '', selectedCategory = ''){
-  const text = String(raw || '').replace(/\s+/g,' ').trim();
-  if(!text) return null;
-  const direct = parseTcgplayerProductInput(text, selectedCategory);
-  if(direct) return direct;
-  const selected = qplCategoryKey(selectedCategory);
-  const looksSealed = /\b(secret\s+lair|booster(?:\s+box|\s+display|\s+pack)?|play\s+booster|collector\s+booster|draft\s+booster|commander\s+deck|starter\s+kit|precon|sealed|display|bundle|case)\b/i.test(text);
-  const looksMtg = selected === 'mtg' || selected === 'sealed' || /\b(mtg|magic(?:\s+the\s+gathering)?|secret\s+lair)\b/i.test(text);
-  if(!looksSealed || !looksMtg) return null;
-  const searchUrl = 'https://www.tcgplayer.com/search/magic/product?q=' + encodeURIComponent(text);
-  return {
-    productId:'',
-    slug:'',
-    name:tcgTitleCase(text),
-    canonicalUrl:searchUrl,
-    isMtg:true,
-    isSealed:true,
-    source:'mtg-sealed-query'
-  };
-}
 
 function mtgSealedCardSearchQuery(q = ''){
   let text = String(q || '').replace(/\s+/g,' ').trim();
@@ -25750,17 +25380,6 @@ function openComicReference(idx,type){
   if(urls[type])window.open(urls[type],'_blank','noopener');
 }
 
-function qplComicMetadataPanel(r,idx){
-  const m=r.metron;if(!m)return '';
-  const credits=(m.credits||[]).map(c=>[c.creator,(c.roles||[]).join(', ')].filter(Boolean).join(' — ')).join('; ');
-  const variants=[{name:'Main cover',imageUrl:m.imageUrl||r.imageUrl||'',_index:-1},...(m.variants||[]).map((v,i)=>({...v,_index:i}))].filter(v=>v.imageUrl);
-  const facts=[
-    ['Publisher',[m.publisher,m.imprint].filter(Boolean).join(' / ')],['Series began',m.seriesYearBegan],['Cover date',m.coverDate],['Store date',m.storeDate],
-    ['Cover price',m.coverPrice?`${m.coverPriceCurrency||'USD'} ${Number(m.coverPrice).toFixed(2)}`:''],['Pages',m.pageCount],['Rating',m.rating],['UPC',m.upc],['SKU',m.sku],['ISBN',m.isbn]
-  ].filter(([,value])=>value!==''&&value!==null&&value!==undefined);
-  const links=`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px"><button class="hbtn" style="color:var(--purple)" onclick="openComicReference(${idx},'metron')">METRON RECORD</button><button class="hbtn" style="color:var(--gold)" onclick="openComicReference(${idx},'pricecharting')">PRICECHARTING</button><button class="hbtn" onclick="openComicReference(${idx},'sold')">EBAY SOLD</button><button class="hbtn" onclick="openComicReference(${idx},'mycomicshop')">MYCOMICSHOP</button>${m.gcdId?`<button class="hbtn" onclick="openComicReference(${idx},'gcd')">GCD RECORD</button>`:''}${m.comicVineId?`<button class="hbtn" onclick="openComicReference(${idx},'comicvine')">COMIC VINE</button>`:''}</div>`;
-  return `<section style="margin-top:12px;border:1px solid rgba(199,125,255,.42);border-radius:10px;padding:14px;background:rgba(199,125,255,.055)"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center"><b style="font-family:'Orbitron',monospace;font-size:12px;color:var(--purple)">BOOK INFO · METRON</b><span class="qpl-badge">METRON #${escHtml(r.metronIssueId||m.id||'')}</span></div><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:6px;margin-top:10px">${facts.map(([label,value])=>`<div style="background:var(--surf);border:1px solid var(--border);border-radius:7px;padding:7px"><small style="display:block;color:var(--dim);font-size:8px">${escHtml(label)}</small><b style="font-size:10px">${escHtml(String(value))}</b></div>`).join('')}</div><div style="margin-top:11px"><b style="font-size:10px;color:var(--purple)">STORY / SYNOPSIS</b><p style="font-size:11px;line-height:1.65;margin:5px 0;color:${m.description?'var(--text)':'var(--dim)'}">${escHtml(m.description||'Metron does not currently have a synopsis for this issue.')}</p></div>${(m.storyTitles||[]).length?`<div style="font-size:10px;margin-top:7px"><b>Story titles:</b> ${escHtml(m.storyTitles.join(' / '))}</div>`:''}${credits?`<div style="font-size:10px;margin-top:7px;line-height:1.55"><b>Creators:</b> ${escHtml(credits)}</div>`:''}${(m.arcs||[]).length?`<div style="font-size:10px;margin-top:7px"><b>Story arcs:</b> ${escHtml(m.arcs.join(', '))}</div>`:''}${(m.genres||[]).length?`<div style="font-size:10px;margin-top:7px"><b>Genres:</b> ${escHtml(m.genres.join(', '))}</div>`:''}${(m.characters||[]).length?`<div style="font-size:10px;margin-top:7px"><b>Characters:</b> ${escHtml(m.characters.join(', '))}</div>`:''}${(m.teams||[]).length?`<div style="font-size:10px;margin-top:7px"><b>Teams:</b> ${escHtml(m.teams.join(', '))}</div>`:''}${(m.universes||[]).length?`<div style="font-size:10px;margin-top:7px"><b>Universes:</b> ${escHtml(m.universes.join(', '))}</div>`:''}${(m.reprints||[]).length?`<div style="font-size:10px;margin-top:7px"><b>Reprints:</b> ${escHtml(m.reprints.map(x=>[x.name,x.number?'#'+x.number:''].filter(Boolean).join(' ')).join(', '))}</div>`:''}${links}<div style="margin-top:11px"><span class="qpl-badge warn">KEY ISSUE STATUS NEEDS A VERIFIED SOURCE</span><div style="font-size:9px;color:var(--dim);margin-top:4px">Metron provides bibliographic facts, creators and story data; it does not make dependable key-issue claims. Record the verified reason below.</div></div>${variants.length?`<div style="font-family:'Orbitron',monospace;font-size:10px;color:var(--purple);margin-top:13px">VERIFY THE EXACT COVER · ${variants.length} SHOWN</div><div style="display:flex;gap:8px;overflow-x:auto;margin-top:7px;padding-bottom:4px">${variants.map(v=>`<button class="hbtn" style="min-width:105px;padding:6px;${r.coverConfirmed&&r.imageUrl===v.imageUrl?'border-color:var(--g)':''}" onclick="confirmMetronComicCover(${idx},${v._index})"><img src="${escHtml(v.imageUrl)}" alt="${escHtml(v.name)}" style="width:90px;height:135px;object-fit:cover;display:block;margin:auto"><span style="display:block;white-space:normal;margin-top:4px">${escHtml(v.name||'Variant')}</span></button>`).join('')}</div>`:'<div style="color:var(--dim);font-size:10px;margin-top:10px">Metron did not return additional variant cover images for this issue.</div>'}</section>`;
-}
 
 function qplComicKeyPanel(r,idx){
   const a=comicAppraisalState(r);
@@ -27739,40 +27358,6 @@ function qplQueryVariants(q, cat = '', searchPlan = qplLastSearchPlan){
   return [...new Set(variants.map(v => v.replace(/\s+/g, ' ').trim()).filter(Boolean))].slice(0, 5);
 }
 
-async function fetchPriceChartingCsvCatalog(q, cat){
-  const pcCat = qplPriceChartingCategory(cat);
-  const rows = [];
-  for(const query of qplQueryVariants(q, cat).slice(0, 4)) {
-    const params = new URLSearchParams({ q:query });
-    if(pcCat) params.set('category', pcCat);
-    const res = await fetch(WORKER + '/pricing/pricecharting/csv/search?' + params.toString(), { cache:'no-store' });
-    const data = await res.json().catch(() => ({}));
-    if(res.ok && data.ok) rows.push(...(data.matches || []));
-    if(rows.length >= 12) break;
-  }
-  return rows.map(m => ({
-    source:'pricecharting_csv',
-    name:m.productName || q,
-    category:m.csvCategory || m.consoleName || cat || 'Collectibles',
-    csvCategory:pcCat || m.csvCategory || '',
-    set:m.consoleName || '',
-    year:m.releaseDate ? String(m.releaseDate).slice(0,4) : '',
-    variant:m.genre || '',
-    card_number:'',
-    condition:'NM',
-    market:Number(m.prices?.ungraded || 0),
-    low:Number(m.retail?.looseBuy || 0),
-    high:Number(m.retail?.looseSell || m.prices?.psa10 || 0),
-    imageUrl:(()=>{ const raw=m.imageUrl||m['image-url']||m.image||m.image_url||''; if(!raw) return ''; if(/^\/\//.test(raw)) return 'https:'+raw; if(/^\//.test(raw)) return 'https://www.pricecharting.com'+raw; return raw; })(),
-    priceSource:'PriceCharting CSV guide',
-    note:'Cached PriceCharting guide value. Current guide data only, not sold comps.',
-    confidence:m.confidence === 'high' ? 90 : m.confidence === 'medium' ? 72 : 55,
-    matchWhy:m.matchReasons || ['PriceCharting CSV'],
-    pricecharting:m,
-    productUrl:m.url || '',
-    raw:m,
-  }));
-}
 
 async function fetchPriceChartingLiveCatalog(q, cat, searchPlan = qplLastSearchPlan){
   const plannedCategory = (searchPlan?.adapters || []).find(a => a.provider === 'PriceCharting')?.category || '';
@@ -28164,43 +27749,6 @@ function qplPriceChartingGuidePanel(r){
   </div>`;
 }
 
-function qplJustTcgChartPanel(r, idx){
-  const points = r.selectedVariant?.priceHistory || r.priceHistory || [];
-  if(!Array.isArray(points) || !points.length) {
-    return `<div style="margin-top:10px;border-top:1px solid rgba(255,255,255,.08);padding-top:10px">
-      <div style="font-family:'Orbitron',monospace;color:var(--blue);font-size:11px">PRICE GRAPH</div>
-      <div style="margin-top:6px;color:var(--dim);font-size:10px">No price graph available for this exact variant.</div>
-    </div>`;
-  }
-  const range = Number(r.graphRange || 30);
-  const vals = points.map(p => Number(p.price ?? p.marketPrice ?? p.value ?? p[1] ?? 0)).filter(v => v > 0).slice(-(range || 30));
-  if(!vals.length) return `<div style="margin-top:10px;color:var(--dim);font-size:10px">No price graph available for this exact variant.</div>`;
-  const max = Math.max(...vals), min = Math.min(...vals);
-  const avg = vals.reduce((a,b)=>a+b,0) / vals.length;
-  const current = vals[vals.length - 1];
-  const first = vals[0];
-  const change = current - first;
-  const changePct = first ? (change / first) * 100 : 0;
-  const bars = vals.map(v => {
-    const h = max === min ? 50 : Math.max(8, Math.round(((v - min) / (max - min)) * 70 + 8));
-    return `<span title="$${v.toFixed(2)}" style="display:inline-block;width:7px;height:${h}px;background:var(--blue);border-radius:2px"></span>`;
-  }).join('');
-  return `<div style="margin-top:10px;border-top:1px solid rgba(255,255,255,.08);padding-top:10px">
-    <div style="display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap">
-      <div style="font-family:'Orbitron',monospace;color:var(--blue);font-size:11px">PRICE GRAPH</div>
-      <div style="display:flex;gap:4px;flex-wrap:wrap">${[7,30,90,180].map(d => `<button class="hbtn" style="min-height:30px;padding:4px 8px;font-size:9px" onclick="qplResults[${idx}].graphRange=${d}; updateQplResultCard(${idx})">${d}D</button>`).join('')}</div>
-    </div>
-    <div style="display:flex;align-items:flex-end;gap:3px;height:88px;margin-top:8px">${bars}</div>
-    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">
-      <span class="qpl-badge">Current $${current.toFixed(2)}</span>
-      <span class="qpl-badge ${change >= 0 ? 'good' : 'bad'}">${range}D ${change >= 0 ? '+' : '-'}$${Math.abs(change).toFixed(2)} (${changePct.toFixed(1)}%)</span>
-      <span class="qpl-badge">Low $${min.toFixed(2)}</span>
-      <span class="qpl-badge">High $${max.toFixed(2)}</span>
-      <span class="qpl-badge">Avg $${avg.toFixed(2)}</span>
-    </div>
-    <div style="color:var(--dim);font-size:10px;margin-top:4px">Chart uses JustTCG history only. PriceCharting is not used for historical chart points.</div>
-  </div>`;
-}
 
 function qplVariantPriceTable(r, idx){
   const pptRows = pokemonPptMatrixRows(r);
@@ -28291,18 +27839,6 @@ function tcgPlayerProductIdFromUrl(value = ''){
   return m ? m[1] : '';
 }
 
-function tcgPlayerProductSlug(item = {}){
-  return [item.category || 'pokemon', item.set || item.setName || '', item.name || '', item.card_number || item.cardNumber || '']
-    .filter(Boolean)
-    .join(' ')
-    .toLowerCase()
-    .normalize('NFKD')
-    .replace(/[^\w\s-]/g, '')
-    .replace(/\s+/g, '-')
-    .replace(/-+/g, '-')
-    .replace(/^-|-$/g, '')
-    .slice(0, 120) || 'product';
-}
 
 function encodeTcgParam(value = ''){
   return encodeURIComponent(String(value || '')).replace(/%20/g, '+');
@@ -29006,38 +28542,6 @@ async function resolveExactPokemonPriceTrackerCard(row = {}, query = qplLastSear
   return card;
 }
 
-async function PokemonExactLookupService(input = {}){
-  const row = {
-    ...(input.row || {}),
-    name:input.rawQuery || input.query || input.name || input.row?.name || '',
-    rawTitle:input.rawQuery || input.rawTitle || input.ocrText || input.row?.rawTitle || '',
-    ocrText:input.ocrText || input.row?.ocrText || '',
-    tcgPlayerId:input.tcgPlayerId || input.row?.tcgPlayerId || '',
-    tcgplayerId:input.tcgPlayerId || input.row?.tcgplayerId || '',
-    set:input.setName || input.row?.set || '',
-    setName:input.setName || input.row?.setName || '',
-    card_number:input.cardNumber || input.row?.card_number || '',
-    cardNumber:input.cardNumber || input.row?.cardNumber || '',
-    language:input.language || input.row?.language || '',
-    category:'Pokemon',
-  };
-  const query = input.rawQuery || input.query || row.name || qplLastSearch || '';
-  const card = await resolveExactPokemonPriceTrackerCard(row, query);
-  const debug = card?.lookupDebug || {};
-  const confidence = pokemonNormalizeConfidence(debug.confidence || debug.exactConfidence, pokemonCandidateScore(row, card) >= 900 ? 0.98 : 0.72);
-  const candidates = (debug.candidates || (card ? [card] : [])).slice(0, 5);
-  return {
-    ok:!!card,
-    selectedTcgPlayerId:card ? (pokemonPriceTrackerId(card) || pokemonPriceTrackerId(row)) : pokemonPriceTrackerId(row),
-    confidence:card ? confidence : 0,
-    autoSelect:!!card && confidence > 95,
-    sourcePath:debug.path || (debug.cache === 'hit' ? 'cache' : 'no-match'),
-    card:card || null,
-    candidates,
-    cacheStatus:debug.cache || card?.cache?.state || 'miss',
-    warnings:card ? [] : ['No exact PokemonPriceTracker card candidate found.'],
-  };
-}
 
 function pokemonPriceTrackerCardToQplRow(card = {}, query = qplLastSearch, parseResult = null){
   const prices = card.prices || {};
@@ -29431,12 +28935,6 @@ function filterQplMasterResults(results, cat){
     .filter(r => r.closestStrictFallback || qplStrictAllows(r, strict, true));
 }
 
-// Kept for any old call sites -- sets the category from a clicked element
-// and jumps the wheel to it, same as scrollQplCatWheelTo below.
-function setQplCategory(btn){
-  const cat = btn?.dataset?.cat ?? '';
-  setQplCategoryByValue(cat);
-}
 
 // The single source of truth for "which category is selected" -- called
 // either by the wheel settling on an item after a scroll (see
@@ -29772,64 +29270,6 @@ async function fetchWorkerTcgCatalog(q, cat){
   }).filter(Boolean);
 }
 
-async function fetchPokemonCatalog(q){
-  const clean = q.replace(/["\\]/g, ' ').replace(/\s+/g, ' ').trim();
-  const needle = smartSearchNeedles(q);
-  const baseName = needle.tokens.filter(t => !/^\d/.test(t) && !['special','illustration','rare','alternate','art','rookie','card'].includes(t)).slice(0, 5).join(' ') || clean;
-  const nameTokens = clean.split(/\s+/).filter(x => !/^\d/.test(x));
-  const numRaw = needle.cardNumbers[0] ? needle.cardNumbers[0].split('/')[0] : '';
-  // When a collector number is present, try name+number combined first so e.g.
-  // "bulbasaur 143/142" finds the secret rare, not Base Set #44.
-  const queries = [
-    numRaw && baseName ? `name:"${baseName}" number:${numRaw}` : '',
-    numRaw && nameTokens.length ? nameTokens.map(x => `name:${x}`).join(' ') + ` number:${numRaw}` : '',
-    nameTokens.map(x => `name:${x}`).join(' '),
-    `name:"${baseName}"`,
-    numRaw ? `number:${numRaw}` : ''
-  ].filter(Boolean);
-  for(const query of queries) {
-    const url = 'https://api.pokemontcg.io/v2/cards?q=' + encodeURIComponent(query) + '&pageSize=20&orderBy=-set.releaseDate';
-    const res = await fetch(url, { headers:{ 'Accept':'application/json' } });
-    if(!res.ok) continue;
-    const data = await res.json();
-    const cards = data.data || [];
-    if(cards.length) {
-      return cards.map(c => {
-        const prices = c.tcgplayer?.prices || {};
-        const p = prices.holofoil || prices.normal || prices.reverseHolofoil || prices['1stEditionHolofoil'] || prices.unlimitedHolofoil || {};
-        const hit = scoreSmartItem({ name:c.name, set:c.set?.name, year:(c.set?.releaseDate||'').slice(0,4), card_number:c.number, rarity:c.rarity, variant:c.supertype }, q);
-        return applyQplSelectedVariant({
-          source:'pokemon',
-          _pokemonGroup:'best',
-          name:c.name || clean,
-          category:'Pokemon TCG',
-          set:c.set?.name || '',
-          year:(c.set?.releaseDate || '').slice(0,4),
-          variant:[c.rarity, p === prices.reverseHolofoil ? 'Reverse Holo' : '', c.supertype].filter(Boolean).join(' / '),
-          card_number:c.number || '',
-          condition:'NM',
-          market:Number(p.market || p.mid || p.low || c.cardmarket?.prices?.averageSellPrice || 0),
-          low:Number(p.low || 0),
-          high:Number(p.high || 0),
-          imageUrl:c.images?.small || c.images?.large || '',
-          priceSource:'TCG.io market',
-          tcgUrl:c.tcgplayer?.url || '',
-          tcgPlayerUrl:c.tcgplayer?.url || '',
-          tcgPlayerId:tcgPlayerProductIdFromUrl(c.tcgplayer?.url || ''),
-          tcgplayerId:tcgPlayerProductIdFromUrl(c.tcgplayer?.url || ''),
-          note:hit.why.length ? 'Matched by ' + hit.why.join(', ') : (c.set?.releaseDate ? 'Released ' + c.set.releaseDate : ''),
-          confidence:Math.min(99, Math.round(hit.score || 50)),
-          matchWhy:hit.why,
-          raw:c,
-          productId:c.id || '',
-          availableVariants:pokemonTcgIoBuildNmVariants(prices, c.id || ''),
-          extraInfo:{ productLine:'Pokemon', categoryName:'Pokemon', releaseDate:c.set?.releaseDate || '' },
-        });
-      });
-    }
-  }
-  return [];
-}
 
 function scryfallTreatmentLabel(c){
   const fe = (c.frame_effects || c.frameEffects || []).map(value=>String(value).toLowerCase());
@@ -29929,30 +29369,6 @@ async function fetchScryfallCatalog(q, searchPlan = qplLastSearchPlan){
   }).filter(Boolean);
 }
 
-// Fetch ALL printings of a named MTG card — used for "show all variants" expander
-async function fetchScryfallAllPrintings(cardName){
-  if(!cardName) return [];
-  const url = 'https://api.scryfall.com/cards/search?q=' + encodeURIComponent('!"' + cardName + '"') + '&unique=prints&order=released&dir=desc';
-  const res = await fetch(url, { headers:{ 'Accept':'application/json' } }).catch(() => null);
-  if(!res?.ok) return [];
-  const data = await res.json().catch(() => ({}));
-  return (data.data || []).map(c => ({
-    scryfallId: c.id,
-    name: c.name,
-    set: c.set_name,
-    setCode: c.set?.toUpperCase(),
-    year: (c.released_at || '').slice(0,4),
-    collectorNumber: c.collector_number,
-    rarity: c.rarity,
-    treatment: scryfallTreatmentLabel(c),
-    finishes: Array.isArray(c.finishes) ? c.finishes : [],
-    prices: { normal: Number(c.prices?.usd || 0), foil: Number(c.prices?.usd_foil || 0), etched: Number(c.prices?.usd_etched || 0) },
-    imageUrl: c.image_uris?.small || c.card_faces?.[0]?.image_uris?.small || '',
-    tcgUrl: c.purchase_uris?.tcgplayer || (c.tcgplayer_id ? 'https://www.tcgplayer.com/product/' + encodeURIComponent(c.tcgplayer_id) : '') || c.scryfall_uri || '',
-    tcgPlayerId: c.tcgplayer_id || '',
-    tcgplayerId: c.tcgplayer_id || '',
-  }));
-}
 
 async function aiQuickLookupFallback(q, cat){
   try {
@@ -31941,33 +31357,6 @@ function setResearchActionStatus(message, tone=''){
   }
 }
 
-function addSelectedResearchResultToBuyOffer(){
-  const idx = selectedResearchIndex();
-  if(idx < 0) return setResearchActionStatus('Select a research result first.', 'var(--gold)');
-  addQuickLookupToBuyOffer(idx);
-  setResearchActionStatus('Sent selected item to Buy Offer.', 'var(--g)');
-}
-
-function addSelectedResearchResultToInventory(){
-  const idx = selectedResearchIndex();
-  if(idx < 0) return setResearchActionStatus('Select a research result first.', 'var(--gold)');
-  addQuickLookupToInventory(idx);
-  setResearchActionStatus('Creating inventory record from selected item...', 'var(--g)');
-}
-
-function addSelectedResearchResultToSaleCart(){
-  const idx = selectedResearchIndex();
-  if(idx < 0) return setResearchActionStatus('Select a research result first.', 'var(--gold)');
-  addQuickLookupToSaleCart(idx);
-  setResearchActionStatus('Sent selected item to Sale Cart.', 'var(--g)');
-}
-
-function markSelectedResearchNeedsReview(){
-  const idx = selectedResearchIndex();
-  if(idx < 0) return setResearchActionStatus('Select a research result first.', 'var(--gold)');
-  markQplNeedsReview(idx);
-  setResearchActionStatus('Marked selected item Needs Review.', 'var(--gold)');
-}
 
 function addSelectedQuickLookupToBuyOffer(idx){
   const item = selectedQuickLookupItem(idx);
@@ -32069,9 +31458,6 @@ if(drawerState?.id && !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]
   drawerState = null;
 }
 
-function createDrawerSessionId(){
-  return 'drawer_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 6);
-}
 
 async function updateSelectedQplEditVariant(idx){
   const r = qplResults[idx];
@@ -32385,16 +31771,6 @@ function saveDrawer(){
   localStorage.setItem('pos_drawer', JSON.stringify(drawerState));
 }
 
-function resetDrawer(){
-  if(!confirm('Reset drawer? This clears all entries.')) return;
-  drawerState = null;
-  localStorage.removeItem('pos_drawer');
-  const floatInput = document.getElementById('drawer-float');
-  if(floatInput) floatInput.value = '';
-  const startNoteInput = document.getElementById('drawer-start-note');
-  if(startNoteInput) startNoteInput.value = '';
-  renderDrawer();
-}
 
 function drawerMovementMeta(type){
   return {
@@ -32467,10 +31843,6 @@ async function addDrawerMovement(type){
   renderDrawer();
 }
 
-function addDrawerAdj(dir){
-  if(!drawerState) return;
-  addDrawerMovement(dir > 0 ? 'cash_in' : 'cash_out');
-}
 
 function countDrawer(){
   if(!drawerState) return;
@@ -34109,9 +33481,6 @@ async function saveInventoryEdit(item, updates){
   return true;
 }
 
-function openScannerCheckout(){
-  window.location.href = 'sca.html#checkout';
-}
 
 async function getActiveCartData(){
   let cart = await fetchCartFromWorker();
@@ -34182,68 +33551,6 @@ async function clearCustomerDisplayCart(){
   toast_dash('Cart cleared');
 }
 
-async function recordCustomerDisplayPayment(method, total, tenderType){
-  let cart = await getActiveCartData();
-  const items = cart.items || [];
-  if(!items.length || !total){ toast_dash('No active cart to record'); return; }
-  if(!confirm('Record ' + method + ' payment for $' + Number(total).toFixed(2) + ' and clear the cart?')) return;
-  const paidAt = new Date().toISOString();
-  const show = getShowMode();
-  const normalizedTender = normalizeTenderType(method, tenderType);
-  const tx = {
-    id:'tx_dash_'+Date.now(),
-    date:paidAt,
-    method,
-    tenderType:normalizedTender,
-    paymentBreakdown:[{ method, tenderType:normalizedTender, amount:Number(total || 0) }],
-    paymentStatus:'paid',
-    total:Number(total || 0),
-    items:items.map(i => ({
-      name:i.name,
-      price:Number(i.price||0),
-      originalPrice:Number(i.originalPrice ?? i.price ?? 0),
-      adjustedPrice:Number(i.adjustedPrice ?? i.price ?? 0),
-      adjustmentType:i.adjustmentType || '',
-      adjustmentReason:i.adjustmentReason || '',
-      adjustedBy:i.adjustedBy || '',
-      adjustedAt:i.adjustedAt || '',
-      cost:Number(i.cost||0),
-      category:i.category || '',
-      categoryName:i.categoryName || i.category || '',
-      set:i.set || '',
-      condition:i.condition || '',
-      soldAt:paidAt,
-      shopId:i.shopId||i.wfId||''
-    })),
-    source:'dashboard-cart',
-    show,
-    showSessionId:getShowSessionId(show),
-    drawerSessionId:drawerState?.id || '',
-    cashTracked:normalizedTender === 'cash' && !!drawerState && !!getPaymentSettings().cash.trackCashDrawer,
-    storeId:getActiveStoreId(),
-    registerId:REGISTER_ID,
-    appVersion:APP_VERSION,
-  };
-  const log = safeLocalJson('pos_transactions', []);
-  log.unshift(tx);
-  localStorage.setItem('pos_transactions', JSON.stringify(log.slice(0,1000)));
-  if(normalizedTender === 'cash' && getPaymentSettings().cash.trackCashDrawer && drawerState) {
-    drawerState.cashSales = Number(drawerState.cashSales || 0) + Number(total || 0);
-    saveDrawer();
-    renderDrawer();
-    logOpsEvent('cash_drawer_updated', 'Cash drawer updated from sale', { txId:tx.id, amount:Number(total || 0), drawerSessionId:drawerState.id || '' });
-  }
-  await markCartItemsSoldFromPayment(items, method, paidAt);
-  const empty = { items:[], discount:0, savedAt:paidAt, clearedAt:paidAt, lastTxId:tx.id, storeId:getActiveStoreId(), registerId:REGISTER_ID, appVersion:APP_VERSION };
-  localStorage.setItem('pos_cart_v2', JSON.stringify(empty));
-  await postCartToWorker(empty);
-  renderCustomerDisplay();
-  renderStats();
-  renderTodayMode();
-  renderBuySignals();
-  logOpsEvent('sale_completed', 'Completed sale from dashboard cart', { txId:tx.id, method, tenderType:normalizedTender, total:Number(total || 0), items:items.length });
-  toast_dash(method + ' payment recorded');
-}
 
 async function markCartItemsSoldFromPayment(items, method, soldAt, options={}){
   const grouped = new Map();
@@ -38238,7 +37545,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.07.16-bad-internet-hardening"></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.07.17-defer-scripts-deadcode-sweep" defer></script>
 </body>
 </html>
 
