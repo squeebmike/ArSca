@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.07.13-load-time-cart-race-fixes">
+<meta name="version" content="2026.08.07.14-gate-background-polling">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1542,13 +1542,13 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.07.13-load-time-cart-race-fixes"></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.07.13-load-time-cart-race-fixes"></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.07.13-load-time-cart-race-fixes"></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.07.13-load-time-cart-race-fixes"></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.07.13-load-time-cart-race-fixes"></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.07.13-load-time-cart-race-fixes"></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.07.13-load-time-cart-race-fixes"></script>
+<script src="scripts/query-routing.js?v=2026.08.07.14-gate-background-polling"></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.07.14-gate-background-polling"></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.07.14-gate-background-polling"></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.07.14-gate-background-polling"></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.07.14-gate-background-polling"></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.07.14-gate-background-polling"></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.07.14-gate-background-polling"></script>
 </head>
 <body>
 
@@ -1598,11 +1598,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.07.13-load-time-cart-race-fixes</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.07.14-gate-background-polling</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.07.13-load-time-cart-race-fixes</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.07.14-gate-background-polling</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1624,7 +1624,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.07.13-load-time-cart-race-fixes</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.07.14-gate-background-polling</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3156,7 +3156,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.07.13-load-time-cart-race-fixes';
+const APP_VERSION = '2026.08.07.14-gate-background-polling';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -4453,6 +4453,19 @@ function dealerItemFromResearchResult(r = {}, source = 'research'){
 }
 // Show Operations v1: default Inventory view to "In Stock" so Sold items don't clutter the floor view
 let all=[], filtered=[], activeF='in_stock', activeTab='overview', soldData=[];
+// Gate for background polling intervals: skips the network call outright
+// when the browser tab is backgrounded (document.hidden), and optionally
+// when the app isn't even showing the one dashboard tab that data is for --
+// this app previously ran a dozen+ setInterval polls unconditionally
+// regardless of visibility or which tab was open, which is real wasted
+// network chatter on a bad connection (and battery/bandwidth generally).
+// Only applied where the polled UI provably lives on a single tab; several
+// intervals (buy tray, storefront orders, eBay sync) feed state read by
+// the always-visible status bar or multiple tabs and are left ungated.
+function shouldPollTab(tab){
+  if(document.hidden) return false;
+  return !tab || activeTab === tab;
+}
 let ts={col:'name',dir:1};
 const PER=50; let page=1;
 const DAILY_TABS = [
@@ -11244,7 +11257,7 @@ function updateNetBadge(){
 
 // Start network probing — immediately and every 30s
 probeNetwork();
-setInterval(probeNetwork, 30000);
+setInterval(() => { if(!document.hidden) probeNetwork(); }, 30000);
 
 // ── Phase 3: Intake count ──────────────────────────────────────────────────
 function getPendingIntakeCount(){
@@ -14873,7 +14886,7 @@ async function syncEbayOrders(silent, reconcile){
     _ebayOrderSyncInFlight = false;
   }
 }
-setInterval(()=>syncEbayOrders(true), 5 * 60000);
+setInterval(() => { if(!document.hidden) syncEbayOrders(true); }, 5 * 60000);
 
 // One-time (or occasional) wider check for eBay orders already fulfilled before
 // this sync existed, or fulfilled through eBay's own app -- the regular sync
@@ -18153,7 +18166,7 @@ async function renderScanInbox(){
   }).join('');
 }
 
-setInterval(renderScanInbox, 2500);
+setInterval(() => { if(shouldPollTab('pos')) renderScanInbox(); }, 2500);
 renderScanInbox();
 
 const FULFILLMENT_METHOD_LABELS = { pickup_fedway:'Pickup — Fed Way Commons', pickup_kitsap:'Pickup — Kitsap County', shipping:'Shipping' };
@@ -18224,7 +18237,7 @@ window.fulfillStorefrontOrder = async function(orderId){
   }
 };
 
-setInterval(renderStorefrontOrders, 30000);
+setInterval(() => { if(shouldPollTab('pos')) renderStorefrontOrders(); }, 30000);
 renderStorefrontOrders();
 
 function toast_dash(msg, ms = 2500){
@@ -34991,12 +35004,14 @@ function finishLockedCheckout(){
   renderLockedCheckout().catch(()=>{});
 }
 
-// Auto-refresh customer display every 3 seconds
-setInterval(renderCustomerDisplay, 3000);
+// Auto-refresh customer display every 3 seconds -- only the device actually
+// showing the DISPLAY tab needs this; a cashier's own device on another tab
+// already has fresh local cart state and pushes changes directly on add.
+setInterval(() => { if(shouldPollTab('display')) renderCustomerDisplay(); }, 3000);
 ensureActiveSaleCart();
 renderSaleCartSwitcher();
 fetchSaleCartIndex();
-setInterval(fetchSaleCartIndex, 6000);
+setInterval(() => { if(shouldPollTab('display')) fetchSaleCartIndex(); }, 6000);
 renderCustomerDisplay().catch(()=>{});
 
 // Init drawer state on load
@@ -35007,8 +35022,10 @@ renderBuyTraySwitcher();
 renderSetNeeds();
 renderBuySignals();
 
-// Poll for buy-offer items and open trays added on another device (mirrors the customer-display refresh below)
-setInterval(()=>{ fetchBuyListFromWorker(); fetchBuyTrayIndex(); }, 8000);
+// Poll for buy-offer items and open trays added on another device (mirrors the customer-display refresh below).
+// Not tab-gated -- buy tray state is trade/purchase money-handling data read
+// from more than one tab, so this only pauses while the page is backgrounded.
+setInterval(()=>{ if(!document.hidden){ fetchBuyListFromWorker(); fetchBuyTrayIndex(); } }, 8000);
 
 // ── POKÉMON SET BROWSER (Pass B) ────────────────────────────────
 const _sbState = {
@@ -38195,7 +38212,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.07.13-load-time-cart-race-fixes"></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.07.14-gate-background-polling"></script>
 </body>
 </html>
 
