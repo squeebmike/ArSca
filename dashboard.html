@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.07.11-remove-push-notifications">
+<meta name="version" content="2026.08.07.12-fix-partial-sealed-sale-stats">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1542,13 +1542,13 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.07.11-remove-push-notifications"></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.07.11-remove-push-notifications"></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.07.11-remove-push-notifications"></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.07.11-remove-push-notifications"></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.07.11-remove-push-notifications"></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.07.11-remove-push-notifications"></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.07.11-remove-push-notifications"></script>
+<script src="scripts/query-routing.js?v=2026.08.07.12-fix-partial-sealed-sale-stats"></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.07.12-fix-partial-sealed-sale-stats"></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.07.12-fix-partial-sealed-sale-stats"></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.07.12-fix-partial-sealed-sale-stats"></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.07.12-fix-partial-sealed-sale-stats"></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.07.12-fix-partial-sealed-sale-stats"></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.07.12-fix-partial-sealed-sale-stats"></script>
 </head>
 <body>
 
@@ -1598,11 +1598,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.07.11-remove-push-notifications</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.07.12-fix-partial-sealed-sale-stats</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.07.11-remove-push-notifications</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.07.12-fix-partial-sealed-sale-stats</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1624,7 +1624,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.07.11-remove-push-notifications</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.07.12-fix-partial-sealed-sale-stats</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3156,7 +3156,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.07.11-remove-push-notifications';
+const APP_VERSION = '2026.08.07.12-fix-partial-sealed-sale-stats';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -15866,21 +15866,29 @@ function dedupeTransactionRows(txRows, inventorySoldItems){
 }
 
 // Returns the pos_transactions rows that should be shown ALONGSIDE the real
-// Supabase inventory-sold records (never both) -- i.e. genuine one-off/
-// non-inventory sales. When Supabase built-in inventory is active it's the
-// authoritative source for every inventory-linked sale, so this trusts the
-// sourceType tag written at checkout time ('one_off' vs 'inventory'/'sealed')
-// instead of trying to reverse-match a tx row back to an inventory record by
-// id or fuzzy name/price/date -- that matching silently failed for any row
-// it couldn't match (including every row logged before the tag existed) and
-// showed the same sale twice. Legacy/spreadsheet-only stores with no
-// Supabase inventory have no sourceType tag to trust, so they keep the
-// original shopId-based dedup.
+// Supabase inventory-sold records (never both) -- i.e. sales not already
+// reflected via an inventory item's status flipping to 'sold'. When
+// Supabase built-in inventory is active it's the authoritative source for a
+// FULL sellout (the item's status does flip to 'sold' then, and reverse-
+// matching a tx row back to that record by fuzzy name/price/date silently
+// failed for rows logged before shopId existed and showed the same sale
+// twice) -- but a PARTIAL sale of a quantity-tracked item (sealed product:
+// sell 1 of 3 Mystery Boosters) never flips the row's status since stock
+// remains, so trusting sourceType alone ('one_off' vs 'inventory'/'sealed')
+// silently dropped every partial sealed-item sale from every sold stat
+// (Home profit/sold count, category meter, Sold Items table) even though
+// the sale genuinely happened and its transaction row is right here. Fix:
+// also keep an inventory-linked row whenever its shopId isn't one of the
+// items that actually reached status 'sold' -- that's exactly the partial-
+// sale case -- then run the existing shopId/fuzzy dedupe over the result as
+// a safety net against double-counting a real sellout.
 function getUnlinkedTransactionRows(inventorySoldItems){
   const txRows = transactionSoldRows();
   const hasSupabaseItems = all.some(i => i.source === 'built_in');
   if(!hasSupabaseItems) return dedupeTransactionRows(txRows, inventorySoldItems);
-  return txRows.filter(r => r.sourceType === 'one_off');
+  const soldIds = new Set(inventorySoldItems.map(i => i.id || i.localId || i.shopId).filter(Boolean));
+  const relevant = txRows.filter(r => r.sourceType === 'one_off' || (r.shopId && !soldIds.has(r.shopId)));
+  return dedupeTransactionRows(relevant, inventorySoldItems);
 }
 
 function renderStats(){
@@ -38165,7 +38173,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.07.11-remove-push-notifications"></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.07.12-fix-partial-sealed-sale-stats"></script>
 </body>
 </html>
 
