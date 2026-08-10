@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.07.12-fix-partial-sealed-sale-stats">
+<meta name="version" content="2026.08.07.13-load-time-cart-race-fixes">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1535,20 +1535,20 @@ body.show-mode .inv-sync-badge{display:none;}
 .settings-shell{display:grid;grid-template-columns:230px minmax(0,1fr);gap:16px;align-items:start;max-width:1400px;margin:0 auto;padding-bottom:28px}.settings-sidebar{position:sticky;top:12px;border:1px solid var(--border);border-radius:12px;background:var(--surf);padding:10px;max-height:calc(100vh - 150px);overflow:auto}.settings-search{width:100%;min-height:42px;margin:0 0 8px;background:var(--surf2);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:9px 10px;font-family:var(--font-mono);font-size:11px}.settings-nav{display:grid;gap:4px}.settings-nav-btn{width:100%;min-height:40px;text-align:left;border:1px solid transparent;border-radius:8px;background:transparent;color:var(--dim);padding:8px 10px;font-family:var(--font-mono);font-size:10px;cursor:pointer}.settings-nav-btn:hover,.settings-nav-btn.on{color:var(--g);border-color:rgba(0,255,179,.28);background:rgba(0,255,179,.07)}.settings-mobile-select{display:none;width:100%;min-height:46px;background:var(--surf);border:1px solid var(--border);border-radius:9px;color:var(--text);padding:8px 10px;font-family:var(--font-mono)}.settings-content{min-width:0}.settings-section{display:none;min-width:0}.settings-section.on{display:block}.settings-section-head{margin-bottom:12px;padding:2px 2px 10px;border-bottom:1px solid var(--border)}.settings-section-title{font-family:'Orbitron',var(--font-mono);font-size:18px;color:var(--text);letter-spacing:.04em}.settings-section-subtitle{font-family:var(--font-mono);font-size:10px;line-height:1.6;color:var(--dim);margin-top:5px;max-width:900px}.settings-overview-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}.settings-overview-card{border:1px solid var(--border);border-radius:10px;background:var(--surf);padding:12px;display:grid;gap:8px;min-height:150px}.settings-overview-card h3{font-size:13px;margin:0;color:var(--text)}.settings-overview-card p{font-family:var(--font-mono);font-size:10px;line-height:1.55;color:var(--dim);margin:0}.settings-overview-card .hbtn{justify-self:start}.settings-status{display:inline-flex;width:max-content;border:1px solid var(--border);border-radius:999px;padding:3px 7px;font-family:var(--font-mono);font-size:8px;letter-spacing:.05em;color:var(--dim)}.settings-status.working,.settings-status.offline-ready{color:var(--g);border-color:rgba(0,255,179,.35)}.settings-status.needs-setup,.settings-status.local-fallback,.settings-status.planned{color:var(--gold);border-color:rgba(255,209,102,.38)}.settings-status.error,.settings-status.blocked{color:var(--red);border-color:rgba(255,77,109,.38)}.settings-status.online-only,.settings-status.advanced{color:var(--blue);border-color:rgba(72,202,228,.38)}.settings-search-results{display:none;margin:0 0 10px;border:1px solid var(--border);border-radius:9px;background:var(--surf2);padding:6px}.settings-search-results.on{display:grid;gap:4px}.settings-search-result{border:0;background:transparent;color:var(--text);text-align:left;padding:8px;border-radius:6px;font-family:var(--font-mono);font-size:10px;cursor:pointer}.settings-search-result:hover{background:rgba(0,255,179,.08);color:var(--g)}.settings-explainer{border:1px solid rgba(72,202,228,.28);background:rgba(72,202,228,.06);border-radius:10px;padding:12px;margin-bottom:12px;font-family:var(--font-mono);font-size:10px;line-height:1.65;color:var(--dim)}.settings-generated-panel{border:1px solid var(--border);border-radius:10px;background:var(--surf);padding:12px;margin-bottom:14px}
 @media(max-width:760px){#backoffice-panels{padding:0 10px!important}.settings-shell{display:block}.settings-sidebar{position:static;max-height:none;padding:0;border:0;background:transparent;margin-bottom:10px}.settings-nav{display:none}.settings-mobile-select{display:block;margin-bottom:8px}.settings-overview-grid{grid-template-columns:1fr}.settings-section .panel,.settings-section .settings-panel{overflow:hidden}.settings-section [style*="grid-template-columns:repeat(3"],.settings-section [style*="grid-template-columns:2fr 1fr auto"],.settings-section [style*="grid-template-columns:minmax(220px,320px) 1fr"]{grid-template-columns:1fr!important}.settings-section .hbtn{white-space:normal}}
 </style>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js" defer></script>
 <!-- Same team-color database + palette engine walkoffsc.com's team picker uses
      (squeebmike/wo-scripts) -- one shared source so a team's colors never need
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.07.12-fix-partial-sealed-sale-stats"></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.07.12-fix-partial-sealed-sale-stats"></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.07.12-fix-partial-sealed-sale-stats"></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.07.12-fix-partial-sealed-sale-stats"></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.07.12-fix-partial-sealed-sale-stats"></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.07.12-fix-partial-sealed-sale-stats"></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.07.12-fix-partial-sealed-sale-stats"></script>
+<script src="scripts/query-routing.js?v=2026.08.07.13-load-time-cart-race-fixes"></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.07.13-load-time-cart-race-fixes"></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.07.13-load-time-cart-race-fixes"></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.07.13-load-time-cart-race-fixes"></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.07.13-load-time-cart-race-fixes"></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.07.13-load-time-cart-race-fixes"></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.07.13-load-time-cart-race-fixes"></script>
 </head>
 <body>
 
@@ -1598,11 +1598,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.07.12-fix-partial-sealed-sale-stats</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.07.13-load-time-cart-race-fixes</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.07.12-fix-partial-sealed-sale-stats</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.07.13-load-time-cart-race-fixes</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1624,7 +1624,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.07.12-fix-partial-sealed-sale-stats</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.07.13-load-time-cart-race-fixes</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3156,7 +3156,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.07.12-fix-partial-sealed-sale-stats';
+const APP_VERSION = '2026.08.07.13-load-time-cart-race-fixes';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -11981,7 +11981,15 @@ async function fetchSaleCartIndex(showToast=false){
     return knownSaleCartIndex;
   }
 }
+// Called both on a 3s timer (renderCustomerDisplay) and directly after cart
+// actions (switchSaleCart) -- on a slow/flaky connection an older in-flight
+// request can resolve AFTER a newer one already landed, and without a
+// sequence guard the older (now-stale) response would win the write and
+// visibly bounce the cart back a step. _seq only advances forward, so a
+// response is applied only if no newer request has started since it fired.
+let _saleCartFetchSeq = 0;
 async function fetchActiveSaleCartFromWorker(){
+  const seq = ++_saleCartFetchSeq;
   const id = getActiveSaleCartId();
   if(!id || getAccountContext().isDemo) return getSaleCarts().find(c => c.cartId === id) || null;
   try {
@@ -11989,6 +11997,7 @@ async function fetchActiveSaleCartFromWorker(){
     const d = await r.json();
     const remote = d?.value ? JSON.parse(d.value) : null;
     if(!remote?.cartId || remote.status !== 'open') return null;
+    if(seq !== _saleCartFetchSeq) return null; // superseded by a newer request; don't clobber fresher local state
     const local = getSaleCarts().find(c => c.cartId === id);
     // Merge by line id and line timestamp so simultaneous additions converge
     // while edits/removals made on another joined register are retained.
@@ -15869,26 +15878,39 @@ function dedupeTransactionRows(txRows, inventorySoldItems){
 // Supabase inventory-sold records (never both) -- i.e. sales not already
 // reflected via an inventory item's status flipping to 'sold'. When
 // Supabase built-in inventory is active it's the authoritative source for a
-// FULL sellout (the item's status does flip to 'sold' then, and reverse-
-// matching a tx row back to that record by fuzzy name/price/date silently
-// failed for rows logged before shopId existed and showed the same sale
-// twice) -- but a PARTIAL sale of a quantity-tracked item (sealed product:
-// sell 1 of 3 Mystery Boosters) never flips the row's status since stock
-// remains, so trusting sourceType alone ('one_off' vs 'inventory'/'sealed')
-// silently dropped every partial sealed-item sale from every sold stat
-// (Home profit/sold count, category meter, Sold Items table) even though
-// the sale genuinely happened and its transaction row is right here. Fix:
-// also keep an inventory-linked row whenever its shopId isn't one of the
-// items that actually reached status 'sold' -- that's exactly the partial-
-// sale case -- then run the existing shopId/fuzzy dedupe over the result as
-// a safety net against double-counting a real sellout.
+// FULL sellout (the item's status does flip to 'sold' then), but a PARTIAL
+// sale of a quantity-tracked item (sealed product: sell 1 of 3 Mystery
+// Boosters) never flips the row's status since stock remains, so that sale
+// needs to come from here instead.
+//
+// Three buckets, precise-to-fuzzy:
+// 1. sourceType 'one_off' -- never linked to inventory, always kept.
+// 2. Inventory-linked ('inventory'/'sealed') WITH a shopId -- matched
+//    precisely: excluded only if that exact item id actually reached status
+//    'sold' (a real sellout, already counted). A partial sale's item never
+//    reaches that status, so its row survives -- this is the fix for
+//    partial sealed-item sales vanishing from every sold stat.
+// 3. Everything else -- rows with no sourceType tag at all, or tagged but
+//    missing a shopId, both meaning they predate the tagging/shopId fix and
+//    can't be matched precisely. Falls back to the same fuzzy name/price/day
+//    dedupe non-Supabase stores use, so an old sale (including old sealed
+//    partial sales, which is exactly what was still missing after bucket 2
+//    alone) isn't lost just because it can't be matched by id, while a
+//    genuine already-counted sellout still gets excluded when it fuzzy-
+//    matches the real sold record.
 function getUnlinkedTransactionRows(inventorySoldItems){
   const txRows = transactionSoldRows();
   const hasSupabaseItems = all.some(i => i.source === 'built_in');
   if(!hasSupabaseItems) return dedupeTransactionRows(txRows, inventorySoldItems);
+
   const soldIds = new Set(inventorySoldItems.map(i => i.id || i.localId || i.shopId).filter(Boolean));
-  const relevant = txRows.filter(r => r.sourceType === 'one_off' || (r.shopId && !soldIds.has(r.shopId)));
-  return dedupeTransactionRows(relevant, inventorySoldItems);
+  const oneOff = txRows.filter(r => r.sourceType === 'one_off');
+  const linkedWithShopId = txRows.filter(r => r.sourceType && r.sourceType !== 'one_off' && r.shopId);
+  const keptLinked = linkedWithShopId.filter(r => !soldIds.has(r.shopId));
+  const linkedIds = new Set(linkedWithShopId.map(r => r.id));
+  const remainder = txRows.filter(r => r.sourceType !== 'one_off' && !linkedIds.has(r.id));
+  const keptRemainder = dedupeTransactionRows(remainder, inventorySoldItems);
+  return [...oneOff, ...keptLinked, ...keptRemainder];
 }
 
 function renderStats(){
@@ -38173,7 +38195,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.07.12-fix-partial-sealed-sale-stats"></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.07.13-load-time-cart-race-fixes"></script>
 </body>
 </html>
 
