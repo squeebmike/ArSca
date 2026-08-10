@@ -4,7 +4,16 @@
   "compatibility_date": "2026-05-19",
   "vars": {
     "STRIPE_PLATFORM_MODE": "live",
-    "STRIPE_PUBLISHABLE_KEY": "pk_live_51OhyA8LHo6HlAYnMuSJGtOtXDbU5I8NIvHqgSpoKfH8PoZ2pIHCFVyO1fkqlpcpTAQ5tgEMGbWYlA81hiwQ2HhB400tlnsrfsw"
+    "STRIPE_PUBLISHABLE_KEY": "pk_live_51OhyA8LHo6HlAYnMuSJGtOtXDbU5I8NIvHqgSpoKfH8PoZ2pIHCFVyO1fkqlpcpTAQ5tgEMGbWYlA81hiwQ2HhB400tlnsrfsw",
+    "CARD_LENS_ACCESS_MODE": "development-open",
+    "CARD_LENS_S_RANK_REDEMPTION_ENABLED": "true",
+    "CARD_LENS_SESSION_EPOCH": "1",
+    "CARD_LENS_ANDROID_PACKAGE": "com.carddeallens",
+    "CARD_LENS_PLAY_PRODUCTS": "card_deal_lens_pro,card_deal_lens_power"
+  },
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1
   },
   "kv_namespaces": [
     {
