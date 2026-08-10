@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.10.02-revert-pricecharting-panel">
+<meta name="version" content="2026.08.10.03-tcgplayer-link-pricing">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1542,13 +1542,13 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.10.02-revert-pricecharting-panel" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.10.02-revert-pricecharting-panel" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.10.02-revert-pricecharting-panel" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.10.02-revert-pricecharting-panel" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.10.02-revert-pricecharting-panel" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.10.02-revert-pricecharting-panel" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.10.02-revert-pricecharting-panel" defer></script>
+<script src="scripts/query-routing.js?v=2026.08.10.03-tcgplayer-link-pricing" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.10.03-tcgplayer-link-pricing" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.10.03-tcgplayer-link-pricing" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.10.03-tcgplayer-link-pricing" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.10.03-tcgplayer-link-pricing" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.10.03-tcgplayer-link-pricing" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.10.03-tcgplayer-link-pricing" defer></script>
 </head>
 <body>
 
@@ -1598,11 +1598,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.10.02-revert-pricecharting-panel</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.10.03-tcgplayer-link-pricing</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.10.02-revert-pricecharting-panel</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.10.03-tcgplayer-link-pricing</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1624,7 +1624,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.10.02-revert-pricecharting-panel</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.10.03-tcgplayer-link-pricing</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3156,7 +3156,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.10.02-revert-pricecharting-panel';
+const APP_VERSION = '2026.08.10.03-tcgplayer-link-pricing';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -22327,7 +22327,7 @@ async function lookupBarcodeProduct(){
   const tcgProduct=parseTcgplayerProductInput(raw, tcgCat) || parseTcgplayerProductInput(hint, tcgCat);
   const pcProduct=!tcgProduct ? (parsePriceChartingProductInput(raw, tcgCat) || parsePriceChartingProductInput(hint, tcgCat)) : null;
   if(tcgProduct || pcProduct){
-    const row=tcgProduct ? tcgplayerProductToQplRow(tcgProduct, raw || hint) : priceChartingProductToQplRow(pcProduct, raw || hint);
+    const row=tcgProduct ? await resolveTcgplayerProductRow(tcgProduct, raw || hint) : priceChartingProductToQplRow(pcProduct, raw || hint);
     qplMasterResults=[row];qplResults=[row];qplLastSearch=raw || hint;
     const cat=document.getElementById('qpl-cat');if(cat && row.is_sealed)cat.value='Sealed';
     document.querySelectorAll('.qpl-cat-pill').forEach(b=>b.classList.toggle('active',b.dataset.cat===(cat?.value||'')));
@@ -24715,7 +24715,7 @@ function tcgplayerProductToQplRow(product = {}, query = ''){
     market:0,
     low:0,
     imageUrl:'',
-    priceSource: exact ? 'TCGplayer product link · live pricing TODO' : 'TCGplayer search · confirm exact product',
+    priceSource: exact ? 'TCGplayer product link · no price match found' : 'TCGplayer search · confirm exact product',
     tcgUrl: product.canonicalUrl || '',
     tcgPlayerUrl: product.canonicalUrl || '',
     productUrl: product.canonicalUrl || '',
@@ -24730,6 +24730,48 @@ function tcgplayerProductToQplRow(product = {}, query = ''){
     is_sealed:sealed,
     raw:{ ...product, query }
   };
+}
+
+// Last resort before showing a priceless placeholder for a pasted TCGplayer
+// link: the product ID wasn't found in any of the exact-match sources
+// (Pokemon PPT, the TCGplayer sealed-marketplace route, JustTCG's exact-ID
+// route, or -- for MTG -- the offline catalog), but we do know its parsed
+// name. Re-use the same JustTCG name search every other TCG lookup in this
+// app already trusts, and if it turns up a plausible match, use its price
+// instead of leaving the row at $0. This is a name match, not a confirmed
+// product-ID hit, so confidence is capped and the source label says so.
+async function tcgplayerNameSearchFallback(product, query){
+  if(!navigator.onLine || !product?.name) return null;
+  try {
+    const rows = await fetchWorkerTcgCatalog(product.name, product.category || product.lineLabel || '');
+    const best = (rows || []).find(r => Number(r.market) > 0);
+    if(!best) return null;
+    return {
+      ...best,
+      productId: product.productId || best.productId,
+      tcgPlayerId: product.productId || best.tcgPlayerId,
+      tcgplayerId: product.productId || best.tcgplayerId,
+      productUrl: product.canonicalUrl || best.productUrl,
+      tcgUrl: product.canonicalUrl || best.tcgUrl,
+      tcgPlayerUrl: product.canonicalUrl || best.tcgUrl,
+      priceSource: (best.priceSource || 'JustTCG') + ' · matched by name, not exact TCGplayer product ID',
+      note: "Exact TCGplayer product link parsed, but that product ID isn't indexed by any connected pricing source. Price shown is the closest name match instead -- verify against the TCGplayer link before buying or pricing inventory.",
+      confidence: Math.min(70, Number(best.confidence || 70)),
+      matchWhy: ['TCGplayer product link parsed', 'JustTCG name match fallback'],
+      is_sealed: !!product.isSealed,
+    };
+  } catch(e) { return null; }
+}
+
+// Single entry point for turning a parsed TCGplayer product link into a
+// priced row: try the exact product-ID sources first, then the name-search
+// fallback above, and only show the priceless placeholder if both miss.
+async function resolveTcgplayerProductRow(product, query){
+  const exact = await resolveExactTcgplayerProduct(product);
+  if(exact) return exact;
+  const fallback = await tcgplayerNameSearchFallback(product, query);
+  if(fallback) return fallback;
+  return tcgplayerProductToQplRow(product, query);
 }
 
 function tcgplayerSearchLinkToQplRow(query = '', game = 'magic'){
@@ -24816,7 +24858,11 @@ async function _runPriceLookupInner(){
     }
   }
   if(tcgProduct || priceChartingProduct) {
-    const row = tcgProduct ? tcgplayerProductToQplRow(tcgProduct, combinedRaw) : priceChartingProductToQplRow(priceChartingProduct, combinedRaw);
+    // Both the exact-ID sources (above) and, for MTG, the offline-catalog
+    // fallback (above) already missed by the time we get here -- one more
+    // try via JustTCG name search before showing a priceless placeholder.
+    const row = tcgProduct ? ((await tcgplayerNameSearchFallback(tcgProduct, combinedRaw)) || tcgplayerProductToQplRow(tcgProduct, combinedRaw)) : priceChartingProductToQplRow(priceChartingProduct, combinedRaw);
+    if(!qplSearchStillActive(mySeq, searchPlan)) return;
     recordSearchPlanRoute(searchPlan, tcgProduct ? 'local:tcgplayer-product' : 'local:pricecharting-product-url', tcgProduct?.productId || priceChartingProduct?.canonicalUrl || combinedRaw, 1);
     qplMasterResults = [row];
     qplLastSearch = combinedRaw;
@@ -24829,7 +24875,10 @@ async function _runPriceLookupInner(){
     renderQuickLookupResults(qplResults.length ? qplResults : qplMasterResults);
     renderUniversalSearchExplain(searchPlan, qplResults.length ? qplResults : qplMasterResults);
     pushQuickLookupHistory(combinedRaw, row);
-    setMtgOfflineBanner('External product URL resolved locally. Live provider price fetch still needs exact catalog/API support.', 'warn');
+    setMtgOfflineBanner(
+      Number(row.market) > 0 ? 'External product URL resolved with a name-matched live price -- verify against the link before buying.' : 'External product URL resolved locally. No connected pricing source has this exact product indexed.',
+      Number(row.market) > 0 ? 'good' : 'warn'
+    );
     return;
   }
   const wantsPokemon = universalPlanHas(searchPlan, 'pokemon') || isPokemonSealedSearchIntent(q,cat) || isPokemonLookupIntent(q, cat);
@@ -37548,7 +37597,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.10.02-revert-pricecharting-panel" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.10.03-tcgplayer-link-pricing" defer></script>
 </body>
 </html>
 
