@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.13.02-pull-list-new-releases">
+<meta name="version" content="2026.08.13.03-cover-detail-demand-signals">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1541,13 +1541,13 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.13.02-pull-list-new-releases" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.13.02-pull-list-new-releases" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.13.02-pull-list-new-releases" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.13.02-pull-list-new-releases" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.13.02-pull-list-new-releases" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.13.02-pull-list-new-releases" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.13.02-pull-list-new-releases" defer></script>
+<script src="scripts/query-routing.js?v=2026.08.13.03-cover-detail-demand-signals" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.13.03-cover-detail-demand-signals" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.13.03-cover-detail-demand-signals" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.13.03-cover-detail-demand-signals" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.13.03-cover-detail-demand-signals" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.13.03-cover-detail-demand-signals" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.13.03-cover-detail-demand-signals" defer></script>
 </head>
 <body>
 
@@ -1597,11 +1597,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.13.02-pull-list-new-releases</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.13.03-cover-detail-demand-signals</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.13.02-pull-list-new-releases</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.13.03-cover-detail-demand-signals</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1623,7 +1623,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.13.02-pull-list-new-releases</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.13.03-cover-detail-demand-signals</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3028,6 +3028,16 @@ body.show-mode .inv-sync-badge{display:none;}
   </div>
 </div>
 
+<!-- Comic issue detail / covers & variants (click a cover) -->
+<div class="modal-bg" id="pulllist-cover-detail-modal">
+  <div class="modal" style="max-width:640px">
+    <div id="pulllist-cover-detail-body"></div>
+    <div class="modal-btns">
+      <button class="modal-btn cancel" onclick="closeComicCoverDetail()">Close</button>
+    </div>
+  </div>
+</div>
+
 <!-- WANT LIST TAB -->
 <div id="tab-wantlist" class="tab-panel">
   <div class="sec">CUSTOMER WANT LIST / PULL LIST</div>
@@ -3249,7 +3259,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.13.02-pull-list-new-releases';
+const APP_VERSION = '2026.08.13.03-cover-detail-demand-signals';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -18281,11 +18291,13 @@ function renderPullListBrowseResults(){
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px">
       ${issues.map(iss => {
         const idx = pullListBrowseResults.indexOf(iss);
+        const signal = detectVariantSignal(iss.issueName || '');
         return `<div style="display:flex;gap:8px;border:1px solid var(--border);background:var(--surf2);border-radius:8px;padding:8px">
-          ${iss.imageUrl ? `<img src="${escHtml(iss.imageUrl)}" alt="" style="width:44px;height:60px;object-fit:cover;border-radius:4px;flex-shrink:0">` : ''}
+          ${iss.imageUrl ? `<img src="${escHtml(iss.imageUrl)}" alt="" style="width:44px;height:60px;object-fit:cover;border-radius:4px;flex-shrink:0;cursor:pointer" onclick="openComicCoverDetail('${escHtml(iss.id)}')">` : ''}
           <div style="min-width:0;flex:1">
             <b style="color:var(--text);font-size:11px">${escHtml(iss.seriesName)} #${escHtml(iss.number)}</b>
             <div style="font-family:var(--font-mono);font-size:9px;color:var(--dim)">${escHtml(iss.publisher || '')}</div>
+            ${signal ? `<div style="font-family:var(--font-mono);font-size:8px;color:var(--gold);margin-top:2px">${escHtml(signal)}</div>` : ''}
             <button class="hbtn" style="min-height:24px;padding:3px 8px;font-size:8px;margin-top:6px" onclick="addBrowsedIssueToPullList(${idx})">+ ADD TO PULL LIST</button>
           </div>
         </div>`;
@@ -18326,7 +18338,7 @@ async function addBrowsedIssueToPullList(idx){
   if(already) return toast_dash('Already on the pull list for ' + series.title);
   const record = {
     id:makeUuid('pli'), store_id:getActiveStoreId(), series_id:series.id, issue_number:iss.number,
-    variant_label:null, cover_image_url:iss.imageUrl || null, foc_date:null, street_date:iss.storeDate || null,
+    variant_label:null, cover_image_url:iss.imageUrl || null, metron_issue_id:iss.id || null, foc_date:null, street_date:iss.storeDate || null,
     status:'upcoming', created_at:new Date().toISOString(), updated_at:new Date().toISOString()
   };
   pullListItemsCache[series.id] = [...(pullListItemsCache[series.id] || []), record];
@@ -18450,10 +18462,11 @@ function renderPullListDetailInto(container){
         ${items.length ? items.map(i => {
           const pastDue = i.foc_date && i.foc_date < today && i.status === 'upcoming';
           const statusPill = i.status === 'ordered' ? '<span class="data-pill warn">ORDERED</span>' : i.status === 'received' ? '<span class="data-pill good">✓ RECEIVED</span>' : i.status === 'cancelled' ? '<span class="data-pill">CANCELLED</span>' : '<span class="data-pill">UPCOMING</span>';
+          const itemSignal = detectVariantSignal(i.variant_label || '');
           return `<div style="border:1px solid var(--border);background:var(--surf2);border-radius:7px;padding:8px;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
             <div style="display:flex;align-items:center;gap:9px;min-width:0">
-              ${i.cover_image_url ? `<img src="${escHtml(i.cover_image_url)}" alt="" style="width:34px;height:46px;object-fit:cover;border-radius:4px;flex-shrink:0">` : ''}
-              <div style="min-width:0"><b style="color:var(--text)">#${escHtml(i.issue_number)}</b>${i.variant_label ? ` <span style="color:var(--dim)">· ${escHtml(i.variant_label)}</span>` : ''}
+              ${i.cover_image_url ? `<img src="${escHtml(i.cover_image_url)}" alt="" style="width:34px;height:46px;object-fit:cover;border-radius:4px;flex-shrink:0;${i.metron_issue_id ? 'cursor:pointer' : ''}" ${i.metron_issue_id ? `onclick="openComicCoverDetail('${escHtml(i.metron_issue_id)}')"` : ''}>` : ''}
+              <div style="min-width:0"><b style="color:var(--text)">#${escHtml(i.issue_number)}</b>${i.variant_label ? ` <span style="color:var(--dim)">· ${escHtml(i.variant_label)}</span>` : ''}${itemSignal ? ` <span style="color:var(--gold);font-size:9px">${escHtml(itemSignal)}</span>` : ''}
                 <div style="font-family:var(--font-mono);font-size:9px;color:${pastDue ? 'var(--red)' : 'var(--dim)'}">${i.foc_date ? 'FOC ' + escHtml(i.foc_date) : 'No FOC date set'}${pastDue ? ' ⚠ past due' : ''}${i.street_date ? ' · on sale ' + escHtml(i.street_date) : ''}</div>
               </div>
             </div>
@@ -18670,7 +18683,7 @@ async function addSelectedMetronIssuesToPullList(){
   closePullListMetronIssuesModal();
   const records = chosen.map(iss => ({
     id:makeUuid('pli'), store_id:getActiveStoreId(), series_id:series.id, issue_number:iss.number,
-    variant_label:null, cover_image_url:iss.imageUrl || null, foc_date:null, street_date:iss.storeDate || null,
+    variant_label:null, cover_image_url:iss.imageUrl || null, metron_issue_id:iss.id || null, foc_date:null, street_date:iss.storeDate || null,
     status:'upcoming', created_at:new Date().toISOString(), updated_at:new Date().toISOString()
   }));
   pullListItemsCache[series.id] = [...(pullListItemsCache[series.id] || []), ...records];
@@ -18685,6 +18698,126 @@ async function addSelectedMetronIssuesToPullList(){
   } catch(e) {
     records.forEach(record => enqueueSync('pulllist-item-upsert', 'Queued pull list issue', record, e.message));
   }
+}
+
+// ── Cover click: full issue detail + every known cover/variant ──────
+// Reuses the existing /comic/metron/issue/:id route (already built for the
+// Research-tab comic lookup) rather than a parallel endpoint -- it already
+// merges Metron's sibling/variant list with PriceCharting and any
+// manually-cataloged covers for heavy-variant books.
+let currentComicCoverDetail = null;
+
+async function openComicCoverDetail(metronIssueId){
+  if(!metronIssueId) return;
+  const modal = document.getElementById('pulllist-cover-detail-modal');
+  const body = document.getElementById('pulllist-cover-detail-body');
+  if(!body) return;
+  body.innerHTML = '<div style="padding:30px;text-align:center;color:var(--dim);font-family:var(--font-mono);font-size:11px">Loading…</div>';
+  modal?.classList.add('on');
+  try {
+    const res = await storeWorkerFetch('/comic/metron/issue/' + encodeURIComponent(metronIssueId), { cache:'no-store' });
+    const data = await res.json().catch(() => ({}));
+    if(!res.ok || !data.ok) { body.innerHTML = `<div style="padding:20px;text-align:center;color:var(--red);font-family:var(--font-mono);font-size:11px">${escHtml(data.error || 'Lookup failed')}</div>`; return; }
+    renderComicCoverDetail(data.issue, data.covers || []);
+  } catch(e) {
+    body.innerHTML = `<div style="padding:20px;text-align:center;color:var(--red);font-family:var(--font-mono);font-size:11px">${escHtml(e.message)}</div>`;
+  }
+}
+function closeComicCoverDetail(){
+  document.getElementById('pulllist-cover-detail-modal')?.classList.remove('on');
+}
+
+// Metron sibling covers use `id` (the issue's own Metron id); nested variant
+// entries use `metronIssueId` instead, which can be blank when a variant has
+// no separate Metron issue record. PriceCharting/Manual cover ids are
+// prefixed strings, never bare digits, so the numeric check safely excludes
+// them from "click to reload detail".
+function comicCoverTargetId(cover){
+  if(cover.metronIssueId) return String(cover.metronIssueId);
+  return /^\d+$/.test(String(cover.id || '')) ? String(cover.id) : '';
+}
+
+function renderComicCoverDetail(issue, covers){
+  const body = document.getElementById('pulllist-cover-detail-body');
+  if(!body || !issue) return;
+  currentComicCoverDetail = { issue, covers };
+  const signal = detectVariantSignal(issue.issueName || '');
+  body.innerHTML = `
+    <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:14px">
+      ${issue.imageUrl ? `<img src="${escHtml(issue.imageUrl)}" alt="" style="width:140px;height:auto;border-radius:8px;flex-shrink:0">` : ''}
+      <div style="min-width:0;flex:1">
+        <div style="font-family:'Orbitron',monospace;font-size:16px;color:var(--text)">${escHtml(issue.seriesName)} #${escHtml(issue.number)}</div>
+        ${issue.issueName && issue.issueName !== issue.seriesName ? `<div style="font-family:var(--font-mono);font-size:11px;color:var(--dim);margin-top:2px">${escHtml(issue.issueName)}</div>` : ''}
+        ${signal ? `<span class="data-pill warn" style="margin-top:6px;display:inline-block">${escHtml(signal)}</span>` : ''}
+        <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);margin-top:8px;line-height:1.6">
+          ${issue.publisher ? escHtml(issue.publisher) + '<br>' : ''}
+          ${issue.storeDate ? 'On sale ' + escHtml(issue.storeDate) + '<br>' : ''}
+          ${issue.coverPrice ? '$' + Number(issue.coverPrice).toFixed(2) : ''}
+        </div>
+        ${issue.writers?.length ? `<div style="font-family:var(--font-mono);font-size:9px;color:var(--dim);margin-top:6px"><b style="color:var(--text)">Writer:</b> ${escHtml(issue.writers.join(', '))}</div>` : ''}
+        ${issue.artists?.length ? `<div style="font-family:var(--font-mono);font-size:9px;color:var(--dim)"><b style="color:var(--text)">Artist:</b> ${escHtml(issue.artists.join(', '))}</div>` : ''}
+        ${issue.coverArtists?.length ? `<div style="font-family:var(--font-mono);font-size:9px;color:var(--dim)"><b style="color:var(--text)">Cover:</b> ${escHtml(issue.coverArtists.join(', '))}</div>` : ''}
+        <div style="margin-top:10px">
+          <button class="hbtn" style="font-size:9px;min-height:28px;padding:5px 10px" onclick="checkEbaySoldCompsForComicIssue()">🔍 CHECK EBAY SOLD PRICES</button>
+        </div>
+        <div id="pulllist-comic-sold-comps" style="margin-top:8px"></div>
+      </div>
+    </div>
+    ${issue.description ? `<div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);line-height:1.5;margin-bottom:14px;max-height:120px;overflow-y:auto">${escHtml(issue.description)}</div>` : ''}
+    <div class="ph" style="margin-top:6px">🎨 COVERS & VARIANTS <span style="font-size:9px;color:var(--dim)">${covers.length}</span></div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:10px;max-height:40vh;overflow-y:auto">
+      ${covers.length ? covers.map(c => {
+        const covSignal = detectVariantSignal(c.issueName || c.name || '');
+        const targetId = comicCoverTargetId(c);
+        return `<div style="text-align:center">
+          ${c.imageUrl ? `<img src="${escHtml(c.imageUrl)}" alt="" style="width:100%;border-radius:6px;${targetId ? 'cursor:pointer' : ''}" ${targetId ? `onclick="openComicCoverDetail('${escHtml(targetId)}')"` : ''}>` : `<div style="width:100%;aspect-ratio:2/3;background:var(--surf2);border-radius:6px;display:flex;align-items:center;justify-content:center;color:var(--dim);font-size:9px">No image</div>`}
+          <div style="font-family:var(--font-mono);font-size:8px;color:var(--dim);margin-top:4px">${escHtml(c.source || '')}</div>
+          ${covSignal ? `<div style="font-family:var(--font-mono);font-size:8px;color:var(--gold)">${escHtml(covSignal)}</div>` : ''}
+        </div>`;
+      }).join('') : '<div style="grid-column:1/-1;padding:14px;text-align:center;color:var(--dim);font-family:var(--font-mono);font-size:10px">No other covers on file</div>'}
+    </div>`;
+}
+
+// ── Demand signal: eBay sold comps ───────────────────────────────────
+// Reuses the existing generic /comps/sold endpoint (built for card price
+// research) -- it's plain free-text search against eBay completed
+// listings, so a comic title + issue + variant name works the same as a
+// card query. No prediction, just a real recent-sales data point.
+async function checkEbaySoldCompsForComicIssue(){
+  const ctx = currentComicCoverDetail;
+  if(!ctx?.issue) return;
+  const el = document.getElementById('pulllist-comic-sold-comps');
+  if(!el) return;
+  const query = [ctx.issue.seriesName, '#' + ctx.issue.number, ctx.issue.issueName && ctx.issue.issueName !== ctx.issue.seriesName ? ctx.issue.issueName : ''].filter(Boolean).join(' ').trim();
+  el.innerHTML = '<div style="font-family:var(--font-mono);font-size:10px;color:var(--dim)">Checking eBay sold listings…</div>';
+  try {
+    const res = await storeWorkerFetch('/comps/sold?' + new URLSearchParams({ q:query, limit:'25' }).toString(), { cache:'no-store' });
+    const data = await res.json().catch(() => ({}));
+    if(!res.ok || !data.ok || !data.stats?.count) { el.innerHTML = `<div style="font-family:var(--font-mono);font-size:10px;color:var(--dim)">No recent sold comps found for "${escHtml(query)}"</div>`; return; }
+    const s = data.stats;
+    const trendColor = Number(s.trendPct) > 0 ? 'var(--g)' : Number(s.trendPct) < 0 ? 'var(--red)' : 'var(--dim)';
+    el.innerHTML = `<div style="font-family:var(--font-mono);font-size:10px;color:var(--text);border:1px solid var(--border);background:var(--surf2);border-radius:7px;padding:8px">
+      <b>${s.count}</b> recent sold · avg <b>$${Number(s.avg).toFixed(2)}</b> · range $${Number(s.min).toFixed(2)}–$${Number(s.max).toFixed(2)}
+      ${s.trendLabel ? ` · <span style="color:${trendColor}">${escHtml(s.trendLabel)}</span>` : ''}
+    </div>`;
+  } catch(e) {
+    el.innerHTML = `<div style="font-family:var(--font-mono);font-size:10px;color:var(--red)">${escHtml(e.message)}</div>`;
+  }
+}
+
+// ── Free demand signal: no distributor or database publishes "this will be
+// hot" -- but incentive ratios and known scarcity keywords in a variant's
+// own name are a real, immediate signal that costs nothing to surface.
+function detectVariantSignal(label){
+  const text = String(label || '');
+  const ratioMatch = text.match(/1\s*:\s*(\d+)/);
+  if(ratioMatch) return `1:${ratioMatch[1]} INCENTIVE`;
+  if(/\bvirgin\b/i.test(text)) return 'VIRGIN (no text/logo)';
+  if(/\bsketch\b/i.test(text)) return 'SKETCH COVER';
+  if(/\b(convention|con[\s-]?exclusive)\b/i.test(text)) return 'CONVENTION EXCLUSIVE';
+  if(/\bretailer\s*(exclusive|incentive)\b/i.test(text)) return 'RETAILER EXCLUSIVE';
+  if(/\bfoil\b/i.test(text)) return 'FOIL';
+  return '';
 }
 
 // Phase 4 reroute: the Inventory "SELL" button no longer finalizes a sale by
@@ -38673,7 +38806,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.13.02-pull-list-new-releases" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.13.03-cover-detail-demand-signals" defer></script>
 </body>
 </html>
 

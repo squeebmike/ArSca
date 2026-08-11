@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 const dashboard = fs.readFileSync('dashboard.html', 'utf8');
 const migration = fs.readFileSync('supabase-migrations/2026-08-12-pull-lists.sql', 'utf8');
 const metronLinkMigration = fs.readFileSync('supabase-migrations/2026-08-13-pull-list-metron-link.sql', 'utf8');
+const issueDetailMigration = fs.readFileSync('supabase-migrations/2026-08-13-pull-list-issue-detail.sql', 'utf8');
 const worker = fs.readFileSync('cloudflare-worker-full.js', 'utf8');
 
 // Migration: tables + RLS exist, store-scoped.
@@ -135,3 +136,45 @@ console.log('Metron pull-list auto-discovery checks passed');
 }
 
 console.log('Pull list order sheet functional checks passed');
+
+// ── Cover click detail + demand signals ──
+
+assert.match(issueDetailMigration, /alter table public\.pull_list_items add column if not exists metron_issue_id text/, 'pull_list_items must be able to remember its Metron issue id for later cover-click lookups');
+assert.match(dashboard, /metron_issue_id:iss\.id \|\| null/, 'adding an issue from New Releases must persist its Metron issue id, not just the cover image');
+
+for (const fn of ['openComicCoverDetail', 'closeComicCoverDetail', 'renderComicCoverDetail', 'comicCoverTargetId', 'checkEbaySoldCompsForComicIssue', 'detectVariantSignal']) {
+  assert.match(dashboard, new RegExp(`function ${fn}`), `missing ${fn}`);
+}
+
+// Cover detail must reuse the existing Metron issue-detail route (built
+// for the Research tab), not a duplicate endpoint.
+assert.match(dashboard, /storeWorkerFetch\('\/comic\/metron\/issue\/' \+ encodeURIComponent\(metronIssueId\)/, 'cover detail must call the existing /comic/metron/issue/:id route');
+
+// Sold-comps must reuse the existing generic endpoint (built for card price
+// research), not a comic-specific duplicate.
+assert.match(dashboard, /storeWorkerFetch\('\/comps\/sold\?' \+ new URLSearchParams/, 'demand check must call the existing /comps/sold route');
+
+// A pull-list item's cover is only clickable when a Metron issue id is on
+// file -- a manually-typed issue (no Metron link) must not render a dead
+// click target.
+assert.match(dashboard, /\$\{i\.metron_issue_id \? `onclick="openComicCoverDetail\('\$\{escHtml\(i\.metron_issue_id\)\}'\)"` : ''\}/, 'pull list item cover must only be clickable when a Metron issue id is on file');
+
+console.log('Cover detail + demand signal contract checks passed');
+
+// ── Functional check: detectVariantSignal (free demand-signal heuristic) ──
+{
+  const fnSrc = dashboard.match(/function detectVariantSignal\(label\)\{[\s\S]*?\n\}/)?.[0];
+  assert.ok(fnSrc, 'could not extract detectVariantSignal for functional testing');
+  const { detectVariantSignal } = new Function(`${fnSrc}\nreturn { detectVariantSignal };`)();
+
+  assert.equal(detectVariantSignal('1:25 Incentive Variant'), '1:25 INCENTIVE', 'a numeric incentive ratio must be detected');
+  assert.equal(detectVariantSignal('1:50 Retailer Incentive Cover'), '1:50 INCENTIVE', 'ratio detection must win even when "retailer incentive" text is also present');
+  assert.equal(detectVariantSignal('Virgin Variant'), 'VIRGIN (no text/logo)', 'a virgin cover must be flagged');
+  assert.equal(detectVariantSignal('Sketch Cover by Artist'), 'SKETCH COVER', 'a sketch cover must be flagged');
+  assert.equal(detectVariantSignal('San Diego Comic-Con Exclusive'), 'CONVENTION EXCLUSIVE', 'a convention exclusive must be flagged');
+  assert.equal(detectVariantSignal('Foil Cover'), 'FOIL', 'a foil cover must be flagged');
+  assert.equal(detectVariantSignal('Regular Cover A'), '', 'an ordinary cover must not be flagged with a fabricated signal');
+  assert.equal(detectVariantSignal(''), '', 'an empty label must not throw or fabricate a signal');
+}
+
+console.log('detectVariantSignal functional checks passed');
