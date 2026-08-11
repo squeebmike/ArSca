@@ -56,7 +56,7 @@ const EBAY_SCOPES = [
 const CORS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, PATCH, PUT, DELETE, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, accept, Authorization, x-store-id, X-Store-Id',
+  'Access-Control-Allow-Headers': 'Content-Type, accept, Authorization, x-store-id, X-Store-Id, X-Card-Lens-Install-Id, X-Card-Lens-Frame-Key',
   'Access-Control-Max-Age': '86400',
 };
 
@@ -479,15 +479,146 @@ function cardLensMobileInstallationId(request) {
     : null;
 }
 
+function cardLensBearerToken(request) {
+  const token = String(request.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '').trim();
+  return /^[A-Za-z0-9_-]{40,160}$/.test(token) ? token : '';
+}
+
+async function cardLensTokenHash(token) {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(String(token || '')));
+  return [...new Uint8Array(digest)].map(value => value.toString(16).padStart(2, '0')).join('');
+}
+
+function cardLensRandomToken() {
+  const bytes = crypto.getRandomValues(new Uint8Array(32));
+  let binary = '';
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+}
+
+function cardLensBase64Url(value) {
+  const bytes = typeof value === 'string' ? new TextEncoder().encode(value) : new Uint8Array(value);
+  let binary = '';
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+}
+
+function cardLensGooglePlayProducts(env) {
+  return new Set(String(env.CARD_LENS_PLAY_PRODUCTS || 'card_deal_lens_pro,card_deal_lens_power')
+    .split(',').map(value => value.trim()).filter(Boolean));
+}
+
+async function cardLensGooglePlayAccessToken(env) {
+  if (!env.GOOGLE_PLAY_SERVICE_ACCOUNT_EMAIL || !env.GOOGLE_PLAY_PRIVATE_KEY) {
+    throw new Error('Google Play server verification is not configured');
+  }
+  const cacheKey = 'card-lens:google-play:oauth';
+  if (env.LBA_KV) {
+    const cached = await env.LBA_KV.get(cacheKey, 'json').catch(() => null);
+    if (cached?.accessToken && Number(cached.expiresAt || 0) > Date.now() + 120000) return cached.accessToken;
+  }
+  const now = Math.floor(Date.now() / 1000);
+  const header = cardLensBase64Url(JSON.stringify({ alg:'RS256', typ:'JWT' }));
+  const claim = cardLensBase64Url(JSON.stringify({
+    iss:String(env.GOOGLE_PLAY_SERVICE_ACCOUNT_EMAIL),
+    scope:'https://www.googleapis.com/auth/androidpublisher',
+    aud:'https://oauth2.googleapis.com/token',
+    iat:now,
+    exp:now + 3600,
+  }));
+  const signingInput = `${header}.${claim}`;
+  const pem = String(env.GOOGLE_PLAY_PRIVATE_KEY).replace(/\\n/g, '\n');
+  const base64 = pem.replace(/-----BEGIN PRIVATE KEY-----|-----END PRIVATE KEY-----|\s/g, '');
+  const binary = atob(base64);
+  const keyBytes = Uint8Array.from(binary, character => character.charCodeAt(0));
+  const key = await crypto.subtle.importKey(
+    'pkcs8', keyBytes,
+    { name:'RSASSA-PKCS1-v1_5', hash:'SHA-256' },
+    false, ['sign'],
+  );
+  const signature = await crypto.subtle.sign(
+    { name:'RSASSA-PKCS1-v1_5' }, key, new TextEncoder().encode(signingInput),
+  );
+  const assertion = `${signingInput}.${cardLensBase64Url(signature)}`;
+  const response = await fetch('https://oauth2.googleapis.com/token', {
+    method:'POST',
+    headers:{ 'Content-Type':'application/x-www-form-urlencoded' },
+    body:new URLSearchParams({
+      grant_type:'urn:ietf:params:oauth:grant-type:jwt-bearer',
+      assertion,
+    }),
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok || !data.access_token) throw new Error(data.error_description || data.error || `Google OAuth ${response.status}`);
+  const expiresAt = Date.now() + Number(data.expires_in || 3600) * 1000;
+  if (env.LBA_KV) await env.LBA_KV.put(cacheKey, JSON.stringify({ accessToken:data.access_token, expiresAt }), {
+    expirationTtl:Math.max(300, Number(data.expires_in || 3600) - 60),
+  });
+  return data.access_token;
+}
+
+async function cardLensVerifyGooglePlaySubscription(env, packageName, productId, purchaseToken) {
+  const accessToken = await cardLensGooglePlayAccessToken(env);
+  const endpoint = `https://androidpublisher.googleapis.com/androidpublisher/v3/applications/${encodeURIComponent(packageName)}/purchases/subscriptionsv2/tokens/${encodeURIComponent(purchaseToken)}`;
+  const response = await fetch(endpoint, { headers:{ Authorization:`Bearer ${accessToken}`, Accept:'application/json' } });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data?.error?.message || `Google Play verification ${response.status}`);
+  const validStates = new Set(['SUBSCRIPTION_STATE_ACTIVE', 'SUBSCRIPTION_STATE_IN_GRACE_PERIOD']);
+  const lineItems = Array.isArray(data.lineItems) ? data.lineItems : [];
+  const matching = lineItems.filter(item => item.productId === productId);
+  const expiryTimes = matching.map(item => Date.parse(item.expiryTime || '')).filter(Number.isFinite);
+  const expiresAtMs = expiryTimes.length ? Math.max(...expiryTimes) : 0;
+  if (!validStates.has(data.subscriptionState) || !matching.length || expiresAtMs <= Date.now()) {
+    return { active:false, state:data.subscriptionState || 'unknown', expiresAt:null };
+  }
+  if (data.acknowledgementState === 'ACKNOWLEDGEMENT_STATE_PENDING') {
+    const acknowledge = `https://androidpublisher.googleapis.com/androidpublisher/v3/applications/${encodeURIComponent(packageName)}/purchases/subscriptions/${encodeURIComponent(productId)}/tokens/${encodeURIComponent(purchaseToken)}:acknowledge`;
+    const ackResponse = await fetch(acknowledge, {
+      method:'POST',
+      headers:{ Authorization:`Bearer ${accessToken}`, 'Content-Type':'application/json' },
+      body:'{}',
+    });
+    if (!ackResponse.ok) {
+      const ackData = await ackResponse.json().catch(() => ({}));
+      throw new Error(ackData?.error?.message || `Google Play acknowledgement ${ackResponse.status}`);
+    }
+  }
+  return { active:true, state:data.subscriptionState, expiresAt:new Date(expiresAtMs).toISOString() };
+}
+
+function cardLensAccessMode(env) {
+  return String(env.CARD_LENS_ACCESS_MODE || 'development-open').toLowerCase();
+}
+
+function cardLensSessionEpoch(env) {
+  return String(env.CARD_LENS_SESSION_EPOCH || '1');
+}
+
+async function cardLensSessionForRequest(request, env, installationId) {
+  if (!env.LBA_KV) return null;
+  const token = cardLensBearerToken(request);
+  if (!token) return null;
+  const hash = await cardLensTokenHash(token);
+  const raw = await env.LBA_KV.get(`card-lens:session:${hash}`);
+  if (!raw) return null;
+  let session;
+  try { session = JSON.parse(raw); } catch (_) { return null; }
+  if (session.installationId !== installationId || session.epoch !== cardLensSessionEpoch(env)) return null;
+  if (session.expiresAt && Date.parse(session.expiresAt) <= Date.now()) return null;
+  return { ...session, tokenHash:hash };
+}
+
 async function requireCardLensMobileClient(request, env) {
   const installationId = cardLensMobileInstallationId(request);
   if (!installationId) {
     return { error:json({ ok:false, error:'A valid Card Lens installation ID is required' }, 400) };
   }
-  // Development mode: accept any valid app-generated installation ID. The ID
-  // still namespaces same-frame caches, but reinstalling no longer requires a
-  // manual KV enrollment step. Add device authorization back before release.
-  return { installationId };
+  const session = await cardLensSessionForRequest(request, env, installationId);
+  if (session) return { installationId, access:session.tier || 'free', unlimited:!!session.unlimited, session };
+  if (cardLensAccessMode(env) === 'development-open') {
+    return { installationId, access:'development', unlimited:true, session:null };
+  }
+  return { error:json({ ok:false, error:'Card Deal Lens access is required', code:'ACCESS_REQUIRED' }, 401) };
 }
 
 function cardLensCacheKey(request, kind, value) {
@@ -510,6 +641,21 @@ function cardLensCacheableResponse(body, status, maxAgeSeconds) {
     status,
     headers:{ ...CORS, 'Content-Type':'application/json', 'Cache-Control':`public, max-age=${maxAgeSeconds}` },
   });
+}
+
+function cardLensNormalizeIdentificationText(raw) {
+  let payload;
+  try { payload = JSON.parse(raw); } catch (_) { return raw; }
+  for (const detection of Array.isArray(payload?.detections) ? payload.detections : []) {
+    const card = detection?.card;
+    if (!card || typeof card !== 'object') continue;
+    const catalogSetName = String(card.setName || '').trim();
+    const releaseName = String(card.releaseName || '').trim();
+    const genericSet = /^(base\s+)?checklist$/i.test(catalogSetName);
+    card.catalogSetName = catalogSetName || null;
+    card.displaySetName = genericSet && releaseName ? releaseName : (catalogSetName || releaseName || null);
+  }
+  return JSON.stringify(payload);
 }
 
 function stripeMode(env, requested) {
@@ -2813,11 +2959,126 @@ export default {
       });
     }
 
-    // Development mobile bridge. Provider credentials remain in Worker secrets;
-    // app-generated installation IDs are used only to namespace response caches.
+    // Card Deal Lens mobile access. S-rank redemption issues a random revocable
+    // bearer token; the redemption code remains a Worker secret and never ships
+    // in the APK. Set CARD_LENS_S_RANK_REDEMPTION_ENABLED=false to close new
+    // redemptions while keeping an already-redeemed developer installation active.
+    if (url.pathname === '/card-lens/mobile/access/redeem') {
+      if (request.method !== 'POST') return json({ error:'POST only' }, 405);
+      if (!env.LBA_KV) return json({ ok:false, error:'Mobile access storage is not configured' }, 503);
+      if (!env.CARD_LENS_S_RANK_CODE || String(env.CARD_LENS_S_RANK_REDEMPTION_ENABLED || 'true') === 'false') {
+        return json({ ok:false, error:'S-rank redemption is closed' }, 403);
+      }
+      const installationId = cardLensMobileInstallationId(request);
+      if (!installationId) return json({ ok:false, error:'A valid Card Lens installation ID is required' }, 400);
+      const ip = String(request.headers.get('CF-Connecting-IP') || 'unknown').slice(0, 80);
+      const rateError = await enforceUsageLimit(env, `card-lens-redeem:${installationId}:${ip}`, 5, 3600);
+      if (rateError) return rateError;
+      const limited = await readJsonWithLimit(request, 2048);
+      if (limited.error) return limited.error;
+      const code = String(limited.data.code || '').trim();
+      if (!code || !(await secureSecretEqual(code, env.CARD_LENS_S_RANK_CODE))) {
+        return json({ ok:false, error:'That S-rank code is not valid' }, 403);
+      }
+      const token = cardLensRandomToken();
+      const tokenHash = await cardLensTokenHash(token);
+      const session = {
+        installationId,
+        tier:'s_rank',
+        unlimited:true,
+        epoch:cardLensSessionEpoch(env),
+        issuedAt:new Date().toISOString(),
+        expiresAt:null,
+      };
+      await env.LBA_KV.put(`card-lens:session:${tokenHash}`, JSON.stringify(session));
+      return json({ ok:true, token, access:{ tier:'s_rank', unlimited:true, expiresAt:null } }, 200, { 'Cache-Control':'no-store' });
+    }
+
+    if (url.pathname === '/card-lens/mobile/access/revoke') {
+      if (request.method !== 'POST') return json({ error:'POST only' }, 405);
+      const installationId = cardLensMobileInstallationId(request);
+      if (!installationId) return json({ ok:false, error:'A valid Card Lens installation ID is required' }, 400);
+      const session = await cardLensSessionForRequest(request, env, installationId);
+      if (!session) return json({ ok:false, error:'No active Card Deal Lens session' }, 401);
+      await env.LBA_KV.delete(`card-lens:session:${session.tokenHash}`);
+      return json({ ok:true });
+    }
+
+    // The Android client sends only the Play purchase token. Entitlement is
+    // granted after this Worker verifies the subscription with Google and
+    // acknowledges it server-side; a modified APK cannot self-grant access.
+    if (url.pathname === '/card-lens/mobile/billing/google-play/verify') {
+      if (request.method !== 'POST') return json({ error:'POST only' }, 405);
+      if (!env.LBA_KV) return json({ ok:false, error:'Mobile access storage is not configured' }, 503);
+      const installationId = cardLensMobileInstallationId(request);
+      if (!installationId) return json({ ok:false, error:'A valid Card Lens installation ID is required' }, 400);
+      const rateError = await enforceUsageLimit(env, `card-lens-play-verify:${installationId}`, 20, 3600);
+      if (rateError) return rateError;
+      const limited = await readJsonWithLimit(request, 8192);
+      if (limited.error) return limited.error;
+      const packageName = String(limited.data.packageName || '').trim();
+      const productId = String(limited.data.productId || '').trim();
+      const purchaseToken = String(limited.data.purchaseToken || '').trim();
+      const expectedPackage = String(env.CARD_LENS_ANDROID_PACKAGE || 'com.carddeallens');
+      if (packageName !== expectedPackage || !cardLensGooglePlayProducts(env).has(productId)) {
+        return json({ ok:false, error:'Unknown Card Deal Lens Play product' }, 400);
+      }
+      if (!/^[A-Za-z0-9._~\-:=]{20,4096}$/.test(purchaseToken)) {
+        return json({ ok:false, error:'A valid Play purchase token is required' }, 400);
+      }
+      let verified;
+      try {
+        verified = await cardLensVerifyGooglePlaySubscription(env, packageName, productId, purchaseToken);
+      } catch (error) {
+        console.error('Card Lens Google Play verification failed', error?.message || error);
+        return json({ ok:false, error:error?.message || 'Google Play verification failed' }, 502);
+      }
+      if (!verified.active) {
+        return json({ ok:false, error:'The Play subscription is not active', state:verified.state }, 403);
+      }
+      const token = cardLensRandomToken();
+      const [tokenHash, purchaseHash] = await Promise.all([
+        cardLensTokenHash(token), cardLensTokenHash(purchaseToken),
+      ]);
+      const tier = productId === 'card_deal_lens_power' ? 'power' : 'pro';
+      const session = {
+        installationId,
+        tier,
+        unlimited:false,
+        productId,
+        purchaseHash,
+        epoch:cardLensSessionEpoch(env),
+        issuedAt:new Date().toISOString(),
+        expiresAt:verified.expiresAt,
+      };
+      const ttlSeconds = Math.max(300, Math.ceil((Date.parse(verified.expiresAt) - Date.now()) / 1000));
+      await Promise.all([
+        env.LBA_KV.put(`card-lens:session:${tokenHash}`, JSON.stringify(session), { expirationTtl:ttlSeconds }),
+        env.LBA_KV.put(`card-lens:play-purchase:${purchaseHash}`, JSON.stringify({
+          productId, tier, lastInstallationId:installationId, state:verified.state,
+          expiresAt:verified.expiresAt, verifiedAt:new Date().toISOString(),
+        }), { expirationTtl:ttlSeconds }),
+      ]);
+      return json({
+        ok:true, token,
+        access:{ tier, unlimited:false, productId, expiresAt:verified.expiresAt },
+      }, 200, { 'Cache-Control':'no-store' });
+    }
+
     if (url.pathname === '/card-lens/mobile/status') {
       if (request.method !== 'GET') return json({ error:'GET only' }, 405);
-      return json({ ok:true, provider:'CardSight', configured:!!env.CARDSIGHTAI_API_KEY, access:'development-open', perMinuteLimit:null }, 200, { 'Cache-Control':'no-store' });
+      const installationId = cardLensMobileInstallationId(request);
+      const session = installationId ? await cardLensSessionForRequest(request, env, installationId) : null;
+      const developmentOpen = cardLensAccessMode(env) === 'development-open';
+      return json({
+        ok:true,
+        provider:'CardSight',
+        configured:!!env.CARDSIGHTAI_API_KEY,
+        access:session?.tier || (developmentOpen ? 'development' : 'none'),
+        unlimited:!!session?.unlimited || developmentOpen,
+        redemptionOpen:!!env.CARD_LENS_S_RANK_CODE && String(env.CARD_LENS_S_RANK_REDEMPTION_ENABLED || 'true') !== 'false',
+        perMinuteLimit:null,
+      }, 200, { 'Cache-Control':'no-store' });
     }
 
     if (url.pathname === '/card-lens/mobile/identify') {
@@ -2878,7 +3139,8 @@ export default {
         headers:{ 'X-API-Key':env.CARDSIGHTAI_API_KEY },
         body:identifyForm,
       });
-      const data = await res.text();
+      const rawIdentification = await res.text();
+      const data = res.ok ? cardLensNormalizeIdentificationText(rawIdentification) : rawIdentification;
       // Cache a same-frame catalog miss briefly too. CardSight counts identify
       // attempts even when no card is matched, so an unchanged difficult view
       // must not consume another provider call every few seconds.

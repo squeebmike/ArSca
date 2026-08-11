@@ -1,4 +1,5 @@
 node_modules/
+.wrangler/
 dist-beta/
 test-results/
 tests/test-results/
