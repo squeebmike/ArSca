@@ -30,7 +30,7 @@ create table if not exists public.loyalty_ledger (
   id uuid primary key default gen_random_uuid(),
   store_id uuid not null references public.stores(id) on delete cascade,
   customer_id uuid not null references public.customers(id) on delete cascade,
-  sale_id uuid references public.pos_sales(id) on delete set null,
+  sale_id text references public.pos_sales(id) on delete set null,
   points integer not null,
   reason text not null,
   balance_after integer not null,
@@ -46,7 +46,7 @@ create table if not exists public.gift_cards (
   balance numeric(12,2) not null default 0,
   status text not null default 'active',
   customer_id uuid references public.customers(id) on delete set null,
-  issued_sale_id uuid references public.pos_sales(id) on delete set null,
+  issued_sale_id text references public.pos_sales(id) on delete set null,
   issued_by uuid references auth.users(id) on delete set null,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
@@ -56,7 +56,7 @@ create table if not exists public.gift_card_transactions (
   id uuid primary key default gen_random_uuid(),
   store_id uuid not null references public.stores(id) on delete cascade,
   gift_card_id uuid not null references public.gift_cards(id) on delete cascade,
-  sale_id uuid references public.pos_sales(id) on delete set null,
+  sale_id text references public.pos_sales(id) on delete set null,
   type text not null,
   amount numeric(12,2) not null default 0,
   balance_after numeric(12,2) not null default 0,
@@ -108,7 +108,7 @@ create policy gift_card_transactions_insert_employee on public.gift_card_transac
 -- SECURITY INVOKER (the default) so the calling user's RLS still applies --
 -- these grant no privilege beyond what the policies above already allow.
 
-create or replace function public.accrue_loyalty_points(p_store_id uuid, p_customer_id uuid, p_points integer, p_sale_id uuid, p_reason text default 'sale')
+create or replace function public.accrue_loyalty_points(p_store_id uuid, p_customer_id uuid, p_points integer, p_sale_id text, p_reason text default 'sale')
 returns integer
 language plpgsql
 as $$
@@ -133,7 +133,7 @@ begin
 end;
 $$;
 
-create or replace function public.redeem_loyalty_points(p_store_id uuid, p_customer_id uuid, p_points integer, p_sale_id uuid)
+create or replace function public.redeem_loyalty_points(p_store_id uuid, p_customer_id uuid, p_points integer, p_sale_id text)
 returns integer
 language plpgsql
 as $$
@@ -163,7 +163,7 @@ begin
 end;
 $$;
 
-create or replace function public.redeem_gift_card(p_store_id uuid, p_code text, p_amount numeric, p_sale_id uuid)
+create or replace function public.redeem_gift_card(p_store_id uuid, p_code text, p_amount numeric, p_sale_id text)
 returns table(gift_card_id uuid, balance numeric)
 language plpgsql
 as $$

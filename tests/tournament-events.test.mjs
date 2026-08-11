@@ -10,6 +10,11 @@ for (const table of ['events', 'event_registrations', 'event_matches']) {
   assert.match(migration, new RegExp(`${table}_select_member`), `${table} missing a select RLS policy`);
 }
 
+// pos_sales.id is text, not uuid (client-generated ids aren't always
+// UUID-shaped) -- a uuid FK against it fails to create at all (42804).
+assert.doesNotMatch(migration, /sale_id uuid references public\.pos_sales/, 'sale_id FK must be text, not uuid -- pos_sales.id is text');
+assert.match(migration, /sale_id text references public\.pos_sales\(id\)/, 'event_registrations.sale_id must be text');
+
 // Tab plumbing: registered with the role/plan gate system, not just a bare panel.
 assert.match(dashboard, /id="tab-events"/, 'events tab panel must exist');
 assert.match(dashboard, /\['events', 'TOURNAMENTS'\]/, 'events must be reachable from the tab nav');

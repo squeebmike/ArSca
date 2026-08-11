@@ -13,6 +13,14 @@ for (const fn of ['accrue_loyalty_points', 'redeem_loyalty_points', 'redeem_gift
 }
 assert.match(migration, /for update/, 'redeem functions must lock the row to prevent double-spend races');
 
+// pos_sales.id is text (client-generated ids aren't always UUID-shaped --
+// see 2026-07-14-atomic-pos-sale.sql), so anything referencing it must be
+// text too or the FK constraint fails to create at all (42804).
+assert.doesNotMatch(migration, /sale_id uuid references public\.pos_sales/, 'sale_id FK must be text, not uuid -- pos_sales.id is text');
+assert.match(migration, /sale_id text references public\.pos_sales\(id\)/, 'loyalty_ledger.sale_id must be text');
+assert.match(migration, /issued_sale_id text references public\.pos_sales\(id\)/, 'gift_cards.issued_sale_id must be text');
+assert.match(migration, /p_sale_id text/, 'RPC p_sale_id parameters must be text to match pos_sales.id');
+
 // Customers panel is Supabase-backed, not localStorage-only.
 assert.match(dashboard, /function loadCustomersFromSupabase/, 'customers must load from Supabase');
 assert.match(dashboard, /async function upsertCustomer/, 'customer upsert must be async (writes to Supabase)');

@@ -30,7 +30,7 @@ create table if not exists public.event_registrations (
   contact text,
   paid boolean not null default false,
   paid_amount numeric(12,2) not null default 0,
-  sale_id uuid references public.pos_sales(id) on delete set null,
+  sale_id text references public.pos_sales(id) on delete set null,
   dropped boolean not null default false,
   created_at timestamptz not null default now()
 );
