@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.10.05-inventory-aging-report">
+<meta name="version" content="2026.08.11.01-loyalty-gift-cards">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1542,13 +1542,13 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.10.05-inventory-aging-report" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.10.05-inventory-aging-report" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.10.05-inventory-aging-report" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.10.05-inventory-aging-report" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.10.05-inventory-aging-report" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.10.05-inventory-aging-report" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.10.05-inventory-aging-report" defer></script>
+<script src="scripts/query-routing.js?v=2026.08.11.01-loyalty-gift-cards" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.11.01-loyalty-gift-cards" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.11.01-loyalty-gift-cards" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.11.01-loyalty-gift-cards" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.11.01-loyalty-gift-cards" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.11.01-loyalty-gift-cards" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.11.01-loyalty-gift-cards" defer></script>
 </head>
 <body>
 
@@ -1598,11 +1598,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.10.05-inventory-aging-report</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.11.01-loyalty-gift-cards</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.10.05-inventory-aging-report</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.11.01-loyalty-gift-cards</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1624,7 +1624,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.10.05-inventory-aging-report</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.11.01-loyalty-gift-cards</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -1725,6 +1725,7 @@ body.show-mode .inv-sync-badge{display:none;}
     </div>
     <button class="hbtn" id="sync-prices-btn" style="margin-left:auto" onclick="openPriceSyncModal()" title="Compare inventory prices against your cached price lookups">💹 SYNC PRICES</button>
     <button class="hbtn" onclick="openOneOffSellModal()" title="Add an item that isn't in inventory yet to the cart">⚡ ADD ONE-OFF TO CART</button>
+    <button class="hbtn" onclick="openGiftCardSellModal()" title="Sell a gift card">🎁 SELL GIFT CARD</button>
   </div>
   <div class="tc">
     <input class="tsi" id="tbl-q" placeholder="Search title, issue, writer, artist, cover artist..." oninput="filterTable()">
@@ -2936,6 +2937,29 @@ body.show-mode .inv-sync-badge{display:none;}
   </div>
 </div>
 
+<!-- Gift cards: sold as a cart line, code generated only once the sale finalizes -->
+<div class="modal-bg" id="gift-card-sell-modal">
+  <div class="modal">
+    <h3>🎁 SELL GIFT CARD</h3>
+    <div style="font-family:var(--font-mono);font-size:9px;color:var(--dim);margin-bottom:8px">Adds a gift card line to the cart. The code is generated and printable only after the sale finalizes at checkout.</div>
+    <label>Amount ($) *</label>
+    <input type="number" id="gift-card-amount" step="0.01" min="1" placeholder="25.00">
+    <label>Recipient name (optional)</label>
+    <input type="text" id="gift-card-recipient" placeholder="Who is this for?">
+    <div class="modal-btns">
+      <button class="modal-btn confirm" onclick="confirmGiftCardSell()">ADD GIFT CARD TO CART</button>
+      <button class="modal-btn cancel" onclick="closeGiftCardSellModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Populated by showIssuedGiftCardsModal() right after a sale containing a
+     gift card line finalizes -- this is the one moment the plaintext code is
+     shown; it is never re-displayed after this. -->
+<div class="modal-bg" id="gift-card-issued-modal">
+  <div class="modal" id="gift-card-issued-modal-body"></div>
+</div>
+
 <!-- WANT LIST TAB -->
 <div id="tab-wantlist" class="tab-panel">
   <div class="sec">CUSTOMER WANT LIST / PULL LIST</div>
@@ -3157,7 +3181,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.10.05-inventory-aging-report';
+const APP_VERSION = '2026.08.11.01-loyalty-gift-cards';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -3309,7 +3333,7 @@ const WALKOFF_SCOPED_KEYS = new Set([
   // POS / operations
   'pos_wantlist','set_needs_v1','pos_consign','pos_consignors','pos_consignment_alerts','pos_locations',
   'price_change_alerts',
-  'pos_ops_log','pos_show_mode','pos_customers','pos_undo_stack',
+  'pos_ops_log','pos_show_mode','pos_customers','customers_cache_v1','pos_undo_stack',
   // Store settings / profile
   'vendor_profile_v1','vendor_config_v1','store_payment_settings_v1',
   'store_theme_v1','store_onboarding_v1',
@@ -4545,6 +4569,7 @@ const DEMO_VENDOR_PROFILE_DEFAULTS = {
   email:'demo@walkoff.local',
   logo:'',
   taxRate:0,
+  loyaltyRate:3,
   defaultBuyPct:70,
   defaultShowMarkdown:0,
   receiptFooter:'Thank you for shopping with us!',
@@ -4647,6 +4672,7 @@ const DEFAULT_VENDOR_PROFILE = {
   email:'',
   logo:'',
   taxRate:0,
+  loyaltyRate:3,
   defaultBuyPct:70,
   defaultShowMarkdown:0,
   receiptFooter:'Thank you for shopping with us!',
@@ -4820,6 +4846,11 @@ function normalizePriceChartingCsvRowClient(p = {}, q = ''){
   };
 }
 
+function getLoyaltyRate(){
+  const rate = Number(getVendorProfile().loyaltyRate);
+  return Number.isFinite(rate) && rate >= 0 ? rate : 3;
+}
+
 function getVendorProfile(){
   // Demo mode falls back to blank demo defaults — never Walk-Off's real store info.
   const base = getAccountContext().isDemo ? DEMO_VENDOR_PROFILE_DEFAULTS : DEFAULT_VENDOR_PROFILE;
@@ -4854,6 +4885,7 @@ async function saveVendorProfile(profile){
       ebayDescriptionTemplate:next.ebayDescriptionTemplate || '',
       paymentMethods:next.paymentMethods,
       taxRate:Number(next.taxRate || 0),
+      loyaltyRate:Number(next.loyaltyRate || 0),
       storefrontEnabled:next.storefrontEnabled === true,
       storefrontMessage:next.storefrontMessage || '',
       venmo:next.venmo || '',
@@ -5544,6 +5576,7 @@ function savePaymentSettings(settings){
       ebayDescriptionTemplate:next.ebayDescriptionTemplate || '',
       paymentMethods:next.paymentMethods,
       taxRate:Number(next.taxRate || 0),
+      loyaltyRate:Number(next.loyaltyRate || 0),
       storefrontEnabled:next.storefrontEnabled === true,
       storefrontMessage:next.storefrontMessage || '',
       venmo:next.venmo || '',
@@ -6043,6 +6076,7 @@ function renderVendorProfilePanel(){
         ${vendorInput('phone','Phone',p.phone)}
         ${vendorInput('email','Email',p.email)}
         ${vendorInput('taxRate','Tax %',p.taxRate,'number')}
+        ${vendorInput('loyaltyRate','Loyalty pts % of $',p.loyaltyRate,'number')}
         ${vendorInput('defaultBuyPct','Buy % default',p.defaultBuyPct,'number')}
         ${vendorInput('defaultShowMarkdown','Show markdown %',p.defaultShowMarkdown,'number')}
       </div>
@@ -6111,12 +6145,12 @@ function vendorInput(key, label, value, type='text', placeholder=''){
 }
 
 async function saveVendorProfileFromForm(){
-  const keys = ['storeName','shortName','location','website','phone','email','taxRate','defaultBuyPct','defaultShowMarkdown','receiptFooter','ebayShippingLine','paymentMethods','venmo','paypal','cashapp'];
+  const keys = ['storeName','shortName','location','website','phone','email','taxRate','loyaltyRate','defaultBuyPct','defaultShowMarkdown','receiptFooter','ebayShippingLine','paymentMethods','venmo','paypal','cashapp'];
   const profile = {};
   keys.forEach(k => {
     const el = document.getElementById('vp-'+k);
     if(!el) return;
-    profile[k] = ['taxRate','defaultBuyPct','defaultShowMarkdown'].includes(k) ? Number(el.value || 0) : el.value.trim();
+    profile[k] = ['taxRate','loyaltyRate','defaultBuyPct','defaultShowMarkdown'].includes(k) ? Number(el.value || 0) : el.value.trim();
   });
   const cloudSaved = await saveVendorProfile(profile);
   toast_dash(cloudSaved ? 'Vendor profile saved' : 'Saved on this device only — cloud sync failed, other devices will not see this change yet');
@@ -10708,6 +10742,54 @@ async function processSyncItem(item){
     if(error) throw error;
     return;
   }
+  if(item.type === 'customer-upsert') {
+    const sb = getSupabaseClient();
+    if(!sb) throw new Error('Supabase client unavailable');
+    const { error } = await sb.from('customers').upsert(item.payload, { onConflict:'id' });
+    if(error) throw error;
+    return;
+  }
+  if(item.type === 'loyalty-accrual') {
+    const sb = getSupabaseClient();
+    if(!sb) throw new Error('Supabase client unavailable');
+    const { contact, name, saleId, points, storeId } = item.payload;
+    const isEmail = String(contact || '').includes('@');
+    const field = isEmail ? 'email' : 'phone';
+    const { data: existing, error: findErr } = await sb.from('customers').select('id').eq('store_id', storeId).eq(field, contact).maybeSingle();
+    if(findErr) throw findErr;
+    let customerId = existing?.id;
+    if(!customerId) {
+      const { data: created, error: createErr } = await sb.from('customers').insert({ id:makeUuid('cust'), store_id:storeId, name, [field]:contact, loyalty_points_balance:0 }).select('id').single();
+      if(createErr) throw createErr;
+      customerId = created.id;
+    }
+    const { error } = await sb.rpc('accrue_loyalty_points', { p_store_id:storeId, p_customer_id:customerId, p_points:points, p_sale_id:saleId, p_reason:'sale' });
+    if(error) throw error;
+    return;
+  }
+  if(item.type === 'loyalty-redeem-commit') {
+    const sb = getSupabaseClient();
+    if(!sb) throw new Error('Supabase client unavailable');
+    const { storeId, customerId, points, saleId } = item.payload;
+    const { error } = await sb.rpc('redeem_loyalty_points', { p_store_id:storeId, p_customer_id:customerId, p_points:points, p_sale_id:saleId });
+    if(error) throw error;
+    return;
+  }
+  if(item.type === 'gift-card-issue') {
+    const sb = getSupabaseClient();
+    if(!sb) throw new Error('Supabase client unavailable');
+    const { error } = await sb.from('gift_cards').insert(item.payload);
+    if(error) throw error;
+    return;
+  }
+  if(item.type === 'gift-card-redeem-commit') {
+    const sb = getSupabaseClient();
+    if(!sb) throw new Error('Supabase client unavailable');
+    const { storeId, code, amount, saleId } = item.payload;
+    const { error } = await sb.rpc('redeem_gift_card', { p_store_id:storeId, p_code:code, p_amount:amount, p_sale_id:saleId });
+    if(error) throw error;
+    return;
+  }
   if(item.type === 'drawer-session-open') {
     await MoneyLedgerService().openDrawerSession({
       id:item.payload.drawerState.id,
@@ -10841,26 +10923,72 @@ function renderStoreCreditPanel(){
   </div>`).join('') : '<div style="padding:10px;border:1px dashed var(--border);border-radius:8px;text-align:center">No outstanding trade credit</div>';
 }
 
-function getCustomers(){ return safeLocalJson('pos_customers', []); }
-function saveCustomers(c){ localStorage.setItem('pos_customers', JSON.stringify(c.slice(0,1000))); renderCustomers(); }
-function upsertCustomer(name, contact, notes, source){
+// Customers moved off localStorage-only pos_customers onto a store-scoped
+// Supabase table (2026-08-10) -- loyalty points and gift cards need a
+// balance that's readable/writable from any register, not just the device
+// that happened to create the contact. customersCache is a local-first read
+// cache (instant render, works offline); writes go straight to Supabase and
+// fall back to the offline sync queue on failure, same pattern already used
+// for customer_receipts/customer_wants.
+let customersCache = safeLocalJson('customers_cache_v1', []);
+let customersCacheLoaded = false;
+
+function getCustomers(){ return customersCache; }
+
+async function loadCustomersFromSupabase(force){
+  if(customersCacheLoaded && !force) return customersCache;
+  const sb = getSupabaseClient();
+  const storeId = getActiveStoreId();
+  if(!sb || !storeId || getAccountContext().isDemo) { customersCacheLoaded = true; return customersCache; }
+  const { data, error } = await sb.from('customers').select('*').eq('store_id', storeId).order('updated_at', { ascending:false }).limit(1000);
+  if(error) { console.warn('Customers sync failed:', error.message); return customersCache; }
+  customersCache = data || [];
+  localStorage.setItem('customers_cache_v1', JSON.stringify(customersCache));
+  customersCacheLoaded = true;
+  renderCustomers();
+  return customersCache;
+}
+
+function findCustomerByContact(contact){
+  const key = String(contact || '').trim().toLowerCase();
+  if(!key) return null;
+  return customersCache.find(c => (c.phone || '').toLowerCase() === key || (c.email || '').toLowerCase() === key) || null;
+}
+
+function saveCustomerLocal(entry){
+  const idx = customersCache.findIndex(c => c.id === entry.id);
+  if(idx >= 0) customersCache[idx] = entry; else customersCache.unshift(entry);
+  customersCache = customersCache.slice(0, 1000);
+  localStorage.setItem('customers_cache_v1', JSON.stringify(customersCache));
+  renderCustomers();
+}
+
+async function upsertCustomer(name, contact, notes, source){
   name = String(name || '').trim();
   contact = String(contact || '').trim();
   notes = String(notes || '').trim();
-  if(!name && !contact) return;
-  const c = getCustomers();
-  const key = (contact || name).toLowerCase();
-  const idx = c.findIndex(x => String(x.contact || x.name || '').toLowerCase() === key);
-  const entry = idx >= 0 ? c[idx] : { id:'cust_'+Date.now(), name, contact, notes:'', createdAt:new Date().toISOString(), source:source || 'auto' };
+  if(!name && !contact) return null;
+  const isEmail = contact.includes('@');
+  const existing = findCustomerByContact(contact) || (!contact && name ? customersCache.find(c => (c.name || '').toLowerCase() === name.toLowerCase()) : null);
+  const now = new Date().toISOString();
+  const entry = existing ? { ...existing } : { id:makeUuid('cust'), store_id:getActiveStoreId(), name:'', phone:'', email:'', notes:'', loyalty_points_balance:0, created_at:now };
   entry.name = entry.name || name;
-  entry.contact = entry.contact || contact;
-  entry.updatedAt = new Date().toISOString();
-  entry.source = entry.source || source || 'auto';
+  if(contact) { if(isEmail) entry.email = entry.email || contact; else entry.phone = entry.phone || contact; }
   if(notes && !String(entry.notes || '').includes(notes)) entry.notes = [entry.notes, notes].filter(Boolean).join('\n');
-  if(idx >= 0) c.splice(idx, 1);
-  c.unshift(entry);
-  saveCustomers(c);
+  entry.updated_at = now;
+  saveCustomerLocal(entry);
+  if(getAccountContext().isDemo) return entry;
+  try {
+    const sb = getSupabaseClient();
+    if(!sb) throw new Error('Supabase unavailable');
+    const { error } = await sb.from('customers').upsert(entry, { onConflict:'id' });
+    if(error) throw error;
+  } catch(e) {
+    enqueueOrReplaceSync('customer-upsert', entry.id, 'Queued customer save', entry, e.message);
+  }
+  return entry;
 }
+
 function addCustomerContact(){
   const name = document.getElementById('cust-name')?.value.trim();
   const contact = document.getElementById('cust-contact')?.value.trim();
@@ -10875,9 +11003,9 @@ function renderCustomers(){
   if(!list) return;
   const c = getCustomers();
   if(count) count.textContent = c.length + ' contacts';
-  list.innerHTML = c.length ? c.slice(0,30).map(x => `<div style="border:1px solid var(--border);background:var(--surf2);border-radius:7px;padding:8px"><b style="color:var(--text)">${escHtml(x.name||'Customer')}</b> · ${escHtml(x.contact||'')}<div>${escHtml(x.notes||'')}</div></div>`).join('') : '<div style="padding:10px;border:1px dashed var(--border);border-radius:8px;text-align:center">No customers yet</div>';
+  list.innerHTML = c.length ? c.slice(0,30).map(x => `<div style="border:1px solid var(--border);background:var(--surf2);border-radius:7px;padding:8px"><div style="display:flex;justify-content:space-between;gap:8px"><b style="color:var(--text)">${escHtml(x.name||'Customer')}</b>${Number(x.loyalty_points_balance||0) > 0 ? `<span style="color:var(--g)">${Number(x.loyalty_points_balance||0)} pts</span>` : ''}</div>${escHtml(x.phone||x.email||'')}<div>${escHtml(x.notes||'')}</div></div>`).join('') : '<div style="padding:10px;border:1px dashed var(--border);border-radius:8px;text-align:center">No customers yet</div>';
 }
-function exportCustomersCSV(){ downloadCSV('walkoff-customers-'+new Date().toISOString().slice(0,10)+'.csv', [['name','contact','notes','created_at']].concat(getCustomers().map(c => [c.name,c.contact,c.notes,c.createdAt]))); }
+function exportCustomersCSV(){ downloadCSV('walkoff-customers-'+new Date().toISOString().slice(0,10)+'.csv', [['name','phone','email','loyalty_points','notes','created_at']].concat(getCustomers().map(c => [c.name,c.phone,c.email,c.loyalty_points_balance||0,c.notes,c.created_at]))); }
 
 function priceTagRows(items){
   return [['name','price','category','condition','location','sku','qr_hint']]
@@ -14984,7 +15112,7 @@ async function buildVendorBackup(){
       universalInventory: safeLocalJson('walkoff_universal_inventory', []),
       spreadsheetMapping: safeLocalJson('sheet_mapping_v1', {}),
       syncQueue: safeLocalJson('sync_queue_v1', []),
-      customers: safeLocalJson('pos_customers', []),
+      customers: safeLocalJson('customers_cache_v1', []),
       undoStack: safeLocalJson('pos_undo_stack', []),
       vendorProfile: safeLocalJson('vendor_profile_v1', null),
       opsLog: getOpsLog(),
@@ -15062,7 +15190,7 @@ async function importVendorBackup(event){
       walkoff_universal_inventory:d.universalInventory,
       sheet_mapping_v1:d.spreadsheetMapping,
       sync_queue_v1:d.syncQueue,
-      pos_customers:d.customers,
+      customers_cache_v1:d.customers,
       pos_undo_stack:d.undoStack,
       vendor_profile_v1:d.vendorProfile,
       pos_ops_log:d.opsLog,
@@ -15439,6 +15567,7 @@ window.addEventListener('load', async function(){
   await loadStoreSettingsFromSupabase();
   await loadConsignmentsFromCloud();
   await loadPriceChangeAlertsFromCloud();
+  loadCustomersFromSupabase();
   setupAppShell();
   setInvView(_invView);
   checkAndApplySubscriptionState().catch(console.warn);
@@ -16660,6 +16789,91 @@ async function confirmOneOffSell(){
 
   closeOneOffSellModal();
   toast_dash('Added one-off item to cart');
+}
+
+// Gift cards: sold as a one_off cart line (no inventory/COGS to track), with
+// the code generated NOW so it's fixed before the sale even finalizes, but
+// the gift_cards row (and any printable code) is only created after the sale
+// actually commits (see finalizeCompletedCheckout) -- a cancelled or failed
+// checkout must never leave a redeemable, unsold code floating around.
+function generateGiftCardCode(){
+  const alphabet = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; // no 0/O/1/I/L -- avoids misreads off a receipt
+  const bytes = new Uint8Array(12);
+  if(window.crypto?.getRandomValues) crypto.getRandomValues(bytes);
+  else for(let i = 0; i < 12; i++) bytes[i] = Math.floor(Math.random() * 256);
+  const chars = Array.from(bytes, b => alphabet[b % alphabet.length]);
+  return chars.slice(0,4).join('') + '-' + chars.slice(4,8).join('') + '-' + chars.slice(8,12).join('');
+}
+function openGiftCardSellModal(){
+  document.getElementById('gift-card-amount').value = '';
+  document.getElementById('gift-card-recipient').value = '';
+  document.getElementById('gift-card-sell-modal').classList.add('on');
+  setTimeout(() => document.getElementById('gift-card-amount')?.focus(), 100);
+}
+function closeGiftCardSellModal(){
+  document.getElementById('gift-card-sell-modal').classList.remove('on');
+}
+function confirmGiftCardSell(){
+  const amount = parseFloat(document.getElementById('gift-card-amount')?.value) || 0;
+  const recipient = document.getElementById('gift-card-recipient')?.value.trim() || '';
+  if(!amount || amount <= 0) return alert('Enter a gift card amount');
+  const code = generateGiftCardCode();
+  const name = 'Gift Card' + (recipient ? ' — ' + recipient : '');
+  addSaleItemToCart({ name, category:'Gift Card' }, {
+    sourceType:'one_off',
+    name,
+    category:'Gift Card',
+    unitPrice:amount,
+    costBasis:0,
+    quantity:1,
+    taxable:false,
+    metadata:{ giftCard:true, giftCardCode:code, giftCardRecipient:recipient },
+    undoLabel:'gift card add to cart'
+  });
+  closeGiftCardSellModal();
+  toast_dash('Added gift card to cart');
+}
+
+// Called from finalizeCompletedCheckout, after the sale is durably committed
+// (or durably queued) -- never before, so a cancelled/failed checkout can
+// never leave a redeemable code that was never actually sold.
+async function issueGiftCardsFromSaleLines(bundle){
+  const giftLines = (bundle.saleLines || []).filter(l => l.metadata?.giftCard && l.metadata?.giftCardCode);
+  if(!giftLines.length) return;
+  if(getAccountContext().isDemo) return;
+  const storeId = bundle.sale.store_id;
+  const issued = [];
+  for(const line of giftLines) {
+    const record = { id:makeUuid('gift'), store_id:storeId, code:line.metadata.giftCardCode, initial_value:Number(line.unit_price || 0), balance:Number(line.unit_price || 0), status:'active', issued_sale_id:bundle.sale.id, issued_by:getCurrentUserId(), created_at:new Date().toISOString() };
+    try {
+      const sb = getSupabaseClient();
+      if(!sb) throw new Error('Supabase unavailable');
+      const { error } = await sb.from('gift_cards').insert(record);
+      if(error) throw error;
+    } catch(e) {
+      enqueueSync('gift-card-issue', 'Queued gift card issuance', record, e.message);
+    }
+    issued.push({ code:record.code, amount:record.initial_value, recipient:line.metadata.giftCardRecipient || '' });
+  }
+  if(issued.length) showIssuedGiftCardsModal(issued);
+}
+
+function showIssuedGiftCardsModal(issued){
+  const body = document.getElementById('gift-card-issued-modal-body');
+  if(!body) return;
+  body.innerHTML = `<h3>🎁 Gift Card${issued.length > 1 ? 's' : ''} Issued</h3>
+    <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);margin-bottom:10px">Write the code down or hand the customer this screen -- it will not be shown again.</div>
+    ${issued.map(g => `<div style="border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:10px;text-align:center;background:var(--surf2)">
+      ${g.recipient ? `<div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);margin-bottom:4px">${escHtml(g.recipient)}</div>` : ''}
+      <img src="https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=8&data=${encodeURIComponent(g.code)}" alt="Gift card QR code" style="width:160px;height:160px;margin-bottom:8px">
+      <div style="font-family:'Orbitron',monospace;font-size:20px;letter-spacing:2px;color:var(--g);margin-bottom:4px">${escHtml(g.code)}</div>
+      <div style="font-family:var(--font-mono);font-size:13px;color:var(--text)">$${Number(g.amount).toFixed(2)} balance</div>
+    </div>`).join('')}
+    <div class="modal-btns"><button class="modal-btn confirm" onclick="closeIssuedGiftCardsModal()">DONE</button></div>`;
+  document.getElementById('gift-card-issued-modal')?.classList.add('on');
+}
+function closeIssuedGiftCardsModal(){
+  document.getElementById('gift-card-issued-modal')?.classList.remove('on');
 }
 
 // Phase 4 reroute: the Inventory "SELL" button no longer finalizes a sale by
@@ -31579,7 +31793,7 @@ function normalizeTenderType(method = '', tenderType = ''){
 }
 
 function formatTenderLabel(key){
-  return ({ cash:'Cash', card:'Card / Stripe', venmo:'Venmo', paypal:'PayPal', cashapp:'Cash App', trade_credit:'Trade Credit', ebay:'eBay', manual_external:'Other' })[key] || String(key).replace(/_/g, ' ');
+  return ({ cash:'Cash', card:'Card / Stripe', venmo:'Venmo', paypal:'PayPal', cashapp:'Cash App', trade_credit:'Trade Credit', loyalty_redeem:'Loyalty Points', gift_card:'Gift Card', ebay:'eBay', manual_external:'Other' })[key] || String(key).replace(/_/g, ' ');
 }
 
 function transactionTenderTotals(transactions = []){
@@ -31621,7 +31835,7 @@ function transactionTenderProfitSummary(transactions = []){
     row.net = row.gross - Number(row.fees || 0);
     row.margin = row.gross ? (row.profit / row.gross) * 100 : 0;
   });
-  ['cash','card','venmo','paypal','cashapp','trade_credit','ebay','manual_external'].forEach(ensure);
+  ['cash','card','venmo','paypal','cashapp','trade_credit','loyalty_redeem','gift_card','ebay','manual_external'].forEach(ensure);
   return summary;
 }
 
@@ -33128,7 +33342,7 @@ function generateEOD(){
   const openDrawerSnapshot = drawerState && new Date(drawerState.opened || 0).toDateString() === targetDay ? getDrawerSnapshot(drawerState) : null;
   const drawerExpected = dayCloseouts.length ? dayCloseouts.reduce((a,c)=>a+Number(c.expected||0),0) : (openDrawerSnapshot ? openDrawerSnapshot.expected : 0);
   const expectedCash = drawerExpected || (Number(show?.startCash || 0) + cashTotal - buyPaidTotal);
-  const tenderRows = ['cash','card','venmo','paypal','cashapp','trade_credit','ebay','manual_external']
+  const tenderRows = ['cash','card','venmo','paypal','cashapp','trade_credit','loyalty_redeem','gift_card','ebay','manual_external']
     .map(key => ({ key, ...tenderProfit[key] }))
     .filter(r => Number(r.gross || 0) || Number(r.profit || 0) || Number(r.count || 0));
 
@@ -33727,6 +33941,8 @@ function getEnabledPaymentMethods(){
     s.paypal?.enabled ? { key:'paypal', label:s.paypal.displayName || 'PayPal', handle:s.paypal.emailOrHandle, qr:s.paypal.qrImageUrl } : null,
     s.cashApp?.enabled ? { key:'cashapp', label:s.cashApp.displayName || 'Cash App', handle:s.cashApp.cashtag, qr:s.cashApp.qrImageUrl } : null,
     { key:'trade_credit', label:'Trade Credit' }, // internal ledger redemption — always available, no processor setup needed
+    getLoyaltyRate() > 0 ? { key:'loyalty_redeem', label:'Loyalty Points' } : null,
+    { key:'gift_card', label:'Gift Card' },
   ].filter(Boolean);
 }
 
@@ -33760,7 +33976,12 @@ function customerSafeLine(item){
     condition:item.condition || '',
     finish:item.finish || '',
     source_id:item.sourceId || item.source_id || item.shopId || item.wfId || '',
-    image_url:item.img || item.image || ''
+    image_url:item.img || item.image || '',
+    // Not a pos_sale_lines column -- the atomic RPC only reads named fields
+    // out of the bundle it's handed, so this extra key rides along harmlessly
+    // and is only read client-side (finalizeCompletedCheckout) to detect a
+    // gift-card sale line after the sale commits.
+    metadata:item.metadata || {}
   };
 }
 
@@ -34126,7 +34347,7 @@ function renderCustomerLiveCart(cartData = { items:[] }){
 function renderCustomerPaymentLinks(total, el){
   if(!el) return;
   const methods = getEnabledPaymentMethods();
-  const visuals={cash:['💵','Record cash received'],card:['💳','Secure card or manual card'],venmo:['V','Show Venmo payment'],paypal:['PP','Show PayPal payment'],cashapp:['$','Show Cash App payment'],trade_credit:['↩','Redeem a customer\'s trade-in credit'],other:['•••','Record another tender']};
+  const visuals={cash:['💵','Record cash received'],card:['💳','Secure card or manual card'],venmo:['V','Show Venmo payment'],paypal:['PP','Show PayPal payment'],cashapp:['$','Show Cash App payment'],trade_credit:['↩','Redeem a customer\'s trade-in credit'],loyalty_redeem:['★','Redeem a customer\'s loyalty points'],gift_card:['🎁','Redeem a gift card'],other:['•••','Record another tender']};
   el.innerHTML = methods.map(m => { const v=visuals[m.key]||['•','Choose payment method']; return `<button class="customer-method-btn ${selectedTenderLines.some(t => t.method === m.key)?'on':''}" onclick="selectLockedPaymentMethod('${m.key}')"><span class="customer-method-icon">${v[0]}</span><span class="customer-method-copy">${escHtml(m.label)}<small>${escHtml(v[1])}</small></span></button>`; }).join('');
 }
 
@@ -34170,6 +34391,34 @@ function selectLockedPaymentMethod(method){
         <div class="payment-confirm-row"><button class="hbtn danger" onclick="removeTradeCreditTender()">REMOVE</button></div>`
       : `<div style="font-weight:800;text-align:center;margin-bottom:8px">Trade Credit</div>
         <div style="text-align:center;color:var(--dim);font-family:var(--font-mono);font-size:12px">No trade-in on this sale. Accept this customer's trade-in buy first — it applies here automatically.</div>`;
+    wb.classList.add('on');
+    renderCustomerDisplaySnapshot();
+    return;
+  }
+  if(method === 'loyalty_redeem') {
+    const priorLoyalty = selectedTenderLines.find(t => t.method === 'loyalty_redeem');
+    wb.innerHTML = priorLoyalty
+      ? `<div style="font-weight:800;text-align:center;margin-bottom:8px">Loyalty Points</div>
+        <div style="text-align:center;color:#05835f;font-family:var(--font-mono);font-size:12px;margin-bottom:12px">✓ ${priorLoyalty.points} pts redeemed for $${Number(priorLoyalty.amount).toFixed(2)}</div>
+        <div class="payment-confirm-row"><button class="hbtn danger" onclick="removeLoyaltyRedemptionTender()">REMOVE</button></div>`
+      : `<div style="font-weight:800;text-align:center;margin-bottom:8px">Loyalty Points</div>
+        <input id="loyalty-redeem-contact" placeholder="Customer phone or email" style="width:100%;min-height:44px;border:1px solid #cfd7e3;border-radius:7px;padding:8px 10px;font-size:14px;margin-bottom:8px">
+        <div class="payment-confirm-row"><button class="hbtn" onclick="lookupLoyaltyBalanceForRedeem()">LOOK UP BALANCE</button></div>
+        <div id="loyalty-redeem-result" style="margin-top:10px"></div>`;
+    wb.classList.add('on');
+    renderCustomerDisplaySnapshot();
+    return;
+  }
+  if(method === 'gift_card') {
+    const priorGift = selectedTenderLines.find(t => t.method === 'gift_card');
+    wb.innerHTML = priorGift
+      ? `<div style="font-weight:800;text-align:center;margin-bottom:8px">Gift Card</div>
+        <div style="text-align:center;color:#05835f;font-family:var(--font-mono);font-size:12px;margin-bottom:12px">✓ ${escHtml(priorGift.reference)} — $${Number(priorGift.amount).toFixed(2)} applied</div>
+        <div class="payment-confirm-row"><button class="hbtn danger" onclick="removeGiftCardRedemptionTender()">REMOVE</button></div>`
+      : `<div style="font-weight:800;text-align:center;margin-bottom:8px">Gift Card</div>
+        <input id="gift-card-redeem-code" placeholder="Gift card code (scan or type)" style="width:100%;min-height:44px;border:1px solid #cfd7e3;border-radius:7px;padding:8px 10px;font-size:14px;margin-bottom:8px;text-transform:uppercase">
+        <div class="payment-confirm-row"><button class="hbtn" onclick="lookupGiftCardBalanceForRedeem()">LOOK UP BALANCE</button></div>
+        <div id="gift-card-redeem-result" style="margin-top:10px"></div>`;
     wb.classList.add('on');
     renderCustomerDisplaySnapshot();
     return;
@@ -34231,14 +34480,122 @@ function removeTradeCreditTender(){
   selectLockedPaymentMethod('trade_credit');
 }
 
+// 100 points = $1 -- fixed, separate from the configurable per-sale accrual
+// rate (loyaltyRate). Only the accrual side was asked to be configurable.
+const LOYALTY_POINTS_PER_DOLLAR = 100;
+
+async function lookupLoyaltyBalanceForRedeem(){
+  const contact = document.getElementById('loyalty-redeem-contact')?.value.trim() || '';
+  const resultEl = document.getElementById('loyalty-redeem-result');
+  if(!resultEl) return;
+  if(!contact) { resultEl.innerHTML = '<div style="color:var(--red);font-family:var(--font-mono);font-size:11px;text-align:center">Enter a phone or email</div>'; return; }
+  if(getAccountContext().isDemo) { resultEl.innerHTML = '<div style="color:var(--dim);font-family:var(--font-mono);font-size:11px;text-align:center">Loyalty redemption is disabled in demo mode</div>'; return; }
+  resultEl.innerHTML = '<div style="text-align:center;color:var(--dim);font-family:var(--font-mono);font-size:11px">Looking up...</div>';
+  try {
+    const sb = getSupabaseClient();
+    const storeId = getActiveStoreId();
+    if(!sb || !storeId) throw new Error('Cloud connection required to redeem points');
+    const isEmail = contact.includes('@');
+    const { data, error } = await sb.from('customers').select('id,name,loyalty_points_balance').eq('store_id', storeId).eq(isEmail ? 'email' : 'phone', contact).maybeSingle();
+    if(error) throw error;
+    const balance = Number(data?.loyalty_points_balance || 0);
+    if(!data || balance <= 0) {
+      resultEl.innerHTML = `<div style="text-align:center;color:var(--dim);font-family:var(--font-mono);font-size:11px">${data ? escHtml(data.name || 'Customer') + ' has no points to redeem' : 'No customer found with that phone/email'}</div>`;
+      return;
+    }
+    const due = remainingCheckoutDue();
+    const maxRedeemablePoints = Math.min(balance, Math.floor(due * LOYALTY_POINTS_PER_DOLLAR));
+    resultEl.innerHTML = `<div style="text-align:center;font-family:var(--font-mono);font-size:12px;margin-bottom:8px">${escHtml(data.name || 'Customer')} has <b style="color:var(--g)">${balance} pts</b> ($${(balance / LOYALTY_POINTS_PER_DOLLAR).toFixed(2)})</div>
+      <input id="loyalty-redeem-points" type="number" min="0" max="${maxRedeemablePoints}" step="1" value="${maxRedeemablePoints}" style="width:100%;min-height:44px;border:1px solid #cfd7e3;border-radius:7px;padding:8px 10px;font-size:14px;margin-bottom:8px">
+      <div class="payment-confirm-row"><button class="hbtn" onclick="applyLoyaltyRedemption('${escHtml(data.id)}',${balance})">REDEEM</button></div>`;
+  } catch(e) {
+    resultEl.innerHTML = `<div style="color:var(--red);font-family:var(--font-mono);font-size:11px;text-align:center">${escHtml(e.message)}</div>`;
+  }
+}
+
+function applyLoyaltyRedemption(customerId, availableBalance){
+  const due = remainingCheckoutDue();
+  const requested = Math.max(0, Math.floor(Number(document.getElementById('loyalty-redeem-points')?.value || 0)));
+  const maxRedeemablePoints = Math.min(Number(availableBalance || 0), Math.floor(due * LOYALTY_POINTS_PER_DOLLAR));
+  const points = Math.min(requested, maxRedeemablePoints);
+  if(points <= 0) return toast_dash('Enter a valid number of points');
+  const amount = Math.round((points / LOYALTY_POINTS_PER_DOLLAR) * 100) / 100;
+  selectedTenderLines = [...selectedTenderLines.filter(t => t.method !== 'loyalty_redeem'), { method:'loyalty_redeem', amount, points, reference:customerId }];
+  selectLockedPaymentMethod('loyalty_redeem');
+  const remaining = remainingCheckoutDue();
+  if(remaining <= 0.009) {
+    const wb = document.getElementById('customer-payment-workbench');
+    if(wb) wb.innerHTML = `<div style="text-align:center;color:#05835f;font-family:var(--font-mono);font-size:13px;margin-bottom:12px">${points} points cover the full $${amount.toFixed(2)} purchase.</div><div class="payment-confirm-row"><button class="hbtn" style="min-height:52px;font-size:14px" onclick="confirmTradeOnlyCheckout()">CONFIRM PURCHASE</button><button class="hbtn danger" onclick="removeLoyaltyRedemptionTender()">REMOVE</button></div>`;
+    toast_dash('Loyalty points cover this purchase — confirm to finish');
+  } else {
+    toast_dash('$' + amount.toFixed(2) + ' applied — choose payment for $' + remaining.toFixed(2));
+  }
+}
+
+function removeLoyaltyRedemptionTender(){
+  selectedTenderLines = selectedTenderLines.filter(t => t.method !== 'loyalty_redeem');
+  selectLockedPaymentMethod('loyalty_redeem');
+}
+
+async function lookupGiftCardBalanceForRedeem(){
+  const code = document.getElementById('gift-card-redeem-code')?.value.trim().toUpperCase() || '';
+  const resultEl = document.getElementById('gift-card-redeem-result');
+  if(!resultEl) return;
+  if(!code) { resultEl.innerHTML = '<div style="color:var(--red);font-family:var(--font-mono);font-size:11px;text-align:center">Enter a gift card code</div>'; return; }
+  if(getAccountContext().isDemo) { resultEl.innerHTML = '<div style="color:var(--dim);font-family:var(--font-mono);font-size:11px;text-align:center">Gift card redemption is disabled in demo mode</div>'; return; }
+  resultEl.innerHTML = '<div style="text-align:center;color:var(--dim);font-family:var(--font-mono);font-size:11px">Looking up...</div>';
+  try {
+    const sb = getSupabaseClient();
+    const storeId = getActiveStoreId();
+    if(!sb || !storeId) throw new Error('Cloud connection required to redeem a gift card');
+    const { data, error } = await sb.from('gift_cards').select('code,balance,status').eq('store_id', storeId).eq('code', code).maybeSingle();
+    if(error) throw error;
+    if(!data || data.status !== 'active' || Number(data.balance || 0) <= 0) {
+      resultEl.innerHTML = `<div style="text-align:center;color:var(--dim);font-family:var(--font-mono);font-size:11px">${data ? 'That code has no balance left' : 'No active gift card found with that code'}</div>`;
+      return;
+    }
+    const balance = Number(data.balance);
+    const due = remainingCheckoutDue();
+    const maxRedeemable = Math.round(Math.min(balance, due) * 100) / 100;
+    resultEl.innerHTML = `<div style="text-align:center;font-family:var(--font-mono);font-size:12px;margin-bottom:8px">Balance: <b style="color:var(--g)">$${balance.toFixed(2)}</b></div>
+      <input id="gift-card-redeem-amount" type="number" min="0.01" max="${maxRedeemable}" step="0.01" value="${maxRedeemable.toFixed(2)}" style="width:100%;min-height:44px;border:1px solid #cfd7e3;border-radius:7px;padding:8px 10px;font-size:14px;margin-bottom:8px">
+      <div class="payment-confirm-row"><button class="hbtn" onclick="applyGiftCardRedemption('${escHtml(data.code)}',${balance})">REDEEM</button></div>`;
+  } catch(e) {
+    resultEl.innerHTML = `<div style="color:var(--red);font-family:var(--font-mono);font-size:11px;text-align:center">${escHtml(e.message)}</div>`;
+  }
+}
+
+function applyGiftCardRedemption(code, availableBalance){
+  const due = remainingCheckoutDue();
+  const requested = Math.max(0, Number(document.getElementById('gift-card-redeem-amount')?.value || 0));
+  const maxRedeemable = Math.round(Math.min(Number(availableBalance || 0), due) * 100) / 100;
+  const amount = Math.round(Math.min(requested, maxRedeemable) * 100) / 100;
+  if(amount <= 0) return toast_dash('Enter a valid redemption amount');
+  selectedTenderLines = [...selectedTenderLines.filter(t => t.method !== 'gift_card'), { method:'gift_card', amount, reference:code }];
+  selectLockedPaymentMethod('gift_card');
+  const remaining = remainingCheckoutDue();
+  if(remaining <= 0.009) {
+    const wb = document.getElementById('customer-payment-workbench');
+    if(wb) wb.innerHTML = `<div style="text-align:center;color:#05835f;font-family:var(--font-mono);font-size:13px;margin-bottom:12px">Gift card covers the full $${amount.toFixed(2)} purchase.</div><div class="payment-confirm-row"><button class="hbtn" style="min-height:52px;font-size:14px" onclick="confirmTradeOnlyCheckout()">CONFIRM PURCHASE</button><button class="hbtn danger" onclick="removeGiftCardRedemptionTender()">REMOVE</button></div>`;
+    toast_dash('Gift card covers this purchase — confirm to finish');
+  } else {
+    toast_dash('$' + amount.toFixed(2) + ' applied — choose payment for $' + remaining.toFixed(2));
+  }
+}
+
+function removeGiftCardRedemptionTender(){
+  selectedTenderLines = selectedTenderLines.filter(t => t.method !== 'gift_card');
+  selectLockedPaymentMethod('gift_card');
+}
+
 async function confirmLockedPayment(method){
   if(checkoutFinalizing) return toast_dash('Checkout is already finalizing');
   if(!lockedCheckoutSnapshot) return toast_dash('No locked checkout');
-  // A prior trade-credit tender (auto-applied by lockCheckoutForPayment when
-  // a same-visit trade-in is pending) may already have covered part of the
-  // total — this method only needs to cover what's left, and joins rather
-  // than replaces that queued trade-credit line.
-  const priorTenders = selectedTenderLines.filter(t => t.method === 'trade_credit');
+  // A prior trade-credit/loyalty-points/gift-card tender (auto-applied by
+  // lockCheckoutForPayment, or manually applied via selectLockedPaymentMethod)
+  // may already have covered part of the total — this method only needs to
+  // cover what's left, and joins rather than replaces those queued lines.
+  const priorTenders = selectedTenderLines.filter(t => ['trade_credit','loyalty_redeem','gift_card'].includes(t.method));
   const priorTotal = priorTenders.reduce((a,t) => a + Number(t.amount || 0), 0);
   const total = Math.max(0, Math.round((Number(lockedCheckoutSnapshot.total || 0) - priorTotal) * 100) / 100);
   let amount = total;
@@ -34323,6 +34680,41 @@ async function finalizeCompletedCheckout(bundle, queued, inventoryCommittedAtomi
     });
   // The explicit handoff is for this same purchase only.
   localStorage.removeItem('pos_pending_trade_purchase');
+  // Loyalty points were already applied as a checkout discount above (the
+  // customer already got the reduced total) -- this just records the ledger
+  // deduction. The sale itself is already committed and can't be undone at
+  // this point, so a failed decrement here is queued for retry rather than
+  // blocking the sale; the atomic RPC's row lock still prevents double-spend
+  // once it does run.
+  bundle.payments.filter(p => normalizeTenderType(p.method) === 'loyalty_redeem' && p.reference)
+    .forEach(async p => {
+      const storeId = bundle.sale.store_id;
+      try {
+        const sb = getSupabaseClient();
+        if(!sb) throw new Error('Supabase unavailable');
+        const { error } = await sb.rpc('redeem_loyalty_points', { p_store_id:storeId, p_customer_id:p.reference, p_points:p.points, p_sale_id:bundle.sale.id });
+        if(error) throw error;
+        const idx = customersCache.findIndex(c => c.id === p.reference);
+        if(idx >= 0) { customersCache[idx].loyalty_points_balance = Math.max(0, Number(customersCache[idx].loyalty_points_balance || 0) - p.points); localStorage.setItem('customers_cache_v1', JSON.stringify(customersCache)); renderCustomers(); }
+      } catch(e) {
+        enqueueSync('loyalty-redeem-commit', 'Queued loyalty points redemption', { storeId, customerId:p.reference, points:p.points, saleId:bundle.sale.id }, e.message);
+      }
+    });
+  // Same reasoning as loyalty above: the discount was already given, this
+  // just records the ledger deduction against the code's balance.
+  bundle.payments.filter(p => normalizeTenderType(p.method) === 'gift_card' && p.reference)
+    .forEach(async p => {
+      const storeId = bundle.sale.store_id;
+      try {
+        const sb = getSupabaseClient();
+        if(!sb) throw new Error('Supabase unavailable');
+        const { error } = await sb.rpc('redeem_gift_card', { p_store_id:storeId, p_code:p.reference, p_amount:p.amount, p_sale_id:bundle.sale.id });
+        if(error) throw error;
+      } catch(e) {
+        enqueueSync('gift-card-redeem-commit', 'Queued gift card redemption', { storeId, code:p.reference, amount:p.amount, saleId:bundle.sale.id }, e.message);
+      }
+    });
+  await issueGiftCardsFromSaleLines(bundle);
   await completeActiveSaleCartAfterCheckout(bundle.sale.id);
   confirmedSaleContext = bundle;
   logOpsEvent(queued ? 'sale_offline_queued' : 'sale_completed', queued ? 'Completed sale queued for Supabase sync' : 'Completed sale in Supabase ledger', { saleId:bundle.sale.id, total:bundle.sale.total });
@@ -34350,7 +34742,8 @@ function showReceiptCaptureScreen(){
   if(wants) wants.classList.remove('on');
   if(!el) return showWantsCaptureScreen();
   if(s.receipt?.captureEnabled === false) return showWantsCaptureScreen();
-  el.innerHTML = `<h2>Want a text receipt?</h2><input id="receipt-phone" placeholder="Phone number"><div class="payment-confirm-row"><button class="hbtn" onclick="saveReceiptCapture()">SEND RECEIPT</button><button class="hbtn danger" onclick="showWantsCaptureScreen()">SKIP</button></div>`;
+  const rate = getLoyaltyRate();
+  el.innerHTML = `<h2>Want a text receipt?</h2>${rate > 0 ? `<div style="font-family:var(--font-mono);font-size:11px;color:var(--gold);margin-bottom:6px">Also earns ${rate}% back in loyalty points</div>` : ''}<input id="receipt-phone" placeholder="Phone number"><div class="payment-confirm-row"><button class="hbtn" onclick="saveReceiptCapture()">SEND RECEIPT</button><button class="hbtn danger" onclick="showWantsCaptureScreen()">SKIP</button></div>`;
   el.classList.add('on');
 }
 
@@ -34366,8 +34759,36 @@ async function saveReceiptCapture(){
     } catch(e) {
       enqueueSync('customer-receipt', 'Queued text receipt request', payload, e.message);
     }
+    accrueLoyaltyForContact(phone, '', confirmedSaleContext.sale.id, confirmedSaleContext.sale.total);
   }
   showWantsCaptureScreen();
+}
+
+// Loyalty accrual reuses the phone already collected for the text-receipt
+// prompt above -- it's the same low-friction "type your phone" moment the
+// user asked for, no separate signup step. customer-save and the accrual
+// RPC are two dependent writes; if either fails (offline, RLS hiccup) the
+// whole thing is re-queued as one self-contained job (see 'loyalty-accrual'
+// in processQueueItem) rather than trying to track partial completion.
+async function accrueLoyaltyForContact(contact, name, saleId, total){
+  if(getAccountContext().isDemo) return;
+  const rate = getLoyaltyRate();
+  const points = Math.round(Number(total || 0) * rate / 100);
+  const storeId = getActiveStoreId();
+  if(!contact || points <= 0 || !storeId) return;
+  try {
+    const customer = await upsertCustomer(name || 'Customer', contact, '', 'checkout');
+    if(!customer?.id) throw new Error('Customer save failed');
+    const sb = getSupabaseClient();
+    if(!sb) throw new Error('Supabase unavailable');
+    const { error } = await sb.rpc('accrue_loyalty_points', { p_store_id:storeId, p_customer_id:customer.id, p_points:points, p_sale_id:saleId, p_reason:'sale' });
+    if(error) throw error;
+    const idx = customersCache.findIndex(c => c.id === customer.id);
+    if(idx >= 0) { customersCache[idx].loyalty_points_balance = Number(customersCache[idx].loyalty_points_balance || 0) + points; localStorage.setItem('customers_cache_v1', JSON.stringify(customersCache)); renderCustomers(); }
+    toast_dash('+' + points + ' loyalty points earned');
+  } catch(e) {
+    enqueueSync('loyalty-accrual', 'Queued loyalty points accrual', { contact, name:name || 'Customer', saleId, points, storeId }, e.message);
+  }
 }
 
 function showWantsCaptureScreen(){
@@ -36883,7 +37304,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.10.05-inventory-aging-report" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.11.01-loyalty-gift-cards" defer></script>
 </body>
 </html>
 
