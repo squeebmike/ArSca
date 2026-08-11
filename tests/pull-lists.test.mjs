@@ -249,3 +249,86 @@ console.log('PRH import contract checks passed');
 }
 
 console.log('PRH import functional checks passed');
+
+// ── #1 highlighting + sort/filter (date, #1s, variants, ratio) ──
+
+for (const fn of ['isFirstIssue', 'pullListFirstIssueBadge', 'extractRatioValue', 'filterAndSortPullListBrowseResults', 'filterAndSortPullListOrderSheetRows', 'pullListFilterSortControlsHtml', 'applyPullListFilterSort']) {
+  assert.match(dashboard, new RegExp(`function ${fn}`), `missing ${fn}`);
+}
+
+// The badge must actually be wired into all four places an issue number is
+// shown, not just exist as an unused helper.
+assert.match(dashboard, /#\$\{escHtml\(iss\.number\)\}<\/b>\$\{pullListFirstIssueBadge\(iss\.number\)\}/, 'New Releases cards must show the #1 badge');
+assert.match(dashboard, /#\$\{escHtml\(i\.issue_number\)\}<\/b>\$\{pullListFirstIssueBadge\(i\.issue_number\)\}/, 'pull list item rows must show the #1 badge');
+assert.match(dashboard, /pullListFirstIssueBadge\(r\.item\.issue_number\)/, 'order sheet rows must show the #1 badge');
+assert.match(dashboard, /#\$\{escHtml\(issue\.number\)\}\$\{pullListFirstIssueBadge\(issue\.number\)\}/, 'the cover detail modal heading must show the #1 badge');
+
+console.log('#1 badge contract checks passed');
+
+// ── Functional check: isFirstIssue / extractRatioValue ──
+{
+  const isFirstSrc = dashboard.match(/function isFirstIssue\(issueNumber\)\{[\s\S]*?\}/)?.[0];
+  const ratioSrc = dashboard.match(/function extractRatioValue\(label\)\{[\s\S]*?\}/)?.[0];
+  assert.ok(isFirstSrc && ratioSrc, 'could not extract isFirstIssue/extractRatioValue for functional testing');
+  const { isFirstIssue, extractRatioValue } = new Function(`${isFirstSrc}\n${ratioSrc}\nreturn { isFirstIssue, extractRatioValue };`)();
+
+  assert.equal(isFirstIssue('1'), true);
+  assert.equal(isFirstIssue('1A'), true, 'a lettered first-issue variant number (1A) must still count as #1');
+  assert.equal(isFirstIssue('10'), false, 'issue 10 must not be mistaken for issue 1');
+  assert.equal(isFirstIssue('11'), false, 'issue 11 (starts with "1") must not be mistaken for issue 1');
+  assert.equal(isFirstIssue(''), false);
+
+  assert.equal(extractRatioValue('1:25 Incentive Variant'), 25);
+  assert.equal(extractRatioValue('1:100 Retailer Incentive'), 100, 'a rarer 1:100 ratio must extract higher than a 1:25');
+  assert.equal(extractRatioValue('Regular Cover A'), 0, 'a non-ratio label must extract to 0, not throw');
+}
+
+// ── Functional check: filterAndSortPullListBrowseResults ──
+{
+  const fnSrc = dashboard.match(/function filterAndSortPullListBrowseResults\(results, filters\)\{[\s\S]*?\n\}/)?.[0];
+  const isFirstSrc = dashboard.match(/function isFirstIssue\(issueNumber\)\{[\s\S]*?\}/)?.[0];
+  const ratioSrc = dashboard.match(/function extractRatioValue\(label\)\{[\s\S]*?\}/)?.[0];
+  assert.ok(fnSrc, 'could not extract filterAndSortPullListBrowseResults for functional testing');
+  const { filterAndSortPullListBrowseResults } = new Function(`${isFirstSrc}\n${ratioSrc}\n${fnSrc}\nreturn { filterAndSortPullListBrowseResults };`)();
+
+  const results = [
+    { id:'1', seriesName:'Alpha', number:'1', issueName:'', storeDate:'2026-09-10' },
+    { id:'2', seriesName:'Alpha', number:'2', issueName:'1:25 Incentive Variant', storeDate:'2026-09-03' },
+    { id:'3', seriesName:'Beta', number:'1', issueName:'1:100 Incentive Variant', storeDate:'2026-09-17' },
+    { id:'4', seriesName:'Beta', number:'5', issueName:'Foil Variant', storeDate:'2026-08-20' },
+  ];
+
+  const firstOnly = filterAndSortPullListBrowseResults(results, { firstIssueOnly:true, variantOnly:false, ratioOnly:false, sortBy:'date' });
+  assert.deepEqual(firstOnly.map(r => r.id), ['1','3'], '#1s-only filter must keep only issue-1 rows, in date order');
+
+  const ratioOnly = filterAndSortPullListBrowseResults(results, { firstIssueOnly:false, variantOnly:false, ratioOnly:true, sortBy:'ratio' });
+  assert.deepEqual(ratioOnly.map(r => r.id), ['3','2'], 'ratio-only + ratio sort must keep only ratio variants, rarest (highest ratio number) first');
+
+  const variantOnly = filterAndSortPullListBrowseResults(results, { firstIssueOnly:false, variantOnly:true, ratioOnly:false, sortBy:'date' });
+  assert.deepEqual(variantOnly.map(r => r.id), ['4','2','3'], 'variant-only filter must exclude the plain main cover (row 1)');
+
+  const seriesSort = filterAndSortPullListBrowseResults(results, { firstIssueOnly:false, variantOnly:false, ratioOnly:false, sortBy:'series' });
+  assert.deepEqual(seriesSort.map(r => r.id), ['2','1','4','3'], 'series sort must group by series name alphabetically, then by date ascending within series');
+}
+
+// ── Functional check: filterAndSortPullListOrderSheetRows ──
+{
+  const fnSrc = dashboard.match(/function filterAndSortPullListOrderSheetRows\(rows, filters\)\{[\s\S]*?\n\}/)?.[0];
+  const isFirstSrc = dashboard.match(/function isFirstIssue\(issueNumber\)\{[\s\S]*?\}/)?.[0];
+  const ratioSrc = dashboard.match(/function extractRatioValue\(label\)\{[\s\S]*?\}/)?.[0];
+  assert.ok(fnSrc, 'could not extract filterAndSortPullListOrderSheetRows for functional testing');
+  const { filterAndSortPullListOrderSheetRows } = new Function(`${isFirstSrc}\n${ratioSrc}\n${fnSrc}\nreturn { filterAndSortPullListOrderSheetRows };`)();
+
+  const rows = [
+    { series:{ title:'Alpha' }, item:{ issue_number:'1', variant_label:null, foc_date:'2026-09-10' } },
+    { series:{ title:'Alpha' }, item:{ issue_number:'2', variant_label:'1:50 Incentive', foc_date:'2026-09-03' } },
+    { series:{ title:'Beta' }, item:{ issue_number:'1', variant_label:'Virgin Variant', foc_date:'2026-09-17' } },
+  ];
+  const firstOnly = filterAndSortPullListOrderSheetRows(rows, { firstIssueOnly:true, variantOnly:false, ratioOnly:false, sortBy:'date' });
+  assert.equal(firstOnly.length, 2, '#1s-only must keep both #1 rows across series');
+  const ratioOnly = filterAndSortPullListOrderSheetRows(rows, { firstIssueOnly:false, variantOnly:false, ratioOnly:true, sortBy:'date' });
+  assert.equal(ratioOnly.length, 1, 'ratio-only must keep only the row with a detectable incentive ratio');
+  assert.equal(ratioOnly[0].item.issue_number, '2');
+}
+
+console.log('#1 badge + sort/filter functional checks passed');
