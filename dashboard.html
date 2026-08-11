@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.10.05-inventory-aging-report">
+<meta name="version" content="2026.08.11.04-settings-cleanup">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -13,7 +13,7 @@
 <title>Walk-Off Dashboard</title>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-:root{--app-bg:#07080a;--app-surface:#0d0f14;--app-surface-2:#141720;--app-text:#e4e4e8;--app-muted:rgba(228,228,232,.4);--app-primary:#00ffb3;--app-secondary:#ffd166;--app-accent:#c77dff;--app-success:#00ffb3;--app-warning:#ffd166;--app-danger:#ff4d6d;--app-border:rgba(255,255,255,.07);--app-button-text:#050507;--app-radius:10px;--app-font:'DM Sans',sans-serif;--customer-bg-image:none;--brand-primary:var(--app-primary);--brand-secondary:var(--app-secondary);--brand-accent:var(--app-accent);--brand-background:var(--app-bg);--brand-surface:var(--app-surface);--brand-surface-2:var(--app-surface-2);--brand-text:var(--app-text);--brand-muted:var(--app-muted);--brand-success:var(--app-success);--brand-warning:var(--app-warning);--brand-danger:var(--app-danger);--brand-info:#48cae4;--brand-border:var(--app-border);--brand-card-radius:var(--app-radius);--brand-button-radius:6px;--brand-font-family:var(--app-font);--btn-height:38px;--btn-height-lg:52px;--font-mono:'DM Mono',monospace;--g:var(--brand-primary);--gd:rgba(0,255,179,.1);--gold:var(--brand-warning);--red:var(--brand-danger);--blue:var(--brand-info);--purple:var(--brand-accent);--bg:var(--brand-background);--surf:var(--brand-surface);--surf2:var(--brand-surface-2);--border:var(--brand-border);--text:var(--brand-text);--dim:var(--brand-muted);}
+:root{--app-bg:#07080a;--app-surface:#0d0f14;--app-surface-2:#141720;--app-text:#e4e4e8;--app-muted:rgba(228,228,232,.4);--app-primary:#00ffb3;--app-secondary:#ffd166;--app-accent:#c77dff;--app-success:#00ffb3;--app-warning:#ffd166;--app-danger:#ff4d6d;--app-border:rgba(255,255,255,.07);--app-button-text:#050507;--app-radius:10px;--app-font:'DM Sans',sans-serif;--customer-bg-image:none;--customer-bg-overlay:rgba(247,248,250,.88);--brand-primary:var(--app-primary);--brand-secondary:var(--app-secondary);--brand-accent:var(--app-accent);--brand-background:var(--app-bg);--brand-surface:var(--app-surface);--brand-surface-2:var(--app-surface-2);--brand-text:var(--app-text);--brand-muted:var(--app-muted);--brand-success:var(--app-success);--brand-warning:var(--app-warning);--brand-danger:var(--app-danger);--brand-info:#48cae4;--brand-border:var(--app-border);--brand-card-radius:var(--app-radius);--brand-button-radius:6px;--brand-font-family:var(--app-font);--btn-height:38px;--btn-height-lg:52px;--font-mono:'DM Mono',monospace;--g:var(--brand-primary);--gd:rgba(0,255,179,.1);--gold:var(--brand-warning);--red:var(--brand-danger);--blue:var(--brand-info);--purple:var(--brand-accent);--bg:var(--brand-background);--surf:var(--brand-surface);--surf2:var(--brand-surface-2);--border:var(--brand-border);--text:var(--brand-text);--dim:var(--brand-muted);}
 *{margin:0;padding:0;box-sizing:border-box;}
 html{max-width:100vw;overflow-x:hidden;}
 body{background:var(--bg);color:var(--text);font-family:var(--brand-font-family);min-height:100vh;padding-bottom:env(safe-area-inset-bottom);max-width:100vw;overflow-x:hidden;}
@@ -55,8 +55,6 @@ header{position:sticky;top:0;z-index:100;background:rgba(7,8,10,.96);backdrop-fi
 .more-menu.on{display:grid;gap:4px;}
 .more-item{font-family:var(--font-mono);font-size:10px;color:var(--dim);padding:9px 10px;border-radius:5px;cursor:pointer;letter-spacing:1px;}
 .more-item:hover,.more-item.on{background:rgba(0,255,179,.08);color:var(--g);}
-.auth-check-shell{max-width:1400px;margin:0 auto;padding:0 20px;display:grid;grid-template-columns:minmax(220px,320px) 1fr minmax(240px,360px);gap:14px;align-items:start}
-@media(max-width:900px){.auth-check-shell{grid-template-columns:1fr;padding:0 12px}}
 .install-hint{display:none;max-width:1400px;margin:0 auto;padding:8px 20px;border-top:1px solid rgba(255,255,255,.04);font-family:var(--font-mono);font-size:10px;color:var(--gold);justify-content:space-between;gap:10px;align-items:center;}
 .install-hint.on{display:flex;}
 
@@ -161,6 +159,7 @@ body{font-size:15px;line-height:1.45;}
 .data-pill{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--border);background:rgba(255,255,255,.035);border-radius:999px;padding:5px 8px;margin:0 5px 5px 0;font-family:var(--font-mono);font-size:9px;color:var(--dim);}
 .data-pill.warn{color:var(--gold);border-color:rgba(255,209,102,.22);background:rgba(255,209,102,.06);}
 .data-pill.bad{color:var(--red);border-color:rgba(255,77,109,.22);background:rgba(255,77,109,.06);}
+.data-pill.good{color:var(--g);border-color:rgba(0,255,179,.22);background:rgba(0,255,179,.06);}
 .timeline-row{border-left:2px solid rgba(0,255,179,.28);padding:0 0 8px 10px;margin-left:4px;font-family:var(--font-mono);font-size:10px;color:var(--dim);}
 .timeline-row b{color:var(--text);font-family:'DM Sans',sans-serif;font-size:12px;}
 .vendor-logo-preview{width:72px;height:72px;border-radius:10px;border:1px solid var(--border);background:var(--surf2);object-fit:contain;padding:6px;}
@@ -987,7 +986,7 @@ body.customer-display-mode{padding-bottom:0;background:#020304;}
 body.customer-display-mode header,body.customer-display-mode #dealer-cart-tools,body.customer-display-mode #cd-help-panel,body.customer-display-mode .sec{display:none!important;}
 body.customer-display-mode .tab-panel{display:none!important;}
 body.customer-display-mode #tab-display{display:block!important;}
-body.customer-display-mode #customer-display{min-height:100dvh;padding:18px;background-color:#f7f8fa;background-image:linear-gradient(rgba(247,248,250,.88),rgba(247,248,250,.88)),var(--customer-bg-image);background-size:cover;background-position:center;}
+body.customer-display-mode #customer-display{min-height:100dvh;padding:18px;background-color:#f7f8fa;background-image:linear-gradient(var(--customer-bg-overlay),var(--customer-bg-overlay)),var(--customer-bg-image);background-size:cover;background-position:center;}
 body.customer-display-mode #customer-display .sell-shell{width:min(920px,100%);padding:0;}
 body.customer-display-mode #customer-display-exit{display:block;}
 body.customer-browse-mode{padding-bottom:0}body.customer-browse-mode header,body.customer-browse-mode .tabs,body.customer-browse-mode .dealer-status-bar,body.customer-browse-mode .beta-mode-strip{display:none!important}body.customer-browse-mode .tab-panel{display:none!important}body.customer-browse-mode #tab-browse{display:block!important;min-height:100vh;padding:18px}body.customer-browse-mode #customer-browse-exit{display:block}
@@ -1542,13 +1541,13 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.10.05-inventory-aging-report" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.10.05-inventory-aging-report" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.10.05-inventory-aging-report" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.10.05-inventory-aging-report" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.10.05-inventory-aging-report" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.10.05-inventory-aging-report" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.10.05-inventory-aging-report" defer></script>
+<script src="scripts/query-routing.js?v=2026.08.11.04-settings-cleanup" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.11.04-settings-cleanup" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.11.04-settings-cleanup" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.11.04-settings-cleanup" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.11.04-settings-cleanup" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.11.04-settings-cleanup" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.11.04-settings-cleanup" defer></script>
 </head>
 <body>
 
@@ -1598,11 +1597,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.10.05-inventory-aging-report</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.11.04-settings-cleanup</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.10.05-inventory-aging-report</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.11.04-settings-cleanup</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1624,7 +1623,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.10.05-inventory-aging-report</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.11.04-settings-cleanup</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -1638,8 +1637,6 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="tab" onclick="switchTab('display',this)">📺 CUSTOMER DISPLAY</div>
     <div class="tab" onclick="switchTab('wantlist',this)">⭐ WANT LIST</div>
     <div class="tab" onclick="switchTab('consign',this)">🤝 CONSIGNMENT</div>
-    <div class="tab" onclick="switchTab('locations',this)">📍 LOCATIONS</div>
-    <div class="tab" onclick="switchTab('restock',this)">📦 RESTOCK</div>
   </div>
 </header>
 
@@ -1725,6 +1722,7 @@ body.show-mode .inv-sync-badge{display:none;}
     </div>
     <button class="hbtn" id="sync-prices-btn" style="margin-left:auto" onclick="openPriceSyncModal()" title="Compare inventory prices against your cached price lookups">💹 SYNC PRICES</button>
     <button class="hbtn" onclick="openOneOffSellModal()" title="Add an item that isn't in inventory yet to the cart">⚡ ADD ONE-OFF TO CART</button>
+    <button class="hbtn" onclick="openGiftCardSellModal()" title="Sell a gift card">🎁 SELL GIFT CARD</button>
   </div>
   <div class="tc">
     <input class="tsi" id="tbl-q" placeholder="Search title, issue, writer, artist, cover artist..." oninput="filterTable()">
@@ -2505,23 +2503,10 @@ body.show-mode .inv-sync-badge{display:none;}
   <div id="shows-panels" style="max-width:1400px;margin:0 auto;padding:0 20px"></div>
 </div>
 
-<!-- AUTH CHECK TAB -->
-<div id="tab-authcheck" class="tab-panel">
-  <div class="sec">AUTH CHECK BETA</div>
-  <div class="auth-check-shell">
-    <div class="panel">
-      <div class="ph">AUTH QUEUE <span id="auth-queue-count" style="font-size:9px;color:var(--dim);font-weight:600">0 queued</span></div>
-      <div id="auth-queue-list" style="display:grid;gap:8px"></div>
-    </div>
-    <div class="panel">
-      <div id="auth-workspace-body" style="font-family:var(--font-mono);font-size:10px;color:var(--dim);line-height:1.6">Choose an item from the Auth Queue, or send one here from Research.</div>
-    </div>
-    <div class="panel">
-      <div class="ph">DECISION SUPPORT</div>
-      <div id="auth-photo-checklist" style="display:grid;gap:8px;margin-bottom:12px"></div>
-      <div id="auth-decision-body" style="font-family:var(--font-mono);font-size:10px;color:var(--dim);line-height:1.6">No item selected.</div>
-    </div>
-  </div>
+<!-- TOURNAMENTS / EVENTS TAB -->
+<div id="tab-events" class="tab-panel">
+  <div class="sec">TOURNAMENTS / EVENTS</div>
+  <div id="events-panels" style="max-width:1400px;margin:0 auto;padding:0 20px"></div>
 </div>
 
 <!-- CUSTOMER DISPLAY TAB -->
@@ -2936,6 +2921,63 @@ body.show-mode .inv-sync-badge{display:none;}
   </div>
 </div>
 
+<!-- Gift cards: sold as a cart line, code generated only once the sale finalizes -->
+<div class="modal-bg" id="gift-card-sell-modal">
+  <div class="modal">
+    <h3>🎁 SELL GIFT CARD</h3>
+    <div style="font-family:var(--font-mono);font-size:9px;color:var(--dim);margin-bottom:8px">Adds a gift card line to the cart. The code is generated and printable only after the sale finalizes at checkout.</div>
+    <label>Amount ($) *</label>
+    <input type="number" id="gift-card-amount" step="0.01" min="1" placeholder="25.00">
+    <label>Recipient name (optional)</label>
+    <input type="text" id="gift-card-recipient" placeholder="Who is this for?">
+    <div class="modal-btns">
+      <button class="modal-btn confirm" onclick="confirmGiftCardSell()">ADD GIFT CARD TO CART</button>
+      <button class="modal-btn cancel" onclick="closeGiftCardSellModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Populated by showIssuedGiftCardsModal() right after a sale containing a
+     gift card line finalizes -- this is the one moment the plaintext code is
+     shown; it is never re-displayed after this. -->
+<div class="modal-bg" id="gift-card-issued-modal">
+  <div class="modal" id="gift-card-issued-modal-body"></div>
+</div>
+
+<!-- New tournament / event -->
+<div class="modal-bg" id="event-modal">
+  <div class="modal">
+    <h3>🏆 NEW EVENT</h3>
+    <label>Event Name *</label>
+    <input type="text" id="event-name" placeholder="e.g. Friday Night Standard">
+    <label>Game</label>
+    <select id="event-game">
+      <option value="Magic: The Gathering">Magic: The Gathering</option>
+      <option value="Pokemon TCG">Pokémon TCG</option>
+      <option value="Yu-Gi-Oh!">Yu-Gi-Oh!</option>
+      <option value="One Piece TCG">One Piece TCG</option>
+      <option value="Sports">Sports Card</option>
+      <option value="Other">Other</option>
+    </select>
+    <label>Format (optional)</label>
+    <input type="text" id="event-format" placeholder="e.g. Standard, Draft, Sealed">
+    <label>Date</label>
+    <input type="date" id="event-date">
+    <label>Entry Fee ($)</label>
+    <input type="number" id="event-entry-fee" step="0.01" min="0" placeholder="0.00">
+    <label>Max Players (optional)</label>
+    <input type="number" id="event-max-players" step="1" min="1" placeholder="No limit">
+    <label>Planned Rounds (optional)</label>
+    <input type="number" id="event-round-count" step="1" min="1" placeholder="Auto">
+    <label>Notes (optional)</label>
+    <input type="text" id="event-notes" placeholder="Prize structure, house rules, etc.">
+    <div class="modal-btns">
+      <button class="modal-btn confirm" onclick="saveEventFromForm()">CREATE EVENT</button>
+      <button class="modal-btn cancel" onclick="closeEventModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
 <!-- WANT LIST TAB -->
 <div id="tab-wantlist" class="tab-panel">
   <div class="sec">CUSTOMER WANT LIST / PULL LIST</div>
@@ -3157,7 +3199,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.10.05-inventory-aging-report';
+const APP_VERSION = '2026.08.11.04-settings-cleanup';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -3309,7 +3351,7 @@ const WALKOFF_SCOPED_KEYS = new Set([
   // POS / operations
   'pos_wantlist','set_needs_v1','pos_consign','pos_consignors','pos_consignment_alerts','pos_locations',
   'price_change_alerts',
-  'pos_ops_log','pos_show_mode','pos_customers','pos_undo_stack',
+  'pos_ops_log','pos_show_mode','pos_customers','customers_cache_v1','events_cache_v1','pos_undo_stack',
   // Store settings / profile
   'vendor_profile_v1','vendor_config_v1','store_payment_settings_v1',
   'store_theme_v1','store_onboarding_v1',
@@ -3427,10 +3469,10 @@ function getAccountContext(){
 const SUBSCRIPTION_PLANS = {
   research:{ name:'Research', price:19, features:['Live + offline pricing','Barcode and cover research','Sets and want lists'], capabilities:['research'] },
   register:{ name:'Register', price:49, features:['Everything in Research','Checkout and customer display','Sales history + Stripe payments'], capabilities:['research','checkout','sales'] },
-  store:{ name:'Store', price:89, features:['Everything in Register','Inventory, buying and consignments','Staff, shows and profit reporting'], capabilities:['research','checkout','sales','inventory','consignments','staff','shows'] },
-  pro:{ name:'Pro', price:149, features:['Everything in Store','Online listing tools','Advanced operations + multi-store'], capabilities:['research','checkout','sales','inventory','consignments','staff','shows','marketplace','advanced'] }
+  store:{ name:'Store', price:89, features:['Everything in Register','Inventory, buying and consignments','Staff, shows, tournaments and profit reporting'], capabilities:['research','checkout','sales','inventory','consignments','staff','shows','events'] },
+  pro:{ name:'Pro', price:149, features:['Everything in Store','Online listing tools','Advanced operations + multi-store'], capabilities:['research','checkout','sales','inventory','consignments','staff','shows','events','marketplace','advanced'] }
 };
-const TAB_CAPABILITY = {research:'research',sets:'research',wantlist:'research',display:'checkout',browse:'checkout',pos:'checkout',sales:'sales',orders:'sales',intake:'inventory',inventory:'inventory',locations:'inventory',restock:'inventory',consign:'consignments',shows:'shows',channels:'marketplace'};
+const TAB_CAPABILITY = {research:'research',sets:'research',wantlist:'research',display:'checkout',browse:'checkout',pos:'checkout',sales:'sales',orders:'sales',intake:'inventory',inventory:'inventory',locations:'inventory',restock:'inventory',consign:'consignments',shows:'shows',events:'events',channels:'marketplace'};
 function currentPlanCode(){ return SUBSCRIPTION_PLANS[window._subStatus?.plan_code] ? window._subStatus.plan_code : 'store'; }
 function hasPlanCapability(capability){ return !capability || SUBSCRIPTION_PLANS[currentPlanCode()].capabilities.includes(capability); }
 function planCanAccessTab(tab){ return hasPlanCapability(TAB_CAPABILITY[tab]); }
@@ -3445,7 +3487,7 @@ function roleCanAccessTab(tab){
   let allowed = false;
   if(role === 'owner' || role === 'admin') allowed = true;
   else if(role === 'manager') allowed = !['backoffice'].includes(tab);
-  else if(role === 'employee') allowed = ['overview','display','browse','inventory','research','pos','alerts','wantlist','locations','restock','sets'].includes(tab);
+  else if(role === 'employee') allowed = ['overview','display','browse','inventory','research','pos','alerts','wantlist','locations','restock','sets','events'].includes(tab);
   return allowed && planCanAccessTab(tab);
 }
 
@@ -3872,7 +3914,7 @@ async function acceptPickedInvite(){
   location.reload();
 }
 
-const DEFAULT_STORE_THEME = { themeName:'Walk-Off Dark', primaryColor:'#00ffb3', secondaryColor:'#ffd166', accentColor:'#c77dff', backgroundColor:'#07080a', surfaceColor:'#0d0f14', surface2Color:'#141720', textColor:'#e4e4e8', mutedTextColor:'rgba(228,228,232,.68)', successColor:'#00ffb3', warningColor:'#ffd166', dangerColor:'#ff4d6d', infoColor:'#48cae4', borderColor:'rgba(255,255,255,.13)', buttonTextColor:'#050507', fontFamily:"'DM Sans',sans-serif", cardRadius:'10px', buttonRadius:'6px', logoUrl:'', customerBgImageUrl:'' };
+const DEFAULT_STORE_THEME = { themeName:'Walk-Off Dark', primaryColor:'#00ffb3', secondaryColor:'#ffd166', accentColor:'#c77dff', backgroundColor:'#07080a', surfaceColor:'#0d0f14', surface2Color:'#141720', textColor:'#e4e4e8', mutedTextColor:'rgba(228,228,232,.68)', successColor:'#00ffb3', warningColor:'#ffd166', dangerColor:'#ff4d6d', infoColor:'#48cae4', borderColor:'rgba(255,255,255,.13)', buttonTextColor:'#050507', fontFamily:"'DM Sans',sans-serif", cardRadius:'10px', buttonRadius:'6px', logoUrl:'', customerBgImageUrl:'', customerBgOverlayColor:'#f7f8fa', customerBgOverlayOpacity:0.88 };
 const STORE_THEME_PRESETS = {
   'Walk-Off Dark': DEFAULT_STORE_THEME,
   'Clean Light': { ...DEFAULT_STORE_THEME, themeName:'Clean Light', primaryColor:'#0c6b52', secondaryColor:'#835a00', accentColor:'#5d4a9c', backgroundColor:'#f6f7f9', surfaceColor:'#ffffff', surface2Color:'#eef1f4', textColor:'#14171d', mutedTextColor:'#5d6673', borderColor:'rgba(0,0,0,.12)', buttonTextColor:'#ffffff' },
@@ -3888,6 +3930,7 @@ function applyStoreTheme(theme = getStoreTheme(), persist = false){
   const root = document.documentElement;
   const vars = {
     '--app-bg':t.backgroundColor,'--app-surface':t.surfaceColor,'--app-surface-2':t.surface2Color,'--app-text':t.textColor,'--app-muted':t.mutedTextColor,'--app-primary':t.primaryColor,'--app-secondary':t.secondaryColor,'--app-accent':t.accentColor,'--app-success':t.successColor,'--app-warning':t.warningColor,'--app-danger':t.dangerColor,'--app-border':t.borderColor,'--app-button-text':t.buttonTextColor,'--app-radius':t.cardRadius,'--app-font':t.fontFamily,'--customer-bg-image':t.customerBgImageUrl ? `url("${String(t.customerBgImageUrl).replace(/"/g, '%22')}")` : 'none',
+    '--customer-bg-overlay':rgbaFromHex(t.customerBgOverlayColor || DEFAULT_STORE_THEME.customerBgOverlayColor, t.customerBgOverlayOpacity ?? DEFAULT_STORE_THEME.customerBgOverlayOpacity),
     '--brand-primary':t.primaryColor,'--brand-secondary':t.secondaryColor,'--brand-accent':t.accentColor,'--brand-background':t.backgroundColor,'--brand-surface':t.surfaceColor,'--brand-surface-2':t.surface2Color,'--brand-text':t.textColor,'--brand-muted':t.mutedTextColor,'--brand-success':t.successColor,'--brand-warning':t.warningColor,'--brand-danger':t.dangerColor,'--brand-info':t.infoColor,'--brand-border':t.borderColor,'--brand-card-radius':t.cardRadius,'--brand-button-radius':t.buttonRadius,'--brand-font-family':t.fontFamily,
     '--g':t.primaryColor,'--gd':rgbaFromHex(t.primaryColor,.1),'--gold':t.warningColor,'--red':t.dangerColor,'--blue':t.infoColor,'--purple':t.accentColor,'--bg':t.backgroundColor,'--surf':t.surfaceColor,'--surf2':t.surface2Color,'--border':t.borderColor,'--text':t.textColor,'--dim':t.mutedTextColor
   };
@@ -3898,11 +3941,13 @@ function applyStoreTheme(theme = getStoreTheme(), persist = false){
 }
 function themeFormValue(id, fallback){ return document.getElementById(id)?.value || fallback; }
 function readThemeForm(){
-  return { themeName:themeFormValue('theme-name','Custom'), primaryColor:themeFormValue('theme-primary','#00ffb3'), secondaryColor:themeFormValue('theme-secondary','#ffd166'), accentColor:themeFormValue('theme-accent','#c77dff'), backgroundColor:themeFormValue('theme-bg','#07080a'), surfaceColor:themeFormValue('theme-surface','#0d0f14'), surface2Color:themeFormValue('theme-surface2','#141720'), textColor:themeFormValue('theme-text','#e4e4e8'), mutedTextColor:themeFormValue('theme-muted','rgba(228,228,232,.68)'), successColor:themeFormValue('theme-success','#00ffb3'), warningColor:themeFormValue('theme-warning','#ffd166'), dangerColor:themeFormValue('theme-danger','#ff4d6d'), infoColor:themeFormValue('theme-info','#48cae4'), borderColor:themeFormValue('theme-border','rgba(255,255,255,.13)'), buttonTextColor:themeFormValue('theme-button-text','#050507'), fontFamily:themeFormValue('theme-font',"'DM Sans',sans-serif"), cardRadius:themeFormValue('theme-card-radius','10px'), buttonRadius:themeFormValue('theme-button-radius','6px'), logoUrl:themeFormValue('theme-logo-url',''), customerBgImageUrl:themeFormValue('theme-customer-bg','') };
+  return { themeName:themeFormValue('theme-name','Custom'), primaryColor:themeFormValue('theme-primary','#00ffb3'), secondaryColor:themeFormValue('theme-secondary','#ffd166'), accentColor:themeFormValue('theme-accent','#c77dff'), backgroundColor:themeFormValue('theme-bg','#07080a'), surfaceColor:themeFormValue('theme-surface','#0d0f14'), surface2Color:themeFormValue('theme-surface2','#141720'), textColor:themeFormValue('theme-text','#e4e4e8'), mutedTextColor:themeFormValue('theme-muted','rgba(228,228,232,.68)'), successColor:themeFormValue('theme-success','#00ffb3'), warningColor:themeFormValue('theme-warning','#ffd166'), dangerColor:themeFormValue('theme-danger','#ff4d6d'), infoColor:themeFormValue('theme-info','#48cae4'), borderColor:themeFormValue('theme-border','rgba(255,255,255,.13)'), buttonTextColor:themeFormValue('theme-button-text','#050507'), fontFamily:themeFormValue('theme-font',"'DM Sans',sans-serif"), cardRadius:themeFormValue('theme-card-radius','10px'), buttonRadius:themeFormValue('theme-button-radius','6px'), logoUrl:themeFormValue('theme-logo-url',''), customerBgImageUrl:themeFormValue('theme-customer-bg',''), customerBgOverlayColor:themeFormValue('theme-customer-bg-overlay-color', DEFAULT_STORE_THEME.customerBgOverlayColor), customerBgOverlayOpacity:Number(document.getElementById('theme-customer-bg-overlay-opacity')?.value ?? DEFAULT_STORE_THEME.customerBgOverlayOpacity * 100) / 100 };
 }
 function setThemeForm(theme){
   const t = { ...DEFAULT_STORE_THEME, ...(theme || {}) };
-  [['theme-name',t.themeName],['theme-primary',t.primaryColor],['theme-secondary',t.secondaryColor],['theme-accent',t.accentColor],['theme-bg',t.backgroundColor],['theme-surface',t.surfaceColor],['theme-surface2',t.surface2Color],['theme-text',t.textColor],['theme-muted',t.mutedTextColor],['theme-success',t.successColor],['theme-warning',t.warningColor],['theme-danger',t.dangerColor],['theme-info',t.infoColor],['theme-border',t.borderColor],['theme-button-text',t.buttonTextColor],['theme-font',t.fontFamily],['theme-card-radius',t.cardRadius],['theme-button-radius',t.buttonRadius],['theme-logo-url',t.logoUrl || getVendorProfile().logo || ''],['theme-customer-bg',t.customerBgImageUrl || '']].forEach(([id,val]) => { const el = document.getElementById(id); if(el) el.value = val; });
+  [['theme-name',t.themeName],['theme-primary',t.primaryColor],['theme-secondary',t.secondaryColor],['theme-accent',t.accentColor],['theme-bg',t.backgroundColor],['theme-surface',t.surfaceColor],['theme-surface2',t.surface2Color],['theme-text',t.textColor],['theme-muted',t.mutedTextColor],['theme-success',t.successColor],['theme-warning',t.warningColor],['theme-danger',t.dangerColor],['theme-info',t.infoColor],['theme-border',t.borderColor],['theme-button-text',t.buttonTextColor],['theme-font',t.fontFamily],['theme-card-radius',t.cardRadius],['theme-button-radius',t.buttonRadius],['theme-logo-url',t.logoUrl || getVendorProfile().logo || ''],['theme-customer-bg',t.customerBgImageUrl || ''],['theme-customer-bg-overlay-color',t.customerBgOverlayColor],['theme-customer-bg-overlay-opacity',Math.round((t.customerBgOverlayOpacity ?? DEFAULT_STORE_THEME.customerBgOverlayOpacity) * 100)]].forEach(([id,val]) => { const el = document.getElementById(id); if(el) el.value = val; });
+  const opacityVal = document.getElementById('theme-customer-bg-overlay-opacity-val');
+  if(opacityVal) opacityVal.textContent = Math.round((t.customerBgOverlayOpacity ?? DEFAULT_STORE_THEME.customerBgOverlayOpacity) * 100) + '%';
 }
 function previewBrandTheme(){ const theme = readThemeForm(); applyStoreTheme(theme, false); const dirty = document.getElementById('theme-unsaved'); if(dirty) dirty.textContent = 'Unsaved changes'; const name = document.getElementById('theme-current-name'); if(name) name.textContent = theme.themeName || 'Custom'; }
 async function saveBrandTheme(){ const theme = readThemeForm(); applyStoreTheme(theme, true); if(theme.logoUrl) localStorage.setItem('vendor_profile_v1', JSON.stringify({ ...getVendorProfile(), logo:theme.logoUrl })); applyVendorProfile(); const cloudSaved = await saveStoreSettingsToSupabase({ theme, receipt_settings:{ ...getVendorProfile(), logo:theme.logoUrl || getVendorProfile().logo || '' } }); const status = document.getElementById('theme-save-status'); if(status) status.textContent = 'Saved ' + theme.themeName + ' at ' + new Date().toLocaleTimeString(); const dirty = document.getElementById('theme-unsaved'); if(dirty) dirty.textContent = ''; toast_dash(cloudSaved ? 'Theme saved' : 'Theme saved locally'); }
@@ -4039,12 +4084,15 @@ function ensureBrandingPanel(backoffice){
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:8px;margin-bottom:10px">
       <label style="font-family:var(--font-mono);font-size:9px;color:var(--dim)">STORE LOGO URL<input id="theme-logo-url" class="tsi" placeholder="https://..." oninput="previewBrandTheme()" style="margin-top:4px"></label>
       <label style="font-family:var(--font-mono);font-size:9px;color:var(--dim)">CUSTOMER SCREEN BACKGROUND IMAGE<input id="theme-customer-bg" class="tsi" placeholder="https://..." oninput="previewBrandTheme()" style="margin-top:4px"></label>
+      <label style="font-family:var(--font-mono);font-size:9px;color:var(--dim)">BACKGROUND OVERLAY COLOR<input id="theme-customer-bg-overlay-color" type="color" oninput="previewBrandTheme()" style="width:100%;height:42px;background:var(--surf2);border:1px solid var(--border);border-radius:8px;padding:3px;margin-top:4px"></label>
+      <label style="font-family:var(--font-mono);font-size:9px;color:var(--dim)">OVERLAY OPACITY <span id="theme-customer-bg-overlay-opacity-val" style="color:var(--text)">88%</span><input id="theme-customer-bg-overlay-opacity" type="range" min="0" max="100" step="1" value="88" oninput="document.getElementById('theme-customer-bg-overlay-opacity-val').textContent=this.value+'%';previewBrandTheme()" style="width:100%;margin-top:10px"></label>
     </div>
+    <div style="font-family:var(--font-mono);font-size:9px;color:var(--dim);margin:-6px 0 10px">The background image is dimmed by this overlay so text stays readable on top of it -- lower the opacity to let the image show through more, or raise it toward 100% to fade the image out almost completely.</div>
     <div style="background:var(--surf2);border:1px solid var(--border);border-radius:var(--brand-card-radius);padding:14px;margin-bottom:10px">
       <div style="font-family:'Orbitron',monospace;font-size:14px;color:var(--g);margin-bottom:6px">Live Preview</div>
       <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);margin-bottom:10px">Buttons, price text, badges, and panels update as you edit.</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><button class="hbtn">PRIMARY</button><button class="hbtn danger">DANGER</button><span class="data-pill warn">WARNING</span><span style="font-family:'Orbitron',monospace;font-size:24px;color:var(--g);font-weight:900">$42.00</span></div>
-      <div style="margin-top:10px;border:1px solid var(--border);border-radius:8px;min-height:100px;background-image:linear-gradient(rgba(247,248,250,.86),rgba(247,248,250,.86)),var(--customer-bg-image);background-size:cover;background-position:center;color:#101319;padding:12px">
+      <div style="margin-top:10px;border:1px solid var(--border);border-radius:8px;min-height:100px;background-image:linear-gradient(var(--customer-bg-overlay),var(--customer-bg-overlay)),var(--customer-bg-image);background-size:cover;background-position:center;color:#101319;padding:12px">
         <b style="font-family:'Orbitron',monospace">Customer Screen Preview</b>
         <div style="font-family:var(--font-mono);font-size:12px;margin-top:8px">Total Due</div>
         <div style="font-family:'Orbitron',monospace;font-size:28px;color:#05835f">$42.00</div>
@@ -4326,15 +4374,14 @@ function normalizedIdentityKey(parts = {}){
 }
 
 function getDealerItems(){
-  return safeLocalJson('dealer_items_v1', { itemsById:{}, photosById:{}, authChecksById:{}, queuesById:{ scannerInbox:[], researchQueue:[], authQueue:[], buyOfferQueue:[], inventoryDraftQueue:[], needsReviewQueue:[] } });
+  return safeLocalJson('dealer_items_v1', { itemsById:{}, photosById:{}, queuesById:{ scannerInbox:[], researchQueue:[], buyOfferQueue:[], inventoryDraftQueue:[], needsReviewQueue:[] } });
 }
 
 function saveDealerItems(state){
   const next = {
     itemsById:{ ...(state.itemsById || {}) },
     photosById:{ ...(state.photosById || {}) },
-    authChecksById:{ ...(state.authChecksById || {}) },
-    queuesById:{ scannerInbox:[], researchQueue:[], authQueue:[], buyOfferQueue:[], inventoryDraftQueue:[], needsReviewQueue:[], ...(state.queuesById || {}) },
+    queuesById:{ scannerInbox:[], researchQueue:[], buyOfferQueue:[], inventoryDraftQueue:[], needsReviewQueue:[], ...(state.queuesById || {}) },
     updatedAt:new Date().toISOString(),
     appVersion:APP_VERSION,
   };
@@ -4360,7 +4407,6 @@ function upsertDealerItem(patch, eventType = 'item_updated'){
     research:{ source:null, priceState:null, selectedVariant:null },
     variant:{ selected:null, available:[], intelligence:null },
     pricing:{ source:null, priceState:null, market:null, guide:null, chartSource:null, snapshotHistory:[] },
-    auth:{ latestAuthCheckId:null, riskLevel:null, confidencePercent:null, redFlags:[], missingChecks:[], watchlistHits:[], slabStatus:null, managerOverride:null },
     inventory:{ inventoryId:null, status:null, location:null, quantity:null },
     buyState:{ buySessionId:null, status:null, offer:null },
     sellState:{ cartLineId:null, status:null, price:null },
@@ -4480,15 +4526,14 @@ const DAILY_TABS = [
 ];
 const MORE_TABS = [
   ['browse', 'CUSTOMER BROWSE'],
-  ['pos', 'LEGACY REGISTER'],
   ['sales', 'SALES'],
   ['orders', 'ORDERS'],
   ['alerts', 'ALERTS'],
-  ['authcheck', 'AUTH CHECK'],
   ['wantlist', 'WANT LIST'],
   ['consign', 'CONSIGNMENT'],
   ['locations', 'LOCATIONS'],
   ['restock', 'RESTOCK'],
+  ['events', 'TOURNAMENTS'],
   ['backoffice', 'SETTINGS / ADMIN'],
 ];
 // Permanent, always-present categories -- every price-sync/routing function
@@ -4545,12 +4590,14 @@ const DEMO_VENDOR_PROFILE_DEFAULTS = {
   email:'demo@walkoff.local',
   logo:'',
   taxRate:0,
+  loyaltyRate:3,
   defaultBuyPct:70,
   defaultShowMarkdown:0,
   receiptFooter:'Thank you for shopping with us!',
   ebayShippingLine:'',
   ebayCategoryMap:{},
   ebayDescriptionTemplate:'',
+  ebayDescriptionTemplates:{},
   paymentMethods:'Cash accepted',
   venmo:'', paypal:'', cashapp:'',
 };
@@ -4647,12 +4694,14 @@ const DEFAULT_VENDOR_PROFILE = {
   email:'',
   logo:'',
   taxRate:0,
+  loyaltyRate:3,
   defaultBuyPct:70,
   defaultShowMarkdown:0,
   receiptFooter:'Thank you for shopping with us!',
   ebayShippingLine:'',
   ebayCategoryMap:{},
   ebayDescriptionTemplate:'',
+  ebayDescriptionTemplates:{},
   paymentMethods:'Cash, card, Venmo, or QR pay accepted',
   venmo:'',
   paypal:'',
@@ -4820,6 +4869,11 @@ function normalizePriceChartingCsvRowClient(p = {}, q = ''){
   };
 }
 
+function getLoyaltyRate(){
+  const rate = Number(getVendorProfile().loyaltyRate);
+  return Number.isFinite(rate) && rate >= 0 ? rate : 3;
+}
+
 function getVendorProfile(){
   // Demo mode falls back to blank demo defaults — never Walk-Off's real store info.
   const base = getAccountContext().isDemo ? DEMO_VENDOR_PROFILE_DEFAULTS : DEFAULT_VENDOR_PROFILE;
@@ -4852,8 +4906,10 @@ async function saveVendorProfile(profile){
       ebayShippingLine:next.ebayShippingLine,
       ebayCategoryMap:next.ebayCategoryMap || {},
       ebayDescriptionTemplate:next.ebayDescriptionTemplate || '',
+      ebayDescriptionTemplates:next.ebayDescriptionTemplates || {},
       paymentMethods:next.paymentMethods,
       taxRate:Number(next.taxRate || 0),
+      loyaltyRate:Number(next.loyaltyRate || 0),
       storefrontEnabled:next.storefrontEnabled === true,
       storefrontMessage:next.storefrontMessage || '',
       venmo:next.venmo || '',
@@ -5542,8 +5598,10 @@ function savePaymentSettings(settings){
       ebayShippingLine:next.ebayShippingLine,
       ebayCategoryMap:next.ebayCategoryMap || {},
       ebayDescriptionTemplate:next.ebayDescriptionTemplate || '',
+      ebayDescriptionTemplates:next.ebayDescriptionTemplates || {},
       paymentMethods:next.paymentMethods,
       taxRate:Number(next.taxRate || 0),
+      loyaltyRate:Number(next.loyaltyRate || 0),
       storefrontEnabled:next.storefrontEnabled === true,
       storefrontMessage:next.storefrontMessage || '',
       venmo:next.venmo || '',
@@ -5763,7 +5821,7 @@ const SETTINGS_PANEL_MAP = {
   payments:['payment-settings-panel'],
   sync:['inventory-sync-panel','sync-queue-panel'],
   catalogs:['backoffice-research-panel','offline-cache-panel','offline-catalog-manager-panel'],
-  inventory:['spreadsheet-panel'],
+  inventory:['inventory-tools-panel','spreadsheet-panel'],
   users:['store-members-panel'],
   theme:['branding-theme-panel'],
   subscription:['subscription-panel'],
@@ -5858,7 +5916,6 @@ function organizeRegisterLayout(){
   moveNode('register-buy-panel', intake);
   ensureBuyResearchBridge(intake);
   renderResearchQueue();
-  renderAuthCheckWorkbench();
   ensureSetNeedsPanel(wantsHub);
   ensureBuySignalsPanel(overview || backoffice);
   ensureOnboardingPanel(overview || backoffice);
@@ -5888,6 +5945,7 @@ function organizeRegisterLayout(){
   ensureSubscriptionPanel(backoffice);
   ensureHelpWalkthroughPanel(backoffice);
   ensureInventorySyncPanel(backoffice); // includes sync queue (merged)
+  ensureInventoryToolsPanel(backoffice);
   ensureSpreadsheetPanel(backoffice);
   ensureSyncQueuePanel(backoffice);
   ensureCustomerPanel(backoffice);
@@ -6043,6 +6101,7 @@ function renderVendorProfilePanel(){
         ${vendorInput('phone','Phone',p.phone)}
         ${vendorInput('email','Email',p.email)}
         ${vendorInput('taxRate','Tax %',p.taxRate,'number')}
+        ${vendorInput('loyaltyRate','Loyalty pts % of $',p.loyaltyRate,'number')}
         ${vendorInput('defaultBuyPct','Buy % default',p.defaultBuyPct,'number')}
         ${vendorInput('defaultShowMarkdown','Show markdown %',p.defaultShowMarkdown,'number')}
       </div>
@@ -6073,16 +6132,24 @@ function renderVendorProfilePanel(){
       <div style="display:grid;grid-template-columns:1fr 140px;gap:8px;margin-bottom:12px;align-items:center">
         ${getInventoryCategories().map(c => `<div style="font-family:var(--font-mono);font-size:11px;color:var(--text)">${escHtml(c)}</div><input class="tsi vp-ebaycat-input" data-cat="${escHtml(c)}" value="${escHtml((p.ebayCategoryMap||{})[c]||'')}" placeholder="eBay category ID" style="margin:0">`).join('')}
       </div>
-      <label style="font-family:var(--font-mono);font-size:9px;color:var(--dim)">DESCRIPTION TEMPLATE -- tokens: {title} {category} {year} {set} {variant} {condition} {cardNumber} {serialNumber} {player} {team} {issue} {publisher} {grade} {sport} {manufacturer} {upc}. A line whose only content is one blank token is dropped automatically; the shipping line above is always appended after this.
-        <textarea id="vp-ebayDescriptionTemplate" class="tsi" style="height:150px;font-family:var(--font-mono);white-space:pre;margin-top:4px" placeholder="${escHtml(DEFAULT_EBAY_DESCRIPTION_TEMPLATE)}">${escHtml(p.ebayDescriptionTemplate||'')}</textarea>
-      </label>
-      <div style="display:flex;gap:8px;margin-top:8px"><button class="hbtn" onclick="saveEbayListingSettings()">SAVE EBAY LISTING SETTINGS</button><button class="hbtn" onclick="resetEbayDescriptionTemplate()">RESET TEMPLATE TO DEFAULT</button></div>
+      <div style="font-family:var(--font-mono);font-size:9px;color:var(--dim);line-height:1.7;margin-bottom:8px">DESCRIPTION TEMPLATES -- one per category, plus a default for anything without its own. Tokens: {title} {category} {year} {set} {variant} {condition} {cardNumber} {serialNumber} {player} {team} {issue} {publisher} {grade} {sport} {manufacturer} {upc} {price} {quantity} {rarity} {finish} {language} {configuration} {writer} {artist} {coverArtist} {signedBy}. A line whose only content is one blank token is dropped automatically; the shipping line above is always appended after this.</div>
+      ${ebayDescriptionTemplateEditorHtml('default', 'Default (any category without its own template)', p)}
+      ${getInventoryCategories().map(c => ebayDescriptionTemplateEditorHtml(c, c, p)).join('')}
+      <div style="display:flex;gap:8px;margin-top:8px"><button class="hbtn" onclick="saveEbayListingSettings()">SAVE EBAY LISTING SETTINGS</button></div>
     </div>`;
 }
 
-function resetEbayDescriptionTemplate(){
-  const ta = document.getElementById('vp-ebayDescriptionTemplate');
-  if(ta) ta.value = '';
+function ebayDescriptionTemplateEditorHtml(key, label, p){
+  const templates = p.ebayDescriptionTemplates || {};
+  const value = templates[key] || (key === 'default' ? (p.ebayDescriptionTemplate || '') : '');
+  const id = 'vp-ebaydesc-' + key.replace(/[^a-z0-9]/gi, '_');
+  return `<details style="margin-bottom:6px;border:1px solid var(--border);border-radius:7px;background:var(--surf)">
+    <summary style="cursor:pointer;padding:8px 10px;font-family:var(--font-mono);font-size:10px;color:${value?'var(--g)':'var(--dim)'}">${escHtml(label)}${value?' ✓ customized':''}</summary>
+    <div style="padding:0 10px 10px">
+      <textarea id="${id}" class="vp-ebaydesc-input tsi" data-key="${escHtml(key)}" style="height:130px;font-family:var(--font-mono);white-space:pre;margin-top:4px" placeholder="${escHtml(key === 'default' ? DEFAULT_EBAY_DESCRIPTION_TEMPLATE : 'Leave blank to use the default template above')}">${escHtml(value)}</textarea>
+      ${value ? `<button class="hbtn" style="margin-top:6px;font-size:9px" onclick="document.getElementById('${id}').value=''">CLEAR</button>` : ''}
+    </div>
+  </details>`;
 }
 
 function saveEbayListingSettings(){
@@ -6092,8 +6159,15 @@ function saveEbayListingSettings(){
     const val = inp.value.trim();
     if(cat && val) ebayCategoryMap[cat] = val;
   });
-  const ebayDescriptionTemplate = document.getElementById('vp-ebayDescriptionTemplate')?.value || '';
-  saveVendorProfile({ ebayCategoryMap, ebayDescriptionTemplate });
+  const ebayDescriptionTemplates = {};
+  document.querySelectorAll('.vp-ebaydesc-input').forEach(ta => {
+    const key = ta.dataset.key;
+    const val = ta.value;
+    if(key && val.trim()) ebayDescriptionTemplates[key] = val;
+  });
+  // Old single-template field is kept in sync (mirrors 'default') so a
+  // rollback or any code that still reads the legacy field doesn't regress.
+  saveVendorProfile({ ebayCategoryMap, ebayDescriptionTemplates, ebayDescriptionTemplate:ebayDescriptionTemplates.default || '' });
   toast_dash('eBay listing settings saved');
 }
 
@@ -6111,12 +6185,12 @@ function vendorInput(key, label, value, type='text', placeholder=''){
 }
 
 async function saveVendorProfileFromForm(){
-  const keys = ['storeName','shortName','location','website','phone','email','taxRate','defaultBuyPct','defaultShowMarkdown','receiptFooter','ebayShippingLine','paymentMethods','venmo','paypal','cashapp'];
+  const keys = ['storeName','shortName','location','website','phone','email','taxRate','loyaltyRate','defaultBuyPct','defaultShowMarkdown','receiptFooter','ebayShippingLine','paymentMethods','venmo','paypal','cashapp'];
   const profile = {};
   keys.forEach(k => {
     const el = document.getElementById('vp-'+k);
     if(!el) return;
-    profile[k] = ['taxRate','defaultBuyPct','defaultShowMarkdown'].includes(k) ? Number(el.value || 0) : el.value.trim();
+    profile[k] = ['taxRate','loyaltyRate','defaultBuyPct','defaultShowMarkdown'].includes(k) ? Number(el.value || 0) : el.value.trim();
   });
   const cloudSaved = await saveVendorProfile(profile);
   toast_dash(cloudSaved ? 'Vendor profile saved' : 'Saved on this device only — cloud sync failed, other devices will not see this change yet');
@@ -6148,8 +6222,13 @@ function handleVendorLogoUpload(event){
           const res = await storeWorkerFetch('/store/logo/upload', { method:'POST', headers:{ 'Content-Type':'image/png' }, body:blob });
           const data = await res.json().catch(() => ({}));
           if(!res.ok || !data.ok) throw new Error(data.error || 'Upload failed');
-          await saveVendorProfile({ logo:data.url });
-          toast_dash('Logo uploaded');
+          // Hosted upload succeeding doesn't guarantee the cloud profile save
+          // did -- that's a separate write, gated on owner/admin role, that
+          // can fail on its own (this was the actual cause of a logo showing
+          // on the uploading device only: this toast used to say "uploaded"
+          // even when that second write silently failed).
+          const cloudSaved = await saveVendorProfile({ logo:data.url });
+          toast_dash(cloudSaved ? 'Logo uploaded' : 'Logo saved on this device only — cloud sync failed, other devices will not see it yet');
         } catch(e) {
           await saveVendorProfile({ logo:localPreview });
           toast_dash('Saved locally only — reconnect and re-upload to sync everywhere (' + (e.message || e) + ')');
@@ -8649,6 +8728,24 @@ function renderInventoryCategoryFilters(){
   });
 }
 
+function ensureInventoryToolsPanel(backoffice){
+  if(document.getElementById('inventory-tools-panel')) return;
+  const panel = document.createElement('div');
+  panel.className = 'panel';
+  panel.id = 'inventory-tools-panel';
+  panel.style.marginBottom = '14px';
+  panel.innerHTML = `
+    <div class="ph">INVENTORY TOOLS</div>
+    <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);margin-bottom:10px;line-height:1.55">
+      Location-based browsing and sales-velocity restock suggestions -- full tools, just tucked in here instead of the main tab bar.
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="hbtn" onclick="switchTab('locations')">📍 MANAGE LOCATIONS</button>
+      <button class="hbtn" onclick="switchTab('restock')">📦 RESTOCK SUGGESTIONS</button>
+    </div>`;
+  backoffice.appendChild(panel);
+}
+
 function ensureSpreadsheetPanel(backoffice){
   if(document.getElementById('spreadsheet-panel')) return;
   const panel = document.createElement('div');
@@ -10708,6 +10805,93 @@ async function processSyncItem(item){
     if(error) throw error;
     return;
   }
+  if(item.type === 'customer-upsert') {
+    const sb = getSupabaseClient();
+    if(!sb) throw new Error('Supabase client unavailable');
+    const { error } = await sb.from('customers').upsert(item.payload, { onConflict:'id' });
+    if(error) throw error;
+    return;
+  }
+  if(item.type === 'loyalty-accrual') {
+    const sb = getSupabaseClient();
+    if(!sb) throw new Error('Supabase client unavailable');
+    const { contact, name, saleId, points, storeId } = item.payload;
+    const isEmail = String(contact || '').includes('@');
+    const field = isEmail ? 'email' : 'phone';
+    const { data: existing, error: findErr } = await sb.from('customers').select('id').eq('store_id', storeId).eq(field, contact).maybeSingle();
+    if(findErr) throw findErr;
+    let customerId = existing?.id;
+    if(!customerId) {
+      const { data: created, error: createErr } = await sb.from('customers').insert({ id:makeUuid('cust'), store_id:storeId, name, [field]:contact, loyalty_points_balance:0 }).select('id').single();
+      if(createErr) throw createErr;
+      customerId = created.id;
+    }
+    const { error } = await sb.rpc('accrue_loyalty_points', { p_store_id:storeId, p_customer_id:customerId, p_points:points, p_sale_id:saleId, p_reason:'sale' });
+    if(error) throw error;
+    return;
+  }
+  if(item.type === 'loyalty-redeem-commit') {
+    const sb = getSupabaseClient();
+    if(!sb) throw new Error('Supabase client unavailable');
+    const { storeId, customerId, points, saleId } = item.payload;
+    const { error } = await sb.rpc('redeem_loyalty_points', { p_store_id:storeId, p_customer_id:customerId, p_points:points, p_sale_id:saleId });
+    if(error) throw error;
+    return;
+  }
+  if(item.type === 'gift-card-issue') {
+    const sb = getSupabaseClient();
+    if(!sb) throw new Error('Supabase client unavailable');
+    const { error } = await sb.from('gift_cards').insert(item.payload);
+    if(error) throw error;
+    return;
+  }
+  if(item.type === 'gift-card-redeem-commit') {
+    const sb = getSupabaseClient();
+    if(!sb) throw new Error('Supabase client unavailable');
+    const { storeId, code, amount, saleId } = item.payload;
+    const { error } = await sb.rpc('redeem_gift_card', { p_store_id:storeId, p_code:code, p_amount:amount, p_sale_id:saleId });
+    if(error) throw error;
+    return;
+  }
+  if(item.type === 'event-upsert') {
+    const sb = getSupabaseClient();
+    if(!sb) throw new Error('Supabase client unavailable');
+    const { error } = await sb.from('events').upsert(item.payload, { onConflict:'id' });
+    if(error) throw error;
+    return;
+  }
+  if(item.type === 'event-registration-upsert') {
+    const sb = getSupabaseClient();
+    if(!sb) throw new Error('Supabase client unavailable');
+    const { error } = await sb.from('event_registrations').upsert(item.payload, { onConflict:'id' });
+    if(error) throw error;
+    return;
+  }
+  if(item.type === 'event-round-start') {
+    const sb = getSupabaseClient();
+    if(!sb) throw new Error('Supabase client unavailable');
+    const { eventId, storeId, round, matches } = item.payload;
+    const { error: matchErr } = await sb.from('event_matches').upsert(matches, { onConflict:'id' });
+    if(matchErr) throw matchErr;
+    const { error: eventErr } = await sb.from('events').update({ current_round:round, status:'in_progress' }).eq('id', eventId).eq('store_id', storeId);
+    if(eventErr) throw eventErr;
+    return;
+  }
+  if(item.type === 'event-match-result') {
+    const sb = getSupabaseClient();
+    if(!sb) throw new Error('Supabase client unavailable');
+    const { error } = await sb.from('event_matches').update({ result:item.payload.result, reported_at:item.payload.reported_at }).eq('id', item.payload.id).eq('store_id', item.payload.store_id);
+    if(error) throw error;
+    return;
+  }
+  if(item.type === 'event-entry-fee-paid') {
+    const sb = getSupabaseClient();
+    if(!sb) throw new Error('Supabase client unavailable');
+    const { registrationId, storeId, paidAmount, saleId } = item.payload;
+    const { error } = await sb.from('event_registrations').update({ paid:true, paid_amount:paidAmount, sale_id:saleId }).eq('id', registrationId).eq('store_id', storeId);
+    if(error) throw error;
+    return;
+  }
   if(item.type === 'drawer-session-open') {
     await MoneyLedgerService().openDrawerSession({
       id:item.payload.drawerState.id,
@@ -10841,26 +11025,72 @@ function renderStoreCreditPanel(){
   </div>`).join('') : '<div style="padding:10px;border:1px dashed var(--border);border-radius:8px;text-align:center">No outstanding trade credit</div>';
 }
 
-function getCustomers(){ return safeLocalJson('pos_customers', []); }
-function saveCustomers(c){ localStorage.setItem('pos_customers', JSON.stringify(c.slice(0,1000))); renderCustomers(); }
-function upsertCustomer(name, contact, notes, source){
+// Customers moved off localStorage-only pos_customers onto a store-scoped
+// Supabase table (2026-08-10) -- loyalty points and gift cards need a
+// balance that's readable/writable from any register, not just the device
+// that happened to create the contact. customersCache is a local-first read
+// cache (instant render, works offline); writes go straight to Supabase and
+// fall back to the offline sync queue on failure, same pattern already used
+// for customer_receipts/customer_wants.
+let customersCache = safeLocalJson('customers_cache_v1', []);
+let customersCacheLoaded = false;
+
+function getCustomers(){ return customersCache; }
+
+async function loadCustomersFromSupabase(force){
+  if(customersCacheLoaded && !force) return customersCache;
+  const sb = getSupabaseClient();
+  const storeId = getActiveStoreId();
+  if(!sb || !storeId || getAccountContext().isDemo) { customersCacheLoaded = true; return customersCache; }
+  const { data, error } = await sb.from('customers').select('*').eq('store_id', storeId).order('updated_at', { ascending:false }).limit(1000);
+  if(error) { console.warn('Customers sync failed:', error.message); return customersCache; }
+  customersCache = data || [];
+  localStorage.setItem('customers_cache_v1', JSON.stringify(customersCache));
+  customersCacheLoaded = true;
+  renderCustomers();
+  return customersCache;
+}
+
+function findCustomerByContact(contact){
+  const key = String(contact || '').trim().toLowerCase();
+  if(!key) return null;
+  return customersCache.find(c => (c.phone || '').toLowerCase() === key || (c.email || '').toLowerCase() === key) || null;
+}
+
+function saveCustomerLocal(entry){
+  const idx = customersCache.findIndex(c => c.id === entry.id);
+  if(idx >= 0) customersCache[idx] = entry; else customersCache.unshift(entry);
+  customersCache = customersCache.slice(0, 1000);
+  localStorage.setItem('customers_cache_v1', JSON.stringify(customersCache));
+  renderCustomers();
+}
+
+async function upsertCustomer(name, contact, notes, source){
   name = String(name || '').trim();
   contact = String(contact || '').trim();
   notes = String(notes || '').trim();
-  if(!name && !contact) return;
-  const c = getCustomers();
-  const key = (contact || name).toLowerCase();
-  const idx = c.findIndex(x => String(x.contact || x.name || '').toLowerCase() === key);
-  const entry = idx >= 0 ? c[idx] : { id:'cust_'+Date.now(), name, contact, notes:'', createdAt:new Date().toISOString(), source:source || 'auto' };
+  if(!name && !contact) return null;
+  const isEmail = contact.includes('@');
+  const existing = findCustomerByContact(contact) || (!contact && name ? customersCache.find(c => (c.name || '').toLowerCase() === name.toLowerCase()) : null);
+  const now = new Date().toISOString();
+  const entry = existing ? { ...existing } : { id:makeUuid('cust'), store_id:getActiveStoreId(), name:'', phone:'', email:'', notes:'', loyalty_points_balance:0, created_at:now };
   entry.name = entry.name || name;
-  entry.contact = entry.contact || contact;
-  entry.updatedAt = new Date().toISOString();
-  entry.source = entry.source || source || 'auto';
+  if(contact) { if(isEmail) entry.email = entry.email || contact; else entry.phone = entry.phone || contact; }
   if(notes && !String(entry.notes || '').includes(notes)) entry.notes = [entry.notes, notes].filter(Boolean).join('\n');
-  if(idx >= 0) c.splice(idx, 1);
-  c.unshift(entry);
-  saveCustomers(c);
+  entry.updated_at = now;
+  saveCustomerLocal(entry);
+  if(getAccountContext().isDemo) return entry;
+  try {
+    const sb = getSupabaseClient();
+    if(!sb) throw new Error('Supabase unavailable');
+    const { error } = await sb.from('customers').upsert(entry, { onConflict:'id' });
+    if(error) throw error;
+  } catch(e) {
+    enqueueOrReplaceSync('customer-upsert', entry.id, 'Queued customer save', entry, e.message);
+  }
+  return entry;
 }
+
 function addCustomerContact(){
   const name = document.getElementById('cust-name')?.value.trim();
   const contact = document.getElementById('cust-contact')?.value.trim();
@@ -10875,9 +11105,9 @@ function renderCustomers(){
   if(!list) return;
   const c = getCustomers();
   if(count) count.textContent = c.length + ' contacts';
-  list.innerHTML = c.length ? c.slice(0,30).map(x => `<div style="border:1px solid var(--border);background:var(--surf2);border-radius:7px;padding:8px"><b style="color:var(--text)">${escHtml(x.name||'Customer')}</b> · ${escHtml(x.contact||'')}<div>${escHtml(x.notes||'')}</div></div>`).join('') : '<div style="padding:10px;border:1px dashed var(--border);border-radius:8px;text-align:center">No customers yet</div>';
+  list.innerHTML = c.length ? c.slice(0,30).map(x => `<div style="border:1px solid var(--border);background:var(--surf2);border-radius:7px;padding:8px"><div style="display:flex;justify-content:space-between;gap:8px"><b style="color:var(--text)">${escHtml(x.name||'Customer')}</b>${Number(x.loyalty_points_balance||0) > 0 ? `<span style="color:var(--g)">${Number(x.loyalty_points_balance||0)} pts</span>` : ''}</div>${escHtml(x.phone||x.email||'')}<div>${escHtml(x.notes||'')}</div></div>`).join('') : '<div style="padding:10px;border:1px dashed var(--border);border-radius:8px;text-align:center">No customers yet</div>';
 }
-function exportCustomersCSV(){ downloadCSV('walkoff-customers-'+new Date().toISOString().slice(0,10)+'.csv', [['name','contact','notes','created_at']].concat(getCustomers().map(c => [c.name,c.contact,c.notes,c.createdAt]))); }
+function exportCustomersCSV(){ downloadCSV('walkoff-customers-'+new Date().toISOString().slice(0,10)+'.csv', [['name','phone','email','loyalty_points','notes','created_at']].concat(getCustomers().map(c => [c.name,c.phone,c.email,c.loyalty_points_balance||0,c.notes,c.created_at]))); }
 
 function priceTagRows(items){
   return [['name','price','category','condition','location','sku','qr_hint']]
@@ -11333,7 +11563,6 @@ function showInvRowMenu(e, id, isInStock){
     isInStock?`<button class="hbtn" style="${btnStyle};color:var(--purple)" onclick="markSoldOnWhatnot('${id}');this.closest('.inv-row-menu').remove()">📦 Sold on Whatnot</button>`:'',
     isInStock?`<button class="hbtn" style="${btnStyle};color:var(--gold)" onclick="openExternalSaleModal('${id}');this.closest('.inv-row-menu').remove()">💰 Record External Sale (other)</button>`:'',
     `<button class="hbtn" style="${btnStyle}" onclick="openItemTimeline('${id}');this.closest('.inv-row-menu').remove()">📋 History</button>`,
-    `<button class="hbtn" style="${btnStyle};color:var(--blue)" onclick="sendInventoryItemToAuthCheck('${id}');this.closest('.inv-row-menu').remove()">✓ Authentication Check</button>`,
     isInStock?`<button class="hbtn" style="${btnStyle};color:var(--g)" onclick="publishInventoryItemToWebflow('${id}');this.closest('.inv-row-menu').remove()">🌐 Publish / Sync Webflow</button>`:'',
     item?.status==='archived'
       ?`<button class="hbtn" style="${btnStyle}color:var(--g)" onclick="restoreInventoryItem('${id}');this.closest('.inv-row-menu').remove()">↩ Restore</button>`
@@ -14984,7 +15213,7 @@ async function buildVendorBackup(){
       universalInventory: safeLocalJson('walkoff_universal_inventory', []),
       spreadsheetMapping: safeLocalJson('sheet_mapping_v1', {}),
       syncQueue: safeLocalJson('sync_queue_v1', []),
-      customers: safeLocalJson('pos_customers', []),
+      customers: safeLocalJson('customers_cache_v1', []),
       undoStack: safeLocalJson('pos_undo_stack', []),
       vendorProfile: safeLocalJson('vendor_profile_v1', null),
       opsLog: getOpsLog(),
@@ -15062,7 +15291,7 @@ async function importVendorBackup(event){
       walkoff_universal_inventory:d.universalInventory,
       sheet_mapping_v1:d.spreadsheetMapping,
       sync_queue_v1:d.syncQueue,
-      pos_customers:d.customers,
+      customers_cache_v1:d.customers,
       pos_undo_stack:d.undoStack,
       vendor_profile_v1:d.vendorProfile,
       pos_ops_log:d.opsLog,
@@ -15439,6 +15668,7 @@ window.addEventListener('load', async function(){
   await loadStoreSettingsFromSupabase();
   await loadConsignmentsFromCloud();
   await loadPriceChangeAlertsFromCloud();
+  loadCustomersFromSupabase();
   setupAppShell();
   setInvView(_invView);
   checkAndApplySubscriptionState().catch(console.warn);
@@ -16566,6 +16796,7 @@ function switchTab(name, btn){
   if(name === 'display') setTimeout(()=>{ fetchSaleCartIndex(); renderSaleCartSwitcher(); renderCustomerDisplay(); }, 0);
   // Pick up buy-offer items and open trays added on another device since this device's last fetch
   if(name === 'intake') setTimeout(()=>{ fetchBuyListFromWorker(); fetchBuyTrayIndex(); }, 0);
+  if(name === 'events') setTimeout(ensureEventsPanel, 0);
 }
 
 // Quick sell modal
@@ -16660,6 +16891,647 @@ async function confirmOneOffSell(){
 
   closeOneOffSellModal();
   toast_dash('Added one-off item to cart');
+}
+
+// Gift cards: sold as a one_off cart line (no inventory/COGS to track), with
+// the code generated NOW so it's fixed before the sale even finalizes, but
+// the gift_cards row (and any printable code) is only created after the sale
+// actually commits (see finalizeCompletedCheckout) -- a cancelled or failed
+// checkout must never leave a redeemable, unsold code floating around.
+function generateGiftCardCode(){
+  const alphabet = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; // no 0/O/1/I/L -- avoids misreads off a receipt
+  const bytes = new Uint8Array(12);
+  if(window.crypto?.getRandomValues) crypto.getRandomValues(bytes);
+  else for(let i = 0; i < 12; i++) bytes[i] = Math.floor(Math.random() * 256);
+  const chars = Array.from(bytes, b => alphabet[b % alphabet.length]);
+  return chars.slice(0,4).join('') + '-' + chars.slice(4,8).join('') + '-' + chars.slice(8,12).join('');
+}
+function openGiftCardSellModal(){
+  document.getElementById('gift-card-amount').value = '';
+  document.getElementById('gift-card-recipient').value = '';
+  document.getElementById('gift-card-sell-modal').classList.add('on');
+  setTimeout(() => document.getElementById('gift-card-amount')?.focus(), 100);
+}
+function closeGiftCardSellModal(){
+  document.getElementById('gift-card-sell-modal').classList.remove('on');
+}
+function confirmGiftCardSell(){
+  const amount = parseFloat(document.getElementById('gift-card-amount')?.value) || 0;
+  const recipient = document.getElementById('gift-card-recipient')?.value.trim() || '';
+  if(!amount || amount <= 0) return alert('Enter a gift card amount');
+  const code = generateGiftCardCode();
+  const name = 'Gift Card' + (recipient ? ' — ' + recipient : '');
+  addSaleItemToCart({ name, category:'Gift Card' }, {
+    sourceType:'one_off',
+    name,
+    category:'Gift Card',
+    unitPrice:amount,
+    costBasis:0,
+    quantity:1,
+    taxable:false,
+    metadata:{ giftCard:true, giftCardCode:code, giftCardRecipient:recipient },
+    undoLabel:'gift card add to cart'
+  });
+  closeGiftCardSellModal();
+  toast_dash('Added gift card to cart');
+}
+
+// Called from finalizeCompletedCheckout, after the sale is durably committed
+// (or durably queued) -- never before, so a cancelled/failed checkout can
+// never leave a redeemable code that was never actually sold.
+async function issueGiftCardsFromSaleLines(bundle){
+  const giftLines = (bundle.saleLines || []).filter(l => l.metadata?.giftCard && l.metadata?.giftCardCode);
+  if(!giftLines.length) return;
+  if(getAccountContext().isDemo) return;
+  const storeId = bundle.sale.store_id;
+  const issued = [];
+  for(const line of giftLines) {
+    const record = { id:makeUuid('gift'), store_id:storeId, code:line.metadata.giftCardCode, initial_value:Number(line.unit_price || 0), balance:Number(line.unit_price || 0), status:'active', issued_sale_id:bundle.sale.id, issued_by:getCurrentUserId(), created_at:new Date().toISOString() };
+    try {
+      const sb = getSupabaseClient();
+      if(!sb) throw new Error('Supabase unavailable');
+      const { error } = await sb.from('gift_cards').insert(record);
+      if(error) throw error;
+    } catch(e) {
+      enqueueSync('gift-card-issue', 'Queued gift card issuance', record, e.message);
+    }
+    issued.push({ code:record.code, amount:record.initial_value, recipient:line.metadata.giftCardRecipient || '' });
+  }
+  if(issued.length) showIssuedGiftCardsModal(issued);
+}
+
+function showIssuedGiftCardsModal(issued){
+  const body = document.getElementById('gift-card-issued-modal-body');
+  if(!body) return;
+  body.innerHTML = `<h3>🎁 Gift Card${issued.length > 1 ? 's' : ''} Issued</h3>
+    <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);margin-bottom:10px">Write the code down or hand the customer this screen -- it will not be shown again.</div>
+    ${issued.map(g => `<div style="border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:10px;text-align:center;background:var(--surf2)">
+      ${g.recipient ? `<div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);margin-bottom:4px">${escHtml(g.recipient)}</div>` : ''}
+      <img src="https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=8&data=${encodeURIComponent(g.code)}" alt="Gift card QR code" style="width:160px;height:160px;margin-bottom:8px">
+      <div style="font-family:'Orbitron',monospace;font-size:20px;letter-spacing:2px;color:var(--g);margin-bottom:4px">${escHtml(g.code)}</div>
+      <div style="font-family:var(--font-mono);font-size:13px;color:var(--text)">$${Number(g.amount).toFixed(2)} balance</div>
+    </div>`).join('')}
+    <div class="modal-btns"><button class="modal-btn confirm" onclick="closeIssuedGiftCardsModal()">DONE</button></div>`;
+  document.getElementById('gift-card-issued-modal')?.classList.add('on');
+}
+function closeIssuedGiftCardsModal(){
+  document.getElementById('gift-card-issued-modal')?.classList.remove('on');
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// TOURNAMENTS / EVENTS — v1
+// ═══════════════════════════════════════════════════════════════════
+// Store-scoped Supabase tables (events/event_registrations/event_matches),
+// local-first cache for instant reads, same pattern as customersCache.
+// Swiss pairing + standings are pure client-side functions computed from
+// the cached registrations/matches -- no server-side pairing logic needed.
+let eventsCache = safeLocalJson('events_cache_v1', []);
+let eventsCacheLoaded = false;
+let eventRegistrationsCache = {}; // eventId -> [registration]
+let eventMatchesCache = {};       // eventId -> [match]
+let activeEventId = null;
+
+async function loadEventsFromSupabase(force){
+  if(eventsCacheLoaded && !force) return eventsCache;
+  const sb = getSupabaseClient();
+  const storeId = getActiveStoreId();
+  if(!sb || !storeId || getAccountContext().isDemo) { eventsCacheLoaded = true; return eventsCache; }
+  const { data, error } = await sb.from('events').select('*').eq('store_id', storeId).order('event_date', { ascending:false }).limit(500);
+  eventsCacheLoaded = true;
+  if(error) { console.warn('Events sync failed:', error.message); return eventsCache; }
+  eventsCache = data || [];
+  localStorage.setItem('events_cache_v1', JSON.stringify(eventsCache));
+  return eventsCache;
+}
+
+async function loadEventDetail(eventId, force){
+  const sb = getSupabaseClient();
+  const storeId = getActiveStoreId();
+  if(!sb || !storeId) return;
+  if(eventRegistrationsCache[eventId] && eventMatchesCache[eventId] && !force) return;
+  const [regRes, matchRes] = await Promise.all([
+    sb.from('event_registrations').select('*').eq('store_id', storeId).eq('event_id', eventId).order('created_at', { ascending:true }),
+    sb.from('event_matches').select('*').eq('store_id', storeId).eq('event_id', eventId).order('round_number', { ascending:true })
+  ]);
+  if(regRes.error) console.warn('Event registrations sync failed:', regRes.error.message);
+  if(matchRes.error) console.warn('Event matches sync failed:', matchRes.error.message);
+  eventRegistrationsCache[eventId] = regRes.data || [];
+  eventMatchesCache[eventId] = matchRes.data || [];
+}
+
+function ensureEventsPanel(){
+  const container = document.getElementById('events-panels');
+  if(!container) return;
+  renderEventsPanel();
+}
+
+async function renderEventsPanel(){
+  const container = document.getElementById('events-panels');
+  if(!container) return;
+  await loadEventsFromSupabase();
+  if(activeEventId && eventsCache.some(e => e.id === activeEventId)) {
+    await loadEventDetail(activeEventId);
+    renderEventDetailInto(container);
+  } else {
+    renderEventsListInto(container);
+  }
+}
+
+// Per-game icon + accent color -- purely cosmetic, gives the events list and
+// event header some personality instead of reading like a settings screen.
+const EVENT_GAME_STYLE = {
+  'Magic: The Gathering':{ icon:'🔮', color:'var(--purple)' },
+  'Pokemon TCG':{ icon:'⚡', color:'var(--gold)' },
+  'Yu-Gi-Oh!':{ icon:'🐉', color:'var(--red)' },
+  'One Piece TCG':{ icon:'🏴‍☠️', color:'var(--blue)' },
+  'Sports':{ icon:'🏈', color:'var(--g)' },
+  'Other':{ icon:'🎲', color:'var(--dim)' },
+};
+function eventGameStyle(game){ return EVENT_GAME_STYLE[game] || EVENT_GAME_STYLE.Other; }
+
+function eventStatusPill(status){
+  const map = { upcoming:['','🗓 UPCOMING'], in_progress:['warn','🔥 LIVE'], completed:['good','🏆 COMPLETED'], cancelled:['bad','CANCELLED'] };
+  const [cls,label] = map[status] || ['', status.toUpperCase()];
+  return `<span class="data-pill ${cls}" style="font-weight:700">${label}</span>`;
+}
+
+function renderEventsListInto(container){
+  const events = eventsCache.slice().sort((a,b) => (b.event_date||'').localeCompare(a.event_date||''));
+  container.innerHTML = `<div class="panel">
+    <div class="ph"><b style="font-family:'Orbitron',monospace;font-size:13px;letter-spacing:1px;color:var(--text)">🏆 EVENTS</b><span style="font-size:9px;color:var(--dim)">${events.length} total</span></div>
+    <div style="margin-bottom:14px"><button class="hbtn" style="background:rgba(0,255,179,.14);border-color:rgba(0,255,179,.4);font-size:11px;padding:10px 16px" onclick="openNewEventModal()">+ NEW EVENT</button></div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px">
+      ${events.length ? events.map(e => {
+        const style = eventGameStyle(e.game);
+        return `<div style="position:relative;cursor:pointer;border:1px solid var(--border);border-top:3px solid ${style.color};background:var(--surf2);border-radius:10px;padding:14px;transition:transform .12s ease" onclick="openEventDetail('${escHtml(e.id)}')" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='none'">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:8px">
+            <span style="font-size:26px;line-height:1">${style.icon}</span>
+            ${eventStatusPill(e.status)}
+          </div>
+          <div style="font-family:'Orbitron',monospace;font-size:14px;color:var(--text);margin-bottom:4px">${escHtml(e.name)}</div>
+          <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);line-height:1.6">${escHtml(e.game)}${e.format ? ' · ' + escHtml(e.format) : ''}${e.event_date ? '<br>' + escHtml(e.event_date) : ''}</div>
+          <div style="margin-top:8px;display:flex;justify-content:space-between;align-items:center">
+            <span style="font-family:'Orbitron',monospace;font-size:13px;color:${Number(e.entry_fee||0) > 0 ? 'var(--gold)' : 'var(--dim)'}">${Number(e.entry_fee||0) > 0 ? '$' + Number(e.entry_fee).toFixed(2) : 'FREE'}</span>
+            ${e.current_round > 0 ? `<span style="font-family:var(--font-mono);font-size:9px;color:var(--dim)">Round ${e.current_round}${e.round_count ? '/' + e.round_count : ''}</span>` : ''}
+          </div>
+        </div>`;
+      }).join('') : `<div style="grid-column:1/-1;padding:36px 14px;border:1px dashed var(--border);border-radius:10px;text-align:center">
+        <div style="font-size:38px;margin-bottom:10px">🏆</div>
+        <div style="color:var(--text);font-family:'Orbitron',monospace;font-size:12px;margin-bottom:4px">No tournaments yet</div>
+        <div style="color:var(--dim);font-family:var(--font-mono);font-size:10px">Start your first event with + NEW EVENT above</div>
+      </div>`}
+    </div>
+  </div>`;
+}
+
+function openEventDetail(eventId){
+  activeEventId = eventId;
+  renderEventsPanel();
+}
+function closeEventDetail(){
+  activeEventId = null;
+  renderEventsPanel();
+}
+
+function openNewEventModal(){
+  ['event-name','event-format','event-date','event-entry-fee','event-max-players','event-round-count','event-notes'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
+  const gameEl = document.getElementById('event-game'); if(gameEl) gameEl.value = 'Magic: The Gathering';
+  document.getElementById('event-modal')?.classList.add('on');
+  setTimeout(() => document.getElementById('event-name')?.focus(), 100);
+}
+function closeEventModal(){
+  document.getElementById('event-modal')?.classList.remove('on');
+}
+async function saveEventFromForm(){
+  const name = document.getElementById('event-name')?.value.trim();
+  if(!name) return alert('Enter an event name');
+  const record = {
+    id:makeUuid('event'),
+    store_id:getActiveStoreId(),
+    name,
+    game:document.getElementById('event-game')?.value || 'Other',
+    format:document.getElementById('event-format')?.value.trim() || null,
+    event_date:document.getElementById('event-date')?.value || null,
+    entry_fee:Number(document.getElementById('event-entry-fee')?.value || 0),
+    max_players:Number(document.getElementById('event-max-players')?.value || 0) || null,
+    round_count:Number(document.getElementById('event-round-count')?.value || 0) || null,
+    notes:document.getElementById('event-notes')?.value.trim() || null,
+    status:'upcoming',
+    structure:'swiss',
+    current_round:0,
+    created_by:getCurrentUserId(),
+    created_at:new Date().toISOString(),
+    updated_at:new Date().toISOString()
+  };
+  eventsCache.unshift(record);
+  localStorage.setItem('events_cache_v1', JSON.stringify(eventsCache));
+  closeEventModal();
+  renderEventsPanel();
+  if(getAccountContext().isDemo) return;
+  try {
+    const sb = getSupabaseClient();
+    if(!sb) throw new Error('Supabase unavailable');
+    const { error } = await sb.from('events').insert(record);
+    if(error) throw error;
+    toast_dash('Event created');
+  } catch(e) {
+    enqueueSync('event-upsert', 'Queued event save', record, e.message);
+    toast_dash('Saved locally — will sync when back online');
+  }
+}
+
+// Deterministic per-player color + initials, purely cosmetic (a little
+// avatar chip in the roster and pairings so the player list reads as people,
+// not spreadsheet rows).
+const PLAYER_AVATAR_COLORS = ['var(--g)','var(--gold)','var(--purple)','var(--blue)','var(--red)'];
+function playerInitials(name){
+  const parts = String(name || '?').trim().split(/\s+/).filter(Boolean);
+  return (parts.slice(0,2).map(w => w[0]).join('') || '?').toUpperCase();
+}
+function playerAvatarColor(name){
+  let hash = 0;
+  for(const ch of String(name || '')) hash = (hash * 31 + ch.charCodeAt(0)) >>> 0;
+  return PLAYER_AVATAR_COLORS[hash % PLAYER_AVATAR_COLORS.length];
+}
+function playerAvatar(name, size){
+  const s = size || 30;
+  return `<div style="width:${s}px;height:${s}px;flex-shrink:0;border-radius:50%;background:${playerAvatarColor(name)};color:#050507;display:flex;align-items:center;justify-content:center;font-family:'Orbitron',monospace;font-size:${Math.round(s*0.38)}px;font-weight:900">${escHtml(playerInitials(name))}</div>`;
+}
+
+function roundProgressStepper(event){
+  if(!event.round_count) return '';
+  const dots = [];
+  for(let i = 1; i <= event.round_count; i++) {
+    const done = i < event.current_round, active = i === event.current_round;
+    dots.push(`<span title="Round ${i}" style="width:${active ? '20px' : '9px'};height:9px;border-radius:999px;background:${done || active ? 'var(--g)' : 'var(--border)'};opacity:${done || active ? 1 : .5};transition:width .2s"></span>`);
+  }
+  return `<div style="display:flex;gap:5px;align-items:center;margin-top:10px">${dots.join('')}</div>`;
+}
+
+function renderEventDetailInto(container){
+  const event = eventsCache.find(e => e.id === activeEventId);
+  if(!event) { activeEventId = null; renderEventsListInto(container); return; }
+  const registrations = (eventRegistrationsCache[event.id] || []).filter(r => !r.dropped);
+  const matches = eventMatchesCache[event.id] || [];
+  const standings = computeStandings(eventRegistrationsCache[event.id] || [], matches);
+  const currentRoundMatches = matches.filter(m => m.round_number === event.current_round);
+  const roundComplete = event.current_round > 0 && currentRoundMatches.length > 0 && currentRoundMatches.every(m => m.result);
+  const style = eventGameStyle(event.game);
+
+  container.innerHTML = `
+  <div class="panel" style="margin-bottom:14px;position:relative;overflow:hidden;background:linear-gradient(135deg, color-mix(in srgb, ${style.color} 12%, var(--surf)), var(--surf))">
+    <div style="position:absolute;right:-10px;top:-18px;font-size:110px;line-height:1;opacity:.09;pointer-events:none">${style.icon}</div>
+    <div class="ph"><button class="hbtn" style="min-height:28px;padding:4px 10px;font-size:9px" onclick="closeEventDetail()">← ALL EVENTS</button>${eventStatusPill(event.status)}</div>
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px;position:relative">
+      <div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <span style="font-size:30px">${style.icon}</span>
+          <div style="font-family:'Orbitron',monospace;font-size:19px;color:var(--text)">${escHtml(event.name)}</div>
+        </div>
+        <div style="font-family:var(--font-mono);font-size:11px;color:var(--dim);margin-top:6px">${escHtml(event.game)}${event.format ? ' · ' + escHtml(event.format) : ''}${event.event_date ? ' · ' + escHtml(event.event_date) : ''} · <span style="color:${Number(event.entry_fee||0) > 0 ? 'var(--gold)' : 'var(--dim)'}">${Number(event.entry_fee||0) > 0 ? '$' + Number(event.entry_fee).toFixed(2) + ' entry' : 'FREE entry'}</span>${event.max_players ? ' · max ' + event.max_players : ''}</div>
+        ${roundProgressStepper(event)}
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        ${event.status !== 'completed' && event.status !== 'cancelled' ? `<button class="hbtn danger" onclick="endEvent('${escHtml(event.id)}')">END EVENT</button>` : ''}
+      </div>
+    </div>
+  </div>
+  <div class="two">
+    <div class="panel">
+      <div class="ph">👥 PLAYERS <span style="font-size:9px;color:var(--dim)">${registrations.length}${event.max_players ? ' / ' + event.max_players : ''}</span></div>
+      ${event.status === 'upcoming' ? `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+        <input class="tsi" id="event-reg-name" placeholder="Player name" style="flex:1;min-width:140px;margin-bottom:0">
+        <input class="tsi" id="event-reg-contact" placeholder="Phone or email (optional)" style="flex:1;min-width:140px;margin-bottom:0">
+        <button class="hbtn" onclick="addEventRegistration()">ADD PLAYER</button>
+      </div>` : ''}
+      <div style="display:grid;gap:6px">
+        ${registrations.length ? registrations.map(r => `<div style="border:1px solid var(--border);background:var(--surf2);border-radius:7px;padding:8px;display:flex;justify-content:space-between;align-items:center;gap:8px">
+          <div style="display:flex;align-items:center;gap:9px;min-width:0">
+            ${playerAvatar(r.player_name)}
+            <div style="min-width:0"><b style="color:var(--text)">${escHtml(r.player_name)}</b>${r.contact ? `<div style="font-family:var(--font-mono);font-size:9px;color:var(--dim)">${escHtml(r.contact)}</div>` : ''}</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+            ${r.paid ? '<span class="data-pill good">✓ PAID</span>' : (Number(event.entry_fee||0) > 0 ? `<button class="hbtn" style="min-height:28px;padding:4px 8px;font-size:9px;background:rgba(255,209,102,.1);border-color:rgba(255,209,102,.35);color:var(--gold)" onclick="chargeEventEntryFee('${escHtml(r.id)}')">COLLECT $${Number(event.entry_fee).toFixed(2)}</button>` : '<span class="data-pill">FREE</span>')}
+            ${event.status === 'upcoming' ? `<button class="hbtn danger" style="min-height:28px;padding:4px 8px;font-size:9px" onclick="removeEventRegistration('${escHtml(r.id)}')">REMOVE</button>` : `<button class="hbtn" style="min-height:28px;padding:4px 8px;font-size:9px;color:var(--red)" onclick="dropEventRegistration('${escHtml(r.id)}')">DROP</button>`}
+          </div>
+        </div>`).join('') : '<div style="padding:10px;border:1px dashed var(--border);border-radius:8px;text-align:center;color:var(--dim);font-family:var(--font-mono);font-size:11px">No players registered yet</div>'}
+      </div>
+    </div>
+    <div class="panel">
+      <div class="ph">🏅 STANDINGS</div>
+      ${standings.length ? `<div style="overflow-x:auto"><table style="width:100%;font-family:var(--font-mono);font-size:11px"><tr style="color:var(--dim);font-size:9px;letter-spacing:1px"><th style="text-align:left;padding:4px">#</th><th style="text-align:left;padding:4px">Player</th><th style="padding:4px">Pts</th><th style="padding:4px">W-L-D</th><th style="padding:4px">OMW%</th></tr>
+        ${standings.map((s,i) => {
+          const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : (i+1);
+          const rowBg = i === 0 ? 'background:rgba(255,209,102,.07)' : i < 3 ? 'background:rgba(255,255,255,.02)' : '';
+          return `<tr style="${rowBg}"><td style="padding:6px 4px;font-size:14px">${medal}</td><td style="padding:6px 4px"><b style="color:${i===0?'var(--gold)':'var(--text)'}">${escHtml(s.registration.player_name)}</b>${s.registration.dropped ? ' <span style="color:var(--dim)">(dropped)</span>' : ''}</td><td style="padding:6px 4px;text-align:center"><b>${s.points}</b></td><td style="padding:6px 4px;text-align:center;color:var(--dim)">${s.wins}-${s.losses}-${s.draws}</td><td style="padding:6px 4px;text-align:center;color:var(--dim)">${(s.omw*100).toFixed(0)}%</td></tr>`;
+        }).join('')}
+      </table></div>` : '<div style="padding:10px;border:1px dashed var(--border);border-radius:8px;text-align:center;color:var(--dim);font-family:var(--font-mono);font-size:11px">No results yet</div>'}
+    </div>
+  </div>
+  <div class="panel" style="margin-top:14px">
+    <div class="ph">⚔️ ROUND ${event.current_round || 0}${event.round_count ? ' / ' + event.round_count : ''}</div>
+    <div style="margin-bottom:10px">
+      ${event.current_round === 0
+        ? (event.status !== 'completed' ? `<button class="hbtn" style="background:rgba(0,255,179,.14);border-color:rgba(0,255,179,.4)" onclick="startNextRound('${escHtml(event.id)}')" ${registrations.length < 2 ? 'disabled' : ''}>🎲 START ROUND 1</button>` : '')
+        : roundComplete && event.status !== 'completed'
+          ? `<button class="hbtn" style="background:rgba(0,255,179,.14);border-color:rgba(0,255,179,.4)" onclick="startNextRound('${escHtml(event.id)}')">▶ START ROUND ${event.current_round + 1}</button>`
+          : event.status !== 'completed' ? '<div style="font-family:var(--font-mono);font-size:10px;color:var(--dim)">Report all match results to start the next round</div>' : ''}
+    </div>
+    <div style="display:grid;gap:8px">
+      ${currentRoundMatches.length ? currentRoundMatches.map((m,i) => renderMatchRow(m, i, eventRegistrationsCache[event.id] || [])).join('') : '<div style="padding:10px;border:1px dashed var(--border);border-radius:8px;text-align:center;color:var(--dim);font-family:var(--font-mono);font-size:11px">No round in progress</div>'}
+    </div>
+  </div>`;
+}
+
+function playerNameById(registrations, id){
+  return registrations.find(r => r.id === id)?.player_name || 'Unknown';
+}
+
+function renderMatchRow(match, idx, registrations){
+  const p1 = playerNameById(registrations, match.player1_registration_id);
+  const p2 = match.player2_registration_id ? playerNameById(registrations, match.player2_registration_id) : null;
+  if(!p2) return `<div style="border:1px solid var(--border);background:var(--surf2);border-radius:8px;padding:10px 12px;display:flex;align-items:center;gap:10px;font-family:var(--font-mono);font-size:11px">
+    <span class="data-pill" style="margin:0">TABLE ${idx+1}</span>${playerAvatar(p1,26)}<b style="color:var(--text)">${escHtml(p1)}</b><span style="color:var(--gold);margin-left:auto">🎟 BYE</span>
+  </div>`;
+  const p1Won = match.result === 'p1', p2Won = match.result === 'p2', draw = match.result === 'draw';
+  return `<div style="border:1px solid var(--border);background:var(--surf2);border-radius:8px;padding:10px 12px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:${match.result ? '0' : '10px'}">
+      <span class="data-pill" style="margin:0">TABLE ${idx+1}</span>
+      ${match.result ? `<span class="data-pill good" style="margin:0">${draw ? '🤝 DRAW' : '🏆 ' + escHtml(p1Won ? p1 : p2) + ' WINS'}</span>` : ''}
+    </div>
+    <div style="display:flex;align-items:center;justify-content:center;gap:14px;flex-wrap:wrap">
+      <div style="display:flex;align-items:center;gap:8px;${p1Won ? 'filter:none' : match.result ? 'opacity:.5' : ''}">${playerAvatar(p1,32)}<b style="color:${p1Won?'var(--g)':'var(--text)'};font-size:13px">${escHtml(p1)}</b></div>
+      <span style="font-family:'Orbitron',monospace;font-size:11px;color:var(--dim);letter-spacing:1px">VS</span>
+      <div style="display:flex;align-items:center;gap:8px;${p2Won ? 'filter:none' : match.result ? 'opacity:.5' : ''}">${playerAvatar(p2,32)}<b style="color:${p2Won?'var(--g)':'var(--text)'};font-size:13px">${escHtml(p2)}</b></div>
+    </div>
+    ${!match.result ? `<div style="display:flex;gap:6px;justify-content:center;margin-top:10px">
+      <button class="hbtn" style="min-height:30px;padding:5px 10px;font-size:9px" onclick="reportMatchResult('${escHtml(match.id)}','p1')">${escHtml(p1)} WINS</button>
+      <button class="hbtn" style="min-height:30px;padding:5px 10px;font-size:9px;color:var(--dim)" onclick="reportMatchResult('${escHtml(match.id)}','draw')">DRAW</button>
+      <button class="hbtn" style="min-height:30px;padding:5px 10px;font-size:9px" onclick="reportMatchResult('${escHtml(match.id)}','p2')">${escHtml(p2)} WINS</button>
+    </div>` : ''}
+  </div>`;
+}
+
+async function addEventRegistration(){
+  const name = document.getElementById('event-reg-name')?.value.trim();
+  const contact = document.getElementById('event-reg-contact')?.value.trim() || '';
+  if(!name) return toast_dash('Enter a player name');
+  const event = eventsCache.find(e => e.id === activeEventId);
+  if(!event) return;
+  let customerId = null;
+  if(contact && !getAccountContext().isDemo) {
+    const customer = await upsertCustomer(name, contact, '', 'event');
+    customerId = customer?.id || null;
+  }
+  const record = { id:makeUuid('reg'), store_id:getActiveStoreId(), event_id:event.id, customer_id:customerId, player_name:name, contact, paid:false, paid_amount:0, dropped:false, created_at:new Date().toISOString() };
+  eventRegistrationsCache[event.id] = [...(eventRegistrationsCache[event.id] || []), record];
+  renderEventsPanel();
+  ['event-reg-name','event-reg-contact'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
+  if(getAccountContext().isDemo) return;
+  try {
+    const sb = getSupabaseClient();
+    if(!sb) throw new Error('Supabase unavailable');
+    const { error } = await sb.from('event_registrations').insert(record);
+    if(error) throw error;
+  } catch(e) {
+    enqueueSync('event-registration-upsert', 'Queued player registration', record, e.message);
+  }
+}
+
+async function removeEventRegistration(registrationId){
+  const event = eventsCache.find(e => e.id === activeEventId);
+  if(!event || !confirm('Remove this player?')) return;
+  eventRegistrationsCache[event.id] = (eventRegistrationsCache[event.id] || []).filter(r => r.id !== registrationId);
+  renderEventsPanel();
+  if(getAccountContext().isDemo) return;
+  const sb = getSupabaseClient();
+  if(sb) await sb.from('event_registrations').delete().eq('id', registrationId).eq('store_id', getActiveStoreId());
+}
+
+async function dropEventRegistration(registrationId){
+  const event = eventsCache.find(e => e.id === activeEventId);
+  if(!event) return;
+  const list = eventRegistrationsCache[event.id] || [];
+  const reg = list.find(r => r.id === registrationId);
+  if(!reg) return;
+  reg.dropped = true;
+  renderEventsPanel();
+  if(getAccountContext().isDemo) return;
+  try {
+    const sb = getSupabaseClient();
+    if(!sb) throw new Error('Supabase unavailable');
+    const { error } = await sb.from('event_registrations').update({ dropped:true }).eq('id', registrationId).eq('store_id', getActiveStoreId());
+    if(error) throw error;
+  } catch(e) {
+    enqueueOrReplaceSync('event-registration-upsert', registrationId, 'Queued player drop', reg, e.message);
+  }
+}
+
+// Entry fee is charged through the normal cart/checkout flow (same one_off +
+// metadata pattern gift cards use) so it's covered by cash drawer tracking,
+// sales reporting, and receipts like every other sale -- not a side-channel
+// payment. The registration is only marked paid once the sale actually
+// finalizes (see markEventEntryFeesPaidFromSaleLines), not when this button
+// is clicked.
+function chargeEventEntryFee(registrationId){
+  const event = eventsCache.find(e => e.id === activeEventId);
+  const reg = (eventRegistrationsCache[activeEventId] || []).find(r => r.id === registrationId);
+  if(!event || !reg) return;
+  const name = 'Entry Fee — ' + event.name + ' (' + reg.player_name + ')';
+  addSaleItemToCart({ name, category:'Event Entry' }, {
+    sourceType:'one_off',
+    name,
+    category:'Event Entry',
+    unitPrice:Number(event.entry_fee || 0),
+    costBasis:0,
+    quantity:1,
+    taxable:false,
+    metadata:{ eventEntryFee:true, eventId:event.id, registrationId:reg.id },
+    undoLabel:'event entry fee add to cart'
+  });
+  toast_dash('Added entry fee to cart — complete payment at checkout');
+  switchTab('display');
+}
+
+async function markEventEntryFeesPaidFromSaleLines(bundle){
+  const entryLines = (bundle.saleLines || []).filter(l => l.metadata?.eventEntryFee && l.metadata?.registrationId);
+  if(!entryLines.length) return;
+  for(const line of entryLines) {
+    const { eventId, registrationId } = line.metadata;
+    const list = eventRegistrationsCache[eventId];
+    const reg = list?.find(r => r.id === registrationId);
+    if(reg) { reg.paid = true; reg.paid_amount = Number(line.unit_price || 0); reg.sale_id = bundle.sale.id; }
+    if(getAccountContext().isDemo) continue;
+    try {
+      const sb = getSupabaseClient();
+      if(!sb) throw new Error('Supabase unavailable');
+      const { error } = await sb.from('event_registrations').update({ paid:true, paid_amount:Number(line.unit_price || 0), sale_id:bundle.sale.id }).eq('id', registrationId).eq('store_id', bundle.sale.store_id);
+      if(error) throw error;
+    } catch(e) {
+      enqueueSync('event-entry-fee-paid', 'Queued event entry fee paid update', { registrationId, storeId:bundle.sale.store_id, paidAmount:Number(line.unit_price || 0), saleId:bundle.sale.id }, e.message);
+    }
+  }
+  if(activeEventId && entryLines.some(l => l.metadata.eventId === activeEventId)) renderEventsPanel();
+}
+
+async function endEvent(eventId){
+  if(!confirm('End this event? Standings will be final.')) return;
+  const event = eventsCache.find(e => e.id === eventId);
+  if(!event) return;
+  event.status = 'completed';
+  renderEventsPanel();
+  if(getAccountContext().isDemo) return;
+  try {
+    const sb = getSupabaseClient();
+    if(!sb) throw new Error('Supabase unavailable');
+    const { error } = await sb.from('events').update({ status:'completed', updated_at:new Date().toISOString() }).eq('id', eventId).eq('store_id', getActiveStoreId());
+    if(error) throw error;
+  } catch(e) {
+    enqueueOrReplaceSync('event-upsert', eventId, 'Queued event end', event, e.message);
+  }
+}
+
+// Swiss pairing: score-group descending, avoid repeat opponents where
+// possible, assign a bye to the lowest-ranked player who hasn't had one yet
+// when the field is odd. Not a perfect maximum-matching solver -- a simple
+// greedy pass, which is what shop-level pairing tools actually do; a perfect
+// solver is not worth the complexity at this scale (dozens of players).
+function computeSwissPairings(players, previousMatches){
+  const playedSet = new Set();
+  previousMatches.forEach(m => {
+    if(m.player2_registration_id) {
+      playedSet.add(m.player1_registration_id + '|' + m.player2_registration_id);
+      playedSet.add(m.player2_registration_id + '|' + m.player1_registration_id);
+    }
+  });
+  const hasHadBye = new Set(previousMatches.filter(m => !m.player2_registration_id).map(m => m.player1_registration_id));
+  const havePlayed = (a, b) => playedSet.has(a + '|' + b);
+
+  const pool = players.slice();
+  const pairs = [];
+  let byePlayer = null;
+
+  if(pool.length % 2 === 1) {
+    let idx = -1;
+    for(let i = pool.length - 1; i >= 0; i--) { if(!hasHadBye.has(pool[i].id)) { idx = i; break; } }
+    if(idx === -1) idx = pool.length - 1;
+    byePlayer = pool[idx];
+    pool.splice(idx, 1);
+  }
+
+  while(pool.length) {
+    const a = pool.shift();
+    let matchIdx = pool.findIndex(b => !havePlayed(a.id, b.id));
+    if(matchIdx === -1) matchIdx = 0; // everyone left has already played this player -- a repeat is rare and unavoidable in a small field
+    const b = pool.splice(matchIdx, 1)[0];
+    pairs.push({ player1:a, player2:b });
+  }
+
+  if(byePlayer) pairs.push({ player1:byePlayer, player2:null });
+  return pairs;
+}
+
+function shuffleArray(arr){
+  const a = arr.slice();
+  for(let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+async function startNextRound(eventId){
+  const event = eventsCache.find(e => e.id === eventId);
+  if(!event) return;
+  const registrations = (eventRegistrationsCache[eventId] || []).filter(r => !r.dropped);
+  if(registrations.length < 2) return toast_dash('Need at least 2 players to start a round');
+  const matches = eventMatchesCache[eventId] || [];
+  const nextRound = (event.current_round || 0) + 1;
+  const standings = computeStandings(eventRegistrationsCache[eventId] || [], matches);
+  const seeded = nextRound === 1
+    ? shuffleArray(registrations).map(r => ({ id:r.id }))
+    : standings.filter(s => !s.registration.dropped).map(s => ({ id:s.registration.id }));
+  const pairs = computeSwissPairings(seeded, matches);
+  const newMatches = pairs.map((p, i) => ({
+    id:makeUuid('match'), store_id:getActiveStoreId(), event_id:eventId, round_number:nextRound, table_number:i + 1,
+    player1_registration_id:p.player1.id, player2_registration_id:p.player2?.id || null,
+    result:p.player2 ? null : 'bye', player1_game_wins:0, player2_game_wins:0,
+    reported_at:p.player2 ? null : new Date().toISOString(), created_at:new Date().toISOString()
+  }));
+  eventMatchesCache[eventId] = [...matches, ...newMatches];
+  event.current_round = nextRound;
+  event.status = 'in_progress';
+  renderEventsPanel();
+  if(getAccountContext().isDemo) return;
+  try {
+    const sb = getSupabaseClient();
+    if(!sb) throw new Error('Supabase unavailable');
+    const { error: matchErr } = await sb.from('event_matches').insert(newMatches);
+    if(matchErr) throw matchErr;
+    const { error: eventErr } = await sb.from('events').update({ current_round:nextRound, status:'in_progress', updated_at:new Date().toISOString() }).eq('id', eventId).eq('store_id', getActiveStoreId());
+    if(eventErr) throw eventErr;
+  } catch(e) {
+    toast_dash('Round saved locally — cloud sync failed: ' + e.message);
+    enqueueSync('event-round-start', 'Queued round pairings', { eventId, storeId:getActiveStoreId(), round:nextRound, matches:newMatches }, e.message);
+  }
+}
+
+async function reportMatchResult(matchId, result){
+  const event = eventsCache.find(e => e.id === activeEventId);
+  if(!event) return;
+  const matches = eventMatchesCache[event.id] || [];
+  const match = matches.find(m => m.id === matchId);
+  if(!match) return;
+  match.result = result;
+  match.reported_at = new Date().toISOString();
+  renderEventsPanel();
+  if(getAccountContext().isDemo) return;
+  try {
+    const sb = getSupabaseClient();
+    if(!sb) throw new Error('Supabase unavailable');
+    const { error } = await sb.from('event_matches').update({ result, reported_at:match.reported_at }).eq('id', matchId).eq('store_id', getActiveStoreId());
+    if(error) throw error;
+  } catch(e) {
+    enqueueOrReplaceSync('event-match-result', matchId, 'Queued match result', match, e.message);
+  }
+}
+
+// Standings: 3/1/0 scoring, opponents' match-win% tiebreaker with the
+// standard 33% floor (prevents one very-low performer from unfairly tanking
+// their opponents' tiebreaker), same convention as real Swiss tournament
+// rules (DCI/WOTC-style).
+function computeStandings(registrations, matches){
+  const stats = {};
+  registrations.forEach(r => { stats[r.id] = { registration:r, points:0, wins:0, losses:0, draws:0, byes:0, matchesPlayed:0, gameWins:0, gameLosses:0 }; });
+  matches.filter(m => m.result).forEach(m => {
+    const s1 = stats[m.player1_registration_id];
+    if(!s1) return;
+    if(!m.player2_registration_id) { s1.points += 3; s1.wins += 1; s1.byes += 1; return; }
+    const s2 = stats[m.player2_registration_id];
+    if(!s2) return;
+    s1.matchesPlayed += 1; s2.matchesPlayed += 1;
+    s1.gameWins += Number(m.player1_game_wins || 0); s1.gameLosses += Number(m.player2_game_wins || 0);
+    s2.gameWins += Number(m.player2_game_wins || 0); s2.gameLosses += Number(m.player1_game_wins || 0);
+    if(m.result === 'p1') { s1.points += 3; s1.wins++; s2.losses++; }
+    else if(m.result === 'p2') { s2.points += 3; s2.wins++; s1.losses++; }
+    else if(m.result === 'draw') { s1.points += 1; s2.points += 1; s1.draws++; s2.draws++; }
+  });
+  const opponentsOf = {};
+  registrations.forEach(r => { opponentsOf[r.id] = []; });
+  matches.filter(m => m.result && m.player2_registration_id).forEach(m => {
+    opponentsOf[m.player1_registration_id]?.push(m.player2_registration_id);
+    opponentsOf[m.player2_registration_id]?.push(m.player1_registration_id);
+  });
+  const matchWinPct = id => {
+    const s = stats[id];
+    if(!s || !s.matchesPlayed) return 0;
+    return Math.max(0.33, (s.wins + s.draws * 0.5) / s.matchesPlayed);
+  };
+  Object.values(stats).forEach(s => {
+    const opps = opponentsOf[s.registration.id] || [];
+    s.omw = opps.length ? opps.reduce((a, id) => a + matchWinPct(id), 0) / opps.length : 0;
+  });
+  return Object.values(stats).sort((a, b) => b.points - a.points || b.omw - a.omw || b.gameWins - a.gameWins);
 }
 
 // Phase 4 reroute: the Inventory "SELL" button no longer finalizes a sale by
@@ -17403,451 +18275,12 @@ async function renderResearchQueue(){
       </div>
       <div class="research-queue-actions">
         <button class="ra" onclick="openScanInResearch('${id}')">Open</button>
-        <button class="ra" onclick="sendScanToAuthCheck('${id}')">Auth</button>
         <button class="ra" onclick="addResearchQueueItemToBuy('${id}')">Buy</button>
         <button class="ra" onclick="addResearchQueueItemToCart('${id}')">Cart</button>
         <button class="ra" onclick="markResearchScanNeedsReview('${id}')">Review</button>
       </div>
     </div>`;
   }).join('');
-}
-
-let activeAuthItemId = '';
-const AUTH_REQUIRED_PHOTOS = ['front','back'];
-const AUTH_CONDITIONAL_PHOTOS = {
-  holo_angle:'Foil / holo angle',
-  texture_closeup:'Texture close-up',
-  corner_macro_top_left:'Corner macro',
-  surface_macro_art_box:'Surface / print close-up',
-  optional_light_test:'Optional light test',
-};
-const AUTH_WATCHLIST_DEFAULTS = [
-  { name:'Umbreon VMAX Alt Art', set:'Evolving Skies', cardNumber:'215/203', riskReason:'Common high-value counterfeit target', suspicionWeight:18, requiresManagerReview:true },
-  { name:'Charizard SIR', set:'', cardNumber:'', riskReason:'High-value modern hit family', suspicionWeight:14, requiresManagerReview:true },
-  { name:'Base Set Charizard', set:'Base Set', cardNumber:'4/102', riskReason:'High-value vintage counterfeit target', suspicionWeight:20, requiresManagerReview:true },
-  { name:'Force of Will', set:'', cardNumber:'', riskReason:'High-value MTG staple', suspicionWeight:18, requiresManagerReview:true },
-  { name:'Mana Crypt', set:'', cardNumber:'', riskReason:'High-value MTG staple', suspicionWeight:16, requiresManagerReview:true },
-  { name:'Dual Lands', set:'', cardNumber:'', riskReason:'High-value vintage MTG family', suspicionWeight:20, requiresManagerReview:true },
-];
-
-function getAuthWatchlist(){
-  const saved = safeLocalJson('auth_watchlist_v1', null);
-  return Array.isArray(saved) && saved.length ? saved : AUTH_WATCHLIST_DEFAULTS;
-}
-
-function getDealerItem(itemId){
-  return getDealerItems().itemsById?.[itemId] || null;
-}
-
-function itemAuthCategory(item = {}){
-  const txt = [
-    item.identity?.category,
-    item.identity?.title,
-    item.identity?.setName,
-    item.research?.source,
-    item.sourcePayload?.category,
-    item.sourcePayload?.game,
-  ].join(' ').toLowerCase();
-  if(txt.includes('pokemon') || txt.includes('pokémon')) return 'Pokemon';
-  if(txt.includes('magic') || txt.includes('mtg')) return 'Magic: The Gathering';
-  if(txt.includes('tcg')) return 'Trading Card';
-  if(txt.includes('slab') || txt.includes('graded')) return 'Slab';
-  if(txt.includes('comic')) return 'Comic';
-  return item.identity?.category || 'Collectibles';
-}
-
-function authCategorySupported(item){
-  const cat = itemAuthCategory(item).toLowerCase();
-  return cat.includes('pokemon') || cat.includes('magic') || cat.includes('trading card') || cat.includes('slab');
-}
-
-function getItemPhotoMap(item = {}, state = getDealerItems()){
-  const map = {};
-  (item.images || []).forEach(idOrUrl => {
-    const p = state.photosById?.[idOrUrl];
-    if(p?.captureType) map[p.captureType] = p;
-  });
-  Object.values(state.photosById || {}).forEach(p => {
-    if(p.itemId === item.itemId && p.captureType) map[p.captureType] = p;
-  });
-  return map;
-}
-
-function authPhotoChecklistForItem(item = {}, state = getDealerItems()){
-  const photos = getItemPhotoMap(item, state);
-  const text = [item.identity?.title, item.identity?.setName, item.identity?.printing, item.sourcePayload?.variant, item.sourcePayload?.rarity].join(' ').toLowerCase();
-  const highValue = getAuthWatchlist().some(w => authWatchlistMatch(item, w));
-  const wantsTexture = /sir|special illustration|alt art|secret|rainbow|textured|moonbreon|charizard|vmax|rare|mythic/.test(text) || highValue;
-  const wanted = [
-    ...AUTH_REQUIRED_PHOTOS.map(type => ({ type, label:type === 'front' ? 'Front photo' : 'Back photo', required:true })),
-    ...[
-      { type:'holo_angle', label:'Holo / finish angle', required:false },
-      { type:'texture_closeup', label:'Texture close-up', required:false },
-      { type:'corner_macro_top_left', label:'Corner macro', required:false },
-      { type:'surface_macro_art_box', label:'Surface / print close-up', required:false },
-      { type:'optional_light_test', label:'Optional light test', required:false },
-    ].filter(x => wantsTexture || ['corner_macro_top_left','optional_light_test'].includes(x.type)),
-  ];
-  return wanted.map(x => ({ ...x, captured:!!photos[x.type], qualityScore:Number(photos[x.type]?.qualityScore || 0), photo:photos[x.type] || null }));
-}
-
-function authWatchlistMatch(item = {}, watch = {}){
-  const title = String(item.identity?.title || '').toLowerCase();
-  const set = String(item.identity?.setName || '').toLowerCase();
-  const num = String(item.identity?.cardNumber || '').toLowerCase();
-  const wName = String(watch.name || '').toLowerCase();
-  if(!wName) return false;
-  const nameHit = title.includes(wName) || wName.split(/\s+/).filter(Boolean).some(t => t.length > 4 && title.includes(t));
-  const setHit = !watch.set || set.includes(String(watch.set).toLowerCase());
-  const numHit = !watch.cardNumber || num === String(watch.cardNumber).toLowerCase();
-  return nameHit && setHit && numHit;
-}
-
-function analyzeAuthRisk(item = {}){
-  const state = getDealerItems();
-  const checklist = authPhotoChecklistForItem(item, state);
-  const missingRequired = checklist.filter(x => x.required && !x.captured).map(x => x.label);
-  const missingOptional = checklist.filter(x => !x.required && !x.captured).map(x => x.label);
-  const poorQuality = checklist.filter(x => x.captured && x.qualityScore && x.qualityScore < 60).map(x => x.label + ' low quality');
-  const watchHits = getAuthWatchlist().filter(w => authWatchlistMatch(item, w));
-  const variantIntel = item.variant?.intelligence || getVariantIntelligence(item.sourcePayload || {});
-  const category = itemAuthCategory(item);
-  const supported = authCategorySupported(item);
-  const matchingSignals = [];
-  const redFlags = [];
-  const missingChecks = [...missingRequired, ...poorQuality];
-  if(missingOptional.length) missingChecks.push(...missingOptional.map(x => x + ' missing'));
-  if(item.identity?.title) matchingSignals.push('Selected identity is attached to the item record.');
-  if(item.identity?.setName || item.identity?.cardNumber) matchingSignals.push('Set/card number metadata is available for comparison.');
-  if(checklist.some(x => x.captured)) matchingSignals.push('Candidate photos are saved with capture labels.');
-  if(item.research?.selectedVariant || item.research?.sourceProductId) matchingSignals.push('Research source data is linked.');
-  (variantIntel.signals || []).forEach(s => matchingSignals.push(s));
-  if(!supported) redFlags.push('Category is outside the current Pokemon / MTG auth profile.');
-  if(watchHits.length) redFlags.push('High-risk watchlist hit: ' + watchHits.map(w => w.name).join(', '));
-  (variantIntel.warnings || []).forEach(w => redFlags.push(w));
-  if(poorQuality.length) redFlags.push('One or more captured photos are too low quality for confident review.');
-  let confidence = 82;
-  confidence -= missingRequired.length * 22;
-  confidence -= missingOptional.length * 6;
-  confidence -= poorQuality.length * 12;
-  confidence -= watchHits.reduce((n,w) => n + Number(w.suspicionWeight || 10), 0);
-  confidence -= (variantIntel.warnings || []).length * 14;
-  if(!supported) confidence -= 24;
-  confidence = Math.max(8, Math.min(92, Math.round(confidence)));
-  let riskLevel = 'Low Risk';
-  if(!supported || missingRequired.length) riskLevel = 'Manual Review Required';
-  else if(watchHits.length && (missingOptional.length || poorQuality.length)) riskLevel = 'Manual Review Required';
-  else if(watchHits.length || redFlags.length || confidence < 68) riskLevel = 'Medium Risk';
-  if(confidence < 35 && redFlags.length > 1) riskLevel = 'High Risk';
-  const slabStatus = item.auth?.slabStatus || { grader:item.sourcePayload?.grader || '', certNumber:item.sourcePayload?.cert_number || item.sourcePayload?.certNumber || '', status:item.sourcePayload?.slabVerified ? 'Verified lookup attached' : 'Not verified in this auth check' };
-  const referenceSourcesUsed = [
-    category === 'Pokemon' ? 'Official Pokemon metadata / reference when configured' : '',
-    category === 'Magic: The Gathering' ? 'Gatherer / official Magic metadata when configured' : '',
-    'Store-owned authentic photo library when available',
-  ].filter(Boolean);
-  const would = riskLevel === 'High Risk' ? 'No' : riskLevel === 'Manual Review Required' ? 'Maybe' : riskLevel === 'Medium Risk' ? 'Maybe' : 'Yes';
-  const recommendedNextAction = riskLevel === 'Low Risk'
-    ? 'Proceed only after normal condition and price review.'
-    : riskLevel === 'Medium Risk'
-      ? 'Capture missing evidence or have a manager review before buying high value items.'
-      : riskLevel === 'High Risk'
-        ? 'Do not buy without manager override and documented manual review.'
-        : 'Capture required front/back evidence and complete manual review.';
-  return {
-    authCheckId:'auth_' + Date.now() + '_' + Math.random().toString(36).slice(2,6),
-    itemId:item.itemId,
-    storeId:getActiveStoreId(),
-    createdAt:new Date().toISOString(),
-    riskLevel,
-    confidencePercent:confidence,
-    matchingSignals,
-    redFlags,
-    missingChecks,
-    referenceSourcesUsed,
-    slabStatus,
-    watchlistHits:watchHits.map(w => ({ name:w.name, reason:w.riskReason || '', requiresManagerReview:!!w.requiresManagerReview })),
-    variantConfidence:variantIntel.confidence || 'unknown',
-    variantWarnings:variantIntel.warnings || [],
-    recommendedNextAction,
-    wouldYouBuyThis:{ answer:would, reason: would === 'Yes' ? 'Current evidence is consistent enough for normal dealer review.' : 'Risk, missing evidence, or watchlist status keeps this from a clean buy recommendation.' },
-  };
-}
-
-function runAuthCheck(itemId){
-  const state = getDealerItems();
-  const item = state.itemsById?.[itemId];
-  if(!item) return toast_dash('Auth item not found');
-  const result = analyzeAuthRisk(item);
-  state.authChecksById[result.authCheckId] = result;
-  item.auth = {
-    ...(item.auth || {}),
-    latestAuthCheckId:result.authCheckId,
-    riskLevel:result.riskLevel,
-    confidencePercent:result.confidencePercent,
-    redFlags:result.redFlags,
-    missingChecks:result.missingChecks,
-    watchlistHits:result.watchlistHits.map(w => w.name),
-    slabStatus:result.slabStatus,
-  };
-  item.workflow = item.workflow || {};
-  item.workflow.stage = 'auth_reviewed';
-  auditItemEvent(item, 'auth_check_run', { riskLevel:result.riskLevel, confidencePercent:result.confidencePercent });
-  state.itemsById[itemId] = item;
-  saveDealerItems(state);
-  logOpsEvent('auth_check_run', 'Auth risk check: ' + (item.identity?.title || 'item') + ' - ' + result.riskLevel, { itemId, riskLevel:result.riskLevel, confidence:result.confidencePercent });
-  activeAuthItemId = itemId;
-  renderAuthCheckWorkbench(itemId);
-  toast_dash('Auth check complete: ' + result.riskLevel);
-}
-
-function authRiskClass(level = ''){
-  const l = String(level).toLowerCase();
-  if(l.includes('low')) return 'low';
-  if(l.includes('medium')) return 'medium';
-  if(l.includes('high')) return 'high';
-  return 'manual';
-}
-
-function renderAuthChecklist(item){
-  if(!item) return '<div style="color:var(--dim)">Select an item to see required captures.</div>';
-  const checklist = authPhotoChecklistForItem(item);
-  return checklist.map(x => `<div class="auth-check-row">
-    <div>
-      <div style="color:${x.captured?'var(--g)':x.required?'var(--gold)':'var(--dim)'};font-weight:800">${x.captured?'DONE':'MISSING'} - ${escHtml(x.label)}</div>
-      <div style="font-size:9px;color:var(--dim)">${x.required?'Required evidence':'Conditional evidence'}${x.qualityScore?' / quality '+x.qualityScore+'%':''}</div>
-    </div>
-    <button class="ra" onclick="captureAuthPhoto('${item.itemId}','${x.type}')">${x.captured?'Replace':'Capture'}</button>
-  </div>`).join('');
-}
-
-function latestAuthResult(item, state = getDealerItems()){
-  return item?.auth?.latestAuthCheckId ? state.authChecksById?.[item.auth.latestAuthCheckId] || null : null;
-}
-
-function renderAuthCheckWorkbench(selectedItemId = activeAuthItemId){
-  const state = getDealerItems();
-  const queue = (state.queuesById?.authQueue || []).filter(id => state.itemsById?.[id]);
-  activeAuthItemId = selectedItemId && state.itemsById?.[selectedItemId] ? selectedItemId : (queue[0] || '');
-  const item = activeAuthItemId ? state.itemsById[activeAuthItemId] : null;
-  const queueEl = document.getElementById('auth-queue-list');
-  const countEl = document.getElementById('auth-queue-count');
-  const checklistEl = document.getElementById('auth-photo-checklist');
-  const workspaceEl = document.getElementById('auth-workspace-body');
-  const decisionEl = document.getElementById('auth-decision-body');
-  if(countEl) countEl.textContent = queue.length ? queue.length + ' queued' : '0 queued';
-  if(queueEl) queueEl.innerHTML = queue.length ? queue.map(id => {
-    const qItem = state.itemsById[id];
-    const risk = qItem.auth?.riskLevel || 'Not checked';
-    const on = id === activeAuthItemId;
-    return `<div class="auth-check-row" role="button" tabindex="0" style="width:100%;text-align:left;cursor:pointer;${on?'border-color:rgba(0,255,179,.42);background:rgba(0,255,179,.06)':''}" onclick="openItemInAuthCheck('${id}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openItemInAuthCheck('${id}')}">
-      <div>
-        <div style="color:var(--text);font-weight:800">${escHtml(qItem.identity?.title || 'Unidentified item')}</div>
-        <div style="font-size:9px;color:var(--dim)">${escHtml([itemAuthCategory(qItem), qItem.identity?.setName, qItem.identity?.cardNumber ? '#'+qItem.identity.cardNumber : ''].filter(Boolean).join(' / '))}</div>
-      </div>
-      <span class="qpl-badge ${authRiskClass(risk)==='low'?'good':authRiskClass(risk)==='high'?'bad':'warn'}">${escHtml(risk)}</span>
-    </div>`;
-  }).join('') : '<div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);padding:12px;border:1px dashed var(--border);border-radius:8px;text-align:center">No auth queue items yet.</div>';
-  if(checklistEl) checklistEl.innerHTML = renderAuthChecklist(item);
-  if(!item) {
-    if(workspaceEl) workspaceEl.innerHTML = 'Choose an item from the Auth Queue, or send one here from Research.';
-    if(decisionEl) decisionEl.innerHTML = 'No item selected.';
-    return;
-  }
-  const result = latestAuthResult(item, state);
-  const firstImage = (item.images || []).map(id => state.photosById?.[id]?.url || id).find(Boolean) || '';
-  const history = (item.audit?.history || []).slice(0,8).map(h => `<div style="border-top:1px solid var(--border);padding:7px 0"><b style="color:var(--text)">${escHtml(h.type)}</b><br>${escHtml(new Date(h.ts).toLocaleString())}</div>`).join('');
-  if(workspaceEl) workspaceEl.innerHTML = `
-    <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;margin-bottom:12px;flex-wrap:wrap">
-      <div>
-        <div class="ph">ITEM WORKSPACE <span style="font-size:9px;color:var(--dim)">single item state</span></div>
-        <div style="font-family:'Orbitron',monospace;color:var(--text);font-size:18px;line-height:1.25">${escHtml(item.identity?.title || 'Unidentified item')}</div>
-        <div style="color:var(--dim);font-size:11px;margin-top:5px">${escHtml([itemAuthCategory(item), item.identity?.setName, item.identity?.cardNumber ? '#'+item.identity.cardNumber : '', item.identity?.printing, item.identity?.language].filter(Boolean).join(' / '))}</div>
-      </div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <button class="hbtn" onclick="runAuthCheck('${item.itemId}')">RUN AUTH CHECK</button>
-        <button class="hbtn" onclick="openItemInResearchFromAuth('${item.itemId}')">OPEN IN RESEARCH</button>
-      </div>
-    </div>
-    <div class="auth-compare">
-      <div class="auth-compare-pane">${firstImage ? `<img src="${escHtml(firstImage)}" alt="">` : '<div style="color:var(--dim);font-size:12px">No candidate image yet</div>'}<span class="auth-source-label">Your Card - user/store photo</span></div>
-      <div class="auth-compare-pane"><div style="padding:18px;text-align:center;color:var(--dim);font-size:12px;line-height:1.5">Official reference render, official cert image, or store-owned authentic photo can be attached here. No third-party scan library is scraped.</div><span class="auth-source-label">Reference source required</span></div>
-    </div>
-    <div style="margin-top:14px" class="panel">
-      <div class="ph">EVIDENCE TIMELINE</div>
-      ${history || '<div style="color:var(--dim)">No item history yet.</div>'}
-    </div>`;
-  const risk = result?.riskLevel || item.auth?.riskLevel || 'Manual Review Required';
-  const confidence = result?.confidencePercent ?? item.auth?.confidencePercent ?? 0;
-  if(decisionEl) decisionEl.innerHTML = `
-    <div class="auth-risk ${authRiskClass(risk)}">
-      <div style="font-family:'Orbitron',monospace;color:var(--text);font-size:18px">${escHtml(risk)}</div>
-      <div style="color:var(--dim);margin-top:5px">Confidence: ${Number(confidence || 0)}%</div>
-      <div style="color:var(--dim);margin-top:5px">Variant confidence: ${escHtml(result?.variantConfidence || item.variant?.intelligence?.confidence || 'unknown')} / Price confidence: ${escHtml(item.sourcePayload?.priceConfidence || item.pricing?.priceState || item.research?.priceState || 'unknown')}</div>
-    </div>
-    <div style="margin-top:12px">
-      <div class="ph" style="font-size:10px">WHY</div>
-      ${(result?.matchingSignals || []).map(x => `<div style="color:var(--g);margin-bottom:5px">+ ${escHtml(x)}</div>`).join('') || '<div style="color:var(--dim)">Run Auth Check to generate reasons.</div>'}
-      ${(result?.redFlags || item.auth?.redFlags || []).map(x => `<div style="color:var(--red);margin-bottom:5px">! ${escHtml(x)}</div>`).join('')}
-    </div>
-    <div style="margin-top:12px">
-      <div class="ph" style="font-size:10px">MISSING CHECKS</div>
-      ${(result?.missingChecks || item.auth?.missingChecks || []).map(x => `<div style="color:var(--gold);margin-bottom:5px">${escHtml(x)}</div>`).join('') || '<div style="color:var(--dim)">No missing checks recorded.</div>'}
-    </div>
-    <div style="margin-top:12px">
-      <div class="ph" style="font-size:10px">SLAB STATUS</div>
-      <div>${escHtml(result?.slabStatus?.status || item.auth?.slabStatus?.status || 'Not verified in this auth check')}</div>
-      <div style="color:var(--dim);margin-top:4px">PSA, CGC, and Beckett hooks are reserved for cert verification. Cert lookup is not market pricing.</div>
-    </div>
-    <div style="margin-top:12px">
-      <div class="ph" style="font-size:10px">WOULD YOU BUY THIS?</div>
-      <div style="font-family:'Orbitron',monospace;color:${result?.wouldYouBuyThis?.answer === 'Yes' ? 'var(--g)' : result?.wouldYouBuyThis?.answer === 'No' ? 'var(--red)' : 'var(--gold)'};font-size:16px">${escHtml(result?.wouldYouBuyThis?.answer || 'Maybe')}</div>
-      <div style="color:var(--dim);margin-top:5px">${escHtml(result?.wouldYouBuyThis?.reason || 'Run the auth check and review evidence before buying.')}</div>
-    </div>
-    <div style="display:grid;gap:8px;margin-top:14px">
-      <button class="hbtn buy" onclick="sendAuthItemToBuyOffer('${item.itemId}')">SEND TO BUY OFFER</button>
-      <button class="hbtn" onclick="sendAuthItemToInventoryDraft('${item.itemId}')">SEND TO INVENTORY DRAFT</button>
-      <button class="hbtn" style="color:var(--gold)" onclick="markAuthItemNeedsReview('${item.itemId}')">MARK NEEDS REVIEW</button>
-      <button class="hbtn" onclick="managerOverrideAuthItem('${item.itemId}')">MANAGER OVERRIDE</button>
-    </div>
-    <div style="margin-top:10px;color:var(--dim)">${escHtml(result?.recommendedNextAction || 'Capture front/back photos before relying on this result.')}</div>`;
-}
-
-function openItemInAuthCheck(itemId){
-  activeAuthItemId = itemId;
-  switchTab('authcheck');
-  renderAuthCheckWorkbench(itemId);
-}
-
-function captureAuthPhoto(itemId, captureType){
-  const state = getDealerItems();
-  const item = state.itemsById?.[itemId];
-  if(!item) return toast_dash('Auth item not found');
-  const url = prompt('Paste image URL for ' + captureType.replace(/_/g, ' ') + ' capture. Leave blank to record checklist placeholder.');
-  const q = Number(prompt('Quality score 1-100?', '85') || 85);
-  const photoId = 'photo_' + Date.now() + '_' + Math.random().toString(36).slice(2,5);
-  state.photosById[photoId] = { imageId:photoId, itemId, captureType, url:url || '', qualityScore:Math.max(1, Math.min(100, q || 85)), capturedAt:new Date().toISOString(), deviceSource:'dashboard', notes:'' };
-  item.images = [...new Set([...(item.images || []), photoId])];
-  auditItemEvent(item, 'auth_photo_captured', { captureType, qualityScore:state.photosById[photoId].qualityScore });
-  state.itemsById[itemId] = item;
-  saveDealerItems(state);
-  renderAuthCheckWorkbench(itemId);
-}
-
-async function findResearchScanById(scanId){
-  const queue = await readScanInbox();
-  const review = getResearchNeedsReviewQueue();
-  return queue.find(s => String(s.id || s.scanId || s._scanQueueId) === String(scanId))
-    || review.find(s => String(s.id || s.originalScanId || s.scanId) === String(scanId))
-    || null;
-}
-
-async function sendScanToAuthCheck(scanId){
-  const scan = await findResearchScanById(scanId);
-  if(!scan) return toast_dash('Research item not found');
-  const item = dealerItemFromScan(scan);
-  enqueueDealerItem(item.itemId, 'authQueue', 'auth_pending');
-  logOpsEvent('auth_queue_added', 'Sent scanner item to Auth Check: ' + (item.identity?.title || scan.name || 'scan'), { scanId, itemId:item.itemId });
-  openItemInAuthCheck(item.itemId);
-  toast_dash('Sent to Auth Check');
-}
-
-function qplItemToAuth(idx){
-  const r = applyQplSelectedVariant(qplResults[idx] || {});
-  if(!r?.name) return null;
-  const item = dealerItemFromResearchResult(r, 'research');
-  qplResults[idx].normalizedItemId = item.itemId;
-  enqueueDealerItem(item.itemId, 'authQueue', 'auth_pending');
-  return item;
-}
-
-
-
-function sendInventoryItemToAuthCheck(id){
-  const inv = all.find(x => String(x.id) === String(id));
-  if(!inv) return toast_dash('Inventory item not found');
-  const item = upsertDealerItem({
-    identity:{ category:inv.category || '', title:inv.name || 'Inventory item', setName:inv.set || inv.setName || '', cardNumber:inv.card_number || inv.cardNumber || '', printing:inv.printing || inv.variant || '', language:inv.language || 'English' },
-    images:[inv.imageUrl || inv.thumbnail || inv.img || ''].filter(Boolean),
-    research:{ source:inv.priceSource || inv.source || 'inventory', priceState:inv.market ? 'Inventory price' : 'No price', selectedVariant:null, market:Number(inv.market || 0), sourceProductId:inv.productId || inv.pricechartingProductId || '', sourceVariantId:inv.justtcgVariantId || inv.productConditionId || '' },
-    inventoryId:inv.id,
-    sourcePayload:inv,
-    workflow:{ stage:'auth_pending', queueMembership:['authQueue'] },
-  }, 'inventory_sent_to_auth');
-  enqueueDealerItem(item.itemId, 'authQueue', 'auth_pending');
-  logOpsEvent('auth_queue_added', 'Sent inventory item to Auth Check: ' + (inv.name || 'item'), { inventoryId:id, itemId:item.itemId });
-  openItemInAuthCheck(item.itemId);
-}
-
-
-function authBlocksDestination(itemId){
-  const item = getDealerItem(itemId);
-  if(!item) return false;
-  const risk = item.auth?.riskLevel || '';
-  return (risk === 'High Risk' || risk === 'Manual Review Required') && !item.auth?.managerOverride;
-}
-
-function managerOverrideAuthItem(itemId){
-  if(!requireManager()) {
-    toast_dash('Manager role required for auth override');
-    return false;
-  }
-  const reason = prompt('Manager override reason?');
-  if(!reason) return false;
-  const state = getDealerItems();
-  const item = state.itemsById?.[itemId];
-  if(!item) return false;
-  item.auth = item.auth || {};
-  item.auth.managerOverride = { reason, userId:getAuthSession()?.user?.id || 'local-user', at:new Date().toISOString(), riskLevel:item.auth.riskLevel || '' };
-  auditItemEvent(item, 'manager_auth_override', item.auth.managerOverride);
-  state.itemsById[itemId] = item;
-  saveDealerItems(state);
-  logOpsEvent('manager_auth_override', 'Manager override saved for Auth Check item: ' + (item.identity?.title || 'item'), { itemId, reason });
-  renderAuthCheckWorkbench(itemId);
-  toast_dash('Manager override saved');
-  return true;
-}
-
-function ensureAuthDestinationAllowed(itemId, destination){
-  if(!authBlocksDestination(itemId)) return true;
-  const item = getDealerItem(itemId);
-  const risk = item?.auth?.riskLevel || 'Manual Review Required';
-  if(!confirm(risk + ' blocks auto-send to ' + destination + '. Manager override required. Add override now?')) return false;
-  return managerOverrideAuthItem(itemId);
-}
-
-function qplAuthDestinationAllowed(idx, destination){
-  const r = qplResults[idx] || {};
-  if(!r.normalizedItemId) return true;
-  return ensureAuthDestinationAllowed(r.normalizedItemId, destination);
-}
-
-function sendAuthItemToBuyOffer(itemId){
-  if(!ensureAuthDestinationAllowed(itemId, 'Buy Offer')) return;
-  const item = getDealerItem(itemId);
-  if(!item) return;
-  const r = item.sourcePayload || {};
-  qplResults.unshift({ ...r, normalizedItemId:itemId, name:item.identity?.title || r.name || 'Auth item', category:item.identity?.category || r.category || 'TCG', set:item.identity?.setName || r.set || '', card_number:item.identity?.cardNumber || r.card_number || '', market:item.research?.market || r.market || 0, imageUrl:(item.images || [])[0] || r.imageUrl || '', priceSource:item.research?.source || r.priceSource || 'Auth Check' });
-  addSelectedQuickLookupToBuyOffer(0);
-}
-
-function sendAuthItemToInventoryDraft(itemId){
-  if(!ensureAuthDestinationAllowed(itemId, 'Inventory')) return;
-  const item = getDealerItem(itemId);
-  if(!item) return;
-  const r = item.sourcePayload || {};
-  qplResults.unshift({ ...r, normalizedItemId:itemId, name:item.identity?.title || r.name || 'Auth item', category:item.identity?.category || r.category || 'TCG', set:item.identity?.setName || r.set || '', card_number:item.identity?.cardNumber || r.card_number || '', market:item.research?.market || r.market || 0, imageUrl:(item.images || [])[0] || r.imageUrl || '', priceSource:item.research?.source || r.priceSource || 'Auth Check' });
-  selectQuickLookupResult(0);
-  openAddToInventoryModal(0);
-}
-
-function markAuthItemNeedsReview(itemId){
-  const state = getDealerItems();
-  const item = state.itemsById?.[itemId];
-  if(!item) return;
-  enqueueDealerItem(itemId, 'needsReviewQueue', 'needs_review');
-  logOpsEvent('auth_needs_review', 'Auth item marked Needs Review: ' + (item.identity?.title || 'item'), { itemId });
-  toast_dash('Auth item marked Needs Review');
-  renderAuthCheckWorkbench(itemId);
 }
 
 // ── Inventory → Research fast path ───────────────────────────────────────
@@ -17947,18 +18380,6 @@ async function openInventoryItemInResearch(itemId){
   // selectQuickLookupResult shows the full panel. If tcgPlayerId exists it will
   // attempt to use cached PPT data or fetch fresh — no extra search cost.
   await selectQuickLookupResult(0);
-}
-
-function openItemInResearchFromAuth(itemId){
-  const item = getDealerItem(itemId);
-  if(!item) return;
-  switchTab('research');
-  const input = document.getElementById('qpl-input');
-  if(input) input.value = [item.identity?.title, item.identity?.setName, item.identity?.cardNumber].filter(Boolean).join(' ');
-  const r = item.sourcePayload || { name:item.identity?.title, category:item.identity?.category, set:item.identity?.setName, card_number:item.identity?.cardNumber, market:item.research?.market || 0, imageUrl:(item.images || [])[0] || '', priceSource:item.research?.source || 'Auth Check' };
-  qplMasterResults = [{ ...r, normalizedItemId:itemId }];
-  qplResults = qplMasterResults;
-  renderQuickLookupResults(qplResults);
 }
 
 async function searchScanInInventory(scanId){
@@ -18298,8 +18719,18 @@ function computeEbayListingFields(item){
     player:item.player||'', team:item.team||'', issue:item.issue||'', publisher:item.publisher||'',
     grade:isGraded?[item.grader,item.grade].filter(Boolean).join(' '):'',
     sport:item.sport||'', manufacturer:item.manufacturer||inferManufacturer||'', upc:item.upc||'',
+    price:price?'$'+price.toFixed(2):'', quantity:String(item.qty||item.quantity||1),
+    rarity:item.rarity||'', finish:item.finish||item.printing||item.selectedFinish||'',
+    language:(item.language||item.selectedLanguage)&&item.language!=='English'?(item.language||item.selectedLanguage):'',
+    configuration:item.configuration||inferConfig||'',
+    writer:isComic?comicCreditList(item,'writers').join(', '):'',
+    artist:isComic?comicCreditList(item,'artists').join(', '):'',
+    coverArtist:isComic?comicCreditList(item,'coverArtists').join(', '):'',
+    signedBy:item.is_signed?(item.signed_by||'Signed'):'',
   };
-  const template = getVendorProfile().ebayDescriptionTemplate || DEFAULT_EBAY_DESCRIPTION_TEMPLATE;
+  const templates = getVendorProfile().ebayDescriptionTemplates || {};
+  const legacyTemplate = getVendorProfile().ebayDescriptionTemplate || '';
+  const template = templates[item.category] || templates.default || legacyTemplate || DEFAULT_EBAY_DESCRIPTION_TEMPLATE;
   const bodyText = renderEbayDescriptionTemplate(template, tokens);
   const desc = [bodyText, getVendorProfile().ebayShippingLine].filter(Boolean).join('\n\n');
   return {condText, isSealed, inferManufacturer, inferConfig, cat, isComic, isTCG, isGraded, catId, conditionId, title, price, desc};
@@ -20906,10 +21337,6 @@ function closeEditModal() {
 function openAddToInventoryModal(idx){
   const item = selectedQuickLookupItem(idx);
   if(!item) return;
-  if(!qplAuthDestinationAllowed(idx, 'Inventory')) {
-    toast_dash('Auth Check requires manager override before inventory.');
-    return;
-  }
   pendingInventoryAdd = { idx };
   editingItemId = null;
 
@@ -31434,10 +31861,6 @@ function setResearchActionStatus(message, tone=''){
 
 function addSelectedQuickLookupToBuyOffer(idx){
   const item = selectedQuickLookupItem(idx);
-  if(!qplAuthDestinationAllowed(idx, 'Buy Offer')) {
-    toast_dash('Auth Check requires manager override before Buy Offer');
-    return;
-  }
   const needsManual = !Number(item.market || 0) || item.priceSource === 'No Real Price Available' || item.priceSource === 'No Guide Value Available';
   if(needsManual && !confirm('No trustworthy price is available for this item. Add to buy offer for manual review with $0 market value?')) {
     toast_dash('Manual review required before adding to offer');
@@ -31579,7 +32002,7 @@ function normalizeTenderType(method = '', tenderType = ''){
 }
 
 function formatTenderLabel(key){
-  return ({ cash:'Cash', card:'Card / Stripe', venmo:'Venmo', paypal:'PayPal', cashapp:'Cash App', trade_credit:'Trade Credit', ebay:'eBay', manual_external:'Other' })[key] || String(key).replace(/_/g, ' ');
+  return ({ cash:'Cash', card:'Card / Stripe', venmo:'Venmo', paypal:'PayPal', cashapp:'Cash App', trade_credit:'Trade Credit', loyalty_redeem:'Loyalty Points', gift_card:'Gift Card', ebay:'eBay', manual_external:'Other' })[key] || String(key).replace(/_/g, ' ');
 }
 
 function transactionTenderTotals(transactions = []){
@@ -31621,7 +32044,7 @@ function transactionTenderProfitSummary(transactions = []){
     row.net = row.gross - Number(row.fees || 0);
     row.margin = row.gross ? (row.profit / row.gross) * 100 : 0;
   });
-  ['cash','card','venmo','paypal','cashapp','trade_credit','ebay','manual_external'].forEach(ensure);
+  ['cash','card','venmo','paypal','cashapp','trade_credit','loyalty_redeem','gift_card','ebay','manual_external'].forEach(ensure);
   return summary;
 }
 
@@ -33128,7 +33551,7 @@ function generateEOD(){
   const openDrawerSnapshot = drawerState && new Date(drawerState.opened || 0).toDateString() === targetDay ? getDrawerSnapshot(drawerState) : null;
   const drawerExpected = dayCloseouts.length ? dayCloseouts.reduce((a,c)=>a+Number(c.expected||0),0) : (openDrawerSnapshot ? openDrawerSnapshot.expected : 0);
   const expectedCash = drawerExpected || (Number(show?.startCash || 0) + cashTotal - buyPaidTotal);
-  const tenderRows = ['cash','card','venmo','paypal','cashapp','trade_credit','ebay','manual_external']
+  const tenderRows = ['cash','card','venmo','paypal','cashapp','trade_credit','loyalty_redeem','gift_card','ebay','manual_external']
     .map(key => ({ key, ...tenderProfit[key] }))
     .filter(r => Number(r.gross || 0) || Number(r.profit || 0) || Number(r.count || 0));
 
@@ -33727,6 +34150,8 @@ function getEnabledPaymentMethods(){
     s.paypal?.enabled ? { key:'paypal', label:s.paypal.displayName || 'PayPal', handle:s.paypal.emailOrHandle, qr:s.paypal.qrImageUrl } : null,
     s.cashApp?.enabled ? { key:'cashapp', label:s.cashApp.displayName || 'Cash App', handle:s.cashApp.cashtag, qr:s.cashApp.qrImageUrl } : null,
     { key:'trade_credit', label:'Trade Credit' }, // internal ledger redemption — always available, no processor setup needed
+    getLoyaltyRate() > 0 ? { key:'loyalty_redeem', label:'Loyalty Points' } : null,
+    { key:'gift_card', label:'Gift Card' },
   ].filter(Boolean);
 }
 
@@ -33760,7 +34185,12 @@ function customerSafeLine(item){
     condition:item.condition || '',
     finish:item.finish || '',
     source_id:item.sourceId || item.source_id || item.shopId || item.wfId || '',
-    image_url:item.img || item.image || ''
+    image_url:item.img || item.image || '',
+    // Not a pos_sale_lines column -- the atomic RPC only reads named fields
+    // out of the bundle it's handed, so this extra key rides along harmlessly
+    // and is only read client-side (finalizeCompletedCheckout) to detect a
+    // gift-card sale line after the sale commits.
+    metadata:item.metadata || {}
   };
 }
 
@@ -34126,7 +34556,7 @@ function renderCustomerLiveCart(cartData = { items:[] }){
 function renderCustomerPaymentLinks(total, el){
   if(!el) return;
   const methods = getEnabledPaymentMethods();
-  const visuals={cash:['💵','Record cash received'],card:['💳','Secure card or manual card'],venmo:['V','Show Venmo payment'],paypal:['PP','Show PayPal payment'],cashapp:['$','Show Cash App payment'],trade_credit:['↩','Redeem a customer\'s trade-in credit'],other:['•••','Record another tender']};
+  const visuals={cash:['💵','Record cash received'],card:['💳','Secure card or manual card'],venmo:['V','Show Venmo payment'],paypal:['PP','Show PayPal payment'],cashapp:['$','Show Cash App payment'],trade_credit:['↩','Redeem a customer\'s trade-in credit'],loyalty_redeem:['★','Redeem a customer\'s loyalty points'],gift_card:['🎁','Redeem a gift card'],other:['•••','Record another tender']};
   el.innerHTML = methods.map(m => { const v=visuals[m.key]||['•','Choose payment method']; return `<button class="customer-method-btn ${selectedTenderLines.some(t => t.method === m.key)?'on':''}" onclick="selectLockedPaymentMethod('${m.key}')"><span class="customer-method-icon">${v[0]}</span><span class="customer-method-copy">${escHtml(m.label)}<small>${escHtml(v[1])}</small></span></button>`; }).join('');
 }
 
@@ -34170,6 +34600,34 @@ function selectLockedPaymentMethod(method){
         <div class="payment-confirm-row"><button class="hbtn danger" onclick="removeTradeCreditTender()">REMOVE</button></div>`
       : `<div style="font-weight:800;text-align:center;margin-bottom:8px">Trade Credit</div>
         <div style="text-align:center;color:var(--dim);font-family:var(--font-mono);font-size:12px">No trade-in on this sale. Accept this customer's trade-in buy first — it applies here automatically.</div>`;
+    wb.classList.add('on');
+    renderCustomerDisplaySnapshot();
+    return;
+  }
+  if(method === 'loyalty_redeem') {
+    const priorLoyalty = selectedTenderLines.find(t => t.method === 'loyalty_redeem');
+    wb.innerHTML = priorLoyalty
+      ? `<div style="font-weight:800;text-align:center;margin-bottom:8px">Loyalty Points</div>
+        <div style="text-align:center;color:#05835f;font-family:var(--font-mono);font-size:12px;margin-bottom:12px">✓ ${priorLoyalty.points} pts redeemed for $${Number(priorLoyalty.amount).toFixed(2)}</div>
+        <div class="payment-confirm-row"><button class="hbtn danger" onclick="removeLoyaltyRedemptionTender()">REMOVE</button></div>`
+      : `<div style="font-weight:800;text-align:center;margin-bottom:8px">Loyalty Points</div>
+        <input id="loyalty-redeem-contact" placeholder="Customer phone or email" style="width:100%;min-height:44px;border:1px solid #cfd7e3;border-radius:7px;padding:8px 10px;font-size:14px;margin-bottom:8px">
+        <div class="payment-confirm-row"><button class="hbtn" onclick="lookupLoyaltyBalanceForRedeem()">LOOK UP BALANCE</button></div>
+        <div id="loyalty-redeem-result" style="margin-top:10px"></div>`;
+    wb.classList.add('on');
+    renderCustomerDisplaySnapshot();
+    return;
+  }
+  if(method === 'gift_card') {
+    const priorGift = selectedTenderLines.find(t => t.method === 'gift_card');
+    wb.innerHTML = priorGift
+      ? `<div style="font-weight:800;text-align:center;margin-bottom:8px">Gift Card</div>
+        <div style="text-align:center;color:#05835f;font-family:var(--font-mono);font-size:12px;margin-bottom:12px">✓ ${escHtml(priorGift.reference)} — $${Number(priorGift.amount).toFixed(2)} applied</div>
+        <div class="payment-confirm-row"><button class="hbtn danger" onclick="removeGiftCardRedemptionTender()">REMOVE</button></div>`
+      : `<div style="font-weight:800;text-align:center;margin-bottom:8px">Gift Card</div>
+        <input id="gift-card-redeem-code" placeholder="Gift card code (scan or type)" style="width:100%;min-height:44px;border:1px solid #cfd7e3;border-radius:7px;padding:8px 10px;font-size:14px;margin-bottom:8px;text-transform:uppercase">
+        <div class="payment-confirm-row"><button class="hbtn" onclick="lookupGiftCardBalanceForRedeem()">LOOK UP BALANCE</button></div>
+        <div id="gift-card-redeem-result" style="margin-top:10px"></div>`;
     wb.classList.add('on');
     renderCustomerDisplaySnapshot();
     return;
@@ -34231,14 +34689,122 @@ function removeTradeCreditTender(){
   selectLockedPaymentMethod('trade_credit');
 }
 
+// 100 points = $1 -- fixed, separate from the configurable per-sale accrual
+// rate (loyaltyRate). Only the accrual side was asked to be configurable.
+const LOYALTY_POINTS_PER_DOLLAR = 100;
+
+async function lookupLoyaltyBalanceForRedeem(){
+  const contact = document.getElementById('loyalty-redeem-contact')?.value.trim() || '';
+  const resultEl = document.getElementById('loyalty-redeem-result');
+  if(!resultEl) return;
+  if(!contact) { resultEl.innerHTML = '<div style="color:var(--red);font-family:var(--font-mono);font-size:11px;text-align:center">Enter a phone or email</div>'; return; }
+  if(getAccountContext().isDemo) { resultEl.innerHTML = '<div style="color:var(--dim);font-family:var(--font-mono);font-size:11px;text-align:center">Loyalty redemption is disabled in demo mode</div>'; return; }
+  resultEl.innerHTML = '<div style="text-align:center;color:var(--dim);font-family:var(--font-mono);font-size:11px">Looking up...</div>';
+  try {
+    const sb = getSupabaseClient();
+    const storeId = getActiveStoreId();
+    if(!sb || !storeId) throw new Error('Cloud connection required to redeem points');
+    const isEmail = contact.includes('@');
+    const { data, error } = await sb.from('customers').select('id,name,loyalty_points_balance').eq('store_id', storeId).eq(isEmail ? 'email' : 'phone', contact).maybeSingle();
+    if(error) throw error;
+    const balance = Number(data?.loyalty_points_balance || 0);
+    if(!data || balance <= 0) {
+      resultEl.innerHTML = `<div style="text-align:center;color:var(--dim);font-family:var(--font-mono);font-size:11px">${data ? escHtml(data.name || 'Customer') + ' has no points to redeem' : 'No customer found with that phone/email'}</div>`;
+      return;
+    }
+    const due = remainingCheckoutDue();
+    const maxRedeemablePoints = Math.min(balance, Math.floor(due * LOYALTY_POINTS_PER_DOLLAR));
+    resultEl.innerHTML = `<div style="text-align:center;font-family:var(--font-mono);font-size:12px;margin-bottom:8px">${escHtml(data.name || 'Customer')} has <b style="color:var(--g)">${balance} pts</b> ($${(balance / LOYALTY_POINTS_PER_DOLLAR).toFixed(2)})</div>
+      <input id="loyalty-redeem-points" type="number" min="0" max="${maxRedeemablePoints}" step="1" value="${maxRedeemablePoints}" style="width:100%;min-height:44px;border:1px solid #cfd7e3;border-radius:7px;padding:8px 10px;font-size:14px;margin-bottom:8px">
+      <div class="payment-confirm-row"><button class="hbtn" onclick="applyLoyaltyRedemption('${escHtml(data.id)}',${balance})">REDEEM</button></div>`;
+  } catch(e) {
+    resultEl.innerHTML = `<div style="color:var(--red);font-family:var(--font-mono);font-size:11px;text-align:center">${escHtml(e.message)}</div>`;
+  }
+}
+
+function applyLoyaltyRedemption(customerId, availableBalance){
+  const due = remainingCheckoutDue();
+  const requested = Math.max(0, Math.floor(Number(document.getElementById('loyalty-redeem-points')?.value || 0)));
+  const maxRedeemablePoints = Math.min(Number(availableBalance || 0), Math.floor(due * LOYALTY_POINTS_PER_DOLLAR));
+  const points = Math.min(requested, maxRedeemablePoints);
+  if(points <= 0) return toast_dash('Enter a valid number of points');
+  const amount = Math.round((points / LOYALTY_POINTS_PER_DOLLAR) * 100) / 100;
+  selectedTenderLines = [...selectedTenderLines.filter(t => t.method !== 'loyalty_redeem'), { method:'loyalty_redeem', amount, points, reference:customerId }];
+  selectLockedPaymentMethod('loyalty_redeem');
+  const remaining = remainingCheckoutDue();
+  if(remaining <= 0.009) {
+    const wb = document.getElementById('customer-payment-workbench');
+    if(wb) wb.innerHTML = `<div style="text-align:center;color:#05835f;font-family:var(--font-mono);font-size:13px;margin-bottom:12px">${points} points cover the full $${amount.toFixed(2)} purchase.</div><div class="payment-confirm-row"><button class="hbtn" style="min-height:52px;font-size:14px" onclick="confirmTradeOnlyCheckout()">CONFIRM PURCHASE</button><button class="hbtn danger" onclick="removeLoyaltyRedemptionTender()">REMOVE</button></div>`;
+    toast_dash('Loyalty points cover this purchase — confirm to finish');
+  } else {
+    toast_dash('$' + amount.toFixed(2) + ' applied — choose payment for $' + remaining.toFixed(2));
+  }
+}
+
+function removeLoyaltyRedemptionTender(){
+  selectedTenderLines = selectedTenderLines.filter(t => t.method !== 'loyalty_redeem');
+  selectLockedPaymentMethod('loyalty_redeem');
+}
+
+async function lookupGiftCardBalanceForRedeem(){
+  const code = document.getElementById('gift-card-redeem-code')?.value.trim().toUpperCase() || '';
+  const resultEl = document.getElementById('gift-card-redeem-result');
+  if(!resultEl) return;
+  if(!code) { resultEl.innerHTML = '<div style="color:var(--red);font-family:var(--font-mono);font-size:11px;text-align:center">Enter a gift card code</div>'; return; }
+  if(getAccountContext().isDemo) { resultEl.innerHTML = '<div style="color:var(--dim);font-family:var(--font-mono);font-size:11px;text-align:center">Gift card redemption is disabled in demo mode</div>'; return; }
+  resultEl.innerHTML = '<div style="text-align:center;color:var(--dim);font-family:var(--font-mono);font-size:11px">Looking up...</div>';
+  try {
+    const sb = getSupabaseClient();
+    const storeId = getActiveStoreId();
+    if(!sb || !storeId) throw new Error('Cloud connection required to redeem a gift card');
+    const { data, error } = await sb.from('gift_cards').select('code,balance,status').eq('store_id', storeId).eq('code', code).maybeSingle();
+    if(error) throw error;
+    if(!data || data.status !== 'active' || Number(data.balance || 0) <= 0) {
+      resultEl.innerHTML = `<div style="text-align:center;color:var(--dim);font-family:var(--font-mono);font-size:11px">${data ? 'That code has no balance left' : 'No active gift card found with that code'}</div>`;
+      return;
+    }
+    const balance = Number(data.balance);
+    const due = remainingCheckoutDue();
+    const maxRedeemable = Math.round(Math.min(balance, due) * 100) / 100;
+    resultEl.innerHTML = `<div style="text-align:center;font-family:var(--font-mono);font-size:12px;margin-bottom:8px">Balance: <b style="color:var(--g)">$${balance.toFixed(2)}</b></div>
+      <input id="gift-card-redeem-amount" type="number" min="0.01" max="${maxRedeemable}" step="0.01" value="${maxRedeemable.toFixed(2)}" style="width:100%;min-height:44px;border:1px solid #cfd7e3;border-radius:7px;padding:8px 10px;font-size:14px;margin-bottom:8px">
+      <div class="payment-confirm-row"><button class="hbtn" onclick="applyGiftCardRedemption('${escHtml(data.code)}',${balance})">REDEEM</button></div>`;
+  } catch(e) {
+    resultEl.innerHTML = `<div style="color:var(--red);font-family:var(--font-mono);font-size:11px;text-align:center">${escHtml(e.message)}</div>`;
+  }
+}
+
+function applyGiftCardRedemption(code, availableBalance){
+  const due = remainingCheckoutDue();
+  const requested = Math.max(0, Number(document.getElementById('gift-card-redeem-amount')?.value || 0));
+  const maxRedeemable = Math.round(Math.min(Number(availableBalance || 0), due) * 100) / 100;
+  const amount = Math.round(Math.min(requested, maxRedeemable) * 100) / 100;
+  if(amount <= 0) return toast_dash('Enter a valid redemption amount');
+  selectedTenderLines = [...selectedTenderLines.filter(t => t.method !== 'gift_card'), { method:'gift_card', amount, reference:code }];
+  selectLockedPaymentMethod('gift_card');
+  const remaining = remainingCheckoutDue();
+  if(remaining <= 0.009) {
+    const wb = document.getElementById('customer-payment-workbench');
+    if(wb) wb.innerHTML = `<div style="text-align:center;color:#05835f;font-family:var(--font-mono);font-size:13px;margin-bottom:12px">Gift card covers the full $${amount.toFixed(2)} purchase.</div><div class="payment-confirm-row"><button class="hbtn" style="min-height:52px;font-size:14px" onclick="confirmTradeOnlyCheckout()">CONFIRM PURCHASE</button><button class="hbtn danger" onclick="removeGiftCardRedemptionTender()">REMOVE</button></div>`;
+    toast_dash('Gift card covers this purchase — confirm to finish');
+  } else {
+    toast_dash('$' + amount.toFixed(2) + ' applied — choose payment for $' + remaining.toFixed(2));
+  }
+}
+
+function removeGiftCardRedemptionTender(){
+  selectedTenderLines = selectedTenderLines.filter(t => t.method !== 'gift_card');
+  selectLockedPaymentMethod('gift_card');
+}
+
 async function confirmLockedPayment(method){
   if(checkoutFinalizing) return toast_dash('Checkout is already finalizing');
   if(!lockedCheckoutSnapshot) return toast_dash('No locked checkout');
-  // A prior trade-credit tender (auto-applied by lockCheckoutForPayment when
-  // a same-visit trade-in is pending) may already have covered part of the
-  // total — this method only needs to cover what's left, and joins rather
-  // than replaces that queued trade-credit line.
-  const priorTenders = selectedTenderLines.filter(t => t.method === 'trade_credit');
+  // A prior trade-credit/loyalty-points/gift-card tender (auto-applied by
+  // lockCheckoutForPayment, or manually applied via selectLockedPaymentMethod)
+  // may already have covered part of the total — this method only needs to
+  // cover what's left, and joins rather than replaces those queued lines.
+  const priorTenders = selectedTenderLines.filter(t => ['trade_credit','loyalty_redeem','gift_card'].includes(t.method));
   const priorTotal = priorTenders.reduce((a,t) => a + Number(t.amount || 0), 0);
   const total = Math.max(0, Math.round((Number(lockedCheckoutSnapshot.total || 0) - priorTotal) * 100) / 100);
   let amount = total;
@@ -34323,6 +34889,42 @@ async function finalizeCompletedCheckout(bundle, queued, inventoryCommittedAtomi
     });
   // The explicit handoff is for this same purchase only.
   localStorage.removeItem('pos_pending_trade_purchase');
+  // Loyalty points were already applied as a checkout discount above (the
+  // customer already got the reduced total) -- this just records the ledger
+  // deduction. The sale itself is already committed and can't be undone at
+  // this point, so a failed decrement here is queued for retry rather than
+  // blocking the sale; the atomic RPC's row lock still prevents double-spend
+  // once it does run.
+  bundle.payments.filter(p => normalizeTenderType(p.method) === 'loyalty_redeem' && p.reference)
+    .forEach(async p => {
+      const storeId = bundle.sale.store_id;
+      try {
+        const sb = getSupabaseClient();
+        if(!sb) throw new Error('Supabase unavailable');
+        const { error } = await sb.rpc('redeem_loyalty_points', { p_store_id:storeId, p_customer_id:p.reference, p_points:p.points, p_sale_id:bundle.sale.id });
+        if(error) throw error;
+        const idx = customersCache.findIndex(c => c.id === p.reference);
+        if(idx >= 0) { customersCache[idx].loyalty_points_balance = Math.max(0, Number(customersCache[idx].loyalty_points_balance || 0) - p.points); localStorage.setItem('customers_cache_v1', JSON.stringify(customersCache)); renderCustomers(); }
+      } catch(e) {
+        enqueueSync('loyalty-redeem-commit', 'Queued loyalty points redemption', { storeId, customerId:p.reference, points:p.points, saleId:bundle.sale.id }, e.message);
+      }
+    });
+  // Same reasoning as loyalty above: the discount was already given, this
+  // just records the ledger deduction against the code's balance.
+  bundle.payments.filter(p => normalizeTenderType(p.method) === 'gift_card' && p.reference)
+    .forEach(async p => {
+      const storeId = bundle.sale.store_id;
+      try {
+        const sb = getSupabaseClient();
+        if(!sb) throw new Error('Supabase unavailable');
+        const { error } = await sb.rpc('redeem_gift_card', { p_store_id:storeId, p_code:p.reference, p_amount:p.amount, p_sale_id:bundle.sale.id });
+        if(error) throw error;
+      } catch(e) {
+        enqueueSync('gift-card-redeem-commit', 'Queued gift card redemption', { storeId, code:p.reference, amount:p.amount, saleId:bundle.sale.id }, e.message);
+      }
+    });
+  await issueGiftCardsFromSaleLines(bundle);
+  await markEventEntryFeesPaidFromSaleLines(bundle);
   await completeActiveSaleCartAfterCheckout(bundle.sale.id);
   confirmedSaleContext = bundle;
   logOpsEvent(queued ? 'sale_offline_queued' : 'sale_completed', queued ? 'Completed sale queued for Supabase sync' : 'Completed sale in Supabase ledger', { saleId:bundle.sale.id, total:bundle.sale.total });
@@ -34350,7 +34952,8 @@ function showReceiptCaptureScreen(){
   if(wants) wants.classList.remove('on');
   if(!el) return showWantsCaptureScreen();
   if(s.receipt?.captureEnabled === false) return showWantsCaptureScreen();
-  el.innerHTML = `<h2>Want a text receipt?</h2><input id="receipt-phone" placeholder="Phone number"><div class="payment-confirm-row"><button class="hbtn" onclick="saveReceiptCapture()">SEND RECEIPT</button><button class="hbtn danger" onclick="showWantsCaptureScreen()">SKIP</button></div>`;
+  const rate = getLoyaltyRate();
+  el.innerHTML = `<h2>Want a text receipt?</h2>${rate > 0 ? `<div style="font-family:var(--font-mono);font-size:11px;color:var(--gold);margin-bottom:6px">Also earns ${rate}% back in loyalty points</div>` : ''}<input id="receipt-phone" placeholder="Phone number"><div class="payment-confirm-row"><button class="hbtn" onclick="saveReceiptCapture()">SEND RECEIPT</button><button class="hbtn danger" onclick="showWantsCaptureScreen()">SKIP</button></div>`;
   el.classList.add('on');
 }
 
@@ -34366,8 +34969,36 @@ async function saveReceiptCapture(){
     } catch(e) {
       enqueueSync('customer-receipt', 'Queued text receipt request', payload, e.message);
     }
+    accrueLoyaltyForContact(phone, '', confirmedSaleContext.sale.id, confirmedSaleContext.sale.total);
   }
   showWantsCaptureScreen();
+}
+
+// Loyalty accrual reuses the phone already collected for the text-receipt
+// prompt above -- it's the same low-friction "type your phone" moment the
+// user asked for, no separate signup step. customer-save and the accrual
+// RPC are two dependent writes; if either fails (offline, RLS hiccup) the
+// whole thing is re-queued as one self-contained job (see 'loyalty-accrual'
+// in processQueueItem) rather than trying to track partial completion.
+async function accrueLoyaltyForContact(contact, name, saleId, total){
+  if(getAccountContext().isDemo) return;
+  const rate = getLoyaltyRate();
+  const points = Math.round(Number(total || 0) * rate / 100);
+  const storeId = getActiveStoreId();
+  if(!contact || points <= 0 || !storeId) return;
+  try {
+    const customer = await upsertCustomer(name || 'Customer', contact, '', 'checkout');
+    if(!customer?.id) throw new Error('Customer save failed');
+    const sb = getSupabaseClient();
+    if(!sb) throw new Error('Supabase unavailable');
+    const { error } = await sb.rpc('accrue_loyalty_points', { p_store_id:storeId, p_customer_id:customer.id, p_points:points, p_sale_id:saleId, p_reason:'sale' });
+    if(error) throw error;
+    const idx = customersCache.findIndex(c => c.id === customer.id);
+    if(idx >= 0) { customersCache[idx].loyalty_points_balance = Number(customersCache[idx].loyalty_points_balance || 0) + points; localStorage.setItem('customers_cache_v1', JSON.stringify(customersCache)); renderCustomers(); }
+    toast_dash('+' + points + ' loyalty points earned');
+  } catch(e) {
+    enqueueSync('loyalty-accrual', 'Queued loyalty points accrual', { contact, name:name || 'Customer', saleId, points, storeId }, e.message);
+  }
 }
 
 function showWantsCaptureScreen(){
@@ -36883,7 +37514,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.10.05-inventory-aging-report" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.11.04-settings-cleanup" defer></script>
 </body>
 </html>
 

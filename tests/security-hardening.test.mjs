@@ -84,7 +84,7 @@ assert.match(textImport, /if \(!await requireAdmin\(\)\)/);
 assert.match(dashboard, /async function storeWorkerFetch/);
 assert.match(dashboard, /headers\.set\('Authorization', 'Bearer ' \+ session\.access_token\)/);
 assert.match(dashboard, /escHtml\(x\.name\|\|'Customer'\)/);
-assert.match(dashboard, /escHtml\(x\.contact\|\|''\)/);
+assert.match(dashboard, /escHtml\(x\.phone\|\|x\.email\|\|''\)/);
 assert.match(dashboard, /escHtml\(x\.notes\|\|''\)/);
 assert.match(dashboard, /escHtml\(r\[h\]\)/);
 assert.doesNotMatch(dashboard, /fetch\([^\n]*(?:WORKER|WORKER_URL)[^\n]*(?:\/proxy\/|\/cart|\/kv\/|\/pos\/checkout|\/upload-image|\/anthropic\/messages|\/ebay\/list|\/subscription\/customer-portal)/);
