@@ -6162,8 +6162,25 @@ export default {
         const storeDateAfter = /^\d{4}-\d{2}-\d{2}$/.test(url.searchParams.get('store_date_after') || '') ? url.searchParams.get('store_date_after') : '';
         const storeDateBefore = /^\d{4}-\d{2}-\d{2}$/.test(url.searchParams.get('store_date_before') || '') ? url.searchParams.get('store_date_before') : '';
         const page = Math.min(500, Math.max(1, Number.parseInt(url.searchParams.get('page') || '1', 10) || 1));
-        if (!series && !seriesId && !creator && !upc && !sku) return json({ ok:false, error:'Comic series, creator, UPC, or SKU is required' }, 400);
+        if (!series && !seriesId && !creator && !upc && !sku && !storeDateAfter) return json({ ok:false, error:'Comic series, creator, UPC, SKU, or a store date range is required' }, 400);
         try {
+          // Browse mode: a bare date range (optionally narrowed by publisher),
+          // with no series/creator/upc/sku specified -- "what's releasing
+          // this week" instead of "look up this one known thing". Used by
+          // Pull Lists' New Releases view so staff can discover upcoming
+          // books without first having to add the series.
+          if (storeDateAfter && !series && !seriesId && !creator && !upc && !sku) {
+            const browseFilters = { store_date_range_after:storeDateAfter, ...(storeDateBefore ? { store_date_range_before:storeDateBefore } : {}), ...(publisher ? { publisher_name:publisher } : {}), page };
+            const browseResponse = await metronFetch(env, '/issue/', browseFilters, 60 * 60 * 6);
+            const rawIssues = Array.isArray(browseResponse.data) ? browseResponse.data : (browseResponse.data?.results || []);
+            const browsePage = Array.isArray(browseResponse.data) ? {} : (browseResponse.data || {});
+            const reportedPageSize = Number(browsePage.page_size || browsePage.pageSize || 0);
+            const pageSize = Math.max(1, reportedPageSize || (page === 1 && rawIssues.length ? rawIssues.length : 100));
+            const total = Math.max(rawIssues.length, Number(browsePage.count || browsePage.total || 0) || 0);
+            const totalPages = Math.max(1, Math.ceil(total / pageSize));
+            const pagination = { page, pageSize, total, totalPages, hasNext:Boolean(browsePage.next) || page < totalPages, hasPrevious:Boolean(browsePage.previous) || page > 1 };
+            return json({ ok:true, source:'Metron', query:rawQuery, filters:browseFilters, selectedSeries:null, seriesChoices:[], cacheStatus:browseResponse.cacheStatus, issues:rawIssues.map(normalizeMetronListIssue), pagination, priceCandidates:[] });
+          }
           if (creator) {
             const creatorResponse = await metronFetch(env, '/creator/', { name:creator }, 60 * 60 * 24 * 7);
             const creators = (Array.isArray(creatorResponse.data) ? creatorResponse.data : (creatorResponse.data?.results || [])).slice(0, 10);

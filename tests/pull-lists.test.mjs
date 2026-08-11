@@ -78,6 +78,26 @@ assert.match(dashboard, /foc_date:null, street_date:iss\.storeDate \|\| null,/, 
 // duplicates from the discovery modal.
 assert.match(dashboard, /const existingNumbers = new Set\(\(pullListItemsCache\[series\?\.id\] \|\| \[\]\)\.map\(i => i\.issue_number\)\);/, 'already-tracked issue numbers must be excluded/disabled in the discovery picker');
 
+// ── New Releases browse mode: discovery without first adding a series ──
+
+// A bare date range (no series/creator/upc/sku) must be a valid request on
+// its own, not rejected by the original "must identify something" gate.
+assert.match(worker, /if \(!series && !seriesId && !creator && !upc && !sku && !storeDateAfter\) return json\(\{ ok:false, error:'Comic series, creator, UPC, SKU, or a store date range is required' \}, 400\);/, 'a bare store date range must be accepted, not just series/creator/upc/sku lookups');
+assert.match(worker, /if \(storeDateAfter && !series && !seriesId && !creator && !upc && !sku\) \{/, 'worker must have a distinct browse-mode branch for a bare date range');
+assert.match(worker, /store_date_range_after:storeDateAfter, \.\.\.\(storeDateBefore \? \{ store_date_range_before:storeDateBefore \} : \{\}\), \.\.\.\(publisher \? \{ publisher_name:publisher \} : \{\}\), page \};/, 'browse mode must support an optional publisher filter alongside the date range');
+
+for (const fn of ['renderPullListBrowseInto', 'searchPullListNewReleases', 'renderPullListBrowseResults', 'createPullListSeriesFromMetron', 'addBrowsedIssueToPullList']) {
+  assert.match(dashboard, new RegExp(`function ${fn}`), `missing ${fn}`);
+}
+assert.match(dashboard, /\['pulllist-browse-from','pulllist-browse-to','pulllist-browse-publisher'\]|pulllist-browse-from/, 'browse view must have date/publisher filter inputs');
+
+// Adding a browsed issue must match series by Metron's real series id first
+// (not just fuzzy title text), so a reboot/relaunch with the same title as
+// an existing series doesn't get silently merged into the wrong one.
+assert.match(dashboard, /pullListSeriesCache\.find\(s => s\.metron_series_id && s\.metron_series_id === iss\.seriesId\)/, 'browsed-issue add must prefer matching by Metron series id over title text');
+
+console.log('New Releases browse mode checks passed');
+
 console.log('Metron pull-list auto-discovery checks passed');
 
 // ── Functional check: computePullListOrderSheetRows ──
