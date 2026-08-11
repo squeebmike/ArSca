@@ -21,7 +21,7 @@ assert.match(dashboard, /id="tab-events"/, 'events tab panel must exist');
 assert.match(dashboard, /\['events', 'TOURNAMENTS'\]/, 'events must be reachable from the tab nav');
 assert.match(dashboard, /events:'events'.*channels:'marketplace'/, 'events tab must be registered in TAB_CAPABILITY');
 assert.match(dashboard, /'overview','display','browse','inventory','research','pos','alerts','wantlist','locations','restock','sets','events'/, 'employees must be able to reach the events tab');
-assert.match(dashboard, /capabilities:\['research','checkout','sales','inventory','consignments','staff','shows','events'\]/, 'events must be gated at the Store plan tier alongside shows');
+assert.match(dashboard, /capabilities:\['research','checkout','sales','inventory','consignments','staff','shows','events','pulllists'\]/, 'events must be gated at the Store plan tier alongside shows');
 
 // Core functions exist.
 for (const fn of ['loadEventsFromSupabase', 'renderEventsPanel', 'saveEventFromForm', 'addEventRegistration', 'chargeEventEntryFee', 'markEventEntryFeesPaidFromSaleLines', 'startNextRound', 'reportMatchResult', 'computeSwissPairings', 'computeStandings', 'computeLeaderboard', 'renderLeaderboardInto', 'loadAllEventDataForLeaderboard',
@@ -64,7 +64,7 @@ assert.match(dashboard, /const swissMatches = matches\.filter\(m => m\.stage !==
 // gift_cards table/codegen as a purchased one, so they spend identically.
 assert.match(dashboard, /issued_sale_id:null, issued_by:getCurrentUserId\(\)/, 'prize gift cards must be issued with no sale attached');
 
-assert.match(dashboard, /'pos_ops_log','pos_show_mode','pos_customers','customers_cache_v1','events_cache_v1','pos_undo_stack'/, 'events cache must be store-scoped (per-store, not shared across a multi-store device)');
+assert.match(dashboard, /'pos_ops_log','pos_show_mode','pos_customers','customers_cache_v1','events_cache_v1','pulllist_series_cache_v1','pos_undo_stack'/, 'events cache must be store-scoped (per-store, not shared across a multi-store device)');
 
 console.log('Tournament events contract checks passed');
 
