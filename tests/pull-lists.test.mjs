@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 
 const dashboard = fs.readFileSync('dashboard.html', 'utf8');
 const migration = fs.readFileSync('supabase-migrations/2026-08-12-pull-lists.sql', 'utf8');
+const metronLinkMigration = fs.readFileSync('supabase-migrations/2026-08-13-pull-list-metron-link.sql', 'utf8');
+const worker = fs.readFileSync('cloudflare-worker-full.js', 'utf8');
 
 // Migration: tables + RLS exist, store-scoped.
 for (const table of ['pull_list_series', 'pull_list_items', 'pull_list_subscriptions']) {
@@ -47,6 +49,36 @@ for (const type of ['pulllist-series-upsert', 'pulllist-item-upsert', 'pulllist-
 assert.match(dashboard, /'pos_ops_log','pos_show_mode','pos_customers','customers_cache_v1','events_cache_v1','pulllist_series_cache_v1','pos_undo_stack'/, 'pull list cache must be store-scoped (per-store, not shared across a multi-store device)');
 
 console.log('Pull list contract checks passed');
+
+// ── Metron auto-discovery: no distributor has a public API, so this rides
+// the already-integrated Metron bibliographic catalog instead. ──
+
+assert.match(metronLinkMigration, /alter table public\.pull_list_series add column if not exists metron_series_id text/, 'pull_list_series must be able to remember its resolved Metron series so repeat lookups skip disambiguation');
+
+// Worker: /comic/metron/search must accept a store-date range so it can
+// answer "what's solicited but not out yet" instead of only "look up this
+// one known issue number".
+assert.match(worker, /storeDateAfter = \/\^\\d\{4\}-\\d\{2\}-\\d\{2\}\$\/\.test\(url\.searchParams\.get\('store_date_after'\)/, 'worker must accept a validated store_date_after param');
+assert.match(worker, /storeDateBefore = \/\^\\d\{4\}-\\d\{2\}-\\d\{2\}\$\/\.test\(url\.searchParams\.get\('store_date_before'\)/, 'worker must accept a validated store_date_before param');
+assert.match(worker, /\.\.\.\(storeDateAfter \? \{ store_date_range_after:storeDateAfter \} : \{\}\), \.\.\.\(storeDateBefore \? \{ store_date_range_before:storeDateBefore \} : \{\}\)/, 'the date-range params must actually reach the Metron filters, not just be parsed and discarded');
+
+for (const fn of ['findUpcomingIssuesFromMetron', 'savePullListSeriesMetronId', 'showMetronSeriesPickerForPullList', 'chooseMetronSeriesForPullList', 'showMetronUpcomingIssuesModal', 'addSelectedMetronIssuesToPullList']) {
+  assert.match(dashboard, new RegExp(`function ${fn}`), `missing ${fn}`);
+}
+
+// Ambiguous series name (multiple Metron matches, e.g. a reboot) must route
+// to a picker, not silently guess or silently fail.
+assert.match(dashboard, /if\(data\.seriesChoices\?\.length > 1\) return showMetronSeriesPickerForPullList\(data\.seriesChoices\);/, 'multiple Metron series matches must show a disambiguation picker, not guess');
+
+// Metron tracks street (on-sale) dates, not FOC (order cutoff) dates -- the
+// bulk-add must never fabricate a FOC date from data Metron doesn't have.
+assert.match(dashboard, /foc_date:null, street_date:iss\.storeDate \|\| null,/, 'issues added from Metron must leave foc_date unset, never invented from the street date');
+
+// Issues already tracked for this series must not be re-addable as
+// duplicates from the discovery modal.
+assert.match(dashboard, /const existingNumbers = new Set\(\(pullListItemsCache\[series\?\.id\] \|\| \[\]\)\.map\(i => i\.issue_number\)\);/, 'already-tracked issue numbers must be excluded/disabled in the discovery picker');
+
+console.log('Metron pull-list auto-discovery checks passed');
 
 // ── Functional check: computePullListOrderSheetRows ──
 {

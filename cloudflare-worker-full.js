@@ -6156,6 +6156,11 @@ export default {
         const upc = String(url.searchParams.get('upc') || '').replace(/\D/g, '').slice(0, 20);
         const sku = String(url.searchParams.get('sku') || '').trim().slice(0, 80);
         const creator = String(url.searchParams.get('creator') || '').trim().slice(0, 120);
+        // YYYY-MM-DD only -- Metron's store_date_range_after/before filters, used by
+        // Pull Lists to ask "what's solicited for this series but not out yet" instead
+        // of looking up one known issue number.
+        const storeDateAfter = /^\d{4}-\d{2}-\d{2}$/.test(url.searchParams.get('store_date_after') || '') ? url.searchParams.get('store_date_after') : '';
+        const storeDateBefore = /^\d{4}-\d{2}-\d{2}$/.test(url.searchParams.get('store_date_before') || '') ? url.searchParams.get('store_date_before') : '';
         const page = Math.min(500, Math.max(1, Number.parseInt(url.searchParams.get('page') || '1', 10) || 1));
         if (!series && !seriesId && !creator && !upc && !sku) return json({ ok:false, error:'Comic series, creator, UPC, or SKU is required' }, 400);
         try {
@@ -6181,7 +6186,7 @@ export default {
             selectedSeries = seriesChoices[0];
           }
           const selectedSeriesId = seriesId || selectedSeries?.id || '';
-          const filters = upc ? { upc } : sku ? { sku } : { series_id:selectedSeriesId, number, page };
+          const filters = upc ? { upc } : sku ? { sku } : { series_id:selectedSeriesId, number, page, ...(storeDateAfter ? { store_date_range_after:storeDateAfter } : {}), ...(storeDateBefore ? { store_date_range_before:storeDateBefore } : {}) };
           const [initialMetron, selectedSeriesDetail] = await Promise.all([
             metronFetch(env, '/issue/', filters, 60 * 60 * 24),
             selectedSeriesId ? metronFetch(env, `/series/${selectedSeriesId}/`, {}, 60 * 60 * 24 * 7).catch(() => null) : Promise.resolve(null),
