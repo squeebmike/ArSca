@@ -3184,7 +3184,9 @@ export default {
       if (!env.CARDSIGHTAI_API_KEY) return json({ error:'CARDSIGHTAI_API_KEY not set' }, 500);
       const client = await requireCardLensMobileClient(request, env);
       if (client.error) return client.error;
-      const params = new URLSearchParams({ period:'90d', listing_type:'auction', limit:'500' });
+      // Sparse and foreign-language printings often have no sale in 90 days even
+      // though CardSight has older completed-auction records.
+      const params = new URLSearchParams({ period:'all', listing_type:'auction', limit:'500' });
       const parallelId = String(url.searchParams.get('parallel_id') || 'null');
       if (/^(null|[a-zA-Z0-9_-]{1,80})$/.test(parallelId)) params.set('parallel_id', parallelId);
       const pricingCacheKey = cardLensCacheKey(request, 'pricing', `${cardLensPricingMatch[1]}:${parallelId}`);
