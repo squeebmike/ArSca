@@ -30,6 +30,10 @@ assert.match(source, /GOOGLE_PLAY_PRIVATE_KEY/, 'Google Play signing credentials
 assert.match(source, /cardLensNormalizeIdentificationText/, 'Mobile identification should normalize provider display metadata.');
 assert.match(source, /displaySetName/, 'Mobile cards should expose a useful display set name.');
 assert.match(source, /catalogSetName/, 'Raw CardSight catalog set names must remain available for review.');
+assert.match(source, /cardLensEnrichIdentificationText/, 'Mobile identification should resolve exact TCGplayer product metadata.');
+assert.match(source, /cardDealLensTcgplayer/, 'Resolved numeric TCGplayer product metadata must be returned to Android.');
+assert.match(source, /PokemonPriceTracker exact catalog match/, 'Pokemon exact links should use the existing PPT catalog resolver.');
+assert.match(source, /Scryfall exact printing match/, 'MTG exact links should use exact Scryfall printing metadata.');
 assert.doesNotMatch(source, /purchaseToken\s*[,}]\s*\)/, 'Raw purchase tokens must not be stored in KV records.');
 const accessStart = source.indexOf("if (url.pathname === '/card-lens/mobile/access/redeem')");
 assert.ok(accessStart >= 0 && accessStart < mobileStart, 'S-rank access routes must be declared before protected mobile routes.');

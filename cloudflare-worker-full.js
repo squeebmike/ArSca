@@ -658,6 +658,91 @@ function cardLensNormalizeIdentificationText(raw) {
   return JSON.stringify(payload);
 }
 
+function cardLensMatchKey(value) {
+  return String(value || '').toLowerCase().normalize('NFKD').replace(/[^a-z0-9]+/g, ' ').trim();
+}
+
+function cardLensNumberKey(value) {
+  return String(value || '').toLowerCase().split('/')[0].replace(/[^a-z0-9]+/g, '').replace(/^0+(?=\d)/, '');
+}
+
+async function cardLensResolveTcgplayer(card, env) {
+  const cardId = String(card?.id || '');
+  if (!cardId) return null;
+  const cacheKey = `card-lens:tcgplayer:${cardId}`;
+  const cached = env.LBA_KV ? await env.LBA_KV.get(cacheKey, 'json').catch(() => null) : null;
+  if (cached?.productId) return cached;
+
+  const name = String(card.name || '').trim();
+  const setName = String(card.displaySetName || card.setName || card.releaseName || '').trim();
+  const number = String(card.number || '').trim();
+  const fields = Array.isArray(card.fields) ? card.fields : [];
+  const fieldKeys = fields.map(field => String(field?.key || '').toUpperCase());
+  const lineage = cardLensMatchKey([card.manufacturer, card.releaseName, card.setName].filter(Boolean).join(' '));
+  let productId = '';
+  let source = '';
+
+  if ((/pokemon|pok mon/.test(lineage) || fieldKeys.some(key => ['HP','POKEMON_TYPE','POKEDEX_NUMBER','ENERGY_TYPE'].includes(key))) && (env.POKEMONPRICE_API_KEY || env.POKEMON_PRICE_TRACKER_API_KEY)) {
+    const languageCode = String(fields.find(field => String(field?.key || '').toUpperCase() === 'CARD_LANGUAGE')?.value || 'english').toLowerCase();
+    const language = ({ en:'english', ja:'japanese', ko:'korean', de:'german', fr:'french', es:'spanish', it:'italian', pt:'portuguese' })[languageCode] || languageCode;
+    const params = new URLSearchParams({ search:name, language, limit:'20' });
+    if (setName) params.set('setName', setName);
+    const response = await fetch(`https://www.pokemonpricetracker.com/api/v2/cards?${params.toString()}`, {
+      headers:{ Authorization:`Bearer ${env.POKEMONPRICE_API_KEY || env.POKEMON_PRICE_TRACKER_API_KEY}`, Accept:'application/json' },
+    }).catch(() => null);
+    if (response?.ok) {
+      const body = await response.json().catch(() => ({}));
+      const rows = Array.isArray(body?.data) ? body.data : body?.data ? [body.data] : Array.isArray(body?.cards) ? body.cards : [];
+      const wantedName = cardLensMatchKey(name), wantedSet = cardLensMatchKey(setName), wantedNumber = cardLensNumberKey(number);
+      const best = rows.map(row => {
+        const rowName = cardLensMatchKey(row.name), rowSet = cardLensMatchKey(row.setName || row.set?.name), rowNumber = cardLensNumberKey(row.cardNumber || row.number);
+        let score = rowName === wantedName ? 60 : 0;
+        if (wantedSet && (rowSet === wantedSet || rowSet.includes(wantedSet) || wantedSet.includes(rowSet))) score += 25;
+        if (wantedNumber && rowNumber === wantedNumber) score += 30;
+        return { row, score };
+      }).filter(match => /^\d+$/.test(String(match.row.tcgPlayerId || match.row.tcgplayerId || '')))
+        .sort((a,b) => b.score - a.score)[0];
+      if (best?.score >= (wantedNumber ? 90 : 80)) {
+        productId = String(best.row.tcgPlayerId || best.row.tcgplayerId);
+        source = 'PokemonPriceTracker exact catalog match';
+      }
+    }
+  } else if ((/magic|gathering|wizards/.test(lineage) || fieldKeys.some(key => ['MANA_COST','TYPE_LINE','ORACLE_TEXT'].includes(key))) && name) {
+    const query = [`!\"${name.replace(/\"/g, '')}\"`, number ? `number:${number}` : ''].filter(Boolean).join(' ');
+    const response = await fetch(`https://api.scryfall.com/cards/search?unique=prints&q=${encodeURIComponent(query)}`, {
+      headers:{ Accept:'application/json', 'User-Agent':'CardDealLens/0.6 (TCGplayer exact-link resolver)' },
+    }).catch(() => null);
+    if (response?.ok) {
+      const body = await response.json().catch(() => ({}));
+      const wantedName = cardLensMatchKey(name), wantedSet = cardLensMatchKey(setName), wantedNumber = cardLensNumberKey(number);
+      const exact = (body.data || []).find(row => cardLensMatchKey(row.name) === wantedName
+        && (!wantedSet || cardLensMatchKey(row.set_name) === wantedSet)
+        && (!wantedNumber || cardLensNumberKey(row.collector_number) === wantedNumber)
+        && /^\d+$/.test(String(row.tcgplayer_id || '')));
+      if (exact) { productId=String(exact.tcgplayer_id); source='Scryfall exact printing match'; }
+    }
+  }
+
+  if (!productId) return null;
+  const result = { productId, productUrl:`https://www.tcgplayer.com/product/${productId}`, source };
+  if (env.LBA_KV) await env.LBA_KV.put(cacheKey, JSON.stringify(result), { expirationTtl:60 * 60 * 24 * 7 }).catch(() => {});
+  return result;
+}
+
+async function cardLensEnrichIdentificationText(raw, env) {
+  const normalized = cardLensNormalizeIdentificationText(raw);
+  let payload;
+  try { payload=JSON.parse(normalized); } catch (_) { return normalized; }
+  const detections = Array.isArray(payload?.detections) ? payload.detections : [];
+  await Promise.all(detections.slice(0, 3).map(async detection => {
+    const card = detection?.card;
+    if (!card?.id) return;
+    const exact = await cardLensResolveTcgplayer(card, env);
+    if (exact) card.cardDealLensTcgplayer=exact;
+  }));
+  return JSON.stringify(payload);
+}
+
 function stripeMode(env, requested) {
   const configured = String(env.STRIPE_PLATFORM_MODE || 'test').toLowerCase() === 'live' ? 'live' : 'test';
   const wanted = String(requested || configured).toLowerCase();
@@ -3089,7 +3174,7 @@ export default {
       const installationId = client.installationId;
       const frameKey = String(request.headers.get('X-Card-Lens-Frame-Key') || '');
       const validFrameKey = /^[0-9a-f]{1,16}-[0-9]{1,3}$/i.test(frameKey) ? frameKey : '';
-      const identifyCacheKey = validFrameKey ? cardLensCacheKey(request, 'identify', `${installationId}:${validFrameKey}`) : null;
+      const identifyCacheKey = validFrameKey ? cardLensCacheKey(request, 'identify', `${installationId}:tcg-v1:${validFrameKey}`) : null;
       if (identifyCacheKey) {
         const cached = await caches.default.match(identifyCacheKey);
         if (cached) return cardLensCachedResponse(cached);
@@ -3140,7 +3225,7 @@ export default {
         body:identifyForm,
       });
       const rawIdentification = await res.text();
-      const data = res.ok ? cardLensNormalizeIdentificationText(rawIdentification) : rawIdentification;
+      const data = res.ok ? await cardLensEnrichIdentificationText(rawIdentification, env) : rawIdentification;
       // Cache a same-frame catalog miss briefly too. CardSight counts identify
       // attempts even when no card is matched, so an unchanged difficult view
       // must not consume another provider call every few seconds.
