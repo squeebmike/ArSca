@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.14.03-order-csv-export-file-picker-fix">
+<meta name="version" content="2026.08.14.04-pull-list-cover-backfill">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1543,13 +1543,13 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.14.03-order-csv-export-file-picker-fix" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.14.03-order-csv-export-file-picker-fix" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.14.03-order-csv-export-file-picker-fix" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.14.03-order-csv-export-file-picker-fix" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.14.03-order-csv-export-file-picker-fix" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.14.03-order-csv-export-file-picker-fix" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.14.03-order-csv-export-file-picker-fix" defer></script>
+<script src="scripts/query-routing.js?v=2026.08.14.04-pull-list-cover-backfill" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.14.04-pull-list-cover-backfill" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.14.04-pull-list-cover-backfill" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.14.04-pull-list-cover-backfill" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.14.04-pull-list-cover-backfill" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.14.04-pull-list-cover-backfill" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.14.04-pull-list-cover-backfill" defer></script>
 </head>
 <body>
 
@@ -1599,11 +1599,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.14.03-order-csv-export-file-picker-fix</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.14.04-pull-list-cover-backfill</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.14.03-order-csv-export-file-picker-fix</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.14.04-pull-list-cover-backfill</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1625,7 +1625,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.14.03-order-csv-export-file-picker-fix</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.14.04-pull-list-cover-backfill</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3280,7 +3280,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.14.03-order-csv-export-file-picker-fix';
+const APP_VERSION = '2026.08.14.04-pull-list-cover-backfill';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -18178,6 +18178,73 @@ async function loadPullListDetail(seriesId, force){
   if(subRes.error) console.warn('Pull list subscriptions sync failed:', subRes.error.message);
   pullListItemsCache[seriesId] = itemRes.data || [];
   pullListSubscriptionsCache[seriesId] = subRes.data || [];
+  backfillPullListSeriesCoversFromMetron(seriesId);
+}
+
+// ── Best-effort cover/info backfill ──────────────────────────────────
+// Issues added via the manual "Add Issue" form or a PRH FOC-list import
+// carry no Metron link -- PRH's spreadsheet has neither cover art nor an
+// issue id, and the manual form doesn't look anything up. That's why those
+// rows show no thumbnail and aren't clickable for detail. Once a series'
+// items are loaded, resolve any of them against Metron in the background;
+// a match fills in the cover image and makes the row clickable, same as
+// issues added via New Releases/auto-discovery, without blocking render.
+let pullListCoverBackfillInFlight = new Set();
+
+async function backfillPullListSeriesCoversFromMetron(seriesId){
+  if(pullListCoverBackfillInFlight.has(seriesId)) return;
+  const series = pullListSeriesCache.find(s => s.id === seriesId);
+  const items = (pullListItemsCache[seriesId] || []).filter(i => !i.metron_issue_id);
+  if(!series || !items.length) return;
+  pullListCoverBackfillInFlight.add(seriesId);
+  try {
+    for(const item of items) await backfillPullListItemCoverFromMetron(item, series);
+  } finally {
+    pullListCoverBackfillInFlight.delete(seriesId);
+  }
+}
+
+function pickMetronIssueMatch(issues, variantLabel){
+  if(!issues.length) return null;
+  if(issues.length === 1 || !variantLabel) return issues[0];
+  const norm = s => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+  const target = norm(variantLabel);
+  const scored = issues.map(iss => {
+    const name = norm(iss.issueName);
+    let score = 0;
+    if(name && target) {
+      if(name === target) score = 3;
+      else if(target.includes(name) || name.includes(target)) score = 2;
+      else if(name.split(' ').some(w => w.length > 2 && target.includes(w))) score = 1;
+    }
+    return { iss, score };
+  });
+  scored.sort((a, b) => b.score - a.score);
+  return scored[0].score > 0 ? scored[0].iss : (issues.find(i => i.imageUrl) || issues[0]);
+}
+
+async function backfillPullListItemCoverFromMetron(item, series){
+  try {
+    const params = new URLSearchParams({ number:item.issue_number });
+    if(series.metron_series_id) params.set('series_id', series.metron_series_id);
+    else params.set('series', series.title);
+    const res = await storeWorkerFetch('/comic/metron/search?' + params.toString(), { cache:'no-store' });
+    const data = await res.json().catch(() => ({}));
+    if(!res.ok || !data.ok || data.reason) return;
+    if(data.selectedSeries?.id && !series.metron_series_id) await savePullListSeriesMetronId(series.id, data.selectedSeries.id);
+    const match = pickMetronIssueMatch(data.issues || [], item.variant_label);
+    if(!match?.id) return;
+    item.metron_issue_id = match.id;
+    item.cover_image_url = match.imageUrl || item.cover_image_url || null;
+    item.updated_at = new Date().toISOString();
+    renderPullListPanel();
+    if(getAccountContext().isDemo) return;
+    const sb = getSupabaseClient();
+    if(!sb) return;
+    await sb.from('pull_list_items').update({ metron_issue_id:item.metron_issue_id, cover_image_url:item.cover_image_url, updated_at:item.updated_at }).eq('id', item.id).eq('store_id', getActiveStoreId());
+  } catch(e) {
+    // Best-effort only -- a missing cover/info link isn't worth surfacing an error for.
+  }
 }
 
 // Order sheet spans every series, so it needs every series' items +
@@ -39097,7 +39164,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.14.03-order-csv-export-file-picker-fix" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.14.04-pull-list-cover-backfill" defer></script>
 </body>
 </html>
 

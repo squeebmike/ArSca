@@ -370,3 +370,44 @@ console.log('File picker + order export contract checks passed');
 }
 
 console.log('Order CSV export functional checks passed');
+
+// ── Cover/info backfill for manually-added + PRH-imported issues ──────
+// Those two entry points never set metron_issue_id/cover_image_url (PRH's
+// spreadsheet has neither; the manual form does no lookup), which is why a
+// series detail view can show issues with no thumbnail and no click-through
+// info. Confirm the backfill is wired in and matches variants sanely.
+
+assert.match(dashboard, /function backfillPullListSeriesCoversFromMetron\(seriesId\)/, 'missing backfillPullListSeriesCoversFromMetron');
+assert.match(dashboard, /function backfillPullListItemCoverFromMetron\(item, series\)/, 'missing backfillPullListItemCoverFromMetron');
+assert.match(dashboard, /function pickMetronIssueMatch\(issues, variantLabel\)/, 'missing pickMetronIssueMatch');
+assert.match(dashboard, /pullListItemsCache\[seriesId\] = itemRes\.data \|\| \[\];\s*\n\s*pullListSubscriptionsCache\[seriesId\] = subRes\.data \|\| \[\];\s*\n\s*backfillPullListSeriesCoversFromMetron\(seriesId\);/, 'loadPullListDetail must trigger the backfill once items are loaded');
+
+console.log('Cover/info backfill contract checks passed');
+
+// ── Functional check: pickMetronIssueMatch ──
+{
+  const fnSrc = dashboard.match(/function pickMetronIssueMatch\(issues, variantLabel\)\{[\s\S]*?\n\}/)?.[0];
+  assert.ok(fnSrc, 'could not extract pickMetronIssueMatch for functional testing');
+  const { pickMetronIssueMatch } = new Function(`${fnSrc}\nreturn { pickMetronIssueMatch };`)();
+
+  assert.equal(pickMetronIssueMatch([], 'Cover A'), null, 'no issues means no match');
+
+  const single = [{ id:'1', issueName:'', imageUrl:'a.jpg' }];
+  assert.equal(pickMetronIssueMatch(single, 'Cover A Daniel Gete').id, '1', 'a single candidate is used regardless of variant label');
+
+  const multi = [
+    { id:'10', issueName:'Cover A Daniel Gete', imageUrl:'a.jpg' },
+    { id:'11', issueName:'Cover B David Lapham', imageUrl:'b.jpg' },
+    { id:'12', issueName:'Cover C Incentive', imageUrl:'c.jpg' },
+  ];
+  assert.equal(pickMetronIssueMatch(multi, 'Cover B David Lapham').id, '11', 'exact-ish variant label match must pick the right cover, not just the first');
+  assert.equal(pickMetronIssueMatch(multi, 'cover a daniel gete').id, '10', 'match must be case/punctuation insensitive');
+
+  const noLabel = pickMetronIssueMatch(multi, null);
+  assert.equal(noLabel.id, '10', 'with no variant label to match against, fall back to the first candidate');
+
+  const noneMatch = pickMetronIssueMatch(multi, 'Totally Unrelated Text');
+  assert.ok(['10','11','12'].includes(noneMatch.id), 'an unmatched label must still fall back to some candidate rather than returning nothing');
+}
+
+console.log('pickMetronIssueMatch functional checks passed');
