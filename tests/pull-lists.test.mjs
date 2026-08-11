@@ -178,3 +178,74 @@ console.log('Cover detail + demand signal contract checks passed');
 }
 
 console.log('detectVariantSignal functional checks passed');
+
+// ── PRH FOC-list XLSX import ──
+
+const upcMigration = fs.readFileSync('supabase-migrations/2026-08-14-pull-list-upc.sql', 'utf8');
+assert.match(upcMigration, /alter table public\.pull_list_items add column if not exists upc text/, 'pull_list_items must be able to store the distributor UPC for dedupe on re-import');
+assert.match(upcMigration, /create unique index if not exists idx_pull_list_items_upc on public\.pull_list_items\(series_id, upc\) where upc is not null/, 'UPC must be unique per series so re-importing the same file twice cannot create duplicates');
+
+assert.match(dashboard, /xlsx@0\.18\.5\/dist\/xlsx\.full\.min\.js/, 'the XLSX parser library must be loaded for the PRH importer to work');
+
+for (const fn of ['parsePrhFocPrice', 'parsePrhFocDate', 'parsePrhFocTitle', 'parsePrhFocRows', 'openPrhImportPicker', 'handlePrhImportFile', 'showPrhImportPreview', 'confirmPrhImport']) {
+  assert.match(dashboard, new RegExp(`function ${fn}`), `missing ${fn}`);
+}
+
+// Import must dedupe by UPC (the distributor's real identifier), not by
+// issue number alone -- two different variants of the same issue number
+// are two different UPCs and must both be importable.
+assert.match(dashboard, /const already = \(pullListItemsCache\[series\.id\] \|\| \[\]\)\.some\(i => i\.upc && i\.upc === row\.upc\);/, 'import must dedupe by UPC per series');
+
+console.log('PRH import contract checks passed');
+
+// ── Functional check: PRH FOC-list parsers, against real rows from an
+// actual PRH FOC-list export (not synthetic fixtures) ──
+{
+  const priceSrc = dashboard.match(/function parsePrhFocPrice\(value\)\{[\s\S]*?\n\}/)?.[0];
+  const dateSrc = dashboard.match(/function parsePrhFocDate\(value\)\{[\s\S]*?\n\}/)?.[0];
+  const titleSrc = dashboard.match(/function parsePrhFocTitle\(title\)\{[\s\S]*?\n\}/)?.[0];
+  const rowsSrc = dashboard.match(/function parsePrhFocRows\(rows\)\{[\s\S]*?\n\}/)?.[0];
+  assert.ok(priceSrc && dateSrc && titleSrc && rowsSrc, 'could not extract PRH parser functions for functional testing');
+  const { parsePrhFocPrice, parsePrhFocDate, parsePrhFocTitle, parsePrhFocRows } = new Function(
+    `${priceSrc}\n${dateSrc}\n${titleSrc}\n${rowsSrc}\nreturn { parsePrhFocPrice, parsePrhFocDate, parsePrhFocTitle, parsePrhFocRows };`
+  )();
+
+  assert.equal(parsePrhFocPrice('$5.99 US'), 5.99);
+  assert.equal(parsePrhFocPrice('$8.99 US'), 8.99);
+  assert.equal(parsePrhFocDate('08/17/2026'), '2026-08-17', 'MM/DD/YYYY must convert to YYYY-MM-DD');
+  assert.equal(parsePrhFocDate('09/30/2026'), '2026-09-30');
+  assert.equal(parsePrhFocDate(''), null, 'a blank date must not throw or fabricate a date');
+
+  assert.deepEqual(parsePrhFocTitle('ALIEN VS. X-MEN #1'), { seriesTitle:'ALIEN VS. X-MEN', issueNumber:'1', variantLabel:null }, 'a main-cover title with no variant text must parse cleanly with a null variant label');
+  assert.deepEqual(parsePrhFocTitle('ALIEN VS. X-MEN #1 ALAN QUAH POSTER HOMAGE VARIANT'), { seriesTitle:'ALIEN VS. X-MEN', issueNumber:'1', variantLabel:'ALAN QUAH POSTER HOMAGE VARIANT' });
+  assert.deepEqual(parsePrhFocTitle('THE AMAZING VENOM #1 ITO VIRGIN VARIANT'), { seriesTitle:'THE AMAZING VENOM', issueNumber:'1', variantLabel:'ITO VIRGIN VARIANT' }, 'a series title containing "THE" must not be confused with a different real series (Amazing Spider-Man)');
+  assert.equal(parsePrhFocTitle('SOME GRAPHIC NOVEL'), null, 'a title with no issue number and no Cover/Variant marker must not be force-parsed');
+  // Real one-shots from an actual PRH FOC-list export ship with no "#1" in
+  // the title at all -- just "<Title> Cover A (Artist)". The primary
+  // #-number regex alone drops these entirely; confirmed by running the
+  // parser against the full real 168-row file before this fallback existed.
+  assert.deepEqual(parsePrhFocTitle('Gangrene Cover A (Giménez)'), { seriesTitle:'Gangrene', issueNumber:'1', variantLabel:'Cover A (Giménez)' }, 'a one-shot with no issue number in the title must fall back to issue 1, not get dropped');
+  assert.deepEqual(parsePrhFocTitle('Godzilla Vs. America: New York City Variant RI (25) (Fox Full Art)'), { seriesTitle:'Godzilla Vs. America: New York City', issueNumber:'1', variantLabel:'Variant RI (25) (Fox Full Art)' });
+
+  // Real rows straight from an actual PRH FOC-list export (same shape
+  // sheet_to_json produces: header row 1, banner row 0 already skipped).
+  const realRows = [
+    { 'ISBN/UPC':'75960621578200111', Quantity:'1', Title:'ALIEN VS. X-MEN #1', Subtitle:'', Creators:'Kieron Gillen', Imprint:'Marvel Universe', 'Retail Price (US)':'$5.99 US', 'Retail Price (CAN)':'$7.50 CAN', Format:'CB', 'FOC Date':'08/17/2026', 'On-Sale Date':'09/30/2026', Age:'', Grade:'' },
+    { 'ISBN/UPC':'75960621578200121', Quantity:'1', Title:'ALIEN VS. X-MEN #1 JOHN ROMITA JR. FOIL VARIANT', Subtitle:'', Creators:'Kieron Gillen', Imprint:'Marvel Universe', 'Retail Price (US)':'$8.99 US', 'Retail Price (CAN)':'$11.25 CAN', Format:'CB', 'FOC Date':'08/17/2026', 'On-Sale Date':'09/30/2026', Age:'', Grade:'' },
+    { 'ISBN/UPC':'75960621550800117', Quantity:'1', Title:'THE AMAZING VENOM #1 ITO VIRGIN VARIANT', Subtitle:'', Creators:'Jordan Morris', Imprint:'Marvel Universe', 'Retail Price (US)':'$4.99 US', 'Retail Price (CAN)':'$6.25 CAN', Format:'CB', 'FOC Date':'08/17/2026', 'On-Sale Date':'09/30/2026', Age:'', Grade:'' },
+    // Not a comic-book format -- must be filtered out entirely.
+    { 'ISBN/UPC':'99999999999', Quantity:'1', Title:'SOME TRADE PAPERBACK', Subtitle:'', Creators:'Someone', Imprint:'Marvel Universe', 'Retail Price (US)':'$19.99 US', 'Retail Price (CAN)':'$25.00 CAN', Format:'TP', 'FOC Date':'08/17/2026', 'On-Sale Date':'09/30/2026', Age:'', Grade:'' },
+  ];
+  const parsed = parsePrhFocRows(realRows);
+  assert.equal(parsed.length, 3, 'the TP-format row must be filtered out, only CB rows parsed');
+  assert.equal(parsed[0].upc, '75960621578200111', 'a 17-digit UPC must survive intact -- this exceeds JS safe-integer precision (2^53), so it must be read as text, not a rounded number');
+  assert.equal(parsed[0].seriesTitle, 'ALIEN VS. X-MEN');
+  assert.equal(parsed[0].variantLabel, null);
+  assert.equal(parsed[1].variantLabel, 'JOHN ROMITA JR. FOIL VARIANT');
+  assert.equal(parsed[1].priceUS, 8.99);
+  assert.equal(parsed[0].focDate, '2026-08-17');
+  assert.equal(parsed[0].streetDate, '2026-09-30');
+  assert.equal(parsed[2].seriesTitle, 'THE AMAZING VENOM');
+}
+
+console.log('PRH import functional checks passed');

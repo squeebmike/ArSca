@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.13.04-new-releases-date-window">
+<meta name="version" content="2026.08.14.01-prh-foc-import">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1536,18 +1536,20 @@ body.show-mode .inv-sync-badge{display:none;}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js" defer></script>
+<!-- Parses distributor FOC-list exports (Pull Lists > IMPORT PRH LIST) -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js" defer></script>
 <!-- Same team-color database + palette engine walkoffsc.com's team picker uses
      (squeebmike/wo-scripts) -- one shared source so a team's colors never need
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.13.04-new-releases-date-window" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.13.04-new-releases-date-window" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.13.04-new-releases-date-window" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.13.04-new-releases-date-window" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.13.04-new-releases-date-window" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.13.04-new-releases-date-window" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.13.04-new-releases-date-window" defer></script>
+<script src="scripts/query-routing.js?v=2026.08.14.01-prh-foc-import" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.14.01-prh-foc-import" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.14.01-prh-foc-import" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.14.01-prh-foc-import" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.14.01-prh-foc-import" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.14.01-prh-foc-import" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.14.01-prh-foc-import" defer></script>
 </head>
 <body>
 
@@ -1597,11 +1599,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.13.04-new-releases-date-window</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.14.01-prh-foc-import</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.13.04-new-releases-date-window</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.14.01-prh-foc-import</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1623,7 +1625,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.13.04-new-releases-date-window</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.14.01-prh-foc-import</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3038,6 +3040,19 @@ body.show-mode .inv-sync-badge{display:none;}
   </div>
 </div>
 
+<!-- PRH FOC-list XLSX import (Pull Lists) -->
+<input type="file" id="pulllist-prh-import-file" accept=".xlsx,.xls" style="display:none" onchange="handlePrhImportFile(event)">
+<div class="modal-bg" id="pulllist-prh-import-modal">
+  <div class="modal">
+    <h3>📥 Import PRH FOC List</h3>
+    <div id="pulllist-prh-import-body"></div>
+    <div class="modal-btns">
+      <button class="modal-btn confirm" onclick="confirmPrhImport()">IMPORT</button>
+      <button class="modal-btn cancel" onclick="closePrhImportPreview()">Cancel</button>
+    </div>
+  </div>
+</div>
+
 <!-- WANT LIST TAB -->
 <div id="tab-wantlist" class="tab-panel">
   <div class="sec">CUSTOMER WANT LIST / PULL LIST</div>
@@ -3259,7 +3274,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.13.04-new-releases-date-window';
+const APP_VERSION = '2026.08.14.01-prh-foc-import';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -18216,6 +18231,7 @@ function renderPullListSeriesListInto(container){
       <button class="hbtn" style="background:rgba(0,255,179,.14);border-color:rgba(0,255,179,.4);font-size:11px;padding:10px 16px" onclick="openNewPullListSeriesModal()">+ NEW SERIES</button>
       <button class="hbtn" style="background:rgba(255,209,102,.1);border-color:rgba(255,209,102,.35);color:var(--gold);font-size:11px;padding:10px 16px" onclick="openPullListOrderSheet()">📋 ORDER SHEET</button>
       <button class="hbtn" style="background:rgba(107,166,255,.12);border-color:rgba(107,166,255,.4);color:var(--blue);font-size:11px;padding:10px 16px" onclick="openPullListBrowse()">📅 NEW RELEASES</button>
+      <button class="hbtn" style="background:rgba(180,120,255,.12);border-color:rgba(180,120,255,.4);color:var(--purple);font-size:11px;padding:10px 16px" onclick="openPrhImportPicker()">📥 IMPORT PRH LIST</button>
     </div>
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px">
       ${series.length ? series.map(s => `<div style="cursor:pointer;border:1px solid var(--border);background:var(--surf2);border-radius:10px;padding:14px;transition:transform .12s ease" onclick="openPullListSeriesDetail('${escHtml(s.id)}')" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='none'">
@@ -18329,6 +18345,145 @@ async function createPullListSeriesFromMetron(iss){
     enqueueSync('pulllist-series-upsert', 'Queued pull list series save', record, e.message);
   }
   return record;
+}
+
+// ── PRH Comics Retail FOC-list import (real distributor data) ────────
+// prhcomics.com has no public API, so this parses the XLSX export a
+// retailer downloads from their own FOC-list page. Unlike the Metron path
+// above, this has REAL FOC (order cutoff) dates and real UPCs -- Metron
+// only ever had street dates, FOC was always left blank for staff to fill
+// in by hand. The header row is the file's 2nd row (row index 1); row 0 is
+// a banner like "FOC August 17, 2026: Order these comics by Monday".
+function parsePrhFocPrice(value){
+  const m = String(value || '').match(/\$?([\d.]+)/);
+  return m ? Number(m[1]) : null;
+}
+function parsePrhFocDate(value){
+  const m = String(value || '').trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if(!m) return null;
+  return `${m[3]}-${m[1].padStart(2,'0')}-${m[2].padStart(2,'0')}`;
+}
+// "ALIEN VS. X-MEN #1 ALAN QUAH POSTER HOMAGE VARIANT" -> series/issue/variant.
+// PRH jams the whole variant name into one Title cell with no separate column.
+function parsePrhFocTitle(title){
+  const text = String(title || '').trim();
+  const numbered = text.match(/^(.*?)\s+#(\d+[A-Za-z]?)(?:\s+(.*))?$/);
+  if(numbered) return { seriesTitle:numbered[1].trim(), issueNumber:numbered[2], variantLabel:(numbered[3] || '').trim() || null };
+  // One-shots/specials sometimes ship with no "#1" in the title at all --
+  // just "<Title> Cover A (Artist)" or "<Title> Variant B (Artist)". Treat
+  // these as issue 1 (the standard one-shot convention -- Metron/GCD do the
+  // same) instead of silently dropping every one-shot with a cover/variant
+  // label, which real PRH FOC lists do include (confirmed against a real
+  // export, not assumed).
+  const oneShot = text.match(/^(.*?)\s+((?:Cover|Variant)\b.*)$/i);
+  if(oneShot) return { seriesTitle:oneShot[1].trim(), issueNumber:'1', variantLabel:oneShot[2].trim() || null };
+  return null;
+}
+// Format 'CB' = single-issue comic book; TPBs/HCs/other formats aren't
+// pull-list-shaped (no ongoing issue number) so they're skipped rather than
+// mis-parsed.
+function parsePrhFocRows(rows){
+  return (rows || []).map(r => {
+    if(String(r['Format'] || '').trim() !== 'CB') return null;
+    const parsedTitle = parsePrhFocTitle(r['Title']);
+    if(!parsedTitle) return null;
+    return {
+      upc:String(r['ISBN/UPC'] || '').trim(),
+      seriesTitle:parsedTitle.seriesTitle,
+      issueNumber:parsedTitle.issueNumber,
+      variantLabel:parsedTitle.variantLabel,
+      publisher:String(r['Imprint'] || '').trim() || null,
+      priceUS:parsePrhFocPrice(r['Retail Price (US)']),
+      focDate:parsePrhFocDate(r['FOC Date']),
+      streetDate:parsePrhFocDate(r['On-Sale Date']),
+    };
+  }).filter(Boolean);
+}
+
+let pendingPrhImportRows = [];
+
+function openPrhImportPicker(){
+  if(typeof XLSX === 'undefined') return toast_dash('Spreadsheet reader is still loading -- try again in a moment');
+  document.getElementById('pulllist-prh-import-file')?.click();
+}
+
+async function handlePrhImportFile(event){
+  const file = event.target.files?.[0];
+  event.target.value = '';
+  if(!file) return;
+  if(typeof XLSX === 'undefined') return toast_dash('Spreadsheet reader failed to load -- try refreshing the page');
+  try {
+    const buf = await file.arrayBuffer();
+    const wb = XLSX.read(buf, { type:'array' });
+    const sheet = wb.Sheets[wb.SheetNames[0]];
+    // range:1 skips the banner row (row 0) and reads headers from row 1,
+    // matching PRH's fixed export layout.
+    const rawRows = XLSX.utils.sheet_to_json(sheet, { range:1, defval:'' });
+    const rows = parsePrhFocRows(rawRows);
+    if(!rows.length) return toast_dash('No comic-book rows found in that file -- is this a PRH FOC-list export?');
+    pendingPrhImportRows = rows;
+    showPrhImportPreview(rows);
+  } catch(e) {
+    toast_dash('Could not read that file: ' + e.message);
+  }
+}
+
+function showPrhImportPreview(rows){
+  const seriesNames = new Set(rows.map(r => r.seriesTitle.toLowerCase()));
+  const variantCount = rows.filter(r => r.variantLabel).length;
+  const body = document.getElementById('pulllist-prh-import-body');
+  if(!body) return;
+  body.innerHTML = `
+    <div style="font-family:var(--font-mono);font-size:11px;color:var(--text);margin-bottom:10px">Found <b>${rows.length}</b> titles across <b>${seriesNames.size}</b> series (${variantCount} are variant covers).</div>
+    <label style="display:flex;gap:8px;align-items:center;font-family:var(--font-mono);font-size:10px;color:var(--dim);margin-bottom:14px">
+      <input type="checkbox" id="pulllist-prh-import-variants" checked> Include variant covers
+    </label>
+    <div style="font-family:var(--font-mono);font-size:9px;color:var(--dim)">Already-tracked issues (matched by UPC) are skipped automatically. New series are created as needed, matched to existing ones by title.</div>
+  `;
+  document.getElementById('pulllist-prh-import-modal')?.classList.add('on');
+}
+function closePrhImportPreview(){
+  document.getElementById('pulllist-prh-import-modal')?.classList.remove('on');
+  pendingPrhImportRows = [];
+}
+
+async function confirmPrhImport(){
+  const includeVariants = document.getElementById('pulllist-prh-import-variants')?.checked !== false;
+  const rows = pendingPrhImportRows.filter(r => includeVariants || !r.variantLabel);
+  closePrhImportPreview();
+  if(!rows.length) return toast_dash('Nothing to import');
+  toast_dash('Importing…');
+  let created = 0, skipped = 0, newSeriesCount = 0;
+  for(const row of rows) {
+    let series = pullListSeriesCache.find(s => (s.title||'').trim().toLowerCase() === row.seriesTitle.toLowerCase());
+    if(!series) {
+      series = await createPullListSeriesFromMetron({ seriesName:row.seriesTitle, publisher:row.publisher, seriesId:null });
+      newSeriesCount++;
+    }
+    if(!series) { skipped++; continue; }
+    await loadPullListDetail(series.id);
+    const already = (pullListItemsCache[series.id] || []).some(i => i.upc && i.upc === row.upc);
+    if(already) { skipped++; continue; }
+    const record = {
+      id:makeUuid('pli'), store_id:getActiveStoreId(), series_id:series.id, issue_number:row.issueNumber,
+      variant_label:row.variantLabel, upc:row.upc || null, cover_image_url:null, metron_issue_id:null,
+      foc_date:row.focDate, street_date:row.streetDate, status:'upcoming',
+      created_at:new Date().toISOString(), updated_at:new Date().toISOString()
+    };
+    pullListItemsCache[series.id] = [...(pullListItemsCache[series.id] || []), record];
+    created++;
+    if(getAccountContext().isDemo) continue;
+    try {
+      const sb = getSupabaseClient();
+      if(!sb) throw new Error('Supabase unavailable');
+      const { error } = await sb.from('pull_list_items').insert(record);
+      if(error) throw error;
+    } catch(e) {
+      enqueueSync('pulllist-item-upsert', 'Queued pull list issue', record, e.message);
+    }
+  }
+  renderPullListPanel();
+  toast_dash(`Imported ${created} issue${created === 1 ? '' : 's'} (${newSeriesCount} new series) — ${skipped} already tracked/skipped`);
 }
 
 async function addBrowsedIssueToPullList(idx){
@@ -38811,7 +38966,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.13.04-new-releases-date-window" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.14.01-prh-foc-import" defer></script>
 </body>
 </html>
 
