@@ -332,3 +332,41 @@ console.log('#1 badge contract checks passed');
 }
 
 console.log('#1 badge + sort/filter functional checks passed');
+
+// ── File picker must not reject a real file over MIME/extension mismatch;
+// order sheet export is the honest answer to "how do we place the order"
+// (no distributor accepts a submitted order from this app) ──
+
+assert.doesNotMatch(dashboard, /id="pulllist-prh-import-file" accept=/, 'the PRH import file input must not restrict by accept -- mobile downloads often lack a clean .xlsx MIME/extension and get grayed out of the picker entirely');
+
+for (const fn of ['csvEscapeField', 'pullListOrderCsvText', 'exportPullListOrderCsv']) {
+  assert.match(dashboard, new RegExp(`function ${fn}`), `missing ${fn}`);
+}
+// The export must respect whatever filter/sort is currently applied, not
+// silently dump the entire untracked order sheet regardless of what's on screen.
+assert.match(dashboard, /const rows = filterAndSortPullListOrderSheetRows\(allRows, pullListBrowseFilters\);\s*\n\s*if\(!rows\.length\) return toast_dash\('Nothing to export'\);/, 'CSV export must use the currently filtered/sorted rows, not all rows unconditionally');
+
+console.log('File picker + order export contract checks passed');
+
+// ── Functional check: pullListOrderCsvText ──
+{
+  const escSrc = dashboard.match(/function csvEscapeField\(value\)\{[\s\S]*?\n\}/)?.[0];
+  const csvSrc = dashboard.match(/function pullListOrderCsvText\(rows\)\{[\s\S]*?\n\}/)?.[0];
+  assert.ok(escSrc && csvSrc, 'could not extract CSV export functions for functional testing');
+  const { pullListOrderCsvText } = new Function(`${escSrc}\n${csvSrc}\nreturn { pullListOrderCsvText };`)();
+
+  const rows = [
+    { series:{ title:'Alien vs. X-Men' }, item:{ issue_number:'1', variant_label:null, upc:'75960621578200111', foc_date:'2026-08-17' }, subscriberCount:3 },
+    { series:{ title:'Batman, "The Dark"' }, item:{ issue_number:'2', variant_label:'1:25 Incentive', upc:'', foc_date:'2026-09-01' }, subscriberCount:0 },
+  ];
+  const csv = pullListOrderCsvText(rows);
+  const lines = csv.split('\r\n');
+  assert.equal(lines[0], 'Series,Issue,Variant,UPC,Subscribers (suggested qty),FOC Date', 'header row must be present and in order');
+  assert.equal(lines[1], 'Alien vs. X-Men,1,,75960621578200111,3,2026-08-17');
+  // A title containing a comma and quotes must be CSV-escaped, not corrupt
+  // the row/column structure when opened in a spreadsheet.
+  assert.equal(lines[2], '"Batman, ""The Dark""",2,1:25 Incentive,,0,2026-09-01');
+  assert.equal(lines.length, 3, 'exactly header + 2 data rows, no stray blank lines');
+}
+
+console.log('Order CSV export functional checks passed');

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.14.02-number1-highlight-sort-filter">
+<meta name="version" content="2026.08.14.03-order-csv-export-file-picker-fix">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1543,13 +1543,13 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.14.02-number1-highlight-sort-filter" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.14.02-number1-highlight-sort-filter" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.14.02-number1-highlight-sort-filter" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.14.02-number1-highlight-sort-filter" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.14.02-number1-highlight-sort-filter" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.14.02-number1-highlight-sort-filter" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.14.02-number1-highlight-sort-filter" defer></script>
+<script src="scripts/query-routing.js?v=2026.08.14.03-order-csv-export-file-picker-fix" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.14.03-order-csv-export-file-picker-fix" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.14.03-order-csv-export-file-picker-fix" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.14.03-order-csv-export-file-picker-fix" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.14.03-order-csv-export-file-picker-fix" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.14.03-order-csv-export-file-picker-fix" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.14.03-order-csv-export-file-picker-fix" defer></script>
 </head>
 <body>
 
@@ -1599,11 +1599,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.14.02-number1-highlight-sort-filter</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.14.03-order-csv-export-file-picker-fix</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.14.02-number1-highlight-sort-filter</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.14.03-order-csv-export-file-picker-fix</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1625,7 +1625,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.14.02-number1-highlight-sort-filter</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.14.03-order-csv-export-file-picker-fix</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3041,7 +3041,13 @@ body.show-mode .inv-sync-badge{display:none;}
 </div>
 
 <!-- PRH FOC-list XLSX import (Pull Lists) -->
-<input type="file" id="pulllist-prh-import-file" accept=".xlsx,.xls" style="display:none" onchange="handlePrhImportFile(event)">
+<!-- No accept restriction: mobile downloads (e.g. from PRH's site) often
+     don't carry a clean .xlsx MIME type/extension, which grays the file out
+     of the picker entirely if accept is narrow. The actual file content is
+     validated after selection (handlePrhImportFile), so being permissive
+     here just means a bad pick fails with a clear error instead of being
+     unselectable. -->
+<input type="file" id="pulllist-prh-import-file" style="display:none" onchange="handlePrhImportFile(event)">
 <div class="modal-bg" id="pulllist-prh-import-modal">
   <div class="modal">
     <h3>📥 Import PRH FOC List</h3>
@@ -3274,7 +3280,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.14.02-number1-highlight-sort-filter';
+const APP_VERSION = '2026.08.14.03-order-csv-export-file-picker-fix';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -18606,12 +18612,18 @@ function renderPullListOrderSheetInto(container){
   const rows = filterAndSortPullListOrderSheetRows(allRows, pullListBrowseFilters);
   const today = new Date().toISOString().slice(0,10);
   container.innerHTML = `<div class="panel">
-    <div class="ph"><b style="font-family:'Orbitron',monospace;font-size:13px;letter-spacing:1px;color:var(--text)">📋 ORDER SHEET</b><button class="hbtn" style="min-height:28px;padding:4px 10px;font-size:9px" onclick="closePullListOrderSheet()">← SERIES</button></div>
+    <div class="ph"><b style="font-family:'Orbitron',monospace;font-size:13px;letter-spacing:1px;color:var(--text)">📋 ORDER SHEET</b>
+      <div style="display:flex;gap:6px">
+        <button class="hbtn" style="min-height:28px;padding:4px 10px;font-size:9px" onclick="exportPullListOrderCsv()">⬇ EXPORT CSV</button>
+        <button class="hbtn" style="min-height:28px;padding:4px 10px;font-size:9px" onclick="closePullListOrderSheet()">← SERIES</button>
+      </div>
+    </div>
+    <div style="font-family:var(--font-mono);font-size:9px;color:var(--dim);margin-bottom:10px">No distributor accepts an automated order from this app -- export this as a reference/checklist while placing the actual order on PRH's site (or wherever you order from).</div>
     ${pullListFilterSortControlsHtml('pulllist-ordersheet')}
-    ${rows.length ? `<div style="overflow-x:auto"><table style="width:100%;font-family:var(--font-mono);font-size:11px"><tr style="color:var(--dim);font-size:9px;letter-spacing:1px"><th style="text-align:left;padding:4px">Series</th><th style="text-align:left;padding:4px">Issue</th><th style="padding:4px">Subscribers</th><th style="padding:4px">FOC Due</th></tr>
+    ${rows.length ? `<div style="overflow-x:auto"><table style="width:100%;font-family:var(--font-mono);font-size:11px"><tr style="color:var(--dim);font-size:9px;letter-spacing:1px"><th style="text-align:left;padding:4px">Series</th><th style="text-align:left;padding:4px">Issue</th><th style="text-align:left;padding:4px">UPC</th><th style="padding:4px">Subscribers</th><th style="padding:4px">FOC Due</th></tr>
       ${rows.map(r => {
         const pastDue = r.item.foc_date && r.item.foc_date < today;
-        return `<tr style="cursor:pointer" onclick="openPullListSeriesDetail('${escHtml(r.series.id)}')"><td style="padding:6px 4px"><b style="color:var(--text)">${escHtml(r.series.title)}</b></td><td style="padding:6px 4px">#${escHtml(r.item.issue_number)}${pullListFirstIssueBadge(r.item.issue_number)}${r.item.variant_label ? ' · ' + escHtml(r.item.variant_label) : ''}</td><td style="padding:6px 4px;text-align:center"><b style="color:${r.subscriberCount ? 'var(--g)' : 'var(--dim)'}">${r.subscriberCount}</b></td><td style="padding:6px 4px;text-align:center;color:${pastDue ? 'var(--red)' : 'var(--dim)'}">${escHtml(r.item.foc_date || '—')}${pastDue ? ' ⚠' : ''}</td></tr>`;
+        return `<tr style="cursor:pointer" onclick="openPullListSeriesDetail('${escHtml(r.series.id)}')"><td style="padding:6px 4px"><b style="color:var(--text)">${escHtml(r.series.title)}</b></td><td style="padding:6px 4px">#${escHtml(r.item.issue_number)}${pullListFirstIssueBadge(r.item.issue_number)}${r.item.variant_label ? ' · ' + escHtml(r.item.variant_label) : ''}</td><td style="padding:6px 4px;color:var(--dim)">${escHtml(r.item.upc || '—')}</td><td style="padding:6px 4px;text-align:center"><b style="color:${r.subscriberCount ? 'var(--g)' : 'var(--dim)'}">${r.subscriberCount}</b></td><td style="padding:6px 4px;text-align:center;color:${pastDue ? 'var(--red)' : 'var(--dim)'}">${escHtml(r.item.foc_date || '—')}${pastDue ? ' ⚠' : ''}</td></tr>`;
       }).join('')}
     </table></div>` : `<div style="padding:36px 14px;border:1px dashed var(--border);border-radius:10px;text-align:center">
       <div style="font-size:38px;margin-bottom:10px">📋</div>
@@ -18619,6 +18631,43 @@ function renderPullListOrderSheetInto(container){
       <div style="color:var(--dim);font-family:var(--font-mono);font-size:10px">${allRows.length ? 'Try clearing a checkbox above' : 'Add upcoming issues from inside a series to see them here'}</div>
     </div>`}
   </div>`;
+}
+
+function csvEscapeField(value){
+  const s = String(value == null ? '' : value);
+  return /[",\r\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+}
+
+// Exactly the rows currently visible (same filters/sort applied) -- so
+// exporting after checking "#1s only" or "ratio only" gives a checklist
+// scoped to what's on screen, not everything ever tracked.
+function pullListOrderCsvText(rows){
+  const header = ['Series','Issue','Variant','UPC','Subscribers (suggested qty)','FOC Date'];
+  const lines = [header.map(csvEscapeField).join(',')];
+  rows.forEach(r => {
+    lines.push([r.series.title, r.item.issue_number, r.item.variant_label || '', r.item.upc || '', String(r.subscriberCount), r.item.foc_date || ''].map(csvEscapeField).join(','));
+  });
+  return lines.join('\r\n');
+}
+
+// No distributor (PRH, Lunar, Diamond) accepts an order placed by this app
+// -- there's no submission API, confirmed earlier. This is the honest next
+// best thing: a clean checklist to work from while placing the real order
+// on the distributor's own site.
+function exportPullListOrderCsv(){
+  const allRows = computePullListOrderSheetRows(pullListSeriesCache, pullListItemsCache, pullListSubscriptionsCache);
+  const rows = filterAndSortPullListOrderSheetRows(allRows, pullListBrowseFilters);
+  if(!rows.length) return toast_dash('Nothing to export');
+  const csv = pullListOrderCsvText(rows);
+  const blob = new Blob([csv], { type:'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'pull-list-order-' + new Date().toISOString().slice(0,10) + '.csv';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
 }
 
 function openPullListSeriesDetail(seriesId){
@@ -39048,7 +39097,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.14.02-number1-highlight-sort-filter" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.14.03-order-csv-export-file-picker-fix" defer></script>
 </body>
 </html>
 
