@@ -666,10 +666,24 @@ function cardLensNumberKey(value) {
   return String(value || '').toLowerCase().split('/')[0].replace(/[^a-z0-9]+/g, '').replace(/^0+(?=\d)/, '');
 }
 
+function cardLensMoneyValue(value) {
+  if (typeof value === 'number') return Number.isFinite(value) && value > 0 ? value : 0;
+  if (typeof value === 'string') {
+    const parsed = Number(value.replace(/[$,]/g, ''));
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+  }
+  if (!value || typeof value !== 'object') return 0;
+  for (const key of ['market', 'marketPrice', 'market_price', 'tcgplayerMarketPrice', 'price', 'value', 'median']) {
+    const parsed = cardLensMoneyValue(value[key]);
+    if (parsed) return parsed;
+  }
+  return 0;
+}
+
 async function cardLensResolveTcgplayer(card, env) {
   const cardId = String(card?.id || '');
   if (!cardId) return null;
-  const cacheKey = `card-lens:tcgplayer:${cardId}`;
+  const cacheKey = `card-lens:tcgplayer:v2:${cardId}`;
   const cached = env.LBA_KV ? await env.LBA_KV.get(cacheKey, 'json').catch(() => null) : null;
   if (cached?.productId) return cached;
 
@@ -681,6 +695,7 @@ async function cardLensResolveTcgplayer(card, env) {
   const lineage = cardLensMatchKey([card.manufacturer, card.releaseName, card.setName].filter(Boolean).join(' '));
   let productId = '';
   let source = '';
+  let marketPrice = 0;
 
   if ((/pokemon|pok mon/.test(lineage) || fieldKeys.some(key => ['HP','POKEMON_TYPE','POKEDEX_NUMBER','ENERGY_TYPE'].includes(key))) && (env.POKEMONPRICE_API_KEY || env.POKEMON_PRICE_TRACKER_API_KEY)) {
     const languageCode = String(fields.find(field => String(field?.key || '').toUpperCase() === 'CARD_LANGUAGE')?.value || 'english').toLowerCase();
@@ -705,6 +720,7 @@ async function cardLensResolveTcgplayer(card, env) {
       if (best?.score >= (wantedNumber ? 90 : 80)) {
         productId = String(best.row.tcgPlayerId || best.row.tcgplayerId);
         source = 'PokemonPriceTracker exact catalog match';
+        marketPrice = cardLensMoneyValue(best.row.prices?.market || best.row.marketPrice || best.row.prices);
       }
     }
   } else if ((/magic|gathering|wizards/.test(lineage) || fieldKeys.some(key => ['MANA_COST','TYPE_LINE','ORACLE_TEXT'].includes(key))) && name) {
@@ -724,7 +740,19 @@ async function cardLensResolveTcgplayer(card, env) {
   }
 
   if (!productId) return null;
-  const result = { productId, productUrl:`https://www.tcgplayer.com/product/${productId}`, source };
+  if (!marketPrice) {
+    const response = await fetch(`https://mpapi.tcgplayer.com/v2/product/${productId}/pricepoints`, {
+      headers:{ Accept:'application/json' },
+      signal:AbortSignal.timeout ? AbortSignal.timeout(5000) : undefined,
+      cf:{ cacheTtl:300, cacheEverything:true },
+    }).catch(() => null);
+    if (response?.ok) {
+      const rows = await response.json().catch(() => []);
+      const normal = (Array.isArray(rows) ? rows : []).find(row => String(row.printingType || '').toLowerCase() === 'normal') || rows?.[0];
+      marketPrice = cardLensMoneyValue(normal?.marketPrice || normal?.listedMedianPrice);
+    }
+  }
+  const result = { productId, productUrl:`https://www.tcgplayer.com/product/${productId}`, marketPrice:marketPrice || null, source };
   if (env.LBA_KV) await env.LBA_KV.put(cacheKey, JSON.stringify(result), { expirationTtl:60 * 60 * 24 * 7 }).catch(() => {});
   return result;
 }
