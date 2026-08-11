@@ -23,9 +23,14 @@ assert.match(dashboard, /'overview','display','browse','inventory','research','p
 assert.match(dashboard, /capabilities:\['research','checkout','sales','inventory','consignments','staff','shows','events'\]/, 'events must be gated at the Store plan tier alongside shows');
 
 // Core functions exist.
-for (const fn of ['loadEventsFromSupabase', 'renderEventsPanel', 'saveEventFromForm', 'addEventRegistration', 'chargeEventEntryFee', 'markEventEntryFeesPaidFromSaleLines', 'startNextRound', 'reportMatchResult', 'computeSwissPairings', 'computeStandings']) {
+for (const fn of ['loadEventsFromSupabase', 'renderEventsPanel', 'saveEventFromForm', 'addEventRegistration', 'chargeEventEntryFee', 'markEventEntryFeesPaidFromSaleLines', 'startNextRound', 'reportMatchResult', 'computeSwissPairings', 'computeStandings', 'computeLeaderboard', 'renderLeaderboardInto', 'loadAllEventDataForLeaderboard']) {
   assert.match(dashboard, new RegExp(`function ${fn}`), `missing ${fn}`);
 }
+
+// Leaderboard aggregates cloud-stored results across events (not a
+// per-device localStorage tally) and only counts completed events.
+assert.match(dashboard, /events\.filter\(e => e\.status === 'completed' && \(gameFilter === 'All' \|\| e\.game === gameFilter\)\)/, 'leaderboard must aggregate only completed events, filterable by format/game');
+assert.match(dashboard, /r\.customer_id \|\| \(\(r\.player_name \|\| ''\)\.trim\(\)\.toLowerCase\(\) \+ '\|' \+ \(r\.contact \|\| ''\)\.trim\(\)\.toLowerCase\(\)\)/, 'leaderboard must key players by customer_id when known, else name+contact');
 
 // Entry fee rides the real checkout/cart flow (cash drawer + sales reporting
 // coverage), not a side-channel payment -- same one_off + metadata pattern
@@ -115,3 +120,50 @@ const { computeSwissPairings, computeStandings } = new Function(`${shuffleSrc}\n
 }
 
 console.log('Swiss pairing + standings functional checks passed');
+
+// ── Functional check: computeLeaderboard aggregates across events ──
+{
+  const leaderboardSrc = dashboard.match(/function computeLeaderboard\(events, gameFilter\)\{[\s\S]*?\n\}/)?.[0];
+  assert.ok(leaderboardSrc, 'could not extract computeLeaderboard for functional testing');
+  const { computeLeaderboard } = new Function(`${standingsSrc}\n${leaderboardSrc}\nreturn { computeLeaderboard };`)();
+
+  const events = [
+    { id:'ev1', status:'completed', game:'Magic: The Gathering' },
+    { id:'ev2', status:'completed', game:'Magic: The Gathering' },
+    { id:'ev3', status:'completed', game:'Pokemon TCG' },
+    { id:'ev4', status:'upcoming', game:'Magic: The Gathering' }, // must be ignored -- not completed
+  ];
+  const registrationsByEvent = {
+    ev1: [{ id:'r1', player_name:'Alice', contact:'alice@x.com', customer_id:'cust-1' }, { id:'r2', player_name:'Bob', contact:'' }],
+    ev2: [{ id:'r3', player_name:'Alice', contact:'alice@x.com', customer_id:'cust-1' }, { id:'r4', player_name:'Bob', contact:'' }],
+    ev3: [{ id:'r5', player_name:'Alice', contact:'alice@x.com', customer_id:'cust-1' }],
+    ev4: [{ id:'r6', player_name:'Alice', contact:'alice@x.com', customer_id:'cust-1' }],
+  };
+  const matchesByEvent = {
+    ev1: [{ player1_registration_id:'r1', player2_registration_id:'r2', result:'p1', player1_game_wins:2, player2_game_wins:0 }],
+    ev2: [{ player1_registration_id:'r3', player2_registration_id:'r4', result:'p2', player1_game_wins:0, player2_game_wins:2 }],
+    ev3: [{ player1_registration_id:'r5', player2_registration_id:null, result:'p1' }],
+    ev4: [],
+  };
+  global.eventRegistrationsCache = registrationsByEvent;
+  global.eventMatchesCache = matchesByEvent;
+
+  const mtgBoard = computeLeaderboard(events, 'Magic: The Gathering');
+  const byName = Object.fromEntries(mtgBoard.map(r => [r.name, r]));
+  assert.equal(mtgBoard.length, 2, 'MTG leaderboard must only include the 2 distinct MTG players, not the Pokemon or upcoming-event entries');
+  assert.equal(byName.Alice.points, 3, 'Alice won ev1 (3pts) and lost ev2 (0pts) -- must sum across events, not just the latest');
+  assert.equal(byName.Alice.wins, 1);
+  assert.equal(byName.Bob.points, 3, 'Bob lost ev1 (0pts) and won ev2 (3pts)');
+  assert.equal(byName.Alice.events, 2, 'Alice played 2 completed MTG events');
+
+  const allBoard = computeLeaderboard(events, 'All');
+  assert.equal(allBoard.length, 2, '"All" filter must still key Alice by customer_id across MTG+Pokemon into one row, not split her by game');
+  const aliceAll = allBoard.find(r => r.name === 'Alice');
+  assert.equal(aliceAll.events, 3, 'Alice\'s "All formats" total must include all 3 of her completed events (2 MTG + 1 Pokemon)');
+
+  const pokemonBoard = computeLeaderboard(events, 'Pokemon TCG');
+  assert.equal(pokemonBoard.length, 1);
+  assert.equal(pokemonBoard[0].points, 3, 'a bye in a completed event must still award points to the leaderboard');
+}
+
+console.log('Leaderboard functional checks passed');
