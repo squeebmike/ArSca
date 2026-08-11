@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 
 const dashboard = fs.readFileSync('dashboard.html', 'utf8');
 const migration = fs.readFileSync('supabase-migrations/2026-08-11-tournament-events.sql', 'utf8');
+const featuresMigration = fs.readFileSync('supabase-migrations/2026-08-12-tournament-features.sql', 'utf8');
 
 // Migration: tables + RLS exist, store-scoped.
 for (const table of ['events', 'event_registrations', 'event_matches']) {
@@ -23,13 +24,15 @@ assert.match(dashboard, /'overview','display','browse','inventory','research','p
 assert.match(dashboard, /capabilities:\['research','checkout','sales','inventory','consignments','staff','shows','events'\]/, 'events must be gated at the Store plan tier alongside shows');
 
 // Core functions exist.
-for (const fn of ['loadEventsFromSupabase', 'renderEventsPanel', 'saveEventFromForm', 'addEventRegistration', 'chargeEventEntryFee', 'markEventEntryFeesPaidFromSaleLines', 'startNextRound', 'reportMatchResult', 'computeSwissPairings', 'computeStandings', 'computeLeaderboard', 'renderLeaderboardInto', 'loadAllEventDataForLeaderboard']) {
+for (const fn of ['loadEventsFromSupabase', 'renderEventsPanel', 'saveEventFromForm', 'addEventRegistration', 'chargeEventEntryFee', 'markEventEntryFeesPaidFromSaleLines', 'startNextRound', 'reportMatchResult', 'computeSwissPairings', 'computeStandings', 'computeLeaderboard', 'renderLeaderboardInto', 'loadAllEventDataForLeaderboard',
+  'toggleEventCheckin', 'checkInAllEventPlayers', 'cutToTopN', 'reportBracketMatchResult', 'maybeAdvanceBracket', 'computeFinalPlacements', 'renderTopCutPanel', 'renderPrizesPanel', 'savePrizeAmount', 'issuePrizeGiftCard', 'completeEvent', 'awardEventLoyaltyPoints', 'setLeaderboardSeriesFilter']) {
   assert.match(dashboard, new RegExp(`function ${fn}`), `missing ${fn}`);
 }
 
 // Leaderboard aggregates cloud-stored results across events (not a
-// per-device localStorage tally) and only counts completed events.
-assert.match(dashboard, /events\.filter\(e => e\.status === 'completed' && \(gameFilter === 'All' \|\| e\.game === gameFilter\)\)/, 'leaderboard must aggregate only completed events, filterable by format/game');
+// per-device localStorage tally), only counts completed events, and can be
+// sliced by series (season) as well as game/format.
+assert.match(dashboard, /events\.filter\(e => e\.status === 'completed' && \(gameFilter === 'All' \|\| e\.game === gameFilter\) && \(!seriesFilter \|\| seriesFilter === 'All' \|\| e\.series_name === seriesFilter\)\)/, 'leaderboard must aggregate only completed events, filterable by format/game and by series');
 assert.match(dashboard, /r\.customer_id \|\| \(\(r\.player_name \|\| ''\)\.trim\(\)\.toLowerCase\(\) \+ '\|' \+ \(r\.contact \|\| ''\)\.trim\(\)\.toLowerCase\(\)\)/, 'leaderboard must key players by customer_id when known, else name+contact');
 
 // Entry fee rides the real checkout/cart flow (cash drawer + sales reporting
@@ -39,9 +42,27 @@ assert.match(dashboard, /metadata:\{ eventEntryFee:true, eventId:event\.id, regi
 assert.match(dashboard, /await markEventEntryFeesPaidFromSaleLines\(bundle\);/, 'checkout finalize must mark entry fees paid');
 
 // Offline durability for all event writes.
-for (const type of ['event-upsert', 'event-registration-upsert', 'event-round-start', 'event-match-result', 'event-entry-fee-paid']) {
+for (const type of ['event-upsert', 'event-registration-upsert', 'event-round-start', 'event-match-result', 'event-entry-fee-paid',
+  'event-checkin', 'event-prize-award', 'event-topcut-start', 'event-bracket-result', 'event-loyalty-award']) {
   assert.match(dashboard, new RegExp(`item\\.type === '${type}'`), `${type} must be replayable from the offline sync queue`);
 }
+
+// Feature-expansion migration: new columns are additive (add column if not
+// exists) so a store that already ran the original migration doesn't break.
+assert.match(featuresMigration, /alter table public\.event_registrations add column if not exists checked_in boolean/, 'event_registrations must gain checked_in');
+assert.match(featuresMigration, /alter table public\.event_registrations add column if not exists prize_amount numeric/, 'event_registrations must gain prize_amount');
+assert.match(featuresMigration, /alter table public\.events add column if not exists top_cut_size integer/, 'events must gain top_cut_size');
+assert.match(featuresMigration, /alter table public\.events add column if not exists series_name text/, 'events must gain series_name');
+assert.match(featuresMigration, /alter table public\.event_matches add column if not exists stage text not null default 'swiss'/, 'event_matches must gain a stage column defaulting to swiss (backward compatible)');
+assert.match(featuresMigration, /alter table public\.event_matches add column if not exists bracket_slot integer/, 'event_matches must gain bracket_slot');
+
+// Top cut must never leak bracket-stage matches into the Swiss points table
+// -- standings freeze at the cut point.
+assert.match(dashboard, /const swissMatches = matches\.filter\(m => m\.stage !== 'topcut'\);/, 'Swiss standings must exclude top-cut bracket matches');
+
+// Prize gift cards are comped (no sale attached) but issued through the same
+// gift_cards table/codegen as a purchased one, so they spend identically.
+assert.match(dashboard, /issued_sale_id:null, issued_by:getCurrentUserId\(\)/, 'prize gift cards must be issued with no sale attached');
 
 assert.match(dashboard, /'pos_ops_log','pos_show_mode','pos_customers','customers_cache_v1','events_cache_v1','pos_undo_stack'/, 'events cache must be store-scoped (per-store, not shared across a multi-store device)');
 
@@ -123,7 +144,7 @@ console.log('Swiss pairing + standings functional checks passed');
 
 // ── Functional check: computeLeaderboard aggregates across events ──
 {
-  const leaderboardSrc = dashboard.match(/function computeLeaderboard\(events, gameFilter\)\{[\s\S]*?\n\}/)?.[0];
+  const leaderboardSrc = dashboard.match(/function computeLeaderboard\(events, gameFilter, seriesFilter\)\{[\s\S]*?\n\}/)?.[0];
   assert.ok(leaderboardSrc, 'could not extract computeLeaderboard for functional testing');
   const { computeLeaderboard } = new Function(`${standingsSrc}\n${leaderboardSrc}\nreturn { computeLeaderboard };`)();
 
@@ -164,6 +185,53 @@ console.log('Swiss pairing + standings functional checks passed');
   const pokemonBoard = computeLeaderboard(events, 'Pokemon TCG');
   assert.equal(pokemonBoard.length, 1);
   assert.equal(pokemonBoard[0].points, 3, 'a bye in a completed event must still award points to the leaderboard');
+
+  // Series (season) filter: same events but tagged into two series -- only
+  // ev1 in "Fall Series", only ev2 in "Winter Series".
+  events[0].series_name = 'Fall Series';
+  events[1].series_name = 'Winter Series';
+  const fallBoard = computeLeaderboard(events, 'All', 'Fall Series');
+  assert.equal(fallBoard.length, 2, 'Fall Series leaderboard must only include ev1 players');
+  assert.equal(fallBoard.find(r => r.name === 'Alice').events, 1, 'Alice only played 1 Fall Series event even though she played 3 events total');
+  const allSeriesBoard = computeLeaderboard(events, 'All', 'All');
+  assert.equal(allSeriesBoard.find(r => r.name === 'Alice').events, 3, '"All" series filter must not narrow the results');
 }
 
 console.log('Leaderboard functional checks passed');
+
+// ── Functional check: computeFinalPlacements (prize payout ordering) ──
+{
+  const placementsSrc = dashboard.match(/function computeFinalPlacements\(event, registrations, matches\)\{[\s\S]*?\n\}/)?.[0];
+  assert.ok(placementsSrc, 'could not extract computeFinalPlacements for functional testing');
+  const { computeFinalPlacements } = new Function(`${standingsSrc}\n${placementsSrc}\nreturn { computeFinalPlacements };`)();
+
+  // No top cut: plain Swiss standings order.
+  {
+    const registrations = [
+      { id:'p1', player_name:'Alice', dropped:false },
+      { id:'p2', player_name:'Bob', dropped:false },
+    ];
+    const matches = [{ player1_registration_id:'p1', player2_registration_id:'p2', result:'p1', player1_game_wins:2, player2_game_wins:0 }];
+    const placements = computeFinalPlacements({ top_cut_size:null }, registrations, matches);
+    assert.equal(placements[0].player_name, 'Alice', 'no top cut -- placements must fall back to plain Swiss standings order');
+  }
+
+  // Top cut of 4: semifinal losers tie for 3rd/4th behind the final's winner/loser.
+  {
+    const registrations = ['Alice','Bob','Carol','Dave'].map((name,i) => ({ id:'p'+(i+1), player_name:name, dropped:false }));
+    const matches = [
+      // Semifinals (round 1 of the bracket, stage topcut, round_number 1).
+      { round_number:1, stage:'topcut', bracket_slot:0, player1_registration_id:'p1', player2_registration_id:'p4', result:'p1' }, // Alice beats Dave
+      { round_number:1, stage:'topcut', bracket_slot:1, player1_registration_id:'p2', player2_registration_id:'p3', result:'p1' }, // Bob beats Carol
+      // Final (round 2).
+      { round_number:2, stage:'topcut', bracket_slot:0, player1_registration_id:'p1', player2_registration_id:'p2', result:'p1' }, // Alice beats Bob
+    ];
+    const placements = computeFinalPlacements({ top_cut_size:4 }, registrations, matches);
+    assert.equal(placements[0].player_name, 'Alice', 'the final winner must place 1st');
+    assert.equal(placements[1].player_name, 'Bob', 'the final loser must place 2nd');
+    const thirdFourth = placements.slice(2, 4).map(r => r.player_name).sort();
+    assert.deepEqual(thirdFourth, ['Carol','Dave'], 'both semifinal losers must place 3rd/4th, ahead of anyone who did not make the cut');
+  }
+}
+
+console.log('computeFinalPlacements functional checks passed');

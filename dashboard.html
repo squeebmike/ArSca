@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.11.05-tournament-leaderboard">
+<meta name="version" content="2026.08.12.01-tournament-features">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1541,13 +1541,13 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.11.05-tournament-leaderboard" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.11.05-tournament-leaderboard" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.11.05-tournament-leaderboard" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.11.05-tournament-leaderboard" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.11.05-tournament-leaderboard" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.11.05-tournament-leaderboard" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.11.05-tournament-leaderboard" defer></script>
+<script src="scripts/query-routing.js?v=2026.08.12.01-tournament-features" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.12.01-tournament-features" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.12.01-tournament-features" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.12.01-tournament-features" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.12.01-tournament-features" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.12.01-tournament-features" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.12.01-tournament-features" defer></script>
 </head>
 <body>
 
@@ -1597,11 +1597,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.11.05-tournament-leaderboard</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.12.01-tournament-features</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.11.05-tournament-leaderboard</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.12.01-tournament-features</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1623,7 +1623,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.11.05-tournament-leaderboard</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.12.01-tournament-features</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -2961,6 +2961,8 @@ body.show-mode .inv-sync-badge{display:none;}
     </select>
     <label>Format (optional)</label>
     <input type="text" id="event-format" placeholder="e.g. Standard, Draft, Sealed">
+    <label>Series (optional)</label>
+    <input type="text" id="event-series" placeholder="e.g. Friday Night Series — groups events into their own season leaderboard">
     <label>Date</label>
     <input type="date" id="event-date">
     <label>Entry Fee ($)</label>
@@ -3199,7 +3201,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.11.05-tournament-leaderboard';
+const APP_VERSION = '2026.08.12.01-tournament-features';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -4591,6 +4593,8 @@ const DEMO_VENDOR_PROFILE_DEFAULTS = {
   logo:'',
   taxRate:0,
   loyaltyRate:3,
+  eventLoyaltyPerPlayed:0,
+  eventLoyaltyPerWin:0,
   defaultBuyPct:70,
   defaultShowMarkdown:0,
   receiptFooter:'Thank you for shopping with us!',
@@ -6102,6 +6106,8 @@ function renderVendorProfilePanel(){
         ${vendorInput('email','Email',p.email)}
         ${vendorInput('taxRate','Tax %',p.taxRate,'number')}
         ${vendorInput('loyaltyRate','Loyalty pts % of $',p.loyaltyRate,'number')}
+        ${vendorInput('eventLoyaltyPerPlayed','Loyalty pts per event played (0=off)',p.eventLoyaltyPerPlayed,'number')}
+        ${vendorInput('eventLoyaltyPerWin','+ Loyalty pts per match won',p.eventLoyaltyPerWin,'number')}
         ${vendorInput('defaultBuyPct','Buy % default',p.defaultBuyPct,'number')}
         ${vendorInput('defaultShowMarkdown','Show markdown %',p.defaultShowMarkdown,'number')}
       </div>
@@ -6185,12 +6191,12 @@ function vendorInput(key, label, value, type='text', placeholder=''){
 }
 
 async function saveVendorProfileFromForm(){
-  const keys = ['storeName','shortName','location','website','phone','email','taxRate','loyaltyRate','defaultBuyPct','defaultShowMarkdown','receiptFooter','ebayShippingLine','paymentMethods','venmo','paypal','cashapp'];
+  const keys = ['storeName','shortName','location','website','phone','email','taxRate','loyaltyRate','eventLoyaltyPerPlayed','eventLoyaltyPerWin','defaultBuyPct','defaultShowMarkdown','receiptFooter','ebayShippingLine','paymentMethods','venmo','paypal','cashapp'];
   const profile = {};
   keys.forEach(k => {
     const el = document.getElementById('vp-'+k);
     if(!el) return;
-    profile[k] = ['taxRate','loyaltyRate','defaultBuyPct','defaultShowMarkdown'].includes(k) ? Number(el.value || 0) : el.value.trim();
+    profile[k] = ['taxRate','loyaltyRate','eventLoyaltyPerPlayed','eventLoyaltyPerWin','defaultBuyPct','defaultShowMarkdown'].includes(k) ? Number(el.value || 0) : el.value.trim();
   });
   const cloudSaved = await saveVendorProfile(profile);
   toast_dash(cloudSaved ? 'Vendor profile saved' : 'Saved on this device only — cloud sync failed, other devices will not see this change yet');
@@ -10889,6 +10895,47 @@ async function processSyncItem(item){
     if(!sb) throw new Error('Supabase client unavailable');
     const { registrationId, storeId, paidAmount, saleId } = item.payload;
     const { error } = await sb.from('event_registrations').update({ paid:true, paid_amount:paidAmount, sale_id:saleId }).eq('id', registrationId).eq('store_id', storeId);
+    if(error) throw error;
+    return;
+  }
+  if(item.type === 'event-checkin') {
+    const sb = getSupabaseClient();
+    if(!sb) throw new Error('Supabase client unavailable');
+    const { error } = await sb.from('event_registrations').update({ checked_in:!!item.payload.checked_in }).eq('id', item.payload.id).eq('store_id', item.payload.store_id);
+    if(error) throw error;
+    return;
+  }
+  if(item.type === 'event-prize-award') {
+    const sb = getSupabaseClient();
+    if(!sb) throw new Error('Supabase client unavailable');
+    const { error } = await sb.from('event_registrations').update({ prize_amount:Number(item.payload.prize_amount || 0) }).eq('id', item.payload.id).eq('store_id', item.payload.store_id);
+    if(error) throw error;
+    return;
+  }
+  if(item.type === 'event-topcut-start') {
+    const sb = getSupabaseClient();
+    if(!sb) throw new Error('Supabase client unavailable');
+    const { eventId, storeId, round, topCutSize, matches } = item.payload;
+    const { error: matchErr } = await sb.from('event_matches').upsert(matches, { onConflict:'id' });
+    if(matchErr) throw matchErr;
+    const update = { current_round:round };
+    if(topCutSize) update.top_cut_size = topCutSize;
+    const { error: eventErr } = await sb.from('events').update(update).eq('id', eventId).eq('store_id', storeId);
+    if(eventErr) throw eventErr;
+    return;
+  }
+  if(item.type === 'event-bracket-result') {
+    const sb = getSupabaseClient();
+    if(!sb) throw new Error('Supabase client unavailable');
+    const { error } = await sb.from('event_matches').update({ result:item.payload.result, reported_at:item.payload.reported_at }).eq('id', item.payload.id).eq('store_id', item.payload.store_id);
+    if(error) throw error;
+    return;
+  }
+  if(item.type === 'event-loyalty-award') {
+    const sb = getSupabaseClient();
+    if(!sb) throw new Error('Supabase client unavailable');
+    const { storeId, customerId, points, reason } = item.payload;
+    const { error } = await sb.rpc('accrue_loyalty_points', { p_store_id:storeId, p_customer_id:customerId, p_points:points, p_sale_id:null, p_reason:reason || 'event' });
     if(error) throw error;
     return;
   }
@@ -16992,6 +17039,7 @@ let eventMatchesCache = {};       // eventId -> [match]
 let activeEventId = null;
 let eventsView = 'list'; // 'list' | 'leaderboard'
 let leaderboardGameFilter = 'All';
+let leaderboardSeriesFilter = 'All';
 let leaderboardDataLoaded = false;
 
 async function loadEventsFromSupabase(force){
@@ -17068,6 +17116,7 @@ async function renderEventsPanel(){
 function openLeaderboard(){ eventsView = 'leaderboard'; renderEventsPanel(); }
 function closeLeaderboard(){ eventsView = 'list'; renderEventsPanel(); }
 function setLeaderboardGameFilter(game){ leaderboardGameFilter = game; renderEventsPanel(); }
+function setLeaderboardSeriesFilter(series){ leaderboardSeriesFilter = series; renderEventsPanel(); }
 
 // Per-game icon + accent color -- purely cosmetic, gives the events list and
 // event header some personality instead of reading like a settings screen.
@@ -17121,12 +17170,17 @@ function renderEventsListInto(container){
 
 function renderLeaderboardInto(container){
   const games = ['All', ...new Set(eventsCache.map(e => e.game).filter(Boolean))];
-  const rows = computeLeaderboard(eventsCache, leaderboardGameFilter);
+  const seriesNames = [...new Set(eventsCache.map(e => e.series_name).filter(Boolean))];
+  const series = seriesNames.length ? ['All', ...seriesNames] : null;
+  const rows = computeLeaderboard(eventsCache, leaderboardGameFilter, leaderboardSeriesFilter);
   container.innerHTML = `<div class="panel">
     <div class="ph"><b style="font-family:'Orbitron',monospace;font-size:13px;letter-spacing:1px;color:var(--text)">🏅 LEADERBOARD</b><button class="hbtn" style="min-height:28px;padding:4px 10px;font-size:9px" onclick="closeLeaderboard()">← EVENTS</button></div>
-    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:${series ? '8px' : '14px'}">
       ${games.map(g => `<button class="hbtn" style="min-height:28px;padding:5px 12px;font-size:10px${g===leaderboardGameFilter?';background:rgba(0,255,179,.14);border-color:rgba(0,255,179,.4)':''}" onclick="setLeaderboardGameFilter('${escHtml(g).replace(/'/g,"\\'")}')">${g === 'All' ? 'ALL FORMATS' : (eventGameStyle(g).icon + ' ' + escHtml(g))}</button>`).join('')}
     </div>
+    ${series ? `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">
+      ${series.map(s => `<button class="hbtn" style="min-height:26px;padding:4px 10px;font-size:9px${s===leaderboardSeriesFilter?';background:rgba(255,209,102,.1);border-color:rgba(255,209,102,.35);color:var(--gold)':''}" onclick="setLeaderboardSeriesFilter('${escHtml(s).replace(/'/g,"\\'")}')">${s === 'All' ? 'ALL SERIES' : '📅 ' + escHtml(s)}</button>`).join('')}
+    </div>` : ''}
     ${rows.length ? `<div style="overflow-x:auto"><table style="width:100%;font-family:var(--font-mono);font-size:11px"><tr style="color:var(--dim);font-size:9px;letter-spacing:1px"><th style="text-align:left;padding:4px">#</th><th style="text-align:left;padding:4px">Player</th><th style="padding:4px">Pts</th><th style="padding:4px">W-L-D</th><th style="padding:4px">Events</th><th style="padding:4px">🏆</th></tr>
       ${rows.map((r,i) => {
         const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : (i+1);
@@ -17151,7 +17205,7 @@ function closeEventDetail(){
 }
 
 function openNewEventModal(){
-  ['event-name','event-format','event-date','event-entry-fee','event-max-players','event-round-count','event-notes'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
+  ['event-name','event-format','event-series','event-date','event-entry-fee','event-max-players','event-round-count','event-notes'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
   const gameEl = document.getElementById('event-game'); if(gameEl) gameEl.value = 'Magic: The Gathering';
   document.getElementById('event-modal')?.classList.add('on');
   setTimeout(() => document.getElementById('event-name')?.focus(), 100);
@@ -17168,6 +17222,7 @@ async function saveEventFromForm(){
     name,
     game:document.getElementById('event-game')?.value || 'Other',
     format:document.getElementById('event-format')?.value.trim() || null,
+    series_name:document.getElementById('event-series')?.value.trim() || null,
     event_date:document.getElementById('event-date')?.value || null,
     entry_fee:Number(document.getElementById('event-entry-fee')?.value || 0),
     max_players:Number(document.getElementById('event-max-players')?.value || 0) || null,
@@ -17230,10 +17285,19 @@ function renderEventDetailInto(container){
   if(!event) { activeEventId = null; renderEventsListInto(container); return; }
   const registrations = (eventRegistrationsCache[event.id] || []).filter(r => !r.dropped);
   const matches = eventMatchesCache[event.id] || [];
-  const standings = computeStandings(eventRegistrationsCache[event.id] || [], matches);
+  // Bracket-stage matches must never feed the Swiss points table -- once a
+  // top cut starts, Swiss standings freeze at the cut point.
+  const swissMatches = matches.filter(m => m.stage !== 'topcut');
+  const standings = computeStandings(eventRegistrationsCache[event.id] || [], swissMatches);
   const currentRoundMatches = matches.filter(m => m.round_number === event.current_round);
+  const inBracket = currentRoundMatches.some(m => m.stage === 'topcut');
   const roundComplete = event.current_round > 0 && currentRoundMatches.length > 0 && currentRoundMatches.every(m => m.result);
   const style = eventGameStyle(event.game);
+  const preCheckin = (event.current_round || 0) === 0 && event.status !== 'completed' && event.status !== 'cancelled';
+  const cutSizes = [4,8,16,32].filter(n => n <= registrations.length);
+  const canOfferCut = roundComplete && !inBracket && !event.top_cut_size && event.status !== 'completed' && cutSizes.length;
+  const placements = event.status === 'completed' ? computeFinalPlacements(event, eventRegistrationsCache[event.id] || [], matches) : [];
+  const champion = event.top_cut_size && event.status === 'completed' ? placements[0] : null;
 
   container.innerHTML = `
   <div class="panel" style="margin-bottom:14px;position:relative;overflow:hidden;background:linear-gradient(135deg, color-mix(in srgb, ${style.color} 12%, var(--surf)), var(--surf))">
@@ -17245,7 +17309,8 @@ function renderEventDetailInto(container){
           <span style="font-size:30px">${style.icon}</span>
           <div style="font-family:'Orbitron',monospace;font-size:19px;color:var(--text)">${escHtml(event.name)}</div>
         </div>
-        <div style="font-family:var(--font-mono);font-size:11px;color:var(--dim);margin-top:6px">${escHtml(event.game)}${event.format ? ' · ' + escHtml(event.format) : ''}${event.event_date ? ' · ' + escHtml(event.event_date) : ''} · <span style="color:${Number(event.entry_fee||0) > 0 ? 'var(--gold)' : 'var(--dim)'}">${Number(event.entry_fee||0) > 0 ? '$' + Number(event.entry_fee).toFixed(2) + ' entry' : 'FREE entry'}</span>${event.max_players ? ' · max ' + event.max_players : ''}</div>
+        <div style="font-family:var(--font-mono);font-size:11px;color:var(--dim);margin-top:6px">${escHtml(event.game)}${event.format ? ' · ' + escHtml(event.format) : ''}${event.series_name ? ' · 📅 ' + escHtml(event.series_name) : ''}${event.event_date ? ' · ' + escHtml(event.event_date) : ''} · <span style="color:${Number(event.entry_fee||0) > 0 ? 'var(--gold)' : 'var(--dim)'}">${Number(event.entry_fee||0) > 0 ? '$' + Number(event.entry_fee).toFixed(2) + ' entry' : 'FREE entry'}</span>${event.max_players ? ' · max ' + event.max_players : ''}</div>
+        ${champion ? `<div style="margin-top:8px;font-family:'Orbitron',monospace;font-size:13px;color:var(--gold)">🏆 CHAMPION: ${escHtml(champion.player_name)}</div>` : ''}
         ${roundProgressStepper(event)}
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
@@ -17261,13 +17326,15 @@ function renderEventDetailInto(container){
         <input class="tsi" id="event-reg-contact" placeholder="Phone or email (optional)" style="flex:1;min-width:140px;margin-bottom:0">
         <button class="hbtn" onclick="addEventRegistration()">ADD PLAYER</button>
       </div>` : ''}
+      ${preCheckin && registrations.length ? `<div style="margin-bottom:10px"><button class="hbtn" style="min-height:28px;padding:5px 12px;font-size:10px" onclick="checkInAllEventPlayers('${escHtml(event.id)}')">✓ CHECK IN ALL</button></div>` : ''}
       <div style="display:grid;gap:6px">
         ${registrations.length ? registrations.map(r => `<div style="border:1px solid var(--border);background:var(--surf2);border-radius:7px;padding:8px;display:flex;justify-content:space-between;align-items:center;gap:8px">
           <div style="display:flex;align-items:center;gap:9px;min-width:0">
             ${playerAvatar(r.player_name)}
             <div style="min-width:0"><b style="color:var(--text)">${escHtml(r.player_name)}</b>${r.contact ? `<div style="font-family:var(--font-mono);font-size:9px;color:var(--dim)">${escHtml(r.contact)}</div>` : ''}</div>
           </div>
-          <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+          <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end">
+            ${preCheckin ? `<button class="hbtn" style="min-height:28px;padding:4px 8px;font-size:9px${r.checked_in ? ';background:rgba(0,255,179,.14);border-color:rgba(0,255,179,.4);color:var(--g)' : ''}" onclick="toggleEventCheckin('${escHtml(r.id)}')">${r.checked_in ? '✓ CHECKED IN' : 'CHECK IN'}</button>` : ''}
             ${r.paid ? '<span class="data-pill good">✓ PAID</span>' : (Number(event.entry_fee||0) > 0 ? `<button class="hbtn" style="min-height:28px;padding:4px 8px;font-size:9px;background:rgba(255,209,102,.1);border-color:rgba(255,209,102,.35);color:var(--gold)" onclick="chargeEventEntryFee('${escHtml(r.id)}')">COLLECT $${Number(event.entry_fee).toFixed(2)}</button>` : '<span class="data-pill">FREE</span>')}
             ${event.status === 'upcoming' ? `<button class="hbtn danger" style="min-height:28px;padding:4px 8px;font-size:9px" onclick="removeEventRegistration('${escHtml(r.id)}')">REMOVE</button>` : `<button class="hbtn" style="min-height:28px;padding:4px 8px;font-size:9px;color:var(--red)" onclick="dropEventRegistration('${escHtml(r.id)}')">DROP</button>`}
           </div>
@@ -17275,7 +17342,7 @@ function renderEventDetailInto(container){
       </div>
     </div>
     <div class="panel">
-      <div class="ph">🏅 STANDINGS</div>
+      <div class="ph">🏅 ${event.top_cut_size ? 'SWISS STANDINGS (final)' : 'STANDINGS'}</div>
       ${standings.length ? `<div style="overflow-x:auto"><table style="width:100%;font-family:var(--font-mono);font-size:11px"><tr style="color:var(--dim);font-size:9px;letter-spacing:1px"><th style="text-align:left;padding:4px">#</th><th style="text-align:left;padding:4px">Player</th><th style="padding:4px">Pts</th><th style="padding:4px">W-L-D</th><th style="padding:4px">OMW%</th></tr>
         ${standings.map((s,i) => {
           const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : (i+1);
@@ -17285,19 +17352,22 @@ function renderEventDetailInto(container){
       </table></div>` : '<div style="padding:10px;border:1px dashed var(--border);border-radius:8px;text-align:center;color:var(--dim);font-family:var(--font-mono);font-size:11px">No results yet</div>'}
     </div>
   </div>
-  <div class="panel" style="margin-top:14px">
+  ${!inBracket && !event.top_cut_size ? `<div class="panel" style="margin-top:14px">
     <div class="ph">⚔️ ROUND ${event.current_round || 0}${event.round_count ? ' / ' + event.round_count : ''}</div>
-    <div style="margin-bottom:10px">
+    <div style="margin-bottom:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
       ${event.current_round === 0
         ? (event.status !== 'completed' ? `<button class="hbtn" style="background:rgba(0,255,179,.14);border-color:rgba(0,255,179,.4)" onclick="startNextRound('${escHtml(event.id)}')" ${registrations.length < 2 ? 'disabled' : ''}>🎲 START ROUND 1</button>` : '')
         : roundComplete && event.status !== 'completed'
           ? `<button class="hbtn" style="background:rgba(0,255,179,.14);border-color:rgba(0,255,179,.4)" onclick="startNextRound('${escHtml(event.id)}')">▶ START ROUND ${event.current_round + 1}</button>`
           : event.status !== 'completed' ? '<div style="font-family:var(--font-mono);font-size:10px;color:var(--dim)">Report all match results to start the next round</div>' : ''}
+      ${canOfferCut ? cutSizes.map(n => `<button class="hbtn" style="background:rgba(255,209,102,.1);border-color:rgba(255,209,102,.35);color:var(--gold)" onclick="cutToTopN('${escHtml(event.id)}',${n})">🏆 CUT TO TOP ${n}</button>`).join('') : ''}
     </div>
     <div style="display:grid;gap:8px">
       ${currentRoundMatches.length ? currentRoundMatches.map((m,i) => renderMatchRow(m, i, eventRegistrationsCache[event.id] || [])).join('') : '<div style="padding:10px;border:1px dashed var(--border);border-radius:8px;text-align:center;color:var(--dim);font-family:var(--font-mono);font-size:11px">No round in progress</div>'}
     </div>
-  </div>`;
+  </div>` : ''}
+  ${renderTopCutPanel(event, matches, eventRegistrationsCache[event.id] || [])}
+  ${renderPrizesPanel(event, placements)}`;
 }
 
 function playerNameById(registrations, id){
@@ -17327,6 +17397,127 @@ function renderMatchRow(match, idx, registrations){
       <button class="hbtn" style="min-height:30px;padding:5px 10px;font-size:9px" onclick="reportMatchResult('${escHtml(match.id)}','p2')">${escHtml(p2)} WINS</button>
     </div>` : ''}
   </div>`;
+}
+
+function bracketRoundLabel(playersInRound){
+  if(playersInRound <= 2) return 'FINALS';
+  if(playersInRound === 4) return 'SEMIFINALS';
+  if(playersInRound === 8) return 'QUARTERFINALS';
+  return `TOP ${playersInRound}`;
+}
+
+// Elimination match card -- no draw option (single elim decides a winner),
+// reports through reportBracketMatchResult so the winner auto-advances.
+function renderBracketMatchCard(match, registrations){
+  const p1 = playerNameById(registrations, match.player1_registration_id);
+  const p2 = playerNameById(registrations, match.player2_registration_id);
+  const p1Won = match.result === 'p1', p2Won = match.result === 'p2';
+  return `<div style="border:1px solid var(--border);background:var(--surf2);border-radius:8px;padding:10px 12px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:${match.result ? '0' : '10px'}">
+      <span class="data-pill" style="margin:0">TABLE ${match.table_number || (match.bracket_slot ?? 0) + 1}</span>
+      ${match.result ? `<span class="data-pill good" style="margin:0">🏆 ${escHtml(p1Won ? p1 : p2)} ADVANCES</span>` : ''}
+    </div>
+    <div style="display:flex;align-items:center;justify-content:center;gap:14px;flex-wrap:wrap">
+      <div style="display:flex;align-items:center;gap:8px;${p1Won ? 'filter:none' : match.result ? 'opacity:.5' : ''}">${playerAvatar(p1,32)}<b style="color:${p1Won?'var(--g)':'var(--text)'};font-size:13px">${escHtml(p1)}</b></div>
+      <span style="font-family:'Orbitron',monospace;font-size:11px;color:var(--dim);letter-spacing:1px">VS</span>
+      <div style="display:flex;align-items:center;gap:8px;${p2Won ? 'filter:none' : match.result ? 'opacity:.5' : ''}">${playerAvatar(p2,32)}<b style="color:${p2Won?'var(--g)':'var(--text)'};font-size:13px">${escHtml(p2)}</b></div>
+    </div>
+    ${!match.result ? `<div style="display:flex;gap:6px;justify-content:center;margin-top:10px">
+      <button class="hbtn" style="min-height:30px;padding:5px 10px;font-size:9px" onclick="reportBracketMatchResult('${escHtml(match.id)}','p1')">${escHtml(p1)} WINS</button>
+      <button class="hbtn" style="min-height:30px;padding:5px 10px;font-size:9px" onclick="reportBracketMatchResult('${escHtml(match.id)}','p2')">${escHtml(p2)} WINS</button>
+    </div>` : ''}
+  </div>`;
+}
+
+function renderTopCutPanel(event, matches, registrations){
+  if(!event.top_cut_size) return '';
+  const bracketMatches = matches.filter(m => m.stage === 'topcut');
+  const rounds = [...new Set(bracketMatches.map(m => m.round_number))].sort((a,b) => a - b);
+  if(!rounds.length) return '';
+  return `<div class="panel" style="margin-top:14px">
+    <div class="ph">🏆 TOP ${event.top_cut_size} BRACKET</div>
+    <div style="display:grid;gap:16px">
+      ${rounds.map(round => {
+        const roundMatches = bracketMatches.filter(m => m.round_number === round).sort((a,b) => a.bracket_slot - b.bracket_slot);
+        const playersInRound = roundMatches.length * 2;
+        return `<div>
+          <div style="font-family:'Orbitron',monospace;font-size:10px;letter-spacing:1px;color:var(--dim);margin-bottom:8px">${bracketRoundLabel(playersInRound)}</div>
+          <div style="display:grid;gap:8px">${roundMatches.map(m => renderBracketMatchCard(m, registrations)).join('')}</div>
+        </div>`;
+      }).join('')}
+    </div>
+  </div>`;
+}
+
+function renderPrizesPanel(event, placements){
+  if(event.status !== 'completed' || !placements.length) return '';
+  const top = placements.slice(0, Math.min(4, placements.length));
+  return `<div class="panel" style="margin-top:14px">
+    <div class="ph">🎁 PRIZE PAYOUTS</div>
+    <div style="display:grid;gap:6px">
+      ${top.map((r,i) => {
+        const label = i===0?'🥇 1st':i===1?'🥈 2nd':i===2?'🥉 3rd':`${i+1}th`;
+        return `<div style="border:1px solid var(--border);background:var(--surf2);border-radius:7px;padding:8px;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
+          <div style="display:flex;align-items:center;gap:9px"><span style="font-family:'Orbitron',monospace;font-size:11px;color:var(--gold);min-width:44px">${label}</span>${playerAvatar(r.player_name,26)}<b style="color:var(--text)">${escHtml(r.player_name)}</b></div>
+          <div style="display:flex;align-items:center;gap:6px">
+            <input class="tsi" id="prize-amt-${escHtml(r.id)}" type="number" step="0.01" placeholder="$0.00" value="${r.prize_amount ? Number(r.prize_amount).toFixed(2) : ''}" style="width:90px;margin-bottom:0">
+            <button class="hbtn" style="min-height:28px;padding:4px 8px;font-size:9px" onclick="savePrizeAmount('${escHtml(r.id)}')">SAVE</button>
+            <button class="hbtn" style="min-height:28px;padding:4px 8px;font-size:9px;background:rgba(255,209,102,.1);border-color:rgba(255,209,102,.35);color:var(--gold)" onclick="issuePrizeGiftCard('${escHtml(r.id)}')">🎫 ISSUE GIFT CARD</button>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>
+  </div>`;
+}
+
+async function savePrizeAmount(registrationId){
+  const input = document.getElementById('prize-amt-' + registrationId);
+  const amount = Number(input?.value || 0);
+  const reg = (eventRegistrationsCache[activeEventId] || []).find(r => r.id === registrationId);
+  if(!reg) return;
+  reg.prize_amount = amount;
+  toast_dash('Prize recorded — $' + amount.toFixed(2));
+  if(getAccountContext().isDemo) return;
+  try {
+    const sb = getSupabaseClient();
+    if(!sb) throw new Error('Supabase unavailable');
+    const { error } = await sb.from('event_registrations').update({ prize_amount:amount }).eq('id', registrationId).eq('store_id', getActiveStoreId());
+    if(error) throw error;
+  } catch(e) {
+    enqueueOrReplaceSync('event-prize-award', registrationId, 'Queued prize amount', reg, e.message);
+  }
+}
+
+// Comp'd gift card -- no sale attached (issued_sale_id stays null), same
+// table/codegen as a purchased gift card so it spends the same way at
+// checkout.
+async function issuePrizeGiftCard(registrationId){
+  const reg = (eventRegistrationsCache[activeEventId] || []).find(r => r.id === registrationId);
+  if(!reg) return;
+  const amount = Number(document.getElementById('prize-amt-' + registrationId)?.value || reg.prize_amount || 0);
+  if(!amount) return toast_dash('Enter a prize amount first');
+  if(!confirm(`Issue a $${amount.toFixed(2)} gift card to ${reg.player_name} as a tournament prize?`)) return;
+  const record = {
+    id:makeUuid('gift'), store_id:getActiveStoreId(), code:generateGiftCardCode(),
+    initial_value:amount, balance:amount, status:'active',
+    customer_id:reg.customer_id || null, issued_sale_id:null, issued_by:getCurrentUserId(),
+    created_at:new Date().toISOString()
+  };
+  reg.prize_amount = amount;
+  renderEventsPanel();
+  showIssuedGiftCardsModal([{ code:record.code, amount:record.initial_value, recipient:reg.player_name }]);
+  if(getAccountContext().isDemo) return;
+  try {
+    const sb = getSupabaseClient();
+    if(!sb) throw new Error('Supabase unavailable');
+    const { error: gcErr } = await sb.from('gift_cards').insert(record);
+    if(gcErr) throw gcErr;
+    const { error: regErr } = await sb.from('event_registrations').update({ prize_amount:amount }).eq('id', registrationId).eq('store_id', getActiveStoreId());
+    if(regErr) throw regErr;
+  } catch(e) {
+    enqueueSync('gift-card-issue', 'Queued prize gift card issuance', record, e.message);
+    enqueueOrReplaceSync('event-prize-award', registrationId, 'Queued prize amount', reg, e.message);
+  }
 }
 
 async function addEventRegistration(){
@@ -17384,6 +17575,42 @@ async function dropEventRegistration(registrationId){
   }
 }
 
+async function toggleEventCheckin(registrationId){
+  const event = eventsCache.find(e => e.id === activeEventId);
+  if(!event) return;
+  const reg = (eventRegistrationsCache[event.id] || []).find(r => r.id === registrationId);
+  if(!reg) return;
+  reg.checked_in = !reg.checked_in;
+  renderEventsPanel();
+  if(getAccountContext().isDemo) return;
+  try {
+    const sb = getSupabaseClient();
+    if(!sb) throw new Error('Supabase unavailable');
+    const { error } = await sb.from('event_registrations').update({ checked_in:reg.checked_in }).eq('id', registrationId).eq('store_id', getActiveStoreId());
+    if(error) throw error;
+  } catch(e) {
+    enqueueOrReplaceSync('event-checkin', registrationId, 'Queued player check-in', reg, e.message);
+  }
+}
+
+async function checkInAllEventPlayers(eventId){
+  const list = (eventRegistrationsCache[eventId] || []).filter(r => !r.dropped && !r.checked_in);
+  if(!list.length) return;
+  list.forEach(r => { r.checked_in = true; });
+  renderEventsPanel();
+  if(getAccountContext().isDemo) return;
+  const sb = getSupabaseClient();
+  for(const reg of list) {
+    try {
+      if(!sb) throw new Error('Supabase unavailable');
+      const { error } = await sb.from('event_registrations').update({ checked_in:true }).eq('id', reg.id).eq('store_id', getActiveStoreId());
+      if(error) throw error;
+    } catch(e) {
+      enqueueOrReplaceSync('event-checkin', reg.id, 'Queued player check-in', reg, e.message);
+    }
+  }
+}
+
 // Entry fee is charged through the normal cart/checkout flow (same one_off +
 // metadata pattern gift cards use) so it's covered by cash drawer tracking,
 // sales reporting, and receipts like every other sale -- not a side-channel
@@ -17433,10 +17660,17 @@ async function markEventEntryFeesPaidFromSaleLines(bundle){
 
 async function endEvent(eventId){
   if(!confirm('End this event? Standings will be final.')) return;
+  await completeEvent(eventId);
+}
+
+// Split from endEvent() so a top-cut final resolving automatically
+// (maybeAdvanceBracket) can complete the event without popping a confirm().
+async function completeEvent(eventId){
   const event = eventsCache.find(e => e.id === eventId);
   if(!event) return;
   event.status = 'completed';
   renderEventsPanel();
+  awardEventLoyaltyPoints(eventId).catch(e => console.warn('Event loyalty award failed:', e.message));
   if(getAccountContext().isDemo) return;
   try {
     const sb = getSupabaseClient();
@@ -17445,6 +17679,37 @@ async function endEvent(eventId){
     if(error) throw error;
   } catch(e) {
     enqueueOrReplaceSync('event-upsert', eventId, 'Queued event end', event, e.message);
+  }
+}
+
+// Optional loyalty tie-in -- both amounts default to 0 (off) so completing
+// an event never surprises a store that hasn't configured them in Settings.
+// Only registrations linked to a real customer record (contact was given at
+// sign-up) can earn points; walk-in-only registrations are skipped.
+async function awardEventLoyaltyPoints(eventId){
+  if(getAccountContext().isDemo) return;
+  const profile = getVendorProfile();
+  const perPlayed = Number(profile.eventLoyaltyPerPlayed || 0);
+  const perWin = Number(profile.eventLoyaltyPerWin || 0);
+  if(perPlayed <= 0 && perWin <= 0) return;
+  const registrations = (eventRegistrationsCache[eventId] || []).filter(r => r.customer_id);
+  if(!registrations.length) return;
+  const matches = eventMatchesCache[eventId] || [];
+  const standingsById = {};
+  computeStandings(eventRegistrationsCache[eventId] || [], matches).forEach(s => { standingsById[s.registration.id] = s; });
+  const storeId = getActiveStoreId();
+  const sb = getSupabaseClient();
+  for(const reg of registrations) {
+    const wins = standingsById[reg.id]?.wins || 0;
+    const points = Math.round(perPlayed + perWin * wins);
+    if(points <= 0) continue;
+    try {
+      if(!sb) throw new Error('Supabase unavailable');
+      const { error } = await sb.rpc('accrue_loyalty_points', { p_store_id:storeId, p_customer_id:reg.customer_id, p_points:points, p_sale_id:null, p_reason:'event' });
+      if(error) throw error;
+    } catch(e) {
+      enqueueSync('event-loyalty-award', 'Queued event loyalty points', { storeId, customerId:reg.customer_id, points, reason:'event' }, e.message);
+    }
   }
 }
 
@@ -17500,10 +17765,16 @@ function shuffleArray(arr){
 async function startNextRound(eventId){
   const event = eventsCache.find(e => e.id === eventId);
   if(!event) return;
-  const registrations = (eventRegistrationsCache[eventId] || []).filter(r => !r.dropped);
-  if(registrations.length < 2) return toast_dash('Need at least 2 players to start a round');
   const matches = eventMatchesCache[eventId] || [];
   const nextRound = (event.current_round || 0) + 1;
+  const allActive = (eventRegistrationsCache[eventId] || []).filter(r => !r.dropped);
+  // Round 1 pairs only checked-in players when anyone has checked in --
+  // lets a shop that uses check-in skip no-shows without deleting their
+  // registration, while a shop that never checks anyone in keeps the old
+  // "everyone registered gets paired" behavior unchanged.
+  const checkedIn = allActive.filter(r => r.checked_in);
+  const registrations = (nextRound === 1 && checkedIn.length) ? checkedIn : allActive;
+  if(registrations.length < 2) return toast_dash('Need at least 2 players to start a round');
   const standings = computeStandings(eventRegistrationsCache[eventId] || [], matches);
   const seeded = nextRound === 1
     ? shuffleArray(registrations).map(r => ({ id:r.id }))
@@ -17553,6 +17824,142 @@ async function reportMatchResult(matchId, result){
   }
 }
 
+// Top cut: standard shop-scale bracket seeding -- seed i faces seed (n-1-i)
+// in the first bracket round (1v8, 2v7, 3v6, 4v5 for a top 8). Not a full
+// recursive re-seed, matching the same "good enough at this scale" approach
+// as the Swiss pairing engine above.
+async function cutToTopN(eventId, n){
+  const event = eventsCache.find(e => e.id === eventId);
+  if(!event) return;
+  if(event.top_cut_size) return toast_dash('Top cut already started for this event');
+  const standings = computeStandings(eventRegistrationsCache[eventId] || [], eventMatchesCache[eventId] || []).filter(s => !s.registration.dropped);
+  if(standings.length < n) return toast_dash(`Need at least ${n} players still in the event`);
+  if(!confirm(`Cut to top ${n}? Swiss standings will freeze and bracket play begins.`)) return;
+  const seeds = standings.slice(0, n).map(s => s.registration);
+  const nextRound = (event.current_round || 0) + 1;
+  const newMatches = [];
+  for(let i = 0; i < n / 2; i++) {
+    const p1 = seeds[i], p2 = seeds[n - 1 - i];
+    newMatches.push({
+      id:makeUuid('match'), store_id:getActiveStoreId(), event_id:eventId, round_number:nextRound, table_number:i + 1,
+      stage:'topcut', bracket_slot:i, player1_registration_id:p1.id, player2_registration_id:p2.id,
+      result:null, player1_game_wins:0, player2_game_wins:0, reported_at:null, created_at:new Date().toISOString()
+    });
+  }
+  eventMatchesCache[eventId] = [...(eventMatchesCache[eventId] || []), ...newMatches];
+  event.current_round = nextRound;
+  event.top_cut_size = n;
+  event.status = 'in_progress';
+  renderEventsPanel();
+  if(getAccountContext().isDemo) return;
+  try {
+    const sb = getSupabaseClient();
+    if(!sb) throw new Error('Supabase unavailable');
+    const { error: matchErr } = await sb.from('event_matches').insert(newMatches);
+    if(matchErr) throw matchErr;
+    const { error: eventErr } = await sb.from('events').update({ current_round:nextRound, top_cut_size:n, status:'in_progress', updated_at:new Date().toISOString() }).eq('id', eventId).eq('store_id', getActiveStoreId());
+    if(eventErr) throw eventErr;
+  } catch(e) {
+    toast_dash('Bracket saved locally — cloud sync failed: ' + e.message);
+    enqueueSync('event-topcut-start', 'Queued top cut bracket start', { eventId, storeId:getActiveStoreId(), round:nextRound, topCutSize:n, matches:newMatches }, e.message);
+  }
+}
+
+async function reportBracketMatchResult(matchId, result){
+  const event = eventsCache.find(e => e.id === activeEventId);
+  if(!event) return;
+  const matches = eventMatchesCache[event.id] || [];
+  const match = matches.find(m => m.id === matchId);
+  if(!match) return;
+  match.result = result;
+  match.reported_at = new Date().toISOString();
+  renderEventsPanel();
+  if(!getAccountContext().isDemo) {
+    try {
+      const sb = getSupabaseClient();
+      if(!sb) throw new Error('Supabase unavailable');
+      const { error } = await sb.from('event_matches').update({ result, reported_at:match.reported_at }).eq('id', matchId).eq('store_id', getActiveStoreId());
+      if(error) throw error;
+    } catch(e) {
+      enqueueOrReplaceSync('event-bracket-result', matchId, 'Queued bracket match result', match, e.message);
+    }
+  }
+  await maybeAdvanceBracket(event.id);
+}
+
+// Once every match in the current bracket round has a result: pair winners
+// by slot (slot 2k + slot 2k+1's winners meet at slot k next round), or if
+// that was the final (a single match), complete the event automatically.
+async function maybeAdvanceBracket(eventId){
+  const event = eventsCache.find(e => e.id === eventId);
+  if(!event || !event.top_cut_size) return;
+  const matches = eventMatchesCache[eventId] || [];
+  const currentRoundMatches = matches.filter(m => m.stage === 'topcut' && m.round_number === event.current_round);
+  if(!currentRoundMatches.length || !currentRoundMatches.every(m => m.result)) return;
+  if(currentRoundMatches.length === 1) { await completeEvent(eventId); return; }
+  const winners = currentRoundMatches.slice().sort((a,b) => a.bracket_slot - b.bracket_slot)
+    .map(m => m.result === 'p1' ? m.player1_registration_id : m.player2_registration_id);
+  const nextRound = event.current_round + 1;
+  const newMatches = [];
+  for(let i = 0; i < winners.length / 2; i++) {
+    newMatches.push({
+      id:makeUuid('match'), store_id:getActiveStoreId(), event_id:eventId, round_number:nextRound, table_number:i + 1,
+      stage:'topcut', bracket_slot:i, player1_registration_id:winners[i * 2], player2_registration_id:winners[i * 2 + 1],
+      result:null, player1_game_wins:0, player2_game_wins:0, reported_at:null, created_at:new Date().toISOString()
+    });
+  }
+  eventMatchesCache[eventId] = [...matches, ...newMatches];
+  event.current_round = nextRound;
+  renderEventsPanel();
+  if(getAccountContext().isDemo) return;
+  try {
+    const sb = getSupabaseClient();
+    if(!sb) throw new Error('Supabase unavailable');
+    const { error: matchErr } = await sb.from('event_matches').insert(newMatches);
+    if(matchErr) throw matchErr;
+    const { error: eventErr } = await sb.from('events').update({ current_round:nextRound, updated_at:new Date().toISOString() }).eq('id', eventId).eq('store_id', getActiveStoreId());
+    if(eventErr) throw eventErr;
+  } catch(e) {
+    enqueueSync('event-topcut-start', 'Queued bracket round advance', { eventId, storeId:getActiveStoreId(), round:nextRound, topCutSize:event.top_cut_size, matches:newMatches }, e.message);
+  }
+}
+
+// Final placement order for prize payouts: no cut ever happened -> plain
+// Swiss standings; a cut happened -> champion, runner-up, then each earlier
+// bracket round's eliminated players (all tied for that placement, order
+// among ties doesn't matter), then anyone who didn't make the cut at all by
+// their frozen Swiss standing.
+function computeFinalPlacements(event, registrations, matches){
+  const swissMatches = matches.filter(m => m.stage !== 'topcut');
+  const swissStandings = computeStandings(registrations, swissMatches).filter(s => !s.registration.dropped);
+  if(!event.top_cut_size) return swissStandings.map(s => s.registration);
+  const bracketMatches = matches.filter(m => m.stage === 'topcut');
+  if(!bracketMatches.length) return swissStandings.map(s => s.registration);
+  const byId = id => registrations.find(r => r.id === id);
+  const placedIds = new Set();
+  const ordered = [];
+  const roundsDesc = [...new Set(bracketMatches.map(m => m.round_number))].sort((a,b) => b - a);
+  roundsDesc.forEach((round, idx) => {
+    const roundMatches = bracketMatches.filter(m => m.round_number === round).sort((a,b) => a.bracket_slot - b.bracket_slot);
+    if(idx === 0) {
+      const final = roundMatches[0];
+      if(final?.result) {
+        const winnerId = final.result === 'p1' ? final.player1_registration_id : final.player2_registration_id;
+        const loserId = final.result === 'p1' ? final.player2_registration_id : final.player1_registration_id;
+        [winnerId, loserId].forEach(id => { if(id && !placedIds.has(id)) { placedIds.add(id); ordered.push(byId(id)); } });
+      }
+    } else {
+      roundMatches.forEach(m => {
+        if(!m.result) return;
+        const loserId = m.result === 'p1' ? m.player2_registration_id : m.player1_registration_id;
+        if(loserId && !placedIds.has(loserId)) { placedIds.add(loserId); ordered.push(byId(loserId)); }
+      });
+    }
+  });
+  swissStandings.forEach(s => { if(!placedIds.has(s.registration.id)) ordered.push(s.registration); });
+  return ordered.filter(Boolean);
+}
+
 // Standings: 3/1/0 scoring, opponents' match-win% tiebreaker with the
 // standard 33% floor (prevents one very-low performer from unfairly tanking
 // their opponents' tiebreaker), same convention as real Swiss tournament
@@ -17594,9 +18001,9 @@ function computeStandings(registrations, matches){
 // Cross-event leaderboard: sums every completed event's standings by player
 // identity, so a regular tracked as a customer keeps one running total
 // across events while a walk-in with no contact info still tallies by name.
-function computeLeaderboard(events, gameFilter){
+function computeLeaderboard(events, gameFilter, seriesFilter){
   const totals = {};
-  events.filter(e => e.status === 'completed' && (gameFilter === 'All' || e.game === gameFilter)).forEach(event => {
+  events.filter(e => e.status === 'completed' && (gameFilter === 'All' || e.game === gameFilter) && (!seriesFilter || seriesFilter === 'All' || e.series_name === seriesFilter)).forEach(event => {
     const registrations = eventRegistrationsCache[event.id] || [];
     const matches = eventMatchesCache[event.id] || [];
     if(!registrations.length) return;
@@ -37597,7 +38004,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.11.05-tournament-leaderboard" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.12.01-tournament-features" defer></script>
 </body>
 </html>
 
