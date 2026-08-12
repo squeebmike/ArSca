@@ -4474,6 +4474,18 @@ export default {
       }
     }
 
+    // Last-run summary of the scheduled auto-reprice job (runScheduledEbayReprice
+    // below) for this store, so the settings panel can show something other than
+    // a toggle it can never confirm actually did anything.
+    if (url.pathname === '/ebay/reprice/status') {
+      if (request.method !== 'GET') return json({ error: 'GET only' }, 405);
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId, ['owner','admin']);
+      if (auth.error) return auth.error;
+      const raw = env.LBA_KV ? await env.LBA_KV.get(`ebay_reprice:${storeId}:latest`) : null;
+      return json({ ok: true, status: raw ? JSON.parse(raw) : null });
+    }
+
     // Detects eBay sales that this dashboard never recorded on its own -- a listing
     // can sell on eBay with zero action taken in this app. Pulls every paid eBay
     // order from the Sell Fulfillment API and records a pos_sales/pos_sale_lines/
@@ -9620,9 +9632,115 @@ export default {
   // /dealscan/latest reads) instead of only ever being reachable by an
   // on-demand click.
   async scheduled(event, env, ctx) {
-    ctx.waitUntil(runScheduledDealScans(env));
+    ctx.waitUntil(Promise.all([runScheduledDealScans(env), runScheduledEbayReprice(env)]));
   },
 };
+
+// Revises ONLY the offer (price/format/quantity/category/best-offer terms) --
+// never the inventory_item (title/description/condition/package/aspects).
+// eBay's Inventory API has no partial-update endpoint, only full-replace PUTs,
+// and the inventory_item side has no reliable way to reconstruct from live
+// data (aspects in particular are built from granular category-specific
+// fields, not a flat dict -- see buildEbayAspects) without risking silently
+// overwriting real listing data with guessed defaults. The offer side has no
+// such risk: everything buildEbayOfferBody needs is returned as-is by GET
+// /sell/inventory/v1/offer/{offerId}, so this only ever touches price.
+async function ebayReviseOfferPrice(env, offerId, newPrice) {
+  const ebayToken = await getEbayUserAccessToken(env);
+  if (!ebayToken) throw new Error('eBay not connected');
+  const offerRes = await fetch(`https://api.ebay.com/sell/inventory/v1/offer/${encodeURIComponent(offerId)}`, { headers: { Authorization: 'Bearer ' + ebayToken } });
+  const offerTxt = await offerRes.text();
+  let offer; try { offer = JSON.parse(offerTxt); } catch (_) { offer = null; }
+  if (!offerRes.ok || !offer) throw new Error('Could not fetch live offer: ' + offerTxt.substring(0, 200));
+  const bestOfferTerms = offer.listingPolicies?.bestOfferTerms || {};
+  const locationKey = env.EBAY_LOCATION_KEY || 'walkoff-main';
+  const body = buildEbayOfferBody({
+    description: offer.listingDescription,
+    price: newPrice,
+    format: offer.format,
+    duration: offer.listingDuration,
+    quantity: offer.availableQuantity,
+    categoryId: offer.categoryId,
+    bestOfferEnabled: !!bestOfferTerms.bestOfferEnabled,
+    autoAcceptPrice: bestOfferTerms.autoAcceptPrice?.value || '',
+    autoDeclinePrice: bestOfferTerms.autoDeclinePrice?.value || '',
+  }, '', locationKey, env);
+  delete body.sku;
+  const putRes = await fetch(`https://api.ebay.com/sell/inventory/v1/offer/${encodeURIComponent(offerId)}`, {
+    method: 'PUT',
+    headers: { 'Authorization': 'Bearer ' + ebayToken, 'Content-Type': 'application/json', 'Content-Language': 'en-US' },
+    body: JSON.stringify(body),
+  });
+  if (!putRes.ok && putRes.status !== 204) {
+    const errTxt = await putRes.text();
+    let errData; try { errData = JSON.parse(errTxt); } catch (_) { errData = errTxt; }
+    const msg = errData?.errors?.[0]?.longMessage || errData?.errors?.[0]?.message || errTxt.substring(0, 200);
+    throw new Error('Offer price update failed (' + putRes.status + '): ' + msg);
+  }
+  return true;
+}
+
+// Drops the price of eBay listings that have sat unsold for N+ days, per
+// store opt-in settings (store_settings.receipt_settings.ebayAutoReprice --
+// off by default, see saveVendorProfile in dashboard.html). Guardrails:
+// never below cost + a configurable margin, capped total number of drops
+// per item (ebayRepriceCount), and at most one drop per item per run cycle
+// (gated on ebayLastRepricedAt / ebayListedAt age). One store or one item
+// failing must never block the rest -- there's no request to report an
+// error to out here.
+async function runScheduledEbayReprice(env) {
+  if (!(env.SUPABASE_URL && (env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SERVICE_KEY))) return;
+  const { data: members } = await supabaseAdminFetch(env, `store_members?active=eq.true&select=store_id`);
+  const storeIds = [...new Set((members || []).map(m => String(m.store_id || '')).filter(Boolean))];
+  for (const storeId of storeIds) {
+    const summary = { checked: 0, repriced: 0, skipped: 0, errors: 0, ranAt: new Date().toISOString() };
+    try {
+      const { data: settingsRows } = await supabaseAdminFetch(env, `store_settings?store_id=eq.${encodeURIComponent(storeId)}&select=receipt_settings`);
+      const cfg = settingsRows?.[0]?.receipt_settings?.ebayAutoReprice;
+      if (!cfg || !cfg.enabled) continue;
+      const days = Math.max(7, Number(cfg.days) || 60);
+      const pct = Math.min(50, Math.max(1, Number(cfg.pct) || 10));
+      const minMarginPct = Math.max(0, Number(cfg.minMarginPct) || 10);
+      const maxDrops = Math.max(1, Number(cfg.maxDrops) || 5);
+
+      const { data: rows, response } = await supabaseAdminFetch(env, `inventory_items?store_id=eq.${encodeURIComponent(storeId)}&status=eq.in_stock&select=id,data,updated_at&limit=1000`);
+      if (!response?.ok) continue;
+      const cutoffMs = days * 86400000;
+      for (const row of (rows || [])) {
+        const d = row.data || {};
+        if (!d.ebayListingId || !d.ebayOfferId) continue;
+        summary.checked++;
+        const repriceCount = Number(d.ebayRepriceCount || 0);
+        if (repriceCount >= maxDrops) { summary.skipped++; continue; }
+        const sinceIso = d.ebayLastRepricedAt || d.ebayListedAt;
+        if (!sinceIso) { summary.skipped++; continue; }
+        const ageMs = Date.now() - new Date(sinceIso).getTime();
+        if (ageMs < cutoffMs) { summary.skipped++; continue; }
+        const currentPrice = Number(d.listPrice || d.salePrice || d.displayPrice || d.price || 0);
+        if (!(currentPrice > 0)) { summary.skipped++; continue; }
+        const cost = Number(d.cost || 0);
+        const floor = cost > 0 ? cost * (1 + minMarginPct / 100) : 0;
+        const newPrice = Math.round(currentPrice * (1 - pct / 100) * 100) / 100;
+        if (newPrice <= 0 || (floor > 0 && newPrice < floor)) { summary.skipped++; continue; }
+        try {
+          await ebayReviseOfferPrice(env, d.ebayOfferId, newPrice);
+          const nowIso = new Date().toISOString();
+          const nextData = { ...d, listPrice: newPrice, salePrice: newPrice, displayPrice: newPrice, ebayLastRepricedAt: nowIso, ebayRepriceCount: repriceCount + 1 };
+          await supabaseAdminFetch(env, `inventory_items?id=eq.${encodeURIComponent(row.id)}&store_id=eq.${encodeURIComponent(storeId)}`, {
+            method: 'PATCH',
+            body: JSON.stringify({ data: nextData, updated_at: nowIso }),
+          });
+          summary.repriced++;
+        } catch (e) {
+          summary.errors++;
+        }
+      }
+    } catch (e) {
+      summary.errors++;
+    }
+    if (env.LBA_KV) await env.LBA_KV.put(`ebay_reprice:${storeId}:latest`, JSON.stringify(summary), { expirationTtl: 30 * 24 * 60 * 60 });
+  }
+}
 
 async function runScheduledDealScans(env) {
   if (!(env.SUPABASE_URL && (env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SERVICE_KEY))) return;

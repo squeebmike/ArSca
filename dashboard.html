@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.16.03-restock-purchase-order">
+<meta name="version" content="2026.08.16.04-ebay-auto-reprice-aged-listings">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1570,13 +1570,13 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.16.03-restock-purchase-order" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.16.03-restock-purchase-order" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.16.03-restock-purchase-order" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.16.03-restock-purchase-order" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.16.03-restock-purchase-order" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.16.03-restock-purchase-order" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.16.03-restock-purchase-order" defer></script>
+<script src="scripts/query-routing.js?v=2026.08.16.04-ebay-auto-reprice-aged-listings" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.16.04-ebay-auto-reprice-aged-listings" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.16.04-ebay-auto-reprice-aged-listings" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.16.04-ebay-auto-reprice-aged-listings" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.16.04-ebay-auto-reprice-aged-listings" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.16.04-ebay-auto-reprice-aged-listings" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.16.04-ebay-auto-reprice-aged-listings" defer></script>
 </head>
 <body>
 
@@ -1626,11 +1626,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.16.03-restock-purchase-order</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.16.04-ebay-auto-reprice-aged-listings</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.16.03-restock-purchase-order</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.16.04-ebay-auto-reprice-aged-listings</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1652,7 +1652,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.16.03-restock-purchase-order</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.16.04-ebay-auto-reprice-aged-listings</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3378,7 +3378,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.16.03-restock-purchase-order';
+const APP_VERSION = '2026.08.16.04-ebay-auto-reprice-aged-listings';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -5141,6 +5141,7 @@ async function saveVendorProfile(profile){
       ebayCategoryMap:next.ebayCategoryMap || {},
       ebayDescriptionTemplate:next.ebayDescriptionTemplate || '',
       ebayDescriptionTemplates:next.ebayDescriptionTemplates || {},
+      ebayAutoReprice:next.ebayAutoReprice || {},
       paymentMethods:next.paymentMethods,
       taxRate:Number(next.taxRate || 0),
       loyaltyRate:Number(next.loyaltyRate || 0),
@@ -5833,6 +5834,7 @@ function savePaymentSettings(settings){
       ebayCategoryMap:next.ebayCategoryMap || {},
       ebayDescriptionTemplate:next.ebayDescriptionTemplate || '',
       ebayDescriptionTemplates:next.ebayDescriptionTemplates || {},
+      ebayAutoReprice:next.ebayAutoReprice || {},
       paymentMethods:next.paymentMethods,
       taxRate:Number(next.taxRate || 0),
       loyaltyRate:Number(next.loyaltyRate || 0),
@@ -6373,7 +6375,52 @@ function renderVendorProfilePanel(){
       ${ebayDescriptionTemplateEditorHtml('default', 'Default (any category without its own template)', p)}
       ${getInventoryCategories().map(c => ebayDescriptionTemplateEditorHtml(c, c, p)).join('')}
       <div style="display:flex;gap:8px;margin-top:8px"><button class="hbtn" onclick="saveEbayListingSettings()">SAVE EBAY LISTING SETTINGS</button></div>
+    </div>
+    <div style="margin-top:14px;padding:14px;border:1px solid var(--border);border-radius:10px;background:var(--surf2)">
+      <div style="font-family:'Orbitron',monospace;font-size:11px;color:var(--gold);margin-bottom:7px">AUTO-REPRICE AGED LISTINGS</div>
+      <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);line-height:1.6;margin-bottom:10px">Automatically drops the price on eBay listings that have sat unsold for a while. Off by default. Only ever touches price (never title, condition, description, or images), never drops below cost plus a margin you set, and stops after a max number of drops per item.</div>
+      ${ebayAutoRepriceSettingsHtml(p)}
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;align-items:center">
+        <button class="hbtn" onclick="saveEbayAutoRepriceSettings()">SAVE AUTO-REPRICE SETTINGS</button>
+        <span id="ebay-reprice-status" style="font-family:var(--font-mono);font-size:9px;color:var(--dim)"></span>
+      </div>
     </div>`;
+  loadEbayRepriceStatus();
+}
+
+function ebayAutoRepriceSettingsHtml(p){
+  const cfg = { enabled:false, days:60, pct:10, minMarginPct:10, maxDrops:5, ...(p.ebayAutoReprice || {}) };
+  return `<label style="display:flex;align-items:center;gap:8px;font-family:var(--font-mono);font-size:11px;margin-bottom:10px"><input id="ear-enabled" type="checkbox" ${cfg.enabled?'checked':''}> Enable auto-reprice</label>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px">
+      ${vendorInput('ear-days','Days unsold before dropping',cfg.days,'number')}
+      ${vendorInput('ear-pct','Price drop % each time',cfg.pct,'number')}
+      ${vendorInput('ear-minMarginPct','Min margin above cost %',cfg.minMarginPct,'number')}
+      ${vendorInput('ear-maxDrops','Max drops per item',cfg.maxDrops,'number')}
+    </div>`;
+}
+
+function saveEbayAutoRepriceSettings(){
+  const ebayAutoReprice = {
+    enabled: !!document.getElementById('ear-enabled')?.checked,
+    days: Math.max(7, Number(document.getElementById('ear-days')?.value) || 60),
+    pct: Math.min(50, Math.max(1, Number(document.getElementById('ear-pct')?.value) || 10)),
+    minMarginPct: Math.max(0, Number(document.getElementById('ear-minMarginPct')?.value) || 10),
+    maxDrops: Math.max(1, Number(document.getElementById('ear-maxDrops')?.value) || 5),
+  };
+  saveVendorProfile({ ebayAutoReprice });
+  toast_dash(ebayAutoReprice.enabled ? 'Auto-reprice enabled' : 'Auto-reprice settings saved');
+}
+
+async function loadEbayRepriceStatus(){
+  const el = document.getElementById('ebay-reprice-status');
+  if(!el || getAccountContext().isDemo) return;
+  try {
+    const res = await storeWorkerFetch(scopedWorkerPath('/ebay/reprice/status'));
+    const data = await res.json();
+    const s = data?.status;
+    if(!s) { el.textContent = 'No auto-reprice run yet'; return; }
+    el.textContent = `Last run ${new Date(s.ranAt).toLocaleString()} · ${s.repriced} repriced · ${s.skipped} skipped${s.errors ? ' · ' + s.errors + ' errors' : ''}`;
+  } catch(e) { /* best-effort status line, not worth surfacing an error for */ }
 }
 
 function ebayDescriptionTemplateEditorHtml(key, label, p){
@@ -40172,7 +40219,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.16.03-restock-purchase-order" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.16.04-ebay-auto-reprice-aged-listings" defer></script>
 </body>
 </html>
 
