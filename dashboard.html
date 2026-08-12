@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.15.05-set-browser-layout-and-buy-inventory">
+<meta name="version" content="2026.08.15.06-set-browser-declutter-and-mtg-icons">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1566,13 +1566,13 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.15.05-set-browser-layout-and-buy-inventory" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.15.05-set-browser-layout-and-buy-inventory" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.15.05-set-browser-layout-and-buy-inventory" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.15.05-set-browser-layout-and-buy-inventory" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.15.05-set-browser-layout-and-buy-inventory" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.15.05-set-browser-layout-and-buy-inventory" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.15.05-set-browser-layout-and-buy-inventory" defer></script>
+<script src="scripts/query-routing.js?v=2026.08.15.06-set-browser-declutter-and-mtg-icons" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.15.06-set-browser-declutter-and-mtg-icons" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.15.06-set-browser-declutter-and-mtg-icons" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.15.06-set-browser-declutter-and-mtg-icons" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.15.06-set-browser-declutter-and-mtg-icons" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.15.06-set-browser-declutter-and-mtg-icons" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.15.06-set-browser-declutter-and-mtg-icons" defer></script>
 </head>
 <body>
 
@@ -1622,11 +1622,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.15.05-set-browser-layout-and-buy-inventory</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.15.06-set-browser-declutter-and-mtg-icons</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.15.05-set-browser-layout-and-buy-inventory</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.15.06-set-browser-declutter-and-mtg-icons</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1648,7 +1648,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.15.05-set-browser-layout-and-buy-inventory</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.15.06-set-browser-declutter-and-mtg-icons</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3319,7 +3319,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.15.05-set-browser-layout-and-buy-inventory';
+const APP_VERSION = '2026.08.15.06-set-browser-declutter-and-mtg-icons';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -36949,6 +36949,13 @@ function setTilePlaceholderColor(name){
   const hues = [340, 210, 150, 45, 265, 15];
   return `hsl(${hues[hash % hues.length]}, 55%, 30%)`;
 }
+// Fallback swap for a set tile image that fails to load, done in JS rather
+// than inline HTML string interpolation so set/card names containing quotes
+// can't break the onerror attribute.
+function setPickerTileImgError(img, color, initial){
+  const wrap = img.parentElement;
+  if(wrap) wrap.innerHTML = `<div class="set-picker-tile-fallback" style="background:${color}">${initial}</div>`;
+}
 function setPickerGridHtml(sets, selectedId, clickFnName){
   if(!sets || !sets.length) return '<div class="set-picker-empty">No sets match</div>';
   return sets.map(s => {
@@ -36956,11 +36963,20 @@ function setPickerGridHtml(sets, selectedId, clickFnName){
     const name = s.name || s.code || '';
     const year = (s.releaseDate || s.released_at) ? String(s.releaseDate || s.released_at).slice(0, 4) : '';
     const count = Number(s.cardCount || s.card_count || 0);
-    const img = s.imageUrl || s.icon_svg_uri || '';
+    // The offline MTG catalog's set records never captured icon_svg_uri (only
+    // built from aggregating card records: setCode/setName/releasedAt/count),
+    // so every offline-mode MTG set fell back to a plain letter circle.
+    // Scryfall's icon CDN uses a stable, predictable path from the set code
+    // alone (https://svgs.scryfall.io/sets/{code}.svg), so it can be
+    // constructed directly with no extra API call -- the onerror handler
+    // below falls back to the letter tile if a particular code's guess is
+    // wrong instead of showing a broken image.
+    const img = s.imageUrl || s.icon_svg_uri || (s.code ? `https://svgs.scryfall.io/sets/${s.code}.svg` : '');
     const active = String(id) === String(selectedId || '') && id;
     const initial = (name || '?').trim().charAt(0).toUpperCase() || '?';
+    const color = setTilePlaceholderColor(name);
     return `<button type="button" class="set-picker-tile${active ? ' active' : ''}" onclick="${clickFnName}('${escHtml(id)}')" title="${escHtml(name)}">
-      <div class="set-picker-tile-img">${img ? `<img src="${escHtml(img)}" alt="" loading="lazy">` : `<div class="set-picker-tile-fallback" style="background:${setTilePlaceholderColor(name)}">${escHtml(initial)}</div>`}</div>
+      <div class="set-picker-tile-img">${img ? `<img src="${escHtml(img)}" alt="" loading="lazy" onerror="setPickerTileImgError(this,'${color}','${escHtml(initial)}')">` : `<div class="set-picker-tile-fallback" style="background:${color}">${escHtml(initial)}</div>`}</div>
       <div class="set-picker-tile-name">${escHtml(name)}</div>
       <div class="set-picker-tile-meta">${year ? escHtml(year) : ''}${year && count ? ' · ' : ''}${count ? count + ' cards' : ''}</div>
     </button>`;
@@ -36980,6 +36996,7 @@ const _sbState = {
   artistCoverage: '',
   swipeIdx: 0, isDragging: false, dragX: 0,
   dealScanExpanded: false,
+  dealScannerOpen: false,
 };
 
 function sbParseCollectorNum(n){
@@ -37562,6 +37579,10 @@ function sbToggleDealScanExpanded(){
   _sbState.dealScanExpanded = !_sbState.dealScanExpanded;
   sbRenderContent(false);
 }
+function sbToggleDealScannerControls(){
+  _sbState.dealScannerOpen = !_sbState.dealScannerOpen;
+  sbRenderContent(false);
+}
 
 function dealScanWarningHtml(scan){
   if(scan.needsProvider) return `<div class="ppsb-empty" style="margin:8px 0;font-size:10px;color:var(--red)">eBay isn't configured on the Worker (no EBAY_APP_ID/EBAY_CLIENT_ID) -- the scan can't search eBay at all until that's set up.</div>`;
@@ -37877,15 +37898,18 @@ function sbRenderContent(loading){
         ${!isSwipe?`SORT: ${sortBtn('number','#')} ${sortBtn('price','PRICE')} ${sortBtn('name','NAME')} ${sortBtn('rarity','RARITY')} ${sortBtn('artist','ARTIST')} ${sortBtn('owned','OWNED')} ${sortBtn('missing','MISSING')}`:''}
         <button class="hbtn ppsb-sort-btn ppsb-filter-toggle" onclick="sbToggleFilters()">FILTERS${hasFilter?' *':''}</button>
         <button class="hbtn ppsb-sort-btn" style="margin-left:4px;border-color:rgba(0,255,179,.4);color:var(--g)" onclick="sbToggleView()">${viewLabel}</button>
+        <button class="hbtn ppsb-sort-btn" style="margin-left:4px;border-color:rgba(255,209,102,.4);color:var(--gold)" onclick="sbToggleDealScannerControls()">💰 DEAL SCANNER${_sbState.dealScannerOpen?' ▴':' ▾'}</button>
+        ${!isSwipe&&!isTable?`<label style="display:flex;align-items:center;gap:4px;font-family:monospace;font-size:9px;color:var(--dim);margin-left:6px">SIZE<input type="range" min="220" max="520" step="20" value="${cardSize}" style="width:90px;accent-color:var(--g);cursor:pointer" oninput="sbSetCardSize(this.value)"></label>`:''}
+        ${isTable?`<label style="display:flex;align-items:center;gap:4px;font-family:monospace;font-size:9px;color:var(--dim);margin-left:6px">IMG<input type="range" min="54" max="220" step="6" value="${tableImgSz}" style="width:90px;accent-color:var(--g);cursor:pointer" oninput="sbSetTableImgSize(this.value)"></label>`:''}
+      </div>
+      ${_sbState.dealScannerOpen ? `<div class="ppsb-sort-row" style="border-top:1px solid var(--border);padding-top:8px;margin-top:4px">
         <label style="display:flex;align-items:center;gap:4px;font-family:monospace;font-size:9px;color:var(--dim);margin-left:6px">SCOPE<select id="ppsb-deal-scope" style="background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:2px 4px;border-radius:4px"><option value="set" ${(_sbState.dealScope||'set')==='set'?'selected':''}>THIS SET</option><option value="inventory" ${_sbState.dealScope==='inventory'?'selected':''}>MY INVENTORY</option></select></label>
         <label style="display:flex;align-items:center;gap:4px;font-family:monospace;font-size:9px;color:var(--dim);margin-left:6px">MIN $<input type="number" id="ppsb-deal-min-price" value="${escHtml(String(_sbState.dealMinPrice??10))}" min="0" step="1" style="width:44px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:2px 4px;border-radius:4px"></label>
         <label style="display:flex;align-items:center;gap:4px;font-family:monospace;font-size:9px;color:var(--dim);margin-left:6px">% BELOW: MIN<input type="number" id="ppsb-deal-threshold" value="${escHtml(String(_sbState.dealThresholdPct||25))}" min="5" max="90" style="width:40px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:2px 4px;border-radius:4px">MAX<input type="number" id="ppsb-deal-max-pct" value="${escHtml(String(_sbState.dealMaxPct??55))}" min="5" max="95" style="width:40px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:2px 4px;border-radius:4px" title="Claims above this are almost always a wrong-item match (keychains, stickers, customs) or a scam/bait listing, not a real deal"></label>
         <label style="display:flex;align-items:center;gap:4px;font-family:monospace;font-size:9px;color:var(--dim);margin-left:6px"><input type="checkbox" id="ppsb-deal-include-fresh" ${_sbState.dealIncludeFresh!==false?'checked':''}>NEW/BIN</label>
         <label style="display:flex;align-items:center;gap:4px;font-family:monospace;font-size:9px;color:var(--dim)"><input type="checkbox" id="ppsb-deal-include-auctions" ${_sbState.dealIncludeAuctions!==false?'checked':''}>AUCTIONS</label>
         <button class="hbtn ppsb-sort-btn" id="ppsb-deal-scan-btn" style="border-color:rgba(255,209,102,.5);color:var(--gold)" onclick="sbScanEbayDeals()">💰 SCAN EBAY FOR DEALS</button>
-        ${!isSwipe&&!isTable?`<label style="display:flex;align-items:center;gap:4px;font-family:monospace;font-size:9px;color:var(--dim);margin-left:6px">SIZE<input type="range" min="220" max="520" step="20" value="${cardSize}" style="width:90px;accent-color:var(--g);cursor:pointer" oninput="sbSetCardSize(this.value)"></label>`:''}
-        ${isTable?`<label style="display:flex;align-items:center;gap:4px;font-family:monospace;font-size:9px;color:var(--dim);margin-left:6px">IMG<input type="range" min="54" max="220" step="6" value="${tableImgSz}" style="width:90px;accent-color:var(--g);cursor:pointer" oninput="sbSetTableImgSize(this.value)"></label>`:''}
-      </div>
+      </div>` : ''}
     </div>
     ${filterBar}
     ${artistNote}
@@ -38071,6 +38095,7 @@ const _mtgsbState = {
   cachedImageUrls: new Map(), imageCacheProgress: null,
   mobileFiltersOpen: false,
   dealScanExpanded: false,
+  dealScannerOpen: false,
 };
 
 function mtgsbNormalizeSetRecord(set = {}){
@@ -38326,13 +38351,16 @@ function mtgsbRenderContent(loading){
         ${view==='table'?`<label style="display:flex;align-items:center;gap:5px;font-family:monospace;font-size:9px;color:var(--dim);margin-left:8px">IMG<input type="range" min="54" max="220" step="6" value="${_mtgsbState.tableImgSize || 84}" style="width:90px;accent-color:#5ba3f5;cursor:pointer" oninput="mtgsbSetTableImgSize(this.value)"></label>`:''}
         <button id="mtsb-cache-images" class="hbtn" ${_mtgsbState.imageCacheProgress?'disabled':''} onclick="mtgsbCacheSelectedSetImages()">${_mtgsbState.imageCacheProgress?`IMAGES ${_mtgsbState.imageCacheProgress.done}/${_mtgsbState.imageCacheProgress.total}`:`CACHE SET IMAGES (${_mtgsbState.cachedImageUrls.size})`}</button>
         <button class="hbtn mtsb-sort-btn mtsb-filter-toggle" onclick="mtgsbToggleMobileFilters()">FILTERS</button>
+        <button class="hbtn mtsb-sort-btn" style="margin-left:4px;border-color:rgba(255,209,102,.4);color:var(--gold)" onclick="mtgsbToggleDealScannerControls()">💰 DEAL SCANNER${_mtgsbState.dealScannerOpen?' ▴':' ▾'}</button>
+      </div>
+      ${_mtgsbState.dealScannerOpen ? `<div class="mtsb-sort-row" style="border-top:1px solid var(--border);padding-top:8px;margin-top:4px">
         <label style="display:flex;align-items:center;gap:4px;font-family:monospace;font-size:9px;color:var(--dim);margin-left:6px">SCOPE<select id="mtsb-deal-scope" style="background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:2px 4px;border-radius:4px"><option value="set" ${(_mtgsbState.dealScope||'set')==='set'?'selected':''}>THIS SET</option><option value="inventory" ${_mtgsbState.dealScope==='inventory'?'selected':''}>MY INVENTORY</option></select></label>
         <label style="display:flex;align-items:center;gap:4px;font-family:monospace;font-size:9px;color:var(--dim);margin-left:6px">MIN $<input type="number" id="mtsb-deal-min-price" value="${escHtml(String(_mtgsbState.dealMinPrice??10))}" min="0" step="1" style="width:44px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:2px 4px;border-radius:4px"></label>
         <label style="display:flex;align-items:center;gap:4px;font-family:monospace;font-size:9px;color:var(--dim);margin-left:6px">% BELOW: MIN<input type="number" id="mtsb-deal-threshold" value="${escHtml(String(_mtgsbState.dealThresholdPct||25))}" min="5" max="90" style="width:40px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:2px 4px;border-radius:4px">MAX<input type="number" id="mtsb-deal-max-pct" value="${escHtml(String(_mtgsbState.dealMaxPct??55))}" min="5" max="95" style="width:40px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:2px 4px;border-radius:4px" title="Claims above this are almost always a wrong-item match (keychains, stickers, customs) or a scam/bait listing, not a real deal"></label>
         <label style="display:flex;align-items:center;gap:4px;font-family:monospace;font-size:9px;color:var(--dim);margin-left:6px"><input type="checkbox" id="mtsb-deal-include-fresh" ${_mtgsbState.dealIncludeFresh!==false?'checked':''}>NEW/BIN</label>
         <label style="display:flex;align-items:center;gap:4px;font-family:monospace;font-size:9px;color:var(--dim)"><input type="checkbox" id="mtsb-deal-include-auctions" ${_mtgsbState.dealIncludeAuctions!==false?'checked':''}>AUCTIONS</label>
         <button class="hbtn mtsb-sort-btn" id="mtsb-deal-scan-btn" style="border-color:rgba(255,209,102,.5);color:var(--gold)" onclick="mtgsbScanEbayDeals()">💰 SCAN EBAY FOR DEALS</button>
-      </div>
+      </div>` : ''}
     </div>
     <div class="mtsb-filters${_mtgsbState.mobileFiltersOpen?' on':''}">
       <input class="mtsb-filter-input" placeholder="Card name…" style="width:130px" value="${escHtml(_mtgsbState.filters.name)}" oninput="mtgsbSetFilter('name',this.value)">
@@ -38741,6 +38769,10 @@ function mtgsbRenderDealScanPanel(){
 }
 function mtgsbToggleDealScanExpanded(){
   _mtgsbState.dealScanExpanded = !_mtgsbState.dealScanExpanded;
+  mtgsbRenderContent(false);
+}
+function mtgsbToggleDealScannerControls(){
+  _mtgsbState.dealScannerOpen = !_mtgsbState.dealScannerOpen;
   mtgsbRenderContent(false);
 }
 
@@ -39602,7 +39634,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.15.05-set-browser-layout-and-buy-inventory" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.15.06-set-browser-declutter-and-mtg-icons" defer></script>
 </body>
 </html>
 

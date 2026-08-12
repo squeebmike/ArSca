@@ -49,13 +49,18 @@ console.log('Set picker grid contract checks passed');
   assert.match(pokemonHtml, /set-picker-tile-meta">2023 · /, 'release year must be extracted from releaseDate');
   assert.match(pokemonHtml, /198 cards/, 'card count must be shown');
 
-  // MTG-shaped set (code/name/released_at/card_count/icon_svg_uri), no image case too.
+  // MTG-shaped set (code/name/released_at/card_count/icon_svg_uri).
   const mtgSets = [{ code:'mkm', name:'Murders at Karlov Manor', released_at:'2024-02-09', card_count:286 }];
   const mtgHtml = setPickerGridHtml(mtgSets, null, 'mtgsbSelectSetTile');
   assert.match(mtgHtml, /onclick="mtgsbSelectSetTile\('mkm'\)"/, 'MTG tiles must use the set code as the id (Scryfall has no separate id field here)');
   assert.doesNotMatch(mtgHtml, /class="set-picker-tile active"/, 'no set should be marked active when selectedId is null');
-  assert.match(mtgHtml, /set-picker-tile-fallback/, 'a set with no image must fall back to a colored-initial tile, not break');
-  assert.match(mtgHtml, />M<\/div>/, 'the fallback initial must be the first letter of the set name, uppercased');
+
+  // A set with no image AND no code at all (neither Pokemon nor MTG shape) --
+  // the only case with truly nothing to render a picture from.
+  const bareSets = [{ id:'x1', name:'Mystery Set' }];
+  const bareHtml = setPickerGridHtml(bareSets, null, 'sbSelectSetTile');
+  assert.match(bareHtml, /set-picker-tile-fallback/, 'a set with no image and no set code must fall back to a colored-initial tile, not break');
+  assert.match(bareHtml, />M<\/div>/, 'the fallback initial must be the first letter of the set name, uppercased');
 }
 
 console.log('Set picker grid functional checks passed');
@@ -136,3 +141,53 @@ const mtgsbAddToInventoryCount = (dashboard.match(/onclick="mtgsbAddToInventory\
 assert.equal(mtgsbAddToInventoryCount, 3, 'MTG +INV action must be wired into all 3 card views (grid, table, swipe)');
 
 console.log('Set Browser buy/inventory action contract checks passed');
+
+// ── MTG set icons: construct from set code when Scryfall's field is missing ──
+// The offline MTG catalog's set records are built purely by aggregating card
+// records (setCode/setName/releasedAt/cardCount) and never captured
+// icon_svg_uri at all, so every offline-mode MTG set fell back to a plain
+// letter circle -- not just obscure sets, ALL of them. Scryfall's icon CDN
+// uses a stable, predictable path from the set code alone, so it can be
+// constructed directly without an extra API call.
+
+assert.match(dashboard, /const img = s\.imageUrl \|\| s\.icon_svg_uri \|\| \(s\.code \? `https:\/\/svgs\.scryfall\.io\/sets\/\$\{s\.code\}\.svg` : ''\);/, 'must construct a Scryfall icon URL from the set code when no icon field is present');
+assert.match(dashboard, /function setPickerTileImgError\(img, color, initial\)\{/, 'missing setPickerTileImgError fallback handler');
+assert.match(dashboard, /onerror="setPickerTileImgError\(this,'\$\{color\}','\$\{escHtml\(initial\)\}'\)"/, 'set tile images must fall back to the letter tile if the constructed/real URL 404s');
+
+console.log('MTG set icon code-fallback contract checks passed');
+
+// ── Functional check: constructed icon URL + onerror fallback wiring ──
+{
+  const colorSrc = dashboard.match(/function setTilePlaceholderColor\(name\)\{[\s\S]*?\n\}/)?.[0];
+  const errSrc = dashboard.match(/function setPickerTileImgError\(img, color, initial\)\{[\s\S]*?\n\}/)?.[0];
+  const gridSrc = dashboard.match(/function setPickerGridHtml\(sets, selectedId, clickFnName\)\{[\s\S]*?\n  \}\)\.join\(''\);\n\}/)?.[0];
+  assert.ok(colorSrc && errSrc && gridSrc, 'could not extract set picker functions for functional testing');
+  const escHtmlStub = `function escHtml(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }`;
+  const { setPickerGridHtml } = new Function(`${escHtmlStub}\n${colorSrc}\n${errSrc}\n${gridSrc}\nreturn { setPickerGridHtml };`)();
+
+  // MTG set with no icon_svg_uri at all (the offline-catalog shape).
+  const offlineMtgSets = [{ code:'mkm', name:'Murders at Karlov Manor', released_at:'2024-02-09', card_count:286 }];
+  const html = setPickerGridHtml(offlineMtgSets, null, 'mtgsbSelectSetTile');
+  assert.match(html, /<img src="https:\/\/svgs\.scryfall\.io\/sets\/mkm\.svg"/, 'an offline-catalog MTG set with no icon field must get a constructed Scryfall icon URL, not a bare letter tile');
+  assert.match(html, /onerror="setPickerTileImgError\(this,'hsl\(\d+, 55%, 30%\)','M'\)"/, 'the constructed-URL image must still carry a working letter-tile fallback in case that particular code guess is wrong');
+}
+
+console.log('MTG set icon code-fallback functional checks passed');
+
+// ── Deal scanner controls must be collapsed by default (not just results) ──
+// The full deal-scan control row (SCOPE, MIN $, % BELOW MIN/MAX, NEW/BIN,
+// AUCTIONS, SCAN button) rendered unconditionally above the card grid,
+// on top of the already-large sort/filter toolbar -- together they pushed
+// real card content most of a screen's height down before it was visible.
+
+assert.match(dashboard, /dealScannerOpen: false,/, 'Pokemon deal scanner controls must default to collapsed');
+assert.match(dashboard, /onclick="sbToggleDealScannerControls\(\)">💰 DEAL SCANNER/, 'Pokemon toolbar must expose a compact toggle for the deal scanner controls instead of showing them unconditionally');
+assert.match(dashboard, /function sbToggleDealScannerControls\(\)\{/, 'missing sbToggleDealScannerControls');
+assert.match(dashboard, /\$\{_sbState\.dealScannerOpen \? `<div class="ppsb-sort-row"[\s\S]*?SCOPE<select id="ppsb-deal-scope"/, 'Pokemon deal scanner controls must only render when dealScannerOpen is true');
+
+assert.match(dashboard, /dealScannerOpen: false,/, 'MTG deal scanner controls must default to collapsed');
+assert.match(dashboard, /onclick="mtgsbToggleDealScannerControls\(\)">💰 DEAL SCANNER/, 'MTG toolbar must expose a compact toggle for the deal scanner controls instead of showing them unconditionally');
+assert.match(dashboard, /function mtgsbToggleDealScannerControls\(\)\{/, 'missing mtgsbToggleDealScannerControls');
+assert.match(dashboard, /\$\{_mtgsbState\.dealScannerOpen \? `<div class="mtsb-sort-row"[\s\S]*?SCOPE<select id="mtsb-deal-scope"/, 'MTG deal scanner controls must only render when dealScannerOpen is true');
+
+console.log('Deal scanner controls collapse-by-default contract checks passed');
