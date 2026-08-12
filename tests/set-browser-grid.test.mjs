@@ -59,3 +59,13 @@ console.log('Set picker grid contract checks passed');
 }
 
 console.log('Set picker grid functional checks passed');
+
+// ── Scryfall set icons must be visible against the dark theme ──────
+// Scryfall's icon_svg_uri is a solid-black monochrome glyph designed to
+// sit on a light background; rendered bare here it's effectively invisible
+// against a near-black theme. Only MTG set icons are SVGs (Pokemon's set
+// images are raster), so a background+padding treatment targeted at SVG
+// <img> tiles fixes this without touching Pokemon tiles.
+assert.match(dashboard, /\.set-picker-tile-img img\[src\*="\.svg"\]\{background:#fff/, 'MTG set icon SVGs must get a light background so they are visible on the dark theme');
+
+console.log('Set icon visibility contract checks passed');
