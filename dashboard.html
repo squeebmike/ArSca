@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.15.04-dealscan-game-scoped-cache">
+<meta name="version" content="2026.08.15.05-set-browser-layout-and-buy-inventory">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1235,6 +1235,7 @@ body.customer-browse-mode{padding-bottom:0}body.customer-browse-mode header,body
 .set-picker-tile-name{font-size:10px;line-height:1.25;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;}
 .set-picker-tile-meta{font-size:8px;color:var(--dim);}
 .set-picker-empty{grid-column:1/-1;padding:14px;text-align:center;color:var(--dim);font-family:monospace;font-size:11px;}
+.set-picker-collapsed-bar{display:flex;align-items:center;gap:10px;padding:8px 18px;border-bottom:1px solid var(--border);flex-shrink:0;font-family:monospace;font-size:11px;color:var(--text);}
 .ppsb-toolbar{display:flex;gap:10px;align-items:center;justify-content:space-between;padding:10px 18px;border-bottom:1px solid var(--border);flex-wrap:wrap;flex-shrink:0;}
 .ppsb-stats{display:flex;gap:12px;font-family:monospace;font-size:11px;color:var(--dim);flex-wrap:wrap;align-items:center;}
 .ppsb-sort-row{display:flex;gap:4px;align-items:center;flex-wrap:wrap;font-family:monospace;font-size:9px;color:var(--dim);}
@@ -1565,13 +1566,13 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.15.04-dealscan-game-scoped-cache" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.15.04-dealscan-game-scoped-cache" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.15.04-dealscan-game-scoped-cache" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.15.04-dealscan-game-scoped-cache" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.15.04-dealscan-game-scoped-cache" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.15.04-dealscan-game-scoped-cache" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.15.04-dealscan-game-scoped-cache" defer></script>
+<script src="scripts/query-routing.js?v=2026.08.15.05-set-browser-layout-and-buy-inventory" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.15.05-set-browser-layout-and-buy-inventory" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.15.05-set-browser-layout-and-buy-inventory" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.15.05-set-browser-layout-and-buy-inventory" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.15.05-set-browser-layout-and-buy-inventory" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.15.05-set-browser-layout-and-buy-inventory" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.15.05-set-browser-layout-and-buy-inventory" defer></script>
 </head>
 <body>
 
@@ -1621,11 +1622,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.15.04-dealscan-game-scoped-cache</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.15.05-set-browser-layout-and-buy-inventory</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.15.04-dealscan-game-scoped-cache</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.15.05-set-browser-layout-and-buy-inventory</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1647,7 +1648,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.15.04-dealscan-game-scoped-cache</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.15.05-set-browser-layout-and-buy-inventory</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3318,7 +3319,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.15.04-dealscan-game-scoped-cache';
+const APP_VERSION = '2026.08.15.05-set-browser-layout-and-buy-inventory';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -36978,6 +36979,7 @@ const _sbState = {
   filterOpen: false,
   artistCoverage: '',
   swipeIdx: 0, isDragging: false, dragX: 0,
+  dealScanExpanded: false,
 };
 
 function sbParseCollectorNum(n){
@@ -37234,14 +37236,20 @@ function renderSetBrowserShell(){
       </div>
       <button class="hbtn" style="min-height:36px;padding:4px 14px;font-size:10px;flex-shrink:0" onclick="closeSetBrowser()">✕ CLOSE</button>
     </div>
-    <div class="ppsb-set-row">
-      <input id="ppsb-set-search" class="ppsb-set-search" placeholder="Search sets…" oninput="sbFilterSetDropdown(this.value)">
-      <button class="hbtn" id="ppsb-set-view-toggle" style="min-height:36px;padding:4px 12px;font-size:9px;flex-shrink:0" onclick="sbToggleSetView()">☰ LIST VIEW</button>
-      <select id="ppsb-set-sel" class="ppsb-set-sel" style="display:none" onchange="sbSelectSet()">
-        <option value="">— Choose a set —</option>
-      </select>
+    <div id="ppsb-set-picker-collapsed" class="set-picker-collapsed-bar" style="display:none">
+      <button class="hbtn" onclick="sbExpandSetPicker()">◂ CHANGE SET</button>
+      <span id="ppsb-current-set-name"></span>
     </div>
-    <div id="ppsb-set-grid" class="set-picker-grid"></div>
+    <div id="ppsb-set-picker">
+      <div class="ppsb-set-row">
+        <input id="ppsb-set-search" class="ppsb-set-search" placeholder="Search sets…" oninput="sbFilterSetDropdown(this.value)">
+        <button class="hbtn" id="ppsb-set-view-toggle" style="min-height:36px;padding:4px 12px;font-size:9px;flex-shrink:0" onclick="sbToggleSetView()">☰ LIST VIEW</button>
+        <select id="ppsb-set-sel" class="ppsb-set-sel" style="display:none" onchange="sbSelectSet()">
+          <option value="">— Choose a set —</option>
+        </select>
+      </div>
+      <div id="ppsb-set-grid" class="set-picker-grid"></div>
+    </div>
     <div id="ppsb-content">
       <div class="ppsb-empty">Select a Pokémon set above to load all cards with prices.</div>
     </div>`;
@@ -37298,6 +37306,25 @@ function sbToggleSetView(){
   btn.textContent = showingGrid ? '▦ GRID VIEW' : '☰ LIST VIEW';
 }
 
+// Picking a set used to leave the full picker (search + a scrollable grid of
+// every set) permanently on screen above the card list -- once a set is
+// selected there's no reason to keep taking that space, and it was pushing
+// the actual card grid (what the button is for) far down the page.
+function sbCollapseSetPicker(setName){
+  const picker = document.getElementById('ppsb-set-picker');
+  const collapsed = document.getElementById('ppsb-set-picker-collapsed');
+  const nameEl = document.getElementById('ppsb-current-set-name');
+  if(picker) picker.style.display = 'none';
+  if(collapsed) collapsed.style.display = '';
+  if(nameEl) nameEl.textContent = setName || '';
+}
+function sbExpandSetPicker(){
+  const picker = document.getElementById('ppsb-set-picker');
+  const collapsed = document.getElementById('ppsb-set-picker-collapsed');
+  if(picker) picker.style.display = '';
+  if(collapsed) collapsed.style.display = 'none';
+}
+
 function sbFilterSetDropdown(q){
   const sets = _sbState.sets || [];
   const sel = document.getElementById('ppsb-set-sel');
@@ -37323,6 +37350,7 @@ async function sbSelectSet(){
   const setName = sel?.options[sel.selectedIndex]?.getAttribute('data-name') || '';
   if(!setId && !setName) return;
   _sbState.selectedSet = { id:setId, name:setName };
+  sbCollapseSetPicker(setName);
   _sbState.cards = [];
   _sbState.filteredCards = [];
   _sbState.filters = { name:'', artist:'', rarity:'', minPrice:'', maxPrice:'', owned:false, missing:false, hasImage:false, hasPrice:false, language:'' };
@@ -37517,6 +37545,10 @@ async function sbScanEbayDeals(){
     const data = await res.json().catch(() => ({}));
     if(!res.ok || data.ok === false) throw new Error(data.error || ('HTTP '+res.status));
     _sbState.dealScan = data;
+    // A scan the user just explicitly asked for should show its results
+    // immediately -- collapsed-by-default only applies to a scan loaded
+    // silently from cache on open.
+    _sbState.dealScanExpanded = true;
     toast_dash(data.deals.length ? (data.deals.length + ' deal' + (data.deals.length>1?'s':'') + ' found!') : ('No listings found ' + thresholdPct + '-' + maxPct + '% below market right now.'));
     sbRenderContent(false);
   } catch(e){
@@ -37524,6 +37556,11 @@ async function sbScanEbayDeals(){
   } finally {
     if(btn){ btn.disabled = false; btn.textContent = '💰 SCAN EBAY FOR DEALS'; }
   }
+}
+
+function sbToggleDealScanExpanded(){
+  _sbState.dealScanExpanded = !_sbState.dealScanExpanded;
+  sbRenderContent(false);
 }
 
 function dealScanWarningHtml(scan){
@@ -37539,13 +37576,23 @@ function dealScanScopeLabel(scan){
   if(scan.scanScope === 'inventory-scheduled') return 'my inventory, auto-scanned';
   return 'this set';
 }
+// Collapsed by default -- a cached scan can be 25+ listings, and rendering
+// them in full unconditionally above the card grid (the reason someone
+// opened a specific set in the first place) buried "cards from this set
+// with prices" under a wall of eBay results before it was ever visible.
 function sbRenderDealScanPanel(){
   const scan = _sbState.dealScan;
   if(!scan) return '';
   const deals = scan.deals || [];
   if(!deals.length) return dealScanWarningHtml(scan) || `<div class="ppsb-empty" style="margin:8px 0;font-size:10px">No listings found ${dealScanRangeLabel(scan)} below market (${escHtml(dealScanScopeLabel(scan))}) as of ${new Date(scan.scannedAt).toLocaleTimeString()}. Try again later or widen the range.</div>`;
+  if(!_sbState.dealScanExpanded) {
+    return `<div style="margin:8px 0"><button class="hbtn" style="border-color:rgba(255,209,102,.5);color:var(--gold)" onclick="sbToggleDealScanExpanded()">▸ ${deals.length} EBAY DEAL${deals.length>1?'S':''} FOUND ${dealScanRangeLabel(scan)} BELOW MARKET — SHOW</button></div>`;
+  }
   return `<div style="margin:8px 0;display:grid;gap:6px">
-    <div style="font-family:monospace;font-size:9px;color:var(--dim)">${deals.length} listing${deals.length>1?'s':''} found ${dealScanRangeLabel(scan)} below market · ${escHtml(dealScanScopeLabel(scan))} · scanned ${new Date(scan.scannedAt).toLocaleTimeString()}</div>
+    <div style="font-family:monospace;font-size:9px;color:var(--dim);display:flex;align-items:center;gap:8px">
+      <button class="hbtn" style="min-height:26px;padding:2px 8px;font-size:9px" onclick="sbToggleDealScanExpanded()">▾ HIDE</button>
+      ${deals.length} listing${deals.length>1?'s':''} found ${dealScanRangeLabel(scan)} below market · ${escHtml(dealScanScopeLabel(scan))} · scanned ${new Date(scan.scannedAt).toLocaleTimeString()}
+    </div>
     ${deals.map(d => `<div style="display:flex;gap:10px;align-items:center;padding:8px;border:1px solid rgba(255,209,102,.35);border-radius:8px;background:rgba(255,209,102,.05)">
       ${d.listingImageUrl?`<img src="${escHtml(d.listingImageUrl)}" alt="" style="width:44px;height:60px;object-fit:cover;border-radius:4px;flex-shrink:0">`:''}
       <div style="flex:1;min-width:0">
@@ -37737,6 +37784,8 @@ function sbSwipeInfoHtml(idx) {
       <button class="hbtn" style="color:var(--gold)" onclick="sbOpenEbay(${idx},'ending')">⏱ ENDING SOON</button>
       <button class="hbtn" style="color:var(--gold)" onclick="sbOpenEbay(${idx},'bin_low')">$↑ LOW-HIGH</button>
       <button class="hbtn" onclick="sbAddToResearch(${idx},this)">+ ADD</button>
+      <button class="hbtn buy" onclick="sbAddToBuy(${idx},this)">+ BUY</button>
+      <button class="hbtn" style="color:var(--g)" onclick="sbAddToInventory(${idx})">+ INV</button>
     </div>`;
 }
 
@@ -37877,6 +37926,8 @@ function sbRenderCardList(cards){
           <button class="hbtn" style="min-height:34px;font-size:9px;padding:3px 9px;color:var(--gold)" onclick="sbOpenEbay(${i},'ending')">⏱ SOON</button>
           <button class="hbtn" style="min-height:34px;font-size:9px;padding:3px 9px;color:var(--gold)" onclick="sbOpenEbay(${i},'bin_low')">$↑ LOW</button>
           <button class="hbtn" style="min-height:34px;font-size:9px;padding:3px 9px" onclick="sbAddToResearch(${i},this)">+ ADD</button>
+          <button class="hbtn buy" style="min-height:34px;font-size:9px;padding:3px 9px" onclick="sbAddToBuy(${i},this)">+ BUY</button>
+          <button class="hbtn" style="min-height:34px;font-size:9px;padding:3px 9px;color:var(--g)" onclick="sbAddToInventory(${i})">+ INV</button>
         </div>
       </div>
     </div>`;
@@ -37914,6 +37965,8 @@ function sbRenderTable(cards){
           <button class="hbtn" style="min-height:28px;font-size:8px;padding:2px 7px;color:var(--gold)" onclick="sbOpenEbay(${i},'ending')">⏱ SOON</button>
           <button class="hbtn" style="min-height:28px;font-size:8px;padding:2px 7px;color:var(--gold)" onclick="sbOpenEbay(${i},'bin_low')">$↑ LOW</button>
           <button class="hbtn" style="min-height:28px;font-size:8px;padding:2px 7px" onclick="sbAddToResearch(${i},this)">+ADD</button>
+          <button class="hbtn buy" style="min-height:28px;font-size:8px;padding:2px 7px" onclick="sbAddToBuy(${i},this)">+BUY</button>
+          <button class="hbtn" style="min-height:28px;font-size:8px;padding:2px 7px;color:var(--g)" onclick="sbAddToInventory(${i})">+INV</button>
         </div>
       </td>
     </tr>`;
@@ -37972,13 +38025,33 @@ function sbOpenEbay(idx, mode){
   window.open('https://www.ebay.com/sch/i.html?' + params.toString(), '_blank', 'noopener');
 }
 
-function sbAddToResearch(idx, btn){
+// Converts a Set Browser card into a QPL row and stages it at the front of
+// qplResults (deduped by tcgPlayerId), returning the index it landed at (0)
+// so callers can immediately drive it through the same QPL actions
+// (research, buy offer, inventory) everywhere else in the app already uses.
+function sbStageQplRow(idx){
   const card = _sbState.filteredCards[idx];
-  if(!card) return;
+  if(!card) return -1;
   const row = pokemonPriceTrackerCardToQplRow(card, card.name || '', null);
   const tid = row.tcgPlayerId || '';
   qplResults = [row, ...qplResults.filter(r => !tid || (r.tcgPlayerId || '') !== tid)];
+  return 0;
+}
+function sbAddToResearch(idx, btn){
+  if(sbStageQplRow(idx) < 0) return;
   if(btn){ const orig = btn.textContent; btn.textContent = '✓'; setTimeout(() => { btn.textContent = orig; }, 1200); }
+}
+async function sbAddToBuy(idx, btn){
+  const qplIdx = sbStageQplRow(idx);
+  if(qplIdx < 0) return;
+  if(btn) btn.disabled = true;
+  try { await addQuickLookupToBuyOffer(qplIdx); }
+  finally { if(btn) btn.disabled = false; }
+}
+function sbAddToInventory(idx){
+  const qplIdx = sbStageQplRow(idx);
+  if(qplIdx < 0) return;
+  addQuickLookupToInventory(qplIdx);
 }
 
 // ── END POKÉMON SET BROWSER ─────────────────────────────────────
@@ -37997,6 +38070,7 @@ const _mtgsbState = {
   swipeIdx: 0, isDragging: false, dragX: 0,
   cachedImageUrls: new Map(), imageCacheProgress: null,
   mobileFiltersOpen: false,
+  dealScanExpanded: false,
 };
 
 function mtgsbNormalizeSetRecord(set = {}){
@@ -38303,6 +38377,8 @@ function mtgsbRenderContent(loading){
             <button class="hbtn" style="min-height:28px;font-size:8px;padding:2px 7px;color:var(--gold)" onclick="mtgsbOpenEbay(${i},'ending')">⏱ SOON</button>
             <button class="hbtn" style="min-height:28px;font-size:8px;padding:2px 7px;color:var(--gold)" onclick="mtgsbOpenEbay(${i},'bin_low')">$↑ LOW</button>
             <button class="hbtn" style="min-height:28px;font-size:8px;padding:2px 7px" onclick="mtgsbAddToResearch(${i},this)">+ADD</button>
+            <button class="hbtn buy" style="min-height:28px;font-size:8px;padding:2px 7px" onclick="mtgsbAddToBuy(${i},this)">+BUY</button>
+            <button class="hbtn" style="min-height:28px;font-size:8px;padding:2px 7px;color:var(--g)" onclick="mtgsbAddToInventory(${i})">+INV</button>
           </div>
         </td>
       </tr>`;
@@ -38342,6 +38418,8 @@ function mtgsbRenderContent(loading){
             <button class="hbtn" style="min-height:34px;font-size:9px;padding:3px 9px;color:var(--gold)" onclick="mtgsbOpenEbay(${i},'ending')">⏱ SOON</button>
             <button class="hbtn" style="min-height:34px;font-size:9px;padding:3px 9px;color:var(--gold)" onclick="mtgsbOpenEbay(${i},'bin_low')">$↑ LOW</button>
             <button class="hbtn" style="min-height:34px;font-size:9px;padding:3px 9px" onclick="mtgsbAddToResearch(${i},this)">+ ADD</button>
+            <button class="hbtn buy" style="min-height:34px;font-size:9px;padding:3px 9px" onclick="mtgsbAddToBuy(${i},this)">+ BUY</button>
+            <button class="hbtn" style="min-height:34px;font-size:9px;padding:3px 9px;color:var(--g)" onclick="mtgsbAddToInventory(${i})">+ INV</button>
           </div>
         </div>
       </div>`;
@@ -38412,14 +38490,20 @@ function renderMtgSetBrowserShell(){
       </div>
       <button class="hbtn" style="min-height:36px;padding:4px 14px;font-size:10px;flex-shrink:0" onclick="closeMtgSetBrowser()">✕ CLOSE</button>
     </div>
-    <div class="mtsb-set-row">
-      <input id="mtsb-set-search" class="mtsb-set-search" placeholder="Search sets…" oninput="mtgsbFilterSetDropdown(this.value)">
-      <button class="hbtn" id="mtsb-set-view-toggle" style="min-height:36px;padding:4px 12px;font-size:9px;flex-shrink:0" onclick="mtgsbToggleSetView()">☰ LIST VIEW</button>
-      <select id="mtsb-set-sel" class="mtsb-set-sel" style="display:none" onchange="mtgsbSelectSet()">
-        <option value="">— Choose a set —</option>
-      </select>
+    <div id="mtsb-set-picker-collapsed" class="set-picker-collapsed-bar" style="display:none">
+      <button class="hbtn" onclick="mtgsbExpandSetPicker()">◂ CHANGE SET</button>
+      <span id="mtsb-current-set-name"></span>
     </div>
-    <div id="mtsb-set-grid" class="set-picker-grid"></div>
+    <div id="mtsb-set-picker">
+      <div class="mtsb-set-row">
+        <input id="mtsb-set-search" class="mtsb-set-search" placeholder="Search sets…" oninput="mtgsbFilterSetDropdown(this.value)">
+        <button class="hbtn" id="mtsb-set-view-toggle" style="min-height:36px;padding:4px 12px;font-size:9px;flex-shrink:0" onclick="mtgsbToggleSetView()">☰ LIST VIEW</button>
+        <select id="mtsb-set-sel" class="mtsb-set-sel" style="display:none" onchange="mtgsbSelectSet()">
+          <option value="">— Choose a set —</option>
+        </select>
+      </div>
+      <div id="mtsb-set-grid" class="set-picker-grid"></div>
+    </div>
     <div id="mtsb-content">
       <div class="mtsb-empty">Select a Magic: The Gathering set above to load all cards with prices.</div>
     </div>`;
@@ -38481,6 +38565,22 @@ function mtgsbToggleSetView(){
   btn.textContent = showingGrid ? '▦ GRID VIEW' : '☰ LIST VIEW';
 }
 
+// See sbCollapseSetPicker's comment (Pokemon Set Browser) -- same fix here.
+function mtgsbCollapseSetPicker(setName){
+  const picker = document.getElementById('mtsb-set-picker');
+  const collapsed = document.getElementById('mtsb-set-picker-collapsed');
+  const nameEl = document.getElementById('mtsb-current-set-name');
+  if(picker) picker.style.display = 'none';
+  if(collapsed) collapsed.style.display = '';
+  if(nameEl) nameEl.textContent = setName || '';
+}
+function mtgsbExpandSetPicker(){
+  const picker = document.getElementById('mtsb-set-picker');
+  const collapsed = document.getElementById('mtsb-set-picker-collapsed');
+  if(picker) picker.style.display = '';
+  if(collapsed) collapsed.style.display = 'none';
+}
+
 function mtgsbFilterSetDropdown(q){
   if(!_mtgsbState.sets) return;
   const low = (q || '').toLowerCase();
@@ -38496,6 +38596,7 @@ async function mtgsbSelectSet(){
   const setName = sel?.options[sel.selectedIndex]?.getAttribute('data-name') || '';
   if(!setCode) return;
   _mtgsbState.selectedSet = { code: setCode, name: setName };
+  mtgsbCollapseSetPicker(setName);
   _mtgsbState.cards = [];
   _mtgsbState.filteredCards = [];
   _mtgsbState.filters = { name:'', artist:'', rarity:'', color:'', minPrice:'', maxPrice:'', owned:false, missing:false };
@@ -38604,6 +38705,7 @@ async function mtgsbScanEbayDeals(){
     const data = await res.json().catch(() => ({}));
     if(!res.ok || data.ok === false) throw new Error(data.error || ('HTTP '+res.status));
     _mtgsbState.dealScan = data;
+    _mtgsbState.dealScanExpanded = true;
     toast_dash(data.deals.length ? (data.deals.length + ' deal' + (data.deals.length>1?'s':'') + ' found!') : ('No listings found ' + thresholdPct + '-' + maxPct + '% below market right now.'));
     mtgsbRenderContent(false);
   } catch(e){
@@ -38613,13 +38715,20 @@ async function mtgsbScanEbayDeals(){
   }
 }
 
+// See sbRenderDealScanPanel's comment (Pokemon Set Browser) -- same fix here.
 function mtgsbRenderDealScanPanel(){
   const scan = _mtgsbState.dealScan;
   if(!scan) return '';
   const deals = scan.deals || [];
   if(!deals.length) return dealScanWarningHtml(scan) || `<div class="mtsb-empty" style="margin:8px 0;font-size:10px">No listings found ${dealScanRangeLabel(scan)} below market (${escHtml(dealScanScopeLabel(scan))}) as of ${new Date(scan.scannedAt).toLocaleTimeString()}. Try again later or widen the range.</div>`;
+  if(!_mtgsbState.dealScanExpanded) {
+    return `<div style="margin:8px 0"><button class="hbtn" style="border-color:rgba(255,209,102,.5);color:var(--gold)" onclick="mtgsbToggleDealScanExpanded()">▸ ${deals.length} EBAY DEAL${deals.length>1?'S':''} FOUND ${dealScanRangeLabel(scan)} BELOW MARKET — SHOW</button></div>`;
+  }
   return `<div style="margin:8px 0;display:grid;gap:6px">
-    <div style="font-family:monospace;font-size:9px;color:var(--dim)">${deals.length} listing${deals.length>1?'s':''} found ${dealScanRangeLabel(scan)} below market · ${escHtml(dealScanScopeLabel(scan))} · scanned ${new Date(scan.scannedAt).toLocaleTimeString()}</div>
+    <div style="font-family:monospace;font-size:9px;color:var(--dim);display:flex;align-items:center;gap:8px">
+      <button class="hbtn" style="min-height:26px;padding:2px 8px;font-size:9px" onclick="mtgsbToggleDealScanExpanded()">▾ HIDE</button>
+      ${deals.length} listing${deals.length>1?'s':''} found ${dealScanRangeLabel(scan)} below market · ${escHtml(dealScanScopeLabel(scan))} · scanned ${new Date(scan.scannedAt).toLocaleTimeString()}
+    </div>
     ${deals.map(d => `<div style="display:flex;gap:10px;align-items:center;padding:8px;border:1px solid rgba(255,209,102,.35);border-radius:8px;background:rgba(255,209,102,.05)">
       ${d.listingImageUrl?`<img src="${escHtml(d.listingImageUrl)}" alt="" style="width:44px;height:60px;object-fit:cover;border-radius:4px;flex-shrink:0">`:''}
       <div style="flex:1;min-width:0">
@@ -38629,6 +38738,10 @@ function mtgsbRenderDealScanPanel(){
       <a class="hbtn" style="flex-shrink:0;color:var(--gold)" href="${escHtml(d.url||'#')}" target="_blank" rel="noopener">VIEW ON EBAY</a>
     </div>`).join('')}
   </div>`;
+}
+function mtgsbToggleDealScanExpanded(){
+  _mtgsbState.dealScanExpanded = !_mtgsbState.dealScanExpanded;
+  mtgsbRenderContent(false);
 }
 
 function mtgsbToggleView(){
@@ -38658,6 +38771,8 @@ function mtgsbSwipeInfoHtml(idx) {
       <button class="hbtn" style="color:var(--gold)" onclick="mtgsbOpenEbay(${idx},'ending')">⏱ ENDING SOON</button>
       <button class="hbtn" style="color:var(--gold)" onclick="mtgsbOpenEbay(${idx},'bin_low')">$↑ LOW-HIGH</button>
       <button class="hbtn" onclick="mtgsbAddToResearch(${idx},this)">+ ADD</button>
+      <button class="hbtn buy" onclick="mtgsbAddToBuy(${idx},this)">+ BUY</button>
+      <button class="hbtn" style="color:var(--g)" onclick="mtgsbAddToInventory(${idx})">+ INV</button>
     </div>`;
 }
 
@@ -38777,14 +38892,31 @@ function mtgsbOpenEbay(idx, mode){
   window.open('https://www.ebay.com/sch/i.html?' + params.toString(), '_blank', 'noopener');
 }
 
-function mtgsbAddToResearch(idx, btn){
+// See sbStageQplRow's comment (Pokemon Set Browser) -- same pattern here.
+function mtgsbStageQplRow(idx){
   const card = _mtgsbState.filteredCards[idx];
-  if(!card) return;
+  if(!card) return -1;
   const row = card.offlinePrice || card.catalogVersion ? mtgOfflineCardToQplRow(mtgOfflineRecordFromLegacy(card)) : scryfallCardToQplRow(card);
-  if(!row) return;
+  if(!row) return -1;
   const sid = row.scryfallId || '';
   qplResults = [row, ...qplResults.filter(r => !sid || (r.scryfallId || '') !== sid)];
+  return 0;
+}
+function mtgsbAddToResearch(idx, btn){
+  if(mtgsbStageQplRow(idx) < 0) return;
   if(btn){ const orig = btn.textContent; btn.textContent = '✓'; setTimeout(() => { btn.textContent = orig; }, 1200); }
+}
+async function mtgsbAddToBuy(idx, btn){
+  const qplIdx = mtgsbStageQplRow(idx);
+  if(qplIdx < 0) return;
+  if(btn) btn.disabled = true;
+  try { await addQuickLookupToBuyOffer(qplIdx); }
+  finally { if(btn) btn.disabled = false; }
+}
+function mtgsbAddToInventory(idx){
+  const qplIdx = mtgsbStageQplRow(idx);
+  if(qplIdx < 0) return;
+  addQuickLookupToInventory(qplIdx);
 }
 
 // ── END MTG SET BROWSER ──────────────────────────────────────────
@@ -39470,7 +39602,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.15.04-dealscan-game-scoped-cache" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.15.05-set-browser-layout-and-buy-inventory" defer></script>
 </body>
 </html>
 
