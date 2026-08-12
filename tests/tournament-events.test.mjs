@@ -235,3 +235,73 @@ console.log('Leaderboard functional checks passed');
 }
 
 console.log('computeFinalPlacements functional checks passed');
+
+// ── Round timer + overtime ──────────────────────────────────────────
+const timerMigration = fs.readFileSync('supabase-migrations/2026-08-15-tournament-round-timer.sql', 'utf8');
+
+for (const col of ['round_length_minutes integer', "round_overtime_mode text not null default 'none'", 'round_overtime_turns integer not null default 5', 'round_overtime_minutes integer not null default 5', "round_timer_state text not null default 'idle'", 'round_timer_started_at timestamptz', 'round_timer_elapsed_seconds integer not null default 0', 'round_timer_overtime_turn integer not null default 0']) {
+  assert.match(timerMigration, new RegExp(`alter table public\\.events add column if not exists ${col.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`), `missing migration for events.${col}`);
+}
+
+assert.match(dashboard, /id="event-round-length"/, 'event modal must expose a round length field');
+assert.match(dashboard, /id="event-overtime-mode"/, 'event modal must expose an overtime mode select');
+assert.match(dashboard, /round_length_minutes:Number\(document\.getElementById\('event-round-length'\)\?\.value \|\| 0\) \|\| null,/, 'saveEventFromForm must persist round_length_minutes');
+assert.match(dashboard, /round_overtime_mode:document\.getElementById\('event-overtime-mode'\)\?\.value \|\| 'none',/, 'saveEventFromForm must persist round_overtime_mode');
+
+for (const fn of ['computeRoundTimerStatus', 'formatTimerClock', 'roundTimerPanelHtml', 'startRoundTimer', 'pauseRoundTimer', 'resetRoundTimer', 'advanceOvertimeTurn', 'tickRoundTimerDisplay']) {
+  assert.match(dashboard, new RegExp(`function ${fn}\\(`), `missing ${fn}`);
+}
+assert.match(dashboard, /\$\{event\.current_round > 0 \? roundTimerPanelHtml\(event\) : ''\}/, 'round timer panel must be wired into the event detail round section');
+assert.match(dashboard, /const timerFields = event\.round_length_minutes/, 'starting a new round must reset the timer for a configured event');
+assert.match(dashboard, /item\.type === 'event-timer-update'/, 'offline sync must handle standalone timer updates (pause/resume/reset/advance turn)');
+assert.match(dashboard, /\.\.\.\(timerFields \|\| \{\}\)/, 'the event-round-start offline sync handler must also apply queued timer fields');
+
+console.log('Round timer contract checks passed');
+
+// ── Functional check: computeRoundTimerStatus + formatTimerClock ──
+{
+  const statusSrc = dashboard.match(/function computeRoundTimerStatus\(event, nowMs\)\{[\s\S]*?\n\}/)?.[0];
+  const clockSrc = dashboard.match(/function formatTimerClock\(totalSeconds\)\{[\s\S]*?\n\}/)?.[0];
+  assert.ok(statusSrc && clockSrc, 'could not extract round timer functions for functional testing');
+  const { computeRoundTimerStatus, formatTimerClock } = new Function(`${statusSrc}\n${clockSrc}\nreturn { computeRoundTimerStatus, formatTimerClock };`)();
+
+  assert.equal(computeRoundTimerStatus({ round_length_minutes:null, round_timer_state:'running' }, Date.now()), null, 'no round length configured means no timer');
+  assert.equal(computeRoundTimerStatus({ round_length_minutes:50, round_timer_state:'idle' }, Date.now()), null, 'idle state means no active timer');
+
+  // Running main round, 10 minutes elapsed of a 50-minute round.
+  const started = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+  const mainStatus = computeRoundTimerStatus({ round_length_minutes:50, round_timer_state:'running', round_timer_started_at:started, round_timer_elapsed_seconds:0 }, Date.now());
+  assert.equal(mainStatus.phase, 'main');
+  assert.ok(Math.abs(mainStatus.remainingSeconds - 40 * 60) <= 2, 'remaining time must reflect 40 minutes left of a 50-minute round');
+  assert.equal(formatTimerClock(mainStatus.remainingSeconds).length, 5, 'clock format must be mm:ss');
+
+  // Paused mid-round: elapsed_seconds alone (no started_at) determines remaining time.
+  const pausedStatus = computeRoundTimerStatus({ round_length_minutes:50, round_timer_state:'paused', round_timer_started_at:null, round_timer_elapsed_seconds:600 }, Date.now());
+  assert.equal(pausedStatus.phase, 'main');
+  assert.equal(pausedStatus.remainingSeconds, 50 * 60 - 600, 'a paused timer must not keep counting down');
+  assert.equal(pausedStatus.paused, true);
+
+  // Main time fully elapsed, overtime_mode 'none' -- just a flat time-up state.
+  const timeUpStatus = computeRoundTimerStatus({ round_length_minutes:50, round_timer_state:'running', round_timer_started_at:new Date(Date.now() - 51 * 60 * 1000).toISOString(), round_timer_elapsed_seconds:0, round_overtime_mode:'none' }, Date.now());
+  assert.equal(timeUpStatus.phase, 'time_up');
+
+  // Magic-style overtime: turn counter, not time-based.
+  const turnsStatus = computeRoundTimerStatus({ round_length_minutes:50, round_timer_state:'running', round_timer_started_at:new Date(Date.now() - 51 * 60 * 1000).toISOString(), round_timer_elapsed_seconds:0, round_overtime_mode:'extra_turns', round_overtime_turns:5, round_timer_overtime_turn:2 }, Date.now());
+  assert.equal(turnsStatus.phase, 'overtime_turns');
+  assert.equal(turnsStatus.turn, 2);
+  assert.equal(turnsStatus.totalTurns, 5);
+  assert.equal(turnsStatus.done, false);
+  const turnsDoneStatus = computeRoundTimerStatus({ round_length_minutes:50, round_timer_state:'running', round_timer_started_at:new Date(Date.now() - 51 * 60 * 1000).toISOString(), round_timer_elapsed_seconds:0, round_overtime_mode:'extra_turns', round_overtime_turns:5, round_timer_overtime_turn:5 }, Date.now());
+  assert.equal(turnsDoneStatus.done, true, 'overtime must report done once the final turn is reached');
+
+  // Pokemon/YGO-style overtime: a fixed extra minutes block, counting down from its own total.
+  const minutesStatus = computeRoundTimerStatus({ round_length_minutes:50, round_timer_state:'running', round_timer_started_at:new Date(Date.now() - 52 * 60 * 1000).toISOString(), round_timer_elapsed_seconds:0, round_overtime_mode:'extra_minutes', round_overtime_minutes:5 }, Date.now());
+  assert.equal(minutesStatus.phase, 'overtime_minutes');
+  assert.ok(Math.abs(minutesStatus.remainingSeconds - 3 * 60) <= 2, '1 minute into a 5-minute overtime block should read close to 4 minutes remaining');
+  assert.equal(minutesStatus.done, false);
+  const minutesDoneStatus = computeRoundTimerStatus({ round_length_minutes:50, round_timer_state:'running', round_timer_started_at:new Date(Date.now() - 56 * 60 * 1000).toISOString(), round_timer_elapsed_seconds:0, round_overtime_mode:'extra_minutes', round_overtime_minutes:5 }, Date.now());
+  assert.equal(minutesDoneStatus.remainingSeconds, 0, 'overtime minutes must clamp at zero, not go negative');
+  assert.equal(minutesDoneStatus.done, true);
+}
+
+console.log('Round timer functional checks passed');

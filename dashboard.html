@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.14.05-cover-thumbnail-info-fix">
+<meta name="version" content="2026.08.15.01-tournament-round-timer">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1543,13 +1543,13 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.14.05-cover-thumbnail-info-fix" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.14.05-cover-thumbnail-info-fix" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.14.05-cover-thumbnail-info-fix" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.14.05-cover-thumbnail-info-fix" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.14.05-cover-thumbnail-info-fix" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.14.05-cover-thumbnail-info-fix" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.14.05-cover-thumbnail-info-fix" defer></script>
+<script src="scripts/query-routing.js?v=2026.08.15.01-tournament-round-timer" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.15.01-tournament-round-timer" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.15.01-tournament-round-timer" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.15.01-tournament-round-timer" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.15.01-tournament-round-timer" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.15.01-tournament-round-timer" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.15.01-tournament-round-timer" defer></script>
 </head>
 <body>
 
@@ -1599,11 +1599,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.14.05-cover-thumbnail-info-fix</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.15.01-tournament-round-timer</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.14.05-cover-thumbnail-info-fix</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.15.01-tournament-round-timer</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1625,7 +1625,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.14.05-cover-thumbnail-info-fix</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.15.01-tournament-round-timer</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -2979,6 +2979,22 @@ body.show-mode .inv-sync-badge{display:none;}
     <input type="number" id="event-max-players" step="1" min="1" placeholder="No limit">
     <label>Planned Rounds (optional)</label>
     <input type="number" id="event-round-count" step="1" min="1" placeholder="Auto">
+    <label>Round Timer (minutes, optional)</label>
+    <input type="number" id="event-round-length" step="1" min="1" placeholder="No timer">
+    <label>Overtime Mode</label>
+    <select id="event-overtime-mode" onchange="toggleEventOvertimeFields()">
+      <option value="none">None (TO calls it)</option>
+      <option value="extra_turns">Extra turns (Magic-style)</option>
+      <option value="extra_minutes">Extra minutes (Pokémon/YGO-style)</option>
+    </select>
+    <div id="event-overtime-turns-field" style="display:none">
+      <label>Overtime Turns</label>
+      <input type="number" id="event-overtime-turns" step="1" min="1" value="5">
+    </div>
+    <div id="event-overtime-minutes-field" style="display:none">
+      <label>Overtime Minutes</label>
+      <input type="number" id="event-overtime-minutes" step="1" min="1" value="5">
+    </div>
     <label>Notes (optional)</label>
     <input type="text" id="event-notes" placeholder="Prize structure, house rules, etc.">
     <div class="modal-btns">
@@ -3280,7 +3296,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.14.05-cover-thumbnail-info-fix';
+const APP_VERSION = '2026.08.15.01-tournament-round-timer';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -10956,11 +10972,19 @@ async function processSyncItem(item){
   if(item.type === 'event-round-start') {
     const sb = getSupabaseClient();
     if(!sb) throw new Error('Supabase client unavailable');
-    const { eventId, storeId, round, matches } = item.payload;
+    const { eventId, storeId, round, matches, timerFields } = item.payload;
     const { error: matchErr } = await sb.from('event_matches').upsert(matches, { onConflict:'id' });
     if(matchErr) throw matchErr;
-    const { error: eventErr } = await sb.from('events').update({ current_round:round, status:'in_progress' }).eq('id', eventId).eq('store_id', storeId);
+    const { error: eventErr } = await sb.from('events').update({ current_round:round, status:'in_progress', ...(timerFields || {}) }).eq('id', eventId).eq('store_id', storeId);
     if(eventErr) throw eventErr;
+    return;
+  }
+  if(item.type === 'event-timer-update') {
+    const sb = getSupabaseClient();
+    if(!sb) throw new Error('Supabase client unavailable');
+    const { eventId, storeId, fields } = item.payload;
+    const { error } = await sb.from('events').update(fields).eq('id', eventId).eq('store_id', storeId);
+    if(error) throw error;
     return;
   }
   if(item.type === 'event-match-result') {
@@ -17314,10 +17338,21 @@ function closeEventDetail(){
 }
 
 function openNewEventModal(){
-  ['event-name','event-format','event-series','event-date','event-entry-fee','event-max-players','event-round-count','event-notes'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
+  ['event-name','event-format','event-series','event-date','event-entry-fee','event-max-players','event-round-count','event-round-length','event-notes'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
   const gameEl = document.getElementById('event-game'); if(gameEl) gameEl.value = 'Magic: The Gathering';
+  const otEl = document.getElementById('event-overtime-mode'); if(otEl) otEl.value = 'none';
+  const turnsEl = document.getElementById('event-overtime-turns'); if(turnsEl) turnsEl.value = '5';
+  const minsEl = document.getElementById('event-overtime-minutes'); if(minsEl) minsEl.value = '5';
+  toggleEventOvertimeFields();
   document.getElementById('event-modal')?.classList.add('on');
   setTimeout(() => document.getElementById('event-name')?.focus(), 100);
+}
+function toggleEventOvertimeFields(){
+  const mode = document.getElementById('event-overtime-mode')?.value || 'none';
+  const turnsField = document.getElementById('event-overtime-turns-field');
+  const minsField = document.getElementById('event-overtime-minutes-field');
+  if(turnsField) turnsField.style.display = mode === 'extra_turns' ? '' : 'none';
+  if(minsField) minsField.style.display = mode === 'extra_minutes' ? '' : 'none';
 }
 function closeEventModal(){
   document.getElementById('event-modal')?.classList.remove('on');
@@ -17336,6 +17371,14 @@ async function saveEventFromForm(){
     entry_fee:Number(document.getElementById('event-entry-fee')?.value || 0),
     max_players:Number(document.getElementById('event-max-players')?.value || 0) || null,
     round_count:Number(document.getElementById('event-round-count')?.value || 0) || null,
+    round_length_minutes:Number(document.getElementById('event-round-length')?.value || 0) || null,
+    round_overtime_mode:document.getElementById('event-overtime-mode')?.value || 'none',
+    round_overtime_turns:Number(document.getElementById('event-overtime-turns')?.value || 5) || 5,
+    round_overtime_minutes:Number(document.getElementById('event-overtime-minutes')?.value || 5) || 5,
+    round_timer_state:'idle',
+    round_timer_started_at:null,
+    round_timer_elapsed_seconds:0,
+    round_timer_overtime_turn:0,
     notes:document.getElementById('event-notes')?.value.trim() || null,
     status:'upcoming',
     structure:'swiss',
@@ -17388,6 +17431,146 @@ function roundProgressStepper(event){
   }
   return `<div style="display:flex;gap:5px;align-items:center;margin-top:10px">${dots.join('')}</div>`;
 }
+
+// ── Round timer + overtime ────────────────────────────────────────────
+// One continuous stopwatch models the whole thing: round_timer_elapsed_seconds
+// accumulates whenever the timer is paused, and round_timer_started_at (only
+// set while state === 'running') marks where the live count resumes from --
+// so pausing/resuming never loses or double-counts time. Overtime is derived
+// from the same clock rather than tracked separately, except extra_turns
+// (Magic-style), which isn't time-based at all -- it's judge-announced turns,
+// tracked by a manual counter instead.
+function computeRoundTimerStatus(event, nowMs){
+  const lengthMin = Number(event?.round_length_minutes || 0);
+  if(!lengthMin || !event.round_timer_state || event.round_timer_state === 'idle') return null;
+  const totalSec = lengthMin * 60;
+  const elapsedBase = Number(event.round_timer_elapsed_seconds || 0);
+  const runningExtra = event.round_timer_state === 'running' && event.round_timer_started_at
+    ? Math.max(0, Math.floor((nowMs - new Date(event.round_timer_started_at).getTime()) / 1000))
+    : 0;
+  const elapsed = elapsedBase + runningExtra;
+  const mainRemaining = totalSec - elapsed;
+  const paused = event.round_timer_state === 'paused';
+  if(mainRemaining > 0) return { phase:'main', remainingSeconds:mainRemaining, paused };
+  const mode = event.round_overtime_mode || 'none';
+  if(mode === 'extra_turns') {
+    const turn = Number(event.round_timer_overtime_turn || 0);
+    const totalTurns = Math.max(1, Number(event.round_overtime_turns || 5));
+    return { phase:'overtime_turns', turn, totalTurns, done:turn >= totalTurns, paused };
+  }
+  if(mode === 'extra_minutes') {
+    const overtimeTotalSec = Math.max(1, Number(event.round_overtime_minutes || 5)) * 60;
+    const overtimeRemaining = overtimeTotalSec + mainRemaining;
+    return { phase:'overtime_minutes', remainingSeconds:Math.max(0, overtimeRemaining), done:overtimeRemaining <= 0, paused };
+  }
+  return { phase:'time_up', paused };
+}
+function formatTimerClock(totalSeconds){
+  const s = Math.max(0, Math.round(totalSeconds));
+  const m = Math.floor(s / 60), r = s % 60;
+  return String(m).padStart(2, '0') + ':' + String(r).padStart(2, '0');
+}
+function playTimerBeep(){
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator(), gain = ctx.createGain();
+    osc.type = 'sine'; osc.frequency.value = 880;
+    gain.gain.setValueAtTime(0.2, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.6);
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.start(); osc.stop(ctx.currentTime + 0.6);
+  } catch(e) { /* Web Audio unavailable -- the visual alert still shows */ }
+}
+
+function roundTimerPanelHtml(event){
+  if(!event.round_length_minutes) return '';
+  const status = computeRoundTimerStatus(event, Date.now());
+  const idle = !status;
+  let display, colorStyle = 'color:var(--text)';
+  if(idle) { display = formatTimerClock(event.round_length_minutes * 60); }
+  else if(status.phase === 'main') { display = formatTimerClock(status.remainingSeconds); if(status.remainingSeconds <= 60) colorStyle = 'color:var(--gold)'; }
+  else if(status.phase === 'overtime_turns') { display = `OT — TURN ${status.turn} / ${status.totalTurns}`; colorStyle = 'color:var(--red)'; }
+  else if(status.phase === 'overtime_minutes') { display = 'OT ' + formatTimerClock(status.remainingSeconds); colorStyle = 'color:var(--red)'; }
+  else { display = "TIME'S UP"; colorStyle = 'color:var(--red)'; }
+  const running = event.round_timer_state === 'running';
+  const paused = event.round_timer_state === 'paused';
+  const canAdvanceTurn = status?.phase === 'overtime_turns' && !status.done;
+  return `<div style="border:1px solid var(--border);background:var(--surf2);border-radius:8px;padding:10px 12px;margin-bottom:10px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+    <div id="round-timer-display" style="font-family:'Orbitron',monospace;font-size:22px;letter-spacing:1px;${colorStyle}">${escHtml(display)}</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap">
+      ${!running ? `<button class="hbtn" style="min-height:28px;padding:4px 10px;font-size:9px" onclick="startRoundTimer('${escHtml(event.id)}')">${paused ? '▶ RESUME' : '▶ START'}</button>` : `<button class="hbtn" style="min-height:28px;padding:4px 10px;font-size:9px" onclick="pauseRoundTimer('${escHtml(event.id)}')">⏸ PAUSE</button>`}
+      <button class="hbtn" style="min-height:28px;padding:4px 10px;font-size:9px" onclick="resetRoundTimer('${escHtml(event.id)}')">↺ RESET</button>
+      ${canAdvanceTurn ? `<button class="hbtn" style="min-height:28px;padding:4px 10px;font-size:9px;color:var(--gold)" onclick="advanceOvertimeTurn('${escHtml(event.id)}')">NEXT TURN</button>` : ''}
+    </div>
+  </div>`;
+}
+
+async function persistRoundTimerFields(eventId, fields){
+  const event = eventsCache.find(e => e.id === eventId);
+  if(!event) return;
+  Object.assign(event, fields);
+  localStorage.setItem('events_cache_v1', JSON.stringify(eventsCache));
+  if(getAccountContext().isDemo) return;
+  try {
+    const sb = getSupabaseClient();
+    if(!sb) throw new Error('Supabase unavailable');
+    const { error } = await sb.from('events').update(fields).eq('id', eventId).eq('store_id', getActiveStoreId());
+    if(error) throw error;
+  } catch(e) {
+    enqueueOrReplaceSync('event-timer-update', eventId, 'Queued round timer update', { eventId, storeId:getActiveStoreId(), fields }, e.message);
+  }
+}
+async function startRoundTimer(eventId){
+  await persistRoundTimerFields(eventId, { round_timer_state:'running', round_timer_started_at:new Date().toISOString(), updated_at:new Date().toISOString() });
+  renderEventsPanel();
+}
+async function pauseRoundTimer(eventId){
+  const event = eventsCache.find(e => e.id === eventId);
+  if(!event) return;
+  // Elapsed time is computed the same way computeRoundTimerStatus derives it
+  // internally, not back-derived from remainingSeconds -- that would lose
+  // progress made once the clock is already past the main round length
+  // (e.g. paused mid-overtime).
+  const elapsedBase = Number(event.round_timer_elapsed_seconds || 0);
+  const runningExtra = event.round_timer_state === 'running' && event.round_timer_started_at
+    ? Math.max(0, Math.floor((Date.now() - new Date(event.round_timer_started_at).getTime()) / 1000))
+    : 0;
+  const elapsedNow = elapsedBase + runningExtra;
+  await persistRoundTimerFields(eventId, { round_timer_state:'paused', round_timer_started_at:null, round_timer_elapsed_seconds:Math.max(0, elapsedNow), updated_at:new Date().toISOString() });
+  renderEventsPanel();
+}
+async function resetRoundTimer(eventId){
+  await persistRoundTimerFields(eventId, { round_timer_state:'idle', round_timer_started_at:null, round_timer_elapsed_seconds:0, round_timer_overtime_turn:0, updated_at:new Date().toISOString() });
+  renderEventsPanel();
+}
+async function advanceOvertimeTurn(eventId){
+  const event = eventsCache.find(e => e.id === eventId);
+  if(!event) return;
+  const nextTurn = Number(event.round_timer_overtime_turn || 0) + 1;
+  await persistRoundTimerFields(eventId, { round_timer_overtime_turn:nextTurn, updated_at:new Date().toISOString() });
+  renderEventsPanel();
+}
+
+let _roundTimerLastPhase = null;
+function tickRoundTimerDisplay(){
+  if(!shouldPollTab('events') || !activeEventId) return;
+  const event = eventsCache.find(e => e.id === activeEventId);
+  const el = document.getElementById('round-timer-display');
+  if(!event || !el || !event.round_length_minutes) return;
+  const status = computeRoundTimerStatus(event, Date.now());
+  const phase = status?.phase || 'idle';
+  if(_roundTimerLastPhase !== null && _roundTimerLastPhase !== phase && (phase === 'time_up' || phase === 'overtime_turns' || phase === 'overtime_minutes')) {
+    playTimerBeep();
+    renderEventsPanel();
+  } else if(status && status.phase === 'main') {
+    el.textContent = formatTimerClock(status.remainingSeconds);
+    if(status.remainingSeconds <= 60) el.style.color = 'var(--gold)';
+  } else if(status && status.phase === 'overtime_minutes') {
+    el.textContent = 'OT ' + formatTimerClock(status.remainingSeconds);
+  }
+  _roundTimerLastPhase = phase;
+}
+setInterval(tickRoundTimerDisplay, 1000);
 
 function renderEventDetailInto(container){
   const event = eventsCache.find(e => e.id === activeEventId);
@@ -17463,6 +17646,7 @@ function renderEventDetailInto(container){
   </div>
   ${!inBracket && !event.top_cut_size ? `<div class="panel" style="margin-top:14px">
     <div class="ph">⚔️ ROUND ${event.current_round || 0}${event.round_count ? ' / ' + event.round_count : ''}</div>
+    ${event.current_round > 0 ? roundTimerPanelHtml(event) : ''}
     <div style="margin-bottom:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
       ${event.current_round === 0
         ? (event.status !== 'completed' ? `<button class="hbtn" style="background:rgba(0,255,179,.14);border-color:rgba(0,255,179,.4)" onclick="startNextRound('${escHtml(event.id)}')" ${registrations.length < 2 ? 'disabled' : ''}>🎲 START ROUND 1</button>` : '')
@@ -17898,6 +18082,12 @@ async function startNextRound(eventId){
   eventMatchesCache[eventId] = [...matches, ...newMatches];
   event.current_round = nextRound;
   event.status = 'in_progress';
+  // A new round resets the clock -- carrying over the last round's elapsed
+  // time or overtime turn count into the next round would be wrong.
+  const timerFields = event.round_length_minutes
+    ? { round_timer_state:'running', round_timer_started_at:new Date().toISOString(), round_timer_elapsed_seconds:0, round_timer_overtime_turn:0 }
+    : {};
+  Object.assign(event, timerFields);
   renderEventsPanel();
   if(getAccountContext().isDemo) return;
   try {
@@ -17905,11 +18095,11 @@ async function startNextRound(eventId){
     if(!sb) throw new Error('Supabase unavailable');
     const { error: matchErr } = await sb.from('event_matches').insert(newMatches);
     if(matchErr) throw matchErr;
-    const { error: eventErr } = await sb.from('events').update({ current_round:nextRound, status:'in_progress', updated_at:new Date().toISOString() }).eq('id', eventId).eq('store_id', getActiveStoreId());
+    const { error: eventErr } = await sb.from('events').update({ current_round:nextRound, status:'in_progress', updated_at:new Date().toISOString(), ...timerFields }).eq('id', eventId).eq('store_id', getActiveStoreId());
     if(eventErr) throw eventErr;
   } catch(e) {
     toast_dash('Round saved locally — cloud sync failed: ' + e.message);
-    enqueueSync('event-round-start', 'Queued round pairings', { eventId, storeId:getActiveStoreId(), round:nextRound, matches:newMatches }, e.message);
+    enqueueSync('event-round-start', 'Queued round pairings', { eventId, storeId:getActiveStoreId(), round:nextRound, matches:newMatches, timerFields }, e.message);
   }
 }
 
@@ -39172,7 +39362,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.14.05-cover-thumbnail-info-fix" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.15.01-tournament-round-timer" defer></script>
 </body>
 </html>
 
