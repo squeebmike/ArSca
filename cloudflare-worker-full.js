@@ -659,6 +659,119 @@ function cardLensNormalizeIdentificationText(raw) {
   return JSON.stringify(payload);
 }
 
+function cardLensMatchKey(value) {
+  return String(value || '').toLowerCase().normalize('NFKD').replace(/[^a-z0-9]+/g, ' ').trim();
+}
+
+function cardLensNumberKey(value) {
+  return String(value || '').toLowerCase().split('/')[0].replace(/[^a-z0-9]+/g, '').replace(/^0+(?=\d)/, '');
+}
+
+function cardLensMoneyValue(value) {
+  if (typeof value === 'number') return Number.isFinite(value) && value > 0 ? value : 0;
+  if (typeof value === 'string') {
+    const parsed = Number(value.replace(/[$,]/g, ''));
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+  }
+  if (!value || typeof value !== 'object') return 0;
+  for (const key of ['market', 'marketPrice', 'market_price', 'tcgplayerMarketPrice', 'price', 'value', 'median']) {
+    const parsed = cardLensMoneyValue(value[key]);
+    if (parsed) return parsed;
+  }
+  return 0;
+}
+
+async function cardLensResolveTcgplayer(card, env) {
+  const cardId = String(card?.id || '');
+  if (!cardId) return null;
+  const cacheKey = `card-lens:tcgplayer:v2:${cardId}`;
+  const cached = env.LBA_KV ? await env.LBA_KV.get(cacheKey, 'json').catch(() => null) : null;
+  if (cached?.productId) return cached;
+
+  const name = String(card.name || '').trim();
+  const setName = String(card.displaySetName || card.setName || card.releaseName || '').trim();
+  const number = String(card.number || '').trim();
+  const fields = Array.isArray(card.fields) ? card.fields : [];
+  const fieldKeys = fields.map(field => String(field?.key || '').toUpperCase());
+  const lineage = cardLensMatchKey([card.manufacturer, card.releaseName, card.setName].filter(Boolean).join(' '));
+  let productId = '';
+  let source = '';
+  let marketPrice = 0;
+
+  if ((/pokemon|pok mon/.test(lineage) || fieldKeys.some(key => ['HP','POKEMON_TYPE','POKEDEX_NUMBER','ENERGY_TYPE'].includes(key))) && (env.POKEMONPRICE_API_KEY || env.POKEMON_PRICE_TRACKER_API_KEY)) {
+    const languageCode = String(fields.find(field => String(field?.key || '').toUpperCase() === 'CARD_LANGUAGE')?.value || 'english').toLowerCase();
+    const language = ({ en:'english', ja:'japanese', ko:'korean', de:'german', fr:'french', es:'spanish', it:'italian', pt:'portuguese' })[languageCode] || languageCode;
+    const params = new URLSearchParams({ search:name, language, limit:'20' });
+    if (setName) params.set('setName', setName);
+    const response = await fetch(`https://www.pokemonpricetracker.com/api/v2/cards?${params.toString()}`, {
+      headers:{ Authorization:`Bearer ${env.POKEMONPRICE_API_KEY || env.POKEMON_PRICE_TRACKER_API_KEY}`, Accept:'application/json' },
+    }).catch(() => null);
+    if (response?.ok) {
+      const body = await response.json().catch(() => ({}));
+      const rows = Array.isArray(body?.data) ? body.data : body?.data ? [body.data] : Array.isArray(body?.cards) ? body.cards : [];
+      const wantedName = cardLensMatchKey(name), wantedSet = cardLensMatchKey(setName), wantedNumber = cardLensNumberKey(number);
+      const best = rows.map(row => {
+        const rowName = cardLensMatchKey(row.name), rowSet = cardLensMatchKey(row.setName || row.set?.name), rowNumber = cardLensNumberKey(row.cardNumber || row.number);
+        let score = rowName === wantedName ? 60 : 0;
+        if (wantedSet && (rowSet === wantedSet || rowSet.includes(wantedSet) || wantedSet.includes(rowSet))) score += 25;
+        if (wantedNumber && rowNumber === wantedNumber) score += 30;
+        return { row, score };
+      }).filter(match => /^\d+$/.test(String(match.row.tcgPlayerId || match.row.tcgplayerId || '')))
+        .sort((a,b) => b.score - a.score)[0];
+      if (best?.score >= (wantedNumber ? 90 : 80)) {
+        productId = String(best.row.tcgPlayerId || best.row.tcgplayerId);
+        source = 'PokemonPriceTracker exact catalog match';
+        marketPrice = cardLensMoneyValue(best.row.prices?.market || best.row.marketPrice || best.row.prices);
+      }
+    }
+  } else if ((/magic|gathering|wizards/.test(lineage) || fieldKeys.some(key => ['MANA_COST','TYPE_LINE','ORACLE_TEXT'].includes(key))) && name) {
+    const query = [`!\"${name.replace(/\"/g, '')}\"`, number ? `number:${number}` : ''].filter(Boolean).join(' ');
+    const response = await fetch(`https://api.scryfall.com/cards/search?unique=prints&q=${encodeURIComponent(query)}`, {
+      headers:{ Accept:'application/json', 'User-Agent':'CardDealLens/0.6 (TCGplayer exact-link resolver)' },
+    }).catch(() => null);
+    if (response?.ok) {
+      const body = await response.json().catch(() => ({}));
+      const wantedName = cardLensMatchKey(name), wantedSet = cardLensMatchKey(setName), wantedNumber = cardLensNumberKey(number);
+      const exact = (body.data || []).find(row => cardLensMatchKey(row.name) === wantedName
+        && (!wantedSet || cardLensMatchKey(row.set_name) === wantedSet)
+        && (!wantedNumber || cardLensNumberKey(row.collector_number) === wantedNumber)
+        && /^\d+$/.test(String(row.tcgplayer_id || '')));
+      if (exact) { productId=String(exact.tcgplayer_id); source='Scryfall exact printing match'; }
+    }
+  }
+
+  if (!productId) return null;
+  if (!marketPrice) {
+    const response = await fetch(`https://mpapi.tcgplayer.com/v2/product/${productId}/pricepoints`, {
+      headers:{ Accept:'application/json' },
+      signal:AbortSignal.timeout ? AbortSignal.timeout(5000) : undefined,
+      cf:{ cacheTtl:300, cacheEverything:true },
+    }).catch(() => null);
+    if (response?.ok) {
+      const rows = await response.json().catch(() => []);
+      const normal = (Array.isArray(rows) ? rows : []).find(row => String(row.printingType || '').toLowerCase() === 'normal') || rows?.[0];
+      marketPrice = cardLensMoneyValue(normal?.marketPrice || normal?.listedMedianPrice);
+    }
+  }
+  const result = { productId, productUrl:`https://www.tcgplayer.com/product/${productId}`, marketPrice:marketPrice || null, source };
+  if (env.LBA_KV) await env.LBA_KV.put(cacheKey, JSON.stringify(result), { expirationTtl:60 * 60 * 24 * 7 }).catch(() => {});
+  return result;
+}
+
+async function cardLensEnrichIdentificationText(raw, env) {
+  const normalized = cardLensNormalizeIdentificationText(raw);
+  let payload;
+  try { payload=JSON.parse(normalized); } catch (_) { return normalized; }
+  const detections = Array.isArray(payload?.detections) ? payload.detections : [];
+  await Promise.all(detections.slice(0, 3).map(async detection => {
+    const card = detection?.card;
+    if (!card?.id) return;
+    const exact = await cardLensResolveTcgplayer(card, env);
+    if (exact) card.cardDealLensTcgplayer=exact;
+  }));
+  return JSON.stringify(payload);
+}
+
 function stripeMode(env, requested) {
   const configured = String(env.STRIPE_PLATFORM_MODE || 'test').toLowerCase() === 'live' ? 'live' : 'test';
   const wanted = String(requested || configured).toLowerCase();
@@ -3090,7 +3203,7 @@ export default {
       const installationId = client.installationId;
       const frameKey = String(request.headers.get('X-Card-Lens-Frame-Key') || '');
       const validFrameKey = /^[0-9a-f]{1,16}-[0-9]{1,3}$/i.test(frameKey) ? frameKey : '';
-      const identifyCacheKey = validFrameKey ? cardLensCacheKey(request, 'identify', `${installationId}:${validFrameKey}`) : null;
+      const identifyCacheKey = validFrameKey ? cardLensCacheKey(request, 'identify', `${installationId}:tcg-v1:${validFrameKey}`) : null;
       if (identifyCacheKey) {
         const cached = await caches.default.match(identifyCacheKey);
         if (cached) return cardLensCachedResponse(cached);
@@ -3141,7 +3254,7 @@ export default {
         body:identifyForm,
       });
       const rawIdentification = await res.text();
-      const data = res.ok ? cardLensNormalizeIdentificationText(rawIdentification) : rawIdentification;
+      const data = res.ok ? await cardLensEnrichIdentificationText(rawIdentification, env) : rawIdentification;
       // Cache a same-frame catalog miss briefly too. CardSight counts identify
       // attempts even when no card is matched, so an unchanged difficult view
       // must not consume another provider call every few seconds.
@@ -3185,7 +3298,9 @@ export default {
       if (!env.CARDSIGHTAI_API_KEY) return json({ error:'CARDSIGHTAI_API_KEY not set' }, 500);
       const client = await requireCardLensMobileClient(request, env);
       if (client.error) return client.error;
-      const params = new URLSearchParams({ period:'90d', listing_type:'auction', limit:'500' });
+      // Sparse and foreign-language printings often have no sale in 90 days even
+      // though CardSight has older completed-auction records.
+      const params = new URLSearchParams({ period:'all', listing_type:'auction', limit:'500' });
       const parallelId = String(url.searchParams.get('parallel_id') || 'null');
       if (/^(null|[a-zA-Z0-9_-]{1,80})$/.test(parallelId)) params.set('parallel_id', parallelId);
       const pricingCacheKey = cardLensCacheKey(request, 'pricing', `${cardLensPricingMatch[1]}:${parallelId}`);
