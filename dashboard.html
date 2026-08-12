@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.15.01-tournament-round-timer">
+<meta name="version" content="2026.08.15.02-set-browser-visual-grid">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1214,7 +1214,18 @@ body.customer-browse-mode{padding-bottom:0}body.customer-browse-mode header,body
 .ppsb-title{font-family:'Orbitron',monospace;font-size:13px;font-weight:900;letter-spacing:.04em;color:var(--g);}
 .ppsb-set-row{display:flex;gap:8px;padding:12px 18px;border-bottom:1px solid var(--border);flex-shrink:0;flex-wrap:wrap;}
 .ppsb-set-sel{flex:1;min-width:200px;background:var(--surf2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:10px 12px;font-family:monospace;font-size:12px;min-height:44px;}
-.ppsb-set-search{width:170px;background:var(--surf2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:10px 12px;font-family:monospace;font-size:12px;min-height:44px;}
+.ppsb-set-search{flex:1;min-width:170px;background:var(--surf2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:10px 12px;font-family:monospace;font-size:12px;min-height:44px;}
+/* Shared by the Pokémon + MTG Set Browsers: a tappable grid of real set images (or a colored-initial fallback) instead of picking a set by name out of a plain dropdown. */
+.set-picker-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px;padding:12px 18px;max-height:280px;overflow-y:auto;border-bottom:1px solid var(--border);flex-shrink:0;}
+.set-picker-tile{display:flex;flex-direction:column;align-items:center;gap:4px;background:var(--surf2);border:1px solid var(--border);border-radius:8px;padding:8px;cursor:pointer;text-align:center;font-family:monospace;color:var(--text);}
+.set-picker-tile:hover{border-color:var(--g);}
+.set-picker-tile.active{border-color:var(--g);background:rgba(0,255,179,.08);}
+.set-picker-tile-img{width:100%;height:52px;display:flex;align-items:center;justify-content:center;}
+.set-picker-tile-img img{max-width:100%;max-height:52px;object-fit:contain;}
+.set-picker-tile-fallback{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Orbitron',monospace;font-size:16px;font-weight:900;color:#fff;}
+.set-picker-tile-name{font-size:10px;line-height:1.25;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;}
+.set-picker-tile-meta{font-size:8px;color:var(--dim);}
+.set-picker-empty{grid-column:1/-1;padding:14px;text-align:center;color:var(--dim);font-family:monospace;font-size:11px;}
 .ppsb-toolbar{display:flex;gap:10px;align-items:center;justify-content:space-between;padding:10px 18px;border-bottom:1px solid var(--border);flex-wrap:wrap;flex-shrink:0;}
 .ppsb-stats{display:flex;gap:12px;font-family:monospace;font-size:11px;color:var(--dim);flex-wrap:wrap;align-items:center;}
 .ppsb-sort-row{display:flex;gap:4px;align-items:center;flex-wrap:wrap;font-family:monospace;font-size:9px;color:var(--dim);}
@@ -1300,6 +1311,7 @@ body.customer-browse-mode{padding-bottom:0}body.customer-browse-mode header,body
   .ppsb-filter-input.ppsb-filter-wide{flex-basis:100%;}
   .ppsb-artist-note{padding:0 12px 8px;}
   .ppsb-set-search{width:100%;flex:1 1 100%;}
+  .set-picker-grid{grid-template-columns:repeat(auto-fill,minmax(90px,1fr));max-height:220px;padding:8px 12px;}
   .ppsb-card{display:block;padding:10px;}
   .ppsb-card-img-wrap{width:min(76vw,260px);margin:0 auto 10px;}
   .ppsb-card-img{width:100%;}
@@ -1375,6 +1387,7 @@ body.customer-browse-mode{padding-bottom:0}body.customer-browse-mode header,body
   .mtsb-set-row{padding:6px 10px;gap:6px;flex-wrap:nowrap;}
   .mtsb-set-sel{min-width:0;min-height:38px;padding:7px 9px;}
   .mtsb-set-search{width:92px;min-height:38px;padding:7px 9px;flex:0 0 92px;}
+  .set-picker-grid{grid-template-columns:repeat(auto-fill,minmax(90px,1fr));max-height:220px;padding:8px 12px;}
   .mtsb-toolbar{padding:5px 10px;min-height:42px;display:block;overflow-x:auto;white-space:nowrap;-webkit-overflow-scrolling:touch;}
   .mtsb-stats{display:none;}
   .mtsb-sort-row{flex-wrap:nowrap;width:max-content;}
@@ -1543,13 +1556,13 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.15.01-tournament-round-timer" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.15.01-tournament-round-timer" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.15.01-tournament-round-timer" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.15.01-tournament-round-timer" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.15.01-tournament-round-timer" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.15.01-tournament-round-timer" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.15.01-tournament-round-timer" defer></script>
+<script src="scripts/query-routing.js?v=2026.08.15.02-set-browser-visual-grid" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.15.02-set-browser-visual-grid" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.15.02-set-browser-visual-grid" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.15.02-set-browser-visual-grid" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.15.02-set-browser-visual-grid" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.15.02-set-browser-visual-grid" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.15.02-set-browser-visual-grid" defer></script>
 </head>
 <body>
 
@@ -1599,11 +1612,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.15.01-tournament-round-timer</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.15.02-set-browser-visual-grid</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.15.01-tournament-round-timer</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.15.02-set-browser-visual-grid</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1625,7 +1638,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.15.01-tournament-round-timer</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.15.02-set-browser-visual-grid</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3296,7 +3309,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.15.01-tournament-round-timer';
+const APP_VERSION = '2026.08.15.02-set-browser-visual-grid';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -36913,6 +36926,37 @@ renderBuySignals();
 // from more than one tab, so this only pauses while the page is backgrounded.
 setInterval(()=>{ if(!document.hidden){ fetchBuyListFromWorker(); fetchBuyTrayIndex(); } }, 8000);
 
+// ── Set picker grid (shared by Pokémon + MTG Set Browsers) ───────────
+// Both browsers used a bare <select> to choose a set out of hundreds --
+// no visual cue which set is which beyond reading its printed name. Both
+// providers already carry a real per-set image (Pokemon: a card/set image
+// from PokemonPriceTracker; MTG: Scryfall's actual icon_svg_uri set symbol),
+// so a tappable image grid replaces guessing-by-name with recognizing the
+// set on sight, the same way a real binder of sets looks.
+function setTilePlaceholderColor(name){
+  let hash = 0;
+  for(const ch of String(name || '')) hash = (hash * 31 + ch.charCodeAt(0)) >>> 0;
+  const hues = [340, 210, 150, 45, 265, 15];
+  return `hsl(${hues[hash % hues.length]}, 55%, 30%)`;
+}
+function setPickerGridHtml(sets, selectedId, clickFnName){
+  if(!sets || !sets.length) return '<div class="set-picker-empty">No sets match</div>';
+  return sets.map(s => {
+    const id = s.id || s.setId || s.code || '';
+    const name = s.name || s.code || '';
+    const year = (s.releaseDate || s.released_at) ? String(s.releaseDate || s.released_at).slice(0, 4) : '';
+    const count = Number(s.cardCount || s.card_count || 0);
+    const img = s.imageUrl || s.icon_svg_uri || '';
+    const active = String(id) === String(selectedId || '') && id;
+    const initial = (name || '?').trim().charAt(0).toUpperCase() || '?';
+    return `<button type="button" class="set-picker-tile${active ? ' active' : ''}" onclick="${clickFnName}('${escHtml(id)}')" title="${escHtml(name)}">
+      <div class="set-picker-tile-img">${img ? `<img src="${escHtml(img)}" alt="" loading="lazy">` : `<div class="set-picker-tile-fallback" style="background:${setTilePlaceholderColor(name)}">${escHtml(initial)}</div>`}</div>
+      <div class="set-picker-tile-name">${escHtml(name)}</div>
+      <div class="set-picker-tile-meta">${year ? escHtml(year) : ''}${year && count ? ' · ' : ''}${count ? count + ' cards' : ''}</div>
+    </button>`;
+  }).join('');
+}
+
 // ── POKÉMON SET BROWSER (Pass B) ────────────────────────────────
 const _sbState = {
   sets: null, setsLoadedAt: 0,
@@ -37182,11 +37226,13 @@ function renderSetBrowserShell(){
       <button class="hbtn" style="min-height:36px;padding:4px 14px;font-size:10px;flex-shrink:0" onclick="closeSetBrowser()">✕ CLOSE</button>
     </div>
     <div class="ppsb-set-row">
-      <select id="ppsb-set-sel" class="ppsb-set-sel" onchange="sbSelectSet()">
+      <input id="ppsb-set-search" class="ppsb-set-search" placeholder="Search sets…" oninput="sbFilterSetDropdown(this.value)">
+      <button class="hbtn" id="ppsb-set-view-toggle" style="min-height:36px;padding:4px 12px;font-size:9px;flex-shrink:0" onclick="sbToggleSetView()">☰ LIST VIEW</button>
+      <select id="ppsb-set-sel" class="ppsb-set-sel" style="display:none" onchange="sbSelectSet()">
         <option value="">— Choose a set —</option>
       </select>
-      <input id="ppsb-set-search" class="ppsb-set-search" placeholder="Search sets…" oninput="sbFilterSetDropdown(this.value)">
     </div>
+    <div id="ppsb-set-grid" class="set-picker-grid"></div>
     <div id="ppsb-content">
       <div class="ppsb-empty">Select a Pokémon set above to load all cards with prices.</div>
     </div>`;
@@ -37208,15 +37254,39 @@ async function sbPopulateSets(){
         const count = s.cardCount ? ' · '+s.cardCount+' cards' : '';
         return `<option value="${escHtml(id)}" data-name="${escHtml(name)}">${escHtml(name)}${year}${count}</option>`;
       }).join('');
+    const gridEl = document.getElementById('ppsb-set-grid');
+    if(gridEl) gridEl.innerHTML = setPickerGridHtml(sets, sel.value, 'sbSelectSetTile');
     const lastSetId = sessionStorage.getItem('sb_last_set_id');
     if(lastSetId && sets.some(s => (s.id || s.setId) === lastSetId)){
       sel.value = lastSetId;
       sbSelectSet();
+      if(gridEl) gridEl.innerHTML = setPickerGridHtml(sets, lastSetId, 'sbSelectSetTile');
     }
   } catch(e){
     sel.innerHTML = '<option value="">Error loading sets — try again</option>';
+    const gridEl = document.getElementById('ppsb-set-grid');
+    if(gridEl) gridEl.innerHTML = '<div class="set-picker-empty">Error loading sets — try again</div>';
     console.warn('[SetBrowser] sets error', e);
   }
+}
+
+function sbSelectSetTile(id){
+  const sel = document.getElementById('ppsb-set-sel');
+  if(!sel) return;
+  sel.value = id;
+  sbSelectSet();
+  const gridEl = document.getElementById('ppsb-set-grid');
+  if(gridEl) gridEl.innerHTML = setPickerGridHtml(_sbState.sets || [], id, 'sbSelectSetTile');
+}
+function sbToggleSetView(){
+  const sel = document.getElementById('ppsb-set-sel');
+  const grid = document.getElementById('ppsb-set-grid');
+  const btn = document.getElementById('ppsb-set-view-toggle');
+  if(!sel || !grid || !btn) return;
+  const showingGrid = grid.style.display !== 'none';
+  grid.style.display = showingGrid ? 'none' : '';
+  sel.style.display = showingGrid ? '' : 'none';
+  btn.textContent = showingGrid ? '▦ GRID VIEW' : '☰ LIST VIEW';
 }
 
 function sbFilterSetDropdown(q){
@@ -37233,6 +37303,8 @@ function sbFilterSetDropdown(q){
       const count = s.cardCount ? ' · '+s.cardCount+' cards' : '';
       return `<option value="${escHtml(id)}" data-name="${escHtml(name)}">${escHtml(name)}${year}${count}</option>`;
     }).join('');
+  const gridEl = document.getElementById('ppsb-set-grid');
+  if(gridEl) gridEl.innerHTML = setPickerGridHtml(filtered, sel.value, 'sbSelectSetTile');
 }
 
 async function sbSelectSet(){
@@ -38332,11 +38404,13 @@ function renderMtgSetBrowserShell(){
       <button class="hbtn" style="min-height:36px;padding:4px 14px;font-size:10px;flex-shrink:0" onclick="closeMtgSetBrowser()">✕ CLOSE</button>
     </div>
     <div class="mtsb-set-row">
-      <select id="mtsb-set-sel" class="mtsb-set-sel" onchange="mtgsbSelectSet()">
+      <input id="mtsb-set-search" class="mtsb-set-search" placeholder="Search sets…" oninput="mtgsbFilterSetDropdown(this.value)">
+      <button class="hbtn" id="mtsb-set-view-toggle" style="min-height:36px;padding:4px 12px;font-size:9px;flex-shrink:0" onclick="mtgsbToggleSetView()">☰ LIST VIEW</button>
+      <select id="mtsb-set-sel" class="mtsb-set-sel" style="display:none" onchange="mtgsbSelectSet()">
         <option value="">— Choose a set —</option>
       </select>
-      <input id="mtsb-set-search" class="mtsb-set-search" placeholder="Search sets…" oninput="mtgsbFilterSetDropdown(this.value)">
     </div>
+    <div id="mtsb-set-grid" class="set-picker-grid"></div>
     <div id="mtsb-content">
       <div class="mtsb-empty">Select a Magic: The Gathering set above to load all cards with prices.</div>
     </div>`;
@@ -38356,9 +38430,13 @@ async function mtgsbPopulateSets(){
     if(last){
       const opt = Array.from(sel.options).find(o => o.value === last);
       if(opt){ opt.selected = true; mtgsbSelectSet(); }
+      const gridEl = document.getElementById('mtsb-set-grid');
+      if(gridEl) gridEl.innerHTML = setPickerGridHtml(sets, last, 'mtgsbSelectSetTile');
     }
   } catch(e){
     sel.innerHTML = `<option value="">Error: ${escHtml(e.message)}</option>`;
+    const gridEl = document.getElementById('mtsb-set-grid');
+    if(gridEl) gridEl.innerHTML = '<div class="set-picker-empty">Error loading sets — try again</div>';
   }
 }
 
@@ -38371,6 +38449,27 @@ function mtgsbRenderSetOptions(sets){
       const count = s.card_count ? ' · ' + s.card_count + ' cards' : '';
       return `<option value="${escHtml(s.code)}" data-name="${escHtml(s.name||'')}">${escHtml(s.name||s.code)}${year}${count}</option>`;
     }).join('');
+  const gridEl = document.getElementById('mtsb-set-grid');
+  if(gridEl) gridEl.innerHTML = setPickerGridHtml(sets, sel.value, 'mtgsbSelectSetTile');
+}
+
+function mtgsbSelectSetTile(code){
+  const sel = document.getElementById('mtsb-set-sel');
+  if(!sel) return;
+  sel.value = code;
+  mtgsbSelectSet();
+  const gridEl = document.getElementById('mtsb-set-grid');
+  if(gridEl) gridEl.innerHTML = setPickerGridHtml(_mtgsbState.sets || [], code, 'mtgsbSelectSetTile');
+}
+function mtgsbToggleSetView(){
+  const sel = document.getElementById('mtsb-set-sel');
+  const grid = document.getElementById('mtsb-set-grid');
+  const btn = document.getElementById('mtsb-set-view-toggle');
+  if(!sel || !grid || !btn) return;
+  const showingGrid = grid.style.display !== 'none';
+  grid.style.display = showingGrid ? 'none' : '';
+  sel.style.display = showingGrid ? '' : 'none';
+  btn.textContent = showingGrid ? '▦ GRID VIEW' : '☰ LIST VIEW';
 }
 
 function mtgsbFilterSetDropdown(q){
@@ -39362,7 +39461,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.15.01-tournament-round-timer" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.15.02-set-browser-visual-grid" defer></script>
 </body>
 </html>
 
