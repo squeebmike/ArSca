@@ -8215,10 +8215,15 @@ export default {
       });
       // Informational only (echoed back, not trusted for anything) -- lets
       // /dealscan/latest tell the client whether the cached result it's
-      // showing came from "this set" or a whole-inventory scan, since the
-      // KV cache is one slot per store regardless of which scope ran it.
+      // showing came from "this set" or a whole-inventory scan.
       result.scanScope = /^[a-z0-9_-]{1,40}$/i.test(String(body.scanScope || '')) ? String(body.scanScope) : 'set';
-      if (env.LBA_KV) await env.LBA_KV.put(`dealscan:${storeId}:latest`, JSON.stringify(result), { expirationTtl: 6 * 60 * 60 }).catch(() => {});
+      // The cache key must be scoped per game -- it used to be one slot per
+      // store regardless of which game ran the scan, so opening the MTG Set
+      // Browser could show a Pokemon scan's results (or vice versa) labeled
+      // as if they belonged to whatever set/panel was currently open.
+      const game = ['pokemon', 'mtg'].includes(String(body.game || '').toLowerCase()) ? String(body.game).toLowerCase() : 'pokemon';
+      result.game = game;
+      if (env.LBA_KV) await env.LBA_KV.put(`dealscan:${storeId}:${game}:latest`, JSON.stringify(result), { expirationTtl: 6 * 60 * 60 }).catch(() => {});
       return json({ ok:true, ...result });
     }
 
@@ -8227,8 +8232,9 @@ export default {
       const storeId = requestStoreId(request, url);
       const auth = await requireStoreUser(request, env, storeId);
       if (auth.error) return auth.error;
+      const game = ['pokemon', 'mtg'].includes(String(url.searchParams.get('game') || '').toLowerCase()) ? String(url.searchParams.get('game')).toLowerCase() : 'pokemon';
       if (!env.LBA_KV) return json({ ok:true, deals: [], scannedAt: null });
-      const cached = await env.LBA_KV.get(`dealscan:${storeId}:latest`, 'json').catch(() => null);
+      const cached = await env.LBA_KV.get(`dealscan:${storeId}:${game}:latest`, 'json').catch(() => null);
       return json({ ok:true, ...(cached || { deals: [], scannedAt: null }) });
     }
 
@@ -9610,8 +9616,9 @@ export default {
   // Runs the same deal scan the SCAN EBAY FOR DEALS button triggers, on a
   // schedule, against each active store's own in-stock Pokemon/MTG
   // inventory (the highest-value items first) -- so results are already
-  // waiting in dealscan:{storeId}:latest (the same KV key /dealscan/latest
-  // reads) instead of only ever being reachable by an on-demand click.
+  // waiting in dealscan:{storeId}:{game}:latest (the same KV keys
+  // /dealscan/latest reads) instead of only ever being reachable by an
+  // on-demand click.
   async scheduled(event, env, ctx) {
     ctx.waitUntil(runScheduledDealScans(env));
   },
@@ -9626,15 +9633,21 @@ async function runScheduledDealScans(env) {
       const { data: rows, response } = await supabaseAdminFetch(env, `inventory_items?store_id=eq.${encodeURIComponent(storeId)}&status=neq.sold&select=id,data,status,created_at,updated_at&limit=1000`);
       if (!response?.ok) continue;
       const items = (rows || []).map(shapeStorefrontItem).filter(isStorefrontItemAvailable);
-      const cards = items
-        .filter(i => /pokemon/i.test(i.category) || /magic|\bmtg\b/i.test(i.category))
-        .filter(i => Number(i.market) > 0)
-        .sort((a, b) => Number(b.market) - Number(a.market))
-        .slice(0, 25)
-        .map(i => ({ name: i.name, set: i.set, marketPrice: Number(i.market), imageUrl: i.image, cardId: i.id }));
-      if (!cards.length) continue;
-      const result = await runDealScan(env, cards, { thresholdPct: 25, maxPct: 55, includeFresh: true, includeAuctions: true });
-      if (env.LBA_KV) await env.LBA_KV.put(`dealscan:${storeId}:latest`, JSON.stringify({ ...result, scanScope: 'inventory-scheduled' }), { expirationTtl: 6 * 60 * 60 });
+      // Scanned and cached per game -- mixing Pokemon and MTG into one scan
+      // used to mean whichever game's set browser you opened could show the
+      // OTHER game's results, mislabeled as if they belonged to it.
+      const gameFilters = { pokemon: /pokemon/i, mtg: /magic|\bmtg\b/i };
+      for (const [game, categoryPattern] of Object.entries(gameFilters)) {
+        const cards = items
+          .filter(i => categoryPattern.test(i.category))
+          .filter(i => Number(i.market) > 0)
+          .sort((a, b) => Number(b.market) - Number(a.market))
+          .slice(0, 25)
+          .map(i => ({ name: i.name, set: i.set, marketPrice: Number(i.market), imageUrl: i.image, cardId: i.id }));
+        if (!cards.length) continue;
+        const result = await runDealScan(env, cards, { thresholdPct: 25, maxPct: 55, includeFresh: true, includeAuctions: true });
+        if (env.LBA_KV) await env.LBA_KV.put(`dealscan:${storeId}:${game}:latest`, JSON.stringify({ ...result, scanScope: 'inventory-scheduled', game }), { expirationTtl: 6 * 60 * 60 });
+      }
     } catch (e) {
       // One store's failure shouldn't block the rest -- there's no request
       // to report an error to out here, just move on to the next store.

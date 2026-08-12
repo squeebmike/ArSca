@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.15.03-mtg-set-icon-visibility-fix">
+<meta name="version" content="2026.08.15.04-dealscan-game-scoped-cache">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1565,13 +1565,13 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.15.03-mtg-set-icon-visibility-fix" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.15.03-mtg-set-icon-visibility-fix" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.15.03-mtg-set-icon-visibility-fix" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.15.03-mtg-set-icon-visibility-fix" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.15.03-mtg-set-icon-visibility-fix" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.15.03-mtg-set-icon-visibility-fix" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.15.03-mtg-set-icon-visibility-fix" defer></script>
+<script src="scripts/query-routing.js?v=2026.08.15.04-dealscan-game-scoped-cache" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.15.04-dealscan-game-scoped-cache" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.15.04-dealscan-game-scoped-cache" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.15.04-dealscan-game-scoped-cache" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.15.04-dealscan-game-scoped-cache" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.15.04-dealscan-game-scoped-cache" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.15.04-dealscan-game-scoped-cache" defer></script>
 </head>
 <body>
 
@@ -1621,11 +1621,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.15.03-mtg-set-icon-visibility-fix</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.15.04-dealscan-game-scoped-cache</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.15.03-mtg-set-icon-visibility-fix</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.15.04-dealscan-game-scoped-cache</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1647,7 +1647,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.15.03-mtg-set-icon-visibility-fix</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.15.04-dealscan-game-scoped-cache</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3318,7 +3318,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.15.03-mtg-set-icon-visibility-fix';
+const APP_VERSION = '2026.08.15.04-dealscan-game-scoped-cache';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -37195,7 +37195,7 @@ function sbInitDealScanPrefs(){
 async function sbLoadCachedDealScan(){
   if(_sbState.dealScan) return;
   try {
-    const res = await storeWorkerFetch('/dealscan/latest');
+    const res = await storeWorkerFetch('/dealscan/latest?game=pokemon');
     const data = await res.json().catch(() => ({}));
     if(data.ok !== false && Array.isArray(data.deals) && data.scannedAt && !_sbState.dealScan){
       _sbState.dealScan = data;
@@ -37512,7 +37512,7 @@ async function sbScanEbayDeals(){
     const res = await storeWorkerFetch('/dealscan/check', {
       method: 'POST',
       headers: { 'Content-Type':'application/json' },
-      body: JSON.stringify({ cards: candidates.slice(0, 25), thresholdPct, maxPct, includeFresh, includeAuctions, scanScope:scope }),
+      body: JSON.stringify({ cards: candidates.slice(0, 25), thresholdPct, maxPct, includeFresh, includeAuctions, scanScope:scope, game:'pokemon' }),
     });
     const data = await res.json().catch(() => ({}));
     if(!res.ok || data.ok === false) throw new Error(data.error || ('HTTP '+res.status));
@@ -38373,7 +38373,7 @@ function mtgsbInitDealScanPrefs(){
 async function mtgsbLoadCachedDealScan(){
   if(_mtgsbState.dealScan) return;
   try {
-    const res = await storeWorkerFetch('/dealscan/latest');
+    const res = await storeWorkerFetch('/dealscan/latest?game=mtg');
     const data = await res.json().catch(() => ({}));
     if(data.ok !== false && Array.isArray(data.deals) && data.scannedAt && !_mtgsbState.dealScan){
       _mtgsbState.dealScan = data;
@@ -38599,7 +38599,7 @@ async function mtgsbScanEbayDeals(){
     const res = await storeWorkerFetch('/dealscan/check', {
       method: 'POST',
       headers: { 'Content-Type':'application/json' },
-      body: JSON.stringify({ cards: candidates.slice(0, 25), thresholdPct, maxPct, includeFresh, includeAuctions, scanScope:scope }),
+      body: JSON.stringify({ cards: candidates.slice(0, 25), thresholdPct, maxPct, includeFresh, includeAuctions, scanScope:scope, game:'mtg' }),
     });
     const data = await res.json().catch(() => ({}));
     if(!res.ok || data.ok === false) throw new Error(data.error || ('HTTP '+res.status));
@@ -39470,7 +39470,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.15.03-mtg-set-icon-visibility-fix" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.15.04-dealscan-game-scoped-cache" defer></script>
 </body>
 </html>
 
