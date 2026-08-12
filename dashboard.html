@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.16.02-shelf-price-label-printing">
+<meta name="version" content="2026.08.16.03-restock-purchase-order">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1570,13 +1570,13 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.16.02-shelf-price-label-printing" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.16.02-shelf-price-label-printing" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.16.02-shelf-price-label-printing" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.16.02-shelf-price-label-printing" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.16.02-shelf-price-label-printing" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.16.02-shelf-price-label-printing" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.16.02-shelf-price-label-printing" defer></script>
+<script src="scripts/query-routing.js?v=2026.08.16.03-restock-purchase-order" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.16.03-restock-purchase-order" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.16.03-restock-purchase-order" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.16.03-restock-purchase-order" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.16.03-restock-purchase-order" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.16.03-restock-purchase-order" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.16.03-restock-purchase-order" defer></script>
 </head>
 <body>
 
@@ -1626,11 +1626,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.16.02-shelf-price-label-printing</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.16.03-restock-purchase-order</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.16.02-shelf-price-label-printing</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.16.03-restock-purchase-order</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1652,7 +1652,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.16.02-shelf-price-label-printing</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.16.03-restock-purchase-order</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3356,8 +3356,8 @@ body.show-mode .inv-sync-badge{display:none;}
 
     <!-- Restock checklist -->
     <div class="panel" style="margin-top:0">
-      <div class="ph">RESTOCK CHECKLIST <a class="ph-action" onclick="printRestockList()">🖨 Print</a></div>
-      <div style="font-family:monospace;font-size:10px;color:var(--dim);margin-bottom:10px">Based on sales velocity, items you should restock soon:</div>
+      <div class="ph">RESTOCK CHECKLIST <a class="ph-action" onclick="printRestockList()">🖨 Print</a> <a class="ph-action" onclick="generateRestockPurchaseOrder()">📋 Generate PO</a></div>
+      <div style="font-family:monospace;font-size:10px;color:var(--dim);margin-bottom:10px">Based on sales velocity, items you should restock soon. Uncheck any you don't want on the PO, adjust qty as needed:</div>
       <div id="rs-checklist"></div>
     </div>
   </div>
@@ -3378,7 +3378,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.16.02-shelf-price-label-printing';
+const APP_VERSION = '2026.08.16.03-restock-purchase-order';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -22144,17 +22144,60 @@ function renderRestock(){
     .sort((a,b)=>b[1]-a[1]).slice(0,15);
 
   const listEl = document.getElementById('rs-checklist');
-  listEl.innerHTML = restockItems.length ? restockItems.map(([name,count])=>{
-    const lastSale = sol.filter(i=>i.name===name).sort((a,b)=>new Date(b.soldAt||0)-new Date(a.soldAt||0))[0];
-    return `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.04)">
-      <input type="checkbox" style="width:14px;height:14px">
+  listEl.innerHTML = restockItems.length ? restockItems.map(([name,count],idx)=>{
+    const nameSales = sol.filter(i=>i.name===name).sort((a,b)=>new Date(b.soldAt||0)-new Date(a.soldAt||0));
+    const lastSale = nameSales[0];
+    const suggestion = restockSuggestedQty(name, count, nameSales);
+    return `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.04)" data-restock-name="${escHtml(name)}" data-restock-cost="${suggestion.unitCost}">
+      <input type="checkbox" class="rs-po-check" style="width:14px;height:14px" checked>
       <div style="flex:1">
-        <div style="font-family:monospace;font-size:10px;color:var(--text)">${name}</div>
-        <div style="font-family:monospace;font-size:8px;color:var(--dim)">Sold ${count}x · last $${(lastSale?.salePrice||0).toFixed(2)}</div>
+        <div style="font-family:monospace;font-size:10px;color:var(--text)">${escHtml(name)}</div>
+        <div style="font-family:monospace;font-size:8px;color:var(--dim)">Sold ${count}x · ~${suggestion.perWeek}/wk · last $${(lastSale?.salePrice||0).toFixed(2)}${suggestion.unitCost ? ' · last cost ' + fd$(suggestion.unitCost) : ''}</div>
       </div>
-      <span style="font-family:monospace;font-size:9px;color:var(--gold)">${count}x sold</span>
+      <label style="font-family:monospace;font-size:8px;color:var(--dim);display:flex;align-items:center;gap:4px">QTY <input type="number" class="rs-po-qty" min="1" value="${suggestion.qty}" style="width:44px;font-size:10px" title="Suggested reorder qty -- based on recent sales velocity, editable before generating a PO"></label>
     </div>`;
   }).join('') : '<div class="empty"><div class="empty-t">SELL MORE FIRST — no data yet</div></div>';
+}
+
+// Suggested reorder qty: enough to cover ~4 weeks at the item's recent sales
+// pace, based on its own sale timestamps (not the whole category's, so a
+// single fast-moving item doesn't get diluted by slower siblings). Capped
+// so one outlier burst-sale doesn't suggest an absurd reorder quantity.
+function restockSuggestedQty(name, count, nameSalesSortedDesc){
+  const oldestSale = nameSalesSortedDesc[nameSalesSortedDesc.length - 1];
+  const weeks = oldestSale ? Math.max(1, (Date.now() - new Date(oldestSale.soldAt)) / 604800000) : 1;
+  const perWeek = count / weeks;
+  const qty = Math.max(1, Math.min(20, Math.ceil(perWeek * 4)));
+  const lastCost = nameSalesSortedDesc.find(i => (i.cost || 0) > 0)?.cost || 0;
+  return { qty, perWeek: perWeek.toFixed(1), unitCost: lastCost };
+}
+
+function generateRestockPurchaseOrder(){
+  const rows = Array.from(document.querySelectorAll('#rs-checklist [data-restock-name]')).filter(row => row.querySelector('.rs-po-check')?.checked);
+  if(!rows.length) return alert('Check at least one item to include in the purchase order');
+  const supplier = prompt('Supplier / distributor name (optional):') || '';
+  const lines = rows.map(row => {
+    const name = row.dataset.restockName;
+    const unitCost = parseFloat(row.dataset.restockCost) || 0;
+    const qty = Math.max(1, parseInt(row.querySelector('.rs-po-qty')?.value, 10) || 1);
+    return { name, qty, unitCost, lineTotal: qty * unitCost };
+  });
+  const grandTotal = lines.reduce((a,l) => a + l.lineTotal, 0);
+  const hasCosts = lines.some(l => l.unitCost > 0);
+  const w = window.open('', '_blank', 'width=500,height=700');
+  w.document.write(`<html><head><title>Purchase Order</title>
+    <style>body{font-family:monospace;padding:20px;font-size:11px;}h2,h3{margin:12px 0 6px;}table{width:100%;border-collapse:collapse;margin-top:8px;}td,th{border:1px solid #ddd;padding:6px 8px;text-align:left;font-size:10px;}th{background:#f5f5f5;font-weight:bold;}td.num,th.num{text-align:right;}</style>
+    </head><body>
+    <h2>${escHtml(getVendorProfile().storeName || 'Store')} — Purchase Order</h2>
+    <p>${new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'})}${supplier ? ' · Supplier: ' + escHtml(supplier) : ''}</p>
+    <table><tr><th>Item</th><th class="num">Qty</th><th class="num">Unit Cost</th><th class="num">Line Total</th></tr>
+    ${lines.map(l => `<tr><td>${escHtml(l.name)}</td><td class="num">${l.qty}</td><td class="num">${l.unitCost ? '$' + l.unitCost.toFixed(2) : '—'}</td><td class="num">${l.unitCost ? '$' + l.lineTotal.toFixed(2) : '—'}</td></tr>`).join('')}
+    </table>
+    <p style="text-align:right;font-weight:bold;margin-top:8px">${hasCosts ? 'Estimated Total: $' + grandTotal.toFixed(2) : ''}</p>
+    ${!hasCosts ? '<p style="color:#900">No recent cost on file for these items -- fill in unit costs by hand before sending.</p>' : '<p style="color:#900">Costs are the last known purchase cost on file -- confirm current pricing with the supplier before ordering.</p>'}
+    <p style="margin-top:24px">Ordered by: _______________________&nbsp;&nbsp;&nbsp;&nbsp;Date sent: _______________</p>
+    <script>window.print();<\/script></body></html>`);
+  w.document.close();
 }
 
 function printRestockList(){
@@ -40129,7 +40172,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.16.02-shelf-price-label-printing" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.16.03-restock-purchase-order" defer></script>
 </body>
 </html>
 
