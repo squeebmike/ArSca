@@ -169,10 +169,37 @@ console.log('MTG set icon code-fallback contract checks passed');
   const offlineMtgSets = [{ code:'mkm', name:'Murders at Karlov Manor', released_at:'2024-02-09', card_count:286 }];
   const html = setPickerGridHtml(offlineMtgSets, null, 'mtgsbSelectSetTile');
   assert.match(html, /<img src="https:\/\/svgs\.scryfall\.io\/sets\/mkm\.svg"/, 'an offline-catalog MTG set with no icon field must get a constructed Scryfall icon URL, not a bare letter tile');
-  assert.match(html, /onerror="setPickerTileImgError\(this,'hsl\(\d+, 55%, 30%\)','M'\)"/, 'the constructed-URL image must still carry a working letter-tile fallback in case that particular code guess is wrong');
+  assert.match(html, /onerror="setPickerTileImgError\(this,'#e8742b','M'\)"/, 'the constructed-URL image must still carry a working letter-tile fallback (in the MTG mythic-orange color) in case that particular code guess is wrong');
 }
 
 console.log('MTG set icon code-fallback functional checks passed');
+
+// ── MTG fallback tiles use the game's "mythic" orange, not a hash color ──
+// MTG sets are the only ones that carry a Scryfall set code, so that field
+// doubles as the game signal: any set with .code gets a fixed mythic-orange
+// (#e8742b, the same hex already used for mythic rarity text elsewhere in
+// the app) fallback/placeholder color instead of Pokemon's hash-rotated hue.
+{
+  const colorSrc = dashboard.match(/function setTilePlaceholderColor\(name\)\{[\s\S]*?\n\}/)?.[0];
+  const errSrc = dashboard.match(/function setPickerTileImgError\(img, color, initial\)\{[\s\S]*?\n\}/)?.[0];
+  const gridSrc = dashboard.match(/function setPickerGridHtml\(sets, selectedId, clickFnName\)\{[\s\S]*?\n  \}\)\.join\(''\);\n\}/)?.[0];
+  assert.ok(colorSrc && errSrc && gridSrc, 'could not extract set picker functions for functional testing');
+  const escHtmlStub = `function escHtml(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }`;
+  const { setPickerGridHtml } = new Function(`${escHtmlStub}\n${colorSrc}\n${errSrc}\n${gridSrc}\nreturn { setPickerGridHtml };`)();
+
+  // MTG set with an image URL present -- the mythic-orange color must still
+  // show up in the onerror fallback even when the primary image is set.
+  const mtgWithImage = [{ code:'mkm', name:'Murders at Karlov Manor', icon_svg_uri:'https://svgs.scryfall.io/sets/mkm.svg' }];
+  const mtgHtml = setPickerGridHtml(mtgWithImage, null, 'mtgsbSelectSetTile');
+  assert.match(mtgHtml, /onerror="setPickerTileImgError\(this,'#e8742b','M'\)"/, 'MTG tiles must use the mythic-orange fallback color regardless of which image field supplied the URL');
+
+  // Pokemon set (no code) must keep the existing hash-rotated color, not mythic orange.
+  const pokemonSets = [{ id:'sv1', name:'Scarlet & Violet', imageUrl:'https://example.com/sv1.png' }];
+  const pokemonHtml = setPickerGridHtml(pokemonSets, null, 'sbSelectSetTile');
+  assert.doesNotMatch(pokemonHtml, /#e8742b/, 'Pokemon tiles (no set code) must not use the MTG mythic-orange color');
+}
+
+console.log('MTG mythic-orange fallback color checks passed');
 
 // ── Deal scanner controls must be collapsed by default (not just results) ──
 // The full deal-scan control row (SCOPE, MIN $, % BELOW MIN/MAX, NEW/BIN,
