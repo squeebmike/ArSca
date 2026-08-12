@@ -20,7 +20,7 @@ assert.match(migration, /sale_id text references public\.pos_sales\(id\)/, 'even
 assert.match(dashboard, /id="tab-events"/, 'events tab panel must exist');
 assert.match(dashboard, /\['events', 'TOURNAMENTS'\]/, 'events must be reachable from the tab nav');
 assert.match(dashboard, /events:'events'.*channels:'marketplace'/, 'events tab must be registered in TAB_CAPABILITY');
-assert.match(dashboard, /'overview','display','browse','inventory','research','pos','alerts','wantlist','locations','restock','sets','events'/, 'employees must be able to reach the events tab');
+assert.match(dashboard, /'overview','display','browse','inventory','research','pos','alerts','wantlist','locations','restock','grading','sets','events'/, 'employees must be able to reach the events tab');
 assert.match(dashboard, /capabilities:\['research','checkout','sales','inventory','consignments','staff','shows','events','pulllists'\]/, 'events must be gated at the Store plan tier alongside shows');
 
 // Core functions exist.

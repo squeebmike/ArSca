@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.15.09-debounced-inventory-search">
+<meta name="version" content="2026.08.16.01-grading-submission-tracker">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1568,13 +1568,13 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.15.09-debounced-inventory-search" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.15.09-debounced-inventory-search" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.15.09-debounced-inventory-search" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.15.09-debounced-inventory-search" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.15.09-debounced-inventory-search" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.15.09-debounced-inventory-search" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.15.09-debounced-inventory-search" defer></script>
+<script src="scripts/query-routing.js?v=2026.08.16.01-grading-submission-tracker" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.16.01-grading-submission-tracker" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.16.01-grading-submission-tracker" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.16.01-grading-submission-tracker" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.16.01-grading-submission-tracker" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.16.01-grading-submission-tracker" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.16.01-grading-submission-tracker" defer></script>
 </head>
 <body>
 
@@ -1624,11 +1624,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.15.09-debounced-inventory-search</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.16.01-grading-submission-tracker</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.15.09-debounced-inventory-search</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.16.01-grading-submission-tracker</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1650,7 +1650,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.15.09-debounced-inventory-search</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.16.01-grading-submission-tracker</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -2542,6 +2542,12 @@ body.show-mode .inv-sync-badge{display:none;}
   <div id="pulllist-panels" style="max-width:1400px;margin:0 auto;padding:0 20px"></div>
 </div>
 
+<!-- GRADING SUBMISSIONS TAB -->
+<div id="tab-grading" class="tab-panel">
+  <div class="sec">GRADING SUBMISSIONS</div>
+  <div id="grading-panels" style="max-width:1400px;margin:0 auto;padding:0 20px"></div>
+</div>
+
 <!-- CUSTOMER DISPLAY TAB -->
 <div id="tab-display" class="tab-panel">
   <div class="sec">SELL / LOCKED CHECKOUT</div>
@@ -3046,6 +3052,37 @@ body.show-mode .inv-sync-badge{display:none;}
   </div>
 </div>
 
+<!-- New grading submission -->
+<div class="modal-bg" id="grading-submission-modal">
+  <div class="modal">
+    <h3>🎓 SEND FOR GRADING</h3>
+    <label>Link an in-stock item (optional)</label>
+    <select id="grading-inventory-link" class="tsi" onchange="applyGradingInventoryLink(this.value)"><option value="">Not linked / not in inventory yet</option></select>
+    <label>Item Name *</label>
+    <input type="text" id="grading-item-name" placeholder="e.g. Amazing Spider-Man #300">
+    <label>Grader</label>
+    <select id="grading-grader" class="tsi"><option>PSA</option><option>BGS</option><option>CGC</option><option>SGC</option><option>Other</option></select>
+    <label>Service Level (optional)</label>
+    <input type="text" id="grading-service-level" placeholder="e.g. Regular, Express, Walk-Through">
+    <label>Submission Cost</label>
+    <input type="number" id="grading-cost" step="0.01" min="0" placeholder="0.00">
+    <label>Declared Value (optional)</label>
+    <input type="number" id="grading-declared-value" step="0.01" min="0" placeholder="0.00">
+    <label>Submitted Date</label>
+    <input type="date" id="grading-submitted-at">
+    <label>Expected Return Date (optional)</label>
+    <input type="date" id="grading-expected-return">
+    <label>Tracking Number (optional)</label>
+    <input type="text" id="grading-tracking" placeholder="Carrier tracking #">
+    <label>Notes (optional)</label>
+    <input type="text" id="grading-notes" placeholder="Anything worth remembering">
+    <div class="modal-btns">
+      <button class="modal-btn confirm" onclick="saveGradingSubmissionFromForm()">SUBMIT</button>
+      <button class="modal-btn cancel" onclick="closeGradingSubmissionModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
 <!-- Metron series disambiguation (pull lists) -->
 <div class="modal-bg" id="pulllist-metron-series-modal">
   <div class="modal">
@@ -3321,7 +3358,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.15.09-debounced-inventory-search';
+const APP_VERSION = '2026.08.16.01-grading-submission-tracker';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -3594,7 +3631,7 @@ const SUBSCRIPTION_PLANS = {
   store:{ name:'Store', price:89, features:['Everything in Register','Inventory, buying and consignments','Staff, shows, tournaments and profit reporting'], capabilities:['research','checkout','sales','inventory','consignments','staff','shows','events','pulllists'] },
   pro:{ name:'Pro', price:149, features:['Everything in Store','Online listing tools','Advanced operations + multi-store'], capabilities:['research','checkout','sales','inventory','consignments','staff','shows','events','pulllists','marketplace','advanced'] }
 };
-const TAB_CAPABILITY = {research:'research',sets:'research',wantlist:'research',display:'checkout',browse:'checkout',pos:'checkout',sales:'sales',orders:'sales',intake:'inventory',inventory:'inventory',locations:'inventory',restock:'inventory',consign:'consignments',shows:'shows',events:'events',pulllists:'pulllists',channels:'marketplace'};
+const TAB_CAPABILITY = {research:'research',sets:'research',wantlist:'research',display:'checkout',browse:'checkout',pos:'checkout',sales:'sales',orders:'sales',intake:'inventory',inventory:'inventory',locations:'inventory',restock:'inventory',grading:'inventory',consign:'consignments',shows:'shows',events:'events',pulllists:'pulllists',channels:'marketplace'};
 function currentPlanCode(){ return SUBSCRIPTION_PLANS[window._subStatus?.plan_code] ? window._subStatus.plan_code : 'store'; }
 function hasPlanCapability(capability){ return !capability || SUBSCRIPTION_PLANS[currentPlanCode()].capabilities.includes(capability); }
 function planCanAccessTab(tab){ return hasPlanCapability(TAB_CAPABILITY[tab]); }
@@ -3609,7 +3646,7 @@ function roleCanAccessTab(tab){
   let allowed = false;
   if(role === 'owner' || role === 'admin') allowed = true;
   else if(role === 'manager') allowed = !['backoffice'].includes(tab);
-  else if(role === 'employee') allowed = ['overview','display','browse','inventory','research','pos','alerts','wantlist','locations','restock','sets','events','pulllists'].includes(tab);
+  else if(role === 'employee') allowed = ['overview','display','browse','inventory','research','pos','alerts','wantlist','locations','restock','grading','sets','events','pulllists'].includes(tab);
   return allowed && planCanAccessTab(tab);
 }
 
@@ -4074,6 +4111,7 @@ const LANDING_TAB_OPTIONS = [
   ['consign','Consignment'],
   ['events','Tournaments'],
   ['pulllists','Pull Lists'],
+  ['grading','Grading'],
 ];
 function getDefaultLandingTab(){
   const v = localStorage.getItem('default_landing_tab_v1');
@@ -4705,6 +4743,7 @@ const MORE_TABS = [
   ['consign', 'CONSIGNMENT'],
   ['locations', 'LOCATIONS'],
   ['restock', 'RESTOCK'],
+  ['grading', 'GRADING'],
   ['events', 'TOURNAMENTS'],
   ['pulllists', 'PULL LISTS'],
   ['backoffice', 'SETTINGS / ADMIN'],
@@ -11147,6 +11186,20 @@ async function processSyncItem(item){
     if(error) throw error;
     return;
   }
+  if(item.type === 'grading-submission-upsert') {
+    const sb = getSupabaseClient();
+    if(!sb) throw new Error('Supabase client unavailable');
+    const { error } = await sb.from('grading_submissions').upsert(item.payload, { onConflict:'id' });
+    if(error) throw error;
+    return;
+  }
+  if(item.type === 'grading-submission-status') {
+    const sb = getSupabaseClient();
+    if(!sb) throw new Error('Supabase client unavailable');
+    const { error } = await sb.from('grading_submissions').update(item.payload.updates).eq('id', item.payload.id).eq('store_id', item.payload.store_id);
+    if(error) throw error;
+    return;
+  }
   if(item.type === 'drawer-session-open') {
     await MoneyLedgerService().openDrawerSession({
       id:item.payload.drawerState.id,
@@ -17096,6 +17149,7 @@ function switchTab(name, btn){
   if(name === 'intake') setTimeout(()=>{ fetchBuyListFromWorker(); fetchBuyTrayIndex(); }, 0);
   if(name === 'events') setTimeout(ensureEventsPanel, 0);
   if(name === 'pulllists') setTimeout(ensurePullListPanel, 0);
+  if(name === 'grading') setTimeout(ensureGradingPanel, 0);
 }
 
 // Quick sell modal
@@ -37083,6 +37137,223 @@ function setPickerGridHtml(sets, selectedId, clickFnName){
   }).join('');
 }
 
+// ══════════════════════════════════════════════════
+// GRADING SUBMISSIONS — items sent out to PSA/BGS/CGC/etc, distinct from
+// the PSA cert lookup feature (which only looks up ALREADY-graded certs).
+// ══════════════════════════════════════════════════
+let gradingSubmissionsCache = [];
+let gradingFilter = 'submitted';
+
+async function loadGradingSubmissionsFromSupabase(force){
+  if(!force){
+    const cached = safeLocalJson('grading_submissions_cache_v1', null);
+    if(cached) gradingSubmissionsCache = cached;
+  }
+  if(getAccountContext().isDemo) return;
+  const sb = getSupabaseClient(), session = getAuthSession(), storeId = getActiveStoreId();
+  if(!sb || !session?.supabase || !storeId) return;
+  const { data, error } = await sb.from('grading_submissions').select('*').eq('store_id', storeId).order('submitted_at', { ascending:false }).limit(1000);
+  if(error) { console.warn('[GRADING] load failed:', error.message); return; }
+  gradingSubmissionsCache = data || [];
+  localStorage.setItem('grading_submissions_cache_v1', JSON.stringify(gradingSubmissionsCache));
+}
+
+function ensureGradingPanel(){
+  if(!document.getElementById('grading-panels')) return;
+  renderGradingPanel();
+}
+async function renderGradingPanel(){
+  const container = document.getElementById('grading-panels');
+  if(!container) return;
+  await loadGradingSubmissionsFromSupabase();
+  renderGradingListInto(container);
+}
+
+function gradingDaysBetween(a, b){
+  if(!a) return null;
+  const start = new Date(a), end = b ? new Date(b) : new Date();
+  if(isNaN(start.getTime())) return null;
+  return Math.round((end - start) / 86400000);
+}
+
+function gradingSubmissionRoi(g){
+  const cost = Number(g.submission_cost || 0) + Number(g.declared_value || 0);
+  const back = Number(g.market_value_after || 0);
+  if(!back || !cost) return null;
+  return { profit: back - cost, pct: cost > 0 ? ((back - cost) / cost) * 100 : 0 };
+}
+
+function renderGradingListInto(container){
+  const rows = gradingSubmissionsCache.filter(g => gradingFilter === 'all' || g.status === gradingFilter);
+  const outstanding = gradingSubmissionsCache.filter(g => g.status === 'submitted');
+  const outstandingCost = outstanding.reduce((a,g) => a + Number(g.submission_cost || 0), 0);
+  const returnedThisMonth = gradingSubmissionsCache.filter(g => g.status === 'returned' && g.actual_return_at && new Date(g.actual_return_at) >= new Date(new Date().getFullYear(), new Date().getMonth(), 1));
+  const avgTurnaround = (() => {
+    const withBoth = gradingSubmissionsCache.filter(g => g.status === 'returned' && g.submitted_at && g.actual_return_at);
+    if(!withBoth.length) return null;
+    const total = withBoth.reduce((a,g) => a + (gradingDaysBetween(g.submitted_at, g.actual_return_at) || 0), 0);
+    return Math.round(total / withBoth.length);
+  })();
+
+  container.innerHTML = `
+  <div class="stats" style="margin-bottom:14px">
+    <div class="sc b"><div class="sc-l">OUT FOR GRADING</div><div class="sc-v">${outstanding.length}</div><div class="sc-s">${fd$(outstandingCost)} in submission costs</div></div>
+    <div class="sc g"><div class="sc-l">RETURNED THIS MONTH</div><div class="sc-v">${returnedThisMonth.length}</div><div class="sc-s">graded &amp; back in hand</div></div>
+    <div class="sc p"><div class="sc-l">AVG TURNAROUND</div><div class="sc-v">${avgTurnaround !== null ? avgTurnaround + 'd' : '—'}</div><div class="sc-s">submit to return</div></div>
+  </div>
+  <div class="panel">
+    <div class="ph" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+      <span>SUBMISSIONS</span>
+      <button class="hbtn" onclick="openNewGradingSubmissionModal()">+ SEND FOR GRADING</button>
+    </div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
+      ${[['submitted','OUT'],['returned','RETURNED'],['cancelled','CANCELLED'],['all','ALL']].map(([f,l]) => `<button class="fb${gradingFilter===f?' on':''}" onclick="setGradingFilter('${f}')">${l}</button>`).join('')}
+    </div>
+    ${!rows.length ? '<div class="empty"><div class="empty-t">NO SUBMISSIONS</div></div>' : rows.map(g => {
+      const roi = gradingSubmissionRoi(g);
+      const daysOut = g.status === 'submitted' ? gradingDaysBetween(g.submitted_at) : gradingDaysBetween(g.submitted_at, g.actual_return_at);
+      const overdue = g.status === 'submitted' && g.expected_return_at && new Date(g.expected_return_at) < new Date();
+      return `<div style="padding:10px;border-bottom:1px solid var(--border);${overdue?'background:rgba(255,77,109,.04)':''}">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+          <div style="flex:1">
+            <div style="font-weight:700;color:var(--text)">${escHtml(g.item_name)}</div>
+            <div style="font-family:monospace;font-size:9px;color:var(--dim);margin-top:2px">
+              ${escHtml(g.grader || 'PSA')}${g.service_level ? ' · ' + escHtml(g.service_level) : ''} · Submitted ${escHtml(g.submitted_at || '—')}
+              ${daysOut !== null ? ` · ${daysOut}d ${g.status==='submitted'?'out':'turnaround'}` : ''}
+              ${overdue ? ' · <span style="color:var(--red)">OVERDUE</span>' : ''}
+            </div>
+            ${g.notes ? `<div style="font-family:monospace;font-size:8px;color:rgba(255,255,255,.3)">${escHtml(g.notes)}</div>` : ''}
+            <div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:5px">
+              <span class="qpl-badge">COST ${fd$(g.submission_cost)}</span>
+              ${g.declared_value ? `<span class="qpl-badge">DECLARED ${fd$(g.declared_value)}</span>` : ''}
+              ${g.grade_result ? `<span class="qpl-badge">${escHtml(g.grade_result)}</span>` : ''}
+              ${g.tracking_number ? `<span class="qpl-badge">TRK ${escHtml(g.tracking_number)}</span>` : ''}
+              ${roi ? `<span class="qpl-badge" style="color:${roi.profit>=0?'var(--g)':'var(--red)'}">${roi.profit>=0?'+':''}${fd$(roi.profit)} (${roi.pct.toFixed(0)}%)</span>` : ''}
+            </div>
+          </div>
+          <div style="text-align:right;flex-shrink:0">
+            <div style="font-family:monospace;font-size:8px;color:var(--dim)">${g.status.toUpperCase()}</div>
+            <div style="display:flex;gap:4px;margin-top:6px;justify-content:flex-end">
+              ${g.status==='submitted'?`<button class="ra" style="background:rgba(0,255,179,.08);border-color:rgba(0,255,179,.2);color:var(--g)" onclick="markGradingReturned('${g.id}')">RETURNED</button>
+              <button class="ra" onclick="cancelGradingSubmission('${g.id}')">Cancel</button>`:''}
+            </div>
+          </div>
+        </div>
+      </div>`;
+    }).join('')}
+  </div>`;
+}
+
+function setGradingFilter(f){ gradingFilter = f; renderGradingListInto(document.getElementById('grading-panels')); }
+
+function openNewGradingSubmissionModal(){
+  ['grading-item-name','grading-service-level','grading-cost','grading-declared-value','grading-tracking','grading-notes'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
+  const gradedSel = document.getElementById('grading-grader'); if(gradedSel) gradedSel.value = 'PSA';
+  const linkSel = document.getElementById('grading-inventory-link');
+  if(linkSel){
+    const inStock = (all || []).filter(i => i.status === 'in_stock');
+    linkSel.innerHTML = '<option value="">Not linked / not in inventory yet</option>' + inStock.map(i => `<option value="${escHtml(i.id)}">${escHtml(i.name)}${i.inventorySku ? ' · ' + escHtml(i.inventorySku) : ''}</option>`).join('');
+    linkSel.value = '';
+  }
+  const submittedEl = document.getElementById('grading-submitted-at'); if(submittedEl) submittedEl.value = new Date().toISOString().slice(0,10);
+  const expectedEl = document.getElementById('grading-expected-return'); if(expectedEl) expectedEl.value = '';
+  document.getElementById('grading-submission-modal')?.classList.add('on');
+  setTimeout(() => document.getElementById('grading-item-name')?.focus(), 100);
+}
+function closeGradingSubmissionModal(){
+  document.getElementById('grading-submission-modal')?.classList.remove('on');
+}
+function applyGradingInventoryLink(itemId){
+  if(!itemId) return;
+  const item = (all || []).find(i => i.id === itemId);
+  if(!item) return;
+  const nameEl = document.getElementById('grading-item-name'); if(nameEl && !nameEl.value) nameEl.value = item.name;
+  const valueEl = document.getElementById('grading-declared-value'); if(valueEl && !valueEl.value) valueEl.value = (item.market || item.price || 0) || '';
+}
+
+async function saveGradingSubmissionFromForm(){
+  const itemName = document.getElementById('grading-item-name')?.value.trim();
+  if(!itemName) return alert('Enter an item name');
+  const inventoryId = document.getElementById('grading-inventory-link')?.value || null;
+  const linkedItem = inventoryId ? (all || []).find(i => i.id === inventoryId) : null;
+  const record = {
+    id: makeUuid('grading'), store_id: getActiveStoreId(),
+    inventory_id: inventoryId || null,
+    item_name: itemName,
+    category: linkedItem?.category || null,
+    grader: document.getElementById('grading-grader')?.value || 'PSA',
+    service_level: document.getElementById('grading-service-level')?.value.trim() || null,
+    submission_cost: parseFloat(document.getElementById('grading-cost')?.value) || 0,
+    declared_value: parseFloat(document.getElementById('grading-declared-value')?.value) || 0,
+    submitted_at: document.getElementById('grading-submitted-at')?.value || new Date().toISOString().slice(0,10),
+    expected_return_at: document.getElementById('grading-expected-return')?.value || null,
+    tracking_number: document.getElementById('grading-tracking')?.value.trim() || null,
+    status: 'submitted',
+    notes: document.getElementById('grading-notes')?.value.trim() || null,
+    created_by: getCurrentUserId(),
+    created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
+  };
+  gradingSubmissionsCache.unshift(record);
+  localStorage.setItem('grading_submissions_cache_v1', JSON.stringify(gradingSubmissionsCache));
+  closeGradingSubmissionModal();
+  renderGradingListInto(document.getElementById('grading-panels'));
+  if(getAccountContext().isDemo) return;
+  try {
+    const sb = getSupabaseClient();
+    if(!sb) throw new Error('Supabase unavailable');
+    const { error } = await sb.from('grading_submissions').insert(record);
+    if(error) throw error;
+    toast_dash('Sent for grading: ' + itemName);
+  } catch(e) {
+    enqueueSync('grading-submission-upsert', 'Queued grading submission', record, e.message);
+    toast_dash('Saved locally — will sync when back online');
+  }
+}
+
+async function updateGradingSubmission(id, updates){
+  const g = gradingSubmissionsCache.find(x => x.id === id);
+  if(!g) return;
+  Object.assign(g, updates, { updated_at:new Date().toISOString() });
+  localStorage.setItem('grading_submissions_cache_v1', JSON.stringify(gradingSubmissionsCache));
+  renderGradingListInto(document.getElementById('grading-panels'));
+  if(getAccountContext().isDemo) return;
+  try {
+    const sb = getSupabaseClient();
+    if(!sb) throw new Error('Supabase unavailable');
+    const { error } = await sb.from('grading_submissions').update({ ...updates, updated_at:g.updated_at }).eq('id', id).eq('store_id', getActiveStoreId());
+    if(error) throw error;
+  } catch(e) {
+    enqueueOrReplaceSync('grading-submission-status', id, 'Queued grading submission update', { id, store_id:getActiveStoreId(), updates:{ ...updates, updated_at:g.updated_at } }, e.message);
+    toast_dash('Saved locally — will sync when back online');
+  }
+}
+
+function markGradingReturned(id){
+  const g = gradingSubmissionsCache.find(x => x.id === id);
+  if(!g) return;
+  const gradeResult = prompt('Grade result for ' + g.item_name + ' (e.g. "PSA 9 MINT"):');
+  if(gradeResult === null) return;
+  const certNumber = prompt('Cert number (optional):') || '';
+  const marketValueRaw = prompt('What is it worth now that it\'s graded? (optional, for ROI tracking)');
+  const marketValueAfter = marketValueRaw ? parseFloat(marketValueRaw) || 0 : null;
+  updateGradingSubmission(id, {
+    status: 'returned',
+    grade_result: gradeResult.trim() || null,
+    cert_number: certNumber.trim() || null,
+    actual_return_at: new Date().toISOString().slice(0,10),
+    ...(marketValueAfter !== null ? { market_value_after: marketValueAfter } : {}),
+  });
+  toast_dash('Marked returned: ' + g.item_name);
+}
+
+function cancelGradingSubmission(id){
+  const g = gradingSubmissionsCache.find(x => x.id === id);
+  if(!g) return;
+  if(!confirm('Cancel this submission for ' + g.item_name + '?')) return;
+  updateGradingSubmission(id, { status:'cancelled' });
+  toast_dash('Submission cancelled');
+}
+
 // ── POKÉMON SET BROWSER (Pass B) ────────────────────────────────
 const _sbState = {
   sets: null, setsLoadedAt: 0,
@@ -39734,7 +40005,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.15.09-debounced-inventory-search" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.16.01-grading-submission-tracker" defer></script>
 </body>
 </html>
 
