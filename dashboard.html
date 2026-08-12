@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.15.07-display-size-and-mtg-mythic-tiles">
+<meta name="version" content="2026.08.15.08-faster-boot-and-default-tab">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1568,13 +1568,13 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.15.07-display-size-and-mtg-mythic-tiles" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.15.07-display-size-and-mtg-mythic-tiles" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.15.07-display-size-and-mtg-mythic-tiles" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.15.07-display-size-and-mtg-mythic-tiles" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.15.07-display-size-and-mtg-mythic-tiles" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.15.07-display-size-and-mtg-mythic-tiles" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.15.07-display-size-and-mtg-mythic-tiles" defer></script>
+<script src="scripts/query-routing.js?v=2026.08.15.08-faster-boot-and-default-tab" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.15.08-faster-boot-and-default-tab" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.15.08-faster-boot-and-default-tab" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.15.08-faster-boot-and-default-tab" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.15.08-faster-boot-and-default-tab" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.15.08-faster-boot-and-default-tab" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.15.08-faster-boot-and-default-tab" defer></script>
 </head>
 <body>
 
@@ -1624,11 +1624,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.15.07-display-size-and-mtg-mythic-tiles</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.15.08-faster-boot-and-default-tab</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.15.07-display-size-and-mtg-mythic-tiles</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.15.08-faster-boot-and-default-tab</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1650,7 +1650,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.15.07-display-size-and-mtg-mythic-tiles</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.15.08-faster-boot-and-default-tab</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3321,7 +3321,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.15.07-display-size-and-mtg-mythic-tiles';
+const APP_VERSION = '2026.08.15.08-faster-boot-and-default-tab';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -4061,6 +4061,28 @@ function applyStoreTheme(theme = getStoreTheme(), persist = false){
   if(t.logoUrl) document.querySelectorAll('[data-vendor-logo]').forEach(el => { el.src = t.logoUrl; el.style.display = ''; });
   if(persist) localStorage.setItem('store_theme_v1', JSON.stringify(t));
 }
+const LANDING_TAB_OPTIONS = [
+  ['overview','Overview (Home)'],
+  ['research','Research'],
+  ['intake','Buy'],
+  ['inventory','Inventory'],
+  ['sales','Sales'],
+  ['pos','POS Tools'],
+  ['alerts','Alerts'],
+  ['display','Customer Display'],
+  ['wantlist','Want List'],
+  ['consign','Consignment'],
+  ['events','Tournaments'],
+  ['pulllists','Pull Lists'],
+];
+function getDefaultLandingTab(){
+  const v = localStorage.getItem('default_landing_tab_v1');
+  return LANDING_TAB_OPTIONS.some(([id]) => id === v) ? v : 'overview';
+}
+function setDefaultLandingTab(tab){
+  const t = LANDING_TAB_OPTIONS.some(([id]) => id === tab) ? tab : 'overview';
+  localStorage.setItem('default_landing_tab_v1', t);
+}
 const UI_SCALE_CLASSES = { compact:'', comfortable:'ui-scale-comfortable', large:'ui-scale-large' };
 function getUiScale(){ const v = localStorage.getItem('ui_scale_v1'); return UI_SCALE_CLASSES[v] !== undefined ? v : 'compact'; }
 function applyUiScale(scale, persist = true){
@@ -4204,6 +4226,12 @@ function ensureBrandingPanel(backoffice){
         <button class="hbtn" id="ui-scale-comfortable" onclick="applyUiScale('comfortable')" style="margin-bottom:0">COMFORTABLE</button>
         <button class="hbtn" id="ui-scale-large" onclick="applyUiScale('large')" style="margin-bottom:0">LARGE</button>
       </div>
+    </div>
+    <div style="border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:14px;background:var(--surf2)">
+      <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);margin-bottom:8px">DEFAULT TAB ON OPEN <span style="color:var(--text)">— this device only</span>, the tab this device lands on when the app loads</div>
+      <select id="default-landing-tab-select" class="tsi" style="margin-bottom:0;max-width:260px" onchange="setDefaultLandingTab(this.value)">
+        ${LANDING_TAB_OPTIONS.map(([id,label])=>`<option value="${escHtml(id)}"${id===getDefaultLandingTab()?' selected':''}>${escHtml(label)}</option>`).join('')}
+      </select>
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;font-family:var(--font-mono);font-size:10px;color:var(--dim)">
       <span>Current: <b style="color:var(--text)" id="theme-current-name">${escHtml(getStoreTheme().themeName || 'Custom')}</b></span>
@@ -15892,23 +15920,36 @@ window.addEventListener('load', async function(){
   // Seed demo data and show banner before any UI renders in demo mode
   updateDataModeBanner();
   seedDemoDataIfNeeded();
-  await loadStoreSettingsFromSupabase();
-  await loadConsignmentsFromCloud();
-  await loadPriceChangeAlertsFromCloud();
-  loadCustomersFromSupabase();
+  // Paint the shell (theme, version stamp) and land on the user's chosen tab
+  // immediately -- neither depends on any network round trip, so there's no
+  // reason to make either one wait behind the cloud syncs below.
   setupAppShell();
   setInvView(_invView);
+  switchTab(getDefaultLandingTab());
   checkAndApplySubscriptionState().catch(console.warn);
-  await syncShowModeFromWorker();
-  startShowSessionSyncLoop();
-  await syncStoreCreditsFromWorker();
-  renderShowMode();
   applyResearchDefaultCategory();
   maybeShowSetupPrompt();
   initHelpButtons();
   startInventoryAutoSync();
   refreshEbayStatus();
-  syncLifecycleFromWorker().finally(loadInventory);
+  loadCustomersFromSupabase();
+  startShowSessionSyncLoop();
+  // These used to run one at a time (each awaited before the next started),
+  // stacking up their round trips in sequence before the first real data
+  // ever reached the screen. None of them reads state another one writes --
+  // each touches its own localStorage key and its own Supabase table/KV key
+  // -- so running them together costs only the SLOWEST of the group instead
+  // of the SUM of all of them. loadInventory does need lifecycle data (it
+  // reads getLifecycle() synchronously while building each item), so it
+  // still waits for this whole batch, just a much shorter wait than before.
+  Promise.all([
+    loadStoreSettingsFromSupabase(),
+    loadConsignmentsFromCloud(),
+    loadPriceChangeAlertsFromCloud(),
+    syncShowModeFromWorker(),
+    syncStoreCreditsFromWorker(),
+    syncLifecycleFromWorker(),
+  ]).then(renderShowMode).finally(loadInventory);
 });
 
 async function loadInventory(){
@@ -15920,7 +15961,7 @@ async function loadInventory(){
       all = applyInventoryEditOverrides(demoItems);
       soldData = all.filter(i => i.status === 'sold');
       filtered = [...all];
-      renderAll();
+      renderAll({ deferHeavy:true });
       renderInventoryCategoryFilters();
       const el = document.getElementById('sync-status');
       if(el) el.textContent = 'DEMO — ' + demoItems.length + ' demo items (local only)';
@@ -15953,7 +15994,7 @@ async function loadInventory(){
     all = applyInventoryEditOverrides(products.map(p=>mapItem(p,skuMap)).concat(getUniversalInventory()));
     soldData = all.filter(i=>i.status==='sold');
     filtered = [...all];
-    renderAll();
+    renderAll({ deferHeavy:true });
     renderInventoryCategoryFilters();
     document.getElementById('sync-status').textContent = products.length+' products · '+new Date().toLocaleTimeString();
   } catch(e){
@@ -16017,7 +16058,7 @@ async function loadInventoryByConfiguredSource(){
     all = applyInventoryEditOverrides(parts);
     soldData = all.filter(i=>i.status==='sold');
     filtered = [...all];
-    renderAll();
+    renderAll({ deferHeavy:true });
     renderInventoryCategoryFilters();
     document.getElementById('sync-status').textContent = 'v'+APP_VERSION+' · '+source.replace('_',' ')+' · '+counts.join(' · ')+' · '+new Date().toLocaleTimeString();
   } catch(e){
@@ -16083,14 +16124,28 @@ function mapItem(i, skuMap){
   };
 }
 
-function renderAll(){
+function renderAll(opts){
+  // deferHeavy: used only by the initial-load call sites, where nothing but
+  // the Overview tab's own elements (stats/cats/top-val/feed, all rendered
+  // below) are actually on screen yet. The rest -- inventory table, sold
+  // table, channel/monthly charts, health/analytics panels -- render into
+  // tabs the user hasn't opened, so deferring them a tick lets the browser
+  // paint real numbers on Overview immediately instead of blocking behind
+  // work for tabs that aren't even visible. Every other renderAll() caller
+  // (there are 30+, after edits/sales/syncs) keeps the old fully-synchronous
+  // behavior so nothing that reads DOM state right after calling it breaks.
+  const deferHeavy = opts && opts.deferHeavy === true;
   renderPriceChangeAlerts();
   renderStats(); renderCats(); renderTopVal(); renderFeed();
-  renderChannels(); renderTopSold(); renderMonthly();
-  renderAlerts(); filterTable(); renderSoldTable();
+  const renderHeavy = () => {
+    renderChannels(); renderTopSold(); renderMonthly();
+    renderAlerts(); filterTable(); renderSoldTable();
+    renderInventoryHealthPanel(); renderOwnerAnalyticsPanel();
+    renderTodayMode(); renderDataHealthPanel(); renderOnboardingPanel(); updateUndoButton();
+  };
+  if(deferHeavy) setTimeout(renderHeavy, 0);
+  else renderHeavy();
   if(typeof updateDealerStatusBar === 'function') setTimeout(updateDealerStatusBar, 50);
-  renderInventoryHealthPanel(); renderOwnerAnalyticsPanel();
-  renderTodayMode(); renderDataHealthPanel(); renderOnboardingPanel(); updateUndoButton();
 }
 
 function applyDashboardItemUpdate(id, updates) {
@@ -39663,7 +39718,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.15.07-display-size-and-mtg-mythic-tiles" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.15.08-faster-boot-and-default-tab" defer></script>
 </body>
 </html>
 
