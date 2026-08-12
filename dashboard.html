@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.16.04-ebay-auto-reprice-aged-listings">
+<meta name="version" content="2026.08.16.05-consignor-stripe-payouts">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1570,13 +1570,13 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.16.04-ebay-auto-reprice-aged-listings" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.16.04-ebay-auto-reprice-aged-listings" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.16.04-ebay-auto-reprice-aged-listings" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.16.04-ebay-auto-reprice-aged-listings" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.16.04-ebay-auto-reprice-aged-listings" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.16.04-ebay-auto-reprice-aged-listings" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.16.04-ebay-auto-reprice-aged-listings" defer></script>
+<script src="scripts/query-routing.js?v=2026.08.16.05-consignor-stripe-payouts" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.16.05-consignor-stripe-payouts" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.16.05-consignor-stripe-payouts" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.16.05-consignor-stripe-payouts" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.16.05-consignor-stripe-payouts" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.16.05-consignor-stripe-payouts" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.16.05-consignor-stripe-payouts" defer></script>
 </head>
 <body>
 
@@ -1626,11 +1626,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.16.04-ebay-auto-reprice-aged-listings</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.16.05-consignor-stripe-payouts</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.16.04-ebay-auto-reprice-aged-listings</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.16.05-consignor-stripe-payouts</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1652,7 +1652,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.16.04-ebay-auto-reprice-aged-listings</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.16.05-consignor-stripe-payouts</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3378,7 +3378,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.16.04-ebay-auto-reprice-aged-listings';
+const APP_VERSION = '2026.08.16.05-consignor-stripe-payouts';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -21840,8 +21840,8 @@ let consignmentCloudSyncTimer = null;
 function consignPersonToCloud(p){return {id:p.id||('person_'+Date.now()),store_id:getActiveStoreId(),name:String(p.name||'').trim(),contact:String(p.contact||''),store_split_percent:Number(p.split??25),active:p.active!==false,created_at:p.createdAt||new Date().toISOString(),updated_at:p.updatedAt||new Date().toISOString()};}
 function consignItemToCloud(c){const person=consignorPeople.find(p=>String(p.name||'').toLowerCase()===String(c.owner||'').toLowerCase());return {id:c.id,store_id:getActiveStoreId(),consignor_id:person?.id||null,inventory_item_id:c.inventoryId||null,item_name:c.item||'Item',owner_name:c.owner||'',contact:c.contact||'',list_price:Number(c.price||0),store_split_percent:Number(c.split??25),cost_basis:Number(c.costBasis||0),market_value:Number(c.marketValue||0),inventory_sku:c.inventorySku||'',notes:c.notes||'',expires_on:c.expires||null,status:c.status||'active',sale_id:c.saleId||null,sale_price:c.salePrice==null?null:Number(c.salePrice),paid_out:!!c.paidOut,added_at:c.addedAt||new Date().toISOString(),sold_at:c.soldAt||null,returned_at:c.returnedAt||null,paid_out_at:c.paidOutAt||null,updated_at:new Date().toISOString()};}
 function consignAlertToCloud(a){return {id:a.id,store_id:getActiveStoreId(),consignment_id:a.consignmentId,inventory_item_id:a.inventoryId||null,sale_id:a.saleId||null,owner_name:a.owner||'',item_name:a.item||'Item',sale_price:Number(a.salePrice||0),store_cut:Number(a.storeCut||0),owner_payout:Number(a.ownerPayout||0),source:a.source||'sale',status:a.status||'open',sold_at:a.soldAt||null,created_at:a.createdAt||new Date().toISOString(),updated_at:new Date().toISOString()};}
-function consignPersonFromCloud(p){return {id:p.id,name:p.name,contact:p.contact||'',split:Number(p.store_split_percent??25),active:p.active!==false,createdAt:p.created_at,updatedAt:p.updated_at};}
-function consignItemFromCloud(c){return {id:c.id,item:c.item_name,owner:c.owner_name,contact:c.contact||'',price:Number(c.list_price||0),split:Number(c.store_split_percent??25),costBasis:Number(c.cost_basis||0),marketValue:Number(c.market_value||0),inventoryId:c.inventory_item_id||'',inventorySku:c.inventory_sku||'',notes:c.notes||'',expires:c.expires_on||'',status:c.status||'active',saleId:c.sale_id||'',salePrice:c.sale_price==null?null:Number(c.sale_price),paidOut:!!c.paid_out,addedAt:c.added_at,soldAt:c.sold_at,returnedAt:c.returned_at,paidOutAt:c.paid_out_at};}
+function consignPersonFromCloud(p){return {id:p.id,name:p.name,contact:p.contact||'',split:Number(p.store_split_percent??25),active:p.active!==false,createdAt:p.created_at,updatedAt:p.updated_at,stripeAccountId:p.stripe_account_id||'',stripeOnboardingStatus:p.stripe_onboarding_status||'not_started',stripeTransfersEnabled:!!p.stripe_transfers_enabled};}
+function consignItemFromCloud(c){return {id:c.id,item:c.item_name,owner:c.owner_name,contact:c.contact||'',price:Number(c.list_price||0),split:Number(c.store_split_percent??25),costBasis:Number(c.cost_basis||0),marketValue:Number(c.market_value||0),inventoryId:c.inventory_item_id||'',inventorySku:c.inventory_sku||'',notes:c.notes||'',expires:c.expires_on||'',status:c.status||'active',saleId:c.sale_id||'',salePrice:c.sale_price==null?null:Number(c.sale_price),paidOut:!!c.paid_out,addedAt:c.added_at,soldAt:c.sold_at,returnedAt:c.returned_at,paidOutAt:c.paid_out_at,stripeTransferId:c.stripe_transfer_id||'',paidVia:c.paid_via||''};}
 function consignAlertFromCloud(a){return {id:a.id,consignmentId:a.consignment_id,inventoryId:a.inventory_item_id||'',saleId:a.sale_id||'',owner:a.owner_name,item:a.item_name,salePrice:Number(a.sale_price||0),storeCut:Number(a.store_cut||0),ownerPayout:Number(a.owner_payout||0),source:a.source,status:a.status,soldAt:a.sold_at,createdAt:a.created_at};}
 async function loadConsignmentsFromCloud(){
   const sb=getSupabaseClient(),session=getAuthSession(),storeId=getActiveStoreId();if(!sb||!session?.supabase||!storeId||storeId==='demo')return false;
@@ -21858,7 +21858,7 @@ async function deleteConsignmentCloudRow(table,id){const sb=getSupabaseClient();
 function saveConsign(){ localStorage.setItem('pos_consign', JSON.stringify(consignItems));scheduleConsignmentCloudSync(); }
 function saveConsignorPeople(){localStorage.setItem('pos_consignors',JSON.stringify(consignorPeople));scheduleConsignmentCloudSync();}
 function addConsignorPerson(){const name=document.getElementById('cs-person-name')?.value.trim(),contact=document.getElementById('cs-person-contact')?.value.trim()||'',split=Math.max(0,Math.min(100,Number(document.getElementById('cs-person-split')?.value||25)));if(!name)return toast_dash('Enter the consignor name');const existing=consignorPeople.find(p=>p.name.toLowerCase()===name.toLowerCase());if(existing)Object.assign(existing,{name,contact,split,updatedAt:new Date().toISOString()});else consignorPeople.push({id:'person_'+Date.now(),name,contact,split,createdAt:new Date().toISOString()});saveConsignorPeople();['cs-person-name','cs-person-contact'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});const splitEl=document.getElementById('cs-person-split');if(splitEl)splitEl.value='25';renderConsign();toast_dash('Consignor ready: '+name);}
-function renderConsignorPeople(){const host=document.getElementById('cs-people-list');if(!host)return;const rows=consignmentOwnerDirectory();host.innerHTML=rows.length?rows.map(p=>`<div style="display:flex;border:1px solid var(--border);border-radius:7px;overflow:hidden"><button class="hbtn" style="border:0;border-radius:0" onclick="useConsignorPerson('${encodeURIComponent(p.name)}')" title="Use this person for a new consignment">${escHtml(p.name)}${p.contact?' · '+escHtml(p.contact):''} · ${Number(p.split||25)}% store</button><button class="hbtn" style="border-width:0 0 0 1px;border-radius:0;color:var(--purple)" onclick="editConsignorPerson('${encodeURIComponent(p.name)}')">EDIT</button><button class="hbtn danger" style="border-width:0 0 0 1px;border-radius:0" onclick="deleteConsignorPerson('${encodeURIComponent(p.name)}')">DELETE</button></div>`).join(''):'<span style="font-family:var(--font-mono);font-size:9px;color:var(--dim)">No consignors yet. Add the first person above.</span>';}
+function renderConsignorPeople(){const host=document.getElementById('cs-people-list');if(!host)return;const rows=consignmentOwnerDirectory();host.innerHTML=rows.length?rows.map(p=>{const stripeReady=p.stripeOnboardingStatus==='ready'&&p.stripeTransfersEnabled;const stripeBtn=p.personId?`<button class="hbtn" style="border-width:0 0 0 1px;border-radius:0;color:${stripeReady?'var(--g)':'var(--gold)'}" onclick="connectConsignorStripe('${escHtml(p.personId)}')" title="Pay this consignor via Stripe instead of cash/check/Venmo">${stripeReady?'💳 STRIPE READY':'💳 CONNECT STRIPE'}</button>`:'';return `<div style="display:flex;border:1px solid var(--border);border-radius:7px;overflow:hidden"><button class="hbtn" style="border:0;border-radius:0" onclick="useConsignorPerson('${encodeURIComponent(p.name)}')" title="Use this person for a new consignment">${escHtml(p.name)}${p.contact?' · '+escHtml(p.contact):''} · ${Number(p.split||25)}% store</button>${stripeBtn}<button class="hbtn" style="border-width:0 0 0 1px;border-radius:0;color:var(--purple)" onclick="editConsignorPerson('${encodeURIComponent(p.name)}')">EDIT</button><button class="hbtn danger" style="border-width:0 0 0 1px;border-radius:0" onclick="deleteConsignorPerson('${encodeURIComponent(p.name)}')">DELETE</button></div>`;}).join(''):'<span style="font-family:var(--font-mono);font-size:9px;color:var(--dim)">No consignors yet. Add the first person above.</span>';}
 function useConsignorPerson(encoded){const name=decodeURIComponent(encoded),p=consignmentOwnerDirectory().find(x=>x.name===name);if(!p)return;document.getElementById('cs-owner').value=p.name;document.getElementById('cs-contact').value=p.contact||'';document.getElementById('cs-split').value=Number(p.split||25);document.getElementById('cs-item')?.focus();}
 function editConsignorPerson(encoded){const oldName=decodeURIComponent(encoded),profile=consignmentOwnerDirectory().find(p=>p.name===oldName);if(!profile)return;const name=prompt('Consignor name:',profile.name);if(name===null||!name.trim())return;const contact=prompt('Phone or email:',profile.contact||'');if(contact===null)return;const splitRaw=prompt('Default store commission %:',String(profile.split||25));if(splitRaw===null)return;const split=Math.max(0,Math.min(100,Number(splitRaw)||0));let person=consignorPeople.find(p=>p.name.toLowerCase()===oldName.toLowerCase());if(!person){person={id:'person_'+Date.now(),createdAt:new Date().toISOString()};consignorPeople.push(person);}Object.assign(person,{name:name.trim(),contact:contact.trim(),split,updatedAt:new Date().toISOString()});consignItems.filter(c=>c.owner===oldName).forEach(c=>Object.assign(c,{owner:name.trim(),contact:contact.trim(),split}));all.filter(i=>i.consignorName===oldName).forEach(i=>{const patch={consignorName:name.trim(),inventoryOwner:name.trim()};Object.assign(i,patch);saveInventoryEditOverride(i.id,patch);});saveConsignorPeople();saveConsign();renderConsign();filterTable();}
 function deleteConsignorPerson(encoded){const name=decodeURIComponent(encoded),hasRecords=consignItems.some(c=>c.owner===name);if(hasRecords)return toast_dash('This consignor has item history. Edit the person instead of deleting them.');if(!confirm('Delete consignor "'+name+'"?'))return;const removed=consignorPeople.find(p=>p.name===name);consignorPeople=consignorPeople.filter(p=>p.name!==name);saveConsignorPeople();deleteConsignmentCloudRow('consignor_people',removed?.id);renderConsign();}
@@ -21930,6 +21930,7 @@ function renderConsign(){
   const el = document.getElementById('cs-list');
   if(!items.length){ el.innerHTML='<div class="empty"><div class="empty-t">NO ITEMS</div></div>'; return; }
 
+  const stripeReadyOwners = new Set(consignmentOwnerDirectory().filter(p => p.stripeOnboardingStatus === 'ready' && p.stripeTransfersEnabled).map(p => p.name.toLowerCase()));
   el.innerHTML = items.map(c=>{
     const yourCut = consignStoreCut(c);
     const ownerCut = consignOwnerCut(c);
@@ -21956,6 +21957,7 @@ function renderConsign(){
             ${c.status==='active'?`<button class="ra" style="background:rgba(0,255,179,.08);border-color:rgba(0,255,179,.2);color:var(--g)" onclick="markConsignSold('${c.id}')">SOLD</button>
             <button class="ra" onclick="returnConsign('${c.id}')">Return</button>`:''}
             ${c.status==='sold'&&!c.paidOut?`<button class="ra" style="background:rgba(72,202,228,.08);border-color:rgba(72,202,228,.2);color:var(--blue)" onclick="markPaidOut('${c.id}')">✓ Paid Out</button>`:''}
+            ${c.status==='sold'&&!c.paidOut&&stripeReadyOwners.has(String(c.owner||'').toLowerCase())?`<button class="ra" style="background:rgba(0,255,179,.08);border-color:rgba(0,255,179,.2);color:var(--g)" onclick="payConsignorViaStripe('${c.id}')">💳 Pay via Stripe</button>`:''}
             <button class="ra ra-sell" onclick="deleteConsign('${c.id}')">✕</button>
           </div>
         </div>
@@ -21999,6 +22001,61 @@ function markPaidOut(id){
   saveConsign();
   renderConsign();
   toast_dash('✓ Paid out to '+c.owner);
+}
+
+// Sends a real Stripe Transfer to the consignor instead of just flagging the
+// row paid. Requires the item to already be synced to Supabase (the Worker
+// reads consignment_items/consignor_people there, not this device's local
+// state) and the consignor to have already connected Stripe. Owner/admin
+// only -- gated server-side too, this is real money leaving the store's
+// Stripe balance.
+async function payConsignorViaStripe(id){
+  if(!requireOwnerAdmin()) return;
+  const c = consignItems.find(x=>x.id===id);
+  if(!c) return;
+  if(!consignmentCloudReady) return toast_dash('Cloud sync not ready yet -- try again in a moment');
+  if(!confirm(`Pay ${c.owner} via Stripe for "${c.item}"? This sends a real bank transfer through Stripe and cannot be undone from here.`)) return;
+  try {
+    const data = await stripeWorkerFetch('/stripe/connect/consignor-payout', { consignmentItemId:id });
+    c.paidOut = true;
+    c.paidOutAt = new Date().toISOString();
+    c.stripeTransferId = data.transferId || '';
+    c.paidVia = 'stripe';
+    const alerts=getConsignmentAlerts();alerts.forEach(a=>{if(a.consignmentId===c.id&&a.status==='open'){a.status='settled';a.settledAt=c.paidOutAt;}});saveConsignmentAlerts(alerts);
+    saveConsign();
+    renderConsign();
+    toast_dash(`✓ Paid ${c.owner} $${((data.amountCents||0)/100).toFixed(2)} via Stripe`);
+  } catch(e) {
+    toast_dash('Stripe payout failed: ' + e.message);
+  }
+}
+
+// Creates (or fetches the status of) a consignor's own Stripe Connect
+// account -- separate from the store's own connected account -- then sends
+// them to Stripe's hosted onboarding if it isn't complete yet. Transfers-
+// only capability (a consignor never takes a card charge, only ever
+// receives a payout).
+async function connectConsignorStripe(personId){
+  if(!requireOwnerAdmin()) return;
+  const person = consignorPeople.find(p => p.id === personId);
+  if(!person) return;
+  if(!consignmentCloudReady) return toast_dash('Cloud sync not ready yet -- try again in a moment');
+  try {
+    const status = await stripeWorkerFetch('/stripe/connect/consignor-account', { consignorId:personId });
+    person.stripeAccountId = status.stripeConnectedAccountId || '';
+    person.stripeOnboardingStatus = status.onboardingStatus || 'incomplete';
+    person.stripeTransfersEnabled = !!status.transfersEnabled;
+    localStorage.setItem('pos_consignors', JSON.stringify(consignorPeople));
+    if(status.onboardingStatus !== 'ready'){
+      const link = await stripeWorkerFetch('/stripe/connect/consignor-onboarding-link', { returnUrl:location.origin });
+      window.open(link.url, '_blank');
+    } else {
+      toast_dash(person.name + ' is ready to receive Stripe payouts');
+    }
+    renderConsignorPeople();
+  } catch(e) {
+    toast_dash('Stripe connect failed: ' + e.message);
+  }
 }
 
 function returnConsign(id){
@@ -23170,7 +23227,7 @@ function applyComicCandidateToEditForm(product){
   if(marketEl && raw > 0 && !Number(marketEl.value)) { marketEl.value = raw; updateEditProfit(); }
 }
 
-function consignmentOwnerDirectory(){const map=new Map();(consignorPeople||[]).forEach(p=>{const name=String(p.name||'').trim();if(name)map.set(name.toLowerCase(),{name,contact:p.contact||'',split:Number(p.split||25),personId:p.id||''});});(consignItems||[]).forEach(c=>{const name=String(c.owner||'').trim();if(name&&!map.has(name.toLowerCase()))map.set(name.toLowerCase(),{name,contact:c.contact||'',split:Number(c.split||25)});});return [...map.values()].sort((a,b)=>a.name.localeCompare(b.name));}
+function consignmentOwnerDirectory(){const map=new Map();(consignorPeople||[]).forEach(p=>{const name=String(p.name||'').trim();if(name)map.set(name.toLowerCase(),{name,contact:p.contact||'',split:Number(p.split||25),personId:p.id||'',stripeOnboardingStatus:p.stripeOnboardingStatus||'not_started',stripeTransfersEnabled:!!p.stripeTransfersEnabled});});(consignItems||[]).forEach(c=>{const name=String(c.owner||'').trim();if(name&&!map.has(name.toLowerCase()))map.set(name.toLowerCase(),{name,contact:c.contact||'',split:Number(c.split||25)});});return [...map.values()].sort((a,b)=>a.name.localeCompare(b.name));}
 function populateInventoryOwnerSelect(item={}){const select=document.getElementById('edit-consignor');if(!select)return;const owners=consignmentOwnerDirectory(),current=item.consignorName||item.inventoryOwner||consignItems.find(c=>c.id===item.consignmentId||c.inventoryId===item.id)?.owner||'';select.innerHTML='<option value="">Select a person...</option>'+owners.map(o=>`<option value="${escHtml(o.name)}">${escHtml(o.name)}${o.contact?' · '+escHtml(o.contact):''}</option>`).join('');if(current&&!owners.some(o=>o.name===current))select.insertAdjacentHTML('beforeend',`<option value="${escHtml(current)}">${escHtml(current)}</option>`);select.value=current;}
 function toggleInventoryOwnerFields(){const type=document.getElementById('edit-owner-type')?.value||'store',wrap=document.getElementById('edit-consignor-wrap'),note=document.getElementById('edit-owner-note');if(wrap)wrap.style.display=type==='consignor'?'':'none';if(note)note.textContent=type==='consignor'?'This item will appear in that person’s consignment inventory. When it sells, a payout alert is created.':'Store-owned item. Sale profit belongs to the store.';}
 function inventoryOwnershipPatch(item={}){const type=document.getElementById('edit-owner-type')?.value||'store',owner=type==='consignor'?(document.getElementById('edit-consignor')?.value||''):'';return {ownershipType:type,inventoryOwner:type==='store'?'Store':owner,consignorName:owner};}
@@ -40219,7 +40276,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.16.04-ebay-auto-reprice-aged-listings" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.16.05-consignor-stripe-payouts" defer></script>
 </body>
 </html>
 

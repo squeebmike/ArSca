@@ -1035,7 +1035,72 @@ async function handleStripeFoundation(request, env, url) {
     const refunded=Number(payment.refunded_amount_cents||0)+amount;const nextStatus=refunded>=Number(payment.amount_cents)?'refunded':'partially_refunded';await supabaseAdminFetch(env,`pos_payments?id=eq.${payment.id}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({status:nextStatus,refunded_amount_cents:refunded,updated_at:new Date().toISOString()})});await supabaseAdminFetch(env,`pos_sales?id=eq.${payment.sale_id}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({payment_status:nextStatus,refund_total_cents:refunded,refundable_remaining_cents:Math.max(0,Number(payment.amount_cents)-refunded),inventory_restock_status:body.restockMode==='restock'?'pending':'not_requested'})});
     return json({ok:true,refundId:refund.id,status:refund.status,amountCents:amount,saleRefundStatus:nextStatus,refundedApplicationFee:body.refundApplicationFee!==false,restockedItems:restocked});
   }
+  // Consignor Connect accounts are transfers-only (no card_payments capability
+  // -- a consignor never takes a charge, only ever receives a payout), so
+  // status is read off the transfers capability specifically rather than
+  // reusing safeStripeAccount()'s charges_enabled/payouts_enabled, which
+  // would stay permanently false for an account that never requested
+  // card_payments.
+  if (path === '/stripe/connect/consignor-account') {
+    const consignorId=String(body.consignorId||'');if(!consignorId)return json({ok:false,error:'consignorId is required'},400);
+    const {data:consignors}=await supabaseAdminFetch(env,`consignor_people?id=eq.${encodeURIComponent(consignorId)}&store_id=eq.${encodeURIComponent(storeId)}&select=*&limit=1`);const consignor=consignors?.[0];if(!consignor)return json({ok:false,error:'Consignor not found'},404);
+    let account;
+    if(consignor.stripe_account_id) account=await stripeApi(env,mode,`accounts/${encodeURIComponent(consignor.stripe_account_id)}`);
+    else {
+      const params=new URLSearchParams({country:String(body.country||'US').toUpperCase(),'controller[fees][payer]':'account','controller[stripe_dashboard][type]':'full','capabilities[transfers][requested]':'true','metadata[arsca_store_id]':storeId,'metadata[arsca_consignor_id]':consignorId,'business_profile[name]':consignor.name||'Consignor','business_profile[product_description]':'Consignment payouts'});
+      account=await stripeApi(env,mode,'accounts',{method:'POST',params,idempotencyKey:`arsca-consignor-connect-${mode}-${consignorId}`});
+    }
+    const status=safeConsignorStripeAccount(account,mode);
+    await supabaseAdminFetch(env,`consignor_people?id=eq.${encodeURIComponent(consignorId)}&store_id=eq.${encodeURIComponent(storeId)}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({stripe_account_id:status.stripeConnectedAccountId,stripe_onboarding_status:status.onboardingStatus,stripe_transfers_enabled:status.transfersEnabled,updated_at:new Date().toISOString()})});
+    return json({ok:true,...status});
+  }
+  if (path === '/stripe/connect/consignor-onboarding-link') {
+    const consignorId=String(body.consignorId||'');if(!consignorId)return json({ok:false,error:'consignorId is required'},400);
+    const {data:consignors}=await supabaseAdminFetch(env,`consignor_people?id=eq.${encodeURIComponent(consignorId)}&store_id=eq.${encodeURIComponent(storeId)}&select=stripe_account_id&limit=1`);const consignor=consignors?.[0];
+    if(!consignor?.stripe_account_id)return json({ok:false,error:"Create the consignor's connected account first"},409);
+    const origin=String(body.returnUrl || request.headers.get('Origin') || url.origin).replace(/\/$/,'');
+    const link=await stripeApi(env,mode,'account_links',{method:'POST',params:new URLSearchParams({account:consignor.stripe_account_id,refresh_url:`${origin}/dashboard.html?stripe=refresh`,return_url:`${origin}/dashboard.html?stripe=return`,type:'account_onboarding'})});
+    return json({ok:true,url:link.url,expiresAt:link.expires_at});
+  }
+  // Moves money OUT of the store's own connected account balance (where a
+  // direct-charge POS sale actually lands) into the consignor's connected
+  // account -- a transfer between two connected accounts under the same
+  // platform, using the store's account as the acting party (Stripe-Account
+  // header) so it's the store's balance being debited, not the platform's.
+  // Idempotency key is keyed to the consignment item id alone (not a
+  // per-attempt counter) so a double-click or retried request can never
+  // double-pay the same item.
+  if (path === '/stripe/connect/consignor-payout') {
+    const itemId=String(body.consignmentItemId||'');if(!itemId)return json({ok:false,error:'consignmentItemId is required'},400);
+    const {data:items}=await supabaseAdminFetch(env,`consignment_items?id=eq.${encodeURIComponent(itemId)}&store_id=eq.${encodeURIComponent(storeId)}&select=*&limit=1`);const item=items?.[0];
+    if(!item)return json({ok:false,error:'Consignment item not found'},404);
+    if(item.status!=='sold'||item.sale_price==null)return json({ok:false,error:'This item has not been recorded as sold yet'},409);
+    if(item.paid_out)return json({ok:false,error:'This item has already been paid out'},409);
+    if(!item.consignor_id)return json({ok:false,error:'This item has no linked consignor record'},409);
+    const {data:consignors}=await supabaseAdminFetch(env,`consignor_people?id=eq.${encodeURIComponent(item.consignor_id)}&store_id=eq.${encodeURIComponent(storeId)}&select=stripe_account_id,name&limit=1`);const consignor=consignors?.[0];
+    if(!consignor?.stripe_account_id)return json({ok:false,error:'This consignor has not connected Stripe yet'},409);
+    const storeRow=await getStripeAccountRow(env,storeId,mode);
+    if(!storeRow?.connected_account_id||!storeRow.charges_enabled)return json({ok:false,error:'Store Stripe account is not ready to send payouts'},409);
+    const ownerCut=Number(item.sale_price)*(1-Number(item.store_split_percent??25)/100);
+    const cents=Math.round(ownerCut*100);
+    if(cents<=0)return json({ok:false,error:'Nothing owed to this consignor on this item'},409);
+    const transfer=await stripeApi(env,mode,'transfers',{method:'POST',account:storeRow.connected_account_id,idempotencyKey:`arsca-consignor-payout-${itemId}`,params:new URLSearchParams({amount:String(cents),currency:'usd',destination:consignor.stripe_account_id,'metadata[arsca_consignment_item_id]':itemId,'metadata[arsca_store_id]':storeId,description:`Consignment payout: ${item.item_name||'item'}`})});
+    const nowIso=new Date().toISOString();
+    await supabaseAdminFetch(env,`consignment_items?id=eq.${encodeURIComponent(itemId)}&store_id=eq.${encodeURIComponent(storeId)}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({paid_out:true,paid_out_at:nowIso,stripe_transfer_id:transfer.id,paid_via:'stripe',updated_at:nowIso})});
+    return json({ok:true,transferId:transfer.id,amountCents:cents,consignor:consignor.name||''});
+  }
   return json({ok:false,error:'Stripe route not found'},404);
+}
+
+function safeConsignorStripeAccount(account, mode) {
+  const transfersActive = account?.capabilities?.transfers === 'active';
+  const due = account?.requirements || {};
+  return {
+    stripeConnectedAccountId: account?.id || '', transfersEnabled: transfersActive,
+    detailsSubmitted: !!account?.details_submitted,
+    onboardingStatus: transfersActive ? 'ready' : account?.details_submitted ? 'restricted' : 'incomplete',
+    requirementsCurrentlyDue: due.currently_due || [], disabledReason: due.disabled_reason || '', mode,
+  };
 }
 
 function adminPage(url) {
