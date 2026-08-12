@@ -2637,6 +2637,57 @@ export default {
     // re-verify against inventory_items, since the caller already did that
     // against the same /public/storefront/item source moments earlier and
     // non-inventory items wouldn't be found there anyway.
+    // Public "sell to us" buylist -- a customer submits a list of items they
+    // want to sell with no login, staff reviews it in the dashboard and
+    // reaches out to make an offer. Independently toggleable from the
+    // storefront catalog (a store might want submissions without publishing
+    // a public inventory page), so its own opt-in flag (buylistEnabled)
+    // rather than piggybacking on storefrontEnabled.
+    if (url.pathname === '/public/buylist/info' && request.method === 'GET') {
+      const storeId = String(url.searchParams.get('store_id') || '').trim();
+      if (!/^[0-9a-z_-]{2,80}$/i.test(storeId)) return json({ ok:false, error:'Valid store_id required' }, 400);
+      if (!(env.SUPABASE_URL && (env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SERVICE_KEY))) return json({ ok:false, error:'Buylist service unavailable' }, 503);
+      const { data:settings } = await supabaseAdminFetch(env, `store_settings?store_id=eq.${encodeURIComponent(storeId)}&select=receipt_settings&limit=1`);
+      const cfg = settings?.[0]?.receipt_settings || {};
+      if (cfg.buylistEnabled !== true) return json({ ok:false, error:'This store is not accepting buylist submissions' }, 404);
+      const { data:stores } = await supabaseAdminFetch(env, `stores?id=eq.${encodeURIComponent(storeId)}&select=id,name,display_name&limit=1`);
+      const store = stores?.[0] || {};
+      return json({ ok:true, store:{ id:storeId, name:storefrontCleanText(cfg.storeName || cfg.shortName || store.display_name || store.name || 'Store',120), logo:storefrontCleanUrl(cfg.logo), message:storefrontCleanText(cfg.buylistMessage,500) } }, 200, { 'Cache-Control':'public, max-age=60' });
+    }
+    if (url.pathname === '/public/buylist/submit' && request.method === 'POST') {
+      if (!(env.SUPABASE_URL && (env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SERVICE_KEY))) return json({ ok:false, error:'Buylist service unavailable' }, 503);
+      const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
+      const limited = await readJsonWithLimit(request, 32 * 1024);
+      if (limited.error) return limited.error;
+      const body = limited.data || {};
+      const storeId = String(body.storeId || '').trim();
+      if (!/^[0-9a-z_-]{2,80}$/i.test(storeId)) return json({ ok:false, error:'Valid storeId required' }, 400);
+      const rateError = await enforceUsageLimit(env, `buylist-submit:${storeId}:${ip}`, 5, 3600);
+      if (rateError) return rateError;
+      const { data:settings } = await supabaseAdminFetch(env, `store_settings?store_id=eq.${encodeURIComponent(storeId)}&select=receipt_settings&limit=1`);
+      if (settings?.[0]?.receipt_settings?.buylistEnabled !== true) return json({ ok:false, error:'This store is not accepting buylist submissions' }, 404);
+
+      const cleanText = (v, n) => String(v == null ? '' : v).trim().slice(0, n);
+      const contactName = cleanText(body.contactName, 160);
+      if (!contactName) return json({ ok:false, error:'Your name is required' }, 400);
+      const contactEmail = cleanText(body.contactEmail, 200);
+      const contactPhone = cleanText(body.contactPhone, 40);
+      if (!contactEmail && !contactPhone) return json({ ok:false, error:'An email or phone number is required so the store can reach you' }, 400);
+      const requestedItems = Array.isArray(body.items) ? body.items.slice(0, 50) : [];
+      const items = requestedItems.map(it => ({
+        description: cleanText(it?.description, 300),
+        category: cleanText(it?.category, 80),
+        condition: cleanText(it?.condition, 80),
+        estimatedValue: Math.max(0, Number(it?.estimatedValue || 0)) || null,
+      })).filter(it => it.description);
+      if (!items.length) return json({ ok:false, error:'Add at least one item you want to sell' }, 400);
+
+      const row = { store_id:storeId, contact_name:contactName, contact_email:contactEmail || null, contact_phone:contactPhone || null, notes:cleanText(body.notes, 1000) || null, items, status:'new' };
+      const { data:inserted, response } = await supabaseAdminFetch(env, 'buylist_submissions', { method:'POST', headers:{ Prefer:'return=representation' }, body:JSON.stringify(row) });
+      if (!response?.ok) return json({ ok:false, error:'Could not save your submission -- please try again' }, 502);
+      return json({ ok:true, id: inserted?.[0]?.id || '' });
+    }
+
     if (url.pathname === '/public/storefront/record-order' && request.method === 'POST') {
       if (!(env.SUPABASE_URL && (env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SERVICE_KEY))) return json({ ok:false, error:'Storefront service unavailable' }, 503);
       const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
@@ -4549,6 +4600,33 @@ export default {
       if (auth.error) return auth.error;
       const raw = env.LBA_KV ? await env.LBA_KV.get(`ebay_reprice:${storeId}:latest`) : null;
       return json({ ok: true, status: raw ? JSON.parse(raw) : null });
+    }
+
+    // Staff-side review of public buylist submissions (see /public/buylist/*
+    // above for the customer-facing side).
+    if (url.pathname === '/buylist/submissions') {
+      if (request.method !== 'GET') return json({ error: 'GET only' }, 405);
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId, ['owner','admin','manager','employee']);
+      if (auth.error) return auth.error;
+      const { data, response } = await supabaseAdminFetch(env, `buylist_submissions?store_id=eq.${encodeURIComponent(storeId)}&select=*&order=created_at.desc&limit=200`);
+      if (!response?.ok) return json({ ok:false, error:'Could not load submissions' }, 502);
+      return json({ ok:true, submissions: data || [] });
+    }
+    if (url.pathname === '/buylist/submissions/status') {
+      if (request.method !== 'POST') return json({ error: 'POST only' }, 405);
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId, ['owner','admin','manager','employee']);
+      if (auth.error) return auth.error;
+      const body = await request.json().catch(() => ({}));
+      const id = String(body.id || '');
+      if (!id) return json({ ok:false, error:'id is required' }, 400);
+      const status = ['new','contacted','closed'].includes(body.status) ? body.status : null;
+      if (!status) return json({ ok:false, error:'Invalid status' }, 400);
+      const patch = { status, updated_at:new Date().toISOString() };
+      if (body.staffNotes != null) patch.staff_notes = String(body.staffNotes).slice(0, 1000);
+      await supabaseAdminFetch(env, `buylist_submissions?id=eq.${encodeURIComponent(id)}&store_id=eq.${encodeURIComponent(storeId)}`, { method:'PATCH', headers:{ Prefer:'return=minimal' }, body:JSON.stringify(patch) });
+      return json({ ok:true });
     }
 
     // Detects eBay sales that this dashboard never recorded on its own -- a listing

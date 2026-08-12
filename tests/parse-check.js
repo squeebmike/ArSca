@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 
 const root = path.resolve(__dirname, '..');
-const htmlFiles = ['dashboard.html', 'sca.html'];
+const htmlFiles = ['dashboard.html', 'sca.html', 'buylist.html'];
 let failed = false;
 
 for (const file of htmlFiles) {
