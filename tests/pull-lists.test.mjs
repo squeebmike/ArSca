@@ -411,3 +411,17 @@ console.log('Cover/info backfill contract checks passed');
 }
 
 console.log('pickMetronIssueMatch functional checks passed');
+
+// ── Cover thumbnail labels must show the cover's own name, not a blank source tag ──
+// Metron sibling/nested covers never carried a `source` field, so the old
+// `${c.source || ''}` label rendered blank under every Metron cover thumbnail
+// -- this is the "tapping covers gives me no info" bug. The label must now
+// prefer the cover's own name (which usually carries the artist, e.g. "Cover B
+// David Lapham"), and clickable covers must hint that a tap loads full credits.
+
+assert.doesNotMatch(dashboard, /\$\{c\.source \|\| ''\}<\/div>\s*\n\s*\$\{covSignal/, 'cover thumbnail label must not regress to the blank source-only tag');
+assert.match(dashboard, /const rawName = c\.issueName \|\| c\.name \|\| '';/, 'missing rawName extraction for cover thumbnail label');
+assert.match(dashboard, /const coverLabel = rawName && rawName !== issue\.seriesName \? rawName : \(targetId \? 'Main cover' : ''\);/, 'missing coverLabel fallback logic');
+assert.match(dashboard, /tap for full credits/, 'clickable covers must hint that tapping loads full credits');
+
+console.log('Cover thumbnail label fix checks passed');

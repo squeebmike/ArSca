@@ -193,11 +193,11 @@ function metronIssueBaseNumber(value) {
 // of cover a heavy-variant book's "missing" complaint traces back to).
 function metronSiblingCovers(currentIssue, issueList = []) {
   const target = metronIssueBaseNumber(currentIssue.number);
-  const siblings = (Array.isArray(issueList) ? issueList : []).map(normalizeMetronListIssue).filter(issue => {
+  const siblings = (Array.isArray(issueList) ? issueList : []).map(normalizeMetronListIssue).map(issue => ({ ...issue, source:'Metron' })).filter(issue => {
     if (!issue.id) return false;
     return !target || metronIssueBaseNumber(issue.number) === target;
   });
-  const current = normalizeMetronListIssue(currentIssue);
+  const current = { ...normalizeMetronListIssue(currentIssue), source:'Metron' };
   if (current.id && !siblings.some(issue => issue.id === current.id)) siblings.unshift(current);
   const nested = (currentIssue.variants || []).map(variant => ({
     id:variant.metronIssueId || variant.id,
@@ -214,6 +214,7 @@ function metronSiblingCovers(currentIssue, issueList = []) {
     coverPrice:variant.coverPrice,
     coverPriceCurrency:variant.coverPriceCurrency,
     nestedVariant:true,
+    source:'Metron',
   })).filter(variant => variant.id);
   const combined = [...siblings, ...nested];
   return combined.filter((cover, index) => combined.findIndex(other => String(other.id) === String(cover.id)) === index);

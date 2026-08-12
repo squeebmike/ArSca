@@ -157,3 +157,14 @@ const comicRoute=dashboard.indexOf("recordSearchPlanRoute(searchPlan,'/comic/met
 const localRoute=dashboard.indexOf('smartSearchLocalItems(q, all, 15)',searchStart);
 assert.ok(comicRoute>searchStart&&comicRoute<localRoute,'comic search must return through Metron before shared inventory/provider fan-out');
 console.log('comic issue hub tests passed');
+
+// ── Cover thumbnails must carry a real source tag, not a blank string ──
+// metronSiblingCovers() (siblings + nested variants) never set a `source`
+// field, so the dashboard's "COVERS & VARIANTS" grid rendered a blank label
+// under every Metron-sourced cover (siblings were the common case: separate
+// same-number issue records, e.g. distinct "Cover A"/"Cover B" printings).
+assert.match(worker,/const siblings = \(Array\.isArray\(issueList\) \? issueList : \[\]\)\.map\(normalizeMetronListIssue\)\.map\(issue => \(\{ \.\.\.issue, source:'Metron' \}\)\)/,'sibling covers must carry a Metron source tag');
+assert.match(worker,/const current = \{ \.\.\.normalizeMetronListIssue\(currentIssue\), source:'Metron' \};/,'the current issue folded into siblings must also carry a Metron source tag');
+assert.match(worker,/nestedVariant:true,\s*\n\s*source:'Metron',/,'nested variant covers must carry a Metron source tag');
+
+console.log('cover source-tag checks passed');
