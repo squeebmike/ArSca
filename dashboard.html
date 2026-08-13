@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.16.10-foil-finish-display">
+<meta name="version" content="2026.08.16.11-storefront-product-type-filter">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1570,13 +1570,13 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.16.10-foil-finish-display" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.16.10-foil-finish-display" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.16.10-foil-finish-display" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.16.10-foil-finish-display" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.16.10-foil-finish-display" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.16.10-foil-finish-display" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.16.10-foil-finish-display" defer></script>
+<script src="scripts/query-routing.js?v=2026.08.16.11-storefront-product-type-filter" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.16.11-storefront-product-type-filter" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.16.11-storefront-product-type-filter" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.16.11-storefront-product-type-filter" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.16.11-storefront-product-type-filter" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.16.11-storefront-product-type-filter" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.16.11-storefront-product-type-filter" defer></script>
 </head>
 <body>
 
@@ -1626,11 +1626,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.16.10-foil-finish-display</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.16.11-storefront-product-type-filter</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.16.10-foil-finish-display</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.16.11-storefront-product-type-filter</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1652,7 +1652,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.16.10-foil-finish-display</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.16.11-storefront-product-type-filter</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -2736,6 +2736,9 @@ body.show-mode .inv-sync-badge{display:none;}
     <label style="margin-top:8px;display:block">Variant / Parallel</label>
     <input type="text" id="edit-variant" placeholder="Base, Holo, Gold Prizm...">
 
+    <label style="margin-top:8px;display:block">Product Type</label>
+    <input type="text" id="edit-configuration" placeholder="Single, Booster Pack, Secret Lair, Commander Deck...">
+
     <label style="margin-top:8px;display:block">Storage Location</label>
     <input type="text" id="edit-location" placeholder="Bin A3, Showcase...">
 
@@ -3378,7 +3381,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.16.10-foil-finish-display';
+const APP_VERSION = '2026.08.16.11-storefront-product-type-filter';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -23514,6 +23517,7 @@ function openEditModal(id) {
   populateInventoryTcgReference(item, false);
   populateInventoryPcReference(item);
   document.getElementById('edit-variant').value = item.variant || '';
+  document.getElementById('edit-configuration').value = inferProductConfiguration(item);
   document.getElementById('edit-location').value = item.location || '';
   populateInventoryOwnerSelect(item);
   const linkedConsignment=consignItems.find(c=>c.status==='active'&&(c.inventoryId===item.id||c.id===item.consignmentId));
@@ -23598,6 +23602,7 @@ function openAddToInventoryModal(idx){
   populateInventoryTcgReference(item, true);
   populateInventoryPcReference(item);
   document.getElementById('edit-variant').value = item.variant || '';
+  document.getElementById('edit-configuration').value = inferProductConfiguration(item);
   document.getElementById('edit-location').value = item.location || '';
   populateInventoryOwnerSelect();
   document.getElementById('edit-owner-type').value = 'store';
@@ -23692,6 +23697,7 @@ async function confirmAddToInventoryFromModal(){
     year: document.getElementById('edit-year').value.trim(),
     set: document.getElementById('edit-set').value.trim(),
     variant: document.getElementById('edit-variant').value.trim(),
+    configuration: document.getElementById('edit-configuration')?.value.trim() || '',
     location: document.getElementById('edit-location').value.trim(),
     condition: document.getElementById('edit-condition').value,
     category: document.getElementById('edit-category').value,
@@ -23908,6 +23914,7 @@ async function confirmEditAndSync() {
     year: document.getElementById('edit-year').value.trim(),
     set: document.getElementById('edit-set').value.trim(),
     variant: document.getElementById('edit-variant').value.trim(),
+    configuration: document.getElementById('edit-configuration')?.value.trim() || '',
     location: document.getElementById('edit-location').value.trim(),
     condition: document.getElementById('edit-condition').value,
     category: document.getElementById('edit-category').value,
@@ -24135,6 +24142,42 @@ function pricingGameForItem(item){
 
 function isSealedProduct(item){
   return /sealed|booster|box|hobby|blaster|mega|pack|case|tin|etb|elite trainer|bundle/.test([item.name,item.set,item.variant].filter(Boolean).join(' ').toLowerCase());
+}
+
+// Buckets an item into a filterable product type (Single, Booster Pack,
+// Secret Lair, Commander Deck, ...) so a category with lots of different
+// product shapes (MTG especially: packs, boxes, precons, singles) can be
+// narrowed on the storefront. Only ever suggests a starting value -- staff
+// can always override it in the edit modal's Product Type field, and an
+// item that already has one keeps it untouched.
+function inferProductConfiguration(item){
+  if(item.configuration) return item.configuration;
+  // Checked before the generic isSealedProduct() gate below: several of
+  // these (Secret Lair, Commander Deck, precons) don't contain any of that
+  // function's trigger words (sealed/booster/box/etc), so gating on it
+  // first would misclassify exactly the sealed subtypes this exists to tell
+  // apart -- name-pattern matches here always imply a sealed product.
+  const name = String(item.name || '').toLowerCase();
+  if(/secret lair/.test(name)) return 'Secret Lair';
+  if(/commander|precon/.test(name)) return 'Commander Deck';
+  if(/planeswalker deck/.test(name)) return 'Planeswalker Deck';
+  if(/starter (deck|kit)/.test(name)) return 'Starter Deck';
+  if(/collector booster/.test(name)) return 'Collector Booster';
+  if(/draft booster/.test(name)) return 'Draft Booster';
+  if(/play booster/.test(name)) return 'Play Booster';
+  if(/set booster/.test(name)) return 'Set Booster';
+  if(/jumpstart/.test(name)) return 'Jumpstart';
+  if(/fat pack|bundle/.test(name)) return 'Bundle';
+  if(/hobby/.test(name)) return 'Hobby Box';
+  if(/blaster/.test(name)) return 'Blaster Box';
+  if(/mega/.test(name)) return 'Mega Box';
+  if(/booster box/.test(name)) return 'Booster Box';
+  if(/elite trainer|\betb\b/.test(name)) return 'Elite Trainer Box';
+  if(/\btin\b/.test(name)) return 'Tin';
+  if(/\bcase\b/.test(name)) return 'Case';
+  if(/booster pack|\bbooster\b|\bpack\b/.test(name)) return 'Booster Pack';
+  if(!isSealedProduct(item) && !item.is_sealed) return (item.gradingCompany || item.grader) ? 'Graded Single' : 'Single';
+  return 'Sealed Product';
 }
 
 function inventoryAvailableQuantity(item){
@@ -40613,7 +40656,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.16.10-foil-finish-display" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.16.11-storefront-product-type-filter" defer></script>
 </body>
 </html>
 

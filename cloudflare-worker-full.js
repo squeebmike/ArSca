@@ -346,6 +346,7 @@ function shapeStorefrontItem(row) {
   return {
     id: storefrontCleanText(row.id, 80), name: storefrontCleanText(d.name || d.title || 'Item'), category: storefrontCleanText(d.category || d.type || 'Other', 80),
     set: storefrontCleanText(d.set || d.series || '', 120), year: storefrontCleanText(d.year || '', 12), variant: storefrontCleanText(d.variant || d.finish || '', 120), condition: storefrontCleanText(d.condition || d.grade || '', 80),
+    configuration: storefrontCleanText(d.configuration || '', 60),
     // photoDataUrl/thumbnail are where the dashboard's own upload flow
     // (camera/file photo, R2-hosted or legacy base64) actually saves a
     // user-taken photo -- checked first, same precedence the dashboard's
