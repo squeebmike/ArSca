@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.16.08-call-forwarding-sms-relay">
+<meta name="version" content="2026.08.16.09-inventory-bundles">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1570,13 +1570,13 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.16.08-call-forwarding-sms-relay" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.16.08-call-forwarding-sms-relay" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.16.08-call-forwarding-sms-relay" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.16.08-call-forwarding-sms-relay" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.16.08-call-forwarding-sms-relay" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.16.08-call-forwarding-sms-relay" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.16.08-call-forwarding-sms-relay" defer></script>
+<script src="scripts/query-routing.js?v=2026.08.16.09-inventory-bundles" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.16.09-inventory-bundles" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.16.09-inventory-bundles" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.16.09-inventory-bundles" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.16.09-inventory-bundles" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.16.09-inventory-bundles" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.16.09-inventory-bundles" defer></script>
 </head>
 <body>
 
@@ -1626,11 +1626,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.16.08-call-forwarding-sms-relay</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.16.09-inventory-bundles</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.16.08-call-forwarding-sms-relay</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.16.09-inventory-bundles</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1652,7 +1652,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.16.08-call-forwarding-sms-relay</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.16.09-inventory-bundles</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3378,7 +3378,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.16.08-call-forwarding-sms-relay';
+const APP_VERSION = '2026.08.16.09-inventory-bundles';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -11977,6 +11977,8 @@ function showInvRowMenu(e, id, isInStock){
     `<button class="hbtn" style="${btnStyle}" onclick="openEbayFromDash('${id}');this.closest('.inv-row-menu').remove()">📦 ${item?.ebayListingId?'Manage eBay Listing':'eBay List'}</button>`,
     isInStock?`<button class="hbtn" style="${btnStyle};color:var(--purple)" onclick="markSoldOnWhatnot('${id}');this.closest('.inv-row-menu').remove()">📦 Sold on Whatnot</button>`:'',
     isInStock?`<button class="hbtn" style="${btnStyle};color:var(--gold)" onclick="openExternalSaleModal('${id}');this.closest('.inv-row-menu').remove()">💰 Record External Sale (other)</button>`:'',
+    inventoryItemBundleEligible(item)?`<button class="hbtn" style="${btnStyle};color:var(--gold)" onclick="toggleBundleDraft('${id}');this.closest('.inv-row-menu').remove()">🎁 ${bundleDraftIds.has(id)?'Remove from':'Add to'} Bundle Draft</button>`:'',
+    (item?.isBundle && item.status==='in_stock')?`<button class="hbtn" style="${btnStyle};color:var(--red)" onclick="dissolveBundle('${id}');this.closest('.inv-row-menu').remove()">🎁 Dissolve Bundle</button>`:'',
     `<button class="hbtn" style="${btnStyle}" onclick="openItemTimeline('${id}');this.closest('.inv-row-menu').remove()">📋 History</button>`,
     `<button class="hbtn" style="${btnStyle}" onclick="openLabelPrintModal('${id}');this.closest('.inv-row-menu').remove()">🏷️ Print Label</button>`,
     isInStock?`<button class="hbtn" style="${btnStyle};color:var(--g)" onclick="publishInventoryItemToWebflow('${id}');this.closest('.inv-row-menu').remove()">🌐 Publish / Sync Webflow</button>`:'',
@@ -15933,6 +15935,12 @@ const BUILT_IN_ITEM_SIMPLE_FIELDS = [
   ['is_signed',false,'bool'], ['is_sealed',false,'bool'],
   ['is_auto',false,'bool'], ['is_patch',false,'bool'], ['is_key',false,'bool'],
   ['stalePrice',false,'bool'],
+  // Item bundles (combine N single-qty items into one priced, sellable
+  // unit) -- container fields live on the bundle row, bundledInto* fields
+  // live on each member row it was built from.
+  ['isBundle',false,'bool'], ['bundleMemberIds',[],'array'], ['bundleMemberNames',[],'array'],
+  ['bundleMemberValueTotal',0,'num'], ['bundledIntoId',''], ['bundledIntoName',''],
+  ['soldAt',''], ['saleId',''],
 ];
 // BUILT_IN_ITEM_ALIASED_FIELDS: the read side stays hand-written in
 // mapBuiltInItem below (a saved row might use an older key name, or the
@@ -17110,14 +17118,14 @@ function renderTable(){
       : `<td class="td-thumb" onclick="${researchClick}" style="cursor:pointer" title="Open in Research"><div class="inv-thumb-placeholder">🔍</div></td>`;
     return `<tr class="${ins?'':'sold'}" data-item-id="${i.id}">
       ${thumbCell}
-      <td><span class="dot ${ins?'in_stock':'sold'}"></span><span class="nc" title="${i.tcgCardId?'TCG ID: '+i.tcgCardId:''}" onclick="${researchClick}" style="cursor:pointer">${i.name}${i.isRookie?' <span style="color:var(--gold);font-size:8px">RC</span>':''}${i.tcgCardId?'<span style="font-family:monospace;font-size:7px;color:rgba(0,255,179,.4);margin-left:4px">●</span>':''}</span>${invSyncBadgeHtml(i.id)}<div class="sc2" style="margin:5px 0 0 12px">${escHtml([i.consignorName||i.inventoryOwner||'Store owned',i.inventorySku||i.sku||''].filter(Boolean).join(' · '))}</div></td>
+      <td><span class="dot ${ins?'in_stock':'sold'}"></span><span class="nc" title="${i.tcgCardId?'TCG ID: '+i.tcgCardId:''}" onclick="${researchClick}" style="cursor:pointer">${i.name}${i.isRookie?' <span style="color:var(--gold);font-size:8px">RC</span>':''}${i.tcgCardId?'<span style="font-family:monospace;font-size:7px;color:rgba(0,255,179,.4);margin-left:4px">●</span>':''}${i.isBundle?' <span style="color:var(--gold);font-size:8px">🎁 BUNDLE</span>':''}</span>${invSyncBadgeHtml(i.id)}<div class="sc2" style="margin:5px 0 0 12px">${escHtml([i.consignorName||i.inventoryOwner||'Store owned',i.inventorySku||i.sku||''].filter(Boolean).join(' · '))}</div>${i.status==='bundled'&&i.bundledIntoName?`<div class="sc2" style="margin-top:5px;color:var(--gold)">🎁 In bundle: ${escHtml(i.bundledIntoName)}</div>`:''}</td>
       <td><span class="sc2">${escHtml([i.set,i.variant].filter(Boolean).join(' · ')||'—')}</span><div class="sc2" style="margin-top:5px">${escHtml([i.year,i.condition,i.location].filter(Boolean).join(' · '))}</div>${comicPeople?`<div class="sc2" style="margin-top:5px;color:var(--purple)">${escHtml(comicPeople)}</div>`:''}</td>
       <td><span class="ct ${cat}">${i.category}</span></td>
       <td style="text-align:center;font-family:var(--font-mono);font-size:11px;color:${(i.qty||1)>1?'var(--g)':'var(--dim)'}">${i.qty||1}</td>
       <td class="pp pm">${money.list>0?fd$(money.list):(money.market>0?fd$(money.market):'—')}<br>${money.list>0&&money.market>0?`<span style="font-family:var(--font-mono);font-size:8px;color:var(--dim)">MKT ${fd$(money.market)}</span><br>`:''}${priceSourceBadge(i.priceSource, i.category)}${stale?'<br><span class="inv-warning-pill">STALE</span>':''}</td>
       <td class="pp pd">${money.cost>0?fd$(money.cost):'<span class="inv-warning-pill">NO COST</span>'}</td>
       <td class="${ppc}">${money.cost>0||i.profit?(pft>=0?'+':'')+fd$(pft)+(money.list>0||money.cost>0?' ('+margin+')':''):'—'}</td>
-      <td><span style="font-family:var(--font-mono);font-size:9px;color:${ins?'var(--g)':'var(--dim)'}">${ins?'IN STOCK':'SOLD'+(i.channel?' · '+i.channel:'')}</span>${ins&&daysInStock!==null?`<div style="font-family:var(--font-mono);font-size:8px;color:${aged?'var(--red)':'var(--dim)'};margin-top:3px">${daysInStock}d in stock</div>`:''}${aged?'<span class="inv-warning-pill" style="margin-top:3px">AGED</span>':''}</td>
+      <td><span style="font-family:var(--font-mono);font-size:9px;color:${ins?'var(--g)':(i.status==='bundled'?'var(--gold)':'var(--dim)')}">${ins?'IN STOCK':(i.status==='bundled'?'IN BUNDLE':'SOLD'+(i.channel?' · '+i.channel:''))}</span>${ins&&daysInStock!==null?`<div style="font-family:var(--font-mono);font-size:8px;color:${aged?'var(--red)':'var(--dim)'};margin-top:3px">${daysInStock}d in stock</div>`:''}${aged?'<span class="inv-warning-pill" style="margin-top:3px">AGED</span>':''}</td>
       <td><div class="row-act-v2">
         ${ins?`<button class="rab rab-cart" onclick="dashAddToCart('${i.id}')">ADD TO CART</button>`:''}
         <button class="rab rab-edit" onclick="openEditModal('${i.id}')">EDIT</button>
@@ -24139,7 +24147,192 @@ function inventoryItemIsSellable(item){
   if(!item) return false;
   if(item.lifecycle === 'hold') return false;
   const status = String(item.status || item.lifecycle || item.raw?.status || '').toLowerCase();
-  return !['sold','archived','returned','deleted'].includes(status) && !item.soldAt && inventoryAvailableQuantity(item) > 0;
+  return !['sold','archived','returned','deleted','bundled'].includes(status) && !item.soldAt && inventoryAvailableQuantity(item) > 0;
+}
+
+// ══════════════════════════════════════════════════
+// ITEM BUNDLES — combine N single-qty items into one priced, sellable unit
+// (e.g. a consecutive run of comic issues sold together). The bundle
+// container is just a normal inventory_items row (productType 'bundle',
+// qty 1), so it flows through the existing cart/checkout/atomic-sale path
+// with zero changes to money-critical code. Member items are marked
+// status 'bundled' (excluded from inventoryItemIsSellable above) so they
+// can't also be sold individually, and get cascade-marked 'sold' right
+// after the bundle itself sells (see cascadeMarkBundleMembersSold).
+// ══════════════════════════════════════════════════
+let bundleDraftIds = new Set();
+
+function inventoryItemBundleEligible(item){
+  return !!item && inventoryItemIsSellable(item) && inventoryAvailableQuantity(item) === 1 && !item.isBundle;
+}
+
+function ensureBundleDraftBar(){
+  if(document.getElementById('bundle-draft-bar')) return;
+  const bar = document.createElement('div');
+  bar.id = 'bundle-draft-bar';
+  bar.style.cssText = 'display:none;position:fixed;bottom:14px;left:50%;transform:translateX(-50%);z-index:500;gap:10px;align-items:center;background:var(--surf);border:1px solid var(--gold);border-radius:10px;padding:8px 14px;box-shadow:0 8px 24px rgba(0,0,0,.4)';
+  document.body.appendChild(bar);
+}
+
+function renderBundleDraftBar(){
+  const host = document.getElementById('bundle-draft-bar');
+  if(!host) return;
+  if(bundleDraftIds.size === 0){ host.style.display='none'; host.innerHTML=''; return; }
+  host.style.display='flex';
+  host.innerHTML = `<span style="font-family:var(--font-mono);font-size:10px;color:var(--gold)">🎁 BUNDLE DRAFT · ${bundleDraftIds.size} item${bundleDraftIds.size===1?'':'s'}</span>
+    <button class="hbtn" style="min-height:28px;padding:2px 10px;font-size:9px" ${bundleDraftIds.size<2?'disabled':''} onclick="openBundleBuilderModal()">BUILD BUNDLE</button>
+    <button class="hbtn" style="min-height:28px;padding:2px 10px;font-size:9px" onclick="clearBundleDraft()">CLEAR</button>`;
+}
+
+function toggleBundleDraft(id){
+  ensureBundleDraftBar();
+  const item = all.find(i => i.id === id);
+  if(!item) return;
+  if(bundleDraftIds.has(id)){
+    bundleDraftIds.delete(id);
+    toast_dash('Removed from bundle draft');
+  } else {
+    if(!inventoryItemBundleEligible(item)){ toast_dash('Only single-quantity, in-stock items can be bundled'); return; }
+    bundleDraftIds.add(id);
+    toast_dash('Added to bundle draft: ' + item.name);
+  }
+  renderBundleDraftBar();
+}
+
+function clearBundleDraft(){ bundleDraftIds.clear(); renderBundleDraftBar(); }
+
+// If all selected items are comics from the same series with distinct
+// issue numbers, name the bundle after the run (e.g. "Series #1–#5
+// (5-issue run)"); otherwise fall back to a generic count-based name.
+function suggestBundleName(items){
+  const comics = items.filter(i => qplCategoryKey(i.category) === 'comic');
+  if(comics.length === items.length && comics.length >= 2){
+    const seriesNames = [...new Set(comics.map(i => i.comicMetadata?.series || i.set || 'Series'))];
+    if(seriesNames.length === 1){
+      const nums = comics.map(i => parseFloat(i.comicMetadata?.issueNumber ?? i.issue) || 0).filter(n => n > 0).sort((a,b) => a-b);
+      if(nums.length === comics.length){
+        const lo = nums[0], hi = nums[nums.length-1];
+        return `${seriesNames[0]} #${lo}${hi!==lo?'–#'+hi:''} (${comics.length}-issue run)`;
+      }
+      return `${seriesNames[0]} (${comics.length}-issue bundle)`;
+    }
+  }
+  return `Bundle of ${items.length} Items`;
+}
+
+function ensureBundleBuilderModal(){
+  if(document.getElementById('bundle-builder-modal')) return;
+  const modal = document.createElement('div');
+  modal.id = 'bundle-builder-modal';
+  modal.style.cssText = 'display:none;position:fixed;inset:0;z-index:900;background:rgba(0,0,0,.6);align-items:center;justify-content:center';
+  modal.innerHTML = `<div style="background:var(--surf);border:1px solid var(--border);border-radius:12px;padding:20px;max-width:420px;width:92%;max-height:80vh;overflow:auto">
+    <div style="font-family:'Orbitron',monospace;font-size:13px;color:var(--gold);margin-bottom:10px">🎁 BUILD BUNDLE</div>
+    <div id="bb-items" style="margin-bottom:10px;max-height:200px;overflow:auto"></div>
+    <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);margin-bottom:10px">Individual total: <span id="bb-sum" style="color:var(--text)"></span></div>
+    <label style="font-family:monospace;font-size:9px;color:var(--dim)">BUNDLE NAME<input id="bb-name" class="tsi" type="text" style="margin-top:3px;margin-bottom:10px"></label>
+    <label style="font-family:monospace;font-size:9px;color:var(--dim)">BUNDLE PRICE<input id="bb-price" class="tsi" type="number" step="0.01" style="margin-top:3px;margin-bottom:14px"></label>
+    <div style="display:flex;gap:8px">
+      <button class="hbtn" style="flex:1" onclick="closeBundleBuilderModal()">CANCEL</button>
+      <button class="hbtn" style="flex:1;color:var(--gold)" onclick="confirmCreateBundle()">CREATE BUNDLE</button>
+    </div>
+  </div>`;
+  document.body.appendChild(modal);
+  modal.addEventListener('click', e => { if(e.target === modal) closeBundleBuilderModal(); });
+}
+
+function openBundleBuilderModal(){
+  if(bundleDraftIds.size < 2) return toast_dash('Select at least 2 items to bundle');
+  const items = [...bundleDraftIds].map(id => all.find(i => i.id === id)).filter(Boolean);
+  const sumPrice = items.reduce((a,i) => a + Number(inventoryListPrice(i) || i.price || i.market || 0), 0);
+  ensureBundleBuilderModal();
+  document.getElementById('bb-items').innerHTML = items.map(i => `<div style="display:flex;justify-content:space-between;gap:8px;padding:4px 0;border-bottom:1px solid var(--border);font-family:var(--font-mono);font-size:10px"><span>${escHtml(i.name)}</span><span style="color:var(--dim)">${fd$(inventoryListPrice(i) || i.price || 0)}</span></div>`).join('');
+  document.getElementById('bb-sum').textContent = fd$(sumPrice);
+  document.getElementById('bb-name').value = suggestBundleName(items);
+  document.getElementById('bb-price').value = sumPrice.toFixed(2);
+  document.getElementById('bundle-builder-modal').style.display = 'flex';
+}
+
+function closeBundleBuilderModal(){
+  const m = document.getElementById('bundle-builder-modal');
+  if(m) m.style.display = 'none';
+}
+
+async function confirmCreateBundle(){
+  const name = document.getElementById('bb-name')?.value.trim();
+  const price = parseFloat(document.getElementById('bb-price')?.value || '0') || 0;
+  if(!name) return toast_dash('Bundle needs a name');
+  if(price <= 0) return toast_dash('Bundle needs a price');
+  const items = [...bundleDraftIds].map(id => all.find(i => i.id === id)).filter(Boolean);
+  if(items.length < 2) return toast_dash('Select at least 2 items to bundle');
+  try {
+    await createInventoryBundle(items, name, price);
+    closeBundleBuilderModal();
+    clearBundleDraft();
+    toast_dash('Bundle created: ' + name);
+  } catch(e) { toast_dash('Could not create bundle: ' + e.message); }
+}
+
+async function createInventoryBundle(items, name, price){
+  const categories = [...new Set(items.map(i => i.category).filter(Boolean))];
+  const category = categories.length === 1 ? categories[0] : 'Bundle';
+  const totalCost = items.reduce((a,i) => a + Number(i.cost||0), 0);
+  const valueTotal = items.reduce((a,i) => a + Number(inventoryListPrice(i) || i.price || i.market || 0), 0);
+  const thumbSource = items.find(i => i.thumbnail || i.imageUrl);
+  const containerUpdates = {
+    name, category, price, market:price, qty:1, cost:totalCost,
+    productType:'bundle', isBundle:true,
+    bundleMemberIds: items.map(i => i.id),
+    bundleMemberNames: items.map(i => i.name),
+    bundleMemberValueTotal: valueTotal,
+    imageUrl: thumbSource?.imageUrl || thumbSource?.thumbnail || '',
+    thumbnail: thumbSource?.thumbnail || thumbSource?.imageUrl || '',
+  };
+  const containerId = await createBuiltInInventoryItem({}, containerUpdates, 'built_in');
+  all.unshift(mapBuiltInItem({ id:containerId, status:'in_stock', created_at:new Date().toISOString(), data:{ ...containerUpdates, id:containerId, status:'in_stock', addedAt:new Date().toISOString() } }));
+  for(const member of items){
+    try { await updateBuiltInInventoryItem(member, { status:'bundled', bundledIntoId:containerId, bundledIntoName:name }); }
+    catch(e) { /* updateBuiltInInventoryItem already queued this for offline retry */ }
+  }
+  logOpsEvent('inventory_bundle_created', 'Created bundle: ' + name, { containerId, memberIds:items.map(i => i.id), price });
+  renderAll();
+}
+
+async function dissolveBundle(containerId){
+  const container = all.find(i => i.id === containerId);
+  if(!container || !container.isBundle) return;
+  if(container.status !== 'in_stock') return toast_dash('This bundle has already sold and cannot be dissolved');
+  const memberIds = Array.isArray(container.bundleMemberIds) ? container.bundleMemberIds : [];
+  if(!confirm('Dissolve this bundle and return ' + memberIds.length + ' item(s) to inventory?')) return;
+  for(const id of memberIds){
+    const member = all.find(i => i.id === id);
+    if(!member) continue;
+    try { await updateBuiltInInventoryItem(member, { status:'in_stock', bundledIntoId:'', bundledIntoName:'' }); }
+    catch(e) { /* queued for offline retry */ }
+  }
+  try { await updateBuiltInInventoryItem(container, { status:'archived', archiveReason:'Bundle dissolved' }); }
+  catch(e) { /* queued for offline retry */ }
+  toast_dash('Bundle dissolved');
+  renderAll();
+}
+
+// Called right after a checkout finalizes -- the bundle container itself
+// already went through the normal atomic sale path like any other item;
+// this just cascades 'sold' onto the member rows it was built from so
+// they don't sit at status 'bundled' forever. Best-effort: the money and
+// the bundle container's own sold status are already durably recorded by
+// the time this runs, so a failure here is a bookkeeping gap on rows that
+// were never independently sellable anyway, not a lost sale.
+async function cascadeMarkBundleMembersSold(lines, soldAt, saleId){
+  for(const line of (lines || [])){
+    const container = all.find(i => i.id === line.item_id);
+    if(!container?.isBundle || !Array.isArray(container.bundleMemberIds) || !container.bundleMemberIds.length) continue;
+    for(const memberId of container.bundleMemberIds){
+      const member = all.find(i => i.id === memberId);
+      if(!member) continue;
+      try { await updateBuiltInInventoryItem(member, { status:'sold', soldAt, saleId }); }
+      catch(e) { /* updateBuiltInInventoryItem already queued this for offline retry */ }
+    }
+  }
 }
 
 // ══════════════════════════════════════════════════
@@ -37093,6 +37286,7 @@ async function finalizeCompletedCheckout(bundle, queued, inventoryCommittedAtomi
   const paidAt = bundle.sale.completed_at;
   const method = bundle.payments.map(p => p.method).join('+');
   await markCartItemsSoldFromPayment((lockedCheckoutSnapshot?.lines || []).map(l => ({ name:l.title, price:l.adjusted_price, cost:l.cost_basis, category:l.category, condition:l.condition, quantity:l.quantity, shopId:l.item_id })), method, paidAt, { skipRemote:inventoryCommittedAtomically });
+  await cascadeMarkBundleMembersSold(lockedCheckoutSnapshot?.lines || [], paidAt, bundle.sale.id);
   const txLog = safeLocalJson('pos_transactions', []);
   // sourceType is the authoritative signal for whether this transaction row
   // duplicates a real inventory-sold record ('inventory'/'sealed', already
@@ -40410,7 +40604,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.16.08-call-forwarding-sms-relay" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.16.09-inventory-bundles" defer></script>
 </body>
 </html>
 
