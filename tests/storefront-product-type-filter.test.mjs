@@ -31,13 +31,23 @@ console.log('Worker storefront payload checks passed');
 
 // ── Storefront: new filter control, dynamically filled, wired into render()'s predicate ──
 assert.match(storefront, /<select id="ptype"><option value="">All product types<\/option><\/select>/, 'missing the Product Type filter select');
-assert.match(storefront, /fill\('ptype',d\.items\.map\(i=>i\.configuration\)\);/, 'Product Type options must be populated dynamically from actual item data, same as category\\/year\\/condition');
 assert.match(storefront, /ptype=document\.getElementById\('ptype'\)\.value/, 'render() must read the selected product type');
 assert.match(storefront, /\(!ptype\|\|i\.configuration===ptype\)/, 'render() must filter rows by the selected product type');
 assert.match(storefront, /\[i\.name,i\.set,i\.variant,i\.category,i\.year,i\.condition,i\.configuration\]\.join\(' '\)\.toLowerCase\(\)\.includes\(q\)/, 'the free-text search must also match against configuration');
 assert.match(storefront, /\[i\.set,i\.year,i\.variant,i\.configuration,i\.condition\]\.filter\(Boolean\)\.join\(' · '\)/, 'the grid card meta line must show the product type so shoppers understand the grouping');
 
 console.log('Storefront Product Type filter checks passed');
+
+// ── Storefront: Product Type list cascades from the selected Category ────
+// (MTG and Comics don't share product types -- a flat, unscoped list mixes
+// Secret Lair in with Comic/Graded Comic and buries what a shopper wants).
+assert.match(storefront, /function refreshProductTypeOptions\(\)\{/, 'missing refreshProductTypeOptions');
+assert.match(storefront, /const scoped=payload\.items\.filter\(i=>!cat\|\|i\.category===cat\)\.map\(i=>i\.configuration\);/, 'the product type option list must be scoped to the selected category');
+assert.match(storefront, /sel\.value=\[\.\.\.sel\.options\]\.some\(o=>o\.value===current\)\?current:'';/, 'the current product type selection must be preserved only if it still applies to the newly selected category, otherwise reset');
+assert.match(storefront, /fill\('category',d\.items\.map\(i=>i\.category\)\);refreshProductTypeOptions\(\);/, 'startup must populate categories first, then derive the initial (unscoped) product type list from refreshProductTypeOptions');
+assert.match(storefront, /document\.getElementById\('category'\)\.addEventListener\('change', refreshProductTypeOptions\);/, 'changing Category must re-scope the Product Type options');
+
+console.log('Storefront cascading category -> product type checks passed');
 
 // ── Functional: inferProductConfiguration bucketing logic ────────────────
 const isSealedSrc = dashboard.match(/function isSealedProduct\(item\)\{[\s\S]*?\n\}/)[0];

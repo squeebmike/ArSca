@@ -59,6 +59,19 @@ let currentStoreId='';
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const money=n=>Number(n)>0?'$'+Number(n).toFixed(2):'Ask for price';
 function fill(id,values){const el=document.getElementById(id);[...new Set(values.filter(Boolean).map(String))].sort((a,b)=>a.localeCompare(b,undefined,{numeric:true})).forEach(v=>el.insertAdjacentHTML('beforeend',`<option value="${esc(v)}">${esc(v)}</option>`));}
+// Cascading filter: the Product Type list (Secret Lair, Booster Box, Comic,
+// ...) is only meaningful scoped to a category -- MTG and Comics don't share
+// product types, so showing every type from every category at once (the
+// original behavior) buried the ones a shopper actually wants under
+// unrelated noise. Re-narrows the option list to whatever's selected in
+// Category, keeping the current pick only if it still applies there.
+function refreshProductTypeOptions(){
+  const cat=document.getElementById('category').value, sel=document.getElementById('ptype'), current=sel.value;
+  const scoped=payload.items.filter(i=>!cat||i.category===cat).map(i=>i.configuration);
+  sel.innerHTML='<option value="">All product types</option>';
+  fill('ptype', scoped);
+  sel.value=[...sel.options].some(o=>o.value===current)?current:'';
+}
 
 function saveCart(){ localStorage.setItem('storefront_cart', JSON.stringify(cart)); updateCartFab(); }
 function updateCartFab(){
@@ -299,7 +312,8 @@ async function confirmStorefrontPayment(){
 // so a plain custom-domain URL (e.g. shop.example.com) works as a bookmark
 // without needing the query string tacked on.
 const DEFAULT_STORE_ID='0f9dd4bc-42a7-487e-a972-2905d24513e9';
-async function start(){const store=new URLSearchParams(location.search).get('store')||DEFAULT_STORE_ID;if(!store){document.getElementById('grid').innerHTML='<div class="empty">Missing store link.</div>';return}currentStoreId=store;try{const r=await fetch(`${WORKER}/public/storefront?store_id=${encodeURIComponent(store)}&_=${Date.now()}`,{cache:'no-store'}),d=await r.json();if(!r.ok)throw new Error(d.error||'Storefront unavailable');payload=d;document.title=`${d.store.name} Inventory`;const desc=`Shop ${d.store.name} — sports cards, Pokémon TCG, One Piece TCG, comics and sealed product. Real market pricing, buy online for pickup or shipping.`;document.querySelector('meta[name="description"]')?.setAttribute('content',desc);document.querySelector('meta[property="og:title"]')?.setAttribute('content',`${d.store.name} Inventory`);document.querySelector('meta[property="og:description"]')?.setAttribute('content',desc);document.getElementById('store-name').textContent=d.store.name;document.getElementById('store-message').textContent=d.store.message||[d.store.location,'Browse available inventory'].filter(Boolean).join(' · ');if(d.store.logo){const logo=document.getElementById('logo');logo.onerror=()=>{logo.hidden=true};logo.src=d.store.logo;logo.hidden=false}fill('category',d.items.map(i=>i.category));fill('ptype',d.items.map(i=>i.configuration));fill('year',d.items.map(i=>i.year));fill('condition',d.items.map(i=>i.condition));cart=cart.filter(c=>d.items.some(i=>i.id===c.id));saveCart();render();}catch(e){document.getElementById('grid').innerHTML=`<div class="empty">${esc(e.message)}</div>`;document.getElementById('store-message').textContent='This catalog is not currently available.';}}
+async function start(){const store=new URLSearchParams(location.search).get('store')||DEFAULT_STORE_ID;if(!store){document.getElementById('grid').innerHTML='<div class="empty">Missing store link.</div>';return}currentStoreId=store;try{const r=await fetch(`${WORKER}/public/storefront?store_id=${encodeURIComponent(store)}&_=${Date.now()}`,{cache:'no-store'}),d=await r.json();if(!r.ok)throw new Error(d.error||'Storefront unavailable');payload=d;document.title=`${d.store.name} Inventory`;const desc=`Shop ${d.store.name} — sports cards, Pokémon TCG, One Piece TCG, comics and sealed product. Real market pricing, buy online for pickup or shipping.`;document.querySelector('meta[name="description"]')?.setAttribute('content',desc);document.querySelector('meta[property="og:title"]')?.setAttribute('content',`${d.store.name} Inventory`);document.querySelector('meta[property="og:description"]')?.setAttribute('content',desc);document.getElementById('store-name').textContent=d.store.name;document.getElementById('store-message').textContent=d.store.message||[d.store.location,'Browse available inventory'].filter(Boolean).join(' · ');if(d.store.logo){const logo=document.getElementById('logo');logo.onerror=()=>{logo.hidden=true};logo.src=d.store.logo;logo.hidden=false}fill('category',d.items.map(i=>i.category));refreshProductTypeOptions();fill('year',d.items.map(i=>i.year));fill('condition',d.items.map(i=>i.condition));cart=cart.filter(c=>d.items.some(i=>i.id===c.id));saveCart();render();}catch(e){document.getElementById('grid').innerHTML=`<div class="empty">${esc(e.message)}</div>`;document.getElementById('store-message').textContent='This catalog is not currently available.';}}
+document.getElementById('category').addEventListener('change', refreshProductTypeOptions);
 document.querySelectorAll('.controls input,.controls select').forEach(el=>el.addEventListener(el.tagName==='INPUT'?'input':'change',render));
 updateCartFab();
 start();
