@@ -20,6 +20,7 @@ assert.match(dashboard, /if\(item\.configuration\) return item\.configuration;/,
 assert.match(dashboard, /if\(!isSealedProduct\(item\) && !item\.is_sealed\) return \(item\.gradingCompany \|\| item\.grader\) \? 'Graded Single' : 'Single';/, 'non-sealed items must default to Single (or Graded Single)');
 assert.match(dashboard, /if\(\/secret lair\/\.test\(name\)\) return 'Secret Lair';/, 'must detect Secret Lair product type');
 assert.match(dashboard, /if\(\/commander\|precon\/\.test\(name\)\) return 'Commander Deck';/, 'must detect Commander Deck product type');
+assert.match(dashboard, /if\(qplCategoryKey\(item\.category\) === 'comic'\)\{\s*\n\s*const isSlabbed = !!\(item\.isSlabbed \|\| item\.is_slabbed \|\| item\.comicMetadata\?\.isSlabbed \|\| item\.grader \|\| item\.cert_number\);\s*\n\s*return isSlabbed \? 'Graded Comic' : 'Comic';/, 'comics must get their own Comic/Graded Comic bucket instead of falling into the generic Single bucket');
 
 console.log('Dashboard Product Type field checks passed');
 
@@ -40,11 +41,14 @@ console.log('Storefront Product Type filter checks passed');
 
 // ── Functional: inferProductConfiguration bucketing logic ────────────────
 const isSealedSrc = dashboard.match(/function isSealedProduct\(item\)\{[\s\S]*?\n\}/)[0];
+const qplCategoryKeySrc = dashboard.match(/function qplCategoryKey\(category\)\{[\s\S]*?\n\}/)[0];
 const inferSrc = dashboard.match(/function inferProductConfiguration\(item\)\{[\s\S]*?\n\}/)[0];
-const { inferProductConfiguration } = new Function(`${isSealedSrc}\n${inferSrc}\nreturn { inferProductConfiguration };`)();
+const { inferProductConfiguration } = new Function(`${isSealedSrc}\n${qplCategoryKeySrc}\n${inferSrc}\nreturn { inferProductConfiguration };`)();
 
 assert.equal(inferProductConfiguration({ name:'Lightning Bolt', category:'MTG' }), 'Single', 'a plain single must default to Single');
 assert.equal(inferProductConfiguration({ name:'Lightning Bolt', gradingCompany:'PSA' }), 'Graded Single', 'a graded single must default to Graded Single');
+assert.equal(inferProductConfiguration({ name:'Amazing Spider-Man #300', category:'Comics' }), 'Comic', 'a raw comic must be bucketed as Comic, not the generic trading-card Single bucket');
+assert.equal(inferProductConfiguration({ name:'Amazing Spider-Man #300', category:'Comics', grader:'CGC' }), 'Graded Comic', 'a slabbed comic must be bucketed as Graded Comic');
 assert.equal(inferProductConfiguration({ name:'Secret Lair Drop: Heads I Win, Tails You Lose' }), 'Secret Lair', 'must detect Secret Lair from the name');
 assert.equal(inferProductConfiguration({ name:'Commander Masters Commander Deck' }), 'Commander Deck', 'must detect a Commander deck from the name');
 assert.equal(inferProductConfiguration({ name:'Foundations Booster Pack' }), 'Booster Pack', 'must detect a loose booster pack from the name');
