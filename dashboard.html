@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.16.06-public-buylist-portal">
+<meta name="version" content="2026.08.16.07-real-sms-email-notifications">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1570,13 +1570,13 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.16.06-public-buylist-portal" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.16.06-public-buylist-portal" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.16.06-public-buylist-portal" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.16.06-public-buylist-portal" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.16.06-public-buylist-portal" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.16.06-public-buylist-portal" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.16.06-public-buylist-portal" defer></script>
+<script src="scripts/query-routing.js?v=2026.08.16.07-real-sms-email-notifications" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.16.07-real-sms-email-notifications" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.16.07-real-sms-email-notifications" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.16.07-real-sms-email-notifications" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.16.07-real-sms-email-notifications" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.16.07-real-sms-email-notifications" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.16.07-real-sms-email-notifications" defer></script>
 </head>
 <body>
 
@@ -1626,11 +1626,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.16.06-public-buylist-portal</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.16.07-real-sms-email-notifications</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.16.06-public-buylist-portal</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.16.07-real-sms-email-notifications</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1652,7 +1652,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.16.06-public-buylist-portal</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.16.07-real-sms-email-notifications</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3378,7 +3378,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.16.06-public-buylist-portal';
+const APP_VERSION = '2026.08.16.07-real-sms-email-notifications';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -21757,6 +21757,7 @@ function renderWantList(){
         <div style="font-weight:600;color:var(--text)">${w.item}</div>
         <div style="font-size:8px;color:var(--dim)">${w.notes||''} ${w.category!=='any'?'· '+w.category:''}</div>
         ${inStock.length?`<div style="font-size:8px;color:var(--g);font-weight:700">✓ ${inStock.length} IN STOCK MATCH${inStock.length>1?'ES':''}!</div>`:''}
+        ${w.notifiedAt?`<div style="font-size:8px;color:var(--blue)">✓ Notified via ${w.notifiedVia||'device'} ${new Date(w.notifiedAt).toLocaleDateString()}</div>`:''}
       </div>
       <div style="font-family:monospace;font-size:10px">${w.customer}</div>
       <div style="font-family:monospace;font-size:9px;color:var(--dim)">${w.contact||'—'}</div>
@@ -21788,18 +21789,33 @@ function checkAllWants(){
   toast_dash(`✓ ${matches.length} want list matches found!`);
 }
 
-function notifyWant(id){
+async function notifyWant(id){
   const w = wantList.find(x=>x.id===id);
   if(!w) return;
-  const inStock = all.filter(i=>i.status==='in_stock'&&i.name.toLowerCase().includes(w.item.toLowerCase().split(' ')[0]));
   const p = getVendorProfile();
   const msg = `Hi ${w.customer}! We have ${w.item} in stock at ${p.storeName} (${p.location}). Come check it out! ${p.website}`;
-  if(w.contact && w.contact.includes('@')) {
-    window.open('mailto:'+w.contact+'?subject=Your Want List Item is In Stock!&body='+encodeURIComponent(msg));
-  } else if(w.contact) {
-    window.open('sms:'+w.contact.replace(/\D/g,'')+'?body='+encodeURIComponent(msg));
-  } else {
+  if(!w.contact){
     navigator.clipboard?.writeText(msg).then(()=>toast_dash('Message copied to clipboard'));
+    return;
+  }
+  // Sends a real SMS/email through the app (Twilio/SendGrid) instead of
+  // just opening the staff device's own mail/messaging app. Falls back to
+  // the old device-link behavior if sending isn't configured yet or fails
+  // for any reason, so this never just breaks for a store that hasn't set
+  // up SMS/email secrets.
+  try {
+    if(getAccountContext().isDemo) throw new Error('Demo mode');
+    const res = await storeWorkerFetch('/notify/send', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ storeId:getActiveStoreId(), contact:w.contact, subject:'Your Want List Item is In Stock!', message:msg }) });
+    const data = await res.json();
+    if(!data.ok) throw new Error(data.error || 'Send failed');
+    w.notifiedAt = new Date().toISOString();
+    w.notifiedVia = data.channel;
+    saveWantList();
+    renderWantList();
+    toast_dash(`✓ Sent ${data.channel === 'email' ? 'email' : 'text'} to ${w.customer}`);
+  } catch(e) {
+    if(w.contact.includes('@')) window.open('mailto:'+w.contact+'?subject=Your Want List Item is In Stock!&body='+encodeURIComponent(msg));
+    else window.open('sms:'+w.contact.replace(/\D/g,'')+'?body='+encodeURIComponent(msg));
   }
 }
 
@@ -40372,7 +40388,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.16.06-public-buylist-portal" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.16.07-real-sms-email-notifications" defer></script>
 </body>
 </html>
 

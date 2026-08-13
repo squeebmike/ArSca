@@ -4629,6 +4629,29 @@ export default {
       return json({ ok:true });
     }
 
+    // Sends a real SMS/email through the app instead of opening the staff
+    // device's own mail/messaging app -- used by Want List notify today,
+    // written generically enough for anything else that wants to reach a
+    // customer (pull-list new releases, etc.) later.
+    if (url.pathname === '/notify/send') {
+      if (request.method !== 'POST') return json({ error: 'POST only' }, 405);
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId, ['owner','admin','manager','employee']);
+      if (auth.error) return auth.error;
+      const rateError = await enforceUsageLimit(env, `notify-send:${storeId}`, 100, 3600);
+      if (rateError) return rateError;
+      const body = await request.json().catch(() => ({}));
+      const contact = String(body.contact || '').trim().slice(0, 200);
+      const message = String(body.message || '').trim().slice(0, 1000);
+      if (!contact || !message) return json({ ok:false, error:'contact and message are required' }, 400);
+      try {
+        const channel = await sendContactNotification(env, contact, String(body.subject || 'Message from your store').slice(0, 200), message);
+        return json({ ok:true, channel });
+      } catch (e) {
+        return json({ ok:false, error:e.message }, 502);
+      }
+    }
+
     // Detects eBay sales that this dashboard never recorded on its own -- a listing
     // can sell on eBay with zero action taken in this app. Pulls every paid eBay
     // order from the Sell Fulfillment API and records a pos_sales/pos_sale_lines/
@@ -9883,6 +9906,55 @@ async function runScheduledEbayReprice(env) {
     }
     if (env.LBA_KV) await env.LBA_KV.put(`ebay_reprice:${storeId}:latest`, JSON.stringify(summary), { expirationTtl: 30 * 24 * 60 * 60 });
   }
+}
+
+// ── Real outbound notifications (Twilio SMS / SendGrid email) ─────────────
+// Everything that used to be a device-only mailto:/sms: link (opens the
+// STAFF device's own mail/messaging app) can go through here instead, so
+// the app itself sends the message. Secrets are configured once at the
+// platform level (wrangler secret put TWILIO_ACCOUNT_SID/TWILIO_AUTH_TOKEN/
+// TWILIO_FROM_NUMBER/SENDGRID_API_KEY/SENDGRID_FROM_EMAIL) -- not
+// per-store, same as every other third-party API key this Worker uses.
+async function sendSms(env, to, body) {
+  if (!env.TWILIO_ACCOUNT_SID || !env.TWILIO_AUTH_TOKEN || !env.TWILIO_FROM_NUMBER) throw new Error('SMS is not configured yet');
+  const auth = btoa(`${env.TWILIO_ACCOUNT_SID}:${env.TWILIO_AUTH_TOKEN}`);
+  const params = new URLSearchParams({ To: to, From: env.TWILIO_FROM_NUMBER, Body: body });
+  const res = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${env.TWILIO_ACCOUNT_SID}/Messages.json`, {
+    method: 'POST',
+    headers: { Authorization: `Basic ${auth}`, 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: params,
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data?.message || `Twilio request failed (${res.status})`);
+  return data;
+}
+
+async function sendEmail(env, to, subject, text) {
+  if (!env.SENDGRID_API_KEY || !env.SENDGRID_FROM_EMAIL) throw new Error('Email is not configured yet');
+  const res = await fetch('https://api.sendgrid.com/v3/mail/send', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${env.SENDGRID_API_KEY}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      personalizations: [{ to: [{ email: to }] }],
+      from: { email: env.SENDGRID_FROM_EMAIL, name: env.SENDGRID_FROM_NAME || 'Store' },
+      subject,
+      content: [{ type: 'text/plain', value: text }],
+    }),
+  });
+  if (!res.ok) { const errTxt = await res.text(); throw new Error(`SendGrid request failed (${res.status}): ${errTxt.slice(0, 200)}`); }
+  return true;
+}
+
+// Picks the channel from the contact string's shape (an '@' means email,
+// anything else is treated as a phone number) -- same detection rule the
+// dashboard's existing device-link notify buttons already use, so a want-
+// list contact field written before this feature existed still works.
+async function sendContactNotification(env, contact, subject, message) {
+  const clean = String(contact || '').trim();
+  if (!clean) throw new Error('No contact info on file');
+  if (clean.includes('@')) { await sendEmail(env, clean, subject, message); return 'email'; }
+  await sendSms(env, clean, message);
+  return 'sms';
 }
 
 async function runScheduledDealScans(env) {
