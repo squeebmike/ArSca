@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.16.09-inventory-bundles">
+<meta name="version" content="2026.08.16.10-foil-finish-display">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1570,13 +1570,13 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.16.09-inventory-bundles" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.16.09-inventory-bundles" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.16.09-inventory-bundles" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.16.09-inventory-bundles" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.16.09-inventory-bundles" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.16.09-inventory-bundles" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.16.09-inventory-bundles" defer></script>
+<script src="scripts/query-routing.js?v=2026.08.16.10-foil-finish-display" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.16.10-foil-finish-display" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.16.10-foil-finish-display" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.16.10-foil-finish-display" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.16.10-foil-finish-display" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.16.10-foil-finish-display" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.16.10-foil-finish-display" defer></script>
 </head>
 <body>
 
@@ -1626,11 +1626,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.16.09-inventory-bundles</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.16.10-foil-finish-display</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.16.09-inventory-bundles</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.16.10-foil-finish-display</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1652,7 +1652,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.16.09-inventory-bundles</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.16.10-foil-finish-display</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3378,7 +3378,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.16.09-inventory-bundles';
+const APP_VERSION = '2026.08.16.10-foil-finish-display';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -34011,13 +34011,22 @@ function selectedQuickLookupItem(idx){
   // markCartItemsSoldFromPayment can find + mark the item sold after checkout.
   // For all other sources, generate an ephemeral qpl_ ID as before.
   const inventorySourceId = r.source === 'inventory' ? (r.raw?.id || '') : '';
+  // Foil/finish status is already captured during search/pricing (selectedFinish,
+  // finish, or a manually-flagged foil comic cover) but never made it into the
+  // one field (variant) the inventory table, edit modal, and storefront actually
+  // display -- so a foil card looked identical to a base one everywhere. Default
+  // variant to the finish label (or append "(Foil)" for a foil comic cover) only
+  // when staff hasn't already typed their own value into the variant field.
+  const impliedFinishKey = String(r.selectedFinish || r.finish || '').toLowerCase();
+  const impliedFinishLabel = (!isComic && impliedFinishKey && !['normal','nonfoil'].includes(impliedFinishKey)) ? qplFinishLabel(impliedFinishKey) : '';
+  const impliedComicFoilVariant = (isComic && r.selectedComicCover?.isFoil && !/\bfoil\b/i.test(r.variant || '')) ? ((r.variant ? r.variant + ' ' : '') + '(Foil)') : '';
   return {
     id: inventorySourceId || ('qpl_' + Date.now() + '_' + Math.random().toString(36).slice(2,6)),
     name:document.getElementById('qpl-edit-name')?.value.trim() || r.name || 'Manual item',
     category:document.getElementById('qpl-edit-category')?.value || normalizeQuickCategory(r.category),
     year:document.getElementById('qpl-edit-year')?.value.trim() || r.year || '',
     set:document.getElementById('qpl-edit-set')?.value.trim() || r.set || '',
-    variant:r.variant || '',
+    variant:impliedComicFoilVariant || r.variant || impliedFinishLabel || '',
     card_number:document.getElementById('qpl-edit-cardnum')?.value.trim() || r.card_number || '',
     series:isComic ? comicAppraisal.series || comicMeta.series : '',
     issueNumber:isComic ? comicAppraisal.issueNumber || comicMeta.issueNumber : '',
@@ -40604,7 +40613,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.16.09-inventory-bundles" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.16.10-foil-finish-display" defer></script>
 </body>
 </html>
 

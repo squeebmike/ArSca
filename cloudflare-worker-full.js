@@ -318,7 +318,7 @@ function storefrontComicDetailFor(d) {
   const credits = (Array.isArray(m.credits) ? m.credits : []).slice(0, 20).map(c => ({ creator: storefrontCleanText(c?.creator, 80), roles: storefrontCleanList(c?.roles, 6) })).filter(c => c.creator);
   return {
     seriesName: storefrontCleanText(m.seriesName || m.series || '', 160), number: storefrontCleanText(m.number || m.issueNumber || '', 20),
-    selectedCover: storefrontCleanText(m.selectedCover?.issueName || m.selectedCover?.name || d.variant || '', 120),
+    selectedCover: storefrontCleanText((m.selectedCover?.issueName || m.selectedCover?.name || d.variant || '') + (m.selectedCover?.isFoil && !/\bfoil\b/i.test(m.selectedCover?.issueName || m.selectedCover?.name || '') ? ' (Foil)' : ''), 120),
     publisher: storefrontCleanText(m.publisher, 120), seriesYearBegan: storefrontCleanText(m.seriesYearBegan, 12),
     coverDate: storefrontCleanText(m.coverDate, 20), storeDate: storefrontCleanText(m.storeDate, 20),
     coverPrice: Number(m.coverPrice || 0) || 0, coverPriceCurrency: storefrontCleanText(m.coverPriceCurrency || 'USD', 10),
