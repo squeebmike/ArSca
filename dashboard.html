@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.16.07-real-sms-email-notifications">
+<meta name="version" content="2026.08.16.08-call-forwarding-sms-relay">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1570,13 +1570,13 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.16.07-real-sms-email-notifications" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.16.07-real-sms-email-notifications" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.16.07-real-sms-email-notifications" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.16.07-real-sms-email-notifications" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.16.07-real-sms-email-notifications" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.16.07-real-sms-email-notifications" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.16.07-real-sms-email-notifications" defer></script>
+<script src="scripts/query-routing.js?v=2026.08.16.08-call-forwarding-sms-relay" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.16.08-call-forwarding-sms-relay" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.16.08-call-forwarding-sms-relay" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.16.08-call-forwarding-sms-relay" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.16.08-call-forwarding-sms-relay" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.16.08-call-forwarding-sms-relay" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.16.08-call-forwarding-sms-relay" defer></script>
 </head>
 <body>
 
@@ -1626,11 +1626,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.16.07-real-sms-email-notifications</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.16.08-call-forwarding-sms-relay</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.16.07-real-sms-email-notifications</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.16.08-call-forwarding-sms-relay</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1652,7 +1652,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.16.07-real-sms-email-notifications</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.16.08-call-forwarding-sms-relay</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3378,7 +3378,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.16.07-real-sms-email-notifications';
+const APP_VERSION = '2026.08.16.08-call-forwarding-sms-relay';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -5149,6 +5149,7 @@ async function saveVendorProfile(profile){
       storefrontMessage:next.storefrontMessage || '',
       buylistEnabled:next.buylistEnabled === true,
       buylistMessage:next.buylistMessage || '',
+      notifyForwardNumbers:Array.isArray(next.notifyForwardNumbers) ? next.notifyForwardNumbers.slice(0,3) : [],
       venmo:next.venmo || '',
       paypal:next.paypal || '',
       cashapp:next.cashapp || '',
@@ -5844,6 +5845,7 @@ function savePaymentSettings(settings){
       storefrontMessage:next.storefrontMessage || '',
       buylistEnabled:next.buylistEnabled === true,
       buylistMessage:next.buylistMessage || '',
+      notifyForwardNumbers:Array.isArray(next.notifyForwardNumbers) ? next.notifyForwardNumbers.slice(0,3) : [],
       venmo:next.venmo || '',
       paypal:next.paypal || '',
       cashapp:next.cashapp || '',
@@ -6328,6 +6330,8 @@ function renderVendorProfilePanel(){
   const p = getVendorProfile();
   const storefrontUrl = new URL('storefront.html', location.href); storefrontUrl.searchParams.set('store', getActiveStoreId());
   const buylistUrl = new URL('buylist.html', location.href); buylistUrl.searchParams.set('store', getActiveStoreId());
+  const twilioVoiceUrl = WORKER + '/twilio/voice?store=' + encodeURIComponent(getActiveStoreId());
+  const twilioSmsUrl = WORKER + '/twilio/sms?store=' + encodeURIComponent(getActiveStoreId());
   body.innerHTML = `
     <div style="display:grid;grid-template-columns:90px 1fr;gap:12px;align-items:start;margin-bottom:12px">
       <div>
@@ -6376,6 +6380,19 @@ function renderVendorProfilePanel(){
       <label style="display:flex;align-items:center;gap:8px;font-family:var(--font-mono);font-size:11px;margin-bottom:10px"><input id="vp-buylistEnabled" type="checkbox" ${p.buylistEnabled?'checked':''}> Accept public buylist submissions</label>
       <label style="font-family:var(--font-mono);font-size:9px;color:var(--dim)">WELCOME MESSAGE<input id="vp-buylistMessage" class="tsi" value="${escHtml(p.buylistMessage||'')}" placeholder="Tell us what you have -- we'll review it and reach out with an offer" style="margin-top:4px"></label>
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><button class="hbtn" onclick="saveBuylistSettings()">SAVE BUYLIST PAGE</button><button class="hbtn" onclick="window.open('${escHtml(buylistUrl.href)}','_blank')">OPEN PUBLIC PAGE</button><button class="hbtn" onclick="copyStorefrontLink('${encodeURIComponent(buylistUrl.href)}')">COPY LINK</button><button class="hbtn" onclick="showStorefrontQr('${encodeURIComponent(buylistUrl.href)}')">SHOW QR CODE</button><code style="font-size:9px;color:var(--dim);word-break:break-all">${escHtml(buylistUrl.href)}</code></div>
+    </div>
+    <div style="margin-top:14px;padding:14px;border:1px solid var(--border);border-radius:10px;background:var(--surf2)">
+      <div style="font-family:'Orbitron',monospace;font-size:11px;color:var(--gold);margin-bottom:7px">CALL FORWARDING &amp; TEXT RELAY</div>
+      <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);line-height:1.6;margin-bottom:10px">One Twilio number handles both -- calls ring all 3 phones at once (whoever answers first gets it), and texts sent to the number get relayed to all 3 as well. Requires TWILIO_AUTH_TOKEN to already be set up (see the SMS/email setup you were given separately).</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px;margin-bottom:10px">
+        ${[0,1,2].map(i => vendorInput('notifyForward'+i, 'Phone '+(i+1), (p.notifyForwardNumbers||[])[i] || '', 'tel', '+15551234567')).join('')}
+      </div>
+      <button class="hbtn" onclick="saveNotifyForwardNumbers()" style="margin-bottom:10px">SAVE FORWARDING NUMBERS</button>
+      <div style="font-family:var(--font-mono);font-size:9px;color:var(--dim);line-height:1.7">
+        One-time setup in your Twilio console (Phone Numbers &gt; Manage &gt; your number): paste these as the webhook URLs for "A call comes in" and "A message comes in" (both as HTTP POST).
+        <div style="margin-top:6px;display:flex;align-items:center;gap:6px;flex-wrap:wrap"><b style="color:var(--text)">Voice:</b><code style="word-break:break-all">${escHtml(twilioVoiceUrl)}</code><button class="hbtn" style="min-height:26px;padding:2px 8px;font-size:8px" onclick="copyStorefrontLink('${encodeURIComponent(twilioVoiceUrl)}')">COPY</button></div>
+        <div style="margin-top:4px;display:flex;align-items:center;gap:6px;flex-wrap:wrap"><b style="color:var(--text)">SMS:</b><code style="word-break:break-all">${escHtml(twilioSmsUrl)}</code><button class="hbtn" style="min-height:26px;padding:2px 8px;font-size:8px" onclick="copyStorefrontLink('${encodeURIComponent(twilioSmsUrl)}')">COPY</button></div>
+      </div>
     </div>
     <div style="margin-top:14px;padding:14px;border:1px solid var(--border);border-radius:10px;background:var(--surf2)">
       <div style="font-family:'Orbitron',monospace;font-size:11px;color:var(--gold);margin-bottom:7px">EBAY LISTING SETTINGS</div>
@@ -6478,6 +6495,11 @@ function saveBuylistSettings(){
   const buylistMessage=document.getElementById('vp-buylistMessage')?.value.trim()||'';
   saveVendorProfile({buylistEnabled:enabled,buylistMessage});
   toast_dash(enabled?'Buylist page enabled':'Buylist page disabled');
+}
+function saveNotifyForwardNumbers(){
+  const notifyForwardNumbers=[0,1,2].map(i=>document.getElementById('vp-notifyForward'+i)?.value.trim()).filter(Boolean);
+  saveVendorProfile({notifyForwardNumbers});
+  toast_dash('Forwarding numbers saved');
 }
 async function copyStorefrontLink(encoded){try{await navigator.clipboard.writeText(decodeURIComponent(encoded));toast_dash('Storefront link copied');}catch(e){toast_dash('Could not copy link');}}
 function showStorefrontQr(encoded){const link=decodeURIComponent(encoded);window.open('https://api.qrserver.com/v1/create-qr-code/?size=500x500&margin=20&data='+encodeURIComponent(link),'_blank');}
@@ -40388,7 +40410,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.16.07-real-sms-email-notifications" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.16.08-call-forwarding-sms-relay" defer></script>
 </body>
 </html>
 

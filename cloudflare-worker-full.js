@@ -2643,6 +2643,10 @@ export default {
     // storefront catalog (a store might want submissions without publishing
     // a public inventory page), so its own opt-in flag (buylistEnabled)
     // rather than piggybacking on storefrontEnabled.
+    if ((url.pathname === '/twilio/voice' || url.pathname === '/twilio/sms') && request.method === 'POST') {
+      return handleTwilioWebhook(request, env, url);
+    }
+
     if (url.pathname === '/public/buylist/info' && request.method === 'GET') {
       const storeId = String(url.searchParams.get('store_id') || '').trim();
       if (!/^[0-9a-z_-]{2,80}$/i.test(storeId)) return json({ ok:false, error:'Valid store_id required' }, 400);
@@ -9955,6 +9959,61 @@ async function sendContactNotification(env, contact, subject, message) {
   if (clean.includes('@')) { await sendEmail(env, clean, subject, message); return 'email'; }
   await sendSms(env, clean, message);
   return 'sms';
+}
+
+// ── Twilio inbound webhooks (voice + SMS on the SAME store number) ────────
+// Twilio calls these directly (no login, no X-Store-Id header) -- the store
+// is identified by a ?store= query param baked into the webhook URL you
+// paste into Twilio's console once per number, and every request is
+// verified against Twilio's own request signature so nothing but Twilio
+// itself can trigger a real call-forward or spend SMS credits relaying to
+// staff phones.
+function twimlResponse(xml) {
+  return new Response(`<?xml version="1.0" encoding="UTF-8"?>${xml}`, { headers: { 'Content-Type': 'text/xml' } });
+}
+function escapeXmlText(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&apos;' }[c]));
+}
+async function verifyTwilioSignature(fullUrl, params, signatureHeader, authToken) {
+  if (!authToken || !signatureHeader) return false;
+  let data = fullUrl;
+  for (const key of Object.keys(params).sort()) data += key + params[key];
+  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(authToken), { name:'HMAC', hash:'SHA-1' }, false, ['sign']);
+  const signed = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(data));
+  const expected = btoa(String.fromCharCode(...new Uint8Array(signed)));
+  return constantTimeEqualHex(expected, signatureHeader);
+}
+async function handleTwilioWebhook(request, env, url) {
+  const storeId = String(url.searchParams.get('store') || '').trim();
+  const rawBody = await request.text();
+  const params = Object.fromEntries(new URLSearchParams(rawBody));
+  const sigOk = await verifyTwilioSignature(request.url, params, request.headers.get('X-Twilio-Signature') || '', env.TWILIO_AUTH_TOKEN);
+  if (!sigOk) return new Response('Invalid signature', { status: 403 });
+  if (!/^[0-9a-z_-]{2,80}$/i.test(storeId) || !(env.SUPABASE_URL && (env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SERVICE_KEY))) {
+    return url.pathname === '/twilio/voice' ? twimlResponse('<Response><Say>This number is not configured yet.</Say></Response>') : twimlResponse('<Response></Response>');
+  }
+  let numbers = [];
+  try {
+    const { data: settings } = await supabaseAdminFetch(env, `store_settings?store_id=eq.${encodeURIComponent(storeId)}&select=receipt_settings&limit=1`);
+    numbers = (settings?.[0]?.receipt_settings?.notifyForwardNumbers || []).filter(Boolean).slice(0, 5);
+  } catch (e) { /* fall through with no numbers -- handled per-route below */ }
+
+  if (url.pathname === '/twilio/voice') {
+    if (!numbers.length) return twimlResponse('<Response><Say>Sorry, no one is available to take your call right now.</Say></Response>');
+    const dialNumbers = numbers.map(n => `<Number>${escapeXmlText(n)}</Number>`).join('');
+    return twimlResponse(`<Response><Dial timeout="20">${dialNumbers}</Dial></Response>`);
+  }
+  if (url.pathname === '/twilio/sms') {
+    const from = String(params.From || '').slice(0, 40);
+    const text = String(params.Body || '').slice(0, 1000);
+    if (from && text) {
+      for (const num of numbers) {
+        try { await sendSms(env, num, `Text from ${from}: ${text}`); } catch (e) { /* one bad forward number shouldn't block the rest */ }
+      }
+    }
+    return twimlResponse('<Response></Response>');
+  }
+  return new Response('Not found', { status: 404 });
 }
 
 async function runScheduledDealScans(env) {
