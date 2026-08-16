@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.16.14-broader-inventory-search">
+<meta name="version" content="2026.08.16.15-pos-cart-fixes">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -196,6 +196,9 @@ html.ui-scale-large{zoom:1.3;}
 .dealer-line-sub{font-family:var(--font-mono);font-size:9px;color:var(--dim);margin-top:3px;}
 .dealer-price-breakdown{font-family:var(--font-mono);font-size:9px;color:var(--dim);text-align:right;line-height:1.55;}
 .dealer-price-breakdown b{font-family:'Orbitron',monospace;font-size:16px;color:var(--gold);}
+.dealer-qty-stepper{display:inline-flex;align-items:center;gap:5px;margin:3px 0;}
+.dealer-qty-stepper .ra{padding:2px 7px;min-height:20px;}
+.dealer-qty-stepper b{font-family:var(--font-mono);font-size:11px;color:var(--text);}
 .dealer-total{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:12px;padding-top:12px;border-top:1px solid var(--border);}
 .dealer-total b{font-family:'Orbitron',monospace;font-size:34px;color:var(--g);}
 .checkout-action-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;}
@@ -1570,13 +1573,13 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.16.14-broader-inventory-search" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.16.14-broader-inventory-search" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.16.14-broader-inventory-search" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.16.14-broader-inventory-search" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.16.14-broader-inventory-search" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.16.14-broader-inventory-search" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.16.14-broader-inventory-search" defer></script>
+<script src="scripts/query-routing.js?v=2026.08.16.15-pos-cart-fixes" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.16.15-pos-cart-fixes" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.16.15-pos-cart-fixes" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.16.15-pos-cart-fixes" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.16.15-pos-cart-fixes" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.16.15-pos-cart-fixes" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.16.15-pos-cart-fixes" defer></script>
 </head>
 <body>
 
@@ -1626,11 +1629,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.16.14-broader-inventory-search</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.16.15-pos-cart-fixes</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.16.14-broader-inventory-search</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.16.15-pos-cart-fixes</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1652,7 +1655,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.16.14-broader-inventory-search</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.16.15-pos-cart-fixes</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -1754,6 +1757,11 @@ body.show-mode .inv-sync-badge{display:none;}
     <button class="hbtn" onclick="openOneOffSellModal()" title="Add an item that isn't in inventory yet to the cart">⚡ ADD ONE-OFF TO CART</button>
     <button class="hbtn" onclick="openGiftCardSellModal()" title="Sell a gift card">🎁 SELL GIFT CARD</button>
   </div>
+  <div class="tc" id="inv-active-cart-bar" style="align-items:center">
+    <span style="font-family:var(--font-mono);font-size:9px;color:var(--dim);white-space:nowrap">ADDING TO CART:</span>
+    <div id="sale-cart-switcher-inv" class="buy-tray-switcher sale-cart-switcher-mount" style="flex:1"></div>
+    <button class="fb" onclick="startNewSaleCart()">+ NEW CART</button>
+  </div>
   <div class="tc">
     <input class="tsi" id="tbl-q" placeholder="Search title, issue, writer, artist, cover artist..." oninput="filterTableDebounced()">
     <button class="fb" aria-label="Voice search inventory" onclick="startVoiceInput('tbl-q', filterTable)">MIC</button>
@@ -1781,7 +1789,8 @@ body.show-mode .inv-sync-badge{display:none;}
       <div class="inv-cat-wheel-track" id="inv-cat-wheel-track" onscroll="handleInvCatWheelScroll()">
         <div class="inv-cat-wheel-pad" aria-hidden="true"></div>
         <button class="fb inv-cat-wheel-item" onclick="invCatWheelSelect(this,'Sports')" role="option">⚾ Sports</button>
-        <button class="fb inv-cat-wheel-item" onclick="invCatWheelSelect(this,'TCG')" role="option">🎴 TCG</button>
+        <button class="fb inv-cat-wheel-item" onclick="invCatWheelSelect(this,'Pokemon TCG')" role="option">🎴 Pokemon</button>
+        <button class="fb inv-cat-wheel-item" onclick="invCatWheelSelect(this,'Magic: The Gathering')" role="option">🎴 MTG</button>
         <button class="fb inv-cat-wheel-item" onclick="invCatWheelSelect(this,'Comic')" role="option">📖 Comics</button>
         <button class="fb inv-cat-wheel-item" onclick="invCatWheelSelect(this,'Graded')" role="option">🏆 Graded</button>
         <button class="fb inv-cat-wheel-item" onclick="invCatWheelSelect(this,'Collectibles')" role="option">🏷 Collectibles</button>
@@ -2562,7 +2571,7 @@ body.show-mode .inv-sync-badge{display:none;}
       <button class="hbtn" onclick="startNewSaleCart()">+ NEW CART</button>
       <button class="hbtn" onclick="fetchSaleCartIndex(true)">↻ REFRESH</button>
     </div>
-    <div id="sale-cart-switcher" class="buy-tray-switcher"></div>
+    <div id="sale-cart-switcher" class="buy-tray-switcher sale-cart-switcher-mount"></div>
     <div style="display:flex;justify-content:flex-end"><button class="buy-tray-delete-btn" onclick="closeActiveSaleCart()">🗑 Close current cart</button></div>
   </div>
   <div class="sell-shell" style="margin-bottom:14px">
@@ -3382,7 +3391,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.16.14-broader-inventory-search';
+const APP_VERSION = '2026.08.16.15-pos-cart-fixes';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -12490,19 +12499,19 @@ async function upsertSaleCartIndexEntry(cart){
     return;
   }
   try {
-    const r = await storeWorkerFetch(scopedWorkerPath('/kv/sale_carts_index'), { cache:'no-store', signal:AbortSignal.timeout(4000) });
-    const d = await r.json();
-    let index = [];
-    try { index = JSON.parse(d?.value || '[]'); } catch(e) { index = []; }
-    if(!Array.isArray(index)) index = [];
+    // Read-modify-write now happens INSIDE the worker request instead of as two
+    // separate client round trips (GET then POST) -- that gap used to be wide
+    // enough for another device's close/complete to land in between and get
+    // clobbered by this device's now-stale copy on the final POST. See the
+    // route comment in cloudflare-worker-full.js for the full explanation.
     const entry = saleCartIndexEntry(cart);
-    const idx = index.findIndex(e => e.id === entry.id);
-    if(idx >= 0) index[idx] = entry; else index.push(entry);
-    knownSaleCartIndex = index.filter(e => e.status === 'open').slice(0,100);
-    await storeWorkerFetch(scopedWorkerPath('/kv/sale_carts_index'), {
+    const r = await storeWorkerFetch(scopedWorkerPath('/kv/sale-cart-index/upsert'), {
       method:'POST', headers:{'Content-Type':'application/json'},
-      body:JSON.stringify(knownSaleCartIndex), signal:AbortSignal.timeout(4000),
+      body:JSON.stringify({ entry }), signal:AbortSignal.timeout(4000),
     });
+    const d = await r.json();
+    if(!d?.ok) throw new Error('Sale cart index upsert failed');
+    knownSaleCartIndex = Array.isArray(d.index) ? d.index : [];
     renderSaleCartSwitcher();
   } catch(e) { /* local cart remains available offline */ }
 }
@@ -12510,15 +12519,11 @@ async function removeSaleCartFromIndex(id){
   knownSaleCartIndex = knownSaleCartIndex.filter(e => e.id !== id);
   if(!getAccountContext().isDemo) {
     try {
-      const r = await storeWorkerFetch(scopedWorkerPath('/kv/sale_carts_index'), { cache:'no-store', signal:AbortSignal.timeout(4000) });
-      const d = await r.json();
-      let index = [];
-      try { index = JSON.parse(d?.value || '[]'); } catch(e) { index = []; }
-      index = (Array.isArray(index) ? index : []).filter(e => e.id !== id && e.status === 'open');
-      knownSaleCartIndex = index;
-      await storeWorkerFetch(scopedWorkerPath('/kv/sale_carts_index'), {
-        method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(index), signal:AbortSignal.timeout(4000),
+      const r = await storeWorkerFetch(scopedWorkerPath('/kv/sale-cart-index/remove'), {
+        method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ id }), signal:AbortSignal.timeout(4000),
       });
+      const d = await r.json();
+      if(d?.ok && Array.isArray(d.index)) knownSaleCartIndex = d.index;
     } catch(e) {}
   }
   renderSaleCartSwitcher();
@@ -12674,8 +12679,13 @@ async function completeActiveSaleCartAfterCheckout(saleId){
   else startNewSaleCart();
 }
 function renderSaleCartSwitcher(){
-  const el = document.getElementById('sale-cart-switcher');
-  if(!el) return;
+  // Mounted in two places: the Customer Display tab (where it originally
+  // lived) and a compact copy in the Inventory tab toolbar, right next to the
+  // ADD TO CART buttons -- switching/joining a cart used to require leaving
+  // the Inventory tab entirely to find this switcher, so staff had no way to
+  // see or choose which customer's cart an item was about to land in.
+  const mounts = document.querySelectorAll('.sale-cart-switcher-mount');
+  if(!mounts.length) return;
   const active = ensureActiveSaleCart();
   const local = getSaleCarts().filter(c => c.status === 'open');
   const localIds = new Set(local.map(c => c.cartId));
@@ -12683,11 +12693,12 @@ function renderSaleCartSwitcher(){
     ...local.map(c => saleCartIndexEntry(c)),
     ...knownSaleCartIndex.filter(e => !localIds.has(e.id)),
   ].sort((a,b) => String(b.updatedAt || '').localeCompare(String(a.updatedAt || '')));
-  el.innerHTML = carts.map(c => `<button class="buy-tray-pill${c.id===active.cartId?' active':''}" onclick="switchSaleCart('${escHtml(c.id)}')">
+  const html = carts.map(c => `<button class="buy-tray-pill${c.id===active.cartId?' active':''}" onclick="switchSaleCart('${escHtml(c.id)}')">
     <span class="buy-tray-pill-name">${escHtml(c.customerName || ('Sale ' + String(c.id).slice(-6).toUpperCase()))}</span>
     <span class="buy-tray-pill-meta">${Number(c.itemCount||0)} item${Number(c.itemCount||0)===1?'':'s'} · $${Number(c.total||0).toFixed(2)}${Number(c.tradeAmount||0)>0?' · trade $'+Number(c.tradeAmount).toFixed(2):''}</span>
     ${localIds.has(c.id)?'':'<span class="buy-tray-pill-badge">JOIN</span>'}
   </button>`).join('');
+  mounts.forEach(el => { el.innerHTML = html; });
   const input = document.getElementById('sale-cart-customer');
   if(input && document.activeElement !== input) input.value = active.customerName || '';
 }
@@ -28871,6 +28882,23 @@ function qplResultCategoryKey(r){
   return qplCategoryKey(r?.category);
 }
 
+// qplResultCategoryKey() already detects the SPECIFIC game (pokemon/mtg/
+// yugioh/etc) from every field a search result can carry. normalizeQuickCategory()
+// deliberately collapses all of those into one generic "TCG" bucket for tab/
+// filter classification -- but that generic label isn't a real category
+// (STANDARD_INVENTORY_CATEGORIES has "Pokemon TCG" and "Magic: The Gathering",
+// never bare "TCG"), so using normalizeQuickCategory's output to actually SET
+// an item's category on add-to-buy/inventory/sell silently mislabeled every
+// Pokemon/MTG card as the unrouteable generic bucket. Reuse the specific key
+// instead, and only fall back to the generic bucket when the game truly isn't known.
+const QPL_KEY_TO_STANDARD_CATEGORY = {
+  pokemon:'Pokemon TCG', mtg:'Magic: The Gathering', yugioh:'Yu-Gi-Oh!',
+  one_piece:'One Piece TCG', lorcana:'Disney Lorcana', comic:'Comic', sports:'Sports',
+};
+function qplResultStandardCategory(r){
+  return QPL_KEY_TO_STANDARD_CATEGORY[qplResultCategoryKey(r)] || normalizeQuickCategory(r?.category);
+}
+
 function qplCategoryAllows(r, wants){
   if(!wants) return true;
   const key = qplResultCategoryKey(r);
@@ -33852,7 +33880,7 @@ async function selectQuickLookupResult(idx){
     }).catch(() => {});
   }
   const el = document.getElementById('qpl-result');
-  const cat = normalizeQuickCategory(r.category);
+  const cat = qplResultStandardCategory(r);
   el.innerHTML = `<div class="qpl-selected-card" data-qpl-idx="${idx}">
     <div class="qpl-selected-top">
       ${r.imageUrl ? `<img src="${escHtml(r.imageUrl)}" onclick="openQplImageLightbox(${idx})" alt="${escHtml(r.name || 'Selected item')}" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'qpl-img-shell',innerHTML:'<div class=qpl-no-img>NO IMAGE</div>'}))">` : '<div class="qpl-img-shell"><div class="qpl-no-img">NO IMAGE</div></div>'}
@@ -33896,7 +33924,7 @@ async function selectQuickLookupResult(idx){
     <div style="display:grid;grid-template-columns:1fr 140px 110px;gap:9px;margin-bottom:9px">
       <input id="qpl-edit-name" value="${escHtml(r.name)}" style="background:var(--surf);border:1px solid var(--border);color:var(--text);padding:12px;border-radius:8px;font-size:14px;min-height:48px">
       <select id="qpl-edit-category" style="background:var(--surf);border:1px solid var(--border);color:var(--text);padding:12px;border-radius:8px;font-size:14px;min-height:48px">
-        ${['TCG','Sports','Comic','Graded','Collectibles'].map(c => `<option value="${c}" ${cat===c?'selected':''}>${c}</option>`).join('')}
+        ${Array.from(new Set([...getInventoryCategories(), 'Graded', cat].filter(Boolean))).map(c => `<option value="${escHtml(c)}" ${cat===c?'selected':''}>${escHtml(c)}</option>`).join('')}
       </select>
       <select id="qpl-edit-condition" onchange="updateSelectedQplEditVariant(${idx})" style="background:var(--surf);border:1px solid var(--border);color:var(--text);padding:12px;border-radius:8px;font-size:14px;min-height:48px">
         ${(r.availableVariants?.length ? qplVariantOptionValues(r, 'condition') : ['NM','LP','MP','HP','DMG']).map(c => `<option value="${c}" ${String(r.selectedCondition||r.condition||'NM')===c?'selected':''}>${c}</option>`).join('')}
@@ -36454,6 +36482,40 @@ async function editCartLinePrice(idx){
   toast_dash('Cart price updated');
 }
 
+// Selling more than 1 of the same item (toploaders, sleeves, any stackable
+// supply) previously meant clicking "add to cart" once per unit -- there was
+// no way to bump a line's quantity after the fact. `price` on a unified-cart-
+// model line (addSaleItemToCart) is the line's EXTENDED total, not per-unit,
+// so quantity changes must recompute it from unitPrice or the charge silently
+// stays pinned to the original 1-unit price while stock still depletes by N.
+async function adjustCartLineQuantity(idx, delta){
+  const cart = await getActiveCartData();
+  const item = cart.items?.[idx];
+  if(!item || item.unitPrice == null) return;
+  const currentQty = Math.max(1, Number(item.quantity || item.qty || 1));
+  const nextQty = currentQty + delta;
+  if(nextQty < 1) return;
+  if(item.inventoryId && ['inventory','sealed'].includes(item.sourceType || 'inventory')){
+    const inventoryItem = all.find(candidate => candidate.id === item.inventoryId || candidate.supabaseRowId === item.inventoryId);
+    const available = inventoryAvailableQuantity(inventoryItem || item);
+    const otherLinesQty = (cart.items || []).reduce((sum, line, i2) => {
+      if(i2 === idx) return sum;
+      const lineId = line.inventoryId || line.shopId || line.wfId;
+      return String(lineId || '') === String(item.inventoryId) ? sum + Number(line.quantity || line.qty || 1) : sum;
+    }, 0);
+    if(delta > 0 && nextQty + otherLinesQty > available){
+      toast_dash(`Only ${available} available (${currentQty + otherLinesQty} already in cart)`);
+      return;
+    }
+  }
+  item.quantity = nextQty;
+  item.qty = nextQty;
+  item.price = Number(item.unitPrice || 0) * nextQty;
+  item.updatedAt = new Date().toISOString();
+  await saveActiveCartData(cart);
+  logOpsEvent('cart_qty_adjusted', 'Adjusted cart line quantity: ' + (item.name || 'item'), { cartLineId:item.id || '', quantity:nextQty });
+}
+
 async function saveInventoryEdit(item, updates){
   if(item.source === 'built_in') {
     await updateBuiltInInventoryItem(item, updates);
@@ -36559,6 +36621,11 @@ async function markCartItemsSoldFromPayment(items, method, soldAt, options={}){
     const inv = all.find(i => i.id === id);
     const salePrice = Number(cartItem.price || 0);
     const quantitySold = Math.max(1, Number(cartItem.quantity || 1));
+    // cartItem.cost is per-unit (set once in addSaleItemToCart's costBasis),
+    // while salePrice is the line's EXTENDED total once a quantity stepper is
+    // involved -- multiply cost by quantitySold too or profit silently reads
+    // high on every multi-unit line.
+    const totalCost = Number(cartItem.cost ?? inv?.cost ?? 0) * quantitySold;
     const remaining = Math.max(0, inventoryAvailableQuantity(inv || cartItem) - quantitySold);
     const depleted = remaining === 0;
     const fieldData = {
@@ -36566,7 +36633,7 @@ async function markCartItemsSoldFromPayment(items, method, soldAt, options={}){
       'inventory-count':remaining,
       status:depleted ? STATUS_SOLD : 'in_stock',
       'sale-price':salePrice,
-      'profit':salePrice - Number(cartItem.cost || inv?.cost || 0),
+      'profit':salePrice - totalCost,
       'sale-channel':method,
       'date-sold':soldAt
     };
@@ -36576,7 +36643,7 @@ async function markCartItemsSoldFromPayment(items, method, soldAt, options={}){
       inv.status=depleted ? 'sold' : 'in_stock';
       inv.lifecycle=depleted ? 'sold' : 'in_stock';
       inv.salePrice=salePrice;
-      inv.profit=salePrice - Number(inv.cost || cartItem.cost || 0);
+      inv.profit=salePrice - totalCost;
       inv.channel=method;
       inv.soldAt=depleted ? soldAt : '';
       setLifecycle(inv.id, depleted ? 'sold' : 'in_stock', true);
@@ -36912,10 +36979,18 @@ function renderDealerCartTools(cartData = getCartDataLocal()){
       const current = Number(i.price ?? i.adjusted_price ?? 0);
       const original = Number(i.originalPrice ?? i.rawMarketPrice ?? i.suggestedFromMarket ?? current);
       const quantity = Math.max(1, Number(i.quantity || i.qty || 1));
+      // Only unified-cart-model lines (addSaleItemToCart) carry unitPrice --
+      // quick-sale/bulk-lot lines store `price` as an already-total lump sum
+      // with `qty` as a display-only label, so a +/- stepper there would
+      // silently double-charge or under-charge instead of adjusting anything real.
+      const qtyAdjustable = i.unitPrice != null;
+      const qtyCell = qtyAdjustable && !locked
+        ? `<span class="dealer-qty-stepper"><button class="ra" onclick="adjustCartLineQuantity(${idx},-1)" ${quantity<=1?'disabled':''}>−</button><b>${quantity}</b><button class="ra" onclick="adjustCartLineQuantity(${idx},1)">+</button></span>`
+        : (quantity>1?'Qty '+quantity+' · ':'');
       return `<div class="dealer-line ${locked?'locked':''}">
     ${imageUrl ? `<img class="dealer-line-image" src="${escHtml(imageUrl)}" alt="${escHtml(i.name || i.title || 'Item')}" onclick="openImageLightboxUrl('${encodeURIComponent(imageUrl)}','${encodeURIComponent(i.name || i.title || 'Item')}')" onerror="this.outerHTML='<div class=dealer-line-image-ph>NO IMAGE</div>'">` : '<div class="dealer-line-image-ph">NO IMAGE</div>'}
     <div><div class="dealer-line-name">${escHtml(i.name || i.title || 'Item')}</div><div class="dealer-line-sub">${escHtml([i.sub, i.category, i.condition, i.adjustmentReason ? 'Adjusted: '+i.adjustmentReason : ''].filter(Boolean).join(' / '))}</div></div>
-    <div class="dealer-price-breakdown"><b>$${current.toFixed(2)}</b><br>${quantity>1?'Qty '+quantity+' · ':''}Sale price${Math.abs(original-current)>0.009?`<br><span style="text-decoration:line-through">Was $${original.toFixed(2)}</span> · <span style="color:${current<original?'var(--g)':'var(--gold)'}">${current<original?'-':'+'}$${Math.abs(current-original).toFixed(2)}</span>`:''}</div>
+    <div class="dealer-price-breakdown"><b>$${current.toFixed(2)}</b><br>${qtyCell}Sale price${Math.abs(original-current)>0.009?`<br><span style="text-decoration:line-through">Was $${original.toFixed(2)}</span> · <span style="color:${current<original?'var(--g)':'var(--gold)'}">${current<original?'-':'+'}$${Math.abs(current-original).toFixed(2)}</span>`:''}</div>
     ${locked ? '' : `<button class="ra" onclick="editCartLinePrice(${idx})">EDIT</button><button class="cd-remove" title="Remove from cart" onclick="removeCustomerDisplayCartItem('${escHtml(i.id || '')}', ${idx})">X</button>`}
   </div>`;
     }).join('');
@@ -37551,7 +37626,10 @@ setInterval(() => { if(shouldPollTab('display')) renderCustomerDisplay(); }, 300
 ensureActiveSaleCart();
 renderSaleCartSwitcher();
 fetchSaleCartIndex();
-setInterval(() => { if(shouldPollTab('display')) fetchSaleCartIndex(); }, 6000);
+// The cart picker also lives in the Inventory tab now (staff add items there,
+// not just on the Customer Display screen), so it needs the same background
+// refresh whichever of those two tabs is active, not just 'display'.
+setInterval(() => { if(shouldPollTab('display') || shouldPollTab('inventory')) fetchSaleCartIndex(); }, 6000);
 renderCustomerDisplay().catch(()=>{});
 
 // Init drawer state on load
@@ -40667,7 +40745,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.16.14-broader-inventory-search" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.16.15-pos-cart-fixes" defer></script>
 </body>
 </html>
 

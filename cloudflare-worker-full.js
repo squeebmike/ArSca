@@ -3151,6 +3151,46 @@ export default {
       return json({ error: 'GET or POST only' }, 405);
     }
 
+    // Multi-cart POS: the shared "which customer carts are open" index used to
+    // be maintained entirely client-side (GET the blob, splice in one entry,
+    // POST the whole thing back). Two devices touching the index around the
+    // same time raced on that read-modify-write -- one device's close/complete
+    // could be silently overwritten by another device's stale copy, which is
+    // exactly why a closed cart could keep reappearing as "open" elsewhere.
+    // Doing the read-modify-write inside a single Worker request doesn't make
+    // it fully atomic (KV has no compare-and-swap here), but it collapses the
+    // race window from a multi-second client round trip down to one Worker
+    // execution, which is the practical fix available without a Durable Object.
+    if (url.pathname === '/kv/sale-cart-index/upsert' || url.pathname === '/kv/sale-cart-index/remove') {
+      if (request.method !== 'POST') return json({ error: 'POST only' }, 405);
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId);
+      if (auth.error) return auth.error;
+      const limited = await readJsonWithLimit(request, 64 * 1024);
+      if (limited.error) return limited.error;
+      const body = limited.data || {};
+      const scopedKey = `lba:${safeStoreKey(storeId)}:sale_carts_index`;
+      const raw = env.LBA_KV ? await env.LBA_KV.get(scopedKey) : (globalThis['_' + scopedKey] || null);
+      let index = [];
+      try { index = JSON.parse(raw || '[]'); } catch (e) { index = []; }
+      if (!Array.isArray(index)) index = [];
+      if (url.pathname.endsWith('/upsert')) {
+        const entry = body.entry;
+        if (!entry || !entry.id) return json({ ok: false, error: 'entry.id is required' }, 400);
+        const idx = index.findIndex(e => e.id === entry.id);
+        if (idx >= 0) index[idx] = entry; else index.push(entry);
+      } else {
+        const id = body.id;
+        if (!id) return json({ ok: false, error: 'id is required' }, 400);
+        index = index.filter(e => e.id !== id);
+      }
+      index = index.filter(e => e && e.status === 'open').slice(0, 100);
+      const nextRaw = JSON.stringify(index);
+      if (env.LBA_KV) await env.LBA_KV.put(scopedKey, nextRaw, { expirationTtl: 604800 });
+      else globalThis['_' + scopedKey] = nextRaw;
+      return json({ ok: true, index });
+    }
+
     if (url.pathname === '/offline/cache/manifest') {
       // PC CSV KV cache removed — Pokemon/MTG data is downloaded to device directly.
       return json({
