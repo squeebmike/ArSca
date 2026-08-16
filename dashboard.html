@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.16.15-pos-cart-fixes">
+<meta name="version" content="2026.08.16.16-ghost-cart-cleanup">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -474,6 +474,9 @@ tr.sold:hover td{opacity:.7;}
 .buy-tray-pill-meta{font-size:9px;color:var(--dim);}
 .buy-tray-pill-badge{font-size:7px;color:var(--gold);letter-spacing:.04em;text-transform:uppercase;}
 .buy-tray-pill-new{border-style:dashed;color:var(--g);align-items:center;justify-content:center;}
+.buy-tray-pill-wrap{position:relative;flex:0 0 auto;}
+.buy-tray-pill-close{position:absolute;top:-6px;right:-6px;width:16px;height:16px;line-height:14px;text-align:center;background:var(--surf);border:1px solid var(--border);border-radius:50%;color:var(--dim);font-family:var(--font-mono);font-size:10px;padding:0;cursor:pointer;}
+.buy-tray-pill-close:hover{color:var(--red);border-color:var(--red);}
 .sale-cart-session-panel{margin:4px auto 14px;max-width:1400px;}
 .sale-cart-session-head{display:grid;grid-template-columns:minmax(180px,1fr) auto auto;gap:8px;align-items:center;margin-bottom:10px;}
 .sale-cart-session-head .tsi{margin:0;}
@@ -1573,13 +1576,13 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.16.15-pos-cart-fixes" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.16.15-pos-cart-fixes" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.16.15-pos-cart-fixes" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.16.15-pos-cart-fixes" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.16.15-pos-cart-fixes" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.16.15-pos-cart-fixes" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.16.15-pos-cart-fixes" defer></script>
+<script src="scripts/query-routing.js?v=2026.08.16.16-ghost-cart-cleanup" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.16.16-ghost-cart-cleanup" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.16.16-ghost-cart-cleanup" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.16.16-ghost-cart-cleanup" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.16.16-ghost-cart-cleanup" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.16.16-ghost-cart-cleanup" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.16.16-ghost-cart-cleanup" defer></script>
 </head>
 <body>
 
@@ -1629,11 +1632,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.16.15-pos-cart-fixes</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.16.16-ghost-cart-cleanup</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.16.15-pos-cart-fixes</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.16.16-ghost-cart-cleanup</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1655,7 +1658,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.16.15-pos-cart-fixes</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.16.16-ghost-cart-cleanup</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3391,7 +3394,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.16.15-pos-cart-fixes';
+const APP_VERSION = '2026.08.16.16-ghost-cart-cleanup';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -12622,7 +12625,12 @@ async function switchSaleCart(id){
       if(d?.value) cart = JSON.parse(d.value);
     } catch(e) {}
   }
-  if(!cart || cart.status !== 'open') { toast_dash('That customer cart is no longer open'); fetchSaleCartIndex(); return; }
+  // A cart can be listed in the shared index yet already be closed/completed/
+  // gone server-side -- re-fetching the SAME index here would just show the
+  // identical stale entry again forever. Actively purge it via the atomic
+  // remove route instead, so this device (and every other device, on their
+  // next fetch) stops seeing a cart that no longer exists.
+  if(!cart || cart.status !== 'open') { toast_dash('That customer cart is no longer open'); await removeSaleCartFromIndex(id); return; }
   setActiveSaleCartId(id);
   upsertLocalSaleCart(cart);
   localStorage.setItem('pos_cart_v2', JSON.stringify(cart));
@@ -12662,6 +12670,30 @@ async function closeActiveSaleCart(){
   const next = getSaleCarts().find(c => c.status === 'open');
   if(next) await switchSaleCart(next.cartId); else startNewSaleCart();
 }
+// Lets staff clear a stale/abandoned cart straight from the switcher pill
+// (a leftover empty cart from a prior device/session, or one that's already
+// closed server-side but still lingering in the shared index) without first
+// having to JOIN it just to discover it's dead and hit "Close current cart".
+async function closeSaleCartById(id){
+  if(!id) return;
+  if(id === getActiveSaleCartId()) return closeActiveSaleCart();
+  const local = getSaleCarts().find(c => c.cartId === id);
+  if(local && (local.items || []).length && !confirm('Close ' + saleCartLabel(local) + ' and discard its sale items?')) return;
+  if(!getAccountContext().isDemo){
+    try {
+      const r = await storeWorkerFetch(scopedWorkerPath(saleCartWorkerKey(id)), { cache:'no-store', signal:AbortSignal.timeout(4000) });
+      const d = await r.json();
+      const cart = d?.value ? JSON.parse(d.value) : null;
+      if(cart){
+        cart.status = 'closed';
+        cart.closedAt = new Date().toISOString();
+        await storeWorkerFetch(scopedWorkerPath(saleCartWorkerKey(id)), { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(cart) });
+      }
+    } catch(e) {}
+  }
+  saveSaleCartsLocal(getSaleCarts().filter(c => c.cartId !== id));
+  await removeSaleCartFromIndex(id);
+}
 async function completeActiveSaleCartAfterCheckout(saleId){
   const cart = ensureActiveSaleCart();
   cart.status = 'complete';
@@ -12693,11 +12725,14 @@ function renderSaleCartSwitcher(){
     ...local.map(c => saleCartIndexEntry(c)),
     ...knownSaleCartIndex.filter(e => !localIds.has(e.id)),
   ].sort((a,b) => String(b.updatedAt || '').localeCompare(String(a.updatedAt || '')));
-  const html = carts.map(c => `<button class="buy-tray-pill${c.id===active.cartId?' active':''}" onclick="switchSaleCart('${escHtml(c.id)}')">
-    <span class="buy-tray-pill-name">${escHtml(c.customerName || ('Sale ' + String(c.id).slice(-6).toUpperCase()))}</span>
-    <span class="buy-tray-pill-meta">${Number(c.itemCount||0)} item${Number(c.itemCount||0)===1?'':'s'} · $${Number(c.total||0).toFixed(2)}${Number(c.tradeAmount||0)>0?' · trade $'+Number(c.tradeAmount).toFixed(2):''}</span>
-    ${localIds.has(c.id)?'':'<span class="buy-tray-pill-badge">JOIN</span>'}
-  </button>`).join('');
+  const html = carts.map(c => `<span class="buy-tray-pill-wrap">
+    <button class="buy-tray-pill${c.id===active.cartId?' active':''}" onclick="switchSaleCart('${escHtml(c.id)}')">
+      <span class="buy-tray-pill-name">${escHtml(c.customerName || ('Sale ' + String(c.id).slice(-6).toUpperCase()))}</span>
+      <span class="buy-tray-pill-meta">${Number(c.itemCount||0)} item${Number(c.itemCount||0)===1?'':'s'} · $${Number(c.total||0).toFixed(2)}${Number(c.tradeAmount||0)>0?' · trade $'+Number(c.tradeAmount).toFixed(2):''}</span>
+      ${localIds.has(c.id)?'':'<span class="buy-tray-pill-badge">JOIN</span>'}
+    </button>
+    <button class="buy-tray-pill-close" title="Close this cart" onclick="event.stopPropagation();closeSaleCartById('${escHtml(c.id)}')">×</button>
+  </span>`).join('');
   mounts.forEach(el => { el.innerHTML = html; });
   const input = document.getElementById('sale-cart-customer');
   if(input && document.activeElement !== input) input.value = active.customerName || '';
@@ -40745,7 +40780,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.16.15-pos-cart-fixes" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.16.16-ghost-cart-cleanup" defer></script>
 </body>
 </html>
 
