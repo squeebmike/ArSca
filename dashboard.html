@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.16.17-cart-selfheal-mobile-collapse">
+<meta name="version" content="2026.08.16.18-discount-and-qty-sold-stats-fix">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1586,13 +1586,13 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.16.17-cart-selfheal-mobile-collapse" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.16.17-cart-selfheal-mobile-collapse" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.16.17-cart-selfheal-mobile-collapse" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.16.17-cart-selfheal-mobile-collapse" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.16.17-cart-selfheal-mobile-collapse" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.16.17-cart-selfheal-mobile-collapse" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.16.17-cart-selfheal-mobile-collapse" defer></script>
+<script src="scripts/query-routing.js?v=2026.08.16.18-discount-and-qty-sold-stats-fix" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.16.18-discount-and-qty-sold-stats-fix" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.16.18-discount-and-qty-sold-stats-fix" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.16.18-discount-and-qty-sold-stats-fix" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.16.18-discount-and-qty-sold-stats-fix" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.16.18-discount-and-qty-sold-stats-fix" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.16.18-discount-and-qty-sold-stats-fix" defer></script>
 </head>
 <body>
 
@@ -1642,11 +1642,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.16.17-cart-selfheal-mobile-collapse</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.16.18-discount-and-qty-sold-stats-fix</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.16.17-cart-selfheal-mobile-collapse</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.16.18-discount-and-qty-sold-stats-fix</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1668,7 +1668,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.16.17-cart-selfheal-mobile-collapse</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.16.18-discount-and-qty-sold-stats-fix</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3404,7 +3404,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.16.17-cart-selfheal-mobile-collapse';
+const APP_VERSION = '2026.08.16.18-discount-and-qty-sold-stats-fix';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -16492,7 +16492,14 @@ const MAX_SANE_ITEM_PRICE = 25000; // flag any single item priced above this as 
 function transactionSoldRows(){
   return safeLocalJson('pos_transactions', []).flatMap(t => (t.items || []).map(i => {
     const salePrice = Number(i.adjustedPrice ?? i.price ?? 0);
+    // i.cost is the PER-UNIT cost basis (set once when the line was added to
+    // cart, never multiplied) while salePrice is the line's EXTENDED total
+    // across however many units that line sold -- has to be scaled by
+    // quantity too or profit reads high on every multi-unit line, same fix
+    // as markCartItemsSoldFromPayment's inventory-side profit calc.
+    const quantity = Math.max(1, Number(i.quantity || i.qty || 1));
     const cost = Number(i.cost || 0);
+    const totalCost = cost * quantity;
     // Guard: skip items whose price looks like a test/corrupt value (> $25k is extremely rare
     // for a card/comic shop and almost certainly bad data from a dev or import mistake).
     if(salePrice > MAX_SANE_ITEM_PRICE) {
@@ -16506,10 +16513,11 @@ function transactionSoldRows(){
       category:i.categoryName || i.category || 'Unknown',
       categoryName:i.categoryName || i.category || 'Unknown',
       cost,
+      quantity,
       salePrice,
       adjustedPrice:salePrice,
       originalPrice:Number(i.originalPrice ?? salePrice),
-      profit:salePrice - cost,
+      profit:salePrice - totalCost,
       channel:t.method || t.tenderType || '',
       soldAt:i.soldAt || t.date || t.paidAt || '',
       status:'sold',
@@ -16599,6 +16607,10 @@ function renderStats(){
   const sellVal=ins.reduce((a,i)=>a+inventoryListPrice(i)*(i.qty||1),0);
   const pft=sol.reduce((a,i)=>a+(i.profit||0),0);
   const cost=ins.reduce((a,i)=>a+(i.cost||0)*(i.qty||1),0);
+  // sol.length counts SALE ROWS, not units -- a single cart line can now sell
+  // several units of the same item (quantity stepper), so "N sold" needs to
+  // sum the actual quantity moved per row or a 3-unit sale reads as 1.
+  const soldUnits=sol.reduce((a,i)=>a+Number(i.soldQuantity ?? i.quantity ?? 1),0);
   const avg=sol.length?pft/sol.length:0;
   const soldCost=sol.reduce((a,i)=>a+(i.cost||0),0);
   const roi=soldCost>0?(pft/soldCost*100):0;
@@ -16618,8 +16630,8 @@ function renderStats(){
   document.getElementById('s8b').textContent=(potentialProfit>=0?'+':'')+f$(potentialProfit)+' if sold at our price';
   document.getElementById('s3').textContent=(pft>=0?'+':'')+f$(pft);
   document.getElementById('s3').className='sc-v'+(pft<0?' neg':'');
-  document.getElementById('s3b').textContent=sol.length+' sold · ROI '+roi.toFixed(0)+'%';
-  document.getElementById('s4').textContent=sol.length;
+  document.getElementById('s3b').textContent=soldUnits+' sold · ROI '+roi.toFixed(0)+'%';
+  document.getElementById('s4').textContent=soldUnits;
   document.getElementById('s4b').textContent=f$(sol.reduce((a,i)=>a+(i.salePrice||0),0))+' revenue';
   document.getElementById('s5').textContent=f$(cost);
   document.getElementById('s6').textContent=(avg>=0?'+':'')+fd$(avg);
@@ -36126,7 +36138,10 @@ function generateEOD(){
   const pulledCount = Object.values(lifecycleMap).filter(v => v==='pulled_ebay').length;
 
   const totalRevenue = dayTx.reduce((a,t)=>a+t.total,0);
-  const totalItems = dayTx.reduce((a,t)=>a+t.items.length,0);
+  // t.items.length counts SALE LINES, not units -- a line can carry a
+  // quantity > 1 (multiple of the same item sold in one transaction), so
+  // summing quantity is required or a 3-unit sale reads as 1 item sold.
+  const totalItems = dayTx.reduce((a,t)=>a+(t.items||[]).reduce((s,i)=>s+Number(i.quantity||1),0),0);
   const tenderTotals = transactionTenderTotals(dayTx);
   const tenderProfit = transactionTenderProfitSummary(dayTx);
   const cashTotal = Number(tenderTotals.cash || 0);
@@ -36715,6 +36730,11 @@ async function markCartItemsSoldFromPayment(items, method, soldAt, options={}){
       inv.lifecycle=depleted ? 'sold' : 'in_stock';
       inv.salePrice=salePrice;
       inv.profit=salePrice - totalCost;
+      // How many units this specific sale event moved -- distinct from
+      // inv.qty/inv.quantity, which is the REMAINING stock count (0 once
+      // depleted). Without this, a row that sold out in one multi-unit
+      // transaction has no way to report how many actually sold.
+      inv.soldQuantity=quantitySold;
       inv.channel=method;
       inv.soldAt=depleted ? soldAt : '';
       setLifecycle(inv.id, depleted ? 'sold' : 'in_stock', true);
@@ -36834,13 +36854,34 @@ function createLockedCheckoutSnapshot(cartData){
   const discountTotal = Number(normalized.discountAmount || 0);
   const taxTotal = settings.tax?.enabled && !Number(normalized.tax || 0) ? Math.max(0, subtotal - discountTotal) * (Number(settings.tax.defaultRate || 0) / 100) : Number(normalized.tax || 0);
   const total = Math.max(0, subtotal - discountTotal + taxTotal);
+  // A cart-level discount % was only ever applied to the visible subtotal/
+  // total -- individual line prices never reflected it. Every downstream
+  // consumer of a line's price (inventory sale-price/profit, the sold-items
+  // ledger, sold stats) recorded the full PRE-discount amount as "what this
+  // sold for," even on a deal where the customer paid noticeably less.
+  // Redistribute the discount proportionally across lines here, once, before
+  // it gets baked into the locked snapshot. Remainder goes to the last line
+  // so the per-line total exactly matches (subtotal - discountTotal) instead
+  // of drifting a cent or two from proportional rounding.
+  const discountRatio = subtotal > 0 ? discountTotal / subtotal : 0;
+  const rawItems = normalized.items || [];
+  let allocated = 0;
+  const discountedItems = rawItems.map((item, idx) => {
+    const linePrice = Number(item.price || 0);
+    const isLast = idx === rawItems.length - 1;
+    const discountedPrice = isLast
+      ? Math.round((subtotal - discountTotal - allocated) * 100) / 100
+      : Math.round((linePrice - linePrice * discountRatio) * 100) / 100;
+    allocated += discountedPrice;
+    return { ...item, originalPrice: item.originalPrice ?? linePrice, price: discountedPrice, adjustedPrice: discountedPrice };
+  });
   return Object.freeze({
     id:makeUuid('checkout'),
     store_id:getActiveStoreId(),
     show_session_id:getShowSessionId(getShowMode()),
     drawer_session_id:drawerState?.id || null,
     register_id:REGISTER_ID,
-    lines:(normalized.items || []).map(customerSafeLine),
+    lines:discountedItems.map(customerSafeLine),
     subtotal,
     discount_total:discountTotal,
     tax_total:taxTotal,
@@ -37505,7 +37546,7 @@ async function finalizeCompletedCheckout(bundle, queued, inventoryCommittedAtomi
   // shopId or fuzzy name/price/date -- that matching was fragile and any
   // row it failed to match (including every row logged before shopId was
   // added here) showed up as a duplicate sale on top of the real one.
-  txLog.unshift({ id:bundle.sale.id, date:paidAt, method, tenderType:normalizeTenderType(method), paymentBreakdown:bundle.payments.map(payment=>({method:payment.method,tenderType:normalizeTenderType(payment.method),amount:Number(payment.amount||0),reference:payment.reference||'',provider:payment.provider||''})), total:bundle.sale.total, items:bundle.saleLines.map(l => ({ name:l.title, price:l.adjusted_price, cost:l.cost_basis, category:l.category, soldAt:paidAt, shopId:l.item_id||'', sourceType:l.source_type||'inventory' })), source:queued?'offline-queued-ledger':'supabase-ledger', showSessionId:bundle.sale.show_session_id||'', drawerSessionId:bundle.sale.drawer_session_id, storeId:bundle.sale.store_id });
+  txLog.unshift({ id:bundle.sale.id, date:paidAt, method, tenderType:normalizeTenderType(method), paymentBreakdown:bundle.payments.map(payment=>({method:payment.method,tenderType:normalizeTenderType(payment.method),amount:Number(payment.amount||0),reference:payment.reference||'',provider:payment.provider||''})), total:bundle.sale.total, items:bundle.saleLines.map(l => ({ name:l.title, price:l.adjusted_price, cost:l.cost_basis, category:l.category, soldAt:paidAt, shopId:l.item_id||'', sourceType:l.source_type||'inventory', quantity:Number(l.quantity||1) })), source:queued?'offline-queued-ledger':'supabase-ledger', showSessionId:bundle.sale.show_session_id||'', drawerSessionId:bundle.sale.drawer_session_id, storeId:bundle.sale.store_id });
   localStorage.setItem('pos_transactions', JSON.stringify(txLog.slice(0,1000)));
   const empty = { items:[], discount:0, savedAt:paidAt, clearedAt:paidAt, lastTxId:bundle.sale.id, storeId:getActiveStoreId(), registerId:REGISTER_ID, appVersion:APP_VERSION };
   localStorage.setItem('pos_cart_v2', JSON.stringify(empty));
@@ -40816,7 +40857,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.16.17-cart-selfheal-mobile-collapse" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.16.18-discount-and-qty-sold-stats-fix" defer></script>
 </body>
 </html>
 
