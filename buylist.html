@@ -32,9 +32,10 @@ header{background:#07110f;color:#fff;padding:28px 20px}
     <div class="field"><label>Your Name *</label><input id="contact-name" placeholder="Full name"></div>
     <div class="two-col">
       <div class="field"><label>Email</label><input id="contact-email" type="email" placeholder="you@example.com"></div>
-      <div class="field"><label>Phone</label><input id="contact-phone" type="tel" placeholder="(555) 555-5555"></div>
+      <div class="field"><label>Phone</label><input id="contact-phone" type="tel" placeholder="(555) 555-5555" oninput="updateSmsConsentVisibility()"></div>
     </div>
     <div style="font-size:11px;color:var(--muted);margin-top:-6px;margin-bottom:12px">At least one of email or phone is required so we can reach you.</div>
+    <label id="sms-consent-row" style="display:none;align-items:flex-start;gap:8px;font-size:12px;color:var(--text);margin-bottom:4px"><input id="sms-consent" type="checkbox" style="margin-top:3px"> I agree to receive text messages from The Mana Pocket about this submission. Msg &amp; data rates may apply. Reply STOP to opt out.</label>
   </div>
 
   <div class="card">
@@ -73,6 +74,13 @@ function addBuylistItemRow(){
   document.getElementById('items-list').appendChild(wrap);
 }
 
+function updateSmsConsentVisibility(){
+  const row=document.getElementById('sms-consent-row');
+  const hasPhone=document.getElementById('contact-phone').value.trim().length>0;
+  row.style.display=hasPhone?'flex':'none';
+  if(!hasPhone) document.getElementById('sms-consent').checked=false;
+}
+
 function collectBuylistItems(){
   return Array.from(document.querySelectorAll('.item-row')).map(row => ({
     description: row.querySelector('.bl-desc').value.trim(),
@@ -92,6 +100,7 @@ async function submitBuylist(){
   const items=collectBuylistItems();
   if(!contactName){ errEl.textContent='Enter your name'; errEl.classList.add('on'); return; }
   if(!contactEmail && !contactPhone){ errEl.textContent='Enter an email or phone number'; errEl.classList.add('on'); return; }
+  if(contactPhone && !document.getElementById('sms-consent').checked){ errEl.textContent='Please confirm you agree to receive text messages about this submission'; errEl.classList.add('on'); return; }
   if(!items.length){ errEl.textContent='Add at least one item you want to sell'; errEl.classList.add('on'); return; }
   const btn=document.getElementById('submit-btn');
   btn.disabled=true; btn.textContent='SUBMITTING…';
