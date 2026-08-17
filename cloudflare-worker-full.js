@@ -3206,6 +3206,97 @@ export default {
       return json({ ok: true, index });
     }
 
+    // Buy trays and show sessions had the exact same client-side
+    // GET-modify-POST-whole-blob race as the sale-cart index above (two
+    // devices opening/closing/updating around the same time could have one's
+    // change silently overwritten by the other's stale copy) -- same fix,
+    // moved server-side into one atomic-ish Worker request. Unlike sale
+    // carts, neither of these prunes non-open entries here; that filtering
+    // already happens client-side at render time, so this only fixes the
+    // race, not any existing filtering behavior.
+    if (url.pathname === '/kv/buy-trays-index/upsert' || url.pathname === '/kv/buy-trays-index/remove') {
+      if (request.method !== 'POST') return json({ error: 'POST only' }, 405);
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId);
+      if (auth.error) return auth.error;
+      const limited = await readJsonWithLimit(request, 64 * 1024);
+      if (limited.error) return limited.error;
+      const body = limited.data || {};
+      const scopedKey = `lba:${safeStoreKey(storeId)}:buy_trays_index`;
+      const raw = env.LBA_KV ? await env.LBA_KV.get(scopedKey) : (globalThis['_' + scopedKey] || null);
+      let index = [];
+      try { index = JSON.parse(raw || '[]'); } catch (e) { index = []; }
+      if (!Array.isArray(index)) index = [];
+      if (url.pathname.endsWith('/upsert')) {
+        const entry = body.entry;
+        if (!entry || !entry.id) return json({ ok: false, error: 'entry.id is required' }, 400);
+        const idx = index.findIndex(e => e.id === entry.id);
+        if (idx >= 0) index[idx] = entry; else index.push(entry);
+        index = index.slice(0, 50);
+      } else {
+        const id = body.id;
+        if (!id) return json({ ok: false, error: 'id is required' }, 400);
+        index = index.filter(e => e.id !== id);
+      }
+      const nextRaw = JSON.stringify(index);
+      if (env.LBA_KV) await env.LBA_KV.put(scopedKey, nextRaw, { expirationTtl: 604800 });
+      else globalThis['_' + scopedKey] = nextRaw;
+      return json({ ok: true, index });
+    }
+
+    if (url.pathname === '/kv/show-sessions-index/upsert') {
+      if (request.method !== 'POST') return json({ error: 'POST only' }, 405);
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId);
+      if (auth.error) return auth.error;
+      const limited = await readJsonWithLimit(request, 64 * 1024);
+      if (limited.error) return limited.error;
+      const entry = limited.data?.entry;
+      if (!entry || !entry.id) return json({ ok: false, error: 'entry.id is required' }, 400);
+      const scopedKey = `lba:${safeStoreKey(storeId)}:show_sessions_index`;
+      const raw = env.LBA_KV ? await env.LBA_KV.get(scopedKey) : (globalThis['_' + scopedKey] || null);
+      let index = [];
+      try { index = JSON.parse(raw || '[]'); } catch (e) { index = []; }
+      if (!Array.isArray(index)) index = [];
+      const idx = index.findIndex(e => e.id === entry.id);
+      if (idx >= 0) index[idx] = entry; else index.unshift(entry);
+      index = index.filter(row => row?.id).slice(0, 100);
+      const nextRaw = JSON.stringify(index);
+      if (env.LBA_KV) await env.LBA_KV.put(scopedKey, nextRaw, { expirationTtl: 604800 });
+      else globalThis['_' + scopedKey] = nextRaw;
+      return json({ ok: true, index });
+    }
+
+    // inventory_lifecycle is a single shared { itemId: status } map, not an
+    // array -- saveLifecycleMap() used to push the client's ENTIRE local copy
+    // over whatever was on the server on every single status change, with no
+    // read-modify-write at all. Two devices setting different items' status
+    // around the same time could have one's change wiped out by the other's
+    // full-map overwrite, even for keys neither device just touched. This
+    // merges a patch of one or more keys in atomically server-side instead --
+    // one key for a single setLifecycle() call, many at once for a bulk
+    // action like markAllVisibleAtShow().
+    if (url.pathname === '/kv/inventory-lifecycle/merge') {
+      if (request.method !== 'POST') return json({ error: 'POST only' }, 405);
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId);
+      if (auth.error) return auth.error;
+      const limited = await readJsonWithLimit(request, 256 * 1024);
+      if (limited.error) return limited.error;
+      const patch = limited.data?.patch;
+      if (!patch || typeof patch !== 'object' || Array.isArray(patch) || !Object.keys(patch).length) return json({ ok: false, error: 'patch is required' }, 400);
+      const scopedKey = `lba:${safeStoreKey(storeId)}:inventory_lifecycle`;
+      const raw = env.LBA_KV ? await env.LBA_KV.get(scopedKey) : (globalThis['_' + scopedKey] || null);
+      let map = {};
+      try { map = JSON.parse(raw || '{}'); } catch (e) { map = {}; }
+      if (!map || typeof map !== 'object' || Array.isArray(map)) map = {};
+      Object.assign(map, patch);
+      const nextRaw = JSON.stringify(map);
+      if (env.LBA_KV) await env.LBA_KV.put(scopedKey, nextRaw, { expirationTtl: 604800 });
+      else globalThis['_' + scopedKey] = nextRaw;
+      return json({ ok: true, map });
+    }
+
     if (url.pathname === '/offline/cache/manifest') {
       // PC CSV KV cache removed — Pokemon/MTG data is downloaded to device directly.
       return json({

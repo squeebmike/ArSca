@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.18.1-inventory-pagination-fix">
+<meta name="version" content="2026.08.18.2-kv-index-atomicity-batch">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1587,13 +1587,13 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.18.1-inventory-pagination-fix" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.18.1-inventory-pagination-fix" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.18.1-inventory-pagination-fix" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.18.1-inventory-pagination-fix" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.18.1-inventory-pagination-fix" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.18.1-inventory-pagination-fix" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.18.1-inventory-pagination-fix" defer></script>
+<script src="scripts/query-routing.js?v=2026.08.18.2-kv-index-atomicity-batch" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.18.2-kv-index-atomicity-batch" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.18.2-kv-index-atomicity-batch" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.18.2-kv-index-atomicity-batch" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.18.2-kv-index-atomicity-batch" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.18.2-kv-index-atomicity-batch" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.18.2-kv-index-atomicity-batch" defer></script>
 </head>
 <body>
 
@@ -1643,11 +1643,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.18.1-inventory-pagination-fix</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.18.2-kv-index-atomicity-batch</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.18.1-inventory-pagination-fix</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.18.2-kv-index-atomicity-batch</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1669,7 +1669,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.18.1-inventory-pagination-fix</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.18.2-kv-index-atomicity-batch</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3433,7 +3433,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.18.1-inventory-pagination-fix';
+const APP_VERSION = '2026.08.18.2-kv-index-atomicity-batch';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -11290,7 +11290,7 @@ async function processSyncItem(item){
     return;
   }
   if(item.type === 'lifecycle-kv') {
-    const res = await storeWorkerFetch(scopedWorkerPath('/kv/inventory_lifecycle'), { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(item.payload.map) });
+    const res = await storeWorkerFetch(scopedWorkerPath('/kv/inventory-lifecycle/merge'), { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ patch:item.payload.patch }) });
     if(!res.ok) throw new Error('Lifecycle sync '+res.status);
     return;
   }
@@ -12955,16 +12955,31 @@ function getLifecycleMap(){
   catch(e) { return {}; }
 }
 
-function saveLifecycleMap(map){
+// `map` is the full local map (for the localStorage cache -- no race there,
+// it's single-device). `patch` is just the keys THIS call actually changed --
+// it's sent to the atomic merge route instead of the whole map, so two
+// devices changing different items' status around the same time merge
+// instead of one overwriting the other's untouched keys.
+function saveLifecycleMap(map, patch){
   localStorage.setItem('inventory_lifecycle', JSON.stringify(map));
   if(getAccountContext().isDemo) return; // Demo: local only, no worker KV writes
-  storeWorkerFetch(scopedWorkerPath('/kv/inventory_lifecycle'), {
+  const body = { patch: patch || map };
+  storeWorkerFetch(scopedWorkerPath('/kv/inventory-lifecycle/merge'), {
     method: 'POST',
     headers: {'Content-Type':'application/json'},
-    body: JSON.stringify(map)
+    body: JSON.stringify(body)
   })
     .then(res => { if(!res.ok) throw new Error('Lifecycle sync '+res.status); })
-    .catch(e => enqueueOrReplaceSync('lifecycle-kv', 'inventory_lifecycle', 'Sync inventory status map', { map }, e.message || 'Lifecycle sync failed'));
+    .catch(e => {
+      // enqueueOrReplaceSync REPLACES any prior queued item for this same
+      // key -- fine for a full-map payload (every retry already carried
+      // everything), but a bare patch would silently drop an earlier
+      // failed change if a second one queues before the first is retried.
+      // Merge onto whatever's already pending first.
+      const existing = getSyncQueue().find(x => x.type === 'lifecycle-kv' && x.syncKey === 'inventory_lifecycle' && x.status !== 'done');
+      const mergedPatch = { ...(existing?.payload?.patch || {}), ...body.patch };
+      enqueueOrReplaceSync('lifecycle-kv', 'inventory_lifecycle', 'Sync inventory status map', { patch:mergedPatch }, e.message || 'Lifecycle sync failed');
+    });
 }
 
 async function syncLifecycleFromWorker(){
@@ -12987,7 +13002,7 @@ function setLifecycle(id, state, silent){
   const map = getLifecycleMap();
   if(!silent) pushUndoAction('status change', { type:'local-storage', key:'inventory_lifecycle', value:{...map} });
   map[id] = state;
-  saveLifecycleMap(map);
+  saveLifecycleMap(map, { [id]: state });
   const item = all.find(i => i.id === id);
   if(item) item.lifecycle = state;
   if(!silent) toast_dash('Status set to ' + (LIFECYCLE_LABELS[state] || state));
@@ -13038,15 +13053,15 @@ function showSessionIndexEntry(show={}){
 
 async function publishShowSession(show){
   await storeWorkerFetch(scopedWorkerPath('/kv/show_session_'+show.id),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(show),signal:AbortSignal.timeout(4000)});
-  let index=[];
+  // Atomic upsert route -- the old client-side GET-modify-POST-whole-blob
+  // could have one device's show update wiped out by another's stale copy
+  // if they published around the same time.
+  const entry=showSessionIndexEntry(show);
   try{
-    const response=await storeWorkerFetch(scopedWorkerPath('/kv/show_sessions_index'),{cache:'no-store',signal:AbortSignal.timeout(4000)});
-    const data=await response.json();index=JSON.parse(data?.value||'[]');if(!Array.isArray(index))index=[];
-  }catch(e){index=[];}
-  const entry=showSessionIndexEntry(show),position=index.findIndex(row=>row.id===show.id);
-  if(position>=0)index[position]=entry;else index.unshift(entry);
-  knownShowSessionIndex=index.filter(row=>row?.id).slice(0,100);
-  await storeWorkerFetch(scopedWorkerPath('/kv/show_sessions_index'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(knownShowSessionIndex),signal:AbortSignal.timeout(4000)});
+    const response=await storeWorkerFetch(scopedWorkerPath('/kv/show-sessions-index/upsert'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({entry}),signal:AbortSignal.timeout(4000)});
+    const data=await response.json();
+    if(data?.ok&&Array.isArray(data.index))knownShowSessionIndex=data.index;
+  }catch(e){}
   renderShowSessionSwitcher();
 }
 
@@ -13273,8 +13288,9 @@ function markAllVisibleAtShow(){
   const show = getShowMode();
   if(!show) startShowMode();
   const map = getLifecycleMap();
-  filtered.forEach(i => { if(i.status === 'in_stock') { map[i.id] = 'at_show'; i.lifecycle = 'at_show'; } });
-  saveLifecycleMap(map);
+  const patch = {};
+  filtered.forEach(i => { if(i.status === 'in_stock') { map[i.id] = 'at_show'; i.lifecycle = 'at_show'; patch[i.id] = 'at_show'; } });
+  saveLifecycleMap(map, patch);
   renderAll();
   toast_dash('Marked ' + filtered.length + ' filtered items At Show');
 }
@@ -20380,46 +20396,36 @@ async function fetchBuyTrayIndex(){
 }
 
 async function upsertBuyTrayIndexEntry(tray){
+  const entry = {
+    id: tray.buySessionId,
+    customerName: tray.customerName || '',
+    itemCount: (tray.items || []).length,
+    offerTotal: Number(tray.offerTotal || 0),
+    status: tray.status || 'open',
+    updatedAt: tray.updatedAt || new Date().toISOString(),
+  };
+  // Atomic upsert route -- see the worker route comment for why the old
+  // client-side GET-modify-POST-whole-blob raced two devices touching the
+  // index around the same time.
   try {
-    const r = await storeWorkerFetch(scopedWorkerPath('/kv/buy_trays_index'), { signal: AbortSignal.timeout(4000) });
-    const d = await r.json();
-    let index = [];
-    try { index = JSON.parse(d?.value || '[]'); } catch(e) { index = []; }
-    if(!Array.isArray(index)) index = [];
-    const entry = {
-      id: tray.buySessionId,
-      customerName: tray.customerName || '',
-      itemCount: (tray.items || []).length,
-      offerTotal: Number(tray.offerTotal || 0),
-      status: tray.status || 'open',
-      updatedAt: tray.updatedAt || new Date().toISOString(),
-    };
-    const idx = index.findIndex(e => e.id === entry.id);
-    if(idx >= 0) index[idx] = entry; else index.push(entry);
-    knownBuyTrayIndex = index;
-    await storeWorkerFetch(scopedWorkerPath('/kv/buy_trays_index'), {
+    const r = await storeWorkerFetch(scopedWorkerPath('/kv/buy-trays-index/upsert'), {
       method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify(index.slice(0,50)),
-      signal: AbortSignal.timeout(4000),
+      body: JSON.stringify({ entry }), signal: AbortSignal.timeout(4000),
     });
+    const d = await r.json();
+    if(d?.ok && Array.isArray(d.index)) knownBuyTrayIndex = d.index;
     renderBuyTraySwitcher();
   } catch(e) { /* offline/demo — this device's own tray list still works */ }
 }
 
 async function removeBuyTrayFromIndex(id){
   try {
-    const r = await storeWorkerFetch(scopedWorkerPath('/kv/buy_trays_index'), { signal: AbortSignal.timeout(4000) });
-    const d = await r.json();
-    let index = [];
-    try { index = JSON.parse(d?.value || '[]'); } catch(e) { index = []; }
-    if(!Array.isArray(index)) index = [];
-    index = index.filter(e => e.id !== id);
-    knownBuyTrayIndex = index;
-    await storeWorkerFetch(scopedWorkerPath('/kv/buy_trays_index'), {
+    const r = await storeWorkerFetch(scopedWorkerPath('/kv/buy-trays-index/remove'), {
       method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify(index),
-      signal: AbortSignal.timeout(4000),
+      body: JSON.stringify({ id }), signal: AbortSignal.timeout(4000),
     });
+    const d = await r.json();
+    if(d?.ok && Array.isArray(d.index)) knownBuyTrayIndex = d.index;
   } catch(e) { /* offline/demo */ }
   renderBuyTraySwitcher();
 }
@@ -41280,7 +41286,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.18.1-inventory-pagination-fix" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.18.2-kv-index-atomicity-batch" defer></script>
 </body>
 </html>
 
