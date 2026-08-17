@@ -207,7 +207,7 @@ function renderCheckoutForm(){
       <button class="btn" id="ck-continue-btn" onclick="submitCheckout()">CONTINUE TO PAYMENT</button>
       <button class="btn close" onclick="document.getElementById('checkout-modal').close()">CANCEL</button>
     </div>`;
-  liveShippingQuote={cents:null,real:false,loading:false,label:''};
+  liveShippingQuote={cents:null,real:false,loading:false,label:'',error:''};
   updateCheckoutSummary();
 }
 function setFulfillment(method){
@@ -217,28 +217,15 @@ function setFulfillment(method){
   if(method==='shipping') liveShippingQuoteDebounced();
   updateCheckoutSummary();
 }
-// Flat-rate guess used until a real Shippo quote comes back (or if it never
-// does -- Shippo not configured, address incomplete, or the call fails).
-// The server falls back to this exact same rule, so what's shown here before
-// a real quote lands always matches what checkout would otherwise charge.
-function fallbackShippingFee(){
-  if(checkoutFulfillment!=='shipping') return 0;
-  const totalQty=cart.reduce((a,c)=>a+c.qty,0);
-  const allRawSingles=cart.every(c=>{
-    const item=payload.items.find(x=>x.id===c.id);
-    return item && !item.isSealed && !item.gradingCompany && item.category!=='Comic';
-  });
-  return (totalQty<=3 && allRawSingles) ? 3 : 7;
-}
-let liveShippingQuote={cents:null,real:false,loading:false,label:''};
+let liveShippingQuote={cents:null,real:false,loading:false,label:'',error:''};
 async function fetchLiveShippingQuote(){
   if(checkoutFulfillment!=='shipping'||!cart.length) return;
   const line1=document.getElementById('ck-addr1')?.value.trim();
   const city=document.getElementById('ck-city')?.value.trim();
   const state=document.getElementById('ck-state')?.value.trim();
   const zip=document.getElementById('ck-zip')?.value.trim();
-  if(!line1||!city||!state||!zip) return;
-  liveShippingQuote={...liveShippingQuote,loading:true};
+  if(!line1||!city||!state||!zip){ liveShippingQuote={cents:null,real:false,loading:false,label:'',error:''}; updateCheckoutSummary(); return; }
+  liveShippingQuote={cents:null,real:false,loading:true,label:'',error:''};
   updateCheckoutSummary();
   try{
     const res=await fetch(`${WORKER}/public/storefront/shipping-quote`,{
@@ -250,25 +237,28 @@ async function fetchLiveShippingQuote(){
       }),
     });
     const data=await res.json();
-    if(!res.ok||!data.ok){ liveShippingQuote={cents:null,real:false,loading:false,label:''}; updateCheckoutSummary(); return; }
+    if(!res.ok||!data.ok){ liveShippingQuote={cents:null,real:false,loading:false,label:'',error:data.error||'Live shipping is unavailable. Please choose pickup.'}; updateCheckoutSummary(); return; }
     liveShippingQuote={
       cents:data.shippingFeeCents,
       real:!!data.real,
       loading:false,
       label:data.real && data.carrier ? `${data.carrier}${data.serviceName?' '+data.serviceName:''}` : '',
+      error:'',
     };
   }catch(e){
-    liveShippingQuote={cents:null,real:false,loading:false,label:''};
+    liveShippingQuote={cents:null,real:false,loading:false,label:'',error:'Live shipping is unavailable. Please choose pickup or try again.'};
   }
   updateCheckoutSummary();
 }
 const liveShippingQuoteDebounced=debounce(fetchLiveShippingQuote, 600);
 function updateCheckoutSummary(){
   const {subtotal}=cartTotals();
-  const showFallback=liveShippingQuote.cents==null;
-  const shipping=showFallback ? fallbackShippingFee() : liveShippingQuote.cents/100;
-  const shipLabel=checkoutFulfillment!=='shipping' ? '' : (liveShippingQuote.loading ? 'Shipping (getting real rate…)' : (showFallback ? 'Shipping (estimated)' : `Shipping${liveShippingQuote.label?' ('+liveShippingQuote.label+')':' (real rate)'}`));
-  document.getElementById('ck-summary').innerHTML=`<div class="cart-total-row"><span>Subtotal</span><span>$${subtotal.toFixed(2)}</span></div>${checkoutFulfillment==='shipping'?`<div class="cart-total-row"><span>${shipLabel}</span><span>$${shipping.toFixed(2)}</span></div>`:''}<div class="cart-total-row grand"><span>Total${showFallback&&checkoutFulfillment==='shipping'?' (estimated)':''}</span><span>$${(subtotal+shipping).toFixed(2)}</span></div>`;
+  const needsQuote=checkoutFulfillment==='shipping'&&liveShippingQuote.cents==null;
+  const shipping=checkoutFulfillment==='shipping'&&!needsQuote ? liveShippingQuote.cents/100 : 0;
+  const shipLabel=liveShippingQuote.loading ? 'Getting live carrier rate…' : (liveShippingQuote.error||'Enter your complete address for a live carrier rate.');
+  document.getElementById('ck-summary').innerHTML=`<div class="cart-total-row"><span>Subtotal</span><span>$${subtotal.toFixed(2)}</span></div>${checkoutFulfillment==='shipping'?(needsQuote?`<div style="padding:10px 0;color:var(--muted)">${esc(shipLabel)}</div>`:`<div class="cart-total-row"><span>Shipping${liveShippingQuote.label?' ('+esc(liveShippingQuote.label)+')':''}</span><span>$${shipping.toFixed(2)}</span></div>`):''}<div class="cart-total-row grand"><span>${needsQuote?'Subtotal':'Total'}</span><span>$${(subtotal+shipping).toFixed(2)}</span></div>`;
+  const btn=document.getElementById('ck-continue-btn');
+  if(btn){ btn.disabled=needsQuote; btn.textContent=needsQuote?'LIVE SHIPPING QUOTE REQUIRED':'CONTINUE TO PAYMENT'; }
 }
 function showCheckoutError(msg){
   const el=document.getElementById('checkout-error');
@@ -291,6 +281,7 @@ async function submitCheckout(){
       zip:document.getElementById('ck-zip').value.trim(),
     };
     if(!shippingAddress.line1||!shippingAddress.city||!shippingAddress.state||!shippingAddress.zip){ showCheckoutError('A complete shipping address is required.'); return; }
+    if(liveShippingQuote.loading||liveShippingQuote.cents==null){ showCheckoutError(liveShippingQuote.error||'Wait for a live carrier rate before continuing.'); return; }
   }
   const btn=document.getElementById('ck-continue-btn');
   btn.disabled=true; btn.textContent='PLEASE WAIT…';

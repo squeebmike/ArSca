@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - cloudflare-worker-full.js
+      - scripts/foc-preorders.mjs
       - wrangler.deploy.jsonc
       - .github/workflows/deploy-worker.yml
   workflow_dispatch:

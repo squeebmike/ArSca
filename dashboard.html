@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.19.3-health-twilio-flag">
+<meta name="version" content="2026.08.19.4-twilio-health-flag">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1575,6 +1575,9 @@ body.show-mode .inv-sync-badge{display:none;}
 .settings-shell{display:grid;grid-template-columns:230px minmax(0,1fr);gap:16px;align-items:start;max-width:1400px;margin:0 auto;padding-bottom:28px}.settings-sidebar{position:sticky;top:12px;border:1px solid var(--border);border-radius:12px;background:var(--surf);padding:10px;max-height:calc(100vh - 150px);overflow:auto}.settings-search{width:100%;min-height:42px;margin:0 0 8px;background:var(--surf2);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:9px 10px;font-family:var(--font-mono);font-size:11px}.settings-nav{display:grid;gap:4px}.settings-nav-btn{width:100%;min-height:40px;text-align:left;border:1px solid transparent;border-radius:8px;background:transparent;color:var(--dim);padding:8px 10px;font-family:var(--font-mono);font-size:10px;cursor:pointer}.settings-nav-btn:hover,.settings-nav-btn.on{color:var(--g);border-color:rgba(0,255,179,.28);background:rgba(0,255,179,.07)}.settings-mobile-select{display:none;width:100%;min-height:46px;background:var(--surf);border:1px solid var(--border);border-radius:9px;color:var(--text);padding:8px 10px;font-family:var(--font-mono)}.settings-content{min-width:0}.settings-section{display:none;min-width:0}.settings-section.on{display:block}.settings-section-head{margin-bottom:12px;padding:2px 2px 10px;border-bottom:1px solid var(--border)}.settings-section-title{font-family:'Orbitron',var(--font-mono);font-size:18px;color:var(--text);letter-spacing:.04em}.settings-section-subtitle{font-family:var(--font-mono);font-size:10px;line-height:1.6;color:var(--dim);margin-top:5px;max-width:900px}.settings-overview-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}.settings-overview-card{border:1px solid var(--border);border-radius:10px;background:var(--surf);padding:12px;display:grid;gap:8px;min-height:150px}.settings-overview-card h3{font-size:13px;margin:0;color:var(--text)}.settings-overview-card p{font-family:var(--font-mono);font-size:10px;line-height:1.55;color:var(--dim);margin:0}.settings-overview-card .hbtn{justify-self:start}.settings-status{display:inline-flex;width:max-content;border:1px solid var(--border);border-radius:999px;padding:3px 7px;font-family:var(--font-mono);font-size:8px;letter-spacing:.05em;color:var(--dim)}.settings-status.working,.settings-status.offline-ready{color:var(--g);border-color:rgba(0,255,179,.35)}.settings-status.needs-setup,.settings-status.local-fallback,.settings-status.planned{color:var(--gold);border-color:rgba(255,209,102,.38)}.settings-status.error,.settings-status.blocked{color:var(--red);border-color:rgba(255,77,109,.38)}.settings-status.online-only,.settings-status.advanced{color:var(--blue);border-color:rgba(72,202,228,.38)}.settings-search-results{display:none;margin:0 0 10px;border:1px solid var(--border);border-radius:9px;background:var(--surf2);padding:6px}.settings-search-results.on{display:grid;gap:4px}.settings-search-result{border:0;background:transparent;color:var(--text);text-align:left;padding:8px;border-radius:6px;font-family:var(--font-mono);font-size:10px;cursor:pointer}.settings-search-result:hover{background:rgba(0,255,179,.08);color:var(--g)}.settings-explainer{border:1px solid rgba(72,202,228,.28);background:rgba(72,202,228,.06);border-radius:10px;padding:12px;margin-bottom:12px;font-family:var(--font-mono);font-size:10px;line-height:1.65;color:var(--dim)}.settings-generated-panel{border:1px solid var(--border);border-radius:10px;background:var(--surf);padding:12px;margin-bottom:14px}
 .feature-log-group{border:1px solid var(--border);border-radius:10px;background:var(--surf);padding:12px;margin-bottom:12px}.feature-log-group-title{font-family:'Orbitron',var(--font-mono);font-size:12px;color:var(--text);letter-spacing:.04em;margin-bottom:8px}.feature-log-item{padding:8px 0;border-top:1px solid var(--border)}.feature-log-item:first-of-type{border-top:0;padding-top:0}.feature-log-item-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:3px}.feature-log-title{font-size:12px;font-weight:700;color:var(--text)}.feature-log-desc{font-family:var(--font-mono);font-size:10px;line-height:1.55;color:var(--dim)}
 @media(max-width:760px){#backoffice-panels{padding:0 10px!important}.settings-shell{display:block}.settings-sidebar{position:static;max-height:none;padding:0;border:0;background:transparent;margin-bottom:10px}.settings-nav{display:none}.settings-mobile-select{display:block;margin-bottom:8px}.settings-overview-grid{grid-template-columns:1fr}.settings-section .panel,.settings-section .settings-panel{overflow:hidden}.settings-section [style*="grid-template-columns:repeat(3"],.settings-section [style*="grid-template-columns:2fr 1fr auto"],.settings-section [style*="grid-template-columns:minmax(220px,320px) 1fr"]{grid-template-columns:1fr!important}.settings-section .hbtn{white-space:normal}}
+/* PRH FOC preorder command center */
+.foc-shell{max-width:1500px;margin:0 auto;padding:0 20px 40px}.foc-hero{border:1px solid color-mix(in srgb,var(--purple) 48%,transparent);background:linear-gradient(135deg,color-mix(in srgb,var(--purple) 12%,var(--surf)),var(--surf));border-radius:14px;padding:18px;margin-bottom:14px}.foc-toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.foc-toolbar .tsi{margin:0;width:auto;min-width:180px}.foc-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin:12px 0}.foc-stat{border:1px solid var(--border);background:var(--surf2);border-radius:10px;padding:10px}.foc-stat b{display:block;font:900 20px/1 'Orbitron',monospace;color:var(--g)}.foc-stat span{font:9px/1.4 var(--font-mono);color:var(--dim);text-transform:uppercase;letter-spacing:.08em}.foc-cycle-card{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center;border:1px solid var(--border);border-radius:10px;background:var(--surf);padding:12px;margin-bottom:8px;cursor:pointer}.foc-cycle-card:hover{border-color:var(--purple)}.foc-family{border:1px solid var(--border);border-radius:12px;background:var(--surf);margin-bottom:12px;overflow:hidden}.foc-family-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;padding:12px;border-bottom:1px solid var(--border);background:var(--surf2)}.foc-family-title{font:800 14px/1.3 'Orbitron',monospace;color:var(--text)}.foc-sku-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px;padding:10px}.foc-sku{border:1px solid var(--border);border-radius:9px;padding:9px;background:var(--bg);min-width:0}.foc-sku.incentive{border-color:color-mix(in srgb,var(--gold) 55%,transparent)}.foc-sku img{width:100%;aspect-ratio:2/3;object-fit:contain;background:#050607;border-radius:7px}.foc-sku-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin-top:8px}.foc-sku-fields label{font:8px/1.4 var(--font-mono);color:var(--dim);text-transform:uppercase}.foc-sku-fields .tsi{width:100%;margin:3px 0 0;min-width:0}.foc-progress{height:7px;border-radius:99px;background:var(--surf2);overflow:hidden;margin:6px 0}.foc-progress>i{display:block;height:100%;background:var(--gold)}.foc-import-report{font:10px/1.65 var(--font-mono);color:var(--dim);padding:10px;border:1px dashed var(--border);border-radius:8px;margin-top:10px}.foc-badge{display:inline-flex;padding:3px 7px;border-radius:99px;border:1px solid var(--border);font:8px/1.2 var(--font-mono);letter-spacing:.06em;text-transform:uppercase}.foc-badge.open{color:var(--g);border-color:color-mix(in srgb,var(--g) 40%,transparent)}.foc-badge.closed,.foc-badge.incentive{color:var(--gold);border-color:color-mix(in srgb,var(--gold) 40%,transparent)}
+@media(max-width:650px){.foc-shell{padding:0 9px 90px}.foc-toolbar>*{width:100%!important}.foc-cycle-card{grid-template-columns:1fr}.foc-sku-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;padding:7px}.foc-sku{padding:6px}.foc-sku-fields{grid-template-columns:1fr}.foc-family-head{display:block}.foc-family-head .foc-toolbar{margin-top:8px}.foc-stat b{font-size:16px}}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js" defer></script>
@@ -1587,13 +1590,14 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.19.3-health-twilio-flag" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.19.3-health-twilio-flag" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.19.3-health-twilio-flag" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.19.3-health-twilio-flag" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.19.3-health-twilio-flag" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.19.3-health-twilio-flag" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.19.3-health-twilio-flag" defer></script>
+<script src="scripts/query-routing.js?v=2026.08.19.4-twilio-health-flag" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.19.4-twilio-health-flag" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.19.4-twilio-health-flag" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.08.19.4-twilio-health-flag" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.19.4-twilio-health-flag" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.19.4-twilio-health-flag" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.19.4-twilio-health-flag" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.19.4-twilio-health-flag" defer></script>
 </head>
 <body>
 
@@ -1643,11 +1647,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.19.3-health-twilio-flag</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.19.4-twilio-health-flag</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.19.3-health-twilio-flag</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.19.4-twilio-health-flag</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1669,7 +1673,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.19.3-health-twilio-flag</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.19.4-twilio-health-flag</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -2593,6 +2597,12 @@ body.show-mode .inv-sync-badge{display:none;}
   <div id="grading-panels" style="max-width:1400px;margin:0 auto;padding:0 20px"></div>
 </div>
 
+<!-- PRH FOC PREORDERS TAB -->
+<div id="tab-foc" class="tab-panel">
+  <div class="sec">COMICS / FOC PREORDERS</div>
+  <div id="foc-panels" class="foc-shell"></div>
+</div>
+
 <!-- CUSTOMER DISPLAY TAB -->
 <div id="tab-display" class="tab-panel">
   <div class="sec">SELL / LOCKED CHECKOUT</div>
@@ -3433,7 +3443,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.19.3-health-twilio-flag';
+const APP_VERSION = '2026.08.19.4-twilio-health-flag';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -3706,7 +3716,7 @@ const SUBSCRIPTION_PLANS = {
   store:{ name:'Store', price:89, features:['Everything in Register','Inventory, buying and consignments','Staff, shows, tournaments and profit reporting'], capabilities:['research','checkout','sales','inventory','consignments','staff','shows','events','pulllists'] },
   pro:{ name:'Pro', price:149, features:['Everything in Store','Online listing tools','Advanced operations + multi-store'], capabilities:['research','checkout','sales','inventory','consignments','staff','shows','events','pulllists','marketplace','advanced'] }
 };
-const TAB_CAPABILITY = {research:'research',sets:'research',wantlist:'research',display:'checkout',browse:'checkout',pos:'checkout',sales:'sales',orders:'sales',intake:'inventory',inventory:'inventory',locations:'inventory',restock:'inventory',grading:'inventory',consign:'consignments',shows:'shows',events:'events',pulllists:'pulllists',channels:'marketplace'};
+const TAB_CAPABILITY = {research:'research',sets:'research',wantlist:'research',display:'checkout',browse:'checkout',pos:'checkout',sales:'sales',orders:'sales',intake:'inventory',inventory:'inventory',locations:'inventory',restock:'inventory',grading:'inventory',consign:'consignments',shows:'shows',events:'events',pulllists:'pulllists',foc:'pulllists',channels:'marketplace'};
 function currentPlanCode(){ return SUBSCRIPTION_PLANS[window._subStatus?.plan_code] ? window._subStatus.plan_code : 'store'; }
 function hasPlanCapability(capability){ return !capability || SUBSCRIPTION_PLANS[currentPlanCode()].capabilities.includes(capability); }
 function planCanAccessTab(tab){ return hasPlanCapability(TAB_CAPABILITY[tab]); }
@@ -3721,7 +3731,7 @@ function roleCanAccessTab(tab){
   let allowed = false;
   if(role === 'owner' || role === 'admin') allowed = true;
   else if(role === 'manager') allowed = !['backoffice'].includes(tab);
-  else if(role === 'employee') allowed = ['overview','display','browse','inventory','research','pos','alerts','wantlist','locations','restock','grading','sets','events','pulllists'].includes(tab);
+  else if(role === 'employee') allowed = ['overview','display','browse','inventory','research','pos','alerts','wantlist','locations','restock','grading','sets','events','pulllists','foc'].includes(tab);
   return allowed && planCanAccessTab(tab);
 }
 
@@ -4821,6 +4831,7 @@ const MORE_TABS = [
   ['grading', 'GRADING'],
   ['events', 'TOURNAMENTS'],
   ['pulllists', 'PULL LISTS'],
+  ['foc', 'COMICS / FOC'],
   ['backoffice', 'SETTINGS / ADMIN'],
 ];
 // Permanent, always-present categories -- every price-sync/routing function
@@ -6578,7 +6589,7 @@ function renderVendorProfilePanel(){
     </div>
     <div style="margin-top:14px;padding:14px;border:1px solid var(--border);border-radius:10px;background:var(--surf2)">
       <div style="font-family:'Orbitron',monospace;font-size:11px;color:var(--g);margin-bottom:7px">SHIPPING ORIGIN &amp; REAL RATES</div>
-      <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);line-height:1.6;margin-bottom:10px">Fill this in with the address you actually ship from so storefront checkout can quote a real carrier rate (via Shippo) instead of a flat guess. Requires the SHIPPO_API_TOKEN secret to already be set on the Worker -- until then, or if this address is left blank, checkout keeps using the old flat $3/$7 fallback rate.</div>
+      <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);line-height:1.6;margin-bottom:10px">Storefront checkout uses live Shippo carrier rates only. This address is the explicit ship-from override. If it is blank, checkout uses the most recently updated address in your Shippo Address Book. A saved Shippo bubble-mailer template is used automatically for small, light orders; larger orders use a conservative box. If neither source has a complete address, shipping stays unavailable and local pickup remains available.</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
         ${vendorInput('shipOriginName','Ship-from name',so.name,'text','Store or business name')}
         ${vendorInput('shipOriginPhone','Ship-from phone',so.phone,'tel','5551234567')}
@@ -17828,6 +17839,7 @@ function switchTab(name, btn){
   if(name === 'events') setTimeout(ensureEventsPanel, 0);
   if(name === 'pulllists') setTimeout(ensurePullListPanel, 0);
   if(name === 'grading') setTimeout(ensureGradingPanel, 0);
+  if(name === 'foc') setTimeout(()=>window.ensureFocPanel?.(), 0);
 }
 
 // Quick sell modal
@@ -41531,7 +41543,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.19.3-health-twilio-flag" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.19.4-twilio-health-flag" defer></script>
 </body>
 </html>
 

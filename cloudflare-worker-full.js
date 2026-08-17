@@ -25,6 +25,7 @@
 // It has zero Node dependencies (pure-JS SHA-1), so it bundles straight into
 // the Worker -- reused here instead of duplicating checklist-parsing logic.
 import { buildChecklistIndex, parseChecklistText, sha1Hex, slugify } from './scripts/topps-checklist-parser.js';
+import { handleFocRequest, syncFocStripeEvent } from './scripts/foc-preorders.mjs';
 
 // Per-isolate rate limiter for PriceCharting API (no KV needed). _pcQueueTail
 // serializes the check-and-update of _pcLastCall itself so concurrent callers
@@ -356,18 +357,112 @@ function buildShippingParcel(totalQuantity, allRawSingles, totalWeightOz) {
     : { length:'10', width:'8', height:String(Math.min(12, Math.max(3, Math.ceil(totalQuantity / 8) + 2))), distance_unit:'in', weight:(weightOz / 16).toFixed(2), mass_unit:'lb' };
 }
 
+function completeShippoOrigin(origin) {
+  return !!(origin && origin.street1 && origin.city && origin.state && origin.zip);
+}
+
+function normalizeShippoAddress(raw) {
+  const address = raw?.address || raw || {};
+  return {
+    name: address.name || address.organization || address.company || 'The Mana Pocket',
+    street1: address.street1 || address.address_line_1 || '',
+    street2: address.street2 || address.address_line_2 || '',
+    city: address.city || address.city_locality || '',
+    state: address.state || address.state_province || '',
+    zip: address.zip || address.postal_code || '',
+    phone: address.phone || '',
+    country: address.country || address.country_code || 'US',
+    updatedAt: raw?.updated_at || raw?.object_updated || raw?.created_at || raw?.object_created || '',
+  };
+}
+
+function pickShippoOrigin(rows, allowNewest = true, excludeGenericRecipients = false) {
+  const complete = (Array.isArray(rows) ? rows : [])
+    .map(normalizeShippoAddress)
+    .filter(origin => completeShippoOrigin(origin) && String(origin.country || 'US').toUpperCase() === 'US')
+    .filter(origin => !excludeGenericRecipients || !/^customer$/i.test(String(origin.name || '').trim()));
+  if (!complete.length) return null;
+  const branded = complete.find(origin => /mana\s*pocket/i.test(origin.name));
+  if (branded) return branded;
+  if (complete.length === 1) return complete[0];
+  if (!allowNewest) return null;
+  complete.sort((a, b) => String(b.updatedAt || '').localeCompare(String(a.updatedAt || '')));
+  return complete[0];
+}
+
+async function loadShippoSavedOrigin(token) {
+  const headers = { 'Authorization': `ShippoToken ${token}`, 'SHIPPO-API-VERSION': '2018-02-08' };
+  // Address Book is the safest automatic source: these are addresses the
+  // merchant intentionally saved in Shippo, rather than every recipient ever
+  // used on a shipment.
+  try {
+    const res = await fetch(SHIPPO_API_BASE + '/v2/addresses?offset=0&limit=30', { headers });
+    const data = await res.json().catch(() => null);
+    const origin = res.ok && data ? pickShippoOrigin(data.results, true) : null;
+    if (origin) return origin;
+  } catch (e) {}
+
+  // Older Shippo accounts may only expose legacy address objects. Checkout
+  // recipients created by this storefront are always named "Customer"; remove
+  // those before selecting the newest merchant-created address.
+  try {
+    const res = await fetch(SHIPPO_API_BASE + '/addresses/?results=100', { headers });
+    const data = await res.json().catch(() => null);
+    return res.ok && data ? pickShippoOrigin(data.results, true, true) : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+function shippoTemplateParcel(template, totalQuantity, totalWeightOz) {
+  const dimensions = template?.template || template || {};
+  const weightOz = totalWeightOz + 2;
+  if (!dimensions.length || !dimensions.width || !dimensions.height || !dimensions.distance_unit) return null;
+  // A bubble mailer is only a safe automatic choice for a small/light order.
+  // Larger orders retain the conservative generated box below.
+  if (totalQuantity > 3 || weightOz > 16) return null;
+  return {
+    length: String(dimensions.length),
+    width: String(dimensions.width),
+    height: String(dimensions.height),
+    distance_unit: String(dimensions.distance_unit),
+    weight: (weightOz / 16).toFixed(2),
+    mass_unit: 'lb',
+  };
+}
+
+async function loadShippoSavedParcel(token, totalQuantity, totalWeightOz) {
+  try {
+    const res = await fetch(SHIPPO_API_BASE + '/user-parcel-templates', {
+      headers: { 'Authorization': `ShippoToken ${token}`, 'SHIPPO-API-VERSION': '2018-02-08' },
+    });
+    const data = await res.json().catch(() => null);
+    const rows = res.ok && Array.isArray(data?.results) ? data.results : [];
+    if (!rows.length) return null;
+    rows.sort((a, b) => {
+      const aMailer = /bubble|mailer|envelope/i.test(String(a?.name || '')) ? 1 : 0;
+      const bMailer = /bubble|mailer|envelope/i.test(String(b?.name || '')) ? 1 : 0;
+      return bMailer - aMailer || String(b?.object_updated || '').localeCompare(String(a?.object_updated || ''));
+    });
+    return shippoTemplateParcel(rows[0], totalQuantity, totalWeightOz);
+  } catch (e) {
+    return null;
+  }
+}
+
 // Calls Shippo for a real, carrier-calculated rate and returns the cheapest
-// one. Falls back to the old flat $3/$7 rule whenever Shippo isn't
-// configured, the store hasn't set a ship-from address, or the call fails --
-// a shipping-rate hiccup must never be able to block checkout entirely.
+// one. Shipping fails closed when Shippo or the ship-from address is not
+// configured: pickup remains available, but checkout must never invent or
+// silently substitute a legacy flat shipping charge.
 async function computeRealShippingFeeCents(env, storeId, shippingAddress, totalQuantity, allRawSingles, totalWeightOz) {
-  const fallback = { cents: totalQuantity <= 3 && allRawSingles ? 300 : 700, real: false };
   const token = env.SHIPPO_API_TOKEN;
-  if (!token) return fallback;
+  if (!token) return { error:'Shipping is not configured yet. Please choose pickup or contact the store.', status:503 };
   const { data: settingsRows } = await supabaseAdminFetch(env, `store_settings?store_id=eq.${encodeURIComponent(storeId)}&select=receipt_settings&limit=1`);
-  const origin = settingsRows?.[0]?.receipt_settings?.shippingOrigin;
-  if (!origin || !origin.street1 || !origin.city || !origin.state || !origin.zip) return fallback;
-  const parcel = buildShippingParcel(totalQuantity, allRawSingles, totalWeightOz);
+  const configuredOrigin = settingsRows?.[0]?.receipt_settings?.shippingOrigin;
+  const origin = completeShippoOrigin(configuredOrigin) ? configuredOrigin : await loadShippoSavedOrigin(token);
+  if (!completeShippoOrigin(origin)) return { error:'No ship-from address is available. Save one in the Mana Pocket dashboard or Shippo Address Book, then try again.', status:503 };
+  const parcel = await loadShippoSavedParcel(token, totalQuantity, totalWeightOz)
+    || buildShippingParcel(totalQuantity, allRawSingles, totalWeightOz);
   try {
     const res = await fetch(SHIPPO_API_BASE + '/shipments/', {
       method: 'POST',
@@ -380,16 +475,16 @@ async function computeRealShippingFeeCents(env, storeId, shippingAddress, totalQ
       }),
     });
     const data = await res.json().catch(() => null);
-    if (!res.ok || !data) return fallback;
+    if (!res.ok || !data) return { error:'A live shipping rate could not be retrieved. Please check the address or choose pickup.', status:502 };
     const rates = (data.rates || [])
       .filter(r => r && r.amount && Number(r.amount) > 0)
       .map(r => ({ cost: Number(r.amount), carrier: r.provider || '', serviceName: r.servicelevel?.name || '', estimatedDays: r.estimated_days ?? null }));
-    if (!rates.length) return fallback;
+    if (!rates.length) return { error:'No carrier rate is available for that address. Please check the address or choose pickup.', status:422 };
     rates.sort((a, b) => a.cost - b.cost);
     const cheapest = rates[0];
     return { cents: Math.round(cheapest.cost * 100), real: true, carrier: cheapest.carrier, serviceName: cheapest.serviceName, estimatedDays: cheapest.estimatedDays };
   } catch (e) {
-    return fallback;
+    return { error:'A live shipping rate could not be retrieved. Please try again or choose pickup.', status:502 };
   }
 }
 
@@ -519,6 +614,20 @@ async function requireStoreUser(request, env, storeId, allowedRoles = ['owner','
   const role = data?.[0]?.role;
   if (!role || !allowedRoles.includes(role)) return { error:json({ ok:false, error:'You do not have permission for this store' }, 403) };
   return { user, role, token };
+}
+
+// Customer-facing FOC routes use the same Supabase Auth project as the staff
+// dashboard, but do not require a store_members row. Private preorder records
+// are still keyed to this verified auth.users id and protected by RLS.
+async function requireAuthenticatedUser(request, env) {
+  const token = String(request.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '');
+  if (!token) return { error:json({ ok:false, error:'Sign in to preorder exact covers' }, 401) };
+  const { base, key } = supabaseAdminConfig(env);
+  const response = await fetch(`${base}/auth/v1/user`, { headers:{ apikey:key, Authorization:`Bearer ${token}` } });
+  if (!response.ok) return { error:json({ ok:false, error:'Your sign-in expired. Please sign in again.' }, 401) };
+  const user = await response.json();
+  if (!user?.id) return { error:json({ ok:false, error:'Authenticated customer was not found' }, 401) };
+  return { user, token };
 }
 
 // Write access to the shared, cross-store comic cover archive: any signed-in
@@ -1001,6 +1110,7 @@ async function syncStripeWebhookPayment(env, event, mode) {
       await fulfillStorefrontOrderInventory(env,payment.sale_id,payment.store_id).catch(e=>console.error('Storefront order fulfillment failed:',e.message));
     }
   }
+  await syncFocStripeEvent(env,event,{supabaseAdminFetch}).catch(error=>console.error(JSON.stringify({message:'FOC preorder Stripe sync failed',error:error.message,intentId})));
   if(event.type.startsWith('refund.')){await supabaseAdminFetch(env,`pos_refunds?stripe_refund_id=eq.${encodeURIComponent(object.id)}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({status:object.status||event.type.replace('refund.',''),failure_reason:object.failure_reason||'',updated_at:new Date().toISOString()})});}
   if(event.type==='account.updated'){const storeId=object.metadata?.arsca_store_id;if(storeId){const status=safeStripeAccount(object,mode);await saveStripeAccount(env,storeId,status);}}
 }
@@ -2416,6 +2526,13 @@ export default {
       return await handleStripeFoundation(request, env, url);
     }
 
+    if (url.pathname === '/public/preorders' || url.pathname.startsWith('/public/preorders/') || url.pathname === '/public/shipping/quotes' || url.pathname.startsWith('/foc/admin/')) {
+      return await handleFocRequest(request, env, url, {
+        CORS, json, supabaseAdminFetch, requireStoreUser, requireAuthenticatedUser,
+        readJsonWithLimit, enforceUsageLimit, stripeApi, stripeMode, stripeConfig,
+      });
+    }
+
     if (url.pathname === '/health') {
       return json({
         ok: true,
@@ -2674,10 +2791,9 @@ export default {
       if (cart.error) return cart.error;
       const { lineItems, subtotalCents, totalQuantity, allRawSingles, totalWeightOz } = cart;
 
-      // Real carrier-calculated rate when Shippo + a ship-from address are
-      // configured, otherwise the same flat $3/$7 rule as before -- see
-      // computeRealShippingFeeCents' fallback behavior above.
+      // Shipping is only charged when the carrier returns a current quote.
       const shippingQuote = method !== 'shipping' ? { cents: 0, real: false } : await computeRealShippingFeeCents(env, storeId, shippingAddress, totalQuantity, allRawSingles, totalWeightOz);
+      if (shippingQuote.error) return json({ ok:false, error:shippingQuote.error }, shippingQuote.status || 503);
       const shippingFeeCents = shippingQuote.cents;
       const totalCents = subtotalCents + shippingFeeCents;
 
@@ -2742,6 +2858,7 @@ export default {
       const cart = await loadCartForShipping(env, storeId, body.items);
       if (cart.error) return cart.error;
       const quote = await computeRealShippingFeeCents(env, storeId, shippingAddress, cart.totalQuantity, cart.allRawSingles, cart.totalWeightOz);
+      if (quote.error) return json({ ok:false, error:quote.error }, quote.status || 503);
       return json({ ok:true, shippingFeeCents:quote.cents, real:quote.real, carrier:quote.carrier || null, serviceName:quote.serviceName || null, estimatedDays:quote.estimatedDays ?? null });
     }
 
