@@ -9,7 +9,7 @@ assert.match(worker, /"game":"pokemon"\|"mtg"\|"sports"\|"one_piece"/, 'the iden
 assert.match(worker, /sports cards \(baseball\/basketball\/football\/hockey\/soccer\/etc\), and One Piece TCG are all in scope/, 'the prompt must state sports and One Piece are in scope, not just Pokemon/MTG');
 assert.match(worker, /For sports: name is the PLAYER\\'s name printed on the card/, 'the prompt must give sports-specific field guidance');
 assert.match(worker, /For one_piece: name is the card\\'s own title/, 'the prompt must give One Piece-specific field guidance');
-assert.match(worker, /graded\/slabbed card, or anything else outside these four/, 'the prompt must still exclude graded slabs from this path');
+assert.match(worker, /or anything else outside these four/, 'the prompt must still exclude non-card items (comics, sealed product, video games)');
 
 // ── Contract: the worker filters/maps the extra games through, including the new year field ──
 assert.match(worker, /\['pokemon', 'mtg', 'sports', 'one_piece'\]\.includes\(c\.game\)/, 'the response filter must accept all four games');
@@ -21,7 +21,7 @@ console.log('Own AI (worker) contract checks passed');
 assert.match(dashboard, /useOwnScanner && \['pokemon', 'mtg', 'sports', 'one_piece'\]\.includes\(categoryHint\)/, 'doCardSightScan must send sports/one_piece scans through own AI too when the setting allows it');
 assert.match(dashboard, /if\(card\.game === 'sports'\) return \[card\.year, card\.setName, card\.name, card\.number \? '#' \+ card\.number : ''\]/, 'ownCardIdentifyQuery must build a year+set+player+number query for sports cards');
 assert.match(dashboard, /: card\.game === 'sports' \? 'Sports Card'\s*\n\s*: 'One Piece';/, 'resolveOwnCardIdentifyCard must map sports/one_piece to real catalog category strings');
-assert.match(dashboard, /CARD SCANNER \(POKEMON \/ MTG \/ SPORTS \/ ONE PIECE\)/, 'the Research settings label must reflect all four covered games');
+assert.match(dashboard, /CARD SCANNER \(ALL GAMES, INCLUDING GRADED\)/, 'the Research settings label must reflect every game the scanner covers');
 
 console.log('Own AI (dashboard) contract checks passed');
 

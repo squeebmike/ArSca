@@ -3485,9 +3485,12 @@ export default {
     // the real catalogs (searchQuickCatalog -- the same pipeline manual
     // Research-tab search and price sync already trust) so the actual card +
     // pricing always comes from verified catalog data, not the model's
-    // opinion. Graded slabs stay on CardSight -- reading a cert number
-    // through a holder reliably isn't proven here, and the barcode-first
-    // check ahead of this call already covers that case.
+    // opinion. Graded slabs are in scope too -- a PSA/BGS/CGC/SGC label
+    // prints the card's identity AND the cert number as plain legible text,
+    // not just as a barcode, so this one photo can carry both. When a
+    // certNumber comes back the client calls the real PSA cert API with it
+    // (same as a decoded barcode would) for an authoritative, population
+    // verified grade instead of trusting the model's read of the grade text.
     if (url.pathname === '/identify/card') {
       if (request.method !== 'POST') return json({ ok:false, error: 'POST only' }, 405);
       if (!env.ANTHROPIC_API_KEY) return json({ ok:false, error: 'ANTHROPIC_API_KEY not set' }, 500);
@@ -3502,14 +3505,15 @@ export default {
       const rateError = await enforceUsageLimit(env, `identify-card:${storeId}:${auth.user.id}`, 60, 60);
       if (rateError) return rateError;
 
-      const identifyPrompt = 'You are looking at a photo of one or more physical trading cards. Pokemon TCG, Magic: The Gathering, sports cards (baseball/basketball/football/hockey/soccer/etc), and One Piece TCG are all in scope -- if the photo shows a comic, sealed product, video game, graded/slabbed card, or anything else outside these four, return an empty "cards" array rather than guessing.\n\n'
+      const identifyPrompt = 'You are looking at a photo of one or more physical trading cards, which may be raw or sealed in a graded slab (PSA/BGS/CGC/SGC). Pokemon TCG, Magic: The Gathering, sports cards (baseball/basketball/football/hockey/soccer/etc), and One Piece TCG are all in scope -- if the photo shows a comic, sealed product, video game, or anything else outside these four, return an empty "cards" array rather than guessing.\n\n'
         + 'Count only actual separate physical cards visible in the photo -- one entry per card, never one entry per line of text on a card. Do NOT create a separate entry for an attack name, ability name, move, spell, stat line, flavor text, or any other text printed ON a card -- e.g. if a Pokemon card has an attack called "Cyclone Kick" printed on it, that is part of that ONE card\'s data, not a second card. If you only see one physical card in the photo, return exactly one entry.\n\n'
         + 'For each distinct card clearly visible, extract exactly what is printed on the card -- do not guess a card you cannot actually read, and never estimate a price. Respond with strict JSON only, no markdown fences, no prose, matching this shape:\n'
-        + '{"cards":[{"game":"pokemon"|"mtg"|"sports"|"one_piece","name":"","setName":"","number":"","year":"","hp":"","manaCost":"","rarity":"","finish":"","specialMarkings":"","confidence":"high"|"medium"|"low"}]}\n\n'
+        + '{"cards":[{"game":"pokemon"|"mtg"|"sports"|"one_piece","name":"","setName":"","number":"","year":"","hp":"","manaCost":"","rarity":"","finish":"","specialMarkings":"","gradingCompany":"","grade":"","certNumber":"","confidence":"high"|"medium"|"low"}]}\n\n'
         + 'For pokemon/mtg: name is the card\'s own title/name only (e.g. "Lucario V"), never an attack, ability, or move name. setName is whatever set name or set symbol you can identify (e.g. "Base Set", "Surging Sparks", "Bloomburrow"). finish is "normal"/"holo"/"reverse holo"/"foil"/"etched foil" as applicable. hp applies to pokemon only, manaCost to mtg only -- leave the other blank, and leave year blank for both.\n'
         + 'For sports: name is the PLAYER\'s name printed on the card, never the team name alone. setName is the brand + product line (e.g. "Topps Chrome", "Panini Prizm", "Bowman"). year is the 4-digit year printed on the card. finish is the parallel/parallel color if any (e.g. "Refractor", "Gold /50", "Silver Prizm"), else leave blank. specialMarkings covers "Rookie Card"/"RC", autograph, or relic/patch notes. Leave hp and manaCost blank.\n'
         + 'For one_piece: name is the card\'s own title (e.g. "Monkey D. Luffy"). setName is the set code + name (e.g. "OP-01 Romance Dawn"). rarity is the printed rarity (e.g. "L", "SR", "SEC"). finish covers "Alternate Art"/"Parallel" if applicable. Leave hp, manaCost, and year blank.\n'
-        + 'number is the printed collector number (e.g. "4/102", "087/091", "150"). specialMarkings also covers a 1st Edition stamp or promo stamp when applicable. If a field is not legible, use an empty string rather than guessing.';
+        + 'number is the printed collector number (e.g. "4/102", "087/091", "150"). specialMarkings also covers a 1st Edition stamp or promo stamp when applicable.\n\n'
+        + 'If the card is sealed in a graded slab, read all of the card\'s own fields (name/set/number/etc) off the printed label text above/below the card, exactly as you would off a raw card. Also fill in: gradingCompany is the company printed on the label ("PSA"/"BGS"/"CGC"/"SGC"). grade is the numeric grade printed on the label (e.g. "10", "9.5"). certNumber is the cert/serial number printed on the label as plain digits -- this is a different string than a barcode and is usually printed near a barcode or QR code on the label, always read it as text rather than trying to decode any barcode graphic. Leave gradingCompany/grade/certNumber blank for a raw (unslabbed) card. If a field is not legible, use an empty string rather than guessing.';
 
       const res = await fetch(`${ANTHROPIC_BASE}/messages`, {
         method: 'POST',
@@ -3554,6 +3558,9 @@ export default {
           rarity: String(c.rarity || '').trim().slice(0, 40),
           finish: String(c.finish || '').trim().slice(0, 20),
           specialMarkings: String(c.specialMarkings || '').trim().slice(0, 80),
+          gradingCompany: String(c.gradingCompany || '').trim().slice(0, 10),
+          grade: String(c.grade || '').trim().slice(0, 10),
+          certNumber: String(c.certNumber || '').replace(/\D/g, '').slice(0, 20),
           confidence: ['high', 'medium', 'low'].includes(c.confidence) ? c.confidence : 'low',
         }));
       return json({ ok:true, success:true, cards: identifiedCards });
