@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.17.4-wrap-logo-grayscale">
+<meta name="version" content="2026.08.17.5-own-ai-sports-onepiece">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1587,13 +1587,13 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.17.4-wrap-logo-grayscale" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.17.4-wrap-logo-grayscale" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.17.4-wrap-logo-grayscale" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.17.4-wrap-logo-grayscale" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.17.4-wrap-logo-grayscale" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.17.4-wrap-logo-grayscale" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.17.4-wrap-logo-grayscale" defer></script>
+<script src="scripts/query-routing.js?v=2026.08.17.5-own-ai-sports-onepiece" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.17.5-own-ai-sports-onepiece" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.17.5-own-ai-sports-onepiece" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.17.5-own-ai-sports-onepiece" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.17.5-own-ai-sports-onepiece" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.17.5-own-ai-sports-onepiece" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.17.5-own-ai-sports-onepiece" defer></script>
 </head>
 <body>
 
@@ -1643,11 +1643,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.17.4-wrap-logo-grayscale</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.17.5-own-ai-sports-onepiece</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.17.4-wrap-logo-grayscale</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.17.5-own-ai-sports-onepiece</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1669,7 +1669,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.17.4-wrap-logo-grayscale</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.17.5-own-ai-sports-onepiece</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3433,7 +3433,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.17.4-wrap-logo-grayscale';
+const APP_VERSION = '2026.08.17.5-own-ai-sports-onepiece';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -5236,10 +5236,11 @@ function saveAlertSettings(patch){
 function getResearchSettings(){
   let saved = {};
   try { saved = JSON.parse(localStorage.getItem('research_settings_v1') || '{}'); } catch(e) {}
-  // cardScannerProvider only affects Pokemon/MTG scans -- sports/One Piece
-  // always use CardSight regardless, since our own AI doesn't cover those
-  // games. 'own' (default) is the cheaper Claude-vision + catalog-match
-  // path; 'cardsight' forces CardSight for every game as before.
+  // cardScannerProvider covers Pokemon/MTG/sports/One Piece scans -- graded
+  // slabs always use CardSight regardless, since a cert number through a
+  // holder isn't proven on this path yet. 'own' (default) is the cheaper
+  // Claude-vision + catalog-match path; 'cardsight' forces CardSight for
+  // every game as before.
   return { defaultCategory:'', rememberLastCategory:false, cardScannerProvider:'own', ...saved };
 }
 function saveResearchSettings(patch){
@@ -5809,9 +5810,9 @@ function ensureResearchSettingsPanel(backoffice){
     </div>
     <div style="font-family:var(--font-mono);font-size:9px;color:var(--dim)">Manually changing the category in Research only affects the current session unless "Remember last used category" is on, or you Save a new default here.</div>
     <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border)">
-      <div style="font-family:var(--font-mono);font-size:10px;color:var(--text);margin-bottom:6px">CARD SCANNER (POKEMON / MTG)</div>
+      <div style="font-family:var(--font-mono);font-size:10px;color:var(--text);margin-bottom:6px">CARD SCANNER (POKEMON / MTG / SPORTS / ONE PIECE)</div>
       <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);margin-bottom:10px;line-height:1.55">
-        Choose which identification service the camera scanner uses when the POKEMON or MTG category is selected. Sports and One Piece scans always use CardSight -- our own AI doesn't cover those games yet.
+        Choose which identification service the camera scanner uses for Pokemon, MTG, Sports, and One Piece scans. Graded slabs always use CardSight -- reading a cert number through a holder isn't proven on our own AI yet.
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
         <select id="research-card-scanner-provider" style="background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:6px 10px;border-radius:6px;font-family:var(--font-mono);font-size:10px">
@@ -6137,8 +6138,8 @@ const FEATURE_LOG = [
   { area:'Scanning & Card ID', items:[
     { title:'Scan To Cart', status:'new', desc:'Scan a printed shelf/price label\'s barcode to add that exact item straight to the active register cart -- no searching. Button lives in the Inventory tab toolbar.' },
     { title:'Universal Scan button', status:'working', desc:'One button in Research auto-detects whether the camera is looking at a trading card, a product barcode, or a graded slab\'s cert barcode, and routes accordingly.' },
-    { title:'Own AI card ID (Pokemon & MTG)', status:'working', desc:'Built-in Claude-vision card identifier for Pokemon and MTG, cheaper than the third-party CardSight service. Switchable per-game in Research settings.' },
-    { title:'CardSight AI (Sports & One Piece)', status:'working', desc:'Third-party scanner used for Sports cards and One Piece TCG, which the own-AI identifier doesn\'t cover yet.' },
+    { title:'Own AI card ID (Pokemon, MTG, Sports, One Piece)', status:'new', desc:'Built-in Claude-vision card identifier covering all four games now, cents per scan instead of the third-party CardSight fee. Matches every extracted card against our own real catalog data, never an AI-guessed price. Switchable per-game in Research settings.' },
+    { title:'CardSight AI (graded slabs)', status:'working', desc:'Third-party scanner still used for graded slab cert numbers, which reading through a holder hasn\'t been proven reliable on our own AI yet.' },
     { title:'Barcode lookup for comics & sealed product', status:'working', desc:'Scan a UPC to identify comics (via Metron) or sealed TCG/game product (via PriceCharting), with a confirm-before-save step so a bad match never gets silently saved.' },
     { title:'PSA cert verification', status:'working', desc:'Look up a PSA cert number, pull the official PSA photo, and link straight to the PSA cert page for buyer-facing proof.' },
   ]},
@@ -25861,14 +25862,16 @@ async function callCardSightDashboard(base64Image, segment){
   }
 }
 
-// Own AI card identification -- Pokemon TCG and Magic: The Gathering only.
-// Claude (Haiku vision, /identify/card) extracts only what's printed on the
-// card; the actual card + real pricing then comes from searchQuickCatalog()
-// below, the same catalog search manual Research-tab lookups and price sync
-// already trust -- identity/price is always verified catalog data, never the
-// model's guess. Cents per scan instead of CardSight's per-call fee, but
-// only covers these two games -- sports/One Piece/graded slabs stay on
-// CardSight (see CARDSIGHT_SEGMENT_HINTS_DASHBOARD above).
+// Own AI card identification -- Pokemon TCG, Magic: The Gathering, sports
+// cards, and One Piece TCG. Claude (Haiku vision, /identify/card) extracts
+// only what's printed on the card; the actual card + real pricing then comes
+// from searchQuickCatalog() below, the same catalog search manual
+// Research-tab lookups and price sync already trust -- identity/price is
+// always verified catalog data, never the model's guess. Cents per scan
+// instead of CardSight's per-call fee. Graded slabs stay on CardSight --
+// reading a cert number through a holder isn't proven here, and the
+// barcode-first check ahead of this call already covers that case (see
+// CARDSIGHT_SEGMENT_HINTS_DASHBOARD above).
 async function callOwnCardIdentify(base64Image){
   const res = await storeWorkerFetch('/identify/card', {
     method: 'POST',
@@ -25880,10 +25883,11 @@ async function callOwnCardIdentify(base64Image){
   let data;
   try { data = JSON.parse(text); } catch(e) { throw new Error('Card identify response not JSON'); }
   if(data.ok === false) throw new Error('Card identify: ' + (data.error || 'failed'));
-  return data.cards || []; // [{game,name,setName,number,hp,manaCost,rarity,finish,specialMarkings,confidence}]
+  return data.cards || []; // [{game,name,setName,number,year,hp,manaCost,rarity,finish,specialMarkings,confidence}]
 }
 
 function ownCardIdentifyQuery(card){
+  if(card.game === 'sports') return [card.year, card.setName, card.name, card.number ? '#' + card.number : ''].filter(Boolean).join(' ').trim();
   return [card.name, card.setName, card.number ? '#' + card.number : ''].filter(Boolean).join(' ').trim();
 }
 
@@ -25895,9 +25899,15 @@ function ownCardIdentifyNote(card){
 // Resolves one extracted card into a real catalog row by running it through
 // the same search + ranking pipeline manual Research-tab search already uses
 // (searchQuickCatalog + mergeAndRankResults) -- so the final result is a
-// verified catalog match with real pricing, not a raw model guess.
+// verified catalog match with real pricing, not a raw model guess. Category
+// strings are picked to match CATEGORY_ALIASES/qplCategoryKey exactly --
+// "One Piece" (not "One Piece TCG") is what resolves to the 'one_piece' key
+// both category-key functions agree on.
 async function resolveOwnCardIdentifyCard(card){
-  const category = card.game === 'pokemon' ? 'Pokemon TCG' : 'Magic: The Gathering';
+  const category = card.game === 'pokemon' ? 'Pokemon TCG'
+    : card.game === 'mtg' ? 'Magic: The Gathering'
+    : card.game === 'sports' ? 'Sports Card'
+    : 'One Piece';
   const q = ownCardIdentifyQuery(card);
   if(!q) return null;
   const plan = buildUniversalSearchPlan(q, category);
@@ -26185,15 +26195,15 @@ async function fetchCardSightRealPrice(row){
   return { market: 0, imageUrl: '', priceSource: '' };
 }
 
-// Pokemon/MTG branch of doCardSightScan() -- resolves each card Claude read
-// off the photo against the real catalog (resolveOwnCardIdentifyCard) and
-// adds confirmed matches straight to the Research results, mirroring the
+// Own-AI branch of doCardSightScan() -- resolves each card Claude read off
+// the photo against the real catalog (resolveOwnCardIdentifyCard) and adds
+// confirmed matches straight to the Research results, mirroring the
 // CardSight branch's log/status UI so the two paths feel identical to use.
 async function runOwnCardIdentifyScan(img){
   const log = document.getElementById('cardsight-results-log');
   const identified = await callOwnCardIdentify(img);
   if(!identified.length){
-    setCardSightStatus('No Pokemon or MTG card detected — move closer and try again.', 'var(--gold)');
+    setCardSightStatus('No card detected — move closer and try again.', 'var(--gold)');
     return;
   }
   let added = 0;
@@ -26244,14 +26254,16 @@ async function doCardSightScan(){
     // sports cards) -- callCardSightDashboard falls back to an unscoped call
     // automatically if this guess doesn't pan out.
     const categoryHint = qplCategoryKey(document.getElementById('qpl-cat')?.value || '');
-    // Pokemon/MTG scans go through our own Claude-vision identify + real
-    // catalog match instead of paid CardSight -- see runOwnCardIdentifyScan.
-    // Everything else (sports, One Piece, auto/unselected) keeps using
-    // CardSight, since that's the only place those games get identified.
-    // The RESEARCH DEFAULTS setting can force CardSight for these two games
-    // too (e.g. while comparing accuracy, or if our own AI mismatches).
+    // Pokemon/MTG/sports/One Piece scans go through our own Claude-vision
+    // identify + real catalog match instead of paid CardSight -- see
+    // runOwnCardIdentifyScan. Graded slabs and auto/unselected scans keep
+    // using CardSight -- a cert number through a holder isn't something this
+    // path has been proven on, and auto-detect still needs CardSight's own
+    // game classification. The RESEARCH DEFAULTS setting can force CardSight
+    // for all four games too (e.g. while comparing accuracy, or if our own
+    // AI mismatches).
     const useOwnScanner = getResearchSettings().cardScannerProvider !== 'cardsight';
-    if(useOwnScanner && (categoryHint === 'pokemon' || categoryHint === 'mtg')){
+    if(useOwnScanner && ['pokemon', 'mtg', 'sports', 'one_piece'].includes(categoryHint)){
       await runOwnCardIdentifyScan(img);
       if(btn){ btn.textContent = '📷 SCAN'; btn.disabled = false; }
       return;
@@ -41156,7 +41168,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.17.4-wrap-logo-grayscale" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.17.5-own-ai-sports-onepiece" defer></script>
 </body>
 </html>
 

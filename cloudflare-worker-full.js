@@ -3476,15 +3476,18 @@ export default {
       return new Response(data, { status:res.status, headers:{ ...CORS, 'Content-Type':'application/json', 'Cache-Control':'no-store', 'X-Card-Lens-Cache':'MISS' } });
     }
 
-    // Own-catalog card identification for Pokemon TCG / Magic: The Gathering
-    // only -- a cheaper alternative to /cardsight/identify below, reusing the
-    // same ANTHROPIC_API_KEY already configured for /anthropic/messages.
-    // Claude only extracts what's printed on the card (name/set/number/
-    // finish/etc); it never guesses a final identity or a price. The client
-    // resolves the extracted fields against the real Pokemon/MTG catalogs
-    // (searchQuickCatalog -- the same pipeline manual Research-tab search and
-    // price sync already trust) so the actual card + pricing always comes
-    // from verified catalog data, not the model's opinion.
+    // Own-catalog card identification for Pokemon TCG, Magic: The Gathering,
+    // sports cards, and One Piece TCG -- a cheaper alternative to
+    // /cardsight/identify below, reusing the same ANTHROPIC_API_KEY already
+    // configured for /anthropic/messages. Claude only extracts what's printed
+    // on the card (name/set/number/finish/etc); it never guesses a final
+    // identity or a price. The client resolves the extracted fields against
+    // the real catalogs (searchQuickCatalog -- the same pipeline manual
+    // Research-tab search and price sync already trust) so the actual card +
+    // pricing always comes from verified catalog data, not the model's
+    // opinion. Graded slabs stay on CardSight -- reading a cert number
+    // through a holder reliably isn't proven here, and the barcode-first
+    // check ahead of this call already covers that case.
     if (url.pathname === '/identify/card') {
       if (request.method !== 'POST') return json({ ok:false, error: 'POST only' }, 405);
       if (!env.ANTHROPIC_API_KEY) return json({ ok:false, error: 'ANTHROPIC_API_KEY not set' }, 500);
@@ -3499,11 +3502,14 @@ export default {
       const rateError = await enforceUsageLimit(env, `identify-card:${storeId}:${auth.user.id}`, 60, 60);
       if (rateError) return rateError;
 
-      const identifyPrompt = 'You are looking at a photo of one or more physical trading cards. Only Pokemon TCG and Magic: The Gathering cards are in scope -- if the photo shows a sports card, One Piece card, comic, sealed product, or anything else, return an empty "cards" array rather than guessing.\n\n'
-        + 'Count only actual separate physical cards visible in the photo -- one entry per card, never one entry per line of text on a card. Do NOT create a separate entry for an attack name, ability name, move, spell, flavor text, or any other text printed ON a card -- e.g. if a Pokemon card has an attack called "Cyclone Kick" printed on it, that is part of that ONE card\'s data, not a second card. If you only see one physical card in the photo, return exactly one entry.\n\n'
-        + 'For each distinct Pokemon or MTG card clearly visible, extract exactly what is printed on the card -- do not guess a card you cannot actually read, and never estimate a price. Respond with strict JSON only, no markdown fences, no prose, matching this shape:\n'
-        + '{"cards":[{"game":"pokemon"|"mtg","name":"","setName":"","number":"","hp":"","manaCost":"","rarity":"","finish":"normal"|"holo"|"reverse holo"|"foil"|"etched foil"|"","specialMarkings":"","confidence":"high"|"medium"|"low"}]}\n\n'
-        + 'name is the card\'s own title/name only (e.g. "Lucario V"), never an attack, ability, or move name. setName is whatever set name or set symbol you can identify (e.g. "Base Set", "Surging Sparks", "Bloomburrow"). number is the printed collector number (e.g. "4/102", "087/091"). specialMarkings covers things like a 1st Edition stamp or promo stamp. If a field is not legible, use an empty string rather than guessing.';
+      const identifyPrompt = 'You are looking at a photo of one or more physical trading cards. Pokemon TCG, Magic: The Gathering, sports cards (baseball/basketball/football/hockey/soccer/etc), and One Piece TCG are all in scope -- if the photo shows a comic, sealed product, video game, graded/slabbed card, or anything else outside these four, return an empty "cards" array rather than guessing.\n\n'
+        + 'Count only actual separate physical cards visible in the photo -- one entry per card, never one entry per line of text on a card. Do NOT create a separate entry for an attack name, ability name, move, spell, stat line, flavor text, or any other text printed ON a card -- e.g. if a Pokemon card has an attack called "Cyclone Kick" printed on it, that is part of that ONE card\'s data, not a second card. If you only see one physical card in the photo, return exactly one entry.\n\n'
+        + 'For each distinct card clearly visible, extract exactly what is printed on the card -- do not guess a card you cannot actually read, and never estimate a price. Respond with strict JSON only, no markdown fences, no prose, matching this shape:\n'
+        + '{"cards":[{"game":"pokemon"|"mtg"|"sports"|"one_piece","name":"","setName":"","number":"","year":"","hp":"","manaCost":"","rarity":"","finish":"","specialMarkings":"","confidence":"high"|"medium"|"low"}]}\n\n'
+        + 'For pokemon/mtg: name is the card\'s own title/name only (e.g. "Lucario V"), never an attack, ability, or move name. setName is whatever set name or set symbol you can identify (e.g. "Base Set", "Surging Sparks", "Bloomburrow"). finish is "normal"/"holo"/"reverse holo"/"foil"/"etched foil" as applicable. hp applies to pokemon only, manaCost to mtg only -- leave the other blank, and leave year blank for both.\n'
+        + 'For sports: name is the PLAYER\'s name printed on the card, never the team name alone. setName is the brand + product line (e.g. "Topps Chrome", "Panini Prizm", "Bowman"). year is the 4-digit year printed on the card. finish is the parallel/parallel color if any (e.g. "Refractor", "Gold /50", "Silver Prizm"), else leave blank. specialMarkings covers "Rookie Card"/"RC", autograph, or relic/patch notes. Leave hp and manaCost blank.\n'
+        + 'For one_piece: name is the card\'s own title (e.g. "Monkey D. Luffy"). setName is the set code + name (e.g. "OP-01 Romance Dawn"). rarity is the printed rarity (e.g. "L", "SR", "SEC"). finish covers "Alternate Art"/"Parallel" if applicable. Leave hp, manaCost, and year blank.\n'
+        + 'number is the printed collector number (e.g. "4/102", "087/091", "150"). specialMarkings also covers a 1st Edition stamp or promo stamp when applicable. If a field is not legible, use an empty string rather than guessing.';
 
       const res = await fetch(`${ANTHROPIC_BASE}/messages`, {
         method: 'POST',
@@ -3535,13 +3541,14 @@ export default {
       let parsedIdentify;
       try { parsedIdentify = JSON.parse(rawText); } catch (_) { return json({ ok:false, error:'Model did not return valid JSON', raw: rawText.slice(0, 300) }, 502); }
       const identifiedCards = (Array.isArray(parsedIdentify.cards) ? parsedIdentify.cards : [])
-        .filter(c => c && (c.game === 'pokemon' || c.game === 'mtg') && String(c.name || '').trim())
+        .filter(c => c && ['pokemon', 'mtg', 'sports', 'one_piece'].includes(c.game) && String(c.name || '').trim())
         .slice(0, 12)
         .map(c => ({
           game: c.game,
           name: String(c.name || '').trim().slice(0, 120),
           setName: String(c.setName || '').trim().slice(0, 120),
           number: String(c.number || '').trim().slice(0, 20),
+          year: String(c.year || '').trim().slice(0, 4),
           hp: String(c.hp || '').trim().slice(0, 10),
           manaCost: String(c.manaCost || '').trim().slice(0, 40),
           rarity: String(c.rarity || '').trim().slice(0, 40),
