@@ -190,32 +190,38 @@ function renderCheckoutForm(){
     <div class="fulfill-opts" id="fulfill-opts">
       <div class="fulfill-opt ${checkoutFulfillment==='pickup_fedway'?'on':''}" data-method="pickup_fedway" onclick="setFulfillment('pickup_fedway')"><b>Local Pickup — Fed Way Commons</b><span>We're there most weekends. We'll text/call to arrange a pickup time.</span></div>
       <div class="fulfill-opt ${checkoutFulfillment==='pickup_kitsap'?'on':''}" data-method="pickup_kitsap" onclick="setFulfillment('pickup_kitsap')"><b>Local Meetup — Kitsap County</b><span>We'll coordinate a meeting spot and time with you directly.</span></div>
-      <div class="fulfill-opt ${checkoutFulfillment==='shipping'?'on':''}" data-method="shipping" onclick="setFulfillment('shipping')"><b>Ship to me</b><span>$3 flat rate for 3 raw singles or less, $7 for everything else.</span></div>
+      <div class="fulfill-opt ${checkoutFulfillment==='shipping'?'on':''}" data-method="shipping" onclick="setFulfillment('shipping')"><b>Ship to me</b><span>Real carrier rate, calculated from your address once entered below.</span></div>
     </div>
     <div class="field"><label>Full name</label><input id="ck-name" placeholder="Jane Smith"></div>
     <div class="field"><label>Phone number</label><input id="ck-phone" type="tel" placeholder="(555) 555-5555"></div>
     <div class="field"><label>Email (optional)</label><input id="ck-email" type="email" placeholder="jane@example.com"></div>
     <div id="ck-shipping-fields" style="display:${checkoutFulfillment==='shipping'?'block':'none'}">
-      <div class="field"><label>Address line 1</label><input id="ck-addr1" placeholder="123 Main St"></div>
-      <div class="field"><label>Address line 2 (optional)</label><input id="ck-addr2" placeholder="Apt / unit"></div>
-      <div class="field"><label>City</label><input id="ck-city"></div>
-      <div class="field"><label>State</label><input id="ck-state" maxlength="2" placeholder="WA"></div>
-      <div class="field"><label>ZIP</label><input id="ck-zip"></div>
+      <div class="field"><label>Address line 1</label><input id="ck-addr1" placeholder="123 Main St" oninput="liveShippingQuoteDebounced()"></div>
+      <div class="field"><label>Address line 2 (optional)</label><input id="ck-addr2" placeholder="Apt / unit" oninput="liveShippingQuoteDebounced()"></div>
+      <div class="field"><label>City</label><input id="ck-city" oninput="liveShippingQuoteDebounced()"></div>
+      <div class="field"><label>State</label><input id="ck-state" maxlength="2" placeholder="WA" oninput="liveShippingQuoteDebounced()"></div>
+      <div class="field"><label>ZIP</label><input id="ck-zip" oninput="liveShippingQuoteDebounced()"></div>
     </div>
     <div id="ck-summary" style="margin:14px 0;font-size:14px"></div>
     <div class="btn-row">
       <button class="btn" id="ck-continue-btn" onclick="submitCheckout()">CONTINUE TO PAYMENT</button>
       <button class="btn close" onclick="document.getElementById('checkout-modal').close()">CANCEL</button>
     </div>`;
+  liveShippingQuote={cents:null,real:false,loading:false,label:''};
   updateCheckoutSummary();
 }
 function setFulfillment(method){
   checkoutFulfillment=method;
   document.querySelectorAll('.fulfill-opt').forEach(el=>el.classList.toggle('on', el.dataset.method===method));
   document.getElementById('ck-shipping-fields').style.display = method==='shipping' ? 'block' : 'none';
+  if(method==='shipping') liveShippingQuoteDebounced();
   updateCheckoutSummary();
 }
-function estimatedShippingFee(){
+// Flat-rate guess used until a real Shippo quote comes back (or if it never
+// does -- Shippo not configured, address incomplete, or the call fails).
+// The server falls back to this exact same rule, so what's shown here before
+// a real quote lands always matches what checkout would otherwise charge.
+function fallbackShippingFee(){
   if(checkoutFulfillment!=='shipping') return 0;
   const totalQty=cart.reduce((a,c)=>a+c.qty,0);
   const allRawSingles=cart.every(c=>{
@@ -224,10 +230,45 @@ function estimatedShippingFee(){
   });
   return (totalQty<=3 && allRawSingles) ? 3 : 7;
 }
+let liveShippingQuote={cents:null,real:false,loading:false,label:''};
+async function fetchLiveShippingQuote(){
+  if(checkoutFulfillment!=='shipping'||!cart.length) return;
+  const line1=document.getElementById('ck-addr1')?.value.trim();
+  const city=document.getElementById('ck-city')?.value.trim();
+  const state=document.getElementById('ck-state')?.value.trim();
+  const zip=document.getElementById('ck-zip')?.value.trim();
+  if(!line1||!city||!state||!zip) return;
+  liveShippingQuote={...liveShippingQuote,loading:true};
+  updateCheckoutSummary();
+  try{
+    const res=await fetch(`${WORKER}/public/storefront/shipping-quote`,{
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        storeId:currentStoreId,
+        items:cart.map(c=>({itemId:c.id, quantity:c.qty})),
+        destination:{line1, line2:document.getElementById('ck-addr2')?.value.trim()||'', city, state, zip},
+      }),
+    });
+    const data=await res.json();
+    if(!res.ok||!data.ok){ liveShippingQuote={cents:null,real:false,loading:false,label:''}; updateCheckoutSummary(); return; }
+    liveShippingQuote={
+      cents:data.shippingFeeCents,
+      real:!!data.real,
+      loading:false,
+      label:data.real && data.carrier ? `${data.carrier}${data.serviceName?' '+data.serviceName:''}` : '',
+    };
+  }catch(e){
+    liveShippingQuote={cents:null,real:false,loading:false,label:''};
+  }
+  updateCheckoutSummary();
+}
+const liveShippingQuoteDebounced=debounce(fetchLiveShippingQuote, 600);
 function updateCheckoutSummary(){
   const {subtotal}=cartTotals();
-  const shipping=estimatedShippingFee();
-  document.getElementById('ck-summary').innerHTML=`<div class="cart-total-row"><span>Subtotal</span><span>$${subtotal.toFixed(2)}</span></div>${checkoutFulfillment==='shipping'?`<div class="cart-total-row"><span>Shipping (estimated)</span><span>$${shipping.toFixed(2)}</span></div>`:''}<div class="cart-total-row grand"><span>Total (estimated)</span><span>$${(subtotal+shipping).toFixed(2)}</span></div>`;
+  const showFallback=liveShippingQuote.cents==null;
+  const shipping=showFallback ? fallbackShippingFee() : liveShippingQuote.cents/100;
+  const shipLabel=checkoutFulfillment!=='shipping' ? '' : (liveShippingQuote.loading ? 'Shipping (getting real rate…)' : (showFallback ? 'Shipping (estimated)' : `Shipping${liveShippingQuote.label?' ('+liveShippingQuote.label+')':' (real rate)'}`));
+  document.getElementById('ck-summary').innerHTML=`<div class="cart-total-row"><span>Subtotal</span><span>$${subtotal.toFixed(2)}</span></div>${checkoutFulfillment==='shipping'?`<div class="cart-total-row"><span>${shipLabel}</span><span>$${shipping.toFixed(2)}</span></div>`:''}<div class="cart-total-row grand"><span>Total${showFallback&&checkoutFulfillment==='shipping'?' (estimated)':''}</span><span>$${(subtotal+shipping).toFixed(2)}</span></div>`;
 }
 function showCheckoutError(msg){
   const el=document.getElementById('checkout-error');

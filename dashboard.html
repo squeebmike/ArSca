@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.19.1-ebay-shipping-labels">
+<meta name="version" content="2026.08.19.2-real-shipping-rates">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1587,13 +1587,13 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.19.1-ebay-shipping-labels" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.19.1-ebay-shipping-labels" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.19.1-ebay-shipping-labels" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.19.1-ebay-shipping-labels" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.19.1-ebay-shipping-labels" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.19.1-ebay-shipping-labels" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.19.1-ebay-shipping-labels" defer></script>
+<script src="scripts/query-routing.js?v=2026.08.19.2-real-shipping-rates" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.19.2-real-shipping-rates" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.19.2-real-shipping-rates" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.19.2-real-shipping-rates" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.19.2-real-shipping-rates" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.19.2-real-shipping-rates" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.19.2-real-shipping-rates" defer></script>
 </head>
 <body>
 
@@ -1643,11 +1643,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.19.1-ebay-shipping-labels</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.19.2-real-shipping-rates</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.19.1-ebay-shipping-labels</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.19.2-real-shipping-rates</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1669,7 +1669,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.19.1-ebay-shipping-labels</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.19.2-real-shipping-rates</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3433,7 +3433,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.19.1-ebay-shipping-labels';
+const APP_VERSION = '2026.08.19.2-real-shipping-rates';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -4997,6 +4997,7 @@ const DEFAULT_VENDOR_PROFILE = {
   cashapp:'',
   storefrontEnabled:false,
   storefrontMessage:'Browse what is available now.',
+  shippingOrigin:{ name:'', street1:'', street2:'', city:'', state:'', zip:'', phone:'' },
 };
 const DEFAULT_PAYMENT_SETTINGS = {
   cash:{ enabled:true, trackCashDrawer:true },
@@ -5208,6 +5209,7 @@ async function saveVendorProfile(profile){
       venmo:next.venmo || '',
       paypal:next.paypal || '',
       cashapp:next.cashapp || '',
+      shippingOrigin:next.shippingOrigin || {},
     },
     theme:{ accent:next.themeAccent || '#00ffb3', logo:next.logo || '' }
   });
@@ -5905,6 +5907,7 @@ function savePaymentSettings(settings){
       venmo:next.venmo || '',
       paypal:next.paypal || '',
       cashapp:next.cashapp || '',
+      shippingOrigin:next.shippingOrigin || {},
     }
   });
   logOpsEvent('payment_settings', 'Updated store payment settings', { storeId:getActiveStoreId() });
@@ -6526,6 +6529,7 @@ function renderVendorProfilePanel(){
   const body = document.getElementById('vendor-profile-body');
   if(!body) return;
   const p = getVendorProfile();
+  const so = { name:'', street1:'', street2:'', city:'', state:'', zip:'', phone:'', ...(p.shippingOrigin || {}) };
   const storefrontUrl = new URL('storefront.html', location.href); storefrontUrl.searchParams.set('store', getActiveStoreId());
   const buylistUrl = new URL('buylist.html', location.href); buylistUrl.searchParams.set('store', getActiveStoreId());
   const twilioVoiceUrl = WORKER + '/twilio/voice?store=' + encodeURIComponent(getActiveStoreId());
@@ -6571,6 +6575,19 @@ function renderVendorProfilePanel(){
       <label style="display:flex;align-items:center;gap:8px;font-family:var(--font-mono);font-size:11px;margin-bottom:10px"><input id="vp-storefrontEnabled" type="checkbox" ${p.storefrontEnabled?'checked':''}> Publish this store's available inventory</label>
       <label style="font-family:var(--font-mono);font-size:9px;color:var(--dim)">WELCOME MESSAGE<input id="vp-storefrontMessage" class="tsi" value="${escHtml(p.storefrontMessage||'')}" placeholder="Browse what is available now" style="margin-top:4px"></label>
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><button class="hbtn" onclick="saveStorefrontSettings()">SAVE STOREFRONT</button><button class="hbtn" onclick="window.open('${escHtml(storefrontUrl.href)}','_blank')">OPEN PUBLIC PAGE</button><button class="hbtn" onclick="copyStorefrontLink('${encodeURIComponent(storefrontUrl.href)}')">COPY LINK</button><button class="hbtn" onclick="showStorefrontQr('${encodeURIComponent(storefrontUrl.href)}')">SHOW QR CODE</button><code style="font-size:9px;color:var(--dim);word-break:break-all">${escHtml(storefrontUrl.href)}</code></div>
+    </div>
+    <div style="margin-top:14px;padding:14px;border:1px solid var(--border);border-radius:10px;background:var(--surf2)">
+      <div style="font-family:'Orbitron',monospace;font-size:11px;color:var(--g);margin-bottom:7px">SHIPPING ORIGIN &amp; REAL RATES</div>
+      <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);line-height:1.6;margin-bottom:10px">Fill this in with the address you actually ship from so storefront checkout can quote a real carrier rate (via Shippo) instead of a flat guess. Requires the SHIPPO_API_TOKEN secret to already be set on the Worker -- until then, or if this address is left blank, checkout keeps using the old flat $3/$7 fallback rate.</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+        ${vendorInput('shipOriginName','Ship-from name',so.name,'text','Store or business name')}
+        ${vendorInput('shipOriginPhone','Ship-from phone',so.phone,'tel','5551234567')}
+        ${vendorInput('shipOriginStreet1','Street address',so.street1,'text','123 Main St')}
+        ${vendorInput('shipOriginStreet2','Street address 2 (optional)',so.street2,'text','Suite / Unit')}
+        ${vendorInput('shipOriginCity','City',so.city,'text','Kingston')}
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">${vendorInput('shipOriginState','State',so.state,'text','WA')}${vendorInput('shipOriginZip','ZIP',so.zip,'text','98346')}</div>
+      </div>
+      <button class="hbtn" onclick="saveShippingOriginSettings()">SAVE SHIPPING ORIGIN</button>
     </div>
     <div style="margin-top:14px;padding:14px;border:1px solid var(--border);border-radius:10px;background:var(--surf2)">
       <div style="font-family:'Orbitron',monospace;font-size:11px;color:var(--g);margin-bottom:7px">PUBLIC "SELL TO US" PAGE</div>
@@ -6693,6 +6710,19 @@ function saveBuylistSettings(){
   const buylistMessage=document.getElementById('vp-buylistMessage')?.value.trim()||'';
   saveVendorProfile({buylistEnabled:enabled,buylistMessage});
   toast_dash(enabled?'Buylist page enabled':'Buylist page disabled');
+}
+function saveShippingOriginSettings(){
+  const shippingOrigin = {
+    name: document.getElementById('vp-shipOriginName')?.value.trim() || '',
+    street1: document.getElementById('vp-shipOriginStreet1')?.value.trim() || '',
+    street2: document.getElementById('vp-shipOriginStreet2')?.value.trim() || '',
+    city: document.getElementById('vp-shipOriginCity')?.value.trim() || '',
+    state: document.getElementById('vp-shipOriginState')?.value.trim() || '',
+    zip: document.getElementById('vp-shipOriginZip')?.value.trim() || '',
+    phone: document.getElementById('vp-shipOriginPhone')?.value.trim() || '',
+  };
+  saveVendorProfile({ shippingOrigin });
+  toast_dash(shippingOrigin.street1 && shippingOrigin.city && shippingOrigin.state && shippingOrigin.zip ? 'Shipping origin saved -- real rates active once SHIPPO_API_TOKEN is set' : 'Shipping origin saved (incomplete -- real rates need street/city/state/zip)');
 }
 function saveNotifyForwardNumbers(){
   const notifyForwardNumbers=[0,1,2].map(i=>document.getElementById('vp-notifyForward'+i)?.value.trim()).filter(Boolean);
@@ -41501,7 +41531,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.19.1-ebay-shipping-labels" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.19.2-real-shipping-rates" defer></script>
 </body>
 </html>
 

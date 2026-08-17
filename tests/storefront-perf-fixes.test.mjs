@@ -13,15 +13,27 @@ assert.match(storefront, /document\.querySelectorAll\('\.controls select'\)\.for
 console.log('Storefront search debounce contract checks passed');
 
 // ── Contract: storefront checkout batches item lookups instead of one
-// sequential awaited fetch per cart line ──
-const checkoutRouteSrc = worker.slice(worker.indexOf('const requestedItems = Array.isArray(body.items)'), worker.indexOf('if (subtotalCents < 50)'));
-assert.match(checkoutRouteSrc, /const requestedIds = requestedItems\.map\(req => String\(req\.itemId \|\| ''\)\.trim\(\)\);/, 'item ids must be collected up front for a batched lookup');
-assert.match(checkoutRouteSrc, /id=in\.\(\$\{requestedIds\.map\(id => encodeURIComponent\(id\)\)\.join\(','\)\}\)/, 'the checkout route must fetch every requested item in a single id=in.(...) query');
-assert.match(checkoutRouteSrc, /const rowById = new Map\(\(fetchedRows \|\| \[\]\)\.map\(row => \[row\.id, row\]\)\);/, 'fetched rows must be indexed by id for O(1) lookup in the per-item loop');
-assert.match(checkoutRouteSrc, /const row = rowById\.get\(itemId\);/, 'the per-item validation loop must read from the batched map, not fetch again');
-assert.doesNotMatch(checkoutRouteSrc, /await supabaseAdminFetch\(env, `inventory_items\?id=eq\.\$\{encodeURIComponent\(itemId\)\}/, 'the old per-item sequential fetch inside the loop must be gone');
+// sequential awaited fetch per cart line. This logic now lives in the
+// shared loadCartForShipping() helper (also used by the real-shipping-rate
+// quote route) rather than inline in the checkout route itself. ──
+const cartLoaderSrc = worker.slice(worker.indexOf('async function loadCartForShipping'), worker.indexOf('// Picks a padded envelope'));
+assert.match(cartLoaderSrc, /const requestedIds = requestedItems\.map\(req => String\(req\.itemId \|\| ''\)\.trim\(\)\);/, 'item ids must be collected up front for a batched lookup');
+assert.match(cartLoaderSrc, /id=in\.\(\$\{requestedIds\.map\(id => encodeURIComponent\(id\)\)\.join\(','\)\}\)/, 'the cart loader must fetch every requested item in a single id=in.(...) query');
+assert.match(cartLoaderSrc, /const rowById = new Map\(\(fetchedRows \|\| \[\]\)\.map\(row => \[row\.id, row\]\)\);/, 'fetched rows must be indexed by id for O(1) lookup in the per-item loop');
+assert.match(cartLoaderSrc, /const row = rowById\.get\(itemId\);/, 'the per-item validation loop must read from the batched map, not fetch again');
+assert.doesNotMatch(cartLoaderSrc, /await supabaseAdminFetch\(env, `inventory_items\?id=eq\.\$\{encodeURIComponent\(itemId\)\}/, 'the old per-item sequential fetch inside the loop must be gone');
 
 console.log('Storefront checkout batching contract checks passed');
+
+// ── Contract: both checkout and the shipping-quote route call the SAME
+// shared cart loader, so a quote shown before payment can never drift from
+// what checkout actually charges ──
+const checkoutRouteSrc2 = worker.slice(worker.indexOf("url.pathname === '/public/storefront/checkout'"), worker.indexOf("url.pathname === '/public/storefront/shipping-quote'"));
+const quoteRouteSrc = worker.slice(worker.indexOf("url.pathname === '/public/storefront/shipping-quote'"), worker.indexOf("url.pathname === '/public/storefront/record-order'"));
+assert.match(checkoutRouteSrc2, /const cart = await loadCartForShipping\(env, storeId, body\.items\);/, 'checkout must use the shared cart loader');
+assert.match(quoteRouteSrc, /const cart = await loadCartForShipping\(env, storeId, body\.items\);/, 'the shipping-quote route must use the same shared cart loader as checkout');
+
+console.log('Shared cart loader reuse contract checks passed');
 
 // ── Functional: debounce collapses rapid calls into one trailing call ──
 function debounce(fn, waitMs){

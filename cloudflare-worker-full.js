@@ -14,6 +14,7 @@
  *   EBAY_APP_ID
  *   METRON_USER / METRON_PASS
  *   SOLDCOMPS_API_KEY
+ *   SHIPPO_API_TOKEN
  *   LBA_KV
  *   MTG_CATALOG_R2 (R2 must be enabled for the Cloudflare account)
  */
@@ -293,6 +294,103 @@ function roundUpToDollar(value) {
   const n = Number(value || 0);
   if (!isFinite(n) || n <= 0) return 0;
   return Math.ceil(n - 1e-9);
+}
+
+// ── Storefront shipping — shared cart loader + real Shippo rate lookup ─────
+// Used by both /public/storefront/checkout and /public/storefront/shipping-quote
+// so the fee a customer is quoted before paying can never drift from what
+// checkout actually charges -- both call this exact same validation logic.
+const SHIPPO_API_BASE = 'https://api.goshippo.com';
+
+async function loadCartForShipping(env, storeId, requestedItemsRaw) {
+  const requestedItems = Array.isArray(requestedItemsRaw) ? requestedItemsRaw.slice(0, 20) : [];
+  if (!requestedItems.length) return { error: json({ ok:false, error:'Your cart is empty' }, 400) };
+  const cleanUrlLoose = v => { const s = String(v == null ? '' : v).trim().slice(0, 1000); return /^https?:\/\//i.test(s) || /^data:image\//i.test(s) ? s : ''; };
+  const requestedIds = requestedItems.map(req => String(req.itemId || '').trim());
+  if (requestedIds.some(id => !/^[0-9a-f-]{36}$/i.test(id))) return { error: json({ ok:false, error:'Invalid item in cart' }, 400) };
+  const { data:fetchedRows } = await supabaseAdminFetch(env, `inventory_items?id=in.(${requestedIds.map(id => encodeURIComponent(id)).join(',')})&store_id=eq.${encodeURIComponent(storeId)}&select=id,data,status`);
+  const rowById = new Map((fetchedRows || []).map(row => [row.id, row]));
+
+  const lineItems = [];
+  let subtotalCents = 0;
+  let totalQuantity = 0;
+  let allRawSingles = true;
+  // No per-item weight is tracked in inventory, so this is a heuristic --
+  // raw singles are treated as near-weightless, graded slabs (rigid plastic
+  // holders) as the heaviest single unit, sealed product in between.
+  let totalWeightOz = 0;
+  for (const req of requestedItems) {
+    const itemId = String(req.itemId || '').trim();
+    const qty = Math.max(1, Math.min(10, Number(req.quantity || 1)));
+    const row = rowById.get(itemId);
+    if (!row) return { error: json({ ok:false, error:'An item in your cart is no longer available' }, 404) };
+    const d = row.data || {};
+    const availableQty = Number(d.quantity ?? d.qty ?? 1) || 0;
+    const invStatus = String(d.lifecycle || d.status || row.status || 'in_stock').toLowerCase();
+    if (invStatus !== 'in_stock' || availableQty < qty || d.soldAt || d.archivedAt) return { error: json({ ok:false, error:`"${d.name || 'An item'}" in your cart just sold out` }, 409) };
+    const checkoutBase = Number(d.priceOverride || 0) || roundUpToDollar(Number(d.market || d.marketPrice || d.rawMarketPrice || d.price || 0) || 0);
+    const unitPrice = Math.max(checkoutBase, Number(d.minPrice || 0) || 0) + (Number(d.signature_value || 0) || 0);
+    if (unitPrice <= 0) return { error: json({ ok:false, error:`"${d.name || 'An item'}" doesn't have a price set yet` }, 409) };
+    const category = String(d.category || d.type || '').toLowerCase();
+    const isSealed = !!d.is_sealed || category.includes('sealed') || category === 'comic';
+    const isGraded = !!(d.grading_company || d.grader);
+    if (isSealed || isGraded) allRawSingles = false;
+    totalQuantity += qty;
+    subtotalCents += Math.round(unitPrice * 100) * qty;
+    totalWeightOz += (isGraded ? 8 : (isSealed ? 10 : 1.2)) * qty;
+    lineItems.push({ itemId, quantity: qty, unitPrice, title: d.name || d.title || 'Item', category: d.category || d.type || 'Other', condition: d.condition || d.grade || '', imageUrl: cleanUrlLoose(d.image || d.img || d.imageUrl || d.image_url || d.photo) });
+  }
+  if (subtotalCents < 50) return { error: json({ ok:false, error:'Order subtotal is too small to check out' }, 400) };
+  return { lineItems, subtotalCents, totalQuantity, allRawSingles, totalWeightOz };
+}
+
+// Picks a padded envelope for a small, all-raw-singles order and a small box
+// otherwise, sized up slightly as quantity grows -- mirrors the shape of the
+// old flat-rate rule, but the resulting parcel now feeds a real carrier
+// quote instead of choosing a flat $3/$7 fee directly.
+function buildShippingParcel(totalQuantity, allRawSingles, totalWeightOz) {
+  const weightOz = totalWeightOz + 2; // + packaging materials
+  const useEnvelope = allRawSingles && totalQuantity <= 3 && weightOz <= 6;
+  return useEnvelope
+    ? { length:'9', width:'6', height:'1', distance_unit:'in', weight:(weightOz / 16).toFixed(2), mass_unit:'lb' }
+    : { length:'10', width:'8', height:String(Math.min(12, Math.max(3, Math.ceil(totalQuantity / 8) + 2))), distance_unit:'in', weight:(weightOz / 16).toFixed(2), mass_unit:'lb' };
+}
+
+// Calls Shippo for a real, carrier-calculated rate and returns the cheapest
+// one. Falls back to the old flat $3/$7 rule whenever Shippo isn't
+// configured, the store hasn't set a ship-from address, or the call fails --
+// a shipping-rate hiccup must never be able to block checkout entirely.
+async function computeRealShippingFeeCents(env, storeId, shippingAddress, totalQuantity, allRawSingles, totalWeightOz) {
+  const fallback = { cents: totalQuantity <= 3 && allRawSingles ? 300 : 700, real: false };
+  const token = env.SHIPPO_API_TOKEN;
+  if (!token) return fallback;
+  const { data: settingsRows } = await supabaseAdminFetch(env, `store_settings?store_id=eq.${encodeURIComponent(storeId)}&select=receipt_settings&limit=1`);
+  const origin = settingsRows?.[0]?.receipt_settings?.shippingOrigin;
+  if (!origin || !origin.street1 || !origin.city || !origin.state || !origin.zip) return fallback;
+  const parcel = buildShippingParcel(totalQuantity, allRawSingles, totalWeightOz);
+  try {
+    const res = await fetch(SHIPPO_API_BASE + '/shipments/', {
+      method: 'POST',
+      headers: { 'Authorization': `ShippoToken ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        address_from: { name: origin.name || 'Store', street1: origin.street1, street2: origin.street2 || '', city: origin.city, state: origin.state, zip: origin.zip, country: 'US', phone: origin.phone || '' },
+        address_to: { name: shippingAddress.name || 'Customer', street1: shippingAddress.line1, street2: shippingAddress.line2 || '', city: shippingAddress.city, state: shippingAddress.state, zip: shippingAddress.zip, country: 'US' },
+        parcels: [parcel],
+        async: false,
+      }),
+    });
+    const data = await res.json().catch(() => null);
+    if (!res.ok || !data) return fallback;
+    const rates = (data.rates || [])
+      .filter(r => r && r.amount && Number(r.amount) > 0)
+      .map(r => ({ cost: Number(r.amount), carrier: r.provider || '', serviceName: r.servicelevel?.name || '', estimatedDays: r.estimated_days ?? null }));
+    if (!rates.length) return fallback;
+    rates.sort((a, b) => a.cost - b.cost);
+    const cheapest = rates[0];
+    return { cents: Math.round(cheapest.cost * 100), real: true, carrier: cheapest.carrier, serviceName: cheapest.serviceName, estimatedDays: cheapest.estimatedDays };
+  } catch (e) {
+    return fallback;
+  }
 }
 
 // ── Public storefront item shaping — single source of truth ────────────────
@@ -2345,6 +2443,7 @@ export default {
         pokemontcg: !!env.POKEMONTCG_API_KEY,
         pokemonprice: !!(env.POKEMONPRICE_API_KEY || env.POKEMON_PRICE_TRACKER_API_KEY),
         soldcomps: !!env.SOLDCOMPS_API_KEY,
+        shippo: !!env.SHIPPO_API_TOKEN,
         kv: !!env.LBA_KV,
         mtgCatalogR2: !!env.MTG_CATALOG_R2,
         supabaseAdmin: !!(env.SUPABASE_URL && (env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SERVICE_KEY)),
@@ -2569,51 +2668,15 @@ export default {
         if (!shippingAddress.line1 || !shippingAddress.city || !shippingAddress.state || !shippingAddress.zip) return json({ ok:false, error:'A complete shipping address is required' }, 400);
       }
 
-      const requestedItems = Array.isArray(body.items) ? body.items.slice(0, 20) : [];
-      if (!requestedItems.length) return json({ ok:false, error:'Your cart is empty' }, 400);
-      const cleanUrlLoose = v => { const s = String(v == null ? '' : v).trim().slice(0, 1000); return /^https?:\/\//i.test(s) || /^data:image\//i.test(s) ? s : ''; };
+      const cart = await loadCartForShipping(env, storeId, body.items);
+      if (cart.error) return cart.error;
+      const { lineItems, subtotalCents, totalQuantity, allRawSingles, totalWeightOz } = cart;
 
-      // Every requested item used to be re-verified with its own sequential
-      // awaited fetch -- up to 20 round trips, one at a time, directly on the
-      // customer-facing checkout path. Validate id shape up front (no network
-      // needed) and batch-fetch every row in a single id=in.(...) query
-      // instead, then apply the exact same per-item checks against that
-      // batch below in the original order, so error precedence (first bad
-      // item wins) is unchanged.
-      const requestedIds = requestedItems.map(req => String(req.itemId || '').trim());
-      if (requestedIds.some(id => !/^[0-9a-f-]{36}$/i.test(id))) return json({ ok:false, error:'Invalid item in cart' }, 400);
-      const { data:fetchedRows } = await supabaseAdminFetch(env, `inventory_items?id=in.(${requestedIds.map(id => encodeURIComponent(id)).join(',')})&store_id=eq.${encodeURIComponent(storeId)}&select=id,data,status`);
-      const rowById = new Map((fetchedRows || []).map(row => [row.id, row]));
-
-      const lineItems = [];
-      let subtotalCents = 0;
-      let totalQuantity = 0;
-      let allRawSingles = true;
-      for (const req of requestedItems) {
-        const itemId = String(req.itemId || '').trim();
-        const qty = Math.max(1, Math.min(10, Number(req.quantity || 1)));
-        const row = rowById.get(itemId);
-        if (!row) return json({ ok:false, error:'An item in your cart is no longer available' }, 404);
-        const d = row.data || {};
-        const availableQty = Number(d.quantity ?? d.qty ?? 1) || 0;
-        const invStatus = String(d.lifecycle || d.status || row.status || 'in_stock').toLowerCase();
-        if (invStatus !== 'in_stock' || availableQty < qty || d.soldAt || d.archivedAt) return json({ ok:false, error:`"${d.name || 'An item'}" in your cart just sold out` }, 409);
-        const checkoutBase = Number(d.priceOverride || 0) || roundUpToDollar(Number(d.market || d.marketPrice || d.rawMarketPrice || d.price || 0) || 0);
-        // Same signature add-on as the listing price above -- without this
-        // a signed item would list correctly but charge the un-signed price.
-        const unitPrice = Math.max(checkoutBase, Number(d.minPrice || 0) || 0) + (Number(d.signature_value || 0) || 0);
-        if (unitPrice <= 0) return json({ ok:false, error:`"${d.name || 'An item'}" doesn't have a price set yet` }, 409);
-        const category = String(d.category || d.type || '').toLowerCase();
-        const isSealed = !!d.is_sealed || category.includes('sealed') || category === 'comic';
-        const isGraded = !!(d.grading_company || d.grader);
-        if (isSealed || isGraded) allRawSingles = false;
-        totalQuantity += qty;
-        subtotalCents += Math.round(unitPrice * 100) * qty;
-        lineItems.push({ itemId, quantity: qty, unitPrice, title: d.name || d.title || 'Item', category: d.category || d.type || 'Other', condition: d.condition || d.grade || '', imageUrl: cleanUrlLoose(d.image || d.img || d.imageUrl || d.image_url || d.photo) });
-      }
-      if (subtotalCents < 50) return json({ ok:false, error:'Order subtotal is too small to check out' }, 400);
-
-      const shippingFeeCents = method !== 'shipping' ? 0 : (totalQuantity <= 3 && allRawSingles ? 300 : 700);
+      // Real carrier-calculated rate when Shippo + a ship-from address are
+      // configured, otherwise the same flat $3/$7 rule as before -- see
+      // computeRealShippingFeeCents' fallback behavior above.
+      const shippingQuote = method !== 'shipping' ? { cents: 0, real: false } : await computeRealShippingFeeCents(env, storeId, shippingAddress, totalQuantity, allRawSingles, totalWeightOz);
+      const shippingFeeCents = shippingQuote.cents;
       const totalCents = subtotalCents + shippingFeeCents;
 
       // No Stripe Connect yet -- this charges directly to the platform's own
@@ -2643,6 +2706,41 @@ export default {
       await supabaseAdminFetch(env, 'storefront_orders', { method:'POST', headers:{ Prefer:'return=minimal' }, body:JSON.stringify({ id:crypto.randomUUID(), store_id:storeId, sale_id:saleId, confirmation_number:confirmationNumber, customer_name:customerName, customer_phone:customerPhone, customer_email:customerEmail || null, fulfillment_method:method, shipping_address:shippingAddress, shipping_fee_cents:shippingFeeCents, fulfillment_status:'pending' }) });
 
       return json({ ok:true, clientSecret:pi.client_secret, publishableKey:stripeConfig(env, mode).publishableKey, confirmationNumber, amountCents:totalCents, shippingFeeCents, mode });
+    }
+
+    // POST /public/storefront/shipping-quote — public (unauthenticated) real
+    // carrier rate lookup, called while the customer is filling out their
+    // shipping address so the checkout total shown is a real quote instead
+    // of a guess. Reuses the exact same cart-loading + rate logic checkout
+    // itself charges, so the two can never disagree.
+    if (url.pathname === '/public/storefront/shipping-quote' && request.method === 'POST') {
+      if (!(env.SUPABASE_URL && (env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SERVICE_KEY))) return json({ ok:false, error:'Storefront service unavailable' }, 503);
+      const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
+      const limited = await readJsonWithLimit(request, 32 * 1024);
+      if (limited.error) return limited.error;
+      const body = limited.data || {};
+      const storeId = String(body.storeId || '').trim();
+      if (!/^[0-9a-z_-]{2,80}$/i.test(storeId)) return json({ ok:false, error:'Valid storeId required' }, 400);
+      const rateError = await enforceUsageLimit(env, `storefront-shipquote:${storeId}:${ip}`, 30, 3600);
+      if (rateError) return rateError;
+
+      const { data:settings } = await supabaseAdminFetch(env, `store_settings?store_id=eq.${encodeURIComponent(storeId)}&select=receipt_settings&limit=1`);
+      if (settings?.[0]?.receipt_settings?.storefrontEnabled !== true) return json({ ok:false, error:'Storefront is not published' }, 404);
+
+      const dest = body.destination || {};
+      const shippingAddress = {
+        line1: String(dest.line1 || '').trim().slice(0, 200),
+        line2: String(dest.line2 || '').trim().slice(0, 200),
+        city: String(dest.city || '').trim().slice(0, 120),
+        state: String(dest.state || '').trim().slice(0, 40),
+        zip: String(dest.zip || '').trim().slice(0, 20),
+      };
+      if (!shippingAddress.line1 || !shippingAddress.city || !shippingAddress.state || !shippingAddress.zip) return json({ ok:false, error:'A complete shipping address is required' }, 400);
+
+      const cart = await loadCartForShipping(env, storeId, body.items);
+      if (cart.error) return cart.error;
+      const quote = await computeRealShippingFeeCents(env, storeId, shippingAddress, cart.totalQuantity, cart.allRawSingles, cart.totalWeightOz);
+      return json({ ok:true, shippingFeeCents:quote.cents, real:quote.real, carrier:quote.carrier || null, serviceName:quote.serviceName || null, estimatedDays:quote.estimatedDays ?? null });
     }
 
     // POST /public/storefront/record-order — records an order that was
