@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.16.20-sold-dedup-shopid-fix">
+<meta name="version" content="2026.08.17.1-labels-and-whats-new">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1573,6 +1573,7 @@ body.show-mode .inv-sync-badge{display:none;}
 }
 /* Settings information architecture shell */
 .settings-shell{display:grid;grid-template-columns:230px minmax(0,1fr);gap:16px;align-items:start;max-width:1400px;margin:0 auto;padding-bottom:28px}.settings-sidebar{position:sticky;top:12px;border:1px solid var(--border);border-radius:12px;background:var(--surf);padding:10px;max-height:calc(100vh - 150px);overflow:auto}.settings-search{width:100%;min-height:42px;margin:0 0 8px;background:var(--surf2);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:9px 10px;font-family:var(--font-mono);font-size:11px}.settings-nav{display:grid;gap:4px}.settings-nav-btn{width:100%;min-height:40px;text-align:left;border:1px solid transparent;border-radius:8px;background:transparent;color:var(--dim);padding:8px 10px;font-family:var(--font-mono);font-size:10px;cursor:pointer}.settings-nav-btn:hover,.settings-nav-btn.on{color:var(--g);border-color:rgba(0,255,179,.28);background:rgba(0,255,179,.07)}.settings-mobile-select{display:none;width:100%;min-height:46px;background:var(--surf);border:1px solid var(--border);border-radius:9px;color:var(--text);padding:8px 10px;font-family:var(--font-mono)}.settings-content{min-width:0}.settings-section{display:none;min-width:0}.settings-section.on{display:block}.settings-section-head{margin-bottom:12px;padding:2px 2px 10px;border-bottom:1px solid var(--border)}.settings-section-title{font-family:'Orbitron',var(--font-mono);font-size:18px;color:var(--text);letter-spacing:.04em}.settings-section-subtitle{font-family:var(--font-mono);font-size:10px;line-height:1.6;color:var(--dim);margin-top:5px;max-width:900px}.settings-overview-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}.settings-overview-card{border:1px solid var(--border);border-radius:10px;background:var(--surf);padding:12px;display:grid;gap:8px;min-height:150px}.settings-overview-card h3{font-size:13px;margin:0;color:var(--text)}.settings-overview-card p{font-family:var(--font-mono);font-size:10px;line-height:1.55;color:var(--dim);margin:0}.settings-overview-card .hbtn{justify-self:start}.settings-status{display:inline-flex;width:max-content;border:1px solid var(--border);border-radius:999px;padding:3px 7px;font-family:var(--font-mono);font-size:8px;letter-spacing:.05em;color:var(--dim)}.settings-status.working,.settings-status.offline-ready{color:var(--g);border-color:rgba(0,255,179,.35)}.settings-status.needs-setup,.settings-status.local-fallback,.settings-status.planned{color:var(--gold);border-color:rgba(255,209,102,.38)}.settings-status.error,.settings-status.blocked{color:var(--red);border-color:rgba(255,77,109,.38)}.settings-status.online-only,.settings-status.advanced{color:var(--blue);border-color:rgba(72,202,228,.38)}.settings-search-results{display:none;margin:0 0 10px;border:1px solid var(--border);border-radius:9px;background:var(--surf2);padding:6px}.settings-search-results.on{display:grid;gap:4px}.settings-search-result{border:0;background:transparent;color:var(--text);text-align:left;padding:8px;border-radius:6px;font-family:var(--font-mono);font-size:10px;cursor:pointer}.settings-search-result:hover{background:rgba(0,255,179,.08);color:var(--g)}.settings-explainer{border:1px solid rgba(72,202,228,.28);background:rgba(72,202,228,.06);border-radius:10px;padding:12px;margin-bottom:12px;font-family:var(--font-mono);font-size:10px;line-height:1.65;color:var(--dim)}.settings-generated-panel{border:1px solid var(--border);border-radius:10px;background:var(--surf);padding:12px;margin-bottom:14px}
+.feature-log-group{border:1px solid var(--border);border-radius:10px;background:var(--surf);padding:12px;margin-bottom:12px}.feature-log-group-title{font-family:'Orbitron',var(--font-mono);font-size:12px;color:var(--text);letter-spacing:.04em;margin-bottom:8px}.feature-log-item{padding:8px 0;border-top:1px solid var(--border)}.feature-log-item:first-of-type{border-top:0;padding-top:0}.feature-log-item-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:3px}.feature-log-title{font-size:12px;font-weight:700;color:var(--text)}.feature-log-desc{font-family:var(--font-mono);font-size:10px;line-height:1.55;color:var(--dim)}
 @media(max-width:760px){#backoffice-panels{padding:0 10px!important}.settings-shell{display:block}.settings-sidebar{position:static;max-height:none;padding:0;border:0;background:transparent;margin-bottom:10px}.settings-nav{display:none}.settings-mobile-select{display:block;margin-bottom:8px}.settings-overview-grid{grid-template-columns:1fr}.settings-section .panel,.settings-section .settings-panel{overflow:hidden}.settings-section [style*="grid-template-columns:repeat(3"],.settings-section [style*="grid-template-columns:2fr 1fr auto"],.settings-section [style*="grid-template-columns:minmax(220px,320px) 1fr"]{grid-template-columns:1fr!important}.settings-section .hbtn{white-space:normal}}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
@@ -1586,13 +1587,13 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.16.20-sold-dedup-shopid-fix" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.16.20-sold-dedup-shopid-fix" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.16.20-sold-dedup-shopid-fix" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.16.20-sold-dedup-shopid-fix" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.16.20-sold-dedup-shopid-fix" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.16.20-sold-dedup-shopid-fix" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.16.20-sold-dedup-shopid-fix" defer></script>
+<script src="scripts/query-routing.js?v=2026.08.17.1-labels-and-whats-new" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.17.1-labels-and-whats-new" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.17.1-labels-and-whats-new" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.17.1-labels-and-whats-new" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.17.1-labels-and-whats-new" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.17.1-labels-and-whats-new" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.17.1-labels-and-whats-new" defer></script>
 </head>
 <body>
 
@@ -1642,11 +1643,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.16.20-sold-dedup-shopid-fix</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.17.1-labels-and-whats-new</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.16.20-sold-dedup-shopid-fix</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.17.1-labels-and-whats-new</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1668,7 +1669,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.16.20-sold-dedup-shopid-fix</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.17.1-labels-and-whats-new</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3108,7 +3109,12 @@ body.show-mode .inv-sync-badge{display:none;}
     <div id="label-print-search-results" style="max-height:160px;overflow-y:auto;margin-bottom:10px"></div>
     <label>Batch (<span id="label-print-batch-count">0</span> items)</label>
     <div id="label-print-batch-list" style="display:grid;gap:6px;max-height:220px;overflow-y:auto;margin-bottom:10px"></div>
-    <div style="font-family:var(--font-mono);font-size:9px;color:var(--dim);margin-bottom:10px">Prints one label per line, sized 2.625&quot; × 1&quot; -- works on plain paper (cut along the borders) or label sheets close to that size. Barcode value uses UPC, then SKU, then falls back to the item's internal ID.</div>
+    <label>Label size / printer</label>
+    <select id="label-print-size" class="tsi" onchange="localStorage.setItem('label_print_size', this.value)" style="margin-bottom:10px">
+      <option value="sheet-2.625x1">Sheet labels -- 2.625" x 1" (Avery 5160-style, laser/inkjet, cut sheet)</option>
+      <option value="roll-2x1">Roll labels -- 2" x 1" (Rollo/Zebra direct-thermal, one per page)</option>
+    </select>
+    <div style="font-family:var(--font-mono);font-size:9px;color:var(--dim);margin-bottom:10px">Sheet mode prints multiple labels per page with dashed cut lines -- works on plain paper or Avery-style sheets. Roll mode prints exactly one label per "page" sized to match a direct-thermal roll printer (no margins, no cut lines needed). Barcode value uses UPC, then SKU, then falls back to the item's internal ID.</div>
     <div class="modal-btns">
       <button class="modal-btn confirm" onclick="printInventoryLabels()">PRINT</button>
       <button class="modal-btn cancel" onclick="closeLabelPrintModal()">Cancel</button>
@@ -3422,7 +3428,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.16.20-sold-dedup-shopid-fix';
+const APP_VERSION = '2026.08.17.1-labels-and-whats-new';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -6091,6 +6097,7 @@ function moveNode(id, target){
 
 const SETTINGS_SECTIONS = [
   {id:'overview',label:'Overview',subtitle:'Store readiness and health at a glance.',keywords:'status health setup stripe refunds sync consignments pokemon mtg pricecharting theme imports users cash bag debug'},
+  {id:'whatsnew',label:"What's New",subtitle:'Every feature in ArSca, grouped by area -- what it does, and what\'s still on the roadmap.',keywords:'changelog updates new features roadmap planned history log release notes whats new feature log'},
   {id:'profile',label:'Store Profile',subtitle:'Store identity, receipts, operational defaults, and public contact details.',keywords:'store vendor profile logo name website phone email location tax buy markdown receipt shipping venmo paypal cash app'},
   {id:'payments',label:'Checkout & Payments',subtitle:'Tender methods, QR payment links, Stripe Connect status, and refund access.',keywords:'checkout payments cash card stripe qr venmo paypal cash app refunds fee payer webhook cash bag receipt customer display'},
   {id:'sync',label:'Data Sync',subtitle:'Store Data Sync keeps inventory, sales, settings, users, queues, and consignment data consistent across devices and cloud.',keywords:'sync queue cloud inventory pull push pending failed conflicts consignments sql device webflow'},
@@ -6114,6 +6121,136 @@ const SETTINGS_PANEL_MAP = {
   subscription:['subscription-panel'],
   advanced:['admin-lock-panel','vendor-config-panel','backoffice-system-panel','backoffice-ops-panel','pricing-qa-panel','data-mode-panel','customer-panel','data-health-panel','help-walkthrough-panel']
 };
+
+// A running record of what ArSca actually does, in plain language, so staff
+// can answer "does it do X?" themselves instead of guessing or asking the
+// owner. 'new' = shipped this update; 'working' = live and stable; 'planned'
+// = on the roadmap, not built yet. Add to this whenever a real feature ships
+// or a real gap is identified -- it's meant to stay accurate, not be written
+// once and forgotten.
+const FEATURE_LOG = [
+  { area:'Scanning & Card ID', items:[
+    { title:'Scan To Cart', status:'new', desc:'Scan a printed shelf/price label\'s barcode to add that exact item straight to the active register cart -- no searching. Button lives in the Inventory tab toolbar.' },
+    { title:'Universal Scan button', status:'working', desc:'One button in Research auto-detects whether the camera is looking at a trading card, a product barcode, or a graded slab\'s cert barcode, and routes accordingly.' },
+    { title:'Own AI card ID (Pokemon & MTG)', status:'working', desc:'Built-in Claude-vision card identifier for Pokemon and MTG, cheaper than the third-party CardSight service. Switchable per-game in Research settings.' },
+    { title:'CardSight AI (Sports & One Piece)', status:'working', desc:'Third-party scanner used for Sports cards and One Piece TCG, which the own-AI identifier doesn\'t cover yet.' },
+    { title:'Barcode lookup for comics & sealed product', status:'working', desc:'Scan a UPC to identify comics (via Metron) or sealed TCG/game product (via PriceCharting), with a confirm-before-save step so a bad match never gets silently saved.' },
+    { title:'PSA cert verification', status:'working', desc:'Look up a PSA cert number, pull the official PSA photo, and link straight to the PSA cert page for buyer-facing proof.' },
+  ]},
+  { area:'Research & Pricing', items:[
+    { title:'Universal Quick Price Lookup', status:'working', desc:'One search box across Pokemon, MTG, Sports, Comics, and general Collectibles, pulling from whichever pricing source fits the category.' },
+    { title:'Real per-condition MTG pricing', status:'working', desc:'JustTCG-powered pricing broken out by condition, with exact TCGPlayer product links -- no estimated/guessed condition prices anywhere in the app anymore.' },
+    { title:'Offline MTG catalog', status:'working', desc:'Scryfall + PriceCharting data cached on-device so MTG research keeps working with no connection.' },
+    { title:'Pokemon offline catalog', status:'planned', desc:'Same offline protection as MTG, built on PokemonPriceTracker data -- not built yet.' },
+    { title:'Sports Card & One Piece TCG real pricing', status:'working', desc:'Live market pricing for Sports cards and One Piece TCG, not just Pokemon/MTG.' },
+  ]},
+  { area:'Inventory Management', items:[
+    { title:'Product Type field', status:'working', desc:'Tags each item as Single, Booster Pack, Secret Lair, Commander Deck, Graded Comic, etc., with a matching filter everywhere items are browsed.' },
+    { title:'Specific game categories', status:'working', desc:'Pokemon TCG and Magic: The Gathering are tracked as their own categories everywhere (inventory, buy counter, filters) -- nothing gets silently bucketed into a generic "TCG" catch-all anymore.' },
+    { title:'Inventory health & aging dashboards', status:'working', desc:'At-a-glance alerts for missing photos, missing cost/market data, stale prices, and how long stock has been sitting -- collapsed by default on mobile so they don\'t bury the item list.' },
+    { title:'Smart inventory search', status:'working', desc:'Fuzzy, typo-tolerant search across name, set, variant, condition, Product Type, and more, with card-number and exact-phrase matching weighted higher.' },
+    { title:'Bundles', status:'working', desc:'Group several inventory items into one priced listing for sale (e.g. a lot of commons) without losing track of the individual items underneath.' },
+    { title:'Foil/finish display', status:'working', desc:'Surfaces foil/finish status for MTG and comics wherever the item shows up, instead of it being buried in raw data.' },
+    { title:'Comic quantity grouping', status:'working', desc:'Multiple raw copies of the same issue/cover/condition collapse into one row with a quantity, instead of cluttering the list with duplicates.' },
+    { title:'Signature added-value tracking', status:'working', desc:'Track and price in the added value of a signature on any item type, reflected correctly in storefront listings and checkout.' },
+  ]},
+  { area:'POS / Register / Checkout', items:[
+    { title:'Multi-quantity sell + fixed discount math', status:'new', desc:'A +/- stepper lets you sell several of the same item (toploaders, sleeves, etc.) as one cart line. Cart-level discounts now apply correctly per line, so revenue/profit records match what the customer actually paid.' },
+    { title:'Multiple customer carts', status:'new', desc:'Start, name, switch between, and close separate carts for different customers at once -- now visible and usable directly from the Inventory tab, not just the Customer Display screen. Abandoned empty carts clean themselves up automatically.' },
+    { title:'Locked checkout + customer payment screen', status:'working', desc:'Lock a cart for payment and show a real-time, customer-facing total/payment screen on a second device.' },
+    { title:'Cash Bag / drawer tracking', status:'working', desc:'Track starting cash, cash sales, payouts, and reconcile the drawer at end of day or end of show.' },
+    { title:'$0 comp / giveaway sales', status:'working', desc:'Zero out a cart line\'s price with a required reason -- the item still depletes from stock and shows as a real (negative) loss in reporting instead of just vanishing unexplained.' },
+    { title:'Gift cards', status:'working', desc:'Issue a gift card at sale, redeem it (fully or partially) at a later checkout.' },
+    { title:'Loyalty points', status:'working', desc:'Earn points on purchases, redeem them as a checkout discount, configurable accrual rate.' },
+    { title:'Store credit / trade-in credit', status:'working', desc:'Apply a customer\'s trade-in credit balance directly toward a purchase at checkout.' },
+  ]},
+  { area:'Buy Counter / Trade-Ins', items:[
+    { title:'Buy session workflow', status:'working', desc:'Build a buy offer line by line with live pricing, accept/reject, and pay out by cash, trade credit, or other tender.' },
+    { title:'Multiple buy trays', status:'working', desc:'Run separate buy sessions for different customers at the same time, same switcher pattern as sale carts.' },
+    { title:'Correct game detection on buy', status:'working', desc:'Buying a Pokemon or MTG card now reliably tags it as that specific game instead of a generic, unroutable "TCG" bucket.' },
+  ]},
+  { area:'eBay Integration', items:[
+    { title:'Listing creation w/ AI category + specifics', status:'working', desc:'Suggests the right eBay category and fills in Item Specifics automatically when creating a listing.' },
+    { title:'Bulk listing tool', status:'working', desc:'Select many in-stock items at once, review/edit each generated listing, then submit them all together.' },
+    { title:'Orders sync + fulfillment', status:'working', desc:'Automatically detects eBay sales, lets you mark shipped and push tracking back to the buyer.' },
+    { title:'Returns & cancellations', status:'working', desc:'Manage eBay return/cancellation requests without leaving the dashboard.' },
+    { title:'Promoted listings', status:'working', desc:'Turn on eBay ad promotion for a listing directly from the item.' },
+    { title:'Send offers to watchers', status:'working', desc:'Proactively send a discount offer to everyone watching a listing.' },
+    { title:'Selling limits & compliance', status:'working', desc:'See your current eBay selling limit and any listing policy violations that need attention.' },
+    { title:'Order/inventory webhooks', status:'working', desc:'Real-time eBay notifications instead of waiting on the next manual sync.' },
+    { title:'Auto-reprice aged stock', status:'working', desc:'Automatically nudges the price down on eBay listings that have sat unsold past a configurable age.' },
+    { title:'eBay deal scanner', status:'working', desc:'Scans active eBay listings for underpriced Pokemon/MTG cards vs. real market value, can run on a schedule in the background.' },
+  ]},
+  { area:'Public Storefront (your website)', items:[
+    { title:'Stripe checkout on your site', status:'working', desc:'Customers can browse and buy directly from your public storefront with a real Stripe-powered checkout.' },
+    { title:'Category + Product Type filters', status:'working', desc:'Shoppers can filter by game (Pokemon, MTG, etc. kept separate) and then by Product Type (singles, boosters, Secret Lair, etc.).' },
+    { title:'Broader storefront search', status:'new', desc:'Search on the live site now matches set, variant, condition, and Product Type, not just the item name.' },
+    { title:'Order recording + pickup fulfillment', status:'working', desc:'Storefront orders land in the dashboard\'s Orders view for fulfillment, including in-store pickup.' },
+  ]},
+  { area:'Comics', items:[
+    { title:'Comic Issue Hub', status:'working', desc:'Browse a full comic run with covers and variants pulled from Metron.' },
+    { title:'Pull List auto-discovery', status:'working', desc:'Finds upcoming issues automatically via Metron so pull lists don\'t have to be built entirely by hand.' },
+    { title:'New Releases + Order Sheet', status:'working', desc:'Browse what\'s shipping soon and roll it into a customer order sheet.' },
+    { title:'FOC-list import', status:'working', desc:'Import a Penguin Random House Final Order Cutoff spreadsheet straight into Pull Lists.' },
+    { title:'eBay demand check on covers', status:'working', desc:'See recent eBay sold comps for a specific cover right from its detail view.' },
+    { title:'Ratio/incentive variant badges', status:'working', desc:'Flags likely ratio or incentive variants automatically.' },
+    { title:'Grading submission tracker', status:'working', desc:'Track items sent out for grading through to their return.' },
+  ]},
+  { area:'Tournaments & Events', items:[
+    { title:'Event creation + registration', status:'working', desc:'Create an event, register players, and collect entry fees.' },
+    { title:'Swiss pairing + standings', status:'working', desc:'Automatic Swiss-format round pairing, result entry, and live standings with tiebreakers.' },
+    { title:'Check-in + top-cut bracket', status:'working', desc:'Player check-in flow plus a single-elimination top-cut bracket once Swiss rounds finish.' },
+    { title:'Prize & payout tracking', status:'working', desc:'Track what was paid out to which finishers.' },
+    { title:'Series / season leaderboards', status:'working', desc:'Roll multiple events into a season-long leaderboard.' },
+    { title:'Loyalty points for events', status:'working', desc:'Event participation can award loyalty points automatically.' },
+  ]},
+  { area:'Pull Lists', items:[
+    { title:'Series & subscriptions', status:'working', desc:'Track which customers want which ongoing series.' },
+    { title:'Order sheet rollup', status:'working', desc:'Roll individual customer subscriptions into one combined order sheet.' },
+  ]},
+  { area:'Customers & Notifications', items:[
+    { title:'Customer records', status:'working', desc:'Customer profiles synced across every device through Supabase, not stuck on one local browser.' },
+    { title:'Real SMS/email notifications', status:'working', desc:'Actual SMS and email delivery (Twilio + email provider), not a simulated/logged-only notification.' },
+    { title:'Call forwarding + inbound SMS relay', status:'working', desc:'Route your business line\'s calls and texts through Twilio.' },
+    { title:'Want List auto-notify', status:'working', desc:'Customers on a Want List get notified automatically when a matching item comes into stock.' },
+  ]},
+  { area:'Labels & Shelf Tags', items:[
+    { title:'Print shelf/price labels', status:'new', desc:'Print barcode labels for sheet paper (2.625"x1", Avery-style) or roll paper on a direct-thermal printer like Rollo/Zebra (2"x1", one label per page). Choice is remembered.' },
+    { title:'Condition on the printed label', status:'new', desc:'Labels now print item condition alongside the SKU/barcode when the item has one set.' },
+  ]},
+  { area:'Consignment', items:[
+    { title:'Consignor payouts via Stripe Connect', status:'working', desc:'Pay consignors out directly through Stripe instead of tracking it by hand.' },
+  ]},
+  { area:'Public Buylist Portal', items:[
+    { title:'"Sell to us" public form', status:'working', desc:'A public web form where customers can submit items they want to sell to the store, without you having to build it yourself.' },
+  ]},
+  { area:'Restock', items:[
+    { title:'Reorder suggestions / PO drafts', status:'working', desc:'Suggests what to reorder based on stock levels and drafts a purchase order.' },
+  ]},
+  { area:'Reporting', items:[
+    { title:'Potential ROI stat (Home)', status:'working', desc:'Shows what you\'d walk away with if everything in stock sold at your real price right now, vs. what you paid for it.' },
+    { title:'One consolidated Reports screen', status:'planned', desc:'A single place for sales reporting with real week/month/date-range rollups, instead of stats spread across Home, End-of-Day, and Sold Items. Not built yet -- being scoped.' },
+  ]},
+];
+
+function renderWhatsNewPanel(){
+  const host = document.getElementById('feature-log-list');
+  if(!host) return;
+  const q = (document.getElementById('feature-log-search')?.value || '').trim().toLowerCase();
+  const statusLabel = { new:'New this update', working:'Live', planned:'Planned -- not built yet' };
+  const statusKind = { new:'working', working:'working', planned:'planned' };
+  const groups = FEATURE_LOG.map(g => ({
+    area:g.area,
+    items:g.items.filter(i => !q || (i.title + ' ' + i.desc + ' ' + g.area).toLowerCase().includes(q)),
+  })).filter(g => g.items.length);
+  host.innerHTML = groups.length ? groups.map(g => `<div class="feature-log-group">
+    <div class="feature-log-group-title">${escHtml(g.area)}</div>
+    ${g.items.map(i => `<div class="feature-log-item">
+      <div class="feature-log-item-head"><span class="feature-log-title">${escHtml(i.title)}</span>${settingsStatus(statusLabel[i.status] || i.status, statusKind[i.status] || 'working')}</div>
+      <div class="feature-log-desc">${escHtml(i.desc)}</div>
+    </div>`).join('')}
+  </div>`).join('') : '<div class="empty"><div class="empty-t">No features match that search</div></div>';
+}
 
 function settingsSectionMarkup(section){return `<section class="settings-section" id="settings-section-${section.id}" data-settings-section="${section.id}"><div class="settings-section-head"><div class="settings-section-title">${escHtml(section.label)}</div><div class="settings-section-subtitle">${escHtml(section.subtitle)}</div></div><div class="settings-section-panels" id="settings-panels-${section.id}"></div></section>`;}
 function settingsStatus(label,kind='working'){return `<span class="settings-status ${kind}">${escHtml(label)}</span>`;}
@@ -6140,6 +6277,8 @@ function renderSettingsOverview(){
 
 function renderSettingsGeneratedPanels(){
   const overview=document.getElementById('settings-panels-overview');if(overview&&!document.getElementById('settings-overview-grid'))overview.innerHTML='<div id="settings-overview-grid" class="settings-overview-grid"></div>';
+  const whatsnew=document.getElementById('settings-panels-whatsnew');if(whatsnew&&!document.getElementById('feature-log-search'))whatsnew.innerHTML=`<input id="feature-log-search" class="settings-search" placeholder="Search features (e.g. scan to cart, discount, labels)..." oninput="renderWhatsNewPanel()" style="margin-bottom:12px"><div id="feature-log-list"></div>`;
+  if(whatsnew)renderWhatsNewPanel();
   const sync=document.getElementById('settings-panels-sync');if(sync&&!document.getElementById('cloud-consignment-settings-status'))sync.insertAdjacentHTML('afterbegin',`<div class="settings-generated-panel" id="cloud-consignment-settings-status"><div class="ph">CLOUD CONSIGNMENTS ${settingsStatus(consignmentCloudReady?'Working':'Local Fallback',consignmentCloudReady?'working':'local-fallback')}</div><div style="font-family:var(--font-mono);font-size:10px;line-height:1.65;color:var(--dim)">${consignmentCloudReady?'Per-store consignors, inventory, and sale alerts are syncing through Supabase.':'This device is using its store-scoped local cache. Apply the cloud migration and reconnect to activate cross-device sync.'}<br>People: ${consignorPeople.length} · Items: ${consignItems.length} · Sale alerts: ${getConsignmentAlerts().length}</div></div>`);if(sync&&!document.getElementById('webflow-integration-panel'))sync.insertAdjacentHTML('afterbegin','<div class="settings-generated-panel" id="webflow-integration-panel"></div>');renderWebflowIntegrationPanel?.();
   const catalogs=document.getElementById('settings-panels-catalogs');if(catalogs&&!document.getElementById('catalog-data-concepts'))catalogs.insertAdjacentHTML('afterbegin',`<div class="settings-explainer" id="catalog-data-concepts"><b style="color:var(--text)">Three different data concepts</b><br>1. Store Data Sync — your inventory, sales, settings, users, queues, and consignments.<br>2. Offline Catalog Sync — reference catalogs downloaded to this device; they never create inventory.<br>3. Live Provider Pricing — live or scheduled candidate prices from PriceCharting, Scryfall, and PokemonPriceTracker.<br><br><b style="color:var(--g)">MTG Offline Catalog: Working.</b> Scryfall cards + PriceCharting snapshot; pipeline and image cache remain untouched.<br><b style="color:var(--gold)">Pokémon Offline Catalog: Planned next.</b> It will use PPT rather than PriceCharting.<br>PriceCharting shared offline catalogs cover Video Games, Yu-Gi-Oh, and One Piece. Comics use live Metron records with server-side caching and PriceCharting values after selection; no device comic catalog is searched.</div>`);
   const devices=document.getElementById('settings-panels-devices');if(devices&&!document.getElementById('devices-hardware-summary'))devices.innerHTML=`<div class="settings-overview-grid" id="devices-hardware-summary">${[['Barcode Scanner','Working','Camera/USB barcode evidence input'],['Phone Scan Inbox','Working','Scanner queue and tablet handoff'],['Receipt Printer','Planned','Browser print workflow; no dedicated driver'],['Cash Drawer','Working','Cash Bag tracking through checkout'],['Customer Display','Working','Cart and payment-method display'],['Stripe Reader','Planned','Coming later; no Terminal integration'],['Vending Hardware','Planned','Future hardware integration'],['Register / Device ID','Working',getDealerDeviceId()]].map(([a,b,c])=>`<article class="settings-overview-card"><div>${settingsStatus(b,b==='Working'?'working':'planned')}</div><h3>${a}</h3><p>${escHtml(c)}</p></article>`).join('')}</div>`;
@@ -38216,6 +38355,7 @@ function openLabelPrintModal(seedItemId){
   }
   const searchEl = document.getElementById('label-print-search'); if(searchEl) searchEl.value = '';
   const resultsEl = document.getElementById('label-print-search-results'); if(resultsEl) resultsEl.innerHTML = '';
+  const sizeEl = document.getElementById('label-print-size'); if(sizeEl) sizeEl.value = localStorage.getItem('label_print_size') || 'sheet-2.625x1';
   renderLabelPrintBatchList();
   document.getElementById('label-print-modal')?.classList.add('on');
   setTimeout(() => document.getElementById('label-print-search')?.focus(), 100);
@@ -38272,12 +38412,19 @@ function printInventoryLabels(){
   if(!labelPrintBatch.length) return alert('Add at least one item to print');
   if(typeof JsBarcode === 'undefined') return alert('Barcode library still loading -- try again in a moment');
   const storeName = getVendorProfile().storeName || '';
+  // Sheet mode (Avery-style cut sheets) and roll mode (Rollo/Zebra direct-
+  // thermal, fed one label at a time) are fundamentally different print
+  // jobs, not just a size tweak -- a roll printer's "page" IS the label, so
+  // it needs zero page margin, no dashed cut border (nothing to cut), and
+  // exactly one label per page instead of a flex-wrapped sheet layout.
+  const mode = document.getElementById('label-print-size')?.value || 'sheet-2.625x1';
+  const isRoll = mode === 'roll-2x1';
   const labelsHtml = labelPrintBatch.flatMap(b => Array.from({ length:b.qty }, () => {
     const canvas = document.createElement('canvas');
     let barcodeImg = '';
     try {
-      JsBarcode(canvas, b.sku || b.id, { format:'CODE128', displayValue:false, margin:0, width:2, height:36 });
-      barcodeImg = `<img src="${canvas.toDataURL('image/png')}" style="width:100%;height:36px;object-fit:contain">`;
+      JsBarcode(canvas, b.sku || b.id, { format:'CODE128', displayValue:false, margin:0, width:2, height:isRoll?30:36 });
+      barcodeImg = `<img src="${canvas.toDataURL('image/png')}" style="width:100%;height:${isRoll?30:36}px;object-fit:contain">`;
     } catch(e) { barcodeImg = ''; }
     return `<div class="label">
       ${storeName ? `<div class="label-store">${escHtml(storeName)}</div>` : ''}
@@ -38287,8 +38434,7 @@ function printInventoryLabels(){
     </div>`;
   })).join('');
   const w = window.open('', '_blank', 'width=600,height=800');
-  w.document.write(`<html><head><title>Labels</title>
-    <style>
+  const sheetStyle = `
       @page { margin: 0.25in; }
       body { margin:0; font-family:sans-serif; }
       .label-sheet { display:flex; flex-wrap:wrap; gap:0.0625in; }
@@ -38297,8 +38443,19 @@ function printInventoryLabels(){
       .label-name { font-size:10px; font-weight:700; line-height:1.15; max-height:24px; overflow:hidden; }
       .label-bottom { display:flex; justify-content:space-between; align-items:center; }
       .label-sku { font-size:7px; color:#555; }
-      .label-price { font-size:14px; font-weight:700; }
-    </style>
+      .label-price { font-size:14px; font-weight:700; }`;
+  const rollStyle = `
+      @page { size: 2in 1in; margin: 0; }
+      body { margin:0; font-family:sans-serif; }
+      .label-sheet { display:block; }
+      .label { width:2in; height:1in; box-sizing:border-box; padding:5px 7px; display:flex; flex-direction:column; justify-content:space-between; overflow:hidden; page-break-after:always; }
+      .label-store { font-size:6px; letter-spacing:.05em; text-transform:uppercase; color:#555; }
+      .label-name { font-size:9px; font-weight:700; line-height:1.1; max-height:20px; overflow:hidden; }
+      .label-bottom { display:flex; justify-content:space-between; align-items:center; }
+      .label-sku { font-size:6px; color:#555; }
+      .label-price { font-size:12px; font-weight:700; }`;
+  w.document.write(`<html><head><title>Labels</title>
+    <style>${isRoll ? rollStyle : sheetStyle}</style>
   </head><body><div class="label-sheet">${labelsHtml}</div>
     <script>window.print();<\/script></body></html>`);
   w.document.close();
@@ -40955,7 +41112,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.16.20-sold-dedup-shopid-fix" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.17.1-labels-and-whats-new" defer></script>
 </body>
 </html>
 
