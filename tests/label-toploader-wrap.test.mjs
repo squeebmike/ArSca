@@ -15,7 +15,7 @@ assert.match(dashboard, /<div class="wrap-back">\s*\n\s*\$\{storeLogo \? `<img c
 assert.match(dashboard, /const storeLogo = vendorProfile\.logo \|\| '';/, 'printInventoryLabels must read the store logo already uploaded in Settings, not a separate upload flow');
 assert.match(dashboard, /\.label\.wrap \{ flex-direction:row !important; padding:0 !important; \}/, 'the wrap layout must lay the two faces out side by side with a fold line between them');
 assert.match(dashboard, /border-right:1px dashed #999;/, 'a dashed fold line must separate the front and back faces so it\'s clear where to fold');
-assert.match(dashboard, /\.wrap-logo \{ max-width:70%; max-height:14px; object-fit:contain; \}/, 'the logo must be sized to fit above the barcode without crowding the fold-line face');
+assert.match(dashboard, /\.wrap-logo \{ max-width:70%; max-height:14px; object-fit:contain; filter:grayscale\(1\) contrast\(1\.3\); \}/, 'the logo must be sized to fit above the barcode, and forced to grayscale so a color logo doesn\'t print muddy or dither oddly on a monochrome/thermal printer');
 
 console.log('Label toploader-wrap contract checks passed');
 
