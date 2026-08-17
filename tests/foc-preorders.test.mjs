@@ -38,6 +38,9 @@ assert.equal(incentive.isIncentive, true);
 assert.equal(incentive.ratioThreshold, 50);
 assert.equal(incentive.flags.incentive, true);
 
+const foil = normalizePrhRow({...representative, MainIdentifier:'75960621456300141', UPC:'75960621456300141', Title:'AVENGERS #1 FOIL VARIANT', VariantType:'Variant Title'});
+assert.equal(foil.flags.foil, true, 'foil covers must be explicitly identified for pricing and filtering');
+
 assert.match(migration, /America\/Los_Angeles/);
 assert.match(migration, /p_foc_date::timestamp \+ interval '1 minute'/, 'default cutoff must be 12:01 AM Monday Pacific');
 assert.match(migration, /revoke all[\s\S]+from anon/i, 'raw preorder tables must not be anonymous');
@@ -45,6 +48,9 @@ assert.match(worker, /handleFocRequest/);
 assert.match(service, /Choose a live carrier shipping rate/);
 assert.match(service, /ShippoToken/);
 assert.match(service, /waitlist-only until the store secures more copies/);
+assert.match(service, /p\.isIncentive \? 0 : p\.msrpCents/, 'new ratio incentives must import without a guessed selling price');
+assert.match(service, /hadCustomPrice/, 'staff selling-price overrides must survive PRH re-imports');
+assert.match(service, /customer_price_cents \|\| 0/, 'checkout must never fall back from an unset selling price to distributor MSRP');
 assert.match(service, /metadata\[source\].*foc_preorder/s);
 assert.match(dashboard, /THE FOC WALL/i);
 
