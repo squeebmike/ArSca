@@ -48,7 +48,7 @@ assert.match(worker, /handleFocRequest/);
 assert.match(service, /Choose a live carrier shipping rate/);
 assert.match(service, /ShippoToken/);
 assert.match(service, /waitlist-only until the store secures more copies/);
-assert.match(service, /p\.isIncentive \? 0 : p\.msrpCents/, 'new ratio incentives must import without a guessed selling price');
+assert.match(service, /p\.isIncentive \|\| p\.flags\.foil/, 'new foils and ratio incentives must import without a guessed selling price');
 assert.match(service, /hadCustomPrice/, 'staff selling-price overrides must survive PRH re-imports');
 assert.match(service, /customer_price_cents \|\| 0/, 'checkout must never fall back from an unset selling price to distributor MSRP');
 assert.match(service, /metadata\[source\].*foc_preorder/s);

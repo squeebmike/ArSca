@@ -143,6 +143,7 @@ function publicSku(row, customerQty = 0) {
   const securedRemaining = row.is_incentive ? Math.max(0, Number(row.secured_quantity || 0) - customerQty) : null;
   const customerPriceCents = Number(row.customer_price_cents || 0);
   const incentiveReady = !!row.is_incentive && securedRemaining > 0 && customerPriceCents > 0;
+  const priceRequired = customerPriceCents <= 0;
   return {
     id:row.id,
     familyId:row.family_id,
@@ -167,10 +168,11 @@ function publicSku(row, customerQty = 0) {
     onSaleDate:row.on_sale_date,
     msrpCents:Number(row.msrp_cents || 0),
     priceCents:customerPriceCents,
+    priceRequired,
     customerQty,
     securedQuantity:Number(row.secured_quantity || 0),
     securedRemaining,
-    canPreorder:row.customer_enabled !== false && (!row.is_incentive || incentiveReady),
+    canPreorder:row.customer_enabled !== false && !priceRequired && (!row.is_incentive || incentiveReady),
     waitlistOnly:!!row.is_incentive && !incentiveReady,
     flags:row.flags || {},
   };
@@ -318,7 +320,7 @@ async function importPrh(request, env, deps, storeId) {
     // SKU, a price the store has deliberately changed is preserved on later
     // PRH imports instead of being reset to MSRP.
     const hadCustomPrice = before && Number(before.customer_price_cents || 0) !== Number(before.msrp_cents || 0);
-    const customerPriceCents = hadCustomPrice ? Number(before.customer_price_cents || 0) : (p.isIncentive ? 0 : p.msrpCents);
+    const customerPriceCents = hadCustomPrice ? Number(before.customer_price_cents || 0) : ((p.isIncentive || p.flags.foil) ? 0 : p.msrpCents);
     skuRows.push({
       store_id:storeId, cycle_id:cycle.id, family_id:familyIds.get(p.distributorFamilyId), distributor:PRH,
       distributor_sku:p.distributorSku, upc:p.upc, isbn:p.isbn || null, title:p.sourceTitle || p.title,
