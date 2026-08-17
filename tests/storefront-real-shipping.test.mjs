@@ -24,12 +24,23 @@ console.log('Parcel-builder contract checks passed');
 const feeFnSrc = worker.slice(worker.indexOf('async function computeRealShippingFeeCents'), worker.indexOf('// ── Public storefront item shaping'));
 assert.doesNotMatch(feeFnSrc, /300|700|fallback/, 'the real-rate function must not contain the legacy $3/$7 fallback');
 assert.match(feeFnSrc, /if \(!token\) return \{ error:'Shipping is not configured yet\./, 'missing SHIPPO_API_TOKEN must make shipping unavailable');
-assert.match(feeFnSrc, /if \(!origin \|\| !origin\.street1 \|\| !origin\.city \|\| !origin\.state \|\| !origin\.zip\) return \{ error:'Shipping is not configured yet\./, 'an incomplete ship-from address must make shipping unavailable');
+assert.match(feeFnSrc, /completeShippoOrigin\(configuredOrigin\) \? configuredOrigin : await loadShippoSavedOrigin\(token\)/, 'an incomplete local origin must fall back to the merchant address saved in Shippo');
+assert.match(feeFnSrc, /if \(!completeShippoOrigin\(origin\)\) return \{ error:'No ship-from address is available\./, 'shipping must remain unavailable when neither the dashboard nor Shippo has a complete origin');
+assert.match(feeFnSrc, /await loadShippoSavedParcel\(token, totalQuantity, totalWeightOz\)\s*\|\| buildShippingParcel/, 'a saved Shippo parcel template must be preferred, with the conservative generated parcel as fallback');
 assert.match(feeFnSrc, /} catch \(e\) \{\s*return \{ error:'A live shipping rate could not be retrieved\./, 'Shippo network failures must be caught and returned as a safe unavailable state');
 assert.match(feeFnSrc, /Authorization': `ShippoToken \$\{token\}`/, 'Shippo auth must use the ShippoToken scheme, not Bearer');
 assert.match(feeFnSrc, /rates\.sort\(\(a, b\) => a\.cost - b\.cost\);/, 'rates must be sorted so the cheapest one is charged');
 
 console.log('Real shipping fee contract checks passed');
+
+const shippoSettingsSrc = worker.slice(worker.indexOf('function completeShippoOrigin'), worker.indexOf('// Calls Shippo for a real'));
+assert.match(shippoSettingsSrc, /\/v2\/addresses\?offset=0&limit=30/, 'Shippo Address Book must be checked before legacy address objects');
+assert.match(shippoSettingsSrc, /\/addresses\/\?results=100/, 'legacy Shippo addresses must remain available for older accounts');
+assert.match(shippoSettingsSrc, /pickShippoOrigin\(data\.results, false\)/, 'legacy address fallback must not choose an arbitrary recipient when several addresses exist');
+assert.match(shippoSettingsSrc, /\/user-parcel-templates/, 'saved Shippo parcel templates must be loaded from the documented endpoint');
+assert.match(shippoSettingsSrc, /totalQuantity > 3 \|\| weightOz > 16/, 'bubble-mailer templates must only be used for small, light orders');
+
+console.log('Shippo saved-settings fallback contract checks passed');
 
 // ── Contract: checkout charges the real fee, and the
 // same fee computation is reused for the customer-facing quote route ──
@@ -54,6 +65,7 @@ const shippingOriginWriteCount = (dashboard.match(/shippingOrigin:next\.shipping
 assert.equal(shippingOriginWriteCount, 2, 'both saveVendorProfile and savePaymentSettings must carry shippingOrigin in their receipt_settings upsert, or one save will silently erase it');
 assert.match(dashboard, /function saveShippingOriginSettings\(\)\{/, 'saveShippingOriginSettings must exist');
 assert.match(dashboard, /const so = \{ name:'', street1:'', street2:'', city:'', state:'', zip:'', phone:'', \.\.\.\(p\.shippingOrigin \|\| \{\}\) \};/, 'renderVendorProfilePanel must merge shippingOrigin over safe defaults for rendering');
+assert.match(dashboard, /most recently updated address in your Shippo Address Book/, 'dashboard must explain the automatic Shippo Address Book fallback');
 
 console.log('Dashboard shipping-origin settings contract checks passed');
 

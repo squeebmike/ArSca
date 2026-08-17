@@ -357,6 +357,98 @@ function buildShippingParcel(totalQuantity, allRawSingles, totalWeightOz) {
     : { length:'10', width:'8', height:String(Math.min(12, Math.max(3, Math.ceil(totalQuantity / 8) + 2))), distance_unit:'in', weight:(weightOz / 16).toFixed(2), mass_unit:'lb' };
 }
 
+function completeShippoOrigin(origin) {
+  return !!(origin && origin.street1 && origin.city && origin.state && origin.zip);
+}
+
+function normalizeShippoAddress(raw) {
+  const address = raw?.address || raw || {};
+  return {
+    name: address.name || address.organization || address.company || 'The Mana Pocket',
+    street1: address.street1 || address.address_line_1 || '',
+    street2: address.street2 || address.address_line_2 || '',
+    city: address.city || address.city_locality || '',
+    state: address.state || address.state_province || '',
+    zip: address.zip || address.postal_code || '',
+    phone: address.phone || '',
+    country: address.country || address.country_code || 'US',
+    updatedAt: raw?.updated_at || raw?.object_updated || raw?.created_at || raw?.object_created || '',
+  };
+}
+
+function pickShippoOrigin(rows, allowNewest = true) {
+  const complete = (Array.isArray(rows) ? rows : [])
+    .map(normalizeShippoAddress)
+    .filter(origin => completeShippoOrigin(origin) && String(origin.country || 'US').toUpperCase() === 'US');
+  if (!complete.length) return null;
+  const branded = complete.find(origin => /mana\s*pocket/i.test(origin.name));
+  if (branded) return branded;
+  if (complete.length === 1) return complete[0];
+  if (!allowNewest) return null;
+  complete.sort((a, b) => String(b.updatedAt || '').localeCompare(String(a.updatedAt || '')));
+  return complete[0];
+}
+
+async function loadShippoSavedOrigin(token) {
+  const headers = { 'Authorization': `ShippoToken ${token}`, 'SHIPPO-API-VERSION': '2018-02-08' };
+  // Address Book is the safest automatic source: these are addresses the
+  // merchant intentionally saved in Shippo, rather than every recipient ever
+  // used on a shipment.
+  try {
+    const res = await fetch(SHIPPO_API_BASE + '/v2/addresses?offset=0&limit=30', { headers });
+    const data = await res.json().catch(() => null);
+    const origin = res.ok && data ? pickShippoOrigin(data.results, true) : null;
+    if (origin) return origin;
+  } catch (e) {}
+
+  // Older Shippo accounts may only expose legacy address objects. Do not pick
+  // an arbitrary recipient when several exist: use a branded match or the sole
+  // complete address only.
+  try {
+    const res = await fetch(SHIPPO_API_BASE + '/addresses/?results=100', { headers });
+    const data = await res.json().catch(() => null);
+    return res.ok && data ? pickShippoOrigin(data.results, false) : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+function shippoTemplateParcel(template, totalQuantity, totalWeightOz) {
+  const dimensions = template?.template || template || {};
+  const weightOz = totalWeightOz + 2;
+  if (!dimensions.length || !dimensions.width || !dimensions.height || !dimensions.distance_unit) return null;
+  // A bubble mailer is only a safe automatic choice for a small/light order.
+  // Larger orders retain the conservative generated box below.
+  if (totalQuantity > 3 || weightOz > 16) return null;
+  return {
+    length: String(dimensions.length),
+    width: String(dimensions.width),
+    height: String(dimensions.height),
+    distance_unit: String(dimensions.distance_unit),
+    weight: (weightOz / 16).toFixed(2),
+    mass_unit: 'lb',
+  };
+}
+
+async function loadShippoSavedParcel(token, totalQuantity, totalWeightOz) {
+  try {
+    const res = await fetch(SHIPPO_API_BASE + '/user-parcel-templates', {
+      headers: { 'Authorization': `ShippoToken ${token}`, 'SHIPPO-API-VERSION': '2018-02-08' },
+    });
+    const data = await res.json().catch(() => null);
+    const rows = res.ok && Array.isArray(data?.results) ? data.results : [];
+    if (!rows.length) return null;
+    rows.sort((a, b) => {
+      const aMailer = /bubble|mailer|envelope/i.test(String(a?.name || '')) ? 1 : 0;
+      const bMailer = /bubble|mailer|envelope/i.test(String(b?.name || '')) ? 1 : 0;
+      return bMailer - aMailer || String(b?.object_updated || '').localeCompare(String(a?.object_updated || ''));
+    });
+    return shippoTemplateParcel(rows[0], totalQuantity, totalWeightOz);
+  } catch (e) {
+    return null;
+  }
+}
+
 // Calls Shippo for a real, carrier-calculated rate and returns the cheapest
 // one. Shipping fails closed when Shippo or the ship-from address is not
 // configured: pickup remains available, but checkout must never invent or
@@ -365,9 +457,11 @@ async function computeRealShippingFeeCents(env, storeId, shippingAddress, totalQ
   const token = env.SHIPPO_API_TOKEN;
   if (!token) return { error:'Shipping is not configured yet. Please choose pickup or contact the store.', status:503 };
   const { data: settingsRows } = await supabaseAdminFetch(env, `store_settings?store_id=eq.${encodeURIComponent(storeId)}&select=receipt_settings&limit=1`);
-  const origin = settingsRows?.[0]?.receipt_settings?.shippingOrigin;
-  if (!origin || !origin.street1 || !origin.city || !origin.state || !origin.zip) return { error:'Shipping is not configured yet. Please choose pickup or contact the store.', status:503 };
-  const parcel = buildShippingParcel(totalQuantity, allRawSingles, totalWeightOz);
+  const configuredOrigin = settingsRows?.[0]?.receipt_settings?.shippingOrigin;
+  const origin = completeShippoOrigin(configuredOrigin) ? configuredOrigin : await loadShippoSavedOrigin(token);
+  if (!completeShippoOrigin(origin)) return { error:'No ship-from address is available. Save one in the Mana Pocket dashboard or Shippo Address Book, then try again.', status:503 };
+  const parcel = await loadShippoSavedParcel(token, totalQuantity, totalWeightOz)
+    || buildShippingParcel(totalQuantity, allRawSingles, totalWeightOz);
   try {
     const res = await fetch(SHIPPO_API_BASE + '/shipments/', {
       method: 'POST',

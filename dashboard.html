@@ -6589,7 +6589,7 @@ function renderVendorProfilePanel(){
     </div>
     <div style="margin-top:14px;padding:14px;border:1px solid var(--border);border-radius:10px;background:var(--surf2)">
       <div style="font-family:'Orbitron',monospace;font-size:11px;color:var(--g);margin-bottom:7px">SHIPPING ORIGIN &amp; REAL RATES</div>
-      <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);line-height:1.6;margin-bottom:10px">Fill this in with the address you actually ship from so storefront checkout can quote a real carrier rate (via Shippo) instead of a flat guess. Requires the SHIPPO_API_TOKEN secret to already be set on the Worker -- until then, or if this address is left blank, checkout keeps using the old flat $3/$7 fallback rate.</div>
+      <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);line-height:1.6;margin-bottom:10px">Storefront checkout uses live Shippo carrier rates only. This address is the explicit ship-from override. If it is blank, checkout uses the most recently updated address in your Shippo Address Book. A saved Shippo bubble-mailer template is used automatically for small, light orders; larger orders use a conservative box. If neither source has a complete address, shipping stays unavailable and local pickup remains available.</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
         ${vendorInput('shipOriginName','Ship-from name',so.name,'text','Store or business name')}
         ${vendorInput('shipOriginPhone','Ship-from phone',so.phone,'tel','5551234567')}
