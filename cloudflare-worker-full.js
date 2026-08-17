@@ -2887,7 +2887,7 @@ export default {
     // storefront catalog (a store might want submissions without publishing
     // a public inventory page), so its own opt-in flag (buylistEnabled)
     // rather than piggybacking on storefrontEnabled.
-    if ((url.pathname === '/twilio/voice' || url.pathname === '/twilio/sms') && request.method === 'POST') {
+    if ((url.pathname === '/twilio/voice' || url.pathname === '/twilio/voice-whisper' || url.pathname === '/twilio/sms') && request.method === 'POST') {
       return handleTwilioWebhook(request, env, url);
     }
 
@@ -10593,15 +10593,26 @@ async function handleTwilioWebhook(request, env, url) {
     return url.pathname === '/twilio/voice' ? twimlResponse('<Response><Say>This number is not configured yet.</Say></Response>') : twimlResponse('<Response></Response>');
   }
   let numbers = [];
+  let storeName = '';
   try {
     const { data: settings } = await supabaseAdminFetch(env, `store_settings?store_id=eq.${encodeURIComponent(storeId)}&select=receipt_settings&limit=1`);
     numbers = (settings?.[0]?.receipt_settings?.notifyForwardNumbers || []).filter(Boolean).slice(0, 5);
+    storeName = String(settings?.[0]?.receipt_settings?.shortName || settings?.[0]?.receipt_settings?.storeName || '').trim();
   } catch (e) { /* fall through with no numbers -- handled per-route below */ }
 
   if (url.pathname === '/twilio/voice') {
     if (!numbers.length) return twimlResponse('<Response><Say>Sorry, no one is available to take your call right now.</Say></Response>');
-    const dialNumbers = numbers.map(n => `<Number>${escapeXmlText(n)}</Number>`).join('');
+    // Each forwarded leg gets its own whisper: the person picking up hears
+    // "Call for <store>" BEFORE being bridged to the actual caller -- without
+    // this a store-forwarded call rings through indistinguishably from any
+    // other personal call, since Twilio's <Dial> passes the original
+    // caller's number through as caller ID by default.
+    const whisperUrl = `${url.origin}/twilio/voice-whisper?store=${encodeURIComponent(storeId)}`;
+    const dialNumbers = numbers.map(n => `<Number url="${escapeXmlText(whisperUrl)}">${escapeXmlText(n)}</Number>`).join('');
     return twimlResponse(`<Response><Dial timeout="20">${dialNumbers}</Dial></Response>`);
+  }
+  if (url.pathname === '/twilio/voice-whisper') {
+    return twimlResponse(`<Response><Say>Call for ${escapeXmlText(storeName || 'your store')}. Connecting you now.</Say></Response>`);
   }
   if (url.pathname === '/twilio/sms') {
     const from = String(params.From || '').slice(0, 40);

@@ -5,7 +5,7 @@ const dashboard = fs.readFileSync('dashboard.html', 'utf8');
 const worker = fs.readFileSync('cloudflare-worker-full.js', 'utf8');
 
 // ── Worker: routing ──────────────────────────────────────────────────
-assert.match(worker, /if \(\(url\.pathname === '\/twilio\/voice' \|\| url\.pathname === '\/twilio\/sms'\) && request\.method === 'POST'\) \{\s*\n\s*return handleTwilioWebhook\(request, env, url\);/, 'must route both /twilio/voice and /twilio/sms POSTs to handleTwilioWebhook');
+assert.match(worker, /if \(\(url\.pathname === '\/twilio\/voice' \|\| url\.pathname === '\/twilio\/voice-whisper' \|\| url\.pathname === '\/twilio\/sms'\) && request\.method === 'POST'\) \{\s*\n\s*return handleTwilioWebhook\(request, env, url\);/, 'must route /twilio/voice, /twilio/voice-whisper, and /twilio/sms POSTs to handleTwilioWebhook');
 
 // ── Worker: signature verification is mandatory ─────────────────────
 assert.match(worker, /async function verifyTwilioSignature\(fullUrl, params, signatureHeader, authToken\) \{/, 'missing verifyTwilioSignature');
@@ -13,11 +13,21 @@ assert.match(worker, /if \(!authToken \|\| !signatureHeader\) return false;/, 'v
 assert.match(worker, /const sigOk = await verifyTwilioSignature\(request\.url, params, request\.headers\.get\('X-Twilio-Signature'\) \|\| '', env\.TWILIO_AUTH_TOKEN\);/, 'handleTwilioWebhook must verify the X-Twilio-Signature header');
 assert.match(worker, /if \(!sigOk\) return new Response\('Invalid signature', \{ status: 403 \}\);/, 'unsigned/forged requests must be rejected with 403, not processed');
 
-// ── Worker: voice -- simultaneous ring to all forward numbers ───────
+// ── Worker: voice -- simultaneous ring to all forward numbers, each with
+// a whisper announcement so a forwarded call doesn't ring through
+// indistinguishably from a personal call (Twilio's <Dial> otherwise passes
+// the original caller's number through as caller ID, with no way to tell
+// it's a business call before answering). ───────
 assert.match(worker, /if \(url\.pathname === '\/twilio\/voice'\) \{/, 'missing /twilio/voice branch');
 assert.match(worker, /if \(!numbers\.length\) return twimlResponse\('<Response><Say>Sorry, no one is available to take your call right now\.<\/Say><\/Response>'\);/, 'voice must gracefully handle no forwarding numbers configured');
-assert.match(worker, /const dialNumbers = numbers\.map\(n => `<Number>\$\{escapeXmlText\(n\)\}<\/Number>`\)\.join\(''\);/, 'voice must build a <Number> per forwarding number');
+assert.match(worker, /const whisperUrl = `\$\{url\.origin\}\/twilio\/voice-whisper\?store=\$\{encodeURIComponent\(storeId\)\}`;/, 'voice must build a whisper URL scoped to this store');
+assert.match(worker, /const dialNumbers = numbers\.map\(n => `<Number url="\$\{escapeXmlText\(whisperUrl\)\}">\$\{escapeXmlText\(n\)\}<\/Number>`\)\.join\(''\);/, 'voice must build a <Number> per forwarding number, each pointing at the whisper URL');
 assert.match(worker, /return twimlResponse\(`<Response><Dial timeout="20">\$\{dialNumbers\}<\/Dial><\/Response>`\);/, 'voice must Dial all numbers inside one <Dial> so they ring simultaneously (first to answer wins)');
+
+// ── Worker: voice-whisper -- announces the store name to whoever answers,
+// BEFORE Twilio bridges them to the actual caller ───────
+assert.match(worker, /if \(url\.pathname === '\/twilio\/voice-whisper'\) \{\s*\n\s*return twimlResponse\(`<Response><Say>Call for \$\{escapeXmlText\(storeName \|\| 'your store'\)\}\. Connecting you now\.<\/Say><\/Response>`\);/, 'voice-whisper must announce the store name before the call connects');
+assert.match(worker, /storeName = String\(settings\?\.\[0\]\?\.receipt_settings\?\.shortName \|\| settings\?\.\[0\]\?\.receipt_settings\?\.storeName \|\| ''\)\.trim\(\);/, 'storeName must be read from the same receipt_settings the forwarding numbers come from');
 
 // ── Worker: sms -- relay inbound texts to all forward numbers ───────
 assert.match(worker, /if \(url\.pathname === '\/twilio\/sms'\) \{/, 'missing /twilio/sms branch');
