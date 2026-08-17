@@ -376,10 +376,11 @@ function normalizeShippoAddress(raw) {
   };
 }
 
-function pickShippoOrigin(rows, allowNewest = true) {
+function pickShippoOrigin(rows, allowNewest = true, excludeGenericRecipients = false) {
   const complete = (Array.isArray(rows) ? rows : [])
     .map(normalizeShippoAddress)
-    .filter(origin => completeShippoOrigin(origin) && String(origin.country || 'US').toUpperCase() === 'US');
+    .filter(origin => completeShippoOrigin(origin) && String(origin.country || 'US').toUpperCase() === 'US')
+    .filter(origin => !excludeGenericRecipients || !/^customer$/i.test(String(origin.name || '').trim()));
   if (!complete.length) return null;
   const branded = complete.find(origin => /mana\s*pocket/i.test(origin.name));
   if (branded) return branded;
@@ -401,13 +402,13 @@ async function loadShippoSavedOrigin(token) {
     if (origin) return origin;
   } catch (e) {}
 
-  // Older Shippo accounts may only expose legacy address objects. Do not pick
-  // an arbitrary recipient when several exist: use a branded match or the sole
-  // complete address only.
+  // Older Shippo accounts may only expose legacy address objects. Checkout
+  // recipients created by this storefront are always named "Customer"; remove
+  // those before selecting the newest merchant-created address.
   try {
     const res = await fetch(SHIPPO_API_BASE + '/addresses/?results=100', { headers });
     const data = await res.json().catch(() => null);
-    return res.ok && data ? pickShippoOrigin(data.results, false) : null;
+    return res.ok && data ? pickShippoOrigin(data.results, true, true) : null;
   } catch (e) {
     return null;
   }

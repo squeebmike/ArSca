@@ -36,7 +36,8 @@ console.log('Real shipping fee contract checks passed');
 const shippoSettingsSrc = worker.slice(worker.indexOf('function completeShippoOrigin'), worker.indexOf('// Calls Shippo for a real'));
 assert.match(shippoSettingsSrc, /\/v2\/addresses\?offset=0&limit=30/, 'Shippo Address Book must be checked before legacy address objects');
 assert.match(shippoSettingsSrc, /\/addresses\/\?results=100/, 'legacy Shippo addresses must remain available for older accounts');
-assert.match(shippoSettingsSrc, /pickShippoOrigin\(data\.results, false\)/, 'legacy address fallback must not choose an arbitrary recipient when several addresses exist');
+assert.match(shippoSettingsSrc, /pickShippoOrigin\(data\.results, true, true\)/, 'legacy address fallback must exclude checkout-created recipients before choosing the newest merchant address');
+assert.match(shippoSettingsSrc, /!\/\^customer\$\/i\.test/, 'generic Customer recipients must never become the ship-from origin');
 assert.match(shippoSettingsSrc, /\/user-parcel-templates/, 'saved Shippo parcel templates must be loaded from the documented endpoint');
 assert.match(shippoSettingsSrc, /totalQuantity > 3 \|\| weightOz > 16/, 'bubble-mailer templates must only be used for small, light orders');
 
