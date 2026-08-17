@@ -51,6 +51,7 @@ const EBAY_SCOPES = [
   'https://api.ebay.com/oauth/api_scope/sell.finances',
   'https://api.ebay.com/oauth/api_scope/sell.marketing.readonly',
   'https://api.ebay.com/oauth/api_scope/sell.marketing',
+  'https://api.ebay.com/oauth/api_scope/sell.logistics',
 ].join(' ');
 
 const CORS = {
@@ -5702,6 +5703,207 @@ export default {
         return json({ ok: true, orderId, trackingNumber, carrierCode });
       } catch (e) {
         return json({ ok: false, error: 'eBay ship update failed: ' + e.message }, 502);
+      }
+    }
+
+    // ── eBay Logistics API: buy + print an eBay-negotiated USPS shipping
+    // label straight from an order, instead of printing tracking numbers
+    // pasted in from somewhere else. Three-step flow matching how Seller Hub
+    // itself works: get rate quotes for a package -> buy the rate the seller
+    // picked -> download the label file to print. USPS/US-origin only (an
+    // eBay Logistics API restriction, not something this integration can
+    // work around). Needs the sell.logistics scope -- a store connected
+    // before this shipped gets needsReconnect and should hit CONNECT EBAY
+    // again.
+    const EBAY_LOGISTICS_BASE = 'https://api.ebay.com/sell/logistics/v1_beta';
+    function ebayLogisticsErrorJson(res, data, txt) {
+      const msg = data?.errors?.[0]?.longMessage || data?.errors?.[0]?.message || txt.substring(0, 300);
+      const scopeIssue = res.status === 403 || /scope|insufficient permission/i.test(msg);
+      return json({ ok: false, needsReconnect: scopeIssue, error: 'eBay Logistics ' + res.status + ': ' + msg }, res.status);
+    }
+    // Best-effort: a purchased shipment is usually enough for eBay to mark
+    // the order fulfilled on its own, but that isn't documented as
+    // guaranteed, so this pushes tracking through the same
+    // createShippingFulfillment call /ebay/orders/ship uses too. Failure
+    // here must never fail the label purchase itself -- the seller already
+    // has a real label and tracking number either way.
+    async function pushEbayTrackingBestEffort(ebayToken, orderId, lineItemIds, trackingNumber, carrierCode) {
+      try {
+        const payload = { shippingCarrierCode: carrierCode, trackingNumber, shippedDate: new Date().toISOString() };
+        if (lineItemIds?.length) payload.lineItems = lineItemIds.map(id => ({ lineItemId: id }));
+        await fetch('https://api.ebay.com/sell/fulfillment/v1/order/' + encodeURIComponent(orderId) + '/shipping_fulfillment', {
+          method: 'POST',
+          headers: { 'Authorization': 'Bearer ' + ebayToken, 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+      } catch (e) { /* best-effort -- the label purchase already succeeded */ }
+    }
+
+    // POST /ebay/orders/shipping-quote -- step 1: get real USPS rate options
+    // for a package. Body: { orderId, weight:{value,unit}, dimensions:{length,width,height,unit} }
+    if (url.pathname === '/ebay/orders/shipping-quote' && request.method === 'POST') {
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId, ['owner','admin']);
+      if (auth.error) return auth.error;
+      let ebayToken = '';
+      try { ebayToken = await getEbayUserAccessToken(env); }
+      catch (tokenErr) { return json({ needsToken: true, error: tokenErr.message }, 401); }
+      if (!ebayToken) return json({ needsToken: true, error: 'Connect eBay first: missing user access/refresh token' }, 401);
+
+      try {
+        const body = await request.json().catch(() => ({}));
+        const orderId = String(body.orderId || '').trim();
+        if (!orderId) return json({ ok: false, error: 'orderId is required' }, 400);
+        const weightValue = Number(body.weight?.value || 0);
+        if (!(weightValue > 0)) return json({ ok: false, error: 'A package weight is required' }, 400);
+        const packageSpecification = {
+          weight: { value: String(weightValue), unit: String(body.weight?.unit || 'POUND').toUpperCase() },
+        };
+        const dims = body.dimensions || {};
+        if (Number(dims.length) > 0 && Number(dims.width) > 0 && Number(dims.height) > 0) {
+          packageSpecification.dimensions = {
+            length: String(dims.length), width: String(dims.width), height: String(dims.height),
+            unit: String(dims.unit || 'INCH').toUpperCase(),
+          };
+        }
+
+        const res = await fetch(EBAY_LOGISTICS_BASE + '/shipping_quote', {
+          method: 'POST',
+          headers: { 'Authorization': 'Bearer ' + ebayToken, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ orders: [{ orderId }], packageSpecification }),
+        });
+        const txt = await res.text();
+        let data; try { data = JSON.parse(txt); } catch (_) { data = { raw: txt }; }
+        if (!res.ok) return ebayLogisticsErrorJson(res, data, txt);
+
+        const rates = (data.rates || []).map(r => ({
+          rateId: r.rateId,
+          carrierCode: r.shippingCarrierCode || '',
+          carrierName: r.shippingCarrierName || '',
+          serviceCode: r.shippingServiceCode || '',
+          serviceName: r.shippingServiceName || '',
+          cost: Number(r.baseShippingCost?.value || 0),
+          currency: r.baseShippingCost?.currency || 'USD',
+          minDeliveryDate: r.minEstimatedDeliveryDate || '',
+          maxDeliveryDate: r.maxEstimatedDeliveryDate || '',
+        })).sort((a, b) => a.cost - b.cost);
+        if (!rates.length) return json({ ok: false, error: 'eBay returned no shipping rates for this package -- double-check the weight/dimensions and that the order ships from a US address.' }, 404);
+        return json({ ok: true, shippingQuoteId: data.shippingQuoteId, expirationDate: data.expirationDate || '', rates });
+      } catch (e) {
+        return json({ ok: false, error: 'eBay shipping quote failed: ' + e.message }, 502);
+      }
+    }
+
+    // POST /ebay/orders/buy-label -- step 2: purchase the rate the seller
+    // picked. Billed to the seller's own eBay account (same negotiated rate
+    // they'd get buying it in Seller Hub). Body: { shippingQuoteId, rateId, orderId, lineItemIds }
+    if (url.pathname === '/ebay/orders/buy-label' && request.method === 'POST') {
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId, ['owner','admin']);
+      if (auth.error) return auth.error;
+      let ebayToken = '';
+      try { ebayToken = await getEbayUserAccessToken(env); }
+      catch (tokenErr) { return json({ needsToken: true, error: tokenErr.message }, 401); }
+      if (!ebayToken) return json({ needsToken: true, error: 'Connect eBay first: missing user access/refresh token' }, 401);
+
+      try {
+        const body = await request.json().catch(() => ({}));
+        const shippingQuoteId = String(body.shippingQuoteId || '').trim();
+        const rateId = String(body.rateId || '').trim();
+        const orderId = String(body.orderId || '').trim();
+        const lineItemIds = Array.isArray(body.lineItemIds) ? body.lineItemIds.filter(Boolean) : [];
+        if (!shippingQuoteId || !rateId) return json({ ok: false, error: 'shippingQuoteId and rateId are required -- get a quote first' }, 400);
+
+        const res = await fetch(EBAY_LOGISTICS_BASE + '/shipment/create_from_shipping_quote', {
+          method: 'POST',
+          headers: { 'Authorization': 'Bearer ' + ebayToken, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ shippingQuoteId, rateId }),
+        });
+        const txt = await res.text();
+        let data; try { data = JSON.parse(txt); } catch (_) { data = { raw: txt }; }
+        if (!res.ok) return ebayLogisticsErrorJson(res, data, txt);
+
+        const shipmentId = data.shipmentId || '';
+        const trackingNumber = data.shipmentTrackingNumber || '';
+        const carrierCode = data.rate?.shippingCarrierCode || 'USPS';
+        if (shipmentId && orderId && trackingNumber) {
+          await pushEbayTrackingBestEffort(ebayToken, orderId, lineItemIds, trackingNumber, carrierCode);
+        }
+        return json({
+          ok: true,
+          shipmentId,
+          trackingNumber,
+          carrierCode,
+          serviceName: data.rate?.shippingServiceName || '',
+          totalCost: Number(data.rate?.totalShippingCost?.value || 0),
+          currency: data.rate?.totalShippingCost?.currency || 'USD',
+        });
+      } catch (e) {
+        return json({ ok: false, error: 'eBay label purchase failed: ' + e.message }, 502);
+      }
+    }
+
+    // GET /ebay/orders/shipping-label/:shipmentId?format=pdf|zpl -- step 3:
+    // download the actual label file. ZPL is the raw format thermal label
+    // printers (Rollo/Zebra) print directly; PDF is for a normal print
+    // dialog. Streams the file straight through -- same binary-proxy
+    // pattern as the PSA cert-photo route.
+    const ebayLabelFileMatch = url.pathname.match(/^\/ebay\/orders\/shipping-label\/([^/]+)$/);
+    if (ebayLabelFileMatch && request.method === 'GET') {
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId, ['owner','admin']);
+      if (auth.error) return auth.error;
+      let ebayToken = '';
+      try { ebayToken = await getEbayUserAccessToken(env); }
+      catch (tokenErr) { return json({ needsToken: true, error: tokenErr.message }, 401); }
+      if (!ebayToken) return json({ needsToken: true, error: 'Connect eBay first: missing user access/refresh token' }, 401);
+
+      const shipmentId = decodeURIComponent(ebayLabelFileMatch[1]);
+      const format = (url.searchParams.get('format') || 'pdf').toLowerCase() === 'zpl' ? 'zpl' : 'pdf';
+      const acceptType = format === 'zpl' ? 'application/zpl' : 'application/pdf';
+      try {
+        const res = await fetch(EBAY_LOGISTICS_BASE + '/shipment/' + encodeURIComponent(shipmentId) + '/download_label_file', {
+          headers: { 'Authorization': 'Bearer ' + ebayToken, 'Accept': acceptType },
+        });
+        if (!res.ok) {
+          const txt = await res.text();
+          let data; try { data = JSON.parse(txt); } catch (_) { data = { raw: txt }; }
+          return ebayLogisticsErrorJson(res, data, txt);
+        }
+        const buf = await res.arrayBuffer();
+        return new Response(buf, {
+          headers: { ...CORS, 'Content-Type': acceptType, 'Content-Disposition': `inline; filename="ebay-label-${shipmentId}.${format}"`, 'Cache-Control': 'private, max-age=3600' },
+        });
+      } catch (e) {
+        return json({ ok: false, error: 'eBay label download failed: ' + e.message }, 502);
+      }
+    }
+
+    // POST /ebay/orders/shipping-label/:shipmentId/cancel -- lets a seller
+    // undo a just-purchased label (wrong rate picked, etc) before it's
+    // handed off to USPS. eBay refunds the label cost on a successful cancel.
+    const ebayLabelCancelMatch = url.pathname.match(/^\/ebay\/orders\/shipping-label\/([^/]+)\/cancel$/);
+    if (ebayLabelCancelMatch && request.method === 'POST') {
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId, ['owner','admin']);
+      if (auth.error) return auth.error;
+      let ebayToken = '';
+      try { ebayToken = await getEbayUserAccessToken(env); }
+      catch (tokenErr) { return json({ needsToken: true, error: tokenErr.message }, 401); }
+      if (!ebayToken) return json({ needsToken: true, error: 'Connect eBay first: missing user access/refresh token' }, 401);
+
+      const shipmentId = decodeURIComponent(ebayLabelCancelMatch[1]);
+      try {
+        const res = await fetch(EBAY_LOGISTICS_BASE + '/shipment/' + encodeURIComponent(shipmentId) + '/cancel', {
+          method: 'POST',
+          headers: { 'Authorization': 'Bearer ' + ebayToken, 'Content-Type': 'application/json' },
+        });
+        const txt = await res.text();
+        let data; try { data = JSON.parse(txt); } catch (_) { data = { raw: txt }; }
+        if (!res.ok) return ebayLogisticsErrorJson(res, data, txt);
+        return json({ ok: true, shipmentId });
+      } catch (e) {
+        return json({ ok: false, error: 'eBay label cancel failed: ' + e.message }, 502);
       }
     }
 
