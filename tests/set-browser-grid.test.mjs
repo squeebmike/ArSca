@@ -160,7 +160,7 @@ console.log('MTG set icon code-fallback contract checks passed');
 {
   const colorSrc = dashboard.match(/function setTilePlaceholderColor\(name\)\{[\s\S]*?\n\}/)?.[0];
   const errSrc = dashboard.match(/function setPickerTileImgError\(img, color, initial\)\{[\s\S]*?\n\}/)?.[0];
-  const gridSrc = dashboard.match(/function setPickerGridHtml\(sets, selectedId, clickFnName\)\{[\s\S]*?\n  \}\)\.join\(''\);\n\}/)?.[0];
+  const gridSrc = dashboard.match(/function setPickerGridHtml\(sets, selectedId, clickFnName\)\{[\s\S]*?\r?\n  \}\)\.join\(''\);\r?\n\}/)?.[0];
   assert.ok(colorSrc && errSrc && gridSrc, 'could not extract set picker functions for functional testing');
   const escHtmlStub = `function escHtml(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }`;
   const { setPickerGridHtml } = new Function(`${escHtmlStub}\n${colorSrc}\n${errSrc}\n${gridSrc}\nreturn { setPickerGridHtml };`)();
@@ -180,9 +180,9 @@ console.log('MTG set icon code-fallback functional checks passed');
 // (#e8742b, the same hex already used for mythic rarity text elsewhere in
 // the app) fallback/placeholder color instead of Pokemon's hash-rotated hue.
 {
-  const colorSrc = dashboard.match(/function setTilePlaceholderColor\(name\)\{[\s\S]*?\n\}/)?.[0];
-  const errSrc = dashboard.match(/function setPickerTileImgError\(img, color, initial\)\{[\s\S]*?\n\}/)?.[0];
-  const gridSrc = dashboard.match(/function setPickerGridHtml\(sets, selectedId, clickFnName\)\{[\s\S]*?\n  \}\)\.join\(''\);\n\}/)?.[0];
+  const colorSrc = dashboard.match(/function setTilePlaceholderColor\(name\)\{[\s\S]*?\r?\n\}/)?.[0];
+  const errSrc = dashboard.match(/function setPickerTileImgError\(img, color, initial\)\{[\s\S]*?\r?\n\}/)?.[0];
+  const gridSrc = dashboard.match(/function setPickerGridHtml\(sets, selectedId, clickFnName\)\{[\s\S]*?\r?\n  \}\)\.join\(''\);\r?\n\}/)?.[0];
   assert.ok(colorSrc && errSrc && gridSrc, 'could not extract set picker functions for functional testing');
   const escHtmlStub = `function escHtml(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }`;
   const { setPickerGridHtml } = new Function(`${escHtmlStub}\n${colorSrc}\n${errSrc}\n${gridSrc}\nreturn { setPickerGridHtml };`)();

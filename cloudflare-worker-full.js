@@ -358,16 +358,15 @@ function buildShippingParcel(totalQuantity, allRawSingles, totalWeightOz) {
 }
 
 // Calls Shippo for a real, carrier-calculated rate and returns the cheapest
-// one. Falls back to the old flat $3/$7 rule whenever Shippo isn't
-// configured, the store hasn't set a ship-from address, or the call fails --
-// a shipping-rate hiccup must never be able to block checkout entirely.
+// one. Shipping fails closed when Shippo or the ship-from address is not
+// configured: pickup remains available, but checkout must never invent or
+// silently substitute a legacy flat shipping charge.
 async function computeRealShippingFeeCents(env, storeId, shippingAddress, totalQuantity, allRawSingles, totalWeightOz) {
-  const fallback = { cents: totalQuantity <= 3 && allRawSingles ? 300 : 700, real: false };
   const token = env.SHIPPO_API_TOKEN;
-  if (!token) return fallback;
+  if (!token) return { error:'Shipping is not configured yet. Please choose pickup or contact the store.', status:503 };
   const { data: settingsRows } = await supabaseAdminFetch(env, `store_settings?store_id=eq.${encodeURIComponent(storeId)}&select=receipt_settings&limit=1`);
   const origin = settingsRows?.[0]?.receipt_settings?.shippingOrigin;
-  if (!origin || !origin.street1 || !origin.city || !origin.state || !origin.zip) return fallback;
+  if (!origin || !origin.street1 || !origin.city || !origin.state || !origin.zip) return { error:'Shipping is not configured yet. Please choose pickup or contact the store.', status:503 };
   const parcel = buildShippingParcel(totalQuantity, allRawSingles, totalWeightOz);
   try {
     const res = await fetch(SHIPPO_API_BASE + '/shipments/', {
@@ -381,16 +380,16 @@ async function computeRealShippingFeeCents(env, storeId, shippingAddress, totalQ
       }),
     });
     const data = await res.json().catch(() => null);
-    if (!res.ok || !data) return fallback;
+    if (!res.ok || !data) return { error:'A live shipping rate could not be retrieved. Please check the address or choose pickup.', status:502 };
     const rates = (data.rates || [])
       .filter(r => r && r.amount && Number(r.amount) > 0)
       .map(r => ({ cost: Number(r.amount), carrier: r.provider || '', serviceName: r.servicelevel?.name || '', estimatedDays: r.estimated_days ?? null }));
-    if (!rates.length) return fallback;
+    if (!rates.length) return { error:'No carrier rate is available for that address. Please check the address or choose pickup.', status:422 };
     rates.sort((a, b) => a.cost - b.cost);
     const cheapest = rates[0];
     return { cents: Math.round(cheapest.cost * 100), real: true, carrier: cheapest.carrier, serviceName: cheapest.serviceName, estimatedDays: cheapest.estimatedDays };
   } catch (e) {
-    return fallback;
+    return { error:'A live shipping rate could not be retrieved. Please try again or choose pickup.', status:502 };
   }
 }
 
@@ -2695,10 +2694,9 @@ export default {
       if (cart.error) return cart.error;
       const { lineItems, subtotalCents, totalQuantity, allRawSingles, totalWeightOz } = cart;
 
-      // Real carrier-calculated rate when Shippo + a ship-from address are
-      // configured, otherwise the same flat $3/$7 rule as before -- see
-      // computeRealShippingFeeCents' fallback behavior above.
+      // Shipping is only charged when the carrier returns a current quote.
       const shippingQuote = method !== 'shipping' ? { cents: 0, real: false } : await computeRealShippingFeeCents(env, storeId, shippingAddress, totalQuantity, allRawSingles, totalWeightOz);
+      if (shippingQuote.error) return json({ ok:false, error:shippingQuote.error }, shippingQuote.status || 503);
       const shippingFeeCents = shippingQuote.cents;
       const totalCents = subtotalCents + shippingFeeCents;
 
@@ -2763,6 +2761,7 @@ export default {
       const cart = await loadCartForShipping(env, storeId, body.items);
       if (cart.error) return cart.error;
       const quote = await computeRealShippingFeeCents(env, storeId, shippingAddress, cart.totalQuantity, cart.allRawSingles, cart.totalWeightOz);
+      if (quote.error) return json({ ok:false, error:quote.error }, quote.status || 503);
       return json({ ok:true, shippingFeeCents:quote.cents, real:quote.real, carrier:quote.carrier || null, serviceName:quote.serviceName || null, estimatedDays:quote.estimatedDays ?? null });
     }
 
