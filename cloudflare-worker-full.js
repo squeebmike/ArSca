@@ -2465,7 +2465,22 @@ export default {
       const cfg = settings?.[0]?.receipt_settings || {};
       if (cfg.storefrontEnabled !== true) return json({ ok:false, error:'Storefront is not published' }, 404);
       const { data:stores } = await supabaseAdminFetch(env, `stores?id=eq.${encodeURIComponent(storeId)}&select=id,name,display_name&limit=1`);
-      const { data:rows, response } = await supabaseAdminFetch(env, `inventory_items?store_id=eq.${encodeURIComponent(storeId)}&select=id,data,status,created_at,updated_at&order=updated_at.desc&limit=1000`);
+      // A single limit=1000 page used to silently truncate the public
+      // storefront once a store's stock passed 1000 items -- older untouched
+      // items just never showed up for customers. Page through fully.
+      const rows = [];
+      let storefrontOffset = 0;
+      let lastResponse = null;
+      while (true) {
+        const page = await supabaseAdminFetch(env, `inventory_items?store_id=eq.${encodeURIComponent(storeId)}&select=id,data,status,created_at,updated_at&order=updated_at.desc&limit=1000&offset=${storefrontOffset}`);
+        lastResponse = page.response;
+        if (!page.response?.ok) break;
+        const batch = page.data || [];
+        rows.push(...batch);
+        if (batch.length < 1000) break;
+        storefrontOffset += 1000;
+      }
+      const response = lastResponse;
       if (!response?.ok) return json({ ok:false, error:'Inventory unavailable' }, 502);
       const linkedWfIds = new Set((rows || []).map(row => row.data?.wfId || row.data?.webflowId).filter(Boolean).map(String));
       let items = (rows || []).map(shapeStorefrontItem).filter(isStorefrontItemAvailable);

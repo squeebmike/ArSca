@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.17.7-cart-index-poll-race-fix">
+<meta name="version" content="2026.08.18.1-inventory-pagination-fix">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1587,13 +1587,13 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.17.7-cart-index-poll-race-fix" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.17.7-cart-index-poll-race-fix" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.17.7-cart-index-poll-race-fix" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.17.7-cart-index-poll-race-fix" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.17.7-cart-index-poll-race-fix" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.17.7-cart-index-poll-race-fix" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.17.7-cart-index-poll-race-fix" defer></script>
+<script src="scripts/query-routing.js?v=2026.08.18.1-inventory-pagination-fix" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.18.1-inventory-pagination-fix" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.18.1-inventory-pagination-fix" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.18.1-inventory-pagination-fix" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.18.1-inventory-pagination-fix" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.18.1-inventory-pagination-fix" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.18.1-inventory-pagination-fix" defer></script>
 </head>
 <body>
 
@@ -1643,11 +1643,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.17.7-cart-index-poll-race-fix</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.18.1-inventory-pagination-fix</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.17.7-cart-index-poll-race-fix</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.18.1-inventory-pagination-fix</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1669,7 +1669,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.17.7-cart-index-poll-race-fix</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.18.1-inventory-pagination-fix</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3433,7 +3433,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.17.7-cart-index-poll-race-fix';
+const APP_VERSION = '2026.08.18.1-inventory-pagination-fix';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -16118,24 +16118,36 @@ async function loadBuiltInInventoryItems(){
     console.warn('[INV] session.supabase not set — Supabase inventory skipped. Re-login may be needed.');
     return [];
   }
-  const { data, error } = await sb
-    .from('inventory_items')
-    .select('id,data,status,created_at,updated_at')
-    .eq('store_id', storeId)
-    .order('updated_at', { ascending:false })
-    .limit(1000);
-  if(error) {
-    console.warn('[INV] Built-in inventory load failed:', error.message, { storeId, code:error.code });
-    toast_dash('Supabase inventory load failed (' + error.code + '): ' + error.message + ' — re-login may fix this.');
-    return [];
+  // A single .limit(1000) query used to silently truncate the store once it
+  // grew past 1000 rows -- older untouched stock never made it into the
+  // client at all, not "loaded slowly," genuinely absent. Page through with
+  // .range() until a short page comes back instead.
+  const PAGE = 1000;
+  const rows = [];
+  let offset = 0;
+  while(true){
+    const { data, error } = await sb
+      .from('inventory_items')
+      .select('id,data,status,created_at,updated_at')
+      .eq('store_id', storeId)
+      .order('updated_at', { ascending:false })
+      .range(offset, offset + PAGE - 1);
+    if(error) {
+      console.warn('[INV] Built-in inventory load failed:', error.message, { storeId, code:error.code });
+      toast_dash('Supabase inventory load failed (' + error.code + '): ' + error.message + ' — re-login may fix this.');
+      break;
+    }
+    rows.push(...(data || []));
+    if(!data || data.length < PAGE) break;
+    offset += PAGE;
   }
-  if(data && data.length === 0) {
+  if(rows.length === 0) {
     console.info('[INV] Supabase returned 0 inventory_items for store_id=' + storeId + '. RLS or empty store.');
   }
-  console.info('[INV] Loaded ' + (data||[]).length + ' built-in items from Supabase for store ' + storeId);
+  console.info('[INV] Loaded ' + rows.length + ' built-in items from Supabase for store ' + storeId);
   // Rows are ordered updated_at DESC, so the first row is the newest.
-  if(data?.length) _builtInSyncWatermark = data[0].updated_at;
-  return (data || []).map(mapBuiltInItem);
+  if(rows.length) _builtInSyncWatermark = rows[0].updated_at;
+  return rows.map(mapBuiltInItem);
 }
 
 // Every "plain passthrough" built-in inventory field -- one that just needs
@@ -16626,12 +16638,36 @@ async function refreshBuiltInInventoryDelta(){
   const session = getAuthSession();
   const storeId = getActiveStoreId();
   if(!sb || !storeId || !session?.supabase) return false;
-  const [{ data:changedRows, error:changedError }, { data:manifest, error:manifestError }] = await Promise.all([
-    sb.from('inventory_items').select('id,data,status,created_at,updated_at').eq('store_id', storeId).gt('updated_at', _builtInSyncWatermark).order('updated_at', { ascending:true }).limit(1000),
-    // Cheap id-only manifest (no data blob) -- the only way to notice an
-    // item deleted elsewhere without pulling every row's full record.
-    sb.from('inventory_items').select('id').eq('store_id', storeId).limit(2000),
-  ]);
+  const PAGE = 2000;
+  // Cheap id-only manifest (no data blob) -- the only way to notice an item
+  // deleted elsewhere without pulling every row's full record. A capped
+  // single page here was a real correctness bug, not just a load-time one:
+  // any store past the cap had real, still-existing items silently dropped
+  // from `all` below every 60s, because their id just never showed up in an
+  // incomplete manifest. Page through fully instead.
+  const manifest = [];
+  let manifestOffset = 0;
+  let manifestError = null;
+  while(true){
+    const { data, error } = await sb.from('inventory_items').select('id').eq('store_id', storeId).range(manifestOffset, manifestOffset + PAGE - 1);
+    if(error) { manifestError = error; break; }
+    manifest.push(...(data || []));
+    if(!data || data.length < PAGE) break;
+    manifestOffset += PAGE;
+  }
+  // Same idea for changed rows -- a single capped page after a big bulk edit
+  // (or a long stretch offline) used to trickle in at 1000 rows per 60s poll
+  // instead of catching up in one pass.
+  const changedRows = [];
+  let changedOffset = 0;
+  let changedError = null;
+  while(true){
+    const { data, error } = await sb.from('inventory_items').select('id,data,status,created_at,updated_at').eq('store_id', storeId).gt('updated_at', _builtInSyncWatermark).order('updated_at', { ascending:true }).range(changedOffset, changedOffset + PAGE - 1);
+    if(error) { changedError = error; break; }
+    changedRows.push(...(data || []));
+    if(!data || data.length < PAGE) break;
+    changedOffset += PAGE;
+  }
   if(changedError || manifestError) return false;
 
   const liveIds = new Set((manifest || []).map(r => r.id));
@@ -41244,7 +41280,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.17.7-cart-index-poll-race-fix" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.18.1-inventory-pagination-fix" defer></script>
 </body>
 </html>
 
