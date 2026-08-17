@@ -1,0 +1,18 @@
+import fs from 'node:fs';
+import assert from 'node:assert/strict';
+
+const dashboard = fs.readFileSync('dashboard.html', 'utf8');
+
+// ── Contract: a layout picker exists and persists, independent of the size/printer picker ──
+assert.match(dashboard, /<select id="label-print-layout" class="tsi" onchange="localStorage\.setItem\('label_print_layout', this\.value\)"/, 'a label layout picker must exist and persist the choice separately from label size');
+assert.match(dashboard, /<option value="wrap">Wraps around a toploader/, 'a toploader-wrap layout option must exist');
+assert.match(dashboard, /layoutEl\.value = localStorage\.getItem\('label_print_layout'\) \|\| 'standard';/, 'opening the modal must restore the last-used layout, defaulting to standard so existing labels don\'t change unexpectedly');
+
+// ── Contract: wrap layout builds two faces -- price/condition large on front, barcode-only on back ──
+assert.match(dashboard, /const isWrap = layout === 'wrap';/, 'printInventoryLabels must branch on the selected layout');
+assert.match(dashboard, /<div class="wrap-condition">\$\{escHtml\(b\.condition \|\| ''\)\}<\/div>\s*\n\s*<div class="wrap-price">\$\{fd\$\(b\.price\)\}<\/div>/, 'the front face must show condition and price, with price rendered via the same fd$ formatter as the rest of the app');
+assert.match(dashboard, /<div class="wrap-back">\s*\n\s*\$\{barcodeImg\}\s*\n\s*<div class="wrap-sku">\$\{escHtml\(b\.sku \|\| ''\)\}<\/div>/, 'the back face must carry only the barcode and SKU text, not price/condition/name');
+assert.match(dashboard, /\.label\.wrap \{ flex-direction:row !important; padding:0 !important; \}/, 'the wrap layout must lay the two faces out side by side with a fold line between them');
+assert.match(dashboard, /border-right:1px dashed #999;/, 'a dashed fold line must separate the front and back faces so it\'s clear where to fold');
+
+console.log('Label toploader-wrap contract checks passed');

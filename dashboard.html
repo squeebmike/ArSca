@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.17.1-labels-and-whats-new">
+<meta name="version" content="2026.08.17.2-toploader-wrap-labels">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1587,13 +1587,13 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.17.1-labels-and-whats-new" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.17.1-labels-and-whats-new" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.17.1-labels-and-whats-new" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.17.1-labels-and-whats-new" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.17.1-labels-and-whats-new" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.17.1-labels-and-whats-new" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.17.1-labels-and-whats-new" defer></script>
+<script src="scripts/query-routing.js?v=2026.08.17.2-toploader-wrap-labels" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.17.2-toploader-wrap-labels" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.17.2-toploader-wrap-labels" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.17.2-toploader-wrap-labels" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.17.2-toploader-wrap-labels" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.17.2-toploader-wrap-labels" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.17.2-toploader-wrap-labels" defer></script>
 </head>
 <body>
 
@@ -1643,11 +1643,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.17.1-labels-and-whats-new</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.17.2-toploader-wrap-labels</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.17.1-labels-and-whats-new</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.17.2-toploader-wrap-labels</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1669,7 +1669,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.17.1-labels-and-whats-new</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.17.2-toploader-wrap-labels</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3114,7 +3114,12 @@ body.show-mode .inv-sync-badge{display:none;}
       <option value="sheet-2.625x1">Sheet labels -- 2.625" x 1" (Avery 5160-style, laser/inkjet, cut sheet)</option>
       <option value="roll-2x1">Roll labels -- 2" x 1" (Rollo/Zebra direct-thermal, one per page)</option>
     </select>
-    <div style="font-family:var(--font-mono);font-size:9px;color:var(--dim);margin-bottom:10px">Sheet mode prints multiple labels per page with dashed cut lines -- works on plain paper or Avery-style sheets. Roll mode prints exactly one label per "page" sized to match a direct-thermal roll printer (no margins, no cut lines needed). Barcode value uses UPC, then SKU, then falls back to the item's internal ID.</div>
+    <label>Label layout</label>
+    <select id="label-print-layout" class="tsi" onchange="localStorage.setItem('label_print_layout', this.value)" style="margin-bottom:10px">
+      <option value="standard">Standard -- name, barcode, SKU/condition, and price all on one face</option>
+      <option value="wrap">Wraps around a toploader -- fold down the middle: price + condition large on the front half, barcode on the back half</option>
+    </select>
+    <div style="font-family:var(--font-mono);font-size:9px;color:var(--dim);margin-bottom:10px">Sheet mode prints multiple labels per page with dashed cut lines -- works on plain paper or Avery-style sheets. Roll mode prints exactly one label per "page" sized to match a direct-thermal roll printer (no margins, no cut lines needed). Toploader-wrap layout is meant for roll labels: stick the left half to the front over the toploader's edge, fold at the dashed line, and the barcode half lands on the back. Barcode value uses UPC, then SKU, then falls back to the item's internal ID.</div>
     <div class="modal-btns">
       <button class="modal-btn confirm" onclick="printInventoryLabels()">PRINT</button>
       <button class="modal-btn cancel" onclick="closeLabelPrintModal()">Cancel</button>
@@ -3428,7 +3433,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.17.1-labels-and-whats-new';
+const APP_VERSION = '2026.08.17.2-toploader-wrap-labels';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -6216,6 +6221,7 @@ const FEATURE_LOG = [
   ]},
   { area:'Labels & Shelf Tags', items:[
     { title:'Print shelf/price labels', status:'new', desc:'Print barcode labels for sheet paper (2.625"x1", Avery-style) or roll paper on a direct-thermal printer like Rollo/Zebra (2"x1", one label per page). Choice is remembered.' },
+    { title:'Toploader-wrap label layout', status:'new', desc:'A label layout that folds around a toploader\'s edge: condition and price large on the face that shows, barcode alone on the face that wraps to the back.' },
     { title:'Condition on the printed label', status:'new', desc:'Labels now print item condition alongside the SKU/barcode when the item has one set.' },
   ]},
   { area:'Consignment', items:[
@@ -38356,6 +38362,7 @@ function openLabelPrintModal(seedItemId){
   const searchEl = document.getElementById('label-print-search'); if(searchEl) searchEl.value = '';
   const resultsEl = document.getElementById('label-print-search-results'); if(resultsEl) resultsEl.innerHTML = '';
   const sizeEl = document.getElementById('label-print-size'); if(sizeEl) sizeEl.value = localStorage.getItem('label_print_size') || 'sheet-2.625x1';
+  const layoutEl = document.getElementById('label-print-layout'); if(layoutEl) layoutEl.value = localStorage.getItem('label_print_layout') || 'standard';
   renderLabelPrintBatchList();
   document.getElementById('label-print-modal')?.classList.add('on');
   setTimeout(() => document.getElementById('label-print-search')?.focus(), 100);
@@ -38419,6 +38426,13 @@ function printInventoryLabels(){
   // exactly one label per page instead of a flex-wrapped sheet layout.
   const mode = document.getElementById('label-print-size')?.value || 'sheet-2.625x1';
   const isRoll = mode === 'roll-2x1';
+  // "Wrap" is a content layout, independent of sheet/roll sizing: the label
+  // physically folds around a toploader's edge, so the two halves need to
+  // work as separate FACES rather than one continuous strip -- condition and
+  // price large on the half that ends up facing out front, barcode alone on
+  // the half that wraps to the back (nobody needs to read a barcode by eye).
+  const layout = document.getElementById('label-print-layout')?.value || 'standard';
+  const isWrap = layout === 'wrap';
   const labelsHtml = labelPrintBatch.flatMap(b => Array.from({ length:b.qty }, () => {
     const canvas = document.createElement('canvas');
     let barcodeImg = '';
@@ -38426,6 +38440,20 @@ function printInventoryLabels(){
       JsBarcode(canvas, b.sku || b.id, { format:'CODE128', displayValue:false, margin:0, width:2, height:isRoll?30:36 });
       barcodeImg = `<img src="${canvas.toDataURL('image/png')}" style="width:100%;height:${isRoll?30:36}px;object-fit:contain">`;
     } catch(e) { barcodeImg = ''; }
+    if(isWrap){
+      return `<div class="label wrap">
+        <div class="wrap-front">
+          ${storeName ? `<div class="label-store">${escHtml(storeName)}</div>` : ''}
+          <div class="wrap-name">${escHtml(b.name)}</div>
+          <div class="wrap-condition">${escHtml(b.condition || '')}</div>
+          <div class="wrap-price">${fd$(b.price)}</div>
+        </div>
+        <div class="wrap-back">
+          ${barcodeImg}
+          <div class="wrap-sku">${escHtml(b.sku || '')}</div>
+        </div>
+      </div>`;
+    }
     return `<div class="label">
       ${storeName ? `<div class="label-store">${escHtml(storeName)}</div>` : ''}
       <div class="label-name">${escHtml(b.name)}</div>
@@ -38454,8 +38482,20 @@ function printInventoryLabels(){
       .label-bottom { display:flex; justify-content:space-between; align-items:center; }
       .label-sku { font-size:6px; color:#555; }
       .label-price { font-size:12px; font-weight:700; }`;
+  // Splits the label into two equal-width faces divided by a dashed fold
+  // line, on top of whichever size (sheet or roll) is already active above --
+  // percentage widths so this adapts to either total label width automatically.
+  const wrapStyle = `
+      .label.wrap { flex-direction:row !important; padding:0 !important; }
+      .label.wrap .wrap-front, .label.wrap .wrap-back { width:50%; height:100%; box-sizing:border-box; display:flex; flex-direction:column; overflow:hidden; }
+      .label.wrap .wrap-front { padding:5px 6px; justify-content:space-between; border-right:1px dashed #999; }
+      .label.wrap .wrap-back { padding:5px 6px; align-items:center; justify-content:center; gap:3px; }
+      .wrap-name { font-size:7px; font-weight:700; line-height:1.1; max-height:16px; overflow:hidden; }
+      .wrap-condition { font-size:11px; font-weight:800; text-transform:uppercase; }
+      .wrap-price { font-size:19px; font-weight:900; line-height:1; }
+      .wrap-sku { font-size:6px; color:#555; text-align:center; }`;
   w.document.write(`<html><head><title>Labels</title>
-    <style>${isRoll ? rollStyle : sheetStyle}</style>
+    <style>${isRoll ? rollStyle : sheetStyle}${isWrap ? wrapStyle : ''}</style>
   </head><body><div class="label-sheet">${labelsHtml}</div>
     <script>window.print();<\/script></body></html>`);
   w.document.close();
@@ -41112,7 +41152,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.17.1-labels-and-whats-new" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.17.2-toploader-wrap-labels" defer></script>
 </body>
 </html>
 
