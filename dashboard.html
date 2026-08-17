@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.18.4-staff-list-search-debounce">
+<meta name="version" content="2026.08.18.5-label-print-chunking">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1587,13 +1587,13 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.18.4-staff-list-search-debounce" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.18.4-staff-list-search-debounce" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.18.4-staff-list-search-debounce" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.18.4-staff-list-search-debounce" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.18.4-staff-list-search-debounce" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.18.4-staff-list-search-debounce" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.18.4-staff-list-search-debounce" defer></script>
+<script src="scripts/query-routing.js?v=2026.08.18.5-label-print-chunking" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.18.5-label-print-chunking" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.18.5-label-print-chunking" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.18.5-label-print-chunking" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.18.5-label-print-chunking" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.18.5-label-print-chunking" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.18.5-label-print-chunking" defer></script>
 </head>
 <body>
 
@@ -1643,11 +1643,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.18.4-staff-list-search-debounce</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.18.5-label-print-chunking</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.18.4-staff-list-search-debounce</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.18.5-label-print-chunking</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1669,7 +1669,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.18.4-staff-list-search-debounce</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.18.5-label-print-chunking</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3121,7 +3121,7 @@ body.show-mode .inv-sync-badge{display:none;}
     </select>
     <div style="font-family:var(--font-mono);font-size:9px;color:var(--dim);margin-bottom:10px">Sheet mode prints multiple labels per page with dashed cut lines -- works on plain paper or Avery-style sheets. Roll mode prints exactly one label per "page" sized to match a direct-thermal roll printer (no margins, no cut lines needed). Toploader-wrap layout is meant for roll labels: stick the left half to the front over the toploader's edge, fold at the dashed line, and the barcode half lands on the back. Barcode value uses UPC, then SKU, then falls back to the item's internal ID.</div>
     <div class="modal-btns">
-      <button class="modal-btn confirm" onclick="printInventoryLabels()">PRINT</button>
+      <button class="modal-btn confirm" id="label-print-btn" onclick="printInventoryLabels()">PRINT</button>
       <button class="modal-btn cancel" onclick="closeLabelPrintModal()">Cancel</button>
     </div>
   </div>
@@ -3433,7 +3433,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.18.4-staff-list-search-debounce';
+const APP_VERSION = '2026.08.18.5-label-print-chunking';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -38569,7 +38569,15 @@ function renderLabelPrintBatchList(){
     : '<div class="empty" style="padding:8px"><div class="empty-t" style="font-size:9px">NO ITEMS YET -- SEARCH ABOVE TO ADD SOME</div></div>';
 }
 
-function printInventoryLabels(){
+// Batch size before yielding a frame back to the browser. Generating a
+// label involves a real <canvas> draw (JsBarcode) plus a PNG encode
+// (canvas.toDataURL) per label -- fine for a handful of labels done
+// synchronously, but a big fresh-intake batch (100+ items, some at qty>1)
+// used to freeze the tab for the whole loop, right during the busiest part
+// of a live-buy workflow. Yielding periodically keeps the tab responsive
+// without meaningfully slowing down the overall batch.
+const LABEL_PRINT_YIELD_EVERY = 20;
+async function printInventoryLabels(){
   if(!labelPrintBatch.length) return alert('Add at least one item to print');
   if(typeof JsBarcode === 'undefined') return alert('Barcode library still loading -- try again in a moment');
   const vendorProfile = getVendorProfile();
@@ -38589,15 +38597,21 @@ function printInventoryLabels(){
   // the half that wraps to the back (nobody needs to read a barcode by eye).
   const layout = document.getElementById('label-print-layout')?.value || 'standard';
   const isWrap = layout === 'wrap';
-  const labelsHtml = labelPrintBatch.flatMap(b => Array.from({ length:b.qty }, () => {
+  // Expand batch entries (item + qty) into one spec per physical label --
+  // cheap, no canvas work yet, so no need to chunk this part.
+  const labelSpecs = labelPrintBatch.flatMap(b => Array.from({ length:b.qty }, () => b));
+  const btn = document.getElementById('label-print-btn');
+  if(btn){ btn.disabled = true; btn.textContent = 'GENERATING...'; }
+  const labelParts = [];
+  for(let i = 0; i < labelSpecs.length; i++){
+    const b = labelSpecs[i];
     const canvas = document.createElement('canvas');
     let barcodeImg = '';
     try {
       JsBarcode(canvas, b.sku || b.id, { format:'CODE128', displayValue:false, margin:0, width:2, height:isRoll?30:36 });
       barcodeImg = `<img src="${canvas.toDataURL('image/png')}" style="width:100%;height:${isRoll?30:36}px;object-fit:contain">`;
     } catch(e) { barcodeImg = ''; }
-    if(isWrap){
-      return `<div class="label wrap">
+    labelParts.push(isWrap ? `<div class="label wrap">
         <div class="wrap-front">
           ${storeName ? `<div class="label-store">${escHtml(storeName)}</div>` : ''}
           <div class="wrap-name">${escHtml(b.name)}</div>
@@ -38609,15 +38623,16 @@ function printInventoryLabels(){
           ${barcodeImg}
           <div class="wrap-sku">${escHtml(b.sku || '')}</div>
         </div>
-      </div>`;
-    }
-    return `<div class="label">
+      </div>` : `<div class="label">
       ${storeName ? `<div class="label-store">${escHtml(storeName)}</div>` : ''}
       <div class="label-name">${escHtml(b.name)}</div>
       ${barcodeImg}
       <div class="label-bottom"><span class="label-sku">${escHtml(b.sku || '')}${b.condition?' · '+escHtml(b.condition):''}</span><span class="label-price">${fd$(b.price)}</span></div>
-    </div>`;
-  })).join('');
+    </div>`);
+    if((i + 1) % LABEL_PRINT_YIELD_EVERY === 0) await new Promise(resolve => setTimeout(resolve, 0));
+  }
+  const labelsHtml = labelParts.join('');
+  if(btn){ btn.disabled = false; btn.textContent = 'PRINT'; }
   const w = window.open('', '_blank', 'width=600,height=800');
   const sheetStyle = `
       @page { margin: 0.25in; }
@@ -41310,7 +41325,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.18.4-staff-list-search-debounce" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.18.5-label-print-chunking" defer></script>
 </body>
 </html>
 
