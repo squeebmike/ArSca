@@ -6217,14 +6217,20 @@ export default {
           const body = await request.json().catch(() => ({}));
           const ids = Array.isArray(body.cardIds) ? body.cardIds : [];
           const duration = body.priceHistoryDuration || url.searchParams.get('priceHistoryDuration') || '90d';
-          const out = [];
-          for (const id of ids.slice(0, 10)) {
+          // No documented JustTCG rate limit requires sequencing these calls
+          // (unlike PriceCharting's pcFetch, which paces itself deliberately
+          // for a real vendor limit) -- run every card lookup in parallel
+          // instead of one at a time despite the "batch" name. A single id
+          // that fails both the primary and fallback lookup still rejects
+          // the whole batch (via Promise.all), matching the original
+          // sequential loop's all-or-nothing failure behavior.
+          const results = await Promise.all(ids.slice(0, 10).map(async id => {
             const data = await justFetch('/cards/' + encodeURIComponent(id), { priceHistory: 'true', priceHistoryDuration: duration, includeVariants: 'true' })
               .catch(() => justFetch('/cards', { id, cardId: id, limit: 1, priceHistory: 'true', priceHistoryDuration: duration, includeVariants: 'true' }));
             const card = Array.isArray(data) ? data[0] : (data.card || data.data?.[0] || data.data || data);
-            if (card) out.push(normalizeJustCard(card));
-          }
-          return json({ ok: true, success: true, source: 'justtcg', matches: out });
+            return card ? normalizeJustCard(card) : null;
+          }));
+          return json({ ok: true, success: true, source: 'justtcg', matches: results.filter(Boolean) });
         }
         if (searchMatch) {
           const q = (url.searchParams.get('q') || '').trim();
@@ -6488,7 +6494,11 @@ export default {
           const wait = _pcLastCall > 0 ? Math.max(0, 1100 - (Date.now() - _pcLastCall)) : 0;
           if (wait > 0) await new Promise(resolve => setTimeout(resolve, wait));
           _pcLastCall = Date.now();
-          const res = await fetch(pcUrl(path) + '?' + qs.toString(), { headers: { 'Accept': 'application/json' } });
+          // Edge-cached like the other PriceCharting lookups in this file
+          // (see the image-lookup calls above) -- without this, every repeat
+          // lookup of the same card by any staff member paid the full
+          // ~1.1s rate-limit pace again instead of being served from cache.
+          const res = await fetch(pcUrl(path) + '?' + qs.toString(), { headers: { 'Accept': 'application/json' }, cf: { cacheTtl: 300, cacheEverything: false } });
           const text = await res.text();
           let data; try { data = JSON.parse(text); } catch (_) { data = { raw: text }; }
           if (!res.ok || data.status === 'error') throw new Error(data['error-message'] || data.error || 'PriceCharting ' + res.status);
