@@ -2444,6 +2444,8 @@ export default {
         pokemonprice: !!(env.POKEMONPRICE_API_KEY || env.POKEMON_PRICE_TRACKER_API_KEY),
         soldcomps: !!env.SOLDCOMPS_API_KEY,
         shippo: !!env.SHIPPO_API_TOKEN,
+        twilio: !!(env.TWILIO_ACCOUNT_SID && env.TWILIO_AUTH_TOKEN && env.TWILIO_FROM_NUMBER),
+        sendgrid: !!(env.SENDGRID_API_KEY && env.SENDGRID_FROM_EMAIL),
         kv: !!env.LBA_KV,
         mtgCatalogR2: !!env.MTG_CATALOG_R2,
         supabaseAdmin: !!(env.SUPABASE_URL && (env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SERVICE_KEY)),
