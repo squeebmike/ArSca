@@ -25,6 +25,7 @@
 // It has zero Node dependencies (pure-JS SHA-1), so it bundles straight into
 // the Worker -- reused here instead of duplicating checklist-parsing logic.
 import { buildChecklistIndex, parseChecklistText, sha1Hex, slugify } from './scripts/topps-checklist-parser.js';
+import { handleFocRequest, syncFocStripeEvent } from './scripts/foc-preorders.mjs';
 
 // Per-isolate rate limiter for PriceCharting API (no KV needed). _pcQueueTail
 // serializes the check-and-update of _pcLastCall itself so concurrent callers
@@ -521,6 +522,20 @@ async function requireStoreUser(request, env, storeId, allowedRoles = ['owner','
   return { user, role, token };
 }
 
+// Customer-facing FOC routes use the same Supabase Auth project as the staff
+// dashboard, but do not require a store_members row. Private preorder records
+// are still keyed to this verified auth.users id and protected by RLS.
+async function requireAuthenticatedUser(request, env) {
+  const token = String(request.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '');
+  if (!token) return { error:json({ ok:false, error:'Sign in to preorder exact covers' }, 401) };
+  const { base, key } = supabaseAdminConfig(env);
+  const response = await fetch(`${base}/auth/v1/user`, { headers:{ apikey:key, Authorization:`Bearer ${token}` } });
+  if (!response.ok) return { error:json({ ok:false, error:'Your sign-in expired. Please sign in again.' }, 401) };
+  const user = await response.json();
+  if (!user?.id) return { error:json({ ok:false, error:'Authenticated customer was not found' }, 401) };
+  return { user, token };
+}
+
 // Write access to the shared, cross-store comic cover archive: any signed-in
 // store user, any role. Open for now since the app has no real user base
 // yet to worry about bad-faith edits from; revisit if that changes.
@@ -1001,6 +1016,7 @@ async function syncStripeWebhookPayment(env, event, mode) {
       await fulfillStorefrontOrderInventory(env,payment.sale_id,payment.store_id).catch(e=>console.error('Storefront order fulfillment failed:',e.message));
     }
   }
+  await syncFocStripeEvent(env,event,{supabaseAdminFetch}).catch(error=>console.error(JSON.stringify({message:'FOC preorder Stripe sync failed',error:error.message,intentId})));
   if(event.type.startsWith('refund.')){await supabaseAdminFetch(env,`pos_refunds?stripe_refund_id=eq.${encodeURIComponent(object.id)}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({status:object.status||event.type.replace('refund.',''),failure_reason:object.failure_reason||'',updated_at:new Date().toISOString()})});}
   if(event.type==='account.updated'){const storeId=object.metadata?.arsca_store_id;if(storeId){const status=safeStripeAccount(object,mode);await saveStripeAccount(env,storeId,status);}}
 }
@@ -2414,6 +2430,13 @@ export default {
 
     if (url.pathname === '/stripe/config-status' || url.pathname === '/stripe/webhook' || url.pathname.startsWith('/stripe/connect/') || url.pathname.startsWith('/stripe/payments/') || url.pathname === '/stripe/refunds/create') {
       return await handleStripeFoundation(request, env, url);
+    }
+
+    if (url.pathname === '/public/preorders' || url.pathname.startsWith('/public/preorders/') || url.pathname === '/public/shipping/quotes' || url.pathname.startsWith('/foc/admin/')) {
+      return await handleFocRequest(request, env, url, {
+        CORS, json, supabaseAdminFetch, requireStoreUser, requireAuthenticatedUser,
+        readJsonWithLimit, enforceUsageLimit, stripeApi, stripeMode, stripeConfig,
+      });
     }
 
     if (url.pathname === '/health') {
