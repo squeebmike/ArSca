@@ -314,7 +314,19 @@ async function confirmStorefrontPayment(){
 const DEFAULT_STORE_ID='0f9dd4bc-42a7-487e-a972-2905d24513e9';
 async function start(){const store=new URLSearchParams(location.search).get('store')||DEFAULT_STORE_ID;if(!store){document.getElementById('grid').innerHTML='<div class="empty">Missing store link.</div>';return}currentStoreId=store;try{const r=await fetch(`${WORKER}/public/storefront?store_id=${encodeURIComponent(store)}&_=${Date.now()}`,{cache:'no-store'}),d=await r.json();if(!r.ok)throw new Error(d.error||'Storefront unavailable');payload=d;document.title=`${d.store.name} Inventory`;const desc=`Shop ${d.store.name} — sports cards, Pokémon TCG, One Piece TCG, comics and sealed product. Real market pricing, buy online for pickup or shipping.`;document.querySelector('meta[name="description"]')?.setAttribute('content',desc);document.querySelector('meta[property="og:title"]')?.setAttribute('content',`${d.store.name} Inventory`);document.querySelector('meta[property="og:description"]')?.setAttribute('content',desc);document.getElementById('store-name').textContent=d.store.name;document.getElementById('store-message').textContent=d.store.message||[d.store.location,'Browse available inventory'].filter(Boolean).join(' · ');if(d.store.logo){const logo=document.getElementById('logo');logo.onerror=()=>{logo.hidden=true};logo.src=d.store.logo;logo.hidden=false}fill('category',d.items.map(i=>i.category));refreshProductTypeOptions();fill('year',d.items.map(i=>i.year));fill('condition',d.items.map(i=>i.condition));cart=cart.filter(c=>d.items.some(i=>i.id===c.id));saveCart();render();}catch(e){document.getElementById('grid').innerHTML=`<div class="empty">${esc(e.message)}</div>`;document.getElementById('store-message').textContent='This catalog is not currently available.';}}
 document.getElementById('category').addEventListener('change', refreshProductTypeOptions);
-document.querySelectorAll('.controls input,.controls select').forEach(el=>el.addEventListener(el.tagName==='INPUT'?'input':'change',render));
+// render() filters the entire catalog and rebuilds the whole product grid --
+// real work on a shop with hundreds/thousands of items. The search box used
+// to call it directly on every keystroke; debounce it so it only runs once
+// the customer pauses typing. The dropdown filters stay on 'change' (already
+// a discrete, infrequent event, not a keystroke stream) so picking one still
+// feels instant.
+function debounce(fn, waitMs){
+  let timer=null;
+  return function(...args){ clearTimeout(timer); timer=setTimeout(()=>fn.apply(this,args), waitMs); };
+}
+const renderDebounced = debounce(render, 200);
+document.querySelectorAll('.controls input').forEach(el=>el.addEventListener('input', renderDebounced));
+document.querySelectorAll('.controls select').forEach(el=>el.addEventListener('change', render));
 updateCartFab();
 start();
 </script></body></html>

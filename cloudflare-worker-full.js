@@ -2572,6 +2572,18 @@ export default {
       if (!requestedItems.length) return json({ ok:false, error:'Your cart is empty' }, 400);
       const cleanUrlLoose = v => { const s = String(v == null ? '' : v).trim().slice(0, 1000); return /^https?:\/\//i.test(s) || /^data:image\//i.test(s) ? s : ''; };
 
+      // Every requested item used to be re-verified with its own sequential
+      // awaited fetch -- up to 20 round trips, one at a time, directly on the
+      // customer-facing checkout path. Validate id shape up front (no network
+      // needed) and batch-fetch every row in a single id=in.(...) query
+      // instead, then apply the exact same per-item checks against that
+      // batch below in the original order, so error precedence (first bad
+      // item wins) is unchanged.
+      const requestedIds = requestedItems.map(req => String(req.itemId || '').trim());
+      if (requestedIds.some(id => !/^[0-9a-f-]{36}$/i.test(id))) return json({ ok:false, error:'Invalid item in cart' }, 400);
+      const { data:fetchedRows } = await supabaseAdminFetch(env, `inventory_items?id=in.(${requestedIds.map(id => encodeURIComponent(id)).join(',')})&store_id=eq.${encodeURIComponent(storeId)}&select=id,data,status`);
+      const rowById = new Map((fetchedRows || []).map(row => [row.id, row]));
+
       const lineItems = [];
       let subtotalCents = 0;
       let totalQuantity = 0;
@@ -2579,9 +2591,7 @@ export default {
       for (const req of requestedItems) {
         const itemId = String(req.itemId || '').trim();
         const qty = Math.max(1, Math.min(10, Number(req.quantity || 1)));
-        if (!/^[0-9a-f-]{36}$/i.test(itemId)) return json({ ok:false, error:'Invalid item in cart' }, 400);
-        const { data:rows } = await supabaseAdminFetch(env, `inventory_items?id=eq.${encodeURIComponent(itemId)}&store_id=eq.${encodeURIComponent(storeId)}&select=id,data,status&limit=1`);
-        const row = rows?.[0];
+        const row = rowById.get(itemId);
         if (!row) return json({ ok:false, error:'An item in your cart is no longer available' }, 404);
         const d = row.data || {};
         const availableQty = Number(d.quantity ?? d.qty ?? 1) || 0;
