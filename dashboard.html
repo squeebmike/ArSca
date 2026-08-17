@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.18.3-storefront-perf-fixes">
+<meta name="version" content="2026.08.18.4-staff-list-search-debounce">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1587,13 +1587,13 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.18.3-storefront-perf-fixes" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.18.3-storefront-perf-fixes" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.18.3-storefront-perf-fixes" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.18.3-storefront-perf-fixes" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.18.3-storefront-perf-fixes" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.18.3-storefront-perf-fixes" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.18.3-storefront-perf-fixes" defer></script>
+<script src="scripts/query-routing.js?v=2026.08.18.4-staff-list-search-debounce" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.18.4-staff-list-search-debounce" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.18.4-staff-list-search-debounce" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.18.4-staff-list-search-debounce" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.18.4-staff-list-search-debounce" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.18.4-staff-list-search-debounce" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.18.4-staff-list-search-debounce" defer></script>
 </head>
 <body>
 
@@ -1643,11 +1643,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.18.3-storefront-perf-fixes</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.18.4-staff-list-search-debounce</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.18.3-storefront-perf-fixes</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.18.4-staff-list-search-debounce</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1669,7 +1669,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.18.3-storefront-perf-fixes</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.18.4-staff-list-search-debounce</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -1868,7 +1868,7 @@ body.show-mode .inv-sync-badge{display:none;}
   </div>
   <div class="sec" id="sold-items-sec">SOLD ITEMS</div>
   <div class="tc">
-    <input class="tsi" id="sold-q" placeholder="Search sold items..." oninput="filterSold()">
+    <input class="tsi" id="sold-q" placeholder="Search sold items..." oninput="filterSoldDebounced()">
   </div>
   <div class="tbl-wrap">
     <table>
@@ -2030,7 +2030,7 @@ body.show-mode .inv-sync-badge{display:none;}
       <button class="hbtn" onclick="toggleEbayBulkSelectAll(false)">SELECT NONE</button>
       <label style="font-family:var(--font-mono);font-size:9px;color:var(--dim);display:flex;align-items:center;gap:5px"><input type="checkbox" id="ebay-bulk-use-ai" checked> Use AI descriptions</label>
     </div>
-    <input id="ebay-bulk-search" placeholder="Search listable items by name, set, or category..." oninput="renderEbayBulkList()" style="width:100%;margin-bottom:8px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:8px;border-radius:6px;box-sizing:border-box;font-family:var(--font-mono);font-size:11px">
+    <input id="ebay-bulk-search" placeholder="Search listable items by name, set, or category..." oninput="renderEbayBulkListDebounced()" style="width:100%;margin-bottom:8px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:8px;border-radius:6px;box-sizing:border-box;font-family:var(--font-mono);font-size:11px">
     <div id="ebay-bulk-list" style="display:grid;gap:6px;max-height:360px;overflow-y:auto;margin-bottom:10px">
       <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);padding:10px;border:1px dashed var(--border);border-radius:8px;text-align:center">Click LOAD LISTABLE ITEMS to see in-stock items not already listed on eBay.</div>
     </div>
@@ -2664,7 +2664,7 @@ body.show-mode .inv-sync-badge{display:none;}
   <div class="sec">CUSTOMER INVENTORY BROWSER</div>
   <div class="panel" style="max-width:1400px;margin:0 auto 14px">
     <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px"><div><h2 data-vendor-store style="font-family:'Orbitron';color:var(--g)">STORE INVENTORY</h2><div style="color:var(--dim);font-size:11px">Browse what is currently available. Cost and private store data are hidden.</div></div><button class="hbtn" onclick="enterCustomerBrowseMode()">CUSTOMER FULL SCREEN</button></div>
-    <div class="cs-browser-controls"><input class="tsi" id="customer-inv-search" placeholder="Search name, set, year, category..." oninput="renderCustomerInventoryBrowser()" style="margin:0"><select class="tsi" id="customer-inv-category" onchange="renderCustomerInventoryBrowser()" style="margin:0"><option value="all">All categories</option></select><select class="tsi" id="customer-inv-sort" onchange="renderCustomerInventoryBrowser()" style="margin:0"><option value="name">Name</option><option value="price-low">Price: low to high</option><option value="price-high">Price: high to low</option><option value="newest">Newest added</option></select></div>
+    <div class="cs-browser-controls"><input class="tsi" id="customer-inv-search" placeholder="Search name, set, year, category..." oninput="renderCustomerInventoryBrowserDebounced()" style="margin:0"><select class="tsi" id="customer-inv-category" onchange="renderCustomerInventoryBrowser()" style="margin:0"><option value="all">All categories</option></select><select class="tsi" id="customer-inv-sort" onchange="renderCustomerInventoryBrowser()" style="margin:0"><option value="name">Name</option><option value="price-low">Price: low to high</option><option value="price-high">Price: high to low</option><option value="newest">Newest added</option></select></div>
     <div id="customer-inv-count" style="font-family:var(--font-mono);font-size:10px;color:var(--dim);margin:8px 0"></div>
     <div id="customer-inventory-grid" class="comic-cover-grid"></div>
   </div>
@@ -3433,7 +3433,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.18.3-storefront-perf-fixes';
+const APP_VERSION = '2026.08.18.4-staff-list-search-debounce';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -6039,6 +6039,12 @@ function exitCustomerDisplayMode(){
 function enterCustomerBrowseMode(){document.body.classList.add('customer-browse-mode');switchTab('browse');renderCustomerInventoryBrowser();}
 function exitCustomerBrowseMode(){document.body.classList.remove('customer-browse-mode');}
 function renderCustomerInventoryBrowser(){const host=document.getElementById('customer-inventory-grid');if(!host)return;const search=(document.getElementById('customer-inv-search')?.value||'').toLowerCase().trim(),cat=document.getElementById('customer-inv-category'),sort=document.getElementById('customer-inv-sort')?.value||'name';const stock=(all||[]).filter(i=>i.status==='in_stock'&&i.lifecycle!=='archived'&&i.lifecycle!=='hold');const categories=[...new Set(stock.map(i=>i.category||'Other'))].sort();if(cat){const selected=cat.value;cat.innerHTML='<option value="all">All categories</option>'+categories.map(c=>`<option value="${escHtml(c)}">${escHtml(c)}</option>`).join('');cat.value=categories.includes(selected)?selected:'all';}let rows=stock.filter(i=>(!search||[i.name,i.set,i.year,i.category,i.variant].join(' ').toLowerCase().includes(search))&&(!cat||cat.value==='all'||i.category===cat.value));rows.sort(sort==='price-low'?(a,b)=>inventoryListPrice(a)-inventoryListPrice(b):sort==='price-high'?(a,b)=>inventoryListPrice(b)-inventoryListPrice(a):sort==='newest'?(a,b)=>new Date(b.addedAt||0)-new Date(a.addedAt||0):(a,b)=>String(a.name).localeCompare(String(b.name)));document.getElementById('customer-inv-count').textContent=rows.length+' available item'+(rows.length===1?'':'s');host.innerHTML=rows.length?rows.slice(0,500).map(i=>{const image=inventoryImageUrl(i),price=inventoryListPrice(i)||inventoryMarketPrice(i);return `<article class="comic-cover-card" style="cursor:pointer" onclick="openCustomerItemDetail('${escHtml(i.id)}')">${image?`<img class="comic-cover-img" src="${escHtml(image)}" alt="${escHtml(i.name)}" loading="lazy">`:'<div class="comic-cover-img" style="display:grid;place-items:center;color:var(--dim)">NO IMAGE</div>'}<h3 style="font-size:14px;margin:8px 0 4px">${escHtml(i.name)}</h3><div style="font-size:10px;color:var(--dim)">${escHtml([i.set,i.year,i.variant,i.condition].filter(Boolean).join(' · '))}</div><div style="font-family:'Orbitron';font-size:18px;color:var(--g);margin-top:8px">${price?fd$(price):'ASK FOR PRICE'}</div></article>`;}).join(''):'<div class="empty"><div class="empty-t">NO MATCHING ITEMS</div></div>';}
+// The search box calls this debounced wrapper -- renderCustomerInventoryBrowser()
+// filters the full in-stock array, rebuilds the category <select>, and
+// builds up to 500 image cards on every call, real work to redo on every
+// keystroke on this customer-facing kiosk view. Category/sort dropdowns and
+// enterCustomerBrowseMode() still call the immediate version directly.
+const renderCustomerInventoryBrowserDebounced = debounce(renderCustomerInventoryBrowser, 200);
 
 // Book details/story/creators panel for the Customer Inventory Browser's
 // item popup -- a customer-facing preview, so it deliberately omits the
@@ -17524,6 +17530,13 @@ function renderSoldTable(){
   }).join('');
 }
 function filterSold(){ renderSoldTable(); }
+// renderSoldTable() re-parses the full pos_transactions blob from
+// localStorage and re-runs the sold/transaction dedup+merge pipeline before
+// its render cap even applies -- real work to redo on every keystroke, same
+// class of bug the inventory search debounce already fixed. The search box
+// calls this debounced wrapper instead; every non-typing caller (VOID,
+// post-sale refreshes) still calls filterSold()/renderSoldTable() directly.
+const filterSoldDebounced = debounce(filterSold, 200);
 
 function viewSalesByCategory(category){
   switchTab('sales');
@@ -21841,6 +21854,12 @@ function ebayBulkCheckboxChanged(cb){
   renderEbayBulkCount();
 }
 
+// Every matching item used to render into the DOM with no cap at all --
+// unlike Sold Items (capped at 100) and Customer Browse (capped at 500),
+// this was fully unbounded. 300 checkboxes is already more than a "select a
+// batch to list" workflow needs at once; narrowing the search is the
+// intended way to find more.
+const EBAY_BULK_LIST_RENDER_CAP = 300;
 function renderEbayBulkList(){
   const host = document.getElementById('ebay-bulk-list');
   if(!host) return;
@@ -21854,7 +21873,9 @@ function renderEbayBulkList(){
     host.innerHTML = `<div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);padding:10px;border:1px dashed var(--border);border-radius:8px;text-align:center">${query?'No listable items match "'+escHtml(query)+'".':'No in-stock items are waiting to be listed.'}</div>`;
     return;
   }
-  host.innerHTML = filtered.map(i => {
+  const shown = filtered.slice(0, EBAY_BULK_LIST_RENDER_CAP);
+  const overflow = filtered.length - shown.length;
+  host.innerHTML = shown.map(i => {
     const money = inventoryProfitStats(i);
     const price = money.list>0?money.list:money.market;
     const thumbSrc = inventoryImageUrl(i);
@@ -21867,8 +21888,11 @@ function renderEbayBulkList(){
         <div style="font-family:var(--font-mono);font-size:9px;color:var(--dim)">${escHtml(i.category||'')}${price?' · '+fd$(price):''}</div>
       </div>
     </label>`;
-  }).join('');
+  }).join('') + (overflow > 0 ? `<div style="font-family:var(--font-mono);font-size:9px;color:var(--dim);padding:6px;text-align:center">+ ${overflow} more match -- refine your search to see them</div>` : '');
 }
+// The search box calls this debounced wrapper; LOAD LISTABLE ITEMS still
+// calls renderEbayBulkList() directly for instant feedback on click.
+const renderEbayBulkListDebounced = debounce(renderEbayBulkList, 200);
 
 function toggleEbayBulkSelectAll(checked){
   document.querySelectorAll('.ebay-bulk-cb').forEach(cb => {
@@ -41286,7 +41310,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.18.3-storefront-perf-fixes" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.18.4-staff-list-search-debounce" defer></script>
 </body>
 </html>
 
