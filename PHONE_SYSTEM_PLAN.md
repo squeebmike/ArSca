@@ -1,7 +1,26 @@
 # The Mana Pocket Phone + SMS System — Planning Notes
 
-Status: **ON HOLD** — spec received and audited 2026-08-18, no implementation started.
-Resume by answering the two open questions below, then proceed with the milestone-one plan.
+Status: **IN PROGRESS** — resumed 2026-08-19 night, building milestone-one unattended.
+
+## Answers to the open questions (2026-08-19)
+
+1. **Multi-tenant scope: single-tenant.** Just The Mana Pocket runs on this
+   dashboard/worker today. No other real shop needs isolation from this store's
+   ring group/phone identities. Schema still carries `store_id` for consistency
+   with the rest of the app's pattern, but no complex per-store TwiML App/SIP
+   Domain provisioning is needed -- one shared TwiML App/Voice identity scheme
+   scoped to this one store is sufficient.
+2. **Personal-phone forwarding: stays forever, permanent backup.** The existing
+   blind-relay-to-personal-phones behavior (voice ring-all + SMS relay) keeps
+   running indefinitely alongside the new browser softphone/inbox, not just
+   during rollout. New `<Client>`/inbox functionality is ADDITIVE to the
+   existing `<Number>` ring-all, never a replacement.
+3. **Scope for the unattended overnight build: milestone-one only.** Schema,
+   webhooks, browser softphone, expanded-but-preserved ring group, outbound
+   calling, Call From My Phone, SMS/MMS with real persistence. Voicemail,
+   business hours, and the full settings UI are separate follow-on milestones.
+   The SIP desk phone is deferred indefinitely -- the user doesn't own the
+   physical device yet, so there's nothing to register/test it against.
 
 ## The ask
 
