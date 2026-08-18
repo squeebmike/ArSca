@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.19.10-qr-pricecharting-link">
+<meta name="version" content="2026.08.19.11-label-png-bw-threshold">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1602,14 +1602,14 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.19.10-qr-pricecharting-link" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.19.10-qr-pricecharting-link" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.19.10-qr-pricecharting-link" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.08.19.10-qr-pricecharting-link" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.19.10-qr-pricecharting-link" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.19.10-qr-pricecharting-link" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.19.10-qr-pricecharting-link" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.19.10-qr-pricecharting-link" defer></script>
+<script src="scripts/query-routing.js?v=2026.08.19.11-label-png-bw-threshold" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.19.11-label-png-bw-threshold" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.19.11-label-png-bw-threshold" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.08.19.11-label-png-bw-threshold" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.19.11-label-png-bw-threshold" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.19.11-label-png-bw-threshold" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.19.11-label-png-bw-threshold" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.19.11-label-png-bw-threshold" defer></script>
 </head>
 <body>
 
@@ -1659,11 +1659,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.19.10-qr-pricecharting-link</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.19.11-label-png-bw-threshold</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.19.10-qr-pricecharting-link</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.19.11-label-png-bw-threshold</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1685,7 +1685,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.19.10-qr-pricecharting-link</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.19.11-label-png-bw-threshold</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3464,7 +3464,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.19.10-qr-pricecharting-link';
+const APP_VERSION = '2026.08.19.11-label-png-bw-threshold';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -39055,6 +39055,29 @@ function loadWrapLogoImage(){
   });
 }
 
+// A thermal printer/app can only output pure black or white, but everything
+// this file draws onto a canvas -- text, the QR/barcode, the logo -- comes
+// out with anti-aliased (soft gray) edges, since that's how Canvas2D always
+// renders. Handed that gray, the printer app has to guess how to dither
+// every one of those edge pixels into a stipple pattern to fake it, which
+// is exactly the grainy look confirmed against a real MUNBYN print preview
+// (still grainy even once the label size itself was correct, so it wasn't
+// a scaling artifact -- it's this). Thresholding every pixel to pure black
+// or white ourselves, before the PNG is generated, removes all the gray the
+// app would otherwise have to dither, so the print comes out crisp
+// regardless of the app's own image-processing settings.
+function thresholdCanvasToBW(canvas, cutoff = 128){
+  const ctx = canvas.getContext('2d');
+  const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const d = img.data;
+  for(let i = 0; i < d.length; i += 4){
+    const luminance = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+    const v = luminance < cutoff ? 0 : 255;
+    d[i] = d[i + 1] = d[i + 2] = v;
+  }
+  ctx.putImageData(img, 0, 0);
+}
+
 async function downloadInventoryLabelPngs(){
   if(!labelPrintBatch.length) return alert('Add at least one item to print');
   if(typeof JsBarcode === 'undefined') return alert('Barcode library still loading -- try again in a moment');
@@ -39122,6 +39145,7 @@ async function downloadInventoryLabelPngs(){
       ctx.textAlign = 'right';
       ctx.fillText(fdLabelPrice$(b.price), w - pad, h * 0.78);
     }
+    thresholdCanvasToBW(canvas);
     const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
     const safeName = String(b.name || 'label').toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 30) || 'label';
     seenNames[safeName] = (seenNames[safeName] || 0) + 1;
@@ -41792,7 +41816,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.19.10-qr-pricecharting-link" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.19.11-label-png-bw-threshold" defer></script>
 </body>
 </html>
 
