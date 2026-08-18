@@ -188,19 +188,12 @@ async function orderedQtyBySku(db, cycleId) {
   return totals;
 }
 
-async function loadCatalog(db, storeId, requestedCycle, includeAdmin = false) {
-  let cycleQuery = `foc_cycles?store_id=eq.${encodeURIComponent(storeId)}&select=${catalogCycleSelect()}`;
-  if (requestedCycle) {
-    const key = text(requestedCycle, 80);
-    cycleQuery += /^\d{4}-\d{2}-\d{2}$/.test(key) ? `&foc_date=eq.${key}` : `&id=eq.${encodeURIComponent(key)}`;
-  }
-  cycleQuery += '&order=foc_date.desc&limit=1';
-  let { data:cycles } = await db(cycleQuery);
-  if (!cycles?.length && !requestedCycle) {
-    ({ data:cycles } = await db(`foc_cycles?store_id=eq.${encodeURIComponent(storeId)}&select=${catalogCycleSelect()}&order=foc_date.desc&limit=1`));
-  }
-  const cycle = cycles?.[0];
-  if (!cycle) return null;
+// Builds one cycle's full customer-facing catalog (families + variant SKUs).
+// Split out from loadCatalog so the multi-week /public/preorders/weeks route
+// can build several cycles' catalogs in parallel without duplicating this --
+// each week needs its own qualification math (incentive ratios are scoped
+// to that week's orders only, never blended across weeks).
+async function buildCycleCatalog(db, cycle, includeAdmin = false) {
   const [{ data:families }, { data:skuRows }, qtyMap, requestRows] = await Promise.all([
     db(`comic_title_families?cycle_id=eq.${encodeURIComponent(cycle.id)}&select=*&order=title.asc`),
     db(`comic_skus?cycle_id=eq.${encodeURIComponent(cycle.id)}&customer_enabled=eq.true&select=*&order=title.asc`),
@@ -255,6 +248,36 @@ async function loadCatalog(db, storeId, requestedCycle, includeAdmin = false) {
     family.variants.sort((a,b) => Number(a.isIncentive) - Number(b.isIncentive) || Number(a.ratioThreshold || 0) - Number(b.ratioThreshold || 0) || a.variantLabel.localeCompare(b.variantLabel));
   }
   return { cycle:{ ...cycle, isOpen:cycleOpen(cycle), serverNow:new Date().toISOString() }, families:[...byFamily.values()] };
+}
+
+async function loadCatalog(db, storeId, requestedCycle, includeAdmin = false) {
+  let cycleQuery = `foc_cycles?store_id=eq.${encodeURIComponent(storeId)}&select=${catalogCycleSelect()}`;
+  if (requestedCycle) {
+    const key = text(requestedCycle, 80);
+    cycleQuery += /^\d{4}-\d{2}-\d{2}$/.test(key) ? `&foc_date=eq.${key}` : `&id=eq.${encodeURIComponent(key)}`;
+  }
+  cycleQuery += '&order=foc_date.desc&limit=1';
+  let { data:cycles } = await db(cycleQuery);
+  if (!cycles?.length && !requestedCycle) {
+    ({ data:cycles } = await db(`foc_cycles?store_id=eq.${encodeURIComponent(storeId)}&select=${catalogCycleSelect()}&order=foc_date.desc&limit=1`));
+  }
+  const cycle = cycles?.[0];
+  if (!cycle) return null;
+  return buildCycleCatalog(db, cycle, includeAdmin);
+}
+
+// Every open (or recently-closed) week at once, newest first -- this is
+// what a customer-facing page needs to render one section per FOC week
+// with its own countdown, instead of loadCatalog's single latest-week
+// view silently hiding every prior week the moment a new one is imported.
+// Archived cycles are the one explicit "hide this for good" state (set via
+// the admin cycle PATCH) and are excluded; open and closed cycles both stay
+// visible so customers can see a running history, not just what's still
+// orderable.
+export async function loadAllCatalogs(db, storeId, includeAdmin = false) {
+  const { data:cycles } = await db(`foc_cycles?store_id=eq.${encodeURIComponent(storeId)}&select=${catalogCycleSelect()}&status=neq.archived&order=foc_date.desc&limit=26`);
+  if (!cycles?.length) return [];
+  return Promise.all(cycles.map(cycle => buildCycleCatalog(db, cycle, includeAdmin)));
 }
 
 async function importPrh(request, env, deps, storeId) {
@@ -592,6 +615,9 @@ export async function handleFocRequest(request, env, url, deps) {
   if(path==='/public/shipping/quotes'&&request.method==='POST')return quoteShipping(request,env,deps);
   if(path==='/public/preorders'&&request.method==='GET'){
     const storeId=text(url.searchParams.get('store_id'),80);const db=(p,o)=>deps.supabaseAdminFetch(env,p,o);const catalog=await loadCatalog(db,storeId,url.searchParams.get('cycle')||'',false);return catalog?deps.json({ok:true,...catalog}):deps.json({ok:false,error:'No FOC catalog is published yet'},404);
+  }
+  if(path==='/public/preorders/weeks'&&request.method==='GET'){
+    const storeId=text(url.searchParams.get('store_id'),80);const db=(p,o)=>deps.supabaseAdminFetch(env,p,o);const cycles=await loadAllCatalogs(db,storeId,false);return deps.json({ok:true,cycles});
   }
   if(path==='/public/preorders/checkout'&&request.method==='POST')return preorderCheckout(request,env,deps);
   if(path==='/public/preorders/waitlist'&&request.method==='POST')return waitlist(request,env,deps);
