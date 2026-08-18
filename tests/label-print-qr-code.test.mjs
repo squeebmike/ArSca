@@ -28,7 +28,7 @@ assert.match(dashboard, /codeStyleEl\.value = localStorage\.getItem\('label_prin
 // ── Contract: a shared helper renders either a barcode or a QR code onto a canvas,
 // using the vendored library's real matrix API (qrcode(...).addData/.make/.isDark),
 // not the nonexistent QRCode.toCanvas API from the broken CDN build ──
-assert.match(dashboard, /async function generateLabelCodeCanvas\(value, style\)\{/, 'missing generateLabelCodeCanvas helper');
+assert.match(dashboard, /async function generateLabelCodeCanvas\(value, style, size = 220\)\{/, 'missing generateLabelCodeCanvas helper');
 assert.match(dashboard, /if\(style === 'qr' && typeof qrcode !== 'undefined'\)\{/, 'the helper must only attempt QR generation when the vendored qrcode library has actually loaded');
 assert.match(dashboard, /const qr = qrcode\(0, 'M'\);/, 'QR generation must use the vendored library\'s constructor (auto type-size, M error correction)');
 assert.match(dashboard, /qr\.addData\(String\(value \|\| ''\)\);/, 'the value must be added to the QR matrix');
@@ -42,8 +42,8 @@ assert.match(dashboard, /JsBarcode\(canvas, value, \{ format:'CODE128', displayV
 // than a QR does on that smaller, more square-ish back face ──
 const codeStyleReads = dashboard.match(/const codeStyle = isWrap \? 'qr' : \(document\.getElementById\('label-print-code-style'\)\?\.value \|\| 'barcode'\);/g) || [];
 assert.equal(codeStyleReads.length, 2, 'both printInventoryLabels and downloadInventoryLabelPngs must force QR for wrap and otherwise read the code-style dropdown');
-assert.match(dashboard, /const canvas = await generateLabelCodeCanvas\(codeStyle === 'qr' \? labelQrPayload\(b\) : \(b\.sku \|\| b\.id\), codeStyle\);/, 'printInventoryLabels must generate its code image via the shared helper');
-assert.match(dashboard, /const codeCanvas = await generateLabelCodeCanvas\(codeStyle === 'qr' \? labelQrPayload\(b\) : \(b\.sku \|\| b\.id\), codeStyle\);/, 'downloadInventoryLabelPngs must generate its code image via the shared helper');
+assert.match(dashboard, /const canvas = await generateLabelCodeCanvas\(codeStyle === 'qr' \? labelQrPayload\(b\) : \(b\.sku \|\| b\.id\), codeStyle, codeGenSize\);/, 'printInventoryLabels must generate its code image via the shared helper');
+assert.match(dashboard, /const codeCanvas = await generateLabelCodeCanvas\(codeValue, codeStyle, Math\.round\(codeSize\)\);/, 'downloadInventoryLabelPngs must generate its wrap-layout code image via the shared helper, at the code\'s real on-label size');
 
 // ── Contract: scan-to-cart (reading our own printed labels back into the cart) must
 // accept QR as a detectable format alongside the existing linear formats -- this is
@@ -81,6 +81,21 @@ console.log('Label QR code contract checks passed');
   const longUuid = moduleGrid('3f1c9a2e-6b7d-4e10-9c3a-1f8e5d2b7a44');
   assert.ok(longUuid.count > short.count, 'a long UUID fallback value must produce a larger matrix than a short SKU -- proving the library actually scales with input length instead of erroring or truncating');
   assert.ok(longUuid.dark > 0, 'the long-UUID QR matrix must not be blank');
+
+  // ── Regression check: a real (confirmed-broken) scan happened on a QR encoding a
+  // full TCGPlayer URL (labelQrPayload's whole point), which needs a much bigger
+  // module count than a bare SKU. Prove that generating the code directly at its
+  // real on-label size (the fix) gives a safe number of print-head dots per module,
+  // and that the OLD approach -- generate at a fixed 220px canvas, then blurrily
+  // downscale it to fit an 85px wrap back face -- would NOT have. ──
+  const realisticUrlPayload = 'https://www.tcgplayer.com/product/654135?page=1&Language=English&Condition=Near+Mint&wo_sku=WO-2044';
+  const urlGrid = moduleGrid(realisticUrlPayload);
+  const quietZoneModules = 4; // matches generateLabelCodeCanvas's quietZone=2 modules on each side
+
+  const newCellPx = 148 / (urlGrid.count + quietZoneModules); // 148 = the new wrap back-face code size (see label-toploader-wrap.test.mjs)
+  const oldEffectiveCellPx = (220 / (urlGrid.count + quietZoneModules)) * (85 / 220); // old: generate at fixed 220, draw scaled down to 85
+  assert.ok(newCellPx >= 2.5, `generating directly at the real on-label size must leave at least ~2.5 print-head dots per module for a realistic URL payload (got ${newCellPx.toFixed(2)}px/module at ${urlGrid.count}x${urlGrid.count} modules) -- below that, a thermal printer physically cannot resolve adjacent modules as separate`);
+  assert.ok(newCellPx > oldEffectiveCellPx * 1.5, `the fix must leave meaningfully more (>1.5x) print-head dots per module than the old generate-then-downscale approach (new: ${newCellPx.toFixed(2)}px, old: ${oldEffectiveCellPx.toFixed(2)}px) -- this is the actual mechanism behind the confirmed real-device scan failure`);
 }
 
 console.log('Label QR code functional checks passed (verified against the real vendored library)');

@@ -26,8 +26,8 @@ assert.match(dashboard, /return sku;\s*\n\}/, 'labelQrPayload must fall back to 
 // ── Contract: both label paths only use labelQrPayload for QR style -- a linear
 // barcode encoding a ~150-char URL would be absurd/unreadable at label size, so
 // barcode style must keep using the plain compact SKU/ID exactly as before ──
-const qrPayloadCallSites = dashboard.match(/generateLabelCodeCanvas\(codeStyle === 'qr' \? labelQrPayload\(b\) : \(b\.sku \|\| b\.id\), codeStyle\);/g) || [];
-assert.equal(qrPayloadCallSites.length, 2, 'both printInventoryLabels and downloadInventoryLabelPngs must gate labelQrPayload behind codeStyle === \'qr\'');
+assert.match(dashboard, /const canvas = await generateLabelCodeCanvas\(codeStyle === 'qr' \? labelQrPayload\(b\) : \(b\.sku \|\| b\.id\), codeStyle, codeGenSize\);/, 'printInventoryLabels must gate labelQrPayload behind codeStyle === \'qr\'');
+assert.match(dashboard, /const codeValue = codeStyle === 'qr' \? labelQrPayload\(b\) : \(b\.sku \|\| b\.id\);/, 'downloadInventoryLabelPngs must gate labelQrPayload behind codeStyle === \'qr\' (resolved once, used by whichever layout branch runs)');
 
 console.log('Label QR TCGPlayer-link contract checks passed');
 

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.19.11-label-png-bw-threshold">
+<meta name="version" content="2026.08.19.12-wrap-qr-bigger-fix">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1602,14 +1602,14 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.19.11-label-png-bw-threshold" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.19.11-label-png-bw-threshold" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.19.11-label-png-bw-threshold" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.08.19.11-label-png-bw-threshold" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.19.11-label-png-bw-threshold" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.19.11-label-png-bw-threshold" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.19.11-label-png-bw-threshold" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.19.11-label-png-bw-threshold" defer></script>
+<script src="scripts/query-routing.js?v=2026.08.19.12-wrap-qr-bigger-fix" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.19.12-wrap-qr-bigger-fix" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.19.12-wrap-qr-bigger-fix" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.08.19.12-wrap-qr-bigger-fix" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.19.12-wrap-qr-bigger-fix" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.19.12-wrap-qr-bigger-fix" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.19.12-wrap-qr-bigger-fix" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.19.12-wrap-qr-bigger-fix" defer></script>
 </head>
 <body>
 
@@ -1659,11 +1659,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.19.11-label-png-bw-threshold</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.19.12-wrap-qr-bigger-fix</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.19.11-label-png-bw-threshold</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.19.12-wrap-qr-bigger-fix</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1685,7 +1685,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.19.11-label-png-bw-threshold</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.19.12-wrap-qr-bigger-fix</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3464,7 +3464,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.19.11-label-png-bw-threshold';
+const APP_VERSION = '2026.08.19.12-wrap-qr-bigger-fix';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -38878,13 +38878,23 @@ function labelQrPayload(batchEntry){
 // there's no real UPC/SKU, and that many characters squeezed into a 2in-wide
 // CODE128 barcode compresses to bars thinner than a small thermal printer
 // (203 DPI) can resolve, which is exactly what makes those labels unscannable.
-async function generateLabelCodeCanvas(value, style){
+async function generateLabelCodeCanvas(value, style, size = 220){
   const canvas = document.createElement('canvas');
   if(style === 'qr' && typeof qrcode !== 'undefined'){
     try {
       // typeNumber 0 = auto-size to fit the data; 'M' = 15% error-correction,
       // a reasonable middle ground for a printed label that might pick up
-      // smudges or a slightly uneven thermal print.
+      // smudges or a slightly uneven thermal print. Since a QR label can now
+      // encode a full TCGPlayer/PriceCharting URL (labelQrPayload) instead of
+      // a short SKU, the module count here can be much higher than it used
+      // to be -- generating the canvas at the EXACT pixel size it will be
+      // drawn at (the caller passes its real target size) is what keeps
+      // those modules crisp. Generating at a fixed size and then scaling the
+      // canvas down at draw time blurs adjacent modules together via the
+      // browser's default image smoothing, and thresholdCanvasToBW() then
+      // has no way to tell which side of the blur a given pixel belonged to
+      // -- that combination is exactly what produced labels that looked
+      // fine on screen but failed to scan.
       const qr = qrcode(0, 'M');
       qr.addData(String(value || ''));
       qr.make();
@@ -38894,7 +38904,6 @@ async function generateLabelCodeCanvas(value, style){
       // is a safe minimum given the label already has whitespace around
       // where this canvas gets drawn.
       const quietZone = 2;
-      const size = 220;
       const cell = size / (count + quietZone * 2);
       canvas.width = size; canvas.height = size;
       const ctx = canvas.getContext('2d');
@@ -38950,11 +38959,19 @@ async function printInventoryLabels(){
     const b = labelSpecs[i];
     let barcodeImg = '';
     try {
-      const canvas = await generateLabelCodeCanvas(codeStyle === 'qr' ? labelQrPayload(b) : (b.sku || b.id), codeStyle);
-      barcodeImg = `<img src="${canvas.toDataURL('image/png')}" style="width:100%;height:${isRoll?30:36}px;object-fit:contain">`;
+      // A wrap-layout QR gets generated at a much bigger native size and
+      // rendered pixelated (nearest-neighbor, no blur) rather than smoothly
+      // scaled down -- generating small and letting the browser smooth-scale
+      // it up (or a big source blurred down) is what produced a QR that
+      // looked fine but failed to actually scan on a real device.
+      const codeGenSize = isWrap ? 500 : 260;
+      const canvas = await generateLabelCodeCanvas(codeStyle === 'qr' ? labelQrPayload(b) : (b.sku || b.id), codeStyle, codeGenSize);
+      const imgHeight = isWrap ? (isRoll ? 62 : 70) : (isRoll ? 30 : 36);
+      barcodeImg = `<img src="${canvas.toDataURL('image/png')}" style="width:100%;height:${imgHeight}px;object-fit:contain;image-rendering:pixelated">`;
     } catch(e) { barcodeImg = ''; }
     labelParts.push(isWrap ? `<div class="label wrap">
         <div class="wrap-front">
+          <div class="wrap-name">${escHtml(b.name)}</div>
           <div class="wrap-condition">${escHtml(b.condition || '')}</div>
           <div class="wrap-price">${fdLabelPrice$(b.price)}</div>
         </div>
@@ -39001,7 +39018,8 @@ async function printInventoryLabels(){
       .label.wrap .wrap-front, .label.wrap .wrap-back { width:50%; height:100%; box-sizing:border-box; display:flex; flex-direction:column; align-items:center; overflow:hidden; }
       .label.wrap .wrap-front { padding:5px 6px; justify-content:center; gap:4px; border-right:1px dashed #999; }
       .label.wrap .wrap-back { padding:5px 6px; justify-content:center; gap:3px; }
-      .wrap-logo { max-width:80%; max-height:28px; object-fit:contain; filter:grayscale(1) contrast(1.3); }
+      .wrap-logo { max-width:70%; max-height:18px; object-fit:contain; filter:grayscale(1) contrast(1.3); }
+      .wrap-name { font-size:7px; font-weight:700; line-height:1.1; max-height:16px; overflow:hidden; text-align:center; }
       .wrap-condition { font-size:12px; font-weight:800; text-transform:uppercase; }
       .wrap-price { font-size:20px; font-weight:900; line-height:1; }`;
   w.document.write(`<html><head><title>Labels</title>
@@ -39104,32 +39122,56 @@ async function downloadInventoryLabelPngs(){
     const canvas = document.createElement('canvas');
     canvas.width = w; canvas.height = h;
     const ctx = canvas.getContext('2d');
+    // Every element drawn here gets flattened to pure black/white by
+    // thresholdCanvasToBW() anyway, so smooth (blurred) scaling only risks
+    // corrupting the QR/barcode's edges for no benefit -- off entirely.
+    ctx.imageSmoothingEnabled = false;
     ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, w, h);
     ctx.fillStyle = '#000';
-    const codeCanvas = await generateLabelCodeCanvas(codeStyle === 'qr' ? labelQrPayload(b) : (b.sku || b.id), codeStyle);
+    const codeValue = codeStyle === 'qr' ? labelQrPayload(b) : (b.sku || b.id);
     if(isWrap){
-      // Front face: price and condition only -- no store name, no item
-      // name -- so the two numbers that actually matter at a glance on a
-      // toploader shelf read big. Back face: the shop logo (greyscaled so
-      // it doesn't fight the thermal print head's limited color depth) and
-      // the scan code, nothing else -- nobody reads a SKU by eye.
+      // Front face: item name (so a loose label is still identifiable by
+      // eye -- "we don't know what the label goes to" without it) plus
+      // condition and price. Back face: a small shop logo and the scan
+      // code, sized as large as the back face allows -- confirmed against a
+      // real device that the code was failing to scan, traced to
+      // generateLabelCodeCanvas rendering at a fixed 220px and then getting
+      // blurrily downscaled to fit here; generating it directly at its
+      // real on-label size (below) fixes that at the source, and making
+      // that real size much bigger gives the printer more physical dots per
+      // module to work with besides.
       const halfW = w / 2;
       ctx.strokeStyle = '#000'; ctx.setLineDash([4, 4]);
       ctx.beginPath(); ctx.moveTo(halfW, 0); ctx.lineTo(halfW, h); ctx.stroke();
       ctx.setLineDash([]);
-      ctx.textAlign = 'center';
-      ctx.font = `bold ${Math.round(h * 0.2)}px sans-serif`;
-      ctx.fillText(String(b.condition || '').toUpperCase(), halfW / 2, h * 0.38);
-      ctx.font = `900 ${Math.round(h * 0.32)}px sans-serif`;
-      ctx.fillText(fdLabelPrice$(b.price), halfW / 2, h * 0.72);
+      const pad = w * 0.03;
+      ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+      const nameFont = Math.round(h * 0.075);
+      ctx.font = `bold ${nameFont}px sans-serif`;
+      wrapCanvasText(ctx, b.name, halfW / 2, pad, halfW - pad * 2, Math.round(nameFont * 1.15), 2);
+      ctx.font = `bold ${Math.round(h * 0.14)}px sans-serif`;
+      ctx.fillText(String(b.condition || '').toUpperCase(), halfW / 2, h * 0.44);
+      ctx.font = `900 ${Math.round(h * 0.26)}px sans-serif`;
+      ctx.fillText(fdLabelPrice$(b.price), halfW / 2, h * 0.62);
+      // The logo is capped by HEIGHT, not width -- it's secondary branding,
+      // and every pixel it doesn't use is a pixel the code gets instead. At
+      // this size it's still perfectly legible; the code below it is the
+      // part that actually has to work.
+      let logoBottom = h * 0.03;
       if(wrapLogoImg){
-        const logoW = halfW * 0.7, logoH = logoW * (wrapLogoImg.height / wrapLogoImg.width);
+        const logoH = h * 0.18, logoW = Math.min(logoH * (wrapLogoImg.width / wrapLogoImg.height), halfW * 0.75);
         ctx.filter = 'grayscale(1)';
-        ctx.drawImage(wrapLogoImg, halfW + (halfW - logoW) / 2, h * 0.06, logoW, Math.min(logoH, h * 0.36));
+        ctx.drawImage(wrapLogoImg, halfW + (halfW - logoW) / 2, h * 0.03, logoW, logoH);
         ctx.filter = 'none';
+        logoBottom = h * 0.03 + logoH;
       }
-      const codeH = h * 0.42, codeW = codeStyle === 'qr' ? codeH : halfW * 0.82;
-      ctx.drawImage(codeCanvas, halfW + (halfW - codeW) / 2, h * 0.52, codeW, codeH);
+      // Square code, as large as the remaining back-face room allows --
+      // bounded by both the leftover height below the logo and the face's
+      // own width, whichever is tighter.
+      const codeMargin = w * 0.015;
+      const codeSize = Math.min(h - logoBottom - codeMargin * 2, halfW - codeMargin * 2);
+      const codeCanvas = await generateLabelCodeCanvas(codeValue, codeStyle, Math.round(codeSize));
+      ctx.drawImage(codeCanvas, halfW + (halfW - codeSize) / 2, h - codeMargin - codeSize, codeSize, codeSize);
     } else {
       const pad = w * 0.02;
       ctx.textBaseline = 'top'; ctx.textAlign = 'left';
@@ -39137,6 +39179,7 @@ async function downloadInventoryLabelPngs(){
       ctx.font = `bold ${Math.round(h * 0.12)}px sans-serif`;
       wrapCanvasText(ctx, b.name, pad, pad + h * 0.12, w - pad * 2, Math.round(h * 0.14));
       const codeH = h * 0.32, codeW = codeStyle === 'qr' ? codeH : w * 0.7;
+      const codeCanvas = await generateLabelCodeCanvas(codeValue, codeStyle, Math.round(codeStyle === 'qr' ? codeH : Math.max(codeW, codeH)));
       ctx.drawImage(codeCanvas, (w - codeW) / 2, h * 0.44, codeW, codeH);
       ctx.font = `${Math.round(h * 0.08)}px sans-serif`;
       ctx.textAlign = 'left';
@@ -41816,7 +41859,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.19.11-label-png-bw-threshold" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.19.12-wrap-qr-bigger-fix" defer></script>
 </body>
 </html>
 
