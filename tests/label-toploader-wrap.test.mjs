@@ -43,11 +43,11 @@ assert.match(dashboard, /border-right:1px dashed #999;/, 'a dashed fold line mus
 assert.match(dashboard, /\.label\.wrap \.wrap-back \{ padding:8px 6px 5px; justify-content:flex-start; gap:8px; \}/, 'the back face must use equal top-padding and shopname-to-code gap so the two spaces read as symmetric');
 assert.match(dashboard, /\.wrap-shopname \{ font-size:9px; font-weight:800; letter-spacing:\.03em; text-align:center; \}/, 'the shop name must be a bit bigger than before, still a small fixed text band');
 assert.match(dashboard, /\.wrap-name \{ font-size:8px; font-weight:700; line-height:1\.1; max-height:18px; overflow:hidden; text-align:center; \}/, 'the item name must be a bit bigger than before while still not crowding out condition/price');
-assert.match(dashboard, /\.wrap-badge \{ font-size:6px; font-weight:400; text-transform:uppercase; text-align:center; \}/, 'the badge (whichever one applies) must not be bold -- it is secondary to the item name');
+assert.match(dashboard, /\.wrap-badge \{ font-size:6px; font-weight:700; text-transform:uppercase; text-align:center; \}/, 'the badge (whichever one applies) must be bold -- an unbolded pass printed noticeably less crisp than every other element on a real thermal print');
 assert.match(dashboard, /\.wrap-condition \{ font-size:11px; font-weight:800; text-transform:uppercase; align-self:flex-start; \}/, 'the condition must sit at the left edge of the front face, not centered');
-assert.match(dashboard, /\.wrap-price \{ font-size:14px; font-weight:900; line-height:1; margin-left:8px; margin-top:auto; \}/, 'the price\'s base size is the small $ sign size -- the digits get their own bigger size via a nested span');
-assert.match(dashboard, /\.wrap-price-dollar \{ vertical-align:9px; \}/, 'the $ sign must be raised above the digits\' own baseline via vertical-align, not sunk to it');
-assert.match(dashboard, /\.wrap-price-num \{ font-size:24px; \}/, 'the whole-dollar digits must render bigger than the $ sign -- classic price-tag styling');
+assert.match(dashboard, /\.wrap-price \{ font-size:15px; font-weight:900; line-height:1; margin-top:auto; \}/, 'the price\'s base size is the small $ sign size -- the digits get their own bigger size via a nested span, and the price must be centered (no side margin pushing it off-center)');
+assert.match(dashboard, /\.wrap-price-dollar \{ vertical-align:10px; \}/, 'the $ sign must be raised above the digits\' own baseline via vertical-align, not sunk to it');
+assert.match(dashboard, /\.wrap-price-num \{ font-size:27px; \}/, 'the whole-dollar digits must render bigger than the $ sign -- classic price-tag styling, sized up slightly from before');
 
 console.log('Label toploader-wrap contract checks passed');
 
@@ -61,9 +61,10 @@ assert.ok(!/WRAP_LOGO_SRC/.test(dashboard), 'the illustrated logo image asset mu
 assert.ok(!/loadWrapLogoImage/.test(dashboard), 'the logo-preload helper must be fully removed along with the image-based logo');
 assert.ok(!/wrapLogoImg/.test(dashboard), 'no wrap-logo-image variable may remain in the download path');
 assert.match(dashboard, /const nameFont = Math\.round\(h \* 0\.085\);/, 'the item name must be drawn a bit bigger than before');
-assert.match(dashboard, /if\(b\.badge\)\{\s*\n(?:[^\n]*\n)*?\s*ctx\.font = `\$\{Math\.round\(h \* 0\.06\)\}px sans-serif`;\s*\n\s*ctx\.fillText\(b\.badge\.toUpperCase\(\), halfW \/ 2, h \* 0\.24\);\s*\n\s*\}/, 'the front face must draw whichever single badge applies, and it must not be bold -- it is secondary to the item name');
+assert.match(dashboard, /if\(b\.badge\)\{\s*\n(?:[^\n]*\n)*?\s*ctx\.font = `bold \$\{Math\.round\(h \* 0\.06\)\}px sans-serif`;\s*\n\s*ctx\.fillText\(b\.badge\.toUpperCase\(\), halfW \/ 2, h \* 0\.24\);\s*\n\s*\}/, 'the front face must draw whichever single badge applies, and it must be bold -- an unbolded pass printed noticeably less crisp than everything else on a real thermal print');
 assert.match(dashboard, /const priceStr = fdLabelPrice\$\(b\.price\);\s*\n\s*const dollarSign = priceStr\.charAt\(0\), priceDigits = priceStr\.slice\(1\);/, 'the price must be split into a $ sign and whole-dollar digits so they can be drawn at different sizes');
-assert.match(dashboard, /const priceBigFont = Math\.round\(h \* 0\.3\), priceSmallFont = Math\.round\(priceBigFont \* 0\.55\);/, 'the $ sign must be drawn noticeably smaller than the digits -- classic price-tag styling');
+assert.match(dashboard, /const priceBigFont = Math\.round\(h \* 0\.33\), priceSmallFont = Math\.round\(priceBigFont \* 0\.55\);/, 'the $ sign must be drawn noticeably smaller than the digits -- classic price-tag styling -- and the price must be sized up slightly from before');
+assert.match(dashboard, /const priceRight = halfW \/ 2 \+ \(priceDollarWidth \+ priceDigitsWidth\) \/ 2;/, 'the $ + digits must be centered as one combined unit around the front face\'s horizontal center, not right-aligned toward the fold line');
 assert.match(dashboard, /ctx\.fillText\(priceDigits, priceRight, priceBaseline\);/, 'the whole-dollar digits must be drawn at the big font size');
 assert.match(dashboard, /const dollarBaseline = priceBaseline - priceBigFont \* 0\.36;/, 'the $ sign must be raised above the digits\' baseline rather than sinking to it');
 assert.match(dashboard, /ctx\.fillText\(dollarSign, priceRight - priceDigitsWidth, dollarBaseline\);/, 'the $ sign must be pinned immediately to the left of the digits, at its raised baseline');
