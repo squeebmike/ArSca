@@ -2887,8 +2887,112 @@ export default {
     // storefront catalog (a store might want submissions without publishing
     // a public inventory page), so its own opt-in flag (buylistEnabled)
     // rather than piggybacking on storefrontEnabled.
-    if ((url.pathname === '/twilio/voice' || url.pathname === '/twilio/voice-whisper' || url.pathname === '/twilio/sms') && request.method === 'POST') {
+    if ((url.pathname === '/twilio/voice' || url.pathname === '/twilio/voice-whisper' || url.pathname === '/twilio/voice-dial-complete' || url.pathname === '/twilio/voice-bridge-to-customer' || url.pathname === '/twilio/sms') && request.method === 'POST') {
       return handleTwilioWebhook(request, env, url);
+    }
+
+    // ── Phone system: authenticated dashboard-facing routes ────────────────
+    if (url.pathname === '/api/phone/token' && request.method === 'POST') {
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId, ['owner','admin','manager','employee']);
+      if (auth.error) return auth.error;
+      const identity = phoneIdentityForUser(auth.user.id);
+      try {
+        const token = await buildTwilioAccessToken(env, identity);
+        return json({ ok:true, token, identity });
+      } catch (e) { return json({ ok:false, error:e.message || 'Could not issue a calling token' }, 503); }
+    }
+    if (url.pathname === '/phone/endpoints' && request.method === 'POST') {
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId, ['owner','admin','manager','employee']);
+      if (auth.error) return auth.error;
+      const limited = await readJsonWithLimit(request, 4 * 1024);
+      if (limited.error) return limited.error;
+      const body = limited.data || {};
+      const identity = phoneIdentityForUser(auth.user.id);
+      const approvedMobile = body.approvedMobile != null ? String(body.approvedMobile).trim().slice(0, 20) : undefined;
+      const row = { store_id:storeId, user_id:auth.user.id, identity, enabled:body.enabled === true, updated_at:new Date().toISOString() };
+      if (approvedMobile !== undefined) row.approved_mobile = approvedMobile || null;
+      try {
+        await supabaseAdminFetch(env, 'phone_endpoints', { method:'POST', headers:{ Prefer:'resolution=merge-duplicates,return=minimal' }, body:JSON.stringify(row) });
+        return json({ ok:true });
+      } catch (e) { return json({ ok:false, error:e.message || 'Could not save phone settings' }, 500); }
+    }
+    if (url.pathname === '/phone/calls' && request.method === 'GET') {
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId, ['owner','admin','manager','employee']);
+      if (auth.error) return auth.error;
+      try {
+        const { data } = await supabaseAdminFetch(env, `calls?store_id=eq.${encodeURIComponent(storeId)}&select=*&order=created_at.desc&limit=200`);
+        return json({ ok:true, calls:data || [] });
+      } catch (e) { return json({ ok:false, error:e.message || 'Could not load call history' }, 500); }
+    }
+    if (url.pathname === '/phone/messages' && request.method === 'GET') {
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId, ['owner','admin','manager','employee']);
+      if (auth.error) return auth.error;
+      try {
+        const { data } = await supabaseAdminFetch(env, `messages?store_id=eq.${encodeURIComponent(storeId)}&select=*&order=created_at.desc&limit=300`);
+        return json({ ok:true, messages:data || [] });
+      } catch (e) { return json({ ok:false, error:e.message || 'Could not load messages' }, 500); }
+    }
+    if (url.pathname === '/phone/sms/send' && request.method === 'POST') {
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId, ['owner','admin','manager','employee']);
+      if (auth.error) return auth.error;
+      const limited = await readJsonWithLimit(request, 4 * 1024);
+      if (limited.error) return limited.error;
+      const to = String(limited.data?.to || '').trim();
+      const body = String(limited.data?.body || '').trim().slice(0, 1600);
+      if (!to || !body) return json({ ok:false, error:'to and body are required' }, 400);
+      try {
+        const result = await sendSms(env, to, body);
+        await persistMessageRecord(env, {
+          store_id: storeId, message_sid: result?.sid || null, direction: 'outbound',
+          from_number: env.TWILIO_FROM_NUMBER || null, to_number: to, body,
+          customer_id: await lookupCustomerIdByPhone(env, storeId, to),
+          staff_user_id: auth.user.id, status: 'sent',
+        });
+        return json({ ok:true });
+      } catch (e) { return json({ ok:false, error:e.message || 'Could not send text' }, 502); }
+    }
+    if (url.pathname === '/phone/call-from-my-phone' && request.method === 'POST') {
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId, ['owner','admin','manager','employee']);
+      if (auth.error) return auth.error;
+      const limited = await readJsonWithLimit(request, 4 * 1024);
+      if (limited.error) return limited.error;
+      const customerNumber = String(limited.data?.customerNumber || '').trim();
+      if (!/^\+?[0-9()\-.\s]{7,20}$/.test(customerNumber)) return json({ ok:false, error:'A valid customer phone number is required' }, 400);
+      if (!env.TWILIO_ACCOUNT_SID || !env.TWILIO_AUTH_TOKEN || !env.TWILIO_FROM_NUMBER) return json({ ok:false, error:'Calling is not configured yet' }, 503);
+      // The bridge-back number is looked up server-side from this employee's
+      // OWN saved settings -- never accepted from the request body. That is
+      // the entire toll-fraud guard: the browser can request "call this
+      // customer," never "call this arbitrary number and bridge it."
+      let approvedMobile = '';
+      try {
+        const { data } = await supabaseAdminFetch(env, `phone_endpoints?store_id=eq.${encodeURIComponent(storeId)}&user_id=eq.${encodeURIComponent(auth.user.id)}&select=approved_mobile&limit=1`);
+        approvedMobile = String(data?.[0]?.approved_mobile || '').trim();
+      } catch (e) { /* falls through to the not-set error below */ }
+      if (!approvedMobile) return json({ ok:false, error:'Set your mobile number in Phone settings first' }, 400);
+      const bridgeUrl = `${url.origin}/twilio/voice-bridge-to-customer?store=${encodeURIComponent(storeId)}&customer=${encodeURIComponent(customerNumber)}`;
+      try {
+        const basicAuth = btoa(`${env.TWILIO_ACCOUNT_SID}:${env.TWILIO_AUTH_TOKEN}`);
+        const callParams = new URLSearchParams({ To: approvedMobile, From: env.TWILIO_FROM_NUMBER, Url: bridgeUrl });
+        const res = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${env.TWILIO_ACCOUNT_SID}/Calls.json`, {
+          method: 'POST',
+          headers: { Authorization: `Basic ${basicAuth}`, 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: callParams,
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) return json({ ok:false, error:data?.message || `Twilio request failed (${res.status})` }, 502);
+        persistCallRecord(env, {
+          store_id: storeId, call_sid: data.sid, direction: 'outbound',
+          from_number: env.TWILIO_FROM_NUMBER, to_number: customerNumber, status: 'ringing',
+          staff_user_id: auth.user.id, customer_id: await lookupCustomerIdByPhone(env, storeId, customerNumber),
+        });
+        return json({ ok:true });
+      } catch (e) { return json({ ok:false, error:e.message || 'Could not start the call' }, 502); }
     }
 
     if (url.pathname === '/public/buylist/info' && request.method === 'GET') {
@@ -10561,6 +10665,84 @@ async function sendContactNotification(env, contact, subject, message) {
   return 'sms';
 }
 
+// ── Phone system helpers (browser softphone, call/SMS persistence, Call
+// From My Phone) ───────────────────────────────────────────────────────
+// A Client identity has character restrictions (Twilio recommends
+// alphanumeric/underscore only) -- deterministic from the staff member's
+// own auth.users id so /api/phone/token and /twilio/voice's <Client> nouns
+// always agree on the same string for the same person.
+function phoneIdentityForUser(userId) {
+  return `staff_${String(userId || '').replace(/[^a-zA-Z0-9]/g, '')}`;
+}
+function base64UrlEncode(bytes) {
+  let bin = '';
+  for (const b of bytes) bin += String.fromCharCode(b);
+  return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+// Twilio Access Token: a standard JWT (HS256, signed with an API Key
+// Secret) carrying a `voice` grant naming the TwiML App that handles
+// browser-initiated outgoing calls and allowing incoming <Client> calls.
+// Needs TWILIO_API_KEY_SID/TWILIO_API_KEY_SECRET/TWILIO_TWIML_APP_SID --
+// none of which exist yet; see PHONE_SYSTEM_PLAN.md for the manual Twilio
+// Console steps that create them.
+async function buildTwilioAccessToken(env, identity) {
+  if (!env.TWILIO_API_KEY_SID || !env.TWILIO_API_KEY_SECRET || !env.TWILIO_ACCOUNT_SID || !env.TWILIO_TWIML_APP_SID) {
+    throw new Error('Browser calling is not configured yet');
+  }
+  const now = Math.floor(Date.now() / 1000);
+  const header = { cty: 'twilio-fpa;v=1', typ: 'JWT', alg: 'HS256' };
+  const payload = {
+    jti: `${env.TWILIO_API_KEY_SID}-${now}`,
+    grants: {
+      identity,
+      voice: { outgoing: { application_sid: env.TWILIO_TWIML_APP_SID }, incoming: { allow: true } },
+    },
+    iat: now,
+    exp: now + 3600,
+    iss: env.TWILIO_API_KEY_SID,
+    sub: env.TWILIO_ACCOUNT_SID,
+  };
+  const enc = new TextEncoder();
+  const signingInput = `${base64UrlEncode(enc.encode(JSON.stringify(header)))}.${base64UrlEncode(enc.encode(JSON.stringify(payload)))}`;
+  const key = await crypto.subtle.importKey('raw', enc.encode(env.TWILIO_API_KEY_SECRET), { name:'HMAC', hash:'SHA-256' }, false, ['sign']);
+  const signature = await crypto.subtle.sign('HMAC', key, enc.encode(signingInput));
+  return `${signingInput}.${base64UrlEncode(new Uint8Array(signature))}`;
+}
+// Best-effort last-10-digits match -- Twilio always sends E.164, but a
+// customer's phone was typed by hand (dashes, parens, a leading 1 or not),
+// so an exact string compare would miss real matches.
+function normalizePhoneDigits(s) {
+  return String(s || '').replace(/\D/g, '').slice(-10);
+}
+async function lookupCustomerIdByPhone(env, storeId, phoneNumber) {
+  const digits = normalizePhoneDigits(phoneNumber);
+  if (!digits) return null;
+  try {
+    // No indexed digits-only column on customers yet, so this is a
+    // client-side filter over a capped fetch -- fine for one shop's
+    // customer list, a known limitation if that list ever gets huge
+    // (see PHONE_SYSTEM_PLAN.md).
+    const { data } = await supabaseAdminFetch(env, `customers?store_id=eq.${encodeURIComponent(storeId)}&select=id,phone&limit=1000`);
+    const match = (data || []).find(c => c.phone && normalizePhoneDigits(c.phone) === digits);
+    return match?.id || null;
+  } catch (e) { return null; }
+}
+// Every one of these is best-effort and swallows its own errors -- a
+// Supabase hiccup must never prevent a call from ringing through or an SMS
+// webhook from acknowledging Twilio; logging failure is not call failure.
+async function persistCallRecord(env, record) {
+  try { await supabaseAdminFetch(env, 'calls', { method:'POST', headers:{ Prefer:'return=minimal' }, body:JSON.stringify(record) }); }
+  catch (e) { /* best-effort */ }
+}
+async function updateCallRecordBySid(env, callSid, patch) {
+  try { await supabaseAdminFetch(env, `calls?call_sid=eq.${encodeURIComponent(callSid)}`, { method:'PATCH', headers:{ Prefer:'return=minimal' }, body:JSON.stringify(patch) }); }
+  catch (e) { /* best-effort */ }
+}
+async function persistMessageRecord(env, record) {
+  try { await supabaseAdminFetch(env, 'messages', { method:'POST', headers:{ Prefer:'return=minimal' }, body:JSON.stringify(record) }); }
+  catch (e) { /* best-effort */ }
+}
+
 // ── Twilio inbound webhooks (voice + SMS on the SAME store number) ────────
 // Twilio calls these directly (no login, no X-Store-Id header) -- the store
 // is identified by a ?store= query param baked into the webhook URL you
@@ -10601,23 +10783,83 @@ async function handleTwilioWebhook(request, env, url) {
   } catch (e) { /* fall through with no numbers -- handled per-route below */ }
 
   if (url.pathname === '/twilio/voice') {
-    if (!numbers.length) return twimlResponse('<Response><Say>Sorry, no one is available to take your call right now.</Say></Response>');
-    // Each forwarded leg gets its own whisper: the person picking up hears
-    // "Call for <store>" BEFORE being bridged to the actual caller -- without
-    // this a store-forwarded call rings through indistinguishably from any
-    // other personal call, since Twilio's <Dial> passes the original
-    // caller's number through as caller ID by default.
+    // Browser softphone identities are ADDITIVE to the personal-phone
+    // ring-all, never a replacement -- per-store opt-in list, kept
+    // permanently alongside the personal numbers (see PHONE_SYSTEM_PLAN.md).
+    let clientIdentities = [];
+    try {
+      const { data: endpoints } = await supabaseAdminFetch(env, `phone_endpoints?store_id=eq.${encodeURIComponent(storeId)}&enabled=eq.true&select=identity`);
+      clientIdentities = (endpoints || []).map(e => e.identity).filter(Boolean);
+    } catch (e) { /* fall through with no browser targets -- personal numbers still ring */ }
+    if (!numbers.length && !clientIdentities.length) return twimlResponse('<Response><Say>Sorry, no one is available to take your call right now.</Say></Response>');
+    // Every call (answered or not) gets a best-effort log row -- deliberately
+    // NOT awaited (not even the customer lookup inside it): this is a live
+    // Voice webhook and Twilio is holding the caller waiting on this
+    // response, so nothing here may add latency before the Dial TwiML goes
+    // out. A Supabase hiccup must never delay, let alone block, the ring.
+    const callSid = String(params.CallSid || '').trim();
+    if (callSid) {
+      lookupCustomerIdByPhone(env, storeId, params.From).then(customerId => persistCallRecord(env, {
+        store_id: storeId, call_sid: callSid, direction: 'inbound',
+        from_number: params.From || null, to_number: params.To || null, status: 'ringing',
+        customer_id: customerId,
+      })).catch(() => {});
+    }
+    // Each forwarded personal-number leg gets its own whisper: the person
+    // picking up hears "Call for <store>" BEFORE being bridged to the actual
+    // caller -- without this a store-forwarded call rings through
+    // indistinguishably from any other personal call, since Twilio's <Dial>
+    // passes the original caller's number through as caller ID by default.
+    // Browser <Client> legs skip the whisper -- the dashboard's own incoming-
+    // call UI already makes it obvious this is a store call.
     const whisperUrl = `${url.origin}/twilio/voice-whisper?store=${encodeURIComponent(storeId)}`;
     const dialNumbers = numbers.map(n => `<Number url="${escapeXmlText(whisperUrl)}">${escapeXmlText(n)}</Number>`).join('');
-    return twimlResponse(`<Response><Dial timeout="20">${dialNumbers}</Dial></Response>`);
+    const dialClients = clientIdentities.map(id => `<Client>${escapeXmlText(id)}</Client>`).join('');
+    const dialCompleteUrl = `${url.origin}/twilio/voice-dial-complete?store=${encodeURIComponent(storeId)}`;
+    return twimlResponse(`<Response><Dial timeout="20" action="${escapeXmlText(dialCompleteUrl)}">${dialNumbers}${dialClients}</Dial></Response>`);
   }
   if (url.pathname === '/twilio/voice-whisper') {
     return twimlResponse(`<Response><Say>Call for ${escapeXmlText(storeName || 'your store')}. Connecting you now.</Say></Response>`);
+  }
+  if (url.pathname === '/twilio/voice-dial-complete') {
+    // Fires exactly once per inbound call regardless of how many <Number>/
+    // <Client> legs were rung -- Twilio itself prevents the duplicate
+    // missed-call noise a naive per-leg callback would create.
+    const callSid = String(params.CallSid || '').trim();
+    const dialStatus = String(params.DialCallStatus || '').trim();
+    if (callSid) {
+      updateCallRecordBySid(env, callSid, {
+        status: dialStatus === 'completed' ? 'answered' : (dialStatus || 'no-answer'),
+        dial_call_status: dialStatus || null,
+        duration_seconds: params.DialCallDuration ? Number(params.DialCallDuration) : null,
+      });
+    }
+    return twimlResponse('<Response></Response>');
+  }
+  if (url.pathname === '/twilio/voice-bridge-to-customer') {
+    // The second leg of "Call From My Phone": Twilio requests this once the
+    // employee's own approved mobile (dialed server-side, see
+    // /phone/call-from-my-phone) answers. Bridges to the customer with the
+    // BUSINESS number as caller ID -- the employee's personal number is
+    // never exposed to the customer, and this number came from the
+    // authenticated employee's server-side call setup, never the browser.
+    const customerNumber = String(url.searchParams.get('customer') || '').trim();
+    if (!customerNumber || !env.TWILIO_FROM_NUMBER) return twimlResponse('<Response><Say>This call could not be connected.</Say></Response>');
+    return twimlResponse(`<Response><Dial callerId="${escapeXmlText(env.TWILIO_FROM_NUMBER)}"><Number>${escapeXmlText(customerNumber)}</Number></Dial></Response>`);
   }
   if (url.pathname === '/twilio/sms') {
     const from = String(params.From || '').slice(0, 40);
     const text = String(params.Body || '').slice(0, 1000);
     if (from && text) {
+      // Persisted first so the new message inbox has it even if every
+      // forward number below happens to fail -- then the existing blind
+      // relay to personal phones, kept permanently as a backup notification
+      // channel alongside the new inbox (see PHONE_SYSTEM_PLAN.md).
+      persistMessageRecord(env, {
+        store_id: storeId, message_sid: params.MessageSid || null, direction: 'inbound',
+        from_number: from, to_number: String(params.To || '').slice(0, 40), body: text,
+        customer_id: await lookupCustomerIdByPhone(env, storeId, from), status: 'received',
+      });
       for (const num of numbers) {
         try { await sendSms(env, num, `Text from ${from}: ${text}`); } catch (e) { /* one bad forward number shouldn't block the rest */ }
       }

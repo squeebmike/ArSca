@@ -5,7 +5,7 @@ const dashboard = fs.readFileSync('dashboard.html', 'utf8');
 const worker = fs.readFileSync('cloudflare-worker-full.js', 'utf8');
 
 // ── Worker: routing ──────────────────────────────────────────────────
-assert.match(worker, /if \(\(url\.pathname === '\/twilio\/voice' \|\| url\.pathname === '\/twilio\/voice-whisper' \|\| url\.pathname === '\/twilio\/sms'\) && request\.method === 'POST'\) \{\s*\n\s*return handleTwilioWebhook\(request, env, url\);/, 'must route /twilio/voice, /twilio/voice-whisper, and /twilio/sms POSTs to handleTwilioWebhook');
+assert.match(worker, /if \(\(url\.pathname === '\/twilio\/voice' \|\| url\.pathname === '\/twilio\/voice-whisper' \|\| url\.pathname === '\/twilio\/voice-dial-complete' \|\| url\.pathname === '\/twilio\/voice-bridge-to-customer' \|\| url\.pathname === '\/twilio\/sms'\) && request\.method === 'POST'\) \{\s*\n\s*return handleTwilioWebhook\(request, env, url\);/, 'must route all five Twilio-facing paths (including the two new phone-system ones) to handleTwilioWebhook');
 
 // ── Worker: signature verification is mandatory ─────────────────────
 assert.match(worker, /async function verifyTwilioSignature\(fullUrl, params, signatureHeader, authToken\) \{/, 'missing verifyTwilioSignature');
@@ -19,19 +19,40 @@ assert.match(worker, /if \(!sigOk\) return new Response\('Invalid signature', \{
 // the original caller's number through as caller ID, with no way to tell
 // it's a business call before answering). ───────
 assert.match(worker, /if \(url\.pathname === '\/twilio\/voice'\) \{/, 'missing /twilio/voice branch');
-assert.match(worker, /if \(!numbers\.length\) return twimlResponse\('<Response><Say>Sorry, no one is available to take your call right now\.<\/Say><\/Response>'\);/, 'voice must gracefully handle no forwarding numbers configured');
+assert.match(worker, /const \{ data: endpoints \} = await supabaseAdminFetch\(env, `phone_endpoints\?store_id=eq\.\$\{encodeURIComponent\(storeId\)\}&enabled=eq\.true&select=identity`\);\s*\n\s*clientIdentities = \(endpoints \|\| \[\]\)\.map\(e => e\.identity\)\.filter\(Boolean\);/, 'voice must pull enabled browser-softphone identities for this store, additive to the personal forwarding numbers');
+assert.match(worker, /if \(!numbers\.length && !clientIdentities\.length\) return twimlResponse\('<Response><Say>Sorry, no one is available to take your call right now\.<\/Say><\/Response>'\);/, 'voice must only give up if BOTH personal numbers and browser identities are empty -- either one alone must still ring');
 assert.match(worker, /const whisperUrl = `\$\{url\.origin\}\/twilio\/voice-whisper\?store=\$\{encodeURIComponent\(storeId\)\}`;/, 'voice must build a whisper URL scoped to this store');
 assert.match(worker, /const dialNumbers = numbers\.map\(n => `<Number url="\$\{escapeXmlText\(whisperUrl\)\}">\$\{escapeXmlText\(n\)\}<\/Number>`\)\.join\(''\);/, 'voice must build a <Number> per forwarding number, each pointing at the whisper URL');
-assert.match(worker, /return twimlResponse\(`<Response><Dial timeout="20">\$\{dialNumbers\}<\/Dial><\/Response>`\);/, 'voice must Dial all numbers inside one <Dial> so they ring simultaneously (first to answer wins)');
+assert.match(worker, /const dialClients = clientIdentities\.map\(id => `<Client>\$\{escapeXmlText\(id\)\}<\/Client>`\)\.join\(''\);/, 'voice must build a <Client> noun per enabled browser identity -- no whisper, unlike the personal-number legs');
+assert.match(worker, /const dialCompleteUrl = `\$\{url\.origin\}\/twilio\/voice-dial-complete\?store=\$\{encodeURIComponent\(storeId\)\}`;\s*\n\s*return twimlResponse\(`<Response><Dial timeout="20" action="\$\{escapeXmlText\(dialCompleteUrl\)\}">\$\{dialNumbers\}\$\{dialClients\}<\/Dial><\/Response>`\);/, 'voice must Dial all numbers AND client identities inside one <Dial> (ring simultaneously, first to answer wins), with a completion callback so the call gets logged');
+assert.match(worker, /lookupCustomerIdByPhone\(env, storeId, params\.From\)\.then\(customerId => persistCallRecord\(env, \{/, 'voice must persist a best-effort call record, and the customer lookup inside it must not be awaited on the hot path (a live caller is waiting on this response)');
+
+// ── Worker: voice-dial-complete -- the <Dial action> callback, fired
+// exactly once per inbound call no matter how many legs were rung, so the
+// "no duplicate missed-call noise" requirement falls out of Twilio's own
+// <Dial> semantics rather than needing a separate per-leg table ───────
+assert.match(worker, /if \(url\.pathname === '\/twilio\/voice-dial-complete'\) \{/, 'missing /twilio/voice-dial-complete branch');
+assert.match(worker, /status: dialStatus === 'completed' \? 'answered' : \(dialStatus \|\| 'no-answer'\),/, 'dial-complete must translate DialCallStatus into a call status, defaulting to no-answer');
+assert.match(worker, /updateCallRecordBySid\(env, callSid, \{/, 'dial-complete must update the existing call record by CallSid, not insert a new row');
+
+// ── Worker: voice-bridge-to-customer -- second leg of "Call From My Phone".
+// The customer number comes from a query param set server-side when the
+// call was created (see /phone/call-from-my-phone below), never from
+// anything the browser supplies to this webhook directly. ───────
+assert.match(worker, /if \(url\.pathname === '\/twilio\/voice-bridge-to-customer'\) \{/, 'missing /twilio/voice-bridge-to-customer branch');
+assert.match(worker, /return twimlResponse\(`<Response><Dial callerId="\$\{escapeXmlText\(env\.TWILIO_FROM_NUMBER\)\}"><Number>\$\{escapeXmlText\(customerNumber\)\}<\/Number><\/Dial><\/Response>`\);/, 'the bridge must set callerId to the business number -- the customer must never see the employee\'s own number');
 
 // ── Worker: voice-whisper -- announces the store name to whoever answers,
 // BEFORE Twilio bridges them to the actual caller ───────
 assert.match(worker, /if \(url\.pathname === '\/twilio\/voice-whisper'\) \{\s*\n\s*return twimlResponse\(`<Response><Say>Call for \$\{escapeXmlText\(storeName \|\| 'your store'\)\}\. Connecting you now\.<\/Say><\/Response>`\);/, 'voice-whisper must announce the store name before the call connects');
 assert.match(worker, /storeName = String\(settings\?\.\[0\]\?\.receipt_settings\?\.shortName \|\| settings\?\.\[0\]\?\.receipt_settings\?\.storeName \|\| ''\)\.trim\(\);/, 'storeName must be read from the same receipt_settings the forwarding numbers come from');
 
-// ── Worker: sms -- relay inbound texts to all forward numbers ───────
+// ── Worker: sms -- persists the inbound message (new), THEN relays to all
+// forward numbers exactly as before -- the personal-phone relay is a
+// permanent backup channel, not something the new message inbox replaces ──
 assert.match(worker, /if \(url\.pathname === '\/twilio\/sms'\) \{/, 'missing /twilio/sms branch');
-assert.match(worker, /for \(const num of numbers\) \{\s*\n\s*try \{ await sendSms\(env, num, `Text from \$\{from\}: \$\{text\}`\); \} catch \(e\) \{ \/\* one bad forward number shouldn't block the rest \*\/ \}/, 'sms webhook must relay the inbound text to every forwarding number, independently of failures');
+assert.match(worker, /persistMessageRecord\(env, \{\s*\n\s*store_id: storeId, message_sid: params\.MessageSid \|\| null, direction: 'inbound',/, 'sms webhook must persist the inbound message to the new messages table');
+assert.match(worker, /for \(const num of numbers\) \{\s*\n\s*try \{ await sendSms\(env, num, `Text from \$\{from\}: \$\{text\}`\); \} catch \(e\) \{ \/\* one bad forward number shouldn't block the rest \*\/ \}/, 'sms webhook must still relay the inbound text to every forwarding number, independently of failures -- the plan calls for this to stay permanent, not fall away once the inbox exists');
 
 // ── Worker: numbers are read from the SAME receipt_settings column ──
 assert.match(worker, /numbers = \(settings\?\.\[0\]\?\.receipt_settings\?\.notifyForwardNumbers \|\| \[\]\)\.filter\(Boolean\)\.slice\(0, 5\);/, 'forward numbers must come from store_settings.receipt_settings.notifyForwardNumbers');
