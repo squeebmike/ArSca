@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.19.7-wrap-qr-forced-whole-dollar">
+<meta name="version" content="2026.08.19.8-qr-vendored-lib-fix">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1589,21 +1589,27 @@ body.show-mode .inv-sync-badge{display:none;}
      long value (e.g. an item's internal UUID, used when there's no real
      UPC/SKU) compresses to unreadably-thin bars once squeezed onto a small
      2in-wide thermal label; a QR code holds the same data in a square grid
-     that stays scannable at that size. -->
-<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js" defer></script>
+     that stays scannable at that size. Vendored locally (not CDN) because
+     the published qrcode@1.5.3 npm package does not actually ship the
+     prebuilt build/qrcode.min.js its own docs reference -- that CDN path
+     404s silently (script just never defines window.QRCode), which is why
+     QR labels kept coming out as plain barcodes even with QR selected. This
+     file is kazuhikoarase/qrcode-generator (MIT), which exposes a global
+     `qrcode(typeNumber, errorCorrectionLevel)` matrix API instead. -->
+<script src="assets/qrcode-generator.js" defer></script>
 <!-- Same team-color database + palette engine walkoffsc.com's team picker uses
      (squeebmike/wo-scripts) -- one shared source so a team's colors never need
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.19.7-wrap-qr-forced-whole-dollar" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.19.7-wrap-qr-forced-whole-dollar" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.19.7-wrap-qr-forced-whole-dollar" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.08.19.7-wrap-qr-forced-whole-dollar" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.19.7-wrap-qr-forced-whole-dollar" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.19.7-wrap-qr-forced-whole-dollar" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.19.7-wrap-qr-forced-whole-dollar" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.19.7-wrap-qr-forced-whole-dollar" defer></script>
+<script src="scripts/query-routing.js?v=2026.08.19.8-qr-vendored-lib-fix" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.19.8-qr-vendored-lib-fix" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.19.8-qr-vendored-lib-fix" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.08.19.8-qr-vendored-lib-fix" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.19.8-qr-vendored-lib-fix" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.19.8-qr-vendored-lib-fix" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.19.8-qr-vendored-lib-fix" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.19.8-qr-vendored-lib-fix" defer></script>
 </head>
 <body>
 
@@ -1653,11 +1659,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.19.7-wrap-qr-forced-whole-dollar</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.19.8-qr-vendored-lib-fix</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.19.7-wrap-qr-forced-whole-dollar</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.19.8-qr-vendored-lib-fix</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1679,7 +1685,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.19.7-wrap-qr-forced-whole-dollar</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.19.8-qr-vendored-lib-fix</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3458,7 +3464,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.19.7-wrap-qr-forced-whole-dollar';
+const APP_VERSION = '2026.08.19.8-qr-vendored-lib-fix';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -38826,9 +38832,34 @@ const fdLabelPrice$ = n => '$' + Math.round(Number(n || 0));
 // (203 DPI) can resolve, which is exactly what makes those labels unscannable.
 async function generateLabelCodeCanvas(value, style){
   const canvas = document.createElement('canvas');
-  if(style === 'qr' && typeof QRCode !== 'undefined'){
+  if(style === 'qr' && typeof qrcode !== 'undefined'){
     try {
-      await QRCode.toCanvas(canvas, String(value || ''), { margin:0, width:220 });
+      // typeNumber 0 = auto-size to fit the data; 'M' = 15% error-correction,
+      // a reasonable middle ground for a printed label that might pick up
+      // smudges or a slightly uneven thermal print.
+      const qr = qrcode(0, 'M');
+      qr.addData(String(value || ''));
+      qr.make();
+      const count = qr.getModuleCount();
+      // A quiet zone (blank border) around the modules is required for most
+      // scanners to even detect a QR code, not just decode it -- 2 modules
+      // is a safe minimum given the label already has whitespace around
+      // where this canvas gets drawn.
+      const quietZone = 2;
+      const size = 220;
+      const cell = size / (count + quietZone * 2);
+      canvas.width = size; canvas.height = size;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, size, size);
+      ctx.fillStyle = '#000';
+      for(let row = 0; row < count; row++){
+        for(let col = 0; col < count; col++){
+          if(qr.isDark(row, col)){
+            const x = (col + quietZone) * cell, y = (row + quietZone) * cell;
+            ctx.fillRect(Math.floor(x), Math.floor(y), Math.ceil(cell), Math.ceil(cell));
+          }
+        }
+      }
       return canvas;
     } catch(e) { /* fall through to barcode if QR generation fails for this value */ }
   }
@@ -41713,7 +41744,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.19.7-wrap-qr-forced-whole-dollar" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.19.8-qr-vendored-lib-fix" defer></script>
 </body>
 </html>
 

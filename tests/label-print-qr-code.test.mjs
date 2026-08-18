@@ -3,17 +3,37 @@ import assert from 'node:assert/strict';
 
 const dashboard = fs.readFileSync('dashboard.html', 'utf8');
 
-// ── Contract: the QR library is loaded, and a barcode-style picker exists and persists ──
-assert.match(dashboard, /<script src="https:\/\/cdn\.jsdelivr\.net\/npm\/qrcode@1\.5\.3\/build\/qrcode\.min\.js" defer><\/script>/, 'missing the qrcode CDN script');
+// ── Contract: the QR library is loaded from a local vendored asset, not a CDN --
+// the published qrcode@1.5.3 npm package does not actually ship the prebuilt
+// build/qrcode.min.js its own docs reference (confirmed by pulling the real
+// registry tarball: no build/ directory in it at all), so that CDN path 404s
+// silently and QRCode never gets defined -- which is exactly why QR labels
+// kept rendering as plain barcodes even with QR selected. Vendoring the file
+// locally means there is no network call, no CDN version drift, and no way
+// for this specific failure mode to recur. ──
+assert.ok(fs.existsSync('assets/qrcode-generator.js'), 'the vendored QR library must exist on disk at assets/qrcode-generator.js');
+assert.match(dashboard, /<script src="assets\/qrcode-generator\.js" defer><\/script>/, 'dashboard.html must load the vendored QR library, not an external CDN');
+assert.doesNotMatch(dashboard, /cdn\.jsdelivr\.net\/npm\/qrcode/, 'no CDN reference to the broken qrcode@1.5.3 build path should remain');
+const qrLibSrc = fs.readFileSync('assets/qrcode-generator.js', 'utf8');
+assert.match(qrLibSrc, /var qrcode = function\(\)/, 'the vendored file must actually define the qrcode() constructor as a plain global var');
+assert.match(qrLibSrc, /_this\.addData = function/, 'the vendored file must expose addData');
+assert.match(qrLibSrc, /_this\.isDark = function/, 'the vendored file must expose isDark');
+assert.match(qrLibSrc, /_this\.getModuleCount = function/, 'the vendored file must expose getModuleCount');
+
 assert.match(dashboard, /<select id="label-print-code-style" class="tsi" onchange="localStorage\.setItem\('label_print_code_style', this\.value\)"/, 'a barcode-style picker must exist and persist the choice');
 assert.match(dashboard, /<option value="barcode">Linear barcode \(CODE128\)/, 'a linear-barcode option must exist');
 assert.match(dashboard, /<option value="qr">QR code/, 'a QR-code option must exist');
 assert.match(dashboard, /codeStyleEl\.value = localStorage\.getItem\('label_print_code_style'\) \|\| 'barcode';/, 'opening the modal must restore the last-used code style, defaulting to barcode so existing labels don\'t change unexpectedly');
 
-// ── Contract: a shared helper renders either a barcode or a QR code onto a canvas ──
+// ── Contract: a shared helper renders either a barcode or a QR code onto a canvas,
+// using the vendored library's real matrix API (qrcode(...).addData/.make/.isDark),
+// not the nonexistent QRCode.toCanvas API from the broken CDN build ──
 assert.match(dashboard, /async function generateLabelCodeCanvas\(value, style\)\{/, 'missing generateLabelCodeCanvas helper');
-assert.match(dashboard, /if\(style === 'qr' && typeof QRCode !== 'undefined'\)\{/, 'the helper must only attempt QR generation when the qrcode library has actually loaded');
-assert.match(dashboard, /await QRCode\.toCanvas\(canvas, String\(value \|\| ''\), \{ margin:0, width:220 \}\);/, 'QR generation must draw onto the canvas via QRCode.toCanvas');
+assert.match(dashboard, /if\(style === 'qr' && typeof qrcode !== 'undefined'\)\{/, 'the helper must only attempt QR generation when the vendored qrcode library has actually loaded');
+assert.match(dashboard, /const qr = qrcode\(0, 'M'\);/, 'QR generation must use the vendored library\'s constructor (auto type-size, M error correction)');
+assert.match(dashboard, /qr\.addData\(String\(value \|\| ''\)\);/, 'the value must be added to the QR matrix');
+assert.match(dashboard, /qr\.make\(\);/, 'the QR matrix must actually be built before reading it');
+assert.match(dashboard, /if\(qr\.isDark\(row, col\)\)\{/, 'each dark module must be drawn onto the canvas by hand, since the vendored library has no built-in canvas renderer call');
 assert.match(dashboard, /JsBarcode\(canvas, value, \{ format:'CODE128', displayValue:false, margin:0 \}\);/, 'the helper must fall back to (or default to) a real CODE128 barcode');
 
 // ── Contract: both the print path and the PNG-download path actually call the shared helper,
@@ -33,35 +53,34 @@ assert.match(dashboard, /const formats=\['upc_a','upc_e','ean_13','ean_8','code_
 
 console.log('Label QR code contract checks passed');
 
-// ── Functional: generateLabelCodeCanvas picks the right library call per style,
-// and falls back to barcode if QR generation throws for a given value ──
+// ── Functional: load the REAL vendored library (not a mock) and prove it actually
+// generates a valid, non-blank QR module matrix for values like the ones this
+// feature encodes -- a plain SKU, and a long UUID fallback (the original bug
+// report: the CDN script 404'd, so this whole path silently no-op'd before). ──
 {
-  async function generateLabelCodeCanvas(value, style, { QRCode, JsBarcode, makeCanvas }){
-    const canvas = makeCanvas();
-    if(style === 'qr' && typeof QRCode !== 'undefined'){
-      try {
-        await QRCode.toCanvas(canvas, String(value || ''), { margin:0, width:220 });
-        return canvas;
-      } catch(e) { /* fall through to barcode if QR generation fails for this value */ }
-    }
-    try { JsBarcode(canvas, value, { format:'CODE128', displayValue:false, margin:0 }); } catch(e) {}
-    return canvas;
+  const vm = await import('node:vm');
+  const context = {};
+  vm.createContext(context);
+  vm.runInContext(qrLibSrc, context);
+  assert.equal(typeof context.qrcode, 'function', 'evaluating the vendored file must define a global qrcode() function, matching what dashboard.html expects at runtime');
+
+  function moduleGrid(value){
+    const qr = context.qrcode(0, 'M');
+    qr.addData(String(value));
+    qr.make();
+    const count = qr.getModuleCount();
+    let dark = 0;
+    for (let r = 0; r < count; r++) for (let c = 0; c < count; c++) if (qr.isDark(r, c)) dark++;
+    return { count, dark };
   }
 
-  const calls = [];
-  const okQr = { toCanvas: async (c, v, o) => { calls.push(['qr', v, o]); } };
-  const okBarcode = (c, v, o) => calls.push(['barcode', v, o]);
-  await generateLabelCodeCanvas('ABC123', 'qr', { QRCode: okQr, JsBarcode: okBarcode, makeCanvas: () => ({}) });
-  assert.deepEqual(calls, [['qr', 'ABC123', { margin:0, width:220 }]], 'style=qr with a working QRCode lib must call QRCode.toCanvas and not fall through to JsBarcode');
+  const short = moduleGrid('WO-1001');
+  assert.ok(short.count >= 21, 'even a short SKU must produce at least a version-1 (21x21) QR matrix');
+  assert.ok(short.dark > 0 && short.dark < short.count * short.count, 'a real QR matrix must have a realistic mix of dark and light modules, not be blank or fully filled');
 
-  calls.length = 0;
-  await generateLabelCodeCanvas('ABC123', 'barcode', { QRCode: okQr, JsBarcode: okBarcode, makeCanvas: () => ({}) });
-  assert.deepEqual(calls, [['barcode', 'ABC123', { format:'CODE128', displayValue:false, margin:0 }]], 'style=barcode must call JsBarcode directly, even when a QRCode lib is available');
-
-  calls.length = 0;
-  const throwingQr = { toCanvas: async () => { throw new Error('bad value for QR'); } };
-  await generateLabelCodeCanvas('some-very-long-uuid-value-1234', 'qr', { QRCode: throwingQr, JsBarcode: okBarcode, makeCanvas: () => ({}) });
-  assert.deepEqual(calls, [['barcode', 'some-very-long-uuid-value-1234', { format:'CODE128', displayValue:false, margin:0 }]], 'if QR generation throws for a given value, it must fall back to a barcode instead of producing a blank label');
+  const longUuid = moduleGrid('3f1c9a2e-6b7d-4e10-9c3a-1f8e5d2b7a44');
+  assert.ok(longUuid.count > short.count, 'a long UUID fallback value must produce a larger matrix than a short SKU -- proving the library actually scales with input length instead of erroring or truncating');
+  assert.ok(longUuid.dark > 0, 'the long-UUID QR matrix must not be blank');
 }
 
-console.log('Label QR code functional checks passed');
+console.log('Label QR code functional checks passed (verified against the real vendored library)');
