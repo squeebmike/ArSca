@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.20.8-customer-web-accounts">
+<meta name="version" content="2026.08.20.9-foc-archive-channel-changelog">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1604,14 +1604,14 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.20.8-customer-web-accounts" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.20.8-customer-web-accounts" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.20.8-customer-web-accounts" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.08.20.8-customer-web-accounts" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.20.8-customer-web-accounts" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.20.8-customer-web-accounts" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.20.8-customer-web-accounts" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.20.8-customer-web-accounts" defer></script>
+<script src="scripts/query-routing.js?v=2026.08.20.9-foc-archive-channel-changelog" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.20.9-foc-archive-channel-changelog" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.20.9-foc-archive-channel-changelog" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.08.20.9-foc-archive-channel-changelog" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.20.9-foc-archive-channel-changelog" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.20.9-foc-archive-channel-changelog" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.20.9-foc-archive-channel-changelog" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.20.9-foc-archive-channel-changelog" defer></script>
 </head>
 <body>
 
@@ -1640,11 +1640,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.20.8-customer-web-accounts</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.20.9-foc-archive-channel-changelog</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.20.8-customer-web-accounts</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.20.9-foc-archive-channel-changelog</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1662,7 +1662,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.20.8-customer-web-accounts</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.20.9-foc-archive-channel-changelog</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3447,7 +3447,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.20.8-customer-web-accounts';
+const APP_VERSION = '2026.08.20.9-foc-archive-channel-changelog';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -6065,6 +6065,7 @@ const FEATURE_LOG = [
     { title:'Category + Product Type filters', status:'working', desc:'Shoppers can filter by game (Pokemon, MTG, etc. kept separate) and then by Product Type (singles, boosters, Secret Lair, etc.).' },
     { title:'Broader storefront search', status:'new', desc:'Search on the live site now matches set, variant, condition, and Product Type, not just the item name.' },
     { title:'Order recording + pickup fulfillment', status:'working', desc:'Storefront orders land in the dashboard\'s Orders view for fulfillment, including in-store pickup.' },
+    { title:'Website sales counted correctly by channel', status:'new', desc:'Website checkout sales now bucket under the same "Website" channel the Sales-by-Channel report already tracks, instead of showing up as an unrecognized channel.' },
   ]},
   { area:'Comics', items:[
     { title:'Comic Issue Hub', status:'working', desc:'Browse a full comic run with covers and variants pulled from Metron.' },
@@ -6074,6 +6075,14 @@ const FEATURE_LOG = [
     { title:'eBay demand check on covers', status:'working', desc:'See recent eBay sold comps for a specific cover right from its detail view.' },
     { title:'Ratio/incentive variant badges', status:'working', desc:'Flags likely ratio or incentive variants automatically.' },
     { title:'Grading submission tracker', status:'working', desc:'Track items sent out for grading through to their return.' },
+    { title:'Every open FOC week shown at once', status:'new', desc:'The website preorder page now lists every open FOC cycle with its own live countdown to that week\'s cutoff, instead of only the most recently imported week.' },
+    { title:'Resend confirmation email', status:'new', desc:'Collectors who never got (or lost) their signup confirmation email can resend it themselves right from the sign-in box on the preorder page.' },
+    { title:'Archive a FOC cycle', status:'new', desc:'Staff can archive a closed FOC week from the admin panel, removing it from the customer-facing preorder page while keeping every order on record. Reversible.' },
+  ]},
+  { area:'Customer Web Accounts (your website)', items:[
+    { title:'My Account page', status:'new', desc:'Signed-in customers can see their general shop orders, comic preorders, loyalty points, trade-in credit, and gift card balances all in one page on your website.' },
+    { title:'Phone-linked in-store history', status:'new', desc:'Customers verify their phone number by SMS code to link their web account to their in-store customer record, unlocking their register purchase history and trade-in credit on the website.' },
+    { title:'Self-service email & password changes', status:'new', desc:'Customers can update their own sign-in email or password directly from the My Account page, no staff involvement needed.' },
   ]},
   { area:'Tournaments & Events', items:[
     { title:'Event creation + registration', status:'working', desc:'Create an event, register players, and collect entry fees.' },
@@ -42232,7 +42241,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.20.8-customer-web-accounts" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.20.9-foc-archive-channel-changelog" defer></script>
 </body>
 </html>
 
