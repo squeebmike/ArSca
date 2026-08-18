@@ -11,7 +11,9 @@ const buylist = fs.readFileSync('buylist.html', 'utf8');
 // a phone number for general service. ──
 assert.match(storefront, /<input id="ck-sms-consent" type="checkbox"/, 'checkout must render an SMS-consent checkbox');
 assert.match(storefront, /I agree to receive text messages about this order/, 'the checkbox label must explicitly say what the customer is consenting to');
-assert.match(storefront, /Reply STOP to opt out/, 'the checkbox label must include opt-out instructions');
+assert.match(storefront, /Message frequency depends on order activity/, 'the checkbox label must disclose message frequency, per Twilio A2P requirements');
+assert.match(storefront, /Reply HELP for help, STOP to opt out/, 'the checkbox label must include both HELP and STOP instructions, not just STOP');
+assert.match(storefront, /href="https:\/\/themanapocket\.com\/privacy-policy" target="_blank">Privacy Policy<\/a> and <a href="https:\/\/themanapocket\.com\/terms-and-conditions" target="_blank">Terms<\/a>/, 'the checkbox label must link directly to the real Privacy Policy and Terms pages');
 assert.match(storefront, /if\(!document\.getElementById\('ck-sms-consent'\)\.checked\)\{ showCheckoutError\('Please confirm you agree to receive text messages about your order\.'\); return; \}/, 'submitCheckout must block submission until the consent checkbox is checked');
 
 console.log('Storefront SMS-consent contract checks passed');
@@ -22,6 +24,9 @@ console.log('Storefront SMS-consent contract checks passed');
 // submitter who will never receive an SMS from this form. ──
 assert.match(buylist, /<input id="sms-consent" type="checkbox"/, 'buylist form must render an SMS-consent checkbox');
 assert.match(buylist, /id="sms-consent-row" style="display:none/, 'the consent row must start hidden -- it only matters once a phone number is entered');
+assert.match(buylist, /Message frequency depends on submission activity/, 'the checkbox label must disclose message frequency, per Twilio A2P requirements');
+assert.match(buylist, /Reply HELP for help, STOP to opt out/, 'the checkbox label must include both HELP and STOP instructions, not just STOP');
+assert.match(buylist, /href="https:\/\/themanapocket\.com\/privacy-policy" target="_blank">Privacy Policy<\/a> and <a href="https:\/\/themanapocket\.com\/terms-and-conditions" target="_blank">Terms<\/a>/, 'the checkbox label must link directly to the real Privacy Policy and Terms pages');
 assert.match(buylist, /function updateSmsConsentVisibility\(\)\{/, 'updateSmsConsentVisibility must exist to toggle the consent row based on whether a phone was entered');
 assert.match(buylist, /oninput="updateSmsConsentVisibility\(\)"/, 'the phone field must trigger the visibility toggle on every keystroke');
 assert.match(buylist, /if\(contactPhone && !document\.getElementById\('sms-consent'\)\.checked\)\{ errEl\.textContent='Please confirm you agree to receive text messages about this submission'; errEl\.classList\.add\('on'\); return; \}/, 'submitBuylist must block submission when a phone was given but consent was not checked');
