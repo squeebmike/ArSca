@@ -23,7 +23,7 @@ assert.match(dashboard, /if\(btn\)\{ btn\.disabled = false; btn\.textContent = b
 // against the barcode library not being loaded yet, and requires at least
 // one item in the batch before doing any work ──
 assert.match(dashboard, /if\(!labelPrintBatch\.length\) return alert\('Add at least one item to print'\);\s*\n\s*if\(typeof JsBarcode === 'undefined'\) return alert/, 'downloadInventoryLabelPngs must guard on an empty batch and a not-yet-loaded barcode library, same as printInventoryLabels');
-assert.match(dashboard, /const codeCanvas = await generateLabelCodeCanvas\(b\.sku \|\| b\.id, codeStyle\);/, 'must render a real scan code onto an offscreen canvas via the shared helper before compositing it onto the label');
+assert.match(dashboard, /const codeCanvas = await generateLabelCodeCanvas\(codeStyle === 'qr' \? labelQrPayload\(b\) : \(b\.sku \|\| b\.id\), codeStyle\);/, 'must render a real scan code onto an offscreen canvas via the shared helper before compositing it onto the label');
 
 // ── Contract: downloaded label prices are always whole dollars, no cents ──
 assert.match(dashboard, /ctx\.fillText\(fdLabelPrice\$\(b\.price\), halfW \/ 2, h \* 0\.72\);/, 'the wrap front face price must render via the whole-dollar formatter');

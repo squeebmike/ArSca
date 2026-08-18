@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.19.8-qr-vendored-lib-fix">
+<meta name="version" content="2026.08.19.9-qr-tcgplayer-link">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1602,14 +1602,14 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.19.8-qr-vendored-lib-fix" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.19.8-qr-vendored-lib-fix" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.19.8-qr-vendored-lib-fix" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.08.19.8-qr-vendored-lib-fix" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.19.8-qr-vendored-lib-fix" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.19.8-qr-vendored-lib-fix" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.19.8-qr-vendored-lib-fix" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.19.8-qr-vendored-lib-fix" defer></script>
+<script src="scripts/query-routing.js?v=2026.08.19.9-qr-tcgplayer-link" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.19.9-qr-tcgplayer-link" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.19.9-qr-tcgplayer-link" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.08.19.9-qr-tcgplayer-link" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.19.9-qr-tcgplayer-link" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.19.9-qr-tcgplayer-link" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.19.9-qr-tcgplayer-link" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.19.9-qr-tcgplayer-link" defer></script>
 </head>
 <body>
 
@@ -1659,11 +1659,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.19.8-qr-vendored-lib-fix</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.19.9-qr-tcgplayer-link</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.19.8-qr-vendored-lib-fix</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.19.9-qr-tcgplayer-link</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1685,7 +1685,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.19.8-qr-vendored-lib-fix</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.19.9-qr-tcgplayer-link</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3464,7 +3464,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.19.8-qr-vendored-lib-fix';
+const APP_VERSION = '2026.08.19.9-qr-tcgplayer-link';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -25813,18 +25813,34 @@ function setCartScanStatus(msg,color){const el=document.getElementById('cart-sca
 // scan (different item, or the same item scanned again after a pause) still
 // goes through immediately.
 let _cartScanLastValue='', _cartScanLastAt=0;
+// A QR label may encode a full TCGPlayer product URL (see labelQrPayload)
+// instead of a bare SKU, so a customer's own phone camera can land on the
+// exact card + condition page. Our own SKU rides along as a &wo_sku= param
+// TCGPlayer itself ignores -- pull it back out here before doing the
+// inventory lookup, so scan-to-cart still finds the item instead of trying
+// to match a whole URL against a barcode value. A label with no TCGPlayer
+// match never had a URL to begin with, so this is a no-op for those --
+// value falls through unchanged, exactly like before this feature existed.
+function cartScanLookupValue(value){
+  if(!/^https?:\/\//i.test(value)) return value;
+  try {
+    const woSku = new URL(value).searchParams.get('wo_sku');
+    return woSku || value;
+  } catch(e) { return value; }
+}
 async function handleCartScanValue(rawValue){
   const value=String(rawValue||'').trim();
   if(!value) return;
+  const lookupValue=cartScanLookupValue(value);
   const now=Date.now();
-  if(value===_cartScanLastValue&&(now-_cartScanLastAt)<2500) return;
-  _cartScanLastValue=value;_cartScanLastAt=now;
+  if(lookupValue===_cartScanLastValue&&(now-_cartScanLastAt)<2500) return;
+  _cartScanLastValue=lookupValue;_cartScanLastAt=now;
   const input=document.getElementById('cart-scan-manual-input');if(input)input.value='';
   const log=document.getElementById('cart-scan-log');
-  const item=(all||[]).find(i=>i.status==='in_stock'&&labelBarcodeValue(i)===value);
+  const item=(all||[]).find(i=>i.status==='in_stock'&&labelBarcodeValue(i)===lookupValue);
   if(!item){
     setCartScanStatus('No in-stock item matches that barcode.','var(--red)');
-    if(log)log.innerHTML=`<div style="color:var(--red)">✕ No match for "${escHtml(value)}"</div>`+log.innerHTML;
+    if(log)log.innerHTML=`<div style="color:var(--red)">✕ No match for "${escHtml(lookupValue)}"</div>`+log.innerHTML;
     return;
   }
   dashAddToCart(item.id);
@@ -38823,6 +38839,30 @@ const LABEL_PRINT_YIELD_EVERY = 20;
 // matter, every price on a printed label here is a round dollar amount.
 const fdLabelPrice$ = n => '$' + Math.round(Number(n || 0));
 
+// Lets one QR code do double duty: scan-to-cart (below) still needs our own
+// SKU/ID to find the item, but a customer's own phone camera scanning the
+// same label should land on the exact card + condition on TCGPlayer instead
+// of a blank SKU. buildTcgExternalLink() (used elsewhere for the "view on
+// TCGPlayer" button) already builds that exact deep link when a real
+// product match exists, and falls back to a plain search URL when it
+// doesn't -- a search is NOT "exact", so only the genuine /product/ link is
+// used here. Our SKU rides along as an extra query param TCGPlayer ignores;
+// scan-to-cart's handleCartScanValue() pulls it back out. Items with no
+// confirmed TCGPlayer match (comics, sports, sealed, or anything unmatched)
+// fall back to the plain SKU/ID value -- scan-to-cart behavior for those is
+// completely unchanged.
+function labelQrPayload(batchEntry){
+  const sku = batchEntry.sku || batchEntry.id;
+  try {
+    const item = (all || []).find(i => i.id === batchEntry.id) || batchEntry;
+    const link = typeof buildTcgExternalLink === 'function' ? buildTcgExternalLink(item) : null;
+    if(link?.url && /tcgplayer\.com\/product\//i.test(link.url)){
+      return link.url + '&wo_sku=' + encodeURIComponent(sku);
+    }
+  } catch(e) { /* fall through to plain SKU/ID if link-building fails for any reason */ }
+  return sku;
+}
+
 // Renders either a linear CODE128 barcode or a QR code onto a fresh canvas,
 // depending on which style the user picked. QR trades physical strip-shape
 // for a square grid that stays scannable when the encoded value is long --
@@ -38902,7 +38942,7 @@ async function printInventoryLabels(){
     const b = labelSpecs[i];
     let barcodeImg = '';
     try {
-      const canvas = await generateLabelCodeCanvas(b.sku || b.id, codeStyle);
+      const canvas = await generateLabelCodeCanvas(codeStyle === 'qr' ? labelQrPayload(b) : (b.sku || b.id), codeStyle);
       barcodeImg = `<img src="${canvas.toDataURL('image/png')}" style="width:100%;height:${isRoll?30:36}px;object-fit:contain">`;
     } catch(e) { barcodeImg = ''; }
     labelParts.push(isWrap ? `<div class="label wrap">
@@ -39035,7 +39075,7 @@ async function downloadInventoryLabelPngs(){
     const ctx = canvas.getContext('2d');
     ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, w, h);
     ctx.fillStyle = '#000';
-    const codeCanvas = await generateLabelCodeCanvas(b.sku || b.id, codeStyle);
+    const codeCanvas = await generateLabelCodeCanvas(codeStyle === 'qr' ? labelQrPayload(b) : (b.sku || b.id), codeStyle);
     if(isWrap){
       // Front face: price and condition only -- no store name, no item
       // name -- so the two numbers that actually matter at a glance on a
@@ -41744,7 +41784,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.19.8-qr-vendored-lib-fix" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.19.9-qr-tcgplayer-link" defer></script>
 </body>
 </html>
 

@@ -18,7 +18,7 @@ for (const fn of ['labelBarcodeValue', 'openLabelPrintModal', 'closeLabelPrintMo
 }
 
 // Labels must actually render a scannable code via generateLabelCodeCanvas (CODE128 barcode or QR), not just text.
-assert.match(dashboard, /const canvas = await generateLabelCodeCanvas\(b\.sku \|\| b\.id, codeStyle\);/, 'printed labels must render a real scan code via generateLabelCodeCanvas');
+assert.match(dashboard, /const canvas = await generateLabelCodeCanvas\(codeStyle === 'qr' \? labelQrPayload\(b\) : \(b\.sku \|\| b\.id\), codeStyle\);/, 'printed labels must render a real scan code via generateLabelCodeCanvas');
 assert.match(dashboard, /JsBarcode\(canvas, value, \{ format:'CODE128', displayValue:false, margin:0 \}\);/, 'generateLabelCodeCanvas must fall back to a real CODE128 barcode');
 assert.match(dashboard, /if\(typeof JsBarcode === 'undefined'\) return alert/, 'printing must fail gracefully if the barcode library has not finished loading yet, not silently produce blank barcodes');
 
