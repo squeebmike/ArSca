@@ -1091,7 +1091,12 @@ async function fulfillStorefrontOrderInventory(env, saleId, storeId) {
       quantity: remaining, qty: remaining, 'inventory-count': remaining,
       status: depleted ? nextStatus : 'in_stock', lifecycle: depleted ? nextStatus : 'in_stock',
       'sold-out': depleted, soldAt: depleted ? soldAt : (data.soldAt || ''),
-      channel: depleted ? (order.fulfillment_method === 'shipping' ? 'storefront_shipping' : 'storefront_pickup') : (data.channel || ''),
+      // 'Website' matches the literal channel label the Reports "sales by
+      // channel" chart and dashboard already color-code (see renderChannels
+      // in dashboard.html) -- the old 'storefront_shipping'/'storefront_pickup'
+      // strings fell through that chart's color map entirely and just showed
+      // as an unrecognized, uncolored channel instead of counting as website sales.
+      channel: depleted ? 'Website' : (data.channel || ''),
     });
     await supabaseAdminFetch(env, `inventory_items?id=eq.${encodeURIComponent(line.item_id)}&store_id=eq.${encodeURIComponent(storeId)}`, { method:'PATCH', headers:{ Prefer:'return=minimal' }, body:JSON.stringify({ data, status: depleted ? nextStatus : 'in_stock' }) });
   }
