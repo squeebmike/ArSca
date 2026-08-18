@@ -100,7 +100,6 @@ async function submitBuylist(){
   const items=collectBuylistItems();
   if(!contactName){ errEl.textContent='Enter your name'; errEl.classList.add('on'); return; }
   if(!contactEmail && !contactPhone){ errEl.textContent='Enter an email or phone number'; errEl.classList.add('on'); return; }
-  if(contactPhone && !document.getElementById('sms-consent').checked){ errEl.textContent='Please confirm you agree to receive text messages about this submission'; errEl.classList.add('on'); return; }
   if(!items.length){ errEl.textContent='Add at least one item you want to sell'; errEl.classList.add('on'); return; }
   const btn=document.getElementById('submit-btn');
   btn.disabled=true; btn.textContent='SUBMITTING…';

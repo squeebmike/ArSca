@@ -4,24 +4,26 @@ import assert from 'node:assert/strict';
 const storefront = fs.readFileSync('storefront.html', 'utf8');
 const buylist = fs.readFileSync('buylist.html', 'utf8');
 
-// ── Contract: storefront checkout requires an explicit SMS-consent checkbox
-// before an order (which always collects a phone number) can be submitted --
-// Twilio A2P registration was rejected for lacking this exact requirement:
-// "explicitly ask consumers to consent" to receiving texts, not just collect
-// a phone number for general service. ──
+// ── Contract: storefront checkout renders an explicit, fully-disclosed
+// SMS-consent checkbox -- Twilio A2P review required clear consent wording
+// (message type, frequency, "msg & data rates", STOP/HELP, and links to
+// Terms/Privacy) directly next to the checkbox. It must also stay OPTIONAL:
+// a later Twilio review explicitly rejected gating checkout on this box --
+// "Make SMS consent optional...so consumers can complete sign-up without
+// opting in to texts." ──
 assert.match(storefront, /<input id="ck-sms-consent" type="checkbox"/, 'checkout must render an SMS-consent checkbox');
 assert.match(storefront, /I agree to receive text messages about this order/, 'the checkbox label must explicitly say what the customer is consenting to');
 assert.match(storefront, /Message frequency depends on order activity/, 'the checkbox label must disclose message frequency, per Twilio A2P requirements');
 assert.match(storefront, /Reply HELP for help, STOP to opt out/, 'the checkbox label must include both HELP and STOP instructions, not just STOP');
 assert.match(storefront, /href="https:\/\/themanapocket\.com\/privacy-policy" target="_blank">Privacy Policy<\/a> and <a href="https:\/\/themanapocket\.com\/terms-and-conditions" target="_blank">Terms<\/a>/, 'the checkbox label must link directly to the real Privacy Policy and Terms pages');
-assert.match(storefront, /if\(!document\.getElementById\('ck-sms-consent'\)\.checked\)\{ showCheckoutError\('Please confirm you agree to receive text messages about your order\.'\); return; \}/, 'submitCheckout must block submission until the consent checkbox is checked');
+assert.doesNotMatch(storefront, /ck-sms-consent'\)\.checked/, 'checkout submission must never read/require ck-sms-consent -- consent must stay optional, not gate the purchase');
 
 console.log('Storefront SMS-consent contract checks passed');
 
-// ── Contract: buylist ("sell to us") form requires the same explicit
-// consent, but only when a phone number is actually provided -- consent to
-// texting is meaningless (and shouldn't block submission) for an email-only
-// submitter who will never receive an SMS from this form. ──
+// ── Contract: buylist ("sell to us") form shows the same fully-disclosed,
+// optional consent checkbox once a phone number is entered (no phone means
+// no SMS is possible, so nothing to consent to) -- but never blocks
+// submission on it either. ──
 assert.match(buylist, /<input id="sms-consent" type="checkbox"/, 'buylist form must render an SMS-consent checkbox');
 assert.match(buylist, /id="sms-consent-row" style="display:none/, 'the consent row must start hidden -- it only matters once a phone number is entered');
 assert.match(buylist, /Message frequency depends on submission activity/, 'the checkbox label must disclose message frequency, per Twilio A2P requirements');
@@ -29,26 +31,27 @@ assert.match(buylist, /Reply HELP for help, STOP to opt out/, 'the checkbox labe
 assert.match(buylist, /href="https:\/\/themanapocket\.com\/privacy-policy" target="_blank">Privacy Policy<\/a> and <a href="https:\/\/themanapocket\.com\/terms-and-conditions" target="_blank">Terms<\/a>/, 'the checkbox label must link directly to the real Privacy Policy and Terms pages');
 assert.match(buylist, /function updateSmsConsentVisibility\(\)\{/, 'updateSmsConsentVisibility must exist to toggle the consent row based on whether a phone was entered');
 assert.match(buylist, /oninput="updateSmsConsentVisibility\(\)"/, 'the phone field must trigger the visibility toggle on every keystroke');
-assert.match(buylist, /if\(contactPhone && !document\.getElementById\('sms-consent'\)\.checked\)\{ errEl\.textContent='Please confirm you agree to receive text messages about this submission'; errEl\.classList\.add\('on'\); return; \}/, 'submitBuylist must block submission when a phone was given but consent was not checked');
+assert.doesNotMatch(buylist, /'sms-consent'\)\.checked\)\{ errEl/, 'submitBuylist must never block on the consent checkbox -- it must stay optional');
 
 console.log('Buylist SMS-consent contract checks passed');
 
-// ── Functional: reimplement the buylist visibility/validation logic and
-// verify the exact behavior matrix -- email-only submitters are never
-// blocked by a consent checkbox that was never shown to them, phone
-// submitters always are until checked. ──
+// ── Functional: reimplement the visibility toggle -- the checkbox row only
+// matters (and only shows) once a phone number exists, but its checked
+// state must never factor into whether the form can be submitted. ──
 function shouldShowConsentRow(phone){
   return phone.trim().length > 0;
 }
-function canSubmitBuylist(phone, consentChecked){
-  if (!phone.trim()) return true; // no phone -- consent row never shown, nothing to block on
-  return consentChecked;
+function canSubmitBuylist(name, emailOrPhone, itemsCount){
+  // Consent-checkbox state is intentionally NOT a parameter -- it must
+  // never be able to block submission, regardless of whether a phone was
+  // given or the box was checked.
+  return !!name && !!emailOrPhone && itemsCount > 0;
 }
 
 assert.equal(shouldShowConsentRow(''), false, 'no phone entered -- consent row must stay hidden');
 assert.equal(shouldShowConsentRow('555-1234'), true, 'a phone entered -- consent row must show');
-assert.equal(canSubmitBuylist('', false), true, 'email-only submission must never be blocked by an unchecked, never-shown consent box');
-assert.equal(canSubmitBuylist('555-1234', false), false, 'a phone number was given but consent was not checked -- submission must be blocked');
-assert.equal(canSubmitBuylist('555-1234', true), true, 'phone number given and consent checked -- submission must be allowed');
+assert.equal(canSubmitBuylist('Jane', '555-1234', 1), true, 'a fully valid submission with a phone number must succeed regardless of consent-checkbox state');
+assert.equal(canSubmitBuylist('Jane', 'jane@example.com', 1), true, 'an email-only submission must succeed -- there is no consent row to even interact with');
+assert.equal(canSubmitBuylist('', '555-1234', 1), false, 'a missing name must still block submission -- only the consent checkbox was made optional');
 
 console.log('SMS-consent visibility/validation functional checks passed');
