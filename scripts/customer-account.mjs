@@ -161,6 +161,43 @@ async function accountInStorePurchases(request, env, deps, url) {
   return deps.json({ ok:true, linked:true, purchases:grouped });
 }
 
+// consignor_people/consignment_items/the want-list KV blob all store contact
+// as one freeform "phone or email" string (staff type whatever the customer
+// gave them at intake) rather than a structured column, so matching it to a
+// signed-in web account has to try both interpretations of that one field.
+function contactMatches(contact, email, phoneDigits, normalizePhoneDigits) {
+  const value = String(contact || '');
+  return (!!email && value.toLowerCase() === email) || (!!phoneDigits && normalizePhoneDigits(value) === phoneDigits);
+}
+
+async function accountConsignments(request, env, deps, url) {
+  const auth = await deps.requireAuthenticatedUser(request, env); if (auth.error) return auth.error;
+  const storeId = text(url.searchParams.get('store_id'), 80);
+  const db = (p, o) => deps.supabaseAdminFetch(env, p, o);
+  const customer = await findLinkedCustomer(db, storeId, auth.user.id);
+  const email = String(auth.user.email || '').toLowerCase();
+  const phoneDigits = customer ? deps.normalizePhoneDigits(customer.phone) : '';
+  const { data:people } = await db(`consignor_people?store_id=eq.${encodeURIComponent(storeId)}&select=id,name,contact,store_split_percent`);
+  const consignor = (people || []).find(person => contactMatches(person.contact, email, phoneDigits, deps.normalizePhoneDigits));
+  if (!consignor) return deps.json({ ok:true, linked:false, consignor:null, items:[] });
+  const { data:items } = await db(`consignment_items?store_id=eq.${encodeURIComponent(storeId)}&consignor_id=eq.${encodeURIComponent(consignor.id)}&order=added_at.desc&limit=300&select=id,item_name,inventory_sku,list_price,status,sale_price,paid_out,added_at,sold_at,paid_out_at`);
+  return deps.json({ ok:true, linked:true, consignor:{ name:consignor.name, storeSplitPercent:Number(consignor.store_split_percent || 0) }, items:items || [] });
+}
+
+async function accountWishlist(request, env, deps, url) {
+  const auth = await deps.requireAuthenticatedUser(request, env); if (auth.error) return auth.error;
+  const storeId = text(url.searchParams.get('store_id'), 80);
+  const db = (p, o) => deps.supabaseAdminFetch(env, p, o);
+  const customer = await findLinkedCustomer(db, storeId, auth.user.id);
+  const email = String(auth.user.email || '').toLowerCase();
+  const phoneDigits = customer ? deps.normalizePhoneDigits(customer.phone) : '';
+  const raw = await deps.kvGet(env, `lba:${text(storeId, 80).replace(/[^a-zA-Z0-9:_-]/g, '-')}:wantlist`);
+  let list = [];
+  try { list = raw ? JSON.parse(raw) : []; } catch (_) { list = []; }
+  const items = (Array.isArray(list) ? list : []).filter(entry => contactMatches(entry.contact, email, phoneDigits, deps.normalizePhoneDigits));
+  return deps.json({ ok:true, items });
+}
+
 export async function handleAccountRequest(request, env, url, deps) {
   const path = url.pathname;
   if (path === '/public/account/phone/start-verify' && request.method === 'POST') return await startPhoneVerify(request, env, deps, url);
@@ -168,5 +205,7 @@ export async function handleAccountRequest(request, env, url, deps) {
   if (path === '/public/account/summary' && request.method === 'GET') return await accountSummary(request, env, deps, url);
   if (path === '/public/account/orders' && request.method === 'GET') return await accountOrders(request, env, deps, url);
   if (path === '/public/account/in-store' && request.method === 'GET') return await accountInStorePurchases(request, env, deps, url);
+  if (path === '/public/account/consignments' && request.method === 'GET') return await accountConsignments(request, env, deps, url);
+  if (path === '/public/account/wishlist' && request.method === 'GET') return await accountWishlist(request, env, deps, url);
   return deps.json({ ok:false, error:'Not found' }, 404);
 }
