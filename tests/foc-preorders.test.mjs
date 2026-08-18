@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { parse } from 'csv-parse/sync';
-import { normalizePrhRow, loadAllCatalogs } from '../scripts/foc-preorders.mjs';
+import { normalizePrhRow, loadAllCatalogs, focOrderConfirmationEmail, syncFocStripeEvent } from '../scripts/foc-preorders.mjs';
 
 const worker = fs.readFileSync('cloudflare-worker-full.js', 'utf8');
 const service = fs.readFileSync('scripts/foc-preorders.mjs', 'utf8');
@@ -146,6 +146,103 @@ console.log('Multi-week FOC public route contract checks passed');
 }
 
 console.log('loadAllCatalogs multi-week functional checks passed');
+
+// ── Bug: placing a FOC preorder and paying for it never sent the customer
+// any confirmation -- checkout only set up the Stripe payment and wrote
+// the order row; nothing in the flow ever called the app's email sender. ──
+assert.match(worker, /syncFocStripeEvent\(env,event,\{supabaseAdminFetch,sendEmail\}\)/, 'the Stripe webhook must pass sendEmail into syncFocStripeEvent, or a paid FOC order can never trigger a confirmation email');
+assert.match(service, /export function focOrderConfirmationEmail\(order, items\) \{/, 'a confirmation-email builder must exist');
+assert.match(service, /const guard = status==='paid' \? '&status=neq\.paid' : '';/, 'the paid-transition update must guard against redelivered Stripe webhooks, or a duplicate delivery would email the customer twice');
+
+console.log('FOC order-confirmation-email contract checks passed');
+
+// ── Functional: the email body itself must actually contain what was
+// ordered and what it cost -- a confirmation with no order details isn't
+// a real confirmation. ──
+{
+  const order = { order_number:'FOC-20260831-ABCD1234', customer_name:'Jane', customer_email:'jane@example.com', fulfillment_method:'pickup', subtotal_cents:998, shipping_cents:0, total_cents:998 };
+  const items = [{ quantity:2, unit_price_cents:499, sku_snapshot:{ title:'Avengers #1', variantLabel:'Cover A' } }];
+  const { subject, body } = focOrderConfirmationEmail(order, items);
+  assert.match(subject, /FOC-20260831-ABCD1234/, 'the subject must name the specific order');
+  assert.match(body, /2 x Avengers #1/, 'the body must list what was actually ordered and the quantity');
+  assert.match(body, /\$9\.98/, 'the body must show the real total charged, not a placeholder');
+  assert.match(body, /Pickup in store/, 'the body must state the fulfillment method the customer chose');
+}
+
+// ── Functional: syncFocStripeEvent against a mock Stripe webhook payload,
+// covering the exact failure modes a real confirmation email needs to
+// avoid -- sending on a genuine payment, never on a failed payment, never
+// twice on a redelivered webhook (Stripe redelivers on any non-2xx or
+// timeout), and never touching FOC tables at all for an unrelated
+// payment (e.g. a normal POS sale) that just happens to share the same
+// event type. ──
+{
+  const mockOrder = { id:'order1', order_number:'FOC-20260831-ABCD1234', customer_email:'jane@example.com', customer_name:'Jane', fulfillment_method:'pickup', subtotal_cents:2499, shipping_cents:0, total_cents:2499 };
+  const mockItems = [{ quantity:1, unit_price_cents:2499, sku_snapshot:{ title:'Avengers #1', variantLabel:'Cover A' } }];
+
+  // Genuine successful payment -> exactly one email, to the right address.
+  // supabaseAdminFetch's real signature is (env, path, options) -- syncFocStripeEvent
+  // always calls it via deps.supabaseAdminFetch(env, path, options), never the
+  // 2-arg (path, options) shorthand loadCatalog/loadAllCatalogs use internally
+  // via their own pre-bound `db` closure, so these mocks take env first.
+  {
+    const emailCalls = [];
+    const db = async (env, path, options) => {
+      if (path.startsWith('foc_preorder_orders?') && options?.method === 'PATCH') {
+        assert.ok(path.includes('status=neq.paid'), 'the paid-transition PATCH must carry the idempotency guard');
+        return { data:[mockOrder] };
+      }
+      if (path.startsWith('foc_preorder_items?')) return { data:mockItems };
+      throw new Error('unexpected db call: ' + path);
+    };
+    const sendEmail = async (env, to, subject) => { emailCalls.push({ to, subject }); };
+    const event = { type:'payment_intent.succeeded', data:{ object:{ id:'pi_1', status:'succeeded', metadata:{ source:'foc_preorder', foc_order_id:'order1' } } } };
+    await syncFocStripeEvent({}, event, { supabaseAdminFetch:db, sendEmail });
+    assert.equal(emailCalls.length, 1, 'a genuine successful payment must send exactly one confirmation email');
+    assert.equal(emailCalls[0].to, 'jane@example.com', 'the email must go to the order\'s customer_email, not somewhere else');
+  }
+
+  // Redelivered webhook for an order already marked paid -> the guarded
+  // PATCH matches zero rows -> must not send a second email.
+  {
+    const emailCalls = [];
+    const db = async (env, path, options) => {
+      if (path.startsWith('foc_preorder_orders?') && options?.method === 'PATCH') return { data:[] };
+      throw new Error('unexpected db call on redelivery: ' + path);
+    };
+    const sendEmail = async () => { emailCalls.push(1); };
+    const event = { type:'payment_intent.succeeded', data:{ object:{ id:'pi_1', status:'succeeded', metadata:{ source:'foc_preorder', foc_order_id:'order1' } } } };
+    await syncFocStripeEvent({}, event, { supabaseAdminFetch:db, sendEmail });
+    assert.equal(emailCalls.length, 0, 'a redelivered webhook for an already-paid order must not send a duplicate confirmation email');
+  }
+
+  // Failed payment -> no email under any circumstances.
+  {
+    let emailCalled = false;
+    const db = async (env, path, options) => {
+      if (path.startsWith('foc_preorder_orders?') && options?.method === 'PATCH') return { data:[{ id:'order1' }] };
+      throw new Error('unexpected db call: ' + path);
+    };
+    const sendEmail = async () => { emailCalled = true; };
+    const event = { type:'payment_intent.payment_failed', data:{ object:{ id:'pi_2', status:'requires_payment_method', metadata:{ source:'foc_preorder', foc_order_id:'order1' } } } };
+    await syncFocStripeEvent({}, event, { supabaseAdminFetch:db, sendEmail });
+    assert.equal(emailCalled, false, 'a failed payment must never trigger a confirmation email');
+  }
+
+  // Unrelated Stripe event (e.g. a normal in-store POS sale's payment_intent)
+  // -> must not touch the FOC tables or send anything.
+  {
+    let dbCalled = false, emailCalled = false;
+    const db = async () => { dbCalled = true; return { data:[] }; };
+    const sendEmail = async () => { emailCalled = true; };
+    const event = { type:'payment_intent.succeeded', data:{ object:{ id:'pi_3', status:'succeeded', metadata:{ source:'pos_ledger' } } } };
+    await syncFocStripeEvent({}, event, { supabaseAdminFetch:db, sendEmail });
+    assert.equal(dbCalled, false, 'a non-FOC Stripe event must be ignored entirely');
+    assert.equal(emailCalled, false);
+  }
+}
+
+console.log('FOC order-confirmation-email functional checks passed');
 
 // On the store workstation, also validate the full supplied PRH export. CI
 // remains deterministic when that private distributor file is absent.

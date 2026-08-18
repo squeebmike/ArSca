@@ -1110,7 +1110,7 @@ async function syncStripeWebhookPayment(env, event, mode) {
       await fulfillStorefrontOrderInventory(env,payment.sale_id,payment.store_id).catch(e=>console.error('Storefront order fulfillment failed:',e.message));
     }
   }
-  await syncFocStripeEvent(env,event,{supabaseAdminFetch}).catch(error=>console.error(JSON.stringify({message:'FOC preorder Stripe sync failed',error:error.message,intentId})));
+  await syncFocStripeEvent(env,event,{supabaseAdminFetch,sendEmail}).catch(error=>console.error(JSON.stringify({message:'FOC preorder Stripe sync failed',error:error.message,intentId})));
   if(event.type.startsWith('refund.')){await supabaseAdminFetch(env,`pos_refunds?stripe_refund_id=eq.${encodeURIComponent(object.id)}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({status:object.status||event.type.replace('refund.',''),failure_reason:object.failure_reason||'',updated_at:new Date().toISOString()})});}
   if(event.type==='account.updated'){const storeId=object.metadata?.arsca_store_id;if(storeId){const status=safeStripeAccount(object,mode);await saveStripeAccount(env,storeId,status);}}
 }
