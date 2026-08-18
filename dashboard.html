@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.19.18-wrap-price-center-bold">
+<meta name="version" content="2026.08.19.19-label-text-supersample">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1602,14 +1602,14 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.19.18-wrap-price-center-bold" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.19.18-wrap-price-center-bold" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.19.18-wrap-price-center-bold" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.08.19.18-wrap-price-center-bold" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.19.18-wrap-price-center-bold" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.19.18-wrap-price-center-bold" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.19.18-wrap-price-center-bold" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.19.18-wrap-price-center-bold" defer></script>
+<script src="scripts/query-routing.js?v=2026.08.19.19-label-text-supersample" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.19.19-label-text-supersample" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.19.19-label-text-supersample" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.08.19.19-label-text-supersample" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.19.19-label-text-supersample" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.19.19-label-text-supersample" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.19.19-label-text-supersample" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.19.19-label-text-supersample" defer></script>
 </head>
 <body>
 
@@ -1659,11 +1659,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.19.18-wrap-price-center-bold</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.19.19-label-text-supersample</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.19.18-wrap-price-center-bold</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.19.19-label-text-supersample</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1685,7 +1685,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.19.18-wrap-price-center-bold</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.19.19-label-text-supersample</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3464,7 +3464,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.19.18-wrap-price-center-bold';
+const APP_VERSION = '2026.08.19.19-label-text-supersample';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -39120,17 +39120,35 @@ async function downloadInventoryLabelPngs(){
   const btnLabel = '⬇️ DOWNLOAD PNGs (for phone thermal-printer app)';
   if(btn){ btn.disabled = true; btn.textContent = 'GENERATING...'; }
   const seenNames = {};
+  // Text is drawn anti-aliased (soft gray edges) no matter what -- canvas
+  // font rendering isn't affected by imageSmoothingEnabled. Thresholding
+  // that straight to 1-bit at the label's real, small pixel size is what
+  // made downloaded PNGs look grainy/speckled even before printing. Fix:
+  // draw all TEXT onto an offscreen canvas at TEXT_SUPERSAMPLE times the
+  // real size, then smoothly downsample it onto the real canvas before the
+  // threshold pass -- this is the standard way to get clean edges out of
+  // anti-aliased text at a small target size. The QR/barcode is exempt: it
+  // still gets generated directly at its exact final pixel size and drawn
+  // onto the real canvas with smoothing off, same as before -- any scaling
+  // there, even smoothed, risks blurring module/bar edges into the gray
+  // zone the threshold pass then cuts unpredictably, which is what broke a
+  // confirmed real scan previously.
+  const TEXT_SUPERSAMPLE = 3;
   for(let i = 0; i < labelSpecs.length; i++){
     const b = labelSpecs[i];
     const canvas = document.createElement('canvas');
     canvas.width = w; canvas.height = h;
     const ctx = canvas.getContext('2d');
-    // Every element drawn here gets flattened to pure black/white by
-    // thresholdCanvasToBW() anyway, so smooth (blurred) scaling only risks
-    // corrupting the QR/barcode's edges for no benefit -- off entirely.
     ctx.imageSmoothingEnabled = false;
     ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, w, h);
     ctx.fillStyle = '#000';
+    const textCanvas = document.createElement('canvas');
+    textCanvas.width = w * TEXT_SUPERSAMPLE; textCanvas.height = h * TEXT_SUPERSAMPLE;
+    const tctx = textCanvas.getContext('2d');
+    tctx.scale(TEXT_SUPERSAMPLE, TEXT_SUPERSAMPLE);
+    tctx.fillStyle = '#fff'; tctx.fillRect(0, 0, w, h);
+    tctx.fillStyle = '#000';
+    let codeDraw = null;
     const codeValue = codeStyle === 'qr' ? labelQrPayload(b) : (b.sku || b.id);
     if(isWrap){
       // Front face: item name (so a loose label is still identifiable by
@@ -39149,23 +39167,23 @@ async function downloadInventoryLabelPngs(){
       // size (below) fixes that, and a much bigger real size besides gives
       // the printer more dots per module to work with.
       const halfW = w / 2;
-      ctx.strokeStyle = '#000'; ctx.setLineDash([4, 4]);
-      ctx.beginPath(); ctx.moveTo(halfW, 0); ctx.lineTo(halfW, h); ctx.stroke();
-      ctx.setLineDash([]);
+      tctx.strokeStyle = '#000'; tctx.setLineDash([4, 4]);
+      tctx.beginPath(); tctx.moveTo(halfW, 0); tctx.lineTo(halfW, h); tctx.stroke();
+      tctx.setLineDash([]);
       // Extra side padding (padX) so text never touches the fold line/edge;
       // the name sits close to the top (padY) since it no longer has to
       // share that space with a store-name header.
       const padX = w * 0.045, padY = h * 0.02;
-      ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+      tctx.textAlign = 'center'; tctx.textBaseline = 'top';
       const nameFont = Math.round(h * 0.085);
-      ctx.font = `bold ${nameFont}px sans-serif`;
-      wrapCanvasText(ctx, b.name, halfW / 2, padY, halfW - padX * 2, Math.round(nameFont * 1.15), 2);
+      tctx.font = `bold ${nameFont}px sans-serif`;
+      wrapCanvasText(tctx, b.name, halfW / 2, padY, halfW - padX * 2, Math.round(nameFont * 1.15), 2);
       if(b.badge){
         // Bold -- thin/regular weight is the one thing on this label that
         // isn't already bold, and it printed noticeably less crisp than
         // everything else on a real thermal print.
-        ctx.font = `bold ${Math.round(h * 0.06)}px sans-serif`;
-        ctx.fillText(b.badge.toUpperCase(), halfW / 2, h * 0.24);
+        tctx.font = `bold ${Math.round(h * 0.06)}px sans-serif`;
+        tctx.fillText(b.badge.toUpperCase(), halfW / 2, h * 0.24);
       }
       // Centered as one unit (the $ + digits together, not each centered
       // separately) rather than right-aligned toward the fold line. The $ is
@@ -39175,31 +39193,31 @@ async function downloadInventoryLabelPngs(){
       const priceStr = fdLabelPrice$(b.price);
       const dollarSign = priceStr.charAt(0), priceDigits = priceStr.slice(1);
       const priceBigFont = Math.round(h * 0.33), priceSmallFont = Math.round(priceBigFont * 0.55);
-      ctx.textBaseline = 'alphabetic';
-      ctx.font = `900 ${priceBigFont}px sans-serif`;
-      const priceDigitsWidth = ctx.measureText(priceDigits).width;
-      ctx.font = `900 ${priceSmallFont}px sans-serif`;
-      const priceDollarWidth = ctx.measureText(dollarSign).width;
+      tctx.textBaseline = 'alphabetic';
+      tctx.font = `900 ${priceBigFont}px sans-serif`;
+      const priceDigitsWidth = tctx.measureText(priceDigits).width;
+      tctx.font = `900 ${priceSmallFont}px sans-serif`;
+      const priceDollarWidth = tctx.measureText(dollarSign).width;
       const priceRight = halfW / 2 + (priceDollarWidth + priceDigitsWidth) / 2;
       const priceBaseline = h * 0.34 + priceBigFont * 0.78;
       const dollarBaseline = priceBaseline - priceBigFont * 0.36;
-      ctx.textAlign = 'right';
-      ctx.font = `900 ${priceBigFont}px sans-serif`;
-      ctx.fillText(priceDigits, priceRight, priceBaseline);
-      ctx.font = `900 ${priceSmallFont}px sans-serif`;
-      ctx.fillText(dollarSign, priceRight - priceDigitsWidth, dollarBaseline);
-      ctx.textAlign = 'left'; ctx.textBaseline = 'top';
-      ctx.font = `bold ${Math.round(h * 0.13)}px sans-serif`;
-      ctx.fillText(String(b.condition || '').toUpperCase(), padX, h * 0.8);
+      tctx.textAlign = 'right';
+      tctx.font = `900 ${priceBigFont}px sans-serif`;
+      tctx.fillText(priceDigits, priceRight, priceBaseline);
+      tctx.font = `900 ${priceSmallFont}px sans-serif`;
+      tctx.fillText(dollarSign, priceRight - priceDigitsWidth, dollarBaseline);
+      tctx.textAlign = 'left'; tctx.textBaseline = 'top';
+      tctx.font = `bold ${Math.round(h * 0.13)}px sans-serif`;
+      tctx.fillText(String(b.condition || '').toUpperCase(), padX, h * 0.8);
       // The shop-name text sits in a band with equal padding above (from the
       // top edge) and below (before the code starts) -- symmetric spacing,
       // computed from the actual text size rather than eyeballed constants,
       // and sized to land on the same total height the code already used to
       // size itself against, so the code doesn't shrink.
       const shopFont = Math.round(h * 0.065), shopPad = h * 0.032;
-      ctx.textAlign = 'center';
-      ctx.font = `bold ${shopFont}px sans-serif`;
-      ctx.fillText('THE MANA POCKET', halfW + halfW / 2, shopPad);
+      tctx.textAlign = 'center';
+      tctx.font = `bold ${shopFont}px sans-serif`;
+      tctx.fillText('THE MANA POCKET', halfW + halfW / 2, shopPad);
       const logoBottom = shopPad + shopFont * 1.2 + shopPad;
       // Square code, as large as the remaining back-face room allows --
       // bounded by both the leftover height below the shop name and the
@@ -39207,23 +39225,33 @@ async function downloadInventoryLabelPngs(){
       const codeMargin = w * 0.015;
       const codeSize = Math.min(h - logoBottom - codeMargin * 2, halfW - codeMargin * 2);
       const codeCanvas = await generateLabelCodeCanvas(codeValue, codeStyle, Math.round(codeSize));
-      ctx.drawImage(codeCanvas, halfW + (halfW - codeSize) / 2, h - codeMargin - codeSize, codeSize, codeSize);
+      codeDraw = { canvas: codeCanvas, x: halfW + (halfW - codeSize) / 2, y: h - codeMargin - codeSize, w: codeSize, h: codeSize };
     } else {
       const pad = w * 0.02;
-      ctx.textBaseline = 'top'; ctx.textAlign = 'left';
-      if(storeName){ ctx.font = `${Math.round(h * 0.07)}px sans-serif`; ctx.fillText(storeName.toUpperCase(), pad, pad); }
-      ctx.font = `bold ${Math.round(h * 0.12)}px sans-serif`;
-      wrapCanvasText(ctx, b.name, pad, pad + h * 0.12, w - pad * 2, Math.round(h * 0.14));
+      tctx.textBaseline = 'top'; tctx.textAlign = 'left';
+      if(storeName){ tctx.font = `${Math.round(h * 0.07)}px sans-serif`; tctx.fillText(storeName.toUpperCase(), pad, pad); }
+      tctx.font = `bold ${Math.round(h * 0.12)}px sans-serif`;
+      wrapCanvasText(tctx, b.name, pad, pad + h * 0.12, w - pad * 2, Math.round(h * 0.14));
       const codeH = h * 0.32, codeW = codeStyle === 'qr' ? codeH : w * 0.7;
       const codeCanvas = await generateLabelCodeCanvas(codeValue, codeStyle, Math.round(codeStyle === 'qr' ? codeH : Math.max(codeW, codeH)));
-      ctx.drawImage(codeCanvas, (w - codeW) / 2, h * 0.44, codeW, codeH);
-      ctx.font = `${Math.round(h * 0.08)}px sans-serif`;
-      ctx.textAlign = 'left';
-      ctx.fillText(`${b.sku || ''}${b.condition ? ' · ' + b.condition : ''}`, pad, h * 0.82);
-      ctx.font = `bold ${Math.round(h * 0.16)}px sans-serif`;
-      ctx.textAlign = 'right';
-      ctx.fillText(fdLabelPrice$(b.price), w - pad, h * 0.78);
+      codeDraw = { canvas: codeCanvas, x: (w - codeW) / 2, y: h * 0.44, w: codeW, h: codeH };
+      tctx.font = `${Math.round(h * 0.08)}px sans-serif`;
+      tctx.textAlign = 'left';
+      tctx.fillText(`${b.sku || ''}${b.condition ? ' · ' + b.condition : ''}`, pad, h * 0.82);
+      tctx.font = `bold ${Math.round(h * 0.16)}px sans-serif`;
+      tctx.textAlign = 'right';
+      tctx.fillText(fdLabelPrice$(b.price), w - pad, h * 0.78);
     }
+    // Downsample the supersampled text layer onto the real canvas with
+    // smoothing on -- this is what turns hard-edged, jagged anti-aliased
+    // text into cleanly averaged gray edges that threshold much more
+    // smoothly below. The code is drawn straight onto the real canvas
+    // afterward at its exact size, smoothing off, completely untouched by
+    // this pass.
+    ctx.imageSmoothingEnabled = true;
+    ctx.drawImage(textCanvas, 0, 0, w, h);
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(codeDraw.canvas, codeDraw.x, codeDraw.y, codeDraw.w, codeDraw.h);
     thresholdCanvasToBW(canvas);
     const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
     const safeName = String(b.name || 'label').toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 30) || 'label';
@@ -41895,7 +41923,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.19.18-wrap-price-center-bold" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.19.19-label-text-supersample" defer></script>
 </body>
 </html>
 
