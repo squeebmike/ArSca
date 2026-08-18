@@ -79,7 +79,7 @@
     "test:worker-backend-perf-fixes": "node tests/worker-backend-perf-fixes.test.mjs",
     "test:ebay-shipping-label": "node tests/ebay-shipping-label.test.mjs",
     "test:storefront-real-shipping": "node tests/storefront-real-shipping.test.mjs",
-"test:foc-preorders": "node tests/foc-preorders.test.mjs",
+    "test:foc-preorders": "node tests/foc-preorders.test.mjs",
     "test:sms-consent-checkboxes": "node tests/sms-consent-checkboxes.test.mjs",
     "test:label-print-png-download": "node tests/label-print-png-download.test.mjs",
     "test:label-print-qr-code": "node tests/label-print-qr-code.test.mjs",
@@ -100,7 +100,8 @@
     "topps:verify:r2": "node scripts/topps/verify-production-r2.mjs"
   },
   "devDependencies": {
-    "@playwright/test": "^1.52.0"
+    "@playwright/test": "^1.52.0",
+    "xlsx": "^0.18.5"
   },
   "dependencies": {
     "csv-parse": "^7.0.0",

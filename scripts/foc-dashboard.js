@@ -43,7 +43,18 @@ async function handleImport(event){
   var status=document.getElementById('foc-import-status');if(status){status.style.display='block';status.textContent='Reading '+file.name+'…';}
   try{
     if(typeof XLSX==='undefined')throw new Error('Spreadsheet reader is still loading');
-    var buffer=await file.arrayBuffer();var wb=XLSX.read(buffer,{type:'array'});var sheet=wb.Sheets[wb.SheetNames[0]];var matrix=XLSX.utils.sheet_to_json(sheet,{header:1,defval:''});
+    // raw:true at read time is required for PRH's CSV export specifically --
+    // without it, SheetJS "helpfully" type-infers date-looking cells (FOCDate,
+    // OnSaleDate, etc.) and reformats them to a locale short date ("08/31/2026"
+    // becomes "8/31/26"), which the strict 4-digit-year dateIso() parser on the
+    // Worker then rejects outright -- every single row fails as "missing a FOC
+    // date" even though the source file has one on every row. It also silently
+    // rounds big numeric-looking identifier strings (MainIdentifier/UPC) through
+    // float coercion, corrupting the last digit -- exactly wrong for a column
+    // this importer treats as an exact identifier. raw:true keeps every cell as
+    // its original literal string, which is what a distributor SKU/UPC/date
+    // needs to stay exact for real XLSX files too, not just this CSV.
+    var buffer=await file.arrayBuffer();var wb=XLSX.read(buffer,{type:'array',raw:true});var sheet=wb.Sheets[wb.SheetNames[0]];var matrix=XLSX.utils.sheet_to_json(sheet,{header:1,defval:''});
     var headerIndex=matrix.findIndex(function(row){var values=row.map(function(v){return String(v).trim();});return values.indexOf('MainIdentifier')>-1&&values.indexOf('Title')>-1&&(values.indexOf('FOCDate')>-1||values.indexOf('FOC Date')>-1);});
     if(headerIndex<0)throw new Error('This does not look like a PRH FOC metadata CSV/XLSX');
     var rows=XLSX.utils.sheet_to_json(sheet,{range:headerIndex,defval:'',raw:false});if(!rows.length)throw new Error('No PRH rows found');

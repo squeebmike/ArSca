@@ -54,6 +54,46 @@ assert.match(service, /customer_price_cents \|\| 0/, 'checkout must never fall b
 assert.match(service, /metadata\[source\].*foc_preorder/s);
 assert.match(dashboard, /THE FOC WALL/i);
 
+// ── Bug: a real PRH FOC metadata CSV import failed with "289 row(s) are
+// missing an exact identifier, title, or FOC date" -- on EVERY row, despite
+// every row genuinely having all three. Root cause: SheetJS's CSV reader
+// type-infers date-looking cells and reformats them to a locale short date
+// (e.g. "08/31/2026" -> "8/31/26") unless read with raw:true, and the
+// server's dateIso() parser requires a 4-digit year, so it silently
+// rejected every single row. The same type-inference also rounds big
+// numeric-looking identifier strings (17-digit UPCs) through float
+// coercion, corrupting the exact identifier this importer depends on. ──
+assert.match(dashboard, /XLSX\.read\(buffer,\{type:'array',raw:true\}\)/, 'the PRH FOC import must read the workbook with raw:true, or SheetJS silently reformats date cells (breaking every row\'s FOC date) and corrupts big numeric identifier strings through float rounding');
+assert.doesNotMatch(dashboard, /XLSX\.read\(buffer,\{type:'array'\}\)/, 'the old raw-less read call must be gone, not just shadowed by a second one');
+
+// ── Functional: reproduce the exact bug end-to-end against the real xlsx
+// library (same version loaded from CDN in production), using the exact
+// read options string extracted from the shipped source -- so this test
+// actually breaks if the raw:true fix is ever reverted, instead of just
+// asserting a string is present. ──
+{
+  const XLSX = (await import('xlsx')).default ?? await import('xlsx');
+  const readOptsSrc = dashboard.match(/XLSX\.read\(buffer,(\{[^}]*\})\)/)?.[1];
+  assert.ok(readOptsSrc, 'could not extract the XLSX.read() options object from scripts/foc-dashboard.js');
+  const readOpts = new Function('return ' + readOptsSrc)();
+
+  // A minimal PRH-shaped CSV: real column names, a date-looking FOCDate,
+  // and a 17-digit UPC-like identifier long enough to lose precision if
+  // SheetJS ever coerces it to a Number instead of keeping it a string.
+  const csv = 'MainIdentifier,UPC,Title,FOCDate\n' +
+    '75960621456300121,75960621456300121,AVENGERS #1 PRIMARY TITLE,08/31/2026\n';
+  const buffer = Buffer.from(csv, 'utf8');
+  const wb = XLSX.read(buffer, { ...readOpts, type:'buffer' }); // type:'buffer' swaps in for the browser's ArrayBuffer path; raw stays whatever the source specifies
+  const sheet = wb.Sheets[wb.SheetNames[0]];
+  const rows = XLSX.utils.sheet_to_json(sheet, { defval:'', raw:false });
+  assert.equal(rows[0].FOCDate, '08/31/2026', 'FOCDate must survive the read as the exact original string, not get reformatted to a 2-digit-year short date ("8/31/26") that the server\'s strict dateIso() parser then rejects');
+  assert.equal(rows[0].MainIdentifier, '75960621456300121', 'a 17-digit identifier must survive the read as an exact string, not get coerced through a float and lose precision');
+  const normalized = normalizePrhRow(rows[0]);
+  assert.ok(normalized.distributorSku && normalized.upc && normalized.focDate && normalized.title, 'the row must pass the server\'s import validation now (all four required fields present) -- this is the exact check that failed on all 289 rows before the fix');
+}
+
+console.log('PRH FOC CSV date/identifier reformatting fix (real xlsx library) verified.');
+
 // On the store workstation, also validate the full supplied PRH export. CI
 // remains deterministic when that private distributor file is absent.
 const actualPath = 'C:/Users/Sales/Downloads/2026-08-24_PRH_FOC_metadata_full (1).csv';
