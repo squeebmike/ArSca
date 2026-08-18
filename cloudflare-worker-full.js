@@ -26,6 +26,7 @@
 // the Worker -- reused here instead of duplicating checklist-parsing logic.
 import { buildChecklistIndex, parseChecklistText, sha1Hex, slugify } from './scripts/topps-checklist-parser.js';
 import { handleFocRequest, syncFocStripeEvent } from './scripts/foc-preorders.mjs';
+import { handleAccountRequest } from './scripts/customer-account.mjs';
 
 // Per-isolate rate limiter for PriceCharting API (no KV needed). _pcQueueTail
 // serializes the check-and-update of _pcLastCall itself so concurrent callers
@@ -2530,6 +2531,13 @@ export default {
       return await handleFocRequest(request, env, url, {
         CORS, json, supabaseAdminFetch, requireStoreUser, requireAuthenticatedUser,
         readJsonWithLimit, enforceUsageLimit, stripeApi, stripeMode, stripeConfig,
+      });
+    }
+
+    if (url.pathname.startsWith('/public/account/')) {
+      return await handleAccountRequest(request, env, url, {
+        CORS, json, supabaseAdminFetch, requireAuthenticatedUser, readJsonWithLimit,
+        sendSms, normalizePhoneDigits, lookupCustomerIdByPhone,
       });
     }
 
