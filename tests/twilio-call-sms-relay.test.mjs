@@ -5,7 +5,7 @@ const dashboard = fs.readFileSync('dashboard.html', 'utf8');
 const worker = fs.readFileSync('cloudflare-worker-full.js', 'utf8');
 
 // ── Worker: routing ──────────────────────────────────────────────────
-assert.match(worker, /if \(\(url\.pathname === '\/twilio\/voice' \|\| url\.pathname === '\/twilio\/voice-whisper' \|\| url\.pathname === '\/twilio\/voice-dial-complete' \|\| url\.pathname === '\/twilio\/voice-bridge-to-customer' \|\| url\.pathname === '\/twilio\/voice-outbound-app' \|\| url\.pathname === '\/twilio\/sms'\) && request\.method === 'POST'\) \{\s*\n\s*return handleTwilioWebhook\(request, env, url\);/, 'must route all six Twilio-facing paths (including the three new phone-system ones) to handleTwilioWebhook');
+assert.match(worker, /if \(\(url\.pathname === '\/twilio\/voice' \|\| url\.pathname === '\/twilio\/voice-whisper' \|\| url\.pathname === '\/twilio\/voice-dial-complete' \|\| url\.pathname === '\/twilio\/voice-bridge-to-customer' \|\| url\.pathname === '\/twilio\/voice-outbound-app' \|\| url\.pathname === '\/twilio\/voice-voicemail-recording' \|\| url\.pathname === '\/twilio\/sms'\) && request\.method === 'POST'\) \{\s*\n\s*return handleTwilioWebhook\(request, env, url\);/, 'must route all seven Twilio-facing paths (including voicemail recording) to handleTwilioWebhook');
 
 // ── Worker: voice-outbound-app -- the TwiML App's own Voice Request URL for
 // direct browser-to-PSTN dialing (device.connect()), a quicker alternative
@@ -26,20 +26,34 @@ assert.match(worker, /if \(!sigOk\) return new Response\('Invalid signature', \{
 // it's a business call before answering). ───────
 assert.match(worker, /if \(url\.pathname === '\/twilio\/voice'\) \{/, 'missing /twilio/voice branch');
 assert.match(worker, /const \{ data: endpoints \} = await supabaseAdminFetch\(env, `phone_endpoints\?store_id=eq\.\$\{encodeURIComponent\(storeId\)\}&enabled=eq\.true&select=identity`\);\s*\n\s*clientIdentities = \(endpoints \|\| \[\]\)\.map\(e => e\.identity\)\.filter\(Boolean\);/, 'voice must pull enabled browser-softphone identities for this store, additive to the personal forwarding numbers');
-assert.match(worker, /if \(!numbers\.length && !clientIdentities\.length\) return twimlResponse\('<Response><Say>Sorry, no one is available to take your call right now\.<\/Say><\/Response>'\);/, 'voice must only give up if BOTH personal numbers and browser identities are empty -- either one alone must still ring');
+assert.match(worker, /if \(!numbers\.length && !clientIdentities\.length\) \{\s*\n\s*if \(phoneSettings\.voicemailEnabled\) \{/, 'voice must only give up ringing if BOTH personal numbers and browser identities are empty -- either one alone must still ring -- and offer voicemail before a plain apology');
 assert.match(worker, /const whisperUrl = `\$\{url\.origin\}\/twilio\/voice-whisper\?store=\$\{encodeURIComponent\(storeId\)\}`;/, 'voice must build a whisper URL scoped to this store');
 assert.match(worker, /const dialNumbers = numbers\.map\(n => `<Number url="\$\{escapeXmlText\(whisperUrl\)\}">\$\{escapeXmlText\(n\)\}<\/Number>`\)\.join\(''\);/, 'voice must build a <Number> per forwarding number, each pointing at the whisper URL');
 assert.match(worker, /const dialClients = clientIdentities\.map\(id => `<Client>\$\{escapeXmlText\(id\)\}<\/Client>`\)\.join\(''\);/, 'voice must build a <Client> noun per enabled browser identity -- no whisper, unlike the personal-number legs');
-assert.match(worker, /const dialCompleteUrl = `\$\{url\.origin\}\/twilio\/voice-dial-complete\?store=\$\{encodeURIComponent\(storeId\)\}`;\s*\n\s*return twimlResponse\(`<Response><Dial timeout="20" action="\$\{escapeXmlText\(dialCompleteUrl\)\}">\$\{dialNumbers\}\$\{dialClients\}<\/Dial><\/Response>`\);/, 'voice must Dial all numbers AND client identities inside one <Dial> (ring simultaneously, first to answer wins), with a completion callback so the call gets logged');
+assert.match(worker, /const dialCompleteUrl = `\$\{url\.origin\}\/twilio\/voice-dial-complete\?store=\$\{encodeURIComponent\(storeId\)\}&vm=\$\{phoneSettings\.voicemailEnabled \? 1 : 0\}&greet=\$\{encodeURIComponent\(\(phoneSettings\.greetingMessage \|\| 'Sorry we missed your call\. Please leave a message after the tone\.'\)\.slice\(0, 300\)\)\}`;\s*\n\s*return twimlResponse\(`<Response><Dial timeout="20" action="\$\{escapeXmlText\(dialCompleteUrl\)\}">\$\{dialNumbers\}\$\{dialClients\}<\/Dial><\/Response>`\);/, 'voice must Dial all numbers AND client identities inside one <Dial> (ring simultaneously, first to answer wins), threading the voicemail-enabled flag and greeting through to dial-complete without a second Supabase round trip');
 assert.match(worker, /lookupCustomerIdByPhone\(env, storeId, params\.From\)\.then\(customerId => persistCallRecord\(env, \{/, 'voice must persist a best-effort call record, and the customer lookup inside it must not be awaited on the hot path (a live caller is waiting on this response)');
+
+// ── Worker: business hours gate the ring group entirely -- an empty
+// business_hours config means "always open" (milestone-one's unchanged
+// behavior), so this must be an opt-in restriction, never a silent new gate ──
+assert.match(worker, /const phoneSettings = await getPhoneSettings\(env, storeId\);/, '/twilio/voice must load phone_settings before deciding whether to ring at all');
+assert.match(worker, /if \(!isStoreOpenNow\(phoneSettings\.businessHours, phoneSettings\.timezone\)\) \{/, 'voice must check business hours before ringing anyone, and skip straight to the closed message/voicemail when closed');
+assert.match(worker, /status: dialStatus === 'completed' \? 'answered' : \(dialStatus \|\| 'no-answer'\),/, 'dial-complete must translate DialCallStatus into a call status, defaulting to no-answer');
 
 // ── Worker: voice-dial-complete -- the <Dial action> callback, fired
 // exactly once per inbound call no matter how many legs were rung, so the
 // "no duplicate missed-call noise" requirement falls out of Twilio's own
-// <Dial> semantics rather than needing a separate per-leg table ───────
+// <Dial> semantics rather than needing a separate per-leg table. On
+// no-answer, offers voicemail if the store has it enabled. ───────
 assert.match(worker, /if \(url\.pathname === '\/twilio\/voice-dial-complete'\) \{/, 'missing /twilio/voice-dial-complete branch');
-assert.match(worker, /status: dialStatus === 'completed' \? 'answered' : \(dialStatus \|\| 'no-answer'\),/, 'dial-complete must translate DialCallStatus into a call status, defaulting to no-answer');
 assert.match(worker, /updateCallRecordBySid\(env, callSid, \{/, 'dial-complete must update the existing call record by CallSid, not insert a new row');
+assert.match(worker, /if \(dialStatus !== 'completed' && url\.searchParams\.get\('vm'\) === '1'\) \{/, 'dial-complete must offer voicemail on any non-completed DialCallStatus when the store has voicemail enabled');
+
+// ── Worker: voice-voicemail-recording -- <Record>'s own action callback,
+// persists the finished recording and marks the call row 'voicemail' ───────
+assert.match(worker, /if \(url\.pathname === '\/twilio\/voice-voicemail-recording'\) \{/, 'missing /twilio/voice-voicemail-recording branch');
+assert.match(worker, /lookupCustomerIdByPhone\(env, storeId, params\.From\)\.then\(customerId => persistVoicemailRecord\(env, \{/, 'voicemail-recording must persist a best-effort voicemail record, customer lookup not awaited on the Twilio-facing hot path');
+assert.match(worker, /if \(callSid\) updateCallRecordBySid\(env, callSid, \{ status: 'voicemail' \}\);/, 'voicemail-recording must mark the original call row as ended-in-voicemail');
 
 // ── Worker: voice-bridge-to-customer -- second leg of "Call From My Phone".
 // The customer number comes from a query param set server-side when the

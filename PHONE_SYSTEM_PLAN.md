@@ -1,9 +1,12 @@
 # The Mana Pocket Phone + SMS System — Planning Notes
 
-Status: **MILESTONE-ONE SHIPPED, AWAITING YOUR TWILIO CONSOLE SETUP** — all
-code built, tested, and merged to main overnight 2026-08-19 → 2026-08-20. It
-won't do anything live until you complete the manual steps in "What you need
-to do" below. See that section for exactly what's left.
+Status: **MILESTONE-ONE + TWO SHIPPED, AWAITING YOUR TWILIO CONSOLE SETUP** —
+all code built, tested, and merged to main. Milestone-one (2026-08-19 →
+2026-08-20) built the ring group, browser softphone, and message inbox.
+Milestone-two (2026-08-20) added voicemail, business-hours-aware routing,
+and a PHONE SETTINGS panel. Neither will do anything live until you complete
+the manual steps in "What you need to do" below — that section now covers
+both milestones' setup in one place.
 
 ## Answers to the open questions (2026-08-19)
 
@@ -311,7 +314,7 @@ but every piece of code is written, tested, and deployed as code.
   `tests/phone-system-dashboard.test.mjs` (tab wiring, click-to-call) added.
   Full suite green.
 
-### What you need to do (I cannot do any of this myself)
+### What you need to do for milestone-one (I cannot do any of this myself)
 
 1. **Run the migration** against your live Supabase project:
    `supabase-migrations/2026-08-19-phone-system.sql` (SQL editor, or however
@@ -340,11 +343,12 @@ but every piece of code is written, tested, and deployed as code.
    appear in the browser. Try "Call From My Phone" with a real number, and
    sending a text.
 
-### Known limitations / deliberate scope trims (read before assuming something's missing vs. broken)
+### Known limitations / deliberate scope trims (milestone-one)
 
-- **No voicemail, no business hours, no SIP desk phone, no full settings UI**
-  — separate follow-on milestones, exactly as scoped going in. You don't own
-  the SIP desk phone yet, so there's nothing to build that against.
+- **No SIP desk phone** — separate follow-on milestone; you don't own the
+  hardware yet, so there's nothing to build that against. (Voicemail,
+  business hours, and a settings UI were originally deferred here too, but
+  shipped in milestone-two below.)
 - **No granular `phone.*` permissions** — role-gated like everything else in
   this app (see schema note above). If you want per-person granular control
   later, that's new territory for this codebase, not an existing pattern to
@@ -365,8 +369,87 @@ but every piece of code is written, tested, and deployed as code.
   `<Dial action>` semantics already solve the "no duplicate missed-call
   noise" requirement without a separate per-leg table; you just won't see
   "answered by Jane's cell" vs. "answered by the browser" specifically.
-- **No recording or transcription.**
 - **`buildTwilioAccessToken` has never touched a real Twilio account** — its
   JWT structure was independently verified in tests (re-derived and checked
   the HMAC-SHA256 signature by hand), but the very first real token issuance
   after you add the secrets is the actual proof. Watch it closely.
+
+## Milestone-two: SHIPPED (2026-08-20) — voicemail, business hours, settings UI
+
+Built after you asked "do we need voicemail set up with what we have now?
+business hours? settings UI?" — the answer was: not required, but a real gap
+(an unanswered call before this just went dead silent, no way for a caller
+to leave a message). This closes that gap.
+
+### What actually got built
+
+- **Schema** (`supabase-migrations/2026-08-20-phone-voicemail-business-hours.sql`):
+  `phone_settings` (one row per store — voicemail on/off, greeting text,
+  after-hours message, `business_hours` jsonb, timezone) and `voicemails`
+  (recording metadata; the actual audio stays hosted on Twilio, never
+  mirrored into Supabase storage). Same RLS pattern as `calls`/`messages` —
+  staff-readable, service-role-writes-only, and `phone_settings` writes are
+  additionally owner/admin-gated at the Worker route level (ring-group
+  policy is a store-wide decision, not a per-employee one).
+- **Worker**:
+  - `/twilio/voice` now loads `phone_settings` and checks `isStoreOpenNow()`
+    (a pure `Intl.DateTimeFormat`-based day/time check, fails OPEN on any
+    error or malformed config) before ringing anyone. Closed → closed
+    message, then `<Record>` for voicemail if enabled. An **empty/unset
+    `business_hours` means always-open** — this is the exact milestone-one
+    behavior, so a store that never visits the new settings panel sees zero
+    change.
+  - On no-answer (`/twilio/voice-dial-complete`), same voicemail fallback —
+    the greeting text is threaded through as a query param from the initial
+    `/twilio/voice` response rather than re-fetched, so no extra Supabase
+    round trip is added to a call a real person is waiting on.
+  - New `/twilio/voice-voicemail-recording` webhook (the `<Record>`
+    callback) persists the finished recording and marks the original call
+    row `status: 'voicemail'`.
+  - New authenticated routes: `GET/POST /phone/settings` (POST is
+    owner/admin only), `GET /phone/voicemails`, `POST
+    /phone/voicemails/mark-heard`, `GET /phone/voicemail-audio` (a
+    Basic-Auth proxy to Twilio's recording media — the dashboard never
+    holds the Twilio Auth Token client-side).
+- **Dashboard**: PHONE SETTINGS panel (owner/admin only) inside the PHONE
+  tab — voicemail on/off, greeting + after-hours message text, a 7-day
+  hours grid with a master "restrict to business hours" toggle (off by
+  default = ring 24/7, so saving without touching anything never silently
+  narrows your hours), and a timezone picker. New VOICEMAILS panel
+  alongside Recent Calls/Messages — click PLAY to fetch+play the recording
+  (via the authenticated proxy, marks it heard automatically).
+- **Tests**: extended `tests/twilio-call-sms-relay.test.mjs` and
+  `tests/phone-system-backend.test.mjs` for the new routing/voicemail/hours
+  logic (including functional tests of `isStoreOpenNow` covering the
+  always-open default, explicit-closed days, omitted-day-means-closed, and
+  fail-open-on-garbage-input behavior), extended
+  `tests/phone-system-dashboard.test.mjs` for the new panel and voicemail
+  list. Full suite green.
+
+### What you need to do for milestone-two specifically
+
+1. **Run the new migration**:
+   `supabase-migrations/2026-08-20-phone-voicemail-business-hours.sql`.
+   Only creates new tables — nothing existing is touched, no changes needed
+   to milestone-one's setup.
+2. **That's it** — no new secrets, no Twilio Console changes. Voicemail
+   uses your existing Twilio credentials; `<Record>` is a TwiML verb, not a
+   separate product to enable.
+3. **Test it**: open PHONE → PHONE SETTINGS (owner/admin only). Leave
+   business hours off and confirm voicemail-on-no-answer works (call the
+   store number, don't answer anywhere, wait ~20s, leave a message — it
+   should show up in VOICEMAILS with a NEW badge and a working PLAY
+   button). Then turn business hours on, set today's window to something
+   already in the past, and confirm a fresh call goes straight to the
+   closed message/voicemail instead of ringing.
+
+### Known limitations / deliberate scope trims (milestone-two)
+
+- **No transcription** — voicemails are audio-only; you have to listen to
+  each one. Twilio does offer transcription as an add-on if you want it
+  later.
+- **One business-hours schedule for the whole store** — no per-line, no
+  holiday-date overrides, no "different hours next week" — just a
+  recurring weekly Mon–Sun grid.
+- **The recording proxy fetches on every play**, no caching — fine at this
+  volume, would want to think about it if voicemail volume ever got heavy.

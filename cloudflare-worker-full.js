@@ -2887,7 +2887,7 @@ export default {
     // storefront catalog (a store might want submissions without publishing
     // a public inventory page), so its own opt-in flag (buylistEnabled)
     // rather than piggybacking on storefrontEnabled.
-    if ((url.pathname === '/twilio/voice' || url.pathname === '/twilio/voice-whisper' || url.pathname === '/twilio/voice-dial-complete' || url.pathname === '/twilio/voice-bridge-to-customer' || url.pathname === '/twilio/voice-outbound-app' || url.pathname === '/twilio/sms') && request.method === 'POST') {
+    if ((url.pathname === '/twilio/voice' || url.pathname === '/twilio/voice-whisper' || url.pathname === '/twilio/voice-dial-complete' || url.pathname === '/twilio/voice-bridge-to-customer' || url.pathname === '/twilio/voice-outbound-app' || url.pathname === '/twilio/voice-voicemail-recording' || url.pathname === '/twilio/sms') && request.method === 'POST') {
       return handleTwilioWebhook(request, env, url);
     }
 
@@ -3005,6 +3005,97 @@ export default {
         });
         return json({ ok:true });
       } catch (e) { return json({ ok:false, error:e.message || 'Could not start the call' }, 502); }
+    }
+    if (url.pathname === '/phone/settings' && request.method === 'GET') {
+      // Readable by every operational role (staff should be able to see the
+      // hours/voicemail policy they're working under) -- only owner/admin
+      // can change it, enforced on the POST below.
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId, ['owner','admin','manager','employee']);
+      if (auth.error) return auth.error;
+      try {
+        const settings = await getPhoneSettings(env, storeId);
+        return json({ ok:true, settings });
+      } catch (e) { return json({ ok:false, error:e.message || 'Could not load phone settings' }, 500); }
+    }
+    if (url.pathname === '/phone/settings' && request.method === 'POST') {
+      // Ring-group policy (hours, voicemail, greeting) is a store-wide
+      // decision, not a per-employee one -- owner/admin only, unlike
+      // /phone/endpoints which every operational role can write to for
+      // their own row.
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId, ['owner','admin']);
+      if (auth.error) return auth.error;
+      const limited = await readJsonWithLimit(request, 8 * 1024);
+      if (limited.error) return limited.error;
+      const body = limited.data || {};
+      const days = ['mon','tue','wed','thu','fri','sat','sun'];
+      const businessHours = {};
+      const rawHours = body.businessHours && typeof body.businessHours === 'object' ? body.businessHours : {};
+      for (const day of days) {
+        const d = rawHours[day];
+        if (!d || typeof d !== 'object') continue;
+        if (d.closed === true) { businessHours[day] = { closed: true }; continue; }
+        const open = /^([01]\d|2[0-3]):[0-5]\d$/.test(d.open) ? d.open : null;
+        const close = /^([01]\d|2[0-3]):[0-5]\d$/.test(d.close) ? d.close : null;
+        if (open && close) businessHours[day] = { open, close, closed: false };
+      }
+      const row = {
+        store_id: storeId,
+        voicemail_enabled: body.voicemailEnabled !== false,
+        greeting_message: body.greetingMessage != null ? String(body.greetingMessage).trim().slice(0, 500) || null : null,
+        closed_message: body.closedMessage != null ? String(body.closedMessage).trim().slice(0, 500) || null : null,
+        business_hours: businessHours,
+        timezone: body.timezone ? String(body.timezone).trim().slice(0, 60) : 'America/New_York',
+        updated_at: new Date().toISOString(),
+      };
+      try {
+        await supabaseAdminFetch(env, 'phone_settings', { method:'POST', headers:{ Prefer:'resolution=merge-duplicates,return=minimal' }, body:JSON.stringify(row) });
+        return json({ ok:true });
+      } catch (e) { return json({ ok:false, error:e.message || 'Could not save phone settings' }, 500); }
+    }
+    if (url.pathname === '/phone/voicemails' && request.method === 'GET') {
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId, ['owner','admin','manager','employee']);
+      if (auth.error) return auth.error;
+      try {
+        const { data } = await supabaseAdminFetch(env, `voicemails?store_id=eq.${encodeURIComponent(storeId)}&select=*&order=created_at.desc&limit=200`);
+        return json({ ok:true, voicemails:data || [] });
+      } catch (e) { return json({ ok:false, error:e.message || 'Could not load voicemails' }, 500); }
+    }
+    if (url.pathname === '/phone/voicemails/mark-heard' && request.method === 'POST') {
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId, ['owner','admin','manager','employee']);
+      if (auth.error) return auth.error;
+      const limited = await readJsonWithLimit(request, 2 * 1024);
+      if (limited.error) return limited.error;
+      const id = String(limited.data?.id || '').trim();
+      if (!/^[0-9a-f-]{36}$/i.test(id)) return json({ ok:false, error:'Valid voicemail id required' }, 400);
+      try {
+        await supabaseAdminFetch(env, `voicemails?id=eq.${encodeURIComponent(id)}&store_id=eq.${encodeURIComponent(storeId)}`, { method:'PATCH', headers:{ Prefer:'return=minimal' }, body:JSON.stringify({ heard:true }) });
+        return json({ ok:true });
+      } catch (e) { return json({ ok:false, error:e.message || 'Could not update voicemail' }, 500); }
+    }
+    if (url.pathname === '/phone/voicemail-audio' && request.method === 'GET') {
+      // Twilio's recording media URLs require the account's own Basic-Auth
+      // credentials to fetch -- this proxies that fetch server-side so the
+      // dashboard never needs the Twilio Auth Token client-side, same
+      // credentials sendSms()/call-from-my-phone already hold.
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId, ['owner','admin','manager','employee']);
+      if (auth.error) return auth.error;
+      const id = String(url.searchParams.get('id') || '').trim();
+      if (!/^[0-9a-f-]{36}$/i.test(id)) return json({ ok:false, error:'Valid voicemail id required' }, 400);
+      if (!env.TWILIO_ACCOUNT_SID || !env.TWILIO_AUTH_TOKEN) return json({ ok:false, error:'Calling is not configured yet' }, 503);
+      try {
+        const { data } = await supabaseAdminFetch(env, `voicemails?id=eq.${encodeURIComponent(id)}&store_id=eq.${encodeURIComponent(storeId)}&select=recording_url&limit=1`);
+        const recordingUrl = data?.[0]?.recording_url;
+        if (!recordingUrl) return json({ ok:false, error:'Voicemail not found' }, 404);
+        const basicAuth = btoa(`${env.TWILIO_ACCOUNT_SID}:${env.TWILIO_AUTH_TOKEN}`);
+        const audioRes = await fetch(`${recordingUrl}.mp3`, { headers: { Authorization: `Basic ${basicAuth}` } });
+        if (!audioRes.ok) return json({ ok:false, error:`Could not fetch recording (${audioRes.status})` }, 502);
+        return new Response(audioRes.body, { headers: { 'Content-Type': 'audio/mpeg', 'Cache-Control': 'private, max-age=3600' } });
+      } catch (e) { return json({ ok:false, error:e.message || 'Could not fetch recording' }, 500); }
     }
 
     if (url.pathname === '/public/buylist/info' && request.method === 'GET') {
@@ -10754,6 +10845,59 @@ async function persistMessageRecord(env, record) {
   try { await supabaseAdminFetch(env, 'messages', { method:'POST', headers:{ Prefer:'return=minimal' }, body:JSON.stringify(record) }); }
   catch (e) { /* best-effort */ }
 }
+async function persistVoicemailRecord(env, record) {
+  try { await supabaseAdminFetch(env, 'voicemails', { method:'POST', headers:{ Prefer:'return=minimal' }, body:JSON.stringify(record) }); }
+  catch (e) { /* best-effort */ }
+}
+// A store that never visits the phone settings panel gets phone_settings ===
+// undefined -- these defaults reproduce milestone-one's exact behavior
+// (always open, voicemail on with a generic greeting) so adding this feature
+// changes nothing for a store that hasn't configured it.
+function defaultPhoneSettings() {
+  return { voicemailEnabled: true, greetingMessage: '', closedMessage: '', businessHours: {}, timezone: 'America/New_York' };
+}
+async function getPhoneSettings(env, storeId) {
+  try {
+    const { data } = await supabaseAdminFetch(env, `phone_settings?store_id=eq.${encodeURIComponent(storeId)}&select=voicemail_enabled,greeting_message,closed_message,business_hours,timezone&limit=1`);
+    const row = data?.[0];
+    if (!row) return defaultPhoneSettings();
+    return {
+      voicemailEnabled: row.voicemail_enabled !== false,
+      greetingMessage: row.greeting_message || '',
+      closedMessage: row.closed_message || '',
+      businessHours: row.business_hours && typeof row.business_hours === 'object' ? row.business_hours : {},
+      timezone: row.timezone || 'America/New_York',
+    };
+  } catch (e) { return defaultPhoneSettings(); }
+}
+// An empty/unconfigured business_hours object means "always open" -- the
+// milestone-one behavior -- so a store must opt INTO hours-gating, never get
+// silently gated by a missing settings row. Any error here fails open (calls
+// still ring) rather than closed, since a business-hours bug must never be
+// able to silently stop a store's phone from ringing at all.
+function isStoreOpenNow(businessHours, timezone) {
+  if (!businessHours || typeof businessHours !== 'object' || !Object.keys(businessHours).length) return true;
+  try {
+    const tz = timezone || 'America/New_York';
+    const now = new Date();
+    const dayKey = new Intl.DateTimeFormat('en-US', { timeZone: tz, weekday: 'short' }).format(now).toLowerCase().slice(0, 3);
+    const today = businessHours[dayKey];
+    if (!today || today.closed) return false;
+    const parts = new Intl.DateTimeFormat('en-US', { timeZone: tz, hour: '2-digit', minute: '2-digit', hour12: false }).formatToParts(now);
+    // Some ICU builds render midnight as hour "24" (hour12:false quirk)
+    // instead of "00" -- normalize so a midnight check doesn't misfire.
+    let nowHour = Number(parts.find(p => p.type === 'hour')?.value || 0);
+    if (nowHour === 24) nowHour = 0;
+    const nowMinutes = nowHour * 60 + Number(parts.find(p => p.type === 'minute')?.value || 0);
+    const [openH, openM] = String(today.open || '').split(':').map(Number);
+    const [closeH, closeM] = String(today.close || '').split(':').map(Number);
+    if (!Number.isFinite(openH) || !Number.isFinite(closeH)) return true;
+    const openMinutes = openH * 60 + (openM || 0);
+    const closeMinutes = closeH * 60 + (closeM || 0);
+    if (closeMinutes <= openMinutes) return false;
+    return nowMinutes >= openMinutes && nowMinutes < closeMinutes;
+  } catch (e) { return true; }
+}
 
 // ── Twilio inbound webhooks (voice + SMS on the SAME store number) ────────
 // Twilio calls these directly (no login, no X-Store-Id header) -- the store
@@ -10795,6 +10939,29 @@ async function handleTwilioWebhook(request, env, url) {
   } catch (e) { /* fall through with no numbers -- handled per-route below */ }
 
   if (url.pathname === '/twilio/voice') {
+    const phoneSettings = await getPhoneSettings(env, storeId);
+    const recordingUrl = `${url.origin}/twilio/voice-voicemail-recording?store=${encodeURIComponent(storeId)}`;
+    const callSid = String(params.CallSid || '').trim();
+    // Business hours gate the ring group entirely -- an empty/unconfigured
+    // business_hours means "always open" (see isStoreOpenNow), so a store
+    // that hasn't visited the settings panel sees no change from
+    // milestone-one. When closed, this never even looks at forwarding
+    // numbers/browser identities -- straight to the closed message.
+    if (!isStoreOpenNow(phoneSettings.businessHours, phoneSettings.timezone)) {
+      if (callSid) {
+        lookupCustomerIdByPhone(env, storeId, params.From).then(customerId => persistCallRecord(env, {
+          store_id: storeId, call_sid: callSid, direction: 'inbound',
+          from_number: params.From || null, to_number: params.To || null, status: 'after-hours',
+          customer_id: customerId,
+        })).catch(() => {});
+      }
+      const closedMsg = phoneSettings.closedMessage || `Sorry, ${storeName || 'we'} ${storeName ? 'is' : 'are'} currently closed.`;
+      if (phoneSettings.voicemailEnabled) {
+        const greeting = phoneSettings.greetingMessage || 'Please leave a message after the tone.';
+        return twimlResponse(`<Response><Say>${escapeXmlText(closedMsg)} ${escapeXmlText(greeting)}</Say><Record maxLength="120" playBeep="true" action="${escapeXmlText(recordingUrl)}" /></Response>`);
+      }
+      return twimlResponse(`<Response><Say>${escapeXmlText(closedMsg)}</Say></Response>`);
+    }
     // Browser softphone identities are ADDITIVE to the personal-phone
     // ring-all, never a replacement -- per-store opt-in list, kept
     // permanently alongside the personal numbers (see PHONE_SYSTEM_PLAN.md).
@@ -10803,13 +10970,18 @@ async function handleTwilioWebhook(request, env, url) {
       const { data: endpoints } = await supabaseAdminFetch(env, `phone_endpoints?store_id=eq.${encodeURIComponent(storeId)}&enabled=eq.true&select=identity`);
       clientIdentities = (endpoints || []).map(e => e.identity).filter(Boolean);
     } catch (e) { /* fall through with no browser targets -- personal numbers still ring */ }
-    if (!numbers.length && !clientIdentities.length) return twimlResponse('<Response><Say>Sorry, no one is available to take your call right now.</Say></Response>');
+    if (!numbers.length && !clientIdentities.length) {
+      if (phoneSettings.voicemailEnabled) {
+        const greeting = phoneSettings.greetingMessage || 'Sorry, no one is available right now. Please leave a message after the tone.';
+        return twimlResponse(`<Response><Say>${escapeXmlText(greeting)}</Say><Record maxLength="120" playBeep="true" action="${escapeXmlText(recordingUrl)}" /></Response>`);
+      }
+      return twimlResponse('<Response><Say>Sorry, no one is available to take your call right now.</Say></Response>');
+    }
     // Every call (answered or not) gets a best-effort log row -- deliberately
     // NOT awaited (not even the customer lookup inside it): this is a live
     // Voice webhook and Twilio is holding the caller waiting on this
     // response, so nothing here may add latency before the Dial TwiML goes
     // out. A Supabase hiccup must never delay, let alone block, the ring.
-    const callSid = String(params.CallSid || '').trim();
     if (callSid) {
       lookupCustomerIdByPhone(env, storeId, params.From).then(customerId => persistCallRecord(env, {
         store_id: storeId, call_sid: callSid, direction: 'inbound',
@@ -10827,7 +10999,11 @@ async function handleTwilioWebhook(request, env, url) {
     const whisperUrl = `${url.origin}/twilio/voice-whisper?store=${encodeURIComponent(storeId)}`;
     const dialNumbers = numbers.map(n => `<Number url="${escapeXmlText(whisperUrl)}">${escapeXmlText(n)}</Number>`).join('');
     const dialClients = clientIdentities.map(id => `<Client>${escapeXmlText(id)}</Client>`).join('');
-    const dialCompleteUrl = `${url.origin}/twilio/voice-dial-complete?store=${encodeURIComponent(storeId)}`;
+    // Voicemail-on-no-answer's greeting is passed through as a query param
+    // rather than re-fetched from Supabase at dial-complete time -- that
+    // path already has a caller waiting on it too, so it gets the same
+    // no-extra-round-trip treatment as the initial response above.
+    const dialCompleteUrl = `${url.origin}/twilio/voice-dial-complete?store=${encodeURIComponent(storeId)}&vm=${phoneSettings.voicemailEnabled ? 1 : 0}&greet=${encodeURIComponent((phoneSettings.greetingMessage || 'Sorry we missed your call. Please leave a message after the tone.').slice(0, 300))}`;
     return twimlResponse(`<Response><Dial timeout="20" action="${escapeXmlText(dialCompleteUrl)}">${dialNumbers}${dialClients}</Dial></Response>`);
   }
   if (url.pathname === '/twilio/voice-whisper') {
@@ -10846,7 +11022,33 @@ async function handleTwilioWebhook(request, env, url) {
         duration_seconds: params.DialCallDuration ? Number(params.DialCallDuration) : null,
       });
     }
+    // Nobody picked up any leg -- offer voicemail if the store has it on
+    // (vm=1, threaded through from /twilio/voice's initial Dial action URL).
+    if (dialStatus !== 'completed' && url.searchParams.get('vm') === '1') {
+      const greeting = url.searchParams.get('greet') || 'Sorry we missed your call. Please leave a message after the tone.';
+      const recordingUrl = `${url.origin}/twilio/voice-voicemail-recording?store=${encodeURIComponent(storeId)}`;
+      return twimlResponse(`<Response><Say>${escapeXmlText(greeting)}</Say><Record maxLength="120" playBeep="true" action="${escapeXmlText(recordingUrl)}" /></Response>`);
+    }
     return twimlResponse('<Response></Response>');
+  }
+  if (url.pathname === '/twilio/voice-voicemail-recording') {
+    // <Record>'s own action callback -- fires once the caller hangs up or
+    // hits maxLength, with the finished recording's Sid/Url/Duration. The
+    // call's own row (already created at /twilio/voice) gets marked
+    // 'voicemail' here so Recent Calls and the Voicemails list agree on how
+    // the call actually ended.
+    const callSid = String(params.CallSid || '').trim();
+    const recordingSid = String(params.RecordingSid || '').trim();
+    const recordingUrl = String(params.RecordingUrl || '').trim();
+    const duration = params.RecordingDuration ? Number(params.RecordingDuration) : null;
+    if (recordingSid) {
+      lookupCustomerIdByPhone(env, storeId, params.From).then(customerId => persistVoicemailRecord(env, {
+        store_id: storeId, call_sid: callSid || null, from_number: params.From || null, to_number: params.To || null,
+        recording_sid: recordingSid, recording_url: recordingUrl || null, duration_seconds: duration, customer_id: customerId,
+      })).catch(() => {});
+    }
+    if (callSid) updateCallRecordBySid(env, callSid, { status: 'voicemail' });
+    return twimlResponse('<Response><Say>Thank you, your message has been recorded. Goodbye.</Say></Response>');
   }
   if (url.pathname === '/twilio/voice-bridge-to-customer') {
     // The second leg of "Call From My Phone": Twilio requests this once the

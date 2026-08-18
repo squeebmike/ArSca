@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.19.21-phone-system-milestone-1">
+<meta name="version" content="2026.08.20.1-phone-voicemail-hours">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1606,14 +1606,14 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.19.21-phone-system-milestone-1" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.19.21-phone-system-milestone-1" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.19.21-phone-system-milestone-1" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.08.19.21-phone-system-milestone-1" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.19.21-phone-system-milestone-1" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.19.21-phone-system-milestone-1" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.19.21-phone-system-milestone-1" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.19.21-phone-system-milestone-1" defer></script>
+<script src="scripts/query-routing.js?v=2026.08.20.1-phone-voicemail-hours" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.20.1-phone-voicemail-hours" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.20.1-phone-voicemail-hours" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.08.20.1-phone-voicemail-hours" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.20.1-phone-voicemail-hours" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.20.1-phone-voicemail-hours" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.20.1-phone-voicemail-hours" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.20.1-phone-voicemail-hours" defer></script>
 </head>
 <body>
 
@@ -1663,11 +1663,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.19.21-phone-system-milestone-1</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.20.1-phone-voicemail-hours</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.19.21-phone-system-milestone-1</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.20.1-phone-voicemail-hours</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1689,7 +1689,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.19.21-phone-system-milestone-1</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.20.1-phone-voicemail-hours</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3474,7 +3474,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.19.21-phone-system-milestone-1';
+const APP_VERSION = '2026.08.20.1-phone-voicemail-hours';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -38505,6 +38505,8 @@ let _phoneEndpoint = { enabled:false, approvedMobile:'' };
 let _phoneCalls = [];
 let _phoneMessages = [];
 let _phoneIncomingCall = null;
+let _phoneSettings = null;
+let _phoneVoicemails = [];
 
 function ensurePhonePanel(){
   if(!document.getElementById('phone-panels')) return;
@@ -38519,14 +38521,18 @@ async function renderPhonePanel(){
     return;
   }
   container.innerHTML = `<div class="panel"><div class="ph">PHONE</div><div style="font-family:monospace;font-size:10px;color:var(--dim)">Loading...</div></div>`;
-  const [endpointRes, callsRes, messagesRes] = await Promise.all([
+  const [endpointRes, callsRes, messagesRes, settingsRes, voicemailsRes] = await Promise.all([
     storeWorkerFetch('/phone/endpoints').then(r => r.json()).catch(() => ({ ok:false })),
     storeWorkerFetch('/phone/calls').then(r => r.json()).catch(() => ({ ok:false })),
     storeWorkerFetch('/phone/messages').then(r => r.json()).catch(() => ({ ok:false })),
+    storeWorkerFetch('/phone/settings').then(r => r.json()).catch(() => ({ ok:false })),
+    storeWorkerFetch('/phone/voicemails').then(r => r.json()).catch(() => ({ ok:false })),
   ]);
   if(endpointRes?.ok) _phoneEndpoint = { enabled:!!endpointRes.enabled, approvedMobile:endpointRes.approvedMobile || '' };
   _phoneCalls = callsRes?.ok ? (callsRes.calls || []) : [];
   _phoneMessages = messagesRes?.ok ? (messagesRes.messages || []) : [];
+  _phoneSettings = settingsRes?.ok ? settingsRes.settings : null;
+  _phoneVoicemails = voicemailsRes?.ok ? (voicemailsRes.voicemails || []) : [];
   renderPhonePanelInto(container);
   if(_phoneEndpoint.enabled) initPhoneDevice();
 }
@@ -38537,6 +38543,8 @@ function phoneCallStatusLabel(call){
   if(call.status === 'busy') return 'Busy';
   if(call.status === 'failed') return 'Failed';
   if(call.status === 'ringing') return 'Ringing...';
+  if(call.status === 'voicemail') return 'Left voicemail';
+  if(call.status === 'after-hours') return 'After hours';
   return escHtml(call.status || '');
 }
 
@@ -38574,6 +38582,150 @@ function renderPhoneMessagesList(){
   }).join('');
 }
 
+function renderVoicemailsList(){
+  if(!_phoneVoicemails.length) return `<div style="font-family:monospace;font-size:10px;color:var(--dim)">No voicemails yet.</div>`;
+  return _phoneVoicemails.map(v => {
+    const number = v.from_number || '';
+    return `
+    <div style="padding:8px 0;border-bottom:1px solid var(--border);font-family:monospace;font-size:11px">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+        <b>${number ? `<a href="#" onclick="event.preventDefault();dialPhoneNumber('${escHtml(number)}')" style="color:var(--text)">${escHtml(number)}</a>` : 'Unknown'}</b>
+        <span style="display:flex;gap:6px;align-items:center">
+          ${!v.heard ? '<span class="data-pill warn">NEW</span>' : ''}
+          <button class="ra" onclick="playPhoneVoicemail('${v.id}', this)">▶ PLAY</button>
+        </span>
+      </div>
+      <div style="color:var(--dim);font-size:9px">${new Date(v.created_at).toLocaleString()}${v.duration_seconds ? ` · ${v.duration_seconds}s` : ''}</div>
+    </div>`;
+  }).join('');
+}
+
+// The recording lives on Twilio, behind Basic Auth the browser never holds
+// directly -- fetched here through the Worker's own proxy (storeWorkerFetch
+// carries the session auth header a bare <audio src> tag couldn't send),
+// then played from an in-memory blob URL.
+async function playPhoneVoicemail(id, btn){
+  const original = btn ? btn.textContent : '';
+  try {
+    if(btn){ btn.disabled = true; btn.textContent = 'LOADING...'; }
+    const res = await storeWorkerFetch(`/phone/voicemail-audio?id=${encodeURIComponent(id)}`);
+    if(!res.ok){
+      const err = await res.json().catch(() => ({}));
+      toast_dash(err.error || 'Could not load recording');
+      if(btn){ btn.disabled = false; btn.textContent = original; }
+      return;
+    }
+    const blob = await res.blob();
+    const src = URL.createObjectURL(blob);
+    let audio = document.getElementById('phone-voicemail-audio-player');
+    if(!audio){
+      audio = document.createElement('audio');
+      audio.id = 'phone-voicemail-audio-player';
+      audio.controls = true;
+      audio.style.cssText = 'position:fixed;bottom:14px;right:14px;z-index:9999;background:var(--bg);border:1px solid var(--border);border-radius:8px';
+      document.body.appendChild(audio);
+    }
+    audio.src = src;
+    audio.play();
+    if(btn){ btn.disabled = false; btn.textContent = original; }
+    storeWorkerFetch('/phone/voicemails/mark-heard', { method:'POST', body:JSON.stringify({ id }) }).catch(() => {});
+    const vm = _phoneVoicemails.find(x => x.id === id);
+    if(vm){ vm.heard = true; renderPhonePanelInto(document.getElementById('phone-panels')); }
+  } catch(e) {
+    toast_dash(e.message || 'Could not load recording');
+    if(btn){ btn.disabled = false; btn.textContent = original; }
+  }
+}
+
+const PHONE_HOURS_DAYS = [['mon','Mon'],['tue','Tue'],['wed','Wed'],['thu','Thu'],['fri','Fri'],['sat','Sat'],['sun','Sun']];
+const PHONE_TIMEZONES = ['America/New_York','America/Chicago','America/Denver','America/Los_Angeles','America/Anchorage','Pacific/Honolulu'];
+
+// Owner/admin only -- ring-group policy (hours, voicemail on/off, greeting
+// text) is a store-wide decision, unlike the per-user BROWSER CALLING panel
+// every operational role can edit for themselves above.
+function renderPhoneSettingsPanelHtml(){
+  if(!requireOwnerAdmin()) return '';
+  const s = _phoneSettings || { voicemailEnabled:true, greetingMessage:'', closedMessage:'', businessHours:{}, timezone:'America/New_York' };
+  const businessHours = s.businessHours || {};
+  const hoursEnabled = Object.keys(businessHours).length > 0;
+  const hoursRows = PHONE_HOURS_DAYS.map(([key, label]) => {
+    const d = businessHours[key] || {};
+    const dayClosed = d.closed === true;
+    return `<div style="display:grid;grid-template-columns:40px auto 1fr 1fr;gap:8px;align-items:center;margin-bottom:4px">
+      <span>${label}</span>
+      <label style="display:flex;align-items:center;gap:4px;font-size:10px;cursor:pointer"><input type="checkbox" id="phone-hours-${key}-closed" ${dayClosed ? 'checked' : ''} onchange="togglePhoneHoursRow('${key}')"> Closed</label>
+      <input class="tsi" type="time" id="phone-hours-${key}-open" value="${escHtml(d.open || '09:00')}" ${dayClosed ? 'disabled' : ''}>
+      <input class="tsi" type="time" id="phone-hours-${key}-close" value="${escHtml(d.close || '18:00')}" ${dayClosed ? 'disabled' : ''}>
+    </div>`;
+  }).join('');
+  return `
+    <div class="panel" style="margin-bottom:14px">
+      <div class="ph">PHONE SETTINGS <span style="font-size:9px;color:var(--dim)">owner/admin only</span></div>
+      <label style="display:flex;align-items:center;gap:8px;font-family:monospace;font-size:11px;margin-bottom:10px;cursor:pointer">
+        <input type="checkbox" id="phone-settings-voicemail-enabled" ${s.voicemailEnabled ? 'checked' : ''}> Take voicemail when nobody answers or the store is closed
+      </label>
+      <label style="font-family:monospace;font-size:9px;color:var(--dim);display:block;margin-bottom:10px">VOICEMAIL GREETING<input id="phone-settings-greeting" class="tsi" type="text" maxlength="500" placeholder="Sorry we missed your call. Please leave a message after the tone." value="${escHtml(s.greetingMessage)}"></label>
+      <label style="font-family:monospace;font-size:9px;color:var(--dim);display:block;margin-bottom:14px">AFTER-HOURS MESSAGE<input id="phone-settings-closed" class="tsi" type="text" maxlength="500" placeholder="Sorry, we are currently closed." value="${escHtml(s.closedMessage)}"></label>
+      <label style="display:flex;align-items:center;gap:8px;font-family:monospace;font-size:11px;margin-bottom:10px;cursor:pointer">
+        <input type="checkbox" id="phone-settings-hours-enabled" ${hoursEnabled ? 'checked' : ''} onchange="togglePhoneHoursEnabled()"> Restrict ring group to business hours (off = ring 24/7)
+      </label>
+      <div id="phone-hours-rows" style="${hoursEnabled ? '' : 'display:none'};font-family:monospace;font-size:10px;margin-bottom:10px">
+        ${hoursRows}
+        <label style="display:block;margin-top:8px">TIMEZONE
+          <select id="phone-settings-timezone" class="tsi">
+            ${PHONE_TIMEZONES.map(tz => `<option value="${tz}" ${s.timezone === tz ? 'selected' : ''}>${tz}</option>`).join('')}
+          </select>
+        </label>
+      </div>
+      <button class="hbtn" onclick="savePhoneSettings()">SAVE PHONE SETTINGS</button>
+    </div>`;
+}
+
+function togglePhoneHoursRow(key){
+  const closed = document.getElementById(`phone-hours-${key}-closed`)?.checked === true;
+  const openEl = document.getElementById(`phone-hours-${key}-open`);
+  const closeEl = document.getElementById(`phone-hours-${key}-close`);
+  if(openEl) openEl.disabled = closed;
+  if(closeEl) closeEl.disabled = closed;
+}
+function togglePhoneHoursEnabled(){
+  const enabled = document.getElementById('phone-settings-hours-enabled')?.checked === true;
+  const rows = document.getElementById('phone-hours-rows');
+  if(rows) rows.style.display = enabled ? '' : 'none';
+}
+
+async function savePhoneSettings(){
+  if(!requireOwnerAdmin()){ toast_dash('Owner/admin only'); return; }
+  const hoursEnabled = document.getElementById('phone-settings-hours-enabled')?.checked === true;
+  const businessHours = {};
+  // Leaving the master toggle off writes an EMPTY businessHours object --
+  // that's the "always open" default (see isStoreOpenNow) -- never a
+  // per-day config the user never actually reviewed.
+  if(hoursEnabled){
+    for(const [key] of PHONE_HOURS_DAYS){
+      const closedEl = document.getElementById(`phone-hours-${key}-closed`);
+      if(closedEl?.checked){ businessHours[key] = { closed:true }; continue; }
+      const open = document.getElementById(`phone-hours-${key}-open`)?.value;
+      const close = document.getElementById(`phone-hours-${key}-close`)?.value;
+      if(open && close) businessHours[key] = { open, close, closed:false };
+    }
+  }
+  const payload = {
+    voicemailEnabled: document.getElementById('phone-settings-voicemail-enabled')?.checked === true,
+    greetingMessage: document.getElementById('phone-settings-greeting')?.value.trim() || '',
+    closedMessage: document.getElementById('phone-settings-closed')?.value.trim() || '',
+    businessHours,
+    timezone: document.getElementById('phone-settings-timezone')?.value || 'America/New_York',
+  };
+  try {
+    const res = await storeWorkerFetch('/phone/settings', { method:'POST', body:JSON.stringify(payload) });
+    const data = await res.json();
+    if(!data.ok) return toast_dash(data.error || 'Could not save phone settings');
+    _phoneSettings = payload;
+    toast_dash('Phone settings saved');
+  } catch(e) { toast_dash(e.message || 'Could not save phone settings'); }
+}
+
 function renderPhonePanelInto(container){
   const p = _phoneEndpoint;
   container.innerHTML = `
@@ -38607,7 +38759,9 @@ function renderPhonePanelInto(container){
       </div>
     </div>
 
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+    ${renderPhoneSettingsPanelHtml()}
+
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px">
       <div class="panel">
         <div class="ph">RECENT CALLS</div>
         <div style="max-height:420px;overflow-y:auto">${renderPhoneCallsList()}</div>
@@ -38615,6 +38769,10 @@ function renderPhonePanelInto(container){
       <div class="panel">
         <div class="ph">MESSAGES</div>
         <div style="max-height:420px;overflow-y:auto">${renderPhoneMessagesList()}</div>
+      </div>
+      <div class="panel">
+        <div class="ph">VOICEMAILS</div>
+        <div style="max-height:420px;overflow-y:auto">${renderVoicemailsList()}</div>
       </div>
     </div>`;
 }
@@ -42185,7 +42343,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.19.21-phone-system-milestone-1" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.20.1-phone-voicemail-hours" defer></script>
 </body>
 </html>
 

@@ -7,11 +7,17 @@ const worker = fs.readFileSync('cloudflare-worker-full.js', 'utf8');
 // with the same operational role set used elsewhere (excludes scanner_only,
 // matching the existing app-wide convention -- no new granular permission
 // system was invented for this one feature) ──
-for (const path of ['/api/phone/token', '/phone/endpoints', '/phone/calls', '/phone/messages', '/phone/sms/send', '/phone/call-from-my-phone']) {
+for (const path of ['/api/phone/token', '/phone/endpoints', '/phone/calls', '/phone/messages', '/phone/sms/send', '/phone/call-from-my-phone', '/phone/settings', '/phone/voicemails', '/phone/voicemails/mark-heard', '/phone/voicemail-audio']) {
   const escaped = path.replace(/[/]/g, '\\/');
-  const re = new RegExp(`url\\.pathname === '${escaped}' && request\\.method === '(POST|GET)'\\) \\{[\\s\\S]{0,120}?const storeId = requestStoreId\\(request, url\\);\\s*\\n\\s*const auth = await requireStoreUser\\(request, env, storeId, \\['owner','admin','manager','employee'\\]\\);\\s*\\n\\s*if \\(auth\\.error\\) return auth\\.error;`);
+  const re = new RegExp(`url\\.pathname === '${escaped}' && request\\.method === '(POST|GET)'\\) \\{[\\s\\S]{0,320}?const storeId = requestStoreId\\(request, url\\);\\s*\\n\\s*const auth = await requireStoreUser\\(request, env, storeId, \\['owner','admin','manager','employee'\\]\\);\\s*\\n\\s*if \\(auth\\.error\\) return auth\\.error;`);
   assert.match(worker, re, `${path} must be gated by requireStoreUser with the standard operational roles, same as every other operational route`);
 }
+
+// POST /phone/settings is the one write route on this narrower gate --
+// ring-group policy (hours, voicemail, greeting) is a store-wide decision,
+// not a per-employee one, so it's owner/admin only unlike every other phone
+// route (which every operational role can use).
+assert.match(worker, /if \(url\.pathname === '\/phone\/settings' && request\.method === 'POST'\) \{[\s\S]{0,320}?const auth = await requireStoreUser\(request, env, storeId, \['owner','admin'\]\);/, 'POST /phone/settings must be gated owner/admin only -- ring-group/voicemail/hours policy is a store-wide decision, not something every employee should be able to change');
 
 // GET /phone/endpoints specifically must scope the query to the caller's OWN
 // user_id -- it returns a personal cell number (approved_mobile).
@@ -61,12 +67,38 @@ assert.match(worker, /async function lookupCustomerIdByPhone\(env, storeId, phon
 assert.match(worker, /async function persistCallRecord\(env, record\) \{/, 'missing persistCallRecord');
 assert.match(worker, /async function updateCallRecordBySid\(env, callSid, patch\) \{/, 'missing updateCallRecordBySid');
 assert.match(worker, /async function persistMessageRecord\(env, record\) \{/, 'missing persistMessageRecord');
+assert.match(worker, /async function persistVoicemailRecord\(env, record\) \{/, 'missing persistVoicemailRecord');
+assert.match(worker, /function defaultPhoneSettings\(\) \{/, 'missing defaultPhoneSettings');
+assert.match(worker, /async function getPhoneSettings\(env, storeId\) \{/, 'missing getPhoneSettings');
+assert.match(worker, /function isStoreOpenNow\(businessHours, timezone\) \{/, 'missing isStoreOpenNow');
 // Every persistence helper must swallow its own errors -- a Twilio webhook
 // or the call/SMS itself must never fail because logging failed.
-for (const fn of ['persistCallRecord', 'updateCallRecordBySid', 'persistMessageRecord']) {
+for (const fn of ['persistCallRecord', 'updateCallRecordBySid', 'persistMessageRecord', 'persistVoicemailRecord']) {
   const re = new RegExp(`async function ${fn}\\([^)]*\\) \\{\\s*\\n\\s*try \\{[\\s\\S]{0,260}?\\}\\s*\\n\\s*catch \\(e\\) \\{ \\/\\* best-effort \\*\\/ \\}`);
   assert.match(worker, re, `${fn} must catch and swallow its own errors -- a Supabase hiccup must never surface as a webhook/route failure`);
 }
+
+// ── Contract: getPhoneSettings fails open to the milestone-one defaults on
+// any Supabase error -- a phone_settings hiccup must never stop the store
+// from ringing (isStoreOpenNow's own always-open default only helps if the
+// settings it's fed are also a safe fallback) ──
+assert.match(worker, /async function getPhoneSettings\(env, storeId\) \{\s*\n\s*try \{[\s\S]{0,700}?\} catch \(e\) \{ return defaultPhoneSettings\(\); \}/, 'getPhoneSettings must fall back to defaultPhoneSettings() on any error, not throw and break the voice webhook');
+
+// ── Contract: the voicemail-audio proxy fetches Twilio's recording with the
+// account's own Basic-Auth credentials -- the dashboard never holds the
+// Twilio Auth Token client-side, same pattern as sendSms()/call-from-my-phone ──
+assert.match(worker, /if \(url\.pathname === '\/phone\/voicemail-audio' && request\.method === 'GET'\) \{/, 'missing GET /phone/voicemail-audio');
+assert.match(worker, /const audioRes = await fetch\(`\$\{recordingUrl\}\.mp3`, \{ headers: \{ Authorization: `Basic \$\{basicAuth\}` \} \}\);/, 'voicemail-audio must fetch the recording from Twilio with Basic-Auth credentials, requesting the .mp3 rendition');
+
+// ── Contract: mark-heard validates the voicemail id and scopes the update to
+// this store (a UUID from another store must not be patchable) ──
+assert.match(worker, /if \(url\.pathname === '\/phone\/voicemails\/mark-heard' && request\.method === 'POST'\) \{/, 'missing POST /phone/voicemails/mark-heard');
+assert.match(worker, /voicemails\?id=eq\.\$\{encodeURIComponent\(id\)\}&store_id=eq\.\$\{encodeURIComponent\(storeId\)\}/, 'mark-heard must scope its PATCH to both the voicemail id AND this store -- never let one store mark another store\'s voicemail heard');
+
+// ── Contract: /phone/settings POST validates business-hours time strings
+// (HH:MM, 24-hour) before writing them -- malformed input must not silently
+// become an always-closed or always-open day ──
+assert.match(worker, /const open = \/\^\(\[01\]\\d\|2\[0-3\]\):\[0-5\]\\d\$\/\.test\(d\.open\) \? d\.open : null;/, '/phone/settings POST must validate each day\'s open time against a strict HH:MM 24-hour pattern');
 
 console.log('Phone system helper function contract checks passed');
 
@@ -149,3 +181,44 @@ console.log('Phone system functional checks (normalizePhoneDigits, phoneIdentity
 }
 
 console.log('Twilio Access Token (buildTwilioAccessToken) functional checks passed');
+
+// ── Functional: isStoreOpenNow -- back-compat default (empty config = always
+// open), day-of-week + time-window gating, and safe-fail behavior ──
+{
+  const src = worker.match(/function isStoreOpenNow\(businessHours, timezone\) \{[\s\S]*?\n\}/)?.[0];
+  assert.ok(src, 'could not extract isStoreOpenNow for functional testing');
+  const { isStoreOpenNow } = new Function(`${src}\nreturn { isStoreOpenNow };`)();
+
+  assert.equal(isStoreOpenNow({}, 'America/New_York'), true, 'an empty business_hours object must mean always-open -- the exact milestone-one behavior, so a store that never visits the settings panel sees no change');
+  assert.equal(isStoreOpenNow(null, 'America/New_York'), true, 'a null/missing business_hours must also mean always-open');
+
+  // Build a window that is definitely open right now, and one that
+  // definitely is not, in a fixed timezone -- avoids any real-clock flakiness
+  // by deriving both windows from the current instant.
+  const tz = 'America/New_York';
+  const now = new Date();
+  const parts = new Intl.DateTimeFormat('en-US', { timeZone: tz, weekday: 'short', hour: '2-digit', minute: '2-digit', hour12: false }).formatToParts(now);
+  const dayKey = parts.find(p => p.type === 'weekday').value.toLowerCase().slice(0, 3);
+  let hour = Number(parts.find(p => p.type === 'hour').value);
+  if (hour === 24) hour = 0;
+  const minute = Number(parts.find(p => p.type === 'minute').value);
+  const pad = (n) => String(n).padStart(2, '0');
+
+  const openAllDay = { [dayKey]: { open: '00:00', close: '23:59', closed: false } };
+  assert.equal(isStoreOpenNow(openAllDay, tz), true, 'a configured window spanning the whole current day must read as open');
+
+  const closedToday = { [dayKey]: { closed: true } };
+  assert.equal(isStoreOpenNow(closedToday, tz), false, 'a day explicitly marked closed must read as closed even if a time window is never checked');
+
+  const otherDayOnly = { [dayKey === 'mon' ? 'tue' : 'mon']: { open: '00:00', close: '23:59', closed: false } };
+  assert.equal(isStoreOpenNow(otherDayOnly, tz), false, 'a non-empty config that omits today entirely must read as closed today, not fall back to always-open');
+
+  // A window that has already ended (closes at the current hour:minute, so
+  // "now" is not strictly before close) must read as closed.
+  const justClosed = { [dayKey]: { open: '00:00', close: `${pad(hour)}:${pad(minute)}`, closed: false } };
+  assert.equal(isStoreOpenNow(justClosed, tz), false, 'a window whose close time is not after the current time must read as closed (half-open interval)');
+
+  assert.equal(isStoreOpenNow({ [dayKey]: { open: 'garbage', close: 'garbage', closed: false } }, tz), true, 'unparseable open/close values must fail OPEN, not silently stop the phone from ringing');
+
+  console.log('isStoreOpenNow functional checks passed');
+}
