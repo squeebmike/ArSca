@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.19.12-wrap-qr-bigger-fix">
+<meta name="version" content="2026.08.19.13-wrap-label-redesign">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1602,14 +1602,14 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.19.12-wrap-qr-bigger-fix" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.19.12-wrap-qr-bigger-fix" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.19.12-wrap-qr-bigger-fix" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.08.19.12-wrap-qr-bigger-fix" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.19.12-wrap-qr-bigger-fix" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.19.12-wrap-qr-bigger-fix" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.19.12-wrap-qr-bigger-fix" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.19.12-wrap-qr-bigger-fix" defer></script>
+<script src="scripts/query-routing.js?v=2026.08.19.13-wrap-label-redesign" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.19.13-wrap-label-redesign" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.19.13-wrap-label-redesign" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.08.19.13-wrap-label-redesign" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.19.13-wrap-label-redesign" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.19.13-wrap-label-redesign" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.19.13-wrap-label-redesign" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.19.13-wrap-label-redesign" defer></script>
 </head>
 <body>
 
@@ -1659,11 +1659,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.19.12-wrap-qr-bigger-fix</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.19.13-wrap-label-redesign</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.19.12-wrap-qr-bigger-fix</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.19.13-wrap-label-redesign</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1685,7 +1685,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.19.12-wrap-qr-bigger-fix</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.19.13-wrap-label-redesign</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3464,7 +3464,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.19.12-wrap-qr-bigger-fix';
+const APP_VERSION = '2026.08.19.13-wrap-label-redesign';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -38766,7 +38766,7 @@ function openLabelPrintModal(seedItemId){
   labelPrintBatch = [];
   if(seedItemId){
     const item = (all || []).find(i => i.id === seedItemId);
-    if(item) labelPrintBatch.push({ id:item.id, name:item.name, condition:item.condition||'', sku:labelBarcodeValue(item), price:inventoryListPrice ? inventoryListPrice(item) : (item.salePrice || item.market || 0), qty:1 });
+    if(item) labelPrintBatch.push({ id:item.id, name:item.name, condition:item.condition||'', sku:labelBarcodeValue(item), price:inventoryListPrice ? inventoryListPrice(item) : (item.salePrice || item.market || 0), signedBy:item.is_signed?(item.signed_by||'Signed'):'', qty:1 });
   }
   const searchEl = document.getElementById('label-print-search'); if(searchEl) searchEl.value = '';
   const resultsEl = document.getElementById('label-print-search-results'); if(resultsEl) resultsEl.innerHTML = '';
@@ -38797,7 +38797,7 @@ function addToLabelPrintBatch(itemId){
   if(!item) return;
   const existing = labelPrintBatch.find(b => b.id === itemId);
   if(existing) existing.qty += 1;
-  else labelPrintBatch.push({ id:item.id, name:item.name, condition:item.condition||'', sku:labelBarcodeValue(item), price:inventoryListPrice ? inventoryListPrice(item) : (item.salePrice || item.market || 0), qty:1 });
+  else labelPrintBatch.push({ id:item.id, name:item.name, condition:item.condition||'', sku:labelBarcodeValue(item), price:inventoryListPrice ? inventoryListPrice(item) : (item.salePrice || item.market || 0), signedBy:item.is_signed?(item.signed_by||'Signed'):'', qty:1 });
   renderLabelPrintBatchList();
 }
 function removeFromLabelPrintBatch(itemId){
@@ -38972,11 +38972,12 @@ async function printInventoryLabels(){
     labelParts.push(isWrap ? `<div class="label wrap">
         <div class="wrap-front">
           <div class="wrap-name">${escHtml(b.name)}</div>
-          <div class="wrap-condition">${escHtml(b.condition || '')}</div>
+          ${b.signedBy ? `<div class="wrap-signed">Signed: ${escHtml(b.signedBy)}</div>` : ''}
           <div class="wrap-price">${fdLabelPrice$(b.price)}</div>
+          <div class="wrap-condition">${escHtml(b.condition || '')}</div>
         </div>
         <div class="wrap-back">
-          <img class="wrap-logo" src="assets/mana-pocket-label-logo.png" alt="">
+          <div class="wrap-shopname">THE MANA POCKET</div>
           ${barcodeImg}
         </div>
       </div>` : `<div class="label">
@@ -39018,10 +39019,11 @@ async function printInventoryLabels(){
       .label.wrap .wrap-front, .label.wrap .wrap-back { width:50%; height:100%; box-sizing:border-box; display:flex; flex-direction:column; align-items:center; overflow:hidden; }
       .label.wrap .wrap-front { padding:5px 6px; justify-content:center; gap:4px; border-right:1px dashed #999; }
       .label.wrap .wrap-back { padding:5px 6px; justify-content:center; gap:3px; }
-      .wrap-logo { max-width:70%; max-height:18px; object-fit:contain; filter:grayscale(1) contrast(1.3); }
+      .wrap-shopname { font-size:8px; font-weight:800; letter-spacing:.03em; text-align:center; }
       .wrap-name { font-size:7px; font-weight:700; line-height:1.1; max-height:16px; overflow:hidden; text-align:center; }
-      .wrap-condition { font-size:12px; font-weight:800; text-transform:uppercase; }
-      .wrap-price { font-size:20px; font-weight:900; line-height:1; }`;
+      .wrap-signed { font-size:6px; font-weight:700; text-transform:uppercase; text-align:center; }
+      .wrap-condition { font-size:11px; font-weight:800; text-transform:uppercase; }
+      .wrap-price { font-size:24px; font-weight:900; line-height:1; }`;
   w.document.write(`<html><head><title>Labels</title>
     <style>${isRoll ? rollStyle : sheetStyle}${isWrap ? wrapStyle : ''}</style>
   </head><body><div class="label-sheet">${labelsHtml}</div>
@@ -39060,19 +39062,6 @@ const LABEL_PNG_DPI = 203;
 // directly onto a canvas sized in real print-head dots and downloading it as a
 // PNG sidesteps the OS print system (and its page-size list) entirely: the
 // printer's own app just imports a bitmap at native size.
-// The toploader-wrap back face carries a fixed shop logo (not the vendor's
-// configurable storefront logo) alongside the scan code -- loaded once per
-// download batch, not per label, since it's the same bitmap every time.
-const WRAP_LOGO_SRC = 'assets/mana-pocket-label-logo.png';
-function loadWrapLogoImage(){
-  return new Promise(resolve => {
-    const img = new Image();
-    img.onload = () => resolve(img);
-    img.onerror = () => resolve(null);
-    img.src = WRAP_LOGO_SRC;
-  });
-}
-
 // A thermal printer/app can only output pure black or white, but everything
 // this file draws onto a canvas -- text, the QR/barcode, the logo -- comes
 // out with anti-aliased (soft gray) edges, since that's how Canvas2D always
@@ -39115,7 +39104,6 @@ async function downloadInventoryLabelPngs(){
   const btn = document.getElementById('label-download-btn');
   const btnLabel = '⬇️ DOWNLOAD PNGs (for phone thermal-printer app)';
   if(btn){ btn.disabled = true; btn.textContent = 'GENERATING...'; }
-  const wrapLogoImg = isWrap ? await loadWrapLogoImage() : null;
   const seenNames = {};
   for(let i = 0; i < labelSpecs.length; i++){
     const b = labelSpecs[i];
@@ -39131,15 +39119,20 @@ async function downloadInventoryLabelPngs(){
     const codeValue = codeStyle === 'qr' ? labelQrPayload(b) : (b.sku || b.id);
     if(isWrap){
       // Front face: item name (so a loose label is still identifiable by
-      // eye -- "we don't know what the label goes to" without it) plus
-      // condition and price. Back face: a small shop logo and the scan
-      // code, sized as large as the back face allows -- confirmed against a
-      // real device that the code was failing to scan, traced to
-      // generateLabelCodeCanvas rendering at a fixed 220px and then getting
-      // blurrily downscaled to fit here; generating it directly at its
-      // real on-label size (below) fixes that at the source, and making
-      // that real size much bigger gives the printer more physical dots per
-      // module to work with besides.
+      // eye), a small "Signed by" badge when set, then price (the biggest,
+      // most dominant element) and condition at the bottom. Back face: the
+      // shop name as plain bold TEXT, not the illustrated logo image -- a
+      // detailed graffiti-style wordmark with outlines and drop shadows
+      // cannot survive being shrunk to ~40px and forced to pure black/white
+      // for a 203-DPI thermal print (confirmed against a real printed
+      // label: it came out as an unreadable blob, while every text element
+      // on the same label stayed crisp). Plain text has none of that
+      // problem. The scan code gets everything else, sized as large as the
+      // back face allows -- confirmed on a real device that a code
+      // generated at a fixed size and then blurrily downscaled to fit here
+      // could fail to scan; generating it directly at its real on-label
+      // size (below) fixes that, and a much bigger real size besides gives
+      // the printer more dots per module to work with.
       const halfW = w / 2;
       ctx.strokeStyle = '#000'; ctx.setLineDash([4, 4]);
       ctx.beginPath(); ctx.moveTo(halfW, 0); ctx.lineTo(halfW, h); ctx.stroke();
@@ -39149,25 +39142,22 @@ async function downloadInventoryLabelPngs(){
       const nameFont = Math.round(h * 0.075);
       ctx.font = `bold ${nameFont}px sans-serif`;
       wrapCanvasText(ctx, b.name, halfW / 2, pad, halfW - pad * 2, Math.round(nameFont * 1.15), 2);
-      ctx.font = `bold ${Math.round(h * 0.14)}px sans-serif`;
-      ctx.fillText(String(b.condition || '').toUpperCase(), halfW / 2, h * 0.44);
-      ctx.font = `900 ${Math.round(h * 0.26)}px sans-serif`;
-      ctx.fillText(fdLabelPrice$(b.price), halfW / 2, h * 0.62);
-      // The logo is capped by HEIGHT, not width -- it's secondary branding,
-      // and every pixel it doesn't use is a pixel the code gets instead. At
-      // this size it's still perfectly legible; the code below it is the
-      // part that actually has to work.
-      let logoBottom = h * 0.03;
-      if(wrapLogoImg){
-        const logoH = h * 0.18, logoW = Math.min(logoH * (wrapLogoImg.width / wrapLogoImg.height), halfW * 0.75);
-        ctx.filter = 'grayscale(1)';
-        ctx.drawImage(wrapLogoImg, halfW + (halfW - logoW) / 2, h * 0.03, logoW, logoH);
-        ctx.filter = 'none';
-        logoBottom = h * 0.03 + logoH;
+      if(b.signedBy){
+        ctx.font = `bold ${Math.round(h * 0.06)}px sans-serif`;
+        ctx.fillText(('Signed: ' + b.signedBy).toUpperCase(), halfW / 2, h * 0.24);
       }
+      ctx.font = `900 ${Math.round(h * 0.3)}px sans-serif`;
+      ctx.fillText(fdLabelPrice$(b.price), halfW / 2, h * 0.34);
+      ctx.font = `bold ${Math.round(h * 0.13)}px sans-serif`;
+      ctx.fillText(String(b.condition || '').toUpperCase(), halfW / 2, h * 0.8);
+      // The shop-name text is a fixed, small band -- every pixel it
+      // doesn't use is a pixel the code gets instead.
+      ctx.font = `bold ${Math.round(h * 0.055)}px sans-serif`;
+      ctx.fillText('THE MANA POCKET', halfW + halfW / 2, h * 0.03);
+      const logoBottom = h * 0.03 + h * 0.08;
       // Square code, as large as the remaining back-face room allows --
-      // bounded by both the leftover height below the logo and the face's
-      // own width, whichever is tighter.
+      // bounded by both the leftover height below the shop name and the
+      // face's own width, whichever is tighter.
       const codeMargin = w * 0.015;
       const codeSize = Math.min(h - logoBottom - codeMargin * 2, halfW - codeMargin * 2);
       const codeCanvas = await generateLabelCodeCanvas(codeValue, codeStyle, Math.round(codeSize));
@@ -41859,7 +41849,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.19.12-wrap-qr-bigger-fix" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.19.13-wrap-label-redesign" defer></script>
 </body>
 </html>
 
