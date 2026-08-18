@@ -602,12 +602,47 @@ async function getShippingSettings(request,env,deps,url){
   return deps.json({ok:true,shipping});
 }
 
+export function focOrderConfirmationEmail(order, items) {
+  const lines = (items || []).map(item => {
+    const snap = item.sku_snapshot || {};
+    const label = [snap.title, snap.variantLabel && snap.variantLabel !== 'Cover A' ? snap.variantLabel : ''].filter(Boolean).join(' -- ');
+    return `  ${item.quantity} x ${label}  ($${(Number(item.unit_price_cents || 0) / 100).toFixed(2)} each)`;
+  }).join('\n');
+  const fulfillmentLine = order.fulfillment_method === 'shipping'
+    ? `Shipping to: ${[order.shipping_address?.street1, order.shipping_address?.city, order.shipping_address?.state, order.shipping_address?.zip].filter(Boolean).join(', ')}`
+    : 'Pickup in store';
+  const body = `Thanks for your PRH FOC preorder, ${order.customer_name || ''}!\n\n`
+    + `Order ${order.order_number}\n\n${lines}\n\n`
+    + `Subtotal: $${(Number(order.subtotal_cents || 0) / 100).toFixed(2)}\n`
+    + (order.shipping_cents ? `Shipping: $${(Number(order.shipping_cents) / 100).toFixed(2)}\n` : '')
+    + `Total charged: $${(Number(order.total_cents || 0) / 100).toFixed(2)}\n\n`
+    + `${fulfillmentLine}\n\n`
+    + `We'll be in touch when your comics arrive.`;
+  return { subject:`Your FOC preorder ${order.order_number} is confirmed`, body };
+}
+
 export async function syncFocStripeEvent(env, event, deps) {
   const object=event.data?.object||{};if(!event.type.startsWith('payment_intent.')||object.metadata?.source!=='foc_preorder')return;
   const orderId=text(object.metadata?.foc_order_id,80);if(!orderId)return;
   let status=object.status;if(event.type==='payment_intent.succeeded')status='paid';else if(event.type==='payment_intent.payment_failed')status='payment_failed';else if(event.type==='payment_intent.canceled')status='cancelled';
   const patch={status,stripe_charge_id:object.latest_charge||null};if(status==='paid')patch.paid_at=new Date().toISOString();if(status==='cancelled')patch.cancelled_at=new Date().toISOString();
-  await deps.supabaseAdminFetch(env,`foc_preorder_orders?id=eq.${encodeURIComponent(orderId)}&stripe_payment_intent_id=eq.${encodeURIComponent(object.id)}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify(patch)});
+  // status=neq.paid on the paid transition doubles as the idempotency guard --
+  // Stripe can and does redeliver the same webhook event more than once. If
+  // the row was already 'paid' this update matches zero rows, so the
+  // confirmation email below only ever fires on the genuine first transition,
+  // never on a redelivered duplicate.
+  const guard = status==='paid' ? '&status=neq.paid' : '';
+  const { data:updated } = await deps.supabaseAdminFetch(env,`foc_preorder_orders?id=eq.${encodeURIComponent(orderId)}&stripe_payment_intent_id=eq.${encodeURIComponent(object.id)}${guard}`,{method:'PATCH',headers:{Prefer:'return=representation'},body:JSON.stringify(patch)});
+  const order = updated?.[0];
+  if (status==='paid' && order?.customer_email && typeof deps.sendEmail === 'function') {
+    try {
+      const { data:items } = await deps.supabaseAdminFetch(env,`foc_preorder_items?order_id=eq.${encodeURIComponent(orderId)}&select=quantity,unit_price_cents,sku_snapshot`);
+      const { subject, body } = focOrderConfirmationEmail(order, items);
+      await deps.sendEmail(env, order.customer_email, subject, body);
+    } catch (error) {
+      console.error(JSON.stringify({ message:'FOC preorder confirmation email failed', error:error.message, orderId }));
+    }
+  }
 }
 
 export async function handleFocRequest(request, env, url, deps) {
