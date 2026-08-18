@@ -222,6 +222,72 @@ async function run() {
     assert.equal(res.body.purchases[0].items.length, 1);
     assert.equal(res.body.purchases[0].items[0].title, 'Booster Pack');
   }
+
+  // consignments: matched by the freeform contact field on consignor_people (phone or email).
+  {
+    const deps = baseDeps({
+      supabaseAdminFetch: async (env, path) => {
+        if (path.startsWith('customers?')) return { data:[] };
+        if (path.startsWith('consignor_people?')) return { data:[
+          { id:'con-1', name:'Jane Doe', contact:'jane@example.com', store_split_percent:30 },
+          { id:'con-2', name:'Someone Else', contact:'other@example.com', store_split_percent:25 },
+        ] };
+        if (path.startsWith('consignment_items?')) {
+          assert.ok(path.includes('consignor_id=eq.con-1'), 'must only query the matched consignor\'s items, not every consignor\'s');
+          return { data:[{ id:'ci-1', item_name:'Booster Box', status:'sold', sale_price:120, paid_out:false }] };
+        }
+        throw new Error('unexpected db call: ' + path);
+      },
+    });
+    const res = await handleAccountRequest(fakeRequest({}), {}, url('/public/account/consignments', { store_id:'store1' }), deps);
+    assert.equal(res.status, 200);
+    assert.equal(res.body.linked, true);
+    assert.equal(res.body.consignor.name, 'Jane Doe');
+    assert.equal(res.body.items.length, 1);
+    assert.equal(res.body.items[0].item_name, 'Booster Box');
+  }
+
+  // consignments: no matching consignor record -> explicit unlinked, not an error.
+  {
+    const deps = baseDeps({
+      supabaseAdminFetch: async (env, path) => {
+        if (path.startsWith('customers?')) return { data:[] };
+        if (path.startsWith('consignor_people?')) return { data:[{ id:'con-9', name:'Nobody Related', contact:'999-999-9999' }] };
+        throw new Error('unexpected db call: ' + path);
+      },
+    });
+    const res = await handleAccountRequest(fakeRequest({}), {}, url('/public/account/consignments', { store_id:'store1' }), deps);
+    assert.equal(res.status, 200);
+    assert.equal(res.body.linked, false);
+    assert.deepEqual(res.body.items, []);
+  }
+
+  // wishlist: reads the same KV blob the dashboard's Want List writes, filtered to this customer's contact.
+  {
+    const wishlistBlob = JSON.stringify([
+      { id:'wl_1', item:'Black Lotus', customer:'Jane Doe', contact:'jane@example.com' },
+      { id:'wl_2', item:'Charizard', customer:'Someone Else', contact:'999-999-9999' },
+    ]);
+    const deps = baseDeps({
+      supabaseAdminFetch: async (env, path) => { if (path.startsWith('customers?')) return { data:[] }; throw new Error('unexpected: ' + path); },
+      kvGet: async (env, key) => { assert.ok(key.endsWith(':wantlist'), 'must read the same lba:<store>:wantlist key the dashboard writes'); return wishlistBlob; },
+    });
+    const res = await handleAccountRequest(fakeRequest({}), {}, url('/public/account/wishlist', { store_id:'store1' }), deps);
+    assert.equal(res.status, 200);
+    assert.equal(res.body.items.length, 1);
+    assert.equal(res.body.items[0].item, 'Black Lotus');
+  }
+
+  // wishlist: missing/corrupt KV blob must not crash the route.
+  {
+    const deps = baseDeps({
+      supabaseAdminFetch: async (env, path) => { if (path.startsWith('customers?')) return { data:[] }; throw new Error('unexpected: ' + path); },
+      kvGet: async () => null,
+    });
+    const res = await handleAccountRequest(fakeRequest({}), {}, url('/public/account/wishlist', { store_id:'store1' }), deps);
+    assert.equal(res.status, 200);
+    assert.deepEqual(res.body.items, []);
+  }
 }
 
 await run();

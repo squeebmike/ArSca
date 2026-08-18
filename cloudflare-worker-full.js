@@ -2543,6 +2543,7 @@ export default {
       return await handleAccountRequest(request, env, url, {
         CORS, json, supabaseAdminFetch, requireAuthenticatedUser, readJsonWithLimit,
         sendSms, normalizePhoneDigits, lookupCustomerIdByPhone,
+        kvGet: (kvEnv, key) => kvEnv.LBA_KV ? kvEnv.LBA_KV.get(key) : null,
       });
     }
 
