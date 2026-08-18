@@ -25,9 +25,17 @@ console.log('syncSharedShowTransactions generalization contract checks passed');
 // every tick regardless of the local Show Mode flag -- that flag being off
 // (or just stale) must not be a reason to stop reconciling with the server ──
 assert.ok(!/\.then\(\(\)=>getShowMode\(\)\?\(drawerState\?joinCashBag\(drawerState\.id,\{silent:true\}\):syncSharedShowTransactions\(\)\):null\)/.test(dashboard), 'the drawer-check/sales-sync step must no longer be gated behind getShowMode()');
-assert.match(dashboard, /window\.__showSessionSyncTimer=setInterval\(\(\)=>\{if\(document\.visibilityState!=='visible'\)return;fetchShowSessionIndex\(false\)\.then\(\(\)=>getShowMode\(\)\?fetchSharedCashBags\(\):null\)\.then\(\(\)=>drawerState\?joinCashBag\(drawerState\.id,\{silent:true\}\):syncSharedShowTransactions\(\)\)\.catch\(\(\)=>\{\}\);\},15000\);/, 'the sync loop must call joinCashBag/syncSharedShowTransactions unconditionally every tick, with only the cash-bag-switcher list staying Show-Mode-scoped');
+assert.match(dashboard, /const tick=\(\)=>\{if\(document\.visibilityState!=='visible'\)return;fetchShowSessionIndex\(false\)\.then\(\(\)=>getShowMode\(\)\?fetchSharedCashBags\(\):null\)\.then\(\(\)=>drawerState\?joinCashBag\(drawerState\.id,\{silent:true\}\):syncSharedShowTransactions\(\)\)\.catch\(\(\)=>\{\}\);\};/, 'the sync loop must call joinCashBag/syncSharedShowTransactions unconditionally every tick, with only the cash-bag-switcher list staying Show-Mode-scoped');
 
 console.log('startShowSessionSyncLoop always-reconcile contract checks passed');
+
+// ── Contract: the reconciliation tick must fire once immediately on load,
+// not only on the first 15s interval tick -- a freshly opened browser (the
+// exact "each browser has a different sold item count" report) should not
+// sit on stale/empty stats for up to 15 seconds before its first sync ──
+assert.match(dashboard, /tick\(\);\s*\n\s*window\.__showSessionSyncTimer=setInterval\(tick,15000\);/, 'startShowSessionSyncLoop must call tick() once immediately before scheduling the 15s interval, so a fresh page load reconciles right away');
+
+console.log('Immediate-tick-on-load contract check passed');
 
 // ── Contract: joinCashBag no longer spams a toast on every silent
 // background tick when there's no local show, and it actually clears a
