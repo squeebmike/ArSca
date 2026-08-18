@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { parse } from 'csv-parse/sync';
-import { normalizePrhRow } from '../scripts/foc-preorders.mjs';
+import { normalizePrhRow, loadAllCatalogs } from '../scripts/foc-preorders.mjs';
 
 const worker = fs.readFileSync('cloudflare-worker-full.js', 'utf8');
 const service = fs.readFileSync('scripts/foc-preorders.mjs', 'utf8');
@@ -93,6 +93,59 @@ assert.doesNotMatch(dashboard, /XLSX\.read\(buffer,\{type:'array'\}\)/, 'the old
 }
 
 console.log('PRH FOC CSV date/identifier reformatting fix (real xlsx library) verified.');
+
+// ── Bug: the customer-facing preorder page can only ever show ONE FOC
+// week -- loadCatalog() always fetches just the single most recent cycle.
+// A new Monday import doesn't delete the prior week from the database (the
+// dashboard's FOC Wall still lists both), but the live site had no way to
+// ask for anything but "the latest one", so from a customer's perspective
+// older weeks just vanished the moment a new week was imported. ──
+assert.match(service, /export async function loadAllCatalogs\(db, storeId, includeAdmin = false\) \{/, 'loadAllCatalogs must exist and be exported for the multi-week public route to use');
+assert.match(service, /status=neq\.archived&order=foc_date\.desc&limit=26/, 'loadAllCatalogs must fetch multiple non-archived cycles, not just the single latest one');
+assert.match(worker, /handleFocRequest/, 'sanity: the worker still wires up the FOC route handler');
+assert.match(service, /if\(path==='\/public\/preorders\/weeks'&&request\.method==='GET'\)\{/, 'a public route to list every FOC week must exist alongside the existing single-week /public/preorders route');
+assert.match(service, /const cycles=await loadAllCatalogs\(db,storeId,false\);return deps\.json\(\{ok:true,cycles\}\);/, 'the weeks route must return every open/closed cycle\'s catalog, not just the newest');
+
+console.log('Multi-week FOC public route contract checks passed');
+
+// ── Functional: loadAllCatalogs against a mock two-cycle store (the exact
+// shape of the real bug report -- an Aug 31 and an Aug 24 cycle both open)
+// -- confirms both weeks come back, newest first, each with only its own
+// families/SKUs (no cross-week bleed), and that an archived third week is
+// excluded. ──
+{
+  const cycleAug31 = { id:'cycle-aug31', store_id:'store1', distributor:'PRH', foc_date:'2026-08-31', customer_cutoff_at:'2026-08-31T07:01:00Z', status:'open' };
+  const cycleAug24 = { id:'cycle-aug24', store_id:'store1', distributor:'PRH', foc_date:'2026-08-24', customer_cutoff_at:'2026-08-24T07:01:00Z', status:'open' };
+  const familyAug31 = { id:'fam-aug31', cycle_id:'cycle-aug31', distributor_family_id:'f1', title:'Sabrina the Teenage Witch #1' };
+  const familyAug24 = { id:'fam-aug24', cycle_id:'cycle-aug24', distributor_family_id:'f2', title:'Uncanny X-Men #36' };
+  const skuAug31 = { id:'sku-aug31', family_id:'fam-aug31', cycle_id:'cycle-aug31', distributor_sku:'111', upc:'111', title:'Sabrina the Teenage Witch #1', variant_label:'Cover A', customer_price_cents:499 };
+  const skuAug24 = { id:'sku-aug24', family_id:'fam-aug24', cycle_id:'cycle-aug24', distributor_sku:'222', upc:'222', title:'Uncanny X-Men #36', variant_label:'Cover A', customer_price_cents:499 };
+
+  const db = async (path) => {
+    if (path.startsWith('foc_cycles?')) {
+      assert.ok(path.includes('status=neq.archived'), 'must exclude archived cycles at the query level');
+      return { data:[cycleAug31, cycleAug24] }; // newest first, as order=foc_date.desc would return
+    }
+    if (path.startsWith('comic_title_families?cycle_id=eq.cycle-aug31')) return { data:[familyAug31] };
+    if (path.startsWith('comic_title_families?cycle_id=eq.cycle-aug24')) return { data:[familyAug24] };
+    if (path.startsWith('comic_skus?cycle_id=eq.cycle-aug31')) return { data:[skuAug31] };
+    if (path.startsWith('comic_skus?cycle_id=eq.cycle-aug24')) return { data:[skuAug24] };
+    if (path.startsWith('foc_preorder_orders?')) return { data:[] };
+    throw new Error('unexpected db call: ' + path);
+  };
+
+  const cycles = await loadAllCatalogs(db, 'store1', false);
+  assert.equal(cycles.length, 2, 'both open weeks must be returned, not just the newest');
+  assert.equal(cycles[0].cycle.id, 'cycle-aug31', 'weeks must come back newest-first, matching the order cycles were fetched in');
+  assert.equal(cycles[1].cycle.id, 'cycle-aug24', 'the older week must still be present, not dropped');
+  assert.equal(cycles[0].families.length, 1);
+  assert.equal(cycles[0].families[0].title, 'Sabrina the Teenage Witch #1', 'the Aug 31 week must only contain its own family, not the other week\'s');
+  assert.equal(cycles[1].families[0].title, 'Uncanny X-Men #36', 'the Aug 24 week must only contain its own family, not the other week\'s');
+  assert.equal(cycles[0].families[0].variants.length, 1);
+  assert.equal(cycles[0].families[0].variants[0].sku, '111', 'each week\'s SKUs must stay scoped to that week\'s cycle_id, not merge across weeks');
+}
+
+console.log('loadAllCatalogs multi-week functional checks passed');
 
 // On the store workstation, also validate the full supplied PRH export. CI
 // remains deterministic when that private distributor file is absent.
