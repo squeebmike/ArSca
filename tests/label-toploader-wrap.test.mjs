@@ -8,17 +8,31 @@ assert.match(dashboard, /<select id="label-print-layout" class="tsi" onchange="l
 assert.match(dashboard, /<option value="wrap">Wraps around a toploader/, 'a toploader-wrap layout option must exist');
 assert.match(dashboard, /layoutEl\.value = localStorage\.getItem\('label_print_layout'\) \|\| 'standard';/, 'opening the modal must restore the last-used layout, defaulting to standard so existing labels don\'t change unexpectedly');
 
-// ── Contract: wrap layout builds two faces -- item name, an optional "Signed by"
-// badge, a price (small $ + big whole-dollar digits, price-tag style), and
-// condition on the front (a loose label must still be identifiable by eye),
-// the shop name as plain text plus a LARGE scan code on the back. A prior
-// version drew an illustrated logo image on the back, but a real printed
-// label showed it as an unreadable blob (a detailed graffiti wordmark cannot
-// survive being thresholded to pure black/white at thermal-print resolution)
-// while every text element on the same label stayed crisp -- so the logo was
-// replaced with plain bold text. ──
+// ── Contract: only one badge line fits under the name, so labelBadgeText
+// picks the single highest-priority thing worth calling out rather than
+// stacking several -- signed (the store's own added-value claim, tied to a
+// real price) beats key issue (a fact about the book, with its own reason)
+// beats a detected ratio/incentive/promo variant signal (the weakest of the
+// three, and the only one with no dedicated field behind it). ──
+assert.match(dashboard, /function labelBadgeText\(item\)\{/, 'missing labelBadgeText');
+assert.match(dashboard, /if\(item\.is_signed\) return 'Signed: ' \+ \(item\.signed_by \|\| 'Signed'\);/, 'a signed item must take top priority for the single badge slot');
+assert.match(dashboard, /if\(item\.is_key\) return 'Key Issue' \+ \(item\.key_notes \? ': ' \+ item\.key_notes : ''\);/, 'a key issue must be the second priority, including its stored reason when present');
+assert.match(dashboard, /const signal = typeof detectVariantSignal === 'function' \? detectVariantSignal\(item\.variant \|\| ''\) : '';/, 'lacking a signed or key flag, the badge must fall back to the existing ratio/incentive/promo variant-signal detector rather than a separate reimplementation');
+
+console.log('Label toploader-wrap badge-priority contract checks passed');
+
+// ── Contract: wrap layout builds two faces -- item name, an optional badge
+// (signed/key/promo -- see labelBadgeText), a price (small $ + big
+// whole-dollar digits, price-tag style), and condition on the front (a loose
+// label must still be identifiable by eye), the shop name as plain text plus
+// a LARGE scan code on the back. A prior version drew an illustrated logo
+// image on the back, but a real printed label showed it as an unreadable
+// blob (a detailed graffiti wordmark cannot survive being thresholded to
+// pure black/white at thermal-print resolution) while every text element on
+// the same label stayed crisp -- so the logo was replaced with plain bold
+// text. ──
 assert.match(dashboard, /const isWrap = layout === 'wrap';/, 'printInventoryLabels must branch on the selected layout');
-assert.match(dashboard, /<div class="wrap-front">\s*\n\s*<div class="wrap-name">\$\{escHtml\(b\.name\)\}<\/div>\s*\n\s*\$\{b\.signedBy \? `<div class="wrap-signed">Signed: \$\{escHtml\(b\.signedBy\)\}<\/div>` : ''\}\s*\n\s*<div class="wrap-price">\$\{escHtml\(fdLabelPrice\$\(b\.price\)\.charAt\(0\)\)\}<span class="wrap-price-num">\$\{escHtml\(fdLabelPrice\$\(b\.price\)\.slice\(1\)\)\}<\/span><\/div>\s*\n\s*<div class="wrap-condition">\$\{escHtml\(b\.condition \|\| ''\)\}<\/div>\s*\n\s*<\/div>/, 'the front face must show the item name, an optional signed-by badge, a price-tag-style price (small $, big digits), and condition in that order (whole dollars, no cents)');
+assert.match(dashboard, /<div class="wrap-front">\s*\n\s*<div class="wrap-name">\$\{escHtml\(b\.name\)\}<\/div>\s*\n\s*\$\{b\.badge \? `<div class="wrap-badge">\$\{escHtml\(b\.badge\)\}<\/div>` : ''\}\s*\n\s*<div class="wrap-price">\$\{escHtml\(fdLabelPrice\$\(b\.price\)\.charAt\(0\)\)\}<span class="wrap-price-num">\$\{escHtml\(fdLabelPrice\$\(b\.price\)\.slice\(1\)\)\}<\/span><\/div>\s*\n\s*<div class="wrap-condition">\$\{escHtml\(b\.condition \|\| ''\)\}<\/div>\s*\n\s*<\/div>/, 'the front face must show the item name, an optional badge, a price-tag-style price (small $, big digits), and condition in that order (whole dollars, no cents)');
 assert.ok(!/<div class="wrap-front">[\s\S]{0,20}label-store/.test(dashboard), 'the wrap front face must not carry the store name header the standard layout uses');
 assert.match(dashboard, /<div class="wrap-back">\s*\n\s*<div class="wrap-shopname">THE MANA POCKET<\/div>\s*\n\s*\$\{barcodeImg\}\s*\n\s*<\/div>/, 'the back face must carry only the shop name as plain text and the scan code -- no image logo, no SKU text');
 assert.ok(!/wrap-logo/.test(dashboard), 'the illustrated logo image class must be fully removed -- it was confirmed unreadable on a real printed label');
@@ -29,15 +43,15 @@ assert.match(dashboard, /border-right:1px dashed #999;/, 'a dashed fold line mus
 assert.match(dashboard, /\.label\.wrap \.wrap-back \{ padding:8px 6px 5px; justify-content:flex-start; gap:8px; \}/, 'the back face must use equal top-padding and shopname-to-code gap so the two spaces read as symmetric');
 assert.match(dashboard, /\.wrap-shopname \{ font-size:9px; font-weight:800; letter-spacing:\.03em; text-align:center; \}/, 'the shop name must be a bit bigger than before, still a small fixed text band');
 assert.match(dashboard, /\.wrap-name \{ font-size:8px; font-weight:700; line-height:1\.1; max-height:18px; overflow:hidden; text-align:center; \}/, 'the item name must be a bit bigger than before while still not crowding out condition/price');
-assert.match(dashboard, /\.wrap-signed \{ font-size:6px; font-weight:400; text-transform:uppercase; text-align:center; \}/, 'the signed-by badge must not be bold -- it is secondary to the item name');
+assert.match(dashboard, /\.wrap-badge \{ font-size:6px; font-weight:400; text-transform:uppercase; text-align:center; \}/, 'the badge (whichever one applies) must not be bold -- it is secondary to the item name');
 assert.match(dashboard, /\.wrap-price \{ font-size:14px; font-weight:900; line-height:1; margin-left:8px; margin-top:auto; \}/, 'the price\'s base size is the small $ sign size -- the digits get their own bigger size via a nested span');
 assert.match(dashboard, /\.wrap-price-num \{ font-size:24px; \}/, 'the whole-dollar digits must render bigger than the $ sign -- classic price-tag styling');
 
 console.log('Label toploader-wrap contract checks passed');
 
 // ── Contract: the download-PNG path draws the shop name as plain bold canvas
-// text (not an image), a "Signed by" badge only when the item is marked
-// signed, a price-tag-style price (small $ sign, big whole-dollar digits,
+// text (not an image), the single highest-priority badge only when one
+// applies, a price-tag-style price (small $ sign, big whole-dollar digits,
 // right-aligned), equal padding above and below the shop name, and generates
 // its QR at the code's own real pixel size (not a fixed size that then gets
 // blurrily scaled to fit) ──
@@ -45,7 +59,7 @@ assert.ok(!/WRAP_LOGO_SRC/.test(dashboard), 'the illustrated logo image asset mu
 assert.ok(!/loadWrapLogoImage/.test(dashboard), 'the logo-preload helper must be fully removed along with the image-based logo');
 assert.ok(!/wrapLogoImg/.test(dashboard), 'no wrap-logo-image variable may remain in the download path');
 assert.match(dashboard, /const nameFont = Math\.round\(h \* 0\.085\);/, 'the item name must be drawn a bit bigger than before');
-assert.match(dashboard, /if\(b\.signedBy\)\{\s*\n(?:[^\n]*\n)*?\s*ctx\.font = `\$\{Math\.round\(h \* 0\.06\)\}px sans-serif`;\s*\n\s*ctx\.fillText\(\('Signed: ' \+ b\.signedBy\)\.toUpperCase\(\), halfW \/ 2, h \* 0\.24\);\s*\n\s*\}/, 'the front face must draw a "Signed by" badge only when the item is marked signed, and it must not be bold -- it is secondary to the item name');
+assert.match(dashboard, /if\(b\.badge\)\{\s*\n(?:[^\n]*\n)*?\s*ctx\.font = `\$\{Math\.round\(h \* 0\.06\)\}px sans-serif`;\s*\n\s*ctx\.fillText\(b\.badge\.toUpperCase\(\), halfW \/ 2, h \* 0\.24\);\s*\n\s*\}/, 'the front face must draw whichever single badge applies, and it must not be bold -- it is secondary to the item name');
 assert.match(dashboard, /const priceStr = fdLabelPrice\$\(b\.price\);\s*\n\s*const dollarSign = priceStr\.charAt\(0\), priceDigits = priceStr\.slice\(1\);/, 'the price must be split into a $ sign and whole-dollar digits so they can be drawn at different sizes');
 assert.match(dashboard, /const priceBigFont = Math\.round\(h \* 0\.3\), priceSmallFont = Math\.round\(priceBigFont \* 0\.55\);/, 'the $ sign must be drawn noticeably smaller than the digits -- classic price-tag styling');
 assert.match(dashboard, /ctx\.fillText\(priceDigits, priceRight, priceBaseline\);/, 'the whole-dollar digits must be drawn at the big font size');
@@ -59,14 +73,32 @@ assert.match(dashboard, /ctx\.imageSmoothingEnabled = false;/, 'canvas image smo
 
 console.log('Label toploader-wrap PNG-download contract checks passed');
 
+// ── Functional: labelBadgeText picks exactly one badge, in priority order ──
+function labelBadgeText(item, detectVariantSignal){
+  if(item.is_signed) return 'Signed: ' + (item.signed_by || 'Signed');
+  if(item.is_key) return 'Key Issue' + (item.key_notes ? ': ' + item.key_notes : '');
+  const signal = typeof detectVariantSignal === 'function' ? detectVariantSignal(item.variant || '') : '';
+  return signal || '';
+}
+const fakeDetectVariantSignal = (label) => /1\s*:\s*(\d+)/.test(label) ? `1:${label.match(/1\s*:\s*(\d+)/)[1]} INCENTIVE` : '';
+
+assert.equal(labelBadgeText({ is_signed:true, signed_by:'Ash Ketchum', is_key:true, key_notes:'1st app' }, fakeDetectVariantSignal), 'Signed: Ash Ketchum', 'signed must win over key issue and variant signal when multiple apply');
+assert.equal(labelBadgeText({ is_signed:true, is_key:true }, fakeDetectVariantSignal), 'Signed: Signed', 'a signed item with no recorded signer name must still show a generic signed badge');
+assert.equal(labelBadgeText({ is_key:true, key_notes:'1st appearance of X', variant:'1:25 ratio' }, fakeDetectVariantSignal), 'Key Issue: 1st appearance of X', 'key issue must win over a variant signal when both apply');
+assert.equal(labelBadgeText({ is_key:true }, fakeDetectVariantSignal), 'Key Issue', 'a key issue with no stored reason must still show a generic key-issue badge, no stray colon');
+assert.equal(labelBadgeText({ variant:'1:25 ratio incentive cover' }, fakeDetectVariantSignal), '1:25 INCENTIVE', 'lacking signed/key flags, a detected variant signal must be used');
+assert.equal(labelBadgeText({}, fakeDetectVariantSignal), '', 'an item with no signed/key flag and no variant signal must show no badge at all');
+
+console.log('labelBadgeText functional checks passed');
+
 // ── Functional: the front face always includes the item name, condition, and a
-// whole-dollar price -- never the store name, never cents -- and the signed-by
-// badge only appears when the item is actually marked signed ──
-function renderWrapFront(name, signedBy, condition, price, fdLabelPrice$, escHtml){
+// whole-dollar price -- never the store name, never cents -- and the badge
+// only appears when one actually applies ──
+function renderWrapFront(name, badge, condition, price, fdLabelPrice$, escHtml){
   const priceStr = fdLabelPrice$(price);
   return `<div class="wrap-front">
           <div class="wrap-name">${escHtml(name)}</div>
-          ${signedBy ? `<div class="wrap-signed">Signed: ${escHtml(signedBy)}</div>` : ''}
+          ${badge ? `<div class="wrap-badge">${escHtml(badge)}</div>` : ''}
           <div class="wrap-price">${escHtml(priceStr.charAt(0))}<span class="wrap-price-num">${escHtml(priceStr.slice(1))}</span></div>
           <div class="wrap-condition">${escHtml(condition || '')}</div>
         </div>`;
@@ -77,10 +109,10 @@ assert.ok(!front.includes('label-store'), 'the front face template must never in
 assert.ok(front.includes('wrap-name') && front.includes('Charizard VMAX'), 'the front face must include the item name so a loose label is still identifiable by eye');
 assert.ok(front.includes('NM') && front.includes('$') && front.includes('13') && !front.includes('12.50'), 'the front face must show the condition and a whole-dollar rounded price, never cents');
 assert.ok(front.includes('wrap-price-num'), 'the digits must render in their own bigger-font span, separate from the $ sign');
-assert.ok(!front.includes('wrap-signed'), 'an unsigned item must not render a signed-by badge at all');
+assert.ok(!front.includes('wrap-badge'), 'an item with no applicable badge must not render a badge element at all');
 
-const signedFront = renderWrapFront('Booster Box', 'Ash Ketchum', 'NM', 10, fdLabelPrice$, s => s);
-assert.ok(signedFront.includes('wrap-signed') && signedFront.includes('Signed: Ash Ketchum'), 'a signed item must render its signed-by badge with the signer\'s name');
+const badgedFront = renderWrapFront('Booster Box', 'Signed: Ash Ketchum', 'NM', 10, fdLabelPrice$, s => s);
+assert.ok(badgedFront.includes('wrap-badge') && badgedFront.includes('Signed: Ash Ketchum'), 'an item with an applicable badge must render it with its full text');
 
 // ── Functional: the back face never includes SKU text or an image logo ──
 function renderWrapBack(barcodeImg, escHtml){

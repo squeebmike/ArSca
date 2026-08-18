@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.19.15-wrap-price-tag-style">
+<meta name="version" content="2026.08.19.16-wrap-priority-badge">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1602,14 +1602,14 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.19.15-wrap-price-tag-style" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.19.15-wrap-price-tag-style" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.19.15-wrap-price-tag-style" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.08.19.15-wrap-price-tag-style" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.19.15-wrap-price-tag-style" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.19.15-wrap-price-tag-style" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.19.15-wrap-price-tag-style" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.19.15-wrap-price-tag-style" defer></script>
+<script src="scripts/query-routing.js?v=2026.08.19.16-wrap-priority-badge" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.19.16-wrap-priority-badge" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.19.16-wrap-priority-badge" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.08.19.16-wrap-priority-badge" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.19.16-wrap-priority-badge" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.19.16-wrap-priority-badge" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.19.16-wrap-priority-badge" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.19.16-wrap-priority-badge" defer></script>
 </head>
 <body>
 
@@ -1659,11 +1659,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.19.15-wrap-price-tag-style</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.19.16-wrap-priority-badge</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.19.15-wrap-price-tag-style</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.19.16-wrap-priority-badge</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1685,7 +1685,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.19.15-wrap-price-tag-style</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.19.16-wrap-priority-badge</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3464,7 +3464,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.19.15-wrap-price-tag-style';
+const APP_VERSION = '2026.08.19.16-wrap-priority-badge';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -38762,11 +38762,24 @@ let labelPrintBatch = [];
 
 function labelBarcodeValue(item){ return String(item.upc || item.inventorySku || item.sku || item.id || '').trim(); }
 
+// A wrap label only has room under the name for one short badge line, so
+// pick the single highest-priority thing worth calling out rather than
+// trying to stack several. Signed (it's the store's own added-value claim,
+// tied to a real price) beats key issue (a fact about the book itself)
+// beats a detected ratio/incentive/promo variant signal (the weakest, most
+// speculative signal of the three).
+function labelBadgeText(item){
+  if(item.is_signed) return 'Signed: ' + (item.signed_by || 'Signed');
+  if(item.is_key) return 'Key Issue' + (item.key_notes ? ': ' + item.key_notes : '');
+  const signal = typeof detectVariantSignal === 'function' ? detectVariantSignal(item.variant || '') : '';
+  return signal || '';
+}
+
 function openLabelPrintModal(seedItemId){
   labelPrintBatch = [];
   if(seedItemId){
     const item = (all || []).find(i => i.id === seedItemId);
-    if(item) labelPrintBatch.push({ id:item.id, name:item.name, condition:item.condition||'', sku:labelBarcodeValue(item), price:inventoryListPrice ? inventoryListPrice(item) : (item.salePrice || item.market || 0), signedBy:item.is_signed?(item.signed_by||'Signed'):'', qty:1 });
+    if(item) labelPrintBatch.push({ id:item.id, name:item.name, condition:item.condition||'', sku:labelBarcodeValue(item), price:inventoryListPrice ? inventoryListPrice(item) : (item.salePrice || item.market || 0), badge:labelBadgeText(item), qty:1 });
   }
   const searchEl = document.getElementById('label-print-search'); if(searchEl) searchEl.value = '';
   const resultsEl = document.getElementById('label-print-search-results'); if(resultsEl) resultsEl.innerHTML = '';
@@ -38797,7 +38810,7 @@ function addToLabelPrintBatch(itemId){
   if(!item) return;
   const existing = labelPrintBatch.find(b => b.id === itemId);
   if(existing) existing.qty += 1;
-  else labelPrintBatch.push({ id:item.id, name:item.name, condition:item.condition||'', sku:labelBarcodeValue(item), price:inventoryListPrice ? inventoryListPrice(item) : (item.salePrice || item.market || 0), signedBy:item.is_signed?(item.signed_by||'Signed'):'', qty:1 });
+  else labelPrintBatch.push({ id:item.id, name:item.name, condition:item.condition||'', sku:labelBarcodeValue(item), price:inventoryListPrice ? inventoryListPrice(item) : (item.salePrice || item.market || 0), badge:labelBadgeText(item), qty:1 });
   renderLabelPrintBatchList();
 }
 function removeFromLabelPrintBatch(itemId){
@@ -38972,7 +38985,7 @@ async function printInventoryLabels(){
     labelParts.push(isWrap ? `<div class="label wrap">
         <div class="wrap-front">
           <div class="wrap-name">${escHtml(b.name)}</div>
-          ${b.signedBy ? `<div class="wrap-signed">Signed: ${escHtml(b.signedBy)}</div>` : ''}
+          ${b.badge ? `<div class="wrap-badge">${escHtml(b.badge)}</div>` : ''}
           <div class="wrap-price">${escHtml(fdLabelPrice$(b.price).charAt(0))}<span class="wrap-price-num">${escHtml(fdLabelPrice$(b.price).slice(1))}</span></div>
           <div class="wrap-condition">${escHtml(b.condition || '')}</div>
         </div>
@@ -39021,7 +39034,7 @@ async function printInventoryLabels(){
       .label.wrap .wrap-back { padding:8px 6px 5px; justify-content:flex-start; gap:8px; }
       .wrap-shopname { font-size:9px; font-weight:800; letter-spacing:.03em; text-align:center; }
       .wrap-name { font-size:8px; font-weight:700; line-height:1.1; max-height:18px; overflow:hidden; text-align:center; }
-      .wrap-signed { font-size:6px; font-weight:400; text-transform:uppercase; text-align:center; }
+      .wrap-badge { font-size:6px; font-weight:400; text-transform:uppercase; text-align:center; }
       .wrap-condition { font-size:11px; font-weight:800; text-transform:uppercase; }
       .wrap-price { font-size:14px; font-weight:900; line-height:1; margin-left:8px; margin-top:auto; }
       .wrap-price-num { font-size:24px; }`;
@@ -39146,11 +39159,11 @@ async function downloadInventoryLabelPngs(){
       const nameFont = Math.round(h * 0.085);
       ctx.font = `bold ${nameFont}px sans-serif`;
       wrapCanvasText(ctx, b.name, halfW / 2, padY, halfW - padX * 2, Math.round(nameFont * 1.15), 2);
-      if(b.signedBy){
+      if(b.badge){
         // Not bold -- it's secondary to the name, and bold on every line reads
         // as noise.
         ctx.font = `${Math.round(h * 0.06)}px sans-serif`;
-        ctx.fillText(('Signed: ' + b.signedBy).toUpperCase(), halfW / 2, h * 0.24);
+        ctx.fillText(b.badge.toUpperCase(), halfW / 2, h * 0.24);
       }
       // Right-aligned rather than centered so the price reads a bit off
       // toward the fold line instead of dead center. The $ is drawn smaller
@@ -41872,7 +41885,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.19.15-wrap-price-tag-style" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.19.16-wrap-priority-badge" defer></script>
 </body>
 </html>
 
