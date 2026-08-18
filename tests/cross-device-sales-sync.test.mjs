@@ -16,7 +16,23 @@ const dashboard = fs.readFileSync('dashboard.html', 'utf8');
 // ── Contract: syncSharedShowTransactions no longer refuses to run without a
 // showId -- it must pull the store's sales generally, not bail out ──
 assert.ok(!/if\(_sharedShowSyncActive\|\|!showId\|\|getAccountContext\(\)\.isDemo\)return;/.test(dashboard), 'syncSharedShowTransactions must not require a showId to run -- that was the exact gate that broke cross-device sync outside Show Mode');
-assert.match(dashboard, /async function syncSharedShowTransactions\(showId=getShowSessionId\(\),drawerId=drawerState\?\.id\|\|''\)\{\s*\n\s*if\(_sharedShowSyncActive\|\|getAccountContext\(\)\.isDemo\)return;/, 'syncSharedShowTransactions must only bail on an in-flight sync or demo mode, not on a missing showId');
+assert.match(dashboard, /async function syncSharedShowTransactions\(showId='',drawerId=drawerState\?\.id\|\|''\)\{\s*\n\s*if\(_sharedShowSyncActive\|\|getAccountContext\(\)\.isDemo\)return;/, 'syncSharedShowTransactions must only bail on an in-flight sync or demo mode, not on a missing showId');
+
+// ── Bug (found after the first fix shipped): incognito/fresh browsers got
+// the full, correct numbers, but browsers that had run a show before did
+// not. Root cause: the default `showId=getShowSessionId()` parameter read
+// LOCAL Show Mode state (pos_show_mode) -- and a browser whose local show
+// flag was never correctly cleared (syncShowModeFromWorker only clears it
+// when the server confirms the show is closed; a failed/empty lookup
+// leaves it stuck) kept silently narrowing every "general" call below to
+// just that one stale show's sales, instead of the whole store. The
+// default must NOT read local Show Mode state at all -- every call site
+// that genuinely wants a specific show's sales already has that show's id
+// in hand and must pass it explicitly. ──
+assert.ok(!/async function syncSharedShowTransactions\(showId=getShowSessionId\(\)/.test(dashboard), 'syncSharedShowTransactions must not default showId to getShowSessionId() -- that silently re-scopes general reconciliation to a stale local show for any browser whose pos_show_mode flag was never cleared');
+assert.match(dashboard, /saveShowMode\(show,\{publish:false\}\);\s*\n\s*await fetchSharedCashBags\(\);\s*\n\s*await syncSharedShowTransactions\(show\.id\);/, 'joinShowSession must pass the just-confirmed-fresh show id explicitly now that the function no longer infers it from local state');
+
+console.log('Stale-local-show-id no-longer-narrows-general-sync contract checks passed');
 assert.match(dashboard, /let query=sb\.from\('pos_sales'\)\.select\('id,show_session_id,drawer_session_id,total,status,created_at,completed_at'\)\.eq\('store_id',getActiveStoreId\(\)\)\.in\('status',\['completed','succeeded'\]\)\.order\('created_at',\{ascending:false\}\)\.limit\(1000\);\s*\n\s*if\(showId\) query=query\.eq\('show_session_id',showId\);/, 'the pos_sales query must fetch store-wide sales by default, only narrowing to a specific show when a showId is actually passed');
 
 console.log('syncSharedShowTransactions generalization contract checks passed');
@@ -73,3 +89,23 @@ console.log('joinCashBag stale-drawer-clearing contract checks passed');
 }
 
 console.log('Cross-device sales merge functional checks passed');
+
+// ── Functional: proves the default parameter itself, extracted verbatim
+// from the real source, resolves to '' when called with no args -- and
+// never even touches getShowSessionId() to get there. A browser with a
+// stale local show sitting in getShowSessionId() must not have that value
+// leak into an unscoped call no matter what that stale state contains. ──
+{
+  const sigSrc = dashboard.match(/async function syncSharedShowTransactions\(showId='',drawerId=drawerState\?\.id\|\|''\)\{/)?.[0];
+  assert.ok(sigSrc, 'could not find the exact syncSharedShowTransactions signature to functionally verify its default');
+  let getShowSessionIdCalls = 0;
+  const getShowSessionId = () => { getShowSessionIdCalls++; return 'stale-show-from-two-weeks-ago'; };
+  const probe = new Function('drawerState', 'getShowSessionId', `
+    async function syncSharedShowTransactions(showId='',drawerId=drawerState?.id||''){ return { showId, drawerId }; }
+    return syncSharedShowTransactions();
+  `);
+  const result = await probe(null, getShowSessionId);
+  assert.equal(result.showId, '', 'calling syncSharedShowTransactions() with no args must resolve showId to the empty string, never a stale local show id');
+  assert.equal(getShowSessionIdCalls, 0, 'the default must not read getShowSessionId()/local Show Mode state at all -- that is the exact leak that scoped general reconciliation down to one dead show');
+}
+
