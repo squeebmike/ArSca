@@ -10,9 +10,10 @@ assert.match(dashboard, /layoutEl\.value = localStorage\.getItem\('label_print_l
 
 // ── Contract: wrap layout builds two faces -- price/condition only on the front, shop logo + scan code only on the back ──
 assert.match(dashboard, /const isWrap = layout === 'wrap';/, 'printInventoryLabels must branch on the selected layout');
-assert.match(dashboard, /<div class="wrap-front">\s*\n\s*<div class="wrap-condition">\$\{escHtml\(b\.condition \|\| ''\)\}<\/div>\s*\n\s*<div class="wrap-price">\$\{fd\$\(b\.price\)\}<\/div>\s*\n\s*<\/div>/, 'the front face must show only condition and price -- no store name, no item name');
+assert.match(dashboard, /<div class="wrap-front">\s*\n\s*<div class="wrap-condition">\$\{escHtml\(b\.condition \|\| ''\)\}<\/div>\s*\n\s*<div class="wrap-price">\$\{fdLabelPrice\$\(b\.price\)\}<\/div>\s*\n\s*<\/div>/, 'the front face must show only condition and price (whole dollars, no cents) -- no store name, no item name');
 assert.ok(!/<div class="wrap-front">[\s\S]{0,20}label-store/.test(dashboard), 'the wrap front face must not carry the store name header the standard layout uses');
 assert.match(dashboard, /<div class="wrap-back">\s*\n\s*<img class="wrap-logo" src="assets\/mana-pocket-label-logo\.png" alt="">\s*\n\s*\$\{barcodeImg\}\s*\n\s*<\/div>/, 'the back face must carry only the fixed shop logo and the scan code -- no SKU text, no price/condition/name');
+assert.match(dashboard, /const codeStyle = isWrap \? 'qr' : \(document\.getElementById\('label-print-code-style'\)\?\.value \|\| 'barcode'\);/, 'the wrap back face must always use QR regardless of the barcode-style dropdown -- a linear barcode reads worse than a QR at that size');
 assert.match(dashboard, /\.label\.wrap \{ flex-direction:row !important; padding:0 !important; \}/, 'the wrap layout must lay the two faces out side by side with a fold line between them');
 assert.match(dashboard, /border-right:1px dashed #999;/, 'a dashed fold line must separate the front and back faces so it\'s clear where to fold');
 assert.match(dashboard, /\.wrap-logo \{ max-width:80%; max-height:28px; object-fit:contain; filter:grayscale\(1\) contrast\(1\.3\); \}/, 'the logo must be forced to grayscale so it doesn\'t print muddy or dither oddly on a monochrome/thermal printer');
@@ -28,16 +29,18 @@ assert.match(dashboard, /ctx\.filter = 'none';/, 'the grayscale filter must be r
 
 console.log('Label toploader-wrap PNG-download contract checks passed');
 
-// ── Functional: the front face never includes a store-name or item-name node ──
-function renderWrapFront(condition, price, fd$){
+// ── Functional: the front face never includes a store-name or item-name node,
+// and its price always renders as whole dollars (no cents) ──
+function renderWrapFront(condition, price, fdLabelPrice$){
   return `<div class="wrap-front">
           <div class="wrap-condition">${condition || ''}</div>
-          <div class="wrap-price">${fd$(price)}</div>
+          <div class="wrap-price">${fdLabelPrice$(price)}</div>
         </div>`;
 }
-const front = renderWrapFront('NM', 12.5, p => `$${p.toFixed(2)}`);
+const fdLabelPrice$ = n => '$' + Math.round(Number(n || 0));
+const front = renderWrapFront('NM', 12.5, fdLabelPrice$);
 assert.ok(!front.includes('label-store') && !front.includes('wrap-name'), 'the front face template must never include a store-name or item-name element');
-assert.ok(front.includes('NM') && front.includes('$12.50'), 'the front face must still show the condition and formatted price');
+assert.ok(front.includes('NM') && front.includes('$13') && !front.includes('$12.50'), 'the front face must show the condition and a whole-dollar rounded price, never cents');
 
 // ── Functional: the back face never includes SKU text, regardless of logo presence ──
 function renderWrapBack(barcodeImg, escHtml){

@@ -25,6 +25,10 @@ assert.match(dashboard, /if\(btn\)\{ btn\.disabled = false; btn\.textContent = b
 assert.match(dashboard, /if\(!labelPrintBatch\.length\) return alert\('Add at least one item to print'\);\s*\n\s*if\(typeof JsBarcode === 'undefined'\) return alert/, 'downloadInventoryLabelPngs must guard on an empty batch and a not-yet-loaded barcode library, same as printInventoryLabels');
 assert.match(dashboard, /const codeCanvas = await generateLabelCodeCanvas\(b\.sku \|\| b\.id, codeStyle\);/, 'must render a real scan code onto an offscreen canvas via the shared helper before compositing it onto the label');
 
+// ── Contract: downloaded label prices are always whole dollars, no cents ──
+assert.match(dashboard, /ctx\.fillText\(fdLabelPrice\$\(b\.price\), halfW \/ 2, h \* 0\.72\);/, 'the wrap front face price must render via the whole-dollar formatter');
+assert.match(dashboard, /ctx\.fillText\(fdLabelPrice\$\(b\.price\), w - pad, h \* 0\.78\);/, 'the standard layout price must render via the whole-dollar formatter');
+
 // ── Contract: each label is downloaded as its own file via a Blob + <a download>
 // link, not routed through window.print() -- that is the whole point of this
 // path. A short delay between downloads accounts for Chrome's multi-download
@@ -67,5 +71,20 @@ const LABEL_PNG_DPI = 203;
 assert.equal(Math.round(2 * LABEL_PNG_DPI), 406, 'roll labels (2in wide) must render at 406 real dots wide at 203 DPI');
 assert.equal(Math.round(2.625 * LABEL_PNG_DPI), 533, 'sheet labels (2.625in wide) must render at 533 real dots wide at 203 DPI');
 assert.equal(Math.round(1 * LABEL_PNG_DPI), 203, 'the 1in label height must render at exactly 203 real dots -- the printer\'s native DPI');
+
+// ── Functional: fdLabelPrice$ always rounds to a whole dollar, never renders cents ──
+{
+  const src = dashboard.match(/const fdLabelPrice\$ = (n => '\$' \+ Math\.round\(Number\(n \|\| 0\)\));/)?.[1];
+  assert.ok(src, 'could not extract fdLabelPrice$ for functional testing');
+  const fdLabelPrice$ = new Function(`return ${src};`)();
+
+  assert.equal(fdLabelPrice$(10), '$10', 'a whole-dollar price must render with no decimal point at all');
+  assert.equal(fdLabelPrice$(9.99), '$10', 'a price just under a dollar boundary must round up, not truncate down to $9');
+  assert.equal(fdLabelPrice$(10.49), '$10', 'a price just over a dollar boundary must round down to the nearest dollar');
+  assert.equal(fdLabelPrice$(0), '$0', 'a zero price must still render, not blank out');
+  assert.equal(fdLabelPrice$(null), '$0', 'a missing price must fall back to $0, not throw or render $NaN');
+}
+
+console.log('Label whole-dollar price functional checks passed');
 
 console.log('Label PNG download functional checks passed');

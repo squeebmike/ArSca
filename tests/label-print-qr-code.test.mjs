@@ -17,10 +17,11 @@ assert.match(dashboard, /await QRCode\.toCanvas\(canvas, String\(value \|\| ''\)
 assert.match(dashboard, /JsBarcode\(canvas, value, \{ format:'CODE128', displayValue:false, margin:0 \}\);/, 'the helper must fall back to (or default to) a real CODE128 barcode');
 
 // ── Contract: both the print path and the PNG-download path actually call the shared helper,
-// reading the code-style dropdown, instead of hardcoding a barcode call ──
-assert.match(dashboard, /const codeStyle = document\.getElementById\('label-print-code-style'\)\?\.value \|\| 'barcode';/g, 'both label paths must read the code-style dropdown, defaulting to barcode');
-const codeStyleReads = dashboard.match(/const codeStyle = document\.getElementById\('label-print-code-style'\)\?\.value \|\| 'barcode';/g) || [];
-assert.equal(codeStyleReads.length, 2, 'both printInventoryLabels and downloadInventoryLabelPngs must read the code-style dropdown');
+// reading the code-style dropdown for the standard layout, but the toploader-wrap layout's
+// back face always forces QR regardless of that dropdown -- a linear barcode reads worse
+// than a QR does on that smaller, more square-ish back face ──
+const codeStyleReads = dashboard.match(/const codeStyle = isWrap \? 'qr' : \(document\.getElementById\('label-print-code-style'\)\?\.value \|\| 'barcode'\);/g) || [];
+assert.equal(codeStyleReads.length, 2, 'both printInventoryLabels and downloadInventoryLabelPngs must force QR for wrap and otherwise read the code-style dropdown');
 assert.match(dashboard, /const canvas = await generateLabelCodeCanvas\(b\.sku \|\| b\.id, codeStyle\);/, 'printInventoryLabels must generate its code image via the shared helper');
 assert.match(dashboard, /const codeCanvas = await generateLabelCodeCanvas\(b\.sku \|\| b\.id, codeStyle\);/, 'downloadInventoryLabelPngs must generate its code image via the shared helper');
 

@@ -22,6 +22,10 @@ assert.match(dashboard, /const canvas = await generateLabelCodeCanvas\(b\.sku \|
 assert.match(dashboard, /JsBarcode\(canvas, value, \{ format:'CODE128', displayValue:false, margin:0 \}\);/, 'generateLabelCodeCanvas must fall back to a real CODE128 barcode');
 assert.match(dashboard, /if\(typeof JsBarcode === 'undefined'\) return alert/, 'printing must fail gracefully if the barcode library has not finished loading yet, not silently produce blank barcodes');
 
+// Printed prices are always whole dollars, no cents.
+assert.match(dashboard, /const fdLabelPrice\$ = n => '\$' \+ Math\.round\(Number\(n \|\| 0\)\);/, 'a dedicated whole-dollar formatter must exist for label prices');
+assert.match(dashboard, /<span class="label-price">\$\{fdLabelPrice\$\(b\.price\)\}<\/span>/, 'the standard label layout must render price via the whole-dollar formatter, not fd$');
+
 console.log('Label printing core function checks passed');
 
 // ── Functional check: labelBarcodeValue precedence ──────────────────

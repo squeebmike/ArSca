@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.19.6-qr-wrap-labels">
+<meta name="version" content="2026.08.19.7-wrap-qr-forced-whole-dollar">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1596,14 +1596,14 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.19.6-qr-wrap-labels" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.19.6-qr-wrap-labels" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.19.6-qr-wrap-labels" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.08.19.6-qr-wrap-labels" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.19.6-qr-wrap-labels" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.19.6-qr-wrap-labels" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.19.6-qr-wrap-labels" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.19.6-qr-wrap-labels" defer></script>
+<script src="scripts/query-routing.js?v=2026.08.19.7-wrap-qr-forced-whole-dollar" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.19.7-wrap-qr-forced-whole-dollar" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.19.7-wrap-qr-forced-whole-dollar" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.08.19.7-wrap-qr-forced-whole-dollar" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.19.7-wrap-qr-forced-whole-dollar" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.19.7-wrap-qr-forced-whole-dollar" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.19.7-wrap-qr-forced-whole-dollar" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.19.7-wrap-qr-forced-whole-dollar" defer></script>
 </head>
 <body>
 
@@ -1653,11 +1653,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.19.6-qr-wrap-labels</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.19.7-wrap-qr-forced-whole-dollar</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.19.6-qr-wrap-labels</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.19.7-wrap-qr-forced-whole-dollar</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1679,7 +1679,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.19.6-qr-wrap-labels</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.19.7-wrap-qr-forced-whole-dollar</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3133,14 +3133,14 @@ body.show-mode .inv-sync-badge{display:none;}
     <label>Label layout</label>
     <select id="label-print-layout" class="tsi" onchange="localStorage.setItem('label_print_layout', this.value)" style="margin-bottom:10px">
       <option value="standard">Standard -- name, barcode, SKU/condition, and price all on one face</option>
-      <option value="wrap">Wraps around a toploader -- fold down the middle: price + condition large on the front half, barcode on the back half</option>
+      <option value="wrap">Wraps around a toploader -- fold down the middle: price + condition large on the front half, logo + QR code on the back half</option>
     </select>
     <label>Barcode style</label>
     <select id="label-print-code-style" class="tsi" onchange="localStorage.setItem('label_print_code_style', this.value)" style="margin-bottom:10px">
       <option value="barcode">Linear barcode (CODE128) -- standard for most scanners</option>
       <option value="qr">QR code -- more reliable at small thermal-label sizes, especially for items without a real UPC/SKU (falls back to a long internal ID)</option>
     </select>
-    <div style="font-family:var(--font-mono);font-size:9px;color:var(--dim);margin-bottom:10px">Sheet mode prints multiple labels per page with dashed cut lines -- works on plain paper or Avery-style sheets. Roll mode prints exactly one label per "page" sized to match a direct-thermal roll printer (no margins, no cut lines needed). Toploader-wrap layout is meant for roll labels: stick the left half to the front over the toploader's edge, fold at the dashed line, and the barcode half lands on the back. Barcode value uses UPC, then SKU, then falls back to the item's internal ID -- that fallback ID is long, which is where a linear barcode can get too dense to scan at small label sizes; switch to QR code above if scans are failing.</div>
+    <div style="font-family:var(--font-mono);font-size:9px;color:var(--dim);margin-bottom:10px">Sheet mode prints multiple labels per page with dashed cut lines -- works on plain paper or Avery-style sheets. Roll mode prints exactly one label per "page" sized to match a direct-thermal roll printer (no margins, no cut lines needed). Toploader-wrap layout is meant for roll labels: stick the left half to the front over the toploader's edge, fold at the dashed line, and the logo + QR code half lands on the back (the toploader-wrap back face always uses a QR code, regardless of the barcode style picked above -- it reads more reliably at that size than a linear barcode). Barcode value uses UPC, then SKU, then falls back to the item's internal ID -- that fallback ID is long, which is where a linear barcode can get too dense to scan at small label sizes; switch to QR code above if standard-layout scans are failing. Prices on printed labels always round to whole dollars.</div>
     <div class="modal-btns">
       <button class="modal-btn confirm" id="label-print-btn" onclick="printInventoryLabels()">PRINT</button>
       <button class="modal-btn cancel" onclick="closeLabelPrintModal()">Cancel</button>
@@ -3458,7 +3458,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.19.6-qr-wrap-labels';
+const APP_VERSION = '2026.08.19.7-wrap-qr-forced-whole-dollar';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -38812,6 +38812,11 @@ function renderLabelPrintBatchList(){
 // without meaningfully slowing down the overall batch.
 const LABEL_PRINT_YIELD_EVERY = 20;
 
+// Shelf/price labels always show whole dollars, no cents -- unlike fd$
+// (used everywhere else: cart totals, invoices, sold stats) where cents
+// matter, every price on a printed label here is a round dollar amount.
+const fdLabelPrice$ = n => '$' + Math.round(Number(n || 0));
+
 // Renders either a linear CODE128 barcode or a QR code onto a fresh canvas,
 // depending on which style the user picked. QR trades physical strip-shape
 // for a square grid that stays scannable when the encoded value is long --
@@ -38851,7 +38856,11 @@ async function printInventoryLabels(){
   // face that wraps to the back.
   const layout = document.getElementById('label-print-layout')?.value || 'standard';
   const isWrap = layout === 'wrap';
-  const codeStyle = document.getElementById('label-print-code-style')?.value || 'barcode';
+  // The wrap back face is always QR, regardless of the dropdown -- a linear
+  // barcode squeezed into a square-ish back face reads worse than a QR does,
+  // and the dropdown only makes sense as a real choice on the standard
+  // single-face layout.
+  const codeStyle = isWrap ? 'qr' : (document.getElementById('label-print-code-style')?.value || 'barcode');
   // Expand batch entries (item + qty) into one spec per physical label --
   // cheap, no canvas work yet, so no need to chunk this part.
   const labelSpecs = labelPrintBatch.flatMap(b => Array.from({ length:b.qty }, () => b));
@@ -38868,7 +38877,7 @@ async function printInventoryLabels(){
     labelParts.push(isWrap ? `<div class="label wrap">
         <div class="wrap-front">
           <div class="wrap-condition">${escHtml(b.condition || '')}</div>
-          <div class="wrap-price">${fd$(b.price)}</div>
+          <div class="wrap-price">${fdLabelPrice$(b.price)}</div>
         </div>
         <div class="wrap-back">
           <img class="wrap-logo" src="assets/mana-pocket-label-logo.png" alt="">
@@ -38878,7 +38887,7 @@ async function printInventoryLabels(){
       ${storeName ? `<div class="label-store">${escHtml(storeName)}</div>` : ''}
       <div class="label-name">${escHtml(b.name)}</div>
       ${barcodeImg}
-      <div class="label-bottom"><span class="label-sku">${escHtml(b.sku || '')}${b.condition?' · '+escHtml(b.condition):''}</span><span class="label-price">${fd$(b.price)}</span></div>
+      <div class="label-bottom"><span class="label-sku">${escHtml(b.sku || '')}${b.condition?' · '+escHtml(b.condition):''}</span><span class="label-price">${fdLabelPrice$(b.price)}</span></div>
     </div>`);
     if((i + 1) % LABEL_PRINT_YIELD_EVERY === 0) await new Promise(resolve => setTimeout(resolve, 0));
   }
@@ -38976,7 +38985,9 @@ async function downloadInventoryLabelPngs(){
   const isRoll = mode === 'roll-2x1';
   const layout = document.getElementById('label-print-layout')?.value || 'standard';
   const isWrap = layout === 'wrap';
-  const codeStyle = document.getElementById('label-print-code-style')?.value || 'barcode';
+  // The wrap back face is always QR, regardless of the dropdown -- see the
+  // same override in printInventoryLabels for why.
+  const codeStyle = isWrap ? 'qr' : (document.getElementById('label-print-code-style')?.value || 'barcode');
   const widthIn = isRoll ? 2 : 2.625;
   const w = Math.round(widthIn * LABEL_PNG_DPI);
   const h = Math.round(1 * LABEL_PNG_DPI);
@@ -39008,7 +39019,7 @@ async function downloadInventoryLabelPngs(){
       ctx.font = `bold ${Math.round(h * 0.2)}px sans-serif`;
       ctx.fillText(String(b.condition || '').toUpperCase(), halfW / 2, h * 0.38);
       ctx.font = `900 ${Math.round(h * 0.32)}px sans-serif`;
-      ctx.fillText(fd$(b.price), halfW / 2, h * 0.72);
+      ctx.fillText(fdLabelPrice$(b.price), halfW / 2, h * 0.72);
       if(wrapLogoImg){
         const logoW = halfW * 0.7, logoH = logoW * (wrapLogoImg.height / wrapLogoImg.width);
         ctx.filter = 'grayscale(1)';
@@ -39030,7 +39041,7 @@ async function downloadInventoryLabelPngs(){
       ctx.fillText(`${b.sku || ''}${b.condition ? ' · ' + b.condition : ''}`, pad, h * 0.82);
       ctx.font = `bold ${Math.round(h * 0.16)}px sans-serif`;
       ctx.textAlign = 'right';
-      ctx.fillText(fd$(b.price), w - pad, h * 0.78);
+      ctx.fillText(fdLabelPrice$(b.price), w - pad, h * 0.78);
     }
     const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
     const safeName = String(b.name || 'label').toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 30) || 'label';
@@ -41702,7 +41713,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.19.6-qr-wrap-labels" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.19.7-wrap-qr-forced-whole-dollar" defer></script>
 </body>
 </html>
 
