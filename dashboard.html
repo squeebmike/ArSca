@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.19.20-wrap-price-font-fix">
+<meta name="version" content="2026.08.19.21-phone-system-milestone-1">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1585,6 +1585,10 @@ body.show-mode .inv-sync-badge{display:none;}
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js" defer></script>
 <!-- Renders scannable CODE128 barcodes for printed shelf/price labels (Inventory > PRINT LABELS) -->
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js" defer></script>
+<!-- Twilio Voice JS SDK -- the PHONE tab's browser softphone. Loaded on every
+     page load like the other CDN libraries here, but only actually used once
+     a staff member enables browser calling (see initPhoneDevice()). -->
+<script src="https://sdk.twilio.com/js/voice/releases/2.11.1/twilio.min.js" defer></script>
 <!-- QR code option for the same labels -- a linear CODE128 barcode encoding a
      long value (e.g. an item's internal UUID, used when there's no real
      UPC/SKU) compresses to unreadably-thin bars once squeezed onto a small
@@ -1602,14 +1606,14 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.19.20-wrap-price-font-fix" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.19.20-wrap-price-font-fix" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.19.20-wrap-price-font-fix" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.08.19.20-wrap-price-font-fix" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.19.20-wrap-price-font-fix" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.19.20-wrap-price-font-fix" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.19.20-wrap-price-font-fix" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.19.20-wrap-price-font-fix" defer></script>
+<script src="scripts/query-routing.js?v=2026.08.19.21-phone-system-milestone-1" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.19.21-phone-system-milestone-1" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.19.21-phone-system-milestone-1" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.08.19.21-phone-system-milestone-1" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.19.21-phone-system-milestone-1" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.19.21-phone-system-milestone-1" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.19.21-phone-system-milestone-1" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.19.21-phone-system-milestone-1" defer></script>
 </head>
 <body>
 
@@ -1659,11 +1663,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.19.20-wrap-price-font-fix</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.19.21-phone-system-milestone-1</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.19.20-wrap-price-font-fix</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.19.21-phone-system-milestone-1</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1685,7 +1689,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.19.20-wrap-price-font-fix</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.19.21-phone-system-milestone-1</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -2603,6 +2607,12 @@ body.show-mode .inv-sync-badge{display:none;}
   <div id="pulllist-panels" style="max-width:1400px;margin:0 auto;padding:0 20px"></div>
 </div>
 
+<!-- PHONE TAB -->
+<div id="tab-phone" class="tab-panel">
+  <div class="sec">PHONE</div>
+  <div id="phone-panels" style="max-width:1400px;margin:0 auto;padding:0 20px"></div>
+</div>
+
 <!-- GRADING SUBMISSIONS TAB -->
 <div id="tab-grading" class="tab-panel">
   <div class="sec">GRADING SUBMISSIONS</div>
@@ -3464,7 +3474,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.19.20-wrap-price-font-fix';
+const APP_VERSION = '2026.08.19.21-phone-system-milestone-1';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -3752,7 +3762,7 @@ function roleCanAccessTab(tab){
   let allowed = false;
   if(role === 'owner' || role === 'admin') allowed = true;
   else if(role === 'manager') allowed = !['backoffice'].includes(tab);
-  else if(role === 'employee') allowed = ['overview','display','browse','inventory','research','pos','alerts','wantlist','locations','restock','grading','sets','events','pulllists','foc'].includes(tab);
+  else if(role === 'employee') allowed = ['overview','display','browse','inventory','research','pos','alerts','wantlist','locations','restock','grading','sets','events','pulllists','foc','phone'].includes(tab);
   return allowed && planCanAccessTab(tab);
 }
 
@@ -4853,6 +4863,7 @@ const MORE_TABS = [
   ['events', 'TOURNAMENTS'],
   ['pulllists', 'PULL LISTS'],
   ['foc', 'COMICS / FOC'],
+  ['phone', 'PHONE'],
   ['backoffice', 'SETTINGS / ADMIN'],
 ];
 // Permanent, always-present categories -- every price-sync/routing function
@@ -17861,6 +17872,7 @@ function switchTab(name, btn){
   if(name === 'pulllists') setTimeout(ensurePullListPanel, 0);
   if(name === 'grading') setTimeout(ensureGradingPanel, 0);
   if(name === 'foc') setTimeout(()=>window.ensureFocPanel?.(), 0);
+  if(name === 'phone') setTimeout(ensurePhonePanel, 0);
 }
 
 // Quick sell modal
@@ -38481,6 +38493,247 @@ async function loadGradingSubmissionsFromSupabase(force){
   localStorage.setItem('grading_submissions_cache_v1', JSON.stringify(gradingSubmissionsCache));
 }
 
+// ── PHONE (Twilio browser softphone + call/SMS history + Call From My Phone) ──
+// Milestone-one scope: the personal-phone forwarding in Settings stays
+// running forever as a permanent backup channel, per the user's own answer --
+// this tab is purely additive to it, never a replacement. Voicemail,
+// business hours, and a real SIP desk phone are separate follow-on
+// milestones (see PHONE_SYSTEM_PLAN.md).
+let _phoneDevice = null;
+let _phoneDeviceIdentity = '';
+let _phoneEndpoint = { enabled:false, approvedMobile:'' };
+let _phoneCalls = [];
+let _phoneMessages = [];
+let _phoneIncomingCall = null;
+
+function ensurePhonePanel(){
+  if(!document.getElementById('phone-panels')) return;
+  renderPhonePanel();
+}
+
+async function renderPhonePanel(){
+  const container = document.getElementById('phone-panels');
+  if(!container) return;
+  if(getAccountContext().isDemo){
+    container.innerHTML = `<div class="panel"><div class="ph">PHONE</div><div style="font-family:monospace;font-size:11px;color:var(--dim)">Calling and texting need a live store -- switch out of demo mode to use this.</div></div>`;
+    return;
+  }
+  container.innerHTML = `<div class="panel"><div class="ph">PHONE</div><div style="font-family:monospace;font-size:10px;color:var(--dim)">Loading...</div></div>`;
+  const [endpointRes, callsRes, messagesRes] = await Promise.all([
+    storeWorkerFetch('/phone/endpoints').then(r => r.json()).catch(() => ({ ok:false })),
+    storeWorkerFetch('/phone/calls').then(r => r.json()).catch(() => ({ ok:false })),
+    storeWorkerFetch('/phone/messages').then(r => r.json()).catch(() => ({ ok:false })),
+  ]);
+  if(endpointRes?.ok) _phoneEndpoint = { enabled:!!endpointRes.enabled, approvedMobile:endpointRes.approvedMobile || '' };
+  _phoneCalls = callsRes?.ok ? (callsRes.calls || []) : [];
+  _phoneMessages = messagesRes?.ok ? (messagesRes.messages || []) : [];
+  renderPhonePanelInto(container);
+  if(_phoneEndpoint.enabled) initPhoneDevice();
+}
+
+function phoneCallStatusLabel(call){
+  if(call.status === 'answered') return 'Answered';
+  if(call.status === 'no-answer') return 'No answer';
+  if(call.status === 'busy') return 'Busy';
+  if(call.status === 'failed') return 'Failed';
+  if(call.status === 'ringing') return 'Ringing...';
+  return escHtml(call.status || '');
+}
+
+// Numbers in both lists are click-to-call (dialPhoneNumber) -- the fuller
+// "click-to-call wherever a customer phone number appears" sweep across the
+// rest of the dashboard (Customer Browse, etc.) is a follow-up, not done
+// tonight; this is the one real surface it's wired into so far.
+function renderPhoneCallsList(){
+  if(!_phoneCalls.length) return `<div style="font-family:monospace;font-size:10px;color:var(--dim)">No calls yet.</div>`;
+  return _phoneCalls.map(c => {
+    const number = c.direction === 'inbound' ? (c.from_number || '') : (c.to_number || '');
+    return `
+    <div style="padding:8px 0;border-bottom:1px solid var(--border);font-family:monospace;font-size:11px">
+      <div style="display:flex;justify-content:space-between">
+        <b>${c.direction === 'inbound' ? '↓' : '↑'} ${number ? `<a href="#" onclick="event.preventDefault();dialPhoneNumber('${escHtml(number)}')" style="color:var(--text)">${escHtml(number)}</a>` : 'Unknown'}</b>
+        <span style="color:var(--dim)">${phoneCallStatusLabel(c)}</span>
+      </div>
+      <div style="color:var(--dim);font-size:9px">${new Date(c.created_at).toLocaleString()}${c.duration_seconds ? ` · ${c.duration_seconds}s` : ''}</div>
+    </div>`;
+  }).join('');
+}
+
+function renderPhoneMessagesList(){
+  if(!_phoneMessages.length) return `<div style="font-family:monospace;font-size:10px;color:var(--dim)">No messages yet.</div>`;
+  return _phoneMessages.map(m => {
+    const number = m.direction === 'inbound' ? m.from_number : m.to_number;
+    return `
+    <div style="padding:8px 0;border-bottom:1px solid var(--border);font-family:monospace;font-size:11px">
+      <div style="display:flex;justify-content:space-between">
+        <b>${m.direction === 'inbound' ? '↓' : '↑'} ${number ? `<a href="#" onclick="event.preventDefault();dialPhoneNumber('${escHtml(number)}')" style="color:var(--text)">${escHtml(number)}</a>` : 'Unknown'}</b>
+        <span style="color:var(--dim);font-size:9px">${new Date(m.created_at).toLocaleString()}</span>
+      </div>
+      <div>${escHtml(m.body || '')}</div>
+    </div>`;
+  }).join('');
+}
+
+function renderPhonePanelInto(container){
+  const p = _phoneEndpoint;
+  container.innerHTML = `
+    <div class="panel" style="margin-bottom:14px">
+      <div class="ph">BROWSER CALLING <span style="font-size:9px;color:var(--dim)">ring this browser alongside the personal-phone forwarding in Settings</span></div>
+      <label style="display:flex;align-items:center;gap:8px;font-family:monospace;font-size:11px;color:var(--text);margin-bottom:10px;cursor:pointer">
+        <input type="checkbox" id="phone-enabled-toggle" ${p.enabled ? 'checked' : ''} onchange="savePhoneEndpointSettings()"> Ring this browser when the store number gets a call
+      </label>
+      <div style="display:grid;grid-template-columns:1fr auto;gap:8px;align-items:end;max-width:420px">
+        <label style="font-family:monospace;font-size:9px;color:var(--dim)">MY MOBILE (for "Call From My Phone")<input id="phone-approved-mobile" class="tsi" type="tel" placeholder="+15551234567" value="${escHtml(p.approvedMobile)}"></label>
+        <button class="hbtn" onclick="savePhoneEndpointSettings()">SAVE</button>
+      </div>
+      <div id="phone-device-status" style="font-family:monospace;font-size:9px;color:var(--dim);margin-top:8px">${p.enabled ? 'Connecting...' : 'Off -- this browser will not ring'}</div>
+    </div>
+
+    <div class="panel" style="margin-bottom:14px">
+      <div class="ph">CALL FROM MY PHONE</div>
+      <div style="display:grid;grid-template-columns:1fr auto;gap:8px;max-width:420px">
+        <input id="phone-cfmp-number" class="tsi" type="tel" placeholder="Customer number, e.g. +15551234567">
+        <button class="hbtn" onclick="startCallFromMyPhone()">CALL</button>
+      </div>
+      <div style="font-family:monospace;font-size:9px;color:var(--dim);margin-top:6px">Calls your own mobile first, then bridges you to the customer -- they only ever see the store's number.</div>
+    </div>
+
+    <div class="panel" style="margin-bottom:14px">
+      <div class="ph">SEND A TEXT</div>
+      <div style="display:grid;grid-template-columns:140px 1fr auto;gap:8px">
+        <input id="phone-sms-to" class="tsi" type="tel" placeholder="+15551234567">
+        <input id="phone-sms-body" class="tsi" type="text" placeholder="Message" maxlength="1600">
+        <button class="hbtn" onclick="sendPhoneSms()">SEND</button>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+      <div class="panel">
+        <div class="ph">RECENT CALLS</div>
+        <div style="max-height:420px;overflow-y:auto">${renderPhoneCallsList()}</div>
+      </div>
+      <div class="panel">
+        <div class="ph">MESSAGES</div>
+        <div style="max-height:420px;overflow-y:auto">${renderPhoneMessagesList()}</div>
+      </div>
+    </div>`;
+}
+
+async function savePhoneEndpointSettings(){
+  const enabled = document.getElementById('phone-enabled-toggle')?.checked === true;
+  const approvedMobile = document.getElementById('phone-approved-mobile')?.value.trim() || '';
+  try {
+    const res = await storeWorkerFetch('/phone/endpoints', { method:'POST', body:JSON.stringify({ enabled, approvedMobile }) });
+    const data = await res.json();
+    if(!data.ok) return toast_dash(data.error || 'Could not save phone settings');
+    _phoneEndpoint = { enabled, approvedMobile };
+    toast_dash('Phone settings saved');
+    const statusEl = document.getElementById('phone-device-status');
+    if(enabled) initPhoneDevice();
+    else if(_phoneDevice) { try { _phoneDevice.destroy(); } catch(e) {} _phoneDevice = null; if(statusEl) statusEl.textContent = 'Off -- this browser will not ring'; }
+  } catch(e) { toast_dash(e.message || 'Could not save phone settings'); }
+}
+
+async function sendPhoneSms(){
+  const to = document.getElementById('phone-sms-to')?.value.trim();
+  const body = document.getElementById('phone-sms-body')?.value.trim();
+  if(!to || !body) return toast_dash('Enter a number and a message');
+  try {
+    const res = await storeWorkerFetch('/phone/sms/send', { method:'POST', body:JSON.stringify({ to, body }) });
+    const data = await res.json();
+    if(!data.ok) return toast_dash(data.error || 'Could not send text');
+    document.getElementById('phone-sms-body').value = '';
+    toast_dash('Text sent');
+    renderPhonePanel();
+  } catch(e) { toast_dash(e.message || 'Could not send text'); }
+}
+
+async function startCallFromMyPhone(){
+  const customerNumber = document.getElementById('phone-cfmp-number')?.value.trim();
+  if(!customerNumber) return toast_dash("Enter the customer's number");
+  try {
+    const res = await storeWorkerFetch('/phone/call-from-my-phone', { method:'POST', body:JSON.stringify({ customerNumber }) });
+    const data = await res.json();
+    if(!data.ok) return toast_dash(data.error || 'Could not start the call');
+    toast_dash('Calling your phone now -- answer it to connect to the customer');
+  } catch(e) { toast_dash(e.message || 'Could not start the call'); }
+}
+
+// ── Browser softphone (Twilio Voice JS SDK) ──────────────────────────────
+// A persistent, tab-navigation-surviving device: initialized lazily (only
+// once "ring this browser" is actually on, so nobody gets a surprise mic-
+// permission prompt just from visiting the Phone tab), then kept alive as a
+// module-level variable, not tied to the Phone tab's own DOM -- switching
+// tabs re-renders #phone-panels but never touches this, so an already-
+// connected device keeps ringing even while the user is elsewhere in the app.
+// Known milestone-one limitation: this only happens once the Phone tab has
+// been visited at least once this session with the toggle on -- there is no
+// always-on background init at app boot yet (would risk an unexpected mic
+// permission prompt immediately on login).
+async function initPhoneDevice(){
+  if(_phoneDevice) return;
+  if(typeof Twilio === 'undefined' || !Twilio.Device) { setTimeout(initPhoneDevice, 500); return; }
+  const statusEl = () => document.getElementById('phone-device-status');
+  try {
+    const res = await storeWorkerFetch('/api/phone/token', { method:'POST' });
+    const data = await res.json();
+    if(!data.ok) { if(statusEl()) statusEl().textContent = data.error || 'Browser calling is not set up yet'; return; }
+    _phoneDeviceIdentity = data.identity;
+    _phoneDevice = new Twilio.Device(data.token, { closeProtection:true });
+    _phoneDevice.on('registered', () => { if(statusEl()) statusEl().textContent = 'Ready -- this browser will ring'; });
+    _phoneDevice.on('error', (err) => toast_dash('Phone error: ' + (err?.message || 'unknown')));
+    _phoneDevice.on('tokenWillExpire', async () => {
+      try {
+        const r = await storeWorkerFetch('/api/phone/token', { method:'POST' });
+        const d = await r.json();
+        if(d.ok) _phoneDevice.updateToken(d.token);
+      } catch(e) {}
+    });
+    _phoneDevice.on('incoming', (call) => showIncomingPhoneCall(call));
+    await _phoneDevice.register();
+  } catch(e) { if(statusEl()) statusEl().textContent = 'Could not connect: ' + (e.message || 'unknown error'); }
+}
+
+function showIncomingPhoneCall(call){
+  _phoneIncomingCall = call;
+  const from = call.parameters?.From || 'Unknown number';
+  const modal = document.createElement('div');
+  modal.id = 'phone-incoming-modal';
+  modal.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center';
+  modal.innerHTML = `
+    <div class="panel" style="max-width:320px;text-align:center">
+      <div class="ph">INCOMING CALL</div>
+      <div style="font-family:monospace;font-size:16px;margin:10px 0">${escHtml(from)}</div>
+      <div style="display:flex;gap:8px;justify-content:center">
+        <button class="hbtn" style="background:var(--red);border-color:var(--red)" onclick="rejectIncomingPhoneCall()">DECLINE</button>
+        <button class="hbtn" style="background:var(--g);border-color:var(--g);color:#000" onclick="acceptIncomingPhoneCall()">ANSWER</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+  call.on('disconnect', () => closeIncomingPhoneCallModal());
+  call.on('cancel', () => closeIncomingPhoneCallModal());
+}
+function acceptIncomingPhoneCall(){ _phoneIncomingCall?.accept(); closeIncomingPhoneCallModal(); }
+function rejectIncomingPhoneCall(){ _phoneIncomingCall?.reject(); closeIncomingPhoneCallModal(); }
+function closeIncomingPhoneCallModal(){ document.getElementById('phone-incoming-modal')?.remove(); _phoneIncomingCall = null; }
+
+// Direct browser-to-PSTN dial via the Voice SDK (device.connect()) --
+// Twilio routes it through the TwiML App's Voice Request URL
+// (/twilio/voice-outbound-app), which bridges with the business number as
+// caller ID, same as Call From My Phone. Falls back to filling the number
+// into the Call From My Phone box when browser calling isn't connected,
+// rather than silently doing nothing.
+function dialPhoneNumber(number){
+  if(!number) return;
+  if(_phoneDevice && _phoneDevice.state === 'registered'){
+    try { _phoneDevice.connect({ params:{ To:number } }); toast_dash('Calling ' + number + '...'); return; }
+    catch(e) { toast_dash('Could not start the call: ' + (e.message || 'unknown error')); return; }
+  }
+  const input = document.getElementById('phone-cfmp-number');
+  if(input){ input.value = number; input.scrollIntoView({ behavior:'smooth', block:'center' }); toast_dash('Browser calling is off -- number filled into Call From My Phone instead'); }
+  else toast_dash('Enable browser calling first, or use Call From My Phone');
+}
+
 function ensureGradingPanel(){
   if(!document.getElementById('grading-panels')) return;
   renderGradingPanel();
@@ -41932,7 +42185,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.19.20-wrap-price-font-fix" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.19.21-phone-system-milestone-1" defer></script>
 </body>
 </html>
 

@@ -2887,7 +2887,7 @@ export default {
     // storefront catalog (a store might want submissions without publishing
     // a public inventory page), so its own opt-in flag (buylistEnabled)
     // rather than piggybacking on storefrontEnabled.
-    if ((url.pathname === '/twilio/voice' || url.pathname === '/twilio/voice-whisper' || url.pathname === '/twilio/voice-dial-complete' || url.pathname === '/twilio/voice-bridge-to-customer' || url.pathname === '/twilio/sms') && request.method === 'POST') {
+    if ((url.pathname === '/twilio/voice' || url.pathname === '/twilio/voice-whisper' || url.pathname === '/twilio/voice-dial-complete' || url.pathname === '/twilio/voice-bridge-to-customer' || url.pathname === '/twilio/voice-outbound-app' || url.pathname === '/twilio/sms') && request.method === 'POST') {
       return handleTwilioWebhook(request, env, url);
     }
 
@@ -2901,6 +2901,18 @@ export default {
         const token = await buildTwilioAccessToken(env, identity);
         return json({ ok:true, token, identity });
       } catch (e) { return json({ ok:false, error:e.message || 'Could not issue a calling token' }, 503); }
+    }
+    if (url.pathname === '/phone/endpoints' && request.method === 'GET') {
+      // Only ever the caller's OWN row -- approved_mobile is a personal cell
+      // number and enabled/identity is nobody else's business either.
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId, ['owner','admin','manager','employee']);
+      if (auth.error) return auth.error;
+      try {
+        const { data } = await supabaseAdminFetch(env, `phone_endpoints?store_id=eq.${encodeURIComponent(storeId)}&user_id=eq.${encodeURIComponent(auth.user.id)}&select=enabled,approved_mobile&limit=1`);
+        const row = data?.[0] || { enabled:false, approved_mobile:null };
+        return json({ ok:true, enabled:!!row.enabled, approvedMobile:row.approved_mobile || '' });
+      } catch (e) { return json({ ok:false, error:e.message || 'Could not load phone settings' }, 500); }
     }
     if (url.pathname === '/phone/endpoints' && request.method === 'POST') {
       const storeId = requestStoreId(request, url);
@@ -10846,6 +10858,17 @@ async function handleTwilioWebhook(request, env, url) {
     const customerNumber = String(url.searchParams.get('customer') || '').trim();
     if (!customerNumber || !env.TWILIO_FROM_NUMBER) return twimlResponse('<Response><Say>This call could not be connected.</Say></Response>');
     return twimlResponse(`<Response><Dial callerId="${escapeXmlText(env.TWILIO_FROM_NUMBER)}"><Number>${escapeXmlText(customerNumber)}</Number></Dial></Response>`);
+  }
+  if (url.pathname === '/twilio/voice-outbound-app') {
+    // The TwiML App's own Voice Request URL -- Twilio hits this when the
+    // browser's Voice JS SDK calls device.connect({ params: { To } })
+    // directly (a quicker alternative to Call From My Phone's two-leg
+    // bridge). The caller's identity was already authenticated and role-
+    // checked once, at /api/phone/token issuance -- this webhook only needs
+    // to sanity-check the destination shape before dialing out.
+    const to = String(params.To || '').trim();
+    if (!/^\+?[0-9()\-.\s]{7,20}$/.test(to) || !env.TWILIO_FROM_NUMBER) return twimlResponse('<Response><Say>This call could not be connected.</Say></Response>');
+    return twimlResponse(`<Response><Dial callerId="${escapeXmlText(env.TWILIO_FROM_NUMBER)}"><Number>${escapeXmlText(to)}</Number></Dial></Response>`);
   }
   if (url.pathname === '/twilio/sms') {
     const from = String(params.From || '').slice(0, 40);

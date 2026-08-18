@@ -9,9 +9,14 @@ const worker = fs.readFileSync('cloudflare-worker-full.js', 'utf8');
 // system was invented for this one feature) ──
 for (const path of ['/api/phone/token', '/phone/endpoints', '/phone/calls', '/phone/messages', '/phone/sms/send', '/phone/call-from-my-phone']) {
   const escaped = path.replace(/[/]/g, '\\/');
-  const re = new RegExp(`url\\.pathname === '${escaped}' && request\\.method === '(POST|GET)'\\) \\{\\s*\\n\\s*const storeId = requestStoreId\\(request, url\\);\\s*\\n\\s*const auth = await requireStoreUser\\(request, env, storeId, \\['owner','admin','manager','employee'\\]\\);\\s*\\n\\s*if \\(auth\\.error\\) return auth\\.error;`);
+  const re = new RegExp(`url\\.pathname === '${escaped}' && request\\.method === '(POST|GET)'\\) \\{[\\s\\S]{0,120}?const storeId = requestStoreId\\(request, url\\);\\s*\\n\\s*const auth = await requireStoreUser\\(request, env, storeId, \\['owner','admin','manager','employee'\\]\\);\\s*\\n\\s*if \\(auth\\.error\\) return auth\\.error;`);
   assert.match(worker, re, `${path} must be gated by requireStoreUser with the standard operational roles, same as every other operational route`);
 }
+
+// GET /phone/endpoints specifically must scope the query to the caller's OWN
+// user_id -- it returns a personal cell number (approved_mobile).
+assert.match(worker, /if \(url\.pathname === '\/phone\/endpoints' && request\.method === 'GET'\) \{/, 'missing GET /phone/endpoints (the dashboard needs to read back the caller\'s own saved settings)');
+assert.match(worker, /phone_endpoints\?store_id=eq\.\$\{encodeURIComponent\(storeId\)\}&user_id=eq\.\$\{encodeURIComponent\(auth\.user\.id\)\}&select=enabled,approved_mobile&limit=1/, 'GET /phone/endpoints must scope the query to the authenticated caller\'s own user_id -- approved_mobile is a personal number, not for other staff to see');
 
 // ── Contract: /api/phone/token issues a Twilio Access Token for the
 // authenticated caller's own deterministic identity ──
@@ -36,6 +41,14 @@ assert.match(worker, /const bridgeUrl = `\$\{url\.origin\}\/twilio\/voice-bridge
 // ── Contract: outbound SMS persists exactly like inbound, crediting the
 // sending staff member ──
 assert.match(worker, /const result = await sendSms\(env, to, body\);\s*\n\s*await persistMessageRecord\(env, \{\s*\n\s*store_id: storeId, message_sid: result\?\.sid \|\| null, direction: 'outbound',/, 'outbound SMS must reuse the existing sendSms() helper and persist a matching message record');
+
+// ── Contract: the TwiML App's own voice webhook (for direct browser dial via
+// device.connect()) validates the destination before dialing and sets
+// caller ID to the business number, same as the Call From My Phone bridge --
+// this is what makes the Access Token's voice.outgoing grant actually work,
+// rather than pointing at a TwiML App with no functioning webhook ──
+assert.match(worker, /if \(url\.pathname === '\/twilio\/voice-outbound-app'\) \{/, 'missing /twilio/voice-outbound-app -- the TwiML App\'s Voice Request URL has nowhere to point without it');
+assert.match(worker, /const to = String\(params\.To \|\| ''\)\.trim\(\);\s*\n\s*if \(!\/\^\\\+\?\[0-9\(\)\\-\.\\s\]\{7,20\}\$\/\.test\(to\) \|\| !env\.TWILIO_FROM_NUMBER\) return twimlResponse\('<Response><Say>This call could not be connected\.<\/Say><\/Response>'\);\s*\n\s*return twimlResponse\(`<Response><Dial callerId="\$\{escapeXmlText\(env\.TWILIO_FROM_NUMBER\)\}"><Number>\$\{escapeXmlText\(to\)\}<\/Number><\/Dial><\/Response>`\);/, 'voice-outbound-app must validate the destination and set callerId to the business number before dialing');
 
 console.log('Phone system backend route contract checks passed');
 

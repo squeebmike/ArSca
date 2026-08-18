@@ -5,7 +5,13 @@ const dashboard = fs.readFileSync('dashboard.html', 'utf8');
 const worker = fs.readFileSync('cloudflare-worker-full.js', 'utf8');
 
 // ── Worker: routing ──────────────────────────────────────────────────
-assert.match(worker, /if \(\(url\.pathname === '\/twilio\/voice' \|\| url\.pathname === '\/twilio\/voice-whisper' \|\| url\.pathname === '\/twilio\/voice-dial-complete' \|\| url\.pathname === '\/twilio\/voice-bridge-to-customer' \|\| url\.pathname === '\/twilio\/sms'\) && request\.method === 'POST'\) \{\s*\n\s*return handleTwilioWebhook\(request, env, url\);/, 'must route all five Twilio-facing paths (including the two new phone-system ones) to handleTwilioWebhook');
+assert.match(worker, /if \(\(url\.pathname === '\/twilio\/voice' \|\| url\.pathname === '\/twilio\/voice-whisper' \|\| url\.pathname === '\/twilio\/voice-dial-complete' \|\| url\.pathname === '\/twilio\/voice-bridge-to-customer' \|\| url\.pathname === '\/twilio\/voice-outbound-app' \|\| url\.pathname === '\/twilio\/sms'\) && request\.method === 'POST'\) \{\s*\n\s*return handleTwilioWebhook\(request, env, url\);/, 'must route all six Twilio-facing paths (including the three new phone-system ones) to handleTwilioWebhook');
+
+// ── Worker: voice-outbound-app -- the TwiML App's own Voice Request URL for
+// direct browser-to-PSTN dialing (device.connect()), a quicker alternative
+// to the two-leg Call From My Phone bridge ───────
+assert.match(worker, /if \(url\.pathname === '\/twilio\/voice-outbound-app'\) \{/, 'missing /twilio/voice-outbound-app branch -- without it the Access Token\'s voice.outgoing grant points at a TwiML App with no working webhook');
+assert.match(worker, /const to = String\(params\.To \|\| ''\)\.trim\(\);\s*\n\s*if \(!\/\^\\\+\?\[0-9\(\)\\-\.\\s\]\{7,20\}\$\/\.test\(to\) \|\| !env\.TWILIO_FROM_NUMBER\) return twimlResponse\('<Response><Say>This call could not be connected\.<\/Say><\/Response>'\);/, 'voice-outbound-app must validate the destination shape before dialing out');
 
 // ── Worker: signature verification is mandatory ─────────────────────
 assert.match(worker, /async function verifyTwilioSignature\(fullUrl, params, signatureHeader, authToken\) \{/, 'missing verifyTwilioSignature');

@@ -1,6 +1,9 @@
 # The Mana Pocket Phone + SMS System — Planning Notes
 
-Status: **IN PROGRESS** — resumed 2026-08-19 night, building milestone-one unattended.
+Status: **MILESTONE-ONE SHIPPED, AWAITING YOUR TWILIO CONSOLE SETUP** — all
+code built, tested, and merged to main overnight 2026-08-19 → 2026-08-20. It
+won't do anything live until you complete the manual steps in "What you need
+to do" below. See that section for exactly what's left.
 
 ## Answers to the open questions (2026-08-19)
 
@@ -251,20 +254,119 @@ extension) alongside any real restructuring, not a patch.
 - The existing regex-based test file will need a substantial rewrite (not an
   extension) the moment the TwiML-building logic changes shape.
 
-## Recommended next step (when resumed)
+## Milestone-one: SHIPPED (built unattended overnight, 2026-08-19 → 2026-08-20)
 
-1. Get answers to the two open questions above.
-2. Propose a concrete milestone-one plan: Supabase schema (calls/call_legs/
-   conversations/messages/phone_endpoints, properly store-scoped depending on Q1),
-   secure `/api/phone/token` endpoint, browser Voice SDK integration with a
-   persistent phone provider (survives route navigation), expanded-but-preserved
-   `<Dial>` ring group (add browser + eventually SIP as more `<Number>`/`<Client>`/
-   `<Sip>` nouns alongside the existing personal numbers — first-answer-wins,
-   parent/child CallSid tracked so unanswered sibling legs don't produce duplicate
-   missed-call records), dashboard outbound calling, Call From My Phone (two-leg
-   bridge, server-only callback number), SMS/MMS with real conversation persistence
-   and realtime updates.
-3. Ship that as its own tested, reviewable unit — following this repo's established
-   pattern (edit → parse-check → tests → version bump → commit/push → merge to main)
-   — before starting voicemail/SIP-phone/business-hours/settings-UI as separate
-   follow-on milestones.
+All of it is merged to `main`: Supabase schema, Worker routes, dashboard PHONE
+tab. It will not do anything live yet — see "What you need to do" below —
+but every piece of code is written, tested, and deployed as code.
+
+### What actually got built
+
+- **Schema** (`supabase-migrations/2026-08-19-phone-system.sql`, not yet run
+  against the live database — see below): `phone_endpoints` (per-staff browser-
+  calling opt-in, deterministic Client identity, and the employee's own
+  approved mobile for Call From My Phone), `calls`, `messages`. Store-scoped,
+  RLS-gated by the existing role system — **no new granular
+  `phone.read`/`phone.call`/etc. permissions** were built, because this app
+  has no granular permission system anywhere; phone routes are gated by role
+  exactly like every other operational route (`requireStoreUser(..., ['owner',
+  'admin','manager','employee'])`).
+- **Worker** (`cloudflare-worker-full.js`):
+  - `/twilio/voice` now Dials the existing personal numbers AND every
+    enabled browser `<Client>` identity in one `<Dial>` — additive, ring-all,
+    first-answer-wins, exactly as before for the personal-number legs. A
+    `<Dial action>` callback (`/twilio/voice-dial-complete`) logs the outcome
+    exactly once per call no matter how many legs rang, so there's no
+    duplicate missed-call noise, and no separate per-leg table was needed.
+  - `/twilio/sms` now persists every inbound message before relaying it to
+    personal phones — the existing blind relay keeps running forever, per
+    your answer.
+  - `/api/phone/token` issues a real Twilio Access Token (hand-rolled
+    HS256 JWT via Web Crypto — Twilio has no Workers-compatible SDK, so this
+    was built from the public Access Token spec and independently verified
+    in tests by re-deriving and checking its HMAC-SHA256 signature, but it
+    has never touched a real Twilio account).
+  - `/twilio/voice-outbound-app` is the TwiML App's own Voice Request URL,
+    for direct browser-to-PSTN dialing (`device.connect()`) — a quicker
+    alternative to the two-leg bridge below.
+  - `/phone/call-from-my-phone` implements "Call From My Phone": calls the
+    AUTHENTICATED employee's own saved `approved_mobile` (server-side lookup
+    only, never anything the browser sends), then on answer bridges to the
+    customer with the business number as caller ID. This is the toll-fraud
+    guard the original spec called out as the real risk, and it's covered by
+    a dedicated test asserting the browser can never influence the bridge-
+    back number.
+  - `/phone/endpoints` (GET/POST), `/phone/calls`, `/phone/messages`,
+    `/phone/sms/send` round out what the dashboard needs.
+- **Dashboard**: new PHONE tab (in the "MORE" menu, alongside Pull Lists/FOC),
+  gated for owner/admin/manager/employee same as the backend. Browser
+  softphone via the Twilio Voice JS SDK (persistent `Twilio.Device`,
+  survives tab switches, incoming-call popup with Accept/Decline), call
+  history + message list (both click-to-call), a "send a text" box, a "Call
+  From My Phone" box, and an "enable browser calling" toggle + "my mobile
+  number" field.
+- **Tests**: `tests/twilio-call-sms-relay.test.mjs` rewritten for the new
+  `/twilio/*` shapes, `tests/phone-system-backend.test.mjs` (route gating,
+  the toll-fraud guard, a full JWT round-trip verification) and
+  `tests/phone-system-dashboard.test.mjs` (tab wiring, click-to-call) added.
+  Full suite green.
+
+### What you need to do (I cannot do any of this myself)
+
+1. **Run the migration** against your live Supabase project:
+   `supabase-migrations/2026-08-19-phone-system.sql` (SQL editor, or however
+   you normally run these). It only creates new tables — nothing existing is
+   touched.
+2. **Create a Twilio API Key** (Console → Account → API keys & tokens →
+   Create API key, Standard type). Save the SID and Secret — the Secret is
+   only shown once.
+3. **Create a TwiML App** (Console → Voice → TwiML → TwiML Apps → Create new
+   TwiML App). Set its **Voice Request URL** to
+   `https://<your-worker-domain>/twilio/voice-outbound-app` (POST). Save the
+   App SID.
+4. **Add three new Worker secrets** (`wrangler secret put`, same as the
+   existing `TWILIO_ACCOUNT_SID`/`TWILIO_AUTH_TOKEN`/`TWILIO_FROM_NUMBER` —
+   those three already exist and don't need to change):
+   - `TWILIO_API_KEY_SID`
+   - `TWILIO_API_KEY_SECRET`
+   - `TWILIO_TWIML_APP_SID`
+   Do this for whichever `wrangler.*.jsonc` environment(s) you deploy to.
+5. **Nothing else changes on the Twilio number itself** — its Voice/SMS
+   webhook URLs stay exactly `/twilio/voice` and `/twilio/sms`, unchanged.
+6. **Test it**: open the PHONE tab, flip "Ring this browser" on, fill in your
+   mobile number, hit Save. Status should go to "Ready — this browser will
+   ring." Call the store's Twilio number from another phone — your personal
+   phones should ring exactly as before, AND an incoming-call popup should
+   appear in the browser. Try "Call From My Phone" with a real number, and
+   sending a text.
+
+### Known limitations / deliberate scope trims (read before assuming something's missing vs. broken)
+
+- **No voicemail, no business hours, no SIP desk phone, no full settings UI**
+  — separate follow-on milestones, exactly as scoped going in. You don't own
+  the SIP desk phone yet, so there's nothing to build that against.
+- **No granular `phone.*` permissions** — role-gated like everything else in
+  this app (see schema note above). If you want per-person granular control
+  later, that's new territory for this codebase, not an existing pattern to
+  extend.
+- **Customer-number matching** (for showing a caller's name instead of just
+  their number) is a capped, unindexed client-side filter over up to 1,000
+  customers — fine for one shop, would need a real indexed lookup if the
+  customer list ever gets much bigger.
+- **The browser device only connects once you've visited the Phone tab with
+  the toggle on this session** — there's no always-on background connection
+  at login yet (deliberately, to avoid a surprise mic-permission prompt for
+  everyone on every login).
+- **Click-to-call is only wired into the Phone tab's own call/message
+  lists**, not swept across Customer Browse or anywhere else a phone number
+  appears elsewhere in the dashboard — that fuller sweep is a follow-up.
+- **Per-leg "who answered" isn't tracked** beyond the overall ring-all
+  outcome (answered/no-answer/busy/failed) — deliberate, since Twilio's own
+  `<Dial action>` semantics already solve the "no duplicate missed-call
+  noise" requirement without a separate per-leg table; you just won't see
+  "answered by Jane's cell" vs. "answered by the browser" specifically.
+- **No recording or transcription.**
+- **`buildTwilioAccessToken` has never touched a real Twilio account** — its
+  JWT structure was independently verified in tests (re-derived and checked
+  the HMAC-SHA256 signature by hand), but the very first real token issuance
+  after you add the secrets is the actual proof. Watch it closely.
