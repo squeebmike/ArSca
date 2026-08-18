@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.20.3-cross-device-sales-sync">
+<meta name="version" content="2026.08.20.4-sold-cost-and-sync-cleanup">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1604,14 +1604,14 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.20.3-cross-device-sales-sync" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.20.3-cross-device-sales-sync" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.20.3-cross-device-sales-sync" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.08.20.3-cross-device-sales-sync" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.20.3-cross-device-sales-sync" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.20.3-cross-device-sales-sync" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.20.3-cross-device-sales-sync" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.20.3-cross-device-sales-sync" defer></script>
+<script src="scripts/query-routing.js?v=2026.08.20.4-sold-cost-and-sync-cleanup" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.20.4-sold-cost-and-sync-cleanup" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.20.4-sold-cost-and-sync-cleanup" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.08.20.4-sold-cost-and-sync-cleanup" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.20.4-sold-cost-and-sync-cleanup" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.20.4-sold-cost-and-sync-cleanup" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.20.4-sold-cost-and-sync-cleanup" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.20.4-sold-cost-and-sync-cleanup" defer></script>
 </head>
 <body>
 
@@ -1640,11 +1640,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.20.3-cross-device-sales-sync</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.20.4-sold-cost-and-sync-cleanup</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.20.3-cross-device-sales-sync</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.20.4-sold-cost-and-sync-cleanup</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1662,7 +1662,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.20.3-cross-device-sales-sync</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.20.4-sold-cost-and-sync-cleanup</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3447,7 +3447,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.20.3-cross-device-sales-sync';
+const APP_VERSION = '2026.08.20.4-sold-cost-and-sync-cleanup';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -10659,6 +10659,7 @@ function ensureSyncQueuePanel(backoffice){
       <button class="hbtn" onclick="renderSyncQueue()">REFRESH</button>
       <button class="hbtn" onclick="retryAllSyncQueue()">SYNC NOW</button>
       <button class="hbtn danger" onclick="clearCompletedSyncQueue()">CLEAR DONE</button>
+      <button class="hbtn danger" onclick="clearFailedSyncQueue()">CLEAR FAILED</button>
     </div>
     <div id="sync-queue-list" style="display:grid;gap:6px;font-family:var(--font-mono);font-size:10px;color:var(--dim)"></div>`;
   backoffice.prepend(panel);
@@ -11094,6 +11095,7 @@ function renderInventorySyncPanel(){
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
       <button class="hbtn" onclick="renderSyncQueue()">REFRESH</button>
       <button class="hbtn danger" onclick="clearCompletedSyncQueue();renderSyncQueue()">CLEAR DONE</button>
+      <button class="hbtn danger" onclick="clearFailedSyncQueue()">CLEAR FAILED</button>
     </div>
     <div id="sync-queue-count" style="font-family:monospace;font-size:9px;color:var(--dim);margin-bottom:6px"></div>
     <div id="sync-queue-list" style="display:grid;gap:6px;font-family:var(--font-mono);font-size:10px;color:var(--dim)"></div>`;
@@ -11458,6 +11460,18 @@ async function retryAllSyncQueue(){
 
 function removeSyncItem(id){ saveSyncQueue(getSyncQueue().filter(x => x.id !== id)); }
 function clearCompletedSyncQueue(){ saveSyncQueue(getSyncQueue().filter(x => x.status !== 'done')); }
+// Removes every item stuck in 'failed' -- for when a whole class of jobs
+// (e.g. Webflow mirroring hitting a CMS plan limit) will never succeed no
+// matter how many times it's retried, and clicking REMOVE on each one by
+// hand isn't realistic once the queue has piled up to dozens/hundreds.
+function clearFailedSyncQueue(){
+  const failedCount = getSyncQueue().filter(x => x.status === 'failed').length;
+  if(!failedCount) return toast_dash('No failed items to clear');
+  if(!confirm(`Remove ${failedCount} failed sync item${failedCount===1?'':'s'}? This does not retry them -- only removes them from the queue.`)) return;
+  saveSyncQueue(getSyncQueue().filter(x => x.status !== 'failed'));
+  renderSyncQueue();
+  toast_dash(failedCount + ' failed item' + (failedCount===1?'':'s') + ' cleared');
+}
 
 window.addEventListener('online', () => { renderSyncQueue(); retryAllSyncQueue(); });
 window.addEventListener('offline', renderSyncQueue);
@@ -17565,13 +17579,22 @@ function renderSoldTable(){
   tb.innerHTML=rows.slice(0,100).map(i=>{
     const d=new Date(i.soldAt||0);
     const ds=d.getFullYear()>2000?d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'2-digit'}):'—';
-    const pft=Number(i.profit || ((i.salePrice || 0) - (i.cost || 0)) || 0);
+    // i.cost is the PER-UNIT cost basis (same convention as
+    // transactionSoldRows/markCartItemsSoldFromPayment), while i.salePrice is
+    // already the line's EXTENDED total across every unit that line sold.
+    // Showing raw per-unit cost next to the extended sale price made the row
+    // look like it didn't add up to the profit column (which correctly uses
+    // total cost) -- extend the displayed cost the same way so the three
+    // numbers agree, on a multi-unit line and a single-unit one alike.
+    const qty=Math.max(1,Number(i.quantity ?? i.soldQuantity ?? 1));
+    const totalCost=Number(i.cost||0)*qty;
+    const pft=Number(i.profit || ((i.salePrice || 0) - totalCost) || 0);
     return `<tr>
       <td><span class="nc">${i.name}</span></td>
       <td><span class="sc2">${i.set||'—'}</span></td>
       <td><span class="ct ${String(i.categoryName || i.category || '').replace(/\s/g,'')}">${i.categoryName || i.category || 'Unknown'}</span></td>
       <td class="pp pm">${i.salePrice>0?fd$(i.salePrice):'—'}</td>
-      <td class="pp pd">${i.cost>0?fd$(i.cost):'—'}</td>
+      <td class="pp pd">${totalCost>0?fd$(totalCost):'—'}</td>
       <td class="pp ${pft>=0?'pos':'neg'}">${pft?(pft>=0?'+':'')+fd$(pft):'—'}</td>
       <td style="font-family:var(--font-mono);font-size:9px;color:var(--dim)">${i.channel||'—'}</td>
       <td style="font-family:var(--font-mono);font-size:9px;color:var(--dim)">${ds}</td>
@@ -42175,7 +42198,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.20.3-cross-device-sales-sync" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.20.4-sold-cost-and-sync-cleanup" defer></script>
 </body>
 </html>
 
