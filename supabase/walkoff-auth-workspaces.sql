@@ -556,7 +556,14 @@ create policy store_invites_update_owner_admin on public.store_invites for updat
 
 grant usage on schema public to anon, authenticated;
 grant select, insert, update, delete on all tables in schema public to authenticated;
-grant execute on function public.create_store_for_current_user(text, text) to authenticated;
+-- create_store_for_current_user is deliberately NOT granted to authenticated:
+-- this app has no public self-signup anymore, and self-service store
+-- provisioning was the exact hole that let any signed-up user spin up a
+-- full owner-level store with zero approval. New stores are created by the
+-- platform admin directly (or via a service-role-backed Worker route), not
+-- by an end user calling this RPC. See
+-- supabase-migrations/2026-08-20-revoke-self-signup-store-creation.sql for
+-- the matching fix on databases where this file was already applied.
 grant execute on function public.invite_store_member(uuid, text, public.store_role) to authenticated;
 grant execute on function public.accept_store_invite(uuid) to authenticated;
 grant execute on function public.list_store_members(uuid) to authenticated;

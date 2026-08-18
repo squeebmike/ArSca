@@ -369,8 +369,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
 <div id="scanner-auth-screen" class="auth-screen">
   <div class="auth-card">
     <div class="auth-title">SCANNER LOGIN</div>
-    <div class="auth-sub">Log in on the dashboard first, or start a browser-local demo scanner session.</div>
-    <button class="hbtn" style="width:100%;padding:12px;color:var(--g)" onclick="scannerDemoLogin()">START DEMO SCANNER</button>
+    <div class="auth-sub">Log in on the dashboard first. Access is by invite only.</div>
   </div>
 </div>
 <!-- DEBUG PANEL — remove after fixing -->
@@ -772,11 +771,6 @@ function scannerScopedKey(key){ return WALKOFF_SCOPED_KEYS.has(key) ? 'walkoff:'
   Storage.prototype.setItem = function(key, value){ return (this === localStorage && WALKOFF_SCOPED_KEYS.has(key)) ? rawSet.call(this, scannerScopedKey(key), value) : rawSet.call(this, key, value); };
   Storage.prototype.removeItem = function(key){ return (this === localStorage && WALKOFF_SCOPED_KEYS.has(key)) ? rawRemove.call(this, scannerScopedKey(key)) : rawRemove.call(this, key); };
 })();
-function scannerDemoLogin(){
-  localStorage.setItem(WALKOFF_AUTH_SESSION_KEY, JSON.stringify({ user:{id:'demo-owner',email:'owner@walkoff.local',displayName:'Store Owner',role:'owner'}, stores:[{id:'walkoff-main',displayName:'Walk-Off Sports Cards'}], activeStoreId:'walkoff-main', demoMode:true, createdAt:new Date().toISOString() }));
-  localStorage.setItem(WALKOFF_ACTIVE_STORE_KEY, 'walkoff-main');
-  location.reload();
-}
 async function loadScannerSupabaseStores(user){
   const sb = getScannerSupabaseClient();
   if(!sb || !user) return [];

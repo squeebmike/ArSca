@@ -8418,12 +8418,14 @@ export default {
       const apiKey = env.POKEMONPRICE_API_KEY || env.POKEMON_PRICE_TRACKER_API_KEY;
       if (!apiKey) return json({ ok: false, error: 'POKEMONPRICE_API_KEY not configured' }, 501);
 
-      // Pass E bypass still applies — check subscription unless demo/bypass
+      // Pass E bypass still applies — check subscription unless bypass/owner.
+      // A missing X-Store-Id header must NOT be treated as a free pass: it
+      // falls through to the subscription lookup below with an empty key,
+      // which correctly resolves to "no subscription" and gets denied.
       const pptStoreId2 = request.headers.get('X-Store-Id') || '';
-      const isDemo2 = !pptStoreId2 || pptStoreId2.startsWith('demo');
       const bypassIds2 = (env.BYPASS_STORE_IDS || '').split(',').map(s => s.trim()).filter(Boolean);
       const ownerIds2 = (env.OWNER_STORE_IDS || env.OWNER_STORE_ID || '').split(',').map(s => s.trim()).filter(Boolean);
-      if (!isDemo2 && !bypassIds2.includes(pptStoreId2) && !ownerIds2.includes(pptStoreId2) && env.LBA_KV) {
+      if (!bypassIds2.includes(pptStoreId2) && !ownerIds2.includes(pptStoreId2) && env.LBA_KV) {
         const subRaw2 = await env.LBA_KV.get(`sub:store:${pptStoreId2}`);
         const sub2 = subRaw2 ? JSON.parse(subRaw2) : null;
         const s2 = sub2?.status || 'none';
@@ -8493,13 +8495,17 @@ export default {
       const key = env.POKEMONPRICE_API_KEY || env.POKEMON_PRICE_TRACKER_API_KEY;
       if (!key) return json({ ok: false, source: 'pokemonpricetracker', error: 'POKEMONPRICE_API_KEY not configured' }, 501);
 
-      // Pass E: subscription gate + daily usage counter
+      // Pass E: subscription gate + daily usage counter. A missing/blank
+      // X-Store-Id must NOT skip this block -- it used to be treated as a
+      // free "demo" pass, which meant an unauthenticated request with no
+      // store header got full access with no login check at all. Now it
+      // falls through to requireStoreUser(), which fails closed (400) on an
+      // empty storeId.
       const pptStoreId = request.headers.get('X-Store-Id') || '';
-      const isDemo = !pptStoreId || pptStoreId.startsWith('demo');
       const bypassIds = (env.BYPASS_STORE_IDS || '').split(',').map(s => s.trim()).filter(Boolean);
       const ownerIds = (env.OWNER_STORE_IDS || env.OWNER_STORE_ID || '').split(',').map(s => s.trim()).filter(Boolean);
       const isBypassed = bypassIds.includes(pptStoreId) || ownerIds.includes(pptStoreId);
-      if (!isDemo && !isBypassed && env.LBA_KV) {
+      if (!isBypassed && env.LBA_KV) {
         const pptAuth = await requireStoreUser(request, env, pptStoreId);
         if (pptAuth.error) return pptAuth.error;
         const subRaw = await env.LBA_KV.get(`sub:store:${pptStoreId}`);

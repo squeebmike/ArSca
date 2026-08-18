@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.20.1-phone-voicemail-hours">
+<meta name="version" content="2026.08.20.2-auth-lockdown">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -248,8 +248,6 @@ html.ui-scale-large{zoom:1.3;}
 .drawer-ledger-metric b{display:block;font-family:'Orbitron',monospace;font-size:16px;color:var(--text);margin-top:4px;}
 .drawer-money-hidden{filter:blur(7px);user-select:none;}
 /* ── Demo mode banner ── */
-.demo-mode-banner{display:none;position:sticky;top:0;z-index:4800;background:linear-gradient(90deg,#ff6b00 0%,#ffd600 100%);color:#000;font-family:'Orbitron',monospace;font-size:10px;font-weight:900;letter-spacing:.12em;text-align:center;padding:5px 12px;cursor:default;}
-.demo-mode-banner.on{display:block;}
 .demo-data-badge{display:inline-block;background:#ff6b00;color:#fff;font-family:monospace;font-size:9px;font-weight:800;border-radius:4px;padding:1px 5px;letter-spacing:.05em;margin-left:4px;vertical-align:middle;}
 /* ── Auth screen ── */
 .auth-screen{position:fixed;inset:0;z-index:5000;background:radial-gradient(circle at top,rgba(0,255,179,.08),transparent 38%),#07080a;display:none;align-items:center;justify-content:center;padding:24px;}
@@ -1606,14 +1604,14 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.20.1-phone-voicemail-hours" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.20.1-phone-voicemail-hours" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.20.1-phone-voicemail-hours" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.08.20.1-phone-voicemail-hours" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.20.1-phone-voicemail-hours" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.20.1-phone-voicemail-hours" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.20.1-phone-voicemail-hours" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.20.1-phone-voicemail-hours" defer></script>
+<script src="scripts/query-routing.js?v=2026.08.20.2-auth-lockdown" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.20.2-auth-lockdown" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.20.2-auth-lockdown" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.08.20.2-auth-lockdown" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.20.2-auth-lockdown" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.20.2-auth-lockdown" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.20.2-auth-lockdown" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.20.2-auth-lockdown" defer></script>
 </head>
 <body>
 
@@ -1630,44 +1628,23 @@ body.show-mode .inv-sync-badge{display:none;}
           <button class="hbtn" type="button" id="auth-password-eye" aria-label="Show password" onclick="toggleAuthPasswordVisibility()" style="width:54px;padding:0">EYE</button>
         </span>
       </label>
-      <label id="auth-store-name-wrap" style="display:none;font-family:monospace;font-size:9px;color:var(--dim)">STORE NAME<input id="auth-store-name" class="tsi" placeholder="Your Store Name"></label>
       <label id="auth-store-wrap" style="display:none;font-family:monospace;font-size:9px;color:var(--dim)">STORE<select id="auth-store" class="tsi"></select></label>
       <button class="hbtn" id="auth-primary-btn" onclick="loginSupabaseAccount()">LOGIN</button>
       <div id="auth-secondary-btns" style="display:flex;gap:8px;flex-wrap:wrap">
-        <button class="hbtn" onclick="showAuthMode('signup')">SIGN UP</button>
         <button class="hbtn" onclick="showAuthMode('reset')">RESET PASSWORD</button>
       </div>
     </div>
-    <div style="margin:14px 0 6px;display:flex;align-items:center;gap:10px">
-      <div style="flex:1;height:1px;background:var(--border,rgba(255,255,255,.1))"></div>
-      <span style="font-family:monospace;font-size:9px;color:var(--dim);letter-spacing:.08em">OR</span>
-      <div style="flex:1;height:1px;background:var(--border,rgba(255,255,255,.1))"></div>
-    </div>
-    <div style="display:flex;flex-direction:column;gap:8px">
-      <button onclick="loginDemoAccount()" style="
-        background:var(--g,#00ffb3);color:#000;
-        border:none;border-radius:8px;
-        font-family:monospace;font-size:13px;font-weight:800;
-        padding:14px 20px;cursor:pointer;letter-spacing:.04em;
-        width:100%;transition:opacity .15s;
-      " onmouseover="this.style.opacity='.88'" onmouseout="this.style.opacity='1'">
-        TRY DEMO — NO ACCOUNT NEEDED
-      </button>
-      <div style="font-family:monospace;font-size:9px;color:var(--dim);text-align:center;line-height:1.55">
-        Full access. No sign-up. Your data stays on this device until you subscribe.
-      </div>
-    </div>
-    <div class="auth-meta" id="auth-status">Supabase connected after login. Demo mode is always available.</div>
+    <div class="auth-meta" id="auth-status">Access is by invite only. Contact your store owner/admin for an account.</div>
   </div>
 </div>
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.20.1-phone-voicemail-hours</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.20.2-auth-lockdown</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.20.1-phone-voicemail-hours</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.20.2-auth-lockdown</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1678,10 +1655,6 @@ body.show-mode .inv-sync-badge{display:none;}
       <button class="hbtn" id="refresh-btn" onclick="loadInventory()">REFRESH</button>
     </div>
   </div>
-  <!-- Demo mode banner — shown when isDemo is true -->
-  <div id="demo-mode-banner" class="demo-mode-banner">
-    ⚠ DEMO MODE — Fake data only &nbsp;·&nbsp; No Walk-Off data &nbsp;·&nbsp; No cloud sync &nbsp;·&nbsp; Nothing you do here affects real records
-  </div>
   <!-- Dealer status bar — always visible, shows key info at a glance -->
   <div class="dealer-status-bar" id="dealer-status-bar">
     <div class="dsb-chip" id="dsb-drawer">🏦 <span>CASH BAG:</span> <b id="dsb-drawer-val">NOT STARTED</b></div>
@@ -1689,7 +1662,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.20.1-phone-voicemail-hours</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.20.2-auth-lockdown</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3474,7 +3447,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.20.1-phone-voicemail-hours';
+const APP_VERSION = '2026.08.20.2-auth-lockdown';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -3608,13 +3581,6 @@ const CAT_MAP = {
   '2c3076cc33bf2f312265bfdc894db265':'Supplies',
 };
 
-// ── Demo store uses id:'demo' — NEVER 'walkoff-main' — so scoped keys
-// (walkoff:demo:*) are physically separate from real Walk-Off keys (walkoff:walkoff-main:*).
-const WALKOFF_DEMO_STORES = [
-  { id:'demo', ownerUserId:'demo-owner', name:'demo', displayName:'Demo Store', logoUrl:'', location:'Demo Location', timezone:'America/Los_Angeles', currency:'USD', status:'active', createdAt:'2026-05-06T00:00:00.000Z' },
-  { id:'demo-show-store', ownerUserId:'demo-owner', name:'demo-show-store', displayName:'Demo Show Store', logoUrl:'', location:'Card Show Demo', timezone:'America/Los_Angeles', currency:'USD', status:'active', createdAt:'2026-05-06T00:00:00.000Z' },
-];
-const WALKOFF_DEMO_USER = { id:'demo-owner', email:'demo@walkoff.local', displayName:'Demo Owner', role:'owner', defaultStoreId:'demo', createdAt:'2026-05-06T00:00:00.000Z' };
 // Keys in this set are transparently scoped to the active store by the storage shim below.
 // Rule: any key that contains per-store business data belongs here.
 const WALKOFF_SCOPED_KEYS = new Set([
@@ -3680,8 +3646,8 @@ async function storeWorkerFetch(path, options = {}){
 }
 
 function getAuthSession(){ try { return JSON.parse(localStorage.getItem(WALKOFF_AUTH_SESSION_KEY) || 'null'); } catch(e) { return null; } }
-function getActiveStoreId(){ return localStorage.getItem(WALKOFF_ACTIVE_STORE_KEY) || getAuthSession()?.activeStoreId || WALKOFF_DEMO_USER.defaultStoreId; }
-function getActiveStore(){ const session = getAuthSession(); const id = getActiveStoreId(); return session?.stores?.find(s => s.id === id) || WALKOFF_DEMO_STORES.find(s => s.id === id) || WALKOFF_DEMO_STORES[0]; }
+function getActiveStoreId(){ return localStorage.getItem(WALKOFF_ACTIVE_STORE_KEY) || getAuthSession()?.activeStoreId || ''; }
+function getActiveStore(){ const session = getAuthSession(); const id = getActiveStoreId(); return session?.stores?.find(s => s.id === id); }
 function scopedStorageKey(key, storeId = getActiveStoreId()){ return WALKOFF_SCOPED_KEYS.has(key) && storeId ? 'walkoff:' + storeId + ':' + key : key; }
 function currentRole(){ return getAuthSession()?.user?.role || 'owner'; }
 function requireOwnerAdmin(){ const role = currentRole(); return role === 'owner' || role === 'admin'; }
@@ -3704,7 +3670,7 @@ function requireEmployee(){ return ['owner','admin','manager','employee'].includ
 // IMPORTANT: if context is missing/invalid, defaults to demo-safe (no real data).
 function getAccountContext(){
   const session = getAuthSession();
-  const storeId = session?.activeStoreId || localStorage.getItem('walkoff_active_store_id') || WALKOFF_DEMO_USER.defaultStoreId;
+  const storeId = session?.activeStoreId || localStorage.getItem('walkoff_active_store_id') || '';
   if(!session || session.demoMode) {
     return { mode:'demo', accountId:'demo', storeId:'demo', storeSlug:'demo',
              role:'demo', isDemo:true, isOwner:false,
@@ -3814,11 +3780,6 @@ function markStoreMigration(key, scoped){
     }
   } catch(e) {}
 }
-function populateLoginStores(){
-  const sel = document.getElementById('auth-store');
-  if(sel && !sel.options.length) sel.innerHTML = WALKOFF_DEMO_STORES.map(s => `<option value="${s.id}">${escHtml(s.displayName)}</option>`).join('');
-}
-
 function toggleAuthPasswordVisibility(){
   const input = document.getElementById('auth-password');
   const btn = document.getElementById('auth-password-eye');
@@ -3836,52 +3797,39 @@ function showAuthMode(mode, message){
   const sub = document.getElementById('auth-sub');
   const emailWrap = document.getElementById('auth-email-wrap');
   const pass = document.getElementById('auth-password-wrap');
-  const storeName = document.getElementById('auth-store-name-wrap');
   const storePick = document.getElementById('auth-store-wrap');
   const primary = document.getElementById('auth-primary-btn');
   const status = document.getElementById('auth-status');
-  if(title) title.textContent = mode === 'signup' ? 'CREATE ACCOUNT' : mode === 'reset' ? 'RESET PASSWORD' : mode === 'update-password' ? 'UPDATE PASSWORD' : mode === 'create-store' ? 'CREATE STORE' : mode === 'invite' ? 'ACCEPT INVITE' : mode === 'picker' ? 'CHOOSE STORE' : 'WALK-OFF LOGIN';
-  if(sub) sub.textContent = mode === 'update-password' ? 'Enter a new password for this Walk-Off account.' : mode === 'create-store' ? 'You are logged in. Create a store workspace to keep your data separate.' : mode === 'invite' ? 'You have a pending store invite. Accept it to join that workspace.' : mode === 'picker' ? 'Choose which store workspace to open.' : 'Real Supabase login. Store data is isolated by membership.';
-  if(emailWrap) emailWrap.style.display = mode === 'update-password' || mode === 'create-store' || mode === 'picker' ? 'none' : '';
-  if(pass) pass.style.display = mode === 'reset' || mode === 'create-store' || mode === 'picker' ? 'none' : '';
+  if(title) title.textContent = mode === 'reset' ? 'RESET PASSWORD' : mode === 'update-password' ? 'UPDATE PASSWORD' : mode === 'no-access' ? 'NO STORE ACCESS' : mode === 'invite' ? 'ACCEPT INVITE' : mode === 'picker' ? 'CHOOSE STORE' : 'WALK-OFF LOGIN';
+  if(sub) sub.textContent = mode === 'update-password' ? 'Enter a new password for this Walk-Off account.' : mode === 'no-access' ? 'Your account is not attached to a store yet. Contact your store owner/admin for an invite.' : mode === 'invite' ? 'You have a pending store invite. Accept it to join that workspace.' : mode === 'picker' ? 'Choose which store workspace to open.' : 'Real Supabase login. Store data is isolated by membership.';
+  if(emailWrap) emailWrap.style.display = mode === 'update-password' || mode === 'no-access' || mode === 'picker' ? 'none' : '';
+  if(pass) pass.style.display = mode === 'reset' || mode === 'no-access' || mode === 'picker' ? 'none' : '';
   const passInput = document.getElementById('auth-password');
   if(passInput) passInput.autocomplete = mode === 'update-password' ? 'new-password' : 'current-password';
-  if(storeName) storeName.style.display = mode === 'create-store' ? '' : 'none';
   if(storePick) storePick.style.display = mode === 'picker' || mode === 'invite' ? '' : 'none';
   if(primary) {
-    primary.textContent = mode === 'signup' ? 'SIGN UP' : mode === 'reset' ? 'SEND RESET' : mode === 'update-password' ? 'SAVE PASSWORD' : mode === 'create-store' ? 'CREATE STORE' : mode === 'invite' ? 'ACCEPT INVITE' : mode === 'picker' ? 'OPEN STORE' : 'LOGIN';
-    primary.onclick = mode === 'signup' ? signupSupabaseAccount : mode === 'reset' ? resetSupabasePassword : mode === 'update-password' ? updateSupabasePassword : mode === 'create-store' ? createSupabaseStore : mode === 'invite' ? acceptPickedInvite : mode === 'picker' ? selectPickedStore : loginSupabaseAccount;
+    primary.style.display = mode === 'no-access' ? 'none' : '';
+    primary.textContent = mode === 'reset' ? 'SEND RESET' : mode === 'update-password' ? 'SAVE PASSWORD' : mode === 'invite' ? 'ACCEPT INVITE' : mode === 'picker' ? 'OPEN STORE' : 'LOGIN';
+    primary.onclick = mode === 'reset' ? resetSupabasePassword : mode === 'update-password' ? updateSupabasePassword : mode === 'invite' ? acceptPickedInvite : mode === 'picker' ? selectPickedStore : loginSupabaseAccount;
   }
   const secBtns = document.getElementById('auth-secondary-btns');
   if(secBtns) {
-    if(mode === 'create-store' || mode === 'picker' || mode === 'invite') {
+    if(mode === 'no-access' || mode === 'picker' || mode === 'invite') {
       secBtns.innerHTML = '<button class="hbtn" onclick="logoutAccount()">SIGN OUT</button>';
     } else {
-      secBtns.innerHTML = '<button class="hbtn" onclick="showAuthMode(\'signup\')">SIGN UP</button><button class="hbtn" onclick="showAuthMode(\'reset\')">RESET PASSWORD</button>';
+      secBtns.innerHTML = '<button class="hbtn" onclick="showAuthMode(\'reset\')">RESET PASSWORD</button>';
     }
   }
-  if(status) status.textContent = message || 'Supabase connected. Local demo remains available for development.';
+  if(status) status.textContent = message || 'Access is by invite only. Contact your store owner/admin for an account.';
   document.getElementById('auth-screen')?.classList.add('on');
 }
 
 async function ensureAuthReady(){
-  // ── Fast path: honour an existing demo session BEFORE any Supabase network call.
-  // (sb.auth.getSession() can hang for up to 30 s when Supabase tries to refresh
-  //  an old token — checking demo mode synchronously first makes demo instant.)
-  const earlySession = getAuthSession();
-  if(earlySession?.demoMode) {
-    localStorage.setItem(WALKOFF_ACTIVE_STORE_KEY, earlySession.activeStoreId || earlySession.user?.defaultStoreId || WALKOFF_DEMO_USER.defaultStoreId);
-    document.getElementById('auth-screen')?.classList.remove('on');
-    renderAccountHeader();
-    return true;
-  }
-
   const sb = getSupabaseClient();
   if(!sb) {
-    populateLoginStores();
     const fallback = getAuthSession();
-    if(!fallback) { showAuthMode('login', 'Supabase library did not load. You can use local demo mode.'); return false; }
-    localStorage.setItem(WALKOFF_ACTIVE_STORE_KEY, fallback.activeStoreId || fallback.user.defaultStoreId || WALKOFF_DEMO_USER.defaultStoreId);
+    if(!fallback) { showAuthMode('login', 'Supabase library did not load. Check your connection and try again.'); return false; }
+    localStorage.setItem(WALKOFF_ACTIVE_STORE_KEY, fallback.activeStoreId || fallback.user.defaultStoreId || '');
     document.getElementById('auth-screen')?.classList.remove('on');
     renderAccountHeader();
     return true;
@@ -3899,11 +3847,11 @@ async function ensureAuthReady(){
     const invites = await loadPendingInvitesForUser(user);
     if(invites.length) {
       renderInvitePickerOptions(invites);
-      showAuthMode('invite', 'Accept an invite, or create your own test store.');
+      showAuthMode('invite', 'Accept an invite to join that store.');
       showInviteRoleHint(invites);
       return false;
     }
-    showAuthMode('create-store', 'Create your store. Testers get their own empty store by default.');
+    showAuthMode('no-access', 'Your account is not attached to a store yet. Contact your store owner/admin for an invite.');
     return false;
   }
   const preferred = localStorage.getItem(WALKOFF_ACTIVE_STORE_KEY);
@@ -4479,7 +4427,7 @@ async function saveStoreSettingsToSupabase(patch){
 
 async function loginSupabaseAccount(){
   const sb = getSupabaseClient();
-  if(!sb) { loginDemoAccount(); return; }
+  if(!sb) { showAuthMode('login', 'Supabase library did not load. Check your connection and try again.'); return; }
   const email = document.getElementById('auth-email')?.value.trim();
   const password = document.getElementById('auth-password')?.value || '';
   if(!email || !password) { showAuthMode('login', 'Enter email and password.'); return; }
@@ -4496,16 +4444,6 @@ async function loginSupabaseAccount(){
   } finally {
     if(btn) { btn.disabled = false; btn.textContent = 'LOGIN'; }
   }
-}
-
-async function signupSupabaseAccount(){
-  const sb = getSupabaseClient();
-  const email = document.getElementById('auth-email')?.value.trim();
-  const password = document.getElementById('auth-password')?.value || '';
-  if(!sb || !email || !password) { showAuthMode('signup', 'Enter email and password.'); return; }
-  const { error } = await sb.auth.signUp({ email, password, options:{ data:{ display_name:email.split('@')[0] }, emailRedirectTo:AUTH_REDIRECT_URL } });
-  if(error) { showAuthMode('signup', error.message); return; }
-  showAuthMode('login', 'Account created. If email confirmation is on, verify first. Then log in.');
 }
 
 async function resetSupabasePassword(){
@@ -4544,59 +4482,11 @@ async function handleAuthRecoveryRedirect(){
   return true;
 }
 
-async function createSupabaseStore(){
-  const sb = getSupabaseClient();
-  const storeName = document.getElementById('auth-store-name')?.value.trim() || 'My Store';
-  if(!sb) return;
-  const { data, error } = await sb.rpc('create_store_for_current_user', { store_display_name:storeName, store_name:null });
-  if(error) { showAuthMode('create-store', error.message); return; }
-  localStorage.setItem(WALKOFF_ACTIVE_STORE_KEY, data.id);
-  localStorage.setItem('store_onboarding_v1', JSON.stringify({ startedAt:new Date().toISOString(), dismissed:false, createdStore:true, appVersion:APP_VERSION }));
-  location.reload();
-}
-
 function selectPickedStore(){
   const storeId = document.getElementById('auth-store')?.value;
   if(!storeId) return;
   localStorage.setItem(WALKOFF_ACTIVE_STORE_KEY, storeId);
   location.reload();
-}
-function loginDemoAccount(){
-  try {
-    // Always use the demo email — never the real Walk-Off email in the input field.
-    const storeId = WALKOFF_DEMO_USER.defaultStoreId; // always 'demo'
-    const user = { ...WALKOFF_DEMO_USER, lastLoginAt:new Date().toISOString() };
-    localStorage.setItem(WALKOFF_AUTH_SESSION_KEY, JSON.stringify({ user, stores:WALKOFF_DEMO_STORES, activeStoreId:storeId, demoMode:true, createdAt:new Date().toISOString() }));
-    localStorage.setItem(WALKOFF_ACTIVE_STORE_KEY, storeId);
-    try { logOpsEvent('auth_login', 'Demo session started', { storeId }); } catch(e) {}
-  } catch(e) {
-    console.error('[demo] Failed to write demo session:', e);
-  }
-  // Boot the app directly — no reload needed; the fast-path in ensureAuthReady
-  // detects demoMode synchronously so calling the same init sequence works here too.
-  (async function(){
-    try {
-      document.getElementById('auth-screen')?.classList.remove('on');
-      renderAccountHeader();
-      showDemoModeBanner();
-      seedDemoDataIfNeeded();
-      await loadStoreSettingsFromSupabase();
-      setupAppShell();
-      if(typeof syncShowModeFromWorker === 'function') await syncShowModeFromWorker();
-      if(typeof syncStoreCreditsFromWorker === 'function') await syncStoreCreditsFromWorker();
-      if(typeof renderShowMode === 'function') renderShowMode();
-      if(typeof applyResearchDefaultCategory === 'function') applyResearchDefaultCategory();
-      if(typeof maybeShowSetupPrompt === 'function') maybeShowSetupPrompt();
-      if(typeof initHelpButtons === 'function') initHelpButtons();
-      if(typeof startInventoryAutoSync === 'function') startInventoryAutoSync();
-      if(typeof refreshEbayStatus === 'function') refreshEbayStatus();
-      if(typeof syncLifecycleFromWorker === 'function') syncLifecycleFromWorker().finally(loadInventory);
-      else if(typeof loadInventory === 'function') loadInventory();
-    } catch(e) {
-      console.error('[demo] Boot error — falling back to reload:', e);
-      location.reload();
-    }
-  })();
 }
 async function logoutAccount(){
   const sb = getSupabaseClient();
@@ -4616,18 +4506,6 @@ function switchActiveStore(storeId){
   logOpsEvent('store_switch', 'Switched active store', { storeId });
   location.reload();
 }
-// ── Phase 9: Demo / data-mode UI helpers ─────────────────────────────────────
-function showDemoModeBanner(){
-  document.getElementById('demo-mode-banner')?.classList.add('on');
-}
-function hideDemoModeBanner(){
-  document.getElementById('demo-mode-banner')?.classList.remove('on');
-}
-function updateDataModeBanner(){
-  if(getAccountContext().isDemo) showDemoModeBanner();
-  else hideDemoModeBanner();
-}
-
 function renderAccountHeader(){
   const session = getAuthSession(), store = getActiveStore();
   const chip = document.getElementById('store-user-chip');
@@ -4934,82 +4812,23 @@ const DEMO_VENDOR_PROFILE_DEFAULTS = {
   venmo:'', paypal:'', cashapp:'',
 };
 
-// Demo inventory items — fake data only, clearly labelled
-const DEMO_INVENTORY_SEED = [
-  // NOTE: must use `market:` not `price:` — getUniversalInventory() maps i.market||0 for market value
-  { id:'demo-charizard-ex',  name:'Demo Charizard ex',                    set:'Scarlet & Violet Base', year:'2023', category:'TCG',          cost:45, market:120, salePrice:120, status:'in_stock', source:'spreadsheet', condition:'Near Mint',       _demo:true },
-  { id:'demo-booster-pack',  name:'Demo Pokémon Booster Pack',             set:'Scarlet & Violet Base', year:'2023', category:'TCG',          cost:4,  market:6,   salePrice:6,   status:'in_stock', source:'spreadsheet', condition:'Factory Sealed',  _demo:true },
-  { id:'demo-comic',         name:'Demo Amazing Spider-Man #1 (Reprint)',  set:'',                      year:'1999', category:'Comics',        cost:10, market:25,  salePrice:25,  status:'in_stock', source:'spreadsheet', condition:'Very Fine',       _demo:true },
-  { id:'demo-sports-card',   name:'Demo Mike Trout Rookie Card',           set:'2011 Topps Update',     year:'2011', category:'Sports Cards',  cost:30, market:85,  salePrice:85,  status:'in_stock', source:'spreadsheet', condition:'Excellent',       _demo:true },
-  { id:'demo-sealed-box',    name:'Demo Sealed Pokémon Box',               set:'Paldea Evolved',        year:'2023', category:'TCG',          cost:90, market:130, salePrice:130, status:'in_stock', source:'spreadsheet', condition:'Factory Sealed',  _demo:true },
-];
-
-// Seed demo-scoped localStorage with blank settings + fake inventory on first demo run.
-// Only runs when getAccountContext().isDemo is true.  Never touches Walk-Off keys.
-function seedDemoDataIfNeeded(){
-  if(!getAccountContext().isDemo) return;
-  // Vendor profile — demo defaults, no real store name/handles
-  if(!safeLocalJson('vendor_profile_v1', null)){
-    localStorage.setItem('vendor_profile_v1', JSON.stringify(DEMO_VENDOR_PROFILE_DEFAULTS));
-  }
-  // Payment settings — blank handles so no real Venmo/PayPal/CashApp appears
-  if(!safeLocalJson('store_payment_settings_v1', null)){
-    localStorage.setItem('store_payment_settings_v1', JSON.stringify({
-      ...DEFAULT_PAYMENT_SETTINGS,
-      venmo:   { ...DEFAULT_PAYMENT_SETTINGS.venmo,   handle:'',           enabled:true },
-      paypal:  { ...DEFAULT_PAYMENT_SETTINGS.paypal,  emailOrHandle:'',    enabled:true },
-      cashApp: { ...DEFAULT_PAYMENT_SETTINGS.cashApp, cashtag:'',          enabled:true },
-      receipt: { ...DEFAULT_PAYMENT_SETTINGS.receipt, storeName:'Demo Store' },
-    }));
-  }
-  // Inventory — fake items so demo isn't a blank screen
-  const inv = safeLocalJson('walkoff_universal_inventory', null);
-  if(!inv || inv.length === 0){
-    localStorage.setItem('walkoff_universal_inventory', JSON.stringify(DEMO_INVENTORY_SEED));
-  }
-}
-
-// ─── Demo session hard repair ───────────────────────────────────────────────
-// Detects old contaminated demo sessions where activeStoreId was set to
-// a real store ('walkoff-main') instead of 'demo'.  Rewrites the session in-place
-// and clears the already-loaded drawerState so the Walk-Off cash drawer never
-// shows in demo mode.  Safe to call any time — returns false and does nothing
-// when the session is already clean or is a real Supabase session.
-function repairDemoSessionIfNeeded(){
+// ─── Legacy demo-session purge ──────────────────────────────────────────────
+// Demo mode has been removed from the app (no more login-screen entry point,
+// no more demoMode:true sessions can be newly created). This only exists to
+// force-log-out a browser that still has an OLD demoMode:true session sitting
+// in localStorage from before this change (including the previously-separate,
+// inconsistent demo login in sca.html) -- rather than "repair" it into a demo
+// store that no longer functions, it's simplest and safest to just clear it
+// and require a real login. Safe to call any time -- returns false and does
+// nothing when there's no demo session to clear.
+function purgeLegacyDemoSessionIfNeeded(){
   const session = getAuthSession();
-  if(!session?.demoMode) return false;          // Not a demo session — nothing to do
-
-  const currentStoreId = session.activeStoreId ||
-    (function(){ try{ return localStorage.getItem(WALKOFF_ACTIVE_STORE_KEY); }catch(e){ return null; } })();
-
-  if(currentStoreId === 'demo') return false;   // Already clean
-
-  // Contaminated: demo flag set but storeId points at a real store namespace
-  console.warn('[DEMO REPAIR] Contaminated demo session detected — storeId was', JSON.stringify(currentStoreId), ', rewriting to "demo" namespace...');
-
-  const repairedSession = {
-    user: { ...WALKOFF_DEMO_USER, lastLoginAt: new Date().toISOString() },
-    stores: WALKOFF_DEMO_STORES,
-    activeStoreId: 'demo',
-    demoMode: true,
-    createdAt: session.createdAt || new Date().toISOString(),
-    repairedAt: new Date().toISOString(),
-  };
-
-  // These are unscoped keys — write goes through shim but bypasses scopedStorageKey check
-  try { localStorage.setItem(WALKOFF_AUTH_SESSION_KEY, JSON.stringify(repairedSession)); } catch(e) {}
-  try { localStorage.setItem(WALKOFF_ACTIVE_STORE_KEY, 'demo'); } catch(e) {}
-
-  // drawerState is a var declared at module level (reads at script parse time from the
-  // then-active scoped key).  Null it out so the repaired demo session starts with a
-  // closed drawer instead of Walk-Off's real open drawer balance.
+  if(!session?.demoMode) return false;
+  try { localStorage.removeItem(WALKOFF_AUTH_SESSION_KEY); } catch(e) {}
+  try { localStorage.removeItem(WALKOFF_ACTIVE_STORE_KEY); } catch(e) {}
   try { drawerState = null; } catch(e) {}
-
-  // Seed demo inventory + settings under the now-correct walkoff:demo:* namespace
-  try { seedDemoDataIfNeeded(); } catch(e) {}
-
-  console.log('[DEMO REPAIR] Session repaired — demo is now isolated to walkoff:demo:* keys.');
-  return true;  // Caller can show a toast if desired
+  console.log('[AUTH] Cleared a legacy demo session — demo mode no longer exists, please log in.');
+  return true;
 }
 
 
@@ -8966,30 +8785,15 @@ function renderDataModePanel(){
     ['Account ID',        ctx.accountId],
     ['Store ID',          ctx.storeId],
     ['Role',              ctx.role],
-    ['Is Demo',           ctx.isDemo ? '⚠ YES — fake data only' : 'No'],
     ['Can Read Real Data',  ctx.canReadRealData  ? '✓ Yes' : '✗ No'],
     ['Can Write Real Data', ctx.canWriteRealData ? '✓ Yes' : '✗ No'],
-    ['localStorage prefix', ctx.isDemo ? 'walkoff:demo:*' : 'walkoff:'+ctx.storeId+':*'],
+    ['localStorage prefix', 'walkoff:'+ctx.storeId+':*'],
     ['Supabase tenant-safe','store_id column exists on key tables (see RLS note below)'],
   ];
   content.innerHTML = rows.map(([k,v]) =>
     `<div style="display:grid;grid-template-columns:180px 1fr;gap:4px;border-bottom:1px solid var(--border);padding:2px 0"><span style="color:var(--dim)">${k}</span><span>${escHtml(String(v))}</span></div>`
   ).join('');
-  if(actions) {
-    actions.innerHTML = ctx.isDemo
-      ? `<div style="display:flex;gap:8px;flex-wrap:wrap">
-           <button class="hbtn" onclick="if(confirm('Reset demo data? This clears all demo inventory, drawer, and sales from this browser.')){
-             ['vendor_profile_v1','store_payment_settings_v1','walkoff_universal_inventory',
-              'pos_transactions','pos_drawer','pos_cart_v2','sync_queue_v1','pos_drawer_closeouts'].forEach(k=>localStorage.removeItem(k));
-             try{drawerState=null;}catch(e){}
-             seedDemoDataIfNeeded();
-             toast_dash('Demo data reset — fresh demo inventory loaded');
-             renderDataModePanel();
-           }">RESET DEMO DATA</button>
-           <button class="hbtn" onclick="var repaired=repairDemoSessionIfNeeded();toast_dash(repaired?'Demo session repaired — contamination cleared':'Demo session is already clean');renderDataModePanel();" title="Fix old sessions that had the wrong store ID">REPAIR SESSION</button>
-         </div>`
-      : `<button class="hbtn" onclick="loginDemoAccount()">SWITCH TO DEMO MODE</button>`;
-  }
+  if(actions) actions.innerHTML = '';
 }
 
 function ensureVendorConfigPanel(backoffice){
@@ -16614,14 +16418,11 @@ function builtInDataFromItem(item, updates={}){
 
 window.addEventListener('load', async function(){
   if(await handleAuthRecoveryRedirect()) return;
-  // Repair contaminated demo sessions BEFORE ensureAuthReady() touches any storeId.
-  // Must run here so drawerState (set at module parse time) gets nulled before drawer UI
-  // renders, preventing Walk-Off's real cash drawer from showing in demo mode.
-  repairDemoSessionIfNeeded();
+  // Clear any leftover pre-removal demo session BEFORE ensureAuthReady() touches
+  // any storeId. Must run here so drawerState (set at module parse time) gets
+  // nulled before drawer UI renders.
+  purgeLegacyDemoSessionIfNeeded();
   if(!(await ensureAuthReady())) return;
-  // Seed demo data and show banner before any UI renders in demo mode
-  updateDataModeBanner();
-  seedDemoDataIfNeeded();
   // Paint the shell (theme, version stamp) and land on the user's chosen tab
   // immediately -- neither depends on any network round trip, so there's no
   // reason to make either one wait behind the cloud syncs below.
@@ -42343,7 +42144,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.20.1-phone-voicemail-hours" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.20.2-auth-lockdown" defer></script>
 </body>
 </html>
 

@@ -1,0 +1,25 @@
+-- Auth lockdown: this app no longer has public self-signup (dashboard.html's
+-- SIGN UP button and the whole flow behind it were removed). The remaining
+-- hole was database-level, not UI-level: create_store_for_current_user() was
+-- granted to every `authenticated` Supabase user with no approval check
+-- beyond "is logged in" -- meaning anyone who ever created a raw Supabase
+-- auth account (via the old signup form, or directly against the Supabase
+-- API with the public anon key) could self-provision a full owner-level
+-- store. Removing the UI button alone does not close this: the anon key is
+-- public, so the RPC was callable directly regardless of what the dashboard
+-- shows.
+--
+-- This revokes execute on that RPC from `authenticated` entirely. Store
+-- creation going forward is a platform-admin action (directly in Supabase,
+-- or via a future service-role-backed Worker route) -- never a self-serve
+-- RPC an end user can call. invite_store_member/accept_store_invite are
+-- untouched: invite_store_member already requires can_manage_store()
+-- (owner/admin of the target store) before it does anything, so the
+-- existing invite flow is not part of this hole and remains the only way to
+-- acquire access to a store.
+--
+-- Safe to run repeatedly. If a legitimate need for self-service store
+-- creation ever comes back (e.g. real multi-tenant signups), re-grant with:
+--   grant execute on function public.create_store_for_current_user(text, text) to authenticated;
+
+revoke execute on function public.create_store_for_current_user(text, text) from authenticated;
