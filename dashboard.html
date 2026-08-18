@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.19.5-label-png-download">
+<meta name="version" content="2026.08.19.6-qr-wrap-labels">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1585,19 +1585,25 @@ body.show-mode .inv-sync-badge{display:none;}
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js" defer></script>
 <!-- Renders scannable CODE128 barcodes for printed shelf/price labels (Inventory > PRINT LABELS) -->
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js" defer></script>
+<!-- QR code option for the same labels -- a linear CODE128 barcode encoding a
+     long value (e.g. an item's internal UUID, used when there's no real
+     UPC/SKU) compresses to unreadably-thin bars once squeezed onto a small
+     2in-wide thermal label; a QR code holds the same data in a square grid
+     that stays scannable at that size. -->
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js" defer></script>
 <!-- Same team-color database + palette engine walkoffsc.com's team picker uses
      (squeebmike/wo-scripts) -- one shared source so a team's colors never need
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.19.5-label-png-download" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.19.5-label-png-download" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.19.5-label-png-download" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.08.19.5-label-png-download" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.19.5-label-png-download" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.19.5-label-png-download" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.19.5-label-png-download" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.19.5-label-png-download" defer></script>
+<script src="scripts/query-routing.js?v=2026.08.19.6-qr-wrap-labels" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.19.6-qr-wrap-labels" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.19.6-qr-wrap-labels" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.08.19.6-qr-wrap-labels" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.19.6-qr-wrap-labels" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.19.6-qr-wrap-labels" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.19.6-qr-wrap-labels" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.19.6-qr-wrap-labels" defer></script>
 </head>
 <body>
 
@@ -1647,11 +1653,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.19.5-label-png-download</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.19.6-qr-wrap-labels</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.19.5-label-png-download</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.19.6-qr-wrap-labels</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1673,7 +1679,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.19.5-label-png-download</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.19.6-qr-wrap-labels</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3129,7 +3135,12 @@ body.show-mode .inv-sync-badge{display:none;}
       <option value="standard">Standard -- name, barcode, SKU/condition, and price all on one face</option>
       <option value="wrap">Wraps around a toploader -- fold down the middle: price + condition large on the front half, barcode on the back half</option>
     </select>
-    <div style="font-family:var(--font-mono);font-size:9px;color:var(--dim);margin-bottom:10px">Sheet mode prints multiple labels per page with dashed cut lines -- works on plain paper or Avery-style sheets. Roll mode prints exactly one label per "page" sized to match a direct-thermal roll printer (no margins, no cut lines needed). Toploader-wrap layout is meant for roll labels: stick the left half to the front over the toploader's edge, fold at the dashed line, and the barcode half lands on the back. Barcode value uses UPC, then SKU, then falls back to the item's internal ID.</div>
+    <label>Barcode style</label>
+    <select id="label-print-code-style" class="tsi" onchange="localStorage.setItem('label_print_code_style', this.value)" style="margin-bottom:10px">
+      <option value="barcode">Linear barcode (CODE128) -- standard for most scanners</option>
+      <option value="qr">QR code -- more reliable at small thermal-label sizes, especially for items without a real UPC/SKU (falls back to a long internal ID)</option>
+    </select>
+    <div style="font-family:var(--font-mono);font-size:9px;color:var(--dim);margin-bottom:10px">Sheet mode prints multiple labels per page with dashed cut lines -- works on plain paper or Avery-style sheets. Roll mode prints exactly one label per "page" sized to match a direct-thermal roll printer (no margins, no cut lines needed). Toploader-wrap layout is meant for roll labels: stick the left half to the front over the toploader's edge, fold at the dashed line, and the barcode half lands on the back. Barcode value uses UPC, then SKU, then falls back to the item's internal ID -- that fallback ID is long, which is where a linear barcode can get too dense to scan at small label sizes; switch to QR code above if scans are failing.</div>
     <div class="modal-btns">
       <button class="modal-btn confirm" id="label-print-btn" onclick="printInventoryLabels()">PRINT</button>
       <button class="modal-btn cancel" onclick="closeLabelPrintModal()">Cancel</button>
@@ -3447,7 +3458,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.19.5-label-png-download';
+const APP_VERSION = '2026.08.19.6-qr-wrap-labels';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -25774,7 +25785,7 @@ async function startCartScanCamera(){
     cartScanStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:1280},height:{ideal:720},focusMode:{ideal:'continuous'}},audio:false});
     await applyContinuousAutofocus(cartScanStream);
     const video=document.getElementById('cart-scan-video');video.srcObject=cartScanStream;await video.play();
-    const supported=typeof BarcodeDetector.getSupportedFormats==='function'?await BarcodeDetector.getSupportedFormats().catch(()=>[]):[];const formats=['upc_a','upc_e','ean_13','ean_8','code_128'].filter(x=>!supported.length||supported.includes(x));
+    const supported=typeof BarcodeDetector.getSupportedFormats==='function'?await BarcodeDetector.getSupportedFormats().catch(()=>[]):[];const formats=['upc_a','upc_e','ean_13','ean_8','code_128','qr_code'].filter(x=>!supported.length||supported.includes(x));
     cartScanDetector=new BarcodeDetector(formats.length?{formats}:undefined);cartScanDetecting=true;document.getElementById('cart-scan-camera')?.classList.add('active');
     const placeholder=document.getElementById('cart-scan-camera-placeholder');if(placeholder)placeholder.style.display='none';
     const btn=document.getElementById('cart-scan-camera-toggle');if(btn)btn.textContent='STOP CAMERA';setCartScanStatus('Point the camera at a label barcode.');detectCartScanFrame();
@@ -38739,6 +38750,7 @@ function openLabelPrintModal(seedItemId){
   const resultsEl = document.getElementById('label-print-search-results'); if(resultsEl) resultsEl.innerHTML = '';
   const sizeEl = document.getElementById('label-print-size'); if(sizeEl) sizeEl.value = localStorage.getItem('label_print_size') || 'sheet-2.625x1';
   const layoutEl = document.getElementById('label-print-layout'); if(layoutEl) layoutEl.value = localStorage.getItem('label_print_layout') || 'standard';
+  const codeStyleEl = document.getElementById('label-print-code-style'); if(codeStyleEl) codeStyleEl.value = localStorage.getItem('label_print_code_style') || 'barcode';
   renderLabelPrintBatchList();
   document.getElementById('label-print-modal')?.classList.add('on');
   setTimeout(() => document.getElementById('label-print-search')?.focus(), 100);
@@ -38799,12 +38811,31 @@ function renderLabelPrintBatchList(){
 // of a live-buy workflow. Yielding periodically keeps the tab responsive
 // without meaningfully slowing down the overall batch.
 const LABEL_PRINT_YIELD_EVERY = 20;
+
+// Renders either a linear CODE128 barcode or a QR code onto a fresh canvas,
+// depending on which style the user picked. QR trades physical strip-shape
+// for a square grid that stays scannable when the encoded value is long --
+// labelBarcodeValue() falls back to the item's internal UUID (36 chars) when
+// there's no real UPC/SKU, and that many characters squeezed into a 2in-wide
+// CODE128 barcode compresses to bars thinner than a small thermal printer
+// (203 DPI) can resolve, which is exactly what makes those labels unscannable.
+async function generateLabelCodeCanvas(value, style){
+  const canvas = document.createElement('canvas');
+  if(style === 'qr' && typeof QRCode !== 'undefined'){
+    try {
+      await QRCode.toCanvas(canvas, String(value || ''), { margin:0, width:220 });
+      return canvas;
+    } catch(e) { /* fall through to barcode if QR generation fails for this value */ }
+  }
+  try { JsBarcode(canvas, value, { format:'CODE128', displayValue:false, margin:0 }); } catch(e) {}
+  return canvas;
+}
+
 async function printInventoryLabels(){
   if(!labelPrintBatch.length) return alert('Add at least one item to print');
   if(typeof JsBarcode === 'undefined') return alert('Barcode library still loading -- try again in a moment');
   const vendorProfile = getVendorProfile();
   const storeName = vendorProfile.storeName || '';
-  const storeLogo = vendorProfile.logo || '';
   // Sheet mode (Avery-style cut sheets) and roll mode (Rollo/Zebra direct-
   // thermal, fed one label at a time) are fundamentally different print
   // jobs, not just a size tweak -- a roll printer's "page" IS the label, so
@@ -38814,11 +38845,13 @@ async function printInventoryLabels(){
   const isRoll = mode === 'roll-2x1';
   // "Wrap" is a content layout, independent of sheet/roll sizing: the label
   // physically folds around a toploader's edge, so the two halves need to
-  // work as separate FACES rather than one continuous strip -- condition and
-  // price large on the half that ends up facing out front, barcode alone on
-  // the half that wraps to the back (nobody needs to read a barcode by eye).
+  // work as separate FACES rather than one continuous strip -- price and
+  // condition on the face that ends up out front, the logo and scan code
+  // (no other text -- nobody reads a code or a logo caption by eye) on the
+  // face that wraps to the back.
   const layout = document.getElementById('label-print-layout')?.value || 'standard';
   const isWrap = layout === 'wrap';
+  const codeStyle = document.getElementById('label-print-code-style')?.value || 'barcode';
   // Expand batch entries (item + qty) into one spec per physical label --
   // cheap, no canvas work yet, so no need to chunk this part.
   const labelSpecs = labelPrintBatch.flatMap(b => Array.from({ length:b.qty }, () => b));
@@ -38827,23 +38860,19 @@ async function printInventoryLabels(){
   const labelParts = [];
   for(let i = 0; i < labelSpecs.length; i++){
     const b = labelSpecs[i];
-    const canvas = document.createElement('canvas');
     let barcodeImg = '';
     try {
-      JsBarcode(canvas, b.sku || b.id, { format:'CODE128', displayValue:false, margin:0, width:2, height:isRoll?30:36 });
+      const canvas = await generateLabelCodeCanvas(b.sku || b.id, codeStyle);
       barcodeImg = `<img src="${canvas.toDataURL('image/png')}" style="width:100%;height:${isRoll?30:36}px;object-fit:contain">`;
     } catch(e) { barcodeImg = ''; }
     labelParts.push(isWrap ? `<div class="label wrap">
         <div class="wrap-front">
-          ${storeName ? `<div class="label-store">${escHtml(storeName)}</div>` : ''}
-          <div class="wrap-name">${escHtml(b.name)}</div>
           <div class="wrap-condition">${escHtml(b.condition || '')}</div>
           <div class="wrap-price">${fd$(b.price)}</div>
         </div>
         <div class="wrap-back">
-          ${storeLogo ? `<img class="wrap-logo" src="${storeLogo}" alt="">` : ''}
+          <img class="wrap-logo" src="assets/mana-pocket-label-logo.png" alt="">
           ${barcodeImg}
-          <div class="wrap-sku">${escHtml(b.sku || '')}</div>
         </div>
       </div>` : `<div class="label">
       ${storeName ? `<div class="label-store">${escHtml(storeName)}</div>` : ''}
@@ -38881,14 +38910,12 @@ async function printInventoryLabels(){
   // percentage widths so this adapts to either total label width automatically.
   const wrapStyle = `
       .label.wrap { flex-direction:row !important; padding:0 !important; }
-      .label.wrap .wrap-front, .label.wrap .wrap-back { width:50%; height:100%; box-sizing:border-box; display:flex; flex-direction:column; overflow:hidden; }
-      .label.wrap .wrap-front { padding:5px 6px; justify-content:space-between; border-right:1px dashed #999; }
-      .label.wrap .wrap-back { padding:5px 6px; align-items:center; justify-content:center; gap:3px; }
-      .wrap-logo { max-width:70%; max-height:14px; object-fit:contain; filter:grayscale(1) contrast(1.3); }
-      .wrap-name { font-size:7px; font-weight:700; line-height:1.1; max-height:16px; overflow:hidden; }
-      .wrap-condition { font-size:11px; font-weight:800; text-transform:uppercase; }
-      .wrap-price { font-size:19px; font-weight:900; line-height:1; }
-      .wrap-sku { font-size:6px; color:#555; text-align:center; }`;
+      .label.wrap .wrap-front, .label.wrap .wrap-back { width:50%; height:100%; box-sizing:border-box; display:flex; flex-direction:column; align-items:center; overflow:hidden; }
+      .label.wrap .wrap-front { padding:5px 6px; justify-content:center; gap:4px; border-right:1px dashed #999; }
+      .label.wrap .wrap-back { padding:5px 6px; justify-content:center; gap:3px; }
+      .wrap-logo { max-width:80%; max-height:28px; object-fit:contain; filter:grayscale(1) contrast(1.3); }
+      .wrap-condition { font-size:12px; font-weight:800; text-transform:uppercase; }
+      .wrap-price { font-size:20px; font-weight:900; line-height:1; }`;
   w.document.write(`<html><head><title>Labels</title>
     <style>${isRoll ? rollStyle : sheetStyle}${isWrap ? wrapStyle : ''}</style>
   </head><body><div class="label-sheet">${labelsHtml}</div>
@@ -38927,6 +38954,19 @@ const LABEL_PNG_DPI = 203;
 // directly onto a canvas sized in real print-head dots and downloading it as a
 // PNG sidesteps the OS print system (and its page-size list) entirely: the
 // printer's own app just imports a bitmap at native size.
+// The toploader-wrap back face carries a fixed shop logo (not the vendor's
+// configurable storefront logo) alongside the scan code -- loaded once per
+// download batch, not per label, since it's the same bitmap every time.
+const WRAP_LOGO_SRC = 'assets/mana-pocket-label-logo.png';
+function loadWrapLogoImage(){
+  return new Promise(resolve => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => resolve(null);
+    img.src = WRAP_LOGO_SRC;
+  });
+}
+
 async function downloadInventoryLabelPngs(){
   if(!labelPrintBatch.length) return alert('Add at least one item to print');
   if(typeof JsBarcode === 'undefined') return alert('Barcode library still loading -- try again in a moment');
@@ -38936,6 +38976,7 @@ async function downloadInventoryLabelPngs(){
   const isRoll = mode === 'roll-2x1';
   const layout = document.getElementById('label-print-layout')?.value || 'standard';
   const isWrap = layout === 'wrap';
+  const codeStyle = document.getElementById('label-print-code-style')?.value || 'barcode';
   const widthIn = isRoll ? 2 : 2.625;
   const w = Math.round(widthIn * LABEL_PNG_DPI);
   const h = Math.round(1 * LABEL_PNG_DPI);
@@ -38943,6 +38984,7 @@ async function downloadInventoryLabelPngs(){
   const btn = document.getElementById('label-download-btn');
   const btnLabel = '⬇️ DOWNLOAD PNGs (for phone thermal-printer app)';
   if(btn){ btn.disabled = true; btn.textContent = 'GENERATING...'; }
+  const wrapLogoImg = isWrap ? await loadWrapLogoImage() : null;
   const seenNames = {};
   for(let i = 0; i < labelSpecs.length; i++){
     const b = labelSpecs[i];
@@ -38951,34 +38993,38 @@ async function downloadInventoryLabelPngs(){
     const ctx = canvas.getContext('2d');
     ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, w, h);
     ctx.fillStyle = '#000';
-    const barcodeCanvas = document.createElement('canvas');
-    try { JsBarcode(barcodeCanvas, b.sku || b.id, { format:'CODE128', displayValue:false, margin:0 }); } catch(e) {}
+    const codeCanvas = await generateLabelCodeCanvas(b.sku || b.id, codeStyle);
     if(isWrap){
+      // Front face: price and condition only -- no store name, no item
+      // name -- so the two numbers that actually matter at a glance on a
+      // toploader shelf read big. Back face: the shop logo (greyscaled so
+      // it doesn't fight the thermal print head's limited color depth) and
+      // the scan code, nothing else -- nobody reads a SKU by eye.
       const halfW = w / 2;
       ctx.strokeStyle = '#000'; ctx.setLineDash([4, 4]);
       ctx.beginPath(); ctx.moveTo(halfW, 0); ctx.lineTo(halfW, h); ctx.stroke();
       ctx.setLineDash([]);
-      const pad = w * 0.03;
-      ctx.textBaseline = 'top'; ctx.textAlign = 'left';
-      if(storeName){ ctx.font = `${Math.round(h * 0.08)}px sans-serif`; ctx.fillText(storeName.toUpperCase(), pad, pad); }
-      ctx.font = `bold ${Math.round(h * 0.11)}px sans-serif`;
-      wrapCanvasText(ctx, b.name, pad, pad + h * 0.14, halfW - pad * 2, Math.round(h * 0.13));
-      ctx.font = `bold ${Math.round(h * 0.16)}px sans-serif`;
-      ctx.fillText(String(b.condition || '').toUpperCase(), pad, h * 0.58);
-      ctx.font = `900 ${Math.round(h * 0.26)}px sans-serif`;
-      ctx.fillText(fd$(b.price), pad, h * 0.7);
-      const barcodeH = h * 0.32, barcodeW = halfW * 0.8;
-      ctx.drawImage(barcodeCanvas, halfW + (halfW - barcodeW) / 2, h * 0.28, barcodeW, barcodeH);
-      ctx.textAlign = 'center'; ctx.font = `${Math.round(h * 0.07)}px sans-serif`;
-      ctx.fillText(String(b.sku || ''), halfW + halfW / 2, h * 0.64);
+      ctx.textAlign = 'center';
+      ctx.font = `bold ${Math.round(h * 0.2)}px sans-serif`;
+      ctx.fillText(String(b.condition || '').toUpperCase(), halfW / 2, h * 0.38);
+      ctx.font = `900 ${Math.round(h * 0.32)}px sans-serif`;
+      ctx.fillText(fd$(b.price), halfW / 2, h * 0.72);
+      if(wrapLogoImg){
+        const logoW = halfW * 0.7, logoH = logoW * (wrapLogoImg.height / wrapLogoImg.width);
+        ctx.filter = 'grayscale(1)';
+        ctx.drawImage(wrapLogoImg, halfW + (halfW - logoW) / 2, h * 0.06, logoW, Math.min(logoH, h * 0.36));
+        ctx.filter = 'none';
+      }
+      const codeH = h * 0.42, codeW = codeStyle === 'qr' ? codeH : halfW * 0.82;
+      ctx.drawImage(codeCanvas, halfW + (halfW - codeW) / 2, h * 0.52, codeW, codeH);
     } else {
       const pad = w * 0.02;
       ctx.textBaseline = 'top'; ctx.textAlign = 'left';
       if(storeName){ ctx.font = `${Math.round(h * 0.07)}px sans-serif`; ctx.fillText(storeName.toUpperCase(), pad, pad); }
       ctx.font = `bold ${Math.round(h * 0.12)}px sans-serif`;
       wrapCanvasText(ctx, b.name, pad, pad + h * 0.12, w - pad * 2, Math.round(h * 0.14));
-      const barcodeH = h * 0.32, barcodeW = w * 0.7;
-      ctx.drawImage(barcodeCanvas, (w - barcodeW) / 2, h * 0.44, barcodeW, barcodeH);
+      const codeH = h * 0.32, codeW = codeStyle === 'qr' ? codeH : w * 0.7;
+      ctx.drawImage(codeCanvas, (w - codeW) / 2, h * 0.44, codeW, codeH);
       ctx.font = `${Math.round(h * 0.08)}px sans-serif`;
       ctx.textAlign = 'left';
       ctx.fillText(`${b.sku || ''}${b.condition ? ' · ' + b.condition : ''}`, pad, h * 0.82);
@@ -41656,7 +41702,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.19.5-label-png-download" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.19.6-qr-wrap-labels" defer></script>
 </body>
 </html>
 

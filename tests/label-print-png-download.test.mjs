@@ -18,11 +18,12 @@ assert.match(dashboard, /<button class="modal-btn confirm" id="label-download-bt
 assert.match(dashboard, /if\(btn\)\{ btn\.disabled = true; btn\.textContent = 'GENERATING\.\.\.'; \}/, 'the download button must be disabled/relabeled while generating (shared pattern with printInventoryLabels)');
 assert.match(dashboard, /if\(btn\)\{ btn\.disabled = false; btn\.textContent = btnLabel; \}/, 'the download button must be restored to its label once generation finishes');
 
-// ── Contract: it draws a real barcode onto the label (same JsBarcode contract
-// as the print path), guards against the library not being loaded yet, and
-// requires at least one item in the batch before doing any work ──
+// ── Contract: it draws a real scan code onto the label via the shared
+// generateLabelCodeCanvas helper (same contract as the print path), guards
+// against the barcode library not being loaded yet, and requires at least
+// one item in the batch before doing any work ──
 assert.match(dashboard, /if\(!labelPrintBatch\.length\) return alert\('Add at least one item to print'\);\s*\n\s*if\(typeof JsBarcode === 'undefined'\) return alert/, 'downloadInventoryLabelPngs must guard on an empty batch and a not-yet-loaded barcode library, same as printInventoryLabels');
-assert.match(dashboard, /JsBarcode\(barcodeCanvas, b\.sku \|\| b\.id, \{ format:'CODE128', displayValue:false, margin:0 \}\);/, 'must render a real CODE128 barcode onto an offscreen canvas before compositing it onto the label');
+assert.match(dashboard, /const codeCanvas = await generateLabelCodeCanvas\(b\.sku \|\| b\.id, codeStyle\);/, 'must render a real scan code onto an offscreen canvas via the shared helper before compositing it onto the label');
 
 // ── Contract: each label is downloaded as its own file via a Blob + <a download>
 // link, not routed through window.print() -- that is the whole point of this
