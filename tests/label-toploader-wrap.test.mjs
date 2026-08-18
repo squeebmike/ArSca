@@ -27,8 +27,8 @@ assert.match(dashboard, /\.label\.wrap \{ flex-direction:row !important; padding
 assert.match(dashboard, /border-right:1px dashed #999;/, 'a dashed fold line must separate the front and back faces so it\'s clear where to fold');
 assert.match(dashboard, /\.wrap-shopname \{ font-size:8px; font-weight:800; letter-spacing:\.03em; text-align:center; \}/, 'the shop name must be styled as a small fixed text band -- every pixel it doesn\'t use is a pixel the code gets instead');
 assert.match(dashboard, /\.wrap-name \{ font-size:7px; font-weight:700; line-height:1\.1; max-height:16px; overflow:hidden; text-align:center; \}/, 'the item name must be styled small so it does not crowd out condition/price');
-assert.match(dashboard, /\.wrap-signed \{ font-size:6px; font-weight:700; text-transform:uppercase; text-align:center; \}/, 'the signed-by badge must be styled small so it does not crowd out price/condition');
-assert.match(dashboard, /\.wrap-price \{ font-size:24px; font-weight:900; line-height:1; \}/, 'the price must be the dominant, largest element on the front face');
+assert.match(dashboard, /\.wrap-signed \{ font-size:6px; font-weight:400; text-transform:uppercase; text-align:center; \}/, 'the signed-by badge must not be bold -- it is secondary to the item name');
+assert.match(dashboard, /\.wrap-price \{ font-size:24px; font-weight:900; line-height:1; margin-left:8px; margin-top:auto; \}/, 'the price must be the dominant, largest element on the front face, pushed toward the bottom-right rather than dead center');
 
 console.log('Label toploader-wrap contract checks passed');
 
@@ -39,10 +39,10 @@ console.log('Label toploader-wrap contract checks passed');
 assert.ok(!/WRAP_LOGO_SRC/.test(dashboard), 'the illustrated logo image asset must no longer be referenced from the PNG download path -- it was confirmed unreadable on a real printed label');
 assert.ok(!/loadWrapLogoImage/.test(dashboard), 'the logo-preload helper must be fully removed along with the image-based logo');
 assert.ok(!/wrapLogoImg/.test(dashboard), 'no wrap-logo-image variable may remain in the download path');
-assert.match(dashboard, /if\(b\.signedBy\)\{\s*\n\s*ctx\.font = `bold \$\{Math\.round\(h \* 0\.06\)\}px sans-serif`;\s*\n\s*ctx\.fillText\(\('Signed: ' \+ b\.signedBy\)\.toUpperCase\(\), halfW \/ 2, h \* 0\.24\);\s*\n\s*\}/, 'the front face must draw a "Signed by" badge only when the item is marked signed');
-assert.match(dashboard, /ctx\.font = `900 \$\{Math\.round\(h \* 0\.3\)\}px sans-serif`;\s*\n\s*ctx\.fillText\(fdLabelPrice\$\(b\.price\), halfW \/ 2, h \* 0\.34\);/, 'the price must be drawn as the biggest, most dominant element on the front face');
-assert.match(dashboard, /ctx\.font = `bold \$\{Math\.round\(h \* 0\.055\)\}px sans-serif`;\s*\n\s*ctx\.fillText\('THE MANA POCKET', halfW \+ halfW \/ 2, h \* 0\.03\);/, 'the back face shop name must be drawn as plain bold text, not an illustrated logo image');
-assert.match(dashboard, /const logoBottom = h \* 0\.03 \+ h \* 0\.08;/, 'the code region must start below a fixed-height shop-name text band, not a variable image-logo height');
+assert.match(dashboard, /if\(b\.signedBy\)\{\s*\n(?:[^\n]*\n)*?\s*ctx\.font = `\$\{Math\.round\(h \* 0\.06\)\}px sans-serif`;\s*\n\s*ctx\.fillText\(\('Signed: ' \+ b\.signedBy\)\.toUpperCase\(\), halfW \/ 2, h \* 0\.24\);\s*\n\s*\}/, 'the front face must draw a "Signed by" badge only when the item is marked signed, and it must not be bold -- it is secondary to the item name');
+assert.match(dashboard, /ctx\.font = `900 \$\{Math\.round\(h \* 0\.3\)\}px sans-serif`;\s*\n\s*ctx\.textAlign = 'right';\s*\n\s*ctx\.fillText\(fdLabelPrice\$\(b\.price\), halfW - padX, h \* 0\.34\);/, 'the price must be drawn as the biggest, most dominant element on the front face, right-aligned rather than centered');
+assert.match(dashboard, /ctx\.font = `bold \$\{Math\.round\(h \* 0\.055\)\}px sans-serif`;\s*\n\s*ctx\.fillText\('THE MANA POCKET', halfW \+ halfW \/ 2, h \* 0\.06\);/, 'the back face shop name must be drawn as plain bold text, not an illustrated logo image, and dropped down slightly from the very top edge');
+assert.match(dashboard, /const logoBottom = h \* 0\.06 \+ h \* 0\.08;/, 'the code region must start below a fixed-height shop-name text band, not a variable image-logo height');
 assert.match(dashboard, /const codeSize = Math\.min\(h - logoBottom - codeMargin \* 2, halfW - codeMargin \* 2\);/, 'the code must be sized to fill essentially all of the remaining back-face room below the shop name');
 assert.match(dashboard, /const codeCanvas = await generateLabelCodeCanvas\(codeValue, codeStyle, Math\.round\(codeSize\)\);/, 'the code canvas must be generated at exactly its real on-label pixel size, not a fixed size scaled down at draw time -- that scale-then-threshold combination is what broke a real scan');
 assert.match(dashboard, /ctx\.imageSmoothingEnabled = false;/, 'canvas image smoothing must be disabled so any residual scaling stays crisp (hard edges) instead of blurring modules together before the black/white threshold pass runs');
@@ -87,7 +87,7 @@ assert.ok(back.includes('THE MANA POCKET'), 'the back face must always show the 
 // the fixed-height text band leaves more room for the code than the old
 // variable-height image logo did ──
 function wrapCodeSize(h, halfW){
-  const logoBottom = h * 0.03 + h * 0.08;
+  const logoBottom = h * 0.06 + h * 0.08;
   const codeMargin = (halfW * 2) * 0.015;
   return Math.min(h - logoBottom - codeMargin * 2, halfW - codeMargin * 2);
 }
