@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.19.4-twilio-health-flag">
+<meta name="version" content="2026.08.19.5-label-png-download">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1590,14 +1590,14 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.19.4-twilio-health-flag" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.19.4-twilio-health-flag" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.19.4-twilio-health-flag" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.08.19.4-twilio-health-flag" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.19.4-twilio-health-flag" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.19.4-twilio-health-flag" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.19.4-twilio-health-flag" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.19.4-twilio-health-flag" defer></script>
+<script src="scripts/query-routing.js?v=2026.08.19.5-label-png-download" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.19.5-label-png-download" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.19.5-label-png-download" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.08.19.5-label-png-download" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.19.5-label-png-download" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.19.5-label-png-download" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.19.5-label-png-download" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.19.5-label-png-download" defer></script>
 </head>
 <body>
 
@@ -1647,11 +1647,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.19.4-twilio-health-flag</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.19.5-label-png-download</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.19.4-twilio-health-flag</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.19.5-label-png-download</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1673,7 +1673,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.19.4-twilio-health-flag</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.19.5-label-png-download</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3134,6 +3134,10 @@ body.show-mode .inv-sync-badge{display:none;}
       <button class="modal-btn confirm" id="label-print-btn" onclick="printInventoryLabels()">PRINT</button>
       <button class="modal-btn cancel" onclick="closeLabelPrintModal()">Cancel</button>
     </div>
+    <div style="font-family:var(--font-mono);font-size:9px;color:var(--dim);margin:10px 0 4px">Printing from a phone to a Bluetooth thermal label printer (Rollo, MUNBYN, etc.)? Those printer apps usually can't receive a job from PRINT above -- the phone's system print dialog only offers full page sizes (Letter, A4...) with no way to fit a small label, so the label prints microscopic. Use DOWNLOAD PNGs instead: it saves one correctly-sized image per label straight to your phone, ready to import into your printer's app.</div>
+    <div class="modal-btns">
+      <button class="modal-btn confirm" id="label-download-btn" onclick="downloadInventoryLabelPngs()" style="background:#0ea5e9">⬇️ DOWNLOAD PNGs (for phone thermal-printer app)</button>
+    </div>
   </div>
 </div>
 
@@ -3443,7 +3447,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.19.4-twilio-health-flag';
+const APP_VERSION = '2026.08.19.5-label-png-download';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -38892,6 +38896,115 @@ async function printInventoryLabels(){
   w.document.close();
 }
 
+// Wraps text onto up to maxLines lines within maxWidth -- canvas text has no
+// built-in wrapping, unlike the HTML/CSS label path above.
+function wrapCanvasText(ctx, text, x, y, maxWidth, lineHeight, maxLines){
+  maxLines = maxLines || 2;
+  const words = String(text || '').split(' ');
+  const lines = [];
+  let line = '';
+  for(const word of words){
+    const test = line ? line + ' ' + word : word;
+    if(ctx.measureText(test).width > maxWidth && line){
+      lines.push(line);
+      line = word;
+      if(lines.length >= maxLines - 1) break;
+    } else line = test;
+  }
+  lines.push(line);
+  lines.slice(0, maxLines).forEach((l, i) => ctx.fillText(l, x, y + i * lineHeight));
+}
+
+// Matches the RW403B and most small direct-thermal label printers -- their
+// companion apps import a bitmap at native print-head dot resolution, not as
+// a scaled page, so drawing at this DPI makes the downloaded PNG come out
+// physically the right size once imported.
+const LABEL_PNG_DPI = 203;
+// Android's own "Save as PDF" print path only offers full page sizes (Letter,
+// A4, Index Card, ...) with no way to enter a label's actual tiny dimensions --
+// confirmed against a real device, where the label rendered microscopic because
+// the whole label got scaled down to fit a full-page PDF. Drawing the label
+// directly onto a canvas sized in real print-head dots and downloading it as a
+// PNG sidesteps the OS print system (and its page-size list) entirely: the
+// printer's own app just imports a bitmap at native size.
+async function downloadInventoryLabelPngs(){
+  if(!labelPrintBatch.length) return alert('Add at least one item to print');
+  if(typeof JsBarcode === 'undefined') return alert('Barcode library still loading -- try again in a moment');
+  const vendorProfile = getVendorProfile();
+  const storeName = vendorProfile.storeName || '';
+  const mode = document.getElementById('label-print-size')?.value || 'sheet-2.625x1';
+  const isRoll = mode === 'roll-2x1';
+  const layout = document.getElementById('label-print-layout')?.value || 'standard';
+  const isWrap = layout === 'wrap';
+  const widthIn = isRoll ? 2 : 2.625;
+  const w = Math.round(widthIn * LABEL_PNG_DPI);
+  const h = Math.round(1 * LABEL_PNG_DPI);
+  const labelSpecs = labelPrintBatch.flatMap(b => Array.from({ length:b.qty }, () => b));
+  const btn = document.getElementById('label-download-btn');
+  const btnLabel = '⬇️ DOWNLOAD PNGs (for phone thermal-printer app)';
+  if(btn){ btn.disabled = true; btn.textContent = 'GENERATING...'; }
+  const seenNames = {};
+  for(let i = 0; i < labelSpecs.length; i++){
+    const b = labelSpecs[i];
+    const canvas = document.createElement('canvas');
+    canvas.width = w; canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, w, h);
+    ctx.fillStyle = '#000';
+    const barcodeCanvas = document.createElement('canvas');
+    try { JsBarcode(barcodeCanvas, b.sku || b.id, { format:'CODE128', displayValue:false, margin:0 }); } catch(e) {}
+    if(isWrap){
+      const halfW = w / 2;
+      ctx.strokeStyle = '#000'; ctx.setLineDash([4, 4]);
+      ctx.beginPath(); ctx.moveTo(halfW, 0); ctx.lineTo(halfW, h); ctx.stroke();
+      ctx.setLineDash([]);
+      const pad = w * 0.03;
+      ctx.textBaseline = 'top'; ctx.textAlign = 'left';
+      if(storeName){ ctx.font = `${Math.round(h * 0.08)}px sans-serif`; ctx.fillText(storeName.toUpperCase(), pad, pad); }
+      ctx.font = `bold ${Math.round(h * 0.11)}px sans-serif`;
+      wrapCanvasText(ctx, b.name, pad, pad + h * 0.14, halfW - pad * 2, Math.round(h * 0.13));
+      ctx.font = `bold ${Math.round(h * 0.16)}px sans-serif`;
+      ctx.fillText(String(b.condition || '').toUpperCase(), pad, h * 0.58);
+      ctx.font = `900 ${Math.round(h * 0.26)}px sans-serif`;
+      ctx.fillText(fd$(b.price), pad, h * 0.7);
+      const barcodeH = h * 0.32, barcodeW = halfW * 0.8;
+      ctx.drawImage(barcodeCanvas, halfW + (halfW - barcodeW) / 2, h * 0.28, barcodeW, barcodeH);
+      ctx.textAlign = 'center'; ctx.font = `${Math.round(h * 0.07)}px sans-serif`;
+      ctx.fillText(String(b.sku || ''), halfW + halfW / 2, h * 0.64);
+    } else {
+      const pad = w * 0.02;
+      ctx.textBaseline = 'top'; ctx.textAlign = 'left';
+      if(storeName){ ctx.font = `${Math.round(h * 0.07)}px sans-serif`; ctx.fillText(storeName.toUpperCase(), pad, pad); }
+      ctx.font = `bold ${Math.round(h * 0.12)}px sans-serif`;
+      wrapCanvasText(ctx, b.name, pad, pad + h * 0.12, w - pad * 2, Math.round(h * 0.14));
+      const barcodeH = h * 0.32, barcodeW = w * 0.7;
+      ctx.drawImage(barcodeCanvas, (w - barcodeW) / 2, h * 0.44, barcodeW, barcodeH);
+      ctx.font = `${Math.round(h * 0.08)}px sans-serif`;
+      ctx.textAlign = 'left';
+      ctx.fillText(`${b.sku || ''}${b.condition ? ' · ' + b.condition : ''}`, pad, h * 0.82);
+      ctx.font = `bold ${Math.round(h * 0.16)}px sans-serif`;
+      ctx.textAlign = 'right';
+      ctx.fillText(fd$(b.price), w - pad, h * 0.78);
+    }
+    const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+    const safeName = String(b.name || 'label').toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 30) || 'label';
+    seenNames[safeName] = (seenNames[safeName] || 0) + 1;
+    const fileName = `label-${safeName}-${seenNames[safeName]}.png`;
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = fileName;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
+    // A short gap between downloads: Chrome on Android prompts once to allow
+    // multiple downloads from a page, then proceeds -- firing them back-to-back
+    // with zero delay is more likely to get some silently dropped.
+    if(i < labelSpecs.length - 1) await new Promise(resolve => setTimeout(resolve, 350));
+    if((i + 1) % LABEL_PRINT_YIELD_EVERY === 0 && btn) btn.textContent = `GENERATING... (${i + 1}/${labelSpecs.length})`;
+  }
+  if(btn){ btn.disabled = false; btn.textContent = btnLabel; }
+  toast_dash(`Saved ${labelSpecs.length} label image${labelSpecs.length === 1 ? '' : 's'} to your phone's Downloads -- open your printer app and import them.`);
+}
+
 // ── POKÉMON SET BROWSER (Pass B) ────────────────────────────────
 const _sbState = {
   sets: null, setsLoadedAt: 0,
@@ -41543,7 +41656,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.19.4-twilio-health-flag" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.19.5-label-png-download" defer></script>
 </body>
 </html>
 
