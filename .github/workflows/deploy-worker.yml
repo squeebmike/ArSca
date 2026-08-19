@@ -133,7 +133,20 @@ jobs:
           }
 
           const probeKey = 'deploy_probe_' + Date.now();
-          await request('health', '/health');
+          // The health check runs seconds after a fresh deploy, which can
+          // occasionally race Cloudflare's edge propagation (especially
+          // right after routes/workers_dev topology changes) and see a
+          // stale response for a moment. Retry before treating it as real.
+          for (let attempt = 1; ; attempt++) {
+            try {
+              await request('health', '/health');
+              break;
+            } catch (err) {
+              if (attempt >= 4) throw err;
+              console.log(`health check attempt ${attempt} failed, retrying in 5s: ${err.message}`);
+              await new Promise(r => setTimeout(r, 5000));
+            }
+          }
           await request('anonymous kv write rejected', '/kv/' + probeKey, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
