@@ -30,6 +30,7 @@
   "triggers": {
     "crons": ["0 */6 * * *"]
   },
+  "workers_dev": true,
   "routes": [
     { "pattern": "themanapocket.com/mtg*", "zone_name": "themanapocket.com" }
   ]
