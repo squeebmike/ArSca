@@ -32,7 +32,10 @@
 #stripe-payment-element{background:#fff;border:1px solid var(--line);border-radius:10px;padding:12px;margin-bottom:14px}
 .confirm-box{text-align:center;padding:30px 20px}
 .confirm-num{font-family:monospace;font-size:26px;font-weight:900;color:#087f5b;letter-spacing:1px;margin:14px 0}
-</style></head><body><header><div class="head"><img id="logo" class="logo" hidden><div><h1 id="store-name">Store Inventory</h1><p id="store-message">Loading available items…</p></div></div></header><main class="wrap"><div class="controls"><input id="q" placeholder="Search inventory…"><select id="category"><option value="">All categories</option></select><select id="ptype"><option value="">All product types</option></select><select id="year"><option value="">All years</option></select><select id="condition"><option value="">All conditions</option></select><select id="sort"><option value="newest">Newest</option><option value="name">Name</option><option value="price-low">Price: low to high</option><option value="price-high">Price: high to low</option><option value="year">Year</option></select></div><div id="summary" class="summary"></div><section id="grid" class="grid"></section></main>
+/* ACCOUNT */
+#account-nav-btn{margin-left:auto;flex-shrink:0;min-height:40px;padding:8px 16px;border:1px solid #2f4a41;border-radius:9px;background:#0d1c17;color:#fff;font-weight:800;font-size:13px;cursor:pointer}
+.account-tab-btn{min-height:34px;padding:6px 12px;font-size:12px;margin-top:0}
+</style></head><body><header><div class="head"><img id="logo" class="logo" hidden><div><h1 id="store-name">Store Inventory</h1><p id="store-message">Loading available items…</p></div><button id="account-nav-btn" onclick="openAccount()">Sign In</button></div></header><main class="wrap"><div class="controls"><input id="q" placeholder="Search inventory…"><select id="category"><option value="">All categories</option></select><select id="ptype"><option value="">All product types</option></select><select id="year"><option value="">All years</option></select><select id="condition"><option value="">All conditions</option></select><select id="sort"><option value="newest">Newest</option><option value="name">Name</option><option value="price-low">Price: low to high</option><option value="price-high">Price: high to low</option><option value="year">Year</option></select></div><div id="summary" class="summary"></div><section id="grid" class="grid"></section></main>
 
 <dialog id="detail"><div id="detail-content"></div></dialog>
 
@@ -50,9 +53,14 @@
 
 <dialog id="checkout-modal"><div class="sheet-copy" id="checkout-content"></div></dialog>
 
+<dialog id="account-modal"><div class="sheet-copy" id="account-content"></div></dialog>
+
 <script src="https://js.stripe.com/v3/"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 const WORKER='https://still-resonance-4f87.swarnerauto.workers.dev';
+const SUPABASE_URL='https://vroknjrxubsqyexngwus.supabase.co';
+const SUPABASE_ANON_KEY='sb_publishable_wbpX2nL8l-4NbXtZNG_bjA_nabSYaJ5';
 let payload={store:{},items:[]};
 let cart=JSON.parse(localStorage.getItem('storefront_cart')||'[]');
 let currentStoreId='';
@@ -362,4 +370,173 @@ document.querySelectorAll('.controls input').forEach(el=>el.addEventListener('in
 document.querySelectorAll('.controls select').forEach(el=>el.addEventListener('change', render));
 updateCartFab();
 start();
+
+// ── ACCOUNT ───────────────────────────────────────────────────────
+let sb=null, accountSession=null, authMode='signin', accountPendingPhone='';
+let accountState={ tab:'summary', loaded:false, linked:false, customer:null, giftCards:[] };
+function initSupabase(){
+  if(!window.supabase || sb) return;
+  sb=window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {auth:{persistSession:true, autoRefreshToken:true}});
+  sb.auth.onAuthStateChange((_event, session)=>{ accountSession=session; updateAccountNav(); });
+  sb.auth.getSession().then(({data})=>{ accountSession=data.session; updateAccountNav(); });
+}
+function updateAccountNav(){
+  const btn=document.getElementById('account-nav-btn');
+  if(btn) btn.textContent = accountSession ? 'My Account' : 'Sign In';
+}
+function openAccount(){
+  if(!sb){ toast('Account sign-in is unavailable right now.'); return; }
+  if(accountSession && !accountState.loaded) loadAccountSummary();
+  renderAccountModal();
+  document.getElementById('account-modal').showModal();
+}
+function renderAccountModal(){
+  const el=document.getElementById('account-content');
+  if(!accountSession){ el.innerHTML=renderAuthForm(); return; }
+  if(!accountState.loaded){ el.innerHTML='<div class="sheet-title">My Account</div><div class="empty">Loading…</div>'; return; }
+  if(accountState.error){ el.innerHTML=`<div class="sheet-title">My Account</div><div class="error-box on">${esc(accountState.error)}</div><button class="btn close" onclick="signOutAccount()">SIGN OUT</button>`; return; }
+  el.innerHTML = accountState.linked ? renderAccountLinked() : renderPhoneLinkForm();
+}
+function renderAuthForm(){
+  return `<div class="sheet-title">${authMode==='signin'?'Sign In':'Create Account'}</div>
+    <div class="error-box" id="auth-error"></div>
+    <div class="field"><label>Email</label><input id="auth-email" type="email" autocomplete="email"></div>
+    <div class="field"><label>Password</label><input id="auth-password" type="password" autocomplete="${authMode==='signin'?'current-password':'new-password'}"></div>
+    <div class="btn-row">
+      <button class="btn" onclick="submitAuth()">${authMode==='signin'?'SIGN IN':'CREATE ACCOUNT'}</button>
+      <button class="btn close" onclick="document.getElementById('account-modal').close()">CANCEL</button>
+    </div>
+    <div style="margin-top:10px;font-size:13px">${authMode==='signin'
+      ?'New here? <a href="#" onclick="event.preventDefault();authMode=\'signup\';renderAccountModal()">Create an account</a>'
+      :'Already have an account? <a href="#" onclick="event.preventDefault();authMode=\'signin\';renderAccountModal()">Sign in</a>'}</div>`;
+}
+async function submitAuth(){
+  const email=document.getElementById('auth-email').value.trim();
+  const password=document.getElementById('auth-password').value;
+  const errEl=document.getElementById('auth-error'); errEl.classList.remove('on');
+  if(!email||!password){ errEl.textContent='Email and password are required.'; errEl.classList.add('on'); return; }
+  const { error } = authMode==='signin'
+    ? await sb.auth.signInWithPassword({email,password})
+    : await sb.auth.signUp({email,password});
+  if(error){ errEl.textContent=error.message; errEl.classList.add('on'); return; }
+  const { data:{session} } = await sb.auth.getSession();
+  accountSession=session;
+  updateAccountNav();
+  if(!accountSession){ errEl.textContent='Check your email to confirm your account, then sign in.'; errEl.classList.add('on'); return; }
+  accountState={ tab:'summary', loaded:false, linked:false, customer:null, giftCards:[] };
+  await loadAccountSummary();
+}
+async function signOutAccount(){
+  await sb.auth.signOut();
+  accountSession=null;
+  accountState={ tab:'summary', loaded:false, linked:false, customer:null, giftCards:[] };
+  updateAccountNav();
+  document.getElementById('account-modal').close();
+}
+async function loadAccountSummary(){
+  try{
+    const res=await fetch(`${WORKER}/public/account/summary?store_id=${encodeURIComponent(currentStoreId)}`,{headers:{Authorization:'Bearer '+accountSession.access_token}});
+    const data=await res.json();
+    if(!res.ok||!data.ok) throw new Error(data.error||'Could not load your account.');
+    accountState.linked=data.linked; accountState.customer=data.customer; accountState.giftCards=data.giftCards||[]; accountState.error=null;
+  }catch(e){ accountState.error=e.message; }
+  accountState.loaded=true;
+  renderAccountModal();
+}
+function renderPhoneLinkForm(){
+  return `<div class="sheet-title">Link Your Account</div>
+    <p style="font-size:13px;color:var(--muted);margin-top:-6px">Verify your phone number to see your orders, trade credit, loyalty points and more from ${esc(payload.store.name||'this store')}.</p>
+    <div class="error-box" id="phone-error"></div>
+    <div class="field"><label>Phone number</label><input id="phone-input" type="tel" placeholder="(555) 555-5555"></div>
+    <div class="btn-row"><button class="btn" onclick="submitStartPhoneVerify()">SEND CODE</button></div>
+    <div id="phone-code-section" style="display:none;margin-top:14px">
+      <div class="field"><label>Verification code</label><input id="phone-code-input" inputmode="numeric" maxlength="6"></div>
+      <div class="btn-row"><button class="btn" onclick="submitConfirmPhoneVerify()">VERIFY</button></div>
+    </div>
+    <button class="btn close" style="margin-top:14px" onclick="signOutAccount()">SIGN OUT</button>`;
+}
+async function submitStartPhoneVerify(){
+  const phone=document.getElementById('phone-input').value.trim();
+  const errEl=document.getElementById('phone-error'); errEl.classList.remove('on');
+  try{
+    const res=await fetch(`${WORKER}/public/account/phone/start-verify`,{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+accountSession.access_token},body:JSON.stringify({storeId:currentStoreId, phone})});
+    const data=await res.json();
+    if(!res.ok||!data.ok) throw new Error(data.error||'Could not send code.');
+    accountPendingPhone=phone;
+    document.getElementById('phone-code-section').style.display='block';
+    toast('Code sent');
+  }catch(e){ errEl.textContent=e.message; errEl.classList.add('on'); }
+}
+async function submitConfirmPhoneVerify(){
+  const code=document.getElementById('phone-code-input').value.trim();
+  const errEl=document.getElementById('phone-error'); errEl.classList.remove('on');
+  try{
+    const res=await fetch(`${WORKER}/public/account/phone/confirm-verify`,{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+accountSession.access_token},body:JSON.stringify({storeId:currentStoreId, phone:accountPendingPhone, code})});
+    const data=await res.json();
+    if(!res.ok||!data.ok) throw new Error(data.error||'That code was not correct.');
+    accountState.linked=data.linked; accountState.customer=data.customer; accountState.giftCards=data.giftCards||[]; accountState.loaded=true; accountState.error=null;
+    renderAccountModal();
+    toast('Account linked!');
+  }catch(e){ errEl.textContent=e.message; errEl.classList.add('on'); }
+}
+const ACCOUNT_TABS=[['summary','Summary'],['orders','Orders'],['in-store','In-Store'],['consignments','Consignments'],['wishlist','Wishlist']];
+const ACCOUNT_TAB_ENDPOINT={orders:'orders','in-store':'in-store',consignments:'consignments',wishlist:'wishlist'};
+function renderAccountLinked(){
+  const c=accountState.customer||{};
+  return `<div class="sheet-title">${esc(c.name||'My Account')}</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">${ACCOUNT_TABS.map(([id,label])=>`<button class="btn account-tab-btn ${accountState.tab===id?'':'close'}" onclick="switchAccountTab('${id}')">${label}</button>`).join('')}</div>
+    <div id="account-tab-content">${renderAccountTabContent()}</div>
+    <button class="btn close" style="margin-top:14px" onclick="signOutAccount()">SIGN OUT</button>`;
+}
+async function switchAccountTab(tab){
+  accountState.tab=tab;
+  renderAccountModal();
+  if(tab!=='summary' && !accountState[tab]) await loadAccountTab(tab);
+}
+async function loadAccountTab(tab){
+  try{
+    const res=await fetch(`${WORKER}/public/account/${ACCOUNT_TAB_ENDPOINT[tab]}?store_id=${encodeURIComponent(currentStoreId)}`,{headers:{Authorization:'Bearer '+accountSession.access_token}});
+    const data=await res.json();
+    if(!res.ok||!data.ok) throw new Error(data.error||'Could not load this section.');
+    accountState[tab]=data;
+  }catch(e){ accountState[tab]={error:e.message}; }
+  const el=document.getElementById('account-tab-content');
+  if(el && accountState.tab===tab) el.innerHTML=renderAccountTabContent();
+}
+function orderCardHtml(o){
+  const items=(o.items||[]).map(it=>`${esc(it.title)} ×${it.quantity}`).join(', ');
+  const date=o.created_at?new Date(o.created_at).toLocaleDateString():'';
+  return `<div class="cart-line"><div><div class="name">${[date,o.confirmation_number].filter(Boolean).map(esc).join(' · ')}</div><div class="sub">${items?esc(items):'No items on file'}</div></div><div>${o.total!=null?'$'+Number(o.total).toFixed(2):''}</div></div>`;
+}
+function renderAccountTabContent(){
+  const t=accountState.tab;
+  if(t==='summary'){
+    const c=accountState.customer;
+    if(!c) return '<div class="empty">No account details yet.</div>';
+    return `<div style="display:grid;gap:2px">
+      <div class="cart-total-row"><span>Loyalty points</span><span>${Number(c.loyaltyPointsBalance||0)}</span></div>
+      <div class="cart-total-row"><span>Trade credit</span><span>$${Number(c.tradeCreditBalance||0).toFixed(2)}</span></div>
+      ${accountState.giftCards.length?`<div style="margin-top:10px"><div style="font-weight:800;font-size:13px;margin-bottom:6px">Gift Cards</div>${accountState.giftCards.map(g=>`<div class="cart-total-row"><span>${esc(g.code)}</span><span>$${Number(g.balance).toFixed(2)}</span></div>`).join('')}</div>`:''}
+    </div>`;
+  }
+  const data=accountState[t];
+  if(!data) return '<div class="empty">Loading…</div>';
+  if(data.error) return `<div class="empty">${esc(data.error)}</div>`;
+  if(t==='orders') return data.orders.length ? data.orders.map(orderCardHtml).join('') : '<div class="empty">No online orders yet.</div>';
+  if(t==='in-store'){
+    if(!data.purchases.length) return '<div class="empty">No in-store purchases on file.</div>';
+    return data.purchases.map(orderCardHtml).join('');
+  }
+  if(t==='consignments'){
+    if(!data.linked) return '<div class="empty">No consignment account matched to this phone or email.</div>';
+    if(!data.items.length) return '<div class="empty">No consigned items yet.</div>';
+    return data.items.map(i=>`<div class="cart-line"><div><div class="name">${esc(i.item_name)}</div><div class="sub">${esc(i.status)}${i.sale_price?' · $'+Number(i.sale_price).toFixed(2):''}</div></div></div>`).join('');
+  }
+  if(t==='wishlist'){
+    if(!data.items.length) return '<div class="empty">Your wishlist is empty.</div>';
+    return data.items.map(i=>`<div class="cart-line"><div><div class="name">${esc(i.item||i.name||'Item')}</div></div></div>`).join('');
+  }
+  return '';
+}
+initSupabase();
 </script></body></html>

@@ -7,7 +7,7 @@ const worker = fs.readFileSync('cloudflare-worker-full.js', 'utf8');
 // ── Worker: send helpers ────────────────────────────────────────────
 assert.match(worker, /async function sendSms\(env, to, body\) \{/, 'missing sendSms');
 assert.match(worker, /async function sendEmail\(env, to, subject, text\) \{/, 'missing sendEmail');
-assert.match(worker, /async function sendContactNotification\(env, contact, subject, message\) \{/, 'missing sendContactNotification');
+assert.match(worker, /async function sendContactNotification\(env, storeId, contact, subject, message, hasConsent\) \{/, 'missing sendContactNotification (storeId + hasConsent are required for SMS consent/opt-out gating)');
 
 // SMS goes through Twilio's Messages API with Basic auth (Account SID/Auth Token).
 assert.match(worker, /https:\/\/api\.twilio\.com\/2010-04-01\/Accounts\/\$\{env\.TWILIO_ACCOUNT_SID\}\/Messages\.json/, 'must POST to the Twilio Messages API');
@@ -22,6 +22,13 @@ assert.match(worker, /if \(!env\.SENDGRID_API_KEY \|\| !env\.SENDGRID_FROM_EMAIL
 assert.match(worker, /if \(clean\.includes\('@'\)\) \{ await sendEmail\(env, clean, subject, message\); return 'email'; \}/, 'sendContactNotification must route email-shaped contacts to sendEmail');
 assert.match(worker, /await sendSms\(env, clean, message\);\s*\n\s*return 'sms';/, 'sendContactNotification must route everything else to sendSms');
 
+// ── A2P 10DLC / CTIA compliance: promotional SMS must never send without
+// consent, and must always honor an opt-out on file, regardless of what the
+// caller claims. ──
+assert.match(worker, /async function smsConsentStatus\(env, storeId, phoneNumber\) \{/, 'missing smsConsentStatus helper');
+assert.match(worker, /if \(status\.optedOut\) \{ const err = new Error\('This customer has opted out of text messages \(replied STOP\)\. Contact them another way\.'\); err\.code = 'opted_out'; throw err; \}/, 'sendContactNotification must refuse to send to an opted-out number even if the caller claims consent');
+assert.match(worker, /if \(!hasConsent\) \{ const err = new Error\('No SMS consent on file for this contact -- check the consent box before texting them\.'\); err\.code = 'no_consent'; throw err; \}/, 'sendContactNotification must require the caller to assert consent for this specific outreach');
+
 console.log('Notification-provider helper checks passed');
 
 // ── Worker: /notify/send route ──────────────────────────────────────
@@ -29,16 +36,28 @@ assert.match(worker, /if \(url\.pathname === '\/notify\/send'\) \{/, 'missing /n
 assert.match(worker, /const auth = await requireStoreUser\(request, env, storeId, \['owner','admin','manager','employee'\]\);/, 'notify/send must require an authenticated store user (any staff role)');
 assert.match(worker, /const rateError = await enforceUsageLimit\(env, `notify-send:\$\{storeId\}`, 100, 3600\);/, 'notify/send must be rate-limited to prevent runaway SMS/email costs from a bug or abuse');
 assert.match(worker, /if \(!contact \|\| !message\) return json\(\{ ok:false, error:'contact and message are required' \}, 400\);/, 'notify/send must require both contact and message');
+assert.match(worker, /const channel = await sendContactNotification\(env, storeId, contact, String\(body\.subject \|\| 'Message from your store'\)\.slice\(0, 200\), message, body\.consent === true\);/, 'notify/send must pass the caller-asserted consent flag through, not assume consent');
+assert.match(worker, /const status = e\.code === 'opted_out' \? 409 : e\.code === 'no_consent' \? 403 : 502;/, 'notify/send must map opted-out/no-consent to distinct status codes so the UI never falls back to a bypass');
 
 console.log('/notify/send route checks passed');
 
 // ── Dashboard: notifyWant sends for real, with graceful fallback ────
 assert.match(dashboard, /async function notifyWant\(id\)\{/, 'notifyWant must be async now that it calls the Worker');
-assert.match(dashboard, /const res = await storeWorkerFetch\('\/notify\/send', \{ method:'POST', headers:\{'Content-Type':'application\/json'\}, body:JSON\.stringify\(\{ storeId:getActiveStoreId\(\), contact:w\.contact, subject:'Your Want List Item is In Stock!', message:msg \}\) \}\);/, 'notifyWant must call the real /notify/send route');
-// Must still fall back to the old device-link behavior on failure (e.g.
-// SMS/email not configured yet) rather than just breaking the button.
-assert.match(dashboard, /\} catch\(e\) \{\s*\n\s*if\(w\.contact\.includes\('@'\)\) window\.open\('mailto:'\+w\.contact/, 'notifyWant must fall back to a device mailto: link if the real send fails');
-assert.match(dashboard, /else window\.open\('sms:'\+w\.contact\.replace\(\/\\D\/g,''\)\+'\?body='\+encodeURIComponent\(msg\)\);/, 'notifyWant must fall back to a device sms: link if the real send fails');
+assert.match(dashboard, /const res = await storeWorkerFetch\('\/notify\/send', \{ method:'POST', headers:\{'Content-Type':'application\/json'\}, body:JSON\.stringify\(\{ storeId:getActiveStoreId\(\), contact:w\.contact, subject:'Your Want List Item is In Stock!', message:msg, consent:w\.smsConsent===true \}\) \}\);/, 'notifyWant must call the real /notify/send route and pass the want-list entry\'s own consent flag');
+// A 403 (no consent on file) or 409 (opted out) means the app itself
+// refused to send -- that must never fall through to opening the staff's
+// own personal texting app below, since that would send the exact text the
+// backend just refused via a channel the compliance check can't see.
+assert.match(dashboard, /if\(res\.status===403\|\|res\.status===409\)\{ toast_dash\(data\.error\|\|'Cannot text this customer\.'\); return; \}/, 'notifyWant must not fall back to a device link when the backend refuses on consent grounds');
+// Only real technical failures (Twilio not configured, network error, etc)
+// still fall back to the old device-link behavior.
+assert.match(dashboard, /\} catch\(e\) \{\s*\n\s*if\(w\.contact\.includes\('@'\)\) window\.open\('mailto:'\+w\.contact/, 'notifyWant must fall back to a device mailto: link if the real send fails for a non-consent reason');
+assert.match(dashboard, /else window\.open\('sms:'\+w\.contact\.replace\(\/\\D\/g,''\)\+'\?body='\+encodeURIComponent\(msg\)\);/, 'notifyWant must fall back to a device sms: link if the real send fails for a non-consent reason');
+// Consent capture: a checkbox in the add-want form, read into the want-list
+// entry, so /notify/send has something real to check against per item.
+assert.match(dashboard, /<input type="checkbox" id="wl-sms-consent">/, 'the add-want form must render an SMS-consent checkbox');
+assert.match(dashboard, /const smsConsent = document\.getElementById\('wl-sms-consent'\)\.checked;/, 'addWantItem must read the consent checkbox');
+assert.match(dashboard, /item, customer, contact, maxprice, category, notes, smsConsent,/, 'addWantItem must store the consent flag on the want-list entry');
 // A successful send must be recorded so staff can see it already went out.
 assert.match(dashboard, /w\.notifiedAt = new Date\(\)\.toISOString\(\);\s*\n\s*w\.notifiedVia = data\.channel;/, 'a successful send must record notifiedAt/notifiedVia on the want record');
 assert.match(dashboard, /\$\{w\.notifiedAt\?`<div style="font-size:8px;color:var\(--blue\)">✓ Notified via/, 'the want list row must show when/how a customer was already notified');
