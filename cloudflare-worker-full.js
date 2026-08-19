@@ -1817,6 +1817,143 @@ function compactToppsCard(row = {}, generatedAt) {
   return { id: row.id, setId: row.setId, sourceId: row.sourceId, year: row.year, brand: row.brand, product: row.product, sport: row.sport, setName: row.setName, releaseName: row.releaseName, cardNumber: row.cardNumber, player: row.player, subject: row.subject, team: row.team, notes: row.notes, section: row.section, flags: row.flags || {}, parseConfidence: Number(row.parseConfidence || 0), searchText: row.searchText || '', updatedAt: row.updatedAt || generatedAt };
 }
 
+// ─── Public MTG card/set pages ──────────────────────────────────────────────
+// Server-rendered so every card and every set gets a real, crawlable URL --
+// unlike the client-side JS shop grid (renderLiveInventory), these pages
+// exist and have real content before any script runs. Reads the same
+// mtg/manifest.json + cards.jsonl.gz / sets.jsonl.gz the offline browser tool
+// (mtg-offline-browser.js) already consumes -- see /catalog/mtg/* above and
+// scripts/mtg/build-mtg-offline-bundle.mjs for how that data gets published.
+// This is a reference/price-guide catalog (every card ever printed), not
+// live shop inventory, so Product JSON-LD here intentionally omits an
+// `availability` claim -- there's no "in stock" truth to assert.
+
+function mtgEscapeHtml(value) {
+  return String(value == null ? '' : value).replace(/[&<>"']/g, ch => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[ch]));
+}
+
+function mtgSlugify(value) {
+  return String(value || '')
+    .normalize('NFKD').replace(/[̀-ͯ]/g, '')
+    .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'card';
+}
+
+function mtgCardSlug(card) {
+  return mtgSlugify(card.name) + '-' + mtgSlugify(card.collectorNumber || '');
+}
+
+function mtgCollectorSortKey(value) {
+  const match = String(value || '').match(/\d+/);
+  return match ? Number(match[0]) : Number.MAX_SAFE_INTEGER;
+}
+
+function mtgPriceLines(card) {
+  const prices = card.prices || {};
+  const lines = [];
+  if (prices.usd) lines.push(`$${prices.usd}`);
+  if (prices.usd_foil) lines.push(`$${prices.usd_foil} foil`);
+  if (prices.usd_etched) lines.push(`$${prices.usd_etched} etched`);
+  return lines;
+}
+
+function mtgPageShell({ title, description, canonicalPath, ogImage, jsonLd, bodyHtml }) {
+  const jsonLdBlock = jsonLd ? `<script type="application/ld+json">${JSON.stringify(jsonLd)}</script>` : '';
+  const ogImageTag = ogImage ? `<meta property="og:image" content="${mtgEscapeHtml(ogImage)}">` : '';
+  return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">` +
+    `<title>${mtgEscapeHtml(title)}</title><meta name="description" content="${mtgEscapeHtml(description)}">` +
+    `<link rel="canonical" href="https://themanapocket.com${canonicalPath}">` +
+    `<meta property="og:title" content="${mtgEscapeHtml(title)}"><meta property="og:description" content="${mtgEscapeHtml(description)}">${ogImageTag}` +
+    `${jsonLdBlock}` +
+    `<style>*{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#0a0710;color:#f2eefc;padding:24px 16px 64px}a{color:#8bd450}.mp-wrap{max-width:1080px;margin:0 auto}.mp-crumb{font-size:13px;opacity:.65;margin-bottom:16px}.mp-crumb a{color:#c8b8ff}h1{font-size:clamp(22px,4vw,32px);margin:0 0 8px}.mp-sub{opacity:.7;font-size:14px;margin-bottom:24px}.mp-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:16px}.mp-card{display:block;border:1px solid rgba(255,255,255,.12);border-radius:12px;overflow:hidden;background:rgba(255,255,255,.03);text-decoration:none;color:inherit}.mp-card img{width:100%;display:block;background:#16101f}.mp-card-body{padding:10px 12px}.mp-card-name{font-size:13px;font-weight:700;line-height:1.3}.mp-card-price{font-size:12px;color:#8bd450;font-weight:700;margin-top:4px}.mp-set-list{display:grid;gap:10px}.mp-set-row{display:flex;justify-content:space-between;gap:12px;padding:12px 16px;border:1px solid rgba(255,255,255,.1);border-radius:10px;text-decoration:none;color:inherit}.mp-set-row:hover{border-color:#8bd450}.mp-detail{display:grid;grid-template-columns:280px 1fr;gap:32px}@media(max-width:640px){.mp-detail{grid-template-columns:1fr}}.mp-detail img{width:100%;border-radius:14px}.mp-prices{display:flex;gap:10px;flex-wrap:wrap;margin:16px 0}.mp-price-pill{background:rgba(139,212,80,.15);color:#8bd450;font-weight:800;padding:8px 14px;border-radius:999px;font-size:14px}.mp-oracle{white-space:pre-wrap;line-height:1.6;font-size:14px;opacity:.9;margin-top:16px}.mp-meta{font-size:13px;opacity:.65;margin-top:8px}</style></head>` +
+    `<body><div class="mp-wrap">${bodyHtml}</div></body></html>`;
+}
+
+function mtgHtmlResponse(html) {
+  return new Response(html, { headers: { 'Content-Type': 'text/html;charset=UTF-8' } });
+}
+
+function mtgNotFoundPage(message) {
+  const html = mtgPageShell({
+    title: 'Not found | The Mana Pocket',
+    description: message,
+    canonicalPath: '/mtg',
+    bodyHtml: `<div class="mp-crumb"><a href="/mtg">← All MTG sets</a></div><h1>Not found</h1><p class="mp-sub">${mtgEscapeHtml(message)}</p>`,
+  });
+  return new Response(html, { status: 404, headers: { 'Content-Type': 'text/html;charset=UTF-8' } });
+}
+
+function mtgComingSoonPage() {
+  const html = mtgPageShell({
+    title: 'MTG Card Catalog | The Mana Pocket',
+    description: 'Every Magic: The Gathering card and set, with prices. Catalog is being built.',
+    canonicalPath: '/mtg',
+    bodyHtml: `<h1>MTG card catalog</h1><p class="mp-sub">This catalog is still being built — check back soon.</p>`,
+  });
+  return mtgHtmlResponse(html);
+}
+
+function renderMtgSetIndexPage(sets) {
+  const rows = sets.map(set => {
+    const href = `/mtg/${mtgEscapeHtml(set.setCode)}`;
+    const year = set.releasedAt ? String(set.releasedAt).slice(0, 4) : '';
+    return `<a class="mp-set-row" href="${href}"><span>${mtgEscapeHtml(set.setName || set.setCode)}${year ? ` <span style="opacity:.6">(${year})</span>` : ''}</span><span style="opacity:.6">${Number(set.cardCount || 0).toLocaleString()} cards</span></a>`;
+  }).join('');
+  return mtgPageShell({
+    title: 'Every MTG Set | The Mana Pocket',
+    description: `Browse every Magic: The Gathering set and card, with current prices. ${sets.length.toLocaleString()} sets.`,
+    canonicalPath: '/mtg',
+    jsonLd: { '@context': 'https://schema.org', '@type': 'CollectionPage', name: 'MTG Sets', description: 'Every Magic: The Gathering set, with cards and prices.' },
+    bodyHtml: `<h1>Every MTG set</h1><p class="mp-sub">${sets.length.toLocaleString()} sets, from the newest release back to the very first.</p><div class="mp-set-list">${rows}</div>`,
+  });
+}
+
+function renderMtgSetPage(set, cards) {
+  const cardTiles = cards.map(card => {
+    const href = `/mtg/${mtgEscapeHtml(set.setCode)}/${mtgCardSlug(card)}`;
+    const img = card.imageUris?.small || card.cardFaces?.[0]?.imageUris?.small || '';
+    const priceLines = mtgPriceLines(card);
+    return `<a class="mp-card" href="${href}">${img ? `<img loading="lazy" src="${mtgEscapeHtml(img)}" alt="${mtgEscapeHtml(card.name)}">` : ''}<div class="mp-card-body"><div class="mp-card-name">${mtgEscapeHtml(card.name)} <span style="opacity:.6">#${mtgEscapeHtml(card.collectorNumber)}</span></div>${priceLines.length ? `<div class="mp-card-price">${mtgEscapeHtml(priceLines[0])}</div>` : ''}</div></a>`;
+  }).join('');
+  const year = set.releasedAt ? String(set.releasedAt).slice(0, 4) : '';
+  return mtgPageShell({
+    title: `${set.setName || set.setCode}${year ? ` (${year})` : ''} — Every Card & Price | The Mana Pocket`,
+    description: `All ${cards.length.toLocaleString()} cards in ${set.setName || set.setCode}, with current market prices.`,
+    canonicalPath: `/mtg/${set.setCode}`,
+    jsonLd: {
+      '@context': 'https://schema.org', '@type': 'CollectionPage', name: set.setName || set.setCode,
+      description: `All cards in ${set.setName || set.setCode}`,
+      hasPart: cards.slice(0, 200).map(card => ({ '@type': 'Product', name: card.name, sku: card.scryfallId })),
+    },
+    bodyHtml: `<div class="mp-crumb"><a href="/mtg">← All MTG sets</a></div><h1>${mtgEscapeHtml(set.setName || set.setCode)}</h1><p class="mp-sub">${cards.length.toLocaleString()} cards${year ? ` · released ${year}` : ''}</p><div class="mp-grid">${cardTiles}</div>`,
+  });
+}
+
+function renderMtgCardPage(card) {
+  const img = card.imageUris?.normal || card.cardFaces?.[0]?.imageUris?.normal || '';
+  const priceLines = mtgPriceLines(card);
+  const priceNum = card.prices?.usd ? Number(card.prices.usd) : null;
+  const canonicalPath = `/mtg/${card.setCode}/${mtgCardSlug(card)}`;
+  return mtgPageShell({
+    title: `${card.name} (${card.setName || card.setCode}) — Price & Details | The Mana Pocket`,
+    description: `${card.name} from ${card.setName || card.setCode}${priceLines.length ? `. Currently ${priceLines[0]}.` : '.'} ${(card.typeLine || '').trim()}`.trim(),
+    canonicalPath,
+    ogImage: img,
+    jsonLd: {
+      '@context': 'https://schema.org', '@type': 'Product', name: card.name, image: img || undefined,
+      sku: card.scryfallId, brand: { '@type': 'Brand', name: 'Magic: The Gathering' },
+      description: card.oracleText || card.typeLine || undefined,
+      ...(priceNum ? { offers: { '@type': 'Offer', priceCurrency: 'USD', price: priceNum, url: `https://themanapocket.com${canonicalPath}` } } : {}),
+    },
+    bodyHtml: `<div class="mp-crumb"><a href="/mtg">All MTG sets</a> / <a href="/mtg/${mtgEscapeHtml(card.setCode)}">${mtgEscapeHtml(card.setName || card.setCode)}</a></div>` +
+      `<div class="mp-detail">${img ? `<img src="${mtgEscapeHtml(img)}" alt="${mtgEscapeHtml(card.name)}">` : ''}` +
+      `<div><h1>${mtgEscapeHtml(card.name)}</h1><div class="mp-meta">${mtgEscapeHtml(card.setName || card.setCode)} · #${mtgEscapeHtml(card.collectorNumber)} · ${mtgEscapeHtml(card.rarity || '')}</div>` +
+      `<div class="mp-prices">${priceLines.map(line => `<span class="mp-price-pill">${mtgEscapeHtml(line)}</span>`).join('') || '<span class="mp-meta">No current price data</span>'}</div>` +
+      `<div class="mp-meta">${mtgEscapeHtml(card.typeLine || '')}${card.manaCost ? ` · ${mtgEscapeHtml(card.manaCost)}` : ''}</div>` +
+      `${card.oracleText ? `<div class="mp-oracle">${mtgEscapeHtml(card.oracleText)}</div>` : ''}` +
+      `${card.artist ? `<div class="mp-meta">Illustrated by ${mtgEscapeHtml(card.artist)}</div>` : ''}</div></div>`,
+  });
+}
+
 function compactToppsSet(row = {}, generatedAt) {
   return { id: row.id, year: row.year, brand: row.brand, product: row.product, sport: row.sport, setName: row.setName, releaseName: row.releaseName, cardCount: Number(row.cardCount || 0), updatedAt: row.updatedAt || generatedAt };
 }
@@ -3275,6 +3412,78 @@ export default {
       response.headers.set('Content-Type', 'application/gzip');
       response.headers.set('X-MTG-Catalog-Version', String(manifest.version || ''));
       response.headers.set('X-Content-SHA256', String(descriptor.sha256 || ''));
+      return response;
+    }
+
+    // GET /mtg -- index of every MTG set (public, SEO page -- see the
+    // "Public MTG card/set pages" block above /catalog/mtg/manifest... no,
+    // above /compactToppsCard for the render helpers).
+    if (url.pathname === '/mtg' && request.method === 'GET') {
+      const cacheKey = new Request(url.toString(), request);
+      const cached = await caches.default.match(cacheKey);
+      if (cached) return cached;
+      if (!env.MTG_CATALOG_R2) return mtgComingSoonPage();
+      const manifestObject = await env.MTG_CATALOG_R2.get('mtg/manifest.json');
+      const manifest = manifestObject ? await manifestObject.json().catch(() => null) : null;
+      if (!manifest || manifest.status !== 'ready') return mtgComingSoonPage();
+      const setsObject = await env.MTG_CATALOG_R2.get(manifest.files?.sets?.path || 'mtg/__missing__');
+      const sets = await gunzipJsonlFromR2(setsObject);
+      sets.sort((a, b) => String(b.releasedAt || '').localeCompare(String(a.releasedAt || '')));
+      const response = mtgHtmlResponse(renderMtgSetIndexPage(sets));
+      response.headers.set('Cache-Control', 'public, max-age=21600');
+      ctx.waitUntil(caches.default.put(cacheKey, response.clone()));
+      return response;
+    }
+
+    // GET /mtg/{setCode} -- every card in one set, with prices.
+    const mtgSetMatch = url.pathname.match(/^\/mtg\/([^/]+)$/);
+    if (mtgSetMatch && request.method === 'GET') {
+      const cacheKey = new Request(url.toString(), request);
+      const cached = await caches.default.match(cacheKey);
+      if (cached) return cached;
+      if (!env.MTG_CATALOG_R2) return mtgComingSoonPage();
+      const setCode = decodeURIComponent(mtgSetMatch[1]).toLowerCase();
+      const manifestObject = await env.MTG_CATALOG_R2.get('mtg/manifest.json');
+      const manifest = manifestObject ? await manifestObject.json().catch(() => null) : null;
+      if (!manifest || manifest.status !== 'ready') return mtgComingSoonPage();
+      const setsObject = await env.MTG_CATALOG_R2.get(manifest.files?.sets?.path || 'mtg/__missing__');
+      const sets = await gunzipJsonlFromR2(setsObject);
+      const set = sets.find(s => String(s.setCode || '').toLowerCase() === setCode);
+      if (!set) return mtgNotFoundPage('That MTG set was not found.');
+      const cardsObject = await env.MTG_CATALOG_R2.get(manifest.files?.cards?.path || 'mtg/__missing__');
+      const cards = [];
+      for await (const card of streamJsonlFromR2(cardsObject)) {
+        if (String(card.setCode || '').toLowerCase() === setCode) cards.push(card);
+      }
+      cards.sort((a, b) => mtgCollectorSortKey(a.collectorNumber) - mtgCollectorSortKey(b.collectorNumber));
+      const response = mtgHtmlResponse(renderMtgSetPage(set, cards));
+      response.headers.set('Cache-Control', 'public, max-age=21600');
+      ctx.waitUntil(caches.default.put(cacheKey, response.clone()));
+      return response;
+    }
+
+    // GET /mtg/{setCode}/{cardSlug} -- a single card's price/detail page.
+    const mtgCardMatch = url.pathname.match(/^\/mtg\/([^/]+)\/([^/]+)$/);
+    if (mtgCardMatch && request.method === 'GET') {
+      const cacheKey = new Request(url.toString(), request);
+      const cached = await caches.default.match(cacheKey);
+      if (cached) return cached;
+      if (!env.MTG_CATALOG_R2) return mtgComingSoonPage();
+      const setCode = decodeURIComponent(mtgCardMatch[1]).toLowerCase();
+      const cardSlug = decodeURIComponent(mtgCardMatch[2]).toLowerCase();
+      const manifestObject = await env.MTG_CATALOG_R2.get('mtg/manifest.json');
+      const manifest = manifestObject ? await manifestObject.json().catch(() => null) : null;
+      if (!manifest || manifest.status !== 'ready') return mtgComingSoonPage();
+      const cardsObject = await env.MTG_CATALOG_R2.get(manifest.files?.cards?.path || 'mtg/__missing__');
+      let found = null;
+      for await (const card of streamJsonlFromR2(cardsObject)) {
+        if (String(card.setCode || '').toLowerCase() !== setCode) continue;
+        if (mtgCardSlug(card) === cardSlug) { found = card; break; }
+      }
+      if (!found) return mtgNotFoundPage('That card was not found in this set.');
+      const response = mtgHtmlResponse(renderMtgCardPage(found));
+      response.headers.set('Cache-Control', 'public, max-age=21600');
+      ctx.waitUntil(caches.default.put(cacheKey, response.clone()));
       return response;
     }
 
