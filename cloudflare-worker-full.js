@@ -27,6 +27,7 @@
 import { buildChecklistIndex, parseChecklistText, sha1Hex, slugify } from './scripts/topps-checklist-parser.js';
 import { handleFocRequest, syncFocStripeEvent } from './scripts/foc-preorders.mjs';
 import { handleAccountRequest } from './scripts/customer-account.mjs';
+import { handleFanClubRequest } from './scripts/fan-club.mjs';
 
 // Per-isolate rate limiter for PriceCharting API (no KV needed). _pcQueueTail
 // serializes the check-and-update of _pcLastCall itself so concurrent callers
@@ -2544,6 +2545,12 @@ export default {
         CORS, json, supabaseAdminFetch, requireAuthenticatedUser, readJsonWithLimit,
         sendSms, normalizePhoneDigits, lookupCustomerIdByPhone,
         kvGet: (kvEnv, key) => kvEnv.LBA_KV ? kvEnv.LBA_KV.get(key) : null,
+      });
+    }
+
+    if (url.pathname.startsWith('/public/fan-club/')) {
+      return await handleFanClubRequest(request, env, url, {
+        json, supabaseAdminFetch, readJsonWithLimit, enforceUsageLimit,
       });
     }
 
