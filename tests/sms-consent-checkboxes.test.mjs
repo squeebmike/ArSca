@@ -12,9 +12,9 @@ const buylist = fs.readFileSync('buylist.html', 'utf8');
 // "Make SMS consent optional...so consumers can complete sign-up without
 // opting in to texts." ──
 assert.match(storefront, /<input id="ck-sms-consent" type="checkbox"/, 'checkout must render an SMS-consent checkbox');
-assert.match(storefront, /I agree to receive text messages about this order/, 'the checkbox label must explicitly say what the customer is consenting to');
+assert.match(storefront, /I agree to receive SMS\/text messages about this order/, 'the checkbox label must explicitly say what the customer is consenting to');
 assert.match(storefront, /Message frequency depends on order activity/, 'the checkbox label must disclose message frequency, per Twilio A2P requirements');
-assert.match(storefront, /Reply HELP for help, STOP to opt out/, 'the checkbox label must include both HELP and STOP instructions, not just STOP');
+assert.match(storefront, /Reply STOP to cancel, HELP for help/, "the checkbox label must use Twilio's exact required STOP/HELP phrasing, not a paraphrase");
 assert.match(storefront, /href="https:\/\/themanapocket\.com\/privacy-policy" target="_blank">Privacy Policy<\/a> and <a href="https:\/\/themanapocket\.com\/terms-and-conditions" target="_blank">Terms<\/a>/, 'the checkbox label must link directly to the real Privacy Policy and Terms pages');
 assert.doesNotMatch(storefront, /ck-sms-consent'\)\.checked/, 'checkout submission must never read/require ck-sms-consent -- consent must stay optional, not gate the purchase');
 
@@ -27,7 +27,7 @@ console.log('Storefront SMS-consent contract checks passed');
 assert.match(buylist, /<input id="sms-consent" type="checkbox"/, 'buylist form must render an SMS-consent checkbox');
 assert.match(buylist, /id="sms-consent-row" style="display:none/, 'the consent row must start hidden -- it only matters once a phone number is entered');
 assert.match(buylist, /Message frequency depends on submission activity/, 'the checkbox label must disclose message frequency, per Twilio A2P requirements');
-assert.match(buylist, /Reply HELP for help, STOP to opt out/, 'the checkbox label must include both HELP and STOP instructions, not just STOP');
+assert.match(buylist, /Reply STOP to cancel, HELP for help/, "the checkbox label must use Twilio's exact required STOP/HELP phrasing, not a paraphrase");
 assert.match(buylist, /href="https:\/\/themanapocket\.com\/privacy-policy" target="_blank">Privacy Policy<\/a> and <a href="https:\/\/themanapocket\.com\/terms-and-conditions" target="_blank">Terms<\/a>/, 'the checkbox label must link directly to the real Privacy Policy and Terms pages');
 assert.match(buylist, /function updateSmsConsentVisibility\(\)\{/, 'updateSmsConsentVisibility must exist to toggle the consent row based on whether a phone was entered');
 assert.match(buylist, /oninput="updateSmsConsentVisibility\(\)"/, 'the phone field must trigger the visibility toggle on every keystroke');
