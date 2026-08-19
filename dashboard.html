@@ -3250,6 +3250,7 @@ body.show-mode .inv-sync-badge{display:none;}
         <input class="tsi" id="wl-notes" placeholder="Notes (condition req, variant, etc)" style="flex:1;margin-bottom:0">
         <button class="hbtn" onclick="addWantItem()" style="white-space:nowrap">+ ADD</button>
       </div>
+      <label style="display:flex;align-items:center;gap:6px;margin-top:8px;font-size:11px;color:var(--muted,#888)"><input type="checkbox" id="wl-sms-consent"> Customer agreed to a text when this comes in (required to text them from here -- SMS/A2P compliance)</label>
     </div>
 
     <!-- Want list table -->
@@ -22198,11 +22199,12 @@ function addWantItem(){
   const maxprice = parseFloat(document.getElementById('wl-maxprice').value)||0;
   const category = document.getElementById('wl-category').value;
   const notes = document.getElementById('wl-notes').value.trim();
+  const smsConsent = document.getElementById('wl-sms-consent').checked;
   if(!item || !customer) { toast_dash('Item name and customer required'); return; }
 
   wantList.push({
     id: 'wl_'+Date.now(),
-    item, customer, contact, maxprice, category, notes,
+    item, customer, contact, maxprice, category, notes, smsConsent,
     status: 'active',
     addedAt: new Date().toISOString(),
     matchedId: null,
@@ -22213,6 +22215,7 @@ function addWantItem(){
     const el = document.getElementById(id);
     if(el) el.value = '';
   });
+  document.getElementById('wl-sms-consent').checked = false;
   renderWantList();
   toast_dash('✓ Want added: '+item+' for '+customer);
 }
@@ -22282,9 +22285,19 @@ async function notifyWant(id){
   // up SMS/email secrets.
   try {
     if(getAccountContext().isDemo) throw new Error('Demo mode');
-    const res = await storeWorkerFetch('/notify/send', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ storeId:getActiveStoreId(), contact:w.contact, subject:'Your Want List Item is In Stock!', message:msg }) });
+    const res = await storeWorkerFetch('/notify/send', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ storeId:getActiveStoreId(), contact:w.contact, subject:'Your Want List Item is In Stock!', message:msg, consent:w.smsConsent===true }) });
     const data = await res.json();
-    if(!data.ok) throw new Error(data.error || 'Send failed');
+    if(!data.ok){
+      // 403/409 mean the app itself refused to send (no SMS consent on file,
+      // or the customer opted out) -- that must never silently fall through
+      // to opening the staff's own personal texting app below, since that
+      // would send the exact text the backend just refused, just from a
+      // channel the compliance check can't see. Only real technical
+      // failures (Twilio not configured, network error, etc) fall back to
+      // the old device-link behavior.
+      if(res.status===403||res.status===409){ toast_dash(data.error||'Cannot text this customer.'); return; }
+      throw new Error(data.error || 'Send failed');
+    }
     w.notifiedAt = new Date().toISOString();
     w.notifiedVia = data.channel;
     saveWantList();

@@ -2971,6 +2971,8 @@ export default {
       const to = String(limited.data?.to || '').trim();
       const body = String(limited.data?.body || '').trim().slice(0, 1600);
       if (!to || !body) return json({ ok:false, error:'to and body are required' }, 400);
+      const consentStatus = await smsConsentStatus(env, storeId, to);
+      if (consentStatus.optedOut) return json({ ok:false, error:'This number has opted out of text messages (replied STOP). Call or email them instead.' }, 409);
       try {
         const result = await sendSms(env, to, body);
         await persistMessageRecord(env, {
@@ -5259,10 +5261,11 @@ export default {
       const message = String(body.message || '').trim().slice(0, 1000);
       if (!contact || !message) return json({ ok:false, error:'contact and message are required' }, 400);
       try {
-        const channel = await sendContactNotification(env, contact, String(body.subject || 'Message from your store').slice(0, 200), message);
+        const channel = await sendContactNotification(env, storeId, contact, String(body.subject || 'Message from your store').slice(0, 200), message, body.consent === true);
         return json({ ok:true, channel });
       } catch (e) {
-        return json({ ok:false, error:e.message }, 502);
+        const status = e.code === 'opted_out' ? 409 : e.code === 'no_consent' ? 403 : 502;
+        return json({ ok:false, error:e.message }, status);
       }
     }
 
@@ -10780,10 +10783,21 @@ async function sendEmail(env, to, subject, text) {
 // anything else is treated as a phone number) -- same detection rule the
 // dashboard's existing device-link notify buttons already use, so a want-
 // list contact field written before this feature existed still works.
-async function sendContactNotification(env, contact, subject, message) {
+//
+// This is a promotional/marketing send (e.g. "item back in stock") rather
+// than a direct reply to a single action the customer just took, so the SMS
+// branch requires the caller to assert real consent was captured for this
+// specific outreach (hasConsent -- e.g. a checkbox staff ticked after the
+// customer said yes in person) and always honors an opt-out on file, even
+// if the caller claims consent -- unlike a one-time verification code,
+// there's no implied consent here just because a phone number exists.
+async function sendContactNotification(env, storeId, contact, subject, message, hasConsent) {
   const clean = String(contact || '').trim();
   if (!clean) throw new Error('No contact info on file');
   if (clean.includes('@')) { await sendEmail(env, clean, subject, message); return 'email'; }
+  const status = await smsConsentStatus(env, storeId, clean);
+  if (status.optedOut) { const err = new Error('This customer has opted out of text messages (replied STOP). Contact them another way.'); err.code = 'opted_out'; throw err; }
+  if (!hasConsent) { const err = new Error('No SMS consent on file for this contact -- check the consent box before texting them.'); err.code = 'no_consent'; throw err; }
   await sendSms(env, clean, message);
   return 'sms';
 }
@@ -10849,6 +10863,22 @@ async function lookupCustomerIdByPhone(env, storeId, phoneNumber) {
     const match = (data || []).find(c => c.phone && normalizePhoneDigits(c.phone) === digits);
     return match?.id || null;
   } catch (e) { return null; }
+}
+// A2P 10DLC / CTIA compliance: honors STOP everywhere a phone number gets
+// looked up before an SMS send, and requires an actual opt-in on file
+// before any promotional/marketing text. Unknown numbers (never in
+// `customers`) are treated as neither opted out nor consented -- callers
+// decide what that means for their own message category (transactional
+// sends to a not-yet-linked number are fine; promotional ones are not).
+async function smsConsentStatus(env, storeId, phoneNumber) {
+  const digits = normalizePhoneDigits(phoneNumber);
+  if (!digits) return { optedOut: false, consented: false, customerId: null };
+  try {
+    const { data } = await supabaseAdminFetch(env, `customers?store_id=eq.${encodeURIComponent(storeId)}&select=id,phone,sms_consent,sms_opted_out&limit=1000`);
+    const match = (data || []).find(c => c.phone && normalizePhoneDigits(c.phone) === digits);
+    if (!match) return { optedOut: false, consented: false, customerId: null };
+    return { optedOut: !!match.sms_opted_out, consented: !!match.sms_consent, customerId: match.id };
+  } catch (e) { return { optedOut: false, consented: false, customerId: null }; }
 }
 // Every one of these is best-effort and swallows its own errors -- a
 // Supabase hiccup must never prevent a call from ringing through or an SMS
@@ -11095,6 +11125,7 @@ async function handleTwilioWebhook(request, env, url) {
   if (url.pathname === '/twilio/sms') {
     const from = String(params.From || '').slice(0, 40);
     const text = String(params.Body || '').slice(0, 1000);
+    const keyword = text.trim().toUpperCase();
     if (from && text) {
       // Persisted first so the new message inbox has it even if every
       // forward number below happens to fail -- then the existing blind
@@ -11105,6 +11136,26 @@ async function handleTwilioWebhook(request, env, url) {
         from_number: from, to_number: String(params.To || '').slice(0, 40), body: text,
         customer_id: await lookupCustomerIdByPhone(env, storeId, from), status: 'received',
       });
+      // CTIA/Twilio require an opt-out keyword to immediately suppress every
+      // future send and get an explicit confirmation reply -- this has to
+      // work even for a number with no customers row yet (someone who never
+      // consented to anything can still text STOP), so it upserts rather
+      // than only patching an existing match.
+      const STOP_KEYWORDS = ['STOP', 'STOPALL', 'UNSUBSCRIBE', 'CANCEL', 'END', 'QUIT'];
+      if (STOP_KEYWORDS.includes(keyword)) {
+        try {
+          const digits = normalizePhoneDigits(from);
+          const { data:existing } = await supabaseAdminFetch(env, `customers?store_id=eq.${encodeURIComponent(storeId)}&select=id,phone&limit=1000`);
+          const match = (existing || []).find(c => c.phone && normalizePhoneDigits(c.phone) === digits);
+          const patch = { sms_opted_out: true, sms_opted_out_at: new Date().toISOString(), sms_consent: false };
+          if (match) await supabaseAdminFetch(env, `customers?id=eq.${encodeURIComponent(match.id)}`, { method:'PATCH', headers:{ Prefer:'return=minimal' }, body:JSON.stringify(patch) });
+          else await supabaseAdminFetch(env, 'customers', { method:'POST', headers:{ Prefer:'return=minimal' }, body:JSON.stringify({ store_id: storeId, name: 'SMS opt-out', phone: from, ...patch }) });
+        } catch (e) { /* best-effort -- the TwiML reply below is what actually satisfies the carrier requirement */ }
+        return twimlResponse('<Response><Message>You have been unsubscribed from The Mana Pocket and will not receive any more texts. Reply HELP for help.</Message></Response>');
+      }
+      if (keyword === 'HELP' || keyword === 'INFO') {
+        return twimlResponse('<Response><Message>The Mana Pocket: msg &amp; data rates may apply, message frequency varies. Reply STOP to unsubscribe. Questions? Visit themanapocket.com.</Message></Response>');
+      }
       for (const num of numbers) {
         try { await sendSms(env, num, `Text from ${from}: ${text}`); } catch (e) { /* one bad forward number shouldn't block the rest */ }
       }
