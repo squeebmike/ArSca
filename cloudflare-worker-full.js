@@ -5276,6 +5276,22 @@ export default {
       }
     }
 
+    if (url.pathname === '/notify/email-unsubscribe' && request.method === 'GET') {
+      const token = (url.searchParams.get('token') || '').trim();
+      const htmlPage = (heading, body) => new Response(
+        `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${heading}</title><meta name="viewport" content="width=device-width,initial-scale=1"></head>` +
+        `<body style="font-family:-apple-system,sans-serif;background:#0b0d10;color:#fff;display:flex;align-items:center;justify-content:center;min-height:100vh;padding:24px;text-align:center">` +
+        `<div><h1 style="margin-bottom:8px">${heading}</h1><p style="opacity:.7">${body}</p></div></body></html>`,
+        { status: 200, headers: { 'Content-Type': 'text/html;charset=utf-8' } },
+      );
+      if (!token) return htmlPage('Missing link', 'This unsubscribe link is incomplete.');
+      const { data: rows } = await supabaseAdminFetch(env, `email_notify_contacts?unsubscribe_token=eq.${encodeURIComponent(token)}&limit=1`);
+      const row = rows?.[0];
+      if (!row) return htmlPage('Link no longer valid', 'This unsubscribe link is no longer valid.');
+      await supabaseAdminFetch(env, `email_notify_contacts?id=eq.${encodeURIComponent(row.id)}`, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ opted_out: true, opted_out_at: new Date().toISOString() }) });
+      return htmlPage("You're unsubscribed", 'You will not receive any more emails like this one.');
+    }
+
     // Detects eBay sales that this dashboard never recorded on its own -- a listing
     // can sell on eBay with zero action taken in this app. Pulls every paid eBay
     // order from the Sell Fulfillment API and records a pos_sales/pos_sale_lines/
@@ -10801,12 +10817,48 @@ async function sendEmail(env, to, subject, text) {
 async function sendContactNotification(env, storeId, contact, subject, message, hasConsent) {
   const clean = String(contact || '').trim();
   if (!clean) throw new Error('No contact info on file');
-  if (clean.includes('@')) { await sendEmail(env, clean, subject, message); return 'email'; }
+  if (clean.includes('@')) {
+    const contactRow = await emailNotifyContact(env, storeId, clean);
+    if (contactRow.optedOut) { const err = new Error('This customer has unsubscribed from emails. Contact them another way.'); err.code = 'opted_out'; throw err; }
+    const footer = await emailUnsubscribeFooter(env, storeId, contactRow.unsubscribeToken);
+    await sendEmail(env, clean, subject, message + footer);
+    return 'email';
+  }
   const status = await smsConsentStatus(env, storeId, clean);
   if (status.optedOut) { const err = new Error('This customer has opted out of text messages (replied STOP). Contact them another way.'); err.code = 'opted_out'; throw err; }
   if (!hasConsent) { const err = new Error('No SMS consent on file for this contact -- check the consent box before texting them.'); err.code = 'no_consent'; throw err; }
   await sendSms(env, clean, message);
   return 'sms';
+}
+
+// CAN-SPAM governs this path (email, not SMS -- TCPA/opt-in doesn't apply):
+// no prior consent is required to send, but every message needs a working
+// unsubscribe and the sender's physical address. email_notify_contacts exists
+// purely to give every email address we've ever contacted here a stable
+// unsubscribe token and an opt-out flag we check before every send -- rows
+// are created on first send, not tied to a formal customers record, since
+// plenty of these contacts (want-list entries, ad-hoc notify requests) never
+// have one.
+async function emailNotifyContact(env, storeId, email) {
+  const clean = String(email || '').trim().toLowerCase();
+  try {
+    const { data: existing } = await supabaseAdminFetch(env, `email_notify_contacts?store_id=eq.${encodeURIComponent(storeId)}&email=eq.${encodeURIComponent(clean)}&limit=1`);
+    if (existing?.length) return { optedOut: !!existing[0].opted_out, unsubscribeToken: existing[0].unsubscribe_token };
+    const { data: created } = await supabaseAdminFetch(env, 'email_notify_contacts', { method: 'POST', headers: { Prefer: 'return=representation' }, body: JSON.stringify({ store_id: storeId, email: clean }) });
+    return { optedOut: false, unsubscribeToken: created?.[0]?.unsubscribe_token || null };
+  } catch (e) { return { optedOut: false, unsubscribeToken: null }; }
+}
+async function emailUnsubscribeFooter(env, storeId, unsubscribeToken) {
+  let addressLine = '';
+  try {
+    const { data: settingsRows } = await supabaseAdminFetch(env, `store_settings?store_id=eq.${encodeURIComponent(storeId)}&select=receipt_settings&limit=1`);
+    const origin = settingsRows?.[0]?.receipt_settings?.shippingOrigin;
+    if (completeShippoOrigin(origin)) addressLine = `${origin.name || 'The Mana Pocket'}, ${origin.street1}${origin.street2 ? ', ' + origin.street2 : ''}, ${origin.city}, ${origin.state} ${origin.zip}\n`;
+  } catch (e) { /* best-effort -- a missing address must never block the send */ }
+  const unsubscribeLine = unsubscribeToken
+    ? `Don't want emails like this? Unsubscribe: https://still-resonance-4f87.swarnerauto.workers.dev/notify/email-unsubscribe?token=${encodeURIComponent(unsubscribeToken)}`
+    : '';
+  return `\n\n---\n${addressLine}${unsubscribeLine}`;
 }
 
 // ── Phone system helpers (browser softphone, call/SMS persistence, Call
