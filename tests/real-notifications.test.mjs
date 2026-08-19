@@ -19,7 +19,7 @@ assert.match(worker, /if \(!env\.SENDGRID_API_KEY \|\| !env\.SENDGRID_FROM_EMAIL
 
 // Channel selection: '@' means email, otherwise SMS -- same rule the
 // existing device-link notify buttons already use.
-assert.match(worker, /if \(clean\.includes\('@'\)\) \{ await sendEmail\(env, clean, subject, message\); return 'email'; \}/, 'sendContactNotification must route email-shaped contacts to sendEmail');
+assert.match(worker, /if \(clean\.includes\('@'\)\) \{/, 'sendContactNotification must route email-shaped contacts down the email branch');
 assert.match(worker, /await sendSms\(env, clean, message\);\s*\n\s*return 'sms';/, 'sendContactNotification must route everything else to sendSms');
 
 // ── A2P 10DLC / CTIA compliance: promotional SMS must never send without
@@ -28,6 +28,16 @@ assert.match(worker, /await sendSms\(env, clean, message\);\s*\n\s*return 'sms';
 assert.match(worker, /async function smsConsentStatus\(env, storeId, phoneNumber\) \{/, 'missing smsConsentStatus helper');
 assert.match(worker, /if \(status\.optedOut\) \{ const err = new Error\('This customer has opted out of text messages \(replied STOP\)\. Contact them another way\.'\); err\.code = 'opted_out'; throw err; \}/, 'sendContactNotification must refuse to send to an opted-out number even if the caller claims consent');
 assert.match(worker, /if \(!hasConsent\) \{ const err = new Error\('No SMS consent on file for this contact -- check the consent box before texting them\.'\); err\.code = 'no_consent'; throw err; \}/, 'sendContactNotification must require the caller to assert consent for this specific outreach');
+
+// ── CAN-SPAM: promotional email doesn't need prior consent (unlike SMS),
+// but must always honor an opt-out and carry a working unsubscribe link. ──
+assert.match(worker, /async function emailNotifyContact\(env, storeId, email\) \{/, 'missing emailNotifyContact helper');
+assert.match(worker, /if \(contactRow\.optedOut\) \{ const err = new Error\('This customer has unsubscribed from emails\. Contact them another way\.'\); err\.code = 'opted_out'; throw err; \}/, 'sendContactNotification must refuse to email an address that has unsubscribed');
+assert.match(worker, /const footer = await emailUnsubscribeFooter\(env, storeId, contactRow\.unsubscribeToken\);/, 'every promotional email sent through this path must get an unsubscribe footer appended');
+assert.match(worker, /await sendEmail\(env, clean, subject, message \+ footer\);/, 'the unsubscribe footer must actually be included in the sent message, not just built');
+assert.match(worker, /async function emailUnsubscribeFooter\(env, storeId, unsubscribeToken\) \{/, 'missing emailUnsubscribeFooter helper');
+assert.match(worker, /if \(url\.pathname === '\/notify\/email-unsubscribe' && request\.method === 'GET'\) \{/, 'missing /notify/email-unsubscribe route');
+assert.match(worker, /await supabaseAdminFetch\(env, `email_notify_contacts\?id=eq\.\$\{encodeURIComponent\(row\.id\)\}`, \{ method: 'PATCH', headers: \{ Prefer: 'return=minimal' \}, body: JSON\.stringify\(\{ opted_out: true, opted_out_at: new Date\(\)\.toISOString\(\) \}\) \}\);/, 'the unsubscribe route must actually flip the opted_out flag');
 
 console.log('Notification-provider helper checks passed');
 
