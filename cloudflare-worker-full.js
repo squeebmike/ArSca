@@ -11056,8 +11056,15 @@ const SUPABASE_EMAIL_HOOK_COPY = {
 
 async function handleSupabaseEmailHook(request, env) {
   const rawBody = await request.text();
-  const verified = await verifySupabaseWebhookSignature(request, rawBody, env.SUPABASE_AUTH_HOOK_SECRET).catch(() => false);
-  if (!verified) return json({ error: { http_code: 401, message: 'Invalid webhook signature' } }, 401);
+  // Supabase's HTTPS hook config has two independent credentials: an
+  // Authorization header (static bearer token) it refuses to call the hook
+  // without at all, and the Standard Webhooks signature. Accept either one
+  // that's actually configured and present, so we're not blocked if
+  // Supabase's UI only sends one for a given hook setup.
+  const authHeader = request.headers.get('Authorization') || '';
+  const bearerOk = !!env.SUPABASE_AUTH_HOOK_BEARER && authHeader === `Bearer ${env.SUPABASE_AUTH_HOOK_BEARER}`;
+  const signatureOk = await verifySupabaseWebhookSignature(request, rawBody, env.SUPABASE_AUTH_HOOK_SECRET).catch(() => false);
+  if (!bearerOk && !signatureOk) return json({ error: { http_code: 401, message: 'Invalid webhook authorization' } }, 401);
   let payload;
   try { payload = JSON.parse(rawBody); } catch { return json({ error: { http_code: 400, message: 'Invalid JSON payload' } }, 400); }
   const email = payload?.user?.email;
