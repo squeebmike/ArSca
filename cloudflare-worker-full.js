@@ -2732,6 +2732,10 @@ export default {
       });
     }
 
+    if (url.pathname === '/auth/email-hook' && request.method === 'POST') {
+      return await handleSupabaseEmailHook(request, env);
+    }
+
     if (url.pathname === '/store/invites' && request.method === 'GET') {
       const storeId = String(url.searchParams.get('store_id') || request.headers.get('X-Store-Id') || '').trim();
       const auth = await requireStoreUser(request, env, storeId, ['owner','admin']);
@@ -11014,6 +11018,63 @@ async function sendEmail(env, to, subject, text) {
   });
   if (!res.ok) { const errTxt = await res.text(); throw new Error(`SendGrid request failed (${res.status}): ${errTxt.slice(0, 200)}`); }
   return true;
+}
+
+// ── Supabase Auth "Send Email" hook ────────────────────────────────────────
+// Supabase's own built-in mailer is unreliable for production (heavily
+// rate-limited, no custom-domain sender) and its Custom SMTP path kept
+// hitting configuration dead ends. This hook lets Supabase keep generating
+// the secure confirmation/recovery link, but instead of Supabase emailing
+// it itself, it POSTs the link here and we send it through the same
+// SendGrid account that already sends order-confirmation email -- proven
+// working, no separate SMTP relay to configure.
+// Verifies Standard Webhooks signatures (https://www.standardwebhooks.com/),
+// the format Supabase Auth Hooks use. SUPABASE_AUTH_HOOK_SECRET is the
+// "whsec_..." value shown when creating the hook in the Supabase dashboard.
+async function verifySupabaseWebhookSignature(request, rawBody, secret) {
+  const id = request.headers.get('webhook-id');
+  const timestamp = request.headers.get('webhook-timestamp');
+  const signatureHeader = request.headers.get('webhook-signature');
+  if (!id || !timestamp || !signatureHeader || !secret) return false;
+  const secretB64 = String(secret).replace(/^v1,/, '').replace(/^whsec_/, '');
+  const keyBytes = Uint8Array.from(atob(secretB64), c => c.charCodeAt(0));
+  const cryptoKey = await crypto.subtle.importKey('raw', keyBytes, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  const signedContent = `${id}.${timestamp}.${rawBody}`;
+  const sigBuffer = await crypto.subtle.sign('HMAC', cryptoKey, new TextEncoder().encode(signedContent));
+  const expected = btoa(String.fromCharCode(...new Uint8Array(sigBuffer)));
+  const candidates = signatureHeader.split(' ').map(part => part.replace(/^v1,/, ''));
+  return candidates.includes(expected);
+}
+
+const SUPABASE_EMAIL_HOOK_COPY = {
+  signup: { subject: 'Confirm your account — The Mana Pocket', verb: 'confirm your account' },
+  recovery: { subject: 'Reset your password — The Mana Pocket', verb: 'reset your password' },
+  email_change: { subject: 'Confirm your new email — The Mana Pocket', verb: 'confirm your new email address' },
+  magiclink: { subject: 'Your sign-in link — The Mana Pocket', verb: 'sign in' },
+  invite: { subject: "You're invited — The Mana Pocket", verb: 'accept your invitation' },
+};
+
+async function handleSupabaseEmailHook(request, env) {
+  const rawBody = await request.text();
+  const verified = await verifySupabaseWebhookSignature(request, rawBody, env.SUPABASE_AUTH_HOOK_SECRET).catch(() => false);
+  if (!verified) return json({ error: { http_code: 401, message: 'Invalid webhook signature' } }, 401);
+  let payload;
+  try { payload = JSON.parse(rawBody); } catch { return json({ error: { http_code: 400, message: 'Invalid JSON payload' } }, 400); }
+  const email = payload?.user?.email;
+  const data = payload?.email_data || {};
+  const { token_hash, redirect_to, email_action_type, site_url } = data;
+  if (!email || !token_hash) return json({ error: { http_code: 400, message: 'Missing user email or token_hash' } }, 400);
+  const base = String(env.SUPABASE_URL || '').replace(/\/+$/, '');
+  if (!base) return json({ error: { http_code: 500, message: 'SUPABASE_URL is not configured' } }, 500);
+  const verifyUrl = `${base}/auth/v1/verify?token=${encodeURIComponent(token_hash)}&type=${encodeURIComponent(email_action_type || 'signup')}&redirect_to=${encodeURIComponent(redirect_to || site_url || '')}`;
+  const copy = SUPABASE_EMAIL_HOOK_COPY[email_action_type] || { subject: 'The Mana Pocket — action required', verb: 'continue' };
+  const text = `Click the link below to ${copy.verb}:\n\n${verifyUrl}\n\nIf you didn't request this, you can safely ignore this email.`;
+  try {
+    await sendEmail(env, email, copy.subject, text);
+  } catch (e) {
+    return json({ error: { http_code: 500, message: 'Failed to send email: ' + e.message } }, 500);
+  }
+  return json({});
 }
 
 // Picks the channel from the contact string's shape (an '@' means email,
