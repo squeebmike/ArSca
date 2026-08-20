@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.20.10-pocket-events-calendar">
+<meta name="version" content="2026.08.20.11-ebay-template-fields">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1633,15 +1633,15 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.20.10-pocket-events-calendar" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.20.10-pocket-events-calendar" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.20.10-pocket-events-calendar" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.08.20.10-pocket-events-calendar" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.20.10-pocket-events-calendar" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.20.10-pocket-events-calendar" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.20.10-pocket-events-calendar" defer></script>
-<script src="scripts/pokemon/offline-browser.js?v=2026.08.20.10-pocket-events-calendar" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.20.10-pocket-events-calendar" defer></script>
+<script src="scripts/query-routing.js?v=2026.08.20.11-ebay-template-fields" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.20.11-ebay-template-fields" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.20.11-ebay-template-fields" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.08.20.11-ebay-template-fields" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.20.11-ebay-template-fields" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.20.11-ebay-template-fields" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.20.11-ebay-template-fields" defer></script>
+<script src="scripts/pokemon/offline-browser.js?v=2026.08.20.11-ebay-template-fields" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.20.11-ebay-template-fields" defer></script>
 </head>
 <body>
 
@@ -1670,11 +1670,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.20.10-pocket-events-calendar</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.20.11-ebay-template-fields</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.20.10-pocket-events-calendar</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.20.11-ebay-template-fields</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1692,7 +1692,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.20.10-pocket-events-calendar</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.20.11-ebay-template-fields</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3031,6 +3031,11 @@ body.show-mode .inv-sync-badge{display:none;}
       </div>
     </div>
 
+    <details style="margin-top:10px;border-top:1px solid var(--border);padding-top:10px">
+      <summary style="font-family:monospace;font-size:8px;color:var(--dim);letter-spacing:2px;cursor:pointer">MORE LISTING DETAILS (used by eBay description templates -- optional, leave blank if not applicable)</summary>
+      <div id="edit-ebay-extra-fields" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px"></div>
+    </details>
+
     <div id="edit-profit-preview" style="font-family:'DM Mono',monospace;font-size:10px;margin:8px 0"></div>
 
     <div class="modal-btns">
@@ -3634,7 +3639,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.20.10-pocket-events-calendar';
+const APP_VERSION = '2026.08.20.11-ebay-template-fields';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -6247,6 +6252,7 @@ const FEATURE_LOG = [
     { title:'Promoted listings', status:'working', desc:'Turn on eBay ad promotion for a listing directly from the item.' },
     { title:'Send offers to watchers', status:'working', desc:'Proactively send a discount offer to everyone watching a listing.' },
     { title:'Selling limits & compliance', status:'working', desc:'See your current eBay selling limit and any listing policy violations that need attention.' },
+    { title:'More description-template fields', status:'new', desc:'15 new optional fields (Brand, Character, Franchise, Series, Card/Item Name, Card Type, Parallel, Insert Set, Edition, Numbered, Memorabilia Type, Release Date, ISBN, Exclusive, Platform) under "More Listing Details" on each item, plus new {rookie} {autograph} {gradingCompany} {certNumber} {notes} tokens exposing data that already existed. A template line whose only content is a blank field is dropped automatically -- an empty field never shows the raw {token} text in a live listing.' },
     { title:'Order/inventory webhooks', status:'working', desc:'Real-time eBay notifications instead of waiting on the next manual sync.' },
     { title:'Auto-reprice aged stock', status:'working', desc:'Automatically nudges the price down on eBay listings that have sat unsold past a configurable age.' },
     { title:'eBay deal scanner', status:'working', desc:'Scans active eBay listings for underpriced Pokemon/MTG cards vs. real market value, can run on a schedule in the background.' },
@@ -6678,7 +6684,7 @@ function renderVendorProfilePanel(){
       <div style="display:grid;grid-template-columns:1fr 140px;gap:8px;margin-bottom:12px;align-items:center">
         ${getInventoryCategories().map(c => `<div style="font-family:var(--font-mono);font-size:11px;color:var(--text)">${escHtml(c)}</div><input class="tsi vp-ebaycat-input" data-cat="${escHtml(c)}" value="${escHtml((p.ebayCategoryMap||{})[c]||'')}" placeholder="eBay category ID" style="margin:0">`).join('')}
       </div>
-      <div style="font-family:var(--font-mono);font-size:9px;color:var(--dim);line-height:1.7;margin-bottom:8px">DESCRIPTION TEMPLATES -- one per category, plus a default for anything without its own. Tokens: {title} {category} {year} {set} {variant} {condition} {cardNumber} {serialNumber} {player} {team} {issue} {publisher} {grade} {sport} {manufacturer} {upc} {price} {quantity} {rarity} {finish} {language} {configuration} {writer} {artist} {coverArtist} {signedBy}. A line whose only content is one blank token is dropped automatically; the shipping line above is always appended after this.</div>
+      <div style="font-family:var(--font-mono);font-size:9px;color:var(--dim);line-height:1.7;margin-bottom:8px">DESCRIPTION TEMPLATES -- one per category, plus a default for anything without its own. Tokens: {title} {category} {year} {set} {variant} {condition} {cardNumber} {serialNumber} {player} {team} {issue} {publisher} {grade} {sport} {manufacturer} {upc} {price} {quantity} {rarity} {finish} {language} {configuration} {writer} {artist} {coverArtist} {signedBy} {rookie} {autograph} {gradingCompany} {certNumber} {notes} ${EBAY_TEMPLATE_EXTRA_FIELDS.map(f=>'{'+f.token+'}').join(' ')}. A line whose only content is one blank token is dropped automatically; the shipping line above is always appended after this. Fill in the matching fields under "More Listing Details" on each item's edit screen.</div>
       ${ebayDescriptionTemplateEditorHtml('default', 'Default (any category without its own template)', p)}
       ${getInventoryCategories().map(c => ebayDescriptionTemplateEditorHtml(c, c, p)).join('')}
       <div style="display:flex;gap:8px;margin-top:8px"><button class="hbtn" onclick="saveEbayListingSettings()">SAVE EBAY LISTING SETTINGS</button></div>
@@ -16546,6 +16552,14 @@ const BUILT_IN_ITEM_SIMPLE_FIELDS = [
   ['isBundle',false,'bool'], ['bundleMemberIds',[],'array'], ['bundleMemberNames',[],'array'],
   ['bundleMemberValueTotal',0,'num'], ['bundledIntoId',''], ['bundledIntoName',''],
   ['soldAt',''], ['saleId',''],
+  // eBay description-template detail fields (see EBAY_TEMPLATE_EXTRA_FIELDS
+  // below, which drives both the edit-modal "More Listing Details" inputs
+  // and the {token} list in computeEbayListingFields off this same list of
+  // keys) -- optional, free-text, blank by default.
+  ['brand',''], ['character',''], ['franchise',''], ['series',''],
+  ['card_name',''], ['card_type',''], ['parallel',''], ['insert',''],
+  ['edition',''], ['numbered',''], ['memorabilia',''], ['release_date',''],
+  ['isbn',''], ['exclusive',''], ['platform',''],
 ];
 // BUILT_IN_ITEM_ALIASED_FIELDS: the read side stays hand-written in
 // mapBuiltInItem below (a saved row might use an older key name, or the
@@ -21478,6 +21492,52 @@ Issue: {issue}
 Publisher: {publisher}
 Grade: {grade}`;
 
+// Optional, free-text eBay-template detail fields -- one shared list drives
+// the edit modal's "More Listing Details" inputs (renderEbayExtraFieldInputs),
+// their populate-on-open/save-on-submit wiring, AND their {token} entry in
+// computeEbayListingFields, so a new field is one array entry instead of
+// four separate hand-edits drifting apart. Storage key is snake_case (goes
+// straight into BUILT_IN_ITEM_SIMPLE_FIELDS); token is the camelCase name
+// used inside {curly braces} in a template, matching the existing token
+// naming style (cardNumber, serialNumber, etc).
+const EBAY_TEMPLATE_EXTRA_FIELDS = [
+  { key:'brand', token:'brand', label:'Brand', placeholder:'e.g. Funko, Ultra Pro, Nerf (when different from Manufacturer)' },
+  { key:'character', token:'character', label:'Character', placeholder:'e.g. Pikachu, Spider-Man' },
+  { key:'franchise', token:'franchise', label:'Franchise', placeholder:'e.g. Pokémon, Marvel, Star Wars' },
+  { key:'series', token:'series', label:'Series', placeholder:'When distinct from Set / Series above' },
+  { key:'card_name', token:'cardName', label:'Card / Item Name', placeholder:'When different from the listing title' },
+  { key:'card_type', token:'cardType', label:'Card Type', placeholder:'e.g. Pokémon, Trainer, Energy, Creature, Artifact' },
+  { key:'parallel', token:'parallel', label:'Parallel', placeholder:'When distinct from Variant, especially sports' },
+  { key:'insert', token:'insert', label:'Insert Set', placeholder:'Sports card insert set name' },
+  { key:'edition', token:'edition', label:'Edition', placeholder:'e.g. 1st Edition, Unlimited, Collector Booster' },
+  { key:'numbered', token:'numbered', label:'Numbered', placeholder:'e.g. /99 (the actual serial # goes in Serial # above)' },
+  { key:'memorabilia', token:'memorabilia', label:'Memorabilia Type', placeholder:'e.g. Patch, Relic, Jersey, Game-Used' },
+  { key:'release_date', token:'releaseDate', label:'Release Date', placeholder:'Useful for sealed/preorder product' },
+  { key:'isbn', token:'isbn', label:'ISBN', placeholder:'Books / trades' },
+  { key:'exclusive', token:'exclusive', label:'Exclusive', placeholder:'e.g. Walmart, Target, Convention, Secret Lair' },
+  { key:'platform', token:'platform', label:'Platform', placeholder:'General collectibles -- console/system, etc.' },
+];
+function renderEbayExtraFieldInputs(){
+  const mount = document.getElementById('edit-ebay-extra-fields');
+  if(!mount) return;
+  mount.innerHTML = EBAY_TEMPLATE_EXTRA_FIELDS.map(f=>`<div><label>${escHtml(f.label)}</label><input type="text" id="edit-ebay-${f.key}" placeholder="${escHtml(f.placeholder)}"></div>`).join('');
+}
+function populateEbayExtraFieldInputs(item){
+  renderEbayExtraFieldInputs();
+  EBAY_TEMPLATE_EXTRA_FIELDS.forEach(f=>{
+    const el = document.getElementById('edit-ebay-'+f.key);
+    if(el) el.value = item?.[f.key] || '';
+  });
+}
+function readEbayExtraFieldUpdates(){
+  const updates = {};
+  EBAY_TEMPLATE_EXTRA_FIELDS.forEach(f=>{
+    const el = document.getElementById('edit-ebay-'+f.key);
+    if(el) updates[f.key] = el.value.trim();
+  });
+  return updates;
+}
+
 // A line whose only content is a single {token} that resolves empty for this item is
 // dropped entirely (matches the old hardcoded field-list's .filter(Boolean) behavior),
 // so a customized template doesn't need per-item conditional logic of its own.
@@ -21536,7 +21596,17 @@ function computeEbayListingFields(item){
     artist:isComic?comicCreditList(item,'artists').join(', '):'',
     coverArtist:isComic?comicCreditList(item,'coverArtists').join(', '):'',
     signedBy:item.is_signed?(item.signed_by||'Signed'):'',
+    // Derived from data that already exists elsewhere on the item (a
+    // checkbox, the grading fields, notes) rather than a new input --
+    // exposed as their own tokens since a template author shouldn't have
+    // to know the internal field names to reference them.
+    rookie:item.is_rookie?'Rookie Card':'',
+    autograph:item.is_signed?'Autograph':'',
+    gradingCompany:item.grader||'',
+    certNumber:item.cert_number||'',
+    notes:item.key_notes||item.notes||'',
   };
+  EBAY_TEMPLATE_EXTRA_FIELDS.forEach(f=>{ tokens[f.token] = item[f.key]||''; });
   const templates = getVendorProfile().ebayDescriptionTemplates || {};
   const legacyTemplate = getVendorProfile().ebayDescriptionTemplate || '';
   const template = templates[item.category] || templates.default || legacyTemplate || DEFAULT_EBAY_DESCRIPTION_TEMPLATE;
@@ -24382,6 +24452,7 @@ function openEditModal(id) {
   document.getElementById('edit-signature-value').value = item.signature_value || '';
   toggleEditSignatureRow();
   document.getElementById('edit-is-sealed').checked = item.is_sealed || false;
+  populateEbayExtraFieldInputs(item);
   document.getElementById('edit-sync-status').textContent = '';
   setInventoryEditPhoto(inventoryImageUrl(item), inventoryImageSourceLabel(item));
   editPhotosWorking = Array.isArray(item.photos) ? [...item.photos] : [];
@@ -24465,6 +24536,7 @@ function openAddToInventoryModal(idx){
   document.getElementById('edit-signature-value').value = item.signature_value || '';
   toggleEditSignatureRow();
   document.getElementById('edit-is-sealed').checked = item.is_sealed || false;
+  populateEbayExtraFieldInputs(item);
   document.getElementById('edit-sync-status').textContent = '';
   setInventoryEditPhoto(inventoryImageUrl(item), inventoryImageSourceLabel(item));
   // openEditModal (editing an existing item) always resets this working
@@ -24545,6 +24617,7 @@ async function confirmAddToInventoryFromModal(){
     serial_number: document.getElementById('edit-serial').value.trim(),
     card_number: document.getElementById('edit-cardnum').value.trim(),
     ...readEditGradingFields(),
+    ...readEbayExtraFieldUpdates(),
     is_rookie: document.getElementById('edit-rookie').checked,
     is_auto: document.getElementById('edit-auto').checked,
     is_patch: document.getElementById('edit-patch').checked,
@@ -24762,6 +24835,7 @@ async function confirmEditAndSync() {
     serial_number: document.getElementById('edit-serial').value.trim(),
     card_number: document.getElementById('edit-cardnum').value.trim(),
     ...readEditGradingFields(),
+    ...readEbayExtraFieldUpdates(),
     is_rookie: document.getElementById('edit-rookie').checked,
     is_auto: document.getElementById('edit-auto').checked,
     is_patch: document.getElementById('edit-patch').checked,
@@ -43218,7 +43292,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.20.10-pocket-events-calendar" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.20.11-ebay-template-fields" defer></script>
 </body>
 </html>
 
