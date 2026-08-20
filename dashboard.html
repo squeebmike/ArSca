@@ -2739,6 +2739,7 @@ body.show-mode .inv-sync-badge{display:none;}
 
       <div id="scout-comps-drawer" style="display:none;background:var(--surf);border:1px solid var(--border);border-radius:10px;padding:10px;margin-bottom:14px">
         <div style="font-family:var(--font-mono);font-size:9px;color:var(--dim);margin-bottom:8px">Tap NOT A MATCH on anything that isn't really this item -- valuation recalculates immediately.</div>
+        <div id="scout-comps-tabs" style="display:flex;gap:6px;margin-bottom:8px"></div>
         <div id="scout-comps-list" style="display:grid;gap:8px"></div>
       </div>
 
@@ -4908,8 +4909,8 @@ const DAILY_TABS = [
   ['overview', 'HOME'],
   ['research', 'RESEARCH'],
   ['intake', 'BUY'],
-  ['scout', 'POCKET SCOUT'],
   ['display', 'SELL'],
+  ['scout', 'POCKET SCOUT'],
   ['inventory', 'INVENTORY'],
   ['sets', 'SETS'],
   ['shows', 'SHOWS'],
@@ -26191,6 +26192,7 @@ async function scoutStartSession(){
     if(!res.ok || !data.ok) throw new Error(data.error||'Could not start scan session');
     scoutSession = { id:data.sessionId, photos:[], identity:{}, confidence:0, candidates:[], compSnapshot:null, textEvidence:[], routeToCardPipeline:false };
     scoutPhotoSeq = 0;
+    scoutCompsView = 'active';
     document.getElementById('scout-idle-panel').style.display='none';
     document.getElementById('scout-session-panel').style.display='';
     document.getElementById('scout-result-card').style.display='none';
@@ -26361,6 +26363,7 @@ function scoutRecomputeDecision(){
   document.getElementById('scout-decision-reason').textContent = result.reason;
 }
 
+let scoutCompsView = 'active'; // 'active' | 'sold' -- which side of the comps drawer is showing
 function scoutToggleComps(){
   const drawer = document.getElementById('scout-comps-drawer');
   if(!drawer) return;
@@ -26368,33 +26371,45 @@ function scoutToggleComps(){
   drawer.style.display = showing ? 'none' : '';
   if(!showing) scoutRenderComps();
 }
+function scoutSwitchCompsView(view){
+  scoutCompsView = view==='sold' ? 'sold' : 'active';
+  scoutRenderComps();
+}
 function scoutRenderComps(){
   const list = document.getElementById('scout-comps-list');
+  const tabs = document.getElementById('scout-comps-tabs');
   if(!list) return;
-  const cands = scoutSession?.candidates||[];
-  list.innerHTML = cands.length ? cands.map((c,i)=>`<div style="display:flex;gap:8px;align-items:center;border:1px solid var(--border);border-radius:8px;padding:6px">
+  const all = scoutSession?.candidates||[];
+  const activeCount = all.filter(c=>c.listingStatus!=='sold').length;
+  const soldCount = all.filter(c=>c.listingStatus==='sold').length;
+  if(tabs){
+    tabs.innerHTML = `<button class="hbtn" style="flex:1;${scoutCompsView==='active'?'color:var(--g);border-color:var(--g)':''}" onclick="scoutSwitchCompsView('active')">ACTIVE (${activeCount})</button>`
+      + `<button class="hbtn" style="flex:1;${scoutCompsView==='sold'?'color:var(--g);border-color:var(--g)':''}" onclick="scoutSwitchCompsView('sold')">SOLD (${soldCount})</button>`;
+  }
+  const cands = all.filter(c => scoutCompsView==='sold' ? c.listingStatus==='sold' : c.listingStatus!=='sold');
+  list.innerHTML = cands.length ? cands.map(c=>`<div style="display:flex;gap:8px;align-items:center;border:1px solid var(--border);border-radius:8px;padding:6px">
     ${c.imageUrl?`<img src="${escHtml(c.imageUrl)}" style="width:44px;height:44px;object-fit:cover;border-radius:4px" loading="lazy">`:'<div style="width:44px;height:44px;border-radius:4px;background:var(--surf2)"></div>'}
     <div style="flex:1;font-family:var(--font-mono);font-size:9px;line-height:1.5">
       <div style="color:var(--text);font-size:10px">${escHtml(c.title||'Listing')}</div>
-      <div style="color:var(--dim)">${scoutMoney(c.total)}${c.condition?' · '+escHtml(c.condition):''} ${c.url?`· <a href="${escHtml(c.url)}" target="_blank" rel="noopener" style="color:var(--blue)">view</a>`:''}</div>
+      <div style="color:var(--dim)">${scoutMoney(c.total)}${c.condition?' · '+escHtml(c.condition):''}${c.listingStatus==='sold'&&c.soldAt?' · sold '+escHtml(new Date(c.soldAt).toLocaleDateString()):''} ${c.url?`· <a href="${escHtml(c.url)}" target="_blank" rel="noopener" style="color:var(--blue)">view</a>`:''}</div>
     </div>
-    <button class="hbtn" style="font-size:8px;padding:6px 8px" onclick="scoutRejectCandidate('${escHtml(c.itemId||'')}',${i})">NOT A MATCH</button>
-  </div>`).join('') : '<div style="font-family:var(--font-mono);font-size:9px;color:var(--dim)">No comps yet.</div>';
+    <button class="hbtn" style="font-size:8px;padding:6px 8px" onclick="scoutRejectCandidate('${escHtml(c.id||'')}')">NOT A MATCH</button>
+  </div>`).join('') : `<div style="font-family:var(--font-mono);font-size:9px;color:var(--dim)">No ${scoutCompsView} comps${scoutCompsView==='sold'?' (or sold history is unavailable for this item)':''}.</div>`;
 }
-async function scoutRejectCandidate(itemId, idx){
-  if(!scoutSession) return;
-  // scan_queue rows aren't keyed by eBay itemId client-side -- reject by
-  // itemId match against what the Worker just persisted for this session.
+async function scoutRejectCandidate(candidateRowId){
+  if(!scoutSession || !candidateRowId) return;
   try{
-    const res = await storeWorkerFetch('/pocket-scout/session/candidate/reject', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ sessionId:scoutSession.id, candidateId:itemId }) });
+    const res = await storeWorkerFetch('/pocket-scout/session/candidate/reject', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ sessionId:scoutSession.id, candidateId:candidateRowId }) });
     const data = await res.json().catch(()=>({}));
     if(!res.ok || !data.ok){ toast_dash(data.error||'Could not reject candidate'); return; }
-    scoutSession.candidates.splice(idx,1);
+    const idx = scoutSession.candidates.findIndex(c=>c.id===candidateRowId);
+    if(idx>=0) scoutSession.candidates.splice(idx,1);
     scoutSession.compSnapshot = { ...(scoutSession.compSnapshot||{}), ...data.compSnapshot };
     document.getElementById('scout-comps-count').textContent = String(scoutSession.candidates.length);
     scoutRenderComps();
     scoutRecomputeDecision();
     document.getElementById('scout-active-median').textContent = scoutMoney(data.compSnapshot?.activeStats?.median);
+    document.getElementById('scout-sold-median').textContent = scoutMoney(data.compSnapshot?.soldStats?.median);
   }catch(e){ toast_dash('Pocket Scout: '+e.message); }
 }
 
