@@ -11,10 +11,11 @@ const buylist = fs.readFileSync('buylist.html', 'utf8');
 // a later Twilio review explicitly rejected gating checkout on this box --
 // "Make SMS consent optional...so consumers can complete sign-up without
 // opting in to texts." ──
-assert.match(storefront, /<input id="ck-sms-consent" type="checkbox"/, 'checkout must render an SMS-consent checkbox');
-assert.match(storefront, /I agree to receive SMS\/text messages about this order/, 'the checkbox label must explicitly say what the customer is consenting to');
-assert.match(storefront, /Message frequency depends on order activity/, 'the checkbox label must disclose message frequency, per Twilio A2P requirements');
-assert.match(storefront, /Reply STOP to cancel, HELP for help/, "the checkbox label must use Twilio's exact required STOP/HELP phrasing, not a paraphrase");
+assert.match(storefront, /<input id="ck-sms-consent" name="smsConsent" type="checkbox"/, 'checkout must render a named SMS-consent checkbox');
+assert.match(storefront, /Optional: I agree to receive order, pickup, shipping, and customer-care SMS\/text messages/, 'the checkbox label must explicitly say what the customer is consenting to and that consent is optional');
+assert.match(storefront, /Message frequency varies based on order activity/, 'the checkbox label must disclose message frequency, per Twilio A2P requirements');
+assert.match(storefront, /Reply STOP to opt out or HELP for help/, "the checkbox label must use the required STOP/HELP instructions");
+assert.match(storefront, /Consent is not a condition of purchase/, 'checkout must state that SMS consent is not a condition of purchase');
 assert.match(storefront, /href="https:\/\/themanapocket\.com\/privacy-policy" target="_blank">Privacy Policy<\/a> and <a href="https:\/\/themanapocket\.com\/terms-and-conditions" target="_blank">Terms<\/a>/, 'the checkbox label must link directly to the real Privacy Policy and Terms pages');
 assert.doesNotMatch(storefront, /ck-sms-consent'\)\.checked/, 'checkout submission must never read/require ck-sms-consent -- consent must stay optional, not gate the purchase');
 
@@ -24,10 +25,12 @@ console.log('Storefront SMS-consent contract checks passed');
 // optional consent checkbox once a phone number is entered (no phone means
 // no SMS is possible, so nothing to consent to) -- but never blocks
 // submission on it either. ──
-assert.match(buylist, /<input id="sms-consent" type="checkbox"/, 'buylist form must render an SMS-consent checkbox');
+assert.match(buylist, /<input id="sms-consent" name="smsConsent" type="checkbox"/, 'buylist form must render a named SMS-consent checkbox');
 assert.match(buylist, /id="sms-consent-row" style="display:none/, 'the consent row must start hidden -- it only matters once a phone number is entered');
-assert.match(buylist, /Message frequency depends on submission activity/, 'the checkbox label must disclose message frequency, per Twilio A2P requirements');
-assert.match(buylist, /Reply STOP to cancel, HELP for help/, "the checkbox label must use Twilio's exact required STOP/HELP phrasing, not a paraphrase");
+assert.match(buylist, /Optional: I agree to receive submission and customer-care SMS\/text messages/, 'buylist consent must explicitly say what messages are sent and that consent is optional');
+assert.match(buylist, /Message frequency varies based on submission activity/, 'the checkbox label must disclose message frequency, per Twilio A2P requirements');
+assert.match(buylist, /Reply STOP to opt out or HELP for help/, "the checkbox label must use the required STOP/HELP instructions");
+assert.match(buylist, /Consent is not a condition of submitting items/, 'buylist must state that SMS consent is not required to submit items');
 assert.match(buylist, /href="https:\/\/themanapocket\.com\/privacy-policy" target="_blank">Privacy Policy<\/a> and <a href="https:\/\/themanapocket\.com\/terms-and-conditions" target="_blank">Terms<\/a>/, 'the checkbox label must link directly to the real Privacy Policy and Terms pages');
 assert.match(buylist, /function updateSmsConsentVisibility\(\)\{/, 'updateSmsConsentVisibility must exist to toggle the consent row based on whether a phone was entered');
 assert.match(buylist, /oninput="updateSmsConsentVisibility\(\)"/, 'the phone field must trigger the visibility toggle on every keystroke');
