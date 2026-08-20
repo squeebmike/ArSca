@@ -44,8 +44,8 @@ assert.match(dashboard, /async function cascadeMarkBundleMembersSold\(lines, sol
 assert.match(dashboard, /if\(!container\?\.isBundle \|\| !Array\.isArray\(container\.bundleMemberIds\) \|\| !container\.bundleMemberIds\.length\) continue;/, 'cascade must skip non-bundle sale lines entirely');
 
 // ── Row menu wiring ──
-assert.match(dashboard, /inventoryItemBundleEligible\(item\)\?`<button class="hbtn" style="\$\{btnStyle\};color:var\(--gold\)" onclick="toggleBundleDraft\('\$\{id\}'\);this\.closest\('\.inv-row-menu'\)\.remove\(\)">🎁 \$\{bundleDraftIds\.has\(id\)\?'Remove from':'Add to'\} Bundle Draft<\/button>`:'',/, 'row menu must offer add/remove-from-bundle-draft for eligible items');
-assert.match(dashboard, /\(item\?\.isBundle && item\.status==='in_stock'\)\?`<button class="hbtn" style="\$\{btnStyle\};color:var\(--red\)" onclick="dissolveBundle\('\$\{id\}'\);this\.closest\('\.inv-row-menu'\)\.remove\(\)">🎁 Dissolve Bundle<\/button>`:'',/, 'row menu must offer Dissolve Bundle only for unsold bundle containers');
+assert.match(dashboard, /inventoryItemBundleEligible\(item\)\?`<button class="hbtn" style="\$\{btnStyle\};color:var\(--gold\)" onclick="toggleBundleDraft\('\$\{id\}'\);closeInvRowMenu\(\)">🎁 \$\{bundleDraftIds\.has\(id\)\?'Remove from':'Add to'\} Bundle Draft<\/button>`:'',/, 'row menu must offer add/remove-from-bundle-draft for eligible items');
+assert.match(dashboard, /\(item\?\.isBundle && item\.status==='in_stock'\)\?`<button class="hbtn" style="\$\{btnStyle\};color:var\(--red\)" onclick="dissolveBundle\('\$\{id\}'\);closeInvRowMenu\(\)">🎁 Dissolve Bundle<\/button>`:'',/, 'row menu must offer Dissolve Bundle only for unsold bundle containers');
 
 // ── Table display: bundled members must not read as plain "SOLD", and bundle containers get a badge ──
 assert.match(dashboard, /\$\{i\.isBundle\?' <span style="color:var\(--gold\);font-size:8px">🎁 BUNDLE<\/span>':''\}/, 'bundle container rows must show a BUNDLE badge');

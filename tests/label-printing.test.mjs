@@ -7,7 +7,7 @@ const dashboard = fs.readFileSync('dashboard.html', 'utf8');
 assert.match(dashboard, /<script src="https:\/\/cdn\.jsdelivr\.net\/npm\/jsbarcode@3\.11\.6\/dist\/JsBarcode\.all\.min\.js" defer><\/script>/, 'missing the JsBarcode CDN script');
 assert.match(dashboard, /id="label-print-modal"/, 'missing the label print batch modal');
 assert.match(dashboard, /onclick="openLabelPrintModal\(\)" title="Build a batch of barcode\/price labels to print"/, 'missing the inventory toolbar PRINT LABELS button');
-assert.match(dashboard, /onclick="openLabelPrintModal\('\$\{id\}'\);this\.closest\('\.inv-row-menu'\)\.remove\(\)">🏷️ Print Label<\/button>/, 'missing the per-row quick Print Label action');
+assert.match(dashboard, /onclick="openLabelPrintModal\('\$\{id\}'\);closeInvRowMenu\(\)">🏷️ Print Label<\/button>/, 'missing the per-row quick Print Label action');
 
 console.log('Label printing entry-point checks passed');
 

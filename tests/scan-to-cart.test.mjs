@@ -5,7 +5,7 @@ const dashboard = fs.readFileSync('dashboard.html', 'utf8');
 
 // ── Contract: a dedicated modal + toolbar entry point exist, separate from the research scanner ──
 assert.match(dashboard, /<div id="cart-scan-modal" class="barcode-modal-overlay"/, 'a dedicated Scan To Cart modal must exist, reusing the shared barcode modal CSS');
-assert.match(dashboard, /<button class="hbtn" onclick="openCartScanModal\(\)" title="Scan a printed shelf\/price label to add that exact item to the cart">📷 SCAN TO CART<\/button>/, 'the Inventory tab toolbar must have a SCAN TO CART entry point');
+assert.match(dashboard, /<button class="tab primary" onclick="openCartScanModal\(\)" title="Scan a printed shelf\/price label to add that exact item to the cart">📷 SCAN TO CART<\/button>/, 'the Inventory tab toolbar must have a SCAN TO CART entry point');
 
 // ── Contract: it uses its own camera state, not the research scanner's globals ──
 assert.match(dashboard, /let cartScanStream=null, cartScanDetector=null, cartScanDetecting=false;/, 'scan-to-cart must keep its own camera state separate from the research barcode scanner (openBarcodeScanner)');
