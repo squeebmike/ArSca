@@ -23,7 +23,7 @@ assert.match(migration, /idx_pull_list_subscriptions_unique on public\.pull_list
 assert.match(dashboard, /id="tab-pulllists"/, 'pull lists tab panel must exist');
 assert.match(dashboard, /\['pulllists', 'PULL LISTS'\]/, 'pull lists must be reachable from the tab nav');
 assert.match(dashboard, /pulllists:'pulllists'/, 'pulllists tab must be registered in TAB_CAPABILITY');
-assert.match(dashboard, /'overview','display','browse','inventory','research','pos','alerts','wantlist','locations','restock','grading','sets','events','pulllists'/, 'employees must be able to reach the pull lists tab');
+assert.match(dashboard, /'overview','display','browse','inventory','research','pos','whatnot','alerts','wantlist','locations','restock','grading','sets','events','pulllists'/, 'employees must be able to reach the pull lists tab');
 assert.match(dashboard, /capabilities:\['research','checkout','sales','inventory','consignments','staff','shows','events','pulllists'\]/, 'pull lists must be gated at the Store plan tier alongside events');
 assert.match(dashboard, /if\(name === 'pulllists'\) setTimeout\(ensurePullListPanel, 0\);/, 'switching to the pull lists tab must trigger a render');
 

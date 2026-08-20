@@ -50,6 +50,11 @@ header{position:sticky;top:0;z-index:100;background:rgba(7,8,10,.96);backdrop-fi
 .tab.on{color:var(--g);border-color:rgba(0,255,179,.62);background:rgba(0,255,179,.16);box-shadow:0 0 26px rgba(0,255,179,.14);}
 .tab.primary{color:var(--g);}
 .tab.deck-lab-link{color:var(--g);text-decoration:none;}
+/* Reuses .tabs/.tab pill styling for a horizontally-sliding action row
+   (e.g. Inventory's toolbar) instead of the page-level nav bar's own
+   max-width/margin/border -- .tabs is kept as a second class so the
+   .tabs>.tab child-selector glow above still applies. */
+.inv-action-tabs{max-width:none;margin:0;padding:6px 0;border-bottom:none;}
 .nav-more{margin-left:auto;position:relative;flex-shrink:0;}
 .more-menu{position:fixed;right:20px;top:98px;display:none;min-width:220px;background:var(--surf);border:1px solid var(--border);border-radius:8px;padding:6px;box-shadow:0 18px 50px rgba(0,0,0,.65);z-index:9998;}
 .more-menu.on{display:grid;gap:4px;}
@@ -1784,11 +1789,14 @@ body.show-mode .inv-sync-badge{display:none;}
       <button class="inv-view-btn active" id="inv-btn-table" onclick="setInvView('table')" title="Table view">≡ Table</button>
       <button class="inv-view-btn" id="inv-btn-cards" onclick="setInvView('cards')" title="Card grid view">⊞ Cards</button>
     </div>
-    <button class="hbtn" id="sync-prices-btn" style="margin-left:auto" onclick="openPriceSyncModal()" title="Compare inventory prices against your cached price lookups">💹 SYNC PRICES</button>
-    <button class="hbtn" onclick="openLabelPrintModal()" title="Build a batch of barcode/price labels to print">🏷️ PRINT LABELS</button>
-    <button class="hbtn" onclick="openOneOffSellModal()" title="Add an item that isn't in inventory yet to the cart">⚡ ADD ONE-OFF TO CART</button>
-    <button class="hbtn" onclick="openCartScanModal()" title="Scan a printed shelf/price label to add that exact item to the cart">📷 SCAN TO CART</button>
-    <button class="hbtn" onclick="openGiftCardSellModal()" title="Sell a gift card">🎁 SELL GIFT CARD</button>
+  </div>
+  <div class="tabs inv-action-tabs" role="toolbar" aria-label="Inventory actions">
+    <button class="tab primary" id="sync-prices-btn" onclick="openPriceSyncModal()" title="Compare inventory prices against your cached price lookups">💹 SYNC PRICES</button>
+    <button class="tab primary" onclick="openLabelPrintModal()" title="Build a batch of barcode/price labels to print">🏷️ PRINT LABELS</button>
+    <button class="tab primary" onclick="openOneOffSellModal()" title="Add an item that isn't in inventory yet to the cart">⚡ ONE-OFF TO CART</button>
+    <button class="tab primary" onclick="openCartScanModal()" title="Scan a printed shelf/price label to add that exact item to the cart">📷 SCAN TO CART</button>
+    <button class="tab primary" onclick="openInventoryFindScanner()" title="Scan a barcode to find and highlight that item in the list below">🔎 SCAN TO FIND</button>
+    <button class="tab primary" onclick="openGiftCardSellModal()" title="Sell a gift card">🎁 GIFT CARD</button>
   </div>
   <div class="tc" id="inv-active-cart-bar" style="align-items:center">
     <span style="font-family:var(--font-mono);font-size:9px;color:var(--dim);white-space:nowrap">ADDING TO CART:</span>
@@ -1821,6 +1829,7 @@ body.show-mode .inv-sync-badge{display:none;}
       <div class="inv-cat-wheel-highlight"></div>
       <div class="inv-cat-wheel-track" id="inv-cat-wheel-track" onscroll="handleInvCatWheelScroll()">
         <div class="inv-cat-wheel-pad" aria-hidden="true"></div>
+        <button class="fb inv-cat-wheel-item" onclick="invCatWheelSelect(this,'all')" role="option">🗂 All</button>
         <button class="fb inv-cat-wheel-item" onclick="invCatWheelSelect(this,'Sports')" role="option">⚾ Sports</button>
         <button class="fb inv-cat-wheel-item" onclick="invCatWheelSelect(this,'Pokemon TCG')" role="option">🎴 Pokemon</button>
         <button class="fb inv-cat-wheel-item" onclick="invCatWheelSelect(this,'Magic: The Gathering')" role="option">🎴 MTG</button>
@@ -2437,7 +2446,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <div id="cart-scan-modal" class="barcode-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="cart-scan-title" onclick="if(event.target===this)closeCartScanModal()">
   <div class="barcode-sheet">
     <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
-      <div><div id="cart-scan-title" style="font-family:'Orbitron',monospace;font-size:12px;color:var(--g)">SCAN TO CART</div><div style="font-size:9px;color:var(--dim);margin-top:3px">Scan a printed shelf/price label's barcode to add that exact item to the active cart. Stays open between scans.</div></div>
+      <div><div id="cart-scan-title" style="font-family:'Orbitron',monospace;font-size:12px;color:var(--g)">SCAN TO CART</div><div id="cart-scan-desc" style="font-size:9px;color:var(--dim);margin-top:3px">Scan a printed shelf/price label's barcode to add that exact item to the active cart. Stays open between scans.</div></div>
       <button class="hbtn" onclick="closeCartScanModal()">CLOSE</button>
     </div>
     <div id="cart-scan-camera" class="barcode-camera"><video id="cart-scan-video" playsinline muted></video><div class="barcode-scan-line"></div><div id="cart-scan-camera-placeholder" style="font-family:monospace;font-size:10px;color:var(--dim);text-align:center;padding:18px">Opening camera when supported.</div><div id="cart-scan-pokeball" aria-hidden="true"><div class="pb-top"></div><div class="pb-bottom"></div><div class="pb-band"></div><div class="pb-button"></div></div></div>
@@ -12200,38 +12209,43 @@ function openInventoryTcgplayer(id){
   if(!built.url){toast_dash('No TCGplayer link or searchable card details');return;}
   window.open(built.url,'_blank','noopener');
 }
+function closeInvRowMenu(){ document.querySelectorAll('.inv-row-menu-backdrop').forEach(m => m.remove()); }
 function showInvRowMenu(e, id, isInStock){
   e.stopPropagation();
-  document.querySelectorAll('.inv-row-menu').forEach(m => m.remove());
-  const btn = e.currentTarget;
-  const rect = btn.getBoundingClientRect();
-  const menu = document.createElement('div');
+  closeInvRowMenu();
   const item = (all || []).find(candidate => String(candidate.id || candidate.wfId) === String(id));
   const deleteBlockReason = inventoryDeleteBlockReason(item);
+  // Centered fixed-position modal (not anchored to the trigger button) --
+  // an anchored popover ran off-screen when the row was near a viewport edge.
+  const backdrop = document.createElement('div');
+  backdrop.className = 'inv-row-menu-backdrop';
+  backdrop.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9998;display:flex;align-items:center;justify-content:center;padding:16px;overflow-y:auto;';
+  const menu = document.createElement('div');
   menu.className = 'inv-row-menu';
-  menu.style.cssText = `position:fixed;left:${rect.left}px;top:${rect.bottom+4}px;z-index:600;background:var(--surf);border:1px solid var(--border);border-radius:8px;padding:6px;min-width:140px;box-shadow:0 8px 24px rgba(0,0,0,.4);`;
+  menu.style.cssText = 'position:relative;width:100%;max-width:320px;max-height:80vh;overflow-y:auto;background:var(--surf);border:1px solid var(--border);border-radius:10px;padding:10px;box-shadow:0 18px 50px rgba(0,0,0,.65);';
   // Secondary actions only — Sell/Cart/Edit are always visible in row
   const btnStyle = 'width:100%;min-height:40px;font-size:11px;margin-bottom:4px;text-align:left;padding:0 12px';
   menu.innerHTML = [
-    `<div style="font-family:monospace;font-size:8px;color:var(--dim);padding:2px 6px 6px;letter-spacing:.06em">MORE ACTIONS</div>`,
-    `<button class="hbtn" style="${btnStyle};color:var(--g)" onclick="openInventoryTcgplayer('${id}');this.closest('.inv-row-menu').remove()">🛒 TCGplayer</button>`,
-    `<button class="hbtn" style="${btnStyle};color:var(--blue)" onclick="openInventoryItemInResearch('${id}');this.closest('.inv-row-menu').remove()">🔍 Research</button>`,
-    `<button class="hbtn" style="${btnStyle}" onclick="openEbayFromDash('${id}');this.closest('.inv-row-menu').remove()">📦 ${item?.ebayListingId?'Manage eBay Listing':'eBay List'}</button>`,
-    isInStock?`<button class="hbtn" style="${btnStyle};color:var(--purple)" onclick="markSoldOnWhatnot('${id}');this.closest('.inv-row-menu').remove()">📦 Sold on Whatnot</button>`:'',
-    isInStock?`<button class="hbtn" style="${btnStyle};color:var(--gold)" onclick="openExternalSaleModal('${id}');this.closest('.inv-row-menu').remove()">💰 Record External Sale (other)</button>`:'',
-    inventoryItemBundleEligible(item)?`<button class="hbtn" style="${btnStyle};color:var(--gold)" onclick="toggleBundleDraft('${id}');this.closest('.inv-row-menu').remove()">🎁 ${bundleDraftIds.has(id)?'Remove from':'Add to'} Bundle Draft</button>`:'',
-    (item?.isBundle && item.status==='in_stock')?`<button class="hbtn" style="${btnStyle};color:var(--red)" onclick="dissolveBundle('${id}');this.closest('.inv-row-menu').remove()">🎁 Dissolve Bundle</button>`:'',
-    `<button class="hbtn" style="${btnStyle}" onclick="openItemTimeline('${id}');this.closest('.inv-row-menu').remove()">📋 History</button>`,
-    `<button class="hbtn" style="${btnStyle}" onclick="openLabelPrintModal('${id}');this.closest('.inv-row-menu').remove()">🏷️ Print Label</button>`,
-    isInStock?`<button class="hbtn" style="${btnStyle};color:var(--g)" onclick="publishInventoryItemToWebflow('${id}');this.closest('.inv-row-menu').remove()">🌐 Publish / Sync Webflow</button>`:'',
+    `<div style="display:flex;align-items:center;justify-content:space-between;padding:2px 6px 8px"><span style="font-family:monospace;font-size:8px;color:var(--dim);letter-spacing:.06em">MORE ACTIONS</span><button onclick="closeInvRowMenu()" style="background:none;border:none;color:var(--dim);font-size:20px;cursor:pointer;line-height:1;padding:0 4px">×</button></div>`,
+    `<button class="hbtn" style="${btnStyle};color:var(--g)" onclick="openInventoryTcgplayer('${id}');closeInvRowMenu()">🛒 TCGplayer</button>`,
+    `<button class="hbtn" style="${btnStyle};color:var(--blue)" onclick="openInventoryItemInResearch('${id}');closeInvRowMenu()">🔍 Research</button>`,
+    `<button class="hbtn" style="${btnStyle}" onclick="openEbayFromDash('${id}');closeInvRowMenu()">📦 ${item?.ebayListingId?'Manage eBay Listing':'eBay List'}</button>`,
+    isInStock?`<button class="hbtn" style="${btnStyle};color:var(--purple)" onclick="markSoldOnWhatnot('${id}');closeInvRowMenu()">📦 Sold on Whatnot</button>`:'',
+    isInStock?`<button class="hbtn" style="${btnStyle};color:var(--gold)" onclick="openExternalSaleModal('${id}');closeInvRowMenu()">💰 Record External Sale (other)</button>`:'',
+    inventoryItemBundleEligible(item)?`<button class="hbtn" style="${btnStyle};color:var(--gold)" onclick="toggleBundleDraft('${id}');closeInvRowMenu()">🎁 ${bundleDraftIds.has(id)?'Remove from':'Add to'} Bundle Draft</button>`:'',
+    (item?.isBundle && item.status==='in_stock')?`<button class="hbtn" style="${btnStyle};color:var(--red)" onclick="dissolveBundle('${id}');closeInvRowMenu()">🎁 Dissolve Bundle</button>`:'',
+    `<button class="hbtn" style="${btnStyle}" onclick="openItemTimeline('${id}');closeInvRowMenu()">📋 History</button>`,
+    `<button class="hbtn" style="${btnStyle}" onclick="openLabelPrintModal('${id}');closeInvRowMenu()">🏷️ Print Label</button>`,
+    isInStock?`<button class="hbtn" style="${btnStyle};color:var(--g)" onclick="publishInventoryItemToWebflow('${id}');closeInvRowMenu()">🌐 Publish / Sync Webflow</button>`:'',
     item?.status==='archived'
-      ?`<button class="hbtn" style="${btnStyle}color:var(--g)" onclick="restoreInventoryItem('${id}');this.closest('.inv-row-menu').remove()">↩ Restore</button>`
-      :`<button class="hbtn" style="${btnStyle}color:var(--gold)" onclick="archiveInventoryItem('${id}');this.closest('.inv-row-menu').remove()">Archive</button>`,
-    !deleteBlockReason?`<button class="hbtn danger" style="${btnStyle}" onclick="deleteInventoryRecord('${id}');this.closest('.inv-row-menu').remove()">Delete Test / Accident</button>`:'',
+      ?`<button class="hbtn" style="${btnStyle}color:var(--g)" onclick="restoreInventoryItem('${id}');closeInvRowMenu()">↩ Restore</button>`
+      :`<button class="hbtn" style="${btnStyle}color:var(--gold)" onclick="archiveInventoryItem('${id}');closeInvRowMenu()">Archive</button>`,
+    !deleteBlockReason?`<button class="hbtn danger" style="${btnStyle}" onclick="deleteInventoryRecord('${id}');closeInvRowMenu()">Delete Test / Accident</button>`:'',
   ].filter(Boolean).join('');
-  document.body.appendChild(menu);
-  const close = () => menu.remove();
-  setTimeout(() => document.addEventListener('click', close, { once:true }), 10);
+  backdrop.appendChild(menu);
+  document.body.appendChild(backdrop);
+  backdrop.addEventListener('click', ev => { if(ev.target === backdrop) closeInvRowMenu(); });
+  setTimeout(() => document.addEventListener('click', closeInvRowMenu, { once:true }), 10);
 }
 
 // ── Stripe QR Checkout v1 ─────────────────────────────────────────────────
@@ -25763,9 +25777,18 @@ function resetBarcodeLookup(clearInput=true){barcodeCandidates=[];barcodeCurrent
 // job, so it gets its own camera stream/state instead of sharing the
 // research scanner's globals.
 let cartScanStream=null, cartScanDetector=null, cartScanDetecting=false;
-function openCartScanModal(){
+// 'cart' (default): scanned item is added to the active sale cart. 'find':
+// scanned item is instead just located/highlighted in the Inventory table --
+// see openInventoryFindScanner() and the branch in handleCartScanValue().
+let cartScanMode='cart';
+function openCartScanModal(mode){
+  cartScanMode=mode==='find'?'find':'cart';
   const modal=document.getElementById('cart-scan-modal');
   if(!modal) return;
+  const titleEl=document.getElementById('cart-scan-title');
+  const descEl=document.getElementById('cart-scan-desc');
+  if(titleEl) titleEl.textContent=cartScanMode==='find'?'SCAN TO FIND':'SCAN TO CART';
+  if(descEl) descEl.textContent=cartScanMode==='find'?"Scan a printed shelf/price label's barcode to jump straight to that item in the inventory list.":"Scan a printed shelf/price label's barcode to add that exact item to the active cart. Stays open between scans.";
   modal.classList.add('on');
   document.body.style.overflow='hidden';
   const log=document.getElementById('cart-scan-log'); if(log) log.innerHTML='';
@@ -25773,6 +25796,7 @@ function openCartScanModal(){
   setTimeout(()=>document.getElementById('cart-scan-manual-input')?.focus(),80);
   if(navigator.mediaDevices?.getUserMedia&&'BarcodeDetector' in window) startCartScanCamera();
 }
+function openInventoryFindScanner(){ openCartScanModal('find'); }
 function closeCartScanModal(){stopCartScanCamera();document.getElementById('cart-scan-modal')?.classList.remove('on');document.body.style.overflow='';}
 async function toggleCartScanCamera(){if(cartScanStream)stopCartScanCamera();else await startCartScanCamera();}
 async function startCartScanCamera(){
@@ -25845,10 +25869,45 @@ async function handleCartScanValue(rawValue){
     if(log)log.innerHTML=`<div style="color:var(--red)">✕ No match for "${escHtml(lookupValue)}"</div>`+log.innerHTML;
     return;
   }
+  if(cartScanMode==='find'){
+    jumpToInventoryItem(item);
+    return;
+  }
   dashAddToCart(item.id);
   showCartScanPokeball();
   setCartScanStatus('Added: '+item.name,'var(--g)');
   if(log)log.innerHTML=`<div style="color:var(--g)">✓ ${escHtml(item.name)}</div>`+log.innerHTML;
+}
+
+// Scan-to-find: instead of adding to a cart, clears any filter that would
+// hide the scanned item, jumps the table to the page it lands on, and
+// highlights the row -- for "where is this thing in my list" during a busy
+// shift rather than a sale.
+function jumpToInventoryItem(item){
+  closeCartScanModal();
+  const search=document.getElementById('tbl-q');
+  if(search) search.value=item.name||'';
+  activeF='all';
+  document.querySelectorAll('.inv-filter-chips .fb').forEach(b=>{
+    b.classList.toggle('on', b.getAttribute('onclick')?.includes("setF('all'"));
+  });
+  page=1;
+  filterTable();
+  const idx=filtered.findIndex(i=>i.id===item.id);
+  if(idx>=0){
+    const targetPage=Math.floor(idx/PER)+1;
+    if(targetPage!==page){ page=targetPage; renderTable(); }
+  }
+  setTimeout(()=>{
+    const row=document.querySelector(`[data-item-id="${CSS.escape(item.id)}"]`);
+    if(row){
+      row.scrollIntoView({behavior:'smooth',block:'center'});
+      row.style.outline='2px solid var(--g)';
+      row.style.outlineOffset='-2px';
+      setTimeout(()=>{row.style.outline='';row.style.outlineOffset='';},2200);
+    }
+    toast_dash('Found: '+(item.name||'Item'));
+  },80);
 }
 
 // ── WHATNOT MODE ─────────────────────────────────────────────────────────
