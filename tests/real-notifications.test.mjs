@@ -21,7 +21,8 @@ assert.match(worker, /https:\/\/comms\.twilio\.com\/v1\/Emails/, 'must POST to t
 assert.match(worker, /const auth = btoa\(`\$\{env\.TWILIO_ACCOUNT_SID\}:\$\{env\.TWILIO_AUTH_TOKEN\}`\);[\s\S]*Authorization: `Basic \$\{auth\}`/, 'Twilio Email must use Account SID and Auth Token Basic authentication');
 assert.match(worker, /const fromAddress = env\.TWILIO_EMAIL_FROM_ADDRESS \|\| env\.SENDGRID_FROM_EMAIL;/, 'sendEmail must accept the existing sender-address secret during migration');
 assert.match(worker, /if \(!env\.TWILIO_ACCOUNT_SID \|\| !env\.TWILIO_AUTH_TOKEN \|\| !fromAddress\) throw new Error\('Email is not configured yet'\);/, 'sendEmail must fail clearly when Twilio email credentials are not configured');
-assert.match(worker, /from: \{ address: fromAddress, name: fromName \},[\s\S]*to: \[\{ address: to \}\],[\s\S]*content: \{ subject, text \}/, 'Twilio Email payload must use the Comms API address/content shape');
+assert.match(worker, /function emailTextToHtml\(text\) \{[\s\S]*replace\(\/\[&<>"'\]\/g/, 'HTML email content must escape customer-controlled text');
+assert.match(worker, /from: \{ address: fromAddress, name: fromName \},[\s\S]*to: \[\{ address: to \}\],[\s\S]*content: \{ subject, html: emailTextToHtml\(text\), text \}/, 'Twilio Email payload must include both html and text in the Comms API content shape');
 assert.doesNotMatch(worker, /https:\/\/api\.sendgrid\.com\/v3\/mail\/send/, 'the Worker must not call the separately billed SendGrid endpoint');
 
 // Channel selection: '@' means email, otherwise SMS -- same rule the

@@ -11654,6 +11654,13 @@ async function sendSms(env, to, body) {
   return data;
 }
 
+function emailTextToHtml(text) {
+  const escaped = String(text || '').replace(/[&<>"']/g, ch => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+  }[ch]));
+  return `<div style="font-family:Arial,sans-serif;line-height:1.6;white-space:normal">${escaped.replace(/\r?\n/g, '<br>')}</div>`;
+}
+
 async function sendEmail(env, to, subject, text) {
   // SENDGRID_FROM_* remains as a backwards-compatible sender-address alias
   // while the site migrates providers. It is not used for authentication.
@@ -11667,7 +11674,7 @@ async function sendEmail(env, to, subject, text) {
     body: JSON.stringify({
       from: { address: fromAddress, name: fromName },
       to: [{ address: to }],
-      content: { subject, text },
+      content: { subject, html: emailTextToHtml(text), text },
       tags: { source: 'mana-pocket-worker' },
     }),
   });
