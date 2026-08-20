@@ -2984,7 +2984,7 @@ export default {
         soldcomps: !!env.SOLDCOMPS_API_KEY,
         shippo: !!env.SHIPPO_API_TOKEN,
         twilio: !!(env.TWILIO_ACCOUNT_SID && env.TWILIO_AUTH_TOKEN && env.TWILIO_FROM_NUMBER),
-        sendgrid: !!(env.SENDGRID_API_KEY && env.SENDGRID_FROM_EMAIL),
+        twilioEmail: !!(env.TWILIO_ACCOUNT_SID && env.TWILIO_AUTH_TOKEN && (env.TWILIO_EMAIL_FROM_ADDRESS || env.SENDGRID_FROM_EMAIL)),
         authEmailHook: !!env.SUPABASE_AUTH_HOOK_SECRET,
         kv: !!env.LBA_KV,
         mtgCatalogR2: !!env.MTG_CATALOG_R2,
@@ -11624,12 +11624,12 @@ async function runScheduledEbayReprice(env) {
   }
 }
 
-// ── Real outbound notifications (Twilio SMS / SendGrid email) ─────────────
+// ── Real outbound notifications (Twilio SMS / Twilio Comms Email) ─────────
 // Everything that used to be a device-only mailto:/sms: link (opens the
 // STAFF device's own mail/messaging app) can go through here instead, so
 // the app itself sends the message. Secrets are configured once at the
 // platform level (wrangler secret put TWILIO_ACCOUNT_SID/TWILIO_AUTH_TOKEN/
-// TWILIO_FROM_NUMBER/SENDGRID_API_KEY/SENDGRID_FROM_EMAIL) -- not
+// TWILIO_FROM_NUMBER/TWILIO_EMAIL_FROM_ADDRESS) -- not
 // per-store, same as every other third-party API key this Worker uses.
 async function sendSms(env, to, body) {
   if (!env.TWILIO_ACCOUNT_SID || !env.TWILIO_AUTH_TOKEN || !env.TWILIO_FROM_NUMBER) throw new Error('SMS is not configured yet');
@@ -11646,18 +11646,23 @@ async function sendSms(env, to, body) {
 }
 
 async function sendEmail(env, to, subject, text) {
-  if (!env.SENDGRID_API_KEY || !env.SENDGRID_FROM_EMAIL) throw new Error('Email is not configured yet');
-  const res = await fetch('https://api.sendgrid.com/v3/mail/send', {
+  // SENDGRID_FROM_* remains as a backwards-compatible sender-address alias
+  // while the site migrates providers. It is not used for authentication.
+  const fromAddress = env.TWILIO_EMAIL_FROM_ADDRESS || env.SENDGRID_FROM_EMAIL;
+  const fromName = env.TWILIO_EMAIL_FROM_NAME || env.SENDGRID_FROM_NAME || 'The Mana Pocket';
+  if (!env.TWILIO_ACCOUNT_SID || !env.TWILIO_AUTH_TOKEN || !fromAddress) throw new Error('Email is not configured yet');
+  const auth = btoa(`${env.TWILIO_ACCOUNT_SID}:${env.TWILIO_AUTH_TOKEN}`);
+  const res = await fetch('https://comms.twilio.com/v1/Emails', {
     method: 'POST',
-    headers: { Authorization: `Bearer ${env.SENDGRID_API_KEY}`, 'Content-Type': 'application/json' },
+    headers: { Authorization: `Basic ${auth}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      personalizations: [{ to: [{ email: to }] }],
-      from: { email: env.SENDGRID_FROM_EMAIL, name: env.SENDGRID_FROM_NAME || 'Store' },
-      subject,
-      content: [{ type: 'text/plain', value: text }],
+      from: { address: fromAddress, name: fromName },
+      to: [{ address: to }],
+      content: { subject, text },
+      tags: { source: 'mana-pocket-worker' },
     }),
   });
-  if (!res.ok) { const errTxt = await res.text(); throw new Error(`SendGrid request failed (${res.status}): ${errTxt.slice(0, 200)}`); }
+  if (!res.ok) { const errTxt = await res.text(); throw new Error(`Twilio Email request failed (${res.status}): ${errTxt.slice(0, 200)}`); }
   return true;
 }
 
@@ -11666,9 +11671,9 @@ async function sendEmail(env, to, subject, text) {
 // rate-limited, no custom-domain sender) and its Custom SMTP path kept
 // hitting configuration dead ends. This hook lets Supabase keep generating
 // the secure confirmation/recovery link, but instead of Supabase emailing
-// it itself, it POSTs the link here and we send it through the same
-// SendGrid account that already sends order-confirmation email -- proven
-// working, no separate SMTP relay to configure.
+// it itself, it POSTs the link here and we send it through Twilio's Comms
+// Email API using the same account credentials already configured for SMS
+// and calling -- no separate SendGrid account or SMTP relay to configure.
 // Verifies Standard Webhooks signatures (https://www.standardwebhooks.com/),
 // the format Supabase Auth Hooks use. SUPABASE_AUTH_HOOK_SECRET is the
 // "whsec_..." value shown when creating the hook in the Supabase dashboard.

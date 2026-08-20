@@ -13,9 +13,16 @@ assert.match(worker, /async function sendContactNotification\(env, storeId, cont
 assert.match(worker, /https:\/\/api\.twilio\.com\/2010-04-01\/Accounts\/\$\{env\.TWILIO_ACCOUNT_SID\}\/Messages\.json/, 'must POST to the Twilio Messages API');
 assert.match(worker, /if \(!env\.TWILIO_ACCOUNT_SID \|\| !env\.TWILIO_AUTH_TOKEN \|\| !env\.TWILIO_FROM_NUMBER\) throw new Error\('SMS is not configured yet'\);/, 'sendSms must fail clearly (not silently) when Twilio secrets are not configured');
 
-// Email goes through SendGrid's v3 mail/send API with Bearer auth.
-assert.match(worker, /https:\/\/api\.sendgrid\.com\/v3\/mail\/send/, 'must POST to the SendGrid mail/send API');
-assert.match(worker, /if \(!env\.SENDGRID_API_KEY \|\| !env\.SENDGRID_FROM_EMAIL\) throw new Error\('Email is not configured yet'\);/, 'sendEmail must fail clearly when SendGrid secrets are not configured');
+// Email goes through Twilio's Comms Email API with the same account-level
+// Basic authentication already used for calling and SMS. The existing
+// sender-address secret is accepted as a migration alias, but a SendGrid API
+// key must never be required or sent to the Twilio endpoint.
+assert.match(worker, /https:\/\/comms\.twilio\.com\/v1\/Emails/, 'must POST to the Twilio Comms Email API');
+assert.match(worker, /const auth = btoa\(`\$\{env\.TWILIO_ACCOUNT_SID\}:\$\{env\.TWILIO_AUTH_TOKEN\}`\);[\s\S]*Authorization: `Basic \$\{auth\}`/, 'Twilio Email must use Account SID and Auth Token Basic authentication');
+assert.match(worker, /const fromAddress = env\.TWILIO_EMAIL_FROM_ADDRESS \|\| env\.SENDGRID_FROM_EMAIL;/, 'sendEmail must accept the existing sender-address secret during migration');
+assert.match(worker, /if \(!env\.TWILIO_ACCOUNT_SID \|\| !env\.TWILIO_AUTH_TOKEN \|\| !fromAddress\) throw new Error\('Email is not configured yet'\);/, 'sendEmail must fail clearly when Twilio email credentials are not configured');
+assert.match(worker, /from: \{ address: fromAddress, name: fromName \},[\s\S]*to: \[\{ address: to \}\],[\s\S]*content: \{ subject, text \}/, 'Twilio Email payload must use the Comms API address/content shape');
+assert.doesNotMatch(worker, /https:\/\/api\.sendgrid\.com\/v3\/mail\/send/, 'the Worker must not call the separately billed SendGrid endpoint');
 
 // Channel selection: '@' means email, otherwise SMS -- same rule the
 // existing device-link notify buttons already use.
