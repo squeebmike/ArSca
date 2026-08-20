@@ -1544,6 +1544,30 @@ body.show-mode .inv-sync-badge{display:none;}
 .barcode-camera video{width:100%;max-height:330px;object-fit:contain;display:none;}
 .barcode-scan-line{display:none;position:absolute;left:8%;right:8%;top:50%;height:2px;background:var(--g);box-shadow:0 0 14px var(--g);}
 .barcode-camera.active .barcode-scan-line,.barcode-camera.active video{display:block;}
+/* Fires once per successful scan-to-cart add: a red/white pokeball pops
+   open then fades, so a staffer scanning a stack of labels back-to-back
+   gets an instant "that one's in, move to the next item" cue without
+   having to read the status text between scans. */
+#cart-scan-pokeball{position:absolute;top:50%;left:50%;width:64px;height:64px;margin:-32px 0 0 -32px;pointer-events:none;opacity:0;transform:scale(.3);z-index:6;}
+#cart-scan-pokeball.pop{animation:cart-scan-pokeball-pop .9s cubic-bezier(.34,1.56,.64,1) forwards;}
+#cart-scan-pokeball .pb-top{position:absolute;top:0;left:0;width:100%;height:50%;background:#e0262b;border:3px solid #101010;border-bottom:none;border-radius:32px 32px 0 0;box-sizing:border-box;transform-origin:50% 100%;}
+#cart-scan-pokeball.pop .pb-top{animation:cart-scan-pokeball-lid .9s cubic-bezier(.34,1.56,.64,1) forwards;}
+#cart-scan-pokeball .pb-bottom{position:absolute;bottom:0;left:0;width:100%;height:50%;background:#f5f5f5;border:3px solid #101010;border-top:none;border-radius:0 0 32px 32px;box-sizing:border-box;}
+#cart-scan-pokeball .pb-band{position:absolute;top:calc(50% - 3px);left:0;width:100%;height:6px;background:#101010;z-index:2;}
+#cart-scan-pokeball .pb-button{position:absolute;top:50%;left:50%;width:18px;height:18px;margin:-9px 0 0 -9px;background:#fff;border:3px solid #101010;border-radius:50%;z-index:3;box-sizing:border-box;}
+@keyframes cart-scan-pokeball-pop{
+  0%{opacity:0;transform:scale(.3);}
+  18%{opacity:1;transform:scale(1.2);}
+  30%{transform:scale(1);}
+  68%{opacity:1;transform:scale(1);}
+  100%{opacity:0;transform:scale(.75);}
+}
+@keyframes cart-scan-pokeball-lid{
+  0%,22%{transform:rotate(0deg);}
+  42%{transform:rotate(-32deg);}
+  62%{transform:rotate(-32deg);}
+  100%{transform:rotate(0deg);}
+}
 .barcode-controls{display:grid;grid-template-columns:minmax(0,2fr) minmax(140px,1fr) auto;gap:8px;align-items:end;}
 .barcode-candidate{display:grid;grid-template-columns:90px minmax(0,1fr);gap:12px;border:1px solid var(--border);border-radius:10px;padding:10px;background:var(--surf2);margin-top:10px;}
 .barcode-candidate img{width:90px;height:120px;object-fit:contain;background:#050607;border-radius:7px;}
@@ -2415,7 +2439,7 @@ body.show-mode .inv-sync-badge{display:none;}
       <div><div id="cart-scan-title" style="font-family:'Orbitron',monospace;font-size:12px;color:var(--g)">SCAN TO CART</div><div style="font-size:9px;color:var(--dim);margin-top:3px">Scan a printed shelf/price label's barcode to add that exact item to the active cart. Stays open between scans.</div></div>
       <button class="hbtn" onclick="closeCartScanModal()">CLOSE</button>
     </div>
-    <div id="cart-scan-camera" class="barcode-camera"><video id="cart-scan-video" playsinline muted></video><div class="barcode-scan-line"></div><div id="cart-scan-camera-placeholder" style="font-family:monospace;font-size:10px;color:var(--dim);text-align:center;padding:18px">Opening camera when supported.</div></div>
+    <div id="cart-scan-camera" class="barcode-camera"><video id="cart-scan-video" playsinline muted></video><div class="barcode-scan-line"></div><div id="cart-scan-camera-placeholder" style="font-family:monospace;font-size:10px;color:var(--dim);text-align:center;padding:18px">Opening camera when supported.</div><div id="cart-scan-pokeball" aria-hidden="true"><div class="pb-top"></div><div class="pb-bottom"></div><div class="pb-band"></div><div class="pb-button"></div></div></div>
     <div id="cart-scan-status" style="font-family:var(--font-mono);font-size:10px;color:var(--dim);min-height:18px;line-height:1.5"></div>
     <div class="barcode-controls" style="grid-template-columns:1fr auto">
       <label style="font-size:9px;color:var(--dim)">BARCODE<input id="cart-scan-manual-input" class="tsi" inputmode="search" autocomplete="off" placeholder="Scan or type the label barcode" onkeydown="if(event.key==='Enter'){event.preventDefault();handleCartScanValue(this.value)}"></label>
@@ -25663,6 +25687,16 @@ async function startCartScanCamera(){
     const denied=/notallowed|permission|denied/i.test(String(e?.name||e?.message||''));setCartScanStatus(denied?'Camera permission denied. Type the barcode instead.':'Camera not available. Type the barcode instead.','var(--gold)');stopCartScanCamera();
   }
 }
+let _cartScanPokeballTimer=null;
+function showCartScanPokeball(){
+  const el=document.getElementById('cart-scan-pokeball');
+  if(!el) return;
+  el.classList.remove('pop');
+  void el.offsetWidth; // restart the animation even if the last one hasn't finished (back-to-back scans)
+  el.classList.add('pop');
+  clearTimeout(_cartScanPokeballTimer);
+  _cartScanPokeballTimer=setTimeout(()=>el.classList.remove('pop'),900);
+}
 async function detectCartScanFrame(){
   if(!cartScanDetecting||!cartScanDetector)return;const video=document.getElementById('cart-scan-video');
   try{if(video?.readyState>=2){const codes=await cartScanDetector.detect(video);const value=codes?.[0]?.rawValue||'';if(value)await handleCartScanValue(value);}}catch(e){}
@@ -25708,6 +25742,7 @@ async function handleCartScanValue(rawValue){
     return;
   }
   dashAddToCart(item.id);
+  showCartScanPokeball();
   setCartScanStatus('Added: '+item.name,'var(--g)');
   if(log)log.innerHTML=`<div style="color:var(--g)">✓ ${escHtml(item.name)}</div>`+log.innerHTML;
 }
