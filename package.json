@@ -95,6 +95,8 @@
     "mtg:build": "node scripts/mtg/build-mtg-offline-bundle.mjs",
     "pricecharting:build": "node scripts/pricecharting/build-offline-bundle.mjs",
     "mtg:build:sample": "node scripts/mtg/build-mtg-offline-bundle.mjs --scryfall=tests/fixtures/mtg/scryfall-sample.json --pricecharting=tests/fixtures/mtg/pricecharting-sample.csv --version=sample",
+    "pokemon:build": "node scripts/pokemon/build-pokemon-offline-bundle.mjs",
+    "pokemon:build:sample": "node scripts/pokemon/build-pokemon-offline-bundle.mjs --sets-file=tests/fixtures/pokemon/sets-sample.json --version=sample",
     "topps:import": "node scripts/import-topps-checklists.js",
     "topps:import:sample": "node scripts/import-topps-checklists.js --limit=3",
     "topps:build:offline": "node scripts/topps/build-offline-bundle.mjs",

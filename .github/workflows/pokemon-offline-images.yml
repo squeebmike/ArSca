@@ -1,0 +1,65 @@
+name: Build Pokemon Offline Card Images
+
+on:
+  workflow_dispatch:
+    inputs:
+      scope:
+        description: 'Image scope: "all" for every set, or a specific set''s numeric TCGPlayer GroupId (tcgPlayerNumericId from the sets bundle -- see /catalog/pokemon/manifest)'
+        required: true
+        default: 'all'
+
+concurrency:
+  group: pokemon-offline-images
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      POKEMONPRICE_API_KEY: ${{ secrets.POKEMONPRICE_API_KEY }}
+      POKEMON_R2_BUCKET: arsca-offline-catalogs
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Validate required secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${CLOUDFLARE_API_TOKEN:-}" || { echo "::error::CLOUDFLARE_API_TOKEN is missing"; exit 1; }
+          test -n "${CLOUDFLARE_ACCOUNT_ID:-}" || { echo "::error::CLOUDFLARE_ACCOUNT_ID is missing"; exit 1; }
+          test -n "${POKEMONPRICE_API_KEY:-}" || { echo "::error::POKEMONPRICE_API_KEY is missing. Add the same PokemonPriceTracker key used by the Worker as a GitHub Actions secret."; exit 1; }
+
+      - name: Build and upload card images
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION="$(date -u +%F)"
+          SCOPE="${{ github.event.inputs.scope }}"
+          if [ "$SCOPE" = "all" ]; then
+            IMAGES_FLAG="all"
+          else
+            IMAGES_FLAG="set:$SCOPE"
+          fi
+          echo "Harvesting images for scope: $IMAGES_FLAG"
+          npm run pokemon:build -- --version="$VERSION" --images="$IMAGES_FLAG" --upload
+
+      - name: Verify production manifest reflects the new image coverage
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --retry 5 --retry-delay 3 \
+            "https://still-resonance-4f87.swarnerauto.workers.dev/catalog/pokemon/manifest" \
+            | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const m=JSON.parse(s);if(m.status!=='ready'||!m.images)process.exit(1);console.log('setsCovered:',m.images.setsCovered.length,'allSetsCovered:',m.images.allSetsCovered)})"
