@@ -2905,6 +2905,19 @@ async function fetchSoldCompsProvider(env, query, limit = 40) {
   return { source: 'soldcomps', comps: [], warning: lastWarning || 'SoldComps unavailable' };
 }
 
+// Mirrors the /comps/sold route's provider-first, eBay-Finding-API-fallback logic so
+// every sold-comp lookup in the app (including Pocket Scout) benefits from the same
+// two-step reliability instead of hitting the flaky legacy eBay API directly.
+async function fetchSoldCompsWithFallback(env, query, limit = 40) {
+  let result = await fetchSoldCompsProvider(env, query, limit);
+  if (!result.comps.length) {
+    const ebay = await fetchEbaySoldComps(env, query, limit).catch(() => ({ comps: [], warning: 'Sold comp lookup failed' }));
+    if (ebay.comps.length) result = ebay;
+    else if (ebay.warning && !result.warning) result = { ...result, warning: ebay.warning };
+  }
+  return result;
+}
+
 export default {
   async fetch(request, env, ctx) {
     if (request.method === 'OPTIONS') {
@@ -9600,7 +9613,7 @@ export default {
       let soldWarning = 'Sold history unavailable';
       let soldFiltered = [];
       if (textQuery) {
-        const soldResult = await fetchEbaySoldComps(env, textQuery, 30).catch(() => ({ comps: [], warning: 'Sold comp lookup failed' }));
+        const soldResult = await fetchSoldCompsWithFallback(env, textQuery, 30).catch(() => ({ comps: [], warning: 'Sold comp lookup failed' }));
         soldFiltered = filterPocketScoutListings(soldResult.comps || []);
         if (soldFiltered.length) { soldStats = pocketScoutCompStats(soldFiltered); soldWarning = null; }
         else if (soldResult.warning) soldWarning = 'Sold history unavailable: ' + soldResult.warning;
@@ -9748,7 +9761,7 @@ export default {
 
       const [activeResult, soldResult] = await Promise.all([
         fetchEbayActiveListings(env, textQuery, { limit: 20 }).catch(() => ({ listings: [] })),
-        fetchEbaySoldComps(env, textQuery, 30).catch(() => ({ comps: [], warning: 'Sold comp lookup failed' })),
+        fetchSoldCompsWithFallback(env, textQuery, 30).catch(() => ({ comps: [], warning: 'Sold comp lookup failed' })),
       ]);
       const filtered = filterPocketScoutListings(activeResult.listings || []);
       const activeStats = pocketScoutCompStats(filtered);
