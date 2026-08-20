@@ -46,6 +46,16 @@ const WF_EVENTS = '6a7cf73500b7a1a3719e7f21';
 const WF_STATUS_SOLD = 'e6b42f14fcb99aa2168a5f5672226f68';
 const EBAY_TOKEN_URL = 'https://api.ebay.com/identity/v1/oauth2/token';
 const EBAY_AUTH_URL = 'https://auth.ebay.com/oauth2/authorize';
+// sell.logistics is deliberately NOT requested here. eBay validates every
+// scope in the auth request atomically -- if the app's production keyset
+// hasn't been separately approved for a given scope, /oauth2/authorize
+// rejects the WHOLE request with {"error_id":"invalid_scope"} before the
+// seller ever sees a login screen, blocking reconnect entirely (not just
+// the one feature that needed it). Add it back to this list only once
+// sell.logistics shows as approved for this keyset in the eBay Developer
+// Portal -- until then, buy-label calls correctly self-report
+// needsReconnect (see /ebay/orders/buy-label) rather than breaking OAuth
+// for every other eBay feature.
 const EBAY_SCOPES = [
   'https://api.ebay.com/oauth/api_scope',
   'https://api.ebay.com/oauth/api_scope/sell.inventory',
@@ -56,7 +66,6 @@ const EBAY_SCOPES = [
   'https://api.ebay.com/oauth/api_scope/sell.finances',
   'https://api.ebay.com/oauth/api_scope/sell.marketing.readonly',
   'https://api.ebay.com/oauth/api_scope/sell.marketing',
-  'https://api.ebay.com/oauth/api_scope/sell.logistics',
 ].join(' ');
 
 const CORS = {
