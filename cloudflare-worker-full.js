@@ -11079,6 +11079,7 @@ async function handleSupabaseEmailHook(request, env) {
   try {
     await sendEmail(env, email, copy.subject, text);
   } catch (e) {
+    console.error('[auth/email-hook] sendEmail failed:', e.message);
     return json({ error: { http_code: 500, message: 'Failed to send email: ' + e.message } }, 500);
   }
   return json({});
