@@ -7223,9 +7223,8 @@ async function renderOfflineCatalogManagerPanel(){
       <div id="offline-update-all-progress" style="font-family:monospace;font-size:9px;color:var(--gold);margin-top:8px"></div>
     </div>
     <div style="font-family:monospace;font-size:10px;color:var(--dim);line-height:1.55;margin-bottom:8px">Cache policy: temporary Research searches are disposable. Downloaded catalogs are official offline reference data. Inventory remains owned stock only.</div>
-    <div style="font-family:'Orbitron',monospace;color:var(--g);font-size:11px;letter-spacing:.05em;margin-top:8px">POKEMON / POKEMONPRICETRACKER BUSINESS EXPORTS</div>
+    <div style="font-family:'Orbitron',monospace;color:var(--g);font-size:11px;letter-spacing:.05em;margin-top:8px">POKEMON (POKEMONPRICETRACKER)</div>
     ${pptRows}
-    <div style="font-family:'Orbitron',monospace;color:var(--g);font-size:11px;letter-spacing:.05em;margin-top:16px">POKEMON SETS &amp; CARD IMAGES</div>
     ${row('Sets (real set names, series, logos)', pokemonImagesStatus?.setsCount || 0, pokemonImagesStatus?.setsImportedAt, pokemonImagesStatus?.setsCount ? 'Downloaded' : 'Not downloaded', `<button class="hbtn" onclick="syncPokemonOfflineSets()">DOWNLOAD / REFRESH</button>`, 'Pokemon offline set bundle')}
     ${row('Card images cached on this device', pokemonImagesStatus?.cardImageCount || 0, '', pokemonImagesStatus?.cardImageCount ? `${(pokemonImagesStatus.imageFileCount||0).toLocaleString()} image files` : 'None cached yet', `<button class="hbtn" style="color:var(--red)" onclick="clearPokemonOfflineImages()">CLEAR IMAGES</button>`, 'Pokemon offline image bundle')}
     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;border-top:1px solid var(--border);padding:9px 0;font-family:monospace;font-size:10px">
