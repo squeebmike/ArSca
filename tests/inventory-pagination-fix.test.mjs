@@ -7,7 +7,7 @@ const worker = fs.readFileSync('cloudflare-worker-full.js', 'utf8');
 // ── Contract: loadBuiltInInventoryItems pages fully instead of a single
 // capped query -- a store past 1000 rows used to have older stock silently
 // missing from the client entirely, not just slow to appear.
-const loadFnSrc = dashboard.match(/async function loadBuiltInInventoryItems\(\)\{[\s\S]*?\n\}\n/)[0];
+const loadFnSrc = dashboard.match(/async function loadBuiltInInventoryItems\(\)\{[\s\S]*?\r?\n\}\r?\n/)[0];
 assert.match(loadFnSrc, /const PAGE = 1000;/, 'loadBuiltInInventoryItems must page in fixed-size batches');
 assert.match(loadFnSrc, /\.range\(offset, offset \+ PAGE - 1\)/, 'loadBuiltInInventoryItems must use .range() pagination, not a single .limit()');
 assert.match(loadFnSrc, /if\(!data \|\| data\.length < PAGE\) break;/, 'the pagination loop must stop on a short page, not an arbitrary fixed count');
@@ -19,7 +19,7 @@ console.log('Inventory load pagination (worker+dashboard) contract checks passed
 // worse bug: real, still-existing items past the cap were actively removed
 // from `all` every 60s because their id never appeared in an incomplete
 // manifest, not merely absent from a fresh load.
-const deltaFnSrc = dashboard.match(/async function refreshBuiltInInventoryDelta\(\)\{[\s\S]*?\n  return true;\n\}\n/)[0];
+const deltaFnSrc = dashboard.match(/async function refreshBuiltInInventoryDelta\(\)\{[\s\S]*?\r?\n  return true;\r?\n\}\r?\n/)[0];
 assert.match(deltaFnSrc, /const manifest = \[\];/, 'the deletion-detection manifest must be accumulated across pages');
 assert.match(deltaFnSrc, /const changedRows = \[\];/, 'the changed-rows query must be accumulated across pages too');
 assert.match(deltaFnSrc, /\.range\(manifestOffset, manifestOffset \+ PAGE - 1\)/, 'the manifest query must use .range() pagination, not a single .limit()');

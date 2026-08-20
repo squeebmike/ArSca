@@ -11,8 +11,8 @@ assert.match(dashboard, /if\(seq !== _saleCartIndexFetchSeq\) return knownSaleCa
 
 // ── Contract: every authoritative local write also bumps the sequence, so an
 // in-flight poll started BEFORE a close/remove/upsert can't win the race ──
-const upsertFnSrc = dashboard.match(/async function upsertSaleCartIndexEntry\(cart\)\{[\s\S]*?\n\}\n/)[0];
-const removeFnSrc = dashboard.match(/async function removeSaleCartFromIndex\(id\)\{[\s\S]*?\n\}\n/)[0];
+const upsertFnSrc = dashboard.match(/async function upsertSaleCartIndexEntry\(cart\)\{[\s\S]*?\r?\n\}\r?\n/)[0];
+const removeFnSrc = dashboard.match(/async function removeSaleCartFromIndex\(id\)\{[\s\S]*?\r?\n\}\r?\n/)[0];
 assert.match(upsertFnSrc, /_saleCartIndexFetchSeq\+\+;/, 'upsertSaleCartIndexEntry must invalidate in-flight polls when it writes an authoritative index');
 assert.match(removeFnSrc, /_saleCartIndexFetchSeq\+\+;/, 'removeSaleCartFromIndex must invalidate in-flight polls when it writes an authoritative index -- this is the exact path closeActiveSaleCart/closeSaleCartById/completeActiveSaleCartAfterCheckout all go through');
 

@@ -14,7 +14,7 @@ assert.match(worker, /certNumber: String\(c\.certNumber \|\| ''\)\.replace\(\/\\
 console.log('Own AI graded-slab (worker) contract checks passed');
 
 // ── Contract: doCardSightScan skips the barcode-first check for Graded Slab, going straight to own AI ──
-const scanFnSrc = dashboard.match(/async function doCardSightScan\(\)\{[\s\S]*?\n\}\n/)[0];
+const scanFnSrc = dashboard.match(/async function doCardSightScan\(\)\{[\s\S]*?\r?\n\}\r?\n/)[0];
 const gradedBranchIdx = scanFnSrc.indexOf("categoryHint === 'graded'");
 const barcodeCheckIdx = scanFnSrc.indexOf('detectCardsightBarcode()');
 assert.ok(gradedBranchIdx >= 0, 'doCardSightScan must branch on the graded category');
@@ -25,7 +25,7 @@ assert.match(scanFnSrc, /await runOwnGradedIdentifyScan\(captureCardSightFrame\(
 console.log('Own AI graded-slab (scan routing) contract checks passed');
 
 // ── Contract: runOwnGradedIdentifyScan resolves a legible cert through the real PSA API, falls back otherwise ──
-const gradedFnSrc = dashboard.match(/async function runOwnGradedIdentifyScan\(img\)\{[\s\S]*?\n\}\n/)[0];
+const gradedFnSrc = dashboard.match(/async function runOwnGradedIdentifyScan\(img\)\{[\s\S]*?\r?\n\}\r?\n/)[0];
 assert.match(gradedFnSrc, /if\(card\.certNumber && \/\^\\d\{6,10\}\$\/\.test\(card\.certNumber\)\)/, 'a certNumber must be validated as plausible digits before trusting it as a real cert lookup key');
 assert.match(gradedFnSrc, /row = await resolvePsaCertRow\(card\.certNumber\)/, 'a legible cert number must be resolved through the real PSA cert API, not just trusted from the model');
 assert.match(gradedFnSrc, /if\(!row\) row = await resolveOwnCardIdentifyCard\(card\)/, 'no legible cert (or a non-PSA slab) must still fall back to a real catalog match instead of failing the scan');

@@ -42,6 +42,7 @@ const ANTHROPIC_BASE = 'https://api.anthropic.com/v1';
 const CARDSIGHTAI_BASE = 'https://api.cardsight.ai';
 const SITE_ID = '65b15ee0228d06647ca7e4ce';
 const WF_PRODUCTS = '65eb45a28ff6bf3fe4f17b14';
+const WF_EVENTS = '6a7cf73500b7a1a3719e7f21';
 const WF_STATUS_SOLD = 'e6b42f14fcb99aa2168a5f5672226f68';
 const EBAY_TOKEN_URL = 'https://api.ebay.com/identity/v1/oauth2/token';
 const EBAY_AUTH_URL = 'https://auth.ebay.com/oauth2/authorize';
@@ -570,6 +571,58 @@ function json(data, status = 200, extraHeaders = {}) {
     status,
     headers: { ...CORS, ...extraHeaders, 'Content-Type': 'application/json' },
   });
+}
+
+function webflowEventOptionLabels(collection) {
+  const field = (collection?.fields || []).find(item => item?.slug === 'event-type');
+  const choices = field?.validations?.options || field?.validations?.choices || field?.options || field?.metadata?.options || [];
+  return Object.fromEntries((Array.isArray(choices) ? choices : []).map(choice => [String(choice?.id || choice?.value || ''), String(choice?.name || choice?.label || '')]));
+}
+
+function publicEventFromWebflow(item, optionLabels = {}) {
+  const data = item?.fieldData || {};
+  const start = String(data['start-date-time'] || '');
+  const end = String(data['end-date-time'] || '');
+  if (!start || Number.isNaN(Date.parse(start))) return null;
+  const href = storefrontCleanUrl(data['watch-or-details-url']);
+  const rawType = String(optionLabels[String(data['event-type'] || '')] || data['event-type'] || '');
+  const online = /online|live|stream|whatnot|youtube|facebook|twitch/i.test(`${rawType} ${href}`);
+  const location = storefrontCleanText(data['location-or-platform'], 500);
+  return {
+    id: storefrontCleanText(item.id, 80),
+    date: start.slice(0, 10),
+    start,
+    end: end && !Number.isNaN(Date.parse(end)) ? end : '',
+    allDay: false,
+    kicker: online ? 'Online live show' : 'In-person show',
+    type: rawType,
+    title: storefrontCleanText(data.name || 'The Mana Pocket event', 240),
+    location,
+    copy: metronText(data.description, 1200),
+    href,
+    mapsUrl: !online && location ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(location)}` : '',
+    videoOrientation: /portrait|vertical|9\s*[:x/]\s*16/i.test(String(data['video-orientation'] || '')) ? 'portrait' : 'landscape',
+    online,
+  };
+}
+
+async function handlePublicEvents(env) {
+  if (!env.WEBFLOW_TOKEN) return json({ ok:false, error:'Event schedule unavailable' }, 503);
+  const headers = { Authorization:`Bearer ${env.WEBFLOW_TOKEN}`, accept:'application/json' };
+  const [collectionResponse, itemsResponse] = await Promise.all([
+    fetch(`${WEBFLOW_BASE}/collections/${WF_EVENTS}`, { headers }),
+    fetch(`${WEBFLOW_BASE}/collections/${WF_EVENTS}/items/live?limit=100`, { headers }),
+  ]);
+  if (!itemsResponse.ok) return json({ ok:false, error:'Event schedule unavailable' }, 502);
+  const collection = collectionResponse.ok ? await collectionResponse.json().catch(() => null) : null;
+  const payload = await itemsResponse.json().catch(() => null);
+  const labels = webflowEventOptionLabels(collection);
+  const events = (Array.isArray(payload?.items) ? payload.items : [])
+    .filter(item => !item?.isArchived && !item?.isDraft && item?.fieldData?.['show-on-homepage'] !== false)
+    .map(item => publicEventFromWebflow(item, labels))
+    .filter(Boolean)
+    .sort((a, b) => Date.parse(a.start) - Date.parse(b.start));
+  return json({ ok:true, events, appearances:[] }, 200, { 'Cache-Control':'public, max-age=60, stale-while-revalidate=300' });
 }
 
 function supabaseAdminConfig(env) {
@@ -2919,6 +2972,7 @@ export default {
         shippo: !!env.SHIPPO_API_TOKEN,
         twilio: !!(env.TWILIO_ACCOUNT_SID && env.TWILIO_AUTH_TOKEN && env.TWILIO_FROM_NUMBER),
         sendgrid: !!(env.SENDGRID_API_KEY && env.SENDGRID_FROM_EMAIL),
+        authEmailHook: !!env.SUPABASE_AUTH_HOOK_SECRET,
         kv: !!env.LBA_KV,
         mtgCatalogR2: !!env.MTG_CATALOG_R2,
         supabaseAdmin: !!(env.SUPABASE_URL && (env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SERVICE_KEY)),
@@ -2927,6 +2981,10 @@ export default {
 
     if (url.pathname === '/auth/email-hook' && request.method === 'POST') {
       return await handleSupabaseEmailHook(request, env);
+    }
+
+    if (url.pathname === '/public/events' && request.method === 'GET') {
+      return await handlePublicEvents(env);
     }
 
     if (url.pathname === '/store/invites' && request.method === 'GET') {
@@ -11606,6 +11664,8 @@ async function verifySupabaseWebhookSignature(request, rawBody, secret) {
   const timestamp = request.headers.get('webhook-timestamp');
   const signatureHeader = request.headers.get('webhook-signature');
   if (!id || !timestamp || !signatureHeader || !secret) return false;
+  const timestampSeconds = Number(timestamp);
+  if (!Number.isFinite(timestampSeconds) || Math.abs(Date.now() / 1000 - timestampSeconds) > 300) return false;
   const secretB64 = String(secret).replace(/^v1,/, '').replace(/^whsec_/, '');
   const keyBytes = Uint8Array.from(atob(secretB64), c => c.charCodeAt(0));
   const cryptoKey = await crypto.subtle.importKey('raw', keyBytes, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
@@ -11634,7 +11694,10 @@ async function handleSupabaseEmailHook(request, env) {
   const authHeader = request.headers.get('Authorization') || '';
   const bearerOk = !!env.SUPABASE_AUTH_HOOK_BEARER && authHeader === `Bearer ${env.SUPABASE_AUTH_HOOK_BEARER}`;
   const signatureOk = await verifySupabaseWebhookSignature(request, rawBody, env.SUPABASE_AUTH_HOOK_SECRET).catch(() => false);
-  if (!bearerOk && !signatureOk) return json({ error: { http_code: 401, message: 'Invalid webhook authorization' } }, 401);
+  if (!bearerOk && !signatureOk) {
+    console.warn(JSON.stringify({ event:'auth_email_hook', status:'rejected', reason:'invalid_signature' }));
+    return json({ error: { http_code: 401, message: 'Invalid webhook authorization' } }, 401);
+  }
   let payload;
   try { payload = JSON.parse(rawBody); } catch { return json({ error: { http_code: 400, message: 'Invalid JSON payload' } }, 400); }
   const email = payload?.user?.email;
@@ -11649,9 +11712,13 @@ async function handleSupabaseEmailHook(request, env) {
   try {
     await sendEmail(env, email, copy.subject, text);
   } catch (e) {
-    console.error('[auth/email-hook] sendEmail failed:', e.message);
-    return json({ error: { http_code: 500, message: 'Failed to send email: ' + e.message } }, 500);
+    console.error(JSON.stringify({ event:'auth_email_hook', status:'failed', action:email_action_type || 'signup', error:String(e.message || e).slice(0, 240) }));
+    return new Response(JSON.stringify({ error: { http_code: 503, message: 'Email delivery is temporarily unavailable' } }), {
+      status:503,
+      headers:{ 'Content-Type':'application/json', 'Retry-After':'2' },
+    });
   }
+  console.log(JSON.stringify({ event:'auth_email_hook', status:'sent', action:email_action_type || 'signup' }));
   return json({});
 }
 

@@ -21,6 +21,14 @@ async function sha256Hex(input) {
   return Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
+function secureSixDigitCode() {
+  const values = new Uint32Array(1);
+  const range = 900000;
+  const ceiling = Math.floor(0x100000000 / range) * range;
+  do crypto.getRandomValues(values); while (values[0] >= ceiling);
+  return String(100000 + (values[0] % range));
+}
+
 async function findLinkedCustomer(db, storeId, userId) {
   const { data } = await db(`customers?store_id=eq.${encodeURIComponent(storeId)}&linked_user_id=eq.${encodeURIComponent(userId)}&limit=1`);
   return data?.[0] || null;
@@ -39,7 +47,7 @@ async function startPhoneVerify(request, env, deps, url) {
   if (last && Date.now() - new Date(last.created_at).getTime() < 60000) {
     return deps.json({ ok:false, error:'Wait a minute before requesting another code.' }, 429);
   }
-  const code = String(Math.floor(100000 + Math.random() * 900000));
+  const code = secureSixDigitCode();
   const codeHash = await sha256Hex(code);
   const expiresAt = new Date(Date.now() + 10 * 60000).toISOString();
   await db('phone_verifications', { method:'POST', headers:{ Prefer:'return=minimal' }, body:JSON.stringify({ store_id:storeId, user_id:auth.user.id, phone:phoneRaw, code_hash:codeHash, expires_at:expiresAt }) });

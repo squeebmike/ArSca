@@ -8,8 +8,20 @@ const PRH = 'PRH';
 const ORDERED_STATUSES = new Set(['paid','reserved','ready_for_pickup','shipped','completed']);
 const CUSTOMER_STATUSES = new Set(['paid','reserved','ready_for_pickup','shipped','completed','cancelled','refunded','partially_refunded']);
 
+function repairMojibake(value) {
+  const input = String(value == null ? '' : value);
+  if (!/[ÃÂâ]/.test(input)) return input;
+  const points = Array.from(input, character => character.codePointAt(0));
+  if (points.some(point => point > 255)) return input;
+  try {
+    return new TextDecoder('utf-8', { fatal:true }).decode(Uint8Array.from(points));
+  } catch (_) {
+    return input;
+  }
+}
+
 function text(value, max = 4000) {
-  return String(value == null ? '' : value).trim().slice(0, max);
+  return repairMojibake(value).trim().slice(0, max);
 }
 
 function exactIdentifier(value) {
@@ -149,21 +161,21 @@ function publicSku(row, customerQty = 0) {
     familyId:row.family_id,
     sku:row.distributor_sku,
     upc:row.upc,
-    title:row.title,
-    subtitle:row.subtitle || '',
-    variantLabel:row.variant_label || 'Cover A',
-    variantType:row.variant_type || '',
-    orderRequirement:row.order_requirement || '',
+    title:text(row.title, 800),
+    subtitle:text(row.subtitle, 500),
+    variantLabel:text(row.variant_label, 300) || 'Cover A',
+    variantType:text(row.variant_type, 200),
+    orderRequirement:text(row.order_requirement, 200),
     ratioThreshold:Number(row.ratio_threshold || 0) || null,
     isIncentive:!!row.is_incentive,
     isFoil:!!row.flags?.foil,
-    coverArtist:row.cover_artist || '',
+    coverArtist:text(row.cover_artist, 1000),
     coverImageUrl:row.cover_image_url || '',
-    writer:row.writer || '',
-    interiorArtist:row.interior_artist || '',
-    publisher:row.publisher || '',
-    imprint:row.imprint || '',
-    description:row.description || '',
+    writer:text(row.writer, 1000),
+    interiorArtist:text(row.interior_artist, 1000),
+    publisher:text(row.publisher, 300),
+    imprint:text(row.imprint, 300),
+    description:text(row.description, 12000),
     focDate:row.foc_date,
     onSaleDate:row.on_sale_date,
     msrpCents:Number(row.msrp_cents || 0),
@@ -205,15 +217,15 @@ async function buildCycleCatalog(db, cycle, includeAdmin = false) {
   const byFamily = new Map((families || []).map(family => [family.id, {
     id:family.id,
     distributorFamilyId:family.distributor_family_id,
-    title:family.title,
-    seriesName:family.series_name || '',
+    title:text(family.title, 800),
+    seriesName:text(family.series_name, 300),
     issueNumber:family.issue_number || '',
-    publisher:family.publisher || '',
-    imprint:family.imprint || '',
+    publisher:text(family.publisher, 300),
+    imprint:text(family.imprint, 300),
     comicType:family.comic_type || '',
-    description:family.description || '',
-    writer:family.writer || '',
-    interiorArtist:family.interior_artist || '',
+    description:text(family.description, 12000),
+    writer:text(family.writer, 1000),
+    interiorArtist:text(family.interior_artist, 1000),
     onSaleDate:family.on_sale_date,
     isFirstIssue:!!family.is_first_issue,
     isNewSeries:!!family.is_new_series,

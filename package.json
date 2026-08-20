@@ -28,7 +28,7 @@
     "test:mtg-research-batch": "node tests/mtg-research-batch.test.js",
     "test:admin-support": "node tests/admin-support-contract.test.mjs",
     "test:release-hardening": "node tests/release-hardening.test.js",
-    "test:security-hardening": "node tests/security-hardening.test.mjs",
+    "test:security-hardening": "node tests/security-hardening.test.mjs && node tests/production-auth-hardening.test.mjs",
     "test:research-pipeline": "node tests/research-pipeline.test.mjs",
     "test:operational-durability": "node tests/offline-outbox-and-ledger.test.mjs",
     "test:loyalty-gift-cards": "node tests/loyalty-gift-cards.test.mjs",

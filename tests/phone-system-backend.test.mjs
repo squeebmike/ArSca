@@ -138,7 +138,7 @@ console.log('Phone system functional checks (normalizePhoneDigits, phoneIdentity
 // verifiable Twilio Access Token -- a three-part JWT, HS256-signed with the
 // API Key Secret, carrying the voice grant Twilio's Voice JS SDK requires ──
 {
-  const src = worker.match(/function base64UrlEncode\(bytes\) \{[\s\S]*?\n\}\n(?:\/\/[^\n]*\n)*async function buildTwilioAccessToken\(env, identity\) \{[\s\S]*?\n\}/)?.[0];
+  const src = worker.match(/function base64UrlEncode\(bytes\) \{[\s\S]*?\r?\n\}\r?\n(?:\/\/[^\r\n]*\r?\n)*async function buildTwilioAccessToken\(env, identity\) \{[\s\S]*?\r?\n\}/)?.[0];
   assert.ok(src, 'could not extract base64UrlEncode + buildTwilioAccessToken for functional testing');
   const { buildTwilioAccessToken } = new Function(`${src}\nreturn { buildTwilioAccessToken };`)();
 

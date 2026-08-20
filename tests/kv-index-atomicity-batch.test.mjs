@@ -45,9 +45,9 @@ console.log('Dashboard client-side atomic route wiring contract checks passed');
 // ── Contract: a single-item lifecycle change sends only that one key as the
 // patch, and a bulk action sends every key it actually touched, not the
 // entire cumulative local map ──
-const setLifecycleSrc = dashboard.match(/function setLifecycle\(id, state, silent\)\{[\s\S]*?\n\}\n/)[0];
+const setLifecycleSrc = dashboard.match(/function setLifecycle\(id, state, silent\)\{[\s\S]*?\r?\n\}\r?\n/)[0];
 assert.match(setLifecycleSrc, /saveLifecycleMap\(map, \{ \[id\]: state \}\);/, 'setLifecycle must send a one-key patch, not the whole map');
-const markAllVisibleSrc = dashboard.match(/function markAllVisibleAtShow\(\)\{[\s\S]*?\n\}\n/)[0];
+const markAllVisibleSrc = dashboard.match(/function markAllVisibleAtShow\(\)\{[\s\S]*?\r?\n\}\r?\n/)[0];
 assert.match(markAllVisibleSrc, /const patch = \{\};/, 'markAllVisibleAtShow must build a patch of only the items it touches');
 assert.match(markAllVisibleSrc, /saveLifecycleMap\(map, patch\);/, 'markAllVisibleAtShow must send its patch, not the whole map, to the merge route');
 

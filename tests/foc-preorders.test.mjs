@@ -41,6 +41,10 @@ assert.equal(incentive.flags.incentive, true);
 const foil = normalizePrhRow({...representative, MainIdentifier:'75960621456300141', UPC:'75960621456300141', Title:'AVENGERS #1 FOIL VARIANT', VariantType:'Variant Title'});
 assert.equal(foil.flags.foil, true, 'foil covers must be explicitly identified for pricing and filtering');
 
+const repairedEncoding = normalizePrhRow({...representative, Artist:'FÃ¡bio Moon', Description:'ITâS reunion weekendÂ at Riverdale High.'});
+assert.equal(repairedEncoding.interiorArtist, 'Fábio Moon', 'PRH names must repair UTF-8 text decoded as Latin-1');
+assert.equal(repairedEncoding.description, 'IT’S reunion weekend at Riverdale High.', 'PRH punctuation must not display mojibake on the preorder page');
+
 assert.match(migration, /America\/Los_Angeles/);
 assert.match(migration, /p_foc_date::timestamp \+ interval '1 minute'/, 'default cutoff must be 12:01 AM Monday Pacific');
 assert.match(migration, /revoke all[\s\S]+from anon/i, 'raw preorder tables must not be anonymous');
