@@ -1635,6 +1635,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.20.9-foc-archive-channel-changelog" defer></script>
 <script src="scripts/pricecharting/offline-browser.js?v=2026.08.20.9-foc-archive-channel-changelog" defer></script>
 <script src="scripts/topps/offline-browser.js?v=2026.08.20.9-foc-archive-channel-changelog" defer></script>
+<script src="scripts/pokemon/offline-browser.js?v=2026.08.20.9-foc-archive-channel-changelog" defer></script>
 <script src="scripts/mtg/research-batch.js?v=2026.08.20.9-foc-archive-channel-changelog" defer></script>
 </head>
 <body>
@@ -7150,13 +7151,15 @@ async function updateToppsCatalogFromPastedLinks(){
 async function renderOfflineCatalogManagerPanel(){
   const body = document.getElementById('offline-catalog-manager-body');
   if(!body) return;
-  const [pptCards, pptSealed, pptEbay, pptPop, mtg, toppsOffline, ...priceChartingStatuses] = await Promise.all([
+  const [pptCards, pptSealed, pptEbay, pptPop, mtg, toppsOffline, pokemonImagesStatus, pokemonSets, ...priceChartingStatuses] = await Promise.all([
     catalogDbGet('meta', 'export_cards').catch(() => null),
     catalogDbGet('meta', 'export_sealed').catch(() => null),
     catalogDbGet('meta', 'export_ebay').catch(() => null),
     catalogDbGet('meta', 'export_population').catch(() => null),
     mtgCatalogCounts().catch(() => ({ cards:0, sets:0, meta:{} })),
     window.ArsCaToppsOffline?.status().catch(() => null),
+    window.ArsCaPokemonOfflineImages?.status().catch(() => null),
+    window.ArsCaPokemonOfflineImages?.listSets().catch(() => []),
     ...PRICECHARTING_OFFLINE_CATALOGS.map(([category]) => window.ArsCaPriceChartingOffline?.status(category).catch(() => null)),
   ]);
   const row = (label, count, downloadedAt, status, actions, source) => `
@@ -7222,6 +7225,19 @@ async function renderOfflineCatalogManagerPanel(){
     <div style="font-family:monospace;font-size:10px;color:var(--dim);line-height:1.55;margin-bottom:8px">Cache policy: temporary Research searches are disposable. Downloaded catalogs are official offline reference data. Inventory remains owned stock only.</div>
     <div style="font-family:'Orbitron',monospace;color:var(--g);font-size:11px;letter-spacing:.05em;margin-top:8px">POKEMON / POKEMONPRICETRACKER BUSINESS EXPORTS</div>
     ${pptRows}
+    <div style="font-family:'Orbitron',monospace;color:var(--g);font-size:11px;letter-spacing:.05em;margin-top:16px">POKEMON SETS &amp; CARD IMAGES</div>
+    ${row('Sets (real set names, series, logos)', pokemonImagesStatus?.setsCount || 0, pokemonImagesStatus?.setsImportedAt, pokemonImagesStatus?.setsCount ? 'Downloaded' : 'Not downloaded', `<button class="hbtn" onclick="syncPokemonOfflineSets()">DOWNLOAD / REFRESH</button>`, 'Pokemon offline set bundle')}
+    ${row('Card images cached on this device', pokemonImagesStatus?.cardImageCount || 0, '', pokemonImagesStatus?.cardImageCount ? `${(pokemonImagesStatus.imageFileCount||0).toLocaleString()} image files` : 'None cached yet', `<button class="hbtn" style="color:var(--red)" onclick="clearPokemonOfflineImages()">CLEAR IMAGES</button>`, 'Pokemon offline image bundle')}
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;border-top:1px solid var(--border);padding:9px 0;font-family:monospace;font-size:10px">
+      <label for="pokemon-image-set-select" style="color:var(--text);font-weight:700">IMAGE SCOPE</label>
+      <select id="pokemon-image-set-select" style="min-width:220px;max-width:100%">
+        <option value="all">All Sets</option>
+        ${(pokemonSets||[]).map(s=>`<option value="${escHtml(s.tcgPlayerNumericId)}">${escHtml(s.name||s.tcgPlayerNumericId)}${s.releaseDate?' ('+escHtml(s.releaseDate)+')':''}</option>`).join('')}
+      </select>
+      <button class="hbtn" onclick="syncPokemonOfflineImages()">SYNC IMAGES FOR SCOPE</button>
+      <span id="pokemon-image-sync-progress" style="color:var(--gold);min-width:160px"></span>
+    </div>
+    <div style="font-family:monospace;font-size:9px;color:var(--dim);line-height:1.55;margin-top:6px">${(pokemonSets||[]).length ? '' : 'Download Sets above first so scopes appear here. '}Images must be built server-side once per set (or for all sets) via the "Build Pokemon Offline Card Images" GitHub Action before a device can sync them -- this only downloads what's already been built.</div>
     <div style="font-family:'Orbitron',monospace;color:#5ba3f5;font-size:11px;letter-spacing:.05em;margin-top:16px">MTG OFFLINE DATA</div>
     ${row('Scryfall cards', mtg.cards || 0, mtgScryfallAt, mtgStatus, `<button class="hbtn" onclick="downloadMtgBulkCatalog()" ${mtgBusy?'disabled':''}>${mtgBusy?'SYNCING...':'FAST PRICE UPDATE'}</button><button class="hbtn" onclick="downloadMtgBulkCatalog(true)" ${mtgBusy?'disabled':''}>FULL CATALOG REBUILD</button><button class="hbtn" onclick="clearMtgBulkCatalog()">CLEAR DATA</button>`, 'Fast update refreshes the compact daily price snapshot. Full rebuild refreshes every card and search index.')}
     ${row('PriceCharting snapshot', mtg.prices || 0, mtgPricechartingAt, (mtg.links || 0).toLocaleString() + ' linked cards', `<button class="hbtn" onclick="clearMtgImageCache()">CLEAR IMAGE CACHE (${Number(mtg.images||0).toLocaleString()})</button>`, 'PriceCharting offline snapshot')}
@@ -7348,6 +7364,34 @@ async function updateToppsCatalogFromWeb(){
     note('Update failed: '+e.message);
     toast_dash('Topps catalog update failed: '+e.message);
   }
+  renderOfflineCatalogManagerPanel();
+}
+
+async function syncPokemonOfflineSets(){
+  if(!window.ArsCaPokemonOfflineImages){toast_dash('Pokemon offline module not loaded');return;}
+  try{
+    await window.ArsCaPokemonOfflineImages.syncSets({workerBase:WORKER,force:true,onProgress:()=>{}});
+    toast_dash('Pokemon sets updated');
+  }catch(e){toast_dash('Pokemon sets: '+e.message);}
+  renderOfflineCatalogManagerPanel();
+}
+async function syncPokemonOfflineImages(){
+  if(!window.ArsCaPokemonOfflineImages){toast_dash('Pokemon offline module not loaded');return;}
+  const select=document.getElementById('pokemon-image-set-select');
+  const scope=select?select.value:'all';
+  const progress=document.getElementById('pokemon-image-sync-progress');
+  const note=value=>{if(progress)progress.textContent=value;};
+  try{
+    const result=await window.ArsCaPokemonOfflineImages.syncImages({workerBase:WORKER,scope,onProgress:detail=>note(detail.total?`${detail.stage}: ${detail.done||0}/${detail.total}`:detail.stage)});
+    note('');
+    toast_dash(result.newlyCached?`${result.newlyCached.toLocaleString()} card image(s) cached`:'Already up to date for this scope');
+  }catch(e){note('');toast_dash('Pokemon images: '+e.message);}
+  renderOfflineCatalogManagerPanel();
+}
+async function clearPokemonOfflineImages(){
+  if(!confirm('Clear all cached Pokemon sets and card images from this device? Inventory is not touched.'))return;
+  await window.ArsCaPokemonOfflineImages?.clear();
+  toast_dash('Pokemon offline images cleared');
   renderOfflineCatalogManagerPanel();
 }
 

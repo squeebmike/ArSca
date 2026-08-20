@@ -1,0 +1,26 @@
+[
+  {
+    "id": "507f1f77bcf86cd799439011",
+    "tcgPlayerId": "scarlet-violet",
+    "tcgPlayerNumericId": 1407,
+    "name": "Scarlet & Violet",
+    "series": "Scarlet & Violet",
+    "releaseDate": "2023-03-31",
+    "cardCount": 258,
+    "imageCdnUrl200": "https://tcgplayer-cdn.tcgplayer.com/set/1407_200x200.jpg",
+    "imageCdnUrl400": "https://tcgplayer-cdn.tcgplayer.com/set/1407_400x400.jpg",
+    "imageCdnUrl800": "https://tcgplayer-cdn.tcgplayer.com/set/1407_800x800.jpg"
+  },
+  {
+    "id": "507f1f77bcf86cd799439012",
+    "tcgPlayerId": "base-set",
+    "tcgPlayerNumericId": 604,
+    "name": "Base Set",
+    "series": "Base",
+    "releaseDate": "1999-01-09",
+    "cardCount": 102,
+    "imageCdnUrl200": "https://tcgplayer-cdn.tcgplayer.com/set/604_200x200.jpg",
+    "imageCdnUrl400": "https://tcgplayer-cdn.tcgplayer.com/set/604_400x400.jpg",
+    "imageCdnUrl800": "https://tcgplayer-cdn.tcgplayer.com/set/604_800x800.jpg"
+  }
+]
