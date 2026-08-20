@@ -20,7 +20,7 @@ console.log('Grading submissions migration checks passed');
 assert.match(dashboard, /id="tab-grading"/, 'grading tab panel must exist');
 assert.match(dashboard, /\['grading', 'GRADING'\]/, 'grading must be reachable from the tab nav (MORE_TABS)');
 assert.match(dashboard, /grading:'inventory'/, 'grading tab must be registered in TAB_CAPABILITY (gated with other inventory-tier features)');
-assert.match(dashboard, /'overview','display','browse','inventory','research','pos','whatnot','alerts','wantlist','locations','restock','grading','sets','events','pulllists'/, 'employees must be able to reach the grading tab');
+assert.match(dashboard, /'overview','display','browse','inventory','research','pos','whatnot','scout','alerts','wantlist','locations','restock','grading','sets','events','pulllists'/, 'employees must be able to reach the grading tab');
 assert.match(dashboard, /if\(name === 'grading'\) setTimeout\(ensureGradingPanel, 0\);/, 'switching to the grading tab must trigger a render');
 assert.match(dashboard, /id="grading-submission-modal"/, 'missing the new-submission modal');
 

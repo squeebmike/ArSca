@@ -2537,6 +2537,194 @@ async function fetchEbayActiveListings(env, query, opts = {}) {
   return { source: 'ebay_active', listings: items.map(normalizeBrowseListing).filter(Boolean), warning: null };
 }
 
+// ── Pocket Scout: universal item scanner ─────────────────────────────────
+// Photograph almost any resale item (not just cards) and get an identity +
+// value + buy/pass read. Reuses the previously-unused scan_sessions/
+// scan_queue tables (one session per physical item, one scan_queue row per
+// candidate match) plus a new pocket_scout_images table (one row per photo).
+// See docs/pocket-scout.md for the full architecture + what's stubbed.
+
+// eBay's Buy Browse API image search -- same app-level token as
+// fetchEbayActiveListings above (public read, no user consent), just a
+// different endpoint. Response shape is identical to a text search
+// (itemSummaries[]), so normalizeBrowseListing is reused as-is.
+async function fetchEbayImageSearch(env, base64Image, opts = {}) {
+  const token = await getEbayAppAccessToken(env).catch(() => '');
+  if (!token) return { source: 'none', listings: [], warning: 'eBay app access token unavailable -- check EBAY_CLIENT_ID/EBAY_CLIENT_SECRET' };
+  const params = new URLSearchParams({ limit: String(Math.min(50, Math.max(1, opts.limit || 20))) });
+  const res = await fetch(`https://api.ebay.com/buy/browse/v1/item_summary/search_by_image?${params.toString()}`, {
+    method: 'POST',
+    headers: {
+      'Authorization': 'Bearer ' + token,
+      'X-EBAY-C-MARKETPLACE-ID': 'EBAY_US',
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+    },
+    body: JSON.stringify({ image: base64Image }),
+  });
+  const { data } = await readApiJson(res);
+  if (!res.ok) return { source: 'ebay_image', listings: [], warning: 'eBay image search ' + res.status + (data?.errors?.[0]?.message ? ': ' + data.errors[0].message : '') };
+  const items = Array.isArray(data.itemSummaries) ? data.itemSummaries : [];
+  return { source: 'ebay_image', listings: items.map(normalizeBrowseListing).filter(Boolean), warning: null };
+}
+
+// General-purpose (non-card) resale item identification + OCR, folded into
+// one Claude vision call rather than a separate OCR provider -- the card
+// pipeline (identifyPrompt above) already proves this reads printed text
+// reliably. Returns a normalized ItemIdentity plus raw text evidence and a
+// same-call "what photo would help most" suggestion, since the model is
+// already looking at the item and knows its category.
+const POCKET_SCOUT_IDENTITY_PROMPT = 'You are helping a resale/thrift buyer identify a physical item from a photo -- plush toys, vintage toys, action figures, electronics, vintage advertising, tins, glassware, collectibles, sports memorabilia, figurines, sealed products, board games, books, cameras, or anything else sold secondhand. Trading cards are also possible but are handled by a separate specialist pipeline -- if this photo is clearly one or more trading cards (Pokemon/MTG/sports/One Piece) and nothing else, set category to "trading_card" and leave the rest of the fields minimal; a different tool will take over.\n\n'
+  + 'Read every legible marking: brand/manufacturer names, model numbers, serial numbers, copyright years, country of origin, size/material tags, UPC/EAN/ISBN numbers, maker\'s marks, and any other printed or embossed text. Do not guess a value or price. Do not fabricate a field you cannot actually read or reasonably infer from what is visible -- leave it null.\n\n'
+  + 'Respond with strict JSON only, no markdown fences, no prose, matching exactly this shape:\n'
+  + '{"category":null,"subcategory":null,"title":null,"brand":null,"manufacturer":null,"productLine":null,"characterOrSubject":null,"model":null,"year":null,"edition":null,"variant":null,"size":null,"color":null,"upc":null,"ean":null,"isbn":null,"mpn":null,"modelNumber":null,"serialNumber":null,"confidence":0,"textEvidence":[],"suggestedNextPhoto":null,"suggestedNextPhotoReason":null}\n\n'
+  + 'category is a short lowercase label (e.g. "plush", "action_figure", "electronics", "advertising_tin", "glassware", "board_game", "book", "camera", "video_game", "trading_card", "other"). title is your best single-line description a reseller would use as a listing title (e.g. "1999 Hasbro Talking Pikachu Plush"). confidence is 0-100: only score above 85 if brand+model/product-name are both clearly legible or otherwise certain, 50-84 if you can identify the general product family but not the exact variant, below 50 if you are largely guessing from visual style alone. textEvidence is an array of short strings for every distinct piece of printed/embossed text you actually read (e.g. "© 1999 HASBRO", "MADE IN CHINA", "MODEL NO. 12345"). suggestedNextPhoto is one of "front","back","tag","bottom","label","barcode","makers_mark","serial_number","damage","other" (or null if you are already confident) -- pick whichever single additional photo would most reduce uncertainty about brand, model, or edition. suggestedNextPhotoReason is one short sentence explaining why, written for a store employee with no collectibles knowledge (e.g. "Photograph the sewn-in tag to confirm the exact release year.").';
+
+async function pocketScoutVisionIdentify(env, base64Image) {
+  if (!env.ANTHROPIC_API_KEY) return { ok: false, error: 'ANTHROPIC_API_KEY not set' };
+  const res = await fetch(`${ANTHROPIC_BASE}/messages`, {
+    method: 'POST',
+    headers: { 'x-api-key': env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01', 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 900,
+      temperature: 0,
+      messages: [{
+        role: 'user',
+        content: [
+          { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: base64Image } },
+          { type: 'text', text: POCKET_SCOUT_IDENTITY_PROMPT },
+        ],
+      }],
+    }),
+  });
+  if (!res.ok) {
+    const errText = await res.text();
+    return { ok: false, error: 'Anthropic ' + res.status + ': ' + errText.slice(0, 300) };
+  }
+  const anthropicData = await res.json().catch(() => ({}));
+  const textBlock = Array.isArray(anthropicData.content) ? anthropicData.content.find(b => b.type === 'text') : null;
+  const rawText = String(textBlock?.text || '').trim().replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/, '');
+  let parsed;
+  try { parsed = JSON.parse(rawText); } catch (_) { return { ok: false, error: 'Model did not return valid JSON', raw: rawText.slice(0, 300) }; }
+  const str = (v, max) => v == null ? null : String(v).trim().slice(0, max) || null;
+  const identity = {
+    category: str(parsed.category, 40),
+    subcategory: str(parsed.subcategory, 40),
+    title: str(parsed.title, 140),
+    brand: str(parsed.brand, 80),
+    manufacturer: str(parsed.manufacturer, 80),
+    productLine: str(parsed.productLine, 80),
+    characterOrSubject: str(parsed.characterOrSubject, 80),
+    model: str(parsed.model, 80),
+    year: /^\d{4}$/.test(String(parsed.year || '')) ? Number(parsed.year) : null,
+    edition: str(parsed.edition, 40),
+    variant: str(parsed.variant, 60),
+    size: str(parsed.size, 30),
+    color: str(parsed.color, 30),
+    upc: str(String(parsed.upc || '').replace(/\D/g, ''), 14) || null,
+    ean: str(String(parsed.ean || '').replace(/\D/g, ''), 14) || null,
+    isbn: str(String(parsed.isbn || '').replace(/[^0-9Xx]/g, ''), 13) || null,
+    mpn: str(parsed.mpn, 40),
+    modelNumber: str(parsed.modelNumber, 40),
+    serialNumber: str(parsed.serialNumber, 60),
+    ebayEpid: null,
+    confidence: Math.max(0, Math.min(100, Math.round(Number(parsed.confidence) || 0))),
+  };
+  const textEvidence = Array.isArray(parsed.textEvidence) ? parsed.textEvidence.map(t => String(t || '').trim().slice(0, 200)).filter(Boolean).slice(0, 30) : [];
+  const suggestedNextPhoto = ['front', 'back', 'tag', 'bottom', 'label', 'barcode', 'makers_mark', 'serial_number', 'damage', 'other'].includes(parsed.suggestedNextPhoto) ? parsed.suggestedNextPhoto : null;
+  return { ok: true, identity, textEvidence, suggestedNextPhoto, suggestedNextPhotoReason: str(parsed.suggestedNextPhotoReason, 200), routeToCardPipeline: identity.category === 'trading_card' };
+}
+
+// Fixed fallback used only when the model didn't suggest a next photo (or
+// confidence is already high enough that it returned null) -- keyed by the
+// identity's category so the hint stays relevant even without a live model
+// call. Per the product spec's own examples.
+const POCKET_SCOUT_NEXT_PHOTO_FALLBACK = {
+  plush: 'Photograph the sewn-in tag for brand, year, and edition.',
+  action_figure: 'Photograph the packaging or a maker\'s mark on the figure itself.',
+  electronics: 'Photograph the model-number sticker, usually on the back or bottom.',
+  glassware: 'Photograph the maker\'s mark on the bottom.',
+  advertising_tin: 'Photograph the bottom and side text.',
+  board_game: 'Photograph the box side panel with the publisher and year.',
+  book: 'Photograph the copyright page.',
+  video_game: 'Photograph the back of the case, including the barcode.',
+  camera: 'Photograph the model plate, usually on the top or bottom.',
+  figurine: 'Photograph the maker\'s mark or stamp on the base.',
+  trading_card: 'Photograph the card number and set symbol.',
+  other: 'Photograph any printed label, tag, or barcode on the item.',
+};
+function pocketScoutNextPhotoHint(identifyResult) {
+  if (identifyResult.suggestedNextPhoto) return { photo: identifyResult.suggestedNextPhoto, reason: identifyResult.suggestedNextPhotoReason || '' };
+  if ((identifyResult.identity?.confidence || 0) >= 85) return null;
+  const fallback = POCKET_SCOUT_NEXT_PHOTO_FALLBACK[identifyResult.identity?.category] || POCKET_SCOUT_NEXT_PHOTO_FALLBACK.other;
+  return { photo: 'other', reason: fallback };
+}
+
+// Removes the most common non-matching junk from a raw candidate list
+// before it ever reaches median/range math -- lots, reproductions, parts
+// -only listings, empty packaging, manuals, and digital codes. This is a
+// blunt keyword filter, not a vision re-check against our own photo -- see
+// docs/pocket-scout.md for what a smarter version would need.
+const POCKET_SCOUT_JUNK_TERMS = /\b(lot of|bundle|wholesale|reprint|repro|replica|bootleg|custom|fantasy|proxy|parts only|for parts|broken|not working|empty box|box only|manual only|instructions only|digital|download code|cd key)\b/i;
+function filterPocketScoutListings(listings, opts = {}) {
+  const wantParts = !!opts.itemIsBroken;
+  return (listings || []).filter(l => {
+    if (!l || !(l.total > 0)) return false;
+    const title = String(l.title || '').toLowerCase();
+    if (!wantParts && POCKET_SCOUT_JUNK_TERMS.test(title)) return false;
+    if (wantParts && /\bnot working\b|\bfor parts\b|\bbroken\b|\bparts only\b/i.test(title) === false && POCKET_SCOUT_JUNK_TERMS.test(title)) return false;
+    return true;
+  });
+}
+// Trims extreme outliers (>3x the raw median, since a single mismatched
+// "lot" or wrong-variant listing that slipped past the keyword filter can
+// otherwise blow out the average) then reports median-first stats.
+function pocketScoutCompStats(listings) {
+  const totals = listings.map(l => l.total).filter(v => v > 0).sort((a, b) => a - b);
+  if (!totals.length) return { count: 0, low: null, median: null, high: null, average: null };
+  const rawMedian = totals[Math.floor(totals.length / 2)];
+  const trimmed = totals.filter(v => v <= rawMedian * 3 && v >= rawMedian / 3);
+  const use = trimmed.length ? trimmed : totals;
+  const sum = use.reduce((a, b) => a + b, 0);
+  return {
+    count: use.length,
+    low: Math.round(use[0] * 100) / 100,
+    median: Math.round(use[Math.floor(use.length / 2)] * 100) / 100,
+    high: Math.round(use[use.length - 1] * 100) / 100,
+    average: Math.round((sum / use.length) * 100) / 100,
+  };
+}
+
+// String.fromCharCode.apply on a whole multi-MB buffer at once can blow the
+// call stack -- chunk it. Used to turn an uploaded photo into the base64
+// payload both Anthropic and eBay's image search expect.
+function arrayBufferToBase64(buf) {
+  const bytes = new Uint8Array(buf);
+  let binary = '';
+  const chunkSize = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunkSize) binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunkSize));
+  return btoa(binary);
+}
+
+// store_settings.receipt_settings.pocketScout defaults -- see
+// /pocket-scout/settings. Dollar amounts in whole USD, percentages as
+// whole numbers (12.9 means 12.9%).
+const POCKET_SCOUT_SETTINGS_DEFAULTS = {
+  minProfit: 15,
+  preferredProfit: 25,
+  minRoiPct: 100,
+  minConfidenceForBuy: 80,
+  marketplaceFeePct: 13.25,
+  paymentFeePct: 2.9,
+  paymentFeeFlat: 0.30,
+  packagingAllowance: 2,
+  defaultShippingBySize: { tiny: 5, small: 8, medium: 13, large: 20, oversize: 35 },
+  maybeRequiresApproval: false,
+  ebayImageSearchEnabled: true,
+  ebaySoldCompsEnabled: true,
+};
+
 // Core of /dealscan/check, extracted so the scheduled() cron handler below
 // can run the exact same scan (same thresholds, same junk filtering, same
 // BIN/auction split) against a store's inventory instead of only ever being
@@ -9239,6 +9427,295 @@ export default {
       if (!key.startsWith(`inventory-photos/${storeId}/`)) return json({ ok: false, error: 'Photo does not belong to this store' }, 403);
       await env.MTG_CATALOG_R2.delete(key);
       return json({ ok: true });
+    }
+
+    // ── Pocket Scout routes ─────────────────────────────────────────────
+    // POST /pocket-scout/session/start -- begin a new scan session (one
+    // physical item, may hold several photos). Reuses scan_sessions.
+    if (url.pathname === '/pocket-scout/session/start' && request.method === 'POST') {
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId);
+      if (auth.error) return auth.error;
+      const { data: rows } = await supabaseAdminFetch(env, 'scan_sessions', {
+        method: 'POST',
+        headers: { Prefer: 'return=representation' },
+        body: JSON.stringify({ store_id: storeId, created_by: auth.user.id, status: 'active' }),
+      });
+      const session = rows?.[0];
+      if (!session) return json({ ok: false, error: 'Could not start scan session' }, 500);
+      return json({ ok: true, sessionId: session.id });
+    }
+
+    // POST /pocket-scout/session/photo?session_id=X&image_type=tag&sequence=2
+    // Body: raw image bytes. Uploads to R2, runs vision-identify + eBay image
+    // search concurrently, fuses the result into the session's running
+    // identity, and returns everything the result screen needs in one call.
+    if (url.pathname === '/pocket-scout/session/photo' && request.method === 'POST') {
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId);
+      if (auth.error) return auth.error;
+      const sessionId = String(url.searchParams.get('session_id') || '').trim();
+      if (!sessionId) return json({ ok: false, error: 'session_id is required' }, 400);
+      if (!env.MTG_CATALOG_R2) return json({ ok: false, error: 'Photo storage not configured' }, 500);
+      const rateError = await enforceUsageLimit(env, `pocket-scout-photo:${storeId}:${auth.user.id}`, 30, 60);
+      if (rateError) return rateError;
+
+      const { data: sessionRows } = await supabaseAdminFetch(env, `scan_sessions?id=eq.${encodeURIComponent(sessionId)}&store_id=eq.${encodeURIComponent(storeId)}&select=id,identity_json,confidence,comp_snapshot_json&limit=1`);
+      const session = sessionRows?.[0];
+      if (!session) return json({ ok: false, error: 'Scan session not found' }, 404);
+
+      const contentType = String(request.headers.get('Content-Type') || 'image/jpeg').split(';')[0].trim();
+      if (!contentType.startsWith('image/')) return json({ ok: false, error: 'Only image uploads are supported' }, 400);
+      const ext = (contentType.split('/')[1] || 'jpg').replace(/[^a-z0-9]/gi, '') || 'jpg';
+      const buf = await request.arrayBuffer();
+      if (!buf.byteLength) return json({ ok: false, error: 'Empty upload' }, 400);
+      if (buf.byteLength > 5 * 1024 * 1024) return json({ ok: false, error: 'Photo must be under 5MB -- resize before upload' }, 400);
+      const imageType = String(url.searchParams.get('image_type') || 'other').slice(0, 20);
+      const sequence = Math.max(1, Number(url.searchParams.get('sequence')) || 1);
+      const key = `pocket-scout/${storeId}/${sessionId}/${Date.now()}-${crypto.randomUUID()}.${ext}`;
+      await env.MTG_CATALOG_R2.put(key, buf, { httpMetadata: { contentType } });
+      const photoUrl = `${url.origin}/pocket-scout/photo/${key}`;
+
+      const base64Image = arrayBufferToBase64(buf);
+      const [visionResult, imageSearchResult] = await Promise.all([
+        pocketScoutVisionIdentify(env, base64Image).catch(e => ({ ok: false, error: e.message })),
+        fetchEbayImageSearch(env, base64Image).catch(e => ({ source: 'ebay_image', listings: [], warning: e.message })),
+      ]);
+
+      // Fuse this photo's identity into the session's running identity --
+      // prefer whichever value came with higher confidence per field rather
+      // than letting the newest photo blindly overwrite an earlier one.
+      const priorIdentity = session.identity_json || {};
+      const priorConfidence = Number(session.confidence || 0);
+      const newIdentity = visionResult.ok ? visionResult.identity : {};
+      const newConfidence = visionResult.ok ? newIdentity.confidence : 0;
+      const fused = { ...priorIdentity };
+      const conflicts = Array.isArray(priorIdentity.__conflicts) ? priorIdentity.__conflicts : [];
+      if (visionResult.ok) {
+        for (const field of Object.keys(newIdentity)) {
+          if (field === 'confidence') continue;
+          const incoming = newIdentity[field];
+          if (incoming == null || incoming === '') continue;
+          const existing = priorIdentity[field];
+          if (existing == null || existing === '') { fused[field] = incoming; continue; }
+          if (String(existing) === String(incoming)) continue;
+          // Same field, different non-empty values from two photos -- keep
+          // the higher-confidence read but log the conflict rather than
+          // silently discarding evidence.
+          if (newConfidence >= priorConfidence) {
+            conflicts.push({ field, kept: incoming, discarded: existing, at: new Date().toISOString() });
+            fused[field] = incoming;
+          } else {
+            conflicts.push({ field, kept: existing, discarded: incoming, at: new Date().toISOString() });
+          }
+        }
+      }
+      fused.confidence = Math.max(priorConfidence, newConfidence);
+      fused.__conflicts = conflicts.slice(-20);
+      fused.__textEvidence = [...(priorIdentity.__textEvidence || []), ...(visionResult.ok ? visionResult.textEvidence : [])].slice(-60);
+
+      // Comps: run one text query built from the fused identity, plus this
+      // photo's image-search hits, merge, de-dupe, filter junk.
+      const queryParts = [fused.brand, fused.manufacturer, fused.title || fused.characterOrSubject, fused.model, fused.year].filter(Boolean);
+      const textQuery = queryParts.length ? queryParts.join(' ').slice(0, 120) : (fused.title || '');
+      let textListings = [];
+      if (textQuery) {
+        const activeResult = await fetchEbayActiveListings(env, textQuery, { limit: 20 }).catch(() => ({ listings: [] }));
+        textListings = activeResult.listings || [];
+      }
+      const imageListings = imageSearchResult.listings || [];
+      const seen = new Set();
+      const merged = [...imageListings, ...textListings].filter(l => {
+        if (!l?.itemId || seen.has(l.itemId)) return false;
+        seen.add(l.itemId);
+        return true;
+      });
+      const filtered = filterPocketScoutListings(merged);
+      const activeStats = pocketScoutCompStats(filtered);
+
+      let soldStats = { count: 0, low: null, median: null, high: null, average: null };
+      let soldWarning = 'Sold history unavailable';
+      if (textQuery) {
+        const soldResult = await fetchEbaySoldComps(env, textQuery, 30).catch(() => ({ comps: [], warning: 'Sold comp lookup failed' }));
+        const soldFiltered = filterPocketScoutListings(soldResult.comps || []);
+        if (soldFiltered.length) { soldStats = pocketScoutCompStats(soldFiltered); soldWarning = null; }
+        else if (soldResult.warning) soldWarning = 'Sold history unavailable: ' + soldResult.warning;
+      }
+      const compSnapshot = { activeStats, soldStats, soldWarning, source: 'ebay', textQuery, generatedAt: new Date().toISOString() };
+
+      // Persist candidates as scan_queue rows (source-of-truth for the comps
+      // drawer / "not a match" rejection), the photo row, and the session.
+      if (filtered.length) {
+        await supabaseAdminFetch(env, 'scan_queue', {
+          method: 'POST',
+          headers: { Prefer: 'return=minimal' },
+          body: JSON.stringify(filtered.slice(0, 30).map(l => ({
+            store_id: storeId, session_id: sessionId, status: 'pending', created_by: auth.user.id,
+            payload: { source: imageListings.some(x => x.itemId === l.itemId) ? 'ebay_image' : 'ebay_text', sourceItemId: l.itemId, title: l.title, image: l.imageUrl, sourceUrl: l.url, price: l.total, condition: l.condition, category: fused.category || null },
+          }))),
+        });
+      }
+      await supabaseAdminFetch(env, 'pocket_scout_images', {
+        method: 'POST',
+        headers: { Prefer: 'return=minimal' },
+        body: JSON.stringify({
+          session_id: sessionId, store_id: storeId, storage_path: key, image_type: imageType, sequence,
+          ocr_json: { textEvidence: visionResult.ok ? visionResult.textEvidence : [] },
+          barcode_json: {},
+          analysis_json: { vision: visionResult, imageSearch: { count: imageListings.length, warning: imageSearchResult.warning || null } },
+        }),
+      });
+      await supabaseAdminFetch(env, `scan_sessions?id=eq.${encodeURIComponent(sessionId)}`, {
+        method: 'PATCH',
+        headers: { Prefer: 'return=minimal' },
+        body: JSON.stringify({ identity_json: fused, confidence: fused.confidence, comp_snapshot_json: compSnapshot, updated_at: new Date().toISOString() }),
+      });
+
+      const nextPhotoHint = visionResult.ok ? pocketScoutNextPhotoHint(visionResult) : null;
+      return json({
+        ok: true,
+        photoUrl,
+        identity: fused,
+        confidence: fused.confidence,
+        conflicts,
+        textEvidence: fused.__textEvidence,
+        routeToCardPipeline: visionResult.ok && visionResult.routeToCardPipeline,
+        nextPhotoHint,
+        candidates: filtered.slice(0, 30),
+        compSnapshot,
+        visionError: visionResult.ok ? null : visionResult.error,
+        imageSearchWarning: imageSearchResult.warning || null,
+      });
+    }
+
+    const pocketScoutPhotoMatch = url.pathname.match(/^\/pocket-scout\/photo\/(pocket-scout\/.+)$/);
+    if (pocketScoutPhotoMatch && request.method === 'GET') {
+      if (!env.MTG_CATALOG_R2) return json({ ok: false, error: 'Photo storage not configured' }, 500);
+      const obj = await env.MTG_CATALOG_R2.get(pocketScoutPhotoMatch[1]);
+      if (!obj) return new Response('Not found', { status: 404, headers: CORS });
+      return new Response(obj.body, {
+        headers: { ...CORS, 'Content-Type': obj.httpMetadata?.contentType || 'image/jpeg', 'Cache-Control': 'public, max-age=31536000, immutable' },
+      });
+    }
+
+    // POST /pocket-scout/session/candidate/reject -- "not a match", removes
+    // one candidate and recomputes the active comp stats from what's left.
+    if (url.pathname === '/pocket-scout/session/candidate/reject' && request.method === 'POST') {
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId);
+      if (auth.error) return auth.error;
+      const limited = await readJsonWithLimit(request, 8 * 1024);
+      if (limited.error) return limited.error;
+      const { sessionId, candidateId } = limited.data;
+      if (!sessionId || !candidateId) return json({ ok: false, error: 'sessionId and candidateId are required' }, 400);
+      await supabaseAdminFetch(env, `scan_queue?id=eq.${encodeURIComponent(candidateId)}&session_id=eq.${encodeURIComponent(sessionId)}&store_id=eq.${encodeURIComponent(storeId)}`, {
+        method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ status: 'rejected' }),
+      });
+      const { data: remaining } = await supabaseAdminFetch(env, `scan_queue?session_id=eq.${encodeURIComponent(sessionId)}&store_id=eq.${encodeURIComponent(storeId)}&status=eq.pending&select=payload`);
+      const listings = (remaining || []).map(r => ({ itemId: r.payload?.sourceItemId, title: r.payload?.title, total: Number(r.payload?.price || 0), condition: r.payload?.condition, url: r.payload?.sourceUrl, imageUrl: r.payload?.image }));
+      const activeStats = pocketScoutCompStats(listings);
+      const { data: sessionRows } = await supabaseAdminFetch(env, `scan_sessions?id=eq.${encodeURIComponent(sessionId)}&select=comp_snapshot_json&limit=1`);
+      const compSnapshot = { ...(sessionRows?.[0]?.comp_snapshot_json || {}), activeStats, generatedAt: new Date().toISOString() };
+      await supabaseAdminFetch(env, `scan_sessions?id=eq.${encodeURIComponent(sessionId)}`, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ comp_snapshot_json: compSnapshot, updated_at: new Date().toISOString() }) });
+      return json({ ok: true, compSnapshot });
+    }
+
+    // POST /pocket-scout/session/close -- records the buy/pass decision and
+    // (if bought) the resulting inventory_item_id, for the future learning
+    // loop. Inventory row creation itself happens client-side (same direct
+    // Supabase insert path every other "add to inventory" flow already
+    // uses) -- this just stamps the decision onto the session afterward.
+    if (url.pathname === '/pocket-scout/session/close' && request.method === 'POST') {
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId);
+      if (auth.error) return auth.error;
+      const limited = await readJsonWithLimit(request, 8 * 1024);
+      if (limited.error) return limited.error;
+      const b = limited.data;
+      if (!b.sessionId) return json({ ok: false, error: 'sessionId is required' }, 400);
+      const update = {
+        status: 'closed',
+        purchase_price: b.purchasePrice != null ? Number(b.purchasePrice) : null,
+        condition: b.condition ? String(b.condition).slice(0, 40) : null,
+        sourcing_location: b.sourcingLocation ? String(b.sourcingLocation).slice(0, 80) : null,
+        decision: b.decision ? String(b.decision).slice(0, 20) : null,
+        expected_profit_low: b.expectedProfitLow != null ? Number(b.expectedProfitLow) : null,
+        expected_profit_high: b.expectedProfitHigh != null ? Number(b.expectedProfitHigh) : null,
+        inventory_item_id: b.inventoryItemId || null,
+        updated_at: new Date().toISOString(),
+      };
+      await supabaseAdminFetch(env, `scan_sessions?id=eq.${encodeURIComponent(b.sessionId)}&store_id=eq.${encodeURIComponent(storeId)}`, {
+        method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify(update),
+      });
+      return json({ ok: true });
+    }
+
+    // POST /pocket-scout/session/manual-search -- fallback when photos alone
+    // aren't enough: same comp pipeline as the photo route, driven by a
+    // typed query instead of a vision call, so it never traps the employee
+    // behind a bad AI read.
+    if (url.pathname === '/pocket-scout/session/manual-search' && request.method === 'POST') {
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId);
+      if (auth.error) return auth.error;
+      const limited = await readJsonWithLimit(request, 4 * 1024);
+      if (limited.error) return limited.error;
+      const { sessionId, query } = limited.data;
+      if (!sessionId || !query) return json({ ok: false, error: 'sessionId and query are required' }, 400);
+      const rateError = await enforceUsageLimit(env, `pocket-scout-manual:${storeId}:${auth.user.id}`, 30, 60);
+      if (rateError) return rateError;
+      const textQuery = String(query).trim().slice(0, 120);
+
+      const [activeResult, soldResult] = await Promise.all([
+        fetchEbayActiveListings(env, textQuery, { limit: 20 }).catch(() => ({ listings: [] })),
+        fetchEbaySoldComps(env, textQuery, 30).catch(() => ({ comps: [], warning: 'Sold comp lookup failed' })),
+      ]);
+      const filtered = filterPocketScoutListings(activeResult.listings || []);
+      const activeStats = pocketScoutCompStats(filtered);
+      const soldFiltered = filterPocketScoutListings(soldResult.comps || []);
+      const soldStats = soldFiltered.length ? pocketScoutCompStats(soldFiltered) : { count: 0, low: null, median: null, high: null, average: null };
+      const soldWarning = soldFiltered.length ? null : ('Sold history unavailable' + (soldResult.warning ? ': ' + soldResult.warning : ''));
+      const compSnapshot = { activeStats, soldStats, soldWarning, source: 'ebay', textQuery, generatedAt: new Date().toISOString() };
+      const identity = { title: textQuery, confidence: 60 };
+
+      if (filtered.length) {
+        await supabaseAdminFetch(env, 'scan_queue', {
+          method: 'POST', headers: { Prefer: 'return=minimal' },
+          body: JSON.stringify(filtered.slice(0, 30).map(l => ({ store_id: storeId, session_id: sessionId, status: 'pending', created_by: auth.user.id, payload: { source: 'ebay_text_manual', sourceItemId: l.itemId, title: l.title, image: l.imageUrl, sourceUrl: l.url, price: l.total, condition: l.condition } }))),
+        });
+      }
+      await supabaseAdminFetch(env, `scan_sessions?id=eq.${encodeURIComponent(sessionId)}&store_id=eq.${encodeURIComponent(storeId)}`, {
+        method: 'PATCH', headers: { Prefer: 'return=minimal' },
+        body: JSON.stringify({ identity_json: identity, confidence: 60, comp_snapshot_json: compSnapshot, updated_at: new Date().toISOString() }),
+      });
+      return json({ ok: true, identity, confidence: 60, candidates: filtered.slice(0, 30), compSnapshot });
+    }
+
+    // GET /pocket-scout/settings -- thresholds live in the same
+    // store_settings.receipt_settings jsonb blob eBay auto-reprice already
+    // uses, under a "pocketScout" key.
+    if (url.pathname === '/pocket-scout/settings' && request.method === 'GET') {
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId);
+      if (auth.error) return auth.error;
+      const { data: rows } = await supabaseAdminFetch(env, `store_settings?store_id=eq.${encodeURIComponent(storeId)}&select=receipt_settings&limit=1`);
+      const settings = { ...POCKET_SCOUT_SETTINGS_DEFAULTS, ...(rows?.[0]?.receipt_settings?.pocketScout || {}) };
+      return json({ ok: true, settings });
+    }
+    if (url.pathname === '/pocket-scout/settings' && request.method === 'POST') {
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId, ['owner', 'admin']);
+      if (auth.error) return auth.error;
+      const limited = await readJsonWithLimit(request, 8 * 1024);
+      if (limited.error) return limited.error;
+      const { data: rows } = await supabaseAdminFetch(env, `store_settings?store_id=eq.${encodeURIComponent(storeId)}&select=receipt_settings&limit=1`);
+      const receiptSettings = rows?.[0]?.receipt_settings || {};
+      const nextSettings = { ...POCKET_SCOUT_SETTINGS_DEFAULTS, ...(receiptSettings.pocketScout || {}), ...limited.data };
+      await supabaseAdminFetch(env, `store_settings?store_id=eq.${encodeURIComponent(storeId)}`, {
+        method: 'PATCH', headers: { Prefer: 'return=minimal' },
+        body: JSON.stringify({ receipt_settings: { ...receiptSettings, pocketScout: nextSettings }, updated_at: new Date().toISOString() }),
+      });
+      return json({ ok: true, settings: nextSettings });
     }
 
     // Store branding logo: same R2 hosting as inventory photos, but its own
