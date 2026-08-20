@@ -533,6 +533,58 @@ async function waitlist(request, env, deps) {
   return deps.json({ok:true,request:requests?.[0]||row,message:'Request saved. Incentive availability is not guaranteed and you have not been charged.'});
 }
 
+async function loadSavedPicks(db, storeId, userId) {
+  const { data:lists } = await db(`foc_pick_lists?store_id=eq.${encodeURIComponent(storeId)}&user_id=eq.${encodeURIComponent(userId)}&select=*,cycle:foc_cycles(id,foc_date,customer_cutoff_at,status)&order=created_at.asc`);
+  const listIds=(lists||[]).map(list=>list.id);let items=[];
+  if(listIds.length){({data:items}=await db(`foc_pick_list_items?pick_list_id=${inFilter(listIds)}&select=id,pick_list_id,sku_id,quantity,sku:comic_skus(id,cycle_id,title,variant_label,cover_artist,cover_image_url,on_sale_date,upc,customer_price_cents,customer_enabled)`));}
+  return (lists||[]).map(list=>({
+    id:list.id,cycle:list.cycle,name:list.name,
+    isOpen:cycleOpen(list.cycle),
+    items:(items||[]).filter(item=>item.pick_list_id===list.id),
+  }));
+}
+
+async function savedPicks(request, env, deps, url) {
+  const auth=await deps.requireAuthenticatedUser(request,env);if(auth.error)return auth.error;
+  const storeId=text(url.searchParams.get('store_id'),80);if(!storeId)return deps.json({ok:false,error:'store_id is required'},400);
+  const db=(path,options)=>deps.supabaseAdminFetch(env,path,options);
+  return deps.json({ok:true,picks:await loadSavedPicks(db,storeId,auth.user.id)});
+}
+
+async function savePicks(request, env, deps) {
+  const auth=await deps.requireAuthenticatedUser(request,env);if(auth.error)return auth.error;
+  const limited=await deps.readJsonWithLimit(request,64*1024);if(limited.error)return limited.error;
+  const body=limited.data||{},storeId=text(body.storeId,80),requested=Array.isArray(body.items)?body.items.slice(0,200):[];
+  if(!storeId)return deps.json({ok:false,error:'storeId is required'},400);
+  const normalized=[];
+  for(const item of requested){
+    const skuId=text(item?.skuId,80),quantity=Math.max(1,Math.min(50,Number(item?.quantity||1)));
+    if(!/^[0-9a-f-]{36}$/i.test(skuId)||normalized.some(line=>line.skuId===skuId))return deps.json({ok:false,error:'Every saved pick must be one unique exact-cover SKU'},400);
+    normalized.push({skuId,quantity});
+  }
+  const db=(path,options)=>deps.supabaseAdminFetch(env,path,options);
+  const {data:existing}=await db(`foc_pick_lists?store_id=eq.${encodeURIComponent(storeId)}&user_id=eq.${encodeURIComponent(auth.user.id)}&select=id,cycle_id`);
+  let skuRows=[];
+  if(normalized.length){
+    const ids=normalized.map(item=>item.skuId);
+    ({data:skuRows}=await db(`comic_skus?id=${inFilter(ids)}&store_id=eq.${encodeURIComponent(storeId)}&customer_enabled=eq.true&select=id,cycle_id,cycle:foc_cycles(id,status,customer_cutoff_at)`));
+    if((skuRows||[]).length!==ids.length)return deps.json({ok:false,error:'One of those covers is no longer available'},409);
+    const closed=skuRows.find(sku=>!cycleOpen(sku.cycle));if(closed)return deps.json({ok:false,error:'One of those FOC weeks has already closed'},409);
+  }
+  const byCycle=new Map();
+  for(const item of normalized){const sku=skuRows.find(row=>row.id===item.skuId);if(!byCycle.has(sku.cycle_id))byCycle.set(sku.cycle_id,[]);byCycle.get(sku.cycle_id).push(item);}
+  for(const list of existing||[]){
+    await db(`foc_pick_list_items?pick_list_id=eq.${encodeURIComponent(list.id)}`,{method:'DELETE',headers:{Prefer:'return=minimal'}});
+  }
+  for(const [cycleId,items] of byCycle){
+    let list=(existing||[]).find(row=>row.cycle_id===cycleId);
+    if(!list){const {data:created}=await db('foc_pick_lists',{method:'POST',headers:{Prefer:'return=representation'},body:JSON.stringify({store_id:storeId,cycle_id:cycleId,user_id:auth.user.id,name:'My Comic Pulls'})});list=created?.[0];}
+    if(!list?.id)return deps.json({ok:false,error:'Your comic pulls could not be saved'},502);
+    await db('foc_pick_list_items',{method:'POST',headers:{Prefer:'return=minimal'},body:JSON.stringify(items.map(item=>({pick_list_id:list.id,sku_id:item.skuId,quantity:item.quantity})))});
+  }
+  return deps.json({ok:true,picks:await loadSavedPicks(db,storeId,auth.user.id),message:'Your comic pulls are saved. Add more anytime, then pay before each FOC deadline.'});
+}
+
 async function myPreorders(request, env, deps, url) {
   const auth=await deps.requireAuthenticatedUser(request,env);if(auth.error)return auth.error;
   const storeId=text(url.searchParams.get('store_id'),80);const db=(path,options)=>deps.supabaseAdminFetch(env,path,options);
@@ -540,7 +592,7 @@ async function myPreorders(request, env, deps, url) {
   const ids=(orders||[]).map(order=>order.id);let items=[];
   if(ids.length){({data:items}=await db(`foc_preorder_items?order_id=${inFilter(ids)}&select=*,sku:comic_skus(id,title,variant_label,cover_artist,cover_image_url,on_sale_date,upc)`));}
   const grouped=(orders||[]).map(order=>({...order,items:(items||[]).filter(item=>item.order_id===order.id),canCancel:new Date(order.cycle?.customer_cutoff_at||0).getTime()>Date.now()&&!['cancelled','refunded','shipped','completed'].includes(order.status)}));
-  return deps.json({ok:true,orders:grouped});
+  return deps.json({ok:true,orders:grouped,picks:await loadSavedPicks(db,storeId,auth.user.id)});
 }
 
 async function cancelPreorder(request, env, deps) {
@@ -667,6 +719,8 @@ export async function handleFocRequest(request, env, url, deps) {
     const storeId=text(url.searchParams.get('store_id'),80);const db=(p,o)=>deps.supabaseAdminFetch(env,p,o);const cycles=await loadAllCatalogs(db,storeId,false);return deps.json({ok:true,cycles});
   }
   if(path==='/public/preorders/checkout'&&request.method==='POST')return preorderCheckout(request,env,deps);
+  if(path==='/public/preorders/picks'&&request.method==='GET')return savedPicks(request,env,deps,url);
+  if(path==='/public/preorders/picks'&&request.method==='PUT')return savePicks(request,env,deps);
   if(path==='/public/preorders/waitlist'&&request.method==='POST')return waitlist(request,env,deps);
   if(path==='/public/preorders/my'&&request.method==='GET')return myPreorders(request,env,deps,url);
   if(path==='/public/preorders/cancel'&&request.method==='POST')return cancelPreorder(request,env,deps);
