@@ -4,9 +4,16 @@ import assert from 'node:assert/strict';
 const worker = fs.readFileSync('cloudflare-worker-full.js', 'utf8');
 const dashboard = fs.readFileSync('dashboard.html', 'utf8');
 
-// ── Contract: sell.logistics scope requested, so a store connected before
-// this shipped can be told to reconnect rather than silently 403ing forever ──
-assert.match(worker, /'https:\/\/api\.ebay\.com\/oauth\/api_scope\/sell\.logistics',\s*\n\]\.join\(' '\);/, 'EBAY_SCOPES must include sell.logistics');
+// ── Contract: sell.logistics must NOT be in the actively-requested OAuth
+// scope list. eBay validates every requested scope atomically -- an app
+// whose production keyset hasn't separately been approved for a given
+// scope gets the ENTIRE /oauth2/authorize request rejected with
+// invalid_scope before the seller ever sees a login screen, which blocks
+// reconnecting every other eBay feature too, not just this one. A store
+// that connected before Logistics scope approval must instead be told to
+// reconnect once buy-label actually needs it (via needsReconnect below),
+// never by breaking OAuth outright. ──
+assert.doesNotMatch(worker, /const EBAY_SCOPES = \[[\s\S]*?sell\.logistics[\s\S]*?\]\.join\(' '\);/, 'EBAY_SCOPES must not request sell.logistics until it is approved for the production keyset, or reconnecting eBay breaks entirely with invalid_scope');
 
 console.log('eBay Logistics OAuth scope contract checks passed');
 
@@ -58,6 +65,13 @@ assert.match(dashboard, /function renderEbayShippingRates\(\)\{/, 'renderEbayShi
 assert.match(dashboard, /async function confirmBuyEbayLabel\(\)\{/, 'confirmBuyEbayLabel must exist');
 assert.match(dashboard, /async function printEbayLabel\(shipmentId, format\)\{/, 'printEbayLabel must exist');
 assert.match(dashboard, /if\(rate && !confirm\(`Buy this \$\{rate\.serviceName\|\|rate\.carrierCode\} label for \$\$\{rate\.cost\.toFixed\(2\)\}\? This charges your eBay account\.`\)\) return;/, 'buying a label must require an explicit confirm naming the real charge amount before it fires -- nothing should purchase silently');
+
+// ── Contract: since sell.logistics is deliberately not requested during
+// OAuth, a needsReconnect response from the quote/buy-label routes must
+// never tell the seller that clicking CONNECT EBAY again will fix it --
+// that message would be false until the scope is actually approved. ──
+assert.match(dashboard, /d\.needsReconnect \? 'eBay has not approved this store for the Logistics API \(shipping labels\) yet -- reconnecting will not fix this until that scope is approved in the eBay Developer Portal' : \(d\.error \|\| 'Could not get shipping rates'\)/, 'the shipping-quote failure message must not claim reconnecting will fix a missing Logistics scope');
+assert.match(dashboard, /d\.needsReconnect \? 'eBay has not approved this store for the Logistics API \(shipping labels\) yet -- reconnecting will not fix this until that scope is approved in the eBay Developer Portal' : \(d\.error \|\| 'Label purchase failed'\)/, 'the buy-label failure message must not claim reconnecting will fix a missing Logistics scope');
 
 console.log('Dashboard wiring contract checks passed');
 
