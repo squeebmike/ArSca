@@ -6361,7 +6361,7 @@ export default {
     // in sync later.
     if (url.pathname === '/inventory/record-external-sale' && request.method === 'POST') {
       const storeId = requestStoreId(request, url);
-      const auth = await requireStoreUser(request, env, storeId, ['owner','admin']);
+      const auth = await requireStoreUser(request, env, storeId, ['owner','admin','manager','employee']);
       if (auth.error) return auth.error;
       try {
         const body = await request.json().catch(() => ({}));

@@ -2593,6 +2593,64 @@ body.show-mode .inv-sync-badge{display:none;}
   <div id="shows-panels" style="max-width:1400px;margin:0 auto;padding:0 20px"></div>
 </div>
 
+<!-- WHATNOT MODE TAB -->
+<div id="tab-whatnot" class="tab-panel">
+  <div class="sec">WHATNOT MODE</div>
+  <div style="max-width:640px;margin:0 auto;padding:0 20px 40px">
+    <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);margin-bottom:12px">Scan an item, punch in what it sold for on Whatnot, hit CONFIRM. Marks it sold immediately -- no cart, no extra checkout steps.</div>
+
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;background:var(--surf);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:14px;font-family:var(--font-mono);text-align:center">
+      <div><div style="font-size:9px;color:var(--dim)">ITEMS SOLD</div><div id="whatnot-session-count" style="font-size:20px;color:var(--g);font-weight:900">0</div></div>
+      <div><div style="font-size:9px;color:var(--dim)">GROSS</div><div id="whatnot-session-gross" style="font-size:20px;color:var(--text);font-weight:900">$0.00</div></div>
+      <div><div style="font-size:9px;color:var(--dim)">PROFIT</div><div id="whatnot-session-profit" style="font-size:20px;color:var(--g);font-weight:900">$0.00</div></div>
+    </div>
+    <div style="display:flex;justify-content:flex-end;margin:-8px 0 12px"><button class="hbtn" onclick="resetWhatnotSession()">RESET SESSION TALLY</button></div>
+
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px;font-family:var(--font-mono);font-size:9px;color:var(--dim)">
+      <span>WHATNOT FEE</span>
+      <input id="whatnot-fee-pct" type="number" step="0.1" min="0" style="width:64px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:5px;border-radius:4px" onchange="saveWhatnotFeeSettings()">%
+      <span>+ $</span>
+      <input id="whatnot-fee-flat" type="number" step="0.01" min="0" style="width:64px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:5px;border-radius:4px" onchange="saveWhatnotFeeSettings()">
+      <span>flat (commission + payment processing, editable)</span>
+    </div>
+
+    <div id="whatnot-scan-camera" class="barcode-camera"><video id="whatnot-scan-video" playsinline muted></video><div class="barcode-scan-line"></div><div id="whatnot-scan-camera-placeholder" style="font-family:var(--font-mono);font-size:10px;color:var(--dim);text-align:center;padding:18px">Opening camera when supported.</div></div>
+    <div style="display:flex;gap:8px;margin-top:8px">
+      <input id="whatnot-scan-manual-input" class="tsi" placeholder="Scan or type barcode" style="flex:1" onkeydown="if(event.key==='Enter'){handleWhatnotScanValue(this.value);this.value='';}">
+      <button class="hbtn" id="whatnot-scan-camera-toggle" onclick="toggleWhatnotScanCamera()">START CAMERA</button>
+    </div>
+    <div id="whatnot-scan-status" style="font-family:var(--font-mono);font-size:10px;color:var(--dim);margin-top:6px">Scan a label barcode or type it below.</div>
+
+    <div id="whatnot-current-item" style="display:none;margin-top:16px;background:var(--surf);border:1px solid var(--g);border-radius:10px;padding:14px">
+      <div id="whatnot-item-name" style="font-family:'Orbitron',monospace;color:var(--text);font-size:15px;margin-bottom:2px"></div>
+      <div id="whatnot-item-meta" style="font-family:var(--font-mono);font-size:9px;color:var(--dim);margin-bottom:12px"></div>
+
+      <div style="text-align:center;font-family:'Orbitron',monospace;font-size:38px;color:var(--gold);margin-bottom:4px" id="whatnot-price-display">$0.00</div>
+      <div style="text-align:center;font-family:var(--font-mono);font-size:10px;color:var(--dim);margin-bottom:12px" id="whatnot-fee-profit-preview">Fee: $0.00 &nbsp;·&nbsp; Profit: $0.00</div>
+
+      <div id="whatnot-keypad" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+        <button class="hbtn" style="padding:18px;font-size:22px" onclick="whatnotKeypadPress('1')">1</button>
+        <button class="hbtn" style="padding:18px;font-size:22px" onclick="whatnotKeypadPress('2')">2</button>
+        <button class="hbtn" style="padding:18px;font-size:22px" onclick="whatnotKeypadPress('3')">3</button>
+        <button class="hbtn" style="padding:18px;font-size:22px" onclick="whatnotKeypadPress('4')">4</button>
+        <button class="hbtn" style="padding:18px;font-size:22px" onclick="whatnotKeypadPress('5')">5</button>
+        <button class="hbtn" style="padding:18px;font-size:22px" onclick="whatnotKeypadPress('6')">6</button>
+        <button class="hbtn" style="padding:18px;font-size:22px" onclick="whatnotKeypadPress('7')">7</button>
+        <button class="hbtn" style="padding:18px;font-size:22px" onclick="whatnotKeypadPress('8')">8</button>
+        <button class="hbtn" style="padding:18px;font-size:22px" onclick="whatnotKeypadPress('9')">9</button>
+        <button class="hbtn" style="padding:18px;font-size:22px" onclick="whatnotKeypadPress('00')">00</button>
+        <button class="hbtn" style="padding:18px;font-size:22px" onclick="whatnotKeypadPress('0')">0</button>
+        <button class="hbtn" style="padding:18px;font-size:22px" onclick="whatnotKeypadBackspace()">⌫</button>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:10px">
+        <button class="hbtn" onclick="clearWhatnotPrice()" style="flex:1;padding:12px">CLEAR</button>
+        <button class="hbtn" onclick="cancelWhatnotItem()" style="flex:1;padding:12px">CANCEL</button>
+      </div>
+      <button class="hbtn" id="whatnot-confirm-btn" onclick="confirmWhatnotSale()" style="width:100%;margin-top:10px;padding:18px;font-size:16px;color:var(--g)" disabled>CONFIRM SOLD</button>
+    </div>
+  </div>
+</div>
+
 <!-- TOURNAMENTS / EVENTS TAB -->
 <div id="tab-events" class="tab-panel">
   <div class="sec">TOURNAMENTS / EVENTS</div>
@@ -3739,7 +3797,7 @@ const SUBSCRIPTION_PLANS = {
   store:{ name:'Store', price:89, features:['Everything in Register','Inventory, buying and consignments','Staff, shows, tournaments and profit reporting'], capabilities:['research','checkout','sales','inventory','consignments','staff','shows','events','pulllists'] },
   pro:{ name:'Pro', price:149, features:['Everything in Store','Online listing tools','Advanced operations + multi-store'], capabilities:['research','checkout','sales','inventory','consignments','staff','shows','events','pulllists','marketplace','advanced'] }
 };
-const TAB_CAPABILITY = {research:'research',sets:'research',wantlist:'research',display:'checkout',browse:'checkout',pos:'checkout',sales:'sales',orders:'sales',intake:'inventory',inventory:'inventory',locations:'inventory',restock:'inventory',grading:'inventory',consign:'consignments',shows:'shows',events:'events',pulllists:'pulllists',foc:'pulllists',channels:'marketplace'};
+const TAB_CAPABILITY = {research:'research',sets:'research',wantlist:'research',display:'checkout',browse:'checkout',pos:'checkout',whatnot:'checkout',sales:'sales',orders:'sales',intake:'inventory',inventory:'inventory',locations:'inventory',restock:'inventory',grading:'inventory',consign:'consignments',shows:'shows',events:'events',pulllists:'pulllists',foc:'pulllists',channels:'marketplace'};
 function currentPlanCode(){ return SUBSCRIPTION_PLANS[window._subStatus?.plan_code] ? window._subStatus.plan_code : 'store'; }
 function hasPlanCapability(capability){ return !capability || SUBSCRIPTION_PLANS[currentPlanCode()].capabilities.includes(capability); }
 function planCanAccessTab(tab){ return hasPlanCapability(TAB_CAPABILITY[tab]); }
@@ -3754,7 +3812,7 @@ function roleCanAccessTab(tab){
   let allowed = false;
   if(role === 'owner' || role === 'admin') allowed = true;
   else if(role === 'manager') allowed = !['backoffice'].includes(tab);
-  else if(role === 'employee') allowed = ['overview','display','browse','inventory','research','pos','alerts','wantlist','locations','restock','grading','sets','events','pulllists','foc','phone'].includes(tab);
+  else if(role === 'employee') allowed = ['overview','display','browse','inventory','research','pos','whatnot','alerts','wantlist','locations','restock','grading','sets','events','pulllists','foc','phone'].includes(tab);
   return allowed && planCanAccessTab(tab);
 }
 
@@ -4752,6 +4810,7 @@ const DAILY_TABS = [
   ['inventory', 'INVENTORY'],
   ['sets', 'SETS'],
   ['shows', 'SHOWS'],
+  ['whatnot', 'WHATNOT'],
   ['channels', 'EBAY / LISTINGS'],
 ];
 const MORE_TABS = [
@@ -15716,7 +15775,7 @@ async function printEbayLabel(shipmentId, format){
 // eBay OAuth sync for a one-off eBay sale. Fee defaults are editable
 // estimates, not exact -- actual rates vary by category/store tier.
 const EXTERNAL_SALE_FEE_DEFAULTS = {
-  Whatnot: { pct: 8, flat: 0.30, note: '8% commission + 2.9% + $0.30 processing (approx -- lower for electronics/coins)' },
+  Whatnot: { pct: 10.9, flat: 0.30, note: '8% commission + 2.9% payment processing + $0.30 flat (approx combined -- lower for electronics/coins)' },
   eBay: { pct: 13.25, flat: 0, note: 'Typical eBay final value fee -- varies by category and store subscription' },
   Mercari: { pct: 10, flat: 0, note: 'Approximate -- confirm your actual rate' },
   Poshmark: { pct: 20, flat: 0, note: 'Approximate -- confirm your actual rate' },
@@ -17767,8 +17826,10 @@ function switchTab(name, btn){
     btn.classList.add('on');
   }
   closeMoreMenu();
+  if(activeTab === 'whatnot' && name !== 'whatnot') stopWhatnotScanCamera();
   activeTab = name;
   if(name === 'inventory') setTimeout(()=>{ filterTable(); setInvView(_invView); },0);
+  if(name === 'whatnot') setTimeout(()=>{ renderWhatnotSessionTally(); if(navigator.mediaDevices?.getUserMedia&&'BarcodeDetector' in window) startWhatnotScanCamera(); setTimeout(()=>document.getElementById('whatnot-scan-manual-input')?.focus(),80); },0);
   if(name === 'browse') setTimeout(renderCustomerInventoryBrowser,0);
   // Refresh category-dependent helper rows (set browser buttons etc.) when switching to POS/Research
   if(name === 'pos' || name === 'research') setTimeout(handleQplCategoryChange, 0);
@@ -25788,6 +25849,175 @@ async function handleCartScanValue(rawValue){
   showCartScanPokeball();
   setCartScanStatus('Added: '+item.name,'var(--g)');
   if(log)log.innerHTML=`<div style="color:var(--g)">✓ ${escHtml(item.name)}</div>`+log.innerHTML;
+}
+
+// ── WHATNOT MODE ─────────────────────────────────────────────────────────
+// Fast-paced live-show flow: scan an in-stock item, punch in what it just
+// sold for on Whatnot with a big-button keypad, confirm. Calls the same
+// /inventory/record-external-sale endpoint the per-item "Sold on Whatnot"
+// context-menu action uses, so it shows up in sales history/profit stats
+// identically -- this tab is just a faster front door to it during a show.
+let whatnotScanStream=null, whatnotScanDetector=null, whatnotScanDetecting=false;
+let whatnotCurrentItem=null, whatnotPriceCents=0, whatnotSubmitting=false;
+let _whatnotScanLastValue='', _whatnotScanLastAt=0;
+let whatnotSession={count:0,gross:0,profit:0};
+
+function saveWhatnotFeeSettings(){
+  const pct=document.getElementById('whatnot-fee-pct')?.value;
+  const flat=document.getElementById('whatnot-fee-flat')?.value;
+  if(pct!=null) localStorage.setItem('whatnot_fee_pct',pct);
+  if(flat!=null) localStorage.setItem('whatnot_fee_flat',flat);
+  renderWhatnotPrice();
+}
+function whatnotFeeSettings(){
+  const def=EXTERNAL_SALE_FEE_DEFAULTS.Whatnot;
+  const pct=Number(localStorage.getItem('whatnot_fee_pct'));
+  const flat=Number(localStorage.getItem('whatnot_fee_flat'));
+  return { pct:Number.isFinite(pct)&&localStorage.getItem('whatnot_fee_pct')!==null?pct:def.pct, flat:Number.isFinite(flat)&&localStorage.getItem('whatnot_fee_flat')!==null?flat:def.flat };
+}
+(function initWhatnotFeeInputs(){
+  const fee=whatnotFeeSettings();
+  const pctEl=document.getElementById('whatnot-fee-pct'), flatEl=document.getElementById('whatnot-fee-flat');
+  if(pctEl) pctEl.value=fee.pct;
+  if(flatEl) flatEl.value=fee.flat;
+})();
+
+function toggleWhatnotScanCamera(){ if(whatnotScanStream) stopWhatnotScanCamera(); else startWhatnotScanCamera(); }
+async function startWhatnotScanCamera(){
+  if(!navigator.mediaDevices?.getUserMedia){setWhatnotScanStatus('Camera not available. Type the barcode instead.','var(--gold)');return;}
+  if(!('BarcodeDetector' in window)){setWhatnotScanStatus('Barcode scanner unavailable in this browser. Type the barcode instead.','var(--gold)');return;}
+  try{
+    stopWhatnotScanCamera();
+    whatnotScanStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:1280},height:{ideal:720},focusMode:{ideal:'continuous'}},audio:false});
+    await applyContinuousAutofocus(whatnotScanStream);
+    const video=document.getElementById('whatnot-scan-video');video.srcObject=whatnotScanStream;await video.play();
+    const supported=typeof BarcodeDetector.getSupportedFormats==='function'?await BarcodeDetector.getSupportedFormats().catch(()=>[]):[];const formats=['upc_a','upc_e','ean_13','ean_8','code_128','qr_code'].filter(x=>!supported.length||supported.includes(x));
+    whatnotScanDetector=new BarcodeDetector(formats.length?{formats}:undefined);whatnotScanDetecting=true;document.getElementById('whatnot-scan-camera')?.classList.add('active');
+    const placeholder=document.getElementById('whatnot-scan-camera-placeholder');if(placeholder)placeholder.style.display='none';
+    const btn=document.getElementById('whatnot-scan-camera-toggle');if(btn)btn.textContent='STOP CAMERA';setWhatnotScanStatus('Point the camera at a label barcode.');detectWhatnotScanFrame();
+  }catch(e){
+    const denied=/notallowed|permission|denied/i.test(String(e?.name||e?.message||''));setWhatnotScanStatus(denied?'Camera permission denied. Type the barcode instead.':'Camera not available. Type the barcode instead.','var(--gold)');stopWhatnotScanCamera();
+  }
+}
+async function detectWhatnotScanFrame(){
+  if(!whatnotScanDetecting||!whatnotScanDetector)return;const video=document.getElementById('whatnot-scan-video');
+  try{if(video?.readyState>=2){const codes=await whatnotScanDetector.detect(video);const value=codes?.[0]?.rawValue||'';if(value)await handleWhatnotScanValue(value);}}catch(e){}
+  if(whatnotScanDetecting)requestAnimationFrame(detectWhatnotScanFrame);
+}
+function stopWhatnotScanCamera(){whatnotScanDetecting=false;(whatnotScanStream?.getTracks?.()||[]).forEach(track=>track.stop());whatnotScanStream=null;whatnotScanDetector=null;const video=document.getElementById('whatnot-scan-video');if(video){video.pause();video.srcObject=null;}document.getElementById('whatnot-scan-camera')?.classList.remove('active');const placeholder=document.getElementById('whatnot-scan-camera-placeholder');if(placeholder)placeholder.style.display='';const btn=document.getElementById('whatnot-scan-camera-toggle');if(btn)btn.textContent='START CAMERA';}
+function setWhatnotScanStatus(msg,color){const el=document.getElementById('whatnot-scan-status');if(el){el.textContent=msg;el.style.color=color||'var(--dim)';}}
+
+async function handleWhatnotScanValue(rawValue){
+  const value=String(rawValue||'').trim();
+  if(!value) return;
+  if(whatnotSubmitting) return;
+  const lookupValue=cartScanLookupValue(value);
+  if(lookupValue===_whatnotScanLastValue&&(Date.now()-_whatnotScanLastAt)<2500) return;
+  _whatnotScanLastValue=lookupValue;_whatnotScanLastAt=Date.now();
+  const input=document.getElementById('whatnot-scan-manual-input');if(input)input.value='';
+  const item=(all||[]).find(i=>i.status==='in_stock'&&labelBarcodeValue(i)===lookupValue);
+  if(!item){
+    setWhatnotScanStatus('No in-stock item matches that barcode.','var(--red)');
+    return;
+  }
+  selectWhatnotItem(item);
+}
+
+function selectWhatnotItem(item){
+  whatnotCurrentItem=item;
+  whatnotPriceCents=0;
+  const panel=document.getElementById('whatnot-current-item');
+  if(panel) panel.style.display='';
+  const nameEl=document.getElementById('whatnot-item-name');
+  if(nameEl) nameEl.textContent=item.name||'Item';
+  const metaEl=document.getElementById('whatnot-item-meta');
+  if(metaEl) metaEl.textContent=[item.set,item.condition,item.cost!=null?'Cost $'+Number(item.cost).toFixed(2):''].filter(Boolean).join(' · ');
+  setWhatnotScanStatus('Ready: '+(item.name||'Item')+' -- enter the sold price.','var(--g)');
+  renderWhatnotPrice();
+}
+
+function cancelWhatnotItem(){
+  whatnotCurrentItem=null;
+  whatnotPriceCents=0;
+  const panel=document.getElementById('whatnot-current-item');
+  if(panel) panel.style.display='none';
+  setWhatnotScanStatus('Scan a label barcode or type it below.');
+  document.getElementById('whatnot-scan-manual-input')?.focus();
+}
+
+function whatnotKeypadPress(digits){
+  if(!whatnotCurrentItem||whatnotSubmitting) return;
+  for(const d of String(digits)) whatnotPriceCents=Math.min(99999999, whatnotPriceCents*10+Number(d));
+  renderWhatnotPrice();
+}
+function whatnotKeypadBackspace(){
+  if(!whatnotCurrentItem||whatnotSubmitting) return;
+  whatnotPriceCents=Math.floor(whatnotPriceCents/10);
+  renderWhatnotPrice();
+}
+function clearWhatnotPrice(){
+  if(!whatnotCurrentItem||whatnotSubmitting) return;
+  whatnotPriceCents=0;
+  renderWhatnotPrice();
+}
+
+function renderWhatnotPrice(){
+  const price=whatnotPriceCents/100;
+  const priceEl=document.getElementById('whatnot-price-display');
+  if(priceEl) priceEl.textContent='$'+price.toFixed(2);
+  const fee=whatnotFeeSettings();
+  const feeAmount=price>0?(price*(fee.pct/100)+fee.flat):0;
+  const cost=Number(whatnotCurrentItem?.cost||0);
+  const profit=price-feeAmount-cost;
+  const previewEl=document.getElementById('whatnot-fee-profit-preview');
+  if(previewEl) previewEl.innerHTML=`Fee: <b style="color:var(--red)">$${feeAmount.toFixed(2)}</b> &nbsp;·&nbsp; Profit: <b style="color:${profit>=0?'var(--g)':'var(--red)'}">$${profit.toFixed(2)}</b>`;
+  const confirmBtn=document.getElementById('whatnot-confirm-btn');
+  if(confirmBtn) confirmBtn.disabled=!(price>0)||whatnotSubmitting;
+}
+
+async function confirmWhatnotSale(){
+  if(!whatnotCurrentItem||whatnotSubmitting) return;
+  const price=whatnotPriceCents/100;
+  if(!(price>0)){ toast_dash('Enter a sale price first'); return; }
+  const fee=whatnotFeeSettings();
+  const feeAmount=Math.round((price*(fee.pct/100)+fee.flat)*100)/100;
+  const itemId=whatnotCurrentItem.id;
+  const itemName=whatnotCurrentItem.name||'Item';
+  whatnotSubmitting=true;
+  const confirmBtn=document.getElementById('whatnot-confirm-btn');
+  if(confirmBtn){confirmBtn.disabled=true;confirmBtn.textContent='SAVING...';}
+  try{
+    const res=await storeWorkerFetch('/inventory/record-external-sale',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({itemId,channel:'Whatnot',salePrice:price,feeAmount})});
+    const d=await res.json().catch(()=>({}));
+    if(!res.ok||!d.ok){ toast_dash(d.error||'Could not record sale'); whatnotSubmitting=false; if(confirmBtn){confirmBtn.disabled=false;confirmBtn.textContent='CONFIRM SOLD';} return; }
+    const item=(all||[]).find(i=>i.id===itemId);
+    if(item&&d.depleted) item.status='sold';
+    whatnotSession.count++;
+    whatnotSession.gross+=price;
+    whatnotSession.profit+=Number(d.profit||0);
+    renderWhatnotSessionTally();
+    toast_dash('Sold: '+itemName+' -- $'+price.toFixed(2)+' ($'+Number(d.profit||0).toFixed(2)+' profit)');
+    loadInventory().catch(()=>{});
+    cancelWhatnotItem();
+  }catch(e){
+    toast_dash(e.message||'Could not record sale');
+  }finally{
+    whatnotSubmitting=false;
+    if(confirmBtn) confirmBtn.textContent='CONFIRM SOLD';
+  }
+}
+
+function renderWhatnotSessionTally(){
+  const countEl=document.getElementById('whatnot-session-count');
+  const grossEl=document.getElementById('whatnot-session-gross');
+  const profitEl=document.getElementById('whatnot-session-profit');
+  if(countEl) countEl.textContent=String(whatnotSession.count);
+  if(grossEl) grossEl.textContent='$'+whatnotSession.gross.toFixed(2);
+  if(profitEl) profitEl.textContent='$'+whatnotSession.profit.toFixed(2);
+}
+function resetWhatnotSession(){
+  whatnotSession={count:0,gross:0,profit:0};
+  renderWhatnotSessionTally();
 }
 
 function barcodeCandidateToResearch(candidate,n){
