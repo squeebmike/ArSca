@@ -45,7 +45,7 @@
     "test:ebay-auto-reprice": "node tests/ebay-auto-reprice.test.mjs",
     "test:consignor-stripe-payouts": "node tests/consignor-stripe-payouts.test.mjs",
     "test:buylist-submissions": "node tests/buylist-submissions.test.mjs",
-    "test:real-notifications": "node tests/real-notifications.test.mjs",
+    "test:real-notifications": "node tests/real-notifications.test.mjs && node tests/auth-email-redirect.test.mjs",
     "test:twilio-call-sms-relay": "node tests/twilio-call-sms-relay.test.mjs",
     "test:inventory-bundles": "node tests/inventory-bundles.test.mjs",
     "test:foil-finish-display": "node tests/foil-finish-display.test.mjs",

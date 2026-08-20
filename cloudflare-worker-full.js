@@ -11718,6 +11718,16 @@ const SUPABASE_EMAIL_HOOK_COPY = {
   invite: { subject: "You're invited — The Mana Pocket", verb: 'accept your invitation' },
 };
 
+function supabaseEmailRedirectUrl(action) {
+  // Never let an obsolete Supabase Site URL send customer auth sessions to
+  // the old GitHub Pages dashboard. Customer-facing auth lives on Webflow.
+  // Recovery needs the authenticated account settings screen; every other
+  // email action should open the account overview.
+  return action === 'recovery'
+    ? 'https://themanapocket.com/account-profile'
+    : 'https://themanapocket.com/account';
+}
+
 async function handleSupabaseEmailHook(request, env) {
   const rawBody = await request.text();
   // Supabase's HTTPS hook config has two independent credentials: an
@@ -11736,11 +11746,12 @@ async function handleSupabaseEmailHook(request, env) {
   try { payload = JSON.parse(rawBody); } catch { return json({ error: { http_code: 400, message: 'Invalid JSON payload' } }, 400); }
   const email = payload?.user?.email;
   const data = payload?.email_data || {};
-  const { token_hash, redirect_to, email_action_type, site_url } = data;
+  const { token_hash, email_action_type } = data;
   if (!email || !token_hash) return json({ error: { http_code: 400, message: 'Missing user email or token_hash' } }, 400);
   const base = String(env.SUPABASE_URL || '').replace(/\/+$/, '');
   if (!base) return json({ error: { http_code: 500, message: 'SUPABASE_URL is not configured' } }, 500);
-  const verifyUrl = `${base}/auth/v1/verify?token=${encodeURIComponent(token_hash)}&type=${encodeURIComponent(email_action_type || 'signup')}&redirect_to=${encodeURIComponent(redirect_to || site_url || '')}`;
+  const action = email_action_type || 'signup';
+  const verifyUrl = `${base}/auth/v1/verify?token=${encodeURIComponent(token_hash)}&type=${encodeURIComponent(action)}&redirect_to=${encodeURIComponent(supabaseEmailRedirectUrl(action))}`;
   const copy = SUPABASE_EMAIL_HOOK_COPY[email_action_type] || { subject: 'The Mana Pocket — action required', verb: 'continue' };
   const text = `Click the link below to ${copy.verb}:\n\n${verifyUrl}\n\nIf you didn't request this, you can safely ignore this email.`;
   try {
