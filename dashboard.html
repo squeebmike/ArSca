@@ -2660,6 +2660,99 @@ body.show-mode .inv-sync-badge{display:none;}
   </div>
 </div>
 
+<!-- POCKET SCOUT TAB -->
+<div id="tab-scout" class="tab-panel">
+  <div class="sec">POCKET SCOUT</div>
+  <div style="max-width:640px;margin:0 auto;padding:0 20px 60px">
+    <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);margin-bottom:12px">Photograph almost anything -- plush, toys, electronics, tins, glassware, games, books, collectibles -- and get an identity, a value read, and a buy/pass call before you commit to the purchase.</div>
+
+    <div id="scout-idle-panel">
+      <button class="hbtn" onclick="scoutStartSession()" style="width:100%;padding:20px;font-size:16px;color:var(--g)">📷 SCAN ITEM</button>
+      <details style="margin-top:14px">
+        <summary style="font-family:var(--font-mono);font-size:10px;color:var(--dim);cursor:pointer">⚙ THRESHOLDS</summary>
+        <div id="scout-settings-panel" style="margin-top:8px;display:grid;grid-template-columns:1fr 1fr;gap:8px;font-family:var(--font-mono);font-size:9px;color:var(--dim)"></div>
+        <button class="hbtn" onclick="savePocketScoutSettings()" style="margin-top:8px">SAVE THRESHOLDS</button>
+        <span id="scout-settings-status" style="font-family:var(--font-mono);font-size:9px;color:var(--gold);margin-left:8px"></span>
+      </details>
+    </div>
+
+    <div id="scout-session-panel" style="display:none">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <span style="font-family:var(--font-mono);font-size:10px;color:var(--dim)">SCAN SESSION</span>
+        <button class="hbtn" onclick="scoutNewItem()" style="padding:6px 10px;font-size:9px">NEW ITEM</button>
+      </div>
+
+      <div id="scout-photo-strip" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px"></div>
+      <input type="file" id="scout-photo-input" accept="image/*" capture="environment" style="display:none" onchange="scoutHandlePhotoFile(this.files[0])">
+      <div style="display:flex;gap:8px;margin-bottom:8px">
+        <select id="scout-photo-type" style="flex:1;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:9px;border-radius:6px">
+          <option value="front">Front</option><option value="back">Back</option><option value="tag">Tag</option><option value="bottom">Bottom</option>
+          <option value="label">Label</option><option value="barcode">Barcode</option><option value="makers_mark">Maker's mark</option>
+          <option value="serial_number">Serial/model number</option><option value="damage">Damage</option><option value="other">Other</option>
+        </select>
+        <button class="hbtn" onclick="document.getElementById('scout-photo-input').click()" style="white-space:nowrap">+ ADD PHOTO</button>
+      </div>
+      <div id="scout-status-log" style="font-family:var(--font-mono);font-size:9px;color:var(--gold);min-height:14px;margin-bottom:10px"></div>
+
+      <div id="scout-result-card" style="display:none;background:var(--surf);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:14px">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
+          <div id="scout-title" style="font-family:'Orbitron',monospace;font-size:15px;color:var(--text)"></div>
+          <div id="scout-confidence-badge" style="font-family:var(--font-mono);font-size:11px;font-weight:900;padding:4px 8px;border-radius:6px;white-space:nowrap"></div>
+        </div>
+        <div id="scout-subtitle" style="font-family:var(--font-mono);font-size:9px;color:var(--dim);margin-top:4px"></div>
+        <div id="scout-card-hint" style="font-family:var(--font-mono);font-size:9px;color:var(--purple);margin-top:8px"></div>
+        <div id="scout-next-photo-hint" style="font-family:var(--font-mono);font-size:9px;color:var(--gold);margin-top:6px"></div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px;font-family:var(--font-mono);font-size:10px">
+          <div style="background:var(--surf2);border-radius:6px;padding:8px"><div style="color:var(--dim);font-size:8px">ACTIVE ASKING (median)</div><div id="scout-active-median" style="color:var(--text);font-size:15px;font-weight:800">—</div></div>
+          <div style="background:var(--surf2);border-radius:6px;padding:8px"><div style="color:var(--dim);font-size:8px">SOLD (median)</div><div id="scout-sold-median" style="color:var(--text);font-size:15px;font-weight:800">—</div></div>
+        </div>
+        <div id="scout-sold-warning" style="font-family:var(--font-mono);font-size:8px;color:var(--dim);margin-top:4px"></div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px">
+          <div><label style="font-family:var(--font-mono);font-size:9px;color:var(--dim)">STORE PRICE</label>
+            <input id="scout-store-price" type="number" step="0.01" min="0" placeholder="$0.00" oninput="scoutRecomputeDecision()" style="width:100%;margin-top:4px;background:var(--surf2);border:1px solid var(--border);color:var(--gold);padding:9px;border-radius:6px;font-size:16px;box-sizing:border-box"></div>
+          <div><label style="font-family:var(--font-mono);font-size:9px;color:var(--dim)">CONDITION</label>
+            <select id="scout-condition" onchange="scoutRecomputeDecision()" style="width:100%;margin-top:4px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:9px;border-radius:6px;box-sizing:border-box">
+              <option value="New/Sealed">New/Sealed</option><option value="Excellent" selected>Excellent</option><option value="Good">Good</option><option value="Fair">Fair</option><option value="Poor">Poor</option><option value="Parts/Repair">Parts/Repair</option>
+            </select></div>
+        </div>
+        <div style="margin-top:8px"><label style="font-family:var(--font-mono);font-size:9px;color:var(--dim)">SIZE (shipping estimate)</label>
+          <select id="scout-size" onchange="scoutRecomputeDecision()" style="width:100%;margin-top:4px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:9px;border-radius:6px;box-sizing:border-box">
+            <option value="tiny">Tiny</option><option value="small">Small</option><option value="medium" selected>Medium</option><option value="large">Large</option><option value="oversize">Oversize</option>
+          </select></div>
+
+        <div id="scout-profit-breakdown" style="font-family:var(--font-mono);font-size:10px;color:var(--dim);line-height:1.8;margin-top:12px"></div>
+
+        <div id="scout-decision-badge" style="text-align:center;font-family:'Orbitron',monospace;font-size:18px;font-weight:900;padding:12px;border-radius:8px;margin-top:12px"></div>
+        <div id="scout-decision-reason" style="font-family:var(--font-mono);font-size:9px;color:var(--dim);text-align:center;margin-top:6px"></div>
+
+        <div style="display:flex;flex-direction:column;gap:8px;margin-top:14px">
+          <button class="hbtn" id="scout-buy-btn" onclick="scoutBuyAddInventory()" style="padding:16px;font-size:14px;color:var(--g)">BUY + ADD INVENTORY</button>
+          <div style="display:flex;gap:8px">
+            <button class="hbtn" onclick="document.getElementById('scout-photo-input').click()" style="flex:1">ADD ANOTHER PHOTO</button>
+            <button class="hbtn" onclick="scoutToggleComps()" style="flex:1">VIEW COMPS (<span id="scout-comps-count">0</span>)</button>
+          </div>
+          <button class="hbtn" style="color:var(--red)" onclick="scoutWrongItem()">WRONG ITEM</button>
+        </div>
+      </div>
+
+      <div id="scout-comps-drawer" style="display:none;background:var(--surf);border:1px solid var(--border);border-radius:10px;padding:10px;margin-bottom:14px">
+        <div style="font-family:var(--font-mono);font-size:9px;color:var(--dim);margin-bottom:8px">Tap NOT A MATCH on anything that isn't really this item -- valuation recalculates immediately.</div>
+        <div id="scout-comps-list" style="display:grid;gap:8px"></div>
+      </div>
+
+      <details style="margin-top:6px">
+        <summary style="font-family:var(--font-mono);font-size:9px;color:var(--dim);cursor:pointer">Search manually instead</summary>
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <input id="scout-manual-query" class="tsi" placeholder="e.g. old yellow pokemon plush hasbro 1999" style="flex:1">
+          <button class="hbtn" onclick="scoutManualSearch()">SEARCH</button>
+        </div>
+      </details>
+    </div>
+  </div>
+</div>
+
 <!-- TOURNAMENTS / EVENTS TAB -->
 <div id="tab-events" class="tab-panel">
   <div class="sec">TOURNAMENTS / EVENTS</div>
@@ -3806,7 +3899,7 @@ const SUBSCRIPTION_PLANS = {
   store:{ name:'Store', price:89, features:['Everything in Register','Inventory, buying and consignments','Staff, shows, tournaments and profit reporting'], capabilities:['research','checkout','sales','inventory','consignments','staff','shows','events','pulllists'] },
   pro:{ name:'Pro', price:149, features:['Everything in Store','Online listing tools','Advanced operations + multi-store'], capabilities:['research','checkout','sales','inventory','consignments','staff','shows','events','pulllists','marketplace','advanced'] }
 };
-const TAB_CAPABILITY = {research:'research',sets:'research',wantlist:'research',display:'checkout',browse:'checkout',pos:'checkout',whatnot:'checkout',sales:'sales',orders:'sales',intake:'inventory',inventory:'inventory',locations:'inventory',restock:'inventory',grading:'inventory',consign:'consignments',shows:'shows',events:'events',pulllists:'pulllists',foc:'pulllists',channels:'marketplace'};
+const TAB_CAPABILITY = {research:'research',sets:'research',wantlist:'research',display:'checkout',browse:'checkout',pos:'checkout',whatnot:'checkout',sales:'sales',orders:'sales',intake:'inventory',scout:'inventory',inventory:'inventory',locations:'inventory',restock:'inventory',grading:'inventory',consign:'consignments',shows:'shows',events:'events',pulllists:'pulllists',foc:'pulllists',channels:'marketplace'};
 function currentPlanCode(){ return SUBSCRIPTION_PLANS[window._subStatus?.plan_code] ? window._subStatus.plan_code : 'store'; }
 function hasPlanCapability(capability){ return !capability || SUBSCRIPTION_PLANS[currentPlanCode()].capabilities.includes(capability); }
 function planCanAccessTab(tab){ return hasPlanCapability(TAB_CAPABILITY[tab]); }
@@ -3821,7 +3914,7 @@ function roleCanAccessTab(tab){
   let allowed = false;
   if(role === 'owner' || role === 'admin') allowed = true;
   else if(role === 'manager') allowed = !['backoffice'].includes(tab);
-  else if(role === 'employee') allowed = ['overview','display','browse','inventory','research','pos','whatnot','alerts','wantlist','locations','restock','grading','sets','events','pulllists','foc','phone'].includes(tab);
+  else if(role === 'employee') allowed = ['overview','display','browse','inventory','research','pos','whatnot','scout','alerts','wantlist','locations','restock','grading','sets','events','pulllists','foc','phone'].includes(tab);
   return allowed && planCanAccessTab(tab);
 }
 
@@ -4815,6 +4908,7 @@ const DAILY_TABS = [
   ['overview', 'HOME'],
   ['research', 'RESEARCH'],
   ['intake', 'BUY'],
+  ['scout', 'POCKET SCOUT'],
   ['display', 'SELL'],
   ['inventory', 'INVENTORY'],
   ['sets', 'SETS'],
@@ -17844,6 +17938,7 @@ function switchTab(name, btn){
   activeTab = name;
   if(name === 'inventory') setTimeout(()=>{ filterTable(); setInvView(_invView); },0);
   if(name === 'whatnot') setTimeout(()=>{ renderWhatnotSessionTally(); if(navigator.mediaDevices?.getUserMedia&&'BarcodeDetector' in window) startWhatnotScanCamera(); setTimeout(()=>document.getElementById('whatnot-scan-manual-input')?.focus(),80); },0);
+  if(name === 'scout') setTimeout(()=>{ renderPocketScoutSettings(); },0);
   if(name === 'browse') setTimeout(renderCustomerInventoryBrowser,0);
   // Refresh category-dependent helper rows (set browser buttons etc.) when switching to POS/Research
   if(name === 'pos' || name === 'research') setTimeout(handleQplCategoryChange, 0);
@@ -26077,6 +26172,351 @@ function renderWhatnotSessionTally(){
 function resetWhatnotSession(){
   whatnotSession={count:0,gross:0,profit:0};
   renderWhatnotSessionTally();
+}
+
+// ── POCKET SCOUT ──────────────────────────────────────────────────────────
+// Universal thrift/resale item scanner. One scoutSession = one physical
+// item and can hold several photos; identity/comps are fused server-side
+// (see /pocket-scout/session/photo in the Worker) and re-rendered here.
+let scoutSession = null; // {id, photos:[], identity, confidence, candidates, compSnapshot, textEvidence, routeToCardPipeline}
+let scoutSettings = null;
+let scoutPhotoSeq = 0;
+
+function scoutMoney(v){ return v==null ? '—' : '$'+Number(v).toFixed(2); }
+
+async function scoutStartSession(){
+  try{
+    const res = await storeWorkerFetch('/pocket-scout/session/start', { method:'POST' });
+    const data = await res.json().catch(()=>({}));
+    if(!res.ok || !data.ok) throw new Error(data.error||'Could not start scan session');
+    scoutSession = { id:data.sessionId, photos:[], identity:{}, confidence:0, candidates:[], compSnapshot:null, textEvidence:[], routeToCardPipeline:false };
+    scoutPhotoSeq = 0;
+    document.getElementById('scout-idle-panel').style.display='none';
+    document.getElementById('scout-session-panel').style.display='';
+    document.getElementById('scout-result-card').style.display='none';
+    document.getElementById('scout-comps-drawer').style.display='none';
+    scoutRenderPhotoStrip();
+    document.getElementById('scout-status-log').textContent='Session started. Add a photo to begin.';
+    document.getElementById('scout-photo-input').click();
+  }catch(e){ toast_dash('Pocket Scout: '+e.message); }
+}
+
+function scoutNewItem(){
+  if(scoutSession?.photos?.length && !confirm('Start a new item? This scan session stays saved, but the screen will reset.')) return;
+  scoutSession = null;
+  document.getElementById('scout-idle-panel').style.display='';
+  document.getElementById('scout-session-panel').style.display='none';
+}
+
+function scoutRenderPhotoStrip(){
+  const strip = document.getElementById('scout-photo-strip');
+  if(!strip) return;
+  strip.innerHTML = (scoutSession?.photos||[]).map(p=>`<div style="width:52px;height:52px;border-radius:6px;overflow:hidden;border:1px solid var(--border);position:relative"><img src="${escHtml(p.url)}" style="width:100%;height:100%;object-fit:cover"><div style="position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,.7);color:var(--g);font-size:7px;text-align:center;padding:1px 0;font-family:var(--font-mono)">${escHtml(p.type)}</div></div>`).join('');
+}
+
+function scoutHandlePhotoFile(file){
+  if(!file || !scoutSession) return;
+  if(!file.type || !file.type.startsWith('image/')){ toast_dash('Choose an image file'); return; }
+  const imageType = document.getElementById('scout-photo-type')?.value || 'other';
+  const reader = new FileReader();
+  reader.onload = () => {
+    const img = new Image();
+    img.onload = () => {
+      const max = 1600;
+      const scale = Math.min(1, max/Math.max(img.width, img.height));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.max(1, Math.round(img.width*scale));
+      canvas.height = Math.max(1, Math.round(img.height*scale));
+      canvas.getContext('2d').drawImage(img,0,0,canvas.width,canvas.height);
+      canvas.toBlob(blob => { if(blob) scoutUploadPhoto(blob, imageType); else toast_dash('Could not process image'); }, 'image/jpeg', 0.85);
+    };
+    img.src = reader.result;
+  };
+  reader.readAsDataURL(file);
+  document.getElementById('scout-photo-input').value='';
+}
+
+async function scoutUploadPhoto(blob, imageType){
+  const status = document.getElementById('scout-status-log');
+  scoutPhotoSeq++;
+  const seq = scoutPhotoSeq;
+  const steps = ['Uploading photo','Reading label','Checking eBay for matching listings','Comparing candidates'];
+  let stepIdx=0;
+  const tick = setInterval(()=>{ if(status && stepIdx<steps.length-1){ stepIdx++; status.textContent = steps[stepIdx]+'...'; } }, 900);
+  if(status) status.textContent = steps[0]+'...';
+  try{
+    const res = await storeWorkerFetch(`/pocket-scout/session/photo?session_id=${encodeURIComponent(scoutSession.id)}&image_type=${encodeURIComponent(imageType)}&sequence=${seq}`, { method:'POST', headers:{'Content-Type':'image/jpeg'}, body:blob });
+    const data = await res.json().catch(()=>({}));
+    clearInterval(tick);
+    if(!res.ok || !data.ok) throw new Error(data.error||'Photo analysis failed');
+    scoutSession.photos.push({ url:data.photoUrl, type:imageType, sequence:seq });
+    scoutSession.identity = data.identity || {};
+    scoutSession.confidence = data.confidence || 0;
+    scoutSession.candidates = data.candidates || [];
+    scoutSession.compSnapshot = data.compSnapshot || null;
+    scoutSession.textEvidence = data.textEvidence || [];
+    scoutSession.routeToCardPipeline = !!data.routeToCardPipeline;
+    scoutSession.nextPhotoHint = data.nextPhotoHint || null;
+    scoutRenderPhotoStrip();
+    if(status) status.textContent = data.visionError ? ('Photo saved, but identification failed: '+data.visionError) : 'Likely match found ✓';
+    scoutRenderResult();
+  }catch(e){
+    clearInterval(tick);
+    if(status) status.textContent = 'Upload failed: '+e.message;
+    toast_dash('Pocket Scout: '+e.message);
+  }
+}
+
+function scoutConfidenceLabel(c){
+  if(c>=95) return {label:'NEAR CERTAIN',color:'var(--g)'};
+  if(c>=85) return {label:'VERY LIKELY',color:'var(--g)'};
+  if(c>=70) return {label:'LIKELY FAMILY/MODEL',color:'var(--gold)'};
+  if(c>=50) return {label:'WEAK ID',color:'var(--gold)'};
+  return {label:'INSUFFICIENT DATA',color:'var(--red)'};
+}
+
+function scoutRenderResult(){
+  const id = scoutSession?.identity || {};
+  const card = document.getElementById('scout-result-card');
+  if(!card) return;
+  card.style.display='';
+  document.getElementById('scout-title').textContent = id.title || [id.year,id.brand,id.characterOrSubject].filter(Boolean).join(' ') || 'Unidentified item';
+  const conf = scoutConfidenceLabel(scoutSession.confidence||0);
+  const badge = document.getElementById('scout-confidence-badge');
+  badge.textContent = (scoutSession.confidence||0)+'% · '+conf.label;
+  badge.style.color = conf.color;
+  badge.style.border = '1px solid '+conf.color;
+  document.getElementById('scout-subtitle').textContent = [id.brand||id.manufacturer, id.model||id.modelNumber, id.year, id.edition].filter(Boolean).join(' · ') || (id.category ? 'Category: '+id.category : '');
+  const cardHintEl = document.getElementById('scout-card-hint');
+  cardHintEl.textContent = scoutSession.routeToCardPipeline ? 'This looks like a trading card -- use the card scanner (Research tab) for exact set/number/pricing.' : '';
+  const hint = scoutSession.nextPhotoHint;
+  document.getElementById('scout-next-photo-hint').textContent = hint ? ('📸 '+(hint.reason || ('Photograph the '+hint.photo))) : '';
+
+  const snap = scoutSession.compSnapshot || {};
+  document.getElementById('scout-active-median').textContent = scoutMoney(snap.activeStats?.median);
+  document.getElementById('scout-sold-median').textContent = scoutMoney(snap.soldStats?.median);
+  document.getElementById('scout-sold-warning').textContent = snap.soldStats?.median==null ? (snap.soldWarning || 'Sold history unavailable') : '';
+  document.getElementById('scout-comps-count').textContent = String((scoutSession.candidates||[]).length);
+
+  scoutRecomputeDecision();
+}
+
+// Pure so it's testable independent of DOM/session state -- range math per
+// the product spec's "use ranges when appropriate, don't fake precision."
+function scoutComputeDecision({ activeMedian, activeLow, activeHigh, soldMedian, purchasePrice, sizeBucket, condition, confidence, settings }){
+  const s = settings || POCKET_SCOUT_CLIENT_DEFAULTS;
+  const expectedSale = soldMedian || activeMedian || 0;
+  const expectedLow = activeLow!=null ? Math.min(activeLow, expectedSale) : Math.round(expectedSale*0.8*100)/100;
+  const expectedHigh = activeHigh!=null ? Math.max(activeHigh, expectedSale) : Math.round(expectedSale*1.2*100)/100;
+  const conditionDiscount = { 'New/Sealed':1, 'Excellent':1, 'Good':0.9, 'Fair':0.75, 'Poor':0.55, 'Parts/Repair':0.35 }[condition] ?? 1;
+  const saleLow = Math.round(expectedLow*conditionDiscount*100)/100;
+  const saleHigh = Math.round(expectedHigh*conditionDiscount*100)/100;
+  const feesAt = sale => Math.round((sale*(s.marketplaceFeePct+s.paymentFeePct)/100 + s.paymentFeeFlat)*100)/100;
+  const shipping = s.defaultShippingBySize?.[sizeBucket] ?? s.defaultShippingBySize?.medium ?? 10;
+  const packaging = s.packagingAllowance ?? 2;
+  const netAt = sale => Math.round((sale - feesAt(sale) - shipping - packaging - purchasePrice)*100)/100;
+  const netLow = netAt(saleLow), netHigh = netAt(saleHigh);
+  const netMid = Math.round(((netLow+netHigh)/2)*100)/100;
+  const roiPct = purchasePrice>0 ? Math.round((netMid/purchasePrice)*1000)/10 : (netMid>0 ? Infinity : 0);
+
+  let decision, label, color, reason;
+  const hasData = expectedSale>0;
+  if(!hasData || confidence<50){
+    decision='maybe'; label='⚠️ MAYBE / REVIEW'; color='var(--gold)'; reason='Not enough pricing or identification data yet -- add another photo or price it manually.';
+  } else if(netMid>=s.preferredProfit && roiPct>=s.minRoiPct && confidence>=s.minConfidenceForBuy){
+    decision='great_buy'; label='🔥 GREAT BUY'; color='var(--g)'; reason='Strong margin. High identification confidence.';
+  } else if(netMid>=s.minProfit && confidence>=60){
+    decision='buy'; label='✅ BUY'; color='var(--g)'; reason='Solid margin for the labor involved.';
+  } else if(netMid>0){
+    decision='maybe'; label='⚠️ MAYBE / REVIEW'; color='var(--gold)'; reason = confidence<s.minConfidenceForBuy ? 'Profit looks fine, but identification confidence is too low to auto-buy.' : 'Margin is thin -- use your judgment on whether it\'s worth the labor.';
+  } else {
+    decision='pass'; label='❌ PASS'; color='var(--red)'; reason='Expected profit is at or below zero at this store price.';
+  }
+  return { decision, label, color, reason, expectedSale, saleLow, saleHigh, fees:feesAt(expectedSale*conditionDiscount), shipping, packaging, netLow, netHigh, netMid, roiPct };
+}
+
+function scoutRecomputeDecision(){
+  if(!scoutSession) return;
+  const snap = scoutSession.compSnapshot || {};
+  const purchasePrice = Number(document.getElementById('scout-store-price')?.value)||0;
+  const condition = document.getElementById('scout-condition')?.value || 'Excellent';
+  const sizeBucket = document.getElementById('scout-size')?.value || 'medium';
+  const result = scoutComputeDecision({
+    activeMedian: snap.activeStats?.median, activeLow: snap.activeStats?.low, activeHigh: snap.activeStats?.high,
+    soldMedian: snap.soldStats?.median, purchasePrice, sizeBucket, condition, confidence: scoutSession.confidence||0,
+    settings: scoutSettings || POCKET_SCOUT_CLIENT_DEFAULTS,
+  });
+  scoutSession.lastDecision = result;
+  const breakdown = document.getElementById('scout-profit-breakdown');
+  breakdown.innerHTML = `Expected sale: <b style="color:var(--text)">${scoutMoney(result.saleLow)}–${scoutMoney(result.saleHigh)}</b><br>`
+    + `Estimated fees: <b style="color:var(--red)">${scoutMoney(result.fees)}</b><br>`
+    + `Estimated shipping: <b style="color:var(--red)">${scoutMoney(result.shipping)}</b> + packaging ${scoutMoney(result.packaging)}<br>`
+    + `Purchase cost: <b style="color:var(--dim)">${scoutMoney(purchasePrice)}</b><br>`
+    + `<span style="color:var(--text)">Estimated net profit: <b>${scoutMoney(result.netLow)}–${scoutMoney(result.netHigh)}</b></span><br>`
+    + `ROI: <b>${result.roiPct===Infinity?'∞':result.roiPct+'%'}</b>`;
+  const badge = document.getElementById('scout-decision-badge');
+  badge.textContent = result.label;
+  badge.style.color = result.color;
+  badge.style.border = '1px solid '+result.color;
+  document.getElementById('scout-decision-reason').textContent = result.reason;
+}
+
+function scoutToggleComps(){
+  const drawer = document.getElementById('scout-comps-drawer');
+  if(!drawer) return;
+  const showing = drawer.style.display!=='none';
+  drawer.style.display = showing ? 'none' : '';
+  if(!showing) scoutRenderComps();
+}
+function scoutRenderComps(){
+  const list = document.getElementById('scout-comps-list');
+  if(!list) return;
+  const cands = scoutSession?.candidates||[];
+  list.innerHTML = cands.length ? cands.map((c,i)=>`<div style="display:flex;gap:8px;align-items:center;border:1px solid var(--border);border-radius:8px;padding:6px">
+    ${c.imageUrl?`<img src="${escHtml(c.imageUrl)}" style="width:44px;height:44px;object-fit:cover;border-radius:4px" loading="lazy">`:'<div style="width:44px;height:44px;border-radius:4px;background:var(--surf2)"></div>'}
+    <div style="flex:1;font-family:var(--font-mono);font-size:9px;line-height:1.5">
+      <div style="color:var(--text);font-size:10px">${escHtml(c.title||'Listing')}</div>
+      <div style="color:var(--dim)">${scoutMoney(c.total)}${c.condition?' · '+escHtml(c.condition):''} ${c.url?`· <a href="${escHtml(c.url)}" target="_blank" rel="noopener" style="color:var(--blue)">view</a>`:''}</div>
+    </div>
+    <button class="hbtn" style="font-size:8px;padding:6px 8px" onclick="scoutRejectCandidate('${escHtml(c.itemId||'')}',${i})">NOT A MATCH</button>
+  </div>`).join('') : '<div style="font-family:var(--font-mono);font-size:9px;color:var(--dim)">No comps yet.</div>';
+}
+async function scoutRejectCandidate(itemId, idx){
+  if(!scoutSession) return;
+  // scan_queue rows aren't keyed by eBay itemId client-side -- reject by
+  // itemId match against what the Worker just persisted for this session.
+  try{
+    const res = await storeWorkerFetch('/pocket-scout/session/candidate/reject', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ sessionId:scoutSession.id, candidateId:itemId }) });
+    const data = await res.json().catch(()=>({}));
+    if(!res.ok || !data.ok){ toast_dash(data.error||'Could not reject candidate'); return; }
+    scoutSession.candidates.splice(idx,1);
+    scoutSession.compSnapshot = { ...(scoutSession.compSnapshot||{}), ...data.compSnapshot };
+    document.getElementById('scout-comps-count').textContent = String(scoutSession.candidates.length);
+    scoutRenderComps();
+    scoutRecomputeDecision();
+    document.getElementById('scout-active-median').textContent = scoutMoney(data.compSnapshot?.activeStats?.median);
+  }catch(e){ toast_dash('Pocket Scout: '+e.message); }
+}
+
+function scoutWrongItem(){
+  if(!scoutSession) return;
+  if(!confirm('Clear the current identification? Photos already taken stay attached to this session.')) return;
+  scoutSession.identity = {}; scoutSession.confidence = 0; scoutSession.candidates = []; scoutSession.compSnapshot = null;
+  document.getElementById('scout-result-card').style.display='none';
+  document.getElementById('scout-comps-drawer').style.display='none';
+  document.getElementById('scout-status-log').textContent = 'Add another photo, or search manually below.';
+}
+
+async function scoutManualSearch(){
+  const query = document.getElementById('scout-manual-query')?.value?.trim();
+  if(!query || !scoutSession) return;
+  const status = document.getElementById('scout-status-log');
+  if(status) status.textContent = 'Searching...';
+  try{
+    const res = await storeWorkerFetch('/pocket-scout/session/manual-search', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ sessionId:scoutSession.id, query }) });
+    const data = await res.json().catch(()=>({}));
+    if(!res.ok || !data.ok) throw new Error(data.error||'Manual search failed');
+    scoutSession.identity = data.identity||{};
+    scoutSession.confidence = data.confidence||0;
+    scoutSession.candidates = data.candidates||[];
+    scoutSession.compSnapshot = data.compSnapshot||null;
+    scoutSession.routeToCardPipeline = false;
+    scoutSession.nextPhotoHint = null;
+    if(status) status.textContent = 'Search complete.';
+    scoutRenderResult();
+  }catch(e){ if(status) status.textContent = 'Search failed: '+e.message; }
+}
+
+function scoutInventoryCategory(identity){
+  const map = { plush:'Collectibles', action_figure:'Collectibles', electronics:'Collectibles', glassware:'Collectibles', advertising_tin:'Collectibles', board_game:'Collectibles', book:'Collectibles', video_game:'Collectibles', camera:'Collectibles', figurine:'Collectibles' };
+  return map[identity?.category] || 'Collectibles';
+}
+
+async function scoutBuyAddInventory(){
+  if(!scoutSession) return;
+  const price = Number(document.getElementById('scout-store-price')?.value)||0;
+  if(!(price>0)){ toast_dash('Enter the store price first'); return; }
+  const result = scoutSession.lastDecision;
+  const identity = scoutSession.identity||{};
+  const condition = document.getElementById('scout-condition')?.value || 'Excellent';
+  const sourcingLocation = prompt('Where was this sourced from? (Goodwill, Value Village, Estate Sale, Garage Sale, Flea Market, Convention, Customer Buy, Collection, Other)', '') || '';
+  const category = scoutInventoryCategory(identity);
+  const sku = generateWalkoffInventorySku(category, { name: identity.title, game: identity.category });
+  const storeId = getActiveStoreId();
+  const sb = getSupabaseClient();
+  if(!sb || !storeId){ toast_dash('Cloud sign-in required to add inventory'); return; }
+  const row = {
+    store_id: storeId, status: 'in_stock',
+    data: {
+      name: identity.title || 'Pocket Scout item', category, subcategory: identity.subcategory||'',
+      brand: identity.brand||'', manufacturer: identity.manufacturer||'', model: identity.model||identity.modelNumber||'',
+      year: identity.year||'', variant: identity.variant||'', edition: identity.edition||'',
+      upc: identity.upc||'', ean: identity.ean||'', isbn: identity.isbn||'', mpn: identity.mpn||'',
+      condition, cost: price, market: result?.expectedSale||null, sku, quantity:1, qty:1,
+      image: scoutSession.photos?.[0]?.url || '',
+      source: 'pocket_scout', sourcingLocation, acquisitionDate: new Date().toISOString(),
+      scanSessionId: scoutSession.id, scanConfidence: scoutSession.confidence||0,
+      pricingConfidence: (scoutSession.compSnapshot?.activeStats?.count||0)>0 ? 'has_comps' : 'no_comps',
+      decisionAtPurchase: result?.decision||'', expectedProfitLow: result?.netLow??null, expectedProfitHigh: result?.netHigh??null,
+      activeCompSnapshot: scoutSession.compSnapshot?.activeStats||null, soldCompSnapshot: scoutSession.compSnapshot?.soldStats||null,
+      scanPhotos: (scoutSession.photos||[]).map(p=>p.url),
+      employee: getAuthSession()?.user?.displayName || getAuthSession()?.user?.email || '',
+    },
+  };
+  try{
+    const { data:inserted, error } = await sb.from('inventory_items').insert([row]).select('id').limit(1);
+    if(error) throw error;
+    const inventoryItemId = inserted?.[0]?.id;
+    await storeWorkerFetch('/pocket-scout/session/close', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({
+      sessionId: scoutSession.id, purchasePrice: price, condition, sourcingLocation, decision: result?.decision||'',
+      expectedProfitLow: result?.netLow, expectedProfitHigh: result?.netHigh, inventoryItemId,
+    })}).catch(()=>{});
+    toast_dash('Added to inventory: '+(identity.title||'item')+' ('+sku+')');
+    await loadInventory().catch(()=>{});
+    scoutNewItem();
+  }catch(e){ toast_dash('Could not add to inventory: '+(e.message||e)); }
+}
+
+const POCKET_SCOUT_CLIENT_DEFAULTS = { minProfit:15, preferredProfit:25, minRoiPct:100, minConfidenceForBuy:80, marketplaceFeePct:13.25, paymentFeePct:2.9, paymentFeeFlat:0.30, packagingAllowance:2, defaultShippingBySize:{tiny:5,small:8,medium:13,large:20,oversize:35}, maybeRequiresApproval:false };
+async function renderPocketScoutSettings(){
+  try{
+    const res = await storeWorkerFetch('/pocket-scout/settings');
+    const data = await res.json().catch(()=>({}));
+    scoutSettings = data.ok ? data.settings : POCKET_SCOUT_CLIENT_DEFAULTS;
+  }catch(e){ scoutSettings = POCKET_SCOUT_CLIENT_DEFAULTS; }
+  const panel = document.getElementById('scout-settings-panel');
+  if(!panel) return;
+  const s = scoutSettings;
+  const field = (id,label,value,step='1') => `<div><label>${label}</label><input id="${id}" type="number" step="${step}" value="${value}" style="width:100%;margin-top:2px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:6px;border-radius:4px;box-sizing:border-box"></div>`;
+  panel.innerHTML = field('scout-set-min-profit','Min profit $',s.minProfit)
+    + field('scout-set-pref-profit','Preferred profit $',s.preferredProfit)
+    + field('scout-set-min-roi','Min ROI %',s.minRoiPct)
+    + field('scout-set-min-conf','Min confidence for auto-BUY %',s.minConfidenceForBuy)
+    + field('scout-set-fee-pct','Marketplace fee %',s.marketplaceFeePct,'0.1')
+    + field('scout-set-pay-fee-pct','Payment fee %',s.paymentFeePct,'0.1')
+    + field('scout-set-pay-fee-flat','Payment fee flat $',s.paymentFeeFlat,'0.01')
+    + field('scout-set-packaging','Packaging allowance $',s.packagingAllowance,'0.01');
+}
+async function savePocketScoutSettings(){
+  const status = document.getElementById('scout-settings-status');
+  const patch = {
+    minProfit: Number(document.getElementById('scout-set-min-profit')?.value)||0,
+    preferredProfit: Number(document.getElementById('scout-set-pref-profit')?.value)||0,
+    minRoiPct: Number(document.getElementById('scout-set-min-roi')?.value)||0,
+    minConfidenceForBuy: Number(document.getElementById('scout-set-min-conf')?.value)||0,
+    marketplaceFeePct: Number(document.getElementById('scout-set-fee-pct')?.value)||0,
+    paymentFeePct: Number(document.getElementById('scout-set-pay-fee-pct')?.value)||0,
+    paymentFeeFlat: Number(document.getElementById('scout-set-pay-fee-flat')?.value)||0,
+    packagingAllowance: Number(document.getElementById('scout-set-packaging')?.value)||0,
+  };
+  try{
+    const res = await storeWorkerFetch('/pocket-scout/settings', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(patch) });
+    const data = await res.json().catch(()=>({}));
+    if(!res.ok || !data.ok) throw new Error(data.error||'Save failed');
+    scoutSettings = data.settings;
+    if(status) status.textContent = 'Saved ✓';
+    setTimeout(()=>{ if(status) status.textContent=''; }, 2000);
+  }catch(e){ if(status) status.textContent = 'Save failed: '+e.message; }
 }
 
 function barcodeCandidateToResearch(candidate,n){
