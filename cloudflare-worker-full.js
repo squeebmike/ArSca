@@ -2300,6 +2300,7 @@ function normalizeSoldComp(raw, source) {
     condition: raw.condition || raw.conditionDisplayName || raw.condition_name || null,
     url: raw.url || raw.itemUrl || raw.item_url || raw.viewItemURL?.[0] || raw.webUrl || null,
     imageUrl: raw.imageUrl || raw.image_url || raw.thumbnail || raw.galleryURL?.[0] || raw.image?.imageUrl || null,
+    itemId: raw.itemId?.[0] || raw.itemId || raw.item_id || null,
     source,
   };
 }
@@ -9533,27 +9534,40 @@ export default {
       const filtered = filterPocketScoutListings(merged);
       const activeStats = pocketScoutCompStats(filtered);
 
+      // Sold comps are persisted as candidates too (listingStatus:'sold'),
+      // not just folded into a summary stat -- the comps drawer needs the
+      // actual sold listings to show, with the same "not a match" rejection
+      // active listings get.
       let soldStats = { count: 0, low: null, median: null, high: null, average: null };
       let soldWarning = 'Sold history unavailable';
+      let soldFiltered = [];
       if (textQuery) {
         const soldResult = await fetchEbaySoldComps(env, textQuery, 30).catch(() => ({ comps: [], warning: 'Sold comp lookup failed' }));
-        const soldFiltered = filterPocketScoutListings(soldResult.comps || []);
+        soldFiltered = filterPocketScoutListings(soldResult.comps || []);
         if (soldFiltered.length) { soldStats = pocketScoutCompStats(soldFiltered); soldWarning = null; }
         else if (soldResult.warning) soldWarning = 'Sold history unavailable: ' + soldResult.warning;
       }
       const compSnapshot = { activeStats, soldStats, soldWarning, source: 'ebay', textQuery, generatedAt: new Date().toISOString() };
 
+      const activeCandidates = filtered.slice(0, 30).map(l => ({ ...l, listingStatus: 'active' }));
+      const soldCandidates = soldFiltered.slice(0, 30).map((l, i) => ({ ...l, itemId: l.itemId || `sold-${sessionId.slice(0, 8)}-${i}`, listingStatus: 'sold' }));
+      const allCandidates = [...activeCandidates, ...soldCandidates];
+
       // Persist candidates as scan_queue rows (source-of-truth for the comps
       // drawer / "not a match" rejection), the photo row, and the session.
-      if (filtered.length) {
-        await supabaseAdminFetch(env, 'scan_queue', {
+      // return=representation so the client gets each row's real uuid back
+      // -- rejection needs to target one exact row, and an eBay itemId
+      // alone isn't guaranteed unique across a session's active+sold sets.
+      if (allCandidates.length) {
+        const { data: insertedCandidateRows } = await supabaseAdminFetch(env, 'scan_queue', {
           method: 'POST',
-          headers: { Prefer: 'return=minimal' },
-          body: JSON.stringify(filtered.slice(0, 30).map(l => ({
+          headers: { Prefer: 'return=representation' },
+          body: JSON.stringify(allCandidates.map(l => ({
             store_id: storeId, session_id: sessionId, status: 'pending', created_by: auth.user.id,
-            payload: { source: imageListings.some(x => x.itemId === l.itemId) ? 'ebay_image' : 'ebay_text', sourceItemId: l.itemId, title: l.title, image: l.imageUrl, sourceUrl: l.url, price: l.total, condition: l.condition, category: fused.category || null },
+            payload: { source: l.listingStatus === 'sold' ? 'ebay_sold' : (imageListings.some(x => x.itemId === l.itemId) ? 'ebay_image' : 'ebay_text'), sourceItemId: l.itemId, title: l.title, image: l.imageUrl, sourceUrl: l.url, price: l.total, condition: l.condition, category: fused.category || null, listingStatus: l.listingStatus },
           }))),
         });
+        (insertedCandidateRows || []).forEach((row, i) => { if (allCandidates[i]) allCandidates[i].id = row.id; });
       }
       await supabaseAdminFetch(env, 'pocket_scout_images', {
         method: 'POST',
@@ -9581,7 +9595,7 @@ export default {
         textEvidence: fused.__textEvidence,
         routeToCardPipeline: visionResult.ok && visionResult.routeToCardPipeline,
         nextPhotoHint,
-        candidates: filtered.slice(0, 30),
+        candidates: allCandidates,
         compSnapshot,
         visionError: visionResult.ok ? null : visionResult.error,
         imageSearchWarning: imageSearchResult.warning || null,
@@ -9599,7 +9613,10 @@ export default {
     }
 
     // POST /pocket-scout/session/candidate/reject -- "not a match", removes
-    // one candidate and recomputes the active comp stats from what's left.
+    // one candidate and recomputes BOTH active and sold comp stats from
+    // whatever's left of each. candidateId is the eBay listing's own itemId
+    // (what the client actually has), matched against the JSON payload --
+    // scan_queue rows don't expose their own uuid to the client.
     if (url.pathname === '/pocket-scout/session/candidate/reject' && request.method === 'POST') {
       const storeId = requestStoreId(request, url);
       const auth = await requireStoreUser(request, env, storeId);
@@ -9612,10 +9629,15 @@ export default {
         method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ status: 'rejected' }),
       });
       const { data: remaining } = await supabaseAdminFetch(env, `scan_queue?session_id=eq.${encodeURIComponent(sessionId)}&store_id=eq.${encodeURIComponent(storeId)}&status=eq.pending&select=payload`);
-      const listings = (remaining || []).map(r => ({ itemId: r.payload?.sourceItemId, title: r.payload?.title, total: Number(r.payload?.price || 0), condition: r.payload?.condition, url: r.payload?.sourceUrl, imageUrl: r.payload?.image }));
-      const activeStats = pocketScoutCompStats(listings);
+      const toListing = r => ({ itemId: r.payload?.sourceItemId, title: r.payload?.title, total: Number(r.payload?.price || 0), condition: r.payload?.condition, url: r.payload?.sourceUrl, imageUrl: r.payload?.image });
+      const activeListings = (remaining || []).filter(r => r.payload?.listingStatus !== 'sold').map(toListing);
+      const soldListings = (remaining || []).filter(r => r.payload?.listingStatus === 'sold').map(toListing);
+      const activeStats = pocketScoutCompStats(activeListings);
       const { data: sessionRows } = await supabaseAdminFetch(env, `scan_sessions?id=eq.${encodeURIComponent(sessionId)}&select=comp_snapshot_json&limit=1`);
-      const compSnapshot = { ...(sessionRows?.[0]?.comp_snapshot_json || {}), activeStats, generatedAt: new Date().toISOString() };
+      const priorSnapshot = sessionRows?.[0]?.comp_snapshot_json || {};
+      const soldStats = soldListings.length ? pocketScoutCompStats(soldListings) : { count: 0, low: null, median: null, high: null, average: null };
+      const soldWarning = soldListings.length ? null : (priorSnapshot.soldWarning || 'Sold history unavailable');
+      const compSnapshot = { ...priorSnapshot, activeStats, soldStats, soldWarning, generatedAt: new Date().toISOString() };
       await supabaseAdminFetch(env, `scan_sessions?id=eq.${encodeURIComponent(sessionId)}`, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ comp_snapshot_json: compSnapshot, updated_at: new Date().toISOString() }) });
       return json({ ok: true, compSnapshot });
     }
@@ -9678,17 +9700,21 @@ export default {
       const compSnapshot = { activeStats, soldStats, soldWarning, source: 'ebay', textQuery, generatedAt: new Date().toISOString() };
       const identity = { title: textQuery, confidence: 60 };
 
-      if (filtered.length) {
-        await supabaseAdminFetch(env, 'scan_queue', {
-          method: 'POST', headers: { Prefer: 'return=minimal' },
-          body: JSON.stringify(filtered.slice(0, 30).map(l => ({ store_id: storeId, session_id: sessionId, status: 'pending', created_by: auth.user.id, payload: { source: 'ebay_text_manual', sourceItemId: l.itemId, title: l.title, image: l.imageUrl, sourceUrl: l.url, price: l.total, condition: l.condition } }))),
+      const activeCandidates = filtered.slice(0, 30).map(l => ({ ...l, listingStatus: 'active' }));
+      const soldCandidates = soldFiltered.slice(0, 30).map((l, i) => ({ ...l, itemId: l.itemId || `sold-${sessionId.slice(0, 8)}-${i}`, listingStatus: 'sold' }));
+      const allCandidates = [...activeCandidates, ...soldCandidates];
+      if (allCandidates.length) {
+        const { data: insertedCandidateRows } = await supabaseAdminFetch(env, 'scan_queue', {
+          method: 'POST', headers: { Prefer: 'return=representation' },
+          body: JSON.stringify(allCandidates.map(l => ({ store_id: storeId, session_id: sessionId, status: 'pending', created_by: auth.user.id, payload: { source: l.listingStatus === 'sold' ? 'ebay_sold' : 'ebay_text_manual', sourceItemId: l.itemId, title: l.title, image: l.imageUrl, sourceUrl: l.url, price: l.total, condition: l.condition, listingStatus: l.listingStatus } }))),
         });
+        (insertedCandidateRows || []).forEach((row, i) => { if (allCandidates[i]) allCandidates[i].id = row.id; });
       }
       await supabaseAdminFetch(env, `scan_sessions?id=eq.${encodeURIComponent(sessionId)}&store_id=eq.${encodeURIComponent(storeId)}`, {
         method: 'PATCH', headers: { Prefer: 'return=minimal' },
         body: JSON.stringify({ identity_json: identity, confidence: 60, comp_snapshot_json: compSnapshot, updated_at: new Date().toISOString() }),
       });
-      return json({ ok: true, identity, confidence: 60, candidates: filtered.slice(0, 30), compSnapshot });
+      return json({ ok: true, identity, confidence: 60, candidates: allCandidates, compSnapshot });
     }
 
     // GET /pocket-scout/settings -- thresholds live in the same
