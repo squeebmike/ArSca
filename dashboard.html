@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.20.11-ebay-template-fields">
+<meta name="version" content="2026.08.20.12-pocket-scout-fixes">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1633,15 +1633,15 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.20.11-ebay-template-fields" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.20.11-ebay-template-fields" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.20.11-ebay-template-fields" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.08.20.11-ebay-template-fields" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.20.11-ebay-template-fields" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.20.11-ebay-template-fields" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.20.11-ebay-template-fields" defer></script>
-<script src="scripts/pokemon/offline-browser.js?v=2026.08.20.11-ebay-template-fields" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.20.11-ebay-template-fields" defer></script>
+<script src="scripts/query-routing.js?v=2026.08.20.12-pocket-scout-fixes" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.20.12-pocket-scout-fixes" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.20.12-pocket-scout-fixes" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.08.20.12-pocket-scout-fixes" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.20.12-pocket-scout-fixes" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.20.12-pocket-scout-fixes" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.20.12-pocket-scout-fixes" defer></script>
+<script src="scripts/pokemon/offline-browser.js?v=2026.08.20.12-pocket-scout-fixes" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.20.12-pocket-scout-fixes" defer></script>
 </head>
 <body>
 
@@ -1670,11 +1670,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.20.11-ebay-template-fields</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.20.12-pocket-scout-fixes</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.20.11-ebay-template-fields</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.20.12-pocket-scout-fixes</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1692,7 +1692,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.20.11-ebay-template-fields</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.20.12-pocket-scout-fixes</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -2747,6 +2747,7 @@ body.show-mode .inv-sync-badge{display:none;}
         <summary style="font-family:var(--font-mono);font-size:9px;color:var(--dim);cursor:pointer">Search manually instead</summary>
         <div style="display:flex;gap:8px;margin-top:8px">
           <input id="scout-manual-query" class="tsi" placeholder="e.g. old yellow pokemon plush hasbro 1999" style="flex:1">
+          <button class="hbtn" title="Speak search" aria-label="Voice search Pocket Scout" onclick="startVoiceInput('scout-manual-query', scoutManualSearch)" style="width:54px;padding:0">MIC</button>
           <button class="hbtn" onclick="scoutManualSearch()">SEARCH</button>
         </div>
       </details>
@@ -3065,6 +3066,7 @@ body.show-mode .inv-sync-badge{display:none;}
       <button class="hbtn" id="price-sync-comics-btn" onclick="runLiveComicPriceSync()">SYNC COMIC PRICES</button>
       <button class="hbtn" id="price-sync-live-btn" onclick="runLivePokemonPriceSync()">FETCH LIVE POKEMON</button>
       <button class="hbtn" id="price-sync-other-btn" onclick="runOtherLivePriceSync()">FETCH LIVE SPORTS / OTHER TCG</button>
+      <button class="hbtn" id="price-sync-scout-btn" onclick="runPocketScoutPriceSync()">SYNC POCKET SCOUT PRICES</button>
       <button class="hbtn" id="price-sync-apply-btn" onclick="applySelectedPriceSyncUpdates()" style="display:none;background:rgba(0,255,179,.12);border-color:rgba(0,255,179,.4);color:var(--g)">✓ UPDATE SELECTED</button>
       <button class="modal-btn cancel" onclick="closePriceSyncModal()" style="margin-left:auto">CLOSE</button>
     </div>
@@ -3639,7 +3641,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.20.11-ebay-template-fields';
+const APP_VERSION = '2026.08.20.12-pocket-scout-fixes';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -6242,6 +6244,12 @@ const FEATURE_LOG = [
     { title:'Buy session workflow', status:'working', desc:'Build a buy offer line by line with live pricing, accept/reject, and pay out by cash, trade credit, or other tender.' },
     { title:'Multiple buy trays', status:'working', desc:'Run separate buy sessions for different customers at the same time, same switcher pattern as sale carts.' },
     { title:'Correct game detection on buy', status:'working', desc:'Buying a Pokemon or MTG card now reliably tags it as that specific game instead of a generic, unroutable "TCG" bucket.' },
+  ]},
+  { area:'Pocket Scout', items:[
+    { title:'Photo/voice identify + buy decision', status:'working', desc:'Snap a photo (or search by voice/text) of an off-the-shelf collectible to identify it, pull live eBay comps, and get a BUY/PASS decision with expected profit before you pay for it.' },
+    { title:'Voice search for manual lookups', status:'new', desc:'A mic button next to the manual search box lets you speak an item description instead of typing it, same voice-input pattern used in Inventory search.' },
+    { title:'Reliable sold comps', status:'new', desc:'Sold comp lookups now try the dedicated sold-comps provider first and only fall back to the legacy eBay Finding API if that comes up empty, the same proven order the public storefront comps drawer already uses -- fixes sold comps not showing for some scanned items.' },
+    { title:'Sync Pocket Scout prices', status:'new', desc:'A SYNC POCKET SCOUT PRICES button in the price sync modal re-runs each Pocket-Scout-sourced item\'s saved eBay search against current sold comps and proposes market price updates, the same review-then-apply flow used for MTG/Pokemon/comic price syncs.' },
   ]},
   { area:'eBay Integration', items:[
     { title:'Listing creation w/ AI category + specifics', status:'working', desc:'Suggests the right eBay category and fills in Item Specifics automatically when creating a listing.' },
@@ -13965,6 +13973,57 @@ async function buildLiveComicPriceSyncProposal(options = {}){
   return proposal.sort((a,b)=>(b.isBig?1:0)-(a.isBig?1:0)||Math.abs(b.delta)-Math.abs(a.delta));
 }
 
+// Pocket Scout items have no stable catalog ID to re-query (unlike MTG/Pokemon/
+// comics, which sync off a saved product ID) -- the only thing that survives from
+// the scan is the free-text eBay search query captured at scan time, saved as
+// pocketScoutQuery. This re-runs that exact query against the same provider-first
+// /comps/sold route the public storefront and manual comps drawer already use.
+function pocketScoutPriceSyncItems(){
+  const localRawItems=safeLocalJson('walkoff_universal_inventory',[]);
+  const seen=new Set(localRawItems.map(i=>i.id||i.wfId).filter(Boolean));
+  const overrides=getInventoryEditOverrides();
+  return localRawItems.concat((all||[]).filter(i=>{const id=i.id||i.wfId;return id&&!seen.has(id);}))
+    .map(i=>{const patch=overrides[i.id]||overrides[i.wfId];return patch?{...i,...patch}:i;})
+    .filter(i=>{
+      const status=String(i.lifecycle||i.status||'in_stock').toLowerCase();
+      return !['sold','archived','returned','deleted'].includes(status) && String(i.pocketScoutQuery||'').trim();
+    })
+    .sort((a,b)=>inventoryReferenceMarketPrice(b)-inventoryReferenceMarketPrice(a));
+}
+
+async function buildPocketScoutPriceSyncProposal(options = {}){
+  const items=pocketScoutPriceSyncItems();
+  const summary={checked:items.length,processed:0,changed:0,unchanged:0,noMatch:0,noPrice:0,errors:0,issues:[]};
+  const proposal=[];
+  for(const item of items){
+    const q=String(item.pocketScoutQuery||'').trim();
+    try{
+      const res=await storeWorkerFetch('/comps/sold?q='+encodeURIComponent(q)+'&limit=40');
+      const data=await res.json().catch(()=>({}));
+      summary.processed++;
+      if(typeof options.onProgress==='function')options.onProgress(summary.processed,summary.checked);
+      if(!res.ok||!data.ok)throw new Error(data.error||'Sold comp lookup failed');
+      const stats=data.stats||{};
+      const freshPrice=Number(stats.median||0);
+      if(!(freshPrice>0)){
+        summary.noPrice++;
+        summary.issues.push({item:{...item},type:'no-price',title:'No recent sold comps',reason:'eBay sold search for "'+q+'" returned no usable comps'+((data.warnings||[]).length?': '+data.warnings.join('; '):'.')});
+        continue;
+      }
+      const oldPrice=inventoryReferenceMarketPrice(item);
+      if(Math.abs(freshPrice-oldPrice)<.01){summary.unchanged++;continue;}
+      const delta=freshPrice-oldPrice,deltaPct=oldPrice>0?Math.abs(delta/oldPrice)*100:100,direction=delta>=0?'up':'down',big=isBigPriceChange(oldPrice,freshPrice);
+      summary.changed++;
+      proposal.push({item:{...item},mode:'pocket-scout',provider:'pocket_scout',source:'eBay sold comps ('+(data.source||'ebay')+')',oldPrice,newPrice:freshPrice,rawNewPrice:freshPrice,delta,deltaPct,direction,isBig:big,label:big?(direction==='up'?'BIG INCREASE':'BIG DROP'):(direction==='up'?'increase':'drop'),matchStatus:stats.count+' sold comp'+(stats.count===1?'':'s')+' for "'+q+'"',lastUpdated:new Date().toISOString(),activeCompSnapshot:item.activeCompSnapshot||null,soldCompSnapshot:stats,pricePath:'eBay sold comps ('+(data.source||'ebay')+')',selected:true});
+    }catch(error){
+      summary.errors++;
+      summary.issues.push({item:{...item},type:'error',title:'Pocket Scout price sync failed',reason:String(error.message||error)});
+    }
+  }
+  _priceSyncLastSummary=summary;
+  return proposal.sort((a,b)=>(b.isBig?1:0)-(a.isBig?1:0)||Math.abs(b.delta)-Math.abs(a.delta));
+}
+
 async function buildPriceSyncProposal(options = {}){
   const { limit = null, categories = null } = options;
   // Read raw items (preserves tcgPlayerId not exposed by getUniversalInventory)
@@ -14609,7 +14668,7 @@ function openPriceSyncModal(){
     if(applyBtn) applyBtn.style.display = '';
     renderPriceSyncProposal();
   } else {
-    if(propEl) propEl.innerHTML = '<div style="color:var(--dim);font-size:11px;padding:12px 0">Use SYNC COMIC PRICES for exact saved PriceCharting covers, SYNC MTG PRICES for live pricing with offline fallback, SCAN CACHED PRICES for saved Pokémon lookup data, or FETCH LIVE POKEMON for current PokemonPriceTracker prices.</div>';
+    if(propEl) propEl.innerHTML = '<div style="color:var(--dim);font-size:11px;padding:12px 0">Use SYNC COMIC PRICES for exact saved PriceCharting covers, SYNC MTG PRICES for live pricing with offline fallback, SCAN CACHED PRICES for saved Pokémon lookup data, FETCH LIVE POKEMON for current PokemonPriceTracker prices, or SYNC POCKET SCOUT PRICES to re-check eBay sold comps for items sourced through Pocket Scout.</div>';
     if(statusEl) statusEl.textContent = '';
     if(applyBtn) applyBtn.style.display = 'none';
   }
@@ -14682,6 +14741,39 @@ async function runLiveComicPriceSync(){
     updatePriceAlertBanner();
   }catch(error){statusEl.textContent='Comic sync failed: '+(error.message||error);}
   finally{btn.disabled=false;btn.textContent='SYNC COMIC PRICES';}
+}
+
+async function runPocketScoutPriceSync(){
+  const btn=document.getElementById('price-sync-scout-btn');
+  const statusEl=document.getElementById('price-sync-status');
+  const propEl=document.getElementById('price-sync-proposal');
+  const applyBtn=document.getElementById('price-sync-apply-btn');
+  if(!btn||!statusEl||!propEl)return;
+  restorePendingPriceSyncProposals();
+  const pendingBeforeRun=[..._priceSyncProposal];
+  const items=pocketScoutPriceSyncItems();
+  if(!items.length){
+    statusEl.textContent='No Pocket Scout items with a saved search query in stock yet.';
+    propEl.innerHTML='<div style="color:var(--dim);font-size:12px;padding:12px 0">Items added through Pocket Scout going forward carry a saved eBay search query and become eligible for this sync automatically.</div>';
+    return;
+  }
+  btn.disabled=true;
+  btn.textContent='Syncing...';
+  statusEl.textContent='Re-checking eBay sold comps for '+items.length+' Pocket Scout item'+(items.length===1?'':'s')+'...';
+  propEl.innerHTML='';
+  if(applyBtn)applyBtn.style.display='none';
+  try{
+    const freshProposal=await buildPocketScoutPriceSyncProposal({onProgress:(done,total)=>{statusEl.textContent='Checking sold comps... '+done+' of '+total;}});
+    const s=_priceSyncLastSummary||{checked:0,changed:0,unchanged:0,noMatch:0,noPrice:0,errors:0,issues:[]};
+    _priceSyncProposal=mergePendingPriceSyncProposals(pendingBeforeRun,freshProposal);
+    savePendingPriceSyncProposals();
+    statusEl.textContent='Pocket Scout sync checked '+s.checked+' item'+(s.checked===1?'':'s')+'. '+s.changed+' changed, '+s.unchanged+' unchanged, '+s.noPrice+' with no recent sold comps, '+s.errors+' errors.'+(_priceSyncProposal.length?' Review below, then click UPDATE SELECTED.':'');
+    renderPriceSyncProposal();
+    if(!_priceSyncProposal.length&&!(s.issues||[]).length)propEl.innerHTML='<div style="color:var(--dim);font-size:12px;padding:12px 0">All Pocket Scout items already match their most recent eBay sold comps.</div>';
+    if(applyBtn&&_priceSyncProposal.length)applyBtn.style.display='';
+    updatePriceAlertBanner();
+  }catch(e){statusEl.textContent='Pocket Scout sync failed: '+(e.message||e);}
+  finally{btn.disabled=false;btn.textContent='SYNC POCKET SCOUT PRICES';}
 }
 
 async function runOfflineMtgPriceSync(){
@@ -14966,7 +15058,7 @@ function renderPriceSyncProposal(){
       <input type="checkbox" data-pso-idx="${idx}" ${p.selected?'checked':''} onchange="togglePriceSyncItem(${idx},this.checked)" style="width:16px;height:16px;flex-shrink:0">
       <div style="flex:1;min-width:0">
         <div style="font-size:12px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(priceSyncItemTitle(p.item))}</div>
-        <div style="font-size:10px;color:var(--dim)">${escHtml(p.item.set||'')}${(p.item.card_number || p.item.cardNumber)?' · #'+escHtml(p.item.card_number || p.item.cardNumber):''} · ${escHtml(p.mode === 'live' ? 'live ' + (p.matchStatus || 'match') : p.mode === 'mtg-live' ? (p.matchStatus || 'live MTG match') : p.mode === 'mtg-offline' ? (p.matchStatus || 'offline MTG match') : 'cached')} · ${escHtml(p.source || '')}${p.lastUpdated?' · '+escHtml(String(p.lastUpdated).slice(0,10)):''}</div>
+        <div style="font-size:10px;color:var(--dim)">${escHtml(p.item.set||'')}${(p.item.card_number || p.item.cardNumber)?' · #'+escHtml(p.item.card_number || p.item.cardNumber):''} · ${escHtml(p.mode === 'live' ? 'live ' + (p.matchStatus || 'match') : p.mode === 'mtg-live' ? (p.matchStatus || 'live MTG match') : p.mode === 'mtg-offline' ? (p.matchStatus || 'offline MTG match') : p.mode === 'comic-live' ? (p.matchStatus || 'live comic match') : p.mode === 'pocket-scout' ? (p.matchStatus || 'eBay sold comp match') : 'cached')} · ${escHtml(p.source || '')}${p.lastUpdated?' · '+escHtml(String(p.lastUpdated).slice(0,10)):''}</div>
         ${p.mode === 'live' && p.sealed && (p.isBig || showAdminDebug()) ? `<div style="font-size:8px;color:var(--gold);margin-top:3px;font-family:monospace">Debug: attemptedQueries [${escHtml((p.attemptedQueries||[]).join(' | ')||'none')}] / matchedProduct="${escHtml(p.matchedProductName||'')}" / matchedSet="${escHtml(p.matchedProductSet||'')}" / matchedTcgPlayerId=${escHtml(p.matchedTcgPlayerId||'')} / prices.market=${escHtml(String(p.prices?.market?.price ?? p.prices?.market ?? ''))} / card.marketPrice=${escHtml(String(p.rawDebug?.marketPrice ?? ''))} / card.price=${escHtml(String(p.rawDebug?.price ?? ''))} / unopenedPrice=${escHtml(String(p.rawDebug?.unopenedPrice ?? ''))}</div>` : ''}
         ${p.mode === 'live' && !p.sealed && (p.isBig || showAdminDebug()) ? `<div style="font-size:8px;color:var(--gold);margin-top:3px;font-family:monospace">Debug: itemCondition=${escHtml(p.item.condition||'NM')} / primaryPrinting=${escHtml(p.prices?.primaryPrinting||'')} / variant printings [${escHtml(Object.keys(p.variants||{}).join(', ')||'none')}] / matchedVariantCondition=${escHtml(String(pokemonPriceTrackerVariantConditionPrice({prices:p.prices}, p.item.condition||'NM')||''))} / legacy conditions keys [${escHtml(Object.keys(p.prices?.conditions||{}).join(', ')||'none')}] / matchedLegacyCondition=${escHtml(String(pokemonPptPriceValue(pokemonPptObjectMatch(p.prices?.conditions||{}, pokemonPptConditionLabel(p.item.condition||'NM')))||''))} / prices.market=${escHtml(String(p.prices?.market?.price ?? p.prices?.market ?? ''))} / card.marketPrice=${escHtml(String(p.rawDebug?.marketPrice ?? ''))}</div>` : ''}
       </div>
@@ -15017,7 +15109,8 @@ async function applySelectedPriceSyncUpdates(){
       const now = new Date().toISOString();
       const isMtgPriceSync = p.mode === 'mtg-offline' || p.mode === 'mtg-live' || p.provider === 'mtg';
       const isComicPriceSync = p.mode === 'comic-live' || p.provider === 'comic';
-      const source = isComicPriceSync ? (p.source || 'PriceCharting comic sync') : isMtgPriceSync ? (p.source || 'MTG price sync') : p.mode === 'live' ? 'PokemonPriceTracker' : (p.source || 'PokemonPriceTracker cache');
+      const isPocketScoutSync = p.mode === 'pocket-scout' || p.provider === 'pocket_scout';
+      const source = isComicPriceSync ? (p.source || 'PriceCharting comic sync') : isMtgPriceSync ? (p.source || 'MTG price sync') : isPocketScoutSync ? (p.source || 'eBay sold comps') : p.mode === 'live' ? 'PokemonPriceTracker' : (p.source || 'PokemonPriceTracker cache');
       const lastUpdated = p.lastUpdated || now;
       const providerFields = isComicPriceSync ? {
         pricechartingProductId:p.pricechartingProductId || comicInventoryPricechartingId(fullItem),
@@ -15038,6 +15131,11 @@ async function applySelectedPriceSyncUpdates(){
         mtgCatalogVersion:p.mtgCatalogVersion || '',
         mtgOfflinePriceUpdatedAt:lastUpdated,
         priceSyncRequestPath:p.pricePath || 'offline IndexedDB',
+      } : isPocketScoutSync ? {
+        pocketScoutLastSync:lastUpdated,
+        activeCompSnapshot:p.activeCompSnapshot || fullItem.activeCompSnapshot || null,
+        soldCompSnapshot:p.soldCompSnapshot || fullItem.soldCompSnapshot || null,
+        priceSyncRequestPath:p.pricePath || 'eBay sold comps',
       } : {
         pokemonPriceTrackerLastUpdated:lastUpdated,
         tcgPlayerId:p.tcgPlayerId || inventoryTcgPlayerId(fullItem),
@@ -15063,11 +15161,11 @@ async function applySelectedPriceSyncUpdates(){
         lastMarketPrice:p.oldPrice,
         previousMarketPrice:p.oldPrice,
         marketPriceSource:source,
-        priceSource: (isMtgPriceSync || isComicPriceSync) ? source : source + (p.mode === 'live' ? ' live sync' : ' cached sync'),
+        priceSource: (isMtgPriceSync || isComicPriceSync || isPocketScoutSync) ? source : source + (p.mode === 'live' ? ' live sync' : ' cached sync'),
         lastPriceUpdate:lastUpdated,
         priceUpdatedAt:now,
         stalePrice:false,
-        livePriceStatus:p.mode === 'live' || p.mode === 'mtg-live' || isComicPriceSync ? 'live' : isMtgPriceSync ? 'offline' : 'cached',
+        livePriceStatus:p.mode === 'live' || p.mode === 'mtg-live' || isComicPriceSync || isPocketScoutSync ? 'live' : isMtgPriceSync ? 'offline' : 'cached',
         ...(hasOverride ? {} : { salePrice:p.newPrice, listPrice:p.newPrice }),
         ...providerFields,
       });
@@ -16526,6 +16624,12 @@ const BUILT_IN_ITEM_SIMPLE_FIELDS = [
   ['priceUpdatedAt',''], ['livePriceStatus',''], ['priceSyncRequestPath',''],
   ['tcgPlayerUrl',''], ['tcgplayerSkuId',''], ['buySessionId',''],
   ['sourceProductId',''], ['sourceVariantId',''],
+  // The free-text eBay search query captured when this item was scanned via
+  // Pocket Scout -- there's no stable catalog ID for a scanned collectible
+  // (unlike MTG/Pokemon/comics, which sync off a saved product ID), so the
+  // dynamic price-sync flow re-runs this exact query against sold comps.
+  ['pocketScoutQuery',''], ['pocketScoutLastSync',''],
+  ['activeCompSnapshot',null,'raw'], ['soldCompSnapshot',null,'raw'],
   ['consignorName',''], ['consignmentId',''], ['signed_by',''],
   ['pokemonPriceTrackerLastUpdated',''],
   ['signature_value',0,'num'], ['minPrice',0,'num'],
@@ -26690,6 +26794,7 @@ async function scoutBuyAddInventory(){
       pricingConfidence: (scoutSession.compSnapshot?.activeStats?.count||0)>0 ? 'has_comps' : 'no_comps',
       decisionAtPurchase: result?.decision||'', expectedProfitLow: result?.netLow??null, expectedProfitHigh: result?.netHigh??null,
       activeCompSnapshot: scoutSession.compSnapshot?.activeStats||null, soldCompSnapshot: scoutSession.compSnapshot?.soldStats||null,
+      pocketScoutQuery: scoutSession.compSnapshot?.textQuery || identity.title || '', pocketScoutLastSync: new Date().toISOString(),
       scanPhotos: (scoutSession.photos||[]).map(p=>p.url),
       employee: getAuthSession()?.user?.displayName || getAuthSession()?.user?.email || '',
     },
@@ -43292,7 +43397,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.20.11-ebay-template-fields" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.20.12-pocket-scout-fixes" defer></script>
 </body>
 </html>
 
