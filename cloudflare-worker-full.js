@@ -1761,6 +1761,14 @@ const POKEMON_IMAGE_SIZES = new Set(['200', '400']);
 // population stay live/on-demand only: PPT's own export cap is 2 total calls
 // a day, and cards+sealed already spend both of them.
 const POKEMON_PRICES_FILE_TYPES = new Set(['cards', 'sealed']);
+// MTG card image bundle (built by scripts/mtg/build-mtg-offline-images.mjs) --
+// mirrors the Pokemon image pipeline above: harvested server-side from
+// Scryfall's own CDN once, stored in our own R2, so devices bulk-sync from us
+// instead of every device fetching directly from Scryfall (and never having
+// to re-fetch once cached, even offline). Small+normal match the two sizes
+// Scryfall's own card image API already serves, keeping this a straight
+// mirror rather than a re-encode.
+const MTG_IMAGE_SIZES = new Set(['small', 'normal']);
 
 function r2ObjectResponse(object, request, cacheControl) {
   if (!object) return json({ ok: false, error: 'MTG catalog object not found' }, 404);
@@ -3924,6 +3932,64 @@ export default {
       const size = String(url.searchParams.get('size') || '400');
       if (!id || !POKEMON_IMAGE_SIZES.has(size)) return json({ ok: false, error: 'id and size (200 or 400) are required' }, 400);
       const object = await env.MTG_CATALOG_R2.get(`pokemon/images/${id}/${size}.jpg`, { onlyIf: request.headers });
+      if (!object) return json({ ok: false, error: 'Image not found' }, 404);
+      const response = r2ObjectResponse(object, request, 'public, max-age=31536000, immutable');
+      response.headers.set('Content-Type', 'image/jpeg');
+      return response;
+    }
+
+    // GET /catalog/mtg/images/manifest?set=<setCode|all> -- lists which
+    // scryfallIds have cached image blobs for the requested set (or every
+    // set built so far). Same shape and same partial-build fallback as the
+    // Pokemon images manifest above -- a multi-day "all" build across
+    // thousands of sets can get interrupted by its own timeout long before
+    // index-all.json itself gets written, so this still merges whatever
+    // per-set indexes have landed in R2 rather than an all-or-nothing 404.
+    if (url.pathname === '/catalog/mtg/images/manifest') {
+      if (request.method !== 'GET') return json({ ok: false, error: 'GET only' }, 405);
+      if (!env.MTG_CATALOG_R2) return json({ ok: false, error: 'Offline catalog R2 binding is not configured' }, 503);
+      const setCode = String(url.searchParams.get('set') || 'all').trim().toLowerCase();
+      if (setCode === 'all') {
+        const cachedAllIndex = await env.MTG_CATALOG_R2.get('mtg/images/index-all.json');
+        if (cachedAllIndex) {
+          const index = await cachedAllIndex.json().catch(() => null);
+          if (index) return json({ ok: true, set: 'all', sizes: ['small', 'normal'], ids: index.ids || [], generatedAt: index.generatedAt || '' });
+        }
+        const mergedIds = new Set();
+        let newestGeneratedAt = '';
+        let cursor;
+        for (let page = 0; page < 100; page++) { // 100 pages far exceeds any realistic MTG set count
+          const listing = await env.MTG_CATALOG_R2.list({ prefix: 'mtg/images/index-set-', cursor });
+          for (const entry of listing.objects) {
+            const setIndexObject = await env.MTG_CATALOG_R2.get(entry.key);
+            const setIndex = setIndexObject ? await setIndexObject.json().catch(() => null) : null;
+            if (!setIndex) continue;
+            for (const id of setIndex.ids || []) mergedIds.add(id);
+            if (setIndex.generatedAt && setIndex.generatedAt > newestGeneratedAt) newestGeneratedAt = setIndex.generatedAt;
+          }
+          if (!listing.truncated) break;
+          cursor = listing.cursor;
+        }
+        if (!mergedIds.size) return json({ ok: false, error: 'All-sets MTG image index not built yet -- run "Build MTG Offline Card Images" for at least one set first' }, 404);
+        return json({ ok: true, set: 'all', sizes: ['small', 'normal'], ids: Array.from(mergedIds), generatedAt: newestGeneratedAt });
+      }
+      const indexObject = await env.MTG_CATALOG_R2.get(`mtg/images/index-set-${setCode}.json`);
+      if (!indexObject) return json({ ok: false, error: `Image index for set ${setCode} not built yet` }, 404);
+      const index = await indexObject.json().catch(() => null);
+      if (!index) return json({ ok: false, error: 'Image index is corrupt' }, 500);
+      return json({ ok: true, set: setCode, sizes: ['small', 'normal'], ids: index.ids || [], generatedAt: index.generatedAt || '' });
+    }
+
+    // GET /catalog/mtg/image?id=<scryfallId>&size=small|normal -- serves a
+    // single card image blob previously harvested from Scryfall and stored
+    // in R2, so devices never depend on Scryfall's CDN once cached offline.
+    if (url.pathname === '/catalog/mtg/image') {
+      if (request.method !== 'GET') return json({ ok: false, error: 'GET only' }, 405);
+      if (!env.MTG_CATALOG_R2) return json({ ok: false, error: 'Offline catalog R2 binding is not configured' }, 503);
+      const id = String(url.searchParams.get('id') || '').replace(/[^a-zA-Z0-9_-]/g, '');
+      const size = String(url.searchParams.get('size') || 'normal');
+      if (!id || !MTG_IMAGE_SIZES.has(size)) return json({ ok: false, error: 'id and size (small or normal) are required' }, 400);
+      const object = await env.MTG_CATALOG_R2.get(`mtg/images/${id}/${size}.jpg`, { onlyIf: request.headers });
       if (!object) return json({ ok: false, error: 'Image not found' }, 404);
       const response = r2ObjectResponse(object, request, 'public, max-age=31536000, immutable');
       response.headers.set('Content-Type', 'image/jpeg');
