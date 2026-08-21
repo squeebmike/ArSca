@@ -1754,6 +1754,13 @@ const PRICECHARTING_OFFLINE_CATEGORIES = new Set([
 // PPT bulk price/sealed/ebay/population CSVs stay on the existing /pricing/pokemon/export route).
 const POKEMON_CATALOG_FILE_TYPES = new Set(['sets']);
 const POKEMON_IMAGE_SIZES = new Set(['200', '400']);
+// Cards + sealed price snapshots pulled from PPT's /export once a day by
+// scripts/pokemon/build-pokemon-prices-bundle.mjs (see pokemon-prices-daily.yml)
+// -- a separate manifest/bundle from POKEMON_CATALOG_FILE_TYPES above so its
+// own daily refresh cycle never collides with the sets/images build. eBay and
+// population stay live/on-demand only: PPT's own export cap is 2 total calls
+// a day, and cards+sealed already spend both of them.
+const POKEMON_PRICES_FILE_TYPES = new Set(['cards', 'sealed']);
 
 function r2ObjectResponse(object, request, cacheControl) {
   if (!object) return json({ ok: false, error: 'MTG catalog object not found' }, 404);
@@ -3819,6 +3826,37 @@ export default {
       const response = r2ObjectResponse(object, request, 'public, max-age=31536000, immutable');
       response.headers.set('Content-Type', 'application/gzip');
       response.headers.set('X-Pokemon-Catalog-Version', String(manifest.version || ''));
+      response.headers.set('X-Content-SHA256', String(descriptor.sha256 || ''));
+      return response;
+    }
+
+    // GET /catalog/pokemon/prices/manifest -- points at the daily cards+sealed
+    // price snapshot pulled from PPT once a day (pokemon-prices-daily.yml),
+    // so a device syncs from our own R2 copy instead of spending PPT's
+    // 2-exports-a-day cap every time someone clicks Download.
+    if (url.pathname === '/catalog/pokemon/prices/manifest') {
+      if (request.method !== 'GET') return json({ ok: false, error: 'GET only' }, 405);
+      if (!env.MTG_CATALOG_R2) return json({ ok: false, error: 'Offline catalog R2 binding is not configured' }, 503);
+      const object = await env.MTG_CATALOG_R2.get('pokemon/prices-manifest.json', { onlyIf: request.headers });
+      return r2ObjectResponse(object, request, 'public, max-age=300, stale-if-error=86400');
+    }
+
+    if (url.pathname === '/catalog/pokemon/prices/download') {
+      if (request.method !== 'GET') return json({ ok: false, error: 'GET only' }, 405);
+      if (!env.MTG_CATALOG_R2) return json({ ok: false, error: 'Offline catalog R2 binding is not configured' }, 503);
+      const type = String(url.searchParams.get('file') || '').toLowerCase();
+      if (!POKEMON_PRICES_FILE_TYPES.has(type)) return json({ ok: false, error: 'file must be cards or sealed' }, 400);
+      const manifestObject = await env.MTG_CATALOG_R2.get('pokemon/prices-manifest.json');
+      if (!manifestObject) return json({ ok: false, error: 'Pokemon prices manifest not found' }, 404);
+      const manifest = await manifestObject.json().catch(() => null);
+      const descriptor = manifest?.status === 'ready' ? manifest.files?.[type] : null;
+      const key = String(descriptor?.path || '');
+      if (!key.startsWith('pokemon/prices/') || !key.endsWith('.jsonl.gz')) return json({ ok: false, error: `Pokemon ${type} price snapshot is not ready` }, 503);
+      const object = await env.MTG_CATALOG_R2.get(key, { onlyIf: request.headers });
+      if (!object) return json({ ok: false, error: `Pokemon ${type} price object not found` }, 404);
+      const response = r2ObjectResponse(object, request, 'public, max-age=31536000, immutable');
+      response.headers.set('Content-Type', 'application/gzip');
+      response.headers.set('X-Pokemon-Prices-Version', String(manifest.version || ''));
       response.headers.set('X-Content-SHA256', String(descriptor.sha256 || ''));
       return response;
     }
