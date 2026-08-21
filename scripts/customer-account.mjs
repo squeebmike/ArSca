@@ -94,13 +94,18 @@ async function confirmPhoneVerify(request, env, deps, url) {
       await db('customers', { method:'POST', headers:{ Prefer:'return=minimal' }, body:JSON.stringify({ store_id:storeId, name:auth.user.user_metadata?.full_name || 'Customer', phone:phoneRaw, email:auth.user.email || null, linked_user_id:auth.user.id }) });
     }
   }
-  return await accountSummary(request, env, deps, url, auth);
+  return await accountSummary(request, env, deps, url, auth, storeId);
 }
 
-async function accountSummary(request, env, deps, url, authOverride) {
+// storeIdOverride carries the store ID through when this is reused from
+// confirmPhoneVerify -- that request is a POST with the store ID in the
+// JSON body, not a query string, so url.searchParams would be empty and
+// the customers lookup below would filter on store_id=eq.'' (invalid
+// uuid syntax) instead of skipping the customer lookup.
+async function accountSummary(request, env, deps, url, authOverride, storeIdOverride) {
   const auth = authOverride || await deps.requireAuthenticatedUser(request, env);
   if (auth.error) return auth.error;
-  const storeId = text(url.searchParams.get('store_id'), 80);
+  const storeId = storeIdOverride || text(url.searchParams.get('store_id'), 80);
   const db = (p, o) => deps.supabaseAdminFetch(env, p, o);
   const customer = await findLinkedCustomer(db, storeId, auth.user.id);
   let giftCards = [];

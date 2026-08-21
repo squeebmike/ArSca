@@ -104,12 +104,18 @@ async function run() {
     assert.equal(patched.attempts, 1);
   }
 
-  // confirm-verify: correct code links to an existing unlinked customer found by phone.
+  // confirm-verify: correct code links to an existing unlinked customer found by phone,
+  // and the account summary returned afterward must be scoped to the store from the POST
+  // body -- confirm-verify's request has no query string, so a summary call that fell back
+  // to reading store_id off the URL (rather than the storeId this handler already parsed)
+  // would filter on store_id=eq.'' and 400 with "invalid input syntax for type uuid".
   {
     const code = '123456';
     const { createHash } = await import('node:crypto');
     const codeHash = createHash('sha256').update(code).digest('hex');
     const patches = [];
+    let summaryLookupPath = '';
+    let linkedLookupCount = 0;
     const deps = baseDeps({
       lookupCustomerIdByPhone: async () => 'cust-9',
       supabaseAdminFetch: async (env, path, options) => {
@@ -117,9 +123,16 @@ async function run() {
           return { data:[{ id:'pv2', attempts:0, expires_at:new Date(Date.now() + 60000).toISOString(), code_hash:codeHash }] };
         }
         if (path === 'phone_verifications?id=eq.pv2' && options?.method === 'PATCH') return { data:[] };
-        if (path.startsWith('customers?') && path.includes('linked_user_id=eq.user-1') && !options) return { data:[] }; // no existing link yet
+        if (path.startsWith('customers?') && path.includes('linked_user_id=eq.user-1') && !options) {
+          linkedLookupCount++;
+          summaryLookupPath = path;
+          // First call (inside confirmPhoneVerify) runs before linking and must see no link yet;
+          // second call (inside the post-link accountSummary) must see the row just linked below.
+          return { data: linkedLookupCount === 1 ? [] : [{ id:'cust-9', name:'Jane', phone:'2065551234' }] };
+        }
         if (path === 'customers?id=eq.cust-9&select=linked_user_id,email') return { data:[{ linked_user_id:null, email:null }] };
         if (path === 'customers?id=eq.cust-9' && options?.method === 'PATCH') { patches.push(JSON.parse(options.body)); return { data:[] }; }
+        if (path.startsWith('gift_cards?')) return { data:[] };
         throw new Error('unexpected db call: ' + path);
       },
     });
@@ -127,6 +140,8 @@ async function run() {
     assert.equal(res.status, 200);
     assert.equal(patches.length, 1);
     assert.equal(patches[0].linked_user_id, 'user-1');
+    assert.match(summaryLookupPath, /store_id=eq\.store1/, 'the post-link summary must use the storeId already parsed from the POST body, not an empty query-string store_id');
+    assert.equal(res.body.linked, true);
   }
 
   // confirm-verify: phone already linked to a different account is rejected, not silently reassigned.
