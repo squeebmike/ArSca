@@ -42,6 +42,17 @@ assert.match(dashboard, /<div class="wrap-back">\s*\n\s*<div class="wrap-shopnam
 assert.ok(!/wrap-logo/.test(dashboard), 'the illustrated logo image class must be fully removed -- it was confirmed unreadable on a real printed label');
 assert.match(dashboard, /const codeStyle = isWrap \? 'qr' : \(document\.getElementById\('label-print-code-style'\)\?\.value \|\| 'qr'\);/, 'the wrap back face must always use QR regardless of the barcode-style dropdown -- a linear barcode reads worse than a QR at that size, and QR is now the default for the standard layout too');
 assert.match(dashboard, /const codeGenSize = isWrap \? 500 : 260;/, 'the wrap QR must be generated at a much bigger native size than the standard layout\'s code -- undersized generation followed by scaling is what made a confirmed-real QR fail to scan');
+// The code image is always generated much bigger than its on-label display
+// size, so the browser is always downscaling it, never upscaling -- unlike
+// the earlier small-then-upscale bug, a large source downscaled has plenty
+// of detail for smooth resampling to average cleanly. Forcing nearest-
+// neighbor (image-rendering:pixelated) on that downscale instead produced
+// visible aliasing/speckle on the dense QR pattern, confirmed against a real
+// print-preview screenshot.
+assert.ok(!/barcodeImg = `<img src="\$\{canvas\.toDataURL\('image\/png'\)\}" style="width:100%;height:\$\{imgHeight\}px;object-fit:contain;image-rendering:pixelated">`;/.test(dashboard),
+  'the print-preview code image must not force nearest-neighbor rendering while being downscaled from its oversized generation size -- that aliases the QR instead of cleanly averaging it');
+assert.match(dashboard, /barcodeImg = `<img src="\$\{canvas\.toDataURL\('image\/png'\)\}" style="width:100%;height:\$\{imgHeight\}px;object-fit:contain">`;/,
+  'the print-preview code image must let the browser use its own smooth downscaling');
 assert.match(dashboard, /\.label\.wrap \{ flex-direction:row !important; padding:0 !important; \}/, 'the wrap layout must lay the two faces out side by side with a fold line between them');
 assert.match(dashboard, /border-right:1px dashed #999;/, 'a dashed fold line must separate the front and back faces so it\'s clear where to fold');
 assert.match(dashboard, /\.label\.wrap \.wrap-back \{ padding:8px 6px 5px; justify-content:flex-start; gap:8px; \}/, 'the back face must use equal top-padding and shopname-to-code gap so the two spaces read as symmetric');
