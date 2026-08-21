@@ -63,7 +63,10 @@ assert.match(dashboard, /onclick="syncMtgOfflineImages\(\)"/, 'the SYNC IMAGES F
 const invImgFnStart = dashboard.indexOf('function inventoryImageUrl(item={})');
 const invImgFnEnd = dashboard.indexOf('\nfunction inventoryImageSourceLabel', invImgFnStart);
 const invImgFn = dashboard.slice(invImgFnStart, invImgFnEnd);
-assert.match(invImgFn, /!navigator\.onLine && \/magic\|\\bmtg\\b\/i\.test\(String\(item\.category\|\|raw\.category\|\|''\)\)/, 'offline MTG inventory items must be special-cased the same way offline Pokemon items already are');
+// A cached offline image must win whenever one exists, online or not -- not
+// only while offline. See the same principle applied to Pokemon items just
+// above it in this same function.
+assert.match(invImgFn, /if\(\/magic\|\\bmtg\\b\/i\.test\(String\(item\.category\|\|raw\.category\|\|''\)\)\)\{/, 'the offline-image-cache check must run for every MTG item regardless of connectivity, not only while offline');
 assert.match(invImgFn, /mtgInventoryScryfallId\(item\)/, 'must resolve the scryfallId through the existing shared helper');
 assert.match(invImgFn, /hydrateMtgOfflineImageUrl\(scryfallId\)/, 'must kick off async hydration from the bulk-synced image cache when not yet warmed');
 
