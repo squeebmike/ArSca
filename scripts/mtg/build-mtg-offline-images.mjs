@@ -95,7 +95,12 @@ async function fetchExistingJson(url) {
 async function downloadImage(url, destination, attempts = 2) {
   for (let attempt = 1; attempt <= attempts; attempt++) {
     try {
-      const response = await fetch(url);
+      // Scryfall's CDN requires a real User-Agent on every request (per
+      // their API terms) and returns HTTP 400 for anything without one --
+      // fetchJson()/downloadToFile() above already send one, this fetch was
+      // the one call site that didn't, so every single image request here
+      // failed identically regardless of the card or size.
+      const response = await fetch(url, { headers: { 'User-Agent': 'Walk-Off-MTG-Offline-Builder/1.0' } });
       if (!response.ok || !response.body) throw new Error(`HTTP ${response.status}`);
       const buffer = Buffer.from(await response.arrayBuffer());
       await fsp.mkdir(path.dirname(destination), { recursive: true });
@@ -192,6 +197,12 @@ for (const [setCode, cards] of bySet) {
     const existingSetIndex = await fetchExistingJson(`${workerBase}/catalog/mtg/images/manifest?set=${encodeURIComponent(setCode)}`);
     const mergedSetIds = [...new Set([...(existingSetIndex?.ids || []), ...newIds])];
     const setIndexPath = path.join(outputRoot, `index-set-${setCode}.json`);
+    // outputRoot only gets created as a side effect of a successful
+    // downloadImage() call (via its own mkdir of imagesDir/<id>/). When
+    // every download for a set fails, that never happens, and this write
+    // would otherwise crash with ENOENT instead of reporting the real
+    // failure (0 images cached) cleanly.
+    await fsp.mkdir(outputRoot, { recursive: true });
     await fsp.writeFile(setIndexPath, JSON.stringify({ ids: mergedSetIds, generatedAt }, null, 2));
     uploadObject(`mtg/images/index-set-${setCode}.json`, setIndexPath);
   }
@@ -202,6 +213,7 @@ if (upload && scope === 'all') {
   const allNewIds = setCodesUploaded.flatMap(setCode => (bySet.get(setCode) || []).map(c => c.scryfallId));
   const mergedAllIds = [...new Set([...(existingAllIndex?.ids || []), ...allNewIds])];
   const allIndexPath = path.join(outputRoot, 'index-all.json');
+  await fsp.mkdir(outputRoot, { recursive: true });
   await fsp.writeFile(allIndexPath, JSON.stringify({ ids: mergedAllIds, generatedAt }, null, 2));
   uploadObject('mtg/images/index-all.json', allIndexPath);
 }
