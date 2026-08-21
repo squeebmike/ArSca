@@ -11793,9 +11793,23 @@ const SUPABASE_EMAIL_HOOK_COPY = {
   invite: { subject: "You're invited — The Mana Pocket", verb: 'accept your invitation' },
 };
 
-function supabaseEmailRedirectUrl(action) {
-  // Never let an obsolete Supabase Site URL send customer auth sessions to
-  // the old GitHub Pages dashboard. Customer-facing auth lives on Webflow.
+// Dashboard staff logins and storefront customer accounts are two different
+// apps sharing one Supabase Auth project, so this same "Send Email" hook
+// fires for both. Recovery emails triggered by the dashboard's own RESET
+// PASSWORD button (dashboard.html's resetSupabasePassword()) pass an
+// explicit redirectTo of the dashboard's GitHub Pages URL -- Supabase Auth
+// Hooks echo that back as email_data.redirect_to. Only ever trust it when it
+// resolves to one of these two known apps; anything else (including an
+// obsolete/misconfigured Supabase Site URL, which Auth Hooks also fall back
+// into this same field) still falls through to the safe customer default.
+const TRUSTED_EMAIL_REDIRECT_ORIGINS = ['https://themanapocket.com', 'https://squeebmike.github.io'];
+
+function supabaseEmailRedirectUrl(action, requestedRedirectTo) {
+  if (requestedRedirectTo) {
+    try {
+      if (TRUSTED_EMAIL_REDIRECT_ORIGINS.includes(new URL(requestedRedirectTo).origin)) return requestedRedirectTo;
+    } catch (e) { /* malformed redirect_to -- fall through to the default below */ }
+  }
   // Recovery needs the authenticated account settings screen; every other
   // email action should open the account overview.
   return action === 'recovery'
@@ -11826,7 +11840,7 @@ async function handleSupabaseEmailHook(request, env) {
   const base = String(env.SUPABASE_URL || '').replace(/\/+$/, '');
   if (!base) return json({ error: { http_code: 500, message: 'SUPABASE_URL is not configured' } }, 500);
   const action = email_action_type || 'signup';
-  const verifyUrl = `${base}/auth/v1/verify?token=${encodeURIComponent(token_hash)}&type=${encodeURIComponent(action)}&redirect_to=${encodeURIComponent(supabaseEmailRedirectUrl(action))}`;
+  const verifyUrl = `${base}/auth/v1/verify?token=${encodeURIComponent(token_hash)}&type=${encodeURIComponent(action)}&redirect_to=${encodeURIComponent(supabaseEmailRedirectUrl(action, data.redirect_to))}`;
   const copy = SUPABASE_EMAIL_HOOK_COPY[email_action_type] || { subject: 'The Mana Pocket — action required', verb: 'continue' };
   const text = `Click the link below to ${copy.verb}:\n\n${verifyUrl}\n\nIf you didn't request this, you can safely ignore this email.`;
   try {
