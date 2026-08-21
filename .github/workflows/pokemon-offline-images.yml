@@ -18,7 +18,14 @@ permissions:
 jobs:
   build-and-publish:
     runs-on: ubuntu-latest
-    timeout-minutes: 300
+    # 360 is the hard ceiling for a GitHub-hosted runner job. The one real
+    # scope=all run so far hit 300 and got cancelled partway through the
+    # set list -- this buys it more room to get further before that happens
+    # again. It no longer has to finish in one shot to be useful: the
+    # Worker's /catalog/pokemon/images/manifest route now merges whatever
+    # per-set indexes already landed in R2 rather than requiring the final
+    # index-all.json write this job only reaches after every set completes.
+    timeout-minutes: 360
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

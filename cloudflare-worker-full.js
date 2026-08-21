@@ -3835,9 +3835,42 @@ export default {
       const manifest = manifestObject ? await manifestObject.json().catch(() => null) : null;
       if (!manifest || manifest.status !== 'ready') return json({ ok: false, error: 'Pokemon catalog is not ready' }, 503);
       const images = manifest.images || {};
-      const indexKey = setId === 'all' ? 'pokemon/images/index-all.json' : `pokemon/images/index-set-${setId}.json`;
-      const indexObject = await env.MTG_CATALOG_R2.get(indexKey);
-      if (!indexObject) return json({ ok: false, error: setId === 'all' ? 'All-sets image index not built yet' : `Image index for set ${setId} not built yet`, availableSets: images.setsCovered || [], allSetsCovered: !!images.allSetsCovered }, 404);
+      if (setId === 'all') {
+        // index-all.json and the setsCovered/allSetsCovered fields on
+        // pokemon/manifest.json are both written only once, after every set
+        // finishes -- the "Build Pokemon Offline Card Images" Action can run
+        // for hours across hundreds of sets and get killed by its own
+        // timeout before ever reaching that last step, even though each
+        // finished set's own index-set-<id>.json already landed in R2 along
+        // the way. Falls back to merging whatever per-set indexes already
+        // exist, so a partial/interrupted build is still usable instead of
+        // an all-or-nothing 404 until one single run manages to finish
+        // every set back to back.
+        const cachedAllIndex = await env.MTG_CATALOG_R2.get('pokemon/images/index-all.json');
+        if (cachedAllIndex) {
+          const index = await cachedAllIndex.json().catch(() => null);
+          if (index) return json({ ok: true, set: 'all', sizes: images.sizes || [200, 400], ids: index.ids || [], generatedAt: index.generatedAt || manifest.generatedAt || '' });
+        }
+        const mergedIds = new Set();
+        let newestGeneratedAt = '';
+        let cursor;
+        for (let page = 0; page < 50; page++) { // 50 pages far exceeds any realistic Pokemon set count
+          const listing = await env.MTG_CATALOG_R2.list({ prefix: 'pokemon/images/index-set-', cursor });
+          for (const entry of listing.objects) {
+            const setIndexObject = await env.MTG_CATALOG_R2.get(entry.key);
+            const setIndex = setIndexObject ? await setIndexObject.json().catch(() => null) : null;
+            if (!setIndex) continue;
+            for (const id of setIndex.ids || []) mergedIds.add(id);
+            if (setIndex.generatedAt && setIndex.generatedAt > newestGeneratedAt) newestGeneratedAt = setIndex.generatedAt;
+          }
+          if (!listing.truncated) break;
+          cursor = listing.cursor;
+        }
+        if (!mergedIds.size) return json({ ok: false, error: 'All-sets image index not built yet -- run "Build Pokemon Offline Card Images" for at least one set first', availableSets: images.setsCovered || [], allSetsCovered: !!images.allSetsCovered }, 404);
+        return json({ ok: true, set: 'all', sizes: images.sizes || [200, 400], ids: Array.from(mergedIds), generatedAt: newestGeneratedAt || manifest.generatedAt || '' });
+      }
+      const indexObject = await env.MTG_CATALOG_R2.get(`pokemon/images/index-set-${setId}.json`);
+      if (!indexObject) return json({ ok: false, error: `Image index for set ${setId} not built yet`, availableSets: images.setsCovered || [], allSetsCovered: !!images.allSetsCovered }, 404);
       const index = await indexObject.json().catch(() => null);
       if (!index) return json({ ok: false, error: 'Image index is corrupt' }, 500);
       return json({ ok: true, set: setId, sizes: images.sizes || [200, 400], ids: index.ids || [], generatedAt: index.generatedAt || manifest.generatedAt || '' });
@@ -9016,16 +9049,20 @@ export default {
       // A missing X-Store-Id header must NOT be treated as a free pass: it
       // falls through to the subscription lookup below with an empty key,
       // which correctly resolves to "no subscription" and gets denied.
+      // Goes through storeHasSubscriptionAccess() (same as every other PPT
+      // route) rather than reading the raw sub:store: record directly, so a
+      // complimentary S Rank entitlement grants bulk exports too -- this
+      // inline copy used to skip that check and 402 an S Rank store that
+      // every other Pokemon pricing route already let through.
       const pptStoreId2 = request.headers.get('X-Store-Id') || '';
       const bypassIds2 = (env.BYPASS_STORE_IDS || '').split(',').map(s => s.trim()).filter(Boolean);
       const ownerIds2 = (env.OWNER_STORE_IDS || env.OWNER_STORE_ID || '').split(',').map(s => s.trim()).filter(Boolean);
       if (!bypassIds2.includes(pptStoreId2) && !ownerIds2.includes(pptStoreId2) && env.LBA_KV) {
-        const subRaw2 = await env.LBA_KV.get(`sub:store:${pptStoreId2}`);
-        const sub2 = subRaw2 ? JSON.parse(subRaw2) : null;
-        const s2 = sub2?.status || 'none';
-        const endMs2 = s2 === 'trialing' ? sub2?.trial_end : sub2?.current_period_end;
-        if (!((s2 === 'active' || s2 === 'trialing') && (!endMs2 || endMs2 > Date.now()))) {
-          return json({ ok: false, error: 'Subscription required.', subscriptionRequired: true, status: s2 }, 402);
+        const subActive2 = await storeHasSubscriptionAccess(env, pptStoreId2);
+        if (!subActive2) {
+          const subRaw2 = await env.LBA_KV.get(`sub:store:${pptStoreId2}`);
+          const sub2 = subRaw2 ? JSON.parse(subRaw2) : null;
+          return json({ ok: false, error: 'Subscription required.', subscriptionRequired: true, status: sub2?.status || 'none' }, 402);
         }
       }
 
