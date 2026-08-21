@@ -37,6 +37,7 @@
     return dbPromise;
   }
   async function getMeta(key){const db=await openDb();return requestPromise(db.transaction('meta','readonly').objectStore('meta').get(key));}
+  async function getAllMeta(){const db=await openDb();return requestPromise(db.transaction('meta','readonly').objectStore('meta').getAll());}
   async function putMeta(record){const db=await openDb(),tx=db.transaction('meta','readwrite');tx.objectStore('meta').put(record);await transactionPromise(tx);return record;}
   async function sha256Hex(buffer){const digest=await crypto.subtle.digest('SHA-256',buffer);return [...new Uint8Array(digest)].map(byte=>byte.toString(16).padStart(2,'0')).join('');}
 
@@ -138,12 +139,24 @@
     const imageKeys=await requestPromise(db.transaction('images','readonly').objectStore('images').getAllKeys());
     const setsMeta=await getMeta('sets');
     const cardIds=new Set((imageKeys||[]).map(key=>String(key[0])));
+    // syncImages() writes its own lastSyncAt under a per-scope key
+    // (images:all, images:<setId>, ...) every time it runs, but nothing ever
+    // read it back out -- the dashboard's offline-catalog panel had no real
+    // date to show for "Card images cached on this device" and fell back to
+    // a hardcoded blank, which displayed as "Not downloaded" right next to
+    // the actual cached image count. Most recent sync across every scope
+    // that's ever been synced on this device.
+    const allMeta=await getAllMeta();
+    const imageSyncTimes=(allMeta||[])
+      .filter(m=>String(m?.key||'').startsWith('images:'))
+      .map(m=>m.lastSyncAt).filter(Boolean).sort();
     return {
       setsCount,
       cardImageCount:cardIds.size,
       imageFileCount:(imageKeys||[]).length,
       setsGeneratedAt:setsMeta?.generatedAt||'',
       setsImportedAt:setsMeta?.lastImportedAt||'',
+      lastImageSyncAt:imageSyncTimes.length?imageSyncTimes[imageSyncTimes.length-1]:'',
     };
   }
 
