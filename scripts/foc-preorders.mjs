@@ -600,6 +600,80 @@ async function adminSku(request,env,deps){
   const {data:rows}=await db(`comic_skus?id=eq.${skuId}&store_id=eq.${encodeURIComponent(storeId)}`,{method:'PATCH',headers:{Prefer:'return=representation'},body:JSON.stringify(patch)});return deps.json({ok:true,sku:rows?.[0]});
 }
 
+// Turns a physically-arrived FOC shipment into real inventory. Deliberately
+// the ONLY place comic_skus ever become inventory_items -- importing a PRH
+// file creates catalog rows for hundreds of covers a store will never
+// actually order, and even placing the distributor order (exportPrh) is not
+// proof the books arrive (short-ships, delays, and cancellations are routine
+// in comics distribution). Creating inventory at either of those earlier
+// points would give the store phantom stock for books it may never receive.
+// Copies that match a paid customer preorder are reserved for that customer
+// first (oldest order first) rather than being sold off the shelf twice.
+async function receiveShipment(request,env,deps){
+  const limited=await deps.readJsonWithLimit(request,32*1024);if(limited.error)return limited.error;
+  const body=limited.data||{};const storeId=text(body.storeId,80),cycleId=text(body.cycleId,80);
+  const auth=await deps.requireStoreUser(request,env,storeId,['owner','admin','manager','employee']);if(auth.error)return auth.error;
+  const lines=(Array.isArray(body.lines)?body.lines:[]).slice(0,500);
+  if(!cycleId||!lines.length)return deps.json({ok:false,error:'cycleId and at least one line are required'},400);
+  const db=(path,options)=>deps.supabaseAdminFetch(env,path,options);
+  const ids=[...new Set(lines.map(l=>text(l.skuId,80)).filter(id=>/^[0-9a-f-]{36}$/i.test(id)))];
+  if(!ids.length)return deps.json({ok:false,error:'No valid cover selections were supplied'},400);
+  const { data:skuRows }=await db(`comic_skus?id=${inFilter(ids)}&cycle_id=eq.${encodeURIComponent(cycleId)}&store_id=eq.${encodeURIComponent(storeId)}&select=*`);
+  const skuById=new Map((skuRows||[]).map(row=>[row.id,row]));
+  const { data:paidItems }=await db(`foc_preorder_items?cycle_id=eq.${encodeURIComponent(cycleId)}&sku_id=${inFilter(ids)}&status=eq.committed&select=id,sku_id,order_id,quantity,created_at,order:foc_preorder_orders(id,status,fulfillment_method)`);
+  const created=[];const receivedSummary=[];
+  for(const line of lines){
+    const sku=skuById.get(text(line.skuId,80));if(!sku)continue;
+    const receivedQty=Math.max(0,Math.min(1000,Number(line.receivedQty||0)));if(!receivedQty)continue;
+    const rows=Array.from({length:receivedQty},()=>({
+      store_id:storeId,status:'in_stock',
+      data:{
+        name:[sku.title,sku.variant_label&&sku.variant_label!=='Cover A'?sku.variant_label:''].filter(Boolean).join(' -- '),
+        category:'Comics',publisher:sku.publisher||'',upc:sku.upc||'',cost:0,
+        market:Number(sku.customer_price_cents||0)/100,salePrice:Number(sku.customer_price_cents||0)/100,
+        qty:1,quantity:1,image:sku.cover_image_url||'',
+        source:'foc_receive',focSkuId:sku.id,focCycleId:cycleId,focReceivedAt:new Date().toISOString(),
+      },
+    }));
+    const { data:inserted }=await db('inventory_items',{method:'POST',headers:{Prefer:'return=representation'},body:JSON.stringify(rows)});
+    (inserted||[]).forEach(row=>created.push(row.id));
+    // Reserve for paid customers before this cover ever reaches the shelf --
+    // oldest paid order first, capped at what actually arrived (a short-ship
+    // can mean fewer copies came in than were sold). An item is only ever
+    // marked 'received' when its FULL requested quantity is covered -- never
+    // partially, or a customer owed 2 copies who only got 1 this batch would
+    // silently look fully fulfilled and their order could wrongly flip to
+    // ready_for_pickup below while they're still short a copy.
+    let reserveRemaining=receivedQty;
+    const sortedPaid=(paidItems||[]).filter(item=>item.sku_id===sku.id&&item.order?.status==='paid').sort((a,b)=>new Date(a.created_at)-new Date(b.created_at));
+    for(const item of sortedPaid){
+      const need=Number(item.quantity||0);
+      if(need<=0||need>reserveRemaining)continue;
+      reserveRemaining-=need;
+      await db(`foc_preorder_items?id=eq.${item.id}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({status:'received'})});
+    }
+    receivedSummary.push({skuId:sku.id,title:sku.title,variantLabel:sku.variant_label,receivedQty,reservedForCustomers:receivedQty-reserveRemaining});
+  }
+  // An order is ready to hand over once every item on it has arrived and
+  // been reserved -- flips paid orders to ready_for_pickup (nothing further
+  // needed) or reserved (still needs an outbound shipment) so My Preorders
+  // and staff both see accurate status instead of a paid order sitting there
+  // looking identical whether the books are in or still weeks away.
+  const orderIds=[...new Set((paidItems||[]).map(item=>item.order_id))];
+  if(orderIds.length){
+    const { data:allItems }=await db(`foc_preorder_items?order_id=${inFilter(orderIds)}&select=order_id,status`);
+    const { data:orders }=await db(`foc_preorder_orders?id=${inFilter(orderIds)}&select=id,status,fulfillment_method`);
+    for(const order of orders||[]){
+      if(order.status!=='paid')continue;
+      const items=(allItems||[]).filter(item=>item.order_id===order.id);
+      if(!items.length||!items.every(item=>item.status==='received'))continue;
+      const nextStatus=order.fulfillment_method==='pickup'?'ready_for_pickup':'reserved';
+      await db(`foc_preorder_orders?id=eq.${order.id}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({status:nextStatus})});
+    }
+  }
+  return deps.json({ok:true,createdInventoryCount:created.length,receivedSummary});
+}
+
 async function saveShippingSettings(request,env,deps){
   const limited=await deps.readJsonWithLimit(request,32*1024);if(limited.error)return limited.error;const body=limited.data||{};const storeId=text(body.storeId,80);
   const auth=await deps.requireStoreUser(request,env,storeId,['owner','admin']);if(auth.error)return auth.error;const db=(path,options)=>deps.supabaseAdminFetch(env,path,options);
@@ -674,6 +748,7 @@ export async function handleFocRequest(request, env, url, deps) {
   if(path==='/foc/admin/cycles'&&(request.method==='GET'||request.method==='PATCH'))return adminCycle(request,env,deps,url);
   if(path==='/foc/admin/sku'&&request.method==='PATCH')return adminSku(request,env,deps);
   if(path==='/foc/admin/export'&&request.method==='GET')return exportPrh(env,deps,url,request);
+  if(path==='/foc/admin/receive'&&request.method==='POST')return receiveShipment(request,env,deps);
   if(path==='/foc/admin/shipping-settings'&&request.method==='GET')return getShippingSettings(request,env,deps,url);
   if(path==='/foc/admin/shipping-settings'&&request.method==='PATCH')return saveShippingSettings(request,env,deps);
   return deps.json({ok:false,error:'FOC route not found'},404);

@@ -265,3 +265,81 @@ if (fs.existsSync(actualPath)) {
 }
 
 console.log('FOC preorder normalization, security, checkout, and real-rate shipping contracts passed.');
+
+// ── Contract: receiving a shipment is the ONLY place a comic_sku becomes
+// real inventory -- importing a PRH file and placing the distributor order
+// (exportPrh) both stay catalog/planning-only, since neither is proof the
+// books actually arrive (short-ships, delays, and cancellations are routine
+// in comics distribution). Creating inventory at either earlier point would
+// give the store phantom stock for books it may never receive. ──
+assert.match(service, /if\(path==='\/foc\/admin\/receive'&&request\.method==='POST'\)return receiveShipment\(request,env,deps\);/, 'a POST /foc/admin/receive route must exist');
+const importPrhSrc = service.match(/async function importPrh\(request, env, deps, storeId\) \{[\s\S]*?\n\}/)[0];
+assert.doesNotMatch(importPrhSrc, /inventory_items/, 'importing a PRH file must never create inventory_items rows -- most of a weekly catalog is never ordered');
+const exportPrhSrc = service.match(/async function exportPrh\(env,deps,url,request\)\{[\s\S]*?\n\}/)[0];
+assert.doesNotMatch(exportPrhSrc, /inventory_items/, 'placing the distributor order must never create inventory_items rows -- an order is not proof the books arrive');
+const receiveSrc = service.match(/async function receiveShipment\(request,env,deps\)\{[\s\S]*?\n\}/)[0];
+assert.match(receiveSrc, /status:'in_stock'/, 'received copies must be created as normal sellable in_stock inventory');
+assert.match(receiveSrc, /source:'foc_receive',focSkuId:sku\.id,focCycleId:cycleId/, 'created inventory must trace back to the exact FOC cover and cycle it came from');
+assert.match(receiveSrc, /sort\(\(a,b\)=>new Date\(a\.created_at\)-new Date\(b\.created_at\)\)/, 'paid customer copies must be reserved oldest-order-first, not in an arbitrary order');
+assert.match(receiveSrc, /status=eq\.committed/, 'only committed (paid, non-refunded) preorder items may claim a received copy');
+assert.match(receiveSrc, /if\(need<=0\|\|need>reserveRemaining\)continue;/, 'an item must only be marked received when its FULL requested quantity is covered -- partially covering it and still marking it received would understate what the customer is still owed');
+assert.match(receiveSrc, /nextStatus=order\.fulfillment_method==='pickup'\?'ready_for_pickup':'reserved'/, 'a fully-received paid order must move to ready_for_pickup (pickup) or reserved (shipping), not sit looking identical to an order still weeks away');
+
+console.log('FOC receive-shipment contract checks passed');
+
+// ── Functional: reimplement the reservation + order-status-flip algorithm
+// and verify it against the scenarios that actually matter: a short-ship
+// (fewer copies arrive than were ordered), oldest-paid-customer-first
+// allocation, a cover with no customer orders at all (pure store stock),
+// and a partially-received order that must NOT be marked ready. ──
+function allocateReceivedCopies(receivedQty, paidItemsForSku) {
+  const sorted = paidItemsForSku.slice().sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+  let remaining = receivedQty;
+  const reservedItemIds = [];
+  for (const item of sorted) {
+    const need = item.quantity;
+    if (need <= 0 || need > remaining) continue; // never partially reserve one item's requested quantity
+    remaining -= need;
+    reservedItemIds.push(item.id);
+  }
+  return { reservedItemIds, reservedForCustomers: receivedQty - remaining, unclaimed: remaining };
+}
+function nextOrderStatus(fulfillmentMethod, allItemsReceived) {
+  if (!allItemsReceived) return null;
+  return fulfillmentMethod === 'pickup' ? 'ready_for_pickup' : 'reserved';
+}
+
+{
+  // Ordered 5, only 3 arrived (short-ship) -- the two oldest paid customers
+  // (qty 1 and 1) get reserved; the newest paid customer (qty 2) is left
+  // unreserved rather than the allocation silently favoring them.
+  const paid = [
+    { id:'item-newest', quantity:2, created_at:'2026-08-19T10:00:00Z' },
+    { id:'item-oldest', quantity:1, created_at:'2026-08-15T10:00:00Z' },
+    { id:'item-middle', quantity:1, created_at:'2026-08-17T10:00:00Z' },
+  ];
+  const result = allocateReceivedCopies(3, paid);
+  assert.deepEqual(result.reservedItemIds, ['item-oldest', 'item-middle'], 'a short-shipped cover must reserve the oldest paid orders first, not an arbitrary order');
+  assert.equal(result.reservedForCustomers, 2, 'only the copies actually allocated to a customer count as reserved');
+  assert.equal(result.unclaimed, 1, 'the remaining received copy (not enough for the newest paid order) becomes normal shelf stock, not a phantom reservation');
+}
+
+{
+  // A cover nobody preordered (pure speculative store stock) -- everything
+  // received goes straight to the shelf, no reservation math applies.
+  const result = allocateReceivedCopies(4, []);
+  assert.deepEqual(result.reservedItemIds, []);
+  assert.equal(result.reservedForCustomers, 0);
+  assert.equal(result.unclaimed, 4, 'a cover with no paid customers must have its entire received quantity available as shelf stock');
+}
+
+{
+  // Order status only flips once EVERY item on it has arrived -- a mixed
+  // order (one cover in, one cover still weeks out) must not be marked
+  // ready for pickup with half the order missing.
+  assert.equal(nextOrderStatus('pickup', true), 'ready_for_pickup');
+  assert.equal(nextOrderStatus('shipping', true), 'reserved');
+  assert.equal(nextOrderStatus('pickup', false), null, 'an order with any unreceived item must not be marked ready_for_pickup');
+}
+
+console.log('FOC receive-shipment functional checks passed');
