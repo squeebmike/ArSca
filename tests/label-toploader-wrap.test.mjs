@@ -54,8 +54,14 @@ assert.ok(!/barcodeImg = `<img src="\$\{canvas\.toDataURL\('image\/png'\)\}" sty
 assert.match(dashboard, /barcodeImg = `<img src="\$\{canvas\.toDataURL\('image\/png'\)\}" style="width:100%;height:\$\{imgHeight\}px;object-fit:contain">`;/,
   'the print-preview code image must let the browser use its own smooth downscaling');
 assert.match(dashboard, /\.label\.wrap \{ flex-direction:row !important; padding:0 !important; \}/, 'the wrap layout must lay the two faces out side by side with a fold line between them');
-assert.match(dashboard, /border-right:1px dashed #999;/, 'a dashed fold line must separate the front and back faces so it\'s clear where to fold');
-assert.match(dashboard, /\.label\.wrap \.wrap-front \{ padding:10px 8px 5px;/, 'the front face must have extra top padding so the item name isn\'t flush against the label edge');
+// Solid black, not the earlier #999 gray -- gray barely survives a
+// monochrome thermal print the same way pure-black text/QR does, which is
+// exactly why the fold line was nearly invisible on a real printed label.
+// The canvas-drawn download path already drew its own fold line in solid
+// black; this brings the browser-print path in line with it.
+assert.match(dashboard, /border-right:2px dashed #000;/, 'a solid-black dashed fold line must separate the front and back faces so it actually survives a monochrome print, not a gray line that fades away');
+assert.ok(!/border-right:1px dashed #999;/.test(dashboard.slice(dashboard.indexOf('const wrapStyle'), dashboard.indexOf('w.document.write'))), 'the wrap fold line must not still be the old barely-visible gray');
+assert.match(dashboard, /\.label\.wrap \.wrap-front \{ padding:10px 8px 5px; justify-content:flex-start; gap:5px;/, 'the front face must have extra top padding so the item name isn\'t flush against the label edge, and a bit more gap between stacked elements to leave room for longer names');
 assert.match(dashboard, /\.label\.wrap \.wrap-back \{ padding:12px 6px 5px; justify-content:flex-start; gap:8px; \}/, 'the back face must have extra top padding so the shop name isn\'t flush against the label edge');
 // Every wrap-face text weight must be a real "700" (bold) -- confirmed
 // against a real print-preview screenshot that wrap-shopname and
@@ -68,7 +74,10 @@ assert.match(dashboard, /\.wrap-name \{ font-size:8px; font-weight:700; line-hei
 assert.match(dashboard, /\.wrap-badge \{ font-size:6px; font-weight:700; text-transform:uppercase; text-align:center; \}/, 'the badge (whichever one applies) must be bold -- an unbolded pass printed noticeably less crisp than every other element on a real thermal print');
 assert.match(dashboard, /\.wrap-condition \{ font-size:11px; font-weight:700; text-transform:uppercase; align-self:flex-start; \}/, 'the condition must use the same real bold weight as every other element on the label, not a synthesized 800');
 assert.ok(!/font-weight:800/.test(dashboard.slice(dashboard.indexOf('const wrapStyle'), dashboard.indexOf('w.document.write'))), 'no wrap-face text may request a synthesized 800 weight');
-assert.match(dashboard, /\.wrap-price \{ font-size:27px; font-weight:700; line-height:1; margin-top:auto; \}/, 'the price must render at the same big size the digits used to get via a nested span, now applied directly since there\'s no more $ sign needing its own smaller size; weight must be a real 700 (bold), not a 900 that has no guaranteed matching real face and can render synthetically thickened/grainy');
+// Sized down slightly from 27px to 24px (still clearly the label's dominant
+// element) specifically to free up a bit more vertical room above it for
+// longer item names/badges, on top of the extra front-face gap above.
+assert.match(dashboard, /\.wrap-price \{ font-size:24px; font-weight:700; line-height:1; margin-top:auto; \}/, 'the price must be a real 700 (bold), not a 900 that has no guaranteed matching real face and can render synthetically thickened/grainy, and sized to leave headroom for longer names');
 assert.ok(!/wrap-price-dollar/.test(dashboard), 'the $-sign-specific CSS class must be fully removed along with the glyph itself');
 assert.ok(!/wrap-price-num/.test(dashboard), 'the digits-specific nested-span CSS class must be fully removed -- the price is one plain text node now');
 
@@ -84,12 +93,19 @@ assert.ok(!/WRAP_LOGO_SRC/.test(dashboard), 'the illustrated logo image asset mu
 assert.ok(!/loadWrapLogoImage/.test(dashboard), 'the logo-preload helper must be fully removed along with the image-based logo');
 assert.ok(!/wrapLogoImg/.test(dashboard), 'no wrap-logo-image variable may remain in the download path');
 assert.match(dashboard, /const nameFont = Math\.round\(h \* 0\.085\);/, 'the item name must be drawn a bit bigger than before');
-assert.match(dashboard, /if\(b\.badge\)\{\s*\n(?:[^\n]*\n)*?\s*tctx\.font = `bold \$\{Math\.round\(h \* 0\.06\)\}px sans-serif`;\s*\n\s*tctx\.fillText\(b\.badge\.toUpperCase\(\), halfW \/ 2, h \* 0\.24\);\s*\n\s*\}/, 'the front face must draw whichever single badge applies, and it must be bold -- an unbolded pass printed noticeably less crisp than everything else on a real thermal print');
+assert.match(dashboard, /if\(b\.badge\)\{\s*\n(?:[^\n]*\n)*?\s*tctx\.font = `bold \$\{Math\.round\(h \* 0\.06\)\}px \$\{LABEL_FONT_STACK\}`;\s*\n\s*tctx\.fillText\(b\.badge\.toUpperCase\(\), halfW \/ 2, h \* 0\.24\);\s*\n\s*\}/, 'the front face must draw whichever single badge applies, and it must be bold -- an unbolded pass printed noticeably less crisp than everything else on a real thermal print');
+// The device's real system UI font (San Francisco/Segoe UI/Roboto) instead
+// of a bare "sans-serif" generic -- these are specifically hinted/optimized
+// for small-size legibility. Shared between this canvas path and the
+// browser-print path (both need the same treatment, since both draw text at
+// a small physical size).
+assert.match(dashboard, /const LABEL_FONT_STACK = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";/, 'a shared system-UI font stack must exist for label text, not a bare "sans-serif" generic');
+assert.ok(!/px sans-serif`/.test(dashboard.slice(dashboard.indexOf('async function downloadInventoryLabelPngs'))), 'no canvas-drawn label text may fall back to a bare "sans-serif" font string once LABEL_FONT_STACK exists');
 assert.match(dashboard, /const priceDigits = fdLabelPrice\$\(b\.price\)\.slice\(1\);/, 'the price must render as whole-dollar digits only, with the "$" glyph dropped');
 assert.match(dashboard, /const priceBigFont = Math\.round\(h \* 0\.33\);/, 'the price must be sized up slightly from before, at one single big font size now that there\'s no smaller $ sign to size separately');
 assert.match(dashboard, /tctx\.textAlign = 'center'; tctx\.textBaseline = 'alphabetic';/, 'the digits must be centered around the front face\'s horizontal center, not right-aligned toward the fold line');
 assert.match(dashboard, /tctx\.fillText\(priceDigits, halfW \/ 2, priceBaseline\);/, 'the whole-dollar digits must be drawn centered at the big font size');
-assert.match(dashboard, /tctx\.textAlign = 'left'; tctx\.textBaseline = 'top';\s*\n\s*tctx\.font = `bold \$\{Math\.round\(h \* 0\.13\)\}px sans-serif`;\s*\n\s*tctx\.fillText\(String\(b\.condition \|\| ''\)\.toUpperCase\(\), padX, h \* 0\.8\);/, 'the condition must be drawn at the left edge of the front face, not centered');
+assert.match(dashboard, /tctx\.textAlign = 'left'; tctx\.textBaseline = 'top';\s*\n\s*tctx\.font = `bold \$\{Math\.round\(h \* 0\.13\)\}px \$\{LABEL_FONT_STACK\}`;\s*\n\s*tctx\.fillText\(String\(b\.condition \|\| ''\)\.toUpperCase\(\), padX, h \* 0\.8\);/, 'the condition must be drawn at the left edge of the front face, not centered');
 assert.match(dashboard, /const shopFont = Math\.round\(h \* 0\.065\), shopPad = h \* 0\.032;/, 'the shop name must be drawn a bit bigger than before, with an explicit symmetric padding value');
 assert.match(dashboard, /tctx\.fillText\('THE MANA POCKET', halfW \+ halfW \/ 2, shopPad\);/, 'the back face shop name must be drawn as plain bold text, not an illustrated logo image, using the symmetric top padding');
 assert.match(dashboard, /const logoBottom = shopPad \+ shopFont \* 1\.2 \+ shopPad;/, 'the code region must start below a band with equal padding above and below the shop-name text, not eyeballed constants');
