@@ -1,0 +1,64 @@
+name: Build MTG Offline Card Images
+
+on:
+  workflow_dispatch:
+    inputs:
+      scope:
+        description: 'Image scope: "all" for every set, or a specific Scryfall set code (e.g. "mh3", "woe")'
+        required: true
+        default: 'all'
+
+concurrency:
+  group: mtg-offline-images
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+    # 360 is the hard ceiling for a GitHub-hosted runner job. MTG's catalog is
+    # roughly 5-10x the size of Pokemon's, so a scope=all run is even more
+    # likely to need several dispatches over multiple days than Pokemon's own
+    # images build already does -- the Worker's /catalog/mtg/images/manifest
+    # route merges whatever per-set indexes have already landed in R2 rather
+    # than requiring one single run to finish every set back to back.
+    timeout-minutes: 360
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      MTG_R2_BUCKET: arsca-offline-catalogs
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Validate required secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${CLOUDFLARE_API_TOKEN:-}" || { echo "::error::CLOUDFLARE_API_TOKEN is missing"; exit 1; }
+          test -n "${CLOUDFLARE_ACCOUNT_ID:-}" || { echo "::error::CLOUDFLARE_ACCOUNT_ID is missing"; exit 1; }
+
+      - name: Build and upload card images
+        shell: bash
+        run: |
+          set -euo pipefail
+          SCOPE="${{ github.event.inputs.scope }}"
+          echo "Harvesting images for scope: $SCOPE"
+          npm run mtg:images:build -- --scope="$SCOPE" --upload
+
+      - name: Verify production manifest reflects the new image coverage
+        shell: bash
+        run: |
+          set -euo pipefail
+          SCOPE="${{ github.event.inputs.scope }}"
+          curl --fail --retry 5 --retry-delay 3 \
+            "https://still-resonance-4f87.swarnerauto.workers.dev/catalog/mtg/images/manifest?set=$SCOPE" \
+            | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const m=JSON.parse(s);if(!m.ok||!m.ids?.length)process.exit(1);console.log('ids:',m.ids.length)})"
