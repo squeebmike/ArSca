@@ -22,8 +22,11 @@ assert.match(qrLibSrc, /_this\.getModuleCount = function/, 'the vendored file mu
 
 assert.match(dashboard, /<select id="label-print-code-style" class="tsi" onchange="localStorage\.setItem\('label_print_code_style', this\.value\)"/, 'a barcode-style picker must exist and persist the choice');
 assert.match(dashboard, /<option value="barcode">Linear barcode \(CODE128\)/, 'a linear-barcode option must exist');
-assert.match(dashboard, /<option value="qr">QR code/, 'a QR-code option must exist');
-assert.match(dashboard, /codeStyleEl\.value = localStorage\.getItem\('label_print_code_style'\) \|\| 'barcode';/, 'opening the modal must restore the last-used code style, defaulting to barcode so existing labels don\'t change unexpectedly');
+assert.match(dashboard, /<option value="qr"[^>]*>QR code/, 'a QR-code option must exist');
+// QR reads far more reliably than a linear barcode at small thermal-label
+// sizes -- defaulting to barcode meant a device that had never had someone
+// manually pick QR kept printing the less reliable style.
+assert.match(dashboard, /codeStyleEl\.value = localStorage\.getItem\('label_print_code_style'\) \|\| 'qr';/, 'opening the modal must restore the last-used code style, defaulting to QR');
 
 // ── Contract: a shared helper renders either a barcode or a QR code onto a canvas,
 // using the vendored library's real matrix API (qrcode(...).addData/.make/.isDark),
@@ -40,7 +43,7 @@ assert.match(dashboard, /JsBarcode\(canvas, value, \{ format:'CODE128', displayV
 // reading the code-style dropdown for the standard layout, but the toploader-wrap layout's
 // back face always forces QR regardless of that dropdown -- a linear barcode reads worse
 // than a QR does on that smaller, more square-ish back face ──
-const codeStyleReads = dashboard.match(/const codeStyle = isWrap \? 'qr' : \(document\.getElementById\('label-print-code-style'\)\?\.value \|\| 'barcode'\);/g) || [];
+const codeStyleReads = dashboard.match(/const codeStyle = isWrap \? 'qr' : \(document\.getElementById\('label-print-code-style'\)\?\.value \|\| 'qr'\);/g) || [];
 assert.equal(codeStyleReads.length, 2, 'both printInventoryLabels and downloadInventoryLabelPngs must force QR for wrap and otherwise read the code-style dropdown');
 assert.match(dashboard, /const canvas = await generateLabelCodeCanvas\(codeStyle === 'qr' \? labelQrPayload\(b\) : \(b\.sku \|\| b\.id\), codeStyle, codeGenSize\);/, 'printInventoryLabels must generate its code image via the shared helper');
 assert.match(dashboard, /const codeCanvas = await generateLabelCodeCanvas\(codeValue, codeStyle, Math\.round\(codeSize\)\);/, 'downloadInventoryLabelPngs must generate its wrap-layout code image via the shared helper, at the code\'s real on-label size');
