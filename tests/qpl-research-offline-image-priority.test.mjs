@@ -40,16 +40,29 @@ assert.match(saveCacheFn, /imageUrl:durableImageUrl\(row\.imageUrl\),/,
 // ── resolvePokemonCatalogImagesForVisibleCards() must check the bulk
 // offline image cache (the one that already makes inventory images work
 // offline) before/alongside the older name+number catalog, and must not
-// be fooled into thinking a dead blob: src is "already resolved".
+// be fooled into thinking a dead blob: src is "already resolved". Crucially,
+// it must target the .qpl-img-shell CONTAINER, not an inner <img> --
+// sanitizing a dead blob: URL at render time means the row often has no
+// <img> tag at all yet (the "NO IMAGE" placeholder branch), so a fix that
+// only ever swaps an existing <img>'s src silently does nothing for exactly
+// the rows this function exists to repair.
 const resolveFnStart = dashboard.indexOf('function resolvePokemonCatalogImagesForVisibleCards(){');
 assert(resolveFnStart >= 0, 'resolvePokemonCatalogImagesForVisibleCards must exist');
 const resolveFnEnd = dashboard.indexOf('\n}', dashboard.indexOf('});', resolveFnStart));
 const resolveFn = dashboard.slice(resolveFnStart, resolveFnEnd);
-assert.match(resolveFn, /!\/\^blob:\/i\.test\(img\.src\)/,
+assert.match(resolveFn, /const shell = card\.querySelector\('\.qpl-img-shell'\);/,
+  'must target the always-present .qpl-img-shell container, not an inner <img> that may not exist when the row started with no image');
+assert.match(resolveFn, /const existingImg = shell\.querySelector\('img'\);/,
+  'must check for an existing <img> inside the shell without assuming one is there');
+assert.match(resolveFn, /!\/\^blob:\/i\.test\(existingImg\.src\)/,
   'an existing blob: src must not be treated as already-working -- it is guaranteed dead outside the tab that created it');
 assert.match(resolveFn, /inventoryTcgPlayerId\(r\)/,
   'must resolve the tcgPlayerId the same way inventory does, to key into the same bulk offline image cache');
 assert.match(resolveFn, /window\.ArsCaPokemonOfflineImages\.getImageBlob\(tcgPlayerId, '400'\)/,
   'must check the bulk-synced offline image cache -- the same store that already makes inventory images work offline -- not only the older legacy catalog');
+assert.match(resolveFn, /shell\.innerHTML = `<img src="\$\{escHtml\(url\)\}"/,
+  'must actually insert a real <img> into the shell when no image existed at all, not just try to update one that may not exist');
+assert.match(resolveFn, /shell\.onclick = \(\) => openQplImageLightbox\(idx\);/,
+  'a freshly-inserted image must still be tap-to-zoom, matching the initial render for rows that had an image from the start');
 
 console.log('QPL research offline-image-priority checks passed');
