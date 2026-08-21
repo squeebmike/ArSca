@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.21.8-label-print-preview-qr-aliasing-fix">
+<meta name="version" content="2026.08.21.9-label-wrap-text-weight-and-padding">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1633,15 +1633,15 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.21.8-label-print-preview-qr-aliasing-fix" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.21.8-label-print-preview-qr-aliasing-fix" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.21.8-label-print-preview-qr-aliasing-fix" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.08.21.8-label-print-preview-qr-aliasing-fix" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.21.8-label-print-preview-qr-aliasing-fix" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.21.8-label-print-preview-qr-aliasing-fix" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.21.8-label-print-preview-qr-aliasing-fix" defer></script>
-<script src="scripts/pokemon/offline-browser.js?v=2026.08.21.8-label-print-preview-qr-aliasing-fix" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.21.8-label-print-preview-qr-aliasing-fix" defer></script>
+<script src="scripts/query-routing.js?v=2026.08.21.9-label-wrap-text-weight-and-padding" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.21.9-label-wrap-text-weight-and-padding" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.21.9-label-wrap-text-weight-and-padding" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.08.21.9-label-wrap-text-weight-and-padding" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.21.9-label-wrap-text-weight-and-padding" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.21.9-label-wrap-text-weight-and-padding" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.21.9-label-wrap-text-weight-and-padding" defer></script>
+<script src="scripts/pokemon/offline-browser.js?v=2026.08.21.9-label-wrap-text-weight-and-padding" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.21.9-label-wrap-text-weight-and-padding" defer></script>
 </head>
 <body>
 
@@ -1670,11 +1670,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.21.8-label-print-preview-qr-aliasing-fix</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.21.9-label-wrap-text-weight-and-padding</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.21.8-label-print-preview-qr-aliasing-fix</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.21.9-label-wrap-text-weight-and-padding</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1692,7 +1692,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.21.8-label-print-preview-qr-aliasing-fix</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.21.9-label-wrap-text-weight-and-padding</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3641,7 +3641,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.21.8-label-print-preview-qr-aliasing-fix';
+const APP_VERSION = '2026.08.21.9-label-wrap-text-weight-and-padding';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -40720,15 +40720,27 @@ async function printInventoryLabels(){
   // Splits the label into two equal-width faces divided by a dashed fold
   // line, on top of whichever size (sheet or roll) is already active above --
   // percentage widths so this adapts to either total label width automatically.
+  // Front/back top padding bumped up (was 6px/8px) so the item name and shop
+  // name aren't flush against the label's top edge.
+  // Every text weight here is exactly "700" (bold), never 800/900 -- the
+  // canvas-drawn download path already learned this the hard way (see
+  // TEXT_SUPERSAMPLE below): "sans-serif" has no guaranteed real 800/900
+  // face on every platform, so a requested weight with no matching real face
+  // gets synthesized by algorithmically over-thickening the 700 outline,
+  // which renders visibly rougher/grainier than the real weight. wrap-
+  // shopname and wrap-condition were still at 800 here even though the rest
+  // of this stylesheet (and the entire canvas path) had already standardized
+  // on 700 -- confirmed against a real print-preview screenshot that those
+  // two elements looked noticeably softer than everything else on the label.
   const wrapStyle = `
       .label.wrap { flex-direction:row !important; padding:0 !important; }
       .label.wrap .wrap-front, .label.wrap .wrap-back { width:50%; height:100%; box-sizing:border-box; display:flex; flex-direction:column; align-items:center; overflow:hidden; }
-      .label.wrap .wrap-front { padding:6px 8px 5px; justify-content:flex-start; gap:3px; border-right:1px dashed #999; }
-      .label.wrap .wrap-back { padding:8px 6px 5px; justify-content:flex-start; gap:8px; }
-      .wrap-shopname { font-size:9px; font-weight:800; letter-spacing:.03em; text-align:center; }
+      .label.wrap .wrap-front { padding:10px 8px 5px; justify-content:flex-start; gap:3px; border-right:1px dashed #999; }
+      .label.wrap .wrap-back { padding:12px 6px 5px; justify-content:flex-start; gap:8px; }
+      .wrap-shopname { font-size:9px; font-weight:700; letter-spacing:.03em; text-align:center; }
       .wrap-name { font-size:8px; font-weight:700; line-height:1.1; max-height:18px; overflow:hidden; text-align:center; }
       .wrap-badge { font-size:6px; font-weight:700; text-transform:uppercase; text-align:center; }
-      .wrap-condition { font-size:11px; font-weight:800; text-transform:uppercase; align-self:flex-start; }
+      .wrap-condition { font-size:11px; font-weight:700; text-transform:uppercase; align-self:flex-start; }
       .wrap-price { font-size:27px; font-weight:700; line-height:1; margin-top:auto; }`;
   w.document.write(`<html><head><title>Labels</title>
     <style>${isRoll ? rollStyle : sheetStyle}${isWrap ? wrapStyle : ''}</style>
@@ -43610,7 +43622,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.21.8-label-print-preview-qr-aliasing-fix" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.21.9-label-wrap-text-weight-and-padding" defer></script>
 </body>
 </html>
 

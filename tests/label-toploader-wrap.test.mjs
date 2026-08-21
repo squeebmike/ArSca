@@ -55,11 +55,19 @@ assert.match(dashboard, /barcodeImg = `<img src="\$\{canvas\.toDataURL\('image\/
   'the print-preview code image must let the browser use its own smooth downscaling');
 assert.match(dashboard, /\.label\.wrap \{ flex-direction:row !important; padding:0 !important; \}/, 'the wrap layout must lay the two faces out side by side with a fold line between them');
 assert.match(dashboard, /border-right:1px dashed #999;/, 'a dashed fold line must separate the front and back faces so it\'s clear where to fold');
-assert.match(dashboard, /\.label\.wrap \.wrap-back \{ padding:8px 6px 5px; justify-content:flex-start; gap:8px; \}/, 'the back face must use equal top-padding and shopname-to-code gap so the two spaces read as symmetric');
-assert.match(dashboard, /\.wrap-shopname \{ font-size:9px; font-weight:800; letter-spacing:\.03em; text-align:center; \}/, 'the shop name must be a bit bigger than before, still a small fixed text band');
+assert.match(dashboard, /\.label\.wrap \.wrap-front \{ padding:10px 8px 5px;/, 'the front face must have extra top padding so the item name isn\'t flush against the label edge');
+assert.match(dashboard, /\.label\.wrap \.wrap-back \{ padding:12px 6px 5px; justify-content:flex-start; gap:8px; \}/, 'the back face must have extra top padding so the shop name isn\'t flush against the label edge');
+// Every wrap-face text weight must be a real "700" (bold) -- confirmed
+// against a real print-preview screenshot that wrap-shopname and
+// wrap-condition (previously 800, unlike every other element here) looked
+// noticeably softer/grainier: "sans-serif" has no guaranteed real 800/900
+// face, so a requested weight with no matching real face gets synthesized
+// by algorithmically over-thickening the true 700 outline.
+assert.match(dashboard, /\.wrap-shopname \{ font-size:9px; font-weight:700; letter-spacing:\.03em; text-align:center; \}/, 'the shop name must use the same real bold weight as every other element on the label, not a synthesized 800');
 assert.match(dashboard, /\.wrap-name \{ font-size:8px; font-weight:700; line-height:1\.1; max-height:18px; overflow:hidden; text-align:center; \}/, 'the item name must be a bit bigger than before while still not crowding out condition/price');
 assert.match(dashboard, /\.wrap-badge \{ font-size:6px; font-weight:700; text-transform:uppercase; text-align:center; \}/, 'the badge (whichever one applies) must be bold -- an unbolded pass printed noticeably less crisp than every other element on a real thermal print');
-assert.match(dashboard, /\.wrap-condition \{ font-size:11px; font-weight:800; text-transform:uppercase; align-self:flex-start; \}/, 'the condition must sit at the left edge of the front face, not centered');
+assert.match(dashboard, /\.wrap-condition \{ font-size:11px; font-weight:700; text-transform:uppercase; align-self:flex-start; \}/, 'the condition must use the same real bold weight as every other element on the label, not a synthesized 800');
+assert.ok(!/font-weight:800/.test(dashboard.slice(dashboard.indexOf('const wrapStyle'), dashboard.indexOf('w.document.write'))), 'no wrap-face text may request a synthesized 800 weight');
 assert.match(dashboard, /\.wrap-price \{ font-size:27px; font-weight:700; line-height:1; margin-top:auto; \}/, 'the price must render at the same big size the digits used to get via a nested span, now applied directly since there\'s no more $ sign needing its own smaller size; weight must be a real 700 (bold), not a 900 that has no guaranteed matching real face and can render synthetically thickened/grainy');
 assert.ok(!/wrap-price-dollar/.test(dashboard), 'the $-sign-specific CSS class must be fully removed along with the glyph itself');
 assert.ok(!/wrap-price-num/.test(dashboard), 'the digits-specific nested-span CSS class must be fully removed -- the price is one plain text node now');
