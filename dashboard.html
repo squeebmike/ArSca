@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.21.15-offline-images-always-preferred">
+<meta name="version" content="2026.08.21.16-fix-dead-blob-image-urls">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1633,16 +1633,16 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.21.15-offline-images-always-preferred" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.21.15-offline-images-always-preferred" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.21.15-offline-images-always-preferred" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.08.21.15-offline-images-always-preferred" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.21.15-offline-images-always-preferred" defer></script>
-<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.08.21.15-offline-images-always-preferred" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.21.15-offline-images-always-preferred" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.21.15-offline-images-always-preferred" defer></script>
-<script src="scripts/pokemon/offline-browser.js?v=2026.08.21.15-offline-images-always-preferred" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.21.15-offline-images-always-preferred" defer></script>
+<script src="scripts/query-routing.js?v=2026.08.21.16-fix-dead-blob-image-urls" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.21.16-fix-dead-blob-image-urls" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.21.16-fix-dead-blob-image-urls" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.08.21.16-fix-dead-blob-image-urls" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.21.16-fix-dead-blob-image-urls" defer></script>
+<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.08.21.16-fix-dead-blob-image-urls" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.21.16-fix-dead-blob-image-urls" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.21.16-fix-dead-blob-image-urls" defer></script>
+<script src="scripts/pokemon/offline-browser.js?v=2026.08.21.16-fix-dead-blob-image-urls" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.21.16-fix-dead-blob-image-urls" defer></script>
 </head>
 <body>
 
@@ -1671,11 +1671,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.21.15-offline-images-always-preferred</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.21.16-fix-dead-blob-image-urls</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.21.15-offline-images-always-preferred</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.21.16-fix-dead-blob-image-urls</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1693,7 +1693,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.21.15-offline-images-always-preferred</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.21.16-fix-dead-blob-image-urls</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3642,7 +3642,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.21.15-offline-images-always-preferred';
+const APP_VERSION = '2026.08.21.16-fix-dead-blob-image-urls';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -17621,6 +17621,18 @@ function filterAndSwitch(f){
   if(btn) setF(f, btn);
 }
 
+// Search results get their imageUrl swapped for a URL.createObjectURL(blob)
+// preview when a bulk-synced offline image is found (see the Pokemon/MTG
+// live-search paths). That blob: URL is only valid inside the tab/document
+// that created it -- if it gets saved into persisted inventory data, it's a
+// dead reference the moment the page reloads or a different device loads
+// it, with the real CDN URL already overwritten and lost. Never let one
+// reach storage; the render layer already re-resolves the real image via
+// the item's tcgPlayerId/scryfallId at display time regardless.
+function durableImageUrl(url=''){
+  return /^blob:/i.test(String(url || '')) ? '' : (url || '');
+}
+
 function inventoryImageUrl(item={}){
   const raw = item.raw || {};
   const comicPhotoKey=item.userPhotoBlobKey||raw.userPhotoBlobKey||'';
@@ -17653,10 +17665,18 @@ function inventoryImageUrl(item={}){
     if(scryfallId && typeof hydrateMtgOfflineImageUrl==='function') hydrateMtgOfflineImageUrl(scryfallId);
     if(!navigator.onLine) return '';
   }
-  return item.photoDataUrl || item.userPhoto || item.uploadedPhotoUrl || item.photoUrl ||
-    item.thumbnail || item.imageUrl || item.image_url || item.image ||
-    raw.photoDataUrl || raw.userPhoto || raw.uploadedPhotoUrl || raw.photoUrl ||
-    raw.thumbnail || raw.imageUrl || raw.image_url || raw.image || '';
+  // durableImageUrl() drops any stored blob: URL -- a leftover from the
+  // now-fixed bug where a search-result's temporary offline-image preview
+  // (URL.createObjectURL(blob), only ever valid in the tab that made it)
+  // could get saved into these fields. A blob: URL found here is guaranteed
+  // dead (this render can't be the document that created it), so each
+  // candidate is filtered individually rather than just the final pick --
+  // otherwise a dead blob: in an earlier field would win the || chain and
+  // hide a perfectly good URL sitting in a later one.
+  return durableImageUrl(item.photoDataUrl) || durableImageUrl(item.userPhoto) || durableImageUrl(item.uploadedPhotoUrl) || durableImageUrl(item.photoUrl) ||
+    durableImageUrl(item.thumbnail) || durableImageUrl(item.imageUrl) || durableImageUrl(item.image_url) || durableImageUrl(item.image) ||
+    durableImageUrl(raw.photoDataUrl) || durableImageUrl(raw.userPhoto) || durableImageUrl(raw.uploadedPhotoUrl) || durableImageUrl(raw.photoUrl) ||
+    durableImageUrl(raw.thumbnail) || durableImageUrl(raw.imageUrl) || durableImageUrl(raw.image_url) || durableImageUrl(raw.image) || '';
 }
 function inventoryImageSourceLabel(item={}){
   const raw = item.raw || {};
@@ -36022,7 +36042,7 @@ async function selectQuickLookupResult(idx){
       <input id="qpl-edit-location" placeholder="Location" value="${escHtml(getShowMode()?.eventName ? 'At show - ' + getShowMode().eventName : '')}" style="background:var(--surf);border:1px solid var(--border);color:var(--text);padding:12px;border-radius:8px;font-size:14px;min-height:48px">
     </div>
     <div style="display:grid;grid-template-columns:1fr;gap:9px;margin-bottom:12px">
-      <input id="qpl-edit-image-url" placeholder="Image / cover URL" value="${escHtml(r.imageUrl || '')}" style="background:var(--surf);border:1px solid var(--border);color:var(--text);padding:12px;border-radius:8px;font-size:14px;min-height:48px">
+      <input id="qpl-edit-image-url" placeholder="Image / cover URL" value="${escHtml(durableImageUrl(r.imageUrl))}" style="background:var(--surf);border:1px solid var(--border);color:var(--text);padding:12px;border-radius:8px;font-size:14px;min-height:48px">
     </div>
     <div class="research-context-actions">
       <button class="hbtn buy" onclick="addSelectedQuickLookupToBuyOffer(${idx})">ADD TO BUY</button>
@@ -36224,8 +36244,8 @@ function selectedQuickLookupItem(idx){
     availableQty:r.source === 'inventory' ? inventoryAvailableQuantity(r.raw) : Number(r.availableQty || r.qty || r.quantity || 1),
     location:document.getElementById('qpl-edit-location')?.value.trim() || comicAppraisal?.location || '',
     box:isComic ? comicAppraisal.box || '' : '',
-    thumbnail:document.getElementById('qpl-edit-image-url')?.value.trim() || (isComic&&r.userPhotoBlobKey ? r.externalCoverImageUrl||'' : r.imageUrl||''),
-    imageUrl:document.getElementById('qpl-edit-image-url')?.value.trim() || (isComic&&r.userPhotoBlobKey ? r.externalCoverImageUrl||'' : r.imageUrl||''),
+    thumbnail:durableImageUrl(document.getElementById('qpl-edit-image-url')?.value.trim()) || (isComic&&r.userPhotoBlobKey ? r.externalCoverImageUrl||'' : durableImageUrl(r.imageUrl)),
+    imageUrl:durableImageUrl(document.getElementById('qpl-edit-image-url')?.value.trim()) || (isComic&&r.userPhotoBlobKey ? r.externalCoverImageUrl||'' : durableImageUrl(r.imageUrl)),
     userPhotoBlobKey:isComic ? r.userPhotoBlobKey || '' : '',
     priceSource:isComic ? 'PriceCharting' : (activePriceBasis.label || r.priceSource || 'No Real Price Available'),
     pricingSource:isComic ? 'PriceCharting' : (activePriceBasis.source || r.pricingSource || r.priceSource || 'No Real Price Available'),
@@ -43779,7 +43799,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.21.15-offline-images-always-preferred" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.21.16-fix-dead-blob-image-urls" defer></script>
 </body>
 </html>
 
