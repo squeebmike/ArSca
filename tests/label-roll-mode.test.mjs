@@ -5,8 +5,11 @@ const dashboard = fs.readFileSync('dashboard.html', 'utf8');
 
 // ── Contract: a size/printer picker exists and remembers the choice ──
 assert.match(dashboard, /<select id="label-print-size" class="tsi" onchange="localStorage\.setItem\('label_print_size', this\.value\)"/, 'the label print modal must offer a size/printer picker that persists the choice');
-assert.match(dashboard, /<option value="roll-2x1">Roll labels -- 2" x 1" \(Rollo\/Zebra direct-thermal, one per page\)<\/option>/, 'a 2x1 direct-thermal roll option must exist');
-assert.match(dashboard, /sizeEl\.value = localStorage\.getItem\('label_print_size'\) \|\| 'sheet-2\.625x1';/, 'opening the modal must restore the last-used size, defaulting to the existing sheet layout so nobody\'s current setup silently changes');
+assert.match(dashboard, /<option value="roll-2x1"[^>]*>Roll labels -- 2" x 1" \(Rollo\/Zebra direct-thermal, one per page\)<\/option>/, 'a 2x1 direct-thermal roll option must exist');
+// The store's actual physical printer is a 2x1 roll -- defaulting to the
+// sheet layout meant a device that had never had someone manually pick the
+// roll option kept silently printing the wrong physical size.
+assert.match(dashboard, /sizeEl\.value = localStorage\.getItem\('label_print_size'\) \|\| 'roll-2x1';/, 'opening the modal must restore the last-used size, defaulting to the store\'s actual 2x1 roll printer');
 
 // ── Contract: roll mode is a real different print job (page-per-label, no margins), not just a size number ──
 assert.match(dashboard, /const isRoll = mode === 'roll-2x1';/, 'printInventoryLabels must branch behavior on the selected mode');

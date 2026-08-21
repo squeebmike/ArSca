@@ -5,8 +5,11 @@ const dashboard = fs.readFileSync('dashboard.html', 'utf8');
 
 // ── Contract: a layout picker exists and persists, independent of the size/printer picker ──
 assert.match(dashboard, /<select id="label-print-layout" class="tsi" onchange="localStorage\.setItem\('label_print_layout', this\.value\)"/, 'a label layout picker must exist and persist the choice separately from label size');
-assert.match(dashboard, /<option value="wrap">Wraps around a toploader/, 'a toploader-wrap layout option must exist');
-assert.match(dashboard, /layoutEl\.value = localStorage\.getItem\('label_print_layout'\) \|\| 'standard';/, 'opening the modal must restore the last-used layout, defaulting to standard so existing labels don\'t change unexpectedly');
+assert.match(dashboard, /<option value="wrap"[^>]*>Wraps around a toploader/, 'a toploader-wrap layout option must exist');
+// The store's actual physical setup IS the toploader-wrap roll printer --
+// defaulting to standard meant a device that had never had someone manually
+// pick wrap kept silently printing the un-tuned single-face layout.
+assert.match(dashboard, /layoutEl\.value = localStorage\.getItem\('label_print_layout'\) \|\| 'wrap';/, 'opening the modal must restore the last-used layout, defaulting to wrap (the store\'s actual toploader setup)');
 
 // ── Contract: only one badge line fits under the name, so labelBadgeText
 // picks the single highest-priority thing worth calling out rather than
@@ -22,21 +25,22 @@ assert.match(dashboard, /const signal = typeof detectVariantSignal === 'function
 console.log('Label toploader-wrap badge-priority contract checks passed');
 
 // ── Contract: wrap layout builds two faces -- item name, an optional badge
-// (signed/key/promo -- see labelBadgeText), a price (small $ + big
-// whole-dollar digits, price-tag style), and condition on the front (a loose
-// label must still be identifiable by eye), the shop name as plain text plus
-// a LARGE scan code on the back. A prior version drew an illustrated logo
-// image on the back, but a real printed label showed it as an unreadable
-// blob (a detailed graffiti wordmark cannot survive being thresholded to
-// pure black/white at thermal-print resolution) while every text element on
-// the same label stayed crisp -- so the logo was replaced with plain bold
+// (signed/key/promo -- see labelBadgeText), a whole-dollar price (no "$"
+// glyph -- the store doesn't want one, and the QR/scan is the reliable
+// source of truth anyway), and condition on the front (a loose label must
+// still be identifiable by eye), the shop name as plain text plus a LARGE
+// scan code on the back. A prior version drew an illustrated logo image on
+// the back, but a real printed label showed it as an unreadable blob (a
+// detailed graffiti wordmark cannot survive being thresholded to pure
+// black/white at thermal-print resolution) while every text element on the
+// same label stayed crisp -- so the logo was replaced with plain bold
 // text. ──
 assert.match(dashboard, /const isWrap = layout === 'wrap';/, 'printInventoryLabels must branch on the selected layout');
-assert.match(dashboard, /<div class="wrap-front">\s*\n\s*<div class="wrap-name">\$\{escHtml\(b\.name\)\}<\/div>\s*\n\s*\$\{b\.badge \? `<div class="wrap-badge">\$\{escHtml\(b\.badge\)\}<\/div>` : ''\}\s*\n\s*<div class="wrap-price"><span class="wrap-price-dollar">\$\{escHtml\(fdLabelPrice\$\(b\.price\)\.charAt\(0\)\)\}<\/span><span class="wrap-price-num">\$\{escHtml\(fdLabelPrice\$\(b\.price\)\.slice\(1\)\)\}<\/span><\/div>\s*\n\s*<div class="wrap-condition">\$\{escHtml\(b\.condition \|\| ''\)\}<\/div>\s*\n\s*<\/div>/, 'the front face must show the item name, an optional badge, a price-tag-style price (small $ raised above the digits\' baseline), and condition in that order (whole dollars, no cents)');
+assert.match(dashboard, /<div class="wrap-front">\s*\n\s*<div class="wrap-name">\$\{escHtml\(b\.name\)\}<\/div>\s*\n\s*\$\{b\.badge \? `<div class="wrap-badge">\$\{escHtml\(b\.badge\)\}<\/div>` : ''\}\s*\n\s*<div class="wrap-price">\$\{escHtml\(fdLabelPrice\$\(b\.price\)\.slice\(1\)\)\}<\/div>\s*\n\s*<div class="wrap-condition">\$\{escHtml\(b\.condition \|\| ''\)\}<\/div>\s*\n\s*<\/div>/, 'the front face must show the item name, an optional badge, a whole-dollar price with no "$" glyph, and condition in that order');
 assert.ok(!/<div class="wrap-front">[\s\S]{0,20}label-store/.test(dashboard), 'the wrap front face must not carry the store name header the standard layout uses');
 assert.match(dashboard, /<div class="wrap-back">\s*\n\s*<div class="wrap-shopname">THE MANA POCKET<\/div>\s*\n\s*\$\{barcodeImg\}\s*\n\s*<\/div>/, 'the back face must carry only the shop name as plain text and the scan code -- no image logo, no SKU text');
 assert.ok(!/wrap-logo/.test(dashboard), 'the illustrated logo image class must be fully removed -- it was confirmed unreadable on a real printed label');
-assert.match(dashboard, /const codeStyle = isWrap \? 'qr' : \(document\.getElementById\('label-print-code-style'\)\?\.value \|\| 'barcode'\);/, 'the wrap back face must always use QR regardless of the barcode-style dropdown -- a linear barcode reads worse than a QR at that size');
+assert.match(dashboard, /const codeStyle = isWrap \? 'qr' : \(document\.getElementById\('label-print-code-style'\)\?\.value \|\| 'qr'\);/, 'the wrap back face must always use QR regardless of the barcode-style dropdown -- a linear barcode reads worse than a QR at that size, and QR is now the default for the standard layout too');
 assert.match(dashboard, /const codeGenSize = isWrap \? 500 : 260;/, 'the wrap QR must be generated at a much bigger native size than the standard layout\'s code -- undersized generation followed by scaling is what made a confirmed-real QR fail to scan');
 assert.match(dashboard, /\.label\.wrap \{ flex-direction:row !important; padding:0 !important; \}/, 'the wrap layout must lay the two faces out side by side with a fold line between them');
 assert.match(dashboard, /border-right:1px dashed #999;/, 'a dashed fold line must separate the front and back faces so it\'s clear where to fold');
@@ -45,9 +49,9 @@ assert.match(dashboard, /\.wrap-shopname \{ font-size:9px; font-weight:800; lett
 assert.match(dashboard, /\.wrap-name \{ font-size:8px; font-weight:700; line-height:1\.1; max-height:18px; overflow:hidden; text-align:center; \}/, 'the item name must be a bit bigger than before while still not crowding out condition/price');
 assert.match(dashboard, /\.wrap-badge \{ font-size:6px; font-weight:700; text-transform:uppercase; text-align:center; \}/, 'the badge (whichever one applies) must be bold -- an unbolded pass printed noticeably less crisp than every other element on a real thermal print');
 assert.match(dashboard, /\.wrap-condition \{ font-size:11px; font-weight:800; text-transform:uppercase; align-self:flex-start; \}/, 'the condition must sit at the left edge of the front face, not centered');
-assert.match(dashboard, /\.wrap-price \{ font-size:15px; font-weight:700; line-height:1; margin-top:auto; \}/, 'the price\'s base size is the small $ sign size -- the digits get their own bigger size via a nested span, and the price must be centered (no side margin pushing it off-center); weight must be a real 700 (bold), not a 900 that has no guaranteed matching real face and can render synthetically thickened/grainy');
-assert.match(dashboard, /\.wrap-price-dollar \{ vertical-align:10px; \}/, 'the $ sign must be raised above the digits\' own baseline via vertical-align, not sunk to it');
-assert.match(dashboard, /\.wrap-price-num \{ font-size:27px; \}/, 'the whole-dollar digits must render bigger than the $ sign -- classic price-tag styling, sized up slightly from before');
+assert.match(dashboard, /\.wrap-price \{ font-size:27px; font-weight:700; line-height:1; margin-top:auto; \}/, 'the price must render at the same big size the digits used to get via a nested span, now applied directly since there\'s no more $ sign needing its own smaller size; weight must be a real 700 (bold), not a 900 that has no guaranteed matching real face and can render synthetically thickened/grainy');
+assert.ok(!/wrap-price-dollar/.test(dashboard), 'the $-sign-specific CSS class must be fully removed along with the glyph itself');
+assert.ok(!/wrap-price-num/.test(dashboard), 'the digits-specific nested-span CSS class must be fully removed -- the price is one plain text node now');
 
 console.log('Label toploader-wrap contract checks passed');
 
@@ -62,12 +66,10 @@ assert.ok(!/loadWrapLogoImage/.test(dashboard), 'the logo-preload helper must be
 assert.ok(!/wrapLogoImg/.test(dashboard), 'no wrap-logo-image variable may remain in the download path');
 assert.match(dashboard, /const nameFont = Math\.round\(h \* 0\.085\);/, 'the item name must be drawn a bit bigger than before');
 assert.match(dashboard, /if\(b\.badge\)\{\s*\n(?:[^\n]*\n)*?\s*tctx\.font = `bold \$\{Math\.round\(h \* 0\.06\)\}px sans-serif`;\s*\n\s*tctx\.fillText\(b\.badge\.toUpperCase\(\), halfW \/ 2, h \* 0\.24\);\s*\n\s*\}/, 'the front face must draw whichever single badge applies, and it must be bold -- an unbolded pass printed noticeably less crisp than everything else on a real thermal print');
-assert.match(dashboard, /const priceStr = fdLabelPrice\$\(b\.price\);\s*\n\s*const dollarSign = priceStr\.charAt\(0\), priceDigits = priceStr\.slice\(1\);/, 'the price must be split into a $ sign and whole-dollar digits so they can be drawn at different sizes');
-assert.match(dashboard, /const priceBigFont = Math\.round\(h \* 0\.33\), priceSmallFont = Math\.round\(priceBigFont \* 0\.55\);/, 'the $ sign must be drawn noticeably smaller than the digits -- classic price-tag styling -- and the price must be sized up slightly from before');
-assert.match(dashboard, /const priceRight = halfW \/ 2 \+ \(priceDollarWidth \+ priceDigitsWidth\) \/ 2;/, 'the $ + digits must be centered as one combined unit around the front face\'s horizontal center, not right-aligned toward the fold line');
-assert.match(dashboard, /tctx\.fillText\(priceDigits, priceRight, priceBaseline\);/, 'the whole-dollar digits must be drawn at the big font size');
-assert.match(dashboard, /const dollarBaseline = priceBaseline - priceBigFont \* 0\.36;/, 'the $ sign must be raised above the digits\' baseline rather than sinking to it');
-assert.match(dashboard, /tctx\.fillText\(dollarSign, priceRight - priceDigitsWidth, dollarBaseline\);/, 'the $ sign must be pinned immediately to the left of the digits, at its raised baseline');
+assert.match(dashboard, /const priceDigits = fdLabelPrice\$\(b\.price\)\.slice\(1\);/, 'the price must render as whole-dollar digits only, with the "$" glyph dropped');
+assert.match(dashboard, /const priceBigFont = Math\.round\(h \* 0\.33\);/, 'the price must be sized up slightly from before, at one single big font size now that there\'s no smaller $ sign to size separately');
+assert.match(dashboard, /tctx\.textAlign = 'center'; tctx\.textBaseline = 'alphabetic';/, 'the digits must be centered around the front face\'s horizontal center, not right-aligned toward the fold line');
+assert.match(dashboard, /tctx\.fillText\(priceDigits, halfW \/ 2, priceBaseline\);/, 'the whole-dollar digits must be drawn centered at the big font size');
 assert.match(dashboard, /tctx\.textAlign = 'left'; tctx\.textBaseline = 'top';\s*\n\s*tctx\.font = `bold \$\{Math\.round\(h \* 0\.13\)\}px sans-serif`;\s*\n\s*tctx\.fillText\(String\(b\.condition \|\| ''\)\.toUpperCase\(\), padX, h \* 0\.8\);/, 'the condition must be drawn at the left edge of the front face, not centered');
 assert.match(dashboard, /const shopFont = Math\.round\(h \* 0\.065\), shopPad = h \* 0\.032;/, 'the shop name must be drawn a bit bigger than before, with an explicit symmetric padding value');
 assert.match(dashboard, /tctx\.fillText\('THE MANA POCKET', halfW \+ halfW \/ 2, shopPad\);/, 'the back face shop name must be drawn as plain bold text, not an illustrated logo image, using the symmetric top padding');
@@ -101,14 +103,14 @@ assert.equal(labelBadgeText({}, fakeDetectVariantSignal), '', 'an item with no s
 console.log('labelBadgeText functional checks passed');
 
 // ── Functional: the front face always includes the item name, condition, and a
-// whole-dollar price -- never the store name, never cents -- and the badge
-// only appears when one actually applies ──
+// whole-dollar price with no "$" glyph -- never the store name, never cents
+// -- and the badge only appears when one actually applies ──
 function renderWrapFront(name, badge, condition, price, fdLabelPrice$, escHtml){
   const priceStr = fdLabelPrice$(price);
   return `<div class="wrap-front">
           <div class="wrap-name">${escHtml(name)}</div>
           ${badge ? `<div class="wrap-badge">${escHtml(badge)}</div>` : ''}
-          <div class="wrap-price">${escHtml(priceStr.charAt(0))}<span class="wrap-price-num">${escHtml(priceStr.slice(1))}</span></div>
+          <div class="wrap-price">${escHtml(priceStr.slice(1))}</div>
           <div class="wrap-condition">${escHtml(condition || '')}</div>
         </div>`;
 }
@@ -116,8 +118,7 @@ const fdLabelPrice$ = n => '$' + Math.round(Number(n || 0));
 const front = renderWrapFront('Charizard VMAX', '', 'NM', 12.5, fdLabelPrice$, s => s);
 assert.ok(!front.includes('label-store'), 'the front face template must never include a store-name element');
 assert.ok(front.includes('wrap-name') && front.includes('Charizard VMAX'), 'the front face must include the item name so a loose label is still identifiable by eye');
-assert.ok(front.includes('NM') && front.includes('$') && front.includes('13') && !front.includes('12.50'), 'the front face must show the condition and a whole-dollar rounded price, never cents');
-assert.ok(front.includes('wrap-price-num'), 'the digits must render in their own bigger-font span, separate from the $ sign');
+assert.ok(front.includes('NM') && !front.includes('$') && front.includes('13') && !front.includes('12.50'), 'the front face must show the condition and a whole-dollar rounded price with no "$" glyph, never cents');
 assert.ok(!front.includes('wrap-badge'), 'an item with no applicable badge must not render a badge element at all');
 
 const badgedFront = renderWrapFront('Booster Box', 'Signed: Ash Ketchum', 'NM', 10, fdLabelPrice$, s => s);
@@ -150,14 +151,13 @@ const newCodeSize = wrapCodeSize(203, 203);
 assert.ok(newCodeSize > oldFixedCodeSize * 1.5, `the new code size (${newCodeSize.toFixed(1)}) must be substantially bigger (>1.5x) than the old fixed allocation (${oldFixedCodeSize.toFixed(1)}) -- "make it bigger" must actually be reflected in the math, not just words`);
 assert.ok(newCodeSize <= 203, 'the code must never be sized larger than the square back face it has to fit inside');
 
-// ── Functional: the price-tag price-splitting logic actually separates a $
-// sign from whole-dollar digits, for both single- and multi-digit prices ──
-function splitPrice(price, fdLabelPrice$){
-  const priceStr = fdLabelPrice$(price);
-  return { dollarSign: priceStr.charAt(0), digits: priceStr.slice(1) };
+// ── Functional: dropping the "$" glyph is just slicing it off the formatted
+// price string, for both single- and multi-digit whole-dollar prices ──
+function labelPriceDigitsOnly(price, fdLabelPrice$){
+  return fdLabelPrice$(price).slice(1);
 }
-assert.deepEqual(splitPrice(10, fdLabelPrice$), { dollarSign: '$', digits: '10' }, 'a whole-dollar price must split into a $ sign and its digits');
-assert.deepEqual(splitPrice(9.99, fdLabelPrice$), { dollarSign: '$', digits: '10' }, 'a price that rounds up must still split correctly after rounding');
-assert.deepEqual(splitPrice(0, fdLabelPrice$), { dollarSign: '$', digits: '0' }, 'a zero price must still split into a $ sign and a lone 0 digit, not blank out');
+assert.equal(labelPriceDigitsOnly(10, fdLabelPrice$), '10', 'a whole-dollar price must render as just its digits, no $ sign');
+assert.equal(labelPriceDigitsOnly(9.99, fdLabelPrice$), '10', 'a price that rounds up must still render correctly after rounding, with no $ sign');
+assert.equal(labelPriceDigitsOnly(0, fdLabelPrice$), '0', 'a zero price must still render as a lone 0 digit, not blank out');
 
 console.log('Label toploader-wrap functional checks passed');

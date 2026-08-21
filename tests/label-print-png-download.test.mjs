@@ -28,7 +28,7 @@ assert.match(dashboard, /const codeCanvas = await generateLabelCodeCanvas\(codeV
 assert.match(dashboard, /const codeCanvas = await generateLabelCodeCanvas\(codeValue, codeStyle, Math\.round\(codeStyle === 'qr' \? codeH : Math\.max\(codeW, codeH\)\)\);/, 'the standard layout must likewise generate its scan code at its real on-label size');
 
 // ── Contract: downloaded label prices are always whole dollars, no cents ──
-assert.match(dashboard, /const priceStr = fdLabelPrice\$\(b\.price\);/, 'the wrap front face price must render via the whole-dollar formatter');
+assert.match(dashboard, /const priceDigits = fdLabelPrice\$\(b\.price\)\.slice\(1\);/, 'the wrap front face price must render via the whole-dollar formatter, with the "$" glyph dropped');
 assert.match(dashboard, /ctx\.fillText\(fdLabelPrice\$\(b\.price\), w - pad, h \* 0\.78\);/, 'the standard layout price must render via the whole-dollar formatter');
 
 // ── Contract: each label is downloaded as its own file via a Blob + <a download>
