@@ -81,9 +81,13 @@ assert.match(dashboard, /\.wrap-shopname \{ font-size:9px; font-weight:700; lett
 // before truncating.
 assert.match(dashboard, /\.wrap-name \{ font-size:8px; font-weight:700; line-height:1\.1; max-height:27px; overflow:hidden; text-align:center; \}/, 'the item name must allow up to 3 lines before truncating, not just 2');
 assert.match(dashboard, /\.wrap-badge \{ font-size:6px; font-weight:700; text-transform:uppercase; text-align:center; \}/, 'the badge (whichever one applies) must be bold -- an unbolded pass printed noticeably less crisp than every other element on a real thermal print');
-assert.match(dashboard, /\.wrap-bottom-row \{ width:100%; display:flex; justify-content:space-between; align-items:baseline; \}/, 'condition and SKU must share one full-width row so SKU doesn\'t need its own extra vertical space');
-assert.match(dashboard, /\.wrap-condition \{ font-size:11px; font-weight:700; text-transform:uppercase; \}/, 'the condition must use the same real bold weight as every other element on the label, not a synthesized 800');
-assert.match(dashboard, /\.wrap-sku \{ font-size:6px; font-weight:400; color:#555; \}/, 'the SKU must render small and muted -- a unique identifier, not competing visually with condition');
+assert.match(dashboard, /\.wrap-bottom-row \{ width:100%; display:flex; justify-content:space-between; align-items:baseline; gap:4px; \}/, 'condition and SKU must share one full-width row so SKU doesn\'t need its own extra vertical space');
+assert.match(dashboard, /\.wrap-condition \{ font-size:11px; font-weight:700; text-transform:uppercase; flex-shrink:0; \}/, 'the condition must use the same real bold weight as every other element on the label, not a synthesized 800, and must never shrink -- it\'s short and always needs to render fully');
+// A bare internal UUID (the common case when there's no real UPC/SKU) has
+// no natural break points and no flexbox min-width:0/wrapping, so it never
+// shrunk to fit and always overflowed straight through the condition badge
+// on a real print -- confirmed against a real printed label photo.
+assert.match(dashboard, /\.wrap-sku \{ font-size:6px; font-weight:400; color:#555; min-width:0; word-break:break-all; text-align:right; \}/, 'the SKU must be able to shrink and wrap onto multiple lines instead of overflowing through the condition badge');
 assert.ok(!/font-weight:800/.test(dashboard.slice(dashboard.indexOf('const wrapStyle'), dashboard.indexOf('w.document.write'))), 'no wrap-face text may request a synthesized 800 weight');
 // Sized down slightly from 27px to 24px (still clearly the label's dominant
 // element) specifically to free up a bit more vertical room above it for
