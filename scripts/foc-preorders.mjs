@@ -616,6 +616,45 @@ async function cancelPreorder(request, env, deps) {
   return deps.json({ok:true,status,refundStatus:refund.status});
 }
 
+// preorderCheckout() only ever creates a brand-new order + PaymentIntent --
+// there was never a way to pick payment back up on an order already sitting
+// in payment_pending (customer closed the tab mid-checkout, network dropped,
+// walked away). My Preorders could show that order forever with no action
+// that could ever resolve it: checkout requires cart items it doesn't have,
+// and cancel is the only other route touching payment_pending. This is the
+// missing third option -- reuse the existing PaymentIntent if Stripe still
+// considers it payable, or mint a fresh one for the same order otherwise,
+// and hand back a client_secret the page can mount Stripe Elements with
+// again, exactly like the original checkout did.
+const RESUMABLE_INTENT_STATUSES = new Set(['requires_payment_method','requires_confirmation','requires_action']);
+async function resumePreorderPayment(request, env, deps) {
+  const auth=await deps.requireAuthenticatedUser(request,env);if(auth.error)return auth.error;
+  const limited=await deps.readJsonWithLimit(request,8*1024);if(limited.error)return limited.error;
+  const orderId=text(limited.data?.orderId,80);if(!orderId)return deps.json({ok:false,error:'orderId is required'},400);
+  const db=(path,options)=>deps.supabaseAdminFetch(env,path,options);
+  const {data:orders}=await db(`foc_preorder_orders?id=eq.${encodeURIComponent(orderId)}&user_id=eq.${encodeURIComponent(auth.user.id)}&select=*,cycle:foc_cycles(status,customer_cutoff_at)&limit=1`);
+  const order=orders?.[0];if(!order)return deps.json({ok:false,error:'Preorder not found'},404);
+  if(!['payment_pending','payment_failed'].includes(order.status))return deps.json({ok:false,error:`This order is already ${order.status}; there is nothing to pay.`},409);
+  if(!cycleOpen(order.cycle))return deps.json({ok:false,error:'This FOC is closed. Contact the store about payment options.'},409);
+  const mode=order.stripe_mode||deps.stripeMode(env);
+  const cfg=deps.stripeConfig(env,mode);
+  if(!cfg.secretKey||!cfg.publishableKey)return deps.json({ok:false,error:'Online preorder payments are not configured'},503);
+  let intent=null;
+  if(order.stripe_payment_intent_id){
+    try{
+      const existing=await deps.stripeApi(env,mode,`payment_intents/${encodeURIComponent(order.stripe_payment_intent_id)}`,{method:'GET'});
+      if(RESUMABLE_INTENT_STATUSES.has(existing.status))intent=existing;
+    }catch(_){/* fall through to minting a fresh intent below */}
+  }
+  if(!intent){
+    const params=new URLSearchParams({amount:String(order.total_cents),currency:'usd','automatic_payment_methods[enabled]':'true','receipt_email':order.customer_email||'',
+      'metadata[source]':'foc_preorder','metadata[foc_order_id]':order.id,'metadata[foc_cycle_id]':order.cycle_id,'metadata[arsca_store_id]':order.store_id,'metadata[order_number]':order.order_number});
+    intent=await deps.stripeApi(env,mode,'payment_intents',{method:'POST',params,idempotencyKey:`arsca-foc-resume-${mode}-${order.id}-${Date.now()}`});
+    await db(`foc_preorder_orders?id=eq.${order.id}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({stripe_payment_intent_id:intent.id,status:'payment_pending'})});
+  }
+  return deps.json({ok:true,orderId:order.id,orderNumber:order.order_number,clientSecret:intent.client_secret,paymentIntentId:intent.id,publishableKey:cfg.publishableKey,amountCents:order.total_cents,mode});
+}
+
 function csvField(value){const s=String(value==null?'':value);return /[",\r\n]/.test(s)?`"${s.replaceAll('"','""')}"`:s;}
 
 async function exportPrh(env,deps,url,request){
@@ -798,6 +837,7 @@ export async function handleFocRequest(request, env, url, deps) {
   if(path==='/public/preorders/waitlist'&&request.method==='POST')return waitlist(request,env,deps);
   if(path==='/public/preorders/my'&&request.method==='GET')return myPreorders(request,env,deps,url);
   if(path==='/public/preorders/cancel'&&request.method==='POST')return cancelPreorder(request,env,deps);
+  if(path==='/public/preorders/resume'&&request.method==='POST')return resumePreorderPayment(request,env,deps);
   if(path==='/foc/admin/import'&&request.method==='POST')return importPrh(request,env,deps,text(request.headers.get('X-Store-Id'),80));
   if(path==='/foc/admin/cycles'&&(request.method==='GET'||request.method==='PATCH'))return adminCycle(request,env,deps,url);
   if(path==='/foc/admin/sku'&&request.method==='PATCH')return adminSku(request,env,deps);
