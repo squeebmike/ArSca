@@ -5,7 +5,7 @@ import { handleAccountRequest } from '../scripts/customer-account.mjs';
 const worker = fs.readFileSync('cloudflare-worker-full.js', 'utf8');
 const migration = fs.readFileSync('supabase-migrations/2026-08-18-customer-web-accounts.sql', 'utf8');
 
-assert.match(worker, /import \{ handleAccountRequest \} from '\.\/scripts\/customer-account\.mjs';/);
+assert.match(worker, /import \{ handleAccountRequest, findLinkedCustomer \} from '\.\/scripts\/customer-account\.mjs';/, 'findLinkedCustomer must also be imported -- the storefront resume-payment route reuses it to verify order ownership by the account\'s SMS-linked phone');
 assert.match(worker, /handleAccountRequest\(request, env, url, \{/, 'the router must wire the new module in');
 assert.match(worker, /sendSms, normalizePhoneDigits, lookupCustomerIdByPhone,/, 'the account routes need the existing SMS + phone-matching helpers, not new copies');
 assert.match(migration, /alter table public\.pos_sales add column if not exists customer_id/, 'every sale needs a customer link for "purchases in store" to be queryable at all');
