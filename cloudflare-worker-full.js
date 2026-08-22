@@ -26,7 +26,7 @@
 // the Worker -- reused here instead of duplicating checklist-parsing logic.
 import { buildChecklistIndex, parseChecklistText, sha1Hex, slugify } from './scripts/topps-checklist-parser.js';
 import { handleFocRequest, syncFocStripeEvent } from './scripts/foc-preorders.mjs';
-import { handleAccountRequest } from './scripts/customer-account.mjs';
+import { handleAccountRequest, findLinkedCustomer } from './scripts/customer-account.mjs';
 import { handleFanClubRequest } from './scripts/fan-club.mjs';
 
 // Per-isolate rate limiter for PriceCharting API (no KV needed). _pcQueueTail
@@ -3279,6 +3279,68 @@ export default {
       await supabaseAdminFetch(env, 'storefront_orders', { method:'POST', headers:{ Prefer:'return=minimal' }, body:JSON.stringify({ id:crypto.randomUUID(), store_id:storeId, sale_id:saleId, confirmation_number:confirmationNumber, customer_name:customerName, customer_phone:customerPhone, customer_email:customerEmail || null, fulfillment_method:method, shipping_address:shippingAddress, shipping_fee_cents:shippingFeeCents, fulfillment_status:'pending' }) });
 
       return json({ ok:true, clientSecret:pi.client_secret, publishableKey:stripeConfig(env, mode).publishableKey, confirmationNumber, amountCents:totalCents, shippingFeeCents, mode });
+    }
+
+    // POST /public/storefront/resume — a checkout interrupted mid-Stripe-
+    // payment (closed tab, dropped connection, walked away) left
+    // pos_sales.status='pending' with no way back: checkout only ever
+    // creates a brand-new sale/order, and nothing else touched a pending
+    // one. Same shape as resumePreorderPayment() in foc-preorders.mjs.
+    // Checkout itself is public/unauthenticated (guest checkout), but
+    // resuming requires being signed into the account whose email or
+    // linked phone matches the order -- the account "Orders" tab that
+    // surfaces this action already requires that login, so this is the
+    // first point ownership can actually be verified.
+    if (url.pathname === '/public/storefront/resume' && request.method === 'POST') {
+      const auth = await requireAuthenticatedUser(request, env);
+      if (auth.error) return auth.error;
+      const limited = await readJsonWithLimit(request, 4 * 1024);
+      if (limited.error) return limited.error;
+      const body = limited.data || {};
+      const storeId = String(body.storeId || '').trim();
+      const orderId = String(body.orderId || '').trim();
+      if (!storeId || !orderId) return json({ ok:false, error:'storeId and orderId are required' }, 400);
+      const db = (p, o) => supabaseAdminFetch(env, p, o);
+      const { data:orders } = await db(`storefront_orders?id=eq.${encodeURIComponent(orderId)}&store_id=eq.${encodeURIComponent(storeId)}&select=*&limit=1`);
+      const order = orders?.[0];
+      if (!order) return json({ ok:false, error:'Order not found' }, 404);
+      const email = String(auth.user.email || '').toLowerCase();
+      const emailMatches = !!email && String(order.customer_email || '').toLowerCase() === email;
+      let phoneMatches = false;
+      if (!emailMatches) {
+        const customer = await findLinkedCustomer(db, storeId, auth.user.id);
+        const linkedPhoneDigits = customer ? normalizePhoneDigits(customer.phone) : '';
+        phoneMatches = !!linkedPhoneDigits && linkedPhoneDigits === normalizePhoneDigits(order.customer_phone);
+      }
+      if (!emailMatches && !phoneMatches) return json({ ok:false, error:'This order does not belong to your account' }, 403);
+      const { data:sales } = await db(`pos_sales?id=eq.${encodeURIComponent(order.sale_id)}&store_id=eq.${encodeURIComponent(storeId)}&select=id,total,status&limit=1`);
+      const sale = sales?.[0];
+      if (!sale) return json({ ok:false, error:'Sale record not found' }, 404);
+      if (sale.status !== 'pending') return json({ ok:false, error:`This order is already ${sale.status}; there is nothing to pay.` }, 409);
+      const mode = stripeMode(env);
+      const cfg = stripeConfig(env, mode);
+      if (!cfg.secretKey || !cfg.publishableKey) return json({ ok:false, error:'Online payments are not configured' }, 503);
+      const totalCents = Math.round(Number(sale.total || 0) * 100);
+      const { data:payments } = await db(`pos_payments?sale_id=eq.${encodeURIComponent(order.sale_id)}&store_id=eq.${encodeURIComponent(storeId)}&provider=eq.stripe&order=created_at.desc&limit=1`);
+      const lastPayment = payments?.[0];
+      const RESUMABLE_INTENT_STATUSES = new Set(['requires_payment_method', 'requires_confirmation', 'requires_action']);
+      let intent = null;
+      if (lastPayment?.stripe_payment_intent_id) {
+        try {
+          const existing = await stripeApi(env, mode, `payment_intents/${encodeURIComponent(lastPayment.stripe_payment_intent_id)}`, { method:'GET' });
+          if (RESUMABLE_INTENT_STATUSES.has(existing.status)) intent = existing;
+        } catch (_) { /* fall through to minting a fresh intent below */ }
+      }
+      if (!intent) {
+        const params = new URLSearchParams({ amount:String(totalCents), currency:'usd', 'automatic_payment_methods[enabled]':'true', 'metadata[arsca_sale_id]':sale.id, 'metadata[arsca_store_id]':storeId, 'metadata[source]':'storefront_order', 'metadata[confirmation_number]':order.confirmation_number });
+        try {
+          intent = await stripeApi(env, mode, 'payment_intents', { method:'POST', params, idempotencyKey:`arsca-storefront-resume-${mode}-${sale.id}-${Date.now()}` });
+        } catch (e) {
+          return json({ ok:false, error:'Payment setup failed: ' + e.message }, 502);
+        }
+        await db('pos_payments', { method:'POST', headers:{ Prefer:'return=minimal' }, body:JSON.stringify({ id:crypto.randomUUID(), sale_id:sale.id, store_id:storeId, method:'Stripe Card', amount:totalCents / 100, status:intent.status, provider:'stripe', stripe_mode:mode, stripe_payment_intent_id:intent.id, currency:intent.currency, amount_cents:totalCents, processing_fee_paid_by:'platform_account' }) });
+      }
+      return json({ ok:true, orderId:order.id, confirmationNumber:order.confirmation_number, clientSecret:intent.client_secret, publishableKey:cfg.publishableKey, amountCents:totalCents, mode });
     }
 
     // POST /public/storefront/shipping-quote — public (unauthenticated) real

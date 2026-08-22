@@ -29,7 +29,7 @@ function secureSixDigitCode() {
   return String(100000 + (values[0] % range));
 }
 
-async function findLinkedCustomer(db, storeId, userId) {
+export async function findLinkedCustomer(db, storeId, userId) {
   const { data } = await db(`customers?store_id=eq.${encodeURIComponent(storeId)}&linked_user_id=eq.${encodeURIComponent(userId)}&limit=1`);
   return data?.[0] || null;
 }
@@ -149,14 +149,24 @@ async function accountOrders(request, env, deps, url) {
   if (saleIds.length) {
     ([{ data:lines }, { data:sales }] = await Promise.all([
       db(`pos_sale_lines?sale_id=${inFilter(saleIds)}&select=sale_id,title,category,quantity,unit_price,image_url`),
-      db(`pos_sales?id=${inFilter(saleIds)}&select=id,total`),
+      db(`pos_sales?id=${inFilter(saleIds)}&select=id,total,status`),
     ]));
   }
-  const withItems = matched.map(order => ({
-    ...order,
-    total:sales?.find(sale => sale.id === order.sale_id)?.total ?? null,
-    items:(lines || []).filter(line => line.sale_id === order.sale_id),
-  }));
+  // A checkout interrupted mid-payment leaves pos_sales.status='pending'
+  // with no visible sign of it here before this -- the account page had no
+  // status field at all, so a stuck order looked identical to a normal
+  // completed one. paymentStatus/canResumePayment give the frontend what it
+  // needs to show that state and offer /public/storefront/resume.
+  const withItems = matched.map(order => {
+    const sale = sales?.find(s => s.id === order.sale_id);
+    return {
+      ...order,
+      total:sale?.total ?? null,
+      paymentStatus:sale?.status || null,
+      canResumePayment:sale?.status === 'pending',
+      items:(lines || []).filter(line => line.sale_id === order.sale_id),
+    };
+  });
   return deps.json({ ok:true, orders:withItems });
 }
 

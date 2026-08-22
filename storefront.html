@@ -506,7 +506,22 @@ async function loadAccountTab(tab){
 function orderCardHtml(o){
   const items=(o.items||[]).map(it=>`${esc(it.title)} ×${it.quantity}`).join(', ');
   const date=o.created_at?new Date(o.created_at).toLocaleDateString():'';
-  return `<div class="cart-line"><div><div class="name">${[date,o.confirmation_number].filter(Boolean).map(esc).join(' · ')}</div><div class="sub">${items?esc(items):'No items on file'}</div></div><div>${o.total!=null?'$'+Number(o.total).toFixed(2):''}</div></div>`;
+  // canResumePayment only appears on the 'orders' tab's response (in-store
+  // purchases are already-completed in-person sales, nothing to resume).
+  // A checkout interrupted mid-payment previously left the order looking
+  // identical to a normal paid one here -- no status shown at all.
+  const pending=o.canResumePayment===true;
+  return `<div class="cart-line"><div><div class="name">${[date,o.confirmation_number].filter(Boolean).map(esc).join(' · ')}</div><div class="sub">${items?esc(items):'No items on file'}</div>${pending?'<div class="sub" style="color:#b91c1c;font-weight:700">Payment not completed</div>':''}</div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">${o.total!=null?'$'+Number(o.total).toFixed(2):''}${pending?`<button class="btn" style="min-height:0;padding:6px 12px;font-size:12px" onclick="resumeOrderPayment('${esc(o.id)}')">PAY NOW</button>`:''}</div></div>`;
+}
+async function resumeOrderPayment(orderId){
+  try{
+    const res=await fetch(`${WORKER}/public/storefront/resume`,{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+accountSession.access_token},body:JSON.stringify({storeId:currentStoreId, orderId})});
+    const data=await res.json();
+    if(!res.ok||!data.ok) throw new Error(data.error||'Could not resume payment.');
+    document.getElementById('account-modal').close();
+    document.getElementById('checkout-modal').showModal();
+    mountStripePayment(data);
+  }catch(e){ toast(e.message); }
 }
 function renderAccountTabContent(){
   const t=accountState.tab;
