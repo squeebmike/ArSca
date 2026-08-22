@@ -17,16 +17,25 @@ const dashboard = fs.readFileSync('dashboard.html', 'utf8');
 // offline, since the initial render never even tried the bulk offline
 // image cache the way inventory does.
 
-// ── quickLookupResultCard must sanitize the row's imageUrl before ever
-// using it as an <img src>.
+// ── quickLookupResultCard must render row.imageUrl directly, WITHOUT
+// durableImageUrl() stripping it. This reverses an earlier fix: qplResults
+// only ever lives in memory for the current page load, and its one
+// sessionStorage mirror (savePokemonCacheResults) already sanitizes before
+// writing and is never read back anywhere -- so a blob: URL reaching this
+// render is always one just created THIS session and still valid.
+// Wrapping it in durableImageUrl() here undid
+// resolvePokemonCatalogImagesForVisibleCards()'s write-back the moment
+// updateQplResultCard() re-rendered the card for any other reason (e.g.
+// price data finishing load a moment later), making an image that had
+// just appeared vanish right back to NO IMAGE.
 const cardFnStart = dashboard.indexOf('function quickLookupResultCard(r, idx){');
 assert(cardFnStart >= 0, 'quickLookupResultCard must exist');
 const cardFnEnd = dashboard.indexOf('\nfunction ', cardFnStart + 10);
 const cardFn = dashboard.slice(cardFnStart, cardFnEnd);
-assert.match(cardFn, /const qplSafeImageUrl = durableImageUrl\(r\.imageUrl\);/,
-  'the card renderer must strip a dead blob: URL before treating it as a real image source');
+assert.match(cardFn, /const qplSafeImageUrl = r\.imageUrl \|\| '';/,
+  'the card renderer must not strip a blob: URL here -- it is always live within this same page load, and stripping it discards resolvePokemonCatalogImagesForVisibleCards()\'s write-back on the very next re-render');
 assert.match(cardFn, /img src="\$\{escHtml\(qplSafeImageUrl\)\}"/,
-  'the <img> must be built from the sanitized URL, not the raw row.imageUrl');
+  'the <img> must be built from qplSafeImageUrl');
 
 // ── savePokemonCacheResults() must never persist a blob: URL into the
 // offline search-replay cache.
@@ -64,5 +73,15 @@ assert.match(resolveFn, /shell\.innerHTML = `<img src="\$\{escHtml\(url\)\}"/,
   'must actually insert a real <img> into the shell when no image existed at all, not just try to update one that may not exist');
 assert.match(resolveFn, /shell\.onclick = \(\) => openQplImageLightbox\(idx\);/,
   'a freshly-inserted image must still be tap-to-zoom, matching the initial render for rows that had an image from the start');
+
+// ── Bug: a resolved image appeared once, then vanished back to NO IMAGE
+// a moment later. resolvePokemonCatalogImagesForVisibleCards() patched the
+// DOM directly but never updated qplResults[idx] -- so the next full
+// re-render (updateQplResultCard(), e.g. once price data finishes loading
+// via hydratePokemonPriceTrackerPricing) rebuilt the card straight from
+// qplResults[idx] via quickLookupResultCard(), whose imageUrl was still
+// empty, discarding the image that had just been resolved.
+assert.match(resolveFn, /if\(qplResults\[idx\] === r\) r\.imageUrl = url;/,
+  'a resolved image must be written back onto the underlying row, not just patched into the DOM -- otherwise the very next full re-render (price data loading, etc.) throws it away and the image vanishes back to NO IMAGE');
 
 console.log('QPL research offline-image-priority checks passed');
