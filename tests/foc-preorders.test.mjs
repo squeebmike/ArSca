@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { parse } from 'csv-parse/sync';
-import { normalizePrhRow, loadAllCatalogs, focOrderConfirmationEmail, syncFocStripeEvent } from '../scripts/foc-preorders.mjs';
+import { normalizePrhRow, loadAllCatalogs, focOrderConfirmationEmail, syncFocStripeEvent, handleFocRequest } from '../scripts/foc-preorders.mjs';
 
 const worker = fs.readFileSync('cloudflare-worker-full.js', 'utf8');
 const service = fs.readFileSync('scripts/foc-preorders.mjs', 'utf8');
@@ -346,3 +346,106 @@ function nextOrderStatus(fulfillmentMethod, allItemsReceived) {
 }
 
 console.log('FOC receive-shipment functional checks passed');
+
+// ── Bug: a customer whose checkout got interrupted (closed the tab,
+// network dropped, walked away) mid-Stripe-payment was left with an order
+// permanently stuck in payment_pending on My Preorders, with no way to ever
+// pay it -- checkout (/public/preorders/checkout) only ever creates a NEW
+// order from cart items, and cancel is the only other route that touches
+// payment_pending. There was no "resume" action at all: the pay button a
+// customer would expect on that order literally had nothing to call. ──
+assert.match(service, /if\(path==='\/public\/preorders\/resume'&&request\.method==='POST'\)return resumePreorderPayment\(request,env,deps\);/, 'a POST /public/preorders/resume route must exist so a payment_pending order is not a permanent dead end');
+assert.match(service, /const RESUMABLE_INTENT_STATUSES = new Set\(\['requires_payment_method','requires_confirmation','requires_action'\]\);/, 'must only reuse an existing PaymentIntent Stripe still considers payable, never one already succeeded/canceled');
+const resumeSrc = service.match(/async function resumePreorderPayment\(request, env, deps\) \{[\s\S]*?\n\}/)[0];
+assert.match(resumeSrc, /user_id=eq\.\$\{encodeURIComponent\(auth\.user\.id\)\}/, 'must scope the order lookup to the authenticated user -- one customer must never be able to resume another\'s order by guessing an orderId');
+assert.match(resumeSrc, /if\(!\['payment_pending','payment_failed'\]\.includes\(order\.status\)\)/, 'an order that is already paid/cancelled/refunded must be rejected, not silently charged again or given a stray new PaymentIntent');
+assert.match(resumeSrc, /if\(!cycleOpen\(order\.cycle\)\)/, 'resuming payment after FOC has closed must be blocked the same way new checkouts and cancellations already are -- the store can no longer add it to the distributor order');
+assert.match(resumeSrc, /idempotencyKey:`arsca-foc-resume-\$\{mode\}-\$\{order\.id\}-\$\{Date\.now\(\)\}`/, 'the resume path\'s idempotency key must differ from the original checkout\'s (no Date.now()) -- reusing that exact key would make Stripe hand back the original, already-dead intent instead of minting a payable one');
+
+console.log('FOC resume-payment contract checks passed');
+
+// ── Functional: drive resumePreorderPayment through handleFocRequest with a
+// fully mocked deps, covering the scenarios that actually matter for a
+// customer stuck on a dead-end order. ──
+function mockRequest(body) {
+  return { method:'POST', headers:{ get:() => null }, json:async () => body };
+}
+function mockDeps(overrides = {}) {
+  return {
+    json:(data, status = 200) => ({ status, data }),
+    readJsonWithLimit:async (request) => ({ data:await request.json() }),
+    requireAuthenticatedUser:async () => ({ user:{ id:'user-1' } }),
+    stripeMode:() => 'test',
+    stripeConfig:() => ({ secretKey:'sk_test_x', publishableKey:'pk_test_x' }),
+    supabaseAdminFetch:async () => ({ data:[] }),
+    stripeApi:async () => { throw new Error('unexpected stripeApi call'); },
+    ...overrides,
+  };
+}
+const openCycle = { status:'open', customer_cutoff_at:new Date(Date.now() + 3600000).toISOString() };
+const closedCycle = { status:'open', customer_cutoff_at:new Date(Date.now() - 3600000).toISOString() };
+
+{
+  // A dead-but-not-yet-known-dead intent (requires_payment_method) must be
+  // reused as-is -- no new PaymentIntent, no order row PATCH.
+  const order = { id:'order-1', user_id:'user-1', status:'payment_pending', stripe_payment_intent_id:'pi_old', stripe_mode:'test', total_cents:998, cycle_id:'cycle-1', store_id:'store-1', order_number:'FOC-1', customer_email:'jane@example.com', cycle:openCycle };
+  let patchCalled = false, stripeApiCalls = [];
+  const deps = mockDeps({
+    supabaseAdminFetch:async (env, path) => { assert.ok(path.includes('user_id=eq.user-1'), 'lookup must be scoped to the authenticated user'); return { data:[order] }; },
+    stripeApi:async (env, mode, path, opts) => { stripeApiCalls.push({ path, opts }); return { id:'pi_old', status:'requires_payment_method', client_secret:'secret_old' }; },
+  });
+  const res = await handleFocRequest(mockRequest({ orderId:'order-1' }), {}, new URL('https://x/public/preorders/resume'), deps);
+  assert.equal(res.data.ok, true);
+  assert.equal(res.data.clientSecret, 'secret_old', 'a still-payable existing intent must be reused, not replaced');
+  assert.equal(stripeApiCalls.length, 1, 'only the GET retrieve call should happen -- no POST to create a new intent');
+  assert.equal(stripeApiCalls[0].path, 'payment_intents/pi_old');
+}
+
+{
+  // An intent Stripe no longer considers payable (e.g. already canceled)
+  // must trigger a fresh PaymentIntent, and the order row must be updated
+  // with the new intent id.
+  const order = { id:'order-2', user_id:'user-1', status:'payment_pending', stripe_payment_intent_id:'pi_dead', stripe_mode:'test', total_cents:1500, cycle_id:'cycle-1', store_id:'store-1', order_number:'FOC-2', customer_email:'jane@example.com', cycle:openCycle };
+  let patchedBody = null;
+  const deps = mockDeps({
+    supabaseAdminFetch:async (env, path, options) => {
+      if (options?.method === 'PATCH') { patchedBody = JSON.parse(options.body); return { data:[order] }; }
+      return { data:[order] };
+    },
+    stripeApi:async (env, mode, path, opts) => {
+      if (opts?.method === 'GET') return { id:'pi_dead', status:'canceled' };
+      assert.equal(opts.method, 'POST');
+      assert.equal(opts.params.get('amount'), '1500', 'the fresh intent must charge the order\'s real total, not a stale or default amount');
+      return { id:'pi_new', status:'requires_payment_method', client_secret:'secret_new' };
+    },
+  });
+  const res = await handleFocRequest(mockRequest({ orderId:'order-2' }), {}, new URL('https://x/public/preorders/resume'), deps);
+  assert.equal(res.data.clientSecret, 'secret_new', 'a dead intent must be replaced with a fresh, payable one');
+  assert.ok(patchedBody, 'the order row must be updated with the new PaymentIntent id');
+  assert.equal(patchedBody.stripe_payment_intent_id, 'pi_new');
+}
+
+{
+  // An order that already succeeded must be rejected outright -- never
+  // re-chargeable, never handed a stray new PaymentIntent.
+  const order = { id:'order-3', user_id:'user-1', status:'paid', stripe_payment_intent_id:'pi_paid', total_cents:998, cycle:openCycle };
+  const deps = mockDeps({ supabaseAdminFetch:async () => ({ data:[order] }) });
+  const res = await handleFocRequest(mockRequest({ orderId:'order-3' }), {}, new URL('https://x/public/preorders/resume'), deps);
+  assert.equal(res.data.ok, false);
+  assert.equal(res.status, 409);
+  assert.match(res.data.error, /already paid/, 'the error must explain the order is already resolved, not a generic failure');
+}
+
+{
+  // FOC already closed for this cycle -- resuming payment must be blocked
+  // the same way starting a new checkout already is, since the store can
+  // no longer add the item to its distributor order.
+  const order = { id:'order-4', user_id:'user-1', status:'payment_pending', stripe_payment_intent_id:'pi_x', total_cents:998, cycle:closedCycle };
+  const deps = mockDeps({ supabaseAdminFetch:async () => ({ data:[order] }) });
+  const res = await handleFocRequest(mockRequest({ orderId:'order-4' }), {}, new URL('https://x/public/preorders/resume'), deps);
+  assert.equal(res.data.ok, false);
+  assert.equal(res.status, 409);
+  assert.match(res.data.error, /FOC is closed/i);
+}
+
+console.log('FOC resume-payment functional checks passed');
