@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.22.03-price-lookup-and-qr-search-fallback">
+<meta name="version" content="2026.08.22.04-qr-exact-match-or-own-storefront">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1633,16 +1633,16 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.22.03-price-lookup-and-qr-search-fallback" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.22.03-price-lookup-and-qr-search-fallback" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.22.03-price-lookup-and-qr-search-fallback" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.08.22.03-price-lookup-and-qr-search-fallback" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.22.03-price-lookup-and-qr-search-fallback" defer></script>
-<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.08.22.03-price-lookup-and-qr-search-fallback" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.22.03-price-lookup-and-qr-search-fallback" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.22.03-price-lookup-and-qr-search-fallback" defer></script>
-<script src="scripts/pokemon/offline-browser.js?v=2026.08.22.03-price-lookup-and-qr-search-fallback" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.22.03-price-lookup-and-qr-search-fallback" defer></script>
+<script src="scripts/query-routing.js?v=2026.08.22.04-qr-exact-match-or-own-storefront" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.22.04-qr-exact-match-or-own-storefront" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.22.04-qr-exact-match-or-own-storefront" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.08.22.04-qr-exact-match-or-own-storefront" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.22.04-qr-exact-match-or-own-storefront" defer></script>
+<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.08.22.04-qr-exact-match-or-own-storefront" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.22.04-qr-exact-match-or-own-storefront" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.22.04-qr-exact-match-or-own-storefront" defer></script>
+<script src="scripts/pokemon/offline-browser.js?v=2026.08.22.04-qr-exact-match-or-own-storefront" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.22.04-qr-exact-match-or-own-storefront" defer></script>
 </head>
 <body>
 
@@ -1671,11 +1671,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.22.03-price-lookup-and-qr-search-fallback</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.22.04-qr-exact-match-or-own-storefront</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.22.03-price-lookup-and-qr-search-fallback</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.22.04-qr-exact-match-or-own-storefront</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1693,7 +1693,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.22.03-price-lookup-and-qr-search-fallback</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.22.04-qr-exact-match-or-own-storefront</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3644,7 +3644,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.22.03-price-lookup-and-qr-search-fallback';
+const APP_VERSION = '2026.08.22.04-qr-exact-match-or-own-storefront';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -40872,43 +40872,46 @@ const fdLabelPrice$ = n => '$' + Math.round(Number(n || 0));
 
 // Lets one QR code do double duty: scan-to-cart (below) still needs our own
 // SKU/ID to find the item, but a customer's own phone camera scanning the
-// same label should land on a real website -- ideally the exact card/comic +
-// condition on TCGPlayer or PriceCharting, but a search on the
-// category-appropriate site beats a bare SKU when there's no confirmed
-// match, since a bare SKU just makes a phone camera offer "search barcode"
-// and go nowhere. Our SKU rides along as an extra query param both sites
-// ignore; scan-to-cart's handleCartScanValue() pulls it back out. Only an
-// item with no name at all (so not even a fresh search can be built) falls
-// back to the plain SKU/ID -- scan-to-cart behavior for that case is
-// completely unchanged.
+// same label should land on the exact card/comic + condition. TCGPlayer or
+// PriceCharting win when a genuine product match exists -- a *search* on
+// either of those sites is explicitly NOT good enough here (it can show the
+// wrong card/edition entirely, or someone else's listing), so it is never
+// used. Everything else falls back to our own themanapocket.com listing for
+// this exact item (condition, price, ADD TO CART) instead -- a real,
+// specific landing page on our own site beats a generic third-party search
+// every time, and storefront.html itself falls back to a name search there
+// if the item isn't (or is no longer) on the live catalog. Our SKU rides
+// along as an extra query param every destination ignores; scan-to-cart's
+// handleCartScanValue() pulls it back out.
 function labelQrPayload(batchEntry){
   const sku = batchEntry.sku || batchEntry.id;
   try {
     const item = (all || []).find(i => i.id === batchEntry.id) || batchEntry;
-    // A live search on the site that actually prices this category is still
-    // a useful landing spot even without an exact match -- a bare SKU makes
-    // a phone camera (Google Lens etc.) just offer "search barcode" and go
-    // nowhere, which is worse for a customer than an inexact search result.
     const key = typeof qplCategoryKey === 'function' ? qplCategoryKey(item.category || '') : '';
     const pricedByPriceCharting = key === 'comic' || key === 'sports';
     const pcUrl = item.providerUrl || '';
-    if(pricedByPriceCharting && /^https?:\/\/(www\.)?pricecharting\.com\//i.test(pcUrl)){
+    // Exact PriceCharting product page (comics/sports) -- never its
+    // /search-products fallback, which is a guess, not a match.
+    if(pricedByPriceCharting && /^https?:\/\/(www\.)?pricecharting\.com\/game\//i.test(pcUrl)){
       return pcUrl + (pcUrl.includes('?') ? '&' : '?') + 'wo_sku=' + encodeURIComponent(sku);
     }
+    // Exact TCGplayer product+condition page -- never its /search/ fallback.
     if(!pricedByPriceCharting){
       const link = typeof buildTcgExternalLink === 'function' ? buildTcgExternalLink(item) : null;
-      if(link?.url) return link.url + (link.url.includes('?') ? '&' : '?') + 'wo_sku=' + encodeURIComponent(sku);
+      if(link?.url && /tcgplayer\.com\/product\//i.test(link.url)){
+        return link.url + '&wo_sku=' + encodeURIComponent(sku);
+      }
     }
-    // Nothing at all on file for the site that prices this category (e.g. a
-    // comic that was never linked to a PriceCharting cover) -- build a fresh
-    // search there from the item's own name instead of giving up.
+    // No exact match on either pricing site -- our own storefront listing
+    // for this exact item is a real, specific page (unlike a third-party
+    // search), so it's the backup, not a generic external search.
+    const storefrontUrl = new URL('https://themanapocket.com/');
+    storefrontUrl.searchParams.set('item', item.id || batchEntry.id || '');
+    storefrontUrl.searchParams.set('store', (typeof getActiveStoreId === 'function' ? getActiveStoreId() : '') || '');
     const name = String(item.name || batchEntry.name || '').trim();
-    if(name){
-      const searchUrl = pricedByPriceCharting
-        ? 'https://www.pricecharting.com/search-products?q=' + encodeURIComponent(name) + '&type=prices'
-        : 'https://www.tcgplayer.com/search/all/product?q=' + encodeURIComponent(name);
-      return searchUrl + '&wo_sku=' + encodeURIComponent(sku);
-    }
+    if(name) storefrontUrl.searchParams.set('q', name);
+    storefrontUrl.searchParams.set('wo_sku', sku);
+    return storefrontUrl.toString();
   } catch(e) { /* fall through to plain SKU/ID if link-building fails for any reason */ }
   return sku;
 }
@@ -44006,7 +44009,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.22.03-price-lookup-and-qr-search-fallback" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.22.04-qr-exact-match-or-own-storefront" defer></script>
 </body>
 </html>
 

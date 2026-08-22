@@ -169,6 +169,21 @@ function openItem(id){
   document.getElementById('detail').showModal();
 }
 
+// Lets a printed shelf label's QR code land on this exact item's detail
+// view (condition, price, ADD TO CART) when the item has no confirmed
+// TCGPlayer/PriceCharting product page to link to instead -- see
+// labelQrPayload() in dashboard.html. Falls back to a pre-filled search
+// when the item id isn't (or is no longer) on this store's live catalog,
+// so an old/unpublished label still lands somewhere useful rather than a
+// blank "item not found".
+function openDeepLinkFromUrl(){
+  const params=new URLSearchParams(location.search);
+  const wantedItemId=params.get('item');
+  if(wantedItemId && payload.items.some(i=>i.id===wantedItemId)){ openItem(wantedItemId); return; }
+  const wantedQuery=params.get('q');
+  if(wantedQuery){ const qEl=document.getElementById('q'); if(qEl){ qEl.value=wantedQuery; render(); } }
+}
+
 function openCart(){ renderCart(); document.getElementById('cart-modal').showModal(); }
 function renderCart(){
   const linesEl=document.getElementById('cart-lines'), totalsEl=document.getElementById('cart-totals'), btn=document.getElementById('cart-checkout-btn');
@@ -353,7 +368,7 @@ async function confirmStorefrontPayment(){
 // so a plain custom-domain URL (e.g. shop.example.com) works as a bookmark
 // without needing the query string tacked on.
 const DEFAULT_STORE_ID='0f9dd4bc-42a7-487e-a972-2905d24513e9';
-async function start(){const store=new URLSearchParams(location.search).get('store')||DEFAULT_STORE_ID;if(!store){document.getElementById('grid').innerHTML='<div class="empty">Missing store link.</div>';return}currentStoreId=store;try{const r=await fetch(`${WORKER}/public/storefront?store_id=${encodeURIComponent(store)}&_=${Date.now()}`,{cache:'no-store'}),d=await r.json();if(!r.ok)throw new Error(d.error||'Storefront unavailable');payload=d;document.title=`${d.store.name} Inventory`;const desc=`Shop ${d.store.name} — sports cards, Pokémon TCG, One Piece TCG, comics and sealed product. Real market pricing, buy online for pickup or shipping.`;document.querySelector('meta[name="description"]')?.setAttribute('content',desc);document.querySelector('meta[property="og:title"]')?.setAttribute('content',`${d.store.name} Inventory`);document.querySelector('meta[property="og:description"]')?.setAttribute('content',desc);document.getElementById('store-name').textContent=d.store.name;document.getElementById('store-message').textContent=d.store.message||[d.store.location,'Browse available inventory'].filter(Boolean).join(' · ');if(d.store.logo){const logo=document.getElementById('logo');logo.onerror=()=>{logo.hidden=true};logo.src=d.store.logo;logo.hidden=false}fill('category',d.items.map(i=>i.category));refreshProductTypeOptions();fill('year',d.items.map(i=>i.year));fill('condition',d.items.map(i=>i.condition));cart=cart.filter(c=>d.items.some(i=>i.id===c.id));saveCart();render();}catch(e){document.getElementById('grid').innerHTML=`<div class="empty">${esc(e.message)}</div>`;document.getElementById('store-message').textContent='This catalog is not currently available.';}}
+async function start(){const store=new URLSearchParams(location.search).get('store')||DEFAULT_STORE_ID;if(!store){document.getElementById('grid').innerHTML='<div class="empty">Missing store link.</div>';return}currentStoreId=store;try{const r=await fetch(`${WORKER}/public/storefront?store_id=${encodeURIComponent(store)}&_=${Date.now()}`,{cache:'no-store'}),d=await r.json();if(!r.ok)throw new Error(d.error||'Storefront unavailable');payload=d;document.title=`${d.store.name} Inventory`;const desc=`Shop ${d.store.name} — sports cards, Pokémon TCG, One Piece TCG, comics and sealed product. Real market pricing, buy online for pickup or shipping.`;document.querySelector('meta[name="description"]')?.setAttribute('content',desc);document.querySelector('meta[property="og:title"]')?.setAttribute('content',`${d.store.name} Inventory`);document.querySelector('meta[property="og:description"]')?.setAttribute('content',desc);document.getElementById('store-name').textContent=d.store.name;document.getElementById('store-message').textContent=d.store.message||[d.store.location,'Browse available inventory'].filter(Boolean).join(' · ');if(d.store.logo){const logo=document.getElementById('logo');logo.onerror=()=>{logo.hidden=true};logo.src=d.store.logo;logo.hidden=false}fill('category',d.items.map(i=>i.category));refreshProductTypeOptions();fill('year',d.items.map(i=>i.year));fill('condition',d.items.map(i=>i.condition));cart=cart.filter(c=>d.items.some(i=>i.id===c.id));saveCart();render();openDeepLinkFromUrl();}catch(e){document.getElementById('grid').innerHTML=`<div class="empty">${esc(e.message)}</div>`;document.getElementById('store-message').textContent='This catalog is not currently available.';}}
 document.getElementById('category').addEventListener('change', refreshProductTypeOptions);
 // render() filters the entire catalog and rebuilds the whole product grid --
 // real work on a shop with hundreds/thousands of items. The search box used
