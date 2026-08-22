@@ -46,8 +46,15 @@ jobs:
             const codes = data
               .filter(s => !s.digital && s.card_count > 0 && !['memorabilia','token'].includes(s.set_type))
               .map(s => s.code);
-            console.log('resolved ' + codes.length + ' set(s)');
-            require('fs').appendFileSync(process.env.GITHUB_OUTPUT, 'matrix=' + JSON.stringify(codes) + '\n');
+            // GitHub caps a matrix at 256 generated jobs -- MTG's real set
+            // list already exceeds that on its own, so legs each carry a
+            // batch of set codes (processed one at a time, in sequence,
+            // inside the same job) rather than one set per leg.
+            const batchSize = 15;
+            const batches = [];
+            for (let i = 0; i < codes.length; i += batchSize) batches.push(codes.slice(i, i + batchSize).join(','));
+            console.log('resolved ' + codes.length + ' set(s) into ' + batches.length + ' batch(es)');
+            require('fs').appendFileSync(process.env.GITHUB_OUTPUT, 'matrix=' + JSON.stringify(batches) + '\n');
           "
 
   build-and-publish:
@@ -62,10 +69,12 @@ jobs:
       # the bottleneck anyway.
       max-parallel: 4
       matrix:
-        set: ${{ fromJson(needs.list-sets.outputs.matrix) }}
-    # 360 is the hard ceiling for a GitHub-hosted runner job, but every leg
-    # here is scoped to a single set now, so it finishes in minutes -- this
-    # ceiling is just a safety net, not the wall it used to be for scope=all.
+        batch: ${{ fromJson(needs.list-sets.outputs.matrix) }}
+    # 360 is the hard ceiling for a GitHub-hosted runner job. Each leg now
+    # works through ~15 sets in sequence rather than the whole catalog, so
+    # it should finish well inside this window -- but it's still a real
+    # ceiling, not just a formality, since a batch full of large sets could
+    # run long.
     timeout-minutes: 360
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -92,15 +101,19 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          SCOPE="${{ matrix.set }}"
-          echo "Harvesting images for scope: $SCOPE"
-          npm run mtg:images:build -- --scope="$SCOPE" --upload
+          IFS=',' read -ra CODES <<< "${{ matrix.batch }}"
+          for SCOPE in "${CODES[@]}"; do
+            echo "Harvesting images for scope: $SCOPE"
+            npm run mtg:images:build -- --scope="$SCOPE" --upload
+          done
 
       - name: Verify production manifest reflects the new image coverage
         shell: bash
         run: |
           set -euo pipefail
-          SCOPE="${{ matrix.set }}"
-          curl --fail --retry 5 --retry-delay 3 \
-            "https://still-resonance-4f87.swarnerauto.workers.dev/catalog/mtg/images/manifest?set=$SCOPE" \
-            | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const m=JSON.parse(s);if(!m.ok||!m.ids?.length)process.exit(1);console.log('ids:',m.ids.length)})"
+          IFS=',' read -ra CODES <<< "${{ matrix.batch }}"
+          for SCOPE in "${CODES[@]}"; do
+            curl --fail --retry 5 --retry-delay 3 \
+              "https://still-resonance-4f87.swarnerauto.workers.dev/catalog/mtg/images/manifest?set=$SCOPE" \
+              | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const m=JSON.parse(s);if(!m.ok||!m.ids?.length)process.exit(1);console.log('$SCOPE ids:',m.ids.length)})"
+          done
