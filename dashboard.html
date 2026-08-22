@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.22.04-qr-exact-match-or-own-storefront">
+<meta name="version" content="2026.08.22.05-fix-unscannable-qr-and-label-sku-overlap">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1633,16 +1633,16 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.22.04-qr-exact-match-or-own-storefront" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.22.04-qr-exact-match-or-own-storefront" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.22.04-qr-exact-match-or-own-storefront" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.08.22.04-qr-exact-match-or-own-storefront" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.22.04-qr-exact-match-or-own-storefront" defer></script>
-<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.08.22.04-qr-exact-match-or-own-storefront" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.22.04-qr-exact-match-or-own-storefront" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.22.04-qr-exact-match-or-own-storefront" defer></script>
-<script src="scripts/pokemon/offline-browser.js?v=2026.08.22.04-qr-exact-match-or-own-storefront" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.22.04-qr-exact-match-or-own-storefront" defer></script>
+<script src="scripts/query-routing.js?v=2026.08.22.05-fix-unscannable-qr-and-label-sku-overlap" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.22.05-fix-unscannable-qr-and-label-sku-overlap" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.22.05-fix-unscannable-qr-and-label-sku-overlap" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.08.22.05-fix-unscannable-qr-and-label-sku-overlap" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.22.05-fix-unscannable-qr-and-label-sku-overlap" defer></script>
+<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.08.22.05-fix-unscannable-qr-and-label-sku-overlap" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.22.05-fix-unscannable-qr-and-label-sku-overlap" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.22.05-fix-unscannable-qr-and-label-sku-overlap" defer></script>
+<script src="scripts/pokemon/offline-browser.js?v=2026.08.22.05-fix-unscannable-qr-and-label-sku-overlap" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.22.05-fix-unscannable-qr-and-label-sku-overlap" defer></script>
 </head>
 <body>
 
@@ -1671,11 +1671,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.22.04-qr-exact-match-or-own-storefront</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.22.05-fix-unscannable-qr-and-label-sku-overlap</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.22.04-qr-exact-match-or-own-storefront</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.22.05-fix-unscannable-qr-and-label-sku-overlap</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1693,7 +1693,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.22.04-qr-exact-match-or-own-storefront</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.22.05-fix-unscannable-qr-and-label-sku-overlap</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3644,7 +3644,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.22.04-qr-exact-match-or-own-storefront';
+const APP_VERSION = '2026.08.22.05-fix-unscannable-qr-and-label-sku-overlap';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -26521,19 +26521,23 @@ function setCartScanStatus(msg,color){const el=document.getElementById('cart-sca
 // scan (different item, or the same item scanned again after a pause) still
 // goes through immediately.
 let _cartScanLastValue='', _cartScanLastAt=0;
-// A QR label may encode a full TCGPlayer product URL (see labelQrPayload)
-// instead of a bare SKU, so a customer's own phone camera can land on the
-// exact card + condition page. Our own SKU rides along as a &wo_sku= param
-// TCGPlayer itself ignores -- pull it back out here before doing the
-// inventory lookup, so scan-to-cart still finds the item instead of trying
-// to match a whole URL against a barcode value. A label with no TCGPlayer
-// match never had a URL to begin with, so this is a no-op for those --
-// value falls through unchanged, exactly like before this feature existed.
+// A QR label may encode a full TCGPlayer/PriceCharting/our-own-storefront
+// URL (see labelQrPayload) instead of a bare SKU, so a customer's own phone
+// camera can land on the exact card + condition page. Our own SKU rides
+// along as a &wo_sku= param every destination ignores -- pull it back out
+// here before doing the inventory lookup, so scan-to-cart still finds the
+// item instead of trying to match a whole URL against a barcode value.
+// wo_sku is omitted from the storefront fallback when it would just
+// duplicate the item id (kept out to keep the printed QR as short/scannable
+// as possible), so fall back to the item= id itself in that case. A label
+// with no match at all never had a URL to begin with, so this is a no-op
+// for those -- value falls through unchanged, exactly like before this
+// feature existed.
 function cartScanLookupValue(value){
   if(!/^https?:\/\//i.test(value)) return value;
   try {
-    const woSku = new URL(value).searchParams.get('wo_sku');
-    return woSku || value;
+    const params = new URL(value).searchParams;
+    return params.get('wo_sku') || params.get('item') || value;
   } catch(e) { return value; }
 }
 async function handleCartScanValue(rawValue){
@@ -40904,13 +40908,19 @@ function labelQrPayload(batchEntry){
     }
     // No exact match on either pricing site -- our own storefront listing
     // for this exact item is a real, specific page (unlike a third-party
-    // search), so it's the backup, not a generic external search.
+    // search), so it's the backup, not a generic external search. Kept as
+    // short as possible: a QR auto-sizes its module grid to fit the data,
+    // so a long URL (store id + item name on top of the item id) forces a
+    // much denser code at the same physical label size -- dense enough that
+    // a small thermal printer can no longer resolve it, which is exactly
+    // what made every fallback label unscannable the one time this carried
+    // store+q too. store is dropped entirely (storefront.html already
+    // falls back to its own default store for a bare link), and wo_sku is
+    // only added when it's not simply a duplicate of the item id.
+    const itemId = item.id || batchEntry.id || '';
     const storefrontUrl = new URL('https://themanapocket.com/');
-    storefrontUrl.searchParams.set('item', item.id || batchEntry.id || '');
-    storefrontUrl.searchParams.set('store', (typeof getActiveStoreId === 'function' ? getActiveStoreId() : '') || '');
-    const name = String(item.name || batchEntry.name || '').trim();
-    if(name) storefrontUrl.searchParams.set('q', name);
-    storefrontUrl.searchParams.set('wo_sku', sku);
+    storefrontUrl.searchParams.set('item', itemId);
+    if(sku !== itemId) storefrontUrl.searchParams.set('wo_sku', sku);
     return storefrontUrl.toString();
   } catch(e) { /* fall through to plain SKU/ID if link-building fails for any reason */ }
   return sku;
@@ -41105,9 +41115,9 @@ async function printInventoryLabels(){
       .wrap-name { font-size:8px; font-weight:700; line-height:1.1; max-height:27px; overflow:hidden; text-align:center; }
       .wrap-badge { font-size:6px; font-weight:700; text-transform:uppercase; text-align:center; }
       .wrap-price { font-size:24px; font-weight:700; line-height:1; margin-top:auto; }
-      .wrap-bottom-row { width:100%; display:flex; justify-content:space-between; align-items:baseline; }
-      .wrap-condition { font-size:11px; font-weight:700; text-transform:uppercase; }
-      .wrap-sku { font-size:6px; font-weight:400; color:#555; }`;
+      .wrap-bottom-row { width:100%; display:flex; justify-content:space-between; align-items:baseline; gap:4px; }
+      .wrap-condition { font-size:11px; font-weight:700; text-transform:uppercase; flex-shrink:0; }
+      .wrap-sku { font-size:6px; font-weight:400; color:#555; min-width:0; word-break:break-all; text-align:right; }`;
   w.document.write(`<html><head><title>Labels</title>
     <style>${isRoll ? rollStyle : sheetStyle}${isWrap ? wrapStyle : ''}</style>
   </head><body><div class="label-sheet">${labelsHtml}</div>
@@ -44009,7 +44019,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.22.04-qr-exact-match-or-own-storefront" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.22.05-fix-unscannable-qr-and-label-sku-overlap" defer></script>
 </body>
 </html>
 
