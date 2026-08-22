@@ -3,25 +3,20 @@ import assert from 'node:assert/strict';
 
 const dashboard = fs.readFileSync('dashboard.html', 'utf8');
 
-// ── Contract: labelQrPayload exists, uses the same buildTcgExternalLink() helper
-// already used for the "view on TCGPlayer" button, only accepts a genuine
-// /product/ deep link (never the search-URL fallback that same helper can also
-// return), and tacks our own SKU onto it as an extra query param so scan-to-cart
-// can still find the item. Anything else falls back to the plain SKU/ID. ──
+// ── Contract: labelQrPayload prefers an exact TCGplayer/PriceCharting
+// product page, but -- unlike the original version of this function -- now
+// falls back to a live search on the category-appropriate site rather than
+// a bare SKU, since a bare SKU just makes a phone camera (Google Lens etc.)
+// offer "search barcode" and go nowhere useful for a customer. Only an item
+// with no name at all falls back to the plain SKU/ID. ──
 assert.match(dashboard, /function labelQrPayload\(batchEntry\)\{/, 'missing labelQrPayload helper');
 assert.match(dashboard, /const item = \(all \|\| \[\]\)\.find\(i => i\.id === batchEntry\.id\) \|\| batchEntry;/, 'labelQrPayload must look up the full live inventory item (batch entries are stripped-down snapshots without tcgPlayerUrl/category/etc.)');
+assert.match(dashboard, /const pricedByPriceCharting = key === 'comic' \|\| key === 'sports';/, 'must route comics/sports through PriceCharting and everything else through TCGPlayer');
+assert.match(dashboard, /if\(pricedByPriceCharting && \/\^https\?:\\\/\\\/\(www\\\.\)\?pricecharting\\\.com\\\/\/i\.test\(pcUrl\)\)\{/, 'any real PriceCharting URL on file (exact /game/ product OR its own /search-products fallback) must be used for comics/sports');
 assert.match(dashboard, /const link = typeof buildTcgExternalLink === 'function' \? buildTcgExternalLink\(item\) : null;/, 'labelQrPayload must reuse the existing buildTcgExternalLink helper, not a separate implementation');
-assert.match(dashboard, /if\(link\?\.url && \/tcgplayer\\\.com\\\/product\\\/\/i\.test\(link\.url\)\)\{/, 'only a genuine /product/ URL counts -- buildTcgExternalLink\'s search-URL fallback (when there is no confirmed match) must NOT be treated as "exact"');
-assert.match(dashboard, /return link\.url \+ '&wo_sku=' \+ encodeURIComponent\(sku\);/, 'a real product link must carry our own SKU as an extra query param');
-
-// ── Contract: sports cards and comics (priced via PriceCharting, not TCGPlayer)
-// get the same treatment -- item.providerUrl only counts as exact when it's a real
-// /game/ product page, never the generic /search-products search fallback ──
-assert.match(dashboard, /const pcUrl = item\.providerUrl \|\| '';/, 'labelQrPayload must check the PriceCharting-sourced providerUrl for sports/comics items');
-assert.match(dashboard, /if\(\/pricecharting\\\.com\\\/game\\\/\/i\.test\(pcUrl\)\)\{/, 'only a genuine /game/ URL counts as exact -- the /search-products fallback for an unmatched item must NOT be treated as exact');
-assert.match(dashboard, /return pcUrl \+ \(pcUrl\.includes\('\?'\) \? '&' : '\?'\) \+ 'wo_sku=' \+ encodeURIComponent\(sku\);/, 'a real PriceCharting product link must carry our own SKU as an extra query param, correctly joined whether or not the URL already has a query string');
-
-assert.match(dashboard, /return sku;\s*\n\}/, 'labelQrPayload must fall back to the plain SKU/ID when there is no exact match on either site');
+assert.match(dashboard, /if\(link\?\.url\) return link\.url \+ \(link\.url\.includes\('\?'\) \? '&' : '\?'\) \+ 'wo_sku=' \+ encodeURIComponent\(sku\);/, 'any URL buildTcgExternalLink returns (exact product, search fallback, or eBay sold comps for graded items) must be used for non-PriceCharting categories -- not just a genuine /product/ link');
+assert.match(dashboard, /pricedByPriceCharting\s*\n\s*\? 'https:\/\/www\.pricecharting\.com\/search-products\?q=' \+ encodeURIComponent\(name\) \+ '&type=prices'\s*\n\s*: 'https:\/\/www\.tcgplayer\.com\/search\/all\/product\?q=' \+ encodeURIComponent\(name\);/, 'when nothing at all is on file, a fresh search must be built from the item\'s own name on the category-appropriate site');
+assert.match(dashboard, /return sku;\s*\n\}/, 'labelQrPayload must fall back to the plain SKU/ID only when even a fresh search cannot be built (no name)');
 
 // ── Contract: both label paths only use labelQrPayload for QR style -- a linear
 // barcode encoding a ~150-char URL would be absurd/unreadable at label size, so
@@ -32,106 +27,128 @@ assert.match(dashboard, /const codeValue = codeStyle === 'qr' \? labelQrPayload\
 console.log('Label QR TCGPlayer-link contract checks passed');
 
 // ── Functional: reimplement labelQrPayload's decision logic and prove each branch ──
-function labelQrPayload(batchEntry, { all, buildTcgExternalLink }){
+function labelQrPayload(batchEntry, { all, buildTcgExternalLink, qplCategoryKey }){
   const sku = batchEntry.sku || batchEntry.id;
   try {
     const item = (all || []).find(i => i.id === batchEntry.id) || batchEntry;
-    const link = typeof buildTcgExternalLink === 'function' ? buildTcgExternalLink(item) : null;
-    if(link?.url && /tcgplayer\.com\/product\//i.test(link.url)){
-      return link.url + '&wo_sku=' + encodeURIComponent(sku);
-    }
+    const key = typeof qplCategoryKey === 'function' ? qplCategoryKey(item.category || '') : '';
+    const pricedByPriceCharting = key === 'comic' || key === 'sports';
     const pcUrl = item.providerUrl || '';
-    if(/pricecharting\.com\/game\//i.test(pcUrl)){
+    if(pricedByPriceCharting && /^https?:\/\/(www\.)?pricecharting\.com\//i.test(pcUrl)){
       return pcUrl + (pcUrl.includes('?') ? '&' : '?') + 'wo_sku=' + encodeURIComponent(sku);
+    }
+    if(!pricedByPriceCharting){
+      const link = typeof buildTcgExternalLink === 'function' ? buildTcgExternalLink(item) : null;
+      if(link?.url) return link.url + (link.url.includes('?') ? '&' : '?') + 'wo_sku=' + encodeURIComponent(sku);
+    }
+    const name = String(item.name || batchEntry.name || '').trim();
+    if(name){
+      const searchUrl = pricedByPriceCharting
+        ? 'https://www.pricecharting.com/search-products?q=' + encodeURIComponent(name) + '&type=prices'
+        : 'https://www.tcgplayer.com/search/all/product?q=' + encodeURIComponent(name);
+      return searchUrl + '&wo_sku=' + encodeURIComponent(sku);
     }
   } catch(e) { /* fall through to plain SKU/ID if link-building fails for any reason */ }
   return sku;
 }
+const qplCategoryKey = (cat) => /comic/i.test(cat) ? 'comic' : /sport/i.test(cat) ? 'sports' : 'other';
 
 // Matched Pokemon/MTG single -> exact product URL, our SKU appended
 {
   const batchEntry = { id:'i1', sku:'WO-2044' };
-  const all = [{ id:'i1', tcgPlayerUrl:'https://www.tcgplayer.com/product/654135' }];
-  const buildTcgExternalLink = (item) => ({ url: `https://www.tcgplayer.com/product/654135?page=1&Language=English&Condition=Near+Mint` });
-  const payload = labelQrPayload(batchEntry, { all, buildTcgExternalLink });
+  const all = [{ id:'i1', category:'Pokemon TCG', tcgPlayerUrl:'https://www.tcgplayer.com/product/654135' }];
+  const buildTcgExternalLink = () => ({ url: `https://www.tcgplayer.com/product/654135?page=1&Language=English&Condition=Near+Mint` });
+  const payload = labelQrPayload(batchEntry, { all, buildTcgExternalLink, qplCategoryKey });
   assert.equal(payload, 'https://www.tcgplayer.com/product/654135?page=1&Language=English&Condition=Near+Mint&wo_sku=WO-2044', 'a matched item must encode the exact product+condition URL with our SKU appended');
 }
 
-// No confirmed match (comics, sports, sealed, or unmatched) -> buildTcgExternalLink
-// returns its search-URL fallback, which must NOT be treated as exact
+// No confirmed TCGplayer match -> its own search-URL fallback is now used
+// (previously fell back to plain SKU)
 {
-  const batchEntry = { id:'i2', sku:'WO-3050' };
-  const all = [{ id:'i2' }];
+  const batchEntry = { id:'i2', sku:'WO-3050', name:'Some Card' };
+  const all = [{ id:'i2', category:'Pokemon TCG' }];
   const buildTcgExternalLink = () => ({ url: 'https://www.tcgplayer.com/search/pokemon/product?q=some+card' });
-  const payload = labelQrPayload(batchEntry, { all, buildTcgExternalLink });
-  assert.equal(payload, 'WO-3050', 'a search-URL fallback (no real product match) must not be encoded -- plain SKU only, since a search is not "exact"');
+  const payload = labelQrPayload(batchEntry, { all, buildTcgExternalLink, qplCategoryKey });
+  assert.equal(payload, 'https://www.tcgplayer.com/search/pokemon/product?q=some+card&wo_sku=WO-3050', 'a search-URL fallback still lands on a real, useful site instead of a bare SKU that goes nowhere');
 }
 
 // Matched sports card / comic (no TCGPlayer match, real PriceCharting product page) ->
 // exact PriceCharting URL, our SKU appended
 {
   const batchEntry = { id:'sc1', sku:'WO-7020' };
-  const all = [{ id:'sc1', providerUrl:'https://www.pricecharting.com/game/sports-cards/2023-topps-chrome-shohei-ohtani' }];
-  const buildTcgExternalLink = () => ({ url: 'https://www.tcgplayer.com/search/all/product?q=x' }); // no TCGPlayer match for a sports card
-  const payload = labelQrPayload(batchEntry, { all, buildTcgExternalLink });
+  const all = [{ id:'sc1', category:'Sports', providerUrl:'https://www.pricecharting.com/game/sports-cards/2023-topps-chrome-shohei-ohtani' }];
+  const buildTcgExternalLink = () => ({ url: 'https://www.tcgplayer.com/search/all/product?q=x' }); // must not be used -- comics/sports route through PriceCharting
+  const payload = labelQrPayload(batchEntry, { all, buildTcgExternalLink, qplCategoryKey });
   assert.equal(payload, 'https://www.pricecharting.com/game/sports-cards/2023-topps-chrome-shohei-ohtani?wo_sku=WO-7020', 'a matched sports card must encode the exact PriceCharting product URL with our SKU appended, joined with a fresh ?');
 }
 
 // Same, but the PriceCharting URL already carries its own query string -- must join with &, not a second ?
 {
   const batchEntry = { id:'cb1', sku:'WO-7030' };
-  const all = [{ id:'cb1', providerUrl:'https://www.pricecharting.com/game/comic-books/amazing-spider-man-1?edition=cgc' }];
+  const all = [{ id:'cb1', category:'Comic', providerUrl:'https://www.pricecharting.com/game/comic-books/amazing-spider-man-1?edition=cgc' }];
   const buildTcgExternalLink = () => null;
-  const payload = labelQrPayload(batchEntry, { all, buildTcgExternalLink });
+  const payload = labelQrPayload(batchEntry, { all, buildTcgExternalLink, qplCategoryKey });
   assert.equal(payload, 'https://www.pricecharting.com/game/comic-books/amazing-spider-man-1?edition=cgc&wo_sku=WO-7030', 'our SKU must be joined with & when the PriceCharting URL already has a query string');
 }
 
-// Unmatched comic/sports item -> providerUrl is the generic /search-products fallback,
-// which must NOT be treated as exact
+// Unmatched comic/sports item -> providerUrl is the generic /search-products
+// fallback, which is now used (previously fell back to plain SKU)
 {
   const batchEntry = { id:'sc2', sku:'WO-7040' };
-  const all = [{ id:'sc2', providerUrl:'https://www.pricecharting.com/search-products?q=some+card&type=prices' }];
+  const all = [{ id:'sc2', category:'Sports', providerUrl:'https://www.pricecharting.com/search-products?q=some+card&type=prices' }];
   const buildTcgExternalLink = () => ({ url: 'https://www.tcgplayer.com/search/all/product?q=x' });
-  const payload = labelQrPayload(batchEntry, { all, buildTcgExternalLink });
-  assert.equal(payload, 'WO-7040', 'a /search-products fallback (no confirmed PriceCharting product match) must not be encoded -- plain SKU only');
+  const payload = labelQrPayload(batchEntry, { all, buildTcgExternalLink, qplCategoryKey });
+  assert.equal(payload, 'https://www.pricecharting.com/search-products?q=some+card&type=prices&wo_sku=WO-7040', 'a /search-products fallback still lands on the right site instead of a bare SKU');
 }
 
-// TCGPlayer match takes priority over a PriceCharting providerUrl when somehow both exist
+// TCGPlayer match takes priority over a PriceCharting providerUrl for a
+// non-comic/sports category
 {
   const batchEntry = { id:'both1', sku:'WO-7050' };
-  const all = [{ id:'both1', providerUrl:'https://www.pricecharting.com/game/pokemon-cards/some-card' }];
+  const all = [{ id:'both1', category:'Pokemon TCG', providerUrl:'https://www.pricecharting.com/game/pokemon-cards/some-card' }];
   const buildTcgExternalLink = () => ({ url: 'https://www.tcgplayer.com/product/999999?page=1&Condition=Near+Mint' });
-  const payload = labelQrPayload(batchEntry, { all, buildTcgExternalLink });
-  assert.equal(payload, 'https://www.tcgplayer.com/product/999999?page=1&Condition=Near+Mint&wo_sku=WO-7050', 'TCGPlayer must be checked first and win when both a TCGPlayer and a PriceCharting exact match exist');
+  const payload = labelQrPayload(batchEntry, { all, buildTcgExternalLink, qplCategoryKey });
+  assert.equal(payload, 'https://www.tcgplayer.com/product/999999?page=1&Condition=Near+Mint&wo_sku=WO-7050', 'a non-comic/sports category must route through TCGPlayer even if a PriceCharting providerUrl happens to be present');
 }
 
-// Graded item -> buildTcgExternalLink returns an eBay sold-comps URL, not TCGPlayer
+// Graded item -> buildTcgExternalLink returns an eBay sold-comps URL, which
+// is now used directly (previously fell back to plain SKU)
 {
   const batchEntry = { id:'i3', sku:'WO-4010' };
-  const all = [{ id:'i3' }];
+  const all = [{ id:'i3', category:'Pokemon TCG' }];
   const buildTcgExternalLink = () => ({ url: 'https://www.ebay.com/sch/i.html?_nkw=graded+card&LH_Sold=1' });
-  const payload = labelQrPayload(batchEntry, { all, buildTcgExternalLink });
-  assert.equal(payload, 'WO-4010', 'a non-TCGPlayer URL (e.g. the eBay sold-comps fallback for graded items) must not be encoded -- plain SKU only');
+  const payload = labelQrPayload(batchEntry, { all, buildTcgExternalLink, qplCategoryKey });
+  assert.equal(payload, 'https://www.ebay.com/sch/i.html?_nkw=graded+card&LH_Sold=1&wo_sku=WO-4010', 'eBay sold comps for a graded item is a real, useful landing page and must be used instead of a bare SKU');
+}
+
+// Comic with nothing on file at all (no providerUrl) -> a fresh PriceCharting
+// search is built from the item's name
+{
+  const batchEntry = { id:'cb2', sku:'WO-8000', name:'Unlinked Comic #1' };
+  const all = [{ id:'cb2', category:'Comic', name:'Unlinked Comic #1' }];
+  const buildTcgExternalLink = () => ({ url: 'https://www.tcgplayer.com/search/all/product?q=x' }); // must not be used
+  const payload = labelQrPayload(batchEntry, { all, buildTcgExternalLink, qplCategoryKey });
+  assert.equal(payload, 'https://www.pricecharting.com/search-products?q=Unlinked%20Comic%20%231&type=prices&wo_sku=WO-8000', 'a comic with no PriceCharting link at all must still get a fresh PriceCharting search built from its own name');
 }
 
 // Item not found in live inventory (id mismatch) -> falls back to the batch
-// entry itself, which has no tcgPlayerUrl, so buildTcgExternalLink still
-// can't produce an exact link -- must not throw, must fall back to plain SKU
+// entry itself; buildTcgExternalLink still returns a usable url from it
 {
   const batchEntry = { id:'i4', sku:'WO-5000' };
   const all = [];
   const buildTcgExternalLink = (item) => item.tcgPlayerUrl ? { url: item.tcgPlayerUrl } : { url: 'https://www.tcgplayer.com/search/all/product?q=x' };
-  const payload = labelQrPayload(batchEntry, { all, buildTcgExternalLink });
-  assert.equal(payload, 'WO-5000', 'an item missing from the live inventory array must not crash label generation -- falls back to plain SKU');
+  const payload = labelQrPayload(batchEntry, { all, buildTcgExternalLink, qplCategoryKey });
+  assert.equal(payload, 'https://www.tcgplayer.com/search/all/product?q=x&wo_sku=WO-5000', 'an item missing from the live inventory array must not crash label generation, and still lands on a real search page');
 }
 
-// buildTcgExternalLink throwing must not break label generation
+// buildTcgExternalLink throwing, with no name to fall back to -> plain SKU,
+// must not propagate the error
 {
   const batchEntry = { id:'i5', sku:'WO-6000' };
-  const all = [{ id:'i5' }];
+  const all = [{ id:'i5', category:'Pokemon TCG' }];
   const buildTcgExternalLink = () => { throw new Error('boom'); };
-  const payload = labelQrPayload(batchEntry, { all, buildTcgExternalLink });
-  assert.equal(payload, 'WO-6000', 'if buildTcgExternalLink throws for any reason, labelQrPayload must still return a usable plain SKU, not propagate the error');
+  const payload = labelQrPayload(batchEntry, { all, buildTcgExternalLink, qplCategoryKey });
+  assert.equal(payload, 'WO-6000', 'if buildTcgExternalLink throws and there is no name to build a fresh search from, labelQrPayload must still return a usable plain SKU, not propagate the error');
 }
 
 console.log('labelQrPayload functional checks passed');

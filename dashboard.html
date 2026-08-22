@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.22.02-bulk-label-print-for-filtered-view">
+<meta name="version" content="2026.08.22.03-price-lookup-and-qr-search-fallback">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1633,16 +1633,16 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.22.02-bulk-label-print-for-filtered-view" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.22.02-bulk-label-print-for-filtered-view" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.22.02-bulk-label-print-for-filtered-view" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.08.22.02-bulk-label-print-for-filtered-view" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.22.02-bulk-label-print-for-filtered-view" defer></script>
-<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.08.22.02-bulk-label-print-for-filtered-view" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.22.02-bulk-label-print-for-filtered-view" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.22.02-bulk-label-print-for-filtered-view" defer></script>
-<script src="scripts/pokemon/offline-browser.js?v=2026.08.22.02-bulk-label-print-for-filtered-view" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.22.02-bulk-label-print-for-filtered-view" defer></script>
+<script src="scripts/query-routing.js?v=2026.08.22.03-price-lookup-and-qr-search-fallback" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.22.03-price-lookup-and-qr-search-fallback" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.22.03-price-lookup-and-qr-search-fallback" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.08.22.03-price-lookup-and-qr-search-fallback" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.22.03-price-lookup-and-qr-search-fallback" defer></script>
+<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.08.22.03-price-lookup-and-qr-search-fallback" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.22.03-price-lookup-and-qr-search-fallback" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.22.03-price-lookup-and-qr-search-fallback" defer></script>
+<script src="scripts/pokemon/offline-browser.js?v=2026.08.22.03-price-lookup-and-qr-search-fallback" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.22.03-price-lookup-and-qr-search-fallback" defer></script>
 </head>
 <body>
 
@@ -1671,11 +1671,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.22.02-bulk-label-print-for-filtered-view</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.22.03-price-lookup-and-qr-search-fallback</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.22.02-bulk-label-print-for-filtered-view</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.22.03-price-lookup-and-qr-search-fallback</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1693,7 +1693,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.22.02-bulk-label-print-for-filtered-view</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.22.03-price-lookup-and-qr-search-fallback</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -1793,6 +1793,7 @@ body.show-mode .inv-sync-badge{display:none;}
   </div>
   <div class="tabs inv-action-tabs" role="toolbar" aria-label="Inventory actions">
     <button class="tab primary" id="sync-prices-btn" onclick="openPriceSyncModal()" title="Compare inventory prices against your cached price lookups">💹 SYNC PRICES</button>
+    <button class="tab primary" onclick="runPriceSyncForFilteredItems()" title="Look up current market prices for only the in-stock items currently shown below (e.g. click Stale Prices first, then this) instead of scanning the whole inventory">💹 LOOK UP THIS VIEW</button>
     <button class="tab primary" onclick="openLabelPrintModal()" title="Build a batch of barcode/price labels to print">🏷️ PRINT LABELS</button>
     <button class="tab primary" onclick="printLabelsForFilteredItems()" title="Queue every in-stock item currently shown below (category chip + search combined) for label printing, instead of adding items one search at a time">🏷️ LABEL THIS VIEW</button>
     <button class="tab primary" onclick="openOneOffSellModal()" title="Add an item that isn't in inventory yet to the cart">⚡ ONE-OFF TO CART</button>
@@ -3643,7 +3644,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.22.02-bulk-label-print-for-filtered-view';
+const APP_VERSION = '2026.08.22.03-price-lookup-and-qr-search-fallback';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -12471,6 +12472,7 @@ function showInvRowMenu(e, id, isInStock){
     (item?.isBundle && item.status==='in_stock')?`<button class="hbtn" style="${btnStyle};color:var(--red)" onclick="dissolveBundle('${id}');closeInvRowMenu()">🎁 Dissolve Bundle</button>`:'',
     `<button class="hbtn" style="${btnStyle}" onclick="openItemTimeline('${id}');closeInvRowMenu()">📋 History</button>`,
     `<button class="hbtn" style="${btnStyle}" onclick="openLabelPrintModal('${id}');closeInvRowMenu()">🏷️ Print Label</button>`,
+    isInStock?`<button class="hbtn" style="${btnStyle};color:var(--blue)" onclick="refreshInventoryItemPriceFromMarket('${id}');closeInvRowMenu()">💹 Refresh Price</button>`:'',
     isInStock?`<button class="hbtn" style="${btnStyle};color:var(--g)" onclick="publishInventoryItemToWebflow('${id}');closeInvRowMenu()">🌐 Publish / Sync Webflow</button>`:'',
     item?.status==='archived'
       ?`<button class="hbtn" style="${btnStyle}color:var(--g)" onclick="restoreInventoryItem('${id}');closeInvRowMenu()">↩ Restore</button>`
@@ -14034,7 +14036,7 @@ function comicSyncedGuidePrice(item = {}, product = {}){
 // the id list into batches and skips the unnecessary image scrape.
 const COMIC_PRICE_SYNC_BATCH_SIZE = 25;
 async function buildLiveComicPriceSyncProposal(options = {}){
-  const items=comicInventoryPriceSyncItems();
+  const items=comicInventoryPriceSyncItems().filter(i=>!options.restrictToIds||options.restrictToIds.has(i.id));
   const summary={checked:items.length,processed:0,changed:0,unchanged:0,noMatch:0,noPrice:0,errors:0,issues:[]};
   const proposal=[];
 
@@ -14349,7 +14351,7 @@ async function fetchLiveMtgInventoryPrice(item = {}, offlineMatch = null){
 }
 async function buildOfflineMtgPriceSyncProposal(options = {}){
   const { onProgress = null, preferOnline = navigator.onLine } = options;
-  const items = mtgOfflineInventoryItems();
+  const items = mtgOfflineInventoryItems().filter(i=>!options.restrictToIds||options.restrictToIds.has(i.id));
   const summary = { checked:items.length, processed:0, changed:0, unchanged:0, noMatch:0, noPrice:0, errors:0, sealedChecked:0, onlineChecked:0, liveMatched:0, offlineFallback:0, issues:[] };
   const proposal = [];
   for(const item of items){
@@ -14480,7 +14482,7 @@ async function buildLivePokemonPriceSyncProposal(options = {}){
   });
   items = items.filter(i => {
     const st = i.lifecycle || i.status || 'in_stock';
-    return st !== 'sold' && st !== 'archived' && isPokemonInventorySyncItem(i);
+    return st !== 'sold' && st !== 'archived' && isPokemonInventorySyncItem(i) && (!options.restrictToIds || options.restrictToIds.has(i.id));
   });
   items = items.sort((a, b) => inventoryReferenceMarketPrice(b) - inventoryReferenceMarketPrice(a));
 
@@ -14802,6 +14804,62 @@ function closePriceSyncModal(){
   document.getElementById('price-sync-modal')?.classList.remove('on');
 }
 
+// Bulk companion to the per-category FETCH/SYNC buttons above: those always
+// scan the *entire* inventory for their category. This instead looks up
+// live prices only for whatever's currently on screen in the Inventory tab
+// (a category chip, the Stale Prices filter, a search, or any combination),
+// so hitting "Stale Prices" then this button actually checks just those
+// items instead of re-scanning everything. Each category builder already
+// accepts an optional restrictToIds set (see buildLivePokemonPriceSyncProposal
+// etc.) -- this just splits the filtered items by category and runs
+// whichever builders apply, merging the results into the same review/apply
+// UI the other sync buttons already use.
+async function runPriceSyncForFilteredItems(){
+  const items = (typeof filtered !== 'undefined' ? filtered : []).filter(i => i.status === 'in_stock');
+  if(!items.length){ toast_dash('No in-stock items in the current view to look up'); return; }
+  openPriceSyncModal();
+  const statusEl = document.getElementById('price-sync-status');
+  const propEl = document.getElementById('price-sync-proposal');
+  const applyBtn = document.getElementById('price-sync-apply-btn');
+  const pendingBeforeRun = [..._priceSyncProposal];
+  if(statusEl) statusEl.textContent = 'Looking up current market prices for ' + items.length + ' item' + (items.length===1?'':'s') + ' in this view...';
+  if(propEl) propEl.innerHTML = '';
+  if(applyBtn) applyBtn.style.display = 'none';
+
+  const runners = [
+    { ids:new Set(items.filter(isPokemonInventorySyncItem).map(i => i.id)), label:'Pokemon', build:buildLivePokemonPriceSyncProposal },
+    { ids:new Set(items.filter(isMtgInventorySyncItem).map(i => i.id)), label:'MTG', build:opts => buildOfflineMtgPriceSyncProposal({ ...opts, preferOnline:navigator.onLine }) },
+    { ids:new Set(items.filter(i => qplCategoryKey(i.category||'') === 'comic').map(i => i.id)), label:'Comics', build:buildLiveComicPriceSyncProposal },
+    { ids:new Set(items.filter(isOtherTcgSportsInventorySyncItem).map(i => i.id)), label:'Sports/Other', build:buildOtherTcgSportsPriceSyncProposal },
+  ];
+  const combined = [];
+  const combinedSummary = { checked:items.length, changed:0, unchanged:0, noMatch:0, noPrice:0, errors:0, issues:[] };
+  for(const runner of runners){
+    if(!runner.ids.size) continue;
+    if(statusEl) statusEl.textContent = 'Looking up ' + runner.label + ' prices (' + runner.ids.size + ')...';
+    try {
+      const proposal = await runner.build({ restrictToIds:runner.ids, onProgress:(done,total) => { if(statusEl) statusEl.textContent = 'Looking up ' + runner.label + ' prices... ' + done + ' of ' + total; } });
+      combined.push(...proposal);
+      const s = _priceSyncLastSummary || {};
+      combinedSummary.changed += s.changed || 0; combinedSummary.unchanged += s.unchanged || 0;
+      combinedSummary.noMatch += s.noMatch || 0; combinedSummary.noPrice += s.noPrice || 0; combinedSummary.errors += s.errors || 0;
+      combinedSummary.issues.push(...(s.issues || []));
+    } catch(e) {
+      combinedSummary.errors += runner.ids.size;
+      combinedSummary.issues.push({ item:{}, type:'error', title:runner.label + ' lookup failed', reason:String(e.message || e) });
+    }
+  }
+  _priceSyncLastSummary = combinedSummary;
+  _priceSyncProposal = mergePendingPriceSyncProposals(pendingBeforeRun, combined);
+  savePendingPriceSyncProposals();
+  const summaryText = 'Looked up ' + items.length + ' item' + (items.length===1?'':'s') + ' from this view. ' + combinedSummary.changed + ' changed, ' + combinedSummary.unchanged + ' unchanged, ' + combinedSummary.noMatch + ' not matched, ' + combinedSummary.errors + ' errors.';
+  if(statusEl) statusEl.textContent = summaryText + (_priceSyncProposal.length ? ' Review price changes below, then click UPDATE SELECTED.' : '');
+  renderPriceSyncProposal();
+  if(!_priceSyncProposal.length && !combinedSummary.issues.length && propEl) propEl.innerHTML = '<div style="color:var(--dim);font-size:12px;padding:12px 0">All prices in this view already match current market.</div>';
+  if(applyBtn && _priceSyncProposal.length) applyBtn.style.display = '';
+  updatePriceAlertBanner();
+}
+
 async function runPriceSyncScan(){
   const btn      = document.getElementById('price-sync-scan-btn');
   const statusEl = document.getElementById('price-sync-status');
@@ -15073,7 +15131,7 @@ async function buildOtherTcgSportsPriceSyncProposal(options = {}){
     const patch = overrides[i.id] || overrides[i.wfId];
     return patch ? { ...i, ...patch } : i;
   });
-  items = items.filter(isOtherTcgSportsInventorySyncItem);
+  items = items.filter(i => isOtherTcgSportsInventorySyncItem(i) && (!options.restrictToIds || options.restrictToIds.has(i.id)));
   items = items.sort((a,b) => inventoryReferenceMarketPrice(b) - inventoryReferenceMarketPrice(a));
 
   const summary = { checked:items.length, processed:0, changed:0, unchanged:0, errors:0, noMatch:0, noPrice:0, issues:[] };
@@ -15222,83 +15280,92 @@ function togglePriceSyncItem(idx, checked){
   savePendingPriceSyncProposals();
 }
 
+// One price-sync proposal entry -> one saveInventoryEdit call. Factored out
+// of applySelectedPriceSyncUpdates so a single-item "refresh this item's
+// price" action (see refreshInventoryItemPriceFromMarket) can apply exactly
+// the same fields a bulk sync would, instead of a second hand-rolled copy
+// that could quietly drift out of sync with the real one over time.
+async function applyPriceSyncEntry(p){
+  const fullItem = (all||[]).find(i => i.id === p.item.id) || p.item;
+  try {
+    const now = new Date().toISOString();
+    const isMtgPriceSync = p.mode === 'mtg-offline' || p.mode === 'mtg-live' || p.provider === 'mtg';
+    const isComicPriceSync = p.mode === 'comic-live' || p.provider === 'comic';
+    const isPocketScoutSync = p.mode === 'pocket-scout' || p.provider === 'pocket_scout';
+    const source = isComicPriceSync ? (p.source || 'PriceCharting comic sync') : isMtgPriceSync ? (p.source || 'MTG price sync') : isPocketScoutSync ? (p.source || 'eBay sold comps') : p.mode === 'live' ? 'PokemonPriceTracker' : (p.source || 'PokemonPriceTracker cache');
+    const lastUpdated = p.lastUpdated || now;
+    const providerFields = isComicPriceSync ? {
+      pricechartingProductId:p.pricechartingProductId || comicInventoryPricechartingId(fullItem),
+      pricechartingProductName:p.pricechartingProductName || fullItem.pricechartingProductName || '',
+      pricechartingComicPrices:p.pricechartingComicPrices || fullItem.pricechartingComicPrices || null,
+      pricechartingPrices:p.pricechartingPrices || fullItem.pricechartingPrices || null,
+      pricechartingRetail:p.pricechartingRetail || fullItem.pricechartingRetail || null,
+      pricechartingDemand:p.pricechartingDemand || fullItem.pricechartingDemand || null,
+      providerUrl:p.providerUrl || fullItem.providerUrl || '',
+      coverImageUrl:p.coverImageUrl || fullItem.coverImageUrl || '',
+      priceSyncRequestPath:p.pricePath || 'PriceCharting exact product',
+    } : isMtgPriceSync ? {
+      scryfallId:p.scryfallId || mtgInventoryScryfallId(fullItem),
+      oracleId:p.oracleId || mtgInventoryOracleId(fullItem),
+      tcgPlayerId:p.tcgPlayerId || inventoryTcgPlayerId(fullItem),
+      tcgPlayerUrl:p.tcgPlayerUrl || fullItem.tcgPlayerUrl || '',
+      pricechartingProductId:p.pricechartingProductId || fullItem.pricechartingProductId || '',
+      mtgCatalogVersion:p.mtgCatalogVersion || '',
+      mtgOfflinePriceUpdatedAt:lastUpdated,
+      priceSyncRequestPath:p.pricePath || 'offline IndexedDB',
+    } : isPocketScoutSync ? {
+      pocketScoutLastSync:lastUpdated,
+      activeCompSnapshot:p.activeCompSnapshot || fullItem.activeCompSnapshot || null,
+      soldCompSnapshot:p.soldCompSnapshot || fullItem.soldCompSnapshot || null,
+      priceSyncRequestPath:p.pricePath || 'eBay sold comps',
+    } : {
+      pokemonPriceTrackerLastUpdated:lastUpdated,
+      tcgPlayerId:p.tcgPlayerId || inventoryTcgPlayerId(fullItem),
+      tcgPlayerUrl:p.tcgPlayerUrl || fullItem.tcgPlayerUrl || '',
+      pokemonPriceTrackerPrices:p.prices || fullItem.pokemonPriceTrackerPrices || null,
+      pokemonPriceTrackerVariants:p.variants || fullItem.pokemonPriceTrackerVariants || null,
+      priceSyncRequestPath:p.requestPath || '',
+    };
+    // Items without a deliberate manual override (see inventoryPriceOverride)
+    // just track market price automatically -- inventoryListPrice() reads
+    // market directly for those, so nothing else is needed for the price
+    // shown to actually move. Only keep the legacy salePrice/listPrice/
+    // displayPrice mirror fields in sync for other code that still reads
+    // them directly (CSV export, eBay listings, etc.); a real override is
+    // left untouched.
+    const hasOverride = inventoryPriceOverride(fullItem) > 0;
+    await saveInventoryEdit(fullItem, {
+      market:      p.newPrice,
+      price:       p.newPrice,
+      displayPrice:p.newPrice,
+      marketPrice: p.newPrice,
+      rawMarketPrice:p.rawNewPrice ?? p.newPrice,
+      lastMarketPrice:p.oldPrice,
+      previousMarketPrice:p.oldPrice,
+      marketPriceSource:source,
+      priceSource: (isMtgPriceSync || isComicPriceSync || isPocketScoutSync) ? source : source + (p.mode === 'live' ? ' live sync' : ' cached sync'),
+      lastPriceUpdate:lastUpdated,
+      priceUpdatedAt:now,
+      stalePrice:false,
+      livePriceStatus:p.mode === 'live' || p.mode === 'mtg-live' || isComicPriceSync || isPocketScoutSync ? 'live' : isMtgPriceSync ? 'offline' : 'cached',
+      ...(hasOverride ? {} : { salePrice:p.newPrice, listPrice:p.newPrice }),
+      ...providerFields,
+    });
+    // Surface big movers from the daily price-check workflow itself --
+    // this alert system previously only ever fired from the single-card
+    // "refresh live price" button in Research results, so it stayed empty
+    // for anyone whose actual routine is running the bulk sync below.
+    maybeRaisePriceChangeAlert(fullItem, Number(p.oldPrice || 0), Number(p.newPrice || 0));
+    return true;
+  } catch(e){ console.warn('[syncPrices] Apply failed:', priceSyncItemTitle(p.item), e); return false; }
+}
+
 async function applySelectedPriceSyncUpdates(){
   const selected = _priceSyncProposal.filter(p => p.selected);
   if(!selected.length){ toast_dash('No items selected'); return; }
   let ok = 0;
   for(const p of selected){
-    try{
-      const fullItem = (all||[]).find(i => i.id === p.item.id) || p.item;
-      const now = new Date().toISOString();
-      const isMtgPriceSync = p.mode === 'mtg-offline' || p.mode === 'mtg-live' || p.provider === 'mtg';
-      const isComicPriceSync = p.mode === 'comic-live' || p.provider === 'comic';
-      const isPocketScoutSync = p.mode === 'pocket-scout' || p.provider === 'pocket_scout';
-      const source = isComicPriceSync ? (p.source || 'PriceCharting comic sync') : isMtgPriceSync ? (p.source || 'MTG price sync') : isPocketScoutSync ? (p.source || 'eBay sold comps') : p.mode === 'live' ? 'PokemonPriceTracker' : (p.source || 'PokemonPriceTracker cache');
-      const lastUpdated = p.lastUpdated || now;
-      const providerFields = isComicPriceSync ? {
-        pricechartingProductId:p.pricechartingProductId || comicInventoryPricechartingId(fullItem),
-        pricechartingProductName:p.pricechartingProductName || fullItem.pricechartingProductName || '',
-        pricechartingComicPrices:p.pricechartingComicPrices || fullItem.pricechartingComicPrices || null,
-        pricechartingPrices:p.pricechartingPrices || fullItem.pricechartingPrices || null,
-        pricechartingRetail:p.pricechartingRetail || fullItem.pricechartingRetail || null,
-        pricechartingDemand:p.pricechartingDemand || fullItem.pricechartingDemand || null,
-        providerUrl:p.providerUrl || fullItem.providerUrl || '',
-        coverImageUrl:p.coverImageUrl || fullItem.coverImageUrl || '',
-        priceSyncRequestPath:p.pricePath || 'PriceCharting exact product',
-      } : isMtgPriceSync ? {
-        scryfallId:p.scryfallId || mtgInventoryScryfallId(fullItem),
-        oracleId:p.oracleId || mtgInventoryOracleId(fullItem),
-        tcgPlayerId:p.tcgPlayerId || inventoryTcgPlayerId(fullItem),
-        tcgPlayerUrl:p.tcgPlayerUrl || fullItem.tcgPlayerUrl || '',
-        pricechartingProductId:p.pricechartingProductId || fullItem.pricechartingProductId || '',
-        mtgCatalogVersion:p.mtgCatalogVersion || '',
-        mtgOfflinePriceUpdatedAt:lastUpdated,
-        priceSyncRequestPath:p.pricePath || 'offline IndexedDB',
-      } : isPocketScoutSync ? {
-        pocketScoutLastSync:lastUpdated,
-        activeCompSnapshot:p.activeCompSnapshot || fullItem.activeCompSnapshot || null,
-        soldCompSnapshot:p.soldCompSnapshot || fullItem.soldCompSnapshot || null,
-        priceSyncRequestPath:p.pricePath || 'eBay sold comps',
-      } : {
-        pokemonPriceTrackerLastUpdated:lastUpdated,
-        tcgPlayerId:p.tcgPlayerId || inventoryTcgPlayerId(fullItem),
-        tcgPlayerUrl:p.tcgPlayerUrl || fullItem.tcgPlayerUrl || '',
-        pokemonPriceTrackerPrices:p.prices || fullItem.pokemonPriceTrackerPrices || null,
-        pokemonPriceTrackerVariants:p.variants || fullItem.pokemonPriceTrackerVariants || null,
-        priceSyncRequestPath:p.requestPath || '',
-      };
-      // Items without a deliberate manual override (see inventoryPriceOverride)
-      // just track market price automatically -- inventoryListPrice() reads
-      // market directly for those, so nothing else is needed for the price
-      // shown to actually move. Only keep the legacy salePrice/listPrice/
-      // displayPrice mirror fields in sync for other code that still reads
-      // them directly (CSV export, eBay listings, etc.); a real override is
-      // left untouched.
-      const hasOverride = inventoryPriceOverride(fullItem) > 0;
-      await saveInventoryEdit(fullItem, {
-        market:      p.newPrice,
-        price:       p.newPrice,
-        displayPrice:p.newPrice,
-        marketPrice: p.newPrice,
-        rawMarketPrice:p.rawNewPrice ?? p.newPrice,
-        lastMarketPrice:p.oldPrice,
-        previousMarketPrice:p.oldPrice,
-        marketPriceSource:source,
-        priceSource: (isMtgPriceSync || isComicPriceSync || isPocketScoutSync) ? source : source + (p.mode === 'live' ? ' live sync' : ' cached sync'),
-        lastPriceUpdate:lastUpdated,
-        priceUpdatedAt:now,
-        stalePrice:false,
-        livePriceStatus:p.mode === 'live' || p.mode === 'mtg-live' || isComicPriceSync || isPocketScoutSync ? 'live' : isMtgPriceSync ? 'offline' : 'cached',
-        ...(hasOverride ? {} : { salePrice:p.newPrice, listPrice:p.newPrice }),
-        ...providerFields,
-      });
-      // Surface big movers from the daily price-check workflow itself --
-      // this alert system previously only ever fired from the single-card
-      // "refresh live price" button in Research results, so it stayed empty
-      // for anyone whose actual routine is running the bulk sync below.
-      maybeRaisePriceChangeAlert(fullItem, Number(p.oldPrice || 0), Number(p.newPrice || 0));
-      ok++;
-    } catch(e){ console.warn('[syncPrices] Apply failed:', priceSyncItemTitle(p.item), e); }
+    if(await applyPriceSyncEntry(p)) ok++;
   }
   _priceSyncProposal = _priceSyncProposal.filter(p => !p.selected);
   savePendingPriceSyncProposals();
@@ -15311,6 +15378,39 @@ async function applySelectedPriceSyncUpdates(){
   if(applyBtn && !_priceSyncProposal.length) applyBtn.style.display = 'none';
   toast_dash('Updated ' + ok + ' price' + (ok===1?'':'s'));
   loadInventory();
+}
+
+// Single-item version of the bulk price-sync flow above -- picks the right
+// category builder (same ones the bulk FETCH/SYNC buttons use), restricts
+// it to exactly this one item, and applies the result immediately via the
+// same applyPriceSyncEntry() the bulk "UPDATE SELECTED" path uses, instead
+// of making a dealer open the sync modal and hunt for one card in a big
+// batch just to refresh a single price from market.
+async function refreshInventoryItemPriceFromMarket(itemId){
+  const item = (all || []).find(i => i.id === itemId);
+  if(!item){ toast_dash('Item not found'); return; }
+  if(!navigator.onLine){ toast_dash('Connect to the internet to look up a live price'); return; }
+  const restrictToIds = new Set([itemId]);
+  const build = isPokemonInventorySyncItem(item) ? buildLivePokemonPriceSyncProposal
+    : isMtgInventorySyncItem(item) ? (opts => buildOfflineMtgPriceSyncProposal({ ...opts, preferOnline:true }))
+    : qplCategoryKey(item.category || '') === 'comic' ? buildLiveComicPriceSyncProposal
+    : buildOtherTcgSportsPriceSyncProposal;
+  toast_dash('Looking up current market price for ' + (item.name || 'this item') + '...');
+  try {
+    const proposal = await build({ restrictToIds });
+    if(proposal.length){
+      const applied = await applyPriceSyncEntry(proposal[0]);
+      toast_dash(applied
+        ? 'Price updated: ' + fd$(proposal[0].oldPrice) + ' → ' + fd$(proposal[0].newPrice)
+        : 'Found a new price but saving it failed -- try again');
+      if(applied) loadInventory();
+      return;
+    }
+    const issue = (_priceSyncLastSummary?.issues || [])[0];
+    toast_dash(issue ? issue.title : 'Price already matches current market -- nothing to update');
+  } catch(e) {
+    toast_dash('Price lookup failed: ' + (e.message || e));
+  }
 }
 
 function updatePriceAlertBanner(){
@@ -40772,31 +40872,42 @@ const fdLabelPrice$ = n => '$' + Math.round(Number(n || 0));
 
 // Lets one QR code do double duty: scan-to-cart (below) still needs our own
 // SKU/ID to find the item, but a customer's own phone camera scanning the
-// same label should land on the exact card/comic + condition on TCGPlayer or
-// PriceCharting instead of a blank SKU. buildTcgExternalLink() (used
-// elsewhere for the "view on TCGPlayer" button) already builds that exact
-// deep link for Pokemon/MTG singles when a real product match exists, and
-// falls back to a plain search URL when it doesn't -- a search is NOT
-// "exact", so only the genuine /product/ link is used here. Sports cards and
-// comics are priced via PriceCharting instead: item.providerUrl only counts
-// as exact when it's a real /game/ product page -- an unmatched/guessed
-// item's providerUrl is a generic /search-products?q=... search link, which
-// is likewise not "exact" and must not be encoded. Our SKU rides along as an
-// extra query param both sites ignore; scan-to-cart's handleCartScanValue()
-// pulls it back out. Items with no confirmed match on either site (sealed
-// product, or anything unmatched) fall back to the plain SKU/ID value --
-// scan-to-cart behavior for those is completely unchanged.
+// same label should land on a real website -- ideally the exact card/comic +
+// condition on TCGPlayer or PriceCharting, but a search on the
+// category-appropriate site beats a bare SKU when there's no confirmed
+// match, since a bare SKU just makes a phone camera offer "search barcode"
+// and go nowhere. Our SKU rides along as an extra query param both sites
+// ignore; scan-to-cart's handleCartScanValue() pulls it back out. Only an
+// item with no name at all (so not even a fresh search can be built) falls
+// back to the plain SKU/ID -- scan-to-cart behavior for that case is
+// completely unchanged.
 function labelQrPayload(batchEntry){
   const sku = batchEntry.sku || batchEntry.id;
   try {
     const item = (all || []).find(i => i.id === batchEntry.id) || batchEntry;
-    const link = typeof buildTcgExternalLink === 'function' ? buildTcgExternalLink(item) : null;
-    if(link?.url && /tcgplayer\.com\/product\//i.test(link.url)){
-      return link.url + '&wo_sku=' + encodeURIComponent(sku);
-    }
+    // A live search on the site that actually prices this category is still
+    // a useful landing spot even without an exact match -- a bare SKU makes
+    // a phone camera (Google Lens etc.) just offer "search barcode" and go
+    // nowhere, which is worse for a customer than an inexact search result.
+    const key = typeof qplCategoryKey === 'function' ? qplCategoryKey(item.category || '') : '';
+    const pricedByPriceCharting = key === 'comic' || key === 'sports';
     const pcUrl = item.providerUrl || '';
-    if(/pricecharting\.com\/game\//i.test(pcUrl)){
+    if(pricedByPriceCharting && /^https?:\/\/(www\.)?pricecharting\.com\//i.test(pcUrl)){
       return pcUrl + (pcUrl.includes('?') ? '&' : '?') + 'wo_sku=' + encodeURIComponent(sku);
+    }
+    if(!pricedByPriceCharting){
+      const link = typeof buildTcgExternalLink === 'function' ? buildTcgExternalLink(item) : null;
+      if(link?.url) return link.url + (link.url.includes('?') ? '&' : '?') + 'wo_sku=' + encodeURIComponent(sku);
+    }
+    // Nothing at all on file for the site that prices this category (e.g. a
+    // comic that was never linked to a PriceCharting cover) -- build a fresh
+    // search there from the item's own name instead of giving up.
+    const name = String(item.name || batchEntry.name || '').trim();
+    if(name){
+      const searchUrl = pricedByPriceCharting
+        ? 'https://www.pricecharting.com/search-products?q=' + encodeURIComponent(name) + '&type=prices'
+        : 'https://www.tcgplayer.com/search/all/product?q=' + encodeURIComponent(name);
+      return searchUrl + '&wo_sku=' + encodeURIComponent(sku);
     }
   } catch(e) { /* fall through to plain SKU/ID if link-building fails for any reason */ }
   return sku;
@@ -43895,7 +44006,7 @@ async function toppsLoadParallels(cardId){
   }
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.22.02-bulk-label-print-for-filtered-view" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.22.03-price-lookup-and-qr-search-fallback" defer></script>
 </body>
 </html>
 
