@@ -38,7 +38,19 @@ assert.match(buildScript, /uploadObject\('mtg\/images\/index-all\.json', allInde
 
 // ── GitHub Action ───────────────────────────────────────────────────────
 assert.match(workflow, /timeout-minutes: 360/, 'must use the GitHub-hosted runner\'s hard ceiling -- MTG\'s catalog is far bigger than Pokemon\'s, an all-scope run is even more likely to need it');
-assert.match(workflow, /npm run mtg:images:build -- --scope="\$SCOPE" --upload/, 'must actually invoke the build script with the dispatched scope');
+// scope=all fans out across the real (non-digital, non-token/memorabilia)
+// Scryfall set list instead of iterating it inside one job -- MTG's ~676
+// sets exceed GitHub's 256-job matrix cap on their own, so legs each carry
+// a batch of set codes rather than one set per leg.
+assert.match(workflow, /const batchSize = 15;/, 'set codes must be grouped into batches to stay well under the 256-job matrix cap');
+assert.match(workflow, /matrix:\s*\n\s*batch: \$\{\{ fromJson\(needs\.list-sets\.outputs\.matrix\) \}\}/, 'the matrix must fan out over batches, not individual sets');
+// The build script re-downloads Scryfall's entire (100s of MB) bulk file
+// from scratch on every invocation unless given a local copy via
+// --scryfall -- looping through a batch's sets without it turns one batch
+// into N full bulk re-downloads. Each job fetches the bulk file exactly
+// once and reuses it for every set in its batch.
+assert.match(workflow, /id: bulk/, 'the bulk-download step must be addressable so its output path can be reused');
+assert.match(workflow, /npm run mtg:images:build -- --scope="\$SCOPE" --scryfall="\$\{\{ steps\.bulk\.outputs\.file \}\}" --upload/, 'must invoke the build script with the dispatched scope and the batch\'s single shared bulk-file download');
 
 // ── Client module ───────────────────────────────────────────────────────
 assert.match(clientModule, /const DB_NAME = 'arscaMtgOfflineImages';/, 'must use its own IndexedDB, separate from both the price/card catalog DB and the opportunistic per-search image cache');

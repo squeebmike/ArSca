@@ -16,14 +16,65 @@ permissions:
   contents: read
 
 jobs:
-  build-and-publish:
+  # scope=all used to mean "download the whole Scryfall catalog and iterate
+  # every set inside one 360-minute job" -- MTG's catalog is roughly 5-10x
+  # Pokemon's, so that single job could never actually reach the end before
+  # GitHub force-cancels it, requiring an indefinite string of manual
+  # re-dispatches to inch through the set list. This job instead asks
+  # Scryfall (which this runner, unlike a local sandbox, can always reach)
+  # for the current list of real paper sets and fans them out below, so one
+  # "all" dispatch drives every set to completion on its own.
+  list-sets:
     runs-on: ubuntu-latest
-    # 360 is the hard ceiling for a GitHub-hosted runner job. MTG's catalog is
-    # roughly 5-10x the size of Pokemon's, so a scope=all run is even more
-    # likely to need several dispatches over multiple days than Pokemon's own
-    # images build already does -- the Worker's /catalog/mtg/images/manifest
-    # route merges whatever per-set indexes have already landed in R2 rather
-    # than requiring one single run to finish every set back to back.
+    outputs:
+      matrix: ${{ steps.resolve.outputs.matrix }}
+    steps:
+      - name: Resolve set list for this dispatch
+        id: resolve
+        shell: bash
+        run: |
+          set -euo pipefail
+          SCOPE="${{ github.event.inputs.scope }}"
+          if [ "$SCOPE" != "all" ]; then
+            echo "matrix=[\"$SCOPE\"]" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          curl --fail --retry 5 --retry-delay 3 -H "User-Agent: ArSca-MTG-Offline-Builder/1.0" \
+            "https://api.scryfall.com/sets" -o sets.json
+          node -e "
+            const data = require('./sets.json').data;
+            const codes = data
+              .filter(s => !s.digital && s.card_count > 0 && !['memorabilia','token'].includes(s.set_type))
+              .map(s => s.code);
+            // GitHub caps a matrix at 256 generated jobs -- MTG's real set
+            // list already exceeds that on its own, so legs each carry a
+            // batch of set codes (processed one at a time, in sequence,
+            // inside the same job) rather than one set per leg.
+            const batchSize = 15;
+            const batches = [];
+            for (let i = 0; i < codes.length; i += batchSize) batches.push(codes.slice(i, i + batchSize).join(','));
+            console.log('resolved ' + codes.length + ' set(s) into ' + batches.length + ' batch(es)');
+            require('fs').appendFileSync(process.env.GITHUB_OUTPUT, 'matrix=' + JSON.stringify(batches) + '\n');
+          "
+
+  build-and-publish:
+    needs: list-sets
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      # Keep this modest -- each matrix leg independently downloads
+      # Scryfall's full bulk card file (100s of MB) before filtering down to
+      # its one set, so running too many at once just multiplies redundant
+      # bandwidth/API load for no real speed win once the runner queue is
+      # the bottleneck anyway.
+      max-parallel: 4
+      matrix:
+        batch: ${{ fromJson(needs.list-sets.outputs.matrix) }}
+    # 360 is the hard ceiling for a GitHub-hosted runner job. Each leg now
+    # works through ~15 sets in sequence rather than the whole catalog, so
+    # it should finish well inside this window -- but it's still a real
+    # ceiling, not just a formality, since a batch full of large sets could
+    # run long.
     timeout-minutes: 360
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -46,19 +97,55 @@ jobs:
           test -n "${CLOUDFLARE_API_TOKEN:-}" || { echo "::error::CLOUDFLARE_API_TOKEN is missing"; exit 1; }
           test -n "${CLOUDFLARE_ACCOUNT_ID:-}" || { echo "::error::CLOUDFLARE_ACCOUNT_ID is missing"; exit 1; }
 
+      - name: Download Scryfall bulk card data once for this batch
+        id: bulk
+        shell: bash
+        run: |
+          set -euo pipefail
+          node -e "
+            (async () => {
+              const headers = { 'User-Agent': 'ArSca-MTG-Offline-Builder/1.0' };
+              const manifestRes = await fetch('https://api.scryfall.com/bulk-data', { headers });
+              if (!manifestRes.ok) throw new Error('bulk-data manifest HTTP ' + manifestRes.status);
+              const manifest = await manifestRes.json();
+              const bulk = (manifest.data || []).find(item => item.type === 'default_cards');
+              const url = bulk?.jsonl_download_uri || bulk?.download_uri;
+              if (!url) throw new Error('default_cards bulk item missing');
+              const dest = bulk.jsonl_download_uri ? 'scryfall-bulk.jsonl.gz' : 'scryfall-bulk.json';
+              const res = await fetch(url, { headers });
+              if (!res.ok || !res.body) throw new Error('bulk download HTTP ' + res.status);
+              const fs = require('fs');
+              const { Readable } = require('stream');
+              const { pipeline } = require('stream/promises');
+              await pipeline(Readable.fromWeb(res.body), fs.createWriteStream(dest));
+              console.log('Downloaded ' + dest + ' (' + fs.statSync(dest).size + ' bytes)');
+              fs.appendFileSync(process.env.GITHUB_OUTPUT, 'file=' + dest + '\n');
+            })().catch(e => { console.error(e); process.exit(1); });
+          "
+
       - name: Build and upload card images
         shell: bash
         run: |
           set -euo pipefail
-          SCOPE="${{ github.event.inputs.scope }}"
-          echo "Harvesting images for scope: $SCOPE"
-          npm run mtg:images:build -- --scope="$SCOPE" --upload
+          IFS=',' read -ra CODES <<< "${{ matrix.batch }}"
+          for SCOPE in "${CODES[@]}"; do
+            echo "Harvesting images for scope: $SCOPE"
+            # --scryfall reuses the single bulk download above across every
+            # set in this batch -- without it, build-mtg-offline-images.mjs
+            # re-fetches Scryfall's entire (100s of MB) bulk file from
+            # scratch on every invocation, multiplying a ~15-set batch into
+            # 15 full catalog re-downloads and making no visible progress
+            # for a very long time.
+            npm run mtg:images:build -- --scope="$SCOPE" --scryfall="${{ steps.bulk.outputs.file }}" --upload
+          done
 
       - name: Verify production manifest reflects the new image coverage
         shell: bash
         run: |
           set -euo pipefail
-          SCOPE="${{ github.event.inputs.scope }}"
-          curl --fail --retry 5 --retry-delay 3 \
-            "https://still-resonance-4f87.swarnerauto.workers.dev/catalog/mtg/images/manifest?set=$SCOPE" \
-            | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const m=JSON.parse(s);if(!m.ok||!m.ids?.length)process.exit(1);console.log('ids:',m.ids.length)})"
+          IFS=',' read -ra CODES <<< "${{ matrix.batch }}"
+          for SCOPE in "${CODES[@]}"; do
+            curl --fail --retry 5 --retry-delay 3 \
+              "https://still-resonance-4f87.swarnerauto.workers.dev/catalog/mtg/images/manifest?set=$SCOPE" \
+              | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const m=JSON.parse(s);if(!m.ok||!m.ids?.length)process.exit(1);console.log('$SCOPE ids:',m.ids.length)})"
+          done
