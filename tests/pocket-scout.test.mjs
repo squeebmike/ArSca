@@ -68,6 +68,25 @@ assert.match(dashboard, /sb\.from\('inventory_items'\)\.insert\(\[row\]\)/, 'Poc
 assert.match(dashboard, /image: scoutSession\.photos\?\.\[0\]\?\.url \|\| '',\s*\n\s*images: \(scoutSession\.photos\|\|\[\]\)\.map\(p=>p\.url\)\.filter\(Boolean\),/, 'BUY + ADD INVENTORY must save every scout photo, not just the first, as the item\'s images');
 assert.match(dashboard, /image:item\.imageUrl \|\| item\.images\?\.\[0\] \|\| '',\s*\n\s*images:\(item\.images && item\.images\.length\) \? item\.images : \(item\.imageUrl \? \[item\.imageUrl\] : \[\]\),/, 'buyItemToInventoryUpdates must explicitly carry the buy-tray item\'s photo(s) into the inventory update, not rely on an incidental object-spread that only works when the item has no .scan');
 
+// ── Contract: trading cards / sports cards / comics get a real handoff into
+// the Research tab's PriceCharting/TCGPlayer lookup instead of just a text
+// hint telling the operator to go redo the search by hand there. Research's
+// existing ADD TO BUY (addSelectedQuickLookupToBuyOffer) already queues into
+// the same buyList tray using the real catalog market price with no manual
+// price entry (manualOfferOverride:false), so this handoff only needs to
+// get the operator there with the identified title already searched. ──
+assert.match(dashboard, /function scoutSearchInResearch\(\)\{/, 'a dedicated handoff function into Research must exist');
+assert.match(dashboard, /switchTab\('research'\);/, 'the handoff must switch to the actual Research tab');
+assert.match(dashboard, /if\(input\) input\.value = query;\s*\n\s*runPriceLookup\(\);/, 'the handoff must pre-fill the Research search box and actually run the lookup, not just switch tabs and leave the operator to retype it');
+assert.match(dashboard, /onclick="scoutSearchInResearch\(\)"/, 'the routeToCardPipeline hint must offer a clickable handoff, not just inert text');
+{
+  const makeBuyItemStart = dashboard.indexOf('const makeBuyItem = copyIndex => ({');
+  assert(makeBuyItemStart >= 0, 'Research\'s ADD TO BUY must build its buy-tray item via a makeBuyItem factory');
+  const makeBuyItemSlice = dashboard.slice(makeBuyItemStart, makeBuyItemStart + 1500);
+  assert.match(makeBuyItemSlice, /market:item\.market,/, 'Research\'s own ADD TO BUY must already use the real catalog market price');
+  assert.match(makeBuyItemSlice, /manualOfferOverride:false,/, 'Research\'s ADD TO BUY must not manually override cost, so the handoff needs no extra buy-tray plumbing of its own');
+}
+
 console.log('Pocket Scout contract checks passed');
 
 // ── Functional: reimplement the pure decision math and check it against the
