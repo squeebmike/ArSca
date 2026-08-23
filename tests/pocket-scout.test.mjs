@@ -99,6 +99,26 @@ assert.match(dashboard, /function scoutSelectCatalogMatch\(i\)\{/, 'picking a re
 assert.match(dashboard, /scoutSession\.catalogMatch = match;/, 'picking a catalog result must attach it to the scout session so BUY \+ ADD INVENTORY \/ SEND TO BUY TAB can use it');
 assert.match(dashboard, /function scoutUseCompAsCatalogQuery\(candidateId\)\{/, 'picking an eBay comp as the correct card must be possible, feeding its exact listing title into the catalog search');
 assert.match(dashboard, /onclick="scoutUseCompAsCatalogQuery\('\$\{escHtml\(c\.id\|\|''\)\}'\)">USE THIS<\/button>/, 'each eBay comp row must offer a USE THIS action, not just NOT A MATCH');
+
+// ── Contract: Pokemon/comic results frequently come back from
+// searchQuickCatalog() with no imageUrl (Research itself only fills these
+// in with a second async lookup -- resolvePokemonCatalogImagesForVisibleCards/
+// lazyLoadComicImages), and the modal's meta line (set/card number/variant,
+// e.g. a parallel's "/250" print run) must never be clipped with an
+// ellipsis -- that's exactly the detail that tells two similar results
+// apart. Confirmed live: results showed with no pictures and a cut-off
+// meta line. ──
+assert.match(dashboard, /async function scoutHydrateCatalogImages\(\)\{/, 'a dedicated image-hydration pass must exist for rows searchQuickCatalog returned with no imageUrl');
+assert.match(dashboard, /scoutHydrateCatalogImages\(\);/, 'the hydration pass must actually run after rendering search results');
+{
+  const fnStart = dashboard.indexOf('async function scoutHydrateCatalogImages(){');
+  const fnEnd = dashboard.indexOf('\n}', fnStart);
+  const fn = dashboard.slice(fnStart, fnEnd);
+  assert.match(fn, /if\(catKey === 'pokemon'\) \{/, 'must resolve missing Pokemon images the same way Research does');
+  assert.match(fn, /if\(catKey === 'comic'\) \{/, 'must resolve missing comic cover images the same way Research does');
+  assert.match(fn, /document\.getElementById\('scout-catalog-img-'\+i\)/, 'a resolved image must patch this exact row\'s own image slot, not re-render the whole list');
+}
+assert.doesNotMatch(dashboard.slice(dashboard.indexOf("const query = document.getElementById('scout-catalog-query')"), dashboard.indexOf('scoutHydrateCatalogImages();')), /white-space:nowrap/, 'the result meta line (set/card number/variant, including a parallel\'s print-run fraction) must wrap instead of being clipped with an ellipsis');
 // A blank title + 0% confidence on a trading card is the model working as
 // designed (see POCKET_SCOUT_IDENTITY_PROMPT), not a broken scan -- it must
 // not render as "Unidentified item" / red "INSUFFICIENT DATA", which reads
