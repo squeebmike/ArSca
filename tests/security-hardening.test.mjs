@@ -46,7 +46,7 @@ assert.match(upload, /requireStoreUser\(request, env, storeId\)/);
 assert.match(upload, /Unsupported image type/);
 assert.match(upload, /enforceUsageLimit/);
 
-const checkout = route(worker, "if (url.pathname === '/pos/checkout')", 'SportsCardsPro: card image lookup');
+const checkout = route(worker, "if (url.pathname === '/pos/checkout')", 'SportsCardsPro: card image + card-number/print-run lookup');
 assert.match(checkout, /requireStoreUser\(request, env, storeId\)/);
 assert.match(checkout, /idempotencyKey/);
 assert.match(checkout, /const collectionId = WF_PRODUCTS/);
