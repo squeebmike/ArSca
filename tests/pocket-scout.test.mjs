@@ -119,6 +119,39 @@ assert.match(dashboard, /scoutHydrateCatalogImages\(\);/, 'the hydration pass mu
   assert.match(fn, /document\.getElementById\('scout-catalog-img-'\+i\)/, 'a resolved image must patch this exact row\'s own image slot, not re-render the whole list');
 }
 assert.doesNotMatch(dashboard.slice(dashboard.indexOf("const query = document.getElementById('scout-catalog-query')"), dashboard.indexOf('scoutHydrateCatalogImages();')), /white-space:nowrap/, 'the result meta line (set/card number/variant, including a parallel\'s print-run fraction) must wrap instead of being clipped with an ellipsis');
+
+// ── Contract: card_number was hardcoded blank for every PriceCharting-
+// sourced result regardless of source data, and no print-run field existed
+// at all -- both are exactly the detail (e.g. "#91" and, for a numbered
+// parallel, "/250") that tells two similar sports/graded card results
+// apart. Confirmed live: a real "Purple /250" search showed neither.
+// PriceCharting's product name usually carries both, so they're parsed out
+// instead of discarded. ──
+{
+  const mappedStart = dashboard.indexOf('const mapped = rows.map(m => {');
+  assert(mappedStart >= 0, 'the PriceCharting live-catalog row builder must exist');
+  const mappedSlice = dashboard.slice(mappedStart, mappedStart + 2200);
+  assert.match(mappedSlice, /const cardNumMatch = productName\.match\(\/#\(\\d\+\[A-Za-z\]\?\)\/\);/, 'must parse the card number out of PriceCharting\'s product name');
+  assert.match(mappedSlice, /const printRunMatch = productName\.match\(\/\\\/\\s\*\(\\d\{1,4\}\)\\b\/\);/, 'must parse a numbered parallel\'s print run out of PriceCharting\'s product name');
+  assert.match(mappedSlice, /card_number:cardNumMatch \? cardNumMatch\[1\] : '',/, 'card_number must actually use the parsed match, not stay hardcoded blank');
+  assert.match(mappedSlice, /printRun:printRunMatch \? printRunMatch\[1\] : '',/, 'the parsed print run must be exposed on the row');
+  assert.match(mappedSlice, /productId:m\.productId \|\| m\.id \|\| '',/, 'the row must carry the product id so a later per-item image/detail lookup is possible');
+}
+assert.match(dashboard, /r\.printRun\?'\/'\+r\.printRun:'',r\.variant\]/, 'the modal\'s meta line must actually show the parsed print run, not just parse it and drop it');
+assert.match(dashboard, /r\.productUrl\?` · <a href="\$\{escHtml\(r\.productUrl\)\}" target="_blank" rel="noopener" style="color:var\(--blue\)">view<\/a>`:''/, 'each catalog result must offer a "view" link to the source product page, so a still-missing photo does not block confirming the exact card');
+
+// ── Contract: PriceCharting's bulk search API returns no image at all for
+// most results (only its single-product detail call does, with a
+// server-side og:image scrape fallback when even that's missing -- see
+// /pricing/pricecharting/product/:id) -- so a capped number of PriceCharting
+// rows missing an image get that same per-product lookup, not left blank. ──
+{
+  const fnStart = dashboard.indexOf('async function scoutHydrateCatalogImages(){');
+  const fnEnd = dashboard.indexOf('\nfunction scoutSelectCatalogMatch', fnStart);
+  const fn = dashboard.slice(fnStart, fnEnd);
+  assert.match(fn, /r\.source === 'PriceCharting' && r\.productId && priceChartingHydrated < 6/, 'PriceCharting image hydration must be capped, not run for every result -- PriceCharting is rate-limited server-side');
+  assert.match(fn, /WORKER \+ '\/pricing\/pricecharting\/product\/' \+ encodeURIComponent\(r\.productId\)/, 'must reuse the existing single-product endpoint (with its og:image scrape fallback) rather than a new image-only route');
+}
 // A blank title + 0% confidence on a trading card is the model working as
 // designed (see POCKET_SCOUT_IDENTITY_PROMPT), not a broken scan -- it must
 // not render as "Unidentified item" / red "INSUFFICIENT DATA", which reads
