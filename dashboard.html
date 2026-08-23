@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.23.13-scout-match-image-and-comp-refresh">
+<meta name="version" content="2026.08.23.14-scout-paste-catalog-url">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1633,16 +1633,16 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.23.13-scout-match-image-and-comp-refresh" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.23.13-scout-match-image-and-comp-refresh" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.23.13-scout-match-image-and-comp-refresh" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.08.23.13-scout-match-image-and-comp-refresh" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.23.13-scout-match-image-and-comp-refresh" defer></script>
-<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.08.23.13-scout-match-image-and-comp-refresh" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.23.13-scout-match-image-and-comp-refresh" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.23.13-scout-match-image-and-comp-refresh" defer></script>
-<script src="scripts/pokemon/offline-browser.js?v=2026.08.23.13-scout-match-image-and-comp-refresh" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.23.13-scout-match-image-and-comp-refresh" defer></script>
+<script src="scripts/query-routing.js?v=2026.08.23.14-scout-paste-catalog-url" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.23.14-scout-paste-catalog-url" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.23.14-scout-paste-catalog-url" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.08.23.14-scout-paste-catalog-url" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.23.14-scout-paste-catalog-url" defer></script>
+<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.08.23.14-scout-paste-catalog-url" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.23.14-scout-paste-catalog-url" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.23.14-scout-paste-catalog-url" defer></script>
+<script src="scripts/pokemon/offline-browser.js?v=2026.08.23.14-scout-paste-catalog-url" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.23.14-scout-paste-catalog-url" defer></script>
 </head>
 <body>
 
@@ -1671,11 +1671,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.23.13-scout-match-image-and-comp-refresh</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.23.14-scout-paste-catalog-url</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.23.13-scout-match-image-and-comp-refresh</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.23.14-scout-paste-catalog-url</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1693,7 +1693,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.23.13-scout-match-image-and-comp-refresh</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.23.14-scout-paste-catalog-url</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -2470,7 +2470,7 @@ body.show-mode .inv-sync-badge{display:none;}
       <button class="hbtn" onclick="scoutCloseCatalogModal()">CLOSE</button>
     </div>
     <div style="display:flex;gap:8px;margin-top:10px">
-      <input id="scout-catalog-query" class="tsi" placeholder="Card name, set, number..." style="flex:1" onkeydown="if(event.key==='Enter'){event.preventDefault();scoutRunCatalogSearch()}">
+      <input id="scout-catalog-query" class="tsi" placeholder="Card name, set, number, or paste a PriceCharting/SportsCardsPro URL" style="flex:1" onkeydown="if(event.key==='Enter'){event.preventDefault();scoutRunCatalogSearch()}">
       <button class="hbtn" onclick="scoutRunCatalogSearch()">SEARCH</button>
     </div>
     <div id="scout-catalog-status" style="font-family:var(--font-mono);font-size:9px;color:var(--dim);margin-top:8px;min-height:14px"></div>
@@ -3663,7 +3663,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.23.13-scout-match-image-and-comp-refresh';
+const APP_VERSION = '2026.08.23.14-scout-paste-catalog-url';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -27193,15 +27193,22 @@ function scoutUseCompAsCatalogQuery(candidateId){
   if(!c) return;
   scoutOpenCatalogSearch(c.title || '');
 }
+// Pasting a PriceCharting/SportsCardsPro product page URL used to just run
+// the raw URL string through the fuzzy text search (25 unrelated results --
+// Garbage Pail Kids, comics, whatever else happened to match stray words in
+// the URL) even though the URL itself already identifies the exact card.
+// Detected here and routed to scoutResolveCatalogUrl instead of a search.
+const SCOUT_CATALOG_URL_RE = /^https?:\/\/(?:www\.)?(?:pricecharting|sportscardspro)\.com\/game\//i;
 async function scoutRunCatalogSearch(){
   const query = document.getElementById('scout-catalog-query')?.value.trim();
   const statusEl = document.getElementById('scout-catalog-status');
   const resultsEl = document.getElementById('scout-catalog-results');
   if(!query){ if(statusEl) statusEl.textContent = 'Enter a search'; return; }
-  if(statusEl) statusEl.textContent = 'Searching PriceCharting/TCGPlayer...';
+  const isUrl = SCOUT_CATALOG_URL_RE.test(query);
+  if(statusEl) statusEl.textContent = isUrl ? 'Reading that product page...' : 'Searching PriceCharting/TCGPlayer...';
   if(resultsEl) resultsEl.innerHTML = '';
   try{
-    const matches = await searchQuickCatalog(query, '');
+    const matches = isUrl ? await scoutResolveCatalogUrl(query) : await searchQuickCatalog(query, '');
     scoutCatalogSearchResults = matches.slice(0, 25);
     if(statusEl) statusEl.textContent = scoutCatalogSearchResults.length
       ? (scoutCatalogSearchResults.length+' match'+(scoutCatalogSearchResults.length===1?'':'es')+' -- tap USE THIS on the right one')
@@ -27228,6 +27235,17 @@ async function scoutRunCatalogSearch(){
     </div>`).join('');
     scoutHydrateCatalogImages();
   }catch(e){ if(statusEl) statusEl.textContent = 'Search failed: '+e.message; }
+}
+// Resolves a pasted PriceCharting/SportsCardsPro product-page URL straight
+// to a single exact row, in the same shape a normal search result gets --
+// so rendering/USE THIS/scoutHydrateCatalogImages above all just work
+// unchanged. Throws on failure so the caller's existing catch handles it
+// the same way a failed text search would.
+async function scoutResolveCatalogUrl(pastedUrl){
+  const res = await fetch(WORKER + '/pricing/sportscardspro/resolve-url?' + new URLSearchParams({ url:pastedUrl }).toString(), { cache:'no-store' });
+  const data = await res.json().catch(()=>({}));
+  if(!res.ok || !data.ok || !data.match) throw new Error(data.error || 'Could not read that page');
+  return [data.match];
 }
 // set/card number/print run/variant, plus a "view" link to the source
 // product page so a still-missing photo doesn't block confirming the exact
@@ -44579,7 +44597,7 @@ async function toppsLoadParallels(cardId){
   window.__arscaCloseModal = closeModal;
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.23.13-scout-match-image-and-comp-refresh" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.23.14-scout-paste-catalog-url" defer></script>
 </body>
 </html>
 

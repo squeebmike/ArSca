@@ -105,7 +105,7 @@ assert.match(dashboard, /image:item\.imageUrl \|\| item\.images\?\.\[0\] \|\| ''
 assert.match(dashboard, /<div id="scout-catalog-modal" class="barcode-modal-overlay"/, 'a dedicated in-tab catalog-match modal must exist, reusing the shared barcode modal CSS');
 assert.match(dashboard, /function scoutOpenCatalogSearch\(prefillQuery\)\{/, 'a dedicated function must open the catalog modal without switching tabs');
 assert.doesNotMatch(dashboard.slice(dashboard.indexOf('function scoutOpenCatalogSearch'), dashboard.indexOf('function scoutOpenCatalogSearch')+1200), /switchTab\(/, 'opening the catalog match modal must never switch tabs -- that was the whole complaint');
-assert.match(dashboard, /const matches = await searchQuickCatalog\(query, ''\);/, 'the in-tab catalog search must reuse the shared catalog search function, not duplicate Research\'s search logic');
+assert.match(dashboard, /const matches = isUrl \? await scoutResolveCatalogUrl\(query\) : await searchQuickCatalog\(query, ''\);/, 'the in-tab catalog search must reuse the shared catalog search function, not duplicate Research\'s search logic');
 assert.match(dashboard, /function scoutSelectCatalogMatch\(i\)\{/, 'picking a result must be a dedicated action');
 assert.match(dashboard, /scoutSession\.catalogMatch = match;/, 'picking a catalog result must attach it to the scout session so BUY \+ ADD INVENTORY \/ SEND TO BUY TAB can use it');
 assert.match(dashboard, /function scoutUseCompAsCatalogQuery\(candidateId\)\{/, 'picking an eBay comp as the correct card must be possible, feeding its exact listing title into the catalog search');
@@ -240,6 +240,25 @@ assert.match(dashboard, /storeWorkerFetch\('\/pocket-scout\/session\/manual-sear
 // the catalog photo is only useful for confirming identity mid-match.
 assert.match(dashboard, /image: scoutSession\.photos\?\.\[0\]\?\.url \|\| match\?\.imageUrl \|\| '',/, 'the direct-buy path must prefer the operator\'s own scan photo over the catalog match\'s stock image');
 assert.match(dashboard, /imageUrl: photoUrls\[0\] \|\| match\?\.imageUrl \|\| '', images: photoUrls,/, 'the buy-tray path must prefer the operator\'s own scan photo over the catalog match\'s stock image');
+
+// ── Contract: pasting a PriceCharting/SportsCardsPro product-page URL into
+// the catalog search box resolves it directly -- typing it in used to just
+// run the raw URL string through the fuzzy text search and return 25
+// unrelated junk results (Garbage Pail Kids, random comics), even though
+// the URL itself already identifies the exact card. ──
+assert.match(dashboard, /const SCOUT_CATALOG_URL_RE = \/\^https\?:\\\/\\\/\(\?:www\\\.\)\?\(\?:pricecharting\|sportscardspro\)\\\.com\\\/game\\\//i, 'a URL-detection regex for both catalog domains must exist');
+assert.match(dashboard, /const isUrl = SCOUT_CATALOG_URL_RE\.test\(query\);/, 'scoutRunCatalogSearch must detect a pasted catalog URL');
+assert.match(dashboard, /const matches = isUrl \? await scoutResolveCatalogUrl\(query\) : await searchQuickCatalog\(query, ''\);/, 'a detected URL must route to the resolver instead of the fuzzy text search');
+assert.match(dashboard, /async function scoutResolveCatalogUrl\(pastedUrl\)\{/, 'a dedicated URL-resolver function must exist');
+assert.match(dashboard, /WORKER \+ '\/pricing\/sportscardspro\/resolve-url\?' \+ new URLSearchParams\(\{ url:pastedUrl \}\)\.toString\(\)/, 'the resolver must call the dedicated resolve-url Worker route');
+// The resolve-url route is a URL fetcher reachable from outside the store --
+// it must only ever fetch the two catalog domains it's meant for, never an
+// arbitrary caller-supplied host (that would be an open SSRF proxy).
+assert.match(worker, /if \(host !== 'pricecharting\.com' && host !== 'sportscardspro\.com'\) \{/, 'the resolve-url route must allowlist only the two catalog hostnames, not fetch any URL a caller supplies');
+assert.match(worker, /const pathMatch = parsed\.pathname\.match\(\/\^\\\/game\\\/\(\[\^\/\]\+\)\\\/\(\[\^\/\]\+\)\/\);/, 'the route must require a real product-page path, not just an allowlisted host');
+assert.match(worker, /if \(url\.pathname === '\/pricing\/sportscardspro\/resolve-url'\) \{/, 'the resolve-url route must exist');
+assert.match(worker, /const idMatch = html\.match\(\/PriceCharting ID\[\^>\]\*>\\s\*\(\?:<\[\^>\]\+>\\s\*\)\*\(\\d\{2,10\}\)\/i\);/, 'the route must scrape the numeric PriceCharting id SCP\'s own page labels, to get the real price via the official API rather than guessing');
+assert.match(worker, /const humanize = s => String\(s \|\| ''\)\.replace\(\/-\/g, ' '\)\.replace\(\/\\b\\w\/g, c => c\.toUpperCase\(\)\);/, 'must degrade to a humanized slug name (not blow up or return nothing) when the id/price lookup fails');
 
 console.log('Pocket Scout contract checks passed');
 
