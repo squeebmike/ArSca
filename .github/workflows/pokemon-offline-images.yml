@@ -16,15 +16,71 @@ permissions:
   contents: read
 
 jobs:
-  build-and-publish:
+  # scope=all used to mean "iterate every set inside one 360-minute job" --
+  # the one real run so far got cancelled partway through the set list
+  # without a clean way to resume. This mirrors the same fan-out fix already
+  # proven on the MTG image builder (see mtg-offline-images.yml): resolve
+  # the real set list up front (from PPT's /sets endpoint) and fan it out
+  # below, so one "all" dispatch drives every set to completion on its own.
+  list-sets:
     runs-on: ubuntu-latest
-    # 360 is the hard ceiling for a GitHub-hosted runner job. The one real
-    # scope=all run so far hit 300 and got cancelled partway through the
-    # set list -- this buys it more room to get further before that happens
-    # again. It no longer has to finish in one shot to be useful: the
-    # Worker's /catalog/pokemon/images/manifest route now merges whatever
-    # per-set indexes already landed in R2 rather than requiring the final
-    # index-all.json write this job only reaches after every set completes.
+    outputs:
+      matrix: ${{ steps.resolve.outputs.matrix }}
+    env:
+      POKEMONPRICE_API_KEY: ${{ secrets.POKEMONPRICE_API_KEY }}
+    steps:
+      - name: Resolve set list for this dispatch
+        id: resolve
+        shell: bash
+        run: |
+          set -euo pipefail
+          SCOPE="${{ github.event.inputs.scope }}"
+          if [ "$SCOPE" != "all" ]; then
+            echo "matrix=[\"$SCOPE\"]" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          test -n "${POKEMONPRICE_API_KEY:-}" || { echo "::error::POKEMONPRICE_API_KEY is missing"; exit 1; }
+          node -e "
+            (async () => {
+              const ids = [];
+              let offset = 0;
+              for (;;) {
+                const res = await fetch('https://www.pokemonpricetracker.com/api/v2/sets?limit=100&offset=' + offset, {
+                  headers: { Authorization: 'Bearer ' + process.env.POKEMONPRICE_API_KEY, Accept: 'application/json' },
+                });
+                if (!res.ok) throw new Error('PPT /sets HTTP ' + res.status);
+                const page = await res.json();
+                const rows = page.data || [];
+                for (const s of rows) if (s.tcgPlayerNumericId != null) ids.push(String(s.tcgPlayerNumericId));
+                if (!page.metadata?.hasMore || !rows.length) break;
+                offset += 100;
+              }
+              // GitHub caps a matrix at 256 generated jobs -- batch legs
+              // each carry several set ids (processed one at a time, in
+              // sequence, inside the same job) rather than one set per leg,
+              // same as the MTG builder.
+              const batchSize = 15;
+              const batches = [];
+              for (let i = 0; i < ids.length; i += batchSize) batches.push(ids.slice(i, i + batchSize).join(','));
+              console.log('resolved ' + ids.length + ' set(s) into ' + batches.length + ' batch(es)');
+              require('fs').appendFileSync(process.env.GITHUB_OUTPUT, 'matrix=' + JSON.stringify(batches) + '\n');
+            })().catch(e => { console.error(e); process.exit(1); });
+          "
+
+  build-and-publish:
+    needs: list-sets
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      # Keep this modest -- same reasoning as the MTG builder: once the
+      # runner queue is the bottleneck, more parallel legs doesn't mean
+      # faster completion, just more simultaneous PPT/R2 load.
+      max-parallel: 4
+      matrix:
+        batch: ${{ fromJson(needs.list-sets.outputs.matrix) }}
+    # 360 is the hard ceiling for a GitHub-hosted runner job. Each leg now
+    # works through ~15 sets in sequence rather than the whole catalog, so
+    # it should finish well inside this window.
     timeout-minutes: 360
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -54,14 +110,15 @@ jobs:
         run: |
           set -euo pipefail
           VERSION="$(date -u +%F)"
-          SCOPE="${{ github.event.inputs.scope }}"
-          if [ "$SCOPE" = "all" ]; then
-            IMAGES_FLAG="all"
-          else
-            IMAGES_FLAG="set:$SCOPE"
-          fi
-          echo "Harvesting images for scope: $IMAGES_FLAG"
-          npm run pokemon:build -- --version="$VERSION" --images="$IMAGES_FLAG" --upload
+          IFS=',' read -ra IDS <<< "${{ matrix.batch }}"
+          for SETID in "${IDS[@]}"; do
+            echo "Harvesting images for set: $SETID"
+            # Unlike MTG's Scryfall bulk file, PPT's /cards endpoint filters
+            # by setId server-side, so each invocation only ever fetches the
+            # one set's cards -- no shared bulk download to reuse across a
+            # batch, and no redundant re-fetch cost to avoid here.
+            npm run pokemon:build -- --version="$VERSION" --images="set:$SETID" --upload
+          done
 
       - name: Verify production manifest reflects the new image coverage
         shell: bash

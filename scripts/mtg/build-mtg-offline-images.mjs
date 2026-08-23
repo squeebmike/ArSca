@@ -124,10 +124,20 @@ async function runPool(items, worker, size) {
   await Promise.all(Array.from({ length: Math.min(size, items.length) }, next));
 }
 
-function uploadObject(objectPath, filePath) {
+// A transient network blip on a single wrangler upload used to throw
+// immediately and kill the whole matrix leg -- confirmed live on a real
+// run: a "fetch request failed" mid-upload aborted a leg that had already
+// harvested and was uploading ~15 sets, losing every set after it. Retries
+// with backoff so one flaky request doesn't cost 15 sets of progress.
+async function uploadObject(objectPath, filePath, attempts = 4) {
   const npx = process.platform === 'win32' ? 'npx.cmd' : 'npx';
-  const result = spawnSync(npx, ['wrangler@latest', 'r2', 'object', 'put', `${bucket}/${objectPath}`, '--file', filePath, '--config', configPath, '--remote'], { stdio: 'inherit', cwd: root, shell: false });
-  if (result.status !== 0) throw new Error(`R2 upload failed for ${objectPath}`);
+  for (let attempt = 1; attempt <= attempts; attempt++) {
+    const result = spawnSync(npx, ['wrangler@latest', 'r2', 'object', 'put', `${bucket}/${objectPath}`, '--file', filePath, '--config', configPath, '--remote'], { stdio: 'inherit', cwd: root, shell: false });
+    if (result.status === 0) return;
+    if (attempt === attempts) throw new Error(`R2 upload failed for ${objectPath} after ${attempts} attempts`);
+    log(`  R2 upload failed for ${objectPath} (attempt ${attempt}/${attempts}), retrying...`);
+    await new Promise(resolve => setTimeout(resolve, attempt * 4000));
+  }
 }
 
 // ── Resolve the Scryfall bulk source (same resolution order as
@@ -191,7 +201,7 @@ for (const [setCode, cards] of bySet) {
     for (const id of newIds) {
       for (const size of imageSizes) {
         const filePath = path.join(imagesDir, id, `${size}.jpg`);
-        if (fs.existsSync(filePath)) uploadObject(`mtg/images/${id}/${size}.jpg`, filePath);
+        if (fs.existsSync(filePath)) await uploadObject(`mtg/images/${id}/${size}.jpg`, filePath);
       }
     }
     const existingSetIndex = await fetchExistingJson(`${workerBase}/catalog/mtg/images/manifest?set=${encodeURIComponent(setCode)}`);
@@ -204,7 +214,7 @@ for (const [setCode, cards] of bySet) {
     // failure (0 images cached) cleanly.
     await fsp.mkdir(outputRoot, { recursive: true });
     await fsp.writeFile(setIndexPath, JSON.stringify({ ids: mergedSetIds, generatedAt }, null, 2));
-    uploadObject(`mtg/images/index-set-${setCode}.json`, setIndexPath);
+    await uploadObject(`mtg/images/index-set-${setCode}.json`, setIndexPath);
   }
 }
 
@@ -215,7 +225,7 @@ if (upload && scope === 'all') {
   const allIndexPath = path.join(outputRoot, 'index-all.json');
   await fsp.mkdir(outputRoot, { recursive: true });
   await fsp.writeFile(allIndexPath, JSON.stringify({ ids: mergedAllIds, generatedAt }, null, 2));
-  uploadObject('mtg/images/index-all.json', allIndexPath);
+  await uploadObject('mtg/images/index-all.json', allIndexPath);
 }
 
 log(`Ready: ${totalNewIds.toLocaleString()} card(s) with at least one size cached across ${setCodesUploaded.length} set(s)`);
