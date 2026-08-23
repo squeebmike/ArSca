@@ -53,7 +53,7 @@ assert.match(dashboard, /} else if\(netMid>=s\.minProfit && confidence>=60\)\{/,
 assert.match(worker, /status=eq\.pending&select=payload`\);/, 'rejecting a candidate must recompute stats from the remaining pending candidates');
 
 // ── Contract: add-to-inventory reuses the existing SKU generator + direct Supabase insert, not a new inventory system ──
-assert.match(dashboard, /generateWalkoffInventorySku\(category, \{ name: identity\.title/, 'Pocket Scout must reuse the existing SKU generator');
+assert.match(dashboard, /generateWalkoffInventorySku\(category, \{ name: match\?\.name \|\| identity\.title/, 'Pocket Scout must reuse the existing SKU generator');
 
 // ── Contract: a bulk sourcing trip can queue scouted items into the Buy
 // List tray (Intake tab) instead of writing to inventory one at a time --
@@ -66,11 +66,11 @@ assert.match(dashboard, /generateWalkoffInventorySku\(category, \{ name: identit
 assert.match(dashboard, /<button class="hbtn" id="scout-buy-tab-btn" onclick="scoutSendToBuyTab\(\)"/, 'a SEND TO BUY TAB button must exist alongside BUY + ADD INVENTORY');
 assert.match(dashboard, /<input id="scout-comp-price" type="number"/, 'an editable comp-price field must exist so the operator controls the 100% basis sent to the buy tray');
 assert.match(dashboard, /function scoutSendToBuyTab\(\)\{/, 'a dedicated handler must queue the scouted item into the buy tray');
-assert.match(dashboard, /const compPrice = Number\(compPriceEl\?\.value\) \|\| scoutSession\.lastDecision\?\.expectedSale \|\| 0;/, 'sending to the buy tray must use the editable comp price (falling back to the computed expected sale), not the store-price field');
+assert.match(dashboard, /const compPrice = Number\(compPriceEl\?\.value\) \|\| match\?\.market \|\| scoutSession\.lastDecision\?\.expectedSale \|\| 0;/, 'sending to the buy tray must use the editable comp price, then a matched catalog price, then the computed expected sale -- never the store-price field');
 assert.match(dashboard, /if\(!\(compPrice>0\)\)\{ toast_dash\('Enter a comp price first'\)/, 'sending to the buy tray must require a comp price, not a store price');
-assert.doesNotMatch(dashboard.slice(dashboard.indexOf('function scoutSendToBuyTab'), dashboard.indexOf('function scoutSendToBuyTab') + 2500), /manualOfferOverride/, 'the queued item must use the tray\'s normal percent-of-market offer math (buyItemOfferValue), not a manual override that bypasses the buy %');
+assert.doesNotMatch(dashboard.slice(dashboard.indexOf('function scoutSendToBuyTab'), dashboard.indexOf('function scoutSendToBuyTab') + 3200), /manualOfferOverride/, 'the queued item must use the tray\'s normal percent-of-market offer math (buyItemOfferValue), not a manual override that bypasses the buy %');
 assert.match(dashboard, /market: compPrice,/, 'the queued item\'s market must be the chosen comp price, so the tray\'s offer % (e.g. 80% of $100 = $80) applies to it like any other buy-tray item');
-assert.match(dashboard, /imageUrl: photoUrls\[0\] \|\| '', images: photoUrls,/, 'every photo taken in the scout session, not just the first, must ride along to the buy tray so it survives into the eventual inventory record');
+assert.match(dashboard, /imageUrl: match\?\.imageUrl \|\| photoUrls\[0\] \|\| '', images: photoUrls,/, 'every photo taken in the scout session, not just the first, must ride along to the buy tray so it survives into the eventual inventory record');
 assert.match(dashboard, /buyList\.push\(item\);\s*\n\s*saveBuyList\(\);\s*\n\s*logOpsEvent\('buy_item_added', 'Sent Pocket Scout item to buy tray/, 'sending to the buy tray must reuse the existing buyList array + saveBuyList persistence, not a separate bulk-buy data model');
 assert.match(dashboard, /sb\.from\('inventory_items'\)\.insert\(\[row\]\)/, 'Pocket Scout must write inventory the same way every other add-to-inventory flow does (direct client Supabase insert), not a parallel backend table');
 
@@ -81,48 +81,34 @@ assert.match(dashboard, /sb\.from\('inventory_items'\)\.insert\(\[row\]\)/, 'Poc
 // by buyItemToInventoryUpdates() along the way (a real pre-existing gap:
 // that function built the inventory update object from scratch and never
 // carried image/imageUrl over at all). ──
-assert.match(dashboard, /image: scoutSession\.photos\?\.\[0\]\?\.url \|\| '',\s*\n\s*images: \(scoutSession\.photos\|\|\[\]\)\.map\(p=>p\.url\)\.filter\(Boolean\),/, 'BUY + ADD INVENTORY must save every scout photo, not just the first, as the item\'s images');
+assert.match(dashboard, /images: \(scoutSession\.photos\|\|\[\]\)\.map\(p=>p\.url\)\.filter\(Boolean\),/, 'BUY + ADD INVENTORY must save every scout photo, not just the first, as the item\'s images');
 assert.match(dashboard, /image:item\.imageUrl \|\| item\.images\?\.\[0\] \|\| '',\s*\n\s*images:\(item\.images && item\.images\.length\) \? item\.images : \(item\.imageUrl \? \[item\.imageUrl\] : \[\]\),/, 'buyItemToInventoryUpdates must explicitly carry the buy-tray item\'s photo(s) into the inventory update, not rely on an incidental object-spread that only works when the item has no .scan');
 
-// ── Contract: trading cards / sports cards / comics get a real handoff into
-// the Research tab's PriceCharting/TCGPlayer lookup instead of just a text
-// hint telling the operator to go redo the search by hand there. Research's
-// existing ADD TO BUY (addSelectedQuickLookupToBuyOffer) already queues into
-// the same buyList tray using the real catalog market price with no manual
-// price entry (manualOfferOverride:false), so this handoff only needs to
-// get the operator there with the identified title already searched. ──
-assert.match(dashboard, /function scoutSearchInResearch\(\)\{/, 'a dedicated handoff function into Research must exist');
-assert.match(dashboard, /switchTab\('research'\);/, 'the handoff must switch to the actual Research tab');
-assert.match(dashboard, /onclick="scoutSearchInResearch\(\)"/, 'the routeToCardPipeline hint must offer a clickable handoff, not just inert text');
-// The identify prompt deliberately tells the model to leave title/brand/etc
-// minimal for trading cards -- it's EXPECTING this exact handoff instead of
-// guessing -- so a title-only query is empty in exactly the case this
-// button matters most. The handoff must fall back to textEvidence (every
-// piece of text the model actually read, captured regardless of category)
-// and must always land the operator on Research, never block with a dead
-// end just because nothing was confidently identified.
-{
-  const fnStart = dashboard.indexOf('function scoutSearchInResearch(){');
-  const fnEnd = dashboard.indexOf('\nfunction scoutInventoryCategory', fnStart);
-  const fn = dashboard.slice(fnStart, fnEnd);
-  assert.match(fn, /\(scoutSession\.textEvidence\|\|\[\]\)\.slice\(0,4\)\.join\(' '\)/, 'must fall back to OCR\'d textEvidence when no title was identified -- the one case this handoff exists for');
-  assert.match(fn, /switchTab\('research'\);/, 'must switch tabs unconditionally, before checking whether a query exists');
-  assert.doesNotMatch(fn, /if\(!query\)\{.*return;/, 'must never return early / block on an empty query -- it must still land the operator on Research so they can search manually');
-  assert.match(fn, /if\(query\) runPriceLookup\(\);/, 'must only auto-run the lookup when there is an actual query to search');
-}
+// ── Contract: trading cards / sports cards / comics can be matched against
+// the real PriceCharting/TCGPlayer catalog WITHOUT switching to the Research
+// tab -- switching away broke scanning items back-to-back, which is the
+// whole point of Pocket Scout. Reuses searchQuickCatalog() (the same
+// catalog search the buy tray's own auto-lookup already calls) rendered
+// into a dedicated modal instead of duplicating Research's tab-coupled
+// search/render logic or navigating away from it. ──
+assert.match(dashboard, /<div id="scout-catalog-modal" class="barcode-modal-overlay"/, 'a dedicated in-tab catalog-match modal must exist, reusing the shared barcode modal CSS');
+assert.match(dashboard, /function scoutOpenCatalogSearch\(prefillQuery\)\{/, 'a dedicated function must open the catalog modal without switching tabs');
+assert.doesNotMatch(dashboard.slice(dashboard.indexOf('function scoutOpenCatalogSearch'), dashboard.indexOf('function scoutOpenCatalogSearch')+1200), /switchTab\(/, 'opening the catalog match modal must never switch tabs -- that was the whole complaint');
+assert.match(dashboard, /const matches = await searchQuickCatalog\(query, ''\);/, 'the in-tab catalog search must reuse the shared catalog search function, not duplicate Research\'s search logic');
+assert.match(dashboard, /function scoutSelectCatalogMatch\(i\)\{/, 'picking a result must be a dedicated action');
+assert.match(dashboard, /scoutSession\.catalogMatch = match;/, 'picking a catalog result must attach it to the scout session so BUY \+ ADD INVENTORY \/ SEND TO BUY TAB can use it');
+assert.match(dashboard, /function scoutUseCompAsCatalogQuery\(candidateId\)\{/, 'picking an eBay comp as the correct card must be possible, feeding its exact listing title into the catalog search');
+assert.match(dashboard, /onclick="scoutUseCompAsCatalogQuery\('\$\{escHtml\(c\.id\|\|''\)\}'\)">USE THIS<\/button>/, 'each eBay comp row must offer a USE THIS action, not just NOT A MATCH');
 // A blank title + 0% confidence on a trading card is the model working as
 // designed (see POCKET_SCOUT_IDENTITY_PROMPT), not a broken scan -- it must
 // not render as "Unidentified item" / red "INSUFFICIENT DATA", which reads
 // as an error.
 assert.match(dashboard, /\(scoutSession\.routeToCardPipeline \? 'Trading card \/ sports card \/ comic' : 'Unidentified item'\)/, 'a title-less trading card must get a card-specific label, not the generic no-data one');
 assert.match(dashboard, /if\(scoutSession\.routeToCardPipeline && !id\.title\)\{/, 'the confidence badge must special-case a title-less trading card instead of showing a scary 0%/red insufficient-data state for expected behavior');
-{
-  const makeBuyItemStart = dashboard.indexOf('const makeBuyItem = copyIndex => ({');
-  assert(makeBuyItemStart >= 0, 'Research\'s ADD TO BUY must build its buy-tray item via a makeBuyItem factory');
-  const makeBuyItemSlice = dashboard.slice(makeBuyItemStart, makeBuyItemStart + 1500);
-  assert.match(makeBuyItemSlice, /market:item\.market,/, 'Research\'s own ADD TO BUY must already use the real catalog market price');
-  assert.match(makeBuyItemSlice, /manualOfferOverride:false,/, 'Research\'s ADD TO BUY must not manually override cost, so the handoff needs no extra buy-tray plumbing of its own');
-}
+// A picked catalog match must actually override the buy-tray output --
+// checked structurally against the two add paths above, not just displayed.
+assert.match(dashboard, /const category = match \? normalizeQuickCategory\(match\.category\) : scoutInventoryCategory\(identity\);/, 'a matched catalog card\'s real category must be used instead of the generic Collectibles bucket, in both add-to-inventory paths', );
+assert.match(dashboard, /sourceProductId: match\?\.pricechartingProductId \|\| match\?\.productId \|\| '',/, 'the buy-tray item must carry the matched catalog product\'s id so it stays connected once accepted into inventory');
 
 console.log('Pocket Scout contract checks passed');
 
