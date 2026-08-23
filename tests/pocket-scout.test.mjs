@@ -33,13 +33,24 @@ assert.match(worker, /activeStats,\s*soldStats,\s*soldWarning/, 'comp snapshot m
 // only ever run when textQuery is non-empty, so sold comps silently never
 // ran for a single trading card. Confirmed live: 20 active comps, 0 sold,
 // every time. __textEvidence (OCR'd text, captured regardless of category)
-// is the real fallback query. ──
+// is the real fallback query. It accumulates oldest-first (each photo's
+// fragments appended to the end), so the fallback must take the LAST N
+// entries -- the freshest read, often the back-of-card photo with the card
+// number / print run -- not the first N (which grabbed only the oldest,
+// front-photo-only text and silently dropped everything read later). ──
 {
   const textQueryStart = worker.indexOf("const queryParts = [fused.brand, fused.manufacturer, fused.title || fused.characterOrSubject, fused.model, fused.year].filter(Boolean);");
   assert(textQueryStart >= 0, 'the per-photo comp query builder must exist');
   const textQuerySlice = worker.slice(textQueryStart, textQueryStart + 400);
-  assert.match(textQuerySlice, /\(fused\.__textEvidence \|\| \[\]\)\.slice\(0, 6\)\.join\(' '\)\.trim\(\)\.slice\(0, 120\)/, 'when the identity has no queryable fields (every trading card), textQuery must fall back to OCR\'d textEvidence instead of staying empty and silently disabling sold-comp search');
+  assert.match(textQuerySlice, /\(fused\.__textEvidence \|\| \[\]\)\.slice\(-6\)\.join\(' '\)\.trim\(\)\.slice\(0, 120\)/, 'when the identity has no queryable fields (every trading card), textQuery must fall back to the MOST RECENT OCR\'d textEvidence, not the oldest');
 }
+
+// ── Contract: active and sold comp lookups must run concurrently, not
+// sequentially -- enabling sold comps for trading cards above means this
+// block now actually runs on every card scan (previously skipped entirely
+// since textQuery was always empty), and awaiting the two eBay calls one
+// after another visibly slowed every trading-card scan down. ──
+assert.match(worker, /const \[activeResult, soldResult\] = await Promise\.all\(\[\s*textQuery \? fetchEbayActiveListings\(env, textQuery, \{ limit: 20 \}\)\.catch\(\(\) => \(\{ listings: \[\] \}\)\) : Promise\.resolve\(\{ listings: \[\] \}\),\s*textQuery \? fetchSoldCompsWithFallback\(env, textQuery, 30\)\.catch\(\(\) => \(\{ comps: \[\], warning: 'Sold comp lookup failed' \}\)\) : Promise\.resolve\(\{ comps: \[\], warning: null \}\),\s*\]\);/, 'active and sold comp lookups must be parallelized with Promise.all, not awaited one after another');
 
 // ── Contract: junk filtering happens before stats, median before average ──
 assert.match(worker, /POCKET_SCOUT_JUNK_TERMS = \/\\b\(lot of\|bundle\|wholesale\|reprint/, 'obvious mismatches (lots, reprints, parts-only) must be filtered before pricing math');

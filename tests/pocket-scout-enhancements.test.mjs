@@ -14,7 +14,7 @@ assert.match(worker, /async function fetchSoldCompsWithFallback\(env, query, lim
 assert.match(worker, /fetchSoldCompsWithFallback[\s\S]{0,200}let result = await fetchSoldCompsProvider\(env, query, limit\);/, 'the fallback helper must try the dedicated sold-comps provider first');
 assert.doesNotMatch(worker, /soldResult = await fetchEbaySoldComps\(env, textQuery, 30\)/, 'the Pocket Scout photo route must no longer call the legacy eBay API directly');
 assert.doesNotMatch(worker, /\[activeResult, soldResult\] = await Promise\.all\(\[\s*fetchEbayActiveListings\(env, textQuery, \{ limit: 20 \}\)\.catch\(\(\) => \(\{ listings: \[\] \}\)\),\s*fetchEbaySoldComps\(env, textQuery, 30\)/, 'the Pocket Scout manual-search route must no longer call the legacy eBay API directly');
-assert.match(worker, /const soldResult = await fetchSoldCompsWithFallback\(env, textQuery, 30\)/, 'the photo route must use the shared fallback helper for sold comps');
+assert.match(worker, /\[activeResult, soldResult\] = await Promise\.all\(\[\s*textQuery \? fetchEbayActiveListings\(env, textQuery, \{ limit: 20 \}\)\.catch\(\(\) => \(\{ listings: \[\] \}\)\) : Promise\.resolve\(\{ listings: \[\] \}\),\s*textQuery \? fetchSoldCompsWithFallback\(env, textQuery, 30\)/, 'the photo route must use the shared fallback helper for sold comps, run concurrently with the active-listings lookup rather than awaited sequentially');
 assert.match(worker, /fetchSoldCompsWithFallback\(env, textQuery, 30\)\.catch\(\(\) => \(\{ comps: \[\], warning: 'Sold comp lookup failed' \}\)\),\s*\]\);/, 'the manual-search route must use the shared fallback helper for sold comps');
 
 // ── Contract: the eBay search query used at scan time is persisted onto the item so a
