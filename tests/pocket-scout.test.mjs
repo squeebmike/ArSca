@@ -137,20 +137,35 @@ assert.doesNotMatch(dashboard.slice(dashboard.indexOf("const query = document.ge
   assert.match(mappedSlice, /printRun:printRunMatch \? printRunMatch\[1\] : '',/, 'the parsed print run must be exposed on the row');
   assert.match(mappedSlice, /productId:m\.productId \|\| m\.id \|\| '',/, 'the row must carry the product id so a later per-item image/detail lookup is possible');
 }
-assert.match(dashboard, /r\.printRun\?'\/'\+r\.printRun:'',r\.variant\]/, 'the modal\'s meta line must actually show the parsed print run, not just parse it and drop it');
+assert.match(dashboard, /function scoutCatalogMetaHtml\(r\)\{/, 'the meta line (set/card number/print run/variant + view link) must be its own function, since hydration re-renders it in place once richer data arrives');
+assert.match(dashboard, /r\.printRun\?'\/'\+r\.printRun:'',r\.variant\]/, 'the meta line must actually show the print run, not just parse/fetch it and drop it');
 assert.match(dashboard, /r\.productUrl\?` · <a href="\$\{escHtml\(r\.productUrl\)\}" target="_blank" rel="noopener" style="color:var\(--blue\)">view<\/a>`:''/, 'each catalog result must offer a "view" link to the source product page, so a still-missing photo does not block confirming the exact card');
 
-// ── Contract: PriceCharting's bulk search API returns no image at all for
-// most results (only its single-product detail call does, with a
-// server-side og:image scrape fallback when even that's missing -- see
-// /pricing/pricecharting/product/:id) -- so a capped number of PriceCharting
-// rows missing an image get that same per-product lookup, not left blank. ──
+// ── Contract: PriceCharting's OWN game/console API schema has no concept
+// of a card number or print run at all -- confirmed live against a real
+// numbered parallel ("Purple /250"): PriceCharting's product name for it
+// didn't contain the print run because the field doesn't exist in that
+// schema. SportsCardsPro is PriceCharting's own sports-card-specific
+// dataset, sharing the SAME numeric product id (confirmed: SportsCardsPro's
+// own product page literally labels it "PriceCharting ID"), and its
+// product schema DOES carry card-number/print-run as real fields
+// (confirmed live: "Card Number: #91", "Print Run: 250" on their page for
+// the exact same id) -- so a capped number of PriceCharting/SportsCardsPro
+// rows missing an image or missing card_number/printRun get looked up
+// there, not left blank or guessed from the name alone. ──
+assert.match(dashboard, /card_number:\s*String\(p\['card-number'\] \|\| p\.cardNumber \|\| \(numM \? numM\[1\] : ''\) \|\| ''\),/, 'scpProductToQplRow must read the real card-number field, not only ever regex it out of the name');
+assert.match(dashboard, /printRun:\s*String\(p\['print-run'\] \|\| p\.printRun \|\| ''\),/, 'scpProductToQplRow must read the real print-run field');
+assert.match(dashboard, /card_number:\s*String\(p\['card-number'\] \|\| p\.cardNumber \|\| baseRow\.card_number \|\| ''\),/, 'scpDetailToQplRow (the fully-hydrated single-product response) must also read card-number');
+assert.match(dashboard, /printRun:\s*String\(p\['print-run'\] \|\| p\.printRun \|\| baseRow\.printRun \|\| ''\),/, 'scpDetailToQplRow must also read print-run');
 {
   const fnStart = dashboard.indexOf('async function scoutHydrateCatalogImages(){');
   const fnEnd = dashboard.indexOf('\nfunction scoutSelectCatalogMatch', fnStart);
   const fn = dashboard.slice(fnStart, fnEnd);
-  assert.match(fn, /r\.source === 'PriceCharting' && r\.productId && priceChartingHydrated < 6/, 'PriceCharting image hydration must be capped, not run for every result -- PriceCharting is rate-limited server-side');
-  assert.match(fn, /WORKER \+ '\/pricing\/pricecharting\/product\/' \+ encodeURIComponent\(r\.productId\)/, 'must reuse the existing single-product endpoint (with its og:image scrape fallback) rather than a new image-only route');
+  assert.match(fn, /\(r\.source === 'PriceCharting' \|\| r\.source === 'sportscardspro'\) && \(r\.productId \|\| r\.scpId\) && catKey !== 'pokemon' && catKey !== 'comic' && \(!r\.imageUrl \|\| !r\.card_number \|\| !r\.printRun\) && priceChartingHydrated < 6/, 'must be capped, and must trigger on a missing card_number/printRun too, not only a missing image');
+  assert.match(fn, /WORKER \+ '\/pricing\/sportscardspro\/product\?id=' \+ encodeURIComponent\(scpId\)/, 'must hit SportsCardsPro\'s single-product endpoint (the richer schema), not PriceCharting\'s own');
+  assert.match(fn, /if\(cardNum && cardNum !== r\.card_number\) \{ r\.card_number = cardNum; metaChanged = true; \}/, 'a newly-found card number must actually update the row');
+  assert.match(fn, /if\(printRun && printRun !== r\.printRun\) \{ r\.printRun = printRun; metaChanged = true; \}/, 'a newly-found print run must actually update the row');
+  assert.match(fn, /if\(metaChanged\) \{\s*\n\s*const metaEl = document\.getElementById\('scout-catalog-meta-'\+i\);\s*\n\s*if\(metaEl\) metaEl\.innerHTML = scoutCatalogMetaHtml\(r\);/, 'a newly-found card number/print run must actually re-render onto the visible meta line, not just sit on the row object unseen');
 }
 // A blank title + 0% confidence on a trading card is the model working as
 // designed (see POCKET_SCOUT_IDENTITY_PROMPT), not a broken scan -- it must
