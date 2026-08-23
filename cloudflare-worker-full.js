@@ -9840,13 +9840,26 @@ export default {
       // player name, set, card number) is captured regardless of category,
       // so it's the real fallback query here, same fix as the client-side
       // Research handoff.
+      // __textEvidence accumulates oldest-first (each photo's fragments
+      // appended to the end, see fused.__textEvidence above), so the LAST
+      // entries are the freshest read -- often the back-of-card photo with
+      // the card number / print run text. Taking the first 6 here (the
+      // original fix) grabbed only the oldest, usually front-photo, text
+      // and both silently dropped later evidence and made for a weaker
+      // search query -- switched to the last 6.
       const queryParts = [fused.brand, fused.manufacturer, fused.title || fused.characterOrSubject, fused.model, fused.year].filter(Boolean);
-      const textQuery = queryParts.length ? queryParts.join(' ').slice(0, 120) : (fused.title || (fused.__textEvidence || []).slice(0, 6).join(' ').trim().slice(0, 120));
-      let textListings = [];
-      if (textQuery) {
-        const activeResult = await fetchEbayActiveListings(env, textQuery, { limit: 20 }).catch(() => ({ listings: [] }));
-        textListings = activeResult.listings || [];
-      }
+      const textQuery = queryParts.length ? queryParts.join(' ').slice(0, 120) : (fused.title || (fused.__textEvidence || []).slice(-6).join(' ').trim().slice(0, 120));
+
+      // Active and sold comp lookups are independent eBay calls -- run them
+      // in parallel. Enabling sold comps for trading cards (textQuery used
+      // to be empty for every card, so this whole block never ran) made
+      // scans visibly slower once these were awaited one after another;
+      // parallelizing gets it back to roughly one round trip.
+      const [activeResult, soldResult] = await Promise.all([
+        textQuery ? fetchEbayActiveListings(env, textQuery, { limit: 20 }).catch(() => ({ listings: [] })) : Promise.resolve({ listings: [] }),
+        textQuery ? fetchSoldCompsWithFallback(env, textQuery, 30).catch(() => ({ comps: [], warning: 'Sold comp lookup failed' })) : Promise.resolve({ comps: [], warning: null }),
+      ]);
+      const textListings = activeResult.listings || [];
       const imageListings = imageSearchResult.listings || [];
       const seen = new Set();
       const merged = [...imageListings, ...textListings].filter(l => {
@@ -9865,7 +9878,6 @@ export default {
       let soldWarning = 'Sold history unavailable';
       let soldFiltered = [];
       if (textQuery) {
-        const soldResult = await fetchSoldCompsWithFallback(env, textQuery, 30).catch(() => ({ comps: [], warning: 'Sold comp lookup failed' }));
         soldFiltered = filterPocketScoutListings(soldResult.comps || []);
         if (soldFiltered.length) { soldStats = pocketScoutCompStats(soldFiltered); soldWarning = null; }
         else if (soldResult.warning) soldWarning = 'Sold history unavailable: ' + soldResult.warning;
