@@ -177,7 +177,16 @@ assert.match(dashboard, /printRun:\s*String\(p\['print-run'\] \|\| p\.printRun \
   assert.match(fn, /if\(cardNum && cardNum !== r\.card_number\) \{ r\.card_number = cardNum; metaChanged = true; \}/, 'a newly-found card number must actually update the row');
   assert.match(fn, /if\(printRun && printRun !== r\.printRun\) \{ r\.printRun = printRun; metaChanged = true; \}/, 'a newly-found print run must actually update the row');
   assert.match(fn, /if\(metaChanged\) \{\s*\n\s*const metaEl = document\.getElementById\('scout-catalog-meta-'\+i\);\s*\n\s*if\(metaEl\) metaEl\.innerHTML = scoutCatalogMetaHtml\(r\);/, 'a newly-found card number/print run must actually re-render onto the visible meta line, not just sit on the row object unseen');
+  // SportsCardsPro's route 501s (needsKey) whenever the SCP_ACCESS_TOKEN
+  // Worker secret isn't set -- confirmed live: every prior fix landed with
+  // no image AND no print run, every single time, matching this exact
+  // failure mode. That must not also cost the image, since PriceCharting's
+  // own single-product endpoint can still provide one with no token needed.
+  assert.match(fn, /else if\(scpRes\.status === 501\) \{\s*\n\s*r\.scpUnavailable = true;/, 'a 501 (needsKey) from the SportsCardsPro route must be recorded on the row, not silently swallowed');
+  assert.match(fn, /if\(!url && r\.source === 'PriceCharting' && r\.productId\) \{/, 'when SportsCardsPro has no image (token missing or lookup failed), PriceCharting\'s own single-product endpoint must still be tried for the image');
+  assert.match(fn, /WORKER \+ '\/pricing\/pricecharting\/product\/' \+ encodeURIComponent\(r\.productId\)/, 'the PriceCharting image fallback must hit the single-product endpoint (og:image scrape fallback), not the search endpoint');
 }
+assert.match(dashboard, /r\.scpUnavailable && !r\.printRun \? ` · <span style="color:var\(--muted\)" title="Set the SCP_ACCESS_TOKEN Worker secret to pull print run \/ card number from SportsCardsPro">no SCP key<\/span>` : ''/, 'a missing SCP key must be visible on the row so it can be diagnosed from a screenshot instead of guessed at again');
 // A blank title + 0% confidence on a trading card is the model working as
 // designed (see POCKET_SCOUT_IDENTITY_PROMPT), not a broken scan -- it must
 // not render as "Unidentified item" / red "INSUFFICIENT DATA", which reads
