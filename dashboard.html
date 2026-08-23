@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.23.04-fix-card-handoff-empty-title">
+<meta name="version" content="2026.08.23.05-scout-inline-catalog-match">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1633,16 +1633,16 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.23.04-fix-card-handoff-empty-title" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.23.04-fix-card-handoff-empty-title" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.23.04-fix-card-handoff-empty-title" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.08.23.04-fix-card-handoff-empty-title" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.23.04-fix-card-handoff-empty-title" defer></script>
-<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.08.23.04-fix-card-handoff-empty-title" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.23.04-fix-card-handoff-empty-title" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.23.04-fix-card-handoff-empty-title" defer></script>
-<script src="scripts/pokemon/offline-browser.js?v=2026.08.23.04-fix-card-handoff-empty-title" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.23.04-fix-card-handoff-empty-title" defer></script>
+<script src="scripts/query-routing.js?v=2026.08.23.05-scout-inline-catalog-match" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.23.05-scout-inline-catalog-match" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.23.05-scout-inline-catalog-match" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.08.23.05-scout-inline-catalog-match" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.23.05-scout-inline-catalog-match" defer></script>
+<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.08.23.05-scout-inline-catalog-match" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.23.05-scout-inline-catalog-match" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.23.05-scout-inline-catalog-match" defer></script>
+<script src="scripts/pokemon/offline-browser.js?v=2026.08.23.05-scout-inline-catalog-match" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.23.05-scout-inline-catalog-match" defer></script>
 </head>
 <body>
 
@@ -1671,11 +1671,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.23.04-fix-card-handoff-empty-title</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.23.05-scout-inline-catalog-match</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.23.04-fix-card-handoff-empty-title</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.23.05-scout-inline-catalog-match</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1693,7 +1693,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.23.04-fix-card-handoff-empty-title</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.23.05-scout-inline-catalog-match</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -2463,6 +2463,21 @@ body.show-mode .inv-sync-badge{display:none;}
   </div>
 </div>
 
+<div id="scout-catalog-modal" class="barcode-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="scout-catalog-title" onclick="if(event.target===this)scoutCloseCatalogModal()">
+  <div class="barcode-sheet">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+      <div><div id="scout-catalog-title" style="font-family:'Orbitron',monospace;font-size:12px;color:var(--g)">MATCH CATALOG CARD</div><div style="font-size:9px;color:var(--dim);margin-top:3px">Search PriceCharting/TCGPlayer without leaving Pocket Scout -- pick the exact card and it's connected to this item at buy.</div></div>
+      <button class="hbtn" onclick="scoutCloseCatalogModal()">CLOSE</button>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:10px">
+      <input id="scout-catalog-query" class="tsi" placeholder="Card name, set, number..." style="flex:1" onkeydown="if(event.key==='Enter'){event.preventDefault();scoutRunCatalogSearch()}">
+      <button class="hbtn" onclick="scoutRunCatalogSearch()">SEARCH</button>
+    </div>
+    <div id="scout-catalog-status" style="font-family:var(--font-mono);font-size:9px;color:var(--dim);margin-top:8px;min-height:14px"></div>
+    <div id="scout-catalog-results" style="display:grid;gap:8px;margin-top:8px;max-height:55vh;overflow-y:auto"></div>
+  </div>
+</div>
+
 <div id="comic-issue-hub" class="comic-hub-overlay" role="dialog" aria-modal="true" aria-labelledby="comic-hub-title">
   <div class="comic-hub-shell"><div id="comic-hub-content"></div></div>
 </div>
@@ -2745,7 +2760,7 @@ body.show-mode .inv-sync-badge{display:none;}
       </div>
 
       <div id="scout-comps-drawer" style="display:none;background:var(--surf);border:1px solid var(--border);border-radius:10px;padding:10px;margin-bottom:14px">
-        <div style="font-family:var(--font-mono);font-size:9px;color:var(--dim);margin-bottom:8px">Tap NOT A MATCH on anything that isn't really this item -- valuation recalculates immediately.</div>
+        <div style="font-family:var(--font-mono);font-size:9px;color:var(--dim);margin-bottom:8px">Tap NOT A MATCH on anything that isn't really this item -- valuation recalculates immediately. USE THIS on a comp copies its exact listing title into the catalog search below.</div>
         <div id="scout-comps-tabs" style="display:flex;gap:6px;margin-bottom:8px"></div>
         <div id="scout-comps-list" style="display:grid;gap:8px"></div>
       </div>
@@ -3648,7 +3663,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.23.04-fix-card-handoff-empty-title';
+const APP_VERSION = '2026.08.23.05-scout-inline-catalog-match';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -26938,9 +26953,14 @@ function scoutRenderResult(){
   // "Unidentified item" / red "0% INSUFFICIENT DATA" reads as a broken scan
   // when it's actually working as designed, so both get a card-specific
   // label instead of the generic no-data state.
-  document.getElementById('scout-title').textContent = id.title || [id.year,id.brand,id.characterOrSubject].filter(Boolean).join(' ') || (scoutSession.routeToCardPipeline ? 'Trading card / sports card / comic' : 'Unidentified item');
+  const match = scoutSession.catalogMatch;
+  document.getElementById('scout-title').textContent = match?.name || id.title || [id.year,id.brand,id.characterOrSubject].filter(Boolean).join(' ') || (scoutSession.routeToCardPipeline ? 'Trading card / sports card / comic' : 'Unidentified item');
   const badge = document.getElementById('scout-confidence-badge');
-  if(scoutSession.routeToCardPipeline && !id.title){
+  if(match){
+    badge.textContent = 'MATCHED · '+(match.priceSource||match.source||'catalog');
+    badge.style.color = 'var(--g)';
+    badge.style.border = '1px solid var(--g)';
+  } else if(scoutSession.routeToCardPipeline && !id.title){
     badge.textContent = 'CARD · use PriceCharting/TCGPlayer';
     badge.style.color = 'var(--purple)';
     badge.style.border = '1px solid var(--purple)';
@@ -26950,18 +26970,26 @@ function scoutRenderResult(){
     badge.style.color = conf.color;
     badge.style.border = '1px solid '+conf.color;
   }
-  document.getElementById('scout-subtitle').textContent = [id.brand||id.manufacturer, id.model||id.modelNumber, id.year, id.edition].filter(Boolean).join(' · ') || (id.category ? 'Category: '+id.category : '');
+  document.getElementById('scout-subtitle').textContent = match
+    ? [match.set, match.card_number, match.variant].filter(Boolean).join(' · ')
+    : [id.brand||id.manufacturer, id.model||id.modelNumber, id.year, id.edition].filter(Boolean).join(' · ') || (id.category ? 'Category: '+id.category : '');
   const cardHintEl = document.getElementById('scout-card-hint');
   // Trading cards, sports cards, and comics all have far more precise
   // pricing available (PriceCharting/TCGPlayer guide/comp data by exact
   // set/number/grade) than the generic eBay-comps math this tab uses for
-  // everything else -- this used to just tell the operator to go redo the
-  // search by hand in Research; now it hands the identified title straight
-  // over and runs the lookup for them.
-  cardHintEl.innerHTML = scoutSession.routeToCardPipeline
-    ? 'This looks like a trading card, sports card, or comic -- PriceCharting/TCGPlayer will price it far more precisely than eBay comps.<br>'
-      + '<button class="hbtn" onclick="scoutSearchInResearch()" style="margin-top:6px;padding:6px 10px;font-size:9px;color:var(--purple)">SEARCH PRICECHARTING/TCGPLAYER →</button>'
-    : '';
+  // everything else. MATCH CATALOG CARD searches that catalog inline (no
+  // tab switch) and, once picked, the match rides along into inventory/the
+  // buy tray instead of the fuzzy eBay comp.
+  if(match){
+    cardHintEl.innerHTML = `✓ Matched ${match.market?'at '+scoutMoney(match.market):''} -- this will be used instead of the eBay comp when added to inventory/buy tray.<br>`
+      + `<button class="hbtn" onclick="scoutOpenCatalogSearch()" style="margin-top:6px;padding:6px 10px;font-size:9px">CHANGE MATCH</button>`
+      + `<button class="hbtn" onclick="scoutClearCatalogMatch()" style="margin-top:6px;margin-left:6px;padding:6px 10px;font-size:9px;color:var(--red)">CLEAR MATCH</button>`;
+  } else if(scoutSession.routeToCardPipeline){
+    cardHintEl.innerHTML = 'This looks like a trading card, sports card, or comic -- PriceCharting/TCGPlayer will price it far more precisely than eBay comps.<br>'
+      + '<button class="hbtn" onclick="scoutOpenCatalogSearch()" style="margin-top:6px;padding:6px 10px;font-size:9px;color:var(--purple)">MATCH CATALOG CARD →</button>';
+  } else {
+    cardHintEl.innerHTML = '';
+  }
   const hint = scoutSession.nextPhotoHint;
   document.getElementById('scout-next-photo-hint').textContent = hint ? ('📸 '+(hint.reason || ('Photograph the '+hint.photo))) : '';
 
@@ -27074,7 +27102,10 @@ function scoutRenderComps(){
       <div style="color:var(--text);font-size:10px">${escHtml(c.title||'Listing')}</div>
       <div style="color:var(--dim)">${scoutMoney(c.total)}${c.condition?' · '+escHtml(c.condition):''}${c.listingStatus==='sold'&&c.soldAt?' · sold '+escHtml(new Date(c.soldAt).toLocaleDateString()):''} ${c.url?`· <a href="${escHtml(c.url)}" target="_blank" rel="noopener" style="color:var(--blue)">view</a>`:''}</div>
     </div>
-    <button class="hbtn" style="font-size:8px;padding:6px 8px" onclick="scoutRejectCandidate('${escHtml(c.id||'')}')">NOT A MATCH</button>
+    <div style="display:flex;flex-direction:column;gap:4px">
+      <button class="hbtn" style="font-size:8px;padding:6px 8px;color:var(--g)" onclick="scoutUseCompAsCatalogQuery('${escHtml(c.id||'')}')">USE THIS</button>
+      <button class="hbtn" style="font-size:8px;padding:6px 8px" onclick="scoutRejectCandidate('${escHtml(c.id||'')}')">NOT A MATCH</button>
+    </div>
   </div>`).join('') : `<div style="font-family:var(--font-mono);font-size:9px;color:var(--dim)">No ${scoutCompsView} comps${scoutCompsView==='sold'?' (or sold history is unavailable for this item)':''}.</div>`;
 }
 async function scoutRejectCandidate(candidateRowId){
@@ -27097,7 +27128,7 @@ async function scoutRejectCandidate(candidateRowId){
 function scoutWrongItem(){
   if(!scoutSession) return;
   if(!confirm('Clear the current identification? Photos already taken stay attached to this session.')) return;
-  scoutSession.identity = {}; scoutSession.confidence = 0; scoutSession.candidates = []; scoutSession.compSnapshot = null;
+  scoutSession.identity = {}; scoutSession.confidence = 0; scoutSession.candidates = []; scoutSession.compSnapshot = null; scoutSession.catalogMatch = null;
   document.getElementById('scout-result-card').style.display='none';
   document.getElementById('scout-comps-drawer').style.display='none';
   document.getElementById('scout-status-log').textContent = 'Add another photo, or search manually below.';
@@ -27123,31 +27154,86 @@ async function scoutManualSearch(){
   }catch(e){ if(status) status.textContent = 'Search failed: '+e.message; }
 }
 
-// Hands a card/sports-card/comic identification off to the Research tab's
-// PriceCharting/TCGPlayer lookup instead of leaving the operator to retype
-// it there by hand. The scout session (and its photos) stay open in the
-// background -- Research's own ADD TO BUY already queues into the same
-// buyList tray with the real catalog market price, no manual price entry
-// required, exactly like SEND TO BUY TAB does for everything else.
-function scoutSearchInResearch(){
+// Matches a card/sports-card/comic against the real PriceCharting/TCGPlayer
+// catalog WITHOUT leaving Pocket Scout -- this used to switch to the
+// Research tab, which broke the whole point of scanning items back-to-back.
+// Reuses searchQuickCatalog(), the same catalog search the buy tray's own
+// auto-lookup (autoLookupBuyItem) already calls, rather than duplicating
+// Research's tab-coupled search/render logic.
+let scoutCatalogSearchResults = [];
+function scoutOpenCatalogSearch(prefillQuery){
   if(!scoutSession) return;
   const identity = scoutSession.identity||{};
   // The vision model is deliberately told to leave title/brand/etc blank for
   // trading cards (it expects this exact handoff, not a guess) -- so a
-  // title-based query is very often empty right when this button matters
-  // most. textEvidence (every distinct bit of printed text it actually
-  // read -- set name, card number, player name) is captured regardless of
-  // category, so it's the real fallback query here, not a dead end.
-  const query = identity.title
+  // title-based query is very often empty right when this matters most.
+  // textEvidence (every distinct bit of printed text it actually read --
+  // set name, card number, player name) is the real fallback query here.
+  const query = prefillQuery
+    || identity.title
     || [identity.year, identity.brand, identity.characterOrSubject].filter(Boolean).join(' ')
     || (scoutSession.textEvidence||[]).slice(0,4).join(' ');
-  switchTab('research');
-  setTimeout(() => {
-    const input = document.getElementById('qpl-input');
-    if(input) input.value = query;
-    if(query) runPriceLookup();
-    else { toast_dash('Nothing read off the card yet -- type the search manually'); input?.focus(); }
-  }, 0);
+  const input = document.getElementById('scout-catalog-query');
+  if(input) input.value = query;
+  document.getElementById('scout-catalog-modal')?.classList.add('on');
+  document.body.style.overflow='hidden';
+  if(query) scoutRunCatalogSearch();
+  else { document.getElementById('scout-catalog-status').textContent = 'Nothing read off the card yet -- type the search manually'; setTimeout(()=>input?.focus(),80); }
+}
+function scoutCloseCatalogModal(){
+  document.getElementById('scout-catalog-modal')?.classList.remove('on');
+  document.body.style.overflow='';
+}
+// USE THIS on an eBay comp (scoutRenderComps) feeds that exact listing title
+// in as the search, since a real matching listing's title is often the
+// fastest path to the exact catalog card.
+function scoutUseCompAsCatalogQuery(candidateId){
+  if(!scoutSession) return;
+  const c = (scoutSession.candidates||[]).find(x=>x.id===candidateId);
+  if(!c) return;
+  scoutOpenCatalogSearch(c.title || '');
+}
+async function scoutRunCatalogSearch(){
+  const query = document.getElementById('scout-catalog-query')?.value.trim();
+  const statusEl = document.getElementById('scout-catalog-status');
+  const resultsEl = document.getElementById('scout-catalog-results');
+  if(!query){ if(statusEl) statusEl.textContent = 'Enter a search'; return; }
+  if(statusEl) statusEl.textContent = 'Searching PriceCharting/TCGPlayer...';
+  if(resultsEl) resultsEl.innerHTML = '';
+  try{
+    const matches = await searchQuickCatalog(query, '');
+    scoutCatalogSearchResults = matches.slice(0, 25);
+    if(statusEl) statusEl.textContent = scoutCatalogSearchResults.length
+      ? (scoutCatalogSearchResults.length+' match'+(scoutCatalogSearchResults.length===1?'':'es')+' -- tap USE THIS on the right one')
+      : 'No matches -- try a shorter or different search';
+    if(resultsEl) resultsEl.innerHTML = scoutCatalogSearchResults.map((r,i) => `<div style="display:flex;gap:8px;align-items:center;border:1px solid var(--border);border-radius:8px;padding:8px">
+      ${r.imageUrl?`<img src="${escHtml(r.imageUrl)}" style="width:44px;height:60px;object-fit:cover;border-radius:4px;flex-shrink:0" loading="lazy">`:'<div style="width:44px;height:60px;border-radius:4px;background:var(--surf2);flex-shrink:0"></div>'}
+      <div style="flex:1;font-family:var(--font-mono);font-size:9px;line-height:1.5;min-width:0">
+        <div style="color:var(--text);font-size:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(r.name||'Unknown')}</div>
+        <div style="color:var(--dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${[r.set,r.card_number,r.variant].filter(Boolean).map(escHtml).join(' · ')}</div>
+        <div style="color:var(--gold);font-weight:700">${r.market?scoutMoney(r.market):'no price'}</div>
+      </div>
+      <button class="hbtn" style="font-size:8px;padding:6px 8px;color:var(--g);flex-shrink:0" onclick="scoutSelectCatalogMatch(${i})">USE THIS</button>
+    </div>`).join('');
+  }catch(e){ if(statusEl) statusEl.textContent = 'Search failed: '+e.message; }
+}
+function scoutSelectCatalogMatch(i){
+  const match = scoutCatalogSearchResults[i];
+  if(!match || !scoutSession) return;
+  scoutSession.catalogMatch = match;
+  // Refresh the buy-tray comp-price suggestion to the matched catalog price
+  // too -- same "never clobber a value already typed" rule as its initial
+  // prefill in scoutRenderResult.
+  const compPriceEl = document.getElementById('scout-comp-price');
+  if(compPriceEl && !compPriceEl.value && Number(match.market||0)>0) compPriceEl.value = match.market;
+  scoutCloseCatalogModal();
+  scoutRenderResult();
+  toast_dash('Matched: '+(match.name||'catalog item'));
+}
+function scoutClearCatalogMatch(){
+  if(!scoutSession) return;
+  scoutSession.catalogMatch = null;
+  scoutRenderResult();
 }
 
 function scoutInventoryCategory(identity){
@@ -27161,26 +27247,34 @@ async function scoutBuyAddInventory(){
   if(!(price>0)){ toast_dash('Enter the store price first'); return; }
   const result = scoutSession.lastDecision;
   const identity = scoutSession.identity||{};
+  const match = scoutSession.catalogMatch;
   const condition = document.getElementById('scout-condition')?.value || 'Excellent';
   const sourcingLocation = prompt('Where was this sourced from? (Goodwill, Value Village, Estate Sale, Garage Sale, Flea Market, Convention, Customer Buy, Collection, Other)', '') || '';
-  const category = scoutInventoryCategory(identity);
-  const sku = generateWalkoffInventorySku(category, { name: identity.title, game: identity.category });
+  // A matched catalog card carries a real category/set/number -- prefer it
+  // over the generic "Collectibles" bucket every non-card item falls into.
+  const category = match ? normalizeQuickCategory(match.category) : scoutInventoryCategory(identity);
+  const sku = generateWalkoffInventorySku(category, { name: match?.name || identity.title, game: identity.category });
   const storeId = getActiveStoreId();
   const sb = getSupabaseClient();
   if(!sb || !storeId){ toast_dash('Cloud sign-in required to add inventory'); return; }
   const row = {
     store_id: storeId, status: 'in_stock',
     data: {
-      name: identity.title || 'Pocket Scout item', category, subcategory: identity.subcategory||'',
+      name: match?.name || identity.title || 'Pocket Scout item', category, subcategory: identity.subcategory||'',
       brand: identity.brand||'', manufacturer: identity.manufacturer||'', model: identity.model||identity.modelNumber||'',
-      year: identity.year||'', variant: identity.variant||'', edition: identity.edition||'',
+      year: identity.year||'', variant: match?.variant || identity.variant||'', edition: identity.edition||'',
       upc: identity.upc||'', ean: identity.ean||'', isbn: identity.isbn||'', mpn: identity.mpn||'',
-      condition, cost: price, market: result?.expectedSale||null, sku, quantity:1, qty:1,
-      image: scoutSession.photos?.[0]?.url || '',
+      set: match?.set || '', card_number: match?.card_number || '',
+      sourceProductId: match?.pricechartingProductId || match?.productId || '',
+      sourceVariantId: match?.variantId || match?.productConditionId || '',
+      tcgplayerSkuId: match?.tcgplayerSkuId || match?.skuId || '', tcgPlayerId: match?.tcgPlayerId || match?.tcgplayerId || '', tcgPlayerUrl: match?.tcgPlayerUrl || '',
+      condition, cost: price, market: match?.market || result?.expectedSale || null, sku, quantity:1, qty:1,
+      image: match?.imageUrl || scoutSession.photos?.[0]?.url || '',
       images: (scoutSession.photos||[]).map(p=>p.url).filter(Boolean),
       source: 'pocket_scout', sourcingLocation, acquisitionDate: new Date().toISOString(),
       scanSessionId: scoutSession.id, scanConfidence: scoutSession.confidence||0,
-      pricingConfidence: (scoutSession.compSnapshot?.activeStats?.count||0)>0 ? 'has_comps' : 'no_comps',
+      pricingConfidence: match ? 'catalog_match' : ((scoutSession.compSnapshot?.activeStats?.count||0)>0 ? 'has_comps' : 'no_comps'),
+      priceSource: match ? (match.priceSource||match.source||'catalog_match') : 'pocket_scout',
       decisionAtPurchase: result?.decision||'', expectedProfitLow: result?.netLow??null, expectedProfitHigh: result?.netHigh??null,
       activeCompSnapshot: scoutSession.compSnapshot?.activeStats||null, soldCompSnapshot: scoutSession.compSnapshot?.soldStats||null,
       pocketScoutQuery: scoutSession.compSnapshot?.textQuery || identity.title || '', pocketScoutLastSync: new Date().toISOString(),
@@ -27213,28 +27307,42 @@ function scoutSendToBuyTab(){
   // purchase where "cost" has to be a real known number), this just queues
   // the item. The Buy tray's own offer % (bl-pct) does the actual cost math
   // against the comp price below once it's accepted at the register.
-  const compPriceEl = document.getElementById('scout-comp-price');
-  const compPrice = Number(compPriceEl?.value) || scoutSession.lastDecision?.expectedSale || 0;
-  if(!(compPrice>0)){ toast_dash('Enter a comp price first'); compPriceEl?.focus(); return; }
   const identity = scoutSession.identity||{};
+  const match = scoutSession.catalogMatch;
+  const compPriceEl = document.getElementById('scout-comp-price');
+  const compPrice = Number(compPriceEl?.value) || match?.market || scoutSession.lastDecision?.expectedSale || 0;
+  if(!(compPrice>0)){ toast_dash('Enter a comp price first'); compPriceEl?.focus(); return; }
   const condition = document.getElementById('scout-condition')?.value || 'Excellent';
-  const category = scoutInventoryCategory(identity);
+  // A matched catalog card carries a real category/set/number -- prefer it
+  // over the generic "Collectibles" bucket every non-card item falls into.
+  const category = match ? normalizeQuickCategory(match.category) : scoutInventoryCategory(identity);
   const session = getActiveBuySession();
   const photoUrls = (scoutSession.photos||[]).map(p=>p.url).filter(Boolean);
   const item = {
     id: 'bl_scout_' + (scoutSession.id || Date.now()) + '_' + Math.random().toString(36).slice(2,5),
-    name: identity.title || 'Pocket Scout item',
+    name: match?.name || identity.title || 'Pocket Scout item',
     // market is the tray's 100% basis -- buyItemOfferValue() (the same math
     // every other buy-tray item uses) multiplies it by bl-pct to get the
     // actual cash offer, e.g. 80% of $100 here becomes an $80 offer.
     market: compPrice,
     priceUsed: compPrice,
-    priceLabel: 'Pocket Scout comp', priceSource: 'pocket_scout', pricingSource: 'Pocket Scout',
+    priceLabel: match ? 'PriceCharting/TCGPlayer match' : 'Pocket Scout comp',
+    priceSource: match ? (match.priceSource||match.source||'catalog_match') : 'pocket_scout',
+    pricingSource: match ? 'PriceCharting/TCGPlayer' : 'Pocket Scout',
     condition, category, subcategory: identity.subcategory||'',
     brand: identity.brand||'', manufacturer: identity.manufacturer||'', model: identity.model||identity.modelNumber||'',
-    year: identity.year||'', variant: identity.variant||'', edition: identity.edition||'',
+    year: identity.year||'', variant: match?.variant || identity.variant||'', edition: identity.edition||'',
     upc: identity.upc||'', ean: identity.ean||'', isbn: identity.isbn||'', mpn: identity.mpn||'',
-    imageUrl: photoUrls[0] || '', images: photoUrls,
+    set: match?.set || '', card_number: match?.card_number || '',
+    // These are what actually "connect" the buy to the catalog product --
+    // buyItemToInventoryUpdates() already carries all of them through into
+    // the inventory row once accepted.
+    sourceProductId: match?.pricechartingProductId || match?.productId || '',
+    sourceVariantId: match?.variantId || match?.productConditionId || '',
+    tcgplayerSkuId: match?.tcgplayerSkuId || match?.skuId || '',
+    tcgPlayerId: match?.tcgPlayerId || match?.tcgplayerId || '',
+    tcgPlayerUrl: match?.tcgPlayerUrl || '',
+    imageUrl: match?.imageUrl || photoUrls[0] || '', images: photoUrls,
     sourceType: 'pocket_scout',
     scanSessionId: scoutSession.id, scanConfidence: scoutSession.confidence||0,
     pocketScoutQuery: scoutSession.compSnapshot?.textQuery || identity.title || '',
@@ -44306,7 +44414,7 @@ async function toppsLoadParallels(cardId){
   window.__arscaCloseModal = closeModal;
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.23.04-fix-card-handoff-empty-title" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.23.05-scout-inline-catalog-match" defer></script>
 </body>
 </html>
 
