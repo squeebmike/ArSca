@@ -81,7 +81,7 @@ assert.match(dashboard, /const compPrice = Number\(compPriceEl\?\.value\) \|\| m
 assert.match(dashboard, /if\(!\(compPrice>0\)\)\{ toast_dash\('Enter a comp price first'\)/, 'sending to the buy tray must require a comp price, not a store price');
 assert.doesNotMatch(dashboard.slice(dashboard.indexOf('function scoutSendToBuyTab'), dashboard.indexOf('function scoutSendToBuyTab') + 3200), /manualOfferOverride/, 'the queued item must use the tray\'s normal percent-of-market offer math (buyItemOfferValue), not a manual override that bypasses the buy %');
 assert.match(dashboard, /market: compPrice,/, 'the queued item\'s market must be the chosen comp price, so the tray\'s offer % (e.g. 80% of $100 = $80) applies to it like any other buy-tray item');
-assert.match(dashboard, /imageUrl: match\?\.imageUrl \|\| photoUrls\[0\] \|\| '', images: photoUrls,/, 'every photo taken in the scout session, not just the first, must ride along to the buy tray so it survives into the eventual inventory record');
+assert.match(dashboard, /imageUrl: photoUrls\[0\] \|\| match\?\.imageUrl \|\| '', images: photoUrls,/, 'every photo taken in the scout session, not just the first, must ride along to the buy tray so it survives into the eventual inventory record, and the operator\'s own photo must win over a catalog match\'s stock image');
 assert.match(dashboard, /buyList\.push\(item\);\s*\n\s*saveBuyList\(\);\s*\n\s*logOpsEvent\('buy_item_added', 'Sent Pocket Scout item to buy tray/, 'sending to the buy tray must reuse the existing buyList array + saveBuyList persistence, not a separate bulk-buy data model');
 assert.match(dashboard, /sb\.from\('inventory_items'\)\.insert\(\[row\]\)/, 'Pocket Scout must write inventory the same way every other add-to-inventory flow does (direct client Supabase insert), not a parallel backend table');
 
@@ -217,8 +217,29 @@ assert.match(dashboard, /sourceProductId: match\?\.pricechartingProductId \|\| m
   const selectFn = dashboard.slice(selectFnStart, selectFnEnd);
   assert.match(selectFn, /if\(compPriceEl && Number\(match\.market\|\|0\)>0\) compPriceEl\.value = match\.market;/, 'selecting a catalog match must overwrite scout-comp-price unconditionally, not only when it was empty');
   assert.doesNotMatch(selectFn, /!compPriceEl\.value && Number\(match\.market/, 'must not still gate the overwrite on the field being empty');
+  assert.match(selectFn, /scoutRefreshCompsForMatch\(match\);/, 'selecting a catalog match must re-run comps off the exact matched card, not leave the rougher scan-derived comps in place');
 }
 assert.match(dashboard, /market: Number\(document\.getElementById\('scout-comp-price'\)\?\.value\) \|\| match\?\.market \|\| result\?\.expectedSale \|\| null,/, 'the direct-buy path must save the same comp-price the operator sees (which a selected catalog match now sets) as the inventory market value, not silently ignore it in favor of a stale decision-engine estimate');
+// A matched card's own comps must be searched off ITS name/set/card number
+// (a specific parallel like the /250), not the rougher scan/manual query
+// that mixes every parallel of the card together -- and must only replace
+// the comps, never the real scan identity or the catalogMatch itself.
+assert.match(dashboard, /async function scoutRefreshCompsForMatch\(match\)\{/, 'a dedicated comp-refresh function must exist for a confirmed catalog match');
+assert.match(dashboard, /storeWorkerFetch\('\/pocket-scout\/session\/manual-search', \{ method:'POST', headers:\{'Content-Type':'application\/json'\}, body:JSON\.stringify\(\{ sessionId:scoutSession\.id, query \}\) \}\);/, 'the comp refresh must reuse the existing manual-search route, not a bespoke lookup');
+{
+  const refreshFnStart = dashboard.indexOf('async function scoutRefreshCompsForMatch(match){');
+  const refreshFnEnd = dashboard.indexOf('\nfunction scoutClearCatalogMatch', refreshFnStart);
+  const refreshFn = dashboard.slice(refreshFnStart, refreshFnEnd);
+  assert.match(refreshFn, /scoutSession\.candidates = data\.candidates\|\|\[\];/, 'the refreshed candidates must replace the stale ones');
+  assert.match(refreshFn, /scoutSession\.compSnapshot = data\.compSnapshot\|\|null;/, 'the refreshed comp snapshot must replace the stale one');
+  assert.doesNotMatch(refreshFn, /scoutSession\.identity\s*=/, 'must not overwrite the real scan identity with manual-search\'s own generic {title,confidence:60} response');
+  assert.doesNotMatch(refreshFn, /scoutSession\.catalogMatch\s*=/, 'must not touch catalogMatch -- this only refreshes comps, the match itself is already set by the caller');
+}
+// The operator's own photo of the physical item, not the catalog match's
+// stock photo, must be what actually gets saved as the inventory image --
+// the catalog photo is only useful for confirming identity mid-match.
+assert.match(dashboard, /image: scoutSession\.photos\?\.\[0\]\?\.url \|\| match\?\.imageUrl \|\| '',/, 'the direct-buy path must prefer the operator\'s own scan photo over the catalog match\'s stock image');
+assert.match(dashboard, /imageUrl: photoUrls\[0\] \|\| match\?\.imageUrl \|\| '', images: photoUrls,/, 'the buy-tray path must prefer the operator\'s own scan photo over the catalog match\'s stock image');
 
 console.log('Pocket Scout contract checks passed');
 

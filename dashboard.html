@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.23.12-scout-catalog-match-price-flow">
+<meta name="version" content="2026.08.23.13-scout-match-image-and-comp-refresh">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1633,16 +1633,16 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.23.12-scout-catalog-match-price-flow" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.23.12-scout-catalog-match-price-flow" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.23.12-scout-catalog-match-price-flow" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.08.23.12-scout-catalog-match-price-flow" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.23.12-scout-catalog-match-price-flow" defer></script>
-<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.08.23.12-scout-catalog-match-price-flow" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.23.12-scout-catalog-match-price-flow" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.23.12-scout-catalog-match-price-flow" defer></script>
-<script src="scripts/pokemon/offline-browser.js?v=2026.08.23.12-scout-catalog-match-price-flow" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.23.12-scout-catalog-match-price-flow" defer></script>
+<script src="scripts/query-routing.js?v=2026.08.23.13-scout-match-image-and-comp-refresh" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.23.13-scout-match-image-and-comp-refresh" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.23.13-scout-match-image-and-comp-refresh" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.08.23.13-scout-match-image-and-comp-refresh" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.23.13-scout-match-image-and-comp-refresh" defer></script>
+<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.08.23.13-scout-match-image-and-comp-refresh" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.23.13-scout-match-image-and-comp-refresh" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.23.13-scout-match-image-and-comp-refresh" defer></script>
+<script src="scripts/pokemon/offline-browser.js?v=2026.08.23.13-scout-match-image-and-comp-refresh" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.23.13-scout-match-image-and-comp-refresh" defer></script>
 </head>
 <body>
 
@@ -1671,11 +1671,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.23.12-scout-catalog-match-price-flow</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.23.13-scout-match-image-and-comp-refresh</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.23.12-scout-catalog-match-price-flow</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.23.13-scout-match-image-and-comp-refresh</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1693,7 +1693,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.23.12-scout-catalog-match-price-flow</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.23.13-scout-match-image-and-comp-refresh</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3663,7 +3663,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.23.12-scout-catalog-match-price-flow';
+const APP_VERSION = '2026.08.23.13-scout-match-image-and-comp-refresh';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -27333,6 +27333,40 @@ function scoutSelectCatalogMatch(i){
   scoutCloseCatalogModal();
   scoutRenderResult();
   toast_dash('Matched: '+(match.name||'catalog item'));
+  // The comps gathered so far were searched off whatever the vision model
+  // and/or the operator's own typed query guessed -- often a generic
+  // player/set search that mixes every parallel of this card together.
+  // Now that the exact card is confirmed (e.g. the specific /250 parallel,
+  // not just "Julio Rodriguez"), re-run the comp search off ITS name/set/
+  // card number so active + sold comps actually price the right card.
+  scoutRefreshCompsForMatch(match);
+}
+// Builds a tight eBay search query from a confirmed catalog match instead of
+// the rougher scan-derived one -- the match's own name usually already
+// carries the card number ("Julio Rodriguez [Purple] #91"), so printRun is
+// only appended when the name doesn't already spell out that exact fraction.
+function scoutCatalogMatchQuery(match){
+  const parts = [match.set, match.name];
+  if(match.printRun && !new RegExp('/\\s*'+match.printRun+'\\b').test(match.name||'')) parts.push('/'+match.printRun);
+  return parts.filter(Boolean).join(' ').trim();
+}
+async function scoutRefreshCompsForMatch(match){
+  if(!scoutSession || !match) return;
+  const query = scoutCatalogMatchQuery(match);
+  if(!query) return;
+  try{
+    const res = await storeWorkerFetch('/pocket-scout/session/manual-search', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ sessionId:scoutSession.id, query }) });
+    const data = await res.json().catch(()=>({}));
+    if(!res.ok || !data.ok) throw new Error(data.error||'Comp refresh failed');
+    // Only the comps get replaced here -- manual-search's own identity/
+    // confidence response is for ITS standalone no-photo flow and would
+    // blow away the real scan identity (and the catalogMatch itself) if
+    // applied on top of a match that was just confirmed.
+    scoutSession.candidates = data.candidates||[];
+    scoutSession.compSnapshot = data.compSnapshot||null;
+    scoutRenderResult();
+    scoutRenderComps();
+  }catch(e){ toast_dash('Could not refresh comps for the matched card: '+(e.message||e)); }
 }
 function scoutClearCatalogMatch(){
   if(!scoutSession) return;
@@ -27373,7 +27407,10 @@ async function scoutBuyAddInventory(){
       sourceVariantId: match?.variantId || match?.productConditionId || '',
       tcgplayerSkuId: match?.tcgplayerSkuId || match?.skuId || '', tcgPlayerId: match?.tcgPlayerId || match?.tcgplayerId || '', tcgPlayerUrl: match?.tcgPlayerUrl || '',
       condition, cost: price, market: Number(document.getElementById('scout-comp-price')?.value) || match?.market || result?.expectedSale || null, sku, quantity:1, qty:1,
-      image: match?.imageUrl || scoutSession.photos?.[0]?.url || '',
+      // The operator's own photo of the actual physical item is the real
+      // inventory image -- the catalog match's stock photo is only useful
+      // while confirming identity, not as what gets listed for sale.
+      image: scoutSession.photos?.[0]?.url || match?.imageUrl || '',
       images: (scoutSession.photos||[]).map(p=>p.url).filter(Boolean),
       source: 'pocket_scout', sourcingLocation, acquisitionDate: new Date().toISOString(),
       scanSessionId: scoutSession.id, scanConfidence: scoutSession.confidence||0,
@@ -27446,7 +27483,10 @@ function scoutSendToBuyTab(){
     tcgplayerSkuId: match?.tcgplayerSkuId || match?.skuId || '',
     tcgPlayerId: match?.tcgPlayerId || match?.tcgplayerId || '',
     tcgPlayerUrl: match?.tcgPlayerUrl || '',
-    imageUrl: match?.imageUrl || photoUrls[0] || '', images: photoUrls,
+    // Same rule as the direct-buy path: the operator's own photo is the
+    // real inventory image, the catalog match's stock photo is only for
+    // confirming identity.
+    imageUrl: photoUrls[0] || match?.imageUrl || '', images: photoUrls,
     sourceType: 'pocket_scout',
     scanSessionId: scoutSession.id, scanConfidence: scoutSession.confidence||0,
     pocketScoutQuery: scoutSession.compSnapshot?.textQuery || identity.title || '',
@@ -44539,7 +44579,7 @@ async function toppsLoadParallels(cardId){
   window.__arscaCloseModal = closeModal;
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.23.12-scout-catalog-match-price-flow" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.23.13-scout-match-image-and-comp-refresh" defer></script>
 </body>
 </html>
 
