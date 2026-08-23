@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.23.01-scout-buy-tab-and-image-upload-retry">
+<meta name="version" content="2026.08.23.03-scout-research-handoff">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1633,16 +1633,16 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.23.01-scout-buy-tab-and-image-upload-retry" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.23.01-scout-buy-tab-and-image-upload-retry" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.23.01-scout-buy-tab-and-image-upload-retry" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.08.23.01-scout-buy-tab-and-image-upload-retry" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.23.01-scout-buy-tab-and-image-upload-retry" defer></script>
-<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.08.23.01-scout-buy-tab-and-image-upload-retry" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.23.01-scout-buy-tab-and-image-upload-retry" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.23.01-scout-buy-tab-and-image-upload-retry" defer></script>
-<script src="scripts/pokemon/offline-browser.js?v=2026.08.23.01-scout-buy-tab-and-image-upload-retry" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.23.01-scout-buy-tab-and-image-upload-retry" defer></script>
+<script src="scripts/query-routing.js?v=2026.08.23.03-scout-research-handoff" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.23.03-scout-research-handoff" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.23.03-scout-research-handoff" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.08.23.03-scout-research-handoff" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.23.03-scout-research-handoff" defer></script>
+<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.08.23.03-scout-research-handoff" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.23.03-scout-research-handoff" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.23.03-scout-research-handoff" defer></script>
+<script src="scripts/pokemon/offline-browser.js?v=2026.08.23.03-scout-research-handoff" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.23.03-scout-research-handoff" defer></script>
 </head>
 <body>
 
@@ -1671,11 +1671,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.23.01-scout-buy-tab-and-image-upload-retry</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.23.03-scout-research-handoff</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.23.01-scout-buy-tab-and-image-upload-retry</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.23.03-scout-research-handoff</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1693,7 +1693,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.23.01-scout-buy-tab-and-image-upload-retry</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.23.03-scout-research-handoff</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -2712,6 +2712,9 @@ body.show-mode .inv-sync-badge{display:none;}
         </div>
         <div id="scout-sold-warning" style="font-family:var(--font-mono);font-size:8px;color:var(--dim);margin-top:4px"></div>
 
+        <div style="margin-top:12px"><label style="font-family:var(--font-mono);font-size:9px;color:var(--dim)">COMP PRICE FOR BUY TAB (the 100% basis the tray's offer % applies to -- e.g. 80% of $100 here = $80 offer)</label>
+          <input id="scout-comp-price" type="number" step="0.01" min="0" placeholder="$0.00" style="width:100%;margin-top:4px;background:var(--surf2);border:1px solid var(--border);color:var(--gold);padding:9px;border-radius:6px;font-size:16px;box-sizing:border-box"></div>
+
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px">
           <div><label style="font-family:var(--font-mono);font-size:9px;color:var(--dim)">STORE PRICE</label>
             <input id="scout-store-price" type="number" step="0.01" min="0" placeholder="$0.00" oninput="scoutRecomputeDecision()" style="width:100%;margin-top:4px;background:var(--surf2);border:1px solid var(--border);color:var(--gold);padding:9px;border-radius:6px;font-size:16px;box-sizing:border-box"></div>
@@ -3645,7 +3648,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.23.01-scout-buy-tab-and-image-upload-retry';
+const APP_VERSION = '2026.08.23.03-scout-research-handoff';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -17823,9 +17826,9 @@ function inventoryImageUrl(item={}){
   // otherwise a dead blob: in an earlier field would win the || chain and
   // hide a perfectly good URL sitting in a later one.
   return durableImageUrl(item.photoDataUrl) || durableImageUrl(item.userPhoto) || durableImageUrl(item.uploadedPhotoUrl) || durableImageUrl(item.photoUrl) ||
-    durableImageUrl(item.thumbnail) || durableImageUrl(item.imageUrl) || durableImageUrl(item.image_url) || durableImageUrl(item.image) ||
+    durableImageUrl(item.thumbnail) || durableImageUrl(item.imageUrl) || durableImageUrl(item.image_url) || durableImageUrl(item.image) || durableImageUrl(item.images?.[0]) ||
     durableImageUrl(raw.photoDataUrl) || durableImageUrl(raw.userPhoto) || durableImageUrl(raw.uploadedPhotoUrl) || durableImageUrl(raw.photoUrl) ||
-    durableImageUrl(raw.thumbnail) || durableImageUrl(raw.imageUrl) || durableImageUrl(raw.image_url) || durableImageUrl(raw.image) || '';
+    durableImageUrl(raw.thumbnail) || durableImageUrl(raw.imageUrl) || durableImageUrl(raw.image_url) || durableImageUrl(raw.image) || durableImageUrl(raw.images?.[0]) || '';
 }
 function inventoryImageSourceLabel(item={}){
   const raw = item.raw || {};
@@ -26836,11 +26839,24 @@ async function scoutStartSession(){
   }catch(e){ toast_dash('Pocket Scout: '+e.message); }
 }
 
+// Input fields left over from the previous item used to just sit there --
+// tolerable for store price (a pre-existing quirk), but actively wrong for
+// comp price once items are queued back-to-back via SEND TO BUY TAB: a
+// stale comp from item #1 silently becoming item #2's 100% offer basis is a
+// real pricing mistake, not just a UI annoyance, so this must actually reset.
+function scoutResetSessionFields(){
+  const priceEl = document.getElementById('scout-store-price'); if(priceEl) priceEl.value = '';
+  const compEl = document.getElementById('scout-comp-price'); if(compEl) compEl.value = '';
+  const conditionEl = document.getElementById('scout-condition'); if(conditionEl) conditionEl.value = 'Excellent';
+  const sizeEl = document.getElementById('scout-size'); if(sizeEl) sizeEl.value = 'medium';
+}
+
 function scoutNewItem(){
   if(scoutSession?.photos?.length && !confirm('Start a new item? This scan session stays saved, but the screen will reset.')) return;
   scoutSession = null;
   document.getElementById('scout-idle-panel').style.display='';
   document.getElementById('scout-session-panel').style.display='none';
+  scoutResetSessionFields();
 }
 
 function scoutRenderPhotoStrip(){
@@ -26923,7 +26939,16 @@ function scoutRenderResult(){
   badge.style.border = '1px solid '+conf.color;
   document.getElementById('scout-subtitle').textContent = [id.brand||id.manufacturer, id.model||id.modelNumber, id.year, id.edition].filter(Boolean).join(' · ') || (id.category ? 'Category: '+id.category : '');
   const cardHintEl = document.getElementById('scout-card-hint');
-  cardHintEl.textContent = scoutSession.routeToCardPipeline ? 'This looks like a trading card -- use the card scanner (Research tab) for exact set/number/pricing.' : '';
+  // Trading cards, sports cards, and comics all have far more precise
+  // pricing available (PriceCharting/TCGPlayer guide/comp data by exact
+  // set/number/grade) than the generic eBay-comps math this tab uses for
+  // everything else -- this used to just tell the operator to go redo the
+  // search by hand in Research; now it hands the identified title straight
+  // over and runs the lookup for them.
+  cardHintEl.innerHTML = scoutSession.routeToCardPipeline
+    ? 'This looks like a trading card, sports card, or comic -- PriceCharting/TCGPlayer will price it far more precisely than eBay comps.<br>'
+      + '<button class="hbtn" onclick="scoutSearchInResearch()" style="margin-top:6px;padding:6px 10px;font-size:9px;color:var(--purple)">SEARCH PRICECHARTING/TCGPLAYER →</button>'
+    : '';
   const hint = scoutSession.nextPhotoHint;
   document.getElementById('scout-next-photo-hint').textContent = hint ? ('📸 '+(hint.reason || ('Photograph the '+hint.photo))) : '';
 
@@ -26932,6 +26957,16 @@ function scoutRenderResult(){
   document.getElementById('scout-sold-median').textContent = scoutMoney(snap.soldStats?.median);
   document.getElementById('scout-sold-warning').textContent = snap.soldStats?.median==null ? (snap.soldWarning || 'Sold history unavailable') : '';
   document.getElementById('scout-comps-count').textContent = String((scoutSession.candidates||[]).length);
+
+  // Default the buy-tab comp price to the best available comp so it's
+  // never blank, but never clobber a value the operator already typed --
+  // an early photo's rough comp shouldn't overwrite a deliberate edit once
+  // a later photo/comps-drawer refinement changes the snapshot.
+  const compPriceEl = document.getElementById('scout-comp-price');
+  if(compPriceEl && !compPriceEl.value) {
+    const defaultComp = snap.soldStats?.median || snap.activeStats?.median || 0;
+    if(defaultComp>0) compPriceEl.value = defaultComp;
+  }
 
   scoutRecomputeDecision();
 }
@@ -27075,6 +27110,25 @@ async function scoutManualSearch(){
   }catch(e){ if(status) status.textContent = 'Search failed: '+e.message; }
 }
 
+// Hands a card/sports-card/comic identification off to the Research tab's
+// PriceCharting/TCGPlayer lookup instead of leaving the operator to retype
+// it there by hand. The scout session (and its photos) stay open in the
+// background -- Research's own ADD TO BUY already queues into the same
+// buyList tray with the real catalog market price, no manual price entry
+// required, exactly like SEND TO BUY TAB does for everything else.
+function scoutSearchInResearch(){
+  if(!scoutSession) return;
+  const identity = scoutSession.identity||{};
+  const query = identity.title || [identity.year, identity.brand, identity.characterOrSubject].filter(Boolean).join(' ');
+  if(!query){ toast_dash('Nothing identified yet to search for'); return; }
+  switchTab('research');
+  setTimeout(() => {
+    const input = document.getElementById('qpl-input');
+    if(input) input.value = query;
+    runPriceLookup();
+  }, 0);
+}
+
 function scoutInventoryCategory(identity){
   const map = { plush:'Collectibles', action_figure:'Collectibles', electronics:'Collectibles', glassware:'Collectibles', advertising_tin:'Collectibles', board_game:'Collectibles', book:'Collectibles', video_game:'Collectibles', camera:'Collectibles', figurine:'Collectibles' };
   return map[identity?.category] || 'Collectibles';
@@ -27102,6 +27156,7 @@ async function scoutBuyAddInventory(){
       upc: identity.upc||'', ean: identity.ean||'', isbn: identity.isbn||'', mpn: identity.mpn||'',
       condition, cost: price, market: result?.expectedSale||null, sku, quantity:1, qty:1,
       image: scoutSession.photos?.[0]?.url || '',
+      images: (scoutSession.photos||[]).map(p=>p.url).filter(Boolean),
       source: 'pocket_scout', sourcingLocation, acquisitionDate: new Date().toISOString(),
       scanSessionId: scoutSession.id, scanConfidence: scoutSession.confidence||0,
       pricingConfidence: (scoutSession.compSnapshot?.activeStats?.count||0)>0 ? 'has_comps' : 'no_comps',
@@ -27133,47 +27188,51 @@ async function scoutBuyAddInventory(){
 // (bulkAddBuyListToInventory) once back at the register.
 function scoutSendToBuyTab(){
   if(!scoutSession) return;
-  const price = Number(document.getElementById('scout-store-price')?.value)||0;
-  if(!(price>0)){ toast_dash('Enter the store price first'); return; }
-  const result = scoutSession.lastDecision;
+  // No store price required here -- unlike BUY + ADD INVENTORY (a same-step
+  // purchase where "cost" has to be a real known number), this just queues
+  // the item. The Buy tray's own offer % (bl-pct) does the actual cost math
+  // against the comp price below once it's accepted at the register.
+  const compPriceEl = document.getElementById('scout-comp-price');
+  const compPrice = Number(compPriceEl?.value) || scoutSession.lastDecision?.expectedSale || 0;
+  if(!(compPrice>0)){ toast_dash('Enter a comp price first'); compPriceEl?.focus(); return; }
   const identity = scoutSession.identity||{};
   const condition = document.getElementById('scout-condition')?.value || 'Excellent';
   const category = scoutInventoryCategory(identity);
   const session = getActiveBuySession();
+  const photoUrls = (scoutSession.photos||[]).map(p=>p.url).filter(Boolean);
   const item = {
     id: 'bl_scout_' + (scoutSession.id || Date.now()) + '_' + Math.random().toString(36).slice(2,5),
     name: identity.title || 'Pocket Scout item',
-    market: result?.expectedSale || price,
-    priceUsed: price,
-    // manualOfferOverride pins the tray's cost basis to the exact store price
-    // entered here, rather than the trade-in tray's default percent-of-market
-    // offer math (buyItemOfferValue) -- this is a sourcing buy, not a
-    // customer trade-in offer.
-    manualOfferOverride: true, cashOffer: price,
-    priceLabel: 'Pocket Scout', priceSource: 'pocket_scout', pricingSource: 'Pocket Scout',
+    // market is the tray's 100% basis -- buyItemOfferValue() (the same math
+    // every other buy-tray item uses) multiplies it by bl-pct to get the
+    // actual cash offer, e.g. 80% of $100 here becomes an $80 offer.
+    market: compPrice,
+    priceUsed: compPrice,
+    priceLabel: 'Pocket Scout comp', priceSource: 'pocket_scout', pricingSource: 'Pocket Scout',
     condition, category, subcategory: identity.subcategory||'',
     brand: identity.brand||'', manufacturer: identity.manufacturer||'', model: identity.model||identity.modelNumber||'',
     year: identity.year||'', variant: identity.variant||'', edition: identity.edition||'',
     upc: identity.upc||'', ean: identity.ean||'', isbn: identity.isbn||'', mpn: identity.mpn||'',
-    imageUrl: scoutSession.photos?.[0]?.url || '',
+    imageUrl: photoUrls[0] || '', images: photoUrls,
     sourceType: 'pocket_scout',
     scanSessionId: scoutSession.id, scanConfidence: scoutSession.confidence||0,
     pocketScoutQuery: scoutSession.compSnapshot?.textQuery || identity.title || '',
     activeCompSnapshot: scoutSession.compSnapshot?.activeStats||null, soldCompSnapshot: scoutSession.compSnapshot?.soldStats||null,
-    scanPhotos: (scoutSession.photos||[]).map(p=>p.url),
+    scanPhotos: photoUrls,
     buySessionId: session?.buySessionId || '',
     storeId: getActiveStoreId(),
     status:'offered',
   };
   buyList.push(item);
   saveBuyList();
-  logOpsEvent('buy_item_added', 'Sent Pocket Scout item to buy tray: ' + item.name, { buySessionId:item.buySessionId, price, source:'pocket_scout' });
+  logOpsEvent('buy_item_added', 'Sent Pocket Scout item to buy tray: ' + item.name, { buySessionId:item.buySessionId, compPrice, source:'pocket_scout' });
   toast_dash('Queued in Buy tray ('+buyList.length+' item'+(buyList.length===1?'':'s')+') -- accept the tray in INTAKE to add all to inventory');
   // Reset for the next photo without the "start a new item?" confirm --
   // nothing is lost here, the item is already safely queued in the tray.
   scoutSession = null;
   document.getElementById('scout-idle-panel').style.display='';
   document.getElementById('scout-session-panel').style.display='none';
+  scoutResetSessionFields();
 }
 
 const POCKET_SCOUT_CLIENT_DEFAULTS = { minProfit:15, preferredProfit:25, minRoiPct:100, minConfidenceForBuy:80, marketplaceFeePct:13.25, paymentFeePct:2.9, paymentFeeFlat:0.30, packagingAllowance:2, defaultShippingBySize:{tiny:5,small:8,medium:13,large:20,oversize:35}, maybeRequiresApproval:false };
@@ -38326,6 +38385,15 @@ function buyItemToInventoryUpdates(item){
     grading_company:item.grading_company || '',
     grade:item.grade || '',
     cert_number:item.cert_number || '',
+    // Explicit, rather than relying on createInventoryRecord's ...item spread
+    // to carry these through -- that spread only sees this buy-tray item's
+    // own fields when there's no item.scan (Pocket Scout items), but a
+    // barcode/card-scanned buy item passes item.scan itself as the base
+    // object instead, which never had imageUrl/images to begin with. Either
+    // way, the photo(s) taken while sourcing this item must survive into
+    // the inventory row.
+    image:item.imageUrl || item.images?.[0] || '',
+    images:(item.images && item.images.length) ? item.images : (item.imageUrl ? [item.imageUrl] : []),
     location,
     key_notes:[
       'Buy/trade intake',
@@ -44217,7 +44285,7 @@ async function toppsLoadParallels(cardId){
   window.__arscaCloseModal = closeModal;
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.23.01-scout-buy-tab-and-image-upload-retry" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.23.03-scout-research-handoff" defer></script>
 </body>
 </html>
 

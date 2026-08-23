@@ -42,12 +42,50 @@ assert.match(dashboard, /generateWalkoffInventorySku\(category, \{ name: identit
 // ── Contract: a bulk sourcing trip can queue scouted items into the Buy
 // List tray (Intake tab) instead of writing to inventory one at a time --
 // reusing the existing buy/trade-in tray + accept flow rather than a new
-// bulk-insert path ──
+// bulk-insert path. Unlike BUY + ADD INVENTORY (an immediate purchase that
+// needs a real known cost), queueing to the tray does NOT require a store
+// price -- the tray's own offer % does that math once accepted. What it
+// does need is a comp price (the 100% basis that % is applied against),
+// which the operator can see prefilled and can edit before sending. ──
 assert.match(dashboard, /<button class="hbtn" id="scout-buy-tab-btn" onclick="scoutSendToBuyTab\(\)"/, 'a SEND TO BUY TAB button must exist alongside BUY + ADD INVENTORY');
+assert.match(dashboard, /<input id="scout-comp-price" type="number"/, 'an editable comp-price field must exist so the operator controls the 100% basis sent to the buy tray');
 assert.match(dashboard, /function scoutSendToBuyTab\(\)\{/, 'a dedicated handler must queue the scouted item into the buy tray');
-assert.match(dashboard, /manualOfferOverride: true, cashOffer: price,/, 'the queued buy-tray item must pin its cost to the exact store price entered, not the tray\'s percent-of-market trade-in offer math');
+assert.match(dashboard, /const compPrice = Number\(compPriceEl\?\.value\) \|\| scoutSession\.lastDecision\?\.expectedSale \|\| 0;/, 'sending to the buy tray must use the editable comp price (falling back to the computed expected sale), not the store-price field');
+assert.match(dashboard, /if\(!\(compPrice>0\)\)\{ toast_dash\('Enter a comp price first'\)/, 'sending to the buy tray must require a comp price, not a store price');
+assert.doesNotMatch(dashboard.slice(dashboard.indexOf('function scoutSendToBuyTab'), dashboard.indexOf('function scoutSendToBuyTab') + 2500), /manualOfferOverride/, 'the queued item must use the tray\'s normal percent-of-market offer math (buyItemOfferValue), not a manual override that bypasses the buy %');
+assert.match(dashboard, /market: compPrice,/, 'the queued item\'s market must be the chosen comp price, so the tray\'s offer % (e.g. 80% of $100 = $80) applies to it like any other buy-tray item');
+assert.match(dashboard, /imageUrl: photoUrls\[0\] \|\| '', images: photoUrls,/, 'every photo taken in the scout session, not just the first, must ride along to the buy tray so it survives into the eventual inventory record');
 assert.match(dashboard, /buyList\.push\(item\);\s*\n\s*saveBuyList\(\);\s*\n\s*logOpsEvent\('buy_item_added', 'Sent Pocket Scout item to buy tray/, 'sending to the buy tray must reuse the existing buyList array + saveBuyList persistence, not a separate bulk-buy data model');
 assert.match(dashboard, /sb\.from\('inventory_items'\)\.insert\(\[row\]\)/, 'Pocket Scout must write inventory the same way every other add-to-inventory flow does (direct client Supabase insert), not a parallel backend table');
+
+// ── Contract: photos taken in a scout session become the inventory item's
+// images (all of them, not just the first) whether the item goes straight
+// to inventory (BUY + ADD INVENTORY) or via the buy tray -- and that image
+// data must actually reach the final inventory row's data, not get dropped
+// by buyItemToInventoryUpdates() along the way (a real pre-existing gap:
+// that function built the inventory update object from scratch and never
+// carried image/imageUrl over at all). ──
+assert.match(dashboard, /image: scoutSession\.photos\?\.\[0\]\?\.url \|\| '',\s*\n\s*images: \(scoutSession\.photos\|\|\[\]\)\.map\(p=>p\.url\)\.filter\(Boolean\),/, 'BUY + ADD INVENTORY must save every scout photo, not just the first, as the item\'s images');
+assert.match(dashboard, /image:item\.imageUrl \|\| item\.images\?\.\[0\] \|\| '',\s*\n\s*images:\(item\.images && item\.images\.length\) \? item\.images : \(item\.imageUrl \? \[item\.imageUrl\] : \[\]\),/, 'buyItemToInventoryUpdates must explicitly carry the buy-tray item\'s photo(s) into the inventory update, not rely on an incidental object-spread that only works when the item has no .scan');
+
+// ── Contract: trading cards / sports cards / comics get a real handoff into
+// the Research tab's PriceCharting/TCGPlayer lookup instead of just a text
+// hint telling the operator to go redo the search by hand there. Research's
+// existing ADD TO BUY (addSelectedQuickLookupToBuyOffer) already queues into
+// the same buyList tray using the real catalog market price with no manual
+// price entry (manualOfferOverride:false), so this handoff only needs to
+// get the operator there with the identified title already searched. ──
+assert.match(dashboard, /function scoutSearchInResearch\(\)\{/, 'a dedicated handoff function into Research must exist');
+assert.match(dashboard, /switchTab\('research'\);/, 'the handoff must switch to the actual Research tab');
+assert.match(dashboard, /if\(input\) input\.value = query;\s*\n\s*runPriceLookup\(\);/, 'the handoff must pre-fill the Research search box and actually run the lookup, not just switch tabs and leave the operator to retype it');
+assert.match(dashboard, /onclick="scoutSearchInResearch\(\)"/, 'the routeToCardPipeline hint must offer a clickable handoff, not just inert text');
+{
+  const makeBuyItemStart = dashboard.indexOf('const makeBuyItem = copyIndex => ({');
+  assert(makeBuyItemStart >= 0, 'Research\'s ADD TO BUY must build its buy-tray item via a makeBuyItem factory');
+  const makeBuyItemSlice = dashboard.slice(makeBuyItemStart, makeBuyItemStart + 1500);
+  assert.match(makeBuyItemSlice, /market:item\.market,/, 'Research\'s own ADD TO BUY must already use the real catalog market price');
+  assert.match(makeBuyItemSlice, /manualOfferOverride:false,/, 'Research\'s ADD TO BUY must not manually override cost, so the handoff needs no extra buy-tray plumbing of its own');
+}
 
 console.log('Pocket Scout contract checks passed');
 
