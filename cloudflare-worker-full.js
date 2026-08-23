@@ -44,6 +44,11 @@ const SITE_ID = '65b15ee0228d06647ca7e4ce';
 const WF_PRODUCTS = '65eb45a28ff6bf3fe4f17b14';
 const WF_EVENTS = '6a7cf73500b7a1a3719e7f21';
 const WF_STATUS_SOLD = 'e6b42f14fcb99aa2168a5f5672226f68';
+// Kept in sync with EXTERNAL_SALE_FEE_DEFAULTS.eBay in dashboard.html (the
+// same rate a dealer sees as the preset when manually recording an eBay
+// sale) -- used as the default deduction for real, auto-synced eBay orders
+// below, which have no equivalent manual entry step to type a fee into.
+const EBAY_DEFAULT_FEE_PCT = 13.25;
 const EBAY_TOKEN_URL = 'https://api.ebay.com/identity/v1/oauth2/token';
 const EBAY_AUTH_URL = 'https://auth.ebay.com/oauth2/authorize';
 // sell.logistics is deliberately NOT requested here. eBay validates every
@@ -568,11 +573,19 @@ function shapeStorefrontItem(row) {
     isSealed: !!d.is_sealed, gradingCompany: storefrontCleanText(d.grading_company || d.grader || '', 40),
     isSigned: !!d.is_signed, signedBy: storefrontCleanText(d.signed_by || '', 120), signatureValue: rowSignatureValue,
     comic: storefrontComicDetailFor(d),
+    // Only explicit false excludes -- undefined/missing (every item that
+    // existed before this field did) stays visible, so this can't silently
+    // pull already-live inventory off the storefront. A brand-new item gets
+    // onlineListed:false written at creation time (see
+    // createBuiltInInventoryItem in dashboard.html), so it now takes a
+    // deliberate PUBLISH TO STOREFRONT action before a customer can see or
+    // buy it -- previously any in-stock item was live the instant it saved.
+    onlineListed: d.onlineListed !== false,
     quantity, inventoryStatus, soldAt: d.soldAt || d.sold_at || '', archivedAt: d.archivedAt || '', addedAt: row.created_at || '', updatedAt: row.updated_at || ''
   };
 }
 function isStorefrontItemAvailable(i) {
-  return !!(i.name && i.quantity > 0 && !i.soldAt && !i.archivedAt && !['sold','archived','returned','deleted','sold_pending_pickup','sold_pending_shipment','hold','lost_damaged'].includes(i.inventoryStatus));
+  return !!(i.name && i.quantity > 0 && i.onlineListed && !i.soldAt && !i.archivedAt && !['sold','archived','returned','deleted','sold_pending_pickup','sold_pending_shipment','hold','lost_damaged'].includes(i.inventoryStatus));
 }
 
 function json(data, status = 200, extraHeaders = {}) {
@@ -6067,6 +6080,8 @@ export default {
       try { ebayToken = await getEbayUserAccessToken(env); }
       catch (tokenErr) { return json({ needsToken: true, error: tokenErr.message }, 401); }
       if (!ebayToken) return json({ needsToken: true, error: 'Connect eBay first: missing user access/refresh token' }, 401);
+      const { data: syncSettings } = await supabaseAdminFetch(env, `store_settings?store_id=eq.${encodeURIComponent(storeId)}&select=receipt_settings&limit=1`);
+      const receiptSettings = syncSettings?.[0]?.receipt_settings || {};
 
       try {
         const { data: items } = await supabaseAdminFetch(env, `inventory_items?store_id=eq.${encodeURIComponent(storeId)}&status=neq.sold&select=id,data,status&limit=500`);
@@ -6124,7 +6139,19 @@ export default {
               const d = invRow ? (invRow.data || {}) : {};
               let remaining = 0, depleted = false;
               const cost = invRow ? Number(d.cost || 0) : 0;
-              const profit = salePrice - cost;
+              // eBay's own final value fee never showed up here -- profit was
+              // gross sale price minus cost only, overstating real money made
+              // by the full fee percentage on every auto-synced order. Manual
+              // "Record External Sale"/"Sold on Whatnot" already deduct a fee
+              // the dealer enters; a real eBay order has no equivalent manual
+              // step, so apply the same default rate used as eBay's preset
+              // there (EBAY_DEFAULT_FEE_PCT, kept in sync with
+              // EXTERNAL_SALE_FEE_DEFAULTS.eBay in dashboard.html) unless a
+              // per-store override is configured.
+              const ebayFeePct = Number(receiptSettings?.ebayFeePct ?? EBAY_DEFAULT_FEE_PCT);
+              const ebayFeeFlat = Number(receiptSettings?.ebayFeeFlat ?? 0);
+              const feeAmount = Math.round((salePrice * (ebayFeePct / 100) + ebayFeeFlat) * 100) / 100;
+              const profit = salePrice - cost - feeAmount;
               const itemName = d.name || li.title || 'eBay Item';
 
               const saleId = crypto.randomUUID();

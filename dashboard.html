@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.22.05-fix-unscannable-qr-and-label-sku-overlap">
+<meta name="version" content="2026.08.22.06-six-ops-fixes">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1633,16 +1633,16 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.22.05-fix-unscannable-qr-and-label-sku-overlap" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.22.05-fix-unscannable-qr-and-label-sku-overlap" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.22.05-fix-unscannable-qr-and-label-sku-overlap" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.08.22.05-fix-unscannable-qr-and-label-sku-overlap" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.22.05-fix-unscannable-qr-and-label-sku-overlap" defer></script>
-<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.08.22.05-fix-unscannable-qr-and-label-sku-overlap" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.22.05-fix-unscannable-qr-and-label-sku-overlap" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.22.05-fix-unscannable-qr-and-label-sku-overlap" defer></script>
-<script src="scripts/pokemon/offline-browser.js?v=2026.08.22.05-fix-unscannable-qr-and-label-sku-overlap" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.22.05-fix-unscannable-qr-and-label-sku-overlap" defer></script>
+<script src="scripts/query-routing.js?v=2026.08.22.06-six-ops-fixes" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.22.06-six-ops-fixes" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.22.06-six-ops-fixes" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.08.22.06-six-ops-fixes" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.22.06-six-ops-fixes" defer></script>
+<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.08.22.06-six-ops-fixes" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.22.06-six-ops-fixes" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.22.06-six-ops-fixes" defer></script>
+<script src="scripts/pokemon/offline-browser.js?v=2026.08.22.06-six-ops-fixes" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.22.06-six-ops-fixes" defer></script>
 </head>
 <body>
 
@@ -1671,11 +1671,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.22.05-fix-unscannable-qr-and-label-sku-overlap</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.22.06-six-ops-fixes</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.22.05-fix-unscannable-qr-and-label-sku-overlap</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.22.06-six-ops-fixes</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1693,7 +1693,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.22.05-fix-unscannable-qr-and-label-sku-overlap</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.22.06-six-ops-fixes</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3644,7 +3644,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.22.05-fix-unscannable-qr-and-label-sku-overlap';
+const APP_VERSION = '2026.08.22.06-six-ops-fixes';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -12474,6 +12474,7 @@ function showInvRowMenu(e, id, isInStock){
     `<button class="hbtn" style="${btnStyle}" onclick="openLabelPrintModal('${id}');closeInvRowMenu()">🏷️ Print Label</button>`,
     isInStock?`<button class="hbtn" style="${btnStyle};color:var(--blue)" onclick="refreshInventoryItemPriceFromMarket('${id}');closeInvRowMenu()">💹 Refresh Price</button>`:'',
     isInStock?`<button class="hbtn" style="${btnStyle};color:var(--g)" onclick="publishInventoryItemToWebflow('${id}');closeInvRowMenu()">🌐 Publish / Sync Webflow</button>`:'',
+    isInStock?`<button class="hbtn" style="${btnStyle};color:${item?.onlineListed===false?'var(--gold)':'var(--dim)'}" onclick="toggleInventoryOnlineListed('${id}');closeInvRowMenu()">${item?.onlineListed===false?'🌐 Publish to Storefront':'🚫 Remove from Storefront'}</button>`:'',
     item?.status==='archived'
       ?`<button class="hbtn" style="${btnStyle}color:var(--g)" onclick="restoreInventoryItem('${id}');closeInvRowMenu()">↩ Restore</button>`
       :`<button class="hbtn" style="${btnStyle}color:var(--gold)" onclick="archiveInventoryItem('${id}');closeInvRowMenu()">Archive</button>`,
@@ -17438,19 +17439,33 @@ function dedupeTransactionRows(txRows, inventorySoldItems){
   // shopId to dedupe by. Fall back to a same-day/name/price match for
   // shopId-less rows so those legacy duplicates stop double-counting
   // revenue/profit too, not just sales made after the fix. Narrow enough
-  // (name + exact price + same day) that a real coincidental one-off sale
-  // matching all three is rare, and one-off/non-inventory sales never
+  // (name + same day, see price note below) that a real coincidental
+  // one-off sale matching is rare, and one-off/non-inventory sales never
   // appear in inventorySoldItems at all so they can never false-match here.
-  const fuzzyKey = (name, salePrice, soldAt) => {
+  //
+  // Price used to be required to match EXACTLY (to the cent) -- but a
+  // discounted sale's ledger price can legitimately diverge from the stale
+  // inventory mirror's price (see getUnlinkedTransactionRows above for the
+  // full story), so an exact-match requirement let a discounted legacy
+  // duplicate slip through this fallback too and keep double-counting.
+  // Same name + same day is already a narrow match; allow price to be
+  // anywhere within 50% of the mirror's price (covers any realistic
+  // discount) instead of demanding an exact match.
+  const candidates = inventorySoldItems
+    .filter(i => i.name && i.soldAt && !Number.isNaN(new Date(i.soldAt).getTime()))
+    .map(i => ({ name: String(i.name).trim().toLowerCase(), day: new Date(i.soldAt).toDateString(), price: Number(i.salePrice || 0) }));
+  const fuzzyMatches = (name, salePrice, soldAt) => {
     const d = new Date(soldAt || 0);
-    if(!name || Number.isNaN(d.getTime())) return '';
-    return [String(name).trim().toLowerCase(), Number(salePrice || 0).toFixed(2), d.toDateString()].join('|');
+    if(!name || Number.isNaN(d.getTime())) return false;
+    const rName = String(name).trim().toLowerCase();
+    const rDay = d.toDateString();
+    const rPrice = Number(salePrice || 0);
+    return candidates.some(c => c.name === rName && c.day === rDay &&
+      (c.price <= 0 || rPrice <= 0 || Math.abs(rPrice - c.price) / Math.max(rPrice, c.price) <= 0.5));
   };
-  const fuzzyKeys = new Set(inventorySoldItems.map(i => fuzzyKey(i.name, i.salePrice, i.soldAt)).filter(Boolean));
   return txRows.filter(r => {
     if(r.shopId) return !inventoryIds.has(r.shopId);
-    const key = fuzzyKey(r.name, r.salePrice, r.soldAt);
-    return !key || !fuzzyKeys.has(key);
+    return !fuzzyMatches(r.name, r.salePrice, r.soldAt);
   });
 }
 
@@ -18420,6 +18435,7 @@ async function confirmOneOffSell(){
   if(!name) return alert('Enter an item name');
   if(!category) return alert('Select a category');
   if(!price) return alert('Enter a sale price');
+  if(!(cost > 0)) { alert('Enter a cost for this item -- a one-off with no cost entered would silently record 100% profit instead of the real margin.'); document.getElementById('oneoff-cost')?.focus(); return; }
 
   addSaleItemToCart({ name, category, cost, notes }, {
     sourceType:'one_off',
@@ -23738,6 +23754,24 @@ async function previewWebflowMigration(){const status=document.getElementById('w
 async function runWebflowMigration(){if(!requireOwnerAdmin())return;if(!confirm('Import unmatched Webflow inventory into this store cloud? Existing linked records will not be duplicated.'))return;const status=document.getElementById('webflow-migration-status');try{const sb=getSupabaseClient(),storeId=getActiveStoreId();if(!sb||!getAuthSession()?.supabase||!storeId)throw new Error('Cloud sign-in required');const p=await webflowMigrationPlan();let created=0;for(let x=0;x<p.candidates.length;x+=50){const rows=p.candidates.slice(x,x+50).map(i=>({store_id:storeId,status:i.status==='sold'?'sold':'in_stock',data:{...i,id:undefined,source:'webflow_import',wfId:i.id,webflowId:i.id,status:i.status||'in_stock',channelFlags:{webflow:true,storefront:true,ebay:false},importedAt:new Date().toISOString(),appVersion:APP_VERSION}}));const {error}=await sb.from('inventory_items').insert(rows);if(error)throw error;created+=rows.length;if(status)status.textContent=`Imported ${created} of ${p.candidates.length}…`;};saveWebflowIntegration({enabled:true,lastImportAt:new Date().toISOString(),lastImportCount:created});saveVendorConfig({...getVendorConfig(),inventorySource:'built_in'});await loadInventory();logOpsEvent('webflow_migration','Imported Webflow inventory into cloud',{created,skipped:p.wf.count-created});if(status)status.textContent=`Import complete · ${created} cloud items created · cloud inventory is now primary`;toast_dash(`Imported ${created} Webflow items into cloud`);}catch(e){if(status)status.textContent='Import failed: '+e.message;toast_dash('Webflow import failed: '+e.message);}}
 async function publishInventoryItemToWebflow(id){const item=all.find(i=>i.id===id);if(!item)return;const existing=item.raw?.wfId||item.raw?.webflowId||item.wfId;if(existing){try{await mirrorUpdateToWebflow(existing,item,item);toast_dash('Webflow listing updated');}catch(e){enqueueSync('webflow-mirror-update','Sync Webflow: '+item.name,{wfId:existing,item,updates:item},e.message);toast_dash('Webflow sync queued');}return;}try{const wfId=await createWebflowProduct(item,item);await storeWfIdOnSupabaseRecord(item.supabaseRowId||item.id,wfId);item.raw={...(item.raw||{}),wfId,webflowId:wfId};saveWebflowIntegration({enabled:true});toast_dash('Published to Webflow');}catch(e){enqueueSync('webflow-mirror-create','Publish Webflow: '+item.name,{item,updates:item,supabaseId:item.supabaseRowId||item.id},e.message);toast_dash('Webflow publish queued');}}
 
+// Fresh inventory now defaults to onlineListed:false (see
+// createBuiltInInventoryItem) so a brand-new item -- no photo, no verified
+// price -- isn't immediately purchasable on the live public storefront.
+// This is the deliberate opt-in that flips it live, and the opt-out to pull
+// something back off without touching its in-stock status/POS availability.
+async function toggleInventoryOnlineListed(id){
+  const item = (all || []).find(i => i.id === id);
+  if(!item) return;
+  const next = item.onlineListed === false; // currently unlisted -> publish; currently listed (incl. undefined/legacy) -> unlist
+  try {
+    await saveInventoryEdit(item, { onlineListed: next });
+    toast_dash(next ? 'Published to storefront' : 'Removed from storefront');
+    loadInventory();
+  } catch(e) {
+    toast_dash('Could not update storefront listing: ' + (e.message || e));
+  }
+}
+
 async function createWebflowProduct(item, updates) {
   // catMap: schema-confirmed Option IDs from live Webflow Products collection.
   // 'Graded' removed — graded cards use their real category (TCG/Sports) + graded:true Switch.
@@ -23887,6 +23921,14 @@ async function createBuiltInInventoryItem(item, updates, sourceLabel='built_in')
     createdFrom:'walkoff_dashboard',
     appVersion:APP_VERSION,
     addedAt:new Date().toISOString(),
+    // A brand-new item used to be purchasable on the live public storefront
+    // the instant it was saved -- no photo, no price review, nothing --
+    // since the storefront route only ever checked status/quantity. Default
+    // every new item to NOT listed; PUBLISH TO STOREFRONT (inventory row
+    // menu) flips this on deliberately once it's actually ready. item/
+    // updates can still override this explicitly (e.g. a future bulk-import
+    // flow that intends items to go live immediately).
+    onlineListed:(item?.onlineListed ?? updates?.onlineListed ?? false),
   };
   if(sb && session?.supabase && storeId) {
     const { data:row, error } = await sb
@@ -38291,8 +38333,36 @@ async function bulkAddBuyListToInventory(skipConfirm, allowDirectInventory=false
   }
 }
 
+// A network response can be lost after the write already succeeded on the
+// server (flaky wifi at the counter is routine) -- the client then thinks
+// it failed and queues a retry (see addBuyItemToInventory's catch block),
+// which used to insert a second, genuinely duplicate inventory row for the
+// same physical item on replay. Tag every buy item with a stable uid
+// before the first attempt, and check for a row already carrying that tag
+// before creating another one.
+async function findInventoryIdByBuyItemUid(buyItemUid){
+  if(!buyItemUid) return '';
+  try {
+    const sb = getSupabaseClient();
+    const session = getAuthSession();
+    const storeId = getActiveStoreId();
+    if(!sb || !session?.supabase || !storeId) return '';
+    const { data, error } = await sb.from('inventory_items').select('id').eq('store_id', storeId).contains('data', { buyItemUid }).limit(1);
+    if(error || !data?.length) return '';
+    return data[0].id;
+  } catch(e) { return ''; }
+}
 async function createBuyItemInventoryRecord(item){
+  if(!item.buyItemUid) item.buyItemUid = item.id || (Date.now().toString(36) + '_' + Math.random().toString(36).slice(2,8));
+  const existingId = await findInventoryIdByBuyItemUid(item.buyItemUid);
+  if(existingId){
+    item.inventoryId = existingId;
+    item.inventoryError = '';
+    item.addedToInventoryAt = new Date().toISOString();
+    return existingId;
+  }
   const updates = buyItemToInventoryUpdates(item);
+  updates.buyItemUid = item.buyItemUid;
   const productId = await createInventoryRecord(item.scan || item, updates);
   if(!productId) throw new Error('Inventory save did not return an item ID');
   item.inventoryId = productId;
@@ -44007,6 +44077,22 @@ async function toppsLoadParallels(cardId){
     return result;
   };
   window.addEventListener('popstate', event => {
+    // A modal open over the current tab used to be invisible to Back --
+    // the tab underneath would silently switch while the modal stayed on
+    // screen, and any unsaved typing in it was just gone with no warning.
+    // Close the modal here instead (prompting first only if something in
+    // it actually changed since it opened), and re-absorb this back-nav so
+    // the tab underneath never moves for it -- a second Back press is what
+    // actually walks the tab history, exactly like a person would expect
+    // "back" to first dismiss what's on top before it navigates anything.
+    const openModal = window.__arscaFindOpenModal?.();
+    if(openModal){
+      try { history.pushState(stateForTab(lastHistoryTab), '', location.pathname + location.search + '#tab=' + encodeURIComponent(lastHistoryTab)); } catch(_) {}
+      const dirty = window.__arscaIsModalDirty?.(openModal);
+      if(dirty && !confirm('You have unsaved changes. Discard them?')) return;
+      window.__arscaCloseModal?.(openModal);
+      return;
+    }
     const tab = event.state?.arscaDashboard ? event.state.tab : '';
     if(!tab || tab === activeTab) return;
     applyingPopState = true;
@@ -44018,8 +44104,69 @@ async function toppsLoadParallels(cardId){
     setTimeout(() => window.switchTab(hashTab, null, { history:false }), 0);
   }
 })();
+
+// Generic modal-dirty tracking for installDashboardBackStack's popstate
+// handler above -- deliberately NOT tied to any one modal's own open/close
+// function, since the app has dozens of them (price sync, label print,
+// one-off sell, external sale, cart scan, etc.) each with their own. Any
+// element whose id ends in "-modal" is treated as a modal; "open" is
+// either the established .on class-toggle convention most of them use, or
+// -- for the handful built by appending a fresh element straight to
+// <body> with no static counterpart (e.g. external-sale-modal) and no
+// class toggle at all -- simply existing as a direct child of <body>,
+// since those are removed from the DOM entirely on close.
+(function installModalBackGuard(){
+  if(window.__arscaModalBackGuardInstalled) return;
+  window.__arscaModalBackGuardInstalled = true;
+  const snapshots = new WeakMap();
+  function isOpenModalEl(el){
+    if(!el || !el.id || !/-modal$/.test(el.id)) return false;
+    if(el.classList.contains('on') || el.classList.contains('open') || el.hasAttribute('open')) return true;
+    return el.parentElement === document.body;
+  }
+  function findOpenModal(){
+    return Array.from(document.querySelectorAll('[id$="-modal"]')).find(isOpenModalEl) || null;
+  }
+  function snapshotInputs(modalEl){
+    return Array.from(modalEl.querySelectorAll('input, select, textarea')).map(el =>
+      (el.type === 'checkbox' || el.type === 'radio') ? el.checked : el.value
+    );
+  }
+  function isModalDirty(modalEl){
+    const snap = snapshots.get(modalEl);
+    if(!snap) return false;
+    const current = snapshotInputs(modalEl);
+    // A field count mismatch means the form itself changed shape (e.g. a
+    // dynamic row got added) -- not something this simple value-diff can
+    // meaningfully compare, so don't block back-navigation on it.
+    if(current.length !== snap.length) return false;
+    return current.some((v, i) => v !== snap[i]);
+  }
+  function closeModal(modalEl){
+    snapshots.delete(modalEl);
+    if(modalEl.parentElement === document.body && !modalEl.classList.contains('on') && !modalEl.hasAttribute('open')) {
+      modalEl.remove();
+    } else {
+      modalEl.classList.remove('on', 'open');
+      if(modalEl.hasAttribute('open')) modalEl.removeAttribute('open');
+    }
+  }
+  const observer = new MutationObserver(() => {
+    const open = findOpenModal();
+    // Deferred one tick so the modal's own open*Modal() function (which
+    // runs synchronously right after the DOM change that made it visible)
+    // finishes populating default/pre-filled field values first -- a
+    // snapshot taken before that would treat every default value as a
+    // user edit the moment the modal opened.
+    if(open && !snapshots.has(open)) setTimeout(() => { if(isOpenModalEl(open) && !snapshots.has(open)) snapshots.set(open, snapshotInputs(open)); }, 0);
+  });
+  observer.observe(document.body, { childList:true, subtree:true, attributes:true, attributeFilter:['class', 'open'] });
+  window.__arscaFindOpenModal = findOpenModal;
+  window.__arscaIsModalDirty = isModalDirty;
+  window.__arscaCloseModal = closeModal;
+})();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.22.05-fix-unscannable-qr-and-label-sku-overlap" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.22.06-six-ops-fixes" defer></script>
 </body>
 </html>
 
