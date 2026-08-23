@@ -160,10 +160,20 @@ async function runPool(items, worker, size) {
   await Promise.all(Array.from({ length: Math.min(size, items.length) }, next));
 }
 
-function uploadObject(objectPath, filePath) {
+// A transient network blip on a single wrangler upload used to throw
+// immediately and kill the whole run -- same failure mode confirmed live on
+// the MTG image builder (see build-mtg-offline-images.mjs), which shares
+// this exact upload helper. Retries with backoff so one flaky request
+// doesn't waste an entire set's (or the whole catalog's) harvested images.
+async function uploadObject(objectPath, filePath, attempts = 4) {
   const npx = process.platform === 'win32' ? 'npx.cmd' : 'npx';
-  const result = spawnSync(npx, ['wrangler@latest', 'r2', 'object', 'put', `${bucket}/${objectPath}`, '--file', filePath, '--config', configPath, '--remote'], { stdio: 'inherit', cwd: root, shell: false });
-  if (result.status !== 0) throw new Error(`R2 upload failed for ${objectPath}`);
+  for (let attempt = 1; attempt <= attempts; attempt++) {
+    const result = spawnSync(npx, ['wrangler@latest', 'r2', 'object', 'put', `${bucket}/${objectPath}`, '--file', filePath, '--config', configPath, '--remote'], { stdio: 'inherit', cwd: root, shell: false });
+    if (result.status === 0) return;
+    if (attempt === attempts) throw new Error(`R2 upload failed for ${objectPath} after ${attempts} attempts`);
+    log(`  R2 upload failed for ${objectPath} (attempt ${attempt}/${attempts}), retrying...`);
+    await new Promise(resolve => setTimeout(resolve, attempt * 4000));
+  }
 }
 
 // ── Sets ─────────────────────────────────────────────────────────────────
@@ -231,14 +241,14 @@ if (imagesMode !== 'none') {
       for (const id of newIds) {
         for (const size of imageSizes) {
           const filePath = path.join(imagesDir, id, `${size}.jpg`);
-          if (fs.existsSync(filePath)) uploadObject(`pokemon/images/${id}/${size}.jpg`, filePath);
+          if (fs.existsSync(filePath)) await uploadObject(`pokemon/images/${id}/${size}.jpg`, filePath);
         }
       }
       const existingSetIndex = await fetchExistingJson(`${workerBase}/catalog/pokemon/images/manifest?set=${encodeURIComponent(set.tcgPlayerNumericId)}`);
       const mergedSetIds = [...new Set([...(existingSetIndex?.ids || []), ...newIds])];
       const setIndexPath = path.join(outputRoot, `index-set-${set.tcgPlayerNumericId}.json`);
       await fsp.writeFile(setIndexPath, JSON.stringify({ ids: mergedSetIds, generatedAt }, null, 2));
-      uploadObject(`pokemon/images/index-set-${set.tcgPlayerNumericId}.json`, setIndexPath);
+      await uploadObject(`pokemon/images/index-set-${set.tcgPlayerNumericId}.json`, setIndexPath);
     }
   }
 
@@ -247,7 +257,7 @@ if (imagesMode !== 'none') {
     const mergedAllIds = [...new Set([...(existingAllIndex?.ids || []), ...setIdsUploaded])];
     const allIndexPath = path.join(outputRoot, 'index-all.json');
     await fsp.writeFile(allIndexPath, JSON.stringify({ ids: mergedAllIds, generatedAt }, null, 2));
-    uploadObject('pokemon/images/index-all.json', allIndexPath);
+    await uploadObject('pokemon/images/index-all.json', allIndexPath);
   }
 
   const existingManifest = await fetchExistingJson(`${workerBase}/catalog/pokemon/manifest`);
@@ -283,8 +293,8 @@ await fsp.writeFile(manifestPath, JSON.stringify(manifest, null, 2));
 
 if (upload) {
   log(`Uploading sets bundle to R2 bucket ${bucket}`);
-  uploadObject(descriptors.sets.path, path.join(outputRoot, descriptors.sets.path));
-  uploadObject('pokemon/manifest.json', manifestPath); // Manifest is deliberately last.
+  await uploadObject(descriptors.sets.path, path.join(outputRoot, descriptors.sets.path));
+  await uploadObject('pokemon/manifest.json', manifestPath); // Manifest is deliberately last.
 }
 
 log(`Ready: ${sets.length.toLocaleString()} sets${imageReport ? `, images covering ${imageReport.setsCovered.length} set(s)${imageReport.allSetsCovered ? ' (all)' : ''}` : ''}`);

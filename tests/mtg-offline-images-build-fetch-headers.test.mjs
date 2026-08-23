@@ -36,4 +36,25 @@ const allIndexSlice = buildScript.slice(allIndexWriteIdx, allIndexWriteIdx + 300
 assert.match(allIndexSlice, /await fsp\.mkdir\(outputRoot, \{ recursive: true \}\);\s*\n\s*await fsp\.writeFile\(allIndexPath/,
   'must ensure outputRoot exists before writing the merged all-sets index too');
 
+// A real "Build MTG Offline Card Images" run: 8 of 29 matrix legs failed
+// after a single transient "fetch request failed" mid-upload -- each leg
+// works through ~15 sets, harvesting and uploading as it goes, and
+// uploadObject() previously threw immediately on any non-zero wrangler
+// exit, killing the whole leg (and every set still queued behind the one
+// that hit the blip) instead of retrying like downloadImage() already does.
+const uploadObjectStart = buildScript.indexOf('async function uploadObject(objectPath, filePath, attempts = 4) {');
+assert(uploadObjectStart >= 0, 'uploadObject() must exist and be async so call sites can await its retries');
+const uploadObjectEnd = buildScript.indexOf('\n}', uploadObjectStart);
+const uploadObjectFn = buildScript.slice(uploadObjectStart, uploadObjectEnd);
+assert.match(uploadObjectFn, /for \(let attempt = 1; attempt <= attempts; attempt\+\+\) \{/, 'uploadObject must retry a transient wrangler failure rather than throwing on the first one');
+assert.match(uploadObjectFn, /if \(result\.status === 0\) return;/, 'a successful upload on any attempt must return without retrying further');
+assert.match(uploadObjectFn, /if \(attempt === attempts\) throw new Error/, 'only the final exhausted attempt may throw -- an earlier failure must not abort the whole matrix leg');
+
+// Every call site must await the now-async uploadObject, or a rejected
+// retry loop would become an unhandled promise rejection instead of
+// stopping the set loop cleanly.
+assert.match(buildScript, /if \(fs\.existsSync\(filePath\)\) await uploadObject\(/, 'the per-image upload call site must await uploadObject');
+assert.match(buildScript, /await uploadObject\(`mtg\/images\/index-set-\$\{setCode\}\.json`, setIndexPath\);/, 'the per-set index upload call site must await uploadObject');
+assert.match(buildScript, /await uploadObject\('mtg\/images\/index-all\.json', allIndexPath\);/, 'the merged all-sets index upload call site must await uploadObject');
+
 console.log('MTG offline images build fetch-header checks passed');

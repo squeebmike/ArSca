@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.22.06-six-ops-fixes">
+<meta name="version" content="2026.08.23.01-scout-buy-tab-and-image-upload-retry">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1633,16 +1633,16 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.22.06-six-ops-fixes" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.22.06-six-ops-fixes" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.22.06-six-ops-fixes" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.08.22.06-six-ops-fixes" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.22.06-six-ops-fixes" defer></script>
-<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.08.22.06-six-ops-fixes" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.22.06-six-ops-fixes" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.22.06-six-ops-fixes" defer></script>
-<script src="scripts/pokemon/offline-browser.js?v=2026.08.22.06-six-ops-fixes" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.22.06-six-ops-fixes" defer></script>
+<script src="scripts/query-routing.js?v=2026.08.23.01-scout-buy-tab-and-image-upload-retry" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.23.01-scout-buy-tab-and-image-upload-retry" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.23.01-scout-buy-tab-and-image-upload-retry" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.08.23.01-scout-buy-tab-and-image-upload-retry" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.23.01-scout-buy-tab-and-image-upload-retry" defer></script>
+<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.08.23.01-scout-buy-tab-and-image-upload-retry" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.23.01-scout-buy-tab-and-image-upload-retry" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.23.01-scout-buy-tab-and-image-upload-retry" defer></script>
+<script src="scripts/pokemon/offline-browser.js?v=2026.08.23.01-scout-buy-tab-and-image-upload-retry" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.23.01-scout-buy-tab-and-image-upload-retry" defer></script>
 </head>
 <body>
 
@@ -1671,11 +1671,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.22.06-six-ops-fixes</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.23.01-scout-buy-tab-and-image-upload-retry</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.22.06-six-ops-fixes</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.23.01-scout-buy-tab-and-image-upload-retry</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1693,7 +1693,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.22.06-six-ops-fixes</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.23.01-scout-buy-tab-and-image-upload-retry</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -2732,6 +2732,7 @@ body.show-mode .inv-sync-badge{display:none;}
 
         <div style="display:flex;flex-direction:column;gap:8px;margin-top:14px">
           <button class="hbtn" id="scout-buy-btn" onclick="scoutBuyAddInventory()" style="padding:16px;font-size:14px;color:var(--g)">BUY + ADD INVENTORY</button>
+          <button class="hbtn" id="scout-buy-tab-btn" onclick="scoutSendToBuyTab()" title="Queue this item in the Buy tray (Intake tab) instead of adding it to inventory right now -- scan the next item immediately, then accept the whole tray at once to bulk-add everything to inventory" style="padding:12px;font-size:12px;color:var(--gold)">SEND TO BUY TAB (bulk)</button>
           <div style="display:flex;gap:8px">
             <button class="hbtn" onclick="document.getElementById('scout-photo-input').click()" style="flex:1">ADD ANOTHER PHOTO</button>
             <button class="hbtn" onclick="scoutToggleComps()" style="flex:1">VIEW COMPS (<span id="scout-comps-count">0</span>)</button>
@@ -3644,7 +3645,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.22.06-six-ops-fixes';
+const APP_VERSION = '2026.08.23.01-scout-buy-tab-and-image-upload-retry';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -27125,6 +27126,56 @@ async function scoutBuyAddInventory(){
   }catch(e){ toast_dash('Could not add to inventory: '+(e.message||e)); }
 }
 
+// Bulk sourcing trip: queue a scouted item into the Buy List tray (Intake
+// tab) instead of writing straight to inventory, so a run through a store
+// can scan item after item without a Supabase round-trip each time, then
+// accept the whole tray at once through the existing buy/trade-in flow
+// (bulkAddBuyListToInventory) once back at the register.
+function scoutSendToBuyTab(){
+  if(!scoutSession) return;
+  const price = Number(document.getElementById('scout-store-price')?.value)||0;
+  if(!(price>0)){ toast_dash('Enter the store price first'); return; }
+  const result = scoutSession.lastDecision;
+  const identity = scoutSession.identity||{};
+  const condition = document.getElementById('scout-condition')?.value || 'Excellent';
+  const category = scoutInventoryCategory(identity);
+  const session = getActiveBuySession();
+  const item = {
+    id: 'bl_scout_' + (scoutSession.id || Date.now()) + '_' + Math.random().toString(36).slice(2,5),
+    name: identity.title || 'Pocket Scout item',
+    market: result?.expectedSale || price,
+    priceUsed: price,
+    // manualOfferOverride pins the tray's cost basis to the exact store price
+    // entered here, rather than the trade-in tray's default percent-of-market
+    // offer math (buyItemOfferValue) -- this is a sourcing buy, not a
+    // customer trade-in offer.
+    manualOfferOverride: true, cashOffer: price,
+    priceLabel: 'Pocket Scout', priceSource: 'pocket_scout', pricingSource: 'Pocket Scout',
+    condition, category, subcategory: identity.subcategory||'',
+    brand: identity.brand||'', manufacturer: identity.manufacturer||'', model: identity.model||identity.modelNumber||'',
+    year: identity.year||'', variant: identity.variant||'', edition: identity.edition||'',
+    upc: identity.upc||'', ean: identity.ean||'', isbn: identity.isbn||'', mpn: identity.mpn||'',
+    imageUrl: scoutSession.photos?.[0]?.url || '',
+    sourceType: 'pocket_scout',
+    scanSessionId: scoutSession.id, scanConfidence: scoutSession.confidence||0,
+    pocketScoutQuery: scoutSession.compSnapshot?.textQuery || identity.title || '',
+    activeCompSnapshot: scoutSession.compSnapshot?.activeStats||null, soldCompSnapshot: scoutSession.compSnapshot?.soldStats||null,
+    scanPhotos: (scoutSession.photos||[]).map(p=>p.url),
+    buySessionId: session?.buySessionId || '',
+    storeId: getActiveStoreId(),
+    status:'offered',
+  };
+  buyList.push(item);
+  saveBuyList();
+  logOpsEvent('buy_item_added', 'Sent Pocket Scout item to buy tray: ' + item.name, { buySessionId:item.buySessionId, price, source:'pocket_scout' });
+  toast_dash('Queued in Buy tray ('+buyList.length+' item'+(buyList.length===1?'':'s')+') -- accept the tray in INTAKE to add all to inventory');
+  // Reset for the next photo without the "start a new item?" confirm --
+  // nothing is lost here, the item is already safely queued in the tray.
+  scoutSession = null;
+  document.getElementById('scout-idle-panel').style.display='';
+  document.getElementById('scout-session-panel').style.display='none';
+}
+
 const POCKET_SCOUT_CLIENT_DEFAULTS = { minProfit:15, preferredProfit:25, minRoiPct:100, minConfidenceForBuy:80, marketplaceFeePct:13.25, paymentFeePct:2.9, paymentFeeFlat:0.30, packagingAllowance:2, defaultShippingBySize:{tiny:5,small:8,medium:13,large:20,oversize:35}, maybeRequiresApproval:false };
 async function renderPocketScoutSettings(){
   try{
@@ -44166,7 +44217,7 @@ async function toppsLoadParallels(cardId){
   window.__arscaCloseModal = closeModal;
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.22.06-six-ops-fixes" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.23.01-scout-buy-tab-and-image-upload-retry" defer></script>
 </body>
 </html>
 

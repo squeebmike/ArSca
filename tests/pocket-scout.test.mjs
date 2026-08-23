@@ -38,6 +38,15 @@ assert.match(worker, /status=eq\.pending&select=payload`\);/, 'rejecting a candi
 
 // ── Contract: add-to-inventory reuses the existing SKU generator + direct Supabase insert, not a new inventory system ──
 assert.match(dashboard, /generateWalkoffInventorySku\(category, \{ name: identity\.title/, 'Pocket Scout must reuse the existing SKU generator');
+
+// ── Contract: a bulk sourcing trip can queue scouted items into the Buy
+// List tray (Intake tab) instead of writing to inventory one at a time --
+// reusing the existing buy/trade-in tray + accept flow rather than a new
+// bulk-insert path ──
+assert.match(dashboard, /<button class="hbtn" id="scout-buy-tab-btn" onclick="scoutSendToBuyTab\(\)"/, 'a SEND TO BUY TAB button must exist alongside BUY + ADD INVENTORY');
+assert.match(dashboard, /function scoutSendToBuyTab\(\)\{/, 'a dedicated handler must queue the scouted item into the buy tray');
+assert.match(dashboard, /manualOfferOverride: true, cashOffer: price,/, 'the queued buy-tray item must pin its cost to the exact store price entered, not the tray\'s percent-of-market trade-in offer math');
+assert.match(dashboard, /buyList\.push\(item\);\s*\n\s*saveBuyList\(\);\s*\n\s*logOpsEvent\('buy_item_added', 'Sent Pocket Scout item to buy tray/, 'sending to the buy tray must reuse the existing buyList array + saveBuyList persistence, not a separate bulk-buy data model');
 assert.match(dashboard, /sb\.from\('inventory_items'\)\.insert\(\[row\]\)/, 'Pocket Scout must write inventory the same way every other add-to-inventory flow does (direct client Supabase insert), not a parallel backend table');
 
 console.log('Pocket Scout contract checks passed');
