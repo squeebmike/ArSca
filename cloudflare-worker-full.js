@@ -5319,18 +5319,30 @@ export default {
       }
     }
 
-    // ── SportsCardsPro: card image lookup ─────────────────────────────────────
+    // ── SportsCardsPro: card image + card-number/print-run lookup (no token needed) ──
     // GET /pricing/sportscardspro/image?id=SCPID  (preferred — numeric or path slug)
     // GET /pricing/sportscardspro/image?console=CONSOLE_NAME&name=PRODUCT_NAME  (fallback)
     // SCP and PC share the same numeric product IDs, so for numeric IDs we hit the
-    // PriceCharting /api/product endpoint directly (most reliable). For path slugs
-    // (e.g. baseball-cards-2025-bowman-chrome/jacob-wilson-refractor-1) we scrape the
-    // SCP product page. Falls back to PC page scraping via derived slug if all else fails.
+    // PriceCharting /api/product endpoint directly for the image (fast, only needs
+    // the PriceCharting token most stores already have -- not a separate SCP one).
+    //
+    // Card number and print run only exist on SportsCardsPro's own schema, not
+    // PriceCharting's -- and SCP's *API* needs its own paid SCP_ACCESS_TOKEN most
+    // stores won't have (see /pricing/sportscardspro/product below). But SCP's
+    // *product page* is public, same as PriceCharting's, and shares the same
+    // console/product slug convention (confirmed: SCP's own page for a shared
+    // product labels the id "PriceCharting ID"). So it's scraped here, same
+    // technique as the PriceCharting og:image scrape a few lines down, no token
+    // of any kind required.
     if (url.pathname === '/pricing/sportscardspro/image') {
       const scpId       = url.searchParams.get('id') || '';
       const consoleName = url.searchParams.get('console') || '';
       const productName = url.searchParams.get('name') || '';
       if (!scpId && (!consoleName || !productName)) return json({ ok: false, error: 'id or (console and name) required' }, 400);
+
+      let imageUrl = null;
+      let cardNumber = '';
+      let printRun = '';
 
       // Numeric ID: SCP and PC share the same product database — call PC API directly for the image
       if (scpId && /^\d+$/.test(scpId)) {
@@ -5344,10 +5356,7 @@ export default {
             if (pcRes.ok) {
               const pcData = await pcRes.json().catch(() => null);
               const rawImg = pcData?.['image-url'] || pcData?.imageUrl || pcData?.image || '';
-              if (rawImg) {
-                const imageUrl = /^\/\//.test(rawImg) ? 'https:' + rawImg : /^\//.test(rawImg) ? 'https://www.pricecharting.com' + rawImg : rawImg;
-                if (imageUrl) return json({ ok: true, imageUrl });
-              }
+              if (rawImg) imageUrl = /^\/\//.test(rawImg) ? 'https:' + rawImg : /^\//.test(rawImg) ? 'https://www.pricecharting.com' + rawImg : rawImg;
             }
           } catch (_) {}
         }
@@ -5358,29 +5367,55 @@ export default {
         .replace(/[^a-z0-9]+/g, '-')
         .replace(/^-+|-+$/g, '');
 
-      // Path slug (e.g. baseball-cards-2025-bowman-chrome/jacob-wilson-refractor-1): fetch SCP page directly.
-      // Otherwise fall back to deriving the slug from console + product names on PC.
-      const pageUrl = (scpId && scpId.includes('/'))
-        ? `https://www.sportscardspro.com/game/${scpId}`
-        : `https://www.pricecharting.com/game/${toSlug(consoleName)}/${toSlug(productName)}`;
+      // Path slug (e.g. baseball-cards-2025-bowman-chrome/jacob-wilson-refractor-1): use
+      // it directly. Otherwise derive the same slug PriceCharting uses from console + name.
+      const scpSlugPath = scpId && scpId.includes('/') ? scpId : (consoleName && productName ? `${toSlug(consoleName)}/${toSlug(productName)}` : '');
+      if (scpSlugPath) {
+        try {
+          const scpPageRes = await fetch(`https://www.sportscardspro.com/game/${scpSlugPath}`, {
+            headers: {
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+              'Accept': 'text/html,application/xhtml+xml',
+              'Accept-Language': 'en-US,en;q=0.9',
+            },
+            cf: { cacheTtl: 7200, cacheEverything: true },
+          });
+          if (scpPageRes.ok) {
+            const scpHtml = await scpPageRes.text();
+            if (!imageUrl) {
+              const scpImgMatch = scpHtml.match(/storage\.googleapis\.com\/images\.pricecharting\.com\/([^/"']+)\/(?:240|300|400|1600)\.jpg/);
+              if (scpImgMatch) imageUrl = `https://storage.googleapis.com/images.pricecharting.com/${scpImgMatch[1]}/240.jpg`;
+            }
+            const cardNumMatch = scpHtml.match(/Card Number[^>]*>\s*(?:<[^>]+>\s*)*#?\s*([A-Za-z0-9-]+)/i);
+            if (cardNumMatch) cardNumber = cardNumMatch[1].replace(/^#/, '');
+            const printRunMatch = scpHtml.match(/Print Run[^>]*>\s*(?:<[^>]+>\s*)*\/?\s*(\d{1,4})/i);
+            if (printRunMatch) printRun = printRunMatch[1];
+          }
+        } catch (_) {}
+      }
 
-      const pageRes = await fetch(pageUrl, {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-          'Accept': 'text/html,application/xhtml+xml',
-          'Accept-Language': 'en-US,en;q=0.9',
-        },
-        cf: { cacheTtl: 7200, cacheEverything: true },
-      });
+      // Last resort for the image alone -- PriceCharting's page has no card
+      // number / print run fields at all, so it can't help with those.
+      if (!imageUrl && consoleName && productName) {
+        try {
+          const pcPageRes = await fetch(`https://www.pricecharting.com/game/${toSlug(consoleName)}/${toSlug(productName)}`, {
+            headers: {
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+              'Accept': 'text/html,application/xhtml+xml',
+              'Accept-Language': 'en-US,en;q=0.9',
+            },
+            cf: { cacheTtl: 7200, cacheEverything: true },
+          });
+          if (pcPageRes.ok) {
+            const pcHtml = await pcPageRes.text();
+            const pcImgMatch = pcHtml.match(/storage\.googleapis\.com\/images\.pricecharting\.com\/([^/"']+)\/(?:240|300|400|1600)\.jpg/);
+            if (pcImgMatch) imageUrl = `https://storage.googleapis.com/images.pricecharting.com/${pcImgMatch[1]}/240.jpg`;
+          }
+        } catch (_) {}
+      }
 
-      if (!pageRes.ok) return json({ ok: false, imageUrl: null, status: pageRes.status });
-
-      const html = await pageRes.text();
-      const m = html.match(/storage\.googleapis\.com\/images\.pricecharting\.com\/([^/"']+)\/(?:240|300|400|1600)\.jpg/);
-      if (!m) return json({ ok: false, imageUrl: null });
-
-      const imageUrl = `https://storage.googleapis.com/images.pricecharting.com/${m[1]}/240.jpg`;
-      return json({ ok: true, imageUrl });
+      if (!imageUrl && !cardNumber && !printRun) return json({ ok: false, imageUrl: null });
+      return json({ ok: true, imageUrl: imageUrl || null, cardNumber, printRun });
     }
 
     // ── SportsCardsPro: candidate list ───────────────────────────────────────
