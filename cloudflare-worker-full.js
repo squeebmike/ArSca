@@ -5418,6 +5418,103 @@ export default {
       return json({ ok: true, imageUrl: imageUrl || null, cardNumber, printRun });
     }
 
+    // ── PriceCharting/SportsCardsPro: resolve a pasted product-page URL directly ──
+    // GET /pricing/sportscardspro/resolve-url?url=<pricecharting.com or sportscardspro.com product URL>
+    // A pasted product-page URL IS the exact card -- typing it into the
+    // catalog search box used to just run the raw URL string as a fuzzy
+    // text search and return unrelated junk. Instead: pull the console/
+    // product slug straight out of the URL's own /game/<console>/<product>
+    // path, scrape SportsCardsPro's public page (same technique as
+    // /pricing/sportscardspro/image just above) for card number, print run,
+    // and the numeric "PriceCharting ID" its page already labels, then use
+    // that id to pull the real name/console/price from PriceCharting's
+    // official API -- the exact same numeric-id call already proven above,
+    // not a fresh guess. Deliberately NOT sharing code with the route above
+    // (a few lines duplicated instead of extracted into a helper) so a bug
+    // here can't touch that already-verified-working route.
+    if (url.pathname === '/pricing/sportscardspro/resolve-url') {
+      const pastedUrl = url.searchParams.get('url') || '';
+      let parsed;
+      try { parsed = new URL(pastedUrl); } catch (_) { return json({ ok: false, error: 'Not a valid URL' }, 400); }
+      const host = parsed.hostname.replace(/^www\./, '').toLowerCase();
+      if (host !== 'pricecharting.com' && host !== 'sportscardspro.com') {
+        return json({ ok: false, error: 'Only pricecharting.com or sportscardspro.com product page URLs are supported' }, 400);
+      }
+      const pathMatch = parsed.pathname.match(/^\/game\/([^/]+)\/([^/]+)/);
+      if (!pathMatch) return json({ ok: false, error: 'That doesn\'t look like a product page URL (expected .../game/<console>/<product>)' }, 400);
+      const [, consoleSlug, productSlug] = pathMatch;
+
+      let imageUrl = null, cardNumber = '', printRun = '', priceChartingId = '';
+      try {
+        const scpRes = await fetch(`https://www.sportscardspro.com/game/${consoleSlug}/${productSlug}`, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml',
+            'Accept-Language': 'en-US,en;q=0.9',
+          },
+          cf: { cacheTtl: 7200, cacheEverything: true },
+        });
+        if (scpRes.ok) {
+          const html = await scpRes.text();
+          const imgMatch = html.match(/storage\.googleapis\.com\/images\.pricecharting\.com\/([^/"']+)\/(?:240|300|400|1600)\.jpg/);
+          if (imgMatch) imageUrl = `https://storage.googleapis.com/images.pricecharting.com/${imgMatch[1]}/240.jpg`;
+          const cardNumMatch = html.match(/Card Number[^>]*>\s*(?:<[^>]+>\s*)*#?\s*([A-Za-z0-9-]+)/i);
+          if (cardNumMatch) cardNumber = cardNumMatch[1].replace(/^#/, '');
+          const printRunMatch = html.match(/Print Run[^>]*>\s*(?:<[^>]+>\s*)*\/?\s*(\d{1,4})/i);
+          if (printRunMatch) printRun = printRunMatch[1];
+          const idMatch = html.match(/PriceCharting ID[^>]*>\s*(?:<[^>]+>\s*)*(\d{2,10})/i);
+          if (idMatch) priceChartingId = idMatch[1];
+        }
+      } catch (_) {}
+
+      let productName = '', consoleName = '', market = 0;
+      if (priceChartingId) {
+        const pcToken = env.PRICECHARTING_TOKEN || env.PRICECHARTING_API_KEY;
+        if (pcToken) {
+          try {
+            const pcRes = await fetch(`https://www.pricecharting.com/api/product?id=${encodeURIComponent(priceChartingId)}&t=${encodeURIComponent(pcToken)}`, {
+              headers: { 'Accept': 'application/json', 'User-Agent': 'Walk-Off Sports Cards Dealer App/2026' },
+              cf: { cacheTtl: 7200 },
+            });
+            if (pcRes.ok) {
+              const pcData = await pcRes.json().catch(() => null);
+              if (pcData) {
+                productName = pcData['product-name'] || '';
+                consoleName = pcData['console-name'] || '';
+                const loose = Number(pcData['loose-price']);
+                if (loose > 0) market = Math.round(loose) / 100;
+                if (!imageUrl) {
+                  const rawImg = pcData['image-url'] || pcData.imageUrl || pcData.image || '';
+                  if (rawImg) imageUrl = /^\/\//.test(rawImg) ? 'https:' + rawImg : /^\//.test(rawImg) ? 'https://www.pricecharting.com' + rawImg : rawImg;
+                }
+              }
+            }
+          } catch (_) {}
+        }
+      }
+
+      // Falls back to a humanized version of the URL's own slug when the id
+      // lookup didn't pan out (no id found on the page, or no PriceCharting
+      // token configured) -- still usable, just without a confirmed price.
+      const humanize = s => String(s || '').replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+      if (!productName) productName = humanize(productSlug);
+      if (!consoleName) consoleName = humanize(consoleSlug);
+
+      return json({
+        ok: true,
+        match: {
+          source: 'PriceCharting', name: productName, category: consoleName || 'Sports Cards', set: consoleName,
+          card_number: cardNumber, printRun, condition: 'NM', market,
+          imageUrl: imageUrl || '',
+          priceSource: market ? 'PriceCharting Guide Value' : 'No Guide Value Available',
+          note: 'Resolved directly from the pasted product page URL.',
+          confidence: 99, matchWhy: ['Pasted product URL -- exact card, no search needed'],
+          productId: priceChartingId || '', productUrl: pastedUrl,
+          raw: { priceChartingId, consoleSlug, productSlug },
+        },
+      });
+    }
+
     // ── SportsCardsPro: candidate list ───────────────────────────────────────
     // dashboard.html calls: GET /pricing/sportscardspro/products?q=QUERY
     // Requires SCP_ACCESS_TOKEN worker secret (set via: wrangler secret put SCP_ACCESS_TOKEN)
