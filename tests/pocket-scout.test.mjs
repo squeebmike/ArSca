@@ -204,6 +204,21 @@ assert.match(dashboard, /if\(scoutSession\.routeToCardPipeline && !id\.title\)\{
 // checked structurally against the two add paths above, not just displayed.
 assert.match(dashboard, /const category = match \? normalizeQuickCategory\(match\.category\) : scoutInventoryCategory\(identity\);/, 'a matched catalog card\'s real category must be used instead of the generic Collectibles bucket, in both add-to-inventory paths', );
 assert.match(dashboard, /sourceProductId: match\?\.pricechartingProductId \|\| match\?\.productId \|\| '',/, 'the buy-tray item must carry the matched catalog product\'s id so it stays connected once accepted into inventory');
+// Picking a catalog match is a deliberate operator action, not a passive
+// re-render -- unlike scoutRenderResult's own comp-price prefill (which must
+// never clobber a typed value), selecting a match must overwrite the
+// comp-price field even if a rougher eBay-comp estimate was already there,
+// since that's the whole point of confirming the exact card. Both add paths
+// (direct buy and send-to-buy-tab) read that same field, so this is what
+// makes the matched price actually flow through to both.
+{
+  const selectFnStart = dashboard.indexOf("function scoutSelectCatalogMatch(i){");
+  const selectFnEnd = dashboard.indexOf('\nfunction scoutClearCatalogMatch', selectFnStart);
+  const selectFn = dashboard.slice(selectFnStart, selectFnEnd);
+  assert.match(selectFn, /if\(compPriceEl && Number\(match\.market\|\|0\)>0\) compPriceEl\.value = match\.market;/, 'selecting a catalog match must overwrite scout-comp-price unconditionally, not only when it was empty');
+  assert.doesNotMatch(selectFn, /!compPriceEl\.value && Number\(match\.market/, 'must not still gate the overwrite on the field being empty');
+}
+assert.match(dashboard, /market: Number\(document\.getElementById\('scout-comp-price'\)\?\.value\) \|\| match\?\.market \|\| result\?\.expectedSale \|\| null,/, 'the direct-buy path must save the same comp-price the operator sees (which a selected catalog match now sets) as the inventory market value, not silently ignore it in favor of a stale decision-engine estimate');
 
 console.log('Pocket Scout contract checks passed');
 
