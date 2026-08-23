@@ -25,6 +25,22 @@ assert.match(worker, /const \[visionResult, imageSearchResult\] = await Promise\
 assert.match(worker, /soldWarning = 'Sold history unavailable'/, 'sold comps must explicitly say when unavailable rather than silently substituting active prices');
 assert.match(worker, /activeStats,\s*soldStats,\s*soldWarning/, 'comp snapshot must carry active and sold stats as separate fields');
 
+// ── Contract: sold comps must not silently go to zero for trading cards.
+// The identity prompt deliberately leaves brand/manufacturer/title/model/
+// year blank for category:trading_card (expects the Research handoff
+// instead of a guess), which left textQuery empty for every card -- active
+// comps still worked (image search needs no text query) but sold comps
+// only ever run when textQuery is non-empty, so sold comps silently never
+// ran for a single trading card. Confirmed live: 20 active comps, 0 sold,
+// every time. __textEvidence (OCR'd text, captured regardless of category)
+// is the real fallback query. ──
+{
+  const textQueryStart = worker.indexOf("const queryParts = [fused.brand, fused.manufacturer, fused.title || fused.characterOrSubject, fused.model, fused.year].filter(Boolean);");
+  assert(textQueryStart >= 0, 'the per-photo comp query builder must exist');
+  const textQuerySlice = worker.slice(textQueryStart, textQueryStart + 400);
+  assert.match(textQuerySlice, /\(fused\.__textEvidence \|\| \[\]\)\.slice\(0, 6\)\.join\(' '\)\.trim\(\)\.slice\(0, 120\)/, 'when the identity has no queryable fields (every trading card), textQuery must fall back to OCR\'d textEvidence instead of staying empty and silently disabling sold-comp search');
+}
+
 // ── Contract: junk filtering happens before stats, median before average ──
 assert.match(worker, /POCKET_SCOUT_JUNK_TERMS = \/\\b\(lot of\|bundle\|wholesale\|reprint/, 'obvious mismatches (lots, reprints, parts-only) must be filtered before pricing math');
 assert.match(worker, /median: Math\.round\(use\[Math\.floor\(use\.length \/ 2\)\] \* 100\) \/ 100,/, 'comp stats must compute a real median, not just an average');

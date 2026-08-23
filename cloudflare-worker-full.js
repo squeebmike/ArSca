@@ -9827,8 +9827,21 @@ export default {
 
       // Comps: run one text query built from the fused identity, plus this
       // photo's image-search hits, merge, de-dupe, filter junk.
+      //
+      // A trading card gets brand/manufacturer/title/model/year all left
+      // blank ON PURPOSE (see POCKET_SCOUT_IDENTITY_PROMPT -- the model
+      // defers exact ID to Research/PriceCharting instead of guessing),
+      // which used to leave textQuery empty for every card. Active comps
+      // still populated fine (image search doesn't need text), but sold
+      // comps ONLY run when textQuery is non-empty (see fetchSoldCompsWithFallback
+      // call below) -- so sold comps silently never ran for any trading
+      // card at all, confirmed live: 20 active comps, 0 sold, every time.
+      // __textEvidence (every piece of text actually read off the card --
+      // player name, set, card number) is captured regardless of category,
+      // so it's the real fallback query here, same fix as the client-side
+      // Research handoff.
       const queryParts = [fused.brand, fused.manufacturer, fused.title || fused.characterOrSubject, fused.model, fused.year].filter(Boolean);
-      const textQuery = queryParts.length ? queryParts.join(' ').slice(0, 120) : (fused.title || '');
+      const textQuery = queryParts.length ? queryParts.join(' ').slice(0, 120) : (fused.title || (fused.__textEvidence || []).slice(0, 6).join(' ').trim().slice(0, 120));
       let textListings = [];
       if (textQuery) {
         const activeResult = await fetchEbayActiveListings(env, textQuery, { limit: 20 }).catch(() => ({ listings: [] }));
