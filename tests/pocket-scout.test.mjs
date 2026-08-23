@@ -25,6 +25,22 @@ assert.match(worker, /const \[visionResult, imageSearchResult\] = await Promise\
 assert.match(worker, /soldWarning = 'Sold history unavailable'/, 'sold comps must explicitly say when unavailable rather than silently substituting active prices');
 assert.match(worker, /activeStats,\s*soldStats,\s*soldWarning/, 'comp snapshot must carry active and sold stats as separate fields');
 
+// ── Contract: sold comps must not silently go to zero for trading cards.
+// The identity prompt deliberately leaves brand/manufacturer/title/model/
+// year blank for category:trading_card (expects the Research handoff
+// instead of a guess), which left textQuery empty for every card -- active
+// comps still worked (image search needs no text query) but sold comps
+// only ever run when textQuery is non-empty, so sold comps silently never
+// ran for a single trading card. Confirmed live: 20 active comps, 0 sold,
+// every time. __textEvidence (OCR'd text, captured regardless of category)
+// is the real fallback query. ──
+{
+  const textQueryStart = worker.indexOf("const queryParts = [fused.brand, fused.manufacturer, fused.title || fused.characterOrSubject, fused.model, fused.year].filter(Boolean);");
+  assert(textQueryStart >= 0, 'the per-photo comp query builder must exist');
+  const textQuerySlice = worker.slice(textQueryStart, textQueryStart + 400);
+  assert.match(textQuerySlice, /\(fused\.__textEvidence \|\| \[\]\)\.slice\(0, 6\)\.join\(' '\)\.trim\(\)\.slice\(0, 120\)/, 'when the identity has no queryable fields (every trading card), textQuery must fall back to OCR\'d textEvidence instead of staying empty and silently disabling sold-comp search');
+}
+
 // ── Contract: junk filtering happens before stats, median before average ──
 assert.match(worker, /POCKET_SCOUT_JUNK_TERMS = \/\\b\(lot of\|bundle\|wholesale\|reprint/, 'obvious mismatches (lots, reprints, parts-only) must be filtered before pricing math');
 assert.match(worker, /median: Math\.round\(use\[Math\.floor\(use\.length \/ 2\)\] \* 100\) \/ 100,/, 'comp stats must compute a real median, not just an average');
@@ -77,8 +93,29 @@ assert.match(dashboard, /image:item\.imageUrl \|\| item\.images\?\.\[0\] \|\| ''
 // get the operator there with the identified title already searched. ──
 assert.match(dashboard, /function scoutSearchInResearch\(\)\{/, 'a dedicated handoff function into Research must exist');
 assert.match(dashboard, /switchTab\('research'\);/, 'the handoff must switch to the actual Research tab');
-assert.match(dashboard, /if\(input\) input\.value = query;\s*\n\s*runPriceLookup\(\);/, 'the handoff must pre-fill the Research search box and actually run the lookup, not just switch tabs and leave the operator to retype it');
 assert.match(dashboard, /onclick="scoutSearchInResearch\(\)"/, 'the routeToCardPipeline hint must offer a clickable handoff, not just inert text');
+// The identify prompt deliberately tells the model to leave title/brand/etc
+// minimal for trading cards -- it's EXPECTING this exact handoff instead of
+// guessing -- so a title-only query is empty in exactly the case this
+// button matters most. The handoff must fall back to textEvidence (every
+// piece of text the model actually read, captured regardless of category)
+// and must always land the operator on Research, never block with a dead
+// end just because nothing was confidently identified.
+{
+  const fnStart = dashboard.indexOf('function scoutSearchInResearch(){');
+  const fnEnd = dashboard.indexOf('\nfunction scoutInventoryCategory', fnStart);
+  const fn = dashboard.slice(fnStart, fnEnd);
+  assert.match(fn, /\(scoutSession\.textEvidence\|\|\[\]\)\.slice\(0,4\)\.join\(' '\)/, 'must fall back to OCR\'d textEvidence when no title was identified -- the one case this handoff exists for');
+  assert.match(fn, /switchTab\('research'\);/, 'must switch tabs unconditionally, before checking whether a query exists');
+  assert.doesNotMatch(fn, /if\(!query\)\{.*return;/, 'must never return early / block on an empty query -- it must still land the operator on Research so they can search manually');
+  assert.match(fn, /if\(query\) runPriceLookup\(\);/, 'must only auto-run the lookup when there is an actual query to search');
+}
+// A blank title + 0% confidence on a trading card is the model working as
+// designed (see POCKET_SCOUT_IDENTITY_PROMPT), not a broken scan -- it must
+// not render as "Unidentified item" / red "INSUFFICIENT DATA", which reads
+// as an error.
+assert.match(dashboard, /\(scoutSession\.routeToCardPipeline \? 'Trading card \/ sports card \/ comic' : 'Unidentified item'\)/, 'a title-less trading card must get a card-specific label, not the generic no-data one');
+assert.match(dashboard, /if\(scoutSession\.routeToCardPipeline && !id\.title\)\{/, 'the confidence badge must special-case a title-less trading card instead of showing a scary 0%/red insufficient-data state for expected behavior');
 {
   const makeBuyItemStart = dashboard.indexOf('const makeBuyItem = copyIndex => ({');
   assert(makeBuyItemStart >= 0, 'Research\'s ADD TO BUY must build its buy-tray item via a makeBuyItem factory');
