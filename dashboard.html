@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.23.07-scout-printrun-and-pc-images">
+<meta name="version" content="2026.08.23.08-scout-scp-card-metadata">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1633,16 +1633,16 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.23.07-scout-printrun-and-pc-images" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.23.07-scout-printrun-and-pc-images" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.23.07-scout-printrun-and-pc-images" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.08.23.07-scout-printrun-and-pc-images" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.23.07-scout-printrun-and-pc-images" defer></script>
-<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.08.23.07-scout-printrun-and-pc-images" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.23.07-scout-printrun-and-pc-images" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.23.07-scout-printrun-and-pc-images" defer></script>
-<script src="scripts/pokemon/offline-browser.js?v=2026.08.23.07-scout-printrun-and-pc-images" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.23.07-scout-printrun-and-pc-images" defer></script>
+<script src="scripts/query-routing.js?v=2026.08.23.08-scout-scp-card-metadata" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.23.08-scout-scp-card-metadata" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.23.08-scout-scp-card-metadata" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.08.23.08-scout-scp-card-metadata" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.23.08-scout-scp-card-metadata" defer></script>
+<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.08.23.08-scout-scp-card-metadata" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.23.08-scout-scp-card-metadata" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.23.08-scout-scp-card-metadata" defer></script>
+<script src="scripts/pokemon/offline-browser.js?v=2026.08.23.08-scout-scp-card-metadata" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.23.08-scout-scp-card-metadata" defer></script>
 </head>
 <body>
 
@@ -1671,11 +1671,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.23.07-scout-printrun-and-pc-images</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.23.08-scout-scp-card-metadata</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.23.07-scout-printrun-and-pc-images</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.23.08-scout-scp-card-metadata</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1693,7 +1693,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.23.07-scout-printrun-and-pc-images</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.23.08-scout-scp-card-metadata</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3663,7 +3663,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.23.07-scout-printrun-and-pc-images';
+const APP_VERSION = '2026.08.23.08-scout-scp-card-metadata';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -27221,7 +27221,7 @@ async function scoutRunCatalogSearch(){
       <div id="scout-catalog-img-${i}" style="width:44px;height:60px;flex-shrink:0">${r.imageUrl?`<img src="${escHtml(r.imageUrl)}" style="width:100%;height:100%;object-fit:cover;border-radius:4px" loading="lazy">`:'<div style="width:100%;height:100%;border-radius:4px;background:var(--surf2)"></div>'}</div>
       <div style="flex:1;font-family:var(--font-mono);font-size:9px;line-height:1.5;min-width:0">
         <div style="color:var(--text);font-size:10px">${escHtml(r.name||'Unknown')}</div>
-        <div style="color:var(--dim);word-break:break-word">${[r.set,r.card_number?'#'+r.card_number:'',r.printRun?'/'+r.printRun:'',r.variant].filter(Boolean).map(escHtml).join(' · ')}${r.productUrl?` · <a href="${escHtml(r.productUrl)}" target="_blank" rel="noopener" style="color:var(--blue)">view</a>`:''}</div>
+        <div id="scout-catalog-meta-${i}" style="color:var(--dim);word-break:break-word">${scoutCatalogMetaHtml(r)}</div>
         <div style="color:var(--gold);font-weight:700">${r.market?scoutMoney(r.market):'no price'}</div>
       </div>
       <button class="hbtn" style="font-size:8px;padding:6px 8px;color:var(--g);flex-shrink:0" onclick="scoutSelectCatalogMatch(${i})">USE THIS</button>
@@ -27229,27 +27229,44 @@ async function scoutRunCatalogSearch(){
     scoutHydrateCatalogImages();
   }catch(e){ if(statusEl) statusEl.textContent = 'Search failed: '+e.message; }
 }
+// set/card number/print run/variant, plus a "view" link to the source
+// product page so a still-missing photo doesn't block confirming the exact
+// card -- same pattern as the eBay comps drawer's own "view" link. Its own
+// function since the hydration pass below re-renders this line in place
+// once SportsCardsPro hydration (below) finds a card number/print run the
+// initial search result didn't have.
+function scoutCatalogMetaHtml(r){
+  return [r.set,r.card_number?'#'+r.card_number:'',r.printRun?'/'+r.printRun:'',r.variant].filter(Boolean).map(escHtml).join(' · ')
+    + (r.productUrl?` · <a href="${escHtml(r.productUrl)}" target="_blank" rel="noopener" style="color:var(--blue)">view</a>`:'');
+}
 // Pokemon and comic rows very often come back from search with no imageUrl
 // at all -- both need a second lookup to fill one in, same as Research does
 // (resolvePokemonCatalogImagesForVisibleCards/lazyLoadComicImages), but
 // those target Research's own .qpl-hero-card DOM/qplResults array, not this
 // modal's compact rows, so this is the same resolution logic called
-// directly per-row instead. PriceCharting search results (sports/graded/
-// generic) come back with no image at all too -- PriceCharting's own
-// bulk-search API just doesn't return one, only its single-product detail
-// call does (with an og:image scrape fallback server-side when even that's
-// missing) -- so a capped number of top PriceCharting rows get that same
-// per-product lookup here. Capped, not run for every row: PriceCharting is
-// rate-limited server-side (~1.1s between calls), so hydrating all 25
-// results would take half a minute for rows the operator likely won't pick.
+// directly per-row instead.
+//
+// PriceCharting-sourced sports/graded results come back with no image AND
+// no card number/print run at all -- confirmed live against a real
+// numbered parallel: PriceCharting's OWN game/console API schema has no
+// concept of a card number or print run (SportsCardsPro's product page for
+// the SAME item shows "Card Number: #91" / "Print Run: 250" as real
+// fields). SportsCardsPro is PriceCharting's own sports-card-specific
+// dataset sharing the SAME numeric product id (confirmed: their page
+// literally labels it "PriceCharting ID"), so a capped number of top rows
+// get that richer per-product lookup instead of PriceCharting's own
+// (which only ever had an image, when it had anything at all). Capped, not
+// run for every row: rate-limited server-side, so hydrating all 25 results
+// would take far too long for rows the operator likely won't pick.
 async function scoutHydrateCatalogImages(){
   let priceChartingHydrated = 0;
   await Promise.all(scoutCatalogSearchResults.map(async (r, i) => {
-    if(r.imageUrl) return;
     const catKey = qplResultCategoryKey(r);
     let url = null;
+    let metaChanged = false;
     try{
-      if(catKey === 'pokemon') {
+      if(r.imageUrl) { /* nothing to fetch for the image, but sports rows may still be missing card_number/printRun below */ }
+      else if(catKey === 'pokemon') {
         url = await resolvePokemonCatalogImageUrl(r, 'small').catch(() => null);
       } else if(catKey === 'comic') {
         const name = r.name || r.raw?.productName || '';
@@ -27259,16 +27276,31 @@ async function scoutHydrateCatalogImages(){
         if(r.year) params.set('year', r.year);
         const res = await fetch(WORKER + '/comic/variants?' + params.toString(), { cache:'no-store' });
         if(res.ok) { const data = await res.json().catch(()=>({})); url = (data.variants||[]).find(v=>v.cover_image)?.cover_image || null; }
-      } else if(r.source === 'PriceCharting' && r.productId && priceChartingHydrated < 6) {
-        priceChartingHydrated++;
-        const res = await fetch(WORKER + '/pricing/pricecharting/product/' + encodeURIComponent(r.productId), { cache:'no-store' });
-        if(res.ok) { const data = await res.json().catch(()=>({})); url = data.product?.imageUrl || data.imageUrl || null; }
       }
-    }catch(e){ /* no image found -- leave the placeholder */ }
-    if(!url) return;
-    r.imageUrl = url;
-    const shell = document.getElementById('scout-catalog-img-'+i);
-    if(shell) shell.innerHTML = `<img src="${escHtml(url)}" style="width:100%;height:100%;object-fit:cover;border-radius:4px" loading="lazy">`;
+      if((r.source === 'PriceCharting' || r.source === 'sportscardspro') && (r.productId || r.scpId) && catKey !== 'pokemon' && catKey !== 'comic' && (!r.imageUrl || !r.card_number || !r.printRun) && priceChartingHydrated < 6) {
+        priceChartingHydrated++;
+        const scpId = r.scpId || r.productId;
+        const res = await fetch(WORKER + '/pricing/sportscardspro/product?id=' + encodeURIComponent(scpId), { cache:'no-store' });
+        if(res.ok) {
+          const data = await res.json().catch(()=>({}));
+          const p = data.product || {};
+          if(!url) url = p.imageUrl || p['image-url'] || p.image_url || null;
+          const cardNum = String(p['card-number'] || p.cardNumber || '');
+          const printRun = String(p['print-run'] || p.printRun || '');
+          if(cardNum && cardNum !== r.card_number) { r.card_number = cardNum; metaChanged = true; }
+          if(printRun && printRun !== r.printRun) { r.printRun = printRun; metaChanged = true; }
+        }
+      }
+    }catch(e){ /* no image/metadata found -- leave what was already there */ }
+    if(url) {
+      r.imageUrl = url;
+      const shell = document.getElementById('scout-catalog-img-'+i);
+      if(shell) shell.innerHTML = `<img src="${escHtml(url)}" style="width:100%;height:100%;object-fit:cover;border-radius:4px" loading="lazy">`;
+    }
+    if(metaChanged) {
+      const metaEl = document.getElementById('scout-catalog-meta-'+i);
+      if(metaEl) metaEl.innerHTML = scoutCatalogMetaHtml(r);
+    }
   }));
 }
 function scoutSelectCatalogMatch(i){
@@ -32756,7 +32788,13 @@ function scpProductToQplRow(p, rawQuery){
     set,
     year:              yearM ? yearM[0] : (String(set).match(/\b(19|20)\d{2}\b/)||[])[0] || '',
     variant:           String(p.genre || ''),
-    card_number:       numM ? numM[1] : '',
+    // SportsCardsPro's own product schema (distinct from PriceCharting's
+    // game/console schema) carries these as real fields on numbered
+    // parallels -- confirmed live against their own product page ("Card
+    // Number: #91", "Print Run: 250") -- so they're read directly instead
+    // of only ever guessed by regexing the product name.
+    card_number:       String(p['card-number'] || p.cardNumber || (numM ? numM[1] : '') || ''),
+    printRun:          String(p['print-run'] || p.printRun || ''),
     condition:         'NM',
     market,
     low:               scpCents(p, 'retail-loose-buy'),
@@ -32799,6 +32837,8 @@ function scpDetailToQplRow(data, baseRow){
     low:               scpCents(p, 'retail-loose-buy') || baseRow.low,
     high:              scpCents(p, 'retail-loose-sell') || baseRow.high,
     imageUrl:          imageUrl || baseRow.imageUrl,
+    card_number:       String(p['card-number'] || p.cardNumber || baseRow.card_number || ''),
+    printRun:          String(p['print-run'] || p.printRun || baseRow.printRun || ''),
     priceSource:       market ? 'SportsCardsPro Guide' : 'SportsCardsPro — No Guide Price',
     availableVariants: buildScpVariants(p, id),
     scpHydrated:       true,
@@ -44481,7 +44521,7 @@ async function toppsLoadParallels(cardId){
   window.__arscaCloseModal = closeModal;
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.23.07-scout-printrun-and-pc-images" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.23.08-scout-scp-card-metadata" defer></script>
 </body>
 </html>
 
