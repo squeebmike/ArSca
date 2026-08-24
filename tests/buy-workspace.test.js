@@ -52,7 +52,16 @@ assert.match(html, /value="skip">Skip duplicates/, 'CSV import must default to s
 {
   const renderBuyListFn = html.slice(html.indexOf('function renderBuyList(){'), html.indexOf('\nfunction printBuyOffer('));
   assert.ok(renderBuyListFn, 'renderBuyList function was not found');
-  assert.match(renderBuyListFn, /pctLbl\.textContent = Math\.round\(\(totalMkt > 0 \? \(offer \/ totalMkt\) : pct\) \* 100\) \+ '%';/, 'Offer % must show the EFFECTIVE blended rate (offer/totalMkt), not the raw slider target, so it always cross-multiplies with Market Value');
+  assert.match(renderBuyListFn, /const effectivePct = Math\.round\(\(totalMkt > 0 \? \(offer \/ totalMkt\) : pct\) \* 100\);/, 'Offer % must show the EFFECTIVE blended rate (offer/totalMkt), not the raw slider target, so it always cross-multiplies with Market Value');
+  assert.match(renderBuyListFn, /if\(pctLbl\) pctLbl\.textContent = effectivePct \+ '%';/, 'the effective % must actually be written to bl-pct-lbl');
+  // The raw slider position (bl-pct) is a genuinely separate control (the
+  // default % for NEW items) that a manual per-item offer can legitimately
+  // diverge from -- surface that only when it actually does, instead of
+  // leaving two disagreeing percentages on screen with no explanation
+  // (confirmed live: "Offer %" showed 90% while the slider/stepper read 100
+  // with no indication why, read as broken math).
+  assert.match(renderBuyListFn, /if\(sliderNote\) sliderNote\.style\.display = \(Math\.round\(pct \* 100\) === effectivePct\) \? 'none' : '';/, 'the slider-vs-effective-rate note must only show when the two actually disagree');
+  assert.match(html, /id="bl-pct-slider-note"/, 'a note explaining the slider is a separate "default for new items" control must exist near it');
   const updateBuyListOfferFn = html.slice(html.indexOf('function updateBuyListOffer(){'), html.indexOf('\nfunction setBuyOfferPct('));
   assert.doesNotMatch(updateBuyListOfferFn, /lbl\.textContent = pct \+ '%';/, 'updateBuyListOffer must not still write the raw slider % onto bl-pct-lbl -- renderBuyList is the single owner of that stat now');
 }
