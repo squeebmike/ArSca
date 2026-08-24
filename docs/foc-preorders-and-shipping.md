@@ -9,7 +9,7 @@
 5. Keep the cycle open through **12:01 AM Monday, America/Los_Angeles**. The database creates that cutoff automatically from the PRH FOC date.
 6. On Monday, close the cycle and export the PRH order CSV. The export combines paid customer quantities with store quantities and uses exact UPCs.
 
-Customers use `/preorders`, pay for regular exact covers through Stripe, and can review or cancel their orders before the cutoff. An unsecured ratio-cover request never charges the customer.
+Customers use `/preorders`, save regular covers to a curated account list, and pay for all or selected comics through Stripe before the cutoff. They can remove an unpaid payment attempt, but a successfully paid comic preorder is final and cannot be cancelled online. An unsecured ratio-cover request never charges the customer.
 
 ## Shippo setup
 

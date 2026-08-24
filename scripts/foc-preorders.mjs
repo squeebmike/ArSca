@@ -563,7 +563,7 @@ async function loadSavedPicks(db, storeId, userId) {
     id:list.id,cycle:list.cycle,name:list.name,
     isOpen:cycleOpen(list.cycle),
     items:(items||[]).filter(item=>item.pick_list_id===list.id),
-  }));
+  })).sort((a,b)=>Number(b.isOpen)-Number(a.isOpen)||new Date(b.cycle?.foc_date||0)-new Date(a.cycle?.foc_date||0));
 }
 
 async function savedPicks(request, env, deps, url) {
@@ -635,16 +635,38 @@ async function mutateSavedPicks(request, env, deps) {
   return deps.json({ok:true,picks:await loadSavedPicks(db,storeId,auth.user.id),message:'Comic saved to My Pocket. Cart changes will not remove it.'});
 }
 
+export async function reconcileFocOrderPayment(env, order, deps) {
+  if(!order?.stripe_payment_intent_id||!['payment_pending','payment_failed'].includes(order.status)||typeof deps.stripeApi!=='function')return {checked:false,status:order?.status};
+  const mode=order.stripe_mode||deps.stripeMode(env);
+  const intent=await deps.stripeApi(env,mode,`payment_intents/${encodeURIComponent(order.stripe_payment_intent_id)}`,{method:'GET'});
+  const metadata=intent.metadata||{};
+  if(metadata.source!=='foc_preorder'||metadata.foc_order_id!==order.id||metadata.arsca_store_id!==order.store_id)throw new Error('Stripe payment metadata does not match this comic preorder');
+  if(String(intent.currency||'').toLowerCase()!==String(order.currency||'usd').toLowerCase()||Number(intent.amount)!==Number(order.total_cents))throw new Error('Stripe payment amount does not match this comic preorder');
+  if(intent.status==='succeeded')await syncFocStripeEvent(env,{type:'payment_intent.succeeded',data:{object:intent}},deps);
+  else if(intent.status==='canceled')await syncFocStripeEvent(env,{type:'payment_intent.canceled',data:{object:intent}},deps);
+  else if(intent.status==='payment_failed')await syncFocStripeEvent(env,{type:'payment_intent.payment_failed',data:{object:intent}},deps);
+  return {checked:true,status:intent.status};
+}
+
+async function reconcilePendingFocOrders(env,deps,orders,limit=20){
+  for(const order of (orders||[]).filter(row=>['payment_pending','payment_failed'].includes(row.status)&&row.stripe_payment_intent_id).slice(0,limit)){
+    try{await reconcileFocOrderPayment(env,order,deps);}
+    catch(error){console.error(JSON.stringify({message:'FOC Stripe reconciliation failed',orderId:order.id,intentId:order.stripe_payment_intent_id,error:error.message}));}
+  }
+}
+
 async function myPreorders(request, env, deps, url) {
   const auth=await deps.requireAuthenticatedUser(request,env);if(auth.error)return auth.error;
   const storeId=text(url.searchParams.get('store_id'),80);const db=(path,options)=>deps.supabaseAdminFetch(env,path,options);
-  const {data:orders}=await db(`foc_preorder_orders?store_id=eq.${encodeURIComponent(storeId)}&user_id=eq.${encodeURIComponent(auth.user.id)}&status=${inFilter([...CUSTOMER_STATUSES,'payment_pending','payment_failed'])}&select=*,cycle:foc_cycles(customer_cutoff_at)&order=created_at.desc&limit=200`);
+  let {data:orders}=await db(`foc_preorder_orders?store_id=eq.${encodeURIComponent(storeId)}&user_id=eq.${encodeURIComponent(auth.user.id)}&status=${inFilter([...CUSTOMER_STATUSES,'payment_pending','payment_failed'])}&select=*,cycle:foc_cycles(foc_date,customer_cutoff_at)&order=created_at.desc&limit=200`);
+  await reconcilePendingFocOrders(env,deps,orders,10);
+  ({data:orders}=await db(`foc_preorder_orders?store_id=eq.${encodeURIComponent(storeId)}&user_id=eq.${encodeURIComponent(auth.user.id)}&status=${inFilter([...CUSTOMER_STATUSES,'payment_pending','payment_failed'])}&select=*,cycle:foc_cycles(foc_date,customer_cutoff_at)&order=created_at.desc&limit=200`));
   const ids=(orders||[]).map(order=>order.id);let items=[];
   if(ids.length){({data:items}=await db(`foc_preorder_items?order_id=${inFilter(ids)}&select=*,sku:comic_skus(id,title,variant_label,cover_artist,cover_image_url,on_sale_date,upc)`));}
   const grouped=(orders||[]).map(order=>{
     const deadlineOpen=new Date(order.cycle?.customer_cutoff_at||0).getTime()>Date.now();
     const unpaid=['payment_pending','payment_failed'].includes(order.status);
-    return {...order,items:(items||[]).filter(item=>item.order_id===order.id),canPay:deadlineOpen&&unpaid,canCancel:unpaid||(deadlineOpen&&!['cancelled','refunded','shipped','completed'].includes(order.status))};
+    return {...order,items:(items||[]).filter(item=>item.order_id===order.id),canPay:deadlineOpen&&unpaid,canCancel:unpaid};
   });
   return deps.json({ok:true,orders:grouped,picks:await loadSavedPicks(db,storeId,auth.user.id)});
 }
@@ -661,13 +683,7 @@ async function cancelPreorder(request, env, deps) {
     await db(`foc_preorder_orders?id=eq.${order.id}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({status:'cancelled',cancelled_at:new Date().toISOString()})});
     return deps.json({ok:true,status:'cancelled'});
   }
-  if(new Date(order.cycle?.customer_cutoff_at).getTime()<=Date.now())return deps.json({ok:false,error:'This FOC is closed. Contact the store about distributor cancellation options.'},409);
-  if(!order.stripe_payment_intent_id)return deps.json({ok:false,error:'No payment was found to refund'},409);
-  const refund=await deps.stripeApi(env,order.stripe_mode||deps.stripeMode(env),'refunds',{method:'POST',params:new URLSearchParams({payment_intent:order.stripe_payment_intent_id,reason:'requested_by_customer'}),idempotencyKey:`arsca-foc-refund-${order.id}`});
-  const status=refund.status==='succeeded'?'refunded':'cancelled';
-  await db(`foc_preorder_orders?id=eq.${order.id}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({status,stripe_refund_id:refund.id,cancelled_at:new Date().toISOString()})});
-  await db(`foc_preorder_items?order_id=eq.${order.id}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({status:refund.status==='succeeded'?'refunded':'cancelled'})});
-  return deps.json({ok:true,status,refundStatus:refund.status});
+  return deps.json({ok:false,error:'Paid comic preorders are final and cannot be cancelled online. Contact the store only if an exceptional correction is needed.'},409);
 }
 
 // preorderCheckout() only ever creates a brand-new order + PaymentIntent --
@@ -842,7 +858,9 @@ async function adminOrders(request,env,deps,url){
   const auth=await deps.requireStoreUser(request,env,storeId,['owner','admin','manager','employee']);if(auth.error)return auth.error;
   const db=(path,options)=>deps.supabaseAdminFetch(env,path,options);
   if(request.method==='GET'){
-    const {data:orders}=await db(`foc_preorder_orders?store_id=eq.${encodeURIComponent(storeId)}&select=*,cycle:foc_cycles(id,foc_date,customer_cutoff_at,status)&order=created_at.desc&limit=200`);
+    let {data:orders}=await db(`foc_preorder_orders?store_id=eq.${encodeURIComponent(storeId)}&select=*,cycle:foc_cycles(id,foc_date,customer_cutoff_at,status)&order=created_at.desc&limit=200`);
+    await reconcilePendingFocOrders(env,deps,orders,20);
+    ({data:orders}=await db(`foc_preorder_orders?store_id=eq.${encodeURIComponent(storeId)}&select=*,cycle:foc_cycles(id,foc_date,customer_cutoff_at,status)&order=created_at.desc&limit=200`));
     const ids=(orders||[]).map(order=>order.id);let items=[];
     if(ids.length){({data:items}=await db(`foc_preorder_items?order_id=${inFilter(ids)}&select=*,sku:comic_skus(id,title,variant_label,cover_artist,cover_image_url,on_sale_date,upc)`));}
     return deps.json({ok:true,orders:(orders||[]).map(order=>({...order,items:(items||[]).filter(item=>item.order_id===order.id)}))});
@@ -950,19 +968,20 @@ export function focOrderConfirmationEmail(order, items) {
   const lines = (items || []).map(item => {
     const snap = item.sku_snapshot || {};
     const label = [snap.title, snap.variantLabel && snap.variantLabel !== 'Cover A' ? snap.variantLabel : ''].filter(Boolean).join(' -- ');
-    return `  ${item.quantity} x ${label}  ($${(Number(item.unit_price_cents || 0) / 100).toFixed(2)} each)`;
+    const release=snap.onSaleDate?` -- releases ${snap.onSaleDate}`:'';
+    return `  ${item.quantity} x ${label}  ($${(Number(item.unit_price_cents || 0) / 100).toFixed(2)} each)${release}`;
   }).join('\n');
   const fulfillmentLine = order.fulfillment_method === 'shipping'
     ? `Shipping to: ${[order.shipping_address?.line1 || order.shipping_address?.street1, order.shipping_address?.line2 || order.shipping_address?.street2, order.shipping_address?.city, order.shipping_address?.state, order.shipping_address?.zip || order.shipping_address?.postal_code].filter(Boolean).join(', ')}`
     : 'Pickup in store';
-  const body = `Thanks for your PRH FOC preorder, ${order.customer_name || ''}!\n\n`
+  const body = `Thanks for your comic preorder, ${order.customer_name || ''}!\n\n`
     + `Order ${order.order_number}\n\n${lines}\n\n`
     + `Subtotal: $${(Number(order.subtotal_cents || 0) / 100).toFixed(2)}\n`
     + (order.shipping_cents ? `Shipping: $${(Number(order.shipping_cents) / 100).toFixed(2)}\n` : '')
     + `Total charged: $${(Number(order.total_cents || 0) / 100).toFixed(2)}\n\n`
     + `${fulfillmentLine}\n\n`
     + `We'll be in touch when your comics arrive.`;
-  return { subject:`Your FOC preorder ${order.order_number} is confirmed`, body };
+  return { subject:`Your comic preorder ${order.order_number} is confirmed`, body };
 }
 
 async function recordPaidFocSale(env, order, paymentIntent, deps) {
@@ -1004,6 +1023,15 @@ export async function syncFocStripeEvent(env, event, deps) {
   const guard = status==='paid' ? '&status=neq.paid' : '';
   const { data:updated } = await deps.supabaseAdminFetch(env,`foc_preorder_orders?id=eq.${encodeURIComponent(orderId)}&stripe_payment_intent_id=eq.${encodeURIComponent(object.id)}${guard}`,{method:'PATCH',headers:{Prefer:'return=representation'},body:JSON.stringify(patch)});
   const order = updated?.[0];
+  if(status==='paid'&&order){
+    await deps.supabaseAdminFetch(env,`foc_preorder_items?order_id=eq.${encodeURIComponent(orderId)}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({status:'committed'})});
+    const skuIds=[...new Set((paidItems||[]).map(item=>item.sku_id).filter(Boolean))];
+    if(skuIds.length&&order.user_id){
+      const {data:lists}=await deps.supabaseAdminFetch(env,`foc_pick_lists?store_id=eq.${encodeURIComponent(order.store_id)}&user_id=eq.${encodeURIComponent(order.user_id)}&select=id`);
+      const listIds=(lists||[]).map(list=>list.id);
+      if(listIds.length)await deps.supabaseAdminFetch(env,`foc_pick_list_items?pick_list_id=${inFilter(listIds)}&sku_id=${inFilter(skuIds)}`,{method:'DELETE',headers:{Prefer:'return=minimal'}});
+    }
+  }
   if (status==='paid' && order?.customer_email && typeof deps.sendEmail === 'function') {
     try {
       const items=paidItems.length?paidItems:(await deps.supabaseAdminFetch(env,`foc_preorder_items?order_id=eq.${encodeURIComponent(orderId)}&select=quantity,unit_price_cents,sku_snapshot`)).data;

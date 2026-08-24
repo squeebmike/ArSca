@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { parse } from 'csv-parse/sync';
-import { normalizePrhRow, loadAllCatalogs, loadCycleSummaries, focOrderConfirmationEmail, syncFocStripeEvent, handleFocRequest } from '../scripts/foc-preorders.mjs';
+import { normalizePrhRow, loadAllCatalogs, loadCycleSummaries, focOrderConfirmationEmail, reconcileFocOrderPayment, syncFocStripeEvent, handleFocRequest } from '../scripts/foc-preorders.mjs';
 
 const worker = fs.readFileSync('cloudflare-worker-full.js', 'utf8');
 const service = fs.readFileSync('scripts/foc-preorders.mjs', 'utf8');
@@ -227,6 +227,7 @@ console.log('FOC order-confirmation-email contract checks passed');
         return { data:[mockOrder] };
       }
       if (path.startsWith('foc_preorder_items?')) return { data:mockItems };
+      if (path.startsWith('foc_pick_lists?')) return { data:[] };
       if (/^pos_(sales|sale_lines|payments)\?on_conflict=id$/.test(path)) { ledgerWrites.push({path,body:JSON.parse(options.body)}); return { data:[] }; }
       throw new Error('unexpected db call: ' + path);
     };
@@ -286,6 +287,26 @@ console.log('FOC order-confirmation-email contract checks passed');
 }
 
 console.log('FOC order-confirmation-email functional checks passed');
+
+// A completed Stripe charge must be recoverable even if the webhook never
+// arrives. The recovery path verifies identity, store, currency, and amount
+// before it is allowed to reuse the normal paid-event transition.
+{
+  const order={id:'order-reconcile',store_id:'store1',status:'payment_pending',stripe_mode:'live',stripe_payment_intent_id:'pi_reconcile',currency:'usd',total_cents:3395};
+  const stripeApi=async()=>({id:'pi_reconcile',status:'succeeded',currency:'usd',amount:3395,metadata:{source:'foc_preorder',foc_order_id:'order-reconcile',arsca_store_id:'store1'}});
+  let paidPatch=false;
+  const db=async(env,path,options)=>{
+    if(path.startsWith('foc_preorder_orders?')&&!options)return{data:[]};
+    if(path.startsWith('foc_preorder_orders?')&&options?.method==='PATCH'){paidPatch=JSON.parse(options.body).status==='paid';return{data:[]};}
+    throw new Error('unexpected reconciliation db call: '+path);
+  };
+  const result=await reconcileFocOrderPayment({},order,{stripeApi,stripeMode:()=> 'live',supabaseAdminFetch:db});
+  assert.equal(result.status,'succeeded');
+  assert.equal(paidPatch,true,'a verified succeeded PaymentIntent must run the ordinary idempotent paid transition');
+  await assert.rejects(()=>reconcileFocOrderPayment({},order,{stripeApi:async()=>({...await stripeApi(),amount:999}),stripeMode:()=> 'live',supabaseAdminFetch:db}),/amount does not match/,'a mismatched Stripe amount must never repair an order');
+}
+
+console.log('FOC missed-webhook reconciliation checks passed');
 
 // On the store workstation, also validate the full supplied PRH export. CI
 // remains deterministic when that private distributor file is absent.
@@ -391,9 +412,11 @@ console.log('FOC receive-shipment functional checks passed');
 // payment_pending. There was no "resume" action at all: the pay button a
 // customer would expect on that order literally had nothing to call. ──
 assert.match(service, /if\(path==='\/public\/preorders\/resume'&&request\.method==='POST'\)return resumePreorderPayment\(request,env,deps\);/, 'a POST /public/preorders/resume route must exist so a payment_pending order is not a permanent dead end');
-assert.match(service, /canPay:deadlineOpen&&unpaid,canCancel:unpaid\|\|\(deadlineOpen/, 'My Preorders must distinguish payable orders from always-removable unpaid attempts');
+assert.match(service, /canPay:deadlineOpen&&unpaid,canCancel:unpaid/, 'My Preorders must distinguish payable orders from always-removable unpaid attempts');
 const cancelSrc = service.match(/async function cancelPreorder\(request, env, deps\) \{[\s\S]*?\n\}/)[0];
-assert.ok(cancelSrc.indexOf("if(order.status==='payment_pending'||order.status==='payment_failed')") < cancelSrc.indexOf("if(new Date(order.cycle?.customer_cutoff_at).getTime()<=Date.now())"), 'an unpaid attempt must remain cancellable after FOC closes; there is no captured payment or distributor quantity to preserve');
+assert.match(cancelSrc,/if\(order\.status==='payment_pending'\|\|order\.status==='payment_failed'\)/,'an unpaid attempt must remain removable after FOC closes; there is no captured payment or distributor quantity to preserve');
+assert.doesNotMatch(cancelSrc,/requested_by_customer|stripeApi\(env[^\n]*'refunds'/,'a paid comic preorder must never expose an automatic customer cancellation or refund path');
+assert.match(cancelSrc,/Paid comic preorders are final and cannot be cancelled online/,'paid orders must clearly explain the final-sale policy');
 assert.match(service, /const RESUMABLE_INTENT_STATUSES = new Set\(\['requires_payment_method','requires_confirmation','requires_action'\]\);/, 'must only reuse an existing PaymentIntent Stripe still considers payable, never one already succeeded/canceled');
 const resumeSrc = service.match(/async function resumePreorderPayment\(request, env, deps\) \{[\s\S]*?\n\}/)[0];
 assert.match(resumeSrc, /user_id=eq\.\$\{encodeURIComponent\(auth\.user\.id\)\}/, 'must scope the order lookup to the authenticated user -- one customer must never be able to resume another\'s order by guessing an orderId');
