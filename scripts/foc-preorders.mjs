@@ -591,7 +591,11 @@ async function myPreorders(request, env, deps, url) {
   const {data:orders}=await db(`foc_preorder_orders?store_id=eq.${encodeURIComponent(storeId)}&user_id=eq.${encodeURIComponent(auth.user.id)}&status=${inFilter([...CUSTOMER_STATUSES,'payment_pending','payment_failed'])}&select=*,cycle:foc_cycles(customer_cutoff_at)&order=created_at.desc&limit=200`);
   const ids=(orders||[]).map(order=>order.id);let items=[];
   if(ids.length){({data:items}=await db(`foc_preorder_items?order_id=${inFilter(ids)}&select=*,sku:comic_skus(id,title,variant_label,cover_artist,cover_image_url,on_sale_date,upc)`));}
-  const grouped=(orders||[]).map(order=>({...order,items:(items||[]).filter(item=>item.order_id===order.id),canCancel:new Date(order.cycle?.customer_cutoff_at||0).getTime()>Date.now()&&!['cancelled','refunded','shipped','completed'].includes(order.status)}));
+  const grouped=(orders||[]).map(order=>{
+    const deadlineOpen=new Date(order.cycle?.customer_cutoff_at||0).getTime()>Date.now();
+    const unpaid=['payment_pending','payment_failed'].includes(order.status);
+    return {...order,items:(items||[]).filter(item=>item.order_id===order.id),canPay:deadlineOpen&&unpaid,canCancel:unpaid||(deadlineOpen&&!['cancelled','refunded','shipped','completed'].includes(order.status))};
+  });
   return deps.json({ok:true,orders:grouped,picks:await loadSavedPicks(db,storeId,auth.user.id)});
 }
 
@@ -601,13 +605,13 @@ async function cancelPreorder(request, env, deps) {
   const orderId=text(limited.data?.orderId,80);const db=(path,options)=>deps.supabaseAdminFetch(env,path,options);
   const {data:orders}=await db(`foc_preorder_orders?id=eq.${encodeURIComponent(orderId)}&user_id=eq.${encodeURIComponent(auth.user.id)}&select=*,cycle:foc_cycles(customer_cutoff_at)&limit=1`);
   const order=orders?.[0];if(!order)return deps.json({ok:false,error:'Preorder not found'},404);
-  if(new Date(order.cycle?.customer_cutoff_at).getTime()<=Date.now())return deps.json({ok:false,error:'This FOC is closed. Contact the store about distributor cancellation options.'},409);
   if(['cancelled','refunded'].includes(order.status))return deps.json({ok:true,status:order.status});
   if(order.status==='payment_pending'||order.status==='payment_failed'){
     if(order.stripe_payment_intent_id)await deps.stripeApi(env,order.stripe_mode||deps.stripeMode(env),`payment_intents/${encodeURIComponent(order.stripe_payment_intent_id)}/cancel`,{method:'POST',params:new URLSearchParams()}).catch(()=>{});
     await db(`foc_preorder_orders?id=eq.${order.id}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({status:'cancelled',cancelled_at:new Date().toISOString()})});
     return deps.json({ok:true,status:'cancelled'});
   }
+  if(new Date(order.cycle?.customer_cutoff_at).getTime()<=Date.now())return deps.json({ok:false,error:'This FOC is closed. Contact the store about distributor cancellation options.'},409);
   if(!order.stripe_payment_intent_id)return deps.json({ok:false,error:'No payment was found to refund'},409);
   const refund=await deps.stripeApi(env,order.stripe_mode||deps.stripeMode(env),'refunds',{method:'POST',params:new URLSearchParams({payment_intent:order.stripe_payment_intent_id,reason:'requested_by_customer'}),idempotencyKey:`arsca-foc-refund-${order.id}`});
   const status=refund.status==='succeeded'?'refunded':'cancelled';

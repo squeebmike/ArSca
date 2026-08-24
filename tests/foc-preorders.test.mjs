@@ -355,6 +355,9 @@ console.log('FOC receive-shipment functional checks passed');
 // payment_pending. There was no "resume" action at all: the pay button a
 // customer would expect on that order literally had nothing to call. ──
 assert.match(service, /if\(path==='\/public\/preorders\/resume'&&request\.method==='POST'\)return resumePreorderPayment\(request,env,deps\);/, 'a POST /public/preorders/resume route must exist so a payment_pending order is not a permanent dead end');
+assert.match(service, /canPay:deadlineOpen&&unpaid,canCancel:unpaid\|\|\(deadlineOpen/, 'My Preorders must distinguish payable orders from always-removable unpaid attempts');
+const cancelSrc = service.match(/async function cancelPreorder\(request, env, deps\) \{[\s\S]*?\n\}/)[0];
+assert.ok(cancelSrc.indexOf("if(order.status==='payment_pending'||order.status==='payment_failed')") < cancelSrc.indexOf("if(new Date(order.cycle?.customer_cutoff_at).getTime()<=Date.now())"), 'an unpaid attempt must remain cancellable after FOC closes; there is no captured payment or distributor quantity to preserve');
 assert.match(service, /const RESUMABLE_INTENT_STATUSES = new Set\(\['requires_payment_method','requires_confirmation','requires_action'\]\);/, 'must only reuse an existing PaymentIntent Stripe still considers payable, never one already succeeded/canceled');
 const resumeSrc = service.match(/async function resumePreorderPayment\(request, env, deps\) \{[\s\S]*?\n\}/)[0];
 assert.match(resumeSrc, /user_id=eq\.\$\{encodeURIComponent\(auth\.user\.id\)\}/, 'must scope the order lookup to the authenticated user -- one customer must never be able to resume another\'s order by guessing an orderId');
