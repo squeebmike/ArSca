@@ -54,6 +54,8 @@ assert.match(service, /ShippoToken/);
 assert.match(service, /waitlist-only until the store secures more copies/);
 assert.match(service, /path==='\/public\/preorders\/picks'&&request\.method==='GET'/, 'signed-in collectors must be able to reopen unpaid comic pulls');
 assert.match(service, /path==='\/public\/preorders\/picks'&&request\.method==='PUT'/, 'comic pulls must be saved before payment instead of living only in one browser');
+assert.match(service, /request\.method==='PATCH'\|\|request\.method==='DELETE'/, 'saved pulls need item-level save/remove operations independent from the cart');
+assert.match(service, /user_id=eq\.\$\{encodeURIComponent\(auth\.user\.id\)\}/, 'saved-pull mutations must remain scoped to the authenticated collector');
 assert.match(service, /await loadSavedPicks\(db,storeId,auth\.user\.id\)/, 'the account preorder response must include saved unpaid pulls separately from purchased orders');
 assert.match(service, /p\.isIncentive \|\| p\.flags\.foil/, 'new foils and ratio incentives must import without a guessed selling price');
 assert.match(service, /hadCustomPrice/, 'staff selling-price overrides must survive PRH re-imports');
@@ -392,8 +394,8 @@ console.log('FOC resume-payment contract checks passed');
 // ── Functional: drive resumePreorderPayment through handleFocRequest with a
 // fully mocked deps, covering the scenarios that actually matter for a
 // customer stuck on a dead-end order. ──
-function mockRequest(body) {
-  return { method:'POST', headers:{ get:() => null }, json:async () => body };
+function mockRequest(body, method = 'POST') {
+  return { method, headers:{ get:() => null }, json:async () => body };
 }
 function mockDeps(overrides = {}) {
   return {
@@ -474,3 +476,38 @@ const closedCycle = { status:'open', customer_cutoff_at:new Date(Date.now() - 36
 }
 
 console.log('FOC resume-payment functional checks passed');
+
+// Saved pulls are a durable curated list now, not a projection of whatever
+// happens to be in one browser's cart. PATCH upserts one exact cover; DELETE
+// removes only explicitly selected SKUs owned by the signed-in collector.
+{
+  const calls=[];
+  const deps=mockDeps({
+    supabaseAdminFetch:async (env,path,options={})=>{
+      calls.push({path,options});
+      if(path.startsWith('comic_skus?'))return{data:[{id:'11111111-1111-4111-8111-111111111111',cycle_id:'22222222-2222-4222-8222-222222222222',cycle:openCycle}]};
+      if(path.startsWith('foc_pick_lists?')&&path.includes('cycle_id=eq.'))return{data:[{id:'33333333-3333-4333-8333-333333333333'}]};
+      return{data:[]};
+    },
+  });
+  const res=await handleFocRequest(mockRequest({storeId:'44444444-4444-4444-8444-444444444444',skuId:'11111111-1111-4111-8111-111111111111',quantity:2},'PATCH'),{},new URL('https://x/public/preorders/picks'),deps);
+  assert.equal(res.status,200);
+  const upsert=calls.find(call=>call.path.startsWith('foc_pick_list_items?on_conflict='));
+  assert.ok(upsert,'PATCH must upsert one saved exact cover instead of replacing the collector\'s whole list');
+  assert.equal(JSON.parse(upsert.options.body).quantity,2);
+  assert.match(upsert.options.headers.Prefer,/merge-duplicates/);
+}
+
+{
+  const calls=[];
+  const deps=mockDeps({supabaseAdminFetch:async (env,path,options={})=>{calls.push({path,options});if(path.startsWith('foc_pick_lists?'))return{data:[{id:'33333333-3333-4333-8333-333333333333'}]};return{data:[]};}});
+  const skuId='11111111-1111-4111-8111-111111111111';
+  const res=await handleFocRequest(mockRequest({storeId:'44444444-4444-4444-8444-444444444444',skuIds:[skuId]},'DELETE'),{},new URL('https://x/public/preorders/picks'),deps);
+  assert.equal(res.status,200);
+  const deletion=calls.find(call=>call.options.method==='DELETE');
+  assert.ok(deletion,'DELETE must issue an item-level removal');
+  assert.match(deletion.path,/pick_list_id=in\./,'removal must be constrained to lists owned by the authenticated collector');
+  assert.match(deletion.path,new RegExp(skuId),'removal must target only the requested exact cover');
+}
+
+console.log('Durable saved-pull mutation checks passed');

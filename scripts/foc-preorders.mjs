@@ -607,6 +607,34 @@ async function savePicks(request, env, deps) {
   return deps.json({ok:true,picks:await loadSavedPicks(db,storeId,auth.user.id),message:'Your comic pulls are saved. Add more anytime, then pay before each FOC deadline.'});
 }
 
+async function mutateSavedPicks(request, env, deps) {
+  const auth=await deps.requireAuthenticatedUser(request,env);if(auth.error)return auth.error;
+  const limited=await deps.readJsonWithLimit(request,16*1024);if(limited.error)return limited.error;
+  const body=limited.data||{},storeId=text(body.storeId,80);
+  const requestedIds=Array.isArray(body.skuIds)?body.skuIds:[body.skuId];
+  const skuIds=[...new Set(requestedIds.map(id=>text(id,80)).filter(Boolean))].slice(0,200);
+  if(!storeId)return deps.json({ok:false,error:'storeId is required'},400);
+  if(!skuIds.length||skuIds.some(id=>!/^[0-9a-f-]{36}$/i.test(id)))return deps.json({ok:false,error:'At least one valid exact-cover SKU is required'},400);
+  const db=(path,options)=>deps.supabaseAdminFetch(env,path,options);
+  if(request.method==='DELETE'){
+    const {data:lists}=await db(`foc_pick_lists?store_id=eq.${encodeURIComponent(storeId)}&user_id=eq.${encodeURIComponent(auth.user.id)}&select=id`);
+    const listIds=(lists||[]).map(list=>list.id);
+    if(listIds.length)await db(`foc_pick_list_items?pick_list_id=${inFilter(listIds)}&sku_id=${inFilter(skuIds)}`,{method:'DELETE',headers:{Prefer:'return=minimal'}});
+    return deps.json({ok:true,picks:await loadSavedPicks(db,storeId,auth.user.id),message:skuIds.length===1?'Comic removed from your saved pulls.':'Paid comics removed from your saved pulls.'});
+  }
+  if(skuIds.length!==1)return deps.json({ok:false,error:'Save one exact cover at a time'},400);
+  const quantity=Math.max(1,Math.min(50,Number(body.quantity||1))),skuId=skuIds[0];
+  const {data:skus}=await db(`comic_skus?id=eq.${encodeURIComponent(skuId)}&store_id=eq.${encodeURIComponent(storeId)}&customer_enabled=eq.true&select=id,cycle_id,cycle:foc_cycles(id,status,customer_cutoff_at)&limit=1`);
+  const sku=skus?.[0];if(!sku)return deps.json({ok:false,error:'That exact cover is no longer available'},404);
+  if(!cycleOpen(sku.cycle))return deps.json({ok:false,error:'That FOC week is already closed'},409);
+  const {data:lists}=await db(`foc_pick_lists?store_id=eq.${encodeURIComponent(storeId)}&user_id=eq.${encodeURIComponent(auth.user.id)}&cycle_id=eq.${encodeURIComponent(sku.cycle_id)}&select=id&limit=1`);
+  let list=lists?.[0];
+  if(!list){const {data:created}=await db('foc_pick_lists',{method:'POST',headers:{Prefer:'return=representation'},body:JSON.stringify({store_id:storeId,cycle_id:sku.cycle_id,user_id:auth.user.id,name:'My Comic Pulls'})});list=created?.[0];}
+  if(!list?.id)return deps.json({ok:false,error:'Your comic pull could not be saved'},502);
+  await db('foc_pick_list_items?on_conflict=pick_list_id,sku_id',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify({pick_list_id:list.id,sku_id:skuId,quantity})});
+  return deps.json({ok:true,picks:await loadSavedPicks(db,storeId,auth.user.id),message:'Comic saved to My Pocket. Cart changes will not remove it.'});
+}
+
 async function myPreorders(request, env, deps, url) {
   const auth=await deps.requireAuthenticatedUser(request,env);if(auth.error)return auth.error;
   const storeId=text(url.searchParams.get('store_id'),80);const db=(path,options)=>deps.supabaseAdminFetch(env,path,options);
@@ -862,6 +890,7 @@ export async function handleFocRequest(request, env, url, deps) {
   if(path==='/public/preorders/checkout'&&request.method==='POST')return preorderCheckout(request,env,deps);
   if(path==='/public/preorders/picks'&&request.method==='GET')return savedPicks(request,env,deps,url);
   if(path==='/public/preorders/picks'&&request.method==='PUT')return savePicks(request,env,deps);
+  if(path==='/public/preorders/picks'&&(request.method==='PATCH'||request.method==='DELETE'))return mutateSavedPicks(request,env,deps);
   if(path==='/public/preorders/waitlist'&&request.method==='POST')return waitlist(request,env,deps);
   if(path==='/public/preorders/my'&&request.method==='GET')return myPreorders(request,env,deps,url);
   if(path==='/public/preorders/cancel'&&request.method==='POST')return cancelPreorder(request,env,deps);
