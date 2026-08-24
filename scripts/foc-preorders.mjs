@@ -264,6 +264,7 @@ async function buildCycleCatalog(db, cycle, includeAdmin = false) {
 
 async function loadCatalog(db, storeId, requestedCycle, includeAdmin = false) {
   let cycleQuery = `foc_cycles?store_id=eq.${encodeURIComponent(storeId)}&select=${catalogCycleSelect()}`;
+  if (!includeAdmin) cycleQuery += '&status=neq.archived';
   if (requestedCycle) {
     const key = text(requestedCycle, 80);
     cycleQuery += /^\d{4}-\d{2}-\d{2}$/.test(key) ? `&foc_date=eq.${key}` : `&id=eq.${encodeURIComponent(key)}`;
@@ -289,7 +290,28 @@ async function loadCatalog(db, storeId, requestedCycle, includeAdmin = false) {
 export async function loadAllCatalogs(db, storeId, includeAdmin = false) {
   const { data:cycles } = await db(`foc_cycles?store_id=eq.${encodeURIComponent(storeId)}&select=${catalogCycleSelect()}&status=neq.archived&order=foc_date.desc&limit=26`);
   if (!cycles?.length) return [];
-  return Promise.all(cycles.map(cycle => buildCycleCatalog(db, cycle, includeAdmin)));
+  const sorted = cycles.slice().sort(compareCyclesForCustomer);
+  return Promise.all(sorted.map(cycle => buildCycleCatalog(db, cycle, includeAdmin)));
+}
+
+// The customer page only needs this small index on first paint. Individual
+// catalogs are fetched from /public/preorders?cycle=<id> when the visitor
+// opens a week, preventing several megabytes of historical covers from being
+// assembled and downloaded before the first useful FOC is visible.
+export async function loadCycleSummaries(db, storeId) {
+  const { data:cycles } = await db(`foc_cycles?store_id=eq.${encodeURIComponent(storeId)}&select=${catalogCycleSelect()}&status=neq.archived&order=foc_date.desc&limit=26`);
+  return (cycles || []).slice().sort(compareCyclesForCustomer).map(cycle => ({
+    ...cycle,
+    isOpen:cycleOpen(cycle),
+    serverNow:new Date().toISOString(),
+  }));
+}
+
+function compareCyclesForCustomer(a, b) {
+  const aOpen=cycleOpen(a),bOpen=cycleOpen(b);
+  if(aOpen!==bOpen)return aOpen?-1:1;
+  const aCutoff=new Date(a.customer_cutoff_at).getTime()||0,bCutoff=new Date(b.customer_cutoff_at).getTime()||0;
+  return aOpen?aCutoff-bCutoff:bCutoff-aCutoff;
 }
 
 async function importPrh(request, env, deps, storeId) {
@@ -677,7 +699,7 @@ async function adminCycle(request,env,deps,url){
   if(request.method==='GET'){
     const cycleId=text(url.searchParams.get('cycle_id'),80);
     if(cycleId){const catalog=await loadCatalog(db,storeId,cycleId,true);return catalog?deps.json({ok:true,...catalog}):deps.json({ok:false,error:'FOC cycle not found'},404);}
-    const {data:cycles}=await db(`foc_cycles?store_id=eq.${encodeURIComponent(storeId)}&select=${catalogCycleSelect()}&order=foc_date.desc&limit=100`);return deps.json({ok:true,cycles:cycles||[]});
+    const {data:cycles}=await db(`foc_cycles?store_id=eq.${encodeURIComponent(storeId)}&select=${catalogCycleSelect()}&order=foc_date.desc&limit=100`);return deps.json({ok:true,cycles:(cycles||[]).map(cycle=>({...cycle,isOpen:cycleOpen(cycle)}))});
   }
   const limited=await deps.readJsonWithLimit(request,32*1024);if(limited.error)return limited.error;const body=limited.data||{};
   const cycleId=text(body.cycleId,80);if(!cycleId)return deps.json({ok:false,error:'cycleId is required'},400);
@@ -833,7 +855,9 @@ export async function handleFocRequest(request, env, url, deps) {
     const storeId=text(url.searchParams.get('store_id'),80);const db=(p,o)=>deps.supabaseAdminFetch(env,p,o);const catalog=await loadCatalog(db,storeId,url.searchParams.get('cycle')||'',false);return catalog?deps.json({ok:true,...catalog}):deps.json({ok:false,error:'No FOC catalog is published yet'},404);
   }
   if(path==='/public/preorders/weeks'&&request.method==='GET'){
-    const storeId=text(url.searchParams.get('store_id'),80);const db=(p,o)=>deps.supabaseAdminFetch(env,p,o);const cycles=await loadAllCatalogs(db,storeId,false);return deps.json({ok:true,cycles});
+    const storeId=text(url.searchParams.get('store_id'),80);const db=(p,o)=>deps.supabaseAdminFetch(env,p,o);
+    if(url.searchParams.get('summary')==='1'){const cycles=await loadCycleSummaries(db,storeId);return deps.json({ok:true,cycles});}
+    const cycles=await loadAllCatalogs(db,storeId,false);return deps.json({ok:true,cycles});
   }
   if(path==='/public/preorders/checkout'&&request.method==='POST')return preorderCheckout(request,env,deps);
   if(path==='/public/preorders/picks'&&request.method==='GET')return savedPicks(request,env,deps,url);

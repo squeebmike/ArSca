@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { parse } from 'csv-parse/sync';
-import { normalizePrhRow, loadAllCatalogs, focOrderConfirmationEmail, syncFocStripeEvent, handleFocRequest } from '../scripts/foc-preorders.mjs';
+import { normalizePrhRow, loadAllCatalogs, loadCycleSummaries, focOrderConfirmationEmail, syncFocStripeEvent, handleFocRequest } from '../scripts/foc-preorders.mjs';
 
 const worker = fs.readFileSync('cloudflare-worker-full.js', 'utf8');
 const service = fs.readFileSync('scripts/foc-preorders.mjs', 'utf8');
@@ -60,6 +60,10 @@ assert.match(service, /hadCustomPrice/, 'staff selling-price overrides must surv
 assert.match(service, /customer_price_cents \|\| 0/, 'checkout must never fall back from an unset selling price to distributor MSRP');
 assert.match(service, /metadata\[source\].*foc_preorder/s);
 assert.match(dashboard, /THE FOC WALL/i);
+assert.match(dashboard, /LOCK ORDERS/);
+assert.match(dashboard, /UNLOCK ORDERS/);
+assert.match(dashboard, /HIDE FROM SITE/);
+assert.match(dashboard, /SHOW ON SITE \(LOCKED\)/);
 
 // ── Bug: a real PRH FOC metadata CSV import failed with "289 row(s) are
 // missing an exact identifier, title, or FOC date" -- on EVERY row, despite
@@ -112,6 +116,8 @@ assert.match(service, /status=neq\.archived&order=foc_date\.desc&limit=26/, 'loa
 assert.match(worker, /handleFocRequest/, 'sanity: the worker still wires up the FOC route handler');
 assert.match(service, /if\(path==='\/public\/preorders\/weeks'&&request\.method==='GET'\)\{/, 'a public route to list every FOC week must exist alongside the existing single-week /public/preorders route');
 assert.match(service, /const cycles=await loadAllCatalogs\(db,storeId,false\);return deps\.json\(\{ok:true,cycles\}\);/, 'the weeks route must return every open/closed cycle\'s catalog, not just the newest');
+assert.match(service, /url\.searchParams\.get\('summary'\)==='1'/, 'the first customer request must support a metadata-only cycle index instead of returning every cover catalog');
+assert.match(service, /if \(!includeAdmin\) cycleQuery \+= '&status=neq\.archived'/, 'a hidden FOC must not be reachable through the public single-cycle route');
 
 console.log('Multi-week FOC public route contract checks passed');
 
@@ -153,6 +159,22 @@ console.log('Multi-week FOC public route contract checks passed');
 }
 
 console.log('loadAllCatalogs multi-week functional checks passed');
+
+// The lightweight index must not build any title/SKU catalogs, and must
+// place orderable cycles first with expired history at the bottom.
+{
+  const active = { id:'active', store_id:'store1', foc_date:'2099-09-07', customer_cutoff_at:'2099-09-07T07:01:00Z', status:'open' };
+  const expired = { id:'expired', store_id:'store1', foc_date:'2020-08-24', customer_cutoff_at:'2020-08-24T07:01:00Z', status:'open' };
+  let calls=0;
+  const db=async path=>{calls++;assert.match(path,/^foc_cycles\?/);return{data:[expired,active]};};
+  const summaries=await loadCycleSummaries(db,'store1');
+  assert.equal(calls,1,'cycle summaries must use one small cycle-table query only');
+  assert.deepEqual(summaries.map(c=>c.id),['active','expired'],'active FOCs must precede expired history');
+  assert.equal(summaries[0].isOpen,true);
+  assert.equal(summaries[1].isOpen,false);
+}
+
+console.log('FOC summary ordering and incremental-load contract checks passed');
 
 // ── Bug: placing a FOC preorder and paying for it never sent the customer
 // any confirmation -- checkout only set up the Stripe payment and wrote
