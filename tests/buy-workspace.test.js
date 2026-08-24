@@ -43,4 +43,18 @@ assert.match(html, /image_url:item\.img \|\| item\.image/, 'Checkout snapshot mu
 assert.match(html, /function rollbackSpreadsheetImport\(/, 'Device CSV imports must be rollback-capable');
 assert.match(html, /value="skip">Skip duplicates/, 'CSV import must default to safe duplicate handling');
 
+// The Offer % stat sits next to Market Value/Your Offer/Profit Spread as if
+// it's a fourth fact about the same tray total -- but it used to just echo
+// the raw slider position, which any item with a manual per-item cashOffer
+// override (buyItemOfferValue) ignores. That let it show e.g. 100% while
+// Your Offer/Profit Spread reflected a lower blended rate, looking like
+// broken math (confirmed live: $91.25 market, "100%", but an $82 offer).
+{
+  const renderBuyListFn = html.slice(html.indexOf('function renderBuyList(){'), html.indexOf('\nfunction printBuyOffer('));
+  assert.ok(renderBuyListFn, 'renderBuyList function was not found');
+  assert.match(renderBuyListFn, /pctLbl\.textContent = Math\.round\(\(totalMkt > 0 \? \(offer \/ totalMkt\) : pct\) \* 100\) \+ '%';/, 'Offer % must show the EFFECTIVE blended rate (offer/totalMkt), not the raw slider target, so it always cross-multiplies with Market Value');
+  const updateBuyListOfferFn = html.slice(html.indexOf('function updateBuyListOffer(){'), html.indexOf('\nfunction setBuyOfferPct('));
+  assert.doesNotMatch(updateBuyListOfferFn, /lbl\.textContent = pct \+ '%';/, 'updateBuyListOffer must not still write the raw slider % onto bl-pct-lbl -- renderBuyList is the single owner of that stat now');
+}
+
 console.log('Buy workspace contract checks passed');
