@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.23.15-buy-offer-pct-effective-rate">
+<meta name="version" content="2026.08.24.01-receipt-sms-send">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1633,16 +1633,16 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.23.15-buy-offer-pct-effective-rate" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.23.15-buy-offer-pct-effective-rate" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.23.15-buy-offer-pct-effective-rate" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.08.23.15-buy-offer-pct-effective-rate" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.23.15-buy-offer-pct-effective-rate" defer></script>
-<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.08.23.15-buy-offer-pct-effective-rate" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.23.15-buy-offer-pct-effective-rate" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.23.15-buy-offer-pct-effective-rate" defer></script>
-<script src="scripts/pokemon/offline-browser.js?v=2026.08.23.15-buy-offer-pct-effective-rate" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.23.15-buy-offer-pct-effective-rate" defer></script>
+<script src="scripts/query-routing.js?v=2026.08.24.01-receipt-sms-send" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.24.01-receipt-sms-send" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.24.01-receipt-sms-send" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.08.24.01-receipt-sms-send" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.24.01-receipt-sms-send" defer></script>
+<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.08.24.01-receipt-sms-send" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.24.01-receipt-sms-send" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.24.01-receipt-sms-send" defer></script>
+<script src="scripts/pokemon/offline-browser.js?v=2026.08.24.01-receipt-sms-send" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.24.01-receipt-sms-send" defer></script>
 </head>
 <body>
 
@@ -1671,11 +1671,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.23.15-buy-offer-pct-effective-rate</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.24.01-receipt-sms-send</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.23.15-buy-offer-pct-effective-rate</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.24.01-receipt-sms-send</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1693,7 +1693,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.23.15-buy-offer-pct-effective-rate</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.24.01-receipt-sms-send</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3663,7 +3663,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.23.15-buy-offer-pct-effective-rate';
+const APP_VERSION = '2026.08.24.01-receipt-sms-send';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -40396,14 +40396,27 @@ function showReceiptCaptureScreen(){
   if(!el) return showWantsCaptureScreen();
   if(s.receipt?.captureEnabled === false) return showWantsCaptureScreen();
   const rate = getLoyaltyRate();
-  el.innerHTML = `<h2>Want a text receipt?</h2>${rate > 0 ? `<div style="font-family:var(--font-mono);font-size:11px;color:var(--gold);margin-bottom:6px">Also earns ${rate}% back in loyalty points</div>` : ''}<input id="receipt-phone" placeholder="Phone number"><div class="payment-confirm-row"><button class="hbtn" onclick="saveReceiptCapture()">SEND RECEIPT</button><button class="hbtn danger" onclick="showWantsCaptureScreen()">SKIP</button></div>`;
+  const storeName = getVendorProfile().storeName || 'this store';
+  // SMS-consent disclosure mirrors storefront.html's already-reviewed
+  // wording (message type/frequency, msg&data rates, STOP/HELP, Privacy/
+  // Terms links) for consistency with this store's registered Twilio A2P
+  // campaign -- unlike that checkbox, this one DOES gate the send, because
+  // sending the text IS the whole point of this screen, not an unrelated
+  // purchase it must never block (the sale is already complete by now).
+  el.innerHTML = `<h2>Want a text receipt?</h2>${rate > 0 ? `<div style="font-family:var(--font-mono);font-size:11px;color:var(--gold);margin-bottom:6px">Also earns ${rate}% back in loyalty points</div>` : ''}<input id="receipt-phone" placeholder="Phone number"><label style="display:flex;align-items:flex-start;gap:8px;font-size:11px;color:var(--dim);margin:8px 0"><input id="receipt-sms-consent" type="checkbox" style="margin-top:3px;flex-shrink:0">I agree to receive this purchase receipt and customer-care SMS/text messages from ${escHtml(storeName)} at the number above. Message frequency varies based on order activity. Msg &amp; data rates may apply. Reply STOP to opt out or HELP for help. Consent is not a condition of purchase. See our <a href="https://themanapocket.com/privacy-policy" target="_blank">Privacy Policy</a> and <a href="https://themanapocket.com/terms-and-conditions" target="_blank">Terms</a>.</label><div class="payment-confirm-row"><button class="hbtn" onclick="saveReceiptCapture()">SEND RECEIPT</button><button class="hbtn danger" onclick="showWantsCaptureScreen()">SKIP</button></div>`;
   el.classList.add('on');
 }
 
 async function saveReceiptCapture(){
   const phone = document.getElementById('receipt-phone')?.value.trim() || '';
+  const consented = document.getElementById('receipt-sms-consent')?.checked === true;
   if(phone && confirmedSaleContext && !getAccountContext().isDemo) {
-    const payload = { id:makeUuid('receipt'), store_id:getActiveStoreId(), sale_id:confirmedSaleContext.sale.id, phone, sms_status:'requested', created_at:new Date().toISOString() };
+    // sms_status used to always start (and silently stay) 'requested' -- this
+    // record was written and then NEVER read by anything, anywhere. Every
+    // customer who typed a phone number here got told "receipt sent" and
+    // received nothing. It's still written first (audit trail + offline
+    // resilience via enqueueSync below), but now actually gets dispatched.
+    const payload = { id:makeUuid('receipt'), store_id:getActiveStoreId(), sale_id:confirmedSaleContext.sale.id, phone, sms_status: consented ? 'requested' : 'skipped_no_consent', created_at:new Date().toISOString() };
     try {
       const sb = getSupabaseClient();
       if(!sb) throw new Error('Supabase unavailable');
@@ -40411,6 +40424,25 @@ async function saveReceiptCapture(){
       if(error) throw error;
     } catch(e) {
       enqueueSync('customer-receipt', 'Queued text receipt request', payload, e.message);
+    }
+    if(consented) {
+      // Fire-and-forget so checkout keeps moving -- reuses the existing
+      // generic /notify/send route (same SMS-consent/opt-out gating Want
+      // List back-in-stock alerts already send real texts through) instead
+      // of a bespoke receipt-send path. Patches the row's own sms_status
+      // back to what actually happened, since that field exists precisely
+      // to answer "did this receipt actually go out."
+      const storeName = getVendorProfile().storeName || 'this store';
+      const total = Number(confirmedSaleContext.sale.total || 0).toFixed(2);
+      const message = `Thanks for shopping at ${storeName}! Your receipt total: $${total}. Msg & data rates may apply. Reply STOP to opt out.`;
+      const markReceiptStatus = async status => { try { const sb = getSupabaseClient(); if(sb) await sb.from('customer_receipts').update({ sms_status:status }).eq('id', payload.id); } catch(_){} };
+      storeWorkerFetch('/notify/send', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ contact:phone, subject:'Your receipt', message, consent:true }) })
+        .then(async r => {
+          const d = await r.json().catch(() => ({}));
+          if(d?.ok) { markReceiptStatus('sent'); }
+          else { toast_dash('Could not text the receipt: ' + (d?.error || 'unknown error')); markReceiptStatus('failed'); }
+        })
+        .catch(() => { toast_dash('Could not text the receipt -- offline or unreachable'); markReceiptStatus('failed'); });
     }
     accrueLoyaltyForContact(phone, '', confirmedSaleContext.sale.id, confirmedSaleContext.sale.total);
   }
@@ -44607,7 +44639,7 @@ async function toppsLoadParallels(cardId){
   window.__arscaCloseModal = closeModal;
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.23.15-buy-offer-pct-effective-rate" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.24.01-receipt-sms-send" defer></script>
 </body>
 </html>
 
