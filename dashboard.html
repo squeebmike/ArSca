@@ -1917,6 +1917,22 @@ body.show-mode .inv-sync-badge{display:none;}
 <!-- ORDERS TAB -->
 <div id="tab-orders" class="tab-panel">
   <div class="sec">ORDERS</div>
+  <div class="panel" id="comic-preorder-orders-panel" style="margin-top:4px;margin-bottom:14px;border-color:rgba(199,125,255,.35)">
+    <div class="ph">COMIC PREORDER ORDERS <span id="foc-orders-count" style="font-size:9px;color:var(--dim)">open Orders to load</span></div>
+    <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);line-height:1.6;margin-bottom:10px">
+      Paid and unpaid FOC checkouts, exact books and covers, pickup or shipping details, address, and confirmation-email status.
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+      <select id="foc-orders-filter" class="tsi" style="width:auto;margin:0" onchange="renderFocPreorderOrdersFromCache()">
+        <option value="action">Needs attention</option><option value="all">All comic preorders</option><option value="payment_pending">Awaiting payment</option><option value="paid">Paid / waiting for books</option><option value="ready_for_pickup">Ready for pickup</option><option value="reserved">Ready to ship</option><option value="shipped">Shipped</option><option value="completed">Completed</option><option value="cancelled">Cancelled / refunded</option>
+      </select>
+      <button class="hbtn" onclick="renderFocPreorderOrders()">REFRESH COMIC ORDERS</button>
+      <button class="hbtn" onclick="switchTab('foc')">OPEN COMICS / FOC</button>
+    </div>
+    <div id="foc-orders-list" style="display:grid;gap:8px">
+      <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);padding:10px;border:1px dashed var(--border);border-radius:8px;text-align:center">Open this Orders tab to load comic preorders.</div>
+    </div>
+  </div>
 </div>
 
 <!-- ALERTS TAB -->
@@ -18405,6 +18421,7 @@ function switchTab(name, btn){
   if(name === 'pulllists') setTimeout(ensurePullListPanel, 0);
   if(name === 'grading') setTimeout(ensureGradingPanel, 0);
   if(name === 'foc') setTimeout(()=>window.ensureFocPanel?.(), 0);
+  if(name === 'orders') setTimeout(()=>{ renderFocPreorderOrders(); renderStorefrontOrders(); }, 0);
   if(name === 'phone') setTimeout(ensurePhonePanel, 0);
 }
 
@@ -21767,8 +21784,55 @@ window.fulfillStorefrontOrder = async function(orderId){
   }
 };
 
-setInterval(() => { if(shouldPollTab('pos')) renderStorefrontOrders(); }, 30000);
+setInterval(() => { if(shouldPollTab('orders')) renderStorefrontOrders(); }, 30000);
 renderStorefrontOrders();
+
+let focPreorderOrdersCache = [];
+const FOC_ORDER_ACTION_STATUSES = new Set(['payment_pending','payment_failed','paid','reserved','ready_for_pickup','shipped']);
+function focOrderStatusLabel(status){return String(status||'unknown').replaceAll('_',' ').toUpperCase();}
+function focOrderAddress(order){
+  const a=order.shipping_address||{};
+  return [a.line1||a.street1,a.line2||a.street2,[a.city,a.state,a.zip||a.postal_code].filter(Boolean).join(', ')].filter(Boolean);
+}
+function renderFocPreorderOrdersFromCache(){
+  const list=document.getElementById('foc-orders-list'),count=document.getElementById('foc-orders-count');if(!list)return;
+  const filter=document.getElementById('foc-orders-filter')?.value||'action';
+  let orders=[...focPreorderOrdersCache].sort((a,b)=>{
+    const action=(FOC_ORDER_ACTION_STATUSES.has(a.status)?0:1)-(FOC_ORDER_ACTION_STATUSES.has(b.status)?0:1);
+    return action||new Date(b.created_at||0)-new Date(a.created_at||0);
+  });
+  if(filter==='action')orders=orders.filter(o=>FOC_ORDER_ACTION_STATUSES.has(o.status));
+  else if(filter==='cancelled')orders=orders.filter(o=>['cancelled','refunded','partially_refunded'].includes(o.status));
+  else if(filter!=='all')orders=orders.filter(o=>o.status===filter);
+  const attention=focPreorderOrdersCache.filter(o=>FOC_ORDER_ACTION_STATUSES.has(o.status)).length;
+  if(count)count.textContent=(attention?attention+' need attention':'all caught up')+' · '+focPreorderOrdersCache.length+' total';
+  if(!orders.length){list.innerHTML='<div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);padding:10px;border:1px dashed var(--border);border-radius:8px;text-align:center">No comic preorders match this view.</div>';return;}
+  list.innerHTML=orders.map(order=>{
+    const items=(order.items||[]).map(item=>{const s=item.sku_snapshot||{},sku=item.sku||{},title=s.title||sku.title||'Comic',variant=s.variantLabel||sku.variant_label||'Cover A',image=s.coverImageUrl||sku.cover_image_url||'';return `<div style="display:grid;grid-template-columns:42px minmax(0,1fr) auto;gap:8px;align-items:center;padding:6px;border:1px solid var(--border);border-radius:7px;background:var(--bg)">${image?`<img src="${escHtml(image)}" alt="" loading="lazy" style="width:42px;height:58px;object-fit:contain;border-radius:4px;background:#050607">`:'<div style="width:42px;height:58px;display:grid;place-items:center;border:1px solid var(--border);border-radius:4px;color:var(--dim);font-size:8px">COVER</div>'}<div><b>${escHtml(title)}</b><div style="font:9px/1.5 var(--font-mono);color:var(--dim)">${escHtml(variant)}${(s.coverArtist||sku.cover_artist)?' · '+escHtml(s.coverArtist||sku.cover_artist):''}<br>UPC ${escHtml(s.upc||sku.upc||'—')}</div></div><b>${Number(item.quantity||0)}×</b></div>`;}).join('');
+    const address=focOrderAddress(order),paid=!['payment_pending','payment_failed','cancelled','refunded'].includes(order.status);
+    const emailBadge=order.confirmation_email_sent_at?'<span class="qpl-badge good">EMAIL SENT</span>':order.confirmation_email_error?'<span class="qpl-badge warn">EMAIL FAILED</span>':paid?'<span class="qpl-badge warn">EMAIL NOT RECORDED</span>':'<span class="qpl-badge">EMAIL AFTER PAYMENT</span>';
+    let action='';
+    if(order.status==='ready_for_pickup')action=`<button class="ra" onclick="updateFocOrderStatus('${order.id}','completed')">MARK PICKED UP</button>`;
+    else if(order.status==='reserved')action=`<button class="ra" onclick="updateFocOrderStatus('${order.id}','shipped')">MARK SHIPPED</button>`;
+    else if(order.status==='shipped')action=`<button class="ra" onclick="updateFocOrderStatus('${order.id}','completed')">MARK COMPLETE</button>`;
+    const resend=paid?`<button class="ra" onclick="resendFocOrderEmail('${order.id}')">${order.confirmation_email_sent_at?'RESEND':'SEND'} CONFIRMATION</button>`:'';
+    const pendingNote=['payment_pending','payment_failed'].includes(order.status)?'<div style="font:9px/1.5 var(--font-mono);color:var(--gold)">Payment has not succeeded. Do not order or fulfill these copies yet; no order confirmation email is sent until payment succeeds.</div>':'';
+    return `<article style="display:grid;gap:8px;background:var(--surf2);border:1px solid var(--border);border-radius:9px;padding:11px"><div style="display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap"><div><b style="font-family:var(--font-mono);color:var(--purple)">${escHtml(order.order_number)}</b><div style="font:9px/1.5 var(--font-mono);color:var(--dim)">FOC ${escHtml(order.cycle?.foc_date||'—')} · ${new Date(order.created_at).toLocaleString()}</div></div><div style="display:flex;gap:6px;flex-wrap:wrap"><span class="qpl-badge ${paid?'good':'warn'}">${focOrderStatusLabel(order.status)}</span>${emailBadge}</div></div><div style="font-size:12px;font-weight:800">${escHtml(order.customer_name||'Unnamed customer')} · ${escHtml(order.customer_email||'')}${order.customer_phone?' · '+escHtml(order.customer_phone):''}</div><div style="font:10px/1.55 var(--font-mono);color:var(--dim)">${order.fulfillment_method==='shipping'?'SHIP':'PICKUP'}${order.shipping_service?' · '+escHtml(order.shipping_service):''}${address.length?'<br>'+address.map(escHtml).join('<br>'):''}</div>${pendingNote}<div style="display:grid;gap:5px">${items||'<div style="color:var(--dim)">No book lines recorded.</div>'}</div><div style="display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap"><b>$${(Number(order.total_cents||0)/100).toFixed(2)} · ${(order.items||[]).reduce((n,i)=>n+Number(i.quantity||0),0)} book(s)</b><div style="display:flex;gap:6px;flex-wrap:wrap">${resend}${action}</div></div></article>`;
+  }).join('');
+}
+async function renderFocPreorderOrders(){
+  const list=document.getElementById('foc-orders-list'),count=document.getElementById('foc-orders-count');if(!list)return;
+  if(count)count.textContent='loading…';
+  try{const storeId=getActiveStoreId();const res=await storeWorkerFetch('/foc/admin/orders?store_id='+encodeURIComponent(storeId));const data=await res.json();if(!res.ok||!data.ok)throw new Error(data.error||'Comic preorder orders unavailable');focPreorderOrdersCache=data.orders||[];renderFocPreorderOrdersFromCache();}
+  catch(error){if(count)count.textContent='unavailable';list.innerHTML=`<div style="font-family:var(--font-mono);font-size:10px;color:var(--red);padding:10px;border:1px dashed var(--border);border-radius:8px;text-align:center">${escHtml(error.message)}</div>`;}
+}
+async function updateFocOrderStatus(orderId,status){
+  try{const res=await storeWorkerFetch('/foc/admin/orders',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({storeId:getActiveStoreId(),orderId,status})});const data=await res.json();if(!res.ok||!data.ok)throw new Error(data.error||'Could not update comic preorder');toast_dash('Comic preorder updated');renderFocPreorderOrders();}catch(error){toast_dash(error.message);}
+}
+async function resendFocOrderEmail(orderId){
+  try{const res=await storeWorkerFetch('/foc/admin/orders/email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({storeId:getActiveStoreId(),orderId})});const data=await res.json();if(!res.ok||!data.ok)throw new Error(data.error||'Could not send confirmation');toast_dash(data.message||'Confirmation email sent');renderFocPreorderOrders();}catch(error){toast_dash(error.message);}
+}
+setInterval(()=>{if(shouldPollTab('orders'))renderFocPreorderOrders();},30000);
 
 function toast_dash(msg, ms = 2500){
   const existing = document.getElementById('dash-toast');

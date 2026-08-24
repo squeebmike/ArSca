@@ -833,6 +833,52 @@ async function getShippingSettings(request,env,deps,url){
   return deps.json({ok:true,shipping});
 }
 
+async function adminOrders(request,env,deps,url){
+  let storeId=text(url.searchParams.get('store_id'),80),body=null;
+  if(request.method==='PATCH'){
+    const limited=await deps.readJsonWithLimit(request,16*1024);if(limited.error)return limited.error;
+    body=limited.data||{};storeId=text(body.storeId,80);
+  }
+  const auth=await deps.requireStoreUser(request,env,storeId,['owner','admin','manager','employee']);if(auth.error)return auth.error;
+  const db=(path,options)=>deps.supabaseAdminFetch(env,path,options);
+  if(request.method==='GET'){
+    const {data:orders}=await db(`foc_preorder_orders?store_id=eq.${encodeURIComponent(storeId)}&select=*,cycle:foc_cycles(id,foc_date,customer_cutoff_at,status)&order=created_at.desc&limit=200`);
+    const ids=(orders||[]).map(order=>order.id);let items=[];
+    if(ids.length){({data:items}=await db(`foc_preorder_items?order_id=${inFilter(ids)}&select=*,sku:comic_skus(id,title,variant_label,cover_artist,cover_image_url,on_sale_date,upc)`));}
+    return deps.json({ok:true,orders:(orders||[]).map(order=>({...order,items:(items||[]).filter(item=>item.order_id===order.id)}))});
+  }
+  const orderId=text(body.orderId,80),next=text(body.status,40);
+  const {data:orders}=await db(`foc_preorder_orders?id=eq.${encodeURIComponent(orderId)}&store_id=eq.${encodeURIComponent(storeId)}&select=id,status,fulfillment_method&limit=1`);
+  const order=orders?.[0];if(!order)return deps.json({ok:false,error:'Comic preorder not found'},404);
+  const allowed={ready_for_pickup:['completed'],reserved:['shipped'],shipped:['completed']};
+  if(!(allowed[order.status]||[]).includes(next))return deps.json({ok:false,error:`A ${order.status.replaceAll('_',' ')} preorder cannot be changed to ${next.replaceAll('_',' ')} here.`},409);
+  if(next==='shipped'&&order.fulfillment_method!=='shipping')return deps.json({ok:false,error:'Only shipping preorders can be marked shipped'},409);
+  const patch={status:next,fulfilled_at:new Date().toISOString()};
+  await db(`foc_preorder_orders?id=eq.${encodeURIComponent(order.id)}&store_id=eq.${encodeURIComponent(storeId)}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify(patch)});
+  await db(`foc_preorder_items?order_id=eq.${encodeURIComponent(order.id)}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({status:next})});
+  return deps.json({ok:true,status:next});
+}
+
+async function resendAdminOrderEmail(request,env,deps){
+  const limited=await deps.readJsonWithLimit(request,16*1024);if(limited.error)return limited.error;
+  const body=limited.data||{},storeId=text(body.storeId,80),orderId=text(body.orderId,80);
+  const auth=await deps.requireStoreUser(request,env,storeId,['owner','admin','manager']);if(auth.error)return auth.error;
+  const db=(path,options)=>deps.supabaseAdminFetch(env,path,options);
+  const {data:orders}=await db(`foc_preorder_orders?id=eq.${encodeURIComponent(orderId)}&store_id=eq.${encodeURIComponent(storeId)}&select=*&limit=1`);
+  const order=orders?.[0];if(!order)return deps.json({ok:false,error:'Comic preorder not found'},404);
+  if(!['paid','reserved','ready_for_pickup','shipped','completed'].includes(order.status))return deps.json({ok:false,error:'Confirmation email is sent only after payment succeeds.'},409);
+  const {data:items}=await db(`foc_preorder_items?order_id=eq.${encodeURIComponent(order.id)}&select=quantity,unit_price_cents,sku_snapshot`);
+  const {subject,body:message}=focOrderConfirmationEmail(order,items);
+  try{
+    await deps.sendEmail(env,order.customer_email,subject,message);
+    await db(`foc_preorder_orders?id=eq.${encodeURIComponent(order.id)}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({confirmation_email_sent_at:new Date().toISOString(),confirmation_email_error:null})});
+    return deps.json({ok:true,message:'Confirmation email sent.'});
+  }catch(error){
+    await db(`foc_preorder_orders?id=eq.${encodeURIComponent(order.id)}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({confirmation_email_error:text(error.message,500)})}).catch(()=>{});
+    return deps.json({ok:false,error:`Confirmation email failed: ${error.message}`},502);
+  }
+}
+
 export function focOrderConfirmationEmail(order, items) {
   const lines = (items || []).map(item => {
     const snap = item.sku_snapshot || {};
@@ -840,7 +886,7 @@ export function focOrderConfirmationEmail(order, items) {
     return `  ${item.quantity} x ${label}  ($${(Number(item.unit_price_cents || 0) / 100).toFixed(2)} each)`;
   }).join('\n');
   const fulfillmentLine = order.fulfillment_method === 'shipping'
-    ? `Shipping to: ${[order.shipping_address?.street1, order.shipping_address?.city, order.shipping_address?.state, order.shipping_address?.zip].filter(Boolean).join(', ')}`
+    ? `Shipping to: ${[order.shipping_address?.line1 || order.shipping_address?.street1, order.shipping_address?.line2 || order.shipping_address?.street2, order.shipping_address?.city, order.shipping_address?.state, order.shipping_address?.zip || order.shipping_address?.postal_code].filter(Boolean).join(', ')}`
     : 'Pickup in store';
   const body = `Thanks for your PRH FOC preorder, ${order.customer_name || ''}!\n\n`
     + `Order ${order.order_number}\n\n${lines}\n\n`
@@ -870,7 +916,9 @@ export async function syncFocStripeEvent(env, event, deps) {
       const { data:items } = await deps.supabaseAdminFetch(env,`foc_preorder_items?order_id=eq.${encodeURIComponent(orderId)}&select=quantity,unit_price_cents,sku_snapshot`);
       const { subject, body } = focOrderConfirmationEmail(order, items);
       await deps.sendEmail(env, order.customer_email, subject, body);
+      await deps.supabaseAdminFetch(env,`foc_preorder_orders?id=eq.${encodeURIComponent(orderId)}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({confirmation_email_sent_at:new Date().toISOString(),confirmation_email_error:null})});
     } catch (error) {
+      await deps.supabaseAdminFetch(env,`foc_preorder_orders?id=eq.${encodeURIComponent(orderId)}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({confirmation_email_error:text(error.message,500)})}).catch(()=>{});
       console.error(JSON.stringify({ message:'FOC preorder confirmation email failed', error:error.message, orderId }));
     }
   }
@@ -899,6 +947,8 @@ export async function handleFocRequest(request, env, url, deps) {
   if(path==='/foc/admin/cycles'&&(request.method==='GET'||request.method==='PATCH'))return adminCycle(request,env,deps,url);
   if(path==='/foc/admin/sku'&&request.method==='PATCH')return adminSku(request,env,deps);
   if(path==='/foc/admin/export'&&request.method==='GET')return exportPrh(env,deps,url,request);
+  if(path==='/foc/admin/orders'&&(request.method==='GET'||request.method==='PATCH'))return adminOrders(request,env,deps,url);
+  if(path==='/foc/admin/orders/email'&&request.method==='POST')return resendAdminOrderEmail(request,env,deps);
   if(path==='/foc/admin/receive'&&request.method==='POST')return receiveShipment(request,env,deps);
   if(path==='/foc/admin/shipping-settings'&&request.method==='GET')return getShippingSettings(request,env,deps,url);
   if(path==='/foc/admin/shipping-settings'&&request.method==='PATCH')return saveShippingSettings(request,env,deps);
