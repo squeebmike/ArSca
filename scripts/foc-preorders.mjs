@@ -859,6 +859,73 @@ async function adminOrders(request,env,deps,url){
   return deps.json({ok:true,status:next});
 }
 
+function focShippoError(data,status){
+  const messages=Array.isArray(data?.messages)?data.messages.map(message=>message?.text||message?.message).filter(Boolean).join('; '):'';
+  return text(messages||data?.detail||data?.message||`Shippo returned ${status}`,500);
+}
+
+function focShippingAddress(order){
+  const address=order.shipping_address||{};
+  return {
+    name:text(order.customer_name||address.name,120),street1:text(address.line1||address.street1,200),street2:text(address.line2||address.street2,200),
+    city:text(address.city,120),state:text(address.state,20).toUpperCase(),zip:text(address.zip||address.postal_code,20),country:'US',
+    phone:text(order.customer_phone||address.phone,40),email:text(order.customer_email||address.email,200),
+  };
+}
+
+function focLabelResult(order){
+  return {transactionId:order.shipping_label_transaction_id||'',labelUrl:order.shipping_label_url||'',amountCents:Number(order.shipping_label_amount_cents||0),trackingNumber:order.shipping_tracking_number||'',trackingUrl:order.shipping_tracking_url||'',purchasedAt:order.shipping_label_purchased_at||''};
+}
+
+async function adminShippingLabel(request,env,deps){
+  const limited=await deps.readJsonWithLimit(request,16*1024);if(limited.error)return limited.error;
+  const body=limited.data||{},storeId=text(body.storeId,80),orderId=text(body.orderId,80),action=text(body.action,20);
+  const auth=await deps.requireStoreUser(request,env,storeId,['owner','admin','manager']);if(auth.error)return auth.error;
+  const db=(path,options)=>deps.supabaseAdminFetch(env,path,options),shippoFetch=deps.shippoFetch||fetch;
+  const {data:orders}=await db(`foc_preorder_orders?id=eq.${encodeURIComponent(orderId)}&store_id=eq.${encodeURIComponent(storeId)}&select=*&limit=1`);
+  const order=orders?.[0];if(!order)return deps.json({ok:false,error:'Comic preorder not found'},404);
+  if(order.fulfillment_method!=='shipping')return deps.json({ok:false,error:'Pickup preorders do not need a shipping label.'},409);
+  if(order.shipping_label_transaction_id&&order.shipping_label_url)return deps.json({ok:true,alreadyPurchased:true,label:focLabelResult(order)});
+  if(order.status!=='reserved')return deps.json({ok:false,error:'A label can be purchased after every comic has arrived and the shipping order is ready.'},409);
+  if(!env.SHIPPO_API_TOKEN)return deps.json({ok:false,error:'Shippo is not configured on this Worker.'},503);
+
+  if(action==='quote'){
+    if(!env.LBA_KV)return deps.json({ok:false,error:'Temporary label quotes are unavailable.'},503);
+    const cfg=await shippingSettings(db,env,storeId);if(!cfg.enabled||cfg.provider!=='shippo'||!cfg.from.street1||!cfg.from.city||!cfg.from.state||!cfg.from.zip)return deps.json({ok:false,error:'Finish the Shippo ship-from setup before buying a label.'},503);
+    const to=focShippingAddress(order);if(!to.name||!to.street1||!to.city||!to.state||!to.zip)return deps.json({ok:false,error:'This preorder needs a complete shipping address before a label can be quoted.'},409);
+    const {data:items}=await db(`foc_preorder_items?order_id=eq.${encodeURIComponent(order.id)}&select=quantity`);
+    const quantity=Math.max(1,(items||[]).reduce((sum,item)=>sum+Number(item.quantity||0),0));
+    const parcel={...cfg.parcel,weight:String(Math.max(Number(cfg.parcel?.weight)||0,(8+quantity*4)/16)),mass_unit:'lb'};
+    const response=await shippoFetch('https://api.goshippo.com/shipments/',{method:'POST',headers:{Authorization:`ShippoToken ${env.SHIPPO_API_TOKEN}`,'Content-Type':'application/json','SHIPPO-API-VERSION':'2018-02-08'},body:JSON.stringify({address_from:cfg.from,address_to:to,parcels:[parcel],async:false,metadata:`FOC ${order.order_number}`.slice(0,100)})});
+    const data=await response.json().catch(()=>({}));if(!response.ok)return deps.json({ok:false,error:focShippoError(data,response.status)},502);
+    const rates=(Array.isArray(data.rates)?data.rates:[]).filter(rate=>rate.object_id&&Number(rate.amount)>=0).map(rate=>({rateId:rate.object_id,amountCents:Math.round(Number(rate.amount)*100),carrier:text(rate.provider,80),service:text(rate.servicelevel?.name||rate.servicelevel?.token,120),estimatedDays:Number(rate.estimated_days||0)||null})).sort((a,b)=>a.amountCents-b.amountCents).slice(0,8);
+    if(!rates.length)return deps.json({ok:false,error:'Shippo returned no label rates for this address.'},422);
+    const prior=text(order.shipping_service,200).toLowerCase().replace(/\s+/g,' ');
+    const recommended=rates.find(rate=>`${rate.carrier} ${rate.service}`.toLowerCase().replace(/\s+/g,' ')===prior)||rates[0];
+    for(const rate of rates)await env.LBA_KV.put(`foc-label-rate:${rate.rateId}`,JSON.stringify({...rate,storeId,orderId:order.id}),{expirationTtl:3600});
+    return deps.json({ok:true,recommended,customerPaidCents:Number(order.shipping_cents||0),originalService:order.shipping_service||''});
+  }
+
+  if(action!=='purchase')return deps.json({ok:false,error:'Choose quote or purchase.'},400);
+  if(!env.LBA_KV)return deps.json({ok:false,error:'Request a fresh Shippo label quote first.'},409);
+  const rateId=text(body.rateId,120),quote=await env.LBA_KV.get(`foc-label-rate:${rateId}`,'json');
+  if(!quote||quote.storeId!==storeId||quote.orderId!==order.id)return deps.json({ok:false,error:'That label quote expired; request a fresh one.'},409);
+  const claimPath=`foc_preorder_orders?id=eq.${encodeURIComponent(order.id)}&store_id=eq.${encodeURIComponent(storeId)}&status=eq.reserved&fulfillment_method=eq.shipping&shipping_label_transaction_id=is.null&or=(shipping_label_status.is.null,shipping_label_status.eq.failed)&select=*`;
+  const {data:claimed}=await db(claimPath,{method:'PATCH',headers:{Prefer:'return=representation'},body:JSON.stringify({shipping_label_status:'purchasing',shipping_label_error:null})});
+  if(!claimed?.length){
+    const {data:fresh}=await db(`foc_preorder_orders?id=eq.${encodeURIComponent(order.id)}&store_id=eq.${encodeURIComponent(storeId)}&select=*&limit=1`);const current=fresh?.[0];
+    if(current?.shipping_label_transaction_id&&current?.shipping_label_url)return deps.json({ok:true,alreadyPurchased:true,label:focLabelResult(current)});
+    return deps.json({ok:false,error:current?.shipping_label_status==='review_required'?'A prior purchase has an unknown outcome. Check Shippo before trying again.':'A label purchase is already in progress; refresh this order.'},409);
+  }
+  let response,data;
+  try{response=await shippoFetch('https://api.goshippo.com/transactions/',{method:'POST',headers:{Authorization:`ShippoToken ${env.SHIPPO_API_TOKEN}`,'Content-Type':'application/json','SHIPPO-API-VERSION':'2018-02-08'},body:JSON.stringify({rate:rateId,label_file_type:'PDF_4x6',async:false})});data=await response.json().catch(()=>({}));}
+  catch(error){await db(`foc_preorder_orders?id=eq.${encodeURIComponent(order.id)}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({shipping_label_status:'review_required',shipping_label_error:text(`Shippo response unavailable: ${error.message}`,500)})});return deps.json({ok:false,error:'Shippo did not return a purchase result. Check Shippo before retrying so a duplicate label is not purchased.'},502);}
+  if(!response.ok||data.status!=='SUCCESS'||!data.object_id||!data.label_url){const error=focShippoError(data,response.status);await db(`foc_preorder_orders?id=eq.${encodeURIComponent(order.id)}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({shipping_label_status:'failed',shipping_label_error:error})});return deps.json({ok:false,error},502);}
+  const patch={shipping_label_status:'purchased',shipping_label_transaction_id:text(data.object_id,160),shipping_label_url:text(data.label_url,1000),shipping_label_amount_cents:Number(quote.amountCents||0),shipping_tracking_number:text(data.tracking_number,200),shipping_tracking_url:text(data.tracking_url_provider,1000),shipping_label_purchased_at:new Date().toISOString(),shipping_label_error:null};
+  await db(`foc_preorder_orders?id=eq.${encodeURIComponent(order.id)}&shipping_label_status=eq.purchasing`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify(patch)});
+  return deps.json({ok:true,label:focLabelResult(patch)});
+}
+
 async function resendAdminOrderEmail(request,env,deps){
   const limited=await deps.readJsonWithLimit(request,16*1024);if(limited.error)return limited.error;
   const body=limited.data||{},storeId=text(body.storeId,80),orderId=text(body.orderId,80);
@@ -949,6 +1016,7 @@ export async function handleFocRequest(request, env, url, deps) {
   if(path==='/foc/admin/export'&&request.method==='GET')return exportPrh(env,deps,url,request);
   if(path==='/foc/admin/orders'&&(request.method==='GET'||request.method==='PATCH'))return adminOrders(request,env,deps,url);
   if(path==='/foc/admin/orders/email'&&request.method==='POST')return resendAdminOrderEmail(request,env,deps);
+  if(path==='/foc/admin/orders/label'&&request.method==='POST')return adminShippingLabel(request,env,deps);
   if(path==='/foc/admin/receive'&&request.method==='POST')return receiveShipment(request,env,deps);
   if(path==='/foc/admin/shipping-settings'&&request.method==='GET')return getShippingSettings(request,env,deps,url);
   if(path==='/foc/admin/shipping-settings'&&request.method==='PATCH')return saveShippingSettings(request,env,deps);
