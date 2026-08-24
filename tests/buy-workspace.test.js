@@ -57,4 +57,22 @@ assert.match(html, /value="skip">Skip duplicates/, 'CSV import must default to s
   assert.doesNotMatch(updateBuyListOfferFn, /lbl\.textContent = pct \+ '%';/, 'updateBuyListOffer must not still write the raw slider % onto bl-pct-lbl -- renderBuyList is the single owner of that stat now');
 }
 
+// ── Contract: TEXT OFFER's sms: handoff to the staff device's own
+// messaging app must keep working unchanged (free, needs no setup), but a
+// second option must exist to actually send through Twilio for real --
+// gated on an explicit, fully-disclosed SMS-consent checkbox, same pattern
+// as the receipt-capture screen. ──
+assert.match(html, /<button class="hbtn" onclick="textBuyOffer\(\)" style="font-size:10px">📱 Text Offer<\/button>/, 'the original native sms: TEXT OFFER button must be unchanged');
+assert.match(html, /<input id="bl-sms-consent" type="checkbox"/, 'a named SMS-consent checkbox must exist next to the buy-offer phone field');
+assert.match(html, /Reply STOP to opt out or HELP for help\. Consent is not a condition of any purchase or sale\./, 'the buy-offer consent checkbox must disclose STOP/HELP and that consent is not a condition of the sale');
+assert.match(html, /<button class="hbtn" onclick="textBuyOfferViaTwilio\(\)"/, 'an Auto-Text Offer button must exist to actually send through Twilio');
+{
+  const fnStart = html.indexOf('async function textBuyOfferViaTwilio(){');
+  assert(fnStart >= 0, 'textBuyOfferViaTwilio function was not found');
+  const fnEnd = html.indexOf('\n}', fnStart);
+  const fn = html.slice(fnStart, fnEnd);
+  assert.match(fn, /if\(document\.getElementById\('bl-sms-consent'\)\?\.checked !== true\)\{ toast_dash\('Check the SMS-consent box above first'\); return; \}/, 'the Twilio send must be gated on the consent checkbox, not implied by entering a phone number');
+  assert.match(fn, /storeWorkerFetch\('\/notify\/send', \{ method:'POST', headers:\{'Content-Type':'application\/json'\}, body:JSON\.stringify\(\{ contact:phone, subject:'Your buy offer', message:buildBuyOfferText\(\), consent:true \}\) \}\)/, 'the Twilio send must reuse the existing /notify/send route and the same buildBuyOfferText() content TEXT OFFER and PRINT OFFER already use, not a separate message builder');
+}
+
 console.log('Buy workspace contract checks passed');
