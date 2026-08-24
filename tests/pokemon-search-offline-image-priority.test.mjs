@@ -18,7 +18,7 @@ const cardsPathEnd = dashboard.indexOf('if(rows.length) {', cardsPathStart);
 const cardsPath = dashboard.slice(cardsPathStart, cardsPathEnd);
 assert.match(cardsPath, /window\.ArsCaPokemonOfflineImages\?\.getImageBlob\(row\.tcgPlayerId \|\| row\.tcgplayerId|id, '400'\)|getImageBlob\(id, '400'\)/,
   'the live cards path must check the bulk-synced offline image cache for every result');
-assert.match(cardsPath, /if\(blob\) row\.imageUrl = URL\.createObjectURL\(blob\);/, 'a cached image must override the live CDN URL the row was built with');
+assert.match(cardsPath, /useOfflineRowImage\(row, blob\);/, 'a cached image must override the live CDN URL the row was built with, via useOfflineRowImage so the original CDN URL survives as liveImageUrl');
 
 // ── Sealed path ──────────────────────────────────────────────────────────
 const sealedPathStart = dashboard.indexOf('const sealedRows = sealedResult.products.slice(0, 20).map(p => {');
