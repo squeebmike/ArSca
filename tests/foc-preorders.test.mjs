@@ -208,8 +208,8 @@ console.log('FOC order-confirmation-email contract checks passed');
 // payment (e.g. a normal POS sale) that just happens to share the same
 // event type. ──
 {
-  const mockOrder = { id:'order1', order_number:'FOC-20260831-ABCD1234', customer_email:'jane@example.com', customer_name:'Jane', fulfillment_method:'pickup', subtotal_cents:2499, shipping_cents:0, total_cents:2499 };
-  const mockItems = [{ quantity:1, unit_price_cents:2499, sku_snapshot:{ title:'Avengers #1', variantLabel:'Cover A' } }];
+  const mockOrder = { id:'order1', order_number:'FOC-20260831-ABCD1234', store_id:'store1', user_id:'user1', stripe_mode:'live', customer_email:'jane@example.com', customer_name:'Jane', fulfillment_method:'pickup', subtotal_cents:2499, shipping_cents:0, total_cents:2499 };
+  const mockItems = [{ id:'item1', sku_id:'sku1', quantity:1, unit_price_cents:2499, line_total_cents:2499, sku_snapshot:{ title:'Avengers #1', variantLabel:'Cover A' } }];
 
   // Genuine successful payment -> exactly one email, to the right address.
   // supabaseAdminFetch's real signature is (env, path, options) -- syncFocStripeEvent
@@ -218,12 +218,16 @@ console.log('FOC order-confirmation-email contract checks passed');
   // via their own pre-bound `db` closure, so these mocks take env first.
   {
     const emailCalls = [];
+    const ledgerWrites = [];
     const db = async (env, path, options) => {
+      if (path.startsWith('foc_preorder_orders?') && !options) return { data:[mockOrder] };
       if (path.startsWith('foc_preorder_orders?') && options?.method === 'PATCH') {
+        if (!path.includes('status=neq.paid')) return { data:[] };
         assert.ok(path.includes('status=neq.paid'), 'the paid-transition PATCH must carry the idempotency guard');
         return { data:[mockOrder] };
       }
       if (path.startsWith('foc_preorder_items?')) return { data:mockItems };
+      if (/^pos_(sales|sale_lines|payments)\?on_conflict=id$/.test(path)) { ledgerWrites.push({path,body:JSON.parse(options.body)}); return { data:[] }; }
       throw new Error('unexpected db call: ' + path);
     };
     const sendEmail = async (env, to, subject) => { emailCalls.push({ to, subject }); };
@@ -231,6 +235,11 @@ console.log('FOC order-confirmation-email contract checks passed');
     await syncFocStripeEvent({}, event, { supabaseAdminFetch:db, sendEmail });
     assert.equal(emailCalls.length, 1, 'a genuine successful payment must send exactly one confirmation email');
     assert.equal(emailCalls[0].to, 'jane@example.com', 'the email must go to the order\'s customer_email, not somewhere else');
+    assert.equal(ledgerWrites.length, 3, 'a paid comic preorder must write one sale, its lines, and its payment into the shared dashboard ledger');
+    const preorderLine=ledgerWrites.find(call=>call.path.startsWith('pos_sale_lines')).body[0];
+    assert.equal(preorderLine.adjusted_price,24.99, 'dashboard sales must receive the full comic line revenue');
+    assert.equal(preorderLine.cost_basis,12.5, 'PRH cost must be exactly 50% of price, rounded to the nearest cent');
+    assert.equal(preorderLine.profit,12.49, 'comic preorder profit must be revenue minus the 50% PRH cost');
   }
 
   // Redelivered webhook for an order already marked paid -> the guarded
@@ -238,7 +247,10 @@ console.log('FOC order-confirmation-email contract checks passed');
   {
     const emailCalls = [];
     const db = async (env, path, options) => {
+      if (path.startsWith('foc_preorder_orders?') && !options) return { data:[mockOrder] };
       if (path.startsWith('foc_preorder_orders?') && options?.method === 'PATCH') return { data:[] };
+      if (path.startsWith('foc_preorder_items?')) return { data:mockItems };
+      if (/^pos_(sales|sale_lines|payments)\?on_conflict=id$/.test(path)) return { data:[] };
       throw new Error('unexpected db call on redelivery: ' + path);
     };
     const sendEmail = async () => { emailCalls.push(1); };

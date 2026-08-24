@@ -314,6 +314,11 @@ function roundUpToDollar(value) {
   return Math.ceil(n - 1e-9);
 }
 
+function inventoryCostBasisFromData(data = {}) {
+  const value = Number(data.cost ?? data.costBasis ?? data.cost_basis ?? data['cost-basis'] ?? 0);
+  return Number.isFinite(value) && value > 0 ? Math.round(value * 100) / 100 : 0;
+}
+
 // ── Storefront shipping — shared cart loader + real Shippo rate lookup ─────
 // Used by both /public/storefront/checkout and /public/storefront/shipping-quote
 // so the fee a customer is quoted before paying can never drift from what
@@ -361,7 +366,7 @@ async function loadCartForShipping(env, storeId, requestedItemsRaw) {
     totalQuantity += qty;
     subtotalCents += Math.round(unitPrice * 100) * qty;
     totalWeightOz += (isGraded ? 8 : (isSealed ? 10 : 1.2)) * qty;
-    lineItems.push({ itemId, quantity: qty, unitPrice, title: d.name || d.title || 'Item', category: d.category || d.type || 'Other', condition: d.condition || d.grade || '', imageUrl: cleanUrlLoose(d.image || d.img || d.imageUrl || d.image_url || d.photo) });
+    lineItems.push({ itemId, quantity: qty, unitPrice, costBasis:inventoryCostBasisFromData(d), title: d.name || d.title || 'Item', category: d.category || d.type || 'Other', condition: d.condition || d.grade || '', imageUrl: cleanUrlLoose(d.image || d.img || d.imageUrl || d.image_url || d.photo) });
   }
   if (subtotalCents < 50) return { error: json({ ok:false, error:'Order subtotal is too small to check out' }, 400) };
   return { lineItems, subtotalCents, totalQuantity, allRawSingles, totalWeightOz };
@@ -3276,8 +3281,8 @@ export default {
       const saleId = crypto.randomUUID();
       await supabaseAdminFetch(env, 'pos_sales', { method:'POST', headers:{ Prefer:'return=minimal' }, body:JSON.stringify({ id:saleId, store_id:storeId, subtotal:subtotalCents/100, discount_total:0, tax_total:0, total:totalCents/100, status:'pending' }) });
 
-      const saleLines = lineItems.map(li => ({ id:crypto.randomUUID(), sale_id:saleId, store_id:storeId, item_id:li.itemId, title:li.title, category:li.category, quantity:li.quantity, unit_price:li.unitPrice, original_price:li.unitPrice, adjusted_price:li.unitPrice, discount_amount:0, cost_basis:0, profit:0, condition:li.condition, image_url:li.imageUrl }));
-      if (shippingFeeCents > 0) saleLines.push({ id:crypto.randomUUID(), sale_id:saleId, store_id:storeId, item_id:null, title:'Shipping', category:'Shipping', quantity:1, unit_price:shippingFeeCents/100, original_price:shippingFeeCents/100, adjusted_price:shippingFeeCents/100, discount_amount:0, cost_basis:0, profit:0 });
+      const saleLines = lineItems.map(li => { const extended=li.unitPrice*li.quantity,totalCost=li.costBasis*li.quantity;return { id:crypto.randomUUID(), sale_id:saleId, store_id:storeId, item_id:li.itemId, title:li.title, category:li.category, quantity:li.quantity, unit_price:li.unitPrice, original_price:extended, adjusted_price:extended, discount_amount:0, cost_basis:li.costBasis, profit:Math.round((extended-totalCost)*100)/100, condition:li.condition, image_url:li.imageUrl }; });
+      if (shippingFeeCents > 0) { const shipping=shippingFeeCents/100;saleLines.push({ id:crypto.randomUUID(), sale_id:saleId, store_id:storeId, item_id:null, title:'Shipping', category:'Shipping', quantity:1, unit_price:shipping, original_price:shipping, adjusted_price:shipping, discount_amount:0, cost_basis:shipping, profit:0 }); }
       await supabaseAdminFetch(env, 'pos_sale_lines', { method:'POST', headers:{ Prefer:'return=minimal' }, body:JSON.stringify(saleLines) });
 
       let pi;
@@ -3723,6 +3728,13 @@ export default {
         if (unitPrice <= 0) return json({ ok:false, error:'Every recorded item needs a positive price' }, 400);
         lineItems.push({ itemId, quantity: qty, unitPrice, title: cleanText(reqItem.name || 'Item', 200), category: cleanText(reqItem.category || 'Other', 80), imageUrl: cleanUrlLoose(reqItem.imageUrl) });
       }
+      const inventoryIds = lineItems.map(line => line.itemId).filter(Boolean);
+      let inventoryCostById = new Map();
+      if (inventoryIds.length) {
+        const { data:inventoryRows } = await supabaseAdminFetch(env, `inventory_items?id=in.(${inventoryIds.map(id => encodeURIComponent(id)).join(',')})&store_id=eq.${encodeURIComponent(storeId)}&select=id,data`);
+        inventoryCostById = new Map((inventoryRows || []).map(row => [row.id, inventoryCostBasisFromData(row.data || {})]));
+      }
+      lineItems.forEach(line => { line.costBasis = inventoryCostById.get(line.itemId) || 0; });
       const subtotalCents = lineItems.reduce((sum, li) => sum + Math.round(li.unitPrice * 100) * li.quantity, 0);
       const shippingFeeCents = Math.max(0, Math.round(Number(body.shippingFeeCents || 0)));
       const totalCents = subtotalCents + shippingFeeCents;
@@ -3743,18 +3755,25 @@ export default {
       }
       const mode = pi.livemode ? 'live' : 'test';
       if (Math.abs(Number(pi.amount || 0) - totalCents) > 1) return json({ ok:false, error:'Recorded total does not match the charged amount' }, 409);
+      if (pi.status !== 'succeeded') return json({ ok:false, error:'The online payment has not completed yet' }, 409);
 
       const confirmationNumber = String(body.confirmationNumber || '').trim().slice(0, 40) || ('ORD-' + crypto.randomUUID().split('-')[0].toUpperCase());
       const saleId = crypto.randomUUID();
       await supabaseAdminFetch(env, 'pos_sales', { method:'POST', headers:{ Prefer:'return=minimal' }, body:JSON.stringify({ id:saleId, store_id:storeId, subtotal:subtotalCents/100, discount_total:0, tax_total:0, total:totalCents/100, status:'pending' }) });
 
-      const saleLines = lineItems.map(li => ({ id:crypto.randomUUID(), sale_id:saleId, store_id:storeId, item_id:li.itemId, title:li.title, category:li.category, quantity:li.quantity, unit_price:li.unitPrice, original_price:li.unitPrice, adjusted_price:li.unitPrice, discount_amount:0, cost_basis:0, profit:0, condition:'', image_url:li.imageUrl }));
-      if (shippingFeeCents > 0) saleLines.push({ id:crypto.randomUUID(), sale_id:saleId, store_id:storeId, item_id:null, title:'Shipping', category:'Shipping', quantity:1, unit_price:shippingFeeCents/100, original_price:shippingFeeCents/100, adjusted_price:shippingFeeCents/100, discount_amount:0, cost_basis:0, profit:0 });
+      const saleLines = lineItems.map(li => { const extended=li.unitPrice*li.quantity,totalCost=li.costBasis*li.quantity;return { id:crypto.randomUUID(), sale_id:saleId, store_id:storeId, item_id:li.itemId, title:li.title, category:li.category, quantity:li.quantity, unit_price:li.unitPrice, original_price:extended, adjusted_price:extended, discount_amount:0, cost_basis:li.costBasis, profit:Math.round((extended-totalCost)*100)/100, condition:'', image_url:li.imageUrl }; });
+      if (shippingFeeCents > 0) { const shipping=shippingFeeCents/100;saleLines.push({ id:crypto.randomUUID(), sale_id:saleId, store_id:storeId, item_id:null, title:'Shipping', category:'Shipping', quantity:1, unit_price:shipping, original_price:shipping, adjusted_price:shipping, discount_amount:0, cost_basis:shipping, profit:0 }); }
       await supabaseAdminFetch(env, 'pos_sale_lines', { method:'POST', headers:{ Prefer:'return=minimal' }, body:JSON.stringify(saleLines) });
 
       await supabaseAdminFetch(env, 'pos_payments', { method:'POST', headers:{ Prefer:'return=minimal' }, body:JSON.stringify({ id:crypto.randomUUID(), sale_id:saleId, store_id:storeId, method:'Stripe Card', amount:totalCents/100, status:pi.status, provider:'stripe', stripe_mode:mode, stripe_payment_intent_id:pi.id, currency:pi.currency, amount_cents:totalCents, processing_fee_paid_by:'platform_account' }) });
 
       await supabaseAdminFetch(env, 'storefront_orders', { method:'POST', headers:{ Prefer:'return=minimal' }, body:JSON.stringify({ id:crypto.randomUUID(), store_id:storeId, sale_id:saleId, confirmation_number:confirmationNumber, customer_name:customerName, customer_phone:customerPhone, customer_email:customerEmail || null, fulfillment_method:method, shipping_address:shippingAddress, shipping_fee_cents:shippingFeeCents, fulfillment_status:'pending' }) });
+
+      // This legacy handoff records an intent only after the external
+      // checkout has already succeeded, so its Stripe webhook may have
+      // arrived before the ledger rows existed. Complete it here as well;
+      // fulfillStorefrontOrderInventory is idempotent if a webhook races us.
+      await fulfillStorefrontOrderInventory(env,saleId,storeId);
 
       return json({ ok:true, saleId, confirmationNumber });
     }

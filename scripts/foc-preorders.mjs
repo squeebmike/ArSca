@@ -965,11 +965,37 @@ export function focOrderConfirmationEmail(order, items) {
   return { subject:`Your FOC preorder ${order.order_number} is confirmed`, body };
 }
 
+async function recordPaidFocSale(env, order, paymentIntent, deps) {
+  const db=deps.supabaseAdminFetch;
+  const {data:items}=await db(env,`foc_preorder_items?order_id=eq.${encodeURIComponent(order.id)}&select=id,sku_id,quantity,unit_price_cents,line_total_cents,sku_snapshot`);
+  const paidAt=order.paid_at||new Date().toISOString();
+  await db(env,'pos_sales?on_conflict=id',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify({id:order.id,store_id:order.store_id,subtotal:Number(order.subtotal_cents||0)/100,discount_total:0,tax_total:0,total:Number(order.total_cents||0)/100,status:'completed',payment_status:'paid',refundable_remaining_cents:Number(order.total_cents||0),created_by:order.user_id||null,created_at:order.created_at||paidAt,completed_at:paidAt})});
+  const lines=(items||[]).map(item=>{
+    const quantity=Math.max(1,Number(item.quantity||1));
+    const unitPriceCents=Math.max(0,Number(item.unit_price_cents||0));
+    const costCents=Math.round(unitPriceCents*0.5);
+    const extendedCents=Number(item.line_total_cents||unitPriceCents*quantity);
+    const snapshot=item.sku_snapshot||{};
+    return {id:`foc-line-${item.id}`,sale_id:order.id,store_id:order.store_id,item_id:item.sku_id||null,title:[snapshot.title,snapshot.variantLabel].filter(Boolean).join(' · ')||'Comic preorder',category:'Comic Preorder',quantity,unit_price:unitPriceCents/100,original_price:extendedCents/100,adjusted_price:extendedCents/100,discount_amount:0,cost_basis:costCents/100,profit:(extendedCents-costCents*quantity)/100,source_id:`foc:${order.order_number}`,image_url:snapshot.coverImageUrl||null};
+  });
+  const shippingCents=Math.max(0,Number(order.shipping_cents||0));
+  if(shippingCents)lines.push({id:`foc-shipping-${order.id}`,sale_id:order.id,store_id:order.store_id,item_id:null,title:'Shipping',category:'Shipping',quantity:1,unit_price:shippingCents/100,original_price:shippingCents/100,adjusted_price:shippingCents/100,discount_amount:0,cost_basis:shippingCents/100,profit:0,source_id:`foc:${order.order_number}`});
+  if(lines.length)await db(env,'pos_sale_lines?on_conflict=id',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify(lines)});
+  await db(env,'pos_payments?on_conflict=id',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify({id:`foc-payment-${order.id}`,sale_id:order.id,store_id:order.store_id,method:'Website · Comic Preorder',amount:Number(order.total_cents||0)/100,status:'succeeded',provider:'stripe',stripe_mode:order.stripe_mode||null,stripe_payment_intent_id:paymentIntent.id,stripe_charge_id:paymentIntent.latest_charge||null,currency:paymentIntent.currency||order.currency||'usd',amount_cents:Number(order.total_cents||0),processing_fee_paid_by:'platform_account',confirmed_at:paidAt,created_at:order.created_at||paidAt})});
+  return items||[];
+}
+
 export async function syncFocStripeEvent(env, event, deps) {
   const object=event.data?.object||{};if(!event.type.startsWith('payment_intent.')||object.metadata?.source!=='foc_preorder')return;
   const orderId=text(object.metadata?.foc_order_id,80);if(!orderId)return;
   let status=object.status;if(event.type==='payment_intent.succeeded')status='paid';else if(event.type==='payment_intent.payment_failed')status='payment_failed';else if(event.type==='payment_intent.canceled')status='cancelled';
-  const patch={status,stripe_charge_id:object.latest_charge||null};if(status==='paid')patch.paid_at=new Date().toISOString();if(status==='cancelled')patch.cancelled_at=new Date().toISOString();
+  const paidAt=new Date().toISOString();const patch={status,stripe_charge_id:object.latest_charge||null};if(status==='paid')patch.paid_at=paidAt;if(status==='cancelled')patch.cancelled_at=paidAt;
+  let paidItems=[];
+  if(status==='paid'){
+    const {data:orders}=await deps.supabaseAdminFetch(env,`foc_preorder_orders?id=eq.${encodeURIComponent(orderId)}&stripe_payment_intent_id=eq.${encodeURIComponent(object.id)}&select=*&limit=1`);
+    const existingOrder=orders?.[0];
+    if(existingOrder)paidItems=await recordPaidFocSale(env,{...existingOrder,paid_at:existingOrder.paid_at||paidAt},object,deps);
+  }
   // status=neq.paid on the paid transition doubles as the idempotency guard --
   // Stripe can and does redeliver the same webhook event more than once. If
   // the row was already 'paid' this update matches zero rows, so the
@@ -980,7 +1006,7 @@ export async function syncFocStripeEvent(env, event, deps) {
   const order = updated?.[0];
   if (status==='paid' && order?.customer_email && typeof deps.sendEmail === 'function') {
     try {
-      const { data:items } = await deps.supabaseAdminFetch(env,`foc_preorder_items?order_id=eq.${encodeURIComponent(orderId)}&select=quantity,unit_price_cents,sku_snapshot`);
+      const items=paidItems.length?paidItems:(await deps.supabaseAdminFetch(env,`foc_preorder_items?order_id=eq.${encodeURIComponent(orderId)}&select=quantity,unit_price_cents,sku_snapshot`)).data;
       const { subject, body } = focOrderConfirmationEmail(order, items);
       await deps.sendEmail(env, order.customer_email, subject, body);
       await deps.supabaseAdminFetch(env,`foc_preorder_orders?id=eq.${encodeURIComponent(orderId)}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({confirmation_email_sent_at:new Date().toISOString(),confirmation_email_error:null})});
