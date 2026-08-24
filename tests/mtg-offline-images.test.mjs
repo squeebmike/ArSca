@@ -89,6 +89,6 @@ const searchFnStart = dashboard.indexOf('async function searchMtgCatalogExport(q
 const searchFnEnd = dashboard.indexOf('\n}\n\nfunction mtgOfflinePriceProductToQplRow', searchFnStart);
 const searchFn = dashboard.slice(searchFnStart, searchFnEnd);
 assert.match(searchFn, /ArsCaMtgOfflineImages\?\.getImageBlob\(card\.scryfallId, 'normal'\)/, 'offline MTG search must check the bulk-synced image cache');
-assert.match(searchFn, /if\(blob\) \{ row\.imageUrl = URL\.createObjectURL\(blob\); return; \}/, 'a bulk-synced image must win over the opportunistic per-search cache when both could apply');
+assert.match(searchFn, /if\(blob\) \{ useOfflineRowImage\(row, blob\); return; \}/, 'a bulk-synced image must win over the opportunistic per-search cache when both could apply, going through useOfflineRowImage so the real CDN URL survives as liveImageUrl instead of being discarded');
 
 console.log('MTG offline images pipeline checks passed');
