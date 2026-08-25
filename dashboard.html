@@ -29362,8 +29362,14 @@ async function autoRefreshStaleCatalogs(){
 const POKEMON_PRICES_CLOUD_TYPES = new Set(['cards', 'sealed']);
 
 async function syncPokemonPricesFromCloud(type){
+  // notReady is only set for "the cloud snapshot genuinely hasn't been built
+  // yet" -- a manifest fetch/download failure is a transport or Worker error,
+  // not that, and must NOT be flagged notReady: downloadPokemonExport() below
+  // only allows a live PPT fallback (which spends the shared 2-exports/day
+  // cap) when notReady is true, precisely so a network blip or Worker hiccup
+  // can't silently burn the quota the daily cron job depends on.
   const manifestRes = await fetch(WORKER + '/catalog/pokemon/prices/manifest', { cache:'no-store' });
-  if(!manifestRes.ok) throw Object.assign(new Error('Pokemon prices manifest not available'), { notReady:true });
+  if(!manifestRes.ok) throw new Error('Pokemon prices manifest not available');
   const manifest = await manifestRes.json().catch(() => null);
   if(manifest?.status !== 'ready' || !manifest?.files?.[type]) throw Object.assign(new Error(`Pokemon ${type} price snapshot is not ready yet`), { notReady:true });
 
@@ -29424,6 +29430,11 @@ async function downloadPokemonExport(type){
       try {
         rowCount = await syncPokemonPricesFromCloud(type);
       } catch(cloudErr){
+        // Only fall back to a live PPT pull when the cloud snapshot genuinely
+        // isn't built yet -- never on a transient manifest/download error,
+        // since that would silently spend the shared 2-exports/day cap the
+        // daily cron job (pokemon-prices-daily.yml) depends on.
+        if(!cloudErr?.notReady) throw cloudErr;
         rowCount = await downloadPokemonExportLive(type);
       }
     } else {
