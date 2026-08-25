@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.25.02-sports-candidate-confirm">
+<meta name="version" content="2026.08.25.03-sports-console-scoped-search">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1633,16 +1633,16 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.25.02-sports-candidate-confirm" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.25.02-sports-candidate-confirm" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.25.02-sports-candidate-confirm" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.08.25.02-sports-candidate-confirm" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.25.02-sports-candidate-confirm" defer></script>
-<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.08.25.02-sports-candidate-confirm" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.25.02-sports-candidate-confirm" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.25.02-sports-candidate-confirm" defer></script>
-<script src="scripts/pokemon/offline-browser.js?v=2026.08.25.02-sports-candidate-confirm" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.25.02-sports-candidate-confirm" defer></script>
+<script src="scripts/query-routing.js?v=2026.08.25.03-sports-console-scoped-search" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.25.03-sports-console-scoped-search" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.25.03-sports-console-scoped-search" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.08.25.03-sports-console-scoped-search" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.25.03-sports-console-scoped-search" defer></script>
+<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.08.25.03-sports-console-scoped-search" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.25.03-sports-console-scoped-search" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.25.03-sports-console-scoped-search" defer></script>
+<script src="scripts/pokemon/offline-browser.js?v=2026.08.25.03-sports-console-scoped-search" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.25.03-sports-console-scoped-search" defer></script>
 </head>
 <body>
 
@@ -1671,11 +1671,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.25.02-sports-candidate-confirm</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.25.03-sports-console-scoped-search</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.25.02-sports-candidate-confirm</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.25.03-sports-console-scoped-search</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1693,7 +1693,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.25.02-sports-candidate-confirm</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.25.03-sports-console-scoped-search</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3687,7 +3687,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.25.02-sports-candidate-confirm';
+const APP_VERSION = '2026.08.25.03-sports-console-scoped-search';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -29003,7 +29003,15 @@ async function hideComicPriceCandidate(idx,candidateIndex){
 // silently labeling a guess as an "exact" match.
 async function resolveSportsPriceChartingUrl(parsed){
   if(!parsed?.name) return { best:null, candidates:[] };
-  const res = await storeWorkerFetch('/pricing/pricecharting/search?' + new URLSearchParams({ q: [parsed.name, parsed.set].filter(Boolean).join(' ') }), { cache:'no-store' });
+  // The pasted URL already names its exact console/set (e.g.
+  // baseball-cards-2022-topps-chrome-platinum-anniversary) -- scope the
+  // search to that console instead of a blind global name search across
+  // PriceCharting's whole catalog, which can and does cross-match totally
+  // unrelated product types (Funko Pops, video games, etc.) that happen to
+  // share a player's name.
+  const params = { q: parsed.name };
+  if(parsed.consoleSlug) params.console = parsed.consoleSlug;
+  const res = await storeWorkerFetch('/pricing/pricecharting/search?' + new URLSearchParams(params), { cache:'no-store' });
   const data = await res.json().catch(() => ({}));
   const products = data.products || data.matches || [];
   if(!products.length) return { best:null, candidates:[] };
@@ -29052,6 +29060,17 @@ function hideSportsPriceCandidate(idx, candidateIndex){
   if(!r) return;
   r.sportsPriceCandidates = (r.sportsPriceCandidates || []).filter((_, i) => i !== candidateIndex);
   updateQplResultCard(idx);
+}
+// Rendered prominently in the hero card body (not buried in the collapsed
+// "VIEW PRICES + GRADING DETAILS" section) since picking the right printing
+// is required to get any price at all, not an optional/advanced action.
+function qplSportsPriceCandidatesPrompt(r, idx){
+  const candidates = (r.sportsPriceCandidates || []).slice(0, 8);
+  if(!candidates.length) return '';
+  return `<div style="margin-top:10px;padding:10px;border:1px solid rgba(255,209,102,.35);border-radius:8px;background:rgba(255,209,102,.06)">
+    <div style="font-size:10px;color:var(--gold);margin-bottom:6px;font-weight:700">CONFIRM THE EXACT PRINTING — the pasted URL matched more than one plausible PriceCharting product.</div>
+    ${candidates.map((candidate, i) => `<div style="display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;border-top:1px solid var(--border);padding:7px 0"><div><b style="font-size:10px">${escHtml(candidate.productName || 'Unnamed PriceCharting product')}</b><div style="font-size:9px;color:var(--dim)">${escHtml(candidate.consoleName || '')} · Ungraded ${Number(candidate.prices?.ungraded || 0) ? '$' + Number(candidate.prices.ungraded).toFixed(2) : '--'}</div></div><button class="hbtn" onclick="selectSportsPriceCandidate(${idx},${i})">USE THIS PRICE</button><button class="hbtn" onclick="hideSportsPriceCandidate(${idx},${i})">NOT THIS</button></div>`).join('')}
+  </div>`;
 }
 async function linkManualSportsPrice(idx){
   const input = document.getElementById('sports-pc-manual-' + idx);
@@ -30487,6 +30506,7 @@ function parsePriceChartingProductInput(raw = '', selectedCategory = ''){
     name:name || 'PriceCharting Product',
     category,
     set:consoleName,
+    consoleSlug,
     canonicalUrl:url.origin + url.pathname,
     isSealed:isSealedProductIntent([name, consoleName, category].join(' '), category),
   };
@@ -35143,8 +35163,10 @@ function qplSlabControls(r, idx){
   const pc = r.pricecharting;
   const rows = pc ? qplPriceChartingTableRows(r) : '';
   const isSports = qplResultCategoryKey(r) === 'sports';
-  const sportsCandidates = (r.sportsPriceCandidates || []).slice(0, 8);
-  const sportsCandidateHtml = sportsCandidates.length ? `<div style="margin-top:8px"><div style="font-size:9px;color:var(--gold);margin-bottom:5px">CONFIRM THE EXACT PRINTING - name searches can match the wrong parallel/insert.</div>${sportsCandidates.map((candidate, i) => `<div style="display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;border-top:1px solid var(--border);padding:7px 0"><div><b style="font-size:10px">${escHtml(candidate.productName || 'Unnamed PriceCharting product')}</b><div style="font-size:9px;color:var(--dim)">${escHtml(candidate.consoleName || '')} · Ungraded ${Number(candidate.prices?.ungraded || 0) ? '$' + Number(candidate.prices.ungraded).toFixed(2) : '--'}</div></div><button class="hbtn" onclick="selectSportsPriceCandidate(${idx},${i})">USE THIS PRICE</button><button class="hbtn" onclick="hideSportsPriceCandidate(${idx},${i})">NOT THIS</button></div>`).join('')}</div>` : '';
+  // The candidate-confirmation list itself now renders prominently above
+  // this collapsed section (see qplSportsPriceCandidatesPrompt), not here --
+  // burying a required action inside "advanced details" meant it went
+  // unnoticed.
   const sportsExactLinkHtml = isSports ? `<div style="margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid rgba(255,255,255,.08)">
     ${pc?.savedExactLink ? `<div style="font-size:10px;margin-bottom:6px"><b>Exact match linked:</b> ${escHtml(pc.productName || '')} ${pc.url?`- <a href="${escHtml(pc.url)}" target="_blank" rel="noopener">open PriceCharting</a>`:''}</div>` : ''}
     <div style="display:grid;grid-template-columns:1fr auto;gap:7px">
@@ -35152,7 +35174,6 @@ function qplSlabControls(r, idx){
       <button class="hbtn" onclick="linkManualSportsPrice(${idx})">LINK EXACT PRICE</button>
     </div>
     <div style="font-size:9px;color:var(--dim);margin-top:5px">A pasted product ID is an exact single-product lookup. A pasted URL is resolved by name search and may need a moment to confirm it's the right printing.</div>
-    ${sportsCandidateHtml}
   </div>` : '';
   return `<div style="margin-top:10px;border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:8px;background:rgba(255,255,255,.02)">
     ${sportsExactLinkHtml}
@@ -35891,6 +35912,10 @@ function quickLookupResultCard(r, idx){
         ${!isComic ? renderVariantIntelligenceBadge(r) : ''}
       </div>
       ${signals.length ? `<div class="qpl-signal" style="color:${needs.length?'var(--g)':'var(--gold)'}">${escHtml(signals.join(' / '))}</div>` : ''}
+      <!-- Ambiguous sports URL match needs a human pick before there's any
+           price at all -- shown up front, not buried in the collapsed
+           details below, since it's required, not optional/advanced. -->
+      ${r.sportsPriceCandidates?.length ? qplSportsPriceCandidatesPrompt(r, idx) : ''}
       <!-- Advanced pricing table — starts collapsed; user opens to see conditions + graded -->
       <details class="research-secondary-actions ${isComic?'comic-book-details':''}" style="margin-top:12px" ${isComic?`ontoggle="openComicDetailsAndHydrate(${idx},this)"`:''}>
         <summary>${isComic?'CHOOSE COVER / VARIANT + SEE PRICES':'VIEW PRICES + GRADING DETAILS'}</summary>
@@ -44938,7 +44963,7 @@ async function toppsLoadParallels(cardId){
   window.__arscaCloseModal = closeModal;
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.25.02-sports-candidate-confirm" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.25.03-sports-console-scoped-search" defer></script>
 </body>
 </html>
 
