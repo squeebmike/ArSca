@@ -13655,7 +13655,10 @@ function roundSellPrice(value){
 function roundBuyOffer(value){
   const n = Number(value || 0);
   if(!isFinite(n) || n <= 0) return 0;
-  return Math.floor(n + 1e-9);
+  // Any card with positive value gets at least a $1 offer -- flooring can't
+  // take a real card down to $0 just because the offer % landed it under a
+  // dollar (e.g. $0.75 market at 100%, or $1.50 at 50%).
+  return Math.max(1, Math.floor(n + 1e-9));
 }
 function suggestedCartSalePrice(value){
   const n = Number(value || 0);
