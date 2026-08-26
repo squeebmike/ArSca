@@ -231,7 +231,7 @@ assert.match(focDash, /title:preview\.baseTitle\|\|preview\.title\.replace\(\/ -
 // ALL its tokens to survive the per-token gap cleanup above (e.g. "features
 // {character} from {franchise}" still reads as "features from" once both
 // are individually blanked -- wrapping it in [[...]] drops the whole thing).
-assert.match(rendererBody, /line\.replace\(\/\\\[\\\[\(\[\^\\\[\\\]\]\*\)\\\]\\\]\/g, \(full, inner\) => \{/, 'must support [[...]] optional-clause syntax');
+assert.match(rendererBody, /raw\.replace\(\/\\\[\\\[\(\[\\s\\S\]\*\?\)\\\]\\\]\/g, \(full, inner\) => \{/, 'must support [[...]] optional-clause syntax');
 assert.match(rendererBody, /return \(innerKeys\.length && innerKeys\.some\(k => !tokens\[k\]\)\) \? '' : inner;/, 'a [[...]] clause must drop entirely if ANY token inside it is empty, not just the empty token itself');
 assert.match(rendererBody, /\.replace\(\/\\n\{3,\}\/g, '\\n\\n'\)/, 'must collapse blank-line stacking left behind when a whole-line [[...]] clause drops');
 
@@ -380,4 +380,41 @@ assert.match(focDash, /var isHtmlTemplate=\/<\\\/\?\[a-z\]\[\\s\\S\]\*>\/i\.test
 assert.match(focDash, /disclosure=isHtmlTemplate\s*\n\s*\? '<p>PRESALE/, 'the mandatory disclosure must be built as real HTML paragraphs when sitting next to an HTML template');
 assert.match(focDash, /description=disclosure\+\(isHtmlTemplate\?'':'\\n\\n'\)\+renderedBody;/, 'the disclosure and template body must be joined without a stray plain-text separator when both are already HTML');
 
-console.log('FOC eBay presale review-step, template-field, eligible-filter, handling-time, aspects, template-reuse, unordered-withdrawal, store-category, template-gap, optional-clause, extra-field, html-formatting, warnings, quantity-default, cross-entry-point presale, real-condition-id, description-length-cap, and html-template-passthrough contract checks passed');
+// Store built a real rich-HTML Comic template using [[...]] to wrap whole
+// multi-line blocks (an entire optional <tr> row, a multi-line <div>
+// around {notes}) -- the original [[...]] implementation only recognized
+// a clause when its opening and closing brackets sat on the SAME line, so
+// a [[ on one line paired with a ]] several lines later leaked the literal
+// bracket characters straight into the live listing instead of being
+// evaluated. Must now be resolved across the whole template before
+// splitting into lines.
+const rendererStart2 = dashboard.indexOf('function renderEbayDescriptionTemplate');
+const rendererEnd2 = dashboard.indexOf('function computeEbayListingFields', rendererStart2);
+const rendererBody2 = dashboard.slice(rendererStart2, rendererEnd2);
+assert.match(rendererBody2, /const withClauses = raw\.replace\(\/\\\[\\\[\(\[\\s\\S\]\*\?\)\\\]\\\]\/g, \(full, inner\) => \{/,
+  'the [[...]] scan must run across the whole template (multiline-capable), not per line, so a clause spanning multiple lines is recognized as one unit');
+assert.match(rendererBody2, /const lines = withClauses\.split\('\\n'\);/, 'line-splitting must happen AFTER clause resolution, not before');
+{
+  const rendererSrc = dashboard.slice(rendererStart2, rendererEnd2);
+  const renderEbayDescriptionTemplate = new Function(rendererSrc + '\nreturn renderEbayDescriptionTemplate;')();
+  const multilineTemplate = '<table>\n[[\n<tr><td>{notes}</td></tr>\n]]\n</table>';
+  const droppedOut = renderEbayDescriptionTemplate(multilineTemplate, {});
+  assert(!droppedOut.includes('[['), 'a multi-line [[...]] clause with its token empty must not leak the literal "[[" into the output');
+  assert(!droppedOut.includes(']]'), 'a multi-line [[...]] clause with its token empty must not leak the literal "]]" into the output');
+  assert(!droppedOut.includes('<tr>'), 'a multi-line [[...]] clause with its token empty must actually drop its content, not just hide the brackets');
+  const keptOut = renderEbayDescriptionTemplate(multilineTemplate, { notes: 'Ships fast' });
+  assert(keptOut.includes('<tr><td>Ships fast</td></tr>'), 'a multi-line [[...]] clause with its token populated must keep its content intact');
+}
+
+// The doubled-punctuation cleanup meant for prose artifacts ("word ,  ."
+// from a dropped clause) was also eating real CSS syntax in a rich-HTML
+// template's inline style attributes, since ":" immediately followed by
+// "." (e.g. "letter-spacing:.5px") matched the same "collapse adjacent
+// punctuation" rule when it covered : and ; too (confirmed live: it became
+// "letter-spacing.5px", silently breaking that CSS declaration).
+assert.match(rendererBody2, /\.replace\(\/\(\[,\.\]\) \*\(\?=\[,\.\]\)\/g, ''\);/,
+  'the doubled-punctuation collapse must only apply to , and . -- never : or ;, which are load-bearing in inline CSS');
+assert.doesNotMatch(rendererBody2, /\.replace\(\/\(\[,\.;:\]\) \*\(\?=\[,\.;:\]\)\/g, ''\);/,
+  'must not still be using the old character class that included : and ;');
+
+console.log('FOC eBay presale review-step, template-field, eligible-filter, handling-time, aspects, template-reuse, unordered-withdrawal, store-category, template-gap, optional-clause, extra-field, html-formatting, warnings, quantity-default, cross-entry-point presale, real-condition-id, description-length-cap, html-template-passthrough, multiline-clause, and css-safety contract checks passed');

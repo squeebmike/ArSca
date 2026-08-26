@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.26.21-ebay-real-condition-id">
+<meta name="version" content="2026.08.26.22-multiline-template-clauses">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1638,16 +1638,16 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.26.21-ebay-real-condition-id" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.26.21-ebay-real-condition-id" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.26.21-ebay-real-condition-id" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.08.26.21-ebay-real-condition-id" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.26.21-ebay-real-condition-id" defer></script>
-<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.08.26.21-ebay-real-condition-id" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.26.21-ebay-real-condition-id" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.26.21-ebay-real-condition-id" defer></script>
-<script src="scripts/pokemon/offline-browser.js?v=2026.08.26.21-ebay-real-condition-id" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.26.21-ebay-real-condition-id" defer></script>
+<script src="scripts/query-routing.js?v=2026.08.26.22-multiline-template-clauses" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.26.22-multiline-template-clauses" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.26.22-multiline-template-clauses" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.08.26.22-multiline-template-clauses" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.26.22-multiline-template-clauses" defer></script>
+<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.08.26.22-multiline-template-clauses" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.26.22-multiline-template-clauses" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.26.22-multiline-template-clauses" defer></script>
+<script src="scripts/pokemon/offline-browser.js?v=2026.08.26.22-multiline-template-clauses" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.26.22-multiline-template-clauses" defer></script>
 </head>
 <body>
 
@@ -1676,11 +1676,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.26.21-ebay-real-condition-id</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.26.22-multiline-template-clauses</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.26.21-ebay-real-condition-id</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.26.22-multiline-template-clauses</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1698,7 +1698,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.26.21-ebay-real-condition-id</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.26.22-multiline-template-clauses</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3700,7 +3700,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.26.21-ebay-real-condition-id';
+const APP_VERSION = '2026.08.26.22-multiline-template-clauses';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -22149,21 +22149,28 @@ function readEbayExtraFieldUpdates(){
 // dropped entirely (matches the old hardcoded field-list's .filter(Boolean) behavior),
 // so a customized template doesn't need per-item conditional logic of its own.
 function renderEbayDescriptionTemplate(template, tokens){
-  const lines = String(template || '').split('\n');
+  const raw = String(template || '');
+  // Optional clauses: wrapping a phrase in [[...]] drops the WHOLE
+  // bracketed span together if any token inside it is empty, instead of
+  // leaving a token-shaped hole mid-sentence -- "features {character}
+  // from {franchise}" with both empty still reads as "features from"
+  // even after cleanup below; "[[features {character} from
+  // {franchise}]]" makes the whole clause disappear together. Optional,
+  // backward compatible -- a template with no [[...]] is unaffected.
+  // Resolved globally across the WHOLE template before splitting into
+  // lines below -- a rich-HTML template commonly wraps a whole multi-line
+  // block (e.g. an entire optional <tr> or <div>) in [[...]], and a
+  // per-line-only scan never recognizes a [[ on one line paired with a ]]
+  // several lines later as one clause, leaking the literal bracket
+  // characters into the live listing instead of evaluating them.
+  const withClauses = raw.replace(/\[\[([\s\S]*?)\]\]/g, (full, inner) => {
+    const innerKeys = [...inner.matchAll(/\{(\w+)\}/g)].map(m => m[1]);
+    return (innerKeys.length && innerKeys.some(k => !tokens[k])) ? '' : inner;
+  });
+  const lines = withClauses.split('\n');
   const out = [];
   for(const line of lines){
-    // Optional clauses: wrapping a phrase in [[...]] drops the WHOLE
-    // bracketed span together if any token inside it is empty, instead of
-    // leaving a token-shaped hole mid-sentence -- "features {character}
-    // from {franchise}" with both empty still reads as "features from"
-    // even after cleanup below; "[[features {character} from
-    // {franchise}]]" makes the whole clause disappear together. Optional,
-    // backward compatible -- a template with no [[...]] is unaffected.
-    let withClauses = line.replace(/\[\[([^\[\]]*)\]\]/g, (full, inner) => {
-      const innerKeys = [...inner.matchAll(/\{(\w+)\}/g)].map(m => m[1]);
-      return (innerKeys.length && innerKeys.some(k => !tokens[k])) ? '' : inner;
-    });
-    const keys = [...withClauses.matchAll(/\{(\w+)\}/g)].map(m => m[1]);
+    const keys = [...line.matchAll(/\{(\w+)\}/g)].map(m => m[1]);
     if(keys.length && keys.every(k => !tokens[k])) continue;
     // A whole line also drops cleanly when every remaining token on it is
     // empty (handles the "COMIC DETAILS"-style one-token-per-line case
@@ -22176,14 +22183,21 @@ function renderEbayDescriptionTemplate(template, tokens){
     // artifacts from removed words are then cleaned up below on a
     // best-effort basis (this can't fully repair arbitrary prose grammar
     // for tokens left unwrapped by [[...]], only avoid the ugliest gaps).
-    let rendered = withClauses.replace(/([#])?\{(\w+)\}/g, (full, connector, k) => {
+    let rendered = line.replace(/([#])?\{(\w+)\}/g, (full, connector, k) => {
       const val = tokens[k] || '';
       return val ? (connector || '') + val : '';
     });
     rendered = rendered
       .replace(/[ \t]{2,}/g, ' ')
       .replace(/ +([,.;:])/g, '$1')
-      .replace(/([,.;:]) *(?=[,.;:])/g, '');
+      // Only , and . collapse when doubled -- that's the real removed-token
+      // artifact shape ("word ,  ." from a dropped clause). : and ; must
+      // never be touched here: a rich-HTML template's inline style
+      // attributes are full of "property:value;" pairs (confirmed live:
+      // "letter-spacing:.5px" lost its colon, becoming
+      // "letter-spacing.5px", because ":" immediately followed by "."
+      // matched this same collapse rule when it also covered : and ;).
+      .replace(/([,.]) *(?=[,.])/g, '');
     out.push(rendered);
   }
   // A [[...]] clause that was a whole line by itself leaves a blank line
@@ -45130,7 +45144,7 @@ async function toppsLoadParallels(cardId){
   window.__arscaCloseModal = closeModal;
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.26.21-ebay-real-condition-id" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.26.22-multiline-template-clauses" defer></script>
 </body>
 </html>
 
