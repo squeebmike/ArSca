@@ -3061,8 +3061,22 @@ export default {
       if (!priceCents) return json({ ok: false, error: 'This SKU has no price set -- set a customer price before creating a presale listing' }, 400);
 
       const onSaleLabel = onSaleDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
-      const variantLabel = sku.variant_label && sku.variant_label !== 'Cover A' ? sku.variant_label : '';
-      const title = [sku.title, variantLabel].filter(Boolean).join(' ').substring(0, 80);
+      // sku.variant_label sometimes already repeats the title verbatim (bad
+      // FOC import data, e.g. variant_label === title) -- appending it
+      // unconditionally produced titles like "Adventure Time Compendium
+      // Vol. 4 Compendium Vol. 4". Only append it if it isn't already there.
+      const baseTitle = String(sku.title || '').trim();
+      const variantLabel = sku.variant_label && sku.variant_label !== 'Cover A' && !baseTitle.toLowerCase().includes(String(sku.variant_label).toLowerCase())
+        ? sku.variant_label : '';
+      // eBay's presale policy requires "presale" to be disclosed in BOTH the
+      // title and the description -- title-only-implicit presale listings
+      // are a real policy violation eBay actively enforces against
+      // (administratively ending the listing, lowered search placement, up
+      // to account suspension). The description already discloses it below;
+      // this reserves space so the suffix always survives the 80-char cap.
+      const PRESALE_TITLE_SUFFIX = ' - PRESALE';
+      const titleBase = [baseTitle, variantLabel].filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
+      const title = (titleBase.substring(0, 80 - PRESALE_TITLE_SUFFIX.length) + PRESALE_TITLE_SUFFIX).substring(0, 80);
       const description = [
         'PRESALE -- This comic has not been released yet and is not currently in stock.',
         `Expected on-sale/ship date: ${onSaleLabel}. Your order ships promptly once we receive stock from the distributor on or shortly after that date.`,
