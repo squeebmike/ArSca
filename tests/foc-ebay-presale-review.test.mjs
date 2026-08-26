@@ -125,4 +125,14 @@ assert.match(worker, /const fulfillmentPolicyId = await getFocPresaleFulfillment
 assert.match(worker, /fulfillmentPolicyId,\s*\n\s*\}, ebayToken, env, storeId\);/, 'the computed fulfillmentPolicyId must be passed into the listing payload');
 assert.match(focDash, /eBay handling time on this listing:/, 'the review modal must show the handling time so the store can verify the ship date is accurate before publishing');
 
+// The dynamic handling-time policies must clone shipping-service setup
+// (carrier, calculated-vs-flat cost, etc.) from a store-created presale-
+// named policy (e.g. "PreSale Paid Shipping") when one exists, rather than
+// always cloning the store's general default policy -- a presale-specific
+// policy is more likely to already have the right shipping cost/service
+// configuration for presale orders.
+assert.match(worker, /async function resolveFocPresaleBasePolicyId\(env, ebayToken\)/, 'must resolve which policy to clone shipping setup from');
+assert.match(worker, /find\(p => \/presale\/i\.test\(p\.name \|\| ''\)\)/, 'must prefer a store-created policy named for presale use');
+assert.match(worker, /const baseId = \(await resolveFocPresaleBasePolicyId\(env, ebayToken\)\) \|\| fallback/, 'the per-book handling-time clone must use the resolved presale base policy');
+
 console.log('FOC eBay presale review-step, template-field, eligible-filter, and handling-time contract checks passed');
