@@ -249,8 +249,9 @@ async function openEbayPresaleReview(skuId){
     var templates=vp.ebayDescriptionTemplates||{};
     var customTemplate=templates.Comic||templates.default||'';
     if(customTemplate&&typeof renderEbayDescriptionTemplate==='function'){
+      var presaleShippingLine=['For presale comics, orders ship promptly once the title reaches its official release date and inventory has been received from our distributor.',preview.onSaleLabel?('Release Date: '+preview.onSaleLabel):'','Publisher and distributor release dates may change. If a presale title is delayed, your order will ship as soon as the book becomes available.'].filter(Boolean).join('\n\n');
       var tokens={title:preview.baseTitle||preview.title.replace(/ - PRESALE$/,''),category:'Comic',price:preview.price,upc:preview.upc,
-        variant:preview.variantLabel||'',
+        variant:preview.variantLabel||'',releaseDate:preview.onSaleLabel||'',shippingLine:presaleShippingLine,
         publisher:asp.Publisher||'',writer:asp.Writer||'',artist:asp.Artist||'',coverArtist:asp['Cover Artist']||'',
         condition:'New',quantity:'1'};
       var renderedBody=renderEbayDescriptionTemplate(customTemplate,tokens);
@@ -286,6 +287,15 @@ async function openEbayPresaleReview(skuId){
     '<div class="foc-sku-fields" style="grid-template-columns:1fr 1fr;margin-bottom:10px">'+
     ['Publisher','Writer','Artist','Cover Artist'].map(function(k){return '<label>'+k.toUpperCase()+'<input class="tsi" data-foc-eb-aspect="'+esc(k)+'" value="'+esc(asp[k]||'')+'"></label>';}).join('')+
     '</div>'+
+    '<details style="margin-bottom:10px"><summary style="cursor:pointer;font:9px var(--font-mono);color:var(--dim)">MORE ITEM DETAILS (OPTIONAL -- feeds eBay item specifics, not just this description)</summary>'+
+    '<div class="foc-sku-fields" style="grid-template-columns:1fr 1fr;margin-top:8px">'+
+    [['Series','series'],['Character','character'],['Franchise','franchise'],['Edition','edition'],['Exclusive','exclusive'],['Cover Type','coverType']]
+      .map(function(x){return '<label>'+x[0].toUpperCase()+'<input class="tsi" data-foc-eb-extra="'+esc(x[1])+'" data-foc-eb-extra-label="'+esc(x[0])+'"></label>';}).join('')+
+    '</div>'+
+    '<div class="foc-sku-fields" style="grid-template-columns:1fr 1fr;margin-top:8px">'+
+    [['Key Issue','keyIssue'],['First Appearance','firstAppearance']]
+      .map(function(x){return '<label>'+x[0].toUpperCase()+'<input class="tsi" data-foc-eb-extra="'+esc(x[1])+'" data-foc-eb-extra-label="'+esc(x[0])+'" placeholder="Only when verified for this book"></label>';}).join('')+
+    '</div></details>'+
     '<label style="font:9px var(--font-mono);color:var(--dim);display:block;margin-bottom:10px">EBAY STORE CATEGORY (optional -- your Seller Hub \'Store category\', not the eBay item category)<input id="foc-eb-store-category" class="tsi" value="'+esc(lastStoreCategory)+'" placeholder="e.g. Comic Books" style="margin-top:4px"></label>'+
     '<div style="display:flex;justify-content:space-between;align-items:baseline"><label style="font:9px var(--font-mono);color:var(--dim)">DESCRIPTION</label>'+
     '<span style="font:8px var(--font-mono);color:var(--dim)">'+(usedCustomTemplate?'Using your saved Comic template (':'Using the built-in default (')+'<a href="#" onclick="openSettingsSection(\'profile\',\'vendor-profile-panel\');return false" style="color:var(--g)">edit in Settings → Vendor Info → EBAY LISTING SETTINGS</a>)</span></div>'+
@@ -303,6 +313,7 @@ async function submitEbayPresaleReview(skuId){
   if(!qty){toast_dash('Enter a valid quantity');return;}
   var customAspects={};
   document.querySelectorAll('[data-foc-eb-aspect]').forEach(function(el){customAspects[el.dataset.focEbAspect]=el.value;});
+  document.querySelectorAll('[data-foc-eb-extra]').forEach(function(el){if(el.value)customAspects[el.dataset.focEbExtraLabel]=el.value;});
   var storeCategory=(document.getElementById('foc-eb-store-category').value||'').trim();
   try{localStorage.setItem('foc_ebay_last_store_category',storeCategory);}catch(e){}
   var payload={

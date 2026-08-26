@@ -39,7 +39,8 @@ assert.match(dashboard, /autograph:item\.is_signed\?'Autograph':'',/, 'autograph
 assert.match(dashboard, /gradingCompany:item\.grader\|\|'',/, 'gradingCompany must expose the existing grader field as its own token');
 assert.match(dashboard, /certNumber:item\.cert_number\|\|'',/, 'certNumber must expose the existing cert_number field as its own token');
 assert.match(dashboard, /notes:item\.key_notes\|\|item\.notes\|\|'',/, 'notes must be a real template token, not just an internal-only field');
-assert.match(dashboard, /EBAY_TEMPLATE_EXTRA_FIELDS\.forEach\(f=>\{ tokens\[f\.token\] = item\[f\.key\]\|\|''; \}\);/, 'every new free-text field must also become a template token');
+assert.match(dashboard, /EBAY_TEMPLATE_EXTRA_FIELDS\.forEach\(f=>\{ tokens\[f\.token\] = tokens\[f\.token\] \|\| item\[f\.key\] \|\| ''; \}\);/,
+  'every new free-text field must also become a template token, without clobbering an already-computed token of the same name (e.g. releaseDate)');
 
 console.log('eBay listing template fields contract checks passed');
 
