@@ -56,26 +56,37 @@ assert.match(html, /value="skip">Skip duplicates/, 'CSV import must default to s
   assert.match(renderBuyListFn, /if\(pctLbl\) pctLbl\.textContent = effectivePct \+ '%';/, 'the effective % must actually be written to bl-pct-lbl');
   // The raw slider position (bl-pct) is a genuinely separate control (the
   // default % for NEW items) that a manual per-item offer can legitimately
-  // diverge from -- surface that only when it actually does, instead of
-  // leaving two disagreeing percentages on screen with no explanation
-  // (confirmed live TWICE: "Offer %" showed 90%, then later 93%, while the
-  // slider/stepper read 100 with no indication why or which item caused it
-  // -- a note alone wasn't enough, so a one-tap RESET ALL was added too).
-  assert.match(renderBuyListFn, /const diverges = Math\.round\(pct \* 100\) !== effectivePct;/, 'must compute whether the slider and effective rate actually disagree');
-  assert.match(renderBuyListFn, /if\(sliderNote\) sliderNote\.style\.display = diverges \? '' : 'none';/, 'the slider-vs-effective-rate note must only show when the two actually disagree');
-  assert.match(renderBuyListFn, /if\(resetAllBtn\) resetAllBtn\.style\.display = diverges \? 'block' : 'none';/, 'the RESET ALL ITEMS TO SLIDER % button must appear alongside the note, not separately');
+  // diverge from -- surface that only when it actually does. A first attempt
+  // compared the slider % against effectivePct, which flickered on for
+  // almost any fractional market price with NO override at all: a single
+  // $36.88 item at a 100% slider already lands effectivePct on 98% purely
+  // from buyItemOfferValue's own floor-to-whole-dollar rounding. A RESET ALL
+  // button added alongside that noisy check made it worse, not better --
+  // the store explicitly does not want a bulk reset, and flooring the basis
+  // price before the % math (see buyItemPricingBasis below) makes the
+  // effective rate match the slider exactly in the common case anyway.
+  // Checking the real per-item flag directly is the correct, non-flickering
+  // signal for whether the note should show at all.
+  assert.match(renderBuyListFn, /if\(sliderNote\) sliderNote\.style\.display = buyList\.some\(i => i\.manualOfferOverride\) \? '' : 'none';/, 'the slider note must only show when a real per-item override exists, not from an effectivePct comparison that can flicker on ordinary rounding');
+  assert.doesNotMatch(renderBuyListFn, /const diverges/, 'must not reintroduce the percentage-comparison divergence heuristic');
   assert.match(html, /id="bl-pct-slider-note"/, 'a note explaining the slider is a separate "default for new items" control must exist near it');
-  assert.match(html, /id="bl-reset-all-offers"[^>]*onclick="resetAllBuyOffersToSlider\(\)"/, 'a one-tap way to clear every per-item offer override back to the slider % must exist near the note');
-  assert.match(html, /function resetAllBuyOffersToSlider\(\)\{/, 'missing resetAllBuyOffersToSlider');
-  const resetAllFn = html.slice(html.indexOf('function resetAllBuyOffersToSlider(){'), html.indexOf('\nfunction ', html.indexOf('function resetAllBuyOffersToSlider(){') + 1));
-  assert.match(resetAllFn, /overridden\.forEach\(item => \{ item\.manualOfferOverride = false; delete item\.cashOffer; \}\);/, 'resetAllBuyOffersToSlider must clear manualOfferOverride/cashOffer, and must leave manualMarketOverride (a real researched price correction) alone');
-  // A manual offer is also the only way to price a card with no researched
-  // market at all -- resetting one of those drops it to $0, silently
-  // discarding real work, so this must warn before doing it, not just fire.
-  assert.match(resetAllFn, /if\(!confirm\(warning\)\) return;/, 'resetAllBuyOffersToSlider must confirm before clearing overrides -- some are unpriced items with no fallback value, not accidental taps');
-  assert.match(resetAllFn, /const unpriced = overridden\.filter\(item => !\(Number\(item\.market \|\| item\.priceUsed \|\| 0\) > 0\)\)\.length;/, 'must specifically call out how many overridden items have no market price and would drop to $0');
+  assert.doesNotMatch(html, /bl-reset-all-offers|resetAllBuyOffersToSlider/, 'the RESET ALL button and its handler must not exist -- store policy is no bulk reset of manual offers');
   const updateBuyListOfferFn = html.slice(html.indexOf('function updateBuyListOffer(){'), html.indexOf('\nfunction setBuyOfferPct('));
   assert.doesNotMatch(updateBuyListOfferFn, /lbl\.textContent = pct \+ '%';/, 'updateBuyListOffer must not still write the raw slider % onto bl-pct-lbl -- renderBuyList is the single owner of that stat now');
+}
+
+// Store buy policy: the guide/market price used as the basis for an offer
+// rounds DOWN to the nearest whole dollar FIRST, before the slider % is
+// applied -- not multiplied while fractional and only rounded at the end.
+// Confirmed live: a $36.88 item at a 100% slider used to compute
+// floor(36.88 * 1.00) = $36.00, an $0.88 "profit" on paper for a full-value
+// offer, purely from leftover fractional cents.
+{
+  assert.match(html, /function buyItemPricingBasis\(item\)\{/, 'missing buyItemPricingBasis');
+  const basisFn = html.slice(html.indexOf('function buyItemPricingBasis(item){'), html.indexOf('\nfunction ', html.indexOf('function buyItemPricingBasis(item){') + 1));
+  assert.match(basisFn, /return raw > 0 \? Math\.floor\(raw\) : 0;/, 'buyItemPricingBasis must floor the raw market price to a whole dollar');
+  const offerValueFn = html.slice(html.indexOf('function buyItemOfferValue(item){'), html.indexOf('\nfunction buyItemMarketValue('));
+  assert.match(offerValueFn, /return roundBuyOffer\(buyItemPricingBasis\(item\) \* pct\);/, 'buyItemOfferValue must apply the slider % to the whole-dollar basis, not the raw fractional market price');
 }
 
 // A card research genuinely can't find a price for still has to be
@@ -88,7 +99,7 @@ assert.match(html, /value="skip">Skip duplicates/, 'CSV import must default to s
 {
   assert.match(html, /function buyItemMarketValue\(item\)\{/, 'missing buyItemMarketValue');
   const marketValueFn = html.slice(html.indexOf('function buyItemMarketValue(item){'), html.indexOf('\nfunction ', html.indexOf('function buyItemMarketValue(item){') + 1));
-  assert.match(marketValueFn, /if\(market > 0\) return market;/, 'buyItemMarketValue must use the real researched market price when one exists');
+  assert.match(marketValueFn, /if\(basis > 0\) return basis;/, 'buyItemMarketValue must use the whole-dollar basis (buyItemPricingBasis) when a real market price exists, so Market Value/Offer/Spread all derive from the same rounded number');
   assert.match(marketValueFn, /return item\.manualOfferOverride \? buyItemOfferValue\(item\) : 0;/, 'an unpriced item must fall back to its own manual offer as a stand-in market value (net $0 spread contribution), not silently contribute $0 to Market Value while its offer still counts toward Your Offer');
   // All three places that sum a tray's market total must use the shared
   // helper -- a raw Number(i.market||0) sum anywhere reintroduces the bug.
