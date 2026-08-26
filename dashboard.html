@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.26.13-buy-unpriced-manual-offer">
+<meta name="version" content="2026.08.26.14-buy-round-basis-first">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1633,16 +1633,16 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.26.13-buy-unpriced-manual-offer" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.26.13-buy-unpriced-manual-offer" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.26.13-buy-unpriced-manual-offer" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.08.26.13-buy-unpriced-manual-offer" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.26.13-buy-unpriced-manual-offer" defer></script>
-<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.08.26.13-buy-unpriced-manual-offer" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.26.13-buy-unpriced-manual-offer" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.26.13-buy-unpriced-manual-offer" defer></script>
-<script src="scripts/pokemon/offline-browser.js?v=2026.08.26.13-buy-unpriced-manual-offer" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.26.13-buy-unpriced-manual-offer" defer></script>
+<script src="scripts/query-routing.js?v=2026.08.26.14-buy-round-basis-first" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.26.14-buy-round-basis-first" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.26.14-buy-round-basis-first" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.08.26.14-buy-round-basis-first" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.26.14-buy-round-basis-first" defer></script>
+<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.08.26.14-buy-round-basis-first" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.26.14-buy-round-basis-first" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.26.14-buy-round-basis-first" defer></script>
+<script src="scripts/pokemon/offline-browser.js?v=2026.08.26.14-buy-round-basis-first" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.26.14-buy-round-basis-first" defer></script>
 </head>
 <body>
 
@@ -1671,11 +1671,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.26.13-buy-unpriced-manual-offer</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.26.14-buy-round-basis-first</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.26.13-buy-unpriced-manual-offer</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.26.14-buy-round-basis-first</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1693,7 +1693,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.26.13-buy-unpriced-manual-offer</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.26.14-buy-round-basis-first</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -2325,7 +2325,6 @@ body.show-mode .inv-sync-badge{display:none;}
         </div>
         <div style="font-family:monospace;font-size:9px;color:var(--dim);margin-top:4px;text-align:center">Offers round down to whole dollars.</div>
         <div id="bl-pct-slider-note" style="font-family:monospace;font-size:9px;color:var(--gold);margin-top:6px;text-align:center">This sets the default % for new items. It won't move for items with their own typed-in offer above, so it can differ from the "Offer %" stat.</div>
-        <button id="bl-reset-all-offers" onclick="resetAllBuyOffersToSlider()" style="display:none;margin:8px auto 0;font-family:monospace;font-size:10px;padding:6px 12px">RESET ALL ITEMS TO SLIDER %</button>
       </div>
 
       <!-- ③ ADD CARD ROW -->
@@ -3696,7 +3695,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.26.13-buy-unpriced-manual-offer';
+const APP_VERSION = '2026.08.26.14-buy-round-basis-first';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -38353,6 +38352,20 @@ function currentBuySessionCustomer(){
     customerEmail:document.getElementById('buy-session-email')?.value.trim() || '',
   };
 }
+// Store buy policy: the guide/market price used as the basis for a buy
+// offer always rounds DOWN to the nearest whole dollar FIRST, before the
+// slider % is ever applied to it -- not left fractional through the %
+// math and only rounded at the very end. A $36.88 guide value at a 100%
+// offer used to compute as floor(36.88 * 1.00) = $36.00, leaving an $0.88
+// "profit" on paper for an item offered at full value -- and it threw off
+// the Offer % stat too (36 / 36.88 = 98%, not 100%) purely from that
+// leftover fractional cent, not from any actual override. Flooring the
+// basis first means a 100% offer on a $36.88 item is a clean $36.00: the
+// price the item is actually bought/written up at.
+function buyItemPricingBasis(item){
+  const raw = Number(item.market || item.priceUsed || 0);
+  return raw > 0 ? Math.floor(raw) : 0;
+}
 function buyItemOfferValue(item){
   // BUY OFFER ROUNDING: offers/cost basis are whole dollars, rounded DOWN
   // (roundBuyOffer). This is the single chokepoint for buy offer math —
@@ -38360,7 +38373,7 @@ function buyItemOfferValue(item){
   // printed/texted offers all flow through here.
   if(item.manualOfferOverride) return roundBuyOffer(Math.max(0, Number(item.cashOffer || 0)));
   const pct = parseFloat(document.getElementById('bl-pct')?.value || 50) / 100;
-  return roundBuyOffer(Number(item.market || item.priceUsed || 0) * pct);
+  return roundBuyOffer(buyItemPricingBasis(item) * pct);
 }
 // A card research genuinely can't find a price for still needs to be
 // buyable -- the customer's offer gets typed straight into the $offer
@@ -38374,8 +38387,8 @@ function buyItemOfferValue(item){
 // (net $0 spread contribution -- honest, since we don't actually know its
 // real value) instead of quietly excluding it.
 function buyItemMarketValue(item){
-  const market = Number(item.market || item.priceUsed || 0);
-  if(market > 0) return market;
+  const basis = buyItemPricingBasis(item);
+  if(basis > 0) return basis;
   return item.manualOfferOverride ? buyItemOfferValue(item) : 0;
 }
 function snapshotBuySession(status){
@@ -38773,29 +38786,6 @@ function resetBuyItemPricing(id){
   }
 }
 
-// Clears just the per-item OFFER override (manualOfferOverride/cashOffer),
-// not manualMarketOverride -- a manually-corrected market price is still a
-// real researched value the slider should keep applying its % to, only a
-// manually-typed cash offer should snap back to following the slider.
-// A manual offer isn't always an accidental tap -- it's also the only way
-// to price a card research genuinely can't find a price for (no market to
-// apply the slider % to at all). Resetting one of THOSE drops it straight
-// to $0, silently discarding real work, so warn specifically about that
-// count rather than treating every override as a mistake to undo.
-function resetAllBuyOffersToSlider(){
-  const overridden = buyList.filter(item => item.manualOfferOverride);
-  if(!overridden.length){ toast_dash('Nothing to reset'); return; }
-  const unpriced = overridden.filter(item => !(Number(item.market || item.priceUsed || 0) > 0)).length;
-  const warning = unpriced
-    ? `Reset ${overridden.length} item${overridden.length === 1 ? '' : 's'} to the slider %? ${unpriced} of them have no researched market price and will drop to $0 -- you'll need to re-type those offers.`
-    : `Reset ${overridden.length} item${overridden.length === 1 ? '' : 's'} back to the slider %?`;
-  if(!confirm(warning)) return;
-  overridden.forEach(item => { item.manualOfferOverride = false; delete item.cashOffer; });
-  saveBuyList();
-  renderBuyList();
-  toast_dash('Reset ' + overridden.length + ' item' + (overridden.length === 1 ? '' : 's') + ' back to the slider %');
-}
-
 function updateBuyListOffer(){
   const pct = document.getElementById('bl-pct')?.value || '50';
   const num = document.getElementById('bl-pct-num');
@@ -38867,19 +38857,16 @@ function renderBuyList(){
   const pctLbl = document.getElementById('bl-pct-lbl');
   const effectivePct = Math.round((totalMkt > 0 ? (offer / totalMkt) : pct) * 100);
   if(pctLbl) pctLbl.textContent = effectivePct + '%';
-  // Only surface the "these can differ" note when they actually do -- e.g. a
-  // manually-typed per-item offer pulled the blended rate away from the
-  // slider's own target. Silent otherwise so the common case (they match)
-  // isn't cluttered with an explanation nobody needs. A stray tap on an
-  // item's own $offer field (easy to do by accident on a touchscreen list)
-  // is enough to silently lock that one item away from the slider forever,
-  // with no visible sign except this note and a tiny per-item reset link --
-  // show a one-tap way to clear every override at once right alongside it.
-  const diverges = Math.round(pct * 100) !== effectivePct;
+  // Only surface the "these can differ" note when a per-item offer override
+  // actually exists -- checking that directly, not by comparing the slider %
+  // against effectivePct. That comparison used to flicker on for almost any
+  // fractional market price with no override involved at all: floor-rounding
+  // a single $36.88 item's offer at a 100% slider already lands effectivePct
+  // on 98%, purely from buyItemOfferValue's floor-to-whole-dollar rounding,
+  // not from anything actually overridden. Checking the real flag instead of
+  // inferring one from noisy percentage math fixes that false positive.
   const sliderNote = document.getElementById('bl-pct-slider-note');
-  if(sliderNote) sliderNote.style.display = diverges ? '' : 'none';
-  const resetAllBtn = document.getElementById('bl-reset-all-offers');
-  if(resetAllBtn) resetAllBtn.style.display = diverges ? 'block' : 'none';
+  if(sliderNote) sliderNote.style.display = buyList.some(i => i.manualOfferOverride) ? '' : 'none';
 
   // Enable / disable PAY CUSTOMER based on session status
   const payBtn = document.getElementById('bl-pay-btn');
@@ -45038,7 +45025,7 @@ async function toppsLoadParallels(cardId){
   window.__arscaCloseModal = closeModal;
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.26.13-buy-unpriced-manual-offer" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.26.14-buy-round-basis-first" defer></script>
 </body>
 </html>
 
