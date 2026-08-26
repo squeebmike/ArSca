@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.26.06-ppt-hydrate-all-visible">
+<meta name="version" content="2026.08.26.07-ppt-offline-cache-and-stock-match">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1633,16 +1633,16 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.26.06-ppt-hydrate-all-visible" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.26.06-ppt-hydrate-all-visible" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.26.06-ppt-hydrate-all-visible" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.08.26.06-ppt-hydrate-all-visible" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.26.06-ppt-hydrate-all-visible" defer></script>
-<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.08.26.06-ppt-hydrate-all-visible" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.26.06-ppt-hydrate-all-visible" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.26.06-ppt-hydrate-all-visible" defer></script>
-<script src="scripts/pokemon/offline-browser.js?v=2026.08.26.06-ppt-hydrate-all-visible" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.26.06-ppt-hydrate-all-visible" defer></script>
+<script src="scripts/query-routing.js?v=2026.08.26.07-ppt-offline-cache-and-stock-match" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.26.07-ppt-offline-cache-and-stock-match" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.26.07-ppt-offline-cache-and-stock-match" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.08.26.07-ppt-offline-cache-and-stock-match" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.26.07-ppt-offline-cache-and-stock-match" defer></script>
+<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.08.26.07-ppt-offline-cache-and-stock-match" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.26.07-ppt-offline-cache-and-stock-match" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.26.07-ppt-offline-cache-and-stock-match" defer></script>
+<script src="scripts/pokemon/offline-browser.js?v=2026.08.26.07-ppt-offline-cache-and-stock-match" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.26.07-ppt-offline-cache-and-stock-match" defer></script>
 </head>
 <body>
 
@@ -1671,11 +1671,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.26.06-ppt-hydrate-all-visible</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.26.07-ppt-offline-cache-and-stock-match</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.26.06-ppt-hydrate-all-visible</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.26.07-ppt-offline-cache-and-stock-match</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1693,7 +1693,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.26.06-ppt-hydrate-all-visible</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.26.07-ppt-offline-cache-and-stock-match</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3695,7 +3695,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.26.06-ppt-hydrate-all-visible';
+const APP_VERSION = '2026.08.26.07-ppt-offline-cache-and-stock-match';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -29147,6 +29147,15 @@ async function pokemonDbAll(store){
   });
 }
 
+async function pokemonDbGet(store, key){
+  const db = await pokemonOfflineDb();
+  return new Promise((resolve, reject) => {
+    const req = db.transaction(store, 'readonly').objectStore(store).get(key);
+    req.onsuccess = () => resolve(req.result || null);
+    req.onerror = () => reject(req.error);
+  });
+}
+
 async function pokemonDbClear(store){
   const db = await pokemonOfflineDb();
   return new Promise((resolve, reject) => {
@@ -34328,13 +34337,36 @@ async function cachedPokemonPriceTrackerCard(row = {}){
     if(card.lookupDebug) card.lookupDebug.hydratedFromCache = true;
     return card;
   }
+  // Fall back to the persistent IDB record so a card exact-hydrated in an
+  // earlier session (page reload, or now fully offline) still has its
+  // condition ladder + PSA/graded prices instead of only the flat NM price
+  // from the bulk export -- _pptSessionCache alone never survives a reload.
+  if(wantedId){
+    try{
+      const stored = await pokemonDbGet('cards', 'pokemon:' + wantedId);
+      if(stored?.card){
+        const card = { ...stored.card, lookupDebug:{ ...(stored.card.lookupDebug || {}), hydratedFromCache:true } };
+        _pptSessionCache.set(wantedId, card);
+        return card;
+      }
+    }catch(e){}
+  }
   return null;
 }
 
 async function cachePokemonPriceTrackerCard(row = {}, card = null){
-  // Write exact-hydrated card to in-session memory cache only — no IDB write.
   const id = String(pokemonPriceTrackerId(row) || card?.tcgPlayerId || '');
-  if(id && card) _pptSessionCache.set(id, card);
+  if(!id || !card) return;
+  _pptSessionCache.set(id, card);
+  // Also persist to IDB (walkoff_pokemon_cache_v1/cards) via the same writer
+  // the set-sync bulk downloader uses, so this exact-hydrated card (with its
+  // full condition + PSA/graded price data) survives page reloads and is
+  // available while offline, and so the repricing engine / offline stats
+  // panel -- which already read this store -- actually get data.
+  try{
+    const priceDb = await pokemonOfflineDb();
+    await pstWriteCard(card, { priceDb, storeId:getActiveStoreId(), now:new Date().toISOString(), dlImages:false, path:'quick-lookup.exact' });
+  }catch(e){}
 }
 
 async function fetchPokemonPriceTrackerCard(row = {}){
@@ -35601,11 +35633,20 @@ function getInventoryCountsForResult(r){
     const iN = normalizePokemonText(i.name);
     // Name: one must contain the other, and the shorter must be at least 3 chars
     if(!iN || !(iN.includes(n) || n.includes(iN)) || Math.min(iN.length, n.length) < 3) return false;
-    // Set: if both provided, at least one must be a substring of the other
-    if(s && i.set && normalizePokemonText(i.set) &&
-       !normalizePokemonText(i.set).includes(s) && !s.includes(normalizePokemonText(i.set))) return false;
-    // Card number: exact match when both provided
-    if(cn && i.card_number && String(i.card_number).replace(/\s+/g,'').toLowerCase() !== cn) return false;
+    // Set: when the search result names a set, the inventory item must too --
+    // a blank set on the inventory side is not proof it's the same print run
+    // (e.g. a plain "Base Set" row with no set filled in was silently
+    // counting as a match for "Base Set (Shadowless)", a different card).
+    if(s){
+      const iS = normalizePokemonText(i.set || '');
+      if(!iS || !(iS.includes(s) || s.includes(iS))) return false;
+    }
+    // Card number: when the search result has one, the inventory item must
+    // match it exactly -- a blank card_number is not proof it's the same card.
+    if(cn){
+      const iCn = String(i.card_number || '').replace(/\s+/g,'').toLowerCase();
+      if(!iCn || iCn !== cn) return false;
+    }
     return true;
   }
   return {
@@ -44855,7 +44896,7 @@ async function toppsLoadParallels(cardId){
   window.__arscaCloseModal = closeModal;
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.26.06-ppt-hydrate-all-visible" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.26.07-ppt-offline-cache-and-stock-match" defer></script>
 </body>
 </html>
 
