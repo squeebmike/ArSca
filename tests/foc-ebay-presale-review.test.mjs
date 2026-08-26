@@ -264,7 +264,7 @@ assert.match(focDash, /document\.querySelectorAll\('\[data-foc-eb-extra\]'\)\.fo
 // breaks to real HTML and be used everywhere a description reaches eBay
 // (both the inventory_item and offer bodies), not just one of the two.
 assert.match(worker, /function toEbayHtmlDescription\(text\) \{/, 'must have a shared HTML-formatting helper for eBay descriptions');
-assert.match(worker, /escaped\.split\(\/\\n\{2,\}\/\)\.map\(para => '<p>' \+ para\.replace\(\/\\n\/g, '<br>'\) \+ '<\/p>'\)\.join\(''\)/,
+assert.match(worker, /escaped\.split\(\/\\n\{2,\}\/\)\.map\(para => '<p>' \+ para\.replace\(\/\\n\/g, '<br>'\) \+ '<\/p>'\);/,
   'must convert blank-line-separated paragraphs to <p> and remaining single line breaks to <br>');
 assert.match(worker, /replace\(\/&\/g, '&amp;'\)\.replace\(\/</, 'must HTML-escape the raw text first, since it is built from several free-text fields');
 assert.match(worker, /description: toEbayHtmlDescription\(description \|\| title\),/, 'the inventory_item description must go through the HTML formatter');
@@ -305,4 +305,50 @@ assert.match(worker, /const itemBody = buildEbayInventoryItemBody\(bWithPolicy\)
 assert.match(worker, /const offerBody = buildEbayOfferBody\(bWithPolicy, sku, locationKey, env\);\s*\n\s*\n\s*const offerRes = await fetch\('https:\/\/api\.ebay\.com\/sell\/inventory\/v1\/offer'/,
   'the offer body (which is what actually carries fulfillmentPolicyId to eBay) must be built from the policy-enriched object in createAndPublishEbayListing');
 
-console.log('FOC eBay presale review-step, template-field, eligible-filter, handling-time, aspects, template-reuse, unordered-withdrawal, store-category, template-gap, optional-clause, extra-field, html-formatting, warnings, quantity-default, and cross-entry-point presale contract checks passed');
+// Store report, confirmed via the review-modal screenshot (handling time,
+// quantity, weight, template all correctly computed) that "Brand New"
+// still wasn't selecting on the live listing -- eBay's condition id for
+// New/Brand New is NOT the same numeric value across every category (1000
+// is the general-purpose id, comics can define their own condition set
+// entirely), so the hardcoded conditionId:'1000' assumption was simply
+// wrong for this category. Must look up the category's real condition
+// policy (the same endpoint the regular tool's own live dropdown already
+// calls) and use whichever entry is actually labeled New.
+assert.match(worker, /async function resolveEbayNewConditionId\(env, ebayToken, categoryId\)/, 'must resolve the real category-specific "New" condition id instead of assuming 1000');
+assert.match(worker, /get_item_condition_policies\?filter=\$\{encodeURIComponent\('categoryIds:\{' \+ categoryId \+ '\}'\)\}/,
+  'must call eBay\'s real condition-policy endpoint, the same one the regular listing tool\'s live dropdown uses');
+assert.match(worker, /const newCond = conditions\.find\(c => \/\^brand new\$\/i\.test\(c\.label\)\) \|\| conditions\.find\(c => \/\^new\$\/i\.test\(c\.label\)\) \|\| conditions\.find\(c => \/\\bnew\\b\/i\.test\(c\.label\)\);/,
+  'must match on the real condition label, preferring an exact "Brand New"/"New" match');
+assert.match(worker, /const conditionId = await resolveEbayNewConditionId\(env, ebayToken, '259104'\);\s*\n\s*\n\s*let listingResult;/,
+  'the FOC create route must use the resolved condition id, not a hardcoded 1000');
+assert.match(worker, /quantity, categoryId: '259104', conditionId,/, 'the resolved conditionId must actually be passed into the listing payload');
+assert.match(worker, /const conditionId = await resolveEbayNewConditionId\(env, ebayToken, '259104'\);\s*\n\s*\n\s*let converted = 0;/,
+  'convert-to-instock must also use the resolved condition id, not a hardcoded 1000');
+
+// The regular (non-FOC) listing tool's own live condition dropdown has the
+// same bug: it pre-selects by matching eBay's real condition ids against
+// our 1000 guess, so if that guess isn't one of the category's real ids,
+// nothing matches and the browser silently defaults to whichever option
+// came first -- must fall back to whichever entry is actually labeled New.
+assert.match(dashboard, /if\(!policy\.conditions\.some\(c => c\.id === keep\)\)\{/, 'must detect when the guessed default id is not one of the category\'s real condition ids');
+assert.match(dashboard, /const newCond = policy\.conditions\.find\(c => \/\^brand new\$\/i\.test\(c\.label\)\) \|\| policy\.conditions\.find\(c => \/\^new\$\/i\.test\(c\.label\)\) \|\| policy\.conditions\.find\(c => \/\\bnew\\b\/i\.test\(c\.label\)\);\s*\n\s*if\(newCond\) sel\.value = newCond\.id;/,
+  'must actually select the real New condition instead of leaving the fallback to the browser');
+
+// Store report: publishing failed live with "Invalid value for
+// description. The length should be between 1 and 4000 characters" on a
+// description that was under 4000 raw characters -- toEbayHtmlDescription
+// wraps paragraphs in <p>/<br>, and that tag overhead can push a
+// description sitting right at the pre-formatting cap over eBay's real
+// 4000-char limit, which applies to the FINAL html, not the raw text.
+assert.match(worker, /const EBAY_DESCRIPTION_MAX = 4000;/, 'must know eBay\'s real description length cap');
+assert.match(worker, /if \(\(out \+ para\)\.length > EBAY_DESCRIPTION_MAX\) break;/, 'must stop adding whole paragraphs before exceeding the cap, not truncate the joined HTML string mid-tag');
+{
+  const toEbayHtmlDescriptionSrc = worker.slice(worker.indexOf('function toEbayHtmlDescription'), worker.indexOf('function buildEbayInventoryItemBody'));
+  const toEbayHtmlDescription = new Function(toEbayHtmlDescriptionSrc + '\nreturn toEbayHtmlDescription;')();
+  const para = 'A'.repeat(180);
+  const raw = Array(22).fill(para).join('\n\n').substring(0, 4000);
+  const html = toEbayHtmlDescription(raw);
+  assert(html.length <= 4000, `toEbayHtmlDescription must never exceed eBay's 4000-char cap even when the raw text is right at 4000 chars (got ${html.length})`);
+}
+
+console.log('FOC eBay presale review-step, template-field, eligible-filter, handling-time, aspects, template-reuse, unordered-withdrawal, store-category, template-gap, optional-clause, extra-field, html-formatting, warnings, quantity-default, cross-entry-point presale, real-condition-id, and description-length-cap contract checks passed');
