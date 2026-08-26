@@ -6544,6 +6544,30 @@ export default {
       }
       if (Array.isArray(pubData?.warnings) && pubData.warnings.length) warnings.push(...pubData.warnings.map(w => w?.message || w?.longMessage).filter(Boolean));
 
+      // Store report: eBay's own listing edit page showed "Item condition"
+      // blank on a live Comics listing even though the inventory_item PUT
+      // above returned no error and no warning for conditionId, and the
+      // resolved id wasn't a fallback either -- meaning "did the PUT
+      // succeed" isn't actually proof eBay stored what we sent. Reading the
+      // item straight back after publish (the same GET the Sell Inventory
+      // API exposes for this) checks the real stored value against what
+      // was requested, so a silent server-side drop shows up as a warning
+      // here instead of only being discoverable by a human clicking into
+      // the eBay listing afterward.
+      try {
+        const verifyRes = await fetch(`https://api.ebay.com/sell/inventory/v1/inventory_item/${sku}`, {
+          headers: { 'Authorization': 'Bearer ' + ebayToken },
+        });
+        if (verifyRes.ok) {
+          const verifyData = await verifyRes.json();
+          const storedConditionId = String(verifyData?.conditionId || '');
+          const requestedConditionId = String(itemBody.conditionId || '');
+          if (requestedConditionId && storedConditionId !== requestedConditionId) {
+            warnings.push(`eBay stored a different condition than requested (requested ${requestedConditionId}, eBay has ${storedConditionId || 'none'}) -- check the listing's condition manually.`);
+          }
+        }
+      } catch (_) { /* best-effort verification only -- never block the listing on it */ }
+
       return { listingId: pubData.listingId, offerId, sku, warnings };
     }
 

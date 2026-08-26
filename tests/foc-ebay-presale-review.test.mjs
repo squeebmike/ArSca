@@ -78,6 +78,19 @@ assert.match(worker, /Store address not set -- fill in the ship-from address und
 assert.match(worker, /import \{ handleFocRequest, syncFocStripeEvent, shippingSettings \} from '\.\/scripts\/foc-preorders\.mjs'/,
   'shippingSettings must be imported from foc-preorders.mjs, not duplicated');
 
+// Store report: eBay's own listing edit page showed "Item condition" blank
+// on a live Comics listing even though the inventory_item PUT returned no
+// error/warning and the resolved condition id was not the fallback either
+// -- an ok response is not proof eBay actually stored what was requested.
+// Must read the item back after publish and compare, so a silent
+// server-side drop of the condition is caught here instead of only being
+// discoverable by a human clicking into the live listing afterward.
+assert.match(createAndPublishBody, /const verifyRes = await fetch\(`https:\/\/api\.ebay\.com\/sell\/inventory\/v1\/inventory_item\/\$\{sku\}`, \{\s*\n\s*headers: \{ 'Authorization': 'Bearer ' \+ ebayToken \},\s*\n\s*\}\);/,
+  'must read the inventory item back from eBay after publish to verify what was actually stored');
+assert.match(createAndPublishBody, /const storedConditionId = String\(verifyData\?\.conditionId \|\| ''\);/, 'must compare the real stored conditionId, not just assume the PUT worked');
+assert.match(createAndPublishBody, /if \(requestedConditionId && storedConditionId !== requestedConditionId\) \{/, 'a mismatch between requested and stored condition must be surfaced');
+assert.match(createAndPublishBody, /warnings\.push\(`eBay stored a different condition than requested/, 'the condition mismatch must become a visible warning, not a silent log line');
+
 // Both callers of createAndPublishEbayListing must pass storeId through now
 // that the function needs it to look up the address.
 assert.match(worker, /const result = await createAndPublishEbayListing\(b, ebayToken, env, storeId\)/, '/ebay/list must pass storeId through');
