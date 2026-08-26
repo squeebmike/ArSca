@@ -25,7 +25,7 @@
 // It has zero Node dependencies (pure-JS SHA-1), so it bundles straight into
 // the Worker -- reused here instead of duplicating checklist-parsing logic.
 import { buildChecklistIndex, parseChecklistText, sha1Hex, slugify } from './scripts/topps-checklist-parser.js';
-import { handleFocRequest, syncFocStripeEvent } from './scripts/foc-preorders.mjs';
+import { handleFocRequest, syncFocStripeEvent, shippingSettings } from './scripts/foc-preorders.mjs';
 import { handleAccountRequest, findLinkedCustomer } from './scripts/customer-account.mjs';
 import { handleFanClubRequest } from './scripts/fan-club.mjs';
 
@@ -3004,11 +3004,60 @@ export default {
       return await handleStripeFoundation(request, env, url);
     }
 
+    // Builds the default (pre-edit) title/description/aspects/price/weight
+    // for a FOC presale listing from the comic_sku row's own trusted DB
+    // data. Shared by the preview endpoint (so the dashboard can show these
+    // before anything is published) and the create endpoint (used as the
+    // fallback whenever the client doesn't override a given field from its
+    // own review screen).
+    function buildFocPresaleDefaults(sku, priceCents, onSaleDate) {
+      const onSaleLabel = onSaleDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
+      // sku.variant_label sometimes already repeats the title verbatim (bad
+      // FOC import data, e.g. variant_label === title) -- appending it
+      // unconditionally produced titles like "Adventure Time Compendium
+      // Vol. 4 Compendium Vol. 4". Only append it if it isn't already there.
+      const baseTitle = String(sku.title || '').trim();
+      const variantLabel = sku.variant_label && sku.variant_label !== 'Cover A' && !baseTitle.toLowerCase().includes(String(sku.variant_label).toLowerCase())
+        ? sku.variant_label : '';
+      // eBay's presale policy requires "presale" to be disclosed in BOTH the
+      // title and the description -- title-only-implicit presale listings
+      // are a real policy violation eBay actively enforces against
+      // (administratively ending the listing, lowered search placement, up
+      // to account suspension). The description already discloses it below;
+      // this reserves space so the suffix always survives the 80-char cap.
+      const PRESALE_TITLE_SUFFIX = ' - PRESALE';
+      const titleBase = [baseTitle, variantLabel].filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
+      const title = (titleBase.substring(0, 80 - PRESALE_TITLE_SUFFIX.length) + PRESALE_TITLE_SUFFIX).substring(0, 80);
+      const description = [
+        'PRESALE -- This comic has not been released yet and is not currently in stock.',
+        `Expected on-sale/ship date: ${onSaleLabel}. Your order ships promptly once we receive stock from the distributor on or shortly after that date.`,
+        sku.description || '',
+      ].filter(Boolean).join('\n\n');
+      const customAspects = {
+        Publisher: sku.publisher || '', Writer: sku.writer || '',
+        Artist: sku.interior_artist || '', 'Cover Artist': sku.cover_artist || '',
+        'Release Date': onSaleLabel,
+      };
+      // No page-count/format field exists on comic_skus to size packages
+      // exactly, so this buckets by cover price as a proxy: cheap == single
+      // floppy issue, mid == trade paperback, expensive == hardcover or
+      // compendium -- real-world comic shipping weights, picked to avoid
+      // undercharging shipping on the heavier end rather than a single flat
+      // guess. Always editable on the review screen before publishing.
+      const weight = priceCents >= 2000 ? { weightValue: 1.5, weightUnit: 'POUND' }
+        : priceCents >= 1000 ? { weightValue: 0.625, weightUnit: 'POUND' }
+        : { weightValue: 0.25, weightUnit: 'POUND' };
+      return { title, description, customAspects, onSaleLabel, ...weight };
+    }
+
     // Lists a FOC comic SKU for eBay presale before physical stock exists,
     // using the same eBay Inventory API mechanics /ebay/list already uses
-    // (createAndPublishEbayListing) -- built from the comic_skus row's own
-    // trusted DB data, not client-supplied listing fields, so a stale
-    // dashboard can't bypass the business-day eligibility check below.
+    // (createAndPublishEbayListing). Eligibility (business-day window) and
+    // price are always recomputed from the comic_skus row's own trusted DB
+    // data server-side, so a stale dashboard can't bypass them -- but the
+    // listing content itself (title/description/aspects/weight/best offer)
+    // is client-editable from a review screen and only falls back to
+    // buildFocPresaleDefaults() above for whatever the client didn't send.
     // eBay's actual presale policy limit is currently 40 business days from
     // listing to ship; the configurable value here is OUR internal safety
     // buffer under that limit (default 35), stored via the existing generic
@@ -3016,7 +3065,8 @@ export default {
     // "comic_" prefix gives it the long-lived KV TTL that endpoint already
     // grants comic-related keys, and it's per-store like every other KV key
     // there) so it can be tightened/loosened without a code deploy.
-    if (url.pathname === '/foc/ebay/create-presale') {
+    if (url.pathname === '/foc/ebay/create-presale' || url.pathname === '/foc/ebay/presale-preview') {
+      const isPreview = url.pathname === '/foc/ebay/presale-preview';
       if (request.method !== 'POST') return json({ error: 'POST only' }, 405);
       const storeId = requestStoreId(request, url);
       const auth = await requireStoreUser(request, env, storeId, ['owner','admin']);
@@ -3052,36 +3102,34 @@ export default {
         }, 409);
       }
 
+      const priceCents = Number(sku.customer_price_cents || sku.msrp_cents || 0);
+      if (!priceCents) return json({ ok: false, error: 'This SKU has no price set -- set a customer price before creating a presale listing' }, 400);
+
+      const defaults = buildFocPresaleDefaults(sku, priceCents, onSaleDate);
+
+      if (isPreview) {
+        return json({
+          ok: true, skuId: sku.id, quantity, price: (priceCents / 100).toFixed(2),
+          imageUrl: sku.cover_image_url || '', upc: sku.upc || '',
+          bestOfferEnabled: true,
+          ...defaults,
+        });
+      }
+
       let ebayToken = '';
       try { ebayToken = await getEbayUserAccessToken(env); }
       catch (tokenErr) { return json({ needsToken: true, error: tokenErr.message }, 401); }
       if (!ebayToken) return json({ needsToken: true, error: 'Connect eBay first: missing user access/refresh token' }, 401);
 
-      const priceCents = Number(sku.customer_price_cents || sku.msrp_cents || 0);
-      if (!priceCents) return json({ ok: false, error: 'This SKU has no price set -- set a customer price before creating a presale listing' }, 400);
-
-      const onSaleLabel = onSaleDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
-      // sku.variant_label sometimes already repeats the title verbatim (bad
-      // FOC import data, e.g. variant_label === title) -- appending it
-      // unconditionally produced titles like "Adventure Time Compendium
-      // Vol. 4 Compendium Vol. 4". Only append it if it isn't already there.
-      const baseTitle = String(sku.title || '').trim();
-      const variantLabel = sku.variant_label && sku.variant_label !== 'Cover A' && !baseTitle.toLowerCase().includes(String(sku.variant_label).toLowerCase())
-        ? sku.variant_label : '';
-      // eBay's presale policy requires "presale" to be disclosed in BOTH the
-      // title and the description -- title-only-implicit presale listings
-      // are a real policy violation eBay actively enforces against
-      // (administratively ending the listing, lowered search placement, up
-      // to account suspension). The description already discloses it below;
-      // this reserves space so the suffix always survives the 80-char cap.
-      const PRESALE_TITLE_SUFFIX = ' - PRESALE';
-      const titleBase = [baseTitle, variantLabel].filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
-      const title = (titleBase.substring(0, 80 - PRESALE_TITLE_SUFFIX.length) + PRESALE_TITLE_SUFFIX).substring(0, 80);
-      const description = [
-        'PRESALE -- This comic has not been released yet and is not currently in stock.',
-        `Expected on-sale/ship date: ${onSaleLabel}. Your order ships promptly once we receive stock from the distributor on or shortly after that date.`,
-        sku.description || '',
-      ].filter(Boolean).join('\n\n');
+      // Client-supplied review-screen overrides, sanitized to sane bounds --
+      // eligibility/price above always come from the trusted DB row, only
+      // the listing *content* is user-editable.
+      const title = (typeof body.title === 'string' && body.title.trim()) ? body.title.trim().substring(0, 80) : defaults.title;
+      const description = (typeof body.description === 'string' && body.description.trim()) ? body.description.trim().substring(0, 4000) : defaults.description;
+      const customAspects = (body.customAspects && typeof body.customAspects === 'object') ? { ...defaults.customAspects, ...body.customAspects } : defaults.customAspects;
+      const bestOfferEnabled = body.bestOfferEnabled !== false;
+      const weightValue = Number(body.weightValue) > 0 ? Number(body.weightValue) : defaults.weightValue;
+      const weightUnit = body.weightUnit || defaults.weightUnit;
 
       let listingResult;
       try {
@@ -3091,12 +3139,10 @@ export default {
           quantity, categoryId: '259104', conditionId: '1000',
           imageUrl: sku.cover_image_url || undefined,
           upc: sku.upc || '',
-          customAspects: {
-            Publisher: sku.publisher || '', Writer: sku.writer || '',
-            Artist: sku.interior_artist || '', 'Cover Artist': sku.cover_artist || '',
-            'Release Date': onSaleLabel,
-          },
-        }, ebayToken, env);
+          customAspects,
+          bestOfferEnabled,
+          weightValue, weightUnit,
+        }, ebayToken, env, storeId);
       } catch (e) {
         console.error('FOC eBay presale listing error:', e);
         return json({ ok: false, error: e.message, detail: e.detail }, e.status || 500);
@@ -6087,11 +6133,29 @@ export default {
     // eBay Inventory API calls either way, just a different source for the
     // body fields. Throws Error with a .status (defaults 500) on failure;
     // callers decide how to turn that into an HTTP response.
-    async function createAndPublishEbayListing(b, ebayToken, env) {
+    async function createAndPublishEbayListing(b, ebayToken, env, storeId) {
       const { title, price } = b;
       if (!title || !price) { const e = new Error('title and price required'); e.status = 400; throw e; }
 
       const locationKey = env.EBAY_LOCATION_KEY || 'walkoff-main';
+      // Ship-from address for the eBay merchant location: reuse the same
+      // store address already collected under FOC -> "REAL SHIPPING SETUP"
+      // (store_settings.payment_settings.shipping.shipFrom) rather than
+      // maintaining a second copy of it. That panel used to be the only
+      // consumer of this address; a hardcoded fallback address here
+      // ("Walk-Off Sports Cards" in Kingston, WA) belonged to a different
+      // store entirely and must never be sent as this store's location --
+      // if the real address hasn't been entered yet, fail loudly instead of
+      // publishing a listing under someone else's business address.
+      let shipFrom = null;
+      if (storeId) {
+        try {
+          const settings = await shippingSettings((path, options) => supabaseAdminFetch(env, path, options), env, storeId);
+          const from = settings?.from || {};
+          if (from.street1 && from.city && from.state && from.zip) shipFrom = from;
+        } catch (_) {}
+      }
+      if (!shipFrom) { const e = new Error('Store address not set -- fill in the ship-from address under FOC → REAL SHIPPING SETUP before listing on eBay'); e.status = 409; throw e; }
       await fetch(`https://api.ebay.com/sell/inventory/v1/location/${locationKey}`, {
         method: 'POST',
         headers: {
@@ -6100,8 +6164,8 @@ export default {
           'Content-Language': 'en-US',
         },
         body: JSON.stringify({
-          location: { address: { addressLine1: '26059 Miller Bay Rd NE', city: 'Kingston', stateOrProvince: 'WA', postalCode: '98346', country: 'US' } },
-          name: 'Walk-Off Sports Cards',
+          location: { address: { addressLine1: shipFrom.street1, addressLine2: shipFrom.street2 || undefined, city: shipFrom.city, stateOrProvince: shipFrom.state, postalCode: shipFrom.zip, country: shipFrom.country || 'US' } },
+          name: shipFrom.name || 'The Mana Pocket',
           merchantLocationStatus: 'ENABLED',
           locationTypes: ['STORE'],
         }),
@@ -6174,7 +6238,7 @@ export default {
 
       try {
         const b = await request.json();
-        const result = await createAndPublishEbayListing(b, ebayToken, env);
+        const result = await createAndPublishEbayListing(b, ebayToken, env, storeId);
         return json({ ok: true, ...result });
       } catch (e) {
         console.error('eBay listing error:', e);
