@@ -259,6 +259,14 @@ async function openEbayPresaleReview(skuId){
       }
     }
   }catch(e){/* template rendering is best-effort -- fall back to the server default below */}
+  // Remembers the last-typed eBay Seller Hub "Store category" (e.g. "Comic
+  // Books") across listings so it only needs to be typed once, the same
+  // last-used-value pattern the eBay shipping-label package picker already
+  // uses. This is the seller's own custom storefront category, distinct
+  // from the eBay item category (Comics & Graphic Novels) which is already
+  // set correctly and not user-editable here.
+  var lastStoreCategory='';
+  try{lastStoreCategory=localStorage.getItem('foc_ebay_last_store_category')||'';}catch(e){}
   modal.innerHTML='<div style="width:100%;max-width:560px;background:var(--surf);border:1px solid var(--border);border-radius:10px;padding:16px">'+
     '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><div style="font-family:\'Orbitron\',monospace;color:var(--gold);font-size:13px;letter-spacing:2px">REVIEW EBAY PRESALE LISTING</div><button onclick="document.getElementById(\'foc-ebay-review-modal\').remove()" style="background:none;border:none;color:var(--dim);font-size:22px;cursor:pointer">×</button></div>'+
     '<div style="font:9px var(--font-mono);color:var(--dim);margin-bottom:10px">Nothing is published to eBay until you click LIST ON EBAY below.</div>'+
@@ -277,6 +285,7 @@ async function openEbayPresaleReview(skuId){
     '<div class="foc-sku-fields" style="grid-template-columns:1fr 1fr;margin-bottom:10px">'+
     ['Publisher','Writer','Artist','Cover Artist'].map(function(k){return '<label>'+k.toUpperCase()+'<input class="tsi" data-foc-eb-aspect="'+esc(k)+'" value="'+esc(asp[k]||'')+'"></label>';}).join('')+
     '</div>'+
+    '<label style="font:9px var(--font-mono);color:var(--dim);display:block;margin-bottom:10px">EBAY STORE CATEGORY (optional -- your Seller Hub \'Store category\', not the eBay item category)<input id="foc-eb-store-category" class="tsi" value="'+esc(lastStoreCategory)+'" placeholder="e.g. Comic Books" style="margin-top:4px"></label>'+
     '<div style="display:flex;justify-content:space-between;align-items:baseline"><label style="font:9px var(--font-mono);color:var(--dim)">DESCRIPTION</label>'+
     '<span style="font:8px var(--font-mono);color:var(--dim)">'+(usedCustomTemplate?'Using your saved Comic template (':'Using the built-in default (')+'<a href="#" onclick="openSettingsSection(\'profile\',\'vendor-profile-panel\');return false" style="color:var(--g)">edit in Settings → Vendor Info → EBAY LISTING SETTINGS</a>)</span></div>'+
     '<textarea id="foc-eb-desc" rows="6" style="width:100%;margin-top:4px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:9px;border-radius:6px;box-sizing:border-box;resize:vertical;font-size:11px">'+esc(description)+'</textarea>'+
@@ -293,6 +302,8 @@ async function submitEbayPresaleReview(skuId){
   if(!qty){toast_dash('Enter a valid quantity');return;}
   var customAspects={};
   document.querySelectorAll('[data-foc-eb-aspect]').forEach(function(el){customAspects[el.dataset.focEbAspect]=el.value;});
+  var storeCategory=(document.getElementById('foc-eb-store-category').value||'').trim();
+  try{localStorage.setItem('foc_ebay_last_store_category',storeCategory);}catch(e){}
   var payload={
     storeId:getActiveStoreId(),skuId:skuId,quantity:qty,
     title:document.getElementById('foc-eb-title').value,
@@ -301,6 +312,7 @@ async function submitEbayPresaleReview(skuId){
     bestOfferEnabled:document.getElementById('foc-eb-best-offer').checked,
     weightValue:parseFloat(document.getElementById('foc-eb-weight').value)||undefined,
     weightUnit:document.getElementById('foc-eb-weight-unit').value,
+    storeCategoryNames:storeCategory?[storeCategory]:[],
   };
   if(status){status.style.display='block';status.style.color='var(--gold)';status.style.border='1px solid rgba(255,209,102,.25)';status.style.background='rgba(255,209,102,.06)';status.textContent='Publishing to eBay…';}
   try{
@@ -398,6 +410,7 @@ async function submitPrhOrder(){
   try{
     var d=await api('/foc/admin/prh-submission',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({storeId:getActiveStoreId(),cycleId:state.cycle.id})});
     toast_dash('PRH order submitted and locked: '+d.submission.total_units+' units across '+d.submission.total_skus+' SKUs');
+    if(d.ebayWithdrawnCount>0)toast_dash(d.ebayWithdrawnCount+' unsold eBay presale listing'+(d.ebayWithdrawnCount===1?'':'s')+' ended -- no copies were ordered for '+(d.ebayWithdrawnCount===1?'it':'them'));
     await loadPrhSubmissionStatus();
   }catch(e){if(status)status.textContent='';toast_dash('Could not submit: '+e.message);}
 }

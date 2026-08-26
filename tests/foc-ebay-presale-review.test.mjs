@@ -122,7 +122,7 @@ assert.doesNotMatch(worker, /fetch\(`https:\/\/api\.ebay\.com\/sell\/account\/v1
   'must never PUT/update the shared base fulfillment policy in place -- that would change handling time on every other live listing using it too');
 assert.match(worker, /const handlingBusinessDays = businessDaysBetween\(new Date\(\), onSaleDate\) \+ 2/, 'handling time must be computed from the SKU\'s real on-sale date, not a fixed guess');
 assert.match(worker, /const fulfillmentPolicyId = await getFocPresaleFulfillmentPolicyId\(env, ebayToken, handlingBusinessDays\)/, 'the create route must actually use the provisioned handling-time policy');
-assert.match(worker, /fulfillmentPolicyId,\s*\n\s*\}, ebayToken, env, storeId\);/, 'the computed fulfillmentPolicyId must be passed into the listing payload');
+assert.match(worker, /fulfillmentPolicyId,\s*\n\s*storeCategoryNames,\s*\n\s*\}, ebayToken, env, storeId\);/, 'the computed fulfillmentPolicyId must be passed into the listing payload');
 assert.match(focDash, /eBay handling time on this listing:/, 'the review modal must show the handling time so the store can verify the ship date is accurate before publishing');
 
 // The dynamic handling-time policies must clone shipping-service setup
@@ -168,4 +168,36 @@ assert.match(focDash, /description='PRESALE -- This comic has not been released 
 assert.match(focDash, /\+renderedBody;\s*\n\s*usedCustomTemplate=true;/, 'the rendered custom template body must be appended after the mandatory disclosure');
 assert.match(focDash, /openSettingsSection\(\\'profile\\',\\'vendor-profile-panel\\'\)/, 'the modal must link to where the template is actually edited');
 
-console.log('FOC eBay presale review-step, template-field, eligible-filter, handling-time, aspects, and template-reuse contract checks passed');
+// Store owner asked: what happens to an eBay presale listing for a book we
+// end up not ordering when the FOC deadline passes? Before this, nothing --
+// adminPrhSubmission skipped any SKU with finalQty<=0 from the distributor
+// order entirely, but never touched a live eBay listing for that same SKU,
+// leaving it purchasable forever for stock that will never arrive. It must
+// now withdraw any such listing (unsold: an already-sold one would have
+// ebayPresold>0, which pulls finalQty above zero and into the order) at the
+// exact moment the PRH order is locked -- that's the decisive
+// "not ordering this" moment.
+const prhSubmissionStart = preorders.indexOf('async function adminPrhSubmission');
+const prhSubmissionEnd = preorders.indexOf('async function adminCycle', prhSubmissionStart);
+const prhSubmissionBody = preorders.slice(prhSubmissionStart, prhSubmissionEnd);
+assert.match(prhSubmissionBody, /if\(finalQty<=0\)continue;/, 'unordered SKUs must still be excluded from the distributor order itself');
+assert.match(prhSubmissionBody, /const includedSkuIds=new Set\(lineItems\.map\(li=>li\.skuId\)\);/, 'must know which SKUs actually got ordered before deciding what to withdraw');
+assert.match(prhSubmissionBody, /d\.source==='foc_presale'&&d\.focCycleId===cycleId&&d\.ebayOfferId&&!includedSkuIds\.has\(d\.focSkuId\)&&Number\(d\.qty\?\?d\.quantity\?\?0\)>0/,
+  'must only withdraw presale listings for SKUs that did not make it into this cycle\'s PRH order');
+assert.match(prhSubmissionBody, /await deps\.withdrawEbayOffer\(env,ebayToken,row\.data\.ebayOfferId\)/, 'must actually withdraw the eBay offer, not just flag it locally');
+assert.match(prhSubmissionBody, /ebayWithdrawnReason:'not_included_in_prh_order'/, 'the withdrawn row must record why, for later auditing');
+assert.match(prhSubmissionBody, /return deps\.json\(\{ok:true,submission:inserted,ebayWithdrawnCount:ebayWithdrawnSkuIds\.length\}\)/, 'the response must report how many listings were withdrawn');
+assert.match(worker, /async function withdrawEbayOffer\(env, ebayToken, offerId\)/, 'must have a reusable withdraw helper, not just the /ebay/end route inline');
+assert.match(worker, /getEbayUserAccessToken, withdrawEbayOffer,\s*\n\s*\}\);/, 'the withdraw helper and token getter must be injected into the FOC module\'s deps');
+assert.match(focDash, /if\(d\.ebayWithdrawnCount>0\)toast_dash/, 'the dashboard must surface when a listing was auto-withdrawn, not just silently succeed');
+
+// Store category: eBay's Seller Hub "Store category" (distinct from the
+// eBay item category, which is already handled correctly) is now editable
+// per listing and remembered across listings via localStorage, rather than
+// hardcoded to any one store's category name.
+assert.match(worker, /storeCategoryNames = \[\]/, 'buildEbayOfferBody must accept an optional store category override');
+assert.match(worker, /storeCategoryNames: cleanStoreCategoryNames\.length \? cleanStoreCategoryNames : undefined/, 'must only send storeCategoryNames when one was actually provided');
+assert.match(focDash, /localStorage\.getItem\('foc_ebay_last_store_category'\)/, 'must remember the last-typed store category across listings');
+assert.match(focDash, /localStorage\.setItem\('foc_ebay_last_store_category',storeCategory\)/, 'must persist a newly-typed store category for next time');
+
+console.log('FOC eBay presale review-step, template-field, eligible-filter, handling-time, aspects, template-reuse, unordered-withdrawal, and store-category contract checks passed');
