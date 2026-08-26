@@ -360,8 +360,8 @@ assert.match(worker, /if \(\(out \+ para\)\.length > EBAY_DESCRIPTION_MAX\) brea
 // EVERY description, which broke a store that had already been relying on
 // raw HTML working (as it did before that fix existed). Must detect
 // already-HTML content and pass it through untouched instead.
-assert.match(worker, /if \(\/<\\\/\?\[a-z\]\[\\s\\S\]\*>\/i\.test\(raw\)\) return raw\.length <= 4000 \? raw : raw\.substring\(0, 4000\);/,
-  'must detect existing HTML markup and pass it through untouched (bounded to the length cap) instead of escaping it');
+assert.match(worker, /if \(\/<\\\/\?\[a-z\]\[\\s\\S\]\*>\/i\.test\(raw\)\) return raw\.length <= 4000 \? raw : truncateHtmlSafely\(raw, 4000\);/,
+  'must detect existing HTML markup and pass it through untouched (safely bounded to the length cap) instead of escaping it');
 {
   const toEbayHtmlDescriptionSrc = worker.slice(worker.indexOf('function toEbayHtmlDescription'), worker.indexOf('function buildEbayInventoryItemBody'));
   const toEbayHtmlDescription = new Function(toEbayHtmlDescriptionSrc + '\nreturn toEbayHtmlDescription;')();
@@ -417,4 +417,31 @@ assert.match(rendererBody2, /\.replace\(\/\(\[,\.\]\) \*\(\?=\[,\.\]\)\/g, ''\);
 assert.doesNotMatch(rendererBody2, /\.replace\(\/\(\[,\.;:\]\) \*\(\?=\[,\.;:\]\)\/g, ''\);/,
   'must not still be using the old character class that included : and ;');
 
-console.log('FOC eBay presale review-step, template-field, eligible-filter, handling-time, aspects, template-reuse, unordered-withdrawal, store-category, template-gap, optional-clause, extra-field, html-formatting, warnings, quantity-default, cross-entry-point presale, real-condition-id, description-length-cap, html-template-passthrough, multiline-clause, and css-safety contract checks passed');
+// Store report: a rich-HTML template's "WHY THIS COMIC BELONGS..." section
+// got cut to "Comic collecting" mid-sentence, with no closing punctuation
+// or tags -- toEbayHtmlDescription's HTML-passthrough branch did a blind
+// substring(0, 4000) on real HTML, which can land mid-tag or mid-word and
+// leaves whatever was cut open (unclosed <p>/<div>). Must cut at the last
+// complete closing tag before the limit and close out any still-open
+// ancestor tags, instead of chopping the string wherever the character
+// count happens to land.
+assert.match(worker, /function truncateHtmlSafely\(html, maxLen\) \{/, 'must have a dedicated safe-HTML-truncation helper, not a blind substring');
+assert.match(worker, /const cut = html\.lastIndexOf\('>', maxLen - 1\);/, 'must cut at the last complete closing tag before the limit, never mid-tag');
+assert.match(worker, /for \(let i = stack\.length - 1; i >= 0; i--\) truncated \+= '<\/' \+ stack\[i\] \+ '>';/,
+  'must close out any tags still open at the cut point so the truncated result is valid HTML');
+assert.match(worker, /if \(\/<\\\/\?\[a-z\]\[\\s\\S\]\*>\/i\.test\(raw\)\) return raw\.length <= 4000 \? raw : truncateHtmlSafely\(raw, 4000\);/,
+  'the HTML-passthrough branch must use the safe truncation helper, not substring');
+{
+  const truncSrc = worker.slice(worker.indexOf('function truncateHtmlSafely'), worker.indexOf('function toEbayHtmlDescription'));
+  const truncateHtmlSafely = new Function(truncSrc + '\nreturn truncateHtmlSafely;')();
+  const longHtml = '<div><p>' + 'A sentence that keeps going. '.repeat(200) + '</p><p>Trailing paragraph.</p></div>';
+  const out = truncateHtmlSafely(longHtml, 200);
+  assert(out.length <= 220, 'truncated output must stay close to the requested limit (a little over is fine, for closing tags)');
+  assert(!/[a-zA-Z]$/.test(out.replace(/<[^>]*>$/, '').trimEnd()) || out.trimEnd().endsWith('.') || out.includes('</'),
+    'truncated output must not end mid-word with no closing punctuation or tags');
+  const openTags = (out.match(/<(?!\/)[a-z][^>]*(?<!\/)>/gi) || []).length;
+  const closeTags = (out.match(/<\/[a-z][^>]*>/gi) || []).length;
+  assert.equal(openTags, closeTags, 'every opened tag in the truncated output must have a matching close tag');
+}
+
+console.log('FOC eBay presale review-step, template-field, eligible-filter, handling-time, aspects, template-reuse, unordered-withdrawal, store-category, template-gap, optional-clause, extra-field, html-formatting, warnings, quantity-default, cross-entry-point presale, real-condition-id, description-length-cap, html-template-passthrough, multiline-clause, css-safety, and safe-html-truncation contract checks passed');

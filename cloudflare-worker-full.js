@@ -2275,9 +2275,36 @@ function buildEbayAspects(b) {
 // untouched -- exactly how descriptions worked before this function
 // existed, which is why that case worked until this "fix" broke it. Only
 // genuine plain text (no HTML tags at all) gets escaped and converted.
+// A blind substring() on real HTML can land mid-tag or mid-word (confirmed
+// live: a rich-HTML template's "WHY THIS COMIC BELONGS..." section got cut
+// to "Comic collecting" with no closing punctuation, mid-sentence) and can
+// leave tags unclosed for whatever got cut off. Cuts at the last complete
+// closing tag before the limit instead, then closes out any ancestor tags
+// still open at that point so the result stays valid HTML -- content past
+// the cut is genuinely gone (eBay's 4000-char cap is real and hard), but
+// what remains renders as intended rather than visibly breaking.
+function truncateHtmlSafely(html, maxLen) {
+  if (html.length <= maxLen) return html;
+  const cut = html.lastIndexOf('>', maxLen - 1);
+  if (cut < 0) return html.substring(0, maxLen);
+  let truncated = html.substring(0, cut + 1);
+  const stack = [];
+  const selfClosing = new Set(['br', 'img', 'hr', 'input', 'meta', 'link']);
+  const tagRe = /<\/?([a-z][a-z0-9]*)\b[^>]*>/gi;
+  let m;
+  while ((m = tagRe.exec(truncated))) {
+    const tag = m[1].toLowerCase();
+    if (selfClosing.has(tag) || m[0].endsWith('/>')) continue;
+    if (m[0][1] === '/') { const idx = stack.lastIndexOf(tag); if (idx >= 0) stack.splice(idx, 1); }
+    else stack.push(tag);
+  }
+  for (let i = stack.length - 1; i >= 0; i--) truncated += '</' + stack[i] + '>';
+  return truncated;
+}
+
 function toEbayHtmlDescription(text) {
   const raw = String(text || '');
-  if (/<\/?[a-z][\s\S]*>/i.test(raw)) return raw.length <= 4000 ? raw : raw.substring(0, 4000);
+  if (/<\/?[a-z][\s\S]*>/i.test(raw)) return raw.length <= 4000 ? raw : truncateHtmlSafely(raw, 4000);
   const escaped = raw.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   const paragraphs = escaped.split(/\n{2,}/).map(para => '<p>' + para.replace(/\n/g, '<br>') + '</p>');
   // eBay's 4000-char description cap applies to the FINAL HTML, not the
