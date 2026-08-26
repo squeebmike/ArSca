@@ -2399,6 +2399,42 @@ async function resolveFocPresaleBasePolicyId(env, ebayToken) {
   return fallback;
 }
 
+// eBay's condition ID for "New"/"Brand New" is NOT the same numeric value
+// across every category -- 1000 is the general-purpose "New" id, but a
+// category can define its own condition set entirely (confirmed live: a
+// Comics listing sent conditionId 1000 and the condition still showed
+// unselected). This looks up the category's REAL condition policy (the
+// same endpoint the regular eBay listing tool's own live condition
+// dropdown already calls) and finds whichever entry is actually labeled
+// New, instead of assuming 1000 is always correct. Cached per category
+// since this rarely changes; falls back to 1000 on any failure (previous
+// behavior) rather than blocking the listing.
+async function resolveEbayNewConditionId(env, ebayToken, categoryId) {
+  const fallback = '1000';
+  const kvKey = `ebay_condition_new:${categoryId}`;
+  try {
+    if (env.LBA_KV) {
+      const cached = await env.LBA_KV.get(kvKey);
+      if (cached) return cached;
+    }
+    const res = await fetch(`https://api.ebay.com/sell/metadata/v1/marketplace/EBAY_US/get_item_condition_policies?filter=${encodeURIComponent('categoryIds:{' + categoryId + '}')}`, {
+      headers: { 'Authorization': 'Bearer ' + ebayToken },
+    });
+    if (!res.ok) return fallback;
+    const data = await res.json();
+    const policy = (data.itemConditionPolicies || [])[0] || {};
+    const conditions = (policy.itemConditions || [])
+      .map(c => ({ id: String(c.conditionId || ''), label: c.conditionDescription || '' }))
+      .filter(c => c.id);
+    const newCond = conditions.find(c => /^brand new$/i.test(c.label)) || conditions.find(c => /^new$/i.test(c.label)) || conditions.find(c => /\bnew\b/i.test(c.label));
+    if (newCond?.id) {
+      if (env.LBA_KV) await env.LBA_KV.put(kvKey, newCond.id, { expirationTtl: 60 * 60 * 24 * 30 }).catch(() => {});
+      return newCond.id;
+    }
+  } catch (_) {}
+  return fallback;
+}
+
 async function getFocPresaleFulfillmentPolicyId(env, ebayToken, handlingDaysNeeded) {
   const fallback = env.EBAY_FULFILLMENT_POLICY_ID || '';
   const baseId = (await resolveFocPresaleBasePolicyId(env, ebayToken)) || fallback;
@@ -3277,13 +3313,14 @@ export default {
       const weightUnit = body.weightUnit || defaults.weightUnit;
       const storeCategoryNames = Array.isArray(body.storeCategoryNames) ? body.storeCategoryNames : String(body.storeCategoryNames || '').split(',');
       const fulfillmentPolicyId = await getFocPresaleFulfillmentPolicyId(env, ebayToken, handlingBusinessDays);
+      const conditionId = await resolveEbayNewConditionId(env, ebayToken, '259104');
 
       let listingResult;
       try {
         listingResult = await createAndPublishEbayListing({
           title, description,
           price: (priceCents / 100).toFixed(2),
-          quantity, categoryId: '259104', conditionId: '1000',
+          quantity, categoryId: '259104', conditionId,
           imageUrl: sku.cover_image_url || undefined,
           upc: sku.upc || '',
           customAspects,
@@ -3366,6 +3403,7 @@ export default {
       try { ebayToken = await getEbayUserAccessToken(env); }
       catch (tokenErr) { return json({ needsToken: true, error: tokenErr.message }, 401); }
       if (!ebayToken) return json({ needsToken: true, error: 'Connect eBay first: missing user access/refresh token' }, 401);
+      const conditionId = await resolveEbayNewConditionId(env, ebayToken, '259104');
 
       let converted = 0;
       const failed = [];
@@ -3378,7 +3416,7 @@ export default {
             description: [d.name, 'In stock now and ships promptly.'].filter(Boolean).join('\n\n'),
             price: (Number(d.market || d.salePrice || 0)).toFixed(2),
             quantity: Number(d.qty ?? d.quantity ?? 0),
-            categoryId: '259104', conditionId: '1000',
+            categoryId: '259104', conditionId,
             imageUrl: d.image || undefined, upc: d.upc || '',
           }, ebayToken, env);
           await supabaseAdminFetch(env, `inventory_items?id=eq.${row.id}&store_id=eq.${encodeURIComponent(storeId)}`, {
