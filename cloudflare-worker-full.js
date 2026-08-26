@@ -3469,7 +3469,20 @@ export default {
         });
       }
 
-      return json({ ok: true, listingId: listingResult.listingId, offerId: listingResult.offerId, sku: listingResult.sku, inventoryItemId: createdRow?.id || null, quantity, warnings: [...(listingResult.warnings || []), ...conditionWarnings] });
+      return json({
+        ok: true, listingId: listingResult.listingId, offerId: listingResult.offerId, sku: listingResult.sku,
+        inventoryItemId: createdRow?.id || null, quantity, warnings: [...(listingResult.warnings || []), ...conditionWarnings],
+        // Store report: eBay's own edit page still showed "Item condition"
+        // blank with no warning from either the resolution or the
+        // stored-value verification below -- returned here on every
+        // successful publish (not just on a detected problem) so the
+        // actual requested-vs-stored condition values are checkable from
+        // the dashboard instead of staying invisible.
+        conditionCheck: {
+          requestedId: listingResult.requestedConditionId, requestedLabel: resolvedCondition.label || '',
+          resolvedFrom: resolvedCondition.source, verifiedStoredId: listingResult.verifiedConditionId,
+        },
+      });
     }
 
     // Flips any eBay presale listings for a FOC cycle over to in-stock
@@ -6554,21 +6567,35 @@ export default {
       // was requested, so a silent server-side drop shows up as a warning
       // here instead of only being discoverable by a human clicking into
       // the eBay listing afterward.
+      //
+      // A second live test still showed the edit page blank with NEITHER
+      // the earlier fallback warning nor a mismatch warning here -- ruling
+      // out both "couldn't resolve a real id" and "eBay silently dropped
+      // what we sent" as the cause. Returning the actual requested/stored
+      // values on every call now (not just when they disagree) so this can
+      // be confirmed from the dashboard instead of staying an invisible
+      // internal detail; a verify-fetch failure is now also surfaced
+      // rather than silently treated the same as a clean match.
+      let verifiedConditionId = null;
       try {
         const verifyRes = await fetch(`https://api.ebay.com/sell/inventory/v1/inventory_item/${sku}`, {
           headers: { 'Authorization': 'Bearer ' + ebayToken },
         });
         if (verifyRes.ok) {
           const verifyData = await verifyRes.json();
-          const storedConditionId = String(verifyData?.conditionId || '');
+          verifiedConditionId = String(verifyData?.conditionId || '');
           const requestedConditionId = String(itemBody.conditionId || '');
-          if (requestedConditionId && storedConditionId !== requestedConditionId) {
-            warnings.push(`eBay stored a different condition than requested (requested ${requestedConditionId}, eBay has ${storedConditionId || 'none'}) -- check the listing's condition manually.`);
+          if (requestedConditionId && verifiedConditionId !== requestedConditionId) {
+            warnings.push(`eBay stored a different condition than requested (requested ${requestedConditionId}, eBay has ${verifiedConditionId || 'none'}) -- check the listing's condition manually.`);
           }
+        } else {
+          warnings.push(`Could not verify eBay actually stored the requested condition (lookup failed, ${verifyRes.status}) -- check the listing's condition manually.`);
         }
-      } catch (_) { /* best-effort verification only -- never block the listing on it */ }
+      } catch (e) {
+        warnings.push('Could not verify eBay actually stored the requested condition (' + e.message + ') -- check the listing\'s condition manually.');
+      }
 
-      return { listingId: pubData.listingId, offerId, sku, warnings };
+      return { listingId: pubData.listingId, offerId, sku, warnings, requestedConditionId: String(itemBody.conditionId || ''), verifiedConditionId };
     }
 
     if (url.pathname === '/ebay/list') {
