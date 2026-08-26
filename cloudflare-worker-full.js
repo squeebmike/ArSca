@@ -2113,6 +2113,25 @@ function addBusinessDays(date, n) {
   return d;
 }
 
+// Inverse of addBusinessDays -- counts weekdays strictly after `from` up to
+// and including `to`. Used to size a FOC presale listing's eBay handling
+// time (see getFocPresaleFulfillmentPolicyId below): eBay computes a
+// buyer's delivery estimate as handling time + carrier transit from the
+// PURCHASE date, so a presale listing sitting under the shared "ships in a
+// day or two" fulfillment policy meant for in-stock items promises delivery
+// before the book is even released. Returns 0 if to <= from.
+function businessDaysBetween(from, to) {
+  if (to.getTime() <= from.getTime()) return 0;
+  let count = 0;
+  const d = new Date(from.getTime());
+  while (d.getTime() < to.getTime()) {
+    d.setUTCDate(d.getUTCDate() + 1);
+    const day = d.getUTCDay();
+    if (day !== 0 && day !== 6) count++;
+  }
+  return count;
+}
+
 // Our internal eBay presale safety buffer (default 35 business days), NOT
 // eBay's actual policy limit (currently 40) -- configurable per store via
 // the existing generic /kv/ endpoint under key
@@ -2279,10 +2298,10 @@ function buildEbayInventoryItemBody(b) {
 function buildEbayOfferBody(b, sku, locationKey, env) {
   const {
     title, description, price, format = 'FIXED_PRICE', duration = 'GTC', quantity = 1, categoryId = '261328',
-    bestOfferEnabled = false, autoAcceptPrice = '', autoDeclinePrice = '',
+    bestOfferEnabled = false, autoAcceptPrice = '', autoDeclinePrice = '', fulfillmentPolicyId = '',
   } = b;
   const listingPolicies = {};
-  if (env.EBAY_FULFILLMENT_POLICY_ID) listingPolicies.fulfillmentPolicyId = env.EBAY_FULFILLMENT_POLICY_ID;
+  if (fulfillmentPolicyId || env.EBAY_FULFILLMENT_POLICY_ID) listingPolicies.fulfillmentPolicyId = fulfillmentPolicyId || env.EBAY_FULFILLMENT_POLICY_ID;
   if (env.EBAY_PAYMENT_POLICY_ID) listingPolicies.paymentPolicyId = env.EBAY_PAYMENT_POLICY_ID;
   if (env.EBAY_RETURN_POLICY_ID) listingPolicies.returnPolicyId = env.EBAY_RETURN_POLICY_ID;
   // Best Offer is a FIXED_PRICE-only feature -- eBay rejects bestOfferTerms on an auction offer.
@@ -2304,6 +2323,65 @@ function buildEbayOfferBody(b, sku, locationKey, env) {
     merchantLocationKey: locationKey,
     pricingSummary: { price: { value: parseFloat(price).toFixed(2), currency: 'USD' } },
   };
+}
+
+// A FOC presale listing needs a MUCH longer handling time than a normal
+// in-stock item -- eBay computes the buyer-facing delivery estimate as
+// handling time + carrier transit from the purchase date, so listing a
+// presale under the store's regular fast-handling fulfillment policy
+// promises delivery before the book is even released (confirmed live: a
+// presale for a Sept 23 release was showing an Aug 29-Sep 3 estimate).
+// eBay's Sell Account API only accepts a *saved policy id* on an offer, not
+// an inline handling-time override, so this clones the store's existing
+// base fulfillment policy (same shipping services/cost) with just the
+// handling time changed, bucketed to the nearest 5 business days (capped at
+// eBay's 40-business-day presale limit) so repeated listings across a
+// cycle reuse a small, cached set of policies instead of creating a new one
+// per SKU. Falls back to the store's normal policy on any failure (network,
+// missing scope, etc.) rather than blocking the listing entirely -- that's
+// the same handling-time behavior the app already had before this existed.
+async function getFocPresaleFulfillmentPolicyId(env, ebayToken, handlingDaysNeeded) {
+  const fallback = env.EBAY_FULFILLMENT_POLICY_ID || '';
+  if (!fallback) return '';
+  const bucket = Math.min(40, Math.max(5, Math.ceil(Math.max(1, handlingDaysNeeded) / 5) * 5));
+  const kvKey = `ebay_foc_fulfillment_policy:${bucket}`;
+  try {
+    if (env.LBA_KV) {
+      const cached = await env.LBA_KV.get(kvKey);
+      if (cached) return cached;
+    }
+    const baseRes = await fetch(`https://api.ebay.com/sell/account/v1/fulfillment_policy/${encodeURIComponent(fallback)}`, {
+      headers: { 'Authorization': 'Bearer ' + ebayToken, 'Accept': 'application/json' },
+    });
+    if (!baseRes.ok) return fallback;
+    const base = await baseRes.json();
+    const createBody = {
+      name: (String(base.name || 'Presale') + ` - FOC ${bucket}D Handling`).substring(0, 65),
+      marketplaceId: base.marketplaceId || 'EBAY_US',
+      categoryTypes: base.categoryTypes,
+      handlingTime: { value: bucket, unit: 'DAY' },
+      shipToLocations: base.shipToLocations,
+      shippingOptions: base.shippingOptions,
+      globalShipping: base.globalShipping,
+      pickupDropOff: base.pickupDropOff,
+      freightShipping: base.freightShipping,
+      localPickup: base.localPickup,
+    };
+    Object.keys(createBody).forEach(k => { if (createBody[k] === undefined) delete createBody[k]; });
+    const createRes = await fetch('https://api.ebay.com/sell/account/v1/fulfillment_policy', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + ebayToken, 'Content-Type': 'application/json', 'Content-Language': 'en-US' },
+      body: JSON.stringify(createBody),
+    });
+    if (!createRes.ok) return fallback;
+    const created = await createRes.json();
+    const newId = created.fulfillmentPolicyId;
+    if (!newId) return fallback;
+    if (env.LBA_KV) await env.LBA_KV.put(kvKey, newId, { expirationTtl: 60 * 60 * 24 * 180 }).catch(() => {});
+    return newId;
+  } catch (_) {
+    return fallback;
+  }
 }
 
 function leftRotate(x, c) {
@@ -3106,12 +3184,18 @@ export default {
       if (!priceCents) return json({ ok: false, error: 'This SKU has no price set -- set a customer price before creating a presale listing' }, 400);
 
       const defaults = buildFocPresaleDefaults(sku, priceCents, onSaleDate);
+      // eBay computes the buyer's delivery estimate as handling time +
+      // carrier transit FROM THE PURCHASE DATE -- listing this under the
+      // store's normal fast-handling policy would promise delivery before
+      // the book is even released. +2 business days on top of the wait
+      // covers packing/hand-to-carrier time once stock actually arrives.
+      const handlingBusinessDays = businessDaysBetween(new Date(), onSaleDate) + 2;
 
       if (isPreview) {
         return json({
           ok: true, skuId: sku.id, quantity, price: (priceCents / 100).toFixed(2),
           imageUrl: sku.cover_image_url || '', upc: sku.upc || '',
-          bestOfferEnabled: true,
+          bestOfferEnabled: true, handlingBusinessDays,
           ...defaults,
         });
       }
@@ -3130,6 +3214,7 @@ export default {
       const bestOfferEnabled = body.bestOfferEnabled !== false;
       const weightValue = Number(body.weightValue) > 0 ? Number(body.weightValue) : defaults.weightValue;
       const weightUnit = body.weightUnit || defaults.weightUnit;
+      const fulfillmentPolicyId = await getFocPresaleFulfillmentPolicyId(env, ebayToken, handlingBusinessDays);
 
       let listingResult;
       try {
@@ -3142,6 +3227,7 @@ export default {
           customAspects,
           bestOfferEnabled,
           weightValue, weightUnit,
+          fulfillmentPolicyId,
         }, ebayToken, env, storeId);
       } catch (e) {
         console.error('FOC eBay presale listing error:', e);

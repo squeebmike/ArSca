@@ -243,9 +243,10 @@ async function openEbayPresaleReview(skuId){
     '<div><label style="font:9px var(--font-mono);color:var(--dim)">TITLE (eBay requires "PRESALE" disclosed here)</label>'+
     '<input id="foc-eb-title" maxlength="80" value="'+esc(preview.title)+'" style="width:100%;margin-top:4px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:9px;border-radius:6px;font-size:12px;box-sizing:border-box">'+
     '<div id="foc-eb-title-count" style="font:8px var(--font-mono);color:var(--dim);text-align:right;margin-top:3px">'+preview.title.length+'/80</div></div></div>'+
-    '<div class="foc-sku-fields" style="grid-template-columns:1fr 1fr 1fr;margin-bottom:10px"><label>QUANTITY<input id="foc-eb-qty" class="tsi" type="number" min="1" max="200" value="1"></label>'+
+    '<div class="foc-sku-fields" style="grid-template-columns:1fr 1fr 1fr;margin-bottom:6px"><label>QUANTITY<input id="foc-eb-qty" class="tsi" type="number" min="1" max="200" value="1"></label>'+
     '<label>PRICE<input class="tsi" value="$'+esc(preview.price)+'" disabled></label>'+
     '<label>SHIP-BY<input class="tsi" value="'+esc(preview.onSaleLabel)+'" disabled></label></div>'+
+    '<div style="font:8px/1.5 var(--font-mono);color:var(--dim);margin-bottom:10px">eBay handling time on this listing: <b style="color:var(--text)">'+Number(preview.handlingBusinessDays||0)+' business days</b> from purchase -- this is what keeps eBay\'s delivery estimate from promising the book before it\'s released.</div>'+
     '<label style="display:flex;gap:6px;align-items:center;margin-bottom:10px;font:9px var(--font-mono);color:var(--dim)"><input id="foc-eb-best-offer" type="checkbox" checked> ALLOW BEST OFFER</label>'+
     '<div class="foc-sku-fields" style="grid-template-columns:1fr 1fr;margin-bottom:10px"><label>PACKAGE WEIGHT<input id="foc-eb-weight" class="tsi" type="number" min=".1" step=".1" value="'+esc(preview.weightValue)+'"></label>'+
     '<label>UNIT<select id="foc-eb-weight-unit" class="tsi"><option value="POUND" '+(preview.weightUnit==='POUND'?'selected':'')+'>LB</option><option value="OUNCE" '+(preview.weightUnit==='OUNCE'?'selected':'')+'>OZ</option></select></label></div>'+
