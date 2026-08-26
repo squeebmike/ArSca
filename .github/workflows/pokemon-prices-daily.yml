@@ -7,7 +7,14 @@ on:
       - scripts/pokemon/build-pokemon-prices-bundle.mjs
       - .github/workflows/pokemon-prices-daily.yml
   schedule:
-    - cron: '50 10 * * *'
+    # PPT's export DOWNLOAD quota (2/day) resets at UTC midnight, but the dump
+    # itself isn't regenerated until 6:00 AM UTC -- a client hitting the live
+    # export route anytime in that 6-10:50 window used to have a real shot at
+    # burning both of the day's slots before this cron got to them (confirmed:
+    # 3 of the last 7 scheduled runs failed with exactly that 429). Running at
+    # 6:10 gives the dump 10 minutes to regenerate and shrinks that exposure
+    # window to almost nothing.
+    - cron: '10 6 * * *'
   workflow_dispatch:
 
 concurrency:
