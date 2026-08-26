@@ -3124,6 +3124,67 @@ export default {
       return json({ ok: true, listingId: listingResult.listingId, offerId: listingResult.offerId, sku: listingResult.sku, inventoryItemId: createdRow?.id || null, quantity });
     }
 
+    // Flips any eBay presale listings for a FOC cycle over to in-stock
+    // wording once the book has actually arrived -- called by the dashboard
+    // right after a successful receiving confirmation. Only touches presale
+    // placeholder rows that still have unsold quantity (a fully sold-out
+    // presale has nothing left to relist); reuses the same
+    // reviseEbayListing() PUT-in-place mechanics /ebay/update already uses,
+    // so this never creates a second/duplicate listing for the same sku.
+    if (url.pathname === '/foc/ebay/convert-to-instock') {
+      if (request.method !== 'POST') return json({ error: 'POST only' }, 405);
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId, ['owner','admin']);
+      if (auth.error) return auth.error;
+
+      let body = {};
+      try { body = await request.json(); } catch (_) {}
+      const cycleId = String(body.cycleId || '').trim();
+      if (!cycleId) return json({ ok: false, error: 'cycleId required' }, 400);
+
+      let candidates = [];
+      try {
+        const { data } = await supabaseAdminFetch(env, `inventory_items?store_id=eq.${encodeURIComponent(storeId)}&status=eq.presale&select=id,data`);
+        candidates = (data || []).filter(row => {
+          const d = row.data || {};
+          return d.source === 'foc_presale' && d.focCycleId === cycleId && d.ebaySku && d.ebayOfferId && Number(d.qty ?? d.quantity ?? 0) > 0;
+        });
+      } catch (e) { return json({ ok: false, error: 'Could not load presale listings: ' + e.message }, 500); }
+
+      if (!candidates.length) return json({ ok: true, converted: 0, failed: [] });
+
+      let ebayToken = '';
+      try { ebayToken = await getEbayUserAccessToken(env); }
+      catch (tokenErr) { return json({ needsToken: true, error: tokenErr.message }, 401); }
+      if (!ebayToken) return json({ needsToken: true, error: 'Connect eBay first: missing user access/refresh token' }, 401);
+
+      let converted = 0;
+      const failed = [];
+      for (const row of candidates) {
+        const d = row.data || {};
+        try {
+          await reviseEbayListing({
+            sku: d.ebaySku, offerId: d.ebayOfferId,
+            title: d.name || 'Comic',
+            description: [d.name, 'In stock now and ships promptly.'].filter(Boolean).join('\n\n'),
+            price: (Number(d.market || d.salePrice || 0)).toFixed(2),
+            quantity: Number(d.qty ?? d.quantity ?? 0),
+            categoryId: '259104', conditionId: '1000',
+            imageUrl: d.image || undefined, upc: d.upc || '',
+          }, ebayToken, env);
+          await supabaseAdminFetch(env, `inventory_items?id=eq.${row.id}&store_id=eq.${encodeURIComponent(storeId)}`, {
+            method: 'PATCH', headers: { Prefer: 'return=minimal' },
+            body: JSON.stringify({ status: 'in_stock', data: { ...d, status: 'in_stock', ebayPresaleConverted: true, ebayConvertedAt: new Date().toISOString() } }),
+          });
+          converted++;
+        } catch (e) {
+          console.error('FOC eBay presale->in-stock conversion failed for', row.id, e);
+          failed.push({ inventoryItemId: row.id, name: d.name || '', error: e.message });
+        }
+      }
+      return json({ ok: true, converted, failed });
+    }
+
     if (url.pathname === '/public/preorders' || url.pathname.startsWith('/public/preorders/') || url.pathname === '/public/shipping/quotes' || url.pathname.startsWith('/foc/admin/')) {
       return await handleFocRequest(request, env, url, {
         CORS, json, supabaseAdminFetch, requireStoreUser, requireAuthenticatedUser,
@@ -6115,6 +6176,50 @@ export default {
     // eBay's own seller app refuses to edit Inventory-API-based listings at all
     // ("Inventory-based listing management is not currently supported by this
     // tool") -- whatever tool created the listing is expected to also revise it.
+    // Core "revise an already-published listing in place" mechanics, shared
+    // by /ebay/update (staff-driven edits) and the FOC presale-to-in-stock
+    // conversion below. eBay's own Inventory API PUT endpoints are full
+    // replaces (not patches), so this rebuilds the same inventory_item/offer
+    // bodies creation uses and re-sends them against the existing
+    // sku/offerId -- no re-publish needed, a live offer picks up PUT changes
+    // immediately. Throws Error with a .status on failure, same convention
+    // as createAndPublishEbayListing.
+    async function reviseEbayListing(b, ebayToken, env) {
+      const { sku, offerId, title, price } = b;
+      if (!sku || !offerId) { const e = new Error('sku and offerId are required'); e.status = 400; throw e; }
+      if (!title || !price) { const e = new Error('title and price required'); e.status = 400; throw e; }
+
+      const itemBody = buildEbayInventoryItemBody(b);
+      const itemRes = await fetch(`https://api.ebay.com/sell/inventory/v1/inventory_item/${encodeURIComponent(sku)}`, {
+        method: 'PUT',
+        headers: { 'Authorization': 'Bearer ' + ebayToken, 'Content-Type': 'application/json', 'Content-Language': 'en-US' },
+        body: JSON.stringify(itemBody),
+      });
+      if (!itemRes.ok && itemRes.status !== 204) {
+        const errTxt = await itemRes.text();
+        let errData; try { errData = JSON.parse(errTxt); } catch (_) { errData = errTxt; }
+        const msg = errData?.errors?.[0]?.longMessage || errData?.errors?.[0]?.message || errTxt.substring(0, 200);
+        const e = new Error('Item update failed (' + itemRes.status + '): ' + msg); e.status = itemRes.status; e.detail = errData; throw e;
+      }
+
+      const locationKey = env.EBAY_LOCATION_KEY || 'walkoff-main';
+      const offerBody = buildEbayOfferBody(b, sku, locationKey, env);
+      delete offerBody.sku; // sku is the path param below, not a body field on update
+      const offerRes = await fetch(`https://api.ebay.com/sell/inventory/v1/offer/${encodeURIComponent(offerId)}`, {
+        method: 'PUT',
+        headers: { 'Authorization': 'Bearer ' + ebayToken, 'Content-Type': 'application/json', 'Content-Language': 'en-US' },
+        body: JSON.stringify(offerBody),
+      });
+      const offerTxt = await offerRes.text();
+      let offerData; try { offerData = JSON.parse(offerTxt); } catch (_) { offerData = { raw: offerTxt }; }
+      if (!offerRes.ok && offerRes.status !== 204) {
+        const msg = offerData?.errors?.[0]?.longMessage || offerData?.errors?.[0]?.message || offerTxt.substring(0, 300);
+        const e = new Error('Offer update failed (' + offerRes.status + '): ' + msg); e.status = offerRes.status; e.detail = offerData; throw e;
+      }
+
+      return { offerId, sku };
+    }
+
     if (url.pathname === '/ebay/update') {
       if (request.method !== 'POST') return json({ error: 'POST only' }, 405);
       const storeId = requestStoreId(request, url);
@@ -6127,42 +6232,11 @@ export default {
 
       try {
         const b = await request.json();
-        const { sku, offerId, title, price } = b;
-        if (!sku || !offerId) return json({ error: 'sku and offerId are required' }, 400);
-        if (!title || !price) return json({ error: 'title and price required' }, 400);
-
-        const itemBody = buildEbayInventoryItemBody(b);
-        const itemRes = await fetch(`https://api.ebay.com/sell/inventory/v1/inventory_item/${encodeURIComponent(sku)}`, {
-          method: 'PUT',
-          headers: { 'Authorization': 'Bearer ' + ebayToken, 'Content-Type': 'application/json', 'Content-Language': 'en-US' },
-          body: JSON.stringify(itemBody),
-        });
-        if (!itemRes.ok && itemRes.status !== 204) {
-          const errTxt = await itemRes.text();
-          let errData; try { errData = JSON.parse(errTxt); } catch (_) { errData = errTxt; }
-          const msg = errData?.errors?.[0]?.longMessage || errData?.errors?.[0]?.message || errTxt.substring(0, 200);
-          return json({ error: 'Item update failed (' + itemRes.status + '): ' + msg, detail: errData }, itemRes.status);
-        }
-
-        const locationKey = env.EBAY_LOCATION_KEY || 'walkoff-main';
-        const offerBody = buildEbayOfferBody(b, sku, locationKey, env);
-        delete offerBody.sku; // sku is the path param below, not a body field on update
-        const offerRes = await fetch(`https://api.ebay.com/sell/inventory/v1/offer/${encodeURIComponent(offerId)}`, {
-          method: 'PUT',
-          headers: { 'Authorization': 'Bearer ' + ebayToken, 'Content-Type': 'application/json', 'Content-Language': 'en-US' },
-          body: JSON.stringify(offerBody),
-        });
-        const offerTxt = await offerRes.text();
-        let offerData; try { offerData = JSON.parse(offerTxt); } catch (_) { offerData = { raw: offerTxt }; }
-        if (!offerRes.ok && offerRes.status !== 204) {
-          const msg = offerData?.errors?.[0]?.longMessage || offerData?.errors?.[0]?.message || offerTxt.substring(0, 300);
-          return json({ error: 'Offer update failed (' + offerRes.status + '): ' + msg, detail: offerData }, offerRes.status);
-        }
-
-        return json({ ok: true, offerId, sku });
+        const result = await reviseEbayListing(b, ebayToken, env);
+        return json({ ok: true, ...result });
       } catch (e) {
         console.error('eBay update error:', e);
-        return json({ error: e.message }, 500);
+        return json({ error: e.message, detail: e.detail }, e.status || 500);
       }
     }
 

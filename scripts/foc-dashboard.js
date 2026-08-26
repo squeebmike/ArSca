@@ -196,6 +196,15 @@ async function confirmReceiveShipment(){
       }).join('\n');
       alert('This shipment did not fully match what was ordered:\n\n'+report);
     }
+    // Any eBay presale still holding unsold copies for this cycle can now
+    // say "in stock" instead of "presale" -- best-effort, separate from the
+    // receiving result itself so a listing hiccup here never looks like the
+    // shipment failed to receive.
+    try{
+      var conv=await api('/foc/ebay/convert-to-instock',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({storeId:getActiveStoreId(),cycleId:state.cycle.id})});
+      if(conv.converted>0)toast_dash(conv.converted+' eBay presale listing'+(conv.converted===1?'':'s')+' switched to in stock');
+      if(conv.failed&&conv.failed.length)toast_dash(conv.failed.length+' eBay listing'+(conv.failed.length===1?'':'s')+' could not be switched to in stock -- check the eBay tab');
+    }catch(e){/* eBay not connected or similar -- receiving itself already succeeded, don't alarm over this */}
     await openCycle(state.cycle.id);
   }catch(e){if(status)status.textContent='';toast_dash('Could not receive shipment: '+e.message);}
 }
