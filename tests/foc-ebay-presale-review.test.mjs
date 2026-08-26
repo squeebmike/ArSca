@@ -163,9 +163,11 @@ assert.match(worker, /if \(!aspects\['Condition'\] && CONDITION_ASPECT_LABEL\[St
 assert.match(focDash, /var templates=vp\.ebayDescriptionTemplates\|\|\{\};/, 'must read the same per-category template settings the regular eBay listing tool uses');
 assert.match(focDash, /var customTemplate=templates\.Comic\|\|templates\.default\|\|'';/, 'must prefer a Comic-specific template, falling back to the default template');
 assert.match(focDash, /renderEbayDescriptionTemplate\(customTemplate,tokens\)/, 'must render the custom template through the shared {token} renderer');
-assert.match(focDash, /description='PRESALE -- This comic has not been released yet and is not currently in stock/,
-  'the mandatory presale disclosure must always be prepended, even when a custom template is used');
-assert.match(focDash, /\+renderedBody;\s*\n\s*usedCustomTemplate=true;/, 'the rendered custom template body must be appended after the mandatory disclosure');
+assert.match(focDash, /'<p>PRESALE -- This comic has not been released yet and is not currently in stock\.<\/p>/,
+  'the mandatory presale disclosure must always be prepended, even when a custom template is used (HTML-template form)');
+assert.match(focDash, /'PRESALE -- This comic has not been released yet and is not currently in stock\.\\n\\nExpected/,
+  'the mandatory presale disclosure must always be prepended, even when a custom template is used (plain-text form)');
+assert.match(focDash, /description=disclosure\+\(isHtmlTemplate\?'':'\\n\\n'\)\+renderedBody;\s*\n\s*usedCustomTemplate=true;/, 'the rendered custom template body must be appended after the mandatory disclosure');
 assert.match(focDash, /openSettingsSection\(\\'profile\\',\\'vendor-profile-panel\\'\)/, 'the modal must link to where the template is actually edited');
 
 // Store owner asked: what happens to an eBay presale listing for a book we
@@ -351,4 +353,31 @@ assert.match(worker, /if \(\(out \+ para\)\.length > EBAY_DESCRIPTION_MAX\) brea
   assert(html.length <= 4000, `toEbayHtmlDescription must never exceed eBay's 4000-char cap even when the raw text is right at 4000 chars (got ${html.length})`);
 }
 
-console.log('FOC eBay presale review-step, template-field, eligible-filter, handling-time, aspects, template-reuse, unordered-withdrawal, store-category, template-gap, optional-clause, extra-field, html-formatting, warnings, quantity-default, cross-entry-point presale, real-condition-id, and description-length-cap contract checks passed');
+// Store report: a hand-built rich-HTML Comic template (real <div>/<table>
+// markup for a full branded listing design) went live with every tag
+// showing as literal visible text instead of rendering -- the previous fix
+// for the plain-text-collapsing-to-a-blob bug unconditionally escaped
+// EVERY description, which broke a store that had already been relying on
+// raw HTML working (as it did before that fix existed). Must detect
+// already-HTML content and pass it through untouched instead.
+assert.match(worker, /if \(\/<\\\/\?\[a-z\]\[\\s\\S\]\*>\/i\.test\(raw\)\) return raw\.length <= 4000 \? raw : raw\.substring\(0, 4000\);/,
+  'must detect existing HTML markup and pass it through untouched (bounded to the length cap) instead of escaping it');
+{
+  const toEbayHtmlDescriptionSrc = worker.slice(worker.indexOf('function toEbayHtmlDescription'), worker.indexOf('function buildEbayInventoryItemBody'));
+  const toEbayHtmlDescription = new Function(toEbayHtmlDescriptionSrc + '\nreturn toEbayHtmlDescription;')();
+  const html = '<div style="width:100%"><div style="background:#171717">THE MANA POCKET</div></div>';
+  assert.equal(toEbayHtmlDescription(html), html, 'a description that already contains real HTML markup must be returned completely unmodified');
+  const plain = 'PRESALE -- not released yet.\n\nExpected ship date: Sept 29.';
+  const plainOut = toEbayHtmlDescription(plain);
+  assert.match(plainOut, /<p>PRESALE -- not released yet\.<\/p><p>Expected ship date: Sept 29\.<\/p>/, 'genuine plain text must still be converted to real HTML paragraphs');
+}
+
+// FOC review-modal token building must match its own disclosure prefix's
+// format to whichever kind of template it's about to sit next to (plain
+// text vs. a store's rich-HTML template), or the combined string is a
+// mismatched blob the server-side formatter can't get right for both halves.
+assert.match(focDash, /var isHtmlTemplate=\/<\\\/\?\[a-z\]\[\\s\\S\]\*>\/i\.test\(customTemplate\);/, 'must detect whether the store\'s saved template is plain text or real HTML');
+assert.match(focDash, /disclosure=isHtmlTemplate\s*\n\s*\? '<p>PRESALE/, 'the mandatory disclosure must be built as real HTML paragraphs when sitting next to an HTML template');
+assert.match(focDash, /description=disclosure\+\(isHtmlTemplate\?'':'\\n\\n'\)\+renderedBody;/, 'the disclosure and template body must be joined without a stray plain-text separator when both are already HTML');
+
+console.log('FOC eBay presale review-step, template-field, eligible-filter, handling-time, aspects, template-reuse, unordered-withdrawal, store-category, template-gap, optional-clause, extra-field, html-formatting, warnings, quantity-default, cross-entry-point presale, real-condition-id, description-length-cap, and html-template-passthrough contract checks passed');
