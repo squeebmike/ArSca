@@ -342,6 +342,17 @@ async function submitEbayPresaleReview(skuId){
     var result=await api('/foc/ebay/create-presale',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
     toast_dash('eBay presale listed: '+qty+' cop'+(qty===1?'y':'ies'));
     if(result.warnings&&result.warnings.length)toast_dash('eBay warning: '+result.warnings.join(' · '));
+    // Temporary diagnostic for the "Item condition" not selecting on eBay's
+    // own edit page -- neither a resolution-fallback nor a stored-value
+    // mismatch warning has fired on two live tests, so this surfaces the
+    // actual requested-vs-stored condition values every time (not just on
+    // a detected problem) since that's otherwise only visible via
+    // Cloudflare Worker logs this store has no access to. Remove once the
+    // root cause is confirmed.
+    if(result.conditionCheck){
+      var cc=result.conditionCheck;
+      toast_dash('Condition check: sent '+cc.requestedId+(cc.requestedLabel?' ('+cc.requestedLabel+')':'')+' via '+cc.resolvedFrom+' · eBay confirms stored: '+(cc.verifiedStoredId||'unknown'));
+    }
     var modal=document.getElementById('foc-ebay-review-modal');if(modal)modal.remove();
     await openCycle(state.cycle.id);
   }catch(e){

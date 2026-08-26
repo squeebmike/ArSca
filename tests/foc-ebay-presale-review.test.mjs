@@ -87,9 +87,24 @@ assert.match(worker, /import \{ handleFocRequest, syncFocStripeEvent, shippingSe
 // discoverable by a human clicking into the live listing afterward.
 assert.match(createAndPublishBody, /const verifyRes = await fetch\(`https:\/\/api\.ebay\.com\/sell\/inventory\/v1\/inventory_item\/\$\{sku\}`, \{\s*\n\s*headers: \{ 'Authorization': 'Bearer ' \+ ebayToken \},\s*\n\s*\}\);/,
   'must read the inventory item back from eBay after publish to verify what was actually stored');
-assert.match(createAndPublishBody, /const storedConditionId = String\(verifyData\?\.conditionId \|\| ''\);/, 'must compare the real stored conditionId, not just assume the PUT worked');
-assert.match(createAndPublishBody, /if \(requestedConditionId && storedConditionId !== requestedConditionId\) \{/, 'a mismatch between requested and stored condition must be surfaced');
+assert.match(createAndPublishBody, /verifiedConditionId = String\(verifyData\?\.conditionId \|\| ''\);/, 'must compare the real stored conditionId, not just assume the PUT worked');
+assert.match(createAndPublishBody, /if \(requestedConditionId && verifiedConditionId !== requestedConditionId\) \{/, 'a mismatch between requested and stored condition must be surfaced');
 assert.match(createAndPublishBody, /warnings\.push\(`eBay stored a different condition than requested/, 'the condition mismatch must become a visible warning, not a silent log line');
+
+// Two live tests showed neither the fallback warning nor the mismatch
+// warning above ever fire -- "no warning" was being read as "it worked",
+// but a verify-fetch failure was silently swallowed too, which looks
+// identical from outside. Both a verify failure and the raw requested/
+// stored values must now be visible instead of only a binary match check.
+assert.match(createAndPublishBody, /warnings\.push\(`Could not verify eBay actually stored the requested condition \(lookup failed, \$\{verifyRes\.status\}\)/,
+  'a failed verify lookup (non-ok response) must be surfaced, not silently treated as a match');
+assert.match(createAndPublishBody, /warnings\.push\('Could not verify eBay actually stored the requested condition \(' \+ e\.message \+ '\)/,
+  'a thrown verify-fetch error must also be surfaced, not silently swallowed');
+assert.match(worker, /return \{ listingId: pubData\.listingId, offerId, sku, warnings, requestedConditionId: String\(itemBody\.conditionId \|\| ''\), verifiedConditionId \};/,
+  'createAndPublishEbayListing must return the actual requested/verified condition values, not just a pass/fail');
+assert.match(worker, /conditionCheck: \{\s*\n\s*requestedId: listingResult\.requestedConditionId, requestedLabel: resolvedCondition\.label \|\| '',\s*\n\s*resolvedFrom: resolvedCondition\.source, verifiedStoredId: listingResult\.verifiedConditionId,\s*\n\s*\},/,
+  'the create-presale response must include the raw condition values on every publish, not just when a problem is detected');
+assert.match(focDash, /if\(result\.conditionCheck\)\{/, 'the dashboard must surface the condition check values so they are visible without Worker log access');
 
 // Both callers of createAndPublishEbayListing must pass storeId through now
 // that the function needs it to look up the address.
@@ -304,7 +319,8 @@ assert.match(worker, /listingDescription: toEbayHtmlDescription\(description \|\
 // actually reach the FOC dashboard so staff can see it.
 assert.match(worker, /if \(Array\.isArray\(itemData\?\.warnings\) && itemData\.warnings\.length\) warnings\.push/, 'must collect warnings from the inventory_item response');
 assert.match(worker, /if \(Array\.isArray\(pubData\?\.warnings\) && pubData\.warnings\.length\) warnings\.push/, 'must collect warnings from the publish response');
-assert.match(worker, /return \{ listingId: pubData\.listingId, offerId, sku, warnings \};/, 'createAndPublishEbayListing must return the collected warnings');
+assert.match(worker, /return \{ listingId: pubData\.listingId, offerId, sku, warnings, requestedConditionId: String\(itemBody\.conditionId \|\| ''\), verifiedConditionId \};/,
+  'createAndPublishEbayListing must return the collected warnings');
 assert.match(worker, /warnings: \[\.\.\.\(listingResult\.warnings \|\| \[\]\), \.\.\.conditionWarnings\]/, 'the FOC create-presale route must pass warnings through to the client');
 assert.match(focDash, /if\(result\.warnings&&result\.warnings\.length\)toast_dash\('eBay warning: '\+result\.warnings\.join\(' · '\)\)/,
   'the dashboard must actually surface a returned warning, not just receive it silently');
