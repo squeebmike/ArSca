@@ -249,7 +249,8 @@ async function openEbayPresaleReview(skuId){
     var templates=vp.ebayDescriptionTemplates||{};
     var customTemplate=templates.Comic||templates.default||'';
     if(customTemplate&&typeof renderEbayDescriptionTemplate==='function'){
-      var tokens={title:preview.title.replace(/ - PRESALE$/,''),category:'Comic',price:preview.price,upc:preview.upc,
+      var tokens={title:preview.baseTitle||preview.title.replace(/ - PRESALE$/,''),category:'Comic',price:preview.price,upc:preview.upc,
+        variant:preview.variantLabel||'',
         publisher:asp.Publisher||'',writer:asp.Writer||'',artist:asp.Artist||'',coverArtist:asp['Cover Artist']||'',
         condition:'New',quantity:'1'};
       var renderedBody=renderEbayDescriptionTemplate(customTemplate,tokens);

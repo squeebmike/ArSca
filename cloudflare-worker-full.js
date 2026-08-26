@@ -3242,6 +3242,7 @@ export default {
         return json({
           ok: true, skuId: sku.id, quantity, price: (priceCents / 100).toFixed(2),
           imageUrl: sku.cover_image_url || '', upc: sku.upc || '',
+          baseTitle: sku.title || '', variantLabel: sku.variant_label || '',
           bestOfferEnabled: true, handlingBusinessDays,
           ...defaults,
         });
