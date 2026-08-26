@@ -2263,6 +2263,19 @@ function buildEbayAspects(b) {
   return aspects;
 }
 
+// The description textarea is plain text with \n line breaks -- eBay
+// renders listing descriptions as HTML, which collapses all whitespace
+// including newlines, so a carefully paragraph-broken template arrived on
+// the live listing page as one unbroken wall of text (store report). Also
+// HTML-escapes the raw text first: description is built by concatenating
+// several free-text fields (writer, notes, custom aspects, etc.), any of
+// which could contain a literal "<" or "&" that must not be interpreted
+// as markup once wrapped in HTML.
+function toEbayHtmlDescription(text) {
+  const escaped = String(text || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  return escaped.split(/\n{2,}/).map(para => '<p>' + para.replace(/\n/g, '<br>') + '</p>').join('');
+}
+
 function buildEbayInventoryItemBody(b) {
   const {
     title, description, conditionId = '3000', conditionDescription = '', conditionDescriptors = [],
@@ -2287,7 +2300,7 @@ function buildEbayInventoryItemBody(b) {
   return {
     product: {
       title: String(title || '').substring(0, 80),
-      description: description || title,
+      description: toEbayHtmlDescription(description || title),
       aspects: buildEbayAspects(b),
       imageUrls: allImgUrls.slice(0, 12),
       epid: epid || undefined,
@@ -2331,7 +2344,7 @@ function buildEbayOfferBody(b, sku, locationKey, env) {
     listingDuration: format === 'AUCTION' ? (duration || 'DAYS_7') : (duration || 'GTC'),
     availableQuantity: parseInt(quantity) || 1,
     categoryId: String(categoryId),
-    listingDescription: description || title,
+    listingDescription: toEbayHtmlDescription(description || title),
     listingPolicies,
     storeCategoryNames: cleanStoreCategoryNames.length ? cleanStoreCategoryNames : undefined,
     merchantLocationKey: locationKey,
@@ -3317,7 +3330,7 @@ export default {
         });
       }
 
-      return json({ ok: true, listingId: listingResult.listingId, offerId: listingResult.offerId, sku: listingResult.sku, inventoryItemId: createdRow?.id || null, quantity });
+      return json({ ok: true, listingId: listingResult.listingId, offerId: listingResult.offerId, sku: listingResult.sku, inventoryItemId: createdRow?.id || null, quantity, warnings: listingResult.warnings || [] });
     }
 
     // Flips any eBay presale listings for a FOC cycle over to in-stock
@@ -6320,11 +6333,22 @@ export default {
         body: JSON.stringify(itemBody),
       });
 
-      if (!itemRes.ok && itemRes.status !== 204) {
-        const errTxt = await itemRes.text();
-        let errData; try { errData = JSON.parse(errTxt); } catch (_) { errData = errTxt; }
-        const msg = errData?.errors?.[0]?.longMessage || errData?.errors?.[0]?.message || errTxt.substring(0, 200);
-        const e = new Error('Item creation failed (' + itemRes.status + '): ' + msg); e.status = itemRes.status; e.detail = errData; throw e;
+      // eBay's Inventory API can return 200/204 "success" while silently
+      // rejecting or ignoring individual fields it didn't like (e.g. a
+      // conditionId not valid for the category) -- those show up as a
+      // `warnings` array on an otherwise-ok response, not an error. Neither
+      // this route nor its caller ever looked at that array before, so a
+      // silently-dropped field had no way to surface. Collected below and
+      // returned to the caller instead of just discarded.
+      const warnings = [];
+      if (itemRes.status !== 204) {
+        const itemTxt = await itemRes.text();
+        let itemData; try { itemData = JSON.parse(itemTxt); } catch (_) { itemData = null; }
+        if (!itemRes.ok) {
+          const msg = itemData?.errors?.[0]?.longMessage || itemData?.errors?.[0]?.message || itemTxt.substring(0, 200);
+          const e = new Error('Item creation failed (' + itemRes.status + '): ' + msg); e.status = itemRes.status; e.detail = itemData; throw e;
+        }
+        if (Array.isArray(itemData?.warnings) && itemData.warnings.length) warnings.push(...itemData.warnings.map(w => w?.message || w?.longMessage).filter(Boolean));
       }
 
       const offerBody = buildEbayOfferBody(b, sku, locationKey, env);
@@ -6358,8 +6382,9 @@ export default {
         const msg = pubData?.errors?.[0]?.longMessage || pubData?.errors?.[0]?.message || pubTxt.substring(0, 300);
         const e = new Error('Publish failed (' + pubRes.status + '): ' + msg); e.status = pubRes.status; e.detail = pubData; throw e;
       }
+      if (Array.isArray(pubData?.warnings) && pubData.warnings.length) warnings.push(...pubData.warnings.map(w => w?.message || w?.longMessage).filter(Boolean));
 
-      return { listingId: pubData.listingId, offerId, sku };
+      return { listingId: pubData.listingId, offerId, sku, warnings };
     }
 
     if (url.pathname === '/ebay/list') {

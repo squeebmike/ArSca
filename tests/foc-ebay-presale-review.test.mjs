@@ -257,4 +257,33 @@ assert.match(focDash, /\[\['Key Issue','keyIssue'\],\['First Appearance','firstA
 assert.match(focDash, /document\.querySelectorAll\('\[data-foc-eb-extra\]'\)\.forEach\(function\(el\)\{if\(el\.value\)customAspects\[el\.dataset\.focEbExtraLabel\]=el\.value;\}\)/,
   'the extra fields must actually reach customAspects (eBay item specifics), not just sit unused in the modal');
 
-console.log('FOC eBay presale review-step, template-field, eligible-filter, handling-time, aspects, template-reuse, unordered-withdrawal, store-category, template-gap, optional-clause, and extra-field contract checks passed');
+// Store report: a carefully paragraph-broken description arrived on the
+// live eBay listing as one unbroken wall of text, because eBay renders
+// descriptions as HTML and plain "\n" line breaks collapse under normal
+// HTML whitespace rules. toEbayHtmlDescription must convert paragraph/line
+// breaks to real HTML and be used everywhere a description reaches eBay
+// (both the inventory_item and offer bodies), not just one of the two.
+assert.match(worker, /function toEbayHtmlDescription\(text\) \{/, 'must have a shared HTML-formatting helper for eBay descriptions');
+assert.match(worker, /escaped\.split\(\/\\n\{2,\}\/\)\.map\(para => '<p>' \+ para\.replace\(\/\\n\/g, '<br>'\) \+ '<\/p>'\)\.join\(''\)/,
+  'must convert blank-line-separated paragraphs to <p> and remaining single line breaks to <br>');
+assert.match(worker, /replace\(\/&\/g, '&amp;'\)\.replace\(\/</, 'must HTML-escape the raw text first, since it is built from several free-text fields');
+assert.match(worker, /description: toEbayHtmlDescription\(description \|\| title\),/, 'the inventory_item description must go through the HTML formatter');
+assert.match(worker, /listingDescription: toEbayHtmlDescription\(description \|\| title\),/, 'the offer listingDescription must also go through the HTML formatter');
+
+// eBay's Inventory API can return an ok response while silently dropping a
+// field it didn't like (e.g. an invalid conditionId for the category) as a
+// `warnings` array rather than an error -- previously discarded entirely,
+// giving no way to notice a silently-rejected field. Must now be collected
+// from both the inventory_item response and the publish response, and
+// actually reach the FOC dashboard so staff can see it.
+assert.match(worker, /if \(Array\.isArray\(itemData\?\.warnings\) && itemData\.warnings\.length\) warnings\.push/, 'must collect warnings from the inventory_item response');
+assert.match(worker, /if \(Array\.isArray\(pubData\?\.warnings\) && pubData\.warnings\.length\) warnings\.push/, 'must collect warnings from the publish response');
+assert.match(worker, /return \{ listingId: pubData\.listingId, offerId, sku, warnings \};/, 'createAndPublishEbayListing must return the collected warnings');
+assert.match(worker, /warnings: listingResult\.warnings \|\| \[\]/, 'the FOC create-presale route must pass warnings through to the client');
+assert.match(focDash, /if\(result\.warnings&&result\.warnings\.length\)toast_dash\('eBay warning: '\+result\.warnings\.join\(' · '\)\)/,
+  'the dashboard must actually surface a returned warning, not just receive it silently');
+
+// Store asked for a higher default presale quantity than one copy.
+assert.match(focDash, /id="foc-eb-qty" class="tsi" type="number" min="1" max="200" value="10"/, 'default presale quantity must be 10, not 1');
+
+console.log('FOC eBay presale review-step, template-field, eligible-filter, handling-time, aspects, template-reuse, unordered-withdrawal, store-category, template-gap, optional-clause, extra-field, html-formatting, warnings, and quantity-default contract checks passed');
