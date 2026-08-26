@@ -200,4 +200,28 @@ assert.match(worker, /storeCategoryNames: cleanStoreCategoryNames\.length \? cle
 assert.match(focDash, /localStorage\.getItem\('foc_ebay_last_store_category'\)/, 'must remember the last-typed store category across listings');
 assert.match(focDash, /localStorage\.setItem\('foc_ebay_last_store_category',storeCategory\)/, 'must persist a newly-typed store category for next time');
 
-console.log('FOC eBay presale review-step, template-field, eligible-filter, handling-time, aspects, template-reuse, unordered-withdrawal, and store-category contract checks passed');
+// Store report: a real Comic description template full of optional prose
+// tokens ("this {variant} {coverType} features {character} from
+// {franchise}...") rendered with ugly gaps for any book missing those
+// attributes -- dangling "Title #" (empty {issue} glued to a literal "#"),
+// triple spaces, and " ," artifacts, because the old renderer only dropped
+// a whole LINE when every token on it was empty; a line mixing populated
+// and empty tokens (title/publisher were set) survived with raw gaps.
+const dashboard = fs.readFileSync('dashboard.html', 'utf8');
+const rendererStart = dashboard.indexOf('function renderEbayDescriptionTemplate');
+const rendererEnd = dashboard.indexOf('function computeEbayListingFields', rendererStart);
+const rendererBody = dashboard.slice(rendererStart, rendererEnd);
+assert.match(rendererBody, /const val = tokens\[k\] \|\| '';\s*\n\s*return val \? \(connector \|\| ''\) \+ val : '';/,
+  'a literal connector character (like "#" in "{title} #{issue}") glued to an empty token must be stripped along with it');
+assert.match(rendererBody, /\.replace\(\/\[ \\t\]\{2,\}\/g, ' '\)/, 'must collapse doubled whitespace left by removed empty tokens');
+assert.match(rendererBody, /\.replace\(\/ \+\(\[,\.;:\]\)\/g, '\$1'\)/, 'must fix space-before-punctuation artifacts');
+
+// FOC presale token-building must pass the plain book title and variant
+// label as SEPARATE tokens (not the already-combined "{title} {variant} -
+// PRESALE" string as {title}), or any template using both would double up
+// the variant text.
+assert.match(worker, /baseTitle: sku\.title \|\| '', variantLabel: sku\.variant_label \|\| ''/, 'preview must expose the plain title and variant separately for template tokens');
+assert.match(focDash, /title:preview\.baseTitle\|\|preview\.title\.replace\(\/ - PRESALE\$\/,''\),category:'Comic',price:preview\.price,upc:preview\.upc,\s*\n\s*variant:preview\.variantLabel\|\|''/,
+  'the {title} token must use the plain base title, with variant passed separately, to avoid doubling the variant text');
+
+console.log('FOC eBay presale review-step, template-field, eligible-filter, handling-time, aspects, template-reuse, unordered-withdrawal, store-category, and template-gap contract checks passed');
