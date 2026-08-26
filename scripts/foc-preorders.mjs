@@ -856,7 +856,39 @@ async function adminPrhSubmission(request,env,deps,url){
     if(/duplicate key|already exists|unique/i.test(String(e.message||'')))return deps.json({ok:false,error:'This FOC cycle already has a submitted PRH order -- it cannot be re-submitted.'},409);
     throw e;
   }
-  return deps.json({ok:true,submission:inserted});
+  // Submitting the PRH order is the decisive "we are/aren't ordering this"
+  // moment -- a SKU with finalQty<=0 got skipped from lineItems above, so
+  // nothing is coming from the distributor for it. If it still has a live,
+  // UNSOLD eBay presale listing (an active one that already sold copies
+  // would have ebayPresold>0, pulling it above zero and into lineItems),
+  // that listing needs to come down now: otherwise it sits on eBay,
+  // purchasable, for a book the store will never receive to ship. This is
+  // best-effort and never blocks the submission itself -- the submission
+  // above is the authoritative distributor-order record regardless of
+  // whether eBay cleanup succeeds.
+  let ebayWithdrawnSkuIds=[];
+  try{
+    const includedSkuIds=new Set(lineItems.map(li=>li.skuId));
+    const {data:presaleRows}=await db(`inventory_items?store_id=eq.${encodeURIComponent(storeId)}&status=eq.presale&select=id,data`);
+    const toWithdraw=(presaleRows||[]).filter(row=>{
+      const d=row.data||{};
+      return d.source==='foc_presale'&&d.focCycleId===cycleId&&d.ebayOfferId&&!includedSkuIds.has(d.focSkuId)&&Number(d.qty??d.quantity??0)>0;
+    });
+    if(toWithdraw.length&&deps.getEbayUserAccessToken&&deps.withdrawEbayOffer){
+      let ebayToken='';
+      try{ebayToken=await deps.getEbayUserAccessToken(env);}catch(_){}
+      if(ebayToken){
+        for(const row of toWithdraw){
+          try{
+            await deps.withdrawEbayOffer(env,ebayToken,row.data.ebayOfferId);
+            await db(`inventory_items?id=eq.${row.id}&store_id=eq.${encodeURIComponent(storeId)}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({data:{...row.data,qty:0,quantity:0,ebayWithdrawnAt:new Date().toISOString(),ebayWithdrawnReason:'not_included_in_prh_order'}})});
+            ebayWithdrawnSkuIds.push(row.data.focSkuId);
+          }catch(e){console.error('FOC PRH submission: could not withdraw unordered eBay presale listing',row.id,e);}
+        }
+      }
+    }
+  }catch(e){console.error('FOC PRH submission: eBay withdrawal sweep failed',e);}
+  return deps.json({ok:true,submission:inserted,ebayWithdrawnCount:ebayWithdrawnSkuIds.length});
 }
 
 async function adminCycle(request,env,deps,url){

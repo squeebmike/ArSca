@@ -2309,6 +2309,7 @@ function buildEbayOfferBody(b, sku, locationKey, env) {
   const {
     title, description, price, format = 'FIXED_PRICE', duration = 'GTC', quantity = 1, categoryId = '261328',
     bestOfferEnabled = false, autoAcceptPrice = '', autoDeclinePrice = '', fulfillmentPolicyId = '',
+    storeCategoryNames = [],
   } = b;
   const listingPolicies = {};
   if (fulfillmentPolicyId || env.EBAY_FULFILLMENT_POLICY_ID) listingPolicies.fulfillmentPolicyId = fulfillmentPolicyId || env.EBAY_FULFILLMENT_POLICY_ID;
@@ -2321,6 +2322,8 @@ function buildEbayOfferBody(b, sku, locationKey, env) {
     if (parseFloat(autoDeclinePrice) > 0) bestOfferTerms.autoDeclinePrice = { value: parseFloat(autoDeclinePrice).toFixed(2), currency: 'USD' };
     listingPolicies.bestOfferTerms = bestOfferTerms;
   }
+  const cleanStoreCategoryNames = (Array.isArray(storeCategoryNames) ? storeCategoryNames : String(storeCategoryNames || '').split(','))
+    .map(s => String(s || '').trim()).filter(Boolean).slice(0, 2);
   return {
     sku,
     marketplaceId: 'EBAY_US',
@@ -2330,6 +2333,7 @@ function buildEbayOfferBody(b, sku, locationKey, env) {
     categoryId: String(categoryId),
     listingDescription: description || title,
     listingPolicies,
+    storeCategoryNames: cleanStoreCategoryNames.length ? cleanStoreCategoryNames : undefined,
     merchantLocationKey: locationKey,
     pricingSummary: { price: { value: parseFloat(price).toFixed(2), currency: 'USD' } },
   };
@@ -3257,6 +3261,7 @@ export default {
       const bestOfferEnabled = body.bestOfferEnabled !== false;
       const weightValue = Number(body.weightValue) > 0 ? Number(body.weightValue) : defaults.weightValue;
       const weightUnit = body.weightUnit || defaults.weightUnit;
+      const storeCategoryNames = Array.isArray(body.storeCategoryNames) ? body.storeCategoryNames : String(body.storeCategoryNames || '').split(',');
       const fulfillmentPolicyId = await getFocPresaleFulfillmentPolicyId(env, ebayToken, handlingBusinessDays);
 
       let listingResult;
@@ -3271,6 +3276,7 @@ export default {
           bestOfferEnabled,
           weightValue, weightUnit,
           fulfillmentPolicyId,
+          storeCategoryNames,
         }, ebayToken, env, storeId);
       } catch (e) {
         console.error('FOC eBay presale listing error:', e);
@@ -3378,7 +3384,7 @@ export default {
       return await handleFocRequest(request, env, url, {
         CORS, json, supabaseAdminFetch, requireStoreUser, requireAuthenticatedUser,
         readJsonWithLimit, enforceUsageLimit, stripeApi, stripeMode, stripeConfig, sendEmail,
-        addBusinessDays, getEbayPresaleSafeBusinessDays,
+        addBusinessDays, getEbayPresaleSafeBusinessDays, getEbayUserAccessToken, withdrawEbayOffer,
       });
     }
 
@@ -6375,6 +6381,26 @@ export default {
       }
     }
 
+    // Ends (withdraws) an already-published offer -- used both by /ebay/end
+    // (staff manually ending a listing) and by the FOC PRH-submission flow
+    // to auto-withdraw a presale listing for a book the store ends up not
+    // ordering at all (see adminPrhSubmission in foc-preorders.mjs). Throws
+    // Error with a .status on failure, same convention as the other eBay
+    // helpers here.
+    async function withdrawEbayOffer(env, ebayToken, offerId) {
+      const res = await fetch(`https://api.ebay.com/sell/inventory/v1/offer/${encodeURIComponent(offerId)}/withdraw`, {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + ebayToken, 'Content-Type': 'application/json' },
+      });
+      const txt = await res.text();
+      let data; try { data = JSON.parse(txt); } catch (_) { data = { raw: txt }; }
+      if (!res.ok) {
+        const msg = data?.errors?.[0]?.longMessage || data?.errors?.[0]?.message || txt.substring(0, 300);
+        const e = new Error('End listing failed (' + res.status + '): ' + msg); e.status = res.status; e.detail = data; throw e;
+      }
+      return { ok: true, offerId };
+    }
+
     // Revises an already-published listing in place. eBay's own Inventory API PUT
     // endpoints are full replaces (not patches), so this rebuilds the exact same
     // inventory_item/offer bodies /ebay/list would for a new listing and re-sends
@@ -6461,20 +6487,11 @@ export default {
         const b = await request.json();
         const { offerId } = b;
         if (!offerId) return json({ error: 'offerId is required' }, 400);
-        const res = await fetch(`https://api.ebay.com/sell/inventory/v1/offer/${encodeURIComponent(offerId)}/withdraw`, {
-          method: 'POST',
-          headers: { 'Authorization': 'Bearer ' + ebayToken, 'Content-Type': 'application/json' },
-        });
-        const txt = await res.text();
-        let data; try { data = JSON.parse(txt); } catch (_) { data = { raw: txt }; }
-        if (!res.ok) {
-          const msg = data?.errors?.[0]?.longMessage || data?.errors?.[0]?.message || txt.substring(0, 300);
-          return json({ error: 'End listing failed (' + res.status + '): ' + msg, detail: data }, res.status);
-        }
+        await withdrawEbayOffer(env, ebayToken, offerId);
         return json({ ok: true, offerId });
       } catch (e) {
         console.error('eBay end-listing error:', e);
-        return json({ error: e.message }, 500);
+        return json({ error: e.message, detail: e.detail }, e.status || 500);
       }
     }
 
