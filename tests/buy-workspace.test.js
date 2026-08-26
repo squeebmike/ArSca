@@ -58,12 +58,46 @@ assert.match(html, /value="skip">Skip duplicates/, 'CSV import must default to s
   // default % for NEW items) that a manual per-item offer can legitimately
   // diverge from -- surface that only when it actually does, instead of
   // leaving two disagreeing percentages on screen with no explanation
-  // (confirmed live: "Offer %" showed 90% while the slider/stepper read 100
-  // with no indication why, read as broken math).
-  assert.match(renderBuyListFn, /if\(sliderNote\) sliderNote\.style\.display = \(Math\.round\(pct \* 100\) === effectivePct\) \? 'none' : '';/, 'the slider-vs-effective-rate note must only show when the two actually disagree');
+  // (confirmed live TWICE: "Offer %" showed 90%, then later 93%, while the
+  // slider/stepper read 100 with no indication why or which item caused it
+  // -- a note alone wasn't enough, so a one-tap RESET ALL was added too).
+  assert.match(renderBuyListFn, /const diverges = Math\.round\(pct \* 100\) !== effectivePct;/, 'must compute whether the slider and effective rate actually disagree');
+  assert.match(renderBuyListFn, /if\(sliderNote\) sliderNote\.style\.display = diverges \? '' : 'none';/, 'the slider-vs-effective-rate note must only show when the two actually disagree');
+  assert.match(renderBuyListFn, /if\(resetAllBtn\) resetAllBtn\.style\.display = diverges \? 'block' : 'none';/, 'the RESET ALL ITEMS TO SLIDER % button must appear alongside the note, not separately');
   assert.match(html, /id="bl-pct-slider-note"/, 'a note explaining the slider is a separate "default for new items" control must exist near it');
+  assert.match(html, /id="bl-reset-all-offers"[^>]*onclick="resetAllBuyOffersToSlider\(\)"/, 'a one-tap way to clear every per-item offer override back to the slider % must exist near the note');
+  assert.match(html, /function resetAllBuyOffersToSlider\(\)\{/, 'missing resetAllBuyOffersToSlider');
+  const resetAllFn = html.slice(html.indexOf('function resetAllBuyOffersToSlider(){'), html.indexOf('\nfunction ', html.indexOf('function resetAllBuyOffersToSlider(){') + 1));
+  assert.match(resetAllFn, /overridden\.forEach\(item => \{ item\.manualOfferOverride = false; delete item\.cashOffer; \}\);/, 'resetAllBuyOffersToSlider must clear manualOfferOverride/cashOffer, and must leave manualMarketOverride (a real researched price correction) alone');
+  // A manual offer is also the only way to price a card with no researched
+  // market at all -- resetting one of those drops it to $0, silently
+  // discarding real work, so this must warn before doing it, not just fire.
+  assert.match(resetAllFn, /if\(!confirm\(warning\)\) return;/, 'resetAllBuyOffersToSlider must confirm before clearing overrides -- some are unpriced items with no fallback value, not accidental taps');
+  assert.match(resetAllFn, /const unpriced = overridden\.filter\(item => !\(Number\(item\.market \|\| item\.priceUsed \|\| 0\) > 0\)\)\.length;/, 'must specifically call out how many overridden items have no market price and would drop to $0');
   const updateBuyListOfferFn = html.slice(html.indexOf('function updateBuyListOffer(){'), html.indexOf('\nfunction setBuyOfferPct('));
   assert.doesNotMatch(updateBuyListOfferFn, /lbl\.textContent = pct \+ '%';/, 'updateBuyListOffer must not still write the raw slider % onto bl-pct-lbl -- renderBuyList is the single owner of that stat now');
+}
+
+// A card research genuinely can't find a price for still has to be
+// buyable -- staff type the customer's offer straight into the $offer
+// field with no researched market behind it. Market Value only ever
+// summed item.market, so that item's offer counted on the "Your Offer"
+// side of Profit Spread and nothing on the "Market Value" side --
+// confirmed this could silently zero out the whole tray's displayed
+// spread even with healthy margin on every other item.
+{
+  assert.match(html, /function buyItemMarketValue\(item\)\{/, 'missing buyItemMarketValue');
+  const marketValueFn = html.slice(html.indexOf('function buyItemMarketValue(item){'), html.indexOf('\nfunction ', html.indexOf('function buyItemMarketValue(item){') + 1));
+  assert.match(marketValueFn, /if\(market > 0\) return market;/, 'buyItemMarketValue must use the real researched market price when one exists');
+  assert.match(marketValueFn, /return item\.manualOfferOverride \? buyItemOfferValue\(item\) : 0;/, 'an unpriced item must fall back to its own manual offer as a stand-in market value (net $0 spread contribution), not silently contribute $0 to Market Value while its offer still counts toward Your Offer');
+  // All three places that sum a tray's market total must use the shared
+  // helper -- a raw Number(i.market||0) sum anywhere reintroduces the bug.
+  assert.doesNotMatch(html, /reduce\(\(a,i\)\s*=>\s*a\+Number\(i\.market\|\|0\),0\)/, 'no market-total sum may bypass buyItemMarketValue');
+  assert.doesNotMatch(html, /reduce\(\(a,i\)\s*=>\s*a\+\(Number\(i\.market\)\s*\|\|\s*0\),\s*0\)/, 'no market-total sum may bypass buyItemMarketValue');
+  assert.match(html, /const marketTotal = Math\.round\(items\.reduce\(\(a,i\)=>a\+buyItemMarketValue\(i\),0\) \* 100\) \/ 100;/, 'snapshotBuySession (accepted-offer totals) must use buyItemMarketValue');
+  assert.match(html, /const totalMkt = buyList\.reduce\(\(a,i\) => a \+ buyItemMarketValue\(i\), 0\);/, 'renderBuyList (live tray display) must use buyItemMarketValue');
+  assert.match(html, /const marketTotal = buyList\.reduce\(\(a,i\)=>a\+buyItemMarketValue\(i\),0\);/, 'getBuyOfferTotals (logged buy-offer totals) must use buyItemMarketValue');
+  assert.match(html, /tray\.marketTotal = Math\.round\(buyList\.reduce\(\(a,i\)=>a\+buyItemMarketValue\(i\),0\) \* 100\) \/ 100;/, 'saveBuyList (the synced tray record) must use buyItemMarketValue');
 }
 
 // ── Contract: TEXT OFFER's sms: handoff to the staff device's own

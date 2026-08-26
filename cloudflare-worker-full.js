@@ -9643,103 +9643,21 @@ export default {
       return new Response(upstream.body, upstream);
     }
 
-    // GET /pricing/pokemon/export?type=cards|sealed|ebay|population
-    // Business-tier bulk export — decompresses gzip, returns CSV text
-    if (url.pathname === '/pricing/pokemon/export' && request.method === 'GET') {
-      const type = url.searchParams.get('type') || 'cards';
-      const validTypes = ['cards', 'sealed', 'ebay', 'population'];
-      if (!validTypes.includes(type)) {
-        return json({ ok: false, error: 'Invalid type. Use: ' + validTypes.join(', ') }, 400);
-      }
-      // Reserve PPT's shared 2-downloads/day export quota for the daily cron
-      // (pokemon-prices-daily.yml, runs 6:10 AM UTC) during the window from
-      // the quota's own UTC-midnight reset through just after that run. Every
-      // device shares this one account-wide 2/day count, and every store's
-      // offline catalog depends on both slots surviving until the cron uses
-      // them -- confirmed live: 3 of the last 7 scheduled runs got shut out
-      // by a 429 from something else (this route) spending the quota first.
-      const nowUtc = new Date();
-      const utcMinutesOfDay = nowUtc.getUTCHours() * 60 + nowUtc.getUTCMinutes();
-      if (utcMinutesOfDay < 6 * 60 + 20) {
-        return json({
-          ok: false,
-          error: 'The daily price-dump download is reserved for the automatic sync until 6:20 AM UTC. Cards and sealed prices sync automatically once that finishes — try eBay/Population again after 6:20 AM UTC, or use your offline cache in the meantime.',
-          reservedForDailySync: true,
-        }, 423);
-      }
-      const apiKey = env.POKEMONPRICE_API_KEY || env.POKEMON_PRICE_TRACKER_API_KEY;
-      if (!apiKey) return json({ ok: false, error: 'POKEMONPRICE_API_KEY not configured' }, 501);
-
-      // Pass E bypass still applies — check subscription unless bypass/owner.
-      // A missing X-Store-Id header must NOT be treated as a free pass: it
-      // falls through to the subscription lookup below with an empty key,
-      // which correctly resolves to "no subscription" and gets denied.
-      // Goes through storeHasSubscriptionAccess() (same as every other PPT
-      // route) rather than reading the raw sub:store: record directly, so a
-      // complimentary S Rank entitlement grants bulk exports too -- this
-      // inline copy used to skip that check and 402 an S Rank store that
-      // every other Pokemon pricing route already let through.
-      const pptStoreId2 = request.headers.get('X-Store-Id') || '';
-      const bypassIds2 = (env.BYPASS_STORE_IDS || '').split(',').map(s => s.trim()).filter(Boolean);
-      const ownerIds2 = (env.OWNER_STORE_IDS || env.OWNER_STORE_ID || '').split(',').map(s => s.trim()).filter(Boolean);
-      if (!bypassIds2.includes(pptStoreId2) && !ownerIds2.includes(pptStoreId2) && env.LBA_KV) {
-        const subActive2 = await storeHasSubscriptionAccess(env, pptStoreId2);
-        if (!subActive2) {
-          const subRaw2 = await env.LBA_KV.get(`sub:store:${pptStoreId2}`);
-          const sub2 = subRaw2 ? JSON.parse(subRaw2) : null;
-          return json({ ok: false, error: 'Subscription required.', subscriptionRequired: true, status: sub2?.status || 'none' }, 402);
-        }
-      }
-
-      let upRes;
-      try {
-        upRes = await fetch(`https://www.pokemonpricetracker.com/api/v2/export?type=${type}`, {
-          headers: { 'Authorization': `Bearer ${apiKey}`, 'Accept': 'text/csv, application/gzip, */*' },
-          redirect: 'follow',
-        });
-      } catch (e) {
-        return json({ ok: false, error: 'Export request failed: ' + e.message }, 502);
-      }
-
-      if (upRes.status === 403) return json({ ok: false, error: 'Business plan required for bulk exports. Upgrade at pokemonpricetracker.com', businessRequired: true }, 403);
-      if (upRes.status === 429) return json({ ok: false, error: 'Daily export limit reached (2 per day). Download quota resets at UTC midnight.', limitReached: true }, 429);
-      if (upRes.status === 503 || upRes.status === 404) return json({ ok: false, error: 'Export not yet available — dumps regenerate daily at 6:00 AM UTC.', notReady: true }, 503);
-      if (!upRes.ok) return json({ ok: false, error: 'Export failed: HTTP ' + upRes.status }, upRes.status);
-
-      const generatedAt = upRes.headers.get('x-generated-at') || upRes.headers.get('last-modified') || '';
-      const downloadsRemaining = upRes.headers.get('x-downloads-remaining') || '';
-      const resetAt = upRes.headers.get('x-reset-at') || '';
-      const contentType = upRes.headers.get('content-type') || '';
-      const contentEncoding = upRes.headers.get('content-encoding') || '';
-      const isGzip = contentEncoding.includes('gzip') || contentType.includes('gzip') || upRes.url.endsWith('.gz');
-
-      let csvText;
-      try {
-        if (isGzip) {
-          const ds = new DecompressionStream('gzip');
-          const decompressed = upRes.body.pipeThrough(ds);
-          csvText = await new Response(decompressed).text();
-        } else {
-          csvText = await upRes.text();
-        }
-      } catch (e) {
-        return json({ ok: false, error: 'Decompression failed: ' + e.message }, 500);
-      }
-
-      const rowCount = Math.max(0, csvText.split('\n').length - 2); // minus header + trailing newline
-      return new Response(csvText, {
-        status: 200,
-        headers: {
-          'Content-Type': 'text/csv; charset=utf-8',
-          'X-Generated-At': generatedAt,
-          'X-Downloads-Remaining': downloadsRemaining,
-          'X-Reset-At': resetAt,
-          'X-Row-Count': String(rowCount),
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Expose-Headers': 'X-Generated-At,X-Downloads-Remaining,X-Reset-At,X-Row-Count',
-          'Cache-Control': 'no-store',
-        },
-      });
+    // Removed for good: this route used to let a device pull PPT's bulk
+    // /export directly. That endpoint shares ONE account-wide 2-downloads/day
+    // count with the daily cron (pokemon-prices-daily.yml) that builds our
+    // own R2 cloud copy -- any device hitting it could burn both of that
+    // day's slots before the cron got a turn. A time-window reservation was
+    // tried first and wasn't enough (GitHub Actions' own scheduling jitter,
+    // plus anything landing in the gap after the window closed, still shut
+    // the cron out on the very next run). The only real fix: devices don't
+    // get a path to PPT's export endpoint at all, ever. Only the cron calls
+    // it now, directly with the server-side key, never through this Worker.
+    // Cards/Sealed sync from /catalog/pokemon/prices/* (our own R2 copy)
+    // below; eBay/Population have no bulk path until the cron itself is
+    // extended to cover them.
+    if (url.pathname === '/pricing/pokemon/export') {
+      return json({ ok: false, error: 'Removed -- devices no longer pull PPT\'s bulk export directly. Cards/Sealed sync automatically from our own daily cloud copy; eBay/Population have no bulk sync path yet.' }, 410);
     }
 
     if (url.pathname.startsWith('/pricing/pokemonpricetracker/') || url.pathname.startsWith('/pricing/pokemon/')) {

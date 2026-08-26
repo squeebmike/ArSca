@@ -75,7 +75,11 @@ console.log('sca.html demo-removal contract checks passed');
 // unauthenticated-access hole, not just a demo-mode leftover ──
 assert.ok(!worker.includes("startsWith('demo')"), "cloudflare-worker-full.js must not contain any storeId.startsWith('demo') check -- demo mode does not exist as a concept the Worker should special-case");
 assert.ok(!/isDemo2?\b/.test(worker), 'cloudflare-worker-full.js must not contain any isDemo/isDemo2 variable -- both Pokemon pricing paywall bypass checks must be gone');
-assert.match(worker, /if \(!bypassIds2\.includes\(pptStoreId2\) && !ownerIds2\.includes\(pptStoreId2\) && env\.LBA_KV\) \{/, '/pricing/pokemon/export must gate on bypass/owner store ids only -- no demo/empty-storeId exemption');
+// /pricing/pokemon/export was removed entirely (devices must never hit
+// PPT's shared 2-exports/day bulk endpoint -- see cloudflare-worker-full.js),
+// which is a stronger guarantee against any demo/empty-storeId bypass than
+// gating logic ever was: there is no longer any code path to bypass.
+assert.match(worker, /if \(url\.pathname === '\/pricing\/pokemon\/export'\) \{\s*\n\s*return json\(\{ ok: false, error: 'Removed/, '/pricing/pokemon/export must be hard-removed, not just gated');
 assert.match(worker, /if \(!isBypassed && env\.LBA_KV\) \{\s*\n\s*const pptAuth = await requireStoreUser\(request, env, pptStoreId\);/, '/pricing/pokemonpricetracker/* must always run requireStoreUser when not bypassed -- a missing store id must fail closed via requireStoreUser, not skip auth entirely');
 
 console.log('Worker paywall-bypass fix contract checks passed');
