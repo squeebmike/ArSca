@@ -224,4 +224,37 @@ assert.match(worker, /baseTitle: sku\.title \|\| '', variantLabel: sku\.variant_
 assert.match(focDash, /title:preview\.baseTitle\|\|preview\.title\.replace\(\/ - PRESALE\$\/,''\),category:'Comic',price:preview\.price,upc:preview\.upc,\s*\n\s*variant:preview\.variantLabel\|\|''/,
   'the {title} token must use the plain base title, with variant passed separately, to avoid doubling the variant text');
 
-console.log('FOC eBay presale review-step, template-field, eligible-filter, handling-time, aspects, template-reuse, unordered-withdrawal, store-category, and template-gap contract checks passed');
+// Optional-clause syntax: [[...]] lets a template author mark a whole
+// phrase as droppable together, for prose too grammatically dependent on
+// ALL its tokens to survive the per-token gap cleanup above (e.g. "features
+// {character} from {franchise}" still reads as "features from" once both
+// are individually blanked -- wrapping it in [[...]] drops the whole thing).
+assert.match(rendererBody, /line\.replace\(\/\\\[\\\[\(\[\^\\\[\\\]\]\*\)\\\]\\\]\/g, \(full, inner\) => \{/, 'must support [[...]] optional-clause syntax');
+assert.match(rendererBody, /return \(innerKeys\.length && innerKeys\.some\(k => !tokens\[k\]\)\) \? '' : inner;/, 'a [[...]] clause must drop entirely if ANY token inside it is empty, not just the empty token itself');
+assert.match(rendererBody, /\.replace\(\/\\n\{3,\}\/g, '\\n\\n'\)/, 'must collapse blank-line stacking left behind when a whole-line [[...]] clause drops');
+
+// shippingLine must not be silently overwritten by the pre-existing manual
+// "Release Date" extra field, which shares the same {releaseDate} token
+// name and is usually blank -- the forEach that layers in extra fields
+// must be non-destructive (computed value wins, extra field is a fallback).
+assert.match(dashboard, /tokens\[f\.token\] = tokens\[f\.token\] \|\| item\[f\.key\] \|\| '';/, 'extra-field merge must not clobber an already-computed token like releaseDate');
+
+// Store asked for real (manual-entry, never auto-guessed) Cover Type / Key
+// Issue / First Appearance fields, since eBay/collectors take those claims
+// seriously -- added as ordinary EBAY_TEMPLATE_EXTRA_FIELDS entries (no
+// schema change needed, item.data is already free-form JSON) and exposed
+// on the FOC presale review modal so they reach both the description
+// template and eBay's item specifics for presale listings, not just the
+// regular in-stock "More Listing Details" editor.
+assert.match(dashboard, /key:'cover_type', token:'coverType'/, 'Cover Type must be a real template/aspect field');
+assert.match(dashboard, /key:'key_issue', token:'keyIssue'/, 'Key Issue must be a real template/aspect field');
+assert.match(dashboard, /key:'first_appearance', token:'firstAppearance'/, 'First Appearance must be a real template/aspect field');
+assert.match(dashboard, /Only when verified for this specific book/, 'Key Issue / First Appearance must be documented as manual-only, never auto-detected');
+assert.match(focDash, /data-foc-eb-extra="'\+esc\(x\[1\]\)\+'"/, 'the FOC review modal must render editable extra-field inputs');
+assert.match(focDash, /\[\['Series','series'\],\['Character','character'\],\['Franchise','franchise'\],\['Edition','edition'\],\['Exclusive','exclusive'\],\['Cover Type','coverType'\]\]/,
+  'the FOC review modal must expose Series/Character/Franchise/Edition/Exclusive/Cover Type as editable fields');
+assert.match(focDash, /\[\['Key Issue','keyIssue'\],\['First Appearance','firstAppearance'\]\]/, 'the FOC review modal must expose Key Issue/First Appearance as editable fields');
+assert.match(focDash, /document\.querySelectorAll\('\[data-foc-eb-extra\]'\)\.forEach\(function\(el\)\{if\(el\.value\)customAspects\[el\.dataset\.focEbExtraLabel\]=el\.value;\}\)/,
+  'the extra fields must actually reach customAspects (eBay item specifics), not just sit unused in the modal');
+
+console.log('FOC eBay presale review-step, template-field, eligible-filter, handling-time, aspects, template-reuse, unordered-withdrawal, store-category, template-gap, optional-clause, and extra-field contract checks passed');

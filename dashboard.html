@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.26.17-ebay-template-cleanup">
+<meta name="version" content="2026.08.26.18-ebay-conditional-shipping-fields">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1638,16 +1638,16 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.26.17-ebay-template-cleanup" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.26.17-ebay-template-cleanup" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.26.17-ebay-template-cleanup" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.08.26.17-ebay-template-cleanup" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.26.17-ebay-template-cleanup" defer></script>
-<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.08.26.17-ebay-template-cleanup" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.26.17-ebay-template-cleanup" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.26.17-ebay-template-cleanup" defer></script>
-<script src="scripts/pokemon/offline-browser.js?v=2026.08.26.17-ebay-template-cleanup" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.26.17-ebay-template-cleanup" defer></script>
+<script src="scripts/query-routing.js?v=2026.08.26.18-ebay-conditional-shipping-fields" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.26.18-ebay-conditional-shipping-fields" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.26.18-ebay-conditional-shipping-fields" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.08.26.18-ebay-conditional-shipping-fields" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.26.18-ebay-conditional-shipping-fields" defer></script>
+<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.08.26.18-ebay-conditional-shipping-fields" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.26.18-ebay-conditional-shipping-fields" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.26.18-ebay-conditional-shipping-fields" defer></script>
+<script src="scripts/pokemon/offline-browser.js?v=2026.08.26.18-ebay-conditional-shipping-fields" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.26.18-ebay-conditional-shipping-fields" defer></script>
 </head>
 <body>
 
@@ -1676,11 +1676,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.26.17-ebay-template-cleanup</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.26.18-ebay-conditional-shipping-fields</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.26.17-ebay-template-cleanup</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.26.18-ebay-conditional-shipping-fields</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1698,7 +1698,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.26.17-ebay-template-cleanup</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.26.18-ebay-conditional-shipping-fields</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3700,7 +3700,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.26.17-ebay-template-cleanup';
+const APP_VERSION = '2026.08.26.18-ebay-conditional-shipping-fields';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -6773,7 +6773,7 @@ function renderVendorProfilePanel(){
       <div style="display:grid;grid-template-columns:1fr 140px;gap:8px;margin-bottom:12px;align-items:center">
         ${getInventoryCategories().map(c => `<div style="font-family:var(--font-mono);font-size:11px;color:var(--text)">${escHtml(c)}</div><input class="tsi vp-ebaycat-input" data-cat="${escHtml(c)}" value="${escHtml((p.ebayCategoryMap||{})[c]||'')}" placeholder="eBay category ID" style="margin:0">`).join('')}
       </div>
-      <div style="font-family:var(--font-mono);font-size:9px;color:var(--dim);line-height:1.7;margin-bottom:8px">DESCRIPTION TEMPLATES -- one per category, plus a default for anything without its own. Tokens: {title} {category} {year} {set} {variant} {condition} {cardNumber} {serialNumber} {player} {team} {issue} {publisher} {grade} {sport} {manufacturer} {upc} {price} {quantity} {rarity} {finish} {language} {configuration} {writer} {artist} {coverArtist} {signedBy} {rookie} {autograph} {gradingCompany} {certNumber} {notes} ${EBAY_TEMPLATE_EXTRA_FIELDS.map(f=>'{'+f.token+'}').join(' ')}. A line whose only content is one blank token is dropped automatically; the shipping line above is always appended after this. Fill in the matching fields under "More Listing Details" on each item's edit screen.</div>
+      <div style="font-family:var(--font-mono);font-size:9px;color:var(--dim);line-height:1.7;margin-bottom:8px">DESCRIPTION TEMPLATES -- one per category, plus a default for anything without its own. Tokens: {title} {category} {year} {set} {variant} {condition} {cardNumber} {serialNumber} {player} {team} {issue} {publisher} {grade} {sport} {manufacturer} {upc} {price} {quantity} {rarity} {finish} {language} {configuration} {writer} {artist} {coverArtist} {signedBy} {rookie} {autograph} {gradingCompany} {certNumber} {notes} {releaseDate} {shippingLine} ${EBAY_TEMPLATE_EXTRA_FIELDS.map(f=>'{'+f.token+'}').join(' ')}. {shippingLine} picks the right ship-timing sentence for this specific item (presale vs. in-stock) -- it's separate from the EBAY SHIPPING LINE box above, which is always appended to every listing regardless of template. A line whose only content is blank tokens is dropped automatically; a line mixing populated and blank tokens has doubled whitespace/stray punctuation cleaned up but isn't rewritten into a full sentence -- for a phrase that only makes sense when ALL its tokens are filled in (e.g. "features {character} from {franchise}"), wrap it as [[features {character} from {franchise}]] and the whole bracketed phrase disappears together instead of leaving "features from". Fill in the matching fields under "More Listing Details" on each item's edit screen.</div>
       ${ebayDescriptionTemplateEditorHtml('default', 'Default (any category without its own template)', p)}
       ${getInventoryCategories().map(c => ebayDescriptionTemplateEditorHtml(c, c, p)).join('')}
       <div style="display:flex;gap:8px;margin-top:8px"><button class="hbtn" onclick="saveEbayListingSettings()">SAVE EBAY LISTING SETTINGS</button></div>
@@ -22105,6 +22105,13 @@ const EBAY_TEMPLATE_EXTRA_FIELDS = [
   { key:'isbn', token:'isbn', label:'ISBN', placeholder:'Books / trades' },
   { key:'exclusive', token:'exclusive', label:'Exclusive', placeholder:'e.g. Walmart, Target, Convention, Secret Lair' },
   { key:'platform', token:'platform', label:'Platform', placeholder:'General collectibles -- console/system, etc.' },
+  { key:'cover_type', token:'coverType', label:'Cover Type', placeholder:'e.g. Cover A, Cover B, Virgin, Foil, 1:25 Incentive' },
+  // Manual-only, deliberately -- these are claims eBay/collectors take
+  // seriously and a wrong guess is real misinformation, so there is no
+  // auto-detection here. Only fill these in once verified for this
+  // specific book, same as the store's own {notes} convention.
+  { key:'key_issue', token:'keyIssue', label:'Key Issue', placeholder:'Only when verified for this specific book' },
+  { key:'first_appearance', token:'firstAppearance', label:'First Appearance', placeholder:'Only when verified for this specific book' },
 ];
 function renderEbayExtraFieldInputs(){
   const mount = document.getElementById('edit-ebay-extra-fields');
@@ -22134,20 +22141,31 @@ function renderEbayDescriptionTemplate(template, tokens){
   const lines = String(template || '').split('\n');
   const out = [];
   for(const line of lines){
-    const keys = [...line.matchAll(/\{(\w+)\}/g)].map(m => m[1]);
+    // Optional clauses: wrapping a phrase in [[...]] drops the WHOLE
+    // bracketed span together if any token inside it is empty, instead of
+    // leaving a token-shaped hole mid-sentence -- "features {character}
+    // from {franchise}" with both empty still reads as "features from"
+    // even after cleanup below; "[[features {character} from
+    // {franchise}]]" makes the whole clause disappear together. Optional,
+    // backward compatible -- a template with no [[...]] is unaffected.
+    let withClauses = line.replace(/\[\[([^\[\]]*)\]\]/g, (full, inner) => {
+      const innerKeys = [...inner.matchAll(/\{(\w+)\}/g)].map(m => m[1]);
+      return (innerKeys.length && innerKeys.some(k => !tokens[k])) ? '' : inner;
+    });
+    const keys = [...withClauses.matchAll(/\{(\w+)\}/g)].map(m => m[1]);
     if(keys.length && keys.every(k => !tokens[k])) continue;
-    // A whole line drops cleanly when every token on it is empty (handles
-    // the "COMIC DETAILS"-style one-token-per-line case above), but a line
-    // mixing populated and empty tokens in flowing prose ("this {variant}
-    // {coverType} features {character} from {franchise}...") can't be
-    // dropped -- {title}/{publisher} etc are populated -- so an empty
-    // token just leaves a gap. A literal connector character (like the "#"
-    // in "{title} #{issue}") glued directly onto an empty token is stripped
-    // along with it, since "Title #" trailing nowhere reads as broken; the
-    // remaining doubled-space/stray-punctuation artifacts from removed
-    // words are then cleaned up below on a best-effort basis (this can't
-    // fully repair arbitrary prose grammar, only avoid the ugliest gaps).
-    let rendered = line.replace(/([#])?\{(\w+)\}/g, (full, connector, k) => {
+    // A whole line also drops cleanly when every remaining token on it is
+    // empty (handles the "COMIC DETAILS"-style one-token-per-line case
+    // above), but a line mixing populated and empty tokens in flowing
+    // prose can't be dropped -- {title}/{publisher} etc are populated --
+    // so an empty token just leaves a gap. A literal connector character
+    // (like the "#" in "{title} #{issue}") glued directly onto an empty
+    // token is stripped along with it, since "Title #" trailing nowhere
+    // reads as broken; the remaining doubled-space/stray-punctuation
+    // artifacts from removed words are then cleaned up below on a
+    // best-effort basis (this can't fully repair arbitrary prose grammar
+    // for tokens left unwrapped by [[...]], only avoid the ugliest gaps).
+    let rendered = withClauses.replace(/([#])?\{(\w+)\}/g, (full, connector, k) => {
       const val = tokens[k] || '';
       return val ? (connector || '') + val : '';
     });
@@ -22157,7 +22175,10 @@ function renderEbayDescriptionTemplate(template, tokens){
       .replace(/([,.;:]) *(?=[,.;:])/g, '');
     out.push(rendered);
   }
-  return out.join('\n').trim();
+  // A [[...]] clause that was a whole line by itself leaves a blank line
+  // behind (correct -- it's now an empty paragraph break) but can stack up
+  // against an already-blank template line into 3+ consecutive blank lines.
+  return out.join('\n').replace(/\n{3,}/g, '\n\n').trim();
 }
 
 function computeEbayListingFields(item){
@@ -22190,8 +22211,19 @@ function computeEbayListingFields(item){
   const title = [item.year && !lowerName.includes(String(item.year)) ? item.year : null,item.name,item.set && !lowerName.includes(String(item.set).toLowerCase()) ? item.set : null,item.variant,item.card_number?'#'+item.card_number:null,isGraded?[item.grader,item.grade].filter(Boolean).join(' '):null,item.isRookie?'RC':null]
     .filter(Boolean).join(' ').replace(/\s+/g,' ').substring(0,80);
   const price = Number(item.market || item.salePrice || 0);
+  // A presale item's real ship date is nowhere near "1 business day" --
+  // {shippingLine} picks the sentence that actually matches this item's
+  // status instead of a template needing two contradictory hardcoded
+  // sentences that both always render (store report: an in-stock line and
+  // a presale line both showing on the same listing).
+  const isPresaleItem = item.status === 'presale' || item.source === 'foc_presale';
+  const releaseDateLabel = item.onSaleDate ? (() => { try { return new Date(/^\d{4}-\d{2}-\d{2}$/.test(item.onSaleDate) ? item.onSaleDate+'T12:00:00' : item.onSaleDate).toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'}); } catch(e){ return ''; } })() : '';
+  const shippingLine = isPresaleItem
+    ? ['For presale comics, orders ship promptly once the title reaches its official release date and inventory has been received from our distributor.', releaseDateLabel ? ('Release Date: '+releaseDateLabel) : '', 'Publisher and distributor release dates may change. If a presale title is delayed, your order will ship as soon as the book becomes available.'].filter(Boolean).join('\n\n')
+    : 'In-stock comics ship within 1 business day with tracking.';
   const tokens = {
     title, category:item.category||'', year:item.year||'', set:item.set||'', variant:item.variant||'',
+    releaseDate:releaseDateLabel, shippingLine,
     condition:condText||'', cardNumber:item.card_number||'', serialNumber:item.serial_number||'',
     player:item.player||'', team:item.team||'', issue:item.issue||'', publisher:item.publisher||'',
     grade:isGraded?[item.grader,item.grade].filter(Boolean).join(' '):'',
@@ -22214,7 +22246,13 @@ function computeEbayListingFields(item){
     certNumber:item.cert_number||'',
     notes:item.key_notes||item.notes||'',
   };
-  EBAY_TEMPLATE_EXTRA_FIELDS.forEach(f=>{ tokens[f.token] = item[f.key]||''; });
+  // Non-destructive: {releaseDate} is computed above from the item's real
+  // on-sale date for presale items, and the extra-fields list separately
+  // has its own manually-entered "Release Date" field with the same
+  // token -- an unconditional overwrite here would silently clobber the
+  // computed presale date with that field's usual blank value. Whichever
+  // is already set wins; the extra field is only a fallback.
+  EBAY_TEMPLATE_EXTRA_FIELDS.forEach(f=>{ tokens[f.token] = tokens[f.token] || item[f.key] || ''; });
   const templates = getVendorProfile().ebayDescriptionTemplates || {};
   const legacyTemplate = getVendorProfile().ebayDescriptionTemplate || '';
   const template = templates[item.category] || templates.default || legacyTemplate || DEFAULT_EBAY_DESCRIPTION_TEMPLATE;
@@ -45068,7 +45106,7 @@ async function toppsLoadParallels(cardId){
   window.__arscaCloseModal = closeModal;
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.26.17-ebay-template-cleanup" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.26.18-ebay-conditional-shipping-fields" defer></script>
 </body>
 </html>
 
