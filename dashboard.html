@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.26.12-ppt-export-cron-only">
+<meta name="version" content="2026.08.26.13-buy-unpriced-manual-offer">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1633,16 +1633,16 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.26.12-ppt-export-cron-only" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.26.12-ppt-export-cron-only" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.26.12-ppt-export-cron-only" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.08.26.12-ppt-export-cron-only" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.26.12-ppt-export-cron-only" defer></script>
-<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.08.26.12-ppt-export-cron-only" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.26.12-ppt-export-cron-only" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.26.12-ppt-export-cron-only" defer></script>
-<script src="scripts/pokemon/offline-browser.js?v=2026.08.26.12-ppt-export-cron-only" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.26.12-ppt-export-cron-only" defer></script>
+<script src="scripts/query-routing.js?v=2026.08.26.13-buy-unpriced-manual-offer" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.26.13-buy-unpriced-manual-offer" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.26.13-buy-unpriced-manual-offer" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.08.26.13-buy-unpriced-manual-offer" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.26.13-buy-unpriced-manual-offer" defer></script>
+<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.08.26.13-buy-unpriced-manual-offer" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.26.13-buy-unpriced-manual-offer" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.26.13-buy-unpriced-manual-offer" defer></script>
+<script src="scripts/pokemon/offline-browser.js?v=2026.08.26.13-buy-unpriced-manual-offer" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.26.13-buy-unpriced-manual-offer" defer></script>
 </head>
 <body>
 
@@ -1671,11 +1671,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.26.12-ppt-export-cron-only</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.26.13-buy-unpriced-manual-offer</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.26.12-ppt-export-cron-only</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.26.13-buy-unpriced-manual-offer</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1693,7 +1693,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.26.12-ppt-export-cron-only</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.26.13-buy-unpriced-manual-offer</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3696,7 +3696,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.26.12-ppt-export-cron-only';
+const APP_VERSION = '2026.08.26.13-buy-unpriced-manual-offer';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -21163,7 +21163,7 @@ function saveBuyList(){
   tray.items = buyList.slice(0,100);
   tray.itemCount = tray.items.length;
   tray.pct = parseFloat(document.getElementById('bl-pct')?.value || tray.pct || 50);
-  tray.marketTotal = Math.round(buyList.reduce((a,i)=>a+Number(i.market||0),0) * 100) / 100;
+  tray.marketTotal = Math.round(buyList.reduce((a,i)=>a+buyItemMarketValue(i),0) * 100) / 100;
   tray.offerTotal = Math.round(buyList.reduce((a,i)=>a+buyItemOfferValue(i),0) * 100) / 100;
   tray.updatedAt = new Date().toISOString();
   upsertLocalBuyTray(tray);
@@ -38362,6 +38362,22 @@ function buyItemOfferValue(item){
   const pct = parseFloat(document.getElementById('bl-pct')?.value || 50) / 100;
   return roundBuyOffer(Number(item.market || item.priceUsed || 0) * pct);
 }
+// A card research genuinely can't find a price for still needs to be
+// buyable -- the customer's offer gets typed straight into the $offer
+// field with no market value behind it at all. That item's offer was
+// already counted correctly in Your Offer, but Market Value only ever
+// summed item.market, so an unpriced item contributed its full offer to
+// one side of Profit Spread and nothing to the other -- one such item
+// could silently zero out the whole tray's displayed spread, even with
+// healthy margin on everything else. When there's no researched market,
+// treat the item's own offer as its market value for stats purposes only
+// (net $0 spread contribution -- honest, since we don't actually know its
+// real value) instead of quietly excluding it.
+function buyItemMarketValue(item){
+  const market = Number(item.market || item.priceUsed || 0);
+  if(market > 0) return market;
+  return item.manualOfferOverride ? buyItemOfferValue(item) : 0;
+}
 function snapshotBuySession(status){
   const existing = getActiveBuySession() || {};
   const totals = getBuyOfferTotals();
@@ -38376,7 +38392,7 @@ function snapshotBuySession(status){
     tradeCreditOffer:Math.round(buyItemOfferValue(i) * 1.15 * 100) / 100,
     status:i.inventoryId ? 'converted_to_inventory' : 'offered',
   }));
-  const marketTotal = Math.round(items.reduce((a,i)=>a+Number(i.market || i.priceUsed || 0),0) * 100) / 100;
+  const marketTotal = Math.round(items.reduce((a,i)=>a+buyItemMarketValue(i),0) * 100) / 100;
   const cashOfferTotal = Math.round(items.reduce((a,i)=>a+Number(i.cashOffer || 0),0) * 100) / 100;
   const tradeCreditTotal = Math.round(cashOfferTotal * 1.15 * 100) / 100;
   return {
@@ -38761,18 +38777,23 @@ function resetBuyItemPricing(id){
 // not manualMarketOverride -- a manually-corrected market price is still a
 // real researched value the slider should keep applying its % to, only a
 // manually-typed cash offer should snap back to following the slider.
+// A manual offer isn't always an accidental tap -- it's also the only way
+// to price a card research genuinely can't find a price for (no market to
+// apply the slider % to at all). Resetting one of THOSE drops it straight
+// to $0, silently discarding real work, so warn specifically about that
+// count rather than treating every override as a mistake to undo.
 function resetAllBuyOffersToSlider(){
-  let cleared = 0;
-  buyList.forEach(item => {
-    if(!item.manualOfferOverride) return;
-    item.manualOfferOverride = false;
-    delete item.cashOffer;
-    cleared++;
-  });
-  if(!cleared){ toast_dash('Nothing to reset'); return; }
+  const overridden = buyList.filter(item => item.manualOfferOverride);
+  if(!overridden.length){ toast_dash('Nothing to reset'); return; }
+  const unpriced = overridden.filter(item => !(Number(item.market || item.priceUsed || 0) > 0)).length;
+  const warning = unpriced
+    ? `Reset ${overridden.length} item${overridden.length === 1 ? '' : 's'} to the slider %? ${unpriced} of them have no researched market price and will drop to $0 -- you'll need to re-type those offers.`
+    : `Reset ${overridden.length} item${overridden.length === 1 ? '' : 's'} back to the slider %?`;
+  if(!confirm(warning)) return;
+  overridden.forEach(item => { item.manualOfferOverride = false; delete item.cashOffer; });
   saveBuyList();
   renderBuyList();
-  toast_dash('Reset ' + cleared + ' item' + (cleared === 1 ? '' : 's') + ' back to the slider %');
+  toast_dash('Reset ' + overridden.length + ' item' + (overridden.length === 1 ? '' : 's') + ' back to the slider %');
 }
 
 function updateBuyListOffer(){
@@ -38823,7 +38844,7 @@ function syncBuyPctFromNum(){
 
 function renderBuyList(){
   const pct = parseFloat(document.getElementById('bl-pct')?.value || '50') / 100;
-  const totalMkt = buyList.reduce((a,i) => a + (Number(i.market) || 0), 0);
+  const totalMkt = buyList.reduce((a,i) => a + buyItemMarketValue(i), 0);
   const offer    = buyList.reduce((a,i) => a + buyItemOfferValue(i), 0);
   const spread   = Math.max(0, totalMkt - offer);
 
@@ -38992,7 +39013,7 @@ async function textBuyOfferViaTwilio(){
 
 function getBuyOfferTotals(){
   const pct = parseFloat(document.getElementById('bl-pct')?.value || 50) / 100;
-  const marketTotal = buyList.reduce((a,i)=>a+Number(i.market||0),0);
+  const marketTotal = buyList.reduce((a,i)=>a+buyItemMarketValue(i),0);
   const offerTotal = buyList.reduce((a,i)=>a+buyItemOfferValue(i),0);
   return {
     pct: Math.round(pct * 100),
@@ -45017,7 +45038,7 @@ async function toppsLoadParallels(cardId){
   window.__arscaCloseModal = closeModal;
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.26.12-ppt-export-cron-only" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.26.13-buy-unpriced-manual-offer" defer></script>
 </body>
 </html>
 
