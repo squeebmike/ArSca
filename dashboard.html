@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.26.14-buy-round-basis-first">
+<meta name="version" content="2026.08.26.15-buy-bargain-bin-bracket">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1633,16 +1633,16 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.26.14-buy-round-basis-first" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.26.14-buy-round-basis-first" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.26.14-buy-round-basis-first" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.08.26.14-buy-round-basis-first" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.26.14-buy-round-basis-first" defer></script>
-<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.08.26.14-buy-round-basis-first" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.26.14-buy-round-basis-first" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.26.14-buy-round-basis-first" defer></script>
-<script src="scripts/pokemon/offline-browser.js?v=2026.08.26.14-buy-round-basis-first" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.26.14-buy-round-basis-first" defer></script>
+<script src="scripts/query-routing.js?v=2026.08.26.15-buy-bargain-bin-bracket" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.26.15-buy-bargain-bin-bracket" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.26.15-buy-bargain-bin-bracket" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.08.26.15-buy-bargain-bin-bracket" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.26.15-buy-bargain-bin-bracket" defer></script>
+<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.08.26.15-buy-bargain-bin-bracket" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.26.15-buy-bargain-bin-bracket" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.26.15-buy-bargain-bin-bracket" defer></script>
+<script src="scripts/pokemon/offline-browser.js?v=2026.08.26.15-buy-bargain-bin-bracket" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.26.15-buy-bargain-bin-bracket" defer></script>
 </head>
 <body>
 
@@ -1671,11 +1671,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.26.14-buy-round-basis-first</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.26.15-buy-bargain-bin-bracket</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.26.14-buy-round-basis-first</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.26.15-buy-bargain-bin-bracket</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1693,7 +1693,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.26.14-buy-round-basis-first</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.26.15-buy-bargain-bin-bracket</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3695,7 +3695,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.26.14-buy-round-basis-first';
+const APP_VERSION = '2026.08.26.15-buy-bargain-bin-bracket';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -12857,7 +12857,7 @@ function updateRegisterCommandCenter(scanCount){
   const offerRounded = buyList.reduce((a,i) => a + buyItemOfferValue(i), 0);
   const offerTotal = document.getElementById('reg-offer-total');
   const offerMeta = document.getElementById('reg-offer-meta');
-  if(offerTotal) offerTotal.textContent = '$' + offerRounded;
+  if(offerTotal) offerTotal.textContent = '$' + offerRounded.toFixed(2);
   if(offerMeta) offerMeta.textContent = buyList.length + ' item' + (buyList.length === 1 ? '' : 's') + ' · ' + pct + '% offer';
 }
 
@@ -21362,9 +21362,9 @@ function renderBuyTraySwitcher(){
     ...remoteOnly.map(e => ({ id:e.id, label:e.customerName || 'Walk-in', count:e.itemCount||0, total:Number(e.offerTotal||0), remote:true })),
   ];
   el.innerHTML = pills.map(p => `
-    <button class="buy-tray-pill${p.id===activeId?' active':''}" onclick="switchBuyTray('${escHtml(p.id)}')" title="${p.count} item${p.count===1?'':'s'} · $${Math.round(p.total)} offer">
+    <button class="buy-tray-pill${p.id===activeId?' active':''}" onclick="switchBuyTray('${escHtml(p.id)}')" title="${p.count} item${p.count===1?'':'s'} · $${p.total.toFixed(2)} offer">
       <span class="buy-tray-pill-name">${escHtml(p.label)}</span>
-      <span class="buy-tray-pill-meta">${p.count} · $${Math.round(p.total)}</span>
+      <span class="buy-tray-pill-meta">${p.count} · $${p.total.toFixed(2)}</span>
       ${p.remote ? '<span class="buy-tray-pill-badge">other device</span>' : ''}
     </button>`).join('')
     + `<button class="buy-tray-pill buy-tray-pill-new" onclick="startNewBuyTray()">+ New Buy</button>`;
@@ -38373,6 +38373,13 @@ function buyItemOfferValue(item){
   // printed/texted offers all flow through here.
   if(item.manualOfferOverride) return roundBuyOffer(Math.max(0, Number(item.cashOffer || 0)));
   const pct = parseFloat(document.getElementById('bl-pct')?.value || 50) / 100;
+  // Bargain-bin bracket: any card under $2 guide value skips the normal %
+  // math entirely -- a percentage of a bulk common at $0.10-$0.35, or of a
+  // $1.01-$1.99 card, doesn't land on a sane whole-dollar number either way.
+  // Store policy prices the whole bracket directly instead: a clean $1.00 at
+  // a full (100%) offer, or a flat $0.50 at anything less than that.
+  const raw = Number(item.market || item.priceUsed || 0);
+  if(raw > 0 && raw < 2) return pct >= 1 ? 1 : 0.5;
   return roundBuyOffer(buyItemPricingBasis(item) * pct);
 }
 // A card research genuinely can't find a price for still needs to be
@@ -38585,11 +38592,11 @@ function showBuyPaymentConfirm(session){
         <input value="${escHtml(session.customerPhone || '')}" placeholder="Phone" oninput="syncBuyConfirmCustomer('customerPhone',this.value)" style="min-width:0;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:11px;border-radius:8px;font-size:12px">
       </div>
       <div style="background:var(--surf2);border-radius:8px;padding:12px;margin-bottom:18px">
-        ${items.slice(0,6).map(i=>`<div style="display:flex;justify-content:space-between;font-family:var(--font-mono);font-size:11px;padding:3px 0;border-bottom:1px solid var(--border)"><span style="color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:240px">${escHtml(i.name||'Card')}</span><span style="color:var(--gold);flex-shrink:0;margin-left:8px">$${Math.round(i.cashOffer||i.offerValue||0)}</span></div>`).join('')}
+        ${items.slice(0,6).map(i=>`<div style="display:flex;justify-content:space-between;font-family:var(--font-mono);font-size:11px;padding:3px 0;border-bottom:1px solid var(--border)"><span style="color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:240px">${escHtml(i.name||'Card')}</span><span style="color:var(--gold);flex-shrink:0;margin-left:8px">$${Number(i.cashOffer||i.offerValue||0).toFixed(2)}</span></div>`).join('')}
         ${items.length>6?`<div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);padding-top:4px">+${items.length-6} more</div>`:''}
         <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;padding-top:10px;border-top:2px solid rgba(0,255,179,.3)">
           <span style="font-family:'Orbitron',monospace;font-size:13px;color:var(--text)">${isTradeCredit?'TRADE-IN CREDIT':'PAY CUSTOMER'}</span>
-          <span style="font-family:'Orbitron',monospace;font-size:22px;color:var(--g)">$${Math.round(total)}</span>
+          <span style="font-family:'Orbitron',monospace;font-size:22px;color:var(--g)">$${total.toFixed(2)}</span>
         </div>
         <div style="font-family:var(--font-mono);font-size:11px;color:var(--dim);text-align:right;margin-top:4px">via ${escHtml(method)}</div>
       </div>
@@ -38658,7 +38665,7 @@ function renderBuySessionPanel(){
     <div style="display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px">
       <div>
         <div style="font-family:monospace;font-size:9px;font-weight:700;color:var(--g)">${escHtml(sessionTitle)}</div>
-        <div style="font-family:monospace;font-size:9px;color:var(--dim)">${escHtml(sessionLabel)} · ${buyList.length} item${buyList.length===1?'':'s'} · Cash $${Math.round(totals.offerTotal)} · Trade $${Math.round(totals.offerTotal*1.15)}</div>
+        <div style="font-family:monospace;font-size:9px;color:var(--dim)">${escHtml(sessionLabel)} · ${buyList.length} item${buyList.length===1?'':'s'} · Cash $${totals.offerTotal.toFixed(2)} · Trade $${(totals.offerTotal*1.15).toFixed(2)}</div>
       </div>
       <div style="display:flex;gap:5px">
         <button class="hbtn" onclick="saveBuySessionOnly()" style="font-size:10px">SAVE</button>
@@ -38843,8 +38850,11 @@ function renderBuyList(){
   const offerEl = document.getElementById('bl-offer');
   const spreadEl = document.getElementById('bl-spread');
   if(mktEl)   mktEl.textContent   = '$' + totalMkt.toFixed(2);
-  // Buy offers are whole-dollar (rounded down) — display without cents.
-  if(offerEl) offerEl.textContent = '$' + Math.round(offer);
+  // Buy offers are whole-dollar (rounded down) EXCEPT the bargain-bin
+  // bracket (any item under $2 offers a flat $0.50 below a 100% slider) --
+  // Math.round() here would corrupt a real $0.50 contribution up to $1 on
+  // screen. toFixed(2) matches Market Value/Profit Spread's own formatting.
+  if(offerEl) offerEl.textContent = '$' + offer.toFixed(2);
   if(spreadEl) spreadEl.textContent = '$' + spread.toFixed(2);
   // The Offer % stat sits next to Your Offer / Profit Spread as if it's a
   // fourth fact about the same total, but it used to just echo the slider's
@@ -38904,7 +38914,11 @@ function renderBuyList(){
     const added = !!i.inventoryId;
     const err   = i.inventoryError ? `<div style="color:var(--red);font-size:8px;margin-top:2px">${escHtml(String(i.inventoryError).slice(0,120))}</div>` : '';
     const sub   = [i.year, i.set, i.variant, i.card_number ? '#' + i.card_number : ''].filter(Boolean).join(' · ');
-    const offerVal = (i.market || i.manualOfferOverride) ? Math.round(buyItemOfferValue(i)) : '';
+    // Not Math.round() -- the bargain-bin bracket (any item under $2 offers
+    // a flat $0.50 below a 100% slider) needs its cents to survive display;
+    // number inputs drop a trailing .00 on their own, so this is safe for
+    // whole-dollar offers too.
+    const offerVal = (i.market || i.manualOfferOverride) ? buyItemOfferValue(i).toFixed(2) : '';
     // An open Buy tray is only an offer draft. Inventory conversion becomes
     // available after the customer accepts, never while the offer is staged.
     const invBtn = added
@@ -38933,7 +38947,7 @@ function renderBuyList(){
       ${conditionControl}
       <input type="number" step="0.01" value="${i.market||''}" placeholder="$mkt"
              class="buy-tray-mkt" onchange="updateBuyItem('${i.id}','market',this.value)" ${added ? 'disabled' : ''}>
-      <input type="number" step="1" min="0" value="${offerVal}" placeholder="$offer" title="Agreed customer offer" class="buy-tray-mkt buy-tray-offer-val" onchange="updateBuyItem('${i.id}','cashOffer',this.value)" ${added ? 'disabled' : ''}>
+      <input type="number" step="0.5" min="0" value="${offerVal}" placeholder="$offer" title="Agreed customer offer" class="buy-tray-mkt buy-tray-offer-val" onchange="updateBuyItem('${i.id}','cashOffer',this.value)" ${added ? 'disabled' : ''}>
       ${invBtn}
       <button class="buy-tray-rm" onclick="removeBuyItem('${i.id}')" aria-label="Remove">×</button>
     </div>`;
@@ -38967,9 +38981,11 @@ function buildBuyOfferText(){
   const offer = document.getElementById('bl-offer').textContent;
   const mkt = document.getElementById('bl-total-mkt').textContent;
   const customer = document.getElementById('bl-customer')?.value.trim();
-  // Route through buyItemOfferValue (whole-dollar, rounded down) so the texted/printed
-  // offer always matches the displayed/accepted/stored offer — no separate calculation.
-  const lines = buyList.map(i => `${i.name}: market ${i.market?'$'+Number(i.market).toFixed(2):'TBD'}, offer ${i.market?'$'+Math.round(buyItemOfferValue(i)):'TBD'}`).join('\n');
+  // Route through buyItemOfferValue so the texted/printed offer always matches
+  // the displayed/accepted/stored offer -- no separate calculation. Not
+  // Math.round(): the bargain-bin bracket (any item under $2 offers a flat
+  // $0.50 below a 100% slider) needs its cents to survive here too.
+  const lines = buyList.map(i => `${i.name}: market ${i.market?'$'+Number(i.market).toFixed(2):'TBD'}, offer ${i.market?'$'+buyItemOfferValue(i).toFixed(2):'TBD'}`).join('\n');
   return `${customer ? customer + ', ' : ''}${p.shortName || p.storeName} offer:\n${lines}\nTotal market: ${mkt}\nOffer (${pct}%): ${offer}\nOffer valid today.`;
 }
 
@@ -39040,7 +39056,7 @@ function logBuyOffer(addedCount, failedCount){
     })),
   });
   localStorage.setItem('pos_buy_offers', JSON.stringify(log.slice(0,200)));
-  upsertCustomer(customer, phone, 'Buy offer: $' + Math.round(totals.offerTotal) + ' for ' + buyList.length + ' item(s)', 'buy-offer');
+  upsertCustomer(customer, phone, 'Buy offer: $' + totals.offerTotal.toFixed(2) + ' for ' + buyList.length + ' item(s)', 'buy-offer');
 }
 
 function buyItemToInventoryUpdates(item){
@@ -45025,7 +45041,7 @@ async function toppsLoadParallels(cardId){
   window.__arscaCloseModal = closeModal;
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.26.14-buy-round-basis-first" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.26.15-buy-bargain-bin-bracket" defer></script>
 </body>
 </html>
 

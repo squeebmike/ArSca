@@ -87,6 +87,24 @@ assert.match(html, /value="skip">Skip duplicates/, 'CSV import must default to s
   assert.match(basisFn, /return raw > 0 \? Math\.floor\(raw\) : 0;/, 'buyItemPricingBasis must floor the raw market price to a whole dollar');
   const offerValueFn = html.slice(html.indexOf('function buyItemOfferValue(item){'), html.indexOf('\nfunction buyItemMarketValue('));
   assert.match(offerValueFn, /return roundBuyOffer\(buyItemPricingBasis\(item\) \* pct\);/, 'buyItemOfferValue must apply the slider % to the whole-dollar basis, not the raw fractional market price');
+  // Bargain-bin bracket: any card under $2 guide value skips the normal %
+  // math -- a percentage of a bulk common at $0.10-$0.35, or of a
+  // $1.01-$1.99 card, doesn't land on a sane whole-dollar number either
+  // way. Store policy: a flat $1.00 at a full (100%) offer, $0.50 below
+  // that -- confirmed explicitly by the store owner for both sub-$1 bulk
+  // commons and the $1.01-$1.99 range as one unified bracket.
+  assert.match(offerValueFn, /if\(raw > 0 && raw < 2\) return pct >= 1 \? 1 : 0\.5;/, 'buyItemOfferValue must apply the flat $1.00/$0.50 bargain-bin bracket for any item under $2, before falling through to the normal whole-dollar-basis % math');
+  // The bracket returns a real $0.50 half-dollar -- every place that shows
+  // an offer amount must format it with cents (toFixed(2)), not Math.round(),
+  // which rounds 0.5 UP to 1 (JS round-half-up) and would silently turn a
+  // $0.50 bargain-bin offer into a displayed $1.00.
+  // (tradeCreditOffer's Math.round(buyItemOfferValue(i) * 1.15 * 100) / 100
+  // is a safe cents-preserving round, not the whole-dollar-corrupting kind.)
+  assert.doesNotMatch(html, /Math\.round\(buyItemOfferValue\(i\)\)/, 'no display site may wrap buyItemOfferValue in a bare Math.round() -- it corrupts a real $0.50 bracket offer up to $1 on screen');
+  assert.doesNotMatch(html, /Math\.round\(offer\)/, 'the Your Offer stat must not Math.round() the tray total -- use toFixed(2) so a $0.50 contribution displays correctly');
+  assert.doesNotMatch(html, /Math\.round\(total\)/, 'the PAY CUSTOMER total must not Math.round() -- use toFixed(2) so a $0.50 bracket contribution displays correctly');
+  assert.doesNotMatch(html, /Math\.round\(totals\.offerTotal/, 'no buy-session total display may Math.round() totals.offerTotal -- use toFixed(2)');
+  assert.doesNotMatch(html, /Math\.round\(p\.total\)/, 'the tray switcher pill must not Math.round() a tray total -- use toFixed(2)');
 }
 
 // A card research genuinely can't find a price for still has to be
