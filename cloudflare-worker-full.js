@@ -2099,6 +2099,34 @@ function safeStoreKey(s) {
   return String(s || 'main').replace(/[^a-zA-Z0-9:_-]/g, '-').slice(0, 80);
 }
 
+// Business-day math (Mon-Fri only, no holiday calendar) for the eBay
+// presale safety buffer. n may be negative to go backward from date.
+function addBusinessDays(date, n) {
+  const d = new Date(date.getTime());
+  let remaining = Math.abs(n);
+  const step = n >= 0 ? 1 : -1;
+  while (remaining > 0) {
+    d.setUTCDate(d.getUTCDate() + step);
+    const day = d.getUTCDay();
+    if (day !== 0 && day !== 6) remaining--;
+  }
+  return d;
+}
+
+// Our internal eBay presale safety buffer (default 35 business days), NOT
+// eBay's actual policy limit (currently 40) -- configurable per store via
+// the existing generic /kv/ endpoint under key
+// "comic_ebay_presale_safe_business_days" without a code deploy. Shared by
+// /foc/ebay/create-presale (enforcement) and the FOC catalog's per-SKU
+// status computation (display) so both agree on the exact same cutoff.
+async function getEbayPresaleSafeBusinessDays(env, storeId) {
+  try {
+    const stored = env.LBA_KV ? await env.LBA_KV.get(`lba:${safeStoreKey(storeId)}:comic_ebay_presale_safe_business_days`) : null;
+    if (stored && Number.isFinite(Number(stored)) && Number(stored) > 0) return Number(stored);
+  } catch (_) {}
+  return 35;
+}
+
 function cartKeyFromUrl(url) {
   const store = safeStoreKey(url.searchParams.get('store') || 'main');
   const register = safeStoreKey(url.searchParams.get('register') || 'front');
@@ -2976,10 +3004,131 @@ export default {
       return await handleStripeFoundation(request, env, url);
     }
 
+    // Lists a FOC comic SKU for eBay presale before physical stock exists,
+    // using the same eBay Inventory API mechanics /ebay/list already uses
+    // (createAndPublishEbayListing) -- built from the comic_skus row's own
+    // trusted DB data, not client-supplied listing fields, so a stale
+    // dashboard can't bypass the business-day eligibility check below.
+    // eBay's actual presale policy limit is currently 40 business days from
+    // listing to ship; the configurable value here is OUR internal safety
+    // buffer under that limit (default 35), stored via the existing generic
+    // /kv/ endpoint under key "comic_ebay_presale_safe_business_days" (the
+    // "comic_" prefix gives it the long-lived KV TTL that endpoint already
+    // grants comic-related keys, and it's per-store like every other KV key
+    // there) so it can be tightened/loosened without a code deploy.
+    if (url.pathname === '/foc/ebay/create-presale') {
+      if (request.method !== 'POST') return json({ error: 'POST only' }, 405);
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId, ['owner','admin']);
+      if (auth.error) return auth.error;
+
+      let body = {};
+      try { body = await request.json(); } catch (_) {}
+      const skuId = String(body.skuId || '').trim();
+      const quantity = Math.max(1, Math.min(200, parseInt(body.quantity, 10) || 0));
+      if (!skuId) return json({ ok: false, error: 'skuId required' }, 400);
+      if (!quantity) return json({ ok: false, error: 'quantity must be a positive integer' }, 400);
+
+      let sku;
+      try {
+        const { data: skuRows } = await supabaseAdminFetch(env, `comic_skus?id=eq.${encodeURIComponent(skuId)}&store_id=eq.${encodeURIComponent(storeId)}&select=*`);
+        sku = Array.isArray(skuRows) ? skuRows[0] : null;
+      } catch (e) { return json({ ok: false, error: 'Could not load that FOC SKU: ' + e.message }, 500); }
+      if (!sku) return json({ ok: false, error: 'FOC SKU not found for this store' }, 404);
+      if (!sku.on_sale_date) return json({ ok: false, error: 'This SKU has no on-sale date -- cannot compute eBay presale eligibility' }, 400);
+
+      const safeBusinessDays = await getEbayPresaleSafeBusinessDays(env, storeId);
+
+      const onSaleDate = new Date(String(sku.on_sale_date).includes('T') ? sku.on_sale_date : sku.on_sale_date + 'T00:00:00Z');
+      if (!Number.isFinite(onSaleDate.getTime())) return json({ ok: false, error: "Could not parse this SKU's on-sale date" }, 400);
+      const eligibleDate = addBusinessDays(onSaleDate, -safeBusinessDays);
+      if (new Date() < eligibleDate) {
+        return json({
+          ok: false,
+          error: `Too early for eBay presale -- eligible ${eligibleDate.toISOString().slice(0, 10)} (${safeBusinessDays} business days before the ${onSaleDate.toISOString().slice(0, 10)} on-sale date).`,
+          eligibleDate: eligibleDate.toISOString().slice(0, 10),
+          onSaleDate: onSaleDate.toISOString().slice(0, 10),
+          safeBusinessDays,
+        }, 409);
+      }
+
+      let ebayToken = '';
+      try { ebayToken = await getEbayUserAccessToken(env); }
+      catch (tokenErr) { return json({ needsToken: true, error: tokenErr.message }, 401); }
+      if (!ebayToken) return json({ needsToken: true, error: 'Connect eBay first: missing user access/refresh token' }, 401);
+
+      const priceCents = Number(sku.customer_price_cents || sku.msrp_cents || 0);
+      if (!priceCents) return json({ ok: false, error: 'This SKU has no price set -- set a customer price before creating a presale listing' }, 400);
+
+      const onSaleLabel = onSaleDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
+      const variantLabel = sku.variant_label && sku.variant_label !== 'Cover A' ? sku.variant_label : '';
+      const title = [sku.title, variantLabel].filter(Boolean).join(' ').substring(0, 80);
+      const description = [
+        'PRESALE -- This comic has not been released yet and is not currently in stock.',
+        `Expected on-sale/ship date: ${onSaleLabel}. Your order ships promptly once we receive stock from the distributor on or shortly after that date.`,
+        sku.description || '',
+      ].filter(Boolean).join('\n\n');
+
+      let listingResult;
+      try {
+        listingResult = await createAndPublishEbayListing({
+          title, description,
+          price: (priceCents / 100).toFixed(2),
+          quantity, categoryId: '259104', conditionId: '1000',
+          imageUrl: sku.cover_image_url || undefined,
+          upc: sku.upc || '',
+          customAspects: {
+            Publisher: sku.publisher || '', Writer: sku.writer || '',
+            Artist: sku.interior_artist || '', 'Cover Artist': sku.cover_artist || '',
+            'Release Date': onSaleLabel,
+          },
+        }, ebayToken, env);
+      } catch (e) {
+        console.error('FOC eBay presale listing error:', e);
+        return json({ ok: false, error: e.message, detail: e.detail }, e.status || 500);
+      }
+
+      const nowIso = new Date().toISOString();
+      let createdRow = null;
+      try {
+        const { data } = await supabaseAdminFetch(env, 'inventory_items', {
+          method: 'POST', headers: { Prefer: 'return=representation' },
+          body: JSON.stringify({
+            store_id: storeId, status: 'presale',
+            data: {
+              name: title, category: 'Comic', publisher: sku.publisher || '', upc: sku.upc || '',
+              // PRH cost is 50% of cover price -- our real wholesale rate, not an estimate.
+              cost: Math.round(Number(sku.msrp_cents || 0) * 0.5) / 100,
+              market: priceCents / 100, salePrice: priceCents / 100,
+              qty: quantity, quantity, image: sku.cover_image_url || '',
+              source: 'foc_presale', focSkuId: sku.id, focCycleId: sku.cycle_id, onSaleDate: sku.on_sale_date,
+              focPresaleOriginalQty: quantity,
+              ebayListingId: listingResult.listingId, ebayOfferId: listingResult.offerId,
+              ebaySku: listingResult.sku, ebayListedAt: nowIso,
+            },
+          }),
+        });
+        createdRow = Array.isArray(data) ? data[0] : data;
+      } catch (e) {
+        // The eBay listing is already live at this point -- surface the save
+        // failure loudly rather than silently losing the linkage, since
+        // order-sync depends on ebaySku existing on some inventory_items row.
+        console.error('FOC eBay presale inventory row create failed:', e);
+        return json({
+          ok: true,
+          warning: 'eBay listing was created but saving the local tracking row failed: ' + e.message,
+          listingId: listingResult.listingId, offerId: listingResult.offerId, sku: listingResult.sku,
+        });
+      }
+
+      return json({ ok: true, listingId: listingResult.listingId, offerId: listingResult.offerId, sku: listingResult.sku, inventoryItemId: createdRow?.id || null, quantity });
+    }
+
     if (url.pathname === '/public/preorders' || url.pathname.startsWith('/public/preorders/') || url.pathname === '/public/shipping/quotes' || url.pathname.startsWith('/foc/admin/')) {
       return await handleFocRequest(request, env, url, {
         CORS, json, supabaseAdminFetch, requireStoreUser, requireAuthenticatedUser,
         readJsonWithLimit, enforceUsageLimit, stripeApi, stripeMode, stripeConfig, sendEmail,
+        addBusinessDays, getEbayPresaleSafeBusinessDays,
       });
     }
 
@@ -5857,6 +6006,87 @@ export default {
       });
     }
 
+    // Core "create inventory item + offer + publish" mechanics, shared by
+    // /ebay/list (arbitrary staff-entered listings) and the FOC presale
+    // endpoint below (listings built from trusted comic_sku data) -- same
+    // eBay Inventory API calls either way, just a different source for the
+    // body fields. Throws Error with a .status (defaults 500) on failure;
+    // callers decide how to turn that into an HTTP response.
+    async function createAndPublishEbayListing(b, ebayToken, env) {
+      const { title, price } = b;
+      if (!title || !price) { const e = new Error('title and price required'); e.status = 400; throw e; }
+
+      const locationKey = env.EBAY_LOCATION_KEY || 'walkoff-main';
+      await fetch(`https://api.ebay.com/sell/inventory/v1/location/${locationKey}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': 'Bearer ' + ebayToken,
+          'Content-Type': 'application/json',
+          'Content-Language': 'en-US',
+        },
+        body: JSON.stringify({
+          location: { address: { addressLine1: '26059 Miller Bay Rd NE', city: 'Kingston', stateOrProvince: 'WA', postalCode: '98346', country: 'US' } },
+          name: 'Walk-Off Sports Cards',
+          merchantLocationStatus: 'ENABLED',
+          locationTypes: ['STORE'],
+        }),
+      }).catch(() => {});
+
+      const sku = 'lba-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 5);
+      const itemBody = buildEbayInventoryItemBody(b);
+
+      const itemRes = await fetch(`https://api.ebay.com/sell/inventory/v1/inventory_item/${sku}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': 'Bearer ' + ebayToken,
+          'Content-Type': 'application/json',
+          'Content-Language': 'en-US',
+        },
+        body: JSON.stringify(itemBody),
+      });
+
+      if (!itemRes.ok && itemRes.status !== 204) {
+        const errTxt = await itemRes.text();
+        let errData; try { errData = JSON.parse(errTxt); } catch (_) { errData = errTxt; }
+        const msg = errData?.errors?.[0]?.longMessage || errData?.errors?.[0]?.message || errTxt.substring(0, 200);
+        const e = new Error('Item creation failed (' + itemRes.status + '): ' + msg); e.status = itemRes.status; e.detail = errData; throw e;
+      }
+
+      const offerBody = buildEbayOfferBody(b, sku, locationKey, env);
+
+      const offerRes = await fetch('https://api.ebay.com/sell/inventory/v1/offer', {
+        method: 'POST',
+        headers: {
+          'Authorization': 'Bearer ' + ebayToken,
+          'Content-Type': 'application/json',
+          'Content-Language': 'en-US',
+        },
+        body: JSON.stringify(offerBody),
+      });
+
+      const offerTxt = await offerRes.text();
+      let offerData; try { offerData = JSON.parse(offerTxt); } catch (_) { offerData = { raw: offerTxt }; }
+      if (!offerRes.ok) {
+        const msg = offerData?.errors?.[0]?.longMessage || offerData?.errors?.[0]?.message || offerTxt.substring(0, 300);
+        const e = new Error('Offer failed (' + offerRes.status + '): ' + msg); e.status = offerRes.status; e.detail = offerData; throw e;
+      }
+
+      const offerId = offerData.offerId;
+      const pubRes = await fetch(`https://api.ebay.com/sell/inventory/v1/offer/${offerId}/publish`, {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + ebayToken, 'Content-Type': 'application/json' },
+      });
+
+      const pubTxt = await pubRes.text();
+      let pubData; try { pubData = JSON.parse(pubTxt); } catch (_) { pubData = { raw: pubTxt }; }
+      if (!pubRes.ok) {
+        const msg = pubData?.errors?.[0]?.longMessage || pubData?.errors?.[0]?.message || pubTxt.substring(0, 300);
+        const e = new Error('Publish failed (' + pubRes.status + '): ' + msg); e.status = pubRes.status; e.detail = pubData; throw e;
+      }
+
+      return { listingId: pubData.listingId, offerId, sku };
+    }
+
     if (url.pathname === '/ebay/list') {
       if (request.method !== 'POST') return json({ error: 'POST only' }, 405);
       const storeId = requestStoreId(request, url);
@@ -5869,95 +6099,11 @@ export default {
 
       try {
         const b = await request.json();
-        const {
-          title, description, price, shippingCost = '0.00',
-          format = 'FIXED_PRICE', conditionId = '3000',
-          conditionDescription = '', conditionDescriptors = [],
-          duration = 'GTC',
-          quantity = 1, categoryId = '261328',
-          imageUrl = null, imageUrls = [],
-          sport = '', year = '', manufacturer = '',
-          set = '', parallel = '', cardNumber = '',
-          player = '', team = '', grade = '', grader = '',
-          isRookie = false, serialNumber = '',
-          upc = '', features = '', productType = '', configuration = '',
-          league = '', season = '', customAspects = {},
-        } = b;
-
-        if (!title || !price) return json({ error: 'title and price required' }, 400);
-
-        const locationKey = env.EBAY_LOCATION_KEY || 'walkoff-main';
-        await fetch(`https://api.ebay.com/sell/inventory/v1/location/${locationKey}`, {
-          method: 'POST',
-          headers: {
-            'Authorization': 'Bearer ' + ebayToken,
-            'Content-Type': 'application/json',
-            'Content-Language': 'en-US',
-          },
-          body: JSON.stringify({
-            location: { address: { addressLine1: '26059 Miller Bay Rd NE', city: 'Kingston', stateOrProvince: 'WA', postalCode: '98346', country: 'US' } },
-            name: 'Walk-Off Sports Cards',
-            merchantLocationStatus: 'ENABLED',
-            locationTypes: ['STORE'],
-          }),
-        }).catch(() => {});
-
-        const sku = 'lba-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 5);
-        const itemBody = buildEbayInventoryItemBody(b);
-
-        const itemRes = await fetch(`https://api.ebay.com/sell/inventory/v1/inventory_item/${sku}`, {
-          method: 'PUT',
-          headers: {
-            'Authorization': 'Bearer ' + ebayToken,
-            'Content-Type': 'application/json',
-            'Content-Language': 'en-US',
-          },
-          body: JSON.stringify(itemBody),
-        });
-
-        if (!itemRes.ok && itemRes.status !== 204) {
-          const errTxt = await itemRes.text();
-          let errData; try { errData = JSON.parse(errTxt); } catch (_) { errData = errTxt; }
-          const msg = errData?.errors?.[0]?.longMessage || errData?.errors?.[0]?.message || errTxt.substring(0, 200);
-          return json({ error: 'Item creation failed (' + itemRes.status + '): ' + msg, detail: errData }, itemRes.status);
-        }
-
-        const offerBody = buildEbayOfferBody(b, sku, locationKey, env);
-
-        const offerRes = await fetch('https://api.ebay.com/sell/inventory/v1/offer', {
-          method: 'POST',
-          headers: {
-            'Authorization': 'Bearer ' + ebayToken,
-            'Content-Type': 'application/json',
-            'Content-Language': 'en-US',
-          },
-          body: JSON.stringify(offerBody),
-        });
-
-        const offerTxt = await offerRes.text();
-        let offerData; try { offerData = JSON.parse(offerTxt); } catch (_) { offerData = { raw: offerTxt }; }
-        if (!offerRes.ok) {
-          const msg = offerData?.errors?.[0]?.longMessage || offerData?.errors?.[0]?.message || offerTxt.substring(0, 300);
-          return json({ error: 'Offer failed (' + offerRes.status + '): ' + msg, detail: offerData }, offerRes.status);
-        }
-
-        const offerId = offerData.offerId;
-        const pubRes = await fetch(`https://api.ebay.com/sell/inventory/v1/offer/${offerId}/publish`, {
-          method: 'POST',
-          headers: { 'Authorization': 'Bearer ' + ebayToken, 'Content-Type': 'application/json' },
-        });
-
-        const pubTxt = await pubRes.text();
-        let pubData; try { pubData = JSON.parse(pubTxt); } catch (_) { pubData = { raw: pubTxt }; }
-        if (!pubRes.ok) {
-          const msg = pubData?.errors?.[0]?.longMessage || pubData?.errors?.[0]?.message || pubTxt.substring(0, 300);
-          return json({ error: 'Publish failed (' + pubRes.status + '): ' + msg, detail: pubData }, pubRes.status);
-        }
-
-        return json({ ok: true, listingId: pubData.listingId, offerId, sku });
+        const result = await createAndPublishEbayListing(b, ebayToken, env);
+        return json({ ok: true, ...result });
       } catch (e) {
         console.error('eBay listing error:', e);
-        return json({ error: e.message }, 500);
+        return json({ error: e.message, detail: e.detail }, e.status || 500);
       }
     }
 
