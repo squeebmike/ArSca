@@ -107,4 +107,22 @@ assert.match(focDash, /onchange="filterFocEbay\(this\.value\)"><option value="al
   'toolbar must expose an "eligible, not listed" option using the catalog\'s own ebayPresaleStatus values');
 assert.match(focDash, /window\.filterFocEbay=function\(v\)\{state\.ebay=v;renderFamilies\(\);\}/, 'the filter dropdown must be wired up');
 
-console.log('FOC eBay presale review-step, template-field, and eligible-filter contract checks passed');
+// Handling time: eBay computes the buyer's delivery estimate as handling
+// time + carrier transit from the PURCHASE date, so a presale listed under
+// the store's normal fast-handling policy promises delivery before the
+// book is even released (confirmed live: a Sept 23 release showed an
+// Aug 29-Sep 3 delivery estimate). A dedicated, cloned fulfillment policy
+// with a handling time long enough to cover the wait must be used instead
+// of the shared one -- never mutated in place, since that would also
+// change handling time on every other live listing referencing it.
+assert.match(worker, /function businessDaysBetween\(from, to\)/, 'must be able to compute business days from now to the on-sale date');
+assert.match(worker, /async function getFocPresaleFulfillmentPolicyId\(env, ebayToken, handlingDaysNeeded\)/, 'must provision a presale-specific fulfillment policy');
+assert.match(worker, /const bucket = Math\.min\(40, Math\.max\(5, Math\.ceil\(Math\.max\(1, handlingDaysNeeded\) \/ 5\) \* 5\)\)/, 'handling time must be capped at eBay\'s 40-business-day presale limit');
+assert.doesNotMatch(worker, /fetch\(`https:\/\/api\.ebay\.com\/sell\/account\/v1\/fulfillment_policy\/\$\{encodeURIComponent\(fallback\)\}`, \{[\s\S]{0,200}method: 'PUT'/,
+  'must never PUT/update the shared base fulfillment policy in place -- that would change handling time on every other live listing using it too');
+assert.match(worker, /const handlingBusinessDays = businessDaysBetween\(new Date\(\), onSaleDate\) \+ 2/, 'handling time must be computed from the SKU\'s real on-sale date, not a fixed guess');
+assert.match(worker, /const fulfillmentPolicyId = await getFocPresaleFulfillmentPolicyId\(env, ebayToken, handlingBusinessDays\)/, 'the create route must actually use the provisioned handling-time policy');
+assert.match(worker, /fulfillmentPolicyId,\s*\n\s*\}, ebayToken, env, storeId\);/, 'the computed fulfillmentPolicyId must be passed into the listing payload');
+assert.match(focDash, /eBay handling time on this listing:/, 'the review modal must show the handling time so the store can verify the ship date is accurate before publishing');
+
+console.log('FOC eBay presale review-step, template-field, eligible-filter, and handling-time contract checks passed');
