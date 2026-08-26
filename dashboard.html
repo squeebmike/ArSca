@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.26.15-buy-bargain-bin-bracket">
+<meta name="version" content="2026.08.26.16-ui-declutter">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -18,6 +18,11 @@
 html{max-width:100vw;overflow-x:hidden;}
 body{background:var(--bg);color:var(--text);font-family:var(--brand-font-family);min-height:100vh;padding-bottom:env(safe-area-inset-bottom);max-width:100vw;overflow-x:hidden;}
 #lba-nav{display:none!important;}
+/* Hidden from view per store request -- underlying functionality (the
+   Customer Display help text, Add-from-Research bridge button, Pokémon Set
+   Browser promo box, Manual Barcode Entry / Offline Data buttons, and the
+   Live Store Mode banner) is untouched; these elements just never render. */
+#cd-help-panel,#buy-research-bridge,#qpl-pokemon-helper,#research-barcode-btn,#research-offline-data-btn,#beta-mode-strip{display:none!important;}
 @media(max-width:640px){
   /* GLOBAL MOBILE CONTAINMENT — belt-and-suspenders against any element pushing past viewport width */
   .panel,.sec,.two,.three,.tc,.tabs,.tbl-wrap,.tab-panel,.module-grid,.responsive-grid,
@@ -1633,16 +1638,16 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.26.15-buy-bargain-bin-bracket" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.26.15-buy-bargain-bin-bracket" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.26.15-buy-bargain-bin-bracket" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.08.26.15-buy-bargain-bin-bracket" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.26.15-buy-bargain-bin-bracket" defer></script>
-<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.08.26.15-buy-bargain-bin-bracket" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.26.15-buy-bargain-bin-bracket" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.26.15-buy-bargain-bin-bracket" defer></script>
-<script src="scripts/pokemon/offline-browser.js?v=2026.08.26.15-buy-bargain-bin-bracket" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.26.15-buy-bargain-bin-bracket" defer></script>
+<script src="scripts/query-routing.js?v=2026.08.26.16-ui-declutter" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.26.16-ui-declutter" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.26.16-ui-declutter" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.08.26.16-ui-declutter" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.26.16-ui-declutter" defer></script>
+<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.08.26.16-ui-declutter" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.26.16-ui-declutter" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.26.16-ui-declutter" defer></script>
+<script src="scripts/pokemon/offline-browser.js?v=2026.08.26.16-ui-declutter" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.26.16-ui-declutter" defer></script>
 </head>
 <body>
 
@@ -1671,11 +1676,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.26.15-buy-bargain-bin-bracket</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.26.16-ui-declutter</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.26.15-buy-bargain-bin-bracket</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.26.16-ui-declutter</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1693,7 +1698,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.26.15-buy-bargain-bin-bracket</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.26.16-ui-declutter</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -2172,7 +2177,7 @@ body.show-mode .inv-sync-badge{display:none;}
           <button class="hbtn" onclick="openPsaCertSearchModal()" style="flex:0 0 auto;font-size:8px;padding:3px 7px;min-height:26px;color:var(--blue);white-space:nowrap">PSA CERT</button>
         </div>
         <button class="hbtn" onclick="runPriceLookup()" style="white-space:nowrap">LOOK UP</button>
-        <button class="hbtn" onclick="openSettingsSection('catalogs','offline-catalog-manager-panel')" style="white-space:nowrap;color:var(--blue)">OFFLINE DATA</button>
+        <button class="hbtn" id="research-offline-data-btn" onclick="openSettingsSection('catalogs','offline-catalog-manager-panel')" style="white-space:nowrap;color:var(--blue)">OFFLINE DATA</button>
         <button class="hbtn" onclick="clearResearchLookup()" style="white-space:nowrap">CLEAR</button>
       </div>
       <div id="pokemon-offline-banner" class="pokemon-offline-banner"></div>
@@ -3695,7 +3700,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.26.15-buy-bargain-bin-bracket';
+const APP_VERSION = '2026.08.26.16-ui-declutter';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -6082,14 +6087,18 @@ function setupAppShell(){
   const tabs = document.querySelector('.tabs');
   if(tabs) {
     const daily = DAILY_TABS.filter(([id]) => roleCanAccessTab(id));
-    const moreTabs = MORE_TABS.filter(([id]) => roleCanAccessTab(id));
+    // CUSTOMER BROWSE hidden from the More menu per store request -- 'browse'
+    // stays in MORE_TABS (switchTab('browse') / enterCustomerBrowseMode()
+    // untouched) so nothing that already relies on it breaks, it's just not
+    // offered here as a menu choice.
+    const moreTabs = MORE_TABS.filter(([id]) => roleCanAccessTab(id) && id !== 'browse');
     tabs.innerHTML = daily.map(([id,label]) =>
       `<div class="tab primary ${id === activeTab ? 'on' : ''}" data-tab="${id}" onclick="switchTab('${id}',this)">${label}</div>`
     ).join('') + `
-      <a class="tab primary deck-lab-link" href="mtg-deck-lab.html">DECK LAB BETA</a>
       <div class="nav-more">
         <div class="tab" id="more-tab-btn" onclick="toggleMoreMenu(event)">MORE</div>
         <div class="more-menu" id="more-menu">
+          <a class="more-item deck-lab-link" href="mtg-deck-lab.html" style="text-decoration:none;display:block">DECK LAB BETA</a>
           ${moreTabs.map(([id,label]) => `<div class="more-item" data-tab="${id}" onclick="switchTab('${id}',this)">${label}</div>`).join('')}
         </div>
       </div>`;
@@ -35144,7 +35153,6 @@ function handleQplCategoryChange(){
     const el = document.getElementById('qpl-result');
     if(q && el) el.innerHTML = `<div style="color:var(--gold);line-height:1.6">Category changed to ${escHtml(cat || 'Any Category')}. Press LOOK UP to search this category.</div>`;
     else if(isComic && el) el.innerHTML = `<div style="color:var(--purple);line-height:1.7;font-family:monospace;font-size:10px">📖 Comics selected. Enter a series title and issue number above, then hit LOOK UP.<br><span style="color:var(--dim)">PriceCharting covers raw, CGC, CBCS grades and more.</span></div>`;
-    else if(isPokemon && el) el.innerHTML = `<div style="color:var(--gold);line-height:1.7;font-family:monospace;font-size:10px">⚡ Pokémon TCG selected. Search a card above, or use <strong>SET BROWSER</strong> to browse all cards in a set with prices, filters, and inventory tracking.</div>`;
     else if(isMtg && el) el.innerHTML = `<div style="color:#5ba3f5;line-height:1.7;font-family:monospace;font-size:10px">🔮 Magic: The Gathering selected. Search a card above, or use <strong>SET BROWSER</strong> to browse all cards in a set — filter by artist, rarity, color, and price.</div>`;
     else if(isSealed && el) el.innerHTML = `<div style="color:var(--gold);line-height:1.7;font-family:monospace;font-size:10px">📦 Sealed selected. Paste a TCGplayer product URL/product ID for exact MTG sealed products, or enter product words to open a TCGplayer sealed search. Live sealed pricing still needs backend catalog credentials.</div>`;
     return;
@@ -45041,7 +45049,7 @@ async function toppsLoadParallels(cardId){
   window.__arscaCloseModal = closeModal;
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.26.15-buy-bargain-bin-bracket" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.26.16-ui-declutter" defer></script>
 </body>
 </html>
 
