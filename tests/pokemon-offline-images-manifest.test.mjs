@@ -26,23 +26,18 @@ assert.match(manifestRoute, /listing\.truncated/, 'the R2 list() fallback must p
 assert.match(manifestRoute, /if \(!mergedIds\.size\) return json\(\{ ok: false, error: 'All-sets image index not built yet/,
   'must only 404 once the merge finds zero ids across every per-set index (i.e. genuinely nothing built yet)');
 
-// /pricing/pokemon/export used to check the raw sub:store: KV record
-// directly instead of going through storeHasSubscriptionAccess() like
-// every other PokemonPriceTracker route -- that skipped the complimentary
-// S Rank entitlement check, so an S Rank store that could use
-// /pricing/pokemon/cards would still get 402'd trying to bulk-export
-// cards/sealed/ebay/population CSVs.
-const exportRouteStart = worker.indexOf("url.pathname === '/pricing/pokemon/export'");
-assert(exportRouteStart >= 0, 'Missing /pricing/pokemon/export route');
-const exportRouteEnd = worker.indexOf('let upRes;', exportRouteStart);
-assert(exportRouteEnd > exportRouteStart, 'Could not bound the export route subscription-check source');
-const exportRoute = worker.slice(exportRouteStart, exportRouteEnd);
+// /pricing/pokemon/export (the device-facing bulk CSV pull) was removed
+// entirely -- it shared PPT's one account-wide 2-downloads/day count with
+// the daily cron that builds our own R2 cloud copy, and any device hitting
+// it could burn both of that day's slots before the cron got a turn. A
+// time-window reservation was tried first and wasn't enough (GitHub
+// Actions scheduling jitter, plus anything landing after the window
+// closed, still shut the cron out on the very next run). Devices now have
+// no path to PPT's export endpoint at all; only the cron calls it,
+// directly with the server-side key, never through this Worker.
+assert.doesNotMatch(worker, /https:\/\/www\.pokemonpricetracker\.com\/api\/v2\/export/,
+  'the Worker must never call PPT\'s bulk export endpoint itself -- only the cron script does, directly, outside this file');
+assert.match(worker, /if \(url\.pathname === '\/pricing\/pokemon\/export'\) \{\s*\n\s*return json\(\{ ok: false, error: 'Removed/,
+  '/pricing/pokemon/export must be hard-removed and return an unambiguous error, not silently 404 or hang');
 
-assert.match(exportRoute, /if \(!bypassIds2\.includes\(pptStoreId2\) && !ownerIds2\.includes\(pptStoreId2\) && env\.LBA_KV\) \{/,
-  '/pricing/pokemon/export must still gate on bypass/owner store ids only -- no demo/empty-storeId exemption');
-assert.match(exportRoute, /storeHasSubscriptionAccess\(env, pptStoreId2\)/,
-  'export route must reuse storeHasSubscriptionAccess() so S Rank entitlements are honored the same as every other PPT route');
-assert.doesNotMatch(exportRoute, /s2 === 'active' \|\| s2 === 'trialing'/,
-  'must not fall back to re-deriving active/trialing status by hand once storeHasSubscriptionAccess() already covers it');
-
-console.log('Pokemon offline images manifest + export subscription contract checks passed');
+console.log('Pokemon offline images manifest + export removal contract checks passed');

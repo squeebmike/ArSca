@@ -58,10 +58,16 @@ assert.match(html, /value="skip">Skip duplicates/, 'CSV import must default to s
   // default % for NEW items) that a manual per-item offer can legitimately
   // diverge from -- surface that only when it actually does, instead of
   // leaving two disagreeing percentages on screen with no explanation
-  // (confirmed live: "Offer %" showed 90% while the slider/stepper read 100
-  // with no indication why, read as broken math).
-  assert.match(renderBuyListFn, /if\(sliderNote\) sliderNote\.style\.display = \(Math\.round\(pct \* 100\) === effectivePct\) \? 'none' : '';/, 'the slider-vs-effective-rate note must only show when the two actually disagree');
+  // (confirmed live TWICE: "Offer %" showed 90%, then later 93%, while the
+  // slider/stepper read 100 with no indication why or which item caused it
+  // -- a note alone wasn't enough, so a one-tap RESET ALL was added too).
+  assert.match(renderBuyListFn, /const diverges = Math\.round\(pct \* 100\) !== effectivePct;/, 'must compute whether the slider and effective rate actually disagree');
+  assert.match(renderBuyListFn, /if\(sliderNote\) sliderNote\.style\.display = diverges \? '' : 'none';/, 'the slider-vs-effective-rate note must only show when the two actually disagree');
+  assert.match(renderBuyListFn, /if\(resetAllBtn\) resetAllBtn\.style\.display = diverges \? 'block' : 'none';/, 'the RESET ALL ITEMS TO SLIDER % button must appear alongside the note, not separately');
   assert.match(html, /id="bl-pct-slider-note"/, 'a note explaining the slider is a separate "default for new items" control must exist near it');
+  assert.match(html, /id="bl-reset-all-offers"[^>]*onclick="resetAllBuyOffersToSlider\(\)"/, 'a one-tap way to clear every per-item offer override back to the slider % must exist near the note');
+  assert.match(html, /function resetAllBuyOffersToSlider\(\)\{/, 'missing resetAllBuyOffersToSlider');
+  assert.match(html, /if\(!item\.manualOfferOverride\) return;\s*\n\s*item\.manualOfferOverride = false;\s*\n\s*delete item\.cashOffer;/, 'resetAllBuyOffersToSlider must clear manualOfferOverride/cashOffer, and must leave manualMarketOverride (a real researched price correction) alone');
   const updateBuyListOfferFn = html.slice(html.indexOf('function updateBuyListOffer(){'), html.indexOf('\nfunction setBuyOfferPct('));
   assert.doesNotMatch(updateBuyListOfferFn, /lbl\.textContent = pct \+ '%';/, 'updateBuyListOffer must not still write the raw slider % onto bl-pct-lbl -- renderBuyList is the single owner of that stat now');
 }

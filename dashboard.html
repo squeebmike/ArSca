@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.26.11-buy-slider-reset-all">
+<meta name="version" content="2026.08.26.12-ppt-export-cron-only">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1633,16 +1633,16 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.26.11-buy-slider-reset-all" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.26.11-buy-slider-reset-all" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.26.11-buy-slider-reset-all" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.08.26.11-buy-slider-reset-all" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.26.11-buy-slider-reset-all" defer></script>
-<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.08.26.11-buy-slider-reset-all" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.26.11-buy-slider-reset-all" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.26.11-buy-slider-reset-all" defer></script>
-<script src="scripts/pokemon/offline-browser.js?v=2026.08.26.11-buy-slider-reset-all" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.26.11-buy-slider-reset-all" defer></script>
+<script src="scripts/query-routing.js?v=2026.08.26.12-ppt-export-cron-only" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.26.12-ppt-export-cron-only" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.26.12-ppt-export-cron-only" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.08.26.12-ppt-export-cron-only" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.26.12-ppt-export-cron-only" defer></script>
+<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.08.26.12-ppt-export-cron-only" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.26.12-ppt-export-cron-only" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.26.12-ppt-export-cron-only" defer></script>
+<script src="scripts/pokemon/offline-browser.js?v=2026.08.26.12-ppt-export-cron-only" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.26.12-ppt-export-cron-only" defer></script>
 </head>
 <body>
 
@@ -1671,11 +1671,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.26.11-buy-slider-reset-all</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.26.12-ppt-export-cron-only</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.26.11-buy-slider-reset-all</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.26.12-ppt-export-cron-only</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1693,7 +1693,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.26.11-buy-slider-reset-all</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.26.12-ppt-export-cron-only</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3696,7 +3696,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.26.11-buy-slider-reset-all';
+const APP_VERSION = '2026.08.26.12-ppt-export-cron-only';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -7429,11 +7429,15 @@ async function renderOfflineCatalogManagerPanel(){
       <span style="color:${status ? 'var(--gold)' : 'var(--g)'}">${escHtml(status || source || 'Offline ready')}</span>
       <span style="display:flex;gap:6px;justify-content:flex-end;flex-wrap:wrap">${actions}</span>
     </div>`;
+  // eBay/Population no longer offer a DOWNLOAD action at all -- devices must
+  // never call PPT's live /export endpoint (see downloadPokemonExport()),
+  // and there's no cloud copy of these two yet. CLEAR stays so a device
+  // still holding data from before this change can wipe it.
   const pptRows = [
     ['Cards', pptCards, `<button class="hbtn" onclick="downloadPokemonExport('cards')">DOWNLOAD</button><button class="hbtn" onclick="clearPokemonExport('cards')">CLEAR</button>`],
     ['Sealed', pptSealed, `<button class="hbtn" onclick="downloadPokemonExport('sealed')">DOWNLOAD</button><button class="hbtn" onclick="clearPokemonExport('sealed')">CLEAR</button>`],
-    ['eBay / Graded', pptEbay, `<button class="hbtn" onclick="downloadPokemonExport('ebay')">DOWNLOAD</button><button class="hbtn" onclick="clearPokemonExport('ebay')">CLEAR</button>`],
-    ['Population', pptPop, `<button class="hbtn" onclick="downloadPokemonExport('population')">DOWNLOAD</button><button class="hbtn" onclick="clearPokemonExport('population')">CLEAR</button>`],
+    ['eBay / Graded', pptEbay, `<span style="color:var(--dim);font-size:9px">No bulk sync -- see search</span><button class="hbtn" onclick="clearPokemonExport('ebay')">CLEAR</button>`],
+    ['Population', pptPop, `<span style="color:var(--dim);font-size:9px">No bulk sync -- see search</span><button class="hbtn" onclick="clearPokemonExport('population')">CLEAR</button>`],
     // "downloadedAt" (shown in its own column) is only when this device last
     // pulled a copy -- not when PPT itself last refreshed the prices in it.
     // A device can download today and still be showing week-old prices if
@@ -29458,63 +29462,37 @@ async function syncPokemonPricesFromCloud(type){
   return rows.length;
 }
 
-// eBay/Population have no daily cloud snapshot (they stay live/on-demand —
-// see POKEMON_PRICES_CLOUD_TYPES above), and this is also the fallback path
-// for cards/sealed on a day the cloud snapshot genuinely isn't ready yet.
-async function downloadPokemonExportLive(type){
-  const storeId = getActiveStoreId();
-  const res = await fetch(WORKER + `/pricing/pokemon/export?type=${type}`, {
-    cache: 'no-store',
-    headers: storeId ? { 'X-Store-Id': storeId } : {},
-  });
-  const generatedAt     = res.headers.get('X-Generated-At') || '';
-  const downloadsLeft   = res.headers.get('X-Downloads-Remaining') || '';
-  const resetAt         = res.headers.get('X-Reset-At') || '';
-
-  if(res.status === 402){ const d = await res.json().catch(()=>({error:'Subscription required'})); throw Object.assign(new Error(d.error || 'Subscription required'), { subscriptionRequired:true }); }
-  if(res.status === 403){ localStorage.setItem('ppt_export_auth_failed', '1'); const d = await res.json().catch(()=>({error:'Business plan required'})); throw Object.assign(new Error(d.error || 'Business plan required'), { businessRequired:true }); }
-  if(res.status === 429){ const d = await res.json().catch(()=>({error:'Daily limit reached'})); throw Object.assign(new Error(d.error || 'Daily limit reached (2/day). Download quota resets at UTC midnight.'), { limitReached:true }); }
-  if(res.status === 503){ throw Object.assign(new Error('Export not ready — dumps regenerate daily at 6:00 AM UTC.'), { notReady:true }); }
-  if(!res.ok){ const d = await res.json().catch(()=>({error:'HTTP '+res.status})); throw new Error(d.error || 'Export failed'); }
-
-  const csvText = await res.text();
-  const { rows: rawRows } = parseCsvWithHeaders(csvText);
-  const idbStore = `ppt_${type}`;
-  await catalogDbClear(idbStore);
-  const rows = rawRows.map(r => normalizePptExportRow(r, type)).filter(Boolean);
-  await catalogDbPutBatch(idbStore, rows);
-
-  const meta = { key:`export_${type}`, type, rowCount:rows.length, downloadedAt:new Date().toISOString(), generatedAt, downloadsLeft, resetAt, error:null, source:'live' };
-  await catalogDbPut('meta', meta);
-  return rows.length;
-}
-
+// A device must NEVER call PPT's live /export endpoint -- it shares one
+// account-wide 2-downloads/day count with the daily cron
+// (pokemon-prices-daily.yml) that builds our own R2 cloud copy, and a
+// single device click can burn both of that day's slots out from under
+// every other store, including the cron itself (confirmed live: the cron
+// still failed on this exact 429 even after moving it earlier and adding a
+// worker-side time-window reservation -- a fixed clock cutoff isn't a real
+// guarantee against GitHub Actions' own scheduling jitter, or against a
+// device request landing in the gap after the window closes). The only
+// correct fix is devices never having a path to that endpoint at all --
+// see cloudflare-worker-full.js, /pricing/pokemon/export has been removed
+// entirely. Cards/Sealed only ever come from our own daily cloud snapshot
+// now, with no live fallback; eBay/Population have no bulk sync path at
+// all until the cron itself is extended to cover them on some rotation.
 async function downloadPokemonExport(type){
+  if(!POKEMON_PRICES_CLOUD_TYPES.has(type)){
+    toast_dash(`${PPT_EXPORT_TYPES.find(x=>x.type===type)?.label || type} has no bulk offline sync -- it would spend the shared daily export cap our price-update cron depends on. Graded/PSA prices are still available per-card during a live search.`);
+    return;
+  }
   const statusKey = `ppt_export_${type}_status`;
   localStorage.setItem(statusKey, 'downloading');
   refreshOfflineCatalogManagerPanel();
   try {
-    let rowCount;
-    if(POKEMON_PRICES_CLOUD_TYPES.has(type)){
-      try {
-        rowCount = await syncPokemonPricesFromCloud(type);
-      } catch(cloudErr){
-        // Only fall back to a live PPT pull when the cloud snapshot genuinely
-        // isn't built yet -- never on a transient manifest/download error,
-        // since that would silently spend the shared 2-exports/day cap the
-        // daily cron job (pokemon-prices-daily.yml) depends on.
-        if(!cloudErr?.notReady) throw cloudErr;
-        rowCount = await downloadPokemonExportLive(type);
-      }
-    } else {
-      rowCount = await downloadPokemonExportLive(type);
-    }
+    const rowCount = await syncPokemonPricesFromCloud(type);
     localStorage.removeItem(statusKey);
     toast_dash(`${PPT_EXPORT_TYPES.find(x=>x.type===type)?.label || type}: ${rowCount.toLocaleString()} rows downloaded`);
   } catch(e){
-    await catalogDbPut('meta', { key:`export_${type}`, type, error:e.message, downloadedAt:null, rowCount:0 }).catch(()=>{});
+    const message = e?.notReady ? "Today's price snapshot isn't built yet -- try again shortly." : (e.message || 'Sync failed');
+    await catalogDbPut('meta', { key:`export_${type}`, type, error:message, downloadedAt:null, rowCount:0 }).catch(()=>{});
     localStorage.removeItem(statusKey);
-    toast_dash('Export failed: ' + e.message);
+    toast_dash('Sync failed: ' + message);
   }
   refreshOfflineCatalogManagerPanel();
 }
@@ -45039,7 +45017,7 @@ async function toppsLoadParallels(cardId){
   window.__arscaCloseModal = closeModal;
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.26.11-buy-slider-reset-all" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.26.12-ppt-export-cron-only" defer></script>
 </body>
 </html>
 
