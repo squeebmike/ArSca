@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.26.09-ppt-batch-hydrate-by-set">
+<meta name="version" content="2026.08.26.10-cart-buytray-auto-join">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1633,16 +1633,16 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.26.09-ppt-batch-hydrate-by-set" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.26.09-ppt-batch-hydrate-by-set" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.26.09-ppt-batch-hydrate-by-set" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.08.26.09-ppt-batch-hydrate-by-set" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.26.09-ppt-batch-hydrate-by-set" defer></script>
-<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.08.26.09-ppt-batch-hydrate-by-set" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.26.09-ppt-batch-hydrate-by-set" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.26.09-ppt-batch-hydrate-by-set" defer></script>
-<script src="scripts/pokemon/offline-browser.js?v=2026.08.26.09-ppt-batch-hydrate-by-set" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.26.09-ppt-batch-hydrate-by-set" defer></script>
+<script src="scripts/query-routing.js?v=2026.08.26.10-cart-buytray-auto-join" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.26.10-cart-buytray-auto-join" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.26.10-cart-buytray-auto-join" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.08.26.10-cart-buytray-auto-join" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.26.10-cart-buytray-auto-join" defer></script>
+<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.08.26.10-cart-buytray-auto-join" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.26.10-cart-buytray-auto-join" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.26.10-cart-buytray-auto-join" defer></script>
+<script src="scripts/pokemon/offline-browser.js?v=2026.08.26.10-cart-buytray-auto-join" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.26.10-cart-buytray-auto-join" defer></script>
 </head>
 <body>
 
@@ -1671,11 +1671,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.26.09-ppt-batch-hydrate-by-set</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.26.10-cart-buytray-auto-join</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.26.09-ppt-batch-hydrate-by-set</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.26.10-cart-buytray-auto-join</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1693,7 +1693,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.26.09-ppt-batch-hydrate-by-set</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.26.10-cart-buytray-auto-join</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3695,7 +3695,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.26.09-ppt-batch-hydrate-by-set';
+const APP_VERSION = '2026.08.26.10-cart-buytray-auto-join';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -13200,6 +13200,23 @@ async function switchSaleCart(id){
   await renderCustomerDisplay();
   toast_dash('Joined ' + saleCartLabel(cart));
 }
+// Was: each device silently started its own isolated cart on first touch --
+// two devices only ever shared one if a human explicitly picked the same
+// cart from the switcher, which read as "cart doesn't sync across devices"
+// even though the underlying push/pull/merge (fetchActiveSaleCartFromWorker)
+// was working fine once joined. When THIS device's active cart is still
+// empty (nothing added here yet), adopt the store's most recently active
+// open cart instead of sitting on an orphaned empty one, so items added
+// elsewhere just show up here without a manual switch. Never touches a
+// cart that already has real items on it.
+async function autoJoinSharedSaleCart(){
+  const current = ensureActiveSaleCart();
+  if((current.items || []).length > 0) return;
+  const openRemote = (knownSaleCartIndex || [])
+    .filter(e => e.id && e.id !== current.cartId && (e.itemCount || 0) > 0)
+    .sort((a, b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0))[0];
+  if(openRemote) await switchSaleCart(openRemote.id);
+}
 function startNewSaleCart(){
   const cart = newSaleCartRecord();
   upsertLocalSaleCart(cart);
@@ -21164,11 +21181,29 @@ function tombstoneBuyIds(ids){
 // cart and scan handoff already use for cross-device sync — read local first
 // (works offline, keeps existing callers synchronous-feeling), then refresh
 // from the synced copy in the background and re-render if it changed.
+// Was: each device silently started its own isolated tray on first touch --
+// two devices only ever shared one if a human explicitly picked the same
+// tray from the switcher, which read as "buy tray doesn't sync across
+// devices" even though the underlying push/pull/merge was working fine.
+// When THIS device's active tray is still empty (nothing added here yet),
+// adopt the store's most recently active open tray instead of sitting on
+// an orphaned empty one, so items added elsewhere just show up here without
+// a manual switch. Never touches a tray that already has real items on it.
+async function autoJoinSharedBuyTray(){
+  await fetchBuyTrayIndex();
+  const current = ensureActiveBuyTray();
+  if((current.items || []).length > 0) return;
+  const openRemote = (knownBuyTrayIndex || [])
+    .filter(e => e.id && e.id !== current.buySessionId && e.status !== 'complete' && e.status !== 'closed' && (e.itemCount || 0) > 0)
+    .sort((a, b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0))[0];
+  if(openRemote) await switchBuyTray(openRemote.id);
+}
+
 function loadBuyList(){
   const tray = ensureActiveBuyTray();
   buyList = Array.isArray(tray.items) ? tray.items : [];
   fetchBuyListFromWorker();
-  fetchBuyTrayIndex();
+  autoJoinSharedBuyTray();
 }
 
 async function syncBuyListToWorker(){
@@ -40874,7 +40909,7 @@ function finishLockedCheckout(){
 setInterval(() => { if(shouldPollTab('display')) renderCustomerDisplay(); }, 3000);
 ensureActiveSaleCart();
 renderSaleCartSwitcher();
-fetchSaleCartIndex();
+fetchSaleCartIndex().then(autoJoinSharedSaleCart);
 // The cart picker also lives in the Inventory tab now (staff add items there,
 // not just on the Customer Display screen), so it needs the same background
 // refresh whichever of those two tabs is active, not just 'display'.
@@ -44978,7 +45013,7 @@ async function toppsLoadParallels(cardId){
   window.__arscaCloseModal = closeModal;
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.26.09-ppt-batch-hydrate-by-set" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.26.10-cart-buytray-auto-join" defer></script>
 </body>
 </html>
 
