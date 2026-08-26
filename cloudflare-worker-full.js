@@ -2263,16 +2263,22 @@ function buildEbayAspects(b) {
   return aspects;
 }
 
-// The description textarea is plain text with \n line breaks -- eBay
-// renders listing descriptions as HTML, which collapses all whitespace
-// including newlines, so a carefully paragraph-broken template arrived on
-// the live listing page as one unbroken wall of text (store report). Also
-// HTML-escapes the raw text first: description is built by concatenating
-// several free-text fields (writer, notes, custom aspects, etc.), any of
-// which could contain a literal "<" or "&" that must not be interpreted
-// as markup once wrapped in HTML.
+// The description textarea is usually plain text with \n line breaks --
+// eBay renders listing descriptions as HTML, which collapses all
+// whitespace including newlines, so a carefully paragraph-broken template
+// arrived on the live listing page as one unbroken wall of text (store
+// report). Escaping+converting unconditionally broke the OTHER real case
+// though: a store's own hand-built rich-HTML template (real <div>/<table>
+// markup, e.g. a full branded listing design) got its tags escaped into
+// visible literal text instead of rendering (also confirmed live). If the
+// text already contains real HTML markup, it's passed through completely
+// untouched -- exactly how descriptions worked before this function
+// existed, which is why that case worked until this "fix" broke it. Only
+// genuine plain text (no HTML tags at all) gets escaped and converted.
 function toEbayHtmlDescription(text) {
-  const escaped = String(text || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const raw = String(text || '');
+  if (/<\/?[a-z][\s\S]*>/i.test(raw)) return raw.length <= 4000 ? raw : raw.substring(0, 4000);
+  const escaped = raw.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   const paragraphs = escaped.split(/\n{2,}/).map(para => '<p>' + para.replace(/\n/g, '<br>') + '</p>');
   // eBay's 4000-char description cap applies to the FINAL HTML, not the
   // raw text -- wrapping in <p>/<br> adds overhead that can push a

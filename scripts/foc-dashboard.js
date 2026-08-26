@@ -256,7 +256,18 @@ async function openEbayPresaleReview(skuId){
         condition:'New',quantity:'1'};
       var renderedBody=renderEbayDescriptionTemplate(customTemplate,tokens);
       if(renderedBody){
-        description='PRESALE -- This comic has not been released yet and is not currently in stock.\n\nExpected on-sale/ship date: '+preview.onSaleLabel+'. Your order ships promptly once we receive stock from the distributor on or shortly after that date.\n\n'+renderedBody;
+        // A store's saved Comic template can be plain text OR a hand-built
+        // rich-HTML design (real <div>/<table> markup) -- the mandatory
+        // presale disclosure this always prepends needs to match whichever
+        // one it's about to sit next to, or the server's HTML formatter
+        // (which only escapes/converts plain text, and otherwise passes
+        // real HTML straight through untouched) treats the combined string
+        // as one blob and gets it wrong for whichever half doesn't match.
+        var isHtmlTemplate=/<\/?[a-z][\s\S]*>/i.test(customTemplate);
+        var disclosure=isHtmlTemplate
+          ? '<p>PRESALE -- This comic has not been released yet and is not currently in stock.</p><p>Expected on-sale/ship date: '+preview.onSaleLabel+'. Your order ships promptly once we receive stock from the distributor on or shortly after that date.</p>'
+          : 'PRESALE -- This comic has not been released yet and is not currently in stock.\n\nExpected on-sale/ship date: '+preview.onSaleLabel+'. Your order ships promptly once we receive stock from the distributor on or shortly after that date.';
+        description=disclosure+(isHtmlTemplate?'':'\n\n')+renderedBody;
         usedCustomTemplate=true;
       }
     }
