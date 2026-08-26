@@ -235,6 +235,30 @@ async function openEbayPresaleReview(skuId){
     return;
   }
   var asp=preview.customAspects||{};
+  // Store request: reuse the same {token} description-template settings the
+  // regular "list on eBay" tool already has (Settings -> Vendor Info ->
+  // EBAY LISTING SETTINGS -> the "Comic" template box), instead of always
+  // publishing the hardcoded default description. The presale disclosure
+  // line is always prepended regardless -- eBay's presale policy requires
+  // it in the description (not just the title), and a store template that
+  // doesn't happen to mention presale status must never silently drop it.
+  var usedCustomTemplate=false;
+  var description=preview.description;
+  try{
+    var vp=(typeof getVendorProfile==='function')?getVendorProfile():{};
+    var templates=vp.ebayDescriptionTemplates||{};
+    var customTemplate=templates.Comic||templates.default||'';
+    if(customTemplate&&typeof renderEbayDescriptionTemplate==='function'){
+      var tokens={title:preview.title.replace(/ - PRESALE$/,''),category:'Comic',price:preview.price,upc:preview.upc,
+        publisher:asp.Publisher||'',writer:asp.Writer||'',artist:asp.Artist||'',coverArtist:asp['Cover Artist']||'',
+        condition:'New',quantity:'1'};
+      var renderedBody=renderEbayDescriptionTemplate(customTemplate,tokens);
+      if(renderedBody){
+        description='PRESALE -- This comic has not been released yet and is not currently in stock.\n\nExpected on-sale/ship date: '+preview.onSaleLabel+'. Your order ships promptly once we receive stock from the distributor on or shortly after that date.\n\n'+renderedBody;
+        usedCustomTemplate=true;
+      }
+    }
+  }catch(e){/* template rendering is best-effort -- fall back to the server default below */}
   modal.innerHTML='<div style="width:100%;max-width:560px;background:var(--surf);border:1px solid var(--border);border-radius:10px;padding:16px">'+
     '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><div style="font-family:\'Orbitron\',monospace;color:var(--gold);font-size:13px;letter-spacing:2px">REVIEW EBAY PRESALE LISTING</div><button onclick="document.getElementById(\'foc-ebay-review-modal\').remove()" style="background:none;border:none;color:var(--dim);font-size:22px;cursor:pointer">×</button></div>'+
     '<div style="font:9px var(--font-mono);color:var(--dim);margin-bottom:10px">Nothing is published to eBay until you click LIST ON EBAY below.</div>'+
@@ -253,8 +277,9 @@ async function openEbayPresaleReview(skuId){
     '<div class="foc-sku-fields" style="grid-template-columns:1fr 1fr;margin-bottom:10px">'+
     ['Publisher','Writer','Artist','Cover Artist'].map(function(k){return '<label>'+k.toUpperCase()+'<input class="tsi" data-foc-eb-aspect="'+esc(k)+'" value="'+esc(asp[k]||'')+'"></label>';}).join('')+
     '</div>'+
-    '<label style="font:9px var(--font-mono);color:var(--dim)">DESCRIPTION</label>'+
-    '<textarea id="foc-eb-desc" rows="6" style="width:100%;margin-top:4px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:9px;border-radius:6px;box-sizing:border-box;resize:vertical;font-size:11px">'+esc(preview.description)+'</textarea>'+
+    '<div style="display:flex;justify-content:space-between;align-items:baseline"><label style="font:9px var(--font-mono);color:var(--dim)">DESCRIPTION</label>'+
+    '<span style="font:8px var(--font-mono);color:var(--dim)">'+(usedCustomTemplate?'Using your saved Comic template (':'Using the built-in default (')+'<a href="#" onclick="openSettingsSection(\'profile\',\'vendor-profile-panel\');return false" style="color:var(--g)">edit in Settings → Vendor Info → EBAY LISTING SETTINGS</a>)</span></div>'+
+    '<textarea id="foc-eb-desc" rows="6" style="width:100%;margin-top:4px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:9px;border-radius:6px;box-sizing:border-box;resize:vertical;font-size:11px">'+esc(description)+'</textarea>'+
     '<div id="foc-eb-status" style="display:none;margin:10px 0;padding:10px;border-radius:6px;font-family:monospace;font-size:10px;text-align:center"></div>'+
     '<div style="display:flex;gap:8px;margin-top:12px"><button class="hbtn" style="flex:1;padding:12px;background:rgba(255,209,102,.12);border-color:rgba(255,209,102,.35);color:var(--gold)" onclick="submitEbayPresaleReview(\''+esc(skuId)+'\')">LIST ON EBAY</button>'+
     '<button class="hbtn" style="padding:12px" onclick="document.getElementById(\'foc-ebay-review-modal\').remove()">CANCEL</button></div>'+

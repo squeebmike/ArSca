@@ -2217,7 +2217,7 @@ function buildEbayAspects(b) {
     sport = '', year = '', manufacturer = '', set = '', parallel = '', cardNumber = '',
     player = '', team = '', isRookie = false, serialNumber = '', grader = '', grade = '',
     upc = '', league = '', season = '', productType = '', configuration = '', features = '',
-    customAspects = {},
+    conditionId = '', customAspects = {}, categoryId = '',
   } = b;
   const aspects = {};
   if (sport) aspects['Sport'] = [sport];
@@ -2246,7 +2246,17 @@ function buildEbayAspects(b) {
     const values = Array.isArray(v) ? v.map(x => String(x || '').trim()).filter(Boolean) : [String(v || '').trim()].filter(Boolean);
     if (values.length) aspects[k] = values;
   }
-  aspects['Sport'] = aspects['Sport'] || ['Trading Cards'];
+  // categoryId 259104 is eBay's Comics category -- "Sport" has no business
+  // being on a comic listing at all (confirmed live: a comic presale was
+  // showing "Sport: Trading Cards" as an item specific). This default only
+  // belongs on the sports/TCG card categories this app also lists to.
+  if (categoryId !== '259104') aspects['Sport'] = aspects['Sport'] || ['Trading Cards'];
+  // Some categories (Comics among them) show a blank "Condition" row among
+  // the item specifics unless it's also sent as an aspect, even though
+  // conditionId already sets the formal listing condition -- fill it in
+  // from the same conditionId so it isn't left blank on the page.
+  const CONDITION_ASPECT_LABEL = { '1000': 'New', '1500': 'New other (see details)', '2750': 'Like New', '3000': 'Used', '4000': 'Very Good', '5000': 'Good', '6000': 'Acceptable', '7000': 'For parts or not working' };
+  if (!aspects['Condition'] && CONDITION_ASPECT_LABEL[String(conditionId)]) aspects['Condition'] = [CONDITION_ASPECT_LABEL[String(conditionId)]];
   for (const [k, v] of Object.entries({ ...aspects })) {
     if (!Array.isArray(v) || !v.length || v.some(x => x == null || String(x).trim() === '')) delete aspects[k];
   }
