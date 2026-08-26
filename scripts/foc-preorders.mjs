@@ -190,6 +190,35 @@ function publicSku(row, customerQty = 0) {
   };
 }
 
+// eBay presale status per SKU for the admin FOC dashboard -- ELIGIBLE_NOW /
+// TOO_EARLY use the on-sale date vs the configurable business-day buffer
+// (same math /foc/ebay/create-presale enforces server-side, via
+// deps.addBusinessDays / the safeBusinessDays value both share); LISTED /
+// SOLD_OUT reflect an actual presale inventory_items row already existing;
+// RELEASED means the on-sale date has passed, so presale semantics no
+// longer apply (receiving/regular inventory takes over from here).
+function ebayPresaleFields(row, presale, deps, safeBusinessDays) {
+  const onSaleDate = row.on_sale_date ? new Date(String(row.on_sale_date).includes('T') ? row.on_sale_date : row.on_sale_date + 'T00:00:00Z') : null;
+  const listed = !!presale && presale.originalQty > 0;
+  const soldQty = listed ? Math.max(0, presale.originalQty - presale.remainingQty) : 0;
+  const availableQty = listed ? presale.remainingQty : 0;
+  if (!onSaleDate || !Number.isFinite(onSaleDate.getTime())) {
+    return { ebayPresaleStatus:'ACTION_REQUIRED', ebayPresaleNote:'No on-sale date on this SKU', ebayListed:listed, ebayPresold:soldQty, ebayAvailable:availableQty };
+  }
+  if (onSaleDate.getTime() <= Date.now()) {
+    return { ebayPresaleStatus:'RELEASED', ebayListed:listed, ebayPresold:soldQty, ebayAvailable:availableQty };
+  }
+  if (listed) {
+    return { ebayPresaleStatus:availableQty > 0 ? 'LISTED' : 'SOLD_OUT', ebayListed:true, ebayPresold:soldQty, ebayAvailable:availableQty };
+  }
+  const eligibleDate = deps.addBusinessDays(onSaleDate, -safeBusinessDays);
+  return {
+    ebayPresaleStatus:Date.now() >= eligibleDate.getTime() ? 'ELIGIBLE_NOW' : 'TOO_EARLY',
+    ebayEligibleDate:eligibleDate.toISOString().slice(0, 10),
+    ebayListed:false, ebayPresold:0, ebayAvailable:0,
+  };
+}
+
 async function orderedQtyBySku(db, cycleId) {
   const { data:orders } = await db(`foc_preorder_orders?cycle_id=eq.${encodeURIComponent(cycleId)}&status=${inFilter([...ORDERED_STATUSES])}&select=id`);
   const orderIds = (orders || []).map(order => order.id);
@@ -205,15 +234,31 @@ async function orderedQtyBySku(db, cycleId) {
 // can build several cycles' catalogs in parallel without duplicating this --
 // each week needs its own qualification math (incentive ratios are scoped
 // to that week's orders only, never blended across weeks).
-async function buildCycleCatalog(db, cycle, includeAdmin = false) {
-  const [{ data:families }, { data:skuRows }, qtyMap, requestRows] = await Promise.all([
+async function buildCycleCatalog(db, cycle, includeAdmin = false, env, deps, storeId) {
+  const [{ data:families }, { data:skuRows }, qtyMap, requestRows, presaleRows] = await Promise.all([
     db(`comic_title_families?cycle_id=eq.${encodeURIComponent(cycle.id)}&select=*&order=title.asc`),
     db(`comic_skus?cycle_id=eq.${encodeURIComponent(cycle.id)}&customer_enabled=eq.true&select=*&order=title.asc`),
     orderedQtyBySku(db, cycle.id),
     includeAdmin ? db(`foc_incentive_requests?cycle_id=eq.${encodeURIComponent(cycle.id)}&status=${inFilter(['waitlisted','offered'])}&select=sku_id,requested_quantity`) : Promise.resolve({ data:[] }),
+    // eBay presale status is admin-only (dashboard control center), never
+    // shown/needed on the public customer catalog -- skip this query there.
+    includeAdmin && env && deps ? db(`inventory_items?store_id=eq.${encodeURIComponent(storeId)}&status=in.(presale,sold)&select=id,status,data`) : Promise.resolve({ data:[] }),
   ]);
   const requestQty = new Map();
   for (const row of requestRows?.data || []) requestQty.set(row.sku_id, (requestQty.get(row.sku_id) || 0) + Number(row.requested_quantity || 0));
+  // Same source/focSkuId matching /foc/ebay/create-presale writes and
+  // receiveShipment reads -- aggregated per SKU (a SKU could in principle
+  // get more than one presale listing over time).
+  const presaleBySkuId = new Map();
+  for (const row of presaleRows?.data || []) {
+    const d = row.data || {};
+    if (d.source !== 'foc_presale' || !d.focSkuId) continue;
+    const originalQty = Number(d.focPresaleOriginalQty || 0);
+    const remainingQty = row.status === 'sold' ? 0 : Number(d.qty ?? d.quantity ?? 0);
+    const prior = presaleBySkuId.get(d.focSkuId) || { originalQty:0, remainingQty:0 };
+    presaleBySkuId.set(d.focSkuId, { originalQty:prior.originalQty + originalQty, remainingQty:prior.remainingQty + remainingQty });
+  }
+  const ebaySafeBusinessDays = includeAdmin && env && deps ? await deps.getEbayPresaleSafeBusinessDays(env, storeId) : 35;
   const byFamily = new Map((families || []).map(family => [family.id, {
     id:family.id,
     distributorFamilyId:family.distributor_family_id,
@@ -243,6 +288,7 @@ async function buildCycleCatalog(db, cycle, includeAdmin = false) {
       customerEnabled:row.customer_enabled !== false,
       waitlistRequests:requestQty.get(row.id) || 0,
       rawDistributorData:row.raw_distributor_data || {},
+      ...ebayPresaleFields(row, presaleBySkuId.get(row.id), deps, ebaySafeBusinessDays),
     });
     family.variants.push(sku);
   }
@@ -262,7 +308,7 @@ async function buildCycleCatalog(db, cycle, includeAdmin = false) {
   return { cycle:{ ...cycle, isOpen:cycleOpen(cycle), serverNow:new Date().toISOString() }, families:[...byFamily.values()] };
 }
 
-async function loadCatalog(db, storeId, requestedCycle, includeAdmin = false) {
+async function loadCatalog(db, storeId, requestedCycle, includeAdmin = false, env, deps) {
   let cycleQuery = `foc_cycles?store_id=eq.${encodeURIComponent(storeId)}&select=${catalogCycleSelect()}`;
   if (!includeAdmin) cycleQuery += '&status=neq.archived';
   if (requestedCycle) {
@@ -276,7 +322,7 @@ async function loadCatalog(db, storeId, requestedCycle, includeAdmin = false) {
   }
   const cycle = cycles?.[0];
   if (!cycle) return null;
-  return buildCycleCatalog(db, cycle, includeAdmin);
+  return buildCycleCatalog(db, cycle, includeAdmin, env, deps, storeId);
 }
 
 // Every open (or recently-closed) week at once, newest first -- this is
@@ -742,7 +788,7 @@ async function adminCycle(request,env,deps,url){
   const db=(path,options)=>deps.supabaseAdminFetch(env,path,options);
   if(request.method==='GET'){
     const cycleId=text(url.searchParams.get('cycle_id'),80);
-    if(cycleId){const catalog=await loadCatalog(db,storeId,cycleId,true);return catalog?deps.json({ok:true,...catalog}):deps.json({ok:false,error:'FOC cycle not found'},404);}
+    if(cycleId){const catalog=await loadCatalog(db,storeId,cycleId,true,env,deps);return catalog?deps.json({ok:true,...catalog}):deps.json({ok:false,error:'FOC cycle not found'},404);}
     const {data:cycles}=await db(`foc_cycles?store_id=eq.${encodeURIComponent(storeId)}&select=${catalogCycleSelect()}&order=foc_date.desc&limit=100`);return deps.json({ok:true,cycles:(cycles||[]).map(cycle=>({...cycle,isOpen:cycleOpen(cycle)}))});
   }
   const limited=await deps.readJsonWithLimit(request,32*1024);if(limited.error)return limited.error;const body=limited.data||{};
@@ -782,6 +828,25 @@ async function receiveShipment(request,env,deps){
   const { data:skuRows }=await db(`comic_skus?id=${inFilter(ids)}&cycle_id=eq.${encodeURIComponent(cycleId)}&store_id=eq.${encodeURIComponent(storeId)}&select=*`);
   const skuById=new Map((skuRows||[]).map(row=>[row.id,row]));
   const { data:paidItems }=await db(`foc_preorder_items?cycle_id=eq.${encodeURIComponent(cycleId)}&sku_id=${inFilter(ids)}&status=eq.committed&select=id,sku_id,order_id,quantity,created_at,order:foc_preorder_orders(id,status,fulfillment_method)`);
+  // eBay presale placeholder rows (created by /foc/ebay/create-presale)
+  // that have already sold are a fulfillment obligation too, exactly like a
+  // paid website preorder -- just tracked as a count on the placeholder row
+  // (focPresaleOriginalQty - qty sold so far) rather than a status flip,
+  // since a single presale listing can partially sell. Matched in JS after
+  // a broad status-scoped fetch, same pattern /ebay/orders/sync already
+  // uses for inventory_items -- no jsonb-path filtering precedent exists
+  // elsewhere in this codebase to build on.
+  const { data:presaleRows }=await db(`inventory_items?store_id=eq.${encodeURIComponent(storeId)}&status=in.(presale,sold)&select=id,status,data`);
+  const presaleByskuId=new Map();
+  for(const row of presaleRows||[]){
+    const d=row.data||{};
+    if(d.source!=='foc_presale'||!d.focSkuId)continue;
+    const originalQty=Number(d.focPresaleOriginalQty||0);
+    const remainingQty=Number(d.qty??d.quantity??0);
+    const soldSoFar=row.status==='sold'?originalQty:Math.max(0,originalQty-remainingQty);
+    if(soldSoFar<=0)continue;
+    presaleByskuId.set(d.focSkuId,(presaleByskuId.get(d.focSkuId)||0)+soldSoFar);
+  }
   const created=[];const receivedSummary=[];
   for(const line of lines){
     const sku=skuById.get(text(line.skuId,80));if(!sku)continue;
@@ -790,7 +855,12 @@ async function receiveShipment(request,env,deps){
       store_id:storeId,status:'in_stock',
       data:{
         name:[sku.title,sku.variant_label&&sku.variant_label!=='Cover A'?sku.variant_label:''].filter(Boolean).join(' -- '),
-        category:'Comics',publisher:sku.publisher||'',upc:sku.upc||'',cost:0,
+        // 'Comic' (singular) -- the eBay listing modal's category auto-select
+        // checks item.category==='Comic', and 'Comics' (plural) here meant a
+        // freshly-received FOC comic never auto-picked the Comics category.
+        category:'Comic',publisher:sku.publisher||'',upc:sku.upc||'',
+        // PRH cost is 50% of cover price -- our real wholesale rate, not an estimate.
+        cost:Math.round(Number(sku.msrp_cents||0)*0.5)/100,
         market:Number(sku.customer_price_cents||0)/100,salePrice:Number(sku.customer_price_cents||0)/100,
         qty:1,quantity:1,image:sku.cover_image_url||'',
         source:'foc_receive',focSkuId:sku.id,focCycleId:cycleId,focReceivedAt:new Date().toISOString(),
@@ -813,7 +883,14 @@ async function receiveShipment(request,env,deps){
       reserveRemaining-=need;
       await db(`foc_preorder_items?id=eq.${item.id}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({status:'received'})});
     }
-    receivedSummary.push({skuId:sku.id,title:sku.title,variantLabel:sku.variant_label,receivedQty,reservedForCustomers:receivedQty-reserveRemaining});
+    // eBay presale sales are a fulfillment obligation too -- reserved next,
+    // after website customers, before anything becomes free store stock.
+    // No specific inventory_items row is bound to a specific eBay order (the
+    // presale placeholder tracks only a count), so this reduces the same
+    // running count rather than flipping individual rows.
+    const reservedForEbay=Math.min(reserveRemaining,presaleByskuId.get(sku.id)||0);
+    reserveRemaining-=reservedForEbay;
+    receivedSummary.push({skuId:sku.id,title:sku.title,variantLabel:sku.variant_label,receivedQty,reservedForCustomers:receivedQty-reserveRemaining-reservedForEbay,reservedForEbayPresale:reservedForEbay,availableAsNewStock:reserveRemaining});
   }
   // An order is ready to hand over once every item on it has arrived and
   // been reserved -- flips paid orders to ready_for_pickup (nothing further

@@ -35,6 +35,7 @@ function renderCycles(){
   var host=panel();if(!host)return;
   host.innerHTML='<section class="foc-hero"><div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap"><div><div style="font:900 22px/1.1 \'Orbitron\',monospace;color:var(--text)">THE FOC WALL</div><div style="font:10px/1.65 var(--font-mono);color:var(--dim);max-width:720px;margin-top:6px">Upload Monday\'s PRH metadata file, review exact covers, set shelf quantities, secure incentives, and export the clean UPC order.</div></div><div class="foc-toolbar"><input type="file" id="foc-import-file" accept=".csv,.xlsx,.xls" hidden onchange="handleFocImportFile(event)"><button class="hbtn" onclick="document.getElementById(\'foc-import-file\').click()">IMPORT PRH FOC</button><button class="hbtn" onclick="loadFocCycles(true)">REFRESH</button></div></div><div id="foc-import-status" class="foc-import-report" style="display:none"></div></section>'+
     '<details class="panel" style="margin-bottom:14px"><summary style="cursor:pointer;font-family:\'Orbitron\',monospace;color:var(--purple);font-size:11px">REAL SHIPPING SETUP</summary><div id="foc-shipping-settings" style="padding-top:12px"><button class="hbtn" onclick="loadFocShippingSettings()">LOAD SHIPPING SETTINGS</button></div></details>'+
+    '<details class="panel" style="margin-bottom:14px" ontoggle="if(this.open)loadEbaySafeDays()"><summary style="cursor:pointer;font-family:\'Orbitron\',monospace;color:var(--purple);font-size:11px">EBAY PRESALE SETTINGS</summary><div style="padding-top:12px;font:10px/1.6 var(--font-mono);color:var(--dim)">Our internal safety buffer before FOC comics are eligible for eBay presale. eBay\'s own current policy limit is 40 business days from listing to ship -- keep this below that.<div style="display:flex;gap:8px;align-items:end;flex-wrap:wrap;margin-top:8px"><label style="font:8px var(--font-mono);color:var(--dim)">SAFE BUSINESS-DAY BUFFER<input id="foc-ebay-safe-days" class="tsi" type="number" min="1" max="60" value="35" style="width:80px"></label><button class="hbtn" onclick="saveFocEbaySafeDays()">SAVE</button></div></div></details>'+
     '<div class="ph">FOC CYCLES</div>'+(state.cycles.length?state.cycles.map(cycleCard).join(''):'<div class="panel" style="padding:30px;text-align:center;color:var(--dim)">No PRH FOC file has been imported yet.</div>');
 }
 
@@ -80,6 +81,21 @@ function visibleFamilies(){
   });
 }
 
+var EBAY_PRESALE_LABEL={TOO_EARLY:'EBAY · TOO EARLY',ELIGIBLE_NOW:'EBAY · ELIGIBLE',LISTED:'EBAY · LISTED',SOLD_OUT:'EBAY · SOLD OUT',RELEASED:'EBAY · RELEASED',ACTION_REQUIRED:'EBAY · ACTION REQUIRED'};
+function ebaySection(v){
+  var status=v.ebayPresaleStatus;if(!status)return'';
+  var cls=status==='LISTED'?'open':(status==='ELIGIBLE_NOW'?'incentive':'');
+  var color=status==='SOLD_OUT'||status==='ACTION_REQUIRED'?'color:var(--red);border-color:color-mix(in srgb,var(--red) 40%,transparent)':'';
+  var badge='<span class="foc-badge '+cls+'" style="'+color+'">'+esc(EBAY_PRESALE_LABEL[status]||status)+'</span>';
+  var detail='';
+  if(status==='TOO_EARLY')detail='Eligible '+displayDate(v.ebayEligibleDate);
+  else if(status==='LISTED'||status==='SOLD_OUT')detail=Number(v.ebayPresold||0)+' presold · '+Number(v.ebayAvailable||0)+' available';
+  else if(status==='ACTION_REQUIRED')detail=v.ebayPresaleNote||'';
+  var action='';
+  if(status==='ELIGIBLE_NOW')action='<button class="hbtn" style="margin-top:6px;width:100%;min-height:30px;font-size:9px" onclick="createFocEbayPresale(\''+esc(v.id)+'\')">CREATE EBAY PRESALE</button>';
+  else if(status==='LISTED')action='<button class="hbtn" style="margin-top:6px;width:100%;min-height:30px;font-size:9px" onclick="createFocEbayPresale(\''+esc(v.id)+'\')">LIST MORE ON EBAY</button>';
+  return '<div style="margin-top:8px;padding-top:7px;border-top:1px solid var(--border)">'+badge+(detail?'<div style="font:8px/1.5 var(--font-mono);color:var(--dim);margin-top:4px">'+esc(detail)+'</div>':'')+action+'</div>';
+}
 function skuCard(v){
   var total=Number(v.customerQty||0)+Number(v.storeQuantity||0);var qual=v.qualification||{};var save="saveFocSku('"+esc(v.id)+"')";
   return '<article class="foc-sku '+(v.isIncentive?'incentive':'')+'" data-foc-sku="'+esc(v.id)+'">'+
@@ -89,7 +105,8 @@ function skuCard(v){
     (v.isIncentive?'<div class="foc-progress"><i style="width:'+pct(qual.total,qual.threshold)+'%"></i></div><div style="font:8px/1.4 var(--font-mono);color:'+(qual.qualified?'var(--g)':'var(--gold)')+'">'+Number(qual.total||0)+' / '+Number(qual.threshold||0)+(qual.qualified?' · QUALIFIED':' · '+Number(qual.needed||0)+' MORE TO UNLOCK')+' · '+Number(v.waitlistRequests||0)+' WAITLISTED</div>':'')+
     '<div class="foc-sku-fields"><label>CUSTOMERS<input class="tsi" value="'+Number(v.customerQty||0)+'" disabled></label><label>STORE QTY<input class="tsi" data-field="storeQuantity" type="number" min="0" value="'+Number(v.storeQuantity||0)+'" onchange="'+save+'"></label><label>'+(v.isIncentive?'SELL PRICE · REQUIRED':(v.isFoil?'FOIL SELL PRICE':'CUSTOMER PRICE'))+'<input class="tsi" data-field="customerPrice" type="number" min="0" step=".01" value="'+(Number(v.priceCents||0)/100).toFixed(2)+'" onchange="'+save+'"></label><label>'+(v.isIncentive?'SECURED QTY':'TOTAL ORDER')+'<input class="tsi" '+(v.isIncentive?'data-field="securedQuantity" type="number" min="0" onchange="'+save+'" value="'+Number(v.securedQuantity||0)+'"':'disabled value="'+total+'"')+'></label></div>'+
     (v.isIncentive&&!Number(v.priceCents||0)?'<div style="font:8px/1.45 var(--font-mono);color:var(--gold);margin-top:6px">REQUEST-ONLY UNTIL BOTH SECURED QTY AND SELL PRICE ARE SET</div>':'')+
-    '<label style="display:flex;gap:6px;align-items:center;margin-top:7px;font:8px var(--font-mono);color:var(--dim)"><input data-field="customerEnabled" type="checkbox" '+(v.customerEnabled!==false?'checked':'')+' onchange="'+save+'"> SHOW TO CUSTOMERS</label></article>';
+    '<label style="display:flex;gap:6px;align-items:center;margin-top:7px;font:8px var(--font-mono);color:var(--dim)"><input data-field="customerEnabled" type="checkbox" '+(v.customerEnabled!==false?'checked':'')+' onchange="'+save+'"> SHOW TO CUSTOMERS</label>'+
+    ebaySection(v)+'</article>';
 }
 
 function familyCard(f){
@@ -173,9 +190,37 @@ async function confirmReceiveShipment(){
   }catch(e){if(status)status.textContent='';toast_dash('Could not receive shipment: '+e.message);}
 }
 
+async function createEbayPresale(skuId){
+  var qty=parseInt(prompt('How many copies to list on eBay as a presale?','1'),10);
+  if(!qty||qty<1)return;
+  try{
+    await api('/foc/ebay/create-presale',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({storeId:getActiveStoreId(),skuId:skuId,quantity:qty})});
+    toast_dash('eBay presale listed: '+qty+' cop'+(qty===1?'y':'ies'));
+    await openCycle(state.cycle.id);
+  }catch(e){toast_dash('Could not create eBay presale: '+e.message);}
+}
+
+async function loadEbaySafeDays(){
+  try{
+    var res=await storeWorkerFetch('/kv/comic_ebay_presale_safe_business_days');
+    var data=await res.json().catch(function(){return{};});
+    var input=document.getElementById('foc-ebay-safe-days');
+    if(input&&data.value)input.value=data.value;
+  }catch(e){}
+}
+async function saveEbaySafeDays(){
+  var input=document.getElementById('foc-ebay-safe-days');
+  var val=parseInt(input&&input.value,10);
+  if(!val||val<1){toast_dash('Enter a positive number of business days');return;}
+  try{
+    await storeWorkerFetch('/kv/comic_ebay_presale_safe_business_days',{method:'POST',body:String(val)});
+    toast_dash('eBay presale safety buffer saved: '+val+' business days');
+  }catch(e){toast_dash('Could not save: '+e.message);}
+}
+
 async function loadShipping(){var host=document.getElementById('foc-shipping-settings');if(!host)return;host.textContent='Loading…';try{var d=await api('/foc/admin/shipping-settings?store_id='+encodeURIComponent(getActiveStoreId()));state.shipping=d.shipping||{};renderShipping();}catch(e){host.innerHTML='<span style="color:var(--red)">'+esc(e.message)+'</span>';}}
 function renderShipping(){var s=state.shipping||{},f=s.from||{},p=s.parcel||{};document.getElementById('foc-shipping-settings').innerHTML='<div class="foc-import-report"><b style="color:'+(s.tokenConfigured?'var(--g)':'var(--gold)')+'">SHIPPO TOKEN '+(s.tokenConfigured?'CONNECTED':'NEEDS SETUP')+'</b><br>The API token stays in the Worker secret. This form stores only your ship-from address and package preset.</div><div class="foc-sku-fields" style="grid-template-columns:repeat(auto-fit,minmax(180px,1fr));margin-top:10px">'+[['name','Store / sender',f.name],['line1','Street',f.street1],['line2','Suite / unit',f.street2],['city','City',f.city],['state','State',f.state],['zip','ZIP',f.zip],['phone','Phone',f.phone],['email','Email',f.email]].map(function(x){return'<label>'+x[1]+'<input class="tsi" data-ship-from="'+x[0]+'" value="'+esc(x[2]||'')+'"></label>';}).join('')+'</div><div class="foc-sku-fields" style="grid-template-columns:repeat(4,minmax(0,1fr));margin-top:10px">'+[['length','Length',p.length||12],['width','Width',p.width||9],['height','Height',p.height||1],['weight','Weight lb',p.weight||1]].map(function(x){return'<label>'+x[1]+'<input class="tsi" type="number" min=".1" step=".1" data-ship-parcel="'+x[0]+'" value="'+esc(x[2])+'"></label>';}).join('')+'</div><button class="hbtn" style="margin-top:10px" onclick="saveFocShippingSettings()">SAVE LIVE SHIPPING SETUP</button>';}
 async function saveShipping(){var shipFrom={},parcel={};document.querySelectorAll('[data-ship-from]').forEach(function(el){shipFrom[el.dataset.shipFrom]=el.value;});document.querySelectorAll('[data-ship-parcel]').forEach(function(el){parcel[el.dataset.shipParcel]=el.value;});try{var d=await api('/foc/admin/shipping-settings',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({storeId:getActiveStoreId(),enabled:true,shipFrom:shipFrom,defaultParcel:parcel})});state.shipping=d.shipping;toast_dash(d.shipping.tokenConfigured?'Live carrier settings saved':'Address saved — add the Shippo token to enable rates');renderShipping();}catch(e){toast_dash(e.message);}}
 
-window.ensureFocPanel=function(){loadCycles(false);};window.loadFocCycles=loadCycles;window.openFocCycle=openCycle;window.handleFocImportFile=handleImport;window.filterFocAdmin=function(v){state.query=v;renderFamilies();};window.filterFocPublisher=function(v){state.publisher=v;renderFamilies();};window.filterFocFlag=function(v){state.flag=v;renderFamilies();};window.saveFocSku=saveSku;window.saveFocFamily=saveFamily;window.toggleFocCycle=toggleCycle;window.archiveFocCycle=archiveCycle;window.unarchiveFocCycle=unarchiveCycle;window.saveFocCycleCutoff=saveCutoff;window.exportFocPrh=exportPrh;window.loadFocShippingSettings=loadShipping;window.saveFocShippingSettings=saveShipping;window.openReceiveShipment=openReceiveShipment;window.confirmReceiveShipment=confirmReceiveShipment;
+window.ensureFocPanel=function(){loadCycles(false);};window.loadFocCycles=loadCycles;window.openFocCycle=openCycle;window.handleFocImportFile=handleImport;window.filterFocAdmin=function(v){state.query=v;renderFamilies();};window.filterFocPublisher=function(v){state.publisher=v;renderFamilies();};window.filterFocFlag=function(v){state.flag=v;renderFamilies();};window.saveFocSku=saveSku;window.saveFocFamily=saveFamily;window.toggleFocCycle=toggleCycle;window.archiveFocCycle=archiveCycle;window.unarchiveFocCycle=unarchiveCycle;window.saveFocCycleCutoff=saveCutoff;window.exportFocPrh=exportPrh;window.loadFocShippingSettings=loadShipping;window.saveFocShippingSettings=saveShipping;window.openReceiveShipment=openReceiveShipment;window.confirmReceiveShipment=confirmReceiveShipment;window.createFocEbayPresale=createEbayPresale;window.loadEbaySafeDays=loadEbaySafeDays;window.saveFocEbaySafeDays=saveEbaySafeDays;
 })();
