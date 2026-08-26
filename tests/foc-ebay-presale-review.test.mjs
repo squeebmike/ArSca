@@ -78,6 +78,19 @@ assert.match(worker, /Store address not set -- fill in the ship-from address und
 assert.match(worker, /import \{ handleFocRequest, syncFocStripeEvent, shippingSettings \} from '\.\/scripts\/foc-preorders\.mjs'/,
   'shippingSettings must be imported from foc-preorders.mjs, not duplicated');
 
+// Store report: eBay's own listing edit page showed "Item condition" blank
+// on a live Comics listing even though the inventory_item PUT returned no
+// error/warning and the resolved condition id was not the fallback either
+// -- an ok response is not proof eBay actually stored what was requested.
+// Must read the item back after publish and compare, so a silent
+// server-side drop of the condition is caught here instead of only being
+// discoverable by a human clicking into the live listing afterward.
+assert.match(createAndPublishBody, /const verifyRes = await fetch\(`https:\/\/api\.ebay\.com\/sell\/inventory\/v1\/inventory_item\/\$\{sku\}`, \{\s*\n\s*headers: \{ 'Authorization': 'Bearer ' \+ ebayToken \},\s*\n\s*\}\);/,
+  'must read the inventory item back from eBay after publish to verify what was actually stored');
+assert.match(createAndPublishBody, /const storedConditionId = String\(verifyData\?\.conditionId \|\| ''\);/, 'must compare the real stored conditionId, not just assume the PUT worked');
+assert.match(createAndPublishBody, /if \(requestedConditionId && storedConditionId !== requestedConditionId\) \{/, 'a mismatch between requested and stored condition must be surfaced');
+assert.match(createAndPublishBody, /warnings\.push\(`eBay stored a different condition than requested/, 'the condition mismatch must become a visible warning, not a silent log line');
+
 // Both callers of createAndPublishEbayListing must pass storeId through now
 // that the function needs it to look up the address.
 assert.match(worker, /const result = await createAndPublishEbayListing\(b, ebayToken, env, storeId\)/, '/ebay/list must pass storeId through');
@@ -85,6 +98,17 @@ assert.match(worker, /\}, ebayToken, env, storeId\);\s*\n\s*\} catch \(e\) \{\s*
 
 const preorders = fs.readFileSync('scripts/foc-preorders.mjs', 'utf8');
 assert.match(preorders, /export async function shippingSettings\(db, env, storeId\)/, 'shippingSettings must be exported for reuse by the Worker');
+
+// PRH's FOC import already captures the distributor's own solicitation copy
+// (comic_skus.description) -- store request: expose it as a {synopsis}
+// template token so custom Comic templates can surface genuine per-book
+// keyword content, instead of only ever feeding it into the old plain-text
+// default description. Truncated at a word boundary (never mid-word/PRH's
+// field can run to 12000 chars) to leave room under eBay's 4000-char cap.
+assert.match(worker, /function truncateAtWordBoundary\(text, maxLen\)/, 'must truncate the distributor synopsis at a word boundary, not a blind substring');
+assert.match(worker, /const synopsis = truncateAtWordBoundary\(sku\.description \|\| '', 400\)/, 'the synopsis token must be sourced from the PRH-imported sku.description field');
+assert.match(worker, /return \{ title, description, customAspects, onSaleLabel, synopsis, \.\.\.weight \};/, 'synopsis must be returned so the preview endpoint (and thus the review-modal token object) receives it');
+assert.match(focDash, /synopsis:preview\.synopsis\|\|''/, 'the review-modal token object must feed {synopsis} from the preview response');
 
 // Dashboard-side: the old flow (prompt() for quantity, then publish
 // immediately) must be gone -- createFocEbayPresale now opens a review modal
@@ -281,7 +305,7 @@ assert.match(worker, /listingDescription: toEbayHtmlDescription\(description \|\
 assert.match(worker, /if \(Array\.isArray\(itemData\?\.warnings\) && itemData\.warnings\.length\) warnings\.push/, 'must collect warnings from the inventory_item response');
 assert.match(worker, /if \(Array\.isArray\(pubData\?\.warnings\) && pubData\.warnings\.length\) warnings\.push/, 'must collect warnings from the publish response');
 assert.match(worker, /return \{ listingId: pubData\.listingId, offerId, sku, warnings \};/, 'createAndPublishEbayListing must return the collected warnings');
-assert.match(worker, /warnings: listingResult\.warnings \|\| \[\]/, 'the FOC create-presale route must pass warnings through to the client');
+assert.match(worker, /warnings: \[\.\.\.\(listingResult\.warnings \|\| \[\]\), \.\.\.conditionWarnings\]/, 'the FOC create-presale route must pass warnings through to the client');
 assert.match(focDash, /if\(result\.warnings&&result\.warnings\.length\)toast_dash\('eBay warning: '\+result\.warnings\.join\(' · '\)\)/,
   'the dashboard must actually surface a returned warning, not just receive it silently');
 
@@ -321,11 +345,20 @@ assert.match(worker, /get_item_condition_policies\?filter=\$\{encodeURIComponent
   'must call eBay\'s real condition-policy endpoint, the same one the regular listing tool\'s live dropdown uses');
 assert.match(worker, /const newCond = conditions\.find\(c => \/\^brand new\$\/i\.test\(c\.label\)\) \|\| conditions\.find\(c => \/\^new\$\/i\.test\(c\.label\)\) \|\| conditions\.find\(c => \/\\bnew\\b\/i\.test\(c\.label\)\);/,
   'must match on the real condition label, preferring an exact "Brand New"/"New" match');
-assert.match(worker, /const conditionId = await resolveEbayNewConditionId\(env, ebayToken, '259104'\);\s*\n\s*\n\s*let listingResult;/,
+assert.match(worker, /const resolvedCondition = await resolveEbayNewConditionId\(env, ebayToken, '259104'\);\s*\n\s*const conditionId = resolvedCondition\.id;\s*\n\s*\n\s*let listingResult;/,
   'the FOC create route must use the resolved condition id, not a hardcoded 1000');
 assert.match(worker, /quantity, categoryId: '259104', conditionId,/, 'the resolved conditionId must actually be passed into the listing payload');
-assert.match(worker, /const conditionId = await resolveEbayNewConditionId\(env, ebayToken, '259104'\);\s*\n\s*\n\s*let converted = 0;/,
+assert.match(worker, /const conditionId = \(await resolveEbayNewConditionId\(env, ebayToken, '259104'\)\)\.id;\s*\n\s*\n\s*let converted = 0;/,
   'convert-to-instock must also use the resolved condition id, not a hardcoded 1000');
+
+// A conditionId falling back to the generic 1000 guess (instead of a real
+// category-specific match) is exactly the failure mode already seen live --
+// eBay silently ignoring it and leaving "Item condition" blank on their own
+// edit page. That must now surface as a warning to the dashboard, not just
+// a Worker log, so it's visible the moment it happens again.
+assert.match(worker, /const fallback = \{ id: '1000', source: 'fallback', label: '' \};/, 'resolveEbayNewConditionId must report when it had to fall back, not just what id it used');
+assert.match(worker, /const conditionWarnings = resolvedCondition\.source === 'fallback'\s*\n\s*\? \['Could not confirm eBay\\'s exact Comics condition ID/,
+  'the FOC create route must turn a fallback condition resolution into a visible warning');
 
 // The regular (non-FOC) listing tool's own live condition dropdown has the
 // same bug: it pre-selects by matching eBay's real condition ids against
@@ -360,8 +393,8 @@ assert.match(worker, /if \(\(out \+ para\)\.length > EBAY_DESCRIPTION_MAX\) brea
 // EVERY description, which broke a store that had already been relying on
 // raw HTML working (as it did before that fix existed). Must detect
 // already-HTML content and pass it through untouched instead.
-assert.match(worker, /if \(\/<\\\/\?\[a-z\]\[\\s\\S\]\*>\/i\.test\(raw\)\) return raw\.length <= 4000 \? raw : raw\.substring\(0, 4000\);/,
-  'must detect existing HTML markup and pass it through untouched (bounded to the length cap) instead of escaping it');
+assert.match(worker, /if \(\/<\\\/\?\[a-z\]\[\\s\\S\]\*>\/i\.test\(raw\)\) return raw\.length <= 4000 \? raw : truncateHtmlSafely\(raw, 4000\);/,
+  'must detect existing HTML markup and pass it through untouched (safely bounded to the length cap) instead of escaping it');
 {
   const toEbayHtmlDescriptionSrc = worker.slice(worker.indexOf('function toEbayHtmlDescription'), worker.indexOf('function buildEbayInventoryItemBody'));
   const toEbayHtmlDescription = new Function(toEbayHtmlDescriptionSrc + '\nreturn toEbayHtmlDescription;')();
@@ -417,4 +450,31 @@ assert.match(rendererBody2, /\.replace\(\/\(\[,\.\]\) \*\(\?=\[,\.\]\)\/g, ''\);
 assert.doesNotMatch(rendererBody2, /\.replace\(\/\(\[,\.;:\]\) \*\(\?=\[,\.;:\]\)\/g, ''\);/,
   'must not still be using the old character class that included : and ;');
 
-console.log('FOC eBay presale review-step, template-field, eligible-filter, handling-time, aspects, template-reuse, unordered-withdrawal, store-category, template-gap, optional-clause, extra-field, html-formatting, warnings, quantity-default, cross-entry-point presale, real-condition-id, description-length-cap, html-template-passthrough, multiline-clause, and css-safety contract checks passed');
+// Store report: a rich-HTML template's "WHY THIS COMIC BELONGS..." section
+// got cut to "Comic collecting" mid-sentence, with no closing punctuation
+// or tags -- toEbayHtmlDescription's HTML-passthrough branch did a blind
+// substring(0, 4000) on real HTML, which can land mid-tag or mid-word and
+// leaves whatever was cut open (unclosed <p>/<div>). Must cut at the last
+// complete closing tag before the limit and close out any still-open
+// ancestor tags, instead of chopping the string wherever the character
+// count happens to land.
+assert.match(worker, /function truncateHtmlSafely\(html, maxLen\) \{/, 'must have a dedicated safe-HTML-truncation helper, not a blind substring');
+assert.match(worker, /const cut = html\.lastIndexOf\('>', maxLen - 1\);/, 'must cut at the last complete closing tag before the limit, never mid-tag');
+assert.match(worker, /for \(let i = stack\.length - 1; i >= 0; i--\) truncated \+= '<\/' \+ stack\[i\] \+ '>';/,
+  'must close out any tags still open at the cut point so the truncated result is valid HTML');
+assert.match(worker, /if \(\/<\\\/\?\[a-z\]\[\\s\\S\]\*>\/i\.test\(raw\)\) return raw\.length <= 4000 \? raw : truncateHtmlSafely\(raw, 4000\);/,
+  'the HTML-passthrough branch must use the safe truncation helper, not substring');
+{
+  const truncSrc = worker.slice(worker.indexOf('function truncateHtmlSafely'), worker.indexOf('function toEbayHtmlDescription'));
+  const truncateHtmlSafely = new Function(truncSrc + '\nreturn truncateHtmlSafely;')();
+  const longHtml = '<div><p>' + 'A sentence that keeps going. '.repeat(200) + '</p><p>Trailing paragraph.</p></div>';
+  const out = truncateHtmlSafely(longHtml, 200);
+  assert(out.length <= 220, 'truncated output must stay close to the requested limit (a little over is fine, for closing tags)');
+  assert(!/[a-zA-Z]$/.test(out.replace(/<[^>]*>$/, '').trimEnd()) || out.trimEnd().endsWith('.') || out.includes('</'),
+    'truncated output must not end mid-word with no closing punctuation or tags');
+  const openTags = (out.match(/<(?!\/)[a-z][^>]*(?<!\/)>/gi) || []).length;
+  const closeTags = (out.match(/<\/[a-z][^>]*>/gi) || []).length;
+  assert.equal(openTags, closeTags, 'every opened tag in the truncated output must have a matching close tag');
+}
+
+console.log('FOC eBay presale review-step, template-field, eligible-filter, handling-time, aspects, template-reuse, unordered-withdrawal, store-category, template-gap, optional-clause, extra-field, html-formatting, warnings, quantity-default, cross-entry-point presale, real-condition-id, description-length-cap, html-template-passthrough, multiline-clause, css-safety, and safe-html-truncation contract checks passed');

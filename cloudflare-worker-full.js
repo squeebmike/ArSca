@@ -2275,9 +2275,36 @@ function buildEbayAspects(b) {
 // untouched -- exactly how descriptions worked before this function
 // existed, which is why that case worked until this "fix" broke it. Only
 // genuine plain text (no HTML tags at all) gets escaped and converted.
+// A blind substring() on real HTML can land mid-tag or mid-word (confirmed
+// live: a rich-HTML template's "WHY THIS COMIC BELONGS..." section got cut
+// to "Comic collecting" with no closing punctuation, mid-sentence) and can
+// leave tags unclosed for whatever got cut off. Cuts at the last complete
+// closing tag before the limit instead, then closes out any ancestor tags
+// still open at that point so the result stays valid HTML -- content past
+// the cut is genuinely gone (eBay's 4000-char cap is real and hard), but
+// what remains renders as intended rather than visibly breaking.
+function truncateHtmlSafely(html, maxLen) {
+  if (html.length <= maxLen) return html;
+  const cut = html.lastIndexOf('>', maxLen - 1);
+  if (cut < 0) return html.substring(0, maxLen);
+  let truncated = html.substring(0, cut + 1);
+  const stack = [];
+  const selfClosing = new Set(['br', 'img', 'hr', 'input', 'meta', 'link']);
+  const tagRe = /<\/?([a-z][a-z0-9]*)\b[^>]*>/gi;
+  let m;
+  while ((m = tagRe.exec(truncated))) {
+    const tag = m[1].toLowerCase();
+    if (selfClosing.has(tag) || m[0].endsWith('/>')) continue;
+    if (m[0][1] === '/') { const idx = stack.lastIndexOf(tag); if (idx >= 0) stack.splice(idx, 1); }
+    else stack.push(tag);
+  }
+  for (let i = stack.length - 1; i >= 0; i--) truncated += '</' + stack[i] + '>';
+  return truncated;
+}
+
 function toEbayHtmlDescription(text) {
   const raw = String(text || '');
-  if (/<\/?[a-z][\s\S]*>/i.test(raw)) return raw.length <= 4000 ? raw : raw.substring(0, 4000);
+  if (/<\/?[a-z][\s\S]*>/i.test(raw)) return raw.length <= 4000 ? raw : truncateHtmlSafely(raw, 4000);
   const escaped = raw.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   const paragraphs = escaped.split(/\n{2,}/).map(para => '<p>' + para.replace(/\n/g, '<br>') + '</p>');
   // eBay's 4000-char description cap applies to the FINAL HTML, not the
@@ -2429,18 +2456,36 @@ async function resolveFocPresaleBasePolicyId(env, ebayToken) {
 // New, instead of assuming 1000 is always correct. Cached per category
 // since this rarely changes; falls back to 1000 on any failure (previous
 // behavior) rather than blocking the listing.
+//
+// Store report (after this fallback shipped): a live Comics listing STILL
+// showed "Item condition" blank on eBay's own edit page. Whether that's
+// because the metadata lookup itself is failing/not matching (silently
+// landing on the 1000 fallback, which the earlier live test showed eBay
+// rejects for this category) or something else can't be told from outside
+// without seeing which path this actually took -- so this now logs its
+// outcome (console.error, visible in Cloudflare Worker logs) and returns
+// {id, source, label} instead of a bare string, so the caller/dashboard
+// can surface "used a real category-specific match" vs "had to fall back
+// to the generic guess" instead of that being invisible either way.
 async function resolveEbayNewConditionId(env, ebayToken, categoryId) {
-  const fallback = '1000';
+  const fallback = { id: '1000', source: 'fallback', label: '' };
   const kvKey = `ebay_condition_new:${categoryId}`;
   try {
     if (env.LBA_KV) {
       const cached = await env.LBA_KV.get(kvKey);
-      if (cached) return cached;
+      if (cached) {
+        let parsed = null;
+        try { parsed = JSON.parse(cached); } catch (_) {}
+        return parsed?.id ? { ...parsed, source: 'cache' } : { id: cached, source: 'cache', label: '' };
+      }
     }
     const res = await fetch(`https://api.ebay.com/sell/metadata/v1/marketplace/EBAY_US/get_item_condition_policies?filter=${encodeURIComponent('categoryIds:{' + categoryId + '}')}`, {
       headers: { 'Authorization': 'Bearer ' + ebayToken },
     });
-    if (!res.ok) return fallback;
+    if (!res.ok) {
+      console.error('resolveEbayNewConditionId: metadata lookup failed', categoryId, res.status, (await res.text().catch(() => '')).substring(0, 300));
+      return fallback;
+    }
     const data = await res.json();
     const policy = (data.itemConditionPolicies || [])[0] || {};
     const conditions = (policy.itemConditions || [])
@@ -2448,10 +2493,14 @@ async function resolveEbayNewConditionId(env, ebayToken, categoryId) {
       .filter(c => c.id);
     const newCond = conditions.find(c => /^brand new$/i.test(c.label)) || conditions.find(c => /^new$/i.test(c.label)) || conditions.find(c => /\bnew\b/i.test(c.label));
     if (newCond?.id) {
-      if (env.LBA_KV) await env.LBA_KV.put(kvKey, newCond.id, { expirationTtl: 60 * 60 * 24 * 30 }).catch(() => {});
-      return newCond.id;
+      const result = { id: newCond.id, source: 'resolved', label: newCond.label };
+      if (env.LBA_KV) await env.LBA_KV.put(kvKey, JSON.stringify(result), { expirationTtl: 60 * 60 * 24 * 30 }).catch(() => {});
+      return result;
     }
-  } catch (_) {}
+    console.error('resolveEbayNewConditionId: no New-like condition in policy for category', categoryId, JSON.stringify(conditions));
+  } catch (e) {
+    console.error('resolveEbayNewConditionId: threw', categoryId, e.message);
+  }
   return fallback;
 }
 
@@ -3198,6 +3247,19 @@ export default {
       return await handleStripeFoundation(request, env, url);
     }
 
+    // Cuts distributor solicitation copy down to a usable snippet at a word
+    // boundary (never mid-word) instead of a blind substring -- PRH's FOC
+    // description field can run up to 12000 characters, far too long to
+    // include in full against eBay's 4000-char description cap.
+    function truncateAtWordBoundary(text, maxLen) {
+      const s = String(text || '').trim();
+      if (s.length <= maxLen) return s;
+      const cut = s.slice(0, maxLen);
+      const lastSpace = cut.lastIndexOf(' ');
+      const trimmed = lastSpace > maxLen * 0.6 ? cut.slice(0, lastSpace) : cut;
+      return trimmed.replace(/[,;:.\-–—]+$/, '').trim() + '…';
+    }
+
     // Builds the default (pre-edit) title/description/aspects/price/weight
     // for a FOC presale listing from the comic_sku row's own trusted DB
     // data. Shared by the preview endpoint (so the dashboard can show these
@@ -3232,6 +3294,14 @@ export default {
         Artist: sku.interior_artist || '', 'Cover Artist': sku.cover_artist || '',
         'Release Date': onSaleLabel,
       };
+      // PRH's FOC import already captures the distributor's own solicitation
+      // copy into sku.description (scripts/foc-preorders.mjs normalizePrhRow)
+      // -- genuine unique per-book keyword text for eBay search/SEO, and
+      // exposed here as its own {synopsis} token so a store's custom
+      // description template can place it, separate from the plain-text
+      // `description` fallback above (which already folds the same source
+      // text in unbounded, for stores with no custom template at all).
+      const synopsis = truncateAtWordBoundary(sku.description || '', 400);
       // No page-count/format field exists on comic_skus to size packages
       // exactly, so this buckets by cover price as a proxy: cheap == single
       // floppy issue, mid == trade paperback, expensive == hardcover or
@@ -3241,7 +3311,7 @@ export default {
       const weight = priceCents >= 2000 ? { weightValue: 1.5, weightUnit: 'POUND' }
         : priceCents >= 1000 ? { weightValue: 0.625, weightUnit: 'POUND' }
         : { weightValue: 0.25, weightUnit: 'POUND' };
-      return { title, description, customAspects, onSaleLabel, ...weight };
+      return { title, description, customAspects, onSaleLabel, synopsis, ...weight };
     }
 
     // Lists a FOC comic SKU for eBay presale before physical stock exists,
@@ -3333,7 +3403,8 @@ export default {
       const weightUnit = body.weightUnit || defaults.weightUnit;
       const storeCategoryNames = Array.isArray(body.storeCategoryNames) ? body.storeCategoryNames : String(body.storeCategoryNames || '').split(',');
       const fulfillmentPolicyId = await getFocPresaleFulfillmentPolicyId(env, ebayToken, handlingBusinessDays);
-      const conditionId = await resolveEbayNewConditionId(env, ebayToken, '259104');
+      const resolvedCondition = await resolveEbayNewConditionId(env, ebayToken, '259104');
+      const conditionId = resolvedCondition.id;
 
       let listingResult;
       try {
@@ -3353,6 +3424,17 @@ export default {
         console.error('FOC eBay presale listing error:', e);
         return json({ ok: false, error: e.message, detail: e.detail }, e.status || 500);
       }
+      // resolveEbayNewConditionId falling back to the generic 1000 id
+      // (instead of resolving Comics' own real condition-policy id) is
+      // exactly the failure mode a store already hit live -- eBay silently
+      // ignoring/rejecting it and leaving "Item condition" blank on their
+      // own edit page. Surfaced as a warning here (not just a Worker log)
+      // so this is visible from the dashboard the moment it happens again,
+      // instead of only being discoverable by someone checking the live
+      // listing after the fact.
+      const conditionWarnings = resolvedCondition.source === 'fallback'
+        ? ['Could not confirm eBay\'s exact Comics condition ID -- used the generic "New" (1000). If eBay doesn\'t show "Brand New" after publishing, edit the listing on eBay and set the condition manually.']
+        : [];
 
       const nowIso = new Date().toISOString();
       let createdRow = null;
@@ -3387,7 +3469,7 @@ export default {
         });
       }
 
-      return json({ ok: true, listingId: listingResult.listingId, offerId: listingResult.offerId, sku: listingResult.sku, inventoryItemId: createdRow?.id || null, quantity, warnings: listingResult.warnings || [] });
+      return json({ ok: true, listingId: listingResult.listingId, offerId: listingResult.offerId, sku: listingResult.sku, inventoryItemId: createdRow?.id || null, quantity, warnings: [...(listingResult.warnings || []), ...conditionWarnings] });
     }
 
     // Flips any eBay presale listings for a FOC cycle over to in-stock
@@ -3423,7 +3505,7 @@ export default {
       try { ebayToken = await getEbayUserAccessToken(env); }
       catch (tokenErr) { return json({ needsToken: true, error: tokenErr.message }, 401); }
       if (!ebayToken) return json({ needsToken: true, error: 'Connect eBay first: missing user access/refresh token' }, 401);
-      const conditionId = await resolveEbayNewConditionId(env, ebayToken, '259104');
+      const conditionId = (await resolveEbayNewConditionId(env, ebayToken, '259104')).id;
 
       let converted = 0;
       const failed = [];
@@ -6461,6 +6543,30 @@ export default {
         const e = new Error('Publish failed (' + pubRes.status + '): ' + msg); e.status = pubRes.status; e.detail = pubData; throw e;
       }
       if (Array.isArray(pubData?.warnings) && pubData.warnings.length) warnings.push(...pubData.warnings.map(w => w?.message || w?.longMessage).filter(Boolean));
+
+      // Store report: eBay's own listing edit page showed "Item condition"
+      // blank on a live Comics listing even though the inventory_item PUT
+      // above returned no error and no warning for conditionId, and the
+      // resolved id wasn't a fallback either -- meaning "did the PUT
+      // succeed" isn't actually proof eBay stored what we sent. Reading the
+      // item straight back after publish (the same GET the Sell Inventory
+      // API exposes for this) checks the real stored value against what
+      // was requested, so a silent server-side drop shows up as a warning
+      // here instead of only being discoverable by a human clicking into
+      // the eBay listing afterward.
+      try {
+        const verifyRes = await fetch(`https://api.ebay.com/sell/inventory/v1/inventory_item/${sku}`, {
+          headers: { 'Authorization': 'Bearer ' + ebayToken },
+        });
+        if (verifyRes.ok) {
+          const verifyData = await verifyRes.json();
+          const storedConditionId = String(verifyData?.conditionId || '');
+          const requestedConditionId = String(itemBody.conditionId || '');
+          if (requestedConditionId && storedConditionId !== requestedConditionId) {
+            warnings.push(`eBay stored a different condition than requested (requested ${requestedConditionId}, eBay has ${storedConditionId || 'none'}) -- check the listing's condition manually.`);
+          }
+        }
+      } catch (_) { /* best-effort verification only -- never block the listing on it */ }
 
       return { listingId: pubData.listingId, offerId, sku, warnings };
     }
