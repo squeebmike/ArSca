@@ -3225,6 +3225,19 @@ export default {
       return await handleStripeFoundation(request, env, url);
     }
 
+    // Cuts distributor solicitation copy down to a usable snippet at a word
+    // boundary (never mid-word) instead of a blind substring -- PRH's FOC
+    // description field can run up to 12000 characters, far too long to
+    // include in full against eBay's 4000-char description cap.
+    function truncateAtWordBoundary(text, maxLen) {
+      const s = String(text || '').trim();
+      if (s.length <= maxLen) return s;
+      const cut = s.slice(0, maxLen);
+      const lastSpace = cut.lastIndexOf(' ');
+      const trimmed = lastSpace > maxLen * 0.6 ? cut.slice(0, lastSpace) : cut;
+      return trimmed.replace(/[,;:.\-–—]+$/, '').trim() + '…';
+    }
+
     // Builds the default (pre-edit) title/description/aspects/price/weight
     // for a FOC presale listing from the comic_sku row's own trusted DB
     // data. Shared by the preview endpoint (so the dashboard can show these
@@ -3259,6 +3272,14 @@ export default {
         Artist: sku.interior_artist || '', 'Cover Artist': sku.cover_artist || '',
         'Release Date': onSaleLabel,
       };
+      // PRH's FOC import already captures the distributor's own solicitation
+      // copy into sku.description (scripts/foc-preorders.mjs normalizePrhRow)
+      // -- genuine unique per-book keyword text for eBay search/SEO, and
+      // exposed here as its own {synopsis} token so a store's custom
+      // description template can place it, separate from the plain-text
+      // `description` fallback above (which already folds the same source
+      // text in unbounded, for stores with no custom template at all).
+      const synopsis = truncateAtWordBoundary(sku.description || '', 400);
       // No page-count/format field exists on comic_skus to size packages
       // exactly, so this buckets by cover price as a proxy: cheap == single
       // floppy issue, mid == trade paperback, expensive == hardcover or
@@ -3268,7 +3289,7 @@ export default {
       const weight = priceCents >= 2000 ? { weightValue: 1.5, weightUnit: 'POUND' }
         : priceCents >= 1000 ? { weightValue: 0.625, weightUnit: 'POUND' }
         : { weightValue: 0.25, weightUnit: 'POUND' };
-      return { title, description, customAspects, onSaleLabel, ...weight };
+      return { title, description, customAspects, onSaleLabel, synopsis, ...weight };
     }
 
     // Lists a FOC comic SKU for eBay presale before physical stock exists,

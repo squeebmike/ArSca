@@ -86,6 +86,17 @@ assert.match(worker, /\}, ebayToken, env, storeId\);\s*\n\s*\} catch \(e\) \{\s*
 const preorders = fs.readFileSync('scripts/foc-preorders.mjs', 'utf8');
 assert.match(preorders, /export async function shippingSettings\(db, env, storeId\)/, 'shippingSettings must be exported for reuse by the Worker');
 
+// PRH's FOC import already captures the distributor's own solicitation copy
+// (comic_skus.description) -- store request: expose it as a {synopsis}
+// template token so custom Comic templates can surface genuine per-book
+// keyword content, instead of only ever feeding it into the old plain-text
+// default description. Truncated at a word boundary (never mid-word/PRH's
+// field can run to 12000 chars) to leave room under eBay's 4000-char cap.
+assert.match(worker, /function truncateAtWordBoundary\(text, maxLen\)/, 'must truncate the distributor synopsis at a word boundary, not a blind substring');
+assert.match(worker, /const synopsis = truncateAtWordBoundary\(sku\.description \|\| '', 400\)/, 'the synopsis token must be sourced from the PRH-imported sku.description field');
+assert.match(worker, /return \{ title, description, customAspects, onSaleLabel, synopsis, \.\.\.weight \};/, 'synopsis must be returned so the preview endpoint (and thus the review-modal token object) receives it');
+assert.match(focDash, /synopsis:preview\.synopsis\|\|''/, 'the review-modal token object must feed {synopsis} from the preview response');
+
 // Dashboard-side: the old flow (prompt() for quantity, then publish
 // immediately) must be gone -- createFocEbayPresale now opens a review modal
 // that fetches the preview and only publishes once the user confirms.
