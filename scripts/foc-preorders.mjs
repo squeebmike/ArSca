@@ -283,6 +283,7 @@ async function buildCycleCatalog(db, cycle, includeAdmin = false, env, deps, sto
     const sku = publicSku(row, qtyMap.get(row.id) || 0);
     if (includeAdmin) Object.assign(sku, {
       storeQuantity:Number(row.store_quantity || 0),
+      safetyStockQty:Number(row.safety_stock_qty || 0),
       qualificationOverrideTotal:row.qualification_override_total,
       qualificationNote:row.qualification_note || '',
       customerEnabled:row.customer_enabled !== false,
@@ -293,9 +294,15 @@ async function buildCycleCatalog(db, cycle, includeAdmin = false, env, deps, sto
     family.variants.push(sku);
   }
   for (const family of byFamily.values()) {
+    // Admin-only: eBay presold units count toward the ratio just like
+    // website + store copies do -- the customer-facing waitlist view never
+    // includes this (presaleBySkuId is only ever populated when
+    // includeAdmin, see above), so public qualification math is unchanged.
     const baseQualifying = family.variants.filter(sku => !sku.isIncentive).reduce((sum, sku) => {
       const source = (skuRows || []).find(row => row.id === sku.id);
-      return sum + sku.customerQty + Number(source?.store_quantity || 0);
+      const presale = presaleBySkuId.get(sku.id);
+      const ebayQty = presale ? Math.max(0, presale.originalQty - presale.remainingQty) : 0;
+      return sum + sku.customerQty + Number(source?.store_quantity || 0) + ebayQty;
     }, 0);
     family.variants.forEach(sku => {
       if (!sku.isIncentive) return;
@@ -777,10 +784,79 @@ async function exportPrh(env,deps,url,request){
   const storeId=text(url.searchParams.get('store_id'),80);const cycleId=text(url.searchParams.get('cycle_id'),80);
   const auth=await deps.requireStoreUser(request,env,storeId,['owner','admin','manager','employee']);if(auth.error)return auth.error;
   const db=(path,options)=>deps.supabaseAdminFetch(env,path,options);const qty=await orderedQtyBySku(db,cycleId);
+  const ebayPresold=await ebayPresoldBySku(db,storeId);
   const {data:skus}=await db(`comic_skus?cycle_id=eq.${encodeURIComponent(cycleId)}&select=id,upc,title,variant_label,cover_artist,store_quantity&order=title.asc`);
   const lines=[['UPC','Quantity','Title','Variant','Cover Artist'].map(csvField).join(',')];
-  for(const sku of skus||[]){const total=(qty.get(sku.id)||0)+Number(sku.store_quantity||0);if(total<=0)continue;lines.push([sku.upc,total,sku.title,sku.variant_label||'',sku.cover_artist||''].map(csvField).join(','));}
+  for(const sku of skus||[]){const total=(qty.get(sku.id)||0)+Number(sku.store_quantity||0)+(ebayPresold.get(sku.id)||0);if(total<=0)continue;lines.push([sku.upc,total,sku.title,sku.variant_label||'',sku.cover_artist||''].map(csvField).join(','));}
   return new Response(lines.join('\r\n'),{status:200,headers:{...deps.CORS,'Content-Type':'text/csv;charset=utf-8','Content-Disposition':`attachment; filename="prh-foc-${cycleId}.csv"`,'Cache-Control':'no-store'}});
+}
+
+// eBay presale sales (already sold, still needing physical fulfillment) per
+// SKU -- shared by exportPrh (must be in the actual distributor order,
+// otherwise eBay-sold copies never get physically ordered at all) and the
+// PRH submission snapshot below. buildCycleCatalog and receiveShipment each
+// compute this inline already (same underlying data, different immediate
+// needs) rather than importing this, to avoid touching already-correct code.
+async function ebayPresoldBySku(db,storeId){
+  const {data:rows}=await db(`inventory_items?store_id=eq.${encodeURIComponent(storeId)}&status=in.(presale,sold)&select=id,status,data`);
+  const map=new Map();
+  for(const row of rows||[]){
+    const d=row.data||{};
+    if(d.source!=='foc_presale'||!d.focSkuId)continue;
+    const originalQty=Number(d.focPresaleOriginalQty||0);
+    const remainingQty=row.status==='sold'?0:Number(d.qty??d.quantity??0);
+    const soldSoFar=Math.max(0,originalQty-remainingQty);
+    if(soldSoFar<=0)continue;
+    map.set(d.focSkuId,(map.get(d.focSkuId)||0)+soldSoFar);
+  }
+  return map;
+}
+
+// Locks a FOC cycle's final PRH order as an immutable snapshot -- later
+// customer/eBay sales must never retroactively change what a submitted
+// order asked for. The unique(cycle_id) constraint on foc_prh_submissions
+// is the actual backstop against a double-submit race; the existence
+// check below just gives a clean error instead of a raw constraint one.
+async function adminPrhSubmission(request,env,deps,url){
+  const db=(path,options)=>deps.supabaseAdminFetch(env,path,options);
+  if(request.method==='GET'){
+    const storeId=text(url.searchParams.get('store_id'),80);const cycleId=text(url.searchParams.get('cycle_id'),80);
+    const auth=await deps.requireStoreUser(request,env,storeId,['owner','admin','manager','employee']);if(auth.error)return auth.error;
+    if(!cycleId)return deps.json({ok:false,error:'cycle_id is required'},400);
+    const {data:rows}=await db(`foc_prh_submissions?cycle_id=eq.${encodeURIComponent(cycleId)}&store_id=eq.${encodeURIComponent(storeId)}&select=*&limit=1`);
+    return deps.json({ok:true,submission:rows?.[0]||null});
+  }
+  if(request.method!=='POST')return deps.json({ok:false,error:'GET or POST only'},405);
+  const limited=await deps.readJsonWithLimit(request,32*1024);if(limited.error)return limited.error;const body=limited.data||{};
+  const storeId=text(body.storeId,80);const cycleId=text(body.cycleId,80);
+  const auth=await deps.requireStoreUser(request,env,storeId,['owner','admin']);if(auth.error)return auth.error;
+  if(!cycleId)return deps.json({ok:false,error:'cycleId is required'},400);
+  const {data:existing}=await db(`foc_prh_submissions?cycle_id=eq.${encodeURIComponent(cycleId)}&store_id=eq.${encodeURIComponent(storeId)}&select=id&limit=1`);
+  if(existing?.length)return deps.json({ok:false,error:'This FOC cycle already has a submitted PRH order -- it cannot be re-submitted.'},409);
+  const qty=await orderedQtyBySku(db,cycleId);
+  const ebayPresold=await ebayPresoldBySku(db,storeId);
+  const {data:skus}=await db(`comic_skus?cycle_id=eq.${encodeURIComponent(cycleId)}&select=id,upc,title,variant_label,cover_artist,store_quantity,msrp_cents,is_incentive,secured_quantity&order=title.asc`);
+  const lineItems=[];let totalUnits=0;let estimatedWholesaleCents=0;
+  for(const sku of skus||[]){
+    const websitePresold=qty.get(sku.id)||0;
+    const ebayQty=ebayPresold.get(sku.id)||0;
+    const whatnotStoreQty=Number(sku.store_quantity||0);
+    const finalQty=websitePresold+ebayQty+whatnotStoreQty;
+    if(finalQty<=0)continue;
+    const costCents=Math.round(Number(sku.msrp_cents||0)*0.5);
+    lineItems.push({skuId:sku.id,upc:sku.upc,title:sku.title,variantLabel:sku.variant_label||'',coverArtist:sku.cover_artist||'',msrpCents:Number(sku.msrp_cents||0),ourCostCents:costCents,websitePresold,ebayPresold:ebayQty,whatnotStoreQty,finalQty,isIncentive:!!sku.is_incentive});
+    totalUnits+=finalQty;estimatedWholesaleCents+=costCents*finalQty;
+  }
+  const notes=text(body.notes,4000)||null;
+  let inserted;
+  try{
+    const {data}=await db('foc_prh_submissions',{method:'POST',headers:{Prefer:'return=representation'},body:JSON.stringify({store_id:storeId,cycle_id:cycleId,submitted_by:auth.user?.id||null,line_items:lineItems,total_skus:lineItems.length,total_units:totalUnits,estimated_wholesale_cents:estimatedWholesaleCents,notes})});
+    inserted=data?.[0];
+  }catch(e){
+    if(/duplicate key|already exists|unique/i.test(String(e.message||'')))return deps.json({ok:false,error:'This FOC cycle already has a submitted PRH order -- it cannot be re-submitted.'},409);
+    throw e;
+  }
+  return deps.json({ok:true,submission:inserted});
 }
 
 async function adminCycle(request,env,deps,url){
@@ -803,7 +879,7 @@ async function adminSku(request,env,deps){
   const skuId=text(body.skuId,80),familyId=text(body.familyId,80);const db=(path,options)=>deps.supabaseAdminFetch(env,path,options);
   if(familyId){const patch={};if(body.heat===null||Number(body.heat)>=1&&Number(body.heat)<=5)patch.heat=body.heat===null?null:Number(body.heat);if(body.heatCategory===null||['dont_sleep','sleeper_watch','solid_stock','special_order','pass'].includes(body.heatCategory))patch.heat_category=body.heatCategory;if(body.adminNote!==undefined)patch.admin_note=text(body.adminNote,4000)||null;const {data:rows}=await db(`comic_title_families?id=eq.${familyId}&store_id=eq.${encodeURIComponent(storeId)}`,{method:'PATCH',headers:{Prefer:'return=representation'},body:JSON.stringify(patch)});return deps.json({ok:true,family:rows?.[0]});}
   if(!skuId)return deps.json({ok:false,error:'skuId or familyId is required'},400);
-  const patch={};if(body.storeQuantity!==undefined)patch.store_quantity=Math.max(0,Math.min(10000,Number(body.storeQuantity)||0));if(body.securedQuantity!==undefined)patch.secured_quantity=Math.max(0,Math.min(1000,Number(body.securedQuantity)||0));if(body.customerPrice!==undefined)patch.customer_price_cents=Math.max(0,Math.round(Number(body.customerPrice)*100));if(body.customerEnabled!==undefined)patch.customer_enabled=!!body.customerEnabled;if(body.qualificationOverrideTotal===null||body.qualificationOverrideTotal!==undefined)patch.qualification_override_total=body.qualificationOverrideTotal===null?null:Math.max(0,Number(body.qualificationOverrideTotal)||0);if(body.qualificationNote!==undefined)patch.qualification_note=text(body.qualificationNote,2000)||null;
+  const patch={};if(body.storeQuantity!==undefined)patch.store_quantity=Math.max(0,Math.min(10000,Number(body.storeQuantity)||0));if(body.securedQuantity!==undefined)patch.secured_quantity=Math.max(0,Math.min(1000,Number(body.securedQuantity)||0));if(body.customerPrice!==undefined)patch.customer_price_cents=Math.max(0,Math.round(Number(body.customerPrice)*100));if(body.customerEnabled!==undefined)patch.customer_enabled=!!body.customerEnabled;if(body.qualificationOverrideTotal===null||body.qualificationOverrideTotal!==undefined)patch.qualification_override_total=body.qualificationOverrideTotal===null?null:Math.max(0,Number(body.qualificationOverrideTotal)||0);if(body.qualificationNote!==undefined)patch.qualification_note=text(body.qualificationNote,2000)||null;if(body.safetyStockQty!==undefined)patch.safety_stock_qty=Math.max(0,Math.min(1000,Number(body.safetyStockQty)||0));
   const {data:rows}=await db(`comic_skus?id=eq.${skuId}&store_id=eq.${encodeURIComponent(storeId)}`,{method:'PATCH',headers:{Prefer:'return=representation'},body:JSON.stringify(patch)});return deps.json({ok:true,sku:rows?.[0]});
 }
 
@@ -890,7 +966,20 @@ async function receiveShipment(request,env,deps){
     // running count rather than flipping individual rows.
     const reservedForEbay=Math.min(reserveRemaining,presaleByskuId.get(sku.id)||0);
     reserveRemaining-=reservedForEbay;
-    receivedSummary.push({skuId:sku.id,title:sku.title,variantLabel:sku.variant_label,receivedQty,reservedForCustomers:receivedQty-reserveRemaining-reservedForEbay,reservedForEbayPresale:reservedForEbay,availableAsNewStock:reserveRemaining});
+    // Safety stock (damage/short-ship/allocation buffer, admin-set per SKU)
+    // is held back from what becomes sellable, not sold to anyone -- taken
+    // last, after every actual commitment is covered.
+    const safetyHeld=Math.min(reserveRemaining,Number(sku.safety_stock_qty||0));
+    reserveRemaining-=safetyHeld;
+    const orderedTotal=Number(sku.store_quantity||0)+(paidItems||[]).filter(item=>item.sku_id===sku.id).reduce((sum,item)=>sum+Number(item.quantity||0),0);
+    const shortShipped=Math.max(0,orderedTotal-receivedQty);
+    const incentiveNotReceived=!!sku.is_incentive&&receivedQty<=0&&Number(sku.secured_quantity||0)>0;
+    receivedSummary.push({
+      skuId:sku.id,title:sku.title,variantLabel:sku.variant_label,receivedQty,orderedTotal,
+      reservedForCustomers:receivedQty-reserveRemaining-reservedForEbay-safetyHeld,
+      reservedForEbayPresale:reservedForEbay,safetyStockHeld:safetyHeld,availableAsNewStock:reserveRemaining,
+      shortShipped,incentiveNotReceived,
+    });
   }
   // An order is ready to hand over once every item on it has arrived and
   // been reserved -- flips paid orders to ready_for_pickup (nothing further
@@ -1144,6 +1233,7 @@ export async function handleFocRequest(request, env, url, deps) {
   if(path==='/foc/admin/import'&&request.method==='POST')return importPrh(request,env,deps,text(request.headers.get('X-Store-Id'),80));
   if(path==='/foc/admin/cycles'&&(request.method==='GET'||request.method==='PATCH'))return adminCycle(request,env,deps,url);
   if(path==='/foc/admin/sku'&&request.method==='PATCH')return adminSku(request,env,deps);
+  if(path==='/foc/admin/prh-submission'&&(request.method==='GET'||request.method==='POST'))return adminPrhSubmission(request,env,deps,url);
   if(path==='/foc/admin/export'&&request.method==='GET')return exportPrh(env,deps,url,request);
   if(path==='/foc/admin/orders'&&(request.method==='GET'||request.method==='PATCH'))return adminOrders(request,env,deps,url);
   if(path==='/foc/admin/orders/email'&&request.method==='POST')return resendAdminOrderEmail(request,env,deps);
