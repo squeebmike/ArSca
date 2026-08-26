@@ -2340,17 +2340,50 @@ function buildEbayOfferBody(b, sku, locationKey, env) {
 // per SKU. Falls back to the store's normal policy on any failure (network,
 // missing scope, etc.) rather than blocking the listing entirely -- that's
 // the same handling-time behavior the app already had before this existed.
-async function getFocPresaleFulfillmentPolicyId(env, ebayToken, handlingDaysNeeded) {
+// Which existing policy to clone the shipping-service setup (carrier,
+// calculated-vs-flat cost, international/local-pickup options) from when
+// building a dynamic handling-time variant. Prefers a policy the store has
+// already named for presale use (e.g. "PreSale Paid Shipping") over the
+// store's general default policy, since a presale-specific policy is more
+// likely to have the shipping cost/service setup actually intended for
+// presale orders. Cached in KV for a day since the account's policy list
+// rarely changes; falls back to env.EBAY_FULFILLMENT_POLICY_ID (the
+// store's normal default) if no presale-named policy is found.
+async function resolveFocPresaleBasePolicyId(env, ebayToken) {
   const fallback = env.EBAY_FULFILLMENT_POLICY_ID || '';
-  if (!fallback) return '';
-  const bucket = Math.min(40, Math.max(5, Math.ceil(Math.max(1, handlingDaysNeeded) / 5) * 5));
-  const kvKey = `ebay_foc_fulfillment_policy:${bucket}`;
+  const kvKey = 'ebay_foc_fulfillment_policy:base';
   try {
     if (env.LBA_KV) {
       const cached = await env.LBA_KV.get(kvKey);
       if (cached) return cached;
     }
-    const baseRes = await fetch(`https://api.ebay.com/sell/account/v1/fulfillment_policy/${encodeURIComponent(fallback)}`, {
+    const listRes = await fetch('https://api.ebay.com/sell/account/v1/fulfillment_policy?marketplace_id=EBAY_US', {
+      headers: { 'Authorization': 'Bearer ' + ebayToken, 'Accept': 'application/json' },
+    });
+    if (listRes.ok) {
+      const list = await listRes.json();
+      const presalePolicy = (list.fulfillmentPolicies || []).find(p => /presale/i.test(p.name || ''));
+      if (presalePolicy?.fulfillmentPolicyId) {
+        if (env.LBA_KV) await env.LBA_KV.put(kvKey, presalePolicy.fulfillmentPolicyId, { expirationTtl: 60 * 60 * 24 }).catch(() => {});
+        return presalePolicy.fulfillmentPolicyId;
+      }
+    }
+  } catch (_) {}
+  return fallback;
+}
+
+async function getFocPresaleFulfillmentPolicyId(env, ebayToken, handlingDaysNeeded) {
+  const fallback = env.EBAY_FULFILLMENT_POLICY_ID || '';
+  const baseId = (await resolveFocPresaleBasePolicyId(env, ebayToken)) || fallback;
+  if (!baseId) return '';
+  const bucket = Math.min(40, Math.max(5, Math.ceil(Math.max(1, handlingDaysNeeded) / 5) * 5));
+  const kvKey = `ebay_foc_fulfillment_policy:${baseId}:${bucket}`;
+  try {
+    if (env.LBA_KV) {
+      const cached = await env.LBA_KV.get(kvKey);
+      if (cached) return cached;
+    }
+    const baseRes = await fetch(`https://api.ebay.com/sell/account/v1/fulfillment_policy/${encodeURIComponent(baseId)}`, {
       headers: { 'Authorization': 'Bearer ' + ebayToken, 'Accept': 'application/json' },
     });
     if (!baseRes.ok) return fallback;
