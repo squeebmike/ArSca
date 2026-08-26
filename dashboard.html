@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.26.18-ebay-conditional-shipping-fields">
+<meta name="version" content="2026.08.26.19-presale-condition-shipping-fix">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1638,16 +1638,16 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.26.18-ebay-conditional-shipping-fields" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.26.18-ebay-conditional-shipping-fields" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.26.18-ebay-conditional-shipping-fields" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.08.26.18-ebay-conditional-shipping-fields" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.26.18-ebay-conditional-shipping-fields" defer></script>
-<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.08.26.18-ebay-conditional-shipping-fields" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.26.18-ebay-conditional-shipping-fields" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.26.18-ebay-conditional-shipping-fields" defer></script>
-<script src="scripts/pokemon/offline-browser.js?v=2026.08.26.18-ebay-conditional-shipping-fields" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.26.18-ebay-conditional-shipping-fields" defer></script>
+<script src="scripts/query-routing.js?v=2026.08.26.19-presale-condition-shipping-fix" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.26.19-presale-condition-shipping-fix" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.26.19-presale-condition-shipping-fix" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.08.26.19-presale-condition-shipping-fix" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.26.19-presale-condition-shipping-fix" defer></script>
+<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.08.26.19-presale-condition-shipping-fix" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.26.19-presale-condition-shipping-fix" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.26.19-presale-condition-shipping-fix" defer></script>
+<script src="scripts/pokemon/offline-browser.js?v=2026.08.26.19-presale-condition-shipping-fix" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.26.19-presale-condition-shipping-fix" defer></script>
 </head>
 <body>
 
@@ -1676,11 +1676,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.26.18-ebay-conditional-shipping-fields</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.26.19-presale-condition-shipping-fix</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.26.18-ebay-conditional-shipping-fields</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.26.19-presale-condition-shipping-fix</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1698,7 +1698,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.26.18-ebay-conditional-shipping-fields</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.26.19-presale-condition-shipping-fix</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3700,7 +3700,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.26.18-ebay-conditional-shipping-fields';
+const APP_VERSION = '2026.08.26.19-presale-condition-shipping-fix';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -22207,7 +22207,14 @@ function computeEbayListingFields(item){
   // Vendor Info > EBAY LISTING SETTINGS) -- that always wins over the built-in guess.
   const mappedCatId = String((getVendorProfile().ebayCategoryMap || {})[item.category] || '').trim();
   const catId = mappedCatId || (isComic ? '259104' : (isSealed && cat === 'Sports') ? '261329' : isTCG ? '183454' : isKnownCardCategory ? '261328' : '');
-  const conditionId = isGraded ? '2750' : (isEbayTradingCardCategory(catId) ? '4000' : '3000');
+  // A presale row is always genuinely brand-new stock (nothing has shipped
+  // yet), regardless of category -- the generic condition guess below
+  // defaults comics to "Used" (3000), which stuck silently whenever a
+  // presale item got listed through this general tool instead of the FOC
+  // review screen's own hardcoded New (store report: "Brand New" showing
+  // unselected on a presale listing).
+  const isPresaleItem = item.status === 'presale' || item.source === 'foc_presale';
+  const conditionId = isPresaleItem ? '1000' : isGraded ? '2750' : (isEbayTradingCardCategory(catId) ? '4000' : '3000');
   const title = [item.year && !lowerName.includes(String(item.year)) ? item.year : null,item.name,item.set && !lowerName.includes(String(item.set).toLowerCase()) ? item.set : null,item.variant,item.card_number?'#'+item.card_number:null,isGraded?[item.grader,item.grade].filter(Boolean).join(' '):null,item.isRookie?'RC':null]
     .filter(Boolean).join(' ').replace(/\s+/g,' ').substring(0,80);
   const price = Number(item.market || item.salePrice || 0);
@@ -22216,7 +22223,6 @@ function computeEbayListingFields(item){
   // status instead of a template needing two contradictory hardcoded
   // sentences that both always render (store report: an in-stock line and
   // a presale line both showing on the same listing).
-  const isPresaleItem = item.status === 'presale' || item.source === 'foc_presale';
   const releaseDateLabel = item.onSaleDate ? (() => { try { return new Date(/^\d{4}-\d{2}-\d{2}$/.test(item.onSaleDate) ? item.onSaleDate+'T12:00:00' : item.onSaleDate).toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'}); } catch(e){ return ''; } })() : '';
   const shippingLine = isPresaleItem
     ? ['For presale comics, orders ship promptly once the title reaches its official release date and inventory has been received from our distributor.', releaseDateLabel ? ('Release Date: '+releaseDateLabel) : '', 'Publisher and distributor release dates may change. If a presale title is delayed, your order will ship as soon as the book becomes available.'].filter(Boolean).join('\n\n')
@@ -22721,6 +22727,13 @@ function collectDashboardEbayFormPayload(item){
     dimWidth:parseFloat(document.getElementById('dash-eb-dim-w')?.value) || 4,
     dimHeight:parseFloat(document.getElementById('dash-eb-dim-h')?.value) || 0.1,
     dimUnit:document.getElementById('dash-eb-dim-unit')?.value || 'INCH',
+    // Lets the Worker apply the same presale-appropriate handling time /
+    // shipping policy this general tool has no other way to know about --
+    // a presale row listed from here (instead of the FOC review screen)
+    // was otherwise silently getting the store's normal fast-handling
+    // policy (store report: wrong shipping policy on a presale listing).
+    isPresale:item.status === 'presale' || item.source === 'foc_presale',
+    onSaleDate:item.onSaleDate || '',
     customAspects:{
       'Product':document.getElementById('dash-eb-product-type')?.value === 'sealed' ? 'Box' : '',
       'Configuration':document.getElementById('dash-eb-config')?.value.trim() || (document.getElementById('dash-eb-product-type')?.value === 'sealed' ? 'Box' : ''),
@@ -45106,7 +45119,7 @@ async function toppsLoadParallels(cardId){
   window.__arscaCloseModal = closeModal;
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.26.18-ebay-conditional-shipping-fields" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.26.19-presale-condition-shipping-fix" defer></script>
 </body>
 </html>
 
