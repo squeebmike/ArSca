@@ -2456,18 +2456,36 @@ async function resolveFocPresaleBasePolicyId(env, ebayToken) {
 // New, instead of assuming 1000 is always correct. Cached per category
 // since this rarely changes; falls back to 1000 on any failure (previous
 // behavior) rather than blocking the listing.
+//
+// Store report (after this fallback shipped): a live Comics listing STILL
+// showed "Item condition" blank on eBay's own edit page. Whether that's
+// because the metadata lookup itself is failing/not matching (silently
+// landing on the 1000 fallback, which the earlier live test showed eBay
+// rejects for this category) or something else can't be told from outside
+// without seeing which path this actually took -- so this now logs its
+// outcome (console.error, visible in Cloudflare Worker logs) and returns
+// {id, source, label} instead of a bare string, so the caller/dashboard
+// can surface "used a real category-specific match" vs "had to fall back
+// to the generic guess" instead of that being invisible either way.
 async function resolveEbayNewConditionId(env, ebayToken, categoryId) {
-  const fallback = '1000';
+  const fallback = { id: '1000', source: 'fallback', label: '' };
   const kvKey = `ebay_condition_new:${categoryId}`;
   try {
     if (env.LBA_KV) {
       const cached = await env.LBA_KV.get(kvKey);
-      if (cached) return cached;
+      if (cached) {
+        let parsed = null;
+        try { parsed = JSON.parse(cached); } catch (_) {}
+        return parsed?.id ? { ...parsed, source: 'cache' } : { id: cached, source: 'cache', label: '' };
+      }
     }
     const res = await fetch(`https://api.ebay.com/sell/metadata/v1/marketplace/EBAY_US/get_item_condition_policies?filter=${encodeURIComponent('categoryIds:{' + categoryId + '}')}`, {
       headers: { 'Authorization': 'Bearer ' + ebayToken },
     });
-    if (!res.ok) return fallback;
+    if (!res.ok) {
+      console.error('resolveEbayNewConditionId: metadata lookup failed', categoryId, res.status, (await res.text().catch(() => '')).substring(0, 300));
+      return fallback;
+    }
     const data = await res.json();
     const policy = (data.itemConditionPolicies || [])[0] || {};
     const conditions = (policy.itemConditions || [])
@@ -2475,10 +2493,14 @@ async function resolveEbayNewConditionId(env, ebayToken, categoryId) {
       .filter(c => c.id);
     const newCond = conditions.find(c => /^brand new$/i.test(c.label)) || conditions.find(c => /^new$/i.test(c.label)) || conditions.find(c => /\bnew\b/i.test(c.label));
     if (newCond?.id) {
-      if (env.LBA_KV) await env.LBA_KV.put(kvKey, newCond.id, { expirationTtl: 60 * 60 * 24 * 30 }).catch(() => {});
-      return newCond.id;
+      const result = { id: newCond.id, source: 'resolved', label: newCond.label };
+      if (env.LBA_KV) await env.LBA_KV.put(kvKey, JSON.stringify(result), { expirationTtl: 60 * 60 * 24 * 30 }).catch(() => {});
+      return result;
     }
-  } catch (_) {}
+    console.error('resolveEbayNewConditionId: no New-like condition in policy for category', categoryId, JSON.stringify(conditions));
+  } catch (e) {
+    console.error('resolveEbayNewConditionId: threw', categoryId, e.message);
+  }
   return fallback;
 }
 
@@ -3381,7 +3403,8 @@ export default {
       const weightUnit = body.weightUnit || defaults.weightUnit;
       const storeCategoryNames = Array.isArray(body.storeCategoryNames) ? body.storeCategoryNames : String(body.storeCategoryNames || '').split(',');
       const fulfillmentPolicyId = await getFocPresaleFulfillmentPolicyId(env, ebayToken, handlingBusinessDays);
-      const conditionId = await resolveEbayNewConditionId(env, ebayToken, '259104');
+      const resolvedCondition = await resolveEbayNewConditionId(env, ebayToken, '259104');
+      const conditionId = resolvedCondition.id;
 
       let listingResult;
       try {
@@ -3401,6 +3424,17 @@ export default {
         console.error('FOC eBay presale listing error:', e);
         return json({ ok: false, error: e.message, detail: e.detail }, e.status || 500);
       }
+      // resolveEbayNewConditionId falling back to the generic 1000 id
+      // (instead of resolving Comics' own real condition-policy id) is
+      // exactly the failure mode a store already hit live -- eBay silently
+      // ignoring/rejecting it and leaving "Item condition" blank on their
+      // own edit page. Surfaced as a warning here (not just a Worker log)
+      // so this is visible from the dashboard the moment it happens again,
+      // instead of only being discoverable by someone checking the live
+      // listing after the fact.
+      const conditionWarnings = resolvedCondition.source === 'fallback'
+        ? ['Could not confirm eBay\'s exact Comics condition ID -- used the generic "New" (1000). If eBay doesn\'t show "Brand New" after publishing, edit the listing on eBay and set the condition manually.']
+        : [];
 
       const nowIso = new Date().toISOString();
       let createdRow = null;
@@ -3435,7 +3469,7 @@ export default {
         });
       }
 
-      return json({ ok: true, listingId: listingResult.listingId, offerId: listingResult.offerId, sku: listingResult.sku, inventoryItemId: createdRow?.id || null, quantity, warnings: listingResult.warnings || [] });
+      return json({ ok: true, listingId: listingResult.listingId, offerId: listingResult.offerId, sku: listingResult.sku, inventoryItemId: createdRow?.id || null, quantity, warnings: [...(listingResult.warnings || []), ...conditionWarnings] });
     }
 
     // Flips any eBay presale listings for a FOC cycle over to in-stock
@@ -3471,7 +3505,7 @@ export default {
       try { ebayToken = await getEbayUserAccessToken(env); }
       catch (tokenErr) { return json({ needsToken: true, error: tokenErr.message }, 401); }
       if (!ebayToken) return json({ needsToken: true, error: 'Connect eBay first: missing user access/refresh token' }, 401);
-      const conditionId = await resolveEbayNewConditionId(env, ebayToken, '259104');
+      const conditionId = (await resolveEbayNewConditionId(env, ebayToken, '259104')).id;
 
       let converted = 0;
       const failed = [];

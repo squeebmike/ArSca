@@ -292,7 +292,7 @@ assert.match(worker, /listingDescription: toEbayHtmlDescription\(description \|\
 assert.match(worker, /if \(Array\.isArray\(itemData\?\.warnings\) && itemData\.warnings\.length\) warnings\.push/, 'must collect warnings from the inventory_item response');
 assert.match(worker, /if \(Array\.isArray\(pubData\?\.warnings\) && pubData\.warnings\.length\) warnings\.push/, 'must collect warnings from the publish response');
 assert.match(worker, /return \{ listingId: pubData\.listingId, offerId, sku, warnings \};/, 'createAndPublishEbayListing must return the collected warnings');
-assert.match(worker, /warnings: listingResult\.warnings \|\| \[\]/, 'the FOC create-presale route must pass warnings through to the client');
+assert.match(worker, /warnings: \[\.\.\.\(listingResult\.warnings \|\| \[\]\), \.\.\.conditionWarnings\]/, 'the FOC create-presale route must pass warnings through to the client');
 assert.match(focDash, /if\(result\.warnings&&result\.warnings\.length\)toast_dash\('eBay warning: '\+result\.warnings\.join\(' · '\)\)/,
   'the dashboard must actually surface a returned warning, not just receive it silently');
 
@@ -332,11 +332,20 @@ assert.match(worker, /get_item_condition_policies\?filter=\$\{encodeURIComponent
   'must call eBay\'s real condition-policy endpoint, the same one the regular listing tool\'s live dropdown uses');
 assert.match(worker, /const newCond = conditions\.find\(c => \/\^brand new\$\/i\.test\(c\.label\)\) \|\| conditions\.find\(c => \/\^new\$\/i\.test\(c\.label\)\) \|\| conditions\.find\(c => \/\\bnew\\b\/i\.test\(c\.label\)\);/,
   'must match on the real condition label, preferring an exact "Brand New"/"New" match');
-assert.match(worker, /const conditionId = await resolveEbayNewConditionId\(env, ebayToken, '259104'\);\s*\n\s*\n\s*let listingResult;/,
+assert.match(worker, /const resolvedCondition = await resolveEbayNewConditionId\(env, ebayToken, '259104'\);\s*\n\s*const conditionId = resolvedCondition\.id;\s*\n\s*\n\s*let listingResult;/,
   'the FOC create route must use the resolved condition id, not a hardcoded 1000');
 assert.match(worker, /quantity, categoryId: '259104', conditionId,/, 'the resolved conditionId must actually be passed into the listing payload');
-assert.match(worker, /const conditionId = await resolveEbayNewConditionId\(env, ebayToken, '259104'\);\s*\n\s*\n\s*let converted = 0;/,
+assert.match(worker, /const conditionId = \(await resolveEbayNewConditionId\(env, ebayToken, '259104'\)\)\.id;\s*\n\s*\n\s*let converted = 0;/,
   'convert-to-instock must also use the resolved condition id, not a hardcoded 1000');
+
+// A conditionId falling back to the generic 1000 guess (instead of a real
+// category-specific match) is exactly the failure mode already seen live --
+// eBay silently ignoring it and leaving "Item condition" blank on their own
+// edit page. That must now surface as a warning to the dashboard, not just
+// a Worker log, so it's visible the moment it happens again.
+assert.match(worker, /const fallback = \{ id: '1000', source: 'fallback', label: '' \};/, 'resolveEbayNewConditionId must report when it had to fall back, not just what id it used');
+assert.match(worker, /const conditionWarnings = resolvedCondition\.source === 'fallback'\s*\n\s*\? \['Could not confirm eBay\\'s exact Comics condition ID/,
+  'the FOC create route must turn a fallback condition resolution into a visible warning');
 
 // The regular (non-FOC) listing tool's own live condition dropdown has the
 // same bug: it pre-selects by matching eBay's real condition ids against
