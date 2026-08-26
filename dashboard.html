@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.26.08-ppt-quota-reservation">
+<meta name="version" content="2026.08.26.09-ppt-batch-hydrate-by-set">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1633,16 +1633,16 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.26.08-ppt-quota-reservation" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.26.08-ppt-quota-reservation" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.26.08-ppt-quota-reservation" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.08.26.08-ppt-quota-reservation" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.26.08-ppt-quota-reservation" defer></script>
-<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.08.26.08-ppt-quota-reservation" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.26.08-ppt-quota-reservation" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.26.08-ppt-quota-reservation" defer></script>
-<script src="scripts/pokemon/offline-browser.js?v=2026.08.26.08-ppt-quota-reservation" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.26.08-ppt-quota-reservation" defer></script>
+<script src="scripts/query-routing.js?v=2026.08.26.09-ppt-batch-hydrate-by-set" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.26.09-ppt-batch-hydrate-by-set" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.26.09-ppt-batch-hydrate-by-set" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.08.26.09-ppt-batch-hydrate-by-set" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.26.09-ppt-batch-hydrate-by-set" defer></script>
+<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.08.26.09-ppt-batch-hydrate-by-set" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.26.09-ppt-batch-hydrate-by-set" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.26.09-ppt-batch-hydrate-by-set" defer></script>
+<script src="scripts/pokemon/offline-browser.js?v=2026.08.26.09-ppt-batch-hydrate-by-set" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.26.09-ppt-batch-hydrate-by-set" defer></script>
 </head>
 <body>
 
@@ -1671,11 +1671,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.26.08-ppt-quota-reservation</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.26.09-ppt-batch-hydrate-by-set</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.26.08-ppt-quota-reservation</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.26.09-ppt-batch-hydrate-by-set</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1693,7 +1693,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.26.08-ppt-quota-reservation</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.26.09-ppt-batch-hydrate-by-set</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3695,7 +3695,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.26.08-ppt-quota-reservation';
+const APP_VERSION = '2026.08.26.09-ppt-batch-hydrate-by-set';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -34227,6 +34227,39 @@ async function fetchPokemonPriceTrackerExactDetail(tcgPlayerId, language = 'engl
   return card;
 }
 
+// Pulls every card in one set (up to PPT's own eBay-included cap of 50) with
+// full condition + graded/PSA data in ONE credit-billed call, via PPT's
+// fetchAllInSet=true. Credits cost the same either way (PPT bills by cards
+// returned, not by call count -- see docs/api/pokemon-price-tracker-openapi.json),
+// so this only pays off when several visible results already share a set:
+// one round trip instead of one per card, and far less exposure to the
+// 500-calls/minute rate limit on a big search.
+async function fetchPokemonPriceTrackerCardsForSet({ setName = '', language = 'english' } = {}){
+  if(!setName) return [];
+  const settings = pokemonPriceTrackerApiSettings();
+  const params = new URLSearchParams({
+    fetchAllInSet:'true', set:setName, language:(language || 'english').toLowerCase(),
+    includeEbay:'true', includeHistory:'true', days:'180', maxDataPoints:String(settings.maxDataPoints), limit:'50',
+  });
+  const requestPath = '/pricing/pokemon/cards?' + params.toString().replace(/\+/g, '%20');
+  const res = await storeWorkerFetch(requestPath, { cache:'no-store' });
+  const data = await res.json().catch(() => ({}));
+  if(data.usage?.dailyRemaining != null) localStorage.setItem('ppt_remaining_credits', String(data.usage.dailyRemaining));
+  if(data.usage?.consumed != null) localStorage.setItem('ppt_last_consumed', String(data.usage.consumed));
+  const remaining = data.usage?.dailyRemaining ?? Number(localStorage.getItem('ppt_remaining_credits') || 9999);
+  if(data.providerQuotaState === 'exhausted' || (res.status === 429 && remaining <= 0) || (res.status === 403 && /quota|exhausted/i.test(String(data.error || data.message || '')))) {
+    localStorage.setItem('ppt_quota_exhausted_until', String(Date.now() + 60 * 60 * 1000));
+  } else if(res.status === 429) {
+    localStorage.setItem('ppt_rate_limited_until', String(Date.now() + 60 * 1000));
+  }
+  if(!res.ok || !data.ok) return [];
+  const now = new Date().toISOString();
+  return pokemonPriceTrackerCardsFromPayload(data).map(card => {
+    card.lookupDebug = { ...(card.lookupDebug || {}), path:'cards.fetchAllInSet', requestPath, exactHydrated:true, exactCacheVersion:POKEMON_EXACT_CACHE_VERSION, syncedAt:now, usage:data.usage || {} };
+    return card;
+  });
+}
+
 async function fetchPokemonPopulation(tcgPlayerId, language = 'english'){
   if(!tcgPlayerId) return null;
   const params = new URLSearchParams({ tcgPlayerId:String(tcgPlayerId), language:language || 'english' });
@@ -34611,6 +34644,19 @@ function pokemonParseTitleToQplRows(parsedResult = {}, query = ''){
   return rows;
 }
 
+async function applyResolvedPokemonCardToRow(row, idx, card, rerender = true){
+  row.pokemonPriceTracker = card;
+  row.tcgPlayerId = card.tcgPlayerId || row.tcgPlayerId || row.tcgplayerId || '';
+  row.tcgplayerId = row.tcgPlayerId || row.tcgplayerId || '';
+  row.tcgPlayerUrl = card.tcgPlayerUrl || row.tcgPlayerUrl || row.tcgUrl || '';
+  row.tcgUrl = row.tcgPlayerUrl || row.tcgUrl || '';
+  row.cache = { state:'cached', updatedAt:new Date().toISOString(), source:'PokemonPriceTracker' };
+  applyQplSelectedVariant(row);
+  await cachePokemonPriceTrackerCard(row, card).catch(() => {});
+  await savePokemonCompsFromRow(row, row.cache?.cardKey || pokemonCardKey(row, qplLastSearch)).catch(() => {});
+  if(rerender) updateQplResultCard(idx);
+}
+
 async function hydratePokemonPriceTrackerPricing(idx, rerender = true){
   const row = qplResults[idx];
   if(!row || !isPokemonChartCandidate(row)) return;
@@ -34635,18 +34681,7 @@ async function hydratePokemonPriceTrackerPricing(idx, rerender = true){
       return;
     }
     const card = await resolveExactPokemonPriceTrackerCard(row, qplLastSearch);
-    if(card) {
-      row.pokemonPriceTracker = card;
-      row.tcgPlayerId = card.tcgPlayerId || row.tcgPlayerId || row.tcgplayerId || '';
-      row.tcgplayerId = row.tcgPlayerId || row.tcgplayerId || '';
-      row.tcgPlayerUrl = card.tcgPlayerUrl || row.tcgPlayerUrl || row.tcgUrl || '';
-      row.tcgUrl = row.tcgPlayerUrl || row.tcgUrl || '';
-      row.cache = { state:'cached', updatedAt:new Date().toISOString(), source:'PokemonPriceTracker' };
-      applyQplSelectedVariant(row);
-      await cachePokemonPriceTrackerCard(row, card).catch(() => {});
-      await savePokemonCompsFromRow(row, row.cache?.cardKey || pokemonCardKey(row, qplLastSearch)).catch(() => {});
-      if(rerender) updateQplResultCard(idx);
-    }
+    if(card) await applyResolvedPokemonCardToRow(row, idx, card, rerender);
   } catch(err) {
     row.pokemonPriceTrackerError = err.message || 'PokemonPriceTracker unavailable';
     if(rerender) updateQplResultCard(idx);
@@ -34662,6 +34697,44 @@ function retryPptHydration(idx){
   delete row._pptHydrating;
   updateQplResultCard(idx);
   hydratePokemonPriceTrackerPricing(idx, true);
+}
+
+// When 2+ visible candidates already share a set, pull that whole batch
+// through one fetchAllInSet call instead of one call per card -- same
+// credit cost (PPT bills by cards returned, not by call), far fewer round
+// trips. Returns the set of indexes it resolved (hydrated or genuinely
+// not-in-set-response); anything else is left for the per-card fallback.
+async function hydratePokemonPriceTrackerPricingBatch(indexes){
+  const bySet = new Map();
+  indexes.forEach(idx => {
+    const row = qplResults[idx];
+    if(!row?.tcgPlayerId) return; // need an id to match a batch response back to this row
+    const setKey = normalizePokemonText(row.setName || row.set || '');
+    if(!setKey) return;
+    if(!bySet.has(setKey)) bySet.set(setKey, { setName:row.setName || row.set, language:row.language || 'english', items:[] });
+    bySet.get(setKey).items.push(idx);
+  });
+  const handled = new Set();
+  for(const [, group] of bySet){
+    if(group.items.length < 2) continue;
+    if(!navigator.onLine || pokemonPriceTrackerQuotaBlocked()) break;
+    group.items.forEach(idx => { qplResults[idx]._pptHydrating = true; });
+    try {
+      const cards = await fetchPokemonPriceTrackerCardsForSet({ setName:group.setName, language:group.language });
+      const byId = new Map(cards.map(c => [String(c.tcgPlayerId || ''), c]));
+      for(const idx of group.items){
+        const row = qplResults[idx];
+        const card = byId.get(String(row.tcgPlayerId || ''));
+        if(card) await applyResolvedPokemonCardToRow(row, idx, card);
+        handled.add(idx);
+      }
+    } catch(e){
+      // Leave this group's indexes unhandled -- the per-card path below retries them.
+    } finally {
+      group.items.forEach(idx => { qplResults[idx]._pptHydrating = false; });
+    }
+  }
+  return handled;
 }
 
 function hydrateVisiblePokemonPriceTrackerResults(indexes = []){
@@ -34682,12 +34755,16 @@ function hydrateVisiblePokemonPriceTrackerResults(indexes = []){
     const r = qplResults[i];
     return r && isPokemonChartCandidate(r) && !r._pptHydrating && !r.pokemonPriceTracker?.lookupDebug?.exactHydrated;
   }).slice(0, HYDRATE_LIMIT);
-  candidates.forEach((idx, n) => {
-    setTimeout(() => {
-      if(pokemonPriceTrackerQuotaBlocked()) return;
-      hydratePokemonPriceTrackerPricing(idx, true);
-    }, n * HYDRATE_STAGGER_MS);
-  });
+  if(!candidates.length) return;
+  (async () => {
+    const handled = await hydratePokemonPriceTrackerPricingBatch(candidates).catch(() => new Set());
+    candidates.filter(idx => !handled.has(idx)).forEach((idx, n) => {
+      setTimeout(() => {
+        if(pokemonPriceTrackerQuotaBlocked()) return;
+        hydratePokemonPriceTrackerPricing(idx, true);
+      }, n * HYDRATE_STAGGER_MS);
+    });
+  })();
 }
 
 function qplChartModalHtml(r, idx){
@@ -44901,7 +44978,7 @@ async function toppsLoadParallels(cardId){
   window.__arscaCloseModal = closeModal;
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.26.08-ppt-quota-reservation" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.26.09-ppt-batch-hydrate-by-set" defer></script>
 </body>
 </html>
 
