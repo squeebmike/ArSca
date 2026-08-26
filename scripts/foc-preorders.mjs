@@ -459,7 +459,7 @@ async function requireShippingRate(env, deps, storeId, address, rateId) {
   return cached;
 }
 
-async function shippingSettings(db, env, storeId) {
+export async function shippingSettings(db, env, storeId) {
   const { data:rows } = await db(`store_settings?store_id=eq.${encodeURIComponent(storeId)}&select=payment_settings,receipt_settings&limit=1`);
   const settings = rows?.[0] || {};
   const shipping = settings.payment_settings?.shipping || {};

@@ -1,7 +1,7 @@
 (function(){
 'use strict';
 
-var state={loaded:false,cycles:[],cycle:null,families:[],query:'',publisher:'all',flag:'all',saving:new Set(),shipping:null};
+var state={loaded:false,cycles:[],cycle:null,families:[],query:'',publisher:'all',flag:'all',ebay:'all',saving:new Set(),shipping:null};
 
 function esc(value){return String(value==null?'':value).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
 function money(cents){return '$'+(Number(cents||0)/100).toFixed(2);}
@@ -77,7 +77,8 @@ function visibleFamilies(){
   var q=state.query.trim().toLowerCase();return state.families.filter(function(f){
     var pub=state.publisher==='all'||String(f.publisher||'').toLowerCase()===state.publisher;
     var flagged=state.flag==='all'||(state.flag==='first'&&f.isFirstIssue)||(state.flag==='foil'&&f.variants.some(function(v){return v.isFoil;}))||(state.flag==='incentive'&&f.variants.some(function(v){return v.isIncentive;}))||(state.flag==='demand'&&f.variants.some(function(v){return v.customerQty>0;}));
-    var hay=[f.title,f.seriesName,f.publisher,f.writer,f.interiorArtist].concat(f.variants.map(function(v){return[v.variantLabel,v.coverArtist].join(' ');})).join(' ').toLowerCase();return pub&&flagged&&(!q||hay.indexOf(q)>-1);
+    var ebay=state.ebay==='all'||f.variants.some(function(v){return v.ebayPresaleStatus===state.ebay;});
+    var hay=[f.title,f.seriesName,f.publisher,f.writer,f.interiorArtist].concat(f.variants.map(function(v){return[v.variantLabel,v.coverArtist].join(' ');})).join(' ').toLowerCase();return pub&&flagged&&ebay&&(!q||hay.indexOf(q)>-1);
   });
 }
 
@@ -115,7 +116,7 @@ function familyCard(f){
 
 function renderCycle(){
   var c=state.cycle;if(!c)return;var publishers=Array.from(new Set(state.families.map(function(f){return f.publisher;}).filter(Boolean))).sort();var allSkus=state.families.reduce(function(a,f){return a.concat(f.variants);},[]);var customerQty=allSkus.reduce(function(s,v){return s+Number(v.customerQty||0);},0);var storeQty=allSkus.reduce(function(s,v){return s+Number(v.storeQuantity||0);},0);var incentiveReq=allSkus.reduce(function(s,v){return s+Number(v.waitlistRequests||0);},0);
-  panel().innerHTML='<section class="foc-hero"><div class="foc-toolbar"><button class="hbtn" onclick="loadFocCycles()">← CYCLES</button><button class="hbtn" style="color:var(--purple)" onclick="openFocReview()">FINAL FOC REVIEW</button><button class="hbtn" onclick="exportFocPrh()">EXPORT PRH ORDER</button><button class="hbtn" style="color:var(--g)" onclick="openReceiveShipment()">RECEIVE SHIPMENT</button>'+(c.status!=='archived'?'<button class="hbtn" onclick="toggleFocCycle()">'+(c.isOpen?'LOCK ORDERS':'UNLOCK ORDERS')+'</button>':'')+(c.status==='archived'?'<button class="hbtn" onclick="unarchiveFocCycle()">SHOW ON SITE (LOCKED)</button>':'<button class="hbtn danger" onclick="archiveFocCycle()">HIDE FROM SITE</button>')+'<a class="hbtn" href="https://themanapocket.com/preorders?cycle='+encodeURIComponent(c.foc_date)+'" target="_blank" rel="noopener" style="text-decoration:none">VIEW CUSTOMER PAGE</a></div><div style="display:flex;justify-content:space-between;gap:12px;align-items:end;flex-wrap:wrap;margin-top:14px"><div><div style="font:900 22px/1.1 \'Orbitron\',monospace;color:var(--text)">FOC '+esc(displayDate(c.foc_date))+'</div><div style="font:10px/1.6 var(--font-mono);color:var(--dim)">'+esc(c.source_filename||'PRH')+' · '+(c.status==='archived'?'HIDDEN FROM SITE':(c.isOpen?'UNLOCKED FOR ORDERS':'VISIBLE BUT LOCKED'))+'</div></div><label style="font:8px var(--font-mono);color:var(--dim)">CUSTOMER CUTOFF · PACIFIC<input id="foc-cycle-cutoff" class="tsi" type="datetime-local" value="'+esc(pacificDateTimeInput(c.customer_cutoff_at))+'" onchange="saveFocCycleCutoff()" style="margin:3px 0 0"><span style="display:block;margin-top:4px">Set a future cutoff before unlocking an expired FOC.</span></label></div><div class="foc-stats"><div class="foc-stat"><b>'+allSkus.length+'</b><span>Exact cover SKUs</span></div><div class="foc-stat"><b>'+state.families.length+'</b><span>Title families</span></div><div class="foc-stat"><b>'+customerQty+'</b><span>Customer copies</span></div><div class="foc-stat"><b>'+storeQty+'</b><span>Store copies</span></div><div class="foc-stat"><b>'+incentiveReq+'</b><span>Incentive requests</span></div></div></section><div class="panel foc-toolbar" style="margin-bottom:12px"><input id="foc-admin-search" class="tsi" placeholder="Search title, writer, artist…" value="'+esc(state.query)+'" oninput="filterFocAdmin(this.value)"><select class="tsi" onchange="filterFocPublisher(this.value)"><option value="all">All publishers</option>'+publishers.map(function(p){return'<option value="'+esc(p.toLowerCase())+'" '+(state.publisher===p.toLowerCase()?'selected':'')+'>'+esc(p)+'</option>';}).join('')+'</select><select class="tsi" onchange="filterFocFlag(this.value)"><option value="all">All comics</option><option value="first">#1 issues</option><option value="foil">Foil covers</option><option value="incentive">Incentives</option><option value="demand">Customer demand</option></select><span id="foc-visible-count" style="font:9px var(--font-mono);color:var(--dim)"></span></div><div id="foc-family-list"></div>';
+  panel().innerHTML='<section class="foc-hero"><div class="foc-toolbar"><button class="hbtn" onclick="loadFocCycles()">← CYCLES</button><button class="hbtn" style="color:var(--purple)" onclick="openFocReview()">FINAL FOC REVIEW</button><button class="hbtn" onclick="exportFocPrh()">EXPORT PRH ORDER</button><button class="hbtn" style="color:var(--g)" onclick="openReceiveShipment()">RECEIVE SHIPMENT</button>'+(c.status!=='archived'?'<button class="hbtn" onclick="toggleFocCycle()">'+(c.isOpen?'LOCK ORDERS':'UNLOCK ORDERS')+'</button>':'')+(c.status==='archived'?'<button class="hbtn" onclick="unarchiveFocCycle()">SHOW ON SITE (LOCKED)</button>':'<button class="hbtn danger" onclick="archiveFocCycle()">HIDE FROM SITE</button>')+'<a class="hbtn" href="https://themanapocket.com/preorders?cycle='+encodeURIComponent(c.foc_date)+'" target="_blank" rel="noopener" style="text-decoration:none">VIEW CUSTOMER PAGE</a></div><div style="display:flex;justify-content:space-between;gap:12px;align-items:end;flex-wrap:wrap;margin-top:14px"><div><div style="font:900 22px/1.1 \'Orbitron\',monospace;color:var(--text)">FOC '+esc(displayDate(c.foc_date))+'</div><div style="font:10px/1.6 var(--font-mono);color:var(--dim)">'+esc(c.source_filename||'PRH')+' · '+(c.status==='archived'?'HIDDEN FROM SITE':(c.isOpen?'UNLOCKED FOR ORDERS':'VISIBLE BUT LOCKED'))+'</div></div><label style="font:8px var(--font-mono);color:var(--dim)">CUSTOMER CUTOFF · PACIFIC<input id="foc-cycle-cutoff" class="tsi" type="datetime-local" value="'+esc(pacificDateTimeInput(c.customer_cutoff_at))+'" onchange="saveFocCycleCutoff()" style="margin:3px 0 0"><span style="display:block;margin-top:4px">Set a future cutoff before unlocking an expired FOC.</span></label></div><div class="foc-stats"><div class="foc-stat"><b>'+allSkus.length+'</b><span>Exact cover SKUs</span></div><div class="foc-stat"><b>'+state.families.length+'</b><span>Title families</span></div><div class="foc-stat"><b>'+customerQty+'</b><span>Customer copies</span></div><div class="foc-stat"><b>'+storeQty+'</b><span>Store copies</span></div><div class="foc-stat"><b>'+incentiveReq+'</b><span>Incentive requests</span></div></div></section><div class="panel foc-toolbar" style="margin-bottom:12px"><input id="foc-admin-search" class="tsi" placeholder="Search title, writer, artist…" value="'+esc(state.query)+'" oninput="filterFocAdmin(this.value)"><select class="tsi" onchange="filterFocPublisher(this.value)"><option value="all">All publishers</option>'+publishers.map(function(p){return'<option value="'+esc(p.toLowerCase())+'" '+(state.publisher===p.toLowerCase()?'selected':'')+'>'+esc(p)+'</option>';}).join('')+'</select><select class="tsi" onchange="filterFocFlag(this.value)"><option value="all">All comics</option><option value="first">#1 issues</option><option value="foil">Foil covers</option><option value="incentive">Incentives</option><option value="demand">Customer demand</option></select><select class="tsi" onchange="filterFocEbay(this.value)"><option value="all">All eBay statuses</option><option value="ELIGIBLE_NOW">Eligible, not listed</option><option value="TOO_EARLY">Too early</option><option value="LISTED">Already listed</option><option value="SOLD_OUT">Presale sold out</option><option value="ACTION_REQUIRED">Action required</option></select><span id="foc-visible-count" style="font:9px var(--font-mono);color:var(--dim)"></span></div><div id="foc-family-list"></div>';
   renderFamilies();
 }
 
@@ -209,14 +210,81 @@ async function confirmReceiveShipment(){
   }catch(e){if(status)status.textContent='';toast_dash('Could not receive shipment: '+e.message);}
 }
 
-async function createEbayPresale(skuId){
-  var qty=parseInt(prompt('How many copies to list on eBay as a presale?','1'),10);
-  if(!qty||qty<1)return;
+// Review-before-publish for FOC eBay presale listings -- a straight
+// prompt()-then-publish used to fire the real eBay listing immediately with
+// no chance to fix the title/description/weight/etc first (store request:
+// give a real edit step, same as the existing bulk eBay listing tool).
+// /foc/ebay/presale-preview computes the same defaults the old hardcoded
+// flow used to publish directly, but returns them for editing instead of
+// listing anything; CREATE EBAY PRESALE below sends the edited fields back
+// to /foc/ebay/create-presale, which still re-checks eligibility/price
+// itself from the trusted DB row (see the Worker route's own comment).
+async function openEbayPresaleReview(skuId){
+  var host=panel();if(!host)return;
+  var modalOld=document.getElementById('foc-ebay-review-modal');if(modalOld)modalOld.remove();
+  var modal=document.createElement('div');
+  modal.id='foc-ebay-review-modal';
+  modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:9999;display:flex;align-items:flex-start;justify-content:center;overflow-y:auto;padding:24px 12px';
+  modal.innerHTML='<div style="width:100%;max-width:560px;background:var(--surf);border:1px solid var(--border);border-radius:10px;padding:16px;font:11px/1.5 var(--font-mono);color:var(--text)">Loading presale listing preview…</div>';
+  document.body.appendChild(modal);
+  var preview;
   try{
-    await api('/foc/ebay/create-presale',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({storeId:getActiveStoreId(),skuId:skuId,quantity:qty})});
+    preview=await api('/foc/ebay/presale-preview',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({storeId:getActiveStoreId(),skuId:skuId,quantity:1})});
+  }catch(e){
+    modal.querySelector('div').innerHTML='<div style="color:var(--red)">Could not load presale preview: '+esc(e.message)+'</div><button class="hbtn" style="margin-top:10px" onclick="document.getElementById(\'foc-ebay-review-modal\').remove()">CLOSE</button>';
+    return;
+  }
+  var asp=preview.customAspects||{};
+  modal.innerHTML='<div style="width:100%;max-width:560px;background:var(--surf);border:1px solid var(--border);border-radius:10px;padding:16px">'+
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><div style="font-family:\'Orbitron\',monospace;color:var(--gold);font-size:13px;letter-spacing:2px">REVIEW EBAY PRESALE LISTING</div><button onclick="document.getElementById(\'foc-ebay-review-modal\').remove()" style="background:none;border:none;color:var(--dim);font-size:22px;cursor:pointer">×</button></div>'+
+    '<div style="font:9px var(--font-mono);color:var(--dim);margin-bottom:10px">Nothing is published to eBay until you click LIST ON EBAY below.</div>'+
+    '<div style="display:grid;grid-template-columns:80px 1fr;gap:12px;margin-bottom:12px;align-items:start">'+
+    (preview.imageUrl?'<img src="'+esc(preview.imageUrl)+'" style="width:80px;height:100px;object-fit:contain;background:#050507;border:1px solid var(--border);border-radius:6px">':'<div style="width:80px;height:100px;background:#050507;border:1px solid var(--border);border-radius:6px;display:flex;align-items:center;justify-content:center;color:var(--dim);font-size:9px">NO IMAGE</div>')+
+    '<div><label style="font:9px var(--font-mono);color:var(--dim)">TITLE (eBay requires "PRESALE" disclosed here)</label>'+
+    '<input id="foc-eb-title" maxlength="80" value="'+esc(preview.title)+'" style="width:100%;margin-top:4px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:9px;border-radius:6px;font-size:12px;box-sizing:border-box">'+
+    '<div id="foc-eb-title-count" style="font:8px var(--font-mono);color:var(--dim);text-align:right;margin-top:3px">'+preview.title.length+'/80</div></div></div>'+
+    '<div class="foc-sku-fields" style="grid-template-columns:1fr 1fr 1fr;margin-bottom:10px"><label>QUANTITY<input id="foc-eb-qty" class="tsi" type="number" min="1" max="200" value="1"></label>'+
+    '<label>PRICE<input class="tsi" value="$'+esc(preview.price)+'" disabled></label>'+
+    '<label>SHIP-BY<input class="tsi" value="'+esc(preview.onSaleLabel)+'" disabled></label></div>'+
+    '<label style="display:flex;gap:6px;align-items:center;margin-bottom:10px;font:9px var(--font-mono);color:var(--dim)"><input id="foc-eb-best-offer" type="checkbox" checked> ALLOW BEST OFFER</label>'+
+    '<div class="foc-sku-fields" style="grid-template-columns:1fr 1fr;margin-bottom:10px"><label>PACKAGE WEIGHT<input id="foc-eb-weight" class="tsi" type="number" min=".1" step=".1" value="'+esc(preview.weightValue)+'"></label>'+
+    '<label>UNIT<select id="foc-eb-weight-unit" class="tsi"><option value="POUND" '+(preview.weightUnit==='POUND'?'selected':'')+'>LB</option><option value="OUNCE" '+(preview.weightUnit==='OUNCE'?'selected':'')+'>OZ</option></select></label></div>'+
+    '<div class="foc-sku-fields" style="grid-template-columns:1fr 1fr;margin-bottom:10px">'+
+    ['Publisher','Writer','Artist','Cover Artist'].map(function(k){return '<label>'+k.toUpperCase()+'<input class="tsi" data-foc-eb-aspect="'+esc(k)+'" value="'+esc(asp[k]||'')+'"></label>';}).join('')+
+    '</div>'+
+    '<label style="font:9px var(--font-mono);color:var(--dim)">DESCRIPTION</label>'+
+    '<textarea id="foc-eb-desc" rows="6" style="width:100%;margin-top:4px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:9px;border-radius:6px;box-sizing:border-box;resize:vertical;font-size:11px">'+esc(preview.description)+'</textarea>'+
+    '<div id="foc-eb-status" style="display:none;margin:10px 0;padding:10px;border-radius:6px;font-family:monospace;font-size:10px;text-align:center"></div>'+
+    '<div style="display:flex;gap:8px;margin-top:12px"><button class="hbtn" style="flex:1;padding:12px;background:rgba(255,209,102,.12);border-color:rgba(255,209,102,.35);color:var(--gold)" onclick="submitEbayPresaleReview(\''+esc(skuId)+'\')">LIST ON EBAY</button>'+
+    '<button class="hbtn" style="padding:12px" onclick="document.getElementById(\'foc-ebay-review-modal\').remove()">CANCEL</button></div>'+
+    '</div>';
+  var titleInput=document.getElementById('foc-eb-title');
+  if(titleInput)titleInput.addEventListener('input',function(){document.getElementById('foc-eb-title-count').textContent=this.value.length+'/80';});
+}
+async function submitEbayPresaleReview(skuId){
+  var status=document.getElementById('foc-eb-status');
+  var qty=Math.max(1,Math.min(200,parseInt(document.getElementById('foc-eb-qty').value,10)||0));
+  if(!qty){toast_dash('Enter a valid quantity');return;}
+  var customAspects={};
+  document.querySelectorAll('[data-foc-eb-aspect]').forEach(function(el){customAspects[el.dataset.focEbAspect]=el.value;});
+  var payload={
+    storeId:getActiveStoreId(),skuId:skuId,quantity:qty,
+    title:document.getElementById('foc-eb-title').value,
+    description:document.getElementById('foc-eb-desc').value,
+    customAspects:customAspects,
+    bestOfferEnabled:document.getElementById('foc-eb-best-offer').checked,
+    weightValue:parseFloat(document.getElementById('foc-eb-weight').value)||undefined,
+    weightUnit:document.getElementById('foc-eb-weight-unit').value,
+  };
+  if(status){status.style.display='block';status.style.color='var(--gold)';status.style.border='1px solid rgba(255,209,102,.25)';status.style.background='rgba(255,209,102,.06)';status.textContent='Publishing to eBay…';}
+  try{
+    await api('/foc/ebay/create-presale',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
     toast_dash('eBay presale listed: '+qty+' cop'+(qty===1?'y':'ies'));
+    var modal=document.getElementById('foc-ebay-review-modal');if(modal)modal.remove();
     await openCycle(state.cycle.id);
-  }catch(e){toast_dash('Could not create eBay presale: '+e.message);}
+  }catch(e){
+    if(status){status.style.color='var(--red)';status.style.borderColor='rgba(255,77,109,.3)';status.style.background='rgba(255,77,109,.06)';status.textContent='Could not create eBay presale: '+e.message;}
+  }
 }
 
 // ═══════════════════════════════════════════════════════
@@ -330,5 +398,5 @@ async function loadShipping(){var host=document.getElementById('foc-shipping-set
 function renderShipping(){var s=state.shipping||{},f=s.from||{},p=s.parcel||{};document.getElementById('foc-shipping-settings').innerHTML='<div class="foc-import-report"><b style="color:'+(s.tokenConfigured?'var(--g)':'var(--gold)')+'">SHIPPO TOKEN '+(s.tokenConfigured?'CONNECTED':'NEEDS SETUP')+'</b><br>The API token stays in the Worker secret. This form stores only your ship-from address and package preset.</div><div class="foc-sku-fields" style="grid-template-columns:repeat(auto-fit,minmax(180px,1fr));margin-top:10px">'+[['name','Store / sender',f.name],['line1','Street',f.street1],['line2','Suite / unit',f.street2],['city','City',f.city],['state','State',f.state],['zip','ZIP',f.zip],['phone','Phone',f.phone],['email','Email',f.email]].map(function(x){return'<label>'+x[1]+'<input class="tsi" data-ship-from="'+x[0]+'" value="'+esc(x[2]||'')+'"></label>';}).join('')+'</div><div class="foc-sku-fields" style="grid-template-columns:repeat(4,minmax(0,1fr));margin-top:10px">'+[['length','Length',p.length||12],['width','Width',p.width||9],['height','Height',p.height||1],['weight','Weight lb',p.weight||1]].map(function(x){return'<label>'+x[1]+'<input class="tsi" type="number" min=".1" step=".1" data-ship-parcel="'+x[0]+'" value="'+esc(x[2])+'"></label>';}).join('')+'</div><button class="hbtn" style="margin-top:10px" onclick="saveFocShippingSettings()">SAVE LIVE SHIPPING SETUP</button>';}
 async function saveShipping(){var shipFrom={},parcel={};document.querySelectorAll('[data-ship-from]').forEach(function(el){shipFrom[el.dataset.shipFrom]=el.value;});document.querySelectorAll('[data-ship-parcel]').forEach(function(el){parcel[el.dataset.shipParcel]=el.value;});try{var d=await api('/foc/admin/shipping-settings',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({storeId:getActiveStoreId(),enabled:true,shipFrom:shipFrom,defaultParcel:parcel})});state.shipping=d.shipping;toast_dash(d.shipping.tokenConfigured?'Live carrier settings saved':'Address saved — add the Shippo token to enable rates');renderShipping();}catch(e){toast_dash(e.message);}}
 
-window.ensureFocPanel=function(){loadCycles(false);};window.loadFocCycles=loadCycles;window.openFocCycle=openCycle;window.handleFocImportFile=handleImport;window.filterFocAdmin=function(v){state.query=v;renderFamilies();};window.filterFocPublisher=function(v){state.publisher=v;renderFamilies();};window.filterFocFlag=function(v){state.flag=v;renderFamilies();};window.saveFocSku=saveSku;window.saveFocFamily=saveFamily;window.toggleFocCycle=toggleCycle;window.archiveFocCycle=archiveCycle;window.unarchiveFocCycle=unarchiveCycle;window.saveFocCycleCutoff=saveCutoff;window.exportFocPrh=exportPrh;window.loadFocShippingSettings=loadShipping;window.saveFocShippingSettings=saveShipping;window.openReceiveShipment=openReceiveShipment;window.confirmReceiveShipment=confirmReceiveShipment;window.createFocEbayPresale=createEbayPresale;window.loadEbaySafeDays=loadEbaySafeDays;window.saveFocEbaySafeDays=saveEbaySafeDays;window.openFocReview=openFocReview;window.submitPrhOrder=submitPrhOrder;window.reviewStoreQtyChanged=reviewStoreQtyChanged;
+window.ensureFocPanel=function(){loadCycles(false);};window.loadFocCycles=loadCycles;window.openFocCycle=openCycle;window.handleFocImportFile=handleImport;window.filterFocAdmin=function(v){state.query=v;renderFamilies();};window.filterFocPublisher=function(v){state.publisher=v;renderFamilies();};window.filterFocFlag=function(v){state.flag=v;renderFamilies();};window.filterFocEbay=function(v){state.ebay=v;renderFamilies();};window.saveFocSku=saveSku;window.saveFocFamily=saveFamily;window.toggleFocCycle=toggleCycle;window.archiveFocCycle=archiveCycle;window.unarchiveFocCycle=unarchiveCycle;window.saveFocCycleCutoff=saveCutoff;window.exportFocPrh=exportPrh;window.loadFocShippingSettings=loadShipping;window.saveFocShippingSettings=saveShipping;window.openReceiveShipment=openReceiveShipment;window.confirmReceiveShipment=confirmReceiveShipment;window.createFocEbayPresale=openEbayPresaleReview;window.submitEbayPresaleReview=submitEbayPresaleReview;window.loadEbaySafeDays=loadEbaySafeDays;window.saveFocEbaySafeDays=saveEbaySafeDays;window.openFocReview=openFocReview;window.submitPrhOrder=submitPrhOrder;window.reviewStoreQtyChanged=reviewStoreQtyChanged;
 })();
