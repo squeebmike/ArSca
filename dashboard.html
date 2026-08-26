@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.26.01-exact-url-resolve-photo-buttons">
+<meta name="version" content="2026.08.26.02-pokemon-offline-price-fix">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1633,16 +1633,16 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.26.01-exact-url-resolve-photo-buttons" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.26.01-exact-url-resolve-photo-buttons" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.26.01-exact-url-resolve-photo-buttons" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.08.26.01-exact-url-resolve-photo-buttons" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.26.01-exact-url-resolve-photo-buttons" defer></script>
-<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.08.26.01-exact-url-resolve-photo-buttons" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.26.01-exact-url-resolve-photo-buttons" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.26.01-exact-url-resolve-photo-buttons" defer></script>
-<script src="scripts/pokemon/offline-browser.js?v=2026.08.26.01-exact-url-resolve-photo-buttons" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.26.01-exact-url-resolve-photo-buttons" defer></script>
+<script src="scripts/query-routing.js?v=2026.08.26.02-pokemon-offline-price-fix" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.26.02-pokemon-offline-price-fix" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.26.02-pokemon-offline-price-fix" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.08.26.02-pokemon-offline-price-fix" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.26.02-pokemon-offline-price-fix" defer></script>
+<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.08.26.02-pokemon-offline-price-fix" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.26.02-pokemon-offline-price-fix" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.26.02-pokemon-offline-price-fix" defer></script>
+<script src="scripts/pokemon/offline-browser.js?v=2026.08.26.02-pokemon-offline-price-fix" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.26.02-pokemon-offline-price-fix" defer></script>
 </head>
 <body>
 
@@ -1671,11 +1671,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.26.01-exact-url-resolve-photo-buttons</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.26.02-pokemon-offline-price-fix</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.26.01-exact-url-resolve-photo-buttons</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.26.02-pokemon-offline-price-fix</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1693,7 +1693,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.26.01-exact-url-resolve-photo-buttons</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.26.02-pokemon-offline-price-fix</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3695,7 +3695,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.26.01-exact-url-resolve-photo-buttons';
+const APP_VERSION = '2026.08.26.02-pokemon-offline-price-fix';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -7433,7 +7433,11 @@ async function renderOfflineCatalogManagerPanel(){
     ['Sealed', pptSealed, `<button class="hbtn" onclick="downloadPokemonExport('sealed')">DOWNLOAD</button><button class="hbtn" onclick="clearPokemonExport('sealed')">CLEAR</button>`],
     ['eBay / Graded', pptEbay, `<button class="hbtn" onclick="downloadPokemonExport('ebay')">DOWNLOAD</button><button class="hbtn" onclick="clearPokemonExport('ebay')">CLEAR</button>`],
     ['Population', pptPop, `<button class="hbtn" onclick="downloadPokemonExport('population')">DOWNLOAD</button><button class="hbtn" onclick="clearPokemonExport('population')">CLEAR</button>`],
-  ].map(([label, meta, actions]) => row(label, meta?.rowCount || 0, meta?.downloadedAt, meta?.error || '', actions, 'PokemonPriceTracker Export')).join('');
+    // "downloadedAt" (shown in its own column) is only when this device last
+    // pulled a copy -- not when PPT itself last refreshed the prices in it.
+    // A device can download today and still be showing week-old prices if
+    // the cloud snapshot hasn't rebuilt. Surface that separately here.
+  ].map(([label, meta, actions]) => row(label, meta?.rowCount || 0, meta?.downloadedAt, meta?.error || (meta?.generatedAt ? 'Pricing data as of ' + formatOfflineCatalogDate(meta.generatedAt) : ''), actions, 'PokemonPriceTracker Export')).join('');
   // Old builds persisted this flag and could leave the UI stuck after a reload.
   localStorage.removeItem('mtg_bulk_status');
   const mtgBusy = _mtgBulkSyncActive;
@@ -29530,40 +29534,6 @@ function pokemonOfflineSealedToQplRow(row = {}, query = ''){
   return qplRow;
 }
 
-// Offline-first Pokemon lookup: scores every cached cards/sealed row by
-// whether its precomputed searchText contains the normalized query, same
-// shape of match MTG's offline search already does. Only reached when
-// pokemonOfflineSearchMode() isn't 'online_only' -- see searchQuickCatalog.
-async function searchPokemonOfflineCache(query, sealedIntent = false){
-  const q = normalizePokemonText(query);
-  if(!q) return [];
-  const scoreText = text => {
-    if(!text || !text.includes(q)) return -1;
-    return 100 - Math.min(60, text.indexOf(q));
-  };
-  const store = sealedIntent ? 'ppt_sealed' : 'ppt_cards';
-  const allRows = await catalogDbAll(store).catch(() => []);
-  const matched = allRows
-    .map(row => ({ row, score:scoreText(row.searchText) }))
-    .filter(x => x.score >= 0)
-    .sort((a, b) => b.score - a.score)
-    .slice(0, 20);
-  const toRow = sealedIntent ? pokemonOfflineSealedToQplRow : pokemonOfflineCardToQplRow;
-  const rows = matched.map(({row}) => toRow(row, query)).filter(Boolean);
-  if(window.ArsCaPokemonOfflineImages && rows.length){
-    await Promise.all(rows.map(async row => {
-      const id = row.tcgPlayerId || row.tcgplayerId;
-      if(!id) return;
-      try {
-        const blob = await window.ArsCaPokemonOfflineImages.getImageBlob(id, '400');
-        useOfflineRowImage(row, blob);
-      } catch(e) { /* no cached image for this card -- keep the default */ }
-    }));
-  }
-  return rows;
-}
-
-
 async function mtgCatalogMeta(){
   const [status, remote] = await Promise.all([
     window.ArsCaMtgOffline?.status().catch(() => null),
@@ -29917,22 +29887,7 @@ async function searchPokemonCatalogExport(query, cat = ''){
       if(!r.searchText) return false;
       if(queryNumber && !pokemonCardNumberMatches(r, queryNumber)) return false;
       return terms.every(t => r.searchText.includes(t));
-    }).slice(0, 40).map(r => ({
-      name:        r.name,
-      set:         r.setName,
-      card_number: r.cardNumber,
-      rarity:      r.rarity,
-      language:    r.language || 'english',
-      finish:      r.printing || '',
-      tcgPlayerId: r.tcgPlayerId,
-      marketPrice: r.marketPrice || 0,
-      displayPrice:r.marketPrice || 0,
-      priceSource: 'PPT Export (catalog)',
-      source:      'ppt_export',
-      category:    'Pokemon TCG',
-      imageUrl:    '',
-      cache:       { state:'catalog', source:'PokemonPriceTracker Export' },
-    }));
+    }).slice(0, 40).map(r => pokemonOfflineCardToQplRow(r, query)).filter(Boolean);
   } catch(e){ return []; }
 }
 
@@ -29942,17 +29897,7 @@ async function searchPokemonSealedCatalogLocal(query){
   try {
     const terms = normalizePokemonText(query).split(/\s+/).filter(Boolean);
     const rows = await catalogDbAll('ppt_sealed').catch(() => []);
-    return rows.filter(r => r.searchText && terms.every(t => r.searchText.includes(t))).slice(0, 20).map(r => ({
-      name:        r.name,
-      set:         r.setName,
-      productType: r.productType,
-      tcgPlayerId: r.tcgPlayerId,
-      marketPrice: r.marketPrice || 0,
-      displayPrice:r.marketPrice || 0,
-      priceSource: 'PPT Export (sealed catalog)',
-      source:      'ppt_export_sealed',
-      category:    'Pokemon TCG',
-    }));
+    return rows.filter(r => r.searchText && terms.every(t => r.searchText.includes(t))).slice(0, 20).map(r => pokemonOfflineSealedToQplRow(r, query)).filter(Boolean);
   } catch(e){ return []; }
 }
 
@@ -44895,7 +44840,7 @@ async function toppsLoadParallels(cardId){
   window.__arscaCloseModal = closeModal;
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.26.01-exact-url-resolve-photo-buttons" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.26.02-pokemon-offline-price-fix" defer></script>
 </body>
 </html>
 
