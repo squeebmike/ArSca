@@ -42,5 +42,10 @@ assert.deepEqual(lab.cleanName('Sol Ring [CMM]'),{name:'Sol Ring',set:'cmm',coll
 assert.deepEqual(lab.cleanName('Sol Ring #400'),{name:'Sol Ring',set:'',collector:'400',cleaned:'Sol Ring'});
 const page=fs.readFileSync('mtg-deck-lab.html','utf8'),dashboard=fs.readFileSync('dashboard.html','utf8');
 assert.match(page,/WALK-OFF FIRST FILL/);assert.match(page,/TCGPLAYER MASS ENTRY/);assert.match(page,/local-saved-decks/);
-assert.match(page,/DEMO · LOCAL ONLY/);assert.match(page,/TODO\(deck-persistence\)/);assert.doesNotMatch(page,/\.from\('(?:decks|deck_cards)'\).*\.(?:insert|upsert)/);assert.match(dashboard,/class="tab primary deck-lab-link" href="mtg-deck-lab\.html">DECK LAB BETA/);assert.match(dashboard,/<meta name="version" content="2026\./);
+assert.match(page,/DEMO · LOCAL ONLY/);assert.match(page,/TODO\(deck-persistence\)/);assert.doesNotMatch(page,/\.from\('(?:decks|deck_cards)'\).*\.(?:insert|upsert)/);
+// Deck Lab moved from the always-visible top nav into the MORE menu (store
+// request: keep the link/functionality, just don't show it up top).
+assert.match(dashboard,/class="more-item deck-lab-link" href="mtg-deck-lab\.html"[^>]*>DECK LAB BETA/);
+assert.doesNotMatch(dashboard,/class="tab primary deck-lab-link"/,'Deck Lab must no longer render as a top-level daily tab');
+assert.match(dashboard,/<meta name="version" content="2026\./);
 console.log('Deck Lab parser and analysis tests passed');
