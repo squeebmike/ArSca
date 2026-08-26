@@ -135,4 +135,37 @@ assert.match(worker, /async function resolveFocPresaleBasePolicyId\(env, ebayTok
 assert.match(worker, /find\(p => \/presale\/i\.test\(p\.name \|\| ''\)\)/, 'must prefer a store-created policy named for presale use');
 assert.match(worker, /const baseId = \(await resolveFocPresaleBasePolicyId\(env, ebayToken\)\) \|\| fallback/, 'the per-book handling-time clone must use the resolved presale base policy');
 
-console.log('FOC eBay presale review-step, template-field, eligible-filter, and handling-time contract checks passed');
+// "Sport: Trading Cards" was showing up as an item specific on comic
+// listings -- buildEbayAspects unconditionally defaulted Sport for every
+// category, sports/TCG cards and comics alike. It must not default Sport
+// for eBay's Comics category (259104), and it must still default it for
+// everything else (a sports/TCG card with no sport set) so this doesn't
+// regress non-comic listings.
+assert.match(worker, /if \(categoryId !== '259104'\) aspects\['Sport'\] = aspects\['Sport'\] \|\| \['Trading Cards'\]/,
+  'must not default the Sport aspect on comic listings');
+
+// "Condition: --" was showing blank on a comic listing even though
+// conditionId was correctly set to New (1000) -- some categories expect
+// Condition as an item-specific aspect too, not just the formal
+// conditionId field.
+assert.match(worker, /CONDITION_ASPECT_LABEL = \{ '1000': 'New'/, 'must map conditionId to a human-readable Condition aspect');
+assert.match(worker, /if \(!aspects\['Condition'\] && CONDITION_ASPECT_LABEL\[String\(conditionId\)\]\) aspects\['Condition'\] = \[CONDITION_ASPECT_LABEL\[String\(conditionId\)\]\]/,
+  'must fill in the Condition aspect from conditionId so it is not left blank');
+
+// Template reuse: the store already has a per-category description
+// template settings UI (Settings -> Vendor Info -> EBAY LISTING SETTINGS)
+// used by the regular "list on eBay" tool -- the FOC presale review modal
+// must use the same {token} template system for Comic when one is
+// configured, per store request for parity with that existing tool. The
+// mandatory presale disclosure must always be prepended regardless, since
+// a custom template that doesn't mention presale status must never
+// silently drop eBay's required description-level disclosure.
+assert.match(focDash, /var templates=vp\.ebayDescriptionTemplates\|\|\{\};/, 'must read the same per-category template settings the regular eBay listing tool uses');
+assert.match(focDash, /var customTemplate=templates\.Comic\|\|templates\.default\|\|'';/, 'must prefer a Comic-specific template, falling back to the default template');
+assert.match(focDash, /renderEbayDescriptionTemplate\(customTemplate,tokens\)/, 'must render the custom template through the shared {token} renderer');
+assert.match(focDash, /description='PRESALE -- This comic has not been released yet and is not currently in stock/,
+  'the mandatory presale disclosure must always be prepended, even when a custom template is used');
+assert.match(focDash, /\+renderedBody;\s*\n\s*usedCustomTemplate=true;/, 'the rendered custom template body must be appended after the mandatory disclosure');
+assert.match(focDash, /openSettingsSection\(\\'profile\\',\\'vendor-profile-panel\\'\)/, 'the modal must link to where the template is actually edited');
+
+console.log('FOC eBay presale review-step, template-field, eligible-filter, handling-time, aspects, and template-reuse contract checks passed');
