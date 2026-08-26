@@ -264,7 +264,7 @@ assert.match(focDash, /document\.querySelectorAll\('\[data-foc-eb-extra\]'\)\.fo
 // breaks to real HTML and be used everywhere a description reaches eBay
 // (both the inventory_item and offer bodies), not just one of the two.
 assert.match(worker, /function toEbayHtmlDescription\(text\) \{/, 'must have a shared HTML-formatting helper for eBay descriptions');
-assert.match(worker, /escaped\.split\(\/\\n\{2,\}\/\)\.map\(para => '<p>' \+ para\.replace\(\/\\n\/g, '<br>'\) \+ '<\/p>'\)\.join\(''\)/,
+assert.match(worker, /escaped\.split\(\/\\n\{2,\}\/\)\.map\(para => '<p>' \+ para\.replace\(\/\\n\/g, '<br>'\) \+ '<\/p>'\);/,
   'must convert blank-line-separated paragraphs to <p> and remaining single line breaks to <br>');
 assert.match(worker, /replace\(\/&\/g, '&amp;'\)\.replace\(\/</, 'must HTML-escape the raw text first, since it is built from several free-text fields');
 assert.match(worker, /description: toEbayHtmlDescription\(description \|\| title\),/, 'the inventory_item description must go through the HTML formatter');
@@ -334,4 +334,21 @@ assert.match(dashboard, /if\(!policy\.conditions\.some\(c => c\.id === keep\)\)\
 assert.match(dashboard, /const newCond = policy\.conditions\.find\(c => \/\^brand new\$\/i\.test\(c\.label\)\) \|\| policy\.conditions\.find\(c => \/\^new\$\/i\.test\(c\.label\)\) \|\| policy\.conditions\.find\(c => \/\\bnew\\b\/i\.test\(c\.label\)\);\s*\n\s*if\(newCond\) sel\.value = newCond\.id;/,
   'must actually select the real New condition instead of leaving the fallback to the browser');
 
-console.log('FOC eBay presale review-step, template-field, eligible-filter, handling-time, aspects, template-reuse, unordered-withdrawal, store-category, template-gap, optional-clause, extra-field, html-formatting, warnings, quantity-default, cross-entry-point presale, and real-condition-id contract checks passed');
+// Store report: publishing failed live with "Invalid value for
+// description. The length should be between 1 and 4000 characters" on a
+// description that was under 4000 raw characters -- toEbayHtmlDescription
+// wraps paragraphs in <p>/<br>, and that tag overhead can push a
+// description sitting right at the pre-formatting cap over eBay's real
+// 4000-char limit, which applies to the FINAL html, not the raw text.
+assert.match(worker, /const EBAY_DESCRIPTION_MAX = 4000;/, 'must know eBay\'s real description length cap');
+assert.match(worker, /if \(\(out \+ para\)\.length > EBAY_DESCRIPTION_MAX\) break;/, 'must stop adding whole paragraphs before exceeding the cap, not truncate the joined HTML string mid-tag');
+{
+  const toEbayHtmlDescriptionSrc = worker.slice(worker.indexOf('function toEbayHtmlDescription'), worker.indexOf('function buildEbayInventoryItemBody'));
+  const toEbayHtmlDescription = new Function(toEbayHtmlDescriptionSrc + '\nreturn toEbayHtmlDescription;')();
+  const para = 'A'.repeat(180);
+  const raw = Array(22).fill(para).join('\n\n').substring(0, 4000);
+  const html = toEbayHtmlDescription(raw);
+  assert(html.length <= 4000, `toEbayHtmlDescription must never exceed eBay's 4000-char cap even when the raw text is right at 4000 chars (got ${html.length})`);
+}
+
+console.log('FOC eBay presale review-step, template-field, eligible-filter, handling-time, aspects, template-reuse, unordered-withdrawal, store-category, template-gap, optional-clause, extra-field, html-formatting, warnings, quantity-default, cross-entry-point presale, real-condition-id, and description-length-cap contract checks passed');

@@ -2273,7 +2273,21 @@ function buildEbayAspects(b) {
 // as markup once wrapped in HTML.
 function toEbayHtmlDescription(text) {
   const escaped = String(text || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-  return escaped.split(/\n{2,}/).map(para => '<p>' + para.replace(/\n/g, '<br>') + '</p>').join('');
+  const paragraphs = escaped.split(/\n{2,}/).map(para => '<p>' + para.replace(/\n/g, '<br>') + '</p>');
+  // eBay's 4000-char description cap applies to the FINAL HTML, not the
+  // raw text -- wrapping in <p>/<br> adds overhead that can push a
+  // description sitting right at the caller's own pre-formatting cap over
+  // eBay's limit (confirmed live: "Invalid value for description... between
+  // 1 and 4000 characters" on text that was under 4000 raw chars). Builds
+  // up whole paragraphs until the next one would exceed the limit, rather
+  // than truncating the joined HTML string mid-tag.
+  const EBAY_DESCRIPTION_MAX = 4000;
+  let out = '';
+  for (const para of paragraphs) {
+    if ((out + para).length > EBAY_DESCRIPTION_MAX) break;
+    out += para;
+  }
+  return out || paragraphs[0]?.substring(0, EBAY_DESCRIPTION_MAX) || '';
 }
 
 function buildEbayInventoryItemBody(b) {
