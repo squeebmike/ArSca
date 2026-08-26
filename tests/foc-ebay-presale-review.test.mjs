@@ -286,4 +286,23 @@ assert.match(focDash, /if\(result\.warnings&&result\.warnings\.length\)toast_das
 // Store asked for a higher default presale quantity than one copy.
 assert.match(focDash, /id="foc-eb-qty" class="tsi" type="number" min="1" max="200" value="10"/, 'default presale quantity must be 10, not 1');
 
-console.log('FOC eBay presale review-step, template-field, eligible-filter, handling-time, aspects, template-reuse, unordered-withdrawal, store-category, template-gap, optional-clause, extra-field, html-formatting, warnings, and quantity-default contract checks passed');
+// Store report: a presale item listed through the REGULAR "list on eBay"
+// dashboard tool (not the FOC review screen) came back showing the store's
+// normal fast-handling shipping policy, and "Brand New" not selected as
+// the condition. Both defaults live in computeEbayListingFields /
+// createAndPublishEbayListing, which had no idea an item was presale at
+// all -- only the FOC-specific route ever computed the right condition/
+// policy. Fixed at the shared source so it applies regardless of which UI
+// button was used to list the item.
+assert.match(dashboard, /const isPresaleItem = item\.status === 'presale' \|\| item\.source === 'foc_presale';\s*\n\s*const conditionId = isPresaleItem \? '1000' : isGraded \? '2750' : \(isEbayTradingCardCategory\(catId\) \? '4000' : '3000'\);/,
+  'a presale item must default to New (1000) condition regardless of category, since it is always genuinely brand-new stock');
+assert.match(dashboard, /isPresale:item\.status === 'presale' \|\| item\.source === 'foc_presale',\s*\n\s*onSaleDate:item\.onSaleDate \|\| '',/,
+  'the regular eBay listing payload must tell the Worker whether this item is presale, since it has no other way to know');
+assert.match(worker, /let fulfillmentPolicyId = b\.fulfillmentPolicyId \|\| '';\s*\n\s*if \(!fulfillmentPolicyId && b\.isPresale && b\.onSaleDate\) \{/,
+  'createAndPublishEbayListing must compute the presale shipping policy itself when the caller flagged the item as presale but did not already supply one');
+assert.match(worker, /const bWithPolicy = fulfillmentPolicyId \? \{ \.\.\.b, fulfillmentPolicyId \} : b;/, 'the computed policy must actually be applied to the listing, not just computed and discarded');
+assert.match(worker, /const itemBody = buildEbayInventoryItemBody\(bWithPolicy\);/, 'the inventory item body must be built from the policy-enriched object');
+assert.match(worker, /const offerBody = buildEbayOfferBody\(bWithPolicy, sku, locationKey, env\);\s*\n\s*\n\s*const offerRes = await fetch\('https:\/\/api\.ebay\.com\/sell\/inventory\/v1\/offer'/,
+  'the offer body (which is what actually carries fulfillmentPolicyId to eBay) must be built from the policy-enriched object in createAndPublishEbayListing');
+
+console.log('FOC eBay presale review-step, template-field, eligible-filter, handling-time, aspects, template-reuse, unordered-withdrawal, store-category, template-gap, optional-clause, extra-field, html-formatting, warnings, quantity-default, and cross-entry-point presale contract checks passed');

@@ -6320,8 +6320,28 @@ export default {
         }),
       }).catch(() => {});
 
+      // Any caller listing a known-presale item (the regular "list on eBay"
+      // tool included, not just the FOC review screen) gets the same
+      // presale-appropriate handling time / shipping policy -- otherwise a
+      // presale row listed from the general tool silently got the store's
+      // normal fast-handling policy (store report: wrong shipping policy
+      // on a presale listing). Only fills in what the caller didn't
+      // already compute itself (the FOC route passes its own, derived from
+      // the trusted DB row, which always wins).
+      let fulfillmentPolicyId = b.fulfillmentPolicyId || '';
+      if (!fulfillmentPolicyId && b.isPresale && b.onSaleDate) {
+        try {
+          const onSaleDate = new Date(String(b.onSaleDate).includes('T') ? b.onSaleDate : b.onSaleDate + 'T00:00:00Z');
+          if (Number.isFinite(onSaleDate.getTime())) {
+            const handlingBusinessDays = businessDaysBetween(new Date(), onSaleDate) + 2;
+            fulfillmentPolicyId = await getFocPresaleFulfillmentPolicyId(env, ebayToken, handlingBusinessDays);
+          }
+        } catch (_) {}
+      }
+      const bWithPolicy = fulfillmentPolicyId ? { ...b, fulfillmentPolicyId } : b;
+
       const sku = 'lba-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 5);
-      const itemBody = buildEbayInventoryItemBody(b);
+      const itemBody = buildEbayInventoryItemBody(bWithPolicy);
 
       const itemRes = await fetch(`https://api.ebay.com/sell/inventory/v1/inventory_item/${sku}`, {
         method: 'PUT',
@@ -6351,7 +6371,7 @@ export default {
         if (Array.isArray(itemData?.warnings) && itemData.warnings.length) warnings.push(...itemData.warnings.map(w => w?.message || w?.longMessage).filter(Boolean));
       }
 
-      const offerBody = buildEbayOfferBody(b, sku, locationKey, env);
+      const offerBody = buildEbayOfferBody(bWithPolicy, sku, locationKey, env);
 
       const offerRes = await fetch('https://api.ebay.com/sell/inventory/v1/offer', {
         method: 'POST',
