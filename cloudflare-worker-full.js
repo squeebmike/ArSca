@@ -9275,6 +9275,51 @@ export default {
           }
           return json({ ok: true, source: 'PriceCharting', query: q, products, matches: products });
         }
+        // Resolves a pasted PriceCharting/SportsCardsPro product-page URL to
+        // its exact product by fetching that literal page and pulling the
+        // numeric product id straight off it -- no name search, no
+        // ambiguity. These URLs are slug-based (no id in the URL itself),
+        // but the id has to be embedded somewhere in the page's own markup
+        // for their price-chart/collection-tracking widgets to work against
+        // it, so this tries several known embedding patterns in order of
+        // specificity before giving up.
+        if (url.pathname === '/pricing/pricecharting/resolve-url') {
+          const pastedUrl = (url.searchParams.get('url') || '').trim();
+          if (!/^https?:\/\/(www\.)?(pricecharting|sportscardspro)\.com\/game\//i.test(pastedUrl)) {
+            return json({ ok: false, error: 'url must be a pricecharting.com or sportscardspro.com /game/ product page' }, 400);
+          }
+          let html;
+          try {
+            const pageRes = await fetch(pastedUrl, {
+              headers: { 'User-Agent': 'Mozilla/5.0 (compatible; Walk-Off Exact Product/2026)', 'Accept': 'text/html' },
+              cf: { cacheTtl: 3600, cacheEverything: true },
+            });
+            if (!pageRes.ok) return json({ ok: false, error: 'Could not load that product page (HTTP ' + pageRes.status + ')' }, 502);
+            html = await pageRes.text();
+          } catch (e) {
+            return json({ ok: false, error: 'Could not load that product page: ' + e.message }, 502);
+          }
+          const idPatterns = [
+            /game-hi-lo-chart\.json\?id=(\d+)/i,
+            /chart[-_]hi[-_]lo[^"']*[?&]id=(\d+)/i,
+            /"productID"\s*:\s*"?(\d+)"?/i,
+            /data-product-id=["'](\d+)["']/i,
+            /data-id=["'](\d+)["']/i,
+            /name=["']id["']\s+value=["'](\d+)["']/i,
+          ];
+          let productId = '';
+          for (const pattern of idPatterns) {
+            const m = html.match(pattern);
+            if (m && m[1]) { productId = m[1]; break; }
+          }
+          if (!productId) {
+            return json({ ok: false, error: "Couldn't find an exact PriceCharting product id on that page -- the page layout may have changed. Try pasting the numeric PriceCharting product ID instead." }, 404);
+          }
+          const data = await pcFetch('/api/product', { id: productId });
+          const product = normalizePcProduct(data, data['product-name'] || '');
+          product.url = pastedUrl;
+          return json({ ok: true, source: 'PriceCharting', product, ...product });
+        }
         const productMatch = url.pathname.match(/^\/pricing\/pricecharting\/product\/([^/]+)$/);
         if (productMatch) {
           const data = await pcFetch('/api/product', { id: decodeURIComponent(productMatch[1]) });

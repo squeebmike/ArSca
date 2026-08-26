@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.25.03-sports-console-scoped-search">
+<meta name="version" content="2026.08.26.01-exact-url-resolve-photo-buttons">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1633,16 +1633,16 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.25.03-sports-console-scoped-search" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.25.03-sports-console-scoped-search" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.25.03-sports-console-scoped-search" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.08.25.03-sports-console-scoped-search" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.25.03-sports-console-scoped-search" defer></script>
-<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.08.25.03-sports-console-scoped-search" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.25.03-sports-console-scoped-search" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.25.03-sports-console-scoped-search" defer></script>
-<script src="scripts/pokemon/offline-browser.js?v=2026.08.25.03-sports-console-scoped-search" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.25.03-sports-console-scoped-search" defer></script>
+<script src="scripts/query-routing.js?v=2026.08.26.01-exact-url-resolve-photo-buttons" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.26.01-exact-url-resolve-photo-buttons" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.26.01-exact-url-resolve-photo-buttons" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.08.26.01-exact-url-resolve-photo-buttons" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.26.01-exact-url-resolve-photo-buttons" defer></script>
+<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.08.26.01-exact-url-resolve-photo-buttons" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.26.01-exact-url-resolve-photo-buttons" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.26.01-exact-url-resolve-photo-buttons" defer></script>
+<script src="scripts/pokemon/offline-browser.js?v=2026.08.26.01-exact-url-resolve-photo-buttons" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.26.01-exact-url-resolve-photo-buttons" defer></script>
 </head>
 <body>
 
@@ -1671,11 +1671,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.25.03-sports-console-scoped-search</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.26.01-exact-url-resolve-photo-buttons</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.25.03-sports-console-scoped-search</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.26.01-exact-url-resolve-photo-buttons</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1693,7 +1693,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.25.03-sports-console-scoped-search</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.26.01-exact-url-resolve-photo-buttons</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -2726,13 +2726,15 @@ body.show-mode .inv-sync-badge{display:none;}
 
       <div id="scout-photo-strip" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px"></div>
       <input type="file" id="scout-photo-input" accept="image/*" style="display:none" onchange="scoutHandlePhotoFile(this.files[0])">
+      <input type="file" id="scout-photo-input-camera" accept="image/*" capture="environment" style="display:none" onchange="scoutHandlePhotoFile(this.files[0])">
       <div style="display:flex;gap:8px;margin-bottom:8px">
         <select id="scout-photo-type" style="flex:1;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:9px;border-radius:6px">
           <option value="front">Front</option><option value="back">Back</option><option value="tag">Tag</option><option value="bottom">Bottom</option>
           <option value="label">Label</option><option value="barcode">Barcode</option><option value="makers_mark">Maker's mark</option>
           <option value="serial_number">Serial/model number</option><option value="damage">Damage</option><option value="other">Other</option>
         </select>
-        <button class="hbtn" onclick="document.getElementById('scout-photo-input').click()" style="white-space:nowrap">+ ADD PHOTO</button>
+        <button class="hbtn" onclick="document.getElementById('scout-photo-input-camera').click()" style="white-space:nowrap">📷 TAKE</button>
+        <button class="hbtn" onclick="document.getElementById('scout-photo-input').click()" style="white-space:nowrap">🖼 UPLOAD</button>
       </div>
       <div id="scout-status-log" style="font-family:var(--font-mono);font-size:9px;color:var(--gold);min-height:14px;margin-bottom:10px"></div>
 
@@ -2921,17 +2923,23 @@ body.show-mode .inv-sync-badge{display:none;}
       <div>
         <div class="inv-photo-box" id="edit-photo-preview"><div class="inv-photo-placeholder">NO PHOTO</div></div>
         <div class="inv-photo-actions">
-          <button class="hbtn" type="button" onclick="document.getElementById('edit-photo-file')?.click()">PHOTO</button>
+          <button class="hbtn" type="button" onclick="document.getElementById('edit-photo-file-camera')?.click()">📷 TAKE PHOTO</button>
+          <button class="hbtn" type="button" onclick="document.getElementById('edit-photo-file')?.click()">🖼 UPLOAD</button>
           <button class="hbtn danger" type="button" onclick="removeInventoryEditPhoto()">REMOVE</button>
         </div>
         <input id="edit-photo-file" type="file" accept="image/*" style="display:none" onchange="handleInventoryEditPhoto(this.files && this.files[0])">
+        <input id="edit-photo-file-camera" type="file" accept="image/*" capture="environment" style="display:none" onchange="handleInventoryEditPhoto(this.files && this.files[0])">
         <input id="edit-photo-data" type="hidden">
         <input id="edit-photo-source" type="hidden">
         <div id="edit-photo-note" class="inv-source-pill">No image</div>
         <div style="font-family:monospace;font-size:8px;color:var(--dim);margin-top:8px">ADDITIONAL PHOTOS</div>
         <div id="edit-photos-gallery" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px"></div>
-        <button class="hbtn" type="button" style="margin-top:6px;width:100%" onclick="document.getElementById('edit-photos-add-file')?.click()">+ ADD PHOTO</button>
+        <div style="display:flex;gap:6px;margin-top:6px">
+          <button class="hbtn" type="button" style="flex:1" onclick="document.getElementById('edit-photos-add-file-camera')?.click()">📷 TAKE PHOTO</button>
+          <button class="hbtn" type="button" style="flex:1" onclick="document.getElementById('edit-photos-add-file')?.click()">🖼 UPLOAD</button>
+        </div>
         <input id="edit-photos-add-file" type="file" accept="image/*" style="display:none" onchange="handleAddInventoryEditPhoto(this.files && this.files[0]);this.value=''">
+        <input id="edit-photos-add-file-camera" type="file" accept="image/*" capture="environment" style="display:none" onchange="handleAddInventoryEditPhoto(this.files && this.files[0]);this.value=''">
         <div id="edit-photos-status" style="font-family:monospace;font-size:8px;color:var(--dim);margin-top:4px"></div>
       </div>
       <div>
@@ -3687,7 +3695,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.25.03-sports-console-scoped-search';
+const APP_VERSION = '2026.08.26.01-exact-url-resolve-photo-buttons';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -28991,51 +28999,22 @@ async function hideComicPriceCandidate(idx,candidateIndex){
   const r=qplResults[idx],visible=(r?.comicPriceCandidates||[]).filter(candidate=>String(candidate.productId||'')!==String(r?.pricecharting?.productId||'')).slice(0,8),candidate=visible[candidateIndex];if(!r||!candidate?.productId)return;
   let hidden=[];try{const response=await storeWorkerFetch('/kv/comic_price_hidden_'+encodeURIComponent(r.metronIssueId),{cache:'no-store'}),raw=(await response.json().catch(()=>({}))).value;hidden=raw?JSON.parse(raw):[];}catch(_){}hidden=[...new Set([...(Array.isArray(hidden)?hidden:[]),String(candidate.productId)])];await storeWorkerFetch('/kv/comic_price_hidden_'+encodeURIComponent(r.metronIssueId),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(hidden)}).catch(()=>null);r.comicPriceCandidates=(r.comicPriceCandidates||[]).filter(item=>String(item.productId)!==String(candidate.productId));updateQplResultCard(idx);const details=document.querySelector(`.qpl-hero-card[data-qpl-idx="${idx}"] details.comic-book-details`);if(details)details.open=true;toast_dash('Wrong price match hidden across devices');
 }
-// Resolves a parsed PriceCharting/SportsCardsPro URL (name+set only -- the
-// URL itself has no numeric product id embedded) to an exact PriceCharting
-// product via a name search. Shared by the row-level LINK EXACT PRICE
-// action and the main search box's one-paste auto-resolve in
-// _runPriceLookupInner. A name search can rank a different parallel/
-// printing of the same player first (e.g. a different Ohtani insert), so
-// this only auto-picks a product when exactly one candidate is a decisive
-// name+set match -- anything less certain comes back as a candidate list
-// for a human to confirm, the same pattern comics already uses, instead of
-// silently labeling a guess as an "exact" match.
-async function resolveSportsPriceChartingUrl(parsed){
-  if(!parsed?.name) return { best:null, candidates:[] };
-  // The pasted URL already names its exact console/set (e.g.
-  // baseball-cards-2022-topps-chrome-platinum-anniversary) -- scope the
-  // search to that console instead of a blind global name search across
-  // PriceCharting's whole catalog, which can and does cross-match totally
-  // unrelated product types (Funko Pops, video games, etc.) that happen to
-  // share a player's name.
-  const params = { q: parsed.name };
-  if(parsed.consoleSlug) params.console = parsed.consoleSlug;
-  const res = await storeWorkerFetch('/pricing/pricecharting/search?' + new URLSearchParams(params), { cache:'no-store' });
+// Resolves a pasted PriceCharting/SportsCardsPro product URL to its exact
+// product by fetching that literal page server-side and reading the real
+// product id off it (see /pricing/pricecharting/resolve-url in the Worker)
+// -- no name search, no candidate list, no guessing. We already have the
+// exact URL the user pasted; there's no reason to search for it.
+async function resolveSportsPriceChartingUrl(canonicalUrl){
+  if(!canonicalUrl) return null;
+  const res = await storeWorkerFetch('/pricing/pricecharting/resolve-url?' + new URLSearchParams({ url: canonicalUrl }), { cache:'no-store' });
   const data = await res.json().catch(() => ({}));
-  const products = data.products || data.matches || [];
-  if(!products.length) return { best:null, candidates:[] };
-  const norm = s => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
-  const wantName = norm(parsed.name), wantSet = norm(parsed.set);
-  const scored = products.map(p => {
-    const name = norm(p.productName), set = norm(p.consoleName);
-    let score = 0;
-    if(name === wantName) score += 100;
-    else if(wantName && (name.includes(wantName) || wantName.includes(name))) score += 40;
-    if(wantSet && set === wantSet) score += 20;
-    else if(wantSet && (set.includes(wantSet) || wantSet.includes(set))) score += 8;
-    return { p, score };
-  }).sort((a, b) => b.score - a.score);
-  const decisive = scored[0].score >= 120 && (scored.length === 1 || scored[1].score < scored[0].score);
-  return {
-    best: decisive ? scored[0].p : null,
-    candidates: scored.map(s => s.p).slice(0, 8),
-  };
+  const pc = data.product || data;
+  if(!res.ok || !pc?.productId) throw new Error(data.error || 'Could not resolve that exact product URL');
+  return pc;
 }
 // Sports-card counterpart to linkManualComicPrice — paste an exact
-// PriceCharting product ID (single-product fetch, no search ambiguity) or a
-// PriceCharting/SportsCardsPro product URL (slug-based, so it's resolved via
-// a name search since the URL itself has no numeric id embedded).
+// PriceCharting product ID (single-product fetch) or a PriceCharting/
+// SportsCardsPro product URL (resolved to its exact product server-side).
 function applyExactSportsPriceMatch(idx, pc){
   const r = qplResults[idx];
   if(!r || !pc) return;
@@ -29045,32 +29024,7 @@ function applyExactSportsPriceMatch(idx, pc){
   r.productUrl = pc.url || r.productUrl || '';
   r.lastPriceUpdate = new Date().toISOString();
   r.priceSource = 'Saved exact PriceCharting link';
-  r.sportsPriceCandidates = [];
   updateQplResultCard(idx);
-}
-function selectSportsPriceCandidate(idx, candidateIndex){
-  const r = qplResults[idx];
-  const candidate = (r?.sportsPriceCandidates || [])[candidateIndex];
-  if(!r || !candidate) return;
-  applyExactSportsPriceMatch(idx, candidate);
-  toast_dash('Exact PriceCharting product linked');
-}
-function hideSportsPriceCandidate(idx, candidateIndex){
-  const r = qplResults[idx];
-  if(!r) return;
-  r.sportsPriceCandidates = (r.sportsPriceCandidates || []).filter((_, i) => i !== candidateIndex);
-  updateQplResultCard(idx);
-}
-// Rendered prominently in the hero card body (not buried in the collapsed
-// "VIEW PRICES + GRADING DETAILS" section) since picking the right printing
-// is required to get any price at all, not an optional/advanced action.
-function qplSportsPriceCandidatesPrompt(r, idx){
-  const candidates = (r.sportsPriceCandidates || []).slice(0, 8);
-  if(!candidates.length) return '';
-  return `<div style="margin-top:10px;padding:10px;border:1px solid rgba(255,209,102,.35);border-radius:8px;background:rgba(255,209,102,.06)">
-    <div style="font-size:10px;color:var(--gold);margin-bottom:6px;font-weight:700">CONFIRM THE EXACT PRINTING — the pasted URL matched more than one plausible PriceCharting product.</div>
-    ${candidates.map((candidate, i) => `<div style="display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;border-top:1px solid var(--border);padding:7px 0"><div><b style="font-size:10px">${escHtml(candidate.productName || 'Unnamed PriceCharting product')}</b><div style="font-size:9px;color:var(--dim)">${escHtml(candidate.consoleName || '')} · Ungraded ${Number(candidate.prices?.ungraded || 0) ? '$' + Number(candidate.prices.ungraded).toFixed(2) : '--'}</div></div><button class="hbtn" onclick="selectSportsPriceCandidate(${idx},${i})">USE THIS PRICE</button><button class="hbtn" onclick="hideSportsPriceCandidate(${idx},${i})">NOT THIS</button></div>`).join('')}
-  </div>`;
 }
 async function linkManualSportsPrice(idx){
   const input = document.getElementById('sports-pc-manual-' + idx);
@@ -29088,18 +29042,11 @@ async function linkManualSportsPrice(idx){
     return;
   }
   const parsed = parsePriceChartingProductInput(raw, 'Sports Card');
-  if(!parsed?.name){ toast_dash('Paste a numeric PriceCharting product ID or a full product URL'); return; }
+  if(!parsed?.canonicalUrl){ toast_dash('Paste a numeric PriceCharting product ID or a full product URL'); return; }
   try{
-    const { best, candidates } = await resolveSportsPriceChartingUrl(parsed);
-    if(!candidates.length) throw new Error('No PriceCharting product candidates found for that URL');
-    if(best){
-      applyExactSportsPriceMatch(idx, best);
-      toast_dash('Exact PriceCharting product linked');
-    } else {
-      const r = qplResults[idx];
-      if(r){ r.sportsPriceCandidates = candidates; updateQplResultCard(idx); }
-      toast_dash(candidates.length === 1 ? 'One PriceCharting candidate found - confirm it below' : 'Choose the exact PriceCharting candidate below');
-    }
+    const pc = await resolveSportsPriceChartingUrl(parsed.canonicalUrl);
+    applyExactSportsPriceMatch(idx, pc);
+    toast_dash('Exact PriceCharting product linked');
   } catch(error){ toast_dash('PriceCharting URL could not be resolved: ' + (error.message || error)); }
 }
 
@@ -29114,7 +29061,7 @@ function qplComicAppraisalPanel(r,idx){
   const a=comicAppraisalState(r),v=comicAppraisalEstimate(r),m=comicProductMeta(r);
   const conditionOptions=['Poor','Fair','Good','Very Good','Fine','Very Fine','Near Mint'].map(x=>`<option ${a.conditionText===x?'selected':''}>${x}</option>`).join('');
   const gradeOptions=['','4.0','4.5','6.0','6.5','8.0','8.5','9.2','9.4','9.8','10.0'].map(x=>`<option value="${x}" ${String(a.numericGrade)===x?'selected':''}>${x||'Select grade'}</option>`).join('');
-  return `<div class="comic-appraisal" style="margin-top:12px;border:1px solid rgba(199,125,255,.28);border-radius:10px;padding:12px;background:rgba(199,125,255,.035)"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><b style="font-family:'Orbitron',monospace;font-size:10px;color:var(--purple)">SHOP APPRAISAL</b><span class="qpl-badge ${v.confidence==='High'?'good':v.confidence==='Medium'?'warn':'bad'}">${v.confidence} confidence</span></div><div style="font-size:10px;color:var(--dim);margin:7px 0">${escHtml([m.series,m.issueNumber?'#'+m.issueNumber:'',a.publisher,a.volume,a.variant].filter(Boolean).join(' / '))}</div><div class="comic-appraisal-grid" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px"><label>RAW CONDITION<select class="tsi" onchange="updateComicAppraisal(${idx},'conditionText',this.value)">${conditionOptions}</select></label><label>SLABBED<select class="tsi" onchange="updateComicAppraisal(${idx},'isSlabbed',this.value==='yes')"><option value="no" ${!a.isSlabbed?'selected':''}>No / Raw</option><option value="yes" ${a.isSlabbed?'selected':''}>Yes</option></select></label><label>NUMERIC GRADE<select class="tsi" onchange="updateComicAppraisal(${idx},'numericGrade',this.value)">${gradeOptions}</select></label><label>GRADER<select class="tsi" onchange="updateComicAppraisal(${idx},'grader',this.value)"><option value="">Unspecified</option>${['CGC','CBCS','PGX','Other'].map(x=>`<option ${a.grader===x?'selected':''}>${x}</option>`).join('')}</select></label><label>CERT NUMBER<input class="tsi" value="${escHtml(a.certNumber)}" oninput="updateComicAppraisal(${idx},'certNumber',this.value,false)"></label><label>PAGE QUALITY<select class="tsi" onchange="updateComicAppraisal(${idx},'pageQuality',this.value,false)"><option value="">Not recorded</option>${['White','Off-white to white','Off-white','Cream to off-white','Cream'].map(x=>`<option ${a.pageQuality===x?'selected':''}>${x}</option>`).join('')}</select></label><label>LIST PRICE<input class="tsi" type="number" min="0" step="1" placeholder="${v.listPrice||0}" value="${escHtml(a.listPriceOverride)}" oninput="updateComicAppraisal(${idx},'listPriceOverride',this.value,false)"></label><label>LOCATION<input class="tsi" value="${escHtml(a.location)}" oninput="updateComicAppraisal(${idx},'location',this.value,false)"></label><label>BOX / BIN<input class="tsi" value="${escHtml(a.box)}" oninput="updateComicAppraisal(${idx},'box',this.value,false)"></label><label>SIGNED<select class="tsi" onchange="updateComicAppraisal(${idx},'is_signed',this.value==='yes')"><option value="no" ${!a.is_signed?'selected':''}>No</option><option value="yes" ${a.is_signed?'selected':''}>Yes</option></select></label>${a.is_signed?`<label>SIGNED BY<input class="tsi" placeholder="e.g. Kevin Eastman" value="${escHtml(a.signed_by)}" oninput="updateComicAppraisal(${idx},'signed_by',this.value,false)"></label><label>SIGNATURE VALUE ADD-ON<input class="tsi" type="number" min="0" step="1" placeholder="0" value="${escHtml(a.signature_value||'')}" oninput="updateComicAppraisal(${idx},'signature_value',this.value)"></label>`:''}</div><details style="margin-top:8px"><summary style="cursor:pointer;color:var(--dim);font-size:10px">Condition defects</summary><div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:7px">${COMIC_DEFECTS.map(d=>`<label style="font-size:9px"><input type="checkbox" ${(a.defects||[]).includes(d)?'checked':''} onchange="toggleComicDefect(${idx},'${d}',this.checked)"> ${d}</label>`).join('')}</div></details><textarea class="tsi" style="width:100%;min-height:54px;margin-top:8px" placeholder="Appraisal notes" oninput="updateComicAppraisal(${idx},'notes',this.value,false)">${escHtml(a.notes)}</textarea>${a.is_signed&&v.signatureValue>0?`<div style="font-size:10px;color:var(--gold);margin-top:9px">Book value $${v.bookValue||0} + ${escHtml(a.signed_by||'signature')} premium $${v.signatureValue} = $${v.estimated||0} total. The signature premium stays fixed when the book's price changes.</div>`:''}<div class="comic-values" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:9px"><div><small>EST. VALUE</small><b>$${v.estimated||0}</b></div><div><small>RECOMMENDED LIST</small><b>$${v.listPrice||0}</b></div><div><small>SUGGESTED BUY RANGE</small><b>$${v.buyLow}-$${v.buyHigh}</b></div></div><div style="font-size:9px;color:var(--dim);line-height:1.5;margin-top:7px">${escHtml(v.sourceLabel)}. ${escHtml(v.reasons.join(' / '))}. Shop estimate only; not certified grading.</div><div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:9px"><button class="hbtn" onclick="copyComicAppraisal(${idx})">COPY APPRAISAL</button><button class="hbtn" onclick="addQuickLookupToInventory(${idx})">SAVE TO INVENTORY</button><label class="hbtn" style="cursor:pointer">USE MY PHOTO<input type="file" accept="image/*" style="display:none" onchange="handleComicCoverPhoto(${idx},this.files&&this.files[0])"></label>${a.coverConfirmed?'<span class="qpl-badge good">COVER CONFIRMED</span>':`<button class="hbtn" style="color:var(--gold)" onclick="confirmComicCover(${idx})">CONFIRM COVER</button>`}</div></div>`;
+  return `<div class="comic-appraisal" style="margin-top:12px;border:1px solid rgba(199,125,255,.28);border-radius:10px;padding:12px;background:rgba(199,125,255,.035)"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><b style="font-family:'Orbitron',monospace;font-size:10px;color:var(--purple)">SHOP APPRAISAL</b><span class="qpl-badge ${v.confidence==='High'?'good':v.confidence==='Medium'?'warn':'bad'}">${v.confidence} confidence</span></div><div style="font-size:10px;color:var(--dim);margin:7px 0">${escHtml([m.series,m.issueNumber?'#'+m.issueNumber:'',a.publisher,a.volume,a.variant].filter(Boolean).join(' / '))}</div><div class="comic-appraisal-grid" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px"><label>RAW CONDITION<select class="tsi" onchange="updateComicAppraisal(${idx},'conditionText',this.value)">${conditionOptions}</select></label><label>SLABBED<select class="tsi" onchange="updateComicAppraisal(${idx},'isSlabbed',this.value==='yes')"><option value="no" ${!a.isSlabbed?'selected':''}>No / Raw</option><option value="yes" ${a.isSlabbed?'selected':''}>Yes</option></select></label><label>NUMERIC GRADE<select class="tsi" onchange="updateComicAppraisal(${idx},'numericGrade',this.value)">${gradeOptions}</select></label><label>GRADER<select class="tsi" onchange="updateComicAppraisal(${idx},'grader',this.value)"><option value="">Unspecified</option>${['CGC','CBCS','PGX','Other'].map(x=>`<option ${a.grader===x?'selected':''}>${x}</option>`).join('')}</select></label><label>CERT NUMBER<input class="tsi" value="${escHtml(a.certNumber)}" oninput="updateComicAppraisal(${idx},'certNumber',this.value,false)"></label><label>PAGE QUALITY<select class="tsi" onchange="updateComicAppraisal(${idx},'pageQuality',this.value,false)"><option value="">Not recorded</option>${['White','Off-white to white','Off-white','Cream to off-white','Cream'].map(x=>`<option ${a.pageQuality===x?'selected':''}>${x}</option>`).join('')}</select></label><label>LIST PRICE<input class="tsi" type="number" min="0" step="1" placeholder="${v.listPrice||0}" value="${escHtml(a.listPriceOverride)}" oninput="updateComicAppraisal(${idx},'listPriceOverride',this.value,false)"></label><label>LOCATION<input class="tsi" value="${escHtml(a.location)}" oninput="updateComicAppraisal(${idx},'location',this.value,false)"></label><label>BOX / BIN<input class="tsi" value="${escHtml(a.box)}" oninput="updateComicAppraisal(${idx},'box',this.value,false)"></label><label>SIGNED<select class="tsi" onchange="updateComicAppraisal(${idx},'is_signed',this.value==='yes')"><option value="no" ${!a.is_signed?'selected':''}>No</option><option value="yes" ${a.is_signed?'selected':''}>Yes</option></select></label>${a.is_signed?`<label>SIGNED BY<input class="tsi" placeholder="e.g. Kevin Eastman" value="${escHtml(a.signed_by)}" oninput="updateComicAppraisal(${idx},'signed_by',this.value,false)"></label><label>SIGNATURE VALUE ADD-ON<input class="tsi" type="number" min="0" step="1" placeholder="0" value="${escHtml(a.signature_value||'')}" oninput="updateComicAppraisal(${idx},'signature_value',this.value)"></label>`:''}</div><details style="margin-top:8px"><summary style="cursor:pointer;color:var(--dim);font-size:10px">Condition defects</summary><div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:7px">${COMIC_DEFECTS.map(d=>`<label style="font-size:9px"><input type="checkbox" ${(a.defects||[]).includes(d)?'checked':''} onchange="toggleComicDefect(${idx},'${d}',this.checked)"> ${d}</label>`).join('')}</div></details><textarea class="tsi" style="width:100%;min-height:54px;margin-top:8px" placeholder="Appraisal notes" oninput="updateComicAppraisal(${idx},'notes',this.value,false)">${escHtml(a.notes)}</textarea>${a.is_signed&&v.signatureValue>0?`<div style="font-size:10px;color:var(--gold);margin-top:9px">Book value $${v.bookValue||0} + ${escHtml(a.signed_by||'signature')} premium $${v.signatureValue} = $${v.estimated||0} total. The signature premium stays fixed when the book's price changes.</div>`:''}<div class="comic-values" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:9px"><div><small>EST. VALUE</small><b>$${v.estimated||0}</b></div><div><small>RECOMMENDED LIST</small><b>$${v.listPrice||0}</b></div><div><small>SUGGESTED BUY RANGE</small><b>$${v.buyLow}-$${v.buyHigh}</b></div></div><div style="font-size:9px;color:var(--dim);line-height:1.5;margin-top:7px">${escHtml(v.sourceLabel)}. ${escHtml(v.reasons.join(' / '))}. Shop estimate only; not certified grading.</div><div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:9px"><button class="hbtn" onclick="copyComicAppraisal(${idx})">COPY APPRAISAL</button><button class="hbtn" onclick="addQuickLookupToInventory(${idx})">SAVE TO INVENTORY</button><label class="hbtn" style="cursor:pointer">📷 TAKE PHOTO<input type="file" accept="image/*" capture="environment" style="display:none" onchange="handleComicCoverPhoto(${idx},this.files&&this.files[0])"></label><label class="hbtn" style="cursor:pointer">🖼 UPLOAD PHOTO<input type="file" accept="image/*" style="display:none" onchange="handleComicCoverPhoto(${idx},this.files&&this.files[0])"></label>${a.coverConfirmed?'<span class="qpl-badge good">COVER CONFIRMED</span>':`<button class="hbtn" style="color:var(--gold)" onclick="confirmComicCover(${idx})">CONFIRM COVER</button>`}</div></div>`;
 }
 
 function pokemonCardKey(row = {}, query = ''){
@@ -30723,28 +30670,21 @@ async function _runPriceLookupInner(){
     const row = tcgProduct ? ((await tcgplayerNameSearchFallback(tcgProduct, combinedRaw)) || tcgplayerProductToQplRow(tcgProduct, combinedRaw)) : priceChartingProductToQplRow(priceChartingProduct, combinedRaw);
     // A pasted PriceCharting/SportsCardsPro URL is slug-based (no numeric
     // product id in the URL itself), so the placeholder row above has no
-    // price yet. Resolve it the same way the row-level LINK EXACT PRICE
-    // action does, right away, so pasting the URL once is enough -- either
-    // a decisive single match gets applied immediately, or the candidate
-    // list is attached to the row so it renders ready to confirm instead of
-    // silently guessing wrong.
+    // price yet. Resolve the literal pasted page server-side (see
+    // /pricing/pricecharting/resolve-url) -- no name search, no guessing --
+    // so pasting the URL once gets the exact product, or a clear error.
     if(!tcgProduct && priceChartingProduct && row.category === 'Sports Card'){
       try {
-        const { best, candidates } = await resolveSportsPriceChartingUrl(priceChartingProduct);
-        if(best){
-          row.pricecharting = { ...best, savedExactLink:true };
-          row.market = Number(best.prices?.ungraded || 0);
-          row.imageUrl = best.imageUrl || row.imageUrl || '';
-          row.productUrl = best.url || row.productUrl || '';
-          row.providerUrl = best.url || row.providerUrl || '';
-          row.priceSource = 'Saved exact PriceCharting link';
-          row.note = 'Exact PriceCharting URL resolved automatically -- double-check it\'s the right printing before buying.';
-        } else if(candidates.length){
-          row.sportsPriceCandidates = candidates;
-          row.priceSource = 'PriceCharting product URL · choose the exact candidate below';
-          row.note = 'Multiple plausible PriceCharting matches for that URL. Confirm the exact one below before buying.';
-        }
-      } catch(e) { /* fall back to the unpriced placeholder row below */ }
+        const pc = await resolveSportsPriceChartingUrl(priceChartingProduct.canonicalUrl);
+        row.pricecharting = { ...pc, savedExactLink:true };
+        row.market = Number(pc.prices?.ungraded || 0);
+        row.imageUrl = pc.imageUrl || row.imageUrl || '';
+        row.productUrl = pc.url || row.productUrl || '';
+        row.providerUrl = pc.url || row.providerUrl || '';
+        row.priceSource = 'Saved exact PriceCharting link';
+      } catch(e) {
+        row.note = 'PriceCharting URL could not be resolved: ' + (e.message || e);
+      }
     }
     if(!qplSearchStillActive(mySeq, searchPlan)) return;
     recordSearchPlanRoute(searchPlan, tcgProduct ? 'local:tcgplayer-product' : 'local:pricecharting-product-url', tcgProduct?.productId || priceChartingProduct?.canonicalUrl || combinedRaw, 1);
@@ -35163,10 +35103,6 @@ function qplSlabControls(r, idx){
   const pc = r.pricecharting;
   const rows = pc ? qplPriceChartingTableRows(r) : '';
   const isSports = qplResultCategoryKey(r) === 'sports';
-  // The candidate-confirmation list itself now renders prominently above
-  // this collapsed section (see qplSportsPriceCandidatesPrompt), not here --
-  // burying a required action inside "advanced details" meant it went
-  // unnoticed.
   const sportsExactLinkHtml = isSports ? `<div style="margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid rgba(255,255,255,.08)">
     ${pc?.savedExactLink ? `<div style="font-size:10px;margin-bottom:6px"><b>Exact match linked:</b> ${escHtml(pc.productName || '')} ${pc.url?`- <a href="${escHtml(pc.url)}" target="_blank" rel="noopener">open PriceCharting</a>`:''}</div>` : ''}
     <div style="display:grid;grid-template-columns:1fr auto;gap:7px">
@@ -35912,10 +35848,6 @@ function quickLookupResultCard(r, idx){
         ${!isComic ? renderVariantIntelligenceBadge(r) : ''}
       </div>
       ${signals.length ? `<div class="qpl-signal" style="color:${needs.length?'var(--g)':'var(--gold)'}">${escHtml(signals.join(' / '))}</div>` : ''}
-      <!-- Ambiguous sports URL match needs a human pick before there's any
-           price at all -- shown up front, not buried in the collapsed
-           details below, since it's required, not optional/advanced. -->
-      ${r.sportsPriceCandidates?.length ? qplSportsPriceCandidatesPrompt(r, idx) : ''}
       <!-- Advanced pricing table — starts collapsed; user opens to see conditions + graded -->
       <details class="research-secondary-actions ${isComic?'comic-book-details':''}" style="margin-top:12px" ${isComic?`ontoggle="openComicDetailsAndHydrate(${idx},this)"`:''}>
         <summary>${isComic?'CHOOSE COVER / VARIANT + SEE PRICES':'VIEW PRICES + GRADING DETAILS'}</summary>
@@ -44963,7 +44895,7 @@ async function toppsLoadParallels(cardId){
   window.__arscaCloseModal = closeModal;
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.25.03-sports-console-scoped-search" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.26.01-exact-url-resolve-photo-buttons" defer></script>
 </body>
 </html>
 
