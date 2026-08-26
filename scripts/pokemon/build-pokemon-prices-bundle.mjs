@@ -51,7 +51,7 @@ async function fetchExport(type) {
     headers: { Authorization: `Bearer ${apiKey}`, Accept: 'text/csv, application/gzip, */*' },
     redirect: 'follow',
   });
-  if (response.status === 429) throw new Error(`PPT export ${type}: daily export limit reached (2 per day, shared across all types). Resets at 6:00 AM UTC.`);
+  if (response.status === 429) throw new Error(`PPT export ${type}: daily export limit reached (2 per day, shared across all types). Download quota resets at UTC midnight; the new dump itself isn't ready until 6:00 AM UTC.`);
   if (response.status === 403) throw new Error(`PPT export ${type}: Business plan required for bulk exports.`);
   if (!response.ok) throw new Error(`PPT export ${type}: HTTP ${response.status}: ${(await response.text().catch(() => '')).slice(0, 300)}`);
 

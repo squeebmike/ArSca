@@ -9651,6 +9651,22 @@ export default {
       if (!validTypes.includes(type)) {
         return json({ ok: false, error: 'Invalid type. Use: ' + validTypes.join(', ') }, 400);
       }
+      // Reserve PPT's shared 2-downloads/day export quota for the daily cron
+      // (pokemon-prices-daily.yml, runs 6:10 AM UTC) during the window from
+      // the quota's own UTC-midnight reset through just after that run. Every
+      // device shares this one account-wide 2/day count, and every store's
+      // offline catalog depends on both slots surviving until the cron uses
+      // them -- confirmed live: 3 of the last 7 scheduled runs got shut out
+      // by a 429 from something else (this route) spending the quota first.
+      const nowUtc = new Date();
+      const utcMinutesOfDay = nowUtc.getUTCHours() * 60 + nowUtc.getUTCMinutes();
+      if (utcMinutesOfDay < 6 * 60 + 20) {
+        return json({
+          ok: false,
+          error: 'The daily price-dump download is reserved for the automatic sync until 6:20 AM UTC. Cards and sealed prices sync automatically once that finishes — try eBay/Population again after 6:20 AM UTC, or use your offline cache in the meantime.',
+          reservedForDailySync: true,
+        }, 423);
+      }
       const apiKey = env.POKEMONPRICE_API_KEY || env.POKEMON_PRICE_TRACKER_API_KEY;
       if (!apiKey) return json({ ok: false, error: 'POKEMONPRICE_API_KEY not configured' }, 501);
 
@@ -9686,7 +9702,7 @@ export default {
       }
 
       if (upRes.status === 403) return json({ ok: false, error: 'Business plan required for bulk exports. Upgrade at pokemonpricetracker.com', businessRequired: true }, 403);
-      if (upRes.status === 429) return json({ ok: false, error: 'Daily export limit reached (2 per day). Resets at 6:00 AM UTC.', limitReached: true }, 429);
+      if (upRes.status === 429) return json({ ok: false, error: 'Daily export limit reached (2 per day). Download quota resets at UTC midnight.', limitReached: true }, 429);
       if (upRes.status === 503 || upRes.status === 404) return json({ ok: false, error: 'Export not yet available — dumps regenerate daily at 6:00 AM UTC.', notReady: true }, 503);
       if (!upRes.ok) return json({ ok: false, error: 'Export failed: HTTP ' + upRes.status }, upRes.status);
 
