@@ -2325,7 +2325,7 @@ function toEbayHtmlDescription(text) {
 
 function buildEbayInventoryItemBody(b) {
   const {
-    title, description, conditionId = '3000', conditionDescription = '', conditionDescriptors = [],
+    title, description, conditionId = '3000', condition = '', conditionDescription = '', conditionDescriptors = [],
     quantity = 1, imageUrl = null, imageUrls = [],
     packageType = '', weightValue = 0.1, weightUnit = 'POUND',
     dimLength = 6.5, dimWidth = 4, dimHeight = 0.1, dimUnit = 'INCH',
@@ -2352,7 +2352,18 @@ function buildEbayInventoryItemBody(b) {
       imageUrls: allImgUrls.slice(0, 12),
       epid: epid || undefined,
     },
+    // Store report: a live listing's inventory item came back from eBay
+    // with NO condition-related field at all (not conditionId, not
+    // condition, not conditionDescription) even though conditionId was
+    // sent and accepted with no error/warning -- eBay silently dropped it.
+    // conditionId is meant as an alternative to the standard `condition`
+    // ConditionEnum for categories with custom condition sets, but this
+    // category apparently isn't honoring it. Sending the enum alongside it
+    // (when known) covers whichever field this category actually persists
+    // on, instead of only ever sending the one that's been silently
+    // ignored.
     conditionId: String(conditionId),
+    condition: condition || undefined,
     conditionDescription: conditionDescription || undefined,
     conditionDescriptors: (() => {
       const cleaned = (Array.isArray(conditionDescriptors) ? conditionDescriptors : [])
@@ -3411,7 +3422,7 @@ export default {
         listingResult = await createAndPublishEbayListing({
           title, description,
           price: (priceCents / 100).toFixed(2),
-          quantity, categoryId: '259104', conditionId,
+          quantity, categoryId: '259104', conditionId, condition: 'NEW',
           imageUrl: sku.cover_image_url || undefined,
           upc: sku.upc || '',
           customAspects,
@@ -3480,8 +3491,8 @@ export default {
         // the dashboard instead of staying invisible.
         conditionCheck: {
           requestedId: listingResult.requestedConditionId, requestedLabel: resolvedCondition.label || '',
-          resolvedFrom: resolvedCondition.source, verifiedStoredId: listingResult.verifiedConditionId,
-          verifyError: listingResult.verifyError || '',
+          requestedCondition: listingResult.requestedCondition, resolvedFrom: resolvedCondition.source,
+          verifiedStoredId: listingResult.verifiedConditionId, verifyError: listingResult.verifyError || '',
         },
       });
     }
@@ -3532,7 +3543,7 @@ export default {
             description: [d.name, 'In stock now and ships promptly.'].filter(Boolean).join('\n\n'),
             price: (Number(d.market || d.salePrice || 0)).toFixed(2),
             quantity: Number(d.qty ?? d.quantity ?? 0),
-            categoryId: '259104', conditionId,
+            categoryId: '259104', conditionId, condition: 'NEW',
             imageUrl: d.image || undefined, upc: d.upc || '',
           }, ebayToken, env);
           await supabaseAdminFetch(env, `inventory_items?id=eq.${row.id}&store_id=eq.${encodeURIComponent(storeId)}`, {
@@ -6585,18 +6596,21 @@ export default {
         });
         if (verifyRes.ok) {
           const verifyData = await verifyRes.json();
-          verifiedConditionId = String(verifyData?.conditionId || '');
+          // A prior live test's GET response had no conditionId, no
+          // condition, and no conditionDescription at all -- confirming
+          // this category (or this listing) simply wasn't persisting the
+          // numeric conditionId we were sending alone. Now sending the
+          // standard `condition` ConditionEnum ("NEW") alongside it, so
+          // checking both here shows which one (if either) actually stuck.
+          verifiedConditionId = String(verifyData?.conditionId || verifyData?.condition || '');
           if (!verifiedConditionId) {
-            // "no conditionId field" alone doesn't say whether eBay stored
-            // NOTHING or stored it under a different key than we assumed
-            // (condition/conditionDescription instead of conditionId, or
-            // nested somewhere else) -- dumping the actual top-level shape
-            // of what eBay returned settles that instead of guessing again.
-            verifyError = `lookup ok but response had no conditionId field -- condition=${JSON.stringify(verifyData?.condition ?? null)}, conditionDescription=${JSON.stringify(verifyData?.conditionDescription ?? null)}, keys=[${Object.keys(verifyData || {}).join(',')}]`;
+            verifyError = `lookup ok but response had neither conditionId nor condition -- conditionDescription=${JSON.stringify(verifyData?.conditionDescription ?? null)}, keys=[${Object.keys(verifyData || {}).join(',')}]`;
           }
           const requestedConditionId = String(itemBody.conditionId || '');
-          if (requestedConditionId && verifiedConditionId !== requestedConditionId) {
-            warnings.push(`eBay stored a different condition than requested (requested ${requestedConditionId}, eBay has ${verifiedConditionId || 'none'}) -- check the listing's condition manually.`);
+          const requestedCondition = String(itemBody.condition || '');
+          const matchesEither = (requestedConditionId && verifiedConditionId === requestedConditionId) || (requestedCondition && verifiedConditionId === requestedCondition);
+          if ((requestedConditionId || requestedCondition) && !matchesEither) {
+            warnings.push(`eBay stored a different condition than requested (requested conditionId=${requestedConditionId || 'none'}/condition=${requestedCondition || 'none'}, eBay has ${verifiedConditionId || 'none'}) -- check the listing's condition manually.`);
           }
         } else {
           const bodyTxt = (await verifyRes.text().catch(() => '')).substring(0, 200);
@@ -6608,7 +6622,7 @@ export default {
         warnings.push('Could not verify eBay actually stored the requested condition (' + e.message + ') -- check the listing\'s condition manually.');
       }
 
-      return { listingId: pubData.listingId, offerId, sku, warnings, requestedConditionId: String(itemBody.conditionId || ''), verifiedConditionId, verifyError };
+      return { listingId: pubData.listingId, offerId, sku, warnings, requestedConditionId: String(itemBody.conditionId || ''), requestedCondition: String(itemBody.condition || ''), verifiedConditionId, verifyError };
     }
 
     if (url.pathname === '/ebay/list') {

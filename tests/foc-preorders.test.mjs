@@ -45,6 +45,29 @@ const repairedEncoding = normalizePrhRow({...representative, Artist:'FÃ¡bio Mo
 assert.equal(repairedEncoding.interiorArtist, 'Fábio Moon', 'PRH names must repair UTF-8 text decoded as Latin-1');
 assert.equal(repairedEncoding.description, 'IT’S reunion weekend at Riverdale High.', 'PRH punctuation must not display mojibake on the preorder page');
 
+// Store report: a FOC synopsis rendered with mangled punctuation ("Fallbacks"
+// followed by garbage instead of an apostrophe, a garbled bullet, etc) --
+// PRH's feed had gone through TWO rounds of UTF-8-decoded-as-Windows-1252
+// before reaching us, not one. The single-pass reversal above (previous
+// test) leaves codepoints like U+20AC/U+2122 in the string from the first
+// bad decode, which used to trip the old "any codepoint over 255 means
+// don't touch it" safety guard and silently skip repair entirely.
+// Reproduced by round-tripping clean text through the exact corruption
+// PRH's feed applies (encode to UTF-8 bytes, reinterpret as Windows-1252,
+// twice) rather than pasting literal mojibake characters, since those can
+// include invisible control codepoints that don't survive being typed or
+// copy-pasted reliably.
+const CP1252_LOW_TO_UNICODE = {0x80:0x20AC,0x82:0x201A,0x83:0x0192,0x84:0x201E,0x85:0x2026,0x86:0x2020,0x87:0x2021,0x88:0x02C6,0x89:0x2030,0x8A:0x0160,0x8B:0x2039,0x8C:0x0152,0x8E:0x017D,0x91:0x2018,0x92:0x2019,0x93:0x201C,0x94:0x201D,0x95:0x2022,0x96:0x2013,0x97:0x2014,0x98:0x02DC,0x99:0x2122,0x9A:0x0161,0x9B:0x203A,0x9C:0x0153,0x9E:0x017E,0x9F:0x0178};
+function mangleOnceAsCp1252(cleanText) {
+  let out = '';
+  for (const byte of Buffer.from(cleanText, 'utf8')) out += String.fromCodePoint(CP1252_LOW_TO_UNICODE[byte] || byte);
+  return out;
+}
+const cleanSynopsis = 'Fallbacks' + String.fromCharCode(0x2019) + ' adventures reach their climax ' + String.fromCharCode(0x2014) + ' the gods themselves await. Can' + String.fromCharCode(0x2019) + 't miss it' + String.fromCharCode(0x2026) + ' ' + String.fromCharCode(0x2022) + ' Featuring Julie Dillon.';
+const doubleMangled = mangleOnceAsCp1252(mangleOnceAsCp1252(cleanSynopsis));
+const repairedDouble = normalizePrhRow({...representative, Description: doubleMangled});
+assert.equal(repairedDouble.description, cleanSynopsis, 'a synopsis mis-encoded through Windows-1252 TWICE must be fully repaired, not silently left broken');
+
 assert.match(migration, /America\/Los_Angeles/);
 assert.match(migration, /p_foc_date::timestamp \+ interval '1 minute'/, 'default cutoff must be 12:01 AM Monday Pacific');
 assert.match(migration, /revoke all[\s\S]+from anon/i, 'raw preorder tables must not be anonymous');
