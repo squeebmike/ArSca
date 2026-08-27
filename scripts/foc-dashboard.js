@@ -116,6 +116,7 @@ function skuCard(v){
     '<div class="foc-sku-fields"><label>CUSTOMERS<input class="tsi" value="'+Number(v.customerQty||0)+'" disabled></label><label>STORE QTY<input class="tsi" data-field="storeQuantity" type="number" min="0" value="'+Number(v.storeQuantity||0)+'" onchange="'+save+'"></label><label>'+(v.isIncentive?'SELL PRICE · REQUIRED':(v.isFoil?'FOIL SELL PRICE':'CUSTOMER PRICE'))+'<input class="tsi" data-field="customerPrice" type="number" min="0" step=".01" value="'+(Number(v.priceCents||0)/100).toFixed(2)+'" onchange="'+save+'"></label><label>'+(v.isIncentive?'SECURED QTY':'TOTAL ORDER')+'<input class="tsi" '+(v.isIncentive?'data-field="securedQuantity" type="number" min="0" onchange="'+save+'" value="'+Number(v.securedQuantity||0)+'"':'disabled value="'+total+'"')+'></label><label>SAFETY STOCK<input class="tsi" data-field="safetyStockQty" type="number" min="0" value="'+Number(v.safetyStockQty||0)+'" onchange="'+save+'"></label></div>'+
     (v.isIncentive&&!Number(v.priceCents||0)?'<div style="font:8px/1.45 var(--font-mono);color:var(--gold);margin-top:6px">REQUEST-ONLY UNTIL BOTH SECURED QTY AND SELL PRICE ARE SET</div>':'')+
     '<label style="display:flex;gap:6px;align-items:center;margin-top:7px;font:8px var(--font-mono);color:var(--dim)"><input data-field="customerEnabled" type="checkbox" '+(v.customerEnabled!==false?'checked':'')+' onchange="'+save+'"> SHOW TO CUSTOMERS</label>'+
+    '<button class="hbtn" style="margin-top:7px;width:100%;min-height:28px;font-size:9px" onclick="quickAddFocSkuToInventory(\''+esc(v.id)+'\')">+ ADD TO INVENTORY</button>'+
     ebaySection(v)+'</article>';
 }
 
@@ -217,6 +218,41 @@ async function confirmReceiveShipment(){
     }catch(e){/* eBay not connected or similar -- receiving itself already succeeded, don't alarm over this */}
     await openCycle(state.cycle.id);
   }catch(e){if(status)status.textContent='';toast_dash('Could not receive shipment: '+e.message);}
+}
+// Store report: no way existed to add a single book straight to inventory
+// from the cover wall -- RECEIVE SHIPMENT only lists covers that were
+// actually ordered (customerQty+storeQuantity>0), and only as a bulk,
+// whole-cycle action, requiring a separate screen. This reuses the same
+// trusted /foc/admin/receive path (paid-customer reservation first, real
+// inventory_items rows, FOC linkage) for just the one cover clicked, so a
+// spot-received extra copy or an off-order book still gets tracked
+// correctly instead of a manual Inventory-tab add that skips FOC linkage
+// and preorder reservation entirely.
+async function quickAddFocSkuToInventory(skuId){
+  if(!state.cycle)return;
+  var qtyStr=prompt('How many copies to add to inventory?','1');
+  if(qtyStr==null)return;
+  var qty=Math.max(0,parseInt(qtyStr,10)||0);
+  if(!qty){toast_dash('Enter a quantity greater than 0');return;}
+  try{
+    var d=await api('/foc/admin/receive',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({storeId:getActiveStoreId(),cycleId:state.cycle.id,lines:[{skuId:skuId,receivedQty:qty}]})});
+    toast_dash(d.createdInventoryCount+' item'+(d.createdInventoryCount===1?'':'s')+' added to inventory');
+    var flagged=(d.receivedSummary||[]).filter(function(s){return s.shortShipped>0||s.incentiveNotReceived;});
+    if(flagged.length){
+      var report=flagged.map(function(s){
+        var parts=[];
+        if(s.shortShipped>0)parts.push('SHORT SHIPMENT: '+s.shortShipped+' (ordered '+s.orderedTotal+', received '+s.receivedQty+')');
+        if(s.incentiveNotReceived)parts.push('INCENTIVE NOT RECEIVED');
+        return s.title+(s.variantLabel?' -- '+s.variantLabel:'')+': '+parts.join(' · ');
+      }).join('\n');
+      alert('This did not fully match what was ordered:\n\n'+report);
+    }
+    try{
+      var conv=await api('/foc/ebay/convert-to-instock',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({storeId:getActiveStoreId(),cycleId:state.cycle.id})});
+      if(conv.converted>0)toast_dash(conv.converted+' eBay presale listing'+(conv.converted===1?'':'s')+' switched to in stock');
+    }catch(e){/* eBay not connected or similar -- the add itself already succeeded, don't alarm over this */}
+    await openCycle(state.cycle.id);
+  }catch(e){toast_dash('Could not add to inventory: '+e.message);}
 }
 
 // Review-before-publish for FOC eBay presale listings -- a straight

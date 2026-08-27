@@ -139,7 +139,7 @@ assert.match(worker, /const volumeDiscount = await createEbayVolumeDiscount\(env
   'the FOC create route must actually call the volume-discount helper after a successful publish');
 assert.match(worker, /volumeDiscountWarnings\.push\('Volume discount \(buy more, save more\) was not set up: ' \+ e\.message\);/,
   'a volume-discount setup failure must become a visible warning, not a silent swallow');
-assert.match(worker, /warnings: \[\.\.\.\(listingResult\.warnings \|\| \[\]\), \.\.\.conditionWarnings, \.\.\.volumeDiscountWarnings\],/,
+assert.match(worker, /warnings: \[\.\.\.\(listingResult\.warnings \|\| \[\]\), \.\.\.conditionWarnings, \.\.\.fulfillmentWarnings, \.\.\.volumeDiscountWarnings\],/,
   'volume-discount warnings must actually reach the client alongside the other warning types');
 assert.match(worker, /volumeDiscount: volumeDiscountPromotionId \? \{ active: true, tiers: FOC_VOLUME_DISCOUNT_TIERS \} : \{ active: false \},/,
   'the create-presale response must report whether the volume discount actually went live');
@@ -370,7 +370,7 @@ assert.match(worker, /if \(Array\.isArray\(itemData\?\.warnings\) && itemData\.w
 assert.match(worker, /if \(Array\.isArray\(pubData\?\.warnings\) && pubData\.warnings\.length\) warnings\.push/, 'must collect warnings from the publish response');
 assert.match(worker, /return \{ listingId: pubData\.listingId, offerId, sku, warnings, requestedConditionId: String\(itemBody\.conditionId \|\| ''\), requestedCondition: String\(itemBody\.condition \|\| ''\), verifiedConditionId, verifyError \};/,
   'createAndPublishEbayListing must return the collected warnings');
-assert.match(worker, /warnings: \[\.\.\.\(listingResult\.warnings \|\| \[\]\), \.\.\.conditionWarnings, \.\.\.volumeDiscountWarnings\],/, 'the FOC create-presale route must pass warnings through to the client');
+assert.match(worker, /warnings: \[\.\.\.\(listingResult\.warnings \|\| \[\]\), \.\.\.conditionWarnings, \.\.\.fulfillmentWarnings, \.\.\.volumeDiscountWarnings\],/, 'the FOC create-presale route must pass warnings through to the client');
 assert.match(focDash, /if\(result\.warnings&&result\.warnings\.length\)toast_dash\('eBay warning: '\+result\.warnings\.join\(' · '\)\)/,
   'the dashboard must actually surface a returned warning, not just receive it silently');
 
@@ -542,4 +542,17 @@ assert.match(worker, /if \(\/<\\\/\?\[a-z\]\[\\s\\S\]\*>\/i\.test\(raw\)\) retur
   assert.equal(openTags, closeTags, 'every opened tag in the truncated output must have a matching close tag');
 }
 
-console.log('FOC eBay presale review-step, template-field, eligible-filter, handling-time, aspects, template-reuse, unordered-withdrawal, store-category, template-gap, optional-clause, extra-field, html-formatting, warnings, quantity-default, cross-entry-point presale, real-condition-id, description-length-cap, html-template-passthrough, multiline-clause, css-safety, and safe-html-truncation contract checks passed');
+// Store report: a FOC presale listing published with no shipping service
+// selected on eBay's edit page. getFocPresaleFulfillmentPolicyId returns ''
+// when it can't find any policy to clone from (no policy named "presale",
+// no EBAY_FULFILLMENT_POLICY_ID fallback configured) -- buildEbayOfferBody
+// only attaches a fulfillmentPolicyId to the offer when one resolved to a
+// real value, so the listing can silently publish with none at all. That
+// was invisible before; now surfaced as a warning like the condition
+// fallback already is.
+assert.match(createBlock, /const fulfillmentWarnings = fulfillmentPolicyId\s*\n\s*\? \[\]\s*\n\s*: \['Could not find a shipping\/fulfillment policy to use/,
+  'must warn when no fulfillment policy could be resolved for a FOC presale listing, instead of silently publishing with none');
+assert.match(createBlock, /warnings: \[\.\.\.\(listingResult\.warnings \|\| \[\]\), \.\.\.conditionWarnings, \.\.\.fulfillmentWarnings, \.\.\.volumeDiscountWarnings\],/,
+  'the fulfillment-policy warning must actually reach the client alongside the other warning types');
+
+console.log('FOC eBay presale review-step, template-field, eligible-filter, handling-time, aspects, template-reuse, unordered-withdrawal, store-category, template-gap, optional-clause, extra-field, html-formatting, warnings, quantity-default, cross-entry-point presale, real-condition-id, description-length-cap, html-template-passthrough, multiline-clause, css-safety, safe-html-truncation, and missing-fulfillment-policy contract checks passed');
