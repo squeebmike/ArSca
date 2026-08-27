@@ -191,8 +191,8 @@ assert.match(focDash, /state=\{loaded:false,cycles:\[\],cycle:null,families:\[\]
 assert.match(focDash, /var ebay=state\.ebay==='all'\|\|f\.variants\.some\(function\(v\)\{return v\.ebayPresaleStatus===state\.ebay;\}\)/,
   'visibleFamilies must filter by ebayPresaleStatus');
 assert.match(focDash, /return pub&&flagged&&ebay&&\(!q\|\|hay\.indexOf\(q\)>-1\)/, 'the eBay filter must actually be applied alongside the existing filters');
-assert.match(focDash, /onchange="filterFocEbay\(this\.value\)"><option value="all">All eBay statuses<\/option><option value="ELIGIBLE_NOW">Eligible, not listed/,
-  'toolbar must expose an "eligible, not listed" option using the catalog\'s own ebayPresaleStatus values');
+assert.match(focDash, /onchange="filterFocEbay\(this\.value\)"><option value="all" '\+\(state\.ebay==='all'\?'selected':''\)\+'>All eBay statuses<\/option><option value="ELIGIBLE_NOW" '\+\(state\.ebay==='ELIGIBLE_NOW'\?'selected':''\)\+'>Eligible, not listed/,
+  'toolbar must expose an "eligible, not listed" option using the catalog\'s own ebayPresaleStatus values, reflecting the real filter state (see foc-cycle-filter-reset.test.mjs)');
 assert.match(focDash, /window\.filterFocEbay=function\(v\)\{state\.ebay=v;renderFamilies\(\);\}/, 'the filter dropdown must be wired up');
 
 // Handling time: eBay computes the buyer's delivery estimate as handling

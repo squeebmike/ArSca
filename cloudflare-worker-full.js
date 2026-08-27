@@ -599,7 +599,19 @@ function shapeStorefrontItem(row) {
   };
 }
 function isStorefrontItemAvailable(i) {
-  return !!(i.name && i.quantity > 0 && i.onlineListed && !i.soldAt && !i.archivedAt && !['sold','archived','returned','deleted','sold_pending_pickup','sold_pending_shipment','hold','lost_damaged'].includes(i.inventoryStatus));
+  // Store report: eBay-only FOC presale placeholder rows (status:'presale',
+  // created by /foc/ebay/create-presale, name suffixed " - PRESALE") were
+  // showing up on the general public storefront as regular ready-to-ship
+  // stock -- "presale" was never in this exclusion list, and the row sets
+  // neither onlineListed:false nor data.status, so it passed every other
+  // check by default. These rows exist purely to track an eBay listing
+  // that hasn't shipped yet; the store has no physical copies to fulfill a
+  // storefront order against, and customers ordering ahead of release
+  // already have a dedicated path (the FOC customer preorders page via
+  // /public/preorders) with its own qualification/quantity rules. Letting
+  // the same units also sell here risked selling the same not-yet-received
+  // copy twice, once on eBay and once through the store's own site.
+  return !!(i.name && i.quantity > 0 && i.onlineListed && !i.soldAt && !i.archivedAt && !['sold','archived','returned','deleted','sold_pending_pickup','sold_pending_shipment','hold','lost_damaged','presale'].includes(i.inventoryStatus));
 }
 
 function json(data, status = 200, extraHeaders = {}) {
