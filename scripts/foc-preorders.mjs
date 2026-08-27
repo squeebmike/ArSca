@@ -279,7 +279,19 @@ async function buildCycleCatalog(db, cycle, includeAdmin = false, env, deps, sto
     includeAdmin ? db(`foc_incentive_requests?cycle_id=eq.${encodeURIComponent(cycle.id)}&status=${inFilter(['waitlisted','offered'])}&select=sku_id,requested_quantity`) : Promise.resolve({ data:[] }),
     // eBay presale status is admin-only (dashboard control center), never
     // shown/needed on the public customer catalog -- skip this query there.
-    includeAdmin && env && deps ? db(`inventory_items?store_id=eq.${encodeURIComponent(storeId)}&status=in.(presale,sold)&select=id,status,data`) : Promise.resolve({ data:[] }),
+    // Store report: a real eBay sale against a presale listing (default
+    // listed quantity is 10, see buildFocPresaleDefaults) made the FOC page
+    // show "we never listed this" (CREATE EBAY PRESALE) right after a book
+    // sold on eBay. /ebay/orders/sync only marks an item status:'sold' once
+    // its qty hits 0 -- selling 1 of 10 leaves 9 remaining, so it flips to
+    // status:'in_stock' instead (still listed, still selling on eBay, just
+    // no longer tracked as presale-status inventory). /foc/ebay/convert-to-
+    // instock does the same status flip once a book physically arrives.
+    // Either way the row drops out of a presale/sold-only query even though
+    // it is d.source==='foc_presale' with real presale sales on it -- must
+    // include in_stock rows too so a partially-sold or since-arrived presale
+    // listing still reports its original/remaining/sold counts correctly.
+    includeAdmin && env && deps ? db(`inventory_items?store_id=eq.${encodeURIComponent(storeId)}&status=in.(presale,sold,in_stock)&select=id,status,data`) : Promise.resolve({ data:[] }),
   ]);
   const requestQty = new Map();
   for (const row of requestRows?.data || []) requestQty.set(row.sku_id, (requestQty.get(row.sku_id) || 0) + Number(row.requested_quantity || 0));
@@ -835,7 +847,13 @@ async function exportPrh(env,deps,url,request){
 // compute this inline already (same underlying data, different immediate
 // needs) rather than importing this, to avoid touching already-correct code.
 async function ebayPresoldBySku(db,storeId){
-  const {data:rows}=await db(`inventory_items?store_id=eq.${encodeURIComponent(storeId)}&status=in.(presale,sold)&select=id,status,data`);
+  // Same in_stock gap as buildCycleCatalog's presale query above -- a
+  // partial eBay sale (qty 1 of the usual 10) or a since-arrived presale
+  // listing flips status to 'in_stock', and this function feeds the real
+  // PRH distributor order (exportPrh, adminPrhSubmission): missing those
+  // rows here doesn't just mis-report a dashboard badge, it silently
+  // under-orders the distributor by the units already sold on eBay.
+  const {data:rows}=await db(`inventory_items?store_id=eq.${encodeURIComponent(storeId)}&status=in.(presale,sold,in_stock)&select=id,status,data`);
   const map=new Map();
   for(const row of rows||[]){
     const d=row.data||{};
@@ -986,8 +1004,12 @@ async function receiveShipment(request,env,deps){
   // since a single presale listing can partially sell. Matched in JS after
   // a broad status-scoped fetch, same pattern /ebay/orders/sync already
   // uses for inventory_items -- no jsonb-path filtering precedent exists
-  // elsewhere in this codebase to build on.
-  const { data:presaleRows }=await db(`inventory_items?store_id=eq.${encodeURIComponent(storeId)}&status=in.(presale,sold)&select=id,status,data`);
+  // elsewhere in this codebase to build on. in_stock is included alongside
+  // presale/sold because /ebay/orders/sync only flips a row to 'sold' once
+  // its qty hits 0 -- selling 1 of the usual 10-qty presale listing leaves
+  // 9 remaining and flips it to 'in_stock' instead, which would otherwise
+  // silently drop that already-sold unit from this fulfillment count.
+  const { data:presaleRows }=await db(`inventory_items?store_id=eq.${encodeURIComponent(storeId)}&status=in.(presale,sold,in_stock)&select=id,status,data`);
   const presaleByskuId=new Map();
   for(const row of presaleRows||[]){
     const d=row.data||{};
