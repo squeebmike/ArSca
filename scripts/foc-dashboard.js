@@ -351,7 +351,7 @@ async function submitEbayPresaleReview(skuId){
     // root cause is confirmed.
     if(result.conditionCheck){
       var cc=result.conditionCheck;
-      toast_dash('Condition check: sent '+cc.requestedId+(cc.requestedLabel?' ('+cc.requestedLabel+')':'')+' via '+cc.resolvedFrom+' · eBay confirms stored: '+(cc.verifiedStoredId||'unknown'));
+      toast_dash('Condition check: sent '+cc.requestedId+(cc.requestedLabel?' ('+cc.requestedLabel+')':'')+' via '+cc.resolvedFrom+' · eBay confirms stored: '+(cc.verifiedStoredId||('unknown'+(cc.verifyError?' -- '+cc.verifyError:''))));
     }
     var modal=document.getElementById('foc-ebay-review-modal');if(modal)modal.remove();
     await openCycle(state.cycle.id);
