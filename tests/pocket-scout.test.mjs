@@ -194,6 +194,51 @@ assert.match(worker, /Card number and print run only exist on SportsCardsPro's o
 assert.match(worker, /const cardNumMatch = scpHtml\.match\(\/Card Number/, 'the /pricing\\/sportscardspro\\/image route must scrape "Card Number" text off SCP\'s public page');
 assert.match(worker, /const printRunMatch = scpHtml\.match\(\/Print Run/, 'the /pricing\\/sportscardspro\\/image route must scrape "Print Run" text off SCP\'s public page');
 assert.match(worker, /return json\(\{ ok: true, imageUrl: imageUrl \|\| null, cardNumber, printRun \}\);/, 'the route must return cardNumber/printRun alongside imageUrl');
+
+// Store report: scoutHydrateCatalogImages() already successfully scrapes a
+// numbered card's print run onto scoutSession.catalogMatch.printRun (tested
+// above), but neither way of actually getting a scouted item into inventory
+// ever read it -- both hand-offs dropped it on the floor even though it had
+// already been found, so it never reached the Serial #/Numbered field or
+// the printed label.
+{
+  const sendToBuyStart = dashboard.indexOf('function scoutSendToBuyTab(){');
+  const sendToBuyEnd = dashboard.indexOf('\n}', sendToBuyStart) + 2;
+  const sendToBuyFn = dashboard.slice(sendToBuyStart, sendToBuyEnd);
+  assert.match(sendToBuyFn, /serial_number: match\?\.printRun \? '\/' \+ match\.printRun : '',/,
+    'scoutSendToBuyTab (queue into the Buy tray) must carry the catalog match\'s print run into serial_number -- buyItemToInventoryUpdates already passes serial_number through once accepted');
+}
+{
+  const buyAddStart = dashboard.indexOf('async function scoutBuyAddInventory(){');
+  const buyAddEnd = dashboard.indexOf('\n}', buyAddStart) + 2;
+  const buyAddFn = dashboard.slice(buyAddStart, buyAddEnd);
+  assert.match(buyAddFn, /serial_number: match\?\.printRun \? '\/' \+ match\.printRun : '',/,
+    'scoutBuyAddInventory (direct one-shot buy+add) must also carry the catalog match\'s print run into serial_number');
+}
+
+// The main Research/Quick Lookup search (a separate flow from Pocket Scout,
+// used for the general "add from search" path) has no equivalent hydration
+// at all for PriceCharting-sourced results -- PriceCharting's own API has
+// no print-run field (confirmed: not part of its game/console schema), and
+// this store has no paid SCP_ACCESS_TOKEN, so the only way to get it is the
+// same token-free SportsCardsPro page-scrape route Pocket Scout already
+// uses. Scoped to sports-category results only (print run is meaningless
+// for other categories) and throttled the same way as the existing image
+// hydration it's modeled on.
+assert.match(dashboard, /async function enrichPcPrintRunsAsync\(\)\{/, 'missing enrichPcPrintRunsAsync');
+{
+  const enrichStart = dashboard.indexOf('async function enrichPcPrintRunsAsync(){');
+  const enrichEnd = dashboard.indexOf('\n}', enrichStart) + 2;
+  const enrichFn = dashboard.slice(enrichStart, enrichEnd);
+  assert.match(enrichFn, /r&&r\.source==='PriceCharting'&&!r\.printRun&&r\.name&&qplResultCategoryKey\(r\)==='sports'/, 'must only target PriceCharting-sourced sports results missing a print run');
+  assert.match(enrichFn, /WORKER\+'\/pricing\/sportscardspro\/image\?'\+params/, 'must hit the token-free SportsCardsPro page-scrape route, not a paid SCP endpoint');
+  assert.doesNotMatch(enrichFn, /\/pricing\/sportscardspro\/product\?id=/, 'must not depend on the paid SCP_ACCESS_TOKEN-gated single-product endpoint');
+  assert.match(enrichFn, /qplResults\[idx\]\.printRun=d\.printRun;/, 'a found print run must actually be written back onto the result row');
+  assert.match(enrichFn, /if\(typeof updateQplResultCard==='function'\)updateQplResultCard\(idx\);/, 'a found print run must re-render onto the visible result card, not just sit on the row object unseen');
+}
+assert.match(dashboard, /if\(qplResults\.some\(r => r\.source === 'PriceCharting' && !r\.printRun && qplResultCategoryKey\(r\) === 'sports'\)\) enrichPcPrintRunsAsync\(\);/,
+  'print-run enrichment must be triggered independently of image hydration -- a result can already have its image (common) while still missing a print run PriceCharting\'s API never returns');
+
 // A blank title + 0% confidence on a trading card is the model working as
 // designed (see POCKET_SCOUT_IDENTITY_PROMPT), not a broken scan -- it must
 // not render as "Unidentified item" / red "INSUFFICIENT DATA", which reads
