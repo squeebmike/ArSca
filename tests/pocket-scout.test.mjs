@@ -207,6 +207,11 @@ assert.match(worker, /return json\(\{ ok: true, imageUrl: imageUrl \|\| null, ca
   const sendToBuyFn = dashboard.slice(sendToBuyStart, sendToBuyEnd);
   assert.match(sendToBuyFn, /serial_number: match\?\.printRun \? '\/' \+ match\.printRun : '',/,
     'scoutSendToBuyTab (queue into the Buy tray) must carry the catalog match\'s print run into serial_number -- buyItemToInventoryUpdates already passes serial_number through once accepted');
+  // Store report: cards added through Pocket Scout had no PriceCharting
+  // product page link saved at all -- also feeds the printed label's QR
+  // code (labelQrPayload reads item.providerUrl).
+  assert.match(sendToBuyFn, /providerUrl: match\?\.productUrl \|\| match\?\.url \|\| '',/,
+    'scoutSendToBuyTab must carry the catalog match\'s product URL into providerUrl');
 }
 {
   const buyAddStart = dashboard.indexOf('async function scoutBuyAddInventory(){');
@@ -214,6 +219,19 @@ assert.match(worker, /return json\(\{ ok: true, imageUrl: imageUrl \|\| null, ca
   const buyAddFn = dashboard.slice(buyAddStart, buyAddEnd);
   assert.match(buyAddFn, /serial_number: match\?\.printRun \? '\/' \+ match\.printRun : '',/,
     'scoutBuyAddInventory (direct one-shot buy+add) must also carry the catalog match\'s print run into serial_number');
+  assert.match(buyAddFn, /providerUrl: match\?\.productUrl \|\| match\?\.url \|\| '',/,
+    'scoutBuyAddInventory must also carry the catalog match\'s product URL into providerUrl');
+}
+// buyItemToInventoryUpdates() (the buy-tray -> inventory conversion used by
+// EVERY accepted buy, not just Pocket Scout's) had no providerUrl field at
+// all -- even a buy-tray item that already carried it (scoutSendToBuyTab,
+// after the fix above) would have had it silently dropped right here.
+{
+  const mapperStart = dashboard.indexOf('function buyItemToInventoryUpdates(item){');
+  const mapperEnd = dashboard.indexOf('\n}', mapperStart) + 2;
+  const mapperFn = dashboard.slice(mapperStart, mapperEnd);
+  assert.match(mapperFn, /providerUrl:item\.providerUrl \|\| '',/,
+    'buyItemToInventoryUpdates must carry providerUrl through from the buy-tray item into the inventory row it builds');
 }
 
 // The main Research/Quick Lookup search (a separate flow from Pocket Scout,
