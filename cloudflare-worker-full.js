@@ -3468,6 +3468,19 @@ export default {
         ? ['Could not confirm eBay\'s exact Comics condition ID -- used the generic "New" (1000). If eBay doesn\'t show "Brand New" after publishing, edit the listing on eBay and set the condition manually.']
         : [];
 
+      // Store report: a FOC presale listing published with no shipping
+      // service selected on eBay's own edit page. getFocPresaleFulfillmentPolicyId
+      // returns '' when it can't find a policy to clone (no policy named
+      // "presale" and no EBAY_FULFILLMENT_POLICY_ID configured as a
+      // fallback) -- buildEbayOfferBody only sets fulfillmentPolicyId on the
+      // offer AT ALL when one of those resolved to something, so a listing
+      // can silently publish with no fulfillment policy attached whatsoever.
+      // That failure was invisible until now; surfaced the same way the
+      // condition fallback above already is.
+      const fulfillmentWarnings = fulfillmentPolicyId
+        ? []
+        : ['Could not find a shipping/fulfillment policy to use -- this listing published with NO shipping service selected. Add an eBay Business Policy named with "presale" in it (or set a default fulfillment policy), then edit this listing on eBay to fix its shipping.'];
+
       // Store request: a buy-more-save-more volume discount on FOC presale
       // listings (2+/5%, 3+/10%, 4+/15%). Best-effort -- a promotion setup
       // failure (e.g. no active eBay Store subscription, which this feature
@@ -3518,7 +3531,7 @@ export default {
 
       return json({
         ok: true, listingId: listingResult.listingId, offerId: listingResult.offerId, sku: listingResult.sku,
-        inventoryItemId: createdRow?.id || null, quantity, warnings: [...(listingResult.warnings || []), ...conditionWarnings, ...volumeDiscountWarnings],
+        inventoryItemId: createdRow?.id || null, quantity, warnings: [...(listingResult.warnings || []), ...conditionWarnings, ...fulfillmentWarnings, ...volumeDiscountWarnings],
         volumeDiscount: volumeDiscountPromotionId ? { active: true, tiers: FOC_VOLUME_DISCOUNT_TIERS } : { active: false },
         // Store report: eBay's own edit page still showed "Item condition"
         // blank with no warning from either the resolution or the

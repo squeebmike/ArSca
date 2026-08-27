@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.27.10-foc-filter-and-storefront-presale-fix">
+<meta name="version" content="2026.08.27.11-editable-name-and-fulfillment-warning">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1638,16 +1638,16 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.27.10-foc-filter-and-storefront-presale-fix" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.27.10-foc-filter-and-storefront-presale-fix" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.27.10-foc-filter-and-storefront-presale-fix" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.08.27.10-foc-filter-and-storefront-presale-fix" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.27.10-foc-filter-and-storefront-presale-fix" defer></script>
-<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.08.27.10-foc-filter-and-storefront-presale-fix" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.27.10-foc-filter-and-storefront-presale-fix" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.27.10-foc-filter-and-storefront-presale-fix" defer></script>
-<script src="scripts/pokemon/offline-browser.js?v=2026.08.27.10-foc-filter-and-storefront-presale-fix" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.27.10-foc-filter-and-storefront-presale-fix" defer></script>
+<script src="scripts/query-routing.js?v=2026.08.27.11-editable-name-and-fulfillment-warning" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.27.11-editable-name-and-fulfillment-warning" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.27.11-editable-name-and-fulfillment-warning" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.08.27.11-editable-name-and-fulfillment-warning" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.27.11-editable-name-and-fulfillment-warning" defer></script>
+<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.08.27.11-editable-name-and-fulfillment-warning" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.27.11-editable-name-and-fulfillment-warning" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.27.11-editable-name-and-fulfillment-warning" defer></script>
+<script src="scripts/pokemon/offline-browser.js?v=2026.08.27.11-editable-name-and-fulfillment-warning" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.27.11-editable-name-and-fulfillment-warning" defer></script>
 </head>
 <body>
 
@@ -1676,11 +1676,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.27.10-foc-filter-and-storefront-presale-fix</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.27.11-editable-name-and-fulfillment-warning</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.27.10-foc-filter-and-storefront-presale-fix</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.27.11-editable-name-and-fulfillment-warning</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1698,7 +1698,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.27.10-foc-filter-and-storefront-presale-fix</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.27.11-editable-name-and-fulfillment-warning</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -2955,6 +2955,10 @@ body.show-mode .inv-sync-badge{display:none;}
       </div>
       <div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      <div style="grid-column:1/-1">
+        <label>Name</label>
+        <input type="text" id="edit-name" placeholder="Item name">
+      </div>
       <div>
         <label>Cost Paid ($)</label>
         <input type="number" id="edit-cost" step="0.01" min="0" placeholder="0.00">
@@ -3706,7 +3710,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.27.10-foc-filter-and-storefront-presale-fix';
+const APP_VERSION = '2026.08.27.11-editable-name-and-fulfillment-warning';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -18374,9 +18378,14 @@ function renderTable(){
     const aged = ins && inventoryIsAgedStock(i);
     const comicPeople = inventoryComicPeopleLine(i);
     const researchClick = `openInventoryItemInResearch('${i.id}')`;
+    // Store report: tapping the thumbnail opened Research (live pricing/comps),
+    // not a great match for "I want to fix this item's details" -- the name
+    // text next to it still opens Research, the image now opens the edit
+    // modal instead, matching how a photo thumbnail usually behaves.
+    const editClick = `openEditModal('${i.id}')`;
     const thumbCell = thumbSrc
-      ? `<td class="td-thumb" onclick="${researchClick}" style="cursor:pointer" title="Open in Research"><img class="inv-thumb" src="${escHtml(thumbSrc)}" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><div class="inv-thumb-placeholder" style="display:none">NO IMG</div></td>`
-      : `<td class="td-thumb" onclick="${researchClick}" style="cursor:pointer" title="Open in Research"><div class="inv-thumb-placeholder">🔍</div></td>`;
+      ? `<td class="td-thumb" onclick="${editClick}" style="cursor:pointer" title="Edit item"><img class="inv-thumb" src="${escHtml(thumbSrc)}" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><div class="inv-thumb-placeholder" style="display:none">NO IMG</div></td>`
+      : `<td class="td-thumb" onclick="${editClick}" style="cursor:pointer" title="Edit item"><div class="inv-thumb-placeholder">🔍</div></td>`;
     return `<tr class="${ins?'':'sold'}" data-item-id="${i.id}">
       ${thumbCell}
       <td><span class="dot ${ins?'in_stock':'sold'}"></span><span class="nc" title="${i.tcgCardId?'TCG ID: '+i.tcgCardId:''}" onclick="${researchClick}" style="cursor:pointer">${i.name}${i.isRookie?' <span style="color:var(--gold);font-size:8px">RC</span>':''}${i.tcgCardId?'<span style="font-family:monospace;font-size:7px;color:rgba(0,255,179,.4);margin-left:4px">●</span>':''}${i.isBundle?' <span style="color:var(--gold);font-size:8px">🎁 BUNDLE</span>':''}</span>${invSyncBadgeHtml(i.id)}<div class="sc2" style="margin:5px 0 0 12px">${escHtml([i.consignorName||i.inventoryOwner||'Store owned',i.inventorySku||i.sku||''].filter(Boolean).join(' · '))}</div>${i.status==='bundled'&&i.bundledIntoName?`<div class="sc2" style="margin-top:5px;color:var(--gold)">🎁 In bundle: ${escHtml(i.bundledIntoName)}</div>`:''}</td>
@@ -25205,6 +25214,7 @@ function openEditModal(id) {
   editingItemId = id;
 
   document.getElementById('edit-item-title').textContent = item.name + (item.year ? ' · '+item.year : '') + (item.set ? ' · '+item.set : '');
+  document.getElementById('edit-name').value = item.name || '';
   document.getElementById('edit-cost').value = item.cost || '';
   document.getElementById('edit-market').value = item.market || '';
   document.getElementById('edit-list-price').value = inventoryEffectiveBasePrice(item) || '';
@@ -25612,6 +25622,11 @@ async function confirmEditAndSync() {
   // read the moment someone opened the edit screen for an unrelated change.
   const editHasOverride = editListVal > 0 && Math.abs(editListVal - editMarketVal) >= 0.01;
   const updates = {
+    // Store report: no way existed to fix a typo'd/wrong item name once
+    // added -- edit-item-title only ever displayed it as read-only text.
+    // Falls back to the existing name if left blank so clearing this field
+    // (rather than typing a real edit) can never wipe the name out.
+    name: document.getElementById('edit-name')?.value.trim() || item.name,
     cost: parseFloat(document.getElementById('edit-cost').value)||0,
     market: editMarketVal,
     price: editMarketVal,
@@ -45402,7 +45417,7 @@ async function toppsLoadParallels(cardId){
   window.__arscaCloseModal = closeModal;
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.27.10-foc-filter-and-storefront-presale-fix" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.27.11-editable-name-and-fulfillment-warning" defer></script>
 </body>
 </html>
 
