@@ -3481,6 +3481,7 @@ export default {
         conditionCheck: {
           requestedId: listingResult.requestedConditionId, requestedLabel: resolvedCondition.label || '',
           resolvedFrom: resolvedCondition.source, verifiedStoredId: listingResult.verifiedConditionId,
+          verifyError: listingResult.verifyError || '',
         },
       });
     }
@@ -6577,6 +6578,7 @@ export default {
       // internal detail; a verify-fetch failure is now also surfaced
       // rather than silently treated the same as a clean match.
       let verifiedConditionId = null;
+      let verifyError = '';
       try {
         const verifyRes = await fetch(`https://api.ebay.com/sell/inventory/v1/inventory_item/${sku}`, {
           headers: { 'Authorization': 'Bearer ' + ebayToken },
@@ -6584,18 +6586,22 @@ export default {
         if (verifyRes.ok) {
           const verifyData = await verifyRes.json();
           verifiedConditionId = String(verifyData?.conditionId || '');
+          if (!verifiedConditionId) verifyError = 'lookup ok but response had no conditionId field';
           const requestedConditionId = String(itemBody.conditionId || '');
           if (requestedConditionId && verifiedConditionId !== requestedConditionId) {
             warnings.push(`eBay stored a different condition than requested (requested ${requestedConditionId}, eBay has ${verifiedConditionId || 'none'}) -- check the listing's condition manually.`);
           }
         } else {
+          const bodyTxt = (await verifyRes.text().catch(() => '')).substring(0, 200);
+          verifyError = `HTTP ${verifyRes.status}: ${bodyTxt}`;
           warnings.push(`Could not verify eBay actually stored the requested condition (lookup failed, ${verifyRes.status}) -- check the listing's condition manually.`);
         }
       } catch (e) {
+        verifyError = e.message;
         warnings.push('Could not verify eBay actually stored the requested condition (' + e.message + ') -- check the listing\'s condition manually.');
       }
 
-      return { listingId: pubData.listingId, offerId, sku, warnings, requestedConditionId: String(itemBody.conditionId || ''), verifiedConditionId };
+      return { listingId: pubData.listingId, offerId, sku, warnings, requestedConditionId: String(itemBody.conditionId || ''), verifiedConditionId, verifyError };
     }
 
     if (url.pathname === '/ebay/list') {

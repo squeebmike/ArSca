@@ -100,9 +100,9 @@ assert.match(createAndPublishBody, /warnings\.push\(`Could not verify eBay actua
   'a failed verify lookup (non-ok response) must be surfaced, not silently treated as a match');
 assert.match(createAndPublishBody, /warnings\.push\('Could not verify eBay actually stored the requested condition \(' \+ e\.message \+ '\)/,
   'a thrown verify-fetch error must also be surfaced, not silently swallowed');
-assert.match(worker, /return \{ listingId: pubData\.listingId, offerId, sku, warnings, requestedConditionId: String\(itemBody\.conditionId \|\| ''\), verifiedConditionId \};/,
+assert.match(worker, /return \{ listingId: pubData\.listingId, offerId, sku, warnings, requestedConditionId: String\(itemBody\.conditionId \|\| ''\), verifiedConditionId, verifyError \};/,
   'createAndPublishEbayListing must return the actual requested/verified condition values, not just a pass/fail');
-assert.match(worker, /conditionCheck: \{\s*\n\s*requestedId: listingResult\.requestedConditionId, requestedLabel: resolvedCondition\.label \|\| '',\s*\n\s*resolvedFrom: resolvedCondition\.source, verifiedStoredId: listingResult\.verifiedConditionId,\s*\n\s*\},/,
+assert.match(worker, /conditionCheck: \{\s*\n\s*requestedId: listingResult\.requestedConditionId, requestedLabel: resolvedCondition\.label \|\| '',\s*\n\s*resolvedFrom: resolvedCondition\.source, verifiedStoredId: listingResult\.verifiedConditionId,\s*\n\s*verifyError: listingResult\.verifyError \|\| '',\s*\n\s*\},/,
   'the create-presale response must include the raw condition values on every publish, not just when a problem is detected');
 assert.match(focDash, /if\(result\.conditionCheck\)\{/, 'the dashboard must surface the condition check values so they are visible without Worker log access');
 
@@ -319,7 +319,7 @@ assert.match(worker, /listingDescription: toEbayHtmlDescription\(description \|\
 // actually reach the FOC dashboard so staff can see it.
 assert.match(worker, /if \(Array\.isArray\(itemData\?\.warnings\) && itemData\.warnings\.length\) warnings\.push/, 'must collect warnings from the inventory_item response');
 assert.match(worker, /if \(Array\.isArray\(pubData\?\.warnings\) && pubData\.warnings\.length\) warnings\.push/, 'must collect warnings from the publish response');
-assert.match(worker, /return \{ listingId: pubData\.listingId, offerId, sku, warnings, requestedConditionId: String\(itemBody\.conditionId \|\| ''\), verifiedConditionId \};/,
+assert.match(worker, /return \{ listingId: pubData\.listingId, offerId, sku, warnings, requestedConditionId: String\(itemBody\.conditionId \|\| ''\), verifiedConditionId, verifyError \};/,
   'createAndPublishEbayListing must return the collected warnings');
 assert.match(worker, /warnings: \[\.\.\.\(listingResult\.warnings \|\| \[\]\), \.\.\.conditionWarnings\]/, 'the FOC create-presale route must pass warnings through to the client');
 assert.match(focDash, /if\(result\.warnings&&result\.warnings\.length\)toast_dash\('eBay warning: '\+result\.warnings\.join\(' · '\)\)/,
