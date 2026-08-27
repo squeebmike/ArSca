@@ -918,6 +918,12 @@ async function adminPrhSubmission(request,env,deps,url){
         for(const row of toWithdraw){
           try{
             await deps.withdrawEbayOffer(env,ebayToken,row.data.ebayOfferId);
+            // A volume-discount promotion tied to this listing must not
+            // outlive the listing itself -- best-effort, never blocks the
+            // withdrawal it's paired with.
+            if(row.data.ebayVolumeDiscountPromotionId&&deps.endEbayVolumeDiscount){
+              try{await deps.endEbayVolumeDiscount(env,ebayToken,row.data.ebayVolumeDiscountPromotionId);}catch(_){}
+            }
             await db(`inventory_items?id=eq.${row.id}&store_id=eq.${encodeURIComponent(storeId)}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({data:{...row.data,qty:0,quantity:0,ebayWithdrawnAt:new Date().toISOString(),ebayWithdrawnReason:'not_included_in_prh_order'}})});
             ebayWithdrawnSkuIds.push(row.data.focSkuId);
           }catch(e){console.error('FOC PRH submission: could not withdraw unordered eBay presale listing',row.id,e);}

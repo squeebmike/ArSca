@@ -118,7 +118,42 @@ assert.match(worker, /return \{ listingId: pubData\.listingId, offerId, sku, war
   'createAndPublishEbayListing must return the actual requested/verified condition values, not just a pass/fail');
 assert.match(worker, /conditionCheck: \{\s*\n\s*requestedId: listingResult\.requestedConditionId, requestedLabel: resolvedCondition\.label \|\| '',\s*\n\s*requestedCondition: listingResult\.requestedCondition, resolvedFrom: resolvedCondition\.source,\s*\n\s*verifiedStoredId: listingResult\.verifiedConditionId, verifyError: listingResult\.verifyError \|\| '',\s*\n\s*\},/,
   'the create-presale response must include the raw condition values on every publish, not just when a problem is detected');
-assert.match(focDash, /if\(result\.conditionCheck\)\{/, 'the dashboard must surface the condition check values so they are visible without Worker log access');
+// Store confirmed the condition fix works live -- the temporary per-publish
+// diagnostic toast (its own comment said "remove once the root cause is
+// confirmed") is gone now; conditionCheck itself stays in the worker
+// response as a quiet debugging aid, just no longer surfaced as a toast.
+assert.doesNotMatch(focDash, /Condition check: sent conditionId/, 'the temporary condition diagnostic toast must be removed now that the fix is confirmed working');
+
+// Store request: a "buy more, save more" volume discount on FOC presale
+// listings (2+/5%, 3+/10%, 4+/15%) via eBay's Promotions Manager (Sell
+// Marketing API item promotion, VOLUME_DISCOUNT type) -- Store-subscription
+// gated on eBay's side, so failure must surface as a warning, never block
+// the listing itself (which is already live by the time this runs).
+assert.match(worker, /const FOC_VOLUME_DISCOUNT_TIERS = \[\s*\n\s*\{ minQuantity: 2, percentageOff: '5' \},\s*\n\s*\{ minQuantity: 3, percentageOff: '10' \},\s*\n\s*\{ minQuantity: 4, percentageOff: '15' \},\s*\n\s*\];/,
+  'volume discount tiers must be declared at module scope, not inside fetch() where an earlier route could hit them before initialization (TDZ)');
+assert.match(worker, /async function createEbayVolumeDiscount\(env, ebayToken, listingId, sku\) \{/, 'must have a dedicated helper to create the eBay volume-discount promotion');
+assert.match(worker, /promotionType: 'VOLUME_DISCOUNT',/, 'must request eBay\'s VOLUME_DISCOUNT promotion type');
+assert.match(worker, /selectionRules: \{ selectionType: 'SPECIFIC', itemIds: \[String\(listingId\)\] \},/, 'the promotion must be scoped to the specific listing just published, not store-wide');
+assert.match(worker, /async function endEbayVolumeDiscount\(env, ebayToken, promotionId\) \{/, 'must have a dedicated helper to end a volume-discount promotion (so it never outlives a withdrawn listing)');
+assert.match(worker, /const volumeDiscount = await createEbayVolumeDiscount\(env, ebayToken, listingResult\.listingId, listingResult\.sku\);/,
+  'the FOC create route must actually call the volume-discount helper after a successful publish');
+assert.match(worker, /volumeDiscountWarnings\.push\('Volume discount \(buy more, save more\) was not set up: ' \+ e\.message\);/,
+  'a volume-discount setup failure must become a visible warning, not a silent swallow');
+assert.match(worker, /warnings: \[\.\.\.\(listingResult\.warnings \|\| \[\]\), \.\.\.conditionWarnings, \.\.\.volumeDiscountWarnings\],/,
+  'volume-discount warnings must actually reach the client alongside the other warning types');
+assert.match(worker, /volumeDiscount: volumeDiscountPromotionId \? \{ active: true, tiers: FOC_VOLUME_DISCOUNT_TIERS \} : \{ active: false \},/,
+  'the create-presale response must report whether the volume discount actually went live');
+assert.match(worker, /ebayVolumeDiscountPromotionId: volumeDiscountPromotionId,/, 'the promotion id must be saved on the inventory_items row so it can be cleaned up later');
+assert.match(focDash, /Volume discount active: /, 'the dashboard must confirm the volume discount to staff after a successful publish');
+
+// A promotion must not outlive the listing it was created for -- cleaned up
+// in the same auto-withdraw sweep that already ends the eBay offer for an
+// unordered book (adminPrhSubmission in foc-preorders.mjs).
+assert.match(worker, /addBusinessDays, getEbayPresaleSafeBusinessDays, getEbayUserAccessToken, withdrawEbayOffer, endEbayVolumeDiscount,/,
+  'endEbayVolumeDiscount must be injected into the FOC request handler alongside the other eBay deps');
+const preordersSrc = fs.readFileSync('scripts/foc-preorders.mjs', 'utf8');
+assert.match(preordersSrc, /if\(row\.data\.ebayVolumeDiscountPromotionId&&deps\.endEbayVolumeDiscount\)\{/,
+  'the unordered-listing withdrawal sweep must also end that listing\'s volume-discount promotion');
 
 // Both callers of createAndPublishEbayListing must pass storeId through now
 // that the function needs it to look up the address.
@@ -243,7 +278,7 @@ assert.match(prhSubmissionBody, /await deps\.withdrawEbayOffer\(env,ebayToken,ro
 assert.match(prhSubmissionBody, /ebayWithdrawnReason:'not_included_in_prh_order'/, 'the withdrawn row must record why, for later auditing');
 assert.match(prhSubmissionBody, /return deps\.json\(\{ok:true,submission:inserted,ebayWithdrawnCount:ebayWithdrawnSkuIds\.length\}\)/, 'the response must report how many listings were withdrawn');
 assert.match(worker, /async function withdrawEbayOffer\(env, ebayToken, offerId\)/, 'must have a reusable withdraw helper, not just the /ebay/end route inline');
-assert.match(worker, /getEbayUserAccessToken, withdrawEbayOffer,\s*\n\s*\}\);/, 'the withdraw helper and token getter must be injected into the FOC module\'s deps');
+assert.match(worker, /getEbayUserAccessToken, withdrawEbayOffer, endEbayVolumeDiscount,\s*\n\s*\}\);/, 'the withdraw helper and token getter must be injected into the FOC module\'s deps');
 assert.match(focDash, /if\(d\.ebayWithdrawnCount>0\)toast_dash/, 'the dashboard must surface when a listing was auto-withdrawn, not just silently succeed');
 
 // Store category: eBay's Seller Hub "Store category" (distinct from the
@@ -335,7 +370,7 @@ assert.match(worker, /if \(Array\.isArray\(itemData\?\.warnings\) && itemData\.w
 assert.match(worker, /if \(Array\.isArray\(pubData\?\.warnings\) && pubData\.warnings\.length\) warnings\.push/, 'must collect warnings from the publish response');
 assert.match(worker, /return \{ listingId: pubData\.listingId, offerId, sku, warnings, requestedConditionId: String\(itemBody\.conditionId \|\| ''\), requestedCondition: String\(itemBody\.condition \|\| ''\), verifiedConditionId, verifyError \};/,
   'createAndPublishEbayListing must return the collected warnings');
-assert.match(worker, /warnings: \[\.\.\.\(listingResult\.warnings \|\| \[\]\), \.\.\.conditionWarnings\]/, 'the FOC create-presale route must pass warnings through to the client');
+assert.match(worker, /warnings: \[\.\.\.\(listingResult\.warnings \|\| \[\]\), \.\.\.conditionWarnings, \.\.\.volumeDiscountWarnings\],/, 'the FOC create-presale route must pass warnings through to the client');
 assert.match(focDash, /if\(result\.warnings&&result\.warnings\.length\)toast_dash\('eBay warning: '\+result\.warnings\.join\(' · '\)\)/,
   'the dashboard must actually surface a returned warning, not just receive it silently');
 

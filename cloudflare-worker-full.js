@@ -49,6 +49,15 @@ const WF_STATUS_SOLD = 'e6b42f14fcb99aa2168a5f5672226f68';
 // sale) -- used as the default deduction for real, auto-synced eBay orders
 // below, which have no equivalent manual entry step to type a fee into.
 const EBAY_DEFAULT_FEE_PCT = 13.25;
+// Standard escalating "buy more, save more" tiers for the FOC volume-pricing
+// promotion below (module scope, not nested in fetch(), so it's initialized
+// once at Worker load rather than only after execution reaches wherever it's
+// declared within a single request's route-dispatch chain).
+const FOC_VOLUME_DISCOUNT_TIERS = [
+  { minQuantity: 2, percentageOff: '5' },
+  { minQuantity: 3, percentageOff: '10' },
+  { minQuantity: 4, percentageOff: '15' },
+];
 const EBAY_TOKEN_URL = 'https://api.ebay.com/identity/v1/oauth2/token';
 const EBAY_AUTH_URL = 'https://auth.ebay.com/oauth2/authorize';
 // sell.logistics is deliberately NOT requested here. eBay validates every
@@ -3447,6 +3456,20 @@ export default {
         ? ['Could not confirm eBay\'s exact Comics condition ID -- used the generic "New" (1000). If eBay doesn\'t show "Brand New" after publishing, edit the listing on eBay and set the condition manually.']
         : [];
 
+      // Store request: a buy-more-save-more volume discount on FOC presale
+      // listings (2+/5%, 3+/10%, 4+/15%). Best-effort -- a promotion setup
+      // failure (e.g. no active eBay Store subscription, which this feature
+      // requires) must never block the listing itself, which is already live
+      // by this point.
+      let volumeDiscountPromotionId = '';
+      const volumeDiscountWarnings = [];
+      try {
+        const volumeDiscount = await createEbayVolumeDiscount(env, ebayToken, listingResult.listingId, listingResult.sku);
+        volumeDiscountPromotionId = volumeDiscount.promotionId || '';
+      } catch (e) {
+        volumeDiscountWarnings.push('Volume discount (buy more, save more) was not set up: ' + e.message);
+      }
+
       const nowIso = new Date().toISOString();
       let createdRow = null;
       try {
@@ -3464,6 +3487,7 @@ export default {
               focPresaleOriginalQty: quantity,
               ebayListingId: listingResult.listingId, ebayOfferId: listingResult.offerId,
               ebaySku: listingResult.sku, ebayListedAt: nowIso,
+              ebayVolumeDiscountPromotionId: volumeDiscountPromotionId,
             },
           }),
         });
@@ -3482,7 +3506,8 @@ export default {
 
       return json({
         ok: true, listingId: listingResult.listingId, offerId: listingResult.offerId, sku: listingResult.sku,
-        inventoryItemId: createdRow?.id || null, quantity, warnings: [...(listingResult.warnings || []), ...conditionWarnings],
+        inventoryItemId: createdRow?.id || null, quantity, warnings: [...(listingResult.warnings || []), ...conditionWarnings, ...volumeDiscountWarnings],
+        volumeDiscount: volumeDiscountPromotionId ? { active: true, tiers: FOC_VOLUME_DISCOUNT_TIERS } : { active: false },
         // Store report: eBay's own edit page still showed "Item condition"
         // blank with no warning from either the resolution or the
         // stored-value verification below -- returned here on every
@@ -3563,7 +3588,7 @@ export default {
       return await handleFocRequest(request, env, url, {
         CORS, json, supabaseAdminFetch, requireStoreUser, requireAuthenticatedUser,
         readJsonWithLimit, enforceUsageLimit, stripeApi, stripeMode, stripeConfig, sendEmail,
-        addBusinessDays, getEbayPresaleSafeBusinessDays, getEbayUserAccessToken, withdrawEbayOffer,
+        addBusinessDays, getEbayPresaleSafeBusinessDays, getEbayUserAccessToken, withdrawEbayOffer, endEbayVolumeDiscount,
       });
     }
 
@@ -6643,6 +6668,64 @@ export default {
         console.error('eBay listing error:', e);
         return json({ error: e.message, detail: e.detail }, e.status || 500);
       }
+    }
+
+    // eBay's "Volume Pricing" (Sell Marketing API item promotion,
+    // VOLUME_DISCOUNT) -- store request: a buy-more-save-more discount on
+    // FOC presale listings, so a buyer taking 2+/3+/4+ copies of the same
+    // book gets a per-unit break instead of paying full price on every
+    // copy. This is a Store-subscription-only eBay feature (Promotions
+    // Manager), so a store without an active eBay Store plan will get a
+    // real error back from eBay here rather than this silently doing
+    // nothing. Best-effort from the caller's side: a failure here must
+    // never block the listing itself from publishing, same as the
+    // condition-check/warnings pattern already used for other post-publish
+    // steps.
+    async function createEbayVolumeDiscount(env, ebayToken, listingId, sku) {
+      const now = new Date();
+      const end = new Date(now.getTime() + 1000 * 60 * 60 * 24 * 365 * 2); // 2-year runway -- well past any presale window
+      const body = {
+        promotionName: ('Buy More Save More - ' + sku).substring(0, 50),
+        promotionStatus: 'RUNNING',
+        startDate: now.toISOString(),
+        endDate: end.toISOString(),
+        promotionType: 'VOLUME_DISCOUNT',
+        selectionRules: { selectionType: 'SPECIFIC', itemIds: [String(listingId)] },
+        discountRules: FOC_VOLUME_DISCOUNT_TIERS.map((t, i) => ({
+          ruleOrder: i + 1,
+          minQuantity: t.minQuantity,
+          discountBenefit: { percentageOffOrder: t.percentageOff },
+        })),
+      };
+      const res = await fetch('https://api.ebay.com/sell/marketing/v1/item_promotion', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + ebayToken, 'Content-Type': 'application/json', 'Content-Language': 'en-US' },
+        body: JSON.stringify(body),
+      });
+      const txt = await res.text();
+      let data; try { data = JSON.parse(txt); } catch (_) { data = { raw: txt.substring(0, 300) }; }
+      if (!res.ok) {
+        const msg = data?.errors?.[0]?.longMessage || data?.errors?.[0]?.message || txt.substring(0, 300);
+        const e = new Error('Volume discount setup failed (' + res.status + '): ' + msg); e.status = res.status; e.detail = data; throw e;
+      }
+      const location = res.headers.get('Location') || res.headers.get('location') || '';
+      const promotionId = data?.promotionId || (location.match(/item_promotion\/([^/?]+)/) || [])[1] || '';
+      return { promotionId, tiers: FOC_VOLUME_DISCOUNT_TIERS };
+    }
+
+    // Ends an active volume-discount promotion -- called when a FOC presale
+    // listing itself gets withdrawn (unordered book, see adminPrhSubmission
+    // in foc-preorders.mjs) so a promotion never outlives the listing it
+    // was created for. Best-effort: swallows failure since the listing
+    // withdrawal it's paired with must never be blocked by this cleanup step.
+    async function endEbayVolumeDiscount(env, ebayToken, promotionId) {
+      if (!promotionId) return;
+      try {
+        await fetch(`https://api.ebay.com/sell/marketing/v1/item_promotion/${encodeURIComponent(promotionId)}/end`, {
+          method: 'POST',
+          headers: { 'Authorization': 'Bearer ' + ebayToken, 'Content-Type': 'application/json' },
+        });
+      } catch (_) { /* best-effort cleanup only */ }
     }
 
     // Ends (withdraws) an already-published offer -- used both by /ebay/end
