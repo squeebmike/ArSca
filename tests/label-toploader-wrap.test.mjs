@@ -14,13 +14,16 @@ assert.match(dashboard, /layoutEl\.value = localStorage\.getItem\('label_print_l
 // ── Contract: only one badge line fits under the name, so labelBadgeText
 // picks the single highest-priority thing worth calling out rather than
 // stacking several -- signed (the store's own added-value claim, tied to a
-// real price) beats key issue (a fact about the book, with its own reason)
-// beats a detected ratio/incentive/promo variant signal (the weakest of the
-// three, and the only one with no dedicated field behind it). ──
+// real price) beats a numbered card's print run (store report: this wasn't
+// printing on labels at all) beats key issue (comics only, never actually
+// competes with a card's print run in practice) beats a detected
+// ratio/incentive/promo variant signal (the weakest of the four, and the
+// only one with no dedicated field behind it). ──
 assert.match(dashboard, /function labelBadgeText\(item\)\{/, 'missing labelBadgeText');
 assert.match(dashboard, /if\(item\.is_signed\) return 'Signed: ' \+ \(item\.signed_by \|\| 'Signed'\);/, 'a signed item must take top priority for the single badge slot');
-assert.match(dashboard, /if\(item\.is_key\) return 'Key Issue' \+ \(item\.key_notes \? ': ' \+ item\.key_notes : ''\);/, 'a key issue must be the second priority, including its stored reason when present');
-assert.match(dashboard, /const signal = typeof detectVariantSignal === 'function' \? detectVariantSignal\(item\.variant \|\| ''\) : '';/, 'lacking a signed or key flag, the badge must fall back to the existing ratio/incentive/promo variant-signal detector rather than a separate reimplementation');
+assert.match(dashboard, /if\(item\.serial_number\) return item\.serial_number\.trim\(\)\.startsWith\('\/'\) \? item\.serial_number\.trim\(\) : '#' \+ item\.serial_number\.trim\(\);/, 'a numbered card\'s print run must be the second priority, and must print with its own leading slash rather than a doubled one');
+assert.match(dashboard, /if\(item\.is_key\) return 'Key Issue' \+ \(item\.key_notes \? ': ' \+ item\.key_notes : ''\);/, 'a key issue must be the third priority, including its stored reason when present');
+assert.match(dashboard, /const signal = typeof detectVariantSignal === 'function' \? detectVariantSignal\(item\.variant \|\| ''\) : '';/, 'lacking a signed/serial/key flag, the badge must fall back to the existing ratio/incentive/promo variant-signal detector rather than a separate reimplementation');
 
 console.log('Label toploader-wrap badge-priority contract checks passed');
 
@@ -143,20 +146,22 @@ assert.match(dashboard, /ctx\.drawImage\(codeDraw\.canvas, codeDraw\.x, codeDraw
 console.log('Label toploader-wrap PNG-download contract checks passed');
 
 // ── Functional: labelBadgeText picks exactly one badge, in priority order ──
-function labelBadgeText(item, detectVariantSignal){
-  if(item.is_signed) return 'Signed: ' + (item.signed_by || 'Signed');
-  if(item.is_key) return 'Key Issue' + (item.key_notes ? ': ' + item.key_notes : '');
-  const signal = typeof detectVariantSignal === 'function' ? detectVariantSignal(item.variant || '') : '';
-  return signal || '';
-}
+// Extracted straight from the real source (not a hand-copied reimplementation
+// that can silently drift out of sync with it) so this actually exercises
+// the function staff's printer runs.
+const labelBadgeTextStart = dashboard.indexOf('function labelBadgeText(item){');
+const labelBadgeTextSrc = dashboard.slice(labelBadgeTextStart, dashboard.indexOf('\n}', labelBadgeTextStart) + 2);
 const fakeDetectVariantSignal = (label) => /1\s*:\s*(\d+)/.test(label) ? `1:${label.match(/1\s*:\s*(\d+)/)[1]} INCENTIVE` : '';
+const labelBadgeText = new Function('detectVariantSignal', labelBadgeTextSrc + '\nreturn labelBadgeText;')(fakeDetectVariantSignal);
 
-assert.equal(labelBadgeText({ is_signed:true, signed_by:'Ash Ketchum', is_key:true, key_notes:'1st app' }, fakeDetectVariantSignal), 'Signed: Ash Ketchum', 'signed must win over key issue and variant signal when multiple apply');
-assert.equal(labelBadgeText({ is_signed:true, is_key:true }, fakeDetectVariantSignal), 'Signed: Signed', 'a signed item with no recorded signer name must still show a generic signed badge');
-assert.equal(labelBadgeText({ is_key:true, key_notes:'1st appearance of X', variant:'1:25 ratio' }, fakeDetectVariantSignal), 'Key Issue: 1st appearance of X', 'key issue must win over a variant signal when both apply');
-assert.equal(labelBadgeText({ is_key:true }, fakeDetectVariantSignal), 'Key Issue', 'a key issue with no stored reason must still show a generic key-issue badge, no stray colon');
-assert.equal(labelBadgeText({ variant:'1:25 ratio incentive cover' }, fakeDetectVariantSignal), '1:25 INCENTIVE', 'lacking signed/key flags, a detected variant signal must be used');
-assert.equal(labelBadgeText({}, fakeDetectVariantSignal), '', 'an item with no signed/key flag and no variant signal must show no badge at all');
+assert.equal(labelBadgeText({ is_signed:true, signed_by:'Ash Ketchum', serial_number:'/250', is_key:true, key_notes:'1st app' }), 'Signed: Ash Ketchum', 'signed must win over print run, key issue, and variant signal when multiple apply');
+assert.equal(labelBadgeText({ is_signed:true, is_key:true }), 'Signed: Signed', 'a signed item with no recorded signer name must still show a generic signed badge');
+assert.equal(labelBadgeText({ serial_number:'/250', is_key:true, key_notes:'1st app' }), '/250', 'a numbered card\'s print run must win over key issue when both apply');
+assert.equal(labelBadgeText({ serial_number:'99' }), '#99', 'a print run stored without a leading slash must still print with a leading marker (# ), not bare digits that could be misread as a card number');
+assert.equal(labelBadgeText({ is_key:true, key_notes:'1st appearance of X', variant:'1:25 ratio' }), 'Key Issue: 1st appearance of X', 'key issue must win over a variant signal when both apply');
+assert.equal(labelBadgeText({ is_key:true }), 'Key Issue', 'a key issue with no stored reason must still show a generic key-issue badge, no stray colon');
+assert.equal(labelBadgeText({ variant:'1:25 ratio incentive cover' }), '1:25 INCENTIVE', 'lacking signed/serial/key flags, a detected variant signal must be used');
+assert.equal(labelBadgeText({}), '', 'an item with no signed/serial/key flag and no variant signal must show no badge at all');
 
 console.log('labelBadgeText functional checks passed');
 

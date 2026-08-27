@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.27.04-buy-offer-lock-in-confirm">
+<meta name="version" content="2026.08.27.05-print-run-capture-and-label">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1638,16 +1638,16 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.27.04-buy-offer-lock-in-confirm" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.27.04-buy-offer-lock-in-confirm" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.27.04-buy-offer-lock-in-confirm" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.08.27.04-buy-offer-lock-in-confirm" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.27.04-buy-offer-lock-in-confirm" defer></script>
-<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.08.27.04-buy-offer-lock-in-confirm" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.27.04-buy-offer-lock-in-confirm" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.27.04-buy-offer-lock-in-confirm" defer></script>
-<script src="scripts/pokemon/offline-browser.js?v=2026.08.27.04-buy-offer-lock-in-confirm" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.27.04-buy-offer-lock-in-confirm" defer></script>
+<script src="scripts/query-routing.js?v=2026.08.27.05-print-run-capture-and-label" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.27.05-print-run-capture-and-label" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.27.05-print-run-capture-and-label" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.08.27.05-print-run-capture-and-label" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.27.05-print-run-capture-and-label" defer></script>
+<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.08.27.05-print-run-capture-and-label" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.27.05-print-run-capture-and-label" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.27.05-print-run-capture-and-label" defer></script>
+<script src="scripts/pokemon/offline-browser.js?v=2026.08.27.05-print-run-capture-and-label" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.27.05-print-run-capture-and-label" defer></script>
 </head>
 <body>
 
@@ -1676,11 +1676,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.27.04-buy-offer-lock-in-confirm</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.27.05-print-run-capture-and-label</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.27.04-buy-offer-lock-in-confirm</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.27.05-print-run-capture-and-label</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1698,7 +1698,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.27.04-buy-offer-lock-in-confirm</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.27.05-print-run-capture-and-label</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3706,7 +3706,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.27.04-buy-offer-lock-in-confirm';
+const APP_VERSION = '2026.08.27.05-print-run-capture-and-label';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -18088,6 +18088,16 @@ function inventoryIsListed(item={}){
   const lifecycle = item.lifecycle || item.status || '';
   return lifecycle === 'listed_online' || !!(item.listingUrl || item.ebayListingId || item.webflowSlug || item.raw?.listingUrl || item.raw?.ebayListingId);
 }
+// A numbered/parallel card's print run (e.g. "/250") is often already
+// sitting in the item name -- PriceCharting search results carry the full
+// product title, print run included -- but wasn't being captured into the
+// dedicated Serial #/Numbered field before the Add-to-Inventory fix above,
+// so anything added before that fix still only has it as unstructured
+// text in the name. Detects those so backfillPrintRunFromName() below can
+// fix them without waiting for a re-scan.
+function itemsWithUncapturedPrintRun(items=all){
+  return (items || []).filter(i => i.status === 'in_stock' && !i.serial_number && /\/\s*\d{1,4}\b/.test(String(i.name || '')));
+}
 function inventoryHealthSummary(items=all){
   const inStock = (items || []).filter(i=>i.status === 'in_stock' && i.lifecycle !== 'archived');
   return {
@@ -18101,7 +18111,27 @@ function inventoryHealthSummary(items=all){
     notListed:inStock.filter(i=>!inventoryIsListed(i)).length,
     belowCost:inStock.filter(i=>{ const s=inventoryProfitStats(i); return s.cost>0 && s.list>0 && s.list<s.cost; }).length,
     highValue:inStock.filter(i=>inventoryListPrice(i) >= 100).length,
+    printRunUncaptured:itemsWithUncapturedPrintRun(items).length,
   };
+}
+// Fixes existing items the Add-to-Inventory capture fix above can't reach
+// (it only helps items added from now on) -- pulls the same "/NNN" pattern
+// out of the item name and fills Serial #/Numbered, but only where that
+// field is currently blank, so a value staff already typed in is never
+// overwritten.
+async function backfillPrintRunFromName(){
+  const matches = itemsWithUncapturedPrintRun().map(item => ({ item, printRun:String(item.name).match(/\/\s*(\d{1,4})\b/)[1] }));
+  if(!matches.length){ toast_dash('No items found with a print run in the name but not captured'); return; }
+  if(!confirm(`Found ${matches.length} item${matches.length===1?'':'s'} with a print run in the name (e.g. "/250") not yet in the Serial #/Numbered field. Fill it in for all of them now?`)) return;
+  let updated = 0;
+  for(const {item, printRun} of matches){
+    const serial = '/' + printRun;
+    try { await saveInventoryEdit(item, { serial_number:serial }); item.serial_number = serial; updated++; }
+    catch(e) { console.error('backfillPrintRunFromName: could not update', item.id, e); }
+  }
+  toast_dash(`Print run filled in for ${updated} of ${matches.length} item${matches.length===1?'':'s'}`);
+  filterTable();
+  renderInventoryHealthPanel();
 }
 function setInventoryHealthFilter(filter){
   const btn = [...document.querySelectorAll('.fb')].find(b=>String(b.getAttribute('onclick')||'').includes("'" + filter + "'"));
@@ -18122,6 +18152,12 @@ function renderInventoryHealthPanel(){
     ['listed_online','Listed',h.listed,'online lifecycle'],
     ['below_cost','Below Cost',h.belowCost,'list below cost'],
     ['high_value','High Value',h.highValue,'$100+ items'],
+    // Unlike the other cards (which only filter the table), clicking this
+    // one runs backfillPrintRunFromName() directly -- there's nothing more
+    // useful to show by filtering to these items than just fixing them, and
+    // the action is safe/reversible-in-spirit (only fills a blank field
+    // from text already visible in the item name, never overwrites).
+    ['print_run','Print Run In Name',h.printRunUncaptured,'tap to fill from name','backfillPrintRunFromName()'],
   ];
   const flagged = h.noPhoto + h.noConfig + h.noCost + h.noMarket + h.stale + h.notListed + h.belowCost;
   // Re-rendered on every filterTable() call (every keystroke in the search box),
@@ -18130,8 +18166,8 @@ function renderInventoryHealthPanel(){
   const wasOpen = el.querySelector('details')?.open;
   el.innerHTML = `<details class="inv-health-details" ${wasOpen ? 'open' : ''}>
     <summary>INVENTORY HEALTH <span class="inv-health-details-hint">${flagged} flagged</span></summary>
-    <div class="inv-health-grid">${cards.map(([f,l,v,s])=>`
-      <div class="inv-health-card" onclick="setInventoryHealthFilter('${f}')">
+    <div class="inv-health-grid">${cards.map(([f,l,v,s,action])=>`
+      <div class="inv-health-card" onclick="${action || `setInventoryHealthFilter('${f}')`}">
         <div class="inv-health-label">${l}</div>
         <div class="inv-health-value">${v}</div>
         <div class="inv-health-sub">${s}</div>
@@ -25236,7 +25272,15 @@ function openAddToInventoryModal(idx){
   document.getElementById('edit-player').value = item.player || '';
   document.getElementById('edit-team').value = item.team || item.publisher || '';
   document.getElementById('edit-issue').value = item.issue || '';
-  document.getElementById('edit-serial').value = item.serial_number || '';
+  // Store report: PriceCharting search results already regex-extract a
+  // print run out of the product title text (e.g. "...#91 /250" -> 250,
+  // see the sports-card result mapping) into item.printRun, but this modal
+  // never read it -- it only ever checked serial_number, which nothing on
+  // the PriceCharting path sets. That extracted value was computed and then
+  // silently thrown away every time. Falls back to it here so a numbered
+  // card's print run actually reaches the Serial #/Numbered field instead
+  // of only being visible as leftover text buried in the item name.
+  document.getElementById('edit-serial').value = item.serial_number || (item.printRun ? '/' + item.printRun : '');
   document.getElementById('edit-cardnum').value = item.card_number || '';
   document.getElementById('edit-grader').value = item.grader || '';
   document.getElementById('edit-grade').value = item.grade || item.comic_grade || '';
@@ -41899,11 +41943,15 @@ function labelBarcodeValue(item){ return String(item.upc || item.inventorySku ||
 // A wrap label only has room under the name for one short badge line, so
 // pick the single highest-priority thing worth calling out rather than
 // trying to stack several. Signed (it's the store's own added-value claim,
-// tied to a real price) beats key issue (a fact about the book itself)
-// beats a detected ratio/incentive/promo variant signal (the weakest, most
-// speculative signal of the three).
+// tied to a real price) beats a numbered card's print run (a fact printed
+// right on the card itself, and often the whole reason it's worth more
+// than the base card -- store report: print run wasn't showing on labels
+// at all) beats key issue (comics only, never actually competes with a
+// card's print run in practice) beats a detected ratio/incentive/promo
+// variant signal (the weakest, most speculative signal of the three).
 function labelBadgeText(item){
   if(item.is_signed) return 'Signed: ' + (item.signed_by || 'Signed');
+  if(item.serial_number) return item.serial_number.trim().startsWith('/') ? item.serial_number.trim() : '#' + item.serial_number.trim();
   if(item.is_key) return 'Key Issue' + (item.key_notes ? ': ' + item.key_notes : '');
   const signal = typeof detectVariantSignal === 'function' ? detectVariantSignal(item.variant || '') : '';
   return signal || '';
@@ -45228,7 +45276,7 @@ async function toppsLoadParallels(cardId){
   window.__arscaCloseModal = closeModal;
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.27.04-buy-offer-lock-in-confirm" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.27.05-print-run-capture-and-label" defer></script>
 </body>
 </html>
 
