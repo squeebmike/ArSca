@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.27.08-sports-category-fix">
+<meta name="version" content="2026.08.27.09-ebay-fee-and-foc-status-fix">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1638,16 +1638,16 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.27.08-sports-category-fix" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.27.08-sports-category-fix" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.27.08-sports-category-fix" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.08.27.08-sports-category-fix" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.27.08-sports-category-fix" defer></script>
-<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.08.27.08-sports-category-fix" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.27.08-sports-category-fix" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.27.08-sports-category-fix" defer></script>
-<script src="scripts/pokemon/offline-browser.js?v=2026.08.27.08-sports-category-fix" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.27.08-sports-category-fix" defer></script>
+<script src="scripts/query-routing.js?v=2026.08.27.09-ebay-fee-and-foc-status-fix" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.27.09-ebay-fee-and-foc-status-fix" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.27.09-ebay-fee-and-foc-status-fix" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.08.27.09-ebay-fee-and-foc-status-fix" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.27.09-ebay-fee-and-foc-status-fix" defer></script>
+<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.08.27.09-ebay-fee-and-foc-status-fix" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.27.09-ebay-fee-and-foc-status-fix" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.27.09-ebay-fee-and-foc-status-fix" defer></script>
+<script src="scripts/pokemon/offline-browser.js?v=2026.08.27.09-ebay-fee-and-foc-status-fix" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.27.09-ebay-fee-and-foc-status-fix" defer></script>
 </head>
 <body>
 
@@ -1676,11 +1676,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.27.08-sports-category-fix</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.27.09-ebay-fee-and-foc-status-fix</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.27.08-sports-category-fix</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.27.09-ebay-fee-and-foc-status-fix</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1698,7 +1698,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.27.08-sports-category-fix</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.27.09-ebay-fee-and-foc-status-fix</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3706,7 +3706,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.27.08-sports-category-fix';
+const APP_VERSION = '2026.08.27.09-ebay-fee-and-foc-status-fix';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -16980,6 +16980,13 @@ const BUILT_IN_ITEM_SIMPLE_FIELDS = [
   ['brokenFromBoxId',''], ['brokenFromBoxName',''],
   ['brokenIntoPackIds',[],'array'], ['brokenIntoPackCount',0,'num'],
   ['soldAt',''], ['saleId',''],
+  // Store report: an auto-synced eBay sale's profit landed as
+  // salePrice-cost with no eBay fee deducted (see backfillEbayProfitFees
+  // below) -- profit was previously never a writable field here at all
+  // (only ever set at write time by mapBuiltInItem's own object literal,
+  // preserved-but-not-updatable via the ...item.raw spread in
+  // builtInDataFromItem), so recomputing it had nowhere to actually save.
+  ['profit',0,'num'],
   // eBay description-template detail fields (see EBAY_TEMPLATE_EXTRA_FIELDS
   // below, which drives both the edit-modal "More Listing Details" inputs
   // and the {token} list in computeEbayListingFields off this same list of
@@ -18112,6 +18119,7 @@ function inventoryHealthSummary(items=all){
     belowCost:inStock.filter(i=>{ const s=inventoryProfitStats(i); return s.cost>0 && s.list>0 && s.list<s.cost; }).length,
     highValue:inStock.filter(i=>inventoryListPrice(i) >= 100).length,
     printRunUncaptured:itemsWithUncapturedPrintRun(items).length,
+    ebayProfitMissingFee:itemsWithFeelessEbayProfit(items).length,
   };
 }
 // Fixes existing items the Add-to-Inventory capture fix above can't reach
@@ -18130,6 +18138,34 @@ async function backfillPrintRunFromName(){
     catch(e) { console.error('backfillPrintRunFromName: could not update', item.id, e); }
   }
   toast_dash(`Print run filled in for ${updated} of ${matches.length} item${matches.length===1?'':'s'}`);
+  filterTable();
+  renderInventoryHealthPanel();
+}
+// Store report: a real auto-synced eBay order recorded profit as exactly
+// salePrice-cost, with nothing held back for eBay's own cut -- /ebay/orders/
+// sync's fee math (EBAY_DEFAULT_FEE_PCT / EXTERNAL_SALE_FEE_DEFAULTS.eBay)
+// checks out correctly on inspection, so this targets the SYMPTOM on
+// already-sold rows (whatever wrote them wrong) rather than waiting on a
+// root cause that couldn't be reproduced: any sold eBay-channel item whose
+// stored profit exactly equals the fee-less salePrice-cost figure almost
+// certainly never had a fee deducted, since eBay always charges one.
+function itemsWithFeelessEbayProfit(items=all){
+  return (items || []).filter(i => i.status === 'sold' && i.channel === 'eBay' && Number(i.salePrice || 0) > 0
+    && Math.abs(Number(i.profit || 0) - (Number(i.salePrice || 0) - Number(i.cost || 0))) < 0.01);
+}
+async function backfillEbayProfitFees(){
+  const matches = itemsWithFeelessEbayProfit();
+  if(!matches.length){ toast_dash('No eBay sales found with a missing fee deduction'); return; }
+  const pct = EXTERNAL_SALE_FEE_DEFAULTS.eBay.pct;
+  if(!confirm(`Found ${matches.length} eBay sale${matches.length===1?'':'s'} recorded with no eBay fee deducted from profit. Recompute profit for all of them now using the standard ${pct}% eBay fee?`)) return;
+  let updated = 0;
+  for(const item of matches){
+    const fee = Math.round(Number(item.salePrice || 0) * (pct / 100) * 100) / 100;
+    const profit = Number(item.salePrice || 0) - Number(item.cost || 0) - fee;
+    try { await saveInventoryEdit(item, { profit }); item.profit = profit; updated++; }
+    catch(e) { console.error('backfillEbayProfitFees: could not update', item.id, e); }
+  }
+  toast_dash(`Profit recalculated for ${updated} of ${matches.length} eBay sale${matches.length===1?'':'s'}`);
   filterTable();
   renderInventoryHealthPanel();
 }
@@ -18158,6 +18194,9 @@ function renderInventoryHealthPanel(){
     // the action is safe/reversible-in-spirit (only fills a blank field
     // from text already visible in the item name, never overwrites).
     ['print_run','Print Run In Name',h.printRunUncaptured,'tap to fill from name','backfillPrintRunFromName()'],
+    // Same "fix directly, nothing more useful to filter to" pattern as
+    // print_run above -- these are already-sold rows, not stock to browse.
+    ['ebay_fee_missing','eBay Fee Missing',h.ebayProfitMissingFee,'tap to recompute profit','backfillEbayProfitFees()'],
   ];
   const flagged = h.noPhoto + h.noConfig + h.noCost + h.noMarket + h.stale + h.notListed + h.belowCost;
   // Re-rendered on every filterTable() call (every keystroke in the search box),
@@ -45363,7 +45402,7 @@ async function toppsLoadParallels(cardId){
   window.__arscaCloseModal = closeModal;
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.27.08-sports-category-fix" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.27.09-ebay-fee-and-foc-status-fix" defer></script>
 </body>
 </html>
 
