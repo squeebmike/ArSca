@@ -6586,7 +6586,14 @@ export default {
         if (verifyRes.ok) {
           const verifyData = await verifyRes.json();
           verifiedConditionId = String(verifyData?.conditionId || '');
-          if (!verifiedConditionId) verifyError = 'lookup ok but response had no conditionId field';
+          if (!verifiedConditionId) {
+            // "no conditionId field" alone doesn't say whether eBay stored
+            // NOTHING or stored it under a different key than we assumed
+            // (condition/conditionDescription instead of conditionId, or
+            // nested somewhere else) -- dumping the actual top-level shape
+            // of what eBay returned settles that instead of guessing again.
+            verifyError = `lookup ok but response had no conditionId field -- condition=${JSON.stringify(verifyData?.condition ?? null)}, conditionDescription=${JSON.stringify(verifyData?.conditionDescription ?? null)}, keys=[${Object.keys(verifyData || {}).join(',')}]`;
+          }
           const requestedConditionId = String(itemBody.conditionId || '');
           if (requestedConditionId && verifiedConditionId !== requestedConditionId) {
             warnings.push(`eBay stored a different condition than requested (requested ${requestedConditionId}, eBay has ${verifiedConditionId || 'none'}) -- check the listing's condition manually.`);
