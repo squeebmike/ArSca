@@ -34,6 +34,19 @@ assert.equal(qplResultStandardCategory(mtgResult), 'Magic: The Gathering', 'a Ma
 const unknownResult = { category:'Some Weird Custom Text' };
 assert.equal(qplResultStandardCategory(unknownResult), normalizeQuickCategoryStandalone(unknownResult), 'an unrecognized game must still fall back through normalizeQuickCategory unchanged');
 
+// Store report: a sports card's category was landing as the raw
+// PriceCharting console/set name (e.g. "2023 Bowman Chrome Baseball")
+// because normalizeQuickCategory only checked for the literal substring
+// "sport" -- a set name naming a specific sport instead ("Baseball",
+// "Football", etc, with no literal "sport" in it) fell through untouched
+// and became a permanent one-off bogus category (populateEditCategorySelect
+// creates a new category option for anything not already in the list).
+const sportsSetNameResult = { category:'2023 Bowman Chrome Baseball' };
+assert.equal(qplResultStandardCategory(sportsSetNameResult), 'Sports', 'a sports set name with no literal "sport" substring must still resolve to Sports, not pass through as a bogus one-off category');
+assert.equal(normalizeQuickCategoryStandalone({ category:'2024 Panini Prizm Football' }), 'Sports', 'football set names must also resolve to Sports');
+assert.equal(normalizeQuickCategoryStandalone({ category:'2024-25 Panini Select Basketball' }), 'Sports', 'basketball set names must also resolve to Sports');
+assert.equal(normalizeQuickCategoryStandalone({ category:'2023-24 Upper Deck Hockey' }), 'Sports', 'hockey set names must also resolve to Sports');
+
 function normalizeQuickCategoryStandalone(r){
   const { normalizeQuickCategory } = new Function(`${normalizeSrc}\nreturn { normalizeQuickCategory };`)();
   return normalizeQuickCategory(r.category);
