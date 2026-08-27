@@ -21,8 +21,18 @@ assert.match(html, /APPLY \$\$\{tradeTotal\.toFixed\(2\)\} TO PURCHASE/, 'Accept
 assert.match(html, /pos_pending_trade_purchase/, 'Trade-in purchase handoff must persist until checkout');
 assert.match(html, /trade_credit_same_visit/, 'Trade-in value must apply to the same visit only, never a persisted store-credit ledger entry');
 assert.doesNotMatch(html, /function issueStoreCredit/, 'Trade-in buys must not create a persisted, redeemable-later store credit record');
-assert.match(html, /id="bl-trade-btn"[^>]+onclick="acceptBuyAsTrade\(\)"/, 'Buy screen must expose a direct Trade to Sale action');
-assert.match(html, /async function acceptBuyAsTrade\(/, 'Direct trade workflow must accept the buy without a second payout modal');
+// Store report: the amount actually charged at Accept could differ from
+// what was last shown on screen (the % slider is re-read live at the
+// moment Accept is pressed) -- ACCEPT OFFER/TRADE both now open a lock-in
+// confirmation step first instead of committing immediately.
+assert.match(html, /id="bl-trade-btn"[^>]+onclick="openBuyAcceptConfirm\('trade'\)"/, 'Buy screen must expose a direct Trade to Sale action, gated by the lock-in confirm step');
+assert.match(html, /id="bl-accept-btn"[^>]+onclick="openBuyAcceptConfirm\('cash'\)"/, 'Buy screen ACCEPT OFFER must also be gated by the lock-in confirm step');
+assert.match(html, /async function acceptBuyAsTrade\(lockedPct\)\{/, 'Direct trade workflow must accept the buy without a second payout modal, and accept a locked-in % from the confirm step');
+assert.match(html, /function openBuyAcceptConfirm\(mode\)\{/, 'must have a dedicated lock-in confirmation step before ACCEPT/TRADE actually commits');
+assert.match(html, /const frozen = getBuyOfferTotals\(\);/, 'the confirm step must freeze the exact totals at the moment it opens');
+assert.match(html, /const mismatch = prior && Math\.abs\(prior\.offer - frozen\.offerTotal\) > 0\.005;/, 'the confirm step must detect when the frozen total differs from what was last rendered on screen');
+assert.match(html, /if\(pending\.mode === 'trade'\) await acceptBuyAsTrade\(pending\.frozen\.pct\);/, 'confirming the lock-in step must pass the frozen % through, not re-read the live slider');
+assert.match(html, /else await acceptBuySession\(pending\.frozen\.pct\);/, 'confirming the lock-in step must pass the frozen % through, not re-read the live slider');
 assert.match(html, /switchTab\('display'\)/, 'Direct trade workflow must open the Sell screen');
 assert.match(html, /TRADE CREDIT/, 'Sell screen must label pending trade credit');
 assert.match(html, /trade\.applied\.toFixed\(2\)/, 'Sell screen must visibly subtract the calculated trade credit');
@@ -85,7 +95,7 @@ assert.match(html, /value="skip">Skip duplicates/, 'CSV import must default to s
   assert.match(html, /function buyItemPricingBasis\(item\)\{/, 'missing buyItemPricingBasis');
   const basisFn = html.slice(html.indexOf('function buyItemPricingBasis(item){'), html.indexOf('\nfunction ', html.indexOf('function buyItemPricingBasis(item){') + 1));
   assert.match(basisFn, /return raw > 0 \? Math\.floor\(raw\) : 0;/, 'buyItemPricingBasis must floor the raw market price to a whole dollar');
-  const offerValueFn = html.slice(html.indexOf('function buyItemOfferValue(item){'), html.indexOf('\nfunction buyItemMarketValue('));
+  const offerValueFn = html.slice(html.indexOf('function buyItemOfferValue(item, pctOverride){'), html.indexOf('\nfunction buyItemMarketValue('));
   assert.match(offerValueFn, /return roundBuyOffer\(buyItemPricingBasis\(item\) \* pct\);/, 'buyItemOfferValue must apply the slider % to the whole-dollar basis, not the raw fractional market price');
   // Bargain-bin bracket: any card under $2 guide value skips the normal %
   // math -- a percentage of a bulk common at $0.10-$0.35, or of a
@@ -145,6 +155,29 @@ assert.match(html, /<button class="hbtn" onclick="textBuyOfferViaTwilio\(\)"/, '
   const fn = html.slice(fnStart, fnEnd);
   assert.match(fn, /if\(document\.getElementById\('bl-sms-consent'\)\?\.checked !== true\)\{ toast_dash\('Check the SMS-consent box above first'\); return; \}/, 'the Twilio send must be gated on the consent checkbox, not implied by entering a phone number');
   assert.match(fn, /storeWorkerFetch\('\/notify\/send', \{ method:'POST', headers:\{'Content-Type':'application\/json'\}, body:JSON\.stringify\(\{ contact:phone, subject:'Your buy offer', message:buildBuyOfferText\(\), consent:true \}\) \}\)/, 'the Twilio send must reuse the existing /notify/send route and the same buildBuyOfferText() content TEXT OFFER and PRINT OFFER already use, not a separate message builder');
+}
+
+// Functional proof of the lock-in guarantee itself, not just that the
+// source strings exist: buyItemOfferValue must use a supplied pctOverride
+// instead of the live DOM slider, so a frozen confirm-step total can never
+// be silently recomputed against a since-changed slider value.
+{
+  const roundBuyOfferSrc = html.slice(html.indexOf('function roundBuyOffer(value){'), html.indexOf('\nfunction suggestedCartSalePrice('));
+  const basisSrc = html.slice(html.indexOf('function buyItemPricingBasis(item){'), html.indexOf('\nfunction buyItemOfferValue('));
+  const offerSrc = html.slice(html.indexOf('function buyItemOfferValue(item, pctOverride){'), html.indexOf('\nfunction buyItemMarketValue('));
+  assert.ok(roundBuyOfferSrc.startsWith('function roundBuyOffer'), 'roundBuyOffer function was not found');
+  assert.ok(basisSrc.startsWith('function buyItemPricingBasis'), 'buyItemPricingBasis function was not found');
+  assert.ok(offerSrc.startsWith('function buyItemOfferValue'), 'buyItemOfferValue function was not found');
+  const fakeDocument = { getElementById: (id) => id === 'bl-pct' ? { value: '10' } : null };
+  const buyItemOfferValue = new Function('document', roundBuyOfferSrc + '\n' + basisSrc + '\n' + offerSrc + '\nreturn buyItemOfferValue;')(fakeDocument);
+  const item = { market: 100 };
+  // Live DOM slider says 10% -- without an override that's a $10 offer.
+  assert.equal(buyItemOfferValue(item), 10, 'with no override, buyItemOfferValue must fall back to the live DOM slider (sanity check on the fake document)');
+  // A frozen 90% override must win outright, ignoring the live (10%) slider
+  // entirely -- this is the actual guarantee the lock-in confirm step
+  // depends on: whatever was shown to staff and typed into the confirm
+  // modal is what gets charged, never a since-drifted live slider value.
+  assert.equal(buyItemOfferValue(item, 90), 90, 'a supplied pctOverride must override the live DOM slider value entirely, not just influence it');
 }
 
 console.log('Buy workspace contract checks passed');
