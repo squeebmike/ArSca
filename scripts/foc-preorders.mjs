@@ -271,10 +271,30 @@ async function orderedQtyBySku(db, cycleId) {
 // can build several cycles' catalogs in parallel without duplicating this --
 // each week needs its own qualification math (incentive ratios are scoped
 // to that week's orders only, never blended across weeks).
-async function buildCycleCatalog(db, cycle, includeAdmin = false, env, deps, storeId) {
+async function buildCycleCatalog(db, cycle, includeAdmin = false, env, deps, storeId, page = null) {
+  let familyRequest;
+  let skuRequest;
+  let skuIndex = null;
+  let pageMeta = null;
+  if (page && !includeAdmin) {
+    const { data:indexRows } = await db(`comic_skus?cycle_id=eq.${encodeURIComponent(cycle.id)}&customer_enabled=eq.true&select=id,family_id,is_incentive,store_quantity&order=title.asc`);
+    skuIndex = indexRows || [];
+    const offset = Math.max(0, Number(page.offset) || 0);
+    const limit = Math.min(48, Math.max(1, Number(page.limit) || 8));
+    const selected = skuIndex.slice(offset, offset + limit);
+    const skuIds = selected.map(row => row.id);
+    const familyIds = [...new Set(selected.map(row => row.family_id).filter(Boolean))];
+    skuRequest = skuIds.length ? db(`comic_skus?id=${inFilter(skuIds)}&select=*&order=title.asc`) : Promise.resolve({ data:[] });
+    familyRequest = familyIds.length ? db(`comic_title_families?id=${inFilter(familyIds)}&select=*&order=title.asc`) : Promise.resolve({ data:[] });
+    const nextOffset = offset + selected.length;
+    pageMeta = { offset, limit, totalVariants:skuIndex.length, hasMore:nextOffset < skuIndex.length, nextOffset:nextOffset < skuIndex.length ? nextOffset : null };
+  } else {
+    familyRequest = db(`comic_title_families?cycle_id=eq.${encodeURIComponent(cycle.id)}&select=*&order=title.asc`);
+    skuRequest = db(`comic_skus?cycle_id=eq.${encodeURIComponent(cycle.id)}&customer_enabled=eq.true&select=*&order=title.asc`);
+  }
   const [{ data:families }, { data:skuRows }, qtyMap, requestRows, presaleRows] = await Promise.all([
-    db(`comic_title_families?cycle_id=eq.${encodeURIComponent(cycle.id)}&select=*&order=title.asc`),
-    db(`comic_skus?cycle_id=eq.${encodeURIComponent(cycle.id)}&customer_enabled=eq.true&select=*&order=title.asc`),
+    familyRequest,
+    skuRequest,
     orderedQtyBySku(db, cycle.id),
     includeAdmin ? db(`foc_incentive_requests?cycle_id=eq.${encodeURIComponent(cycle.id)}&status=${inFilter(['waitlisted','offered'])}&select=sku_id,requested_quantity`) : Promise.resolve({ data:[] }),
     // eBay presale status is admin-only (dashboard control center), never
@@ -347,11 +367,13 @@ async function buildCycleCatalog(db, cycle, includeAdmin = false, env, deps, sto
     // website + store copies do -- the customer-facing waitlist view never
     // includes this (presaleBySkuId is only ever populated when
     // includeAdmin, see above), so public qualification math is unchanged.
-    const baseQualifying = family.variants.filter(sku => !sku.isIncentive).reduce((sum, sku) => {
-      const source = (skuRows || []).find(row => row.id === sku.id);
-      const presale = presaleBySkuId.get(sku.id);
+    const qualifyingSources = skuIndex
+      ? skuIndex.filter(row => row.family_id === family.id && !row.is_incentive)
+      : family.variants.filter(sku => !sku.isIncentive).map(sku => (skuRows || []).find(row => row.id === sku.id)).filter(Boolean);
+    const baseQualifying = qualifyingSources.reduce((sum, source) => {
+      const presale = presaleBySkuId.get(source.id);
       const ebayQty = presale ? Math.max(0, presale.originalQty - presale.remainingQty) : 0;
-      return sum + sku.customerQty + Number(source?.store_quantity || 0) + ebayQty;
+      return sum + Number(qtyMap.get(source.id) || 0) + Number(source.store_quantity || 0) + ebayQty;
     }, 0);
     family.variants.forEach(sku => {
       if (!sku.isIncentive) return;
@@ -361,10 +383,10 @@ async function buildCycleCatalog(db, cycle, includeAdmin = false, env, deps, sto
     });
     family.variants.sort((a,b) => Number(a.isIncentive) - Number(b.isIncentive) || Number(a.ratioThreshold || 0) - Number(b.ratioThreshold || 0) || a.variantLabel.localeCompare(b.variantLabel));
   }
-  return { cycle:{ ...cycle, isOpen:cycleOpen(cycle), serverNow:new Date().toISOString() }, families:[...byFamily.values()] };
+  return { cycle:{ ...cycle, isOpen:cycleOpen(cycle), serverNow:new Date().toISOString() }, families:[...byFamily.values()], ...(pageMeta || {}) };
 }
 
-async function loadCatalog(db, storeId, requestedCycle, includeAdmin = false, env, deps) {
+async function loadCatalog(db, storeId, requestedCycle, includeAdmin = false, env, deps, page = null) {
   let cycleQuery = `foc_cycles?store_id=eq.${encodeURIComponent(storeId)}&select=${catalogCycleSelect()}`;
   if (!includeAdmin) cycleQuery += '&status=neq.archived';
   if (requestedCycle) {
@@ -378,7 +400,7 @@ async function loadCatalog(db, storeId, requestedCycle, includeAdmin = false, en
   }
   const cycle = cycles?.[0];
   if (!cycle) return null;
-  return buildCycleCatalog(db, cycle, includeAdmin, env, deps, storeId);
+  return buildCycleCatalog(db, cycle, includeAdmin, env, deps, storeId, page);
 }
 
 // Keep the public response small enough for mobile connections while
@@ -1348,7 +1370,7 @@ export async function handleFocRequest(request, env, url, deps) {
   const path=url.pathname;
   if(path==='/public/shipping/quotes'&&request.method==='POST')return quoteShipping(request,env,deps);
   if(path==='/public/preorders'&&request.method==='GET'){
-    const storeId=text(url.searchParams.get('store_id'),80);const db=(p,o)=>deps.supabaseAdminFetch(env,p,o);const catalog=await loadCatalog(db,storeId,url.searchParams.get('cycle')||'',false);const page=paginateCycleCatalog(catalog,url.searchParams.get('limit'),url.searchParams.get('offset'));return page?deps.json({ok:true,...page}):deps.json({ok:false,error:'No FOC catalog is published yet'},404);
+    const storeId=text(url.searchParams.get('store_id'),80);const db=(p,o)=>deps.supabaseAdminFetch(env,p,o);const requestedLimit=Number.parseInt(url.searchParams.get('limit'),10);const requestedPage=Number.isFinite(requestedLimit)&&requestedLimit>0?{limit:requestedLimit,offset:Number.parseInt(url.searchParams.get('offset'),10)||0}:null;const catalog=await loadCatalog(db,storeId,url.searchParams.get('cycle')||'',false,undefined,undefined,requestedPage);return catalog?deps.json({ok:true,...catalog}):deps.json({ok:false,error:'No FOC catalog is published yet'},404);
   }
   if(path==='/public/preorders/weeks'&&request.method==='GET'){
     const storeId=text(url.searchParams.get('store_id'),80);const db=(p,o)=>deps.supabaseAdminFetch(env,p,o);
