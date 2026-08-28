@@ -17,8 +17,8 @@ const focDash = fs.readFileSync('scripts/foc-dashboard.js', 'utf8');
 // position.
 
 // ── openCycle must only clear filters when actually switching cycles ──
-assert.match(focDash, /if\(!state\.cycle\|\|state\.cycle\.id!==id\)\{state\.query='';state\.publisher='all';state\.flag='all';state\.ebay='all';\}/,
-  'openCycle must only reset filters when opening a DIFFERENT cycle than the one already loaded, or every single-item refresh (which passes the same id) keeps wiping filters');
+assert.match(focDash, /if\(!state\.cycle\|\|state\.cycle\.id!==id\)\{state\.query='';state\.publisher='all';state\.flag='all';state\.ebay='all';focEbayBulkSelectedIds\.clear\(\);focEbayBulkQueue=null;\}/,
+  'openCycle must only reset filters (and the bulk eBay listing selection/queue, which are sku ids scoped to that cycle) when opening a DIFFERENT cycle than the one already loaded, or every single-item refresh (which passes the same id) keeps wiping filters');
 
 // ── refreshCycleFamilies must exist as a lighter refresh that doesn't
 // rebuild the whole panel (and therefore doesn't reset scroll position) ──

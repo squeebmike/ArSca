@@ -86,7 +86,11 @@ async function openCycle(id){
   // different one, so the filter-clearing above (which only needs to guard
   // against a stale filter surviving a real cycle switch) doesn't apply --
   // only reset filters when actually opening a different cycle.
-  if(!state.cycle||state.cycle.id!==id){state.query='';state.publisher='all';state.flag='all';state.ebay='all';}
+  // Bulk eBay selections/queue are sku ids scoped to whatever cycle they
+  // were picked from -- carrying them into a different cycle would try to
+  // review skus that don't belong to it. Same cycle-switch-only guard as
+  // the filter reset above.
+  if(!state.cycle||state.cycle.id!==id){state.query='';state.publisher='all';state.flag='all';state.ebay='all';focEbayBulkSelectedIds.clear();focEbayBulkQueue=null;}
   try{var data=await api('/foc/admin/cycles?store_id='+encodeURIComponent(getActiveStoreId())+'&cycle_id='+encodeURIComponent(id));state.cycle=data.cycle;state.families=data.families||[];renderCycle();}
   catch(e){panel().innerHTML='<button class="hbtn" onclick="loadFocCycles()">BACK</button><div class="panel" style="margin-top:10px;color:var(--red)">'+esc(e.message)+'</div>';}
 }
@@ -113,6 +117,21 @@ function visibleFamilies(){
 }
 
 var EBAY_PRESALE_LABEL={TOO_EARLY:'EBAY · TOO EARLY',ELIGIBLE_NOW:'EBAY · ELIGIBLE',LISTED:'EBAY · LISTED',SOLD_OUT:'EBAY · SOLD OUT',RELEASED:'EBAY · RELEASED',ACTION_REQUIRED:'EBAY · ACTION REQUIRED'};
+// Selections are tracked here (not just read off checkbox DOM state) so
+// checking covers, then a filter/search change re-renders the family list
+// and scrolls some out of view, doesn't silently lose them -- same pattern
+// the regular inventory eBay bulk-listing tool already uses.
+var focEbayBulkSelectedIds=new Set();
+function focEbayBulkCheckboxChanged(cb){if(cb.checked)focEbayBulkSelectedIds.add(cb.value);else focEbayBulkSelectedIds.delete(cb.value);renderFocEbayBulkCount();}
+function toggleFocEbayBulkSelectAll(checked){
+  document.querySelectorAll('.foc-ebay-bulk-cb').forEach(function(cb){cb.checked=checked;if(checked)focEbayBulkSelectedIds.add(cb.value);else focEbayBulkSelectedIds.delete(cb.value);});
+  renderFocEbayBulkCount();
+}
+function renderFocEbayBulkCount(){
+  var el=document.getElementById('foc-ebay-bulk-count');if(!el)return;
+  var eligible=0;state.families.forEach(function(f){f.variants.forEach(function(v){if(v.ebayPresaleStatus==='ELIGIBLE_NOW')eligible++;});});
+  el.textContent=eligible+' eligible'+(focEbayBulkSelectedIds.size?' · '+focEbayBulkSelectedIds.size+' selected':'');
+}
 function ebaySection(v){
   var status=v.ebayPresaleStatus;if(!status)return'';
   var cls=status==='LISTED'?'open':(status==='ELIGIBLE_NOW'?'incentive':'');
@@ -123,7 +142,7 @@ function ebaySection(v){
   else if(status==='LISTED'||status==='SOLD_OUT')detail=Number(v.ebayPresold||0)+' presold · '+Number(v.ebayAvailable||0)+' available';
   else if(status==='ACTION_REQUIRED')detail=v.ebayPresaleNote||'';
   var action='';
-  if(status==='ELIGIBLE_NOW')action='<button class="hbtn" style="margin-top:6px;width:100%;min-height:30px;font-size:9px" onclick="createFocEbayPresale(\''+esc(v.id)+'\')">CREATE EBAY PRESALE</button>';
+  if(status==='ELIGIBLE_NOW')action='<label style="display:flex;align-items:center;gap:6px;margin-top:6px;font:9px var(--font-mono);color:var(--dim);cursor:pointer"><input type="checkbox" class="foc-ebay-bulk-cb" value="'+esc(v.id)+'" '+(focEbayBulkSelectedIds.has(v.id)?'checked':'')+' onchange="focEbayBulkCheckboxChanged(this)"> SELECT FOR BULK LISTING</label><button class="hbtn" style="margin-top:6px;width:100%;min-height:30px;font-size:9px" onclick="createFocEbayPresale(\''+esc(v.id)+'\')">CREATE EBAY PRESALE</button>';
   else if(status==='LISTED')action='<button class="hbtn" style="margin-top:6px;width:100%;min-height:30px;font-size:9px" onclick="createFocEbayPresale(\''+esc(v.id)+'\')">LIST MORE ON EBAY</button>';
   return '<div style="margin-top:8px;padding-top:7px;border-top:1px solid var(--border)">'+badge+(detail?'<div style="font:8px/1.5 var(--font-mono);color:var(--dim);margin-top:4px">'+esc(detail)+'</div>':'')+action+'</div>';
 }
@@ -147,11 +166,21 @@ function familyCard(f){
 
 function renderCycle(){
   var c=state.cycle;if(!c)return;var publishers=Array.from(new Set(state.families.map(function(f){return f.publisher;}).filter(Boolean))).sort();var allSkus=state.families.reduce(function(a,f){return a.concat(f.variants);},[]);var customerQty=allSkus.reduce(function(s,v){return s+Number(v.customerQty||0);},0);var storeQty=allSkus.reduce(function(s,v){return s+Number(v.storeQuantity||0);},0);var incentiveReq=allSkus.reduce(function(s,v){return s+Number(v.waitlistRequests||0);},0);
-  panel().innerHTML='<section class="foc-hero"><div class="foc-toolbar"><button class="hbtn" onclick="loadFocCycles()">← CYCLES</button><button class="hbtn" style="color:var(--purple)" onclick="openFocReview()">FINAL FOC REVIEW</button><button class="hbtn" onclick="exportFocPrh()">EXPORT PRH ORDER</button><button class="hbtn" style="color:var(--g)" onclick="openReceiveShipment()">RECEIVE SHIPMENT</button>'+(c.status!=='archived'?'<button class="hbtn" onclick="toggleFocCycle()">'+(c.isOpen?'LOCK ORDERS':'UNLOCK ORDERS')+'</button>':'')+(c.status==='archived'?'<button class="hbtn" onclick="unarchiveFocCycle()">SHOW ON SITE (LOCKED)</button>':'<button class="hbtn danger" onclick="archiveFocCycle()">HIDE FROM SITE</button>')+'<a class="hbtn" href="https://themanapocket.com/preorders?cycle='+encodeURIComponent(c.foc_date)+'" target="_blank" rel="noopener" style="text-decoration:none">VIEW CUSTOMER PAGE</a></div><div style="display:flex;justify-content:space-between;gap:12px;align-items:end;flex-wrap:wrap;margin-top:14px"><div><div style="font:900 22px/1.1 \'Orbitron\',monospace;color:var(--text)">FOC '+esc(displayDate(c.foc_date))+'</div><div style="font:10px/1.6 var(--font-mono);color:var(--dim)">'+esc(c.source_filename||'PRH')+' · '+(c.status==='archived'?'HIDDEN FROM SITE':(c.isOpen?'UNLOCKED FOR ORDERS':'VISIBLE BUT LOCKED'))+'</div></div><label style="font:8px var(--font-mono);color:var(--dim)">CUSTOMER CUTOFF · PACIFIC<input id="foc-cycle-cutoff" class="tsi" type="datetime-local" value="'+esc(pacificDateTimeInput(c.customer_cutoff_at))+'" onchange="saveFocCycleCutoff()" style="margin:3px 0 0"><span style="display:block;margin-top:4px">Set a future cutoff before unlocking an expired FOC.</span></label></div><div class="foc-stats"><div class="foc-stat"><b>'+allSkus.length+'</b><span>Exact cover SKUs</span></div><div class="foc-stat"><b>'+state.families.length+'</b><span>Title families</span></div><div class="foc-stat"><b>'+customerQty+'</b><span>Customer copies</span></div><div class="foc-stat"><b>'+storeQty+'</b><span>Store copies</span></div><div class="foc-stat"><b>'+incentiveReq+'</b><span>Incentive requests</span></div></div></section><div class="panel foc-toolbar" style="margin-bottom:12px"><input id="foc-admin-search" class="tsi" placeholder="Search title, writer, artist…" value="'+esc(state.query)+'" oninput="filterFocAdmin(this.value)"><select class="tsi" onchange="filterFocPublisher(this.value)"><option value="all" '+(state.publisher==='all'?'selected':'')+'>All publishers</option>'+publishers.map(function(p){return'<option value="'+esc(p.toLowerCase())+'" '+(state.publisher===p.toLowerCase()?'selected':'')+'>'+esc(p)+'</option>';}).join('')+'</select><select class="tsi" onchange="filterFocFlag(this.value)"><option value="all" '+(state.flag==='all'?'selected':'')+'>All comics</option><option value="first" '+(state.flag==='first'?'selected':'')+'>#1 issues</option><option value="foil" '+(state.flag==='foil'?'selected':'')+'>Foil covers</option><option value="incentive" '+(state.flag==='incentive'?'selected':'')+'>Incentives</option><option value="demand" '+(state.flag==='demand'?'selected':'')+'>Customer demand</option></select><select class="tsi" onchange="filterFocEbay(this.value)"><option value="all" '+(state.ebay==='all'?'selected':'')+'>All eBay statuses</option><option value="ELIGIBLE_NOW" '+(state.ebay==='ELIGIBLE_NOW'?'selected':'')+'>Eligible, not listed</option><option value="TOO_EARLY" '+(state.ebay==='TOO_EARLY'?'selected':'')+'>Too early</option><option value="LISTED" '+(state.ebay==='LISTED'?'selected':'')+'>Already listed</option><option value="SOLD_OUT" '+(state.ebay==='SOLD_OUT'?'selected':'')+'>Presale sold out</option><option value="ACTION_REQUIRED" '+(state.ebay==='ACTION_REQUIRED'?'selected':'')+'>Action required</option></select><span id="foc-visible-count" style="font:9px var(--font-mono);color:var(--dim)"></span></div><div id="foc-family-list"></div>';
+  panel().innerHTML='<section class="foc-hero"><div class="foc-toolbar"><button class="hbtn" onclick="loadFocCycles()">← CYCLES</button><button class="hbtn" style="color:var(--purple)" onclick="openFocReview()">FINAL FOC REVIEW</button><button class="hbtn" onclick="exportFocPrh()">EXPORT PRH ORDER</button><button class="hbtn" style="color:var(--g)" onclick="openReceiveShipment()">RECEIVE SHIPMENT</button>'+(c.status!=='archived'?'<button class="hbtn" onclick="toggleFocCycle()">'+(c.isOpen?'LOCK ORDERS':'UNLOCK ORDERS')+'</button>':'')+(c.status==='archived'?'<button class="hbtn" onclick="unarchiveFocCycle()">SHOW ON SITE (LOCKED)</button>':'<button class="hbtn danger" onclick="archiveFocCycle()">HIDE FROM SITE</button>')+'<a class="hbtn" href="https://themanapocket.com/preorders?cycle='+encodeURIComponent(c.foc_date)+'" target="_blank" rel="noopener" style="text-decoration:none">VIEW CUSTOMER PAGE</a></div><div style="display:flex;justify-content:space-between;gap:12px;align-items:end;flex-wrap:wrap;margin-top:14px"><div><div style="font:900 22px/1.1 \'Orbitron\',monospace;color:var(--text)">FOC '+esc(displayDate(c.foc_date))+'</div><div style="font:10px/1.6 var(--font-mono);color:var(--dim)">'+esc(c.source_filename||'PRH')+' · '+(c.status==='archived'?'HIDDEN FROM SITE':(c.isOpen?'UNLOCKED FOR ORDERS':'VISIBLE BUT LOCKED'))+'</div></div><label style="font:8px var(--font-mono);color:var(--dim)">CUSTOMER CUTOFF · PACIFIC<input id="foc-cycle-cutoff" class="tsi" type="datetime-local" value="'+esc(pacificDateTimeInput(c.customer_cutoff_at))+'" onchange="saveFocCycleCutoff()" style="margin:3px 0 0"><span style="display:block;margin-top:4px">Set a future cutoff before unlocking an expired FOC.</span></label></div><div class="foc-stats"><div class="foc-stat"><b>'+allSkus.length+'</b><span>Exact cover SKUs</span></div><div class="foc-stat"><b>'+state.families.length+'</b><span>Title families</span></div><div class="foc-stat"><b>'+customerQty+'</b><span>Customer copies</span></div><div class="foc-stat"><b>'+storeQty+'</b><span>Store copies</span></div><div class="foc-stat"><b>'+incentiveReq+'</b><span>Incentive requests</span></div></div></section><div class="panel foc-toolbar" style="margin-bottom:12px"><input id="foc-admin-search" class="tsi" placeholder="Search title, writer, artist…" value="'+esc(state.query)+'" oninput="filterFocAdmin(this.value)"><select class="tsi" onchange="filterFocPublisher(this.value)"><option value="all" '+(state.publisher==='all'?'selected':'')+'>All publishers</option>'+publishers.map(function(p){return'<option value="'+esc(p.toLowerCase())+'" '+(state.publisher===p.toLowerCase()?'selected':'')+'>'+esc(p)+'</option>';}).join('')+'</select><select class="tsi" onchange="filterFocFlag(this.value)"><option value="all" '+(state.flag==='all'?'selected':'')+'>All comics</option><option value="first" '+(state.flag==='first'?'selected':'')+'>#1 issues</option><option value="foil" '+(state.flag==='foil'?'selected':'')+'>Foil covers</option><option value="incentive" '+(state.flag==='incentive'?'selected':'')+'>Incentives</option><option value="demand" '+(state.flag==='demand'?'selected':'')+'>Customer demand</option></select><select class="tsi" onchange="filterFocEbay(this.value)"><option value="all" '+(state.ebay==='all'?'selected':'')+'>All eBay statuses</option><option value="ELIGIBLE_NOW" '+(state.ebay==='ELIGIBLE_NOW'?'selected':'')+'>Eligible, not listed</option><option value="TOO_EARLY" '+(state.ebay==='TOO_EARLY'?'selected':'')+'>Too early</option><option value="LISTED" '+(state.ebay==='LISTED'?'selected':'')+'>Already listed</option><option value="SOLD_OUT" '+(state.ebay==='SOLD_OUT'?'selected':'')+'>Presale sold out</option><option value="ACTION_REQUIRED" '+(state.ebay==='ACTION_REQUIRED'?'selected':'')+'>Action required</option></select><span id="foc-visible-count" style="font:9px var(--font-mono);color:var(--dim)"></span></div>'+
+    // Store request: listing eligible FOC covers on eBay one at a time
+    // (open the review modal, edit, LIST, close, find the next one, repeat)
+    // was too much clicking for a whole cycle's worth of ratio/incentive
+    // books. Check the ones to list (or SELECT ALL ELIGIBLE), then LIST
+    // SELECTED opens the exact same single-cover review-and-edit modal
+    // already trusted for one-at-a-time listings, just chained: submitting
+    // one automatically opens the next selected cover's review instead of
+    // just closing, until the queue is empty.
+    '<div class="panel foc-toolbar" style="margin-bottom:12px"><button class="hbtn" onclick="toggleFocEbayBulkSelectAll(true)">SELECT ALL ELIGIBLE</button><button class="hbtn" onclick="toggleFocEbayBulkSelectAll(false)">SELECT NONE</button><button class="hbtn" style="background:rgba(255,209,102,.12);border-color:rgba(255,209,102,.35);color:var(--gold)" onclick="startFocEbayBulkListing()">LIST SELECTED ON EBAY</button><span id="foc-ebay-bulk-count" style="font:9px var(--font-mono);color:var(--dim)"></span></div>'+
+    '<div id="foc-family-list"></div>';
   renderFamilies();
 }
 
-function renderFamilies(){var list=document.getElementById('foc-family-list');if(!list)return;var rows=visibleFamilies();var count=document.getElementById('foc-visible-count');if(count)count.textContent=rows.length+' title families';list.innerHTML=rows.length?rows.map(familyCard).join(''):'<div class="panel" style="padding:28px;text-align:center;color:var(--dim)">Nothing matches those filters.</div>';}
+function renderFamilies(){var list=document.getElementById('foc-family-list');if(!list)return;var rows=visibleFamilies();var count=document.getElementById('foc-visible-count');if(count)count.textContent=rows.length+' title families';list.innerHTML=rows.length?rows.map(familyCard).join(''):'<div class="panel" style="padding:28px;text-align:center;color:var(--dim)">Nothing matches those filters.</div>';renderFocEbayBulkCount();}
 
 async function saveSku(id){var card=document.querySelector('[data-foc-sku="'+CSS.escape(id)+'"]');if(!card||state.saving.has(id))return;state.saving.add(id);try{var payload={storeId:getActiveStoreId(),skuId:id};card.querySelectorAll('[data-field]').forEach(function(el){payload[el.dataset.field]=el.type==='checkbox'?el.checked:el.value;});await api('/foc/admin/sku',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});toast_dash('FOC cover saved');await refreshCycleFamilies();}catch(e){toast_dash('Could not save cover: '+e.message);}finally{state.saving.delete(id);}}
 async function saveFamily(id){try{var heat=document.querySelector('[data-family-heat="'+CSS.escape(id)+'"]');var category=document.querySelector('[data-family-category="'+CSS.escape(id)+'"]');await api('/foc/admin/sku',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({storeId:getActiveStoreId(),familyId:id,heat:heat&&heat.value?Number(heat.value):null,heatCategory:category&&category.value||null})});toast_dash('Title heat flag saved');}catch(e){toast_dash(e.message);}}
@@ -276,6 +305,46 @@ async function quickAddFocSkuToInventory(skuId){
   }catch(e){toast_dash('Could not add to inventory: '+e.message);}
 }
 
+// Store request: listing eligible FOC covers on eBay one at a time (open
+// the review modal, edit, LIST, close, find the next one, repeat) was too
+// much clicking for a whole cycle's worth of ratio/incentive books.
+// focEbayBulkQueue holds the remaining sku ids still to review -- null
+// means no bulk run is active, so the review modal and its submit handler
+// below behave exactly as they always did for a single-cover listing.
+// Reuses that same single-cover review-and-edit modal for every step
+// instead of a separate bulk UI, so each cover still gets the identical
+// review/edit chance a one-off listing gets -- only the "what happens after
+// LIST ON EBAY" step changes, from closing to opening the next one.
+var focEbayBulkQueue=null;
+function startFocEbayBulkListing(){
+  var ids=Array.from(focEbayBulkSelectedIds);
+  if(!ids.length){toast_dash('Select at least one eligible cover first');return;}
+  focEbayBulkQueue=ids;
+  focEbayBulkAdvance();
+}
+function focEbayBulkAdvance(){
+  if(!focEbayBulkQueue||!focEbayBulkQueue.length){focEbayBulkQueue=null;return;}
+  var next=focEbayBulkQueue.shift();
+  focEbayBulkSelectedIds.delete(next);
+  renderFocEbayBulkCount();
+  openEbayPresaleReview(next);
+}
+// The × close button during a bulk run stops the whole run (not just this
+// one cover) -- whatever's left in the queue stays selected, so LIST
+// SELECTED ON EBAY picks up right where it left off instead of losing the
+// rest of the batch.
+function cancelFocEbayBulkListing(){
+  var remaining=focEbayBulkQueue?focEbayBulkQueue.length:0;
+  focEbayBulkQueue=null;
+  var modal=document.getElementById('foc-ebay-review-modal');if(modal)modal.remove();
+  if(remaining)toast_dash(remaining+' cover'+(remaining===1?'':'s')+' still selected -- LIST SELECTED ON EBAY again to resume');
+}
+// Move to the next cover in the queue WITHOUT listing this one -- distinct
+// from the × close button, which stops the whole run.
+function skipFocEbayBulkItem(){
+  if(!focEbayBulkQueue){var modal=document.getElementById('foc-ebay-review-modal');if(modal)modal.remove();return;}
+  focEbayBulkAdvance();
+}
 // Review-before-publish for FOC eBay presale listings -- a straight
 // prompt()-then-publish used to fire the real eBay listing immediately with
 // no chance to fix the title/description/weight/etc first (store request:
@@ -347,8 +416,8 @@ async function openEbayPresaleReview(skuId){
   var lastStoreCategory='';
   try{lastStoreCategory=localStorage.getItem('foc_ebay_last_store_category')||'';}catch(e){}
   modal.innerHTML='<div style="width:100%;max-width:560px;background:var(--surf);border:1px solid var(--border);border-radius:10px;padding:16px">'+
-    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><div style="font-family:\'Orbitron\',monospace;color:var(--gold);font-size:13px;letter-spacing:2px">REVIEW EBAY PRESALE LISTING</div><button onclick="document.getElementById(\'foc-ebay-review-modal\').remove()" style="background:none;border:none;color:var(--dim);font-size:22px;cursor:pointer">×</button></div>'+
-    '<div style="font:9px var(--font-mono);color:var(--dim);margin-bottom:10px">Nothing is published to eBay until you click LIST ON EBAY below.</div>'+
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><div><div style="font-family:\'Orbitron\',monospace;color:var(--gold);font-size:13px;letter-spacing:2px">REVIEW EBAY PRESALE LISTING</div>'+(focEbayBulkQueue?'<div style="font:9px var(--font-mono);color:var(--dim);margin-top:3px">Bulk listing -- '+focEbayBulkQueue.length+' more after this one · <button type="button" onclick="skipFocEbayBulkItem()" style="background:none;border:none;color:var(--gold);text-decoration:underline;cursor:pointer;font:inherit;padding:0">SKIP THIS ONE</button></div>':'')+'</div><button onclick="cancelFocEbayBulkListing()" style="background:none;border:none;color:var(--dim);font-size:22px;cursor:pointer">×</button></div>'+
+    '<div style="font:9px var(--font-mono);color:var(--dim);margin-bottom:10px">Nothing is published to eBay until you click LIST ON EBAY below.'+(focEbayBulkQueue?' The next selected cover opens automatically after this one lists.':'')+'</div>'+
     '<div style="display:grid;grid-template-columns:80px 1fr;gap:12px;margin-bottom:12px;align-items:start">'+
     (preview.imageUrl?'<img src="'+esc(preview.imageUrl)+'" style="width:80px;height:100px;object-fit:contain;background:#050507;border:1px solid var(--border);border-radius:6px">':'<div style="width:80px;height:100px;background:#050507;border:1px solid var(--border);border-radius:6px;display:flex;align-items:center;justify-content:center;color:var(--dim);font-size:9px">NO IMAGE</div>')+
     '<div><label style="font:9px var(--font-mono);color:var(--dim)">TITLE (eBay requires "PRESALE" disclosed here)</label>'+
@@ -414,6 +483,15 @@ async function submitEbayPresaleReview(skuId){
     }
     var modal=document.getElementById('foc-ebay-review-modal');if(modal)modal.remove();
     await refreshCycleFamilies();
+    // Bulk run in progress: open the next selected cover's review instead
+    // of just closing. A listing failure below deliberately leaves the
+    // modal open on this cover (rather than skipping ahead) so a real
+    // problem (bad title, missing weight, etc) gets fixed here instead of
+    // silently skipping the whole rest of the batch.
+    if(focEbayBulkQueue){
+      if(focEbayBulkQueue.length)focEbayBulkAdvance();
+      else{focEbayBulkQueue=null;toast_dash('Bulk eBay listing complete');}
+    }
   }catch(e){
     if(status){status.style.color='var(--red)';status.style.borderColor='rgba(255,77,109,.3)';status.style.background='rgba(255,77,109,.06)';status.textContent='Could not create eBay presale: '+e.message;}
   }
