@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
 const preorders = fs.readFileSync('scripts/foc-preorders.mjs', 'utf8');
+const worker = fs.readFileSync('cloudflare-worker-full.js', 'utf8');
 
 // Store report: a real eBay order sold a FOC presale comic, but the FOC admin
 // dashboard reverted to showing "CREATE EBAY PRESALE" / 0 customers / 0 store
@@ -75,3 +76,18 @@ assert.equal(droppedFromQuery.ebayPresaleStatus, 'ELIGIBLE_NOW', 'confirms the r
 assert.equal(droppedFromQuery.ebayListed, false);
 
 console.log('FOC eBay presale partial-sale functional checks passed');
+
+// The source of the original leak is fixed at both marketplace-sale entry
+// points: a remaining FOC presale balance stays presale until the explicit
+// receive/convert workflow sets ebayPresaleConverted=true.
+const ebaySync = worker.slice(worker.indexOf("url.pathname === '/ebay/orders/sync'"), worker.indexOf("url.pathname === '/ebay/listing-performance'"));
+assert.match(ebaySync, /const preservePresale = !depleted && \(invRow\.status === 'presale' \|\| d\.source === 'foc_presale'\) && d\.ebayPresaleConverted !== true;/,
+  'automatic eBay order sync must preserve the remaining FOC presale balance');
+assert.match(ebaySync, /const nextStatus = depleted \? 'sold' : preservePresale \? 'presale' : 'in_stock';/,
+  'automatic eBay order sync must not expose a partial presale as in-stock');
+
+const externalSale = worker.slice(worker.indexOf("url.pathname === '/inventory/record-external-sale'"), worker.indexOf("url.pathname === '/ebay/orders/ship'"));
+assert.match(externalSale, /const preservePresale = !depleted && \(invRow\.status === 'presale' \|\| d\.source === 'foc_presale'\) && d\.ebayPresaleConverted !== true;/,
+  'manual marketplace sale recording must preserve the remaining FOC presale balance');
+
+console.log('FOC eBay presale inventory-status preservation checks passed');

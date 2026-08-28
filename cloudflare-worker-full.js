@@ -539,6 +539,27 @@ async function computeRealShippingFeeCents(env, storeId, shippingAddress, totalQ
 function storefrontCleanText(v, n = 240) { return String(v == null ? '' : v).trim().slice(0, n); }
 function storefrontCleanUrl(v) { const s = storefrontCleanText(v, 1000); return /^https?:\/\//i.test(s) || /^data:image\//i.test(s) ? s : ''; }
 function storefrontCleanList(v, n = 12) { return (Array.isArray(v) ? v : []).map(x => storefrontCleanText(x, 80)).filter(Boolean).slice(0, n); }
+function storefrontCategorySlug(value) {
+  const text = String(value || '').toLowerCase();
+  if (/pokemon|pokémon/.test(text)) return 'pokemon';
+  if (/magic|\bmtg\b/.test(text)) return 'mtg';
+  if (/one[ -]?piece/.test(text)) return 'one-piece';
+  if (/yu[ -]?gi[ -]?oh/.test(text)) return 'yugioh';
+  if (/lorcana/.test(text)) return 'lorcana';
+  if (/sport|baseball|basketball|football|hockey|soccer|wrestling|racing/.test(text)) return 'sports-cards';
+  if (/comic|manga|graphic novel/.test(text)) return 'comics';
+  if (/suppl|sleeve|binder|top.?loader|playmat|storage/.test(text)) return 'supplies';
+  if (/collectible|figure|toy|plush|apparel|statue/.test(text)) return 'collectibles';
+  return 'other';
+}
+function storefrontProductTypeSlug(item) {
+  const words = [item.productType,item.name,item.category,item.set,item.variant,item.condition,item.configuration].join(' ').toLowerCase();
+  if (item.categorySlug === 'comics') return /manga|graphic novel|trade paperback|omnibus|hardcover|\bvol\.?\b/.test(words) ? 'graphic-novels' : 'in-stock';
+  if (item.categorySlug === 'collectibles') return /plush|squishmallow/.test(words) ? 'plush' : /shirt|hoodie|hat|cap|apparel/.test(words) ? 'apparel' : 'figures';
+  if (item.categorySlug === 'supplies') return /sleeve/.test(words) ? 'sleeves' : /binder/.test(words) ? 'binders' : /top.?loader/.test(words) ? 'toploaders' : /playmat/.test(words) ? 'playmats' : 'other-supplies';
+  if (['pokemon','mtg','one-piece','yugioh','lorcana','sports-cards'].includes(item.categorySlug)) return item.gradingCompany || /psa|bgs|cgc|sgc|graded|slab/.test(words) ? 'graded' : item.isSealed || /booster|sealed|box|pack|bundle|elite trainer|\betb\b|tin|deck/.test(words) ? 'sealed' : 'singles';
+  return storefrontCleanText(item.productType || 'other', 40).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'other';
+}
 // Same book-detail fields the dashboard's own item editor already shows
 // (Metron-sourced), trimmed for public payload size -- only attached for
 // comic rows, and only when the item actually has a saved comic record.
@@ -573,8 +594,11 @@ function shapeStorefrontItem(row) {
   const rowMarket = Number(d.market || d.marketPrice || d.rawMarketPrice || 0) || 0;
   const rowBase = Number(d.priceOverride || 0) || roundUpToDollar(rowMarket);
   const rowSignatureValue = Number(d.signature_value || 0) || 0;
-  return {
+  const item = {
     id: storefrontCleanText(row.id, 80), name: storefrontCleanText(d.name || d.title || 'Item'), category: storefrontCleanText(d.category || d.type || 'Other', 80),
+    categorySlug: storefrontCategorySlug([d.category, d.type, d.game, d.sport].filter(Boolean).join(' ')),
+    productType: storefrontCleanText(d.productType || d.product_type || d.itemType || d.item_type || d.configuration || '', 80),
+    brand: storefrontCleanText(d.brand || d.manufacturer || '', 100), sport: storefrontCleanText(d.sport || '', 60), game: storefrontCleanText(d.game || '', 60),
     set: storefrontCleanText(d.set || d.series || '', 120), year: storefrontCleanText(d.year || '', 12), variant: storefrontCleanText(d.variant || d.finish || '', 120), condition: storefrontCleanText(d.condition || d.grade || '', 80),
     configuration: storefrontCleanText(d.configuration || '', 60),
     // photoDataUrl/thumbnail are where the dashboard's own upload flow
@@ -597,6 +621,8 @@ function shapeStorefrontItem(row) {
     onlineListed: d.onlineListed !== false,
     quantity, inventoryStatus, soldAt: d.soldAt || d.sold_at || '', archivedAt: d.archivedAt || '', addedAt: row.created_at || '', updatedAt: row.updated_at || ''
   };
+  item.productTypeSlug = storefrontProductTypeSlug(item);
+  return item;
 }
 function isStorefrontItemAvailable(i) {
   // Store report: eBay-only FOC presale placeholder rows (status:'presale',
@@ -3825,8 +3851,21 @@ export default {
         };}).filter(i=>i.name&&i.quantity>0&&i.inventoryStatus==='in_stock'&&!i.soldAt);
         items=[...items,...mappedWebflow];
       }
+      const allItems = items;
+      const category = storefrontCleanText(url.searchParams.get('category') || '', 40).toLowerCase();
+      const productType = storefrontCleanText(url.searchParams.get('type') || '', 40).toLowerCase();
+      const query = storefrontCleanText(url.searchParams.get('q') || '', 120).toLowerCase();
+      if (category && category !== 'all') items = items.filter(item => item.categorySlug === category || (category === 'tcg' && ['pokemon','mtg','one-piece','yugioh','lorcana'].includes(item.categorySlug)));
+      if (productType && productType !== 'all') items = items.filter(item => item.productTypeSlug === productType);
+      if (query) items = items.filter(item => [item.name,item.category,item.set,item.year,item.variant,item.condition,item.productType,item.brand,item.sport,item.game,item.comic?.publisher,item.comic?.description].join(' ').toLowerCase().includes(query));
+      const total = items.length;
+      const requestedLimit = Number(url.searchParams.get('limit'));
+      const limit = Number.isFinite(requestedLimit) && requestedLimit > 0 ? Math.min(96, Math.floor(requestedLimit)) : 0;
+      const offset = limit ? Math.max(0, Math.floor(Number(url.searchParams.get('offset')) || 0)) : 0;
+      if (limit) items = items.slice(offset, offset + limit);
+      const facets = Array.from(new Set(allItems.map(item => item.categorySlug).filter(Boolean))).sort();
       const store = stores?.[0] || {};
-      return json({ ok:true, store:{ id:storeId, name:storefrontCleanText(cfg.storeName || cfg.shortName || store.display_name || store.name || 'Store',120), location:storefrontCleanText(cfg.location,160), website:storefrontCleanUrl(cfg.website), email:storefrontCleanText(cfg.email,200), phone:storefrontCleanText(cfg.phone,80), logo:storefrontCleanUrl(cfg.logo), message:storefrontCleanText(cfg.storefrontMessage,500), theme:settings?.[0]?.theme || {} }, items, updatedAt:new Date().toISOString() }, 200, { 'Cache-Control':'public, max-age=60, stale-while-revalidate=300' });
+      return json({ ok:true, store:{ id:storeId, name:storefrontCleanText(cfg.storeName || cfg.shortName || store.display_name || store.name || 'Store',120), location:storefrontCleanText(cfg.location,160), website:storefrontCleanUrl(cfg.website), email:storefrontCleanText(cfg.email,200), phone:storefrontCleanText(cfg.phone,80), logo:storefrontCleanUrl(cfg.logo), message:storefrontCleanText(cfg.storefrontMessage,500), theme:settings?.[0]?.theme || {} }, items, total, offset, limit:limit || total, hasMore:limit ? offset + items.length < total : false, nextOffset:limit && offset + items.length < total ? offset + items.length : null, facets, updatedAt:new Date().toISOString() }, 200, { 'Cache-Control':'public, max-age=60, stale-while-revalidate=300' });
     }
 
     // GET /public/storefront/item?store_id=...&id=... -- single-row version of
@@ -7133,7 +7172,14 @@ export default {
                 const currentQty = Number(d.quantity ?? d.qty ?? 1) || 0;
                 remaining = Math.max(0, currentQty - quantitySold);
                 depleted = remaining <= 0;
-                const nextStatus = depleted ? 'sold' : 'in_stock';
+                // A partial marketplace sale must not turn the unsold balance of
+                // an FOC eBay presale into ordinary shelf inventory. That made
+                // the remaining copies leak into the public shop before the
+                // books arrived. The explicit receive/convert workflow marks a
+                // received presale with ebayPresaleConverted; only that state is
+                // allowed to become in_stock while quantity remains.
+                const preservePresale = !depleted && (invRow.status === 'presale' || d.source === 'foc_presale') && d.ebayPresaleConverted !== true;
+                const nextStatus = depleted ? 'sold' : preservePresale ? 'presale' : 'in_stock';
                 const nextData = { ...d, status: nextStatus, lifecycle: nextStatus, qty: remaining, quantity: remaining, salePrice, profit, channel: 'eBay', soldAt: depleted ? soldAt : '' };
                 if (depleted) { nextData.ebayListingId = ''; nextData.ebayOfferId = ''; nextData.ebaySku = ''; nextData.ebayListedAt = ''; }
                 await supabaseAdminFetch(env, `inventory_items?id=eq.${encodeURIComponent(invRow.id)}&store_id=eq.${encodeURIComponent(storeId)}`, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ data: nextData, status: nextStatus, updated_at: new Date().toISOString() }) });
@@ -7857,7 +7903,8 @@ export default {
         const currentQty = Number(d.quantity ?? d.qty ?? 1) || 0;
         const remaining = Math.max(0, currentQty - quantitySold);
         const depleted = remaining <= 0;
-        const nextStatus = depleted ? 'sold' : 'in_stock';
+        const preservePresale = !depleted && (invRow.status === 'presale' || d.source === 'foc_presale') && d.ebayPresaleConverted !== true;
+        const nextStatus = depleted ? 'sold' : preservePresale ? 'presale' : 'in_stock';
         const nextData = { ...d, status: nextStatus, lifecycle: nextStatus, qty: remaining, quantity: remaining, salePrice, profit, channel, soldAt: depleted ? soldAt : '' };
         await supabaseAdminFetch(env, `inventory_items?id=eq.${encodeURIComponent(invRow.id)}&store_id=eq.${encodeURIComponent(storeId)}`, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ data: nextData, status: nextStatus, updated_at: new Date().toISOString() }) });
 

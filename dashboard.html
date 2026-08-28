@@ -42374,7 +42374,7 @@ function labelQrPayload(batchEntry){
     // falls back to its own default store for a bare link), and wo_sku is
     // only added when it's not simply a duplicate of the item id.
     const itemId = item.id || batchEntry.id || '';
-    const storefrontUrl = new URL('https://themanapocket.com/');
+    const storefrontUrl = new URL('https://themanapocket.com/shop');
     storefrontUrl.searchParams.set('item', itemId);
     if(sku !== itemId) storefrontUrl.searchParams.set('wo_sku', sku);
     return storefrontUrl.toString();
