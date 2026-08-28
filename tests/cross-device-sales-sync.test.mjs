@@ -41,7 +41,20 @@ console.log('syncSharedShowTransactions generalization contract checks passed');
 // every tick regardless of the local Show Mode flag -- that flag being off
 // (or just stale) must not be a reason to stop reconciling with the server ──
 assert.ok(!/\.then\(\(\)=>getShowMode\(\)\?\(drawerState\?joinCashBag\(drawerState\.id,\{silent:true\}\):syncSharedShowTransactions\(\)\):null\)/.test(dashboard), 'the drawer-check/sales-sync step must no longer be gated behind getShowMode()');
-assert.match(dashboard, /const tick=\(\)=>\{if\(document\.visibilityState!=='visible'\)return;fetchShowSessionIndex\(false\)\.then\(\(\)=>getShowMode\(\)\?fetchSharedCashBags\(\):null\)\.then\(\(\)=>drawerState\?joinCashBag\(drawerState\.id,\{silent:true\}\):syncSharedShowTransactions\(\)\)\.catch\(\(\)=>\{\}\);\};/, 'the sync loop must call joinCashBag/syncSharedShowTransactions unconditionally every tick, with only the cash-bag-switcher list staying Show-Mode-scoped');
+// Store report (later, after this fix shipped): a device left open/
+// foregrounded all day at a show booth never noticed the show being renamed
+// or closed on another device -- this tick called fetchShowSessionIndex
+// (refreshes the JOIN switcher list only) and fetchSharedCashBags, but never
+// syncShowModeFromWorker, the one function that actually pulls the
+// CURRENTLY-JOINED show's own live status/fields back into pos_show_mode.
+// That only ran on page load and visibilitychange, neither of which fires
+// on a tablet just left sitting open. The tick now delegates to
+// syncShowModeFromWorker itself (a strict superset of the old
+// fetchShowSessionIndex+fetchSharedCashBags pair -- see its own no-show-
+// joined branch below, which still runs general sales reconciliation).
+assert.ok(!/const tick=\(\)=>\{if\(document\.visibilityState!=='visible'\)return;fetchShowSessionIndex\(false\)\.then\(\(\)=>getShowMode\(\)\?fetchSharedCashBags\(\):null\)/.test(dashboard), 'the tick must no longer skip syncShowModeFromWorker -- that was the exact gap that let a joined show\'s live status go stale on a device that never reloads or loses focus');
+assert.match(dashboard, /const tick=\(\)=>\{if\(document\.visibilityState!=='visible'\)return;syncShowModeFromWorker\(\)\.then\(\(\)=>drawerState\?joinCashBag\(drawerState\.id,\{silent:true\}\):null\)\.catch\(\(\)=>\{\}\);\};/, 'the sync loop must delegate to syncShowModeFromWorker every tick (which itself refreshes the show index, the joined show\'s live status, cash bags, and sales), then reconcile the open drawer if any');
+assert.match(dashboard, /if\(!selected\?\.id\)\{ renderShowMode\(\); await syncSharedShowTransactions\(\)\.catch\(\(\)=>\{\}\); return; \}/, 'syncShowModeFromWorker must still run general sales reconciliation when no show is joined, now that the tick relies on it alone instead of its own separate branch');
 
 console.log('startShowSessionSyncLoop always-reconcile contract checks passed');
 
