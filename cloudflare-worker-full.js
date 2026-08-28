@@ -8793,6 +8793,11 @@ export default {
         String(q || '').toLowerCase().split(/\s+/).filter(Boolean).forEach(t => { if (hay.includes(t)) reasons.push(t); });
         return reasons.length ? reasons.slice(0, 6) : ['PriceCharting search match'];
       };
+      // PriceCharting/SportsCardsPro product pages are slug-based
+      // (/game/<console-slug>/<product-slug>), never the bare numeric id --
+      // matches the slug() helper the /pricing/pricecharting/product/:id
+      // route already uses to build a real, working link.
+      const pcSlug = value => String(value || '').toLowerCase().replace(/['’]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
       const normalizePcProduct = (p, q = '') => ({
         source: 'PriceCharting',
         productId: String(p.id || p.productId || ''),
@@ -8800,7 +8805,21 @@ export default {
         consoleName: p['console-name'] || p.consoleName || '',
         genre: p.genre || '',
         releaseDate: p['release-date'] || p.releaseDate || null,
-        url: p['product-url'] || p.url || (p.id ? `https://www.pricecharting.com/game/${p.id}` : null),
+        // Store report: "no PriceCharting url" saved for cards picked
+        // straight from search results (Research / Pocket Scout catalog
+        // search), even though a url field was always present here. Root
+        // cause: PriceCharting's /api/products (bulk search) response never
+        // includes a real product-url, so this fell to
+        // `/game/${p.id}` -- not a real PriceCharting URL at all (those are
+        // slug-based, e.g. /game/baseball-cards-2021-topps/cal-raleigh-49),
+        // so every search-result link was silently broken/dead the whole
+        // time rather than genuinely missing. Only the single-product
+        // detail lookup (verifying by numeric id) built a real link, via
+        // its own separate slug construction. Now built here too, off the
+        // same product-name/console-name every search result already has.
+        url: p['product-url'] || p.url || (((p['product-name'] || p.productName) && (p['console-name'] || p.consoleName))
+          ? `https://www.pricecharting.com/game/${pcSlug(p['console-name'] || p.consoleName)}/${pcSlug(p['product-name'] || p.productName)}`
+          : null),
         imageUrl: pcImageUrl(p),
         prices: {
           ungraded: pcMoney(p, 'loose-price', 'prices.ungraded'),
