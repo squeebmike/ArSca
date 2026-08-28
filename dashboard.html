@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.28.19-sports-price-sync-sourceproductid-fix">
+<meta name="version" content="2026.08.28.22-fix-sports-category-fragmentation">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1638,16 +1638,16 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.28.19-sports-price-sync-sourceproductid-fix" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.28.19-sports-price-sync-sourceproductid-fix" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.28.19-sports-price-sync-sourceproductid-fix" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.08.28.19-sports-price-sync-sourceproductid-fix" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.28.19-sports-price-sync-sourceproductid-fix" defer></script>
-<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.08.28.19-sports-price-sync-sourceproductid-fix" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.28.19-sports-price-sync-sourceproductid-fix" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.28.19-sports-price-sync-sourceproductid-fix" defer></script>
-<script src="scripts/pokemon/offline-browser.js?v=2026.08.28.19-sports-price-sync-sourceproductid-fix" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.28.19-sports-price-sync-sourceproductid-fix" defer></script>
+<script src="scripts/query-routing.js?v=2026.08.28.22-fix-sports-category-fragmentation" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.28.22-fix-sports-category-fragmentation" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.28.22-fix-sports-category-fragmentation" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.08.28.22-fix-sports-category-fragmentation" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.28.22-fix-sports-category-fragmentation" defer></script>
+<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.08.28.22-fix-sports-category-fragmentation" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.28.22-fix-sports-category-fragmentation" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.28.22-fix-sports-category-fragmentation" defer></script>
+<script src="scripts/pokemon/offline-browser.js?v=2026.08.28.22-fix-sports-category-fragmentation" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.28.22-fix-sports-category-fragmentation" defer></script>
 </head>
 <body>
 
@@ -1676,11 +1676,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.28.19-sports-price-sync-sourceproductid-fix</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.28.22-fix-sports-category-fragmentation</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.28.19-sports-price-sync-sourceproductid-fix</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.28.22-fix-sports-category-fragmentation</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1698,7 +1698,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.28.19-sports-price-sync-sourceproductid-fix</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.28.22-fix-sports-category-fragmentation</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -1801,6 +1801,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <button class="tab primary" onclick="runPriceSyncForFilteredItems()" title="Look up current market prices for only the in-stock items currently shown below (e.g. click Stale Prices first, then this) instead of scanning the whole inventory">💹 LOOK UP THIS VIEW</button>
     <button class="tab primary" onclick="openLabelPrintModal()" title="Build a batch of barcode/price labels to print">🏷️ PRINT LABELS</button>
     <button class="tab primary" onclick="printLabelsForFilteredItems()" title="Queue every in-stock item currently shown below (category chip + search combined) for label printing, instead of adding items one search at a time">🏷️ LABEL THIS VIEW</button>
+    <button class="tab primary" onclick="publishFilteredToStorefrontView()" title="Publish every unpublished in-stock item currently shown below (category chip + search combined) to themanapocket.com, instead of one at a time from each row's menu">🌐 PUBLISH THIS VIEW</button>
     <button class="tab primary" onclick="openOneOffSellModal()" title="Add an item that isn't in inventory yet to the cart">⚡ ONE-OFF TO CART</button>
     <button class="tab primary" onclick="openCartScanModal()" title="Scan a printed shelf/price label to add that exact item to the cart">📷 SCAN TO CART</button>
     <button class="tab primary" onclick="openInventoryFindScanner()" title="Scan a barcode to find and highlight that item in the list below">🔎 SCAN TO FIND</button>
@@ -3710,7 +3711,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.28.19-sports-price-sync-sourceproductid-fix';
+const APP_VERSION = '2026.08.28.22-fix-sports-category-fragmentation';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -18159,6 +18160,23 @@ function nameWithPrintRun(name, printRun){
 function itemsWithUncapturedPrintRun(items=all){
   return (items || []).filter(i => i.status === 'in_stock' && !i.serial_number && /\/\s*\d{1,4}\b/.test(String(i.name || '')));
 }
+// Store report: a sports card's own Category field ended up as a raw
+// PriceCharting console/set name (e.g. "Baseball Cards 2023 Topps") or the
+// barcode scanner's own one-off "Sports Card" string, instead of the app's
+// shared "Sports" bucket every other add path uses (see the fixes on
+// fetchPriceChartingLiveCatalog and barcodeCandidateToResearch) -- a
+// different set name produced a different bogus category every time, and
+// each one is a permanent dropdown option (getInventoryCategories unions in
+// every category value that has EVER existed on a real item), so those
+// cards vanished from wherever "Sports" actually gets filtered/browsed.
+// Those code fixes only help items added from now on; detects existing
+// items already saved under one of these stray categories so
+// backfillBogusSportsCategory() below can repair them without a re-add.
+function itemsWithBogusSportsCategory(items=all){
+  const sportsWord = /sport|\b(?:baseball|football|basketball|hockey|soccer|wrestling|racing)\b/i;
+  return (items || []).filter(i => i.status === 'in_stock' && i.category !== 'Sports'
+    && (i.category === 'Sports Card' || (!STANDARD_INVENTORY_CATEGORIES.includes(i.category) && sportsWord.test(String(i.category || '')))));
+}
 function inventoryHealthSummary(items=all){
   const inStock = (items || []).filter(i=>i.status === 'in_stock' && i.lifecycle !== 'archived');
   return {
@@ -18174,6 +18192,7 @@ function inventoryHealthSummary(items=all){
     highValue:inStock.filter(i=>inventoryListPrice(i) >= 100).length,
     printRunUncaptured:itemsWithUncapturedPrintRun(items).length,
     ebayProfitMissingFee:itemsWithFeelessEbayProfit(items).length,
+    bogusSportsCategory:itemsWithBogusSportsCategory(items).length,
   };
 }
 // Fixes existing items the Add-to-Inventory capture fix above can't reach
@@ -18223,6 +18242,24 @@ async function backfillEbayProfitFees(){
   filterTable();
   renderInventoryHealthPanel();
 }
+// Same "fix directly, nothing more useful to filter to" pattern as the two
+// backfills above -- repairs an item's Category back to the shared "Sports"
+// bucket, correcting the stray one-off categories itemsWithBogusSportsCategory
+// detects (see that function for the full root-cause story).
+async function backfillBogusSportsCategory(){
+  const matches = itemsWithBogusSportsCategory();
+  if(!matches.length){ toast_dash('No sports cards found with a bogus category'); return; }
+  if(!confirm(`Found ${matches.length} sports card${matches.length===1?'':'s'} filed under the wrong Category (a set name or "Sports Card" instead of "Sports"). Fix them all now?`)) return;
+  let updated = 0;
+  for(const item of matches){
+    try { await saveInventoryEdit(item, { category:'Sports' }); item.category = 'Sports'; updated++; }
+    catch(e) { console.error('backfillBogusSportsCategory: could not update', item.id, e); }
+  }
+  toast_dash(`Category fixed for ${updated} of ${matches.length} sports card${matches.length===1?'':'s'}`);
+  filterTable();
+  renderInventoryHealthPanel();
+  renderInventoryCategoryFilters();
+}
 function setInventoryHealthFilter(filter){
   const btn = [...document.querySelectorAll('.fb')].find(b=>String(b.getAttribute('onclick')||'').includes("'" + filter + "'"));
   if(btn) setF(filter, btn);
@@ -18251,6 +18288,9 @@ function renderInventoryHealthPanel(){
     // Same "fix directly, nothing more useful to filter to" pattern as
     // print_run above -- these are already-sold rows, not stock to browse.
     ['ebay_fee_missing','eBay Fee Missing',h.ebayProfitMissingFee,'tap to recompute profit','backfillEbayProfitFees()'],
+    // Same pattern again -- a bogus category is a data error to fix, not a
+    // useful way to browse the table.
+    ['bogus_sports_category','Sports Category Fix',h.bogusSportsCategory,'tap to repair','backfillBogusSportsCategory()'],
   ];
   const flagged = h.noPhoto + h.noConfig + h.noCost + h.noMarket + h.stale + h.notListed + h.belowCost;
   // Re-rendered on every filterTable() call (every keystroke in the search box),
@@ -28148,7 +28188,13 @@ function barcodeCandidateToResearch(candidate,n){
     const row=metronIssueToQplRow(candidate.raw||{},[]);
     return {...row,barcode:n.primary,barcodePrimary:n.primary,barcodeSupplement:n.supplement||'',barcodeType:n.typeGuess,barcodeEvidence:{raw:n.raw,primary:n.primary,supplement:n.supplement||'',candidatesTried:n.candidates||[],confidence:candidate.confidence||98,matchReason:candidate.matchReason||[],confirmed:false},confidence:Number(candidate.confidence||98),matchWhy:candidate.matchReason||row.matchWhy,note:'Metron barcode match. Select it to confirm the exact cover and load PriceCharting prices.'};
   }
-  const categoryMap={comics:'Comic',pokemon:'Pokemon TCG',mtg:'Magic: The Gathering',sports:'Sports Card',other:'Collectibles'};
+  // Store report: a barcode-scanned sports card saved with category "Sports
+  // Card" (singular) while every other add path (Scout, Research search,
+  // manual entry via normalizeQuickCategory) uses "Sports" -- two different
+  // strings for the same conceptual bucket meant a barcode-scanned card
+  // never showed up anywhere "Sports" gets filtered/browsed, since nothing
+  // treats them as the same category.
+  const categoryMap={comics:'Comic',pokemon:'Pokemon TCG',mtg:'Magic: The Gathering',sports:'Sports',other:'Collectibles'};
   // The barcode provider's own "sealed" bucket means it couldn't pin a
   // specific game from the UPC alone -- try the product's own title/console
   // text before falling back to a generic bucket, so a sealed Pokemon box
@@ -33707,22 +33753,28 @@ async function fetchPriceChartingLiveCatalog(q, cat, searchPlan = qplLastSearchP
     const productName = m.productName || '';
     const cardNumMatch = productName.match(/#(\d+[A-Za-z]?)/);
     const printRunMatch = productName.match(/\/\s*(\d{1,4})\b/);
+    // Store report: a sports card's Category was landing as the raw
+    // PriceCharting console/set name (e.g. "Baseball Cards 2023 Topps")
+    // instead of the app's own "Sports" bucket -- and since that string
+    // never matched an existing category, the Add-to-Inventory category
+    // picker (populateEditCategorySelect) silently created it as a
+    // brand-new one-off category and selected it, so a different set name
+    // produced a different bogus category every time, and every one of
+    // those cards vanished from wherever "Sports" actually gets browsed
+    // (the store's own category dashboards, and the public storefront's
+    // category filter, which is just a raw list of whatever category
+    // strings exist). The fix below only forced 'Sports' when the SEARCH
+    // ITSELF was already scoped to the sports category (isSports) -- a
+    // plain Research-tab search for a card by name, with no category
+    // filter selected first, left isSports false even for a genuine
+    // baseball/football/etc. card, so the leak kept happening. Detect it
+    // from the actual returned product's own console name too, the same
+    // keyword check normalizeQuickCategory already uses everywhere else.
+    const looksLikeSports = isSports || /sport|\b(?:baseball|football|basketball|hockey|soccer|wrestling|racing)\b/i.test(m.consoleName || '');
     return {
       source:'PriceCharting',
       name:productName || q,
-      // Store report: a sports card's Category was landing as the raw
-      // PriceCharting console/set name (e.g. "2023 Bowman Chrome
-      // Baseball") instead of the app's own "Sports" bucket -- and since
-      // that string never matched an existing category, the Add-to-
-      // Inventory category picker (populateEditCategorySelect) silently
-      // created it as a brand-new one-off category and selected it, so a
-      // different set name produced a different bogus category every
-      // time. The SportsCardsPro-sourced mapping (scpProductToQplRow)
-      // already gets this right with a fixed category; sports rows from
-      // plain PriceCharting results now match it. Category and set were
-      // otherwise identical values anyway -- set (below) already carries
-      // the real console/set name on its own.
-      category:isSports ? 'Sports' : (m.consoleName || cat || 'Collectibles'),
+      category:looksLikeSports ? 'Sports' : (m.consoleName || cat || 'Collectibles'),
       csvCategory:pcCat || '',
       set:m.consoleName || '',
       year:m.releaseDate ? String(m.releaseDate).slice(0,4) : '',
@@ -42272,6 +42324,28 @@ function printLabelsForFilteredItems(){
   openLabelPrintModal(null, batch);
 }
 
+// Store report: a batch of newly-bought cards never showed up on
+// themanapocket.com -- new inventory defaults to onlineListed:false (see
+// createBuiltInInventoryItem) on purpose, so nothing goes live before a
+// photo/price review, but the only way to flip it back on was a one-at-a-
+// time "Publish to Storefront" toggle buried in each row's menu. Buying a
+// whole lot of the same category made that a real chore. Same "act on
+// whatever the search box + category chip currently show" pattern as LABEL
+// THIS VIEW/LOOK UP THIS VIEW above -- filter down to what was just added
+// (category wheel + search), then publish all of it in one click.
+async function publishFilteredToStorefrontView(){
+  const items = (typeof filtered !== 'undefined' ? filtered : []).filter(i => i.status === 'in_stock' && i.onlineListed === false);
+  if(!items.length){ toast_dash('Nothing in the current view is unpublished'); return; }
+  if(!confirm('Publish ' + items.length + ' item' + (items.length === 1 ? '' : 's') + ' in this view to the storefront?')) return;
+  let ok = 0, fail = 0;
+  for(const item of items){
+    try { await saveInventoryEdit(item, { onlineListed:true }); item.onlineListed = true; ok++; }
+    catch(e) { fail++; }
+  }
+  toast_dash('Published ' + ok + ' item' + (ok === 1 ? '' : 's') + ' to storefront' + (fail ? ', ' + fail + ' failed' : ''));
+  filterTable();
+}
+
 function renderLabelPrintSearchResults(query){
   const el = document.getElementById('label-print-search-results');
   if(!el) return;
@@ -45552,7 +45626,7 @@ async function toppsLoadParallels(cardId){
   window.__arscaCloseModal = closeModal;
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.28.19-sports-price-sync-sourceproductid-fix" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.28.22-fix-sports-category-fragmentation" defer></script>
 </body>
 </html>
 

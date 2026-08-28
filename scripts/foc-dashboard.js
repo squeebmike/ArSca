@@ -77,9 +77,30 @@ async function openCycle(id){
   // matched, while flag/eBay's <select> markup (unlike the search box and
   // publisher select) never re-marked the right option as selected -- so
   // the stale filter looked like "no filter" was active at all.
-  state.query='';state.publisher='all';state.flag='all';state.ebay='all';
+  //
+  // Store report (later): listing a single cover on eBay -- or saving any
+  // one field on a cover card -- reset the search box and every filter
+  // dropdown back to "All" and jumped the whole wall back to the top, since
+  // every one of those actions calls openCycle(state.cycle.id) just to
+  // refresh the data. That's still the SAME cycle, not a switch to a
+  // different one, so the filter-clearing above (which only needs to guard
+  // against a stale filter surviving a real cycle switch) doesn't apply --
+  // only reset filters when actually opening a different cycle.
+  if(!state.cycle||state.cycle.id!==id){state.query='';state.publisher='all';state.flag='all';state.ebay='all';}
   try{var data=await api('/foc/admin/cycles?store_id='+encodeURIComponent(getActiveStoreId())+'&cycle_id='+encodeURIComponent(id));state.cycle=data.cycle;state.families=data.families||[];renderCycle();}
   catch(e){panel().innerHTML='<button class="hbtn" onclick="loadFocCycles()">BACK</button><div class="panel" style="margin-top:10px;color:var(--red)">'+esc(e.message)+'</div>';}
+}
+// Same refetch as openCycle, for actions that only changed ONE cover within
+// the cycle already open (a field save, an eBay listing) -- openCycle's own
+// renderCycle() rebuilds the ENTIRE panel (hero, toolbar, filters, family
+// list) from scratch, which resets scroll position back to the top of the
+// wall regardless of the filter fix above. Re-rendering only the family
+// list (renderFamilies, which already respects whatever filters are
+// currently set) leaves the toolbar and scroll position alone.
+async function refreshCycleFamilies(){
+  if(!state.cycle)return;
+  try{var data=await api('/foc/admin/cycles?store_id='+encodeURIComponent(getActiveStoreId())+'&cycle_id='+encodeURIComponent(state.cycle.id));state.cycle=data.cycle;state.families=data.families||[];renderFamilies();}
+  catch(e){toast_dash('Could not refresh: '+e.message);}
 }
 
 function visibleFamilies(){
@@ -132,7 +153,7 @@ function renderCycle(){
 
 function renderFamilies(){var list=document.getElementById('foc-family-list');if(!list)return;var rows=visibleFamilies();var count=document.getElementById('foc-visible-count');if(count)count.textContent=rows.length+' title families';list.innerHTML=rows.length?rows.map(familyCard).join(''):'<div class="panel" style="padding:28px;text-align:center;color:var(--dim)">Nothing matches those filters.</div>';}
 
-async function saveSku(id){var card=document.querySelector('[data-foc-sku="'+CSS.escape(id)+'"]');if(!card||state.saving.has(id))return;state.saving.add(id);try{var payload={storeId:getActiveStoreId(),skuId:id};card.querySelectorAll('[data-field]').forEach(function(el){payload[el.dataset.field]=el.type==='checkbox'?el.checked:el.value;});await api('/foc/admin/sku',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});toast_dash('FOC cover saved');await openCycle(state.cycle.id);}catch(e){toast_dash('Could not save cover: '+e.message);}finally{state.saving.delete(id);}}
+async function saveSku(id){var card=document.querySelector('[data-foc-sku="'+CSS.escape(id)+'"]');if(!card||state.saving.has(id))return;state.saving.add(id);try{var payload={storeId:getActiveStoreId(),skuId:id};card.querySelectorAll('[data-field]').forEach(function(el){payload[el.dataset.field]=el.type==='checkbox'?el.checked:el.value;});await api('/foc/admin/sku',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});toast_dash('FOC cover saved');await refreshCycleFamilies();}catch(e){toast_dash('Could not save cover: '+e.message);}finally{state.saving.delete(id);}}
 async function saveFamily(id){try{var heat=document.querySelector('[data-family-heat="'+CSS.escape(id)+'"]');var category=document.querySelector('[data-family-category="'+CSS.escape(id)+'"]');await api('/foc/admin/sku',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({storeId:getActiveStoreId(),familyId:id,heat:heat&&heat.value?Number(heat.value):null,heatCategory:category&&category.value||null})});toast_dash('Title heat flag saved');}catch(e){toast_dash(e.message);}}
 async function toggleCycle(){
   if(!state.cycle||state.cycle.status==='archived')return;
@@ -392,7 +413,7 @@ async function submitEbayPresaleReview(skuId){
       toast_dash('Volume discount active: '+tiers);
     }
     var modal=document.getElementById('foc-ebay-review-modal');if(modal)modal.remove();
-    await openCycle(state.cycle.id);
+    await refreshCycleFamilies();
   }catch(e){
     if(status){status.style.color='var(--red)';status.style.borderColor='rgba(255,77,109,.3)';status.style.background='rgba(255,77,109,.06)';status.textContent='Could not create eBay presale: '+e.message;}
   }
