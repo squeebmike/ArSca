@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.28.17-scout-pc-ref-display-fix">
+<meta name="version" content="2026.08.28.18-show-and-cart-live-sync-fix">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1638,16 +1638,16 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.28.17-scout-pc-ref-display-fix" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.28.17-scout-pc-ref-display-fix" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.28.17-scout-pc-ref-display-fix" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.08.28.17-scout-pc-ref-display-fix" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.28.17-scout-pc-ref-display-fix" defer></script>
-<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.08.28.17-scout-pc-ref-display-fix" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.28.17-scout-pc-ref-display-fix" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.28.17-scout-pc-ref-display-fix" defer></script>
-<script src="scripts/pokemon/offline-browser.js?v=2026.08.28.17-scout-pc-ref-display-fix" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.28.17-scout-pc-ref-display-fix" defer></script>
+<script src="scripts/query-routing.js?v=2026.08.28.18-show-and-cart-live-sync-fix" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.28.18-show-and-cart-live-sync-fix" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.28.18-show-and-cart-live-sync-fix" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.08.28.18-show-and-cart-live-sync-fix" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.28.18-show-and-cart-live-sync-fix" defer></script>
+<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.08.28.18-show-and-cart-live-sync-fix" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.28.18-show-and-cart-live-sync-fix" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.28.18-show-and-cart-live-sync-fix" defer></script>
+<script src="scripts/pokemon/offline-browser.js?v=2026.08.28.18-show-and-cart-live-sync-fix" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.28.18-show-and-cart-live-sync-fix" defer></script>
 </head>
 <body>
 
@@ -1676,11 +1676,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.28.17-scout-pc-ref-display-fix</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.28.18-show-and-cart-live-sync-fix</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.28.17-scout-pc-ref-display-fix</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.28.18-show-and-cart-live-sync-fix</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1698,7 +1698,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.28.17-scout-pc-ref-display-fix</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.28.18-show-and-cart-live-sync-fix</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3710,7 +3710,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.28.17-scout-pc-ref-display-fix';
+const APP_VERSION = '2026.08.28.18-show-and-cart-live-sync-fix';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -13173,6 +13173,19 @@ async function fetchActiveSaleCartFromWorker(){
     // Merge by line id and line timestamp so simultaneous additions converge
     // while edits/removals made on another joined register are retained.
     let merged = remote;
+    // Store report: two registers sharing one joined cart could silently
+    // diverge -- this merge fixed what got shown on THIS device, but the
+    // merged result was never pushed back to the worker (unlike buy trays'
+    // fetchBuyListFromWorker, which explicitly re-pushes its merged union
+    // "so every device converges on the same list"). The cart's own body
+    // write is a blind KV overwrite (no server-side merge, only the shared
+    // index gets that treatment), so the very next plain add on either
+    // register would silently clobber whatever the OTHER register had just
+    // added, with nothing left anywhere that ever combined both. Track
+    // whether this merge actually pulled in something the last-known local
+    // copy didn't already have, and push it back only then -- so the 3s
+    // poll doesn't re-POST an unchanged cart every tick.
+    let mergedChanged = false;
     if(local) {
       const localNewer = String(local.updatedAt || '') > String(remote.updatedAt || '');
       merged = { ...(localNewer ? remote : local), ...(localNewer ? local : remote) };
@@ -13186,9 +13199,14 @@ async function fetchActiveSaleCartFromWorker(){
       }
       merged.items = [...byId.values()];
       merged.removedLineIds = [...removed].slice(-300);
+      const localItemIds = new Set((local.items || []).map(i => i.id || i.cartLineId));
+      mergedChanged = merged.items.length !== localItemIds.size
+        || merged.items.some(i => !localItemIds.has(i.id || i.cartLineId))
+        || merged.removedLineIds.length !== (local.removedLineIds || []).length;
     }
     upsertLocalSaleCart(merged);
     localStorage.setItem('pos_cart_v2', JSON.stringify(merged));
+    if(mergedChanged) syncActiveSaleCartToWorker(merged).catch(() => {});
     if(merged.tradeCredit) {
       localStorage.setItem('pos_pending_trade_purchase', JSON.stringify({ creditId:merged.tradeCredit.id, buySessionId:merged.tradeCredit.buySessionId || '', customerName:merged.tradeCredit.customerName || '' }));
       if(!getStoreCredits().some(c => c.id === merged.tradeCredit.id)) await syncStoreCreditsFromWorker();
@@ -13427,7 +13445,7 @@ async function syncShowModeFromWorker(){
   if(getAccountContext().isDemo){ renderShowSessionSwitcher(); return; }
   await fetchShowSessionIndex(false);
   const selected=getShowMode();
-  if(!selected?.id){ renderShowMode(); return; }
+  if(!selected?.id){ renderShowMode(); await syncSharedShowTransactions().catch(()=>{}); return; }
   try {
     const res = await storeWorkerFetch(scopedWorkerPath('/kv/show_session_'+selected.id), { cache:'no-store', signal:AbortSignal.timeout(4000) });
     const data = await res.json().catch(() => ({}));
@@ -38212,7 +38230,19 @@ function startShowSessionSyncLoop(){
   // never re-checked either against the server. Both must run every tick
   // regardless of Show Mode; fetchSharedCashBags (the show-switcher list)
   // stays show-scoped since it's only used to populate that UI.
-  const tick=()=>{if(document.visibilityState!=='visible')return;fetchShowSessionIndex(false).then(()=>getShowMode()?fetchSharedCashBags():null).then(()=>drawerState?joinCashBag(drawerState.id,{silent:true}):syncSharedShowTransactions()).catch(()=>{});};
+  //
+  // Store report: a device left open all day (a tablet at a booth) never
+  // noticed when the show was renamed/closed on another device -- this
+  // tick called fetchShowSessionIndex (refreshes the JOIN switcher list
+  // only) but never syncShowModeFromWorker, the one function that actually
+  // pulls the CURRENTLY-JOINED show's own live status/fields, so it only
+  // ever ran on page load and tab-visibilitychange. A tablet that's simply
+  // left foregrounded never fires visibilitychange either, so its local
+  // pos_show_mode flag could go stale indefinitely with no error surfaced
+  // (syncShowModeFromWorker's own network failure path is a silent catch).
+  // Calling the real function here (a strict superset of the old
+  // fetchShowSessionIndex+fetchSharedCashBags pair) closes that gap.
+  const tick=()=>{if(document.visibilityState!=='visible')return;syncShowModeFromWorker().then(()=>drawerState?joinCashBag(drawerState.id,{silent:true}):null).catch(()=>{});};
   // Run once immediately on load instead of only on the first 15s tick --
   // a freshly opened browser should reconcile with what every other device
   // has already sold right away, not sit on stale/empty stats for up to 15s.
@@ -45513,7 +45543,7 @@ async function toppsLoadParallels(cardId){
   window.__arscaCloseModal = closeModal;
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.28.17-scout-pc-ref-display-fix" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.28.18-show-and-cart-live-sync-fix" defer></script>
 </body>
 </html>
 
