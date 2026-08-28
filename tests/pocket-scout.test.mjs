@@ -141,23 +141,25 @@ assert.doesNotMatch(dashboard.slice(dashboard.indexOf("const query = document.ge
 {
   const mappedStart = dashboard.indexOf('const mapped = rows.map(m => {');
   assert(mappedStart >= 0, 'the PriceCharting live-catalog row builder must exist');
-  const mappedSlice = dashboard.slice(mappedStart, mappedStart + 2800);
+  const mappedSlice = dashboard.slice(mappedStart, mappedStart + 3600);
   assert.match(mappedSlice, /const cardNumMatch = productName\.match\(\/#\(\\d\+\[A-Za-z\]\?\)\/\);/, 'must parse the card number out of PriceCharting\'s product name');
   assert.match(mappedSlice, /const printRunMatch = productName\.match\(\/\\\/\\s\*\(\\d\{1,4\}\)\\b\/\);/, 'must parse a numbered parallel\'s print run out of PriceCharting\'s product name');
   assert.match(mappedSlice, /card_number:cardNumMatch \? cardNumMatch\[1\] : '',/, 'card_number must actually use the parsed match, not stay hardcoded blank');
   assert.match(mappedSlice, /printRun:printRunMatch \? printRunMatch\[1\] : '',/, 'the parsed print run must be exposed on the row');
   assert.match(mappedSlice, /productId:m\.productId \|\| m\.id \|\| '',/, 'the row must carry the product id so a later per-item image/detail lookup is possible');
-  // Store report: a sports card's Category was landing as the raw
-  // PriceCharting console/set name (e.g. "2023 Bowman Chrome Baseball")
-  // instead of "Sports" -- and since that string never matched an
-  // existing category, the Add-to-Inventory category picker
-  // (populateEditCategorySelect) silently created it as a brand-new
-  // one-off category and selected it, so a different set name produced a
-  // different bogus category every time. scpProductToQplRow (the paid-SCP
-  // path) already gets this right with a fixed category; plain
-  // PriceCharting sports rows must match it.
-  assert.match(mappedSlice, /category:isSports \? 'Sports' : \(m\.consoleName \|\| cat \|\| 'Collectibles'\),/,
-    'a sports-category search must set category to the fixed "Sports" bucket, not the raw console/set name');
+  // Store report (later, after a live screenshot of the actual stray
+  // dropdown option): a sports card's Category was STILL landing as the
+  // raw PriceCharting console/set name (e.g. "Baseball Cards 2023 Topps")
+  // even after the fix above, because that fix only forced category:
+  // 'Sports' when the SEARCH ITSELF was already scoped to sports (isSports)
+  // -- a plain Research-tab search for a card by name with no category
+  // filter selected first left isSports false even for a genuine baseball
+  // card. Detects it from the actual returned product's own console name
+  // too, not only from how the search was scoped.
+  assert.match(mappedSlice, /const looksLikeSports = isSports \|\| \/sport\|\\b\(\?:baseball\|football\|basketball\|hockey\|soccer\|wrestling\|racing\)\\b\/i\.test\(m\.consoleName \|\| ''\);/,
+    'must also detect sports from the returned product\'s own console name, not only from whether the search was pre-scoped to sports');
+  assert.match(mappedSlice, /category:looksLikeSports \? 'Sports' : \(m\.consoleName \|\| cat \|\| 'Collectibles'\),/,
+    'a sports card must set category to the fixed "Sports" bucket, not the raw console/set name');
 }
 assert.match(dashboard, /function scoutCatalogMetaHtml\(r\)\{/, 'the meta line (set/card number/print run/variant + view link) must be its own function, since hydration re-renders it in place once richer data arrives');
 assert.match(dashboard, /r\.printRun\?'\/'\+r\.printRun:'',r\.variant\]/, 'the meta line must actually show the print run, not just parse/fetch it and drop it');
