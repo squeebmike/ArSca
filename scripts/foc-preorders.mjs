@@ -381,6 +381,42 @@ async function loadCatalog(db, storeId, requestedCycle, includeAdmin = false, en
   return buildCycleCatalog(db, cycle, includeAdmin, env, deps, storeId);
 }
 
+// Keep the public response small enough for mobile connections while
+// preserving each title family's metadata around the requested variants.
+// Omitting limit retains the full response for existing account/admin users.
+export function paginateCycleCatalog(catalog, requestedLimit, requestedOffset) {
+  const parsedLimit = Number.parseInt(requestedLimit, 10);
+  if (!catalog || !Number.isFinite(parsedLimit) || parsedLimit <= 0) return catalog;
+  const limit = Math.min(48, parsedLimit);
+  const offset = Math.max(0, Number.parseInt(requestedOffset, 10) || 0);
+  const flat = [];
+  for (const family of catalog.families || []) {
+    for (const sku of family.variants || []) flat.push({ family, sku });
+  }
+  const selected = flat.slice(offset, offset + limit);
+  const families = [];
+  const byId = new Map();
+  for (const entry of selected) {
+    let family = byId.get(entry.family.id);
+    if (!family) {
+      family = { ...entry.family, variants:[] };
+      byId.set(entry.family.id, family);
+      families.push(family);
+    }
+    family.variants.push(entry.sku);
+  }
+  const nextOffset = offset + selected.length;
+  return {
+    ...catalog,
+    families,
+    offset,
+    limit,
+    totalVariants:flat.length,
+    hasMore:nextOffset < flat.length,
+    nextOffset:nextOffset < flat.length ? nextOffset : null,
+  };
+}
+
 // Every open (or recently-closed) week at once, newest first -- this is
 // what a customer-facing page needs to render one section per FOC week
 // with its own countdown, instead of loadCatalog's single latest-week
@@ -1312,7 +1348,7 @@ export async function handleFocRequest(request, env, url, deps) {
   const path=url.pathname;
   if(path==='/public/shipping/quotes'&&request.method==='POST')return quoteShipping(request,env,deps);
   if(path==='/public/preorders'&&request.method==='GET'){
-    const storeId=text(url.searchParams.get('store_id'),80);const db=(p,o)=>deps.supabaseAdminFetch(env,p,o);const catalog=await loadCatalog(db,storeId,url.searchParams.get('cycle')||'',false);return catalog?deps.json({ok:true,...catalog}):deps.json({ok:false,error:'No FOC catalog is published yet'},404);
+    const storeId=text(url.searchParams.get('store_id'),80);const db=(p,o)=>deps.supabaseAdminFetch(env,p,o);const catalog=await loadCatalog(db,storeId,url.searchParams.get('cycle')||'',false);const page=paginateCycleCatalog(catalog,url.searchParams.get('limit'),url.searchParams.get('offset'));return page?deps.json({ok:true,...page}):deps.json({ok:false,error:'No FOC catalog is published yet'},404);
   }
   if(path==='/public/preorders/weeks'&&request.method==='GET'){
     const storeId=text(url.searchParams.get('store_id'),80);const db=(p,o)=>deps.supabaseAdminFetch(env,p,o);

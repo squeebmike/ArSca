@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { parse } from 'csv-parse/sync';
-import { normalizePrhRow, loadAllCatalogs, loadCycleSummaries, focOrderConfirmationEmail, reconcileFocOrderPayment, syncFocStripeEvent, handleFocRequest } from '../scripts/foc-preorders.mjs';
+import { normalizePrhRow, loadAllCatalogs, loadCycleSummaries, paginateCycleCatalog, focOrderConfirmationEmail, reconcileFocOrderPayment, syncFocStripeEvent, handleFocRequest } from '../scripts/foc-preorders.mjs';
 
 const worker = fs.readFileSync('cloudflare-worker-full.js', 'utf8');
 const service = fs.readFileSync('scripts/foc-preorders.mjs', 'utf8');
@@ -72,6 +72,15 @@ assert.match(migration, /America\/Los_Angeles/);
 assert.match(migration, /p_foc_date::timestamp \+ interval '1 minute'/, 'default cutoff must be 12:01 AM Monday Pacific');
 assert.match(migration, /revoke all[\s\S]+from anon/i, 'raw preorder tables must not be anonymous');
 assert.match(worker, /handleFocRequest/);
+
+const pagedCatalog=paginateCycleCatalog({cycle:{id:'cycle-1'},families:[
+  {id:'family-1',title:'One',variants:[{id:'sku-1'},{id:'sku-2'}]},
+  {id:'family-2',title:'Two',variants:[{id:'sku-3'}]},
+]},'2','1');
+assert.deepEqual(pagedCatalog.families.map(family=>[family.id,family.variants.map(sku=>sku.id)]),[['family-1',['sku-2']],['family-2',['sku-3']]]);
+assert.equal(pagedCatalog.totalVariants,3);
+assert.equal(pagedCatalog.hasMore,false);
+assert.equal(pagedCatalog.nextOffset,null);
 assert.match(service, /Choose a live carrier shipping rate/);
 assert.match(service, /ShippoToken/);
 assert.match(service, /waitlist-only until the store secures more copies/);
