@@ -3813,6 +3813,9 @@ export default {
       const storeId = String(url.searchParams.get('store_id') || '').trim();
       if (!/^[0-9a-z_-]{2,80}$/i.test(storeId)) return json({ ok:false, error:'Valid store_id required' }, 400);
       if (!(env.SUPABASE_URL && (env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SERVICE_KEY))) return json({ ok:false, error:'Storefront service unavailable' }, 503);
+      const storefrontCacheKey = new Request(url.toString(), { method:'GET' });
+      const cachedStorefront = await caches.default.match(storefrontCacheKey);
+      if (cachedStorefront) return cachedStorefront;
       const { data:settings } = await supabaseAdminFetch(env, `store_settings?store_id=eq.${encodeURIComponent(storeId)}&select=receipt_settings,theme,modules&limit=1`);
       const cfg = settings?.[0]?.receipt_settings || {};
       if (cfg.storefrontEnabled !== true) return json({ ok:false, error:'Storefront is not published' }, 404);
@@ -3865,7 +3868,9 @@ export default {
       if (limit) items = items.slice(offset, offset + limit);
       const facets = Array.from(new Set(allItems.map(item => item.categorySlug).filter(Boolean))).sort();
       const store = stores?.[0] || {};
-      return json({ ok:true, store:{ id:storeId, name:storefrontCleanText(cfg.storeName || cfg.shortName || store.display_name || store.name || 'Store',120), location:storefrontCleanText(cfg.location,160), website:storefrontCleanUrl(cfg.website), email:storefrontCleanText(cfg.email,200), phone:storefrontCleanText(cfg.phone,80), logo:storefrontCleanUrl(cfg.logo), message:storefrontCleanText(cfg.storefrontMessage,500), theme:settings?.[0]?.theme || {} }, items, total, offset, limit:limit || total, hasMore:limit ? offset + items.length < total : false, nextOffset:limit && offset + items.length < total ? offset + items.length : null, facets, updatedAt:new Date().toISOString() }, 200, { 'Cache-Control':'public, max-age=60, stale-while-revalidate=300' });
+      const storefrontResponse = json({ ok:true, store:{ id:storeId, name:storefrontCleanText(cfg.storeName || cfg.shortName || store.display_name || store.name || 'Store',120), location:storefrontCleanText(cfg.location,160), website:storefrontCleanUrl(cfg.website), email:storefrontCleanText(cfg.email,200), phone:storefrontCleanText(cfg.phone,80), logo:storefrontCleanUrl(cfg.logo), message:storefrontCleanText(cfg.storefrontMessage,500), theme:settings?.[0]?.theme || {} }, items, total, offset, limit:limit || total, hasMore:limit ? offset + items.length < total : false, nextOffset:limit && offset + items.length < total ? offset + items.length : null, facets, updatedAt:new Date().toISOString() }, 200, { 'Cache-Control':'public, max-age=60, stale-while-revalidate=300' });
+      ctx.waitUntil(caches.default.put(storefrontCacheKey, storefrontResponse.clone()));
+      return storefrontResponse;
     }
 
     // GET /public/storefront/item?store_id=...&id=... -- single-row version of

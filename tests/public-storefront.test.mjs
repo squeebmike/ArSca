@@ -9,6 +9,8 @@ assert.match(worker,/\['sold','archived','returned','deleted'(?:,'[^']+')*\]\.in
 assert.match(worker,/const limit = Number\.isFinite\(requestedLimit\) && requestedLimit > 0 \? Math\.min\(96, Math\.floor\(requestedLimit\)\) : 0;/,'public storefront supports an explicitly bounded page size');
 assert.match(worker,/if \(limit\) items = items\.slice\(offset, offset \+ limit\);/,'public storefront returns only the requested item page');
 assert.match(worker,/hasMore:limit \? offset \+ items\.length < total : false/,'public storefront tells the browser when another page exists');
+assert.match(worker,/caches\.default\.match\(storefrontCacheKey\)/,'public storefront pages should reuse a short-lived edge response');
+assert.match(worker,/ctx\.waitUntil\(caches\.default\.put\(storefrontCacheKey/,'storefront cache writes must not block the response');
 for(const slug of ['pokemon','mtg','one-piece','yugioh','lorcana','sports-cards','comics','collectibles','supplies']) assert.match(worker,new RegExp("'"+slug.replace('-','\\-')+"'"),'public storefront taxonomy must include '+slug);
 assert.match(worker,/inventorySource === 'webflow' \|\| inventorySource === 'hybrid'/,'hybrid stores publish Webflow inventory too');
 for(const privateField of ['cost','profit','consignor','notes']) assert.doesNotMatch(storefront,new RegExp(`i\\.${privateField}`,'i'),`${privateField} is not rendered`);
