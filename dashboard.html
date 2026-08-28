@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.27.15-pc-reference-providerurl-fix">
+<meta name="version" content="2026.08.28.16-pc-reference-url-paste">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1638,16 +1638,16 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.27.15-pc-reference-providerurl-fix" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.27.15-pc-reference-providerurl-fix" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.27.15-pc-reference-providerurl-fix" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.08.27.15-pc-reference-providerurl-fix" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.27.15-pc-reference-providerurl-fix" defer></script>
-<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.08.27.15-pc-reference-providerurl-fix" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.27.15-pc-reference-providerurl-fix" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.27.15-pc-reference-providerurl-fix" defer></script>
-<script src="scripts/pokemon/offline-browser.js?v=2026.08.27.15-pc-reference-providerurl-fix" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.27.15-pc-reference-providerurl-fix" defer></script>
+<script src="scripts/query-routing.js?v=2026.08.28.16-pc-reference-url-paste" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.28.16-pc-reference-url-paste" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.28.16-pc-reference-url-paste" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.08.28.16-pc-reference-url-paste" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.28.16-pc-reference-url-paste" defer></script>
+<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.08.28.16-pc-reference-url-paste" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.28.16-pc-reference-url-paste" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.28.16-pc-reference-url-paste" defer></script>
+<script src="scripts/pokemon/offline-browser.js?v=2026.08.28.16-pc-reference-url-paste" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.28.16-pc-reference-url-paste" defer></script>
 </head>
 <body>
 
@@ -1676,11 +1676,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.27.15-pc-reference-providerurl-fix</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.28.16-pc-reference-url-paste</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.27.15-pc-reference-providerurl-fix</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.28.16-pc-reference-url-paste</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1698,7 +1698,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.27.15-pc-reference-providerurl-fix</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.28.16-pc-reference-url-paste</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3018,12 +3018,12 @@ body.show-mode .inv-sync-badge{display:none;}
     </div>
 
     <div style="margin-top:8px">
-      <label style="display:block">PriceCharting Product ID (sealed / sports / any category)</label>
+      <label style="display:block">PriceCharting / SportsCardsPro Product ID or URL (sealed / sports / any category)</label>
       <div style="display:flex;gap:7px;align-items:center">
-        <input type="text" id="edit-pricecharting-ref" inputmode="numeric" placeholder="e.g. 5970222" style="flex:1" oninput="inventoryPcReferenceChanged()">
+        <input type="text" id="edit-pricecharting-ref" inputmode="url" placeholder="5970222 or https://www.sportscardspro.com/game/..." style="flex:1" oninput="inventoryPcReferenceChanged()">
         <button class="hbtn" type="button" id="edit-pricecharting-verify" onclick="verifyInventoryPriceChartingReference()">VERIFY</button>
       </div>
-      <div id="edit-pricecharting-status" style="font-family:var(--font-mono);font-size:9px;color:var(--dim);line-height:1.45;margin-top:5px">Paste the numeric PriceCharting/SportsCardsPro product ID (shown as "PriceCharting ID" on the product page) to pin exact-match pricing.</div>
+      <div id="edit-pricecharting-status" style="font-family:var(--font-mono);font-size:9px;color:var(--dim);line-height:1.45;margin-top:5px">Paste the numeric PriceCharting/SportsCardsPro product ID, or a full product page URL, to pin exact-match pricing.</div>
     </div>
 
     <div style="margin-top:8px">
@@ -3710,7 +3710,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.27.15-pc-reference-providerurl-fix';
+const APP_VERSION = '2026.08.28.16-pc-reference-url-paste';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -24837,17 +24837,22 @@ async function inventoryTcgReferencePatch(item = {}){
 }
 
 // Lets a manually-added item (typically sealed/sports, no TCGplayer product)
-// be pinned to an exact PriceCharting product by ID -- the number shown as
-// "PriceCharting ID" on pricecharting.com/sportscardspro.com product pages.
-// Once saved, price syncs that already prefer an exact pricechartingProductId
-// (e.g. MTG sealed) use it instead of a fuzzy name search.
+// be pinned to an exact PriceCharting product by ID or by pasting its real
+// product page URL directly -- the store's actual normal workflow for
+// sports cards is "paste the pricecharting.com/sportscardspro.com link I
+// already have open", not hunting down the numeric "PriceCharting ID" by
+// hand. Once saved, price syncs that already prefer an exact
+// pricechartingProductId (e.g. MTG sealed) use it instead of a fuzzy name
+// search.
 let inventoryPcReferenceState = { originalId:'', verified:null };
 // Unlike TCGplayer, a pricecharting.com/sportscardspro.com product URL never
 // contains the numeric product ID anywhere -- those URLs are slug-based
 // (/game/baseball-cards-2023-topps-holiday/mega-box). Blindly stripping
 // non-digits from a pasted URL used to grab whatever digits happened to be in
 // the slug (a year, a card number...) and silently "verify" a completely
-// unrelated product. So: reject URL-shaped input outright instead of guessing.
+// unrelated product -- so a pasted URL is resolved by fetching the real page
+// (/pricing/sportscardspro/resolve-url, the same route Pocket/Mana Scout's
+// own catalog-search modal already uses successfully) instead of guessed at.
 function inventoryPcLooksLikeUrl(raw=''){
   const t = String(raw||'').trim();
   return /^https?:\/\//i.test(t) || /pricecharting\.com|sportscardspro\.com/i.test(t);
@@ -24857,20 +24862,30 @@ function inventoryPcIdFromRaw(raw=''){
   if(!t || inventoryPcLooksLikeUrl(t)) return '';
   return /^\d+$/.test(t) ? t : '';
 }
+// The cache key for whatever was actually typed/pasted -- a numeric id, or
+// the URL itself when a URL was pasted. Lets verify-once-then-save reuse a
+// cached resolution the same way for both input shapes.
+function inventoryPcRefKeyFromRaw(raw=''){
+  const id = inventoryPcIdFromRaw(raw);
+  if(id) return id;
+  const t = String(raw||'').trim();
+  return inventoryPcLooksLikeUrl(t) ? t : '';
+}
 function inventoryPcReferenceChanged(){
   const raw = document.getElementById('edit-pricecharting-ref')?.value || '';
-  const id = inventoryPcIdFromRaw(raw);
+  const key = inventoryPcRefKeyFromRaw(raw);
+  const isUrl = inventoryPcLooksLikeUrl(raw);
   const status = document.getElementById('edit-pricecharting-status');
   if(!status) return;
-  status.style.color = raw && !id ? 'var(--red)' : 'var(--dim)';
-  if(inventoryPcReferenceState.verified?.id !== id) inventoryPcReferenceState.verified = null;
-  status.textContent = inventoryPcLooksLikeUrl(raw)
-    ? "This field needs the numeric PriceCharting ID, not the page URL -- PriceCharting/SportsCardsPro links don't contain that ID. Look for the numeric \"PriceCharting ID\" shown on the product page, or match by name in Research instead."
-    : raw && !id
-      ? 'Enter a numeric PriceCharting product ID.'
-      : id === inventoryPcReferenceState.originalId
-        ? 'Saved PriceCharting product #' + id + '. Click VERIFY to re-check it.'
-        : id ? 'Product #' + id + ' must be verified before saving.' : 'Paste the numeric PriceCharting/SportsCardsPro product ID to pin exact-match pricing.';
+  status.style.color = raw && !key ? 'var(--red)' : 'var(--dim)';
+  if(inventoryPcReferenceState.verified?.key !== key) inventoryPcReferenceState.verified = null;
+  status.textContent = raw && !key
+    ? 'Paste the numeric PriceCharting/SportsCardsPro product ID, or a full pricecharting.com/sportscardspro.com product page URL.'
+    : isUrl
+      ? 'Product page link ready -- tap VERIFY to resolve it.'
+      : key === inventoryPcReferenceState.originalId
+        ? 'Saved PriceCharting product #' + key + '. Click VERIFY to re-check it.'
+        : key ? 'Product #' + key + ' must be verified before saving.' : 'Paste the numeric PriceCharting/SportsCardsPro product ID or product page URL to pin exact-match pricing.';
 }
 function populateInventoryPcReference(item = {}){
   const id = String(item.pricechartingProductId || item.raw?.pricechartingProductId || '').trim();
@@ -24880,7 +24895,7 @@ function populateInventoryPcReference(item = {}){
   const status = document.getElementById('edit-pricecharting-status');
   if(status) {
     status.style.color = 'var(--dim)';
-    status.textContent = id ? 'Saved PriceCharting product #' + id + '. Click VERIFY to re-check it.' : 'Paste the numeric PriceCharting/SportsCardsPro product ID (shown as "PriceCharting ID" on the product page) to pin exact-match pricing.';
+    status.textContent = id ? 'Saved PriceCharting product #' + id + '. Click VERIFY to re-check it.' : 'Paste the numeric PriceCharting/SportsCardsPro product ID, or a full product page URL, to pin exact-match pricing.';
   }
 }
 async function verifyInventoryPriceChartingReference(){
@@ -24888,32 +24903,34 @@ async function verifyInventoryPriceChartingReference(){
   const status = document.getElementById('edit-pricecharting-status');
   const button = document.getElementById('edit-pricecharting-verify');
   const raw = input?.value || '';
-  const id = inventoryPcIdFromRaw(raw);
-  if(!id) {
-    if(status) {
-      status.style.color='var(--red)';
-      status.textContent = inventoryPcLooksLikeUrl(raw)
-        ? "This field needs the numeric PriceCharting ID, not the page URL -- that ID isn't in the URL for this site."
-        : 'Enter a numeric PriceCharting product ID.';
-    }
+  const key = inventoryPcRefKeyFromRaw(raw);
+  if(!key) {
+    if(status) { status.style.color='var(--red)'; status.textContent = 'Paste the numeric PriceCharting/SportsCardsPro product ID, or a full product page URL.'; }
     return null;
   }
   if(button) button.disabled = true;
-  if(status) { status.style.color='var(--gold)'; status.textContent='Checking PriceCharting #' + id + '…'; }
+  const isUrl = inventoryPcLooksLikeUrl(raw);
+  if(status) { status.style.color='var(--gold)'; status.textContent = isUrl ? 'Reading that product page…' : 'Checking PriceCharting #' + key + '…'; }
   try {
-    const res = await fetch(WORKER + '/pricing/pricecharting/product/' + encodeURIComponent(id), { cache:'no-store' });
-    const data = await res.json().catch(() => ({}));
-    if(!res.ok || !data.ok || !data.product) throw new Error(data.error || 'No PriceCharting product found for that ID.');
-    const product = data.product;
-    inventoryPcReferenceState.verified = { id, product, url:product.url || '' };
-    if(status) {
-      status.style.color='var(--g)';
-      status.textContent='✓ #' + id + ' · ' + (product.productName || 'Unnamed product') + (product.consoleName ? ' · ' + product.consoleName : '');
+    if(isUrl) {
+      const res = await fetch(WORKER + '/pricing/sportscardspro/resolve-url?' + new URLSearchParams({ url:key }).toString(), { cache:'no-store' });
+      const data = await res.json().catch(() => ({}));
+      if(!res.ok || !data.ok || !data.match) throw new Error(data.error || 'Could not read that product page.');
+      const m = data.match;
+      inventoryPcReferenceState.verified = { key, id:String(m.productId || ''), product:{ productName:m.name || '', consoleName:m.set || '' }, url:m.productUrl || key, cardNumber:m.card_number || '', printRun:m.printRun || '' };
+      if(status) { status.style.color='var(--g)'; status.textContent='✓ ' + (m.name || 'Unnamed product') + (m.set ? ' · ' + m.set : ''); }
+    } else {
+      const res = await fetch(WORKER + '/pricing/pricecharting/product/' + encodeURIComponent(key), { cache:'no-store' });
+      const data = await res.json().catch(() => ({}));
+      if(!res.ok || !data.ok || !data.product) throw new Error(data.error || 'No PriceCharting product found for that ID.');
+      const product = data.product;
+      inventoryPcReferenceState.verified = { key, id:key, product, url:product.url || '' };
+      if(status) { status.style.color='var(--g)'; status.textContent='✓ #' + key + ' · ' + (product.productName || 'Unnamed product') + (product.consoleName ? ' · ' + product.consoleName : ''); }
     }
     return inventoryPcReferenceState.verified;
   } catch(error) {
     inventoryPcReferenceState.verified = null;
-    if(status) { status.style.color='var(--red)'; status.textContent='Could not verify PriceCharting #' + id + ': ' + (error.message || error); }
+    if(status) { status.style.color='var(--red)'; status.textContent = (isUrl ? 'Could not read that product page: ' : 'Could not verify PriceCharting #' + key + ': ') + (error.message || error); }
     return null;
   } finally {
     if(button) button.disabled = false;
@@ -24921,22 +24938,25 @@ async function verifyInventoryPriceChartingReference(){
 }
 async function inventoryPcReferencePatch(item = {}){
   const raw = document.getElementById('edit-pricecharting-ref')?.value || '';
-  const id = inventoryPcIdFromRaw(raw);
-  if(!id) return { pricechartingProductId:'', pricechartingProductName:item.pricechartingProductId ? '' : (item.pricechartingProductName || '') };
-  let verified = inventoryPcReferenceState.verified?.id === id ? inventoryPcReferenceState.verified : null;
-  if(!verified && id !== inventoryPcReferenceState.originalId) verified = await verifyInventoryPriceChartingReference();
-  if(!verified && id !== inventoryPcReferenceState.originalId) throw new Error('Verify the changed PriceCharting product before saving.');
+  const key = inventoryPcRefKeyFromRaw(raw);
+  if(!key) return { pricechartingProductId:'', pricechartingProductName:item.pricechartingProductId ? '' : (item.pricechartingProductName || '') };
+  let verified = inventoryPcReferenceState.verified?.key === key ? inventoryPcReferenceState.verified : null;
+  if(!verified && key !== inventoryPcReferenceState.originalId) verified = await verifyInventoryPriceChartingReference();
+  if(!verified && key !== inventoryPcReferenceState.originalId) throw new Error('Verify the changed PriceCharting product before saving.');
   // Store report: pinning a sports card by its numeric PriceCharting ID
-  // (the store's usual way of linking one -- pasting the raw URL is
-  // rejected here since PriceCharting/SportsCardsPro URLs never contain
-  // the id) verified fine and showed the product name, but the actual
-  // product page link was never in this patch at all -- verifyInventory
-  // PriceChartingReference() fetches and stores it (verified.url), it just
-  // never made it into what actually gets saved.
+  // verified fine and showed the product name, but the actual product page
+  // link was never in this patch at all -- verifyInventoryPriceCharting
+  // Reference() fetches and stores it (verified.url), it just never made it
+  // into what actually gets saved. Also now backfills the print run/card
+  // number when a URL was resolved, so a pasted sports-card link doesn't
+  // just confirm the product but skips what the store already asked for
+  // print run to reach the Serial #/Numbered field too.
   return {
-    pricechartingProductId:id,
+    pricechartingProductId:verified?.id || '',
     pricechartingProductName:verified?.product?.productName || item.pricechartingProductName || '',
     providerUrl:verified?.url || item.providerUrl || '',
+    ...(verified?.cardNumber ? { card_number:verified.cardNumber } : {}),
+    ...(verified?.printRun ? { serial_number:'/' + verified.printRun } : {}),
   };
 }
 
@@ -25024,7 +25044,7 @@ function applyComicCandidateToEditForm(product){
   const pcInput = document.getElementById('edit-pricecharting-ref');
   if(pcInput && product.productId){
     pcInput.value = String(product.productId);
-    inventoryPcReferenceState = { originalId:inventoryPcReferenceState.originalId, verified:{ id:String(product.productId), product, url:product.url || '' } };
+    inventoryPcReferenceState = { originalId:inventoryPcReferenceState.originalId, verified:{ key:String(product.productId), id:String(product.productId), product, url:product.url || '' } };
     const pcStatus = document.getElementById('edit-pricecharting-status');
     if(pcStatus){ pcStatus.style.color='var(--g)'; pcStatus.textContent='✓ #' + product.productId + ' · ' + (product.productName || 'Unnamed product') + ' (from pasted link)'; }
   }
@@ -45475,7 +45495,7 @@ async function toppsLoadParallels(cardId){
   window.__arscaCloseModal = closeModal;
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.27.15-pc-reference-providerurl-fix" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.28.16-pc-reference-url-paste" defer></script>
 </body>
 </html>
 
