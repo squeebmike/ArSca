@@ -61,6 +61,19 @@ function text(value, max = 4000) {
   return repairMojibake(value).trim().slice(0, max);
 }
 
+function escapeHtml(value) {
+  return String(value == null ? '' : value).replace(/[&<>"']/g, ch => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[ch]));
+}
+
+function moneyLabel(cents) {
+  return new Intl.NumberFormat('en-US', { style:'currency', currency:'USD' }).format(Number(cents || 0) / 100);
+}
+
+function dateOnlyLabel(value) {
+  if (!value) return 'TBA';
+  return new Intl.DateTimeFormat('en-US', { timeZone:'UTC', month:'short', day:'numeric', year:'numeric' }).format(new Date(value + 'T12:00:00Z'));
+}
+
 function exactIdentifier(value) {
   return text(value, 80).replace(/\.0+$/, '');
 }
@@ -225,6 +238,61 @@ function publicSku(row, customerQty = 0) {
     waitlistOnly:!!row.is_incentive && !incentiveReady,
     flags:row.flags || {},
   };
+}
+
+// GET /preorder/{skuId} -- a single comic preorder's real, crawlable share
+// page. The actual shopping UI (/preorders, /shop) is 100% client-rendered,
+// so a link to either of those always shows Facebook/iMessage/etc. the same
+// generic sitewide preview no matter which cover someone meant to share --
+// there is no per-item HTML for a non-JS link-preview scraper to read, only
+// one static page-level og:title/og:description with no image. This route
+// exists solely to give a scraper real per-cover og:title/og:description/
+// og:image in the initial HTTP response; a real visitor with JS gets bounced
+// straight into the interactive app (/preorders?sku=...), which now opens
+// this exact cover's detail modal automatically (see handleDeepLink in
+// preorders.js) instead of just scrolling/filtering to it.
+async function preorderDetailPage(env, deps, skuId) {
+  const db = (p, o) => deps.supabaseAdminFetch(env, p, o);
+  const { data:skuRows } = await db(`comic_skus?id=eq.${encodeURIComponent(skuId)}&customer_enabled=eq.true&select=*&limit=1`);
+  const skuRow = skuRows?.[0];
+  if (!skuRow) return notFoundPreorderPage();
+  const [{ data:familyRows }, { data:cycleRows }] = await Promise.all([
+    db(`comic_title_families?id=eq.${encodeURIComponent(skuRow.family_id)}&select=*&limit=1`),
+    db(`foc_cycles?id=eq.${encodeURIComponent(skuRow.cycle_id)}&select=${catalogCycleSelect()}&limit=1`),
+  ]);
+  const familyRow = familyRows?.[0];
+  const cycleRow = cycleRows?.[0];
+  if (!familyRow || !cycleRow) return notFoundPreorderPage();
+  const sku = publicSku(skuRow);
+  const seriesName = text(familyRow.series_name, 300) || text(familyRow.title, 800);
+  const issueNumber = familyRow.issue_number || '';
+  const publisher = [text(familyRow.publisher, 300), text(familyRow.imprint, 300)].filter(Boolean).join(' · ');
+  const name = seriesName + (issueNumber ? ' #' + issueNumber : '') + ' · ' + (sku.variantLabel || 'Cover A');
+  const priceText = sku.priceRequired ? 'Price coming soon' : moneyLabel(sku.priceCents);
+  const description = [
+    priceText,
+    'Preorder deadline ' + dateOnlyLabel(cycleRow.foc_date),
+    publisher || null,
+    text(skuRow.description, 220) || text(familyRow.description, 220) || null,
+  ].filter(Boolean).join(' · ');
+  const title = `${name} | The Mana Pocket Comic Preorders`;
+  const appUrl = `/preorders?sku=${encodeURIComponent(skuId)}`;
+  const image = sku.coverImageUrl || '';
+  const html = `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">` +
+    `<title>${escapeHtml(title)}</title><meta name="description" content="${escapeHtml(description)}">` +
+    `<link rel="canonical" href="https://themanapocket.com/preorder/${encodeURIComponent(skuId)}">` +
+    `<meta property="og:type" content="product"><meta property="og:site_name" content="The Mana Pocket">` +
+    `<meta property="og:title" content="${escapeHtml(title)}"><meta property="og:description" content="${escapeHtml(description)}">` +
+    (image ? `<meta property="og:image" content="${escapeHtml(image)}"><meta name="twitter:card" content="summary_large_image">` : `<meta name="twitter:card" content="summary">`) +
+    `<style>body{margin:0;background:#10121a;color:#f5f5f2;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;padding:32px 20px}a{color:#8f55bd}.wrap{max-width:520px;margin:0 auto;text-align:center}img{max-width:220px;border-radius:12px;margin-bottom:16px}</style>` +
+    `</head><body><div class="wrap">${image ? `<img src="${escapeHtml(image)}" alt="">` : ''}<h1>${escapeHtml(name)}</h1><p>${escapeHtml(description)}</p><p><a href="${escapeHtml(appUrl)}">View &amp; preorder this cover →</a></p></div>` +
+    `<script>location.replace(${JSON.stringify(appUrl)});</script></body></html>`;
+  return new Response(html, { status:200, headers:{ 'Content-Type':'text/html;charset=UTF-8', 'Cache-Control':'public, max-age=300' } });
+}
+
+function notFoundPreorderPage() {
+  const html = `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>Not found | The Mana Pocket</title></head><body><p>That comic preorder was not found. <a href="/preorders">Browse comic preorders</a></p></body></html>`;
+  return new Response(html, { status:404, headers:{ 'Content-Type':'text/html;charset=UTF-8' } });
 }
 
 // eBay presale status per SKU for the admin FOC dashboard -- ELIGIBLE_NOW /
@@ -1368,6 +1436,10 @@ export async function syncFocStripeEvent(env, event, deps) {
 
 export async function handleFocRequest(request, env, url, deps) {
   const path=url.pathname;
+  if(path.startsWith('/preorder/')&&request.method==='GET'){
+    const skuId=decodeURIComponent(path.slice('/preorder/'.length).split('/')[0]||'');
+    return skuId?preorderDetailPage(env,deps,skuId):notFoundPreorderPage();
+  }
   if(path==='/public/shipping/quotes'&&request.method==='POST')return quoteShipping(request,env,deps);
   if(path==='/public/preorders'&&request.method==='GET'){
     const storeId=text(url.searchParams.get('store_id'),80);const db=(p,o)=>deps.supabaseAdminFetch(env,p,o);const requestedLimit=Number.parseInt(url.searchParams.get('limit'),10);const requestedPage=Number.isFinite(requestedLimit)&&requestedLimit>0?{limit:requestedLimit,offset:Number.parseInt(url.searchParams.get('offset'),10)||0}:null;const catalog=await loadCatalog(db,storeId,url.searchParams.get('cycle')||'',false,undefined,undefined,requestedPage);return catalog?deps.json({ok:true,...catalog}):deps.json({ok:false,error:'No FOC catalog is published yet'},404);
