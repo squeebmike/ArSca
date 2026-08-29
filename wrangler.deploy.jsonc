@@ -32,6 +32,7 @@
   },
   "workers_dev": true,
   "routes": [
-    { "pattern": "themanapocket.com/mtg*", "zone_name": "themanapocket.com" }
+    { "pattern": "themanapocket.com/mtg*", "zone_name": "themanapocket.com" },
+    { "pattern": "themanapocket.com/preorder*", "zone_name": "themanapocket.com" }
   ]
 }
