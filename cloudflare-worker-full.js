@@ -2481,6 +2481,15 @@ function buildEbayOfferBody(b, sku, locationKey, env) {
 // presale orders. Cached in KV for a day since the account's policy list
 // rarely changes; falls back to env.EBAY_FULFILLMENT_POLICY_ID (the
 // store's normal default) if no presale-named policy is found.
+// Store report: a live FOC listing published with the store's generic
+// default shipping policy ("USPS Ground Adv") instead of the presale-
+// specific clone -- even though that exact clone ("...- FOC 40D Handling")
+// already existed and was in active use on 20 other listings. Every
+// failure branch below silently returned the generic fallback with zero
+// logging, so there was no way to tell from outside which of several
+// possible causes (eBay list call failing, KV unavailable, etc) actually
+// happened. Logs every fallback now, the same visibility
+// resolveEbayNewConditionId already has for its own silent-fallback bug.
 async function resolveFocPresaleBasePolicyId(env, ebayToken) {
   const fallback = env.EBAY_FULFILLMENT_POLICY_ID || '';
   const kvKey = 'ebay_foc_fulfillment_policy:base';
@@ -2492,15 +2501,20 @@ async function resolveFocPresaleBasePolicyId(env, ebayToken) {
     const listRes = await fetch('https://api.ebay.com/sell/account/v1/fulfillment_policy?marketplace_id=EBAY_US', {
       headers: { 'Authorization': 'Bearer ' + ebayToken, 'Accept': 'application/json' },
     });
-    if (listRes.ok) {
-      const list = await listRes.json();
-      const presalePolicy = (list.fulfillmentPolicies || []).find(p => /presale/i.test(p.name || ''));
-      if (presalePolicy?.fulfillmentPolicyId) {
-        if (env.LBA_KV) await env.LBA_KV.put(kvKey, presalePolicy.fulfillmentPolicyId, { expirationTtl: 60 * 60 * 24 }).catch(() => {});
-        return presalePolicy.fulfillmentPolicyId;
-      }
+    if (!listRes.ok) {
+      console.error('resolveFocPresaleBasePolicyId: fulfillment_policy list failed', listRes.status, (await listRes.text().catch(() => '')).substring(0, 300));
+      return fallback;
     }
-  } catch (_) {}
+    const list = await listRes.json();
+    const presalePolicy = (list.fulfillmentPolicies || []).find(p => /presale/i.test(p.name || ''));
+    if (presalePolicy?.fulfillmentPolicyId) {
+      if (env.LBA_KV) await env.LBA_KV.put(kvKey, presalePolicy.fulfillmentPolicyId, { expirationTtl: 60 * 60 * 24 }).catch(() => {});
+      return presalePolicy.fulfillmentPolicyId;
+    }
+    console.error('resolveFocPresaleBasePolicyId: no policy with "presale" in its name found', JSON.stringify((list.fulfillmentPolicies || []).map(p => p.name)));
+  } catch (e) {
+    console.error('resolveFocPresaleBasePolicyId: threw', e.message);
+  }
   return fallback;
 }
 
@@ -2562,12 +2576,30 @@ async function resolveEbayNewConditionId(env, ebayToken, categoryId) {
   return fallback;
 }
 
+// Store report: a live FOC listing published with the generic default
+// shipping policy instead of its own "...- FOC 40D Handling" clone, even
+// though that exact clone already existed (in use on 20 other listings) --
+// discovered right after a bulk-listing run (many listings back to back).
+// eBay's Business Policy API REJECTS creating a second policy with a name
+// that already exists on the account -- and the per-(baseId,bucket) KV
+// cache below is the only thing that would normally stop this function
+// from re-attempting that exact create every time the same bucket comes up
+// again. If that cache write ever failed to land even once (KV hiccup,
+// first run before this function existed, etc), every later listing
+// needing that same bucket hit a duplicate-name rejection here and, same
+// as every other failure branch, silently fell back to the generic
+// default with no record of why. Now: (1) every failure branch is logged,
+// and (2) a failed create no longer gives up immediately -- it re-fetches
+// the policy list and reuses the existing policy of the exact name it was
+// about to create, since "already exists" means the real fix (the FOC
+// clone) is sitting right there, just not the one this lookup found.
 async function getFocPresaleFulfillmentPolicyId(env, ebayToken, handlingDaysNeeded) {
   const fallback = env.EBAY_FULFILLMENT_POLICY_ID || '';
   const baseId = (await resolveFocPresaleBasePolicyId(env, ebayToken)) || fallback;
   if (!baseId) return '';
   const bucket = Math.min(40, Math.max(5, Math.ceil(Math.max(1, handlingDaysNeeded) / 5) * 5));
   const kvKey = `ebay_foc_fulfillment_policy:${baseId}:${bucket}`;
+  let cloneName = '';
   try {
     if (env.LBA_KV) {
       const cached = await env.LBA_KV.get(kvKey);
@@ -2576,10 +2608,14 @@ async function getFocPresaleFulfillmentPolicyId(env, ebayToken, handlingDaysNeed
     const baseRes = await fetch(`https://api.ebay.com/sell/account/v1/fulfillment_policy/${encodeURIComponent(baseId)}`, {
       headers: { 'Authorization': 'Bearer ' + ebayToken, 'Accept': 'application/json' },
     });
-    if (!baseRes.ok) return fallback;
+    if (!baseRes.ok) {
+      console.error('getFocPresaleFulfillmentPolicyId: base policy lookup failed', baseId, baseRes.status, (await baseRes.text().catch(() => '')).substring(0, 300));
+      return fallback;
+    }
     const base = await baseRes.json();
+    cloneName = (String(base.name || 'Presale') + ` - FOC ${bucket}D Handling`).substring(0, 65);
     const createBody = {
-      name: (String(base.name || 'Presale') + ` - FOC ${bucket}D Handling`).substring(0, 65),
+      name: cloneName,
       marketplaceId: base.marketplaceId || 'EBAY_US',
       categoryTypes: base.categoryTypes,
       handlingTime: { value: bucket, unit: 'DAY' },
@@ -2596,14 +2632,48 @@ async function getFocPresaleFulfillmentPolicyId(env, ebayToken, handlingDaysNeed
       headers: { 'Authorization': 'Bearer ' + ebayToken, 'Content-Type': 'application/json', 'Content-Language': 'en-US' },
       body: JSON.stringify(createBody),
     });
-    if (!createRes.ok) return fallback;
+    if (!createRes.ok) {
+      const errText = (await createRes.text().catch(() => '')).substring(0, 500);
+      console.error('getFocPresaleFulfillmentPolicyId: create clone failed', cloneName, createRes.status, errText);
+      // A duplicate-name rejection means the real clone already exists --
+      // find it instead of giving up and losing the presale-specific
+      // shipping setup for this listing.
+      const existingId = await findEbayFulfillmentPolicyIdByName(env, ebayToken, cloneName);
+      if (existingId) {
+        if (env.LBA_KV) await env.LBA_KV.put(kvKey, existingId, { expirationTtl: 60 * 60 * 24 * 180 }).catch(() => {});
+        return existingId;
+      }
+      return fallback;
+    }
     const created = await createRes.json();
     const newId = created.fulfillmentPolicyId;
-    if (!newId) return fallback;
+    if (!newId) {
+      console.error('getFocPresaleFulfillmentPolicyId: create response had no fulfillmentPolicyId', cloneName, JSON.stringify(created).substring(0, 300));
+      return fallback;
+    }
     if (env.LBA_KV) await env.LBA_KV.put(kvKey, newId, { expirationTtl: 60 * 60 * 24 * 180 }).catch(() => {});
     return newId;
-  } catch (_) {
+  } catch (e) {
+    console.error('getFocPresaleFulfillmentPolicyId: threw', cloneName, e.message);
     return fallback;
+  }
+}
+// Exact-name lookup used when creating a fulfillment policy clone fails
+// because one of that exact name already exists (eBay rejects duplicate
+// policy names per account) -- reuses the existing policy's id instead of
+// falling back to the generic default and losing the presale-specific
+// shipping setup.
+async function findEbayFulfillmentPolicyIdByName(env, ebayToken, name) {
+  try {
+    const res = await fetch('https://api.ebay.com/sell/account/v1/fulfillment_policy?marketplace_id=EBAY_US', {
+      headers: { 'Authorization': 'Bearer ' + ebayToken, 'Accept': 'application/json' },
+    });
+    if (!res.ok) return '';
+    const list = await res.json();
+    const match = (list.fulfillmentPolicies || []).find(p => p.name === name);
+    return match?.fulfillmentPolicyId || '';
+  } catch (_) {
+    return '';
   }
 }
 
@@ -3324,7 +3394,7 @@ export default {
     // before anything is published) and the create endpoint (used as the
     // fallback whenever the client doesn't override a given field from its
     // own review screen).
-    function buildFocPresaleDefaults(sku, priceCents, onSaleDate) {
+    function buildFocPresaleDefaults(sku, priceCents, onSaleDate, issueNumber = '') {
       const onSaleLabel = onSaleDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
       // sku.variant_label sometimes already repeats the title verbatim (bad
       // FOC import data, e.g. variant_label === title) -- appending it
@@ -3347,10 +3417,26 @@ export default {
         `Expected on-sale/ship date: ${onSaleLabel}. Your order ships promptly once we receive stock from the distributor on or shortly after that date.`,
         sku.description || '',
       ].filter(Boolean).join('\n\n');
+      // Store report: every FOC eBay listing showed a full page of unchecked
+      // "Suggested item specifics -- powered by eBay.ai" (Tradition, Era,
+      // Language, Signed, Type, Unit of Sale, etc), forcing a manual check-
+      // and-apply pass on every single listing after publish. eBay only
+      // offers those as AI SUGGESTIONS when it has no real value for that
+      // aspect from the listing itself -- customAspects below previously
+      // only ever sent Publisher/Writer/Artist/Cover Artist/Release Date,
+      // none of which overlap the fields eBay was left to guess at. These
+      // are either derived from data already on hand (Issue Number,
+      // Publication Year) or safe fixed defaults for a brand-new, US-
+      // published, non-vintage single-issue presale comic -- exactly what
+      // every FOC listing this creates actually is.
       const customAspects = {
         Publisher: sku.publisher || '', Writer: sku.writer || '',
         Artist: sku.interior_artist || '', 'Cover Artist': sku.cover_artist || '',
         'Release Date': onSaleLabel,
+        'Issue Number': issueNumber || '', 'Publication Year': String(onSaleDate.getUTCFullYear()),
+        Tradition: 'US Comics', Era: 'Modern Age (1992-Now)', Language: 'English',
+        Type: 'Comic Book', 'Unit of Sale': 'Single Unit', Style: 'Color',
+        Signed: 'No', Personalized: 'No', Inscribed: 'No', Vintage: 'No',
       };
       // PRH's FOC import already captures the distributor's own solicitation
       // copy into sku.description (scripts/foc-preorders.mjs normalizePrhRow)
@@ -3409,6 +3495,20 @@ export default {
       if (!sku) return json({ ok: false, error: 'FOC SKU not found for this store' }, 404);
       if (!sku.on_sale_date) return json({ ok: false, error: 'This SKU has no on-sale date -- cannot compute eBay presale eligibility' }, 400);
 
+      // Issue number lives on the title family, not the SKU itself (every
+      // variant cover of the same issue shares one family row) -- fetched
+      // here so buildFocPresaleDefaults can send it as a real "Issue Number"
+      // item specific instead of leaving eBay's own AI to guess one from the
+      // cover photo, unchecked, on every single listing (see the aspects
+      // comment below for the full story).
+      let issueNumber = '';
+      if (sku.family_id) {
+        try {
+          const { data: familyRows } = await supabaseAdminFetch(env, `comic_title_families?id=eq.${encodeURIComponent(sku.family_id)}&select=issue_number`);
+          issueNumber = familyRows?.[0]?.issue_number || '';
+        } catch (_) {}
+      }
+
       const safeBusinessDays = await getEbayPresaleSafeBusinessDays(env, storeId);
 
       const onSaleDate = new Date(String(sku.on_sale_date).includes('T') ? sku.on_sale_date : sku.on_sale_date + 'T00:00:00Z');
@@ -3427,7 +3527,7 @@ export default {
       const priceCents = Number(sku.customer_price_cents || sku.msrp_cents || 0);
       if (!priceCents) return json({ ok: false, error: 'This SKU has no price set -- set a customer price before creating a presale listing' }, 400);
 
-      const defaults = buildFocPresaleDefaults(sku, priceCents, onSaleDate);
+      const defaults = buildFocPresaleDefaults(sku, priceCents, onSaleDate, issueNumber);
       // eBay computes the buyer's delivery estimate as handling time +
       // carrier transit FROM THE PURCHASE DATE -- listing this under the
       // store's normal fast-handling policy would promise delivery before
