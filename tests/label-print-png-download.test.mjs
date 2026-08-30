@@ -22,7 +22,12 @@ assert.match(dashboard, /if\(btn\)\{ btn\.disabled = false; btn\.textContent = b
 // generateLabelCodeCanvas helper (same contract as the print path), guards
 // against the barcode library not being loaded yet, and requires at least
 // one item in the batch before doing any work ──
-assert.match(dashboard, /if\(!labelPrintBatch\.length\) return alert\('Add at least one item to print'\);\s*\n\s*if\(typeof JsBarcode === 'undefined'\) return alert/, 'downloadInventoryLabelPngs must guard on an empty batch and a not-yet-loaded barcode library, same as printInventoryLabels');
+{
+  const fnStart = dashboard.indexOf('async function downloadInventoryLabelPngs(){');
+  const head = dashboard.slice(fnStart, fnStart + 400);
+  assert.match(head, /if\(!labelPrintBatch\.length\) return alert\('Add at least one item to print'\);/, 'downloadInventoryLabelPngs must guard on an empty batch');
+  assert.match(head, /if\(typeof JsBarcode === 'undefined' \|\| typeof qrcode === 'undefined'\) return alert\('Barcode library still loading -- try again in a moment'\);/, 'downloadInventoryLabelPngs must guard on both not-yet-loaded code libraries, same as printInventoryLabels');
+}
 assert.match(dashboard, /const codeValue = codeStyle === 'qr' \? labelQrPayload\(b\) : \(b\.sku \|\| b\.id\);/, 'the code value must be resolved once before either layout branch generates its code image');
 assert.match(dashboard, /const codeCanvas = await generateLabelCodeCanvas\(codeValue, codeStyle, Math\.round\(codeSize\)\);/, 'the wrap layout must render its scan code onto an offscreen canvas at the code\'s real on-label size, not a fixed size that then gets blurrily scaled to fit');
 assert.match(dashboard, /const codeCanvas = await generateLabelCodeCanvas\(codeValue, codeStyle, Math\.round\(codeStyle === 'qr' \? codeH : Math\.max\(codeW, codeH\)\)\);/, 'the standard layout must likewise generate its scan code at its real on-label size');
