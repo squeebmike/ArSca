@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.30.02-print-image-decode-race">
+<meta name="version" content="2026.08.30.03-wrap-qr-fill-space">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1638,16 +1638,16 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.30.02-print-image-decode-race" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.30.02-print-image-decode-race" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.30.02-print-image-decode-race" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.08.30.02-print-image-decode-race" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.30.02-print-image-decode-race" defer></script>
-<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.08.30.02-print-image-decode-race" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.30.02-print-image-decode-race" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.30.02-print-image-decode-race" defer></script>
-<script src="scripts/pokemon/offline-browser.js?v=2026.08.30.02-print-image-decode-race" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.30.02-print-image-decode-race" defer></script>
+<script src="scripts/query-routing.js?v=2026.08.30.03-wrap-qr-fill-space" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.30.03-wrap-qr-fill-space" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.30.03-wrap-qr-fill-space" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.08.30.03-wrap-qr-fill-space" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.30.03-wrap-qr-fill-space" defer></script>
+<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.08.30.03-wrap-qr-fill-space" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.30.03-wrap-qr-fill-space" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.30.03-wrap-qr-fill-space" defer></script>
+<script src="scripts/pokemon/offline-browser.js?v=2026.08.30.03-wrap-qr-fill-space" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.30.03-wrap-qr-fill-space" defer></script>
 </head>
 <body>
 
@@ -1676,11 +1676,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.30.02-print-image-decode-race</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.30.03-wrap-qr-fill-space</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.30.02-print-image-decode-race</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.30.03-wrap-qr-fill-space</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1698,7 +1698,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.30.02-print-image-decode-race</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.30.03-wrap-qr-fill-space</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3711,7 +3711,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.30.02-print-image-decode-race';
+const APP_VERSION = '2026.08.30.03-wrap-qr-fill-space';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -42581,8 +42581,22 @@ async function printInventoryLabels(){
       // browser's own high-quality downsampling handle it instead.
       const codeGenSize = isWrap ? 500 : 260;
       const canvas = await generateLabelCodeCanvas(codeStyle === 'qr' ? labelQrPayload(b) : (b.sku || b.id), codeStyle, codeGenSize);
-      const imgHeight = isWrap ? (isRoll ? 62 : 70) : (isRoll ? 30 : 36);
-      barcodeImg = `<img src="${canvas.toDataURL('image/png')}" style="width:100%;height:${imgHeight}px;object-fit:contain">`;
+      // Store report: the QR was cutting off a little on a real direct
+      // print. A hardcoded height guess (62px/70px) here was actually
+      // TALLER than the real remaining room on the back face once the shop
+      // name line, the gap, and the face's own padding were accounted for
+      // -- .wrap-back clips overflow, so the last couple rows of modules
+      // were silently sliced off. flex:1 (with min-height:0, which
+      // overrides a flex item's default refusal to shrink below its
+      // content size) hands the image whatever space is actually left
+      // after layout, computed by the browser instead of guessed here, so
+      // it can never overflow -- and, freed from a conservative fixed
+      // guess, fills noticeably more of the face than before. The standard
+      // (non-wrap) layout isn't flexed the same way, so it keeps its fixed
+      // on-label height.
+      const imgHeight = isRoll ? 30 : 36;
+      const imgStyle = isWrap ? 'width:100%;flex:1;min-height:0;object-fit:contain' : `width:100%;height:${imgHeight}px;object-fit:contain`;
+      barcodeImg = `<img src="${canvas.toDataURL('image/png')}" style="${imgStyle}">`;
     } catch(e) { barcodeImg = ''; }
     labelParts.push(isWrap ? `<div class="label wrap">
         <div class="wrap-front">
@@ -42658,7 +42672,7 @@ async function printInventoryLabels(){
       .label.wrap { flex-direction:row !important; padding:0 !important; }
       .label.wrap .wrap-front, .label.wrap .wrap-back { width:50%; height:100%; box-sizing:border-box; display:flex; flex-direction:column; align-items:center; overflow:hidden; }
       .label.wrap .wrap-front { padding:10px 8px 5px; justify-content:flex-start; gap:5px; border-right:2px dashed #000; }
-      .label.wrap .wrap-back { padding:12px 6px 5px; justify-content:flex-start; gap:8px; }
+      .label.wrap .wrap-back { padding:6px 4px 4px; justify-content:flex-start; gap:4px; }
       .wrap-shopname { font-size:9px; font-weight:700; letter-spacing:.03em; text-align:center; }
       .wrap-name { font-size:8px; font-weight:700; line-height:1.1; max-height:27px; overflow:hidden; text-align:center; }
       .wrap-badge { font-size:6px; font-weight:700; text-transform:uppercase; text-align:center; }
@@ -45660,7 +45674,7 @@ async function toppsLoadParallels(cardId){
   window.__arscaCloseModal = closeModal;
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.30.02-print-image-decode-race" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.30.03-wrap-qr-fill-space" defer></script>
 </body>
 </html>
 
