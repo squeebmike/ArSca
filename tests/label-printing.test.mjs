@@ -45,10 +45,13 @@ console.log('labelBarcodeValue functional checks passed');
 // ── Functional check: batch add/remove/qty logic ────────────────────
 {
   const barcodeSrc = dashboard.match(/function labelBarcodeValue\(item\)\{[\s\S]*?\n\}/)?.[0];
+  const badgeSrc = dashboard.match(/function labelBadgeText\(item\)\{[\s\S]*?\n\}/)?.[0];
+  const metaSrc = dashboard.match(/function labelMetaText\(item\)\{[\s\S]*?\}/)?.[0];
+  const entrySrc = dashboard.match(/function labelBatchEntryFromItem\(item\)\{[\s\S]*?\n\}/)?.[0];
   const addSrc = dashboard.match(/function addToLabelPrintBatch\(itemId\)\{[\s\S]*?\n\}/)?.[0];
   const removeSrc = dashboard.match(/function removeFromLabelPrintBatch\(itemId\)\{[\s\S]*?\n\}/)?.[0];
   const qtySrc = dashboard.match(/function setLabelPrintQty\(itemId, qty\)\{[\s\S]*?\n\}/)?.[0];
-  assert.ok(barcodeSrc && addSrc && removeSrc && qtySrc, 'could not extract batch functions for functional testing');
+  assert.ok(barcodeSrc && badgeSrc && metaSrc && entrySrc && addSrc && removeSrc && qtySrc, 'could not extract batch functions for functional testing');
 
   const noop = () => {};
   const document = { getElementById: () => null };
@@ -65,6 +68,9 @@ console.log('labelBarcodeValue functional checks passed');
     'document', 'all', 'inventoryListPrice', 'fd$', 'escHtml', 'renderLabelPrintBatchList',
     `let labelPrintBatch = [];
      ${barcodeSrc}
+     ${badgeSrc}
+     ${metaSrc}
+     ${entrySrc}
      ${addSrc}
      ${removeSrc}
      ${qtySrc}
