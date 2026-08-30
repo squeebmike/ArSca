@@ -59,9 +59,18 @@ assert.match(dashboard, /const codeGenSize = isWrap \? 500 : 260;/, 'the wrap QR
 // neighbor (image-rendering:pixelated) on that downscale instead produced
 // visible aliasing/speckle on the dense QR pattern, confirmed against a real
 // print-preview screenshot.
-assert.ok(!/barcodeImg = `<img src="\$\{canvas\.toDataURL\('image\/png'\)\}" style="width:100%;height:\$\{imgHeight\}px;object-fit:contain;image-rendering:pixelated">`;/.test(dashboard),
+assert.ok(!/image-rendering:pixelated/.test(dashboard.slice(dashboard.indexOf('const codeGenSize'), dashboard.indexOf('} catch(e) { barcodeImg'))),
   'the print-preview code image must not force nearest-neighbor rendering while being downscaled from its oversized generation size -- that aliases the QR instead of cleanly averaging it');
-assert.match(dashboard, /barcodeImg = `<img src="\$\{canvas\.toDataURL\('image\/png'\)\}" style="width:100%;height:\$\{imgHeight\}px;object-fit:contain">`;/,
+// Store report: a fixed height guess here (62px/70px) was actually taller
+// than the real remaining room on the back face once the shop name line,
+// the gap, and the face's own padding were accounted for -- .wrap-back
+// clips overflow, so a real print sliced off the last couple rows of QR
+// modules. flex:1 (min-height:0 overrides a flex item's default refusal to
+// shrink below its content size) hands the image whatever space layout
+// actually leaves, computed by the browser instead of guessed here.
+assert.match(dashboard, /const imgStyle = isWrap \? 'width:100%;flex:1;min-height:0;object-fit:contain' : `width:100%;height:\$\{imgHeight\}px;object-fit:contain`;/,
+  'the wrap back face\'s code image must flex to fill whatever space is actually left, not a fixed height guess that can overflow and get clipped');
+assert.match(dashboard, /barcodeImg = `<img src="\$\{canvas\.toDataURL\('image\/png'\)\}" style="\$\{imgStyle\}">`;/,
   'the print-preview code image must let the browser use its own smooth downscaling');
 assert.match(dashboard, /\.label\.wrap \{ flex-direction:row !important; padding:0 !important; \}/, 'the wrap layout must lay the two faces out side by side with a fold line between them');
 // Solid black, not the earlier #999 gray -- gray barely survives a
@@ -72,7 +81,11 @@ assert.match(dashboard, /\.label\.wrap \{ flex-direction:row !important; padding
 assert.match(dashboard, /border-right:2px dashed #000;/, 'a solid-black dashed fold line must separate the front and back faces so it actually survives a monochrome print, not a gray line that fades away');
 assert.ok(!/border-right:1px dashed #999;/.test(dashboard.slice(dashboard.indexOf('const wrapStyle'), dashboard.indexOf('w.document.write'))), 'the wrap fold line must not still be the old barely-visible gray');
 assert.match(dashboard, /\.label\.wrap \.wrap-front \{ padding:10px 8px 5px; justify-content:flex-start; gap:5px;/, 'the front face must have extra top padding so the item name isn\'t flush against the label edge, and a bit more gap between stacked elements to leave room for longer names');
-assert.match(dashboard, /\.label\.wrap \.wrap-back \{ padding:12px 6px 5px; justify-content:flex-start; gap:8px; \}/, 'the back face must have extra top padding so the shop name isn\'t flush against the label edge');
+// Padding/gap tightened (was 12px 6px 5px / gap:8px) -- store report: the
+// old, more generous spacing left less real room for the QR than the fixed
+// imgHeight guess assumed, which is exactly what caused a real print to
+// clip the QR. Still enough top padding to keep the shop name off the edge.
+assert.match(dashboard, /\.label\.wrap \.wrap-back \{ padding:6px 4px 4px; justify-content:flex-start; gap:4px; \}/, 'the back face must still have some top padding so the shop name isn\'t flush against the label edge, but tight enough to leave real room for the QR');
 // Every wrap-face text weight must be a real "700" (bold) -- confirmed
 // against a real print-preview screenshot that wrap-shopname and
 // wrap-condition (previously 800, unlike every other element here) looked
