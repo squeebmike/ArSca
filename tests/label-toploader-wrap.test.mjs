@@ -80,19 +80,31 @@ assert.match(dashboard, /\.label\.wrap \{ flex-direction:row !important; padding
 // black; this brings the browser-print path in line with it.
 assert.match(dashboard, /border-right:2px dashed #000;/, 'a solid-black dashed fold line must separate the front and back faces so it actually survives a monochrome print, not a gray line that fades away');
 assert.ok(!/border-right:1px dashed #999;/.test(dashboard.slice(dashboard.indexOf('const wrapStyle'), dashboard.indexOf('w.document.write'))), 'the wrap fold line must not still be the old barely-visible gray');
-assert.match(dashboard, /\.label\.wrap \.wrap-front \{ padding:10px 8px 5px; justify-content:flex-start; gap:5px;/, 'the front face must have extra top padding so the item name isn\'t flush against the label edge, and a bit more gap between stacked elements to leave room for longer names');
+assert.match(dashboard, /\.label\.wrap \.wrap-front \{ width:44%; padding:10px 8px 5px; justify-content:flex-start; gap:5px;/, 'the front face must have extra top padding so the item name isn\'t flush against the label edge, and a bit more gap between stacked elements to leave room for longer names');
 // Padding/gap tightened (was 12px 6px 5px / gap:8px) -- store report: the
 // old, more generous spacing left less real room for the QR than the fixed
 // imgHeight guess assumed, which is exactly what caused a real print to
 // clip the QR. Still enough top padding to keep the shop name off the edge.
-assert.match(dashboard, /\.label\.wrap \.wrap-back \{ padding:6px 4px 4px; justify-content:flex-start; gap:4px; \}/, 'the back face must still have some top padding so the shop name isn\'t flush against the label edge, but tight enough to leave real room for the QR');
+// Width shifted from an even 50/50 split (was 44/56 -- store report: the QR
+// still looked small even once it stopped clipping. A square code inside
+// an evenly-split face is capped by whichever is tighter, width or height
+// -- here it's width, and the front face's own content doesn't need as
+// much room as an even split gave it.
+assert.match(dashboard, /\.label\.wrap \.wrap-back \{ width:56%; padding:6px 4px 4px; justify-content:flex-start; gap:4px; \}/, 'the back face must get more than half the label\'s width so the QR has real room to grow into, and still have some top padding so the shop name isn\'t flush against the label edge');
 // Every wrap-face text weight must be a real "700" (bold) -- confirmed
 // against a real print-preview screenshot that wrap-shopname and
 // wrap-condition (previously 800, unlike every other element here) looked
 // noticeably softer/grainier: "sans-serif" has no guaranteed real 800/900
 // face, so a requested weight with no matching real face gets synthesized
 // by algorithmically over-thickening the true 700 outline.
-assert.match(dashboard, /\.wrap-shopname \{ font-size:9px; font-weight:700; letter-spacing:\.03em; text-align:center; \}/, 'the shop name must use the same real bold weight as every other element on the label, not a synthesized 800');
+// One line, not two -- store report: "THE MANA POCKET" was wrapping to
+// "THE MANA" / "POCKET" on a real print, eating an extra line of height
+// the QR could otherwise have. Shrunk from 9px and the letter-spacing
+// pulled in (was pushing width right up against the face's, which is
+// exactly what forced the wrap); white-space:nowrap is the actual
+// guarantee -- the smaller size/spacing just keeps that from clipping
+// instead of wrapping.
+assert.match(dashboard, /\.wrap-shopname \{ font-size:8px; font-weight:700; letter-spacing:\.01em; text-align:center; white-space:nowrap; \}/, 'the shop name must use the same real bold weight as every other element on the label, sized and spaced to fit on one line, with nowrap as the actual guarantee it never wraps to two');
 // 3 lines now (was 2, max-height 18px) so a long item name has more room
 // before truncating.
 assert.match(dashboard, /\.wrap-name \{ font-size:8px; font-weight:700; line-height:1\.1; max-height:27px; overflow:hidden; text-align:center; \}/, 'the item name must allow up to 3 lines before truncating, not just 2');

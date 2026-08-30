@@ -25,7 +25,7 @@ assert.doesNotMatch(html, /isWrap \? \(isRoll \? 62 : 70\)/, 'the old oversized 
 
 // Padding/gap tightened so flex actually has more real room to hand the
 // image, not just avoiding overflow at the old cramped size.
-assert.match(html, /\.label\.wrap \.wrap-back \{ padding:6px 4px 4px; justify-content:flex-start; gap:4px; \}/,
-  'wrap-back padding/gap must be tightened to free up real room for the QR, not just barely avoid clipping at the old size');
+assert.match(html, /\.label\.wrap \.wrap-back \{ width:56%; padding:6px 4px 4px; justify-content:flex-start; gap:4px; \}/,
+  'wrap-back padding/gap must be tightened to free up real room for the QR, not just barely avoid clipping at the old size, and must get more than half the label\'s width');
 
 console.log('Wrap QR fills back face contract checks passed');
