@@ -46,7 +46,7 @@ assert.match(dashboard, /const isWrap = layout === 'wrap';/, 'printInventoryLabe
 // can't tell two different items' labels apart. The SKU is always unique,
 // so it's what actually lets a loose label get matched back to the exact
 // inventory record.
-assert.match(dashboard, /<div class="wrap-front">\s*\n\s*<div class="wrap-name">\$\{escHtml\(b\.name\)\}<\/div>\s*\n\s*\$\{b\.badge \? `<div class="wrap-badge">\$\{escHtml\(b\.badge\)\}<\/div>` : ''\}\s*\n\s*<div class="wrap-price">\$\{escHtml\(fdLabelPrice\$\(b\.price\)\.slice\(1\)\)\}<\/div>\s*\n\s*<div class="wrap-bottom-row"><span class="wrap-condition">\$\{escHtml\(b\.condition \|\| ''\)\}<\/span><span class="wrap-sku">\$\{escHtml\(b\.sku \|\| ''\)\}<\/span><\/div>\s*\n\s*<\/div>/, 'the front face must show the item name, an optional badge, a whole-dollar price with no "$" glyph, and a condition+SKU row in that order');
+assert.match(dashboard, /<div class="wrap-front">\s*\n\s*<div class="wrap-name">\$\{escHtml\(b\.name\)\}<\/div>\s*\n\s*\$\{b\.badge \? `<div class="wrap-badge">\$\{escHtml\(b\.badge\)\}<\/div>` : ''\}\s*\n\s*<div class="wrap-price">\$\{escHtml\(fdLabelPrice\$\(b\.price\)\.slice\(1\)\)\}<\/div>\s*\n\s*<div class="wrap-bottom-row"><span class="wrap-condition">\$\{escHtml\(b\.condition \|\| ''\)\}<\/span><span class="wrap-meta">\$\{escHtml\(b\.meta \|\| ''\)\}<\/span><\/div>\s*\n\s*<\/div>/, 'the front face must show the item name, an optional badge, a whole-dollar price with no "$" glyph, and a condition+meta row in that order');
 assert.ok(!/<div class="wrap-front">[\s\S]{0,20}label-store/.test(dashboard), 'the wrap front face must not carry the store name header the standard layout uses');
 assert.match(dashboard, /<div class="wrap-back">\s*\n\s*<div class="wrap-shopname">THE MANA POCKET<\/div>\s*\n\s*\$\{barcodeImg\}\s*\n\s*<\/div>/, 'the back face must carry only the shop name as plain text and the scan code -- no image logo, no separate SKU text (the SKU lives on the front face now)');
 assert.ok(!/wrap-logo/.test(dashboard), 'the illustrated logo image class must be fully removed -- it was confirmed unreadable on a real printed label');
@@ -86,11 +86,13 @@ assert.match(dashboard, /\.wrap-name \{ font-size:8px; font-weight:700; line-hei
 assert.match(dashboard, /\.wrap-badge \{ font-size:6px; font-weight:700; text-transform:uppercase; text-align:center; \}/, 'the badge (whichever one applies) must be bold -- an unbolded pass printed noticeably less crisp than every other element on a real thermal print');
 assert.match(dashboard, /\.wrap-bottom-row \{ width:100%; display:flex; justify-content:space-between; align-items:baseline; gap:4px; \}/, 'condition and SKU must share one full-width row so SKU doesn\'t need its own extra vertical space');
 assert.match(dashboard, /\.wrap-condition \{ font-size:11px; font-weight:700; text-transform:uppercase; flex-shrink:0; \}/, 'the condition must use the same real bold weight as every other element on the label, not a synthesized 800, and must never shrink -- it\'s short and always needs to render fully');
-// A bare internal UUID (the common case when there's no real UPC/SKU) has
-// no natural break points and no flexbox min-width:0/wrapping, so it never
-// shrunk to fit and always overflowed straight through the condition badge
-// on a real print -- confirmed against a real printed label photo.
-assert.match(dashboard, /\.wrap-sku \{ font-size:6px; font-weight:400; color:#555; min-width:0; word-break:break-all; text-align:right; \}/, 'the SKU must be able to shrink and wrap onto multiple lines instead of overflowing through the condition badge');
+// The SKU/UPC that used to render here is gone -- store report: nobody
+// reads a long id off a shelf, and (even after an earlier word-break fix)
+// it kept crowding condition and contributing to real print cutoff. It's
+// set/year now, truncated with an ellipsis if too long rather than any
+// wrapping/breaking trick, so it can never visually overflow this row no
+// matter what text lands in it.
+assert.match(dashboard, /\.wrap-meta \{ font-size:6px; font-weight:400; color:#555; flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-align:right; \}/, 'meta must truncate with an ellipsis instead of any wrap/word-break trick, so it can never overflow through the condition badge');
 assert.ok(!/font-weight:800/.test(dashboard.slice(dashboard.indexOf('const wrapStyle'), dashboard.indexOf('w.document.write'))), 'no wrap-face text may request a synthesized 800 weight');
 // Sized down slightly from 27px to 24px (still clearly the label's dominant
 // element) specifically to free up a bit more vertical room above it for
