@@ -18209,8 +18209,8 @@ function renderReportsResults(result, groupBy){
     </div>
     <div class="owner-section-grid" style="grid-template-columns:1fr;margin-top:14px">
       <div class="owner-mini-panel">
-        <div class="ph">PAYMENT METHOD MIX <span style="font-size:9px;color:var(--dim)">in-person POS only</span></div>
-        <div style="font-family:var(--font-mono);font-size:9px;color:var(--dim);margin:4px 0 8px">eBay, Whatnot, and storefront/FOC preorder sales aren't included here -- they're separate order systems that don't flow through this register ledger.</div>
+        <div class="ph">PAYMENT METHOD MIX</div>
+        <div style="font-family:var(--font-mono);font-size:9px;color:var(--dim);margin:4px 0 8px">Includes eBay (auto-synced) and Whatnot/manual external sales as their own buckets, plus storefront/FOC preorder payments -- those share the "Card / Stripe" bucket with in-person card sales, since both record the same payment method label.</div>
         ${reportsBarRows(result.paymentList.map(p => [p.label, p.amount]), { color:'var(--gold)', empty:'NO PAYMENTS' })}
       </div>
     </div>
