@@ -3041,89 +3041,6 @@ async function scannerFetchJson(path, options = {}){
   return data;
 }
 
-function scannerNormalizeCacheText(value = ''){
-  return String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9/]+/g, ' ').trim();
-}
-
-function scannerPokemonIntent(q = '', category = ''){
-  const text = scannerNormalizeCacheText([q, category].join(' '));
-  return /pokemon|poke|pikachu|charizard|umbreon|bulbasaur|squirtle|charmander|mewtwo|alakazam|151|evolving skies/.test(text);
-}
-
-function scannerPokemonCardKey(row = {}, query = ''){
-  const slug = v => scannerNormalizeCacheText(v).replace(/\s+/g, '-').replace(/^-|-$/g, '');
-  return ['pokemon', slug(row.set || row.setName || ''), slug(row.name || query || ''), scannerNormalizeCacheText(row.card_number || row.cardNumber || ''), slug(row.language || 'english'), slug(row.selectedVariant?.finish || row.finish || '')].filter(Boolean).join('|');
-}
-
-function scannerPokemonDb(){
-  if(!('indexedDB' in window)) return Promise.reject(new Error('IndexedDB unavailable'));
-  if(window._scannerPokemonDb) return window._scannerPokemonDb;
-  window._scannerPokemonDb = new Promise((resolve, reject) => {
-    const req = indexedDB.open('walkoff_pokemon_cache_v1', 1);
-    req.onupgradeneeded = () => {
-      const db = req.result;
-      if(!db.objectStoreNames.contains('cards')) db.createObjectStore('cards', { keyPath:'cardKey' });
-      if(!db.objectStoreNames.contains('comps')) db.createObjectStore('comps', { keyPath:'id' });
-      if(!db.objectStoreNames.contains('meta')) db.createObjectStore('meta', { keyPath:'key' });
-      if(!db.objectStoreNames.contains('images')) db.createObjectStore('images', { keyPath:'cardKey' });
-    };
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error);
-  });
-  return window._scannerPokemonDb;
-}
-
-async function scannerPokemonPut(store, value){
-  const db = await scannerPokemonDb();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(store, 'readwrite');
-    tx.objectStore(store).put(value);
-    tx.oncomplete = () => resolve(value);
-    tx.onerror = () => reject(tx.error);
-  });
-}
-
-async function scannerPokemonAll(store){
-  const db = await scannerPokemonDb();
-  return new Promise((resolve, reject) => {
-    const req = db.transaction(store, 'readonly').objectStore(store).getAll();
-    req.onsuccess = () => resolve(req.result || []);
-    req.onerror = () => reject(req.error);
-  });
-}
-
-async function scannerSearchPokemonCache(query, category = ''){
-  if(!scannerPokemonIntent(query, category)) return [];
-  const terms = scannerNormalizeCacheText(query).split(/\s+/).filter(Boolean);
-  const rows = await scannerPokemonAll('cards').catch(() => []);
-  return rows.filter(r => r.storeId === getScannerActiveStoreId()).filter(r => {
-    const hay = r.searchText || scannerNormalizeCacheText(JSON.stringify(r.card || {}));
-    return terms.every(t => hay.includes(t));
-  }).sort((a,b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0)).slice(0, 12).map(r => ({
-    ...(r.card || {}),
-    source:r.card?.source || 'pokemon_cache',
-    priceSource:(r.card?.priceSource || 'Pokemon cache') + ' (cached)',
-    cache:{ state:navigator.onLine ? 'cached' : 'offline', updatedAt:r.updatedAt, source:r.source || 'Pokemon cache', cardKey:r.cardKey }
-  }));
-}
-
-async function scannerSavePokemonCache(query, matches = []){
-  const pokemon = (matches || []).filter(m => scannerPokemonIntent([m.name,m.set,m.card_number].join(' '), m.category));
-  if(!pokemon.length) return;
-  const now = new Date().toISOString();
-  await Promise.all(pokemon.map(m => scannerPokemonPut('cards', {
-    cardKey:scannerPokemonCardKey(m, query),
-    storeId:getScannerActiveStoreId(),
-    query,
-    searchText:scannerNormalizeCacheText([query,m.name,m.set,m.card_number,m.category,m.selectedVariant?.finish].join(' ')),
-    card:{ ...m, cache:{ state:'cached', updatedAt:now, source:m.priceSource || m.source || 'Scanner Pokemon lookup' } },
-    updatedAt:now,
-    source:m.priceSource || m.source || 'Scanner Pokemon lookup',
-    imageUrl:m.imageUrl || ''
-  })));
-  await scannerPokemonPut('meta', { key:'lastPokemonSyncAt', value:now });
-}
-
 async function scannerUnifiedSearch(query, category = ''){
   const q = String(query || '').trim();
   if(!q) return [];
@@ -3136,12 +3053,6 @@ async function scannerUnifiedSearch(query, category = ''){
     seen.add(key);
     matches.push(item);
   });
-  const cached = await scannerSearchPokemonCache(q, category);
-  cached.forEach(m => {
-    const key = ['cache',m.name,m.set,m.card_number].join('|').toLowerCase();
-    if(!seen.has(key)) { seen.add(key); matches.push(m); }
-  });
-  if(cached.length && !navigator.onLine) return cached;
   const pcCategory = scannerCategoryIntent({}, category);
   const pcParams = (extra = {}) => {
     const params = new URLSearchParams({ q, ...extra });
@@ -3168,7 +3079,6 @@ async function scannerUnifiedSearch(query, category = ''){
   const primary = matches.filter(m => scannerStrictAllows(m, strict, true));
   const fallback = strict.mods.length && !primary.length ? matches.filter(m => scannerStrictAllows(m, strict, false)).map(m => ({ ...m, closestStrictFallback:true })) : [];
   const ranked = [...primary, ...fallback].sort((a,b) => (b.confidenceScore + (b.marketPrice?30:0) + (b.availableVariantCount?20:0) - (b.closestStrictFallback?100:0)) - (a.confidenceScore + (a.marketPrice?30:0) + (a.availableVariantCount?20:0) - (a.closestStrictFallback?100:0))).slice(0, 12);
-  scannerSavePokemonCache(q, ranked).catch(console.warn);
   return ranked;
 }
 

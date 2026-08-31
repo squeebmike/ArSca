@@ -1810,24 +1810,14 @@ async function handlePlatformAdmin(request, env, url) {
 }
 
 const MTG_CATALOG_FILE_TYPES = new Set(['cards', 'marketprices', 'prices', 'links', 'sets']);
-// Shared PriceCharting business-download catalogs. Pokemon intentionally stays on
-// PokemonPriceTracker exports and MTG keeps its Scryfall + PriceCharting pipeline.
+// Shared PriceCharting business-download catalogs. Pokemon has no offline
+// catalog at all (live PokemonPriceTracker API only) and MTG keeps its own
+// Scryfall + PriceCharting pipeline.
 const PRICECHARTING_OFFLINE_CATEGORIES = new Set([
   'video_games', 'yugioh', 'one_piece',
 ]);
-// Pokemon set metadata + card image bundle (built by scripts/pokemon/build-pokemon-offline-bundle.mjs,
-// PPT bulk price/sealed/ebay/population CSVs stay on the existing /pricing/pokemon/export route).
-const POKEMON_CATALOG_FILE_TYPES = new Set(['sets']);
-const POKEMON_IMAGE_SIZES = new Set(['200', '400']);
-// Cards + sealed price snapshots pulled from PPT's /export once a day by
-// scripts/pokemon/build-pokemon-prices-bundle.mjs (see pokemon-prices-daily.yml)
-// -- a separate manifest/bundle from POKEMON_CATALOG_FILE_TYPES above so its
-// own daily refresh cycle never collides with the sets/images build. eBay and
-// population stay live/on-demand only: PPT's own export cap is 2 total calls
-// a day, and cards+sealed already spend both of them.
-const POKEMON_PRICES_FILE_TYPES = new Set(['cards', 'sealed']);
 // MTG card image bundle (built by scripts/mtg/build-mtg-offline-images.mjs) --
-// mirrors the Pokemon image pipeline above: harvested server-side from
+// harvested server-side from
 // Scryfall's own CDN once, stored in our own R2, so devices bulk-sync from us
 // instead of every device fetching directly from Scryfall (and never having
 // to re-fetch once cached, even offline). Small+normal match the two sizes
@@ -4683,140 +4673,12 @@ export default {
       return response;
     }
 
-    if (url.pathname === '/catalog/pokemon/manifest') {
-      if (request.method !== 'GET') return json({ ok: false, error: 'GET only' }, 405);
-      if (!env.MTG_CATALOG_R2) return json({ ok: false, error: 'Offline catalog R2 binding is not configured' }, 503);
-      const object = await env.MTG_CATALOG_R2.get('pokemon/manifest.json', { onlyIf: request.headers });
-      return r2ObjectResponse(object, request, 'public, max-age=300, stale-if-error=86400');
-    }
-
-    if (url.pathname === '/catalog/pokemon/download') {
-      if (request.method !== 'GET') return json({ ok: false, error: 'GET only' }, 405);
-      if (!env.MTG_CATALOG_R2) return json({ ok: false, error: 'Offline catalog R2 binding is not configured' }, 503);
-      const type = String(url.searchParams.get('file') || '').toLowerCase();
-      if (!POKEMON_CATALOG_FILE_TYPES.has(type)) return json({ ok: false, error: 'file must be sets' }, 400);
-      const manifestObject = await env.MTG_CATALOG_R2.get('pokemon/manifest.json');
-      if (!manifestObject) return json({ ok: false, error: 'Pokemon manifest not found' }, 404);
-      const manifest = await manifestObject.json().catch(() => null);
-      const descriptor = manifest?.status === 'ready' ? manifest.files?.[type] : null;
-      const key = String(descriptor?.path || '');
-      if (!key.startsWith('pokemon/') || !key.endsWith('.jsonl.gz')) return json({ ok: false, error: `Pokemon ${type} file is not ready` }, 503);
-      const object = await env.MTG_CATALOG_R2.get(key, { onlyIf: request.headers });
-      if (!object) return json({ ok: false, error: `Pokemon ${type} object not found` }, 404);
-      const response = r2ObjectResponse(object, request, 'public, max-age=31536000, immutable');
-      response.headers.set('Content-Type', 'application/gzip');
-      response.headers.set('X-Pokemon-Catalog-Version', String(manifest.version || ''));
-      response.headers.set('X-Content-SHA256', String(descriptor.sha256 || ''));
-      return response;
-    }
-
-    // GET /catalog/pokemon/prices/manifest -- points at the daily cards+sealed
-    // price snapshot pulled from PPT once a day (pokemon-prices-daily.yml),
-    // so a device syncs from our own R2 copy instead of spending PPT's
-    // 2-exports-a-day cap every time someone clicks Download.
-    if (url.pathname === '/catalog/pokemon/prices/manifest') {
-      if (request.method !== 'GET') return json({ ok: false, error: 'GET only' }, 405);
-      if (!env.MTG_CATALOG_R2) return json({ ok: false, error: 'Offline catalog R2 binding is not configured' }, 503);
-      const object = await env.MTG_CATALOG_R2.get('pokemon/prices-manifest.json', { onlyIf: request.headers });
-      return r2ObjectResponse(object, request, 'public, max-age=300, stale-if-error=86400');
-    }
-
-    if (url.pathname === '/catalog/pokemon/prices/download') {
-      if (request.method !== 'GET') return json({ ok: false, error: 'GET only' }, 405);
-      if (!env.MTG_CATALOG_R2) return json({ ok: false, error: 'Offline catalog R2 binding is not configured' }, 503);
-      const type = String(url.searchParams.get('file') || '').toLowerCase();
-      if (!POKEMON_PRICES_FILE_TYPES.has(type)) return json({ ok: false, error: 'file must be cards or sealed' }, 400);
-      const manifestObject = await env.MTG_CATALOG_R2.get('pokemon/prices-manifest.json');
-      if (!manifestObject) return json({ ok: false, error: 'Pokemon prices manifest not found' }, 404);
-      const manifest = await manifestObject.json().catch(() => null);
-      const descriptor = manifest?.status === 'ready' ? manifest.files?.[type] : null;
-      const key = String(descriptor?.path || '');
-      if (!key.startsWith('pokemon/prices/') || !key.endsWith('.jsonl.gz')) return json({ ok: false, error: `Pokemon ${type} price snapshot is not ready` }, 503);
-      const object = await env.MTG_CATALOG_R2.get(key, { onlyIf: request.headers });
-      if (!object) return json({ ok: false, error: `Pokemon ${type} price object not found` }, 404);
-      const response = r2ObjectResponse(object, request, 'public, max-age=31536000, immutable');
-      response.headers.set('Content-Type', 'application/gzip');
-      response.headers.set('X-Pokemon-Prices-Version', String(manifest.version || ''));
-      response.headers.set('X-Content-SHA256', String(descriptor.sha256 || ''));
-      return response;
-    }
-
-    // GET /catalog/pokemon/images/manifest?set=<setId|all> -- lists which
-    // tcgPlayerIds have cached image blobs for the requested set (or every
-    // set built so far), so a device only fetches what it needs instead of
-    // guessing which ids exist.
-    if (url.pathname === '/catalog/pokemon/images/manifest') {
-      if (request.method !== 'GET') return json({ ok: false, error: 'GET only' }, 405);
-      if (!env.MTG_CATALOG_R2) return json({ ok: false, error: 'Offline catalog R2 binding is not configured' }, 503);
-      const setId = String(url.searchParams.get('set') || 'all').trim();
-      const manifestObject = await env.MTG_CATALOG_R2.get('pokemon/manifest.json');
-      const manifest = manifestObject ? await manifestObject.json().catch(() => null) : null;
-      if (!manifest || manifest.status !== 'ready') return json({ ok: false, error: 'Pokemon catalog is not ready' }, 503);
-      const images = manifest.images || {};
-      if (setId === 'all') {
-        // index-all.json and the setsCovered/allSetsCovered fields on
-        // pokemon/manifest.json are both written only once, after every set
-        // finishes -- the "Build Pokemon Offline Card Images" Action can run
-        // for hours across hundreds of sets and get killed by its own
-        // timeout before ever reaching that last step, even though each
-        // finished set's own index-set-<id>.json already landed in R2 along
-        // the way. Falls back to merging whatever per-set indexes already
-        // exist, so a partial/interrupted build is still usable instead of
-        // an all-or-nothing 404 until one single run manages to finish
-        // every set back to back.
-        const cachedAllIndex = await env.MTG_CATALOG_R2.get('pokemon/images/index-all.json');
-        if (cachedAllIndex) {
-          const index = await cachedAllIndex.json().catch(() => null);
-          if (index) return json({ ok: true, set: 'all', sizes: images.sizes || [200, 400], ids: index.ids || [], generatedAt: index.generatedAt || manifest.generatedAt || '' });
-        }
-        const mergedIds = new Set();
-        let newestGeneratedAt = '';
-        let cursor;
-        for (let page = 0; page < 50; page++) { // 50 pages far exceeds any realistic Pokemon set count
-          const listing = await env.MTG_CATALOG_R2.list({ prefix: 'pokemon/images/index-set-', cursor });
-          for (const entry of listing.objects) {
-            const setIndexObject = await env.MTG_CATALOG_R2.get(entry.key);
-            const setIndex = setIndexObject ? await setIndexObject.json().catch(() => null) : null;
-            if (!setIndex) continue;
-            for (const id of setIndex.ids || []) mergedIds.add(id);
-            if (setIndex.generatedAt && setIndex.generatedAt > newestGeneratedAt) newestGeneratedAt = setIndex.generatedAt;
-          }
-          if (!listing.truncated) break;
-          cursor = listing.cursor;
-        }
-        if (!mergedIds.size) return json({ ok: false, error: 'All-sets image index not built yet -- run "Build Pokemon Offline Card Images" for at least one set first', availableSets: images.setsCovered || [], allSetsCovered: !!images.allSetsCovered }, 404);
-        return json({ ok: true, set: 'all', sizes: images.sizes || [200, 400], ids: Array.from(mergedIds), generatedAt: newestGeneratedAt || manifest.generatedAt || '' });
-      }
-      const indexObject = await env.MTG_CATALOG_R2.get(`pokemon/images/index-set-${setId}.json`);
-      if (!indexObject) return json({ ok: false, error: `Image index for set ${setId} not built yet`, availableSets: images.setsCovered || [], allSetsCovered: !!images.allSetsCovered }, 404);
-      const index = await indexObject.json().catch(() => null);
-      if (!index) return json({ ok: false, error: 'Image index is corrupt' }, 500);
-      return json({ ok: true, set: setId, sizes: images.sizes || [200, 400], ids: index.ids || [], generatedAt: index.generatedAt || manifest.generatedAt || '' });
-    }
-
-    // GET /catalog/pokemon/image?id=<tcgPlayerId>&size=200|400 -- serves a
-    // single card image blob previously harvested from PPT and stored in R2,
-    // so devices never depend on TCGPlayer's CDN once cached offline.
-    if (url.pathname === '/catalog/pokemon/image') {
-      if (request.method !== 'GET') return json({ ok: false, error: 'GET only' }, 405);
-      if (!env.MTG_CATALOG_R2) return json({ ok: false, error: 'Offline catalog R2 binding is not configured' }, 503);
-      const id = String(url.searchParams.get('id') || '').replace(/[^a-zA-Z0-9_-]/g, '');
-      const size = String(url.searchParams.get('size') || '400');
-      if (!id || !POKEMON_IMAGE_SIZES.has(size)) return json({ ok: false, error: 'id and size (200 or 400) are required' }, 400);
-      const object = await env.MTG_CATALOG_R2.get(`pokemon/images/${id}/${size}.jpg`, { onlyIf: request.headers });
-      if (!object) return json({ ok: false, error: 'Image not found' }, 404);
-      const response = r2ObjectResponse(object, request, 'public, max-age=31536000, immutable');
-      response.headers.set('Content-Type', 'image/jpeg');
-      return response;
-    }
-
     // GET /catalog/mtg/images/manifest?set=<setCode|all> -- lists which
     // scryfallIds have cached image blobs for the requested set (or every
-    // set built so far). Same shape and same partial-build fallback as the
-    // Pokemon images manifest above -- a multi-day "all" build across
-    // thousands of sets can get interrupted by its own timeout long before
-    // index-all.json itself gets written, so this still merges whatever
-    // per-set indexes have landed in R2 rather than an all-or-nothing 404.
+    // set built so far). A multi-day "all" build across thousands of sets
+    // can get interrupted by its own timeout long before index-all.json
+    // itself gets written, so this still merges whatever per-set indexes
+    // have landed in R2 rather than an all-or-nothing 404.
     if (url.pathname === '/catalog/mtg/images/manifest') {
       if (request.method !== 'GET') return json({ ok: false, error: 'GET only' }, 405);
       if (!env.MTG_CATALOG_R2) return json({ ok: false, error: 'Offline catalog R2 binding is not configured' }, 503);
@@ -10434,13 +10296,6 @@ export default {
     // the cron out on the very next run). The only real fix: devices don't
     // get a path to PPT's export endpoint at all, ever. Only the cron calls
     // it now, directly with the server-side key, never through this Worker.
-    // Cards/Sealed sync from /catalog/pokemon/prices/* (our own R2 copy)
-    // below; eBay/Population have no bulk path until the cron itself is
-    // extended to cover them.
-    if (url.pathname === '/pricing/pokemon/export') {
-      return json({ ok: false, error: 'Removed -- devices no longer pull PPT\'s bulk export directly. Cards/Sealed sync automatically from our own daily cloud copy; eBay/Population have no bulk sync path yet.' }, 410);
-    }
-
     if (url.pathname.startsWith('/pricing/pokemonpricetracker/') || url.pathname.startsWith('/pricing/pokemon/')) {
       // Docs: docs/api/pokemon-price-tracker-openapi.json
       // Clean aliases: /pricing/pokemon/* → canonical /pricing/pokemonpricetracker/*

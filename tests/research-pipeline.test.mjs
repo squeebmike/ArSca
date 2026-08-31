@@ -29,8 +29,8 @@ assert.match(worker,/mpapi\.tcgplayer\.com\/v2\/product/,'Worker must proxy exac
 assert.match(lookup,/\.\.\.cachedResults, \.\.\.liveResults/, 'live results must merge with already-rendered cached results');
 assert.match(dashboard,/await Promise\.allSettled\(providerTasks\)/, 'independent catalog providers must run concurrently');
 assert.match(dashboard,/const pokemonOnly = wants === 'pokemon' \|\| plannedCategories\.has\('pokemon'\)/, 'a selected Pokemon category must be authoritative');
-assert.match(dashboard,/pokemonOfflineReady \? await searchPokemonOfflineCache\(q, cat\) : \[\]/, 'missing PPT offline data must skip the local scan and continue online');
-assert.match(dashboard,/PPT offline catalog is not installed\. Searching PPT online now\./, 'the online PPT fallback must be visible');
+assert.doesNotMatch(dashboard,/searchPokemonOfflineCache|pokemonOfflineSearchMode|setPokemonOfflineBanner/, 'Pokemon has no offline catalog -- there must be no offline-cache code path left for it');
+assert.match(dashboard,/Pokemon pricing requires the live PokemonPriceTracker API\. Reconnect and search again\./, 'an offline Pokemon search must tell the dealer to reconnect, since there is no local fallback');
 assert.match(dashboard,/const plannedFromIntent = \(intent\?\.intents \|\| \[\]\)\.filter\(Boolean\)/, 'broad card intent must prevent unrelated provider fan-out');
 assert.match(dashboard,/const autoUnknown = !wants && !plannedCategories\.size/, 'unknown auto searches must use a bounded fallback');
 assert.match(dashboard,/if\(key === 'one_piece'\) return 'One Piece Cards'/, 'One Piece must use its exact PriceCharting category');

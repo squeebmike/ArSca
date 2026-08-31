@@ -2,10 +2,8 @@
 // Harvests actual MTG card image bytes from Scryfall's own CDN and stores
 // them content-addressed in R2, so devices never depend on Scryfall's CDN
 // (or its fair-use hotlinking limits, multiplied across an entire fleet of
-// store devices) once cached offline. Mirrors
-// scripts/pokemon/build-pokemon-offline-bundle.mjs's image-harvest half
-// closely -- same per-set index + incremental-merge pattern, same R2 layout
-// shape, same reasons for both.
+// store devices) once cached offline. Uses a per-set index + incremental-merge
+// pattern so a partial/interrupted build is still usable.
 //
 // Card metadata/prices are a separate, already-existing daily build
 // (scripts/mtg/build-mtg-offline-bundle.mjs, mtg-offline-daily.yml) and are

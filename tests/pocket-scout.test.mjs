@@ -125,7 +125,7 @@ assert.match(dashboard, /scoutHydrateCatalogImages\(\);/, 'the hydration pass mu
   const fnStart = dashboard.indexOf('async function scoutHydrateCatalogImages(){');
   const fnEnd = dashboard.indexOf('\n}', fnStart);
   const fn = dashboard.slice(fnStart, fnEnd);
-  assert.match(fn, /if\(catKey === 'pokemon'\) \{/, 'must resolve missing Pokemon images the same way Research does');
+  assert.doesNotMatch(fn, /catKey === 'pokemon'/, 'Pokemon has no offline image catalog to resolve against -- there must be no Pokemon branch left here');
   assert.match(fn, /if\(catKey === 'comic'\) \{/, 'must resolve missing comic cover images the same way Research does');
   assert.match(fn, /document\.getElementById\('scout-catalog-img-'\+i\)/, 'a resolved image must patch this exact row\'s own image slot, not re-render the whole list');
 }
