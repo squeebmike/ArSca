@@ -17988,6 +17988,7 @@ function renderReportsPanel(){
         </label>
         <button class="hbtn" onclick="runReportsQuery()">RUN REPORT</button>
         <button class="hbtn" onclick="exportReportsCSV()">EXPORT CSV</button>
+        <button class="hbtn" onclick="exportCategoryBreakdownCSV()">EXPORT CATEGORY BREAKDOWN CSV</button>
       </div>
       <div style="display:flex;gap:6px;flex-wrap:wrap">
         <button class="hbtn" onclick="setReportsRangePreset('this_month')">THIS MONTH</button>
@@ -18065,16 +18066,19 @@ async function runReportsQuery(){
     const saleMap = new Map(saleRows.map(s => [s.id, s]));
     const ids = saleRows.map(s => s.id);
     const lines = [];
+    const payments = [];
     for(let i = 0; i < ids.length; i += 100){
       const batch = ids.slice(i, i+100);
-      const { data: lineBatch, error: lineErr } = await sb.from('pos_sale_lines')
-        .select('sale_id,adjusted_price,cost_basis,profit,taxable')
-        .eq('store_id', storeId)
-        .in('sale_id', batch);
-      if(lineErr) throw lineErr;
-      lines.push(...(lineBatch || []));
+      const [lineRes, paymentRes] = await Promise.all([
+        sb.from('pos_sale_lines').select('sale_id,title,category,adjusted_price,cost_basis,profit,taxable').eq('store_id', storeId).in('sale_id', batch),
+        sb.from('pos_payments').select('sale_id,method,amount').eq('store_id', storeId).in('sale_id', batch),
+      ]);
+      if(lineRes.error) throw lineRes.error;
+      if(paymentRes.error) throw paymentRes.error;
+      lines.push(...(lineRes.data || []));
+      payments.push(...(paymentRes.data || []));
     }
-    _reportsLastResult = aggregateReportsData(saleRows, lines, saleMap, groupBy, fromVal);
+    _reportsLastResult = aggregateReportsData(saleRows, lines, payments, saleMap, groupBy, fromVal);
     renderReportsResults(_reportsLastResult, groupBy);
   } catch(e){
     if(resultsEl) resultsEl.innerHTML = `<div class="empty" style="padding:20px"><div class="empty-t" style="color:var(--red)">Report failed: ${escHtml(e.message)}</div></div>`;
@@ -18083,7 +18087,7 @@ async function runReportsQuery(){
   }
 }
 
-function aggregateReportsData(saleRows, lines, saleMap, groupBy, fromVal){
+function aggregateReportsData(saleRows, lines, payments, saleMap, groupBy, fromVal){
   const periods = new Map();
   const getPeriod = key => {
     if(!periods.has(key)) periods.set(key, { key, grossSales:0, discounts:0, taxableSales:0, exemptSales:0, taxCollected:0, cogs:0, grossProfit:0, saleCount:0, missingCostLines:0 });
@@ -18096,17 +18100,40 @@ function aggregateReportsData(saleRows, lines, saleMap, groupBy, fromVal){
     p.taxCollected += Number(sale.tax_total || 0);
     p.saleCount += 1;
   });
+  const categoryStats = new Map();
+  const getCategory = key => {
+    if(!categoryStats.has(key)) categoryStats.set(key, { key, revenue:0, cogs:0, profit:0, taxableRevenue:0, exemptRevenue:0 });
+    return categoryStats.get(key);
+  };
+  const itemStats = new Map();
+  const getItem = key => {
+    if(!itemStats.has(key)) itemStats.set(key, { key, revenue:0, profit:0 });
+    return itemStats.get(key);
+  };
   lines.forEach(line => {
     const sale = saleMap.get(line.sale_id);
     if(!sale) return;
     const p = getPeriod(reportsPeriodKey(sale.completed_at, groupBy));
     const revenue = Number(line.adjusted_price || 0);
     const cost = Number(line.cost_basis || 0);
+    const profit = Number(line.profit ?? (revenue - cost));
     if(line.taxable === false) p.exemptSales += revenue;
     else p.taxableSales += revenue;
     p.cogs += cost;
-    p.grossProfit += Number(line.profit ?? (revenue - cost));
+    p.grossProfit += profit;
     if(cost <= 0) p.missingCostLines += 1;
+
+    const c = getCategory(line.category || 'Uncategorized');
+    c.revenue += revenue; c.cogs += cost; c.profit += profit;
+    if(line.taxable === false) c.exemptRevenue += revenue; else c.taxableRevenue += revenue;
+
+    const it = getItem(line.title || 'Untitled');
+    it.revenue += revenue; it.profit += profit;
+  });
+  const paymentStats = new Map();
+  payments.forEach(pmt => {
+    const key = normalizeTenderType(pmt.method);
+    paymentStats.set(key, (paymentStats.get(key) || 0) + Number(pmt.amount || 0));
   });
   const periodList = [...periods.values()].sort((a,b) => a.key.localeCompare(b.key));
   const totals = periodList.reduce((t,p) => {
@@ -18116,7 +18143,28 @@ function aggregateReportsData(saleRows, lines, saleMap, groupBy, fromVal){
     return t;
   }, { grossSales:0, discounts:0, taxableSales:0, exemptSales:0, taxCollected:0, cogs:0, grossProfit:0, saleCount:0, missingCostLines:0 });
   const preFixRange = new Date(fromVal) < new Date(REPORTS_TAXABLE_FIX_DATE);
-  return { periods:periodList, totals, preFixRange };
+  const categoryList = [...categoryStats.values()].sort((a,b) => b.profit - a.profit);
+  const itemList = [...itemStats.values()];
+  const topByRevenue = [...itemList].sort((a,b) => b.revenue - a.revenue).slice(0,8);
+  const topByProfit = [...itemList].sort((a,b) => b.profit - a.profit).slice(0,8);
+  const paymentList = [...paymentStats.entries()].sort((a,b) => b[1]-a[1]).map(([key,amount]) => ({ key, label:formatTenderLabel(key), amount }));
+  return { periods:periodList, totals, preFixRange, categoryList, topByRevenue, topByProfit, paymentList };
+}
+
+// Shared hand-rolled bar-chart row builder -- matches the .br/.br-l/.br-t/
+// .br-f/.br-v convention already used everywhere else in this app
+// (renderChannels/renderTopSold/renderMonthly), no charting library.
+function reportsBarRows(pairs, opts = {}){
+  const color = opts.color || 'var(--g)';
+  const fmt = opts.fmt || fd$;
+  const empty = opts.empty || 'NO DATA';
+  if(!pairs.length) return `<div class="empty"><div class="empty-t">${escHtml(empty)}</div></div>`;
+  const max = Math.max(...pairs.map(p => Math.abs(p[1])), 1);
+  return pairs.map(([label, v]) => `<div class="br">
+    <span class="br-l" title="${escHtml(label)}">${escHtml(label)}</span>
+    <div class="br-t"><div class="br-f" style="width:${(Math.abs(v)/max*100).toFixed(1)}%;background:${v < 0 ? 'var(--red)' : color}"></div></div>
+    <span class="br-v">${fmt(v)}</span>
+  </div>`).join('');
 }
 
 function renderReportsResults(result, groupBy){
@@ -18141,7 +18189,44 @@ function renderReportsResults(result, groupBy){
     ${result.preFixRange ? `<div style="font-family:var(--font-mono);font-size:10px;color:var(--gold);margin-bottom:10px">⚠ Taxable/exempt breakdown is only accurate for sales completed after ${new Date(REPORTS_TAXABLE_FIX_DATE).toLocaleDateString()} — earlier sales are counted as taxable by default.</div>` : ''}
     ${rows.length ? `<div class="tbl-wrap"><table><thead><tr><th>PERIOD</th><th style="text-align:right">GROSS SALES</th><th style="text-align:right">TAXABLE</th><th style="text-align:right">EXEMPT</th><th style="text-align:right">TAX COLLECTED</th><th style="text-align:right">COGS</th><th style="text-align:right">GROSS PROFIT</th><th style="text-align:right">SALES</th></tr></thead><tbody>
       ${rows.map(p => `<tr><td>${escHtml(reportsPeriodLabel(p.key, groupBy))}</td><td style="text-align:right">${fd$(p.grossSales)}</td><td style="text-align:right">${fd$(p.taxableSales)}</td><td style="text-align:right">${fd$(p.exemptSales)}</td><td style="text-align:right">${fd$(p.taxCollected)}</td><td style="text-align:right">${fd$(p.cogs)}</td><td style="text-align:right">${fd$(p.grossProfit)}</td><td style="text-align:right">${p.saleCount}</td></tr>`).join('')}
-    </tbody></table></div>` : ''}`;
+    </tbody></table></div>` : ''}
+    ${rows.length > 1 ? `<div class="owner-section-grid" style="grid-template-columns:1fr 1fr">
+      <div class="owner-mini-panel"><div class="ph">GROSS SALES BY PERIOD</div>${reportsBarRows(rows.map(p => [reportsPeriodLabel(p.key, groupBy), p.grossSales]), { color:'var(--blue)' })}</div>
+      <div class="owner-mini-panel"><div class="ph">GROSS PROFIT BY PERIOD</div>${reportsBarRows(rows.map(p => [reportsPeriodLabel(p.key, groupBy), p.grossProfit]), { color:'var(--g)' })}</div>
+    </div>` : ''}
+    <div class="owner-section-grid" style="grid-template-columns:1fr 1fr;margin-top:14px">
+      <div class="owner-mini-panel"><div class="ph">TOP SELLERS BY REVENUE</div>${reportsBarRows(result.topByRevenue.map(i => [i.key, i.revenue]), { color:'var(--blue)', empty:'NO SALES' })}</div>
+      <div class="owner-mini-panel"><div class="ph">TOP SELLERS BY PROFIT</div>${reportsBarRows(result.topByProfit.map(i => [i.key, i.profit]), { color:'var(--g)', empty:'NO SALES' })}</div>
+    </div>
+    <div class="owner-section-grid" style="grid-template-columns:2fr 1fr;margin-top:14px">
+      <div class="owner-mini-panel">
+        <div class="ph">CATEGORY / PRODUCT PROFITABILITY <span style="font-size:9px;color:var(--dim)">sorted by profit</span></div>
+        <div class="tbl-wrap" style="margin-top:6px"><table><thead><tr><th>CATEGORY</th><th style="text-align:right">REVENUE</th><th style="text-align:right">COGS</th><th style="text-align:right">PROFIT</th><th style="text-align:right">MARGIN</th><th style="text-align:right">TAXABLE</th><th style="text-align:right">EXEMPT</th></tr></thead><tbody>
+          ${result.categoryList.map(c => `<tr><td>${escHtml(c.key)}</td><td style="text-align:right">${fd$(c.revenue)}</td><td style="text-align:right">${fd$(c.cogs)}</td><td style="text-align:right">${fd$(c.profit)}</td><td style="text-align:right">${(c.revenue > 0 ? c.profit/c.revenue*100 : 0).toFixed(1)}%</td><td style="text-align:right">${fd$(c.taxableRevenue)}</td><td style="text-align:right">${fd$(c.exemptRevenue)}</td></tr>`).join('')}
+        </tbody></table></div>
+      </div>
+      <div class="owner-mini-panel"><div class="ph">PROFIT BY CATEGORY</div>${reportsBarRows(reportsCategoryChartPairs(result.categoryList), { color:'var(--g)', empty:'NO SALES' })}</div>
+    </div>
+    <div class="owner-section-grid" style="grid-template-columns:1fr;margin-top:14px">
+      <div class="owner-mini-panel">
+        <div class="ph">PAYMENT METHOD MIX <span style="font-size:9px;color:var(--dim)">in-person POS only</span></div>
+        <div style="font-family:var(--font-mono);font-size:9px;color:var(--dim);margin:4px 0 8px">eBay, Whatnot, and storefront/FOC preorder sales aren't included here -- they're separate order systems that don't flow through this register ledger.</div>
+        ${reportsBarRows(result.paymentList.map(p => [p.label, p.amount]), { color:'var(--gold)', empty:'NO PAYMENTS' })}
+      </div>
+    </div>
+    <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);line-height:1.55;margin-top:14px;padding:10px;border:1px dashed var(--border);border-radius:8px">
+      <b style="color:var(--text)">Washington tax filing:</b> the DOR's Combined Excise Tax Return includes both the sales tax shown above AND a separate Business &amp; Occupation (B&amp;O) tax calculated on gross receipts -- this report's Gross Sales figure is that same gross-receipts basis, but B&amp;O has its own rate/classification this report doesn't compute. Check your DOR MyDOR account or your accountant for the current rate and filing frequency.
+    </div>`;
+}
+
+// Top 8 categories by profit for the chart, remaining categories folded
+// into one "Other" bucket -- the table above still lists every category.
+function reportsCategoryChartPairs(categoryList){
+  const top = categoryList.slice(0, 8);
+  const rest = categoryList.slice(8);
+  const pairs = top.map(c => [c.key, c.profit]);
+  if(rest.length) pairs.push([`Other (${rest.length})`, rest.reduce((s,c) => s + c.profit, 0)]);
+  return pairs;
 }
 
 function exportReportsCSV(){
@@ -18155,6 +18240,18 @@ function exportReportsCSV(){
   const from = document.getElementById('reports-from')?.value || '';
   const to = document.getElementById('reports-to')?.value || '';
   downloadCSV(`mana-pocket-tax-report-${from}-to-${to}.csv`, rows);
+}
+
+function exportCategoryBreakdownCSV(){
+  if(!_reportsLastResult){ toast_dash('Run a report first'); return; }
+  const header = ['Category','Revenue','COGS','Profit','Margin %','Taxable Sales','Exempt Sales'];
+  const rows = [header, ..._reportsLastResult.categoryList.map(c => [
+    c.key, c.revenue.toFixed(2), c.cogs.toFixed(2), c.profit.toFixed(2),
+    (c.revenue > 0 ? c.profit/c.revenue*100 : 0).toFixed(1), c.taxableRevenue.toFixed(2), c.exemptRevenue.toFixed(2),
+  ])];
+  const from = document.getElementById('reports-from')?.value || '';
+  const to = document.getElementById('reports-to')?.value || '';
+  downloadCSV(`mana-pocket-category-breakdown-${from}-to-${to}.csv`, rows);
 }
 
 function inventoryEmptySearchState(q){
