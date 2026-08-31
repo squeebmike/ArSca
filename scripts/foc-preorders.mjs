@@ -1096,10 +1096,17 @@ async function adminEndFocEbayListings(request,env,deps){
   const storeId=text(body.storeId,80);const cycleId=text(body.cycleId,80);
   const auth=await deps.requireStoreUser(request,env,storeId,['owner','admin']);if(auth.error)return auth.error;
   if(!cycleId)return deps.json({ok:false,error:'cycleId is required'},400);
+  // Optional allow-list: end only these specific covers' listings, so the
+  // dealer can choose to keep some presales running past this action
+  // instead of it always being every live listing in the cycle at once.
+  // Omitted entirely (not just empty), it falls back to "end everything
+  // still live" -- the original behavior.
+  const focSkuIds=Array.isArray(body.focSkuIds)?new Set(body.focSkuIds.map(String)):null;
   const {data:presaleRows}=await db(`inventory_items?store_id=eq.${encodeURIComponent(storeId)}&status=eq.presale&select=id,data`);
   const toWithdraw=(presaleRows||[]).filter(row=>{
     const d=row.data||{};
-    return d.source==='foc_presale'&&d.focCycleId===cycleId&&d.ebayOfferId&&Number(d.qty??d.quantity??0)>0;
+    if(!(d.source==='foc_presale'&&d.focCycleId===cycleId&&d.ebayOfferId&&Number(d.qty??d.quantity??0)>0))return false;
+    return focSkuIds?focSkuIds.has(String(d.focSkuId)):true;
   });
   if(!toWithdraw.length)return deps.json({ok:true,endedCount:0,failedCount:0});
   if(!deps.getEbayUserAccessToken||!deps.withdrawEbayOffer)return deps.json({ok:false,error:'eBay is not configured for this store'},503);

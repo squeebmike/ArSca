@@ -586,13 +586,46 @@ async function submitPrhOrder(){
     await loadPrhSubmissionStatus();
   }catch(e){if(status)status.textContent='';toast_dash('Could not submit: '+e.message);}
 }
-async function endFocEbayListings(){
+// Store report: ending eBay listings used to be all-or-nothing for the
+// whole cycle -- no way to keep a specific cover's presale running while
+// stopping the rest. This opens a checklist of every still-live listing,
+// pre-checked (so confirming with no changes matches the old "end
+// everything" behavior), and the dealer unchecks whichever covers they
+// want to KEEP live before confirming.
+function endFocEbayListings(){
   if(!state.cycle)return;
-  if(!confirm('End every still-live eBay presale listing for FOC '+displayDate(state.cycle.foc_date)+'? This includes covers you DID order from PRH -- use this once you\'re done wanting new eBay presale sales for this cycle (e.g. at/after cutoff, or once a listing has sold what you ordered). Already-sold copies are unaffected; this only stops FURTHER eBay sales.'))return;
+  var live=allFocSkus().filter(function(v){return v.ebayPresaleStatus==='LISTED';});
+  var modalOld=document.getElementById('foc-end-ebay-modal');if(modalOld)modalOld.remove();
+  if(!live.length){toast_dash('No live eBay presale listings for this cycle');return;}
+  var modal=document.createElement('div');
+  modal.id='foc-end-ebay-modal';
+  modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:9999;display:flex;align-items:flex-start;justify-content:center;overflow-y:auto;padding:24px 12px';
+  modal.innerHTML='<div style="width:100%;max-width:520px;background:var(--surf);border:1px solid var(--border);border-radius:10px;padding:16px">'+
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><div style="font-family:\'Orbitron\',monospace;color:var(--red);font-size:13px;letter-spacing:2px">END EBAY LISTINGS</div><button onclick="document.getElementById(\'foc-end-ebay-modal\').remove()" style="background:none;border:none;color:var(--dim);font-size:22px;cursor:pointer">×</button></div>'+
+    '<div style="font:9px var(--font-mono);color:var(--dim);margin-bottom:10px">Everything below is checked to end. Uncheck any cover you want to KEEP live on eBay, then confirm. Already-sold copies are unaffected either way -- this only stops further eBay sales.</div>'+
+    '<label style="display:flex;gap:6px;align-items:center;margin-bottom:8px;font:9px var(--font-mono);color:var(--dim);cursor:pointer"><input type="checkbox" checked onchange="toggleFocEndEbayAll(this.checked)"> SELECT ALL</label>'+
+    '<div style="max-height:360px;overflow-y:auto;border-top:1px solid var(--border);padding-top:8px">'+
+    live.map(function(v){return '<label style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);font:10px var(--font-mono);color:var(--text);cursor:pointer">'+
+      '<input type="checkbox" class="foc-end-ebay-cb" value="'+esc(v.id)+'" checked>'+
+      '<span style="flex:1">'+esc(v.variantLabel)+'<div style="font:8px var(--font-mono);color:var(--dim)">'+Number(v.ebayPresold||0)+' presold · '+Number(v.ebayAvailable||0)+' available</div></span>'+
+      '</label>';}).join('')+
+    '</div>'+
+    '<div style="display:flex;gap:8px;margin-top:12px"><button class="hbtn" style="flex:1;padding:12px;background:rgba(255,77,109,.12);border-color:rgba(255,77,109,.35);color:var(--red)" onclick="confirmEndFocEbayListings()">END SELECTED LISTINGS</button>'+
+    '<button class="hbtn" style="padding:12px" onclick="document.getElementById(\'foc-end-ebay-modal\').remove()">CANCEL</button></div>'+
+    '</div>';
+  document.body.appendChild(modal);
+}
+function toggleFocEndEbayAll(checked){
+  document.querySelectorAll('.foc-end-ebay-cb').forEach(function(cb){cb.checked=checked;});
+}
+async function confirmEndFocEbayListings(){
+  var ids=Array.prototype.slice.call(document.querySelectorAll('.foc-end-ebay-cb:checked')).map(function(cb){return cb.value;});
+  if(!ids.length){toast_dash('Nothing selected to end');return;}
+  var modal=document.getElementById('foc-end-ebay-modal');if(modal)modal.remove();
   var status=document.getElementById('foc-review-status');
   if(status)status.textContent='Ending eBay listings…';
   try{
-    var d=await api('/foc/admin/end-ebay-listings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({storeId:getActiveStoreId(),cycleId:state.cycle.id})});
+    var d=await api('/foc/admin/end-ebay-listings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({storeId:getActiveStoreId(),cycleId:state.cycle.id,focSkuIds:ids})});
     if(d.endedCount===0)toast_dash('No live eBay presale listings left for this cycle');
     else toast_dash(d.endedCount+' eBay presale listing'+(d.endedCount===1?'':'s')+' ended'+(d.failedCount?' ('+d.failedCount+' failed, see console)':''));
     if(d.errors&&d.errors.length)console.error('FOC bulk eBay end failures:',d.errors);
@@ -622,5 +655,5 @@ async function loadShipping(){var host=document.getElementById('foc-shipping-set
 function renderShipping(){var s=state.shipping||{},f=s.from||{},p=s.parcel||{};document.getElementById('foc-shipping-settings').innerHTML='<div class="foc-import-report"><b style="color:'+(s.tokenConfigured?'var(--g)':'var(--gold)')+'">SHIPPO TOKEN '+(s.tokenConfigured?'CONNECTED':'NEEDS SETUP')+'</b><br>The API token stays in the Worker secret. This form stores only your ship-from address and package preset.</div><div class="foc-sku-fields" style="grid-template-columns:repeat(auto-fit,minmax(180px,1fr));margin-top:10px">'+[['name','Store / sender',f.name],['line1','Street',f.street1],['line2','Suite / unit',f.street2],['city','City',f.city],['state','State',f.state],['zip','ZIP',f.zip],['phone','Phone',f.phone],['email','Email',f.email]].map(function(x){return'<label>'+x[1]+'<input class="tsi" data-ship-from="'+x[0]+'" value="'+esc(x[2]||'')+'"></label>';}).join('')+'</div><div class="foc-sku-fields" style="grid-template-columns:repeat(4,minmax(0,1fr));margin-top:10px">'+[['length','Length',p.length||12],['width','Width',p.width||9],['height','Height',p.height||1],['weight','Weight lb',p.weight||1]].map(function(x){return'<label>'+x[1]+'<input class="tsi" type="number" min=".1" step=".1" data-ship-parcel="'+x[0]+'" value="'+esc(x[2])+'"></label>';}).join('')+'</div><button class="hbtn" style="margin-top:10px" onclick="saveFocShippingSettings()">SAVE LIVE SHIPPING SETUP</button>';}
 async function saveShipping(){var shipFrom={},parcel={};document.querySelectorAll('[data-ship-from]').forEach(function(el){shipFrom[el.dataset.shipFrom]=el.value;});document.querySelectorAll('[data-ship-parcel]').forEach(function(el){parcel[el.dataset.shipParcel]=el.value;});try{var d=await api('/foc/admin/shipping-settings',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({storeId:getActiveStoreId(),enabled:true,shipFrom:shipFrom,defaultParcel:parcel})});state.shipping=d.shipping;toast_dash(d.shipping.tokenConfigured?'Live carrier settings saved':'Address saved — add the Shippo token to enable rates');renderShipping();}catch(e){toast_dash(e.message);}}
 
-window.ensureFocPanel=function(){loadCycles(false);};window.loadFocCycles=loadCycles;window.openFocCycle=openCycle;window.handleFocImportFile=handleImport;window.filterFocAdmin=function(v){state.query=v;renderFamilies();};window.filterFocPublisher=function(v){state.publisher=v;renderFamilies();};window.filterFocFlag=function(v){state.flag=v;renderFamilies();};window.filterFocEbay=function(v){state.ebay=v;renderFamilies();};window.saveFocSku=saveSku;window.saveFocFamily=saveFamily;window.toggleFocCycle=toggleCycle;window.archiveFocCycle=archiveCycle;window.unarchiveFocCycle=unarchiveCycle;window.saveFocCycleCutoff=saveCutoff;window.exportFocPrh=exportPrh;window.loadFocShippingSettings=loadShipping;window.saveFocShippingSettings=saveShipping;window.openReceiveShipment=openReceiveShipment;window.confirmReceiveShipment=confirmReceiveShipment;window.createFocEbayPresale=openEbayPresaleReview;window.submitEbayPresaleReview=submitEbayPresaleReview;window.loadEbaySafeDays=loadEbaySafeDays;window.saveFocEbaySafeDays=saveEbaySafeDays;window.openFocReview=openFocReview;window.submitPrhOrder=submitPrhOrder;window.endFocEbayListings=endFocEbayListings;window.reviewStoreQtyChanged=reviewStoreQtyChanged;
+window.ensureFocPanel=function(){loadCycles(false);};window.loadFocCycles=loadCycles;window.openFocCycle=openCycle;window.handleFocImportFile=handleImport;window.filterFocAdmin=function(v){state.query=v;renderFamilies();};window.filterFocPublisher=function(v){state.publisher=v;renderFamilies();};window.filterFocFlag=function(v){state.flag=v;renderFamilies();};window.filterFocEbay=function(v){state.ebay=v;renderFamilies();};window.saveFocSku=saveSku;window.saveFocFamily=saveFamily;window.toggleFocCycle=toggleCycle;window.archiveFocCycle=archiveCycle;window.unarchiveFocCycle=unarchiveCycle;window.saveFocCycleCutoff=saveCutoff;window.exportFocPrh=exportPrh;window.loadFocShippingSettings=loadShipping;window.saveFocShippingSettings=saveShipping;window.openReceiveShipment=openReceiveShipment;window.confirmReceiveShipment=confirmReceiveShipment;window.createFocEbayPresale=openEbayPresaleReview;window.submitEbayPresaleReview=submitEbayPresaleReview;window.loadEbaySafeDays=loadEbaySafeDays;window.saveFocEbaySafeDays=saveEbaySafeDays;window.openFocReview=openFocReview;window.submitPrhOrder=submitPrhOrder;window.endFocEbayListings=endFocEbayListings;window.toggleFocEndEbayAll=toggleFocEndEbayAll;window.confirmEndFocEbayListings=confirmEndFocEbayListings;window.reviewStoreQtyChanged=reviewStoreQtyChanged;
 })();
