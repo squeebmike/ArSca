@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.08.31.02-pokemon-live-only">
+<meta name="version" content="2026.08.31.03-pc-grade-fallback">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1628,15 +1628,15 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.08.31.02-pokemon-live-only" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.08.31.02-pokemon-live-only" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.08.31.02-pokemon-live-only" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.08.31.02-pokemon-live-only" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.31.02-pokemon-live-only" defer></script>
-<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.08.31.02-pokemon-live-only" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.08.31.02-pokemon-live-only" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.08.31.02-pokemon-live-only" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.08.31.02-pokemon-live-only" defer></script>
+<script src="scripts/query-routing.js?v=2026.08.31.03-pc-grade-fallback" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.08.31.03-pc-grade-fallback" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.08.31.03-pc-grade-fallback" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.08.31.03-pc-grade-fallback" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.08.31.03-pc-grade-fallback" defer></script>
+<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.08.31.03-pc-grade-fallback" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.08.31.03-pc-grade-fallback" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.08.31.03-pc-grade-fallback" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.08.31.03-pc-grade-fallback" defer></script>
 </head>
 <body>
 
@@ -1665,11 +1665,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.31.02-pokemon-live-only</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.08.31.03-pc-grade-fallback</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.31.02-pokemon-live-only</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.08.31.03-pc-grade-fallback</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1687,7 +1687,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.31.02-pokemon-live-only</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.08.31.03-pc-grade-fallback</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3705,7 +3705,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.08.31.02-pokemon-live-only';
+const APP_VERSION = '2026.08.31.03-pc-grade-fallback';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -30767,7 +30767,7 @@ function pokemonPptGradeRows(row = {}){
   const card = row.pokemonPriceTracker || row.pokemonPriceTrackerCard || row.pptCard || null;
   const grades = card?.ebay?.salesByGrade || {};
   const updated = card?.ebay?.updatedAt || card?.ebay?.lastEbayCheck || card?.ebay?.lastScrapedDate || '';
-  return Object.entries(grades).map(([gradeKey, value]) => {
+  const rows = Object.entries(grades).map(([gradeKey, value]) => {
     const smart = Number(value?.smartMarketPrice?.price || 0) || 0;
     const median = Number(value?.medianPrice || 0) || 0;
     const average = Number(value?.averagePrice || 0) || 0;
@@ -30790,10 +30790,106 @@ function pokemonPptGradeRows(row = {}){
       path: smart ? `ebay.salesByGrade[${gradeKey}].smartMarketPrice.price` : median ? `ebay.salesByGrade[${gradeKey}].medianPrice` : average ? `ebay.salesByGrade[${gradeKey}].averagePrice` : `ebay.salesByGrade[${gradeKey}] missing price`,
       label:'Graded ' + label
     };
-  }).sort((a,b) => {
+  });
+  // PokemonPriceTracker's own eBay graded-sales data is genuinely sparse for
+  // less-popular/older cards -- PSA 10/PSA 9 can come back with nothing at
+  // all. Fall back to PriceCharting's graded-slab guide value (a different
+  // kind of number: an estimate, not an average of real sold comps), fetched
+  // and cached on the row by ensurePokemonPriceChartingGradeFallback(). Only
+  // fills in the two grades PPT didn't already have real sales data for.
+  ['10','9'].forEach(gradeNum => {
+    const label = 'PSA ' + gradeNum;
+    if(rows.some(r => r.gradeLabel === label && r.price > 0)) return;
+    const pc = row.priceChartingGrades?.[gradeNum];
+    if(!pc || !(Number(pc.price) > 0)) return;
+    rows.push({
+      basisType:'graded',
+      gradeKey:'psa' + gradeNum,
+      gradeLabel:label,
+      price:Number(pc.price),
+      averagePrice:0,
+      medianPrice:0,
+      minPrice:null,
+      maxPrice:null,
+      count:null,
+      marketTrend:'',
+      confidence:'',
+      lastUpdated:pc.lastUpdated || '',
+      source:'PriceCharting Guide',
+      path:`priceChartingGrades[${gradeNum}].price`,
+      label:'Graded ' + label + ' (PriceCharting guide value)'
+    });
+  });
+  return rows.sort((a,b) => {
     const rank = g => (/PSA 10/.test(g) ? 0 : /PSA 9/.test(g) ? 1 : /PSA 8/.test(g) ? 2 : /CGC 10/.test(g) ? 3 : /CGC 9\.5/.test(g) ? 4 : /BGS 10/.test(g) ? 5 : /BGS 9\.5/.test(g) ? 6 : /SGC 10/.test(g) ? 7 : 99);
     return rank(a.gradeLabel) - rank(b.gradeLabel) || a.gradeLabel.localeCompare(b.gradeLabel);
   });
+}
+
+// Fetches PriceCharting's graded-slab guide value for whichever of PSA
+// 10/PSA 9 this row's own PPT eBay data is missing, and caches it on the row
+// (row.priceChartingGrades) so pokemonPptGradeRows() picks it up on the next
+// render. Tried at most once automatically per row (row._pcGradeFallbackTried) --
+// retryPokemonGradeFallback() below clears that flag for a manual retry.
+// Reuses fetchGradedSlabPriceForItem(), the same helper the inventory
+// repricing sync already uses for graded items, so this is the identical
+// PriceCharting call/response shape, just aimed at a raw search result
+// instead of an owned graded item.
+async function ensurePokemonPriceChartingGradeFallback(row){
+  if(!row || qplResultCategoryKey(row) !== 'pokemon') return false;
+  if(row._pcGradeFallbackTried) return false;
+  if(!navigator.onLine) return false;
+  const have = pokemonPptGradeRows(row);
+  const needed = ['10','9'].filter(gradeNum => !have.some(g => g.gradeLabel === 'PSA ' + gradeNum && g.price > 0));
+  if(!needed.length) return false;
+  row._pcGradeFallbackTried = true;
+  let changed = false;
+  for(const gradeNum of needed){
+    const slab = await fetchGradedSlabPriceForItem({ grader:'PSA', grade:gradeNum, name:row.name, set:row.set, card_number:row.card_number }).catch(() => null);
+    if(slab && Number(slab.price) > 0){
+      row.priceChartingGrades = row.priceChartingGrades || {};
+      row.priceChartingGrades[gradeNum] = slab;
+      changed = true;
+    }
+  }
+  return changed;
+}
+
+async function retryPokemonGradeFallback(idx){
+  const r = qplResults[idx];
+  if(!r) return;
+  delete r._pcGradeFallbackTried;
+  const changed = await ensurePokemonPriceChartingGradeFallback(r).catch(() => false);
+  updateQplResultCard(idx);
+  if(!changed) toast_dash('No PriceCharting guide value found for this grade either');
+}
+
+// Runs the PriceCharting grade fallback for a bounded slice of visible
+// results after their PPT hydration pass finishes -- capped well below
+// PPT's own HYDRATE_LIMIT because PriceCharting is a separate, metered,
+// globally-throttled provider (~1.1s between calls, shared across every
+// store using the Worker); firing it for a full batch of 40 results would
+// pile onto that same queue and slow down every other PriceCharting-backed
+// feature (comics, video games, sports) for everyone. Only rows PPT
+// genuinely came up empty for get a PriceCharting call at all.
+async function hydratePokemonGradeFallbacks(indexes){
+  const GRADE_FALLBACK_LIMIT = 8;
+  const GRADE_FALLBACK_STAGGER_MS = 300;
+  const candidates = indexes.filter(i => {
+    const r = qplResults[i];
+    if(!r || !isPokemonChartCandidate(r) || r._pcGradeFallbackTried) return false;
+    if(!r.pokemonPriceTracker?.lookupDebug?.exactHydrated) return false;
+    const have = pokemonPptGradeRows(r);
+    return !['PSA 10','PSA 9'].every(label => have.some(g => g.gradeLabel === label && g.price > 0));
+  }).slice(0, GRADE_FALLBACK_LIMIT);
+  for(let n = 0; n < candidates.length; n++){
+    const idx = candidates[n];
+    if(n) await new Promise(resolve => setTimeout(resolve, GRADE_FALLBACK_STAGGER_MS));
+    const r = qplResults[idx];
+    if(!r) continue;
+    const changed = await ensurePokemonPriceChartingGradeFallback(r).catch(() => false);
+    if(changed) updateQplResultCard(idx);
+  }
 }
 
 function makePokemonActivePriceBasis(row, resolved){
@@ -33568,12 +33664,17 @@ function hydrateVisiblePokemonPriceTrackerResults(indexes = []){
   if(!candidates.length) return;
   (async () => {
     const handled = await hydratePokemonPriceTrackerPricingBatch(candidates).catch(() => new Set());
-    candidates.filter(idx => !handled.has(idx)).forEach((idx, n) => {
+    const unhandled = candidates.filter(idx => !handled.has(idx));
+    unhandled.forEach((idx, n) => {
       setTimeout(() => {
         if(pokemonPriceTrackerQuotaBlocked()) return;
         hydratePokemonPriceTrackerPricing(idx, true);
       }, n * HYDRATE_STAGGER_MS);
     });
+    // Runs once the PPT stagger above has had time to actually land -- checks
+    // which of these rows PPT genuinely came up empty for on PSA 10/PSA 9 and
+    // fills those in from PriceCharting instead.
+    setTimeout(() => { hydratePokemonGradeFallbacks(candidates); }, unhandled.length * HYDRATE_STAGGER_MS + 2000);
   })();
 }
 
@@ -34554,9 +34655,17 @@ function qplGradedQuickChips(r, idx){
   const chip = (gradeLabel, gradeKey, g) => {
     const isActive = r.activePriceBasis?.basisType === 'graded' && normalizePokemonPptKey(r.selectedGrade||'') === normalizePokemonPptKey(gradeLabel);
     const price = g?.price || 0;
-    return `<button class="qpl-cond-chip${isActive?' active':''}" style="border-color:rgba(72,202,228,.4);${isActive?'':'color:var(--blue)'}" onclick="(async()=>{${g ? `await updateQplVariant(${idx},{selectedGrade:'${escHtml(gradeLabel)}',selectedGradeKey:'${escHtml(gradeKey)}',pricingMode:'graded'});` : `await loadPricesForResultCard(${idx});`}fetchPopCountForCard(${idx});})()">
+    // No price yet: if PPT hasn't even loaded this card, fetch PPT first (may
+    // fill both condition prices and grade data in one shot). If PPT already
+    // loaded and still has nothing for this grade, go straight to the
+    // PriceCharting guide-value fallback instead of repeating the same PPT
+    // call for no new result.
+    const emptyAction = r.pokemonPriceTracker?.lookupDebug?.exactHydrated
+      ? `await retryPokemonGradeFallback(${idx});`
+      : `await loadPricesForResultCard(${idx});`;
+    return `<button class="qpl-cond-chip${isActive?' active':''}" style="border-color:rgba(72,202,228,.4);${isActive?'':'color:var(--blue)'}" onclick="(async()=>{${g ? `await updateQplVariant(${idx},{selectedGrade:'${escHtml(gradeLabel)}',selectedGradeKey:'${escHtml(gradeKey)}',pricingMode:'graded'});` : emptyAction}fetchPopCountForCard(${idx});})()">
       <span class="cchip-label">${gradeLabel}</span>
-      <span class="${price?'cchip-price':'cchip-na'}">${price?'$'+Number(price).toFixed(2):'—'}</span>
+      <span class="${price?'cchip-price':'cchip-na'}" title="${g?.source==='PriceCharting Guide'?'PriceCharting guide value, not a sold comp average':''}">${price?'$'+Number(price).toFixed(2):'—'}</span>
     </button>`;
   };
   return `<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:6px;padding-top:6px;border-top:1px solid rgba(72,202,228,.15)">
@@ -35686,6 +35795,10 @@ async function selectQuickLookupResult(idx){
       qplResults[idx] = { ...pokemonPriceTrackerCardToQplRow(exact, qplLastSearch, r.lookupDebug?.parseTitle || null), lookupDebug:{ ...(r.lookupDebug || {}), ...(exact.lookupDebug || {}), exactHydrated:true }, confidence:Math.max(Number(r.confidence || 0), 98), autoSelect:true };
       await cachePokemonPriceTrackerCard(qplResults[idx], exact).catch(() => {});
       r = qplResults[idx];
+      // Selecting a card is a single, deliberate lookup (not a batch of 40
+      // background rows) so it's worth the extra PriceCharting call here,
+      // rather than making the dealer notice a dash and tap the chip again.
+      await ensurePokemonPriceChartingGradeFallback(r).catch(() => false);
     }
   }
 
@@ -44064,7 +44177,7 @@ async function toppsLoadParallels(cardId){
   window.__arscaCloseModal = closeModal;
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.08.31.02-pokemon-live-only" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.08.31.03-pc-grade-fallback" defer></script>
 </body>
 </html>
 
