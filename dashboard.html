@@ -17984,6 +17984,7 @@ function renderReportsPanel(){
             <option value="none">Totals only</option>
             <option value="month" selected>Month</option>
             <option value="quarter">Quarter</option>
+            <option value="year">Year</option>
           </select>
         </label>
         <button class="hbtn" onclick="runReportsQuery()">RUN REPORT</button>
@@ -17997,6 +17998,7 @@ function renderReportsPanel(){
         <button class="hbtn" onclick="setReportsRangePreset('this_year')">THIS YEAR</button>
         <button class="hbtn" onclick="setReportsRangePreset('last_year')">LAST YEAR</button>
         <button class="hbtn" onclick="setReportsRangePreset('ytd')">YEAR TO DATE</button>
+        <button class="hbtn" onclick="setReportsRangePreset('all_time')">ALL TIME</button>
       </div>
     </div>
     <div id="reports-results"></div>`;
@@ -18013,6 +18015,13 @@ function setReportsRangePreset(preset){
   else if(preset === 'this_year'){ from = new Date(y,0,1); to = new Date(y,11,31); }
   else if(preset === 'last_year'){ from = new Date(y-1,0,1); to = new Date(y-1,11,31); }
   else if(preset === 'ytd'){ from = new Date(y,0,1); to = now; }
+  else if(preset === 'all_time'){
+    from = new Date('2000-01-01'); to = now;
+    // Grouping a possibly-years-long "all time" range by month would make
+    // an unusably long table -- Year reads far better for that span.
+    const groupByEl = document.getElementById('reports-groupby');
+    if(groupByEl) groupByEl.value = 'year';
+  }
   else return;
   const fromEl = document.getElementById('reports-from'), toEl = document.getElementById('reports-to');
   if(fromEl) fromEl.value = from.toISOString().slice(0,10);
@@ -18024,6 +18033,7 @@ function reportsPeriodKey(dateStr, groupBy){
   const d = new Date(dateStr);
   if(groupBy === 'month') return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
   if(groupBy === 'quarter') return `${d.getFullYear()} Q${Math.floor(d.getMonth()/3)+1}`;
+  if(groupBy === 'year') return `${d.getFullYear()}`;
   return 'total';
 }
 function reportsPeriodLabel(key, groupBy){
@@ -18054,15 +18064,25 @@ async function runReportsQuery(){
   if(resultsEl) resultsEl.innerHTML = '<div style="padding:20px;text-align:center;color:var(--dim);font-family:var(--font-mono);font-size:11px">Loading…</div>';
   try {
     const storeId = getActiveStoreId();
-    const { data: sales, error } = await sb.from('pos_sales')
-      .select('id,subtotal,discount_total,tax_total,total,status,completed_at')
-      .eq('store_id', storeId)
-      .in('status', ['completed','succeeded'])
-      .gte('completed_at', fromISO)
-      .lte('completed_at', toISO)
-      .order('completed_at', {ascending:true});
-    if(error) throw error;
-    const saleRows = sales || [];
+    // No .limit() here on purpose -- paginate with .range() until a short
+    // page comes back, so an ALL TIME (or any range with more than one
+    // page's worth of sales) report doesn't silently truncate at whatever
+    // the Supabase project's default max-rows happens to be. A store with
+    // years of history needs every sale counted, not just the first page.
+    const saleRows = [];
+    for(let offset = 0; ; offset += 1000){
+      const { data: pageRows, error } = await sb.from('pos_sales')
+        .select('id,subtotal,discount_total,tax_total,total,status,completed_at')
+        .eq('store_id', storeId)
+        .in('status', ['completed','succeeded'])
+        .gte('completed_at', fromISO)
+        .lte('completed_at', toISO)
+        .order('completed_at', {ascending:true})
+        .range(offset, offset + 999);
+      if(error) throw error;
+      saleRows.push(...(pageRows || []));
+      if(!pageRows || pageRows.length < 1000) break;
+    }
     const saleMap = new Map(saleRows.map(s => [s.id, s]));
     const ids = saleRows.map(s => s.id);
     const lines = [];
@@ -38171,7 +38191,25 @@ async function syncSharedShowTransactions(showId='',drawerId=drawerState?.id||''
     (payments||[]).forEach(row=>{const rows=paymentMap.get(row.sale_id)||[];rows.push(row);paymentMap.set(row.sale_id,rows);});
     (lines||[]).forEach(row=>{const rows=lineMap.get(row.sale_id)||[];rows.push(row);lineMap.set(row.sale_id,rows);});
     const cloud=(sales||[]).map(sale=>{const tender=paymentMap.get(sale.id)||[],items=lineMap.get(sale.id)||[];return {id:sale.id,date:sale.completed_at||sale.created_at,method:tender.map(row=>row.method).join('+')||'Unknown',tenderType:tender.length===1?normalizeTenderType(tender[0].method):'mixed',paymentBreakdown:tender.map(row=>({method:row.method,tenderType:normalizeTenderType(row.method),amount:Number(row.amount||0),reference:row.reference||'',provider:row.provider||'',stripePaymentIntentId:row.stripe_payment_intent_id||''})),paymentStatus:'paid',total:Number(sale.total||0),items:items.map(row=>({name:row.title,price:Number(row.adjusted_price||row.unit_price||0),cost:Number(row.cost_basis||0),profit:Number(row.profit||0),quantity:Number(row.quantity||1),category:row.category||'',condition:row.condition||'',finish:row.finish||'',soldAt:sale.completed_at||sale.created_at})),source:'supabase-shared-show',showSessionId:sale.show_session_id||showId,drawerSessionId:sale.drawer_session_id||'',storeId:getActiveStoreId()};});
-    const merged=new Map((safeLocalJson('pos_transactions',[])||[]).map(row=>[String(row.id),row]));cloud.forEach(row=>merged.set(String(row.id),row));
+    const localRows=safeLocalJson('pos_transactions',[])||[];
+    const merged=new Map(localRows.map(row=>[String(row.id),row]));cloud.forEach(row=>merged.set(String(row.id),row));
+    // A sale voided on a DIFFERENT device than the one running this sync
+    // never gets purged locally otherwise: the query above only pulls
+    // completed/succeeded sales, so a voided one simply stops appearing --
+    // indistinguishable, from absence alone, from a legitimately-older sale
+    // that just fell outside this pull's most-recent-1000 window. Check
+    // those candidates' real status directly rather than guess. Only rows
+    // already confirmed synced to Supabase are candidates -- an
+    // 'offline-queued-ledger' row hasn't reached the cloud yet and must
+    // never be pruned just because it's absent from a cloud query.
+    const idsInThisPull=new Set(cloud.map(row=>String(row.id)));
+    const staleCandidates=localRows.filter(row=>(row.source==='supabase-ledger'||row.source==='supabase-shared-show')&&!idsInThisPull.has(String(row.id))).map(row=>String(row.id));
+    for(let index=0;index<staleCandidates.length;index+=100){
+      const batch=staleCandidates.slice(index,index+100);
+      const {data:statusRows}=await sb.from('pos_sales').select('id,status').eq('store_id',getActiveStoreId()).in('id',batch);
+      const stillLive=new Set((statusRows||[]).filter(row=>['completed','succeeded'].includes(row.status)).map(row=>String(row.id)));
+      batch.forEach(id=>{if(!stillLive.has(id))merged.delete(id);});
+    }
     localStorage.setItem('pos_transactions',JSON.stringify([...merged.values()].sort((a,b)=>new Date(b.date||0)-new Date(a.date||0)).slice(0,1000)));
     if(drawerId&&drawerState?.id===drawerId){drawerState.lastCloudSyncAt=new Date().toISOString();saveDrawer();renderDrawer();}
     renderStats();renderTodayMode();
