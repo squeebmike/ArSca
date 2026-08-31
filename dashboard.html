@@ -39083,6 +39083,7 @@ function showBuyPaymentConfirm(session){
         </div>
         <div style="font-family:var(--font-mono);font-size:11px;color:var(--dim);text-align:right;margin-top:4px">via ${escHtml(method)}</div>
       </div>
+      <button onclick="printLabelsForAcceptedBuy()" style="width:100%;background:rgba(0,255,179,.1);color:var(--g);border:1px solid rgba(0,255,179,.45);border-radius:10px;font-family:'Orbitron',monospace;font-size:13px;font-weight:800;padding:14px;cursor:pointer;letter-spacing:.04em;margin-bottom:10px">🏷️ PRINT LABELS (${items.length})</button>
       <div style="display:flex;gap:10px;flex-wrap:wrap">
         <button onclick="confirmBuyPayout('${escHtml(method)}')" style="flex:1;background:var(--g);color:#000;border:none;border-radius:10px;font-family:'Orbitron',monospace;font-size:14px;font-weight:800;padding:18px;cursor:pointer;letter-spacing:.05em">${isTradeCredit?'ISSUE TRADE CREDIT':'CONFIRM PAYMENT'}</button>
         ${isTradeCredit ? '' : `<button onclick="confirmBuyPayout('Trade Credit',true)" style="flex:1 0 100%;background:rgba(255,190,70,.12);color:var(--gold);border:1px solid rgba(255,190,70,.55);border-radius:10px;font-family:'Orbitron',monospace;font-size:12px;font-weight:800;padding:15px;cursor:pointer;letter-spacing:.04em">APPLY $${tradeTotal.toFixed(2)} TO PURCHASE${total>0?` (+${Math.round((tradeTotal/total-1)*100)}% TRADE BONUS)`:''}</button>`}
@@ -39091,6 +39092,27 @@ function showBuyPaymentConfirm(session){
       <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);line-height:1.5;margin-top:12px;text-align:center">Apply to Purchase issues customer-linked trade credit, then opens POS. At checkout choose Trade Credit and apply it before taking any remaining balance.</div>
     </div>`;
   el.style.display = 'flex';
+}
+
+// Store report: "printing labels after a buy" -- 1 item or 100+ -- had no
+// path at all. showBuyPaymentConfirm's own `session` argument can't supply
+// this: snapshotBuySession() shallow-copies buyList into session.items
+// BEFORE bulkAddBuyListToInventory() runs, so session.items[].inventoryId
+// is stale/undefined even after acceptance. buyList itself is what
+// createBuyItemInventoryRecord mutates in place and isn't cleared until the
+// tray closes, so it's the live source for which items now have real
+// inventory rows. Reloading inventory before reading `all` covers the case
+// where loadInventory()'s own fire-and-forget refresh (kicked off inside
+// bulkAddBuyListToInventory) hasn't landed yet by the time this button is
+// clicked -- otherwise a fast click could silently label zero items.
+async function printLabelsForAcceptedBuy(){
+  const ids = buyList.filter(i => i.inventoryId).map(i => String(i.inventoryId));
+  if(!ids.length){ toast_dash('No inventory items to label yet'); return; }
+  await loadInventory();
+  const idSet = new Set(ids);
+  const items = (all || []).filter(i => idSet.has(String(i.id)));
+  if(!items.length){ toast_dash('Could not find the new inventory items to label'); return; }
+  openLabelPrintModal(null, items.map(labelBatchEntryFromItem));
 }
 
 function syncBuyConfirmCustomer(field, value){
