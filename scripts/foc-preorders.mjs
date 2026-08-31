@@ -1078,6 +1078,51 @@ async function adminPrhSubmission(request,env,deps,url){
   return deps.json({ok:true,submission:inserted,ebayWithdrawnCount:ebayWithdrawnSkuIds.length});
 }
 
+// Manual, one-click sibling to the auto-sweep inside adminPrhSubmission
+// above. That sweep only pulls listings for covers the shop ended up NOT
+// ordering (finalQty<=0) -- covers that WERE ordered are deliberately left
+// alone there, so their eBay listings stay live and purchasable with no
+// cap, indefinitely, even after the distributor order is locked in. This
+// is the tool for the shop owner to end those too, in bulk, whenever they
+// decide demand has been captured (at/after FOC cutoff, once a listing's
+// unsold quantity roughly matches what was ordered, or for any other
+// reason) -- unlike the sweep, this is owner-triggered, not automatic, and
+// it ends every still-live FOC presale listing for the cycle regardless of
+// whether that SKU made it into the PRH order.
+async function adminEndFocEbayListings(request,env,deps){
+  const db=(path,options)=>deps.supabaseAdminFetch(env,path,options);
+  if(request.method!=='POST')return deps.json({ok:false,error:'POST only'},405);
+  const limited=await deps.readJsonWithLimit(request,8*1024);if(limited.error)return limited.error;const body=limited.data||{};
+  const storeId=text(body.storeId,80);const cycleId=text(body.cycleId,80);
+  const auth=await deps.requireStoreUser(request,env,storeId,['owner','admin']);if(auth.error)return auth.error;
+  if(!cycleId)return deps.json({ok:false,error:'cycleId is required'},400);
+  const {data:presaleRows}=await db(`inventory_items?store_id=eq.${encodeURIComponent(storeId)}&status=eq.presale&select=id,data`);
+  const toWithdraw=(presaleRows||[]).filter(row=>{
+    const d=row.data||{};
+    return d.source==='foc_presale'&&d.focCycleId===cycleId&&d.ebayOfferId&&Number(d.qty??d.quantity??0)>0;
+  });
+  if(!toWithdraw.length)return deps.json({ok:true,endedCount:0,failedCount:0});
+  if(!deps.getEbayUserAccessToken||!deps.withdrawEbayOffer)return deps.json({ok:false,error:'eBay is not configured for this store'},503);
+  let ebayToken='';
+  try{ebayToken=await deps.getEbayUserAccessToken(env);}catch(e){return deps.json({ok:false,error:'Could not get an eBay access token: '+e.message},502);}
+  if(!ebayToken)return deps.json({ok:false,error:'eBay is not connected for this store'},503);
+  let endedCount=0;const errors=[];
+  for(const row of toWithdraw){
+    try{
+      await deps.withdrawEbayOffer(env,ebayToken,row.data.ebayOfferId);
+      if(row.data.ebayVolumeDiscountPromotionId&&deps.endEbayVolumeDiscount){
+        try{await deps.endEbayVolumeDiscount(env,ebayToken,row.data.ebayVolumeDiscountPromotionId);}catch(_){}
+      }
+      await db(`inventory_items?id=eq.${row.id}&store_id=eq.${encodeURIComponent(storeId)}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({data:{...row.data,qty:0,quantity:0,ebayWithdrawnAt:new Date().toISOString(),ebayWithdrawnReason:'manual_bulk_end'}})});
+      endedCount++;
+    }catch(e){
+      console.error('FOC bulk eBay end: could not withdraw listing',row.id,e);
+      errors.push({title:row.data.title||row.id,error:e.message});
+    }
+  }
+  return deps.json({ok:true,endedCount,failedCount:errors.length,errors});
+}
+
 async function adminCycle(request,env,deps,url){
   const storeId=text(url.searchParams.get('store_id'),80);const auth=await deps.requireStoreUser(request,env,storeId,['owner','admin','manager','employee']);if(auth.error)return auth.error;
   const db=(path,options)=>deps.supabaseAdminFetch(env,path,options);
@@ -1461,6 +1506,7 @@ export async function handleFocRequest(request, env, url, deps) {
   if(path==='/foc/admin/cycles'&&(request.method==='GET'||request.method==='PATCH'))return adminCycle(request,env,deps,url);
   if(path==='/foc/admin/sku'&&request.method==='PATCH')return adminSku(request,env,deps);
   if(path==='/foc/admin/prh-submission'&&(request.method==='GET'||request.method==='POST'))return adminPrhSubmission(request,env,deps,url);
+  if(path==='/foc/admin/end-ebay-listings'&&request.method==='POST')return adminEndFocEbayListings(request,env,deps);
   if(path==='/foc/admin/export'&&request.method==='GET')return exportPrh(env,deps,url,request);
   if(path==='/foc/admin/orders'&&(request.method==='GET'||request.method==='PATCH'))return adminOrders(request,env,deps,url);
   if(path==='/foc/admin/orders/email'&&request.method==='POST')return resendAdminOrderEmail(request,env,deps);
