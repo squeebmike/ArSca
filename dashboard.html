@@ -40473,7 +40473,10 @@ function createLockedCheckoutSnapshot(cartData){
   // ratio every line's own price is reduced by below.
   const taxableSubtotal = rawItems.filter(i => i.taxable !== false).reduce((s,i) => s + Number(i.price || 0), 0);
   const taxableAfterDiscount = Math.max(0, taxableSubtotal - taxableSubtotal * discountRatio);
-  const taxTotal = settings.tax?.enabled && !Number(normalized.tax || 0) ? taxableAfterDiscount * (Number(settings.tax.defaultRate || 0) / 100) : Number(normalized.tax || 0);
+  // Shows/conventions don't collect sales tax here regardless of the store's
+  // own tax setting -- different venue, often a different jurisdiction, and
+  // the dealer decided not to handle that per-event.
+  const taxTotal = settings.tax?.enabled && !getShowMode() && !Number(normalized.tax || 0) ? taxableAfterDiscount * (Number(settings.tax.defaultRate || 0) / 100) : Number(normalized.tax || 0);
   const total = Math.max(0, subtotal - discountTotal + taxTotal);
   let allocated = 0;
   const discountedItems = rawItems.map((item, idx) => {

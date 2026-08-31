@@ -20,8 +20,8 @@ assert.match(html,
   'the taxable subtotal must have the same proportional discount applied as every other line');
 
 assert.match(html,
-  /const taxTotal = settings\.tax\?\.enabled && !Number\(normalized\.tax \|\| 0\) \? taxableAfterDiscount \* \(Number\(settings\.tax\.defaultRate \|\| 0\) \/ 100\) : Number\(normalized\.tax \|\| 0\);/,
-  'taxTotal must be computed from taxableAfterDiscount, not the whole cart subtotal minus discount');
+  /const taxTotal = settings\.tax\?\.enabled && !getShowMode\(\) && !Number\(normalized\.tax \|\| 0\) \? taxableAfterDiscount \* \(Number\(settings\.tax\.defaultRate \|\| 0\) \/ 100\) : Number\(normalized\.tax \|\| 0\);/,
+  'taxTotal must be computed from taxableAfterDiscount (with the Show Mode gate still present), not the whole cart subtotal minus discount');
 
 assert.doesNotMatch(html,
   /const taxTotal = settings\.tax\?\.enabled && !Number\(normalized\.tax \|\| 0\) \? Math\.max\(0, subtotal - discountTotal\) \* \(Number\(settings\.tax\.defaultRate \|\| 0\) \/ 100\)/,
