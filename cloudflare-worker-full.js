@@ -560,6 +560,44 @@ function storefrontProductTypeSlug(item) {
   if (['pokemon','mtg','one-piece','yugioh','lorcana','sports-cards'].includes(item.categorySlug)) return item.gradingCompany || /psa|bgs|cgc|sgc|graded|slab/.test(words) ? 'graded' : item.isSealed || /booster|sealed|box|pack|bundle|elite trainer|\betb\b|tin|deck/.test(words) ? 'sealed' : 'singles';
   return storefrontCleanText(item.productType || 'other', 40).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'other';
 }
+// Facets use saved inventory values across the whole available catalog,
+// never only the current page. Legacy navigation slugs remain supported.
+function storefrontCategoryMatches(item, category) {
+  return !category || category === 'all' || item.category.toLowerCase() === category || item.categorySlug === category || (category === 'tcg' && ['pokemon','mtg','one-piece','yugioh','lorcana'].includes(item.categorySlug));
+}
+function storefrontTypeValue(item) {
+  return item.configuration || item.productType || 'Unspecified';
+}
+function storefrontFacetOptions(items, valueFor) {
+  const values = new Map();
+  for (const item of items) {
+    const label = valueFor(item), value = label.toLowerCase();
+    const entry = values.get(value) || { value, label, count:0 };
+    entry.count++;
+    values.set(value, entry);
+  }
+  return [...values.values()].sort((a,b) => a.label.localeCompare(b.label));
+}
+function filterStorefrontCatalog(allItems, params) {
+  const category = storefrontCleanText(params.get('category'), 80).toLowerCase();
+  const productType = storefrontCleanText(params.get('type'), 80).toLowerCase();
+  const query = storefrontCleanText(params.get('q'), 120).normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  let items = allItems.filter(item => storefrontCategoryMatches(item, category));
+  const filterOptions = { categories:storefrontFacetOptions(allItems, item => item.category), types:storefrontFacetOptions(items, storefrontTypeValue) };
+  if (productType && productType !== 'all') items = items.filter(item => storefrontTypeValue(item).toLowerCase() === productType || item.productTypeSlug === productType);
+  if (query) {
+    const tokens = query.split(/\s+/).filter(Boolean);
+    items = items.filter(item => {
+      const text = [item.name,item.category,item.set,item.year,item.variant,item.condition,item.productType,item.configuration,item.brand,item.sport,item.game,item.player,item.team,item.cardNumber,item.comic?.publisher,item.comic?.description].join(' ').normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+      return tokens.every(token => text.includes(token));
+    });
+  }
+  const sort = params.get('sort');
+  if (sort === 'price-asc') items.sort((a,b) => a.price-b.price || a.id.localeCompare(b.id));
+  else if (sort === 'price-desc') items.sort((a,b) => b.price-a.price || a.id.localeCompare(b.id));
+  else if (sort === 'name') items.sort((a,b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id));
+  return { items, filterOptions };
+}
 // Same book-detail fields the dashboard's own item editor already shows
 // (Metron-sourced), trimmed for public payload size -- only attached for
 // comic rows, and only when the item actually has a saved comic record.
@@ -599,6 +637,7 @@ function shapeStorefrontItem(row) {
     categorySlug: storefrontCategorySlug([d.category, d.type, d.game, d.sport].filter(Boolean).join(' ')),
     productType: storefrontCleanText(d.productType || d.product_type || d.itemType || d.item_type || d.configuration || '', 80),
     brand: storefrontCleanText(d.brand || d.manufacturer || '', 100), sport: storefrontCleanText(d.sport || '', 60), game: storefrontCleanText(d.game || '', 60),
+    player: storefrontCleanText(d.player || d.subject || '', 120), team: storefrontCleanText(d.team || '', 100), cardNumber: storefrontCleanText(d.cardNumber || d.number || '', 40),
     set: storefrontCleanText(d.set || d.series || '', 120), year: storefrontCleanText(d.year || '', 12), variant: storefrontCleanText(d.variant || d.finish || '', 120), condition: storefrontCleanText(d.condition || d.grade || '', 80),
     configuration: storefrontCleanText(d.configuration || '', 60),
     // photoDataUrl/thumbnail are where the dashboard's own upload flow
@@ -3903,7 +3942,8 @@ export default {
       const storeId = String(url.searchParams.get('store_id') || '').trim();
       if (!/^[0-9a-z_-]{2,80}$/i.test(storeId)) return json({ ok:false, error:'Valid store_id required' }, 400);
       if (!(env.SUPABASE_URL && (env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SERVICE_KEY))) return json({ ok:false, error:'Storefront service unavailable' }, 503);
-      const storefrontCacheKey = new Request(url.toString(), { method:'GET' });
+      const storefrontCacheUrl = new URL(url); storefrontCacheUrl.searchParams.set('_catalog_version', 'database-facets-1');
+      const storefrontCacheKey = new Request(storefrontCacheUrl.toString(), { method:'GET' });
       const cachedStorefront = await caches.default.match(storefrontCacheKey);
       if (cachedStorefront) return cachedStorefront;
       const { data:settings } = await supabaseAdminFetch(env, `store_settings?store_id=eq.${encodeURIComponent(storeId)}&select=receipt_settings,theme,modules&limit=1`);
@@ -3917,7 +3957,7 @@ export default {
       let storefrontOffset = 0;
       let lastResponse = null;
       while (true) {
-        const page = await supabaseAdminFetch(env, `inventory_items?store_id=eq.${encodeURIComponent(storeId)}&select=id,data,status,created_at,updated_at&order=updated_at.desc&limit=1000&offset=${storefrontOffset}`);
+        const page = await supabaseAdminFetch(env, `inventory_items?store_id=eq.${encodeURIComponent(storeId)}&select=id,data,status,created_at,updated_at&order=updated_at.desc,id.asc&limit=1000&offset=${storefrontOffset}`);
         lastResponse = page.response;
         if (!page.response?.ok) break;
         const batch = page.data || [];
@@ -3945,12 +3985,9 @@ export default {
         items=[...items,...mappedWebflow];
       }
       const allItems = items;
-      const category = storefrontCleanText(url.searchParams.get('category') || '', 40).toLowerCase();
-      const productType = storefrontCleanText(url.searchParams.get('type') || '', 40).toLowerCase();
-      const query = storefrontCleanText(url.searchParams.get('q') || '', 120).toLowerCase();
-      if (category && category !== 'all') items = items.filter(item => item.categorySlug === category || (category === 'tcg' && ['pokemon','mtg','one-piece','yugioh','lorcana'].includes(item.categorySlug)));
-      if (productType && productType !== 'all') items = items.filter(item => item.productTypeSlug === productType);
-      if (query) items = items.filter(item => [item.name,item.category,item.set,item.year,item.variant,item.condition,item.productType,item.brand,item.sport,item.game,item.comic?.publisher,item.comic?.description].join(' ').toLowerCase().includes(query));
+      const filteredCatalog = filterStorefrontCatalog(allItems, url.searchParams);
+      items = filteredCatalog.items;
+      const filterOptions = filteredCatalog.filterOptions;
       const total = items.length;
       const requestedLimit = Number(url.searchParams.get('limit'));
       const limit = Number.isFinite(requestedLimit) && requestedLimit > 0 ? Math.min(96, Math.floor(requestedLimit)) : 0;
@@ -3958,7 +3995,7 @@ export default {
       if (limit) items = items.slice(offset, offset + limit);
       const facets = Array.from(new Set(allItems.map(item => item.categorySlug).filter(Boolean))).sort();
       const store = stores?.[0] || {};
-      const storefrontResponse = json({ ok:true, store:{ id:storeId, name:storefrontCleanText(cfg.storeName || cfg.shortName || store.display_name || store.name || 'Store',120), location:storefrontCleanText(cfg.location,160), website:storefrontCleanUrl(cfg.website), email:storefrontCleanText(cfg.email,200), phone:storefrontCleanText(cfg.phone,80), logo:storefrontCleanUrl(cfg.logo), message:storefrontCleanText(cfg.storefrontMessage,500), theme:settings?.[0]?.theme || {} }, items, total, offset, limit:limit || total, hasMore:limit ? offset + items.length < total : false, nextOffset:limit && offset + items.length < total ? offset + items.length : null, facets, updatedAt:new Date().toISOString() }, 200, { 'Cache-Control':'public, max-age=60, stale-while-revalidate=300' });
+      const storefrontResponse = json({ ok:true, store:{ id:storeId, name:storefrontCleanText(cfg.storeName || cfg.shortName || store.display_name || store.name || 'Store',120), location:storefrontCleanText(cfg.location,160), website:storefrontCleanUrl(cfg.website), email:storefrontCleanText(cfg.email,200), phone:storefrontCleanText(cfg.phone,80), logo:storefrontCleanUrl(cfg.logo), message:storefrontCleanText(cfg.storefrontMessage,500), theme:settings?.[0]?.theme || {} }, items, total, offset, limit:limit || total, hasMore:limit ? offset + items.length < total : false, nextOffset:limit && offset + items.length < total ? offset + items.length : null, facets, filterOptions, updatedAt:new Date().toISOString() }, 200, { 'Cache-Control':'public, max-age=60, stale-while-revalidate=300' });
       ctx.waitUntil(caches.default.put(storefrontCacheKey, storefrontResponse.clone()));
       return storefrontResponse;
     }
