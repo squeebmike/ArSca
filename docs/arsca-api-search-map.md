@@ -36,7 +36,6 @@ The browser stores only confirmed barcode-product mappings in IndexedDB. PriceCh
 - `GET /pricing/pokemon/sealed-products`
 - `POST /pricing/pokemon/parse-title`
 - `GET /pricing/pokemon/population`
-- Export routes already present under `/pricing/pokemon/export`
 
 The Worker owns `POKEMONPRICE_API_KEY` and sends `Authorization: Bearer ...` upstream. Browser code must never receive or log the key.
 

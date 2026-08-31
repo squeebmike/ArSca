@@ -7,8 +7,7 @@
   // and zero dependency on Scryfall's own CDN once cached. Card metadata and
   // prices are a separate, already-existing module (mtg-offline-browser.js)
   // and are untouched by this one -- this only covers what that one
-  // doesn't: actual image bytes, mirroring
-  // scripts/pokemon/offline-browser.js's same split for Pokemon.
+  // doesn't: actual image bytes.
 
   const DB_NAME = 'arscaMtgOfflineImages';
   const DB_VERSION = 1;

@@ -400,21 +400,11 @@ tr.sold:hover td{opacity:.7;}
 .qpl-badge.good{color:var(--g);border-color:rgba(0,255,179,.35);background:rgba(0,255,179,.08);}
 .qpl-badge.warn{color:var(--gold);border-color:rgba(255,209,102,.35);background:rgba(255,209,102,.08);}
 .qpl-badge.bad{color:var(--red);border-color:rgba(255,77,109,.32);background:rgba(255,77,109,.07);}
-.pokemon-offline-banner,.mtg-offline-banner,.comics-offline-banner{display:none;border:1px solid rgba(255,209,102,.35);background:rgba(255,209,102,.08);color:var(--gold);border-radius:8px;padding:9px 10px;margin:10px 0;font-family:var(--font-mono);font-size:10px;line-height:1.45;}
-.pokemon-offline-banner.on,.mtg-offline-banner.on,.comics-offline-banner.on{display:block;}
+.mtg-offline-banner,.comics-offline-banner{display:none;border:1px solid rgba(255,209,102,.35);background:rgba(255,209,102,.08);color:var(--gold);border-radius:8px;padding:9px 10px;margin:10px 0;font-family:var(--font-mono);font-size:10px;line-height:1.45;}
+.mtg-offline-banner.on,.comics-offline-banner.on{display:block;}
 .pokemon-cache-meta{font-family:var(--font-mono);font-size:10px;color:var(--dim);line-height:1.45;margin-top:6px;}
 .pokemon-comps-panel{margin-top:12px;border:1px solid var(--border);border-radius:10px;padding:12px;background:rgba(255,255,255,.035);}
 .pokemon-comp-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;margin-top:8px;}
-/* Pokemon Set Sync tiles */
-.pst-tile{position:relative;background:var(--surf2);border:1px solid var(--border);border-radius:10px;padding:10px 10px 8px;cursor:pointer;transition:.15s;display:flex;flex-direction:column;gap:3px;min-height:100px;}
-.pst-tile:hover{border-color:rgba(59,130,246,.45);background:rgba(59,130,246,.06);}
-.pst-tile.pst-sel{border-color:rgba(59,130,246,.75);background:rgba(59,130,246,.12);box-shadow:0 0 0 2px rgba(59,130,246,.25);}
-.pst-tile.pst-syncing{border-color:rgba(255,209,102,.5);background:rgba(255,209,102,.06);}
-.pst-check{position:absolute;top:6px;right:7px;width:18px;height:18px;background:rgba(59,130,246,.9);border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:700;}
-.pst-symbol{width:28px;height:28px;object-fit:contain;margin-bottom:2px;}
-.pst-tile-name{font-size:11px;font-weight:700;color:var(--text);line-height:1.3;}
-.pst-tile-meta{font-family:monospace;font-size:9px;color:var(--dim);line-height:1.4;}
-.pst-tile .qpl-badge{font-size:9px;padding:3px 7px;align-self:flex-start;margin-top:auto;}
 .pokemon-comp-card{border:1px solid var(--border);background:var(--surf2);border-radius:8px;padding:9px;font-family:var(--font-mono);font-size:10px;color:var(--dim);line-height:1.45;}
 .pokemon-comp-card b{display:block;color:var(--text);font-family:'Orbitron',monospace;font-size:14px;margin-bottom:3px;}
 .pokemon-comp-card.guide b{color:var(--gold);}
@@ -1646,7 +1636,6 @@ body.show-mode .inv-sync-badge{display:none;}
 <script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.08.31.01-financials" defer></script>
 <script src="scripts/pricecharting/offline-browser.js?v=2026.08.31.01-financials" defer></script>
 <script src="scripts/topps/offline-browser.js?v=2026.08.31.01-financials" defer></script>
-<script src="scripts/pokemon/offline-browser.js?v=2026.08.31.01-financials" defer></script>
 <script src="scripts/mtg/research-batch.js?v=2026.08.31.01-financials" defer></script>
 </head>
 <body>
@@ -2187,7 +2176,6 @@ body.show-mode .inv-sync-badge{display:none;}
         <button class="hbtn" id="research-offline-data-btn" onclick="openSettingsSection('catalogs','offline-catalog-manager-panel')" style="white-space:nowrap;color:var(--blue)">OFFLINE DATA</button>
         <button class="hbtn" onclick="clearResearchLookup()" style="white-space:nowrap">CLEAR</button>
       </div>
-      <div id="pokemon-offline-banner" class="pokemon-offline-banner"></div>
       <div id="mtg-offline-banner" class="mtg-offline-banner"></div>
       <div id="comics-offline-banner" class="comics-offline-banner"></div>
       <!-- Pokémon helper row — shown only when Pokemon TCG category is selected -->
@@ -3980,7 +3968,7 @@ function getAccountContext(){
 // RLS is required before paid isolation can be guaranteed.
 
 const SUBSCRIPTION_PLANS = {
-  research:{ name:'Research', price:19, features:['Live + offline pricing','Barcode and cover research','Sets and want lists'], capabilities:['research'] },
+  research:{ name:'Research', price:19, features:['Live pricing lookups','Barcode and cover research','Sets and want lists'], capabilities:['research'] },
   register:{ name:'Register', price:49, features:['Everything in Research','Checkout and customer display','Sales history + Stripe payments'], capabilities:['research','checkout','sales'] },
   store:{ name:'Store', price:89, features:['Everything in Register','Inventory, buying and consignments','Staff, shows, tournaments and profit reporting'], capabilities:['research','checkout','sales','inventory','consignments','staff','shows','events','pulllists'] },
   pro:{ name:'Pro', price:149, features:['Everything in Store','Online listing tools','Advanced operations + multi-store'], capabilities:['research','checkout','sales','inventory','consignments','staff','shows','events','pulllists','marketplace','advanced'] }
@@ -6133,7 +6121,7 @@ const SETTINGS_PANEL_MAP = {
   profile:['vendor-profile-panel'],
   payments:['payment-settings-panel'],
   sync:['inventory-sync-panel','sync-queue-panel'],
-  catalogs:['backoffice-research-panel','offline-cache-panel','offline-catalog-manager-panel'],
+  catalogs:['backoffice-research-panel','offline-catalog-manager-panel'],
   inventory:['inventory-tools-panel','spreadsheet-panel'],
   users:['store-members-panel'],
   theme:['branding-theme-panel'],
@@ -6313,7 +6301,7 @@ function renderSettingsOverview(){
     settingsOverviewCard('Checkout & Payments',stripeConfigured?'Working':'Needs Setup',stripeConfigured?'working':'needs-setup',`${enabled.length?enabled.join(', '):'No tenders enabled'} · refunds Owner/Admin only`,'payments'),
     settingsOverviewCard('Cloud Consignments',cloudReady?'Working':'Local Fallback',cloudReady?'working':'local-fallback',cloudReady?`${consignLocal} local/cloud records for this store`:`${consignLocal} cached records · cloud schema or connection still needed`,'sync'),
     settingsOverviewCard('Store Data Sync',failed||conflicts?'Error':queue.filter(x=>x.status!=='done').length?'Needs Setup':'Working',failed||conflicts?'error':queue.filter(x=>x.status!=='done').length?'needs-setup':'working',`${queue.filter(x=>x.status!=='done').length} pending · ${failed} failed · ${conflicts} conflicts · ${navigator.onLine?'online':'offline'}`,'sync'),
-    settingsOverviewCard('Catalogs & Pricing','Offline Ready','offline-ready','MTG offline protected · Pokémon PPT offline planned · three shared PriceCharting catalogs supported','catalogs'),
+    settingsOverviewCard('Catalogs & Pricing','Offline Ready','offline-ready','MTG offline protected · Pokémon live pricing only · three shared PriceCharting catalogs supported','catalogs'),
     settingsOverviewCard('Inventory & Imports',all.length?'Working':'Needs Setup',all.length?'working':'needs-setup',`${all.length} inventory records · imports and exports available`,'inventory'),
     settingsOverviewCard('Subscription',sub.status?roleLabel(sub.status):'Needs Setup',sub.active?'working':'needs-setup',sub.daysRemaining?`${sub.daysRemaining} trial days remaining`:'ArSca software billing and plan status','subscription'),
     settingsOverviewCard('Users',members?'Working':'Needs Setup',members?'working':'needs-setup',`${members} accessible store membership${members===1?'':'s'} · manage staff and invites`,'users'),
@@ -6326,7 +6314,7 @@ function renderSettingsGeneratedPanels(){
   const whatsnew=document.getElementById('settings-panels-whatsnew');if(whatsnew&&!document.getElementById('feature-log-search'))whatsnew.innerHTML=`<input id="feature-log-search" class="settings-search" placeholder="Search features (e.g. scan to cart, discount, labels)..." oninput="renderWhatsNewPanel()" style="margin-bottom:12px"><div id="feature-log-list"></div>`;
   if(whatsnew)renderWhatsNewPanel();
   const sync=document.getElementById('settings-panels-sync');if(sync&&!document.getElementById('cloud-consignment-settings-status'))sync.insertAdjacentHTML('afterbegin',`<div class="settings-generated-panel" id="cloud-consignment-settings-status"><div class="ph">CLOUD CONSIGNMENTS ${settingsStatus(consignmentCloudReady?'Working':'Local Fallback',consignmentCloudReady?'working':'local-fallback')}</div><div style="font-family:var(--font-mono);font-size:10px;line-height:1.65;color:var(--dim)">${consignmentCloudReady?'Per-store consignors, inventory, and sale alerts are syncing through Supabase.':'This device is using its store-scoped local cache. Apply the cloud migration and reconnect to activate cross-device sync.'}<br>People: ${consignorPeople.length} · Items: ${consignItems.length} · Sale alerts: ${getConsignmentAlerts().length}</div></div>`);if(sync&&!document.getElementById('webflow-integration-panel'))sync.insertAdjacentHTML('afterbegin','<div class="settings-generated-panel" id="webflow-integration-panel"></div>');renderWebflowIntegrationPanel?.();if(sync&&!document.getElementById('event-calendar-panel'))sync.insertAdjacentHTML('afterbegin','<div class="settings-generated-panel" id="event-calendar-panel"></div>');renderEventCalendarPanel?.();
-  const catalogs=document.getElementById('settings-panels-catalogs');if(catalogs&&!document.getElementById('catalog-data-concepts'))catalogs.insertAdjacentHTML('afterbegin',`<div class="settings-explainer" id="catalog-data-concepts"><b style="color:var(--text)">Three different data concepts</b><br>1. Store Data Sync — your inventory, sales, settings, users, queues, and consignments.<br>2. Offline Catalog Sync — reference catalogs downloaded to this device; they never create inventory.<br>3. Live Provider Pricing — live or scheduled candidate prices from PriceCharting, Scryfall, and PokemonPriceTracker.<br><br><b style="color:var(--g)">MTG Offline Catalog: Working.</b> Scryfall cards + PriceCharting snapshot; pipeline and image cache remain untouched.<br><b style="color:var(--gold)">Pokémon Offline Catalog: Planned next.</b> It will use PPT rather than PriceCharting.<br>PriceCharting shared offline catalogs cover Video Games, Yu-Gi-Oh, and One Piece. Comics use live Metron records with server-side caching and PriceCharting values after selection; no device comic catalog is searched.</div>`);
+  const catalogs=document.getElementById('settings-panels-catalogs');if(catalogs&&!document.getElementById('catalog-data-concepts'))catalogs.insertAdjacentHTML('afterbegin',`<div class="settings-explainer" id="catalog-data-concepts"><b style="color:var(--text)">Three different data concepts</b><br>1. Store Data Sync — your inventory, sales, settings, users, queues, and consignments.<br>2. Offline Catalog Sync — reference catalogs downloaded to this device; they never create inventory.<br>3. Live Provider Pricing — live or scheduled candidate prices from PriceCharting, Scryfall, and PokemonPriceTracker.<br><br><b style="color:var(--g)">MTG Offline Catalog: Working.</b> Scryfall cards + PriceCharting snapshot; pipeline and image cache remain untouched.<br><b style="color:var(--text)">Pokémon: Live pricing only.</b> PokemonPriceTracker is queried live per search; there is no offline catalog for Pokémon.<br>PriceCharting shared offline catalogs cover Video Games, Yu-Gi-Oh, and One Piece. Comics use live Metron records with server-side caching and PriceCharting values after selection; no device comic catalog is searched.</div>`);
   const devices=document.getElementById('settings-panels-devices');if(devices&&!document.getElementById('devices-hardware-summary'))devices.innerHTML=`<div class="settings-overview-grid" id="devices-hardware-summary">${[['Barcode Scanner','Working','Camera/USB barcode evidence input'],['Phone Scan Inbox','Working','Scanner queue and tablet handoff'],['Receipt Printer','Planned','Browser print workflow; no dedicated driver'],['Cash Drawer','Working','Cash Bag tracking through checkout'],['Customer Display','Working','Cart and payment-method display'],['Stripe Reader','Planned','Coming later; no Terminal integration'],['Vending Hardware','Planned','Future hardware integration'],['Register / Device ID','Working',getDealerDeviceId()]].map(([a,b,c])=>`<article class="settings-overview-card"><div>${settingsStatus(b,b==='Working'?'working':'planned')}</div><h3>${a}</h3><p>${escHtml(c)}</p></article>`).join('')}</div>`;
   const users=document.getElementById('settings-panels-users');if(users&&!document.getElementById('permissions-summary'))users.insertAdjacentHTML('afterbegin',`<div class="settings-generated-panel" id="permissions-summary"><div class="ph">PERMISSION SUMMARY</div><div style="font-family:var(--font-mono);font-size:10px;line-height:1.65;color:var(--dim)">Owner/Admin: payment setup, refunds, members, store configuration, and advanced tools.<br>Manager/Staff: inventory and checkout according to existing role gates.<br>Scanner Only: phone scanner workflow. Stripe refunds remain Owner/Admin only.</div></div>`);
   const advanced=document.getElementById('settings-panels-advanced');if(advanced&&!document.getElementById('advanced-settings-warning'))advanced.insertAdjacentHTML('afterbegin','<div class="settings-explainer" id="advanced-settings-warning" style="border-color:rgba(255,209,102,.35)"><b style="color:var(--gold)">Advanced tools can affect local data, caches, sync queues, and diagnostics. Use carefully.</b></div>');
@@ -6408,7 +6396,6 @@ function organizeRegisterLayout(){
   ensureBrandingPanel(backoffice);
   ensurePaymentSettingsPanel(backoffice);
   ensureResearchSettingsPanel(backoffice);
-  ensureOfflineCachePanel(backoffice);
   ensureOfflineCatalogManagerPanel(backoffice);
   ensurePricingQaPanel(backoffice);
   ensureStoreMembersPanel(backoffice);
@@ -6919,139 +6906,6 @@ function savePaymentSettingsFromForm(){
   toast_dash('Payment settings saved');
 }
 
-function ensureOfflineCachePanel(backoffice){
-  if(document.getElementById('offline-cache-panel')) return;
-  const panel = document.createElement('div');
-  panel.className = 'panel';
-  panel.id = 'offline-cache-panel';
-  panel.style.marginBottom = '14px';
-  panel.innerHTML = '<div class="ph">OFFLINE POKÉMON CENTER <span style="font-size:9px;color:var(--dim)">show mode · synced data · offline lookup</span></div><div id="offline-cache-body">Loading...</div>';
-  backoffice.prepend(panel);
-  renderOfflineCachePanel();
-}
-
-async function getOfflineCacheStats(){
-  const cards = await pokemonDbAll('cards').catch(() => []);
-  const comps = await pokemonDbAll('comps').catch(() => []);
-  const images = await pokemonDbAll('images').catch(() => []);
-  const storeId = getActiveStoreId();
-  const mineCards = cards.filter(c => c.storeId === storeId);
-  const mineComps = comps.filter(c => c.storeId === storeId);
-  const metaRows = await pokemonDbAll('meta').catch(() => []);
-  const lastSync = metaRows.find(m => m.key === 'lastPokemonSyncAt')?.value || mineCards.map(c => c.updatedAt).sort().pop() || '';
-  const estimate = navigator.storage?.estimate ? await navigator.storage.estimate().catch(() => ({})) : {};
-  const historyCachedCount = mineCards.filter(c => {
-    const ph = c.card?.pokemonPriceTracker?.priceHistory || c.card?.pokemonPriceTrackerCard?.priceHistory || {};
-    return Object.keys(ph.variants || {}).length > 0 || Object.keys(ph.conditions || {}).length > 0;
-  }).length;
-  const pendingQueueCount = getSyncQueue().filter(x => x.status !== 'done').length;
-  return {
-    cachedPokemonCardsCount:mineCards.length,
-    cachedPokemonImagesCount:images.length,
-    cachedPokemonCompsCount:mineComps.length,
-    cachedVariantCount:mineCards.reduce((a,c) => a + Number(c.card?.availableVariants?.length || 0), 0),
-    lastPokemonSyncAt:lastSync,
-    cacheStorageEstimate:estimate.usage ? Math.round(estimate.usage / 1024 / 1024 * 10) / 10 + ' MB' : 'Unknown',
-    lastSyncError:localStorage.getItem('pokemon_cache_last_error') || '',
-    historyCachedCount,
-    pendingQueueCount,
-  };
-}
-
-async function renderOfflineCachePanel(status = ''){
-  const body = document.getElementById('offline-cache-body');
-  if(!body) return;
-  const s = await getOfflineCacheStats();
-  const isOnline = navigator.onLine;
-  const lastSyncStr = s.lastPokemonSyncAt ? pokemonCacheAgeLabel(s.lastPokemonSyncAt) : 'Never';
-  const blobPct = s.cachedPokemonCardsCount ? Math.round(s.cachedPokemonImagesCount / s.cachedPokemonCardsCount * 100) : 0;
-
-  // Offline queue — synchronous from localStorage
-  const pendingItems = getSyncQueue().filter(x => x.status !== 'done');
-  const queueRows = pendingItems.length
-    ? pendingItems.slice(0, 12).map(x => `<div style="border:1px solid var(--border);background:var(--surf2);border-radius:6px;padding:7px 8px;display:grid;gap:3px">
-        <div style="display:flex;justify-content:space-between;gap:8px;align-items:center">
-          <b style="color:${x.status==='failed'?'var(--red)':'var(--gold)'}">${escHtml(x.type)}</b>
-          <span style="font-size:9px;color:var(--dim)">${new Date(x.updatedAt||x.createdAt).toLocaleTimeString()}</span>
-        </div>
-        <div style="color:var(--text);font-size:10px">${escHtml((x.label||'Sync item').slice(0,120))}</div>
-        ${x.error ? `<div style="color:var(--red);font-size:9px">${escHtml(String(x.error).slice(0,160))}</div>` : ''}
-        <div style="display:flex;gap:5px;margin-top:2px">
-          <button class="hbtn" style="min-height:24px;font-size:9px" onclick="retrySyncItem('${x.id}')">RETRY</button>
-          <button class="hbtn danger" style="min-height:24px;font-size:9px" onclick="removeSyncItem('${x.id}');renderOfflineCachePanel()">REMOVE</button>
-        </div>
-      </div>`).join('')
-    : `<div style="padding:8px;border:1px dashed var(--border);border-radius:8px;text-align:center;color:var(--dim);font-size:10px">No pending items — all caught up</div>`;
-
-  body.innerHTML = `
-    <!-- ── Status Banner ── -->
-    <div class="pokemon-offline-banner on" style="display:block;color:${isOnline?'var(--g)':'var(--gold)'}">
-      ${isOnline ? '● ONLINE' : '◆ OFFLINE MODE'} &nbsp;·&nbsp; ${s.cachedPokemonCardsCount.toLocaleString()} cards cached &nbsp;·&nbsp; Last sync: ${escHtml(lastSyncStr)}${s.pendingQueueCount ? ` &nbsp;·&nbsp; <b>${s.pendingQueueCount} pending sync</b>` : ''}
-    </div>
-
-    <!-- ── Primary Action ── -->
-    <div style="margin:10px 0 12px">
-      <button class="hbtn" style="color:var(--gold);font-weight:700;min-height:40px;font-size:12px;letter-spacing:.04em" onclick="pokemonPrepForShow()">⚡ PREP FOR SHOW</button>
-      <span style="font-family:monospace;font-size:9px;color:var(--dim);margin-left:10px">Syncs latest 8 sets · recent searches · inventory · wantlist</span>
-    </div>
-
-    <!-- ── Stats Grid ── -->
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin-bottom:14px">
-      ${[
-        ['Cards', s.cachedPokemonCardsCount.toLocaleString(), s.cachedPokemonCardsCount > 0 ? 'var(--g)' : 'var(--dim)', 'price-cached cards ready offline'],
-        ['Blob Images', s.cachedPokemonImagesCount.toLocaleString() + (s.cachedPokemonCardsCount ? ' (' + blobPct + '%)' : ''), s.cachedPokemonImagesCount > 0 ? 'var(--blue)' : 'var(--dim)', 'images stored as data URLs — fully offline-safe'],
-        ['Charts', s.historyCachedCount.toLocaleString(), s.historyCachedCount > 0 ? 'var(--blue)' : 'var(--dim)', 'cards with priceHistory cached'],
-        ['Comps', s.cachedPokemonCompsCount.toLocaleString(), 'var(--dim)', 'comparable sale records'],
-        ['Storage', s.cacheStorageEstimate, 'var(--dim)', 'estimated IndexedDB usage'],
-        ['Queue', s.pendingQueueCount.toLocaleString(), s.pendingQueueCount > 0 ? 'var(--gold)' : 'var(--g)', 'pending offline writes'],
-      ].map(([k,v,c,tip]) => `<div class="item-metric" title="${escHtml(tip)}"><div class="metric-label">${escHtml(k)}</div><div class="metric-val" style="font-size:16px;color:${c}">${escHtml(String(v))}</div></div>`).join('')}
-    </div>
-
-    <!-- ── Options ── -->
-    <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:12px;font-family:monospace;font-size:10px;color:var(--dim)">
-      <label title="Store card images as offline-safe data URLs"><input type="checkbox" id="pokemon-cache-images-toggle" ${localStorage.getItem('pokemon_cache_images') !== '0' ? 'checked' : ''} onchange="localStorage.setItem('pokemon_cache_images',this.checked?'1':'0')"> Cache Images</label>
-      <label title="Store price history for offline charts"><input type="checkbox" id="pokemon-cache-charts-toggle" ${localStorage.getItem('pokemon_cache_charts') !== '0' ? 'checked' : ''} onchange="localStorage.setItem('pokemon_cache_charts',this.checked?'1':'0')"> Cache Charts</label>
-      <label title="Cache PSA/BGS grading guides offline"><input type="checkbox" id="pokemon-cache-slabs-toggle" ${localStorage.getItem('pokemon_cache_slabs') !== '0' ? 'checked' : ''} onchange="localStorage.setItem('pokemon_cache_slabs',this.checked?'1':'0')"> Cache Slabs</label>
-    </div>
-
-    <!-- ── Status Line ── -->
-    <div id="offline-cache-status" style="font-family:monospace;font-size:10px;color:${s.lastSyncError?'var(--red)':'var(--dim)'};line-height:1.5;margin-bottom:4px">${escHtml(status || s.lastSyncError || 'Pokémon cache ready for show mode.')}</div>
-
-    <!-- ── Set Sync placeholder (replaced by renderPokemonSetSyncPanel) ── -->
-    <div id="pokemon-set-sync-panel" style="margin-top:16px;border-top:1px solid var(--border);padding-top:14px">
-      <div style="font-family:monospace;font-size:10px;color:var(--dim)">Loading set sync…</div>
-    </div>
-
-    <!-- ── Image Catalog placeholder (replaced by pokemonImageCatalogPanelHtml) ── -->
-    <div id="pokemon-image-catalog-section" style="margin-top:14px;border-top:1px solid var(--border);padding-top:12px">
-      <div style="font-family:monospace;font-size:10px;color:var(--dim)">Loading image catalog…</div>
-    </div>
-
-    <!-- ── Offline Queue (summary; full queue in SYNC QUEUE panel below) ── -->
-    ${s.pendingQueueCount ? `<div style="margin-top:12px;padding:8px 10px;background:rgba(255,209,102,.06);border:1px solid rgba(255,209,102,.25);border-radius:8px;font-family:monospace;font-size:10px;color:var(--gold);display:flex;justify-content:space-between;align-items:center">
-      <span>${s.pendingQueueCount} item${s.pendingQueueCount!==1?'s':''} pending in offline queue</span>
-      <button class="hbtn" style="min-height:26px;font-size:9px" onclick="retryAllSyncQueue().then(()=>renderOfflineCachePanel())">RETRY ALL</button>
-    </div>` : ''}
-
-    <!-- ── Cache Management ── -->
-    <div style="margin-top:14px;border-top:1px dashed rgba(255,77,109,.3);padding-top:12px">
-      <div style="font-family:'Orbitron',monospace;color:var(--red);font-size:9px;letter-spacing:.05em;margin-bottom:8px">CACHE MANAGEMENT</div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <button class="hbtn" style="color:var(--red)" onclick="clearPokemonOfflineCache()">CLEAR ALL</button>
-        <button class="hbtn" style="color:var(--gold);font-size:10px" onclick="clearPokemonExactCache()">CLEAR EXACT CACHE</button>
-        <button class="hbtn" style="font-size:10px" onclick="clearPokemonSearchCache()">CLEAR SEARCH CACHE</button>
-      </div>
-    </div>`;
-
-  // Replace image catalog placeholder with live data
-  pokemonImageCatalogPanelHtml().then(html => {
-    const placeholder = document.getElementById('pokemon-image-catalog-section');
-    if(placeholder) placeholder.outerHTML = html;
-  }).catch(() => {});
-  // Replace set sync placeholder with live panel
-  renderPokemonSetSyncPanel().catch(() => {});
-}
-
 function ensureOfflineCatalogManagerPanel(backoffice){
   if(!backoffice || document.getElementById('offline-catalog-manager-panel')) return;
   const panel = document.createElement('div');
@@ -7063,8 +6917,7 @@ function ensureOfflineCatalogManagerPanel(backoffice){
       <p class="settings-panel-desc">Official provider catalogs for offline research and set browsing. Catalog rows are reference data only; they never create inventory.</p>
     </div>
     <div id="offline-catalog-manager-body" style="font-family:monospace;font-size:10px;color:var(--dim)">Loading offline catalog choices...</div>`;
-  const ref = backoffice.querySelector('#offline-cache-panel') || backoffice.lastElementChild;
-  ref.after ? ref.after(panel) : backoffice.appendChild(panel);
+  backoffice.prepend(panel);
   // This panel is created while the settings shell is being initialized. Defer
   // its first read until the catalog constants and offline modules are ready.
   setTimeout(() => refreshOfflineCatalogManagerPanel(), 0);
@@ -7286,15 +7139,9 @@ async function updateToppsCatalogFromPastedLinks(){
 async function renderOfflineCatalogManagerPanel(){
   const body = document.getElementById('offline-catalog-manager-body');
   if(!body) return;
-  const [pptCards, pptSealed, pptEbay, pptPop, mtg, toppsOffline, pokemonImagesStatus, pokemonSets, mtgImagesStatus, mtgSets, ...priceChartingStatuses] = await Promise.all([
-    catalogDbGet('meta', 'export_cards').catch(() => null),
-    catalogDbGet('meta', 'export_sealed').catch(() => null),
-    catalogDbGet('meta', 'export_ebay').catch(() => null),
-    catalogDbGet('meta', 'export_population').catch(() => null),
+  const [mtg, toppsOffline, mtgImagesStatus, mtgSets, ...priceChartingStatuses] = await Promise.all([
     mtgCatalogCounts().catch(() => ({ cards:0, sets:0, meta:{} })),
     window.ArsCaToppsOffline?.status().catch(() => null),
-    window.ArsCaPokemonOfflineImages?.status().catch(() => null),
-    window.ArsCaPokemonOfflineImages?.listSets().catch(() => []),
     window.ArsCaMtgOfflineImages?.status().catch(() => null),
     mtgCatalogSets().catch(() => []),
     ...PRICECHARTING_OFFLINE_CATALOGS.map(([category]) => window.ArsCaPriceChartingOffline?.status(category).catch(() => null)),
@@ -7307,20 +7154,6 @@ async function renderOfflineCatalogManagerPanel(){
       <span style="color:${status ? 'var(--gold)' : 'var(--g)'}">${escHtml(status || source || 'Offline ready')}</span>
       <span style="display:flex;gap:6px;justify-content:flex-end;flex-wrap:wrap">${actions}</span>
     </div>`;
-  // eBay/Population no longer offer a DOWNLOAD action at all -- devices must
-  // never call PPT's live /export endpoint (see downloadPokemonExport()),
-  // and there's no cloud copy of these two yet. CLEAR stays so a device
-  // still holding data from before this change can wipe it.
-  const pptRows = [
-    ['Cards', pptCards, `<button class="hbtn" onclick="downloadPokemonExport('cards')">DOWNLOAD</button><button class="hbtn" onclick="clearPokemonExport('cards')">CLEAR</button>`],
-    ['Sealed', pptSealed, `<button class="hbtn" onclick="downloadPokemonExport('sealed')">DOWNLOAD</button><button class="hbtn" onclick="clearPokemonExport('sealed')">CLEAR</button>`],
-    ['eBay / Graded', pptEbay, `<span style="color:var(--dim);font-size:9px">No bulk sync -- see search</span><button class="hbtn" onclick="clearPokemonExport('ebay')">CLEAR</button>`],
-    ['Population', pptPop, `<span style="color:var(--dim);font-size:9px">No bulk sync -- see search</span><button class="hbtn" onclick="clearPokemonExport('population')">CLEAR</button>`],
-    // "downloadedAt" (shown in its own column) is only when this device last
-    // pulled a copy -- not when PPT itself last refreshed the prices in it.
-    // A device can download today and still be showing week-old prices if
-    // the cloud snapshot hasn't rebuilt. Surface that separately here.
-  ].map(([label, meta, actions]) => row(label, meta?.rowCount || 0, meta?.downloadedAt, meta?.error || (meta?.generatedAt ? 'Pricing data as of ' + formatOfflineCatalogDate(meta.generatedAt) : ''), actions, 'PokemonPriceTracker Export')).join('');
   // Old builds persisted this flag and could leave the UI stuck after a reload.
   localStorage.removeItem('mtg_bulk_status');
   const mtgBusy = _mtgBulkSyncActive;
@@ -7368,29 +7201,6 @@ async function renderOfflineCatalogManagerPanel(){
       <div id="offline-update-all-progress" style="font-family:monospace;font-size:9px;color:var(--gold);margin-top:8px"></div>
     </div>
     <div style="font-family:monospace;font-size:10px;color:var(--dim);line-height:1.55;margin-bottom:8px">Cache policy: temporary Research searches are disposable. Downloaded catalogs are official offline reference data. Inventory remains owned stock only.</div>
-    <div style="font-family:'Orbitron',monospace;color:var(--g);font-size:11px;letter-spacing:.05em;margin-top:8px">POKEMON (POKEMONPRICETRACKER)</div>
-    <div style="font-family:monospace;font-size:9px;color:var(--dim);line-height:1.55;margin-bottom:4px">Cards + Sealed sync from our own cloud copy of PokemonPriceTracker's daily export (see pokemon-prices-daily.yml) — DOWNLOAD never spends PPT's shared 2-exports-a-day cap. eBay/Graded and Population stay live/on-demand only.</div>
-    ${pptRows}
-    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;border-top:1px solid var(--border);padding:9px 0;font-family:monospace;font-size:10px">
-      <label for="pokemon-offline-mode" style="color:var(--text);font-weight:700">SEARCH MODE</label>
-      <select id="pokemon-offline-mode" onchange="setPokemonOfflineSearchMode(this.value)" style="min-width:220px;max-width:100%">
-        <option value="offline_first" ${pokemonOfflineSearchMode()==='offline_first'?'selected':''}>Offline first, online backup</option>
-        <option value="online_only" ${pokemonOfflineSearchMode()==='online_only'?'selected':''}>Online only</option>
-        <option value="offline_only" ${pokemonOfflineSearchMode()==='offline_only'?'selected':''}>Offline only</option>
-      </select>
-    </div>
-    ${row('Sets (real set names, series, logos)', pokemonImagesStatus?.setsCount || 0, pokemonImagesStatus?.setsImportedAt, pokemonImagesStatus?.setsCount ? 'Downloaded' : 'Not downloaded', `<button class="hbtn" onclick="syncPokemonOfflineSets()">DOWNLOAD / REFRESH</button>`, 'Pokemon offline set bundle')}
-    ${row('Card images cached on this device', pokemonImagesStatus?.cardImageCount || 0, pokemonImagesStatus?.lastImageSyncAt || '', pokemonImagesStatus?.cardImageCount ? `${(pokemonImagesStatus.imageFileCount||0).toLocaleString()} image files` : 'None cached yet', `<button class="hbtn" style="color:var(--red)" onclick="clearPokemonOfflineImages()">CLEAR IMAGES</button>`, 'Pokemon offline image bundle')}
-    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;border-top:1px solid var(--border);padding:9px 0;font-family:monospace;font-size:10px">
-      <label for="pokemon-image-set-select" style="color:var(--text);font-weight:700">IMAGE SCOPE</label>
-      <select id="pokemon-image-set-select" style="min-width:220px;max-width:100%">
-        <option value="all">All Sets</option>
-        ${(pokemonSets||[]).map(s=>`<option value="${escHtml(s.tcgPlayerNumericId)}">${escHtml(s.name||s.tcgPlayerNumericId)}${s.releaseDate?' ('+escHtml(s.releaseDate)+')':''}</option>`).join('')}
-      </select>
-      <button class="hbtn" onclick="syncPokemonOfflineImages()">SYNC IMAGES FOR SCOPE</button>
-      <span id="pokemon-image-sync-progress" style="color:var(--gold);min-width:160px"></span>
-    </div>
-    <div style="font-family:monospace;font-size:9px;color:var(--dim);line-height:1.55;margin-top:6px">${(pokemonSets||[]).length ? '' : 'Download Sets above first so scopes appear here. '}Images must be built server-side once per set (or for all sets) via the "Build Pokemon Offline Card Images" GitHub Action before a device can sync them -- this only downloads what's already been built.</div>
     <div style="font-family:'Orbitron',monospace;color:#5ba3f5;font-size:11px;letter-spacing:.05em;margin-top:16px">MTG OFFLINE DATA</div>
     ${row('Scryfall cards', mtg.cards || 0, mtgScryfallAt, mtgStatus, `<button class="hbtn" onclick="downloadMtgBulkCatalog()" ${mtgBusy?'disabled':''}>${mtgBusy?'SYNCING...':'FAST PRICE UPDATE'}</button><button class="hbtn" onclick="downloadMtgBulkCatalog(true)" ${mtgBusy?'disabled':''}>FULL CATALOG REBUILD</button><button class="hbtn" onclick="clearMtgBulkCatalog()">CLEAR DATA</button>`, 'Fast update refreshes the compact daily price snapshot. Full rebuild refreshes every card and search index.')}
     ${row('PriceCharting snapshot', mtg.prices || 0, mtgPricechartingAt, (mtg.links || 0).toLocaleString() + ' linked cards', `<button class="hbtn" onclick="clearMtgImageCache()">CLEAR IMAGE CACHE (${Number(mtg.images||0).toLocaleString()})</button>`, 'PriceCharting offline snapshot')}
@@ -7531,40 +7341,11 @@ async function updateToppsCatalogFromWeb(){
   renderOfflineCatalogManagerPanel();
 }
 
-async function syncPokemonOfflineSets(){
-  if(!window.ArsCaPokemonOfflineImages){toast_dash('Pokemon offline module not loaded');return;}
-  try{
-    await window.ArsCaPokemonOfflineImages.syncSets({workerBase:WORKER,force:true,onProgress:()=>{}});
-    toast_dash('Pokemon sets updated');
-  }catch(e){toast_dash('Pokemon sets: '+e.message);}
-  renderOfflineCatalogManagerPanel();
-}
-async function syncPokemonOfflineImages(){
-  if(!window.ArsCaPokemonOfflineImages){toast_dash('Pokemon offline module not loaded');return;}
-  const select=document.getElementById('pokemon-image-set-select');
-  const scope=select?select.value:'all';
-  const progress=document.getElementById('pokemon-image-sync-progress');
-  const note=value=>{if(progress)progress.textContent=value;};
-  try{
-    const result=await window.ArsCaPokemonOfflineImages.syncImages({workerBase:WORKER,scope,onProgress:detail=>note(detail.total?`${detail.stage}: ${detail.done||0}/${detail.total}`:detail.stage)});
-    note('');
-    toast_dash(result.newlyCached?`${result.newlyCached.toLocaleString()} card image(s) cached`:'Already up to date for this scope');
-  }catch(e){note('');toast_dash('Pokemon images: '+e.message);}
-  renderOfflineCatalogManagerPanel();
-}
-async function clearPokemonOfflineImages(){
-  if(!confirm('Clear all cached Pokemon sets and card images from this device? Inventory is not touched.'))return;
-  await window.ArsCaPokemonOfflineImages?.clear();
-  toast_dash('Pokemon offline images cleared');
-  renderOfflineCatalogManagerPanel();
-}
-
 // Bulk MTG card images (scripts/mtg/mtg-offline-images-browser.js) --
 // separate from the existing opportunistic per-search image cache
 // (ArsCaMtgOffline.cacheImage/clearMtgImageCache), which only ever caches
-// whatever a card a device happened to search for while online. This is the
-// same "harvested server-side once, synced in bulk" pattern Pokemon already
-// has, mirrored for MTG.
+// whatever a card a device happened to search for while online. This
+// harvests images server-side once and syncs them in bulk instead.
 async function syncMtgOfflineImages(){
   if(!window.ArsCaMtgOfflineImages){toast_dash('MTG offline images module not loaded');return;}
   const select=document.getElementById('mtg-image-set-select');
@@ -7595,55 +7376,10 @@ async function syncPriceChartingOffline(category){
 }
 async function clearPriceChartingOffline(category){await window.ArsCaPriceChartingOffline?.clear(category);renderOfflineCatalogManagerPanel();toast_dash(`${category} offline catalog cleared`);}
 
-async function syncPokemonQueries(queries = [], label = 'Pokemon cache'){
-  const status = document.getElementById('offline-cache-status');
-  let saved = 0;
-  for(const q of [...new Set(queries.filter(Boolean))]) {
-    if(status) status.textContent = label + ': syncing ' + q + '...';
-    try {
-      const rows = await searchQuickCatalog(q, 'Pokemon TCG');
-      await savePokemonCacheResults(q, rows, label);
-      saved += rows.filter(r => qplResultCategoryKey(r) === 'pokemon').length;
-    } catch(e) {
-      localStorage.setItem('pokemon_cache_last_error', e.message);
-      if(status) status.textContent = label + ' failed on ' + q + ': ' + e.message;
-    }
-  }
-  localStorage.removeItem('pokemon_cache_last_error');
-  await pokemonDbPut('meta', { key:'lastPokemonSyncAt', value:new Date().toISOString() });
-  renderOfflineCachePanel(label + ' complete. Cached ' + saved + ' Pokemon rows.');
-}
-
-
-function syncRecentPokemonSearches(){
-  syncPokemonQueries((qplHistory || []).map(h => h.q).filter(q => isPokemonLookupIntent(q, 'Pokemon TCG')), 'Recent Pokemon sync');
-}
-
-function syncInventoryPokemonCache(){
-  const queries = (all || []).filter(i => isPokemonLookupIntent([i.name,i.set,i.card_number].join(' '), i.category)).map(i => [i.name, i.set, i.card_number].filter(Boolean).join(' '));
-  syncPokemonQueries(queries.slice(0, 80), 'Inventory Pokemon sync');
-}
-
-function syncWantListPokemonCache(){
-  const wants = [...safeLocalJson('set_needs_v1', []), ...safeLocalJson('pos_wantlist', [])];
-  const queries = wants.map(w => [w.name || w.item || w.want_text, w.set, w.cardNumber || w.card_number].filter(Boolean).join(' ')).filter(q => isPokemonLookupIntent(q, 'Pokemon TCG'));
-  syncPokemonQueries(queries.slice(0, 80), 'Want list Pokemon sync');
-}
-
-async function clearPokemonOfflineCache(){
-  if(!confirm('Clear cached Pokemon cards and comps on this device?')) return;
-  await pokemonDbClear('cards');
-  await pokemonDbClear('comps');
-  await pokemonDbClear('images');
-  await pokemonDbClear('meta');
-  renderOfflineCachePanel('Pokemon cache cleared on this device.');
-}
-
 async function clearPokemonSearchCache(){
   await pokemonDbClear('cards');
   await pokemonDbPut('meta', { key:'pokemonSearchCacheClearedAt', value:new Date().toISOString() });
   localStorage.removeItem('ppt_quota_exhausted_until');
-  renderOfflineCachePanel('Pokemon search cache cleared on this device.');
   if(document.getElementById('pricecharting-data-body')) renderPriceChartingDataPanel('Pokemon search cache cleared.');
 }
 
@@ -7652,818 +7388,7 @@ async function clearPokemonExactCache(){
   await pokemonDbClear('cards');
   await Promise.all(rows.filter(r => !String(r.cardKey || '').startsWith('pokemon:')).map(r => pokemonDbPut('cards', r)));
   await pokemonDbPut('meta', { key:'pokemonExactCacheClearedAt', value:new Date().toISOString() });
-  renderOfflineCachePanel('Pokemon exact card cache cleared on this device.');
   if(document.getElementById('pricecharting-data-body')) renderPriceChartingDataPanel('Pokemon exact cache cleared.');
-}
-
-// ═══════════════════════════════════════════════════════════════
-// POKEMON IMAGE CATALOG  (Pokemon TCG API → local IndexedDB)
-// Separate DB from the search/price cache — catalog of all cards.
-// ═══════════════════════════════════════════════════════════════
-const POKEMON_CATALOG_DB_NAME = 'walkoff_pokemon_catalog_v1';
-let _pokemonCatalogDbPromise = null;
-let _pokemonCatalogSyncStop = false;
-let _pokemonCatalogCache = null; // in-memory LRU (Map) for recent lookups
-
-function pokemonCatalogOpenDb(){
-  if(_pokemonCatalogDbPromise) return _pokemonCatalogDbPromise;
-  _pokemonCatalogDbPromise = new Promise((resolve, reject) => {
-    const req = indexedDB.open(POKEMON_CATALOG_DB_NAME, 1);
-    req.onupgradeneeded = () => {
-      const db = req.result;
-      if(!db.objectStoreNames.contains('catalog')){
-        const s = db.createObjectStore('catalog', { keyPath:'id' });
-        s.createIndex('name', 'normalizedName');
-        s.createIndex('lookupKey', 'lookupKey');
-        s.createIndex('setId', 'setId');
-      }
-      if(!db.objectStoreNames.contains('meta')) db.createObjectStore('meta', { keyPath:'key' });
-    };
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = () => { _pokemonCatalogDbPromise = null; reject(req.error); };
-  });
-  return _pokemonCatalogDbPromise;
-}
-
-async function pokemonCatalogDbCount(){
-  try {
-    const db = await pokemonCatalogOpenDb();
-    return new Promise((resolve, reject) => {
-      const req = db.transaction('catalog','readonly').objectStore('catalog').count();
-      req.onsuccess = () => resolve(req.result || 0);
-      req.onerror = () => reject(req.error);
-    });
-  } catch(e){ return 0; }
-}
-
-async function pokemonCatalogMetaGet(key){
-  try {
-    const db = await pokemonCatalogOpenDb();
-    return new Promise((resolve, reject) => {
-      const req = db.transaction('meta','readonly').objectStore('meta').get(key);
-      req.onsuccess = () => resolve(req.result?.value ?? null);
-      req.onerror = () => reject(req.error);
-    });
-  } catch(e){ return null; }
-}
-
-async function pokemonCatalogMetaPut(key, value){
-  const db = await pokemonCatalogOpenDb();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction('meta','readwrite');
-    tx.objectStore('meta').put({ key, value });
-    tx.oncomplete = resolve;
-    tx.onerror = () => reject(tx.error);
-  });
-}
-
-async function pokemonCatalogDbClearAll(){
-  const db = await pokemonCatalogOpenDb();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(['catalog','meta'],'readwrite');
-    tx.objectStore('catalog').clear();
-    tx.objectStore('meta').clear();
-    tx.oncomplete = resolve;
-    tx.onerror = () => reject(tx.error);
-  });
-}
-
-// Build the lookup key used for name+number index
-function pokemonCatalogLookupKey(name, number){
-  return normalizePokemonText(String(name||'')).trim() + '|' + String(number||'').replace(/\s+/g,'').toLowerCase();
-}
-
-// Async lookup: find catalog record for a card row (by name+number)
-async function lookupPokemonCatalogCard(r){
-  if(!r || !r.name) return null;
-  const key = pokemonCatalogLookupKey(r.name, r.card_number || r.cardNumber || '');
-  if(!_pokemonCatalogCache) _pokemonCatalogCache = new Map();
-  if(_pokemonCatalogCache.has(key)) return _pokemonCatalogCache.get(key);
-  try {
-    const db = await pokemonCatalogOpenDb();
-    const result = await new Promise((resolve, reject) => {
-      const req = db.transaction('catalog','readonly').objectStore('catalog').index('lookupKey').get(key);
-      req.onsuccess = () => resolve(req.result || null);
-      req.onerror = () => reject(req.error);
-    });
-    // Limit cache size to 500 entries
-    if(_pokemonCatalogCache.size > 500) _pokemonCatalogCache.delete(_pokemonCatalogCache.keys().next().value);
-    _pokemonCatalogCache.set(key, result);
-    return result;
-  } catch(e){ return null; }
-}
-
-// Get best image URL for a card from catalog (null if not found)
-async function resolvePokemonCatalogImageUrl(r, size){
-  size = size || 'small';
-  const cat = await lookupPokemonCatalogCard(r).catch(() => null);
-  if(!cat) return null;
-  return size === 'large' ? (cat.imageLarge || cat.imageSmall || null) : (cat.imageSmall || cat.imageLarge || null);
-}
-
-// After rendering result cards, async-swap in catalog images where present.
-// Two independent sources, tried in order: the bulk-synced offline image
-// cache (ArsCaPokemonOfflineImages, keyed by tcgPlayerId -- the same store
-// that already makes inventory images work offline) first, since it's the
-// one this device is actually kept in sync with; the older name+number
-// catalog (resolvePokemonCatalogImageUrl, populated by the separate/legacy
-// syncPokemonImageCatalog()) as a second try. A row's initial imageUrl can
-// be empty (never resolved by the live API, or -- for a row replayed from
-// the offline search cache -- sanitized away because it was a blob: URL
-// guaranteed dead outside the tab that created it, see durableImageUrl()),
-// in which case the initial render has NO <img> tag at all (the "NO IMAGE"
-// placeholder branch), or a live CDN URL that's simply unreachable offline.
-// This targets the .qpl-img-shell container itself, not an inner <img>,
-// specifically so the empty-initially case (no <img> to swap a src onto)
-// still gets a real image inserted, not just a dead-URL one repaired.
-function resolvePokemonCatalogImagesForVisibleCards(){
-  const cards = document.querySelectorAll('.qpl-hero-card[data-qpl-idx]');
-  cards.forEach(async card => {
-    const idx = parseInt(card.getAttribute('data-qpl-idx'), 10);
-    const r = qplResults[idx];
-    if(!r || qplResultCategoryKey(r) !== 'pokemon') return;
-    const shell = card.querySelector('.qpl-img-shell');
-    if(!shell || shell.dataset.catalogResolved) return;
-    const existingImg = shell.querySelector('img');
-    const hasWorkingSrc = existingImg && existingImg.src && existingImg.src !== window.location.href && !/^blob:/i.test(existingImg.src);
-    if(hasWorkingSrc) return;
-    const tcgPlayerId = inventoryTcgPlayerId(r);
-    let url = null;
-    if(tcgPlayerId && window.ArsCaPokemonOfflineImages) {
-      try {
-        const blob = await window.ArsCaPokemonOfflineImages.getImageBlob(tcgPlayerId, '400');
-        if(blob) url = URL.createObjectURL(blob);
-      } catch(e) { /* not cached on this device -- fall through */ }
-    }
-    if(!url) url = await resolvePokemonCatalogImageUrl(r, 'small').catch(() => null);
-    if(url && shell && !shell.dataset.catalogResolved) {
-      shell.dataset.catalogResolved = '1';
-      shell.innerHTML = `<img src="${escHtml(url)}" alt="${escHtml(r.name || 'Card image')}" onerror="this.closest('.qpl-img-shell').innerHTML='<div class=qpl-no-img>NO IMAGE</div>'">`;
-      shell.onclick = () => openQplImageLightbox(idx);
-      // This DOM patch alone doesn't survive the next full re-render:
-      // updateQplResultCard() (e.g. once price data finishes loading a
-      // moment later via hydratePokemonPriceTrackerPricing) rebuilds the
-      // whole card straight from qplResults[idx] via quickLookupResultCard(),
-      // and durableImageUrl(r.imageUrl) would come back empty again -- the
-      // image that had just appeared would vanish right back to NO IMAGE.
-      // Only write back if this is still the same row (a fresh search
-      // could have replaced qplResults while the lookup was in flight).
-      if(qplResults[idx] === r) r.imageUrl = url;
-    }
-  });
-}
-
-// Main sync — pages through the Pokemon TCG API and stores metadata+URLs
-async function syncPokemonImageCatalog(){
-  if(!navigator.onLine){ toast_dash('Need internet to sync Pokemon image catalog.'); return; }
-  _pokemonCatalogSyncStop = false;
-  _pokemonCatalogCache = null; // clear in-memory cache so stale hits are gone
-
-  const statusEl = document.getElementById('pokemon-catalog-status');
-  const barEl = document.getElementById('pokemon-catalog-bar');
-  const countEl = document.getElementById('pokemon-catalog-count');
-  const syncBtn = document.getElementById('pokemon-catalog-sync-btn');
-  const stopBtn = document.getElementById('pokemon-catalog-stop-btn');
-  if(syncBtn){ syncBtn.disabled = true; syncBtn.textContent = 'SYNCING...'; }
-  if(stopBtn){ stopBtn.style.display = ''; stopBtn.disabled = false; stopBtn.textContent = 'STOP'; }
-
-  const API = 'https://api.pokemontcg.io/v2/cards';
-  const PAGE_SIZE = 250;
-  const FIELDS = 'id,name,number,rarity,images,tcgplayer,set';
-  let page = 1, totalSaved = 0, totalCount = 0, stopped = false;
-
-  const setStatus = (msg, pct) => {
-    if(statusEl) statusEl.textContent = msg;
-    if(barEl && pct != null) barEl.style.width = Math.min(100, pct) + '%';
-  };
-
-  try {
-    while(true){
-      if(_pokemonCatalogSyncStop){ stopped = true; break; }
-      setStatus(`Fetching page ${page}… (${totalSaved} saved so far)`, totalCount ? totalSaved/totalCount*100 : 0);
-      const url = `${API}?page=${page}&pageSize=${PAGE_SIZE}&select=${encodeURIComponent(FIELDS)}`;
-      const res = await fetch(url, { cache:'no-store' });
-      if(!res.ok) throw new Error(`Pokemon TCG API HTTP ${res.status} on page ${page}`);
-      const json = await res.json();
-      const cards = Array.isArray(json.data) ? json.data : [];
-      if(totalCount === 0) totalCount = json.totalCount || 0;
-      if(!cards.length) break;
-
-      // Batch write to IDB in one transaction
-      const db = await pokemonCatalogOpenDb();
-      await new Promise((resolve, reject) => {
-        const tx = db.transaction('catalog','readwrite');
-        const store = tx.objectStore('catalog');
-        const now = new Date().toISOString();
-        for(const c of cards){
-          const normName = normalizePokemonText(c.name || '');
-          const normNum = String(c.number || '').replace(/\s+/g,'').toLowerCase();
-          store.put({
-            id: c.id || '',
-            name: c.name || '',
-            normalizedName: normName,
-            number: c.number || '',
-            rarity: c.rarity || '',
-            setId: c.set?.id || '',
-            setName: c.set?.name || '',
-            imageSmall: c.images?.small || '',
-            imageLarge: c.images?.large || '',
-            tcgplayerUrl: c.tcgplayer?.url || '',
-            lookupKey: normName + '|' + normNum,
-            syncedAt: now
-          });
-        }
-        tx.oncomplete = resolve;
-        tx.onerror = () => reject(tx.error);
-      });
-
-      totalSaved += cards.length;
-      const pct = totalCount ? Math.round(totalSaved / totalCount * 100) : 0;
-      if(countEl) countEl.textContent = totalSaved.toLocaleString() + (totalCount ? ' / ' + totalCount.toLocaleString() : '') + ' cards';
-      setStatus(`Page ${page} done — ${totalSaved.toLocaleString()} cards saved (${pct}%)`, pct);
-
-      if(cards.length < PAGE_SIZE) break; // last page
-      page++;
-      await new Promise(r => setTimeout(r, 80)); // gentle rate-limit pause
-    }
-
-    const now = new Date().toISOString();
-    await pokemonCatalogMetaPut('lastImageCatalogSyncAt', now);
-    await pokemonCatalogMetaPut('imageCatalogSavedCount', totalSaved);
-    setStatus(stopped ? `Stopped — ${totalSaved.toLocaleString()} cards saved.` : `✓ Complete — ${totalSaved.toLocaleString()} cards saved.`, 100);
-  } catch(e){
-    setStatus('Error: ' + e.message, null);
-  }
-
-  if(syncBtn){ syncBtn.disabled = false; syncBtn.textContent = 'SYNC POKEMON IMAGES'; }
-  if(stopBtn){ stopBtn.style.display = 'none'; }
-  // Refresh panel stats
-  const lastSyncEl = document.getElementById('pokemon-catalog-last-sync');
-  const totalCountEl = document.getElementById('pokemon-catalog-total');
-  if(lastSyncEl) lastSyncEl.textContent = new Date().toLocaleString();
-  const fresh = await pokemonCatalogDbCount().catch(() => 0);
-  if(totalCountEl) totalCountEl.textContent = fresh.toLocaleString();
-  if(countEl) countEl.textContent = fresh.toLocaleString();
-}
-
-function stopPokemonImageCatalogSync(){
-  _pokemonCatalogSyncStop = true;
-  const btn = document.getElementById('pokemon-catalog-stop-btn');
-  if(btn){ btn.textContent = 'STOPPING…'; btn.disabled = true; }
-}
-
-async function clearPokemonImageCatalog(){
-  if(!confirm('Clear the local Pokemon image catalog? (~20k entries will be deleted. You can re-sync anytime.)')) return;
-  await pokemonCatalogDbClearAll();
-  _pokemonCatalogCache = null;
-  const countEl = document.getElementById('pokemon-catalog-total');
-  if(countEl) countEl.textContent = '0';
-  const statusEl = document.getElementById('pokemon-catalog-status');
-  if(statusEl) statusEl.textContent = 'Image catalog cleared.';
-  renderOfflineCachePanel('Pokemon image catalog cleared.');
-}
-
-// Render the Image Catalog sub-panel HTML (called inside renderOfflineCachePanel)
-async function pokemonImageCatalogPanelHtml(){
-  const count = await pokemonCatalogDbCount().catch(() => 0);
-  const lastSync = await pokemonCatalogMetaGet('lastImageCatalogSyncAt').catch(() => null);
-  const blobImages = await pokemonDbAll('images').catch(() => []);
-  const blobCount = blobImages.length;
-  // Blob-cached images are fully offline-safe (stored as data URLs in IndexedDB).
-  // The image catalog stores CDN URLs — those require internet to load.
-  const statusLine = count > 0
-    ? `${count.toLocaleString()} CDN-linked &nbsp;·&nbsp; <span style="color:${blobCount > 0 ? 'var(--blue)' : 'var(--dim)'}">${blobCount.toLocaleString()} blob-cached (offline-safe)</span>`
-    : 'Not yet synced — click SYNC IMAGES to download ~20k card metadata + image URLs';
-  return `<div id="pokemon-image-catalog-section" style="margin-top:14px;border-top:1px solid var(--border);padding-top:12px">
-    <div style="font-family:'Orbitron',monospace;color:var(--blue);font-size:10px;letter-spacing:.05em;margin-bottom:8px">IMAGE CATALOG &nbsp;<span style="font-size:8px;font-family:monospace;color:var(--dim)">Pokemon TCG API · ~20k cards</span></div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-bottom:10px">
-      <div class="item-metric" title="CDN URL cards — requires internet to display images"><div class="metric-label">Catalog Cards</div><div class="metric-val" id="pokemon-catalog-total" style="font-size:18px;color:${count>0?'var(--g)':'var(--dim)'}">${count.toLocaleString()}</div></div>
-      <div class="item-metric" title="Images stored as data URLs in IndexedDB — load fully offline"><div class="metric-label">Blob-Cached</div><div class="metric-val" style="font-size:18px;color:${blobCount>0?'var(--blue)':'var(--dim)'}">${blobCount.toLocaleString()}</div></div>
-      <div class="item-metric"><div class="metric-label">Last Synced</div><div class="metric-val" id="pokemon-catalog-last-sync" style="font-size:11px">${lastSync ? pokemonCacheAgeLabel(lastSync) : 'Never'}</div></div>
-    </div>
-    <div style="font-family:monospace;font-size:9px;color:var(--dim);margin-bottom:8px;line-height:1.5">
-      ${statusLine}<br>
-      <span style="color:var(--dim)">Blob images (from set sync with Download Images on) load without internet. CDN images require connection.</span>
-    </div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;align-items:center">
-      <button id="pokemon-catalog-sync-btn" class="hbtn" style="color:var(--blue)" onclick="syncPokemonImageCatalog()">SYNC IMAGES</button>
-      <button id="pokemon-catalog-stop-btn" class="hbtn" style="color:var(--gold);display:none" onclick="stopPokemonImageCatalogSync()">STOP</button>
-      <button class="hbtn" style="color:var(--red);font-size:10px" onclick="clearPokemonImageCatalog()">CLEAR CATALOG</button>
-    </div>
-    <div style="background:rgba(255,255,255,.06);border-radius:4px;height:6px;margin-bottom:6px;overflow:hidden">
-      <div id="pokemon-catalog-bar" style="height:100%;background:var(--blue);width:0%;transition:width .3s;border-radius:4px"></div>
-    </div>
-    <div id="pokemon-catalog-count" style="font-family:monospace;font-size:10px;color:var(--dim);margin-bottom:4px"></div>
-    <div id="pokemon-catalog-status" style="font-family:monospace;font-size:10px;color:var(--dim);min-height:16px"></div>
-  </div>`;
-}
-
-// ═══════════════════════════════════════════════════════════════
-// POKEMON SET SYNC  (PPT fetchAllInSet → IndexedDB price cache)
-// ═══════════════════════════════════════════════════════════════
-let _pstSets = [];                // all sets from API
-let _pstSelectedIds = new Set();  // selected set IDs
-let _pstSyncStop = false;
-let _pstFilter = 'latest';        // latest | popular | synced | all
-let _pstSearchQ = '';
-let _pstSyncMeta = {};            // setId → { syncedAt, cardCount, failed, … }
-let _pstTcgSetMap = null;         // catalog setName → setId map (built once)
-
-const PST_POPULAR_SET_NAMES = [
-  'Scarlet & Violet 151','Paldean Fates','Twilight Masquerade','Shrouded Fable',
-  'Stellar Crown','Surging Sparks','Prismatic Evolutions','Journey Together',
-  'Destined Rivals','Black Bolt','White Flare'
-];
-
-// Credit multiplier based on toggle state (reads localStorage so works before panel renders)
-function pstCreditMult(){
-  const hist = localStorage.getItem('pst_inc_history') === '1';
-  const ebay = localStorage.getItem('pst_inc_ebay') === '1';
-  return hist && ebay ? 3 : (hist || ebay ? 2 : 1);
-}
-
-function pstEstCredits(sets){ return sets.reduce((s,x) => s + (x.total||0)*pstCreditMult(), 0); }
-
-async function pstLoadSyncMeta(){
-  const rows = await pokemonDbAll('meta').catch(() => []);
-  _pstSyncMeta = {};
-  rows.filter(r => String(r.key||'').startsWith('pst_set_')).forEach(r => {
-    _pstSyncMeta[r.key.replace('pst_set_','')] = r.value;
-  });
-}
-
-// Fetch sets — tries worker first, falls back to Pokemon TCG API
-// Session-caches the result so repeated panel opens don't re-hit the worker.
-async function pstFetchSets(){
-  try {
-    const cached = JSON.parse(sessionStorage.getItem('pst_sets_session') || 'null');
-    if(cached?.length) return cached;
-  } catch(e){}
-  // Try PPT worker route — skip if rate-limited
-  if(pokemonPriceTrackerQuotaBlocked()) throw new Error('Rate limited — try again shortly');
-  try {
-    const res = await storeWorkerFetch('/pricing/pokemonpricetracker/sets', { cache:'no-store' });
-    if(res.status === 429){ localStorage.setItem('ppt_rate_limited_until', String(Date.now() + 60 * 1000)); throw new Error('Rate limited'); }
-    if(res.ok){
-      const d = await res.json();
-      const sets = d.sets || d.data || [];
-      if(sets.length) {
-        const mapped = sets.map(s => ({
-          id: s.id || s.setId || s.pokemonTcgApiId || '',
-          name: s.name || s.setName || '',
-          series: s.series || s.groupName || '',
-          releaseDate: s.releaseDate || s.publishedOn || '',
-          total: Number(s.total || s.totalCards || s.cardCount || 0),
-          symbolUrl: s.symbolUrl || s.images?.symbol || '',
-          logoUrl: s.logoUrl || s.images?.logo || '',
-          tcgplayerGroupId: s.tcgplayerGroupId || s.groupId || s.tcgPlayerId || null,
-        }));
-        try { sessionStorage.setItem('pst_sets_session', JSON.stringify(mapped)); } catch(e){}
-        return mapped;
-      }
-    }
-  } catch(e){}
-  // Fallback: Pokemon TCG API public endpoint
-  const res = await fetch('https://api.pokemontcg.io/v2/sets?orderBy=-releaseDate&pageSize=500&select=id,name,series,releaseDate,total,images,tcgplayer', { cache:'force-cache' });
-  if(!res.ok) throw new Error('Could not load sets: HTTP ' + res.status);
-  const d = await res.json();
-  return (d.data || []).map(s => ({
-    id: s.id,
-    name: s.name,
-    series: s.series || '',
-    releaseDate: s.releaseDate || '',
-    total: s.total || 0,
-    symbolUrl: s.images?.symbol || '',
-    logoUrl: s.images?.logo || '',
-    tcgplayerGroupId: s.tcgplayer?.groupId || null,
-  }));
-}
-
-function pstSetStatusInfo(setId){
-  const m = _pstSyncMeta[setId];
-  if(!m) return { label:'Not Synced', cls:'bad' };
-  if(m.failed) return { label:'Failed', cls:'bad' };
-  const age = (Date.now() - new Date(m.syncedAt||0)) / 86400000;
-  if(age < 7) return { label:'Offline Ready', cls:'good' };
-  return { label:'Needs Refresh', cls:'warn' };
-}
-
-function pstFilteredSets(){
-  let s = _pstSets;
-  if(_pstSearchQ){ const q = _pstSearchQ.toLowerCase(); s = s.filter(x => x.name.toLowerCase().includes(q) || (x.series||'').toLowerCase().includes(q)); }
-  if(_pstFilter === 'latest') s = s.slice(0, 8);
-  else if(_pstFilter === 'popular') s = s.filter(x => PST_POPULAR_SET_NAMES.some(p => x.name.toLowerCase().includes(p.toLowerCase())));
-  else if(_pstFilter === 'synced') s = s.filter(x => _pstSyncMeta[x.id] && !_pstSyncMeta[x.id].failed);
-  return s;
-}
-
-function pstTileHtml(s){
-  const sel = _pstSelectedIds.has(s.id);
-  const { label, cls } = pstSetStatusInfo(s.id);
-  const m = _pstSyncMeta[s.id];
-  const lastSync = m?.syncedAt ? pokemonCacheAgeLabel(m.syncedAt) : '';
-  const credits = (s.total||0) * pstCreditMult();
-  const id = escHtml(s.id);
-  return `<div class="pst-tile${sel?' pst-sel':''}" onclick="pstToggleSet('${id}')" title="${escHtml(s.name)} — click to ${sel?'deselect':'select'}">
-    ${sel ? '<div class="pst-check">✓</div>' : ''}
-    ${s.symbolUrl ? `<img class="pst-symbol" src="${escHtml(s.symbolUrl)}" alt="" loading="lazy" onerror="this.style.display='none'">` : ''}
-    <div class="pst-tile-name">${escHtml(s.name)}</div>
-    <div class="pst-tile-meta">${escHtml(s.series||'')}${s.releaseDate ? ' · ' + s.releaseDate.slice(0,4) : ''}</div>
-    <div class="pst-tile-meta">${s.total||'?'} cards · ~${credits} credits</div>
-    ${m?.cardCount != null ? `<div class="pst-tile-meta">${m.cardCount} cached</div>` : ''}
-    <span class="qpl-badge ${cls}">${label}</span>
-    ${lastSync ? `<div class="pst-tile-meta">${escHtml(lastSync)}</div>` : ''}
-  </div>`;
-}
-
-function pstRenderTiles(){
-  const el = document.getElementById('pst-tiles');
-  if(!el) return;
-  const f = pstFilteredSets();
-  el.innerHTML = f.length
-    ? f.map(pstTileHtml).join('')
-    : `<div style="color:var(--dim);font-size:12px;padding:20px;text-align:center">${_pstSets.length ? 'No sets match filter.' : 'Loading sets…'}</div>`;
-  pstUpdateSummaryBar();
-}
-
-function pstUpdateSummaryBar(){
-  const bar = document.getElementById('pst-summary-bar');
-  if(!bar) return;
-  const sel = _pstSets.filter(s => _pstSelectedIds.has(s.id));
-  const n = sel.length, cards = sel.reduce((a,s) => a+(s.total||0),0), creds = pstEstCredits(sel);
-  if(!n){ bar.innerHTML=''; bar.style.display='none'; return; }
-  bar.style.display='flex';
-  bar.innerHTML = `<span style="font-size:12px;color:var(--text)"><b style="color:var(--blue)">${n}</b> set${n>1?'s':''} · <b>${cards.toLocaleString()}</b> cards · <b style="color:var(--gold)">~${creds.toLocaleString()}</b> credits estimated</span>
-    <button class="hbtn primary" style="min-height:36px" onclick="pstSyncSelected()">SYNC SELECTED (${n})</button>
-    <button class="hbtn" style="min-height:36px;font-size:10px" onclick="pstDeselectAll()">CLEAR</button>`;
-}
-
-function pstToggleSet(id){ if(_pstSelectedIds.has(id)) _pstSelectedIds.delete(id); else _pstSelectedIds.add(id); pstRenderTiles(); }
-function pstSetFilter(f){ _pstFilter=f; pstRenderTiles(); }
-function pstSelectAll(){ pstFilteredSets().forEach(s => _pstSelectedIds.add(s.id)); pstRenderTiles(); }
-function pstDeselectAll(){ _pstSelectedIds.clear(); pstRenderTiles(); }
-
-async function pstLoadSetsBackground(){
-  const el = document.getElementById('pst-tiles');
-  if(el) el.innerHTML = '<div style="color:var(--dim);font-size:12px;padding:20px;text-align:center">Loading Pokémon sets…</div>';
-  try { _pstSets = await pstFetchSets(); pstRenderTiles(); }
-  catch(e){ if(el) el.innerHTML = !navigator.onLine
-    ? `<div style="color:var(--gold);font-size:12px;padding:12px">Offline — set list requires internet. Previously synced sets still work for lookup.</div>`
-    : `<div style="color:var(--red);font-size:12px;padding:12px">Failed to load sets: ${escHtml(e.message)}</div>`; }
-}
-
-// ─── Core sync engine ───────────────────────────────────────────
-async function pstSyncSets(setsToSync, label){
-  if(!setsToSync.length){ toast_dash('No sets selected.'); return; }
-  if(!navigator.onLine){ toast_dash('Need internet to sync sets.'); return; }
-  if(pokemonPriceTrackerQuotaBlocked()){ toast_dash('PPT quota blocked — try again soon.'); return; }
-  _pstSyncStop = false;
-  const stopBtn = document.getElementById('pst-stop-btn');
-  const progressWrap = document.getElementById('pst-progress');
-  const barEl = document.getElementById('pst-bar');
-  const progText = document.getElementById('pst-progress-text');
-  const statusEl = document.getElementById('pst-status');
-  if(stopBtn){ stopBtn.style.display=''; stopBtn.disabled=false; stopBtn.textContent='STOP'; }
-  if(progressWrap) progressWrap.style.display='';
-  const staleOnly = localStorage.getItem('pst_stale_only') !== '0';
-  const incHistory = localStorage.getItem('pst_inc_history') === '1';
-  const incEbay = localStorage.getItem('pst_inc_ebay') === '1';
-  const dlImages = localStorage.getItem('pst_dl_images') !== '0';
-  let synced=0, failed=0;
-  for(let i=0; i<setsToSync.length; i++){
-    if(_pstSyncStop) break;
-    const s = setsToSync[i];
-    const pct = Math.round(i/setsToSync.length*100);
-    if(barEl) barEl.style.width = pct+'%';
-    if(statusEl) statusEl.textContent = `Syncing ${i+1}/${setsToSync.length}: ${s.name}…`;
-    try {
-      const count = await pstSyncOneSet(s, { staleOnly, incHistory, incEbay, dlImages, progText });
-      const meta = { setId:s.id, setName:s.name, syncedAt:new Date().toISOString(), cardCount:count, includesHistory:incHistory, includesEbay:incEbay, creditsEstimated:(s.total||0)*pstCreditMult(), failed:false };
-      await pokemonDbPut('meta', { key:'pst_set_'+s.id, value:meta });
-      _pstSyncMeta[s.id] = meta;
-      synced++;
-      pstRenderTiles();
-    } catch(e){
-      failed++;
-      const failMeta = { setId:s.id, setName:s.name, syncedAt:new Date().toISOString(), failed:true, error:e.message };
-      await pokemonDbPut('meta', { key:'pst_set_'+s.id, value:failMeta }).catch(()=>{});
-      _pstSyncMeta[s.id] = failMeta;
-      if(statusEl) statusEl.textContent = `Failed: ${s.name} — ${e.message}`;
-      if(/quota/i.test(e.message)) break;
-    }
-  }
-  if(barEl) barEl.style.width='100%';
-  if(stopBtn) stopBtn.style.display='none';
-  await pokemonDbPut('meta', { key:'lastPokemonSyncAt', value:new Date().toISOString() });
-  const done = `${label||'Set sync'}: ${synced} sets synced${failed?', '+failed+' failed':''}`;
-  if(statusEl) statusEl.textContent = done;
-  toast_dash(done);
-  renderOfflineCachePanel();
-}
-
-// ── Catalog helpers for set sync ────────────────────────────────
-async function pstBuildTcgSetMap(){
-  // Scan image catalog once to build setName→setId map; cached in _pstTcgSetMap
-  if(_pstTcgSetMap) return _pstTcgSetMap;
-  const map = new Map();
-  try {
-    const db = await pokemonCatalogOpenDb();
-    await new Promise(res => {
-      const tx = db.transaction('catalog','readonly');
-      const req = tx.objectStore('catalog').openCursor();
-      req.onsuccess = e => {
-        const c = e.target.result;
-        if(!c){ res(); return; }
-        if(c.value.setName && !map.has(c.value.setName)) map.set(c.value.setName, c.value.setId);
-        c.continue();
-      };
-      req.onerror = res;
-    });
-  } catch(e){}
-  _pstTcgSetMap = map;
-  return map;
-}
-
-async function pstFindTcgSetId(pptSetName){
-  // Match a PPT set name (e.g. "SV: Scarlet & Violet 151") to a TCG API setId (e.g. "sv3pt5")
-  // PPT names often prepend a series tag like "SV: " or "SV08: " — strip it for matching
-  const map = await pstBuildTcgSetMap();
-  const norm = pptSetName.toLowerCase();
-  // First try: exact match after stripping "XX: " or "XX0N: " prefix
-  const stripped = pptSetName.replace(/^[A-Z0-9]+:\s*/,'').toLowerCase();
-  for(const [catName, catId] of map){
-    if(catName.toLowerCase() === stripped) return catId;
-  }
-  // Second try: longest catalog setName that is a substring of the PPT name
-  let bestId = null, bestLen = 0;
-  for(const [catName, catId] of map){
-    const n = catName.toLowerCase();
-    if(n.length > 2 && norm.includes(n) && n.length > bestLen){ bestId = catId; bestLen = n.length; }
-  }
-  return bestId;
-}
-
-async function pstGetCatalogCardsBySetId(tcgSetId){
-  const db = await pokemonCatalogOpenDb();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction('catalog','readonly');
-    const idx = tx.objectStore('catalog').index('setId');
-    const req = idx.getAll(tcgSetId);
-    req.onsuccess = () => resolve(req.result || []);
-    req.onerror = () => reject(req.error);
-  });
-}
-
-// ── Shared card writer — stores one PPT card into IDB and optionally blobs the image ──
-async function pstWriteCard(card, { priceDb, storeId, now, dlImages, path }){
-  if(!card?.tcgPlayerId) return false;
-  await new Promise((resolve, reject) => {
-    const tx = priceDb.transaction('cards','readwrite');
-    tx.objectStore('cards').put({
-      cardKey: 'pokemon:'+card.tcgPlayerId,
-      storeId,
-      source: 'PokemonPriceTracker set sync',
-      cacheVersion: POKEMON_EXACT_CACHE_VERSION,
-      searchText: normalizePokemonText([card.name, card.setName, card.cardNumber, card.rarity].filter(Boolean).join(' ')),
-      normalizedQuery: normalizePokemonText(card.name||''),
-      updatedAt: now,
-      card: { ...card, lookupDebug:{ ...(card.lookupDebug||{}), exactHydrated:true, path, syncedAt:now } },
-      imageUrl: card.imageCdnUrl400||card.imageCdnUrl800||card.imageCdnUrl200||card.imageCdnUrl||card.imageUrl||'',
-    });
-    tx.oncomplete = resolve;
-    tx.onerror = () => reject(tx.error);
-  });
-  if(dlImages && localStorage.getItem('pokemon_cache_images') !== '0'){
-    const imgUrl = card.imageCdnUrl400||card.imageCdnUrl200||card.imageCdnUrl800||card.imageUrl||'';
-    if(imgUrl) await cachePokemonImage('pokemon:'+card.tcgPlayerId, imgUrl).catch(()=>{});
-  }
-  return true;
-}
-
-// ── Quota / usage helpers ────────────────────────────────────────
-function pstHandleQuota(res, data){
-  if(data?.usage?.dailyRemaining != null) localStorage.setItem('ppt_remaining_credits', String(data.usage.dailyRemaining));
-  if(data?.usage?.consumed != null) localStorage.setItem('ppt_last_consumed', String(data.usage.consumed));
-  if(data?.providerQuotaState === 'exhausted'){
-    localStorage.setItem('ppt_quota_exhausted_until', String(Date.now()+3600000));
-    throw new Error('PPT quota exhausted (429). Try again in 1 hour.');
-  }
-  if(res.status === 429 || data?.providerQuotaState === 'rate_limited'){
-    localStorage.setItem('ppt_rate_limited_until', String(Date.now()+60000));
-    throw new Error('PPT is temporarily rate limited. Try again in about 1 minute.');
-  }
-}
-
-// ── Core per-set sync — catalog path then direct-setId fallback ──
-async function pstSyncOneSet(s, { staleOnly, incHistory, incEbay, dlImages, progText }){
-  // Set-level stale check
-  if(staleOnly && _pstSyncMeta[s.id]?.syncedAt && !_pstSyncMeta[s.id]?.failed){
-    const age = (Date.now() - new Date(_pstSyncMeta[s.id].syncedAt)) / 86400000;
-    if(age < 1){ if(progText) progText.textContent = s.name+': fresh, skipped'; return 0; }
-  }
-
-  // ── PATH A: image catalog (works for official Pokemon TCG sets) ──
-  if(progText) progText.textContent = `${s.name}: checking image catalog…`;
-  const tcgSetId = await pstFindTcgSetId(s.name);
-  const catalogCards = tcgSetId ? await pstGetCatalogCardsBySetId(tcgSetId).catch(() => []) : [];
-
-  if(catalogCards.length > 0){
-    // Optional stale filter
-    let toSync = catalogCards;
-    if(staleOnly){
-      const priceDb2 = await pokemonOfflineDb();
-      const freshKeys = new Set();
-      await new Promise(res => {
-        const tx = priceDb2.transaction('cards','readonly');
-        const req = tx.objectStore('cards').openCursor();
-        req.onsuccess = e => {
-          const c = e.target.result;
-          if(!c){ res(); return; }
-          const age = (Date.now() - new Date(c.value.updatedAt||0)) / 86400000;
-          if(age < 1 && c.value.card?.lookupDebug?.exactHydrated) freshKeys.add(c.value.cardKey);
-          c.continue();
-        };
-        req.onerror = res;
-      });
-      toSync = catalogCards.filter(c => !freshKeys.has('pokemon:'+c.id));
-      if(!toSync.length){ if(progText) progText.textContent = `${s.name}: all cards fresh, skipped`; return 0; }
-    }
-    const priceDb = await pokemonOfflineDb();
-    const storeId = getActiveStoreId();
-    const now = new Date().toISOString();
-    let written = 0;
-    const PARALLEL = 3;
-    for(let i = 0; i < toSync.length; i += PARALLEL){
-      if(_pstSyncStop) break;
-      const batch = toSync.slice(i, i + PARALLEL);
-      if(progText) progText.textContent = `${s.name}: ${i+1}–${Math.min(i+PARALLEL, toSync.length)} / ${toSync.length}`;
-      let quotaHit = false;
-      await Promise.all(batch.map(async catCard => {
-        if(quotaHit) return;
-        try {
-          const params = new URLSearchParams({ tcgPlayerId:catCard.id, language:'english', limit:'1', includeHistory:incHistory?'true':'false', includeEbay:incEbay?'true':'false' });
-          const res = await storeWorkerFetch('/pricing/pokemonpricetracker/cards?' + params.toString(), { cache:'no-store' });
-          const data = await res.json().catch(() => ({}));
-          pstHandleQuota(res, data);
-          if(!res.ok) return;
-          const card = pokemonPriceTrackerCardsFromPayload(data)[0];
-          if(await pstWriteCard(card, { priceDb, storeId, now, dlImages, path:'set-sync.catalog' })) written++;
-        } catch(e){
-          if(/quota/i.test(e.message)){ quotaHit = true; throw e; }
-        }
-      }));
-      if(quotaHit) throw new Error('PPT quota exhausted. Try again in 1 hour.');
-      if(i + PARALLEL < toSync.length) await new Promise(r => setTimeout(r, 150));
-    }
-    return written;
-  }
-
-  // ── PATH B: direct PPT setId query — works for custom/non-catalog sets ──
-  if(progText) progText.textContent = `${s.name}: syncing direct from PPT (no catalog match)…`;
-  const priceDb = await pokemonOfflineDb();
-  const storeId = getActiveStoreId();
-  const now = new Date().toISOString();
-  let written = 0;
-  const PAGE = 5; // worker caps non-exact queries at 5
-  const MAX = Math.min(s.total || 200, 500); // never fetch more than 500 cards per set
-  for(let offset = 0; offset < MAX; offset += PAGE){
-    if(_pstSyncStop) break;
-    if(progText) progText.textContent = `${s.name}: ${offset}–${Math.min(offset+PAGE, MAX)} / ${s.total||'?'}`;
-    const params = new URLSearchParams({
-      setId: s.id,
-      language: 'english',
-      limit: String(PAGE),
-      offset: String(offset),
-      includeHistory: incHistory ? 'true' : 'false',
-      includeEbay: incEbay ? 'true' : 'false',
-    });
-    const res = await storeWorkerFetch('/pricing/pokemonpricetracker/cards?' + params.toString(), { cache:'no-store' });
-    const data = await res.json().catch(() => ({}));
-    pstHandleQuota(res, data);
-    if(!res.ok) break;
-    const cards = pokemonPriceTrackerCardsFromPayload(data);
-    if(!cards.length) break; // no more cards — done
-    for(const card of cards){
-      if(await pstWriteCard(card, { priceDb, storeId, now, dlImages, path:'set-sync.direct-setId' })) written++;
-    }
-    if(cards.length < PAGE) break; // last page
-    await new Promise(r => setTimeout(r, 180));
-  }
-  if(!written) throw new Error(`No cards returned for "${s.name}" (setId: ${s.id}). Check the set ID or PPT API availability.`);
-  return written;
-}
-
-function pstStopSync(){
-  _pstSyncStop = true;
-  const btn = document.getElementById('pst-stop-btn');
-  if(btn){ btn.textContent='STOPPING…'; btn.disabled=true; }
-}
-
-async function pstSyncSelected(){
-  const sets = _pstSets.filter(s => _pstSelectedIds.has(s.id));
-  if(!sets.length){ toast_dash('Select at least one set first.'); return; }
-  await pstSyncSets(sets, 'Selected sets');
-}
-
-async function pstSyncLatest(){
-  await pstLoadSyncMeta();
-  if(!_pstSets.length){ toast_dash('Sets still loading…'); return; }
-  await pstSyncSets(_pstSets.slice(0, 8), 'Latest 8 sets');
-}
-
-
-async function pstClearSetCache(){
-  if(!confirm('Clear all set-synced price data from IndexedDB? Image cache is kept. You can re-sync any time.')) return;
-  const rows = await pokemonDbAll('meta').catch(() => []);
-  const db = await pokemonOfflineDb();
-  await new Promise((res,rej) => {
-    const tx = db.transaction('meta','readwrite');
-    const store = tx.objectStore('meta');
-    rows.filter(r => String(r.key||'').startsWith('pst_set_')).forEach(r => store.delete(r.key));
-    tx.oncomplete=res; tx.onerror=()=>rej(tx.error);
-  });
-  await pokemonDbClear('cards');
-  _pstSyncMeta = {};
-  pstRenderTiles();
-  const el = document.getElementById('pst-status');
-  if(el) el.textContent = 'Set price cache cleared.';
-  renderOfflineCachePanel('Set price cache cleared.');
-}
-
-async function pstRetryFailed(){
-  await pstLoadSyncMeta();
-  const failed = _pstSets.filter(s => _pstSyncMeta[s.id]?.failed);
-  if(!failed.length){ const el=document.getElementById('pst-status'); if(el) el.textContent='No failed sets found.'; return; }
-  await pstSyncSets(failed, 'Retry failed sets');
-}
-
-// ─── Prep For Show ──────────────────────────────────────────────
-async function pokemonPrepForShow(){
-  const statusEl = document.getElementById('pst-status');
-  const progressWrap = document.getElementById('pst-progress');
-  if(progressWrap) progressWrap.style.display='';
-  const log = msg => { if(statusEl) statusEl.textContent = msg; };
-  log('Prep For Show starting…');
-  toast_dash('Prep For Show started');
-  log('Step 1/4: Syncing latest 8 sets…');
-  await pstSyncLatest().catch(e => log('Step 1 failed: '+e.message));
-  log('Step 2/4: Refreshing recent search cache…');
-  await syncRecentPokemonSearches().catch(() => {});
-  log('Step 3/4: Refreshing inventory Pokémon…');
-  await syncInventoryPokemonCache().catch(() => {});
-  log('Step 4/4: Refreshing wantlist Pokémon…');
-  await syncWantListPokemonCache().catch(() => {});
-  log('Prep For Show complete ✓');
-  toast_dash('Prep For Show complete!');
-  renderOfflineCachePanel('Prep For Show complete.');
-}
-
-// ─── Panel render ────────────────────────────────────────────────
-async function renderPokemonSetSyncPanel(statusMsg){
-  const body = document.getElementById('offline-cache-body');
-  if(!body) return;
-  await pstLoadSyncMeta();
-  const filterBtns = [['latest','Latest Sets'],['popular','Popular Trade'],['synced','Recently Synced'],['all','All Sets']].map(([k,l]) =>
-    `<button class="hbtn" style="min-height:28px;font-size:10px;padding:2px 10px${_pstFilter===k?';color:var(--blue);border-color:rgba(59,130,246,.5)':''}" onclick="pstSetFilter('${k}')">${l}</button>`
-  ).join('');
-  const html = `<div id="pokemon-set-sync-panel" style="margin-top:16px;border-top:1px solid var(--border);padding-top:14px">
-    <div style="font-family:'Orbitron',monospace;color:var(--blue);font-size:11px;letter-spacing:.05em;margin-bottom:10px">POKÉMON SET SYNC</div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;align-items:center">
-      <button class="hbtn" style="color:var(--g);font-weight:600" onclick="pstSyncSelected()">SYNC SELECTED</button>
-      <button id="pst-stop-btn" class="hbtn" style="color:var(--red);display:none" onclick="pstStopSync()">STOP</button>
-      <span style="font-family:monospace;font-size:9px;color:var(--dim)">Select set tiles below then SYNC SELECTED · or ⚡ PREP FOR SHOW above to sync all at once</span>
-    </div>
-    <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:10px;font-family:monospace;font-size:10px;color:var(--dim)">
-      <label><input type="checkbox" id="pst-toggle-history" ${localStorage.getItem('pst_inc_history')==='1'?'checked':''} onchange="localStorage.setItem('pst_inc_history',this.checked?'1':'0');pstRenderTiles()"> Include history</label>
-      <label><input type="checkbox" id="pst-toggle-ebay" ${localStorage.getItem('pst_inc_ebay')==='1'?'checked':''} onchange="localStorage.setItem('pst_inc_ebay',this.checked?'1':'0');pstRenderTiles()"> Include eBay</label>
-      <label><input type="checkbox" id="pst-toggle-stale" ${localStorage.getItem('pst_stale_only')!=='0'?'checked':''} onchange="localStorage.setItem('pst_stale_only',this.checked?'1':'0')"> Skip fresh</label>
-      <label><input type="checkbox" id="pst-toggle-images" ${localStorage.getItem('pst_dl_images')!=='0'?'checked':''} onchange="localStorage.setItem('pst_dl_images',this.checked?'1':'0')"> Download images</label>
-    </div>
-    <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;align-items:center">
-      <input class="tsi" placeholder="Search sets…" value="${escHtml(_pstSearchQ)}" oninput="_pstSearchQ=this.value;pstRenderTiles()" style="flex:1;min-width:160px;height:34px">
-      ${filterBtns}
-    </div>
-    <div id="pst-tiles" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:10px;margin-bottom:8px">${_pstSets.length ? pstFilteredSets().map(pstTileHtml).join('') : '<div style="color:var(--dim);font-size:12px;padding:20px;text-align:center">Loading sets…</div>'}</div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">
-      <button class="hbtn" style="font-size:10px;min-height:30px" onclick="pstSelectAll()">SELECT ALL</button>
-      <button class="hbtn" style="font-size:10px;min-height:30px" onclick="pstDeselectAll()">DESELECT ALL</button>
-      <button class="hbtn" style="font-size:10px;min-height:30px;color:var(--red)" onclick="pstClearSetCache()">CLEAR SET CACHE</button>
-      <button class="hbtn" style="font-size:10px;min-height:30px;color:var(--gold)" onclick="pstRetryFailed()">RETRY FAILED</button>
-    </div>
-    <div id="pst-progress" style="margin-top:10px;display:none">
-      <div style="background:rgba(255,255,255,.07);border-radius:4px;height:6px;margin-bottom:6px;overflow:hidden">
-        <div id="pst-bar" style="height:100%;background:var(--blue);width:0%;transition:width .25s;border-radius:4px"></div>
-      </div>
-      <div id="pst-progress-text" style="font-family:monospace;font-size:10px;color:var(--dim)"></div>
-    </div>
-    <div id="pst-status" style="font-family:monospace;font-size:10px;color:var(--dim);margin-top:6px;min-height:16px">${escHtml(statusMsg||'')}</div>
-    <div id="pst-summary-bar" style="display:none;position:sticky;bottom:0;background:var(--bg);border-top:1px solid rgba(59,130,246,.3);padding:10px 0 0;margin-top:10px;gap:10px;align-items:center;flex-wrap:wrap"></div>
-  </div>`;
-  const existing = document.getElementById('pokemon-set-sync-panel');
-  if(existing) existing.outerHTML = html;
-  else body.insertAdjacentHTML('beforeend', html);
-  pstUpdateSummaryBar();
-  if(!_pstSets.length && !pokemonPriceTrackerQuotaBlocked()) pstLoadSetsBackground();
 }
 
 function ensurePriceChartingDataPanel(backoffice){
@@ -9524,9 +8449,8 @@ function betaSetupChecklist(){
   const hasPaymentHandle = !!(pay.venmo?.handle || pay.paypal?.emailOrHandle || pay.cashApp?.cashtag);
   const cashOnly = !!skipped.cashOnlyConfirmed || !!pay.cash?.enabled;
   const catalogMeta = safeLocalJson('walkoff_catalog_last_counts_v1', {});
-  const hasPokemonCatalog = !!(catalogMeta.pokemon || catalogMeta.pokemonCards || skipped.pokemonCatalogSkipped);
   const hasMtgCatalog = !!(catalogMeta.mtg || catalogMeta.mtgCards || skipped.mtgCatalogSkipped);
-  const hasCatalog = !!(hasPokemonCatalog || hasMtgCatalog || skipped.catalogSkipped);
+  const hasCatalog = !!(hasMtgCatalog || skipped.catalogSkipped);
   const item = (key, title, complete, detail) => ({
     key,
     title,
@@ -9542,7 +8466,6 @@ function betaSetupChecklist(){
     item('stripe','Stripe/Card status checked', !!(pay.card?.provider || skipped.stripeChecked), pay.card?.enabled ? 'Card payment enabled; backend setup still required.' : 'Card status can be checked in Payments.'),
     item('mode','Demo/Live mode understood', !!skipped.modeUnderstood, ctx.isDemo ? 'Demo Mode is safe for testing.' : 'Live Mode changes real inventory and sales.'),
     item('catalog','Offline catalog downloaded or skipped', hasCatalog, skipped.catalogSkipped ? 'Skipped for now.' : hasCatalog ? 'Offline catalog present or recorded.' : 'Use Offline Catalog Download Manager.'),
-    item('pokemonCatalog','Offline Pokemon catalog downloaded/skipped', hasPokemonCatalog || skipped.pokemonCatalogSkipped, skipped.pokemonCatalogSkipped ? 'Skipped for now.' : hasPokemonCatalog ? 'Pokemon catalog recorded.' : 'Download or skip in Offline Catalogs.'),
     item('mtgCatalog','Offline MTG catalog downloaded/skipped', hasMtgCatalog || skipped.mtgCatalogSkipped, skipped.mtgCatalogSkipped ? 'Skipped for now.' : hasMtgCatalog ? 'MTG catalog recorded.' : 'Download or skip in Offline Catalogs.'),
     item('inventoryAdd','Inventory add flow tested/skipped', !!(skipped.inventoryAddTested || skipped.inventoryAddSkipped), skipped.inventoryAddTested ? 'Inventory add flow tested.' : 'Run Add Inventory walkthrough or skip.'),
     item('checkoutTest','Checkout test completed/skipped', !!(skipped.checkoutTested || skipped.checkoutSkipped), skipped.checkoutTested ? 'Checkout test completed.' : 'Run Test Drive in Demo Mode or skip.'),
@@ -9628,7 +8551,7 @@ function betaWalkthroughs(){
       {title:'Store Info', body:'Set store name, location, website, phone, email, receipt text, and public payment labels here.', tab:'backoffice', target:'#vendor-profile-panel'},
       {title:'Worker / API Connection', body:'Use System / Backup to check Worker and API health. No API keys or secrets should appear in the browser.', tab:'backoffice', target:'#backoffice-system-panel', checklist:{workerHealth:'Checked'}},
       {title:'Payment Setup', body:'Cash works without handles. QR payments need Venmo, PayPal, or Cash App handles. Stripe/Card also needs backend setup.', tab:'backoffice', target:'#payment-settings-panel', checklist:{stripeChecked:true}},
-      {title:'Offline Catalog Setup', body:'Download official PokemonPriceTracker exports or Scryfall default_cards here. Catalog rows are reference data, not inventory.', tab:'backoffice', target:'#offline-catalog-manager-panel'},
+      {title:'Offline Catalog Setup', body:'Download the Scryfall default_cards MTG catalog here for offline reference. Catalog rows are reference data, not inventory.', tab:'backoffice', target:'#offline-catalog-manager-panel'},
       {title:'Inventory Start', body:'Inventory is owned stock only. Add your first owned item here or import a spreadsheet. Search/catalog results do not become inventory by themselves.', tab:'backoffice', target:'#spreadsheet-panel'},
       {title:'Report Bug', body:'Use this button to share a note, severity, mode, store, active tab, viewport, app version, and last safe actions.', tab:'overview', target:'#store-onboarding-panel', action:'bug'},
       {title:'Setup Checklist', body:'Setup checklist complete enough to test. Any remaining yellow items are warnings, not blockers.', tab:'overview', target:'#store-onboarding-panel', finish:true}
@@ -9685,7 +8608,6 @@ function betaWalkthroughs(){
     ],
     offlineCatalogs:[
       {title:'Offline Catalogs', body:'Offline catalogs help Research when network or API calls are limited. They are not owned inventory.', tab:'backoffice', target:'#offline-catalog-manager-panel'},
-      {title:'Pokemon Catalog', body:'Download or skip Pokemon catalog setup for beta. Skipping is allowed and does not block app use.', tab:'backoffice', target:'#offline-catalog-manager-panel', checklist:{pokemonCatalogSkipped:'Skipped'}},
       {title:'MTG Catalog', body:'Download or skip MTG catalog setup for beta. Skipping is allowed and does not block app use.', tab:'backoffice', target:'#offline-catalog-manager-panel', checklist:{mtgCatalogSkipped:'Skipped'}, finish:true}
     ],
     reportBug:[
@@ -9956,7 +8878,7 @@ const HELP_TEXTS = {
   paypal:{title:'PayPal',body:'Save the PayPal handle, email, or link shown to customers during checkout. Confirm payment received before completing a sale.',relatedWorkflow:'Checkout',customerSafe:true},
   cashapp:{title:'Cash App',body:'Save the Cash App cashtag or link shown to customers during checkout. Confirm payment received before completing a sale.',relatedWorkflow:'Checkout',customerSafe:true},
   stripe:{title:'Card / Stripe Status',body:'Card checkout depends on Stripe backend setup. This help pass does not change Stripe processing, QR generation, or checkout finalize behavior.',relatedWorkflow:'Checkout',setupRequirement:'Stripe setup',danger:true},
-  catalog:{title:'Offline Catalog Downloads',body:'Offline catalogs provide reference lookup data for Pokemon and MTG. Catalog rows are not owned inventory until you explicitly add an item.',relatedWorkflow:'Offline Catalogs',setupRequirement:'Optional catalog download'},
+  catalog:{title:'Offline Catalog Downloads',body:'Offline catalogs provide reference lookup data for MTG. Catalog rows are not owned inventory until you explicitly add an item.',relatedWorkflow:'Offline Catalogs',setupRequirement:'Optional catalog download'},
   mode:{title:'Demo vs Live Mode',body:'Demo Mode is safe for testing. Live Store Mode changes real inventory, sale, and report records when you complete real actions.',relatedWorkflow:'Setup',danger:true,demoLiveWarning:'Check the mode before every test.'},
   subscription:{title:'Subscription / Trial',body:'This banner tells testers whether the current account is in trial, active, or needs attention. It should warn, not block beta testing unless billing rules require it.',relatedWorkflow:'Setup'},
   research:{title:'Research Search',body:'Type the full card name, card number, set, or natural-language query. Searching does not change inventory or checkout records.',relatedWorkflow:'Research'},
@@ -10038,7 +8960,7 @@ function applyBetaHelpAnnotations(){
     ['#payment-settings-panel','payment'], ['input[id*="venmo"],#pay-venmo,#venmo-link','venmo'],
     ['input[id*="paypal"],#pay-paypal,#paypal-link','paypal'], ['input[id*="cashapp"],input[id*="cashApp"],#pay-cashapp,#cashapp-link','cashapp'],
     ['button[onclick*="stripe"],#stripe-status,#stripe-qr-modal','stripe'],
-    ['#offline-catalog-manager-panel,#offline-cache-panel','catalog'],
+    ['#offline-catalog-manager-panel','catalog'],
     ['#subscription-panel,.subscription-banner','subscription'],
     ['#qpl-input','research'], ['#qpl-cat,#qpl-pokemon-helper,#qpl-mtg-helper,#qpl-comic-helper','setBrowser'],
     ['button[onclick*="loadPricesForResultCard"],button[onclick*="runPriceLookup"],button[onclick*="getPrices"]','prices'],
@@ -13630,7 +12552,7 @@ function isBigPriceChange(oldPrice, newPrice){
 function findCachedCardForInventoryItem(item, storeCards){
   const tcgPlayerId = String(item.tcgPlayerId || item.tcgplayerId || '');
   if(tcgPlayerId) {
-    // Try pstWriteCard format: cardKey = 'pokemon:<tcgPlayerId>'
+    // Try the price-cache key format: cardKey = 'pokemon:<tcgPlayerId>'
     const byKey = storeCards.find(c => c.cardKey === 'pokemon:' + tcgPlayerId);
     if(byKey) return byKey;
     // Try scanning card.tcgPlayerId on cached search results
@@ -17501,28 +16423,28 @@ function filterAndSwitch(f){
 }
 
 // Search results get their imageUrl swapped for a URL.createObjectURL(blob)
-// preview when a bulk-synced offline image is found (see the Pokemon/MTG
-// live-search paths). That blob: URL is only valid inside the tab/document
+// preview when a bulk-synced offline image is found (see the MTG
+// live-search path). That blob: URL is only valid inside the tab/document
 // that created it -- if it gets saved into persisted inventory data, it's a
 // dead reference the moment the page reloads or a different device loads
 // it, with the real CDN URL already overwritten and lost. Never let one
 // reach storage; the render layer already re-resolves the real image via
-// the item's tcgPlayerId/scryfallId at display time regardless.
+// the item's scryfallId at display time regardless.
 function durableImageUrl(url=''){
   return /^blob:/i.test(String(url || '')) ? '' : (url || '');
 }
 // The comment above assumes the render layer can always "re-resolve the
-// real image via tcgPlayerId/scryfallId regardless" -- true only once that
-// card's image has actually been bulk-synced offline. Until then,
-// hydratePokemonOfflineImageUrl/hydrateMtgOfflineImageUrl only ever check
-// the LOCAL blob cache (see below) -- neither ever re-fetches the live CDN
-// URL -- so a search row whose imageUrl got swapped for a blob: URL here
-// had its only surviving durable reference thrown away, even while online.
-// Confirmed as the actual cause of "image doesn't load sometimes even
-// while online, started when we added offline images": the swap started
-// happening unconditionally (not just while offline), and nothing preserved
-// what it was overwriting. Called at every swap site instead of duplicating
-// this rescue line five times across the Pokemon/MTG search paths.
+// real image via scryfallId regardless" -- true only once that card's
+// image has actually been bulk-synced offline. Until then,
+// hydrateMtgOfflineImageUrl only ever checks the LOCAL blob cache (see
+// below) -- it never re-fetches the live CDN URL -- so a search row whose
+// imageUrl got swapped for a blob: URL here had its only surviving durable
+// reference thrown away, even while online. Confirmed as the actual cause
+// of "image doesn't load sometimes even while online, started when we
+// added offline images": the swap started happening unconditionally (not
+// just while offline), and nothing preserved what it was overwriting.
+// Called at every swap site instead of duplicating this rescue line across
+// the MTG search path.
 function useOfflineRowImage(row, blob){
   if(!row || !blob) return;
   row.liveImageUrl = row.liveImageUrl || row.imageUrl || '';
@@ -17546,13 +16468,6 @@ function inventoryImageUrl(item={}){
   // live CDN URL is only ever the fallback for a card that hasn't been
   // synced yet (or, while offline with nothing cached, simply unavailable
   // -- return '' rather than a dead URL in that one case).
-  if(/pokemon/i.test(String(item.category||raw.category||''))){
-    const tcgPlayerId = inventoryTcgPlayerId(item);
-    const cached = tcgPlayerId ? window._pokemonOfflineImageUrls?.[tcgPlayerId] : '';
-    if(cached) return cached;
-    if(tcgPlayerId && typeof hydratePokemonOfflineImageUrl==='function') hydratePokemonOfflineImageUrl(tcgPlayerId);
-    if(!navigator.onLine) return '';
-  }
   // Same fix, same reason, for MTG -- see scripts/mtg/mtg-offline-images-browser.js.
   if(/magic|\bmtg\b/i.test(String(item.category||raw.category||''))){
     const scryfallId = mtgInventoryScryfallId(item);
@@ -27763,12 +26678,11 @@ function scoutCatalogMetaHtml(r){
   return [r.set,r.card_number?'#'+r.card_number:'',r.printRun?'/'+r.printRun:'',r.variant].filter(Boolean).map(escHtml).join(' · ')
     + (r.productUrl?` · <a href="${escHtml(r.productUrl)}" target="_blank" rel="noopener" style="color:var(--blue)">view</a>`:'');
 }
-// Pokemon and comic rows very often come back from search with no imageUrl
-// at all -- both need a second lookup to fill one in, same as Research does
-// (resolvePokemonCatalogImagesForVisibleCards/lazyLoadComicImages), but
-// those target Research's own .qpl-hero-card DOM/qplResults array, not this
-// modal's compact rows, so this is the same resolution logic called
-// directly per-row instead.
+// Comic rows very often come back from search with no imageUrl at all --
+// they need a second lookup to fill one in, same as Research does
+// (lazyLoadComicImages), but that targets Research's own .qpl-hero-card
+// DOM/qplResults array, not this modal's compact rows, so this is the same
+// resolution logic called directly per-row instead.
 //
 // PriceCharting-sourced sports/graded results come back with no image AND
 // no card number/print run at all -- confirmed live against a real
@@ -27790,9 +26704,7 @@ async function scoutHydrateCatalogImages(){
     let metaChanged = false;
     try{
       if(r.imageUrl) { /* nothing to fetch for the image, but sports rows may still be missing card_number/printRun below */ }
-      else if(catKey === 'pokemon') {
-        url = await resolvePokemonCatalogImageUrl(r, 'small').catch(() => null);
-      } else if(catKey === 'comic') {
+      else if(catKey === 'comic') {
         const name = r.name || r.raw?.productName || '';
         const issueMatch = name.match(/^(.+?)\s+#(\d+[a-z]?)(?:\s|$)/i);
         const params = new URLSearchParams({ title: issueMatch ? issueMatch[1].trim() : name });
@@ -29312,15 +28224,6 @@ async function hydrateComicPhotoKey(key){
   window._comicPhotoUrls[key]=URL.createObjectURL(record.blob);filterTable();
 }
 
-window._pokemonOfflineImageUrls ||= {};
-async function hydratePokemonOfflineImageUrl(tcgPlayerId){
-  if(!tcgPlayerId||window._pokemonOfflineImageUrls[tcgPlayerId]||window._pokemonOfflineImageUrls[tcgPlayerId]===null)return;
-  window._pokemonOfflineImageUrls[tcgPlayerId]=null;
-  const blob=await window.ArsCaPokemonOfflineImages?.getImageBlob(tcgPlayerId,'400').catch(()=>null);
-  if(!blob)return;
-  window._pokemonOfflineImageUrls[tcgPlayerId]=URL.createObjectURL(blob);filterTable();
-}
-
 window._mtgOfflineImageUrls ||= {};
 async function hydrateMtgOfflineImageUrl(scryfallId){
   if(!scryfallId||window._mtgOfflineImageUrls[scryfallId]||window._mtgOfflineImageUrls[scryfallId]===null)return;
@@ -29470,7 +28373,6 @@ function pokemonOfflineDb(){
         s.createIndex('capturedAt', 'capturedAt');
       }
       if(!db.objectStoreNames.contains('meta')) db.createObjectStore('meta', { keyPath:'key' });
-      if(!db.objectStoreNames.contains('images')) db.createObjectStore('images', { keyPath:'cardKey' });
     };
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
@@ -29516,29 +28418,12 @@ async function pokemonDbClear(store){
   });
 }
 
-// ─── PPT Business Export Catalog ──────────────────────────────────────────────
-// Separate IDB from the per-query search cache — catalog is global reference
-// data, not owned inventory.
-
-const PPT_EXPORT_TYPES = [
-  { type:'cards',      label:'Pokémon Cards',           icon:'🃏' },
-  { type:'sealed',     label:'Pokémon Sealed Products', icon:'📦' },
-  { type:'ebay',       label:'Pokémon eBay / Graded',   icon:'📊' },
-  { type:'population', label:'Population Reports',      icon:'🏆' },
-];
-
 function catalogDb(){
   if(window._catalogDb) return window._catalogDb;
   window._catalogDb = new Promise((resolve, reject) => {
     const req = indexedDB.open('walkoff_catalog_v1', 2);
     req.onupgradeneeded = () => {
       const db = req.result;
-      ['ppt_cards','ppt_sealed','ppt_ebay','ppt_population'].forEach(store => {
-        if(!db.objectStoreNames.contains(store)){
-          const s = db.createObjectStore(store, { keyPath:'tcgPlayerId' });
-          if(store === 'ppt_cards' || store === 'ppt_sealed') s.createIndex('name','name');
-        }
-      });
       if(!db.objectStoreNames.contains('mtg_cards')){
         const s = db.createObjectStore('mtg_cards', { keyPath:'id' });
         s.createIndex('set','set');
@@ -29619,87 +28504,6 @@ async function catalogDbPutBatch(store, rows){
   }
 }
 
-function parseCsvWithHeaders(text){
-  const lines = text.split('\n').filter(l => l.trim());
-  if(lines.length < 2) return { headers:[], rows:[] };
-  const parseRow = line => {
-    const cells = []; let cell = '', q = false;
-    for(let i = 0; i < line.length; i++){
-      const ch = line[i];
-      if(ch === '"' && !q){ q = true; continue; }
-      if(ch === '"' && q && line[i+1] === '"'){ cell += '"'; i++; continue; }
-      if(ch === '"' && q){ q = false; continue; }
-      if(ch === ',' && !q){ cells.push(cell.trim()); cell = ''; continue; }
-      cell += ch;
-    }
-    cells.push(cell.trim());
-    return cells;
-  };
-  const headers = parseRow(lines[0]);
-  const rows = lines.slice(1).map(l => {
-    const vals = parseRow(l);
-    const obj = {};
-    headers.forEach((h, i) => { obj[h] = vals[i] !== undefined ? vals[i] : ''; });
-    return obj;
-  });
-  return { headers, rows };
-}
-
-function normalizePptExportRow(row, type){
-  const num = v => { const n = parseFloat(String(v || '').replace(/[^0-9.-]/g,'')); return isNaN(n) ? null : n; };
-  const id = String(row.tcgPlayerId || '').trim();
-  if(!id) return null;
-  const base = { tcgPlayerId: id, _exportType: type };
-  if(type === 'cards') return { ...base,
-    name:        row.name || '',
-    setName:     row.setName || '',
-    setId:       row.setId || '',
-    cardNumber:  row.cardNumber || '',
-    rarity:      row.rarity || '',
-    language:    row.language || 'english',
-    printing:    row.printing || '',
-    marketPrice: num(row.marketPrice),
-    lowPrice:    num(row.lowPrice),
-    sellers:     num(row.sellers),
-    lastUpdate:  row.lastPriceUpdate || '',
-    searchText:  normalizePokemonText((row.name || '') + ' ' + (row.setName || '') + ' ' + (row.cardNumber || '') + ' ' + (row.rarity || '')),
-  };
-  if(type === 'sealed') return { ...base,
-    name:        row.name || '',
-    setName:     row.setName || '',
-    setId:       row.setId || '',
-    productType: row.productType || '',
-    language:    row.language || 'english',
-    marketPrice: num(row.marketPrice),
-    lowPrice:    num(row.lowPrice),
-    sellers:     num(row.sellers),
-    lastUpdate:  row.lastPriceUpdate || '',
-    searchText:  normalizePokemonText((row.name || '') + ' ' + (row.setName || '') + ' ' + (row.productType || '')),
-  };
-  if(type === 'ebay') return { ...base,
-    grade:            row.grade || '',
-    salesCount:       num(row.salesCount),
-    averagePrice:     num(row.averagePrice),
-    medianPrice:      num(row.medianPrice),
-    smartMarket:      num(row.smartMarketPrice),
-    confidence:       row.smartMarketConfidence || '',
-    market7Day:       num(row.marketPrice7Day),
-    trend:            row.marketTrend || '',
-    velocityWeekly:   num(row.salesVelocityWeekly),
-  };
-  if(type === 'population') return { ...base,
-    grader:       row.grader || '',
-    total:        num(row.totalPopulation),
-    gemRate:      num(row.gemRate),
-    g10:          num(row.g10),
-    g9:           num(row.g9),
-    g9_5:         num(row.g9_5),
-    g8:           num(row.g8),
-    matchConf:    row.matchConfidence || '',
-  };
-  return base;
-}
-
 // Silently refresh stale offline catalogs in the background (no UI feedback unless triggered manually).
 // Scheduled exactly once, 5s after the app boots (see applyResearchDefaultCategory) -- on a device
 // whose tab/PWA just stays open for days or weeks without a real reload (common for a phone left in
@@ -29716,18 +28520,6 @@ async function autoRefreshStaleCatalogs(){
   _lastAutoRefreshAttempt = Date.now();
   const MS_24H = 24 * 60 * 60 * 1000;
   try {
-    // Pokemon cards + sealed catalogs — refresh from our own daily cloud
-    // snapshot (see POKEMON_PRICES_CLOUD_TYPES) if >24h old and not already
-    // downloading. Unlike the eBay/Population live path, this never spends
-    // PPT's own export cap, so the old "skip if 403'd once" business-plan
-    // gate doesn't apply here.
-    for(const type of POKEMON_PRICES_CLOUD_TYPES){
-      const meta = await catalogDbGet('meta', `export_${type}`).catch(() => null);
-      const age  = meta?.downloadedAt ? Date.now() - new Date(meta.downloadedAt).getTime() : Infinity;
-      if(age > MS_24H && localStorage.getItem(`ppt_export_${type}_status`) !== 'downloading') {
-        downloadPokemonExport(type).catch(console.warn);
-      }
-    }
     // MTG offline bundle is built daily; refresh when R2 has a newer manifest, or when the local import is older than 24h.
     const mtg = await mtgCatalogCounts().catch(() => ({ meta:{} }));
     const mtgAge = mtg.meta?.downloadedAt ? Date.now() - new Date(mtg.meta.downloadedAt).getTime() : Infinity;
@@ -29735,136 +28527,6 @@ async function autoRefreshStaleCatalogs(){
       downloadMtgBulkCatalog().catch(console.warn);
     }
   } catch(e) { /* silent */ }
-}
-
-// Cards + sealed snapshots are pulled from PPT once a day by
-// pokemon-prices-daily.yml into our own R2 copy (see /catalog/pokemon/prices/*
-// in cloudflare-worker-full.js) -- devices sync from that shared cloud copy
-// instead of each one spending PPT's 2-exports-a-day cap by hitting
-// /pricing/pokemon/export live every time someone clicks Download.
-const POKEMON_PRICES_CLOUD_TYPES = new Set(['cards', 'sealed']);
-
-async function syncPokemonPricesFromCloud(type){
-  // notReady is only set for "the cloud snapshot genuinely hasn't been built
-  // yet" -- a manifest fetch/download failure is a transport or Worker error,
-  // not that, and must NOT be flagged notReady: downloadPokemonExport() below
-  // only allows a live PPT fallback (which spends the shared 2-exports/day
-  // cap) when notReady is true, precisely so a network blip or Worker hiccup
-  // can't silently burn the quota the daily cron job depends on.
-  const manifestRes = await fetch(WORKER + '/catalog/pokemon/prices/manifest', { cache:'no-store' });
-  if(!manifestRes.ok) throw new Error('Pokemon prices manifest not available');
-  const manifest = await manifestRes.json().catch(() => null);
-  if(manifest?.status !== 'ready' || !manifest?.files?.[type]) throw Object.assign(new Error(`Pokemon ${type} price snapshot is not ready yet`), { notReady:true });
-
-  const dlRes = await fetch(WORKER + `/catalog/pokemon/prices/download?file=${type}`, { cache:'no-store' });
-  if(!dlRes.ok){ const d = await dlRes.json().catch(()=>({error:'HTTP '+dlRes.status})); throw new Error(d.error || 'Pokemon prices download failed'); }
-  const ds = new DecompressionStream('gzip');
-  const text = await new Response(dlRes.body.pipeThrough(ds)).text();
-  const rawRows = text.split('\n').filter(Boolean).map(line => { try { return JSON.parse(line); } catch { return null; } }).filter(Boolean);
-
-  const idbStore = `ppt_${type}`;
-  await catalogDbClear(idbStore);
-  const rows = rawRows.map(r => normalizePptExportRow(r, type)).filter(Boolean);
-  await catalogDbPutBatch(idbStore, rows);
-
-  const meta = { key:`export_${type}`, type, rowCount:rows.length, downloadedAt:new Date().toISOString(), generatedAt: manifest.generatedAt || '', downloadsLeft:'', resetAt:'', error:null, source:'cloud' };
-  await catalogDbPut('meta', meta);
-  return rows.length;
-}
-
-// A device must NEVER call PPT's live /export endpoint -- it shares one
-// account-wide 2-downloads/day count with the daily cron
-// (pokemon-prices-daily.yml) that builds our own R2 cloud copy, and a
-// single device click can burn both of that day's slots out from under
-// every other store, including the cron itself (confirmed live: the cron
-// still failed on this exact 429 even after moving it earlier and adding a
-// worker-side time-window reservation -- a fixed clock cutoff isn't a real
-// guarantee against GitHub Actions' own scheduling jitter, or against a
-// device request landing in the gap after the window closes). The only
-// correct fix is devices never having a path to that endpoint at all --
-// see cloudflare-worker-full.js, /pricing/pokemon/export has been removed
-// entirely. Cards/Sealed only ever come from our own daily cloud snapshot
-// now, with no live fallback; eBay/Population have no bulk sync path at
-// all until the cron itself is extended to cover them on some rotation.
-async function downloadPokemonExport(type){
-  if(!POKEMON_PRICES_CLOUD_TYPES.has(type)){
-    toast_dash(`${PPT_EXPORT_TYPES.find(x=>x.type===type)?.label || type} has no bulk offline sync -- it would spend the shared daily export cap our price-update cron depends on. Graded/PSA prices are still available per-card during a live search.`);
-    return;
-  }
-  const statusKey = `ppt_export_${type}_status`;
-  localStorage.setItem(statusKey, 'downloading');
-  refreshOfflineCatalogManagerPanel();
-  try {
-    const rowCount = await syncPokemonPricesFromCloud(type);
-    localStorage.removeItem(statusKey);
-    toast_dash(`${PPT_EXPORT_TYPES.find(x=>x.type===type)?.label || type}: ${rowCount.toLocaleString()} rows downloaded`);
-  } catch(e){
-    const message = e?.notReady ? "Today's price snapshot isn't built yet -- try again shortly." : (e.message || 'Sync failed');
-    await catalogDbPut('meta', { key:`export_${type}`, type, error:message, downloadedAt:null, rowCount:0 }).catch(()=>{});
-    localStorage.removeItem(statusKey);
-    toast_dash('Sync failed: ' + message);
-  }
-  refreshOfflineCatalogManagerPanel();
-}
-
-async function clearPokemonExport(type){
-  const idbStore = `ppt_${type}`;
-  await catalogDbClear(idbStore).catch(()=>{});
-  await catalogDbPut('meta', { key:`export_${type}`, type, rowCount:0, downloadedAt:null, generatedAt:'', error:null }).catch(()=>{});
-  refreshOfflineCatalogManagerPanel();
-  toast_dash(`${type} export cache cleared`);
-}
-
-function pokemonOfflineSearchMode(){
-  const mode = localStorage.getItem('pokemon_offline_mode') || 'offline_first';
-  return ['offline_first','online_only','offline_only'].includes(mode) ? mode : 'offline_first';
-}
-
-function setPokemonOfflineSearchMode(mode){
-  localStorage.setItem('pokemon_offline_mode', ['offline_first','online_only','offline_only'].includes(mode) ? mode : 'offline_first');
-  renderOfflineCatalogManagerPanel();
-}
-
-// Reshapes an offline ppt_cards row (normalizePptExportRow's 'cards' shape)
-// into the same legacy "PPT card" object pokemonPriceTrackerCardToQplRow()
-// already knows how to score/format for the QPL result list -- reused as-is
-// rather than duplicated so cards look identical whether they came from a
-// live lookup or the offline cache.
-function pokemonOfflineCardToQplRow(row = {}, query = ''){
-  const legacy = {
-    tcgPlayerId: row.tcgPlayerId || '',
-    name: row.name || '',
-    setName: row.setName || '',
-    rarity: row.rarity || '',
-    cardNumber: row.cardNumber || '',
-    language: row.language || 'english',
-    prices: { market:row.marketPrice, lowPrice:row.lowPrice, primaryCondition:'Near Mint', primaryPrinting: row.printing || 'Normal' },
-    lookupDebug: { path:'offline catalog', cache:'offline' },
-  };
-  const qplRow = pokemonPriceTrackerCardToQplRow(legacy, query);
-  if(!qplRow) return null;
-  qplRow.cache = { state:'offline-catalog', source:'Pokemon offline price cache', updatedAt: row.lastUpdate || '' };
-  qplRow.priceSource = 'PokemonPriceTracker offline snapshot';
-  qplRow.note = 'Matched from the offline price cache (synced daily from PokemonPriceTracker).';
-  qplRow.confidence = 90;
-  qplRow.matchWhy = ['Pokemon offline catalog'];
-  return qplRow;
-}
-
-function pokemonOfflineSealedToQplRow(row = {}, query = ''){
-  const legacy = {
-    tcgPlayerId: row.tcgPlayerId || '',
-    name: row.name || '',
-    setName: row.setName || '',
-    language: row.language || 'english',
-    unopenedPrice: row.marketPrice,
-  };
-  const qplRow = pokemonSealedProductToQplRow(legacy, query);
-  if(!qplRow) return null;
-  qplRow.cache = { state:'offline-catalog', source:'Pokemon offline price cache', updatedAt: row.lastUpdate || '' };
-  qplRow.priceSource = 'PokemonPriceTracker offline snapshot';
-  qplRow._pokemonGroup = 'sealed';
-  return qplRow;
 }
 
 async function mtgCatalogMeta(){
@@ -30155,161 +28817,6 @@ async function mtgCatalogCardsBySet(setCode){
   return (await window.ArsCaMtgOffline.cardsBySet(setCode)).map(mtgOfflineLegacyCard);
 }
 
-async function pokemonCatalogExportSets(){
-  const rows = await catalogDbAll('ppt_cards').catch(() => []);
-  const map = new Map();
-  rows.forEach(r => {
-    const name = r.setName || '';
-    if(!name) return;
-    const prev = map.get(name) || { id:name, name, series:'Offline Catalog', releaseDate:'', cardCount:0, source:'ppt_export' };
-    prev.cardCount++;
-    map.set(name, prev);
-  });
-  return [...map.values()].sort((a,b) => a.name.localeCompare(b.name));
-}
-
-async function pokemonCatalogExportCardsBySet(setName){
-  const rows = await catalogDbAll('ppt_cards').catch(() => []);
-  return rows.filter(r => String(r.setName || '').toLowerCase() === String(setName || '').toLowerCase()).map(r => sbNormalizeSetCard({
-    name:r.name,
-    setName:r.setName,
-    setId:r.setId,
-    cardNumber:r.cardNumber,
-    rarity:r.rarity,
-    language:r.language || 'English',
-    tcgPlayerId:r.tcgPlayerId,
-    marketPrice:r.marketPrice,
-    lowPrice:r.lowPrice,
-    prices:{ market:r.marketPrice || 0, lowPrice:r.lowPrice || 0 },
-    source:'ppt_export',
-    cache:{ state:'catalog', source:'PokemonPriceTracker Export', updatedAt:r.lastUpdate || '' },
-  }, setName));
-}
-
-// ── Catalog search / lookup ────────────────────────────────────────────────────
-
-async function searchPokemonCatalogExport(query, cat = ''){
-  // cat must be threaded through from the caller (searchPokemonOfflineCache
-  // already validates intent using the real selected category, e.g. the
-  // "Pokemon" tab filter) rather than re-derived here with an empty
-  // category. A bare card-number query like "143/142" has no name text and
-  // no game-identifying words of its own -- isPokemonLookupIntent(query,'')
-  // fails it every time, so this guard returned [] before the fixed
-  // number-matching logic below ever ran, no matter how correct that logic
-  // was. Losing the caller's already-established category context here
-  // made the previous fix to the matching logic unreachable for exactly
-  // the query shape it was written for.
-  if(!query || !isPokemonLookupIntent(query, cat)) return [];
-  try {
-    const queryNumber = pokemonQueryCardNumber(query);
-    // pokemonCardNumberMatches() already knows a stored cardNumber of just
-    // "143" (PPT's export never includes the "/142" denominator) still
-    // satisfies a "143/142" query -- but it was only ever used below to
-    // EXCLUDE non-matches. The literal query token "143/142" still had to
-    // survive the generic terms.every(searchText.includes(...)) substring
-    // check to count as a match at all, and that substring never exists in
-    // any card's searchText (built from the bare numerator), so a
-    // number-only query matched zero rows, offline, no exceptions. Drop the
-    // query-number token from the literal-substring terms -- it's already
-    // validated (inclusively, not just exclusively) below.
-    const queryNumberNormalized = queryNumber ? normalizePokemonText(queryNumber) : '';
-    const terms = normalizePokemonText(query).split(/\s+/).filter(Boolean)
-      .filter(t => !queryNumberNormalized || t !== queryNumberNormalized);
-    const rows = await catalogDbAll('ppt_cards').catch(() => []);
-    return rows.filter(r => {
-      if(!r.searchText) return false;
-      if(queryNumber && !pokemonCardNumberMatches(r, queryNumber)) return false;
-      return terms.every(t => r.searchText.includes(t));
-    }).slice(0, 40).map(r => pokemonOfflineCardToQplRow(r, query)).filter(Boolean);
-  } catch(e){ return []; }
-}
-
-
-async function searchPokemonSealedCatalogLocal(query){
-  if(!query) return [];
-  try {
-    const terms = normalizePokemonText(query).split(/\s+/).filter(Boolean);
-    const rows = await catalogDbAll('ppt_sealed').catch(() => []);
-    return rows.filter(r => r.searchText && terms.every(t => r.searchText.includes(t))).slice(0, 20).map(r => pokemonOfflineSealedToQplRow(r, query)).filter(Boolean);
-  } catch(e){ return []; }
-}
-
-function pokemonBlobToDataUrl(blob){
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result);
-    reader.onerror = () => reject(reader.error);
-    reader.readAsDataURL(blob);
-  });
-}
-
-async function cachePokemonImage(cardKey, imageUrl){
-  if(!cardKey || !imageUrl || localStorage.getItem('pokemon_cache_images') === '0') return;
-  try{
-    let dataUrl = imageUrl;
-    if(!imageUrl.startsWith('data:')){
-      const res = await fetch(imageUrl, { cache:'force-cache' });
-      if(!res.ok) throw new Error('Pokemon image cache fetch failed');
-      dataUrl = await pokemonBlobToDataUrl(await res.blob());
-    }
-    await pokemonDbPut('images', {
-      cardKey,
-      storeId:getActiveStoreId(),
-      imageUrl,
-      dataUrl,
-      capturedAt:new Date().toISOString()
-    });
-  }catch(err){
-    console.warn('Pokemon image cache skipped', err);
-  }
-}
-
-
-async function savePokemonCacheResults(query, rows = [], source = 'Live lookup'){
-  const pokemonRows = (rows || []).filter(r => qplResultCategoryKey(r) === 'pokemon' || isPokemonLookupIntent(query, r.category));
-  if(!pokemonRows.length) return;
-  const updatedAt = new Date().toISOString();
-  const temporary = pokemonRows.slice(0, 40).map(row => ({
-    ...row,
-    // A row.imageUrl of blob:... (the offline-image preview swap applied to
-    // live search results) is only valid in the tab that created it -- this
-    // cache is read back on a later reload/session to replay results while
-    // offline, where that blob would already be dead. Never persist one;
-    // resolvePokemonCatalogImagesForVisibleCards() re-resolves a real image
-    // from the bulk offline cache at render time regardless.
-    imageUrl:durableImageUrl(row.imageUrl),
-    cache:{ ...(row.cache || {}), state:'temporary', source:source || 'Temporary Search Result', updatedAt },
-    priceSource:(row.priceSource || source || 'PokemonPriceTracker') + ' (temporary search result)'
-  }));
-  try{
-    const key = 'pokemon_temp_search_cache_v2';
-    const current = JSON.parse(sessionStorage.getItem(key) || '[]');
-    current.unshift({ query, source, updatedAt, rows:temporary });
-    sessionStorage.setItem(key, JSON.stringify(current.slice(0, 20)));
-  }catch(e){}
-}
-
-async function searchPokemonOfflineCache(query, cat = ''){
-  if(!isPokemonLookupIntent(query, cat)) return [];
-  if(isPokemonSealedSearchIntent(query, cat)) {
-    return (await searchPokemonSealedCatalogLocal(query).catch(() => [])).slice(0, 60);
-  }
-  // Bulk PPT export is the sole local data source — search catalog only.
-  const catalogHits = await searchPokemonCatalogExport(query, cat).catch(() => []);
-  const sealedHits  = await searchPokemonSealedCatalogLocal(query).catch(() => []);
-  const seenIds = new Set(catalogHits.map(r => String(r.tcgPlayerId || '')).filter(Boolean));
-  const freshSealed = sealedHits.filter(r => !seenIds.has(String(r.tcgPlayerId || '')));
-  return [...catalogHits, ...freshSealed].slice(0, 60);
-}
-
-async function pokemonOfflineCatalogAvailable(sealed = false){
-  const store = sealed ? 'ppt_sealed' : 'ppt_cards';
-  const metaKey = sealed ? 'export_sealed' : 'export_cards';
-  const meta = await catalogDbGet('meta', metaKey).catch(() => null);
-  if(Number(meta?.rowCount || 0) > 0) return true;
-  return (await catalogDbCount(store).catch(() => 0)) > 0;
-}
-
 async function savePokemonCompsFromRow(row = {}, cardKey = pokemonCardKey(row)){
   const capturedAt = new Date().toISOString();
   const comps = [];
@@ -30391,8 +28898,8 @@ async function searchPriceChartingOfflineCatalog(category,query){
   const products=await window.ArsCaPriceChartingOffline?.search(category,query,20) || [];
   return products.map(product=>priceChartingOfflineProductToQplRow(product,category));
 }
-// The base .mtg-offline-banner/.comics-offline-banner/.pokemon-offline-banner
-// CSS class hardcodes a gold border+background -- only .style.color used to
+// The base .mtg-offline-banner/.comics-offline-banner CSS class hardcodes a
+// gold border+background -- only .style.color used to
 // change with tone, so a "good" (fresh, up to date) banner still LOOKED like
 // a stale/warning box. Border and background now follow tone too.
 function applyOfflineBannerTone(banner, tone){
@@ -30411,14 +28918,6 @@ function setMtgOfflineBanner(message = '', tone = 'warn'){
 
 function setComicsOfflineBanner(message = '', tone = 'warn'){
   const banner = document.getElementById('comics-offline-banner');
-  if(!banner) return;
-  banner.textContent = message;
-  banner.classList.toggle('on', !!message);
-  applyOfflineBannerTone(banner, tone);
-}
-
-function setPokemonOfflineBanner(message = '', tone = 'warn'){
-  const banner = document.getElementById('pokemon-offline-banner');
   if(!banner) return;
   banner.textContent = message;
   banner.classList.toggle('on', !!message);
@@ -30988,7 +29487,6 @@ async function _runPriceLookupInner(){
   const wantsComic = !wantsPokemon && !wantsMtg && (universalPlanHas(searchPlan, 'comic') || isComicLookupIntent(q, cat));
   const wantsSports = !wantsPokemon && !wantsMtg && !wantsComic && (universalPlanHas(searchPlan,'sports') || universalPlanHas(searchPlan,'graded') || isSportsLookupIntent(q,cat));
   const priceChartingOfflineCategory = !wantsPokemon && !wantsMtg ? priceChartingOfflineCategoryFor(cat) : '';
-  setPokemonOfflineBanner('');
   setMtgOfflineBanner('');
   setComicsOfflineBanner('');
   el.innerHTML = wantsComic
@@ -31004,27 +29502,7 @@ async function _runPriceLookupInner(){
   }
 
   if(wantsSports && !navigator.onLine){el.innerHTML='<div style="color:var(--gold)">Sports pricing requires the live SportsCardsPro / PriceCharting providers. Reconnect and search by player, year, brand, set, and card number.</div>';return;}
-
-  // ── Pokemon offline cache ──────────────────────────────────────────────────
-  if(wantsPokemon) {
-    const pokemonOfflineReady = await pokemonOfflineCatalogAvailable(isPokemonSealedSearchIntent(q, cat));
-    cachedResults = pokemonOfflineReady ? await searchPokemonOfflineCache(q, cat) : [];
-    if(cachedResults.length) {
-      if(!qplSearchStillActive(mySeq, searchPlan)) return;
-      qplMasterResults = cachedResults; qplLastSearch = q;
-      qplResults = filterQplMasterResults(qplMasterResults, cat);
-      renderQuickLookupResults(qplResults);
-      renderUniversalSearchExplain(searchPlan, qplResults);
-      setPokemonOfflineBanner(navigator.onLine ? 'PPT offline catalog result. Select a card for optional live detail.' : 'Offline Mode: showing PPT bulk export catalog data.', 'good');
-      return;
-    } else if(!navigator.onLine) {
-      el.innerHTML = `<div style="color:var(--gold);line-height:1.6">No cached or catalog data found for this search.<br>To enable full offline research, download the PPT export catalog in Settings.<br><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"><button class="hbtn" onclick="openSettingsSection('catalogs','offline-cache-panel')">OPEN OFFLINE CACHE</button><button class="hbtn" onclick="openSettingsSection('catalogs','offline-catalog-manager-panel')">DOWNLOAD CATALOG</button></div></div>`;
-      setPokemonOfflineBanner('Offline Mode: no cached Pokémon data found for "' + q + '".', 'bad');
-      return;
-    } else if(!pokemonOfflineReady) {
-      setPokemonOfflineBanner('PPT offline catalog is not installed. Searching PPT online now.');
-    }
-  }
+  if(wantsPokemon && !navigator.onLine){el.innerHTML='<div style="color:var(--gold)">Pokemon pricing requires the live PokemonPriceTracker API. Reconnect and search again.</div>';return;}
 
   // ── MTG offline cache ──────────────────────────────────────────────────────
   if(wantsMtg) {
@@ -31057,12 +29535,11 @@ async function _runPriceLookupInner(){
   }
 
   // ── Offline guard: cached results already rendered — do not fire live API ──
-  if((wantsPokemon || wantsMtg || wantsSports || priceChartingOfflineCategory) && !navigator.onLine) return;
+  if((wantsMtg || wantsSports || priceChartingOfflineCategory) && !navigator.onLine) return;
 
   try {
     const slowTimer = setTimeout(() => {
       if(_netStatus === 'online') { _netStatus = 'slow'; updateNetBadge(); }
-      if(wantsPokemon) setPokemonOfflineBanner(cachedResults.length ? 'Slow Internet: still showing cached Pokémon data while live refresh continues.' : 'Slow Internet: still trying live Pokémon sources.');
       if(wantsMtg) setMtgOfflineBanner(cachedResults.length ? 'Slow Internet: still showing cached MTG data while Scryfall refresh continues.' : 'Slow Internet: still trying live MTG sources.');
       if(wantsComic) setComicsOfflineBanner('Still waiting for the live Metron comic catalog…');
     }, 5000);
@@ -31090,12 +29567,9 @@ async function _runPriceLookupInner(){
     // API never returns one at all.
     if(qplResults.some(r => r.source === 'PriceCharting' && !r.printRun && qplResultCategoryKey(r) === 'sports')) enrichPcPrintRunsAsync();
     if(qplResults.some(r => r.source === 'topps_checklist')) enrichToppsSportsPriceChartingAsync();
-    if(wantsPokemon) {
-      savePokemonCacheResults(q, qplMasterResults, 'Live Pokemon lookup').catch(console.warn);
-      setPokemonOfflineBanner('Live Pokémon prices loaded. Offline search uses PPT bulk export catalog.', 'good');
-      // hydrateVisiblePokemonPriceTrackerResults (called inside renderQuickLookupResults)
-      // already hydrates the top result — no separate auto-fire needed here.
-    }
+    // wantsPokemon: hydrateVisiblePokemonPriceTrackerResults (called inside
+    // renderQuickLookupResults) already hydrates the top result -- no
+    // separate auto-fire needed here.
     if(wantsMtg) setMtgOfflineBanner('Live Scryfall results. Use Refresh MTG Offline Data to update the device catalog.', 'good');
     if(wantsComic) setComicsOfflineBanner('Live Metron issue records loaded. Select a book for full details and PriceCharting prices.','good');
   } catch(e) {
@@ -31111,12 +29585,10 @@ async function _runPriceLookupInner(){
       return;
     }
     if(cachedResults.length) {
-      if(wantsPokemon) setPokemonOfflineBanner('Live refresh failed: ' + e.message + '. Cached Pokémon data remains visible.', 'bad');
       if(wantsMtg) setMtgOfflineBanner('Live refresh failed: ' + e.message + '. Cached MTG data remains visible.', 'bad');
       if(wantsComic) setComicsOfflineBanner('Live Metron refresh failed: ' + e.message, 'bad');
     } else {
       el.innerHTML = '<div style="color:var(--red)">Lookup failed: ' + e.message + (e.message?.includes('timed out') ? ' — network may be slow.' : '') + '</div>';
-      if(wantsPokemon) setPokemonOfflineBanner('No cached Pokémon data found. Search online to build offline cache.', 'bad');
       if(wantsMtg && !navigator.onLine) setMtgOfflineBanner('No cached MTG data found. Search online to build offline cache.', 'bad');
       if(wantsComic) setComicsOfflineBanner('Live Metron comic search failed. No device comic catalog was searched.', 'bad');
     }
@@ -31618,31 +30090,6 @@ async function searchQuickCatalog(q, cat, searchPlan = buildUniversalSearchPlan(
     const isParseTitleQuery = /\b(psa|bgs|cgc|sgc|gem[\s-]*mint|graded)\b/i.test(q)
       || (q.length > 50 && /\b\d{1,4}\s*\/\s*\d{1,4}\b/.test(q))
       || (/\b(jpn|japanese)\b.{0,40}\d/i.test(q) && q.length > 30);
-    // Offline-first: try the daily-synced local price cache (cards+sealed
-    // only — see POKEMON_PRICES_CLOUD_TYPES) before ever touching a live
-    // PokemonPriceTracker call, same offline_first/online_only/offline_only
-    // mode MTG already uses. Parse-title queries (graded slab titles) always
-    // need the live parser and skip this.
-    const pokemonMode = pokemonOfflineSearchMode();
-    if(!isParseTitleQuery && pokemonMode !== 'online_only') {
-      try {
-        // Passing cat (not isSealedQuery) matters: searchPokemonOfflineCache(query, cat)
-        // at line ~29253 is the version that actually runs (a duplicate, dead
-        // declaration above it took a boolean sealedIntent instead -- JS resolves
-        // the name to whichever function declaration comes last). That real
-        // version already derives sealed intent itself from query+cat via
-        // isPokemonSealedSearchIntent(), and needs the real category to pass its
-        // own isPokemonLookupIntent(query, cat) gate -- a bare card-number query
-        // like "143/142" has no name text of its own to satisfy that gate without it.
-        const offlineRows = await searchPokemonOfflineCache(q, cat);
-        if(offlineRows.length) {
-          offlineRows.forEach(add);
-          await savePokemonCacheResults(q, offlineRows, 'Pokemon offline catalog').catch(console.warn);
-          return results;
-        }
-      } catch(e) { /* fall through to the live lookup below */ }
-    }
-    if(pokemonMode === 'offline_only') return results;
     // Kick off sealed-products fetch in parallel with cards — skip cards when parse-title
     const pokemonSearchQuery = universalSearchQueries(searchPlan, 'pokemon', 'PokemonPriceTracker')[0] || q;
     const pokemonSearchFilters = universalSearchFilters(searchPlan, 'pokemon', 'PokemonPriceTracker');
@@ -31680,13 +30127,10 @@ async function searchQuickCatalog(q, cat, searchPlan = buildUniversalSearchPlan(
                   h.matchWhy = row.matchWhy;
                   h.note = row.note;
                   applyPokemonPriceTrackerPrice(h);
-                  const blob = await window.ArsCaPokemonOfflineImages?.getImageBlob(row.tcgPlayerId, '400').catch(() => null);
-                  useOfflineRowImage(h, blob);
                   return h;
                 } catch(e) { return row; }
               }));
               hydratedRows.forEach(add);
-              await savePokemonCacheResults(q, hydratedRows, 'PokemonPriceTracker parse-title').catch(console.warn);
               return hydratedRows;
             }
           }
@@ -31701,19 +30145,7 @@ async function searchQuickCatalog(q, cat, searchPlan = buildUniversalSearchPlan(
           r._pokemonGroup = 'sealed';
           return r;
         });
-        // Same offline-image-first swap as the cards path below.
-        if(sealedRows.length && window.ArsCaPokemonOfflineImages) {
-          await Promise.all(sealedRows.map(async row => {
-            const id = row.tcgPlayerId || row.tcgplayerId;
-            if(!id) return;
-            try {
-              const blob = await window.ArsCaPokemonOfflineImages.getImageBlob(id, '400');
-              useOfflineRowImage(row, blob);
-            } catch(e) { /* no cached image for this product -- keep the live CDN URL */ }
-          }));
-        }
         sealedRows.forEach(add);
-        await savePokemonCacheResults(q, sealedRows, 'PokemonPriceTracker sealed search').catch(console.warn);
         if(wants === 'sealed' || isSealedQuery) return sealedRows;
       }
       if(isSealedQuery) return [];
@@ -31764,25 +30196,8 @@ async function searchQuickCatalog(q, cat, searchPlan = buildUniversalSearchPlan(
         }
         rows.push(row);
       }
-      // A bulk-synced offline image wins over the live PPT CDN URl this row
-      // was just built with, online or not -- see the same principle in
-      // inventoryImageUrl(). A live search can legitimately return a card
-      // whose price wasn't in the offline cache (which is why this is the
-      // live path at all) but whose image already was, from a separate
-      // image-only sync.
-      if(rows.length && window.ArsCaPokemonOfflineImages) {
-        await Promise.all(rows.map(async row => {
-          const id = row.tcgPlayerId || row.tcgplayerId;
-          if(!id) return;
-          try {
-            const blob = await window.ArsCaPokemonOfflineImages.getImageBlob(id, '400');
-            useOfflineRowImage(row, blob);
-          } catch(e) { /* no cached image for this card -- keep the live CDN URL */ }
-        }));
-      }
       if(rows.length) {
         rows.forEach(add);
-        await savePokemonCacheResults(q, rows, 'PokemonPriceTracker documented search').catch(console.warn);
         if(rows.some(r => !r.closestStrictFallback)) return rows;
       }
     } catch(e) {
@@ -31889,7 +30304,6 @@ async function searchQuickCatalog(q, cat, searchPlan = buildUniversalSearchPlan(
 
   const legacyRanked = rankQuickLookupResults(results, q, cat);
   const ranked = (universalSearchAdapter()?.mergeAndRankResults(legacyRanked, searchPlan) || legacyRanked).slice(0, isPokemonLookupIntent(q, cat) ? 50 : 100);
-  if(isPokemonLookupIntent(q, cat)) savePokemonCacheResults(q, ranked, 'Live Pokemon lookup').catch(console.warn);
   return ranked;
 }
 
@@ -34769,14 +33183,30 @@ async function cachePokemonPriceTrackerCard(row = {}, card = null){
   const id = String(pokemonPriceTrackerId(row) || card?.tcgPlayerId || '');
   if(!id || !card) return;
   _pptSessionCache.set(id, card);
-  // Also persist to IDB (walkoff_pokemon_cache_v1/cards) via the same writer
-  // the set-sync bulk downloader uses, so this exact-hydrated card (with its
-  // full condition + PSA/graded price data) survives page reloads and is
-  // available while offline, and so the repricing engine / offline stats
-  // panel -- which already read this store -- actually get data.
+  // Also persist to IDB (walkoff_pokemon_cache_v1/cards), so this exact-
+  // hydrated card (with its full condition + PSA/graded price data)
+  // survives page reloads and the repricing engine -- which already reads
+  // this store -- gets data without re-spending a PPT credit.
   try{
     const priceDb = await pokemonOfflineDb();
-    await pstWriteCard(card, { priceDb, storeId:getActiveStoreId(), now:new Date().toISOString(), dlImages:false, path:'quick-lookup.exact' });
+    const storeId = getActiveStoreId();
+    const now = new Date().toISOString();
+    await new Promise((resolve, reject) => {
+      const tx = priceDb.transaction('cards','readwrite');
+      tx.objectStore('cards').put({
+        cardKey: 'pokemon:'+id,
+        storeId,
+        source: 'PokemonPriceTracker exact hydration',
+        cacheVersion: POKEMON_EXACT_CACHE_VERSION,
+        searchText: normalizePokemonText([card.name, card.setName, card.cardNumber, card.rarity].filter(Boolean).join(' ')),
+        normalizedQuery: normalizePokemonText(card.name||''),
+        updatedAt: now,
+        card: { ...card, lookupDebug:{ ...(card.lookupDebug||{}), exactHydrated:true, path:'quick-lookup.exact', syncedAt:now } },
+        imageUrl: card.imageCdnUrl400||card.imageCdnUrl800||card.imageCdnUrl200||card.imageCdnUrl||card.imageUrl||'',
+      });
+      tx.oncomplete = resolve;
+      tx.onerror = () => reject(tx.error);
+    });
   }catch(e){}
 }
 
@@ -36042,7 +34472,6 @@ function renderQuickLookupResults(results){
       ${groupOrder.map(g => groupHtml(groups[g], groupLabels[g])).join('')}
       ${fallbackHtml}${showMoreHtml}`;
     setTimeout(() => hydrateVisiblePokemonPriceTrackerResults(primary.map(x => x.idx)), 0);
-    setTimeout(() => resolvePokemonCatalogImagesForVisibleCards(), 200);
     setTimeout(() => lazyLoadComicImages([...primary,...fallback].map(x=>x.idx)), 100);
     setTimeout(() => lazyLoadMetronSeriesPreviews([...primary,...fallback].map(x=>x.idx)), 120);
     return;
@@ -36072,7 +34501,6 @@ function renderQuickLookupResults(results){
     </div>
     ${fallbackHtml}${showMoreHtml}${comicSeriesPager}`;
   setTimeout(() => hydrateVisiblePokemonPriceTrackerResults(primary.map(x => x.idx)), 0);
-  setTimeout(() => resolvePokemonCatalogImagesForVisibleCards(), 200);
   setTimeout(() => lazyLoadComicImages([...primary,...fallback].map(x=>x.idx)), 100);
   setTimeout(() => lazyLoadMetronSeriesPreviews([...primary,...fallback].map(x=>x.idx)), 120);
   if(indexed.some(x=>qplResultCategoryKey(x.r)==='comic')) setTimeout(()=>renderComicRunChooser(results),0);
@@ -36147,16 +34575,13 @@ function quickLookupResultCard(r, idx){
   const isSportsResult = qplResultCategoryKey(r) === 'sports' || r.source === 'topps_checklist' || r.source === 'sportscardspro';
   // durableImageUrl() exists to strip a blob: URL that survived a reload
   // (dead, since it can't outlive the document that created it) -- but
-  // qplResults only ever lives in memory for the current page load, and
-  // its one sessionStorage mirror (savePokemonCacheResults) already
-  // sanitizes before writing and is never read back anywhere in this file.
-  // So a blob: URL reaching this render is always one just created THIS
-  // session (a live search's offline-image swap, or
-  // resolvePokemonCatalogImagesForVisibleCards()'s write-back after the
-  // fact) and is still perfectly valid -- stripping it here undid that
-  // write-back the moment updateQplResultCard() re-rendered the card for
-  // any other reason (e.g. price data finishing load a moment later),
-  // making an image that had just appeared vanish right back to NO IMAGE.
+  // qplResults only ever lives in memory for the current page load, so a
+  // blob: URL reaching this render (e.g. an MTG offline-image swap) is
+  // always one just created THIS session and is still perfectly valid --
+  // stripping it here undid that swap the moment updateQplResultCard()
+  // re-rendered the card for any other reason (e.g. price data finishing
+  // load a moment later), making an image that had just appeared vanish
+  // right back to NO IMAGE.
   const qplSafeImageUrl = r.imageUrl || '';
   const img = qplSafeImageUrl
     ? `<div class="qpl-img-shell" onclick="openQplImageLightbox(${idx})"${isComic?' style="aspect-ratio:2/3;max-height:220px"':''}><img src="${escHtml(qplSafeImageUrl)}" alt="${escHtml(r.name || 'Card image')}" style="${isComic?'object-fit:cover;width:100%;height:100%':''}" onerror="this.closest('.qpl-img-shell').innerHTML='<div class=qpl-no-img>${isComic?'📖<br>NO COVER':'NO IMAGE'}</div>'"></div>`
@@ -36639,7 +35064,7 @@ async function renderPokemonCompsPanel(idx){
   const allComps = [...comps, ...sales];
   if(!allComps.length) {
     el.innerHTML = `<div class="ph">POKEMON COMPS <span style="font-size:9px;color:var(--dim)">offline cache</span></div>
-      <div style="color:var(--gold);line-height:1.6">No cached comps for this card yet. Search online before show or sync Pokemon cache.</div>
+      <div style="color:var(--gold);line-height:1.6">No cached comps for this card yet. Search online or save a manual comp below.</div>
       <div class="pokemon-comp-actions">
         <button class="hbtn" onclick="saveManualPokemonComp(${idx})">SAVE MANUAL COMP</button>
         <button class="hbtn" onclick="runPriceLookup()">REFRESH LIVE</button>
@@ -36702,7 +35127,6 @@ async function saveManualPokemonComp(idx){
   await pokemonDbPut('comps', comp);
   enqueueSync('pokemon-manual-comp', 'Manual Pokemon comp: ' + comp.title, comp, 'queued for backend sync');
   renderPokemonCompsPanel(idx);
-  renderOfflineCachePanel();
   toast_dash('Manual Pokemon comp saved locally');
 }
 
@@ -36818,7 +35242,6 @@ function refreshQplResultCard(idx){
   const tmp = document.createElement('div');
   tmp.innerHTML = quickLookupResultCard(qplResults[idx], idx);
   card.replaceWith(tmp.firstElementChild);
-  setTimeout(() => resolvePokemonCatalogImagesForVisibleCards(), 150);
 }
 
 // Fetch PPT exact detail for a result card and re-render it inline (no navigation)
@@ -37299,12 +35722,6 @@ async function selectQuickLookupResult(idx){
   // The availability flag used to exist only in quickLookupResultCard().
   // This selected-result card needs its own scoped value before rendering.
   const inventoryUnavailable = r.source === 'inventory' && !inventoryItemIsSellable(r.raw || r);
-  // If no image yet, try to fill from catalog (async, updates img after render)
-  if(!r.imageUrl && qplResultCategoryKey(r) === 'pokemon'){
-    resolvePokemonCatalogImageUrl(r, 'large').then(url => {
-      if(url){ const img = document.querySelector('.qpl-selected-card img'); if(!img){ const shell = document.querySelector('.qpl-selected-card .qpl-no-img'); if(shell){ const i = document.createElement('img'); i.src = url; i.alt = r.name || ''; i.onclick = () => openQplImageLightbox(idx); shell.closest('.qpl-img-shell')?.replaceWith(i); } } }
-    }).catch(() => {});
-  }
   const el = document.getElementById('qpl-result');
   const cat = qplResultStandardCategory(r);
   el.innerHTML = `<div class="qpl-selected-card" data-qpl-idx="${idx}">
@@ -43026,11 +41443,6 @@ function sbOwnedQty(card){
 async function sbFetchSets(){
   // PPT /sets — set NAME is used as the value so sbFetchSetCards can pass set=<name> directly.
   // Cache 24h in localStorage (persists across reloads — fast on return visits).
-  const localSets = await pokemonCatalogExportSets().catch(() => []);
-  if(localSets.length && !navigator.onLine) {
-    _sbState.sourceLabel = 'Offline Catalog - PokemonPriceTracker Export';
-    return localSets;
-  }
   const cacheKey = 'sb_ppt_sets_v1';
   try {
     const cached = JSON.parse(localStorage.getItem(cacheKey) || 'null');
@@ -43050,7 +41462,7 @@ async function sbFetchSets(){
   })).sort((a,b) => String(b.releaseDate || '').localeCompare(String(a.releaseDate || '')) || a.name.localeCompare(b.name));
   try { localStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), sets })); } catch(e){}
   _sbState.sourceLabel = 'Live PokemonPriceTracker Sets';
-  return localSets.length ? [...sets, ...localSets.filter(ls => !sets.some(s => String(s.name).toLowerCase() === String(ls.name).toLowerCase()))] : sets;
+  return sets;
 }
 
 function sbNormalizeSetCard(card = {}, setName = ''){
@@ -43090,11 +41502,6 @@ async function sbFetchSetCards(setIdOrName){
   if(!setIdOrName) throw new Error('No set name');
   // Always use the human-readable set name — PPT cards endpoint expects set=<name>
   const setName = _sbState.selectedSet?.name || setIdOrName;
-  const catalogCards = await pokemonCatalogExportCardsBySet(setName).catch(() => []);
-  if(catalogCards.length) {
-    _sbState.sourceLabel = 'Offline Catalog - PokemonPriceTracker Export';
-    return catalogCards;
-  }
   // Session cache — cards stable within a session
   const ck = 'sb_cards_' + setName.toLowerCase().replace(/[^a-z0-9]/g,'_').slice(0,40);
   try {

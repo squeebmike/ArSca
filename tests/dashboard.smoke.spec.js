@@ -123,8 +123,7 @@ test('Pokemon lookup shows a recoverable offline state without cache', async ({ 
   await page.locator('.qpl-cat-pill[data-cat="Pokemon TCG"]').click();
   await page.locator('#qpl-input').fill('pikachu 151');
   await page.getByRole('button', { name: 'LOOK UP' }).click();
-  await expect(page.locator('#pokemon-offline-banner')).toContainText(/Offline Mode/i);
-  await expect(page.locator('#qpl-result')).toContainText(/No cached|OPEN OFFLINE CACHE|DOWNLOAD CATALOG/i);
+  await expect(page.locator('#qpl-result')).toContainText(/PokemonPriceTracker API|Reconnect/i);
   await page.context().setOffline(false);
   guard.assertClean();
 });

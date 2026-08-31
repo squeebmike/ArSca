@@ -26,26 +26,13 @@ test('scanner progress card shows card sorter states and timeout actions', async
   guard.assertClean();
 });
 
-test('scanner Pokemon search can return cached rows offline', async ({ page }) => {
+test('scanner Pokemon search has no offline cache -- always live', async ({ page }) => {
   const guard = await openScanner(page);
-  await page.evaluate(async () => {
-    await window.scannerSavePokemonCache('pikachu 151', [{
-      source: 'justtcg',
-      name: 'Pikachu',
-      category: 'Pokemon TCG',
-      set: 'Scarlet & Violet 151',
-      card_number: '025/165',
-      marketPrice: 11.11,
-      priceSource: 'JustTCG Exact Variant',
-      confidenceScore: 95,
-      availableVariantCount: 1
-    }]);
-  });
+  const cacheFnType = await page.evaluate(() => typeof window.scannerSavePokemonCache);
+  expect(cacheFnType).toBe('undefined');
   await page.context().setOffline(true);
   const rows = await page.evaluate(() => window.scannerUnifiedSearch('pikachu 151', 'Pokemon TCG'));
-  expect(rows.length).toBeGreaterThan(0);
-  expect(rows[0].name).toContain('Pikachu');
-  expect(rows[0].cache.state).toBe('offline');
+  expect(rows.length).toBe(0);
   await page.context().setOffline(false);
   guard.assertClean();
 });
