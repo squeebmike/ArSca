@@ -18491,6 +18491,15 @@ async function confirmVoidSale(saleId){
     toast_dash(result.alreadyVoided
       ? 'Sale was already voided'
       : 'Sale voided — ' + result.restockedItems + ' item(s) restocked' + (result.cashReversed ? ', $' + result.cashReversed.toFixed(2) + ' cash reversed' : ''));
+    // The local pos_transactions cache (what Overview/Home stats and the
+    // Sold table read) never got told about this -- it kept the voided
+    // sale's row forever, still counted as real revenue, which is exactly
+    // why Overview's "all time" totals could run ahead of the Reports tab's
+    // live, void-excluding numbers. Purge it here, the one place a void
+    // actually happens client-side.
+    const txLog = safeLocalJson('pos_transactions', []);
+    const withoutVoided = txLog.filter(t => String(t.id) !== String(saleId));
+    if(withoutVoided.length !== txLog.length) localStorage.setItem('pos_transactions', JSON.stringify(withoutVoided));
     await loadInventory();
     renderStats(); renderTodayMode(); renderSoldTable();
   } catch(e) {
