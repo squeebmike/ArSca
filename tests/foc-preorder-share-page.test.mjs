@@ -39,7 +39,8 @@ assert.match(foc, /function notFoundPreorderPage\(\) \{/,
   assert.match(fn, /<meta property="og:description" content="\$\{escapeHtml\(description\)\}">/, 'must send a real per-cover og:description');
   assert.match(fn, /image \? `<meta property="og:image" content="\$\{escapeHtml\(image\)\}">/, 'must send the cover art as og:image when one exists');
   assert.match(fn, /location\.replace\(\$\{JSON\.stringify\(appUrl\)\}\)/, 'a real visitor (with JS) must be bounced into the interactive /preorders?sku= view, not stranded on the static share page');
-  assert.match(fn, /appUrl = `\/preorders\?sku=\$\{encodeURIComponent\(skuId\)\}`/, 'the redirect target must deep-link back to this exact sku');
+  assert.match(fn, /appUrl = `https:\/\/themanapocket\.com\/preorders\?sku=\$\{encodeURIComponent\(skuId\)\}`/, 'the Worker-hosted preview must redirect visitors back to the branded preorder app and exact sku');
+  assert.match(fn, /shareUrl = `https:\/\/still-resonance-4f87\.swarnerauto\.workers\.dev\/preorder\/\$\{encodeURIComponent\(skuId\)\}`/, 'the canonical share URL must use the host that reaches the Worker instead of Webflow\'s 404');
 }
 
 console.log('preorderDetailPage contract checks passed');

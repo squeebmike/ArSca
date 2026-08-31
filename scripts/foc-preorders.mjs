@@ -276,11 +276,12 @@ async function preorderDetailPage(env, deps, skuId) {
     text(skuRow.description, 220) || text(familyRow.description, 220) || null,
   ].filter(Boolean).join(' · ');
   const title = `${name} | The Mana Pocket Comic Preorders`;
-  const appUrl = `/preorders?sku=${encodeURIComponent(skuId)}`;
+  const appUrl = `https://themanapocket.com/preorders?sku=${encodeURIComponent(skuId)}`;
   const image = sku.coverImageUrl || '';
+  const shareUrl = `https://still-resonance-4f87.swarnerauto.workers.dev/preorder/${encodeURIComponent(skuId)}`;
   const html = `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">` +
     `<title>${escapeHtml(title)}</title><meta name="description" content="${escapeHtml(description)}">` +
-    `<link rel="canonical" href="https://themanapocket.com/preorder/${encodeURIComponent(skuId)}">` +
+    `<link rel="canonical" href="${shareUrl}">` +
     `<meta property="og:type" content="product"><meta property="og:site_name" content="The Mana Pocket">` +
     `<meta property="og:title" content="${escapeHtml(title)}"><meta property="og:description" content="${escapeHtml(description)}">` +
     (image ? `<meta property="og:image" content="${escapeHtml(image)}"><meta name="twitter:card" content="summary_large_image">` : `<meta name="twitter:card" content="summary">`) +
