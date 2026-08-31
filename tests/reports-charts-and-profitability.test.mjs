@@ -41,16 +41,27 @@ const html = fs.readFileSync('dashboard.html', 'utf8');
     'the new breakdowns must be returned so exports and re-renders can reach them');
 }
 
-// 3. No misleading "channel mix" (eBay/Whatnot/storefront) claim anywhere
-// in the Reports block -- those sales don't flow through pos_sales/
-// pos_payments at all, so a chart claiming to show them would be wrong.
+// 3. eBay auto-sync, Whatnot/manual external sales, and storefront/FOC
+// preorder payments all DO write into pos_sales/pos_sale_lines/pos_payments
+// (confirmed by reading /ebay/orders/sync, /inventory/record-external-sale,
+// and recordPaidFocSale/storefront checkout directly) -- so they're already
+// counted in Gross Sales/category/top-sellers. The section must not claim
+// they're excluded; it should instead disclose the real limitation, which
+// is that storefront/FOC preorder card payments share the "Card / Stripe"
+// method label with in-person card sales, so they're not separately broken
+// out as their own bucket the way eBay/Whatnot are (those use distinct
+// method values: 'eBay', the channel name for manual entries).
+// The section is still labeled "PAYMENT METHOD MIX" rather than "CHANNEL
+// MIX" -- it groups by payment method, not a true per-channel breakdown,
+// since in-person and storefront card payments remain conflated.
 {
   const reportsStart = html.indexOf('// ===== REPORTS (sales tax owed');
   const reportsEnd = html.indexOf('\nfunction inventoryEmptySearchState', reportsStart);
   const reportsBlock = html.slice(reportsStart, reportsEnd);
-  assert.doesNotMatch(reportsBlock, /CHANNEL MIX/i, 'must not claim a channel-mix chart -- pos_sales/pos_payments only ever contain in-person POS sales');
-  assert.match(reportsBlock, /eBay, Whatnot, and storefront\/FOC preorder sales aren't included here/,
-    'must explicitly disclose that other sales channels are not represented in the payment breakdown');
+  assert.doesNotMatch(reportsBlock, /CHANNEL MIX/i, 'must not claim a true channel-mix chart -- it groups by payment method label, and storefront/in-person card payments share one label');
+  assert.doesNotMatch(reportsBlock, /aren't included here/, 'must not claim eBay/Whatnot/storefront sales are excluded -- they DO flow into pos_sales/pos_payments via their own sync/manual-entry/checkout paths');
+  assert.match(reportsBlock, /share the "Card \/ Stripe" bucket with in-person card sales/,
+    'must disclose the real limitation: storefront/FOC card payments are not separately distinguishable from in-person card payments');
 }
 
 // 4. New UI sections actually render.
