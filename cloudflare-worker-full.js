@@ -5157,36 +5157,6 @@ export default {
       return json({ error: 'GET or POST only' }, 405);
     }
 
-    if (url.pathname.startsWith('/kv/')) {
-      const key = url.pathname.slice(4).replace(/[^a-zA-Z0-9:_-]/g, '-');
-      const storeId = requestStoreId(request, url);
-      const auth = await requireStoreUser(request, env, storeId);
-      if (auth.error) return auth.error;
-      if (!key) return json({ ok:false, error:'KV key is required' }, 400);
-      const scopedKey = `lba:${safeStoreKey(storeId)}:${key}`;
-
-      if (request.method === 'GET') {
-        const val = env.LBA_KV
-          ? await env.LBA_KV.get(scopedKey)
-          : (globalThis['_' + scopedKey] || null);
-        return json({ value: val });
-      }
-
-      if (request.method === 'POST') {
-        const body = await request.text();
-        if (new TextEncoder().encode(body).byteLength > 1024 * 1024) return json({ ok:false, error:'KV payload is too large' }, 413);
-        if (env.LBA_KV) {
-          const expirationTtl = key.startsWith('show_session') ? 60 * 60 * 24 * 180 : key.startsWith('comic_') ? 60 * 60 * 24 * 365 : 604800;
-          await env.LBA_KV.put(scopedKey, body, { expirationTtl });
-        } else {
-          globalThis['_' + scopedKey] = body;
-        }
-        return json({ ok: true });
-      }
-
-      return json({ error: 'GET or POST only' }, 405);
-    }
-
     // Multi-cart POS: the shared "which customer carts are open" index used to
     // be maintained entirely client-side (GET the blob, splice in one entry,
     // POST the whole thing back). Two devices touching the index around the
@@ -5316,6 +5286,50 @@ export default {
       if (env.LBA_KV) await env.LBA_KV.put(scopedKey, nextRaw, { expirationTtl: 604800 });
       else globalThis['_' + scopedKey] = nextRaw;
       return json({ ok: true, map });
+    }
+
+    // Generic KV read/write for everything else under /kv/ -- MUST stay below
+    // every specific /kv/... route above (sale-cart-index, buy-trays-index,
+    // show-sessions-index, inventory-lifecycle). This used to sit first, with
+    // its own startsWith('/kv/') match, and silently swallowed every request
+    // to those four routes before they ever ran: it returned a real 200
+    // {ok:true} for e.g. POST /kv/sale-cart-index/upsert, but wrote the body
+    // into a mangled fallback key ('lba:{store}:sale-cart-index-upsert') and
+    // never touched the real *_index key those routes maintain -- and that
+    // the client's join/switcher UI actually polls. Every device pushed its
+    // own cart/tray/show fine, but none of them could ever discover another
+    // device's, because the shared index was never written by anything.
+    // Confirmed as the root cause of "cart/buy tray/cash bag/shows don't
+    // sync across devices" surviving several earlier client-side-only fixes
+    // (which were correct but unreachable without this).
+    if (url.pathname.startsWith('/kv/')) {
+      const key = url.pathname.slice(4).replace(/[^a-zA-Z0-9:_-]/g, '-');
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId);
+      if (auth.error) return auth.error;
+      if (!key) return json({ ok:false, error:'KV key is required' }, 400);
+      const scopedKey = `lba:${safeStoreKey(storeId)}:${key}`;
+
+      if (request.method === 'GET') {
+        const val = env.LBA_KV
+          ? await env.LBA_KV.get(scopedKey)
+          : (globalThis['_' + scopedKey] || null);
+        return json({ value: val });
+      }
+
+      if (request.method === 'POST') {
+        const body = await request.text();
+        if (new TextEncoder().encode(body).byteLength > 1024 * 1024) return json({ ok:false, error:'KV payload is too large' }, 413);
+        if (env.LBA_KV) {
+          const expirationTtl = key.startsWith('show_session') ? 60 * 60 * 24 * 180 : key.startsWith('comic_') ? 60 * 60 * 24 * 365 : 604800;
+          await env.LBA_KV.put(scopedKey, body, { expirationTtl });
+        } else {
+          globalThis['_' + scopedKey] = body;
+        }
+        return json({ ok: true });
+      }
+
+      return json({ error: 'GET or POST only' }, 405);
     }
 
     if (url.pathname === '/offline/cache/manifest') {
