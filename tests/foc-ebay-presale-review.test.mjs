@@ -137,6 +137,16 @@ assert.match(createAndPublishBody, /if \(requestedFulfillmentPolicyId\) \{/, 'mu
 assert.match(worker, /fulfillmentCheck: \{\s*\n\s*requestedId: listingResult\.requestedFulfillmentPolicyId \|\| '',\s*\n\s*verifiedStoredId: listingResult\.verifiedFulfillmentPolicyId \|\| '',\s*\n\s*\},/,
   'the requested/verified shipping policy must reach the dashboard on every publish, not just when a mismatch is caught');
 
+// Store report: shipping still wasn't landing on the picked policy with no
+// warning ever shown on screen -- fulfillmentCheck was already computed
+// and returned by the server (above) but the dashboard never read it, so
+// an empty/mismatched result was invisible even though the data existed.
+assert.match(focDash, /if\(result\.fulfillmentCheck\)\{/, 'the dashboard must actually read the fulfillmentCheck the server already returns');
+assert.match(focDash, /if\(!fc\.requestedId\)toast_dash\('Shipping policy warning: nothing was actually requested on this listing/,
+  'an empty requestedId (nothing sent to eBay at all) must be surfaced explicitly, not silently treated as success');
+assert.match(focDash, /else if\(fc\.verifiedStoredId&&fc\.verifiedStoredId!==fc\.requestedId\)toast_dash\('Shipping policy warning: eBay stored a different policy/,
+  'a requested-vs-stored mismatch must be surfaced on screen too, not just available in a JSON response nobody reads');
+
 assert.match(worker, /conditionCheck: \{\s*\n\s*requestedId: listingResult\.requestedConditionId, requestedLabel: resolvedCondition\.label \|\| '',\s*\n\s*requestedCondition: listingResult\.requestedCondition, resolvedFrom: resolvedCondition\.source,\s*\n\s*verifiedStoredId: listingResult\.verifiedConditionId, verifyError: listingResult\.verifyError \|\| '',\s*\n\s*\},/,
   'the create-presale response must include the raw condition values on every publish, not just when a problem is detected');
 // Store confirmed the condition fix works live -- the temporary per-publish
