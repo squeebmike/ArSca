@@ -385,7 +385,20 @@ async function openEbayPresaleReview(skuId){
     var policyData=await api('/ebay/business-policies');
     if(policyData.needsToken)shipPoliciesError='eBay is not connected -- connect it under Settings → EBAY to pick a shipping policy here.';
     else if(policyData.fulfillment&&policyData.fulfillment.error)shipPoliciesError=policyData.fulfillment.error;
-    shipPolicies=(policyData.fulfillment&&policyData.fulfillment.policies)||[];
+    // Store report: picking a policy here and it still not applying --
+    // the unfiltered list includes this feature's OWN previously-created
+    // "<base name> - FOC <n>D Handling" clones alongside their real base
+    // policy (e.g. both "PreSale Paid Shipping" and "PreSale Paid Shipping
+    // - FOC 40D Handling" show up), and picking the clone by mistake (an
+    // easy thing to do -- it's right there, and it's the one already
+    // visibly in use on eBay) makes the server clone FROM the clone,
+    // producing a new, different, wrong policy instead of reusing the
+    // real one. The server's own resolveFocPresaleBasePolicyId already
+    // excludes its own clones from candidacy for exactly this reason
+    // (see FOC_HANDLING_CLONE_NAME_RE in cloudflare-worker-full.js) --
+    // mirrored here so the picker only ever offers real base policies.
+    var FOC_HANDLING_CLONE_NAME_RE=/-\s*FOC\s+\d+D\s+Handling\s*$/i;
+    shipPolicies=((policyData.fulfillment&&policyData.fulfillment.policies)||[]).filter(function(p){return !FOC_HANDLING_CLONE_NAME_RE.test(p.name||'');});
   }catch(e){shipPoliciesError=e.message||'request failed';}
   var lastShipPolicyId='';
   try{lastShipPolicyId=localStorage.getItem('foc_ebay_last_ship_policy_id')||'';}catch(e){}

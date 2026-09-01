@@ -270,6 +270,19 @@ assert.match(focDash, /else if\(policyData\.fulfillment&&policyData\.fulfillment
 assert.match(focDash, /catch\(e\)\{shipPoliciesError=e\.message\|\|'request failed';\}/, 'a thrown fetch failure must also be captured for display, not just silently leave the list empty');
 assert.match(focDash, /Could not load your eBay shipping policies'\+\(shipPoliciesError\?\(': '\+esc\(shipPoliciesError\)\):''\)\+' -- auto-detect will be used\./, 'the empty-picker message shown to the store must include the actual reason when one is known');
 
+// Store report: picked a real policy from the picker and it still didn't
+// apply -- the unfiltered list included this feature's own previously-
+// created "<base name> - FOC <n>D Handling" clones right alongside their
+// real base policy, and picking the clone by mistake (it's right there,
+// and it's the one already visibly in use on eBay) makes the server clone
+// FROM the clone, producing a new, different, wrong policy instead of
+// reusing the real one. Mirrors the server's own FOC_HANDLING_CLONE_NAME_RE
+// exclusion so the picker only ever offers real base policies to choose.
+assert.match(focDash, /var FOC_HANDLING_CLONE_NAME_RE=\/-\\s\*FOC\\s\+\\d\+D\\s\+Handling\\s\*\$\/i;/,
+  'the picker must recognize the same FOC-clone name pattern the server excludes from its own auto-detect candidacy');
+assert.match(focDash, /shipPolicies=\(\(policyData\.fulfillment&&policyData\.fulfillment\.policies\)\|\|\[\]\)\.filter\(function\(p\)\{return !FOC_HANDLING_CLONE_NAME_RE\.test\(p\.name\|\|''\);\}\);/,
+  'the picker\'s option list must exclude the store\'s own FOC handling-time clones, or picking one clones a clone instead of the real base policy');
+
 // Store report: shipping stopped auto-selecting the FOC handling policy a
 // second time, even though the store's real presale-named policy still
 // existed -- resolveFocPresaleBasePolicyId's own previously-created clones
@@ -626,5 +639,18 @@ assert.match(createBlock, /const fulfillmentWarnings = fulfillmentPolicyId\s*\n\
   'must warn when no fulfillment policy could be resolved for a FOC presale listing, instead of silently publishing with none');
 assert.match(createBlock, /warnings: \[\.\.\.\(listingResult\.warnings \|\| \[\]\), \.\.\.conditionWarnings, \.\.\.fulfillmentWarnings, \.\.\.volumeDiscountWarnings\],/,
   'the fulfillment-policy warning must actually reach the client alongside the other warning types');
+
+// Functional check against the exact real-world policy list a store
+// report showed: the true base policy alongside its own already-created
+// clone (visibly in use on 7 listings). Picking the clone must be
+// impossible -- it must never even appear as an option.
+const FOC_HANDLING_CLONE_NAME_RE = /-\s*FOC\s+\d+D\s+Handling\s*$/i;
+const realWorldPolicies = [
+  { id: '111', name: 'PreSale Paid Shipping' },
+  { id: '222', name: 'PreSale Paid Shipping - FOC 40D Handling' },
+  { id: '333', name: 'Standard Shipping' },
+];
+const pickerOptions = realWorldPolicies.filter(p => !FOC_HANDLING_CLONE_NAME_RE.test(p.name || ''));
+assert.deepEqual(pickerOptions.map(p => p.id), ['111', '333'], 'the clone (id 222) must be excluded from the picker while the real base policy and unrelated policies remain selectable');
 
 console.log('FOC eBay presale review-step, template-field, eligible-filter, handling-time, aspects, template-reuse, unordered-withdrawal, store-category, template-gap, optional-clause, extra-field, html-formatting, warnings, quantity-default, cross-entry-point presale, real-condition-id, description-length-cap, html-template-passthrough, multiline-clause, css-safety, safe-html-truncation, and missing-fulfillment-policy contract checks passed');
