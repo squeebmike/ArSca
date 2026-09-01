@@ -31,9 +31,9 @@ assert.match(worker, /async function resolveFocPresaleBasePolicyId\(env, ebayTok
 
 console.log('resolveFocPresaleBasePolicyId logging contract checks passed');
 
-assert.match(worker, /async function getFocPresaleFulfillmentPolicyId\(env, ebayToken, handlingDaysNeeded\) \{/, 'missing getFocPresaleFulfillmentPolicyId');
+assert.match(worker, /async function getFocPresaleFulfillmentPolicyId\(env, ebayToken, handlingDaysNeeded, basePolicyIdOverride\) \{/, 'missing getFocPresaleFulfillmentPolicyId');
 {
-  const fnStart = worker.indexOf('async function getFocPresaleFulfillmentPolicyId(env, ebayToken, handlingDaysNeeded) {');
+  const fnStart = worker.indexOf('async function getFocPresaleFulfillmentPolicyId(env, ebayToken, handlingDaysNeeded, basePolicyIdOverride) {');
   const fnEnd = worker.indexOf('\nasync function findEbayFulfillmentPolicyIdByName', fnStart);
   const fn = worker.slice(fnStart, fnEnd);
   assert.match(fn, /console\.error\('getFocPresaleFulfillmentPolicyId: base policy lookup failed'/, 'a failed base-policy lookup must be logged');

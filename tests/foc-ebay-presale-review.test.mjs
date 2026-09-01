@@ -204,12 +204,12 @@ assert.match(focDash, /window\.filterFocEbay=function\(v\)\{state\.ebay=v;render
 // of the shared one -- never mutated in place, since that would also
 // change handling time on every other live listing referencing it.
 assert.match(worker, /function businessDaysBetween\(from, to\)/, 'must be able to compute business days from now to the on-sale date');
-assert.match(worker, /async function getFocPresaleFulfillmentPolicyId\(env, ebayToken, handlingDaysNeeded\)/, 'must provision a presale-specific fulfillment policy');
+assert.match(worker, /async function getFocPresaleFulfillmentPolicyId\(env, ebayToken, handlingDaysNeeded, basePolicyIdOverride\)/, 'must provision a presale-specific fulfillment policy');
 assert.match(worker, /const bucket = Math\.min\(40, Math\.max\(5, Math\.ceil\(Math\.max\(1, handlingDaysNeeded\) \/ 5\) \* 5\)\)/, 'handling time must be capped at eBay\'s 40-business-day presale limit');
 assert.doesNotMatch(worker, /fetch\(`https:\/\/api\.ebay\.com\/sell\/account\/v1\/fulfillment_policy\/\$\{encodeURIComponent\(fallback\)\}`, \{[\s\S]{0,200}method: 'PUT'/,
   'must never PUT/update the shared base fulfillment policy in place -- that would change handling time on every other live listing using it too');
 assert.match(worker, /const handlingBusinessDays = businessDaysBetween\(new Date\(\), onSaleDate\) \+ 2/, 'handling time must be computed from the SKU\'s real on-sale date, not a fixed guess');
-assert.match(worker, /const fulfillmentPolicyId = await getFocPresaleFulfillmentPolicyId\(env, ebayToken, handlingBusinessDays\)/, 'the create route must actually use the provisioned handling-time policy');
+assert.match(worker, /const fulfillmentPolicyId = await getFocPresaleFulfillmentPolicyId\(env, ebayToken, handlingBusinessDays, basePolicyId\)/, 'the create route must actually use the provisioned handling-time policy');
 assert.match(worker, /fulfillmentPolicyId,\s*\n\s*storeCategoryNames,\s*\n\s*\}, ebayToken, env, storeId\);/, 'the computed fulfillmentPolicyId must be passed into the listing payload');
 assert.match(focDash, /eBay handling time on this listing:/, 'the review modal must show the handling time so the store can verify the ship date is accurate before publishing');
 
@@ -221,7 +221,22 @@ assert.match(focDash, /eBay handling time on this listing:/, 'the review modal m
 // configuration for presale orders.
 assert.match(worker, /async function resolveFocPresaleBasePolicyId\(env, ebayToken\)/, 'must resolve which policy to clone shipping setup from');
 assert.match(worker, /filter\(p => \/presale\/i\.test\(p\.name \|\| ''\) && !FOC_HANDLING_CLONE_NAME_RE\.test\(p\.name \|\| ''\)\)/, 'must prefer a store-created policy named for presale use');
-assert.match(worker, /const baseId = \(await resolveFocPresaleBasePolicyId\(env, ebayToken\)\) \|\| fallback/, 'the per-book handling-time clone must use the resolved presale base policy');
+assert.match(worker, /const baseId = basePolicyIdOverride \|\| \(await resolveFocPresaleBasePolicyId\(env, ebayToken\)\) \|\| fallback/, 'the per-book handling-time clone must use the resolved presale base policy, or the store\'s explicit override when one was picked in the dashboard');
+
+// Store request: shipping kept auto-selecting the wrong (or generic
+// default) policy because resolveFocPresaleBasePolicyId can only ever
+// guess which account policy to clone from. A dashboard picker lets the
+// store name the exact policy, bypassing the guesswork, remembered across
+// listings via localStorage the same way the store category field is.
+assert.match(worker, /const basePolicyId = \(typeof body\.basePolicyId === 'string' && body\.basePolicyId\.trim\(\)\) \? body\.basePolicyId\.trim\(\) : '';/,
+  'the create-presale route must accept an optional client-chosen base policy id');
+assert.match(focDash, /var shipPolicies=\[\];/, 'the review modal must be able to hold a fetched list of the store\'s eBay shipping policies');
+assert.match(focDash, /api\('\/ebay\/business-policies'\)/, 'must fetch the store\'s real eBay fulfillment policies to populate the picker, not a hardcoded list');
+assert.match(focDash, /id="foc-eb-ship-policy"/, 'the review modal must expose a shipping-policy picker');
+assert.match(focDash, /localStorage\.getItem\('foc_ebay_last_ship_policy_id'\)/, 'must remember the last-picked shipping policy across listings');
+assert.match(focDash, /if\(basePolicyId\)localStorage\.setItem\('foc_ebay_last_ship_policy_id',basePolicyId\);else localStorage\.removeItem\('foc_ebay_last_ship_policy_id'\);/,
+  'picking "Auto-detect" again must clear the remembered override, not get stuck on a stale pick');
+assert.match(focDash, /basePolicyId:basePolicyId,/, 'the chosen policy id must actually be sent to the server');
 
 // Store report: shipping stopped auto-selecting the FOC handling policy a
 // second time, even though the store's real presale-named policy still
