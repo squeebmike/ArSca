@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.09.01.06-exclude-foc-clones-from-picker">
+<meta name="version" content="2026.09.01.07-foc-instock-quantity-shipping">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1628,15 +1628,15 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.09.01.06-exclude-foc-clones-from-picker" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.09.01.06-exclude-foc-clones-from-picker" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.09.01.06-exclude-foc-clones-from-picker" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.09.01.06-exclude-foc-clones-from-picker" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.09.01.06-exclude-foc-clones-from-picker" defer></script>
-<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.09.01.06-exclude-foc-clones-from-picker" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.09.01.06-exclude-foc-clones-from-picker" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.09.01.06-exclude-foc-clones-from-picker" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.09.01.06-exclude-foc-clones-from-picker" defer></script>
+<script src="scripts/query-routing.js?v=2026.09.01.07-foc-instock-quantity-shipping" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.09.01.07-foc-instock-quantity-shipping" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.09.01.07-foc-instock-quantity-shipping" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.09.01.07-foc-instock-quantity-shipping" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.09.01.07-foc-instock-quantity-shipping" defer></script>
+<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.09.01.07-foc-instock-quantity-shipping" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.09.01.07-foc-instock-quantity-shipping" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.09.01.07-foc-instock-quantity-shipping" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.09.01.07-foc-instock-quantity-shipping" defer></script>
 </head>
 <body>
 
@@ -1665,11 +1665,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.09.01.06-exclude-foc-clones-from-picker</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.09.01.07-foc-instock-quantity-shipping</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.09.01.06-exclude-foc-clones-from-picker</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.09.01.07-foc-instock-quantity-shipping</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1687,7 +1687,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.09.01.06-exclude-foc-clones-from-picker</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.09.01.07-foc-instock-quantity-shipping</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3705,7 +3705,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.09.01.06-exclude-foc-clones-from-picker';
+const APP_VERSION = '2026.09.01.07-foc-instock-quantity-shipping';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -5175,6 +5175,13 @@ async function saveVendorProfile(profile){
       ebayDescriptionTemplate:next.ebayDescriptionTemplate || '',
       ebayDescriptionTemplates:next.ebayDescriptionTemplates || {},
       ebayAutoReprice:next.ebayAutoReprice || {},
+      // Store request: /foc/ebay/convert-to-instock needs to know which
+      // real eBay shipping policy to switch a listing to once it's out of
+      // presale. receipt_settings is a full-replace write from BOTH this
+      // function and its sibling that writes the same column -- must be
+      // listed explicitly in both or saving one settings panel silently
+      // erases whatever the other last wrote here.
+      ebayNormalFulfillmentPolicyId:next.ebayNormalFulfillmentPolicyId || '',
       paymentMethods:next.paymentMethods,
       taxRate:Number(next.taxRate || 0),
       loyaltyRate:Number(next.loyaltyRate || 0),
@@ -5884,6 +5891,13 @@ function savePaymentSettings(settings){
       ebayDescriptionTemplate:next.ebayDescriptionTemplate || '',
       ebayDescriptionTemplates:next.ebayDescriptionTemplates || {},
       ebayAutoReprice:next.ebayAutoReprice || {},
+      // Store request: /foc/ebay/convert-to-instock needs to know which
+      // real eBay shipping policy to switch a listing to once it's out of
+      // presale. receipt_settings is a full-replace write from BOTH this
+      // function and its sibling that writes the same column -- must be
+      // listed explicitly in both or saving one settings panel silently
+      // erases whatever the other last wrote here.
+      ebayNormalFulfillmentPolicyId:next.ebayNormalFulfillmentPolicyId || '',
       paymentMethods:next.paymentMethods,
       taxRate:Number(next.taxRate || 0),
       loyaltyRate:Number(next.loyaltyRate || 0),
@@ -6636,6 +6650,12 @@ function renderVendorProfilePanel(){
       <div style="display:flex;gap:8px;margin-top:8px"><button class="hbtn" onclick="saveEbayListingSettings()">SAVE EBAY LISTING SETTINGS</button></div>
     </div>
     <div style="margin-top:14px;padding:14px;border:1px solid var(--border);border-radius:10px;background:var(--surf2)">
+      <div style="font-family:'Orbitron',monospace;font-size:11px;color:var(--gold);margin-bottom:7px">SHIPPING POLICY FOR IN-STOCK LISTINGS</div>
+      <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);line-height:1.6;margin-bottom:10px">A FOC presale listing publishes under a long "FOC 40D Handling" policy so eBay's delivery estimate doesn't promise the book before it's released. Once the shipment arrives and the listing converts to in-stock, it should switch to your normal fast-handling policy instead -- pick which one here.</div>
+      <label style="font-family:var(--font-mono);font-size:9px;color:var(--dim);display:block">SHIPPING POLICY<select id="vp-ebay-normal-policy" class="tsi" style="margin-top:4px"><option value="">Loading your eBay shipping policies…</option></select></label>
+      <div style="display:flex;gap:8px;margin-top:8px"><button class="hbtn" onclick="saveEbayNormalPolicySettings()">SAVE SHIPPING POLICY</button></div>
+    </div>
+    <div style="margin-top:14px;padding:14px;border:1px solid var(--border);border-radius:10px;background:var(--surf2)">
       <div style="font-family:'Orbitron',monospace;font-size:11px;color:var(--gold);margin-bottom:7px">AUTO-REPRICE AGED LISTINGS</div>
       <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);line-height:1.6;margin-bottom:10px">Automatically drops the price on eBay listings that have sat unsold for a while. Off by default. Only ever touches price (never title, condition, description, or images), never drops below cost plus a margin you set, and stops after a max number of drops per item.</div>
       ${ebayAutoRepriceSettingsHtml(p)}
@@ -6645,6 +6665,35 @@ function renderVendorProfilePanel(){
       </div>
     </div>`;
   loadEbayRepriceStatus();
+  loadEbayNormalPolicyOptions(p.ebayNormalFulfillmentPolicyId || '');
+}
+
+// Store request: converting a FOC presale listing to in-stock never
+// switched it off the long "FOC 40D Handling" presale policy -- picked
+// once here (from the store's real eBay policies, same clone-excluding
+// picker pattern the FOC presale review modal already uses) and saved,
+// /foc/ebay/convert-to-instock applies it explicitly on every conversion
+// instead of falling through to an unconfigured/undefined default.
+async function loadEbayNormalPolicyOptions(savedId){
+  const sel = document.getElementById('vp-ebay-normal-policy');
+  if(!sel || getAccountContext().isDemo) return;
+  try {
+    const res = await storeWorkerFetch('/ebay/business-policies', { cache:'no-store' });
+    const d = await res.json();
+    if(d.needsToken) { sel.innerHTML = '<option value="">Connect eBay above to pick a policy</option>'; return; }
+    if(!d.ok || d.fulfillment?.error) { sel.innerHTML = '<option value="">Could not load your eBay shipping policies</option>'; return; }
+    const FOC_HANDLING_CLONE_NAME_RE = /-\s*FOC\s+\d+D\s+Handling\s*$/i;
+    const policies = (d.fulfillment?.policies || []).filter(p => !FOC_HANDLING_CLONE_NAME_RE.test(p.name || ''));
+    if(!policies.length) { sel.innerHTML = '<option value="">No eBay shipping policies found</option>'; return; }
+    sel.innerHTML = '<option value="">Not set (falls back to the account default, if any)</option>' +
+      policies.map(p => `<option value="${escHtml(p.id)}" ${String(p.id)===String(savedId)?'selected':''}>${escHtml(p.name)}</option>`).join('');
+  } catch(e) { sel.innerHTML = '<option value="">Could not load your eBay shipping policies</option>'; }
+}
+
+function saveEbayNormalPolicySettings(){
+  const ebayNormalFulfillmentPolicyId = document.getElementById('vp-ebay-normal-policy')?.value || '';
+  saveVendorProfile({ ebayNormalFulfillmentPolicyId });
+  toast_dash('Shipping policy for in-stock listings saved');
 }
 
 function ebayAutoRepriceSettingsHtml(p){
@@ -44200,7 +44249,7 @@ async function toppsLoadParallels(cardId){
   window.__arscaCloseModal = closeModal;
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.09.01.06-exclude-foc-clones-from-picker" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.09.01.07-foc-instock-quantity-shipping" defer></script>
 </body>
 </html>
 

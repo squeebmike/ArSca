@@ -3781,6 +3781,17 @@ export default {
       if (!ebayToken) return json({ needsToken: true, error: 'Connect eBay first: missing user access/refresh token' }, 401);
       const conditionId = (await resolveEbayNewConditionId(env, ebayToken, '259104')).id;
 
+      // Store report: a book that's actually in stock and ready to ship
+      // fast kept the long "FOC 40D Handling" presale policy after
+      // converting -- nothing here ever switched it back. Reads the
+      // store's own configured normal-handling policy (Settings -> Vendor
+      // Info -> EBAY LISTING SETTINGS -> "Shipping policy for in-stock
+      // listings", picked from the store's real eBay policies the same
+      // way the FOC presale review modal's picker already works) and
+      // applies it explicitly on every conversion.
+      const { data: settingsRows } = await supabaseAdminFetch(env, `store_settings?store_id=eq.${encodeURIComponent(storeId)}&select=receipt_settings&limit=1`);
+      const normalFulfillmentPolicyId = String(settingsRows?.[0]?.receipt_settings?.ebayNormalFulfillmentPolicyId || '').trim();
+
       let converted = 0;
       const failed = [];
       for (const row of candidates) {
@@ -3794,6 +3805,7 @@ export default {
             quantity: Number(d.qty ?? d.quantity ?? 0),
             categoryId: '259104', conditionId, condition: 'NEW',
             imageUrl: d.image || undefined, upc: d.upc || '',
+            fulfillmentPolicyId: normalFulfillmentPolicyId || undefined,
           }, ebayToken, env);
           await supabaseAdminFetch(env, `inventory_items?id=eq.${row.id}&store_id=eq.${encodeURIComponent(storeId)}`, {
             method: 'PATCH', headers: { Prefer: 'return=minimal' },
@@ -3805,14 +3817,17 @@ export default {
           failed.push({ inventoryItemId: row.id, name: d.name || '', error: e.message });
         }
       }
-      return json({ ok: true, converted, failed });
+      return json({
+        ok: true, converted, failed,
+        shippingPolicyWarning: normalFulfillmentPolicyId ? '' : 'No normal-handling shipping policy is configured -- converted listings may still show the long presale handling time. Set one in Settings -> Vendor Info -> EBAY LISTING SETTINGS.',
+      });
     }
 
     if (url.pathname === '/public/preorders' || url.pathname.startsWith('/public/preorders/') || url.pathname === '/public/shipping/quotes' || url.pathname.startsWith('/foc/admin/') || url.pathname.startsWith('/preorder/')) {
       return await handleFocRequest(request, env, url, {
         CORS, json, supabaseAdminFetch, requireStoreUser, requireAuthenticatedUser,
         readJsonWithLimit, enforceUsageLimit, stripeApi, stripeMode, stripeConfig, sendEmail,
-        addBusinessDays, getEbayPresaleSafeBusinessDays, getEbayUserAccessToken, withdrawEbayOffer, endEbayVolumeDiscount,
+        addBusinessDays, getEbayPresaleSafeBusinessDays, getEbayUserAccessToken, withdrawEbayOffer, endEbayVolumeDiscount, ebayReviseOfferQuantity,
       });
     }
 
@@ -12930,6 +12945,51 @@ async function ebayReviseOfferPrice(env, offerId, newPrice) {
     let errData; try { errData = JSON.parse(errTxt); } catch (_) { errData = errTxt; }
     const msg = errData?.errors?.[0]?.longMessage || errData?.errors?.[0]?.message || errTxt.substring(0, 200);
     throw new Error('Offer price update failed (' + putRes.status + '): ' + msg);
+  }
+  return true;
+}
+
+// Same GET-then-PUT quantity-only revise as ebayReviseOfferPrice above, for
+// bumping a still-live FOC presale listing's available quantity to match
+// the store's locked PRH order total (see the PRH-submission route) --
+// without touching title/description/condition, and without re-triggering
+// the FOC handling-time base-policy resolution this offer already has.
+// Unlike ebayReviseOfferPrice, this explicitly carries the existing
+// fulfillmentPolicyId and storeCategoryNames through from the GET into the
+// PUT -- eBay's offer PUT is a full replace, so a field silently dropped
+// here (neither one is otherwise passed into buildEbayOfferBody) would
+// wipe it from the live listing rather than leave it unchanged.
+async function ebayReviseOfferQuantity(env, ebayToken, offerId, newQuantity) {
+  const offerRes = await fetch(`https://api.ebay.com/sell/inventory/v1/offer/${encodeURIComponent(offerId)}`, { headers: { Authorization: 'Bearer ' + ebayToken } });
+  const offerTxt = await offerRes.text();
+  let offer; try { offer = JSON.parse(offerTxt); } catch (_) { offer = null; }
+  if (!offerRes.ok || !offer) throw new Error('Could not fetch live offer: ' + offerTxt.substring(0, 200));
+  const bestOfferTerms = offer.listingPolicies?.bestOfferTerms || {};
+  const locationKey = env.EBAY_LOCATION_KEY || 'walkoff-main';
+  const body = buildEbayOfferBody({
+    description: offer.listingDescription,
+    price: offer.pricingSummary?.price?.value,
+    format: offer.format,
+    duration: offer.listingDuration,
+    quantity: newQuantity,
+    categoryId: offer.categoryId,
+    bestOfferEnabled: !!bestOfferTerms.bestOfferEnabled,
+    autoAcceptPrice: bestOfferTerms.autoAcceptPrice?.value || '',
+    autoDeclinePrice: bestOfferTerms.autoDeclinePrice?.value || '',
+    fulfillmentPolicyId: offer.listingPolicies?.fulfillmentPolicyId || '',
+    storeCategoryNames: offer.storeCategoryNames || [],
+  }, '', locationKey, env);
+  delete body.sku;
+  const putRes = await fetch(`https://api.ebay.com/sell/inventory/v1/offer/${encodeURIComponent(offerId)}`, {
+    method: 'PUT',
+    headers: { 'Authorization': 'Bearer ' + ebayToken, 'Content-Type': 'application/json', 'Content-Language': 'en-US' },
+    body: JSON.stringify(body),
+  });
+  if (!putRes.ok && putRes.status !== 204) {
+    const errTxt = await putRes.text();
+    let errData; try { errData = JSON.parse(errTxt); } catch (_) { errData = errTxt; }
+    const msg = errData?.errors?.[0]?.longMessage || errData?.errors?.[0]?.message || errTxt.substring(0, 200);
+    throw new Error('Offer quantity update failed (' + putRes.status + '): ' + msg);
   }
   return true;
 }

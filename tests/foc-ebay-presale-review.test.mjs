@@ -352,9 +352,25 @@ assert.match(prhSubmissionBody, /d\.source==='foc_presale'&&d\.focCycleId===cycl
   'must only withdraw presale listings for SKUs that did not make it into this cycle\'s PRH order');
 assert.match(prhSubmissionBody, /await deps\.withdrawEbayOffer\(env,ebayToken,row\.data\.ebayOfferId\)/, 'must actually withdraw the eBay offer, not just flag it locally');
 assert.match(prhSubmissionBody, /ebayWithdrawnReason:'not_included_in_prh_order'/, 'the withdrawn row must record why, for later auditing');
-assert.match(prhSubmissionBody, /return deps\.json\(\{ok:true,submission:inserted,ebayWithdrawnCount:ebayWithdrawnSkuIds\.length\}\)/, 'the response must report how many listings were withdrawn');
+assert.match(prhSubmissionBody, /return deps\.json\(\{ok:true,submission:inserted,ebayWithdrawnCount:ebayWithdrawnSkuIds\.length,ebayQuantityUpdatedCount:ebayQuantityUpdatedSkuIds\.length\}\)/, 'the response must report how many listings were withdrawn and how many had their quantity synced');
 assert.match(worker, /async function withdrawEbayOffer\(env, ebayToken, offerId\)/, 'must have a reusable withdraw helper, not just the /ebay/end route inline');
-assert.match(worker, /getEbayUserAccessToken, withdrawEbayOffer, endEbayVolumeDiscount,\s*\n\s*\}\);/, 'the withdraw helper and token getter must be injected into the FOC module\'s deps');
+assert.match(worker, /getEbayUserAccessToken, withdrawEbayOffer, endEbayVolumeDiscount, ebayReviseOfferQuantity,\s*\n\s*\}\);/, 'the withdraw helper, quantity-revise helper, and token getter must be injected into the FOC module\'s deps');
+
+// Store request: once the PRH order locks in, a live FOC presale
+// listing's buyable quantity should immediately reflect the real ordered
+// total for that cover -- not just whatever guess was typed in when the
+// presale was first listed -- so customers can keep buying presale
+// copies up to what's actually coming, right up until the books
+// physically arrive. Deliberately only touches the still-presale eBay
+// listing's own quantity counter, never real inventory_items stock --
+// receiving the shipment is a separate, later step.
+assert.match(prhSubmissionBody, /const finalQtyBySku=new Map\(lineItems\.map\(li=>\[li\.skuId,li\.finalQty\]\)\);/,
+  'must know the final locked order total per SKU to sync the listing to');
+assert.match(prhSubmissionBody, /const alreadySold=Math\.max\(0,Number\(d\.focPresaleOriginalQty\|\|currentAvailable\)-currentAvailable\);/,
+  'must subtract copies already sold via this presale listing so it never shows more available than what is actually left to sell');
+assert.match(prhSubmissionBody, /const newAvailable=Math\.max\(0,orderedTotal-alreadySold\);/, 'the new available quantity must be the ordered total minus what already sold');
+assert.match(prhSubmissionBody, /await deps\.ebayReviseOfferQuantity\(env,ebayToken,d\.ebayOfferId,newAvailable\)/, 'must actually push the new quantity to the live eBay offer, not just update the local row');
+assert.match(prhSubmissionBody, /qty:newAvailable,quantity:newAvailable,focPresaleOriginalQty:orderedTotal/, 'the local row and its sold-so-far baseline must both be updated to match');
 assert.match(focDash, /if\(d\.ebayWithdrawnCount>0\)toast_dash/, 'the dashboard must surface when a listing was auto-withdrawn, not just silently succeed');
 
 // Store category: eBay's Seller Hub "Store category" (distinct from the
@@ -498,8 +514,26 @@ assert.match(worker, /const newCond = conditions\.find\(c => \/\^brand new\$\/i\
 assert.match(worker, /const resolvedCondition = await resolveEbayNewConditionId\(env, ebayToken, '259104'\);\s*\n\s*const conditionId = resolvedCondition\.id;\s*\n\s*\n\s*let listingResult;/,
   'the FOC create route must use the resolved condition id, not a hardcoded 1000');
 assert.match(worker, /quantity, categoryId: '259104', conditionId,/, 'the resolved conditionId must actually be passed into the listing payload');
-assert.match(worker, /const conditionId = \(await resolveEbayNewConditionId\(env, ebayToken, '259104'\)\)\.id;\s*\n\s*\n\s*let converted = 0;/,
+assert.match(worker, /const conditionId = \(await resolveEbayNewConditionId\(env, ebayToken, '259104'\)\)\.id;/,
   'convert-to-instock must also use the resolved condition id, not a hardcoded 1000');
+
+// Store request: converting a presale listing to in-stock never switched
+// it off the long "FOC 40D Handling" presale policy -- reads the store's
+// own configured normal-handling policy (picked in Settings -> Vendor
+// Info -> EBAY LISTING SETTINGS, same eBay-policy list the FOC presale
+// review modal's picker already pulls from) and applies it explicitly on
+// every conversion, warning when none is configured instead of silently
+// leaving the long handling time in place.
+const convertToInstockStart = worker.indexOf("if (url.pathname === '/foc/ebay/convert-to-instock') {");
+const convertToInstockEnd = worker.indexOf("if (url.pathname === '/public/preorders'", convertToInstockStart);
+const convertToInstockBody = worker.slice(convertToInstockStart, convertToInstockEnd);
+assert.ok(convertToInstockStart !== -1, '/foc/ebay/convert-to-instock route must exist');
+assert.match(convertToInstockBody, /const normalFulfillmentPolicyId = String\(settingsRows\?\.\[0\]\?\.receipt_settings\?\.ebayNormalFulfillmentPolicyId \|\| ''\)\.trim\(\);/,
+  'must read the store\'s configured normal-handling policy from receipt_settings');
+assert.match(convertToInstockBody, /fulfillmentPolicyId: normalFulfillmentPolicyId \|\| undefined,/,
+  'the configured normal-handling policy must actually be applied on every conversion');
+assert.match(convertToInstockBody, /shippingPolicyWarning: normalFulfillmentPolicyId \? '' : 'No normal-handling shipping policy is configured/,
+  'must warn when no normal-handling policy is configured, instead of silently leaving the presale handling time in place');
 
 // A conditionId falling back to the generic 1000 guess (instead of a real
 // category-specific match) is exactly the failure mode already seen live --

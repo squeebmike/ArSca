@@ -265,6 +265,7 @@ async function confirmReceiveShipment(){
       var conv=await api('/foc/ebay/convert-to-instock',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({storeId:getActiveStoreId(),cycleId:state.cycle.id})});
       if(conv.converted>0)toast_dash(conv.converted+' eBay presale listing'+(conv.converted===1?'':'s')+' switched to in stock');
       if(conv.failed&&conv.failed.length)toast_dash(conv.failed.length+' eBay listing'+(conv.failed.length===1?'':'s')+' could not be switched to in stock -- check the eBay tab');
+      if(conv.shippingPolicyWarning)toast_dash(conv.shippingPolicyWarning);
     }catch(e){/* eBay not connected or similar -- receiving itself already succeeded, don't alarm over this */}
     await openCycle(state.cycle.id);
   }catch(e){if(status)status.textContent='';toast_dash('Could not receive shipment: '+e.message);}
@@ -300,6 +301,7 @@ async function quickAddFocSkuToInventory(skuId){
     try{
       var conv=await api('/foc/ebay/convert-to-instock',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({storeId:getActiveStoreId(),cycleId:state.cycle.id})});
       if(conv.converted>0)toast_dash(conv.converted+' eBay presale listing'+(conv.converted===1?'':'s')+' switched to in stock');
+      if(conv.shippingPolicyWarning)toast_dash(conv.shippingPolicyWarning);
     }catch(e){/* eBay not connected or similar -- the add itself already succeeded, don't alarm over this */}
     await openCycle(state.cycle.id);
   }catch(e){toast_dash('Could not add to inventory: '+e.message);}
