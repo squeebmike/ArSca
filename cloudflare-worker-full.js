@@ -6550,6 +6550,16 @@ export default {
       try { ebayToken = await getEbayUserAccessToken(env); }
       catch (tokenErr) { return json({ needsToken: true, error: tokenErr.message }, 401); }
       if (!ebayToken) return json({ needsToken: true, error: 'Connect eBay first: missing user access/refresh token' }, 401);
+      // Store report: the picker (and this endpoint's EBAY tab display)
+      // always showed zero policies, even for a store with real ones
+      // configured on eBay. Root cause: eBay's response wraps each policy
+      // list under a camelCase key (fulfillmentPolicies / paymentPolicies /
+      // returnPolicies), but this read `data[kind + 's']` -- kind is the
+      // underscored URL path segment ('fulfillment_policy'), so that
+      // computed 'fulfillment_policys' (and the payment/return equivalents)
+      // and never matched anything real, silently returning an empty list
+      // every single time regardless of what the account actually has.
+      const RESPONSE_LIST_KEYS = { fulfillment_policy: 'fulfillmentPolicies', payment_policy: 'paymentPolicies', return_policy: 'returnPolicies' };
       const fetchPolicies = async (kind) => {
         try {
           const res = await fetch(`https://api.ebay.com/sell/account/v1/${kind}?marketplace_id=EBAY_US`, {
@@ -6558,7 +6568,7 @@ export default {
           const txt = await res.text();
           let data; try { data = JSON.parse(txt); } catch (_) { data = {}; }
           if (!res.ok) return { error: data?.errors?.[0]?.message || txt.substring(0, 200) };
-          return { list: data[kind + 's'] || [] };
+          return { list: data[RESPONSE_LIST_KEYS[kind]] || [] };
         } catch (e) { return { error: e.message }; }
       };
       const [fulfillment, payment, ret] = await Promise.all([
