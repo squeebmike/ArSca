@@ -59,6 +59,17 @@ assert.match(openBody, /class="foc-end-ebay-cb" value="'\+esc\(v\.id\)\+'" check
   'every row must be pre-checked by default, so confirming with no changes matches ending everything (the original behavior)');
 assert.match(openBody, /onclick="confirmEndFocEbayListings\(\)">END SELECTED LISTINGS</, 'must hand off to the confirm step, not act immediately');
 
+// Store report: with only the raw variantLabel shown ("Variant Title A",
+// "Cover A"), the dealer had no way to tell which physical book a checklist
+// row actually was without cross-referencing another screen -- every SKU
+// already carries its own real book title (publicSku() in
+// scripts/foc-preorders.mjs sets title from comic_skus.title, not just the
+// parent family) and cover image, this just needed to render them.
+assert.match(openBody, /esc\(v\.title\|\|v\.variantLabel\)/, 'each row must show the actual book title, not just the bare cover-variant label');
+assert.match(openBody, /v\.coverImageUrl\?'<img src="'\+esc\(v\.coverImageUrl\)/, 'each row must show the cover thumbnail when one exists, so the dealer can visually confirm the book without leaving the modal');
+assert.match(openBody, /NO<br>COVER/, 'a SKU with no cover image on file must show a clear placeholder, not a broken image or blank space');
+assert.match(openBody, /v\.variantLabel&&v\.variantLabel!=='Cover A'\?/, 'the generic default "Cover A" label must not clutter every row -- only real variant descriptors (B Variant, Foil, etc.) need their own line');
+
 const confirmStart = focDash.indexOf('async function confirmEndFocEbayListings');
 const confirmEnd = focDash.indexOf('\nasync function loadEbaySafeDays', confirmStart);
 const confirmBody = focDash.slice(confirmStart, confirmEnd);
