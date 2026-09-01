@@ -114,8 +114,29 @@ assert.match(createAndPublishBody, /warnings\.push\(`Could not verify eBay actua
   'a failed verify lookup (non-ok response) must be surfaced, not silently treated as a match');
 assert.match(createAndPublishBody, /warnings\.push\('Could not verify eBay actually stored the requested condition \(' \+ e\.message \+ '\)/,
   'a thrown verify-fetch error must also be surfaced, not silently swallowed');
-assert.match(worker, /return \{ listingId: pubData\.listingId, offerId, sku, warnings, requestedConditionId: String\(itemBody\.conditionId \|\| ''\), requestedCondition: String\(itemBody\.condition \|\| ''\), verifiedConditionId, verifyError \};/,
-  'createAndPublishEbayListing must return the actual requested/verified condition values, not just a pass/fail');
+assert.match(worker, /return \{ listingId: pubData\.listingId, offerId, sku, warnings, requestedConditionId: String\(itemBody\.conditionId \|\| ''\), requestedCondition: String\(itemBody\.condition \|\| ''\), verifiedConditionId, verifyError, requestedFulfillmentPolicyId, verifiedFulfillmentPolicyId \};/,
+  'createAndPublishEbayListing must return the actual requested/verified condition and fulfillment-policy values, not just a pass/fail');
+
+// Store report: a listing published with a shipping policy selected --
+// either auto-detected or picked explicitly in the dashboard's own picker
+// -- but it still didn't show applied on the live listing, with nothing
+// in the response to tell the store whether that was because the policy
+// was never actually requested vs. eBay silently not storing what was
+// requested. Same proven failure shape and same fix pattern already used
+// for conditionId above (eBay's Inventory API can return 200/204 while
+// silently not persisting a field it received) -- reads the offer back
+// after publish and compares.
+assert.match(createAndPublishBody, /const requestedFulfillmentPolicyId = String\(offerBody\.listingPolicies\?\.fulfillmentPolicyId \|\| ''\);/,
+  'must know what fulfillment policy id was actually requested on the offer, not assume the computed one made it through');
+assert.match(createAndPublishBody, /const verifyOfferRes = await fetch\(`https:\/\/api\.ebay\.com\/sell\/inventory\/v1\/offer\/\$\{encodeURIComponent\(offerId\)\}`, \{\s*\n\s*headers: \{ 'Authorization': 'Bearer ' \+ ebayToken \},\s*\n\s*\}\);/,
+  'must read the offer back from eBay after publish to verify the shipping policy actually stored, the same way the condition check does');
+assert.match(createAndPublishBody, /verifiedFulfillmentPolicyId = String\(verifyOfferData\?\.listingPolicies\?\.fulfillmentPolicyId \|\| ''\);/, 'must compare against the real stored fulfillmentPolicyId');
+assert.match(createAndPublishBody, /if \(verifiedFulfillmentPolicyId !== requestedFulfillmentPolicyId\) \{\s*\n\s*warnings\.push\(`eBay stored a different shipping policy than requested/,
+  'a shipping-policy mismatch must become a visible warning, not a silent log line');
+assert.match(createAndPublishBody, /if \(requestedFulfillmentPolicyId\) \{/, 'must skip the verify round-trip entirely when no fulfillment policy was ever requested -- nothing to check');
+assert.match(worker, /fulfillmentCheck: \{\s*\n\s*requestedId: listingResult\.requestedFulfillmentPolicyId \|\| '',\s*\n\s*verifiedStoredId: listingResult\.verifiedFulfillmentPolicyId \|\| '',\s*\n\s*\},/,
+  'the requested/verified shipping policy must reach the dashboard on every publish, not just when a mismatch is caught');
+
 assert.match(worker, /conditionCheck: \{\s*\n\s*requestedId: listingResult\.requestedConditionId, requestedLabel: resolvedCondition\.label \|\| '',\s*\n\s*requestedCondition: listingResult\.requestedCondition, resolvedFrom: resolvedCondition\.source,\s*\n\s*verifiedStoredId: listingResult\.verifiedConditionId, verifyError: listingResult\.verifyError \|\| '',\s*\n\s*\},/,
   'the create-presale response must include the raw condition values on every publish, not just when a problem is detected');
 // Store confirmed the condition fix works live -- the temporary per-publish
@@ -419,7 +440,7 @@ assert.match(worker, /listingDescription: toEbayHtmlDescription\(description \|\
 // actually reach the FOC dashboard so staff can see it.
 assert.match(worker, /if \(Array\.isArray\(itemData\?\.warnings\) && itemData\.warnings\.length\) warnings\.push/, 'must collect warnings from the inventory_item response');
 assert.match(worker, /if \(Array\.isArray\(pubData\?\.warnings\) && pubData\.warnings\.length\) warnings\.push/, 'must collect warnings from the publish response');
-assert.match(worker, /return \{ listingId: pubData\.listingId, offerId, sku, warnings, requestedConditionId: String\(itemBody\.conditionId \|\| ''\), requestedCondition: String\(itemBody\.condition \|\| ''\), verifiedConditionId, verifyError \};/,
+assert.match(worker, /return \{ listingId: pubData\.listingId, offerId, sku, warnings, requestedConditionId: String\(itemBody\.conditionId \|\| ''\), requestedCondition: String\(itemBody\.condition \|\| ''\), verifiedConditionId, verifyError, requestedFulfillmentPolicyId, verifiedFulfillmentPolicyId \};/,
   'createAndPublishEbayListing must return the collected warnings');
 assert.match(worker, /warnings: \[\.\.\.\(listingResult\.warnings \|\| \[\]\), \.\.\.conditionWarnings, \.\.\.fulfillmentWarnings, \.\.\.volumeDiscountWarnings\],/, 'the FOC create-presale route must pass warnings through to the client');
 assert.match(focDash, /if\(result\.warnings&&result\.warnings\.length\)toast_dash\('eBay warning: '\+result\.warnings\.join\(' · '\)\)/,
