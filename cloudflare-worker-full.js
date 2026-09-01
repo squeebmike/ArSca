@@ -3731,6 +3731,18 @@ export default {
           requestedCondition: listingResult.requestedCondition, resolvedFrom: resolvedCondition.source,
           verifiedStoredId: listingResult.verifiedConditionId, verifyError: listingResult.verifyError || '',
         },
+        // Same idea as conditionCheck above, for the shipping/fulfillment
+        // policy -- store report: a listing published with a policy picked
+        // (auto-detected or chosen explicitly in the dashboard's picker)
+        // but it still didn't show applied on the live listing, and there
+        // was no way to tell from the dashboard whether that was because
+        // nothing was ever requested vs. eBay silently not storing what was
+        // requested. Returned on every successful publish, not just when a
+        // mismatch is caught.
+        fulfillmentCheck: {
+          requestedId: listingResult.requestedFulfillmentPolicyId || '',
+          verifiedStoredId: listingResult.verifiedFulfillmentPolicyId || '',
+        },
       });
     }
 
@@ -6771,7 +6783,38 @@ export default {
         warnings.push('Could not verify eBay actually stored the requested condition (' + e.message + ') -- check the listing\'s condition manually.');
       }
 
-      return { listingId: pubData.listingId, offerId, sku, warnings, requestedConditionId: String(itemBody.conditionId || ''), requestedCondition: String(itemBody.condition || ''), verifiedConditionId, verifyError };
+      // Store report: a listing published with a shipping policy selected
+      // (either auto-detected or picked explicitly in the dashboard's own
+      // picker) but the live listing still didn't show it applied -- same
+      // failure shape already proven true for conditionId above (eBay's
+      // Inventory API can return 200/204 while silently not persisting a
+      // field it received), and unlike conditionId, fulfillmentPolicyId had
+      // no verify-after-publish check at all, so a silent drop here was
+      // completely invisible. Reads the offer straight back the same way
+      // the conditionId check does and warns on any mismatch instead of
+      // trusting the create call's 200 as proof.
+      let verifiedFulfillmentPolicyId = null;
+      const requestedFulfillmentPolicyId = String(offerBody.listingPolicies?.fulfillmentPolicyId || '');
+      if (requestedFulfillmentPolicyId) {
+        try {
+          const verifyOfferRes = await fetch(`https://api.ebay.com/sell/inventory/v1/offer/${encodeURIComponent(offerId)}`, {
+            headers: { 'Authorization': 'Bearer ' + ebayToken },
+          });
+          if (verifyOfferRes.ok) {
+            const verifyOfferData = await verifyOfferRes.json();
+            verifiedFulfillmentPolicyId = String(verifyOfferData?.listingPolicies?.fulfillmentPolicyId || '');
+            if (verifiedFulfillmentPolicyId !== requestedFulfillmentPolicyId) {
+              warnings.push(`eBay stored a different shipping policy than requested (requested ${requestedFulfillmentPolicyId}, eBay has ${verifiedFulfillmentPolicyId || 'none'}) -- check the listing's shipping policy manually.`);
+            }
+          } else {
+            warnings.push(`Could not verify eBay actually stored the requested shipping policy (lookup failed, ${verifyOfferRes.status}) -- check the listing's shipping policy manually.`);
+          }
+        } catch (e) {
+          warnings.push('Could not verify eBay actually stored the requested shipping policy (' + e.message + ') -- check the listing\'s shipping policy manually.');
+        }
+      }
+
+      return { listingId: pubData.listingId, offerId, sku, warnings, requestedConditionId: String(itemBody.conditionId || ''), requestedCondition: String(itemBody.condition || ''), verifiedConditionId, verifyError, requestedFulfillmentPolicyId, verifiedFulfillmentPolicyId };
     }
 
     if (url.pathname === '/ebay/list') {
