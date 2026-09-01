@@ -377,7 +377,71 @@ assert.match(receiveSrc, /status=eq\.committed/, 'only committed (paid, non-refu
 assert.match(receiveSrc, /if\(need<=0\|\|need>reserveRemaining\)continue;/, 'an item must only be marked received when its FULL requested quantity is covered -- partially covering it and still marking it received would understate what the customer is still owed');
 assert.match(receiveSrc, /nextStatus=order\.fulfillment_method==='pickup'\?'ready_for_pickup':'reserved'/, 'a fully-received paid order must move to ready_for_pickup (pickup) or reserved (shipping), not sit looking identical to an order still weeks away');
 
+// Store request: a received physical copy must never be sellable twice --
+// once as a freshly-created standalone row (POS/storefront) AND again
+// through the still-live FOC eBay presale listing's own separate quantity
+// counter. Copies already spoken for by that listing's own available
+// quantity must not also become new standalone rows; a short-ship against
+// what the listing still shows available must pull the listing's quantity
+// down (locally and on the live eBay offer) instead of leaving it able to
+// oversell copies that never arrived.
+assert.match(receiveSrc, /if\(row\.status==='presale'&&d\.ebayOfferId&&remainingQty>0\)livePresaleRowBySkuId\.set\(d\.focSkuId,row\);/,
+  'must track which SKUs have a live (still-presale, still-unsold) eBay listing to reconcile against');
+assert.match(receiveSrc, /newStandaloneCount=Math\.max\(0,receivedQty-presaleAvailable\);/,
+  'only the amount received beyond what the live listing already accounts for may become new standalone rows');
+assert.match(receiveSrc, /if\(receivedQty<presaleAvailable\)\{/, 'a short-ship against the listing\'s own available quantity must be detected');
+assert.match(receiveSrc, /await deps\.ebayReviseOfferQuantity\(env,ebayToken,pd\.ebayOfferId,receivedQty\)/,
+  'a short-shipped listing\'s quantity must actually be pushed down on the live eBay offer, not just the local row');
+assert.match(receiveSrc, /data:\{\.\.\.pd,qty:receivedQty,quantity:receivedQty\}/, 'the local presale row must be reduced to match what actually arrived');
+assert.match(receiveSrc, /const \{ data:inserted \}=rows\.length\?await db\('inventory_items',\{method:'POST'/,
+  'must skip the insert call entirely when nothing needs a new standalone row (all received copies already absorbed by the live listing)');
+
 console.log('FOC receive-shipment contract checks passed');
+
+// ── Functional: reimplement the receiving-vs-live-listing reconciliation
+// math and verify it against the scenarios that actually matter -- no live
+// listing (legacy behavior unchanged), over-received (surplus becomes new
+// stock, listing untouched), exact match, and short-ship (listing pulled
+// down, nothing double-counted as new stock). ──
+function reconcileReceivedAgainstLivePresale(receivedQty, presaleAvailable) {
+  if (!(presaleAvailable > 0)) return { newStandaloneCount: receivedQty, presaleReducedTo: null };
+  const newStandaloneCount = Math.max(0, receivedQty - presaleAvailable);
+  const presaleReducedTo = receivedQty < presaleAvailable ? receivedQty : null;
+  return { newStandaloneCount, presaleReducedTo };
+}
+{
+  // No live eBay listing for this SKU at all -- every received copy becomes
+  // a normal standalone row, exactly as it always did before this feature.
+  const r = reconcileReceivedAgainstLivePresale(5, 0);
+  assert.equal(r.newStandaloneCount, 5, 'with no live listing, nothing should be withheld from becoming standalone stock');
+  assert.equal(r.presaleReducedTo, null, 'there is no listing to reduce');
+}
+{
+  // Store ordered/received more than the live listing still shows
+  // available (e.g. it already sold some) -- the surplus becomes new
+  // standalone stock; the listing itself is left alone (it's not short).
+  const r = reconcileReceivedAgainstLivePresale(10, 7);
+  assert.equal(r.newStandaloneCount, 3, 'only the surplus beyond the listing\'s own available count should become new standalone stock');
+  assert.equal(r.presaleReducedTo, null, 'a listing that is not short-shipped must not have its quantity touched');
+}
+{
+  // Received exactly what the listing still shows available -- fully
+  // absorbed by the listing (which convert-to-instock will flip to
+  // in_stock right after), no new standalone rows, no reduction needed.
+  const r = reconcileReceivedAgainstLivePresale(7, 7);
+  assert.equal(r.newStandaloneCount, 0, 'an exact match must not create redundant standalone rows for copies the listing already accounts for');
+  assert.equal(r.presaleReducedTo, null, 'an exact match is not a short-ship');
+}
+{
+  // Short-ship: fewer copies arrived than the live listing still shows
+  // available to buy -- the listing must be pulled down to what actually
+  // came in so it can never oversell a copy that never showed up.
+  const r = reconcileReceivedAgainstLivePresale(4, 7);
+  assert.equal(r.newStandaloneCount, 0, 'a short-shipped SKU must not spin off standalone rows -- there is nothing left over');
+  assert.equal(r.presaleReducedTo, 4, 'the listing\'s available quantity must be pulled down to exactly what arrived');
+}
+
+console.log('FOC receive-vs-live-listing reconciliation functional checks passed');
 
 // ── Functional: reimplement the reservation + order-status-flip algorithm
 // and verify it against the scenarios that actually matter: a short-ship

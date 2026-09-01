@@ -1076,7 +1076,50 @@ async function adminPrhSubmission(request,env,deps,url){
       }
     }
   }catch(e){console.error('FOC PRH submission: eBay withdrawal sweep failed',e);}
-  return deps.json({ok:true,submission:inserted,ebayWithdrawnCount:ebayWithdrawnSkuIds.length});
+  // Store request: once the PRH order is locked in, a live FOC presale
+  // listing's buyable quantity should immediately reflect the real ordered
+  // total for that cover -- not just whatever guess was typed in when the
+  // presale was first listed -- so customers can keep buying presale
+  // copies up to what's actually coming, right up until the books
+  // physically arrive. Deliberately does NOT create or touch any real
+  // inventory_items stock here -- only the still-presale eBay listing's
+  // own available-to-buy count -- same "presale is a commitment, not
+  // physical stock" boundary receiveShipment already draws; receiving the
+  // shipment and converting to in-stock is a separate, later step.
+  // alreadySold (this SKU's presale sales so far) is subtracted from the
+  // new ordered total rather than just setting availableQuantity to it
+  // outright, so a listing that's already sold some copies never shows
+  // more available than what's actually left to sell.
+  let ebayQuantityUpdatedSkuIds=[];
+  try{
+    const {data:presaleRowsForQty}=await db(`inventory_items?store_id=eq.${encodeURIComponent(storeId)}&status=eq.presale&select=id,data`);
+    const candidatesForQty=(presaleRowsForQty||[]).filter(row=>{
+      const d=row.data||{};
+      return d.source==='foc_presale'&&d.focCycleId===cycleId&&d.ebayOfferId;
+    });
+    if(candidatesForQty.length&&deps.getEbayUserAccessToken&&deps.ebayReviseOfferQuantity){
+      const finalQtyBySku=new Map(lineItems.map(li=>[li.skuId,li.finalQty]));
+      let ebayToken='';
+      try{ebayToken=await deps.getEbayUserAccessToken(env);}catch(_){}
+      if(ebayToken){
+        for(const row of candidatesForQty){
+          const d=row.data||{};
+          const orderedTotal=finalQtyBySku.get(d.focSkuId);
+          if(orderedTotal===undefined)continue; // not in this order -- the withdrawal sweep above handles it instead
+          const currentAvailable=Number(d.qty??d.quantity??0);
+          const alreadySold=Math.max(0,Number(d.focPresaleOriginalQty||currentAvailable)-currentAvailable);
+          const newAvailable=Math.max(0,orderedTotal-alreadySold);
+          if(newAvailable===currentAvailable)continue;
+          try{
+            await deps.ebayReviseOfferQuantity(env,ebayToken,d.ebayOfferId,newAvailable);
+            await db(`inventory_items?id=eq.${row.id}&store_id=eq.${encodeURIComponent(storeId)}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({data:{...d,qty:newAvailable,quantity:newAvailable,focPresaleOriginalQty:orderedTotal}})});
+            ebayQuantityUpdatedSkuIds.push(d.focSkuId);
+          }catch(e){console.error('FOC PRH submission: could not update eBay presale listing quantity',row.id,e);}
+        }
+      }
+    }
+  }catch(e){console.error('FOC PRH submission: eBay quantity sync sweep failed',e);}
+  return deps.json({ok:true,submission:inserted,ebayWithdrawnCount:ebayWithdrawnSkuIds.length,ebayQuantityUpdatedCount:ebayQuantityUpdatedSkuIds.length});
 }
 
 // Manual, one-click sibling to the auto-sweep inside adminPrhSubmission
@@ -1190,20 +1233,55 @@ async function receiveShipment(request,env,deps){
   // silently drop that already-sold unit from this fulfillment count.
   const { data:presaleRows }=await db(`inventory_items?store_id=eq.${encodeURIComponent(storeId)}&status=in.(presale,sold,in_stock)&select=id,status,data`);
   const presaleByskuId=new Map();
+  // Store request: a physical copy that arrives must never be sellable
+  // twice -- once as a freshly-created standalone inventory row (via POS/
+  // storefront) AND again through the still-live FOC eBay presale listing
+  // (via its own separate quantity counter). The live presale row's own
+  // qty already represents copies this SKU's real eBay listing can still
+  // sell (bumped to the locked PRH order total at submission time, see
+  // adminPrhSubmission) -- so only the amount received BEYOND that gets
+  // turned into new standalone rows; the rest is already spoken for by
+  // that listing and becomes generally sellable (POS/storefront/eBay
+  // alike) once /foc/ebay/convert-to-instock flips it to in_stock right
+  // after this call returns. A short-ship (fewer copies arrived than the
+  // listing still shows available) reduces the listing's quantity to what
+  // actually came in -- both locally and on the live eBay offer -- so
+  // eBay can never oversell a copy that never showed up.
+  const livePresaleRowBySkuId=new Map();
   for(const row of presaleRows||[]){
     const d=row.data||{};
     if(d.source!=='foc_presale'||!d.focSkuId)continue;
     const originalQty=Number(d.focPresaleOriginalQty||0);
     const remainingQty=Number(d.qty??d.quantity??0);
     const soldSoFar=row.status==='sold'?originalQty:Math.max(0,originalQty-remainingQty);
-    if(soldSoFar<=0)continue;
-    presaleByskuId.set(d.focSkuId,(presaleByskuId.get(d.focSkuId)||0)+soldSoFar);
+    if(soldSoFar>0)presaleByskuId.set(d.focSkuId,(presaleByskuId.get(d.focSkuId)||0)+soldSoFar);
+    if(row.status==='presale'&&d.ebayOfferId&&remainingQty>0)livePresaleRowBySkuId.set(d.focSkuId,row);
+  }
+  let ebayToken='';
+  if(livePresaleRowBySkuId.size&&deps.getEbayUserAccessToken&&deps.ebayReviseOfferQuantity){
+    try{ebayToken=await deps.getEbayUserAccessToken(env);}catch(_){}
   }
   const created=[];const receivedSummary=[];
   for(const line of lines){
     const sku=skuById.get(text(line.skuId,80));if(!sku)continue;
     const receivedQty=Math.max(0,Math.min(1000,Number(line.receivedQty||0)));if(!receivedQty)continue;
-    const rows=Array.from({length:receivedQty},()=>({
+    const livePresale=livePresaleRowBySkuId.get(sku.id);
+    const presaleAvailable=livePresale?Number(livePresale.data.qty??livePresale.data.quantity??0):0;
+    let newStandaloneCount=receivedQty;
+    if(livePresale&&presaleAvailable>0){
+      newStandaloneCount=Math.max(0,receivedQty-presaleAvailable);
+      if(receivedQty<presaleAvailable){
+        // Short-shipped against what the live listing still shows available --
+        // pull it down to what actually arrived, on eBay too if possible.
+        const pd=livePresale.data;
+        if(ebayToken){
+          try{await deps.ebayReviseOfferQuantity(env,ebayToken,pd.ebayOfferId,receivedQty);}
+          catch(e){console.error('FOC receive: could not reduce short-shipped eBay presale quantity',livePresale.id,e);}
+        }
+        await db(`inventory_items?id=eq.${livePresale.id}&store_id=eq.${encodeURIComponent(storeId)}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({data:{...pd,qty:receivedQty,quantity:receivedQty}})});
+      }
+    }
+    const rows=Array.from({length:newStandaloneCount},()=>({
       store_id:storeId,status:'in_stock',
       data:{
         name:[sku.title,sku.variant_label&&sku.variant_label!=='Cover A'?sku.variant_label:''].filter(Boolean).join(' -- '),
@@ -1218,7 +1296,7 @@ async function receiveShipment(request,env,deps){
         source:'foc_receive',focSkuId:sku.id,focCycleId:cycleId,focReceivedAt:new Date().toISOString(),
       },
     }));
-    const { data:inserted }=await db('inventory_items',{method:'POST',headers:{Prefer:'return=representation'},body:JSON.stringify(rows)});
+    const { data:inserted }=rows.length?await db('inventory_items',{method:'POST',headers:{Prefer:'return=representation'},body:JSON.stringify(rows)}):{data:[]};
     (inserted||[]).forEach(row=>created.push(row.id));
     // Reserve for paid customers before this cover ever reaches the shelf --
     // oldest paid order first, capped at what actually arrived (a short-ship
