@@ -2519,6 +2519,24 @@ function buildEbayOfferBody(b, sku, locationKey, env) {
 // possible causes (eBay list call failing, KV unavailable, etc) actually
 // happened. Logs every fallback now, the same visibility
 // resolveEbayNewConditionId already has for its own silent-fallback bug.
+//
+// Store report (recurrence, after the above shipped): the plain
+// /presale/i.test(name) match is ambiguous the moment the account has more
+// than one policy with "presale" in its name -- and it always will once
+// this function has run once, since it names its OWN clones
+// "<base name> - FOC 40D Handling", which still contains "presale" if the
+// base name did. A store with "PreSale Paid Shipping" AND "WOSC FREE
+// PRESALE" AND that clone all matching left the pick entirely up to
+// whatever order eBay's list endpoint happened to return that call --
+// eBay does not document or guarantee a stable order. A bad pick here
+// isn't a "failure" this function would ever log; it silently caches the
+// wrong policy id for a full day. Two fixes: never let an already-cloned
+// "... - FOC <n>D Handling" policy be mistaken for a base to clone again,
+// and make the pick deterministic (shortest matching name wins, then
+// alphabetical) instead of API-order luck. Also now logs the winning name
+// and every candidate it beat, on the SUCCESS path too, so a future wrong
+// pick is diagnosable instead of invisible.
+const FOC_HANDLING_CLONE_NAME_RE = /-\s*FOC\s+\d+D\s+Handling\s*$/i;
 async function resolveFocPresaleBasePolicyId(env, ebayToken) {
   const fallback = env.EBAY_FULFILLMENT_POLICY_ID || '';
   const kvKey = 'ebay_foc_fulfillment_policy:base';
@@ -2535,8 +2553,14 @@ async function resolveFocPresaleBasePolicyId(env, ebayToken) {
       return fallback;
     }
     const list = await listRes.json();
-    const presalePolicy = (list.fulfillmentPolicies || []).find(p => /presale/i.test(p.name || ''));
+    const candidates = (list.fulfillmentPolicies || [])
+      .filter(p => /presale/i.test(p.name || '') && !FOC_HANDLING_CLONE_NAME_RE.test(p.name || ''))
+      .sort((a, b) => String(a.name || '').length - String(b.name || '').length || String(a.name || '').localeCompare(String(b.name || '')));
+    const presalePolicy = candidates[0];
     if (presalePolicy?.fulfillmentPolicyId) {
+      if (candidates.length > 1) {
+        console.error('resolveFocPresaleBasePolicyId: multiple presale-named policies, picked shortest/alphabetically-first', presalePolicy.name, 'out of', JSON.stringify(candidates.map(p => p.name)));
+      }
       if (env.LBA_KV) await env.LBA_KV.put(kvKey, presalePolicy.fulfillmentPolicyId, { expirationTtl: 60 * 60 * 24 }).catch(() => {});
       return presalePolicy.fulfillmentPolicyId;
     }

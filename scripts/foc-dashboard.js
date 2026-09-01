@@ -413,8 +413,14 @@ async function openEbayPresaleReview(skuId){
   // uses. This is the seller's own custom storefront category, distinct
   // from the eBay item category (Comics & Graphic Novels) which is already
   // set correctly and not user-editable here.
-  var lastStoreCategory='';
-  try{lastStoreCategory=localStorage.getItem('foc_ebay_last_store_category')||'';}catch(e){}
+  // Store report: this field silently submitted empty (storeCategoryNames:[]
+  // on the eBay offer) on a fresh browser/device with nothing remembered
+  // yet -- eBay then bucketed the listing into its own default "Other"
+  // store category instead of Comic Books. Every FOC listing this feature
+  // creates is a comic, so "Comic Books" is the real default, not an
+  // empty string that merely LOOKS pre-filled via a placeholder.
+  var lastStoreCategory='Comic Books';
+  try{lastStoreCategory=localStorage.getItem('foc_ebay_last_store_category')||'Comic Books';}catch(e){}
   modal.innerHTML='<div style="width:100%;max-width:560px;background:var(--surf);border:1px solid var(--border);border-radius:10px;padding:16px">'+
     '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><div><div style="font-family:\'Orbitron\',monospace;color:var(--gold);font-size:13px;letter-spacing:2px">REVIEW EBAY PRESALE LISTING</div>'+(focEbayBulkQueue?'<div style="font:9px var(--font-mono);color:var(--dim);margin-top:3px">Bulk listing -- '+focEbayBulkQueue.length+' more after this one · <button type="button" onclick="skipFocEbayBulkItem()" style="background:none;border:none;color:var(--gold);text-decoration:underline;cursor:pointer;font:inherit;padding:0">SKIP THIS ONE</button></div>':'')+'</div><button onclick="cancelFocEbayBulkListing()" style="background:none;border:none;color:var(--dim);font-size:22px;cursor:pointer">×</button></div>'+
     '<div style="font:9px var(--font-mono);color:var(--dim);margin-bottom:10px">Nothing is published to eBay until you click LIST ON EBAY below.'+(focEbayBulkQueue?' The next selected cover opens automatically after this one lists.':'')+'</div>'+
