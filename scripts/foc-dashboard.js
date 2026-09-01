@@ -369,6 +369,21 @@ async function openEbayPresaleReview(skuId){
     modal.querySelector('div').innerHTML='<div style="color:var(--red)">Could not load presale preview: '+esc(e.message)+'</div><button class="hbtn" style="margin-top:10px" onclick="document.getElementById(\'foc-ebay-review-modal\').remove()">CLOSE</button>';
     return;
   }
+  // Store report: shipping kept falling back to the generic default policy
+  // instead of a real "FOC 40D Handling" clone -- the server can only ever
+  // GUESS which of the account's business policies is the right one to
+  // clone from (matching on "presale" in the name), and that guess breaks
+  // the moment a store has more than one policy that could plausibly match.
+  // Removes the guesswork: the store picks the exact policy to clone from
+  // here, remembered across listings the same way the store category field
+  // already is. Best-effort -- a failure to load the policy list here must
+  // never block the review modal itself, it just leaves auto-detect as the
+  // only option.
+  var shipPolicies=[];
+  try{var policyData=await api('/ebay/business-policies');shipPolicies=(policyData.fulfillment&&policyData.fulfillment.policies)||[];}catch(e){}
+  var lastShipPolicyId='';
+  try{lastShipPolicyId=localStorage.getItem('foc_ebay_last_ship_policy_id')||'';}catch(e){}
+  if(lastShipPolicyId&&!shipPolicies.some(function(p){return String(p.id)===lastShipPolicyId;}))lastShipPolicyId='';
   var asp=preview.customAspects||{};
   // Store request: reuse the same {token} description-template settings the
   // regular "list on eBay" tool already has (Settings -> Vendor Info ->
@@ -433,6 +448,13 @@ async function openEbayPresaleReview(skuId){
     '<label>PRICE<input class="tsi" value="$'+esc(preview.price)+'" disabled></label>'+
     '<label>SHIP-BY<input class="tsi" value="'+esc(preview.onSaleLabel)+'" disabled></label></div>'+
     '<div style="font:8px/1.5 var(--font-mono);color:var(--dim);margin-bottom:10px">eBay handling time on this listing: <b style="color:var(--text)">'+Number(preview.handlingBusinessDays||0)+' business days</b> from purchase -- this is what keeps eBay\'s delivery estimate from promising the book before it\'s released.</div>'+
+    '<label style="font:9px var(--font-mono);color:var(--dim);display:block;margin-bottom:10px">SHIPPING POLICY TO CLONE HANDLING TIME FROM'+
+    '<select id="foc-eb-ship-policy" class="tsi" style="margin-top:4px">'+
+    '<option value="">Auto-detect (policy named "presale")</option>'+
+    shipPolicies.map(function(p){return '<option value="'+esc(p.id)+'" '+(String(p.id)===lastShipPolicyId?'selected':'')+'>'+esc(p.name)+'</option>';}).join('')+
+    '</select>'+
+    (shipPolicies.length?'':'<div style="font:8px var(--font-mono);color:var(--dim);margin-top:3px">Could not load your eBay shipping policies -- auto-detect will be used.</div>')+
+    '</label>'+
     '<label style="display:flex;gap:6px;align-items:center;margin-bottom:10px;font:9px var(--font-mono);color:var(--dim)"><input id="foc-eb-best-offer" type="checkbox" checked> ALLOW BEST OFFER</label>'+
     '<div class="foc-sku-fields" style="grid-template-columns:1fr 1fr;margin-bottom:10px"><label>PACKAGE WEIGHT<input id="foc-eb-weight" class="tsi" type="number" min=".1" step=".1" value="'+esc(preview.weightValue)+'"></label>'+
     '<label>UNIT<select id="foc-eb-weight-unit" class="tsi"><option value="POUND" '+(preview.weightUnit==='POUND'?'selected':'')+'>LB</option><option value="OUNCE" '+(preview.weightUnit==='OUNCE'?'selected':'')+'>OZ</option></select></label></div>'+
@@ -468,6 +490,8 @@ async function submitEbayPresaleReview(skuId){
   document.querySelectorAll('[data-foc-eb-extra]').forEach(function(el){if(el.value)customAspects[el.dataset.focEbExtraLabel]=el.value;});
   var storeCategory=(document.getElementById('foc-eb-store-category').value||'').trim();
   try{localStorage.setItem('foc_ebay_last_store_category',storeCategory);}catch(e){}
+  var basePolicyId=(document.getElementById('foc-eb-ship-policy')?.value||'').trim();
+  try{if(basePolicyId)localStorage.setItem('foc_ebay_last_ship_policy_id',basePolicyId);else localStorage.removeItem('foc_ebay_last_ship_policy_id');}catch(e){}
   var payload={
     storeId:getActiveStoreId(),skuId:skuId,quantity:qty,
     title:document.getElementById('foc-eb-title').value,
@@ -477,6 +501,7 @@ async function submitEbayPresaleReview(skuId){
     weightValue:parseFloat(document.getElementById('foc-eb-weight').value)||undefined,
     weightUnit:document.getElementById('foc-eb-weight-unit').value,
     storeCategoryNames:storeCategory?[storeCategory]:[],
+    basePolicyId:basePolicyId,
   };
   if(status){status.style.display='block';status.style.color='var(--gold)';status.style.border='1px solid rgba(255,209,102,.25)';status.style.background='rgba(255,209,102,.06)';status.textContent='Publishing to eBay…';}
   try{

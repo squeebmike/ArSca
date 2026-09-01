@@ -2646,9 +2646,16 @@ async function resolveEbayNewConditionId(env, ebayToken, categoryId) {
 // the policy list and reuses the existing policy of the exact name it was
 // about to create, since "already exists" means the real fix (the FOC
 // clone) is sitting right there, just not the one this lookup found.
-async function getFocPresaleFulfillmentPolicyId(env, ebayToken, handlingDaysNeeded) {
+// basePolicyIdOverride: lets the dashboard's own shipping-policy picker
+// (FOC eBay review modal) name the exact policy to clone handling time
+// from, bypassing resolveFocPresaleBasePolicyId's name-matching guesswork
+// entirely -- store request, after that guesswork picked the wrong policy
+// (or the generic default) more than once. Trusted as-is when provided;
+// the id came from this store's own /ebay/business-policies list, not
+// arbitrary client input.
+async function getFocPresaleFulfillmentPolicyId(env, ebayToken, handlingDaysNeeded, basePolicyIdOverride) {
   const fallback = env.EBAY_FULFILLMENT_POLICY_ID || '';
-  const baseId = (await resolveFocPresaleBasePolicyId(env, ebayToken)) || fallback;
+  const baseId = basePolicyIdOverride || (await resolveFocPresaleBasePolicyId(env, ebayToken)) || fallback;
   if (!baseId) return '';
   const bucket = Math.min(40, Math.max(5, Math.ceil(Math.max(1, handlingDaysNeeded) / 5) * 5));
   const kvKey = `ebay_foc_fulfillment_policy:${baseId}:${bucket}`;
@@ -3613,7 +3620,8 @@ export default {
       const weightValue = Number(body.weightValue) > 0 ? Number(body.weightValue) : defaults.weightValue;
       const weightUnit = body.weightUnit || defaults.weightUnit;
       const storeCategoryNames = Array.isArray(body.storeCategoryNames) ? body.storeCategoryNames : String(body.storeCategoryNames || '').split(',');
-      const fulfillmentPolicyId = await getFocPresaleFulfillmentPolicyId(env, ebayToken, handlingBusinessDays);
+      const basePolicyId = (typeof body.basePolicyId === 'string' && body.basePolicyId.trim()) ? body.basePolicyId.trim() : '';
+      const fulfillmentPolicyId = await getFocPresaleFulfillmentPolicyId(env, ebayToken, handlingBusinessDays, basePolicyId);
       const resolvedCondition = await resolveEbayNewConditionId(env, ebayToken, '259104');
       const conditionId = resolvedCondition.id;
 
