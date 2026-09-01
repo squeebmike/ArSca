@@ -238,6 +238,17 @@ assert.match(focDash, /if\(basePolicyId\)localStorage\.setItem\('foc_ebay_last_s
   'picking "Auto-detect" again must clear the remembered override, not get stuck on a stale pick');
 assert.match(focDash, /basePolicyId:basePolicyId,/, 'the chosen policy id must actually be sent to the server');
 
+// Store report: the picker showed nothing but "Auto-detect" with no real
+// policies to pick from, and there was no way to tell why -- the fetch
+// failure (or an empty policy list from eBay) was swallowed silently.
+// Surfaces the actual reason (not connected, eBay list call failed, etc)
+// inline instead of a single generic "could not load" message with no
+// way to diagnose it from a support report.
+assert.match(focDash, /if\(policyData\.needsToken\)shipPoliciesError='eBay is not connected/, 'a missing eBay connection must be called out by name, not lumped into a generic failure message');
+assert.match(focDash, /else if\(policyData\.fulfillment&&policyData\.fulfillment\.error\)shipPoliciesError=policyData\.fulfillment\.error;/, 'the real eBay list-call error must be surfaced, not swallowed');
+assert.match(focDash, /catch\(e\)\{shipPoliciesError=e\.message\|\|'request failed';\}/, 'a thrown fetch failure must also be captured for display, not just silently leave the list empty');
+assert.match(focDash, /Could not load your eBay shipping policies'\+\(shipPoliciesError\?\(': '\+esc\(shipPoliciesError\)\):''\)\+' -- auto-detect will be used\./, 'the empty-picker message shown to the store must include the actual reason when one is known');
+
 // Store report: shipping stopped auto-selecting the FOC handling policy a
 // second time, even though the store's real presale-named policy still
 // existed -- resolveFocPresaleBasePolicyId's own previously-created clones

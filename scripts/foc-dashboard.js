@@ -380,7 +380,13 @@ async function openEbayPresaleReview(skuId){
   // never block the review modal itself, it just leaves auto-detect as the
   // only option.
   var shipPolicies=[];
-  try{var policyData=await api('/ebay/business-policies');shipPolicies=(policyData.fulfillment&&policyData.fulfillment.policies)||[];}catch(e){}
+  var shipPoliciesError='';
+  try{
+    var policyData=await api('/ebay/business-policies');
+    if(policyData.needsToken)shipPoliciesError='eBay is not connected -- connect it under Settings → EBAY to pick a shipping policy here.';
+    else if(policyData.fulfillment&&policyData.fulfillment.error)shipPoliciesError=policyData.fulfillment.error;
+    shipPolicies=(policyData.fulfillment&&policyData.fulfillment.policies)||[];
+  }catch(e){shipPoliciesError=e.message||'request failed';}
   var lastShipPolicyId='';
   try{lastShipPolicyId=localStorage.getItem('foc_ebay_last_ship_policy_id')||'';}catch(e){}
   if(lastShipPolicyId&&!shipPolicies.some(function(p){return String(p.id)===lastShipPolicyId;}))lastShipPolicyId='';
@@ -453,7 +459,7 @@ async function openEbayPresaleReview(skuId){
     '<option value="">Auto-detect (policy named "presale")</option>'+
     shipPolicies.map(function(p){return '<option value="'+esc(p.id)+'" '+(String(p.id)===lastShipPolicyId?'selected':'')+'>'+esc(p.name)+'</option>';}).join('')+
     '</select>'+
-    (shipPolicies.length?'':'<div style="font:8px var(--font-mono);color:var(--dim);margin-top:3px">Could not load your eBay shipping policies -- auto-detect will be used.</div>')+
+    (shipPolicies.length?'':'<div style="font:8px var(--font-mono);color:var(--red);margin-top:3px">Could not load your eBay shipping policies'+(shipPoliciesError?(': '+esc(shipPoliciesError)):'')+' -- auto-detect will be used.</div>')+
     '</label>'+
     '<label style="display:flex;gap:6px;align-items:center;margin-bottom:10px;font:9px var(--font-mono);color:var(--dim)"><input id="foc-eb-best-offer" type="checkbox" checked> ALLOW BEST OFFER</label>'+
     '<div class="foc-sku-fields" style="grid-template-columns:1fr 1fr;margin-bottom:10px"><label>PACKAGE WEIGHT<input id="foc-eb-weight" class="tsi" type="number" min=".1" step=".1" value="'+esc(preview.weightValue)+'"></label>'+
