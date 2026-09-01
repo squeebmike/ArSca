@@ -3620,7 +3620,16 @@ export default {
       const weightValue = Number(body.weightValue) > 0 ? Number(body.weightValue) : defaults.weightValue;
       const weightUnit = body.weightUnit || defaults.weightUnit;
       const storeCategoryNames = Array.isArray(body.storeCategoryNames) ? body.storeCategoryNames : String(body.storeCategoryNames || '').split(',');
+      // Store request: auto-detecting the base shipping policy by name
+      // match (resolveFocPresaleBasePolicyId) kept landing on the wrong
+      // pick or a self-clone across several real incidents (#367-#372) --
+      // even after fixing each one, the store wants zero reliance on that
+      // guess for FOC listings. The dashboard's own picker (populated from
+      // this store's real /ebay/business-policies list) must always supply
+      // an explicit choice; publishing without one is refused instead of
+      // silently falling back to the auto-detect heuristic.
       const basePolicyId = (typeof body.basePolicyId === 'string' && body.basePolicyId.trim()) ? body.basePolicyId.trim() : '';
+      if (!basePolicyId) return json({ ok: false, error: 'Pick a shipping policy in the review screen before publishing -- FOC listings no longer auto-detect one.' }, 400);
       const fulfillmentPolicyId = await getFocPresaleFulfillmentPolicyId(env, ebayToken, handlingBusinessDays, basePolicyId);
       const resolvedCondition = await resolveEbayNewConditionId(env, ebayToken, '259104');
       const conditionId = resolvedCondition.id;

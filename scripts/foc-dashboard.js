@@ -371,16 +371,17 @@ async function openEbayPresaleReview(skuId){
     modal.querySelector('div').innerHTML='<div style="color:var(--red)">Could not load presale preview: '+esc(e.message)+'</div><button class="hbtn" style="margin-top:10px" onclick="document.getElementById(\'foc-ebay-review-modal\').remove()">CLOSE</button>';
     return;
   }
-  // Store report: shipping kept falling back to the generic default policy
-  // instead of a real "FOC 40D Handling" clone -- the server can only ever
-  // GUESS which of the account's business policies is the right one to
-  // clone from (matching on "presale" in the name), and that guess breaks
-  // the moment a store has more than one policy that could plausibly match.
-  // Removes the guesswork: the store picks the exact policy to clone from
-  // here, remembered across listings the same way the store category field
-  // already is. Best-effort -- a failure to load the policy list here must
-  // never block the review modal itself, it just leaves auto-detect as the
-  // only option.
+  // Store report: shipping kept landing on the wrong policy no matter how
+  // the auto-detect guess (matching on "presale" in the name) got tuned --
+  // it broke again every time the account had more than one plausible
+  // match. Store decision: FOC listings no longer auto-detect a shipping
+  // policy AT ALL -- the store must explicitly pick one here every time
+  // (submitEbayPresaleReview below refuses to publish without a real
+  // selection), remembered across listings the same way the store
+  // category field already is, so picking it once is normally enough.
+  // Best-effort fetch -- a failure to load the policy list here must never
+  // block the review modal itself, it just leaves nothing to pick from
+  // until the store retries (never silently falls back to a guess).
   var shipPolicies=[];
   var shipPoliciesError='';
   try{
@@ -469,12 +470,12 @@ async function openEbayPresaleReview(skuId){
     '<label>PRICE<input class="tsi" value="$'+esc(preview.price)+'" disabled></label>'+
     '<label>SHIP-BY<input class="tsi" value="'+esc(preview.onSaleLabel)+'" disabled></label></div>'+
     '<div style="font:8px/1.5 var(--font-mono);color:var(--dim);margin-bottom:10px">eBay handling time on this listing: <b style="color:var(--text)">'+Number(preview.handlingBusinessDays||0)+' business days</b> from purchase -- this is what keeps eBay\'s delivery estimate from promising the book before it\'s released.</div>'+
-    '<label style="font:9px var(--font-mono);color:var(--dim);display:block;margin-bottom:10px">SHIPPING POLICY TO CLONE HANDLING TIME FROM'+
+    '<label style="font:9px var(--font-mono);color:var(--dim);display:block;margin-bottom:10px">SHIPPING POLICY TO CLONE HANDLING TIME FROM (required -- never auto-detected)'+
     '<select id="foc-eb-ship-policy" class="tsi" style="margin-top:4px">'+
-    '<option value="">Auto-detect (policy named "presale")</option>'+
+    (lastShipPolicyId?'':'<option value="" disabled selected>-- select a shipping policy --</option>')+
     shipPolicies.map(function(p){return '<option value="'+esc(p.id)+'" '+(String(p.id)===lastShipPolicyId?'selected':'')+'>'+esc(p.name)+'</option>';}).join('')+
     '</select>'+
-    (shipPolicies.length?'':'<div style="font:8px var(--font-mono);color:var(--red);margin-top:3px">Could not load your eBay shipping policies'+(shipPoliciesError?(': '+esc(shipPoliciesError)):'')+' -- auto-detect will be used.</div>')+
+    (shipPolicies.length?'':'<div style="font:8px var(--font-mono);color:var(--red);margin-top:3px">Could not load your eBay shipping policies'+(shipPoliciesError?(': '+esc(shipPoliciesError)):'')+' -- reload this screen before publishing.</div>')+
     '</label>'+
     '<label style="display:flex;gap:6px;align-items:center;margin-bottom:10px;font:9px var(--font-mono);color:var(--dim)"><input id="foc-eb-best-offer" type="checkbox" checked> ALLOW BEST OFFER</label>'+
     '<div class="foc-sku-fields" style="grid-template-columns:1fr 1fr;margin-bottom:10px"><label>PACKAGE WEIGHT<input id="foc-eb-weight" class="tsi" type="number" min=".1" step=".1" value="'+esc(preview.weightValue)+'"></label>'+
@@ -512,7 +513,12 @@ async function submitEbayPresaleReview(skuId){
   var storeCategory=(document.getElementById('foc-eb-store-category').value||'').trim();
   try{localStorage.setItem('foc_ebay_last_store_category',storeCategory);}catch(e){}
   var basePolicyId=(document.getElementById('foc-eb-ship-policy')?.value||'').trim();
-  try{if(basePolicyId)localStorage.setItem('foc_ebay_last_ship_policy_id',basePolicyId);else localStorage.removeItem('foc_ebay_last_ship_policy_id');}catch(e){}
+  // Store decision: FOC listings never auto-detect a shipping policy --
+  // publishing without an explicit pick here must be blocked, not silently
+  // fall back to the server's old name-matching guess (the repeated
+  // source of wrong-policy incidents this picker replaced).
+  if(!basePolicyId){toast_dash('Select a shipping policy before publishing');return;}
+  try{localStorage.setItem('foc_ebay_last_ship_policy_id',basePolicyId);}catch(e){}
   var payload={
     storeId:getActiveStoreId(),skuId:skuId,quantity:qty,
     title:document.getElementById('foc-eb-title').value,
