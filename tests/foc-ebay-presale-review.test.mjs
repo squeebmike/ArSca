@@ -220,8 +220,24 @@ assert.match(focDash, /eBay handling time on this listing:/, 'the review modal m
 // policy is more likely to already have the right shipping cost/service
 // configuration for presale orders.
 assert.match(worker, /async function resolveFocPresaleBasePolicyId\(env, ebayToken\)/, 'must resolve which policy to clone shipping setup from');
-assert.match(worker, /find\(p => \/presale\/i\.test\(p\.name \|\| ''\)\)/, 'must prefer a store-created policy named for presale use');
+assert.match(worker, /filter\(p => \/presale\/i\.test\(p\.name \|\| ''\) && !FOC_HANDLING_CLONE_NAME_RE\.test\(p\.name \|\| ''\)\)/, 'must prefer a store-created policy named for presale use');
 assert.match(worker, /const baseId = \(await resolveFocPresaleBasePolicyId\(env, ebayToken\)\) \|\| fallback/, 'the per-book handling-time clone must use the resolved presale base policy');
+
+// Store report: shipping stopped auto-selecting the FOC handling policy a
+// second time, even though the store's real presale-named policy still
+// existed -- resolveFocPresaleBasePolicyId's own previously-created clones
+// are ALSO named with "presale" in them (inherited from the base policy's
+// name), so re-running the match could pick its own clone as the "base"
+// to clone again, or land on an unrelated policy that merely contains
+// "presale" as a substring, purely by eBay's undocumented list order.
+// Fixed by excluding self-clones by name and picking deterministically
+// (shortest name, then alphabetical) instead of trusting API order.
+assert.match(worker, /const FOC_HANDLING_CLONE_NAME_RE = \/-\\s\*FOC\\s\+\\d\+D\\s\+Handling\\s\*\$\/i;/,
+  'must recognize and exclude its own previously-created FOC handling clones from candidacy, or a repeat resolution could clone a clone');
+assert.match(worker, /\.sort\(\(a, b\) => String\(a\.name \|\| ''\)\.length - String\(b\.name \|\| ''\)\.length \|\| String\(a\.name \|\| ''\)\.localeCompare\(String\(b\.name \|\| ''\)\)\)/,
+  'when multiple policies match "presale", the pick must be deterministic (shortest name, then alphabetical) rather than relying on eBay\'s unordered API response');
+assert.match(worker, /if \(candidates\.length > 1\) \{\s*\n\s*console\.error\('resolveFocPresaleBasePolicyId: multiple presale-named policies, picked shortest\/alphabetically-first', presalePolicy\.name, 'out of', JSON\.stringify\(candidates\.map\(p => p\.name\)\)\);/,
+  'an ambiguous match must be logged even on the success path, not just on outright failure, so a wrong pick is diagnosable');
 
 // "Sport: Trading Cards" was showing up as an item specific on comic
 // listings -- buildEbayAspects unconditionally defaulted Sport for every
@@ -289,6 +305,15 @@ assert.match(worker, /storeCategoryNames = \[\]/, 'buildEbayOfferBody must accep
 assert.match(worker, /storeCategoryNames: cleanStoreCategoryNames\.length \? cleanStoreCategoryNames : undefined/, 'must only send storeCategoryNames when one was actually provided');
 assert.match(focDash, /localStorage\.getItem\('foc_ebay_last_store_category'\)/, 'must remember the last-typed store category across listings');
 assert.match(focDash, /localStorage\.setItem\('foc_ebay_last_store_category',storeCategory\)/, 'must persist a newly-typed store category for next time');
+
+// Store report: on a fresh browser/device with nothing remembered yet,
+// the store category field silently submitted empty (storeCategoryNames
+// omitted entirely) and eBay bucketed the listing into its own default
+// "Other" store category instead of Comic Books. Every FOC listing this
+// feature creates is a comic, so the field's real default must be
+// "Comic Books", not an empty string.
+assert.match(focDash, /var lastStoreCategory='Comic Books';/, 'the store category field must default to "Comic Books", not blank, before any localStorage value has ever been saved');
+assert.match(focDash, /lastStoreCategory=localStorage\.getItem\('foc_ebay_last_store_category'\)\|\|'Comic Books';/, 'a missing/empty remembered store category must fall back to "Comic Books", never to blank');
 
 // Store report: a real Comic description template full of optional prose
 // tokens ("this {variant} {coverType} features {character} from
