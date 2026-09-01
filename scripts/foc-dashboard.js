@@ -535,6 +535,16 @@ async function submitEbayPresaleReview(skuId){
     var result=await api('/foc/ebay/create-presale',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
     toast_dash('eBay presale listed: '+qty+' cop'+(qty===1?'y':'ies'));
     if(result.warnings&&result.warnings.length)toast_dash('eBay warning: '+result.warnings.join(' · '));
+    // Store report: shipping still not landing on the picked policy with
+    // no warning shown -- createAndPublishEbayListing already computes and
+    // verifies this (fulfillmentCheck), it just never reached the screen.
+    // Surfaced explicitly so a wrong/empty result is visible immediately
+    // instead of only discoverable by clicking into the live eBay listing.
+    if(result.fulfillmentCheck){
+      var fc=result.fulfillmentCheck;
+      if(!fc.requestedId)toast_dash('Shipping policy warning: nothing was actually requested on this listing -- check the picker selection.');
+      else if(fc.verifiedStoredId&&fc.verifiedStoredId!==fc.requestedId)toast_dash('Shipping policy warning: eBay stored a different policy ('+fc.verifiedStoredId+') than requested ('+fc.requestedId+').');
+    }
     if(result.volumeDiscount&&result.volumeDiscount.active){
       var tiers=(result.volumeDiscount.tiers||[]).map(function(t){return t.minQuantity+'+/'+t.percentageOff+'%';}).join(', ');
       toast_dash('Volume discount active: '+tiers);
