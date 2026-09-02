@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.09.01.12-bundle-ebay-description">
+<meta name="version" content="2026.09.01.13-slab-grading-capture">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -517,6 +517,9 @@ tr.sold:hover td{opacity:.7;}
 .buy-tray-reset{border:0;background:none;color:var(--blue);font-family:var(--font-mono);font-size:8px;padding:0;cursor:pointer;text-decoration:underline;}
 .buy-tray-name{font-family:var(--font-mono);font-size:11px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .buy-tray-sub{font-family:var(--font-mono);font-size:8px;color:var(--dim);margin-top:2px;}
+.buy-tray-graded-toggle{display:flex;align-items:center;gap:5px;font-family:var(--font-mono);font-size:8px;color:var(--gold);margin-top:5px;cursor:pointer;}
+.buy-tray-graded-fields{display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;margin-top:4px;}
+.buy-tray-graded-fields input{width:100%;box-sizing:border-box;background:var(--surf);border:1px solid var(--border);color:var(--text);padding:5px 4px;border-radius:5px;font-size:9px;font-family:monospace;}
 .buy-tray-cond{width:70px;background:var(--surf);border:1px solid var(--border);color:var(--text);padding:5px 4px;border-radius:5px;font-size:10px;font-family:monospace;}
 .buy-tray-mkt{width:80px;background:var(--surf);border:1px solid var(--border);color:var(--text);padding:5px;border-radius:5px;font-size:10px;font-family:monospace;}
 .buy-tray-offer-val{font-family:'Orbitron',monospace;font-size:12px;font-weight:700;color:var(--gold);text-align:right;white-space:nowrap;}
@@ -1628,15 +1631,15 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.09.01.12-bundle-ebay-description" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.09.01.12-bundle-ebay-description" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.09.01.12-bundle-ebay-description" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.09.01.12-bundle-ebay-description" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.09.01.12-bundle-ebay-description" defer></script>
-<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.09.01.12-bundle-ebay-description" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.09.01.12-bundle-ebay-description" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.09.01.12-bundle-ebay-description" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.09.01.12-bundle-ebay-description" defer></script>
+<script src="scripts/query-routing.js?v=2026.09.01.13-slab-grading-capture" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.09.01.13-slab-grading-capture" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.09.01.13-slab-grading-capture" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.09.01.13-slab-grading-capture" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.09.01.13-slab-grading-capture" defer></script>
+<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.09.01.13-slab-grading-capture" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.09.01.13-slab-grading-capture" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.09.01.13-slab-grading-capture" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.09.01.13-slab-grading-capture" defer></script>
 </head>
 <body>
 
@@ -1665,11 +1668,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.09.01.12-bundle-ebay-description</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.09.01.13-slab-grading-capture</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.09.01.12-bundle-ebay-description</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.09.01.13-slab-grading-capture</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1687,7 +1690,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.09.01.12-bundle-ebay-description</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.09.01.13-slab-grading-capture</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -2775,6 +2778,17 @@ body.show-mode .inv-sync-badge{display:none;}
             <option value="tiny">Tiny</option><option value="small">Small</option><option value="medium" selected>Medium</option><option value="large">Large</option><option value="oversize">Oversize</option>
           </select></div>
 
+        <div style="margin-top:8px;border-top:1px solid var(--border);padding-top:8px">
+          <label style="display:flex;align-items:center;gap:6px;font-family:var(--font-mono);font-size:9px;color:var(--dim);cursor:pointer">
+            <input type="checkbox" id="scout-is-graded" onchange="toggleScoutGradedRow()"> 🏆 This item is professionally graded (PSA/BGS/CGC/SGC/CBCS)
+          </label>
+          <div id="scout-graded-row" style="display:none;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:8px">
+            <input id="scout-grader" placeholder="Grader" style="width:100%;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:9px;border-radius:6px;box-sizing:border-box;font-size:12px">
+            <input id="scout-grade" placeholder="Grade (e.g. 9.5)" style="width:100%;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:9px;border-radius:6px;box-sizing:border-box;font-size:12px">
+            <input id="scout-cert" placeholder="Cert #" style="width:100%;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:9px;border-radius:6px;box-sizing:border-box;font-size:12px">
+          </div>
+        </div>
+
         <div id="scout-profit-breakdown" style="font-family:var(--font-mono);font-size:10px;color:var(--dim);line-height:1.8;margin-top:12px"></div>
 
         <div id="scout-decision-badge" style="text-align:center;font-family:'Orbitron',monospace;font-size:18px;font-weight:900;padding:12px;border-radius:8px;margin-top:12px"></div>
@@ -3705,7 +3719,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.09.01.12-bundle-ebay-description';
+const APP_VERSION = '2026.09.01.13-slab-grading-capture';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -24097,7 +24111,12 @@ async function fetchPsaCertPhotoForEditItem(){
   try {
     const res = await fetch(WORKER + '/psa/cert/' + encodeURIComponent(cert), { cache:'no-store' });
     const data = await res.json().catch(() => ({}));
-    if(!res.ok || !data.ok) throw new Error(data.error || 'PSA lookup failed');
+    // Store report: a PSA 403 only ever showed as the bare "PSA API error
+    // 403" -- the Worker route already captures PSA's own response body as
+    // `detail` (the actual reason: an expired token, a permission scope
+    // issue, etc), it just never reached the screen. Surfacing it here is
+    // the difference between "something's wrong" and knowing what to fix.
+    if(!res.ok || !data.ok) throw new Error([data.error || 'PSA lookup failed', data.detail].filter(Boolean).join(' — '));
     const c = data.cert || {};
     if(!c.photoUrl) { if(statusEl) statusEl.textContent = 'Cert verified, but PSA has no photo on file (PSA only attaches photos to certs graded after Oct 2021).'; return; }
     setInventoryEditPhoto(psaCertPhotoUrl(c.certNumber || cert), 'PSA cert photo');
@@ -26380,6 +26399,29 @@ function scoutResetSessionFields(){
   const compEl = document.getElementById('scout-comp-price'); if(compEl) compEl.value = '';
   const conditionEl = document.getElementById('scout-condition'); if(conditionEl) conditionEl.value = 'Excellent';
   const sizeEl = document.getElementById('scout-size'); if(sizeEl) sizeEl.value = 'medium';
+  ['scout-grader','scout-grade','scout-cert'].forEach(k => { const el = document.getElementById(k); if(el) el.value = ''; });
+  const gradedCheckbox = document.getElementById('scout-is-graded'); if(gradedCheckbox) gradedCheckbox.checked = false;
+  toggleScoutGradedRow();
+}
+// Store report: no way existed to flag an item as a graded slab from Pocket
+// Scout at all -- neither BUY + ADD INVENTORY (immediate) nor SEND TO BUY
+// TAB (queued) ever captured grader/grade/cert#, so every card scouted this
+// way landed in inventory ungraded no matter what it actually was. Mirrors
+// the same checkbox-reveals-3-fields pattern already used by the manual
+// Add Inventory form (built-is-graded) and the Edit Item modal
+// (edit-is-graded), so it behaves the same way everywhere it appears.
+function toggleScoutGradedRow(){
+  const on = document.getElementById('scout-is-graded')?.checked;
+  const row = document.getElementById('scout-graded-row');
+  if(row) row.style.display = on ? 'grid' : 'none';
+}
+function readScoutGradingFields(){
+  const graded = document.getElementById('scout-is-graded')?.checked;
+  return {
+    grader: graded ? (document.getElementById('scout-grader')?.value.trim() || '') : '',
+    grade: graded ? (document.getElementById('scout-grade')?.value.trim() || '') : '',
+    cert_number: graded ? (document.getElementById('scout-cert')?.value.trim() || '') : '',
+  };
 }
 
 function scoutNewItem(){
@@ -26947,6 +26989,7 @@ async function scoutBuyAddInventory(){
       sourceVariantId: match?.variantId || match?.productConditionId || '',
       tcgplayerSkuId: match?.tcgplayerSkuId || match?.skuId || '', tcgPlayerId: match?.tcgPlayerId || match?.tcgplayerId || '', tcgPlayerUrl: match?.tcgPlayerUrl || '',
       condition, cost: price, market: Number(document.getElementById('scout-comp-price')?.value) || match?.market || result?.expectedSale || null, sku, quantity:1, qty:1,
+      ...readScoutGradingFields(),
       // The operator's own photo of the actual physical item is the real
       // inventory image -- the catalog match's stock photo is only useful
       // while confirming identity, not as what gets listed for sale.
@@ -27011,6 +27054,7 @@ function scoutSendToBuyTab(){
     priceSource: match ? (match.priceSource||match.source||'catalog_match') : 'pocket_scout',
     pricingSource: match ? 'PriceCharting/TCGPlayer' : 'Pocket Scout',
     condition, category, subcategory: identity.subcategory||'',
+    ...readScoutGradingFields(),
     brand: identity.brand||'', manufacturer: identity.manufacturer||'', model: identity.model||identity.modelNumber||'',
     year: identity.year||'', variant: match?.variant || identity.variant||'', edition: identity.edition||'',
     upc: identity.upc||'', ean: identity.ean||'', isbn: identity.isbn||'', mpn: identity.mpn||'',
@@ -35191,7 +35235,7 @@ function psaCertToQplRow(c = {}, certFallback = ''){
 async function resolvePsaCertRow(cert){
   const res = await fetch(WORKER + '/psa/cert/' + encodeURIComponent(cert), { cache:'no-store' });
   const data = await res.json().catch(() => ({}));
-  if(!res.ok || !data.ok) throw new Error(data.error || 'PSA lookup failed');
+  if(!res.ok || !data.ok) throw new Error([data.error || 'PSA lookup failed', data.detail].filter(Boolean).join(' — '));
   const c = data.cert || {};
   const row = psaCertToQplRow(c, cert);
   const slab = await fetchGradedSlabPriceForItem(row).catch(() => null);
@@ -35365,7 +35409,12 @@ async function verifyQplPsaCert(idx){
   try {
     const res = await fetch(WORKER + '/psa/cert/' + encodeURIComponent(cert), { cache:'no-store' });
     const data = await res.json().catch(() => ({}));
-    if(!res.ok || !data.ok) throw new Error(data.error || 'PSA lookup failed');
+    // Store report: a PSA 403 only ever showed as the bare "PSA API error
+    // 403" -- the Worker route already captures PSA's own response body as
+    // `detail` (the actual reason: an expired token, a permission scope
+    // issue, etc), it just never reached the screen. Surfacing it here is
+    // the difference between "something's wrong" and knowing what to fix.
+    if(!res.ok || !data.ok) throw new Error([data.error || 'PSA lookup failed', data.detail].filter(Boolean).join(' — '));
     const c = data.cert || {};
     const r = qplResults[idx] || {};
     const subject = [c.year,c.brand,c.series,c.subject,c.cardNumber ? '#'+c.cardNumber : ''].filter(Boolean).join(' ');
@@ -37285,6 +37334,21 @@ function renderDrawer(){
 // ══════════════════════════════════════════════════
 let buyList = [];
 let knownBuyTrayIndex = [];
+// Store report: there was no way to flag an item as a graded slab while it
+// was still sitting in the Buy Tray, waiting to be accepted -- the grader/
+// grade/cert# fields only existed on the Edit Item modal, reachable after
+// the item had already become real inventory. This is purely UI-open/close
+// state (which rows currently show the grader/grade/cert inputs), not the
+// grading data itself -- the data lives on the buy-tray item's own grader/
+// grade/cert_number fields (see updateBuyItem), so it survives a re-render
+// and carries straight through into inventory via buyItemToInventoryUpdates
+// once accepted.
+let buyItemGradedRowsOpen = new Set();
+function toggleBuyItemGradedRow(id){
+  if(buyItemGradedRowsOpen.has(id)) buyItemGradedRowsOpen.delete(id);
+  else buyItemGradedRowsOpen.add(id);
+  renderBuyList();
+}
 // Store report: the "Your Offer" total shown while adjusting the % slider
 // didn't always match the amount actually charged at Accept -- the charge
 // re-reads the slider live at that instant instead of using whatever was
@@ -38089,12 +38153,26 @@ function renderBuyList(){
       ? `<select class="buy-tray-cond" title="Researched condition and finish" onchange="updateBuyItem('${i.id}','priceOption',this.value)" ${added ? 'disabled' : ''}>${priceOptions.map(o => `<option value="${escHtml(o.key)}" ${i.selectedBuyPriceKey===o.key?'selected':''}>${escHtml([o.condition, o.finishLabel || qplFinishLabel(o.finish), '$'+Number(o.price||0).toFixed(2)].filter(Boolean).join(' / '))}</option>`).join('')}</select>`
       : `<select class="buy-tray-cond" onchange="updateBuyItem('${i.id}','condition',this.value)" ${added ? 'disabled' : ''}>${['NM','LP','MP','HP','DMG'].map(c => `<option value="${c}" ${String(i.condition||'NM')===c?'selected':''}>${c}</option>`).join('')}</select>`;
     const priceNote = i.manualMarketOverride ? 'Manual market override' : (i.resolvedPricePath || i.priceLabel || i.priceSource || 'Manual price');
+    // Store report: no way existed to mark an item as a graded slab while it
+    // was still sitting in the tray -- only visible once it became real
+    // inventory. buyItemGradedRowsOpen is purely which rows have the inputs
+    // expanded (also auto-expanded once any grading data is already set, so
+    // it's never hidden behind a click); the grader/grade/cert_number values
+    // themselves live on the item and flow straight into inventory via
+    // buyItemToInventoryUpdates once accepted.
+    const gradedOpen = buyItemGradedRowsOpen.has(i.id) || !!(i.grader || i.grade || i.cert_number);
+    const gradedRow = `<label class="buy-tray-graded-toggle"><input type="checkbox" ${gradedOpen?'checked':''} onchange="toggleBuyItemGradedRow('${i.id}')" ${added ? 'disabled' : ''}> 🏆 Graded (PSA/BGS/CGC/SGC/CBCS)</label>${gradedOpen ? `<div class="buy-tray-graded-fields">
+          <input type="text" placeholder="Grader" value="${escHtml(i.grader||'')}" onchange="updateBuyItem('${i.id}','grader',this.value)" ${added ? 'disabled' : ''}>
+          <input type="text" placeholder="Grade" value="${escHtml(i.grade||'')}" onchange="updateBuyItem('${i.id}','grade',this.value)" ${added ? 'disabled' : ''}>
+          <input type="text" placeholder="Cert #" value="${escHtml(i.cert_number||'')}" onchange="updateBuyItem('${i.id}','cert_number',this.value)" ${added ? 'disabled' : ''}>
+        </div>` : ''}`;
     return `<div class="buy-tray-item">
       ${imgEl}
       <div class="buy-tray-info">
         <div class="buy-tray-name">${escHtml(i.name || 'Phone scan')}</div>
         <div class="buy-tray-sub">${escHtml(sub)}</div>
         <div class="buy-tray-price-note">${escHtml(priceNote)}${(i.manualMarketOverride || i.manualOfferOverride) ? ` · <button class="buy-tray-reset" onclick="resetBuyItemPricing('${i.id}')">reset researched price</button>` : ''}</div>
+        ${gradedRow}
         ${err}
       </div>
       ${conditionControl}
@@ -38265,7 +38343,12 @@ function buyItemToInventoryUpdates(item){
     manufacturer:item.manufacturer || '',
     publisher:item.publisher || '',
     issue:item.issue || '',
-    grading_company:item.grading_company || '',
+    // Store report: 'grading_company' was never a real field anywhere else
+    // in the app -- the Edit Item modal's own grading fields save as
+    // 'grader' (see readEditGradingFields), so even a buy-tray item that
+    // had grading data set had it silently dropped right here on the way
+    // into inventory, since nothing was ever writing 'grading_company'.
+    grader:item.grader || '',
     grade:item.grade || '',
     cert_number:item.cert_number || '',
     // Explicit, rather than relying on createInventoryRecord's ...item spread
@@ -44328,7 +44411,7 @@ async function toppsLoadParallels(cardId){
   window.__arscaCloseModal = closeModal;
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.09.01.12-bundle-ebay-description" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.09.01.13-slab-grading-capture" defer></script>
 </body>
 </html>
 
