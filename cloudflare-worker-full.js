@@ -6218,13 +6218,27 @@ export default {
       if (host !== 'pricecharting.com' && host !== 'sportscardspro.com') {
         return json({ ok: false, error: 'Only pricecharting.com or sportscardspro.com product page URLs are supported' }, 400);
       }
-      const pathMatch = parsed.pathname.match(/^\/game\/([^/]+)\/([^/]+)/);
-      if (!pathMatch) return json({ ok: false, error: 'That doesn\'t look like a product page URL (expected .../game/<console>/<product>)' }, 400);
-      const [, consoleSlug, productSlug] = pathMatch;
+      // Store report: 100+ sports cards already have SportsCardsPro's OTHER
+      // valid product-page shape saved -- a short permalink of just
+      // .../game/<numeric-id> with no console/product slug (it resolves to
+      // the same real product page when opened in a browser; SportsCardsPro
+      // serves both shapes). The slug-only regex below rejected every one
+      // of them with a 400, even though the pasted link was genuinely a
+      // working product page. Recognized as its own case rather than
+      // folded into the slug regex, since it needs a different scrape URL
+      // (no slug to build one from) and already carries its own numeric id
+      // with no need to scrape the page for it.
+      const slugMatch = parsed.pathname.match(/^\/game\/([^/]+)\/([^/]+)/);
+      const shortIdMatch = !slugMatch ? parsed.pathname.match(/^\/game\/(\d+)\/?$/) : null;
+      if (!slugMatch && !shortIdMatch) return json({ ok: false, error: 'That doesn\'t look like a product page URL (expected .../game/<console>/<product> or .../game/<id>)' }, 400);
+      const [, consoleSlug, productSlug] = slugMatch || [];
+      const scrapeUrl = slugMatch
+        ? `https://www.sportscardspro.com/game/${consoleSlug}/${productSlug}`
+        : `https://www.sportscardspro.com/game/${shortIdMatch[1]}`;
 
-      let imageUrl = null, cardNumber = '', printRun = '', priceChartingId = '';
+      let imageUrl = null, cardNumber = '', printRun = '', priceChartingId = shortIdMatch ? shortIdMatch[1] : '';
       try {
-        const scpRes = await fetch(`https://www.sportscardspro.com/game/${consoleSlug}/${productSlug}`, {
+        const scpRes = await fetch(scrapeUrl, {
           headers: {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
             'Accept': 'text/html,application/xhtml+xml',
@@ -6240,8 +6254,10 @@ export default {
           if (cardNumMatch) cardNumber = cardNumMatch[1].replace(/^#/, '');
           const printRunMatch = html.match(/Print Run[^>]*>\s*(?:<[^>]+>\s*)*\/?\s*(\d{1,4})/i);
           if (printRunMatch) printRun = printRunMatch[1];
-          const idMatch = html.match(/PriceCharting ID[^>]*>\s*(?:<[^>]+>\s*)*(\d{2,10})/i);
-          if (idMatch) priceChartingId = idMatch[1];
+          if (!priceChartingId) {
+            const idMatch = html.match(/PriceCharting ID[^>]*>\s*(?:<[^>]+>\s*)*(\d{2,10})/i);
+            if (idMatch) priceChartingId = idMatch[1];
+          }
         }
       } catch (_) {}
 
@@ -6274,8 +6290,10 @@ export default {
       // Falls back to a humanized version of the URL's own slug when the id
       // lookup didn't pan out (no id found on the page, or no PriceCharting
       // token configured) -- still usable, just without a confirmed price.
+      // The short-id form has no slug to humanize, so it falls back to
+      // labeling itself by the id instead of coming back completely blank.
       const humanize = s => String(s || '').replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-      if (!productName) productName = humanize(productSlug);
+      if (!productName) productName = productSlug ? humanize(productSlug) : (priceChartingId ? 'PriceCharting #' + priceChartingId : '');
       if (!consoleName) consoleName = humanize(consoleSlug);
 
       return json({
