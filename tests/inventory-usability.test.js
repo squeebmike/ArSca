@@ -27,5 +27,9 @@ assert.match(dashboard,/function inventoryAgingBuckets/, 'inventory aging needs 
 assert.match(dashboard,/id="inventory-aging-panel"/, 'inventory aging report needs a mounted panel');
 assert.match(dashboard,/function renderInventoryAgingPanel/, 'inventory aging report needs a render function');
 assert.match(dashboard,/renderInventoryAgingPanel\(\);\s*renderTable\(\);/, 'inventory aging report must refresh whenever the table filters/re-renders');
-assert.match(dashboard,/activeF==='age_0_30'\|\|activeF==='age_31_90'\|\|activeF==='age_91_180'\|\|activeF==='age_181_plus'/, 'aging buckets must be filterable from the inventory table');
+// Aging buckets are now their own independently-combinable filter group
+// (see the multi-select filter rework) instead of a branch on the old
+// shared activeF -- inventoryMatchesAge is the successor predicate.
+assert.match(dashboard,/function inventoryMatchesAge\(i, age\)\{/, 'aging buckets must be filterable from the inventory table');
+assert.match(dashboard,/return i\.status === 'in_stock' && inventoryAgingBucket\(i\) === age;/, 'aging bucket filter must match the item\'s own computed bucket');
 console.log('Inventory usability contract checks passed');

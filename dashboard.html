@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.09.01.12-bundle-ebay-description">
+<meta name="version" content="2026.09.01.15-inventory-multiselect-filters">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -517,6 +517,9 @@ tr.sold:hover td{opacity:.7;}
 .buy-tray-reset{border:0;background:none;color:var(--blue);font-family:var(--font-mono);font-size:8px;padding:0;cursor:pointer;text-decoration:underline;}
 .buy-tray-name{font-family:var(--font-mono);font-size:11px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .buy-tray-sub{font-family:var(--font-mono);font-size:8px;color:var(--dim);margin-top:2px;}
+.buy-tray-graded-toggle{display:flex;align-items:center;gap:5px;font-family:var(--font-mono);font-size:8px;color:var(--gold);margin-top:5px;cursor:pointer;}
+.buy-tray-graded-fields{display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;margin-top:4px;}
+.buy-tray-graded-fields input{width:100%;box-sizing:border-box;background:var(--surf);border:1px solid var(--border);color:var(--text);padding:5px 4px;border-radius:5px;font-size:9px;font-family:monospace;}
 .buy-tray-cond{width:70px;background:var(--surf);border:1px solid var(--border);color:var(--text);padding:5px 4px;border-radius:5px;font-size:10px;font-family:monospace;}
 .buy-tray-mkt{width:80px;background:var(--surf);border:1px solid var(--border);color:var(--text);padding:5px;border-radius:5px;font-size:10px;font-family:monospace;}
 .buy-tray-offer-val{font-family:'Orbitron',monospace;font-size:12px;font-weight:700;color:var(--gold);text-align:right;white-space:nowrap;}
@@ -955,6 +958,8 @@ body.show-mode .show-mode-toggle { border-color:rgba(0,255,179,.4); color:var(--
 }
 .inv-filter-toggle{display:none;}
 .inv-filter-chips{display:flex;}
+.inv-filter-group-label{font-family:var(--font-mono);font-size:8px;color:var(--dim);letter-spacing:1.5px;align-self:center;margin-right:2px;}
+.inv-filter-group-label:not(:first-child){margin-left:8px;}
 @media(max-width:640px){
   .inv-filter-toggle{display:inline-flex!important;align-items:center;}
   .inv-filter-toggle.active{border-color:rgba(0,255,179,.5);color:var(--g);}
@@ -1628,15 +1633,15 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.09.01.12-bundle-ebay-description" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.09.01.12-bundle-ebay-description" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.09.01.12-bundle-ebay-description" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.09.01.12-bundle-ebay-description" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.09.01.12-bundle-ebay-description" defer></script>
-<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.09.01.12-bundle-ebay-description" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.09.01.12-bundle-ebay-description" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.09.01.12-bundle-ebay-description" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.09.01.12-bundle-ebay-description" defer></script>
+<script src="scripts/query-routing.js?v=2026.09.01.15-inventory-multiselect-filters" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.09.01.15-inventory-multiselect-filters" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.09.01.15-inventory-multiselect-filters" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.09.01.15-inventory-multiselect-filters" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.09.01.15-inventory-multiselect-filters" defer></script>
+<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.09.01.15-inventory-multiselect-filters" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.09.01.15-inventory-multiselect-filters" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.09.01.15-inventory-multiselect-filters" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.09.01.15-inventory-multiselect-filters" defer></script>
 </head>
 <body>
 
@@ -1665,11 +1670,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.09.01.12-bundle-ebay-description</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.09.01.15-inventory-multiselect-filters</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.09.01.12-bundle-ebay-description</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.09.01.15-inventory-multiselect-filters</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1687,7 +1692,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.09.01.12-bundle-ebay-description</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.09.01.15-inventory-multiselect-filters</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -1766,7 +1771,7 @@ body.show-mode .inv-sync-badge{display:none;}
 
   <div class="two">
     <div class="panel">
-      <div class="ph">TOP VALUE IN STOCK <a class="ph-action" onclick="filterAndSwitch('in_stock')">View all →</a></div>
+      <div class="ph">TOP VALUE IN STOCK <a class="ph-action" onclick="filterAndSwitch('status','in_stock')">View all →</a></div>
       <div id="top-val"></div>
     </div>
     <div class="panel">
@@ -1807,42 +1812,61 @@ body.show-mode .inv-sync-badge{display:none;}
     <button class="fb inv-filter-toggle" onclick="toggleInvFilters()" id="inv-filter-toggle-btn">☰ FILTERS</button>
     <span id="tbl-count" style="font-family:var(--font-mono);font-size:9px;color:var(--dim);margin-left:4px" class="inv-count-desktop"></span>
   </div>
+  <!-- Store report: every chip here (status, category, listing state, grading,
+       and quality flags) used to share ONE single-select slot -- picking
+       "Sold" cleared "Comics", picking "Graded" (the wheel's pseudo-category)
+       cleared "Sold", etc, so only ever one filter could be active no matter
+       how unrelated the two actually were. Each group below now has its own
+       independent selection (see filterState / inventoryMatches* in JS) and
+       combines with every other group via AND, so "Sold" + "Comics" +
+       "Graded" can all be active together. Comic Raw/Comic Slabbed (the old
+       comic-only chips) are gone -- they're now just Category=Comic combined
+       with the new Grading group, so picking both achieves the same result
+       without a redundant dedicated chip. -->
   <div class="tc inv-filter-chips" id="inv-filter-chips">
-    <button class="fb" onclick="setF('all',this)">All</button>
-    <button class="fb on" onclick="setF('in_stock',this)">In Stock</button>
-    <button class="fb" onclick="setF('sold',this)">Sold</button>
-    <button class="fb" onclick="setF('archived',this)">Archived</button>
-    <button class="fb" onclick="setF('at_show',this)">At Show</button>
-    <button class="fb" onclick="setF('hold',this)">On Hold</button>
-    <button class="fb" onclick="setF('listed_online',this)">Listed</button>
-    <button class="fb" onclick="setF('not_listed',this)">Not Listed</button>
-    <button class="fb" onclick="setF('no_photo',this)">No Photo</button>
-    <button class="fb" onclick="setF('no_config',this)">No Product Type</button>
-    <button class="fb" onclick="setF('no_cost',this)">No Cost</button>
-    <button class="fb" onclick="setF('no_market',this)">No Market</button>
-    <button class="fb" onclick="setF('stale_price',this)">Stale Price</button>
-    <button class="fb" onclick="setF('below_cost',this)">Below Cost</button>
-    <button class="fb" onclick="setF('pulled_ebay',this)">Pulled</button>
+    <span class="inv-filter-group-label">STATUS</span>
+    <button class="fb" data-filter-group="status" onclick="setF('status','all',this)">All</button>
+    <button class="fb on" data-filter-group="status" onclick="setF('status','in_stock',this)">In Stock</button>
+    <button class="fb" data-filter-group="status" onclick="setF('status','sold',this)">Sold</button>
+    <button class="fb" data-filter-group="status" onclick="setF('status','archived',this)">Archived</button>
+    <button class="fb" data-filter-group="status" onclick="setF('status','at_show',this)">At Show</button>
+    <button class="fb" data-filter-group="status" onclick="setF('status','hold',this)">On Hold</button>
+    <button class="fb" data-filter-group="status" onclick="setF('status','pulled_ebay',this)">Pulled</button>
     <div class="inv-cat-wheel" id="inv-cat-wheel" role="listbox" aria-label="Category">
       <div class="inv-cat-wheel-highlight"></div>
       <div class="inv-cat-wheel-track" id="inv-cat-wheel-track" onscroll="handleInvCatWheelScroll()">
         <div class="inv-cat-wheel-pad" aria-hidden="true"></div>
-        <button class="fb inv-cat-wheel-item" onclick="invCatWheelSelect(this,'all')" role="option">🗂 All</button>
-        <button class="fb inv-cat-wheel-item" onclick="invCatWheelSelect(this,'Sports')" role="option">⚾ Sports</button>
-        <button class="fb inv-cat-wheel-item" onclick="invCatWheelSelect(this,'Pokemon TCG')" role="option">🎴 Pokemon</button>
-        <button class="fb inv-cat-wheel-item" onclick="invCatWheelSelect(this,'Magic: The Gathering')" role="option">🎴 MTG</button>
-        <button class="fb inv-cat-wheel-item" onclick="invCatWheelSelect(this,'Comic')" role="option">📖 Comics</button>
-        <button class="fb inv-cat-wheel-item" onclick="invCatWheelSelect(this,'Graded')" role="option">🏆 Graded</button>
-        <button class="fb inv-cat-wheel-item" onclick="invCatWheelSelect(this,'Collectibles')" role="option">🏷 Collectibles</button>
+        <button class="fb inv-cat-wheel-item" data-filter-group="category" onclick="invCatWheelSelect(this,'cat_all')" role="option">🗂 All</button>
+        <button class="fb inv-cat-wheel-item" data-filter-group="category" onclick="invCatWheelSelect(this,'Sports')" role="option">⚾ Sports</button>
+        <button class="fb inv-cat-wheel-item" data-filter-group="category" onclick="invCatWheelSelect(this,'Pokemon TCG')" role="option">🎴 Pokemon</button>
+        <button class="fb inv-cat-wheel-item" data-filter-group="category" onclick="invCatWheelSelect(this,'Magic: The Gathering')" role="option">🎴 MTG</button>
+        <button class="fb inv-cat-wheel-item" data-filter-group="category" onclick="invCatWheelSelect(this,'Comic')" role="option">📖 Comics</button>
+        <button class="fb inv-cat-wheel-item" data-filter-group="category" onclick="invCatWheelSelect(this,'Collectibles')" role="option">🏷 Collectibles</button>
         <div class="inv-cat-wheel-pad" aria-hidden="true"></div>
       </div>
     </div>
   </div>
-  <div class="tc inv-filter-chips" aria-label="Comic inventory filters">
-    <button class="fb" onclick="setF('comic_raw',this)">Comic Raw</button>
-    <button class="fb" onclick="setF('comic_slabbed',this)">Comic Slabbed</button>
-    <button class="fb" onclick="setF('needs_cover',this)">Needs Cover Check</button>
-    <button class="fb" onclick="setF('high_value',this)">High Value</button>
+  <div class="tc inv-filter-chips" aria-label="Listing and grading filters">
+    <span class="inv-filter-group-label">LISTING</span>
+    <button class="fb on" data-filter-group="listing" onclick="setF('listing','all',this)">All</button>
+    <button class="fb" data-filter-group="listing" onclick="setF('listing','listed_online',this)">Listed</button>
+    <button class="fb" data-filter-group="listing" onclick="setF('listing','not_listed',this)">Not Listed</button>
+    <span class="inv-filter-group-label">GRADING</span>
+    <button class="fb on" data-filter-group="grading" onclick="setF('grading','all',this)">All</button>
+    <button class="fb" data-filter-group="grading" onclick="setF('grading','graded',this)">Graded</button>
+    <button class="fb" data-filter-group="grading" onclick="setF('grading','ungraded',this)">Ungraded</button>
+  </div>
+  <div class="tc inv-filter-chips" aria-label="Inventory quality filters">
+    <span class="inv-filter-group-label">FLAGS</span>
+    <button class="fb on" data-filter-group="flag" onclick="setF('flag','all',this)">All</button>
+    <button class="fb" data-filter-group="flag" onclick="setF('flag','no_photo',this)">No Photo</button>
+    <button class="fb" data-filter-group="flag" onclick="setF('flag','no_config',this)">No Product Type</button>
+    <button class="fb" data-filter-group="flag" onclick="setF('flag','no_cost',this)">No Cost</button>
+    <button class="fb" data-filter-group="flag" onclick="setF('flag','no_market',this)">No Market</button>
+    <button class="fb" data-filter-group="flag" onclick="setF('flag','stale_price',this)">Stale Price</button>
+    <button class="fb" data-filter-group="flag" onclick="setF('flag','below_cost',this)">Below Cost</button>
+    <button class="fb" data-filter-group="flag" onclick="setF('flag','high_value',this)">High Value</button>
+    <button class="fb" data-filter-group="flag" onclick="setF('flag','needs_cover',this)">Needs Cover Check</button>
     <select class="tsi" aria-label="Sort comic inventory" onchange="setComicInventorySort(this.value)"><option value="name">Sort: title</option><option value="issueNumber">Issue number</option><option value="market">Market value</option><option value="numericGrade">Grade</option><option value="lastPriceUpdate">Last updated</option><option value="cost">Cost</option><option value="location">Location</option></select>
   </div>
   <div id="inventory-health-panel"></div>
@@ -2775,6 +2799,17 @@ body.show-mode .inv-sync-badge{display:none;}
             <option value="tiny">Tiny</option><option value="small">Small</option><option value="medium" selected>Medium</option><option value="large">Large</option><option value="oversize">Oversize</option>
           </select></div>
 
+        <div style="margin-top:8px;border-top:1px solid var(--border);padding-top:8px">
+          <label style="display:flex;align-items:center;gap:6px;font-family:var(--font-mono);font-size:9px;color:var(--dim);cursor:pointer">
+            <input type="checkbox" id="scout-is-graded" onchange="toggleScoutGradedRow()"> 🏆 This item is professionally graded (PSA/BGS/CGC/SGC/CBCS)
+          </label>
+          <div id="scout-graded-row" style="display:none;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:8px">
+            <input id="scout-grader" placeholder="Grader" style="width:100%;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:9px;border-radius:6px;box-sizing:border-box;font-size:12px">
+            <input id="scout-grade" placeholder="Grade (e.g. 9.5)" style="width:100%;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:9px;border-radius:6px;box-sizing:border-box;font-size:12px">
+            <input id="scout-cert" placeholder="Cert #" style="width:100%;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:9px;border-radius:6px;box-sizing:border-box;font-size:12px">
+          </div>
+        </div>
+
         <div id="scout-profit-breakdown" style="font-family:var(--font-mono);font-size:10px;color:var(--dim);line-height:1.8;margin-top:12px"></div>
 
         <div id="scout-decision-badge" style="text-align:center;font-family:'Orbitron',monospace;font-size:18px;font-weight:900;padding:12px;border-radius:8px;margin-top:12px"></div>
@@ -2863,6 +2898,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div id="checkout-offline-banner" class="offline-queued-banner">OFFLINE QUEUED: payment was confirmed, and the complete transaction bundle is waiting to sync.</div>
     <div class="dealer-checkout-panel" id="dealer-cart-tools" style="margin-bottom:14px">
       <div class="ph">DEALER CHECKOUT PANEL <span style="font-size:9px;color:var(--dim)">private controls</span></div>
+      <button class="hbtn" onclick="openCartScanModal()" style="margin-bottom:10px" title="Scan a printed shelf/price label's barcode or QR code to add that exact item to the active cart">📷 SCAN TO CART</button>
       <div id="dealer-checkout-state" class="checkout-state-strip"></div>
       <div id="dealer-cart-lines" style="display:grid;gap:8px;font-family:var(--font-mono);font-size:10px;color:var(--dim)"></div>
       <div id="dealer-cart-total" class="dealer-total"></div>
@@ -3705,7 +3741,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.09.01.12-bundle-ebay-description';
+const APP_VERSION = '2026.09.01.15-inventory-multiselect-filters';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -4962,7 +4998,17 @@ function dealerItemFromResearchResult(r = {}, source = 'research'){
   return item;
 }
 // Show Operations v1: default Inventory view to "In Stock" so Sold items don't clutter the floor view
-let all=[], filtered=[], activeF='in_stock', activeTab='overview', soldData=[];
+let all=[], filtered=[], activeTab='overview', soldData=[];
+// Store report: every Inventory filter chip (status, category, listing
+// state, grading, quality flags) used to share ONE single-select value
+// (activeF) -- picking "Sold" cleared "Comics", picking the category
+// wheel's "Graded" pseudo-category cleared "Sold", etc. filterState splits
+// these into independent groups that combine via AND (see filterTable),
+// so e.g. Status=Sold + Category=Comic + Grading=Graded can all be active
+// together. 'all' is each group's own neutral/no-restriction value --
+// distinct per group (status 'all' vs category 'cat_all') since they used
+// to collide when there was only one shared slot.
+let filterState = { status:'in_stock', category:'cat_all', listing:'all', grading:'all', flag:'all', age:'all' };
 // Gate for background polling intervals: skips the network call outright
 // when the browser tab is backgrounded (document.hidden), and optionally
 // when the app isn't even showing the one dashboard tab that data is for --
@@ -5044,6 +5090,23 @@ const LIFECYCLE_LABELS = {
   lost_damaged: 'Lost/damaged',
   archived: 'Archived',
 };
+// Store report: an item flagged On Hold or At Show read exactly like a
+// normal, fully-sellable in-stock item -- both renderTable and
+// renderCardView only ever checked i.status==='in_stock' to decide
+// availability/fade/ADD TO CART, never i.lifecycle, and neither hold nor
+// at_show flips status away from 'in_stock'. So a hold item showed bright,
+// badged "IN STOCK", with a working ADD TO CART button -- indistinguishable
+// from genuinely available stock, which is a real risk (staff could
+// accidentally sell something that's actually on hold for someone else).
+// One shared helper for both renderers so this can't drift out of sync
+// between them again.
+function inventoryRowAvailability(i){
+  if(i.status !== 'in_stock') return { available:false, label: i.status==='bundled' ? 'IN BUNDLE' : ('SOLD'+(i.channel?' · '+i.channel:'')), color: i.status==='bundled' ? 'var(--gold)' : 'var(--dim)' };
+  if(i.lifecycle === 'hold') return { available:false, label:'ON HOLD', color:'var(--gold)' };
+  if(i.lifecycle === 'at_show') return { available:false, label:'AT SHOW', color:'var(--gold)' };
+  if(i.lifecycle === 'pulled_ebay') return { available:false, label:'PULLED', color:'var(--gold)' };
+  return { available:true, label:'IN STOCK', color:'var(--g)' };
+}
 
 function escHtml(v){
   return String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -8123,9 +8186,6 @@ function renderInventoryCategoryFilters(){
   const configured = getInventoryCategories();
   wheelTrack.querySelectorAll('.fb').forEach(btn => {
     const txt = btn.textContent.replace(/[^\w\s-]/g,'').trim().toLowerCase();
-    // "Graded" is intentionally excluded here -- it's a cross-category
-    // attribute now (any item can be graded regardless of category), not a
-    // configurable category, so that filter button always stays visible.
     const map = { sports:'Sports', tcg:'TCG', comics:'Comic', collectibles:'Collectibles' };
     const key = Object.keys(map).find(k => txt.includes(k));
     if(key) btn.style.display = configured.includes(map[key]) ? '' : 'none';
@@ -8137,6 +8197,7 @@ function renderInventoryCategoryFilters(){
     const btn = document.createElement('button');
     btn.className = 'fb inv-cat-wheel-item vendor-cat-filter';
     btn.setAttribute('role','option');
+    btn.setAttribute('data-filter-group','category');
     btn.textContent = cat;
     btn.onclick = function(){ invCatWheelSelect(btn, cat); };
     wheelTrack.insertBefore(btn, lastPad);
@@ -11020,7 +11081,8 @@ function renderCardView(){
     return;
   }
   grid.innerHTML = rows.map(i => {
-    const ins = i.status === 'in_stock';
+    const rowAvail = inventoryRowAvailability(i);
+    const ins = rowAvail.available;
     const thumb = inventoryImageUrl(i);
     const money = inventoryProfitStats(i);
     const imgEl = thumb
@@ -11045,7 +11107,7 @@ function renderCardView(){
         <div class="inv-card-meta">${inventoryImageSourceLabel(i)}${inventoryIsPriceStale(i) ? ' · stale price' : ''}</div>
         ${i.qty > 1 ? `<div class="inv-card-meta" style="color:var(--g)">Qty: ${i.qty}</div>` : ''}
         <div class="inv-card-actions">
-          ${ins ? `<button class="rab rab-cart" onclick="dashAddToCart('${i.id}')">ADD TO CART</button>` : '<div style="grid-column:1/-1;text-align:center;font-family:monospace;font-size:10px;color:var(--dim);padding:8px">SOLD</div>'}
+          ${ins ? `<button class="rab rab-cart" onclick="dashAddToCart('${i.id}')">ADD TO CART</button>` : `<div style="grid-column:1/-1;text-align:center;font-family:monospace;font-size:10px;color:${rowAvail.color};padding:8px">${rowAvail.label}</div>`}
           <button class="rab rab-edit" onclick="openEditModal('${i.id}')">EDIT</button>
           ${ins ? `<button class="rab" onclick="openEbayFromDash('${i.id}')" style="border-color:rgba(255,209,102,.3);color:var(--gold);font-size:10px;min-height:36px">${i.ebayListingId?'📦 MANAGE EBAY':'📦 LIST EBAY'}</button>` : ''}
           <button class="rab" onclick="openInventoryItemInResearch('${i.id}')" style="${ins?'':'grid-column:1/-1;'}border-color:rgba(0,160,255,.3);color:var(--blue);font-size:10px;min-height:36px">🔍 RESEARCH</button>
@@ -16286,7 +16348,7 @@ function renderCats(){
       const catCost=items.reduce((a,i)=>a+(i.cost||0)*(i.qty||1),0);
       const catSellVal=items.reduce((a,i)=>a+inventoryListPrice(i)*(i.qty||1),0);
       const catPotentialRoi=catCost>0?((catSellVal-catCost)/catCost*100):0;
-      return `<div class="cp" onclick="filterAndSwitch('${escHtml(c)}')">
+      return `<div class="cp" onclick="filterAndSwitch('category','${escHtml(c)}')">
         <div class="cp-n">${escHtml(c).toUpperCase()}</div>
         <div class="cp-v">${items.length}</div>
         <div class="cp-s">${f$(vals[idx])} value</div>
@@ -16452,23 +16514,37 @@ function srt(col){
 }
 // Mobile inventory filter drawer toggle — purely presentational, no filter logic change.
 function toggleInvFilters(){
-  const el = document.getElementById('inv-filter-chips');
+  // Store report (found while splitting the filters into groups): this only
+  // ever toggled the FIRST .inv-filter-chips row by id -- on mobile, every
+  // other filter row (there are now three: status+category, listing+
+  // grading, quality flags) stayed permanently hidden behind the FILTERS
+  // button no matter how many times it was tapped, since only that one row
+  // ever got the .on class that reveals it.
+  const rows = document.querySelectorAll('.inv-filter-chips');
   const btn = document.getElementById('inv-filter-toggle-btn');
-  if(!el) return;
-  const on = el.classList.toggle('on');
+  if(!rows.length) return;
+  const on = !rows[0].classList.contains('on');
+  rows.forEach(el => el.classList.toggle('on', on));
   if(btn) btn.classList.toggle('active', on);
 }
 
-function setF(f,btn){
-  activeF=f; page=1;
-  document.querySelectorAll('.fb').forEach(b=>b.classList.remove('on'));
-  btn.classList.add('on');
+// group is one of 'status'|'category'|'listing'|'grading'|'flag'|'age' (see
+// filterState). Only clears/highlights chips within that SAME group, not
+// every .fb on the page -- that's the actual fix: picking a new value in
+// one group no longer resets any other group's selection.
+function setF(group,value,btn){
+  filterState[group]=value; page=1;
+  document.querySelectorAll('.fb[data-filter-group="'+group+'"]').forEach(b=>b.classList.remove('on'));
+  // btn is omitted when set programmatically (filterAndSwitch, health/aging
+  // panel click-throughs) -- fall back to finding the matching chip by its
+  // own onclick value so the right one still highlights.
+  const target = btn || [...document.querySelectorAll('.fb[data-filter-group="'+group+'"]')].find(b=>String(b.getAttribute('onclick')||'').includes("'"+value+"'"));
+  if(target) target.classList.add('on');
   filterTable();
 }
-function filterAndSwitch(f){
+function filterAndSwitch(group,f){
   switchTab('inventory', document.querySelector('.tab:nth-child(2)'));
-  const btn = [...document.querySelectorAll('.fb')].find(b=>b.textContent.includes(f));
-  if(btn) setF(f, btn);
+  setF(group, f);
 }
 
 // Search results get their imageUrl swapped for a URL.createObjectURL(blob)
@@ -16671,7 +16747,7 @@ function renderInventoryAgingPanel(){
     <div class="inv-health-grid">${order.map(key=>{
       const b = buckets[key];
       const isOld = key === 'age_181_plus';
-      return `<div class="inv-health-card" style="${isOld && b.count ? 'border-color:rgba(255,77,109,.4)' : ''}" onclick="setInventoryHealthFilter('${key}')">
+      return `<div class="inv-health-card" style="${isOld && b.count ? 'border-color:rgba(255,77,109,.4)' : ''}" onclick="setInventoryHealthFilter('age','${key}')">
         <div class="inv-health-label">${b.label}</div>
         <div class="inv-health-value" style="${isOld && b.count ? 'color:var(--red)' : ''}">${b.count}</div>
         <div class="inv-health-sub">${fd$(b.value)} at list</div>
@@ -16806,10 +16882,8 @@ async function backfillBogusSportsCategory(){
   renderInventoryHealthPanel();
   renderInventoryCategoryFilters();
 }
-function setInventoryHealthFilter(filter){
-  const btn = [...document.querySelectorAll('.fb')].find(b=>String(b.getAttribute('onclick')||'').includes("'" + filter + "'"));
-  if(btn) setF(filter, btn);
-  else { activeF = filter; page = 1; filterTable(); }
+function setInventoryHealthFilter(group, filter){
+  setF(group, filter);
 }
 function renderInventoryHealthPanel(){
   const el = document.getElementById('inventory-health-panel');
@@ -16846,7 +16920,7 @@ function renderInventoryHealthPanel(){
   el.innerHTML = `<details class="inv-health-details" ${wasOpen ? 'open' : ''}>
     <summary>INVENTORY HEALTH <span class="inv-health-details-hint">${flagged} flagged</span></summary>
     <div class="inv-health-grid">${cards.map(([f,l,v,s,action])=>`
-      <div class="inv-health-card" onclick="${action || `setInventoryHealthFilter('${f}')`}">
+      <div class="inv-health-card" onclick="${action || `setInventoryHealthFilter('${(f==='not_listed'||f==='listed_online')?'listing':'flag'}','${f}')`}">
         <div class="inv-health-label">${l}</div>
         <div class="inv-health-value">${v}</div>
         <div class="inv-health-sub">${s}</div>
@@ -16901,7 +16975,7 @@ function renderOwnerAnalyticsPanel(){
       <div class="owner-metric-card"><div class="owner-metric-label">Inventory Value</div><div class="owner-metric-value">${fd$(d.value)}</div><div class="owner-metric-sub">Cost ${fd$(d.cost)} · unrealized ${fd$(d.unrealized)}</div></div>
       <div class="owner-metric-card"><div class="owner-metric-label">Today Sales</div><div class="owner-metric-value">${fd$(d.revenueToday)}</div><div class="owner-metric-sub">${d.salesToday.length} sold · profit ${fd$(d.profitToday)}</div></div>
       <div class="owner-metric-card"><div class="owner-metric-label">Month Sales</div><div class="owner-metric-value">${fd$(d.revenueMonth)}</div><div class="owner-metric-sub">${d.salesMonth.length} sold · profit ${fd$(d.profitMonth)}</div></div>
-      <div class="owner-metric-card" onclick="setInventoryHealthFilter('not_listed')"><div class="owner-metric-label">Listing Coverage</div><div class="owner-metric-value">${d.listed}/${d.inv.length}</div><div class="owner-metric-sub">${d.health.notListed} in stock not listed</div></div>
+      <div class="owner-metric-card" onclick="setInventoryHealthFilter('listing','not_listed')"><div class="owner-metric-label">Listing Coverage</div><div class="owner-metric-value">${d.listed}/${d.inv.length}</div><div class="owner-metric-sub">${d.health.notListed} in stock not listed</div></div>
     </div>
     <div class="owner-section-grid">
       <div class="owner-mini-panel"><div class="ph">TOP VALUE</div>${d.topValue.length?d.topValue.map(i=>`<div class="owner-mini-row"><b title="${escHtml(i.name)}">${escHtml(i.name)}</b><span>${fd$(inventoryListPrice(i))}</span></div>`).join(''):'<div class="empty"><div class="empty-t">NONE</div></div>'}</div>
@@ -17270,37 +17344,64 @@ function debounce(fn, waitMs){
 // directly for instant feedback.
 const filterTableDebounced = debounce(filterTable, 200);
 function setComicInventorySort(column){ts2.col=column||'name';ts2.dir=1;page=1;filterTable();}
+// One independent predicate per filter group -- filterTable ANDs all six
+// together instead of the old single if/else chain that could only ever
+// match one activeF value at a time. Each keeps the exact matching logic
+// the old branch used (same fields, same >=/<= thresholds), just split out
+// so it can combine with the other groups instead of excluding them.
+function inventoryMatchesStatus(i, status){
+  const isArchived = i.lifecycle === 'archived' || i.status === 'archived' || !!i.archivedAt;
+  if(status === 'archived') return isArchived;
+  if(isArchived) return false; // archived items only ever show under Status=Archived, same as before
+  if(status === 'all') return true;
+  if(status === 'in_stock') return i.status === 'in_stock';
+  if(status === 'sold') return i.status === 'sold';
+  if(LIFECYCLE_LABELS[status]) return i.lifecycle === status; // at_show / hold / pulled_ebay
+  return true;
+}
+function inventoryMatchesCategory(i, category){
+  return category === 'cat_all' || i.category === category;
+}
+function inventoryMatchesListing(i, listing){
+  if(listing === 'all') return true;
+  if(i.status !== 'in_stock') return false; // listing state was always in-stock-only, same as before
+  return listing === 'listed_online' ? inventoryIsListed(i) : !inventoryIsListed(i);
+}
+function inventoryMatchesGrading(i, grading){
+  if(grading === 'all') return true;
+  const graded = !!(i.grader || i.grade);
+  return grading === 'graded' ? graded : !graded;
+}
+function inventoryMatchesFlag(i, flag){
+  if(flag === 'all') return true;
+  if(flag === 'needs_cover') return qplCategoryKey(i.category)==='comic' && (!inventoryImageUrl(i) || (!i.coverConfirmed && i.coverConfidence!=='confirmed'));
+  if(i.status !== 'in_stock') return false; // every other flag was always in-stock-only, same as before
+  if(flag === 'no_photo') return !inventoryImageUrl(i);
+  if(flag === 'no_config') return !i.configuration;
+  if(flag === 'no_cost') return inventoryCostBasis(i) <= 0;
+  if(flag === 'no_market') return inventoryMarketPrice(i) <= 0;
+  if(flag === 'stale_price') return inventoryIsPriceStale(i);
+  if(flag === 'below_cost') return inventoryProfitStats(i).cost>0 && inventoryProfitStats(i).list>0 && inventoryProfitStats(i).list<inventoryProfitStats(i).cost;
+  if(flag === 'high_value') return inventoryListPrice(i) >= 100;
+  return true;
+}
+function inventoryMatchesAge(i, age){
+  if(age === 'all') return true;
+  return i.status === 'in_stock' && inventoryAgingBucket(i) === age; // age buckets were always in-stock-only, same as before
+}
 function filterTable(){
   const q=(document.getElementById('tbl-q')?.value||'').trim();
   const smartRows = q ? smartSearchLocalItems(q, all, all.length) : [];
   const smartMap = new Map(smartRows.map(r => [r.item.id, r]));
   filtered=all.filter(i=>{
     const mq=!q || smartMap.has(i.id);
-    const isArchived = i.lifecycle === 'archived' || i.status === 'archived' || !!i.archivedAt;
-    if(activeF==='archived') return mq&&isArchived;
-    if(isArchived) return false;
-    if(activeF==='all') return mq;
-    if(activeF==='in_stock') return mq&&i.status==='in_stock';
-    if(activeF==='sold') return mq&&i.status==='sold';
-    if(activeF==='no_photo') return mq&&i.status==='in_stock'&&!inventoryImageUrl(i);
-    if(activeF==='no_config') return mq&&i.status==='in_stock'&&!i.configuration;
-    if(activeF==='no_cost') return mq&&i.status==='in_stock'&&inventoryCostBasis(i)<=0;
-    if(activeF==='no_market') return mq&&i.status==='in_stock'&&inventoryMarketPrice(i)<=0;
-    if(activeF==='stale_price') return mq&&i.status==='in_stock'&&inventoryIsPriceStale(i);
-    if(activeF==='not_listed') return mq&&i.status==='in_stock'&&!inventoryIsListed(i);
-    if(activeF==='listed_online') return mq&&i.status==='in_stock'&&inventoryIsListed(i);
-    if(activeF==='below_cost') return mq&&i.status==='in_stock'&&inventoryProfitStats(i).cost>0&&inventoryProfitStats(i).list>0&&inventoryProfitStats(i).list<inventoryProfitStats(i).cost;
-    if(activeF==='high_value') return mq&&i.status==='in_stock'&&inventoryListPrice(i)>=100;
-    if(activeF==='age_0_30'||activeF==='age_31_90'||activeF==='age_91_180'||activeF==='age_181_plus') return mq&&i.status==='in_stock'&&inventoryAgingBucket(i)===activeF;
-    // Grading is a cross-category attribute (any category can be graded), not
-    // a category of its own -- match on the actual grading fields instead of
-    // requiring category==='Graded'.
-    if(activeF==='Graded') return mq&&!!(i.grader||i.grade);
-    if(activeF==='comic_raw') return mq&&qplCategoryKey(i.category)==='comic'&&!i.isSlabbed;
-    if(activeF==='comic_slabbed') return mq&&qplCategoryKey(i.category)==='comic'&&!!i.isSlabbed;
-    if(activeF==='needs_cover') return mq&&qplCategoryKey(i.category)==='comic'&&(!inventoryImageUrl(i)||(!i.coverConfirmed&&i.coverConfidence!=='confirmed'));
-    if(LIFECYCLE_LABELS[activeF]) return mq&&i.lifecycle===activeF;
-    return mq&&i.category===activeF;
+    return mq
+      && inventoryMatchesStatus(i, filterState.status)
+      && inventoryMatchesCategory(i, filterState.category)
+      && inventoryMatchesListing(i, filterState.listing)
+      && inventoryMatchesGrading(i, filterState.grading)
+      && inventoryMatchesFlag(i, filterState.flag)
+      && inventoryMatchesAge(i, filterState.age);
   });
   if(q) {
     filtered.sort((a,b)=>(smartMap.get(b.id)?.score||0)-(smartMap.get(a.id)?.score||0));
@@ -17316,6 +17417,13 @@ function filterTable(){
   renderInventoryHealthPanel();
   renderInventoryAgingPanel();
   renderTable();
+  // Pre-existing gap, fixed while rewriting this filter logic anyway: a
+  // second, later `function renderTable(){...}` declaration in this same
+  // script (this one) wins the binding for the whole file, so an earlier
+  // wrapper meant to also refresh card view after it never actually runs.
+  // Filtering while in card view changed `filtered` but never touched the
+  // visible cards until the user left and came back to the tab.
+  if(typeof _invView !== 'undefined' && _invView === 'cards') renderCardView();
 }
 function renderTable(){
   const start=(page-1)*PER, end=start+PER;
@@ -17327,7 +17435,8 @@ function renderTable(){
     document.getElementById('pager').innerHTML=''; return;
   }
   tb.innerHTML=rows.map(i=>{
-    const ins=i.status==='in_stock';
+    const rowAvail = inventoryRowAvailability(i);
+    const ins = rowAvail.available;
     const money = inventoryProfitStats(i);
     const pft=ins?money.profit:i.profit;
     const ppc=pft>=0?'pp pos':'pp neg';
@@ -17356,7 +17465,7 @@ function renderTable(){
       <td class="pp pm">${money.list>0?fd$(money.list):(money.market>0?fd$(money.market):'—')}<br>${money.list>0&&money.market>0?`<span style="font-family:var(--font-mono);font-size:8px;color:var(--dim)">MKT ${fd$(money.market)}</span><br>`:''}${priceSourceBadge(i.priceSource, i.category)}${stale?'<br><span class="inv-warning-pill">STALE</span>':''}</td>
       <td class="pp pd">${money.cost>0?fd$(money.cost):'<span class="inv-warning-pill">NO COST</span>'}</td>
       <td class="${ppc}">${money.cost>0||i.profit?(pft>=0?'+':'')+fd$(pft)+(money.list>0||money.cost>0?' ('+margin+')':''):'—'}</td>
-      <td><span style="font-family:var(--font-mono);font-size:9px;color:${ins?'var(--g)':(i.status==='bundled'?'var(--gold)':'var(--dim)')}">${ins?'IN STOCK':(i.status==='bundled'?'IN BUNDLE':'SOLD'+(i.channel?' · '+i.channel:''))}</span>${ins&&daysInStock!==null?`<div style="font-family:var(--font-mono);font-size:8px;color:${aged?'var(--red)':'var(--dim)'};margin-top:3px">${daysInStock}d in stock</div>`:''}${aged?'<span class="inv-warning-pill" style="margin-top:3px">AGED</span>':''}</td>
+      <td><span style="font-family:var(--font-mono);font-size:9px;color:${rowAvail.color}">${rowAvail.label}</span>${ins&&daysInStock!==null?`<div style="font-family:var(--font-mono);font-size:8px;color:${aged?'var(--red)':'var(--dim)'};margin-top:3px">${daysInStock}d in stock</div>`:''}${aged?'<span class="inv-warning-pill" style="margin-top:3px">AGED</span>':''}</td>
       <td><div class="row-act-v2">
         ${ins?`<button class="rab rab-cart" onclick="dashAddToCart('${i.id}')">ADD TO CART</button>`:''}
         <button class="rab rab-edit" onclick="openEditModal('${i.id}')">EDIT</button>
@@ -24097,7 +24206,12 @@ async function fetchPsaCertPhotoForEditItem(){
   try {
     const res = await fetch(WORKER + '/psa/cert/' + encodeURIComponent(cert), { cache:'no-store' });
     const data = await res.json().catch(() => ({}));
-    if(!res.ok || !data.ok) throw new Error(data.error || 'PSA lookup failed');
+    // Store report: a PSA 403 only ever showed as the bare "PSA API error
+    // 403" -- the Worker route already captures PSA's own response body as
+    // `detail` (the actual reason: an expired token, a permission scope
+    // issue, etc), it just never reached the screen. Surfacing it here is
+    // the difference between "something's wrong" and knowing what to fix.
+    if(!res.ok || !data.ok) throw new Error([data.error || 'PSA lookup failed', data.detail].filter(Boolean).join(' — '));
     const c = data.cert || {};
     if(!c.photoUrl) { if(statusEl) statusEl.textContent = 'Cert verified, but PSA has no photo on file (PSA only attaches photos to certs graded after Oct 2021).'; return; }
     setInventoryEditPhoto(psaCertPhotoUrl(c.certNumber || cert), 'PSA cert photo');
@@ -26150,9 +26264,14 @@ function jumpToInventoryItem(item){
   closeCartScanModal();
   const search=document.getElementById('tbl-q');
   if(search) search.value=item.name||'';
-  activeF='all';
-  document.querySelectorAll('.inv-filter-chips .fb').forEach(b=>{
-    b.classList.toggle('on', b.getAttribute('onclick')?.includes("setF('all'"));
+  // Guarantee the target item is actually visible regardless of whatever
+  // combination of filters was active -- every group resets to its own
+  // neutral "no restriction" value (status:'all', not the usual default
+  // 'in_stock', since the found item might be sold/archived/etc).
+  filterState = { status:'all', category:'cat_all', listing:'all', grading:'all', flag:'all', age:'all' };
+  document.querySelectorAll('.inv-filter-chips .fb, .inv-cat-wheel-item').forEach(b=>{
+    const oc = String(b.getAttribute('onclick')||'');
+    b.classList.toggle('on', oc.includes(",'all',") || oc.includes("'cat_all'"));
   });
   page=1;
   filterTable();
@@ -26380,6 +26499,29 @@ function scoutResetSessionFields(){
   const compEl = document.getElementById('scout-comp-price'); if(compEl) compEl.value = '';
   const conditionEl = document.getElementById('scout-condition'); if(conditionEl) conditionEl.value = 'Excellent';
   const sizeEl = document.getElementById('scout-size'); if(sizeEl) sizeEl.value = 'medium';
+  ['scout-grader','scout-grade','scout-cert'].forEach(k => { const el = document.getElementById(k); if(el) el.value = ''; });
+  const gradedCheckbox = document.getElementById('scout-is-graded'); if(gradedCheckbox) gradedCheckbox.checked = false;
+  toggleScoutGradedRow();
+}
+// Store report: no way existed to flag an item as a graded slab from Pocket
+// Scout at all -- neither BUY + ADD INVENTORY (immediate) nor SEND TO BUY
+// TAB (queued) ever captured grader/grade/cert#, so every card scouted this
+// way landed in inventory ungraded no matter what it actually was. Mirrors
+// the same checkbox-reveals-3-fields pattern already used by the manual
+// Add Inventory form (built-is-graded) and the Edit Item modal
+// (edit-is-graded), so it behaves the same way everywhere it appears.
+function toggleScoutGradedRow(){
+  const on = document.getElementById('scout-is-graded')?.checked;
+  const row = document.getElementById('scout-graded-row');
+  if(row) row.style.display = on ? 'grid' : 'none';
+}
+function readScoutGradingFields(){
+  const graded = document.getElementById('scout-is-graded')?.checked;
+  return {
+    grader: graded ? (document.getElementById('scout-grader')?.value.trim() || '') : '',
+    grade: graded ? (document.getElementById('scout-grade')?.value.trim() || '') : '',
+    cert_number: graded ? (document.getElementById('scout-cert')?.value.trim() || '') : '',
+  };
 }
 
 function scoutNewItem(){
@@ -26947,6 +27089,7 @@ async function scoutBuyAddInventory(){
       sourceVariantId: match?.variantId || match?.productConditionId || '',
       tcgplayerSkuId: match?.tcgplayerSkuId || match?.skuId || '', tcgPlayerId: match?.tcgPlayerId || match?.tcgplayerId || '', tcgPlayerUrl: match?.tcgPlayerUrl || '',
       condition, cost: price, market: Number(document.getElementById('scout-comp-price')?.value) || match?.market || result?.expectedSale || null, sku, quantity:1, qty:1,
+      ...readScoutGradingFields(),
       // The operator's own photo of the actual physical item is the real
       // inventory image -- the catalog match's stock photo is only useful
       // while confirming identity, not as what gets listed for sale.
@@ -27011,6 +27154,7 @@ function scoutSendToBuyTab(){
     priceSource: match ? (match.priceSource||match.source||'catalog_match') : 'pocket_scout',
     pricingSource: match ? 'PriceCharting/TCGPlayer' : 'Pocket Scout',
     condition, category, subcategory: identity.subcategory||'',
+    ...readScoutGradingFields(),
     brand: identity.brand||'', manufacturer: identity.manufacturer||'', model: identity.model||identity.modelNumber||'',
     year: identity.year||'', variant: match?.variant || identity.variant||'', edition: identity.edition||'',
     upc: identity.upc||'', ean: identity.ean||'', isbn: identity.isbn||'', mpn: identity.mpn||'',
@@ -34047,7 +34191,7 @@ function handleQplCatWheelScroll(){
 // the Research wheel above, but wired to the existing .fb/.on/setF()
 // filter convention instead of a separate active-class state machine.
 function invCatWheelSelect(btn, cat){
-  setF(cat, btn);
+  setF('category', cat, btn);
   btn.scrollIntoView({block: 'center', behavior: 'smooth'});
 }
 let invCatWheelSettleTimer = null;
@@ -35191,7 +35335,7 @@ function psaCertToQplRow(c = {}, certFallback = ''){
 async function resolvePsaCertRow(cert){
   const res = await fetch(WORKER + '/psa/cert/' + encodeURIComponent(cert), { cache:'no-store' });
   const data = await res.json().catch(() => ({}));
-  if(!res.ok || !data.ok) throw new Error(data.error || 'PSA lookup failed');
+  if(!res.ok || !data.ok) throw new Error([data.error || 'PSA lookup failed', data.detail].filter(Boolean).join(' — '));
   const c = data.cert || {};
   const row = psaCertToQplRow(c, cert);
   const slab = await fetchGradedSlabPriceForItem(row).catch(() => null);
@@ -35365,7 +35509,12 @@ async function verifyQplPsaCert(idx){
   try {
     const res = await fetch(WORKER + '/psa/cert/' + encodeURIComponent(cert), { cache:'no-store' });
     const data = await res.json().catch(() => ({}));
-    if(!res.ok || !data.ok) throw new Error(data.error || 'PSA lookup failed');
+    // Store report: a PSA 403 only ever showed as the bare "PSA API error
+    // 403" -- the Worker route already captures PSA's own response body as
+    // `detail` (the actual reason: an expired token, a permission scope
+    // issue, etc), it just never reached the screen. Surfacing it here is
+    // the difference between "something's wrong" and knowing what to fix.
+    if(!res.ok || !data.ok) throw new Error([data.error || 'PSA lookup failed', data.detail].filter(Boolean).join(' — '));
     const c = data.cert || {};
     const r = qplResults[idx] || {};
     const subject = [c.year,c.brand,c.series,c.subject,c.cardNumber ? '#'+c.cardNumber : ''].filter(Boolean).join(' ');
@@ -37285,6 +37434,21 @@ function renderDrawer(){
 // ══════════════════════════════════════════════════
 let buyList = [];
 let knownBuyTrayIndex = [];
+// Store report: there was no way to flag an item as a graded slab while it
+// was still sitting in the Buy Tray, waiting to be accepted -- the grader/
+// grade/cert# fields only existed on the Edit Item modal, reachable after
+// the item had already become real inventory. This is purely UI-open/close
+// state (which rows currently show the grader/grade/cert inputs), not the
+// grading data itself -- the data lives on the buy-tray item's own grader/
+// grade/cert_number fields (see updateBuyItem), so it survives a re-render
+// and carries straight through into inventory via buyItemToInventoryUpdates
+// once accepted.
+let buyItemGradedRowsOpen = new Set();
+function toggleBuyItemGradedRow(id){
+  if(buyItemGradedRowsOpen.has(id)) buyItemGradedRowsOpen.delete(id);
+  else buyItemGradedRowsOpen.add(id);
+  renderBuyList();
+}
 // Store report: the "Your Offer" total shown while adjusting the % slider
 // didn't always match the amount actually charged at Accept -- the charge
 // re-reads the slider live at that instant instead of using whatever was
@@ -38089,12 +38253,26 @@ function renderBuyList(){
       ? `<select class="buy-tray-cond" title="Researched condition and finish" onchange="updateBuyItem('${i.id}','priceOption',this.value)" ${added ? 'disabled' : ''}>${priceOptions.map(o => `<option value="${escHtml(o.key)}" ${i.selectedBuyPriceKey===o.key?'selected':''}>${escHtml([o.condition, o.finishLabel || qplFinishLabel(o.finish), '$'+Number(o.price||0).toFixed(2)].filter(Boolean).join(' / '))}</option>`).join('')}</select>`
       : `<select class="buy-tray-cond" onchange="updateBuyItem('${i.id}','condition',this.value)" ${added ? 'disabled' : ''}>${['NM','LP','MP','HP','DMG'].map(c => `<option value="${c}" ${String(i.condition||'NM')===c?'selected':''}>${c}</option>`).join('')}</select>`;
     const priceNote = i.manualMarketOverride ? 'Manual market override' : (i.resolvedPricePath || i.priceLabel || i.priceSource || 'Manual price');
+    // Store report: no way existed to mark an item as a graded slab while it
+    // was still sitting in the tray -- only visible once it became real
+    // inventory. buyItemGradedRowsOpen is purely which rows have the inputs
+    // expanded (also auto-expanded once any grading data is already set, so
+    // it's never hidden behind a click); the grader/grade/cert_number values
+    // themselves live on the item and flow straight into inventory via
+    // buyItemToInventoryUpdates once accepted.
+    const gradedOpen = buyItemGradedRowsOpen.has(i.id) || !!(i.grader || i.grade || i.cert_number);
+    const gradedRow = `<label class="buy-tray-graded-toggle"><input type="checkbox" ${gradedOpen?'checked':''} onchange="toggleBuyItemGradedRow('${i.id}')" ${added ? 'disabled' : ''}> 🏆 Graded (PSA/BGS/CGC/SGC/CBCS)</label>${gradedOpen ? `<div class="buy-tray-graded-fields">
+          <input type="text" placeholder="Grader" value="${escHtml(i.grader||'')}" onchange="updateBuyItem('${i.id}','grader',this.value)" ${added ? 'disabled' : ''}>
+          <input type="text" placeholder="Grade" value="${escHtml(i.grade||'')}" onchange="updateBuyItem('${i.id}','grade',this.value)" ${added ? 'disabled' : ''}>
+          <input type="text" placeholder="Cert #" value="${escHtml(i.cert_number||'')}" onchange="updateBuyItem('${i.id}','cert_number',this.value)" ${added ? 'disabled' : ''}>
+        </div>` : ''}`;
     return `<div class="buy-tray-item">
       ${imgEl}
       <div class="buy-tray-info">
         <div class="buy-tray-name">${escHtml(i.name || 'Phone scan')}</div>
         <div class="buy-tray-sub">${escHtml(sub)}</div>
         <div class="buy-tray-price-note">${escHtml(priceNote)}${(i.manualMarketOverride || i.manualOfferOverride) ? ` · <button class="buy-tray-reset" onclick="resetBuyItemPricing('${i.id}')">reset researched price</button>` : ''}</div>
+        ${gradedRow}
         ${err}
       </div>
       ${conditionControl}
@@ -38265,7 +38443,12 @@ function buyItemToInventoryUpdates(item){
     manufacturer:item.manufacturer || '',
     publisher:item.publisher || '',
     issue:item.issue || '',
-    grading_company:item.grading_company || '',
+    // Store report: 'grading_company' was never a real field anywhere else
+    // in the app -- the Edit Item modal's own grading fields save as
+    // 'grader' (see readEditGradingFields), so even a buy-tray item that
+    // had grading data set had it silently dropped right here on the way
+    // into inventory, since nothing was ever writing 'grading_company'.
+    grader:item.grader || '',
     grade:item.grade || '',
     cert_number:item.cert_number || '',
     // Explicit, rather than relying on createInventoryRecord's ...item spread
@@ -44328,7 +44511,7 @@ async function toppsLoadParallels(cardId){
   window.__arscaCloseModal = closeModal;
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.09.01.12-bundle-ebay-description" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.09.01.15-inventory-multiselect-filters" defer></script>
 </body>
 </html>
 

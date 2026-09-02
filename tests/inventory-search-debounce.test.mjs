@@ -18,7 +18,10 @@ assert.doesNotMatch(dashboard, /id="tbl-q"[^>]*oninput="filterTable\(\)"/, 'the 
 
 // Non-typing callers (filter chips, sort clicks, voice search) must still
 // get instant feedback -- they call filterTable() directly, unchanged.
-assert.match(dashboard, /activeF = filter; page = 1; filterTable\(\);/, 'filter-chip clicks must still call filterTable() directly (no debounce) for instant feedback');
+// (setInventoryHealthFilter's old direct activeF-write fallback is gone --
+// see the multi-select filter rework -- it now just delegates to setF,
+// which still ends in a direct, undebounced filterTable() call below.)
+assert.match(dashboard, /function setF\(group,value,btn\)\{[\s\S]*?filterTable\(\);\n\}/, 'filter-chip clicks (setF) must still call filterTable() directly (no debounce) for instant feedback');
 assert.match(dashboard, /function setComicInventorySort\(column\)\{ts2\.col=column\|\|'name';ts2\.dir=1;page=1;filterTable\(\);\}/, 'sort-column clicks must still call filterTable() directly (no debounce)');
 
 console.log('Inventory search debounce contract checks passed');

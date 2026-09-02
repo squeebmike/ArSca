@@ -50,7 +50,14 @@ assert.match(dashboard, /\(item\?\.isBundle && item\.status==='in_stock'\)\?`<bu
 // ── Table display: bundled members must not read as plain "SOLD", and bundle containers get a badge ──
 assert.match(dashboard, /\$\{i\.isBundle\?' <span style="color:var\(--gold\);font-size:8px">🎁 BUNDLE<\/span>':''\}/, 'bundle container rows must show a BUNDLE badge');
 assert.match(dashboard, /\$\{i\.status==='bundled'&&i\.bundledIntoName\?`<div class="sc2" style="margin-top:5px;color:var\(--gold\)">🎁 In bundle: \$\{escHtml\(i\.bundledIntoName\)\}<\/div>`:''\}/, 'member rows must show which bundle they were folded into');
-assert.match(dashboard, /\$\{ins\?'IN STOCK':\(i\.status==='bundled'\?'IN BUNDLE':'SOLD'\+\(i\.channel\?' · '\+i\.channel:''\)\)\}/, 'bundled member rows must read IN BUNDLE, not SOLD, in the status column');
+// The status column now reads off the shared inventoryRowAvailability()
+// helper (see the multi-select filter rework) instead of an inline ternary
+// -- confirm that helper itself still gives a bundle container "IN BUNDLE",
+// not "SOLD", and that the table row actually renders its label/color.
+assert.match(dashboard, /if\(i\.status !== 'in_stock'\) return \{ available:false, label: i\.status==='bundled' \? 'IN BUNDLE' : \('SOLD'\+\(i\.channel\?' · '\+i\.channel:''\)\), color: i\.status==='bundled' \? 'var\(--gold\)' : 'var\(--dim\)' \};/,
+  'inventoryRowAvailability must give a bundle container "IN BUNDLE", not "SOLD", in its status label');
+assert.match(dashboard, /<td><span style="font-family:var\(--font-mono\);font-size:9px;color:\$\{rowAvail\.color\}">\$\{rowAvail\.label\}<\/span>/,
+  'bundled member rows must read the shared rowAvail.label/color in the status column, not a bespoke IN BUNDLE/SOLD ternary');
 
 console.log('Inventory bundle contract checks passed');
 
