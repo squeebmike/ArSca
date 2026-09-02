@@ -23275,6 +23275,28 @@ async function toggleInventoryOnlineListed(id){
   }
 }
 
+// Webflow descriptions are public and can be indexed or used in link
+// previews. Operational notes may contain cost, sourcing, buy-session, or
+// customer details, so they must never be copied into a public CMS field.
+function publicInventoryDescription(item={}, updates={}) {
+  const d={...item,...updates};
+  return [
+    d.category ? 'Category: '+d.category : '',
+    d.set ? 'Set: '+d.set : '',
+    d.year ? 'Year: '+d.year : '',
+    d.variant ? 'Variant: '+d.variant : '',
+    d.condition ? 'Condition: '+d.condition : '',
+    d.card_number ? 'Card #: '+d.card_number : '',
+    d.serial_number ? 'Serial #: '+d.serial_number : '',
+    d.manufacturer ? 'Manufacturer: '+d.manufacturer : '',
+    d.publisher ? 'Publisher: '+d.publisher : '',
+    d.issue ? 'Issue: '+d.issue : '',
+    d.grader || d.grading_company || d.grade ? 'Grade: '+[d.grader||d.grading_company,d.grade].filter(Boolean).join(' ') : '',
+    d.is_signed ? 'Signed'+(d.signed_by?' by '+d.signed_by:'') : '',
+    'Available from The Mana Pocket.'
+  ].filter(Boolean).join('\n');
+}
+
 async function createWebflowProduct(item, updates) {
   // catMap: schema-confirmed Option IDs from live Webflow Products collection.
   // 'Graded' removed — graded cards use their real category (TCG/Sports) + graded:true Switch.
@@ -23307,16 +23329,7 @@ async function createWebflowProduct(item, updates) {
   // moment it's first added to inventory still got listed live at the raw
   // unsigned market price.
   const priceCents = Math.max(1, Math.round(inventoryListPrice({...item, ...updates}) * 100));
-  const desc = [
-    updates.key_notes || '',
-    updates.condition ? 'Condition: ' + updates.condition : '',
-    updates.card_number ? 'Card #: ' + updates.card_number : '',
-    updates.serial_number ? 'Serial #: ' + updates.serial_number : '',
-    updates.manufacturer ? 'Manufacturer: ' + updates.manufacturer : '',
-    updates.publisher ? 'Publisher: ' + updates.publisher : '',
-    updates.issue ? 'Issue: ' + updates.issue : '',
-    updates.grading_company || updates.grade ? 'Grade: ' + [updates.grading_company, updates.grade].filter(Boolean).join(' ') : '',
-  ].filter(Boolean).join('\n');
+  const desc = publicInventoryDescription(item, updates);
 
   try {
     const res = await storeWorkerFetch('/proxy/sites/65b15ee0228d06647ca7e4ce/products', {
@@ -23366,8 +23379,7 @@ async function createWebflowProduct(item, updates) {
       'inventory-count': updates.qty || 1,
       'set-name':        updates.set  || item.set  || '',
       year:              String(updates.year || item.year || ''),
-      'cost-basis':      Number(updates.cost || 0),
-      'card-description': desc || updates.key_notes || '',
+      'card-description': desc,
       msrp:              Math.round(updates.market || 0),
       'retail-price':    Math.round(updates.market || 0),
       // Grading — schema slugs confirmed: grader (PlainText), grade (PlainText), graded (Switch)
@@ -23638,10 +23650,9 @@ async function mirrorUpdateToWebflow(wfId, item, updates){
     'inventory-count': u.qty    ?? i.qty    ?? 1,
     'set-name':        u.set    || i.set    || '',
     year:              String(u.year    || i.year    || ''),
-    'cost-basis':      Number(u.cost    || i.cost    || 0),
     msrp:              Math.round(Number(u.market || i.market || 0)),
     'retail-price':    Math.round(Number(u.market || i.market || 0)),
-    'card-description': u.key_notes || i.key_notes || '',
+      'card-description': publicInventoryDescription(i,u),
     grader:     u.grader  || i.grader  || '',
     grade:      u.grade   || i.grade   || '',
     graded:     isGraded,
@@ -24976,8 +24987,7 @@ async function confirmEditAndSync() {
     if(updates.year)       fieldData['year']             = String(updates.year);
     if(updates.variant)    fieldData['variant']          = updates.variant;
     if(updates.location)   fieldData['location']         = updates.location;
-    if(updates.key_notes)  fieldData['card-description'] = updates.key_notes;
-    if(updates.cost > 0)   fieldData['cost-basis']       = updates.cost;
+    fieldData['card-description'] = publicInventoryDescription(item,updates);
     if(updates.card_number)fieldData['card-number']      = updates.card_number;
     if(updates.imageUrl || updates.thumbnail) fieldData['image-url'] = updates.imageUrl || updates.thumbnail || '';
     if(catMap[updates.category]) fieldData['card-category'] = catMap[updates.category];
@@ -38414,6 +38424,7 @@ function buyItemToInventoryUpdates(item){
   return {
     name:item.name,
     category,
+    productType:(item.grade||item.grader||item.cert_number||item.isSlabbed)?'Graded':item.is_sealed?'Sealed':category==='Comic'?'Comic':category==='Collectibles'?'Collectible':'Single',
     set:item.set || item.product_line || '',
     variant:item.variant || '',
     year:item.year || '',

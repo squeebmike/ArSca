@@ -20,7 +20,7 @@
     "test:settings-architecture": "node tests/settings-information-architecture.test.mjs",
     "test:subscription-plans": "node tests/subscription-plan-gates.test.mjs",
     "test:storefront": "node tests/public-storefront.test.mjs",
-    "test:webflow-sync": "node tests/webflow-cloud-sync.test.mjs",
+    "test:webflow-sync": "node tests/webflow-cloud-sync.test.mjs && node tests/webflow-public-description-privacy.test.mjs",
     "test:inventory-usability": "node tests/inventory-usability.test.js",
     "test:mtg-offline": "node tests/mtg-offline-core.test.mjs && node tests/mtg-offline-contract.test.mjs && node tests/mtg-price-sync.test.js",
     "test:pricecharting-offline": "node tests/pricecharting-offline-contract.test.mjs",
