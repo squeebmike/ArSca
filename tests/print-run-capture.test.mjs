@@ -50,7 +50,7 @@ assert.match(dashboard, /async function backfillPrintRunFromName\(\)\{/, 'missin
 // run in the name" has nothing more useful to show than just fixing them.
 assert.match(dashboard, /\['print_run','Print Run In Name',h\.printRunUncaptured,'tap to fill from name','backfillPrintRunFromName\(\)'\],/,
   'the inventory health grid must include a Print Run In Name card wired to run the backfill');
-assert.match(dashboard, /<div class="inv-health-card" onclick="\$\{action \|\| `setInventoryHealthFilter\('\$\{f\}'\)`\}">/,
+assert.match(dashboard, /<div class="inv-health-card" onclick="\$\{action \|\| `setInventoryHealthFilter\('\$\{\(f==='not_listed'\|\|f==='listed_online'\)\?'listing':'flag'\}','\$\{f\}'\)`\}">/,
   'the health card template must support a per-card custom action, defaulting to the existing filter-only behavior for every other card');
 
 // ── Functional: the backfill only touches items missing serial_number, and
