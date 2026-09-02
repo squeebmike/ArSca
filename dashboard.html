@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.09.01.09-surface-fulfillment-check">
+<meta name="version" content="2026.09.01.10-buy-tray-cross-device-delete">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1628,15 +1628,15 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.09.01.09-surface-fulfillment-check" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.09.01.09-surface-fulfillment-check" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.09.01.09-surface-fulfillment-check" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.09.01.09-surface-fulfillment-check" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.09.01.09-surface-fulfillment-check" defer></script>
-<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.09.01.09-surface-fulfillment-check" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.09.01.09-surface-fulfillment-check" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.09.01.09-surface-fulfillment-check" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.09.01.09-surface-fulfillment-check" defer></script>
+<script src="scripts/query-routing.js?v=2026.09.01.10-buy-tray-cross-device-delete" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.09.01.10-buy-tray-cross-device-delete" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.09.01.10-buy-tray-cross-device-delete" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.09.01.10-buy-tray-cross-device-delete" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.09.01.10-buy-tray-cross-device-delete" defer></script>
+<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.09.01.10-buy-tray-cross-device-delete" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.09.01.10-buy-tray-cross-device-delete" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.09.01.10-buy-tray-cross-device-delete" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.09.01.10-buy-tray-cross-device-delete" defer></script>
 </head>
 <body>
 
@@ -1665,11 +1665,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.09.01.09-surface-fulfillment-check</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.09.01.10-buy-tray-cross-device-delete</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.09.01.09-surface-fulfillment-check</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.09.01.10-buy-tray-cross-device-delete</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1687,7 +1687,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.09.01.09-surface-fulfillment-check</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.09.01.10-buy-tray-cross-device-delete</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3705,7 +3705,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.09.01.09-surface-fulfillment-check';
+const APP_VERSION = '2026.09.01.10-buy-tray-cross-device-delete';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -20297,6 +20297,18 @@ async function syncBuyListToWorker(){
 // overwriting — two devices adding different items to the SAME tray at the
 // same time must not clobber each other. Recently-removed ids are skipped
 // so a stale server copy can't bring back something this device just deleted.
+//
+// Store report: a delete on one device still showed up on other devices --
+// this only ever merged items IN, it never removed a local item the server
+// copy no longer had. buyListTombstones (in-memory, per-device) only ever
+// protected the deleting device itself from its own race with an in-flight
+// fetch; it was never transmitted, so a genuine removal never reached any
+// other device at all. remote.removedIds (persisted on the tray, written
+// by removeBuyItem) is the actual fix: applied here to prune local items
+// too, and unioned into this device's own removedIds so the removal keeps
+// propagating even to a device that syncs through a third device instead
+// of directly from the one that deleted it.
+const BUY_REMOVED_ID_RETENTION_MS = 30 * 24 * 60 * 60 * 1000; // 30 days -- long enough for a device that's been offline a while, bounded so the list doesn't grow forever
 async function fetchBuyListFromWorker(){
   const tray = ensureActiveBuyTray();
   try {
@@ -20305,18 +20317,32 @@ async function fetchBuyListFromWorker(){
     if(!d?.value) return;
     const remote = JSON.parse(d.value);
     if(!remote || !Array.isArray(remote.items)) return;
+    const now = Date.now();
+    const localRemovedIds = tray.removedIds || [];
+    const remoteRemovedIds = Array.isArray(remote.removedIds) ? remote.removedIds : [];
+    const mergedRemovedById = new Map();
+    [...localRemovedIds, ...remoteRemovedIds].forEach(r => {
+      if(!r?.id || now - Number(r.at || 0) > BUY_REMOVED_ID_RETENTION_MS) return;
+      const existing = mergedRemovedById.get(r.id);
+      if(!existing || Number(r.at || 0) > Number(existing.at || 0)) mergedRemovedById.set(r.id, r);
+    });
+    const removedIdSet = new Set(mergedRemovedById.keys());
+    let changed = false;
+    const beforeCount = buyList.length;
+    buyList = buyList.filter(i => !removedIdSet.has(i.id));
+    if(buyList.length !== beforeCount) changed = true;
     const localIds = new Set(buyList.map(i=>i.id));
-    let added = false;
     for(const item of remote.items) {
-      if(!item?.id || localIds.has(item.id) || buyListTombstones.has(item.id)) continue;
+      if(!item?.id || localIds.has(item.id) || buyListTombstones.has(item.id) || removedIdSet.has(item.id)) continue;
       buyList.push(item);
-      added = true;
+      changed = true;
     }
-    if(!added) return;
+    tray.removedIds = [...mergedRemovedById.values()];
+    if(!changed && tray.removedIds.length === localRemovedIds.length) return;
     tray.items = buyList.slice(0,100);
     upsertLocalBuyTray(tray);
     renderBuyList();
-    syncBuyListToWorker(); // push the merged union back so every device converges on the same list
+    syncBuyListToWorker(); // push the merged union (items + removedIds) back so every device converges
   } catch(e) { /* offline/demo — keep the local copy */ }
 }
 
@@ -37282,6 +37308,15 @@ function newBuyTrayRecord(){
     createdAt:new Date().toISOString(), updatedAt:new Date().toISOString(),
     pct:50, items:[], itemCount:0, marketTotal:0, offerTotal:0, location:'Intake Tray', paymentType:'', notes:'',
     appVersion:APP_VERSION,
+    // Store report: deleting an item on one device never removed it on
+    // another -- fetchBuyListFromWorker only ever merged items IN from the
+    // server copy, it never removed items the server copy no longer had.
+    // The in-memory buyListTombstones map only protects the device that
+    // did the delete from its own race with an in-flight fetch; it's
+    // never transmitted, so it does nothing for any other device. This
+    // synced, persisted list of {id, at} is the real fix -- see
+    // removeBuyItem and fetchBuyListFromWorker.
+    removedIds: [],
   };
 }
 // Guarantees buyList always has a backing tray to sync through — creates
@@ -37831,6 +37866,12 @@ function removeBuyItem(id){
   const item = buyList.find(i=>i.id===id);
   buyList = buyList.filter(i=>i.id!==id);
   tombstoneBuyIds([id]);
+  // Persisted (not just this device's in-memory tombstone) so the removal
+  // actually reaches every other device syncing this tray -- see
+  // fetchBuyListFromWorker, which is what actually applies it elsewhere.
+  const tray = ensureActiveBuyTray();
+  tray.removedIds = [...(tray.removedIds || []).filter(r => r.id !== id), { id, at: Date.now() }];
+  upsertLocalBuyTray(tray);
   saveBuyList();
   if(item) logOpsEvent('buy_item_removed', 'Removed item from buy offer: ' + (item.name || id), { buySessionId:item.buySessionId || getActiveBuySession()?.buySessionId || '' });
   renderBuyList();
@@ -44249,7 +44290,7 @@ async function toppsLoadParallels(cardId){
   window.__arscaCloseModal = closeModal;
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.09.01.09-surface-fulfillment-check" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.09.01.10-buy-tray-cross-device-delete" defer></script>
 </body>
 </html>
 
