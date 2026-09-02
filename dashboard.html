@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.09.01.17-hide-webflow-sync-button">
+<meta name="version" content="2026.09.01.19-foc-window-exposure-fix">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1633,15 +1633,15 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.09.01.17-hide-webflow-sync-button" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.09.01.17-hide-webflow-sync-button" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.09.01.17-hide-webflow-sync-button" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.09.01.17-hide-webflow-sync-button" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.09.01.17-hide-webflow-sync-button" defer></script>
-<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.09.01.17-hide-webflow-sync-button" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.09.01.17-hide-webflow-sync-button" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.09.01.17-hide-webflow-sync-button" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.09.01.17-hide-webflow-sync-button" defer></script>
+<script src="scripts/query-routing.js?v=2026.09.01.19-foc-window-exposure-fix" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.09.01.19-foc-window-exposure-fix" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.09.01.19-foc-window-exposure-fix" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.09.01.19-foc-window-exposure-fix" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.09.01.19-foc-window-exposure-fix" defer></script>
+<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.09.01.19-foc-window-exposure-fix" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.09.01.19-foc-window-exposure-fix" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.09.01.19-foc-window-exposure-fix" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.09.01.19-foc-window-exposure-fix" defer></script>
 </head>
 <body>
 
@@ -1670,11 +1670,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.09.01.17-hide-webflow-sync-button</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.09.01.19-foc-window-exposure-fix</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.09.01.17-hide-webflow-sync-button</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.09.01.19-foc-window-exposure-fix</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1692,7 +1692,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.09.01.17-hide-webflow-sync-button</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.09.01.19-foc-window-exposure-fix</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3741,7 +3741,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.09.01.17-hide-webflow-sync-button';
+const APP_VERSION = '2026.09.01.19-foc-window-exposure-fix';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -11178,6 +11178,19 @@ function showInvRowMenu(e, id, isInStock){
     // showing this for stores actually configured to use Webflow inventory.
     (isInStock && usesWebflowInventory())?`<button class="hbtn" style="${btnStyle};color:var(--g)" onclick="publishInventoryItemToWebflow('${id}');closeInvRowMenu()">🌐 Publish / Sync Webflow</button>`:'',
     isInStock?`<button class="hbtn" style="${btnStyle};color:${item?.onlineListed===false?'var(--gold)':'var(--dim)'}" onclick="toggleInventoryOnlineListed('${id}');closeInvRowMenu()">${item?.onlineListed===false?'🌐 Publish to Storefront':'🚫 Remove from Storefront'}</button>`:'',
+    // Store report: "publish all" said an item was live, the row menu
+    // agreed (showed Remove from Storefront, meaning onlineListed:true),
+    // and it still didn't show on themanapocket.com -- with no way from the
+    // dashboard to see why. onlineListed is only ONE of several checks the
+    // live storefront route (isStorefrontItemAvailable) actually applies
+    // (quantity>0, not sold/archived, and inventoryStatus not in an
+    // exclusion list that includes lifecycle values like hold/at_show, not
+    // just true sales) -- any of those can silently block a listed item.
+    // This calls the exact same live endpoint the storefront itself calls
+    // for one row (/public/storefront/item, already built for wo-checkout's
+    // real-time stock check) and reports back which check is actually
+    // failing, instead of leaving that a guessing game.
+    isInStock?`<button class="hbtn" style="${btnStyle}" onclick="checkStorefrontStatus('${id}');closeInvRowMenu()">🔍 Check Storefront Status</button>`:'',
     item?.status==='archived'
       ?`<button class="hbtn" style="${btnStyle}color:var(--g)" onclick="restoreInventoryItem('${id}');closeInvRowMenu()">↩ Restore</button>`
       :`<button class="hbtn" style="${btnStyle}color:var(--gold)" onclick="archiveInventoryItem('${id}');closeInvRowMenu()">Archive</button>`,
@@ -23280,6 +23293,57 @@ async function toggleInventoryOnlineListed(id){
     loadInventory();
   } catch(e) {
     toast_dash('Could not update storefront listing: ' + (e.message || e));
+  }
+}
+
+// The storefront exclusion list, mirrored from isStorefrontItemAvailable in
+// cloudflare-worker-full.js -- kept as its own list (not imported, this is
+// a separate Worker) so a plain-English reason can be built per status
+// instead of just saying "excluded".
+const STOREFRONT_EXCLUDED_STATUS_REASONS = {
+  sold:'marked Sold', archived:'Archived', returned:'marked Returned', deleted:'marked Deleted',
+  sold_pending_pickup:'Sold (pending pickup)', sold_pending_shipment:'Sold (pending shipment)',
+  hold:'On Hold', lost_damaged:'Lost/Damaged', presale:'a FOC presale placeholder (not receivable stock)',
+};
+// Store report: "publish all" said an item was live, the row menu agreed
+// (showed Remove from Storefront, meaning onlineListed:true), and it still
+// never showed on themanapocket.com -- with no way from the dashboard to
+// see why. onlineListed is only ONE of several checks the live storefront
+// route (isStorefrontItemAvailable) applies -- quantity>0, not sold/
+// archived, and inventoryStatus/lifecycle not in an exclusion list that
+// covers more than just true sales (On Hold and Archived are in it too).
+// Any of those can silently block an otherwise-published item. This calls
+// the exact same live endpoint the storefront itself calls for one row
+// (/public/storefront/item, already built for wo-checkout's real-time
+// stock check) and reports back which check is actually failing, instead
+// of leaving that a guessing game.
+async function checkStorefrontStatus(id){
+  const item = (all || []).find(i => i.id === id);
+  if(!item) return;
+  const storeId = getActiveStoreId();
+  const rowId = item.supabaseRowId || item.id;
+  if(!storeId || !rowId){ toast_dash('Missing store/item id -- cannot check'); return; }
+  try {
+    const res = await fetch(WORKER + '/public/storefront/item?' + new URLSearchParams({ store_id:storeId, id:rowId }));
+    const data = await res.json().catch(() => ({}));
+    if(data.ok){
+      alert('✅ LIVE on the storefront right now:\n\n' + (item.name || rowId) + '\n\nIf you still don\'t see it on themanapocket.com, try a hard refresh of the site (it caches for up to a few minutes) before assuming it\'s still hidden.');
+      return;
+    }
+    if(res.status === 404 && /not published/i.test(data.error || '')){
+      alert('🚫 The storefront itself is not published for this store yet (a store-wide setting, separate from any one item). Check Settings.');
+      return;
+    }
+    const d = data.item || {};
+    const reasons = [];
+    if(!(Number(d.quantity) > 0)) reasons.push('Quantity is ' + (d.quantity ?? 0) + ' -- must be greater than 0.');
+    if(d.onlineListed === false) reasons.push('Not flagged as published on this item (onlineListed is off) -- use "Publish to Storefront."');
+    if(d.soldAt) reasons.push('Has a soldAt date on file: ' + d.soldAt);
+    if(d.archivedAt) reasons.push('Has an archivedAt date on file: ' + d.archivedAt);
+    if(STOREFRONT_EXCLUDED_STATUS_REASONS[d.inventoryStatus]) reasons.push('Status/lifecycle is "' + d.inventoryStatus + '" (' + STOREFRONT_EXCLUDED_STATUS_REASONS[d.inventoryStatus] + ') -- that status is excluded from the storefront no matter what else is set. Check the lifecycle dropdown on this item\'s row.');
+    alert('🚫 NOT showing on the storefront:\n\n' + (item.name || rowId) + '\n\n' + (reasons.length ? reasons.join('\n\n') : ('Reason: ' + (data.error || 'unknown') + '\n' + JSON.stringify(d))));
+  } catch(e) {
+    toast_dash('Could not check storefront status: ' + (e.message || e));
   }
 }
 
@@ -44538,7 +44602,7 @@ async function toppsLoadParallels(cardId){
   window.__arscaCloseModal = closeModal;
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.09.01.17-hide-webflow-sync-button" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.09.01.19-foc-window-exposure-fix" defer></script>
 </body>
 </html>
 

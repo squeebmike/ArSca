@@ -729,4 +729,17 @@ function renderShipping(){var s=state.shipping||{},f=s.from||{},p=s.parcel||{};d
 async function saveShipping(){var shipFrom={},parcel={};document.querySelectorAll('[data-ship-from]').forEach(function(el){shipFrom[el.dataset.shipFrom]=el.value;});document.querySelectorAll('[data-ship-parcel]').forEach(function(el){parcel[el.dataset.shipParcel]=el.value;});try{var d=await api('/foc/admin/shipping-settings',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({storeId:getActiveStoreId(),enabled:true,shipFrom:shipFrom,defaultParcel:parcel})});state.shipping=d.shipping;toast_dash(d.shipping.tokenConfigured?'Live carrier settings saved':'Address saved — add the Shippo token to enable rates');renderShipping();}catch(e){toast_dash(e.message);}}
 
 window.ensureFocPanel=function(){loadCycles(false);};window.loadFocCycles=loadCycles;window.openFocCycle=openCycle;window.handleFocImportFile=handleImport;window.filterFocAdmin=function(v){state.query=v;renderFamilies();};window.filterFocPublisher=function(v){state.publisher=v;renderFamilies();};window.filterFocFlag=function(v){state.flag=v;renderFamilies();};window.filterFocEbay=function(v){state.ebay=v;renderFamilies();};window.saveFocSku=saveSku;window.saveFocFamily=saveFamily;window.toggleFocCycle=toggleCycle;window.archiveFocCycle=archiveCycle;window.unarchiveFocCycle=unarchiveCycle;window.saveFocCycleCutoff=saveCutoff;window.exportFocPrh=exportPrh;window.loadFocShippingSettings=loadShipping;window.saveFocShippingSettings=saveShipping;window.openReceiveShipment=openReceiveShipment;window.confirmReceiveShipment=confirmReceiveShipment;window.createFocEbayPresale=openEbayPresaleReview;window.submitEbayPresaleReview=submitEbayPresaleReview;window.loadEbaySafeDays=loadEbaySafeDays;window.saveFocEbaySafeDays=saveEbaySafeDays;window.openFocReview=openFocReview;window.submitPrhOrder=submitPrhOrder;window.endFocEbayListings=endFocEbayListings;window.toggleFocEndEbayAll=toggleFocEndEbayAll;window.confirmEndFocEbayListings=confirmEndFocEbayListings;window.reviewStoreQtyChanged=reviewStoreQtyChanged;
+// Store report: "+ ADD TO INVENTORY" on a FOC cover-wall card threw
+// "quickAddFocSkuToInventory is not defined" -- this whole file is wrapped
+// in an IIFE (line 1), so every function it declares is private to that
+// closure by default. An onclick="..." HTML attribute string always
+// resolves against the GLOBAL scope, not this closure, so only functions
+// explicitly re-exposed onto window (this block) are reachable from an
+// onclick attribute at all -- quickAddFocSkuToInventory was defined but
+// never added here, so every single click threw. Auditing every onclick/
+// onchange reference in this file against this list turned up five more
+// with the exact same bug, all clustered around the eBay bulk-listing
+// workflow on the wall (select-all, per-checkbox, start/skip/cancel) --
+// that whole feature has been non-functional the same way.
+window.quickAddFocSkuToInventory=quickAddFocSkuToInventory;window.focEbayBulkCheckboxChanged=focEbayBulkCheckboxChanged;window.toggleFocEbayBulkSelectAll=toggleFocEbayBulkSelectAll;window.startFocEbayBulkListing=startFocEbayBulkListing;window.cancelFocEbayBulkListing=cancelFocEbayBulkListing;window.skipFocEbayBulkItem=skipFocEbayBulkItem;
 })();
