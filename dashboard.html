@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.09.01.10-buy-tray-cross-device-delete">
+<meta name="version" content="2026.09.01.11-label-price-edit">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1628,15 +1628,15 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.09.01.10-buy-tray-cross-device-delete" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.09.01.10-buy-tray-cross-device-delete" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.09.01.10-buy-tray-cross-device-delete" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.09.01.10-buy-tray-cross-device-delete" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.09.01.10-buy-tray-cross-device-delete" defer></script>
-<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.09.01.10-buy-tray-cross-device-delete" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.09.01.10-buy-tray-cross-device-delete" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.09.01.10-buy-tray-cross-device-delete" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.09.01.10-buy-tray-cross-device-delete" defer></script>
+<script src="scripts/query-routing.js?v=2026.09.01.11-label-price-edit" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.09.01.11-label-price-edit" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.09.01.11-label-price-edit" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.09.01.11-label-price-edit" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.09.01.11-label-price-edit" defer></script>
+<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.09.01.11-label-price-edit" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.09.01.11-label-price-edit" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.09.01.11-label-price-edit" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.09.01.11-label-price-edit" defer></script>
 </head>
 <body>
 
@@ -1665,11 +1665,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.09.01.10-buy-tray-cross-device-delete</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.09.01.11-label-price-edit</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.09.01.10-buy-tray-cross-device-delete</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.09.01.11-label-price-edit</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1687,7 +1687,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.09.01.10-buy-tray-cross-device-delete</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.09.01.11-label-price-edit</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3705,7 +3705,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.09.01.10-buy-tray-cross-device-delete';
+const APP_VERSION = '2026.09.01.11-label-price-edit';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -40997,6 +40997,36 @@ function setLabelPrintQty(itemId, qty){
   entry.qty = Math.max(1, parseInt(qty, 10) || 1);
 }
 
+// Store report: after buying a lot and before printing labels, there was no
+// way to fix the retail price -- the label modal only ever showed the price
+// the item already had, read-only, so a wrong buy-time price shipped
+// straight to a printed label. Editing just the label-batch entry's price
+// (in-memory) would make the printed label lie about what the item actually
+// rings up as at checkout, which is worse than the original gap -- so this
+// writes through saveInventoryEdit, the same universal update path the rest
+// of the app uses, to keep the label, the real inventory record, and every
+// other device's view of the price in sync.
+async function setLabelPrintPrice(itemId, rawVal){
+  const entry = labelPrintBatch.find(b => b.id === itemId);
+  if(!entry) return;
+  const val = parseFloat(rawVal);
+  if(isNaN(val) || val < 0){ renderLabelPrintBatchList(); return; }
+  const prevPrice = entry.price;
+  entry.price = val;
+  renderLabelPrintBatchList();
+  const item = (all || []).find(i => i.id === itemId);
+  if(!item){ return; }
+  try {
+    await saveInventoryEdit(item, { listPrice:val, salePrice:val, displayPrice:val });
+    item.listPrice = val; item.salePrice = val; item.displayPrice = val;
+    toast_dash('Price updated: ' + fd$(val));
+  } catch(e) {
+    entry.price = prevPrice;
+    renderLabelPrintBatchList();
+    toast_dash('Failed to update price');
+  }
+}
+
 function renderLabelPrintBatchList(){
   const el = document.getElementById('label-print-batch-list');
   const countEl = document.getElementById('label-print-batch-count');
@@ -41005,7 +41035,7 @@ function renderLabelPrintBatchList(){
   el.innerHTML = labelPrintBatch.length
     ? labelPrintBatch.map(b => `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 8px;border:1px solid var(--border);border-radius:6px">
         <span style="font-size:11px;flex:1">${escHtml(b.name)}</span>
-        <span style="font-family:monospace;font-size:9px;color:var(--dim)">${fd$(b.price)}</span>
+        <input type="number" min="0" step="0.01" value="${b.price}" style="width:64px;font-family:monospace;font-size:9px" class="tsi" onchange="setLabelPrintPrice('${b.id}', this.value)">
         <input type="number" min="1" value="${b.qty}" style="width:50px;font-size:11px" class="tsi" onchange="setLabelPrintQty('${b.id}', this.value)">
         <button class="hbtn danger" style="min-height:28px;padding:2px 8px;font-size:9px" onclick="removeFromLabelPrintBatch('${b.id}')">✕</button>
       </div>`).join('')
@@ -44290,7 +44320,7 @@ async function toppsLoadParallels(cardId){
   window.__arscaCloseModal = closeModal;
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.09.01.10-buy-tray-cross-device-delete" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.09.01.11-label-price-edit" defer></script>
 </body>
 </html>
 
