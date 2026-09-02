@@ -331,7 +331,17 @@ assert.match(dashboard, /WORKER \+ '\/pricing\/sportscardspro\/resolve-url\?' \+
 // it must only ever fetch the two catalog domains it's meant for, never an
 // arbitrary caller-supplied host (that would be an open SSRF proxy).
 assert.match(worker, /if \(host !== 'pricecharting\.com' && host !== 'sportscardspro\.com'\) \{/, 'the resolve-url route must allowlist only the two catalog hostnames, not fetch any URL a caller supplies');
-assert.match(worker, /const pathMatch = parsed\.pathname\.match\(\/\^\\\/game\\\/\(\[\^\/\]\+\)\\\/\(\[\^\/\]\+\)\/\);/, 'the route must require a real product-page path, not just an allowlisted host');
+assert.match(worker, /const slugMatch = parsed\.pathname\.match\(\/\^\\\/game\\\/\(\[\^\/\]\+\)\\\/\(\[\^\/\]\+\)\/\);/, 'the route must require a real product-page path, not just an allowlisted host');
+// Store report: SportsCardsPro also serves a short permalink form,
+// .../game/<numeric-id> with no console/product slug -- 100+ already-saved
+// sports card links used exactly this shape and every one 400'd against the
+// slug-only regex above, even though the link opened the correct product
+// page in a browser. The short form must resolve too, without breaking the
+// long slug form it sits alongside.
+assert.match(worker, /const shortIdMatch = !slugMatch \? parsed\.pathname\.match\(\/\^\\\/game\\\/\(\\d\+\)\\\/\?\$\/\) : null;/, 'a bare .../game/<numeric-id> permalink (no slug) must be recognized as its own valid case, not rejected alongside genuine garbage input');
+assert.match(worker, /if \(!slugMatch && !shortIdMatch\) return json\(\{ ok: false, error: 'That doesn\\'t look like a product page URL \(expected \.\.\.\/game\/<console>\/<product> or \.\.\.\/game\/<id>\)' \}, 400\);/, 'the 400 must only fire when neither the slug form nor the short-id form matched');
+assert.match(worker, /let imageUrl = null, cardNumber = '', printRun = '', priceChartingId = shortIdMatch \? shortIdMatch\[1\] : '';/, 'the short-id form already IS the numeric PriceCharting id -- it must be used directly instead of re-scraping the page for an id it already has');
+assert.match(worker, /const scrapeUrl = slugMatch\s*\n\s*\? `https:\/\/www\.sportscardspro\.com\/game\/\$\{consoleSlug\}\/\$\{productSlug\}`\s*\n\s*: `https:\/\/www\.sportscardspro\.com\/game\/\$\{shortIdMatch\[1\]\}`;/, 'the short-id form must scrape its own short URL (SportsCardsPro resolves it to the real page), not try to build a slug URL it has no slug for');
 assert.match(worker, /if \(url\.pathname === '\/pricing\/sportscardspro\/resolve-url'\) \{/, 'the resolve-url route must exist');
 assert.match(worker, /const idMatch = html\.match\(\/PriceCharting ID\[\^>\]\*>\\s\*\(\?:<\[\^>\]\+>\\s\*\)\*\(\\d\{2,10\}\)\/i\);/, 'the route must scrape the numeric PriceCharting id SCP\'s own page labels, to get the real price via the official API rather than guessing');
 assert.match(worker, /const humanize = s => String\(s \|\| ''\)\.replace\(\/-\/g, ' '\)\.replace\(\/\\b\\w\/g, c => c\.toUpperCase\(\)\);/, 'must degrade to a humanized slug name (not blow up or return nothing) when the id/price lookup fails');
