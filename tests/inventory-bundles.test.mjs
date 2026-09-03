@@ -48,6 +48,22 @@ assert.match(dashboard, /if\(container\.status !== 'in_stock'\) return toast_das
 assert.match(dashboard, /try \{ await updateBuiltInInventoryItem\(member, \{ status:'in_stock', lifecycle:'in_stock', bundledIntoId:'', bundledIntoName:'' \}\); \}/, 'dissolveBundle must revert each member back to in_stock and clear its bundle link, including lifecycle -- otherwise a dissolved member stays excluded from the storefront forever');
 assert.match(dashboard, /setLifecycle\(member\.id, 'in_stock', true\);/, 'dissolveBundle must also sync the client-side lifecycle KV map back to in_stock');
 
+// Store report: dissolving a bundle still left the (now-dead) container
+// showing live on themanapocket.com. This is the same missing-lifecycle bug
+// one level up: this archive call used to set only status:'archived',
+// never lifecycle:'archived' or archivedAt -- and NOT setting lifecycle
+// explicitly here doesn't just leave it alone, it actively re-derives and
+// WRITES a stale value (builtInDataFromItem's lifecycle field always
+// resolves to something via its own fallback chain, defaulting to whatever
+// the client's in-memory item.lifecycle already was -- typically 'in_stock'
+// from before the dissolve), which the Worker's storefront gate then reads
+// ahead of the correctly-set 'archived' status. Must match the full
+// archiveInventoryItem convention (lifecycle+status+archivedAt+archivedBy
+// together), not set status alone.
+assert.match(dashboard, /try \{ await updateBuiltInInventoryItem\(container, \{ lifecycle:'archived', status:'archived', archivedAt, archivedBy:getAuthSession\(\)\?\.user\?\.id \|\| 'local-user', archiveReason:'Bundle dissolved' \}\); \}/,
+  'dissolveBundle must archive the container with lifecycle+status+archivedAt+archivedBy together, not status alone -- otherwise the dead container keeps showing live on the storefront');
+assert.match(dashboard, /setLifecycle\(container\.id, 'archived', true\);/, 'dissolveBundle must also sync the client-side lifecycle KV map for the container itself');
+
 // ── Sale cascade: hooked into checkout finalize, right after the normal sold-marking call ──
 assert.match(dashboard, /await markCartItemsSoldFromPayment\(\(lockedCheckoutSnapshot\?\.lines \|\| \[\]\)\.map\(l => \(\{ name:l\.title, price:l\.adjusted_price, cost:l\.cost_basis, category:l\.category, condition:l\.condition, quantity:l\.quantity, shopId:l\.item_id \}\)\), method, paidAt, \{ skipRemote:inventoryCommittedAtomically \}\);\s*\n\s*await cascadeMarkBundleMembersSold\(lockedCheckoutSnapshot\?\.lines \|\| \[\], paidAt, bundle\.sale\.id\);/, 'checkout finalize must cascade-mark bundle members sold right after the bundle container itself is marked sold');
 assert.match(dashboard, /async function cascadeMarkBundleMembersSold\(lines, soldAt, saleId\)\{/, 'missing cascadeMarkBundleMembersSold');
