@@ -40,6 +40,24 @@ assert.match(dashboard, /photos: collectBundleMemberPhotos\(items\),/, 'bundle c
 assert.match(dashboard, /\.\.\.\(comicMetadata \? \{ comicMetadata \} : \{\}\),/, 'bundle container must carry combined comicMetadata when it has comic members, and omit the field entirely otherwise');
 assert.match(dashboard, /function collectBundleMemberPhotos\(items\)\{/, 'missing collectBundleMemberPhotos');
 assert.match(dashboard, /function buildBundleComicMetadata\(items\)\{/, 'missing buildBundleComicMetadata');
+
+// Store report: a bundle created before these two builders existed only
+// ever computed photos/comicMetadata once, at creation time -- an older
+// bundle has no way to pick up the fix short of a full dissolve+rebuild.
+// refreshBundleInfo re-runs both builders against the bundle's CURRENT
+// members and saves the result onto the existing container in place.
+assert.match(dashboard, /async function refreshBundleInfo\(containerId\)\{/, 'missing refreshBundleInfo');
+{
+  const fnStart = dashboard.indexOf('async function refreshBundleInfo(containerId){');
+  const fnEnd = dashboard.indexOf('\n}', fnStart) + 2;
+  const fn = dashboard.slice(fnStart, fnEnd);
+  assert.match(fn, /if\(!container \|\| !container\.isBundle\) return;/, 'must refuse to run on a non-bundle item');
+  assert.match(fn, /const photos = collectBundleMemberPhotos\(members\);/, 'must recompute photos from the bundle\'s current members');
+  assert.match(fn, /const comicMetadata = buildBundleComicMetadata\(members\);/, 'must recompute comicMetadata from the bundle\'s current members');
+  assert.match(fn, /await updateBuiltInInventoryItem\(container, \{ photos, \.\.\.\(comicMetadata \? \{ comicMetadata \} : \{\}\) \}\);/, 'must save the refreshed fields onto the existing container, not create a new row or touch name/price/member links');
+}
+assert.match(dashboard, /onclick="refreshBundleInfo\('\$\{id\}'\);closeInvRowMenu\(\)" title="Re-pulls photos and comic info from this bundle's current member items, without dissolving it">🔄 Refresh Bundle Photos\/Info<\/button>/,
+  'row menu must offer Refresh Bundle Photos/Info alongside Dissolve Bundle for an in-stock bundle container');
 assert.match(dashboard, /try \{ await updateBuiltInInventoryItem\(member, \{ status:'bundled', lifecycle:'bundled', bundledIntoId:containerId, bundledIntoName:name \}\); \}/, 'each member must be marked status bundled and linked back to the container');
 // Store report: 3 books folded into a bundle kept showing individually as
 // in-stock on themanapocket.com. Root cause: the live storefront route
