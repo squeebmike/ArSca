@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.09.01.25-refresh-bundle-info">
+<meta name="version" content="2026.09.01.26-category-health-report">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1633,15 +1633,15 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.09.01.25-refresh-bundle-info" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.09.01.25-refresh-bundle-info" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.09.01.25-refresh-bundle-info" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.09.01.25-refresh-bundle-info" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.09.01.25-refresh-bundle-info" defer></script>
-<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.09.01.25-refresh-bundle-info" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.09.01.25-refresh-bundle-info" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.09.01.25-refresh-bundle-info" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.09.01.25-refresh-bundle-info" defer></script>
+<script src="scripts/query-routing.js?v=2026.09.01.26-category-health-report" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.09.01.26-category-health-report" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.09.01.26-category-health-report" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.09.01.26-category-health-report" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.09.01.26-category-health-report" defer></script>
+<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.09.01.26-category-health-report" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.09.01.26-category-health-report" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.09.01.26-category-health-report" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.09.01.26-category-health-report" defer></script>
 </head>
 <body>
 
@@ -1670,11 +1670,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.09.01.25-refresh-bundle-info</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.09.01.26-category-health-report</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.09.01.25-refresh-bundle-info</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.09.01.26-category-health-report</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1692,7 +1692,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.09.01.25-refresh-bundle-info</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.09.01.26-category-health-report</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3741,7 +3741,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.09.01.25-refresh-bundle-info';
+const APP_VERSION = '2026.09.01.26-category-health-report';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -17312,6 +17312,21 @@ function renderReportsResults(result, groupBy){
       </div>
       <div class="owner-mini-panel"><div class="ph">PROFIT BY CATEGORY</div>${reportsBarRows(reportsCategoryChartPairs(result.categoryList), { color:'var(--g)', empty:'NO SALES' })}</div>
     </div>
+    ${(() => {
+      const categoryHealth = computeCategoryHealth(result.categoryList)
+        .map(c => ({ ...c, reasons: categoryHealthReasons(c) }))
+        .filter(c => c.reasons.length)
+        .sort((a,b) => (b.unsoldCost + Math.max(0,-b.profit)) - (a.unsoldCost + Math.max(0,-a.profit)));
+      return `<div class="owner-section-grid" style="grid-template-columns:1fr;margin-top:14px">
+      <div class="owner-mini-panel">
+        <div class="ph">CATEGORY HEALTH <span style="font-size:9px;color:var(--dim)">sold performance vs. cash tied up in CURRENT unsold stock, worst first</span></div>
+        ${categoryHealth.length ? categoryHealth.map(c => `<div style="padding:8px 0;border-bottom:1px solid var(--border)">
+          <div style="font-family:var(--font-mono);font-size:11px;color:var(--text);font-weight:600">${escHtml(c.key)}</div>
+          ${c.reasons.map(r => `<div style="font-family:var(--font-mono);font-size:10px;color:var(--gold);margin-top:4px;line-height:1.5">⚠ ${escHtml(r)}</div>`).join('')}
+        </div>`).join('') : `<div class="empty"><div class="empty-t">No flagged categories -- margins and stock turnover look healthy across the board this period</div></div>`}
+      </div>
+    </div>`;
+    })()}
     <div class="owner-section-grid" style="grid-template-columns:1fr;margin-top:14px">
       <div class="owner-mini-panel">
         <div class="ph">PAYMENT METHOD MIX</div>
@@ -17322,6 +17337,61 @@ function renderReportsResults(result, groupBy){
     <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);line-height:1.55;margin-top:14px;padding:10px;border:1px dashed var(--border);border-radius:8px">
       <b style="color:var(--text)">Washington tax filing:</b> the DOR's Combined Excise Tax Return includes both the sales tax shown above AND a separate Business &amp; Occupation (B&amp;O) tax calculated on gross receipts -- this report's Gross Sales figure is that same gross-receipts basis, but B&amp;O has its own rate/classification this report doesn't compute. Check your DOR MyDOR account or your accountant for the current rate and filing frequency.
     </div>`;
+}
+
+// Store request: "where is each category struggling to make money, and how
+// do we improve it" -- the existing category table only ever showed
+// profitability on what SOLD in the period. A category can look fine there
+// while actually tying up real cash in stock that isn't moving (or, worse,
+// have zero sales at all and never show up in that table in the first
+// place, since it's built purely from sold sale_lines). This cross-
+// references sold performance against the CURRENT live inventory (not
+// anything from the period query -- inventory state is always "right now")
+// to surface exactly that: dead categories with no sales but real stock
+// sitting, thin margins, and capital parked in aged (90+ day) stock.
+// Reuses the exact aging threshold (inventoryIsAgedStock, 90 days) and
+// sellability filter (inventoryItemIsSellable) already used everywhere
+// else in this app, rather than inventing new ones.
+function computeCategoryHealth(categoryList){
+  const byCategory = new Map();
+  (categoryList || []).forEach(c => byCategory.set(c.key, { ...c, unsoldQty:0, unsoldCost:0, agedQty:0, agedCost:0 }));
+  const getCategory = key => {
+    if(!byCategory.has(key)) byCategory.set(key, { key, revenue:0, cogs:0, profit:0, taxableRevenue:0, exemptRevenue:0, unsoldQty:0, unsoldCost:0, agedQty:0, agedCost:0 });
+    return byCategory.get(key);
+  };
+  (typeof all !== 'undefined' ? all : []).filter(inventoryItemIsSellable).forEach(item => {
+    const c = getCategory(item.category || 'Uncategorized');
+    const qty = inventoryAvailableQuantity(item);
+    const cost = Number(item.cost || 0) * qty;
+    c.unsoldQty += qty;
+    c.unsoldCost += cost;
+    if(inventoryIsAgedStock(item)){ c.agedQty += qty; c.agedCost += cost; }
+  });
+  return [...byCategory.values()];
+}
+// One plain-language reason per problem this category actually has, each
+// naming the dollar amount involved and a concrete next step -- not just a
+// flag. A category can carry more than one at once (e.g. dead AND aged).
+function categoryHealthReasons(c){
+  const reasons = [];
+  const margin = c.revenue > 0 ? (c.profit / c.revenue) * 100 : null;
+  if(c.revenue === 0 && c.unsoldQty > 0){
+    reasons.push(`No sales this period, but ${c.unsoldQty} unit(s) worth ${fd$(c.unsoldCost)} in cost sitting in stock -- this category has stalled. Consider a promotion, bundling it with a faster-moving category, or checking whether it's still worth restocking.`);
+  } else if(margin !== null && margin < 0){
+    reasons.push(`Selling at a loss this period (${margin.toFixed(1)}% margin) -- either the list price needs to go up or the buy/cost basis needs to come down for this category.`);
+  } else if(margin !== null && margin < 15){
+    reasons.push(`Thin margin (${margin.toFixed(1)}%) on what sold -- pricing is sitting close to cost. Consider raising list prices or renegotiating buy prices for this category.`);
+  }
+  if(c.unsoldCost > 0 && c.agedCost > 0){
+    const agedShare = (c.agedCost / c.unsoldCost) * 100;
+    if(agedShare >= 30){
+      reasons.push(`${agedShare.toFixed(0)}% of the cash tied up here (${fd$(c.agedCost)} of ${fd$(c.unsoldCost)}) is in stock 90+ days old -- a markdown or liquidation push on the oldest items would free that cash up for faster-moving stock.`);
+    }
+  }
+  if(c.profit > 0 && c.unsoldCost > c.profit * 3){
+    reasons.push(`${fd$(c.unsoldCost)} tied up in stock vs. only ${fd$(c.profit)} profit generated this period -- slow turnover relative to how much capital this category is holding.`);
+  }
+  return reasons;
 }
 
 // Top 8 categories by profit for the chart, remaining categories folded
@@ -44767,7 +44837,7 @@ async function toppsLoadParallels(cardId){
   window.__arscaCloseModal = closeModal;
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.09.01.25-refresh-bundle-info" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.09.01.26-category-health-report" defer></script>
 </body>
 </html>
 
