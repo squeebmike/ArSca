@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.09.01.19-foc-window-exposure-fix">
+<meta name="version" content="2026.09.01.20-storefront-default-published">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1633,15 +1633,15 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.09.01.19-foc-window-exposure-fix" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.09.01.19-foc-window-exposure-fix" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.09.01.19-foc-window-exposure-fix" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.09.01.19-foc-window-exposure-fix" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.09.01.19-foc-window-exposure-fix" defer></script>
-<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.09.01.19-foc-window-exposure-fix" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.09.01.19-foc-window-exposure-fix" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.09.01.19-foc-window-exposure-fix" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.09.01.19-foc-window-exposure-fix" defer></script>
+<script src="scripts/query-routing.js?v=2026.09.01.20-storefront-default-published" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.09.01.20-storefront-default-published" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.09.01.20-storefront-default-published" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.09.01.20-storefront-default-published" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.09.01.20-storefront-default-published" defer></script>
+<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.09.01.20-storefront-default-published" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.09.01.20-storefront-default-published" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.09.01.20-storefront-default-published" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.09.01.20-storefront-default-published" defer></script>
 </head>
 <body>
 
@@ -1670,11 +1670,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.09.01.19-foc-window-exposure-fix</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.09.01.20-storefront-default-published</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.09.01.19-foc-window-exposure-fix</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.09.01.20-storefront-default-published</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1692,7 +1692,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.09.01.19-foc-window-exposure-fix</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.09.01.20-storefront-default-published</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3741,7 +3741,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.09.01.19-foc-window-exposure-fix';
+const APP_VERSION = '2026.09.01.20-storefront-default-published';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -11178,6 +11178,17 @@ function showInvRowMenu(e, id, isInStock){
     // showing this for stores actually configured to use Webflow inventory.
     (isInStock && usesWebflowInventory())?`<button class="hbtn" style="${btnStyle};color:var(--g)" onclick="publishInventoryItemToWebflow('${id}');closeInvRowMenu()">🌐 Publish / Sync Webflow</button>`:'',
     isInStock?`<button class="hbtn" style="${btnStyle};color:${item?.onlineListed===false?'var(--gold)':'var(--dim)'}" onclick="toggleInventoryOnlineListed('${id}');closeInvRowMenu()">${item?.onlineListed===false?'🌐 Publish to Storefront':'🚫 Remove from Storefront'}</button>`:'',
+    // Store report: this device's own cached onlineListed value can be
+    // stale (a queued edit that never actually landed, a read from before
+    // another device's change) -- the toggle just above reads that same
+    // cached value to decide which direction to go, so a stale "already
+    // published" read leaves NO button here that actually publishes.
+    // "Check Storefront Status" confirms the real, live Supabase state and
+    // offers this same fix inline, but it's also available directly here
+    // for anyone who already knows the item is stuck, without a diagnostic
+    // detour. Only shown when the local cache claims it's already
+    // published -- when it doesn't, the toggle above already covers it.
+    (isInStock && item?.onlineListed !== false)?`<button class="hbtn" style="${btnStyle};color:var(--blue)" onclick="forcePublishToStorefront('${id}');closeInvRowMenu()" title="Writes onlineListed:true directly, ignoring whatever this device currently has cached">🌐 Force Publish to Storefront</button>`:'',
     // Store report: "publish all" said an item was live, the row menu
     // agreed (showed Remove from Storefront, meaning onlineListed:true),
     // and it still didn't show on themanapocket.com -- with no way from the
@@ -23278,11 +23289,10 @@ async function previewWebflowMigration(){const status=document.getElementById('w
 async function runWebflowMigration(){if(!requireOwnerAdmin())return;if(!confirm('Import unmatched Webflow inventory into this store cloud? Existing linked records will not be duplicated.'))return;const status=document.getElementById('webflow-migration-status');try{const sb=getSupabaseClient(),storeId=getActiveStoreId();if(!sb||!getAuthSession()?.supabase||!storeId)throw new Error('Cloud sign-in required');const p=await webflowMigrationPlan();let created=0;for(let x=0;x<p.candidates.length;x+=50){const rows=p.candidates.slice(x,x+50).map(i=>({store_id:storeId,status:i.status==='sold'?'sold':'in_stock',data:{...i,id:undefined,source:'webflow_import',wfId:i.id,webflowId:i.id,status:i.status||'in_stock',channelFlags:{webflow:true,storefront:true,ebay:false},importedAt:new Date().toISOString(),appVersion:APP_VERSION}}));const {error}=await sb.from('inventory_items').insert(rows);if(error)throw error;created+=rows.length;if(status)status.textContent=`Imported ${created} of ${p.candidates.length}…`;};saveWebflowIntegration({enabled:true,lastImportAt:new Date().toISOString(),lastImportCount:created});saveVendorConfig({...getVendorConfig(),inventorySource:'built_in'});await loadInventory();logOpsEvent('webflow_migration','Imported Webflow inventory into cloud',{created,skipped:p.wf.count-created});if(status)status.textContent=`Import complete · ${created} cloud items created · cloud inventory is now primary`;toast_dash(`Imported ${created} Webflow items into cloud`);}catch(e){if(status)status.textContent='Import failed: '+e.message;toast_dash('Webflow import failed: '+e.message);}}
 async function publishInventoryItemToWebflow(id){const item=all.find(i=>i.id===id);if(!item)return;const existing=item.raw?.wfId||item.raw?.webflowId||item.wfId;if(existing){try{await mirrorUpdateToWebflow(existing,item,item);toast_dash('Webflow listing updated');}catch(e){enqueueSync('webflow-mirror-update','Sync Webflow: '+item.name,{wfId:existing,item,updates:item},e.message);toast_dash('Webflow sync queued');}return;}try{const wfId=await createWebflowProduct(item,item);await storeWfIdOnSupabaseRecord(item.supabaseRowId||item.id,wfId);item.raw={...(item.raw||{}),wfId,webflowId:wfId};saveWebflowIntegration({enabled:true});toast_dash('Published to Webflow');}catch(e){enqueueSync('webflow-mirror-create','Publish Webflow: '+item.name,{item,updates:item,supabaseId:item.supabaseRowId||item.id},e.message);toast_dash('Webflow publish queued');}}
 
-// Fresh inventory now defaults to onlineListed:false (see
-// createBuiltInInventoryItem) so a brand-new item -- no photo, no verified
-// price -- isn't immediately purchasable on the live public storefront.
-// This is the deliberate opt-in that flips it live, and the opt-out to pull
-// something back off without touching its in-stock status/POS availability.
+// Fresh inventory now defaults to listed (see createBuiltInInventoryItem)
+// -- this is the opt-out to deliberately pull one item off the live public
+// storefront without touching its in-stock status/POS availability, and
+// the opt-in to bring it back.
 async function toggleInventoryOnlineListed(id){
   const item = (all || []).find(i => i.id === id);
   if(!item) return;
@@ -23293,6 +23303,30 @@ async function toggleInventoryOnlineListed(id){
     loadInventory();
   } catch(e) {
     toast_dash('Could not update storefront listing: ' + (e.message || e));
+  }
+}
+
+// Store report: an item's own "Publish to Storefront" toggle (and the bulk
+// PUBLISH THIS VIEW button, which filters on the same locally-held
+// item.onlineListed) both compute their action off whatever value THIS
+// DEVICE currently has cached for the item -- if that's out of sync with
+// the real Supabase row (a queued/offline edit that never actually landed,
+// a stale read from before another device's change), the toggle can
+// silently compute the wrong direction, or a bulk publish can skip an item
+// it wrongly believes is already live. Unlike those, this writes the
+// target state directly and unconditionally -- it never reads or branches
+// on the current cached value at all, so it can't inherit that bug no
+// matter how stale the local cache is.
+async function forcePublishToStorefront(id){
+  const item = (all || []).find(i => i.id === id);
+  if(!item) return;
+  try {
+    await saveInventoryEdit(item, { onlineListed: true });
+    item.onlineListed = true;
+    toast_dash('Published to storefront: ' + (item.name || id));
+    loadInventory();
+  } catch(e) {
+    toast_dash('Could not publish to storefront: ' + (e.message || e));
   }
 }
 
@@ -23336,12 +23370,19 @@ async function checkStorefrontStatus(id){
     }
     const d = data.item || {};
     const reasons = [];
+    let onlyReasonIsUnpublished = false;
     if(!(Number(d.quantity) > 0)) reasons.push('Quantity is ' + (d.quantity ?? 0) + ' -- must be greater than 0.');
-    if(d.onlineListed === false) reasons.push('Not flagged as published on this item (onlineListed is off) -- use "Publish to Storefront."');
+    if(d.onlineListed === false) reasons.push('Not flagged as published on this item (onlineListed is off).');
     if(d.soldAt) reasons.push('Has a soldAt date on file: ' + d.soldAt);
     if(d.archivedAt) reasons.push('Has an archivedAt date on file: ' + d.archivedAt);
     if(STOREFRONT_EXCLUDED_STATUS_REASONS[d.inventoryStatus]) reasons.push('Status/lifecycle is "' + d.inventoryStatus + '" (' + STOREFRONT_EXCLUDED_STATUS_REASONS[d.inventoryStatus] + ') -- that status is excluded from the storefront no matter what else is set. Check the lifecycle dropdown on this item\'s row.');
+    onlyReasonIsUnpublished = reasons.length === 1 && d.onlineListed === false;
     alert('🚫 NOT showing on the storefront:\n\n' + (item.name || rowId) + '\n\n' + (reasons.length ? reasons.join('\n\n') : ('Reason: ' + (data.error || 'unknown') + '\n' + JSON.stringify(d))));
+    // Confirmed straight from the live Supabase row (not this device's
+    // local cache) that publishing is the only thing blocking it -- offer
+    // to fix it right here instead of sending the operator back to a
+    // toggle that reads this same device's (possibly stale) local state.
+    if(onlyReasonIsUnpublished && confirm('Publish this item to the storefront now?')) await forcePublishToStorefront(id);
   } catch(e) {
     toast_dash('Could not check storefront status: ' + (e.message || e));
   }
@@ -23508,14 +23549,15 @@ async function createBuiltInInventoryItem(item, updates, sourceLabel='built_in')
     createdFrom:'walkoff_dashboard',
     appVersion:APP_VERSION,
     addedAt:new Date().toISOString(),
-    // A brand-new item used to be purchasable on the live public storefront
-    // the instant it was saved -- no photo, no price review, nothing --
-    // since the storefront route only ever checked status/quantity. Default
-    // every new item to NOT listed; PUBLISH TO STOREFRONT (inventory row
-    // menu) flips this on deliberately once it's actually ready. item/
-    // updates can still override this explicitly (e.g. a future bulk-import
-    // flow that intends items to go live immediately).
-    onlineListed:(item?.onlineListed ?? updates?.onlineListed ?? false),
+    // Store decision: the review gate this comment used to describe (every
+    // new item defaulting to NOT listed, requiring a manual PUBLISH TO
+    // STOREFRONT click before it went live) caused more real friction than
+    // it prevented -- repeated store reports of items that were genuinely
+    // in stock just not showing up on themanapocket.com, needing a manual
+    // per-item publish nobody remembered to do. New items now default to
+    // listed immediately. item/updates can still override this explicitly
+    // (e.g. an import flow that intentionally wants to hold something back).
+    onlineListed:(item?.onlineListed ?? updates?.onlineListed ?? true),
   };
   if(sb && session?.supabase && storeId) {
     const { data:row, error } = await sb
@@ -41228,15 +41270,13 @@ function printLabelsForFilteredItems(){
   openLabelPrintModal(null, batch);
 }
 
-// Store report: a batch of newly-bought cards never showed up on
-// themanapocket.com -- new inventory defaults to onlineListed:false (see
-// createBuiltInInventoryItem) on purpose, so nothing goes live before a
-// photo/price review, but the only way to flip it back on was a one-at-a-
-// time "Publish to Storefront" toggle buried in each row's menu. Buying a
-// whole lot of the same category made that a real chore. Same "act on
-// whatever the search box + category chip currently show" pattern as LABEL
-// THIS VIEW/LOOK UP THIS VIEW above -- filter down to what was just added
-// (category wheel + search), then publish all of it in one click.
+// New inventory now defaults to listed immediately (see
+// createBuiltInInventoryItem), but this stays around as a bulk catch-up
+// tool -- an item manually unpublished, or one created before that default
+// changed, can still be sitting unpublished. Same "act on whatever the
+// search box + category chip currently show" pattern as LABEL THIS VIEW/
+// LOOK UP THIS VIEW above -- filter down to whatever view is on screen,
+// then publish everything still unpublished in it in one click.
 async function publishFilteredToStorefrontView(){
   const items = (typeof filtered !== 'undefined' ? filtered : []).filter(i => i.status === 'in_stock' && i.onlineListed === false);
   if(!items.length){ toast_dash('Nothing in the current view is unpublished'); return; }
@@ -44602,7 +44642,7 @@ async function toppsLoadParallels(cardId){
   window.__arscaCloseModal = closeModal;
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.09.01.19-foc-window-exposure-fix" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.09.01.20-storefront-default-published" defer></script>
 </body>
 </html>
 

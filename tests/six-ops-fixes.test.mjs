@@ -137,13 +137,17 @@ console.log('Fix 3 functional checks passed');
 console.log('Fix 4 (buy-to-inventory retry dedup) checks passed');
 
 // ════════════════════════════════════════════════════════════════════════
-// Fix 5: fresh inventory no longer auto-lists on the public storefront
+// Fix 5: the storefront publish flag itself -- toggle/label semantics,
+// and the eventual store decision to reverse the fresh-inventory default
+// (see the later "onlineListed default reversed" section) after repeated
+// store reports of genuinely in-stock items just not showing up, needing
+// a manual per-item publish nobody remembered to do
 // ════════════════════════════════════════════════════════════════════════
 {
   const createStart = dashboard.indexOf('async function createBuiltInInventoryItem(');
   assert(createStart >= 0, 'createBuiltInInventoryItem must exist');
   const createFn = dashboard.slice(createStart, dashboard.indexOf('\n}', createStart));
-  assert.match(createFn, /onlineListed:\(item\?\.onlineListed \?\? updates\?\.onlineListed \?\? false\),/, 'a freshly created item must default onlineListed to false unless the caller explicitly set it');
+  assert.match(createFn, /onlineListed:\(item\?\.onlineListed \?\? updates\?\.onlineListed \?\? true\),/, 'a freshly created item must default onlineListed to true (listed immediately) unless the caller explicitly set it -- reversed from the original opt-in gate, see the section below for why');
 
   assert.match(worker, /onlineListed: d\.onlineListed !== false,/, 'the storefront route must default onlineListed to true for pre-existing items with no such field, and false must be the only value that excludes -- otherwise every already-live item would vanish from the storefront the moment this shipped');
   assert.match(worker, /return !!\(i\.name && i\.quantity > 0 && i\.onlineListed && !i\.soldAt/, 'isStorefrontItemAvailable must actually require onlineListed to be truthy');
@@ -157,7 +161,7 @@ console.log('Fix 4 (buy-to-inventory retry dedup) checks passed');
   assert.match(dashboard, /onclick="toggleInventoryOnlineListed\('\$\{id\}'\);closeInvRowMenu\(\)"/, 'the inventory row menu must expose the publish/unpublish toggle');
   assert.match(dashboard, /\$\{item\?\.onlineListed===false\?'🌐 Publish to Storefront':'🚫 Remove from Storefront'\}/, 'the row menu button label must reflect the item\'s actual current listed state');
 }
-console.log('Fix 5 (no auto-online for fresh inventory) checks passed');
+console.log('Fix 5 (storefront publish toggle + onlineListed default) checks passed');
 
 // ════════════════════════════════════════════════════════════════════════
 // Fix 6: real auto-synced eBay orders now deduct eBay's marketplace fee
