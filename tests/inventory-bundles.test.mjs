@@ -31,6 +31,15 @@ assert.match(dashboard, /async function createInventoryBundle\(items, name, pric
 assert.match(dashboard, /productType:'bundle', isBundle:true,/, 'bundle container must be tagged isBundle so cascade logic and row menu can recognize it');
 assert.match(dashboard, /bundleMemberIds: items\.map\(i => i\.id\),/, 'bundle container must record its member ids');
 assert.match(dashboard, /const containerId = await createBuiltInInventoryItem\(\{\}, containerUpdates, 'built_in'\);/, 'bundle container must be created via the same createBuiltInInventoryItem path as any other new inventory row (so it gets a real inventory_items row and flows through normal cart/checkout unmodified)');
+
+// Store report: a bundle's storefront listing only ever carried ONE
+// member's thumbnail and no comic detail (synopsis/writers/artists) at
+// all, even when every member book had its own. Every member's images and
+// comic metadata must fold into the container.
+assert.match(dashboard, /photos: collectBundleMemberPhotos\(items\),/, 'bundle container must collect every member\'s photos, not just one thumbnail');
+assert.match(dashboard, /\.\.\.\(comicMetadata \? \{ comicMetadata \} : \{\}\),/, 'bundle container must carry combined comicMetadata when it has comic members, and omit the field entirely otherwise');
+assert.match(dashboard, /function collectBundleMemberPhotos\(items\)\{/, 'missing collectBundleMemberPhotos');
+assert.match(dashboard, /function buildBundleComicMetadata\(items\)\{/, 'missing buildBundleComicMetadata');
 assert.match(dashboard, /try \{ await updateBuiltInInventoryItem\(member, \{ status:'bundled', lifecycle:'bundled', bundledIntoId:containerId, bundledIntoName:name \}\); \}/, 'each member must be marked status bundled and linked back to the container');
 // Store report: 3 books folded into a bundle kept showing individually as
 // in-stock on themanapocket.com. Root cause: the live storefront route
@@ -47,6 +56,22 @@ assert.match(dashboard, /async function dissolveBundle\(containerId\)\{/, 'missi
 assert.match(dashboard, /if\(container\.status !== 'in_stock'\) return toast_dash\('This bundle has already sold and cannot be dissolved'\);/, 'dissolveBundle must refuse to dissolve an already-sold bundle');
 assert.match(dashboard, /try \{ await updateBuiltInInventoryItem\(member, \{ status:'in_stock', lifecycle:'in_stock', bundledIntoId:'', bundledIntoName:'' \}\); \}/, 'dissolveBundle must revert each member back to in_stock and clear its bundle link, including lifecycle -- otherwise a dissolved member stays excluded from the storefront forever');
 assert.match(dashboard, /setLifecycle\(member\.id, 'in_stock', true\);/, 'dissolveBundle must also sync the client-side lifecycle KV map back to in_stock');
+
+// Store report: dissolving a bundle still left the (now-dead) container
+// showing live on themanapocket.com. This is the same missing-lifecycle bug
+// one level up: this archive call used to set only status:'archived',
+// never lifecycle:'archived' or archivedAt -- and NOT setting lifecycle
+// explicitly here doesn't just leave it alone, it actively re-derives and
+// WRITES a stale value (builtInDataFromItem's lifecycle field always
+// resolves to something via its own fallback chain, defaulting to whatever
+// the client's in-memory item.lifecycle already was -- typically 'in_stock'
+// from before the dissolve), which the Worker's storefront gate then reads
+// ahead of the correctly-set 'archived' status. Must match the full
+// archiveInventoryItem convention (lifecycle+status+archivedAt+archivedBy
+// together), not set status alone.
+assert.match(dashboard, /try \{ await updateBuiltInInventoryItem\(container, \{ lifecycle:'archived', status:'archived', archivedAt, archivedBy:getAuthSession\(\)\?\.user\?\.id \|\| 'local-user', archiveReason:'Bundle dissolved' \}\); \}/,
+  'dissolveBundle must archive the container with lifecycle+status+archivedAt+archivedBy together, not status alone -- otherwise the dead container keeps showing live on the storefront');
+assert.match(dashboard, /setLifecycle\(container\.id, 'archived', true\);/, 'dissolveBundle must also sync the client-side lifecycle KV map for the container itself');
 
 // ── Sale cascade: hooked into checkout finalize, right after the normal sold-marking call ──
 assert.match(dashboard, /await markCartItemsSoldFromPayment\(\(lockedCheckoutSnapshot\?\.lines \|\| \[\]\)\.map\(l => \(\{ name:l\.title, price:l\.adjusted_price, cost:l\.cost_basis, category:l\.category, condition:l\.condition, quantity:l\.quantity, shopId:l\.item_id \}\)\), method, paidAt, \{ skipRemote:inventoryCommittedAtomically \}\);\s*\n\s*await cascadeMarkBundleMembersSold\(lockedCheckoutSnapshot\?\.lines \|\| \[\], paidAt, bundle\.sale\.id\);/, 'checkout finalize must cascade-mark bundle members sold right after the bundle container itself is marked sold');
@@ -84,7 +109,11 @@ console.log('Inventory bundle contract checks passed');
 // ── Functional: suggestBundleName's comic-run detection ──────────────────
 const qplSrc = dashboard.match(/function qplCategoryKey\(category\)\{[\s\S]*?\n\}/)[0];
 const suggestSrc = dashboard.match(/function suggestBundleName\(items\)\{[\s\S]*?\n\}/)[0];
-const { suggestBundleName } = new Function(`${qplSrc}\n${suggestSrc}\nreturn { suggestBundleName };`)();
+const photosSrc = dashboard.match(/function collectBundleMemberPhotos\(items\)\{[\s\S]*?\n\}/)[0];
+const comicMetaSrc = dashboard.match(/function buildBundleComicMetadata\(items\)\{[\s\S]*?\n\}/)[0];
+const { suggestBundleName, collectBundleMemberPhotos, buildBundleComicMetadata } = new Function(
+  `${qplSrc}\n${suggestSrc}\n${photosSrc}\n${comicMetaSrc}\nreturn { suggestBundleName, collectBundleMemberPhotos, buildBundleComicMetadata };`
+)();
 
 const run = [
   { category:'Comics', comicMetadata:{ series:'Amazing Spider-Man', issueNumber:'300' } },
@@ -112,6 +141,73 @@ const noIssueNumbers = [
 assert.equal(noIssueNumbers.length && suggestBundleName(noIssueNumbers), 'Saga (2-issue bundle)', 'same-series comics without parseable issue numbers must still name the series, without a fabricated range');
 
 console.log('suggestBundleName functional checks passed');
+
+// ── Functional: collectBundleMemberPhotos ──────────────────────────────
+{
+  const items = [
+    { photos:['a.jpg','b.jpg'], thumbnail:'a.jpg' },
+    { photos:['c.jpg'], imageUrl:'d.jpg' },
+    { photos:[], thumbnail:'', imageUrl:'' },
+  ];
+  const photos = collectBundleMemberPhotos(items);
+  assert.deepEqual(photos, ['a.jpg','b.jpg','c.jpg','d.jpg'], 'must collect every member\'s photos array plus its own single image, deduped, in member order');
+}
+{
+  // A member whose only image is its own thumbnail/imageUrl (no photos
+  // array at all) must still contribute that one image.
+  const items = [{ thumbnail:'only.jpg' }];
+  assert.deepEqual(collectBundleMemberPhotos(items), ['only.jpg'], 'a member with no photos array must still contribute its thumbnail');
+}
+{
+  // Must never exceed the storefront's own 12-photo cap (shapeStorefrontItem).
+  const items = Array.from({ length: 20 }, (_, i) => ({ photos:['img' + i + '.jpg'] }));
+  assert.equal(collectBundleMemberPhotos(items).length, 12, 'must cap combined photos at 12, matching the storefront\'s own gallery limit');
+}
+console.log('collectBundleMemberPhotos functional checks passed');
+
+// ── Functional: buildBundleComicMetadata ───────────────────────────────
+{
+  // No comic members at all -- must return null, not an empty/misleading object.
+  const items = [{ category:'Pokemon' }, { category:'MTG' }];
+  assert.equal(buildBundleComicMetadata(items), null, 'a bundle with no comic members must get no comicMetadata at all');
+}
+{
+  const items = [
+    { name:'Crain Cover A', category:'Comic', comicMetadata:{ series:'Amazing Spider-Man', issueNumber:'300', publisher:'Marvel', description:'Venom returns.', writers:['Writer A'], artists:['Artist A'], characters:['Spider-Man','Venom'] } },
+    { name:'Crain Cover B', category:'Comic', comicMetadata:{ series:'Amazing Spider-Man', issueNumber:'300', publisher:'Marvel', description:'Same issue, connecting cover.', writers:['Writer A'], artists:['Artist B'], characters:['Spider-Man'] } },
+  ];
+  const meta = buildBundleComicMetadata(items);
+  assert.equal(meta.series, 'Amazing Spider-Man', 'same-series members must collapse to one series name, not duplicate it');
+  assert.equal(meta.issueNumber, '300', 'same-issue-number members must collapse to one number, not duplicate it');
+  assert.equal(meta.publisher, 'Marvel', 'must carry the publisher through');
+  assert.match(meta.description, /Crain Cover A: Venom returns\./, 'each member\'s own synopsis must be labeled with its own name and included');
+  assert.match(meta.description, /Crain Cover B: Same issue, connecting cover\./, 'every member\'s synopsis must be included, not just the first');
+  assert.deepEqual(meta.writers, ['Writer A'], 'a writer credited on multiple members must not be duplicated');
+  assert.deepEqual(meta.artists, ['Artist A','Artist B'], 'distinct artists across members must all be carried, deduplicated');
+  assert.deepEqual(meta.characters, ['Spider-Man','Venom'], 'characters across members must be unioned and deduplicated');
+}
+{
+  // Different series/issues (e.g. a mixed-run bundle) must join rather than
+  // silently pick one and drop the rest.
+  const items = [
+    { name:'Batman #1', category:'Comic', comicMetadata:{ series:'Batman', issueNumber:'1', description:'The Bat begins.' } },
+    { name:'Detective Comics #1', category:'Comic', comicMetadata:{ series:'Detective Comics', issueNumber:'1', description:'A new case.' } },
+  ];
+  const meta = buildBundleComicMetadata(items);
+  assert.equal(meta.series, 'Batman / Detective Comics', 'different series across members must be joined, not silently dropped');
+}
+{
+  // A mixed bundle (some comics, some not) must still build metadata from
+  // just the comic members, ignoring the non-comic ones.
+  const items = [
+    { name:'Amazing Spider-Man #300', category:'Comic', comicMetadata:{ series:'Amazing Spider-Man', issueNumber:'300', description:'Venom returns.' } },
+    { name:'Charizard', category:'Pokemon' },
+  ];
+  const meta = buildBundleComicMetadata(items);
+  assert.equal(meta.series, 'Amazing Spider-Man', 'a mixed bundle must still build comicMetadata from its comic members');
+  assert.doesNotMatch(meta.description, /Charizard/, 'a non-comic member must not appear in the synopsis');
+}
+console.log('buildBundleComicMetadata functional checks passed');
 
 // ── Functional: the real storefront gate must reject a bundled member ──
 function isStorefrontItemAvailable(i) {
