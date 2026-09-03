@@ -1281,7 +1281,17 @@ async function receiveShipment(request,env,deps){
         await db(`inventory_items?id=eq.${livePresale.id}&store_id=eq.${encodeURIComponent(storeId)}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({data:{...pd,qty:receivedQty,quantity:receivedQty}})});
       }
     }
-    const rows=Array.from({length:newStandaloneCount},()=>({
+    // Store report: receiving N copies of the same cover created N separate
+    // inventory rows (each qty:1) instead of one row holding a quantity of
+    // N, unlike every other fungible product in this app (sealed packs/
+    // boxes get exactly this same one-row-with-a-qty treatment -- see
+    // "SEALED PRODUCT -- QUANTITY GROUPING" above -- and checkout already
+    // decrements a row's qty by however many sold rather than requiring one
+    // row per unit, see finalizeSharedShowSale's quantity_delta). A plain
+    // FOC cover has no per-copy distinction to track (condition/grading is
+    // the CGC/signed workflow, not ordinary new-comic-day stock), so one
+    // row per SKU per receiving batch.
+    const rows=newStandaloneCount?[{
       store_id:storeId,status:'in_stock',
       data:{
         name:[sku.title,sku.variant_label&&sku.variant_label!=='Cover A'?sku.variant_label:''].filter(Boolean).join(' -- '),
@@ -1292,12 +1302,16 @@ async function receiveShipment(request,env,deps){
         // PRH cost is 50% of cover price -- our real wholesale rate, not an estimate.
         cost:Math.round(Number(sku.msrp_cents||0)*0.5)/100,
         market:Number(sku.customer_price_cents||0)/100,salePrice:Number(sku.customer_price_cents||0)/100,
-        qty:1,quantity:1,image:sku.cover_image_url||'',
+        qty:newStandaloneCount,quantity:newStandaloneCount,image:sku.cover_image_url||'',
         source:'foc_receive',focSkuId:sku.id,focCycleId:cycleId,focReceivedAt:new Date().toISOString(),
       },
-    }));
+    }]:[];
     const { data:inserted }=rows.length?await db('inventory_items',{method:'POST',headers:{Prefer:'return=representation'},body:JSON.stringify(rows)}):{data:[]};
-    (inserted||[]).forEach(row=>created.push(row.id));
+    // createdInventoryCount reports copies added, not rows created -- the
+    // dashboard's toast reads it as "N item(s) added to inventory," and a
+    // store owner receiving 5 copies wants to hear "5," not "1" just
+    // because they now land in a single row.
+    if((inserted||[]).length) for(let i=0;i<newStandaloneCount;i++) created.push(inserted[0].id);
     // Reserve for paid customers before this cover ever reaches the shelf --
     // oldest paid order first, capped at what actually arrived (a short-ship
     // can mean fewer copies came in than were sold). An item is only ever

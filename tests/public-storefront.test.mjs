@@ -25,7 +25,7 @@ assert.match(storefront,/ASK ABOUT THIS ITEM|ADD TO CART/,'storefront items expo
 // public storefront as regular ready-to-ship stock, letting a customer buy
 // a not-yet-received copy through the store's own site while the same
 // units were also live on eBay.
-assert.match(worker,/\['sold','archived','returned','deleted','sold_pending_pickup','sold_pending_shipment','hold','lost_damaged','presale'\]\.includes\(i\.inventoryStatus\)/,
+assert.match(worker,/\['sold','archived','returned','deleted','sold_pending_pickup','sold_pending_shipment','hold','lost_damaged','presale','bundled'\]\.includes\(i\.inventoryStatus\)/,
   'presale-status rows must be excluded from the public storefront');
 {
   const fnStart=worker.indexOf('function isStorefrontItemAvailable');

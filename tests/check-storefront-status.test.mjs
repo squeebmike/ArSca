@@ -34,10 +34,10 @@ assert.match(fnBody, /if\(STOREFRONT_EXCLUDED_STATUS_REASONS\[d\.inventoryStatus
 // isStorefrontItemAvailable exclusion list -- if these drift apart, the
 // diagnostic tool would give a false "looks fine" for a status the live
 // storefront actually still blocks.
-const workerExclusionMatch = worker.match(/\['sold','archived','returned','deleted','sold_pending_pickup','sold_pending_shipment','hold','lost_damaged','presale'\]/);
+const workerExclusionMatch = worker.match(/\['sold','archived','returned','deleted','sold_pending_pickup','sold_pending_shipment','hold','lost_damaged','presale','bundled'\]/);
 assert.ok(workerExclusionMatch, 'the Worker\'s real exclusion list must exist to compare against');
 const mirroredKeys = dashboard.match(/const STOREFRONT_EXCLUDED_STATUS_REASONS = \{([\s\S]*?)\};/)[1];
-for (const status of ['sold','archived','returned','deleted','sold_pending_pickup','sold_pending_shipment','hold','lost_damaged','presale']) {
+for (const status of ['sold','archived','returned','deleted','sold_pending_pickup','sold_pending_shipment','hold','lost_damaged','presale','bundled']) {
   assert.match(mirroredKeys, new RegExp(status + ':'), `STOREFRONT_EXCLUDED_STATUS_REASONS must mirror the Worker's own "${status}" exclusion, or this tool could wrongly clear an item the live storefront still blocks`);
 }
 
