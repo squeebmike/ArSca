@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.09.01.23-dissolve-bundle-archive-fix">
+<meta name="version" content="2026.09.01.24-bundle-photos-comic-metadata">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1633,15 +1633,15 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.09.01.23-dissolve-bundle-archive-fix" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.09.01.23-dissolve-bundle-archive-fix" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.09.01.23-dissolve-bundle-archive-fix" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.09.01.23-dissolve-bundle-archive-fix" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.09.01.23-dissolve-bundle-archive-fix" defer></script>
-<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.09.01.23-dissolve-bundle-archive-fix" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.09.01.23-dissolve-bundle-archive-fix" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.09.01.23-dissolve-bundle-archive-fix" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.09.01.23-dissolve-bundle-archive-fix" defer></script>
+<script src="scripts/query-routing.js?v=2026.09.01.24-bundle-photos-comic-metadata" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.09.01.24-bundle-photos-comic-metadata" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.09.01.24-bundle-photos-comic-metadata" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.09.01.24-bundle-photos-comic-metadata" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.09.01.24-bundle-photos-comic-metadata" defer></script>
+<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.09.01.24-bundle-photos-comic-metadata" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.09.01.24-bundle-photos-comic-metadata" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.09.01.24-bundle-photos-comic-metadata" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.09.01.24-bundle-photos-comic-metadata" defer></script>
 </head>
 <body>
 
@@ -1670,11 +1670,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.09.01.23-dissolve-bundle-archive-fix</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.09.01.24-bundle-photos-comic-metadata</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.09.01.23-dissolve-bundle-archive-fix</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.09.01.24-bundle-photos-comic-metadata</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1692,7 +1692,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.09.01.23-dissolve-bundle-archive-fix</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.09.01.24-bundle-photos-comic-metadata</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3741,7 +3741,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.09.01.23-dissolve-bundle-archive-fix';
+const APP_VERSION = '2026.09.01.24-bundle-photos-comic-metadata';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -25317,6 +25317,54 @@ function suggestBundleName(items){
   return `Bundle of ${items.length} Items`;
 }
 
+// Store report: a bundle only ever carried ONE member's thumbnail and NO
+// comic detail at all (synopsis, writers, series info) -- a 3-book bundle's
+// storefront listing showed a single cover image and nothing else, even
+// though every member book had its own rich Metron-sourced comicMetadata
+// and its own photos. Collects every member's images into one deduplicated
+// list for the container's own `photos` array (shapeStorefrontItem already
+// renders that as a gallery, capped at 12 -- matched here so the container
+// doesn't carry more than the storefront would ever show).
+function collectBundleMemberPhotos(items){
+  const photos = [];
+  const add = url => { if(url && !photos.includes(url)) photos.push(url); };
+  for(const item of items){
+    (Array.isArray(item.photos) ? item.photos : []).forEach(add);
+    add(item.photoDataUrl || item.thumbnail || item.imageUrl || '');
+  }
+  return photos.slice(0, 12);
+}
+// Builds one combined comicMetadata for the bundle container out of
+// however many comic members it has -- storefrontComicDetailFor (the Worker)
+// only understands a single comicMetadata object per row, so a run of
+// several issues folds into one series/number range (reusing the same
+// same-series detection suggestBundleName already does) with each book's
+// own synopsis labeled and concatenated, and writer/artist/character/team
+// credits deduplicated across all of them. Non-comic bundles, or a bundle
+// with no comic metadata on any member, correctly get null (no synopsis
+// panel at all) rather than an empty/misleading one.
+function buildBundleComicMetadata(items){
+  const comics = items.filter(i => qplCategoryKey(i.category) === 'comic' && i.comicMetadata);
+  if(!comics.length) return null;
+  const uniq = arr => [...new Set(arr)].filter(Boolean);
+  const listField = field => uniq(comics.flatMap(i => Array.isArray(i.comicMetadata[field]) ? i.comicMetadata[field] : []));
+  const seriesNames = uniq(comics.map(i => i.comicMetadata.series || i.comicMetadata.seriesName));
+  const numbers = uniq(comics.map(i => i.comicMetadata.issueNumber || i.comicMetadata.number));
+  const description = comics
+    .map(i => (i.name || 'Item') + (i.comicMetadata.description ? ': ' + i.comicMetadata.description : ''))
+    .join('\n\n')
+    .slice(0, 2000);
+  return {
+    series: seriesNames.join(' / '), seriesName: seriesNames.join(' / '),
+    issueNumber: numbers.join(', '), number: numbers.join(', '),
+    publisher: comics[0].comicMetadata.publisher || '',
+    description,
+    writers: listField('writers'), artists: listField('artists'), coverArtists: listField('coverArtists'),
+    characters: listField('characters'), teams: listField('teams'),
+    credits: comics.flatMap(i => Array.isArray(i.comicMetadata.credits) ? i.comicMetadata.credits : []).slice(0, 20),
+  };
+}
+
 function ensureBundleBuilderModal(){
   if(document.getElementById('bundle-builder-modal')) return;
   const modal = document.createElement('div');
@@ -25375,6 +25423,7 @@ async function createInventoryBundle(items, name, price){
   const totalCost = items.reduce((a,i) => a + Number(i.cost||0), 0);
   const valueTotal = items.reduce((a,i) => a + Number(inventoryListPrice(i) || i.price || i.market || 0), 0);
   const thumbSource = items.find(i => i.thumbnail || i.imageUrl);
+  const comicMetadata = buildBundleComicMetadata(items);
   const containerUpdates = {
     name, category, price, market:price, qty:1, cost:totalCost,
     productType:'bundle', isBundle:true,
@@ -25383,6 +25432,12 @@ async function createInventoryBundle(items, name, price){
     bundleMemberValueTotal: valueTotal,
     imageUrl: thumbSource?.imageUrl || thumbSource?.thumbnail || '',
     thumbnail: thumbSource?.thumbnail || thumbSource?.imageUrl || '',
+    // Store report: a bundle's storefront listing only ever showed one
+    // member's cover and no synopsis/writer/artist info, even though every
+    // member book carried its own. See collectBundleMemberPhotos and
+    // buildBundleComicMetadata above.
+    photos: collectBundleMemberPhotos(items),
+    ...(comicMetadata ? { comicMetadata } : {}),
   };
   const containerId = await createBuiltInInventoryItem({}, containerUpdates, 'built_in');
   all.unshift(mapBuiltInItem({ id:containerId, status:'in_stock', created_at:new Date().toISOString(), data:{ ...containerUpdates, id:containerId, status:'in_stock', addedAt:new Date().toISOString() } }));
@@ -44683,7 +44738,7 @@ async function toppsLoadParallels(cardId){
   window.__arscaCloseModal = closeModal;
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.09.01.23-dissolve-bundle-archive-fix" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.09.01.24-bundle-photos-comic-metadata" defer></script>
 </body>
 </html>
 
