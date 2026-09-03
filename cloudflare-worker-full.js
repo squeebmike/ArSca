@@ -676,7 +676,15 @@ function isStorefrontItemAvailable(i) {
   // /public/preorders) with its own qualification/quantity rules. Letting
   // the same units also sell here risked selling the same not-yet-received
   // copy twice, once on eBay and once through the store's own site.
-  return !!(i.name && i.quantity > 0 && i.onlineListed && !i.soldAt && !i.archivedAt && !['sold','archived','returned','deleted','sold_pending_pickup','sold_pending_shipment','hold','lost_damaged','presale'].includes(i.inventoryStatus));
+  //
+  // Store report: bundling 3 books into a single bundle (createInventoryBundle
+  // in dashboard.html) sets each member row to status:'bundled' -- it's still
+  // qty>0, still onlineListed, still not sold/archived, and 'bundled' was
+  // never in this exclusion list either, so all 3 individual books kept
+  // showing up as their own in-stock storefront listings even though none of
+  // them is independently sellable anymore (they're only sellable as the
+  // bundle container row, which has its own separate row and its own qty).
+  return !!(i.name && i.quantity > 0 && i.onlineListed && !i.soldAt && !i.archivedAt && !['sold','archived','returned','deleted','sold_pending_pickup','sold_pending_shipment','hold','lost_damaged','presale','bundled'].includes(i.inventoryStatus));
 }
 
 function json(data, status = 200, extraHeaders = {}) {

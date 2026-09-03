@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.09.01.21-onlinelisted-field-roundtrip-fix">
+<meta name="version" content="2026.09.01.22-bundle-storefront-foc-qty-fix">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1633,15 +1633,15 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.09.01.21-onlinelisted-field-roundtrip-fix" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.09.01.21-onlinelisted-field-roundtrip-fix" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.09.01.21-onlinelisted-field-roundtrip-fix" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.09.01.21-onlinelisted-field-roundtrip-fix" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.09.01.21-onlinelisted-field-roundtrip-fix" defer></script>
-<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.09.01.21-onlinelisted-field-roundtrip-fix" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.09.01.21-onlinelisted-field-roundtrip-fix" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.09.01.21-onlinelisted-field-roundtrip-fix" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.09.01.21-onlinelisted-field-roundtrip-fix" defer></script>
+<script src="scripts/query-routing.js?v=2026.09.01.22-bundle-storefront-foc-qty-fix" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.09.01.22-bundle-storefront-foc-qty-fix" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.09.01.22-bundle-storefront-foc-qty-fix" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.09.01.22-bundle-storefront-foc-qty-fix" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.09.01.22-bundle-storefront-foc-qty-fix" defer></script>
+<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.09.01.22-bundle-storefront-foc-qty-fix" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.09.01.22-bundle-storefront-foc-qty-fix" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.09.01.22-bundle-storefront-foc-qty-fix" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.09.01.22-bundle-storefront-foc-qty-fix" defer></script>
 </head>
 <body>
 
@@ -1670,11 +1670,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.09.01.21-onlinelisted-field-roundtrip-fix</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.09.01.22-bundle-storefront-foc-qty-fix</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.09.01.21-onlinelisted-field-roundtrip-fix</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.09.01.22-bundle-storefront-foc-qty-fix</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1692,7 +1692,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.09.01.21-onlinelisted-field-roundtrip-fix</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.09.01.22-bundle-storefront-foc-qty-fix</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3741,7 +3741,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.09.01.21-onlinelisted-field-roundtrip-fix';
+const APP_VERSION = '2026.09.01.22-bundle-storefront-foc-qty-fix';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -23352,6 +23352,7 @@ const STOREFRONT_EXCLUDED_STATUS_REASONS = {
   sold:'marked Sold', archived:'Archived', returned:'marked Returned', deleted:'marked Deleted',
   sold_pending_pickup:'Sold (pending pickup)', sold_pending_shipment:'Sold (pending shipment)',
   hold:'On Hold', lost_damaged:'Lost/Damaged', presale:'a FOC presale placeholder (not receivable stock)',
+  bundled:'part of a bundle (only sellable as the bundle itself, not individually)',
 };
 // Store report: "publish all" said an item was live, the row menu agreed
 // (showed Remove from Storefront, meaning onlineListed:true), and it still
@@ -25386,8 +25387,19 @@ async function createInventoryBundle(items, name, price){
   const containerId = await createBuiltInInventoryItem({}, containerUpdates, 'built_in');
   all.unshift(mapBuiltInItem({ id:containerId, status:'in_stock', created_at:new Date().toISOString(), data:{ ...containerUpdates, id:containerId, status:'in_stock', addedAt:new Date().toISOString() } }));
   for(const member of items){
-    try { await updateBuiltInInventoryItem(member, { status:'bundled', bundledIntoId:containerId, bundledIntoName:name }); }
+    // status AND lifecycle together, matching every other status-changing
+    // flow in this file (archive/restore/sale) -- the live storefront route
+    // (isStorefrontItemAvailable in the Worker) reads data.lifecycle before
+    // the raw status column (shapeStorefrontItem), so setting status alone
+    // left lifecycle stuck at whatever it was (usually 'in_stock'), and the
+    // 3 individually-listed books kept showing as in-stock on
+    // themanapocket.com even after being folded into this bundle.
+    try { await updateBuiltInInventoryItem(member, { status:'bundled', lifecycle:'bundled', bundledIntoId:containerId, bundledIntoName:name }); }
     catch(e) { /* updateBuiltInInventoryItem already queued this for offline retry */ }
+    // Keep the row's own lifecycle dropdown/display in sync too -- that
+    // reads from the separate cross-device lifecycle KV map (getLifecycle),
+    // not the Supabase field just written above.
+    setLifecycle(member.id, 'bundled', true);
   }
   logOpsEvent('inventory_bundle_created', 'Created bundle: ' + name, { containerId, memberIds:items.map(i => i.id), price });
   renderAll();
@@ -25402,8 +25414,13 @@ async function dissolveBundle(containerId){
   for(const id of memberIds){
     const member = all.find(i => i.id === id);
     if(!member) continue;
-    try { await updateBuiltInInventoryItem(member, { status:'in_stock', bundledIntoId:'', bundledIntoName:'' }); }
+    // Mirror the same status+lifecycle pairing createInventoryBundle sets --
+    // otherwise a dissolved member's lifecycle would stay stuck at 'bundled'
+    // forever, and it would never come back on the storefront even though
+    // it's genuinely back in sellable stock.
+    try { await updateBuiltInInventoryItem(member, { status:'in_stock', lifecycle:'in_stock', bundledIntoId:'', bundledIntoName:'' }); }
     catch(e) { /* queued for offline retry */ }
+    setLifecycle(member.id, 'in_stock', true);
   }
   try { await updateBuiltInInventoryItem(container, { status:'archived', archiveReason:'Bundle dissolved' }); }
   catch(e) { /* queued for offline retry */ }
@@ -44656,7 +44673,7 @@ async function toppsLoadParallels(cardId){
   window.__arscaCloseModal = closeModal;
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.09.01.21-onlinelisted-field-roundtrip-fix" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.09.01.22-bundle-storefront-foc-qty-fix" defer></script>
 </body>
 </html>
 

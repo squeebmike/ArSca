@@ -396,6 +396,18 @@ assert.match(receiveSrc, /data:\{\.\.\.pd,qty:receivedQty,quantity:receivedQty\}
 assert.match(receiveSrc, /const \{ data:inserted \}=rows\.length\?await db\('inventory_items',\{method:'POST'/,
   'must skip the insert call entirely when nothing needs a new standalone row (all received copies already absorbed by the live listing)');
 
+// Store report: receiving 5 copies of one cover created 5 separate
+// inventory_items rows (each qty:1) instead of one row holding qty:5, the
+// same as every other fungible product in this app (sealed packs/boxes get
+// exactly one row with a quantity -- see "SEALED PRODUCT -- QUANTITY
+// GROUPING" in dashboard.html). Checkout already decrements a row's qty by
+// however many sold rather than requiring one row per unit, so there's no
+// reason a plain FOC cover (no per-copy distinction like grading/signing to
+// track) needs to fan out into N rows.
+assert.match(receiveSrc, /const rows=newStandaloneCount\?\[\{/, 'must build at most ONE row per SKU per receiving batch, not one row per copy');
+assert.match(receiveSrc, /qty:newStandaloneCount,quantity:newStandaloneCount,image:sku\.cover_image_url\|\|''/, 'the single row must carry the full received count as its quantity, not qty:1');
+assert.doesNotMatch(receiveSrc, /Array\.from\(\{length:newStandaloneCount\}/, 'must not fan out into newStandaloneCount separate rows any more');
+
 console.log('FOC receive-shipment contract checks passed');
 
 // ── Functional: reimplement the receiving-vs-live-listing reconciliation
@@ -439,6 +451,30 @@ function reconcileReceivedAgainstLivePresale(receivedQty, presaleAvailable) {
   const r = reconcileReceivedAgainstLivePresale(4, 7);
   assert.equal(r.newStandaloneCount, 0, 'a short-shipped SKU must not spin off standalone rows -- there is nothing left over');
   assert.equal(r.presaleReducedTo, 4, 'the listing\'s available quantity must be pulled down to exactly what arrived');
+}
+
+// ── Functional: one row per SKU carrying the full quantity, and
+// createdInventoryCount reporting copies (what the dashboard's toast says),
+// not rows created. ──
+function buildReceivedRows(newStandaloneCount) {
+  return newStandaloneCount ? [{ qty: newStandaloneCount, quantity: newStandaloneCount }] : [];
+}
+function createdCountFromInsert(insertedRows, newStandaloneCount) {
+  const created = [];
+  if (insertedRows.length) for (let i = 0; i < newStandaloneCount; i++) created.push(insertedRows[0].id);
+  return created.length;
+}
+{
+  const rows = buildReceivedRows(5);
+  assert.equal(rows.length, 1, 'receiving 5 copies must build exactly one row, not five');
+  assert.equal(rows[0].qty, 5, 'that one row must carry the full received count as its quantity');
+  const inserted = [{ id: 'row-1' }];
+  assert.equal(createdCountFromInsert(inserted, 5), 5, 'createdInventoryCount must report 5 copies added, not 1 row created');
+}
+{
+  const rows = buildReceivedRows(0);
+  assert.equal(rows.length, 0, 'zero new standalone copies (fully absorbed by a live presale listing) must insert nothing');
+  assert.equal(createdCountFromInsert([], 0), 0, 'createdInventoryCount must be 0 when nothing was inserted');
 }
 
 console.log('FOC receive-vs-live-listing reconciliation functional checks passed');

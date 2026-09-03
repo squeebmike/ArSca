@@ -31,12 +31,22 @@ assert.match(dashboard, /async function createInventoryBundle\(items, name, pric
 assert.match(dashboard, /productType:'bundle', isBundle:true,/, 'bundle container must be tagged isBundle so cascade logic and row menu can recognize it');
 assert.match(dashboard, /bundleMemberIds: items\.map\(i => i\.id\),/, 'bundle container must record its member ids');
 assert.match(dashboard, /const containerId = await createBuiltInInventoryItem\(\{\}, containerUpdates, 'built_in'\);/, 'bundle container must be created via the same createBuiltInInventoryItem path as any other new inventory row (so it gets a real inventory_items row and flows through normal cart/checkout unmodified)');
-assert.match(dashboard, /try \{ await updateBuiltInInventoryItem\(member, \{ status:'bundled', bundledIntoId:containerId, bundledIntoName:name \}\); \}/, 'each member must be marked status bundled and linked back to the container');
+assert.match(dashboard, /try \{ await updateBuiltInInventoryItem\(member, \{ status:'bundled', lifecycle:'bundled', bundledIntoId:containerId, bundledIntoName:name \}\); \}/, 'each member must be marked status bundled and linked back to the container');
+// Store report: 3 books folded into a bundle kept showing individually as
+// in-stock on themanapocket.com. Root cause: the live storefront route
+// (isStorefrontItemAvailable in the Worker) reads data.lifecycle before the
+// raw status column (shapeStorefrontItem), and this update only ever set
+// status, never lifecycle -- so a member's lifecycle stayed at whatever it
+// was (usually 'in_stock') no matter what status said. lifecycle must be
+// set in the same update call, matching every other status-changing flow
+// in this file (archive/restore/sale all set both together).
+assert.match(dashboard, /setLifecycle\(member\.id, 'bundled', true\);/, 'createInventoryBundle must also sync the client-side lifecycle KV map so the row\'s own lifecycle display matches what was actually saved');
 
 // ── Dissolve: only allowed before the bundle sells, reverts members ──
 assert.match(dashboard, /async function dissolveBundle\(containerId\)\{/, 'missing dissolveBundle');
 assert.match(dashboard, /if\(container\.status !== 'in_stock'\) return toast_dash\('This bundle has already sold and cannot be dissolved'\);/, 'dissolveBundle must refuse to dissolve an already-sold bundle');
-assert.match(dashboard, /try \{ await updateBuiltInInventoryItem\(member, \{ status:'in_stock', bundledIntoId:'', bundledIntoName:'' \}\); \}/, 'dissolveBundle must revert each member back to in_stock and clear its bundle link');
+assert.match(dashboard, /try \{ await updateBuiltInInventoryItem\(member, \{ status:'in_stock', lifecycle:'in_stock', bundledIntoId:'', bundledIntoName:'' \}\); \}/, 'dissolveBundle must revert each member back to in_stock and clear its bundle link, including lifecycle -- otherwise a dissolved member stays excluded from the storefront forever');
+assert.match(dashboard, /setLifecycle\(member\.id, 'in_stock', true\);/, 'dissolveBundle must also sync the client-side lifecycle KV map back to in_stock');
 
 // ── Sale cascade: hooked into checkout finalize, right after the normal sold-marking call ──
 assert.match(dashboard, /await markCartItemsSoldFromPayment\(\(lockedCheckoutSnapshot\?\.lines \|\| \[\]\)\.map\(l => \(\{ name:l\.title, price:l\.adjusted_price, cost:l\.cost_basis, category:l\.category, condition:l\.condition, quantity:l\.quantity, shopId:l\.item_id \}\)\), method, paidAt, \{ skipRemote:inventoryCommittedAtomically \}\);\s*\n\s*await cascadeMarkBundleMembersSold\(lockedCheckoutSnapshot\?\.lines \|\| \[\], paidAt, bundle\.sale\.id\);/, 'checkout finalize must cascade-mark bundle members sold right after the bundle container itself is marked sold');
@@ -58,6 +68,16 @@ assert.match(dashboard, /if\(i\.status !== 'in_stock'\) return \{ available:fals
   'inventoryRowAvailability must give a bundle container "IN BUNDLE", not "SOLD", in its status label');
 assert.match(dashboard, /<td><span style="font-family:var\(--font-mono\);font-size:9px;color:\$\{rowAvail\.color\}">\$\{rowAvail\.label\}<\/span>/,
   'bundled member rows must read the shared rowAvail.label/color in the status column, not a bespoke IN BUNDLE/SOLD ternary');
+
+// ── Live storefront gate: a bundled member must never pass availability,
+// no matter what onlineListed/quantity say -- it's only sellable as the
+// bundle container's own row. Checked against both the real Worker gate
+// and the dashboard's own mirrored copy (used by Check Storefront Status).
+const worker = fs.readFileSync('cloudflare-worker-full.js', 'utf8');
+assert.match(worker, /!\['sold','archived','returned','deleted','sold_pending_pickup','sold_pending_shipment','hold','lost_damaged','presale','bundled'\]\.includes\(i\.inventoryStatus\)/,
+  'isStorefrontItemAvailable in the Worker must exclude status "bundled", the same as every other excluded lifecycle');
+assert.match(dashboard, /bundled:'part of a bundle \(only sellable as the bundle itself, not individually\)',/,
+  'STOREFRONT_EXCLUDED_STATUS_REASONS must mirror the Worker\'s bundled exclusion so Check Storefront Status reports the real reason instead of a false "should be showing"');
 
 console.log('Inventory bundle contract checks passed');
 
@@ -92,3 +112,18 @@ const noIssueNumbers = [
 assert.equal(noIssueNumbers.length && suggestBundleName(noIssueNumbers), 'Saga (2-issue bundle)', 'same-series comics without parseable issue numbers must still name the series, without a fabricated range');
 
 console.log('suggestBundleName functional checks passed');
+
+// ── Functional: the real storefront gate must reject a bundled member ──
+function isStorefrontItemAvailable(i) {
+  return !!(i.name && i.quantity > 0 && i.onlineListed && !i.soldAt && !i.archivedAt && !['sold','archived','returned','deleted','sold_pending_pickup','sold_pending_shipment','hold','lost_damaged','presale','bundled'].includes(i.inventoryStatus));
+}
+{
+  const bundledMember = { name:'Crain Cover A', quantity:1, onlineListed:true, soldAt:'', archivedAt:'', inventoryStatus:'bundled' };
+  assert.equal(isStorefrontItemAvailable(bundledMember), false, 'a bundled member must never show as available on the live storefront, even with quantity>0 and onlineListed:true');
+}
+{
+  const normalItem = { name:'Regular card', quantity:1, onlineListed:true, soldAt:'', archivedAt:'', inventoryStatus:'in_stock' };
+  assert.equal(isStorefrontItemAvailable(normalItem), true, 'sanity check: a normal in-stock item must still be available');
+}
+
+console.log('Storefront bundled-exclusion functional checks passed');
