@@ -622,6 +622,14 @@ function shapeStorefrontItem(row) {
   const rawQty = d.quantity ?? d.qty ?? 1;
   const quantity = Number.isFinite(Number(rawQty)) ? Number(rawQty) : 1;
   const inventoryStatus = storefrontCleanText(d.lifecycle || d.status || row.status || 'in_stock', 40).toLowerCase();
+  // Inventory photos have been saved under both `photos` (the edit modal)
+  // and `images` (Pocket Scout / buy intake). Normalize both at the public
+  // boundary, keep the selected/default image first, and remove duplicates.
+  // This gives every storefront client one stable gallery contract while
+  // retaining the existing `image` field for older clients.
+  const primaryPhoto = storefrontCleanUrl(d.photoDataUrl || d.thumbnail?.url || d.thumbnail || d.image || d.img || d.imageUrl || d.image_url || d.photo);
+  const storefrontPhotos = [primaryPhoto, ...(Array.isArray(d.photos) ? d.photos : []), ...(Array.isArray(d.images) ? d.images : [])]
+    .map(storefrontCleanUrl).filter((photo, index, all) => photo && all.indexOf(photo) === index).slice(0, 12);
   // Price rule: market price, unless there's a floor (minPrice) or a
   // manually-entered override (priceOverride) from the dashboard's edit
   // screen -- whichever of those is higher than market wins. A signature is
@@ -645,8 +653,8 @@ function shapeStorefrontItem(row) {
     // user-taken photo -- checked first, same precedence the dashboard's
     // own inventoryImageUrl() uses, so a self-taken photo with no
     // catalog-sourced image still shows up on the public storefront.
-    price: Math.max(rowBase, Number(d.minPrice || 0) || 0) + rowSignatureValue, market: rowMarket, image: storefrontCleanUrl(d.photoDataUrl || d.thumbnail || d.image || d.img || d.imageUrl || d.image_url || d.photo),
-    photos: (Array.isArray(d.photos) ? d.photos : []).map(storefrontCleanUrl).filter(Boolean).slice(0, 12),
+    price: Math.max(rowBase, Number(d.minPrice || 0) || 0) + rowSignatureValue, market: rowMarket, image: storefrontPhotos[0] || '',
+    photos: storefrontPhotos,
     isSealed: !!d.is_sealed, gradingCompany: storefrontCleanText(d.grading_company || d.grader || '', 40),
     isSigned: !!d.is_signed, signedBy: storefrontCleanText(d.signed_by || '', 120), signatureValue: rowSignatureValue,
     comic: storefrontComicDetailFor(d),
