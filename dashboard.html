@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.09.01.27-cart-qty-price-edit-fix">
+<meta name="version" content="2026.09.01.28-category-price-ceiling">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1633,15 +1633,15 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.09.01.27-cart-qty-price-edit-fix" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.09.01.27-cart-qty-price-edit-fix" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.09.01.27-cart-qty-price-edit-fix" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.09.01.27-cart-qty-price-edit-fix" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.09.01.27-cart-qty-price-edit-fix" defer></script>
-<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.09.01.27-cart-qty-price-edit-fix" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.09.01.27-cart-qty-price-edit-fix" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.09.01.27-cart-qty-price-edit-fix" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.09.01.27-cart-qty-price-edit-fix" defer></script>
+<script src="scripts/query-routing.js?v=2026.09.01.28-category-price-ceiling" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.09.01.28-category-price-ceiling" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.09.01.28-category-price-ceiling" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.09.01.28-category-price-ceiling" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.09.01.28-category-price-ceiling" defer></script>
+<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.09.01.28-category-price-ceiling" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.09.01.28-category-price-ceiling" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.09.01.28-category-price-ceiling" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.09.01.28-category-price-ceiling" defer></script>
 </head>
 <body>
 
@@ -1670,11 +1670,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.09.01.27-cart-qty-price-edit-fix</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.09.01.28-category-price-ceiling</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.09.01.27-cart-qty-price-edit-fix</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.09.01.28-category-price-ceiling</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1692,7 +1692,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.09.01.27-cart-qty-price-edit-fix</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.09.01.28-category-price-ceiling</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3003,6 +3003,10 @@ body.show-mode .inv-sync-badge{display:none;}
         <input type="number" id="edit-list-price" step="0.01" min="0" placeholder="0.00">
       </div>
       <div>
+        <label>Max Sale Price / Ceiling ($)</label>
+        <input type="number" id="edit-ceiling-price" step="0.01" min="0" placeholder="No ceiling">
+      </div>
+      <div>
         <label>Min Sale Price ($)</label>
         <input type="number" id="edit-min-price" step="0.01" min="0" placeholder="No floor">
       </div>
@@ -3741,7 +3745,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.09.01.27-cart-qty-price-edit-fix';
+const APP_VERSION = '2026.09.01.28-category-price-ceiling';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -5077,6 +5081,14 @@ const DEFAULT_VENDOR_CONFIG = {
     pricingSync: true,
   },
   categories: [...STANDARD_INVENTORY_CATEGORIES],
+  // Store request: a bulk "how far above market can we sell" rule per
+  // category (e.g. Pokemon 20% over market or +$2, whichever's greater;
+  // Sports 60% over or +$5), auto-applied as a new item's ceilingPrice at
+  // creation (see createBuiltInInventoryItem) and adjustable per item
+  // afterward, same as the existing floor (minPrice). Keyed by category
+  // name; a category with no entry here gets no ceiling at all -- the
+  // feature is opt-in per category, not a blanket default.
+  categoryPriceCeilings: {},
 };
 const LIFECYCLE_LABELS = {
   in_stock: 'In stock',
@@ -6584,6 +6596,7 @@ function getVendorConfig(){
       inventorySource: saved.inventorySource || defaultSource,
       modules: { ...DEFAULT_VENDOR_CONFIG.modules, ...(saved.modules || {}) },
       categories: Array.isArray(saved.categories) ? saved.categories.filter(Boolean) : [...DEFAULT_VENDOR_CONFIG.categories],
+      categoryPriceCeilings: { ...DEFAULT_VENDOR_CONFIG.categoryPriceCeilings, ...(saved.categoryPriceCeilings || {}) },
     };
   } catch(e) {
     return JSON.parse(JSON.stringify(DEFAULT_VENDOR_CONFIG));
@@ -6597,6 +6610,7 @@ function saveVendorConfig(config){
     modules:{ ...DEFAULT_VENDOR_CONFIG.modules, ...(config.modules || {}) },
     categories:Array.isArray(config.categories) ? config.categories.filter(Boolean) : getVendorConfig().categories,
     inventorySource:config.inventorySource || getVendorConfig().inventorySource,
+    categoryPriceCeilings: config.categoryPriceCeilings ? { ...config.categoryPriceCeilings } : getVendorConfig().categoryPriceCeilings,
   };
   localStorage.setItem('vendor_config_v1', JSON.stringify(next));
   applyVendorConfig();
@@ -8010,6 +8024,22 @@ function renderVendorConfigPanel(){
       const isStandard = STANDARD_INVENTORY_CATEGORIES.includes(c);
       return `<span class="category-chip">${escHtml(c)}${isStandard ? ' <span style="color:var(--dim);font-size:9px">(standard)</span>' : `<button onclick="removeVendorCategory('${String(c).replace(/'/g,"\\'")}')">x</button>`}</span>`;
     }).join('')}</div>
+    <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border)">
+      <div style="font-family:'Orbitron',monospace;font-size:10px;color:var(--dim);letter-spacing:.04em;margin-bottom:6px">CATEGORY PRICE CEILINGS</div>
+      <div style="font-family:var(--font-mono);font-size:9px;color:var(--dim);line-height:1.55;margin-bottom:8px">
+        Bulk "how far above market can we sell" rule, applied automatically as the ceiling on every NEW item added to that category going forward -- whichever bump is greater, percent or flat dollars. Leave both blank for a category to skip auto-ceilings for it. Doesn't touch existing inventory, and any item's own ceiling can still be changed individually afterward (Max Sale Price / Ceiling on its edit screen).
+      </div>
+      <div class="tbl-wrap"><table><thead><tr><th>CATEGORY</th><th style="text-align:right">% OVER MARKET</th><th style="text-align:right">OR FLAT $ OVER</th></tr></thead><tbody>
+        ${getInventoryCategories().map(c => {
+          const rule = cfg.categoryPriceCeilings?.[c] || {};
+          const safe = String(c).replace(/'/g,"\\'");
+          return `<tr><td>${escHtml(c)}</td>
+            <td style="text-align:right"><input type="number" min="0" step="1" class="tsi" style="width:70px;text-align:right" value="${rule.pct || ''}" placeholder="0" onchange="setCategoryPriceCeilingRule('${safe}','pct',this.value)"></td>
+            <td style="text-align:right"><input type="number" min="0" step="0.01" class="tsi" style="width:80px;text-align:right" value="${rule.flat || ''}" placeholder="0.00" onchange="setCategoryPriceCeilingRule('${safe}','flat',this.value)"></td>
+          </tr>`;
+        }).join('')}
+      </tbody></table></div>
+    </div>
     <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border);display:flex;gap:16px;align-items:center;flex-wrap:wrap">
       <label style="display:flex;align-items:center;gap:8px;font-family:monospace;font-size:10px;color:var(--dim);cursor:pointer">
         <input type="checkbox" ${localStorage.getItem('qa_debug')==='1'?'checked':''} onchange="localStorage.setItem('qa_debug',this.checked?'1':'0');toast_dash(this.checked?'Debug mode ON':'Debug mode OFF')">
@@ -8128,6 +8158,26 @@ function removeVendorCategory(name){
   }
   const cfg = getVendorConfig();
   cfg.categories = (cfg.categories || []).filter(c => c !== name);
+  saveVendorConfig(cfg);
+}
+
+// field is 'pct' or 'flat' -- the bulk "% over market or flat $ over,
+// whichever's greater" ceiling rule for one category (see
+// computeCategoryCeilingPrice / createBuiltInInventoryItem's auto-set).
+function setCategoryPriceCeilingRule(category, field, value){
+  const cfg = getVendorConfig();
+  const rules = { ...(cfg.categoryPriceCeilings || {}) };
+  const num = Math.max(0, parseFloat(value) || 0);
+  const nextRule = { ...(rules[category] || {}), [field]: num };
+  // A rule with nothing in either field isn't a rule at all -- drop the
+  // category's entry entirely rather than leaving a zeroed-out {pct:0,flat:0}
+  // sitting in storage (categoryPriceCeilingRule already treats "no entry"
+  // and "an all-zero entry" identically at read time, but keeping storage
+  // clean makes the settings table itself an honest reflection of what's
+  // actually configured).
+  if(!nextRule.pct && !nextRule.flat) delete rules[category];
+  else rules[category] = nextRule;
+  cfg.categoryPriceCeilings = rules;
   saveVendorConfig(cfg);
 }
 
@@ -15641,7 +15691,7 @@ const BUILT_IN_ITEM_SIMPLE_FIELDS = [
   ['activeCompSnapshot',null,'raw'], ['soldCompSnapshot',null,'raw'],
   ['consignorName',''], ['consignmentId',''], ['signed_by',''],
   ['pokemonPriceTrackerLastUpdated',''],
-  ['signature_value',0,'num'], ['minPrice',0,'num'],
+  ['signature_value',0,'num'], ['minPrice',0,'num'], ['ceilingPrice',0,'num'],
   ['expectedProfit',0,'num'],
   ['photos',[],'array'],
   ['pokemonPriceTrackerPrices',null,'raw'], ['pokemonPriceTrackerVariants',null,'raw'],
@@ -16674,6 +16724,31 @@ function inventoryImageSourceLabel(item={}){
 function inventoryCostBasis(item={}){ return Number(item.cost ?? item.costBasis ?? item.raw?.cost ?? 0) || 0; }
 function inventoryMarketPrice(item={}){ return Number(item.market ?? item.marketPrice ?? item.rawMarketPrice ?? item.raw?.market ?? 0) || 0; }
 function inventoryMinPrice(item={}){ return Number(item.minPrice ?? item.raw?.minPrice ?? 0) || 0; }
+// The ceiling counterpart to inventoryMinPrice -- "never sell above this."
+// Auto-set per category at creation time (see createBuiltInInventoryItem /
+// categoryPriceCeilingRule), then freely editable per item afterward the
+// same way minPrice already is. 0 means "no ceiling set."
+function inventoryCeilingPrice(item={}){ return Number(item.ceilingPrice ?? item.raw?.ceilingPrice ?? 0) || 0; }
+// Store request: a bulk "how far above market can we sell" rule by
+// category (e.g. Pokemon 20% over market or +$2, whichever's greater).
+// Keyed by the exact category string on the item (STANDARD_INVENTORY_
+// CATEGORIES) -- a category with no configured rule returns null, meaning
+// no ceiling gets auto-set for it at all.
+function categoryPriceCeilingRule(category){
+  const rules = getVendorConfig().categoryPriceCeilings || {};
+  return rules[category] || null;
+}
+// market + max(market x pct%, flat $), whichever bump is greater -- 0 if
+// there's no rule or no market price to compute against yet. Rounded the
+// same cash-register-friendly way roundSellPrice already rounds every
+// other suggested price in this app.
+function computeCategoryCeilingPrice(market, rule){
+  if(!rule || !(market > 0)) return 0;
+  const pct = Number(rule.pct || 0);
+  const flat = Number(rule.flat || 0);
+  const bump = Math.max(market * pct / 100, flat);
+  return bump > 0 ? roundSellPrice(market + bump) : 0;
+}
 // A manually-entered price from the edit screen's List/Sale Price field
 // (only set when that value was deliberately typed apart from Market Price
 // at save time — see confirmEditAndSync/confirmAddToInventoryFromModal).
@@ -16699,25 +16774,31 @@ function inventoryEffectiveBasePrice(item={}){
 }
 // The price rule: market price, unless there's a floor (minPrice) or a
 // manually-entered override, in which case the higher of override/market
-// vs floor wins.
+// vs floor wins -- then capped at the ceiling (ceilingPrice), if one is
+// set, same as the floor applies on top of an override.
 function inventoryListPrice(item={}){
   const base = inventoryEffectiveBasePrice(item);
   const floor = inventoryMinPrice(item);
-  const floored = floor > 0 ? Math.max(base, floor) : base;
-  return floored + inventorySignatureValue(item);
+  let price = floor > 0 ? Math.max(base, floor) : base;
+  const ceiling = inventoryCeilingPrice(item);
+  if(ceiling > 0) price = Math.min(price, ceiling);
+  return price + inventorySignatureValue(item);
 }
 // Suggested ring-up price for the Sell/POS flow: respects a manual price
 // override, applies the active Show Mode discount on top of it, then
 // enforces the per-item minPrice floor as a hard minimum (never rings up
-// below the floor even after a show discount). The signature premium is
-// added after the discount and floor -- a trade-show percentage-off rule
+// below the floor even after a show discount) and the ceilingPrice as a
+// hard maximum. The signature premium is added after the discount/floor/
+// ceiling -- a trade-show percentage-off rule (or a market-based ceiling)
 // shouldn't eat into a real signature's value any more than it eats into
 // the floor.
 function inventorySellSuggestedPrice(item={}){
   const basePrice = inventoryEffectiveBasePrice(item);
   const discounted = basePrice > 0 ? applyShowPriceRule(basePrice) : 0;
   const floor = inventoryMinPrice(item);
-  const floored = floor > 0 ? Math.max(discounted, floor) : discounted;
+  let floored = floor > 0 ? Math.max(discounted, floor) : discounted;
+  const ceiling = inventoryCeilingPrice(item);
+  if(ceiling > 0) floored = Math.min(floored, ceiling);
   return floored + inventorySignatureValue(item);
 }
 function inventoryProfitStats(item={}){
@@ -23626,6 +23707,18 @@ async function createBuiltInInventoryItem(item, updates, sourceLabel='built_in')
   const session = getAuthSession();
   const storeId = getActiveStoreId();
   const id = 'builtin_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2,6);
+  // Store request: a per-category "how far above market can we sell" rule
+  // (e.g. Pokemon 20% over market or +$2, whichever's greater), auto-set as
+  // this new item's ceiling going in -- adjustable per item afterward via
+  // ceilingPrice same as the floor (minPrice) already is. Only computed when
+  // the caller hasn't already set an explicit ceilingPrice, and only when
+  // the category actually has a configured rule (categoryPriceCeilingRule
+  // returns null otherwise) and there's a market price to compute against.
+  const resolvedForCeiling = { ...item, ...updates };
+  const autoCeiling = computeCategoryCeilingPrice(
+    inventoryMarketPrice(resolvedForCeiling),
+    categoryPriceCeilingRule(resolvedForCeiling.category)
+  );
   const data = {
     id,
     ...item,
@@ -23644,6 +23737,7 @@ async function createBuiltInInventoryItem(item, updates, sourceLabel='built_in')
     // listed immediately. item/updates can still override this explicitly
     // (e.g. an import flow that intentionally wants to hold something back).
     onlineListed:(item?.onlineListed ?? updates?.onlineListed ?? true),
+    ceilingPrice:(item?.ceilingPrice ?? updates?.ceilingPrice ?? autoCeiling),
   };
   if(sb && session?.supabase && storeId) {
     const { data:row, error } = await sb
@@ -24608,6 +24702,7 @@ function openEditModal(id) {
   document.getElementById('edit-market').value = item.market || '';
   document.getElementById('edit-list-price').value = inventoryEffectiveBasePrice(item) || '';
   document.getElementById('edit-min-price').value = item.minPrice || '';
+  document.getElementById('edit-ceiling-price').value = item.ceilingPrice || '';
   document.getElementById('edit-qty').value = item.qty || 1;
   document.getElementById('edit-year').value = item.year || '';
   document.getElementById('edit-set').value = item.set || '';
@@ -24694,6 +24789,7 @@ function openAddToInventoryModal(idx){
   document.getElementById('edit-market').value = item.market || '';
   document.getElementById('edit-list-price').value = item.listPrice || item.salePrice || item.market || '';
   document.getElementById('edit-min-price').value = item.minPrice || '';
+  document.getElementById('edit-ceiling-price').value = item.ceilingPrice || '';
   document.getElementById('edit-qty').value = item.qty || 1;
   document.getElementById('edit-year').value = item.year || '';
   document.getElementById('edit-set').value = item.set || '';
@@ -24805,6 +24901,13 @@ async function confirmAddToInventoryFromModal(){
     listPrice: addHasOverride ? addListVal : addMarketVal,
     displayPrice: addHasOverride ? addListVal : addMarketVal,
     minPrice: parseFloat(document.getElementById('edit-min-price')?.value)||0,
+    // Left blank (the common case -- a fresh item from Research has no
+    // ceiling of its own yet), this resolves to undefined rather than 0 so
+    // createBuiltInInventoryItem's `item?.ceilingPrice ?? updates?.ceilingPrice
+    // ?? autoCeiling` chain can still fall through to the category's
+    // auto-computed ceiling. A real typed value here (an explicit per-item
+    // override before the item even exists) still wins over that default.
+    ceilingPrice: parseFloat(document.getElementById('edit-ceiling-price')?.value) || undefined,
     qty: parseInt(document.getElementById('edit-qty').value)||1,
     year: document.getElementById('edit-year').value.trim(),
     set: document.getElementById('edit-set').value.trim(),
@@ -25024,6 +25127,10 @@ async function confirmEditAndSync() {
     listPrice: editHasOverride ? editListVal : editMarketVal,
     displayPrice: editHasOverride ? editListVal : editMarketVal,
     minPrice: parseFloat(document.getElementById('edit-min-price')?.value)||0,
+    // Editing an existing item: blank explicitly means "no ceiling," same
+    // as minPrice above -- the auto-category-default only ever applies at
+    // creation time (createBuiltInInventoryItem), not on every later save.
+    ceilingPrice: parseFloat(document.getElementById('edit-ceiling-price')?.value)||0,
     thumbnail: document.getElementById('edit-photo-data')?.value || '',
     photoDataUrl: document.getElementById('edit-photo-data')?.value || '',
     photoSource: document.getElementById('edit-photo-source')?.value || '',
@@ -44847,7 +44954,7 @@ async function toppsLoadParallels(cardId){
   window.__arscaCloseModal = closeModal;
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.09.01.27-cart-qty-price-edit-fix" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.09.01.28-category-price-ceiling" defer></script>
 </body>
 </html>
 
