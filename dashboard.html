@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.09.01.28-category-price-ceiling">
+<meta name="version" content="2026.09.01.29-whats-new-catchup">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1633,15 +1633,15 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.09.01.28-category-price-ceiling" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.09.01.28-category-price-ceiling" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.09.01.28-category-price-ceiling" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.09.01.28-category-price-ceiling" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.09.01.28-category-price-ceiling" defer></script>
-<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.09.01.28-category-price-ceiling" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.09.01.28-category-price-ceiling" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.09.01.28-category-price-ceiling" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.09.01.28-category-price-ceiling" defer></script>
+<script src="scripts/query-routing.js?v=2026.09.01.29-whats-new-catchup" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.09.01.29-whats-new-catchup" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.09.01.29-whats-new-catchup" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.09.01.29-whats-new-catchup" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.09.01.29-whats-new-catchup" defer></script>
+<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.09.01.29-whats-new-catchup" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.09.01.29-whats-new-catchup" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.09.01.29-whats-new-catchup" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.09.01.29-whats-new-catchup" defer></script>
 </head>
 <body>
 
@@ -1670,11 +1670,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.09.01.28-category-price-ceiling</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.09.01.29-whats-new-catchup</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.09.01.28-category-price-ceiling</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.09.01.29-whats-new-catchup</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1692,7 +1692,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.09.01.28-category-price-ceiling</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.09.01.29-whats-new-catchup</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3745,7 +3745,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.09.01.28-category-price-ceiling';
+const APP_VERSION = '2026.09.01.29-whats-new-catchup';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -6253,6 +6253,7 @@ const FEATURE_LOG = [
     { title:'Foil/finish display', status:'working', desc:'Surfaces foil/finish status for MTG and comics wherever the item shows up, instead of it being buried in raw data.' },
     { title:'Comic quantity grouping', status:'working', desc:'Multiple raw copies of the same issue/cover/condition collapse into one row with a quantity, instead of cluttering the list with duplicates.' },
     { title:'Signature added-value tracking', status:'working', desc:'Track and price in the added value of a signature on any item type, reflected correctly in storefront listings and checkout.' },
+    { title:'Category price ceilings', status:'new', desc:'Set a bulk "how far above market can we sell" rule per category in Settings -- percent over market or a flat dollar amount, whichever\'s greater (e.g. Pokemon 20% or +$2, Sports 60% or +$5). Auto-applied as the ceiling on every new item added to that category going forward; still freely adjustable per item afterward, same as the existing price floor.' },
   ]},
   { area:'POS / Register / Checkout', items:[
     { title:'Multi-quantity sell + fixed discount math', status:'new', desc:'A +/- stepper lets you sell several of the same item (toploaders, sleeves, etc.) as one cart line. Cart-level discounts now apply correctly per line, so revenue/profit records match what the customer actually paid.' },
@@ -6263,6 +6264,7 @@ const FEATURE_LOG = [
     { title:'Gift cards', status:'working', desc:'Issue a gift card at sale, redeem it (fully or partially) at a later checkout.' },
     { title:'Loyalty points', status:'working', desc:'Earn points on purchases, redeem them as a checkout discount, configurable accrual rate.' },
     { title:'Store credit / trade-in credit', status:'working', desc:'Apply a customer\'s trade-in credit balance directly toward a purchase at checkout.' },
+    { title:'Fixed: changing a cart line\'s quantity could undo a manual price edit', status:'new', desc:'Editing a line\'s price via Edit Price, then bumping its quantity with the +/- stepper, silently threw the edit away and reverted to the original market-derived price -- the stepper always recalculated from the price captured when the item was first added to cart, never the edited one.' },
   ]},
   { area:'Buy Counter / Trade-Ins', items:[
     { title:'Buy session workflow', status:'working', desc:'Build a buy offer line by line with live pricing, accept/reject, and pay out by cash, trade credit, or other tender.' },
@@ -6299,6 +6301,12 @@ const FEATURE_LOG = [
     { title:'Order recording + pickup fulfillment', status:'working', desc:'Storefront orders land in the dashboard\'s Orders view for fulfillment, including in-store pickup.' },
     { title:'Website sales counted correctly by channel', status:'new', desc:'Website checkout sales now bucket under the same "Website" channel the Sales-by-Channel report already tracks, instead of showing up as an unrecognized channel.' },
     { title:'Public event calendar from the dashboard', status:'new', desc:'Add, edit, or remove Online Live Show and In-Person Show dates from Settings and they publish straight to the website\'s calendar -- no more editing the Webflow CMS by hand.' },
+    { title:'New inventory publishes to the storefront immediately', status:'new', desc:'New items used to default to hidden, requiring a manual "Publish to Storefront" click before they went live -- that caused repeated reports of genuinely in-stock items never showing up on the site. New items now go live the moment they\'re added; a "Force Publish" row-menu action and an inline fix offered by Check Storefront Status (below) both write the change directly, sidestepping a stale local cache instead of computing off it.' },
+    { title:'Check Storefront Status', status:'new', desc:'A row-menu diagnostic that checks an item against the exact live storefront rules (quantity, publish flag, sold/archived dates, lifecycle status) and tells you which one is actually blocking it -- instead of a listed item just silently not showing up with no way to see why.' },
+    { title:'Fixed: publishing to the storefront could silently do nothing', status:'new', desc:'The publish flag was never actually being read from or written to the database on an edit -- every publish button reported success, but the real value in Supabase never changed. Only creating a brand-new item worked correctly; every later edit was a no-op no matter which button was clicked.' },
+    { title:'Fixed: bundled and dissolved items kept showing individually', status:'new', desc:'Folding books into a bundle (or dissolving one back apart) only updated part of an item\'s status, not the field the live storefront actually checks first -- so individually-bundled books, and the dead container left behind after dissolving a bundle, both kept showing as their own in-stock listings.' },
+    { title:'Bundle photos & comic info pulled from every member item', status:'new', desc:'A bundle\'s storefront listing used to show only one member\'s photo and no synopsis/writer/artist info. Now pulls every member\'s photos into one gallery and combines their comic details into one listing. A "Refresh Bundle Photos/Info" row-menu action re-pulls this for a bundle made before this shipped, without dissolving and rebuilding it.' },
+    { title:'"Publish/Sync Webflow" hidden for non-Webflow stores', status:'new', desc:'That row-menu button was being confused for the real storefront-publish control on stores that don\'t use Webflow for inventory at all -- now only shown for stores actually configured to sync inventory through Webflow.' },
   ]},
   { area:'Comics', items:[
     { title:'Comic Issue Hub', status:'working', desc:'Browse a full comic run with covers and variants pulled from Metron.' },
@@ -6312,6 +6320,8 @@ const FEATURE_LOG = [
     { title:'Resend confirmation email', status:'new', desc:'Collectors who never got (or lost) their signup confirmation email can resend it themselves right from the sign-in box on the preorder page.' },
     { title:'Archive a FOC cycle', status:'new', desc:'Staff can archive a closed FOC week from the admin panel, removing it from the customer-facing preorder page while keeping every order on record. Reversible.' },
     { title:'Receive FOC shipment into inventory', status:'new', desc:'RECEIVE SHIPMENT on a FOC cycle is the first and only point a comic becomes real inventory -- importing the PRH file and placing the distributor order both stay catalog/planning-only, since neither proves the books actually show up. Enter what physically arrived per cover (defaults to what was ordered, lower it on a short-ship); paid customer copies are reserved oldest-order-first and their preorder is marked ready for pickup/reserved for shipping once fully in, the rest goes straight into sellable in-stock inventory.' },
+    { title:'Fixed: receiving multiple copies of one cover made one item each', status:'new', desc:'Receiving 5 copies of the same cover used to create 5 separate inventory rows (each qty 1) instead of one row holding a quantity of 5, unlike every other fungible product in this app. Now creates a single row per cover per receiving batch.' },
+    { title:'Fixed: the FOC wall\'s Add to Inventory and eBay bulk tools', status:'new', desc:'The whole FOC-wall eBay bulk-listing toolbar (select-all, per-item checkbox, start/skip/cancel) and the "+ Add to Inventory" button were completely non-functional -- a hard refresh never fixed it because the real cause was those functions never being exposed for the page to actually call them.' },
   ]},
   { area:'Customer Web Accounts (your website)', items:[
     { title:'My Account page', status:'new', desc:'Signed-in customers can see their general shop orders, comic preorders, loyalty points, trade-in credit, and gift card balances all in one page on your website.' },
@@ -6352,6 +6362,8 @@ const FEATURE_LOG = [
   ]},
   { area:'Reporting', items:[
     { title:'Potential ROI stat (Home)', status:'working', desc:'Shows what you\'d walk away with if everything in stock sold at your real price right now, vs. what you paid for it.' },
+    { title:'Category / product profitability & payment mix', status:'new', desc:'The Reports tab now breaks down revenue, COGS, profit and margin by category and by product, shows top sellers by revenue and by profit, charts sales/profit trends over your chosen date range, and a payment-method mix chart -- plus a Washington B&O tax filing note.' },
+    { title:'Category Health report', status:'new', desc:'Cross-references what actually sold against your CURRENT unsold stock to flag where a category is struggling: no sales at all this period despite real stock sitting, negative or thin margins, cash concentrated in stock 90+ days old, or slow turnover relative to what it\'s tying up -- each with the real dollar amount and a concrete next step, not just a bare warning.' },
     { title:'One consolidated Reports screen', status:'planned', desc:'A single place for sales reporting with real week/month/date-range rollups, instead of stats spread across Home, End-of-Day, and Sold Items. Not built yet -- being scoped.' },
   ]},
 ];
@@ -44954,7 +44966,7 @@ async function toppsLoadParallels(cardId){
   window.__arscaCloseModal = closeModal;
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.09.01.28-category-price-ceiling" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.09.01.29-whats-new-catchup" defer></script>
 </body>
 </html>
 
