@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.09.01.29-whats-new-catchup">
+<meta name="version" content="2026.09.01.30-card-themes">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1633,15 +1633,15 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.09.01.29-whats-new-catchup" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.09.01.29-whats-new-catchup" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.09.01.29-whats-new-catchup" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.09.01.29-whats-new-catchup" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.09.01.29-whats-new-catchup" defer></script>
-<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.09.01.29-whats-new-catchup" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.09.01.29-whats-new-catchup" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.09.01.29-whats-new-catchup" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.09.01.29-whats-new-catchup" defer></script>
+<script src="scripts/query-routing.js?v=2026.09.01.30-card-themes" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.09.01.30-card-themes" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.09.01.30-card-themes" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.09.01.30-card-themes" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.09.01.30-card-themes" defer></script>
+<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.09.01.30-card-themes" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.09.01.30-card-themes" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.09.01.30-card-themes" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.09.01.30-card-themes" defer></script>
 </head>
 <body>
 
@@ -1670,11 +1670,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.09.01.29-whats-new-catchup</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.09.01.30-card-themes</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.09.01.29-whats-new-catchup</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.09.01.30-card-themes</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1692,7 +1692,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.09.01.29-whats-new-catchup</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.09.01.30-card-themes</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -2587,6 +2587,7 @@ body.show-mode .inv-sync-badge{display:none;}
   <div style="display:flex;gap:8px;flex-wrap:wrap;max-width:1400px;margin:0 auto 10px;padding:0 20px">
     <button class="hbtn" onclick="openSetBrowser()" style="font-size:10px;min-height:34px;padding:4px 14px;background:rgba(255,209,102,.1);border-color:rgba(255,209,102,.4);color:var(--gold)">⚡ POKÉMON SET BROWSER</button>
     <button class="hbtn" onclick="openMtgSetBrowser()" style="font-size:10px;min-height:34px;padding:4px 14px;background:rgba(91,163,245,.1);border-color:rgba(91,163,245,.4);color:#5ba3f5">🔮 MTG SET BROWSER</button>
+    <button class="hbtn" onclick="openCardThemesBrowser()" style="font-size:10px;min-height:34px;padding:4px 14px;background:rgba(255,107,181,.1);border-color:rgba(255,107,181,.4);color:#ff6bb5">🎨 CARD THEMES</button>
   </div>
   <div id="topps-checklist-panel" class="topps-browser">
     <div class="topps-shell">
@@ -3745,7 +3746,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.09.01.29-whats-new-catchup';
+const APP_VERSION = '2026.09.01.30-card-themes';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -5089,6 +5090,14 @@ const DEFAULT_VENDOR_CONFIG = {
   // name; a category with no entry here gets no ceiling at all -- the
   // feature is opt-in per category, not a blanket default.
   categoryPriceCeilings: {},
+  // Store request: curated card groupings (like Dex's "Golden Hour" --
+  // cards that look good displayed together, not an official set) cross-
+  // referenced against current inventory. There's no public API for these
+  // (dextcg.com is unreachable from here, and web search turns up nothing
+  // usable), so themes are entered by the store from a screenshot of the
+  // theme rather than imported automatically. Array, not a map, since a
+  // theme has no natural unique key besides its own generated id.
+  cardThemes: [],
 };
 const LIFECYCLE_LABELS = {
   in_stock: 'In stock',
@@ -6254,6 +6263,7 @@ const FEATURE_LOG = [
     { title:'Comic quantity grouping', status:'working', desc:'Multiple raw copies of the same issue/cover/condition collapse into one row with a quantity, instead of cluttering the list with duplicates.' },
     { title:'Signature added-value tracking', status:'working', desc:'Track and price in the added value of a signature on any item type, reflected correctly in storefront listings and checkout.' },
     { title:'Category price ceilings', status:'new', desc:'Set a bulk "how far above market can we sell" rule per category in Settings -- percent over market or a flat dollar amount, whichever\'s greater (e.g. Pokemon 20% or +$2, Sports 60% or +$5). Auto-applied as the ceiling on every new item added to that category going forward; still freely adjustable per item afterward, same as the existing price floor.' },
+    { title:'Card Themes', status:'new', desc:'Enter a curated card grouping for display/merchandising (e.g. a "Golden Hour"-style theme) and see how many of its cards you already have in stock, with price/qty per match -- available from the SETS tab. Card lists are entered by the store since there\'s no public API for these groupings; this just cross-references whatever list you give it against current sellable inventory.' },
   ]},
   { area:'POS / Register / Checkout', items:[
     { title:'Multi-quantity sell + fixed discount math', status:'new', desc:'A +/- stepper lets you sell several of the same item (toploaders, sleeves, etc.) as one cart line. Cart-level discounts now apply correctly per line, so revenue/profit records match what the customer actually paid.' },
@@ -6609,6 +6619,7 @@ function getVendorConfig(){
       modules: { ...DEFAULT_VENDOR_CONFIG.modules, ...(saved.modules || {}) },
       categories: Array.isArray(saved.categories) ? saved.categories.filter(Boolean) : [...DEFAULT_VENDOR_CONFIG.categories],
       categoryPriceCeilings: { ...DEFAULT_VENDOR_CONFIG.categoryPriceCeilings, ...(saved.categoryPriceCeilings || {}) },
+      cardThemes: Array.isArray(saved.cardThemes) ? saved.cardThemes : [...DEFAULT_VENDOR_CONFIG.cardThemes],
     };
   } catch(e) {
     return JSON.parse(JSON.stringify(DEFAULT_VENDOR_CONFIG));
@@ -6623,6 +6634,7 @@ function saveVendorConfig(config){
     categories:Array.isArray(config.categories) ? config.categories.filter(Boolean) : getVendorConfig().categories,
     inventorySource:config.inventorySource || getVendorConfig().inventorySource,
     categoryPriceCeilings: config.categoryPriceCeilings ? { ...config.categoryPriceCeilings } : getVendorConfig().categoryPriceCeilings,
+    cardThemes: Array.isArray(config.cardThemes) ? config.cardThemes : getVendorConfig().cardThemes,
   };
   localStorage.setItem('vendor_config_v1', JSON.stringify(next));
   applyVendorConfig();
@@ -44208,6 +44220,132 @@ function mtgsbAddToInventory(idx){
 
 // ── END MTG SET BROWSER ──────────────────────────────────────────
 
+// ── CARD THEMES ───────────────────────────────────────────────────
+// Store request: curated card groupings (like the Dex TCG app's "Golden
+// Hour" -- cards that look good displayed/sold together, not an official
+// set). There's no public API for these, so the store enters a theme's
+// card list themselves (from a screenshot, a reddit post, etc.) and this
+// cross-references it against current sellable inventory to show what
+// they already have vs. still need, for merchandising/case-layout.
+function getCardThemes(){
+  return getVendorConfig().cardThemes || [];
+}
+function addCardTheme(name, cardListText){
+  const cardNames = String(cardListText || '')
+    .split(/[\n,]/)
+    .map(s => s.trim())
+    .filter(Boolean);
+  if(!name || !name.trim() || !cardNames.length) return null;
+  const theme = { id: 'theme_' + Date.now().toString(36) + Math.random().toString(36).slice(2,7), name: name.trim(), cardNames };
+  const config = getVendorConfig();
+  saveVendorConfig({ ...config, cardThemes: [...getCardThemes(), theme] });
+  return theme;
+}
+function deleteCardTheme(id){
+  if(!confirm('Delete this card theme?')) return;
+  const config = getVendorConfig();
+  saveVendorConfig({ ...config, cardThemes: getCardThemes().filter(t => t.id !== id) });
+  renderCardThemesBrowser();
+}
+function matchCardThemeToInventory(theme){
+  const sellable = all.filter(inventoryItemIsSellable);
+  return (theme.cardNames || []).map(cardName => {
+    const needle = cardName.toLowerCase();
+    const matches = sellable.filter(item => String(item.name || '').toLowerCase().includes(needle));
+    return { cardName, matches };
+  });
+}
+function openCardThemesBrowser(){
+  let modal = document.getElementById('card-themes-modal');
+  if(!modal){
+    modal = document.createElement('div');
+    modal.id = 'card-themes-modal';
+    modal.className = 'ppsb-modal';
+    modal.innerHTML = '<div class="ppsb-inner" id="card-themes-inner"></div>';
+    modal.addEventListener('click', e => { if(e.target === modal) closeCardThemesBrowser(); });
+    document.body.appendChild(modal);
+  }
+  modal.classList.add('on');
+  renderCardThemesBrowser();
+}
+function closeCardThemesBrowser(){
+  document.getElementById('card-themes-modal')?.classList.remove('on');
+}
+function renderCardThemesBrowser(){
+  const inner = document.getElementById('card-themes-inner');
+  if(!inner) return;
+  const themes = getCardThemes();
+  const rows = themes.map(t => {
+    const breakdown = matchCardThemeToInventory(t);
+    const ownedCount = breakdown.filter(b => b.matches.length > 0).length;
+    return `<div class="hbtn" style="display:flex;align-items:center;justify-content:space-between;gap:10px;text-align:left;cursor:pointer;margin-bottom:6px" onclick="openCardThemeDetail('${t.id}')">
+      <div style="min-width:0">
+        <div style="font-weight:800;font-size:12px">${t.name}</div>
+        <div style="font-family:monospace;font-size:9px;color:var(--dim)">${ownedCount} / ${t.cardNames.length} in stock</div>
+      </div>
+      <button class="hbtn" style="font-size:9px;min-height:28px;padding:2px 10px;color:var(--red)" onclick="event.stopPropagation();deleteCardTheme('${t.id}')">DELETE</button>
+    </div>`;
+  }).join('') || `<div style="font-family:monospace;font-size:11px;color:var(--dim);padding:12px 0">No card themes yet -- add one below.</div>`;
+  inner.innerHTML = `
+    <div class="ppsb-header">
+      <div style="display:flex;align-items:center;gap:10px;min-width:0">
+        <span class="ppsb-title">🎨 CARD THEMES</span>
+        <span style="font-family:monospace;font-size:9px;color:var(--dim);white-space:nowrap">curated groupings for display/merchandising · cross-referenced with inventory</span>
+      </div>
+      <button class="hbtn" style="min-height:36px;padding:4px 14px;font-size:10px;flex-shrink:0" onclick="closeCardThemesBrowser()">✕ CLOSE</button>
+    </div>
+    <div style="max-width:700px;margin:0 auto;padding:16px 20px">
+      <div style="border:1px solid var(--line);border-radius:10px;padding:12px;margin-bottom:16px">
+        <div style="font-family:monospace;font-size:9px;color:var(--dim);margin-bottom:8px">ADD A THEME</div>
+        <input id="card-theme-new-name" placeholder="Theme name (e.g. Golden Hour)" style="width:100%;margin-bottom:6px">
+        <textarea id="card-theme-new-cards" placeholder="Card names, one per line or comma-separated" rows="3" style="width:100%;margin-bottom:8px"></textarea>
+        <button class="hbtn" style="font-size:10px;min-height:34px;padding:4px 14px" onclick="submitNewCardTheme()">+ ADD THEME</button>
+      </div>
+      ${rows}
+    </div>`;
+}
+function submitNewCardTheme(){
+  const name = document.getElementById('card-theme-new-name')?.value || '';
+  const cardListText = document.getElementById('card-theme-new-cards')?.value || '';
+  const theme = addCardTheme(name, cardListText);
+  if(!theme){ alert('Enter a theme name and at least one card.'); return; }
+  renderCardThemesBrowser();
+}
+function openCardThemeDetail(id){
+  const theme = getCardThemes().find(t => t.id === id);
+  if(!theme) return;
+  const inner = document.getElementById('card-themes-inner');
+  if(!inner) return;
+  const breakdown = matchCardThemeToInventory(theme);
+  const rows = breakdown.map(({ cardName, matches }) => {
+    if(!matches.length){
+      return `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)">
+        <span style="font-size:12px">${cardName}</span>
+        <span style="font-family:monospace;font-size:9px;color:var(--dim)">Not in stock</span>
+      </div>`;
+    }
+    return matches.map(item => `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)">
+      <span style="font-size:12px">${cardName}<span style="font-family:monospace;font-size:9px;color:var(--dim)"> -- ${item.name}</span></span>
+      <span style="display:flex;align-items:center;gap:8px">
+        <span style="font-family:monospace;font-size:10px;color:var(--g)">$${Number(inventoryListPrice(item)||0).toFixed(2)} · qty ${inventoryAvailableQuantity(item)}</span>
+        <button class="hbtn" style="font-size:9px;min-height:26px;padding:2px 10px" onclick="closeCardThemesBrowser();openEditModal('${item.id}')">VIEW ITEM</button>
+      </span>
+    </div>`).join('');
+  }).join('');
+  const ownedCount = breakdown.filter(b => b.matches.length > 0).length;
+  inner.innerHTML = `
+    <div class="ppsb-header">
+      <div style="display:flex;align-items:center;gap:10px;min-width:0">
+        <button class="hbtn" style="min-height:36px;padding:4px 14px;font-size:10px;flex-shrink:0" onclick="renderCardThemesBrowser()">← BACK</button>
+        <span class="ppsb-title">${theme.name}</span>
+        <span style="font-family:monospace;font-size:9px;color:var(--dim);white-space:nowrap">${ownedCount} / ${theme.cardNames.length} in stock</span>
+      </div>
+      <button class="hbtn" style="min-height:36px;padding:4px 14px;font-size:10px;flex-shrink:0" onclick="closeCardThemesBrowser()">✕ CLOSE</button>
+    </div>
+    <div style="max-width:700px;margin:0 auto;padding:16px 20px">${rows}</div>`;
+}
+// ── END CARD THEMES ──────────────────────────────────────────────
+
 // Auto-init when sets tab is opened
 (function sbSetupInit() {
   const origSwitch = window.switchTab;
@@ -44966,7 +45104,7 @@ async function toppsLoadParallels(cardId){
   window.__arscaCloseModal = closeModal;
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.09.01.29-whats-new-catchup" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.09.01.30-card-themes" defer></script>
 </body>
 </html>
 
