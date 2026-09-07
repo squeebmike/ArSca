@@ -9,7 +9,14 @@ assert.match(dashboard, /adjustCartLineQuantity\(\$\{idx\},-1\)/, 'cart line mus
 assert.match(dashboard, /adjustCartLineQuantity\(\$\{idx\},1\)/, 'cart line must render an increment control');
 
 // ── Contract: adjustCartLineQuantity recomputes price from unitPrice, and stock-checks inventory-linked lines ──
-assert.match(dashboard, /async function adjustCartLineQuantity\(idx, delta\)\{[\s\S]*?item\.quantity = nextQty;[\s\S]*?item\.qty = nextQty;[\s\S]*?item\.price = Number\(item\.unitPrice \|\| 0\) \* nextQty;[\s\S]*?\n\}/, 'adjustCartLineQuantity must recompute the extended line price as unitPrice * quantity');
+// Store report: bumping quantity after manually editing a line's price
+// (editCartLinePrice, the "Edit Price" button) silently threw the edit
+// away -- it always recomputed straight from item.unitPrice, which
+// editCartLinePrice never touches. Once a manual edit is on record
+// (adjustmentReason set), the per-unit rate the edit implies (price at the
+// OLD quantity, divided by that quantity) must be preserved instead.
+assert.match(dashboard, /async function adjustCartLineQuantity\(idx, delta\)\{[\s\S]*?item\.quantity = nextQty;[\s\S]*?item\.qty = nextQty;[\s\S]*?const effectiveUnitPrice = item\.adjustmentReason\s*\n\s*\? Number\(item\.price \|\| 0\) \/ currentQty\s*\n\s*: Number\(item\.unitPrice \|\| 0\);[\s\S]*?item\.price = Math\.round\(effectiveUnitPrice \* nextQty \* 100\) \/ 100;[\s\S]*?\n\}/,
+  'adjustCartLineQuantity must preserve a manually-edited price\'s per-unit rate across a quantity change, not always recompute from the original unitPrice');
 assert.match(dashboard, /if\(delta > 0 && nextQty \+ otherLinesQty > available\)\{/, 'adjustCartLineQuantity must refuse to increment past available stock');
 
 // ── Contract: profit calc no longer treats per-unit cost as if it were the whole line's cost ──
@@ -25,7 +32,10 @@ function computeAdjustment(item, otherLinesQty, available, delta){
   const nextQty = currentQty + delta;
   if(nextQty < 1) return null;
   if(delta > 0 && nextQty + otherLinesQty > available) return null;
-  return { quantity:nextQty, qty:nextQty, price:Number(item.unitPrice || 0) * nextQty };
+  const effectiveUnitPrice = item.adjustmentReason
+    ? Number(item.price || 0) / currentQty
+    : Number(item.unitPrice || 0);
+  return { quantity:nextQty, qty:nextQty, price:Math.round(effectiveUnitPrice * nextQty * 100) / 100 };
 }
 
 // Selling a 3rd toploader when 5 are in stock and 0 already in other lines must succeed.
@@ -42,6 +52,27 @@ assert.equal(overStock, null, 'must refuse to increment past available stock onc
 // Never allow going below quantity 1 via the decrement button.
 const belowOne = computeAdjustment({ unitPrice:2.5, quantity:1 }, 0, 5, -1);
 assert.equal(belowOne, null, 'must refuse to decrement a line below quantity 1');
+
+// Store report: a card added at $10 (unitPrice), manually re-priced to $15
+// via Edit Price, then bumped to qty 2 -- must charge $30 (the $15/unit the
+// edit implied), never snap back to $20 (2 x the original $10 unitPrice).
+const editedCard = { unitPrice:10, quantity:1, price:15, adjustmentReason:'Trade-in credit' };
+const afterEditThenBump = computeAdjustment(editedCard, 0, 5, 1);
+assert.deepEqual(afterEditThenBump, { quantity:2, qty:2, price:30 }, 'a manually-edited price must scale by its own per-unit rate on qty bump, not revert to the original unitPrice');
+
+// The edit must keep holding across repeated quantity changes, not just the
+// first bump immediately after the edit.
+const afterSecondBumpEdited = computeAdjustment({ ...editedCard, ...afterEditThenBump }, 0, 5, 1);
+assert.deepEqual(afterSecondBumpEdited, { quantity:3, qty:3, price:45 }, 'the edited per-unit rate must keep applying across further quantity changes');
+
+// Decrementing an edited line must scale down by the same edited rate, not the original unitPrice.
+const afterDecrementEdited = computeAdjustment({ ...editedCard, quantity:2, price:30 }, 0, 5, -1);
+assert.deepEqual(afterDecrementEdited, { quantity:1, qty:1, price:15 }, 'decrementing an edited line must scale down using the edited per-unit rate too');
+
+// A line with no manual edit at all must behave exactly as before -- pure
+// unitPrice x quantity, with no regression from this fix.
+const unedited = computeAdjustment({ unitPrice:2.5, quantity:1, price:2.5 }, 0, 5, 1);
+assert.deepEqual(unedited, { quantity:2, qty:2, price:5 }, 'a line with no adjustmentReason must still use the plain unitPrice x quantity calc');
 
 // Profit must scale cost by quantitySold, matching markCartItemsSoldFromPayment's fix.
 function computeProfit(cartItem, inv){
