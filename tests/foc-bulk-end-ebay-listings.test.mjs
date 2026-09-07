@@ -38,6 +38,19 @@ assert.doesNotMatch(routeBody, /includedSkuIds/,
 assert.match(routeBody, /await deps\.withdrawEbayOffer\(env,ebayToken,row\.data\.ebayOfferId\)/, 'must actually withdraw each eBay offer');
 assert.match(routeBody, /deps\.endEbayVolumeDiscount\(env,ebayToken,row\.data\.ebayVolumeDiscountPromotionId\)/, 'must also end any attached volume-discount promotion so it does not outlive the listing');
 assert.match(routeBody, /ebayWithdrawnReason:'manual_bulk_end'/, "must record a distinct reason from the auto-sweep's 'not_included_in_prh_order', for later auditing");
+// Store report: after ending listings here for covers not being ordered,
+// the next PRH export showed those same never-sold covers back as
+// full-quantity "orders". ebayPresoldBySku infers units sold from
+// (focPresaleOriginalQty - current qty) -- ending a listing zeroed qty
+// without ever adjusting focPresaleOriginalQty, so a 10-copy listing that
+// sold zero and got ended here read back as "10 sold" in every later
+// export. Fix: pin focPresaleOriginalQty down to only what had genuinely
+// sold *before* zeroing it, same fix as the auto-sweep in
+// adminPrhSubmission.
+assert.match(routeBody, /const alreadySoldBeforeWithdraw=Math\.max\(0,Number\(row\.data\.focPresaleOriginalQty\|\|0\)-Number\(row\.data\.qty\?\?row\.data\.quantity\?\?0\)\);/,
+  'ending a listing must compute what had genuinely sold before zeroing it out');
+assert.match(routeBody, /focPresaleOriginalQty:alreadySoldBeforeWithdraw,ebayWithdrawnAt:/,
+  'ending a listing must pin focPresaleOriginalQty down to the real sold-so-far count, not leave it at the full original listing quantity');
 assert.match(routeBody, /return deps\.json\(\{ok:true,endedCount,failedCount:errors\.length,errors\}\)/, 'response must report how many succeeded/failed');
 
 // Route wiring

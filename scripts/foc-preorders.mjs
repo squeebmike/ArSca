@@ -1069,7 +1069,14 @@ async function adminPrhSubmission(request,env,deps,url){
             if(row.data.ebayVolumeDiscountPromotionId&&deps.endEbayVolumeDiscount){
               try{await deps.endEbayVolumeDiscount(env,ebayToken,row.data.ebayVolumeDiscountPromotionId);}catch(_){}
             }
-            await db(`inventory_items?id=eq.${row.id}&store_id=eq.${encodeURIComponent(storeId)}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({data:{...row.data,qty:0,quantity:0,ebayWithdrawnAt:new Date().toISOString(),ebayWithdrawnReason:'not_included_in_prh_order'}})});
+            // Zeroing qty here (ending the listing) must NOT be read later as
+            // "the rest sold out" -- ebayPresoldBySku infers units sold from
+            // (focPresaleOriginalQty - current qty), so pin originalQty down
+            // to just what had genuinely sold before this withdrawal, or a
+            // withdrawn/unsold listing silently reappears as a full-quantity
+            // "order" in every later export and submission.
+            const alreadySoldBeforeWithdraw=Math.max(0,Number(row.data.focPresaleOriginalQty||0)-Number(row.data.qty??row.data.quantity??0));
+            await db(`inventory_items?id=eq.${row.id}&store_id=eq.${encodeURIComponent(storeId)}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({data:{...row.data,qty:0,quantity:0,focPresaleOriginalQty:alreadySoldBeforeWithdraw,ebayWithdrawnAt:new Date().toISOString(),ebayWithdrawnReason:'not_included_in_prh_order'}})});
             ebayWithdrawnSkuIds.push(row.data.focSkuId);
           }catch(e){console.error('FOC PRH submission: could not withdraw unordered eBay presale listing',row.id,e);}
         }
@@ -1164,7 +1171,12 @@ async function adminEndFocEbayListings(request,env,deps){
       if(row.data.ebayVolumeDiscountPromotionId&&deps.endEbayVolumeDiscount){
         try{await deps.endEbayVolumeDiscount(env,ebayToken,row.data.ebayVolumeDiscountPromotionId);}catch(_){}
       }
-      await db(`inventory_items?id=eq.${row.id}&store_id=eq.${encodeURIComponent(storeId)}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({data:{...row.data,qty:0,quantity:0,ebayWithdrawnAt:new Date().toISOString(),ebayWithdrawnReason:'manual_bulk_end'}})});
+      // Same fix as the auto-withdrawal sweep in adminPrhSubmission: pin
+      // originalQty down to what had genuinely sold before ending this
+      // listing, so ebayPresoldBySku doesn't later read the withdrawn,
+      // never-sold remainder as sold-out demand.
+      const alreadySoldBeforeWithdraw=Math.max(0,Number(row.data.focPresaleOriginalQty||0)-Number(row.data.qty??row.data.quantity??0));
+      await db(`inventory_items?id=eq.${row.id}&store_id=eq.${encodeURIComponent(storeId)}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({data:{...row.data,qty:0,quantity:0,focPresaleOriginalQty:alreadySoldBeforeWithdraw,ebayWithdrawnAt:new Date().toISOString(),ebayWithdrawnReason:'manual_bulk_end'}})});
       endedCount++;
     }catch(e){
       console.error('FOC bulk eBay end: could not withdraw listing',row.id,e);

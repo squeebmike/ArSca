@@ -370,6 +370,20 @@ assert.match(prhSubmissionBody, /d\.source==='foc_presale'&&d\.focCycleId===cycl
   'must only withdraw presale listings for SKUs that did not make it into this cycle\'s PRH order');
 assert.match(prhSubmissionBody, /await deps\.withdrawEbayOffer\(env,ebayToken,row\.data\.ebayOfferId\)/, 'must actually withdraw the eBay offer, not just flag it locally');
 assert.match(prhSubmissionBody, /ebayWithdrawnReason:'not_included_in_prh_order'/, 'the withdrawn row must record why, for later auditing');
+// Store report: submitting the PRH order withdrew unordered eBay listings
+// as designed, but the very next PRH export showed those SAME never-sold
+// covers back as full-quantity "orders". Root cause: ebayPresoldBySku
+// infers units sold from (focPresaleOriginalQty - current qty), and
+// withdrawal zeroed qty without ever touching focPresaleOriginalQty --
+// so a 10-copy listing that sold zero and got withdrawn read back as
+// "10 sold" forever after. The fix pins focPresaleOriginalQty down to
+// only what had genuinely sold *before* the withdrawal at the moment
+// qty gets zeroed, so nothing withdrawn-but-unsold is ever misread as
+// distributor demand again.
+assert.match(prhSubmissionBody, /const alreadySoldBeforeWithdraw=Math\.max\(0,Number\(row\.data\.focPresaleOriginalQty\|\|0\)-Number\(row\.data\.qty\?\?row\.data\.quantity\?\?0\)\);/,
+  'withdrawing an unordered listing must compute what had genuinely sold before zeroing it out');
+assert.match(prhSubmissionBody, /focPresaleOriginalQty:alreadySoldBeforeWithdraw,ebayWithdrawnAt:/,
+  'withdrawing an unordered listing must pin focPresaleOriginalQty down to the real sold-so-far count, not leave it at the full original listing quantity');
 assert.match(prhSubmissionBody, /return deps\.json\(\{ok:true,submission:inserted,ebayWithdrawnCount:ebayWithdrawnSkuIds\.length,ebayQuantityUpdatedCount:ebayQuantityUpdatedSkuIds\.length\}\)/, 'the response must report how many listings were withdrawn and how many had their quantity synced');
 assert.match(worker, /async function withdrawEbayOffer\(env, ebayToken, offerId\)/, 'must have a reusable withdraw helper, not just the /ebay/end route inline');
 assert.match(worker, /getEbayUserAccessToken, withdrawEbayOffer, endEbayVolumeDiscount, ebayReviseOfferQuantity,\s*\n\s*\}\);/, 'the withdraw helper, quantity-revise helper, and token getter must be injected into the FOC module\'s deps');
@@ -706,3 +720,49 @@ const pickerOptions = realWorldPolicies.filter(p => !FOC_HANDLING_CLONE_NAME_RE.
 assert.deepEqual(pickerOptions.map(p => p.id), ['111', '333'], 'the clone (id 222) must be excluded from the picker while the real base policy and unrelated policies remain selectable');
 
 console.log('FOC eBay presale review-step, template-field, eligible-filter, handling-time, aspects, template-reuse, unordered-withdrawal, store-category, template-gap, optional-clause, extra-field, html-formatting, warnings, quantity-default, cross-entry-point presale, real-condition-id, description-length-cap, html-template-passthrough, multiline-clause, css-safety, safe-html-truncation, and missing-fulfillment-policy contract checks passed');
+
+// ── Functional: reimplement ebayPresoldBySku's inference and the withdrawal
+// fix, and prove a withdrawn-but-unsold listing never reads back as sold ──
+function ebayPresoldSoldSoFar(row){
+  const d = row.data || {};
+  const originalQty = Number(d.focPresaleOriginalQty || 0);
+  const remainingQty = row.status === 'sold' ? 0 : Number(d.qty ?? d.quantity ?? 0);
+  return Math.max(0, originalQty - remainingQty);
+}
+function withdrawRowBuggy(row){
+  // The old, broken behavior: zero qty, leave focPresaleOriginalQty alone.
+  return { ...row, data: { ...row.data, qty: 0, quantity: 0 } };
+}
+function withdrawRowFixed(row){
+  const d = row.data || {};
+  const alreadySoldBeforeWithdraw = Math.max(0, Number(d.focPresaleOriginalQty || 0) - Number(d.qty ?? d.quantity ?? 0));
+  return { ...row, data: { ...d, qty: 0, quantity: 0, focPresaleOriginalQty: alreadySoldBeforeWithdraw } };
+}
+
+// A 10-copy listing that never sold a single unit, then gets withdrawn
+// because the cover isn't being ordered.
+{
+  const listing = { status: 'presale', data: { focPresaleOriginalQty: 10, qty: 10, quantity: 10 } };
+  const buggy = withdrawRowBuggy(listing);
+  assert.equal(ebayPresoldSoldSoFar(buggy), 10, 'sanity check: the old behavior really did misread an unsold, withdrawn listing as 10 sold');
+  const fixed = withdrawRowFixed(listing);
+  assert.equal(ebayPresoldSoldSoFar(fixed), 0, 'a withdrawn listing that never sold anything must never be counted as demand in a later export or submission');
+}
+// A listing that sold 3 of 10 before being withdrawn (the remaining 7
+// unsold copies pulled off eBay) -- the 3 real sales must still count,
+// but not the 7 that were only ever listed, never sold.
+{
+  const listing = { status: 'presale', data: { focPresaleOriginalQty: 10, qty: 7, quantity: 7 } };
+  const fixed = withdrawRowFixed(listing);
+  assert.equal(ebayPresoldSoldSoFar(fixed), 3, 'only the genuinely sold copies must survive a withdrawal, not the full original listing size');
+}
+// A listing that fully sold out (0 remaining) and then gets "withdrawn"
+// (a no-op in practice, since nothing's left to end) must still read as
+// fully sold, not zero.
+{
+  const listing = { status: 'presale', data: { focPresaleOriginalQty: 10, qty: 0, quantity: 0 } };
+  const fixed = withdrawRowFixed(listing);
+  assert.equal(ebayPresoldSoldSoFar(fixed), 10, 'a listing that legitimately sold out must still count as 10 sold after the fix, not lose its real sales');
+}
+
+console.log('FOC eBay withdrawal phantom-quantity fix functional checks passed');
