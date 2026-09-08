@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.09.01.29-whats-new-catchup">
+<meta name="version" content="2026.09.02.01-roadmap-batch-complete">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1633,15 +1633,15 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.09.01.29-whats-new-catchup" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.09.01.29-whats-new-catchup" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.09.01.29-whats-new-catchup" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.09.01.29-whats-new-catchup" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.09.01.29-whats-new-catchup" defer></script>
-<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.09.01.29-whats-new-catchup" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.09.01.29-whats-new-catchup" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.09.01.29-whats-new-catchup" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.09.01.29-whats-new-catchup" defer></script>
+<script src="scripts/query-routing.js?v=2026.09.02.01-roadmap-batch-complete" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.09.02.01-roadmap-batch-complete" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.09.02.01-roadmap-batch-complete" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.09.02.01-roadmap-batch-complete" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.09.02.01-roadmap-batch-complete" defer></script>
+<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.09.02.01-roadmap-batch-complete" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.09.02.01-roadmap-batch-complete" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.09.02.01-roadmap-batch-complete" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.09.02.01-roadmap-batch-complete" defer></script>
 </head>
 <body>
 
@@ -1670,11 +1670,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.09.01.29-whats-new-catchup</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.09.02.01-roadmap-batch-complete</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.09.01.29-whats-new-catchup</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.09.02.01-roadmap-batch-complete</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1692,7 +1692,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.09.01.29-whats-new-catchup</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.09.02.01-roadmap-batch-complete</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -1712,6 +1712,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <!-- OVERVIEW TAB -->
 <div id="tab-overview" class="tab-panel on">
   <div class="sec">OVERVIEW</div>
+  <div style="max-width:1400px;margin:0 auto;padding:0 20px" id="pulse-wrap"></div>
   <div class="stats">
     <div class="sc g clickable" onclick="switchTab('inventory')" title="View inventory">
       <div class="sc-l">IN STOCK</div>
@@ -1757,6 +1758,7 @@ body.show-mode .inv-sync-badge{display:none;}
   </div>
 
   <div style="max-width:1400px;margin:0 auto;padding:0 20px;margin-top:14px;" id="alert-wrap"></div>
+  <div style="max-width:1400px;margin:0 auto;padding:0 20px;margin-top:8px;" id="dead-inventory-radar-wrap"></div>
 
   <div class="two" style="margin-top:14px">
     <div class="panel">
@@ -2587,6 +2589,7 @@ body.show-mode .inv-sync-badge{display:none;}
   <div style="display:flex;gap:8px;flex-wrap:wrap;max-width:1400px;margin:0 auto 10px;padding:0 20px">
     <button class="hbtn" onclick="openSetBrowser()" style="font-size:10px;min-height:34px;padding:4px 14px;background:rgba(255,209,102,.1);border-color:rgba(255,209,102,.4);color:var(--gold)">⚡ POKÉMON SET BROWSER</button>
     <button class="hbtn" onclick="openMtgSetBrowser()" style="font-size:10px;min-height:34px;padding:4px 14px;background:rgba(91,163,245,.1);border-color:rgba(91,163,245,.4);color:#5ba3f5">🔮 MTG SET BROWSER</button>
+    <button class="hbtn" onclick="openCardThemesBrowser()" style="font-size:10px;min-height:34px;padding:4px 14px;background:rgba(255,107,181,.1);border-color:rgba(255,107,181,.4);color:#ff6bb5">🎨 CARD THEMES</button>
   </div>
   <div id="topps-checklist-panel" class="topps-browser">
     <div class="topps-shell">
@@ -2678,6 +2681,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <div id="tab-whatnot" class="tab-panel">
   <div class="sec">WHATNOT MODE</div>
   <div style="max-width:640px;margin:0 auto;padding:0 20px 40px">
+    <div id="whatnot-show-panel" style="margin-bottom:14px"></div>
     <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);margin-bottom:12px">Scan an item, punch in what it sold for on Whatnot, hit CONFIRM. Marks it sold immediately -- no cart, no extra checkout steps.</div>
 
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;background:var(--surf);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:14px;font-family:var(--font-mono);text-align:center">
@@ -2708,6 +2712,7 @@ body.show-mode .inv-sync-badge{display:none;}
 
       <div style="text-align:center;font-family:'Orbitron',monospace;font-size:38px;color:var(--gold);margin-bottom:4px" id="whatnot-price-display">$0.00</div>
       <div style="text-align:center;font-family:var(--font-mono);font-size:10px;color:var(--dim);margin-bottom:12px" id="whatnot-fee-profit-preview">Fee: $0.00 &nbsp;·&nbsp; Profit: $0.00</div>
+      <input id="whatnot-buyer-name" class="tsi" placeholder="Buyer name (optional -- powers Whale Dashboard/Momentum)" style="margin-bottom:12px">
 
       <div id="whatnot-keypad" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
         <button class="hbtn" style="padding:18px;font-size:22px" onclick="whatnotKeypadPress('1')">1</button>
@@ -3528,6 +3533,12 @@ body.show-mode .inv-sync-badge{display:none;}
   <div class="sec">CUSTOMER WANT LIST / PULL LIST</div>
   <div style="max-width:1400px;margin:0 auto;padding:0 20px">
 
+    <!-- Storefront-submitted requests -->
+    <div class="panel" id="sf-notify-panel" style="margin-bottom:14px;display:none">
+      <div class="ph">📥 STOREFRONT REQUESTS <b id="sf-notify-count">0</b> <span style="color:var(--dim);font-size:9px">— customers who couldn't find something and asked to be notified</span></div>
+      <div id="sf-notify-list"></div>
+    </div>
+
     <!-- Add want -->
     <div class="panel" style="margin-bottom:14px">
       <div class="ph">+ ADD WANT</div>
@@ -3727,6 +3738,18 @@ body.show-mode .inv-sync-badge{display:none;}
       <div style="font-family:monospace;font-size:10px;color:var(--dim);margin-bottom:10px">Based on sales velocity, items you should restock soon. Uncheck any you don't want on the PO, adjust qty as needed:</div>
       <div id="rs-checklist"></div>
     </div>
+
+    <!-- Inventory Opportunity Matching -->
+    <div class="two" style="margin-top:14px">
+      <div class="panel">
+        <div class="ph">🎯 THINNING PRODUCT LINES <span style="color:var(--dim);font-size:8px">selling fast, running low -- before the shelf goes empty</span></div>
+        <div id="rs-thinning"></div>
+      </div>
+      <div class="panel">
+        <div class="ph">📚 UPCOMING FOC MATCHES YOUR SELLERS <span style="color:var(--dim);font-size:8px">recent comic sales vs. what's coming in FOC</span></div>
+        <div id="rs-foc-match">Loading…</div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -3745,7 +3768,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.09.01.29-whats-new-catchup';
+const APP_VERSION = '2026.09.02.01-roadmap-batch-complete';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -5089,6 +5112,14 @@ const DEFAULT_VENDOR_CONFIG = {
   // name; a category with no entry here gets no ceiling at all -- the
   // feature is opt-in per category, not a blanket default.
   categoryPriceCeilings: {},
+  // Store request: curated card groupings (like Dex's "Golden Hour" --
+  // cards that look good displayed together, not an official set) cross-
+  // referenced against current inventory. There's no public API for these
+  // (dextcg.com is unreachable from here, and web search turns up nothing
+  // usable), so themes are entered by the store from a screenshot of the
+  // theme rather than imported automatically. Array, not a map, since a
+  // theme has no natural unique key besides its own generated id.
+  cardThemes: [],
 };
 const LIFECYCLE_LABELS = {
   in_stock: 'In stock',
@@ -6254,6 +6285,9 @@ const FEATURE_LOG = [
     { title:'Comic quantity grouping', status:'working', desc:'Multiple raw copies of the same issue/cover/condition collapse into one row with a quantity, instead of cluttering the list with duplicates.' },
     { title:'Signature added-value tracking', status:'working', desc:'Track and price in the added value of a signature on any item type, reflected correctly in storefront listings and checkout.' },
     { title:'Category price ceilings', status:'new', desc:'Set a bulk "how far above market can we sell" rule per category in Settings -- percent over market or a flat dollar amount, whichever\'s greater (e.g. Pokemon 20% or +$2, Sports 60% or +$5). Auto-applied as the ceiling on every new item added to that category going forward; still freely adjustable per item afterward, same as the existing price floor.' },
+    { title:'Card Themes', status:'new', desc:'Enter a curated card grouping for display/merchandising (e.g. a "Golden Hour"-style theme) and see how many of its cards you already have in stock, with price/qty per match -- available from the SETS tab. Card lists are entered by the store since there\'s no public API for these groupings; this just cross-references whatever list you give it against current sellable inventory.' },
+    { title:'Print a Card Theme case card', status:'new', desc:'Print a theme\'s in-stock cards (name, condition, price) laid out for physical display in the case -- only prints what you actually have, so it doubles as a price card for the display.' },
+    { title:'Bundle Brain', status:'new', desc:'Finds inventory that makes sense sold together instead of getting randomly discounted -- groups of 3+ sellable items sharing a player, team, or set -- and calculates a bundle price with a real discount off the combined list price that never drops below cost plus a minimum margin. One click hands the group + suggested price into the existing Bundle Builder to review and create. Reachable from BUNDLE BRAIN next to Slow Movers in Reports.' },
   ]},
   { area:'POS / Register / Checkout', items:[
     { title:'Multi-quantity sell + fixed discount math', status:'new', desc:'A +/- stepper lets you sell several of the same item (toploaders, sleeves, etc.) as one cart line. Cart-level discounts now apply correctly per line, so revenue/profit records match what the customer actually paid.' },
@@ -6294,6 +6328,20 @@ const FEATURE_LOG = [
     { title:'Auto-reprice aged stock', status:'working', desc:'Automatically nudges the price down on eBay listings that have sat unsold past a configurable age.' },
     { title:'eBay deal scanner', status:'working', desc:'Scans active eBay listings for underpriced Pokemon/MTG cards vs. real market value, can run on a schedule in the background.' },
   ]},
+  { area:'Whatnot / Live Selling', items:[
+    { title:'Scan-and-sell Whatnot Mode', status:'working', desc:'Scan an item, punch in what it sold for on Whatnot, hit CONFIRM -- marks it sold immediately with fee/profit preview, no cart or extra checkout steps.' },
+    { title:'Show Builder', status:'new', desc:'Pick platform (Whatnot/eBay Live/Twitch), show length, and category -- drafts a full run-of-show from current inventory: mid-tier openers (never your best stuff first), cheap engagement filler, your highest-value anchors once the room is warmed up, giveaways, and a strong closer. A deterministic starting heuristic -- the "learns what works over time" half needs real accumulated Show P&L history across shows, which builds up as you run them.' },
+    { title:'Show Inventory Bucket', status:'new', desc:'The Show Builder\'s run-of-show becomes a live queue you work through one item at a time, plus a "🎬 Add to Tonight\'s Show" action on any item\'s row menu to drop something in on the fly mid-show. Every item auto-sorts into SOLD / PASSED / GIVEAWAY as the show runs.' },
+    { title:'Live Auction Companion', status:'new', desc:'While a show is live, Whatnot Mode gets NEXT ITEM / PASS / 🎁 GIVEAWAY buttons on top of the existing scan-and-sell flow -- NEXT ITEM loads the next queued item straight into the price keypad, a real sale automatically closes out that show item too, and GIVEAWAY records it as a near-zero-price sale (correctly depleting inventory) tagged with its own channel for later giveaway-cost tracking.' },
+    { title:'Show P&L', status:'new', desc:'END SHOW prints a full breakdown the moment a stream ends: gross, COGS, estimated Whatnot fees, giveaway cost, estimated profit, and profit per hour -- comparable across shows regardless of length. Also splits any items sold at a loss into "customer acquisition" (the same buyer more than made it up elsewhere in the show) vs. genuine unexplained loss (Loss-Leader Tracking).' },
+    { title:'$1 Auction Risk Score', status:'new', desc:'Every item loaded into Whatnot Mode during a live show shows SAFE / RISKY / DO NOT $1 START based on its cost vs. that category\'s own real historical Whatnot results (falls back to a flat conservative default with zero history yet) -- a $150 card isn\'t automatically safe just because it\'s worth $150.' },
+    { title:'Live Floor-Price Warning', status:'new', desc:'The live fee/profit preview in Whatnot Mode now flashes an explicit ⚠️ DANGER banner with your break-even price the moment the entered price would sell at a loss, instead of just quietly turning the number red.' },
+    { title:'Audience-Size Logic', status:'new', desc:'Enter the current room size in the live show panel and NEXT ITEM will hold back your anchor-tier (highest-value) items until the room crosses a depth threshold, pulling from the rest of the queue instead -- optional and never gates anything until you actually enter a number.' },
+    { title:'Buyer Momentum / The Bench', status:'new', desc:'While a show is live, a MOMENTUM line shows which categories are running hot or cold relative to their planned price this show, and NEXT ITEM quietly prioritizes queued items from hot categories first -- reacting to what\'s actually selling tonight instead of blindly following the pre-planned order.' },
+    { title:'Whatnot vs. eBay Decision', status:'new', desc:'A per-item channel recommendation (Whatnot / eBay Auction / eBay Bin) based on value, quantity, and category -- a $12 card can be perfect Whatnot filler while a $150+ card is steered to eBay\'s full-market audience instead of a thin $1-start room.' },
+    { title:'Repeat Buyer / Whale Dashboard', status:'new', desc:'An optional buyer-name field when confirming a Whatnot sale links it to a real customer record; the Whale Dashboard then shows shows attended, total spent, average order, categories, and last purchase per buyer -- someone spending steadily every week can matter more than a single big one-time drop-in.' },
+    { title:'Show Experiment Engine + True Giveaway Cost', status:'new', desc:'Tag a show with what you\'re testing (e.g. "$1-starts" vs "$5-starts") when starting it, then COMPARE EXPERIMENTS shows average profit/hour across every ended show sharing a tag -- what actually works for your audience, not general Whatnot-guru folklore. The same screen always compares shows that ran giveaways against ones that didn\'t, so you can see whether giveaway-heavy shows actually correlate with better profit/hour instead of assuming either way.' },
+  ]},
   { area:'Public Storefront (your website)', items:[
     { title:'Stripe checkout on your site', status:'working', desc:'Customers can browse and buy directly from your public storefront with a real Stripe-powered checkout.' },
     { title:'Category + Product Type filters', status:'working', desc:'Shoppers can filter by game (Pokemon, MTG, etc. kept separate) and then by Product Type (singles, boosters, Secret Lair, etc.).' },
@@ -6322,6 +6370,8 @@ const FEATURE_LOG = [
     { title:'Receive FOC shipment into inventory', status:'new', desc:'RECEIVE SHIPMENT on a FOC cycle is the first and only point a comic becomes real inventory -- importing the PRH file and placing the distributor order both stay catalog/planning-only, since neither proves the books actually show up. Enter what physically arrived per cover (defaults to what was ordered, lower it on a short-ship); paid customer copies are reserved oldest-order-first and their preorder is marked ready for pickup/reserved for shipping once fully in, the rest goes straight into sellable in-stock inventory.' },
     { title:'Fixed: receiving multiple copies of one cover made one item each', status:'new', desc:'Receiving 5 copies of the same cover used to create 5 separate inventory rows (each qty 1) instead of one row holding a quantity of 5, unlike every other fungible product in this app. Now creates a single row per cover per receiving batch.' },
     { title:'Fixed: the FOC wall\'s Add to Inventory and eBay bulk tools', status:'new', desc:'The whole FOC-wall eBay bulk-listing toolbar (select-all, per-item checkbox, start/skip/cancel) and the "+ Add to Inventory" button were completely non-functional -- a hard refresh never fixed it because the real cause was those functions never being exposed for the page to actually call them.' },
+    { title:'eBay listing health check', status:'new', desc:'The FOC Cover Wall now flags two things automatically: a live eBay presale listing whose on-sale date has already passed but still has copies available (needs receiving or ending), and SKUs eBay can\'t even schedule because they have no on-sale date on file -- so neither sits unnoticed until a customer asks where their book is. A "Released (on sale)" option was also added to the eBay status filter.' },
+    { title:'FOC Intelligence 2.0', status:'new', desc:'A new 🧠 FOC INTELLIGENCE screen on the Cover Wall compares this week\'s file against your prior submitted PRH orders, current website/eBay/Whatnot/secured presales, and your last 90 days of comic sales, then suggests ORDER / REDUCE / SKIP / SPEC per title with a plain-language reason for each. Also flags any book that had real secured interest in an earlier import but silently vanished from a more recent one, before its own on-sale date passed -- the "He-Man situation" -- so it gets caught instead of a customer asking where it went.' },
   ]},
   { area:'Customer Web Accounts (your website)', items:[
     { title:'My Account page', status:'new', desc:'Signed-in customers can see their general shop orders, comic preorders, loyalty points, trade-in credit, and gift card balances all in one page on your website.' },
@@ -6345,6 +6395,7 @@ const FEATURE_LOG = [
     { title:'Real SMS/email notifications', status:'working', desc:'Actual SMS and email delivery (Twilio + email provider), not a simulated/logged-only notification.' },
     { title:'Call forwarding + inbound SMS relay', status:'working', desc:'Route your business line\'s calls and texts through Twilio.' },
     { title:'Want List auto-notify', status:'working', desc:'Customers on a Want List get notified automatically when a matching item comes into stock.' },
+    { title:'Storefront "let us know" requests', status:'new', desc:'Customers can now self-report what they\'re looking for right from your public storefront (a persistent link, plus a prompt when a search comes up empty) -- no more needing to call or text the store just to ask. Requests land in a new STOREFRONT REQUESTS panel at the top of the Want List tab, where staff convert one into a real Want List entry or dismiss it.' },
   ]},
   { area:'Labels & Shelf Tags', items:[
     { title:'Print shelf/price labels', status:'new', desc:'Print barcode labels for sheet paper (2.625"x1", Avery-style) or roll paper on a direct-thermal printer like Rollo/Zebra (2"x1", one label per page). Choice is remembered.' },
@@ -6359,11 +6410,15 @@ const FEATURE_LOG = [
   ]},
   { area:'Restock', items:[
     { title:'Reorder suggestions / PO drafts', status:'working', desc:'Suggests what to reorder based on stock levels and drafts a purchase order.' },
+    { title:'Inventory Opportunity Matching', status:'new', desc:'Two new panels on the Restock tab: Thinning Product Lines flags a whole product line (e.g. a specific set) selling well while what\'s left is running low, before the shelf actually empties -- catching the gap the exact-name restock checklist misses. Upcoming FOC Matches Your Sellers cross-references your last 14 days of comic sales against titles in an upcoming FOC file, so a hot-selling character/series gets connected to a related release already on the way.' },
   ]},
   { area:'Reporting', items:[
     { title:'Potential ROI stat (Home)', status:'working', desc:'Shows what you\'d walk away with if everything in stock sold at your real price right now, vs. what you paid for it.' },
+    { title:'The Mana Pocket Pulse', status:'new', desc:'The Home screen now opens with today\'s sales, est. gross profit, items sold, and cash tied up in 90+ day stock, followed by a short DO THESE THINGS list -- move stale Whatnot-friendly stock into tonight\'s show, reprice items flagged by a price-sync run, reorder what keeps selling out, and any FOC cutoff closing within 48 hours with no order submitted yet. Every line reuses a real, already-existing data source (Dead Inventory Radar, price-change alerts, the Restock checklist\'s own rule, real FOC cutoffs) -- nothing fabricated, and no "eBay watched items" line since this app has no aggregate watcher-count data to draw from.' },
     { title:'Category / product profitability & payment mix', status:'new', desc:'The Reports tab now breaks down revenue, COGS, profit and margin by category and by product, shows top sellers by revenue and by profit, charts sales/profit trends over your chosen date range, and a payment-method mix chart -- plus a Washington B&O tax filing note.' },
     { title:'Category Health report', status:'new', desc:'Cross-references what actually sold against your CURRENT unsold stock to flag where a category is struggling: no sales at all this period despite real stock sitting, negative or thin margins, cash concentrated in stock 90+ days old, or slow turnover relative to what it\'s tying up -- each with the real dollar amount and a concrete next step, not just a bare warning.' },
+    { title:'Slow Movers / Dead Stock report', status:'new', desc:'Category Health flags an entire category as struggling; this drills straight to the specific items behind it -- everything sitting 90+ days, sorted by cash tied up (cost x quantity), with an EDIT shortcut to mark it down, bundle it, or pull it from the case.' },
+    { title:'Dead Inventory Radar', status:'new', desc:'The home screen now proactively flags stale stock instead of waiting to be asked -- a banner shows the total count and cash trapped in 90+ day inventory, linking to the full list. Each item also gets a concrete suggested action (bundle, markdown, eBay offer, convention box, run on Whatnot, or hold) based on quantity, price vs. your own floor, category, and age.' },
     { title:'One consolidated Reports screen', status:'planned', desc:'A single place for sales reporting with real week/month/date-range rollups, instead of stats spread across Home, End-of-Day, and Sold Items. Not built yet -- being scoped.' },
   ]},
 ];
@@ -6609,6 +6664,7 @@ function getVendorConfig(){
       modules: { ...DEFAULT_VENDOR_CONFIG.modules, ...(saved.modules || {}) },
       categories: Array.isArray(saved.categories) ? saved.categories.filter(Boolean) : [...DEFAULT_VENDOR_CONFIG.categories],
       categoryPriceCeilings: { ...DEFAULT_VENDOR_CONFIG.categoryPriceCeilings, ...(saved.categoryPriceCeilings || {}) },
+      cardThemes: Array.isArray(saved.cardThemes) ? saved.cardThemes : [...DEFAULT_VENDOR_CONFIG.cardThemes],
     };
   } catch(e) {
     return JSON.parse(JSON.stringify(DEFAULT_VENDOR_CONFIG));
@@ -6623,6 +6679,7 @@ function saveVendorConfig(config){
     categories:Array.isArray(config.categories) ? config.categories.filter(Boolean) : getVendorConfig().categories,
     inventorySource:config.inventorySource || getVendorConfig().inventorySource,
     categoryPriceCeilings: config.categoryPriceCeilings ? { ...config.categoryPriceCeilings } : getVendorConfig().categoryPriceCeilings,
+    cardThemes: Array.isArray(config.cardThemes) ? config.cardThemes : getVendorConfig().cardThemes,
   };
   localStorage.setItem('vendor_config_v1', JSON.stringify(next));
   applyVendorConfig();
@@ -11224,6 +11281,7 @@ function showInvRowMenu(e, id, isInStock){
     `<button class="hbtn" style="${btnStyle}" onclick="openEbayFromDash('${id}');closeInvRowMenu()">📦 ${item?.ebayListingId?'Manage eBay Listing':'eBay List'}</button>`,
     isInStock?`<button class="hbtn" style="${btnStyle};color:var(--purple)" onclick="markSoldOnWhatnot('${id}');closeInvRowMenu()">📦 Sold on Whatnot</button>`:'',
     isInStock?`<button class="hbtn" style="${btnStyle};color:var(--gold)" onclick="openExternalSaleModal('${id}');closeInvRowMenu()">💰 Record External Sale (other)</button>`:'',
+    (isInStock && whatnotActiveShow)?`<button class="hbtn" style="${btnStyle};color:var(--g)" onclick="addItemToActiveShow('${id}');closeInvRowMenu()" title="Drop this item into tonight's live show queue">🎬 Add to Tonight's Show</button>`:'',
     inventoryItemBundleEligible(item)?`<button class="hbtn" style="${btnStyle};color:var(--gold)" onclick="toggleBundleDraft('${id}');closeInvRowMenu()">🎁 ${bundleDraftIds.has(id)?'Remove from':'Add to'} Bundle Draft</button>`:'',
     (item?.isBundle && item.status==='in_stock')?`<button class="hbtn" style="${btnStyle};color:var(--blue)" onclick="refreshBundleInfo('${id}');closeInvRowMenu()" title="Re-pulls photos and comic info from this bundle's current member items, without dissolving it">🔄 Refresh Bundle Photos/Info</button>`:'',
     (item?.isBundle && item.status==='in_stock')?`<button class="hbtn" style="${btnStyle};color:var(--red)" onclick="dissolveBundle('${id}');closeInvRowMenu()">🎁 Dissolve Bundle</button>`:'',
@@ -16122,7 +16180,7 @@ function renderAll(opts){
   // behavior so nothing that reads DOM state right after calling it breaks.
   const deferHeavy = opts && opts.deferHeavy === true;
   renderPriceChangeAlerts();
-  renderStats(); renderCats(); renderTopVal(); renderFeed();
+  renderStats(); renderCats(); renderTopVal(); renderFeed(); renderPulse();
   const renderHeavy = () => {
     renderChannels(); renderTopSold(); renderMonthly();
     renderAlerts(); filterTable(); renderSoldTable();
@@ -16440,6 +16498,89 @@ function renderStats(){
   const unpriced = ins.filter(i=>!i.market||i.market===0);
   if(unpriced.length) alerts.push(`📊 ${unpriced.length} items missing market price`);
   alertWrap.innerHTML = alerts.map(a=>`<div class="alert"><span>${a}</span><a class="ph-action" onclick="switchTab('alerts',document.querySelector('.tab:nth-child(4)'))">View →</a></div>`).join('');
+
+  // Dead Inventory Radar: separate div so its "View →" can jump to Reports
+  // (where the actual radar list lives, next to Slow Movers) instead of
+  // the generic Alerts tab the banners above point to.
+  const radar = computeSlowMovers(all, { limit:9999 });
+  const radarWrap = document.getElementById('dead-inventory-radar-wrap');
+  if(radarWrap){
+    if(!radar.length){ radarWrap.innerHTML=''; }
+    else {
+      const trapped = radar.reduce((s,r)=>s+r.cashTiedUp,0);
+      radarWrap.innerHTML = `<div class="alert" style="border-color:rgba(255,77,109,.35)"><span>💀 DEAD INVENTORY RADAR — ${radar.length} item${radar.length!==1?'s':''} sitting 90+ days, ${f$(trapped)} trapped</span><a class="ph-action" onclick="switchTab('reports')">View →</a></div>`;
+    }
+  }
+}
+
+// ── The Mana Pocket Pulse ────────────────────────────────────────────
+// Store idea: one home-screen summary that says "here's what to do next"
+// instead of "here's all your data". Rolls up features already built
+// this session (Dead Inventory Radar, the Restock checklist's own "keeps
+// selling out" rule, real price-change alerts, and FOC cutoffs with no
+// PRH order submitted yet) rather than inventing new data sources.
+// Deliberately has NO "eBay watched items" line -- nothing in this app
+// tracks an aggregate watcher count (Send Offers to Watchers is a manual
+// per-listing action, not a batch data source) -- and skips it rather
+// than fabricating a number, same principle as Dead Inventory Radar
+// skipping a "views" signal.
+async function computePulseData(){
+  const startOfToday = new Date(); startOfToday.setHours(0, 0, 0, 0);
+  const soldToday = (all || []).filter(i => i.status === 'sold' && i.soldAt && new Date(i.soldAt) >= startOfToday);
+  const grossToday = soldToday.reduce((s, i) => s + (i.salePrice || 0), 0);
+  const profitToday = soldToday.reduce((s, i) => s + (i.profit || 0), 0);
+
+  const radar = computeSlowMovers(all, { limit:9999 });
+  const trappedCash = radar.reduce((s, r) => s + r.cashTiedUp, 0);
+
+  const actions = [];
+  const whatnotCandidates = radar.filter(r => r.action === 'RUN ON WHATNOT');
+  if(whatnotCandidates.length) actions.push({ text:`Move ${whatnotCandidates.length} stale item${whatnotCandidates.length === 1 ? '' : 's'} into tonight's Whatnot`, tab:'reports' });
+
+  const openAlerts = safeLocalJson('price_change_alerts', []).filter(a => a.status === 'open');
+  if(openAlerts.length) actions.push({ text:`Reprice ${openAlerts.length} item${openAlerts.length === 1 ? '' : 's'} flagged by a price-sync run`, tab:'alerts' });
+
+  const soldAll = (all || []).filter(i => i.status === 'sold' && i.soldAt);
+  const insAll = (all || []).filter(i => i.status === 'in_stock');
+  const nameCount = {};
+  soldAll.forEach(i => { nameCount[i.name] = (nameCount[i.name] || 0) + 1; });
+  const restockCount = Object.entries(nameCount).filter(([name, count]) => count >= 2 && !insAll.some(i => i.name === name)).length;
+  if(restockCount) actions.push({ text:`Reorder ${restockCount} item${restockCount === 1 ? '' : 's'} that keep selling out`, tab:'restock' });
+
+  try{
+    const sb = getSupabaseClient();
+    const storeId = getActiveStoreId();
+    if(sb && storeId){
+      const cutoff48h = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString();
+      const { data: cycles } = await sb.from('foc_cycles').select('id,foc_date,customer_cutoff_at').eq('store_id', storeId).eq('status', 'open').lte('customer_cutoff_at', cutoff48h).gte('customer_cutoff_at', new Date().toISOString());
+      for(const cycle of (cycles || [])){
+        const { data: sub } = await sb.from('foc_prh_submissions').select('id').eq('cycle_id', cycle.id).limit(1);
+        if(!sub?.length){
+          const hoursLeft = Math.max(0, Math.round((new Date(cycle.customer_cutoff_at) - Date.now()) / 3600000));
+          actions.push({ text:`FOC ${cycle.foc_date} closes in ~${hoursLeft}h -- order not submitted yet`, tab:'foc' });
+        }
+      }
+    }
+  }catch(e){ /* best-effort -- Pulse still shows everything else if this fails */ }
+
+  return { grossToday, profitToday, soldTodayCount:soldToday.length, trappedCash, actions:actions.slice(0, 5) };
+}
+async function renderPulse(){
+  const el = document.getElementById('pulse-wrap');
+  if(!el) return;
+  const p = await computePulseData();
+  el.innerHTML = `<div style="background:var(--surf);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:14px">
+    <div style="font:900 11px 'Orbitron',monospace;color:var(--dim);letter-spacing:1px;margin-bottom:8px">TODAY</div>
+    <div style="display:flex;gap:18px;flex-wrap:wrap;font-family:monospace;font-size:12px;margin-bottom:12px">
+      <span><b style="color:var(--text)">${fd$(p.grossToday)}</b> <span style="color:var(--dim)">sales</span></span>
+      <span><b style="color:var(--g)">${fd$(p.profitToday)}</b> <span style="color:var(--dim)">est. gross profit</span></span>
+      <span><b style="color:var(--text)">${p.soldTodayCount}</b> <span style="color:var(--dim)">items sold</span></span>
+      <span><b style="color:var(--red)">${fd$(p.trappedCash)}</b> <span style="color:var(--dim)">cash tied up &gt;90 days</span></span>
+    </div>
+    ${p.actions.length ? `<div style="font:900 11px 'Orbitron',monospace;color:var(--gold);letter-spacing:1px;margin-bottom:6px">DO THESE ${p.actions.length} THING${p.actions.length === 1 ? '' : 'S'}</div>
+      ${p.actions.map(a => `<div style="font-family:monospace;font-size:11px;color:var(--text);padding:4px 0;cursor:pointer" onclick="switchTab('${a.tab}')">→ ${escHtml(a.text)}</div>`).join('')}`
+    : `<div style="font-family:monospace;font-size:10px;color:var(--dim)">Nothing urgent right now -- stock is turning over and FOC decisions are current.</div>`}
+  </div>`;
 }
 
 function renderCats(){
@@ -17420,6 +17561,17 @@ function renderReportsResults(result, groupBy){
       </div>
     </div>`;
     })()}
+    ${(() => {
+      const slowMovers = computeSlowMovers(typeof all !== 'undefined' ? all : []);
+      return `<div class="owner-section-grid" style="grid-template-columns:1fr;margin-top:14px">
+      <div class="owner-mini-panel">
+        <div class="ph">SLOW MOVERS / DEAD STOCK <span style="font-size:9px;color:var(--dim)">in stock 90+ days, worst cash-tied-up first</span> <a class="ph-action" onclick="openBundleBrainModal()">🧠 Bundle Brain →</a></div>
+        ${slowMovers.length ? `<div class="tbl-wrap" style="margin-top:6px"><table><thead><tr><th>ITEM</th><th>CATEGORY</th><th style="text-align:right">DAYS</th><th style="text-align:right">QTY</th><th style="text-align:right">CASH TIED UP</th><th style="text-align:right">LIST PRICE</th><th>SUGGESTED ACTION</th><th></th></tr></thead><tbody>
+          ${slowMovers.map(s => `<tr><td>${escHtml(s.name)}</td><td>${escHtml(s.category)}</td><td style="text-align:right">${s.days}</td><td style="text-align:right">${s.qty}</td><td style="text-align:right">${fd$(s.cashTiedUp)}</td><td style="text-align:right">${fd$(s.listPrice)}</td><td><span title="${escHtml(s.actionReason)}" style="font-family:monospace;font-size:9px;font-weight:700;color:var(--gold);border-bottom:1px dotted var(--gold);cursor:help">${escHtml(s.action)}</span></td><td><button class="ra rab-edit" onclick="openEditModal('${s.id}')">EDIT</button></td></tr>`).join('')}
+        </tbody></table></div>` : `<div class="empty"><div class="empty-t">Nothing has been sitting 90+ days -- stock is turning over</div></div>`}
+      </div>
+    </div>`;
+    })()}
     <div class="owner-section-grid" style="grid-template-columns:1fr;margin-top:14px">
       <div class="owner-mini-panel">
         <div class="ph">PAYMENT METHOD MIX</div>
@@ -17495,6 +17647,55 @@ function reportsCategoryChartPairs(categoryList){
   const pairs = top.map(c => [c.key, c.profit]);
   if(rest.length) pairs.push([`Other (${rest.length})`, rest.reduce((s,c) => s + c.profit, 0)]);
   return pairs;
+}
+
+// Store idea: Category Health flags an entire category as struggling, but
+// doesn't say WHICH items are the actual cash sitting there. This drills
+// straight to the worst individual offenders (reuses the same 90-day
+// aging threshold and sellability rule as Category Health/the Inventory
+// Aging panel) so there's something concrete to act on -- markdown it,
+// bundle it, pull it from the case -- instead of just a category-wide
+// warning. Independent of the report's date range, same as Category
+// Health's unsold side: "what's sitting right now" is always "right now".
+function computeSlowMovers(items, opts={}){
+  const thresholdDays = opts.thresholdDays || 90;
+  const limit = opts.limit || 25;
+  return (items || [])
+    .filter(inventoryItemIsSellable)
+    .map(item => ({ item, days: inventoryDaysInStock(item) }))
+    .filter(x => x.days !== null && x.days >= thresholdDays)
+    .map(x => {
+      const qty = inventoryAvailableQuantity(x.item);
+      const suggestion = suggestDeadStockAction(x.item);
+      return {
+        id: x.item.id, name: x.item.name, category: x.item.category || 'Uncategorized',
+        days: x.days, qty,
+        cashTiedUp: Number(x.item.cost || 0) * qty,
+        listPrice: inventoryListPrice(x.item),
+        action: suggestion.action, actionReason: suggestion.reason,
+      };
+    })
+    .sort((a, b) => b.cashTiedUp - a.cashTiedUp)
+    .slice(0, limit);
+}
+
+// Dead Inventory Radar: Slow Movers says WHAT is stuck; this says what to
+// DO about it. Deterministic, explainable rules built only from data this
+// app actually has (quantity on hand, current price vs. your own set
+// floor, category, days in stock) -- no fabricated "view count" or
+// "market trend" signal, since neither is tracked anywhere in this app.
+function suggestDeadStockAction(item){
+  const qty = inventoryAvailableQuantity(item);
+  const price = inventoryListPrice(item);
+  const floor = inventoryMinPrice(item);
+  const days = inventoryDaysInStock(item) || 0;
+  const whatnotCategories = ['Pokemon TCG','Magic: The Gathering','One Piece TCG','Yu-Gi-Oh!','Disney Lorcana','Sports'];
+  if(qty > 1) return { action:'BUNDLE', reason:`${qty} copies on hand -- combine into one lot instead of selling one at a time` };
+  if(floor > 0 && price > floor + 0.01) return { action:'MARKDOWN', reason:`Still above your own floor ($${floor.toFixed(2)}) -- move it down toward that` };
+  if(price >= 40) return { action:'EBAY OFFER', reason:'High enough value to be worth a dedicated eBay listing with Best Offer enabled' };
+  if(price < 8 && days >= 365) return { action:'CONVENTION BOX', reason:'Low value and over a year old -- bulk clearance beats individual sale attempts' };
+  if(whatnotCategories.includes(item.category)) return { action:'RUN ON WHATNOT', reason:'Single-copy collectible -- a live audience often outperforms a static listing' };
+  return { action:'HOLD', reason:'No clear signal yet -- keep an eye on it' };
 }
 
 function exportReportsCSV(){
@@ -22602,6 +22803,73 @@ async function loadWantListFromWorker() {
 }
 
 
+// Store idea: customers can now self-report "notify me" directly from the
+// storefront (see /public/storefront/notify in the Worker) instead of it
+// only being possible via staff manually typing into Want List. Requests
+// land in their own table (storefront_notify_requests) rather than
+// writing into Want List directly -- see that table's migration for why
+// (Want List is KV-backed and replaces its whole array per save, unsafe
+// for anonymous public writes). This panel is where staff review them:
+// convert one into a real Want List entry (pre-fills the existing Add
+// Want form below) or dismiss it.
+let _storefrontNotifyRequests = [];
+async function loadStorefrontNotifyRequests(){
+  const sb = getSupabaseClient();
+  const storeId = getActiveStoreId();
+  if(!sb || !storeId) return;
+  const { data, error } = await sb
+    .from('storefront_notify_requests')
+    .select('id,item_text,contact_email,status,created_at')
+    .eq('store_id', storeId)
+    .eq('status', 'new')
+    .order('created_at', { ascending:false })
+    .limit(200);
+  if(error){ console.warn('[NOTIFY] load failed:', error.message); return; }
+  _storefrontNotifyRequests = data || [];
+  renderStorefrontNotifyRequests();
+}
+function renderStorefrontNotifyRequests(){
+  const panel = document.getElementById('sf-notify-panel');
+  const list = document.getElementById('sf-notify-list');
+  const countEl = document.getElementById('sf-notify-count');
+  if(!panel || !list) return;
+  const reqs = _storefrontNotifyRequests;
+  countEl.textContent = reqs.length;
+  panel.style.display = reqs.length ? '' : 'none';
+  list.innerHTML = reqs.map(r => `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);gap:10px">
+    <div style="min-width:0">
+      <div style="font-weight:600;color:var(--text)">${escHtml(r.item_text)}</div>
+      <div style="font-family:monospace;font-size:9px;color:var(--dim)">${escHtml(r.contact_email)} · ${new Date(r.created_at).toLocaleDateString()}</div>
+    </div>
+    <div style="display:flex;gap:6px;flex-shrink:0">
+      <button class="ra" style="background:rgba(0,255,179,.12);border-color:rgba(0,255,179,.3);color:var(--g);white-space:nowrap" onclick="convertNotifyRequestToWant('${r.id}')">→ Add to Want List</button>
+      <button class="ra ra-sell" onclick="dismissNotifyRequest('${r.id}')">✕</button>
+    </div>
+  </div>`).join('');
+}
+function convertNotifyRequestToWant(id){
+  const r = _storefrontNotifyRequests.find(x => x.id === id);
+  if(!r) return;
+  document.getElementById('wl-item').value = r.item_text;
+  document.getElementById('wl-customer').value = r.contact_email;
+  document.getElementById('wl-contact').value = r.contact_email;
+  document.getElementById('wl-item').scrollIntoView({ behavior:'smooth', block:'center' });
+  toast_dash('Filled into Add Want below -- review and click + ADD');
+  updateStorefrontNotifyRequestStatus(id, 'converted');
+}
+function dismissNotifyRequest(id){
+  if(!confirm('Dismiss this request?')) return;
+  updateStorefrontNotifyRequestStatus(id, 'dismissed');
+}
+async function updateStorefrontNotifyRequestStatus(id, status){
+  _storefrontNotifyRequests = _storefrontNotifyRequests.filter(x => x.id !== id);
+  renderStorefrontNotifyRequests();
+  const sb = getSupabaseClient();
+  if(!sb) return;
+  try{ await sb.from('storefront_notify_requests').update({ status }).eq('id', id); }
+  catch(e){ console.warn('[NOTIFY] status update failed:', e.message); }
+}
+
 function addWantItem(){
   const item = document.getElementById('wl-item').value.trim();
   const customer = document.getElementById('wl-customer').value.trim();
@@ -23210,6 +23478,107 @@ function restockSuggestedQty(name, count, nameSalesSortedDesc){
   return { qty, perWeek: perWeek.toFixed(1), unitCost: lastCost };
 }
 
+// ── Inventory Opportunity Matching ──────────────────────────────────────
+// Store idea: the restock checklist above only fires once a specific item
+// hits qty 0 (exact name match). This catches the earlier warning sign --
+// a whole PRODUCT LINE (grouped by set, not exact item) selling well
+// while what's left is thinning out, e.g. "selling TMNT MTG quickly but
+// only 4 left" -- so restocking happens before the shelf actually empties.
+function computeThinningProductLines(items, opts={}){
+  const days = opts.days || 30;
+  const minSold = opts.minSold || 3;
+  const maxRemaining = opts.maxRemaining ?? 6;
+  const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
+  const sold = (items || []).filter(i => i.status === 'sold' && i.soldAt && i.set && new Date(i.soldAt).getTime() >= cutoff);
+  const groups = new Map();
+  sold.forEach(i => {
+    const key = (i.category || '') + '||' + i.set;
+    if(!groups.has(key)) groups.set(key, { category: i.category, set: i.set, soldCount: 0 });
+    groups.get(key).soldCount++;
+  });
+  return [...groups.values()]
+    .map(g => {
+      const remaining = (items || []).filter(i => i.status === 'in_stock' && i.category === g.category && i.set === g.set);
+      const remainingQty = remaining.reduce((s, i) => s + (i.qty || 1), 0);
+      return { ...g, remainingQty };
+    })
+    .filter(g => g.soldCount >= minSold && g.remainingQty > 0 && g.remainingQty <= maxRemaining)
+    .sort((a, b) => b.soldCount - a.soldCount);
+}
+function renderThinningProductLines(){
+  const el = document.getElementById('rs-thinning');
+  if(!el) return;
+  const thinning = computeThinningProductLines(all);
+  el.innerHTML = thinning.length ? thinning.map(g => `<div class="attn-item">
+    <div class="attn-dot low"></div>
+    <div class="attn-name">${escHtml(g.set)} <span style="color:var(--dim);font-size:8px">${escHtml(g.category)}</span></div>
+    <div class="attn-act" style="font-family:monospace;font-size:8px;color:var(--red)">${g.soldCount} sold / 30d, only ${g.remainingQty} left</div>
+  </div>`).join('') : '<div class="empty"><div class="empty-t">Nothing thinning out right now</div></div>';
+}
+
+// Store idea: cross-reference recent comic sales against what's coming in
+// an upcoming FOC file -- "sold 7 Spider-Man comics in 14 days; next
+// week's FOC has 3 related releases". Matching is a simple shared-
+// significant-word check (same "no fancy NLP, explainable rule" approach
+// as Card Themes' inventory matching), not fuzzy AI matching, so a hit
+// is always traceable back to why it matched.
+const FOC_MATCH_STOPWORDS = new Set(['the','and','of','vol','volume','tpb','hc','presents','annual','special','one','shot','issue','cover']);
+function focMatchSignificantWords(text){
+  return String(text || '')
+    .toLowerCase()
+    .replace(/#\d+.*/, '')
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .split(/\s+/)
+    .filter(w => w.length >= 4 && !FOC_MATCH_STOPWORDS.has(w));
+}
+function titlesShareSignificantWord(a, b){
+  const wa = new Set(focMatchSignificantWords(a));
+  return focMatchSignificantWords(b).some(w => wa.has(w));
+}
+async function loadFocRelatedReleaseOpportunities(){
+  const sb = getSupabaseClient();
+  const storeId = getActiveStoreId();
+  if(!sb || !storeId) return [];
+  const cutoffIso = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString();
+  const { data: sales, error: salesErr } = await sb
+    .from('pos_sale_lines').select('title,quantity,created_at')
+    .eq('store_id', storeId).eq('category', 'Comic').gte('created_at', cutoffIso);
+  if(salesErr || !sales?.length) return [];
+  const soldByTitle = new Map();
+  sales.forEach(s => { const t = s.title || ''; if(!t) return; soldByTitle.set(t, (soldByTitle.get(t) || 0) + Number(s.quantity || 1)); });
+
+  const today = new Date().toISOString().slice(0, 10);
+  const { data: cycles } = await sb.from('foc_cycles').select('id,foc_date').eq('store_id', storeId).neq('status', 'archived').gte('foc_date', today).order('foc_date', { ascending:true }).limit(10);
+  if(!cycles?.length) return [];
+  const cycleIds = cycles.map(c => c.id);
+  const { data: skus } = await sb.from('comic_skus').select('title,cycle_id').in('cycle_id', cycleIds);
+  if(!skus?.length) return [];
+
+  const opportunities = [];
+  soldByTitle.forEach((qty, soldTitle) => {
+    if(qty < 2) return; // a single sale isn't a real signal
+    const matched = skus.filter(s => titlesShareSignificantWord(soldTitle, s.title));
+    if(!matched.length) return;
+    const matchedTitles = [...new Set(matched.map(s => s.title))];
+    const cycle = cycles.find(c => c.id === matched[0].cycle_id);
+    opportunities.push({ soldTitle, qty, matchedTitles: matchedTitles.slice(0, 5), focDate: cycle?.foc_date });
+  });
+  return opportunities.sort((a, b) => b.qty - a.qty);
+}
+async function renderFocRelatedReleaseOpportunities(){
+  const el = document.getElementById('rs-foc-match');
+  if(!el) return;
+  let opportunities = [];
+  try{ opportunities = await loadFocRelatedReleaseOpportunities(); }
+  catch(e){ el.innerHTML = `<div class="empty"><div class="empty-t">Could not load: ${escHtml(e.message)}</div></div>`; return; }
+  el.innerHTML = opportunities.length ? opportunities.map(o => `<div class="attn-item" style="align-items:flex-start">
+    <div class="attn-dot low"></div>
+    <div class="attn-name">${escHtml(o.soldTitle)} <span style="color:var(--dim);font-size:8px">${o.qty} sold / 14d</span>
+      <div style="font-family:monospace;font-size:8px;color:var(--g);margin-top:2px">→ ${escHtml(o.matchedTitles.join(', '))}${o.focDate ? ' · FOC ' + escHtml(o.focDate) : ''}</div>
+    </div>
+  </div>`).join('') : '<div class="empty"><div class="empty-t">No overlap between recent comic sales and upcoming FOC</div></div>';
+}
+
 function generateRestockPurchaseOrder(){
   const rows = Array.from(document.querySelectorAll('#rs-checklist [data-restock-name]')).filter(row => row.querySelector('.rs-po-check')?.checked);
   if(!rows.length) return alert('Check at least one item to include in the purchase order');
@@ -23257,10 +23626,11 @@ const _origSwitchTab = switchTab;
 switchTab = function(tab, btn){
   betaTrackAction?.('tab switched', tab);
   _origSwitchTab(tab, btn);
-  if(tab==='wantlist') { loadWantListFromWorker().then(()=>renderWantList()); }
+  if(tab==='wantlist') { loadWantListFromWorker().then(()=>renderWantList()); loadStorefrontNotifyRequests(); }
+  if(tab==='whatnot') loadActiveWhatnotShow();
   if(tab==='consign') renderConsign();
   if(tab==='locations') renderLocations();
-  if(tab==='restock') renderRestock();
+  if(tab==='restock') { renderRestock(); renderThinningProductLines(); renderFocRelatedReleaseOpportunities(); }
   if(tab==='pos') {
     renderScanInbox();
     renderOpsLog();
@@ -25491,6 +25861,119 @@ function clearBundleDraft(){ bundleDraftIds.clear(); renderBundleDraftBar(); }
 // If all selected items are comics from the same series with distinct
 // issue numbers, name the bundle after the run (e.g. "Series #1–#5
 // (5-issue run)"); otherwise fall back to a generic count-based name.
+// ── Bundle Brain ──────────────────────────────────────────────────────
+// Store idea: find inventory that makes sense bundled together instead of
+// getting randomly discounted one at a time. Deliberately limited to
+// groupings this app has REAL data for -- same set, same team, or same
+// player. Skips "Pokemon evolution lines" and "Commander synergy themes"
+// as literal groupings on purpose: neither has a real dataset backing it
+// here (no evolution-chain table, no color-identity/tribal data), and a
+// plausible-looking-but-wrong grouping would be worse than not suggesting
+// one at all. A same-set lot already covers most of that intent honestly
+// -- it's a real, sellable grouping even without knowing which cards
+// evolve into which.
+function computeBundleCandidates(items, opts={}){
+  const minGroupSize = opts.minGroupSize || 3;
+  const maxGroups = opts.maxGroups || 20;
+  const sellable = (items || []).filter(inventoryItemIsSellable).filter(i => !i.isBundle);
+  const groups = [];
+  const addGroupsFromKey = (keyFn, type) => {
+    const byKey = new Map();
+    sellable.forEach(i => {
+      const key = keyFn(i);
+      if(!key) return;
+      if(!byKey.has(key)) byKey.set(key, []);
+      byKey.get(key).push(i);
+    });
+    byKey.forEach((groupItems, key) => {
+      if(groupItems.length >= minGroupSize) groups.push({ type, key, category:groupItems[0].category, items:groupItems });
+    });
+  };
+  // Most-specific grouping first (player, then team, then set) so the
+  // de-dupe pass below prefers the tightest, most relevant lot for an
+  // item instead of always falling back to its broadest "same set" group.
+  addGroupsFromKey(i => i.player ? `${i.category}||${i.player}` : null, 'player');
+  addGroupsFromKey(i => i.team ? `${i.category}||${i.team}` : null, 'team');
+  addGroupsFromKey(i => i.set ? `${i.category}||${i.set}` : null, 'set');
+  const claimed = new Set();
+  const deduped = [];
+  groups.forEach(g => {
+    const unclaimed = g.items.filter(i => !claimed.has(i.id));
+    if(unclaimed.length >= minGroupSize){
+      unclaimed.forEach(i => claimed.add(i.id));
+      deduped.push({ ...g, items:unclaimed, label:g.key.split('||')[1] || g.key });
+    }
+  });
+  return deduped
+    .map(g => ({ ...g, suggestedPrice: computeBundlePrice(g.items) }))
+    .sort((a, b) => b.items.length - a.items.length)
+    .slice(0, maxGroups);
+}
+// Bundle price: a real discount off the combined list price -- enough to
+// be worth buying as a lot -- but never below combined cost plus a
+// minimum margin, so clearing inventory doesn't mean selling at a loss.
+function computeBundlePrice(items, opts={}){
+  const discountPct = opts.discountPct ?? 15;
+  const minMarginPct = opts.minMarginPct ?? 10;
+  const combinedList = items.reduce((s, i) => s + inventoryListPrice(i) * (i.qty || 1), 0);
+  const combinedCost = items.reduce((s, i) => s + Number(i.cost || 0) * (i.qty || 1), 0);
+  const discounted = roundSellPrice(combinedList * (1 - discountPct / 100));
+  const floor = roundSellPrice(combinedCost * (1 + minMarginPct / 100));
+  return Math.max(discounted, floor);
+}
+let _bundleBrainCandidates = [];
+function openBundleBrainModal(){
+  let modal = document.getElementById('bundle-brain-modal');
+  if(!modal){
+    modal = document.createElement('div');
+    modal.id = 'bundle-brain-modal';
+    modal.className = 'ppsb-modal';
+    modal.innerHTML = '<div class="ppsb-inner" id="bundle-brain-inner"></div>';
+    modal.addEventListener('click', e => { if(e.target === modal) closeBundleBrainModal(); });
+    document.body.appendChild(modal);
+  }
+  modal.classList.add('on');
+  renderBundleBrainModal();
+}
+function closeBundleBrainModal(){
+  document.getElementById('bundle-brain-modal')?.classList.remove('on');
+}
+const BUNDLE_BRAIN_TYPE_LABEL = { set:'SAME SET', team:'SAME TEAM', player:'SAME PLAYER' };
+function renderBundleBrainModal(){
+  const inner = document.getElementById('bundle-brain-inner');
+  if(!inner) return;
+  _bundleBrainCandidates = computeBundleCandidates(all);
+  const rows = _bundleBrainCandidates.map((g, idx) => `<div class="hbtn" style="display:flex;justify-content:space-between;align-items:center;gap:10px;text-align:left;margin-bottom:6px;cursor:default">
+    <div style="min-width:0">
+      <div style="font-weight:800;font-size:12px">${escHtml(g.label)} <span style="font-size:9px;color:var(--dim)">${BUNDLE_BRAIN_TYPE_LABEL[g.type] || g.type} · ${escHtml(g.category)}</span></div>
+      <div style="font-family:monospace;font-size:9px;color:var(--dim)">${g.items.length} items · combined list ${fd$(g.items.reduce((s,i)=>s+inventoryListPrice(i)*(i.qty||1),0))} → suggested ${fd$(g.suggestedPrice)}</div>
+    </div>
+    <button class="hbtn" style="font-size:9px;min-height:28px;padding:2px 10px;color:var(--g)" onclick="createBundleFromCandidate(${idx})">BUILD BUNDLE</button>
+  </div>`).join('') || `<div style="font-family:monospace;font-size:11px;color:var(--dim);padding:12px 0">No bundle opportunities right now -- nothing has 3+ sellable items sharing a set, team, or player.</div>`;
+  inner.innerHTML = `
+    <div class="ppsb-header">
+      <div style="display:flex;align-items:center;gap:10px;min-width:0">
+        <span class="ppsb-title">🧠 BUNDLE BRAIN</span>
+        <span style="font-family:monospace;font-size:9px;color:var(--dim);white-space:nowrap">inventory that makes sense sold together, not randomly discounted</span>
+      </div>
+      <button class="hbtn" style="min-height:36px;padding:4px 14px;font-size:10px;flex-shrink:0" onclick="closeBundleBrainModal()">✕ CLOSE</button>
+    </div>
+    <div style="max-width:700px;margin:0 auto;padding:16px 20px">${rows}</div>`;
+}
+function createBundleFromCandidate(idx){
+  const g = _bundleBrainCandidates[idx];
+  if(!g) return;
+  bundleDraftIds = new Set(g.items.map(i => i.id));
+  closeBundleBrainModal();
+  openBundleBuilderModal();
+  const typeName = { set:'Lot', team:'Team Lot', player:'Player Lot' };
+  const nameEl = document.getElementById('bb-name');
+  const priceEl = document.getElementById('bb-price');
+  if(nameEl) nameEl.value = `${g.label} ${typeName[g.type] || 'Lot'} (${g.items.length})`;
+  if(priceEl) priceEl.value = g.suggestedPrice.toFixed(2);
+}
+// ── END Bundle Brain ─────────────────────────────────────────────────
+
 function suggestBundleName(items){
   const comics = items.filter(i => qplCategoryKey(i.category) === 'comic');
   if(comics.length === items.length && comics.length >= 2){
@@ -26745,6 +27228,559 @@ function jumpToInventoryItem(item){
 // context-menu action uses, so it shows up in sales history/profit stats
 // identically -- this tab is just a faster front door to it during a show.
 let whatnotScanStream=null, whatnotScanDetector=null, whatnotScanDetecting=false;
+// ── Whatnot Show Builder / Live Auction Companion / Show P&L ───────────
+let whatnotActiveShow = null; // { id, title, category, platform, planned_length_minutes, started_at, status }
+let whatnotShowItems = []; // full queue for the active show, position order
+let whatnotCurrentShowItemId = null; // which whatnotShowItems row is loaded into the scan/keypad panel below
+let _whatnotCategoryBenchmarks = new Map(); // category -> avg real Whatnot sale price, refreshed when a show starts/resumes
+
+// Store idea ("What Should I Sell Tonight?" Show Builder / Show Planner):
+// pick platform, length, and category; draft a running order from current
+// inventory -- opener (mid-tier value, deliberately NOT the best stuff, so
+// the first 15 minutes doesn't blow the show's peak inventory) ->
+// engagement (cheap filler) -> anchor (the highest-value items, run once
+// the room's warmed up) -> giveaway -> closer (second-highest tier, ends
+// on a high note). A deterministic v1 heuristic -- the "learns what works
+// over time" half of this idea needs real accumulated Show P&L history
+// across many shows, which doesn't exist on a fresh install; every show
+// run through this feeds that history forward for later.
+function buildShowRunOfShow(items, opts={}){
+  const lengthMinutes = opts.lengthMinutes || 60;
+  const category = opts.category || 'Mixed';
+  const itemsPerHour = opts.itemsPerHour || 20;
+  const targetCount = Math.max(6, Math.round(lengthMinutes / 60 * itemsPerHour));
+
+  const pool = (items || []).filter(inventoryItemIsSellable).filter(i => category === 'Mixed' || i.category === category);
+  const priced = pool.map(i => ({ item:i, price: inventoryListPrice(i) || 0 })).filter(x => x.price > 0);
+  if(!priced.length) return [];
+
+  const anchorCount = Math.max(2, Math.round(targetCount * 0.15));
+  const closerCount = Math.max(1, Math.round(targetCount * 0.05));
+  const openerCount = Math.max(1, Math.round(targetCount * 0.10));
+  const giveawayCount = Math.max(1, Math.round(targetCount * 0.05));
+
+  const used = new Set();
+  const take = (arr, n) => { const out = []; for(const x of arr){ if(out.length >= n) break; if(used.has(x.item.id)) continue; used.add(x.item.id); out.push(x); } return out; };
+
+  const byValueDesc = [...priced].sort((a, b) => b.price - a.price);
+  const anchors = take(byValueDesc, anchorCount);
+  const closer = take(byValueDesc, closerCount);
+  const midTier = byValueDesc.filter(x => !used.has(x.item.id));
+  const opener = take(midTier, openerCount);
+  const byValueAsc = [...priced].sort((a, b) => a.price - b.price);
+  const giveaway = take(byValueAsc, giveawayCount);
+  const engagementTarget = Math.max(0, targetCount - anchors.length - closer.length - opener.length - giveaway.length);
+  const engagement = take(byValueAsc.filter(x => !used.has(x.item.id)), engagementTarget);
+
+  const half = Math.ceil(engagement.length / 2);
+  const order = [
+    ...opener.map(x => ({ ...x, role:'opener' })),
+    ...engagement.slice(0, half).map(x => ({ ...x, role:'engagement' })),
+    ...anchors.map(x => ({ ...x, role:'anchor' })),
+    ...engagement.slice(half).map(x => ({ ...x, role:'engagement' })),
+    ...giveaway.map(x => ({ ...x, role:'giveaway' })),
+    ...closer.map(x => ({ ...x, role:'closer' })),
+  ];
+  return order.map((x, idx) => ({ position: idx + 1, item: x.item, role: x.role, listPrice: x.price }));
+}
+
+function openShowBuilderModal(){
+  let modal = document.getElementById('show-builder-modal');
+  if(!modal){
+    modal = document.createElement('div');
+    modal.id = 'show-builder-modal';
+    modal.className = 'ppsb-modal';
+    modal.innerHTML = `<div class="ppsb-inner" style="max-width:420px;margin:60px auto;padding:20px">
+      <div class="ppsb-header"><span class="ppsb-title">🎬 SHOW BUILDER</span><button class="hbtn" onclick="closeShowBuilderModal()">✕</button></div>
+      <div style="padding:14px 4px">
+        <label style="display:block;font-size:9px;color:var(--dim);margin-bottom:4px">TITLE</label>
+        <input id="ws-title" class="tsi" placeholder="e.g. Pokemon Tuesday">
+        <label style="display:block;font-size:9px;color:var(--dim);margin:10px 0 4px">PLATFORM</label>
+        <select id="ws-platform" class="tsi"><option value="whatnot">Whatnot</option><option value="ebay_live">eBay Live</option><option value="twitch">Twitch</option></select>
+        <label style="display:block;font-size:9px;color:var(--dim);margin:10px 0 4px">CATEGORY</label>
+        <select id="ws-category" class="tsi"><option value="Mixed">Mixed</option><option value="Pokemon TCG">Pokemon TCG</option><option value="Magic: The Gathering">Magic: The Gathering</option><option value="Sports">Sports</option><option value="Comic">Comic</option><option value="One Piece TCG">One Piece TCG</option><option value="Yu-Gi-Oh!">Yu-Gi-Oh!</option><option value="Disney Lorcana">Disney Lorcana</option></select>
+        <label style="display:block;font-size:9px;color:var(--dim);margin:10px 0 4px">SHOW LENGTH (MINUTES)</label>
+        <input id="ws-length" type="number" class="tsi" value="60">
+        <label style="display:block;font-size:9px;color:var(--dim);margin:10px 0 4px">EXPERIMENT TAG (OPTIONAL) <span title="Tag what you're testing, e.g. '$1-starts' or '30s-timer' -- COMPARE EXPERIMENTS later groups ended shows by this tag to see what actually performs better across shows tagged the same way.">ⓘ</span></label>
+        <input id="ws-experiment-tag" class="tsi" placeholder="e.g. $1-starts">
+        <button class="hbtn" style="width:100%;padding:14px;margin-top:14px;color:var(--g)" onclick="createWhatnotShow()">BUILD SHOW & GO LIVE</button>
+      </div>
+    </div>`;
+    modal.addEventListener('click', e => { if(e.target === modal) closeShowBuilderModal(); });
+    document.body.appendChild(modal);
+  }
+  modal.classList.add('on');
+}
+function closeShowBuilderModal(){
+  document.getElementById('show-builder-modal')?.classList.remove('on');
+}
+async function createWhatnotShow(){
+  const platform = document.getElementById('ws-platform')?.value || 'whatnot';
+  const category = document.getElementById('ws-category')?.value || 'Mixed';
+  const lengthMinutes = parseInt(document.getElementById('ws-length')?.value, 10) || 60;
+  const title = document.getElementById('ws-title')?.value?.trim() || (category + ' Show ' + new Date().toLocaleDateString());
+  const experimentTag = document.getElementById('ws-experiment-tag')?.value?.trim() || null;
+  const runOfShow = buildShowRunOfShow(all, { lengthMinutes, category });
+  if(!runOfShow.length){ toast_dash('No sellable inventory matches that category to build a show from'); return; }
+  const sb = getSupabaseClient();
+  const storeId = getActiveStoreId();
+  if(!sb || !storeId) return;
+  try{
+    const { data: showRows, error: showErr } = await sb.from('whatnot_shows').insert({ store_id:storeId, platform, title, category, planned_length_minutes:lengthMinutes, status:'live', started_at:new Date().toISOString(), experiment_tag:experimentTag }).select('*').limit(1);
+    if(showErr) throw showErr;
+    const show = showRows[0];
+    const itemRows = runOfShow.map(r => ({
+      show_id: show.id, store_id: storeId, inventory_item_id: r.item.id, name: r.item.name, category: r.item.category,
+      image_url: r.item.thumbnail || r.item.imageUrl || '', cost_cents: Math.round(Number(r.item.cost || 0) * 100),
+      market_price_cents: Math.round(r.listPrice * 100), role: r.role, position: r.position, status:'queued',
+    }));
+    const { data: insertedItems, error: itemsErr } = await sb.from('whatnot_show_items').insert(itemRows).select('*');
+    if(itemsErr) throw itemsErr;
+    whatnotActiveShow = show;
+    whatnotShowItems = insertedItems.sort((a, b) => a.position - b.position);
+    whatnotCurrentShowItemId = null;
+    closeShowBuilderModal();
+    renderWhatnotShowPanel();
+    loadCategoryWhatnotBenchmarks().then(m => { _whatnotCategoryBenchmarks = m; });
+    toast_dash('Show started: ' + runOfShow.length + ' items queued');
+  }catch(e){ toast_dash('Could not start show: ' + e.message); }
+}
+async function loadActiveWhatnotShow(){
+  const sb = getSupabaseClient();
+  const storeId = getActiveStoreId();
+  if(!sb || !storeId) return;
+  try{
+    const { data: shows } = await sb.from('whatnot_shows').select('*').eq('store_id', storeId).eq('status', 'live').order('started_at', { ascending:false }).limit(1);
+    if(shows?.length){
+      whatnotActiveShow = shows[0];
+      const { data: items } = await sb.from('whatnot_show_items').select('*').eq('show_id', whatnotActiveShow.id).order('position', { ascending:true });
+      whatnotShowItems = items || [];
+    } else {
+      whatnotActiveShow = null;
+      whatnotShowItems = [];
+    }
+    if(whatnotActiveShow) loadCategoryWhatnotBenchmarks().then(m => { _whatnotCategoryBenchmarks = m; });
+  }catch(e){ console.warn('[SHOW] load failed:', e.message); }
+  renderWhatnotShowPanel();
+}
+// Store idea (Show Inventory Bucket): drop a specific item into tonight's
+// show on the fly, on top of whatever the Show Builder auto-drafted --
+// reachable from any in-stock item's row menu once a show is live, e.g.
+// a customer request mid-show or a manual "this deserves to be in there"
+// call the auto-draft wouldn't have made. Always queued as ENGAGEMENT
+// (a manual add mid-show is filler, not a pre-planned anchor/closer beat).
+async function addItemToActiveShow(itemId){
+  if(!whatnotActiveShow){ toast_dash('No show is live -- start one first'); return; }
+  const item = (all || []).find(i => i.id === itemId);
+  if(!item){ toast_dash('Item not found'); return; }
+  if(whatnotShowItems.some(r => r.inventory_item_id === itemId && r.status === 'queued')){ toast_dash('Already queued in tonight\'s show'); return; }
+  const sb = getSupabaseClient();
+  if(!sb) return;
+  const position = whatnotShowItems.length ? Math.max(...whatnotShowItems.map(r => r.position)) + 1 : 1;
+  const row = { show_id: whatnotActiveShow.id, store_id: getActiveStoreId(), inventory_item_id: item.id, name: item.name, category: item.category, image_url: item.thumbnail || item.imageUrl || '', cost_cents: Math.round(Number(item.cost || 0) * 100), market_price_cents: Math.round(inventoryListPrice(item) * 100), role:'engagement', position, status:'queued' };
+  try{
+    const { data, error } = await sb.from('whatnot_show_items').insert(row).select('*').limit(1);
+    if(error) throw error;
+    whatnotShowItems.push(data[0]);
+    renderWhatnotShowPanel();
+    toast_dash('Added to tonight\'s show: ' + item.name);
+  }catch(e){ toast_dash('Could not add to show: ' + e.message); }
+}
+// Store idea (Buyer Momentum / The Bench): react to what's actually
+// selling well THIS show instead of blindly following the pre-planned
+// order. Computed purely from this show's own sold items so far -- no
+// cross-show ML, just "which category is over/under-performing its own
+// planned (market) price right now". Needs at least 2 sales in a
+// category before calling it a trend, so one lucky/unlucky sale doesn't
+// swing the whole read.
+function computeShowMomentum(){
+  const sold = whatnotShowItems.filter(r => r.status === 'sold' && Number(r.market_price_cents || 0) > 0);
+  const byCategory = new Map();
+  sold.forEach(r => {
+    const cat = r.category || 'Other';
+    if(!byCategory.has(cat)) byCategory.set(cat, { realized:0, target:0, count:0 });
+    const c = byCategory.get(cat);
+    c.realized += Number(r.sold_price_cents || 0);
+    c.target += Number(r.market_price_cents || 0);
+    c.count++;
+  });
+  return [...byCategory.entries()]
+    .map(([category, c]) => ({ category, pctOfTarget: c.target > 0 ? (c.realized / c.target * 100) : 100, count:c.count }))
+    .filter(x => x.count >= 2)
+    .sort((a, b) => b.pctOfTarget - a.pctOfTarget);
+}
+// Bench order: queued items from categories currently running hot
+// (100%+ of their planned price) get bumped ahead of the rest, without
+// touching their stored `position` (still a soft display/pull-order
+// preference, not a destructive reorder of the planned show).
+function pickBenchOrder(){
+  const momentum = computeShowMomentum();
+  const hotCategories = new Set(momentum.filter(m => m.pctOfTarget >= 100).map(m => m.category));
+  const queued = whatnotShowItems.filter(r => r.status === 'queued');
+  const hot = queued.filter(r => hotCategories.has(r.category));
+  const rest = queued.filter(r => !hotCategories.has(r.category));
+  return { ordered: [...hot, ...rest], momentum };
+}
+// Store idea (Audience-Size Logic): "Hold the $300 Charizard, current
+// room isn't deep enough. Run the $25-50 cards." Only kicks in once the
+// seller has actually entered a room size this session (0 = not tracked,
+// never gates anything) -- an anchor-tier item is held back until the
+// room crosses the threshold, and the show pulls from the rest of the
+// queue instead of stalling.
+let whatnotCurrentAudienceSize = 0;
+const WHATNOT_ANCHOR_MIN_AUDIENCE = 15;
+function setWhatnotAudienceSize(val){
+  whatnotCurrentAudienceSize = Math.max(0, parseInt(val, 10) || 0);
+  if(whatnotActiveShow && whatnotCurrentAudienceSize > (whatnotActiveShow.peak_audience_size || 0)){
+    whatnotActiveShow.peak_audience_size = whatnotCurrentAudienceSize;
+    const sb = getSupabaseClient();
+    if(sb) sb.from('whatnot_shows').update({ peak_audience_size: whatnotCurrentAudienceSize }).eq('id', whatnotActiveShow.id).then(() => {}).catch(() => {});
+  }
+}
+function pullNextShowItem(){
+  const { ordered } = pickBenchOrder();
+  const audienceReady = whatnotCurrentAudienceSize === 0 || whatnotCurrentAudienceSize >= WHATNOT_ANCHOR_MIN_AUDIENCE;
+  let next = ordered.find(r => audienceReady || r.role !== 'anchor');
+  if(!next) next = whatnotShowItems.find(r => r.status === 'queued'); // every remaining item is a held-back anchor -- pull one anyway rather than stalling the show on an empty queue
+  if(!next){ toast_dash('Show queue is empty'); renderWhatnotShowPanel(); return; }
+  if(next.role === 'anchor' && !audienceReady) toast_dash('Room is thin (' + whatnotCurrentAudienceSize + ') -- running an anchor item anyway since nothing else is queued');
+  whatnotCurrentShowItemId = next.id;
+  const liveItem = (all || []).find(i => i.id === next.inventory_item_id);
+  const resolved = liveItem || { id: next.inventory_item_id, name: next.name, category: next.category, cost: Number(next.cost_cents || 0) / 100, market: Number(next.market_price_cents || 0) / 100, set:'', condition:'' };
+  selectWhatnotItem(resolved);
+  renderWhatnotShowPanel();
+}
+async function passWhatnotShowItem(){
+  if(!whatnotCurrentShowItemId){ toast_dash('No item loaded -- hit NEXT ITEM first'); return; }
+  await updateWhatnotShowItemStatus(whatnotCurrentShowItemId, 'passed');
+  cancelWhatnotItem();
+  whatnotCurrentShowItemId = null;
+  pullNextShowItem();
+}
+async function giveawayWhatnotShowItem(){
+  if(!whatnotCurrentItem || !whatnotCurrentShowItemId){ toast_dash('No item loaded -- hit NEXT ITEM first'); return; }
+  const itemId = whatnotCurrentItem.id;
+  const itemName = whatnotCurrentItem.name || 'Item';
+  try{
+    // A $0.01 external sale, not a $0 one -- record-external-sale requires
+    // salePrice > 0. This still runs the giveaway through the exact same
+    // trusted inventory-depletion pipeline as a real sale (so the item
+    // correctly leaves stock) while its near-zero price and distinct
+    // 'Whatnot Giveaway' channel keep it identifiable later for True
+    // Giveaway Cost tracking, instead of a separate parallel bookkeeping
+    // path that could drift out of sync with real inventory.
+    const res = await storeWorkerFetch('/inventory/record-external-sale', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ itemId, channel:'Whatnot Giveaway', salePrice:0.01, feeAmount:0 }) });
+    const d = await res.json().catch(() => ({}));
+    if(!res.ok || !d.ok){ toast_dash(d.error || 'Could not record giveaway'); return; }
+    await updateWhatnotShowItemStatus(whatnotCurrentShowItemId, 'giveaway', { sold_price_cents:1, sold_at:new Date().toISOString() });
+    loadInventory().catch(() => {});
+    toast_dash('Giveaway recorded: ' + itemName);
+    cancelWhatnotItem();
+    whatnotCurrentShowItemId = null;
+    pullNextShowItem();
+  }catch(e){ toast_dash(e.message); }
+}
+async function updateWhatnotShowItemStatus(showItemId, status, extra={}){
+  const row = whatnotShowItems.find(r => r.id === showItemId);
+  if(row){ row.status = status; Object.assign(row, extra); }
+  const sb = getSupabaseClient();
+  if(sb){
+    try{ await sb.from('whatnot_show_items').update({ status, ...extra }).eq('id', showItemId); }
+    catch(e){ console.warn('[SHOW] status update failed:', e.message); }
+  }
+  renderWhatnotShowPanel();
+}
+// Store idea ($1 Auction Risk Score): SAFE AT $1 / RISKY / DO NOT $1 START
+// per item. A $150 card isn't automatically safe just because it's worth
+// $150 -- what matters is what a stalled $1 auction could realistically
+// lose. The benchmark is this category's own actual average $1-start
+// realized price from past shows (real data, once there's history);
+// falls back to a flat, conservative default with zero history yet
+// rather than fabricating a number.
+function computeAuctionRiskScore(item, categoryAvgSalePrice){
+  const cost = Number(item.cost || 0);
+  const benchmark = categoryAvgSalePrice > 0 ? categoryAvgSalePrice : 25;
+  if(cost <= 0) return { level:'SAFE', reason:'No cost basis on file -- nothing to lose starting at $1' };
+  if(cost <= benchmark * 0.3) return { level:'SAFE', reason:`Cost $${cost.toFixed(2)} is well under this category's typical result (~$${benchmark.toFixed(2)})` };
+  if(cost <= benchmark * 0.8) return { level:'RISKY', reason:`Cost $${cost.toFixed(2)} is close to this category's typical result (~$${benchmark.toFixed(2)}) -- a stalled auction could lose money` };
+  return { level:'DO NOT $1 START', reason:`Cost $${cost.toFixed(2)} exceeds this category's typical result (~$${benchmark.toFixed(2)}) -- start higher, or run it as an anchor/closer instead` };
+}
+async function loadCategoryWhatnotBenchmarks(){
+  const sb = getSupabaseClient();
+  const storeId = getActiveStoreId();
+  if(!sb || !storeId) return new Map();
+  try{
+    const { data } = await sb.from('whatnot_show_items').select('category,sold_price_cents').eq('store_id', storeId).eq('status', 'sold');
+    const byCategory = new Map();
+    (data || []).forEach(r => {
+      const cat = r.category || 'Other';
+      if(!byCategory.has(cat)) byCategory.set(cat, { total:0, count:0 });
+      const c = byCategory.get(cat);
+      c.total += Number(r.sold_price_cents || 0) / 100;
+      c.count++;
+    });
+    const out = new Map();
+    byCategory.forEach((c, cat) => out.set(cat, c.count > 0 ? c.total / c.count : 0));
+    return out;
+  }catch(e){ console.warn('[SHOW] benchmark load failed:', e.message); return new Map(); }
+}
+// Store idea (Whatnot vs. eBay Decision): a per-item channel
+// recommendation. A $12 card can be a bad standalone eBay listing but
+// perfect Whatnot filler; a $600 card can be the wrong thing to expose to
+// a thin $1-start room.
+function suggestSalesChannel(item){
+  const price = inventoryListPrice(item);
+  const qty = inventoryAvailableQuantity(item);
+  if(price >= 150) return { channel:'EBAY AUCTION', reason:'High value -- eBay\'s full-market audience and real bidding beats a live $1-start room' };
+  if(price < 5) return { channel:'EBAY BIN / BUNDLE', reason:'Too cheap to justify a standalone listing -- bundle it or bin-list it' };
+  if(WHATNOT_SHOW_CATEGORIES.includes(item.category) && qty <= 1) return { channel:'WHATNOT', reason:'Mid-value single-copy collectible -- a live audience usually outperforms a static listing' };
+  return { channel:'EBAY BIN', reason:'Not a strong fit for a live room -- list it as a normal fixed-price/auction listing' };
+}
+const WHATNOT_SHOW_CATEGORIES = ['Pokemon TCG','Magic: The Gathering','One Piece TCG','Yu-Gi-Oh!','Disney Lorcana','Sports'];
+
+function openWhaleDashboard(){
+  let modal = document.getElementById('whale-dashboard-modal');
+  if(!modal){
+    modal = document.createElement('div');
+    modal.id = 'whale-dashboard-modal';
+    modal.className = 'ppsb-modal';
+    modal.innerHTML = '<div class="ppsb-inner" id="whale-dashboard-inner"></div>';
+    modal.addEventListener('click', e => { if(e.target === modal) closeWhaleDashboard(); });
+    document.body.appendChild(modal);
+  }
+  modal.classList.add('on');
+  renderWhaleDashboard();
+}
+function closeWhaleDashboard(){
+  document.getElementById('whale-dashboard-modal')?.classList.remove('on');
+}
+// Store idea (Repeat Buyer / Whale Dashboard): not just "who spent the
+// most" -- shows attended, total spent, average order, categories, last
+// purchase. Someone spending $80/week for 15 weeks can matter more than
+// a single $500 drop-in. Built entirely from real buyer_name/
+// buyer_customer_id captured on confirmWhatnotSale -- empty until staff
+// actually fill in the buyer field during a show.
+async function renderWhaleDashboard(){
+  const inner = document.getElementById('whale-dashboard-inner');
+  if(!inner) return;
+  inner.innerHTML = '<div style="padding:20px;font-family:monospace;font-size:11px;color:var(--dim)">Loading…</div>';
+  const sb = getSupabaseClient();
+  const storeId = getActiveStoreId();
+  if(!sb || !storeId) return;
+  const { data, error } = await sb.from('whatnot_show_items').select('show_id,buyer_name,buyer_customer_id,sold_price_cents,category,sold_at').eq('store_id', storeId).eq('status', 'sold').not('buyer_name', 'is', null);
+  if(error){ inner.innerHTML = `<div style="padding:20px;color:var(--red);font-family:monospace;font-size:11px">${escHtml(error.message)}</div>`; return; }
+  const byBuyer = new Map();
+  (data || []).forEach(r => {
+    const key = r.buyer_customer_id || r.buyer_name;
+    if(!key) return;
+    if(!byBuyer.has(key)) byBuyer.set(key, { name:r.buyer_name, shows:new Set(), total:0, count:0, categories:new Set(), lastAt:r.sold_at });
+    const b = byBuyer.get(key);
+    b.shows.add(r.show_id);
+    b.total += Number(r.sold_price_cents || 0) / 100;
+    b.count++;
+    if(r.category) b.categories.add(r.category);
+    if(new Date(r.sold_at) > new Date(b.lastAt)) b.lastAt = r.sold_at;
+  });
+  const buyers = [...byBuyer.values()].sort((a, b) => b.total - a.total);
+  inner.innerHTML = `<div class="ppsb-header">
+      <div style="display:flex;align-items:center;gap:10px;min-width:0"><span class="ppsb-title">🐋 REPEAT BUYER / WHALE DASHBOARD</span></div>
+      <button class="hbtn" style="min-height:36px;padding:4px 14px;font-size:10px;flex-shrink:0" onclick="closeWhaleDashboard()">✕ CLOSE</button>
+    </div>
+    <div style="max-width:700px;margin:0 auto;padding:16px 20px">
+    ${buyers.length ? buyers.map(b => `<div style="padding:8px 0;border-bottom:1px solid var(--line)">
+      <div style="font-weight:800;font-size:12px">${escHtml(b.name)}</div>
+      <div style="font-family:monospace;font-size:9px;color:var(--dim)">${b.shows.size} show${b.shows.size === 1 ? '' : 's'} · ${b.count} purchase${b.count === 1 ? '' : 's'} · ${fd$(b.total)} total · avg ${fd$(b.total / b.count)} · ${[...b.categories].join(', ')} · last ${new Date(b.lastAt).toLocaleDateString()}</div>
+    </div>`).join('') : '<div class="empty"><div class="empty-t">No buyer names captured yet -- fill in the buyer field when confirming a Whatnot sale to start building this.</div></div>'}
+    </div>`;
+}
+
+function openExperimentComparison(){
+  let modal = document.getElementById('experiment-comparison-modal');
+  if(!modal){
+    modal = document.createElement('div');
+    modal.id = 'experiment-comparison-modal';
+    modal.className = 'ppsb-modal';
+    modal.innerHTML = '<div class="ppsb-inner" id="experiment-comparison-inner"></div>';
+    modal.addEventListener('click', e => { if(e.target === modal) closeExperimentComparison(); });
+    document.body.appendChild(modal);
+  }
+  modal.classList.add('on');
+  renderExperimentComparison();
+}
+function closeExperimentComparison(){
+  document.getElementById('experiment-comparison-modal')?.classList.remove('on');
+}
+// Store idea (Show Experiment Engine + True Giveaway Cost): compare
+// aggregate outcomes across ALL ended shows -- by experiment tag (e.g.
+// "$1-starts" vs "$5-starts") when tagged, and always by whether a show
+// ran any giveaways at all, to see whether giveaway-heavy shows actually
+// correlate with better profit/hour rather than assuming either way.
+// Needs at least 2 shows in a bucket to say anything (a single show isn't
+// a trend); untagged shows are simply excluded from the tag comparison,
+// not the giveaway comparison.
+async function renderExperimentComparison(){
+  const inner = document.getElementById('experiment-comparison-inner');
+  if(!inner) return;
+  inner.innerHTML = '<div style="padding:20px;font-family:monospace;font-size:11px;color:var(--dim)">Loading…</div>';
+  const sb = getSupabaseClient();
+  const storeId = getActiveStoreId();
+  if(!sb || !storeId) return;
+  const { data: shows, error } = await sb.from('whatnot_shows').select('id,title,experiment_tag,started_at,ended_at').eq('store_id', storeId).eq('status', 'ended');
+  if(error){ inner.innerHTML = `<div style="padding:20px;color:var(--red);font-family:monospace;font-size:11px">${escHtml(error.message)}</div>`; return; }
+  if(!shows?.length){ inner.innerHTML = `<div class="ppsb-header"><span class="ppsb-title">📊 COMPARE EXPERIMENTS</span><button class="hbtn" onclick="closeExperimentComparison()">✕ CLOSE</button></div><div style="padding:20px"><div class="empty"><div class="empty-t">No ended shows yet -- this fills in as you run and end shows.</div></div></div>`; return; }
+  const showIds = shows.map(s => s.id);
+  const { data: items } = await sb.from('whatnot_show_items').select('show_id,status,sold_price_cents,cost_cents').in('show_id', showIds);
+  const byShow = new Map();
+  (items || []).forEach(r => { if(!byShow.has(r.show_id)) byShow.set(r.show_id, []); byShow.get(r.show_id).push(r); });
+  const perShow = shows.map(s => {
+    const rows = byShow.get(s.id) || [];
+    const sold = rows.filter(r => r.status === 'sold');
+    const gross = sold.reduce((sum, r) => sum + Number(r.sold_price_cents || 0) / 100, 0);
+    const cogs = sold.reduce((sum, r) => sum + Number(r.cost_cents || 0) / 100, 0);
+    const hours = s.started_at && s.ended_at ? Math.max(1 / 60, (new Date(s.ended_at) - new Date(s.started_at)) / 3600000) : 1;
+    return { show:s, profitPerHour:(gross - cogs) / hours, giveawayCount: rows.filter(r => r.status === 'giveaway').length };
+  });
+  const byTag = new Map();
+  perShow.filter(p => p.show.experiment_tag).forEach(p => {
+    const tag = p.show.experiment_tag;
+    if(!byTag.has(tag)) byTag.set(tag, { showCount:0, totalProfitPerHour:0 });
+    const t = byTag.get(tag);
+    t.showCount++;
+    t.totalProfitPerHour += p.profitPerHour;
+  });
+  const tagRows = [...byTag.entries()].map(([tag, t]) => ({ tag, showCount:t.showCount, avgProfitPerHour: t.totalProfitPerHour / t.showCount })).sort((a, b) => b.avgProfitPerHour - a.avgProfitPerHour);
+  const withGiveaways = perShow.filter(p => p.giveawayCount > 0);
+  const withoutGiveaways = perShow.filter(p => p.giveawayCount === 0);
+  const avgOf = list => list.length ? list.reduce((s, p) => s + p.profitPerHour, 0) / list.length : null;
+  const giveawayRows = [
+    { label:'Shows WITH giveaways', showCount:withGiveaways.length, avgProfitPerHour:avgOf(withGiveaways) },
+    { label:'Shows with NO giveaways', showCount:withoutGiveaways.length, avgProfitPerHour:avgOf(withoutGiveaways) },
+  ].filter(r => r.showCount > 0);
+  inner.innerHTML = `<div class="ppsb-header"><span class="ppsb-title">📊 COMPARE EXPERIMENTS</span><button class="hbtn" onclick="closeExperimentComparison()">✕ CLOSE</button></div>
+    <div style="max-width:600px;margin:0 auto;padding:16px 20px">
+      <div style="font:900 11px 'Orbitron',monospace;color:var(--gold);letter-spacing:1px;margin-bottom:6px">GIVEAWAY IMPACT</div>
+      <div style="font-family:monospace;font-size:9px;color:var(--dim);margin-bottom:10px">Avg. profit/hour -- do giveaway-heavy shows actually do better?</div>
+      ${giveawayRows.length < 2 ? '<div class="empty"><div class="empty-t">Need ended shows both with and without giveaways to compare</div></div>' : giveawayRows.map(r => `<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--line)">
+        <span style="font-weight:700;font-size:12px">${escHtml(r.label)} <span style="color:var(--dim);font-size:9px">(${r.showCount} show${r.showCount === 1 ? '' : 's'})</span></span>
+        <span style="font-family:monospace;font-size:12px;color:${r.avgProfitPerHour >= 0 ? 'var(--g)' : 'var(--red)'}">${fd$(r.avgProfitPerHour)}/hr</span>
+      </div>`).join('')}
+      <div style="font:900 11px 'Orbitron',monospace;color:var(--gold);letter-spacing:1px;margin:16px 0 6px">BY EXPERIMENT TAG</div>
+      ${!tagRows.length ? '<div class="empty"><div class="empty-t">No tagged shows yet -- add an Experiment Tag next time you start a show.</div></div>' : tagRows.map(r => `<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--line)">
+        <span style="font-weight:700;font-size:12px">${escHtml(r.tag)} <span style="color:var(--dim);font-size:9px">(${r.showCount} show${r.showCount === 1 ? '' : 's'})</span></span>
+        <span style="font-family:monospace;font-size:12px;color:${r.avgProfitPerHour >= 0 ? 'var(--g)' : 'var(--red)'}">${fd$(r.avgProfitPerHour)}/hr</span>
+      </div>`).join('')}
+    </div>`;
+}
+
+const WHATNOT_SHOW_ROLE_LABEL = { opener:'OPENER', engagement:'FILLER', anchor:'ANCHOR', giveaway:'GIVEAWAY', closer:'CLOSER' };
+function renderWhatnotShowPanel(){
+  const el = document.getElementById('whatnot-show-panel');
+  if(!el) return;
+  if(!whatnotActiveShow){
+    el.innerHTML = `<button class="hbtn" style="width:100%;padding:14px;color:var(--gold)" onclick="openShowBuilderModal()">🎬 START A SHOW</button>
+      <button class="hbtn" style="width:100%;padding:10px;margin-top:6px" onclick="openWhaleDashboard()">🐋 Repeat Buyer / Whale Dashboard</button>
+      <button class="hbtn" style="width:100%;padding:10px;margin-top:6px" onclick="openExperimentComparison()">📊 Compare Experiments</button>`;
+    return;
+  }
+  const { ordered: benchOrder, momentum } = pickBenchOrder();
+  const sold = whatnotShowItems.filter(r => r.status === 'sold');
+  const gross = sold.reduce((s, r) => s + Number(r.sold_price_cents || 0) / 100, 0);
+  const upcoming = benchOrder.slice(0, 5);
+  const hot = momentum.filter(m => m.pctOfTarget >= 100);
+  const cold = momentum.filter(m => m.pctOfTarget < 80);
+  const momentumLine = (hot.length || cold.length)
+    ? `MOMENTUM: ${[...hot.map(m => m.category + ' ↑ ' + m.pctOfTarget.toFixed(0) + '%'), ...cold.map(m => m.category + ' ↓ ' + m.pctOfTarget.toFixed(0) + '%')].join(' · ')}`
+    : '';
+  el.innerHTML = `<div style="background:var(--surf);border:1px solid var(--g);border-radius:10px;padding:12px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <div style="font-family:'Orbitron',monospace;font-size:12px;color:var(--g)">🔴 LIVE: ${escHtml(whatnotActiveShow.title)}</div>
+      <button class="hbtn" style="font-size:9px;min-height:26px;padding:2px 10px" onclick="endWhatnotShow()">END SHOW</button>
+    </div>
+    <div style="font-family:monospace;font-size:9px;color:var(--dim);margin-bottom:8px">${sold.length} sold · ${whatnotShowItems.filter(r => r.status === 'queued').length} queued · ${fd$(gross)} gross so far</div>
+    <label style="display:flex;align-items:center;gap:6px;font-family:monospace;font-size:9px;color:var(--dim);margin-bottom:10px">ROOM SIZE <input type="number" min="0" value="${whatnotCurrentAudienceSize || ''}" placeholder="viewers" style="width:60px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:3px 6px;border-radius:4px" onchange="setWhatnotAudienceSize(this.value)"> <span title="Below ${WHATNOT_ANCHOR_MIN_AUDIENCE}, NEXT ITEM holds back your anchor-tier items for a bigger room">ⓘ</span></label>
+    ${momentumLine ? `<div style="font-family:monospace;font-size:9px;color:var(--gold);margin-bottom:8px">${escHtml(momentumLine)}</div>` : ''}
+    <div style="display:flex;gap:6px;margin-bottom:10px">
+      <button class="hbtn" style="flex:1;color:var(--g)" onclick="pullNextShowItem()">▶ NEXT ITEM</button>
+      <button class="hbtn" onclick="passWhatnotShowItem()">PASS</button>
+      <button class="hbtn" style="color:var(--gold)" onclick="giveawayWhatnotShowItem()">🎁 GIVEAWAY</button>
+    </div>
+    <div style="font-family:monospace;font-size:8px;color:var(--dim)">UP NEXT: ${upcoming.map(r => escHtml(r.name) + ' (' + (WHATNOT_SHOW_ROLE_LABEL[r.role] || r.role) + ')').join(' → ') || 'queue empty'}</div>
+    <div style="display:flex;gap:6px;margin-top:10px">
+      <button class="hbtn" style="flex:1;font-size:9px;padding:6px" onclick="openWhaleDashboard()">🐋 Whale Dashboard</button>
+      <button class="hbtn" style="flex:1;font-size:9px;padding:6px" onclick="openExperimentComparison()">📊 Compare Experiments</button>
+    </div>
+  </div>`;
+}
+// Store idea (Loss-Leader Tracking): a sold item priced under its cost is
+// only a "bad loss" if the buyer didn't also spend enough elsewhere in
+// this same show to more than cover it -- otherwise it's the cost of
+// getting them in the door. Only classifiable when a buyer name/id was
+// captured on both the loss and their other purchases; unattributed
+// losses (no buyer name entered) can't be linked to anything and stay
+// unexplained.
+function classifyShowLosses(soldItems){
+  const byBuyer = new Map();
+  soldItems.forEach(r => {
+    const key = r.buyer_customer_id || r.buyer_name || '';
+    if(!key) return;
+    if(!byBuyer.has(key)) byBuyer.set(key, []);
+    byBuyer.get(key).push(r);
+  });
+  return soldItems.map(r => {
+    const priceCents = Number(r.sold_price_cents || 0), costCents = Number(r.cost_cents || 0);
+    const loss = priceCents < costCents ? (costCents - priceCents) / 100 : 0;
+    if(loss <= 0) return { ...r, lossType:null, loss:0 };
+    const key = r.buyer_customer_id || r.buyer_name || '';
+    const buyerItems = key ? (byBuyer.get(key) || []) : [];
+    const buyerOtherProfit = buyerItems.filter(x => x.id !== r.id).reduce((s, x) => s + (Number(x.sold_price_cents || 0) - Number(x.cost_cents || 0)) / 100, 0);
+    return { ...r, lossType: (key && buyerOtherProfit >= loss) ? 'acquisition' : 'bad_loss', loss };
+  });
+}
+async function endWhatnotShow(){
+  if(!whatnotActiveShow) return;
+  if(!confirm('End "' + whatnotActiveShow.title + '"? This locks in the Show P&L.')) return;
+  const sb = getSupabaseClient();
+  const endedAt = new Date().toISOString();
+  try{ if(sb) await sb.from('whatnot_shows').update({ status:'ended', ended_at:endedAt }).eq('id', whatnotActiveShow.id); }catch(e){}
+  const sold = whatnotShowItems.filter(r => r.status === 'sold');
+  const giveaways = whatnotShowItems.filter(r => r.status === 'giveaway');
+  const gross = sold.reduce((s, r) => s + Number(r.sold_price_cents || 0) / 100, 0);
+  const cogs = sold.reduce((s, r) => s + Number(r.cost_cents || 0) / 100, 0);
+  const fee = whatnotFeeSettings();
+  const estFees = sold.reduce((s, r) => { const p = Number(r.sold_price_cents || 0) / 100; return s + (p * (fee.pct / 100) + fee.flat); }, 0);
+  const giveawayCost = giveaways.reduce((s, r) => s + Number(r.cost_cents || 0) / 100, 0);
+  const profit = gross - cogs - estFees;
+  const startedMs = whatnotActiveShow.started_at ? new Date(whatnotActiveShow.started_at).getTime() : Date.now();
+  const hours = Math.max(1 / 60, (Date.now() - startedMs) / 3600000);
+  const profitPerHour = profit / hours;
+  // Store idea (Loss-Leader Tracking): distinguish a "bad loss" from
+  // "customer acquisition" -- losing $5 on an opening auction is fine if
+  // that same buyer went on to spend $140 later in the show. Only
+  // classifiable for sales with a captured buyer name/id; anything sold
+  // at a loss with no buyer on file is left as an unexplained loss.
+  const losses = classifyShowLosses(sold);
+  const acquisitionLoss = losses.filter(l => l.lossType === 'acquisition').reduce((s, l) => s + l.loss, 0);
+  const badLoss = losses.filter(l => l.lossType === 'bad_loss').reduce((s, l) => s + l.loss, 0);
+  const w = window.open('', '_blank', 'width=420,height=560');
+  if(w){
+    w.document.write('<html><head><title>Show P&L</title><style>body{font-family:monospace;padding:20px;font-size:12px}h2{margin:0 0 4px}.row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #ddd}</style></head><body>');
+    w.document.write('<h2>' + escHtml(whatnotActiveShow.title) + '</h2><div style="color:#666;margin-bottom:12px">' + new Date().toLocaleString() + '</div>');
+    const rows=[['Gross', fd$(gross)], ['COGS', fd$(cogs)], ['Est. fees', fd$(estFees)], ['Giveaway cost', fd$(giveawayCost)], ['Est. profit', fd$(profit)], ['Profit/hour', fd$(profitPerHour)], ['Items sold', sold.length], ['Giveaways', giveaways.length], ['Show length', hours.toFixed(1) + 'h']];
+    if(badLoss>0||acquisitionLoss>0){ rows.push(['Loss leaders (customer acquisition)', fd$(acquisitionLoss)]); rows.push(['Loss leaders (unexplained)', fd$(badLoss)]); }
+    rows.forEach(([k, v]) => {
+      w.document.write('<div class="row"><span>' + k + '</span><b>' + v + '</b></div>');
+    });
+    w.document.write('<script>window.print();<\/script></body></html>');
+  }
+  whatnotActiveShow = null;
+  whatnotShowItems = [];
+  whatnotCurrentShowItemId = null;
+  cancelWhatnotItem();
+  renderWhatnotShowPanel();
+  toast_dash('Show ended -- ' + fd$(profit) + ' est. profit');
+}
+// ── END Whatnot Show Builder ─────────────────────────────────────────
+
 let whatnotCurrentItem=null, whatnotPriceCents=0, whatnotSubmitting=false;
 let _whatnotScanLastValue='', _whatnotScanLastAt=0;
 let whatnotSession={count:0,gross:0,profit:0};
@@ -26818,7 +27854,15 @@ function selectWhatnotItem(item){
   const nameEl=document.getElementById('whatnot-item-name');
   if(nameEl) nameEl.textContent=item.name||'Item';
   const metaEl=document.getElementById('whatnot-item-meta');
-  if(metaEl) metaEl.textContent=[item.set,item.condition,item.cost!=null?'Cost $'+Number(item.cost).toFixed(2):''].filter(Boolean).join(' · ');
+  const metaParts=[item.set,item.condition,item.cost!=null?'Cost $'+Number(item.cost).toFixed(2):''].filter(Boolean);
+  if(whatnotActiveShow){
+    const risk=computeAuctionRiskScore(item, _whatnotCategoryBenchmarks.get(item.category)||0);
+    metaParts.push(risk.level);
+  }
+  if(metaEl){
+    metaEl.textContent=metaParts.join(' · ');
+    if(whatnotActiveShow) metaEl.title=computeAuctionRiskScore(item, _whatnotCategoryBenchmarks.get(item.category)||0).reason;
+  }
   setWhatnotScanStatus('Ready: '+(item.name||'Item')+' -- enter the sold price.','var(--g)');
   renderWhatnotPrice();
 }
@@ -26828,6 +27872,8 @@ function cancelWhatnotItem(){
   whatnotPriceCents=0;
   const panel=document.getElementById('whatnot-current-item');
   if(panel) panel.style.display='none';
+  const buyerEl=document.getElementById('whatnot-buyer-name');
+  if(buyerEl) buyerEl.value='';
   setWhatnotScanStatus('Scan a label barcode or type it below.');
   document.getElementById('whatnot-scan-manual-input')?.focus();
 }
@@ -26857,7 +27903,17 @@ function renderWhatnotPrice(){
   const cost=Number(whatnotCurrentItem?.cost||0);
   const profit=price-feeAmount-cost;
   const previewEl=document.getElementById('whatnot-fee-profit-preview');
-  if(previewEl) previewEl.innerHTML=`Fee: <b style="color:var(--red)">$${feeAmount.toFixed(2)}</b> &nbsp;·&nbsp; Profit: <b style="color:${profit>=0?'var(--g)':'var(--red)'}">$${profit.toFixed(2)}</b>`;
+  // Store idea (Live Floor-Price Warning): the existing fee/profit preview
+  // already updates live as digits are typed -- this just makes a real
+  // loss impossible to miss (an explicit banner, not just red text) so it
+  // registers instantly on a second screen next to OBS mid-auction.
+  const breakEven=cost+fee.flat; // rough floor ignoring the pct fee's own compounding, good enough for an at-a-glance warning
+  if(previewEl){
+    previewEl.innerHTML = (price>0 && profit<0)
+      ? `⚠️ DANGER -- selling at a loss &nbsp;·&nbsp; Fee: <b style="color:var(--red)">$${feeAmount.toFixed(2)}</b> &nbsp;·&nbsp; Profit: <b style="color:var(--red)">$${profit.toFixed(2)}</b> &nbsp;·&nbsp; break-even ~$${breakEven.toFixed(2)}`
+      : `Fee: <b style="color:var(--red)">$${feeAmount.toFixed(2)}</b> &nbsp;·&nbsp; Profit: <b style="color:${profit>=0?'var(--g)':'var(--red)'}">$${profit.toFixed(2)}</b>`;
+    previewEl.style.cssText = (price>0 && profit<0) ? 'font-weight:800;color:var(--red);background:rgba(255,77,109,.12);border:1px solid var(--red);border-radius:8px;padding:6px' : '';
+  }
   const confirmBtn=document.getElementById('whatnot-confirm-btn');
   if(confirmBtn) confirmBtn.disabled=!(price>0)||whatnotSubmitting;
 }
@@ -26885,6 +27941,24 @@ async function confirmWhatnotSale(){
     renderWhatnotSessionTally();
     toast_dash('Sold: '+itemName+' -- $'+price.toFixed(2)+' ($'+Number(d.profit||0).toFixed(2)+' profit)');
     loadInventory().catch(()=>{});
+    // Whatnot Show Builder: if this sale was for the show's current item,
+    // record it against that show_item row too, so Show P&L reflects it.
+    // The buyer name (optional) is the only real data source Buyer
+    // Momentum / The Bench / Repeat Buyer-Whale Dashboard have -- Whatnot
+    // gives this app no API access to who's actually bidding.
+    if(whatnotCurrentShowItemId){
+      const soldShowItemId=whatnotCurrentShowItemId;
+      whatnotCurrentShowItemId=null;
+      const buyerName=document.getElementById('whatnot-buyer-name')?.value?.trim()||'';
+      const extra={ sold_price_cents:Math.round(price*100), sold_at:new Date().toISOString() };
+      if(buyerName){
+        extra.buyer_name=buyerName;
+        upsertCustomer(buyerName,'','Whatnot show purchase: '+itemName,'whatnot-show').then(c=>{
+          if(c?.id) updateWhatnotShowItemStatus(soldShowItemId,'sold',{ ...extra, buyer_customer_id:c.id });
+        }).catch(()=>{});
+      }
+      updateWhatnotShowItemStatus(soldShowItemId,'sold',extra);
+    }
     cancelWhatnotItem();
   }catch(e){
     toast_dash(e.message||'Could not record sale');
@@ -44208,6 +45282,166 @@ function mtgsbAddToInventory(idx){
 
 // ── END MTG SET BROWSER ──────────────────────────────────────────
 
+// ── CARD THEMES ───────────────────────────────────────────────────
+// Store request: curated card groupings (like the Dex TCG app's "Golden
+// Hour" -- cards that look good displayed/sold together, not an official
+// set). There's no public API for these, so the store enters a theme's
+// card list themselves (from a screenshot, a reddit post, etc.) and this
+// cross-references it against current sellable inventory to show what
+// they already have vs. still need, for merchandising/case-layout.
+function getCardThemes(){
+  return getVendorConfig().cardThemes || [];
+}
+function addCardTheme(name, cardListText){
+  const cardNames = String(cardListText || '')
+    .split(/[\n,]/)
+    .map(s => s.trim())
+    .filter(Boolean);
+  if(!name || !name.trim() || !cardNames.length) return null;
+  const theme = { id: 'theme_' + Date.now().toString(36) + Math.random().toString(36).slice(2,7), name: name.trim(), cardNames };
+  const config = getVendorConfig();
+  saveVendorConfig({ ...config, cardThemes: [...getCardThemes(), theme] });
+  return theme;
+}
+function deleteCardTheme(id){
+  if(!confirm('Delete this card theme?')) return;
+  const config = getVendorConfig();
+  saveVendorConfig({ ...config, cardThemes: getCardThemes().filter(t => t.id !== id) });
+  renderCardThemesBrowser();
+}
+function matchCardThemeToInventory(theme){
+  const sellable = all.filter(inventoryItemIsSellable);
+  return (theme.cardNames || []).map(cardName => {
+    const needle = cardName.toLowerCase();
+    const matches = sellable.filter(item => String(item.name || '').toLowerCase().includes(needle));
+    return { cardName, matches };
+  });
+}
+function openCardThemesBrowser(){
+  let modal = document.getElementById('card-themes-modal');
+  if(!modal){
+    modal = document.createElement('div');
+    modal.id = 'card-themes-modal';
+    modal.className = 'ppsb-modal';
+    modal.innerHTML = '<div class="ppsb-inner" id="card-themes-inner"></div>';
+    modal.addEventListener('click', e => { if(e.target === modal) closeCardThemesBrowser(); });
+    document.body.appendChild(modal);
+  }
+  modal.classList.add('on');
+  renderCardThemesBrowser();
+}
+function closeCardThemesBrowser(){
+  document.getElementById('card-themes-modal')?.classList.remove('on');
+}
+function renderCardThemesBrowser(){
+  const inner = document.getElementById('card-themes-inner');
+  if(!inner) return;
+  const themes = getCardThemes();
+  const rows = themes.map(t => {
+    const breakdown = matchCardThemeToInventory(t);
+    const ownedCount = breakdown.filter(b => b.matches.length > 0).length;
+    return `<div class="hbtn" style="display:flex;align-items:center;justify-content:space-between;gap:10px;text-align:left;cursor:pointer;margin-bottom:6px" onclick="openCardThemeDetail('${t.id}')">
+      <div style="min-width:0">
+        <div style="font-weight:800;font-size:12px">${t.name}</div>
+        <div style="font-family:monospace;font-size:9px;color:var(--dim)">${ownedCount} / ${t.cardNames.length} in stock</div>
+      </div>
+      <button class="hbtn" style="font-size:9px;min-height:28px;padding:2px 10px;color:var(--red)" onclick="event.stopPropagation();deleteCardTheme('${t.id}')">DELETE</button>
+    </div>`;
+  }).join('') || `<div style="font-family:monospace;font-size:11px;color:var(--dim);padding:12px 0">No card themes yet -- add one below.</div>`;
+  inner.innerHTML = `
+    <div class="ppsb-header">
+      <div style="display:flex;align-items:center;gap:10px;min-width:0">
+        <span class="ppsb-title">🎨 CARD THEMES</span>
+        <span style="font-family:monospace;font-size:9px;color:var(--dim);white-space:nowrap">curated groupings for display/merchandising · cross-referenced with inventory</span>
+      </div>
+      <button class="hbtn" style="min-height:36px;padding:4px 14px;font-size:10px;flex-shrink:0" onclick="closeCardThemesBrowser()">✕ CLOSE</button>
+    </div>
+    <div style="max-width:700px;margin:0 auto;padding:16px 20px">
+      <div style="border:1px solid var(--line);border-radius:10px;padding:12px;margin-bottom:16px">
+        <div style="font-family:monospace;font-size:9px;color:var(--dim);margin-bottom:8px">ADD A THEME</div>
+        <input id="card-theme-new-name" placeholder="Theme name (e.g. Golden Hour)" style="width:100%;margin-bottom:6px">
+        <textarea id="card-theme-new-cards" placeholder="Card names, one per line or comma-separated" rows="3" style="width:100%;margin-bottom:8px"></textarea>
+        <button class="hbtn" style="font-size:10px;min-height:34px;padding:4px 14px" onclick="submitNewCardTheme()">+ ADD THEME</button>
+      </div>
+      ${rows}
+    </div>`;
+}
+function submitNewCardTheme(){
+  const name = document.getElementById('card-theme-new-name')?.value || '';
+  const cardListText = document.getElementById('card-theme-new-cards')?.value || '';
+  const theme = addCardTheme(name, cardListText);
+  if(!theme){ alert('Enter a theme name and at least one card.'); return; }
+  renderCardThemesBrowser();
+}
+function openCardThemeDetail(id){
+  const theme = getCardThemes().find(t => t.id === id);
+  if(!theme) return;
+  const inner = document.getElementById('card-themes-inner');
+  if(!inner) return;
+  const breakdown = matchCardThemeToInventory(theme);
+  const rows = breakdown.map(({ cardName, matches }) => {
+    if(!matches.length){
+      return `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)">
+        <span style="font-size:12px">${cardName}</span>
+        <span style="font-family:monospace;font-size:9px;color:var(--dim)">Not in stock</span>
+      </div>`;
+    }
+    return matches.map(item => `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)">
+      <span style="font-size:12px">${cardName}<span style="font-family:monospace;font-size:9px;color:var(--dim)"> -- ${item.name}</span></span>
+      <span style="display:flex;align-items:center;gap:8px">
+        <span style="font-family:monospace;font-size:10px;color:var(--g)">$${Number(inventoryListPrice(item)||0).toFixed(2)} · qty ${inventoryAvailableQuantity(item)}</span>
+        <button class="hbtn" style="font-size:9px;min-height:26px;padding:2px 10px" onclick="closeCardThemesBrowser();openEditModal('${item.id}')">VIEW ITEM</button>
+      </span>
+    </div>`).join('');
+  }).join('');
+  const ownedCount = breakdown.filter(b => b.matches.length > 0).length;
+  inner.innerHTML = `
+    <div class="ppsb-header">
+      <div style="display:flex;align-items:center;gap:10px;min-width:0">
+        <button class="hbtn" style="min-height:36px;padding:4px 14px;font-size:10px;flex-shrink:0" onclick="renderCardThemesBrowser()">← BACK</button>
+        <span class="ppsb-title">${theme.name}</span>
+        <span style="font-family:monospace;font-size:9px;color:var(--dim);white-space:nowrap">${ownedCount} / ${theme.cardNames.length} in stock</span>
+      </div>
+      <div style="display:flex;gap:8px;flex-shrink:0">
+        <button class="hbtn" style="min-height:36px;padding:4px 14px;font-size:10px" onclick="printCardThemeCase('${id}')">🖨️ PRINT CASE CARD</button>
+        <button class="hbtn" style="min-height:36px;padding:4px 14px;font-size:10px" onclick="closeCardThemesBrowser()">✕ CLOSE</button>
+      </div>
+    </div>
+    <div style="max-width:700px;margin:0 auto;padding:16px 20px">${rows}</div>`;
+}
+// Store request: a way to lay a theme's owned cards out for physical
+// display in the case, not just look at them on screen -- prints only
+// the cards actually IN STOCK (nothing to display for ones not owned),
+// with price and condition so it doubles as a price card for the case.
+function printCardThemeCase(id){
+  const theme = getCardThemes().find(t => t.id === id);
+  if(!theme) return;
+  const breakdown = matchCardThemeToInventory(theme).filter(b => b.matches.length > 0);
+  const w = window.open('','_blank','width=500,height=700');
+  if(!w) return;
+  w.document.write('<html><head><title>'+escHtml(theme.name)+' -- Case Card</title><style>'+
+    'body{font-family:Arial,sans-serif;padding:24px;color:#111}'+
+    'h1{font-size:20px;margin:0 0 4px}'+
+    '.sub{font-size:11px;color:#666;margin-bottom:18px}'+
+    '.row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #ddd}'+
+    '.name{font-weight:700;font-size:13px}'+
+    '.card{font-size:11px;color:#666}'+
+    '.price{font-weight:700;font-size:14px}'+
+    '</style></head><body>');
+  w.document.write('<h1>'+escHtml(theme.name)+'</h1><div class="sub">'+escHtml(getVendorProfile().storeName||'Store')+' -- '+new Date().toLocaleDateString()+' -- '+breakdown.length+' of '+theme.cardNames.length+' in stock</div>');
+  if(!breakdown.length){
+    w.document.write('<p>None of these cards are currently in stock.</p>');
+  } else {
+    breakdown.forEach(({ cardName, matches }) => {
+      matches.forEach(item => {
+        w.document.write('<div class="row"><span><div class="name">'+escHtml(cardName)+'</div><div class="card">'+escHtml(item.name)+(item.condition?' -- '+escHtml(item.condition):'')+'</div></span><span class="price">$'+Number(inventoryListPrice(item)||0).toFixed(2)+'</span></div>');
+      });
+    });
+  }
+  w.document.write('<script>window.print();<\/script></body></html>');
+}
+// ── END CARD THEMES ──────────────────────────────────────────────
+
 // Auto-init when sets tab is opened
 (function sbSetupInit() {
   const origSwitch = window.switchTab;
@@ -44966,7 +46200,7 @@ async function toppsLoadParallels(cardId){
   window.__arscaCloseModal = closeModal;
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.09.01.29-whats-new-catchup" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.09.02.01-roadmap-batch-complete" defer></script>
 </body>
 </html>
 

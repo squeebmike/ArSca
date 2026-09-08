@@ -4110,6 +4110,38 @@ export default {
       return json({ ok:true, item });
     }
 
+    // POST /public/storefront/notify — public (unauthenticated) self-service
+    // request capture: a customer looking for something sold out (or never
+    // carried) leaves their email and what they're after, instead of that
+    // only being possible today by calling/texting the store so staff can
+    // type it into the dashboard's Want List themselves. Only ever INSERTs
+    // a row via the service-role key -- never writes into the existing
+    // Want List directly (see the storefront_notify_requests migration for
+    // why: that list is KV-backed and replaces its whole array on every
+    // save, which is unsafe to expose to anonymous public writes). Staff
+    // review requests from the dashboard and convert whichever ones they
+    // want into a real Want List entry.
+    if (url.pathname === '/public/storefront/notify' && request.method === 'POST') {
+      if (!(env.SUPABASE_URL && (env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SERVICE_KEY))) return json({ ok:false, error:'Storefront service unavailable' }, 503);
+      const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
+      const limited = await readJsonWithLimit(request, 4 * 1024);
+      if (limited.error) return limited.error;
+      const body = limited.data || {};
+      const storeId = String(body.storeId || '').trim();
+      if (!/^[0-9a-z_-]{2,80}$/i.test(storeId)) return json({ ok:false, error:'Valid storeId required' }, 400);
+      const rateError = await enforceUsageLimit(env, `storefront-notify:${storeId}:${ip}`, 5, 300);
+      if (rateError) return rateError;
+      const { data:settings } = await supabaseAdminFetch(env, `store_settings?store_id=eq.${encodeURIComponent(storeId)}&select=receipt_settings&limit=1`);
+      if (settings?.[0]?.receipt_settings?.storefrontEnabled !== true) return json({ ok:false, error:'Storefront is not published' }, 404);
+      const itemText = String(body.itemText || '').trim().slice(0, 300);
+      const contactEmail = String(body.contactEmail || '').trim().slice(0, 200);
+      if (!itemText) return json({ ok:false, error:'Tell us what you are looking for' }, 400);
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactEmail)) return json({ ok:false, error:'A valid email is required' }, 400);
+      const { response:notifyResponse } = await supabaseAdminFetch(env, 'storefront_notify_requests', { method:'POST', headers:{ Prefer:'return=minimal' }, body:JSON.stringify({ store_id:storeId, item_text:itemText, contact_email:contactEmail }) });
+      if (!notifyResponse?.ok) return json({ ok:false, error:'Could not save your request -- try again in a moment' }, 502);
+      return json({ ok:true });
+    }
+
     // POST /public/storefront/checkout — public (unauthenticated) checkout.
     // Creates a pos_sales/pos_sale_lines/pos_payments/storefront_orders record
     // and a Stripe PaymentIntent under the store's own connected account.
