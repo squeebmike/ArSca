@@ -7,12 +7,22 @@ actually shipped. Check items off / move to `FEATURE_LOG` as they get built.
 
 ## Pending action
 
-- [ ] **Apply `supabase-migrations/2026-09-08-storefront-notify-requests.sql`**
-      to the production Supabase project. This session doesn't have write
-      access to the real database (only to two unrelated test projects), so
-      the storefront "let us know" feature (shipped, commit `c7d92ff`) is
-      built and pushed but won't actually work until this migration runs.
-      Reminder scheduled for the next session.
+Three migrations are written and pushed but NOT yet applied to the real
+production Supabase project -- this session only has write access to two
+unrelated test projects, not the live Mana Pocket database:
+
+- [ ] **`supabase-migrations/2026-09-08-storefront-notify-requests.sql`**
+      -- needed for the storefront "let us know" feature (commit `c7d92ff`).
+- [ ] **`supabase-migrations/2026-09-08-whatnot-shows.sql`** -- needed for
+      the Whatnot Show Builder core (commit `6f77587`).
+- [ ] **`supabase-migrations/2026-09-08-whatnot-shows-intelligence.sql`**
+      -- needed for the Whatnot live intelligence layer (commit `88cc42d`),
+      run AFTER the whatnot-shows.sql migration above (it ALTERs those
+      tables).
+
+Everything else in each of those features (the UI, the client-side logic)
+is already live -- only the database side needs this one manual step.
+Reminder scheduled for the next session.
 
 ---
 
