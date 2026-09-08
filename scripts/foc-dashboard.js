@@ -694,6 +694,23 @@ async function openFamilyEbayGroupReview(familyId){
     '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><div style="font-family:\'Orbitron\',monospace;color:var(--gold);font-size:13px;letter-spacing:2px">LIST ALL COVERS · ONE EBAY LISTING</div><button onclick="document.getElementById(\'foc-ebay-group-modal\').remove()" style="background:none;border:none;color:var(--dim);font-size:22px;cursor:pointer">×</button></div>'+
     '<div style="font:9px var(--font-mono);color:var(--dim);margin-bottom:10px">One eBay listing with a native "Cover: Select" dropdown for every checked cover below, plus an optional bundle option. Nothing is published until you click LIST ON EBAY.</div>'+
     '<label style="font:9px var(--font-mono);color:var(--dim);display:block;margin-bottom:10px">LISTING TITLE (shared -- eBay requires "PRESALE" disclosed here)<input id="foc-eb-grp-title" maxlength="80" value="'+esc(preview.title)+'" class="tsi" style="margin-top:4px;width:100%;box-sizing:border-box"></label>'+
+    // Store request: "an automated way to make the lead image the one
+    // with all the covers listed as one image?" -- there's no way to
+    // auto-generate a collage (no image-compositing capability in this
+    // app), but a store-uploaded combined graphic can be set as the
+    // FIRST/default photo shown before a buyer picks a cover, ahead of
+    // (never replacing) each cover's own photo -- reuses the same
+    // resize-then-upload-to-R2 pattern the regular inventory photo editor
+    // already uses (handleInventoryEditPhoto), just against this modal's
+    // own preview/hidden-URL elements instead of an inventory item.
+    '<label style="font:9px var(--font-mono);color:var(--dim);display:block;margin-bottom:4px">MAIN LISTING PHOTO (optional -- shown first, before a buyer picks a cover. e.g. a "pick your cover" graphic combining all the covers, made in any photo editor)</label>'+
+    '<div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">'+
+    '<div id="foc-eb-grp-main-image-preview" style="width:44px;height:58px;flex-shrink:0;background:#050507;border:1px solid var(--border);border-radius:4px;display:flex;align-items:center;justify-content:center;color:var(--dim);font-size:7px;text-align:center;overflow:hidden">NONE</div>'+
+    '<input type="file" id="foc-eb-grp-main-image-file" accept="image/*" style="display:none" onchange="handleFocGroupMainImageFile(this.files[0])">'+
+    '<button type="button" class="hbtn" onclick="document.getElementById(\'foc-eb-grp-main-image-file\').click()">UPLOAD</button>'+
+    '<button type="button" class="hbtn" onclick="clearFocGroupMainImage()">CLEAR</button>'+
+    '<input type="hidden" id="foc-eb-grp-main-image-url" value="">'+
+    '</div>'+
     '<div style="font:8px/1.5 var(--font-mono);color:var(--dim);margin-bottom:10px">eBay handling time: <b style="color:var(--text)">'+Number(preview.handlingBusinessDays||0)+' business days</b> from purchase.</div>'+
     '<label style="font:9px var(--font-mono);color:var(--dim);display:block;margin-bottom:10px">SHIPPING POLICY TO CLONE HANDLING TIME FROM (required)<select id="foc-eb-grp-ship-policy" class="tsi" style="margin-top:4px">'+
     (lastShipPolicyId?'':'<option value="" disabled selected>-- select a shipping policy --</option>')+
@@ -718,6 +735,49 @@ async function openFamilyEbayGroupReview(familyId){
     '<div style="display:flex;gap:8px;margin-top:12px"><button class="hbtn" style="flex:1;padding:12px;background:rgba(255,209,102,.12);border-color:rgba(255,209,102,.35);color:var(--gold)" onclick="submitFamilyEbayGroupReview(\''+esc(familyId)+'\')">LIST ON EBAY (ONE LISTING)</button>'+
     '<button class="hbtn" style="padding:12px" onclick="document.getElementById(\'foc-ebay-group-modal\').remove()">CANCEL</button></div>'+
     '</div>';
+}
+// Resize-then-upload-to-R2, same as the regular inventory photo editor's
+// handleInventoryEditPhoto -- 1600px longest side matches eBay's own photo
+// guidance (and what every other eBay-bound photo in this app already
+// uses), just targeting this modal's own preview thumbnail and hidden URL
+// field instead of an inventory item.
+function handleFocGroupMainImageFile(file){
+  if(!file)return;
+  if(!file.type||!file.type.startsWith('image/')){toast_dash('Choose an image file');return;}
+  var reader=new FileReader();
+  reader.onload=function(){
+    var img=new Image();
+    img.onload=function(){
+      var max=1600;
+      var scale=Math.min(1,max/Math.max(img.width,img.height));
+      var canvas=document.createElement('canvas');
+      canvas.width=Math.max(1,Math.round(img.width*scale));
+      canvas.height=Math.max(1,Math.round(img.height*scale));
+      canvas.getContext('2d').drawImage(img,0,0,canvas.width,canvas.height);
+      var preview=document.getElementById('foc-eb-grp-main-image-preview');
+      if(preview)preview.innerHTML='<img src="'+canvas.toDataURL('image/jpeg',.92)+'" style="width:100%;height:100%;object-fit:contain">';
+      canvas.toBlob(function(blob){
+        if(!blob){toast_dash('Could not process image');return;}
+        storeWorkerFetch('/inventory/photo/upload',{method:'POST',headers:{'Content-Type':'image/jpeg'},body:blob})
+          .then(function(res){return res.json().catch(function(){return{};}).then(function(data){return{res:res,data:data};});})
+          .then(function(r){
+            if(!r.res.ok||!r.data.ok)throw new Error(r.data.error||'Upload failed');
+            var urlField=document.getElementById('foc-eb-grp-main-image-url');
+            if(urlField)urlField.value=r.data.url;
+            toast_dash('Main listing photo uploaded');
+          })
+          .catch(function(e){toast_dash('Upload failed: '+e.message);});
+      },'image/jpeg',.92);
+    };
+    img.onerror=function(){toast_dash('Could not read image');};
+    img.src=reader.result;
+  };
+  reader.readAsDataURL(file);
+}
+function clearFocGroupMainImage(){
+  var urlField=document.getElementById('foc-eb-grp-main-image-url');if(urlField)urlField.value='';
+  var preview=document.getElementById('foc-eb-grp-main-image-preview');if(preview)preview.innerHTML='NONE';
+  var fileInput=document.getElementById('foc-eb-grp-main-image-file');if(fileInput)fileInput.value='';
 }
 async function submitFamilyEbayGroupReview(familyId){
   var status=document.getElementById('foc-eb-grp-status');
@@ -757,6 +817,7 @@ async function submitFamilyEbayGroupReview(familyId){
     weightUnit:document.getElementById('foc-eb-grp-weight-unit').value,
     storeCategoryNames:storeCategory?[storeCategory]:[],
     basePolicyId:basePolicyId,
+    mainImageUrl:(document.getElementById('foc-eb-grp-main-image-url')?.value||'').trim()||undefined,
   };
   if(status){status.style.display='block';status.style.color='var(--gold)';status.style.border='1px solid rgba(255,209,102,.25)';status.style.background='rgba(255,209,102,.06)';status.textContent='Publishing '+variants.length+' cover'+(variants.length===1?'':'s')+(bundle?' + bundle':'')+' as one eBay listing…';}
   try{
@@ -981,7 +1042,7 @@ async function loadShipping(){var host=document.getElementById('foc-shipping-set
 function renderShipping(){var s=state.shipping||{},f=s.from||{},p=s.parcel||{};document.getElementById('foc-shipping-settings').innerHTML='<div class="foc-import-report"><b style="color:'+(s.tokenConfigured?'var(--g)':'var(--gold)')+'">SHIPPO TOKEN '+(s.tokenConfigured?'CONNECTED':'NEEDS SETUP')+'</b><br>The API token stays in the Worker secret. This form stores only your ship-from address and package preset.</div><div class="foc-sku-fields" style="grid-template-columns:repeat(auto-fit,minmax(180px,1fr));margin-top:10px">'+[['name','Store / sender',f.name],['line1','Street',f.street1],['line2','Suite / unit',f.street2],['city','City',f.city],['state','State',f.state],['zip','ZIP',f.zip],['phone','Phone',f.phone],['email','Email',f.email]].map(function(x){return'<label>'+x[1]+'<input class="tsi" data-ship-from="'+x[0]+'" value="'+esc(x[2]||'')+'"></label>';}).join('')+'</div><div class="foc-sku-fields" style="grid-template-columns:repeat(4,minmax(0,1fr));margin-top:10px">'+[['length','Length',p.length||12],['width','Width',p.width||9],['height','Height',p.height||1],['weight','Weight lb',p.weight||1]].map(function(x){return'<label>'+x[1]+'<input class="tsi" type="number" min=".1" step=".1" data-ship-parcel="'+x[0]+'" value="'+esc(x[2])+'"></label>';}).join('')+'</div><button class="hbtn" style="margin-top:10px" onclick="saveFocShippingSettings()">SAVE LIVE SHIPPING SETUP</button>';}
 async function saveShipping(){var shipFrom={},parcel={};document.querySelectorAll('[data-ship-from]').forEach(function(el){shipFrom[el.dataset.shipFrom]=el.value;});document.querySelectorAll('[data-ship-parcel]').forEach(function(el){parcel[el.dataset.shipParcel]=el.value;});try{var d=await api('/foc/admin/shipping-settings',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({storeId:getActiveStoreId(),enabled:true,shipFrom:shipFrom,defaultParcel:parcel})});state.shipping=d.shipping;toast_dash(d.shipping.tokenConfigured?'Live carrier settings saved':'Address saved — add the Shippo token to enable rates');renderShipping();}catch(e){toast_dash(e.message);}}
 
-window.ensureFocPanel=function(){loadCycles(false);};window.loadFocCycles=loadCycles;window.openFocCycle=openCycle;window.handleFocImportFile=handleImport;window.filterFocAdmin=function(v){state.query=v;renderFamilies();};window.filterFocPublisher=function(v){state.publisher=v;renderFamilies();};window.filterFocFlag=function(v){state.flag=v;renderFamilies();};window.filterFocEbay=function(v){state.ebay=v;renderFamilies();};window.saveFocSku=saveSku;window.saveFocFamily=saveFamily;window.toggleFocCycle=toggleCycle;window.archiveFocCycle=archiveCycle;window.unarchiveFocCycle=unarchiveCycle;window.saveFocCycleCutoff=saveCutoff;window.exportFocPrh=exportPrh;window.loadFocShippingSettings=loadShipping;window.saveFocShippingSettings=saveShipping;window.openReceiveShipment=openReceiveShipment;window.confirmReceiveShipment=confirmReceiveShipment;window.createFocEbayPresale=openEbayPresaleReview;window.submitEbayPresaleReview=submitEbayPresaleReview;window.openFamilyEbayGroupReview=openFamilyEbayGroupReview;window.submitFamilyEbayGroupReview=submitFamilyEbayGroupReview;window.loadEbaySafeDays=loadEbaySafeDays;window.saveFocEbaySafeDays=saveEbaySafeDays;window.openFocReview=openFocReview;window.openFocIntelligence=openFocIntelligence;window.submitPrhOrder=submitPrhOrder;window.endFocEbayListings=endFocEbayListings;window.toggleFocEndEbayAll=toggleFocEndEbayAll;window.confirmEndFocEbayListings=confirmEndFocEbayListings;window.reviewStoreQtyChanged=reviewStoreQtyChanged;
+window.ensureFocPanel=function(){loadCycles(false);};window.loadFocCycles=loadCycles;window.openFocCycle=openCycle;window.handleFocImportFile=handleImport;window.filterFocAdmin=function(v){state.query=v;renderFamilies();};window.filterFocPublisher=function(v){state.publisher=v;renderFamilies();};window.filterFocFlag=function(v){state.flag=v;renderFamilies();};window.filterFocEbay=function(v){state.ebay=v;renderFamilies();};window.saveFocSku=saveSku;window.saveFocFamily=saveFamily;window.toggleFocCycle=toggleCycle;window.archiveFocCycle=archiveCycle;window.unarchiveFocCycle=unarchiveCycle;window.saveFocCycleCutoff=saveCutoff;window.exportFocPrh=exportPrh;window.loadFocShippingSettings=loadShipping;window.saveFocShippingSettings=saveShipping;window.openReceiveShipment=openReceiveShipment;window.confirmReceiveShipment=confirmReceiveShipment;window.createFocEbayPresale=openEbayPresaleReview;window.submitEbayPresaleReview=submitEbayPresaleReview;window.openFamilyEbayGroupReview=openFamilyEbayGroupReview;window.submitFamilyEbayGroupReview=submitFamilyEbayGroupReview;window.handleFocGroupMainImageFile=handleFocGroupMainImageFile;window.clearFocGroupMainImage=clearFocGroupMainImage;window.loadEbaySafeDays=loadEbaySafeDays;window.saveFocEbaySafeDays=saveEbaySafeDays;window.openFocReview=openFocReview;window.openFocIntelligence=openFocIntelligence;window.submitPrhOrder=submitPrhOrder;window.endFocEbayListings=endFocEbayListings;window.toggleFocEndEbayAll=toggleFocEndEbayAll;window.confirmEndFocEbayListings=confirmEndFocEbayListings;window.reviewStoreQtyChanged=reviewStoreQtyChanged;
 // Store report: "+ ADD TO INVENTORY" on a FOC cover-wall card threw
 // "quickAddFocSkuToInventory is not defined" -- this whole file is wrapped
 // in an IIFE (line 1), so every function it declares is private to that
