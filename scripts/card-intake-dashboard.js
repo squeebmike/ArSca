@@ -7,18 +7,22 @@
 // needs must be re-exposed on window in the block at the bottom (see
 // tests/card-intake-window-exposure.test.mjs).
 //
-// "Async processing" here means a client-side concurrency-limited queue,
-// not a server job queue (this app has no Cloudflare Queues binding) --
-// capture returns instantly and the identify+resolve calls run in the
-// background while the store keeps shooting, PATCHing results back to the
-// card_intake_items row as they land so nothing is lost if the tab closes
-// mid-batch (the item just sits at status 'captured'/'processing' until
-// the queue is resumed or /card-intake/items is re-polled).
+// Identification + pricing run entirely server-side (a Worker execution
+// context kicked off the moment an item is created, not this app's own JS)
+// -- this app has no Cloudflare Queues binding, so instead of a real job
+// queue, item creation itself starts the work in the background and the
+// Worker keeps running it after the HTTP response returns, regardless of
+// whether the browser tab that captured the photo is still open. Capture
+// returns instantly here either way. This file's only remaining job is
+// polling for status changes while Scan Lab is actually open on screen
+// (startScanLabPolling/stopScanLabPolling below), purely so thumbnails
+// update live -- closing the tab never pauses the real work, it just means
+// you see the results the next time Scan Lab or the review queue is opened.
 (function(){
 var state={
   view:'home', batch:null, items:[], thumbById:{},
   camera:{stream:null, facing:false},
-  queue:[], active:0, concurrency:2,
+  pollTimer:null,
   verify:{list:[], index:0, showBack:false, editing:false},
   collections:[], activeCollection:null,
   scannerToken:'',
@@ -43,6 +47,7 @@ function ensureCardIntakePanel(){
 // ── HOME ──────────────────────────────────────────────────────────────────
 function renderCardIntakeHome(){
   var host=panel();if(!host)return;
+  stopScanLabPolling();
   host.innerHTML=
     '<div style="max-width:720px;margin:0 auto;padding:0 20px 60px">'+
     '<div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);margin-bottom:16px">Capture cards from any source -- phone camera, bulk upload, or an auto-feed scanner -- into one processing queue. Identification and pricing run in the background while you keep capturing.</div>'+
@@ -118,6 +123,7 @@ function renderScanLab(){
     '<div id="ci-thumb-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:8px"></div>'+
     '</div>';
   renderThumbGrid();
+  startScanLabPolling();
 }
 function statusColor(s){return s==='approved'?'var(--g)':s==='rejected'||s==='failed'?'var(--red)':s==='needs_review'||s==='needs_back'?'var(--gold)':'var(--dim)';}
 function renderThumbGrid(){
@@ -137,6 +143,7 @@ function updateThumbStatus(itemId,status){
 // ── RAPID CAMERA ──────────────────────────────────────────────────────────
 function renderRapidCamera(){
   var host=panel();if(!host)return;
+  stopScanLabPolling();
   host.innerHTML=
     '<div style="max-width:520px;margin:0 auto;padding:0 20px 60px;text-align:center">'+
     '<div style="position:relative;background:#000;border-radius:10px;overflow:hidden;aspect-ratio:3/4;max-height:70vh;margin:0 auto">'+
@@ -205,10 +212,12 @@ async function captureAndQueueCard(blob,base64,source){
     var uploadRes=await storeWorkerFetch('/inventory/photo/upload',{method:'POST',headers:{'Content-Type':'image/jpeg'},body:blob});
     var uploadData=await uploadRes.json();
     if(!uploadData.ok)throw new Error(uploadData.error||'Upload failed');
+    // Identification + pricing now happens server-side (ctx.waitUntil), kicked
+    // off automatically by this POST -- nothing to enqueue client-side, and
+    // it keeps running even if this tab closes right after the request lands.
     var data=await api('/card-intake/items',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({storeId:getActiveStoreId(),batchId:state.batch.id,source:source,sequence:sequence,frontImageUrl:uploadData.url})});
     var idx=state.items.indexOf(placeholder);
     if(idx>=0)state.items[idx]=data.item;
-    enqueueCardIntakeProcessing(data.item,base64);
   }catch(e){
     var idx2=state.items.indexOf(placeholder);
     if(idx2>=0)state.items[idx2].status='failed';
@@ -219,6 +228,7 @@ async function captureAndQueueCard(blob,base64,source){
 // ── BULK UPLOAD ───────────────────────────────────────────────────────────
 function renderBulkUpload(){
   var host=panel();if(!host)return;
+  stopScanLabPolling();
   host.innerHTML=
     '<div style="max-width:560px;margin:0 auto;padding:0 20px 60px;text-align:center">'+
     '<div id="ci-bulk-drop" style="border:2px dashed var(--border);border-radius:10px;padding:40px 20px;cursor:pointer" onclick="document.getElementById(\'ci-bulk-input\').click()">'+
@@ -277,7 +287,6 @@ async function handleCardIntakeBulkFiles(fileList){
         if(!uploadData.ok)throw new Error(uploadData.error||'Upload failed');
         var data=await api('/card-intake/items',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({storeId:getActiveStoreId(),batchId:state.batch.id,source:'BULK_UPLOAD',sequence:startSequence+myIndex+1,frontImageUrl:uploadData.url})});
         state.items.push(data.item);
-        enqueueCardIntakeProcessing(data.item,resized.base64);
       }catch(e){
         console.error('Bulk upload failed for',file.name,e);
       }
@@ -291,6 +300,7 @@ async function handleCardIntakeBulkFiles(fileList){
 // ── SCANNER (watched-folder agent) ───────────────────────────────────────
 function renderScannerSetup(){
   var host=panel();if(!host)return;
+  stopScanLabPolling();
   host.innerHTML=
     '<div style="max-width:560px;margin:0 auto;padding:0 20px 60px">'+
     '<div class="foc-import-report">A local watched-folder agent uploads whatever your scanner software drops into a folder -- one image per card -- straight into this same intake queue. No specific scanner brand is required; anything that saves JPG/PNG files to a folder works.</div>'+
@@ -311,97 +321,44 @@ async function createScannerWorkstation(){
   }catch(e){toast_dash('Could not create scanner station: '+e.message);}
 }
 
-// ── BACKGROUND PROCESSING QUEUE ──────────────────────────────────────────
-function enqueueCardIntakeProcessing(item,base64){
-  state.queue.push({item:item,base64:base64});
-  pumpCardIntakeQueue();
+// ── BACKGROUND PROCESSING STATUS (server-driven) ─────────────────────────
+// Identification + pricing now run entirely server-side (ctx.waitUntil,
+// kicked off automatically when an item is created) -- this app no longer
+// does any of that work itself. All that's left client-side is polling
+// Scan Lab for status changes while it's open, so thumbnails update live;
+// closing the tab (or never opening Scan Lab at all) doesn't stop
+// processing, it just means you see the results next time you check.
+function stopScanLabPolling(){
+  if(state.pollTimer){clearInterval(state.pollTimer);state.pollTimer=null;}
 }
-function updateQueueStatusLabel(){
+function startScanLabPolling(){
+  stopScanLabPolling();
+  state.pollTimer=setInterval(async function(){
+    if(!state.batch)return;
+    try{
+      var data=await api('/card-intake/items?store_id='+encodeURIComponent(getActiveStoreId())+'&batch_id='+encodeURIComponent(state.batch.id));
+      var byId={};(data.items||[]).forEach(function(it){byId[it.id]=it;});
+      var stillProcessing=false;
+      state.items.forEach(function(it,i){
+        var fresh=byId[it.id];
+        if(!fresh)return;
+        state.items[i]=fresh;
+        updateThumbStatus(fresh.id,fresh.status);
+        if(fresh.status==='captured'||fresh.status==='processing')stillProcessing=true;
+      });
+      updateQueueStatusLabel(stillProcessing);
+      if(!stillProcessing)stopScanLabPolling();
+    }catch(e){/* best effort -- next tick tries again */}
+  },4000);
+}
+function updateQueueStatusLabel(stillProcessing){
   var el=document.getElementById('ci-queue-status');
-  if(!el)return;
-  var remaining=state.queue.length+state.active;
-  el.textContent=remaining?('processing '+remaining+' card'+(remaining===1?'':'s')+'…'):'idle';
-}
-function pumpCardIntakeQueue(){
-  while(state.active<state.concurrency&&state.queue.length){
-    var entry=state.queue.shift();
-    state.active++;
-    updateQueueStatusLabel();
-    processCardIntakeItem(entry).finally(function(){
-      state.active--;updateQueueStatusLabel();pumpCardIntakeQueue();
-    });
-  }
-}
-// Category strings mirror resolveOwnCardIdentifyCard's own mapping exactly
-// so a resolved catalog match's category matches what the rest of this app
-// (CATEGORY_ALIASES/qplCategoryKey) already expects.
-function ciCategoryForGame(game){
-  return game==='pokemon'?'Pokemon TCG':game==='mtg'?'Magic: The Gathering':game==='sports'?'Sports Card':'One Piece TCG';
-}
-// Resolves one extracted card against the real catalog, same search+rank
-// pipeline resolveOwnCardIdentifyCard already uses, but keeps the top N
-// ranked candidates instead of collapsing to just the best one -- the
-// review queue needs 1-5 alternatives, not only a single best guess.
-async function resolveCardIntakeCandidates(card,limit){
-  var category=ciCategoryForGame(card.game);
-  var q=ownCardIdentifyQuery(card);
-  if(!q)return [];
-  var plan=buildUniversalSearchPlan(q,category);
-  var rows=[];
-  if(card.game==='mtg'){try{rows=await searchMtgOfflineCache(q,category)||[];}catch(e){rows=[];}}
-  if(!rows.length){try{rows=await searchQuickCatalog(q,category,plan)||[];}catch(e){rows=[];}}
-  if(!rows.length)return [];
-  var ranked=universalSearchAdapter()?.mergeAndRankResults(rows,plan)||rows;
-  return ranked.slice(0,limit||5).map(function(row){
-    return Object.assign({},row,{source:'own-ai',note:ownCardIdentifyNote(card)});
-  });
-}
-function confidenceFromLabel(label){return label==='high'?0.92:label==='medium'?0.65:0.35;}
-async function processCardIntakeItem(entry){
-  var item=entry.item,base64=entry.base64;
-  updateThumbStatus(item.id,'processing');
-  try{
-    await api('/card-intake/items',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({storeId:getActiveStoreId(),itemId:item.id,status:'processing'})});
-    var cards=await callOwnCardIdentify(base64);
-    if(!cards.length){
-      await api('/card-intake/items',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({storeId:getActiveStoreId(),itemId:item.id,status:'needs_review',error:'No card detected in this photo'})});
-      updateThumbStatus(item.id,'needs_review');
-      return;
-    }
-    var card=cards[0];
-    var candidates=await resolveCardIntakeCandidates(card,5);
-    var best=candidates[0]||null;
-    var cardIdConfidence=confidenceFromLabel(card.confidence)*(best?1:0.5);
-    // Variant/parallel confidence is a separate, generally lower-trust
-    // number: high only when the model actually read a finish/parallel AND
-    // the top catalog match's own note reflects it; otherwise the card's
-    // identity can be very sure while its exact parallel is still a guess.
-    var hasVariantSignal=!!(card.finish||card.specialMarkings);
-    var variantConfidence=!best?0:(hasVariantSignal?0.78:0.5);
-    var needsBack=!best||cardIdConfidence<0.5||(!card.number&&candidates.length>1);
-    var marketCents=best?Math.round(Number(best.market||0)*100):0;
-    await api('/card-intake/items',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({
-      storeId:getActiveStoreId(),itemId:item.id,
-      status:needsBack?'needs_back':'needs_review',
-      category:ciCategoryForGame(card.game),
-      bestMatch:best,candidates:candidates,
-      cardIdConfidence:cardIdConfidence,variantConfidence:variantConfidence,
-      marketCents:marketCents,
-    })});
-    await api('/card-intake/attempts',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
-      storeId:getActiveStoreId(),itemId:item.id,provider:'own-ai',
-      request:{query:ownCardIdentifyQuery(card)},response:{cardsFound:cards.length,candidatesFound:candidates.length},
-      cardIdConfidence:cardIdConfidence,variantConfidence:variantConfidence,
-    })});
-    updateThumbStatus(item.id,needsBack?'needs_back':'needs_review');
-  }catch(e){
-    try{await api('/card-intake/items',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({storeId:getActiveStoreId(),itemId:item.id,status:'failed',error:String(e.message||e).slice(0,400)})});}catch(_){}
-    updateThumbStatus(item.id,'failed');
-  }
+  if(el)el.textContent=stillProcessing?'processing…':'idle';
 }
 
 // ── VERIFICATION QUEUE ────────────────────────────────────────────────────
 async function openCardIntakeVerification(filter){
+  stopScanLabPolling();
   busy('Loading review queue…');
   var qp='store_id='+encodeURIComponent(getActiveStoreId())+'&status=needs_review,needs_back,failed';
   if(filter?.batchId)qp+='&batch_id='+encodeURIComponent(filter.batchId);
@@ -540,6 +497,7 @@ function cardIntakeVerifyKeyHandler(e){
 // ── COLLECTION BUY ────────────────────────────────────────────────────────
 function renderCollectionsHome(){
   var host=panel();if(!host)return;
+  stopScanLabPolling();
   host.innerHTML=
     '<div style="max-width:720px;margin:0 auto;padding:0 20px 60px">'+
     '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">'+

@@ -28,6 +28,158 @@ const INTAKE_SOURCES = new Set(['PHONE_CAMERA', 'BULK_UPLOAD', 'SCANNER', 'DESKT
 const ITEM_STATUSES = new Set(['captured', 'processing', 'needs_review', 'needs_back', 'approved', 'rejected', 'duplicate', 'failed']);
 const HIGH_VALUE_CENTS = 25000; // $250+ per the store's own high-value alert threshold
 
+function firstMoneyValue(...vals) {
+  for (const v of vals) {
+    const n = Number(v);
+    if (Number.isFinite(n) && n > 0) return n;
+  }
+  return 0;
+}
+
+function arrayBufferToBase64(buf) {
+  let binary = '';
+  const bytes = new Uint8Array(buf);
+  const chunkSize = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunkSize) binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunkSize));
+  return btoa(binary);
+}
+
+// Category strings match resolveOwnCardIdentifyCard's own mapping in
+// dashboard.html exactly, so a resolved match's category lines up with what
+// the rest of the app (CATEGORY_ALIASES/qplCategoryKey) already expects.
+function ciCategoryForGame(game) {
+  return game === 'pokemon' ? 'Pokemon TCG' : game === 'mtg' ? 'Magic: The Gathering' : game === 'sports' ? 'Sports Card' : 'One Piece TCG';
+}
+function ciConfidenceFromLabel(label) { return label === 'high' ? 0.92 : label === 'medium' ? 0.65 : 0.35; }
+
+// Same-origin call into the existing, already-battle-tested
+// /pricing/pokemonpricetracker/cards route (caching, subscription gating,
+// quota/rate-limit handling all reused for free) rather than re-implementing
+// any of that here. Needs the ORIGINAL caller's own auth token -- there is
+// no service-level bypass for this, so a scanner-sourced item (no logged-in
+// user attached to the upload) simply gets no Pokemon price candidates,
+// same honest limitation documented for sports/one_piece below.
+async function resolvePokemonCandidates(originUrl, storeId, authToken, card) {
+  if (!authToken) return [];
+  const q = [card.year, card.setName, card.name, card.number ? '#' + card.number : ''].filter(Boolean).join(' ').trim();
+  if (!q) return [];
+  try {
+    const params = new URLSearchParams({ search: q, limit: '5', language: 'english' });
+    const res = await fetch(`${originUrl}/pricing/pokemonpricetracker/cards?${params}`, { headers: { Authorization: authToken, 'X-Store-Id': storeId } });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || data.ok === false) return [];
+    const rows = (data.cards?.length ? data.cards : null) || data.matches || data.data || data.results || [];
+    const list = Array.isArray(rows) ? rows : (rows && typeof rows === 'object' ? [rows] : []);
+    return list.slice(0, 5).map(c => ({
+      name: text(c.name || c.cardName, 120),
+      set: text(c.setName || c.set, 120),
+      number: text(c.cardNumber || c.number || c.collectorNumber || c.card_number, 20),
+      year: text(card.year, 4),
+      finish: text(card.finish, 20),
+      market: firstMoneyValue(c.marketPrice?.price, c.prices?.market?.price, c.marketPrice, c.market, c.price, c.selectedVariant?.marketPrice),
+      category: 'Pokemon TCG',
+      source: 'pokemonpricetracker',
+      tcgPlayerId: text(c.tcgPlayerId, 40),
+    })).filter(c => c.name);
+  } catch (e) { return []; }
+}
+
+// Scryfall's public API needs no auth and no per-store gating, so unlike
+// Pokemon this works for every source (including scanner uploads with no
+// attached user token).
+async function resolveMtgCandidates(card) {
+  const q = [card.name, card.setName].filter(Boolean).join(' ').trim();
+  if (!q) return [];
+  try {
+    const res = await fetch(`https://api.scryfall.com/cards/search?q=${encodeURIComponent(q)}&order=released`, { headers: { 'User-Agent': 'TheManaPocketCardIntake/1.0', Accept: 'application/json' } });
+    if (!res.ok) return [];
+    const data = await res.json().catch(() => ({}));
+    const list = Array.isArray(data.data) ? data.data : [];
+    const isFoil = /foil/i.test(card.finish || '');
+    return list.slice(0, 5).map(c => ({
+      name: text(c.name, 120),
+      set: text(c.set_name, 120),
+      number: text(c.collector_number, 20),
+      year: text((c.released_at || '').slice(0, 4), 4),
+      finish: text(card.finish, 20),
+      market: firstMoneyValue(isFoil ? c.prices?.usd_foil : c.prices?.usd, c.prices?.usd, c.prices?.usd_foil),
+      category: 'Magic: The Gathering',
+      source: 'scryfall',
+      scryfallId: text(c.id, 60),
+    })).filter(c => c.name);
+  } catch (e) { return []; }
+}
+
+// The one place a captured photo actually gets identified + priced. Run via
+// ctx.waitUntil at capture time (see createItem/scannerUpload below), so it
+// keeps running whether or not the browser tab that captured the photo is
+// still open -- the store can shoot a 300-card batch, close the tab, and
+// come back to a fully processed review queue.
+//
+// Sports and One Piece TCG only get the raw Claude-extracted identity here
+// (name/set/year/number/parallel) -- there is no live text-search catalog
+// API wired in server-side for those two yet (CardSightAI identifies FROM a
+// photo, it doesn't expose a by-name search endpoint), so they land in
+// needs_review with an honest note instead of a fabricated price. Pokemon
+// and MTG get a real, verified market price from resolvePokemonCandidates/
+// resolveMtgCandidates above.
+async function identifyAndResolveCardIntakeItem(db, env, deps, item, callCtx) {
+  try {
+    await db(`card_intake_items?id=eq.${item.id}`, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ status: 'processing' }) });
+    const key = (item.front_image_url || '').split('/inventory/photo/')[1];
+    if (!key || !env.MTG_CATALOG_R2) throw new Error('No stored image to identify');
+    const obj = await env.MTG_CATALOG_R2.get(key);
+    if (!obj) throw new Error('Stored image not found in photo storage');
+    const base64 = arrayBufferToBase64(await obj.arrayBuffer());
+    const cards = await deps.identifyCardsFromImageBase64(env, base64);
+    if (!cards.length) {
+      await db(`card_intake_items?id=eq.${item.id}`, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ status: 'needs_review', error: 'No card detected in this photo' }) });
+      return;
+    }
+    const card = cards[0];
+    let candidates = [];
+    let priceProvider = '';
+    if (card.game === 'pokemon') { candidates = await resolvePokemonCandidates(callCtx.originUrl, callCtx.storeId, callCtx.authToken, card); priceProvider = 'pokemonpricetracker'; }
+    else if (card.game === 'mtg') { candidates = await resolveMtgCandidates(card); priceProvider = 'scryfall'; }
+    const best = candidates[0] || null;
+    const cardIdConfidence = ciConfidenceFromLabel(card.confidence) * (best ? 1 : 0.5);
+    const hasVariantSignal = !!(card.finish || card.specialMarkings);
+    const variantConfidence = !best ? 0 : (hasVariantSignal ? 0.78 : 0.5);
+    const needsBack = !best || cardIdConfidence < 0.5 || (!card.number && candidates.length > 1);
+    const marketCents = best ? Math.round(num(best.market, 0) * 100) : 0;
+    const bestMatch = best || { name: card.name, set: card.setName, number: card.number, year: card.year, category: ciCategoryForGame(card.game), finish: card.finish, market: 0 };
+    const noLivePriceCategory = card.game === 'sports' || card.game === 'one_piece';
+    await db(`card_intake_items?id=eq.${item.id}`, {
+      method: 'PATCH', headers: { Prefer: 'return=minimal' },
+      body: JSON.stringify({
+        status: needsBack ? 'needs_back' : 'needs_review',
+        category: ciCategoryForGame(card.game),
+        best_match: bestMatch, candidates,
+        card_id_confidence: cardIdConfidence, variant_confidence: variantConfidence,
+        market_cents: marketCents, high_value: marketCents >= HIGH_VALUE_CENTS,
+        error: best ? null
+          : noLivePriceCategory ? 'Identified, but no live price source is wired in server-side for this category yet -- set price manually.'
+          : (card.game === 'pokemon' && !callCtx.authToken) ? 'Identified, but pricing needs a signed-in session -- reopen this review from the dashboard to fetch a price.'
+          : 'No catalog match found for this card',
+      }),
+    });
+    await db('card_identification_attempts', {
+      method: 'POST', headers: { Prefer: 'return=minimal' },
+      body: JSON.stringify([{
+        item_id: item.id, store_id: item.store_id, provider: 'own-ai',
+        request: { query: [card.year, card.setName, card.name, card.number].filter(Boolean).join(' ') },
+        response: { cardsFound: cards.length, candidatesFound: candidates.length },
+        card_id_confidence: cardIdConfidence, variant_confidence: variantConfidence, status: 'ok',
+      }]),
+    });
+    if (best && marketCents > 0) {
+      await db('pricing_snapshots', { method: 'POST', headers: { Prefer: 'return=minimal' }, body: JSON.stringify([{ item_id: item.id, store_id: item.store_id, provider: priceProvider, price_cents: marketCents, raw: best }]) });
+    }
+  } catch (e) {
+    try { await db(`card_intake_items?id=eq.${item.id}`, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ status: 'failed', error: String(e.message || e).slice(0, 400) }) }); } catch (_) { /* never leave it silently stuck */ }
+  }
+}
+
 function jsonField(value) {
   if (value == null) return undefined;
   try { return JSON.parse(JSON.stringify(value)); } catch (_) { return undefined; }
@@ -200,7 +352,16 @@ async function createItem(request, env, deps) {
     category: text(body.category, 60) || null,
   };
   const { data } = await db('card_intake_items', { method: 'POST', headers: { Prefer: 'return=representation' }, body: JSON.stringify([row]) });
-  return deps.json({ ok: true, item: data?.[0] });
+  const inserted = data?.[0];
+  // Fire-and-forget: identification/pricing runs in the background via
+  // ctx.waitUntil, which keeps the Worker alive to finish it regardless of
+  // whether the browser that captured this photo is still connected -- this
+  // is what makes "close the tab mid-batch" safe.
+  if (inserted && deps.waitUntil) {
+    const authToken = text(request.headers.get('Authorization'), 2000);
+    deps.waitUntil(identifyAndResolveCardIntakeItem(db, env, deps, inserted, { originUrl: new URL(request.url).origin, storeId, authToken }).catch(e => console.error('Card intake background processing failed for', inserted.id, e)));
+  }
+  return deps.json({ ok: true, item: inserted });
 }
 
 async function updateItem(request, env, deps) {
@@ -533,7 +694,15 @@ async function scannerUpload(request, env, deps, url) {
     body: JSON.stringify([{ batch_id: batchId, store_id: station.store_id, sequence, source: 'SCANNER', status: 'captured', front_image_url: imageUrl, thumbnail_url: imageUrl }]),
   });
   await db(`scanner_workstations?id=eq.${encodeURIComponent(station.id)}`, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ last_seen_at: new Date().toISOString() }) });
-  return deps.json({ ok: true, batchId, item: itemRows?.[0] });
+  const scannedItem = itemRows?.[0];
+  // A scanner upload has no logged-in user attached, so there's no auth
+  // token to resolve a live Pokemon price with (see resolvePokemonCandidates)
+  // -- MTG (Scryfall, no auth needed) still resolves fully; identification
+  // itself always runs regardless.
+  if (scannedItem && deps.waitUntil) {
+    deps.waitUntil(identifyAndResolveCardIntakeItem(db, env, deps, scannedItem, { originUrl: url.origin, storeId: station.store_id, authToken: '' }).catch(e => console.error('Card intake background processing failed for', scannedItem.id, e)));
+  }
+  return deps.json({ ok: true, batchId, item: scannedItem });
 }
 
 export async function handleCardIntakeRequest(request, env, url, deps) {
@@ -556,4 +725,4 @@ export async function handleCardIntakeRequest(request, env, url, deps) {
   return deps.json({ ok: false, error: 'Card intake route not found' }, 404);
 }
 
-export { applyAcquisitionTiers, defaultAcquisitionTiers, promoteItemToInventory, HIGH_VALUE_CENTS };
+export { applyAcquisitionTiers, defaultAcquisitionTiers, promoteItemToInventory, HIGH_VALUE_CENTS, identifyAndResolveCardIntakeItem, resolvePokemonCandidates, resolveMtgCandidates };
