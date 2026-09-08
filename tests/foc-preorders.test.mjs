@@ -260,6 +260,11 @@ console.log('FOC order-confirmation-email contract checks passed');
       }
       if (path.startsWith('foc_preorder_items?')) return { data:mockItems };
       if (path.startsWith('foc_pick_lists?')) return { data:[] };
+      // mockItems' sku_snapshot has no msrpCents (an order placed before that
+      // field was added to the snapshot) -- recordPaidFocSale must fall back
+      // to a live comic_skus lookup rather than costing off the customer
+      // price, so this mock has to answer that query too.
+      if (path.startsWith('comic_skus?id=in.')) return { data:[{ id:'sku1', msrp_cents:2499 }] };
       if (/^pos_(sales|sale_lines|payments)\?on_conflict=id$/.test(path)) { ledgerWrites.push({path,body:JSON.parse(options.body)}); return { data:[] }; }
       throw new Error('unexpected db call: ' + path);
     };
@@ -283,6 +288,7 @@ console.log('FOC order-confirmation-email contract checks passed');
       if (path.startsWith('foc_preorder_orders?') && !options) return { data:[mockOrder] };
       if (path.startsWith('foc_preorder_orders?') && options?.method === 'PATCH') return { data:[] };
       if (path.startsWith('foc_preorder_items?')) return { data:mockItems };
+      if (path.startsWith('comic_skus?id=in.')) return { data:[{ id:'sku1', msrp_cents:2499 }] };
       if (/^pos_(sales|sale_lines|payments)\?on_conflict=id$/.test(path)) return { data:[] };
       throw new Error('unexpected db call on redelivery: ' + path);
     };
@@ -319,6 +325,60 @@ console.log('FOC order-confirmation-email contract checks passed');
 }
 
 console.log('FOC order-confirmation-email functional checks passed');
+
+// Store report: comic preorder profit was wrong -- worst on incentive/ratio
+// covers, which routinely get priced well above their real MSRP as
+// compensation for the order-ratio chase. recordPaidFocSale used to cost a
+// line at 50% of unit_price_cents (what the customer paid) instead of 50%
+// of the real MSRP (the documented real PRH wholesale rate used everywhere
+// else in this app a comic's cost gets computed) -- a $20 incentive cover
+// with a $4.99 MSRP was costing out at $10 instead of the real ~$2.50,
+// understating profit by a lot on exactly the highest-value lines.
+{
+  const order = { id:'order-incentive', order_number:'FOC-20260831-INCEN01', store_id:'store1', user_id:'user1', stripe_mode:'live', customer_email:'jane@example.com', customer_name:'Jane', fulfillment_method:'pickup', total_cents:2000, subtotal_cents:2000, shipping_cents:0 };
+  // sku_snapshot carries msrpCents (added alongside this fix) -- a customer
+  // price of $20.00 on a cover whose real MSRP is $4.99.
+  const items = [{ id:'item-incentive', sku_id:'sku-incentive', quantity:1, unit_price_cents:2000, line_total_cents:2000, sku_snapshot:{ title:'Amazing Spider-Man #1', variantLabel:'1:25 Incentive', msrpCents:499 } }];
+  const ledgerWrites = [];
+  const db = async (env, path, options) => {
+    if (path.startsWith('foc_preorder_orders?') && !options) return { data:[order] };
+    if (path.startsWith('foc_preorder_orders?') && options?.method === 'PATCH') return { data:[order] };
+    if (path.startsWith('foc_preorder_items?')) return { data:items };
+    if (path.startsWith('foc_pick_lists?')) return { data:[] };
+    if (/^pos_(sales|sale_lines|payments)\?on_conflict=id$/.test(path)) { ledgerWrites.push({ path, body:JSON.parse(options.body) }); return { data:[] }; }
+    throw new Error('unexpected db call: ' + path);
+  };
+  const event = { type:'payment_intent.succeeded', data:{ object:{ id:'pi_incentive', status:'succeeded', metadata:{ source:'foc_preorder', foc_order_id:'order-incentive' } } } };
+  await syncFocStripeEvent({}, event, { supabaseAdminFetch:db, sendEmail:async()=>{} });
+  const line = ledgerWrites.find(call => call.path.startsWith('pos_sale_lines')).body[0];
+  assert.equal(line.adjusted_price, 20, 'revenue must still be the full amount the customer actually paid');
+  assert.equal(line.cost_basis, 2.5, 'cost must be 50% of the real MSRP ($4.99), NOT 50% of the inflated incentive price the customer paid ($20)');
+  assert.equal(line.profit, 17.5, 'profit must reflect the real ~88% margin on an incentive cover, not the wrong ~50% the old customer-price-based calc would have shown');
+}
+
+// Same scenario, but for an order placed before msrpCents was added to
+// sku_snapshot -- must fall back to a live comic_skus lookup rather than
+// silently reverting to the old (wrong) customer-price-based guess.
+{
+  const order = { id:'order-legacy', order_number:'FOC-20260831-LEGACY1', store_id:'store1', user_id:'user1', stripe_mode:'live', customer_email:'jane@example.com', customer_name:'Jane', fulfillment_method:'pickup', total_cents:2000, subtotal_cents:2000, shipping_cents:0 };
+  const items = [{ id:'item-legacy', sku_id:'sku-legacy', quantity:1, unit_price_cents:2000, line_total_cents:2000, sku_snapshot:{ title:'Amazing Spider-Man #1', variantLabel:'1:25 Incentive' } }];
+  const ledgerWrites = [];
+  const db = async (env, path, options) => {
+    if (path.startsWith('foc_preorder_orders?') && !options) return { data:[order] };
+    if (path.startsWith('foc_preorder_orders?') && options?.method === 'PATCH') return { data:[order] };
+    if (path.startsWith('foc_preorder_items?')) return { data:items };
+    if (path.startsWith('foc_pick_lists?')) return { data:[] };
+    if (path === 'comic_skus?id=in.(sku-legacy)&select=id,msrp_cents') return { data:[{ id:'sku-legacy', msrp_cents:499 }] };
+    if (/^pos_(sales|sale_lines|payments)\?on_conflict=id$/.test(path)) { ledgerWrites.push({ path, body:JSON.parse(options.body) }); return { data:[] }; }
+    throw new Error('unexpected db call: ' + path);
+  };
+  const event = { type:'payment_intent.succeeded', data:{ object:{ id:'pi_legacy', status:'succeeded', metadata:{ source:'foc_preorder', foc_order_id:'order-legacy' } } } };
+  await syncFocStripeEvent({}, event, { supabaseAdminFetch:db, sendEmail:async()=>{} });
+  const line = ledgerWrites.find(call => call.path.startsWith('pos_sale_lines')).body[0];
+  assert.equal(line.cost_basis, 2.5, 'a snapshot missing msrpCents must fall back to a live comic_skus lookup, not the old customer-price-based guess');
+}
+
+console.log('FOC comic preorder cost-basis (real MSRP, not customer price) fix checks passed');
 
 // A completed Stripe charge must be recoverable even if the webhook never
 // arrives. The recovery path verifies identity, store, currency, and amount

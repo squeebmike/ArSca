@@ -3886,6 +3886,23 @@ export default {
           aspectOverrides: cover.coverArtist ? { 'Cover Artist': cover.coverArtist } : {},
         });
       }
+      // Store report (live error): "Publish failed (400): A user error has
+      // occurred. Add at least 1 photo." eBay requires every variant's own
+      // inventory_item to carry at least one photo -- a cover whose FOC
+      // import never got cover art (cover_image_url empty) was publishing
+      // with zero images and eBay rejected the whole group over that one
+      // variant. Borrows another selected cover's photo for it rather than
+      // leaving it blank -- "use all images from the FOC" -- since a
+      // borrowed real cover photo beats no photo at all and eBay's
+      // requirement is "at least one," not "the exact right one."
+      const anyCoverImage = built.find(v => v.imageUrl)?.imageUrl || '';
+      if (!anyCoverImage) return json({ ok: false, error: 'None of the selected covers have a cover image on file -- eBay requires at least one photo per listing. Add cover art to at least one selected cover first.' }, 400);
+      built.forEach(v => { if (!v.imageUrl) v.imageUrl = anyCoverImage; });
+      // Every distinct real cover photo actually available, in selection
+      // order -- used below as the bundle variant's own image gallery so
+      // "All Covers Bundle" visually shows every cover it bundles, not just
+      // one at random.
+      const allCoverImages = [...new Set(built.map(v => v.imageUrl).filter(Boolean))];
       // Optional extra "All Covers Bundle" variant -- not tied to any real
       // comic_sku (it's a synthetic offer, not a distributor line item), so
       // it's tracked below via a source:'foc_presale_bundle' inventory row
@@ -3902,7 +3919,7 @@ export default {
             key: 'bundle', skuId: null,
             label: (typeof body.bundle.label === 'string' && body.bundle.label.trim()) ? body.bundle.label.trim().substring(0, 60) : `All Covers Bundle (${built.length} Books)`,
             price: (bundlePriceCents / 100).toFixed(2), quantity: bundleQty,
-            imageUrl: built[0]?.imageUrl || '', upc: '', aspectOverrides: {},
+            imageUrl: allCoverImages[0] || anyCoverImage, imageUrls: allCoverImages, upc: '', aspectOverrides: {},
           };
           built.push(bundleRequested);
         }
@@ -7174,6 +7191,7 @@ export default {
           title: groupTitle,
           quantity: v.quantity,
           imageUrl: v.imageUrl || b.imageUrl,
+          imageUrls: v.imageUrls || [],
           upc: v.upc || '',
           customAspects: { ...(b.customAspects || {}), ...(v.aspectOverrides || {}), [variantAspectName]: v.label },
         });
