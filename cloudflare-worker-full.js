@@ -28,6 +28,7 @@ import { buildChecklistIndex, parseChecklistText, sha1Hex, slugify } from './scr
 import { handleFocRequest, syncFocStripeEvent, shippingSettings } from './scripts/foc-preorders.mjs';
 import { handleAccountRequest, findLinkedCustomer } from './scripts/customer-account.mjs';
 import { handleFanClubRequest } from './scripts/fan-club.mjs';
+import { handleCardIntakeRequest } from './scripts/card-intake.mjs';
 
 // Per-isolate rate limiter for PriceCharting API (no KV needed). _pcQueueTail
 // serializes the check-and-update of _pcLastCall itself so concurrent callers
@@ -4124,6 +4125,12 @@ export default {
     if (url.pathname.startsWith('/public/fan-club/')) {
       return await handleFanClubRequest(request, env, url, {
         json, supabaseAdminFetch, readJsonWithLimit, enforceUsageLimit,
+      });
+    }
+
+    if (url.pathname.startsWith('/card-intake/') || url.pathname === '/collections' || url.pathname === '/collections/purchase') {
+      return await handleCardIntakeRequest(request, env, url, {
+        CORS, json, supabaseAdminFetch, requireStoreUser, readJsonWithLimit,
       });
     }
 
