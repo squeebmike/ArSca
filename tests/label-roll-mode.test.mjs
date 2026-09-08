@@ -13,7 +13,7 @@ assert.match(dashboard, /sizeEl\.value = localStorage\.getItem\('label_print_siz
 
 // ── Contract: roll mode is a real different print job (page-per-label, no margins), not just a size number ──
 assert.match(dashboard, /const isRoll = mode === 'roll-2x1';/, 'printInventoryLabels must branch behavior on the selected mode');
-assert.match(dashboard, /@page \{ size: 2in 1in; margin: 0; \}/, 'roll mode must set the page size to exactly the label size with zero margin -- a roll printer\'s page IS the label');
+assert.match(dashboard, /@page \{ size: \$\{rotateForRoll \? '1in 2in' : '2in 1in'\}; margin: 0; \}/, 'roll mode must set the page size to exactly the label size with zero margin (or its 90deg-rotated swap) -- a roll printer\'s page IS the label');
 assert.match(dashboard, /page-break-after:always/, 'roll mode must print exactly one label per page so a continuous-feed roll printer advances correctly between labels');
 assert.match(dashboard, /w\.document\.write\(`<html><head><title>Labels<\/title>\s*\n\s*<style>\$\{isRoll \? rollStyle : sheetStyle\}\$\{isWrap \? wrapStyle : ''\}<\/style>/, 'the print window must use the roll stylesheet only when roll mode is selected, leaving the existing sheet layout untouched otherwise');
 
