@@ -1169,9 +1169,10 @@ async function adminPrhSubmission(request,env,deps,url){
       let ebayToken='';
       try{ebayToken=await deps.getEbayUserAccessToken(env);}catch(_){}
       if(ebayToken){
+        const withdrawingIds=new Set(toWithdraw.map(r=>r.id));
         for(const row of toWithdraw){
           try{
-            await deps.withdrawEbayOffer(env,ebayToken,row.data.ebayOfferId);
+            await withdrawFocPresaleRow(env,deps,ebayToken,row,presaleRows,withdrawingIds);
             // A volume-discount promotion tied to this listing must not
             // outlive the listing itself -- best-effort, never blocks the
             // withdrawal it's paired with.
@@ -1249,6 +1250,39 @@ async function adminPrhSubmission(request,env,deps,url){
 // reason) -- unlike the sweep, this is owner-triggered, not automatic, and
 // it ends every still-live FOC presale listing for the cycle regardless of
 // whether that SKU made it into the PRH order.
+// Ends one FOC eBay presale row's live listing -- shared by the PRH-submit
+// auto-sweep (adminPrhSubmission, for books the store ends up not ordering)
+// and the manual bulk-end route (adminEndFocEbayListings) below. Handles a
+// row that belongs to a multi-cover eBay variation listing (see
+// createAndPublishEbayVariationListing/create-presale-group in
+// cloudflare-worker-full.js, ebayInventoryItemGroupKey on the row's data)
+// differently from a normal single-cover listing: withdrawing that row's
+// own offer directly would take the WHOLE shared listing down for every
+// other cover still available in it, not just this one. So a grouped row
+// only gets its own offer's quantity zeroed (ebayReviseOfferQuantity,
+// already used elsewhere in this file for the exact same "reduce
+// availability without touching the rest of the listing" need) as long as
+// at least one sibling cover in the same group is still live -- only once
+// this is the LAST live cover in the group does the whole group listing
+// actually get withdrawn, so a zero-quantity listing doesn't sit live on
+// eBay forever after every cover in it has been ended.
+// allPresaleRows must be the full store's presale rows (not pre-filtered to
+// just what's being withdrawn) so sibling lookups see covers this same
+// withdrawal batch isn't also ending; withdrawingIds names every row id
+// being ended in THIS batch, so two siblings withdrawn together correctly
+// fall through to a single group withdraw instead of each thinking the
+// other is still live.
+async function withdrawFocPresaleRow(env,deps,ebayToken,row,allPresaleRows,withdrawingIds){
+  const groupKey=row.data.ebayInventoryItemGroupKey;
+  if(!groupKey||!deps.ebayReviseOfferQuantity||!deps.withdrawEbayOfferGroup){
+    await deps.withdrawEbayOffer(env,ebayToken,row.data.ebayOfferId);
+    return;
+  }
+  const siblingStillLive=(allPresaleRows||[]).some(r=>r.id!==row.id&&!withdrawingIds.has(r.id)&&(r.data||{}).ebayInventoryItemGroupKey===groupKey&&!r.data.ebayWithdrawnAt&&Number(r.data.qty??r.data.quantity??0)>0);
+  if(siblingStillLive)await deps.ebayReviseOfferQuantity(env,ebayToken,row.data.ebayOfferId,0);
+  else await deps.withdrawEbayOfferGroup(env,ebayToken,groupKey);
+}
+
 async function adminEndFocEbayListings(request,env,deps){
   const db=(path,options)=>deps.supabaseAdminFetch(env,path,options);
   if(request.method!=='POST')return deps.json({ok:false,error:'POST only'},405);
@@ -1274,9 +1308,10 @@ async function adminEndFocEbayListings(request,env,deps){
   try{ebayToken=await deps.getEbayUserAccessToken(env);}catch(e){return deps.json({ok:false,error:'Could not get an eBay access token: '+e.message},502);}
   if(!ebayToken)return deps.json({ok:false,error:'eBay is not connected for this store'},503);
   let endedCount=0;const errors=[];
+  const withdrawingIds=new Set(toWithdraw.map(r=>r.id));
   for(const row of toWithdraw){
     try{
-      await deps.withdrawEbayOffer(env,ebayToken,row.data.ebayOfferId);
+      await withdrawFocPresaleRow(env,deps,ebayToken,row,presaleRows,withdrawingIds);
       if(row.data.ebayVolumeDiscountPromotionId&&deps.endEbayVolumeDiscount){
         try{await deps.endEbayVolumeDiscount(env,ebayToken,row.data.ebayVolumeDiscountPromotionId);}catch(_){}
       }

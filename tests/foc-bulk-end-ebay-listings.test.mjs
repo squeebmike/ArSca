@@ -35,7 +35,7 @@ assert.match(routeBody, /return focSkuIds\?focSkuIds\.has\(String\(d\.focSkuId\)
 assert.doesNotMatch(routeBody, /includedSkuIds/,
   'must stay independent of the PRH-order-inclusion set used by the separate auto-sweep in adminPrhSubmission -- this tool ends listings regardless of order status');
 
-assert.match(routeBody, /await deps\.withdrawEbayOffer\(env,ebayToken,row\.data\.ebayOfferId\)/, 'must actually withdraw each eBay offer');
+assert.match(routeBody, /await withdrawFocPresaleRow\(env,deps,ebayToken,row,presaleRows,withdrawingIds\)/, 'must actually withdraw each eBay offer (via the group-aware helper, so a multi-cover variation listing is not blindly killed by ending one cover)');
 assert.match(routeBody, /deps\.endEbayVolumeDiscount\(env,ebayToken,row\.data\.ebayVolumeDiscountPromotionId\)/, 'must also end any attached volume-discount promotion so it does not outlive the listing');
 assert.match(routeBody, /ebayWithdrawnReason:'manual_bulk_end'/, "must record a distinct reason from the auto-sweep's 'not_included_in_prh_order', for later auditing");
 // Store report: after ending listings here for covers not being ordered,

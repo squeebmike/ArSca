@@ -2669,24 +2669,39 @@ async function resolveEbayNewConditionId(env, ebayToken, categoryId) {
 // (or the generic default) more than once. Trusted as-is when provided;
 // the id came from this store's own /ebay/business-policies list, not
 // arbitrary client input.
+// Store report: after picking the "FOC" policy explicitly in the review
+// screen, the first several bulk listings correctly used a "... - FOC 30D
+// Handling" clone, then later listings in the SAME bulk run silently
+// reverted to the store's generic default policy ("Ground Advantage") with
+// no warning shown anywhere in the dashboard -- discovered only by noticing
+// the wrong handling time on a live listing. Root cause: every failure
+// branch below returned the bare `fallback` policy id, which is a REAL,
+// non-empty policy id (the store's own normal default) -- so the callers'
+// `fulfillmentPolicyId ? [] : [warn]` warning check (only empty-string
+// counted as "something went wrong") saw a perfectly valid-looking id and
+// stayed silent, even though it was silently the WRONG one. Returning a
+// {id, usedFallback, reason} shape instead of a bare string lets callers
+// tell "got the real FOC-bucket policy" apart from "silently substituted
+// the generic default" and warn on the latter too, not just on a total
+// empty-string failure.
 async function getFocPresaleFulfillmentPolicyId(env, ebayToken, handlingDaysNeeded, basePolicyIdOverride) {
   const fallback = env.EBAY_FULFILLMENT_POLICY_ID || '';
   const baseId = basePolicyIdOverride || (await resolveFocPresaleBasePolicyId(env, ebayToken)) || fallback;
-  if (!baseId) return '';
+  if (!baseId) return { id: '', usedFallback: true, reason: 'no FOC/presale-specific shipping policy is configured for this store, and no generic default policy is set either' };
   const bucket = Math.min(40, Math.max(5, Math.ceil(Math.max(1, handlingDaysNeeded) / 5) * 5));
   const kvKey = `ebay_foc_fulfillment_policy:${baseId}:${bucket}`;
   let cloneName = '';
   try {
     if (env.LBA_KV) {
       const cached = await env.LBA_KV.get(kvKey);
-      if (cached) return cached;
+      if (cached) return { id: cached, usedFallback: false, reason: '' };
     }
     const baseRes = await fetch(`https://api.ebay.com/sell/account/v1/fulfillment_policy/${encodeURIComponent(baseId)}`, {
       headers: { 'Authorization': 'Bearer ' + ebayToken, 'Accept': 'application/json' },
     });
     if (!baseRes.ok) {
       console.error('getFocPresaleFulfillmentPolicyId: base policy lookup failed', baseId, baseRes.status, (await baseRes.text().catch(() => '')).substring(0, 300));
-      return fallback;
+      return { id: fallback, usedFallback: true, reason: `could not look up the picked shipping policy to clone its handling time from (HTTP ${baseRes.status})` };
     }
     const base = await baseRes.json();
     cloneName = (String(base.name || 'Presale') + ` - FOC ${bucket}D Handling`).substring(0, 65);
@@ -2717,21 +2732,21 @@ async function getFocPresaleFulfillmentPolicyId(env, ebayToken, handlingDaysNeed
       const existingId = await findEbayFulfillmentPolicyIdByName(env, ebayToken, cloneName);
       if (existingId) {
         if (env.LBA_KV) await env.LBA_KV.put(kvKey, existingId, { expirationTtl: 60 * 60 * 24 * 180 }).catch(() => {});
-        return existingId;
+        return { id: existingId, usedFallback: false, reason: '' };
       }
-      return fallback;
+      return { id: fallback, usedFallback: true, reason: `eBay rejected creating the "${cloneName}" handling-time policy (HTTP ${createRes.status}: ${errText.substring(0, 150)})` };
     }
     const created = await createRes.json();
     const newId = created.fulfillmentPolicyId;
     if (!newId) {
       console.error('getFocPresaleFulfillmentPolicyId: create response had no fulfillmentPolicyId', cloneName, JSON.stringify(created).substring(0, 300));
-      return fallback;
+      return { id: fallback, usedFallback: true, reason: `eBay accepted the "${cloneName}" handling-time policy but did not return its id` };
     }
     if (env.LBA_KV) await env.LBA_KV.put(kvKey, newId, { expirationTtl: 60 * 60 * 24 * 180 }).catch(() => {});
-    return newId;
+    return { id: newId, usedFallback: false, reason: '' };
   } catch (e) {
     console.error('getFocPresaleFulfillmentPolicyId: threw', cloneName, e.message);
-    return fallback;
+    return { id: fallback, usedFallback: true, reason: 'error while creating the handling-time policy: ' + e.message };
   }
 }
 // Exact-name lookup used when creating a fulfillment policy clone fails
@@ -3646,7 +3661,8 @@ export default {
       // silently falling back to the auto-detect heuristic.
       const basePolicyId = (typeof body.basePolicyId === 'string' && body.basePolicyId.trim()) ? body.basePolicyId.trim() : '';
       if (!basePolicyId) return json({ ok: false, error: 'Pick a shipping policy in the review screen before publishing -- FOC listings no longer auto-detect one.' }, 400);
-      const fulfillmentPolicyId = await getFocPresaleFulfillmentPolicyId(env, ebayToken, handlingBusinessDays, basePolicyId);
+      const fulfillmentResult = await getFocPresaleFulfillmentPolicyId(env, ebayToken, handlingBusinessDays, basePolicyId);
+      const fulfillmentPolicyId = fulfillmentResult.id;
       const resolvedCondition = await resolveEbayNewConditionId(env, ebayToken, '259104');
       const conditionId = resolvedCondition.id;
 
@@ -3689,9 +3705,11 @@ export default {
       // can silently publish with no fulfillment policy attached whatsoever.
       // That failure was invisible until now; surfaced the same way the
       // condition fallback above already is.
-      const fulfillmentWarnings = fulfillmentPolicyId
-        ? []
-        : ['Could not find a shipping/fulfillment policy to use -- this listing published with NO shipping service selected. Add an eBay Business Policy named with "presale" in it (or set a default fulfillment policy), then edit this listing on eBay to fix its shipping.'];
+      const fulfillmentWarnings = !fulfillmentPolicyId
+        ? ['Could not find a shipping/fulfillment policy to use -- this listing published with NO shipping service selected. Add an eBay Business Policy named with "presale" in it (or set a default fulfillment policy), then edit this listing on eBay to fix its shipping.']
+        : fulfillmentResult.usedFallback
+        ? [`This listing published under the store's normal default shipping policy, NOT the FOC handling-time policy you picked -- ${fulfillmentResult.reason}. Check this listing's handling time on eBay before it ships, and consider ending/re-listing it once fixed.`]
+        : [];
 
       // Store request: a buy-more-save-more volume discount on FOC presale
       // listings (2+/5%, 3+/10%, 4+/15%). Best-effort -- a promotion setup
@@ -3768,6 +3786,209 @@ export default {
           requestedId: listingResult.requestedFulfillmentPolicyId || '',
           verifiedStoredId: listingResult.verifiedFulfillmentPolicyId || '',
         },
+      });
+    }
+
+    // Lists every cover of one FOC title family as ONE eBay listing with a
+    // native "Cover: Select" variation dropdown, instead of the one-
+    // listing-per-cover flow above. /presale-group-preview computes the
+    // shared listing defaults + per-cover eligibility for editing (same
+    // "preview, then submit the edited fields" shape /foc/ebay/presale-
+    // preview already uses); /create-presale-group re-validates everything
+    // server-side from the trusted comic_skus rows and actually publishes.
+    if (url.pathname === '/foc/ebay/presale-group-preview' || url.pathname === '/foc/ebay/create-presale-group') {
+      const isPreview = url.pathname === '/foc/ebay/presale-group-preview';
+      if (request.method !== 'POST') return json({ error: 'POST only' }, 405);
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId, ['owner','admin']);
+      if (auth.error) return auth.error;
+
+      let body = {};
+      try { body = await request.json(); } catch (_) {}
+      const familyId = String(body.familyId || '').trim();
+      if (!familyId) return json({ ok: false, error: 'familyId required' }, 400);
+
+      let family, skuRows;
+      try {
+        const { data: familyRows } = await supabaseAdminFetch(env, `comic_title_families?id=eq.${encodeURIComponent(familyId)}&store_id=eq.${encodeURIComponent(storeId)}&select=id,title,issue_number`);
+        family = Array.isArray(familyRows) ? familyRows[0] : null;
+        const { data: skus } = await supabaseAdminFetch(env, `comic_skus?family_id=eq.${encodeURIComponent(familyId)}&store_id=eq.${encodeURIComponent(storeId)}&select=*`);
+        skuRows = skus || [];
+      } catch (e) { return json({ ok: false, error: 'Could not load that FOC title: ' + e.message }, 500); }
+      if (!family) return json({ ok: false, error: 'FOC title family not found for this store' }, 404);
+      if (skuRows.length < 2) return json({ ok: false, error: 'This title needs at least 2 covers to list as one eBay variation listing' }, 400);
+
+      const safeBusinessDays = await getEbayPresaleSafeBusinessDays(env, storeId);
+      const now = new Date();
+      // Eligibility recomputed per cover from the trusted DB row, exactly
+      // the same window/price checks the single-cover route enforces --
+      // eligible/ineligible covers are both returned (not just eligible
+      // ones) so the review screen can show why a cover is greyed out
+      // instead of it just silently not appearing.
+      const covers = skuRows.map(sku => {
+        const priceCents = Number(sku.customer_price_cents || sku.msrp_cents || 0);
+        let reason = '', onSaleDate = null;
+        if (!sku.on_sale_date) reason = 'No on-sale date on file';
+        else {
+          onSaleDate = new Date(String(sku.on_sale_date).includes('T') ? sku.on_sale_date : sku.on_sale_date + 'T00:00:00Z');
+          if (!Number.isFinite(onSaleDate.getTime())) reason = 'Could not parse on-sale date';
+        }
+        if (!reason && !priceCents) reason = 'No customer price set';
+        if (!reason && onSaleDate) {
+          const eligibleDate = addBusinessDays(onSaleDate, -safeBusinessDays);
+          if (now < eligibleDate) reason = `Too early -- eligible ${eligibleDate.toISOString().slice(0, 10)}`;
+        }
+        return {
+          skuId: sku.id, variantLabel: sku.variant_label || 'Cover', upc: sku.upc || '',
+          imageUrl: sku.cover_image_url || '', price: (priceCents / 100).toFixed(2), priceCents,
+          coverArtist: sku.cover_artist || '', onSaleDate: sku.on_sale_date || '',
+          eligible: !reason, reason,
+        };
+      });
+      const eligibleCovers = covers.filter(c => c.eligible);
+
+      if (isPreview) {
+        if (eligibleCovers.length < 2) return json({ ok: true, familyTitle: family.title, issueNumber: family.issue_number || '', covers, eligibleCount: eligibleCovers.length });
+        const repSku = skuRows.find(s => s.id === eligibleCovers[0].skuId);
+        const onSaleDate = new Date(String(repSku.on_sale_date).includes('T') ? repSku.on_sale_date : repSku.on_sale_date + 'T00:00:00Z');
+        const handlingBusinessDays = businessDaysBetween(new Date(), onSaleDate) + 2;
+        // buildFocPresaleDefaults is written per-cover (its title includes
+        // variant_label) -- passing variant_label:'' gets back the shared,
+        // cover-agnostic title/description/aspects a GROUP listing needs
+        // (the eBay-rendered dropdown is what distinguishes covers, not the
+        // listing title).
+        const defaults = buildFocPresaleDefaults({ ...repSku, variant_label: '' }, eligibleCovers[0].priceCents, onSaleDate, family.issue_number || '');
+        return json({
+          ok: true, familyTitle: family.title, issueNumber: family.issue_number || '',
+          covers, eligibleCount: eligibleCovers.length, handlingBusinessDays, ...defaults,
+        });
+      }
+
+      let ebayToken = '';
+      try { ebayToken = await getEbayUserAccessToken(env); }
+      catch (tokenErr) { return json({ needsToken: true, error: tokenErr.message }, 401); }
+      if (!ebayToken) return json({ needsToken: true, error: 'Connect eBay first: missing user access/refresh token' }, 401);
+
+      const bySkuId = new Map(covers.map(c => [c.skuId, c]));
+      const chosen = (Array.isArray(body.variants) ? body.variants : []).map(v => ({ skuId: String(v.skuId || '').trim(), price: v.price, quantity: v.quantity }));
+      if (chosen.length < 2) return json({ ok: false, error: 'Select at least 2 covers to list as one eBay variation listing' }, 400);
+      const built = [];
+      for (const v of chosen) {
+        const cover = bySkuId.get(v.skuId);
+        if (!cover) return json({ ok: false, error: `Unknown cover ${v.skuId} for this title` }, 400);
+        if (!cover.eligible) return json({ ok: false, error: `"${cover.variantLabel}" is not eligible for eBay presale: ${cover.reason}` }, 409);
+        const priceCents = Math.round(Number(v.price) * 100) || cover.priceCents;
+        if (!priceCents) return json({ ok: false, error: `No price for "${cover.variantLabel}"` }, 400);
+        built.push({
+          key: v.skuId, skuId: v.skuId, label: cover.variantLabel,
+          price: (priceCents / 100).toFixed(2), quantity: Math.max(1, Math.min(200, parseInt(v.quantity, 10) || 10)),
+          imageUrl: cover.imageUrl, upc: cover.upc,
+          aspectOverrides: cover.coverArtist ? { 'Cover Artist': cover.coverArtist } : {},
+        });
+      }
+      // Optional extra "All Covers Bundle" variant -- not tied to any real
+      // comic_sku (it's a synthetic offer, not a distributor line item), so
+      // it's tracked below via a source:'foc_presale_bundle' inventory row
+      // referencing every real cover's skuId instead of a focSkuId of its
+      // own. Skipped entirely unless the store gave it both a price and a
+      // quantity -- an incomplete bundle request must never silently become
+      // a free/unlimited listing.
+      let bundleRequested = null;
+      if (body.bundle && body.bundle.included) {
+        const bundlePriceCents = Math.round(Number(body.bundle.price) * 100);
+        const bundleQty = Math.max(1, Math.min(200, parseInt(body.bundle.quantity, 10) || 0));
+        if (bundlePriceCents > 0 && bundleQty > 0) {
+          bundleRequested = {
+            key: 'bundle', skuId: null,
+            label: (typeof body.bundle.label === 'string' && body.bundle.label.trim()) ? body.bundle.label.trim().substring(0, 60) : `All Covers Bundle (${built.length} Books)`,
+            price: (bundlePriceCents / 100).toFixed(2), quantity: bundleQty,
+            imageUrl: built[0]?.imageUrl || '', upc: '', aspectOverrides: {},
+          };
+          built.push(bundleRequested);
+        }
+      }
+
+      const repSkuId = built.find(v => v.skuId)?.skuId;
+      const repSku = skuRows.find(s => s.id === repSkuId);
+      const onSaleDate = new Date(String(repSku.on_sale_date).includes('T') ? repSku.on_sale_date : repSku.on_sale_date + 'T00:00:00Z');
+      const handlingBusinessDays = businessDaysBetween(new Date(), onSaleDate) + 2;
+      const defaults = buildFocPresaleDefaults({ ...repSku, variant_label: '' }, built[0].priceCents || Math.round(Number(built[0].price) * 100), onSaleDate, family.issue_number || '');
+
+      const groupTitle = (typeof body.title === 'string' && body.title.trim()) ? body.title.trim().substring(0, 80) : defaults.title;
+      const description = (typeof body.description === 'string' && body.description.trim()) ? body.description.trim().substring(0, 4000) : defaults.description;
+      const customAspects = (body.customAspects && typeof body.customAspects === 'object') ? { ...defaults.customAspects, ...body.customAspects } : defaults.customAspects;
+      const bestOfferEnabled = body.bestOfferEnabled !== false;
+      const weightValue = Number(body.weightValue) > 0 ? Number(body.weightValue) : defaults.weightValue;
+      const weightUnit = body.weightUnit || defaults.weightUnit;
+      const storeCategoryNames = Array.isArray(body.storeCategoryNames) ? body.storeCategoryNames : String(body.storeCategoryNames || '').split(',');
+      const basePolicyId = (typeof body.basePolicyId === 'string' && body.basePolicyId.trim()) ? body.basePolicyId.trim() : '';
+      if (!basePolicyId) return json({ ok: false, error: 'Pick a shipping policy in the review screen before publishing -- FOC listings no longer auto-detect one.' }, 400);
+      const fulfillmentResult = await getFocPresaleFulfillmentPolicyId(env, ebayToken, handlingBusinessDays, basePolicyId);
+      const fulfillmentPolicyId = fulfillmentResult.id;
+      const resolvedCondition = await resolveEbayNewConditionId(env, ebayToken, '259104');
+      const conditionId = resolvedCondition.id;
+
+      let listingResult;
+      try {
+        listingResult = await createAndPublishEbayVariationListing({
+          groupTitle, description, variantAspectName: 'Cover', variants: built,
+          categoryId: '259104', conditionId, condition: 'NEW',
+          customAspects, bestOfferEnabled, weightValue, weightUnit,
+          fulfillmentPolicyId, storeCategoryNames,
+        }, ebayToken, env, storeId);
+      } catch (e) {
+        console.error('FOC eBay group presale listing error:', e);
+        return json({ ok: false, error: e.message, detail: e.detail }, e.status || 500);
+      }
+      const conditionWarnings = resolvedCondition.source === 'fallback'
+        ? ['Could not confirm eBay\'s exact Comics condition ID -- used the generic "New" (1000). If eBay doesn\'t show "Brand New" after publishing, edit the listing on eBay and set the condition manually.']
+        : [];
+      const fulfillmentWarnings = !fulfillmentPolicyId
+        ? ['Could not find a shipping/fulfillment policy to use -- this listing published with NO shipping service selected. Add an eBay Business Policy named with "presale" in it (or set a default fulfillment policy), then edit this listing on eBay to fix its shipping.']
+        : fulfillmentResult.usedFallback
+        ? [`This listing published under the store's normal default shipping policy, NOT the FOC handling-time policy you picked -- ${fulfillmentResult.reason}. Check this listing's handling time on eBay before it ships, and consider ending/re-listing it once fixed.`]
+        : [];
+
+      const nowIso = new Date().toISOString();
+      const createdRows = [];
+      const rowErrors = [];
+      for (const v of built) {
+        const matched = listingResult.variants.find(x => x.key === v.key);
+        if (!matched) continue;
+        const skuRow = v.skuId ? skuRows.find(s => s.id === v.skuId) : null;
+        try {
+          const { data } = await supabaseAdminFetch(env, 'inventory_items', {
+            method: 'POST', headers: { Prefer: 'return=representation' },
+            body: JSON.stringify({
+              store_id: storeId, status: 'presale',
+              data: {
+                name: v.skuId ? [family.title, v.label].filter(Boolean).join(' ') : v.label,
+                category: 'Comic', publisher: skuRow?.publisher || repSku.publisher || '', upc: v.upc || '',
+                cost: skuRow ? Math.round(Number(skuRow.msrp_cents || 0) * 0.5) / 100 : 0,
+                market: Number(v.price), salePrice: Number(v.price),
+                qty: v.quantity, quantity: v.quantity, image: v.imageUrl || '',
+                source: v.skuId ? 'foc_presale' : 'foc_presale_bundle',
+                focSkuId: v.skuId || null, focCycleId: repSku.cycle_id || null,
+                focBundleSkuIds: v.skuId ? undefined : built.filter(x => x.skuId).map(x => x.skuId),
+                onSaleDate: skuRow?.on_sale_date || repSku.on_sale_date || null,
+                focPresaleOriginalQty: v.quantity,
+                ebayListingId: listingResult.listingId, ebayOfferId: matched.offerId,
+                ebaySku: matched.sku, ebayListedAt: nowIso,
+                ebayInventoryItemGroupKey: listingResult.inventoryItemGroupKey,
+              },
+            }),
+          });
+          createdRows.push(Array.isArray(data) ? data[0] : data);
+        } catch (e) {
+          console.error('FOC eBay group presale inventory row create failed:', v.label, e);
+          rowErrors.push(`"${v.label}": eBay listing was created but saving the local tracking row failed -- ${e.message}`);
+        }
+      }
+
+      return json({
+        ok: true, listingId: listingResult.listingId, inventoryItemGroupKey: listingResult.inventoryItemGroupKey,
+        createdCount: createdRows.length, bundleIncluded: !!bundleRequested,
+        warnings: [...(listingResult.warnings || []), ...conditionWarnings, ...fulfillmentWarnings, ...rowErrors],
       });
     }
 
@@ -3852,7 +4073,7 @@ export default {
       return await handleFocRequest(request, env, url, {
         CORS, json, supabaseAdminFetch, requireStoreUser, requireAuthenticatedUser,
         readJsonWithLimit, enforceUsageLimit, stripeApi, stripeMode, stripeConfig, sendEmail,
-        addBusinessDays, getEbayPresaleSafeBusinessDays, getEbayUserAccessToken, withdrawEbayOffer, endEbayVolumeDiscount, ebayReviseOfferQuantity,
+        addBusinessDays, getEbayPresaleSafeBusinessDays, getEbayUserAccessToken, withdrawEbayOffer, withdrawEbayOfferGroup, endEbayVolumeDiscount, ebayReviseOfferQuantity,
       });
     }
 
@@ -6698,20 +6919,20 @@ export default {
     // eBay Inventory API calls either way, just a different source for the
     // body fields. Throws Error with a .status (defaults 500) on failure;
     // callers decide how to turn that into an HTTP response.
-    async function createAndPublishEbayListing(b, ebayToken, env, storeId) {
-      const { title, price } = b;
-      if (!title || !price) { const e = new Error('title and price required'); e.status = 400; throw e; }
-
+    // Ship-from address for the eBay merchant location: reuse the same
+    // store address already collected under FOC -> "REAL SHIPPING SETUP"
+    // (store_settings.payment_settings.shipping.shipFrom) rather than
+    // maintaining a second copy of it. That panel used to be the only
+    // consumer of this address; a hardcoded fallback address here
+    // ("Walk-Off Sports Cards" in Kingston, WA) belonged to a different
+    // store entirely and must never be sent as this store's location --
+    // if the real address hasn't been entered yet, fail loudly instead of
+    // publishing a listing under someone else's business address. Shared by
+    // every route that creates or republishes an eBay listing -- single-cover
+    // (createAndPublishEbayListing) and the multi-cover variation listing
+    // creator below -- so there's exactly one place enforcing that rule.
+    async function ensureEbayMerchantLocation(env, storeId, ebayToken) {
       const locationKey = env.EBAY_LOCATION_KEY || 'walkoff-main';
-      // Ship-from address for the eBay merchant location: reuse the same
-      // store address already collected under FOC -> "REAL SHIPPING SETUP"
-      // (store_settings.payment_settings.shipping.shipFrom) rather than
-      // maintaining a second copy of it. That panel used to be the only
-      // consumer of this address; a hardcoded fallback address here
-      // ("Walk-Off Sports Cards" in Kingston, WA) belonged to a different
-      // store entirely and must never be sent as this store's location --
-      // if the real address hasn't been entered yet, fail loudly instead of
-      // publishing a listing under someone else's business address.
       let shipFrom = null;
       if (storeId) {
         try {
@@ -6735,6 +6956,14 @@ export default {
           locationTypes: ['STORE'],
         }),
       }).catch(() => {});
+      return { locationKey, shipFrom };
+    }
+
+    async function createAndPublishEbayListing(b, ebayToken, env, storeId) {
+      const { title, price } = b;
+      if (!title || !price) { const e = new Error('title and price required'); e.status = 400; throw e; }
+
+      const { locationKey } = await ensureEbayMerchantLocation(env, storeId, ebayToken);
 
       // Any caller listing a known-presale item (the regular "list on eBay"
       // tool included, not just the FOC review screen) gets the same
@@ -6750,7 +6979,7 @@ export default {
           const onSaleDate = new Date(String(b.onSaleDate).includes('T') ? b.onSaleDate : b.onSaleDate + 'T00:00:00Z');
           if (Number.isFinite(onSaleDate.getTime())) {
             const handlingBusinessDays = businessDaysBetween(new Date(), onSaleDate) + 2;
-            fulfillmentPolicyId = await getFocPresaleFulfillmentPolicyId(env, ebayToken, handlingBusinessDays);
+            fulfillmentPolicyId = (await getFocPresaleFulfillmentPolicyId(env, ebayToken, handlingBusinessDays)).id;
           }
         } catch (_) {}
       }
@@ -6907,6 +7136,150 @@ export default {
       return { listingId: pubData.listingId, offerId, sku, warnings, requestedConditionId: String(itemBody.conditionId || ''), requestedCondition: String(itemBody.condition || ''), verifiedConditionId, verifyError, requestedFulfillmentPolicyId, verifiedFulfillmentPolicyId };
     }
 
+    // Publishes several FOC covers of the SAME issue as ONE eBay listing
+    // using eBay's native multiple-variation format -- the "Cover: Select"
+    // dropdown eBay itself renders on the listing page -- instead of the
+    // one-listing-per-cover approach createAndPublishEbayListing uses above.
+    // Store request: match a real competitor listing that showed a Cover
+    // dropdown (Cover A / Cover B / Cover C / "All Covers Bundle") on ONE
+    // listing instead of running N separate listings for the same issue.
+    //
+    // Mechanics (eBay Sell Inventory API): each variant still gets its own
+    // inventory_item (PUT .../inventory_item/{sku}) and its own offer
+    // (POST .../offer, own price/quantity) -- the same building blocks
+    // createAndPublishEbayListing uses per SKU, via the same
+    // buildEbayInventoryItemBody/buildEbayOfferBody helpers. What's
+    // different: the offers are never published individually. An
+    // inventory_item_group ties the variant SKUs together (variesBy the
+    // given aspect, e.g. "Cover", with aspectsImageVaryBy so eBay shows
+    // each variant's own cover image in the dropdown), and a single
+    // publish_by_inventory_item_group call publishes every offer in the
+    // group at once under one shared listingId.
+    async function createAndPublishEbayVariationListing(b, ebayToken, env, storeId) {
+      const { groupTitle, variants, variantAspectName } = b;
+      if (!groupTitle) { const e = new Error('groupTitle required'); e.status = 400; throw e; }
+      if (!Array.isArray(variants) || variants.length < 2) { const e = new Error('At least 2 variants are required for a variation listing'); e.status = 400; throw e; }
+      if (!variantAspectName) { const e = new Error('variantAspectName required'); e.status = 400; throw e; }
+
+      const { locationKey } = await ensureEbayMerchantLocation(env, storeId, ebayToken);
+
+      const groupKey = 'lbagrp-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 6);
+      const warnings = [];
+      const built = [];
+
+      for (const v of variants) {
+        const sku = groupKey + '-' + built.length;
+        const itemBody = buildEbayInventoryItemBody({
+          ...b,
+          title: groupTitle,
+          quantity: v.quantity,
+          imageUrl: v.imageUrl || b.imageUrl,
+          upc: v.upc || '',
+          customAspects: { ...(b.customAspects || {}), ...(v.aspectOverrides || {}), [variantAspectName]: v.label },
+        });
+        const itemRes = await fetch(`https://api.ebay.com/sell/inventory/v1/inventory_item/${sku}`, {
+          method: 'PUT',
+          headers: { 'Authorization': 'Bearer ' + ebayToken, 'Content-Type': 'application/json', 'Content-Language': 'en-US' },
+          body: JSON.stringify(itemBody),
+        });
+        if (itemRes.status !== 204) {
+          const itemTxt = await itemRes.text();
+          let itemData; try { itemData = JSON.parse(itemTxt); } catch (_) { itemData = null; }
+          if (!itemRes.ok) {
+            const msg = itemData?.errors?.[0]?.longMessage || itemData?.errors?.[0]?.message || itemTxt.substring(0, 200);
+            const e = new Error(`Item creation failed for "${v.label}" (${itemRes.status}): ${msg}`); e.status = itemRes.status; e.detail = itemData; throw e;
+          }
+          if (Array.isArray(itemData?.warnings) && itemData.warnings.length) warnings.push(...itemData.warnings.map(w => `${v.label}: ` + (w?.message || w?.longMessage)).filter(Boolean));
+        }
+        built.push({ ...v, sku });
+      }
+
+      const groupBody = {
+        title: String(groupTitle).substring(0, 80),
+        description: toEbayHtmlDescription(b.description || groupTitle),
+        aspects: buildEbayAspects(b),
+        variantSKUs: built.map(v => v.sku),
+        variesBy: {
+          aspectsImageVaryBy: [variantAspectName],
+          specifications: [{ name: variantAspectName, values: built.map(v => v.label) }],
+        },
+      };
+      const groupRes = await fetch(`https://api.ebay.com/sell/inventory/v1/inventory_item_group/${groupKey}`, {
+        method: 'PUT',
+        headers: { 'Authorization': 'Bearer ' + ebayToken, 'Content-Type': 'application/json', 'Content-Language': 'en-US' },
+        body: JSON.stringify(groupBody),
+      });
+      if (groupRes.status !== 204) {
+        const groupTxt = await groupRes.text();
+        let groupData; try { groupData = JSON.parse(groupTxt); } catch (_) { groupData = null; }
+        if (!groupRes.ok) {
+          const msg = groupData?.errors?.[0]?.longMessage || groupData?.errors?.[0]?.message || groupTxt.substring(0, 200);
+          const e = new Error('Variation group creation failed (' + groupRes.status + '): ' + msg); e.status = groupRes.status; e.detail = groupData; throw e;
+        }
+      }
+
+      for (const v of built) {
+        const offerBody = buildEbayOfferBody({ ...b, price: v.price, quantity: v.quantity }, v.sku, locationKey, env);
+        const offerRes = await fetch('https://api.ebay.com/sell/inventory/v1/offer', {
+          method: 'POST',
+          headers: { 'Authorization': 'Bearer ' + ebayToken, 'Content-Type': 'application/json', 'Content-Language': 'en-US' },
+          body: JSON.stringify(offerBody),
+        });
+        const offerTxt = await offerRes.text();
+        let offerData; try { offerData = JSON.parse(offerTxt); } catch (_) { offerData = { raw: offerTxt }; }
+        if (!offerRes.ok) {
+          const msg = offerData?.errors?.[0]?.longMessage || offerData?.errors?.[0]?.message || offerTxt.substring(0, 300);
+          const e = new Error(`Offer failed for "${v.label}" (${offerRes.status}): ${msg}`); e.status = offerRes.status; e.detail = offerData; throw e;
+        }
+        v.offerId = offerData.offerId;
+      }
+
+      const pubRes = await fetch('https://api.ebay.com/sell/inventory/v1/offer/publish_by_inventory_item_group', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + ebayToken, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ inventoryItemGroupKey: groupKey, marketplaceId: 'EBAY_US' }),
+      });
+      const pubTxt = await pubRes.text();
+      let pubData; try { pubData = JSON.parse(pubTxt); } catch (_) { pubData = { raw: pubTxt }; }
+      if (!pubRes.ok) {
+        const msg = pubData?.errors?.[0]?.longMessage || pubData?.errors?.[0]?.message || pubTxt.substring(0, 300);
+        const e = new Error('Publish failed (' + pubRes.status + '): ' + msg); e.status = pubRes.status; e.detail = pubData; throw e;
+      }
+      if (Array.isArray(pubData?.warnings) && pubData.warnings.length) warnings.push(...pubData.warnings.map(w => w?.message || w?.longMessage).filter(Boolean));
+      // publish_by_inventory_item_group's success response is documented to
+      // carry the one shared listingId for the whole group -- read
+      // defensively (a couple of plausible alternate shapes) and surface a
+      // warning rather than silently returning an empty listingId if eBay's
+      // response doesn't match, same "verify, don't just trust a 200"
+      // discipline the rest of this file already applies to eBay responses.
+      const listingId = pubData.listingId || (Array.isArray(pubData?.responses) && pubData.responses[0]?.listingId) || '';
+      if (!listingId) warnings.push('eBay did not return a listingId for the published group -- check the listing manually.');
+
+      return { listingId, inventoryItemGroupKey: groupKey, warnings, variants: built.map(v => ({ key: v.key, sku: v.sku, offerId: v.offerId, label: v.label })) };
+    }
+
+    // Ends (withdraws) an ENTIRE multi-variation listing at once -- the
+    // group counterpart to withdrawEbayOffer below. Used only when ending
+    // the LAST remaining live cover in a group (see withdrawFocPresaleRow in
+    // foc-preorders.mjs); ending one cover while others in the same group
+    // are still live instead zeroes just that one offer's quantity via
+    // ebayReviseOfferQuantity so the shared listing stays live for the
+    // covers still available.
+    async function withdrawEbayOfferGroup(env, ebayToken, inventoryItemGroupKey) {
+      const res = await fetch('https://api.ebay.com/sell/inventory/v1/offer/withdraw_by_inventory_item_group', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + ebayToken, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ inventoryItemGroupKey, marketplaceId: 'EBAY_US' }),
+      });
+      const txt = await res.text();
+      let data; try { data = JSON.parse(txt); } catch (_) { data = { raw: txt }; }
+      if (!res.ok) {
+        const msg = data?.errors?.[0]?.longMessage || data?.errors?.[0]?.message || txt.substring(0, 300);
+        const e = new Error('End group listing failed (' + res.status + '): ' + msg); e.status = res.status; e.detail = data; throw e;
+      }
+      return { ok: true, inventoryItemGroupKey };
+    }
+
     if (url.pathname === '/ebay/list') {
       if (request.method !== 'POST') return json({ error: 'POST only' }, 405);
       const storeId = requestStoreId(request, url);
@@ -6938,10 +7311,20 @@ export default {
     // never block the listing itself from publishing, same as the
     // condition-check/warnings pattern already used for other post-publish
     // steps.
+    //
+    // Store report (live warning banner on a listing): "Volume discount
+    // (buy more, save more) was not set up: Volume discount setup failed
+    // (400): A valid entry is required for 'marketplaceId'." -- unlike the
+    // Sell Inventory API calls elsewhere in this file (which take
+    // marketplaceId inside a nested `marketplaceId` field on the
+    // inventory_item/offer body), the Sell Marketing API's createItemPromotion
+    // requires it as its OWN top-level field on the promotion body, which
+    // was missing entirely here.
     async function createEbayVolumeDiscount(env, ebayToken, listingId, sku) {
       const now = new Date();
       const end = new Date(now.getTime() + 1000 * 60 * 60 * 24 * 365 * 2); // 2-year runway -- well past any presale window
       const body = {
+        marketplaceId: 'EBAY_US',
         promotionName: ('Buy More Save More - ' + sku).substring(0, 50),
         promotionStatus: 'RUNNING',
         startDate: now.toISOString(),
