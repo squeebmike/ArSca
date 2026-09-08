@@ -18,7 +18,7 @@ actually shipped. Check items off / move to `FEATURE_LOG` as they get built.
 
 ## Inventory Intelligence
 
-- [ ] **Dead Inventory Radar.** Dashboard actively flags stuff that isn't
+- [x] **Dead Inventory Radar.** Dashboard actively flags stuff that isn't
       moving instead of waiting to be asked: "Owned 143 days · 3 views ·
       market down 18% · $220 trapped." Then suggests a concrete next step —
       markdown, Whatnot auction, bundle, eBay best-offer, convention box, or

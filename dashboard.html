@@ -1757,6 +1757,7 @@ body.show-mode .inv-sync-badge{display:none;}
   </div>
 
   <div style="max-width:1400px;margin:0 auto;padding:0 20px;margin-top:14px;" id="alert-wrap"></div>
+  <div style="max-width:1400px;margin:0 auto;padding:0 20px;margin-top:8px;" id="dead-inventory-radar-wrap"></div>
 
   <div class="two" style="margin-top:14px">
     <div class="panel">
@@ -6384,6 +6385,7 @@ const FEATURE_LOG = [
     { title:'Category / product profitability & payment mix', status:'new', desc:'The Reports tab now breaks down revenue, COGS, profit and margin by category and by product, shows top sellers by revenue and by profit, charts sales/profit trends over your chosen date range, and a payment-method mix chart -- plus a Washington B&O tax filing note.' },
     { title:'Category Health report', status:'new', desc:'Cross-references what actually sold against your CURRENT unsold stock to flag where a category is struggling: no sales at all this period despite real stock sitting, negative or thin margins, cash concentrated in stock 90+ days old, or slow turnover relative to what it\'s tying up -- each with the real dollar amount and a concrete next step, not just a bare warning.' },
     { title:'Slow Movers / Dead Stock report', status:'new', desc:'Category Health flags an entire category as struggling; this drills straight to the specific items behind it -- everything sitting 90+ days, sorted by cash tied up (cost x quantity), with an EDIT shortcut to mark it down, bundle it, or pull it from the case.' },
+    { title:'Dead Inventory Radar', status:'new', desc:'The home screen now proactively flags stale stock instead of waiting to be asked -- a banner shows the total count and cash trapped in 90+ day inventory, linking to the full list. Each item also gets a concrete suggested action (bundle, markdown, eBay offer, convention box, run on Whatnot, or hold) based on quantity, price vs. your own floor, category, and age.' },
     { title:'One consolidated Reports screen', status:'planned', desc:'A single place for sales reporting with real week/month/date-range rollups, instead of stats spread across Home, End-of-Day, and Sold Items. Not built yet -- being scoped.' },
   ]},
 ];
@@ -16462,6 +16464,19 @@ function renderStats(){
   const unpriced = ins.filter(i=>!i.market||i.market===0);
   if(unpriced.length) alerts.push(`📊 ${unpriced.length} items missing market price`);
   alertWrap.innerHTML = alerts.map(a=>`<div class="alert"><span>${a}</span><a class="ph-action" onclick="switchTab('alerts',document.querySelector('.tab:nth-child(4)'))">View →</a></div>`).join('');
+
+  // Dead Inventory Radar: separate div so its "View →" can jump to Reports
+  // (where the actual radar list lives, next to Slow Movers) instead of
+  // the generic Alerts tab the banners above point to.
+  const radar = computeSlowMovers(all, { limit:9999 });
+  const radarWrap = document.getElementById('dead-inventory-radar-wrap');
+  if(radarWrap){
+    if(!radar.length){ radarWrap.innerHTML=''; }
+    else {
+      const trapped = radar.reduce((s,r)=>s+r.cashTiedUp,0);
+      radarWrap.innerHTML = `<div class="alert" style="border-color:rgba(255,77,109,.35)"><span>💀 DEAD INVENTORY RADAR — ${radar.length} item${radar.length!==1?'s':''} sitting 90+ days, ${f$(trapped)} trapped</span><a class="ph-action" onclick="switchTab('reports')">View →</a></div>`;
+    }
+  }
 }
 
 function renderCats(){
@@ -17447,8 +17462,8 @@ function renderReportsResults(result, groupBy){
       return `<div class="owner-section-grid" style="grid-template-columns:1fr;margin-top:14px">
       <div class="owner-mini-panel">
         <div class="ph">SLOW MOVERS / DEAD STOCK <span style="font-size:9px;color:var(--dim)">in stock 90+ days, worst cash-tied-up first</span></div>
-        ${slowMovers.length ? `<div class="tbl-wrap" style="margin-top:6px"><table><thead><tr><th>ITEM</th><th>CATEGORY</th><th style="text-align:right">DAYS</th><th style="text-align:right">QTY</th><th style="text-align:right">CASH TIED UP</th><th style="text-align:right">LIST PRICE</th><th></th></tr></thead><tbody>
-          ${slowMovers.map(s => `<tr><td>${escHtml(s.name)}</td><td>${escHtml(s.category)}</td><td style="text-align:right">${s.days}</td><td style="text-align:right">${s.qty}</td><td style="text-align:right">${fd$(s.cashTiedUp)}</td><td style="text-align:right">${fd$(s.listPrice)}</td><td><button class="ra rab-edit" onclick="openEditModal('${s.id}')">EDIT</button></td></tr>`).join('')}
+        ${slowMovers.length ? `<div class="tbl-wrap" style="margin-top:6px"><table><thead><tr><th>ITEM</th><th>CATEGORY</th><th style="text-align:right">DAYS</th><th style="text-align:right">QTY</th><th style="text-align:right">CASH TIED UP</th><th style="text-align:right">LIST PRICE</th><th>SUGGESTED ACTION</th><th></th></tr></thead><tbody>
+          ${slowMovers.map(s => `<tr><td>${escHtml(s.name)}</td><td>${escHtml(s.category)}</td><td style="text-align:right">${s.days}</td><td style="text-align:right">${s.qty}</td><td style="text-align:right">${fd$(s.cashTiedUp)}</td><td style="text-align:right">${fd$(s.listPrice)}</td><td><span title="${escHtml(s.actionReason)}" style="font-family:monospace;font-size:9px;font-weight:700;color:var(--gold);border-bottom:1px dotted var(--gold);cursor:help">${escHtml(s.action)}</span></td><td><button class="ra rab-edit" onclick="openEditModal('${s.id}')">EDIT</button></td></tr>`).join('')}
         </tbody></table></div>` : `<div class="empty"><div class="empty-t">Nothing has been sitting 90+ days -- stock is turning over</div></div>`}
       </div>
     </div>`;
@@ -17547,15 +17562,36 @@ function computeSlowMovers(items, opts={}){
     .filter(x => x.days !== null && x.days >= thresholdDays)
     .map(x => {
       const qty = inventoryAvailableQuantity(x.item);
+      const suggestion = suggestDeadStockAction(x.item);
       return {
         id: x.item.id, name: x.item.name, category: x.item.category || 'Uncategorized',
         days: x.days, qty,
         cashTiedUp: Number(x.item.cost || 0) * qty,
         listPrice: inventoryListPrice(x.item),
+        action: suggestion.action, actionReason: suggestion.reason,
       };
     })
     .sort((a, b) => b.cashTiedUp - a.cashTiedUp)
     .slice(0, limit);
+}
+
+// Dead Inventory Radar: Slow Movers says WHAT is stuck; this says what to
+// DO about it. Deterministic, explainable rules built only from data this
+// app actually has (quantity on hand, current price vs. your own set
+// floor, category, days in stock) -- no fabricated "view count" or
+// "market trend" signal, since neither is tracked anywhere in this app.
+function suggestDeadStockAction(item){
+  const qty = inventoryAvailableQuantity(item);
+  const price = inventoryListPrice(item);
+  const floor = inventoryMinPrice(item);
+  const days = inventoryDaysInStock(item) || 0;
+  const whatnotCategories = ['Pokemon TCG','Magic: The Gathering','One Piece TCG','Yu-Gi-Oh!','Disney Lorcana','Sports'];
+  if(qty > 1) return { action:'BUNDLE', reason:`${qty} copies on hand -- combine into one lot instead of selling one at a time` };
+  if(floor > 0 && price > floor + 0.01) return { action:'MARKDOWN', reason:`Still above your own floor ($${floor.toFixed(2)}) -- move it down toward that` };
+  if(price >= 40) return { action:'EBAY OFFER', reason:'High enough value to be worth a dedicated eBay listing with Best Offer enabled' };
+  if(price < 8 && days >= 365) return { action:'CONVENTION BOX', reason:'Low value and over a year old -- bulk clearance beats individual sale attempts' };
+  if(whatnotCategories.includes(item.category)) return { action:'RUN ON WHATNOT', reason:'Single-copy collectible -- a live audience often outperforms a static listing' };
+  return { action:'HOLD', reason:'No clear signal yet -- keep an eye on it' };
 }
 
 function exportReportsCSV(){
