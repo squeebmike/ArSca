@@ -636,11 +636,26 @@ async function openFamilyEbayGroupReview(familyId){
   if(lastShipPolicyId&&!shipPolicies.some(function(p){return String(p.id)===lastShipPolicyId;}))lastShipPolicyId='';
   var lastStoreCategory='Comic Books';try{lastStoreCategory=localStorage.getItem('foc_ebay_last_store_category')||'Comic Books';}catch(e){}
   var asp=preview.customAspects||{};
+  // Store report (live eBay error): "Publish failed (400): Add at least 1
+  // photo" -- a cover with no cover_image_url on file published with zero
+  // images and eBay rejected the WHOLE shared listing over that one
+  // variant. The server now borrows another selected cover's photo for a
+  // missing one rather than leaving it blank, but that's a fallback worth
+  // seeing before publishing, not something that should stay invisible --
+  // shown here as a thumbnail (or a clear "NO COVER ART" flag) per row, the
+  // same at-a-glance confirmation the single-cover review modal already
+  // gives via its own cover preview image.
+  var anyCoverImg=(preview.covers||[]).find(function(c){return c.imageUrl;});
   var coverRows=(preview.covers||[]).map(function(c){
     var disabled=c.eligible?'':'disabled';
-    return '<div class="foc-sku-fields" data-eb-cover-row="'+esc(c.skuId)+'" style="grid-template-columns:auto 1.4fr 1fr 1fr;align-items:end;padding:6px 0;border-bottom:1px solid var(--border);opacity:'+(c.eligible?'1':'.45')+'">'+
+    var thumbUrl=c.imageUrl||(anyCoverImg&&anyCoverImg.imageUrl)||'';
+    var thumb=thumbUrl
+      ? '<img src="'+esc(thumbUrl)+'" style="width:34px;height:44px;object-fit:contain;background:#050507;border:1px solid var(--border);border-radius:4px" onerror="this.style.opacity=.16">'
+      : '<div style="width:34px;height:44px;background:#050507;border:1px solid var(--border);border-radius:4px;display:flex;align-items:center;justify-content:center;color:var(--red);font-size:6px;text-align:center;line-height:1.2">NO COVER ART</div>';
+    return '<div class="foc-sku-fields" data-eb-cover-row="'+esc(c.skuId)+'" style="grid-template-columns:auto auto 1.4fr 1fr 1fr;align-items:end;padding:6px 0;border-bottom:1px solid var(--border);opacity:'+(c.eligible?'1':'.45')+'">'+
       '<label style="display:flex;align-items:center;gap:5px"><input type="checkbox" data-eb-cover-cb="'+esc(c.skuId)+'" '+(c.eligible?'checked':'')+' '+disabled+'></label>'+
-      '<div><div style="font-weight:700;color:var(--text)">'+esc(c.variantLabel)+'</div><div style="font:8px var(--font-mono);color:var(--dim)">'+(c.eligible?'UPC '+esc(c.upc):esc(c.reason))+'</div></div>'+
+      thumb+
+      '<div><div style="font-weight:700;color:var(--text)">'+esc(c.variantLabel)+'</div><div style="font:8px var(--font-mono);color:var(--dim)">'+(c.eligible?'UPC '+esc(c.upc)+(c.imageUrl?'':' · borrowing another cover\'s photo -- add its own cover art later'):esc(c.reason))+'</div></div>'+
       '<label>PRICE<input class="tsi" data-eb-cover-price="'+esc(c.skuId)+'" type="number" min="0" step=".01" value="'+esc(c.price)+'" '+disabled+'></label>'+
       '<label>QTY<input class="tsi" data-eb-cover-qty="'+esc(c.skuId)+'" type="number" min="1" max="200" value="10" '+disabled+'></label>'+
       '</div>';
@@ -659,7 +674,8 @@ async function openFamilyEbayGroupReview(familyId){
     '<div class="foc-sku-fields" style="grid-template-columns:1fr 1fr;margin-bottom:10px">'+['Publisher','Writer','Artist'].map(function(k){return '<label>'+k.toUpperCase()+'<input class="tsi" data-eb-grp-aspect="'+esc(k)+'" value="'+esc(asp[k]||'')+'"></label>';}).join('')+'</div>'+
     '<label style="font:9px var(--font-mono);color:var(--dim);display:block;margin-bottom:10px">EBAY STORE CATEGORY (optional)<input id="foc-eb-grp-store-category" class="tsi" value="'+esc(lastStoreCategory)+'" style="margin-top:4px"></label>'+
     '<div style="font:9px var(--font-mono);color:var(--dim);margin-bottom:6px">COVERS ON THIS LISTING</div>'+coverRows+
-    '<div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border)"><label style="display:flex;gap:6px;align-items:center;margin-bottom:8px;font:9px var(--font-mono);color:var(--dim)"><input id="foc-eb-grp-bundle-cb" type="checkbox" onchange="document.getElementById(\'foc-eb-grp-bundle-fields\').style.display=this.checked?\'grid\':\'none\'"> INCLUDE "ALL COVERS BUNDLE" VARIANT</label>'+
+    '<div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border)"><label style="display:flex;gap:6px;align-items:center;margin-bottom:4px;font:9px var(--font-mono);color:var(--dim)"><input id="foc-eb-grp-bundle-cb" type="checkbox" onchange="document.getElementById(\'foc-eb-grp-bundle-fields\').style.display=this.checked?\'grid\':\'none\'"> INCLUDE "ALL COVERS BUNDLE" VARIANT</label>'+
+    '<div style="font:8px var(--font-mono);color:var(--dim);margin-bottom:8px">Shares the listing title above -- the bundle option shows in the Cover dropdown as whatever label you give it below. Its photo gallery is every checked cover\'s own cover image, so buyers see all of them.</div>'+
     '<div id="foc-eb-grp-bundle-fields" class="foc-sku-fields" style="grid-template-columns:1.6fr 1fr 1fr;display:none">'+
     '<label>BUNDLE LABEL<input id="foc-eb-grp-bundle-label" class="tsi" placeholder="All Covers Bundle"></label>'+
     '<label>BUNDLE PRICE<input id="foc-eb-grp-bundle-price" class="tsi" type="number" min="0" step=".01"></label>'+

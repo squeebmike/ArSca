@@ -754,7 +754,7 @@ async function preorderCheckout(request, env, deps) {
   await db('foc_preorder_orders', { method:'POST', headers:{ Prefer:'return=minimal' }, body:JSON.stringify(orderRow) });
   await db('foc_preorder_items', { method:'POST', headers:{ Prefer:'return=minimal' }, body:JSON.stringify(lines.map(line => ({
     order_id:orderId, store_id:storeId, cycle_id:cycleId, sku_id:line.sku.id, quantity:line.quantity,
-    unit_price_cents:line.unitPriceCents, sku_snapshot:{ title:line.sku.title, variantLabel:line.sku.variant_label, coverArtist:line.sku.cover_artist, coverImageUrl:line.sku.cover_image_url, upc:line.sku.upc, onSaleDate:line.sku.on_sale_date },
+    unit_price_cents:line.unitPriceCents, sku_snapshot:{ title:line.sku.title, variantLabel:line.sku.variant_label, coverArtist:line.sku.cover_artist, coverImageUrl:line.sku.cover_image_url, upc:line.sku.upc, onSaleDate:line.sku.on_sale_date, msrpCents:Number(line.sku.msrp_cents||0) },
   }))) });
   try {
     const params = new URLSearchParams({ amount:String(totalCents), currency:'usd', 'automatic_payment_methods[enabled]':'true', 'receipt_email':customerEmail,
@@ -1677,14 +1677,35 @@ export function focOrderConfirmationEmail(order, items) {
 async function recordPaidFocSale(env, order, paymentIntent, deps) {
   const db=deps.supabaseAdminFetch;
   const {data:items}=await db(env,`foc_preorder_items?order_id=eq.${encodeURIComponent(order.id)}&select=id,sku_id,quantity,unit_price_cents,line_total_cents,sku_snapshot`);
+  // Store report: comic preorder profit reporting was wrong -- worst on
+  // incentive/ratio covers, which routinely get priced well above MSRP as
+  // compensation for the order-ratio chase. Real PRH wholesale cost is 50%
+  // of MSRP (the same documented rate used everywhere else in this app a
+  // comic's cost gets computed -- receiveShipment, /foc/ebay/create-presale)
+  // -- NOT 50% of whatever the customer was actually charged, which is what
+  // this used to compute. A $20 incentive cover with a $4.99 MSRP was
+  // costing out at $10 here instead of the real ~$2.50, understating profit
+  // by a lot on exactly the highest-value lines. msrpCents is snapshotted
+  // onto sku_snapshot at order-creation time now; orders placed before that
+  // existed fall back to a live comic_skus lookup here (msrp practically
+  // never changes post-FOC-import, so this stays accurate for old orders
+  // too), and only as an absolute last resort (sku since deleted) to the
+  // old customer-price-based guess.
+  const missingMsrpSkuIds=[...new Set((items||[]).filter(item=>!(item.sku_snapshot||{}).msrpCents&&item.sku_id).map(item=>item.sku_id))];
+  const msrpBySkuId=new Map();
+  if(missingMsrpSkuIds.length){
+    const {data:skuRows}=await db(env,`comic_skus?id=${inFilter(missingMsrpSkuIds)}&select=id,msrp_cents`);
+    (skuRows||[]).forEach(row=>msrpBySkuId.set(row.id,Number(row.msrp_cents||0)));
+  }
   const paidAt=order.paid_at||new Date().toISOString();
   await db(env,'pos_sales?on_conflict=id',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify({id:order.id,store_id:order.store_id,subtotal:Number(order.subtotal_cents||0)/100,discount_total:0,tax_total:0,total:Number(order.total_cents||0)/100,status:'completed',payment_status:'paid',refundable_remaining_cents:Number(order.total_cents||0),created_by:order.user_id||null,created_at:order.created_at||paidAt,completed_at:paidAt})});
   const lines=(items||[]).map(item=>{
     const quantity=Math.max(1,Number(item.quantity||1));
     const unitPriceCents=Math.max(0,Number(item.unit_price_cents||0));
-    const costCents=Math.round(unitPriceCents*0.5);
-    const extendedCents=Number(item.line_total_cents||unitPriceCents*quantity);
     const snapshot=item.sku_snapshot||{};
+    const msrpCents=Number(snapshot.msrpCents||msrpBySkuId.get(item.sku_id)||0);
+    const costCents=Math.round((msrpCents||unitPriceCents)*0.5);
+    const extendedCents=Number(item.line_total_cents||unitPriceCents*quantity);
     return {id:`foc-line-${item.id}`,sale_id:order.id,store_id:order.store_id,item_id:item.sku_id||null,title:[snapshot.title,snapshot.variantLabel].filter(Boolean).join(' · ')||'Comic preorder',category:'Comic Preorder',quantity,unit_price:unitPriceCents/100,original_price:extendedCents/100,adjusted_price:extendedCents/100,discount_amount:0,cost_basis:costCents/100,profit:(extendedCents-costCents*quantity)/100,source_id:`foc:${order.order_number}`,image_url:snapshot.coverImageUrl||null};
   });
   const shippingCents=Math.max(0,Number(order.shipping_cents||0));

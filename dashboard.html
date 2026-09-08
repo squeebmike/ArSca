@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.09.08.01-ebay-variation-listings">
+<meta name="version" content="2026.09.08.02-comic-profit-cart-qty-fixes">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1633,15 +1633,15 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.09.08.01-ebay-variation-listings" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.09.08.01-ebay-variation-listings" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.09.08.01-ebay-variation-listings" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.09.08.01-ebay-variation-listings" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.09.08.01-ebay-variation-listings" defer></script>
-<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.09.08.01-ebay-variation-listings" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.09.08.01-ebay-variation-listings" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.09.08.01-ebay-variation-listings" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.09.08.01-ebay-variation-listings" defer></script>
+<script src="scripts/query-routing.js?v=2026.09.08.02-comic-profit-cart-qty-fixes" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.09.08.02-comic-profit-cart-qty-fixes" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.09.08.02-comic-profit-cart-qty-fixes" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.09.08.02-comic-profit-cart-qty-fixes" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.09.08.02-comic-profit-cart-qty-fixes" defer></script>
+<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.09.08.02-comic-profit-cart-qty-fixes" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.09.08.02-comic-profit-cart-qty-fixes" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.09.08.02-comic-profit-cart-qty-fixes" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.09.08.02-comic-profit-cart-qty-fixes" defer></script>
 </head>
 <body>
 
@@ -1670,11 +1670,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.09.08.01-ebay-variation-listings</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.09.08.02-comic-profit-cart-qty-fixes</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.09.08.01-ebay-variation-listings</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.09.08.02-comic-profit-cart-qty-fixes</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1692,7 +1692,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.09.08.01-ebay-variation-listings</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.09.08.02-comic-profit-cart-qty-fixes</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3768,7 +3768,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.09.08.01-ebay-variation-listings';
+const APP_VERSION = '2026.09.08.02-comic-profit-cart-qty-fixes';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -6375,6 +6375,9 @@ const FEATURE_LOG = [
     { title:'List every cover as one eBay listing', status:'new', desc:'A title with 2+ covers now has a LIST ALL COVERS · 1 EBAY LISTING button on the Cover Wall -- publishes every checked cover as ONE real eBay listing with eBay\'s native "Cover: Select" variation dropdown (own price/qty per cover, own cover photo per choice), plus an optional "All Covers Bundle" variant, instead of separate listings per cover. Ending one cover later only pulls that cover out of the shared listing (or ends the whole listing if it was the last one still live) -- the other covers keep selling.' },
     { title:'Fixed: FOC presale listings could silently publish under the wrong shipping policy', status:'new', desc:'A store report: after explicitly picking a "FOC" shipping policy in the review screen, the first several listings in a bulk run correctly used its cloned handling-time policy, then later listings in the SAME run silently reverted to the store\'s generic default policy with no warning anywhere. Every failure path in the policy-cloning logic was quietly returning the generic default (a real, valid-looking policy id) instead of flagging that a substitution happened -- now surfaced as a warning naming exactly why, right on the listing result.' },
     { title:'Fixed: FOC volume-discount promotion setup', status:'new', desc:'The "buy more, save more" volume discount FOC presale listings try to set up automatically was failing on every listing with "A valid entry is required for \'marketplaceId\'" -- eBay\'s promotion API needed that field on the request and it was missing.' },
+    { title:'Fixed: comic preorder profit was wrong, worst on incentive covers', status:'new', desc:'A paid website comic preorder\'s recorded cost was 50% of what the CUSTOMER paid instead of 50% of the real MSRP -- correct on a book priced at MSRP, but incentive/ratio covers routinely sell for well above MSRP as compensation for the order-ratio chase, so a $20 incentive cover with a $4.99 MSRP was costing out at $10 instead of the real ~$2.50, understating profit by a lot on exactly the highest-value comic sales.' },
+    { title:'Fixed: the eBay variation listing tool could reject a whole listing over one missing cover photo', status:'new', desc:'A cover with no cover art on file published its own inventory_item with zero photos, and eBay rejected the entire shared listing over it ("Add at least 1 photo"). Now borrows another selected cover\'s photo for it instead of leaving it blank, flags which cover is borrowing one right in the review screen, and gives the "All Covers Bundle" variant a full photo gallery of every cover it bundles instead of just one.' },
+    { title:'Fixed: selling more than 1 of an item (one-off sale, or a quantity-grouped comic) recorded the wrong sale total and profit', status:'new', desc:'A one-off cart sale with its quantity typed directly (not via the +/- stepper), or a normal Sell on a quantity-grouped comic row selling more than 1 copy at once, recorded that line\'s price as if only 1 unit had sold -- undercounting the sale total, and (since cost is always tracked per-unit) overstating profit on top of that. Every cart line\'s price now correctly reflects its full quantity from the moment it\'s added, matching what the quantity stepper already maintained.' },
   ]},
   { area:'Customer Web Accounts (your website)', items:[
     { title:'My Account page', status:'new', desc:'Signed-in customers can see their general shop orders, comic preorders, loyalty points, trade-in credit, and gift card balances all in one page on your website.' },
@@ -20664,7 +20667,19 @@ function addSaleItemToCart(item = {}, options = {}){
     // ── Legacy fields kept in sync for existing cart render / finalize code ──
     id: cartLineId,
     sub: options.sub ?? [item.set, item.year, category].filter(Boolean).join(' · ') ?? '',
-    price: unitPrice,
+    // Store report: comic/one-off sales weren't calculating correctly --
+    // root cause. Every other reader of a cart line (normalizeCartTotals,
+    // customerSafeLine, renderDealerCartTools's own comment: "quick-sale/
+    // bulk-lot lines store `price` as an already-total lump sum") treats
+    // `price` as the line's FULL extended total, not a per-unit rate --
+    // adjustCartLineQuantity (the +/- stepper) already maintains it that
+    // way (`item.price = effectiveUnitPrice * nextQty`). But a line added
+    // here with an initial quantity > 1 typed directly -- the ONE-OFF modal
+    // (any qty), or the normal Sell modal on a quantity-grouped comic row
+    // (sell 3 of the 5 copies at once) -- set price to the bare per-unit
+    // rate instead, silently undercounting that line's cart total/revenue
+    // by a factor of its quantity, which cascaded into wrong profit too.
+    price: Math.round(unitPrice * quantity * 100) / 100,
     rawMarketPrice: options.rawMarketPrice ?? item.rawMarketPrice ?? item.marketPrice ?? item.market ?? null,
     suggestedFromMarket: options.suggestedFromMarket ?? item.rawMarketPrice ?? item.marketPrice ?? item.market ?? null,
     cost: costBasis,
@@ -40865,18 +40880,28 @@ function makeUuid(prefix = 'local'){
 }
 
 function customerSafeLine(item){
+  // Store report: comic (and one-off) sale profit wasn't calculating
+  // correctly. item.cost/costBasis is always PER-UNIT (set once in
+  // addSaleItemToCart, never touched by the +/- quantity stepper), while
+  // item.price is the line's EXTENDED total -- same "multiply cost by
+  // quantity or profit silently reads high on every multi-unit line" fix
+  // already applied in markCartItemsSoldFromPayment (inventory-side
+  // tracking) but missing here on the pos_sale_lines/reporting side, which
+  // is what Reports/profit actually reads.
+  const lineQuantity = Number(item.qty || item.quantity || 1);
+  const extendedCost = Number(item.cost || 0) * lineQuantity;
   return {
     item_id:item.shopId || item.wfId || item.id || '',
     source_type:item.sourceType || 'inventory',
     title:item.name || 'Item',
     category:item.categoryName || item.category || '',
-    quantity:Number(item.qty || item.quantity || 1),
+    quantity:lineQuantity,
     unit_price:Number(item.price || 0),
     original_price:Number(item.originalPrice ?? item.price ?? 0),
     adjusted_price:Number(item.adjustedPrice ?? item.price ?? 0),
     discount_amount:Math.max(0, Number(item.originalPrice ?? item.price ?? 0) - Number(item.price || 0)),
-    cost_basis:Number(item.cost || 0),
-    profit:Number(item.price || 0) - Number(item.cost || 0),
+    cost_basis:extendedCost,
+    profit:Number(item.price || 0) - extendedCost,
     taxable:item.taxable !== false,
     condition:item.condition || '',
     finish:item.finish || '',
@@ -46203,7 +46228,7 @@ async function toppsLoadParallels(cardId){
   window.__arscaCloseModal = closeModal;
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.09.08.01-ebay-variation-listings" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.09.08.02-comic-profit-cart-qty-fixes" defer></script>
 </body>
 </html>
 
