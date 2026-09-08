@@ -3950,6 +3950,13 @@ export default {
       const weightValue = Number(body.weightValue) > 0 ? Number(body.weightValue) : defaults.weightValue;
       const weightUnit = body.weightUnit || defaults.weightUnit;
       const storeCategoryNames = Array.isArray(body.storeCategoryNames) ? body.storeCategoryNames : String(body.storeCategoryNames || '').split(',');
+      // Optional store-uploaded "pick your cover" combined graphic --
+      // shown as the FIRST/default photo before a buyer picks a cover,
+      // ahead of (never replacing) each cover's own real photo. Trusted as
+      // a plain URL string, same as every other client-supplied image URL
+      // this route already accepts (cover.imageUrl itself is also never
+      // more deeply validated than "is it a non-empty string").
+      const mainImageUrl = (typeof body.mainImageUrl === 'string' && body.mainImageUrl.trim()) ? body.mainImageUrl.trim().substring(0, 1000) : '';
       const basePolicyId = (typeof body.basePolicyId === 'string' && body.basePolicyId.trim()) ? body.basePolicyId.trim() : '';
       if (!basePolicyId) return json({ ok: false, error: 'Pick a shipping policy in the review screen before publishing -- FOC listings no longer auto-detect one.' }, 400);
       const fulfillmentResult = await getFocPresaleFulfillmentPolicyId(env, ebayToken, handlingBusinessDays, basePolicyId);
@@ -3963,7 +3970,7 @@ export default {
           groupTitle, description, variantAspectName: 'Cover', variants: built,
           categoryId: '259104', conditionId, condition: 'NEW',
           customAspects, bestOfferEnabled, weightValue, weightUnit,
-          fulfillmentPolicyId, storeCategoryNames,
+          fulfillmentPolicyId, storeCategoryNames, mainImageUrl,
         }, ebayToken, env, storeId);
       } catch (e) {
         console.error('FOC eBay group presale listing error:', e);
@@ -7233,7 +7240,15 @@ export default {
       // images. Every prior version of this group body omitted it entirely,
       // so from eBay's point of view the GROUP itself had zero photos even
       // though every individual variant did.
-      const groupImageUrls = [...new Set(built.map(v => v.imageUrl).filter(Boolean))];
+      // Store request: "an automated way to make the lead image the one
+      // with all the covers listed as one image?" -- there's no image-
+      // compositing capability anywhere in this app (no WASM/canvas image
+      // library, nothing that draws multiple photos into one), so this
+      // can't generate a collage automatically. What it CAN do: let the
+      // store upload their own pre-made combined graphic and use it as the
+      // FIRST (default/lead) photo shown before a buyer picks a cover --
+      // ahead of each individual cover's own photo, never replacing them.
+      const groupImageUrls = [...new Set([b.mainImageUrl, ...built.map(v => v.imageUrl)].filter(Boolean))];
       const groupBody = {
         title: String(groupTitle).substring(0, 80),
         description: toEbayHtmlDescription(b.description || groupTitle),
