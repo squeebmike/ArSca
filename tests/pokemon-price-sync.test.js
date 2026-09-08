@@ -34,6 +34,7 @@ const context = {
 vm.createContext(context);
 vm.runInContext(functionSource(dashboard, 'isPokemonSealedInventorySyncItem'), context);
 vm.runInContext(functionSource(dashboard, 'pokemonPriceTrackerMarketPrice'), context);
+vm.runInContext(functionSource(dashboard, 'pokemonExpandSealedAbbreviations'), context);
 vm.runInContext(functionSource(dashboard, 'pokemonSealedInventorySearchQueries'), context);
 vm.runInContext(functionSource(dashboard, 'findBestLivePokemonSealedMatch'), context);
 vm.runInContext(functionSource(dashboard, 'inventoryTcgplayerReferenceId'), context);
@@ -60,6 +61,11 @@ assert.deepStrictEqual(
   ['Mega Charizard X Ex Ultra Premium Collection'],
   'Punctuation should not prevent a provider match'
 );
+assert.deepStrictEqual(
+  [...context.pokemonSealedInventorySearchQueries({ name:'Surging Sparks ETB' })],
+  ['Surging Sparks elite trainer box'],
+  'ETB shorthand must be expanded before being sent to PPT as a search query too, not just at match-scoring time'
+);
 const lucario = context.findBestLivePokemonSealedMatch(
   { name:'Elite Trainer Box [Mega Lucario]', set:'Pokemon Mega Evolution' },
   [
@@ -68,7 +74,37 @@ const lucario = context.findBestLivePokemonSealedMatch(
     { name:'Mega Lucario ex Premium Figure Collection', setName:'Mega Evolution' },
   ]
 );
-assert.strictEqual(lucario.tcgPlayerId, '648394', 'Fallback must prefer the normal ETB over Pokemon Center and unrelated products');
+assert.strictEqual(lucario.product.tcgPlayerId, '648394', 'Fallback must prefer the normal ETB over Pokemon Center and unrelated products');
+
+// Store report: real sealed items were landing in "not matched" even when
+// PPT's search returned the right product, because a store-entered "ETB"/
+// "UPC" abbreviation had zero token overlap against PPT's always-spelled-
+// out product name ("Elite Trainer Box"/"Ultra Premium Collection").
+assert.strictEqual(
+  context.pokemonExpandSealedAbbreviations('Surging Sparks ETB'),
+  'Surging Sparks elite trainer box',
+  'ETB must expand to its full product name before searching/matching'
+);
+assert.strictEqual(
+  context.pokemonExpandSealedAbbreviations('Charizard UPC'),
+  'Charizard ultra premium collection',
+  'UPC must expand to its full product name before searching/matching'
+);
+const etbOnly = context.findBestLivePokemonSealedMatch(
+  { name:'Surging Sparks ETB', set:'Surging Sparks' },
+  [{ name:'Surging Sparks Elite Trainer Box', setName:'Surging Sparks', tcgPlayerId:'999111' }]
+);
+assert.strictEqual(etbOnly.product?.tcgPlayerId, '999111', 'A store-entered "ETB" shorthand must still match PPT\'s fully-spelled-out product name');
+
+// A rejected match must still report the closest candidate + score, not
+// just "nothing matched", so a real near-miss is explainable/actionable.
+const noMatch = context.findBestLivePokemonSealedMatch(
+  { name:'Completely Unrelated Product Nobody Sells', set:'Nonexistent Set' },
+  [{ name:'Surging Sparks Elite Trainer Box', setName:'Surging Sparks', tcgPlayerId:'999111' }]
+);
+assert.strictEqual(noMatch.product, null, 'A genuinely unrelated candidate must still be rejected');
+assert.strictEqual(noMatch.bestName, 'Surging Sparks Elite Trainer Box', 'the closest (even if rejected) candidate name must be reported for diagnosability');
+assert(noMatch.bestScore < 75, 'the reported near-miss score must be below the accept threshold, matching why it was rejected');
 assert.strictEqual(context.inventoryTcgplayerReferenceId('654135'), '654135', 'Inventory should accept a bare TCGplayer product ID');
 assert.strictEqual(context.inventoryTcgplayerReferenceId('https://www.tcgplayer.com/product/654135/example?Language=English'), '654135', 'Inventory should accept a complete TCGplayer URL');
 assert.strictEqual(context.inventoryTcgplayerReferenceId('not-a-product'), '', 'Inventory should reject invalid TCGplayer references');

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.09.08.02-comic-profit-cart-qty-fixes">
+<meta name="version" content="2026.09.08.03-pokemon-sealed-match-fix">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1633,15 +1633,15 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.09.08.02-comic-profit-cart-qty-fixes" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.09.08.02-comic-profit-cart-qty-fixes" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.09.08.02-comic-profit-cart-qty-fixes" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.09.08.02-comic-profit-cart-qty-fixes" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.09.08.02-comic-profit-cart-qty-fixes" defer></script>
-<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.09.08.02-comic-profit-cart-qty-fixes" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.09.08.02-comic-profit-cart-qty-fixes" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.09.08.02-comic-profit-cart-qty-fixes" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.09.08.02-comic-profit-cart-qty-fixes" defer></script>
+<script src="scripts/query-routing.js?v=2026.09.08.03-pokemon-sealed-match-fix" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.09.08.03-pokemon-sealed-match-fix" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.09.08.03-pokemon-sealed-match-fix" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.09.08.03-pokemon-sealed-match-fix" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.09.08.03-pokemon-sealed-match-fix" defer></script>
+<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.09.08.03-pokemon-sealed-match-fix" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.09.08.03-pokemon-sealed-match-fix" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.09.08.03-pokemon-sealed-match-fix" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.09.08.03-pokemon-sealed-match-fix" defer></script>
 </head>
 <body>
 
@@ -1670,11 +1670,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.09.08.02-comic-profit-cart-qty-fixes</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.09.08.03-pokemon-sealed-match-fix</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.09.08.02-comic-profit-cart-qty-fixes</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.09.08.03-pokemon-sealed-match-fix</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1692,7 +1692,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.09.08.02-comic-profit-cart-qty-fixes</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.09.08.03-pokemon-sealed-match-fix</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3768,7 +3768,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.09.08.02-comic-profit-cart-qty-fixes';
+const APP_VERSION = '2026.09.08.03-pokemon-sealed-match-fix';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -6274,6 +6274,7 @@ const FEATURE_LOG = [
     { title:'MTG offline card images', status:'working', desc:'MTG never had a bulk card-image pipeline -- only an opportunistic cache that only ever caches a card actually searched for while online, so offline search regularly showed no image. Mirrors Pokemon\'s image pipeline: a GitHub Action harvests images from Scryfall server-side once per set (or all sets), devices bulk-sync the finished bundle from Settings > Offline Catalogs, and offline search/inventory now check that bulk cache first.' },
     { title:'Sports Card & One Piece TCG real pricing', status:'working', desc:'Live market pricing for Sports cards and One Piece TCG, not just Pokemon/MTG.' },
     { title:'PokemonPriceTracker bulk exports respect complimentary access', status:'working', desc:'Fixed: the bulk CSV export used for the Cards/Sealed/eBay/Population offline downloads checked subscription status on its own instead of the same shared check every other Pokemon pricing route uses, so a store with complimentary (S Rank) access could still get "Subscription required" trying to download those.' },
+    { title:'Better sealed-product price-sync matching', status:'new', desc:'FETCH LIVE POKEMON was leaving real sealed items in "not matched" even when PokemonPriceTracker had the right product in its results -- common store shorthand like "ETB" or "UPC" has zero word overlap against PPT\'s always-spelled-out names ("Elite Trainer Box", "Ultra Premium Collection"), so a real match scored too low to accept. Those abbreviations now expand before both searching and matching, generic filler words (Pokemon, TCG, the) no longer dilute the match score, and a rejected sealed item now names its closest real candidate and score instead of just saying "no match" with no way to tell why.' },
   ]},
   { area:'Inventory Management', items:[
     { title:'Product Type field', status:'working', desc:'Tags each item as Single, Booster Pack, Secret Lair, Commander Deck, Graded Comic, etc., with a matching filter everywhere items are browsed.' },
@@ -12735,7 +12736,8 @@ async function fetchLivePokemonInventoryCard(item = {}){
     }
   }
   const cards = result.cards || [];
-  const card = tcgPlayerId ? (cards[0] || null) : (sealed ? findBestLivePokemonSealedMatch(item, cards) : findBestLivePokemonInventoryMatch(item, cards));
+  const sealedMatch = sealed && !tcgPlayerId ? findBestLivePokemonSealedMatch(item, cards) : null;
+  const card = tcgPlayerId ? (cards[0] || null) : (sealed ? sealedMatch.product : findBestLivePokemonInventoryMatch(item, cards));
   return {
     card,
     requestPath:result.requestPath,
@@ -12746,6 +12748,11 @@ async function fetchLivePokemonInventoryCard(item = {}){
     query:tcgPlayerId ? '' : query,
     attemptedQueries,
     productType:sealed ? 'sealed' : 'card',
+    // The single closest sealed candidate PPT actually returned, even when
+    // it didn't clear the accept threshold -- lets a rejected match be
+    // explained ("closest was X, Y% confident") instead of just "no match".
+    nearMissName:sealedMatch?.bestName || '',
+    nearMissScore:sealedMatch?.bestScore || 0,
   };
 }
 
@@ -12757,8 +12764,26 @@ function isPokemonSealedInventorySyncItem(item = {}){
   return /\b(etb|elite[\s-]*trainer[\s-]*box|booster[\s-]*(box|display|bundle|pack)|ultra[\s-]*premium[\s-]*collection|premium[\s-]*(figure[\s-]*)?collection|collection[\s-]*box|build[\s-]*&?[\s-]*battle|sleeved[\s-]*booster|blister|tin|sealed|display|case)\b/i.test(text);
 }
 
+// Store report: sealed-product price sync (SYNC LATEST PRICES) left a lot
+// of real sealed items in "not matched" -- the actual PPT candidate was
+// often right there in the search results (resultCount > 0), just scored
+// too low to accept. A big chunk of that was store-entered names using
+// common sealed-product shorthand ("ETB", "UPC") that PPT's own product
+// names always spell out in full ("Elite Trainer Box", "Ultra Premium
+// Collection") -- the token-overlap scorer below has zero overlap between
+// "etb" and {elite, trainer, box}, tanking nameCoverage for an otherwise
+// exact match. Mirrors the existing pokemonExpandSearchAbbreviations
+// pattern (rarity shorthand -- SIR/IR/etc) for the sealed-product side.
+function pokemonExpandSealedAbbreviations(text){
+  return String(text || '')
+    .replace(/\betb\b/gi, 'elite trainer box')
+    .replace(/\bupc\b/gi, 'ultra premium collection')
+    .replace(/\bptcgo?\b/gi, 'pokemon trading card game online')
+    .replace(/\s+/g, ' ').trim();
+}
+
 function pokemonSealedInventorySearchQueries(item = {}){
-  const name = String(inventoryCardName(item) || '').trim();
+  const name = pokemonExpandSealedAbbreviations(String(inventoryCardName(item) || '').trim());
   const cleanedName = name.replace(/[\[\](){},:;–—-]+/g, ' ').replace(/\s+/g, ' ').trim();
   const bracketName = (name.match(/[\[(]([^\])]+)[\])]/) || [])[1] || '';
   const setName = String(inventorySetName(item) || '').trim();
@@ -12774,17 +12799,29 @@ function pokemonSealedInventorySearchQueries(item = {}){
     .filter(query => query && query.length >= 3))];
 }
 
+// Returns {product, score, bestName, bestScore} -- product is null (no
+// accept) when nothing cleared the threshold, but bestName/bestScore
+// (the single closest candidate regardless of threshold) are always
+// populated when at least one product was scored, so a rejected match can
+// be explained to the store instead of just reported as "no match" with no
+// visibility into how close the real candidate actually was.
 function findBestLivePokemonSealedMatch(item = {}, products = []){
-  const targetName = normalizePokemonText(inventoryCardName(item));
+  // Generic filler tokens that add no matching signal but can dilute
+  // coverage scoring purely by being present on one side and not the other
+  // (a store's inventory name/set is often the full verbose Webflow-style
+  // text -- "Pokemon TCG: Scarlet & Violet—Surging Sparks" -- while PPT's
+  // own set field is just "Surging Sparks").
+  const stopwords = new Set(['pokemon', 'tcg', 'the', 'a', 'an', 'of', 'and']);
+  const targetName = normalizePokemonText(pokemonExpandSealedAbbreviations(inventoryCardName(item)));
   const targetSet = normalizePokemonText(inventorySetName(item));
-  const targetTokens = new Set(targetName.split(' ').filter(Boolean));
-  const targetSetTokens = new Set(targetSet.split(' ').filter(token => token && token !== 'pokemon'));
+  const targetTokens = new Set(targetName.split(' ').filter(token => token && !stopwords.has(token)));
+  const targetSetTokens = new Set(targetSet.split(' ').filter(token => token && !stopwords.has(token)));
   let best = null;
   products.forEach(product => {
-    const name = normalizePokemonText(product.name || product.productName || product.title || '');
+    const name = normalizePokemonText(pokemonExpandSealedAbbreviations(product.name || product.productName || product.title || ''));
     const set = normalizePokemonText(product.setName || product.set || '');
-    const nameTokens = new Set(name.split(' ').filter(Boolean));
-    const setTokens = new Set(set.split(' ').filter(Boolean));
+    const nameTokens = new Set(name.split(' ').filter(token => token && !stopwords.has(token)));
+    const setTokens = new Set(set.split(' ').filter(token => token && !stopwords.has(token)));
     let score = 0;
     if(targetName && name === targetName) score += 120;
     else if(targetName && (name.includes(targetName) || targetName.includes(name))) score += 75;
@@ -12802,9 +12839,13 @@ function findBestLivePokemonSealedMatch(item = {}, products = []){
     ['case', 'pokemon center', 'exclusive'].forEach(qualifier => {
       if(name.includes(qualifier) !== targetName.includes(qualifier)) score -= 70;
     });
-    if(!best || score > best.score) best = { product, score };
+    if(!best || score > best.score) best = { product, score, name:product.name || product.productName || product.title || '' };
   });
-  return best && best.score >= 75 ? best.product : null;
+  return {
+    product: best && best.score >= 75 ? best.product : null,
+    bestName: best ? best.name : '',
+    bestScore: best ? Math.round(best.score) : 0,
+  };
 }
 
 // ── PRICE SYNC ENGINE (A5-A8) ─────────────────────────────────────────────
@@ -13492,7 +13533,14 @@ async function buildLivePokemonPriceSyncProposal(options = {}){
             ? 'Exact product ID ' + linkedId + ' returned no Pokemon ' + (sealed ? 'sealed product from /sealed-products.' : 'card from /cards.') + ' Confirm the TCGplayer link and product type.'
             : (live.matchStatus === 'no-query'
               ? 'This row has no TCGplayer product ID/link and not enough name, set, or card-number data to search.'
-              : 'No TCGplayer product ID/link is saved. The fallback search' + (live.attemptedQueries?.length > 1 ? 'es' : '') + ' for "' + ((live.attemptedQueries || [live.query || inventoryPokemonExactQuery(item)]).join('" / "')) + '" returned ' + Number(live.resultCount || 0) + ' candidate(s), but none passed exact product-name and set matching.'),
+              // Store report: sealed items regularly showed "returned N
+              // candidate(s), but none passed" with no way to tell whether
+              // that meant PPT found nothing usable or found the RIGHT
+              // product and just scored it too low -- naming the closest
+              // candidate and its score turns that into something the
+              // store can actually act on (rename the inventory item to
+              // match, or confirm it's a genuine no-match).
+              : 'No TCGplayer product ID/link is saved. The fallback search' + (live.attemptedQueries?.length > 1 ? 'es' : '') + ' for "' + ((live.attemptedQueries || [live.query || inventoryPokemonExactQuery(item)]).join('" / "')) + '" returned ' + Number(live.resultCount || 0) + ' candidate(s), but none passed exact product-name and set matching.' + (sealed && live.nearMissName ? ' Closest candidate: "' + live.nearMissName + '" (' + live.nearMissScore + '/75+ needed to accept -- rename this item to match more closely if that is the right product).' : '')),
         });
         return;
       }
@@ -46228,7 +46276,7 @@ async function toppsLoadParallels(cardId){
   window.__arscaCloseModal = closeModal;
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.09.08.02-comic-profit-cart-qty-fixes" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.09.08.03-pokemon-sealed-match-fix" defer></script>
 </body>
 </html>
 
