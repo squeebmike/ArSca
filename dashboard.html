@@ -3735,6 +3735,18 @@ body.show-mode .inv-sync-badge{display:none;}
       <div style="font-family:monospace;font-size:10px;color:var(--dim);margin-bottom:10px">Based on sales velocity, items you should restock soon. Uncheck any you don't want on the PO, adjust qty as needed:</div>
       <div id="rs-checklist"></div>
     </div>
+
+    <!-- Inventory Opportunity Matching -->
+    <div class="two" style="margin-top:14px">
+      <div class="panel">
+        <div class="ph">🎯 THINNING PRODUCT LINES <span style="color:var(--dim);font-size:8px">selling fast, running low -- before the shelf goes empty</span></div>
+        <div id="rs-thinning"></div>
+      </div>
+      <div class="panel">
+        <div class="ph">📚 UPCOMING FOC MATCHES YOUR SELLERS <span style="color:var(--dim);font-size:8px">recent comic sales vs. what's coming in FOC</span></div>
+        <div id="rs-foc-match">Loading…</div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -6379,6 +6391,7 @@ const FEATURE_LOG = [
   ]},
   { area:'Restock', items:[
     { title:'Reorder suggestions / PO drafts', status:'working', desc:'Suggests what to reorder based on stock levels and drafts a purchase order.' },
+    { title:'Inventory Opportunity Matching', status:'new', desc:'Two new panels on the Restock tab: Thinning Product Lines flags a whole product line (e.g. a specific set) selling well while what\'s left is running low, before the shelf actually empties -- catching the gap the exact-name restock checklist misses. Upcoming FOC Matches Your Sellers cross-references your last 14 days of comic sales against titles in an upcoming FOC file, so a hot-selling character/series gets connected to a related release already on the way.' },
   ]},
   { area:'Reporting', items:[
     { title:'Potential ROI stat (Home)', status:'working', desc:'Shows what you\'d walk away with if everything in stock sold at your real price right now, vs. what you paid for it.' },
@@ -23374,6 +23387,107 @@ function restockSuggestedQty(name, count, nameSalesSortedDesc){
   return { qty, perWeek: perWeek.toFixed(1), unitCost: lastCost };
 }
 
+// ── Inventory Opportunity Matching ──────────────────────────────────────
+// Store idea: the restock checklist above only fires once a specific item
+// hits qty 0 (exact name match). This catches the earlier warning sign --
+// a whole PRODUCT LINE (grouped by set, not exact item) selling well
+// while what's left is thinning out, e.g. "selling TMNT MTG quickly but
+// only 4 left" -- so restocking happens before the shelf actually empties.
+function computeThinningProductLines(items, opts={}){
+  const days = opts.days || 30;
+  const minSold = opts.minSold || 3;
+  const maxRemaining = opts.maxRemaining ?? 6;
+  const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
+  const sold = (items || []).filter(i => i.status === 'sold' && i.soldAt && i.set && new Date(i.soldAt).getTime() >= cutoff);
+  const groups = new Map();
+  sold.forEach(i => {
+    const key = (i.category || '') + '||' + i.set;
+    if(!groups.has(key)) groups.set(key, { category: i.category, set: i.set, soldCount: 0 });
+    groups.get(key).soldCount++;
+  });
+  return [...groups.values()]
+    .map(g => {
+      const remaining = (items || []).filter(i => i.status === 'in_stock' && i.category === g.category && i.set === g.set);
+      const remainingQty = remaining.reduce((s, i) => s + (i.qty || 1), 0);
+      return { ...g, remainingQty };
+    })
+    .filter(g => g.soldCount >= minSold && g.remainingQty > 0 && g.remainingQty <= maxRemaining)
+    .sort((a, b) => b.soldCount - a.soldCount);
+}
+function renderThinningProductLines(){
+  const el = document.getElementById('rs-thinning');
+  if(!el) return;
+  const thinning = computeThinningProductLines(all);
+  el.innerHTML = thinning.length ? thinning.map(g => `<div class="attn-item">
+    <div class="attn-dot low"></div>
+    <div class="attn-name">${escHtml(g.set)} <span style="color:var(--dim);font-size:8px">${escHtml(g.category)}</span></div>
+    <div class="attn-act" style="font-family:monospace;font-size:8px;color:var(--red)">${g.soldCount} sold / 30d, only ${g.remainingQty} left</div>
+  </div>`).join('') : '<div class="empty"><div class="empty-t">Nothing thinning out right now</div></div>';
+}
+
+// Store idea: cross-reference recent comic sales against what's coming in
+// an upcoming FOC file -- "sold 7 Spider-Man comics in 14 days; next
+// week's FOC has 3 related releases". Matching is a simple shared-
+// significant-word check (same "no fancy NLP, explainable rule" approach
+// as Card Themes' inventory matching), not fuzzy AI matching, so a hit
+// is always traceable back to why it matched.
+const FOC_MATCH_STOPWORDS = new Set(['the','and','of','vol','volume','tpb','hc','presents','annual','special','one','shot','issue','cover']);
+function focMatchSignificantWords(text){
+  return String(text || '')
+    .toLowerCase()
+    .replace(/#\d+.*/, '')
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .split(/\s+/)
+    .filter(w => w.length >= 4 && !FOC_MATCH_STOPWORDS.has(w));
+}
+function titlesShareSignificantWord(a, b){
+  const wa = new Set(focMatchSignificantWords(a));
+  return focMatchSignificantWords(b).some(w => wa.has(w));
+}
+async function loadFocRelatedReleaseOpportunities(){
+  const sb = getSupabaseClient();
+  const storeId = getActiveStoreId();
+  if(!sb || !storeId) return [];
+  const cutoffIso = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString();
+  const { data: sales, error: salesErr } = await sb
+    .from('pos_sale_lines').select('title,quantity,created_at')
+    .eq('store_id', storeId).eq('category', 'Comic').gte('created_at', cutoffIso);
+  if(salesErr || !sales?.length) return [];
+  const soldByTitle = new Map();
+  sales.forEach(s => { const t = s.title || ''; if(!t) return; soldByTitle.set(t, (soldByTitle.get(t) || 0) + Number(s.quantity || 1)); });
+
+  const today = new Date().toISOString().slice(0, 10);
+  const { data: cycles } = await sb.from('foc_cycles').select('id,foc_date').eq('store_id', storeId).neq('status', 'archived').gte('foc_date', today).order('foc_date', { ascending:true }).limit(10);
+  if(!cycles?.length) return [];
+  const cycleIds = cycles.map(c => c.id);
+  const { data: skus } = await sb.from('comic_skus').select('title,cycle_id').in('cycle_id', cycleIds);
+  if(!skus?.length) return [];
+
+  const opportunities = [];
+  soldByTitle.forEach((qty, soldTitle) => {
+    if(qty < 2) return; // a single sale isn't a real signal
+    const matched = skus.filter(s => titlesShareSignificantWord(soldTitle, s.title));
+    if(!matched.length) return;
+    const matchedTitles = [...new Set(matched.map(s => s.title))];
+    const cycle = cycles.find(c => c.id === matched[0].cycle_id);
+    opportunities.push({ soldTitle, qty, matchedTitles: matchedTitles.slice(0, 5), focDate: cycle?.foc_date });
+  });
+  return opportunities.sort((a, b) => b.qty - a.qty);
+}
+async function renderFocRelatedReleaseOpportunities(){
+  const el = document.getElementById('rs-foc-match');
+  if(!el) return;
+  let opportunities = [];
+  try{ opportunities = await loadFocRelatedReleaseOpportunities(); }
+  catch(e){ el.innerHTML = `<div class="empty"><div class="empty-t">Could not load: ${escHtml(e.message)}</div></div>`; return; }
+  el.innerHTML = opportunities.length ? opportunities.map(o => `<div class="attn-item" style="align-items:flex-start">
+    <div class="attn-dot low"></div>
+    <div class="attn-name">${escHtml(o.soldTitle)} <span style="color:var(--dim);font-size:8px">${o.qty} sold / 14d</span>
+      <div style="font-family:monospace;font-size:8px;color:var(--g);margin-top:2px">→ ${escHtml(o.matchedTitles.join(', '))}${o.focDate ? ' · FOC ' + escHtml(o.focDate) : ''}</div>
+    </div>
+  </div>`).join('') : '<div class="empty"><div class="empty-t">No overlap between recent comic sales and upcoming FOC</div></div>';
+}
+
 function generateRestockPurchaseOrder(){
   const rows = Array.from(document.querySelectorAll('#rs-checklist [data-restock-name]')).filter(row => row.querySelector('.rs-po-check')?.checked);
   if(!rows.length) return alert('Check at least one item to include in the purchase order');
@@ -23424,7 +23538,7 @@ switchTab = function(tab, btn){
   if(tab==='wantlist') { loadWantListFromWorker().then(()=>renderWantList()); loadStorefrontNotifyRequests(); }
   if(tab==='consign') renderConsign();
   if(tab==='locations') renderLocations();
-  if(tab==='restock') renderRestock();
+  if(tab==='restock') { renderRestock(); renderThinningProductLines(); renderFocRelatedReleaseOpportunities(); }
   if(tab==='pos') {
     renderScanInbox();
     renderOpsLog();

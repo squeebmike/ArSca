@@ -26,7 +26,7 @@ actually shipped. Check items off / move to `FEATURE_LOG` as they get built.
       data already shipped — this is the proactive/alerting layer on top
       of that, plus view counts and market-trend data it doesn't have yet.)
 
-- [ ] **Inventory Opportunity Matching.** Cross-references sales velocity
+- [x] **Inventory Opportunity Matching.** Cross-references sales velocity
       against current stock depth and upcoming FOC to surface gaps:
       "You're selling TMNT MTG quickly but only have 4 left." / "You sold 7
       Spider-Man comics in 14 days; next week's FOC has 3 related
