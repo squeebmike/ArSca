@@ -2680,6 +2680,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <div id="tab-whatnot" class="tab-panel">
   <div class="sec">WHATNOT MODE</div>
   <div style="max-width:640px;margin:0 auto;padding:0 20px 40px">
+    <div id="whatnot-show-panel" style="margin-bottom:14px"></div>
     <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);margin-bottom:12px">Scan an item, punch in what it sold for on Whatnot, hit CONFIRM. Marks it sold immediately -- no cart, no extra checkout steps.</div>
 
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;background:var(--surf);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:14px;font-family:var(--font-mono);text-align:center">
@@ -6324,6 +6325,13 @@ const FEATURE_LOG = [
     { title:'Order/inventory webhooks', status:'working', desc:'Real-time eBay notifications instead of waiting on the next manual sync.' },
     { title:'Auto-reprice aged stock', status:'working', desc:'Automatically nudges the price down on eBay listings that have sat unsold past a configurable age.' },
     { title:'eBay deal scanner', status:'working', desc:'Scans active eBay listings for underpriced Pokemon/MTG cards vs. real market value, can run on a schedule in the background.' },
+  ]},
+  { area:'Whatnot / Live Selling', items:[
+    { title:'Scan-and-sell Whatnot Mode', status:'working', desc:'Scan an item, punch in what it sold for on Whatnot, hit CONFIRM -- marks it sold immediately with fee/profit preview, no cart or extra checkout steps.' },
+    { title:'Show Builder', status:'new', desc:'Pick platform (Whatnot/eBay Live/Twitch), show length, and category -- drafts a full run-of-show from current inventory: mid-tier openers (never your best stuff first), cheap engagement filler, your highest-value anchors once the room is warmed up, giveaways, and a strong closer. A deterministic starting heuristic -- the "learns what works over time" half needs real accumulated Show P&L history across shows, which builds up as you run them.' },
+    { title:'Show Inventory Bucket', status:'new', desc:'The Show Builder\'s run-of-show becomes a live queue you work through one item at a time, plus a "🎬 Add to Tonight\'s Show" action on any item\'s row menu to drop something in on the fly mid-show. Every item auto-sorts into SOLD / PASSED / GIVEAWAY as the show runs.' },
+    { title:'Live Auction Companion', status:'new', desc:'While a show is live, Whatnot Mode gets NEXT ITEM / PASS / 🎁 GIVEAWAY buttons on top of the existing scan-and-sell flow -- NEXT ITEM loads the next queued item straight into the price keypad, a real sale automatically closes out that show item too, and GIVEAWAY records it as a near-zero-price sale (correctly depleting inventory) tagged with its own channel for later giveaway-cost tracking.' },
+    { title:'Show P&L', status:'new', desc:'END SHOW prints a full breakdown the moment a stream ends: gross, COGS, estimated Whatnot fees, giveaway cost, estimated profit, and profit per hour -- comparable across shows regardless of length.' },
   ]},
   { area:'Public Storefront (your website)', items:[
     { title:'Stripe checkout on your site', status:'working', desc:'Customers can browse and buy directly from your public storefront with a real Stripe-powered checkout.' },
@@ -11263,6 +11271,7 @@ function showInvRowMenu(e, id, isInStock){
     `<button class="hbtn" style="${btnStyle}" onclick="openEbayFromDash('${id}');closeInvRowMenu()">📦 ${item?.ebayListingId?'Manage eBay Listing':'eBay List'}</button>`,
     isInStock?`<button class="hbtn" style="${btnStyle};color:var(--purple)" onclick="markSoldOnWhatnot('${id}');closeInvRowMenu()">📦 Sold on Whatnot</button>`:'',
     isInStock?`<button class="hbtn" style="${btnStyle};color:var(--gold)" onclick="openExternalSaleModal('${id}');closeInvRowMenu()">💰 Record External Sale (other)</button>`:'',
+    (isInStock && whatnotActiveShow)?`<button class="hbtn" style="${btnStyle};color:var(--g)" onclick="addItemToActiveShow('${id}');closeInvRowMenu()" title="Drop this item into tonight's live show queue">🎬 Add to Tonight's Show</button>`:'',
     inventoryItemBundleEligible(item)?`<button class="hbtn" style="${btnStyle};color:var(--gold)" onclick="toggleBundleDraft('${id}');closeInvRowMenu()">🎁 ${bundleDraftIds.has(id)?'Remove from':'Add to'} Bundle Draft</button>`:'',
     (item?.isBundle && item.status==='in_stock')?`<button class="hbtn" style="${btnStyle};color:var(--blue)" onclick="refreshBundleInfo('${id}');closeInvRowMenu()" title="Re-pulls photos and comic info from this bundle's current member items, without dissolving it">🔄 Refresh Bundle Photos/Info</button>`:'',
     (item?.isBundle && item.status==='in_stock')?`<button class="hbtn" style="${btnStyle};color:var(--red)" onclick="dissolveBundle('${id}');closeInvRowMenu()">🎁 Dissolve Bundle</button>`:'',
@@ -23538,6 +23547,7 @@ switchTab = function(tab, btn){
   betaTrackAction?.('tab switched', tab);
   _origSwitchTab(tab, btn);
   if(tab==='wantlist') { loadWantListFromWorker().then(()=>renderWantList()); loadStorefrontNotifyRequests(); }
+  if(tab==='whatnot') loadActiveWhatnotShow();
   if(tab==='consign') renderConsign();
   if(tab==='locations') renderLocations();
   if(tab==='restock') { renderRestock(); renderThinningProductLines(); renderFocRelatedReleaseOpportunities(); }
@@ -27138,6 +27148,268 @@ function jumpToInventoryItem(item){
 // context-menu action uses, so it shows up in sales history/profit stats
 // identically -- this tab is just a faster front door to it during a show.
 let whatnotScanStream=null, whatnotScanDetector=null, whatnotScanDetecting=false;
+// ── Whatnot Show Builder / Live Auction Companion / Show P&L ───────────
+let whatnotActiveShow = null; // { id, title, category, platform, planned_length_minutes, started_at, status }
+let whatnotShowItems = []; // full queue for the active show, position order
+let whatnotCurrentShowItemId = null; // which whatnotShowItems row is loaded into the scan/keypad panel below
+
+// Store idea ("What Should I Sell Tonight?" Show Builder / Show Planner):
+// pick platform, length, and category; draft a running order from current
+// inventory -- opener (mid-tier value, deliberately NOT the best stuff, so
+// the first 15 minutes doesn't blow the show's peak inventory) ->
+// engagement (cheap filler) -> anchor (the highest-value items, run once
+// the room's warmed up) -> giveaway -> closer (second-highest tier, ends
+// on a high note). A deterministic v1 heuristic -- the "learns what works
+// over time" half of this idea needs real accumulated Show P&L history
+// across many shows, which doesn't exist on a fresh install; every show
+// run through this feeds that history forward for later.
+function buildShowRunOfShow(items, opts={}){
+  const lengthMinutes = opts.lengthMinutes || 60;
+  const category = opts.category || 'Mixed';
+  const itemsPerHour = opts.itemsPerHour || 20;
+  const targetCount = Math.max(6, Math.round(lengthMinutes / 60 * itemsPerHour));
+
+  const pool = (items || []).filter(inventoryItemIsSellable).filter(i => category === 'Mixed' || i.category === category);
+  const priced = pool.map(i => ({ item:i, price: inventoryListPrice(i) || 0 })).filter(x => x.price > 0);
+  if(!priced.length) return [];
+
+  const anchorCount = Math.max(2, Math.round(targetCount * 0.15));
+  const closerCount = Math.max(1, Math.round(targetCount * 0.05));
+  const openerCount = Math.max(1, Math.round(targetCount * 0.10));
+  const giveawayCount = Math.max(1, Math.round(targetCount * 0.05));
+
+  const used = new Set();
+  const take = (arr, n) => { const out = []; for(const x of arr){ if(out.length >= n) break; if(used.has(x.item.id)) continue; used.add(x.item.id); out.push(x); } return out; };
+
+  const byValueDesc = [...priced].sort((a, b) => b.price - a.price);
+  const anchors = take(byValueDesc, anchorCount);
+  const closer = take(byValueDesc, closerCount);
+  const midTier = byValueDesc.filter(x => !used.has(x.item.id));
+  const opener = take(midTier, openerCount);
+  const byValueAsc = [...priced].sort((a, b) => a.price - b.price);
+  const giveaway = take(byValueAsc, giveawayCount);
+  const engagementTarget = Math.max(0, targetCount - anchors.length - closer.length - opener.length - giveaway.length);
+  const engagement = take(byValueAsc.filter(x => !used.has(x.item.id)), engagementTarget);
+
+  const half = Math.ceil(engagement.length / 2);
+  const order = [
+    ...opener.map(x => ({ ...x, role:'opener' })),
+    ...engagement.slice(0, half).map(x => ({ ...x, role:'engagement' })),
+    ...anchors.map(x => ({ ...x, role:'anchor' })),
+    ...engagement.slice(half).map(x => ({ ...x, role:'engagement' })),
+    ...giveaway.map(x => ({ ...x, role:'giveaway' })),
+    ...closer.map(x => ({ ...x, role:'closer' })),
+  ];
+  return order.map((x, idx) => ({ position: idx + 1, item: x.item, role: x.role, listPrice: x.price }));
+}
+
+function openShowBuilderModal(){
+  let modal = document.getElementById('show-builder-modal');
+  if(!modal){
+    modal = document.createElement('div');
+    modal.id = 'show-builder-modal';
+    modal.className = 'ppsb-modal';
+    modal.innerHTML = `<div class="ppsb-inner" style="max-width:420px;margin:60px auto;padding:20px">
+      <div class="ppsb-header"><span class="ppsb-title">🎬 SHOW BUILDER</span><button class="hbtn" onclick="closeShowBuilderModal()">✕</button></div>
+      <div style="padding:14px 4px">
+        <label style="display:block;font-size:9px;color:var(--dim);margin-bottom:4px">TITLE</label>
+        <input id="ws-title" class="tsi" placeholder="e.g. Pokemon Tuesday">
+        <label style="display:block;font-size:9px;color:var(--dim);margin:10px 0 4px">PLATFORM</label>
+        <select id="ws-platform" class="tsi"><option value="whatnot">Whatnot</option><option value="ebay_live">eBay Live</option><option value="twitch">Twitch</option></select>
+        <label style="display:block;font-size:9px;color:var(--dim);margin:10px 0 4px">CATEGORY</label>
+        <select id="ws-category" class="tsi"><option value="Mixed">Mixed</option><option value="Pokemon TCG">Pokemon TCG</option><option value="Magic: The Gathering">Magic: The Gathering</option><option value="Sports">Sports</option><option value="Comic">Comic</option><option value="One Piece TCG">One Piece TCG</option><option value="Yu-Gi-Oh!">Yu-Gi-Oh!</option><option value="Disney Lorcana">Disney Lorcana</option></select>
+        <label style="display:block;font-size:9px;color:var(--dim);margin:10px 0 4px">SHOW LENGTH (MINUTES)</label>
+        <input id="ws-length" type="number" class="tsi" value="60">
+        <button class="hbtn" style="width:100%;padding:14px;margin-top:14px;color:var(--g)" onclick="createWhatnotShow()">BUILD SHOW & GO LIVE</button>
+      </div>
+    </div>`;
+    modal.addEventListener('click', e => { if(e.target === modal) closeShowBuilderModal(); });
+    document.body.appendChild(modal);
+  }
+  modal.classList.add('on');
+}
+function closeShowBuilderModal(){
+  document.getElementById('show-builder-modal')?.classList.remove('on');
+}
+async function createWhatnotShow(){
+  const platform = document.getElementById('ws-platform')?.value || 'whatnot';
+  const category = document.getElementById('ws-category')?.value || 'Mixed';
+  const lengthMinutes = parseInt(document.getElementById('ws-length')?.value, 10) || 60;
+  const title = document.getElementById('ws-title')?.value?.trim() || (category + ' Show ' + new Date().toLocaleDateString());
+  const runOfShow = buildShowRunOfShow(all, { lengthMinutes, category });
+  if(!runOfShow.length){ toast_dash('No sellable inventory matches that category to build a show from'); return; }
+  const sb = getSupabaseClient();
+  const storeId = getActiveStoreId();
+  if(!sb || !storeId) return;
+  try{
+    const { data: showRows, error: showErr } = await sb.from('whatnot_shows').insert({ store_id:storeId, platform, title, category, planned_length_minutes:lengthMinutes, status:'live', started_at:new Date().toISOString() }).select('*').limit(1);
+    if(showErr) throw showErr;
+    const show = showRows[0];
+    const itemRows = runOfShow.map(r => ({
+      show_id: show.id, store_id: storeId, inventory_item_id: r.item.id, name: r.item.name, category: r.item.category,
+      image_url: r.item.thumbnail || r.item.imageUrl || '', cost_cents: Math.round(Number(r.item.cost || 0) * 100),
+      market_price_cents: Math.round(r.listPrice * 100), role: r.role, position: r.position, status:'queued',
+    }));
+    const { data: insertedItems, error: itemsErr } = await sb.from('whatnot_show_items').insert(itemRows).select('*');
+    if(itemsErr) throw itemsErr;
+    whatnotActiveShow = show;
+    whatnotShowItems = insertedItems.sort((a, b) => a.position - b.position);
+    whatnotCurrentShowItemId = null;
+    closeShowBuilderModal();
+    renderWhatnotShowPanel();
+    toast_dash('Show started: ' + runOfShow.length + ' items queued');
+  }catch(e){ toast_dash('Could not start show: ' + e.message); }
+}
+async function loadActiveWhatnotShow(){
+  const sb = getSupabaseClient();
+  const storeId = getActiveStoreId();
+  if(!sb || !storeId) return;
+  try{
+    const { data: shows } = await sb.from('whatnot_shows').select('*').eq('store_id', storeId).eq('status', 'live').order('started_at', { ascending:false }).limit(1);
+    if(shows?.length){
+      whatnotActiveShow = shows[0];
+      const { data: items } = await sb.from('whatnot_show_items').select('*').eq('show_id', whatnotActiveShow.id).order('position', { ascending:true });
+      whatnotShowItems = items || [];
+    } else {
+      whatnotActiveShow = null;
+      whatnotShowItems = [];
+    }
+  }catch(e){ console.warn('[SHOW] load failed:', e.message); }
+  renderWhatnotShowPanel();
+}
+// Store idea (Show Inventory Bucket): drop a specific item into tonight's
+// show on the fly, on top of whatever the Show Builder auto-drafted --
+// reachable from any in-stock item's row menu once a show is live, e.g.
+// a customer request mid-show or a manual "this deserves to be in there"
+// call the auto-draft wouldn't have made. Always queued as ENGAGEMENT
+// (a manual add mid-show is filler, not a pre-planned anchor/closer beat).
+async function addItemToActiveShow(itemId){
+  if(!whatnotActiveShow){ toast_dash('No show is live -- start one first'); return; }
+  const item = (all || []).find(i => i.id === itemId);
+  if(!item){ toast_dash('Item not found'); return; }
+  if(whatnotShowItems.some(r => r.inventory_item_id === itemId && r.status === 'queued')){ toast_dash('Already queued in tonight\'s show'); return; }
+  const sb = getSupabaseClient();
+  if(!sb) return;
+  const position = whatnotShowItems.length ? Math.max(...whatnotShowItems.map(r => r.position)) + 1 : 1;
+  const row = { show_id: whatnotActiveShow.id, store_id: getActiveStoreId(), inventory_item_id: item.id, name: item.name, category: item.category, image_url: item.thumbnail || item.imageUrl || '', cost_cents: Math.round(Number(item.cost || 0) * 100), market_price_cents: Math.round(inventoryListPrice(item) * 100), role:'engagement', position, status:'queued' };
+  try{
+    const { data, error } = await sb.from('whatnot_show_items').insert(row).select('*').limit(1);
+    if(error) throw error;
+    whatnotShowItems.push(data[0]);
+    renderWhatnotShowPanel();
+    toast_dash('Added to tonight\'s show: ' + item.name);
+  }catch(e){ toast_dash('Could not add to show: ' + e.message); }
+}
+function pullNextShowItem(){
+  const next = whatnotShowItems.find(r => r.status === 'queued');
+  if(!next){ toast_dash('Show queue is empty'); renderWhatnotShowPanel(); return; }
+  whatnotCurrentShowItemId = next.id;
+  const liveItem = (all || []).find(i => i.id === next.inventory_item_id);
+  const resolved = liveItem || { id: next.inventory_item_id, name: next.name, category: next.category, cost: Number(next.cost_cents || 0) / 100, market: Number(next.market_price_cents || 0) / 100, set:'', condition:'' };
+  selectWhatnotItem(resolved);
+  renderWhatnotShowPanel();
+}
+async function passWhatnotShowItem(){
+  if(!whatnotCurrentShowItemId){ toast_dash('No item loaded -- hit NEXT ITEM first'); return; }
+  await updateWhatnotShowItemStatus(whatnotCurrentShowItemId, 'passed');
+  cancelWhatnotItem();
+  whatnotCurrentShowItemId = null;
+  pullNextShowItem();
+}
+async function giveawayWhatnotShowItem(){
+  if(!whatnotCurrentItem || !whatnotCurrentShowItemId){ toast_dash('No item loaded -- hit NEXT ITEM first'); return; }
+  const itemId = whatnotCurrentItem.id;
+  const itemName = whatnotCurrentItem.name || 'Item';
+  try{
+    // A $0.01 external sale, not a $0 one -- record-external-sale requires
+    // salePrice > 0. This still runs the giveaway through the exact same
+    // trusted inventory-depletion pipeline as a real sale (so the item
+    // correctly leaves stock) while its near-zero price and distinct
+    // 'Whatnot Giveaway' channel keep it identifiable later for True
+    // Giveaway Cost tracking, instead of a separate parallel bookkeeping
+    // path that could drift out of sync with real inventory.
+    const res = await storeWorkerFetch('/inventory/record-external-sale', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ itemId, channel:'Whatnot Giveaway', salePrice:0.01, feeAmount:0 }) });
+    const d = await res.json().catch(() => ({}));
+    if(!res.ok || !d.ok){ toast_dash(d.error || 'Could not record giveaway'); return; }
+    await updateWhatnotShowItemStatus(whatnotCurrentShowItemId, 'giveaway', { sold_price_cents:1, sold_at:new Date().toISOString() });
+    loadInventory().catch(() => {});
+    toast_dash('Giveaway recorded: ' + itemName);
+    cancelWhatnotItem();
+    whatnotCurrentShowItemId = null;
+    pullNextShowItem();
+  }catch(e){ toast_dash(e.message); }
+}
+async function updateWhatnotShowItemStatus(showItemId, status, extra={}){
+  const row = whatnotShowItems.find(r => r.id === showItemId);
+  if(row){ row.status = status; Object.assign(row, extra); }
+  const sb = getSupabaseClient();
+  if(sb){
+    try{ await sb.from('whatnot_show_items').update({ status, ...extra }).eq('id', showItemId); }
+    catch(e){ console.warn('[SHOW] status update failed:', e.message); }
+  }
+  renderWhatnotShowPanel();
+}
+const WHATNOT_SHOW_ROLE_LABEL = { opener:'OPENER', engagement:'FILLER', anchor:'ANCHOR', giveaway:'GIVEAWAY', closer:'CLOSER' };
+function renderWhatnotShowPanel(){
+  const el = document.getElementById('whatnot-show-panel');
+  if(!el) return;
+  if(!whatnotActiveShow){
+    el.innerHTML = `<button class="hbtn" style="width:100%;padding:14px;color:var(--gold)" onclick="openShowBuilderModal()">🎬 START A SHOW</button>`;
+    return;
+  }
+  const queued = whatnotShowItems.filter(r => r.status === 'queued');
+  const sold = whatnotShowItems.filter(r => r.status === 'sold');
+  const gross = sold.reduce((s, r) => s + Number(r.sold_price_cents || 0) / 100, 0);
+  const upcoming = queued.slice(0, 5);
+  el.innerHTML = `<div style="background:var(--surf);border:1px solid var(--g);border-radius:10px;padding:12px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <div style="font-family:'Orbitron',monospace;font-size:12px;color:var(--g)">🔴 LIVE: ${escHtml(whatnotActiveShow.title)}</div>
+      <button class="hbtn" style="font-size:9px;min-height:26px;padding:2px 10px" onclick="endWhatnotShow()">END SHOW</button>
+    </div>
+    <div style="font-family:monospace;font-size:9px;color:var(--dim);margin-bottom:10px">${sold.length} sold · ${queued.length} queued · ${fd$(gross)} gross so far</div>
+    <div style="display:flex;gap:6px;margin-bottom:10px">
+      <button class="hbtn" style="flex:1;color:var(--g)" onclick="pullNextShowItem()">▶ NEXT ITEM</button>
+      <button class="hbtn" onclick="passWhatnotShowItem()">PASS</button>
+      <button class="hbtn" style="color:var(--gold)" onclick="giveawayWhatnotShowItem()">🎁 GIVEAWAY</button>
+    </div>
+    <div style="font-family:monospace;font-size:8px;color:var(--dim)">UP NEXT: ${upcoming.map(r => escHtml(r.name) + ' (' + (WHATNOT_SHOW_ROLE_LABEL[r.role] || r.role) + ')').join(' → ') || 'queue empty'}</div>
+  </div>`;
+}
+async function endWhatnotShow(){
+  if(!whatnotActiveShow) return;
+  if(!confirm('End "' + whatnotActiveShow.title + '"? This locks in the Show P&L.')) return;
+  const sb = getSupabaseClient();
+  const endedAt = new Date().toISOString();
+  try{ if(sb) await sb.from('whatnot_shows').update({ status:'ended', ended_at:endedAt }).eq('id', whatnotActiveShow.id); }catch(e){}
+  const sold = whatnotShowItems.filter(r => r.status === 'sold');
+  const giveaways = whatnotShowItems.filter(r => r.status === 'giveaway');
+  const gross = sold.reduce((s, r) => s + Number(r.sold_price_cents || 0) / 100, 0);
+  const cogs = sold.reduce((s, r) => s + Number(r.cost_cents || 0) / 100, 0);
+  const fee = whatnotFeeSettings();
+  const estFees = sold.reduce((s, r) => { const p = Number(r.sold_price_cents || 0) / 100; return s + (p * (fee.pct / 100) + fee.flat); }, 0);
+  const giveawayCost = giveaways.reduce((s, r) => s + Number(r.cost_cents || 0) / 100, 0);
+  const profit = gross - cogs - estFees;
+  const startedMs = whatnotActiveShow.started_at ? new Date(whatnotActiveShow.started_at).getTime() : Date.now();
+  const hours = Math.max(1 / 60, (Date.now() - startedMs) / 3600000);
+  const profitPerHour = profit / hours;
+  const w = window.open('', '_blank', 'width=420,height=560');
+  if(w){
+    w.document.write('<html><head><title>Show P&L</title><style>body{font-family:monospace;padding:20px;font-size:12px}h2{margin:0 0 4px}.row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #ddd}</style></head><body>');
+    w.document.write('<h2>' + escHtml(whatnotActiveShow.title) + '</h2><div style="color:#666;margin-bottom:12px">' + new Date().toLocaleString() + '</div>');
+    [['Gross', fd$(gross)], ['COGS', fd$(cogs)], ['Est. fees', fd$(estFees)], ['Giveaway cost', fd$(giveawayCost)], ['Est. profit', fd$(profit)], ['Profit/hour', fd$(profitPerHour)], ['Items sold', sold.length], ['Giveaways', giveaways.length], ['Show length', hours.toFixed(1) + 'h']].forEach(([k, v]) => {
+      w.document.write('<div class="row"><span>' + k + '</span><b>' + v + '</b></div>');
+    });
+    w.document.write('<script>window.print();<\/script></body></html>');
+  }
+  whatnotActiveShow = null;
+  whatnotShowItems = [];
+  whatnotCurrentShowItemId = null;
+  cancelWhatnotItem();
+  renderWhatnotShowPanel();
+  toast_dash('Show ended -- ' + fd$(profit) + ' est. profit');
+}
+// ── END Whatnot Show Builder ─────────────────────────────────────────
+
 let whatnotCurrentItem=null, whatnotPriceCents=0, whatnotSubmitting=false;
 let _whatnotScanLastValue='', _whatnotScanLastAt=0;
 let whatnotSession={count:0,gross:0,profit:0};
@@ -27278,6 +27550,13 @@ async function confirmWhatnotSale(){
     renderWhatnotSessionTally();
     toast_dash('Sold: '+itemName+' -- $'+price.toFixed(2)+' ($'+Number(d.profit||0).toFixed(2)+' profit)');
     loadInventory().catch(()=>{});
+    // Whatnot Show Builder: if this sale was for the show's current item,
+    // record it against that show_item row too, so Show P&L reflects it.
+    if(whatnotCurrentShowItemId){
+      const soldShowItemId=whatnotCurrentShowItemId;
+      whatnotCurrentShowItemId=null;
+      updateWhatnotShowItemStatus(soldShowItemId,'sold',{ sold_price_cents:Math.round(price*100), sold_at:new Date().toISOString() });
+    }
     cancelWhatnotItem();
   }catch(e){
     toast_dash(e.message||'Could not record sale');

@@ -51,19 +51,19 @@ actually shipped. Check items off / move to `FEATURE_LOG` as they get built.
 
 ## Show Builder & Live Selling (Whatnot / Twitch / eBay Live)
 
-- [ ] **"What Should I Sell Tonight?" Show Builder.** Pick platform, show
+- [x] **"What Should I Sell Tonight?" Show Builder.** Pick platform, show
       length, and category; the software drafts a running order from
       current inventory — opening heat, cheap engagement items, mid-show
       anchors, giveaways, closers. Tracks actual sale prices afterward and
       learns what works at different points in a show over time.
 
-- [ ] **Show Planner + Run of Show.** Same idea, more explicit: select
+- [x] **Show Planner + Run of Show.** Same idea, more explicit: select
       Pokémon / MTG / comics / sports / mixed, show length, format
       (singles, breaks, sudden death, etc). Builds warm-up → engagement →
       bigger items → cooldown → finale, deliberately not blowing the best
       inventory in the first 15 minutes.
 
-- [ ] **Live Auction Companion.** Second-screen UI next to OBS with huge
+- [x] **Live Auction Companion.** Second-screen UI next to OBS with huge
       buttons: NEXT ITEM, SOLD, PASS, GIVEAWAY, PULL HEAT FOR LATER.
       Entering a sale price instantly shows estimated profit and pulls up
       the next item.
@@ -93,7 +93,7 @@ actually shipped. Check items off / move to `FEATURE_LOG` as they get built.
       Pokémon cards in 20 minutes → suggest running another related card
       or bundle. Live-commerce version of "customers also bought."
 
-- [ ] **Show Inventory Bucket.** Drag ~100 items into "Tonight's Show"
+- [x] **Show Inventory Bucket.** Drag ~100 items into "Tonight's Show"
       instead of exposing the whole inventory database. Items get
       numbered/ordered for easy physical pull, then auto-sort afterward
       into SOLD / UNSOLD / GIVEAWAY / NEEDS RELISTING.
@@ -103,7 +103,7 @@ actually shipped. Check items off / move to `FEATURE_LOG` as they get built.
       be a bad eBay listing but great Whatnot filler; a $600 card can be
       the wrong thing to expose to a thin $1-start room.
 
-- [ ] **Show P&L.** Immediately at stream end: Gross / COGS / est. fees /
+- [x] **Show P&L.** Immediately at stream end: Gross / COGS / est. fees /
       giveaways / est. profit / profit per hour. Comparable across shows
       (e.g. Pokémon Tuesday vs. MTG Thursday vs. Comics Sunday).
 
