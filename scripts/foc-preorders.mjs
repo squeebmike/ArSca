@@ -967,6 +967,115 @@ async function exportPrh(env,deps,url,request){
   return new Response(lines.join('\r\n'),{status:200,headers:{...deps.CORS,'Content-Type':'text/csv;charset=utf-8','Content-Disposition':`attachment; filename="prh-foc-${cycleId}.csv"`,'Cache-Control':'no-store'}});
 }
 
+// FOC Intelligence 2.0 -- store idea: when a new PRH FOC file comes in,
+// compare it against prior submitted orders, current presales, and recent
+// comic sales to suggest ORDER / REDUCE / SKIP / SPEC per title instead of
+// the store re-deriving all of that from memory every week. Also flags a
+// book that was solicited (with real secured customer interest already
+// attached) in an earlier PRH import but silently vanished from a more
+// recently imported one before its own on-sale date ever passed -- the
+// "He-Man situation": a wanted book quietly disappearing from FOC with
+// nobody noticing until a customer asks where it went.
+//
+// Deliberately does NOT attempt "upcoming movies/events/signings" as a
+// signal -- there's no real data source for that in this app, and
+// fabricating one would be worse than not claiming it. Every signal below
+// is real, queryable data this store already has: prior submitted PRH
+// orders (foc_prh_submissions), current website/eBay/Whatnot/secured
+// presales (the same helpers exportPrh/adminPrhSubmission already use),
+// and actual POS comic sales history -- matched by a simple shared-
+// significant-word title comparison (same explainable, non-fuzzy-AI
+// approach as Inventory Opportunity Matching / Card Themes in
+// dashboard.html, reimplemented here since this file doesn't share code
+// with the client).
+const FOC_INTEL_STOPWORDS=new Set(['the','and','of','vol','volume','tpb','hc','presents','annual','special','one','shot','issue','cover']);
+function focIntelSignificantWords(text){
+  return String(text||'').toLowerCase().replace(/#\d+.*/,'').replace(/[^a-z0-9\s]/g,' ').split(/\s+/).filter(w=>w.length>=4&&!FOC_INTEL_STOPWORDS.has(w));
+}
+function focIntelTitlesRelated(a,b){
+  const wa=new Set(focIntelSignificantWords(a));
+  return focIntelSignificantWords(b).some(w=>wa.has(w));
+}
+const FOC_INTEL_ACTION_ORDER={ORDER:0,SPEC:1,REDUCE:2,SKIP:3};
+async function focIntelligence(request,env,deps,url){
+  const storeId=text(url.searchParams.get('store_id'),80);
+  const cycleId=text(url.searchParams.get('cycle_id'),80);
+  const auth=await deps.requireStoreUser(request,env,storeId,['owner','admin','manager','employee']);if(auth.error)return auth.error;
+  if(!cycleId)return deps.json({ok:false,error:'cycle_id is required'},400);
+  const db=(path,options)=>deps.supabaseAdminFetch(env,path,options);
+
+  const {data:families}=await db(`comic_title_families?cycle_id=eq.${encodeURIComponent(cycleId)}&select=id,distributor_family_id,title,publisher`);
+  if(!families?.length)return deps.json({ok:true,recommendations:[],disappeared:[]});
+  const {data:skus}=await db(`comic_skus?cycle_id=eq.${encodeURIComponent(cycleId)}&select=id,family_id,title,store_quantity,secured_quantity`);
+
+  const qty=await orderedQtyBySku(db,cycleId);
+  const ebayPresold=await ebayPresoldBySku(db,storeId);
+
+  // Prior submitted PRH orders across past cycles -- matched by title, not
+  // distributor_family_id, since a recurring ongoing series gets a brand
+  // new family id every single week's file.
+  const {data:submissions}=await db(`foc_prh_submissions?store_id=eq.${encodeURIComponent(storeId)}&select=cycle_id,line_items&order=submitted_at.desc&limit=26`);
+  const priorOrderedTitles=[];
+  (submissions||[]).forEach(sub=>{
+    if(sub.cycle_id===cycleId)return;
+    (sub.line_items||[]).forEach(li=>{ if(Number(li.finalQty||0)>0)priorOrderedTitles.push(li.title||''); });
+  });
+
+  // Recent real comic sales (90 days) -- independent of whether it's ever
+  // been on a PRH order, so a speculative title customers are already
+  // buying (used copies, back issues, a hot creator's other work) shows up
+  // as real signal too, not just habitual reordering.
+  const cutoff=new Date(Date.now()-90*24*60*60*1000).toISOString();
+  const {data:sales}=await db(`pos_sale_lines?store_id=eq.${encodeURIComponent(storeId)}&category=eq.Comic&created_at=gte.${cutoff}&select=title,quantity`);
+  const recentSaleTitles=(sales||[]).map(s=>({title:s.title||'',qty:Number(s.quantity||1)}));
+
+  const skusByFamily=new Map();
+  (skus||[]).forEach(s=>{ if(!skusByFamily.has(s.family_id))skusByFamily.set(s.family_id,[]); skusByFamily.get(s.family_id).push(s); });
+
+  const recommendations=families.map(fam=>{
+    const famSkus=skusByFamily.get(fam.id)||[];
+    const currentDemand=famSkus.reduce((sum,s)=>sum+(qty.get(s.id)||0)+(ebayPresold.get(s.id)||0)+Number(s.store_quantity||0)+Number(s.secured_quantity||0),0);
+    const hasOrderHistory=priorOrderedTitles.some(t=>focIntelTitlesRelated(fam.title,t));
+    const salesMatch=recentSaleTitles.filter(s=>focIntelTitlesRelated(fam.title,s.title));
+    const recentSalesQty=salesMatch.reduce((s,x)=>s+x.qty,0);
+    let action,reason;
+    if(currentDemand>0){ action='ORDER'; reason=`${currentDemand} already presold/requested this cycle (website, eBay, Whatnot, or secured)`; }
+    else if(hasOrderHistory&&recentSalesQty>0){ action='ORDER'; reason=`Regularly ordered, and ${recentSalesQty} sold in the last 90 days`; }
+    else if(hasOrderHistory&&recentSalesQty===0){ action='REDUCE'; reason='Ordered before, but no related sales in the last 90 days -- consider a smaller order'; }
+    else if(!hasOrderHistory&&recentSalesQty>0){ action='SPEC'; reason=`No order history for this title, but ${recentSalesQty} related sale(s) in the last 90 days`; }
+    else { action='SKIP'; reason='No presales, no order history, and no recent related sales'; }
+    return { familyId:fam.id, title:fam.title, publisher:fam.publisher, action, reason, currentDemand, recentSalesQty };
+  }).sort((a,b)=>FOC_INTEL_ACTION_ORDER[a.action]-FOC_INTEL_ACTION_ORDER[b.action]);
+
+  // Disappeared-book check: the two most recently IMPORTED cycles before
+  // this one (by imported_at, not foc_date -- a store can import weeks out
+  // of chronological order). A distributor_family_id present in the older
+  // import with real secured interest and a still-future on-sale date at
+  // the time of that import, but absent from the newer import, is worth a
+  // flag -- a book that had already shipped by then rolling off the list
+  // is normal and NOT flagged.
+  const {data:priorCycles}=await db(`foc_cycles?store_id=eq.${encodeURIComponent(storeId)}&id=neq.${encodeURIComponent(cycleId)}&select=id,imported_at&order=imported_at.desc&limit=2`);
+  let disappeared=[];
+  if(priorCycles?.length===2){
+    const [newer,older]=priorCycles;
+    const {data:olderFamilies}=await db(`comic_title_families?cycle_id=eq.${encodeURIComponent(older.id)}&select=id,distributor_family_id,title`);
+    const {data:newerFamilies}=await db(`comic_title_families?cycle_id=eq.${encodeURIComponent(newer.id)}&select=distributor_family_id`);
+    const newerIds=new Set((newerFamilies||[]).map(f=>f.distributor_family_id));
+    const {data:olderSkus}=await db(`comic_skus?cycle_id=eq.${encodeURIComponent(older.id)}&select=family_id,secured_quantity,on_sale_date`);
+    const securedByFamily=new Map();
+    (olderSkus||[]).forEach(s=>{
+      if(Number(s.secured_quantity||0)<=0)return;
+      if(s.on_sale_date&&new Date(s.on_sale_date).getTime()<=new Date(older.imported_at).getTime())return; // already past on-sale at import time -- normal roll-off, not a disappearance
+      securedByFamily.set(s.family_id,(securedByFamily.get(s.family_id)||0)+Number(s.secured_quantity||0));
+    });
+    disappeared=(olderFamilies||[])
+      .filter(f=>!newerIds.has(f.distributor_family_id)&&securedByFamily.has(f.id))
+      .map(f=>({ title:f.title, securedQuantity:securedByFamily.get(f.id), lastSeenCycleImportedAt:older.imported_at }));
+  }
+
+  return deps.json({ ok:true, recommendations, disappeared });
+}
+
 // eBay presale sales (already sold, still needing physical fulfillment) per
 // SKU -- shared by exportPrh (must be in the actual distributor order,
 // otherwise eBay-sold copies never get physically ordered at all) and the
@@ -1620,6 +1729,7 @@ export async function handleFocRequest(request, env, url, deps) {
   if(path==='/foc/admin/prh-submission'&&(request.method==='GET'||request.method==='POST'))return adminPrhSubmission(request,env,deps,url);
   if(path==='/foc/admin/end-ebay-listings'&&request.method==='POST')return adminEndFocEbayListings(request,env,deps);
   if(path==='/foc/admin/export'&&request.method==='GET')return exportPrh(env,deps,url,request);
+  if(path==='/foc/admin/intelligence'&&request.method==='GET')return focIntelligence(request,env,deps,url);
   if(path==='/foc/admin/orders'&&(request.method==='GET'||request.method==='PATCH'))return adminOrders(request,env,deps,url);
   if(path==='/foc/admin/orders/email'&&request.method==='POST')return resendAdminOrderEmail(request,env,deps);
   if(path==='/foc/admin/orders/label'&&request.method==='POST')return adminShippingLabel(request,env,deps);

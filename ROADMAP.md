@@ -41,7 +41,7 @@ actually shipped. Check items off / move to `FEATURE_LOG` as they get built.
 
 ## FOC Intelligence 2.0
 
-- [ ] **FOC Intelligence 2.0.** New PRH FOC comes in → compares it against
+- [x] **FOC Intelligence 2.0.** New PRH FOC comes in → compares it against
       prior orders, current inventory, presales, characters/artists that
       have actually sold, upcoming movies/events/signings, and previous
       FOC weeks. Outputs a recommendation per book: ORDER / REDUCE / SKIP /
