@@ -41,6 +41,76 @@ let _pcQueueTail = Promise.resolve();
 const WEBFLOW_BASE = 'https://api.webflow.com/v2';
 const ANTHROPIC_BASE = 'https://api.anthropic.com/v1';
 const CARDSIGHTAI_BASE = 'https://api.cardsight.ai';
+
+// Shared by the /identify/card route and Card Intake's server-side
+// background processing (scripts/card-intake.mjs, run via ctx.waitUntil) --
+// extracted so both call the exact same prompt/parsing instead of two
+// copies drifting apart. Claude only ever extracts what's printed on the
+// card; it never guesses a final identity or a price -- that verification
+// step happens separately against real catalog data.
+async function identifyCardsFromImageBase64(env, rawBase64) {
+  if (!env.ANTHROPIC_API_KEY) { const e = new Error('ANTHROPIC_API_KEY not set'); e.status = 500; throw e; }
+  const identifyPrompt = 'You are looking at a photo of one or more physical trading cards, which may be raw or sealed in a graded slab (PSA/BGS/CGC/SGC). Pokemon TCG, Magic: The Gathering, sports cards (baseball/basketball/football/hockey/soccer/etc), and One Piece TCG are all in scope -- if the photo shows a comic, sealed product, video game, or anything else outside these four, return an empty "cards" array rather than guessing.\n\n'
+    + 'Count only actual separate physical cards visible in the photo -- one entry per card, never one entry per line of text on a card. Do NOT create a separate entry for an attack name, ability name, move, spell, stat line, flavor text, or any other text printed ON a card -- e.g. if a Pokemon card has an attack called "Cyclone Kick" printed on it, that is part of that ONE card\'s data, not a second card. If you only see one physical card in the photo, return exactly one entry.\n\n'
+    + 'For each distinct card clearly visible, extract exactly what is printed on the card -- do not guess a card you cannot actually read, and never estimate a price. Respond with strict JSON only, no markdown fences, no prose, matching this shape:\n'
+    + '{"cards":[{"game":"pokemon"|"mtg"|"sports"|"one_piece","name":"","setName":"","number":"","year":"","hp":"","manaCost":"","rarity":"","finish":"","specialMarkings":"","gradingCompany":"","grade":"","certNumber":"","confidence":"high"|"medium"|"low"}]}\n\n'
+    + 'For pokemon/mtg: name is the card\'s own title/name only (e.g. "Lucario V"), never an attack, ability, or move name. setName is whatever set name or set symbol you can identify (e.g. "Base Set", "Surging Sparks", "Bloomburrow"). finish is "normal"/"holo"/"reverse holo"/"foil"/"etched foil" as applicable. hp applies to pokemon only, manaCost to mtg only -- leave the other blank, and leave year blank for both.\n'
+    + 'For sports: name is the PLAYER\'s name printed on the card, never the team name alone. setName is the brand + product line (e.g. "Topps Chrome", "Panini Prizm", "Bowman"). year is the 4-digit year printed on the card. finish is the parallel/parallel color if any (e.g. "Refractor", "Gold /50", "Silver Prizm"), else leave blank. specialMarkings covers "Rookie Card"/"RC", autograph, or relic/patch notes. Leave hp and manaCost blank.\n'
+    + 'For one_piece: name is the card\'s own title (e.g. "Monkey D. Luffy"). setName is the set code + name (e.g. "OP-01 Romance Dawn"). rarity is the printed rarity (e.g. "L", "SR", "SEC"). finish covers "Alternate Art"/"Parallel" if applicable. Leave hp, manaCost, and year blank.\n'
+    + 'number is the printed collector number (e.g. "4/102", "087/091", "150"). specialMarkings also covers a 1st Edition stamp or promo stamp when applicable.\n\n'
+    + 'If the card is sealed in a graded slab, read all of the card\'s own fields (name/set/number/etc) off the printed label text above/below the card, exactly as you would off a raw card. Also fill in: gradingCompany is the company printed on the label ("PSA"/"BGS"/"CGC"/"SGC"). grade is the numeric grade printed on the label (e.g. "10", "9.5"). certNumber is the cert/serial number printed on the label as plain digits -- this is a different string than a barcode and is usually printed near a barcode or QR code on the label, always read it as text rather than trying to decode any barcode graphic. Leave gradingCompany/grade/certNumber blank for a raw (unslabbed) card. If a field is not legible, use an empty string rather than guessing.';
+
+  const res = await fetch(`${ANTHROPIC_BASE}/messages`, {
+    method: 'POST',
+    headers: {
+      'x-api-key': env.ANTHROPIC_API_KEY,
+      'anthropic-version': '2023-06-01',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 800,
+      temperature: 0,
+      messages: [{
+        role: 'user',
+        content: [
+          { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: rawBase64 } },
+          { type: 'text', text: identifyPrompt },
+        ],
+      }],
+    }),
+  });
+  if (!res.ok) {
+    const errText = await res.text();
+    const e = new Error('Anthropic ' + res.status + ': ' + errText.slice(0, 300));
+    e.status = res.status === 429 ? 429 : 502;
+    throw e;
+  }
+  const anthropicData = await res.json().catch(() => ({}));
+  const textBlock = Array.isArray(anthropicData.content) ? anthropicData.content.find(b => b.type === 'text') : null;
+  const rawText = String(textBlock?.text || '').trim().replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/, '');
+  let parsedIdentify;
+  try { parsedIdentify = JSON.parse(rawText); } catch (_) { const e = new Error('Model did not return valid JSON'); e.status = 502; throw e; }
+  return (Array.isArray(parsedIdentify.cards) ? parsedIdentify.cards : [])
+    .filter(c => c && ['pokemon', 'mtg', 'sports', 'one_piece'].includes(c.game) && String(c.name || '').trim())
+    .slice(0, 12)
+    .map(c => ({
+      game: c.game,
+      name: String(c.name || '').trim().slice(0, 120),
+      setName: String(c.setName || '').trim().slice(0, 120),
+      number: String(c.number || '').trim().slice(0, 20),
+      year: String(c.year || '').trim().slice(0, 4),
+      hp: String(c.hp || '').trim().slice(0, 10),
+      manaCost: String(c.manaCost || '').trim().slice(0, 40),
+      rarity: String(c.rarity || '').trim().slice(0, 40),
+      finish: String(c.finish || '').trim().slice(0, 20),
+      specialMarkings: String(c.specialMarkings || '').trim().slice(0, 80),
+      gradingCompany: String(c.gradingCompany || '').trim().slice(0, 10),
+      grade: String(c.grade || '').trim().slice(0, 10),
+      certNumber: String(c.certNumber || '').replace(/\D/g, '').slice(0, 20),
+      confidence: ['high', 'medium', 'low'].includes(c.confidence) ? c.confidence : 'low',
+    }));
+}
 const SITE_ID = '65b15ee0228d06647ca7e4ce';
 const WF_PRODUCTS = '65eb45a28ff6bf3fe4f17b14';
 const WF_EVENTS = '6a7cf73500b7a1a3719e7f21';
@@ -3895,6 +3965,25 @@ export default {
           aspectOverrides: cover.coverArtist ? { 'Cover Artist': cover.coverArtist } : {},
         });
       }
+
+      // Store report: clicking LIST ALL COVERS twice (a slow eBay response
+      // getting retried, or a double-tap) created two separate live eBay
+      // listings for the same 7 covers, each carved out of the same
+      // physical stock -- a real double-sell risk, not just clutter. A
+      // cover already live under a DIFFERENT eBay listing blocks the whole
+      // create instead of silently spinning up a duplicate.
+      const { data: alreadyListedRows } = await supabaseAdminFetch(env, `inventory_items?store_id=eq.${encodeURIComponent(storeId)}&status=in.(presale,in_stock)&select=id,status,data`);
+      const alreadyListed = [];
+      for (const row of alreadyListedRows || []) {
+        const d = row.data || {};
+        if ((d.source === 'foc_presale' || d.source === 'foc_presale_bundle') && d.focSkuId && d.ebayListingId && built.some(v => v.skuId === d.focSkuId)) {
+          alreadyListed.push({ label: bySkuId.get(d.focSkuId)?.variantLabel || d.focSkuId, listingId: d.ebayListingId });
+        }
+      }
+      if (alreadyListed.length) {
+        const listingIds = [...new Set(alreadyListed.map(x => x.listingId))];
+        return json({ ok: false, error: `Already listed on eBay (listing ${listingIds.join(', ')}): ${alreadyListed.map(x => x.label).join(', ')}. End that listing first if you want to re-list these covers, or uncheck them and list the rest.` }, 409);
+      }
       // Store report (live error): "Publish failed (400): A user error has
       // occurred. Add at least 1 photo." eBay requires every variant's own
       // inventory_item to carry at least one photo -- a cover whose FOC
@@ -3945,7 +4034,20 @@ export default {
       const defaults = buildFocPresaleDefaults({ ...repSku, title: family.title, variant_label: '' }, built[0].priceCents || Math.round(Number(built[0].price) * 100), onSaleDate, family.issue_number || '');
 
       const groupTitle = (typeof body.title === 'string' && body.title.trim()) ? body.title.trim().substring(0, 80) : defaults.title;
-      const description = (typeof body.description === 'string' && body.description.trim()) ? body.description.trim().substring(0, 4000) : defaults.description;
+      const descriptionBase = (typeof body.description === 'string' && body.description.trim()) ? body.description.trim().substring(0, 4000) : defaults.description;
+      // Store request: "the listing should include the info on all covers
+      // ratio ect so it gets views" -- a shared multi-cover listing's
+      // description is the only text eBay indexes for every cover bundled
+      // into it, not just whichever cover the page happens to default to
+      // showing, so a buyer searching for a specific incentive ratio ("1:100
+      // variant") only finds this listing if that ratio is spelled out in
+      // the text. Always appended after whatever description text is used
+      // (default or a custom template), so it can't be silently dropped by
+      // an edited template, and reflects the covers actually being
+      // published here, not just whatever was eligible in preview.
+      const coversListText = 'This listing includes ' + built.length + ' cover option' + (built.length === 1 ? '' : 's') + ' -- pick yours from the "Cover" dropdown above:\n'
+        + built.map(v => `- ${v.label} -- $${v.price}`).join('\n');
+      const description = [descriptionBase, coversListText].filter(Boolean).join('\n\n').substring(0, 4000);
       const customAspects = (body.customAspects && typeof body.customAspects === 'object') ? { ...defaults.customAspects, ...body.customAspects } : defaults.customAspects;
       const bestOfferEnabled = body.bestOfferEnabled !== false;
       const weightValue = Number(body.weightValue) > 0 ? Number(body.weightValue) : defaults.weightValue;
@@ -4131,6 +4233,7 @@ export default {
     if (url.pathname.startsWith('/card-intake/') || url.pathname === '/collections' || url.pathname === '/collections/purchase') {
       return await handleCardIntakeRequest(request, env, url, {
         CORS, json, supabaseAdminFetch, requireStoreUser, readJsonWithLimit,
+        identifyCardsFromImageBase64, waitUntil: (p) => ctx.waitUntil(p),
       });
     }
 
@@ -5911,6 +6014,13 @@ export default {
     // certNumber comes back the client calls the real PSA cert API with it
     // (same as a decoded barcode would) for an authoritative, population
     // verified grade instead of trusting the model's read of the grade text.
+    //
+    // The actual Claude call + parsing lives in identifyCardsFromImageBase64
+    // (defined near the top of this file) so Card Intake's own background
+    // processing (identifyAndResolveCardIntakeItem in scripts/card-intake.mjs,
+    // kicked off from a Worker execution context so it keeps running after a
+    // closed browser tab) can call the exact same identification logic this
+    // route uses, instead of drifting into a second copy of the prompt.
     if (url.pathname === '/identify/card') {
       if (request.method !== 'POST') return json({ ok:false, error: 'POST only' }, 405);
       if (!env.ANTHROPIC_API_KEY) return json({ ok:false, error: 'ANTHROPIC_API_KEY not set' }, 500);
@@ -5924,66 +6034,12 @@ export default {
       if (!rawBase64) return json({ ok:false, error:'image is required' }, 400);
       const rateError = await enforceUsageLimit(env, `identify-card:${storeId}:${auth.user.id}`, 60, 60);
       if (rateError) return rateError;
-
-      const identifyPrompt = 'You are looking at a photo of one or more physical trading cards, which may be raw or sealed in a graded slab (PSA/BGS/CGC/SGC). Pokemon TCG, Magic: The Gathering, sports cards (baseball/basketball/football/hockey/soccer/etc), and One Piece TCG are all in scope -- if the photo shows a comic, sealed product, video game, or anything else outside these four, return an empty "cards" array rather than guessing.\n\n'
-        + 'Count only actual separate physical cards visible in the photo -- one entry per card, never one entry per line of text on a card. Do NOT create a separate entry for an attack name, ability name, move, spell, stat line, flavor text, or any other text printed ON a card -- e.g. if a Pokemon card has an attack called "Cyclone Kick" printed on it, that is part of that ONE card\'s data, not a second card. If you only see one physical card in the photo, return exactly one entry.\n\n'
-        + 'For each distinct card clearly visible, extract exactly what is printed on the card -- do not guess a card you cannot actually read, and never estimate a price. Respond with strict JSON only, no markdown fences, no prose, matching this shape:\n'
-        + '{"cards":[{"game":"pokemon"|"mtg"|"sports"|"one_piece","name":"","setName":"","number":"","year":"","hp":"","manaCost":"","rarity":"","finish":"","specialMarkings":"","gradingCompany":"","grade":"","certNumber":"","confidence":"high"|"medium"|"low"}]}\n\n'
-        + 'For pokemon/mtg: name is the card\'s own title/name only (e.g. "Lucario V"), never an attack, ability, or move name. setName is whatever set name or set symbol you can identify (e.g. "Base Set", "Surging Sparks", "Bloomburrow"). finish is "normal"/"holo"/"reverse holo"/"foil"/"etched foil" as applicable. hp applies to pokemon only, manaCost to mtg only -- leave the other blank, and leave year blank for both.\n'
-        + 'For sports: name is the PLAYER\'s name printed on the card, never the team name alone. setName is the brand + product line (e.g. "Topps Chrome", "Panini Prizm", "Bowman"). year is the 4-digit year printed on the card. finish is the parallel/parallel color if any (e.g. "Refractor", "Gold /50", "Silver Prizm"), else leave blank. specialMarkings covers "Rookie Card"/"RC", autograph, or relic/patch notes. Leave hp and manaCost blank.\n'
-        + 'For one_piece: name is the card\'s own title (e.g. "Monkey D. Luffy"). setName is the set code + name (e.g. "OP-01 Romance Dawn"). rarity is the printed rarity (e.g. "L", "SR", "SEC"). finish covers "Alternate Art"/"Parallel" if applicable. Leave hp, manaCost, and year blank.\n'
-        + 'number is the printed collector number (e.g. "4/102", "087/091", "150"). specialMarkings also covers a 1st Edition stamp or promo stamp when applicable.\n\n'
-        + 'If the card is sealed in a graded slab, read all of the card\'s own fields (name/set/number/etc) off the printed label text above/below the card, exactly as you would off a raw card. Also fill in: gradingCompany is the company printed on the label ("PSA"/"BGS"/"CGC"/"SGC"). grade is the numeric grade printed on the label (e.g. "10", "9.5"). certNumber is the cert/serial number printed on the label as plain digits -- this is a different string than a barcode and is usually printed near a barcode or QR code on the label, always read it as text rather than trying to decode any barcode graphic. Leave gradingCompany/grade/certNumber blank for a raw (unslabbed) card. If a field is not legible, use an empty string rather than guessing.';
-
-      const res = await fetch(`${ANTHROPIC_BASE}/messages`, {
-        method: 'POST',
-        headers: {
-          'x-api-key': env.ANTHROPIC_API_KEY,
-          'anthropic-version': '2023-06-01',
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'claude-haiku-4-5-20251001',
-          max_tokens: 800,
-          temperature: 0,
-          messages: [{
-            role: 'user',
-            content: [
-              { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: rawBase64 } },
-              { type: 'text', text: identifyPrompt },
-            ],
-          }],
-        }),
-      });
-      if (!res.ok) {
-        const errText = await res.text();
-        return json({ ok:false, error: 'Anthropic ' + res.status + ': ' + errText.slice(0, 300) }, res.status === 429 ? 429 : 502);
+      try {
+        const cards = await identifyCardsFromImageBase64(env, rawBase64);
+        return json({ ok:true, success:true, cards });
+      } catch (e) {
+        return json({ ok:false, error: e.message }, e.status || 502);
       }
-      const anthropicData = await res.json().catch(() => ({}));
-      const textBlock = Array.isArray(anthropicData.content) ? anthropicData.content.find(b => b.type === 'text') : null;
-      const rawText = String(textBlock?.text || '').trim().replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/, '');
-      let parsedIdentify;
-      try { parsedIdentify = JSON.parse(rawText); } catch (_) { return json({ ok:false, error:'Model did not return valid JSON', raw: rawText.slice(0, 300) }, 502); }
-      const identifiedCards = (Array.isArray(parsedIdentify.cards) ? parsedIdentify.cards : [])
-        .filter(c => c && ['pokemon', 'mtg', 'sports', 'one_piece'].includes(c.game) && String(c.name || '').trim())
-        .slice(0, 12)
-        .map(c => ({
-          game: c.game,
-          name: String(c.name || '').trim().slice(0, 120),
-          setName: String(c.setName || '').trim().slice(0, 120),
-          number: String(c.number || '').trim().slice(0, 20),
-          year: String(c.year || '').trim().slice(0, 4),
-          hp: String(c.hp || '').trim().slice(0, 10),
-          manaCost: String(c.manaCost || '').trim().slice(0, 40),
-          rarity: String(c.rarity || '').trim().slice(0, 40),
-          finish: String(c.finish || '').trim().slice(0, 20),
-          specialMarkings: String(c.specialMarkings || '').trim().slice(0, 80),
-          gradingCompany: String(c.gradingCompany || '').trim().slice(0, 10),
-          grade: String(c.grade || '').trim().slice(0, 10),
-          certNumber: String(c.certNumber || '').replace(/\D/g, '').slice(0, 20),
-          confidence: ['high', 'medium', 'low'].includes(c.confidence) ? c.confidence : 'low',
-        }));
-      return json({ ok:true, success:true, cards: identifiedCards });
     }
 
     if (url.pathname === '/cardsight/identify') {
