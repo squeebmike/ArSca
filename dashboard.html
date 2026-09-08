@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.09.01.32-slow-movers-ebay-health-notify-print">
+<meta name="version" content="2026.09.02.01-roadmap-batch-complete">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1633,15 +1633,15 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.09.01.32-slow-movers-ebay-health-notify-print" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.09.01.32-slow-movers-ebay-health-notify-print" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.09.01.32-slow-movers-ebay-health-notify-print" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.09.01.32-slow-movers-ebay-health-notify-print" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.09.01.32-slow-movers-ebay-health-notify-print" defer></script>
-<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.09.01.32-slow-movers-ebay-health-notify-print" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.09.01.32-slow-movers-ebay-health-notify-print" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.09.01.32-slow-movers-ebay-health-notify-print" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.09.01.32-slow-movers-ebay-health-notify-print" defer></script>
+<script src="scripts/query-routing.js?v=2026.09.02.01-roadmap-batch-complete" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.09.02.01-roadmap-batch-complete" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.09.02.01-roadmap-batch-complete" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.09.02.01-roadmap-batch-complete" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.09.02.01-roadmap-batch-complete" defer></script>
+<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.09.02.01-roadmap-batch-complete" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.09.02.01-roadmap-batch-complete" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.09.02.01-roadmap-batch-complete" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.09.02.01-roadmap-batch-complete" defer></script>
 </head>
 <body>
 
@@ -1670,11 +1670,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.09.01.32-slow-movers-ebay-health-notify-print</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.09.02.01-roadmap-batch-complete</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.09.01.32-slow-movers-ebay-health-notify-print</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.09.02.01-roadmap-batch-complete</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1692,7 +1692,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.09.01.32-slow-movers-ebay-health-notify-print</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.09.02.01-roadmap-batch-complete</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -1712,6 +1712,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <!-- OVERVIEW TAB -->
 <div id="tab-overview" class="tab-panel on">
   <div class="sec">OVERVIEW</div>
+  <div style="max-width:1400px;margin:0 auto;padding:0 20px" id="pulse-wrap"></div>
   <div class="stats">
     <div class="sc g clickable" onclick="switchTab('inventory')" title="View inventory">
       <div class="sc-l">IN STOCK</div>
@@ -3767,7 +3768,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.09.01.32-slow-movers-ebay-health-notify-print';
+const APP_VERSION = '2026.09.02.01-roadmap-batch-complete';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -6413,6 +6414,7 @@ const FEATURE_LOG = [
   ]},
   { area:'Reporting', items:[
     { title:'Potential ROI stat (Home)', status:'working', desc:'Shows what you\'d walk away with if everything in stock sold at your real price right now, vs. what you paid for it.' },
+    { title:'The Mana Pocket Pulse', status:'new', desc:'The Home screen now opens with today\'s sales, est. gross profit, items sold, and cash tied up in 90+ day stock, followed by a short DO THESE THINGS list -- move stale Whatnot-friendly stock into tonight\'s show, reprice items flagged by a price-sync run, reorder what keeps selling out, and any FOC cutoff closing within 48 hours with no order submitted yet. Every line reuses a real, already-existing data source (Dead Inventory Radar, price-change alerts, the Restock checklist\'s own rule, real FOC cutoffs) -- nothing fabricated, and no "eBay watched items" line since this app has no aggregate watcher-count data to draw from.' },
     { title:'Category / product profitability & payment mix', status:'new', desc:'The Reports tab now breaks down revenue, COGS, profit and margin by category and by product, shows top sellers by revenue and by profit, charts sales/profit trends over your chosen date range, and a payment-method mix chart -- plus a Washington B&O tax filing note.' },
     { title:'Category Health report', status:'new', desc:'Cross-references what actually sold against your CURRENT unsold stock to flag where a category is struggling: no sales at all this period despite real stock sitting, negative or thin margins, cash concentrated in stock 90+ days old, or slow turnover relative to what it\'s tying up -- each with the real dollar amount and a concrete next step, not just a bare warning.' },
     { title:'Slow Movers / Dead Stock report', status:'new', desc:'Category Health flags an entire category as struggling; this drills straight to the specific items behind it -- everything sitting 90+ days, sorted by cash tied up (cost x quantity), with an EDIT shortcut to mark it down, bundle it, or pull it from the case.' },
@@ -16178,7 +16180,7 @@ function renderAll(opts){
   // behavior so nothing that reads DOM state right after calling it breaks.
   const deferHeavy = opts && opts.deferHeavy === true;
   renderPriceChangeAlerts();
-  renderStats(); renderCats(); renderTopVal(); renderFeed();
+  renderStats(); renderCats(); renderTopVal(); renderFeed(); renderPulse();
   const renderHeavy = () => {
     renderChannels(); renderTopSold(); renderMonthly();
     renderAlerts(); filterTable(); renderSoldTable();
@@ -16509,6 +16511,76 @@ function renderStats(){
       radarWrap.innerHTML = `<div class="alert" style="border-color:rgba(255,77,109,.35)"><span>💀 DEAD INVENTORY RADAR — ${radar.length} item${radar.length!==1?'s':''} sitting 90+ days, ${f$(trapped)} trapped</span><a class="ph-action" onclick="switchTab('reports')">View →</a></div>`;
     }
   }
+}
+
+// ── The Mana Pocket Pulse ────────────────────────────────────────────
+// Store idea: one home-screen summary that says "here's what to do next"
+// instead of "here's all your data". Rolls up features already built
+// this session (Dead Inventory Radar, the Restock checklist's own "keeps
+// selling out" rule, real price-change alerts, and FOC cutoffs with no
+// PRH order submitted yet) rather than inventing new data sources.
+// Deliberately has NO "eBay watched items" line -- nothing in this app
+// tracks an aggregate watcher count (Send Offers to Watchers is a manual
+// per-listing action, not a batch data source) -- and skips it rather
+// than fabricating a number, same principle as Dead Inventory Radar
+// skipping a "views" signal.
+async function computePulseData(){
+  const startOfToday = new Date(); startOfToday.setHours(0, 0, 0, 0);
+  const soldToday = (all || []).filter(i => i.status === 'sold' && i.soldAt && new Date(i.soldAt) >= startOfToday);
+  const grossToday = soldToday.reduce((s, i) => s + (i.salePrice || 0), 0);
+  const profitToday = soldToday.reduce((s, i) => s + (i.profit || 0), 0);
+
+  const radar = computeSlowMovers(all, { limit:9999 });
+  const trappedCash = radar.reduce((s, r) => s + r.cashTiedUp, 0);
+
+  const actions = [];
+  const whatnotCandidates = radar.filter(r => r.action === 'RUN ON WHATNOT');
+  if(whatnotCandidates.length) actions.push({ text:`Move ${whatnotCandidates.length} stale item${whatnotCandidates.length === 1 ? '' : 's'} into tonight's Whatnot`, tab:'reports' });
+
+  const openAlerts = safeLocalJson('price_change_alerts', []).filter(a => a.status === 'open');
+  if(openAlerts.length) actions.push({ text:`Reprice ${openAlerts.length} item${openAlerts.length === 1 ? '' : 's'} flagged by a price-sync run`, tab:'alerts' });
+
+  const soldAll = (all || []).filter(i => i.status === 'sold' && i.soldAt);
+  const insAll = (all || []).filter(i => i.status === 'in_stock');
+  const nameCount = {};
+  soldAll.forEach(i => { nameCount[i.name] = (nameCount[i.name] || 0) + 1; });
+  const restockCount = Object.entries(nameCount).filter(([name, count]) => count >= 2 && !insAll.some(i => i.name === name)).length;
+  if(restockCount) actions.push({ text:`Reorder ${restockCount} item${restockCount === 1 ? '' : 's'} that keep selling out`, tab:'restock' });
+
+  try{
+    const sb = getSupabaseClient();
+    const storeId = getActiveStoreId();
+    if(sb && storeId){
+      const cutoff48h = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString();
+      const { data: cycles } = await sb.from('foc_cycles').select('id,foc_date,customer_cutoff_at').eq('store_id', storeId).eq('status', 'open').lte('customer_cutoff_at', cutoff48h).gte('customer_cutoff_at', new Date().toISOString());
+      for(const cycle of (cycles || [])){
+        const { data: sub } = await sb.from('foc_prh_submissions').select('id').eq('cycle_id', cycle.id).limit(1);
+        if(!sub?.length){
+          const hoursLeft = Math.max(0, Math.round((new Date(cycle.customer_cutoff_at) - Date.now()) / 3600000));
+          actions.push({ text:`FOC ${cycle.foc_date} closes in ~${hoursLeft}h -- order not submitted yet`, tab:'foc' });
+        }
+      }
+    }
+  }catch(e){ /* best-effort -- Pulse still shows everything else if this fails */ }
+
+  return { grossToday, profitToday, soldTodayCount:soldToday.length, trappedCash, actions:actions.slice(0, 5) };
+}
+async function renderPulse(){
+  const el = document.getElementById('pulse-wrap');
+  if(!el) return;
+  const p = await computePulseData();
+  el.innerHTML = `<div style="background:var(--surf);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:14px">
+    <div style="font:900 11px 'Orbitron',monospace;color:var(--dim);letter-spacing:1px;margin-bottom:8px">TODAY</div>
+    <div style="display:flex;gap:18px;flex-wrap:wrap;font-family:monospace;font-size:12px;margin-bottom:12px">
+      <span><b style="color:var(--text)">${fd$(p.grossToday)}</b> <span style="color:var(--dim)">sales</span></span>
+      <span><b style="color:var(--g)">${fd$(p.profitToday)}</b> <span style="color:var(--dim)">est. gross profit</span></span>
+      <span><b style="color:var(--text)">${p.soldTodayCount}</b> <span style="color:var(--dim)">items sold</span></span>
+      <span><b style="color:var(--red)">${fd$(p.trappedCash)}</b> <span style="color:var(--dim)">cash tied up &gt;90 days</span></span>
+    </div>
+    ${p.actions.length ? `<div style="font:900 11px 'Orbitron',monospace;color:var(--gold);letter-spacing:1px;margin-bottom:6px">DO THESE ${p.actions.length} THING${p.actions.length === 1 ? '' : 'S'}</div>
+      ${p.actions.map(a => `<div style="font-family:monospace;font-size:11px;color:var(--text);padding:4px 0;cursor:pointer" onclick="switchTab('${a.tab}')">→ ${escHtml(a.text)}</div>`).join('')}`
+    : `<div style="font-family:monospace;font-size:10px;color:var(--dim)">Nothing urgent right now -- stock is turning over and FOC decisions are current.</div>`}
+  </div>`;
 }
 
 function renderCats(){
@@ -46128,7 +46200,7 @@ async function toppsLoadParallels(cardId){
   window.__arscaCloseModal = closeModal;
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.09.01.32-slow-movers-ebay-health-notify-print" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.09.02.01-roadmap-batch-complete" defer></script>
 </body>
 </html>
 

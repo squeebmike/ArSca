@@ -138,11 +138,16 @@ actually shipped. Check items off / move to `FEATURE_LOG` as they get built.
 - [ ] **Three dashboard modes** (organizing idea for the above, not a
       separate build): **RESEARCH MODE** (should I buy this?), **SELL
       MODE** (where/how should I sell this?), **LIVE MODE** (what should I
-      run next?).
+      run next?). The underlying capabilities behind each now exist
+      (research: existing pricing/comps lookups; sell: Whatnot vs. eBay
+      Decision; live: Show Builder/Live Auction Companion/The Bench) --
+      what's NOT built is an actual mode-switcher UI that reframes the
+      dashboard around one of the three. Left unchecked/not started since
+      it's explicitly a UI reorganization, not new functionality.
 
 ## The Mana Pocket Pulse
 
-- [ ] **One home-screen summary** replacing "here's all my data" with
+- [x] **One home-screen summary** replacing "here's all my data" with
       "here's what I should do next":
       > TODAY  $846 sales · $271 est. gross profit · 17 items sold · $4,810 cash tied up >90 days
       >
