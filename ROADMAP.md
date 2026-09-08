@@ -68,28 +68,28 @@ actually shipped. Check items off / move to `FEATURE_LOG` as they get built.
       Entering a sale price instantly shows estimated profit and pulls up
       the next item.
 
-- [ ] **Live Floor-Price Warning.** Mid-auction, if bidding stalls below
+- [x] **Live Floor-Price Warning.** Mid-auction, if bidding stalls below
       what makes sense given cost: "⚠️ DANGER — break-even ~$21.40" (you
       paid $17, running it at $1, stalled at $18). Can't stop a live
       Whatnot auction, but this teaches which inventory shouldn't be
       started at $1 next time.
 
-- [ ] **$1 Auction Risk Score.** Pre-show rating per item: SAFE AT $1 /
+- [x] **$1 Auction Risk Score.** Pre-show rating per item: SAFE AT $1 /
       RISKY / DO NOT $1 START. Based on cost, comps, demand, past Whatnot
       performance, category, and audience size — a $150 card isn't
       automatically safe to $1-start just because it's worth $150.
 
-- [ ] **Audience-Size Logic.** Ties inventory selection to how many people
+- [x] **Audience-Size Logic.** Ties inventory selection to how many people
       are actually in the room: "Hold the $300 Charizard, current room
       isn't deep enough — run the $25–$50 cards," unlocking bigger items
       once viewer/bidder count crosses a threshold.
 
-- [ ] **Buyer Heat Map.** Sales intelligence from the store's own shows,
+- [x] **Buyer Heat Map.** Sales intelligence from the store's own shows,
       not creepy tracking: which regular buyers go for which categories
       (e.g. "Mariners + Griffey," "Pokémon SIRs," "Spawn/90s comics"), so
       relevant inventory can be surfaced when they're active in a show.
 
-- [ ] **Buyer Momentum.** Mid-show pattern detection: someone buys 4
+- [x] **Buyer Momentum.** Mid-show pattern detection: someone buys 4
       Pokémon cards in 20 minutes → suggest running another related card
       or bundle. Live-commerce version of "customers also bought."
 
@@ -98,7 +98,7 @@ actually shipped. Check items off / move to `FEATURE_LOG` as they get built.
       numbered/ordered for easy physical pull, then auto-sort afterward
       into SOLD / UNSOLD / GIVEAWAY / NEEDS RELISTING.
 
-- [ ] **Whatnot vs. eBay Decision.** Per-item channel recommendation:
+- [x] **Whatnot vs. eBay Decision.** Per-item channel recommendation:
       WHATNOT / EBAY BIN / EBAY AUCTION / HOLD / CONVENTION. A $12 card can
       be a bad eBay listing but great Whatnot filler; a $600 card can be
       the wrong thing to expose to a thin $1-start room.
@@ -107,26 +107,26 @@ actually shipped. Check items off / move to `FEATURE_LOG` as they get built.
       giveaways / est. profit / profit per hour. Comparable across shows
       (e.g. Pokémon Tuesday vs. MTG Thursday vs. Comics Sunday).
 
-- [ ] **True Giveaway Cost.** Tracks not just the giveaway item's cost but
+- [x] **True Giveaway Cost.** Tracks not just the giveaway item's cost but
       shipping/fees/other costs attributable to it, then reports whether
       giveaway-heavy shows actually correlate with better sales.
 
-- [ ] **Loss-Leader Tracking.** Distinguishes "bad loss" from "customer
+- [x] **Loss-Leader Tracking.** Distinguishes "bad loss" from "customer
       acquisition" — losing $5 on an opening auction is fine if that same
       buyer goes on to spend $140 later in the show.
 
-- [ ] **Repeat Buyer / Whale Dashboard.** Beyond "who spent the most":
+- [x] **Repeat Buyer / Whale Dashboard.** Beyond "who spent the most":
       shows attended, total purchases, average order, categories, last
       purchase date. Someone spending $80/week for 15 weeks can matter
       more than a single $500 drop-in.
 
-- [ ] **Show Experiment Engine.** A/B-style testing across shows: $1 vs $5
+- [x] **Show Experiment Engine.** A/B-style testing across shows: $1 vs $5
       starts, 30s vs 15s auction timers, giveaways every 30 vs 60 minutes,
       Pokémon-only vs mixed, Saturday 7pm vs Tuesday 6pm. After enough
       shows, tells the store what actually works for their audience
       instead of general Whatnot-guru folklore.
 
-- [ ] **The Bench.** While live, a dynamic queue of the next 5–10 items the
+- [x] **The Bench.** While live, a dynamic queue of the next 5–10 items the
       software thinks should run next, reacting to real-time momentum
       instead of blindly following the pre-planned order:
       > MOMENTUM: MTG ↑

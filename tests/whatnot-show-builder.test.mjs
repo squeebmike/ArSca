@@ -43,14 +43,16 @@ const pullStart = dashboard.indexOf('function pullNextShowItem(){');
 const pullEnd = dashboard.indexOf('\n}', pullStart) + 2;
 const pullFn = dashboard.slice(pullStart, pullEnd);
 assert.match(pullFn, /selectWhatnotItem\(resolved\);/, 'NEXT ITEM must reuse the existing selectWhatnotItem, not a separate current-item mechanism');
-assert.match(pullFn, /const next = whatnotShowItems\.find\(r => r\.status === 'queued'\);/, 'must pull the next QUEUED item by position order');
+assert.match(pullFn, /const \{ ordered \} = pickBenchOrder\(\);/, 'must pull from the bench-prioritized order, not raw queue order');
+assert.match(pullFn, /if\(!next\) next = whatnotShowItems\.find\(r => r\.status === 'queued'\);/, 'must still fall back to any queued item so the show never stalls on an empty bench order');
 
 // confirmWhatnotSale must be hooked to also close out the show item.
 const confirmStart = dashboard.indexOf('async function confirmWhatnotSale(){');
 const confirmEnd = dashboard.indexOf('\nfunction renderWhatnotSessionTally', confirmStart);
 const confirmFn = dashboard.slice(confirmStart, confirmEnd);
 assert.match(confirmFn, /if\(whatnotCurrentShowItemId\)\{/, 'a real sale during an active show must update the show_item row, not just the general session tally');
-assert.match(confirmFn, /updateWhatnotShowItemStatus\(soldShowItemId,'sold',\{ sold_price_cents:Math\.round\(price\*100\), sold_at:new Date\(\)\.toISOString\(\) \}\);/, 'the show item must record the ACTUAL sale price, not the planned market price');
+assert.match(confirmFn, /const extra=\{ sold_price_cents:Math\.round\(price\*100\), sold_at:new Date\(\)\.toISOString\(\) \};/, 'the show item must record the ACTUAL sale price, not the planned market price');
+assert.match(confirmFn, /upsertCustomer\(buyerName,'','Whatnot show purchase: '\+itemName,'whatnot-show'\)/, 'an optional buyer name must flow through the EXISTING upsertCustomer, not a separate parallel customer record');
 
 assert.match(dashboard, /function giveawayWhatnotShowItem\(\)\{/, 'missing giveawayWhatnotShowItem');
 const giveStart = dashboard.indexOf('async function giveawayWhatnotShowItem(){');

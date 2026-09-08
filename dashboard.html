@@ -2711,6 +2711,7 @@ body.show-mode .inv-sync-badge{display:none;}
 
       <div style="text-align:center;font-family:'Orbitron',monospace;font-size:38px;color:var(--gold);margin-bottom:4px" id="whatnot-price-display">$0.00</div>
       <div style="text-align:center;font-family:var(--font-mono);font-size:10px;color:var(--dim);margin-bottom:12px" id="whatnot-fee-profit-preview">Fee: $0.00 &nbsp;·&nbsp; Profit: $0.00</div>
+      <input id="whatnot-buyer-name" class="tsi" placeholder="Buyer name (optional -- powers Whale Dashboard/Momentum)" style="margin-bottom:12px">
 
       <div id="whatnot-keypad" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
         <button class="hbtn" style="padding:18px;font-size:22px" onclick="whatnotKeypadPress('1')">1</button>
@@ -6331,7 +6332,14 @@ const FEATURE_LOG = [
     { title:'Show Builder', status:'new', desc:'Pick platform (Whatnot/eBay Live/Twitch), show length, and category -- drafts a full run-of-show from current inventory: mid-tier openers (never your best stuff first), cheap engagement filler, your highest-value anchors once the room is warmed up, giveaways, and a strong closer. A deterministic starting heuristic -- the "learns what works over time" half needs real accumulated Show P&L history across shows, which builds up as you run them.' },
     { title:'Show Inventory Bucket', status:'new', desc:'The Show Builder\'s run-of-show becomes a live queue you work through one item at a time, plus a "🎬 Add to Tonight\'s Show" action on any item\'s row menu to drop something in on the fly mid-show. Every item auto-sorts into SOLD / PASSED / GIVEAWAY as the show runs.' },
     { title:'Live Auction Companion', status:'new', desc:'While a show is live, Whatnot Mode gets NEXT ITEM / PASS / 🎁 GIVEAWAY buttons on top of the existing scan-and-sell flow -- NEXT ITEM loads the next queued item straight into the price keypad, a real sale automatically closes out that show item too, and GIVEAWAY records it as a near-zero-price sale (correctly depleting inventory) tagged with its own channel for later giveaway-cost tracking.' },
-    { title:'Show P&L', status:'new', desc:'END SHOW prints a full breakdown the moment a stream ends: gross, COGS, estimated Whatnot fees, giveaway cost, estimated profit, and profit per hour -- comparable across shows regardless of length.' },
+    { title:'Show P&L', status:'new', desc:'END SHOW prints a full breakdown the moment a stream ends: gross, COGS, estimated Whatnot fees, giveaway cost, estimated profit, and profit per hour -- comparable across shows regardless of length. Also splits any items sold at a loss into "customer acquisition" (the same buyer more than made it up elsewhere in the show) vs. genuine unexplained loss (Loss-Leader Tracking).' },
+    { title:'$1 Auction Risk Score', status:'new', desc:'Every item loaded into Whatnot Mode during a live show shows SAFE / RISKY / DO NOT $1 START based on its cost vs. that category\'s own real historical Whatnot results (falls back to a flat conservative default with zero history yet) -- a $150 card isn\'t automatically safe just because it\'s worth $150.' },
+    { title:'Live Floor-Price Warning', status:'new', desc:'The live fee/profit preview in Whatnot Mode now flashes an explicit ⚠️ DANGER banner with your break-even price the moment the entered price would sell at a loss, instead of just quietly turning the number red.' },
+    { title:'Audience-Size Logic', status:'new', desc:'Enter the current room size in the live show panel and NEXT ITEM will hold back your anchor-tier (highest-value) items until the room crosses a depth threshold, pulling from the rest of the queue instead -- optional and never gates anything until you actually enter a number.' },
+    { title:'Buyer Momentum / The Bench', status:'new', desc:'While a show is live, a MOMENTUM line shows which categories are running hot or cold relative to their planned price this show, and NEXT ITEM quietly prioritizes queued items from hot categories first -- reacting to what\'s actually selling tonight instead of blindly following the pre-planned order.' },
+    { title:'Whatnot vs. eBay Decision', status:'new', desc:'A per-item channel recommendation (Whatnot / eBay Auction / eBay Bin) based on value, quantity, and category -- a $12 card can be perfect Whatnot filler while a $150+ card is steered to eBay\'s full-market audience instead of a thin $1-start room.' },
+    { title:'Repeat Buyer / Whale Dashboard', status:'new', desc:'An optional buyer-name field when confirming a Whatnot sale links it to a real customer record; the Whale Dashboard then shows shows attended, total spent, average order, categories, and last purchase per buyer -- someone spending steadily every week can matter more than a single big one-time drop-in.' },
+    { title:'Show Experiment Engine + True Giveaway Cost', status:'new', desc:'Tag a show with what you\'re testing (e.g. "$1-starts" vs "$5-starts") when starting it, then COMPARE EXPERIMENTS shows average profit/hour across every ended show sharing a tag -- what actually works for your audience, not general Whatnot-guru folklore. The same screen always compares shows that ran giveaways against ones that didn\'t, so you can see whether giveaway-heavy shows actually correlate with better profit/hour instead of assuming either way.' },
   ]},
   { area:'Public Storefront (your website)', items:[
     { title:'Stripe checkout on your site', status:'working', desc:'Customers can browse and buy directly from your public storefront with a real Stripe-powered checkout.' },
@@ -27152,6 +27160,7 @@ let whatnotScanStream=null, whatnotScanDetector=null, whatnotScanDetecting=false
 let whatnotActiveShow = null; // { id, title, category, platform, planned_length_minutes, started_at, status }
 let whatnotShowItems = []; // full queue for the active show, position order
 let whatnotCurrentShowItemId = null; // which whatnotShowItems row is loaded into the scan/keypad panel below
+let _whatnotCategoryBenchmarks = new Map(); // category -> avg real Whatnot sale price, refreshed when a show starts/resumes
 
 // Store idea ("What Should I Sell Tonight?" Show Builder / Show Planner):
 // pick platform, length, and category; draft a running order from current
@@ -27220,6 +27229,8 @@ function openShowBuilderModal(){
         <select id="ws-category" class="tsi"><option value="Mixed">Mixed</option><option value="Pokemon TCG">Pokemon TCG</option><option value="Magic: The Gathering">Magic: The Gathering</option><option value="Sports">Sports</option><option value="Comic">Comic</option><option value="One Piece TCG">One Piece TCG</option><option value="Yu-Gi-Oh!">Yu-Gi-Oh!</option><option value="Disney Lorcana">Disney Lorcana</option></select>
         <label style="display:block;font-size:9px;color:var(--dim);margin:10px 0 4px">SHOW LENGTH (MINUTES)</label>
         <input id="ws-length" type="number" class="tsi" value="60">
+        <label style="display:block;font-size:9px;color:var(--dim);margin:10px 0 4px">EXPERIMENT TAG (OPTIONAL) <span title="Tag what you're testing, e.g. '$1-starts' or '30s-timer' -- COMPARE EXPERIMENTS later groups ended shows by this tag to see what actually performs better across shows tagged the same way.">ⓘ</span></label>
+        <input id="ws-experiment-tag" class="tsi" placeholder="e.g. $1-starts">
         <button class="hbtn" style="width:100%;padding:14px;margin-top:14px;color:var(--g)" onclick="createWhatnotShow()">BUILD SHOW & GO LIVE</button>
       </div>
     </div>`;
@@ -27236,13 +27247,14 @@ async function createWhatnotShow(){
   const category = document.getElementById('ws-category')?.value || 'Mixed';
   const lengthMinutes = parseInt(document.getElementById('ws-length')?.value, 10) || 60;
   const title = document.getElementById('ws-title')?.value?.trim() || (category + ' Show ' + new Date().toLocaleDateString());
+  const experimentTag = document.getElementById('ws-experiment-tag')?.value?.trim() || null;
   const runOfShow = buildShowRunOfShow(all, { lengthMinutes, category });
   if(!runOfShow.length){ toast_dash('No sellable inventory matches that category to build a show from'); return; }
   const sb = getSupabaseClient();
   const storeId = getActiveStoreId();
   if(!sb || !storeId) return;
   try{
-    const { data: showRows, error: showErr } = await sb.from('whatnot_shows').insert({ store_id:storeId, platform, title, category, planned_length_minutes:lengthMinutes, status:'live', started_at:new Date().toISOString() }).select('*').limit(1);
+    const { data: showRows, error: showErr } = await sb.from('whatnot_shows').insert({ store_id:storeId, platform, title, category, planned_length_minutes:lengthMinutes, status:'live', started_at:new Date().toISOString(), experiment_tag:experimentTag }).select('*').limit(1);
     if(showErr) throw showErr;
     const show = showRows[0];
     const itemRows = runOfShow.map(r => ({
@@ -27257,6 +27269,7 @@ async function createWhatnotShow(){
     whatnotCurrentShowItemId = null;
     closeShowBuilderModal();
     renderWhatnotShowPanel();
+    loadCategoryWhatnotBenchmarks().then(m => { _whatnotCategoryBenchmarks = m; });
     toast_dash('Show started: ' + runOfShow.length + ' items queued');
   }catch(e){ toast_dash('Could not start show: ' + e.message); }
 }
@@ -27274,6 +27287,7 @@ async function loadActiveWhatnotShow(){
       whatnotActiveShow = null;
       whatnotShowItems = [];
     }
+    if(whatnotActiveShow) loadCategoryWhatnotBenchmarks().then(m => { _whatnotCategoryBenchmarks = m; });
   }catch(e){ console.warn('[SHOW] load failed:', e.message); }
   renderWhatnotShowPanel();
 }
@@ -27300,9 +27314,64 @@ async function addItemToActiveShow(itemId){
     toast_dash('Added to tonight\'s show: ' + item.name);
   }catch(e){ toast_dash('Could not add to show: ' + e.message); }
 }
+// Store idea (Buyer Momentum / The Bench): react to what's actually
+// selling well THIS show instead of blindly following the pre-planned
+// order. Computed purely from this show's own sold items so far -- no
+// cross-show ML, just "which category is over/under-performing its own
+// planned (market) price right now". Needs at least 2 sales in a
+// category before calling it a trend, so one lucky/unlucky sale doesn't
+// swing the whole read.
+function computeShowMomentum(){
+  const sold = whatnotShowItems.filter(r => r.status === 'sold' && Number(r.market_price_cents || 0) > 0);
+  const byCategory = new Map();
+  sold.forEach(r => {
+    const cat = r.category || 'Other';
+    if(!byCategory.has(cat)) byCategory.set(cat, { realized:0, target:0, count:0 });
+    const c = byCategory.get(cat);
+    c.realized += Number(r.sold_price_cents || 0);
+    c.target += Number(r.market_price_cents || 0);
+    c.count++;
+  });
+  return [...byCategory.entries()]
+    .map(([category, c]) => ({ category, pctOfTarget: c.target > 0 ? (c.realized / c.target * 100) : 100, count:c.count }))
+    .filter(x => x.count >= 2)
+    .sort((a, b) => b.pctOfTarget - a.pctOfTarget);
+}
+// Bench order: queued items from categories currently running hot
+// (100%+ of their planned price) get bumped ahead of the rest, without
+// touching their stored `position` (still a soft display/pull-order
+// preference, not a destructive reorder of the planned show).
+function pickBenchOrder(){
+  const momentum = computeShowMomentum();
+  const hotCategories = new Set(momentum.filter(m => m.pctOfTarget >= 100).map(m => m.category));
+  const queued = whatnotShowItems.filter(r => r.status === 'queued');
+  const hot = queued.filter(r => hotCategories.has(r.category));
+  const rest = queued.filter(r => !hotCategories.has(r.category));
+  return { ordered: [...hot, ...rest], momentum };
+}
+// Store idea (Audience-Size Logic): "Hold the $300 Charizard, current
+// room isn't deep enough. Run the $25-50 cards." Only kicks in once the
+// seller has actually entered a room size this session (0 = not tracked,
+// never gates anything) -- an anchor-tier item is held back until the
+// room crosses the threshold, and the show pulls from the rest of the
+// queue instead of stalling.
+let whatnotCurrentAudienceSize = 0;
+const WHATNOT_ANCHOR_MIN_AUDIENCE = 15;
+function setWhatnotAudienceSize(val){
+  whatnotCurrentAudienceSize = Math.max(0, parseInt(val, 10) || 0);
+  if(whatnotActiveShow && whatnotCurrentAudienceSize > (whatnotActiveShow.peak_audience_size || 0)){
+    whatnotActiveShow.peak_audience_size = whatnotCurrentAudienceSize;
+    const sb = getSupabaseClient();
+    if(sb) sb.from('whatnot_shows').update({ peak_audience_size: whatnotCurrentAudienceSize }).eq('id', whatnotActiveShow.id).then(() => {}).catch(() => {});
+  }
+}
 function pullNextShowItem(){
-  const next = whatnotShowItems.find(r => r.status === 'queued');
+  const { ordered } = pickBenchOrder();
+  const audienceReady = whatnotCurrentAudienceSize === 0 || whatnotCurrentAudienceSize >= WHATNOT_ANCHOR_MIN_AUDIENCE;
+  let next = ordered.find(r => audienceReady || r.role !== 'anchor');
+  if(!next) next = whatnotShowItems.find(r => r.status === 'queued'); // every remaining item is a held-back anchor -- pull one anyway rather than stalling the show on an empty queue
   if(!next){ toast_dash('Show queue is empty'); renderWhatnotShowPanel(); return; }
+  if(next.role === 'anchor' && !audienceReady) toast_dash('Room is thin (' + whatnotCurrentAudienceSize + ') -- running an anchor item anyway since nothing else is queued');
   whatnotCurrentShowItemId = next.id;
   const liveItem = (all || []).find(i => i.id === next.inventory_item_id);
   const resolved = liveItem || { id: next.inventory_item_id, name: next.name, category: next.category, cost: Number(next.cost_cents || 0) / 100, market: Number(next.market_price_cents || 0) / 100, set:'', condition:'' };
@@ -27349,31 +27418,251 @@ async function updateWhatnotShowItemStatus(showItemId, status, extra={}){
   }
   renderWhatnotShowPanel();
 }
+// Store idea ($1 Auction Risk Score): SAFE AT $1 / RISKY / DO NOT $1 START
+// per item. A $150 card isn't automatically safe just because it's worth
+// $150 -- what matters is what a stalled $1 auction could realistically
+// lose. The benchmark is this category's own actual average $1-start
+// realized price from past shows (real data, once there's history);
+// falls back to a flat, conservative default with zero history yet
+// rather than fabricating a number.
+function computeAuctionRiskScore(item, categoryAvgSalePrice){
+  const cost = Number(item.cost || 0);
+  const benchmark = categoryAvgSalePrice > 0 ? categoryAvgSalePrice : 25;
+  if(cost <= 0) return { level:'SAFE', reason:'No cost basis on file -- nothing to lose starting at $1' };
+  if(cost <= benchmark * 0.3) return { level:'SAFE', reason:`Cost $${cost.toFixed(2)} is well under this category's typical result (~$${benchmark.toFixed(2)})` };
+  if(cost <= benchmark * 0.8) return { level:'RISKY', reason:`Cost $${cost.toFixed(2)} is close to this category's typical result (~$${benchmark.toFixed(2)}) -- a stalled auction could lose money` };
+  return { level:'DO NOT $1 START', reason:`Cost $${cost.toFixed(2)} exceeds this category's typical result (~$${benchmark.toFixed(2)}) -- start higher, or run it as an anchor/closer instead` };
+}
+async function loadCategoryWhatnotBenchmarks(){
+  const sb = getSupabaseClient();
+  const storeId = getActiveStoreId();
+  if(!sb || !storeId) return new Map();
+  try{
+    const { data } = await sb.from('whatnot_show_items').select('category,sold_price_cents').eq('store_id', storeId).eq('status', 'sold');
+    const byCategory = new Map();
+    (data || []).forEach(r => {
+      const cat = r.category || 'Other';
+      if(!byCategory.has(cat)) byCategory.set(cat, { total:0, count:0 });
+      const c = byCategory.get(cat);
+      c.total += Number(r.sold_price_cents || 0) / 100;
+      c.count++;
+    });
+    const out = new Map();
+    byCategory.forEach((c, cat) => out.set(cat, c.count > 0 ? c.total / c.count : 0));
+    return out;
+  }catch(e){ console.warn('[SHOW] benchmark load failed:', e.message); return new Map(); }
+}
+// Store idea (Whatnot vs. eBay Decision): a per-item channel
+// recommendation. A $12 card can be a bad standalone eBay listing but
+// perfect Whatnot filler; a $600 card can be the wrong thing to expose to
+// a thin $1-start room.
+function suggestSalesChannel(item){
+  const price = inventoryListPrice(item);
+  const qty = inventoryAvailableQuantity(item);
+  if(price >= 150) return { channel:'EBAY AUCTION', reason:'High value -- eBay\'s full-market audience and real bidding beats a live $1-start room' };
+  if(price < 5) return { channel:'EBAY BIN / BUNDLE', reason:'Too cheap to justify a standalone listing -- bundle it or bin-list it' };
+  if(WHATNOT_SHOW_CATEGORIES.includes(item.category) && qty <= 1) return { channel:'WHATNOT', reason:'Mid-value single-copy collectible -- a live audience usually outperforms a static listing' };
+  return { channel:'EBAY BIN', reason:'Not a strong fit for a live room -- list it as a normal fixed-price/auction listing' };
+}
+const WHATNOT_SHOW_CATEGORIES = ['Pokemon TCG','Magic: The Gathering','One Piece TCG','Yu-Gi-Oh!','Disney Lorcana','Sports'];
+
+function openWhaleDashboard(){
+  let modal = document.getElementById('whale-dashboard-modal');
+  if(!modal){
+    modal = document.createElement('div');
+    modal.id = 'whale-dashboard-modal';
+    modal.className = 'ppsb-modal';
+    modal.innerHTML = '<div class="ppsb-inner" id="whale-dashboard-inner"></div>';
+    modal.addEventListener('click', e => { if(e.target === modal) closeWhaleDashboard(); });
+    document.body.appendChild(modal);
+  }
+  modal.classList.add('on');
+  renderWhaleDashboard();
+}
+function closeWhaleDashboard(){
+  document.getElementById('whale-dashboard-modal')?.classList.remove('on');
+}
+// Store idea (Repeat Buyer / Whale Dashboard): not just "who spent the
+// most" -- shows attended, total spent, average order, categories, last
+// purchase. Someone spending $80/week for 15 weeks can matter more than
+// a single $500 drop-in. Built entirely from real buyer_name/
+// buyer_customer_id captured on confirmWhatnotSale -- empty until staff
+// actually fill in the buyer field during a show.
+async function renderWhaleDashboard(){
+  const inner = document.getElementById('whale-dashboard-inner');
+  if(!inner) return;
+  inner.innerHTML = '<div style="padding:20px;font-family:monospace;font-size:11px;color:var(--dim)">Loading…</div>';
+  const sb = getSupabaseClient();
+  const storeId = getActiveStoreId();
+  if(!sb || !storeId) return;
+  const { data, error } = await sb.from('whatnot_show_items').select('show_id,buyer_name,buyer_customer_id,sold_price_cents,category,sold_at').eq('store_id', storeId).eq('status', 'sold').not('buyer_name', 'is', null);
+  if(error){ inner.innerHTML = `<div style="padding:20px;color:var(--red);font-family:monospace;font-size:11px">${escHtml(error.message)}</div>`; return; }
+  const byBuyer = new Map();
+  (data || []).forEach(r => {
+    const key = r.buyer_customer_id || r.buyer_name;
+    if(!key) return;
+    if(!byBuyer.has(key)) byBuyer.set(key, { name:r.buyer_name, shows:new Set(), total:0, count:0, categories:new Set(), lastAt:r.sold_at });
+    const b = byBuyer.get(key);
+    b.shows.add(r.show_id);
+    b.total += Number(r.sold_price_cents || 0) / 100;
+    b.count++;
+    if(r.category) b.categories.add(r.category);
+    if(new Date(r.sold_at) > new Date(b.lastAt)) b.lastAt = r.sold_at;
+  });
+  const buyers = [...byBuyer.values()].sort((a, b) => b.total - a.total);
+  inner.innerHTML = `<div class="ppsb-header">
+      <div style="display:flex;align-items:center;gap:10px;min-width:0"><span class="ppsb-title">🐋 REPEAT BUYER / WHALE DASHBOARD</span></div>
+      <button class="hbtn" style="min-height:36px;padding:4px 14px;font-size:10px;flex-shrink:0" onclick="closeWhaleDashboard()">✕ CLOSE</button>
+    </div>
+    <div style="max-width:700px;margin:0 auto;padding:16px 20px">
+    ${buyers.length ? buyers.map(b => `<div style="padding:8px 0;border-bottom:1px solid var(--line)">
+      <div style="font-weight:800;font-size:12px">${escHtml(b.name)}</div>
+      <div style="font-family:monospace;font-size:9px;color:var(--dim)">${b.shows.size} show${b.shows.size === 1 ? '' : 's'} · ${b.count} purchase${b.count === 1 ? '' : 's'} · ${fd$(b.total)} total · avg ${fd$(b.total / b.count)} · ${[...b.categories].join(', ')} · last ${new Date(b.lastAt).toLocaleDateString()}</div>
+    </div>`).join('') : '<div class="empty"><div class="empty-t">No buyer names captured yet -- fill in the buyer field when confirming a Whatnot sale to start building this.</div></div>'}
+    </div>`;
+}
+
+function openExperimentComparison(){
+  let modal = document.getElementById('experiment-comparison-modal');
+  if(!modal){
+    modal = document.createElement('div');
+    modal.id = 'experiment-comparison-modal';
+    modal.className = 'ppsb-modal';
+    modal.innerHTML = '<div class="ppsb-inner" id="experiment-comparison-inner"></div>';
+    modal.addEventListener('click', e => { if(e.target === modal) closeExperimentComparison(); });
+    document.body.appendChild(modal);
+  }
+  modal.classList.add('on');
+  renderExperimentComparison();
+}
+function closeExperimentComparison(){
+  document.getElementById('experiment-comparison-modal')?.classList.remove('on');
+}
+// Store idea (Show Experiment Engine + True Giveaway Cost): compare
+// aggregate outcomes across ALL ended shows -- by experiment tag (e.g.
+// "$1-starts" vs "$5-starts") when tagged, and always by whether a show
+// ran any giveaways at all, to see whether giveaway-heavy shows actually
+// correlate with better profit/hour rather than assuming either way.
+// Needs at least 2 shows in a bucket to say anything (a single show isn't
+// a trend); untagged shows are simply excluded from the tag comparison,
+// not the giveaway comparison.
+async function renderExperimentComparison(){
+  const inner = document.getElementById('experiment-comparison-inner');
+  if(!inner) return;
+  inner.innerHTML = '<div style="padding:20px;font-family:monospace;font-size:11px;color:var(--dim)">Loading…</div>';
+  const sb = getSupabaseClient();
+  const storeId = getActiveStoreId();
+  if(!sb || !storeId) return;
+  const { data: shows, error } = await sb.from('whatnot_shows').select('id,title,experiment_tag,started_at,ended_at').eq('store_id', storeId).eq('status', 'ended');
+  if(error){ inner.innerHTML = `<div style="padding:20px;color:var(--red);font-family:monospace;font-size:11px">${escHtml(error.message)}</div>`; return; }
+  if(!shows?.length){ inner.innerHTML = `<div class="ppsb-header"><span class="ppsb-title">📊 COMPARE EXPERIMENTS</span><button class="hbtn" onclick="closeExperimentComparison()">✕ CLOSE</button></div><div style="padding:20px"><div class="empty"><div class="empty-t">No ended shows yet -- this fills in as you run and end shows.</div></div></div>`; return; }
+  const showIds = shows.map(s => s.id);
+  const { data: items } = await sb.from('whatnot_show_items').select('show_id,status,sold_price_cents,cost_cents').in('show_id', showIds);
+  const byShow = new Map();
+  (items || []).forEach(r => { if(!byShow.has(r.show_id)) byShow.set(r.show_id, []); byShow.get(r.show_id).push(r); });
+  const perShow = shows.map(s => {
+    const rows = byShow.get(s.id) || [];
+    const sold = rows.filter(r => r.status === 'sold');
+    const gross = sold.reduce((sum, r) => sum + Number(r.sold_price_cents || 0) / 100, 0);
+    const cogs = sold.reduce((sum, r) => sum + Number(r.cost_cents || 0) / 100, 0);
+    const hours = s.started_at && s.ended_at ? Math.max(1 / 60, (new Date(s.ended_at) - new Date(s.started_at)) / 3600000) : 1;
+    return { show:s, profitPerHour:(gross - cogs) / hours, giveawayCount: rows.filter(r => r.status === 'giveaway').length };
+  });
+  const byTag = new Map();
+  perShow.filter(p => p.show.experiment_tag).forEach(p => {
+    const tag = p.show.experiment_tag;
+    if(!byTag.has(tag)) byTag.set(tag, { showCount:0, totalProfitPerHour:0 });
+    const t = byTag.get(tag);
+    t.showCount++;
+    t.totalProfitPerHour += p.profitPerHour;
+  });
+  const tagRows = [...byTag.entries()].map(([tag, t]) => ({ tag, showCount:t.showCount, avgProfitPerHour: t.totalProfitPerHour / t.showCount })).sort((a, b) => b.avgProfitPerHour - a.avgProfitPerHour);
+  const withGiveaways = perShow.filter(p => p.giveawayCount > 0);
+  const withoutGiveaways = perShow.filter(p => p.giveawayCount === 0);
+  const avgOf = list => list.length ? list.reduce((s, p) => s + p.profitPerHour, 0) / list.length : null;
+  const giveawayRows = [
+    { label:'Shows WITH giveaways', showCount:withGiveaways.length, avgProfitPerHour:avgOf(withGiveaways) },
+    { label:'Shows with NO giveaways', showCount:withoutGiveaways.length, avgProfitPerHour:avgOf(withoutGiveaways) },
+  ].filter(r => r.showCount > 0);
+  inner.innerHTML = `<div class="ppsb-header"><span class="ppsb-title">📊 COMPARE EXPERIMENTS</span><button class="hbtn" onclick="closeExperimentComparison()">✕ CLOSE</button></div>
+    <div style="max-width:600px;margin:0 auto;padding:16px 20px">
+      <div style="font:900 11px 'Orbitron',monospace;color:var(--gold);letter-spacing:1px;margin-bottom:6px">GIVEAWAY IMPACT</div>
+      <div style="font-family:monospace;font-size:9px;color:var(--dim);margin-bottom:10px">Avg. profit/hour -- do giveaway-heavy shows actually do better?</div>
+      ${giveawayRows.length < 2 ? '<div class="empty"><div class="empty-t">Need ended shows both with and without giveaways to compare</div></div>' : giveawayRows.map(r => `<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--line)">
+        <span style="font-weight:700;font-size:12px">${escHtml(r.label)} <span style="color:var(--dim);font-size:9px">(${r.showCount} show${r.showCount === 1 ? '' : 's'})</span></span>
+        <span style="font-family:monospace;font-size:12px;color:${r.avgProfitPerHour >= 0 ? 'var(--g)' : 'var(--red)'}">${fd$(r.avgProfitPerHour)}/hr</span>
+      </div>`).join('')}
+      <div style="font:900 11px 'Orbitron',monospace;color:var(--gold);letter-spacing:1px;margin:16px 0 6px">BY EXPERIMENT TAG</div>
+      ${!tagRows.length ? '<div class="empty"><div class="empty-t">No tagged shows yet -- add an Experiment Tag next time you start a show.</div></div>' : tagRows.map(r => `<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--line)">
+        <span style="font-weight:700;font-size:12px">${escHtml(r.tag)} <span style="color:var(--dim);font-size:9px">(${r.showCount} show${r.showCount === 1 ? '' : 's'})</span></span>
+        <span style="font-family:monospace;font-size:12px;color:${r.avgProfitPerHour >= 0 ? 'var(--g)' : 'var(--red)'}">${fd$(r.avgProfitPerHour)}/hr</span>
+      </div>`).join('')}
+    </div>`;
+}
+
 const WHATNOT_SHOW_ROLE_LABEL = { opener:'OPENER', engagement:'FILLER', anchor:'ANCHOR', giveaway:'GIVEAWAY', closer:'CLOSER' };
 function renderWhatnotShowPanel(){
   const el = document.getElementById('whatnot-show-panel');
   if(!el) return;
   if(!whatnotActiveShow){
-    el.innerHTML = `<button class="hbtn" style="width:100%;padding:14px;color:var(--gold)" onclick="openShowBuilderModal()">🎬 START A SHOW</button>`;
+    el.innerHTML = `<button class="hbtn" style="width:100%;padding:14px;color:var(--gold)" onclick="openShowBuilderModal()">🎬 START A SHOW</button>
+      <button class="hbtn" style="width:100%;padding:10px;margin-top:6px" onclick="openWhaleDashboard()">🐋 Repeat Buyer / Whale Dashboard</button>
+      <button class="hbtn" style="width:100%;padding:10px;margin-top:6px" onclick="openExperimentComparison()">📊 Compare Experiments</button>`;
     return;
   }
-  const queued = whatnotShowItems.filter(r => r.status === 'queued');
+  const { ordered: benchOrder, momentum } = pickBenchOrder();
   const sold = whatnotShowItems.filter(r => r.status === 'sold');
   const gross = sold.reduce((s, r) => s + Number(r.sold_price_cents || 0) / 100, 0);
-  const upcoming = queued.slice(0, 5);
+  const upcoming = benchOrder.slice(0, 5);
+  const hot = momentum.filter(m => m.pctOfTarget >= 100);
+  const cold = momentum.filter(m => m.pctOfTarget < 80);
+  const momentumLine = (hot.length || cold.length)
+    ? `MOMENTUM: ${[...hot.map(m => m.category + ' ↑ ' + m.pctOfTarget.toFixed(0) + '%'), ...cold.map(m => m.category + ' ↓ ' + m.pctOfTarget.toFixed(0) + '%')].join(' · ')}`
+    : '';
   el.innerHTML = `<div style="background:var(--surf);border:1px solid var(--g);border-radius:10px;padding:12px">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
       <div style="font-family:'Orbitron',monospace;font-size:12px;color:var(--g)">🔴 LIVE: ${escHtml(whatnotActiveShow.title)}</div>
       <button class="hbtn" style="font-size:9px;min-height:26px;padding:2px 10px" onclick="endWhatnotShow()">END SHOW</button>
     </div>
-    <div style="font-family:monospace;font-size:9px;color:var(--dim);margin-bottom:10px">${sold.length} sold · ${queued.length} queued · ${fd$(gross)} gross so far</div>
+    <div style="font-family:monospace;font-size:9px;color:var(--dim);margin-bottom:8px">${sold.length} sold · ${whatnotShowItems.filter(r => r.status === 'queued').length} queued · ${fd$(gross)} gross so far</div>
+    <label style="display:flex;align-items:center;gap:6px;font-family:monospace;font-size:9px;color:var(--dim);margin-bottom:10px">ROOM SIZE <input type="number" min="0" value="${whatnotCurrentAudienceSize || ''}" placeholder="viewers" style="width:60px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:3px 6px;border-radius:4px" onchange="setWhatnotAudienceSize(this.value)"> <span title="Below ${WHATNOT_ANCHOR_MIN_AUDIENCE}, NEXT ITEM holds back your anchor-tier items for a bigger room">ⓘ</span></label>
+    ${momentumLine ? `<div style="font-family:monospace;font-size:9px;color:var(--gold);margin-bottom:8px">${escHtml(momentumLine)}</div>` : ''}
     <div style="display:flex;gap:6px;margin-bottom:10px">
       <button class="hbtn" style="flex:1;color:var(--g)" onclick="pullNextShowItem()">▶ NEXT ITEM</button>
       <button class="hbtn" onclick="passWhatnotShowItem()">PASS</button>
       <button class="hbtn" style="color:var(--gold)" onclick="giveawayWhatnotShowItem()">🎁 GIVEAWAY</button>
     </div>
     <div style="font-family:monospace;font-size:8px;color:var(--dim)">UP NEXT: ${upcoming.map(r => escHtml(r.name) + ' (' + (WHATNOT_SHOW_ROLE_LABEL[r.role] || r.role) + ')').join(' → ') || 'queue empty'}</div>
+    <div style="display:flex;gap:6px;margin-top:10px">
+      <button class="hbtn" style="flex:1;font-size:9px;padding:6px" onclick="openWhaleDashboard()">🐋 Whale Dashboard</button>
+      <button class="hbtn" style="flex:1;font-size:9px;padding:6px" onclick="openExperimentComparison()">📊 Compare Experiments</button>
+    </div>
   </div>`;
+}
+// Store idea (Loss-Leader Tracking): a sold item priced under its cost is
+// only a "bad loss" if the buyer didn't also spend enough elsewhere in
+// this same show to more than cover it -- otherwise it's the cost of
+// getting them in the door. Only classifiable when a buyer name/id was
+// captured on both the loss and their other purchases; unattributed
+// losses (no buyer name entered) can't be linked to anything and stay
+// unexplained.
+function classifyShowLosses(soldItems){
+  const byBuyer = new Map();
+  soldItems.forEach(r => {
+    const key = r.buyer_customer_id || r.buyer_name || '';
+    if(!key) return;
+    if(!byBuyer.has(key)) byBuyer.set(key, []);
+    byBuyer.get(key).push(r);
+  });
+  return soldItems.map(r => {
+    const priceCents = Number(r.sold_price_cents || 0), costCents = Number(r.cost_cents || 0);
+    const loss = priceCents < costCents ? (costCents - priceCents) / 100 : 0;
+    if(loss <= 0) return { ...r, lossType:null, loss:0 };
+    const key = r.buyer_customer_id || r.buyer_name || '';
+    const buyerItems = key ? (byBuyer.get(key) || []) : [];
+    const buyerOtherProfit = buyerItems.filter(x => x.id !== r.id).reduce((s, x) => s + (Number(x.sold_price_cents || 0) - Number(x.cost_cents || 0)) / 100, 0);
+    return { ...r, lossType: (key && buyerOtherProfit >= loss) ? 'acquisition' : 'bad_loss', loss };
+  });
 }
 async function endWhatnotShow(){
   if(!whatnotActiveShow) return;
@@ -27392,11 +27681,21 @@ async function endWhatnotShow(){
   const startedMs = whatnotActiveShow.started_at ? new Date(whatnotActiveShow.started_at).getTime() : Date.now();
   const hours = Math.max(1 / 60, (Date.now() - startedMs) / 3600000);
   const profitPerHour = profit / hours;
+  // Store idea (Loss-Leader Tracking): distinguish a "bad loss" from
+  // "customer acquisition" -- losing $5 on an opening auction is fine if
+  // that same buyer went on to spend $140 later in the show. Only
+  // classifiable for sales with a captured buyer name/id; anything sold
+  // at a loss with no buyer on file is left as an unexplained loss.
+  const losses = classifyShowLosses(sold);
+  const acquisitionLoss = losses.filter(l => l.lossType === 'acquisition').reduce((s, l) => s + l.loss, 0);
+  const badLoss = losses.filter(l => l.lossType === 'bad_loss').reduce((s, l) => s + l.loss, 0);
   const w = window.open('', '_blank', 'width=420,height=560');
   if(w){
     w.document.write('<html><head><title>Show P&L</title><style>body{font-family:monospace;padding:20px;font-size:12px}h2{margin:0 0 4px}.row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #ddd}</style></head><body>');
     w.document.write('<h2>' + escHtml(whatnotActiveShow.title) + '</h2><div style="color:#666;margin-bottom:12px">' + new Date().toLocaleString() + '</div>');
-    [['Gross', fd$(gross)], ['COGS', fd$(cogs)], ['Est. fees', fd$(estFees)], ['Giveaway cost', fd$(giveawayCost)], ['Est. profit', fd$(profit)], ['Profit/hour', fd$(profitPerHour)], ['Items sold', sold.length], ['Giveaways', giveaways.length], ['Show length', hours.toFixed(1) + 'h']].forEach(([k, v]) => {
+    const rows=[['Gross', fd$(gross)], ['COGS', fd$(cogs)], ['Est. fees', fd$(estFees)], ['Giveaway cost', fd$(giveawayCost)], ['Est. profit', fd$(profit)], ['Profit/hour', fd$(profitPerHour)], ['Items sold', sold.length], ['Giveaways', giveaways.length], ['Show length', hours.toFixed(1) + 'h']];
+    if(badLoss>0||acquisitionLoss>0){ rows.push(['Loss leaders (customer acquisition)', fd$(acquisitionLoss)]); rows.push(['Loss leaders (unexplained)', fd$(badLoss)]); }
+    rows.forEach(([k, v]) => {
       w.document.write('<div class="row"><span>' + k + '</span><b>' + v + '</b></div>');
     });
     w.document.write('<script>window.print();<\/script></body></html>');
@@ -27483,7 +27782,15 @@ function selectWhatnotItem(item){
   const nameEl=document.getElementById('whatnot-item-name');
   if(nameEl) nameEl.textContent=item.name||'Item';
   const metaEl=document.getElementById('whatnot-item-meta');
-  if(metaEl) metaEl.textContent=[item.set,item.condition,item.cost!=null?'Cost $'+Number(item.cost).toFixed(2):''].filter(Boolean).join(' · ');
+  const metaParts=[item.set,item.condition,item.cost!=null?'Cost $'+Number(item.cost).toFixed(2):''].filter(Boolean);
+  if(whatnotActiveShow){
+    const risk=computeAuctionRiskScore(item, _whatnotCategoryBenchmarks.get(item.category)||0);
+    metaParts.push(risk.level);
+  }
+  if(metaEl){
+    metaEl.textContent=metaParts.join(' · ');
+    if(whatnotActiveShow) metaEl.title=computeAuctionRiskScore(item, _whatnotCategoryBenchmarks.get(item.category)||0).reason;
+  }
   setWhatnotScanStatus('Ready: '+(item.name||'Item')+' -- enter the sold price.','var(--g)');
   renderWhatnotPrice();
 }
@@ -27493,6 +27800,8 @@ function cancelWhatnotItem(){
   whatnotPriceCents=0;
   const panel=document.getElementById('whatnot-current-item');
   if(panel) panel.style.display='none';
+  const buyerEl=document.getElementById('whatnot-buyer-name');
+  if(buyerEl) buyerEl.value='';
   setWhatnotScanStatus('Scan a label barcode or type it below.');
   document.getElementById('whatnot-scan-manual-input')?.focus();
 }
@@ -27522,7 +27831,17 @@ function renderWhatnotPrice(){
   const cost=Number(whatnotCurrentItem?.cost||0);
   const profit=price-feeAmount-cost;
   const previewEl=document.getElementById('whatnot-fee-profit-preview');
-  if(previewEl) previewEl.innerHTML=`Fee: <b style="color:var(--red)">$${feeAmount.toFixed(2)}</b> &nbsp;·&nbsp; Profit: <b style="color:${profit>=0?'var(--g)':'var(--red)'}">$${profit.toFixed(2)}</b>`;
+  // Store idea (Live Floor-Price Warning): the existing fee/profit preview
+  // already updates live as digits are typed -- this just makes a real
+  // loss impossible to miss (an explicit banner, not just red text) so it
+  // registers instantly on a second screen next to OBS mid-auction.
+  const breakEven=cost+fee.flat; // rough floor ignoring the pct fee's own compounding, good enough for an at-a-glance warning
+  if(previewEl){
+    previewEl.innerHTML = (price>0 && profit<0)
+      ? `⚠️ DANGER -- selling at a loss &nbsp;·&nbsp; Fee: <b style="color:var(--red)">$${feeAmount.toFixed(2)}</b> &nbsp;·&nbsp; Profit: <b style="color:var(--red)">$${profit.toFixed(2)}</b> &nbsp;·&nbsp; break-even ~$${breakEven.toFixed(2)}`
+      : `Fee: <b style="color:var(--red)">$${feeAmount.toFixed(2)}</b> &nbsp;·&nbsp; Profit: <b style="color:${profit>=0?'var(--g)':'var(--red)'}">$${profit.toFixed(2)}</b>`;
+    previewEl.style.cssText = (price>0 && profit<0) ? 'font-weight:800;color:var(--red);background:rgba(255,77,109,.12);border:1px solid var(--red);border-radius:8px;padding:6px' : '';
+  }
   const confirmBtn=document.getElementById('whatnot-confirm-btn');
   if(confirmBtn) confirmBtn.disabled=!(price>0)||whatnotSubmitting;
 }
@@ -27552,10 +27871,21 @@ async function confirmWhatnotSale(){
     loadInventory().catch(()=>{});
     // Whatnot Show Builder: if this sale was for the show's current item,
     // record it against that show_item row too, so Show P&L reflects it.
+    // The buyer name (optional) is the only real data source Buyer
+    // Momentum / The Bench / Repeat Buyer-Whale Dashboard have -- Whatnot
+    // gives this app no API access to who's actually bidding.
     if(whatnotCurrentShowItemId){
       const soldShowItemId=whatnotCurrentShowItemId;
       whatnotCurrentShowItemId=null;
-      updateWhatnotShowItemStatus(soldShowItemId,'sold',{ sold_price_cents:Math.round(price*100), sold_at:new Date().toISOString() });
+      const buyerName=document.getElementById('whatnot-buyer-name')?.value?.trim()||'';
+      const extra={ sold_price_cents:Math.round(price*100), sold_at:new Date().toISOString() };
+      if(buyerName){
+        extra.buyer_name=buyerName;
+        upsertCustomer(buyerName,'','Whatnot show purchase: '+itemName,'whatnot-show').then(c=>{
+          if(c?.id) updateWhatnotShowItemStatus(soldShowItemId,'sold',{ ...extra, buyer_customer_id:c.id });
+        }).catch(()=>{});
+      }
+      updateWhatnotShowItemStatus(soldShowItemId,'sold',extra);
     }
     cancelWhatnotItem();
   }catch(e){
