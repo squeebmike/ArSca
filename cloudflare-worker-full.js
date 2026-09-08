@@ -7212,10 +7212,21 @@ export default {
         built.push({ ...v, sku });
       }
 
+      // Store report (live error, persisting after every variant's own
+      // inventory_item already carried a real image): "Publish failed
+      // (400): Add at least 1 photo." eBay's inventory_item_group resource
+      // has its OWN top-level imageUrls -- the group's default/fallback
+      // gallery, separate from each variant's own inventory_item images --
+      // and publish validation checks that, not just each variant's own
+      // images. Every prior version of this group body omitted it entirely,
+      // so from eBay's point of view the GROUP itself had zero photos even
+      // though every individual variant did.
+      const groupImageUrls = [...new Set(built.map(v => v.imageUrl).filter(Boolean))];
       const groupBody = {
         title: String(groupTitle).substring(0, 80),
         description: toEbayHtmlDescription(b.description || groupTitle),
         aspects: buildEbayAspects(b),
+        imageUrls: groupImageUrls,
         variantSKUs: built.map(v => v.sku),
         variesBy: {
           aspectsImageVaryBy: [variantAspectName],

@@ -42,6 +42,15 @@ assert.match(createGroupBody, /fetch\(`https:\/\/api\.ebay\.com\/sell\/inventory
 // (each cover really does have its own art).
 assert.match(createGroupBody, /inventory_item_group\/\$\{groupKey\}/, 'must PUT the inventory_item_group tying the variant SKUs together');
 assert.match(createGroupBody, /variantSKUs: built\.map\(v => v\.sku\)/, 'the group must list every variant SKU just created');
+// Store report (live error, persisting even though every variant's own
+// inventory_item already had a real image): "Publish failed (400): Add at
+// least 1 photo." eBay's inventory_item_group resource has its own
+// top-level imageUrls -- the group's default gallery, checked by publish
+// validation separately from each variant's own images -- which every
+// prior version of this group body omitted entirely.
+assert.match(createGroupBody, /const groupImageUrls = \[\.\.\.new Set\(built\.map\(v => v\.imageUrl\)\.filter\(Boolean\)\)\];/,
+  'must collect every distinct real variant image for the group\'s own gallery');
+assert.match(createGroupBody, /imageUrls: groupImageUrls,/, 'the inventory_item_group PUT body must carry its own imageUrls, not just rely on each variant\'s own image');
 assert.match(createGroupBody, /aspectsImageVaryBy: \[variantAspectName\]/, 'the group must vary its shown image by the same aspect (e.g. Cover), so each variant shows its own cover art like the real eBay example');
 assert.match(createGroupBody, /specifications: \[\{ name: variantAspectName, values: built\.map\(v => v\.label\) \}\]/, 'the group must declare the dropdown values as every variant\'s own label');
 
