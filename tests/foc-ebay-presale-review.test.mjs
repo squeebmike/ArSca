@@ -64,12 +64,22 @@ assert.match(worker, /priceCents >= 1000 \? \{ weightValue: 0\.625, weightUnit: 
 // and regular eBay listing was being published under someone else's store
 // address. It must now come from the store's own already-collected
 // ship-from address (the same one used for real Shippo labels) instead.
+// The shipFrom/merchant-location logic was later factored out of
+// createAndPublishEbayListing into ensureEbayMerchantLocation (shared with
+// the multi-cover eBay variation listing creator, which needs the exact
+// same store-address enforcement) -- checked there now instead of inline.
+const ensureLocationStart = worker.indexOf('async function ensureEbayMerchantLocation');
+const ensureLocationEnd = worker.indexOf('async function createAndPublishEbayListing', ensureLocationStart);
+const ensureLocationBody = worker.slice(ensureLocationStart, ensureLocationEnd);
+assert.ok(ensureLocationStart !== -1, 'ensureEbayMerchantLocation must exist');
+assert.doesNotMatch(ensureLocationBody, /name: 'Walk-Off Sports Cards'/, 'must not publish listings under a different business\'s name');
+assert.doesNotMatch(ensureLocationBody, /addressLine1: '26059 Miller Bay Rd NE'/, 'must not publish listings under a different business\'s address');
+assert.match(ensureLocationBody, /addressLine1: shipFrom\.street1/, 'the eBay location address must come from this store\'s own configured shipFrom, not a literal');
+
 const createAndPublishStart = worker.indexOf('async function createAndPublishEbayListing');
 const createAndPublishEnd = worker.indexOf("if (url.pathname === '/ebay/list')", createAndPublishStart);
 const createAndPublishBody = worker.slice(createAndPublishStart, createAndPublishEnd);
-assert.doesNotMatch(createAndPublishBody, /name: 'Walk-Off Sports Cards'/, 'must not publish listings under a different business\'s name');
-assert.doesNotMatch(createAndPublishBody, /addressLine1: '26059 Miller Bay Rd NE'/, 'must not publish listings under a different business\'s address');
-assert.match(createAndPublishBody, /addressLine1: shipFrom\.street1/, 'the eBay location address must come from this store\'s own configured shipFrom, not a literal');
+assert.match(createAndPublishBody, /await ensureEbayMerchantLocation\(env, storeId, ebayToken\)/, 'must use the shared merchant-location helper instead of duplicating the shipFrom lookup inline');
 assert.match(worker, /async function createAndPublishEbayListing\(b, ebayToken, env, storeId\)/, 'createAndPublishEbayListing must take a storeId to look up this store\'s own address');
 assert.match(worker, /shippingSettings\(\(path, options\) => supabaseAdminFetch\(env, path, options\), env, storeId\)/,
   'must reuse the existing FOC "REAL SHIPPING SETUP" address instead of maintaining a second copy of it');
@@ -180,7 +190,7 @@ assert.match(focDash, /Volume discount active: /, 'the dashboard must confirm th
 // A promotion must not outlive the listing it was created for -- cleaned up
 // in the same auto-withdraw sweep that already ends the eBay offer for an
 // unordered book (adminPrhSubmission in foc-preorders.mjs).
-assert.match(worker, /addBusinessDays, getEbayPresaleSafeBusinessDays, getEbayUserAccessToken, withdrawEbayOffer, endEbayVolumeDiscount,/,
+assert.match(worker, /addBusinessDays, getEbayPresaleSafeBusinessDays, getEbayUserAccessToken, withdrawEbayOffer, withdrawEbayOfferGroup, endEbayVolumeDiscount,/,
   'endEbayVolumeDiscount must be injected into the FOC request handler alongside the other eBay deps');
 const preordersSrc = fs.readFileSync('scripts/foc-preorders.mjs', 'utf8');
 assert.match(preordersSrc, /if\(row\.data\.ebayVolumeDiscountPromotionId&&deps\.endEbayVolumeDiscount\)\{/,
@@ -240,7 +250,7 @@ assert.match(worker, /const bucket = Math\.min\(40, Math\.max\(5, Math\.ceil\(Ma
 assert.doesNotMatch(worker, /fetch\(`https:\/\/api\.ebay\.com\/sell\/account\/v1\/fulfillment_policy\/\$\{encodeURIComponent\(fallback\)\}`, \{[\s\S]{0,200}method: 'PUT'/,
   'must never PUT/update the shared base fulfillment policy in place -- that would change handling time on every other live listing using it too');
 assert.match(worker, /const handlingBusinessDays = businessDaysBetween\(new Date\(\), onSaleDate\) \+ 2/, 'handling time must be computed from the SKU\'s real on-sale date, not a fixed guess');
-assert.match(worker, /const fulfillmentPolicyId = await getFocPresaleFulfillmentPolicyId\(env, ebayToken, handlingBusinessDays, basePolicyId\)/, 'the create route must actually use the provisioned handling-time policy');
+assert.match(worker, /const fulfillmentResult = await getFocPresaleFulfillmentPolicyId\(env, ebayToken, handlingBusinessDays, basePolicyId\);\s*\n\s*const fulfillmentPolicyId = fulfillmentResult\.id;/, 'the create route must actually use the provisioned handling-time policy');
 assert.match(worker, /fulfillmentPolicyId,\s*\n\s*storeCategoryNames,\s*\n\s*\}, ebayToken, env, storeId\);/, 'the computed fulfillmentPolicyId must be passed into the listing payload');
 assert.match(focDash, /eBay handling time on this listing:/, 'the review modal must show the handling time so the store can verify the ship date is accurate before publishing');
 
@@ -368,7 +378,7 @@ assert.match(prhSubmissionBody, /if\(finalQty<=0\)continue;/, 'unordered SKUs mu
 assert.match(prhSubmissionBody, /const includedSkuIds=new Set\(lineItems\.map\(li=>li\.skuId\)\);/, 'must know which SKUs actually got ordered before deciding what to withdraw');
 assert.match(prhSubmissionBody, /d\.source==='foc_presale'&&d\.focCycleId===cycleId&&d\.ebayOfferId&&!includedSkuIds\.has\(d\.focSkuId\)&&Number\(d\.qty\?\?d\.quantity\?\?0\)>0/,
   'must only withdraw presale listings for SKUs that did not make it into this cycle\'s PRH order');
-assert.match(prhSubmissionBody, /await deps\.withdrawEbayOffer\(env,ebayToken,row\.data\.ebayOfferId\)/, 'must actually withdraw the eBay offer, not just flag it locally');
+assert.match(prhSubmissionBody, /await withdrawFocPresaleRow\(env,deps,ebayToken,row,presaleRows,withdrawingIds\)/, 'must actually withdraw the eBay offer (via the group-aware helper, not just flag it locally)');
 assert.match(prhSubmissionBody, /ebayWithdrawnReason:'not_included_in_prh_order'/, 'the withdrawn row must record why, for later auditing');
 // Store report: submitting the PRH order withdrew unordered eBay listings
 // as designed, but the very next PRH export showed those SAME never-sold
@@ -386,7 +396,7 @@ assert.match(prhSubmissionBody, /focPresaleOriginalQty:alreadySoldBeforeWithdraw
   'withdrawing an unordered listing must pin focPresaleOriginalQty down to the real sold-so-far count, not leave it at the full original listing quantity');
 assert.match(prhSubmissionBody, /return deps\.json\(\{ok:true,submission:inserted,ebayWithdrawnCount:ebayWithdrawnSkuIds\.length,ebayQuantityUpdatedCount:ebayQuantityUpdatedSkuIds\.length\}\)/, 'the response must report how many listings were withdrawn and how many had their quantity synced');
 assert.match(worker, /async function withdrawEbayOffer\(env, ebayToken, offerId\)/, 'must have a reusable withdraw helper, not just the /ebay/end route inline');
-assert.match(worker, /getEbayUserAccessToken, withdrawEbayOffer, endEbayVolumeDiscount, ebayReviseOfferQuantity,\s*\n\s*\}\);/, 'the withdraw helper, quantity-revise helper, and token getter must be injected into the FOC module\'s deps');
+assert.match(worker, /getEbayUserAccessToken, withdrawEbayOffer, withdrawEbayOfferGroup, endEbayVolumeDiscount, ebayReviseOfferQuantity,\s*\n\s*\}\);/, 'the withdraw helper, group-withdraw helper, quantity-revise helper, and token getter must be injected into the FOC module\'s deps');
 
 // Store request: once the PRH order locks in, a live FOC presale
 // listing's buyable quantity should immediately reflect the real ordered
@@ -701,8 +711,18 @@ assert.match(worker, /if \(\/<\\\/\?\[a-z\]\[\\s\\S\]\*>\/i\.test\(raw\)\) retur
 // real value, so the listing can silently publish with none at all. That
 // was invisible before; now surfaced as a warning like the condition
 // fallback already is.
-assert.match(createBlock, /const fulfillmentWarnings = fulfillmentPolicyId\s*\n\s*\? \[\]\s*\n\s*: \['Could not find a shipping\/fulfillment policy to use/,
+assert.match(createBlock, /const fulfillmentWarnings = !fulfillmentPolicyId\s*\n\s*\? \['Could not find a shipping\/fulfillment policy to use/,
   'must warn when no fulfillment policy could be resolved for a FOC presale listing, instead of silently publishing with none');
+// Store report (recurrence): after picking the "FOC" policy explicitly,
+// several bulk listings correctly used a "... - FOC 30D Handling" clone,
+// then LATER listings in the same run silently reverted to the store's
+// generic default policy with NO warning shown -- because the fallback is
+// itself a real, non-empty policy id, so the empty-string-only check above
+// stayed silent even though the wrong policy was used. Must also warn on
+// that "fell back to the generic default" case specifically, not just on
+// total failure.
+assert.match(createBlock, /: fulfillmentResult\.usedFallback\s*\n\s*\? \[`This listing published under the store's normal default shipping policy, NOT the FOC handling-time policy you picked/,
+  'must warn when getFocPresaleFulfillmentPolicyId silently substituted the generic default policy, not just when it returned nothing at all');
 assert.match(createBlock, /warnings: \[\.\.\.\(listingResult\.warnings \|\| \[\]\), \.\.\.conditionWarnings, \.\.\.fulfillmentWarnings, \.\.\.volumeDiscountWarnings\],/,
   'the fulfillment-policy warning must actually reach the client alongside the other warning types');
 

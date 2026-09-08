@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.09.02.01-roadmap-batch-complete">
+<meta name="version" content="2026.09.08.01-ebay-variation-listings">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1633,15 +1633,15 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.09.02.01-roadmap-batch-complete" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.09.02.01-roadmap-batch-complete" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.09.02.01-roadmap-batch-complete" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.09.02.01-roadmap-batch-complete" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.09.02.01-roadmap-batch-complete" defer></script>
-<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.09.02.01-roadmap-batch-complete" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.09.02.01-roadmap-batch-complete" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.09.02.01-roadmap-batch-complete" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.09.02.01-roadmap-batch-complete" defer></script>
+<script src="scripts/query-routing.js?v=2026.09.08.01-ebay-variation-listings" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.09.08.01-ebay-variation-listings" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.09.08.01-ebay-variation-listings" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.09.08.01-ebay-variation-listings" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.09.08.01-ebay-variation-listings" defer></script>
+<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.09.08.01-ebay-variation-listings" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.09.08.01-ebay-variation-listings" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.09.08.01-ebay-variation-listings" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.09.08.01-ebay-variation-listings" defer></script>
 </head>
 <body>
 
@@ -1670,11 +1670,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.09.02.01-roadmap-batch-complete</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.09.08.01-ebay-variation-listings</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.09.02.01-roadmap-batch-complete</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.09.08.01-ebay-variation-listings</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1692,7 +1692,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.09.02.01-roadmap-batch-complete</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.09.08.01-ebay-variation-listings</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3768,7 +3768,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.09.02.01-roadmap-batch-complete';
+const APP_VERSION = '2026.09.08.01-ebay-variation-listings';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -6372,6 +6372,9 @@ const FEATURE_LOG = [
     { title:'Fixed: the FOC wall\'s Add to Inventory and eBay bulk tools', status:'new', desc:'The whole FOC-wall eBay bulk-listing toolbar (select-all, per-item checkbox, start/skip/cancel) and the "+ Add to Inventory" button were completely non-functional -- a hard refresh never fixed it because the real cause was those functions never being exposed for the page to actually call them.' },
     { title:'eBay listing health check', status:'new', desc:'The FOC Cover Wall now flags two things automatically: a live eBay presale listing whose on-sale date has already passed but still has copies available (needs receiving or ending), and SKUs eBay can\'t even schedule because they have no on-sale date on file -- so neither sits unnoticed until a customer asks where their book is. A "Released (on sale)" option was also added to the eBay status filter.' },
     { title:'FOC Intelligence 2.0', status:'new', desc:'A new 🧠 FOC INTELLIGENCE screen on the Cover Wall compares this week\'s file against your prior submitted PRH orders, current website/eBay/Whatnot/secured presales, and your last 90 days of comic sales, then suggests ORDER / REDUCE / SKIP / SPEC per title with a plain-language reason for each. Also flags any book that had real secured interest in an earlier import but silently vanished from a more recent one, before its own on-sale date passed -- the "He-Man situation" -- so it gets caught instead of a customer asking where it went.' },
+    { title:'List every cover as one eBay listing', status:'new', desc:'A title with 2+ covers now has a LIST ALL COVERS · 1 EBAY LISTING button on the Cover Wall -- publishes every checked cover as ONE real eBay listing with eBay\'s native "Cover: Select" variation dropdown (own price/qty per cover, own cover photo per choice), plus an optional "All Covers Bundle" variant, instead of separate listings per cover. Ending one cover later only pulls that cover out of the shared listing (or ends the whole listing if it was the last one still live) -- the other covers keep selling.' },
+    { title:'Fixed: FOC presale listings could silently publish under the wrong shipping policy', status:'new', desc:'A store report: after explicitly picking a "FOC" shipping policy in the review screen, the first several listings in a bulk run correctly used its cloned handling-time policy, then later listings in the SAME run silently reverted to the store\'s generic default policy with no warning anywhere. Every failure path in the policy-cloning logic was quietly returning the generic default (a real, valid-looking policy id) instead of flagging that a substitution happened -- now surfaced as a warning naming exactly why, right on the listing result.' },
+    { title:'Fixed: FOC volume-discount promotion setup', status:'new', desc:'The "buy more, save more" volume discount FOC presale listings try to set up automatically was failing on every listing with "A valid entry is required for \'marketplaceId\'" -- eBay\'s promotion API needed that field on the request and it was missing.' },
   ]},
   { area:'Customer Web Accounts (your website)', items:[
     { title:'My Account page', status:'new', desc:'Signed-in customers can see their general shop orders, comic preorders, loyalty points, trade-in credit, and gift card balances all in one page on your website.' },
@@ -46200,7 +46203,7 @@ async function toppsLoadParallels(cardId){
   window.__arscaCloseModal = closeModal;
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.09.02.01-roadmap-batch-complete" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.09.08.01-ebay-variation-listings" defer></script>
 </body>
 </html>
 

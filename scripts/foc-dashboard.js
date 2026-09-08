@@ -190,7 +190,8 @@ function skuCard(v){
 }
 
 function familyCard(f){
-  return '<section class="foc-family"><header class="foc-family-head"><div><div class="foc-family-title">'+esc(f.title)+'</div><div style="font:9px/1.55 var(--font-mono);color:var(--dim)">'+esc([f.publisher,f.writer?'W: '+f.writer:'',f.interiorArtist?'A: '+f.interiorArtist:'',f.onSaleDate?'On sale '+displayDate(f.onSaleDate):''].filter(Boolean).join(' · '))+'</div></div><div class="foc-toolbar"><label style="font:8px var(--font-mono);color:var(--dim)">HEAT <select class="tsi" data-family-heat="'+esc(f.id)+'" onchange="saveFocFamily(\''+esc(f.id)+'\')"><option value="">—</option>'+[1,2,3,4,5].map(function(n){return'<option '+(Number(f.heat)===n?'selected':'')+'>'+n+'</option>';}).join('')+'</select></label><label style="font:8px var(--font-mono);color:var(--dim)">FLAG <select class="tsi" data-family-category="'+esc(f.id)+'" onchange="saveFocFamily(\''+esc(f.id)+'\')"><option value="">None</option>'+[['dont_sleep',"DON\'T SLEEP"],['sleeper_watch','SLEEPER WATCH'],['solid_stock','SOLID STOCK'],['special_order','SPECIAL ORDER'],['pass','PASS']].map(function(x){return'<option value="'+x[0]+'" '+(f.heatCategory===x[0]?'selected':'')+'>'+x[1]+'</option>';}).join('')+'</select></label></div></header><div class="foc-sku-grid">'+f.variants.map(skuCard).join('')+'</div></section>';
+  var groupListBtn=(f.variants||[]).length>=2?'<button class="hbtn" style="font-size:8px;color:var(--gold)" onclick="openFamilyEbayGroupReview(\''+esc(f.id)+'\')" title="List every cover of this title as one eBay listing with a native Cover variation dropdown">LIST ALL COVERS · 1 EBAY LISTING</button>':'';
+  return '<section class="foc-family"><header class="foc-family-head"><div><div class="foc-family-title">'+esc(f.title)+'</div><div style="font:9px/1.55 var(--font-mono);color:var(--dim)">'+esc([f.publisher,f.writer?'W: '+f.writer:'',f.interiorArtist?'A: '+f.interiorArtist:'',f.onSaleDate?'On sale '+displayDate(f.onSaleDate):''].filter(Boolean).join(' · '))+'</div></div><div class="foc-toolbar">'+groupListBtn+'<label style="font:8px var(--font-mono);color:var(--dim)">HEAT <select class="tsi" data-family-heat="'+esc(f.id)+'" onchange="saveFocFamily(\''+esc(f.id)+'\')"><option value="">—</option>'+[1,2,3,4,5].map(function(n){return'<option '+(Number(f.heat)===n?'selected':'')+'>'+n+'</option>';}).join('')+'</select></label><label style="font:8px var(--font-mono);color:var(--dim)">FLAG <select class="tsi" data-family-category="'+esc(f.id)+'" onchange="saveFocFamily(\''+esc(f.id)+'\')"><option value="">None</option>'+[['dont_sleep',"DON\'T SLEEP"],['sleeper_watch','SLEEPER WATCH'],['solid_stock','SOLID STOCK'],['special_order','SPECIAL ORDER'],['pass','PASS']].map(function(x){return'<option value="'+x[0]+'" '+(f.heatCategory===x[0]?'selected':'')+'>'+x[1]+'</option>';}).join('')+'</select></label></div></header><div class="foc-sku-grid">'+f.variants.map(skuCard).join('')+'</div></section>';
 }
 
 function renderCycle(){
@@ -594,6 +595,134 @@ async function submitEbayPresaleReview(skuId){
   }
 }
 
+// Store request: "how do I list it like that" (a real competitor listing
+// showing one eBay page with a "Cover: Select" dropdown -- Cover A / Cover
+// B / Cover C / "All Covers Bundle") instead of running one separate
+// listing per cover, which openEbayPresaleReview above still does one cover
+// at a time. This lists every checked cover of ONE title as a single eBay
+// listing using eBay's native multi-variation format -- see
+// createAndPublishEbayVariationListing / /foc/ebay/create-presale-group in
+// cloudflare-worker-full.js for the mechanics. Mirrors openEbayPresaleReview's
+// preview-then-edit-then-submit shape, just for the whole family at once.
+async function openFamilyEbayGroupReview(familyId){
+  var host=panel();if(!host)return;
+  var modalOld=document.getElementById('foc-ebay-group-modal');if(modalOld)modalOld.remove();
+  var modal=document.createElement('div');
+  modal.id='foc-ebay-group-modal';
+  modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:9999;display:flex;align-items:flex-start;justify-content:center;overflow-y:auto;padding:24px 12px';
+  modal.innerHTML='<div style="width:100%;max-width:640px;background:var(--surf);border:1px solid var(--border);border-radius:10px;padding:16px;font:11px/1.5 var(--font-mono);color:var(--text)">Loading covers…</div>';
+  document.body.appendChild(modal);
+  var preview;
+  try{
+    preview=await api('/foc/ebay/presale-group-preview',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({storeId:getActiveStoreId(),familyId:familyId})});
+  }catch(e){
+    modal.querySelector('div').innerHTML='<div style="color:var(--red)">Could not load this title: '+esc(e.message)+'</div><button class="hbtn" style="margin-top:10px" onclick="document.getElementById(\'foc-ebay-group-modal\').remove()">CLOSE</button>';
+    return;
+  }
+  if(!preview.eligibleCount||preview.eligibleCount<2){
+    var reasons=(preview.covers||[]).map(function(c){return '<div style="padding:4px 0;font:9px var(--font-mono);color:var(--dim)">'+esc(c.variantLabel)+(c.eligible?' -- eligible':' -- '+esc(c.reason))+'</div>';}).join('');
+    modal.querySelector('div').innerHTML='<div style="color:var(--gold)">Need at least 2 eligible covers to list as one eBay variation listing.</div>'+reasons+'<button class="hbtn" style="margin-top:10px" onclick="document.getElementById(\'foc-ebay-group-modal\').remove()">CLOSE</button>';
+    return;
+  }
+  var shipPolicies=[];var shipPoliciesError='';
+  try{
+    var policyData=await api('/ebay/business-policies');
+    if(policyData.needsToken)shipPoliciesError='eBay is not connected -- connect it under Settings → EBAY to pick a shipping policy here.';
+    else if(policyData.fulfillment&&policyData.fulfillment.error)shipPoliciesError=policyData.fulfillment.error;
+    var FOC_HANDLING_CLONE_NAME_RE=/-\s*FOC\s+\d+D\s+Handling\s*$/i;
+    shipPolicies=((policyData.fulfillment&&policyData.fulfillment.policies)||[]).filter(function(p){return !FOC_HANDLING_CLONE_NAME_RE.test(p.name||'');});
+  }catch(e){shipPoliciesError=e.message||'request failed';}
+  var lastShipPolicyId='';try{lastShipPolicyId=localStorage.getItem('foc_ebay_last_ship_policy_id')||'';}catch(e){}
+  if(lastShipPolicyId&&!shipPolicies.some(function(p){return String(p.id)===lastShipPolicyId;}))lastShipPolicyId='';
+  var lastStoreCategory='Comic Books';try{lastStoreCategory=localStorage.getItem('foc_ebay_last_store_category')||'Comic Books';}catch(e){}
+  var asp=preview.customAspects||{};
+  var coverRows=(preview.covers||[]).map(function(c){
+    var disabled=c.eligible?'':'disabled';
+    return '<div class="foc-sku-fields" data-eb-cover-row="'+esc(c.skuId)+'" style="grid-template-columns:auto 1.4fr 1fr 1fr;align-items:end;padding:6px 0;border-bottom:1px solid var(--border);opacity:'+(c.eligible?'1':'.45')+'">'+
+      '<label style="display:flex;align-items:center;gap:5px"><input type="checkbox" data-eb-cover-cb="'+esc(c.skuId)+'" '+(c.eligible?'checked':'')+' '+disabled+'></label>'+
+      '<div><div style="font-weight:700;color:var(--text)">'+esc(c.variantLabel)+'</div><div style="font:8px var(--font-mono);color:var(--dim)">'+(c.eligible?'UPC '+esc(c.upc):esc(c.reason))+'</div></div>'+
+      '<label>PRICE<input class="tsi" data-eb-cover-price="'+esc(c.skuId)+'" type="number" min="0" step=".01" value="'+esc(c.price)+'" '+disabled+'></label>'+
+      '<label>QTY<input class="tsi" data-eb-cover-qty="'+esc(c.skuId)+'" type="number" min="1" max="200" value="10" '+disabled+'></label>'+
+      '</div>';
+  }).join('');
+  modal.innerHTML='<div style="width:100%;max-width:640px;background:var(--surf);border:1px solid var(--border);border-radius:10px;padding:16px">'+
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><div style="font-family:\'Orbitron\',monospace;color:var(--gold);font-size:13px;letter-spacing:2px">LIST ALL COVERS · ONE EBAY LISTING</div><button onclick="document.getElementById(\'foc-ebay-group-modal\').remove()" style="background:none;border:none;color:var(--dim);font-size:22px;cursor:pointer">×</button></div>'+
+    '<div style="font:9px var(--font-mono);color:var(--dim);margin-bottom:10px">One eBay listing with a native "Cover: Select" dropdown for every checked cover below, plus an optional bundle option. Nothing is published until you click LIST ON EBAY.</div>'+
+    '<label style="font:9px var(--font-mono);color:var(--dim);display:block;margin-bottom:10px">LISTING TITLE (shared -- eBay requires "PRESALE" disclosed here)<input id="foc-eb-grp-title" maxlength="80" value="'+esc(preview.title)+'" class="tsi" style="margin-top:4px;width:100%;box-sizing:border-box"></label>'+
+    '<div style="font:8px/1.5 var(--font-mono);color:var(--dim);margin-bottom:10px">eBay handling time: <b style="color:var(--text)">'+Number(preview.handlingBusinessDays||0)+' business days</b> from purchase.</div>'+
+    '<label style="font:9px var(--font-mono);color:var(--dim);display:block;margin-bottom:10px">SHIPPING POLICY TO CLONE HANDLING TIME FROM (required)<select id="foc-eb-grp-ship-policy" class="tsi" style="margin-top:4px">'+
+    (lastShipPolicyId?'':'<option value="" disabled selected>-- select a shipping policy --</option>')+
+    shipPolicies.map(function(p){return '<option value="'+esc(p.id)+'" '+(String(p.id)===lastShipPolicyId?'selected':'')+'>'+esc(p.name)+'</option>';}).join('')+
+    '</select>'+(shipPolicies.length?'':'<div style="font:8px var(--font-mono);color:var(--red);margin-top:3px">Could not load your eBay shipping policies'+(shipPoliciesError?(': '+esc(shipPoliciesError)):'')+'.</div>')+'</label>'+
+    '<label style="display:flex;gap:6px;align-items:center;margin-bottom:10px;font:9px var(--font-mono);color:var(--dim)"><input id="foc-eb-grp-best-offer" type="checkbox" checked> ALLOW BEST OFFER (every cover)</label>'+
+    '<div class="foc-sku-fields" style="grid-template-columns:1fr 1fr;margin-bottom:10px"><label>PACKAGE WEIGHT<input id="foc-eb-grp-weight" class="tsi" type="number" min=".1" step=".1" value="'+esc(preview.weightValue)+'"></label><label>UNIT<select id="foc-eb-grp-weight-unit" class="tsi"><option value="POUND" '+(preview.weightUnit==='POUND'?'selected':'')+'>LB</option><option value="OUNCE" '+(preview.weightUnit==='OUNCE'?'selected':'')+'>OZ</option></select></label></div>'+
+    '<div class="foc-sku-fields" style="grid-template-columns:1fr 1fr;margin-bottom:10px">'+['Publisher','Writer','Artist'].map(function(k){return '<label>'+k.toUpperCase()+'<input class="tsi" data-eb-grp-aspect="'+esc(k)+'" value="'+esc(asp[k]||'')+'"></label>';}).join('')+'</div>'+
+    '<label style="font:9px var(--font-mono);color:var(--dim);display:block;margin-bottom:10px">EBAY STORE CATEGORY (optional)<input id="foc-eb-grp-store-category" class="tsi" value="'+esc(lastStoreCategory)+'" style="margin-top:4px"></label>'+
+    '<div style="font:9px var(--font-mono);color:var(--dim);margin-bottom:6px">COVERS ON THIS LISTING</div>'+coverRows+
+    '<div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border)"><label style="display:flex;gap:6px;align-items:center;margin-bottom:8px;font:9px var(--font-mono);color:var(--dim)"><input id="foc-eb-grp-bundle-cb" type="checkbox" onchange="document.getElementById(\'foc-eb-grp-bundle-fields\').style.display=this.checked?\'grid\':\'none\'"> INCLUDE "ALL COVERS BUNDLE" VARIANT</label>'+
+    '<div id="foc-eb-grp-bundle-fields" class="foc-sku-fields" style="grid-template-columns:1.6fr 1fr 1fr;display:none">'+
+    '<label>BUNDLE LABEL<input id="foc-eb-grp-bundle-label" class="tsi" placeholder="All Covers Bundle"></label>'+
+    '<label>BUNDLE PRICE<input id="foc-eb-grp-bundle-price" class="tsi" type="number" min="0" step=".01"></label>'+
+    '<label>BUNDLE QTY<input id="foc-eb-grp-bundle-qty" class="tsi" type="number" min="1" max="200" value="5"></label>'+
+    '</div></div>'+
+    '<label style="display:flex;justify-content:space-between;align-items:baseline;margin-top:12px"><span style="font:9px var(--font-mono);color:var(--dim)">DESCRIPTION (shared)</span></label>'+
+    '<textarea id="foc-eb-grp-desc" rows="6" style="width:100%;margin-top:4px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:9px;border-radius:6px;box-sizing:border-box;resize:vertical;font-size:11px">'+esc(preview.description)+'</textarea>'+
+    '<div id="foc-eb-grp-status" style="display:none;margin:10px 0;padding:10px;border-radius:6px;font-family:monospace;font-size:10px;text-align:center"></div>'+
+    '<div style="display:flex;gap:8px;margin-top:12px"><button class="hbtn" style="flex:1;padding:12px;background:rgba(255,209,102,.12);border-color:rgba(255,209,102,.35);color:var(--gold)" onclick="submitFamilyEbayGroupReview(\''+esc(familyId)+'\')">LIST ON EBAY (ONE LISTING)</button>'+
+    '<button class="hbtn" style="padding:12px" onclick="document.getElementById(\'foc-ebay-group-modal\').remove()">CANCEL</button></div>'+
+    '</div>';
+}
+async function submitFamilyEbayGroupReview(familyId){
+  var status=document.getElementById('foc-eb-grp-status');
+  var variants=[];
+  document.querySelectorAll('[data-eb-cover-cb]').forEach(function(cb){
+    if(!cb.checked||cb.disabled)return;
+    var skuId=cb.dataset.ebCoverCb;
+    var priceEl=document.querySelector('[data-eb-cover-price="'+CSS.escape(skuId)+'"]');
+    var qtyEl=document.querySelector('[data-eb-cover-qty="'+CSS.escape(skuId)+'"]');
+    variants.push({skuId:skuId,price:priceEl?priceEl.value:0,quantity:qtyEl?parseInt(qtyEl.value,10)||10:10});
+  });
+  if(variants.length<2){toast_dash('Check at least 2 covers to list as one eBay variation listing');return;}
+  var basePolicyId=(document.getElementById('foc-eb-grp-ship-policy')?.value||'').trim();
+  if(!basePolicyId){toast_dash('Select a shipping policy before publishing');return;}
+  try{localStorage.setItem('foc_ebay_last_ship_policy_id',basePolicyId);}catch(e){}
+  var storeCategory=(document.getElementById('foc-eb-grp-store-category').value||'').trim();
+  try{localStorage.setItem('foc_ebay_last_store_category',storeCategory);}catch(e){}
+  var customAspects={};
+  document.querySelectorAll('[data-eb-grp-aspect]').forEach(function(el){customAspects[el.dataset.ebGrpAspect]=el.value;});
+  var bundleCb=document.getElementById('foc-eb-grp-bundle-cb');
+  var bundle=null;
+  if(bundleCb&&bundleCb.checked){
+    bundle={
+      included:true,
+      label:(document.getElementById('foc-eb-grp-bundle-label').value||'').trim()||undefined,
+      price:document.getElementById('foc-eb-grp-bundle-price').value,
+      quantity:parseInt(document.getElementById('foc-eb-grp-bundle-qty').value,10)||0,
+    };
+  }
+  var payload={
+    storeId:getActiveStoreId(),familyId:familyId,variants:variants,bundle:bundle,
+    title:document.getElementById('foc-eb-grp-title').value,
+    description:document.getElementById('foc-eb-grp-desc').value,
+    customAspects:customAspects,
+    bestOfferEnabled:document.getElementById('foc-eb-grp-best-offer').checked,
+    weightValue:parseFloat(document.getElementById('foc-eb-grp-weight').value)||undefined,
+    weightUnit:document.getElementById('foc-eb-grp-weight-unit').value,
+    storeCategoryNames:storeCategory?[storeCategory]:[],
+    basePolicyId:basePolicyId,
+  };
+  if(status){status.style.display='block';status.style.color='var(--gold)';status.style.border='1px solid rgba(255,209,102,.25)';status.style.background='rgba(255,209,102,.06)';status.textContent='Publishing '+variants.length+' cover'+(variants.length===1?'':'s')+(bundle?' + bundle':'')+' as one eBay listing…';}
+  try{
+    var result=await api('/foc/ebay/create-presale-group',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    toast_dash('eBay variation listing created: '+result.createdCount+' variant'+(result.createdCount===1?'':'s'));
+    if(result.warnings&&result.warnings.length)toast_dash('eBay warning: '+result.warnings.join(' · '));
+    var modal=document.getElementById('foc-ebay-group-modal');if(modal)modal.remove();
+    await refreshCycleFamilies();
+  }catch(e){
+    if(status){status.style.color='var(--red)';status.style.borderColor='rgba(255,77,109,.3)';status.style.background='rgba(255,77,109,.06)';status.textContent='Could not create eBay variation listing: '+e.message;}
+  }
+}
+
 // ═══════════════════════════════════════════════════════
 // FINAL FOC REVIEW — the Monday screen: website + eBay + whatnot/store
 // per cover, ratio-incentive progress per family, then lock the order.
@@ -805,7 +934,7 @@ async function loadShipping(){var host=document.getElementById('foc-shipping-set
 function renderShipping(){var s=state.shipping||{},f=s.from||{},p=s.parcel||{};document.getElementById('foc-shipping-settings').innerHTML='<div class="foc-import-report"><b style="color:'+(s.tokenConfigured?'var(--g)':'var(--gold)')+'">SHIPPO TOKEN '+(s.tokenConfigured?'CONNECTED':'NEEDS SETUP')+'</b><br>The API token stays in the Worker secret. This form stores only your ship-from address and package preset.</div><div class="foc-sku-fields" style="grid-template-columns:repeat(auto-fit,minmax(180px,1fr));margin-top:10px">'+[['name','Store / sender',f.name],['line1','Street',f.street1],['line2','Suite / unit',f.street2],['city','City',f.city],['state','State',f.state],['zip','ZIP',f.zip],['phone','Phone',f.phone],['email','Email',f.email]].map(function(x){return'<label>'+x[1]+'<input class="tsi" data-ship-from="'+x[0]+'" value="'+esc(x[2]||'')+'"></label>';}).join('')+'</div><div class="foc-sku-fields" style="grid-template-columns:repeat(4,minmax(0,1fr));margin-top:10px">'+[['length','Length',p.length||12],['width','Width',p.width||9],['height','Height',p.height||1],['weight','Weight lb',p.weight||1]].map(function(x){return'<label>'+x[1]+'<input class="tsi" type="number" min=".1" step=".1" data-ship-parcel="'+x[0]+'" value="'+esc(x[2])+'"></label>';}).join('')+'</div><button class="hbtn" style="margin-top:10px" onclick="saveFocShippingSettings()">SAVE LIVE SHIPPING SETUP</button>';}
 async function saveShipping(){var shipFrom={},parcel={};document.querySelectorAll('[data-ship-from]').forEach(function(el){shipFrom[el.dataset.shipFrom]=el.value;});document.querySelectorAll('[data-ship-parcel]').forEach(function(el){parcel[el.dataset.shipParcel]=el.value;});try{var d=await api('/foc/admin/shipping-settings',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({storeId:getActiveStoreId(),enabled:true,shipFrom:shipFrom,defaultParcel:parcel})});state.shipping=d.shipping;toast_dash(d.shipping.tokenConfigured?'Live carrier settings saved':'Address saved — add the Shippo token to enable rates');renderShipping();}catch(e){toast_dash(e.message);}}
 
-window.ensureFocPanel=function(){loadCycles(false);};window.loadFocCycles=loadCycles;window.openFocCycle=openCycle;window.handleFocImportFile=handleImport;window.filterFocAdmin=function(v){state.query=v;renderFamilies();};window.filterFocPublisher=function(v){state.publisher=v;renderFamilies();};window.filterFocFlag=function(v){state.flag=v;renderFamilies();};window.filterFocEbay=function(v){state.ebay=v;renderFamilies();};window.saveFocSku=saveSku;window.saveFocFamily=saveFamily;window.toggleFocCycle=toggleCycle;window.archiveFocCycle=archiveCycle;window.unarchiveFocCycle=unarchiveCycle;window.saveFocCycleCutoff=saveCutoff;window.exportFocPrh=exportPrh;window.loadFocShippingSettings=loadShipping;window.saveFocShippingSettings=saveShipping;window.openReceiveShipment=openReceiveShipment;window.confirmReceiveShipment=confirmReceiveShipment;window.createFocEbayPresale=openEbayPresaleReview;window.submitEbayPresaleReview=submitEbayPresaleReview;window.loadEbaySafeDays=loadEbaySafeDays;window.saveFocEbaySafeDays=saveEbaySafeDays;window.openFocReview=openFocReview;window.openFocIntelligence=openFocIntelligence;window.submitPrhOrder=submitPrhOrder;window.endFocEbayListings=endFocEbayListings;window.toggleFocEndEbayAll=toggleFocEndEbayAll;window.confirmEndFocEbayListings=confirmEndFocEbayListings;window.reviewStoreQtyChanged=reviewStoreQtyChanged;
+window.ensureFocPanel=function(){loadCycles(false);};window.loadFocCycles=loadCycles;window.openFocCycle=openCycle;window.handleFocImportFile=handleImport;window.filterFocAdmin=function(v){state.query=v;renderFamilies();};window.filterFocPublisher=function(v){state.publisher=v;renderFamilies();};window.filterFocFlag=function(v){state.flag=v;renderFamilies();};window.filterFocEbay=function(v){state.ebay=v;renderFamilies();};window.saveFocSku=saveSku;window.saveFocFamily=saveFamily;window.toggleFocCycle=toggleCycle;window.archiveFocCycle=archiveCycle;window.unarchiveFocCycle=unarchiveCycle;window.saveFocCycleCutoff=saveCutoff;window.exportFocPrh=exportPrh;window.loadFocShippingSettings=loadShipping;window.saveFocShippingSettings=saveShipping;window.openReceiveShipment=openReceiveShipment;window.confirmReceiveShipment=confirmReceiveShipment;window.createFocEbayPresale=openEbayPresaleReview;window.submitEbayPresaleReview=submitEbayPresaleReview;window.openFamilyEbayGroupReview=openFamilyEbayGroupReview;window.submitFamilyEbayGroupReview=submitFamilyEbayGroupReview;window.loadEbaySafeDays=loadEbaySafeDays;window.saveFocEbaySafeDays=saveEbaySafeDays;window.openFocReview=openFocReview;window.openFocIntelligence=openFocIntelligence;window.submitPrhOrder=submitPrhOrder;window.endFocEbayListings=endFocEbayListings;window.toggleFocEndEbayAll=toggleFocEndEbayAll;window.confirmEndFocEbayListings=confirmEndFocEbayListings;window.reviewStoreQtyChanged=reviewStoreQtyChanged;
 // Store report: "+ ADD TO INVENTORY" on a FOC cover-wall card threw
 // "quickAddFocSkuToInventory is not defined" -- this whole file is wrapped
 // in an IIFE (line 1), so every function it declares is private to that
