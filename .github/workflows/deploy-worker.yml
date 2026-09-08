@@ -6,6 +6,7 @@ on:
     paths:
       - cloudflare-worker-full.js
       - scripts/foc-preorders.mjs
+      - scripts/card-intake.mjs
       - wrangler.deploy.jsonc
       - .github/workflows/deploy-worker.yml
   workflow_dispatch:
