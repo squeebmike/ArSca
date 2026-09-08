@@ -636,6 +636,36 @@ async function openFamilyEbayGroupReview(familyId){
   if(lastShipPolicyId&&!shipPolicies.some(function(p){return String(p.id)===lastShipPolicyId;}))lastShipPolicyId='';
   var lastStoreCategory='Comic Books';try{lastStoreCategory=localStorage.getItem('foc_ebay_last_store_category')||'Comic Books';}catch(e){}
   var asp=preview.customAspects||{};
+  // Store report: "it didn't take my template with the html to do the
+  // themed listing" -- openEbayPresaleReview (single-cover) already
+  // renders the store's saved Settings -> Vendor Info -> EBAY LISTING
+  // SETTINGS "Comic" template into the description; this group-listing
+  // modal never had that logic at all and always used the server's plain-
+  // text default. Same rendering, just with no single variant/UPC to fill
+  // in (a shared listing has neither).
+  var usedCustomTemplate=false;
+  var description=preview.description;
+  try{
+    var vp=(typeof getVendorProfile==='function')?getVendorProfile():{};
+    var templates=vp.ebayDescriptionTemplates||{};
+    var customTemplate=templates.Comic||templates.default||'';
+    if(customTemplate&&typeof renderEbayDescriptionTemplate==='function'){
+      var presaleShippingLine=['For presale comics, orders ship promptly once the title reaches its official release date and inventory has been received from our distributor.',preview.onSaleLabel?('Release Date: '+preview.onSaleLabel):'','Publisher and distributor release dates may change. If a presale title is delayed, your order will ship as soon as the book becomes available.'].filter(Boolean).join('\n\n');
+      var tokens={title:preview.title.replace(/ - PRESALE$/,''),category:'Comic',price:'',upc:'',
+        variant:'',releaseDate:preview.onSaleLabel||'',shippingLine:presaleShippingLine,
+        publisher:asp.Publisher||'',writer:asp.Writer||'',artist:asp.Artist||'',coverArtist:asp['Cover Artist']||'',
+        synopsis:preview.synopsis||'',condition:'New',quantity:'1'};
+      var renderedBody=renderEbayDescriptionTemplate(customTemplate,tokens);
+      if(renderedBody){
+        var isHtmlTemplate=/<\/?[a-z][\s\S]*>/i.test(customTemplate);
+        var disclosure=isHtmlTemplate
+          ? '<p>PRESALE -- This comic has not been released yet and is not currently in stock.</p><p>Expected on-sale/ship date: '+preview.onSaleLabel+'. Your order ships promptly once we receive stock from the distributor on or shortly after that date.</p>'
+          : 'PRESALE -- This comic has not been released yet and is not currently in stock.\n\nExpected on-sale/ship date: '+preview.onSaleLabel+'. Your order ships promptly once we receive stock from the distributor on or shortly after that date.';
+        description=disclosure+(isHtmlTemplate?'':'\n\n')+renderedBody;
+        usedCustomTemplate=true;
+      }
+    }
+  }catch(e){/* template rendering is best-effort -- fall back to the server default below */}
   // Store report (live eBay error): "Publish failed (400): Add at least 1
   // photo" -- a cover with no cover_image_url on file published with zero
   // images and eBay rejected the WHOLE shared listing over that one
@@ -681,8 +711,9 @@ async function openFamilyEbayGroupReview(familyId){
     '<label>BUNDLE PRICE<input id="foc-eb-grp-bundle-price" class="tsi" type="number" min="0" step=".01"></label>'+
     '<label>BUNDLE QTY<input id="foc-eb-grp-bundle-qty" class="tsi" type="number" min="1" max="200" value="5"></label>'+
     '</div></div>'+
-    '<label style="display:flex;justify-content:space-between;align-items:baseline;margin-top:12px"><span style="font:9px var(--font-mono);color:var(--dim)">DESCRIPTION (shared)</span></label>'+
-    '<textarea id="foc-eb-grp-desc" rows="6" style="width:100%;margin-top:4px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:9px;border-radius:6px;box-sizing:border-box;resize:vertical;font-size:11px">'+esc(preview.description)+'</textarea>'+
+    '<label style="display:flex;justify-content:space-between;align-items:baseline;margin-top:12px"><span style="font:9px var(--font-mono);color:var(--dim)">DESCRIPTION (shared)</span>'+
+    '<span style="font:8px var(--font-mono);color:var(--dim)">'+(usedCustomTemplate?'Using your saved Comic template (':'Using the built-in default (')+'<a href="#" onclick="openSettingsSection(\'profile\',\'vendor-profile-panel\');return false" style="color:var(--g)">edit in Settings → Vendor Info → EBAY LISTING SETTINGS</a>)</span></label>'+
+    '<textarea id="foc-eb-grp-desc" rows="6" style="width:100%;margin-top:4px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:9px;border-radius:6px;box-sizing:border-box;resize:vertical;font-size:11px">'+esc(description)+'</textarea>'+
     '<div id="foc-eb-grp-status" style="display:none;margin:10px 0;padding:10px;border-radius:6px;font-family:monospace;font-size:10px;text-align:center"></div>'+
     '<div style="display:flex;gap:8px;margin-top:12px"><button class="hbtn" style="flex:1;padding:12px;background:rgba(255,209,102,.12);border-color:rgba(255,209,102,.35);color:var(--gold)" onclick="submitFamilyEbayGroupReview(\''+esc(familyId)+'\')">LIST ON EBAY (ONE LISTING)</button>'+
     '<button class="hbtn" style="padding:12px" onclick="document.getElementById(\'foc-ebay-group-modal\').remove()">CANCEL</button></div>'+
