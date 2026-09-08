@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.09.01.31-foc-ebay-withdrawn-qty-fix">
+<meta name="version" content="2026.09.01.32-slow-movers-ebay-health-notify-print">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1633,15 +1633,15 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.09.01.31-foc-ebay-withdrawn-qty-fix" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.09.01.31-foc-ebay-withdrawn-qty-fix" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.09.01.31-foc-ebay-withdrawn-qty-fix" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.09.01.31-foc-ebay-withdrawn-qty-fix" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.09.01.31-foc-ebay-withdrawn-qty-fix" defer></script>
-<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.09.01.31-foc-ebay-withdrawn-qty-fix" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.09.01.31-foc-ebay-withdrawn-qty-fix" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.09.01.31-foc-ebay-withdrawn-qty-fix" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.09.01.31-foc-ebay-withdrawn-qty-fix" defer></script>
+<script src="scripts/query-routing.js?v=2026.09.01.32-slow-movers-ebay-health-notify-print" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.09.01.32-slow-movers-ebay-health-notify-print" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.09.01.32-slow-movers-ebay-health-notify-print" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.09.01.32-slow-movers-ebay-health-notify-print" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.09.01.32-slow-movers-ebay-health-notify-print" defer></script>
+<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.09.01.32-slow-movers-ebay-health-notify-print" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.09.01.32-slow-movers-ebay-health-notify-print" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.09.01.32-slow-movers-ebay-health-notify-print" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.09.01.32-slow-movers-ebay-health-notify-print" defer></script>
 </head>
 <body>
 
@@ -1670,11 +1670,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.09.01.31-foc-ebay-withdrawn-qty-fix</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.09.01.32-slow-movers-ebay-health-notify-print</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.09.01.31-foc-ebay-withdrawn-qty-fix</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.09.01.32-slow-movers-ebay-health-notify-print</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1692,7 +1692,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.09.01.31-foc-ebay-withdrawn-qty-fix</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.09.01.32-slow-movers-ebay-health-notify-print</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3529,6 +3529,12 @@ body.show-mode .inv-sync-badge{display:none;}
   <div class="sec">CUSTOMER WANT LIST / PULL LIST</div>
   <div style="max-width:1400px;margin:0 auto;padding:0 20px">
 
+    <!-- Storefront-submitted requests -->
+    <div class="panel" id="sf-notify-panel" style="margin-bottom:14px;display:none">
+      <div class="ph">📥 STOREFRONT REQUESTS <b id="sf-notify-count">0</b> <span style="color:var(--dim);font-size:9px">— customers who couldn't find something and asked to be notified</span></div>
+      <div id="sf-notify-list"></div>
+    </div>
+
     <!-- Add want -->
     <div class="panel" style="margin-bottom:14px">
       <div class="ph">+ ADD WANT</div>
@@ -3746,7 +3752,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.09.01.31-foc-ebay-withdrawn-qty-fix';
+const APP_VERSION = '2026.09.01.32-slow-movers-ebay-health-notify-print';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -6264,6 +6270,7 @@ const FEATURE_LOG = [
     { title:'Signature added-value tracking', status:'working', desc:'Track and price in the added value of a signature on any item type, reflected correctly in storefront listings and checkout.' },
     { title:'Category price ceilings', status:'new', desc:'Set a bulk "how far above market can we sell" rule per category in Settings -- percent over market or a flat dollar amount, whichever\'s greater (e.g. Pokemon 20% or +$2, Sports 60% or +$5). Auto-applied as the ceiling on every new item added to that category going forward; still freely adjustable per item afterward, same as the existing price floor.' },
     { title:'Card Themes', status:'new', desc:'Enter a curated card grouping for display/merchandising (e.g. a "Golden Hour"-style theme) and see how many of its cards you already have in stock, with price/qty per match -- available from the SETS tab. Card lists are entered by the store since there\'s no public API for these groupings; this just cross-references whatever list you give it against current sellable inventory.' },
+    { title:'Print a Card Theme case card', status:'new', desc:'Print a theme\'s in-stock cards (name, condition, price) laid out for physical display in the case -- only prints what you actually have, so it doubles as a price card for the display.' },
   ]},
   { area:'POS / Register / Checkout', items:[
     { title:'Multi-quantity sell + fixed discount math', status:'new', desc:'A +/- stepper lets you sell several of the same item (toploaders, sleeves, etc.) as one cart line. Cart-level discounts now apply correctly per line, so revenue/profit records match what the customer actually paid.' },
@@ -6332,6 +6339,7 @@ const FEATURE_LOG = [
     { title:'Receive FOC shipment into inventory', status:'new', desc:'RECEIVE SHIPMENT on a FOC cycle is the first and only point a comic becomes real inventory -- importing the PRH file and placing the distributor order both stay catalog/planning-only, since neither proves the books actually show up. Enter what physically arrived per cover (defaults to what was ordered, lower it on a short-ship); paid customer copies are reserved oldest-order-first and their preorder is marked ready for pickup/reserved for shipping once fully in, the rest goes straight into sellable in-stock inventory.' },
     { title:'Fixed: receiving multiple copies of one cover made one item each', status:'new', desc:'Receiving 5 copies of the same cover used to create 5 separate inventory rows (each qty 1) instead of one row holding a quantity of 5, unlike every other fungible product in this app. Now creates a single row per cover per receiving batch.' },
     { title:'Fixed: the FOC wall\'s Add to Inventory and eBay bulk tools', status:'new', desc:'The whole FOC-wall eBay bulk-listing toolbar (select-all, per-item checkbox, start/skip/cancel) and the "+ Add to Inventory" button were completely non-functional -- a hard refresh never fixed it because the real cause was those functions never being exposed for the page to actually call them.' },
+    { title:'eBay listing health check', status:'new', desc:'The FOC Cover Wall now flags two things automatically: a live eBay presale listing whose on-sale date has already passed but still has copies available (needs receiving or ending), and SKUs eBay can\'t even schedule because they have no on-sale date on file -- so neither sits unnoticed until a customer asks where their book is. A "Released (on sale)" option was also added to the eBay status filter.' },
   ]},
   { area:'Customer Web Accounts (your website)', items:[
     { title:'My Account page', status:'new', desc:'Signed-in customers can see their general shop orders, comic preorders, loyalty points, trade-in credit, and gift card balances all in one page on your website.' },
@@ -6355,6 +6363,7 @@ const FEATURE_LOG = [
     { title:'Real SMS/email notifications', status:'working', desc:'Actual SMS and email delivery (Twilio + email provider), not a simulated/logged-only notification.' },
     { title:'Call forwarding + inbound SMS relay', status:'working', desc:'Route your business line\'s calls and texts through Twilio.' },
     { title:'Want List auto-notify', status:'working', desc:'Customers on a Want List get notified automatically when a matching item comes into stock.' },
+    { title:'Storefront "let us know" requests', status:'new', desc:'Customers can now self-report what they\'re looking for right from your public storefront (a persistent link, plus a prompt when a search comes up empty) -- no more needing to call or text the store just to ask. Requests land in a new STOREFRONT REQUESTS panel at the top of the Want List tab, where staff convert one into a real Want List entry or dismiss it.' },
   ]},
   { area:'Labels & Shelf Tags', items:[
     { title:'Print shelf/price labels', status:'new', desc:'Print barcode labels for sheet paper (2.625"x1", Avery-style) or roll paper on a direct-thermal printer like Rollo/Zebra (2"x1", one label per page). Choice is remembered.' },
@@ -6374,6 +6383,7 @@ const FEATURE_LOG = [
     { title:'Potential ROI stat (Home)', status:'working', desc:'Shows what you\'d walk away with if everything in stock sold at your real price right now, vs. what you paid for it.' },
     { title:'Category / product profitability & payment mix', status:'new', desc:'The Reports tab now breaks down revenue, COGS, profit and margin by category and by product, shows top sellers by revenue and by profit, charts sales/profit trends over your chosen date range, and a payment-method mix chart -- plus a Washington B&O tax filing note.' },
     { title:'Category Health report', status:'new', desc:'Cross-references what actually sold against your CURRENT unsold stock to flag where a category is struggling: no sales at all this period despite real stock sitting, negative or thin margins, cash concentrated in stock 90+ days old, or slow turnover relative to what it\'s tying up -- each with the real dollar amount and a concrete next step, not just a bare warning.' },
+    { title:'Slow Movers / Dead Stock report', status:'new', desc:'Category Health flags an entire category as struggling; this drills straight to the specific items behind it -- everything sitting 90+ days, sorted by cash tied up (cost x quantity), with an EDIT shortcut to mark it down, bundle it, or pull it from the case.' },
     { title:'One consolidated Reports screen', status:'planned', desc:'A single place for sales reporting with real week/month/date-range rollups, instead of stats spread across Home, End-of-Day, and Sold Items. Not built yet -- being scoped.' },
   ]},
 ];
@@ -17432,6 +17442,17 @@ function renderReportsResults(result, groupBy){
       </div>
     </div>`;
     })()}
+    ${(() => {
+      const slowMovers = computeSlowMovers(typeof all !== 'undefined' ? all : []);
+      return `<div class="owner-section-grid" style="grid-template-columns:1fr;margin-top:14px">
+      <div class="owner-mini-panel">
+        <div class="ph">SLOW MOVERS / DEAD STOCK <span style="font-size:9px;color:var(--dim)">in stock 90+ days, worst cash-tied-up first</span></div>
+        ${slowMovers.length ? `<div class="tbl-wrap" style="margin-top:6px"><table><thead><tr><th>ITEM</th><th>CATEGORY</th><th style="text-align:right">DAYS</th><th style="text-align:right">QTY</th><th style="text-align:right">CASH TIED UP</th><th style="text-align:right">LIST PRICE</th><th></th></tr></thead><tbody>
+          ${slowMovers.map(s => `<tr><td>${escHtml(s.name)}</td><td>${escHtml(s.category)}</td><td style="text-align:right">${s.days}</td><td style="text-align:right">${s.qty}</td><td style="text-align:right">${fd$(s.cashTiedUp)}</td><td style="text-align:right">${fd$(s.listPrice)}</td><td><button class="ra rab-edit" onclick="openEditModal('${s.id}')">EDIT</button></td></tr>`).join('')}
+        </tbody></table></div>` : `<div class="empty"><div class="empty-t">Nothing has been sitting 90+ days -- stock is turning over</div></div>`}
+      </div>
+    </div>`;
+    })()}
     <div class="owner-section-grid" style="grid-template-columns:1fr;margin-top:14px">
       <div class="owner-mini-panel">
         <div class="ph">PAYMENT METHOD MIX</div>
@@ -17507,6 +17528,34 @@ function reportsCategoryChartPairs(categoryList){
   const pairs = top.map(c => [c.key, c.profit]);
   if(rest.length) pairs.push([`Other (${rest.length})`, rest.reduce((s,c) => s + c.profit, 0)]);
   return pairs;
+}
+
+// Store idea: Category Health flags an entire category as struggling, but
+// doesn't say WHICH items are the actual cash sitting there. This drills
+// straight to the worst individual offenders (reuses the same 90-day
+// aging threshold and sellability rule as Category Health/the Inventory
+// Aging panel) so there's something concrete to act on -- markdown it,
+// bundle it, pull it from the case -- instead of just a category-wide
+// warning. Independent of the report's date range, same as Category
+// Health's unsold side: "what's sitting right now" is always "right now".
+function computeSlowMovers(items, opts={}){
+  const thresholdDays = opts.thresholdDays || 90;
+  const limit = opts.limit || 25;
+  return (items || [])
+    .filter(inventoryItemIsSellable)
+    .map(item => ({ item, days: inventoryDaysInStock(item) }))
+    .filter(x => x.days !== null && x.days >= thresholdDays)
+    .map(x => {
+      const qty = inventoryAvailableQuantity(x.item);
+      return {
+        id: x.item.id, name: x.item.name, category: x.item.category || 'Uncategorized',
+        days: x.days, qty,
+        cashTiedUp: Number(x.item.cost || 0) * qty,
+        listPrice: inventoryListPrice(x.item),
+      };
+    })
+    .sort((a, b) => b.cashTiedUp - a.cashTiedUp)
+    .slice(0, limit);
 }
 
 function exportReportsCSV(){
@@ -22614,6 +22663,73 @@ async function loadWantListFromWorker() {
 }
 
 
+// Store idea: customers can now self-report "notify me" directly from the
+// storefront (see /public/storefront/notify in the Worker) instead of it
+// only being possible via staff manually typing into Want List. Requests
+// land in their own table (storefront_notify_requests) rather than
+// writing into Want List directly -- see that table's migration for why
+// (Want List is KV-backed and replaces its whole array per save, unsafe
+// for anonymous public writes). This panel is where staff review them:
+// convert one into a real Want List entry (pre-fills the existing Add
+// Want form below) or dismiss it.
+let _storefrontNotifyRequests = [];
+async function loadStorefrontNotifyRequests(){
+  const sb = getSupabaseClient();
+  const storeId = getActiveStoreId();
+  if(!sb || !storeId) return;
+  const { data, error } = await sb
+    .from('storefront_notify_requests')
+    .select('id,item_text,contact_email,status,created_at')
+    .eq('store_id', storeId)
+    .eq('status', 'new')
+    .order('created_at', { ascending:false })
+    .limit(200);
+  if(error){ console.warn('[NOTIFY] load failed:', error.message); return; }
+  _storefrontNotifyRequests = data || [];
+  renderStorefrontNotifyRequests();
+}
+function renderStorefrontNotifyRequests(){
+  const panel = document.getElementById('sf-notify-panel');
+  const list = document.getElementById('sf-notify-list');
+  const countEl = document.getElementById('sf-notify-count');
+  if(!panel || !list) return;
+  const reqs = _storefrontNotifyRequests;
+  countEl.textContent = reqs.length;
+  panel.style.display = reqs.length ? '' : 'none';
+  list.innerHTML = reqs.map(r => `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);gap:10px">
+    <div style="min-width:0">
+      <div style="font-weight:600;color:var(--text)">${escHtml(r.item_text)}</div>
+      <div style="font-family:monospace;font-size:9px;color:var(--dim)">${escHtml(r.contact_email)} · ${new Date(r.created_at).toLocaleDateString()}</div>
+    </div>
+    <div style="display:flex;gap:6px;flex-shrink:0">
+      <button class="ra" style="background:rgba(0,255,179,.12);border-color:rgba(0,255,179,.3);color:var(--g);white-space:nowrap" onclick="convertNotifyRequestToWant('${r.id}')">→ Add to Want List</button>
+      <button class="ra ra-sell" onclick="dismissNotifyRequest('${r.id}')">✕</button>
+    </div>
+  </div>`).join('');
+}
+function convertNotifyRequestToWant(id){
+  const r = _storefrontNotifyRequests.find(x => x.id === id);
+  if(!r) return;
+  document.getElementById('wl-item').value = r.item_text;
+  document.getElementById('wl-customer').value = r.contact_email;
+  document.getElementById('wl-contact').value = r.contact_email;
+  document.getElementById('wl-item').scrollIntoView({ behavior:'smooth', block:'center' });
+  toast_dash('Filled into Add Want below -- review and click + ADD');
+  updateStorefrontNotifyRequestStatus(id, 'converted');
+}
+function dismissNotifyRequest(id){
+  if(!confirm('Dismiss this request?')) return;
+  updateStorefrontNotifyRequestStatus(id, 'dismissed');
+}
+async function updateStorefrontNotifyRequestStatus(id, status){
+  _storefrontNotifyRequests = _storefrontNotifyRequests.filter(x => x.id !== id);
+  renderStorefrontNotifyRequests();
+  const sb = getSupabaseClient();
+  if(!sb) return;
+  try{ await sb.from('storefront_notify_requests').update({ status }).eq('id', id); }
+  catch(e){ console.warn('[NOTIFY] status update failed:', e.message); }
+}
+
 function addWantItem(){
   const item = document.getElementById('wl-item').value.trim();
   const customer = document.getElementById('wl-customer').value.trim();
@@ -23269,7 +23385,7 @@ const _origSwitchTab = switchTab;
 switchTab = function(tab, btn){
   betaTrackAction?.('tab switched', tab);
   _origSwitchTab(tab, btn);
-  if(tab==='wantlist') { loadWantListFromWorker().then(()=>renderWantList()); }
+  if(tab==='wantlist') { loadWantListFromWorker().then(()=>renderWantList()); loadStorefrontNotifyRequests(); }
   if(tab==='consign') renderConsign();
   if(tab==='locations') renderLocations();
   if(tab==='restock') renderRestock();
@@ -44340,9 +44456,43 @@ function openCardThemeDetail(id){
         <span class="ppsb-title">${theme.name}</span>
         <span style="font-family:monospace;font-size:9px;color:var(--dim);white-space:nowrap">${ownedCount} / ${theme.cardNames.length} in stock</span>
       </div>
-      <button class="hbtn" style="min-height:36px;padding:4px 14px;font-size:10px;flex-shrink:0" onclick="closeCardThemesBrowser()">✕ CLOSE</button>
+      <div style="display:flex;gap:8px;flex-shrink:0">
+        <button class="hbtn" style="min-height:36px;padding:4px 14px;font-size:10px" onclick="printCardThemeCase('${id}')">🖨️ PRINT CASE CARD</button>
+        <button class="hbtn" style="min-height:36px;padding:4px 14px;font-size:10px" onclick="closeCardThemesBrowser()">✕ CLOSE</button>
+      </div>
     </div>
     <div style="max-width:700px;margin:0 auto;padding:16px 20px">${rows}</div>`;
+}
+// Store request: a way to lay a theme's owned cards out for physical
+// display in the case, not just look at them on screen -- prints only
+// the cards actually IN STOCK (nothing to display for ones not owned),
+// with price and condition so it doubles as a price card for the case.
+function printCardThemeCase(id){
+  const theme = getCardThemes().find(t => t.id === id);
+  if(!theme) return;
+  const breakdown = matchCardThemeToInventory(theme).filter(b => b.matches.length > 0);
+  const w = window.open('','_blank','width=500,height=700');
+  if(!w) return;
+  w.document.write('<html><head><title>'+escHtml(theme.name)+' -- Case Card</title><style>'+
+    'body{font-family:Arial,sans-serif;padding:24px;color:#111}'+
+    'h1{font-size:20px;margin:0 0 4px}'+
+    '.sub{font-size:11px;color:#666;margin-bottom:18px}'+
+    '.row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #ddd}'+
+    '.name{font-weight:700;font-size:13px}'+
+    '.card{font-size:11px;color:#666}'+
+    '.price{font-weight:700;font-size:14px}'+
+    '</style></head><body>');
+  w.document.write('<h1>'+escHtml(theme.name)+'</h1><div class="sub">'+escHtml(getVendorProfile().storeName||'Store')+' -- '+new Date().toLocaleDateString()+' -- '+breakdown.length+' of '+theme.cardNames.length+' in stock</div>');
+  if(!breakdown.length){
+    w.document.write('<p>None of these cards are currently in stock.</p>');
+  } else {
+    breakdown.forEach(({ cardName, matches }) => {
+      matches.forEach(item => {
+        w.document.write('<div class="row"><span><div class="name">'+escHtml(cardName)+'</div><div class="card">'+escHtml(item.name)+(item.condition?' -- '+escHtml(item.condition):'')+'</div></span><span class="price">$'+Number(inventoryListPrice(item)||0).toFixed(2)+'</span></div>');
+      });
+    });
+  }
+  w.document.write('<script>window.print();<\/script></body></html>');
 }
 // ── END CARD THEMES ──────────────────────────────────────────────
 
@@ -45104,7 +45254,7 @@ async function toppsLoadParallels(cardId){
   window.__arscaCloseModal = closeModal;
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.09.01.31-foc-ebay-withdrawn-qty-fix" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.09.01.32-slow-movers-ebay-health-notify-print" defer></script>
 </body>
 </html>
 
