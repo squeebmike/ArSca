@@ -47,8 +47,8 @@ assert.match(createGroupBody, /title: groupTitle,/, 'every variant\'s inventory_
 // image gallery (imageUrls) into the inventory_item body, not just the
 // single primary imageUrl -- otherwise the bundle's gallery built above
 // would never reach eBay.
-assert.match(createGroupBody, /imageUrl: v\.imageUrl \|\| b\.imageUrl,\s*\n\s*imageUrls: v\.imageUrls \|\| \[\],/,
-  'must pass each variant\'s own imageUrls array through to buildEbayInventoryItemBody, or a multi-photo gallery (the bundle\'s) never actually reaches eBay');
+assert.match(createGroupBody, /imageUrl: v\.imageUrl \|\| b\.imageUrl,\s*\n\s*imageUrls: \[\.\.\.\(v\.imageUrls \|\| \[\]\), b\.mainImageUrl\]\.filter\(Boolean\),/,
+  'must pass each variant\'s own imageUrls array (plus the optional main photo) through to buildEbayInventoryItemBody, or a multi-photo gallery (the bundle\'s) never actually reaches eBay');
 
 // Frontend: the review modal must show each cover's own thumbnail (or a
 // clear flag when one is missing/being borrowed) so the store sees this

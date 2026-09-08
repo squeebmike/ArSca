@@ -7268,12 +7268,18 @@ export default {
 
       for (const v of variants) {
         const sku = groupKey + '-' + built.length;
+        // The optional store-uploaded "pick your cover" combined graphic
+        // (mainImageUrl) rides as an EXTRA photo in each variant's own
+        // inventory_item gallery, never in the group-level imageUrls array
+        // below -- that array has a strict per-variation contract (see the
+        // comment on groupImageUrls) with no room for an extra lead photo
+        // without breaking every cover's photo-to-selection binding.
         const itemBody = buildEbayInventoryItemBody({
           ...b,
           title: groupTitle,
           quantity: v.quantity,
           imageUrl: v.imageUrl || b.imageUrl,
-          imageUrls: v.imageUrls || [],
+          imageUrls: [...(v.imageUrls || []), b.mainImageUrl].filter(Boolean),
           upc: v.upc || '',
           customAspects: { ...(b.customAspects || {}), ...(v.aspectOverrides || {}), [variantAspectName]: v.label },
         });
@@ -7303,15 +7309,24 @@ export default {
       // images. Every prior version of this group body omitted it entirely,
       // so from eBay's point of view the GROUP itself had zero photos even
       // though every individual variant did.
-      // Store request: "an automated way to make the lead image the one
-      // with all the covers listed as one image?" -- there's no image-
-      // compositing capability anywhere in this app (no WASM/canvas image
-      // library, nothing that draws multiple photos into one), so this
-      // can't generate a collage automatically. What it CAN do: let the
-      // store upload their own pre-made combined graphic and use it as the
-      // FIRST (default/lead) photo shown before a buyer picks a cover --
-      // ahead of each individual cover's own photo, never replacing them.
-      const groupImageUrls = [...new Set([b.mainImageUrl, ...built.map(v => v.imageUrl)].filter(Boolean))];
+      // Store report: clicking through the photo gallery on a live listing
+      // never changed the selected cover or its price -- confirmed against
+      // eBay's own Inventory API docs: "The images in the imageUrls array
+      // should correspond to each variation specified in the
+      // specifications.values array" -- this group-level array has a
+      // strict 1:1, SAME-ORDER contract with variesBy.specifications.values
+      // (one photo per variation, no more, no fewer) that drives which
+      // photo the live page shows for each cover. Two things here broke
+      // that contract: new Set(...) could silently collapse two covers
+      // that share a borrowed fallback photo (see the anyCoverImage
+      // fallback below) down to one array entry, shifting every cover
+      // after it out of alignment with its own label; and prepending
+      // mainImageUrl added an extra entry with nothing in
+      // specifications.values to match it, shifting EVERY cover's photo
+      // one position off from what its dropdown selection should show.
+      // mainImageUrl now rides on each variant's own inventory_item
+      // instead (see the itemBody above) -- never in this array.
+      const groupImageUrls = built.map(v => v.imageUrl);
       const groupBody = {
         title: String(groupTitle).substring(0, 80),
         description: toEbayHtmlDescription(b.description || groupTitle),

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.09.08.07-card-intake-server-processing-ebay-dup-guard">
+<meta name="version" content="2026.09.08.08-ebay-group-photo-position-fix">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1633,16 +1633,16 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.09.08.07-card-intake-server-processing-ebay-dup-guard" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.09.08.07-card-intake-server-processing-ebay-dup-guard" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.09.08.07-card-intake-server-processing-ebay-dup-guard" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.09.08.07-card-intake-server-processing-ebay-dup-guard" defer></script>
-<script src="scripts/card-intake-dashboard.js?v=2026.09.08.07-card-intake-server-processing-ebay-dup-guard" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.09.08.07-card-intake-server-processing-ebay-dup-guard" defer></script>
-<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.09.08.07-card-intake-server-processing-ebay-dup-guard" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.09.08.07-card-intake-server-processing-ebay-dup-guard" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.09.08.07-card-intake-server-processing-ebay-dup-guard" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.09.08.07-card-intake-server-processing-ebay-dup-guard" defer></script>
+<script src="scripts/query-routing.js?v=2026.09.08.08-ebay-group-photo-position-fix" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.09.08.08-ebay-group-photo-position-fix" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.09.08.08-ebay-group-photo-position-fix" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.09.08.08-ebay-group-photo-position-fix" defer></script>
+<script src="scripts/card-intake-dashboard.js?v=2026.09.08.08-ebay-group-photo-position-fix" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.09.08.08-ebay-group-photo-position-fix" defer></script>
+<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.09.08.08-ebay-group-photo-position-fix" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.09.08.08-ebay-group-photo-position-fix" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.09.08.08-ebay-group-photo-position-fix" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.09.08.08-ebay-group-photo-position-fix" defer></script>
 </head>
 <body>
 
@@ -1671,11 +1671,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.09.08.07-card-intake-server-processing-ebay-dup-guard</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.09.08.08-ebay-group-photo-position-fix</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.09.08.07-card-intake-server-processing-ebay-dup-guard</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.09.08.08-ebay-group-photo-position-fix</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1693,7 +1693,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="dsb-chip" id="dsb-sync">🔄 <span>SYNC:</span> <b id="dsb-sync-val">—</b></div>
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.09.08.07-card-intake-server-processing-ebay-dup-guard</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.09.08.08-ebay-group-photo-position-fix</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3779,7 +3779,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.09.08.07-card-intake-server-processing-ebay-dup-guard';
+const APP_VERSION = '2026.09.08.08-ebay-group-photo-position-fix';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -6402,6 +6402,7 @@ const FEATURE_LOG = [
     { title:'Fixed: FOC volume-discount promotion setup', status:'new', desc:'The "buy more, save more" volume discount FOC presale listings try to set up automatically was failing on every listing with "A valid entry is required for \'marketplaceId\'" -- eBay\'s promotion API needed that field on the request and it was missing.' },
     { title:'Fixed: LIST ALL COVERS could create duplicate live eBay listings', status:'new', desc:'A store report: two separate live eBay listings existed for the same book\'s 7 covers, each carved out of the same physical stock -- a real double-sell risk, confirmed by checking the actual listing records (same covers, 10 minutes apart). LIST ALL COVERS now checks whether any selected cover is already live under a different eBay listing and blocks the whole publish with a clear error instead of silently creating a duplicate.' },
     { title:'Multi-cover eBay listings now spell out every cover + ratio', status:'new', desc:'A shared multi-cover listing\'s description now always lists every cover included and its price (e.g. "CVR D INC 1:10 DAVID LOPEZ VAR -- $12.69"), appended automatically regardless of a custom description template -- eBay only indexes a listing\'s description text for search, so a buyer looking for a specific incentive ratio ("1:100 variant") can actually find a shared listing that includes it.' },
+    { title:'Fixed: clicking through a multi-cover listing\'s photos never changed the selected cover', status:'new', desc:'A store report, backed by a live listing: browsing the photo gallery on a published multi-cover listing never updated the "Cover:" dropdown or its price. Confirmed against eBay\'s own Inventory API docs -- the shared listing\'s photo array has to line up exactly one photo per cover, in the same order the covers are listed in, or eBay can\'t tell which photo belongs to which cover. Two things broke that: photos were being deduplicated (so two covers sharing a stand-in photo collapsed into one slot and knocked every cover after it out of alignment), and the optional combined "pick your cover" lead photo was getting inserted at the front of that same array, shifting every single cover\'s photo out of place. The combined photo now rides alongside each cover\'s own photo instead of in the shared array, and the shared array is never deduplicated or reordered.' },
     { title:'Fixed: comic preorder profit was wrong, worst on incentive covers', status:'new', desc:'A paid website comic preorder\'s recorded cost was 50% of what the CUSTOMER paid instead of 50% of the real MSRP -- correct on a book priced at MSRP, but incentive/ratio covers routinely sell for well above MSRP as compensation for the order-ratio chase, so a $20 incentive cover with a $4.99 MSRP was costing out at $10 instead of the real ~$2.50, understating profit by a lot on exactly the highest-value comic sales.' },
     { title:'Fixed: the eBay variation listing tool could reject a whole listing over one missing cover photo', status:'new', desc:'A cover with no cover art on file published its own inventory_item with zero photos, and eBay rejected the entire shared listing over it ("Add at least 1 photo"). Now borrows another selected cover\'s photo for it instead of leaving it blank, flags which cover is borrowing one right in the review screen, and gives the "All Covers Bundle" variant a full photo gallery of every cover it bundles instead of just one.' },
     { title:'Fixed: selling more than 1 of an item (one-off sale, or a quantity-grouped comic) recorded the wrong sale total and profit', status:'new', desc:'A one-off cart sale with its quantity typed directly (not via the +/- stepper), or a normal Sell on a quantity-grouped comic row selling more than 1 copy at once, recorded that line\'s price as if only 1 unit had sold -- undercounting the sale total, and (since cost is always tracked per-unit) overstating profit on top of that. Every cart line\'s price now correctly reflects its full quantity from the moment it\'s added, matching what the quantity stepper already maintained.' },
@@ -46334,7 +46335,7 @@ async function toppsLoadParallels(cardId){
   window.__arscaCloseModal = closeModal;
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.09.08.07-card-intake-server-processing-ebay-dup-guard" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.09.08.08-ebay-group-photo-position-fix" defer></script>
 </body>
 </html>
 

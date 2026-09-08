@@ -48,8 +48,8 @@ assert.match(createGroupBody, /variantSKUs: built\.map\(v => v\.sku\)/, 'the gro
 // top-level imageUrls -- the group's default gallery, checked by publish
 // validation separately from each variant's own images -- which every
 // prior version of this group body omitted entirely.
-assert.match(createGroupBody, /const groupImageUrls = \[\.\.\.new Set\(\[b\.mainImageUrl, \.\.\.built\.map\(v => v\.imageUrl\)\]\.filter\(Boolean\)\)\];/,
-  'must collect every distinct real variant image for the group\'s own gallery (with an optional store-uploaded main photo, if any, leading it -- see tests/foc-ebay-variation-listing-main-photo.test.mjs)');
+assert.match(createGroupBody, /const groupImageUrls = built\.map\(v => v\.imageUrl\);/,
+  'the group\'s own imageUrls must be exactly one photo per variant, in the same order as specifications.values -- eBay documents this array as needing to correspond 1:1 to each variation, and any dedupe or extra entry desyncs every cover\'s photo from its own dropdown selection (see tests/foc-ebay-variation-listing-main-photo.test.mjs for where the main photo goes instead)');
 assert.match(createGroupBody, /imageUrls: groupImageUrls,/, 'the inventory_item_group PUT body must carry its own imageUrls, not just rely on each variant\'s own image');
 assert.match(createGroupBody, /aspectsImageVaryBy: \[variantAspectName\]/, 'the group must vary its shown image by the same aspect (e.g. Cover), so each variant shows its own cover art like the real eBay example');
 assert.match(createGroupBody, /specifications: \[\{ name: variantAspectName, values: built\.map\(v => v\.label\) \}\]/, 'the group must declare the dropdown values as every variant\'s own label');

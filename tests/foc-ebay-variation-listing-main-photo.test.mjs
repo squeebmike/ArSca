@@ -9,18 +9,31 @@ const focDash = fs.readFileSync('scripts/foc-dashboard.js', 'utf8');
 // that." This app has no image-compositing capability (no WASM/canvas
 // library that draws multiple photos into one), so a real collage can't
 // be auto-generated -- but a store-uploaded combined graphic can be set
-// as the FIRST/default photo shown before a buyer picks a cover, ahead of
-// (never replacing) each individual cover's own real photo.
+// as an extra photo shown before a buyer picks a cover, never replacing
+// each individual cover's own real photo.
+//
+// Store report (live listings): clicking through the photo gallery never
+// changed the selected cover or its price. eBay's own Inventory API docs
+// require the group's imageUrls array to correspond 1:1, in the SAME
+// order, to variesBy.specifications.values -- exactly one photo per
+// variation. The original version of this feature prepended mainImageUrl
+// onto that array, shifting every cover's photo one position out of sync
+// with its own label -- so mainImageUrl now rides on each variant's own
+// inventory_item instead (an extra photo in that SKU's own gallery),
+// never in the group-level array.
 
 // ---------------------------------------------------------------------
-// Backend: createAndPublishEbayVariationListing prepends mainImageUrl
+// Backend: mainImageUrl rides on each variant's own inventory_item,
+// never in the group's own strictly-1:1 imageUrls array
 // ---------------------------------------------------------------------
 const createGroupStart = worker.indexOf('async function createAndPublishEbayVariationListing');
 assert.ok(createGroupStart !== -1, 'createAndPublishEbayVariationListing must exist');
 const createGroupEnd = worker.indexOf('async function withdrawEbayOfferGroup', createGroupStart);
 const createGroupBody = worker.slice(createGroupStart, createGroupEnd);
-assert.match(createGroupBody, /const groupImageUrls = \[\.\.\.new Set\(\[b\.mainImageUrl, \.\.\.built\.map\(v => v\.imageUrl\)\]\.filter\(Boolean\)\)\];/,
-  'the optional store-uploaded main image must be prepended ahead of every cover\'s own image in the group\'s photo gallery, not replace them');
+assert.match(createGroupBody, /imageUrls: \[\.\.\.\(v\.imageUrls \|\| \[\]\), b\.mainImageUrl\]\.filter\(Boolean\),/,
+  'the optional store-uploaded main image must be added to each variant\'s OWN inventory_item photo gallery, not the group-level array');
+assert.match(createGroupBody, /const groupImageUrls = built\.map\(v => v\.imageUrl\);/,
+  'the group-level imageUrls array must stay exactly one photo per variant with no extra entries, or the live page\'s photo-to-variation binding breaks for every cover');
 
 // ---------------------------------------------------------------------
 // Backend: the route reads, sanitizes, and forwards mainImageUrl
