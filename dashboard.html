@@ -6284,6 +6284,7 @@ const FEATURE_LOG = [
     { title:'Category price ceilings', status:'new', desc:'Set a bulk "how far above market can we sell" rule per category in Settings -- percent over market or a flat dollar amount, whichever\'s greater (e.g. Pokemon 20% or +$2, Sports 60% or +$5). Auto-applied as the ceiling on every new item added to that category going forward; still freely adjustable per item afterward, same as the existing price floor.' },
     { title:'Card Themes', status:'new', desc:'Enter a curated card grouping for display/merchandising (e.g. a "Golden Hour"-style theme) and see how many of its cards you already have in stock, with price/qty per match -- available from the SETS tab. Card lists are entered by the store since there\'s no public API for these groupings; this just cross-references whatever list you give it against current sellable inventory.' },
     { title:'Print a Card Theme case card', status:'new', desc:'Print a theme\'s in-stock cards (name, condition, price) laid out for physical display in the case -- only prints what you actually have, so it doubles as a price card for the display.' },
+    { title:'Bundle Brain', status:'new', desc:'Finds inventory that makes sense sold together instead of getting randomly discounted -- groups of 3+ sellable items sharing a player, team, or set -- and calculates a bundle price with a real discount off the combined list price that never drops below cost plus a minimum margin. One click hands the group + suggested price into the existing Bundle Builder to review and create. Reachable from BUNDLE BRAIN next to Slow Movers in Reports.' },
   ]},
   { area:'POS / Register / Checkout', items:[
     { title:'Multi-quantity sell + fixed discount math', status:'new', desc:'A +/- stepper lets you sell several of the same item (toploaders, sleeves, etc.) as one cart line. Cart-level discounts now apply correctly per line, so revenue/profit records match what the customer actually paid.' },
@@ -17474,7 +17475,7 @@ function renderReportsResults(result, groupBy){
       const slowMovers = computeSlowMovers(typeof all !== 'undefined' ? all : []);
       return `<div class="owner-section-grid" style="grid-template-columns:1fr;margin-top:14px">
       <div class="owner-mini-panel">
-        <div class="ph">SLOW MOVERS / DEAD STOCK <span style="font-size:9px;color:var(--dim)">in stock 90+ days, worst cash-tied-up first</span></div>
+        <div class="ph">SLOW MOVERS / DEAD STOCK <span style="font-size:9px;color:var(--dim)">in stock 90+ days, worst cash-tied-up first</span> <a class="ph-action" onclick="openBundleBrainModal()">🧠 Bundle Brain →</a></div>
         ${slowMovers.length ? `<div class="tbl-wrap" style="margin-top:6px"><table><thead><tr><th>ITEM</th><th>CATEGORY</th><th style="text-align:right">DAYS</th><th style="text-align:right">QTY</th><th style="text-align:right">CASH TIED UP</th><th style="text-align:right">LIST PRICE</th><th>SUGGESTED ACTION</th><th></th></tr></thead><tbody>
           ${slowMovers.map(s => `<tr><td>${escHtml(s.name)}</td><td>${escHtml(s.category)}</td><td style="text-align:right">${s.days}</td><td style="text-align:right">${s.qty}</td><td style="text-align:right">${fd$(s.cashTiedUp)}</td><td style="text-align:right">${fd$(s.listPrice)}</td><td><span title="${escHtml(s.actionReason)}" style="font-family:monospace;font-size:9px;font-weight:700;color:var(--gold);border-bottom:1px dotted var(--gold);cursor:help">${escHtml(s.action)}</span></td><td><button class="ra rab-edit" onclick="openEditModal('${s.id}')">EDIT</button></td></tr>`).join('')}
         </tbody></table></div>` : `<div class="empty"><div class="empty-t">Nothing has been sitting 90+ days -- stock is turning over</div></div>`}
@@ -25769,6 +25770,119 @@ function clearBundleDraft(){ bundleDraftIds.clear(); renderBundleDraftBar(); }
 // If all selected items are comics from the same series with distinct
 // issue numbers, name the bundle after the run (e.g. "Series #1–#5
 // (5-issue run)"); otherwise fall back to a generic count-based name.
+// ── Bundle Brain ──────────────────────────────────────────────────────
+// Store idea: find inventory that makes sense bundled together instead of
+// getting randomly discounted one at a time. Deliberately limited to
+// groupings this app has REAL data for -- same set, same team, or same
+// player. Skips "Pokemon evolution lines" and "Commander synergy themes"
+// as literal groupings on purpose: neither has a real dataset backing it
+// here (no evolution-chain table, no color-identity/tribal data), and a
+// plausible-looking-but-wrong grouping would be worse than not suggesting
+// one at all. A same-set lot already covers most of that intent honestly
+// -- it's a real, sellable grouping even without knowing which cards
+// evolve into which.
+function computeBundleCandidates(items, opts={}){
+  const minGroupSize = opts.minGroupSize || 3;
+  const maxGroups = opts.maxGroups || 20;
+  const sellable = (items || []).filter(inventoryItemIsSellable).filter(i => !i.isBundle);
+  const groups = [];
+  const addGroupsFromKey = (keyFn, type) => {
+    const byKey = new Map();
+    sellable.forEach(i => {
+      const key = keyFn(i);
+      if(!key) return;
+      if(!byKey.has(key)) byKey.set(key, []);
+      byKey.get(key).push(i);
+    });
+    byKey.forEach((groupItems, key) => {
+      if(groupItems.length >= minGroupSize) groups.push({ type, key, category:groupItems[0].category, items:groupItems });
+    });
+  };
+  // Most-specific grouping first (player, then team, then set) so the
+  // de-dupe pass below prefers the tightest, most relevant lot for an
+  // item instead of always falling back to its broadest "same set" group.
+  addGroupsFromKey(i => i.player ? `${i.category}||${i.player}` : null, 'player');
+  addGroupsFromKey(i => i.team ? `${i.category}||${i.team}` : null, 'team');
+  addGroupsFromKey(i => i.set ? `${i.category}||${i.set}` : null, 'set');
+  const claimed = new Set();
+  const deduped = [];
+  groups.forEach(g => {
+    const unclaimed = g.items.filter(i => !claimed.has(i.id));
+    if(unclaimed.length >= minGroupSize){
+      unclaimed.forEach(i => claimed.add(i.id));
+      deduped.push({ ...g, items:unclaimed, label:g.key.split('||')[1] || g.key });
+    }
+  });
+  return deduped
+    .map(g => ({ ...g, suggestedPrice: computeBundlePrice(g.items) }))
+    .sort((a, b) => b.items.length - a.items.length)
+    .slice(0, maxGroups);
+}
+// Bundle price: a real discount off the combined list price -- enough to
+// be worth buying as a lot -- but never below combined cost plus a
+// minimum margin, so clearing inventory doesn't mean selling at a loss.
+function computeBundlePrice(items, opts={}){
+  const discountPct = opts.discountPct ?? 15;
+  const minMarginPct = opts.minMarginPct ?? 10;
+  const combinedList = items.reduce((s, i) => s + inventoryListPrice(i) * (i.qty || 1), 0);
+  const combinedCost = items.reduce((s, i) => s + Number(i.cost || 0) * (i.qty || 1), 0);
+  const discounted = roundSellPrice(combinedList * (1 - discountPct / 100));
+  const floor = roundSellPrice(combinedCost * (1 + minMarginPct / 100));
+  return Math.max(discounted, floor);
+}
+let _bundleBrainCandidates = [];
+function openBundleBrainModal(){
+  let modal = document.getElementById('bundle-brain-modal');
+  if(!modal){
+    modal = document.createElement('div');
+    modal.id = 'bundle-brain-modal';
+    modal.className = 'ppsb-modal';
+    modal.innerHTML = '<div class="ppsb-inner" id="bundle-brain-inner"></div>';
+    modal.addEventListener('click', e => { if(e.target === modal) closeBundleBrainModal(); });
+    document.body.appendChild(modal);
+  }
+  modal.classList.add('on');
+  renderBundleBrainModal();
+}
+function closeBundleBrainModal(){
+  document.getElementById('bundle-brain-modal')?.classList.remove('on');
+}
+const BUNDLE_BRAIN_TYPE_LABEL = { set:'SAME SET', team:'SAME TEAM', player:'SAME PLAYER' };
+function renderBundleBrainModal(){
+  const inner = document.getElementById('bundle-brain-inner');
+  if(!inner) return;
+  _bundleBrainCandidates = computeBundleCandidates(all);
+  const rows = _bundleBrainCandidates.map((g, idx) => `<div class="hbtn" style="display:flex;justify-content:space-between;align-items:center;gap:10px;text-align:left;margin-bottom:6px;cursor:default">
+    <div style="min-width:0">
+      <div style="font-weight:800;font-size:12px">${escHtml(g.label)} <span style="font-size:9px;color:var(--dim)">${BUNDLE_BRAIN_TYPE_LABEL[g.type] || g.type} · ${escHtml(g.category)}</span></div>
+      <div style="font-family:monospace;font-size:9px;color:var(--dim)">${g.items.length} items · combined list ${fd$(g.items.reduce((s,i)=>s+inventoryListPrice(i)*(i.qty||1),0))} → suggested ${fd$(g.suggestedPrice)}</div>
+    </div>
+    <button class="hbtn" style="font-size:9px;min-height:28px;padding:2px 10px;color:var(--g)" onclick="createBundleFromCandidate(${idx})">BUILD BUNDLE</button>
+  </div>`).join('') || `<div style="font-family:monospace;font-size:11px;color:var(--dim);padding:12px 0">No bundle opportunities right now -- nothing has 3+ sellable items sharing a set, team, or player.</div>`;
+  inner.innerHTML = `
+    <div class="ppsb-header">
+      <div style="display:flex;align-items:center;gap:10px;min-width:0">
+        <span class="ppsb-title">🧠 BUNDLE BRAIN</span>
+        <span style="font-family:monospace;font-size:9px;color:var(--dim);white-space:nowrap">inventory that makes sense sold together, not randomly discounted</span>
+      </div>
+      <button class="hbtn" style="min-height:36px;padding:4px 14px;font-size:10px;flex-shrink:0" onclick="closeBundleBrainModal()">✕ CLOSE</button>
+    </div>
+    <div style="max-width:700px;margin:0 auto;padding:16px 20px">${rows}</div>`;
+}
+function createBundleFromCandidate(idx){
+  const g = _bundleBrainCandidates[idx];
+  if(!g) return;
+  bundleDraftIds = new Set(g.items.map(i => i.id));
+  closeBundleBrainModal();
+  openBundleBuilderModal();
+  const typeName = { set:'Lot', team:'Team Lot', player:'Player Lot' };
+  const nameEl = document.getElementById('bb-name');
+  const priceEl = document.getElementById('bb-price');
+  if(nameEl) nameEl.value = `${g.label} ${typeName[g.type] || 'Lot'} (${g.items.length})`;
+  if(priceEl) priceEl.value = g.suggestedPrice.toFixed(2);
+}
+// ── END Bundle Brain ─────────────────────────────────────────────────
+
 function suggestBundleName(items){
   const comics = items.filter(i => qplCategoryKey(i.category) === 'comic');
   if(comics.length === items.length && comics.length >= 2){

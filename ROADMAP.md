@@ -33,7 +33,7 @@ actually shipped. Check items off / move to `FEATURE_LOG` as they get built.
       releases." Makes FOC, inventory, and sales history actually talk to
       each other instead of being three separate screens.
 
-- [ ] **Bundle Brain.** Finds inventory that makes sense bundled together
+- [x] **Bundle Brain.** Finds inventory that makes sense bundled together
       instead of randomly discounted: connecting covers, artist sets,
       Pokémon evolution lines, team/player lots, Commander themes, etc.
       Calculates a bundle price that clears stock without murdering
