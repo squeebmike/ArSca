@@ -3852,12 +3852,20 @@ export default {
         const repSku = skuRows.find(s => s.id === eligibleCovers[0].skuId);
         const onSaleDate = new Date(String(repSku.on_sale_date).includes('T') ? repSku.on_sale_date : repSku.on_sale_date + 'T00:00:00Z');
         const handlingBusinessDays = businessDaysBetween(new Date(), onSaleDate) + 2;
-        // buildFocPresaleDefaults is written per-cover (its title includes
-        // variant_label) -- passing variant_label:'' gets back the shared,
-        // cover-agnostic title/description/aspects a GROUP listing needs
-        // (the eBay-rendered dropdown is what distinguishes covers, not the
-        // listing title).
-        const defaults = buildFocPresaleDefaults({ ...repSku, variant_label: '' }, eligibleCovers[0].priceCents, onSaleDate, family.issue_number || '');
+        // buildFocPresaleDefaults is written per-cover (its title is
+        // sku.title + sku.variant_label) -- store report (live listing):
+        // the shared group title came out as "...  (CVR A) (Nicola Izzo) -
+        // PRESALE" and stayed that way no matter which cover a buyer picked
+        // in the dropdown. Root cause: sku.title itself already has the
+        // cover baked in for PRH imports (titleWithoutVariant in
+        // foc-preorders.mjs strips "CVR X ..." into comic_title_families.
+        // title precisely so there's a clean, cover-agnostic title to use
+        // here) -- passing variant_label:'' alone wasn't enough when the
+        // representative SKU's own title field was never cover-agnostic to
+        // begin with. Using family.title as the title source (not
+        // repSku.title) actually gets the shared, cover-agnostic title a
+        // GROUP listing needs.
+        const defaults = buildFocPresaleDefaults({ ...repSku, title: family.title, variant_label: '' }, eligibleCovers[0].priceCents, onSaleDate, family.issue_number || '');
         return json({
           ok: true, familyTitle: family.title, issueNumber: family.issue_number || '',
           covers, eligibleCount: eligibleCovers.length, handlingBusinessDays, ...defaults,
@@ -3929,7 +3937,11 @@ export default {
       const repSku = skuRows.find(s => s.id === repSkuId);
       const onSaleDate = new Date(String(repSku.on_sale_date).includes('T') ? repSku.on_sale_date : repSku.on_sale_date + 'T00:00:00Z');
       const handlingBusinessDays = businessDaysBetween(new Date(), onSaleDate) + 2;
-      const defaults = buildFocPresaleDefaults({ ...repSku, variant_label: '' }, built[0].priceCents || Math.round(Number(built[0].price) * 100), onSaleDate, family.issue_number || '');
+      // See the matching comment in the preview branch above: sku.title is
+      // never cover-agnostic on its own for PRH imports, so the shared
+      // group title/description must be built from family.title, not
+      // repSku.title.
+      const defaults = buildFocPresaleDefaults({ ...repSku, title: family.title, variant_label: '' }, built[0].priceCents || Math.round(Number(built[0].price) * 100), onSaleDate, family.issue_number || '');
 
       const groupTitle = (typeof body.title === 'string' && body.title.trim()) ? body.title.trim().substring(0, 80) : defaults.title;
       const description = (typeof body.description === 'string' && body.description.trim()) ? body.description.trim().substring(0, 4000) : defaults.description;
