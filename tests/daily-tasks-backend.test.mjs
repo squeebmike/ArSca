@@ -136,3 +136,50 @@ console.log('Completion toggle checks passed');
   assert.equal(requireStoreUserCalls[0].allowedRoles, undefined, 'completion must use the default (all working-staff) permission floor, not an explicit admin-only list');
 }
 console.log('Permission floor checks passed');
+
+// ── Assignment: create/update can set a specific assignee, or clear back
+// to "anyone in role" ─────────────────────────────────────────────────────
+{
+  const { deps, calls } = mockDeps();
+  await handleDailyTasksRequest(fakeRequest({ storeId: 's1', roleId: 'r1', title: 'Count drawer', assignedToUserId: 'u9', assignedToLabel: 'Sam' }), {}, new URL('https://x.test/daily-tasks/items'), deps);
+  const write = calls.find(c => c.path === 'daily_task_items' && c.opts?.method === 'POST');
+  const [row] = JSON.parse(write.opts.body);
+  assert.equal(row.assigned_to_user_id, 'u9', 'creating a task with an assignee must persist the user id');
+  assert.equal(row.assigned_to_label, 'Sam', 'creating a task with an assignee must persist the display label');
+}
+function fakePatchRequest(body) {
+  return { method: 'PATCH', headers: new Map(), json: async () => body };
+}
+{
+  const { deps, calls } = mockDeps();
+  await handleDailyTasksRequest(fakePatchRequest({ storeId: 's1', id: 't1', assignedToUserId: 'u9', assignedToLabel: 'Sam' }), {}, new URL('https://x.test/daily-tasks/items'), deps);
+  const write = calls.find(c => c.opts?.method === 'PATCH');
+  const patch = JSON.parse(write.opts.body);
+  assert.equal(patch.assigned_to_user_id, 'u9');
+  assert.equal(patch.assigned_to_label, 'Sam');
+}
+{
+  const { deps, calls } = mockDeps();
+  await handleDailyTasksRequest(fakePatchRequest({ storeId: 's1', id: 't1', assignedToUserId: '' }), {}, new URL('https://x.test/daily-tasks/items'), deps);
+  const write = calls.find(c => c.opts?.method === 'PATCH');
+  const patch = JSON.parse(write.opts.body);
+  assert.equal(patch.assigned_to_user_id, null, 'clearing assignedToUserId must null it out, reverting to anyone-in-role');
+  assert.equal(patch.assigned_to_label, '');
+}
+console.log('Assignment checks passed');
+
+// ── The read path must surface each task's assignment ────────────────────
+{
+  const { deps } = mockDeps({
+    dbHandler: (path) => {
+      if (path.startsWith('daily_task_roles')) return { data: [{ id: 'r1', store_id: 's1', name: 'Opener', sort_order: 0 }] };
+      if (path.startsWith('daily_task_items')) return { data: [{ id: 't1', store_id: 's1', role_id: 'r1', title: 'Count drawer', detail: '', days_of_week: [0, 1, 2, 3, 4, 5, 6], sort_order: 0, active: true, assigned_to_user_id: 'u9', assigned_to_label: 'Sam' }] };
+      if (path.startsWith('daily_task_completions')) return { data: [] };
+    },
+  });
+  const res = await handleDailyTasksRequest({ method: 'GET', headers: new Map() }, {}, new URL('https://x.test/daily-tasks?store_id=s1&date=2026-09-09'), deps);
+  const task = res.body.roles[0].tasks[0];
+  assert.equal(task.assignedToUserId, 'u9');
+  assert.equal(task.assignedToLabel, 'Sam');
+}
+console.log('Assignment read-path checks passed');

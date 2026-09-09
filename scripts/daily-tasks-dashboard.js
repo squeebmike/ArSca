@@ -10,7 +10,8 @@
 // tests/daily-tasks-window-exposure.test.mjs).
 (function(){
 var DOW_LABELS=['S','M','T','W','T','F','S'];
-var state={ date:todayLocalDateStr(), data:null, editing:false, loading:false };
+var DOW_NAMES=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+var state={ date:todayLocalDateStr(), data:null, view:'today', loading:false, members:null, filters:{role:'',assignee:'',status:''} };
 
 function todayLocalDateStr(){
   var d=new Date();
@@ -58,8 +59,41 @@ async function loadDailyTasks(dateStr){
     return;
   }
   state.loading=false;
-  state.editing?renderManageRolesTasks():renderDailyTasksHome();
+  renderCurrentView();
+  refreshDailyTasksBadge();
 }
+
+function renderCurrentView(){
+  if(state.view==='manage')renderManageRolesTasks();
+  else if(state.view==='all')renderAllTasksView();
+  else renderDailyTasksHome();
+}
+
+function switchDailyTasksView(view){
+  state.view=view;
+  renderCurrentView();
+}
+
+// Home-screen alert chip (dealer status bar): a lightweight, independent
+// poll so "today's tasks" stays visible no matter which tab is open, not
+// just while the Tasks panel itself is mounted. Only shown once there's
+// something actually outstanding -- a 0/0 chip on a day nothing's
+// scheduled would just be clutter, not an alert.
+function refreshDailyTasksBadge(){
+  var val=document.getElementById('dsb-tasks-val');
+  var chip=document.getElementById('dsb-tasks');
+  if(!val||!chip)return;
+  if(typeof getActiveStoreId!=='function'||!getActiveStoreId())return;
+  api('/daily-tasks?date='+encodeURIComponent(todayLocalDateStr())).then(function(d){
+    var due=0,done=0;
+    (d.roles||[]).forEach(function(r){(r.tasks||[]).forEach(function(t){if(t.dueToday&&t.active!==false){due++;if(t.completed)done++;}});});
+    val.textContent=done+'/'+due;
+    chip.style.display=due>0?'':'none';
+    chip.classList.toggle('dsb-tasks-active',due>0&&done<due);
+  }).catch(function(){});
+}
+setInterval(function(){ if(!document.hidden) refreshDailyTasksBadge(); }, 90000);
+setTimeout(refreshDailyTasksBadge, 3000);
 
 function goToDate(dateStr){ loadDailyTasks(dateStr); }
 function shiftDay(delta){ loadDailyTasks(shiftDateStr(state.date,delta)); }
@@ -83,6 +117,7 @@ function renderDailyTasksHome(){
           '<button class="hbtn" onclick="shiftDailyTasksDay(-1)">← PREV DAY</button>'+
           (isToday?'':'<button class="hbtn" onclick="jumpToTodayDailyTasks()">TODAY</button>')+
           '<button class="hbtn" onclick="shiftDailyTasksDay(1)">NEXT DAY →</button>'+
+          '<button class="hbtn" onclick="switchDailyTasksView(\'all\')">ALL TASKS · FILTER</button>'+
           (canManageTasks()?'<button class="hbtn" style="color:var(--gold)" onclick="openManageRolesTasks()">MANAGE ROLES &amp; TASKS</button>':'')+
         '</div>'+
       '</div>'+
@@ -109,6 +144,7 @@ function renderTaskRow(t){
     '<span style="flex:1;min-width:0">'+
       '<div style="font-weight:700;color:var(--text);font-size:12px;'+(t.completed?'text-decoration:line-through;color:var(--dim)':'')+'">'+esc(t.title)+'</div>'+
       (t.detail?'<div style="font-family:var(--font-mono);font-size:9px;color:var(--dim);margin-top:2px">'+esc(t.detail)+'</div>':'')+
+      (t.assignedToLabel?'<div style="font-family:var(--font-mono);font-size:8px;color:var(--dim);margin-top:2px">assigned to '+esc(t.assignedToLabel)+'</div>':'')+
       (t.completed&&t.completedBy?'<div style="font-family:var(--font-mono);font-size:8px;color:var(--dim);margin-top:2px">checked off by '+esc(t.completedBy)+'</div>':'')+
     '</span>'+
   '</label>';
@@ -120,19 +156,23 @@ async function toggleDailyTask(taskId,checked){
     var role=(state.data.roles||[]).find(function(r){return (r.tasks||[]).some(function(t){return t.id===taskId;});});
     var task=role&&role.tasks.find(function(t){return t.id===taskId;});
     if(task){task.completed=checked;}
-    renderDailyTasksHome();
+    renderCurrentView();
+    refreshDailyTasksBadge();
   }catch(e){toast_dash('Could not update task: '+e.message);}
 }
 
 // ── MANAGE ROLES & TASKS (owner/admin/manager) ──────────────────────────
-function openManageRolesTasks(){
+async function openManageRolesTasks(){
   if(!canManageTasks())return;
-  state.editing=true;
+  state.view='manage';
+  if(!state.members){
+    try{ state.members=typeof loadStoreMembers==='function'?await loadStoreMembers():[]; }
+    catch(e){ state.members=[]; }
+  }
   renderManageRolesTasks();
 }
 function closeManageRolesTasks(){
-  state.editing=false;
-  renderDailyTasksHome();
+  switchDailyTasksView('today');
 }
 
 function renderManageRolesTasks(){
@@ -142,8 +182,9 @@ function renderManageRolesTasks(){
     '<div class="panel" style="padding:14px;margin-bottom:12px">'+
       '<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">'+
         '<div class="ph" style="margin:0">MANAGE ROLES &amp; TASKS</div>'+
-        '<div style="display:flex;gap:8px">'+
+        '<div style="display:flex;gap:8px;flex-wrap:wrap">'+
           '<button class="hbtn" style="color:var(--g)" onclick="addDailyTaskRole()">+ ADD ROLE</button>'+
+          '<button class="hbtn" onclick="switchDailyTasksView(\'all\')">ALL TASKS · FILTER</button>'+
           '<button class="hbtn" onclick="closeManageRolesTasks()">← BACK TO CHECKLIST</button>'+
         '</div>'+
       '</div>'+
@@ -167,8 +208,32 @@ function renderManageRoleCard(role){
 function dowChipsHtml(taskId,daysOfWeek){
   return DOW_LABELS.map(function(label,i){
     var on=(daysOfWeek||[]).includes(i);
-    return '<button type="button" class="hbtn" style="min-width:26px;padding:4px 0;font-size:9px;'+(on?'color:var(--g);border-color:rgba(0,255,179,.4)':'color:var(--dim)')+'" onclick="toggleDailyTaskDay(\''+esc(taskId)+'\','+i+')" title="'+['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][i]+'">'+label+'</button>';
+    return '<button type="button" class="hbtn" style="min-width:26px;padding:4px 0;font-size:9px;'+(on?'color:var(--g);border-color:rgba(0,255,179,.4)':'color:var(--dim)')+'" onclick="toggleDailyTaskDay(\''+esc(taskId)+'\','+i+')" title="'+DOW_NAMES[i]+'">'+label+'</button>';
   }).join('');
+}
+
+// Read-only compact rendering of the same days-of-week, used in ALL TASKS
+// (a real month calendar would be the wrong model here -- these tasks
+// don't repeat on specific dates, they repeat on weekdays, identically
+// every week, so a 7-dot weekday strip shows the actual recurrence
+// pattern more directly than a monthly grid full of duplicate entries).
+function dowDotsHtml(daysOfWeek){
+  return '<span style="letter-spacing:2px">'+DOW_LABELS.map(function(l,i){
+    var on=(daysOfWeek||[]).includes(i);
+    return '<span style="'+(on?'color:var(--g);font-weight:700':'color:var(--dim);opacity:.35')+'" title="'+DOW_NAMES[i]+'">'+l+'</span>';
+  }).join('')+'</span>';
+}
+
+function assigneeSelectHtml(t){
+  var members=state.members||[];
+  return '<select class="tsi" onchange="setDailyTaskAssignee(\''+esc(t.id)+'\',this.value,this.options[this.selectedIndex].text)">'+
+    '<option value=""'+(!t.assignedToUserId?' selected':'')+'>Anyone in role</option>'+
+    members.map(function(m){
+      var uid=m.user_id||m.id;
+      var label=m.displayName||m.email||uid;
+      return '<option value="'+esc(uid)+'"'+(t.assignedToUserId===uid?' selected':'')+'>'+esc(label)+'</option>';
+    }).join('')+
+  '</select>';
 }
 
 function renderManageTaskRow(t){
@@ -178,11 +243,111 @@ function renderManageTaskRow(t){
       '<button class="hbtn" style="color:var(--red);padding:6px 10px" onclick="removeDailyTaskItem(\''+esc(t.id)+'\',\''+esc(t.title.replace(/'/g,"\\'"))+'\')">✕</button>'+
     '</div>'+
     '<input type="text" value="'+esc(t.detail||'')+'" style="width:100%;margin-bottom:6px" class="tsi" placeholder="Optional detail/note" onchange="setDailyTaskDetail(\''+esc(t.id)+'\',this.value)">'+
-    '<div style="display:flex;gap:4px;align-items:center">'+
-      '<span style="font-family:var(--font-mono);font-size:8px;color:var(--dim);margin-right:4px">DAYS:</span>'+
-      dowChipsHtml(t.id,t.daysOfWeek)+
+    '<div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap">'+
+      '<div style="display:flex;gap:4px;align-items:center">'+
+        '<span style="font-family:var(--font-mono);font-size:8px;color:var(--dim);margin-right:4px">DAYS:</span>'+
+        dowChipsHtml(t.id,t.daysOfWeek)+
+      '</div>'+
+      '<div style="display:flex;gap:4px;align-items:center">'+
+        '<span style="font-family:var(--font-mono);font-size:8px;color:var(--dim)">ASSIGNED:</span>'+
+        assigneeSelectHtml(t)+
+      '</div>'+
     '</div>'+
   '</div>';
+}
+
+async function setDailyTaskAssignee(taskId,userId,label){
+  try{
+    await api('/daily-tasks/items',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:taskId,assignedToUserId:userId||null,assignedToLabel:userId?label:''})});
+    var found=findTaskAndRole(taskId);
+    if(found){found.task.assignedToUserId=userId||null;found.task.assignedToLabel=userId?label:'';}
+  }catch(e){toast_dash('Could not set assignee: '+e.message);renderManageRolesTasks();}
+}
+
+// ── ALL TASKS · FILTER (any staff member -- read-only across every role) ─
+function uniqueAssignees(allTasks){
+  var map={};
+  allTasks.forEach(function(x){
+    if(x.task.assignedToUserId&&!map[x.task.assignedToUserId]) map[x.task.assignedToUserId]={id:x.task.assignedToUserId,label:x.task.assignedToLabel||'Assigned'};
+  });
+  return Object.keys(map).map(function(k){return map[k];}).sort(function(a,b){return a.label.localeCompare(b.label);});
+}
+
+function renderAllTasksView(){
+  var host=panel();if(!host||!state.data)return;
+  var roles=state.data.roles||[];
+  var allTasks=[];
+  roles.forEach(function(r){(r.tasks||[]).forEach(function(t){if(t.active!==false)allTasks.push({task:t,role:r});});});
+  var assignees=uniqueAssignees(allTasks);
+  var f=state.filters;
+  var filtered=allTasks.filter(function(x){
+    if(f.role&&x.role.id!==f.role)return false;
+    if(f.assignee==='__unassigned__'&&x.task.assignedToUserId)return false;
+    if(f.assignee&&f.assignee!=='__unassigned__'&&x.task.assignedToUserId!==f.assignee)return false;
+    if(f.status==='due'&&!x.task.dueToday)return false;
+    if(f.status==='notdue'&&x.task.dueToday)return false;
+    if(f.status==='done'&&!(x.task.dueToday&&x.task.completed))return false;
+    if(f.status==='pending'&&!(x.task.dueToday&&!x.task.completed))return false;
+    return true;
+  });
+  host.innerHTML=
+    '<div class="panel" style="padding:14px;margin-bottom:12px">'+
+      '<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:10px">'+
+        '<div class="ph" style="margin:0">ALL TASKS <span style="font-size:9px;color:var(--dim)">'+esc(formatDateLabel(state.date))+(state.date===todayLocalDateStr()?' · TODAY':'')+'</span></div>'+
+        '<div style="display:flex;gap:8px;flex-wrap:wrap">'+
+          '<button class="hbtn" onclick="shiftDailyTasksDay(-1)">← PREV DAY</button>'+
+          '<button class="hbtn" onclick="shiftDailyTasksDay(1)">NEXT DAY →</button>'+
+          '<button class="hbtn" onclick="switchDailyTasksView(\'today\')">← TODAY\'S CHECKLIST</button>'+
+          (canManageTasks()?'<button class="hbtn" style="color:var(--gold)" onclick="openManageRolesTasks()">MANAGE ROLES &amp; TASKS</button>':'')+
+        '</div>'+
+      '</div>'+
+      '<div style="display:flex;gap:8px;flex-wrap:wrap">'+
+        '<select class="tsi" onchange="setDailyTasksFilter(\'role\',this.value)">'+
+          '<option value=""'+(f.role===''?' selected':'')+'>All roles</option>'+
+          roles.map(function(r){return '<option value="'+esc(r.id)+'"'+(f.role===r.id?' selected':'')+'>'+esc(r.name)+'</option>';}).join('')+
+        '</select>'+
+        '<select class="tsi" onchange="setDailyTasksFilter(\'assignee\',this.value)">'+
+          '<option value=""'+(f.assignee===''?' selected':'')+'>All assignees</option>'+
+          '<option value="__unassigned__"'+(f.assignee==='__unassigned__'?' selected':'')+'>Anyone in role (unassigned)</option>'+
+          assignees.map(function(a){return '<option value="'+esc(a.id)+'"'+(f.assignee===a.id?' selected':'')+'>'+esc(a.label)+'</option>';}).join('')+
+        '</select>'+
+        '<select class="tsi" onchange="setDailyTasksFilter(\'status\',this.value)">'+
+          '<option value=""'+(f.status===''?' selected':'')+'>All statuses</option>'+
+          '<option value="due"'+(f.status==='due'?' selected':'')+'>Due this day</option>'+
+          '<option value="notdue"'+(f.status==='notdue'?' selected':'')+'>Not scheduled this day</option>'+
+          '<option value="done"'+(f.status==='done'?' selected':'')+'>Done</option>'+
+          '<option value="pending"'+(f.status==='pending'?' selected':'')+'>Pending</option>'+
+        '</select>'+
+      '</div>'+
+    '</div>'+
+    '<div class="panel" style="padding:0;overflow-x:auto">'+
+      '<table style="width:100%;border-collapse:collapse;font-family:var(--font-mono);font-size:10px">'+
+      '<thead><tr style="text-align:left;border-bottom:1px solid var(--border);color:var(--dim)">'+
+        '<th style="padding:8px">TASK</th><th style="padding:8px">ROLE</th><th style="padding:8px">ASSIGNED TO</th><th style="padding:8px">REPEATS</th><th style="padding:8px">STATUS</th>'+
+      '</tr></thead><tbody>'+
+      (filtered.length?filtered.map(function(x){return allTasksRowHtml(x.task,x.role);}).join(''):
+        '<tr><td colspan="5" style="padding:20px;text-align:center;color:var(--dim)">No tasks match this filter.</td></tr>')+
+      '</tbody></table>'+
+    '</div>';
+}
+
+function allTasksRowHtml(t,role){
+  var statusCell;
+  if(!t.dueToday) statusCell='<span style="color:var(--dim)">not scheduled</span>';
+  else if(t.completed) statusCell='<span style="color:var(--g)">✓ done'+(t.completedBy?' — '+esc(t.completedBy):'')+'</span>';
+  else statusCell='<span style="color:var(--gold)">pending</span>';
+  return '<tr style="border-bottom:1px solid var(--border)">'+
+    '<td style="padding:8px;color:var(--text)">'+esc(t.title)+(t.detail?'<div style="color:var(--dim);font-size:9px;margin-top:2px">'+esc(t.detail)+'</div>':'')+'</td>'+
+    '<td style="padding:8px">'+esc(role.name)+'</td>'+
+    '<td style="padding:8px">'+(t.assignedToLabel?esc(t.assignedToLabel):'<span style="color:var(--dim)">anyone in role</span>')+'</td>'+
+    '<td style="padding:8px">'+dowDotsHtml(t.daysOfWeek)+'</td>'+
+    '<td style="padding:8px">'+statusCell+'</td>'+
+  '</tr>';
+}
+
+function setDailyTasksFilter(key,val){
+  state.filters[key]=val;
+  renderAllTasksView();
 }
 
 function findTaskAndRole(taskId){
@@ -272,6 +437,7 @@ window.ensureDailyTasksPanel=ensureDailyTasksPanel;
 window.toggleDailyTask=toggleDailyTask;
 window.shiftDailyTasksDay=shiftDay;
 window.jumpToTodayDailyTasks=jumpToToday;
+window.switchDailyTasksView=switchDailyTasksView;
 window.openManageRolesTasks=openManageRolesTasks;
 window.closeManageRolesTasks=closeManageRolesTasks;
 window.addDailyTaskRole=addDailyTaskRole;
@@ -282,4 +448,6 @@ window.renameDailyTaskItem=renameDailyTaskItem;
 window.setDailyTaskDetail=setDailyTaskDetail;
 window.toggleDailyTaskDay=toggleDailyTaskDay;
 window.removeDailyTaskItem=removeDailyTaskItem;
+window.setDailyTaskAssignee=setDailyTaskAssignee;
+window.setDailyTasksFilter=setDailyTasksFilter;
 })();
