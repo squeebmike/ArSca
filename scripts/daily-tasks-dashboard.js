@@ -50,7 +50,7 @@ async function loadDailyTasks(dateStr){
   state.loading=true;
   host.innerHTML='<div class="panel" style="padding:36px;text-align:center;font-family:var(--font-mono);color:var(--dim)">Loading…</div>';
   try{
-    var d=await api('/daily-tasks?date='+encodeURIComponent(dateStr));
+    var d=await api('/daily-tasks?store_id='+encodeURIComponent(getActiveStoreId())+'&date='+encodeURIComponent(dateStr));
     state.date=d.date;
     state.data=d;
   }catch(e){
@@ -84,7 +84,7 @@ function refreshDailyTasksBadge(){
   var chip=document.getElementById('dsb-tasks');
   if(!val||!chip)return;
   if(typeof getActiveStoreId!=='function'||!getActiveStoreId())return;
-  api('/daily-tasks?date='+encodeURIComponent(todayLocalDateStr())).then(function(d){
+  api('/daily-tasks?store_id='+encodeURIComponent(getActiveStoreId())+'&date='+encodeURIComponent(todayLocalDateStr())).then(function(d){
     var due=0,done=0;
     (d.roles||[]).forEach(function(r){(r.tasks||[]).forEach(function(t){if(t.dueToday&&t.active!==false){due++;if(t.completed)done++;}});});
     val.textContent=done+'/'+due;
@@ -152,7 +152,7 @@ function renderTaskRow(t){
 
 async function toggleDailyTask(taskId,checked){
   try{
-    await api('/daily-tasks/complete',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({taskId:taskId,date:state.date,completed:checked})});
+    await api('/daily-tasks/complete',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({storeId:getActiveStoreId(),taskId:taskId,date:state.date,completed:checked})});
     var role=(state.data.roles||[]).find(function(r){return (r.tasks||[]).some(function(t){return t.id===taskId;});});
     var task=role&&role.tasks.find(function(t){return t.id===taskId;});
     if(task){task.completed=checked;}
@@ -258,7 +258,7 @@ function renderManageTaskRow(t){
 
 async function setDailyTaskAssignee(taskId,userId,label){
   try{
-    await api('/daily-tasks/items',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:taskId,assignedToUserId:userId||null,assignedToLabel:userId?label:''})});
+    await api('/daily-tasks/items',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({storeId:getActiveStoreId(),id:taskId,assignedToUserId:userId||null,assignedToLabel:userId?label:''})});
     var found=findTaskAndRole(taskId);
     if(found){found.task.assignedToUserId=userId||null;found.task.assignedToLabel=userId?label:'';}
   }catch(e){toast_dash('Could not set assignee: '+e.message);renderManageRolesTasks();}
@@ -363,7 +363,7 @@ async function addDailyTaskRole(){
   var name=(prompt('Role name (e.g. Opener, Closer, Whatnot Host):')||'').trim();
   if(!name)return;
   try{
-    var d=await api('/daily-tasks/roles',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:name,sortOrder:(state.data.roles||[]).length})});
+    var d=await api('/daily-tasks/roles',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({storeId:getActiveStoreId(),name:name,sortOrder:(state.data.roles||[]).length})});
     state.data.roles=(state.data.roles||[]).concat([{id:d.role.id,name:d.role.name,sortOrder:d.role.sort_order,tasks:[]}]);
     renderManageRolesTasks();
   }catch(e){toast_dash('Could not add role: '+e.message);}
@@ -372,7 +372,7 @@ async function renameDailyTaskRole(roleId,name){
   name=(name||'').trim();
   if(!name){toast_dash('Role name cannot be blank');renderManageRolesTasks();return;}
   try{
-    await api('/daily-tasks/roles',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:roleId,name:name})});
+    await api('/daily-tasks/roles',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({storeId:getActiveStoreId(),id:roleId,name:name})});
     var role=(state.data.roles||[]).find(function(r){return r.id===roleId;});
     if(role)role.name=name;
   }catch(e){toast_dash('Could not rename role: '+e.message);renderManageRolesTasks();}
@@ -380,7 +380,7 @@ async function renameDailyTaskRole(roleId,name){
 async function removeDailyTaskRole(roleId,name){
   if(!confirm('Delete "'+name+'" and every task under it? This also removes its checklist history.'))return;
   try{
-    await api('/daily-tasks/roles?id='+encodeURIComponent(roleId),{method:'DELETE'});
+    await api('/daily-tasks/roles?store_id='+encodeURIComponent(getActiveStoreId())+'&id='+encodeURIComponent(roleId),{method:'DELETE'});
     state.data.roles=(state.data.roles||[]).filter(function(r){return r.id!==roleId;});
     renderManageRolesTasks();
   }catch(e){toast_dash('Could not delete role: '+e.message);}
@@ -391,7 +391,7 @@ async function addDailyTaskItem(roleId){
   if(!title)return;
   try{
     var role=(state.data.roles||[]).find(function(r){return r.id===roleId;});
-    var d=await api('/daily-tasks/items',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({roleId:roleId,title:title,sortOrder:role?(role.tasks||[]).length:0})});
+    var d=await api('/daily-tasks/items',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({storeId:getActiveStoreId(),roleId:roleId,title:title,sortOrder:role?(role.tasks||[]).length:0})});
     if(role)role.tasks=(role.tasks||[]).concat([{id:d.item.id,roleId:roleId,title:d.item.title,detail:'',daysOfWeek:d.item.days_of_week,active:true,completed:false}]);
     renderManageRolesTasks();
   }catch(e){toast_dash('Could not add task: '+e.message);}
@@ -400,14 +400,14 @@ async function renameDailyTaskItem(taskId,title){
   title=(title||'').trim();
   if(!title){toast_dash('Task title cannot be blank');renderManageRolesTasks();return;}
   try{
-    await api('/daily-tasks/items',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:taskId,title:title})});
+    await api('/daily-tasks/items',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({storeId:getActiveStoreId(),id:taskId,title:title})});
     var found=findTaskAndRole(taskId);
     if(found)found.task.title=title;
   }catch(e){toast_dash('Could not rename task: '+e.message);renderManageRolesTasks();}
 }
 async function setDailyTaskDetail(taskId,detail){
   try{
-    await api('/daily-tasks/items',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:taskId,detail:detail||''})});
+    await api('/daily-tasks/items',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({storeId:getActiveStoreId(),id:taskId,detail:detail||''})});
     var found=findTaskAndRole(taskId);
     if(found)found.task.detail=detail||'';
   }catch(e){toast_dash('Could not update task: '+e.message);renderManageRolesTasks();}
@@ -418,7 +418,7 @@ async function toggleDailyTaskDay(taskId,dayIndex){
   var idx=days.indexOf(dayIndex);
   if(idx===-1)days.push(dayIndex);else days.splice(idx,1);
   try{
-    await api('/daily-tasks/items',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:taskId,daysOfWeek:days})});
+    await api('/daily-tasks/items',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({storeId:getActiveStoreId(),id:taskId,daysOfWeek:days})});
     found.task.daysOfWeek=days.slice().sort(function(a,b){return a-b;});
     renderManageRolesTasks();
   }catch(e){toast_dash('Could not update days: '+e.message);}
@@ -426,7 +426,7 @@ async function toggleDailyTaskDay(taskId,dayIndex){
 async function removeDailyTaskItem(taskId,title){
   if(!confirm('Delete task "'+title+'"?'))return;
   try{
-    await api('/daily-tasks/items?id='+encodeURIComponent(taskId),{method:'DELETE'});
+    await api('/daily-tasks/items?store_id='+encodeURIComponent(getActiveStoreId())+'&id='+encodeURIComponent(taskId),{method:'DELETE'});
     var found=findTaskAndRole(taskId);
     if(found)found.role.tasks=(found.role.tasks||[]).filter(function(t){return t.id!==taskId;});
     renderManageRolesTasks();
