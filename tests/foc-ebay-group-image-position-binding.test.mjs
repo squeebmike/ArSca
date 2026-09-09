@@ -23,9 +23,16 @@ const worker = fs.readFileSync('cloudflare-worker-full.js', 'utf8');
 // Both are real, verifiable bugs in how this app built that request, not
 // something on eBay's side.
 
-const createGroupStart = worker.indexOf('async function createAndPublishEbayVariationListing');
+const createGroupStart = worker.indexOf('async function createAndPublishEbayVariationListing(');
 assert.ok(createGroupStart !== -1, 'createAndPublishEbayVariationListing must exist');
-const createGroupEnd = worker.indexOf('async function withdrawEbayOfferGroup', createGroupStart);
+// Ends right where the next function starts (buildVariationPictureSetsXml)
+// -- NOT at withdrawEbayOfferGroup, which is defined much further down and
+// would otherwise swallow every function in between, including the
+// unrelated Trading-API createAndPublishEbayVariationListingTrading (which
+// legitimately does mix mainImageUrl into ITS OWN gallery array -- that's
+// a different, position-INsensitive top-level PictureDetails list, not the
+// REST inventory_item_group's position-sensitive one this test guards).
+const createGroupEnd = worker.indexOf('function buildVariationPictureSetsXml', createGroupStart);
 const createGroupBody = worker.slice(createGroupStart, createGroupEnd);
 
 // The group-level array: exactly one entry per built variant, same order,

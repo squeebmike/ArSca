@@ -1163,7 +1163,14 @@ async function adminPrhSubmission(request,env,deps,url){
     const {data:presaleRows}=await db(`inventory_items?store_id=eq.${encodeURIComponent(storeId)}&status=eq.presale&select=id,data`);
     const toWithdraw=(presaleRows||[]).filter(row=>{
       const d=row.data||{};
-      return d.source==='foc_presale'&&d.focCycleId===cycleId&&d.ebayOfferId&&!includedSkuIds.has(d.focSkuId)&&Number(d.qty??d.quantity??0)>0;
+      // Trading-API-built group listings (ebayApiSystem:'trading') carry no
+      // ebayOfferId at all -- see the matching (d.ebayOfferId||...) check
+      // already used for the quantity-sync/receive-shipment sweeps below.
+      // Without this, an unordered cover on a Trading-built listing never
+      // gets auto-withdrawn here, staying live and purchasable on eBay for
+      // a book the distributor was never actually asked to ship.
+      const hasLiveEbayListing=d.ebayOfferId||(d.ebayApiSystem==='trading'&&d.ebayListingId&&d.ebaySku);
+      return d.source==='foc_presale'&&d.focCycleId===cycleId&&hasLiveEbayListing&&!includedSkuIds.has(d.focSkuId)&&Number(d.qty??d.quantity??0)>0;
     });
     if(toWithdraw.length&&deps.getEbayUserAccessToken&&deps.withdrawEbayOffer){
       let ebayToken='';
@@ -1313,7 +1320,12 @@ async function adminEndFocEbayListings(request,env,deps){
   const {data:presaleRows}=await db(`inventory_items?store_id=eq.${encodeURIComponent(storeId)}&status=eq.presale&select=id,data`);
   const toWithdraw=(presaleRows||[]).filter(row=>{
     const d=row.data||{};
-    if(!(d.source==='foc_presale'&&d.focCycleId===cycleId&&d.ebayOfferId&&Number(d.qty??d.quantity??0)>0))return false;
+    // Same Trading-API-listing recognition as the auto-withdrawal sweep in
+    // adminPrhSubmission above -- a Trading-built row's ebayOfferId is
+    // always empty, so without this OR the manual bulk-end tool silently
+    // does nothing for any listing built via the new Trading API path.
+    const hasLiveEbayListing=d.ebayOfferId||(d.ebayApiSystem==='trading'&&d.ebayListingId&&d.ebaySku);
+    if(!(d.source==='foc_presale'&&d.focCycleId===cycleId&&hasLiveEbayListing&&Number(d.qty??d.quantity??0)>0))return false;
     return focSkuIds?focSkuIds.has(String(d.focSkuId)):true;
   });
   if(!toWithdraw.length)return deps.json({ok:true,endedCount:0,failedCount:0});

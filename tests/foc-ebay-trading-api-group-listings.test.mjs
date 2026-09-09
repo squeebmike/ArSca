@@ -92,8 +92,8 @@ console.log('buildEbayWeightXml checks passed');
   // container itself, not on each picture set (see buildVariationPictureSetsXml).
   assert.match(body, /\(pictureSetsXml \? `<Pictures><VariationSpecificName>\$\{xmlEscape\(variantAspectName\)\}<\/VariationSpecificName>\$\{pictureSetsXml\}<\/Pictures>` : ''\)/,
     'the per-cover photo binding (Pictures/VariationSpecificPictureSet) must be set INLINE at creation time, with VariationSpecificName declared once on Pictures itself -- this is the entire point of building on the Trading API instead of the REST one');
-  assert.match(body, /buildVariationPictureSetsXml\(\s*\n\s*built\.map\(v => \(\{ label: v\.label, sku: v\.sku, imageUrls: \[v\.imageUrl, \.\.\.\(v\.imageUrls \|\| \[\]\)\]\.filter\(Boolean\) \}\)\),\s*\n\s*variantAspectName\s*\n\s*\);/,
-    'must build the picture sets the same shape setEbayVariationSpecificPhotos uses AND actually pass the real variantAspectName through -- a listing never needs a follow-up repair call just to get its own creation-time photos bound');
+  assert.match(body, /buildVariationPictureSetsXml\(\s*\n(?:\s*\/\/[^\n]*\n)*\s*built\.map\(v => \(\{ label: v\.label, sku: v\.sku, imageUrls: \[\.\.\.new Set\(\[v\.imageUrl, \.\.\.\(v\.imageUrls \|\| \[\]\)\]\.filter\(Boolean\)\)\] \}\)\),\s*\n\s*variantAspectName\s*\n\s*\);/,
+    'must build the picture sets the same shape setEbayVariationSpecificPhotos uses AND actually pass the real variantAspectName through -- a listing never needs a follow-up repair call just to get its own creation-time photos bound. Deduplicated -- v.imageUrl is often already the first entry of v.imageUrls (e.g. the bundle variant), and a repeated URL just wastes one of eBay\'s 12-photo-per-variant slots');
   assert.match(body, /sellerProfilesXml =\s*\n\s*\(b\.fulfillmentPolicyId \? `<SellerShippingProfile><ShippingProfileID>\$\{xmlEscape\(b\.fulfillmentPolicyId\)\}<\/ShippingProfileID><\/SellerShippingProfile>` : ''\) \+/,
     'must reference the SAME already-resolved eBay Business Policy id (fulfillmentPolicyId) via SellerProfiles that the REST flow resolves -- Business Policy ids are shared across both eBay API systems, so no separate policy-resolution logic is needed');
   assert.match(body, /env\.EBAY_RETURN_POLICY_ID.*ReturnProfileID/, 'must reference the store\'s return policy via SellerProfiles');
@@ -119,6 +119,13 @@ console.log('buildEbayWeightXml checks passed');
     'a publish that reports success but returns no ItemID must be treated as an error, not silently returned as if it worked');
   assert.match(body, /return \{ listingId, inventoryItemGroupKey: listingId, warnings, variants:/,
     'inventoryItemGroupKey must equal the listingId itself -- a Trading API variation listing IS one ItemID for the whole group, unlike the REST flow\'s separate inventoryItemGroupKey; reusing the same field lets every existing sibling-detection/withdrawal helper keep working unchanged for both systems');
+  // Store report: the store-uploaded "MAIN LISTING PHOTO" never showed up
+  // anywhere on the live listing -- b.mainImageUrl was accepted by the
+  // route and passed all the way into this function, but nothing here ever
+  // read it. Must lead the general/default gallery (shown before a buyer
+  // picks a cover), same as its own label promises.
+  assert.match(body, /const galleryUrls = \[\.\.\.new Set\(\[b\.mainImageUrl, \.\.\.built\.map\(v => v\.imageUrl \|\| anyCoverImage\)\]\.filter\(Boolean\)\)\];/,
+    'galleryUrls must lead with b.mainImageUrl when provided -- it was silently dropped entirely before this fix');
 }
 console.log('createAndPublishEbayVariationListingTrading checks passed');
 
@@ -161,6 +168,28 @@ console.log('ebayReviseVariationQuantityTrading / endEbayListingTrading checks p
     'every inventory_items row created by this route must be flagged ebayApiSystem:\'trading\' so later revise/end calls (see withdrawFocPresaleRow) route to the Trading-API-native functions instead of the offerId-keyed REST ones');
 }
 console.log('Group-create route Trading-API wiring checks passed');
+
+// ── Volume pricing: "are we able to do the volume pricing on this?" --
+// eBay's Volume Pricing (Sell Marketing API VOLUME_DISCOUNT promotion) keys
+// off the eBay ItemID itself, not which API created the listing, so the
+// same createEbayVolumeDiscount() the single-cover flow already uses works
+// unchanged for a Trading-API multi-cover listing too. Was never called
+// from this route at all before this fix.
+{
+  const routeStart = worker.indexOf("if (url.pathname === '/foc/ebay/presale-group-preview' || url.pathname === '/foc/ebay/create-presale-group')");
+  const routeEnd = worker.indexOf("if (url.pathname === '/foc/ebay/repair-group-listing-photos')", routeStart);
+  const routeBody = worker.slice(routeStart, routeEnd);
+
+  assert.match(routeBody, /const volumeDiscount = await createEbayVolumeDiscount\(env, ebayToken, listingResult\.listingId, listingResult\.inventoryItemGroupKey\);/,
+    'must call the same createEbayVolumeDiscount() helper the single-cover flow uses, keyed off the real published ItemID');
+  assert.match(routeBody, /volumeDiscountWarnings\.push\('Volume discount \(buy more, save more\) was not set up: ' \+ e\.message\);/,
+    'a promotion-setup failure (e.g. no active eBay Store subscription) must surface as a warning, never block the listing itself, which is already live by this point');
+  assert.match(routeBody, /ebayVolumeDiscountPromotionId: volumeDiscountPromotionId,/,
+    'the resolved promotion id must be stored on every created row -- withdrawFocPresaleRow\'s callers use it to end the promotion when the listing itself ends');
+  assert.match(routeBody, /volumeDiscount: volumeDiscountPromotionId \? \{ active: true, tiers: FOC_VOLUME_DISCOUNT_TIERS \} : \{ active: false \},/,
+    'the route response must report whether volume pricing actually got set up, same shape the single-cover flow already returns');
+}
+console.log('Group-create route volume-discount wiring checks passed');
 
 // ── Repair route: a Trading-API-built group has no REST group resource to
 // GET/PUT at all -- must skip that entirely, not 404 against it ─────────

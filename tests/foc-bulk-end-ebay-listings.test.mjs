@@ -27,9 +27,17 @@ assert.match(routeBody, /requireStoreUser\(request,env,storeId,\['owner','admin'
 
 assert.match(routeBody, /const focSkuIds=Array\.isArray\(body\.focSkuIds\)\?new Set\(body\.focSkuIds\.map\(String\)\):null;/,
   'must accept an optional allow-list of specific covers to end, so the dealer can choose to keep some listings running');
+// Store report: the manual bulk-end tool silently did nothing for any
+// listing built via the new Trading API path -- ebayApiSystem:'trading'
+// rows always carry an empty ebayOfferId (Trading has no "offer" concept),
+// so the old d.ebayOfferId-only check excluded them entirely. Must
+// recognize a live Trading listing the same way the quantity-sync sweep
+// already does.
+assert.match(routeBody, /const hasLiveEbayListing=d\.ebayOfferId\|\|\(d\.ebayApiSystem==='trading'&&d\.ebayListingId&&d\.ebaySku\);/,
+  'must recognize a live Trading-API-built listing (no ebayOfferId, but a real ebayListingId+ebaySku) same as a live REST one');
 assert.match(routeBody,
-  /if\(!\(d\.source==='foc_presale'&&d\.focCycleId===cycleId&&d\.ebayOfferId&&Number\(d\.qty\?\?d\.quantity\?\?0\)>0\)\)return false;/,
-  'must still match only real, still-live FOC presale listings for this cycle');
+  /if\(!\(d\.source==='foc_presale'&&d\.focCycleId===cycleId&&hasLiveEbayListing&&Number\(d\.qty\?\?d\.quantity\?\?0\)>0\)\)return false;/,
+  'must still match only real, still-live FOC presale listings for this cycle, now including Trading-built ones');
 assert.match(routeBody, /return focSkuIds\?focSkuIds\.has\(String\(d\.focSkuId\)\):true;/,
   'when an allow-list is given, must only end the specifically selected covers -- when omitted, must fall back to ending everything live (the original behavior)');
 assert.doesNotMatch(routeBody, /includedSkuIds/,

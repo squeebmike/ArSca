@@ -376,8 +376,15 @@ const prhSubmissionEnd = preorders.indexOf('async function adminCycle', prhSubmi
 const prhSubmissionBody = preorders.slice(prhSubmissionStart, prhSubmissionEnd);
 assert.match(prhSubmissionBody, /if\(finalQty<=0\)continue;/, 'unordered SKUs must still be excluded from the distributor order itself');
 assert.match(prhSubmissionBody, /const includedSkuIds=new Set\(lineItems\.map\(li=>li\.skuId\)\);/, 'must know which SKUs actually got ordered before deciding what to withdraw');
-assert.match(prhSubmissionBody, /d\.source==='foc_presale'&&d\.focCycleId===cycleId&&d\.ebayOfferId&&!includedSkuIds\.has\(d\.focSkuId\)&&Number\(d\.qty\?\?d\.quantity\?\?0\)>0/,
-  'must only withdraw presale listings for SKUs that did not make it into this cycle\'s PRH order');
+// Store report: this sweep silently never withdrew a Trading-API-built
+// listing at all -- ebayOfferId is always empty for ebayApiSystem:'trading'
+// rows (Trading has no "offer" concept), so the old ebayOfferId-only check
+// excluded them entirely. Must recognize a live Trading listing the same
+// way the quantity-sync sweep already does.
+assert.match(prhSubmissionBody, /const hasLiveEbayListing=d\.ebayOfferId\|\|\(d\.ebayApiSystem==='trading'&&d\.ebayListingId&&d\.ebaySku\);/,
+  'must recognize a live Trading-API-built listing (no ebayOfferId, but a real ebayListingId+ebaySku) same as a live REST one');
+assert.match(prhSubmissionBody, /d\.source==='foc_presale'&&d\.focCycleId===cycleId&&hasLiveEbayListing&&!includedSkuIds\.has\(d\.focSkuId\)&&Number\(d\.qty\?\?d\.quantity\?\?0\)>0/,
+  'must only withdraw presale listings for SKUs that did not make it into this cycle\'s PRH order, now including Trading-built ones');
 assert.match(prhSubmissionBody, /await withdrawFocPresaleRow\(env,deps,ebayToken,row,presaleRows,withdrawingIds\)/, 'must actually withdraw the eBay offer (via the group-aware helper, not just flag it locally)');
 assert.match(prhSubmissionBody, /ebayWithdrawnReason:'not_included_in_prh_order'/, 'the withdrawn row must record why, for later auditing');
 // Store report: submitting the PRH order withdrew unordered eBay listings
