@@ -29,6 +29,7 @@ import { handleFocRequest, syncFocStripeEvent, shippingSettings } from './script
 import { handleAccountRequest, findLinkedCustomer } from './scripts/customer-account.mjs';
 import { handleFanClubRequest } from './scripts/fan-club.mjs';
 import { handleCardIntakeRequest } from './scripts/card-intake.mjs';
+import { handleDailyTasksRequest } from './scripts/daily-tasks.mjs';
 
 // Per-isolate rate limiter for PriceCharting API (no KV needed). _pcQueueTail
 // serializes the check-and-update of _pcLastCall itself so concurrent callers
@@ -4274,6 +4275,12 @@ export default {
       return await handleCardIntakeRequest(request, env, url, {
         CORS, json, supabaseAdminFetch, requireStoreUser, readJsonWithLimit,
         identifyCardsFromImageBase64, waitUntil: (p) => ctx.waitUntil(p),
+      });
+    }
+
+    if (url.pathname === '/daily-tasks' || url.pathname.startsWith('/daily-tasks/')) {
+      return await handleDailyTasksRequest(request, env, url, {
+        json, supabaseAdminFetch, requireStoreUser, readJsonWithLimit,
       });
     }
 
