@@ -3976,7 +3976,7 @@ export default {
       const alreadyListed = [];
       for (const row of alreadyListedRows || []) {
         const d = row.data || {};
-        if ((d.source === 'foc_presale' || d.source === 'foc_presale_bundle') && d.focSkuId && d.ebayListingId && built.some(v => v.skuId === d.focSkuId)) {
+        if ((d.source === 'foc_presale' || d.source === 'foc_presale_bundle') && d.focSkuId && d.ebayListingId && !d.ebayWithdrawnAt && built.some(v => v.skuId === d.focSkuId)) {
           alreadyListed.push({ label: bySkuId.get(d.focSkuId)?.variantLabel || d.focSkuId, listingId: d.ebayListingId });
         }
       }
@@ -4129,6 +4129,42 @@ export default {
         createdCount: createdRows.length, bundleIncluded: !!bundleRequested,
         warnings: [...(listingResult.warnings || []), ...conditionWarnings, ...fulfillmentWarnings, ...rowErrors],
       });
+    }
+
+    // One-time cleanup route for group listings published before the photo-
+    // position-binding fix (see createAndPublishEbayVariationListing /
+    // repairEbayGroupListingImages above): re-derives each cover's correct
+    // 1:1 imageUrls entry and PUTs it back to eBay, without touching price,
+    // quantity, or the listing's live/ended state. Body optionally names one
+    // { groupKey }; otherwise every still-live group listing on file for
+    // this store is repaired in one pass, since the bug could only ever
+    // have affected listings created before this route shipped.
+    if (url.pathname === '/foc/ebay/repair-group-listing-photos') {
+      if (request.method !== 'POST') return json({ error: 'POST only' }, 405);
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId, ['owner','admin']);
+      if (auth.error) return auth.error;
+      let ebayToken = '';
+      try { ebayToken = await getEbayUserAccessToken(env); }
+      catch (tokenErr) { return json({ needsToken: true, error: tokenErr.message }, 401); }
+      if (!ebayToken) return json({ needsToken: true, error: 'Connect eBay first: missing user access/refresh token' }, 401);
+
+      let body = {}; try { body = await request.json(); } catch (_) {}
+      let groupKeys;
+      if (typeof body.groupKey === 'string' && body.groupKey.trim()) {
+        groupKeys = [body.groupKey.trim()];
+      } else {
+        const { data: rows } = await supabaseAdminFetch(env, `inventory_items?store_id=eq.${encodeURIComponent(storeId)}&status=neq.sold&select=data`);
+        groupKeys = [...new Set((rows || []).map(r => r.data?.ebayInventoryItemGroupKey).filter(Boolean))];
+      }
+      if (!groupKeys.length) return json({ ok: true, repaired: [], failed: [], message: 'No group listings on file to repair' });
+
+      const repaired = [], failed = [];
+      for (const groupKey of groupKeys) {
+        try { repaired.push(await repairEbayGroupListingImages(env, ebayToken, storeId, groupKey)); }
+        catch (e) { failed.push({ groupKey, error: e.message }); }
+      }
+      return json({ ok: true, repaired, failed });
     }
 
     // Flips any eBay presale listings for a FOC cycle over to in-stock
@@ -7390,6 +7426,54 @@ export default {
       if (!listingId) warnings.push('eBay did not return a listingId for the published group -- check the listing manually.');
 
       return { listingId, inventoryItemGroupKey: groupKey, warnings, variants: built.map(v => ({ key: v.key, sku: v.sku, offerId: v.offerId, label: v.label })) };
+    }
+
+    // Repairs the group-level imageUrls array on an ALREADY-PUBLISHED group
+    // listing -- for any listing created before the position-binding fix
+    // above shipped, whose live eBay imageUrls array is still deduplicated
+    // and/or shifted by the old bug (see createAndPublishEbayVariationListing).
+    // Re-derives the correct 1:1 array from each variant's OWN per-row image
+    // (stored on our inventory_items at creation time and never affected by
+    // the shared-array bug), then PUTs the group back with everything else
+    // -- title, description, aspects, variesBy -- left exactly as eBay
+    // already has it, so this only ever touches photo-to-cover binding.
+    async function repairEbayGroupListingImages(env, ebayToken, storeId, groupKey) {
+      const getRes = await fetch(`https://api.ebay.com/sell/inventory/v1/inventory_item_group/${groupKey}`, {
+        headers: { 'Authorization': 'Bearer ' + ebayToken, 'Content-Type': 'application/json' },
+      });
+      const getTxt = await getRes.text();
+      let group; try { group = JSON.parse(getTxt); } catch (_) { group = null; }
+      if (!getRes.ok || !group) {
+        const msg = group?.errors?.[0]?.longMessage || group?.errors?.[0]?.message || getTxt.substring(0, 200);
+        const e = new Error('Could not load group listing ' + groupKey + ' from eBay (' + getRes.status + '): ' + msg); e.status = getRes.status; throw e;
+      }
+      const variantSKUs = Array.isArray(group.variantSKUs) ? group.variantSKUs : [];
+      if (!variantSKUs.length) { const e = new Error('Group listing ' + groupKey + ' has no variant SKUs on eBay'); e.status = 500; throw e; }
+
+      const { data: rows } = await supabaseAdminFetch(env, `inventory_items?store_id=eq.${encodeURIComponent(storeId)}&status=neq.sold&select=data`);
+      const imageBySku = {};
+      (rows || []).forEach(r => { if (r.data?.ebayInventoryItemGroupKey === groupKey && r.data?.ebaySku) imageBySku[r.data.ebaySku] = r.data.image || ''; });
+      const fallbackImage = Object.values(imageBySku).find(Boolean) || (Array.isArray(group.imageUrls) ? group.imageUrls.find(Boolean) : '') || '';
+      if (!fallbackImage) { const e = new Error('No usable cover image found on file for group listing ' + groupKey + ' -- cannot repair'); e.status = 400; throw e; }
+      const correctedImageUrls = variantSKUs.map(sku => imageBySku[sku] || fallbackImage);
+
+      const putRes = await fetch(`https://api.ebay.com/sell/inventory/v1/inventory_item_group/${groupKey}`, {
+        method: 'PUT',
+        headers: { 'Authorization': 'Bearer ' + ebayToken, 'Content-Type': 'application/json', 'Content-Language': 'en-US' },
+        body: JSON.stringify({
+          title: group.title, description: group.description, aspects: group.aspects,
+          imageUrls: correctedImageUrls, variantSKUs, variesBy: group.variesBy,
+        }),
+      });
+      if (putRes.status !== 204) {
+        const putTxt = await putRes.text();
+        let putData; try { putData = JSON.parse(putTxt); } catch (_) { putData = null; }
+        if (!putRes.ok) {
+          const msg = putData?.errors?.[0]?.longMessage || putData?.errors?.[0]?.message || putTxt.substring(0, 200);
+          const e = new Error('Repairing group listing ' + groupKey + ' failed (' + putRes.status + '): ' + msg); e.status = putRes.status; throw e;
+        }
+      }
+      return { ok: true, groupKey, imageCount: correctedImageUrls.length };
     }
 
     // Ends (withdraws) an ENTIRE multi-variation listing at once -- the
