@@ -4068,9 +4068,20 @@ export default {
       const resolvedCondition = await resolveEbayNewConditionId(env, ebayToken, '259104');
       const conditionId = resolvedCondition.id;
 
+      // Built end-to-end on eBay's older Trading API, not the REST
+      // Inventory API createAndPublishEbayVariationListing above uses --
+      // eBay flatly refuses to let the Trading API bind per-cover photos
+      // onto a listing the REST API created ("Inventory-based listing
+      // management is not currently supported by this tool," confirmed
+      // against production), so getting real "the photo changes when a
+      // buyer picks a cover" behavior requires the WHOLE listing to be a
+      // Trading API item from creation onward. Every NEW multi-cover
+      // listing goes this way now; nothing already live is touched --
+      // see ebayApiSystem below and withdrawFocPresaleRow in
+      // foc-preorders.mjs, which branches on it for later revise/end calls.
       let listingResult;
       try {
-        listingResult = await createAndPublishEbayVariationListing({
+        listingResult = await createAndPublishEbayVariationListingTrading({
           groupTitle, description, variantAspectName: 'Cover', variants: built,
           categoryId: '259104', conditionId, condition: 'NEW',
           customAspects, bestOfferEnabled, weightValue, weightUnit,
@@ -4115,6 +4126,13 @@ export default {
                 ebayListingId: listingResult.listingId, ebayOfferId: matched.offerId,
                 ebaySku: matched.sku, ebayListedAt: nowIso,
                 ebayInventoryItemGroupKey: listingResult.inventoryItemGroupKey,
+                // Marks this row as a Trading-API-built listing so later
+                // revise/end calls route to the ItemID+SKU-keyed Trading
+                // functions instead of the offerId-keyed REST ones -- see
+                // withdrawFocPresaleRow in foc-preorders.mjs. Existing rows
+                // from before this change have no such field and keep
+                // using the REST path exactly as they always have.
+                ebayApiSystem: 'trading',
               },
             }),
           });
@@ -4254,6 +4272,7 @@ export default {
         CORS, json, supabaseAdminFetch, requireStoreUser, requireAuthenticatedUser,
         readJsonWithLimit, enforceUsageLimit, stripeApi, stripeMode, stripeConfig, sendEmail,
         addBusinessDays, getEbayPresaleSafeBusinessDays, getEbayUserAccessToken, withdrawEbayOffer, withdrawEbayOfferGroup, endEbayVolumeDiscount, ebayReviseOfferQuantity,
+        ebayReviseVariationQuantityTrading, endEbayListingTrading,
       });
     }
 
@@ -7519,6 +7538,123 @@ export default {
       return { listingId, inventoryItemGroupKey: groupKey, warnings, variants: built.map(v => ({ key: v.key, sku: v.sku, offerId: v.offerId, label: v.label })) };
     }
 
+    // eBay flatly refuses to let the Trading API touch a listing created
+    // via the REST Inventory API ("Inventory-based listing management is
+    // not currently supported by this tool" -- ErrorCode 21919474, a real
+    // platform wall confirmed against production, not a bug in this app's
+    // payload) -- so setEbayVariationSpecificPhotos above can never bind
+    // per-cover photos onto a listing createAndPublishEbayVariationListing
+    // built. This is the only way to get that binding at all: build the
+    // WHOLE multi-cover listing through the older Trading API from the
+    // start, so it's a Trading API item end-to-end and never hits that
+    // wall. Deliberately separate from createAndPublishEbayVariationListing
+    // rather than a mode flag on it -- existing/already-live listings stay
+    // exactly as they are, on the REST path, untouched; only a NEW listing
+    // published from here on gets built this way.
+    //
+    // AddFixedPriceItem's Variations container documents the exact same
+    // Pictures/VariationSpecificPictureSet shape ReviseFixedPriceItem uses
+    // above, just declared at creation time instead of revised in after
+    // the fact -- built inline here rather than by calling
+    // setEbayVariationSpecificPhotos (which assumes an ItemID that doesn't
+    // exist yet).
+    function buildVariationPictureSetsXml(variantPhotos) {
+      const usable = variantPhotos.filter(v => v.label && v.imageUrls && v.imageUrls.length);
+      const skipped = variantPhotos.filter(v => !(v.label && v.imageUrls && v.imageUrls.length)).map(v => v.label || v.sku || '(unidentified cover)');
+      const sets = usable.map(v =>
+        `<VariationSpecificPictureSet><VariationSpecificValue>${xmlEscape(v.label)}</VariationSpecificValue>` +
+        v.imageUrls.slice(0, 12).map(u => `<PictureURL>${xmlEscape(u)}</PictureURL>`).join('') +
+        `</VariationSpecificPictureSet>`
+      ).join('');
+      return { sets, skipped };
+    }
+
+    async function createAndPublishEbayVariationListingTrading(b, ebayToken, env, storeId) {
+      const { groupTitle, variants, variantAspectName } = b;
+      if (!groupTitle) { const e = new Error('groupTitle required'); e.status = 400; throw e; }
+      if (!Array.isArray(variants) || variants.length < 2) { const e = new Error('At least 2 variants are required for a variation listing'); e.status = 400; throw e; }
+      if (!variantAspectName) { const e = new Error('variantAspectName required'); e.status = 400; throw e; }
+
+      const { shipFrom } = await ensureEbayMerchantLocation(env, storeId, ebayToken);
+      const groupKey = 'lbagrp-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 6);
+      const built = variants.map((v, i) => ({ ...v, sku: groupKey + '-' + i }));
+
+      const anyCoverImage = built.find(v => v.imageUrl)?.imageUrl || '';
+      const galleryUrls = [...new Set(built.map(v => v.imageUrl || anyCoverImage).filter(Boolean))];
+      const { sets: pictureSetsXml, skipped: pictureSkipped } = buildVariationPictureSetsXml(
+        built.map(v => ({ label: v.label, sku: v.sku, imageUrls: [v.imageUrl, ...(v.imageUrls || [])].filter(Boolean) }))
+      );
+
+      const aspects = buildEbayAspects(b);
+      const itemSpecificsXml = Object.entries(aspects)
+        .map(([name, values]) => `<NameValueList><Name>${xmlEscape(name)}</Name>${values.map(val => `<Value>${xmlEscape(val)}</Value>`).join('')}</NameValueList>`)
+        .join('');
+      // CDATA lets the HTML description through untouched (no per-tag
+      // escaping needed) -- guard the one sequence that would actually
+      // break a CDATA section if it ever appeared in a description.
+      const descriptionCdata = toEbayHtmlDescription(b.description || groupTitle).replace(/]]>/g, ']]]]><![CDATA[>');
+      const totalQuantity = built.reduce((n, v) => n + (parseInt(v.quantity, 10) || 0), 0);
+      const lowestPrice = Math.min(...built.map(v => Number(v.price) || 0)).toFixed(2);
+
+      const sellerProfilesXml =
+        (b.fulfillmentPolicyId ? `<SellerShippingProfile><ShippingProfileID>${xmlEscape(b.fulfillmentPolicyId)}</ShippingProfileID></SellerShippingProfile>` : '') +
+        (env.EBAY_RETURN_POLICY_ID ? `<SellerReturnProfile><ReturnProfileID>${xmlEscape(env.EBAY_RETURN_POLICY_ID)}</ReturnProfileID></SellerReturnProfile>` : '') +
+        (env.EBAY_PAYMENT_POLICY_ID ? `<SellerPaymentProfile><PaymentProfileID>${xmlEscape(env.EBAY_PAYMENT_POLICY_ID)}</PaymentProfileID></SellerPaymentProfile>` : '');
+
+      const variationSpecificsSetXml = `<VariationSpecificsSet><NameValueList><Name>${xmlEscape(variantAspectName)}</Name>${built.map(v => `<Value>${xmlEscape(v.label)}</Value>`).join('')}</NameValueList></VariationSpecificsSet>`;
+      const variationEntriesXml = built.map(v =>
+        `<Variation><SKU>${xmlEscape(v.sku)}</SKU><StartPrice currencyID="USD">${xmlEscape(Number(v.price).toFixed(2))}</StartPrice><Quantity>${xmlEscape(String(parseInt(v.quantity, 10) || 1))}</Quantity>` +
+        `<VariationSpecifics><NameValueList><Name>${xmlEscape(variantAspectName)}</Name><Value>${xmlEscape(v.label)}</Value></NameValueList></VariationSpecifics></Variation>`
+      ).join('');
+
+      const itemXml =
+        `<Item>` +
+        `<Title>${xmlEscape(String(groupTitle).substring(0, 80))}</Title>` +
+        `<Description><![CDATA[${descriptionCdata}]]></Description>` +
+        `<PrimaryCategory><CategoryID>${xmlEscape(b.categoryId || '261328')}</CategoryID></PrimaryCategory>` +
+        `<StartPrice currencyID="USD">${lowestPrice}</StartPrice>` +
+        `<Quantity>${totalQuantity || 1}</Quantity>` +
+        `<ConditionID>${xmlEscape(String(b.conditionId || '3000'))}</ConditionID>` +
+        `<Country>US</Country><Currency>USD</Currency>` +
+        `<ListingDuration>GTC</ListingDuration><ListingType>FixedPriceItem</ListingType>` +
+        `<Location>${xmlEscape([shipFrom.city, shipFrom.state].filter(Boolean).join(', '))}</Location>` +
+        `<PostalCode>${xmlEscape(shipFrom.zip || '')}</PostalCode>` +
+        (galleryUrls.length ? `<PictureDetails>${galleryUrls.slice(0, 12).map(u => `<PictureURL>${xmlEscape(u)}</PictureURL>`).join('')}</PictureDetails>` : '') +
+        (itemSpecificsXml ? `<ItemSpecifics>${itemSpecificsXml}</ItemSpecifics>` : '') +
+        (sellerProfilesXml ? `<SellerProfiles>${sellerProfilesXml}</SellerProfiles>` : '') +
+        (b.bestOfferEnabled ? `<BestOfferDetails><BestOfferEnabled>true</BestOfferEnabled></BestOfferDetails>` : '') +
+        `<Variations>${variationSpecificsSetXml}${variationEntriesXml}` +
+        (pictureSetsXml ? `<Pictures>${pictureSetsXml}</Pictures>` : '') +
+        `</Variations>` +
+        `</Item>`;
+
+      const result = await ebayTradingApiCall(ebayToken, 'AddFixedPriceItem', itemXml);
+      const listingId = (result.raw.match(/<ItemID>([^<]+)<\/ItemID>/) || [])[1] || '';
+      if (!listingId) { const e = new Error('AddFixedPriceItem did not return an ItemID -- check eBay Seller Hub manually'); e.status = 502; e.raw = result.raw; throw e; }
+      const warnings = [];
+      if (pictureSkipped.length) warnings.push(`Per-cover photo binding was not set for: ${pictureSkipped.join(', ')} -- missing a label or photo.`);
+
+      return { listingId, inventoryItemGroupKey: listingId, warnings, variants: built.map(v => ({ key: v.key, sku: v.sku, offerId: '', label: v.label })) };
+    }
+
+    // Trading-API-native counterparts to ebayReviseOfferQuantity/
+    // withdrawEbayOfferGroup, for listings built via
+    // createAndPublishEbayVariationListingTrading above -- keyed by
+    // ItemID+SKU (there's no separate "offer" concept in the Trading API)
+    // instead of an offerId. Only ever called for rows carrying
+    // ebayApiSystem:'trading' (see withdrawFocPresaleRow in
+    // foc-preorders.mjs) -- existing REST-created listings keep using the
+    // offerId-keyed functions above, completely untouched.
+    async function ebayReviseVariationQuantityTrading(ebayToken, listingId, sku, newQuantity) {
+      const body = `<Item><ItemID>${xmlEscape(listingId)}</ItemID><Variations><Variation><SKU>${xmlEscape(sku)}</SKU><Quantity>${xmlEscape(String(Math.max(0, parseInt(newQuantity, 10) || 0)))}</Quantity></Variation></Variations></Item>`;
+      return await ebayTradingApiCall(ebayToken, 'ReviseFixedPriceItem', body);
+    }
+
+    async function endEbayListingTrading(ebayToken, listingId) {
+      const body = `<ItemID>${xmlEscape(listingId)}</ItemID><EndingReason>NotAvailable</EndingReason>`;
+      return await ebayTradingApiCall(ebayToken, 'EndFixedPriceItem', body);
+    }
+
     // Repairs group-listing photo-to-cover binding for an
     // ALREADY-PUBLISHED group listing, in two parts:
     //   1. The group-level imageUrls array (general/fallback gallery) --
@@ -7537,7 +7673,37 @@ export default {
     // by the caller, which may be repairing several groups in one pass --
     // fetching this same store-wide set again per group here would be pure
     // redundant I/O).
+    // Trading-API-built group listings (ebayApiSystem:'trading', see
+    // createAndPublishEbayVariationListingTrading) have no REST
+    // inventory_item_group resource to GET/PUT at all -- eBay would just
+    // 404 the GET below for one of these. Their per-cover photo binding is
+    // already set correctly at creation time by construction, so "repair"
+    // here is just re-applying setEbayVariationSpecificPhotos from this
+    // app's own current per-row image/label data (e.g. after a cover's art
+    // gets swapped later) -- no REST gallery step exists to repair.
+    async function repairEbayTradingGroupListingPhotos(env, ebayToken, groupKey, groupRows) {
+      const listingId = groupRows.find(r => r.data?.ebayListingId)?.data.ebayListingId || groupKey;
+      const focSkuIds = [...new Set(groupRows.map(r => r.data?.focSkuId).filter(Boolean))];
+      const labelBySkuId = {};
+      if (focSkuIds.length) {
+        const { data: skuRows } = await supabaseAdminFetch(env, `comic_skus?id=in.(${focSkuIds.map(id => encodeURIComponent(id)).join(',')})&select=id,variant_label`);
+        (skuRows || []).forEach(s => { labelBySkuId[s.id] = s.variant_label || 'Cover'; });
+      }
+      const variantPhotos = groupRows.map(r => ({
+        sku: r.data?.ebaySku || '',
+        label: r.data?.focSkuId ? labelBySkuId[r.data.focSkuId] : (r.data?.name || ''),
+        imageUrls: [r.data?.image || ''].filter(Boolean),
+      }));
+      const result = await setEbayVariationSpecificPhotos(ebayToken, listingId, variantPhotos);
+      const warning = result.skipped.length ? `Per-cover photo binding was not set for: ${result.skipped.join(', ')} -- missing a label or photo on file.` : undefined;
+      return { ok: true, groupKey, imageCount: variantPhotos.filter(v => v.imageUrls.length).length, warning };
+    }
+
     async function repairEbayGroupListingImages(env, ebayToken, storeId, groupKey, rows) {
+      const groupRows = (rows || []).filter(r => r.data?.ebayInventoryItemGroupKey === groupKey);
+      if (groupRows.length && groupRows.every(r => r.data?.ebayApiSystem === 'trading')) {
+        return await repairEbayTradingGroupListingPhotos(env, ebayToken, groupKey, groupRows);
+      }
       const getRes = await fetch(`https://api.ebay.com/sell/inventory/v1/inventory_item_group/${groupKey}`, {
         headers: { 'Authorization': 'Bearer ' + ebayToken, 'Content-Type': 'application/json' },
       });

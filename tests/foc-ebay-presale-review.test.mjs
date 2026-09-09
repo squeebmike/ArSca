@@ -396,7 +396,7 @@ assert.match(prhSubmissionBody, /focPresaleOriginalQty:alreadySoldBeforeWithdraw
   'withdrawing an unordered listing must pin focPresaleOriginalQty down to the real sold-so-far count, not leave it at the full original listing quantity');
 assert.match(prhSubmissionBody, /return deps\.json\(\{ok:true,submission:inserted,ebayWithdrawnCount:ebayWithdrawnSkuIds\.length,ebayQuantityUpdatedCount:ebayQuantityUpdatedSkuIds\.length\}\)/, 'the response must report how many listings were withdrawn and how many had their quantity synced');
 assert.match(worker, /async function withdrawEbayOffer\(env, ebayToken, offerId\)/, 'must have a reusable withdraw helper, not just the /ebay/end route inline');
-assert.match(worker, /getEbayUserAccessToken, withdrawEbayOffer, withdrawEbayOfferGroup, endEbayVolumeDiscount, ebayReviseOfferQuantity,\s*\n\s*\}\);/, 'the withdraw helper, group-withdraw helper, quantity-revise helper, and token getter must be injected into the FOC module\'s deps');
+assert.match(worker, /getEbayUserAccessToken, withdrawEbayOffer, withdrawEbayOfferGroup, endEbayVolumeDiscount, ebayReviseOfferQuantity,\s*\n\s*ebayReviseVariationQuantityTrading, endEbayListingTrading,\s*\n\s*\}\);/, 'the withdraw helper, group-withdraw helper, quantity-revise helper, token getter, and the Trading-API-native quantity-revise/end helpers must all be injected into the FOC module\'s deps');
 
 // Store request: once the PRH order locks in, a live FOC presale
 // listing's buyable quantity should immediately reflect the real ordered
