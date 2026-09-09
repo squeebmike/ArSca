@@ -89,18 +89,24 @@ assert.match(helperBody, /'X-EBAY-API-CALL-NAME': callName,/, 'must set the Trad
 assert.match(helperBody, /const ack = \(txt\.match\(\/<Ack>\(\[\^<\]\+\)<\\\/Ack>\/\) \|\| \[\]\)\[1\] \|\| '';/, 'must actually check the XML response\'s Ack value -- a 200 HTTP status from this endpoint does not mean the call succeeded');
 assert.match(helperBody, /if \(ack !== 'Success' && ack !== 'Warning'\) \{/, 'Failure and PartialFailure Acks must be treated as real errors, not silently accepted');
 assert.match(helperBody, /VariationSpecificPictureSet>/, 'must build the VariationSpecificPictureSet XML container -- this is the actual per-variation photo mechanism, distinct from anything in the REST group repair above');
-// Store report (live error): "AddFixedPriceItem failed: Variation
-// specific name "" used for pictures does not exist in variation
-// specific set." -- VariationSpecificPictureSetType requires BOTH the
-// aspect name (VariationSpecificName, e.g. "Cover") and the value
-// (VariationSpecificValue, e.g. "Cover A"); sending only the value left
-// eBay defaulting the name to "", which it then rejects outright.
-assert.match(helperBody, /<VariationSpecificName>\$\{xmlEscape\(variantAspectName\)\}<\/VariationSpecificName><VariationSpecificValue>\$\{xmlEscape\(v\.label\)\}<\/VariationSpecificValue>/,
-  'each picture set must carry BOTH the real aspect name and the variation\'s own label text -- an empty/missing aspect name gets the whole request rejected, not just that one entry');
+// Store report (live error, TWICE more after each of the two earlier fix
+// attempts here): "AddFixedPriceItem failed: Variation specific name ""
+// used for pictures does not exist in variation specific set." Root
+// cause, finally confirmed against eBay's own schema reference
+// (PicturesType/VariationSpecificPictureSetType): VariationSpecificName
+// belongs to the PARENT Pictures container, declared EXACTLY ONCE -- it
+// is NOT a field of each individual VariationSpecificPictureSet entry.
+// The first fix attempt sent no name at all; the second attempt (this
+// exact wrong structure) repeated the name inside every single picture
+// set instead of declaring it once up front, which eBay's parser also
+// rejects since it never finds a name where it expects one (leading
+// child of Pictures, before any VariationSpecificPictureSet).
+assert.match(helperBody, /`<VariationSpecificPictureSet><VariationSpecificValue>\$\{xmlEscape\(v\.label\)\}<\/VariationSpecificValue>` \+/,
+  'each picture set entry must carry ONLY the variation\'s own label text (VariationSpecificValue) -- the aspect name does not belong inside each repeated entry');
 assert.match(helperBody, /async function setEbayVariationSpecificPhotos\(ebayToken, listingId, variantPhotos, variantAspectName = 'Cover'\)/,
   'must accept the real aspect name as a parameter (defaulting to \'Cover\', the only variant dimension this app has ever used) rather than hardcoding or omitting it');
-assert.match(helperBody, /<Item><ItemID>\$\{xmlEscape\(listingId\)\}<\/ItemID><Variations><Pictures>\$\{sets\}<\/Pictures><\/Variations><\/Item>/,
-  'the picture sets must be nested under Item.Variations.Pictures, eBay\'s documented hierarchy for this field -- a wrong nesting level is silently ignored rather than erroring');
+assert.match(helperBody, /<Item><ItemID>\$\{xmlEscape\(listingId\)\}<\/ItemID><Variations><Pictures><VariationSpecificName>\$\{xmlEscape\(variantAspectName\)\}<\/VariationSpecificName>\$\{sets\}<\/Pictures><\/Variations><\/Item>/,
+  'VariationSpecificName must be declared exactly ONCE, as the leading child of Pictures, before the repeated VariationSpecificPictureSet entries -- eBay\'s own schema puts the aspect name on the Pictures container itself, not on each picture set');
 assert.match(helperBody, /const skipped = variantPhotos\.filter\(v => !\(v\.label && v\.imageUrls && v\.imageUrls\.length\)\)\.map\(v => v\.label \|\| v\.sku \|\| '\(unidentified cover\)'\);/,
   'a variant missing a label or photo must be tracked by name/sku, not just silently dropped from the request -- otherwise a partial binding (e.g. 4 of 5 covers set) looks identical to full success to every caller');
 assert.match(helperBody, /return \{ \.\.\.result, skipped \};/, 'the skipped list must actually be returned to the caller, not just computed and discarded');
