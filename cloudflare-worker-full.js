@@ -2760,7 +2760,21 @@ async function getFocPresaleFulfillmentPolicyId(env, ebayToken, handlingDaysNeed
   const fallback = env.EBAY_FULFILLMENT_POLICY_ID || '';
   const baseId = basePolicyIdOverride || (await resolveFocPresaleBasePolicyId(env, ebayToken)) || fallback;
   if (!baseId) return { id: '', usedFallback: true, reason: 'no FOC/presale-specific shipping policy is configured for this store, and no generic default policy is set either' };
-  const bucket = Math.min(40, Math.max(5, Math.ceil(Math.max(1, handlingDaysNeeded) / 5) * 5));
+  // Store report (live error, warning finally showing real detail after
+  // the previous fix): "eBay rejected creating the 'FOC - FOC 35D
+  // Handling' handling-time policy (HTTP 400: LSAS validation failed.
+  // [... SHIPLEIG_ERROR_CODE_NAME=INVALID_HANDLING_TIME])." eBay's Business
+  // Policy fulfillment_policy API caps handlingTime at 30 (business) days
+  // -- this cap was wrongly set to 40 (an untested guess), so any listing
+  // needing more than 30 days' lead time tried an invalid bucket every
+  // time and silently fell back to the store's generic default policy.
+  // Capped at eBay's real max instead of just always using 30 for every
+  // listing, so a listing that only needs a shorter bucket (5/10/.../30)
+  // still gets it -- eBay's own estimated-delivery-date calculation uses
+  // handling time directly, and inflating every listing to 30 days
+  // regardless of actual need would push out buyer-facing delivery
+  // estimates for no reason.
+  const bucket = Math.min(30, Math.max(5, Math.ceil(Math.max(1, handlingDaysNeeded) / 5) * 5));
   const kvKey = `ebay_foc_fulfillment_policy:${baseId}:${bucket}`;
   let cloneName = '';
   try {

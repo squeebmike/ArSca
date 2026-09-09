@@ -682,10 +682,17 @@ async function openFamilyEbayGroupReview(familyId){
     var thumb=thumbUrl
       ? '<img src="'+esc(thumbUrl)+'" style="width:34px;height:44px;object-fit:contain;background:#050507;border:1px solid var(--border);border-radius:4px" onerror="this.style.opacity=.16">'
       : '<div style="width:34px;height:44px;background:#050507;border:1px solid var(--border);border-radius:4px;display:flex;align-items:center;justify-content:center;color:var(--red);font-size:6px;text-align:center;line-height:1.2">NO COVER ART</div>';
-    return '<div class="foc-sku-fields" data-eb-cover-row="'+esc(c.skuId)+'" style="grid-template-columns:auto auto 1.4fr 1fr 1fr;align-items:end;padding:6px 0;border-bottom:1px solid var(--border);opacity:'+(c.eligible?'1':'.45')+'">'+
+    // Store report: "if an item has too long a name it won't let me edit
+    // it" -- a CSS grid item's default min-width is auto (its content's
+    // intrinsic width), not 0, so this row's 1.4fr label column refused to
+    // shrink for a long cover name and pushed the PRICE/QTY inputs to the
+    // right of it past the modal's own edge, out of reach, instead of
+    // wrapping the name onto more lines. minmax(0, ...) on the track plus
+    // min-width:0/overflow-wrap on the label div let both actually shrink.
+    return '<div class="foc-sku-fields" data-eb-cover-row="'+esc(c.skuId)+'" style="grid-template-columns:auto auto minmax(0,1.4fr) minmax(0,1fr) minmax(0,1fr);align-items:end;padding:6px 0;border-bottom:1px solid var(--border);opacity:'+(c.eligible?'1':'.45')+'">'+
       '<label style="display:flex;align-items:center;gap:5px"><input type="checkbox" data-eb-cover-cb="'+esc(c.skuId)+'" '+(c.eligible?'checked':'')+' '+disabled+'></label>'+
       thumb+
-      '<div><div style="font-weight:700;color:var(--text)">'+esc(c.variantLabel)+'</div><div style="font:8px var(--font-mono);color:var(--dim)">'+(c.eligible?'UPC '+esc(c.upc)+(c.imageUrl?'':' · borrowing another cover\'s photo -- add its own cover art later'):esc(c.reason))+'</div></div>'+
+      '<div style="min-width:0;overflow-wrap:break-word"><div style="font-weight:700;color:var(--text)">'+esc(c.variantLabel)+'</div><div style="font:8px var(--font-mono);color:var(--dim);overflow-wrap:break-word">'+(c.eligible?'UPC '+esc(c.upc)+(c.imageUrl?'':' · borrowing another cover\'s photo -- add its own cover art later'):esc(c.reason))+'</div></div>'+
       '<label>PRICE<input class="tsi" data-eb-cover-price="'+esc(c.skuId)+'" type="number" min="0" step=".01" value="'+esc(c.price)+'" '+disabled+'></label>'+
       '<label>QTY<input class="tsi" data-eb-cover-qty="'+esc(c.skuId)+'" type="number" min="1" max="200" value="10" '+disabled+'></label>'+
       '</div>';

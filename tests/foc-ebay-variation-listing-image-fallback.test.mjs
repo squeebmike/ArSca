@@ -100,4 +100,15 @@ assert.match(focDash, /onchange="document\.getElementById\(\\'foc-eb-grp-bundle-
 assert.match(focDash, /imageUrl:\(document\.getElementById\('foc-eb-grp-bundle-image-url'\)\?\.value\|\|''\)\.trim\(\)\|\|undefined,/,
   'the bundle payload must include the uploaded bundle-specific image URL');
 
+// Store report: "if an item has too long a name it won't let me edit it"
+// -- a CSS grid item's default min-width is auto (its own content's
+// intrinsic width), not 0, so the 1.4fr label column in each cover row
+// refused to shrink for a long cover name and pushed the PRICE/QTY inputs
+// out past the modal's edge instead of wrapping. Both the grid track
+// definitions and the label div itself must allow shrinking/wrapping.
+assert.match(focDash, /grid-template-columns:auto auto minmax\(0,1\.4fr\) minmax\(0,1fr\) minmax\(0,1fr\);/,
+  'each cover row\'s grid columns must use minmax(0, ...) so a long cover name can\'t force the PRICE/QTY inputs out of reach');
+assert.match(focDash, /<div style="min-width:0;overflow-wrap:break-word"><div style="font-weight:700;color:var\(--text\)">'\+esc\(c\.variantLabel\)\+'<\/div>/,
+  'the cover name label itself must be allowed to shrink and wrap a long name, not force the row wider than the modal');
+
 console.log('FOC eBay variation listing image-fallback + bundle gallery contract checks passed');
