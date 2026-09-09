@@ -15,17 +15,18 @@ const focPreorders = fs.readFileSync('scripts/foc-preorders.mjs', 'utf8');
 // go this way -- everything already live stays on the REST path.
 
 // ── buildVariationPictureSetsXml ──────────────────────────────────────────
-// Store report (live error trying this for real): "AddFixedPriceItem
-// failed: Variation specific name "" used for pictures does not exist in
-// variation specific set." VariationSpecificPictureSetType requires BOTH
-// VariationSpecificName (which aspect, e.g. "Cover") and
-// VariationSpecificValue (which value) -- omitting the name left eBay
-// defaulting it to "", which it then rejects outright since "" isn't a
-// declared aspect. This was a latent bug in the original Trading API
-// integration too (setEbayVariationSpecificPhotos, see
-// foc-ebay-group-listing-photo-repair.test.mjs), just never actually
-// exercised because the "Inventory-based" wall blocked it from ever
-// reaching eBay in the first place.
+// Store report (live error, three separate times across three wrong fix
+// attempts): "AddFixedPriceItem failed: Variation specific name "" used
+// for pictures does not exist in variation specific set." Root cause,
+// finally confirmed against eBay's own schema reference
+// (PicturesType/VariationSpecificPictureSetType): VariationSpecificName
+// belongs to the PARENT Pictures container, declared EXACTLY ONCE -- it
+// is NOT a field of each individual VariationSpecificPictureSet entry.
+// Attempt 1 sent no name at all. Attempt 2 repeated the name inside every
+// picture set (the wrong structure this test used to assert on) -- eBay's
+// parser never finds a name where it expects one (leading child of
+// Pictures, before any VariationSpecificPictureSet), so a repeated
+// per-entry name is rejected exactly the same as no name at all.
 {
   const start = worker.indexOf('function buildVariationPictureSetsXml');
   assert.ok(start !== -1, 'buildVariationPictureSetsXml must exist');
@@ -33,8 +34,8 @@ const focPreorders = fs.readFileSync('scripts/foc-preorders.mjs', 'utf8');
   const body = worker.slice(start, end);
   assert.match(body, /function buildVariationPictureSetsXml\(variantPhotos, variantAspectName\)/,
     'must accept the real variant aspect name as a parameter, not just the label/photo data');
-  assert.match(body, /<VariationSpecificPictureSet><VariationSpecificName>\$\{xmlEscape\(variantAspectName\)\}<\/VariationSpecificName><VariationSpecificValue>\$\{xmlEscape\(v\.label\)\}<\/VariationSpecificValue>/,
-    'each picture set must declare BOTH VariationSpecificName and VariationSpecificValue -- eBay rejects the whole AddFixedPriceItem call if the name is missing/empty, not just that one picture set');
+  assert.match(body, /`<VariationSpecificPictureSet><VariationSpecificValue>\$\{xmlEscape\(v\.label\)\}<\/VariationSpecificValue>` \+/,
+    'each picture set entry must carry ONLY the variation\'s own label text (VariationSpecificValue) -- the aspect name does not belong inside each repeated entry, it is declared once by the caller');
 }
 console.log('buildVariationPictureSetsXml checks passed');
 
@@ -58,14 +59,18 @@ console.log('buildVariationPictureSetsXml checks passed');
   // eBay's binder can silently fail to register the misplaced
   // VariationSpecificsSet at all, leaving the "declared legal variation
   // specifics" empty by the time it validates Pictures against it.
-  assert.match(body, /`<Variations>\$\{variationEntriesXml\}` \+\s*\n\s*\(pictureSetsXml \? `<Pictures>\$\{pictureSetsXml\}<\/Pictures>` : ''\) \+\s*\n\s*variationSpecificsSetXml \+/,
+  assert.match(body, /`<Variations>\$\{variationEntriesXml\}` \+\s*\n\s*\(pictureSetsXml \? `<Pictures><VariationSpecificName>\$\{xmlEscape\(variantAspectName\)\}<\/VariationSpecificName>\$\{pictureSetsXml\}<\/Pictures>` : ''\) \+\s*\n\s*variationSpecificsSetXml \+/,
     'Variations children must appear in eBay\'s required order -- Variation entries, then Pictures, then VariationSpecificsSet -- not VariationSpecificsSet first');
   assert.match(body, /variationSpecificsSetXml = `<VariationSpecificsSet><NameValueList><Name>\$\{xmlEscape\(variantAspectName\)\}<\/Name>\$\{built\.map\(v => `<Value>\$\{xmlEscape\(v\.label\)\}<\/Value>`\)\.join\(''\)\}<\/NameValueList><\/VariationSpecificsSet>`;/,
     'VariationSpecificsSet must declare every cover\'s label as one of the varying aspect\'s legal values, or eBay rejects the per-variant entries below');
   assert.match(body, /<SKU>\$\{xmlEscape\(v\.sku\)\}<\/SKU><StartPrice currencyID="USD">\$\{xmlEscape\(Number\(v\.price\)\.toFixed\(2\)\)\}<\/StartPrice><Quantity>/,
     'each Variation entry must carry its own SKU, price, and quantity -- this is what makes per-cover price/qty independently manageable, same as the REST offer-per-SKU model');
-  assert.match(body, /\(pictureSetsXml \? `<Pictures>\$\{pictureSetsXml\}<\/Pictures>` : ''\)/,
-    'the per-cover photo binding (Pictures/VariationSpecificPictureSet) must be set INLINE at creation time -- this is the entire point of building on the Trading API instead of the REST one');
+  // VariationSpecificName must be declared exactly ONCE, as the leading
+  // child of Pictures, before the repeated VariationSpecificPictureSet
+  // entries -- eBay's own schema puts the aspect name on the Pictures
+  // container itself, not on each picture set (see buildVariationPictureSetsXml).
+  assert.match(body, /\(pictureSetsXml \? `<Pictures><VariationSpecificName>\$\{xmlEscape\(variantAspectName\)\}<\/VariationSpecificName>\$\{pictureSetsXml\}<\/Pictures>` : ''\)/,
+    'the per-cover photo binding (Pictures/VariationSpecificPictureSet) must be set INLINE at creation time, with VariationSpecificName declared once on Pictures itself -- this is the entire point of building on the Trading API instead of the REST one');
   assert.match(body, /buildVariationPictureSetsXml\(\s*\n\s*built\.map\(v => \(\{ label: v\.label, sku: v\.sku, imageUrls: \[v\.imageUrl, \.\.\.\(v\.imageUrls \|\| \[\]\)\]\.filter\(Boolean\) \}\)\),\s*\n\s*variantAspectName\s*\n\s*\);/,
     'must build the picture sets the same shape setEbayVariationSpecificPhotos uses AND actually pass the real variantAspectName through -- a listing never needs a follow-up repair call just to get its own creation-time photos bound');
   assert.match(body, /sellerProfilesXml =\s*\n\s*\(b\.fulfillmentPolicyId \? `<SellerShippingProfile><ShippingProfileID>\$\{xmlEscape\(b\.fulfillmentPolicyId\)\}<\/ShippingProfileID><\/SellerShippingProfile>` : ''\) \+/,

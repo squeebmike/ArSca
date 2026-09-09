@@ -7372,28 +7372,33 @@ export default {
     // forgotten: a partial binding (4 of 5 covers set) must never look
     // identical to a full success.
     //
-    // Store report (live error): "AddFixedPriceItem failed: Variation
-    // specific name "" used for pictures does not exist in variation
-    // specific set." -- VariationSpecificPictureSetType has TWO fields,
-    // not one: VariationSpecificName (which ASPECT the photos vary by,
-    // e.g. "Cover") alongside VariationSpecificValue (which value of that
-    // aspect, e.g. "Cover A"). This only ever sent the value, never the
-    // name, so eBay defaulted the name to an empty string and rejected it
-    // outright since "" isn't a real declared aspect. variantAspectName
-    // defaults to 'Cover' -- the only variant dimension this app has ever
-    // used anywhere (see the one call site that sets it, in the FOC group-
-    // listing route) -- but every caller with the real value in scope
-    // still passes it through explicitly rather than relying on the default.
+    // Store report (live error, twice more after this comment was first
+    // written -- see the two corrections below): "AddFixedPriceItem
+    // failed: Variation specific name "" used for pictures does not exist
+    // in variation specific set." Root cause, finally confirmed against
+    // eBay's own schema reference (PicturesType/VariationSpecificPictureSetType):
+    // VariationSpecificName belongs to the PARENT Pictures container,
+    // declared EXACTLY ONCE -- it is NOT a field of each individual
+    // VariationSpecificPictureSet entry. This had it repeated inside every
+    // single picture set instead of declared once up front; eBay's parser
+    // never found a VariationSpecificName where it expected one (leading
+    // child of Pictures, before any VariationSpecificPictureSet), so it
+    // treated the required name as effectively empty.
+    // variantAspectName defaults to 'Cover' -- the only variant dimension
+    // this app has ever used anywhere (see the one call site that sets it,
+    // in the FOC group-listing route) -- but every caller with the real
+    // value in scope still passes it through explicitly rather than
+    // relying on the default.
     async function setEbayVariationSpecificPhotos(ebayToken, listingId, variantPhotos, variantAspectName = 'Cover') {
       const usable = variantPhotos.filter(v => v.label && v.imageUrls && v.imageUrls.length);
       const skipped = variantPhotos.filter(v => !(v.label && v.imageUrls && v.imageUrls.length)).map(v => v.label || v.sku || '(unidentified cover)');
       const sets = usable.map(v =>
-        `<VariationSpecificPictureSet><VariationSpecificName>${xmlEscape(variantAspectName)}</VariationSpecificName><VariationSpecificValue>${xmlEscape(v.label)}</VariationSpecificValue>` +
+        `<VariationSpecificPictureSet><VariationSpecificValue>${xmlEscape(v.label)}</VariationSpecificValue>` +
         v.imageUrls.slice(0, 12).map(u => `<PictureURL>${xmlEscape(u)}</PictureURL>`).join('') +
         `</VariationSpecificPictureSet>`
       ).join('');
       if (!sets) { const e = new Error('No variant photos to assign'); e.status = 400; throw e; }
-      const body = `<Item><ItemID>${xmlEscape(listingId)}</ItemID><Variations><Pictures>${sets}</Pictures></Variations></Item>`;
+      const body = `<Item><ItemID>${xmlEscape(listingId)}</ItemID><Variations><Pictures><VariationSpecificName>${xmlEscape(variantAspectName)}</VariationSpecificName>${sets}</Pictures></Variations></Item>`;
       const result = await ebayTradingApiCall(ebayToken, 'ReviseFixedPriceItem', body);
       return { ...result, skipped };
     }
@@ -7571,16 +7576,18 @@ export default {
     // the fact -- built inline here rather than by calling
     // setEbayVariationSpecificPhotos (which assumes an ItemID that doesn't
     // exist yet).
-    // VariationSpecificPictureSetType requires BOTH VariationSpecificName
-    // (which aspect the photos vary by, e.g. "Cover") and
-    // VariationSpecificValue (which value of that aspect) -- see the
-    // matching fix/comment on setEbayVariationSpecificPhotos above for the
-    // live error this caused when only the value was ever sent.
+    // VariationSpecificName belongs to the PARENT Pictures container,
+    // declared exactly once -- it is NOT a field of each individual
+    // VariationSpecificPictureSet entry (see the matching fix/comment on
+    // setEbayVariationSpecificPhotos above for the live error two earlier,
+    // wrong attempts at this caused). sets here is only the repeated
+    // per-cover entries; the caller prepends VariationSpecificName once
+    // when wrapping this in <Pictures>.
     function buildVariationPictureSetsXml(variantPhotos, variantAspectName) {
       const usable = variantPhotos.filter(v => v.label && v.imageUrls && v.imageUrls.length);
       const skipped = variantPhotos.filter(v => !(v.label && v.imageUrls && v.imageUrls.length)).map(v => v.label || v.sku || '(unidentified cover)');
       const sets = usable.map(v =>
-        `<VariationSpecificPictureSet><VariationSpecificName>${xmlEscape(variantAspectName)}</VariationSpecificName><VariationSpecificValue>${xmlEscape(v.label)}</VariationSpecificValue>` +
+        `<VariationSpecificPictureSet><VariationSpecificValue>${xmlEscape(v.label)}</VariationSpecificValue>` +
         v.imageUrls.slice(0, 12).map(u => `<PictureURL>${xmlEscape(u)}</PictureURL>`).join('') +
         `</VariationSpecificPictureSet>`
       ).join('');
@@ -7656,7 +7663,7 @@ export default {
         // the time it validates Pictures against it -- explaining an
         // "empty name" complaint even though a real name was sent.
         `<Variations>${variationEntriesXml}` +
-        (pictureSetsXml ? `<Pictures>${pictureSetsXml}</Pictures>` : '') +
+        (pictureSetsXml ? `<Pictures><VariationSpecificName>${xmlEscape(variantAspectName)}</VariationSpecificName>${pictureSetsXml}</Pictures>` : '') +
         variationSpecificsSetXml +
         `</Variations>` +
         `</Item>`;
