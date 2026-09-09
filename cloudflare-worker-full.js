@@ -2796,7 +2796,7 @@ async function getFocPresaleFulfillmentPolicyId(env, ebayToken, handlingDaysNeed
       body: JSON.stringify(createBody),
     });
     if (!createRes.ok) {
-      const errText = (await createRes.text().catch(() => '')).substring(0, 500);
+      const errText = (await createRes.text().catch(() => '')).substring(0, 1000);
       console.error('getFocPresaleFulfillmentPolicyId: create clone failed', cloneName, createRes.status, errText);
       // A duplicate-name rejection means the real clone already exists --
       // find it instead of giving up and losing the presale-specific
@@ -2806,7 +2806,23 @@ async function getFocPresaleFulfillmentPolicyId(env, ebayToken, handlingDaysNeed
         if (env.LBA_KV) await env.LBA_KV.put(kvKey, existingId, { expirationTtl: 60 * 60 * 24 * 180 }).catch(() => {});
         return { id: existingId, usedFallback: false, reason: '' };
       }
-      return { id: fallback, usedFallback: true, reason: `eBay rejected creating the "${cloneName}" handling-time policy (HTTP ${createRes.status}: ${errText.substring(0, 150)})` };
+      // Store report: the warning shown for this failure got truncated
+      // right before the useful part -- eBay's error body carries a
+      // `parameters` array naming the actual offending field (e.g.
+      // {name:'shippingOptions[0].shippingServices[1].shippingCost', ...}),
+      // which a flat 150-char slice of the raw JSON text cut off every
+      // time. Surface that specifically when present, so the real cause is
+      // diagnosable from the dashboard instead of a dead-end truncated blob.
+      let detail = errText.substring(0, 300);
+      try {
+        const parsed = JSON.parse(errText);
+        const firstError = parsed?.errors?.[0];
+        if (firstError) {
+          const params = (firstError.parameters || []).map(p => `${p.name}=${p.value}`).join(', ');
+          detail = [firstError.longMessage || firstError.message, params ? `[${params}]` : ''].filter(Boolean).join(' ');
+        }
+      } catch (_) { /* not JSON -- fall back to the raw truncated text above */ }
+      return { id: fallback, usedFallback: true, reason: `eBay rejected creating the "${cloneName}" handling-time policy (HTTP ${createRes.status}: ${detail})` };
     }
     const created = await createRes.json();
     const newId = created.fulfillmentPolicyId;
@@ -4016,19 +4032,25 @@ export default {
         if (bundlePriceCents > 0 && bundleQty > 0) {
           // Store report: selecting "All Covers Bundle" on the live listing
           // showed a giant pile of every checked cover's photo (up to 12,
-          // one per cover) instead of the store's own uploaded "pick your
-          // cover" graphic -- the one thing that actually represents a
-          // bundle as ONE image. When a mainImageUrl was uploaded, use ONLY
-          // that as the bundle's own photo (it already IS a composite of
-          // every cover, by the store's own design); only fall back to the
-          // "every cover's own photo" gallery when no such image exists.
+          // one per cover) instead of a single representative image.
+          // Store request: "i need a main image and a bundle image able to
+          // upload here" -- a dedicated bundle-only image, independent of
+          // the general MAIN LISTING PHOTO (that one is the default gallery
+          // shown before any cover is picked; this one shows specifically
+          // when the bundle option itself is selected). Priority: the
+          // store's own bundle-specific upload, then the general main
+          // image as a reasonable substitute (it's usually a "pick your
+          // cover" composite anyway), then the "every cover's own photo"
+          // gallery as a last resort.
+          const bundleOwnImage = (typeof body.bundle.imageUrl === 'string' && body.bundle.imageUrl.trim()) ? body.bundle.imageUrl.trim().substring(0, 1000) : '';
           const bundleMainImage = (typeof body.mainImageUrl === 'string' && body.mainImageUrl.trim()) ? body.mainImageUrl.trim().substring(0, 1000) : '';
+          const bundleImage = bundleOwnImage || bundleMainImage;
           bundleRequested = {
             key: 'bundle', skuId: null,
             label: (typeof body.bundle.label === 'string' && body.bundle.label.trim()) ? body.bundle.label.trim().substring(0, 60) : `All Covers Bundle (${built.length} Books)`,
             price: (bundlePriceCents / 100).toFixed(2), quantity: bundleQty,
-            imageUrl: bundleMainImage || allCoverImages[0] || anyCoverImage,
-            imageUrls: bundleMainImage ? [bundleMainImage] : allCoverImages,
+            imageUrl: bundleImage || allCoverImages[0] || anyCoverImage,
+            imageUrls: bundleImage ? [bundleImage] : allCoverImages,
             upc: '', aspectOverrides: {},
           };
           built.push(bundleRequested);
