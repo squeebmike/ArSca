@@ -4014,11 +4014,22 @@ export default {
         const bundlePriceCents = Math.round(Number(body.bundle.price) * 100);
         const bundleQty = Math.max(1, Math.min(200, parseInt(body.bundle.quantity, 10) || 0));
         if (bundlePriceCents > 0 && bundleQty > 0) {
+          // Store report: selecting "All Covers Bundle" on the live listing
+          // showed a giant pile of every checked cover's photo (up to 12,
+          // one per cover) instead of the store's own uploaded "pick your
+          // cover" graphic -- the one thing that actually represents a
+          // bundle as ONE image. When a mainImageUrl was uploaded, use ONLY
+          // that as the bundle's own photo (it already IS a composite of
+          // every cover, by the store's own design); only fall back to the
+          // "every cover's own photo" gallery when no such image exists.
+          const bundleMainImage = (typeof body.mainImageUrl === 'string' && body.mainImageUrl.trim()) ? body.mainImageUrl.trim().substring(0, 1000) : '';
           bundleRequested = {
             key: 'bundle', skuId: null,
             label: (typeof body.bundle.label === 'string' && body.bundle.label.trim()) ? body.bundle.label.trim().substring(0, 60) : `All Covers Bundle (${built.length} Books)`,
             price: (bundlePriceCents / 100).toFixed(2), quantity: bundleQty,
-            imageUrl: allCoverImages[0] || anyCoverImage, imageUrls: allCoverImages, upc: '', aspectOverrides: {},
+            imageUrl: bundleMainImage || allCoverImages[0] || anyCoverImage,
+            imageUrls: bundleMainImage ? [bundleMainImage] : allCoverImages,
+            upc: '', aspectOverrides: {},
           };
           built.push(bundleRequested);
         }
@@ -4100,6 +4111,23 @@ export default {
         ? [`This listing published under the store's normal default shipping policy, NOT the FOC handling-time policy you picked -- ${fulfillmentResult.reason}. Check this listing's handling time on eBay before it ships, and consider ending/re-listing it once fixed.`]
         : [];
 
+      // Store request: "are we able to do the volume pricing on this?" --
+      // eBay's Volume Pricing (Sell Marketing API VOLUME_DISCOUNT promotion,
+      // same mechanism the single-cover FOC presale flow already uses) keys
+      // off the eBay ItemID itself, not which API created the listing, so
+      // it works the same way here as it does for a REST-created listing.
+      // Best-effort: a promotion-setup failure (e.g. no active eBay Store
+      // subscription, which this feature requires) must never block the
+      // listing itself, which is already live by this point.
+      let volumeDiscountPromotionId = '';
+      const volumeDiscountWarnings = [];
+      try {
+        const volumeDiscount = await createEbayVolumeDiscount(env, ebayToken, listingResult.listingId, listingResult.inventoryItemGroupKey);
+        volumeDiscountPromotionId = volumeDiscount.promotionId || '';
+      } catch (e) {
+        volumeDiscountWarnings.push('Volume discount (buy more, save more) was not set up: ' + e.message);
+      }
+
       const nowIso = new Date().toISOString();
       const createdRows = [];
       const rowErrors = [];
@@ -4126,6 +4154,7 @@ export default {
                 ebayListingId: listingResult.listingId, ebayOfferId: matched.offerId,
                 ebaySku: matched.sku, ebayListedAt: nowIso,
                 ebayInventoryItemGroupKey: listingResult.inventoryItemGroupKey,
+                ebayVolumeDiscountPromotionId: volumeDiscountPromotionId,
                 // Marks this row as a Trading-API-built listing so later
                 // revise/end calls route to the ItemID+SKU-keyed Trading
                 // functions instead of the offerId-keyed REST ones -- see
@@ -4146,7 +4175,8 @@ export default {
       return json({
         ok: true, listingId: listingResult.listingId, inventoryItemGroupKey: listingResult.inventoryItemGroupKey,
         createdCount: createdRows.length, bundleIncluded: !!bundleRequested,
-        warnings: [...(listingResult.warnings || []), ...conditionWarnings, ...fulfillmentWarnings, ...rowErrors],
+        warnings: [...(listingResult.warnings || []), ...conditionWarnings, ...fulfillmentWarnings, ...volumeDiscountWarnings, ...rowErrors],
+        volumeDiscount: volumeDiscountPromotionId ? { active: true, tiers: FOC_VOLUME_DISCOUNT_TIERS } : { active: false },
       });
     }
 
@@ -7630,9 +7660,19 @@ export default {
       const built = variants.map((v, i) => ({ ...v, sku: groupKey + '-' + i }));
 
       const anyCoverImage = built.find(v => v.imageUrl)?.imageUrl || '';
-      const galleryUrls = [...new Set(built.map(v => v.imageUrl || anyCoverImage).filter(Boolean))];
+      // Store report: the store-uploaded "MAIN LISTING PHOTO" (a "pick your
+      // cover" composite graphic) never showed up anywhere on the live
+      // listing -- b.mainImageUrl was accepted by the route and passed all
+      // the way into this function, but nothing here ever read it. It
+      // belongs first in the general/default gallery, shown before a buyer
+      // picks a cover, same as its own label says ("shown first, before a
+      // buyer picks a cover").
+      const galleryUrls = [...new Set([b.mainImageUrl, ...built.map(v => v.imageUrl || anyCoverImage)].filter(Boolean))];
       const { sets: pictureSetsXml, skipped: pictureSkipped } = buildVariationPictureSetsXml(
-        built.map(v => ({ label: v.label, sku: v.sku, imageUrls: [v.imageUrl, ...(v.imageUrls || [])].filter(Boolean) })),
+        // Deduplicated -- v.imageUrl is often already the first entry of
+        // v.imageUrls (e.g. the bundle variant above), and binding the same
+        // URL twice just wastes one of eBay's 12-photo-per-variant slots.
+        built.map(v => ({ label: v.label, sku: v.sku, imageUrls: [...new Set([v.imageUrl, ...(v.imageUrls || [])].filter(Boolean))] })),
         variantAspectName
       );
 

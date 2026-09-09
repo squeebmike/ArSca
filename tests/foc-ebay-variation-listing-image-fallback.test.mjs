@@ -25,13 +25,21 @@ assert.match(routeBody, /if \(!anyCoverImage\) return json\(\{ ok: false, error:
 assert.match(routeBody, /built\.forEach\(v => \{ if \(!v\.imageUrl\) v\.imageUrl = anyCoverImage; \}\);/,
   'every variant missing its own cover art must be backfilled with a borrowed real cover photo, not published blank');
 
-// The bundle variant's image must be a gallery of every real cover's own
-// photo, not just one at random -- "what is it doing for an image for the
-// bundle" answered: all of them.
+// The bundle variant's image, absent a store-uploaded main photo, must be a
+// gallery of every real cover's own photo, not just one at random -- "what
+// is it doing for an image for the bundle" answered: all of them.
 assert.match(routeBody, /const allCoverImages = \[\.\.\.new Set\(built\.map\(v => v\.imageUrl\)\.filter\(Boolean\)\)\];/,
   'must collect every distinct real cover image actually available');
-assert.match(routeBody, /imageUrl: allCoverImages\[0\] \|\| anyCoverImage, imageUrls: allCoverImages, upc: '', aspectOverrides: \{\},/,
-  'the bundle variant must carry the full gallery of every selected cover\'s image, not a single borrowed one');
+// Store report (live listing screenshot): selecting "All Covers Bundle"
+// showed a pile of every cover's photo instead of the store's own uploaded
+// "pick your cover" graphic -- the one thing that actually represents a
+// bundle as ONE image. When mainImageUrl is provided it takes over as the
+// bundle's ONLY photo; the "every cover" gallery is only the fallback for
+// when no such image was uploaded.
+assert.match(routeBody, /const bundleMainImage = \(typeof body\.mainImageUrl === 'string' && body\.mainImageUrl\.trim\(\)\) \? body\.mainImageUrl\.trim\(\)\.substring\(0, 1000\) : '';/,
+  'must check for a store-uploaded main/bundle image before falling back to the every-cover gallery');
+assert.match(routeBody, /imageUrl: bundleMainImage \|\| allCoverImages\[0\] \|\| anyCoverImage,\s*\n\s*imageUrls: bundleMainImage \? \[bundleMainImage\] : allCoverImages,/,
+  'the bundle variant must use the store\'s uploaded main image alone when provided, falling back to the full gallery of every selected cover\'s image only when it is not');
 
 // The bundle's TITLE is the shared group title (same as every other
 // variant) -- eBay variation listings have ONE title at the group level;
