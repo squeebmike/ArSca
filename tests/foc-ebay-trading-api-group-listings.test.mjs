@@ -14,6 +14,30 @@ const focPreorders = fs.readFileSync('scripts/foc-preorders.mjs', 'utf8');
 // multi-cover listing on the Trading API from the start. Only NEW listings
 // go this way -- everything already live stays on the REST path.
 
+// ── buildVariationPictureSetsXml ──────────────────────────────────────────
+// Store report (live error trying this for real): "AddFixedPriceItem
+// failed: Variation specific name "" used for pictures does not exist in
+// variation specific set." VariationSpecificPictureSetType requires BOTH
+// VariationSpecificName (which aspect, e.g. "Cover") and
+// VariationSpecificValue (which value) -- omitting the name left eBay
+// defaulting it to "", which it then rejects outright since "" isn't a
+// declared aspect. This was a latent bug in the original Trading API
+// integration too (setEbayVariationSpecificPhotos, see
+// foc-ebay-group-listing-photo-repair.test.mjs), just never actually
+// exercised because the "Inventory-based" wall blocked it from ever
+// reaching eBay in the first place.
+{
+  const start = worker.indexOf('function buildVariationPictureSetsXml');
+  assert.ok(start !== -1, 'buildVariationPictureSetsXml must exist');
+  const end = worker.indexOf('async function createAndPublishEbayVariationListingTrading', start);
+  const body = worker.slice(start, end);
+  assert.match(body, /function buildVariationPictureSetsXml\(variantPhotos, variantAspectName\)/,
+    'must accept the real variant aspect name as a parameter, not just the label/photo data');
+  assert.match(body, /<VariationSpecificPictureSet><VariationSpecificName>\$\{xmlEscape\(variantAspectName\)\}<\/VariationSpecificName><VariationSpecificValue>\$\{xmlEscape\(v\.label\)\}<\/VariationSpecificValue>/,
+    'each picture set must declare BOTH VariationSpecificName and VariationSpecificValue -- eBay rejects the whole AddFixedPriceItem call if the name is missing/empty, not just that one picture set');
+}
+console.log('buildVariationPictureSetsXml checks passed');
+
 // ── createAndPublishEbayVariationListingTrading ───────────────────────────
 {
   const start = worker.indexOf('async function createAndPublishEbayVariationListingTrading');
@@ -31,7 +55,8 @@ const focPreorders = fs.readFileSync('scripts/foc-preorders.mjs', 'utf8');
     'each Variation entry must carry its own SKU, price, and quantity -- this is what makes per-cover price/qty independently manageable, same as the REST offer-per-SKU model');
   assert.match(body, /\(pictureSetsXml \? `<Pictures>\$\{pictureSetsXml\}<\/Pictures>` : ''\)/,
     'the per-cover photo binding (Pictures/VariationSpecificPictureSet) must be set INLINE at creation time -- this is the entire point of building on the Trading API instead of the REST one');
-  assert.match(body, /buildVariationPictureSetsXml\(/, 'must build the picture sets the same shape setEbayVariationSpecificPhotos uses, so a listing never needs a follow-up repair call just to get its own creation-time photos bound');
+  assert.match(body, /buildVariationPictureSetsXml\(\s*\n\s*built\.map\(v => \(\{ label: v\.label, sku: v\.sku, imageUrls: \[v\.imageUrl, \.\.\.\(v\.imageUrls \|\| \[\]\)\]\.filter\(Boolean\) \}\)\),\s*\n\s*variantAspectName\s*\n\s*\);/,
+    'must build the picture sets the same shape setEbayVariationSpecificPhotos uses AND actually pass the real variantAspectName through -- a listing never needs a follow-up repair call just to get its own creation-time photos bound');
   assert.match(body, /sellerProfilesXml =\s*\n\s*\(b\.fulfillmentPolicyId \? `<SellerShippingProfile><ShippingProfileID>\$\{xmlEscape\(b\.fulfillmentPolicyId\)\}<\/ShippingProfileID><\/SellerShippingProfile>` : ''\) \+/,
     'must reference the SAME already-resolved eBay Business Policy id (fulfillmentPolicyId) via SellerProfiles that the REST flow resolves -- Business Policy ids are shared across both eBay API systems, so no separate policy-resolution logic is needed');
   assert.match(body, /env\.EBAY_RETURN_POLICY_ID.*ReturnProfileID/, 'must reference the store\'s return policy via SellerProfiles');

@@ -7371,11 +7371,24 @@ export default {
     // variant is named back in the result rather than being dropped and
     // forgotten: a partial binding (4 of 5 covers set) must never look
     // identical to a full success.
-    async function setEbayVariationSpecificPhotos(ebayToken, listingId, variantPhotos) {
+    //
+    // Store report (live error): "AddFixedPriceItem failed: Variation
+    // specific name "" used for pictures does not exist in variation
+    // specific set." -- VariationSpecificPictureSetType has TWO fields,
+    // not one: VariationSpecificName (which ASPECT the photos vary by,
+    // e.g. "Cover") alongside VariationSpecificValue (which value of that
+    // aspect, e.g. "Cover A"). This only ever sent the value, never the
+    // name, so eBay defaulted the name to an empty string and rejected it
+    // outright since "" isn't a real declared aspect. variantAspectName
+    // defaults to 'Cover' -- the only variant dimension this app has ever
+    // used anywhere (see the one call site that sets it, in the FOC group-
+    // listing route) -- but every caller with the real value in scope
+    // still passes it through explicitly rather than relying on the default.
+    async function setEbayVariationSpecificPhotos(ebayToken, listingId, variantPhotos, variantAspectName = 'Cover') {
       const usable = variantPhotos.filter(v => v.label && v.imageUrls && v.imageUrls.length);
       const skipped = variantPhotos.filter(v => !(v.label && v.imageUrls && v.imageUrls.length)).map(v => v.label || v.sku || '(unidentified cover)');
       const sets = usable.map(v =>
-        `<VariationSpecificPictureSet><VariationSpecificValue>${xmlEscape(v.label)}</VariationSpecificValue>` +
+        `<VariationSpecificPictureSet><VariationSpecificName>${xmlEscape(variantAspectName)}</VariationSpecificName><VariationSpecificValue>${xmlEscape(v.label)}</VariationSpecificValue>` +
         v.imageUrls.slice(0, 12).map(u => `<PictureURL>${xmlEscape(u)}</PictureURL>`).join('') +
         `</VariationSpecificPictureSet>`
       ).join('');
@@ -7528,7 +7541,7 @@ export default {
       // post-publish step in this function.
       if (listingId) {
         try {
-          const photoResult = await setEbayVariationSpecificPhotos(ebayToken, listingId, built.map(v => ({ label: v.label, sku: v.sku, imageUrls: [v.imageUrl, ...(v.imageUrls || [])].filter(Boolean) })));
+          const photoResult = await setEbayVariationSpecificPhotos(ebayToken, listingId, built.map(v => ({ label: v.label, sku: v.sku, imageUrls: [v.imageUrl, ...(v.imageUrls || [])].filter(Boolean) })), variantAspectName);
           if (photoResult.skipped.length) warnings.push(`Per-cover photo binding was not set for: ${photoResult.skipped.join(', ')} -- missing a label or photo.`);
         } catch (e) {
           warnings.push('Could not set per-cover "Cover: Select" photo binding: ' + e.message + ' -- covers may not switch photos when a buyer picks one until repaired.');
@@ -7558,11 +7571,16 @@ export default {
     // the fact -- built inline here rather than by calling
     // setEbayVariationSpecificPhotos (which assumes an ItemID that doesn't
     // exist yet).
-    function buildVariationPictureSetsXml(variantPhotos) {
+    // VariationSpecificPictureSetType requires BOTH VariationSpecificName
+    // (which aspect the photos vary by, e.g. "Cover") and
+    // VariationSpecificValue (which value of that aspect) -- see the
+    // matching fix/comment on setEbayVariationSpecificPhotos above for the
+    // live error this caused when only the value was ever sent.
+    function buildVariationPictureSetsXml(variantPhotos, variantAspectName) {
       const usable = variantPhotos.filter(v => v.label && v.imageUrls && v.imageUrls.length);
       const skipped = variantPhotos.filter(v => !(v.label && v.imageUrls && v.imageUrls.length)).map(v => v.label || v.sku || '(unidentified cover)');
       const sets = usable.map(v =>
-        `<VariationSpecificPictureSet><VariationSpecificValue>${xmlEscape(v.label)}</VariationSpecificValue>` +
+        `<VariationSpecificPictureSet><VariationSpecificName>${xmlEscape(variantAspectName)}</VariationSpecificName><VariationSpecificValue>${xmlEscape(v.label)}</VariationSpecificValue>` +
         v.imageUrls.slice(0, 12).map(u => `<PictureURL>${xmlEscape(u)}</PictureURL>`).join('') +
         `</VariationSpecificPictureSet>`
       ).join('');
@@ -7582,7 +7600,8 @@ export default {
       const anyCoverImage = built.find(v => v.imageUrl)?.imageUrl || '';
       const galleryUrls = [...new Set(built.map(v => v.imageUrl || anyCoverImage).filter(Boolean))];
       const { sets: pictureSetsXml, skipped: pictureSkipped } = buildVariationPictureSetsXml(
-        built.map(v => ({ label: v.label, sku: v.sku, imageUrls: [v.imageUrl, ...(v.imageUrls || [])].filter(Boolean) }))
+        built.map(v => ({ label: v.label, sku: v.sku, imageUrls: [v.imageUrl, ...(v.imageUrls || [])].filter(Boolean) })),
+        variantAspectName
       );
 
       const aspects = buildEbayAspects(b);
@@ -7778,7 +7797,8 @@ export default {
           imageUrls: [imageBySku[sku] || fallbackImage],
         }));
         try {
-          const result = await setEbayVariationSpecificPhotos(ebayToken, listingId, variantPhotos);
+          const variantAspectName = group.variesBy?.specifications?.[0]?.name || 'Cover';
+          const result = await setEbayVariationSpecificPhotos(ebayToken, listingId, variantPhotos, variantAspectName);
           if (result.skipped.length) warning = `Per-cover photo binding was not set for: ${result.skipped.join(', ')} -- missing a label or photo on file.`;
         } catch (e) {
           warning = 'General gallery was repaired, but per-cover "Cover: Select" photo binding failed: ' + e.message;
