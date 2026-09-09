@@ -33,13 +33,19 @@ assert.match(routeBody, /const allCoverImages = \[\.\.\.new Set\(built\.map\(v =
 // Store report (live listing screenshot): selecting "All Covers Bundle"
 // showed a pile of every cover's photo instead of the store's own uploaded
 // "pick your cover" graphic -- the one thing that actually represents a
-// bundle as ONE image. When mainImageUrl is provided it takes over as the
-// bundle's ONLY photo; the "every cover" gallery is only the fallback for
-// when no such image was uploaded.
+// bundle as ONE image. Store request: "i need a main image and a bundle
+// image able to upload here" -- a DEDICATED bundle-only image, distinct
+// from the general main listing photo, takes priority when uploaded; the
+// general main image (usually a "pick your cover" composite anyway) is
+// the next fallback; the full every-cover gallery is the last resort.
+assert.match(routeBody, /const bundleOwnImage = \(typeof body\.bundle\.imageUrl === 'string' && body\.bundle\.imageUrl\.trim\(\)\) \? body\.bundle\.imageUrl\.trim\(\)\.substring\(0, 1000\) : '';/,
+  'must check for a store-uploaded bundle-specific image first');
 assert.match(routeBody, /const bundleMainImage = \(typeof body\.mainImageUrl === 'string' && body\.mainImageUrl\.trim\(\)\) \? body\.mainImageUrl\.trim\(\)\.substring\(0, 1000\) : '';/,
-  'must check for a store-uploaded main/bundle image before falling back to the every-cover gallery');
-assert.match(routeBody, /imageUrl: bundleMainImage \|\| allCoverImages\[0\] \|\| anyCoverImage,\s*\n\s*imageUrls: bundleMainImage \? \[bundleMainImage\] : allCoverImages,/,
-  'the bundle variant must use the store\'s uploaded main image alone when provided, falling back to the full gallery of every selected cover\'s image only when it is not');
+  'must fall back to the general main/bundle image before falling back to the every-cover gallery');
+assert.match(routeBody, /const bundleImage = bundleOwnImage \|\| bundleMainImage;/,
+  'the bundle-specific image must win over the general main image when both are provided');
+assert.match(routeBody, /imageUrl: bundleImage \|\| allCoverImages\[0\] \|\| anyCoverImage,\s*\n\s*imageUrls: bundleImage \? \[bundleImage\] : allCoverImages,/,
+  'the bundle variant must use the resolved single image alone when one exists, falling back to the full gallery of every selected cover\'s image only when neither upload was provided');
 
 // The bundle's TITLE is the shared group title (same as every other
 // variant) -- eBay variation listings have ONE title at the group level;
@@ -65,6 +71,33 @@ assert.match(createGroupBody, /imageUrl: v\.imageUrl \|\| b\.imageUrl,\s*\n\s*im
 assert.match(focDash, /var anyCoverImg=\(preview\.covers\|\|\[\]\)\.find\(function\(c\)\{return c\.imageUrl;\}\);/, 'the review modal must resolve a fallback thumbnail the same way the server does');
 assert.match(focDash, /NO COVER ART/, 'a cover with truly no image anywhere must show a clear flag, not a silently blank thumbnail');
 assert.match(focDash, /borrowing another cover\\'s photo -- add its own cover art later/, 'a cover borrowing a sibling\'s photo must say so explicitly, not look identical to one with its own real art');
-assert.match(focDash, /Its photo gallery is every checked cover\\'s own cover image, so buyers see all of them\./, 'the bundle section must explain its image behavior inline, not leave the store guessing');
+// Store request: "i need a main image and a bundle image able to upload
+// here" -- the bundle now gets its own dedicated upload, so the inline
+// copy explaining its image behavior changed to describe that instead of
+// the old always-every-cover-photo default.
+assert.match(focDash, /Upload a bundle image below for its own photo, or leave it blank to use every checked cover\\'s own cover image instead\./, 'the bundle section must explain its image behavior inline, not leave the store guessing');
+
+// Store request: "i need a main image and a bundle image able to upload
+// here" -- a distinct upload field for the bundle option's own photo,
+// separate from MAIN LISTING PHOTO. Must have its own file input, preview,
+// hidden URL field, and upload/clear handlers, all wired the same way the
+// existing main-image upload already is.
+assert.match(focDash, /id="foc-eb-grp-bundle-image-file"[^>]*onchange="handleFocGroupBundleImageFile\(this\.files\[0\]\)"/, 'the bundle image file input must exist and call its own upload handler');
+assert.match(focDash, /id="foc-eb-grp-bundle-image-preview"/, 'the bundle image needs its own preview thumbnail element');
+assert.match(focDash, /id="foc-eb-grp-bundle-image-url"/, 'the bundle image needs its own hidden URL field, distinct from foc-eb-grp-main-image-url');
+assert.match(focDash, /onclick="clearFocGroupBundleImage\(\)"/, 'must be able to clear a bundle image independently of the main image');
+assert.match(focDash, /function handleFocGroupBundleImageFile\(file\)\{handleFocGroupImageFile\(file,'foc-eb-grp-bundle-image','Bundle image'\);\}/,
+  'the bundle image handler must reuse the same shared upload mechanics as the main image, targeting its own field prefix');
+// Both the bundle fields (label/price/qty) and the new bundle image fields
+// must show/hide together under the "INCLUDE ALL COVERS BUNDLE" checkbox --
+// a store request added after the bundle-fields-only toggle already
+// existed, so the checkbox's onchange must now target the shared wrapper,
+// not just the original narrower fields div.
+assert.match(focDash, /onchange="document\.getElementById\(\\'foc-eb-grp-bundle-fields-wrap\\'\)\.style\.display=this\.checked\?\\'block\\':\\'none\\'"/,
+  'the bundle checkbox must toggle one shared wrapper containing both the bundle fields and the bundle image uploader');
+// The uploaded bundle image URL must actually reach the submit payload as
+// bundle.imageUrl, or the whole upload UI is decorative.
+assert.match(focDash, /imageUrl:\(document\.getElementById\('foc-eb-grp-bundle-image-url'\)\?\.value\|\|''\)\.trim\(\)\|\|undefined,/,
+  'the bundle payload must include the uploaded bundle-specific image URL');
 
 console.log('FOC eBay variation listing image-fallback + bundle gallery contract checks passed');

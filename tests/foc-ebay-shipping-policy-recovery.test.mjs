@@ -44,6 +44,20 @@ assert.match(worker, /async function getFocPresaleFulfillmentPolicyId\(env, ebay
     'a recovered existing-policy id must be cached the same way a freshly-created one would be, so this recovery path only has to run once per bucket');
   assert.match(fn, /console\.error\('getFocPresaleFulfillmentPolicyId: create response had no fulfillmentPolicyId'/, 'a malformed create response must be logged');
   assert.match(fn, /console\.error\('getFocPresaleFulfillmentPolicyId: threw'/, 'a thrown exception must be logged');
+  // Store report: the warning shown for a clone-create failure ("LSAS
+  // validation failed.") got truncated right at the useful part -- a flat
+  // 150-char slice of the raw error JSON cut off before eBay's own
+  // `parameters` array (which names the actual offending field) ever
+  // appeared. Must extract longMessage + parameters specifically instead
+  // of blindly truncating the raw text, so the real cause is diagnosable
+  // from the dashboard warning itself.
+  assert.match(fn, /const errText = \(await createRes\.text\(\)\.catch\(\(\) => ''\)\)\.substring\(0, 1000\);/,
+    'must capture enough of the raw error body to actually reach eBay\'s parameters array, not just its opening fields');
+  assert.match(fn, /const parsed = JSON\.parse\(errText\);/, 'must attempt to parse the structured eBay error body');
+  assert.match(fn, /const params = \(firstError\.parameters \|\| \[\]\)\.map\(p => `\$\{p\.name\}=\$\{p\.value\}`\)\.join\(', '\);/,
+    'must surface eBay\'s own named parameters (the actual invalid field) when present, not just the generic top-level message');
+  assert.match(fn, /catch \(_\) \{ \/\* not JSON -- fall back to the raw truncated text above \*\/ \}/,
+    'a non-JSON or unexpectedly-shaped error body must fall back to the raw text, not throw and lose the whole listing warning');
 }
 
 console.log('getFocPresaleFulfillmentPolicyId logging and recovery contract checks passed');
