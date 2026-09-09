@@ -19,9 +19,9 @@ const routeStart = worker.indexOf("url.pathname === '/foc/ebay/presale-group-pre
 const routeEnd = worker.indexOf("if (url.pathname === '/foc/ebay/convert-to-instock')", routeStart);
 const routeBody = worker.slice(routeStart, routeEnd);
 
-assert.match(routeBody, /buildFocPresaleDefaults\(\{ \.\.\.repSku, title: family\.title, variant_label: '' \}, eligibleCovers\[0\]\.priceCents, onSaleDate, family\.issue_number \|\| ''\);/,
+assert.match(routeBody, /buildFocPresaleDefaults\(\{ \.\.\.repSku, title: family\.title, variant_label: '' \}, eligibleCovers\[0\]\.priceCents, onSaleDate, family\.issue_number \|\| '', family\.series_name \|\| ''\);/,
   'the preview route must build the shared title from family.title (the clean, cover-agnostic title), not the representative cover\'s own sku.title');
-assert.match(routeBody, /buildFocPresaleDefaults\(\{ \.\.\.repSku, title: family\.title, variant_label: '' \}, built\[0\]\.priceCents \|\| Math\.round\(Number\(built\[0\]\.price\) \* 100\), onSaleDate, family\.issue_number \|\| ''\);/,
+assert.match(routeBody, /buildFocPresaleDefaults\(\{ \.\.\.repSku, title: family\.title, variant_label: '' \}, built\[0\]\.priceCents \|\| Math\.round\(Number\(built\[0\]\.price\) \* 100\), onSaleDate, family\.issue_number \|\| '', family\.series_name \|\| ''\);/,
   'the create route must build the shared title from family.title too, matching the preview route exactly (or the published listing would drift from what was previewed)');
 
 console.log('FOC eBay group-listing shared title (family.title, not per-cover sku.title) checks passed');

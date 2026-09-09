@@ -2410,6 +2410,19 @@ function buildEbayAspects(b) {
     const values = Array.isArray(v) ? v.map(x => String(x || '').trim()).filter(Boolean) : [String(v || '').trim()].filter(Boolean);
     if (values.length) aspects[k] = values;
   }
+  // Store report (live listing screenshot, eBay's own Variations edit page):
+  // "Artist/Writer" showed up blank in the item specifics even though
+  // Writer and Artist were both being sent. eBay's real comics-category
+  // aspect is the single combined "Artist/Writer" field -- "Writer" and
+  // "Artist" aren't aspect names eBay's comics category recognizes at all,
+  // so both values were being silently dropped into nowhere. This app's
+  // own dashboard still tracks them as two separate store-editable inputs
+  // (more natural for a store to fill in), so the merge happens here, at
+  // the one place every listing path funnels its final aspects through,
+  // rather than needing every caller/UI to know eBay's real field name.
+  const artistWriterValues = [...new Set([...(aspects['Writer'] || []), ...(aspects['Artist'] || [])])];
+  delete aspects['Writer']; delete aspects['Artist'];
+  if (artistWriterValues.length) aspects['Artist/Writer'] = artistWriterValues;
   // categoryId 259104 is eBay's Comics category -- "Sport" has no business
   // being on a comic listing at all (confirmed live: a comic presale was
   // showing "Sport: Trading Cards" as an item specific). This default only
@@ -3587,7 +3600,7 @@ export default {
     // before anything is published) and the create endpoint (used as the
     // fallback whenever the client doesn't override a given field from its
     // own review screen).
-    function buildFocPresaleDefaults(sku, priceCents, onSaleDate, issueNumber = '') {
+    function buildFocPresaleDefaults(sku, priceCents, onSaleDate, issueNumber = '', seriesName = '') {
       const onSaleLabel = onSaleDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
       // sku.variant_label sometimes already repeats the title verbatim (bad
       // FOC import data, e.g. variant_label === title) -- appending it
@@ -3604,7 +3617,18 @@ export default {
       // this reserves space so the suffix always survives the 80-char cap.
       const PRESALE_TITLE_SUFFIX = ' - PRESALE';
       const titleBase = [baseTitle, variantLabel].filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
-      const title = (titleBase.substring(0, 80 - PRESALE_TITLE_SUFFIX.length) + PRESALE_TITLE_SUFFIX).substring(0, 80);
+      let title = (titleBase.substring(0, 80 - PRESALE_TITLE_SUFFIX.length) + PRESALE_TITLE_SUFFIX).substring(0, 80);
+      // Store request: "better ebay titles with seo?" -- buyers commonly
+      // search comics by publisher alongside the series/issue, and it's
+      // real data already on file (not a guess), so it's worth the extra
+      // keyword when it actually fits -- never at the cost of truncating
+      // the title/variant that uniquely identifies the specific book, so
+      // this only ever applies on top of the untruncated titleBase.
+      const publisherKeyword = String(sku.publisher || '').trim();
+      if (publisherKeyword && !titleBase.toLowerCase().includes(publisherKeyword.toLowerCase())) {
+        const withPublisher = [titleBase, publisherKeyword].join(' ') + PRESALE_TITLE_SUFFIX;
+        if (withPublisher.length <= 80) title = withPublisher;
+      }
       const description = [
         'PRESALE -- This comic has not been released yet and is not currently in stock.',
         `Expected on-sale/ship date: ${onSaleLabel}. Your order ships promptly once we receive stock from the distributor on or shortly after that date.`,
@@ -3622,10 +3646,18 @@ export default {
       // Publication Year) or safe fixed defaults for a brand-new, US-
       // published, non-vintage single-issue presale comic -- exactly what
       // every FOC listing this creates actually is.
+      // Store report (live listing screenshot): "Series Title" showed up
+      // blank among eBay's own item specifics -- a real, searchable aspect
+      // this app already has the data for (comic_title_families.series_name,
+      // the clean series name distinct from the family's display title/the
+      // sku's own cover-specific title), just never sent. Falls back to
+      // stripping a trailing "#<issue>" off the base title only if the
+      // caller didn't have a real series_name on hand.
+      const seriesTitle = seriesName || baseTitle.replace(/\s*#\s*[\w.-]+\s*$/, '').trim() || baseTitle;
       const customAspects = {
         Publisher: sku.publisher || '', Writer: sku.writer || '',
         Artist: sku.interior_artist || '', 'Cover Artist': sku.cover_artist || '',
-        'Release Date': onSaleLabel,
+        'Release Date': onSaleLabel, 'Series Title': seriesTitle,
         'Issue Number': issueNumber || '', 'Publication Year': String(onSaleDate.getUTCFullYear()),
         Tradition: 'US Comics', Era: 'Modern Age (1992-Now)', Language: 'English',
         Type: 'Comic Book', 'Unit of Sale': 'Single Unit', Style: 'Color',
@@ -3695,10 +3727,12 @@ export default {
       // cover photo, unchecked, on every single listing (see the aspects
       // comment below for the full story).
       let issueNumber = '';
+      let seriesName = '';
       if (sku.family_id) {
         try {
-          const { data: familyRows } = await supabaseAdminFetch(env, `comic_title_families?id=eq.${encodeURIComponent(sku.family_id)}&select=issue_number`);
+          const { data: familyRows } = await supabaseAdminFetch(env, `comic_title_families?id=eq.${encodeURIComponent(sku.family_id)}&select=issue_number,series_name`);
           issueNumber = familyRows?.[0]?.issue_number || '';
+          seriesName = familyRows?.[0]?.series_name || '';
         } catch (_) {}
       }
 
@@ -3720,7 +3754,7 @@ export default {
       const priceCents = Number(sku.customer_price_cents || sku.msrp_cents || 0);
       if (!priceCents) return json({ ok: false, error: 'This SKU has no price set -- set a customer price before creating a presale listing' }, 400);
 
-      const defaults = buildFocPresaleDefaults(sku, priceCents, onSaleDate, issueNumber);
+      const defaults = buildFocPresaleDefaults(sku, priceCents, onSaleDate, issueNumber, seriesName);
       // eBay computes the buyer's delivery estimate as handling time +
       // carrier transit FROM THE PURCHASE DATE -- listing this under the
       // store's normal fast-handling policy would promise delivery before
@@ -3912,7 +3946,7 @@ export default {
 
       let family, skuRows;
       try {
-        const { data: familyRows } = await supabaseAdminFetch(env, `comic_title_families?id=eq.${encodeURIComponent(familyId)}&store_id=eq.${encodeURIComponent(storeId)}&select=id,title,issue_number`);
+        const { data: familyRows } = await supabaseAdminFetch(env, `comic_title_families?id=eq.${encodeURIComponent(familyId)}&store_id=eq.${encodeURIComponent(storeId)}&select=id,title,issue_number,series_name`);
         family = Array.isArray(familyRows) ? familyRows[0] : null;
         const { data: skus } = await supabaseAdminFetch(env, `comic_skus?family_id=eq.${encodeURIComponent(familyId)}&store_id=eq.${encodeURIComponent(storeId)}&select=*`);
         skuRows = skus || [];
@@ -3967,7 +4001,7 @@ export default {
         // begin with. Using family.title as the title source (not
         // repSku.title) actually gets the shared, cover-agnostic title a
         // GROUP listing needs.
-        const defaults = buildFocPresaleDefaults({ ...repSku, title: family.title, variant_label: '' }, eligibleCovers[0].priceCents, onSaleDate, family.issue_number || '');
+        const defaults = buildFocPresaleDefaults({ ...repSku, title: family.title, variant_label: '' }, eligibleCovers[0].priceCents, onSaleDate, family.issue_number || '', family.series_name || '');
         return json({
           ok: true, familyTitle: family.title, issueNumber: family.issue_number || '',
           covers, eligibleCount: eligibleCovers.length, handlingBusinessDays, ...defaults,
@@ -4079,7 +4113,7 @@ export default {
       // never cover-agnostic on its own for PRH imports, so the shared
       // group title/description must be built from family.title, not
       // repSku.title.
-      const defaults = buildFocPresaleDefaults({ ...repSku, title: family.title, variant_label: '' }, built[0].priceCents || Math.round(Number(built[0].price) * 100), onSaleDate, family.issue_number || '');
+      const defaults = buildFocPresaleDefaults({ ...repSku, title: family.title, variant_label: '' }, built[0].priceCents || Math.round(Number(built[0].price) * 100), onSaleDate, family.issue_number || '', family.series_name || '');
 
       const groupTitle = (typeof body.title === 'string' && body.title.trim()) ? body.title.trim().substring(0, 80) : defaults.title;
       const descriptionBase = (typeof body.description === 'string' && body.description.trim()) ? body.description.trim().substring(0, 4000) : defaults.description;
@@ -7745,6 +7779,22 @@ export default {
         `<VariationSpecifics><NameValueList><Name>${xmlEscape(variantAspectName)}</Name><Value>${xmlEscape(v.label)}</Value></NameValueList></VariationSpecifics></Variation>`
       ).join('');
       const weightXml = buildEbayWeightXml(b.weightValue, b.weightUnit);
+      // Store report: "its not listing the multi listing in the correct
+      // store category" -- b.storeCategoryNames reached this function (the
+      // dashboard's EBAY STORE CATEGORY field sends it same as the
+      // REST/single-cover path) but was never actually read anywhere in the
+      // XML built below. The REST Inventory API's offer body takes a
+      // storeCategoryNames array of names directly (buildEbayOfferBody
+      // above); the Trading API's equivalent is the Item.Storefront
+      // container, which also accepts plain category names via
+      // StoreCategoryName/StoreCategory2ID's sibling StoreCategory2Name --
+      // no separate numeric-ID lookup call needed, so this mirrors the REST
+      // path's same max-2-names convention.
+      const storeCategoryNames = (Array.isArray(b.storeCategoryNames) ? b.storeCategoryNames : String(b.storeCategoryNames || '').split(','))
+        .map(s => String(s || '').trim()).filter(Boolean).slice(0, 2);
+      const storefrontXml = storeCategoryNames.length
+        ? `<Storefront>${storeCategoryNames[0] ? `<StoreCategoryName>${xmlEscape(storeCategoryNames[0])}</StoreCategoryName>` : ''}${storeCategoryNames[1] ? `<StoreCategory2Name>${xmlEscape(storeCategoryNames[1])}</StoreCategory2Name>` : ''}</Storefront>`
+        : '';
 
       const itemXml =
         `<Item>` +
@@ -7760,6 +7810,7 @@ export default {
         `<PostalCode>${xmlEscape(shipFrom.zip || '')}</PostalCode>` +
         (galleryUrls.length ? `<PictureDetails>${galleryUrls.slice(0, 12).map(u => `<PictureURL>${xmlEscape(u)}</PictureURL>`).join('')}</PictureDetails>` : '') +
         (itemSpecificsXml ? `<ItemSpecifics>${itemSpecificsXml}</ItemSpecifics>` : '') +
+        storefrontXml +
         (sellerProfilesXml ? `<SellerProfiles>${sellerProfilesXml}</SellerProfiles>` : '') +
         (weightXml ? `<ShippingPackageDetails>${weightXml}</ShippingPackageDetails>` : '') +
         (b.bestOfferEnabled ? `<BestOfferDetails><BestOfferEnabled>true</BestOfferEnabled></BestOfferDetails>` : '') +

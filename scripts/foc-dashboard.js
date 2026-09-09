@@ -511,7 +511,12 @@ async function openEbayPresaleReview(skuId){
     '<div class="foc-sku-fields" style="grid-template-columns:1fr 1fr;margin-bottom:10px"><label>PACKAGE WEIGHT<input id="foc-eb-weight" class="tsi" type="number" min=".1" step=".1" value="'+esc(preview.weightValue)+'"></label>'+
     '<label>UNIT<select id="foc-eb-weight-unit" class="tsi"><option value="POUND" '+(preview.weightUnit==='POUND'?'selected':'')+'>LB</option><option value="OUNCE" '+(preview.weightUnit==='OUNCE'?'selected':'')+'>OZ</option></select></label></div>'+
     '<div class="foc-sku-fields" style="grid-template-columns:1fr 1fr;margin-bottom:10px">'+
-    ['Publisher','Writer','Artist','Cover Artist'].map(function(k){return '<label>'+k.toUpperCase()+'<input class="tsi" data-foc-eb-aspect="'+esc(k)+'" value="'+esc(asp[k]||'')+'"></label>';}).join('')+
+    // Store report (live listing screenshot): "Series Title" showed up
+    // blank on eBay's own item specifics page -- shown here alongside the
+    // other real, eBay-recognized aspects (not buried in the MORE ITEM
+    // DETAILS section below) since it's now a real server-computed default
+    // (comic_title_families.series_name), same as Publisher/Writer/Artist.
+    ['Publisher','Writer','Artist','Cover Artist','Series Title'].map(function(k){return '<label>'+k.toUpperCase()+'<input class="tsi" data-foc-eb-aspect="'+esc(k)+'" value="'+esc(asp[k]||'')+'"></label>';}).join('')+
     '</div>'+
     '<details style="margin-bottom:10px"><summary style="cursor:pointer;font:9px var(--font-mono);color:var(--dim)">MORE ITEM DETAILS (OPTIONAL -- feeds eBay item specifics, not just this description)</summary>'+
     '<div class="foc-sku-fields" style="grid-template-columns:1fr 1fr;margin-top:8px">'+
@@ -725,7 +730,11 @@ async function openFamilyEbayGroupReview(familyId){
     '</select>'+(shipPolicies.length?'':'<div style="font:8px var(--font-mono);color:var(--red);margin-top:3px">Could not load your eBay shipping policies'+(shipPoliciesError?(': '+esc(shipPoliciesError)):'')+'.</div>')+'</label>'+
     '<label style="display:flex;gap:6px;align-items:center;margin-bottom:10px;font:9px var(--font-mono);color:var(--dim)"><input id="foc-eb-grp-best-offer" type="checkbox" checked> ALLOW BEST OFFER (every cover)</label>'+
     '<div class="foc-sku-fields" style="grid-template-columns:1fr 1fr;margin-bottom:10px"><label>PACKAGE WEIGHT<input id="foc-eb-grp-weight" class="tsi" type="number" min=".1" step=".1" value="'+esc(preview.weightValue)+'"></label><label>UNIT<select id="foc-eb-grp-weight-unit" class="tsi"><option value="POUND" '+(preview.weightUnit==='POUND'?'selected':'')+'>LB</option><option value="OUNCE" '+(preview.weightUnit==='OUNCE'?'selected':'')+'>OZ</option></select></label></div>'+
-    '<div class="foc-sku-fields" style="grid-template-columns:1fr 1fr;margin-bottom:10px">'+['Publisher','Writer','Artist'].map(function(k){return '<label>'+k.toUpperCase()+'<input class="tsi" data-eb-grp-aspect="'+esc(k)+'" value="'+esc(asp[k]||'')+'"></label>';}).join('')+'</div>'+
+    // Store report (live listing screenshot): "Series Title" showed up
+    // blank on eBay's own item specifics page for a multi-cover listing too
+    // -- shown here pre-filled from the same real server default
+    // (comic_title_families.series_name) the single-cover modal now uses.
+    '<div class="foc-sku-fields" style="grid-template-columns:1fr 1fr;margin-bottom:10px">'+['Publisher','Writer','Artist','Series Title'].map(function(k){return '<label>'+k.toUpperCase()+'<input class="tsi" data-eb-grp-aspect="'+esc(k)+'" value="'+esc(asp[k]||'')+'"></label>';}).join('')+'</div>'+
     '<label style="font:9px var(--font-mono);color:var(--dim);display:block;margin-bottom:10px">EBAY STORE CATEGORY (optional)<input id="foc-eb-grp-store-category" class="tsi" value="'+esc(lastStoreCategory)+'" style="margin-top:4px"></label>'+
     '<div style="font:9px var(--font-mono);color:var(--dim);margin-bottom:6px">COVERS ON THIS LISTING</div>'+coverRows+
     '<div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border)"><label style="display:flex;gap:6px;align-items:center;margin-bottom:4px;font:9px var(--font-mono);color:var(--dim)"><input id="foc-eb-grp-bundle-cb" type="checkbox" onchange="document.getElementById(\'foc-eb-grp-bundle-fields-wrap\').style.display=this.checked?\'block\':\'none\'"> INCLUDE "ALL COVERS BUNDLE" VARIANT</label>'+
