@@ -47,8 +47,19 @@ console.log('buildVariationPictureSetsXml checks passed');
 
   assert.match(body, /await ebayTradingApiCall\(ebayToken, 'AddFixedPriceItem', itemXml\)/,
     'must publish via the Trading API\'s AddFixedPriceItem, not the REST inventory_item/offer/group flow');
-  assert.match(body, /<Variations>\$\{variationSpecificsSetXml\}\$\{variationEntriesXml\}/,
-    'the item body must declare a Variations container with the specifics-set and per-variant entries');
+  // Store report (live error, again, after the VariationSpecificName fix):
+  // "Variation specific name "" used for pictures does not exist in
+  // variation specific set" -- the name WAS being sent correctly; the real
+  // bug was element order. eBay's Trading API VariationsType schema
+  // requires a strict child sequence -- Variation*, Pictures,
+  // VariationSpecificsSet, ModifyNameList -- and this had
+  // VariationSpecificsSet FIRST, before any Variation. An out-of-sequence
+  // element against a strict XSD doesn't necessarily throw a schema error;
+  // eBay's binder can silently fail to register the misplaced
+  // VariationSpecificsSet at all, leaving the "declared legal variation
+  // specifics" empty by the time it validates Pictures against it.
+  assert.match(body, /`<Variations>\$\{variationEntriesXml\}` \+\s*\n\s*\(pictureSetsXml \? `<Pictures>\$\{pictureSetsXml\}<\/Pictures>` : ''\) \+\s*\n\s*variationSpecificsSetXml \+/,
+    'Variations children must appear in eBay\'s required order -- Variation entries, then Pictures, then VariationSpecificsSet -- not VariationSpecificsSet first');
   assert.match(body, /variationSpecificsSetXml = `<VariationSpecificsSet><NameValueList><Name>\$\{xmlEscape\(variantAspectName\)\}<\/Name>\$\{built\.map\(v => `<Value>\$\{xmlEscape\(v\.label\)\}<\/Value>`\)\.join\(''\)\}<\/NameValueList><\/VariationSpecificsSet>`;/,
     'VariationSpecificsSet must declare every cover\'s label as one of the varying aspect\'s legal values, or eBay rejects the per-variant entries below');
   assert.match(body, /<SKU>\$\{xmlEscape\(v\.sku\)\}<\/SKU><StartPrice currencyID="USD">\$\{xmlEscape\(Number\(v\.price\)\.toFixed\(2\)\)\}<\/StartPrice><Quantity>/,

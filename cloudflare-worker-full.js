@@ -7642,8 +7642,22 @@ export default {
         (itemSpecificsXml ? `<ItemSpecifics>${itemSpecificsXml}</ItemSpecifics>` : '') +
         (sellerProfilesXml ? `<SellerProfiles>${sellerProfilesXml}</SellerProfiles>` : '') +
         (b.bestOfferEnabled ? `<BestOfferDetails><BestOfferEnabled>true</BestOfferEnabled></BestOfferDetails>` : '') +
-        `<Variations>${variationSpecificsSetXml}${variationEntriesXml}` +
+        // Store report (live error, again, after the VariationSpecificName
+        // fix above): "Variation specific name "" used for pictures does
+        // not exist in variation specific set" -- STILL failed with the
+        // name genuinely being sent correctly. Root cause: eBay's Trading
+        // API VariationsType schema requires a strict child element order
+        // -- Variation*, Pictures, VariationSpecificsSet, ModifyNameList --
+        // and this had VariationSpecificsSet FIRST, before any Variation.
+        // An out-of-sequence element against a strict XSD doesn't
+        // necessarily throw a schema error outright; eBay's binder can
+        // silently fail to register the misplaced VariationSpecificsSet at
+        // all, leaving the "declared legal variation specifics" empty by
+        // the time it validates Pictures against it -- explaining an
+        // "empty name" complaint even though a real name was sent.
+        `<Variations>${variationEntriesXml}` +
         (pictureSetsXml ? `<Pictures>${pictureSetsXml}</Pictures>` : '') +
+        variationSpecificsSetXml +
         `</Variations>` +
         `</Item>`;
 
