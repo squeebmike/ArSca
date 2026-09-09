@@ -119,13 +119,23 @@ console.log('buildEbayWeightXml checks passed');
     'a publish that reports success but returns no ItemID must be treated as an error, not silently returned as if it worked');
   assert.match(body, /return \{ listingId, inventoryItemGroupKey: listingId, warnings, variants:/,
     'inventoryItemGroupKey must equal the listingId itself -- a Trading API variation listing IS one ItemID for the whole group, unlike the REST flow\'s separate inventoryItemGroupKey; reusing the same field lets every existing sibling-detection/withdrawal helper keep working unchanged for both systems');
-  // Store report: the store-uploaded "MAIN LISTING PHOTO" never showed up
-  // anywhere on the live listing -- b.mainImageUrl was accepted by the
+  // Store report #1: the store-uploaded "MAIN LISTING PHOTO" never showed
+  // up anywhere on the live listing -- b.mainImageUrl was accepted by the
   // route and passed all the way into this function, but nothing here ever
-  // read it. Must lead the general/default gallery (shown before a buyer
-  // picks a cover), same as its own label promises.
-  assert.match(body, /const galleryUrls = \[\.\.\.new Set\(\[b\.mainImageUrl, \.\.\.built\.map\(v => v\.imageUrl \|\| anyCoverImage\)\]\.filter\(Boolean\)\)\];/,
-    'galleryUrls must lead with b.mainImageUrl when provided -- it was silently dropped entirely before this fix');
+  // read it.
+  // Store report #2 (after fixing #1 the naive way): "it loads all covers
+  // again, doubling them up. the books images up top don't change the
+  // item, the ones at the bottom do change when clicked." Item.PictureDetails
+  // (the general/default gallery) and Item.Variations.Pictures (the actual
+  // per-cover switching) are two SEPARATE, ADDITIVE mechanisms on the
+  // Trading API -- putting every cover's own photo into PictureDetails
+  // (copying the REST group-level imageUrls' "one entry per variant"
+  // contract, which does NOT apply here) made every cover's photo show up
+  // TWICE in eBay's flat thumbnail strip. PictureDetails must carry only
+  // ONE default photo: the store's uploaded composite, or (absent that) a
+  // single representative cover photo -- never a copy of every variant.
+  assert.match(body, /const galleryUrls = \[b\.mainImageUrl \|\| anyCoverImage\]\.filter\(Boolean\);/,
+    'galleryUrls must be a single default photo (mainImageUrl, falling back to one representative cover), never one entry per cover -- that duplicates what Variations.Pictures already binds per-cover');
 }
 console.log('createAndPublishEbayVariationListingTrading checks passed');
 
