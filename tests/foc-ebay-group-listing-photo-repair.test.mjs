@@ -21,8 +21,10 @@ const repairFnBody = worker.slice(repairFnStart, repairFnEnd);
 assert.match(repairFnBody, /fetch\(`https:\/\/api\.ebay\.com\/sell\/inventory\/v1\/inventory_item_group\/\$\{groupKey\}`, \{\s*headers:/,
   'must GET the group\'s current state from eBay first -- title/description/aspects/variesBy are preserved from what eBay already has, only imageUrls is corrected, so this can never accidentally drift the listing\'s other fields');
 assert.match(repairFnBody, /const variantSKUs = Array\.isArray\(group\.variantSKUs\)/, 'must read the live variantSKUs order from eBay -- that order defines the position each corrected image must land in');
-assert.match(repairFnBody, /if \(r\.data\?\.ebaySku\) imageBySku\[r\.data\.ebaySku\] = r\.data\.image \|\| '';/,
+assert.match(repairFnBody, /imageBySku\[sku\] = r\.data\.image \|\| '';/,
   'must map each variant SKU back to that inventory_item row\'s OWN stored image -- the per-row image was never touched by the shared-array bug, so it is the trustworthy source for the repair');
+assert.match(repairFnBody, /async function repairEbayGroupListingImages\(env, ebayToken, storeId, groupKey, rows\)/,
+  'must accept the store\'s inventory_items rows as a parameter instead of re-fetching them itself -- the batch-repair route already has this same store-wide set and would otherwise re-fetch it once per group listing being repaired');
 assert.match(repairFnBody, /const correctedImageUrls = variantSKUs\.map\(sku => imageBySku\[sku\] \|\| fallbackImage\)/,
   'the corrected array must stay exactly one entry per live variant SKU, in eBay\'s own order -- never shorter/longer than variantSKUs or the position-binding contract breaks again');
 assert.match(repairFnBody, /if \(!fallbackImage\) \{ const e = new Error\('No usable cover image found on file/,
@@ -41,10 +43,29 @@ assert.match(repairFnBody, /method: 'PUT',[\s\S]*?imageUrls: correctedImageUrls,
 // above is still worth keeping (it fixes the general/fallback gallery),
 // but it does not and cannot fix the actual per-cover dropdown-to-photo
 // binding on its own.
-assert.match(repairFnBody, /const specValues = \(group\.variesBy\?\.specifications\?\.\[0\]\?\.values\) \|\| \[\];/,
-  'must read the live specifications.values from eBay to know each SKU\'s own dropdown label -- VariationSpecificValue has to be the exact buyer-facing label text, not a SKU or internal key');
-assert.match(repairFnBody, /await setEbayVariationSpecificPhotos\(ebayToken, listingId, variantSKUs\.map\(sku => \(\{ label: labelBySku\[sku\], imageUrls: \[imageBySku\[sku\] \|\| fallbackImage\] \}\)\)\)/,
-  'the repair must also call setEbayVariationSpecificPhotos with one entry per SKU, using each SKU\'s own stored image -- fixing only the REST-side gallery array leaves the actual buyer-facing symptom (dropdown does not change the photo) completely unfixed');
+// eBay's own variantSKUs/specifications.values arrays are documented as
+// positionally aligned -- but that is exactly the "documented as
+// sufficient, not actually true in practice" assumption that broke the
+// REST group-level imageUrls array before this repair tool existed (see
+// foc-ebay-group-image-position-binding.test.mjs). Trusting it a SECOND
+// time here to look up each SKU's label would risk silently cross-wiring
+// one cover's photo onto a different cover's dropdown entry -- worse than
+// the original bug, since a real (but wrong) photo would show up instead
+// of no photo at all. The repair instead re-derives each cover's label
+// from this app's OWN trusted data: focSkuId -> comic_skus.variant_label,
+// the exact same label this app sent to eBay when the listing was created.
+assert.doesNotMatch(repairFnBody, /specifications\?\.\[0\]\?\.values/,
+  'must NOT re-derive per-SKU labels from eBay\'s specifications.values by array position -- that is an unverified assumption this app already got burned by once for the group imageUrls array, and a silent mismatch here would cross-wire covers instead of erroring');
+assert.match(repairFnBody, /const focSkuIds = \[\.\.\.new Set\(Object\.values\(focSkuIdBySku\)\.filter\(Boolean\)\)\];/,
+  'must collect each variant\'s own focSkuId from our own inventory_items rows, not from eBay\'s response');
+assert.match(repairFnBody, /comic_skus\?id=in\.\(\$\{focSkuIds\.map\(id => encodeURIComponent\(id\)\)\.join\(','\)\}\)&select=id,variant_label/,
+  'must look up each cover\'s real label from comic_skus by its own focSkuId -- the same source of truth the label was originally built from, not eBay\'s echoed array');
+assert.match(repairFnBody, /label: focSkuIdBySku\[sku\] \? labelBySkuId\[focSkuIdBySku\[sku\]\] : nameBySku\[sku\],/,
+  'a real cover uses its own comic_skus label; the synthetic bundle variant (no focSkuId) falls back to its own stored name, which already IS its label verbatim');
+assert.match(repairFnBody, /const result = await setEbayVariationSpecificPhotos\(ebayToken, listingId, variantPhotos\);/,
+  'the repair must also call setEbayVariationSpecificPhotos with one entry per SKU -- fixing only the REST-side gallery array leaves the actual buyer-facing symptom (dropdown does not change the photo) completely unfixed');
+assert.match(repairFnBody, /if \(result\.skipped\.length\) warning = `Per-cover photo binding was not set for: \$\{result\.skipped\.join\(', '\)\}/,
+  'a variant skipped for missing a label/photo must be named in the warning, not silently omitted -- a partial binding must never look identical to full success');
 assert.match(repairFnBody, /warning = 'General gallery was repaired, but per-cover "Cover: Select" photo binding failed: '/,
   'a Trading API failure must not throw and lose the REST-side repair that already succeeded -- it must come back as a warning on the result instead');
 
@@ -70,6 +91,9 @@ assert.match(helperBody, /<VariationSpecificValue>\$\{xmlEscape\(v\.label\)\}<\/
   'each picture set must be keyed by the variation\'s own label text (VariationSpecificValue) -- this has to exactly match the dropdown\'s own option text or eBay cannot bind the photos to the right cover');
 assert.match(helperBody, /<Item><ItemID>\$\{xmlEscape\(listingId\)\}<\/ItemID><Variations><Pictures>\$\{sets\}<\/Pictures><\/Variations><\/Item>/,
   'the picture sets must be nested under Item.Variations.Pictures, eBay\'s documented hierarchy for this field -- a wrong nesting level is silently ignored rather than erroring');
+assert.match(helperBody, /const skipped = variantPhotos\.filter\(v => !\(v\.label && v\.imageUrls && v\.imageUrls\.length\)\)\.map\(v => v\.label \|\| v\.sku \|\| '\(unidentified cover\)'\);/,
+  'a variant missing a label or photo must be tracked by name/sku, not just silently dropped from the request -- otherwise a partial binding (e.g. 4 of 5 covers set) looks identical to full success to every caller');
+assert.match(helperBody, /return \{ \.\.\.result, skipped \};/, 'the skipped list must actually be returned to the caller, not just computed and discarded');
 
 console.log('eBay Trading API variation-photo helper checks passed');
 
@@ -81,8 +105,10 @@ console.log('eBay Trading API variation-photo helper checks passed');
 const createFnStart = worker.indexOf('async function createAndPublishEbayVariationListing');
 const createFnEnd = worker.indexOf('// Repairs group-listing photo-to-cover binding', createFnStart);
 const createFnBody = worker.slice(createFnStart, createFnEnd);
-assert.match(createFnBody, /await setEbayVariationSpecificPhotos\(ebayToken, listingId, built\.map\(v => \(\{ label: v\.label, imageUrls: \[v\.imageUrl, \.\.\.\(v\.imageUrls \|\| \[\]\)\]\.filter\(Boolean\) \}\)\)\)/,
+assert.match(createFnBody, /const photoResult = await setEbayVariationSpecificPhotos\(ebayToken, listingId, built\.map\(v => \(\{ label: v\.label, sku: v\.sku, imageUrls: \[v\.imageUrl, \.\.\.\(v\.imageUrls \|\| \[\]\)\]\.filter\(Boolean\) \}\)\)\)/,
   'a freshly published group listing must have its per-cover photo binding set at publish time, using every real photo already gathered for that variant -- not left for a store to notice and repair later');
+assert.match(createFnBody, /if \(photoResult\.skipped\.length\) warnings\.push\(`Per-cover photo binding was not set for: \$\{photoResult\.skipped\.join\(', '\)\}/,
+  'a variant skipped for missing a label/photo at publish time must be named in the listing\'s own warnings, not silently omitted');
 assert.match(createFnBody, /warnings\.push\('Could not set per-cover "Cover: Select" photo binding: '/,
   'a Trading API failure here must surface as a warning on the listing result, never throw and kill an otherwise-successful publish');
 
@@ -99,10 +125,12 @@ const routeEnd = worker.indexOf('// Flips any eBay presale listings for a FOC cy
 const routeBody = worker.slice(routeStart, routeEnd);
 
 assert.match(routeBody, /requireStoreUser\(request, env, storeId, \['owner','admin'\]\)/, 'must require owner/admin auth, same as the other FOC eBay admin routes');
+assert.match(routeBody, /const \{ data: rows \} = await supabaseAdminFetch\(env, `inventory_items\?store_id=eq\.\$\{encodeURIComponent\(storeId\)\}&status=neq\.sold&select=data`\);/,
+  'must fetch the store\'s inventory_items exactly once regardless of how many groups get repaired, and pass that same set into every repairEbayGroupListingImages call -- re-fetching this per group would be redundant I/O for a store with several live listings');
 assert.match(routeBody, /groupKeys = \[\.\.\.new Set\(\(rows \|\| \[\]\)\.map\(r => r\.data\?\.ebayInventoryItemGroupKey\)\.filter\(Boolean\)\)\]/,
   'when no specific groupKey is given, must discover every distinct group listing on file for the store and repair them all in one pass');
-assert.match(routeBody, /for \(const groupKey of groupKeys\) \{\s*try \{ repaired\.push\(await repairEbayGroupListingImages/,
-  'must attempt every group listing independently -- one listing failing (e.g. already ended on eBay) must not block repairing the rest');
+assert.match(routeBody, /for \(const groupKey of groupKeys\) \{\s*try \{ repaired\.push\(await repairEbayGroupListingImages\(env, ebayToken, storeId, groupKey, rows\)\); \}/,
+  'must attempt every group listing independently, passing the already-fetched rows through -- one listing failing (e.g. already ended on eBay) must not block repairing the rest');
 assert.match(routeBody, /catch \(e\) \{ failed\.push\(\{ groupKey, error: e\.message \}\); \}/, 'a failed repair must be reported back per-listing, not thrown and lost');
 
 console.log('FOC eBay group-listing photo repair route checks passed');

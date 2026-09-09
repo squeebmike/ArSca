@@ -4150,18 +4150,22 @@ export default {
       if (!ebayToken) return json({ needsToken: true, error: 'Connect eBay first: missing user access/refresh token' }, 401);
 
       let body = {}; try { body = await request.json(); } catch (_) {}
+      // Fetched once here regardless of how many groups end up being
+      // repaired -- repairEbayGroupListingImages needs this same
+      // store-wide set for every group, and re-fetching it per group
+      // would be redundant I/O for a store with several live listings.
+      const { data: rows } = await supabaseAdminFetch(env, `inventory_items?store_id=eq.${encodeURIComponent(storeId)}&status=neq.sold&select=data`);
       let groupKeys;
       if (typeof body.groupKey === 'string' && body.groupKey.trim()) {
         groupKeys = [body.groupKey.trim()];
       } else {
-        const { data: rows } = await supabaseAdminFetch(env, `inventory_items?store_id=eq.${encodeURIComponent(storeId)}&status=neq.sold&select=data`);
         groupKeys = [...new Set((rows || []).map(r => r.data?.ebayInventoryItemGroupKey).filter(Boolean))];
       }
       if (!groupKeys.length) return json({ ok: true, repaired: [], failed: [], message: 'No group listings on file to repair' });
 
       const repaired = [], failed = [];
       for (const groupKey of groupKeys) {
-        try { repaired.push(await repairEbayGroupListingImages(env, ebayToken, storeId, groupKey)); }
+        try { repaired.push(await repairEbayGroupListingImages(env, ebayToken, storeId, groupKey, rows)); }
         catch (e) { failed.push({ groupKey, error: e.message }); }
       }
       return json({ ok: true, repaired, failed });
@@ -7329,20 +7333,30 @@ export default {
       }
       return { ack, raw: txt };
     }
-    // variantPhotos: [{ label, imageUrls: [url, ...] }] -- one entry per
-    // variation value. VariationSpecificValue must equal the exact text
-    // shown in the "Cover:" dropdown (the same label used for
+    // variantPhotos: [{ label, sku, imageUrls: [url, ...] }] -- one entry
+    // per variation value. VariationSpecificValue must equal the exact
+    // text shown in the "Cover:" dropdown (the same label used for
     // variesBy.specifications.values above), not a SKU or internal key,
     // or eBay can't match the photo set to the right dropdown option.
+    // A variant missing a label or a photo is left out of the request
+    // rather than sent with a blank value (which eBay would likely
+    // reject or silently ignore) -- but that means a variant CAN be
+    // silently omitted if the caller isn't careful, so every skipped
+    // variant is named back in the result rather than being dropped and
+    // forgotten: a partial binding (4 of 5 covers set) must never look
+    // identical to a full success.
     async function setEbayVariationSpecificPhotos(ebayToken, listingId, variantPhotos) {
-      const sets = variantPhotos.filter(v => v.label && v.imageUrls && v.imageUrls.length).map(v =>
+      const usable = variantPhotos.filter(v => v.label && v.imageUrls && v.imageUrls.length);
+      const skipped = variantPhotos.filter(v => !(v.label && v.imageUrls && v.imageUrls.length)).map(v => v.label || v.sku || '(unidentified cover)');
+      const sets = usable.map(v =>
         `<VariationSpecificPictureSet><VariationSpecificValue>${xmlEscape(v.label)}</VariationSpecificValue>` +
         v.imageUrls.slice(0, 12).map(u => `<PictureURL>${xmlEscape(u)}</PictureURL>`).join('') +
         `</VariationSpecificPictureSet>`
       ).join('');
       if (!sets) { const e = new Error('No variant photos to assign'); e.status = 400; throw e; }
       const body = `<Item><ItemID>${xmlEscape(listingId)}</ItemID><Variations><Pictures>${sets}</Pictures></Variations></Item>`;
-      return ebayTradingApiCall(ebayToken, 'ReviseFixedPriceItem', body);
+      const result = await ebayTradingApiCall(ebayToken, 'ReviseFixedPriceItem', body);
+      return { ...result, skipped };
     }
 
     async function createAndPublishEbayVariationListing(b, ebayToken, env, storeId) {
@@ -7488,7 +7502,8 @@ export default {
       // post-publish step in this function.
       if (listingId) {
         try {
-          await setEbayVariationSpecificPhotos(ebayToken, listingId, built.map(v => ({ label: v.label, imageUrls: [v.imageUrl, ...(v.imageUrls || [])].filter(Boolean) })));
+          const photoResult = await setEbayVariationSpecificPhotos(ebayToken, listingId, built.map(v => ({ label: v.label, sku: v.sku, imageUrls: [v.imageUrl, ...(v.imageUrls || [])].filter(Boolean) })));
+          if (photoResult.skipped.length) warnings.push(`Per-cover photo binding was not set for: ${photoResult.skipped.join(', ')} -- missing a label or photo.`);
         } catch (e) {
           warnings.push('Could not set per-cover "Cover: Select" photo binding: ' + e.message + ' -- covers may not switch photos when a buyer picks one until repaired.');
         }
@@ -7511,7 +7526,11 @@ export default {
     // inventory_items at creation time, never affected by either gap), so
     // this only ever touches photo-to-cover binding -- price, quantity,
     // title, and live/ended state are left exactly as eBay already has them.
-    async function repairEbayGroupListingImages(env, ebayToken, storeId, groupKey) {
+    // rows: every one of the store's inventory_items (already fetched once
+    // by the caller, which may be repairing several groups in one pass --
+    // fetching this same store-wide set again per group here would be pure
+    // redundant I/O).
+    async function repairEbayGroupListingImages(env, ebayToken, storeId, groupKey, rows) {
       const getRes = await fetch(`https://api.ebay.com/sell/inventory/v1/inventory_item_group/${groupKey}`, {
         headers: { 'Authorization': 'Bearer ' + ebayToken, 'Content-Type': 'application/json' },
       });
@@ -7524,13 +7543,16 @@ export default {
       const variantSKUs = Array.isArray(group.variantSKUs) ? group.variantSKUs : [];
       if (!variantSKUs.length) { const e = new Error('Group listing ' + groupKey + ' has no variant SKUs on eBay'); e.status = 500; throw e; }
 
-      const { data: rows } = await supabaseAdminFetch(env, `inventory_items?store_id=eq.${encodeURIComponent(storeId)}&status=neq.sold&select=data`);
-      const imageBySku = {};
+      const imageBySku = {}, focSkuIdBySku = {}, nameBySku = {};
       let listingId = '';
       (rows || []).forEach(r => {
         if (r.data?.ebayInventoryItemGroupKey !== groupKey) return;
-        if (r.data?.ebaySku) imageBySku[r.data.ebaySku] = r.data.image || '';
-        if (!listingId && r.data?.ebayListingId) listingId = r.data.ebayListingId;
+        const sku = r.data?.ebaySku;
+        if (!sku) return;
+        imageBySku[sku] = r.data.image || '';
+        if (r.data.focSkuId) focSkuIdBySku[sku] = r.data.focSkuId;
+        nameBySku[sku] = r.data.name || '';
+        if (!listingId && r.data.ebayListingId) listingId = r.data.ebayListingId;
       });
       const fallbackImage = Object.values(imageBySku).find(Boolean) || (Array.isArray(group.imageUrls) ? group.imageUrls.find(Boolean) : '') || '';
       if (!fallbackImage) { const e = new Error('No usable cover image found on file for group listing ' + groupKey + ' -- cannot repair'); e.status = 400; throw e; }
@@ -7557,11 +7579,34 @@ export default {
       if (!listingId) {
         warning = 'Could not find this listing\'s eBay item ID on file -- only the general gallery was repaired, per-cover photo binding was not set.';
       } else {
-        const specValues = (group.variesBy?.specifications?.[0]?.values) || [];
-        const labelBySku = {};
-        variantSKUs.forEach((sku, i) => { labelBySku[sku] = specValues[i]; });
+        // eBay's own variantSKUs and variesBy.specifications.values arrays
+        // are documented as positionally aligned, but trusting that a
+        // second time here (after the group-level imageUrls array already
+        // broke that exact same assumption in practice, see the fix
+        // above) risks cross-wiring one cover's photo onto a DIFFERENT
+        // cover's dropdown entry -- worse than the original bug, since it
+        // would look correct (a real cover photo shows up) while actually
+        // being wrong. Each SKU's own focSkuId -> comic_skus.variant_label
+        // is the exact same label this app itself sent to eBay for that
+        // cover when the listing was created (see the built array in the
+        // group-create route above), so it's used instead of re-trusting
+        // eBay's array order. The synthetic "All Covers Bundle" variant
+        // has no focSkuId; its own stored name already IS its label
+        // verbatim (see where these rows are created above), no lookup needed.
+        const focSkuIds = [...new Set(Object.values(focSkuIdBySku).filter(Boolean))];
+        const labelBySkuId = {};
+        if (focSkuIds.length) {
+          const { data: skuRows } = await supabaseAdminFetch(env, `comic_skus?id=in.(${focSkuIds.map(id => encodeURIComponent(id)).join(',')})&select=id,variant_label`);
+          (skuRows || []).forEach(s => { labelBySkuId[s.id] = s.variant_label || 'Cover'; });
+        }
+        const variantPhotos = variantSKUs.map(sku => ({
+          sku,
+          label: focSkuIdBySku[sku] ? labelBySkuId[focSkuIdBySku[sku]] : nameBySku[sku],
+          imageUrls: [imageBySku[sku] || fallbackImage],
+        }));
         try {
-          await setEbayVariationSpecificPhotos(ebayToken, listingId, variantSKUs.map(sku => ({ label: labelBySku[sku], imageUrls: [imageBySku[sku] || fallbackImage] })));
+          const result = await setEbayVariationSpecificPhotos(ebayToken, listingId, variantPhotos);
+          if (result.skipped.length) warning = `Per-cover photo binding was not set for: ${result.skipped.join(', ')} -- missing a label or photo on file.`;
         } catch (e) {
           warning = 'General gallery was repaired, but per-cover "Cover: Select" photo binding failed: ' + e.message;
         }
