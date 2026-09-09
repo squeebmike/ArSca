@@ -39,6 +39,27 @@ const focPreorders = fs.readFileSync('scripts/foc-preorders.mjs', 'utf8');
 }
 console.log('buildVariationPictureSetsXml checks passed');
 
+// ── buildEbayWeightXml ─────────────────────────────────────────────────────
+// Store report: "AddFixedPriceItem failed: The package weight is not valid
+// or is missing." This app's own weight picker offers POUND/OUNCE/KILOGRAM/
+// GRAM (see dashboard.html); eBay's Trading API WeightMajor/WeightMinor pair
+// is English-units-only (pounds + ounces), so metric input must collapse
+// into a single WeightMajor(unit="kg") instead of a nonsensical major/minor
+// split.
+{
+  const start = worker.indexOf('function buildEbayWeightXml');
+  assert.ok(start !== -1, 'buildEbayWeightXml must exist');
+  const end = worker.indexOf('\n    }', start);
+  const body = worker.slice(start, end);
+  assert.match(body, /if \(!\(value > 0\)\) return '';/, 'a zero/missing weight must not emit an empty/invalid ShippingPackageDetails block');
+  assert.match(body, /unit === 'KILOGRAM' \|\| unit === 'GRAM'/, 'must handle metric units separately from the English lb\/oz pair');
+  assert.match(body, /<WeightMajor unit="kg">\$\{kg\.toFixed\(3\)\}<\/WeightMajor>/, 'metric weight must be sent as a single WeightMajor in kg, not split into a major\/minor pair');
+  assert.match(body, /const totalOz = unit === 'OUNCE' \? value : value \* 16;/, 'POUND (and any other/default unit) must convert to ounces before splitting into major\/minor');
+  assert.match(body, /<WeightMajor unit="lbs">\$\{majorLb\}<\/WeightMajor><WeightMinor unit="oz">\$\{minorOz\.toFixed\(2\)\}<\/WeightMinor>/,
+    'English-unit weight must split into whole-pound WeightMajor plus remainder-ounce WeightMinor -- eBay defaults (0.25/0.625/1.5 lb) are fractional pounds, not whole lb+oz already');
+}
+console.log('buildEbayWeightXml checks passed');
+
 // ── createAndPublishEbayVariationListingTrading ───────────────────────────
 {
   const start = worker.indexOf('async function createAndPublishEbayVariationListingTrading');
@@ -77,6 +98,18 @@ console.log('buildVariationPictureSetsXml checks passed');
     'must reference the SAME already-resolved eBay Business Policy id (fulfillmentPolicyId) via SellerProfiles that the REST flow resolves -- Business Policy ids are shared across both eBay API systems, so no separate policy-resolution logic is needed');
   assert.match(body, /env\.EBAY_RETURN_POLICY_ID.*ReturnProfileID/, 'must reference the store\'s return policy via SellerProfiles');
   assert.match(body, /env\.EBAY_PAYMENT_POLICY_ID.*PaymentProfileID/, 'must reference the store\'s payment policy via SellerProfiles');
+  // Store report (live error, after the VariationSpecificName fix landed):
+  // "AddFixedPriceItem failed: The package weight is not valid or is
+  // missing. Provide a valid number for the weight." -- itemXml had no
+  // weight/dimension elements at all, even though weightValue/weightUnit
+  // were already being passed into this function from the route. eBay's
+  // calculated-shipping Business Policies require Item.ShippingPackageDetails
+  // to carry a real weight whenever the profile applies a weight-based
+  // rate table -- a SellerShippingProfile reference alone isn't enough.
+  assert.match(body, /const weightXml = buildEbayWeightXml\(b\.weightValue, b\.weightUnit\);/,
+    'must convert this app\'s own weightValue/weightUnit input into eBay\'s WeightMajor/WeightMinor shape');
+  assert.match(body, /\(weightXml \? `<ShippingPackageDetails>\$\{weightXml\}<\/ShippingPackageDetails>` : ''\) \+\s*\n\s*\(b\.bestOfferEnabled/,
+    'ShippingPackageDetails must actually be included in the published itemXml, or the weight is computed but never sent');
   assert.match(body, /<Description><!\[CDATA\[\$\{descriptionCdata\}\]\]><\/Description>/, 'the HTML description must ride in a CDATA section so it does not need per-character XML escaping');
   assert.match(body, /descriptionCdata = toEbayHtmlDescription\(b\.description \|\| groupTitle\)\.replace\(\/\]\]>\/g, '\]\]\]\]><!\[CDATA\[>'\)/,
     'a literal "]]>" inside the description would otherwise prematurely close the CDATA section -- must be escaped');

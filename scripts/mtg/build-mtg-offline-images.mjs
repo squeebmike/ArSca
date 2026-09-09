@@ -150,13 +150,30 @@ async function runPool(items, worker, size) {
 // run: a "fetch request failed" mid-upload aborted a leg that had already
 // harvested and was uploading ~15 sets, losing every set after it. Retries
 // with backoff so one flaky request doesn't cost 15 sets of progress.
+//
+// A later full production run stalled again even after the fetchWithTimeout
+// fix above (which only covers this script's own fetch() calls) -- 45+
+// minutes with zero images uploaded and no error. Root cause: spawnSync
+// here had no `timeout` option at all, so if the wrangler CHILD PROCESS
+// itself ever stalls (a hung network call inside wrangler, or npx
+// resolving the "@latest" tag against a slow/stalled npm registry
+// connection), Node blocks on it forever -- completely un-timed, same
+// class of bug as the missing fetch() timeouts, just one layer deeper
+// (inside a subprocess this script doesn't control the internals of).
+// A timed-out attempt (result.signal set, result.status left null) falls
+// through to the same retry-with-backoff path as any other failed attempt.
 async function uploadObject(objectPath, filePath, attempts = 4) {
   const npx = process.platform === 'win32' ? 'npx.cmd' : 'npx';
   for (let attempt = 1; attempt <= attempts; attempt++) {
-    const result = spawnSync(npx, ['wrangler@latest', 'r2', 'object', 'put', `${bucket}/${objectPath}`, '--file', filePath, '--config', configPath, '--remote'], { stdio: 'inherit', cwd: root, shell: false });
+    // -y avoids npx's own "ok to proceed installing wrangler? (y)"
+    // confirmation prompt on a cold cache -- with stdio:'inherit' on a
+    // non-interactive CI runner, stdin never answers that prompt, so
+    // without -y this could hang exactly like the missing timeout above,
+    // just one layer earlier (before wrangler itself even starts).
+    const result = spawnSync(npx, ['-y', 'wrangler@latest', 'r2', 'object', 'put', `${bucket}/${objectPath}`, '--file', filePath, '--config', configPath, '--remote'], { stdio: 'inherit', cwd: root, shell: false, timeout: 120000 });
     if (result.status === 0) return;
-    if (attempt === attempts) throw new Error(`R2 upload failed for ${objectPath} after ${attempts} attempts`);
-    log(`  R2 upload failed for ${objectPath} (attempt ${attempt}/${attempts}), retrying...`);
+    if (attempt === attempts) throw new Error(`R2 upload failed for ${objectPath} after ${attempts} attempts` + (result.signal ? ` (last attempt timed out: ${result.signal})` : ''));
+    log(`  R2 upload failed for ${objectPath} (attempt ${attempt}/${attempts}${result.signal ? `, timed out: ${result.signal}` : ''}), retrying...`);
     await new Promise(resolve => setTimeout(resolve, attempt * 4000));
   }
 }

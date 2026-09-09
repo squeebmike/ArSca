@@ -7594,6 +7594,31 @@ export default {
       return { sets, skipped };
     }
 
+    // Store report: "AddFixedPriceItem failed: The package weight is not
+    // valid or is missing" -- itemXml below had no weight/dimension
+    // elements at all. eBay's calculated-shipping profiles (Business
+    // Policies) require Item.ShippingPackageDetails to carry a weight
+    // whenever the profile applies a weight-based rate table, which a
+    // SellerShippingProfile reference alone doesn't satisfy. The Trading
+    // API's WeightMajor/WeightMinor pair is English units only (pounds +
+    // ounces); weightValue/weightUnit here come from this app's own POUND/
+    // OUNCE/KILOGRAM/GRAM picker (see dashboard.html), so convert metric
+    // units into a single WeightMajor with unit="kg" instead of splitting
+    // into a major/minor pair that only makes sense for lb+oz.
+    function buildEbayWeightXml(weightValue, weightUnit) {
+      const value = Number(weightValue) || 0;
+      if (!(value > 0)) return '';
+      const unit = String(weightUnit || 'POUND').toUpperCase();
+      if (unit === 'KILOGRAM' || unit === 'GRAM') {
+        const kg = unit === 'GRAM' ? value / 1000 : value;
+        return `<WeightMajor unit="kg">${kg.toFixed(3)}</WeightMajor>`;
+      }
+      const totalOz = unit === 'OUNCE' ? value : value * 16;
+      const majorLb = Math.floor(totalOz / 16);
+      const minorOz = totalOz - (majorLb * 16);
+      return `<WeightMajor unit="lbs">${majorLb}</WeightMajor><WeightMinor unit="oz">${minorOz.toFixed(2)}</WeightMinor>`;
+    }
+
     async function createAndPublishEbayVariationListingTrading(b, ebayToken, env, storeId) {
       const { groupTitle, variants, variantAspectName } = b;
       if (!groupTitle) { const e = new Error('groupTitle required'); e.status = 400; throw e; }
@@ -7632,6 +7657,7 @@ export default {
         `<Variation><SKU>${xmlEscape(v.sku)}</SKU><StartPrice currencyID="USD">${xmlEscape(Number(v.price).toFixed(2))}</StartPrice><Quantity>${xmlEscape(String(parseInt(v.quantity, 10) || 1))}</Quantity>` +
         `<VariationSpecifics><NameValueList><Name>${xmlEscape(variantAspectName)}</Name><Value>${xmlEscape(v.label)}</Value></NameValueList></VariationSpecifics></Variation>`
       ).join('');
+      const weightXml = buildEbayWeightXml(b.weightValue, b.weightUnit);
 
       const itemXml =
         `<Item>` +
@@ -7648,6 +7674,7 @@ export default {
         (galleryUrls.length ? `<PictureDetails>${galleryUrls.slice(0, 12).map(u => `<PictureURL>${xmlEscape(u)}</PictureURL>`).join('')}</PictureDetails>` : '') +
         (itemSpecificsXml ? `<ItemSpecifics>${itemSpecificsXml}</ItemSpecifics>` : '') +
         (sellerProfilesXml ? `<SellerProfiles>${sellerProfilesXml}</SellerProfiles>` : '') +
+        (weightXml ? `<ShippingPackageDetails>${weightXml}</ShippingPackageDetails>` : '') +
         (b.bestOfferEnabled ? `<BestOfferDetails><BestOfferEnabled>true</BestOfferEnabled></BestOfferDetails>` : '') +
         // Store report (live error, again, after the VariationSpecificName
         // fix above): "Variation specific name "" used for pictures does

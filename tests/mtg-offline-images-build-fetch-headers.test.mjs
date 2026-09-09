@@ -50,6 +50,17 @@ assert.match(uploadObjectFn, /for \(let attempt = 1; attempt <= attempts; attemp
 assert.match(uploadObjectFn, /if \(result\.status === 0\) return;/, 'a successful upload on any attempt must return without retrying further');
 assert.match(uploadObjectFn, /if \(attempt === attempts\) throw new Error/, 'only the final exhausted attempt may throw -- an earlier failure must not abort the whole matrix leg');
 
+// A real production run stalled 45+ minutes with zero images uploaded and
+// no error, even after the fetchWithTimeout fix -- that fix only covers
+// this script's own fetch() calls, not the wrangler CHILD PROCESS spawned
+// per upload. spawnSync had no timeout at all, so a hung wrangler process
+// (a stalled network call inside it, or npx's own confirmation prompt on
+// a cold cache blocking forever on stdin in non-interactive CI) blocked
+// Node indefinitely, one layer deeper than the fetch() calls this script
+// controls directly.
+assert.match(uploadObjectFn, /spawnSync\(npx, \['-y', 'wrangler@latest', 'r2', 'object', 'put', `\$\{bucket\}\/\$\{objectPath\}`, '--file', filePath, '--config', configPath, '--remote'\], \{ stdio: 'inherit', cwd: root, shell: false, timeout: 120000 \}\)/,
+  'the wrangler child process must have a real timeout (spawnSync does not time out by default) and -y to skip npx\'s own install-confirmation prompt, which would otherwise hang forever with stdio inherited on a non-interactive CI runner');
+
 // Every call site must await the now-async uploadObject, or a rejected
 // retry loop would become an unhandled promise rejection instead of
 // stopping the set loop cleanly.
