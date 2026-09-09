@@ -42,14 +42,37 @@ const generatedAt = new Date().toISOString();
 
 function log(message) { process.stdout.write(`[mtg-images] ${message}\n`); }
 
+// A full production run of this job left a matrix leg stuck for 2+ hours
+// with zero progress and no error -- every fetch() call here had no
+// timeout at all, so a single stalled TCP connection to Scryfall's CDN
+// (no default timeout on Node's fetch/undici) blocked that request
+// forever, and since runPool below awaits each worker sequentially per
+// concurrency lane, one hung download permanently stalls that whole lane.
+// With enough concurrent lanes each eventually hitting a hung connection,
+// the entire batch -- and every batch still queued behind it in the
+// matrix's limited concurrency -- stalls indefinitely. Every fetch here
+// now aborts and retries instead of hanging forever.
+async function fetchWithTimeout(url, options = {}, timeoutMs = 20000) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } catch (error) {
+    if (error.name === 'AbortError') throw new Error(`Timed out after ${timeoutMs}ms fetching ${url}`);
+    throw error;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 async function fetchJson(url) {
-  const response = await fetch(url, { headers: { 'User-Agent': 'Walk-Off-MTG-Offline-Builder/1.0' } });
+  const response = await fetchWithTimeout(url, { headers: { 'User-Agent': 'Walk-Off-MTG-Offline-Builder/1.0' } });
   if (!response.ok) throw new Error(`HTTP ${response.status} for ${url}`);
   return response.json();
 }
 
 async function downloadToFile(url, destination) {
-  const response = await fetch(url, { headers: { 'User-Agent': 'Walk-Off-MTG-Offline-Builder/1.0' } });
+  const response = await fetchWithTimeout(url, { headers: { 'User-Agent': 'Walk-Off-MTG-Offline-Builder/1.0' } }, 180000);
   if (!response.ok || !response.body) throw new Error(`Download HTTP ${response.status} for ${url}`);
   await fsp.mkdir(path.dirname(destination), { recursive: true });
   const writer = fs.createWriteStream(destination);
@@ -82,7 +105,7 @@ async function* readScryfallEntries(filePath, format) {
 
 async function fetchExistingJson(url) {
   try {
-    const response = await fetch(url, { cache: 'no-store' });
+    const response = await fetchWithTimeout(url, { cache: 'no-store' });
     if (!response.ok) return null;
     return await response.json();
   } catch {
@@ -98,7 +121,7 @@ async function downloadImage(url, destination, attempts = 2) {
       // fetchJson()/downloadToFile() above already send one, this fetch was
       // the one call site that didn't, so every single image request here
       // failed identically regardless of the card or size.
-      const response = await fetch(url, { headers: { 'User-Agent': 'Walk-Off-MTG-Offline-Builder/1.0' } });
+      const response = await fetchWithTimeout(url, { headers: { 'User-Agent': 'Walk-Off-MTG-Offline-Builder/1.0' } }, 20000);
       if (!response.ok || !response.body) throw new Error(`HTTP ${response.status}`);
       const buffer = Buffer.from(await response.arrayBuffer());
       await fsp.mkdir(path.dirname(destination), { recursive: true });
