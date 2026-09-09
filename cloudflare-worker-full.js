@@ -7290,6 +7290,61 @@ export default {
     // each variant's own cover image in the dropdown), and a single
     // publish_by_inventory_item_group call publishes every offer in the
     // group at once under one shared listingId.
+    // Store report (live listing, confirmed directly in eBay's own Seller
+    // Hub "Add variation photos" tool -- 0/12 photos assigned to every
+    // cover on a listing built entirely through the mechanism above):
+    // eBay's REST Inventory API's aspectsImageVaryBy + group-level
+    // imageUrls is documented as sufficient to drive "which photo buyers
+    // see when they select a variation," but in practice does not
+    // populate that binding at all -- confirmed by eBay's own tool, whose
+    // description literally reads "This determines which photos buyers
+    // see when they select a variation option." That binding is actually
+    // driven by the older Trading (XML) API's VariationSpecificPictureSet
+    // (ReviseFixedPriceItem), a separate mechanism from anything used
+    // above. eBay's traditional APIs accept the SAME OAuth user token
+    // already used for the Inventory/Sell APIs via the X-EBAY-API-IAF-TOKEN
+    // header, so no new credentials are needed to call it.
+    function xmlEscape(s) {
+      return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
+    }
+    async function ebayTradingApiCall(ebayToken, callName, bodyXml) {
+      const xml = `<?xml version="1.0" encoding="utf-8"?><${callName}Request xmlns="urn:ebay:apis:eBLBaseComponents">${bodyXml}</${callName}Request>`;
+      const res = await fetch('https://api.ebay.com/ws/api.dll', {
+        method: 'POST',
+        headers: {
+          'X-EBAY-API-SITEID': '0',
+          'X-EBAY-API-COMPATIBILITY-LEVEL': '1155',
+          'X-EBAY-API-CALL-NAME': callName,
+          'X-EBAY-API-IAF-TOKEN': ebayToken,
+          'Content-Type': 'text/xml',
+        },
+        body: xml,
+      });
+      const txt = await res.text();
+      const ack = (txt.match(/<Ack>([^<]+)<\/Ack>/) || [])[1] || '';
+      if (ack !== 'Success' && ack !== 'Warning') {
+        const longMsg = (txt.match(/<LongMessage>([^<]+)<\/LongMessage>/) || [])[1] || '';
+        const shortMsg = (txt.match(/<ShortMessage>([^<]+)<\/ShortMessage>/) || [])[1] || '';
+        const e = new Error(`${callName} failed: ${longMsg || shortMsg || ('Ack=' + (ack || 'none'))}`); e.status = 502; e.raw = txt.substring(0, 500); throw e;
+      }
+      return { ack, raw: txt };
+    }
+    // variantPhotos: [{ label, imageUrls: [url, ...] }] -- one entry per
+    // variation value. VariationSpecificValue must equal the exact text
+    // shown in the "Cover:" dropdown (the same label used for
+    // variesBy.specifications.values above), not a SKU or internal key,
+    // or eBay can't match the photo set to the right dropdown option.
+    async function setEbayVariationSpecificPhotos(ebayToken, listingId, variantPhotos) {
+      const sets = variantPhotos.filter(v => v.label && v.imageUrls && v.imageUrls.length).map(v =>
+        `<VariationSpecificPictureSet><VariationSpecificValue>${xmlEscape(v.label)}</VariationSpecificValue>` +
+        v.imageUrls.slice(0, 12).map(u => `<PictureURL>${xmlEscape(u)}</PictureURL>`).join('') +
+        `</VariationSpecificPictureSet>`
+      ).join('');
+      if (!sets) { const e = new Error('No variant photos to assign'); e.status = 400; throw e; }
+      const body = `<Item><ItemID>${xmlEscape(listingId)}</ItemID><Variations><Pictures>${sets}</Pictures></Variations></Item>`;
+      return ebayTradingApiCall(ebayToken, 'ReviseFixedPriceItem', body);
+    }
+
     async function createAndPublishEbayVariationListing(b, ebayToken, env, storeId) {
       const { groupTitle, variants, variantAspectName } = b;
       if (!groupTitle) { const e = new Error('groupTitle required'); e.status = 400; throw e; }
@@ -7425,18 +7480,37 @@ export default {
       const listingId = pubData.listingId || (Array.isArray(pubData?.responses) && pubData.responses[0]?.listingId) || '';
       if (!listingId) warnings.push('eBay did not return a listingId for the published group -- check the listing manually.');
 
+      // The group-level imageUrls set above is the general/fallback
+      // gallery -- the actual per-cover "which photo shows when this
+      // dropdown option is picked" binding is a separate mechanism (see
+      // setEbayVariationSpecificPhotos above). Best-effort: a failure here
+      // must never block the listing itself, same as every other
+      // post-publish step in this function.
+      if (listingId) {
+        try {
+          await setEbayVariationSpecificPhotos(ebayToken, listingId, built.map(v => ({ label: v.label, imageUrls: [v.imageUrl, ...(v.imageUrls || [])].filter(Boolean) })));
+        } catch (e) {
+          warnings.push('Could not set per-cover "Cover: Select" photo binding: ' + e.message + ' -- covers may not switch photos when a buyer picks one until repaired.');
+        }
+      }
+
       return { listingId, inventoryItemGroupKey: groupKey, warnings, variants: built.map(v => ({ key: v.key, sku: v.sku, offerId: v.offerId, label: v.label })) };
     }
 
-    // Repairs the group-level imageUrls array on an ALREADY-PUBLISHED group
-    // listing -- for any listing created before the position-binding fix
-    // above shipped, whose live eBay imageUrls array is still deduplicated
-    // and/or shifted by the old bug (see createAndPublishEbayVariationListing).
-    // Re-derives the correct 1:1 array from each variant's OWN per-row image
-    // (stored on our inventory_items at creation time and never affected by
-    // the shared-array bug), then PUTs the group back with everything else
-    // -- title, description, aspects, variesBy -- left exactly as eBay
-    // already has it, so this only ever touches photo-to-cover binding.
+    // Repairs group-listing photo-to-cover binding for an
+    // ALREADY-PUBLISHED group listing, in two parts:
+    //   1. The group-level imageUrls array (general/fallback gallery) --
+    //      for a listing created before the position-binding fix above
+    //      shipped, whose live array is still deduplicated and/or shifted.
+    //   2. The actual per-cover "which photo shows when this dropdown
+    //      option is picked" binding via setEbayVariationSpecificPhotos --
+    //      for EVERY listing regardless of when it was created, since that
+    //      binding was never set by this app until now (see the comment
+    //      above setEbayVariationSpecificPhotos for why).
+    // Both re-derive from each variant's OWN per-row image (stored on our
+    // inventory_items at creation time, never affected by either gap), so
+    // this only ever touches photo-to-cover binding -- price, quantity,
+    // title, and live/ended state are left exactly as eBay already has them.
     async function repairEbayGroupListingImages(env, ebayToken, storeId, groupKey) {
       const getRes = await fetch(`https://api.ebay.com/sell/inventory/v1/inventory_item_group/${groupKey}`, {
         headers: { 'Authorization': 'Bearer ' + ebayToken, 'Content-Type': 'application/json' },
@@ -7452,7 +7526,12 @@ export default {
 
       const { data: rows } = await supabaseAdminFetch(env, `inventory_items?store_id=eq.${encodeURIComponent(storeId)}&status=neq.sold&select=data`);
       const imageBySku = {};
-      (rows || []).forEach(r => { if (r.data?.ebayInventoryItemGroupKey === groupKey && r.data?.ebaySku) imageBySku[r.data.ebaySku] = r.data.image || ''; });
+      let listingId = '';
+      (rows || []).forEach(r => {
+        if (r.data?.ebayInventoryItemGroupKey !== groupKey) return;
+        if (r.data?.ebaySku) imageBySku[r.data.ebaySku] = r.data.image || '';
+        if (!listingId && r.data?.ebayListingId) listingId = r.data.ebayListingId;
+      });
       const fallbackImage = Object.values(imageBySku).find(Boolean) || (Array.isArray(group.imageUrls) ? group.imageUrls.find(Boolean) : '') || '';
       if (!fallbackImage) { const e = new Error('No usable cover image found on file for group listing ' + groupKey + ' -- cannot repair'); e.status = 400; throw e; }
       const correctedImageUrls = variantSKUs.map(sku => imageBySku[sku] || fallbackImage);
@@ -7473,7 +7552,21 @@ export default {
           const e = new Error('Repairing group listing ' + groupKey + ' failed (' + putRes.status + '): ' + msg); e.status = putRes.status; throw e;
         }
       }
-      return { ok: true, groupKey, imageCount: correctedImageUrls.length };
+
+      let warning = '';
+      if (!listingId) {
+        warning = 'Could not find this listing\'s eBay item ID on file -- only the general gallery was repaired, per-cover photo binding was not set.';
+      } else {
+        const specValues = (group.variesBy?.specifications?.[0]?.values) || [];
+        const labelBySku = {};
+        variantSKUs.forEach((sku, i) => { labelBySku[sku] = specValues[i]; });
+        try {
+          await setEbayVariationSpecificPhotos(ebayToken, listingId, variantSKUs.map(sku => ({ label: labelBySku[sku], imageUrls: [imageBySku[sku] || fallbackImage] })));
+        } catch (e) {
+          warning = 'General gallery was repaired, but per-cover "Cover: Select" photo binding failed: ' + e.message;
+        }
+      }
+      return { ok: true, groupKey, imageCount: correctedImageUrls.length, warning: warning || undefined };
     }
 
     // Ends (withdraws) an ENTIRE multi-variation listing at once -- the
