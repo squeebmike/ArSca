@@ -1212,7 +1212,7 @@ async function adminPrhSubmission(request,env,deps,url){
     const {data:presaleRowsForQty}=await db(`inventory_items?store_id=eq.${encodeURIComponent(storeId)}&status=eq.presale&select=id,data`);
     const candidatesForQty=(presaleRowsForQty||[]).filter(row=>{
       const d=row.data||{};
-      return d.source==='foc_presale'&&d.focCycleId===cycleId&&d.ebayOfferId;
+      return d.source==='foc_presale'&&d.focCycleId===cycleId&&(d.ebayOfferId||(d.ebayApiSystem==='trading'&&d.ebayListingId&&d.ebaySku));
     });
     if(candidatesForQty.length&&deps.getEbayUserAccessToken&&deps.ebayReviseOfferQuantity){
       const finalQtyBySku=new Map(lineItems.map(li=>[li.skuId,li.finalQty]));
@@ -1228,7 +1228,8 @@ async function adminPrhSubmission(request,env,deps,url){
           const newAvailable=Math.max(0,orderedTotal-alreadySold);
           if(newAvailable===currentAvailable)continue;
           try{
-            await deps.ebayReviseOfferQuantity(env,ebayToken,d.ebayOfferId,newAvailable);
+            if(d.ebayApiSystem==='trading')await deps.ebayReviseVariationQuantityTrading(ebayToken,d.ebayListingId,d.ebaySku,newAvailable);
+            else await deps.ebayReviseOfferQuantity(env,ebayToken,d.ebayOfferId,newAvailable);
             await db(`inventory_items?id=eq.${row.id}&store_id=eq.${encodeURIComponent(storeId)}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({data:{...d,qty:newAvailable,quantity:newAvailable,focPresaleOriginalQty:orderedTotal}})});
             ebayQuantityUpdatedSkuIds.push(d.focSkuId);
           }catch(e){console.error('FOC PRH submission: could not update eBay presale listing quantity',row.id,e);}
@@ -1279,6 +1280,19 @@ async function withdrawFocPresaleRow(env,deps,ebayToken,row,allPresaleRows,withd
     return;
   }
   const siblingStillLive=(allPresaleRows||[]).some(r=>r.id!==row.id&&!withdrawingIds.has(r.id)&&(r.data||{}).ebayInventoryItemGroupKey===groupKey&&!r.data.ebayWithdrawnAt&&Number(r.data.qty??r.data.quantity??0)>0);
+  // Listings built via eBay's older Trading API (ebayApiSystem:'trading'
+  // on the row -- only NEW group listings opt into this, see
+  // createAndPublishEbayVariationListingTrading in cloudflare-worker-full.js;
+  // existing/already-live REST-created listings never carry this flag and
+  // fall through to the offerId-keyed path below, completely untouched)
+  // key their live listing by ItemID+SKU instead of an offerId, and have
+  // no separate group-withdraw REST resource -- ending the ItemID ends
+  // the whole group at once, same semantics as withdrawEbayOfferGroup.
+  if(row.data.ebayApiSystem==='trading'){
+    if(siblingStillLive)await deps.ebayReviseVariationQuantityTrading(ebayToken,row.data.ebayListingId,row.data.ebaySku,0);
+    else await deps.endEbayListingTrading(ebayToken,groupKey);
+    return;
+  }
   if(siblingStillLive)await deps.ebayReviseOfferQuantity(env,ebayToken,row.data.ebayOfferId,0);
   else await deps.withdrawEbayOfferGroup(env,ebayToken,groupKey);
 }
@@ -1411,7 +1425,7 @@ async function receiveShipment(request,env,deps){
     const remainingQty=Number(d.qty??d.quantity??0);
     const soldSoFar=row.status==='sold'?originalQty:Math.max(0,originalQty-remainingQty);
     if(soldSoFar>0)presaleByskuId.set(d.focSkuId,(presaleByskuId.get(d.focSkuId)||0)+soldSoFar);
-    if(row.status==='presale'&&d.ebayOfferId&&remainingQty>0)livePresaleRowBySkuId.set(d.focSkuId,row);
+    if(row.status==='presale'&&(d.ebayOfferId||(d.ebayApiSystem==='trading'&&d.ebayListingId&&d.ebaySku))&&remainingQty>0)livePresaleRowBySkuId.set(d.focSkuId,row);
   }
   let ebayToken='';
   if(livePresaleRowBySkuId.size&&deps.getEbayUserAccessToken&&deps.ebayReviseOfferQuantity){
@@ -1431,7 +1445,10 @@ async function receiveShipment(request,env,deps){
         // pull it down to what actually arrived, on eBay too if possible.
         const pd=livePresale.data;
         if(ebayToken){
-          try{await deps.ebayReviseOfferQuantity(env,ebayToken,pd.ebayOfferId,receivedQty);}
+          try{
+            if(pd.ebayApiSystem==='trading')await deps.ebayReviseVariationQuantityTrading(ebayToken,pd.ebayListingId,pd.ebaySku,receivedQty);
+            else await deps.ebayReviseOfferQuantity(env,ebayToken,pd.ebayOfferId,receivedQty);
+          }
           catch(e){console.error('FOC receive: could not reduce short-shipped eBay presale quantity',livePresale.id,e);}
         }
         await db(`inventory_items?id=eq.${livePresale.id}&store_id=eq.${encodeURIComponent(storeId)}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({data:{...pd,qty:receivedQty,quantity:receivedQty}})});

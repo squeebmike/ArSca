@@ -445,13 +445,15 @@ assert.match(receiveSrc, /nextStatus=order\.fulfillment_method==='pickup'\?'read
 // what the listing still shows available must pull the listing's quantity
 // down (locally and on the live eBay offer) instead of leaving it able to
 // oversell copies that never arrived.
-assert.match(receiveSrc, /if\(row\.status==='presale'&&d\.ebayOfferId&&remainingQty>0\)livePresaleRowBySkuId\.set\(d\.focSkuId,row\);/,
-  'must track which SKUs have a live (still-presale, still-unsold) eBay listing to reconcile against');
+assert.match(receiveSrc, /if\(row\.status==='presale'&&\(d\.ebayOfferId\|\|\(d\.ebayApiSystem==='trading'&&d\.ebayListingId&&d\.ebaySku\)\)&&remainingQty>0\)livePresaleRowBySkuId\.set\(d\.focSkuId,row\);/,
+  'must track which SKUs have a live (still-presale, still-unsold) eBay listing to reconcile against -- both REST-offer-keyed and Trading-API-keyed (ItemID+SKU) listings');
 assert.match(receiveSrc, /newStandaloneCount=Math\.max\(0,receivedQty-presaleAvailable\);/,
   'only the amount received beyond what the live listing already accounts for may become new standalone rows');
 assert.match(receiveSrc, /if\(receivedQty<presaleAvailable\)\{/, 'a short-ship against the listing\'s own available quantity must be detected');
-assert.match(receiveSrc, /await deps\.ebayReviseOfferQuantity\(env,ebayToken,pd\.ebayOfferId,receivedQty\)/,
-  'a short-shipped listing\'s quantity must actually be pushed down on the live eBay offer, not just the local row');
+assert.match(receiveSrc, /if\(pd\.ebayApiSystem==='trading'\)await deps\.ebayReviseVariationQuantityTrading\(ebayToken,pd\.ebayListingId,pd\.ebaySku,receivedQty\);/,
+  'a short-shipped Trading-API-built listing must revise quantity via the ItemID+SKU-keyed Trading path, not the offerId-keyed REST one');
+assert.match(receiveSrc, /else await deps\.ebayReviseOfferQuantity\(env,ebayToken,pd\.ebayOfferId,receivedQty\);/,
+  'a short-shipped REST-created listing\'s quantity must still be pushed down on the live eBay offer exactly as before');
 assert.match(receiveSrc, /data:\{\.\.\.pd,qty:receivedQty,quantity:receivedQty\}/, 'the local presale row must be reduced to match what actually arrived');
 assert.match(receiveSrc, /const \{ data:inserted \}=rows\.length\?await db\('inventory_items',\{method:'POST'/,
   'must skip the insert call entirely when nothing needs a new standalone row (all received copies already absorbed by the live listing)');
