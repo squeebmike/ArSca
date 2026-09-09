@@ -1025,12 +1025,16 @@ async function repairFocEbayGroupPhotos(){
   if(status)status.textContent='Checking group listing photos…';
   try{
     var d=await api('/foc/ebay/repair-group-listing-photos',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({storeId:getActiveStoreId()})});
-    var repaired=d.repaired||[],f=(d.failed||[]).length;
-    var withWarning=repaired.filter(function(r){return r.warning;}).length;
-    if(!repaired.length&&!f)toast_dash(d.message||'No group listings on file to repair');
-    else toast_dash(repaired.length+' listing'+(repaired.length===1?'':'s')+' photo binding repaired'+(withWarning?' ('+withWarning+' with warnings, see console)':'')+(f?' ('+f+' failed, see console)':''));
-    if(withWarning)console.warn('FOC eBay group photo repair warnings:',repaired.filter(function(r){return r.warning;}));
-    if(d.failed&&d.failed.length)console.error('FOC eBay group photo repair failures:',d.failed);
+    var repaired=d.repaired||[],failed=d.failed||[];
+    var warned=repaired.filter(function(r){return r.warning;});
+    if(!repaired.length&&!failed.length)toast_dash(d.message||'No group listings on file to repair');
+    else toast_dash(repaired.length+' listing'+(repaired.length===1?'':'s')+' photo binding repaired'+(warned.length?' ('+warned.length+' with warnings)':'')+(failed.length?' ('+failed.length+' failed)':''));
+    if(warned.length)console.warn('FOC eBay group photo repair warnings:',warned);
+    if(failed.length)console.error('FOC eBay group photo repair failures:',failed);
+    if(warned.length||failed.length){
+      var lines=warned.map(function(r){return r.groupKey+': '+r.warning;}).concat(failed.map(function(f){return f.groupKey+': '+f.error;}));
+      alert('Some listings had issues:\n\n'+lines.join('\n\n'));
+    }
   }catch(e){toast_dash('Could not repair listing photos: '+e.message);}
   finally{if(status)status.textContent='';}
 }

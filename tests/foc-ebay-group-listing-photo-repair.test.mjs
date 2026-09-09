@@ -132,3 +132,21 @@ assert.match(focDash, /api\('\/foc\/ebay\/repair-group-listing-photos',\{method:
 assert.match(focDash, /window\.repairFocEbayGroupPhotos=repairFocEbayGroupPhotos;/, 'the handler must be exposed on window for its onclick to find it');
 
 console.log('FOC eBay group-listing photo repair frontend checks passed');
+
+// A repair "succeeding" with a per-listing warning (e.g. the Trading API
+// call failing while the REST gallery fix still went through) was only
+// ever logged to the browser console -- invisible to a store owner who
+// isn't running dev tools. They'd see "N listings repaired" and reasonably
+// assume it worked, with no way to tell Claude what eBay actually said
+// back when it still didn't. The real error text must be put directly in
+// front of the person running this, not buried in console output only an
+// engineer would think to open.
+const repairHandlerStart = focDash.indexOf('async function repairFocEbayGroupPhotos(){');
+const repairHandlerEnd = focDash.indexOf('async function loadEbaySafeDays', repairHandlerStart);
+const repairHandlerBody = focDash.slice(repairHandlerStart, repairHandlerEnd);
+assert.match(repairHandlerBody, /alert\('Some listings had issues:/,
+  'a repair with any warnings or failures must alert() the actual per-listing message text directly to whoever clicked the button -- console.warn/console.error alone hides the real diagnostic from a non-technical store owner');
+assert.match(repairHandlerBody, /r\.groupKey\+': '\+r\.warning/, 'the alert must include each warned listing\'s own message, not just a count');
+assert.match(repairHandlerBody, /f\.groupKey\+': '\+f\.error/, 'the alert must include each failed listing\'s own message, not just a count');
+
+console.log('FOC eBay group-listing photo repair warning-visibility checks passed');
