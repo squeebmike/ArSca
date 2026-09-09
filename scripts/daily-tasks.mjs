@@ -49,6 +49,7 @@ async function getDailyTasks(request, env, deps, url) {
     list.push({
       id: item.id, roleId: item.role_id, title: item.title, detail: item.detail || '',
       daysOfWeek: item.days_of_week || [0, 1, 2, 3, 4, 5, 6], sortOrder: item.sort_order, active: item.active,
+      assignedToUserId: item.assigned_to_user_id || null, assignedToLabel: item.assigned_to_label || '',
       dueToday: (item.days_of_week || []).includes(dow),
       completed: !!completion, completedBy: completion?.completed_by || '', completedAt: completion?.completed_at || null,
     });
@@ -124,6 +125,8 @@ async function createItem(request, env, deps) {
     body: JSON.stringify([{
       store_id: storeId, role_id: roleId, title, detail: text(body.detail, 2000),
       days_of_week: normalizeDaysOfWeek(body.daysOfWeek), sort_order: Math.round(Number(body.sortOrder) || 0),
+      assigned_to_user_id: body.assignedToUserId ? text(body.assignedToUserId, 80) : null,
+      assigned_to_label: body.assignedToUserId ? text(body.assignedToLabel, 200) : '',
     }]),
   });
   return deps.json({ ok: true, item: data?.[0] });
@@ -143,6 +146,12 @@ async function updateItem(request, env, deps) {
   if (body.daysOfWeek !== undefined) patch.days_of_week = normalizeDaysOfWeek(body.daysOfWeek);
   if (body.sortOrder !== undefined) patch.sort_order = Math.round(Number(body.sortOrder) || 0);
   if (body.active !== undefined) patch.active = !!body.active;
+  // assignedToUserId is the toggle: pass a falsy value (null/'') to clear
+  // assignment back to "any staff in this role", or an id + label to set it.
+  if (body.assignedToUserId !== undefined) {
+    patch.assigned_to_user_id = body.assignedToUserId ? text(body.assignedToUserId, 80) : null;
+    patch.assigned_to_label = body.assignedToUserId ? text(body.assignedToLabel, 200) : '';
+  }
   if (!Object.keys(patch).length) return deps.json({ ok: false, error: 'Nothing to update' }, 400);
   const db = (p, o) => deps.supabaseAdminFetch(env, p, o);
   const { data } = await db(`daily_task_items?id=eq.${encodeURIComponent(id)}&store_id=eq.${encodeURIComponent(storeId)}`, {
