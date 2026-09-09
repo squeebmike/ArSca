@@ -23,7 +23,7 @@ assert.ok(guardIdx > builtLoopIdx, 'the duplicate-listing guard must run after t
 assert.ok(guardIdx > isPreviewReturnIdx, 'the duplicate-listing guard must live on the create path, after the preview branch already returned -- preview must keep working even when covers are already listed, so staff can still see status');
 
 assert.match(createBody, /status=in\.\(presale,in_stock\)/, 'the duplicate check must look at currently-live inventory rows (presale or in_stock), not archived/sold ones');
-assert.match(createBody, /d\.focSkuId && d\.ebayListingId && built\.some\(v => v\.skuId === d\.focSkuId\)/, 'a cover only counts as "already listed" if it is one of the covers actually being published now AND already carries a live ebayListingId');
+assert.match(createBody, /d\.focSkuId && d\.ebayListingId && !d\.ebayWithdrawnAt && built\.some\(v => v\.skuId === d\.focSkuId\)/, 'a cover only counts as "already listed" if it is one of the covers actually being published now, carries a live ebayListingId, AND has not been withdrawn -- otherwise a properly-ended (or store-ended-on-eBay-directly) listing permanently blocks ever re-listing that cover, since ebayListingId is never cleared when a listing ends');
 assert.match(createBody, /return json\(\{ ok: false, error: `Already listed on eBay/, 'an already-listed cover must block the whole create with a clear, actionable error instead of silently creating a duplicate listing');
 
 console.log('Duplicate eBay group-listing guard checks passed');
