@@ -174,7 +174,18 @@ assert.match(worker, /const FOC_VOLUME_DISCOUNT_TIERS = \[\s*\n\s*\{ minQuantity
   'volume discount tiers must be declared at module scope, not inside fetch() where an earlier route could hit them before initialization (TDZ)');
 assert.match(worker, /async function createEbayVolumeDiscount\(env, ebayToken, listingId, sku\) \{/, 'must have a dedicated helper to create the eBay volume-discount promotion');
 assert.match(worker, /promotionType: 'VOLUME_DISCOUNT',/, 'must request eBay\'s VOLUME_DISCOUNT promotion type');
-assert.match(worker, /selectionRules: \{ selectionType: 'SPECIFIC', itemIds: \[String\(listingId\)\] \},/, 'the promotion must be scoped to the specific listing just published, not store-wide');
+// Store report (live error): "Volume discount setup failed (400): A valid
+// entry is required for 'name'." -- promotionName/selectionRules were
+// guessed field names that don't exist on eBay's real createItemPromotion
+// schema; the real fields (verified against eBay's own docs) are name,
+// inventoryCriterion (inventoryCriterionType + listingIds), and a nested
+// discountSpecification container per discount rule.
+assert.match(worker, /name: \('Buy More Save More - ' \+ sku\)\.substring\(0, 50\),/, 'the promotion display name must be sent under the field eBay actually expects (name, not promotionName)');
+assert.match(worker, /applyDiscountToSingleItemOnly: true,/, 'must apply per-listing (buy more of THIS listing), not mixed across multiple listings');
+assert.match(worker, /inventoryCriterion: \{ inventoryCriterionType: 'INVENTORY_BY_VALUE', listingIds: \[String\(listingId\)\] \},/,
+  'the promotion must be scoped to the specific listing just published via inventoryCriterion, not a nonexistent selectionRules shape');
+assert.match(worker, /discountRules: FOC_VOLUME_DISCOUNT_TIERS\.map\(\(t, i\) => \(\{\s*\n\s*ruleOrder: i \+ 1,\s*\n\s*discountSpecification: \{ minQuantity: t\.minQuantity \},\s*\n\s*discountBenefit: \{ percentageOffOrder: t\.percentageOff \},\s*\n\s*\}\)\),/,
+  'each discount tier\'s quantity threshold must be nested inside its own discountSpecification container, not sent as a sibling field of discountBenefit');
 assert.match(worker, /async function endEbayVolumeDiscount\(env, ebayToken, promotionId\) \{/, 'must have a dedicated helper to end a volume-discount promotion (so it never outlives a withdrawn listing)');
 assert.match(worker, /const volumeDiscount = await createEbayVolumeDiscount\(env, ebayToken, listingResult\.listingId, listingResult\.sku\);/,
   'the FOC create route must actually call the volume-discount helper after a successful publish');

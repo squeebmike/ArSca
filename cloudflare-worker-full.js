@@ -4127,8 +4127,18 @@ export default {
       // (default or a custom template), so it can't be silently dropped by
       // an edited template, and reflects the covers actually being
       // published here, not just whatever was eligible in preview.
-      const coversListText = 'This listing includes ' + built.length + ' cover option' + (built.length === 1 ? '' : 's') + ' -- pick yours from the "Cover" dropdown above:\n'
-        + built.map(v => `- ${v.label} -- $${v.price}`).join('\n');
+      // Store report: "the part about how many covers in the listing is
+      // off" -- built includes the synthetic "All Covers Bundle" entry
+      // alongside the real per-cover ones (bundleRequested.skuId is always
+      // null, every real cover's skuId is always set), so counting
+      // built.length as "N cover options" overstated the real number of
+      // distinct artwork covers by one whenever a bundle was included --
+      // misleading both buyers and eBay's own search indexing.
+      const realCovers = built.filter(v => v.skuId);
+      const bundleVariant = built.find(v => !v.skuId);
+      const coversListText = 'This listing includes ' + realCovers.length + ' cover option' + (realCovers.length === 1 ? '' : 's') + ' -- pick yours from the "Cover" dropdown above:\n'
+        + realCovers.map(v => `- ${v.label} -- $${v.price}`).join('\n')
+        + (bundleVariant ? `\n\nAlso available as a bundle: ${bundleVariant.label} -- $${bundleVariant.price} (all ${realCovers.length} covers together).` : '');
       const description = [descriptionBase, coversListText].filter(Boolean).join('\n\n').substring(0, 4000);
       const customAspects = (body.customAspects && typeof body.customAspects === 'object') ? { ...defaults.customAspects, ...body.customAspects } : defaults.customAspects;
       const bestOfferEnabled = body.bestOfferEnabled !== false;
@@ -8058,17 +8068,27 @@ export default {
     async function createEbayVolumeDiscount(env, ebayToken, listingId, sku) {
       const now = new Date();
       const end = new Date(now.getTime() + 1000 * 60 * 60 * 24 * 365 * 2); // 2-year runway -- well past any presale window
+      // Store report (live error): "Volume discount setup failed (400): A
+      // valid entry is required for 'name'." Checked against eBay's own
+      // Marketing API reference instead of guessing again: the promotion's
+      // display name field is `name`, not `promotionName`; which listings
+      // it applies to is `inventoryCriterion` (inventoryCriterionType +
+      // listingIds), not a `selectionRules`/`itemIds` shape that doesn't
+      // exist on this endpoint at all; and each discount tier's threshold
+      // belongs in its own nested `discountSpecification` container, not
+      // as a sibling field of discountBenefit.
       const body = {
         marketplaceId: 'EBAY_US',
-        promotionName: ('Buy More Save More - ' + sku).substring(0, 50),
+        name: ('Buy More Save More - ' + sku).substring(0, 50),
         promotionStatus: 'RUNNING',
         startDate: now.toISOString(),
         endDate: end.toISOString(),
         promotionType: 'VOLUME_DISCOUNT',
-        selectionRules: { selectionType: 'SPECIFIC', itemIds: [String(listingId)] },
+        applyDiscountToSingleItemOnly: true,
+        inventoryCriterion: { inventoryCriterionType: 'INVENTORY_BY_VALUE', listingIds: [String(listingId)] },
         discountRules: FOC_VOLUME_DISCOUNT_TIERS.map((t, i) => ({
           ruleOrder: i + 1,
-          minQuantity: t.minQuantity,
+          discountSpecification: { minQuantity: t.minQuantity },
           discountBenefit: { percentageOffOrder: t.percentageOff },
         })),
       };

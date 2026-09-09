@@ -35,8 +35,18 @@ console.log('Duplicate eBay group-listing guard checks passed');
 // ratio is spelled out in the description itself.
 
 assert.match(createBody, /const descriptionBase = \(typeof body\.description/, 'the original description (default or custom template) must still be computed first');
-assert.match(createBody, /const coversListText = 'This listing includes '/, 'a covers/ratio summary must be built from the covers actually being published');
-assert.match(createBody, /built\.map\(v => `- \$\{v\.label\} -- \$\$\{v\.price\}`\)/, 'every published cover\'s own label (which carries its incentive ratio, e.g. "CVR D INC 1:10...") and price must appear in the description');
+// Store report: "the part about how many covers in the listing is off" --
+// built also carries the synthetic "All Covers Bundle" entry (skuId:
+// null) alongside the real per-cover ones, so built.length overstated
+// the real number of distinct artwork covers by one whenever a bundle
+// was included. The bundle is now excluded from the cover count/list and
+// called out separately instead.
+assert.match(createBody, /const realCovers = built\.filter\(v => v\.skuId\);/, 'must separate the real per-cover entries from the synthetic bundle entry before counting/listing them');
+assert.match(createBody, /const bundleVariant = built\.find\(v => !v\.skuId\);/, 'must identify the bundle entry (the only one with no skuId) separately');
+assert.match(createBody, /const coversListText = 'This listing includes ' \+ realCovers\.length \+ ' cover option'/, 'the cover count must reflect only real covers, not the bundle');
+assert.match(createBody, /realCovers\.map\(v => `- \$\{v\.label\} -- \$\$\{v\.price\}`\)/, 'every real cover\'s own label (which carries its incentive ratio, e.g. "CVR D INC 1:10...") and price must appear in the description, excluding the bundle');
+assert.match(createBody, /\(bundleVariant \? `\\n\\nAlso available as a bundle: \$\{bundleVariant\.label\} -- \$\$\{bundleVariant\.price\} \(all \$\{realCovers\.length\} covers together\)\.` : ''\)/,
+  'an included bundle must still be mentioned, just called out separately from the real cover count instead of inflating it');
 assert.match(createBody, /const description = \[descriptionBase, coversListText\]\.filter\(Boolean\)\.join\('\\n\\n'\)\.substring\(0, 4000\)/, 'the covers list must be appended to whatever description is actually used, so it survives a custom template instead of being silently dropped by it');
 
 console.log('eBay group-listing covers/ratio description checks passed');
