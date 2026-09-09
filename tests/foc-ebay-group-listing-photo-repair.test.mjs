@@ -62,8 +62,10 @@ assert.match(repairFnBody, /comic_skus\?id=in\.\(\$\{focSkuIds\.map\(id => encod
   'must look up each cover\'s real label from comic_skus by its own focSkuId -- the same source of truth the label was originally built from, not eBay\'s echoed array');
 assert.match(repairFnBody, /label: focSkuIdBySku\[sku\] \? labelBySkuId\[focSkuIdBySku\[sku\]\] : nameBySku\[sku\],/,
   'a real cover uses its own comic_skus label; the synthetic bundle variant (no focSkuId) falls back to its own stored name, which already IS its label verbatim');
-assert.match(repairFnBody, /const result = await setEbayVariationSpecificPhotos\(ebayToken, listingId, variantPhotos\);/,
-  'the repair must also call setEbayVariationSpecificPhotos with one entry per SKU -- fixing only the REST-side gallery array leaves the actual buyer-facing symptom (dropdown does not change the photo) completely unfixed');
+assert.match(repairFnBody, /const variantAspectName = group\.variesBy\?\.specifications\?\.\[0\]\?\.name \|\| 'Cover';/,
+  'must derive the real variant aspect name (e.g. "Cover") from eBay\'s own live group data rather than assuming -- a wrong/empty aspect name gets the whole photo-binding request rejected outright (see the VariationSpecificName fix below)');
+assert.match(repairFnBody, /const result = await setEbayVariationSpecificPhotos\(ebayToken, listingId, variantPhotos, variantAspectName\);/,
+  'the repair must also call setEbayVariationSpecificPhotos with one entry per SKU AND the real aspect name -- fixing only the REST-side gallery array leaves the actual buyer-facing symptom (dropdown does not change the photo) completely unfixed');
 assert.match(repairFnBody, /if \(result\.skipped\.length\) warning = `Per-cover photo binding was not set for: \$\{result\.skipped\.join\(', '\)\}/,
   'a variant skipped for missing a label/photo must be named in the warning, not silently omitted -- a partial binding must never look identical to full success');
 assert.match(repairFnBody, /warning = 'General gallery was repaired, but per-cover "Cover: Select" photo binding failed: '/,
@@ -87,8 +89,16 @@ assert.match(helperBody, /'X-EBAY-API-CALL-NAME': callName,/, 'must set the Trad
 assert.match(helperBody, /const ack = \(txt\.match\(\/<Ack>\(\[\^<\]\+\)<\\\/Ack>\/\) \|\| \[\]\)\[1\] \|\| '';/, 'must actually check the XML response\'s Ack value -- a 200 HTTP status from this endpoint does not mean the call succeeded');
 assert.match(helperBody, /if \(ack !== 'Success' && ack !== 'Warning'\) \{/, 'Failure and PartialFailure Acks must be treated as real errors, not silently accepted');
 assert.match(helperBody, /VariationSpecificPictureSet>/, 'must build the VariationSpecificPictureSet XML container -- this is the actual per-variation photo mechanism, distinct from anything in the REST group repair above');
-assert.match(helperBody, /<VariationSpecificValue>\$\{xmlEscape\(v\.label\)\}<\/VariationSpecificValue>/,
-  'each picture set must be keyed by the variation\'s own label text (VariationSpecificValue) -- this has to exactly match the dropdown\'s own option text or eBay cannot bind the photos to the right cover');
+// Store report (live error): "AddFixedPriceItem failed: Variation
+// specific name "" used for pictures does not exist in variation
+// specific set." -- VariationSpecificPictureSetType requires BOTH the
+// aspect name (VariationSpecificName, e.g. "Cover") and the value
+// (VariationSpecificValue, e.g. "Cover A"); sending only the value left
+// eBay defaulting the name to "", which it then rejects outright.
+assert.match(helperBody, /<VariationSpecificName>\$\{xmlEscape\(variantAspectName\)\}<\/VariationSpecificName><VariationSpecificValue>\$\{xmlEscape\(v\.label\)\}<\/VariationSpecificValue>/,
+  'each picture set must carry BOTH the real aspect name and the variation\'s own label text -- an empty/missing aspect name gets the whole request rejected, not just that one entry');
+assert.match(helperBody, /async function setEbayVariationSpecificPhotos\(ebayToken, listingId, variantPhotos, variantAspectName = 'Cover'\)/,
+  'must accept the real aspect name as a parameter (defaulting to \'Cover\', the only variant dimension this app has ever used) rather than hardcoding or omitting it');
 assert.match(helperBody, /<Item><ItemID>\$\{xmlEscape\(listingId\)\}<\/ItemID><Variations><Pictures>\$\{sets\}<\/Pictures><\/Variations><\/Item>/,
   'the picture sets must be nested under Item.Variations.Pictures, eBay\'s documented hierarchy for this field -- a wrong nesting level is silently ignored rather than erroring');
 assert.match(helperBody, /const skipped = variantPhotos\.filter\(v => !\(v\.label && v\.imageUrls && v\.imageUrls\.length\)\)\.map\(v => v\.label \|\| v\.sku \|\| '\(unidentified cover\)'\);/,
@@ -105,8 +115,8 @@ console.log('eBay Trading API variation-photo helper checks passed');
 const createFnStart = worker.indexOf('async function createAndPublishEbayVariationListing');
 const createFnEnd = worker.indexOf('// Repairs group-listing photo-to-cover binding', createFnStart);
 const createFnBody = worker.slice(createFnStart, createFnEnd);
-assert.match(createFnBody, /const photoResult = await setEbayVariationSpecificPhotos\(ebayToken, listingId, built\.map\(v => \(\{ label: v\.label, sku: v\.sku, imageUrls: \[v\.imageUrl, \.\.\.\(v\.imageUrls \|\| \[\]\)\]\.filter\(Boolean\) \}\)\)\)/,
-  'a freshly published group listing must have its per-cover photo binding set at publish time, using every real photo already gathered for that variant -- not left for a store to notice and repair later');
+assert.match(createFnBody, /const photoResult = await setEbayVariationSpecificPhotos\(ebayToken, listingId, built\.map\(v => \(\{ label: v\.label, sku: v\.sku, imageUrls: \[v\.imageUrl, \.\.\.\(v\.imageUrls \|\| \[\]\)\]\.filter\(Boolean\) \}\)\), variantAspectName\)/,
+  'a freshly published group listing must have its per-cover photo binding set at publish time, using every real photo already gathered for that variant AND the real aspect name -- not left for a store to notice and repair later');
 assert.match(createFnBody, /if \(photoResult\.skipped\.length\) warnings\.push\(`Per-cover photo binding was not set for: \$\{photoResult\.skipped\.join\(', '\)\}/,
   'a variant skipped for missing a label/photo at publish time must be named in the listing\'s own warnings, not silently omitted');
 assert.match(createFnBody, /warnings\.push\('Could not set per-cover "Cover: Select" photo binding: '/,
