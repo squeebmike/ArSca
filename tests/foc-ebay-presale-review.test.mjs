@@ -246,7 +246,11 @@ assert.match(focDash, /window\.filterFocEbay=function\(v\)\{state\.ebay=v;render
 // change handling time on every other live listing referencing it.
 assert.match(worker, /function businessDaysBetween\(from, to\)/, 'must be able to compute business days from now to the on-sale date');
 assert.match(worker, /async function getFocPresaleFulfillmentPolicyId\(env, ebayToken, handlingDaysNeeded, basePolicyIdOverride\)/, 'must provision a presale-specific fulfillment policy');
-assert.match(worker, /const bucket = Math\.min\(40, Math\.max\(5, Math\.ceil\(Math\.max\(1, handlingDaysNeeded\) \/ 5\) \* 5\)\)/, 'handling time must be capped at eBay\'s 40-business-day presale limit');
+// Store report (live error): eBay rejected creating a "FOC 35D Handling"
+// policy with SHIPLEIG_ERROR_CODE_NAME=INVALID_HANDLING_TIME -- the cap
+// here was wrongly set to 40 (an untested guess); eBay's real max for a
+// fulfillment policy's handlingTime is 30 business days.
+assert.match(worker, /const bucket = Math\.min\(30, Math\.max\(5, Math\.ceil\(Math\.max\(1, handlingDaysNeeded\) \/ 5\) \* 5\)\)/, 'handling time must be capped at eBay\'s real 30-business-day fulfillment-policy limit, not a wrong guess of 40');
 assert.doesNotMatch(worker, /fetch\(`https:\/\/api\.ebay\.com\/sell\/account\/v1\/fulfillment_policy\/\$\{encodeURIComponent\(fallback\)\}`, \{[\s\S]{0,200}method: 'PUT'/,
   'must never PUT/update the shared base fulfillment policy in place -- that would change handling time on every other live listing using it too');
 assert.match(worker, /const handlingBusinessDays = businessDaysBetween\(new Date\(\), onSaleDate\) \+ 2/, 'handling time must be computed from the SKU\'s real on-sale date, not a fixed guess');

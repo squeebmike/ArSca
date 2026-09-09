@@ -136,6 +136,23 @@ console.log('buildEbayWeightXml checks passed');
   // single representative cover photo -- never a copy of every variant.
   assert.match(body, /const galleryUrls = \[b\.mainImageUrl \|\| anyCoverImage\]\.filter\(Boolean\);/,
     'galleryUrls must be a single default photo (mainImageUrl, falling back to one representative cover), never one entry per cover -- that duplicates what Variations.Pictures already binds per-cover');
+
+  // Store report: "its not listing the mulit listing in th ecorrect store
+  // category" -- b.storeCategoryNames reached this function (the route
+  // already passes it through) but nothing here ever read it, so the
+  // dashboard's EBAY STORE CATEGORY field was entirely decorative for a
+  // Trading-API-built listing. The REST Inventory API's offer body takes a
+  // storeCategoryNames array of plain names directly (buildEbayOfferBody);
+  // the Trading API's equivalent, Item.Storefront.StoreCategoryName /
+  // StoreCategory2Name, documented by eBay as accepting a category NAME
+  // directly (no separate numeric-ID lookup call needed), mirrors that same
+  // max-2-names convention.
+  assert.match(body, /const storeCategoryNames = \(Array\.isArray\(b\.storeCategoryNames\) \? b\.storeCategoryNames : String\(b\.storeCategoryNames \|\| ''\)\.split\(','\)\)\s*\n\s*\.map\(s => String\(s \|\| ''\)\.trim\(\)\)\.filter\(Boolean\)\.slice\(0, 2\);/,
+    'must accept storeCategoryNames as either an array or a comma-separated string, capped at eBay\'s 2-store-category limit, matching buildEbayOfferBody\'s own cleaning logic');
+  assert.match(body, /const storefrontXml = storeCategoryNames\.length\s*\n\s*\? `<Storefront>\$\{storeCategoryNames\[0\] \? `<StoreCategoryName>\$\{xmlEscape\(storeCategoryNames\[0\]\)\}<\/StoreCategoryName>` : ''\}\$\{storeCategoryNames\[1\] \? `<StoreCategory2Name>\$\{xmlEscape\(storeCategoryNames\[1\]\)\}<\/StoreCategory2Name>` : ''\}<\/Storefront>`\s*\n\s*: '';/,
+    'must build a Storefront container with StoreCategoryName (and StoreCategory2Name for a second category) when a store category was actually given');
+  assert.match(body, /\(itemSpecificsXml \? `<ItemSpecifics>\$\{itemSpecificsXml\}<\/ItemSpecifics>` : ''\) \+\s*\n\s*storefrontXml \+/,
+    'the Storefront container must actually be included in the published itemXml, or the store-category fix is computed but never sent');
 }
 console.log('createAndPublishEbayVariationListingTrading checks passed');
 
