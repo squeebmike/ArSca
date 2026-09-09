@@ -7660,14 +7660,25 @@ export default {
       const built = variants.map((v, i) => ({ ...v, sku: groupKey + '-' + i }));
 
       const anyCoverImage = built.find(v => v.imageUrl)?.imageUrl || '';
-      // Store report: the store-uploaded "MAIN LISTING PHOTO" (a "pick your
-      // cover" composite graphic) never showed up anywhere on the live
-      // listing -- b.mainImageUrl was accepted by the route and passed all
-      // the way into this function, but nothing here ever read it. It
-      // belongs first in the general/default gallery, shown before a buyer
-      // picks a cover, same as its own label says ("shown first, before a
-      // buyer picks a cover").
-      const galleryUrls = [...new Set([b.mainImageUrl, ...built.map(v => v.imageUrl || anyCoverImage)].filter(Boolean))];
+      // Store report: "it loads all covers again, doubling them up. the
+      // books images up top don't change the item, the ones at the bottom
+      // do change when clicked." Item.PictureDetails (the general/default
+      // gallery, shown before a buyer picks a cover) and
+      // Item.Variations.Pictures (the actual per-cover switching, bound via
+      // buildVariationPictureSetsXml below) are two SEPARATE, ADDITIVE
+      // mechanisms on the Trading API -- unlike the REST Inventory API's
+      // single group-level imageUrls array, which IS the per-variant
+      // switching mechanism and therefore needs exactly one entry per
+      // variant (see createAndPublishEbayVariationListing above). Putting
+      // every cover's own photo into PictureDetails here copied that REST
+      // mental model by mistake: eBay's page then shows the union of both
+      // sets in one flat thumbnail strip, so every cover's photo appeared
+      // TWICE -- once as a static PictureDetails entry that never drives
+      // selection ("up top"), once as its own variation-bound entry that
+      // does ("at the bottom"). PictureDetails only ever needs ONE default
+      // photo: the store's uploaded composite, or (absent that) a single
+      // representative cover photo -- never a copy of every variant.
+      const galleryUrls = [b.mainImageUrl || anyCoverImage].filter(Boolean);
       const { sets: pictureSetsXml, skipped: pictureSkipped } = buildVariationPictureSetsXml(
         // Deduplicated -- v.imageUrl is often already the first entry of
         // v.imageUrls (e.g. the bundle variant above), and binding the same

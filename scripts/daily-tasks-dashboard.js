@@ -9,6 +9,14 @@
 // attribute needs must be re-exposed on window at the bottom (see
 // tests/daily-tasks-window-exposure.test.mjs).
 (function(){
+// Store report: "Uncaught ReferenceError: esc is not defined" -- this file
+// calls esc() throughout (matching foc-dashboard.js's own convention) but,
+// unlike that file, never actually defined it. dashboard.html's own global
+// helper is escHtml, not esc, and foc-dashboard.js's esc is private to its
+// own IIFE, not shared across module files -- this never surfaced before
+// because every render call used to fail earlier, on the storeId bug, well
+// before reaching any code that calls esc().
+function esc(value){return String(value==null?'':value).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
 var DOW_LABELS=['S','M','T','W','T','F','S'];
 var DOW_NAMES=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
 var state={ date:todayLocalDateStr(), data:null, view:'today', loading:false, members:null, filters:{role:'',assignee:'',status:''} };
