@@ -16,8 +16,8 @@ const downloadImageStart = buildScript.indexOf('async function downloadImage(url
 assert(downloadImageStart >= 0, 'downloadImage() must exist');
 const downloadImageEnd = buildScript.indexOf('\nasync function runPool', downloadImageStart);
 const downloadImageFn = buildScript.slice(downloadImageStart, downloadImageEnd);
-assert.match(downloadImageFn, /fetch\(url, \{ headers: \{ 'User-Agent': 'Walk-Off-MTG-Offline-Builder\/1\.0' \} \}\)/,
-  'downloadImage() must send the same User-Agent header as fetchJson()/downloadToFile() in this file -- Scryfall\'s CDN 400s every request missing one');
+assert.match(downloadImageFn, /fetchWithTimeout\(url, \{ headers: \{ 'User-Agent': 'Walk-Off-MTG-Offline-Builder\/1\.0' \} \}, 20000\)/,
+  'downloadImage() must send the same User-Agent header as fetchJson()/downloadToFile() in this file -- Scryfall\'s CDN 400s every request missing one -- and must go through fetchWithTimeout, not a bare fetch(), so a stalled connection cannot hang this call forever');
 
 // A set where every image download fails must still fail cleanly (0 cached,
 // index reflects that) rather than crash with ENOENT -- outputRoot was
@@ -58,3 +58,35 @@ assert.match(buildScript, /await uploadObject\(`mtg\/images\/index-set-\$\{setCo
 assert.match(buildScript, /await uploadObject\('mtg\/images\/index-all\.json', allIndexPath\);/, 'the merged all-sets index upload call site must await uploadObject');
 
 console.log('MTG offline images build fetch-header checks passed');
+
+// A real "Build MTG Offline Card Images" run stuck 2+ hours with zero
+// progress on 4 concurrent matrix legs and no error -- every fetch() call
+// in this file had no timeout at all, so a single stalled connection to
+// Scryfall's CDN (Node's fetch has no default timeout) blocked that
+// request, and every leg still queued behind the stuck concurrency slots,
+// forever. Every network call in this file must go through the shared
+// fetchWithTimeout helper instead of a bare fetch(), so a stall aborts and
+// retries instead of hanging the whole matrix.
+const timeoutHelperStart = buildScript.indexOf('async function fetchWithTimeout');
+assert(timeoutHelperStart >= 0, 'fetchWithTimeout() must exist');
+const timeoutHelperEnd = buildScript.indexOf('\nasync function fetchJson', timeoutHelperStart);
+const timeoutHelperFn = buildScript.slice(timeoutHelperStart, timeoutHelperEnd);
+assert.match(timeoutHelperFn, /const controller = new AbortController\(\);/, 'must actually abort the in-flight request on timeout, not just race a timer alongside an fetch that keeps running');
+assert.match(timeoutHelperFn, /const timer = setTimeout\(\(\) => controller\.abort\(\), timeoutMs\);/, 'the abort must actually fire after timeoutMs');
+assert.match(timeoutHelperFn, /signal: controller\.signal/, 'the abort signal must actually be wired into the fetch call, or the timer is decorative');
+assert.match(timeoutHelperFn, /finally \{\s*\n\s*clearTimeout\(timer\);/, 'a request that finishes normally must clear its timer -- an uncleared timer per call would leak and could fire after the process is already done with that request');
+
+// Every fetch() call site in this file must be routed through the timeout
+// wrapper -- a single bare fetch() left anywhere reintroduces the exact
+// hang this fix exists to close. The only legitimate "await fetch(" in the
+// whole file is the real one inside fetchWithTimeout itself.
+const bareFetchCount = (buildScript.match(/await fetch\(/g) || []).length;
+assert.equal(bareFetchCount, 1,
+  `exactly one bare "await fetch(" may exist in this file (inside fetchWithTimeout itself) -- found ${bareFetchCount}; every other call site must go through fetchWithTimeout so a stalled connection cannot hang the build forever`);
+assert.match(buildScript, /await fetchWithTimeout\(url, \{ headers: \{ 'User-Agent': 'Walk-Off-MTG-Offline-Builder\/1\.0' \} \}\);/,
+  'fetchJson() must use the timeout wrapper');
+assert.match(buildScript, /await fetchWithTimeout\(url, \{ headers: \{ 'User-Agent': 'Walk-Off-MTG-Offline-Builder\/1\.0' \} \}, 180000\);/,
+  'downloadToFile() (used for the multi-hundred-MB Scryfall bulk file) must use a longer timeout than the default -- a large-but-healthy transfer must not be killed just for taking a while');
+assert.match(buildScript, /await fetchWithTimeout\(url, \{ cache: 'no-store' \}\);/, 'fetchExistingJson() must use the timeout wrapper');
+
+console.log('fetchWithTimeout hang-prevention checks passed');

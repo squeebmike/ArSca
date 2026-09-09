@@ -99,6 +99,7 @@ jobs:
 
       - name: Download Scryfall bulk card data once for this batch
         id: bulk
+        timeout-minutes: 15
         shell: bash
         run: |
           set -euo pipefail
@@ -124,6 +125,15 @@ jobs:
           "
 
       - name: Build and upload card images
+        # A full production run left this step stuck 2+ hours with zero
+        # progress and no error: every fetch() in build-mtg-offline-images.mjs
+        # had no timeout, so one stalled connection to Scryfall's CDN blocked
+        # a whole matrix leg (and every leg queued behind it, since
+        # concurrency is capped) indefinitely. The script itself now aborts
+        # and retries a stalled request instead of hanging forever -- this
+        # step timeout is a second line of defense so an unforeseen hang
+        # fails this one leg fast instead of blocking the whole matrix.
+        timeout-minutes: 45
         shell: bash
         run: |
           set -euo pipefail
