@@ -1025,9 +1025,11 @@ async function repairFocEbayGroupPhotos(){
   if(status)status.textContent='Checking group listing photos…';
   try{
     var d=await api('/foc/ebay/repair-group-listing-photos',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({storeId:getActiveStoreId()})});
-    var n=(d.repaired||[]).length,f=(d.failed||[]).length;
-    if(!n&&!f)toast_dash(d.message||'No group listings on file to repair');
-    else toast_dash(n+' listing'+(n===1?'':'s')+' photo binding repaired'+(f?' ('+f+' failed, see console)':''));
+    var repaired=d.repaired||[],f=(d.failed||[]).length;
+    var withWarning=repaired.filter(function(r){return r.warning;}).length;
+    if(!repaired.length&&!f)toast_dash(d.message||'No group listings on file to repair');
+    else toast_dash(repaired.length+' listing'+(repaired.length===1?'':'s')+' photo binding repaired'+(withWarning?' ('+withWarning+' with warnings, see console)':'')+(f?' ('+f+' failed, see console)':''));
+    if(withWarning)console.warn('FOC eBay group photo repair warnings:',repaired.filter(function(r){return r.warning;}));
     if(d.failed&&d.failed.length)console.error('FOC eBay group photo repair failures:',d.failed);
   }catch(e){toast_dash('Could not repair listing photos: '+e.message);}
   finally{if(status)status.textContent='';}

@@ -21,7 +21,7 @@ const repairFnBody = worker.slice(repairFnStart, repairFnEnd);
 assert.match(repairFnBody, /fetch\(`https:\/\/api\.ebay\.com\/sell\/inventory\/v1\/inventory_item_group\/\$\{groupKey\}`, \{\s*headers:/,
   'must GET the group\'s current state from eBay first -- title/description/aspects/variesBy are preserved from what eBay already has, only imageUrls is corrected, so this can never accidentally drift the listing\'s other fields');
 assert.match(repairFnBody, /const variantSKUs = Array\.isArray\(group\.variantSKUs\)/, 'must read the live variantSKUs order from eBay -- that order defines the position each corrected image must land in');
-assert.match(repairFnBody, /r\.data\?\.ebayInventoryItemGroupKey === groupKey && r\.data\?\.ebaySku/,
+assert.match(repairFnBody, /if \(r\.data\?\.ebaySku\) imageBySku\[r\.data\.ebaySku\] = r\.data\.image \|\| '';/,
   'must map each variant SKU back to that inventory_item row\'s OWN stored image -- the per-row image was never touched by the shared-array bug, so it is the trustworthy source for the repair');
 assert.match(repairFnBody, /const correctedImageUrls = variantSKUs\.map\(sku => imageBySku\[sku\] \|\| fallbackImage\)/,
   'the corrected array must stay exactly one entry per live variant SKU, in eBay\'s own order -- never shorter/longer than variantSKUs or the position-binding contract breaks again');
@@ -30,7 +30,63 @@ assert.match(repairFnBody, /if \(!fallbackImage\) \{ const e = new Error\('No us
 assert.match(repairFnBody, /method: 'PUT',[\s\S]*?imageUrls: correctedImageUrls, variantSKUs, variesBy: group\.variesBy,/,
   'the repair PUT must send back the group\'s own existing title/description/aspects/variesBy alongside the corrected imageUrls');
 
+// eBay's own Seller Hub "Add variation photos" tool -- described by eBay
+// itself as "This determines which photos buyers see when they select a
+// variation option" -- showed 0/12 photos assigned to EVERY cover on a
+// listing built entirely through the REST Inventory API mechanism above
+// (aspectsImageVaryBy + group-level imageUrls), confirmed directly on a
+// live listing. That tool is actually driven by the older Trading (XML)
+// API's VariationSpecificPictureSet (ReviseFixedPriceItem), a completely
+// separate mechanism this app never called before. The REST-side repair
+// above is still worth keeping (it fixes the general/fallback gallery),
+// but it does not and cannot fix the actual per-cover dropdown-to-photo
+// binding on its own.
+assert.match(repairFnBody, /const specValues = \(group\.variesBy\?\.specifications\?\.\[0\]\?\.values\) \|\| \[\];/,
+  'must read the live specifications.values from eBay to know each SKU\'s own dropdown label -- VariationSpecificValue has to be the exact buyer-facing label text, not a SKU or internal key');
+assert.match(repairFnBody, /await setEbayVariationSpecificPhotos\(ebayToken, listingId, variantSKUs\.map\(sku => \(\{ label: labelBySku\[sku\], imageUrls: \[imageBySku\[sku\] \|\| fallbackImage\] \}\)\)\)/,
+  'the repair must also call setEbayVariationSpecificPhotos with one entry per SKU, using each SKU\'s own stored image -- fixing only the REST-side gallery array leaves the actual buyer-facing symptom (dropdown does not change the photo) completely unfixed');
+assert.match(repairFnBody, /warning = 'General gallery was repaired, but per-cover "Cover: Select" photo binding failed: '/,
+  'a Trading API failure must not throw and lose the REST-side repair that already succeeded -- it must come back as a warning on the result instead');
+
 console.log('repairEbayGroupListingImages checks passed');
+
+// Trading API integration: this app never called eBay's older XML Trading
+// API before -- setEbayVariationSpecificPhotos and its ebayTradingApiCall
+// helper are new. The Trading API accepts the SAME OAuth user token
+// already used for the REST Sell APIs via the X-EBAY-API-IAF-TOKEN header,
+// so this needs no new credentials or a separate auth flow.
+
+const helperStart = worker.indexOf('async function setEbayVariationSpecificPhotos');
+assert.ok(helperStart !== -1, 'setEbayVariationSpecificPhotos must exist');
+const helperFnEnd = worker.indexOf('async function createAndPublishEbayVariationListing', helperStart);
+const helperBody = worker.slice(worker.indexOf('function xmlEscape'), helperFnEnd);
+
+assert.match(helperBody, /'X-EBAY-API-IAF-TOKEN': ebayToken,/, 'the Trading API call must authenticate with the existing OAuth user token via the IAF header, not a separate legacy token/session');
+assert.match(helperBody, /'X-EBAY-API-CALL-NAME': callName,/, 'must set the Trading API call-name header the way every XML Trading API call requires');
+assert.match(helperBody, /const ack = \(txt\.match\(\/<Ack>\(\[\^<\]\+\)<\\\/Ack>\/\) \|\| \[\]\)\[1\] \|\| '';/, 'must actually check the XML response\'s Ack value -- a 200 HTTP status from this endpoint does not mean the call succeeded');
+assert.match(helperBody, /if \(ack !== 'Success' && ack !== 'Warning'\) \{/, 'Failure and PartialFailure Acks must be treated as real errors, not silently accepted');
+assert.match(helperBody, /VariationSpecificPictureSet>/, 'must build the VariationSpecificPictureSet XML container -- this is the actual per-variation photo mechanism, distinct from anything in the REST group repair above');
+assert.match(helperBody, /<VariationSpecificValue>\$\{xmlEscape\(v\.label\)\}<\/VariationSpecificValue>/,
+  'each picture set must be keyed by the variation\'s own label text (VariationSpecificValue) -- this has to exactly match the dropdown\'s own option text or eBay cannot bind the photos to the right cover');
+assert.match(helperBody, /<Item><ItemID>\$\{xmlEscape\(listingId\)\}<\/ItemID><Variations><Pictures>\$\{sets\}<\/Pictures><\/Variations><\/Item>/,
+  'the picture sets must be nested under Item.Variations.Pictures, eBay\'s documented hierarchy for this field -- a wrong nesting level is silently ignored rather than erroring');
+
+console.log('eBay Trading API variation-photo helper checks passed');
+
+// The same binding must also be set automatically when a NEW group
+// listing is first published -- otherwise every future listing keeps
+// landing with the same 0/12 gap this whole fix exists to close, and the
+// store would have to remember to run REPAIR LISTING PHOTOS every time.
+
+const createFnStart = worker.indexOf('async function createAndPublishEbayVariationListing');
+const createFnEnd = worker.indexOf('// Repairs group-listing photo-to-cover binding', createFnStart);
+const createFnBody = worker.slice(createFnStart, createFnEnd);
+assert.match(createFnBody, /await setEbayVariationSpecificPhotos\(ebayToken, listingId, built\.map\(v => \(\{ label: v\.label, imageUrls: \[v\.imageUrl, \.\.\.\(v\.imageUrls \|\| \[\]\)\]\.filter\(Boolean\) \}\)\)\)/,
+  'a freshly published group listing must have its per-cover photo binding set at publish time, using every real photo already gathered for that variant -- not left for a store to notice and repair later');
+assert.match(createFnBody, /warnings\.push\('Could not set per-cover "Cover: Select" photo binding: '/,
+  'a Trading API failure here must surface as a warning on the listing result, never throw and kill an otherwise-successful publish');
+
+console.log('New-listing variation-photo binding checks passed');
 
 // Backend route: batch-repairs every still-live group listing for the
 // store in one call (or just one, if a specific groupKey is given) --
