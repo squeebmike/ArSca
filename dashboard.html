@@ -1640,7 +1640,8 @@ body.show-mode .inv-sync-badge{display:none;}
 <script src="scripts/comic-issue-hub.js?v=2026.09.09.18-ebay-character-genre-format-fields" defer></script>
 <script src="scripts/foc-dashboard.js?v=2026.09.09.18-ebay-character-genre-format-fields" defer></script>
 <script src="scripts/card-intake-dashboard.js?v=2026.09.09.18-ebay-character-genre-format-fields" defer></script>
-<script src="scripts/daily-tasks-dashboard.js?v=2026.09.09.18-ebay-character-genre-format-fields" defer></script>
+<script src="scripts/mana-pocket-task-library.js?v=2026.09.10.01-daily-task-cadence" defer></script>
+<script src="scripts/daily-tasks-dashboard.js?v=2026.09.10.01-daily-task-cadence" defer></script>
 <script src="scripts/mtg/mtg-offline-browser.js?v=2026.09.09.18-ebay-character-genre-format-fields" defer></script>
 <script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.09.09.18-ebay-character-genre-format-fields" defer></script>
 <script src="scripts/pricecharting/offline-browser.js?v=2026.09.09.18-ebay-character-genre-format-fields" defer></script>
@@ -16668,6 +16669,11 @@ async function computePulseData(){
         }
       }
     }
+  }catch(e){ /* best-effort -- Pulse still shows everything else if this fails */ }
+
+  try{
+    const myTasks = typeof getMyDailyTasksAction === 'function' ? await getMyDailyTasksAction() : null;
+    if(myTasks) actions.push(myTasks);
   }catch(e){ /* best-effort -- Pulse still shows everything else if this fails */ }
 
   return { grossToday, profitToday, soldTodayCount:soldToday.length, trappedCash, actions:actions.slice(0, 5) };

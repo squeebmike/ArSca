@@ -24,6 +24,51 @@ function normalizeDaysOfWeek(input) {
   return days.length ? days.sort((a, b) => a - b) : [0, 1, 2, 3, 4, 5, 6];
 }
 
+const CADENCES = ['daily', 'weekly', 'monthly', 'quarterly', 'yearly'];
+function normalizeCadence(input) {
+  const c = String(input || 'daily').trim().toLowerCase();
+  return CADENCES.includes(c) ? c : 'daily';
+}
+const PERIOD_CADENCES = new Set(['monthly', 'quarterly', 'yearly']);
+
+function pad2(n) { return String(n).padStart(2, '0'); }
+function dateToStr(d) { return `${d.getUTCFullYear()}-${pad2(d.getUTCMonth() + 1)}-${pad2(d.getUTCDate())}`; }
+
+function shiftDateStr(dateStr, deltaDays) {
+  const d = new Date(`${dateStr}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + deltaDays);
+  return dateToStr(d);
+}
+
+// Calendar-period bounds for the non-weekday cadences -- 'monthly' is a
+// calendar month, 'quarterly' a calendar quarter, 'yearly' a calendar
+// year, all computed in UTC from the client's own 'YYYY-MM-DD' string
+// (same no-timezone-guessing rule as dayOfWeekForDateString above).
+function periodBounds(cadence, dateStr) {
+  const d = new Date(`${dateStr}T00:00:00Z`);
+  if (Number.isNaN(d.getTime())) return null;
+  const y = d.getUTCFullYear(), m = d.getUTCMonth();
+  if (cadence === 'monthly') {
+    return { start: dateToStr(new Date(Date.UTC(y, m, 1))), end: dateToStr(new Date(Date.UTC(y, m + 1, 0))) };
+  }
+  if (cadence === 'quarterly') {
+    const qStart = Math.floor(m / 3) * 3;
+    return { start: dateToStr(new Date(Date.UTC(y, qStart, 1))), end: dateToStr(new Date(Date.UTC(y, qStart + 3, 0))) };
+  }
+  return { start: dateToStr(new Date(Date.UTC(y, 0, 1))), end: dateToStr(new Date(Date.UTC(y, 11, 31))) };
+}
+
+function previousPeriodBounds(cadence, dateStr) {
+  const cur = periodBounds(cadence, dateStr);
+  if (!cur) return null;
+  return periodBounds(cadence, shiftDateStr(cur.start, -1));
+}
+
+// How many days back to look for a missed occurrence of a daily/weekly
+// task before flagging it "overdue" -- wide enough to catch a weekly task
+// (7-day cycle) with margin, without scanning forever.
+const OVERDUE_LOOKBACK_DAYS = 13;
+
 // Combined read: powers both the "Today's Checklist" view (filter each
 // task's own dueToday flag client-side) and the "Edit Roles & Tasks" admin
 // screen (which needs every task regardless of day-of-week), in one round
@@ -36,22 +81,84 @@ async function getDailyTasks(request, env, deps, url) {
   if (dow === null) return deps.json({ ok: false, error: 'Invalid date' }, 400);
   const db = (p, o) => deps.supabaseAdminFetch(env, p, o);
 
-  const [{ data: roleRows }, { data: itemRows }, { data: completionRows }] = await Promise.all([
+  const [{ data: roleRows }, { data: itemRows }] = await Promise.all([
     db(`daily_task_roles?store_id=eq.${encodeURIComponent(storeId)}&select=*&order=sort_order.asc,name.asc`),
     db(`daily_task_items?store_id=eq.${encodeURIComponent(storeId)}&select=*&order=sort_order.asc,title.asc`),
-    db(`daily_task_completions?store_id=eq.${encodeURIComponent(storeId)}&task_date=eq.${encodeURIComponent(dateStr)}&select=task_id,completed_by,completed_at`),
   ]);
-  const completedByTaskId = new Map((completionRows || []).map(c => [c.task_id, c]));
+
+  // Completions are fetched as one range, not one exact-date row per task:
+  // daily/weekly overdue detection needs the last OVERDUE_LOOKBACK_DAYS
+  // days, and monthly/quarterly/yearly tasks need every completion inside
+  // their current (and previous, for overdue) calendar period -- both
+  // reach further back than "just today".
+  let earliest = shiftDateStr(dateStr, -OVERDUE_LOOKBACK_DAYS);
+  const cadencesPresent = new Set((itemRows || []).map(i => normalizeCadence(i.cadence)));
+  for (const c of PERIOD_CADENCES) {
+    if (!cadencesPresent.has(c)) continue;
+    const prev = previousPeriodBounds(c, dateStr);
+    if (prev && prev.start < earliest) earliest = prev.start;
+  }
+  const [{ data: completionRows }, { data: overrideRows }] = await Promise.all([
+    db(`daily_task_completions?store_id=eq.${encodeURIComponent(storeId)}&task_date=gte.${encodeURIComponent(earliest)}&task_date=lte.${encodeURIComponent(dateStr)}&select=task_id,task_date,completed_by,completed_at`),
+    db(`daily_task_overrides?store_id=eq.${encodeURIComponent(storeId)}&task_date=eq.${encodeURIComponent(dateStr)}&select=task_id,assigned_to_user_id,assigned_to_label`),
+  ]);
+  const completedByExactDate = new Map();
+  const completionsByTask = new Map();
+  (completionRows || []).forEach(c => {
+    completedByExactDate.set(`${c.task_id}|${c.task_date}`, c);
+    const list = completionsByTask.get(c.task_id) || [];
+    list.push(c);
+    completionsByTask.set(c.task_id, list);
+  });
+  const overrideByTask = new Map((overrideRows || []).map(o => [o.task_id, o]));
+
   const itemsByRole = new Map();
   (itemRows || []).forEach(item => {
+    const cadence = normalizeCadence(item.cadence);
+    const daysOfWeek = item.days_of_week || [0, 1, 2, 3, 4, 5, 6];
+    const compsForTask = completionsByTask.get(item.id) || [];
+    let dueToday, completed, completedBy, completedAt, overdue = false, overdueSince = null;
+
+    if (PERIOD_CADENCES.has(cadence)) {
+      const bounds = periodBounds(cadence, dateStr);
+      const thisPeriodComp = compsForTask.find(c => c.task_date >= bounds.start && c.task_date <= bounds.end);
+      completed = !!thisPeriodComp;
+      completedBy = thisPeriodComp?.completed_by || '';
+      completedAt = thisPeriodComp?.completed_at || null;
+      dueToday = !completed;
+      const prevBounds = previousPeriodBounds(cadence, dateStr);
+      const createdBefore = !item.created_at || item.created_at.slice(0, 10) <= prevBounds.end;
+      const prevComp = prevBounds && compsForTask.some(c => c.task_date >= prevBounds.start && c.task_date <= prevBounds.end);
+      if (!completed && createdBefore && !prevComp) { overdue = true; overdueSince = prevBounds.end; }
+    } else {
+      dueToday = daysOfWeek.includes(dow);
+      const exact = completedByExactDate.get(`${item.id}|${dateStr}`);
+      completed = !!exact;
+      completedBy = exact?.completed_by || '';
+      completedAt = exact?.completed_at || null;
+      for (let back = 1; back <= OVERDUE_LOOKBACK_DAYS; back++) {
+        const past = shiftDateStr(dateStr, -back);
+        if (!daysOfWeek.includes(dayOfWeekForDateString(past))) continue;
+        if (item.created_at && past < item.created_at.slice(0, 10)) break;
+        const hasPast = completedByExactDate.has(`${item.id}|${past}`);
+        overdue = !hasPast;
+        overdueSince = hasPast ? null : past;
+        break;
+      }
+    }
+
+    const override = overrideByTask.get(item.id);
+    const defaultAssignedToUserId = item.assigned_to_user_id || null;
+    const defaultAssignedToLabel = item.assigned_to_label || '';
+
     const list = itemsByRole.get(item.role_id) || [];
-    const completion = completedByTaskId.get(item.id);
     list.push({
       id: item.id, roleId: item.role_id, title: item.title, detail: item.detail || '',
-      daysOfWeek: item.days_of_week || [0, 1, 2, 3, 4, 5, 6], sortOrder: item.sort_order, active: item.active,
-      assignedToUserId: item.assigned_to_user_id || null, assignedToLabel: item.assigned_to_label || '',
-      dueToday: (item.days_of_week || []).includes(dow),
-      completed: !!completion, completedBy: completion?.completed_by || '', completedAt: completion?.completed_at || null,
+      cadence, daysOfWeek, sortOrder: item.sort_order, active: item.active,
+      assignedToUserId: override ? (override.assigned_to_user_id || null) : defaultAssignedToUserId,
+      assignedToLabel: override ? (override.assigned_to_label || '') : defaultAssignedToLabel,
+      defaultAssignedToUserId, defaultAssignedToLabel, reassignedToday: !!override,
+      dueToday, completed, completedBy, completedAt, overdue, overdueSince,
     });
     itemsByRole.set(item.role_id, list);
   });
@@ -59,7 +166,10 @@ async function getDailyTasks(request, env, deps, url) {
     id: role.id, name: role.name, sortOrder: role.sort_order,
     tasks: itemsByRole.get(role.id) || [],
   }));
-  return deps.json({ ok: true, date: dateStr, dayOfWeek: dow, roles });
+  const overdueTasks = [];
+  roles.forEach(role => (role.tasks || []).forEach(t => { if (t.overdue) overdueTasks.push({ ...t, roleName: role.name }); }));
+  overdueTasks.sort((a, b) => (a.overdueSince || '').localeCompare(b.overdueSince || ''));
+  return deps.json({ ok: true, date: dateStr, dayOfWeek: dow, roles, overdueTasks });
 }
 
 async function createRole(request, env, deps) {
@@ -125,6 +235,7 @@ async function createItem(request, env, deps) {
     body: JSON.stringify([{
       store_id: storeId, role_id: roleId, title, detail: text(body.detail, 2000),
       days_of_week: normalizeDaysOfWeek(body.daysOfWeek), sort_order: Math.round(Number(body.sortOrder) || 0),
+      cadence: normalizeCadence(body.cadence),
       assigned_to_user_id: body.assignedToUserId ? text(body.assignedToUserId, 80) : null,
       assigned_to_label: body.assignedToUserId ? text(body.assignedToLabel, 200) : '',
     }]),
@@ -144,6 +255,7 @@ async function updateItem(request, env, deps) {
   if (body.detail !== undefined) patch.detail = text(body.detail, 2000);
   if (body.roleId !== undefined) patch.role_id = text(body.roleId, 80);
   if (body.daysOfWeek !== undefined) patch.days_of_week = normalizeDaysOfWeek(body.daysOfWeek);
+  if (body.cadence !== undefined) patch.cadence = normalizeCadence(body.cadence);
   if (body.sortOrder !== undefined) patch.sort_order = Math.round(Number(body.sortOrder) || 0);
   if (body.active !== undefined) patch.active = !!body.active;
   // assignedToUserId is the toggle: pass a falsy value (null/'') to clear
@@ -199,6 +311,36 @@ async function setCompletion(request, env, deps) {
   return deps.json({ ok: true, completed: true, completedBy });
 }
 
+// One-time reassignment: "cover this single occurrence" rather than "this
+// task belongs to someone else now" (that permanent case is already
+// handled by updateItem's assignedToUserId). Same permission floor as
+// checking a task off -- any working staff member can hand off a task for
+// the day, not just owner/admin/manager. Passing an empty userId clears
+// the override, reverting to the task's own default assignee for that date.
+async function reassignOnce(request, env, deps) {
+  const limited = await deps.readJsonWithLimit(request, 4 * 1024); if (limited.error) return limited.error;
+  const body = limited.data || {};
+  const storeId = text(body.storeId, 80);
+  const auth = await deps.requireStoreUser(request, env, storeId); if (auth.error) return auth.error;
+  const taskId = text(body.taskId, 80);
+  const date = text(body.date, 10);
+  if (!taskId || !date) return deps.json({ ok: false, error: 'taskId and date are required' }, 400);
+  const db = (p, o) => deps.supabaseAdminFetch(env, p, o);
+  const userId = text(body.userId, 80);
+  if (!userId) {
+    await db(`daily_task_overrides?store_id=eq.${encodeURIComponent(storeId)}&task_id=eq.${encodeURIComponent(taskId)}&task_date=eq.${encodeURIComponent(date)}`, { method: 'DELETE', headers: { Prefer: 'return=minimal' } });
+    return deps.json({ ok: true, reassigned: false });
+  }
+  const label = text(body.label, 200);
+  const createdBy = text(auth.user?.email, 200);
+  await db('daily_task_overrides', {
+    method: 'POST',
+    headers: { Prefer: 'resolution=merge-duplicates,return=minimal', 'Content-Type': 'application/json' },
+    body: JSON.stringify([{ store_id: storeId, task_id: taskId, task_date: date, assigned_to_user_id: userId, assigned_to_label: label, created_by: createdBy }]),
+  });
+  return deps.json({ ok: true, reassigned: true, assignedToUserId: userId, assignedToLabel: label });
+}
+
 export async function handleDailyTasksRequest(request, env, url, deps) {
   const path = url.pathname;
   if (path === '/daily-tasks' && request.method === 'GET') return getDailyTasks(request, env, deps, url);
@@ -209,5 +351,6 @@ export async function handleDailyTasksRequest(request, env, url, deps) {
   if (path === '/daily-tasks/items' && request.method === 'PATCH') return updateItem(request, env, deps);
   if (path === '/daily-tasks/items' && request.method === 'DELETE') return deleteItem(request, env, deps, url);
   if (path === '/daily-tasks/complete' && request.method === 'POST') return setCompletion(request, env, deps);
+  if (path === '/daily-tasks/reassign-once' && request.method === 'POST') return reassignOnce(request, env, deps);
   return deps.json({ ok: false, error: 'Daily tasks route not found' }, 404);
 }

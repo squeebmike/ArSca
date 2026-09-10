@@ -78,7 +78,7 @@ console.log('Day-of-week due-today filtering checks passed');
     dbHandler: (path) => {
       if (path.startsWith('daily_task_roles')) return { data: [{ id: 'r1', store_id: 's1', name: 'Opener', sort_order: 0 }] };
       if (path.startsWith('daily_task_items')) return { data: [{ id: 't1', store_id: 's1', role_id: 'r1', title: 'Count drawer', detail: '', days_of_week: [0, 1, 2, 3, 4, 5, 6], sort_order: 0, active: true }] };
-      if (path.startsWith('daily_task_completions')) return { data: [{ task_id: 't1', completed_by: 'sam@example.com', completed_at: '2026-09-09T12:00:00Z' }] };
+      if (path.startsWith('daily_task_completions')) return { data: [{ task_id: 't1', task_date: '2026-09-09', completed_by: 'sam@example.com', completed_at: '2026-09-09T12:00:00Z' }] };
     },
   });
   const req = { method: 'GET', headers: new Map() };
