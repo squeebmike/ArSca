@@ -111,4 +111,19 @@ assert.match(focDash, /grid-template-columns:auto auto minmax\(0,1\.4fr\) minmax
 assert.match(focDash, /<div style="min-width:0;overflow-wrap:break-word"><div style="font-weight:700;color:var\(--text\)">'\+esc\(c\.variantLabel\)\+'<\/div>/,
   'the cover name label itself must be allowed to shrink and wrap a long name, not force the row wider than the modal');
 
+// Store request: "add editable Character/Genre/Format fields" (following
+// the "better ebay titles with seo" conversation) -- the group review
+// modal must expose these same manual-entry optional fields the
+// single-cover modal already has, plus the pre-existing Publisher/Writer/
+// Artist/Series Title row, and actually collect all of it into the
+// submitted customAspects.
+assert.match(focDash, /\['Publisher','Writer','Artist','Series Title'\]\.map\(function\(k\)\{return '<label>'\+k\.toUpperCase\(\)\+'<input class="tsi" data-eb-grp-aspect="'\+esc\(k\)\+'" value="'\+esc\(asp\[k\]\|\|''\)\+'"><\/label>';\}\)/,
+  'the group review modal must render editable Publisher/Writer/Artist/Series Title fields');
+assert.match(focDash, /\[\['Character','character'\],\['Genre','genre'\],\['Format','format'\]\]\s*\n\s*\.map\(function\(x\)\{return '<label>'\+x\[0\]\.toUpperCase\(\)\+'<input class="tsi" data-eb-grp-extra="'\+esc\(x\[1\]\)\+'" data-eb-grp-extra-label="'\+esc\(x\[0\]\)\+'"><\/label>';\}\)/,
+  'the group review modal must expose Character/Genre/Format as editable, blank-by-default fields -- no data source exists for these so they must never be pre-filled with a guess');
+assert.match(focDash, /document\.querySelectorAll\('\[data-eb-grp-aspect\]'\)\.forEach\(function\(el\)\{customAspects\[el\.dataset\.ebGrpAspect\]=el\.value;\}\);/,
+  'the Publisher/Writer/Artist/Series Title fields must actually reach customAspects');
+assert.match(focDash, /document\.querySelectorAll\('\[data-eb-grp-extra\]'\)\.forEach\(function\(el\)\{if\(el\.value\)customAspects\[el\.dataset\.ebGrpExtraLabel\]=el\.value;\}\);/,
+  'the Character/Genre/Format fields must actually reach customAspects -- a field a store filled in must not be silently dropped from the eBay listing');
+
 console.log('FOC eBay variation listing image-fallback + bundle gallery contract checks passed');

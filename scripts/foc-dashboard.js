@@ -520,7 +520,7 @@ async function openEbayPresaleReview(skuId){
     '</div>'+
     '<details style="margin-bottom:10px"><summary style="cursor:pointer;font:9px var(--font-mono);color:var(--dim)">MORE ITEM DETAILS (OPTIONAL -- feeds eBay item specifics, not just this description)</summary>'+
     '<div class="foc-sku-fields" style="grid-template-columns:1fr 1fr;margin-top:8px">'+
-    [['Series','series'],['Character','character'],['Franchise','franchise'],['Edition','edition'],['Exclusive','exclusive'],['Cover Type','coverType']]
+    [['Series','series'],['Character','character'],['Genre','genre'],['Format','format'],['Franchise','franchise'],['Edition','edition'],['Exclusive','exclusive'],['Cover Type','coverType']]
       .map(function(x){return '<label>'+x[0].toUpperCase()+'<input class="tsi" data-foc-eb-extra="'+esc(x[1])+'" data-foc-eb-extra-label="'+esc(x[0])+'"></label>';}).join('')+
     '</div>'+
     '<div class="foc-sku-fields" style="grid-template-columns:1fr 1fr;margin-top:8px">'+
@@ -735,6 +735,15 @@ async function openFamilyEbayGroupReview(familyId){
     // -- shown here pre-filled from the same real server default
     // (comic_title_families.series_name) the single-cover modal now uses.
     '<div class="foc-sku-fields" style="grid-template-columns:1fr 1fr;margin-bottom:10px">'+['Publisher','Writer','Artist','Series Title'].map(function(k){return '<label>'+k.toUpperCase()+'<input class="tsi" data-eb-grp-aspect="'+esc(k)+'" value="'+esc(asp[k]||'')+'"></label>';}).join('')+'</div>'+
+    // Store request: "add editable Character/Genre/Format fields" -- no
+    // reliable data source for these (the FOC import has no character/
+    // genre/format columns), so left blank/optional rather than guessed,
+    // same MORE ITEM DETAILS pattern the single-cover modal already uses.
+    '<details style="margin-bottom:10px"><summary style="cursor:pointer;font:9px var(--font-mono);color:var(--dim)">MORE ITEM DETAILS (OPTIONAL -- feeds eBay item specifics, not just this description)</summary>'+
+    '<div class="foc-sku-fields" style="grid-template-columns:1fr 1fr;margin-top:8px">'+
+    [['Character','character'],['Genre','genre'],['Format','format']]
+      .map(function(x){return '<label>'+x[0].toUpperCase()+'<input class="tsi" data-eb-grp-extra="'+esc(x[1])+'" data-eb-grp-extra-label="'+esc(x[0])+'"></label>';}).join('')+
+    '</div></details>'+
     '<label style="font:9px var(--font-mono);color:var(--dim);display:block;margin-bottom:10px">EBAY STORE CATEGORY (optional)<input id="foc-eb-grp-store-category" class="tsi" value="'+esc(lastStoreCategory)+'" style="margin-top:4px"></label>'+
     '<div style="font:9px var(--font-mono);color:var(--dim);margin-bottom:6px">COVERS ON THIS LISTING</div>'+coverRows+
     '<div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border)"><label style="display:flex;gap:6px;align-items:center;margin-bottom:4px;font:9px var(--font-mono);color:var(--dim)"><input id="foc-eb-grp-bundle-cb" type="checkbox" onchange="document.getElementById(\'foc-eb-grp-bundle-fields-wrap\').style.display=this.checked?\'block\':\'none\'"> INCLUDE "ALL COVERS BUNDLE" VARIANT</label>'+
@@ -839,6 +848,7 @@ async function submitFamilyEbayGroupReview(familyId){
   try{localStorage.setItem('foc_ebay_last_store_category',storeCategory);}catch(e){}
   var customAspects={};
   document.querySelectorAll('[data-eb-grp-aspect]').forEach(function(el){customAspects[el.dataset.ebGrpAspect]=el.value;});
+  document.querySelectorAll('[data-eb-grp-extra]').forEach(function(el){if(el.value)customAspects[el.dataset.ebGrpExtraLabel]=el.value;});
   var bundleCb=document.getElementById('foc-eb-grp-bundle-cb');
   var bundle=null;
   if(bundleCb&&bundleCb.checked){
