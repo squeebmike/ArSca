@@ -1642,6 +1642,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <script src="scripts/card-intake-dashboard.js?v=2026.09.09.18-ebay-character-genre-format-fields" defer></script>
 <script src="scripts/mana-pocket-task-library.js?v=2026.09.10.01-daily-task-cadence" defer></script>
 <script src="scripts/daily-tasks-dashboard.js?v=2026.09.10.01-daily-task-cadence" defer></script>
+<script src="scripts/research-loupe.js?v=2026.09.11.01-research-loupe" defer></script>
 <script src="scripts/mtg/mtg-offline-browser.js?v=2026.09.09.18-ebay-character-genre-format-fields" defer></script>
 <script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.09.09.18-ebay-character-genre-format-fields" defer></script>
 <script src="scripts/pricecharting/offline-browser.js?v=2026.09.09.18-ebay-character-genre-format-fields" defer></script>
@@ -2154,6 +2155,7 @@ body.show-mode .inv-sync-badge{display:none;}
       <div id="qpl-search-row" style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">
         <input class="tsi" id="qpl-input" placeholder="Card name, TCGplayer ID, or full product URL..." style="flex:1;margin-bottom:0;font-size:12px;padding:10px 14px" oninput="debouncePriceLookup()" onkeydown="if(event.key==='Enter'){event.preventDefault();runPriceLookup()}">
         <button class="hbtn" id="research-cardsight-btn" title="One camera, auto-detects a card, a product barcode, or a graded slab cert barcode" onclick="openCardSightScanner()" style="white-space:nowrap;color:var(--g)">📷 SCAN</button>
+        <button class="hbtn" id="research-loupe-btn" title="Live camera inspection: flashlight, zoom, and a draggable jeweler's-loupe magnifier" aria-label="Open Loupe visual inspection" onclick="openResearchLoupe()" style="white-space:nowrap;color:var(--purple)">🔍 LOUPE</button>
         <button class="hbtn" id="research-barcode-btn" title="Manual barcode entry -- typed UPC or USB barcode scanner" onclick="openBarcodeScanner()" style="white-space:nowrap;font-size:9px">MANUAL BARCODE ENTRY</button>
         <button class="hbtn" title="Speak search" aria-label="Voice price search" onclick="startVoiceInput('qpl-input', runPriceLookup)" style="width:54px;padding:0">MIC</button>
       </div>

@@ -1,0 +1,531 @@
+// Research Loupe: a live jeweler's-loupe camera for the Research tab --
+// point the phone at a card, turn on the flashlight, zoom in, and drag a
+// circular magnifier over tiny print (card numbers, copyright lines, holo
+// patterns) to read it with your own eyes. This is deliberately NOT the
+// AI card-identification scanner (openCardSightScanner, see dashboard.html)
+// -- that one takes a photo and asks "what card is this" for pricing.
+// Loupe never analyzes anything; it's pure optical inspection, closer to
+// holding a real loupe than to a scan button. The two live side by side in
+// the same search row on purpose.
+//
+// Self-contained like card-intake-dashboard.js/daily-tasks-dashboard.js,
+// but builds its own DOM at runtime instead of relying on markup already
+// in dashboard.html -- there's nothing there to move into, and it keeps
+// dashboard.html's edit surface down to one new button. Every internal
+// control is wired with addEventListener (not inline onclick="..."), so
+// unlike those two files there's no window-exposure list to maintain --
+// the only function dashboard.html's markup ever calls directly is
+// window.openResearchLoupe.
+(function(){
+
+// ── Tunables ──────────────────────────────────────────────────────────
+var DIGITAL_MAX_ZOOM = 5;      // always achievable, regardless of hardware
+var MIN_ZOOM = 1;
+var QUICK_ZOOMS = [1, 2, 5];
+var MAG_LEVELS = [2, 4, 8];    // loupe glass magnification, separate from camera zoom
+var DEFAULT_MAG = 4;
+var GLASS_SIZE = 148;          // px, the magnifier circle's diameter
+
+// ── Pure geometry helper (exported for tests) ────────────────────────────
+// Given the camera preview box size, a drag point as a 0..1 fraction of
+// that box, and a magnification level, returns exactly where to position
+// the glass circle and its inner (larger, re-cropped) clone video so the
+// point under the glass stays visually centered. Kept pure/DOM-free on
+// purpose -- this is the one piece of Loupe's math worth unit testing
+// without mocking a camera.
+function computeLoupeGeometry(containerW, containerH, fx, fy, mag, glassSize){
+  fx = Math.min(1, Math.max(0, fx));
+  fy = Math.min(1, Math.max(0, fy));
+  var glassLeft = fx * containerW - glassSize / 2;
+  var glassTop = fy * containerH - glassSize / 2;
+  var videoWidth = containerW * mag;
+  var videoHeight = containerH * mag;
+  var videoLeft = glassSize / 2 - fx * videoWidth;
+  var videoTop = glassSize / 2 - fy * videoHeight;
+  return { glassLeft: glassLeft, glassTop: glassTop, videoWidth: videoWidth, videoHeight: videoHeight, videoLeft: videoLeft, videoTop: videoTop };
+}
+
+function clamp(n, lo, hi){ return Math.min(hi, Math.max(lo, n)); }
+
+// ── State ─────────────────────────────────────────────────────────────
+var state = {
+  open: false,
+  started: false,          // camera actually running (vs. the pre-permission CTA screen)
+  stream: null,
+  track: null,
+  torchOn: false,
+  torchSupported: null,    // null = unknown until camera starts
+  zoomHwSupported: null,
+  zoomHwMin: 1, zoomHwMax: 1, zoomHwStep: 0.1,
+  zoomLevel: 1,
+  usingDigitalZoom: false,
+  loupeOn: false,
+  loupeMag: DEFAULT_MAG,
+  loupeFx: 0.5, loupeFy: 0.38,
+  error: '',
+};
+
+var dom = null; // populated by ensureDom()
+var pinch = null; // {startDist, startZoom} while a two-finger gesture is active
+var dragging = false;
+var rafPending = false;
+
+function toast(msg){ if(typeof toast_dash === 'function') toast_dash(msg); }
+
+// ── DOM shell (built once, reused across opens) ──────────────────────────
+function ensureDom(){
+  if(dom) return dom;
+  var overlay = document.createElement('div');
+  overlay.className = 'rloupe-overlay';
+  overlay.innerHTML =
+    '<div class="rloupe-sheet" role="dialog" aria-label="Loupe visual inspection">' +
+      '<div class="rloupe-head">' +
+        '<div class="rloupe-title">LOUPE <span class="rloupe-title-sub">visual inspection</span></div>' +
+        '<button type="button" class="hbtn rloupe-close" aria-label="Close Loupe">CLOSE</button>' +
+      '</div>' +
+      '<div class="rloupe-cat-row">' +
+        '<span class="rloupe-cat-label">Category</span>' +
+        '<select class="tsi rloupe-cat" aria-label="Change research category"></select>' +
+      '</div>' +
+      '<div class="rloupe-camera">' +
+        '<video class="rloupe-video" playsinline muted></video>' +
+        '<div class="rloupe-glass" hidden>' +
+          '<video class="rloupe-glass-video" playsinline muted></video>' +
+          '<div class="rloupe-glass-ring"></div>' +
+          '<div class="rloupe-glass-mag"></div>' +
+        '</div>' +
+        '<div class="rloupe-cta">' +
+          '<div class="rloupe-cta-copy">Camera access is needed for Loupe inspection.</div>' +
+          '<button type="button" class="hbtn rloupe-enable" style="color:var(--g)">ENABLE CAMERA</button>' +
+        '</div>' +
+        '<div class="rloupe-error" hidden></div>' +
+      '</div>' +
+      '<div class="rloupe-controls">' +
+        '<button type="button" class="hbtn rloupe-torch" aria-label="Toggle flashlight" disabled>🔦 TORCH</button>' +
+        '<div class="rloupe-zoom-group">' +
+          '<div class="rloupe-zoom-btns"></div>' +
+          '<input type="range" class="rloupe-zoom-slider" min="1" max="' + DIGITAL_MAX_ZOOM + '" step="0.1" value="1" aria-label="Camera zoom">' +
+          '<span class="rloupe-zoom-note"></span>' +
+        '</div>' +
+        '<button type="button" class="hbtn rloupe-loupe-toggle" aria-label="Enable jeweler\'s loupe">🔍 LOUPE</button>' +
+        '<div class="rloupe-mag-btns" hidden></div>' +
+      '</div>' +
+      '<div class="rloupe-input-row">' +
+        '<input type="text" class="tsi rloupe-input" placeholder="Ask/search anything...">' +
+        '<button type="button" class="hbtn rloupe-mic" aria-label="Voice search" style="width:54px;padding:0">MIC</button>' +
+      '</div>' +
+    '</div>';
+  document.body.appendChild(overlay);
+
+  dom = {
+    overlay: overlay,
+    sheet: overlay.querySelector('.rloupe-sheet'),
+    closeBtn: overlay.querySelector('.rloupe-close'),
+    catSelect: overlay.querySelector('.rloupe-cat'),
+    camera: overlay.querySelector('.rloupe-camera'),
+    video: overlay.querySelector('.rloupe-video'),
+    glass: overlay.querySelector('.rloupe-glass'),
+    glassVideo: overlay.querySelector('.rloupe-glass-video'),
+    glassMagLabel: overlay.querySelector('.rloupe-glass-mag'),
+    cta: overlay.querySelector('.rloupe-cta'),
+    enableBtn: overlay.querySelector('.rloupe-enable'),
+    errorBox: overlay.querySelector('.rloupe-error'),
+    torchBtn: overlay.querySelector('.rloupe-torch'),
+    zoomBtnsWrap: overlay.querySelector('.rloupe-zoom-btns'),
+    zoomSlider: overlay.querySelector('.rloupe-zoom-slider'),
+    zoomNote: overlay.querySelector('.rloupe-zoom-note'),
+    loupeToggle: overlay.querySelector('.rloupe-loupe-toggle'),
+    magBtnsWrap: overlay.querySelector('.rloupe-mag-btns'),
+    input: overlay.querySelector('.rloupe-input'),
+    mic: overlay.querySelector('.rloupe-mic'),
+  };
+
+  QUICK_ZOOMS.forEach(function(z){
+    var b = document.createElement('button');
+    b.type = 'button'; b.className = 'hbtn rloupe-zoom-btn'; b.textContent = z + '×';
+    b.setAttribute('aria-label', 'Zoom to ' + z + 'x');
+    b.addEventListener('click', function(){ applyZoom(z); });
+    dom.zoomBtnsWrap.appendChild(b);
+  });
+  MAG_LEVELS.forEach(function(m){
+    var b = document.createElement('button');
+    b.type = 'button'; b.className = 'hbtn rloupe-mag-btn'; b.textContent = m + '×';
+    b.setAttribute('aria-label', 'Loupe magnification ' + m + 'x');
+    b.addEventListener('click', function(){ state.loupeMag = m; renderMagButtons(); updateGlassGeometry(); });
+    dom.magBtnsWrap.appendChild(b);
+  });
+
+  dom.closeBtn.addEventListener('click', closeResearchLoupe);
+  dom.overlay.addEventListener('click', function(e){ if(e.target === dom.overlay) closeResearchLoupe(); });
+  dom.enableBtn.addEventListener('click', startLoupeCamera);
+  dom.torchBtn.addEventListener('click', function(){ setTorch(!state.torchOn); });
+  dom.loupeToggle.addEventListener('click', toggleLoupeGlass);
+  dom.zoomSlider.addEventListener('input', function(){ applyZoom(parseFloat(dom.zoomSlider.value) || 1); });
+  dom.catSelect.addEventListener('change', function(){
+    var main = document.getElementById('qpl-cat');
+    if(!main) return;
+    main.value = dom.catSelect.value;
+    main.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+  dom.input.addEventListener('input', function(){
+    var main = document.getElementById('qpl-input');
+    if(!main) return;
+    main.value = dom.input.value;
+    main.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  dom.input.addEventListener('keydown', function(e){
+    if(e.key === 'Enter'){ e.preventDefault(); if(typeof runPriceLookup === 'function') runPriceLookup(); }
+  });
+  dom.mic.addEventListener('click', function(){
+    if(typeof startVoiceInput === 'function') startVoiceInput('qpl-input', typeof runPriceLookup === 'function' ? runPriceLookup : undefined);
+    else toast('Voice input not available');
+  });
+
+  bindDragHandlers();
+  window.addEventListener('resize', function(){ if(state.loupeOn) updateGlassGeometry(); });
+  document.addEventListener('visibilitychange', function(){
+    if(document.hidden || !state.open || !state.started) return;
+    // Most browsers pause the camera track while backgrounded rather than
+    // ending it -- but some (notably some Android WebViews under memory
+    // pressure) do end it, so recover instead of leaving a dead preview.
+    if(state.track && state.track.readyState === 'ended') startLoupeCamera();
+  });
+
+  return dom;
+}
+
+// ── Open / close ──────────────────────────────────────────────────────
+function openResearchLoupe(){
+  ensureDom();
+  state.open = true;
+  dom.overlay.classList.add('on');
+  document.body.style.overflow = 'hidden';
+  syncCategoryOptions();
+  var mainInput = document.getElementById('qpl-input');
+  dom.input.value = mainInput ? mainInput.value : '';
+  showError('');
+  if(!state.started){
+    dom.cta.hidden = false;
+    dom.video.style.display = 'none';
+  }
+  // Covers the very first open, before stopLoupeCamera has ever run once
+  // to put the controls row into its correct disabled/off state.
+  renderControls();
+}
+
+function closeResearchLoupe(){
+  stopLoupeCamera();
+  state.open = false;
+  if(dom){ dom.overlay.classList.remove('on'); }
+  document.body.style.overflow = '';
+}
+
+// ── Category mini-select: reuses #qpl-cat as the only source of truth,
+// just copies its current &lt;option&gt; list + selection so there is no
+// second category model to keep in sync by hand. ─────────────────────────
+function syncCategoryOptions(){
+  var main = document.getElementById('qpl-cat');
+  if(!main) { dom.catSelect.innerHTML = ''; return; }
+  dom.catSelect.innerHTML = '';
+  Array.prototype.forEach.call(main.options, function(opt){
+    var clone = document.createElement('option');
+    clone.value = opt.value;
+    clone.textContent = opt.textContent;
+    dom.catSelect.appendChild(clone);
+  });
+  dom.catSelect.value = main.value;
+}
+
+// ── Camera lifecycle ──────────────────────────────────────────────────
+async function startLoupeCamera(){
+  if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+    showError('Camera not supported in this browser.');
+    return false;
+  }
+  showError('');
+  try {
+    state.stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 }, focusMode: { ideal: 'continuous' } },
+      audio: false,
+    });
+  } catch(e){
+    showError(cameraErrorMessage(e));
+    return false;
+  }
+  if(typeof window.applyContinuousAutofocus === 'function'){
+    try { await window.applyContinuousAutofocus(state.stream); } catch(e){ /* best effort */ }
+  }
+  state.track = state.stream.getVideoTracks()[0] || null;
+  dom.video.srcObject = state.stream;
+  dom.glassVideo.srcObject = state.stream;
+  try { await dom.video.play(); } catch(e){ /* autoplay quirks -- video still becomes playable on interaction */ }
+  try { await dom.glassVideo.play(); } catch(e){ /* ditto */ }
+  state.started = true;
+  dom.cta.hidden = true;
+  dom.video.style.display = '';
+  detectCapabilities();
+  renderControls();
+  if(state.track){
+    state.track.addEventListener('ended', function(){
+      if(!state.open) return;
+      showError('Camera stopped unexpectedly (it may be in use by another app).');
+      stopLoupeCamera(true);
+    });
+  }
+  return true;
+}
+
+function stopLoupeCamera(keepOpenState){
+  if(state.stream){ state.stream.getTracks().forEach(function(t){ t.stop(); }); }
+  state.stream = null;
+  state.track = null;
+  state.started = false;
+  state.torchOn = false;
+  state.torchSupported = null;
+  state.zoomHwSupported = null;
+  state.zoomLevel = 1;
+  state.usingDigitalZoom = false;
+  if(state.loupeOn) toggleLoupeGlass();
+  if(dom){
+    dom.video.srcObject = null;
+    dom.glassVideo.srcObject = null;
+    dom.video.style.transform = '';
+    if(!keepOpenState){ dom.cta.hidden = false; dom.video.style.display = 'none'; }
+    // Unconditional, not just inside the loupeOn branch above -- torch/zoom
+    // button enabled+active states must never survive past the stream that
+    // backed them, whether or not the magnifier happened to be on.
+    renderControls();
+  }
+}
+
+function cameraErrorMessage(e){
+  var name = (e && e.name) || '';
+  if(name === 'NotAllowedError' || name === 'PermissionDeniedError') return 'Camera permission denied. Enable camera access for this site to use Loupe.';
+  if(name === 'NotFoundError' || name === 'DevicesNotFoundError') return 'No camera found on this device.';
+  if(name === 'NotReadableError' || name === 'TrackStartError') return 'Camera is already in use by another app.';
+  return 'Could not start the camera: ' + (e && e.message ? e.message : 'unknown error');
+}
+
+function showError(msg){
+  if(!dom) return;
+  dom.errorBox.hidden = !msg;
+  dom.errorBox.textContent = msg || '';
+}
+
+// ── Capability detection (torch / hardware zoom) ─────────────────────────
+function detectCapabilities(){
+  var caps = (state.track && state.track.getCapabilities) ? (state.track.getCapabilities() || {}) : {};
+  state.torchSupported = 'torch' in caps;
+  state.zoomHwSupported = 'zoom' in caps;
+  if(state.zoomHwSupported){
+    state.zoomHwMin = caps.zoom.min != null ? caps.zoom.min : 1;
+    state.zoomHwMax = caps.zoom.max != null ? caps.zoom.max : 1;
+    state.zoomHwStep = caps.zoom.step || 0.1;
+  }
+}
+
+// ── Torch ─────────────────────────────────────────────────────────────
+async function setTorch(on){
+  if(!state.track || !state.torchSupported) return;
+  try {
+    await state.track.applyConstraints({ advanced: [{ torch: on }] });
+    state.torchOn = on;
+  } catch(e){
+    state.torchOn = false;
+    toast('Flashlight control failed on this device');
+  }
+  renderControls();
+}
+
+// ── Zoom (hardware when available, CSS digital zoom always as fallback) ──
+async function applyZoom(level){
+  level = clamp(level, MIN_ZOOM, DIGITAL_MAX_ZOOM);
+  state.zoomLevel = level;
+  var usedHardware = false;
+  if(state.track && state.zoomHwSupported && level <= state.zoomHwMax){
+    try {
+      await state.track.applyConstraints({ advanced: [{ zoom: clamp(level, state.zoomHwMin, state.zoomHwMax) }] });
+      usedHardware = true;
+      dom.video.style.transform = '';
+    } catch(e){ usedHardware = false; }
+  }
+  if(!usedHardware){
+    dom.video.style.transform = 'scale(' + level + ')';
+  }
+  state.usingDigitalZoom = !usedHardware;
+  renderControls();
+  if(state.loupeOn) updateGlassGeometry();
+}
+
+// ── Jeweler's loupe magnifier ─────────────────────────────────────────
+function toggleLoupeGlass(){
+  state.loupeOn = !state.loupeOn;
+  dom.glass.hidden = !state.loupeOn;
+  renderControls();
+  if(state.loupeOn) updateGlassGeometry();
+}
+
+function renderMagButtons(){
+  Array.prototype.forEach.call(dom.magBtnsWrap.children, function(btn, i){
+    btn.classList.toggle('active', MAG_LEVELS[i] === state.loupeMag);
+  });
+  dom.glassMagLabel.textContent = state.loupeMag + '×';
+}
+
+function updateGlassGeometry(){
+  if(!state.loupeOn) return;
+  var rect = dom.camera.getBoundingClientRect();
+  var g = computeLoupeGeometry(rect.width, rect.height, state.loupeFx, state.loupeFy, state.loupeMag, GLASS_SIZE);
+  dom.glass.style.left = g.glassLeft + 'px';
+  dom.glass.style.top = g.glassTop + 'px';
+  dom.glassVideo.style.width = g.videoWidth + 'px';
+  dom.glassVideo.style.height = g.videoHeight + 'px';
+  dom.glassVideo.style.left = g.videoLeft + 'px';
+  dom.glassVideo.style.top = g.videoTop + 'px';
+}
+
+function scheduleGlassUpdate(){
+  if(rafPending) return;
+  rafPending = true;
+  requestAnimationFrame(function(){ rafPending = false; updateGlassGeometry(); });
+}
+
+function pointFromEvent(e){
+  var rect = dom.camera.getBoundingClientRect();
+  return { fx: (e.clientX - rect.left) / rect.width, fy: (e.clientY - rect.top) / rect.height };
+}
+
+function bindDragHandlers(){
+  var el = dom.camera;
+  el.addEventListener('pointerdown', function(e){
+    // Dragging only repositions an already-visible glass -- the 🔍 LOUPE
+    // button is what turns it on, so a stray tap on the camera (focusing
+    // attention, adjusting zoom) never silently re-enables a magnifier the
+    // user just turned off.
+    if(!state.started || !state.loupeOn) return;
+    if(e.isPrimary === false) return; // let the pinch handler own multi-touch
+    dragging = true;
+    var p = pointFromEvent(e);
+    state.loupeFx = p.fx; state.loupeFy = p.fy;
+    scheduleGlassUpdate();
+    try { el.setPointerCapture(e.pointerId); } catch(err){}
+  });
+  el.addEventListener('pointermove', function(e){
+    if(!dragging || !state.loupeOn) return;
+    var p = pointFromEvent(e);
+    state.loupeFx = p.fx; state.loupeFy = p.fy;
+    scheduleGlassUpdate();
+  });
+  function endDrag(e){ dragging = false; try { el.releasePointerCapture(e.pointerId); } catch(err){} }
+  el.addEventListener('pointerup', endDrag);
+  el.addEventListener('pointercancel', endDrag);
+
+  // Pinch-to-zoom: tracked via raw touch events (Pointer Events don't give
+  // a clean two-finger distance API) -- kept independent of the loupe drag
+  // above, which only ever tracks a single pointer.
+  el.addEventListener('touchstart', function(e){
+    if(e.touches.length !== 2) return;
+    pinch = { startDist: touchDist(e.touches), startZoom: state.zoomLevel };
+  }, { passive: true });
+  el.addEventListener('touchmove', function(e){
+    if(!pinch || e.touches.length !== 2) return;
+    var dist = touchDist(e.touches);
+    var ratio = dist / (pinch.startDist || 1);
+    applyZoom(pinch.startZoom * ratio);
+  }, { passive: true });
+  el.addEventListener('touchend', function(e){ if(e.touches.length < 2) pinch = null; }, { passive: true });
+
+  el.addEventListener('dblclick', function(e){
+    if(!state.started) return;
+    var target = state.zoomLevel > 1.5 ? 1 : clamp(3, MIN_ZOOM, DIGITAL_MAX_ZOOM);
+    applyZoom(target);
+  });
+}
+
+function touchDist(touches){
+  var dx = touches[0].clientX - touches[1].clientX;
+  var dy = touches[0].clientY - touches[1].clientY;
+  return Math.sqrt(dx * dx + dy * dy);
+}
+
+// ── Control rendering (torch/zoom/loupe button states) ────────────────
+function renderControls(){
+  if(!dom) return;
+  dom.torchBtn.disabled = !state.torchSupported;
+  dom.torchBtn.classList.toggle('active', !!state.torchOn);
+  dom.torchBtn.title = state.torchSupported === false ? 'Flashlight unavailable on this device/browser.' : 'Toggle flashlight';
+
+  dom.zoomSlider.value = String(state.zoomLevel);
+  dom.zoomSlider.disabled = !state.started;
+  Array.prototype.forEach.call(dom.zoomBtnsWrap.children, function(btn, i){
+    btn.classList.toggle('active', Math.abs(QUICK_ZOOMS[i] - state.zoomLevel) < 0.05);
+  });
+  dom.zoomNote.textContent = state.started && state.usingDigitalZoom ? 'digital zoom' : (state.started && state.zoomHwSupported ? 'hardware zoom' : '');
+
+  dom.loupeToggle.disabled = !state.started;
+  dom.loupeToggle.classList.toggle('active', !!state.loupeOn);
+  dom.magBtnsWrap.hidden = !state.loupeOn;
+  renderMagButtons();
+}
+
+// ── Styles (injected once, kept out of dashboard.html's already-huge
+// stylesheet -- self-contained like the rest of this file) ───────────────
+function ensureStyles(){
+  if(document.getElementById('research-loupe-styles')) return;
+  var style = document.createElement('style');
+  style.id = 'research-loupe-styles';
+  style.textContent = [
+    '.rloupe-overlay{display:none;position:fixed;inset:0;z-index:10070;background:rgba(0,0,0,.88);padding:18px;align-items:center;justify-content:center;}',
+    '.rloupe-overlay.on{display:flex;}',
+    '.rloupe-sheet{width:min(520px,100%);max-height:92vh;overflow:auto;background:var(--surf);border:1px solid rgba(0,255,179,.3);border-radius:14px;padding:16px;box-shadow:0 24px 80px rgba(0,0,0,.7);}',
+    '.rloupe-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:10px;}',
+    '.rloupe-title{font:900 13px \'Orbitron\',monospace;color:var(--g);letter-spacing:1px;}',
+    '.rloupe-title-sub{font-family:var(--font-mono);font-size:9px;color:var(--dim);font-weight:400;letter-spacing:0;margin-left:6px;}',
+    '.rloupe-cat-row{display:flex;align-items:center;gap:8px;margin-bottom:10px;}',
+    '.rloupe-cat-label{font-family:var(--font-mono);font-size:9px;color:var(--dim);white-space:nowrap;}',
+    '.rloupe-cat{flex:1;margin-bottom:0;}',
+    '.rloupe-camera{position:relative;background:#030405;border:1px solid var(--border);border-radius:10px;overflow:hidden;aspect-ratio:3/4;touch-action:none;}',
+    '.rloupe-video{width:100%;height:100%;object-fit:cover;display:block;transform-origin:center center;}',
+    '.rloupe-glass-video{width:100%;height:100%;object-fit:cover;position:absolute;left:0;top:0;}',
+    '.rloupe-glass{position:absolute;width:' + GLASS_SIZE + 'px;height:' + GLASS_SIZE + 'px;border-radius:50%;overflow:hidden;pointer-events:none;box-shadow:0 8px 26px rgba(0,0,0,.55);}',
+    '.rloupe-glass-ring{position:absolute;inset:0;border-radius:50%;border:2px solid var(--g);box-shadow:inset 0 0 0 1px rgba(255,255,255,.12);pointer-events:none;}',
+    '.rloupe-glass-mag{position:absolute;right:8px;bottom:6px;font-family:\'Orbitron\',monospace;font-size:10px;font-weight:900;color:var(--g);text-shadow:0 1px 3px rgba(0,0,0,.8);}',
+    '.rloupe-cta{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:20px;text-align:center;}',
+    '.rloupe-cta-copy{font-family:var(--font-mono);font-size:11px;color:var(--dim);max-width:280px;}',
+    '.rloupe-error{position:absolute;left:10px;right:10px;bottom:10px;background:rgba(255,77,109,.12);border:1px solid rgba(255,77,109,.35);color:var(--red);font-family:var(--font-mono);font-size:10px;padding:8px 10px;border-radius:8px;}',
+    '.rloupe-controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:10px;}',
+    '.rloupe-torch{white-space:nowrap;}',
+    '.rloupe-torch.active{color:var(--g);border-color:rgba(0,255,179,.5);background:rgba(0,255,179,.12);}',
+    '.rloupe-torch:disabled{opacity:.4;}',
+    '.rloupe-zoom-group{display:flex;align-items:center;gap:6px;flex:1;min-width:180px;}',
+    '.rloupe-zoom-btns{display:flex;gap:4px;}',
+    '.rloupe-zoom-btn{min-height:34px;padding:4px 8px;}',
+    '.rloupe-zoom-btn.active{color:var(--g);border-color:rgba(0,255,179,.5);background:rgba(0,255,179,.12);}',
+    '.rloupe-zoom-slider{flex:1;min-width:70px;accent-color:var(--g);}',
+    '.rloupe-zoom-note{font-family:var(--font-mono);font-size:8px;color:var(--dim);white-space:nowrap;}',
+    '.rloupe-loupe-toggle.active{color:var(--purple);border-color:rgba(199,125,255,.5);background:rgba(199,125,255,.12);}',
+    '.rloupe-mag-btns{display:flex;gap:4px;width:100%;}',
+    '.rloupe-mag-btn{flex:1;min-height:34px;}',
+    '.rloupe-mag-btn.active{color:var(--purple);border-color:rgba(199,125,255,.5);background:rgba(199,125,255,.12);}',
+    '.rloupe-input-row{display:flex;gap:6px;margin-top:10px;}',
+    '.rloupe-input{flex:1;margin-bottom:0;}',
+    '@media(max-width:640px){',
+    '  .rloupe-overlay{padding:0;align-items:flex-end;}',
+    '  .rloupe-sheet{width:100%;max-height:calc(100vh - 24px - env(safe-area-inset-bottom));border-radius:16px 16px 0 0;padding:14px 12px calc(16px + env(safe-area-inset-bottom));}',
+    '  .rloupe-controls .hbtn{min-height:44px;}',
+    '}',
+  ].join('\n');
+  document.head.appendChild(style);
+}
+
+// ── Entry point ───────────────────────────────────────────────────────
+function openResearchLoupeEntry(){
+  ensureStyles();
+  openResearchLoupe();
+}
+
+window.openResearchLoupe = openResearchLoupeEntry;
+window.closeResearchLoupe = closeResearchLoupe;
+// Exposed for tests only -- not part of the public feature surface.
+window.__researchLoupeInternals = { computeLoupeGeometry: computeLoupeGeometry, state: state };
+})();
