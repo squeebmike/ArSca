@@ -69,4 +69,38 @@ assert.match(
   'scanToBuyItem\'s providerUrl fallback must check scan.sourceUrl -- that is the field Pocket Scout writes for the actual eBay listing link, so without it the buy offer loses the source link entirely'
 );
 
+// Same bug, a third layer deep: the POS tab's "Phone Scanner Inbox" list
+// (renderScanInbox, polled every 2.5s) and the research drawer's own
+// "PHONE SCANNER INBOX" mini-list (renderScanInboxInDrawer) both read the
+// exact same readScanInbox() data -- including Pocket Scout candidates --
+// through their own independent name fallback chains, so they had the
+// identical "Research item"-style bug on two more screens. The inbox list
+// also interpolated the name unescaped, which mattered only once it could
+// actually render real external eBay listing text instead of always
+// falling back to the hardcoded "Phone scan" string.
+
+const scanInboxFnMatch = dashboardSrc.match(/async function renderScanInbox\(\)\{[\s\S]*?\n\}\n/);
+assert.ok(scanInboxFnMatch, 'expected to find renderScanInbox()');
+assert.match(
+  scanInboxFnMatch[0],
+  /escHtml\(s\.name \|\| s\.title \|\| 'Phone scan'\)/,
+  'renderScanInbox\'s name fallback must check scan.title AND escape it -- otherwise the POS tab\'s Phone Scanner Inbox shows generic "Phone scan" for every Pocket Scout candidate, and once fixed to show real titles, an unescaped external listing title would inject raw HTML'
+);
+
+const drawerFnMatch = dashboardSrc.match(/function renderScanInboxInDrawer\(\)\{[\s\S]*?\n\}\n/);
+assert.ok(drawerFnMatch, 'expected to find renderScanInboxInDrawer()');
+assert.match(
+  drawerFnMatch[0],
+  /m\.name \|\| s\.search_query \|\| s\.title \|\| 'Scan item'/,
+  'renderScanInboxInDrawer\'s name fallback must check s.title -- otherwise the drawer\'s Phone Scanner Inbox mini-list shows generic "Scan item" for every Pocket Scout candidate'
+);
+
+const findFnMatch = dashboardSrc.match(/async function searchScanInInventory\(scanId\)\{[\s\S]*?\n\}\n/);
+assert.ok(findFnMatch, 'expected to find searchScanInInventory()');
+assert.match(
+  findFnMatch[0],
+  /\[scan\.name \|\| scan\.title, scan\.year, scan\.set, scan\.issue\]/,
+  'searchScanInInventory\'s (Find button) query must check scan.title -- otherwise it runs an empty inventory search for every Pocket Scout candidate'
+);
+
 console.log('Research Queue payload mapping checks passed');

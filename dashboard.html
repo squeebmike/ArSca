@@ -11588,7 +11588,7 @@ function renderScanInboxInDrawer(){
     el.innerHTML = inbox.slice(0,20).map(s => {
       const m = s.bestMatch || s.possibleMatches?.[0] || {};
       return `<div style="border:1px solid var(--border);border-radius:8px;padding:8px;margin-bottom:6px;font-family:monospace;font-size:10px">
-        <div style="color:var(--text);font-weight:700;margin-bottom:4px">${escHtml(m.name || s.search_query || 'Scan item')}</div>
+        <div style="color:var(--text);font-weight:700;margin-bottom:4px">${escHtml(m.name || s.search_query || s.title || 'Scan item')}</div>
         <div style="color:var(--dim)">${escHtml([m.set,m.year].filter(Boolean).join(' / ') || '')}</div>
       </div>`;
     }).join('');
@@ -21201,7 +21201,7 @@ async function acceptScanToBuyList(scanId){
     saveBuyList();
     logOpsEvent('buy_item_added', 'Added phone scan to buy offer: ' + (item.name || 'scan'), { buySessionId:item.buySessionId || '', scanId:scan.id || '', decision:item.buyDecision || '' });
     renderBuyList();
-    toast_dash('Added to buy offer: ' + (scan.name || scan.player || 'item'));
+    toast_dash('Added to buy offer: ' + (scan.name || scan.title || scan.player || 'item'));
   }
   if(scan) await markScanInboxItem(scan, 'added');
   await writeScanInbox(queue.filter(s => s.id !== scanId));
@@ -21525,7 +21525,7 @@ async function searchScanInInventory(scanId){
   switchTab('inventory', document.querySelector('.tab:nth-child(2)'));
   const q = document.getElementById('tbl-q');
   if(q) {
-    q.value = [scan.name, scan.year, scan.set, scan.issue].filter(Boolean).join(' ');
+    q.value = [scan.name || scan.title, scan.year, scan.set, scan.issue].filter(Boolean).join(' ');
     filterTable();
   }
 }
@@ -21554,7 +21554,7 @@ async function renderScanInbox(){
     return `<div style="display:grid;grid-template-columns:52px 1fr auto;gap:10px;align-items:center;background:var(--surf2);border:1px solid var(--border);border-radius:8px;padding:8px">
       ${img ? `<img src="${img}" style="width:52px;height:52px;object-fit:cover;border-radius:6px;border:1px solid var(--border)">` : `<div style="width:52px;height:52px;border-radius:6px;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;color:var(--dim);font-size:9px">SCAN</div>`}
       <div>
-        <div style="font-weight:700;color:var(--text);font-size:12px">${s.name || 'Phone scan'}</div>
+        <div style="font-weight:700;color:var(--text);font-size:12px">${escHtml(s.name || s.title || 'Phone scan')}</div>
         <div style="font-family:var(--font-mono);font-size:9px;color:var(--dim);margin-top:2px">${meta || 'No details'}</div>
         <div style="font-family:var(--font-mono);font-size:8px;color:${decisionColor};margin-top:2px">${escHtml(decision)}${s.scannerMode ? ' · '+escHtml(s.scannerMode) : ''}${s.buySessionId ? ' · SESSION' : ''}</div>
         <div style="font-family:var(--font-mono);font-size:8px;color:${s.confidence==='low'?'var(--red)':s.confidence==='high'?'var(--g)':'var(--gold)'};margin-top:2px">${(s.confidence || 'medium').toUpperCase()} ${s.confidence_reason ? '· '+s.confidence_reason : ''}</div>
