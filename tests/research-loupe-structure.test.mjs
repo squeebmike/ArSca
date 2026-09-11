@@ -70,4 +70,22 @@ assert.match(src, /function requestCloseResearchLoupe\(\)\{\s*if\(historyPushed\
 // icon-only close control overlaid on the camera itself, not a text label.
 assert.match(src, /class="rloupe-x"[^>]*>✕</, 'the camera view must have its own icon-only (not text) close control');
 
+// Store report: "can't get to the mic button unless scroll first" -- a
+// fixed aspect-ratio camera box could grow taller than the viewport.
+// Guards the fix: the camera flexes/caps instead of forcing a ratio, and
+// the input/mic row is pinned so it can't be scrolled out of reach.
+assert.doesNotMatch(src, /rloupe-camera\{[^}]*aspect-ratio/, 'the camera box must not use a fixed aspect-ratio -- it grows unbounded and can push the mic row off-screen');
+assert.match(src, /rloupe-camera\{[^}]*max-height:/, 'the camera box must cap its own height so the rest of the sheet always has room');
+assert.match(src, /rloupe-input-row\{[^}]*position:sticky/, 'the input/mic row must stay pinned within the sheet, not scroll out of reach');
+
+// Store report: "said try again right away, and the button doesn't turn
+// on camera" -- once a browser blocks camera access for a site, no page
+// script can reopen that permission prompt, so a plain "try again" is
+// actively misleading. Guards that a confirmed block gets real
+// instructions instead, with the retry button repurposed to a reload
+// (the actual next step once the user fixes the block in browser settings).
+assert.match(src, /async function handleCameraStartError/, 'camera start failures must be triaged, not shown a single generic message');
+assert.match(src, /permState === 'denied'/, 'must distinguish a confirmed block (Permissions API) from a not-yet-asked prompt');
+assert.match(src, /dom\.retryBtn\.dataset\.action = blocked \? 'reload' : 'retry'/, 'the retry control must become a reload action once the block is confirmed, not keep offering a retry that cannot work');
+
 console.log('Research Loupe structural contract checks passed');

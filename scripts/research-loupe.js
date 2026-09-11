@@ -122,7 +122,7 @@ function ensureDom(){
         '<button type="button" class="rloupe-x" aria-label="Close Loupe">✕</button>' +
         '<div class="rloupe-error" hidden>' +
           '<div class="rloupe-error-msg"></div>' +
-          '<button type="button" class="hbtn rloupe-retry" style="color:var(--g)">TRY AGAIN</button>' +
+          '<button type="button" class="hbtn rloupe-retry" data-action="retry" style="color:var(--g)">TRY AGAIN</button>' +
         '</div>' +
       '</div>' +
       '<div class="rloupe-controls">' +
@@ -184,7 +184,10 @@ function ensureDom(){
   dom.closeBtn.addEventListener('click', requestCloseResearchLoupe);
   dom.xBtn.addEventListener('click', requestCloseResearchLoupe);
   dom.overlay.addEventListener('click', function(e){ if(e.target === dom.overlay) requestCloseResearchLoupe(); });
-  dom.retryBtn.addEventListener('click', startLoupeCamera);
+  dom.retryBtn.addEventListener('click', function(){
+    if(dom.retryBtn.dataset.action === 'reload') location.reload();
+    else startLoupeCamera();
+  });
   dom.torchBtn.addEventListener('click', function(){ setTorch(!state.torchOn); });
   dom.loupeToggle.addEventListener('click', toggleLoupeGlass);
   dom.zoomSlider.addEventListener('input', function(){ applyZoom(parseFloat(dom.zoomSlider.value) || 1); });
@@ -302,7 +305,7 @@ async function startLoupeCamera(){
       audio: false,
     });
   } catch(e){
-    showError(cameraErrorMessage(e));
+    await handleCameraStartError(e);
     return false;
   }
   if(typeof window.applyContinuousAutofocus === 'function'){
@@ -358,16 +361,52 @@ function stopLoupeCamera(){
 
 function cameraErrorMessage(e){
   var name = (e && e.name) || '';
-  if(name === 'NotAllowedError' || name === 'PermissionDeniedError') return 'Camera permission denied. Enable camera access for this site to use Loupe.';
   if(name === 'NotFoundError' || name === 'DevicesNotFoundError') return 'No camera found on this device.';
   if(name === 'NotReadableError' || name === 'TrackStartError') return 'Camera is already in use by another app.';
   return 'Could not start the camera: ' + (e && e.message ? e.message : 'unknown error');
 }
 
-function showError(msg){
+// Best-effort: not every browser implements a 'camera' Permissions API
+// descriptor (notably Safari), so a null return just means "can't tell" --
+// callers fall back to a message that covers both the not-yet-asked and
+// blocked cases without claiming to know which one it is.
+async function cameraPermissionState(){
+  try {
+    if(!navigator.permissions || !navigator.permissions.query) return null;
+    var status = await navigator.permissions.query({ name: 'camera' });
+    return status.state;
+  } catch(e){ return null; }
+}
+
+// Store report: "said try again right away, and the button doesn't turn
+// on camera" -- the exact signature of a site-level camera block, not a
+// prompt the user just hasn't answered yet. Once a browser blocks camera
+// access for a site, NO page script can reopen that permission prompt --
+// getUserMedia() just rejects instantly, every time, forever, until the
+// user changes it in the browser's own site settings. Tapping a TRY AGAIN
+// button that calls getUserMedia again can't fix that, so this checks the
+// Permissions API (when available) to tell the two cases apart and gives
+// real instructions for the blocked one instead of implying retry will work.
+async function handleCameraStartError(e){
+  var name = (e && e.name) || '';
+  if(name === 'NotAllowedError' || name === 'PermissionDeniedError'){
+    var permState = await cameraPermissionState();
+    if(permState === 'denied'){
+      showError('Camera is blocked for this site. Tap the lock/info icon next to the address bar, open Permissions, allow Camera, then reload this page.', true);
+      return;
+    }
+    showError('Camera permission was not granted. Tap TRY AGAIN and allow camera access when your browser prompts you.', false);
+    return;
+  }
+  showError(cameraErrorMessage(e), false);
+}
+
+function showError(msg, blocked){
   if(!dom) return;
   dom.errorBox.hidden = !msg;
   dom.errorMsg.textContent = msg || '';
+  dom.retryBtn.textContent = blocked ? 'RELOAD PAGE' : 'TRY AGAIN';
+  dom.retryBtn.dataset.action = blocked ? 'reload' : 'retry';
 }
 
 // ── Capability detection (torch / hardware zoom) ─────────────────────────
@@ -536,14 +575,24 @@ function ensureStyles(){
   style.textContent = [
     '.rloupe-overlay{display:none;position:fixed;inset:0;z-index:10070;background:rgba(0,0,0,.88);padding:18px;align-items:center;justify-content:center;}',
     '.rloupe-overlay.on{display:flex;}',
-    '.rloupe-sheet{width:min(520px,100%);max-height:92vh;overflow:auto;background:var(--surf);border:1px solid rgba(0,255,179,.3);border-radius:14px;padding:16px;box-shadow:0 24px 80px rgba(0,0,0,.7);}',
-    '.rloupe-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:10px;}',
+    // Store report: "can't get to the mic button unless scroll first" --
+    // a fixed aspect-ratio:3/4 camera box grows without bound as the sheet
+    // gets wider, so on a lot of phones it alone was taller than the
+    // viewport, pushing the input/mic row below the fold. The sheet is now
+    // a flex column with the camera as the only flexible piece (capped by
+    // max-height, not aspect-ratio), and the input row is sticky to the
+    // bottom of the sheet\'s own scroll area as a second guarantee -- mic
+    // and typed search stay reachable without scrolling on virtually any
+    // screen, and even degrade to "pinned while you scroll" rather than
+    // "gone" on the rare screen too short for that guarantee to hold.
+    '.rloupe-sheet{width:min(520px,100%);max-height:92vh;overflow:auto;display:flex;flex-direction:column;background:var(--surf);border:1px solid rgba(0,255,179,.3);border-radius:14px;padding:16px;box-shadow:0 24px 80px rgba(0,0,0,.7);}',
+    '.rloupe-head{flex:0 0 auto;display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:10px;}',
     '.rloupe-title{font:900 13px \'Orbitron\',monospace;color:var(--g);letter-spacing:1px;}',
     '.rloupe-title-sub{font-family:var(--font-mono);font-size:9px;color:var(--dim);font-weight:400;letter-spacing:0;margin-left:6px;}',
-    '.rloupe-cat-row{display:flex;align-items:center;gap:8px;margin-bottom:10px;}',
+    '.rloupe-cat-row{flex:0 0 auto;display:flex;align-items:center;gap:8px;margin-bottom:10px;}',
     '.rloupe-cat-label{font-family:var(--font-mono);font-size:9px;color:var(--dim);white-space:nowrap;}',
     '.rloupe-cat{flex:1;margin-bottom:0;}',
-    '.rloupe-camera{position:relative;background:#030405;border:1px solid var(--border);border-radius:10px;overflow:hidden;aspect-ratio:3/4;touch-action:none;}',
+    '.rloupe-camera{flex:1 1 auto;min-height:150px;max-height:40vh;position:relative;background:#030405;border:1px solid var(--border);border-radius:10px;overflow:hidden;touch-action:none;}',
     '.rloupe-video{width:100%;height:100%;object-fit:cover;display:block;transform-origin:center center;}',
     '.rloupe-glass-video{width:100%;height:100%;object-fit:cover;position:absolute;left:0;top:0;}',
     '.rloupe-glass{position:absolute;width:' + GLASS_SIZE + 'px;height:' + GLASS_SIZE + 'px;border-radius:50%;overflow:hidden;pointer-events:none;box-shadow:0 8px 26px rgba(0,0,0,.55);}',
@@ -553,7 +602,7 @@ function ensureStyles(){
     '.rloupe-x:hover,.rloupe-x:active{background:rgba(0,0,0,.75);}',
     '.rloupe-error{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:20px;text-align:center;background:rgba(5,6,7,.94);}',
     '.rloupe-error-msg{font-family:var(--font-mono);font-size:11px;color:var(--red);max-width:280px;}',
-    '.rloupe-controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:10px;}',
+    '.rloupe-controls{flex:0 0 auto;display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:10px;}',
     '.rloupe-torch{white-space:nowrap;}',
     '.rloupe-torch.active{color:var(--g);border-color:rgba(0,255,179,.5);background:rgba(0,255,179,.12);}',
     '.rloupe-torch:disabled{opacity:.4;}',
@@ -567,11 +616,12 @@ function ensureStyles(){
     '.rloupe-mag-btns{display:flex;gap:4px;width:100%;}',
     '.rloupe-mag-btn{flex:1;min-height:34px;}',
     '.rloupe-mag-btn.active{color:var(--purple);border-color:rgba(199,125,255,.5);background:rgba(199,125,255,.12);}',
-    '.rloupe-input-row{display:flex;gap:6px;margin-top:10px;}',
+    '.rloupe-input-row{flex:0 0 auto;position:sticky;bottom:0;display:flex;gap:6px;margin-top:10px;padding-top:8px;background:var(--surf);}',
     '.rloupe-input{flex:1;margin-bottom:0;}',
     '@media(max-width:640px){',
     '  .rloupe-overlay{padding:0;align-items:flex-end;}',
     '  .rloupe-sheet{width:100%;max-height:calc(100vh - 24px - env(safe-area-inset-bottom));border-radius:16px 16px 0 0;padding:14px 12px calc(16px + env(safe-area-inset-bottom));}',
+    '  .rloupe-camera{max-height:32vh;}',
     '  .rloupe-controls .hbtn{min-height:44px;}',
     '}',
   ].join('\n');
