@@ -6103,6 +6103,7 @@ function setupAppShell(){
         <div class="tab" id="more-tab-btn" onclick="toggleMoreMenu(event)">MORE</div>
         <div class="more-menu" id="more-menu">
           <a class="more-item deck-lab-link" href="mtg-deck-lab.html" style="text-decoration:none;display:block">DECK LAB BETA</a>
+          <a class="more-item deck-lab-link" href="supplies-import.html" style="text-decoration:none;display:block">SUPPLIES IMPORT</a>
           ${moreTabs.map(([id,label]) => `<div class="more-item" data-tab="${id}" onclick="switchTab('${id}',this)">${label}</div>`).join('')}
         </div>
       </div>`;
