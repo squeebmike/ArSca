@@ -14578,7 +14578,12 @@ async function loadEbayListingPerformance(listingIds){
 
 // eBay's own read on whether a listing is a good candidate for a Promoted
 // Listings campaign, and at roughly what bid -- via the Recommendation API.
-// Purely informational; doesn't create or change any campaign itself.
+// Was purely informational (a text line, no way to act on it from here --
+// acting meant remembering the listing, scrolling down to the separate
+// PROMOTED LISTINGS section, opening ADD MY LISTINGS, and re-finding the
+// same item in a checklist). Now renders a PROMOTE button right on the
+// recommendation itself; promoteListingNow does the campaign lookup/
+// create/add so a recommendation and the action on it live in one place.
 async function loadEbayListingRecommendations(listingIds){
   if(!listingIds?.length) return;
   try{
@@ -14591,10 +14596,62 @@ async function loadEbayListingRecommendations(listingIds){
       if(!el) continue;
       const r = byId[String(id)];
       if(r && r.promoteWithAd === 'RECOMMENDED'){
-        el.innerHTML = '<span style="color:var(--gold)">eBay recommends Promoted Listings' + (r.bidPercentage?' at ~'+r.bidPercentage+'% bid':'') + '</span>';
+        const bid = r.bidPercentage || '';
+        const item = (all || []).find(i => i.ebayListingId === id);
+        el.innerHTML = '<span style="color:var(--gold)">eBay recommends Promoted Listings' + (bid?' at ~'+escHtml(bid)+'% bid':'') + '</span> ' +
+          '<button class="hbtn" style="padding:2px 7px;font-size:8px;color:var(--gold)" onclick="promoteListingNow(\'' + escHtml(id) + '\',\'' + escHtml((item?.name||'this item').replace(/'/g,"\\'")) + '\',\'' + escHtml(bid) + '\',this)">PROMOTE</button>';
       }
     }
   }catch(e){ /* purely informational, fail silently */ }
+}
+
+// One-click action on a recommendation: reuses a RUNNING campaign if one
+// exists (adds this single listing at that campaign's existing ad rate --
+// the Marketing API sets bid per campaign, not per ad, so an existing
+// campaign's rate can't be overridden per item here), otherwise creates a
+// new campaign at eBay's own suggested bid and adds the listing to it.
+// Same real-money confirm() wording used elsewhere for a live eBay charge
+// (see submitCreateCampaign/endEbayCampaign) -- nothing here is silent.
+async function promoteListingNow(listingId, itemName, suggestedBid, btn){
+  if(btn){ btn.disabled = true; btn.textContent = 'WORKING...'; }
+  try{
+    const res = await storeWorkerFetch('/ebay/marketing/campaigns', { cache:'no-store' });
+    const d = await res.json().catch(()=>({}));
+    if(!d.ok){
+      toast_dash(d.needsToken || d.needsReconnect ? 'Connect/reconnect eBay above first' : (d.error || 'Could not check campaigns'));
+      if(btn){ btn.disabled = false; btn.textContent = 'PROMOTE'; }
+      return;
+    }
+    const running = (d.campaigns || []).find(c => c.status === 'RUNNING');
+    let campaignId = running?.campaignId;
+    if(running){
+      if(!confirm(`Add "${itemName}" to the "${running.name||running.campaignId}" campaign?\n\nIt starts showing as promoted immediately and pays that campaign's ${running.bidPercentage||'?'}% ad rate when it sells. This spends real eBay ad budget.`)){
+        if(btn){ btn.disabled = false; btn.textContent = 'PROMOTE'; }
+        return;
+      }
+    } else {
+      const bidNum = parseFloat(suggestedBid) || 5;
+      if(!confirm(`No Promoted Listings campaign exists yet. Create one for "${itemName}" at eBay's suggested ${bidNum}% bid?\n\nThis creates a real eBay ad campaign that charges ${bidNum}% of the sale price when a promoted listing sells.`)){
+        if(btn){ btn.disabled = false; btn.textContent = 'PROMOTE'; }
+        return;
+      }
+      const createRes = await storeWorkerFetch('/ebay/marketing/campaign/create', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ campaignName: 'Promoted Listings — ' + new Date().toLocaleDateString(), bidPercentage: bidNum }) });
+      const createD = await createRes.json().catch(()=>({}));
+      if(!createD.ok) throw new Error(createD.error || 'Campaign create failed');
+      campaignId = createD.campaignId;
+    }
+    const addRes = await storeWorkerFetch('/ebay/marketing/campaign/add-listings', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ campaignId, listingIds: [listingId] }) });
+    const addD = await addRes.json().catch(()=>({}));
+    if(!addD.ok) throw new Error(addD.error || 'Add listing failed');
+    const result = (addD.results||[])[0];
+    if(result && !result.ok) throw new Error(result.error || 'eBay rejected this listing');
+    toast_dash('Promoted: ' + itemName);
+    if(btn){ btn.outerHTML = '<span style="color:var(--g)">✓ promoted</span>'; }
+    loadEbayPromotedCampaigns?.();
+  }catch(e){
+    toast_dash('Could not promote: ' + e.message);
+    if(btn){ btn.disabled = false; btn.textContent = 'PROMOTE'; }
+  }
 }
 
 // Every eBay sale this app has ever recorded (via /ebay/orders/sync), matched
