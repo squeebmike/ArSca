@@ -445,7 +445,7 @@ assert.match(receiveSrc, /nextStatus=order\.fulfillment_method==='pickup'\?'read
 // what the listing still shows available must pull the listing's quantity
 // down (locally and on the live eBay offer) instead of leaving it able to
 // oversell copies that never arrived.
-assert.match(receiveSrc, /if\(row\.status==='presale'&&\(d\.ebayOfferId\|\|\(d\.ebayApiSystem==='trading'&&d\.ebayListingId&&d\.ebaySku\)\)&&remainingQty>0\)livePresaleRowBySkuId\.set\(d\.focSkuId,row\);/,
+assert.match(receiveSrc, /if\(!isBundle&&row\.status==='presale'&&\(d\.ebayOfferId\|\|\(d\.ebayApiSystem==='trading'&&d\.ebayListingId&&d\.ebaySku\)\)&&remainingQty>0\)livePresaleRowBySkuId\.set\(d\.focSkuId,row\);/,
   'must track which SKUs have a live (still-presale, still-unsold) eBay listing to reconcile against -- both REST-offer-keyed and Trading-API-keyed (ItemID+SKU) listings');
 assert.match(receiveSrc, /newStandaloneCount=Math\.max\(0,receivedQty-presaleAvailable\);/,
   'only the amount received beyond what the live listing already accounts for may become new standalone rows');

@@ -12,9 +12,17 @@ const visibleVersion = dashboard.match(/id="dsb-version">v([^<]+)</)?.[1];
 assert.ok(appVersion, 'dashboard APP_VERSION must exist');
 assert.equal(metaVersion, appVersion, 'update metadata must match APP_VERSION');
 assert.equal(visibleVersion, appVersion, 'visible version stamp must match APP_VERSION');
-const assetVersions = [...dashboard.matchAll(/<script src="[^"]+\?v=([^"]+)"/g)].map(match => match[1]);
-assert.ok(assetVersions.length, 'versioned dashboard scripts must exist');
-assert.ok(assetVersions.every(version => version === appVersion), 'dashboard script cache keys must match APP_VERSION');
+// research-loupe.js is deliberately excluded: its cache-buster is the
+// file's own content hash, not APP_VERSION (see research-loupe-cache-bust
+// .test.mjs) -- a hand-typed APP_VERSION-style tag on it is exactly what
+// let five straight rounds of real Loupe fixes silently never reach the
+// browser, since nothing forced that tag to be touched on every edit.
+const assetTags = [...dashboard.matchAll(/<script src="([^"]+)\?v=([^"]+)"/g)].map(match => ({ src: match[1], version: match[2] }));
+assert.ok(assetTags.length, 'versioned dashboard scripts must exist');
+assert.ok(
+  assetTags.filter(tag => tag.src !== 'scripts/research-loupe.js').every(tag => tag.version === appVersion),
+  'dashboard script cache keys must match APP_VERSION (research-loupe.js is exempt -- it uses its own content-hash versioning)'
+);
 assert.match(dashboard, /function reloadIntoAppVersion/, 'update banner should navigate to a versioned page URL');
 
 assert.match(dashboard, /let checkoutFinalizing = false;/, 'checkout finalization lock should exist');

@@ -269,7 +269,7 @@ console.log('withdrawFocPresaleRow Trading-API branch + REST-path regression che
     'the PRH-submit quantity-sync candidate filter must also match Trading-API rows (keyed by ebayListingId+ebaySku), or their listings silently never get their quantity synced to the locked order total');
   assert.match(focPreorders, /if\(d\.ebayApiSystem==='trading'\)await deps\.ebayReviseVariationQuantityTrading\(ebayToken,d\.ebayListingId,d\.ebaySku,newAvailable\);/,
     'must actually call the Trading-API quantity-revise function for a flagged row during the PRH quantity-sync sweep');
-  assert.match(focPreorders, /if\(row\.status==='presale'&&\(d\.ebayOfferId\|\|\(d\.ebayApiSystem==='trading'&&d\.ebayListingId&&d\.ebaySku\)\)&&remainingQty>0\)livePresaleRowBySkuId\.set\(d\.focSkuId,row\);/,
+  assert.match(focPreorders, /if\(!isBundle&&row\.status==='presale'&&\(d\.ebayOfferId\|\|\(d\.ebayApiSystem==='trading'&&d\.ebayListingId&&d\.ebaySku\)\)&&remainingQty>0\)livePresaleRowBySkuId\.set\(d\.focSkuId,row\);/,
     'the receive-shipment reconciliation must also recognize a live Trading-API listing, or a short-ship against it silently fails to pull the listing\'s quantity down');
   assert.match(focPreorders, /if\(pd\.ebayApiSystem==='trading'\)await deps\.ebayReviseVariationQuantityTrading\(ebayToken,pd\.ebayListingId,pd\.ebaySku,receivedQty\);/,
     'a short-shipped Trading-API listing must have its quantity reduced via the Trading-API function');

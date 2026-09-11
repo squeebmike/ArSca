@@ -390,11 +390,22 @@ async function buildCycleCatalog(db, cycle, includeAdmin = false, env, deps, sto
   const presaleBySkuId = new Map();
   for (const row of presaleRows?.data || []) {
     const d = row.data || {};
-    if (d.source !== 'foc_presale' || !d.focSkuId) continue;
+    // Store report: "what about eBay comic bundles?" -- a sold "All Covers
+    // Bundle" unit (source:'foc_presale_bundle', focSkuId:null) was
+    // invisible here, so both the dashboard's per-cover "N presold" badge
+    // and ratio-incentive qualification progress (baseQualifying below)
+    // silently ignored every bundle sale, undercounting each real cover it
+    // bundles by however many bundles sold.
+    const isBundle = d.source === 'foc_presale_bundle' && Array.isArray(d.focBundleSkuIds) && d.focBundleSkuIds.length;
+    if (d.source !== 'foc_presale' && !isBundle) continue;
+    if (!isBundle && !d.focSkuId) continue;
     const originalQty = Number(d.focPresaleOriginalQty || 0);
     const remainingQty = row.status === 'sold' ? 0 : Number(d.qty ?? d.quantity ?? 0);
-    const prior = presaleBySkuId.get(d.focSkuId) || { originalQty:0, remainingQty:0 };
-    presaleBySkuId.set(d.focSkuId, { originalQty:prior.originalQty + originalQty, remainingQty:prior.remainingQty + remainingQty });
+    const skuIds = isBundle ? d.focBundleSkuIds : [d.focSkuId];
+    for (const skuId of skuIds) {
+      const prior = presaleBySkuId.get(skuId) || { originalQty:0, remainingQty:0 };
+      presaleBySkuId.set(skuId, { originalQty:prior.originalQty + originalQty, remainingQty:prior.remainingQty + remainingQty });
+    }
   }
   const ebaySafeBusinessDays = includeAdmin && env && deps ? await deps.getEbayPresaleSafeBusinessDays(env, storeId) : 35;
   const byFamily = new Map((families || []).map(family => [family.id, {
@@ -1093,12 +1104,24 @@ async function ebayPresoldBySku(db,storeId){
   const map=new Map();
   for(const row of rows||[]){
     const d=row.data||{};
-    if(d.source!=='foc_presale'||!d.focSkuId)continue;
+    // Store report: "what about eBay comic bundles?" -- a sold "All Covers
+    // Bundle" unit was invisible here (this loop only matched
+    // source==='foc_presale' rows with a single focSkuId; a bundle row has
+    // source:'foc_presale_bundle' and focSkuId:null, see the group-listing
+    // create route). Every real cover bundled into it got silently
+    // under-ordered from the distributor by however many bundles sold --
+    // one bundle unit sold means one physical copy of EACH cover it
+    // contains is now spoken for, same fulfillment obligation as a direct
+    // single-cover sale, tracked here per underlying focBundleSkuIds entry.
+    const isBundle=d.source==='foc_presale_bundle'&&Array.isArray(d.focBundleSkuIds)&&d.focBundleSkuIds.length;
+    if(d.source!=='foc_presale'&&!isBundle)continue;
+    if(!isBundle&&!d.focSkuId)continue;
     const originalQty=Number(d.focPresaleOriginalQty||0);
     const remainingQty=row.status==='sold'?0:Number(d.qty??d.quantity??0);
     const soldSoFar=Math.max(0,originalQty-remainingQty);
     if(soldSoFar<=0)continue;
-    map.set(d.focSkuId,(map.get(d.focSkuId)||0)+soldSoFar);
+    if(isBundle){for(const skuId of d.focBundleSkuIds)map.set(skuId,(map.get(skuId)||0)+soldSoFar);}
+    else map.set(d.focSkuId,(map.get(d.focSkuId)||0)+soldSoFar);
   }
   return map;
 }
@@ -1432,12 +1455,30 @@ async function receiveShipment(request,env,deps){
   const livePresaleRowBySkuId=new Map();
   for(const row of presaleRows||[]){
     const d=row.data||{};
-    if(d.source!=='foc_presale'||!d.focSkuId)continue;
+    // Store report: "what about eBay comic bundles?" -- a sold "All Covers
+    // Bundle" unit (source:'foc_presale_bundle', focSkuId:null, see the
+    // group-listing create route) never reserved anything here, meaning a
+    // physical copy already sold through the bundle could get handed out
+    // again as fresh standalone stock the moment this same shipment arrived.
+    // One sold bundle unit reserves one copy of EACH real cover it bundles.
+    // The bundle LISTING's own live eBay quantity is intentionally not
+    // touched here on a short-ship the way a single-cover listing's is
+    // (livePresaleRowBySkuId stays keyed by one real focSkuId) -- a
+    // bundle's true sellable count depends on the minimum across every
+    // cover it contains, which this per-cover receiving line can't resolve
+    // alone; it may need a manual quantity check on eBay after a
+    // bundle-covering short-ship.
+    const isBundle=d.source==='foc_presale_bundle'&&Array.isArray(d.focBundleSkuIds)&&d.focBundleSkuIds.length;
+    if(d.source!=='foc_presale'&&!isBundle)continue;
+    if(!isBundle&&!d.focSkuId)continue;
     const originalQty=Number(d.focPresaleOriginalQty||0);
     const remainingQty=Number(d.qty??d.quantity??0);
     const soldSoFar=row.status==='sold'?originalQty:Math.max(0,originalQty-remainingQty);
-    if(soldSoFar>0)presaleByskuId.set(d.focSkuId,(presaleByskuId.get(d.focSkuId)||0)+soldSoFar);
-    if(row.status==='presale'&&(d.ebayOfferId||(d.ebayApiSystem==='trading'&&d.ebayListingId&&d.ebaySku))&&remainingQty>0)livePresaleRowBySkuId.set(d.focSkuId,row);
+    if(soldSoFar>0){
+      if(isBundle){for(const skuId of d.focBundleSkuIds)presaleByskuId.set(skuId,(presaleByskuId.get(skuId)||0)+soldSoFar);}
+      else presaleByskuId.set(d.focSkuId,(presaleByskuId.get(d.focSkuId)||0)+soldSoFar);
+    }
+    if(!isBundle&&row.status==='presale'&&(d.ebayOfferId||(d.ebayApiSystem==='trading'&&d.ebayListingId&&d.ebaySku))&&remainingQty>0)livePresaleRowBySkuId.set(d.focSkuId,row);
   }
   let ebayToken='';
   if(livePresaleRowBySkuId.size&&deps.getEbayUserAccessToken&&deps.ebayReviseOfferQuantity){

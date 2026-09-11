@@ -4208,6 +4208,14 @@ export default {
         volumeDiscountWarnings.push('Volume discount (buy more, save more) was not set up: ' + e.message);
       }
 
+      // Store report: the "All Covers Bundle" variant's inventory row always
+      // saved cost:0 (skuRow is null for it -- it has no single skuId of its
+      // own, see focSkuId:null below), so every bundle sale recorded 100%
+      // margin instead of the real wholesale cost of every cover it bundles.
+      // One bundle unit = one copy of each real cover in it, so its per-unit
+      // cost is the sum of each real cover's own PRH cost (50% of that
+      // cover's MSRP), same rate used for every other cost figure in this file.
+      const bundleCostCents = realCovers.reduce((sum, v) => sum + Math.round(Number(skuRows.find(s => s.id === v.skuId)?.msrp_cents || 0) * 0.5), 0);
       const nowIso = new Date().toISOString();
       const createdRows = [];
       const rowErrors = [];
@@ -4223,7 +4231,7 @@ export default {
               data: {
                 name: v.skuId ? [family.title, v.label].filter(Boolean).join(' ') : v.label,
                 category: 'Comic', publisher: skuRow?.publisher || repSku.publisher || '', upc: v.upc || '',
-                cost: skuRow ? Math.round(Number(skuRow.msrp_cents || 0) * 0.5) / 100 : 0,
+                cost: skuRow ? Math.round(Number(skuRow.msrp_cents || 0) * 0.5) / 100 : bundleCostCents / 100,
                 market: Number(v.price), salePrice: Number(v.price),
                 qty: v.quantity, quantity: v.quantity, image: v.imageUrl || '',
                 source: v.skuId ? 'foc_presale' : 'foc_presale_bundle',
