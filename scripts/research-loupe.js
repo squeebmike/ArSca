@@ -108,10 +108,6 @@ function ensureDom(){
         '<div class="rloupe-title">LOUPE <span class="rloupe-title-sub">visual inspection</span></div>' +
         '<button type="button" class="hbtn rloupe-close" aria-label="Close Loupe">CLOSE</button>' +
       '</div>' +
-      '<div class="rloupe-cat-row">' +
-        '<span class="rloupe-cat-label">Category</span>' +
-        '<div class="rloupe-cat-slot"></div>' +
-      '</div>' +
       '<div class="rloupe-camera">' +
         '<video class="rloupe-video" playsinline muted></video>' +
         '<div class="rloupe-glass" hidden>' +
@@ -133,6 +129,7 @@ function ensureDom(){
           '<span class="rloupe-zoom-note"></span>' +
         '</div>' +
         '<button type="button" class="hbtn rloupe-loupe-toggle" aria-label="Enable jeweler\'s loupe">🔍 LOUPE</button>' +
+        '<div class="rloupe-cat-slot"></div>' +
         '<div class="rloupe-mag-btns" hidden></div>' +
       '</div>' +
       '<div class="rloupe-input-row">' +
@@ -310,6 +307,7 @@ function restoreCategoryWheel(){
 // the current attempt before touching shared state or the UI, and a
 // superseded call's own stream/track is torn down rather than adopted.
 var cameraAttemptId = 0;
+var endedRestartCount = 0; // consecutive silent auto-recoveries from an 'ended' track; capped in the handler below
 
 async function startLoupeCamera(){
   var attemptId = ++cameraAttemptId;
@@ -357,6 +355,7 @@ async function startLoupeCamera(){
   }
   state.started = true;
   showError('');
+  endedRestartCount = 0; // a track that's actually live resets the recovery budget
   detectCapabilities();
   renderControls();
   // A fresh track never remembers last session's zoom on its own (hardware
@@ -368,8 +367,20 @@ async function startLoupeCamera(){
   if(state.track){
     state.track.addEventListener('ended', function(){
       if(attemptId !== cameraAttemptId || !state.open) return; // a newer attempt already replaced this track
-      showError('Camera stopped unexpectedly (it may be in use by another app).');
-      stopLoupeCamera();
+      // Store report: "still darkened, I can see the camera behind it" --
+      // a camera track ending is often transient on mobile (brief
+      // backgrounding, the OS reclaiming the camera for a moment), not a
+      // real failure. Try a silent restart first rather than immediately
+      // handing the user a full error panel; startLoupeCamera shows its
+      // own error only if the restart genuinely fails too. Capped so a
+      // camera that's truly gone doesn't restart-loop forever.
+      if(endedRestartCount >= 3){
+        showError('Camera keeps stopping unexpectedly. It may be in use by another app.');
+        stopLoupeCamera();
+        return;
+      }
+      endedRestartCount++;
+      startLoupeCamera();
     });
   }
   return true;
@@ -626,19 +637,21 @@ function ensureStyles(){
     // screen, and even degrade to "pinned while you scroll" rather than
     // "gone" on the rare screen too short for that guarantee to hold.
     '.rloupe-sheet{width:min(520px,100%);max-height:92vh;overflow:auto;display:flex;flex-direction:column;background:var(--surf);border:1px solid rgba(0,255,179,.3);border-radius:14px;padding:16px;box-shadow:0 24px 80px rgba(0,0,0,.7);}',
-    '.rloupe-head{flex:0 0 auto;display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:10px;}',
+    // Store report: "I can't get to the close button" -- sticky keeps the
+    // header (and its CLOSE button) pinned to the top of the sheet's own
+    // scroll area no matter what, so it can never end up scrolled out of
+    // the visible viewport regardless of content height or a mobile
+    // browser's own dynamic toolbar shrinking the usable screen mid-view.
+    '.rloupe-head{flex:0 0 auto;position:sticky;top:0;z-index:5;background:var(--surf);display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;padding-bottom:2px;gap:10px;}',
     '.rloupe-title{font:900 13px \'Orbitron\',monospace;color:var(--g);letter-spacing:1px;}',
     '.rloupe-title-sub{font-family:var(--font-mono);font-size:9px;color:var(--dim);font-weight:400;letter-spacing:0;margin-left:6px;}',
-    '.rloupe-cat-row{flex:0 0 auto;display:flex;align-items:center;gap:8px;margin-bottom:10px;}',
-    '.rloupe-cat-label{font-family:var(--font-mono);font-size:9px;color:var(--dim);white-space:nowrap;}',
-    '.rloupe-cat-slot{flex:1;min-width:0;display:flex;}',
     '.rloupe-camera{flex:1 1 auto;min-height:150px;max-height:40vh;position:relative;background:#030405;border:1px solid var(--border);border-radius:10px;overflow:hidden;touch-action:none;}',
     '.rloupe-video{width:100%;height:100%;object-fit:cover;display:block;transform-origin:center center;}',
     '.rloupe-glass-video{width:100%;height:100%;object-fit:cover;position:absolute;left:0;top:0;}',
     '.rloupe-glass{position:absolute;width:' + GLASS_SIZE + 'px;height:' + GLASS_SIZE + 'px;border-radius:50%;overflow:hidden;pointer-events:none;box-shadow:0 8px 26px rgba(0,0,0,.55);}',
     '.rloupe-glass-ring{position:absolute;inset:0;border-radius:50%;border:2px solid var(--g);box-shadow:inset 0 0 0 1px rgba(255,255,255,.12);pointer-events:none;}',
     '.rloupe-glass-mag{position:absolute;right:8px;bottom:6px;font-family:\'Orbitron\',monospace;font-size:10px;font-weight:900;color:var(--g);text-shadow:0 1px 3px rgba(0,0,0,.8);}',
-    '.rloupe-x{position:absolute;top:8px;right:8px;z-index:3;width:34px;height:34px;border-radius:50%;border:1px solid rgba(255,255,255,.18);background:rgba(0,0,0,.55);color:#fff;font-size:16px;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0;}',
+    '.rloupe-x{position:absolute;top:8px;right:8px;z-index:4;width:34px;height:34px;border-radius:50%;border:1px solid rgba(255,255,255,.18);background:rgba(0,0,0,.55);color:#fff;font-size:16px;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0;}',
     '.rloupe-x:hover,.rloupe-x:active{background:rgba(0,0,0,.75);}',
     '.rloupe-error{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:20px;text-align:center;background:rgba(5,6,7,.94);}',
     '.rloupe-error-msg{font-family:var(--font-mono);font-size:11px;color:var(--red);max-width:280px;}',
@@ -653,6 +666,13 @@ function ensureStyles(){
     '.rloupe-zoom-slider{flex:1;min-width:70px;accent-color:var(--g);}',
     '.rloupe-zoom-note{font-family:var(--font-mono);font-size:8px;color:var(--dim);white-space:nowrap;}',
     '.rloupe-loupe-toggle.active{color:var(--purple);border-color:rgba(199,125,255,.5);background:rgba(199,125,255,.12);}',
+    // Store request: "place the category picker in the open space next to
+    // loupe button" -- the relocated #qpl-cat-wheel (see
+    // relocateCategoryWheel) lands here; its own CSS already fixes its
+    // size (96px tall, 150px wide on desktop, wraps to auto-height pills
+    // under 640px), this just gives it room to sit inline without
+    // stretching the row.
+    '.rloupe-cat-slot{display:flex;flex:0 1 auto;min-width:0;}',
     '.rloupe-mag-btns{display:flex;gap:4px;width:100%;}',
     '.rloupe-mag-btn{flex:1;min-height:34px;}',
     '.rloupe-mag-btn.active{color:var(--purple);border-color:rgba(199,125,255,.5);background:rgba(199,125,255,.12);}',

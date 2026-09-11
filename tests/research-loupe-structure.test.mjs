@@ -108,4 +108,29 @@ assert.match(src, /function restoreCategoryWheel\(\)\{/, 'must restore the categ
 assert.match(src, /getElementById\('qpl-cat-wheel'\)/, 'must move the actual #qpl-cat-wheel element, not a clone of its options');
 assert.doesNotMatch(src, /createElement\('option'\)/, 'must not clone <option> elements into a second category control anymore');
 
+// Store request: "I can't get to the close button" -- guards that the
+// header (and its CLOSE button) is pinned within the sheet's own scroll
+// area, so it can never end up scrolled out of the visible viewport.
+assert.match(src, /rloupe-head\{[^}]*position:sticky/, 'the header/close button must be sticky within the sheet so it is always reachable');
+
+// Store request: "place the category picker in the open space next to
+// loupe button" -- the wheel's slot must live inside the controls row
+// (alongside the LOUPE toggle), not as its own separate row above the
+// camera anymore.
+const controlsBlockMatch = src.match(/'<div class="rloupe-controls">'[\s\S]*?rloupe-input-row/);
+assert.ok(controlsBlockMatch, 'expected to find the rloupe-controls markup block');
+assert.match(controlsBlockMatch[0], /rloupe-cat-slot/, 'the category wheel slot must be inside the controls row, next to the LOUPE toggle');
+assert.doesNotMatch(src, /rloupe-cat-row/, 'the old separate category row must be gone');
+
+// Store report: "still darkened, I can see the camera behind it" -- an
+// unexpectedly-ended track must attempt a silent recovery before handing
+// the user a full error panel, capped so a truly dead camera doesn't
+// restart-loop forever.
+assert.match(src, /var endedRestartCount = 0;/, 'must track consecutive silent recoveries so a dead camera does not loop forever');
+const endedHandlerMatch = src.match(/state\.track\.addEventListener\('ended', function\(\)\{[\s\S]*?\}\);/);
+assert.ok(endedHandlerMatch, 'expected to find the track "ended" handler');
+assert.match(endedHandlerMatch[0], /endedRestartCount >= 3/, 'the ended handler must cap silent restarts rather than looping indefinitely');
+assert.match(endedHandlerMatch[0], /startLoupeCamera\(\);\s*\n\s*\}\);/, 'below the cap, the ended handler must attempt a silent restart, not immediately show an error');
+assert.match(src, /endedRestartCount = 0; \/\/ a track that's actually live resets the recovery budget/, 'a successful start must reset the recovery budget');
+
 console.log('Research Loupe structural contract checks passed');
