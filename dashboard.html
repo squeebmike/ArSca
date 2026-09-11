@@ -20703,7 +20703,7 @@ function addScanToCart(scan){
   const cartPrice = rawMarketPrice > 0 ? suggestedCartSalePrice(rawMarketPrice) : 0;
   cartData.items.push({
     id: 'ci_phone_' + Date.now(),
-    name: scan.name || 'Phone scan',
+    name: scan.name || scan.title || 'Phone scan',
     sub: [scan.year, scan.set, scan.variant, scan.card_number ? '#'+scan.card_number : null, scan.issue ? '#'+scan.issue : null].filter(Boolean).join(' · '),
     price: cartPrice,
     rawMarketPrice,
@@ -20725,7 +20725,7 @@ function addScanToCart(scan){
   cartData.show = getShowMode();
   localStorage.setItem('pos_cart_v2', JSON.stringify(cartData));
   postCartToWorker(cartData);
-  toast_dash('Added phone scan to cart: ' + (scan.name || 'item'));
+  toast_dash('Added phone scan to cart: ' + (scan.name || scan.title || 'item'));
 }
 
 function getCartDataLocal(){
@@ -20887,13 +20887,13 @@ function getScanPriceSource(scan){
 
 function scanToBuyItem(scan){
   const categoryText = scan.category || scan.game || 'TCG';
-  const isSealed = !!scan.is_sealed || /sealed|box|pack|tin|case|booster|blaster|mega|hobby|elite trainer|etb/i.test([categoryText, scan.name, scan.set, scan.configuration, scan.product_line].filter(Boolean).join(' '));
+  const isSealed = !!scan.is_sealed || /sealed|box|pack|tin|case|booster|blaster|mega|hobby|elite trainer|etb/i.test([categoryText, scan.name, scan.title, scan.set, scan.configuration, scan.product_line].filter(Boolean).join(' '));
   const session = getActiveBuySession();
   const market = getScanMarket(scan);
   return {
     id: 'bl_scan_' + (scan.id || Date.now()) + '_' + Math.random().toString(36).slice(2,5),
     scanId: scan.id || null,
-    name: scan.name || scan.player || 'Phone scan',
+    name: scan.name || scan.title || scan.player || 'Phone scan',
     market,
     priceUsed:market,
     priceLabel:scan.priceLabel || scan.priceSource || getScanPriceSource(scan) || 'Scan Price',
@@ -20904,7 +20904,7 @@ function scanToBuyItem(scan){
     year: scan.year || '',
     card_number: scan.card_number || scan.cardNumber || '',
     serial_number: scan.serial_number || (scan.printRun ? '/' + scan.printRun : ''),
-    providerUrl: scan.providerUrl || '',
+    providerUrl: scan.providerUrl || scan.sourceUrl || '',
     player: scan.player || '',
     team: scan.team || '',
     manufacturer: scan.manufacturer || '',
@@ -21303,7 +21303,7 @@ async function openScanInResearch(scanId){
     || review.find(s => String(s.id || s.originalScanId || s.scanId) === String(scanId));
   if(!scan) return toast_dash('Scan not found');
   switchTab('research');
-  const q = scan.queryUsed || scan.search_query || scan.rawExtractedText || scan.name || scan.player || '';
+  const q = scan.queryUsed || scan.search_query || scan.rawExtractedText || scan.name || scan.title || scan.player || '';
   const input = document.getElementById('qpl-input');
   const cat = document.getElementById('qpl-cat');
   if(input) input.value = q;
