@@ -22,8 +22,13 @@
 var DIGITAL_MAX_ZOOM = 5;      // always achievable, regardless of hardware
 var MIN_ZOOM = 1;
 var QUICK_ZOOMS = [1, 2, 5];
-var MAG_LEVELS = [2, 4, 8];    // loupe glass magnification, separate from camera zoom
-var DEFAULT_MAG = 4;
+// Store report: "why is there another zoom section? 2 4 8? keep the 1 2 5
+// we have" -- a second, separately-adjustable magnification level for the
+// loupe glass (on top of camera zoom) read as a confusing duplicate
+// control, not a distinct feature. The glass still magnifies further than
+// the live feed (that's the point of a loupe), just at one fixed strength
+// now instead of a picker.
+var GLASS_MAG = 4;
 var GLASS_SIZE = 148;          // px, the magnifier circle's diameter
 
 // ── Pure geometry helper (exported for tests) ────────────────────────────
@@ -49,11 +54,11 @@ function clamp(n, lo, hi){ return Math.min(hi, Math.max(lo, n)); }
 
 // ── Persisted preferences ─────────────────────────────────────────────
 // Store request: leaving Loupe zoomed in on a set number should stay that
-// way next time, not silently reset to 1x. Only zoom + loupe magnification
-// persist -- deliberately NOT torch (a phone that auto-turns its flashlight
-// back on next time, possibly face-down in a pocket, is a worse default
-// than just tapping it again), and not loupeOn/position (those are
-// per-session framing, not a standing preference).
+// way next time, not silently reset to 1x. Only zoom persists --
+// deliberately NOT torch (a phone that auto-turns its flashlight back on
+// next time, possibly face-down in a pocket, is a worse default than just
+// tapping it again), and not loupeOn/position (those are per-session
+// framing, not a standing preference).
 var PREFS_KEY = 'research_loupe_prefs_v1';
 function loadPrefs(){
   try {
@@ -85,7 +90,6 @@ var state = {
   zoomLevel: clamp(Number(prefs.zoom) || 1, MIN_ZOOM, DIGITAL_MAX_ZOOM),
   usingDigitalZoom: false,
   loupeOn: false,
-  loupeMag: MAG_LEVELS.includes(Number(prefs.mag)) ? Number(prefs.mag) : DEFAULT_MAG,
   loupeFx: 0.5, loupeFy: 0.38,
   error: '',
 };
@@ -129,7 +133,6 @@ function ensureDom(){
         '</div>' +
         '<button type="button" class="hbtn rloupe-loupe-toggle" aria-label="Enable jeweler\'s loupe">🔍 LOUPE</button>' +
         '<div class="rloupe-cat-slot"></div>' +
-        '<div class="rloupe-mag-btns" hidden></div>' +
       '</div>' +
       '<div class="rloupe-input-row">' +
         '<input type="text" class="tsi rloupe-input" placeholder="Ask/search anything...">' +
@@ -156,10 +159,10 @@ function ensureDom(){
     zoomSlider: overlay.querySelector('.rloupe-zoom-slider'),
     zoomNote: overlay.querySelector('.rloupe-zoom-note'),
     loupeToggle: overlay.querySelector('.rloupe-loupe-toggle'),
-    magBtnsWrap: overlay.querySelector('.rloupe-mag-btns'),
     input: overlay.querySelector('.rloupe-input'),
     mic: overlay.querySelector('.rloupe-mic'),
   };
+  dom.glassMagLabel.textContent = GLASS_MAG + '×'; // fixed strength, no picker -- set once
 
   QUICK_ZOOMS.forEach(function(z){
     var b = document.createElement('button');
@@ -168,14 +171,6 @@ function ensureDom(){
     b.addEventListener('click', function(){ applyZoom(z); });
     dom.zoomBtnsWrap.appendChild(b);
   });
-  MAG_LEVELS.forEach(function(m){
-    var b = document.createElement('button');
-    b.type = 'button'; b.className = 'hbtn rloupe-mag-btn'; b.textContent = m + '×';
-    b.setAttribute('aria-label', 'Loupe magnification ' + m + 'x');
-    b.addEventListener('click', function(){ state.loupeMag = m; savePrefs({ mag: m }); renderMagButtons(); updateGlassGeometry(); });
-    dom.magBtnsWrap.appendChild(b);
-  });
-
   dom.xBtn.addEventListener('click', requestCloseResearchLoupe);
   dom.overlay.addEventListener('click', function(e){ if(e.target === dom.overlay) requestCloseResearchLoupe(); });
   dom.retryBtn.addEventListener('click', function(){
@@ -522,17 +517,10 @@ function toggleLoupeGlass(){
   if(state.loupeOn) updateGlassGeometry();
 }
 
-function renderMagButtons(){
-  Array.prototype.forEach.call(dom.magBtnsWrap.children, function(btn, i){
-    btn.classList.toggle('active', MAG_LEVELS[i] === state.loupeMag);
-  });
-  dom.glassMagLabel.textContent = state.loupeMag + '×';
-}
-
 function updateGlassGeometry(){
   if(!state.loupeOn) return;
   var rect = dom.camera.getBoundingClientRect();
-  var g = computeLoupeGeometry(rect.width, rect.height, state.loupeFx, state.loupeFy, state.loupeMag, GLASS_SIZE);
+  var g = computeLoupeGeometry(rect.width, rect.height, state.loupeFx, state.loupeFy, GLASS_MAG, GLASS_SIZE);
   dom.glass.style.left = g.glassLeft + 'px';
   dom.glass.style.top = g.glassTop + 'px';
   dom.glassVideo.style.width = g.videoWidth + 'px';
@@ -621,8 +609,6 @@ function renderControls(){
 
   dom.loupeToggle.disabled = !state.started;
   dom.loupeToggle.classList.toggle('active', !!state.loupeOn);
-  dom.magBtnsWrap.hidden = !state.loupeOn;
-  renderMagButtons();
 }
 
 // ── Styles (injected once, kept out of dashboard.html's already-huge
@@ -681,9 +667,6 @@ function ensureStyles(){
     // under 640px), this just gives it room to sit inline without
     // stretching the row.
     '.rloupe-cat-slot{display:flex;flex:0 1 auto;min-width:0;}',
-    '.rloupe-mag-btns{display:flex;gap:4px;width:100%;}',
-    '.rloupe-mag-btn{flex:1;min-height:34px;}',
-    '.rloupe-mag-btn.active{color:var(--purple);border-color:rgba(199,125,255,.5);background:rgba(199,125,255,.12);}',
     '.rloupe-input-row{flex:0 0 auto;position:sticky;bottom:0;display:flex;gap:6px;margin-top:10px;padding-top:8px;background:var(--surf);}',
     '.rloupe-input{flex:1;margin-bottom:0;}',
     '@media(max-width:640px){',
