@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Supplies Drop-Ship Import</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="app-config.js"></script>
+<style>
+:root{color-scheme:dark;--bg:#070b0c;--panel:#101617;--panel2:#151d1f;--line:#253235;--text:#eef4f2;--muted:#8fa09d;--green:#00e6a0;--amber:#ffc857;--red:#ff5c75}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 Inter,ui-sans-serif,system-ui,sans-serif}
+button,input,select,textarea{font:inherit}
+button{cursor:pointer}
+.hidden{display:none!important}
+.top{position:sticky;top:0;z-index:10;display:flex;align-items:center;gap:12px;padding:12px 18px;background:#080d0eee;border-bottom:1px solid var(--line);backdrop-filter:blur(12px)}
+.brand{font-weight:800;letter-spacing:.08em;color:var(--green)}
+.spacer{flex:1}
+.btn{border:1px solid #24634f;background:#0b342b;color:var(--green);padding:9px 14px;border-radius:6px;font-weight:700}
+.btn.secondary{background:transparent;border-color:var(--line);color:var(--text)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.wrap{max-width:920px;margin:0 auto;padding:22px 18px 60px}
+h1{font-size:22px;margin:0 0 4px}
+.sub{color:var(--muted);margin:0 0 20px}
+.panel{border:1px solid var(--line);border-radius:8px;background:var(--panel);padding:18px;margin-bottom:18px}
+.field{display:grid;gap:5px;margin-bottom:14px}
+.field label{font-size:10px;text-transform:uppercase;letter-spacing:.12em;color:var(--muted)}
+input,select,textarea{width:100%;border:1px solid var(--line);border-radius:6px;background:#0b1112;color:var(--text);padding:10px}
+textarea{min-height:220px;resize:vertical;font:13px/1.5 ui-monospace,monospace}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.row3{display:grid;grid-template-columns:2fr 1fr 1fr;gap:12px}
+.check{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text)}
+.check input{width:auto}
+.notice{margin:0 0 14px;padding:10px 12px;border:1px solid #6c5521;background:#241e0d;color:#ffd978;border-radius:6px}
+.notice.error{border-color:#713040;background:#281219;color:#ff9caf}
+.notice.ok{border-color:#26755e;background:#0b2721;color:#afffe2}
+.table-wrap{overflow:auto;border:1px solid var(--line);border-radius:6px}
+table{width:100%;border-collapse:collapse;min-width:560px}
+th,td{padding:9px 10px;text-align:left;border-bottom:1px solid #1d282a;font-size:13px}
+th{font-size:10px;text-transform:uppercase;letter-spacing:.09em;color:var(--muted)}
+.err-row{color:var(--red)}
+.login{max-width:380px;margin:14vh auto;padding:24px}
+.login h1{margin-top:0}
+</style>
+</head>
+<body>
+<section id="login-view" class="login panel">
+  <div style="font-size:10px;text-transform:uppercase;letter-spacing:.12em;color:var(--muted)">Staff sign-in</div>
+  <h1>Supplies Import</h1>
+  <p style="color:var(--muted)">Sign in with your store staff account.</p>
+  <form id="login-form">
+    <div class="field"><label>Email</label><input id="email" type="email" required autocomplete="username"></div>
+    <div class="field"><label>Password</label><input id="password" type="password" required autocomplete="current-password"></div>
+    <button class="btn" type="submit">Sign in</button>
+  </form>
+  <p id="login-error" class="notice error hidden"></p>
+</section>
+
+<div id="app" class="hidden">
+  <header class="top">
+    <div class="brand">SUPPLIES DROP-SHIP IMPORT</div>
+    <div class="spacer"></div>
+    <span id="who" style="color:var(--muted);font-size:12px"></span>
+    <a class="btn secondary" href="dashboard.html">Back to dashboard</a>
+    <button id="logout" class="btn secondary">Log out</button>
+  </header>
+  <div class="wrap">
+    <h1>Bulk-add drop-ship supplies</h1>
+    <p class="sub">For items a vendor (e.g. BCW) fulfills directly — never physically stocked here, but still purchasable on the shop. They'll appear under the existing "Supplies" shop category without showing a stock count.</p>
+
+    <div id="message"></div>
+
+    <div class="panel">
+      <div class="row3">
+        <div class="field"><label>Store ID</label><input id="store-id" placeholder="Paste your store ID"></div>
+        <div class="field"><label>Vendor</label><input id="vendor" value="BCW"></div>
+        <div class="field"><label>Category</label><input id="category" value="Supplies"></div>
+      </div>
+      <div class="field">
+        <label>Items — one per line: Name, Price, Image URL, Description</label>
+        <textarea id="csv-input" placeholder="Ultra Pro 3&quot; 3-Ring Album Black, 24.99, https://example.com/album.jpg, Holds up to 360 cards
+BCW Standard Card Sleeves (100ct), 2.49, https://example.com/sleeves.jpg,"></textarea>
+      </div>
+      <label class="check"><input type="checkbox" id="publish" checked> Publish these items to the shop immediately (uncheck to import for review first)</label>
+      <div style="display:flex;gap:10px;margin-top:14px">
+        <button class="btn secondary" id="parse-btn" type="button">Preview</button>
+        <button class="btn" id="import-btn" type="button" disabled>Import previewed items</button>
+      </div>
+    </div>
+
+    <div id="preview-panel" class="panel hidden">
+      <div style="display:flex;align-items:center;margin-bottom:10px"><strong>Preview</strong><span class="spacer"></span><span id="preview-summary" style="color:var(--muted);font-size:12px"></span></div>
+      <div class="table-wrap"><table><thead><tr><th>Name</th><th>Price</th><th>Image</th><th>Description</th></tr></thead><tbody id="preview-body"></tbody></table></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const WORKER = window.WALKOFF_CONFIG?.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
+const sb = window.supabase.createClient(
+  window.WALKOFF_CONFIG?.supabaseUrl || 'https://vroknjrxubsqyexngwus.supabase.co',
+  window.WALKOFF_CONFIG?.supabaseAnonKey || 'sb_publishable_wbpX2nL8l-4NbXtZNG_bjA_nabSYaJ5',
+  { auth: { persistSession: true } }
+);
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>'"]/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;' }[c]));
+
+function message(text, error) {
+  $('message').innerHTML = text ? `<p class="notice ${error ? 'error' : 'ok'}">${esc(text)}</p>` : '';
+}
+
+async function api(path, options = {}) {
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) throw new Error('Please sign in again');
+  const r = await fetch(WORKER + path, {
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${session.access_token}`,
+      'X-Store-Id': $('store-id').value.trim(),
+      ...options.headers,
+    },
+  });
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(data.error || `Request failed (${r.status})`);
+  return data;
+}
+
+// Minimal CSV-ish line parser: comma-separated, double-quoted fields may
+// contain commas/escaped quotes ("" -> "). Good enough for a short pasted
+// vendor export; not a general CSV parser.
+function parseLine(line) {
+  const fields = [];
+  let cur = '', inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (inQuotes) {
+      if (ch === '"' && line[i + 1] === '"') { cur += '"'; i++; }
+      else if (ch === '"') { inQuotes = false; }
+      else { cur += ch; }
+    } else if (ch === '"') { inQuotes = true; }
+    else if (ch === ',') { fields.push(cur); cur = ''; }
+    else { cur += ch; }
+  }
+  fields.push(cur);
+  return fields.map(f => f.trim());
+}
+
+let previewItems = [];
+
+function parseInput() {
+  const raw = $('csv-input').value.split('\n').map(l => l.trim()).filter(Boolean);
+  // Skip an optional header row (first cell literally "name", case-insensitive).
+  const lines = raw.length && /^name$/i.test(parseLine(raw[0])[0] || '') ? raw.slice(1) : raw;
+  const rows = [];
+  for (const line of lines) {
+    const [name, priceRaw, image, description] = parseLine(line);
+    const price = Number(String(priceRaw || '').replace(/[^0-9.]/g, ''));
+    rows.push({ name: name || '', price, image: image || '', description: description || '', valid: !!name && Number.isFinite(price) && price > 0 });
+  }
+  return rows;
+}
+
+function renderPreview(rows) {
+  previewItems = rows.filter(r => r.valid);
+  $('preview-panel').classList.remove('hidden');
+  $('preview-summary').textContent = `${previewItems.length} valid of ${rows.length} row(s)`;
+  $('preview-body').innerHTML = rows.map(r => `<tr class="${r.valid ? '' : 'err-row'}"><td>${esc(r.name) || '(missing name)'}</td><td>${Number.isFinite(r.price) && r.price > 0 ? '$' + r.price.toFixed(2) : '(invalid price)'}</td><td>${r.image ? 'yes' : '—'}</td><td>${esc((r.description || '').slice(0, 60))}</td></tr>`).join('') || '<tr><td colspan="4">Nothing to preview.</td></tr>';
+  $('import-btn').disabled = previewItems.length === 0;
+}
+
+$('parse-btn').addEventListener('click', () => {
+  message('');
+  if (!$('store-id').value.trim()) { message('Enter a store ID first.', true); return; }
+  renderPreview(parseInput());
+});
+
+$('import-btn').addEventListener('click', async () => {
+  if (!previewItems.length) return;
+  $('import-btn').disabled = true;
+  message('Importing…');
+  try {
+    const result = await api('/inventory/dropship-import', {
+      method: 'POST',
+      body: JSON.stringify({
+        storeId: $('store-id').value.trim(),
+        items: previewItems,
+        vendor: $('vendor').value.trim() || 'BCW',
+        category: $('category').value.trim() || 'Supplies',
+        publish: $('publish').checked,
+      }),
+    });
+    let text = `Imported ${result.imported} item(s)${result.published ? ' — live on the shop now' : ' — saved for review, not yet published'}.`;
+    if (result.skipped?.length) text += ` Skipped ${result.skipped.length}: ${result.skipped.slice(0, 5).join(', ')}${result.skipped.length > 5 ? '…' : ''}`;
+    message(text, false);
+    $('csv-input').value = '';
+    $('preview-panel').classList.add('hidden');
+    previewItems = [];
+  } catch (e) {
+    message(e.message, true);
+  } finally {
+    $('import-btn').disabled = previewItems.length === 0;
+  }
+});
+
+$('login-form').addEventListener('submit', async e => {
+  e.preventDefault();
+  $('login-error').classList.add('hidden');
+  const { error } = await sb.auth.signInWithPassword({ email: $('email').value.trim(), password: $('password').value });
+  if (error) { $('login-error').textContent = error.message; $('login-error').classList.remove('hidden'); return; }
+  await start();
+});
+
+$('logout').addEventListener('click', async () => { await sb.auth.signOut(); location.reload(); });
+
+async function start() {
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) return;
+  $('login-view').classList.add('hidden');
+  $('app').classList.remove('hidden');
+  $('who').textContent = session.user.email || '';
+  const savedStore = localStorage.getItem('walkoff_active_store_id');
+  if (savedStore) $('store-id').value = savedStore;
+}
+
+start();
+</script>
+</body>
+</html>

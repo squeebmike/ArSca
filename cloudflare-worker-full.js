@@ -729,6 +729,12 @@ function shapeStorefrontItem(row) {
     photos: storefrontPhotos,
     isSealed: !!d.is_sealed, gradingCompany: storefrontCleanText(d.grading_company || d.grader || '', 40),
     isSigned: !!d.is_signed, signedBy: storefrontCleanText(d.signed_by || '', 120), signatureValue: rowSignatureValue,
+    // Drop-ship items (vendor-fulfilled, e.g. BCW supplies) are never
+    // physically counted -- see createDropshipInventoryItem/the Supplies
+    // import tool, which writes a large fixed quantity alongside this flag
+    // so the item still passes isStorefrontItemAvailable()'s quantity>0
+    // check without the storefront claiming a real, specific stock count.
+    dropship: !!d.dropship,
     comic: storefrontComicDetailFor(d),
     // Only explicit false excludes -- undefined/missing (every item that
     // existed before this field did) stays visible, so this can't silently
@@ -2219,6 +2225,63 @@ function renderMtgCardPage(card) {
       `<div class="mp-meta">${mtgEscapeHtml(card.typeLine || '')}${card.manaCost ? ` · ${mtgEscapeHtml(card.manaCost)}` : ''}</div>` +
       `${card.oracleText ? `<div class="mp-oracle">${mtgEscapeHtml(card.oracleText)}</div>` : ''}` +
       `${card.artist ? `<div class="mp-meta">Illustrated by ${mtgEscapeHtml(card.artist)}</div>` : ''}</div></div>`,
+  });
+}
+
+// ─── Public live-inventory item pages ───────────────────────────────────────
+// Server-rendered so every card/comic/TCG single/supply actually for sale
+// gets a real, crawlable URL and Product JSON-LD with a real availability
+// claim -- unlike the client-side-only shop grid (renderLiveInventory in
+// wo-ui.js), which opens a JS modal with no URL. Reuses the exact same
+// shapeStorefrontItem()/isStorefrontItemAvailable() logic as
+// /public/storefront and /public/storefront/item, so price/stock rules
+// never drift between the JSON API and this HTML view. themanapocket.com
+// is currently the only storefront using this route, so the store id is
+// fixed here rather than accepted from the URL/query -- avoids leaking
+// other stores' inventory through a guessable id if this worker is ever
+// reused by a second store.
+const ITEM_DETAIL_STORE_ID = '0f9dd4bc-42a7-487e-a972-2905d24513e9'; // The Mana Pocket
+
+function itemDetailDescription(item) {
+  const bits = [item.set, item.year, item.condition].filter(Boolean).join(' · ');
+  const priceBit = item.price ? ` $${item.price.toFixed(2)} at The Mana Pocket.` : ' At The Mana Pocket.';
+  return `${item.name}${bits ? ` — ${bits}.` : '.'}${priceBit}`.trim();
+}
+
+function itemNotFoundPage() {
+  const html = mtgPageShell({
+    title: 'Item not found | The Mana Pocket',
+    description: 'This item has sold or is no longer listed. Browse the shop for what’s currently in stock.',
+    canonicalPath: '/shop',
+    bodyHtml: `<div class="mp-crumb"><a href="/shop">← Back to shop</a></div><h1>Item not found</h1><p class="mp-sub">This item may have sold or is no longer listed. Browse the shop for what's currently in stock.</p>`,
+  });
+  return new Response(html, { status: 404, headers: { 'Content-Type': 'text/html;charset=UTF-8' } });
+}
+
+function renderItemDetailPage(item) {
+  const canonicalPath = `/item/${encodeURIComponent(item.id)}`;
+  const shopHref = `/shop?item=${encodeURIComponent(item.id)}`;
+  const priceStr = item.price ? `$${item.price.toFixed(2)}` : '';
+  const metaBits = [item.set, item.year, item.condition, item.variant].filter(Boolean).join(' · ');
+  const description = itemDetailDescription(item);
+  return mtgPageShell({
+    title: `${item.name}${item.set ? ` (${item.set})` : ''}${priceStr ? ` — ${priceStr}` : ''} | The Mana Pocket`,
+    description,
+    canonicalPath,
+    ogImage: item.image || undefined,
+    jsonLd: {
+      '@context': 'https://schema.org', '@type': 'Product', name: item.name,
+      image: item.image || undefined, sku: item.id,
+      brand: item.brand ? { '@type': 'Brand', name: item.brand } : undefined,
+      description,
+      ...(item.price ? { offers: { '@type': 'Offer', priceCurrency: 'USD', price: item.price, availability: 'https://schema.org/InStock', url: `https://themanapocket.com${canonicalPath}` } } : {}),
+    },
+    bodyHtml: `<div class="mp-crumb"><a href="/shop">← Back to shop</a></div>` +
+      `<div class="mp-detail">${item.image ? `<img src="${mtgEscapeHtml(item.image)}" alt="${mtgEscapeHtml(item.name)}">` : ''}` +
+      `<div><h1>${mtgEscapeHtml(item.name)}</h1>${metaBits ? `<div class="mp-meta">${mtgEscapeHtml(metaBits)}</div>` : ''}` +
+      `<div class="mp-prices">${priceStr ? `<span class="mp-price-pill">${mtgEscapeHtml(priceStr)}</span>` : '<span class="mp-meta">Contact the shop for price</span>'}</div>` +
+      `<a class="mp-card" style="display:inline-block;padding:12px 20px;margin-top:8px" href="${mtgEscapeHtml(shopHref)}">View in shop →</a>` +
+      `</div></div>`,
   });
 }
 
@@ -5340,6 +5403,111 @@ export default {
       response.headers.set('Cache-Control', 'public, max-age=21600');
       ctx.waitUntil(caches.default.put(cacheKey, response.clone()));
       return response;
+    }
+
+    // GET /item/{id} -- server-rendered detail page for one real, for-sale
+    // inventory item (not the /mtg reference catalog). See the item-page
+    // helpers above for why this exists and how it stays in sync with the
+    // JSON API's price/stock rules.
+    const itemDetailMatch = url.pathname.match(/^\/item\/([^/]+)$/);
+    if (itemDetailMatch && request.method === 'GET') {
+      const itemId = decodeURIComponent(itemDetailMatch[1]);
+      const cacheKey = new Request(url.toString(), request);
+      const cached = await caches.default.match(cacheKey);
+      if (cached) return cached;
+      if (!(env.SUPABASE_URL && (env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SERVICE_KEY))) return itemNotFoundPage();
+      const { data: itemRows, response: itemSbResponse } = await supabaseAdminFetch(env, `inventory_items?id=eq.${encodeURIComponent(itemId)}&store_id=eq.${encodeURIComponent(ITEM_DETAIL_STORE_ID)}&select=id,data,status,created_at,updated_at&limit=1`);
+      if (!itemSbResponse?.ok) return itemNotFoundPage();
+      const itemRow = itemRows?.[0];
+      const item = itemRow ? shapeStorefrontItem(itemRow) : null;
+      if (!item || !isStorefrontItemAvailable(item)) return itemNotFoundPage();
+      const response = mtgHtmlResponse(renderItemDetailPage(item));
+      // Real stock/price, not a reference catalog -- much shorter TTL than
+      // the /mtg pages (21600s) so a sale or price change shows up soon.
+      response.headers.set('Cache-Control', 'public, max-age=300');
+      ctx.waitUntil(caches.default.put(cacheKey, response.clone()));
+      return response;
+    }
+
+    // GET /sitemap-items.xml -- lists every currently-available item's
+    // /item/{id} URL, so Google can discover them even before anything
+    // links to them. Webflow's own sitemap.xml only knows about Webflow
+    // pages/CMS items, not these worker-rendered routes -- add this as an
+    // additional sitemap in Google Search Console (Sitemaps report), it
+    // doesn't need to be referenced from robots.txt to be crawled.
+    if (url.pathname === '/sitemap-items.xml' && request.method === 'GET') {
+      const cacheKey = new Request(url.toString(), request);
+      const cached = await caches.default.match(cacheKey);
+      if (cached) return cached;
+      if (!(env.SUPABASE_URL && (env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SERVICE_KEY))) return new Response('Storefront service unavailable', { status: 503 });
+      const sitemapRows = [];
+      let sitemapOffset = 0;
+      while (true) {
+        const page = await supabaseAdminFetch(env, `inventory_items?store_id=eq.${encodeURIComponent(ITEM_DETAIL_STORE_ID)}&select=id,data,status,created_at,updated_at&order=updated_at.desc&limit=1000&offset=${sitemapOffset}`);
+        if (!page.response?.ok) break;
+        const batch = page.data || [];
+        sitemapRows.push(...batch);
+        if (batch.length < 1000) break;
+        sitemapOffset += 1000;
+        if (sitemapOffset >= 50000) break; // sitemap.xml URL cap safety net
+      }
+      const urls = sitemapRows
+        .map(shapeStorefrontItem)
+        .filter(isStorefrontItemAvailable)
+        .map(item => `<url><loc>https://themanapocket.com/item/${mtgEscapeHtml(item.id)}</loc><lastmod>${mtgEscapeHtml((item.updatedAt || '').slice(0, 10))}</lastmod></url>`)
+        .join('');
+      const xml = `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${urls}</urlset>`;
+      const response = new Response(xml, { headers: { 'Content-Type': 'application/xml;charset=UTF-8' } });
+      response.headers.set('Cache-Control', 'public, max-age=1800');
+      ctx.waitUntil(caches.default.put(cacheKey, response.clone()));
+      return response;
+    }
+
+    // POST /inventory/dropship-import -- staff bulk-import for vendor
+    // drop-ship items (e.g. BCW supplies fulfilled by the vendor, never
+    // physically stocked). Each row gets a large fixed quantity so it
+    // always reads as purchasable, plus data.dropship=true, which
+    // shapeStorefrontItem()/the shop grid's itemCard() read to suppress a
+    // fake "X in stock" count without hiding the item -- see the dropship
+    // field comment above shapeStorefrontItem's isSealed/isSigned flags.
+    if (url.pathname === '/inventory/dropship-import' && request.method === 'POST') {
+      const bodyResult = await readJsonWithLimit(request, 2 * 1024 * 1024);
+      if (bodyResult.error) return bodyResult.error;
+      const body = bodyResult.data || {};
+      const storeId = requestStoreId(request, url, body);
+      const auth = await requireStoreUser(request, env, storeId, ['owner', 'admin', 'manager']);
+      if (auth.error) return auth.error;
+      const rawItems = Array.isArray(body.items) ? body.items : [];
+      if (!rawItems.length) return json({ ok: false, error: 'No items provided' }, 400);
+      if (rawItems.length > 500) return json({ ok: false, error: 'Import at most 500 items at a time' }, 400);
+      const publish = body.publish !== false;
+      const category = storefrontCleanText(body.category || 'Supplies', 80) || 'Supplies';
+      const vendor = storefrontCleanText(body.vendor || 'BCW', 80);
+      const nowIso = new Date().toISOString();
+      const rows = [];
+      const skipped = [];
+      for (const raw of rawItems) {
+        const name = storefrontCleanText(raw?.name, 200);
+        const price = Number(raw?.price);
+        if (!name || !Number.isFinite(price) || price <= 0) { skipped.push(String(raw?.name || '(missing name)')); continue; }
+        rows.push({
+          store_id: storeId, status: 'active',
+          data: {
+            name, category, priceOverride: Math.round(price * 100) / 100,
+            image: storefrontCleanUrl(raw?.image) || '', description: storefrontCleanText(raw?.description, 2000),
+            quantity: 999, dropship: true, vendor,
+            onlineListed: publish, source: 'dropship_import', importedAt: nowIso,
+          },
+        });
+      }
+      if (!rows.length) return json({ ok: false, error: 'No valid rows -- each needs a name and a price greater than 0', skipped }, 400);
+      let createdRows;
+      try {
+        ({ data: createdRows } = await supabaseAdminFetch(env, 'inventory_items', { method: 'POST', headers: { Prefer: 'return=representation' }, body: JSON.stringify(rows) }));
+      } catch (e) {
+        return json({ ok: false, error: 'Import failed: ' + e.message }, 502);
+      }
+      return json({ ok: true, imported: Array.isArray(createdRows) ? createdRows.length : rows.length, skipped, published: publish });
     }
 
     if (url.pathname === '/catalog/topps/manifest') {
