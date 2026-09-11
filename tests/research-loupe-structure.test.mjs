@@ -88,4 +88,24 @@ assert.match(src, /async function handleCameraStartError/, 'camera start failure
 assert.match(src, /permState === 'denied'/, 'must distinguish a confirmed block (Permissions API) from a not-yet-asked prompt');
 assert.match(src, /dom\.retryBtn\.dataset\.action = blocked \? 'reload' : 'retry'/, 'the retry control must become a reload action once the block is confirmed, not keep offering a retry that cannot work');
 
+// Store report: "I still see try again button even though I see the
+// camera feed darkened behind it" -- a slow/stale startLoupeCamera() call
+// resolving after a newer one had already succeeded was re-showing the
+// error panel on a working camera. Guards the generation-counter fix.
+assert.match(src, /var cameraAttemptId = 0;/, 'must track a generation counter to detect a superseded camera-start attempt');
+assert.match(src, /var attemptId = \+\+cameraAttemptId;/, 'startLoupeCamera must capture its own attempt id at the start');
+const startFnMatch = src.match(/async function startLoupeCamera\(\)\{[\s\S]*?\n\}\n\nfunction stopLoupeCamera/);
+assert.ok(startFnMatch, 'expected to find startLoupeCamera');
+const staleChecks = (startFnMatch[0].match(/attemptId !== cameraAttemptId/g) || []).length;
+assert.ok(staleChecks >= 3, `startLoupeCamera must check staleness after every await (getUserMedia, applyContinuousAutofocus, video.play) -- found ${staleChecks}, expected at least 3`);
+
+// Store request: "category picker should be the scrolling thing we have
+// in research tab." The real #qpl-cat-wheel element must be relocated
+// (moved, not cloned) into Loupe and back -- reusing its own already-wired
+// onclick/onscroll handlers rather than inventing a second category model.
+assert.match(src, /function relocateCategoryWheel\(\)\{/, 'must relocate the real category wheel into the Loupe sheet');
+assert.match(src, /function restoreCategoryWheel\(\)\{/, 'must restore the category wheel to its original position on close');
+assert.match(src, /getElementById\('qpl-cat-wheel'\)/, 'must move the actual #qpl-cat-wheel element, not a clone of its options');
+assert.doesNotMatch(src, /createElement\('option'\)/, 'must not clone <option> elements into a second category control anymore');
+
 console.log('Research Loupe structural contract checks passed');

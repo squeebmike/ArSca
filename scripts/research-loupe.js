@@ -110,7 +110,7 @@ function ensureDom(){
       '</div>' +
       '<div class="rloupe-cat-row">' +
         '<span class="rloupe-cat-label">Category</span>' +
-        '<select class="tsi rloupe-cat" aria-label="Change research category"></select>' +
+        '<div class="rloupe-cat-slot"></div>' +
       '</div>' +
       '<div class="rloupe-camera">' +
         '<video class="rloupe-video" playsinline muted></video>' +
@@ -147,7 +147,7 @@ function ensureDom(){
     sheet: overlay.querySelector('.rloupe-sheet'),
     closeBtn: overlay.querySelector('.rloupe-close'),
     xBtn: overlay.querySelector('.rloupe-x'),
-    catSelect: overlay.querySelector('.rloupe-cat'),
+    catSlot: overlay.querySelector('.rloupe-cat-slot'),
     camera: overlay.querySelector('.rloupe-camera'),
     video: overlay.querySelector('.rloupe-video'),
     glass: overlay.querySelector('.rloupe-glass'),
@@ -191,12 +191,6 @@ function ensureDom(){
   dom.torchBtn.addEventListener('click', function(){ setTorch(!state.torchOn); });
   dom.loupeToggle.addEventListener('click', toggleLoupeGlass);
   dom.zoomSlider.addEventListener('input', function(){ applyZoom(parseFloat(dom.zoomSlider.value) || 1); });
-  dom.catSelect.addEventListener('change', function(){
-    var main = document.getElementById('qpl-cat');
-    if(!main) return;
-    main.value = dom.catSelect.value;
-    main.dispatchEvent(new Event('change', { bubbles: true }));
-  });
   dom.input.addEventListener('input', function(){
     var main = document.getElementById('qpl-input');
     if(!main) return;
@@ -244,7 +238,7 @@ function openResearchLoupe(){
   state.open = true;
   dom.overlay.classList.add('on');
   document.body.style.overflow = 'hidden';
-  syncCategoryOptions();
+  relocateCategoryWheel();
   var mainInput = document.getElementById('qpl-input');
   dom.input.value = mainInput ? mainInput.value : '';
   showError('');
@@ -274,49 +268,95 @@ function performLoupeClose(){
   state.open = false;
   if(dom){ dom.overlay.classList.remove('on'); }
   document.body.style.overflow = '';
+  restoreCategoryWheel();
 }
 
-// ── Category mini-select: reuses #qpl-cat as the only source of truth,
-// just copies its current &lt;option&gt; list + selection so there is no
-// second category model to keep in sync by hand. ─────────────────────────
-function syncCategoryOptions(){
-  var main = document.getElementById('qpl-cat');
-  if(!main) { dom.catSelect.innerHTML = ''; return; }
-  dom.catSelect.innerHTML = '';
-  Array.prototype.forEach.call(main.options, function(opt){
-    var clone = document.createElement('option');
-    clone.value = opt.value;
-    clone.textContent = opt.textContent;
-    dom.catSelect.appendChild(clone);
-  });
-  dom.catSelect.value = main.value;
+// ── Category picker: relocates the REAL #qpl-cat-wheel (the same
+// scrolling pill wheel the main Research search row uses) into the Loupe
+// sheet for as long as it's open, then puts it back exactly where it came
+// from. Store request: "category picker should be the scrolling thing we
+// have in research tab." This is the actual live element -- its existing
+// onclick/onscroll handlers (scrollQplCatWheelTo/handleQplCatWheelScroll,
+// both defined in dashboard.html) already update the real #qpl-cat select
+// and dispatch its change event, so there is nothing here to keep in sync
+// by hand and no second category model. If the wheel isn't on the page
+// for some reason, the slot is just left empty rather than failing.
+var catWheelHome = null; // {parent, next} -- where to put it back on close
+
+function relocateCategoryWheel(){
+  var wheel = document.getElementById('qpl-cat-wheel');
+  if(!wheel || !dom.catSlot) return;
+  if(!catWheelHome) catWheelHome = { parent: wheel.parentNode, next: wheel.nextSibling };
+  dom.catSlot.appendChild(wheel);
+}
+
+function restoreCategoryWheel(){
+  var wheel = document.getElementById('qpl-cat-wheel');
+  if(!wheel || !catWheelHome) return;
+  if(catWheelHome.next && catWheelHome.next.parentNode === catWheelHome.parent){
+    catWheelHome.parent.insertBefore(wheel, catWheelHome.next);
+  } else {
+    catWheelHome.parent.appendChild(wheel);
+  }
 }
 
 // ── Camera lifecycle ──────────────────────────────────────────────────
+// Store report: "I still see the try again button even though I see the
+// camera feed darkened behind it" -- a slow/stale startLoupeCamera() call
+// (an earlier tap, or the auto-start racing a manual retry tap) was
+// resolving its error handling AFTER a later call had already succeeded,
+// re-showing the error panel on top of an actually-working camera. Every
+// call captures its own attemptId; any await-resumption checks it's still
+// the current attempt before touching shared state or the UI, and a
+// superseded call's own stream/track is torn down rather than adopted.
+var cameraAttemptId = 0;
+
 async function startLoupeCamera(){
+  var attemptId = ++cameraAttemptId;
   if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
     showError('Camera not supported in this browser.');
     return false;
   }
   showError('');
+  var stream;
   try {
-    state.stream = await navigator.mediaDevices.getUserMedia({
+    stream = await navigator.mediaDevices.getUserMedia({
       video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 }, focusMode: { ideal: 'continuous' } },
       audio: false,
     });
   } catch(e){
-    await handleCameraStartError(e);
+    if(attemptId !== cameraAttemptId) return false; // a newer attempt has already taken over
+    await handleCameraStartError(e, attemptId);
     return false;
   }
+  if(attemptId !== cameraAttemptId){
+    // Superseded while getUserMedia was resolving -- this stream belongs
+    // to no one now; stop it immediately rather than leaving it running
+    // unseen, and leave whatever the newer attempt already set up alone.
+    stream.getTracks().forEach(function(t){ t.stop(); });
+    return false;
+  }
+  state.stream = stream;
   if(typeof window.applyContinuousAutofocus === 'function'){
     try { await window.applyContinuousAutofocus(state.stream); } catch(e){ /* best effort */ }
+  }
+  if(attemptId !== cameraAttemptId){
+    stream.getTracks().forEach(function(t){ t.stop(); });
+    if(state.stream === stream) state.stream = null;
+    return false;
   }
   state.track = state.stream.getVideoTracks()[0] || null;
   dom.video.srcObject = state.stream;
   dom.glassVideo.srcObject = state.stream;
   try { await dom.video.play(); } catch(e){ /* autoplay quirks -- video still becomes playable on interaction */ }
   try { await dom.glassVideo.play(); } catch(e){ /* ditto */ }
+  if(attemptId !== cameraAttemptId){
+    stream.getTracks().forEach(function(t){ t.stop(); });
+    if(state.stream === stream){ state.stream = null; state.track = null; dom.video.srcObject = null; dom.glassVideo.srcObject = null; }
+    return false;
+  }
   state.started = true;
+  showError('');
   detectCapabilities();
   renderControls();
   // A fresh track never remembers last session's zoom on its own (hardware
@@ -327,7 +367,7 @@ async function startLoupeCamera(){
   applyZoom(state.zoomLevel);
   if(state.track){
     state.track.addEventListener('ended', function(){
-      if(!state.open) return;
+      if(attemptId !== cameraAttemptId || !state.open) return; // a newer attempt already replaced this track
       showError('Camera stopped unexpectedly (it may be in use by another app).');
       stopLoupeCamera();
     });
@@ -591,7 +631,7 @@ function ensureStyles(){
     '.rloupe-title-sub{font-family:var(--font-mono);font-size:9px;color:var(--dim);font-weight:400;letter-spacing:0;margin-left:6px;}',
     '.rloupe-cat-row{flex:0 0 auto;display:flex;align-items:center;gap:8px;margin-bottom:10px;}',
     '.rloupe-cat-label{font-family:var(--font-mono);font-size:9px;color:var(--dim);white-space:nowrap;}',
-    '.rloupe-cat{flex:1;margin-bottom:0;}',
+    '.rloupe-cat-slot{flex:1;min-width:0;display:flex;}',
     '.rloupe-camera{flex:1 1 auto;min-height:150px;max-height:40vh;position:relative;background:#030405;border:1px solid var(--border);border-radius:10px;overflow:hidden;touch-action:none;}',
     '.rloupe-video{width:100%;height:100%;object-fit:cover;display:block;transform-origin:center center;}',
     '.rloupe-glass-video{width:100%;height:100%;object-fit:cover;position:absolute;left:0;top:0;}',
