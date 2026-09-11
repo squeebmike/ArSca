@@ -50,4 +50,24 @@ assert.match(src, /savePrefs\(\{\s*zoom:\s*level\s*\}\)/, 'applyZoom must persis
 assert.match(src, /localStorage\.getItem\(PREFS_KEY\)/, 'zoom/magnification preferences must be read from localStorage on load');
 assert.match(src, /catch\(e\)\{\s*return \{\};\s*\}/, 'reading persisted prefs must degrade gracefully (private browsing / storage blocked), not throw');
 
+// Store request: "if I open the loupe, the camera should already be on"
+// -- no separate "enable camera" tap. Guards against the original
+// permission-ceremony screen (a full-text "Camera access is needed..."
+// CTA shown before ever attempting getUserMedia) regressing back in.
+const openFnMatch = src.match(/function openResearchLoupe\(\)\{[\s\S]*?\n\}/);
+assert.ok(openFnMatch, 'expected to find openResearchLoupe');
+assert.match(openFnMatch[0], /startLoupeCamera\(\)/, 'openResearchLoupe must start the camera itself, not wait for a separate enable button');
+assert.doesNotMatch(src, /Camera access is needed/, 'must not show a pre-permission ceremony screen before ever attempting getUserMedia');
+assert.doesNotMatch(src, /ENABLE CAMERA/, 'there must be no separate "enable camera" tap -- opening Loupe starts the camera directly');
+
+// Store request: "pressing the back button should close the loupe."
+assert.match(src, /history\.pushState\(\{\s*rloupeOpen:\s*true\s*\}/, 'opening Loupe must push a history entry so the back button has something to consume');
+assert.match(src, /addEventListener\('popstate'/, 'must listen for popstate so the back/gesture-back button closes Loupe');
+assert.match(src, /function requestCloseResearchLoupe\(\)\{\s*if\(historyPushed\)\{\s*historyPushed = false;\s*history\.back\(\);/, 'the UI close path (X button, header close, tap-outside) must go through history.back(), the same path the hardware back button uses -- not a separate close routine');
+
+// Store request: "I shouldn't have words on the screen where I'm looking
+// at things... you should have a close button on there as well." -- an
+// icon-only close control overlaid on the camera itself, not a text label.
+assert.match(src, /class="rloupe-x"[^>]*>✕</, 'the camera view must have its own icon-only (not text) close control');
+
 console.log('Research Loupe structural contract checks passed');

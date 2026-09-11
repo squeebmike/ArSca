@@ -75,7 +75,7 @@ var prefs = loadPrefs();
 // ── State ─────────────────────────────────────────────────────────────
 var state = {
   open: false,
-  started: false,          // camera actually running (vs. the pre-permission CTA screen)
+  started: false,          // camera actually running (vs. still starting up, or failed)
   stream: null,
   track: null,
   torchOn: false,
@@ -119,11 +119,11 @@ function ensureDom(){
           '<div class="rloupe-glass-ring"></div>' +
           '<div class="rloupe-glass-mag"></div>' +
         '</div>' +
-        '<div class="rloupe-cta">' +
-          '<div class="rloupe-cta-copy">Camera access is needed for Loupe inspection.</div>' +
-          '<button type="button" class="hbtn rloupe-enable" style="color:var(--g)">ENABLE CAMERA</button>' +
+        '<button type="button" class="rloupe-x" aria-label="Close Loupe">✕</button>' +
+        '<div class="rloupe-error" hidden>' +
+          '<div class="rloupe-error-msg"></div>' +
+          '<button type="button" class="hbtn rloupe-retry" style="color:var(--g)">TRY AGAIN</button>' +
         '</div>' +
-        '<div class="rloupe-error" hidden></div>' +
       '</div>' +
       '<div class="rloupe-controls">' +
         '<button type="button" class="hbtn rloupe-torch" aria-label="Toggle flashlight" disabled>🔦 TORCH</button>' +
@@ -146,15 +146,16 @@ function ensureDom(){
     overlay: overlay,
     sheet: overlay.querySelector('.rloupe-sheet'),
     closeBtn: overlay.querySelector('.rloupe-close'),
+    xBtn: overlay.querySelector('.rloupe-x'),
     catSelect: overlay.querySelector('.rloupe-cat'),
     camera: overlay.querySelector('.rloupe-camera'),
     video: overlay.querySelector('.rloupe-video'),
     glass: overlay.querySelector('.rloupe-glass'),
     glassVideo: overlay.querySelector('.rloupe-glass-video'),
     glassMagLabel: overlay.querySelector('.rloupe-glass-mag'),
-    cta: overlay.querySelector('.rloupe-cta'),
-    enableBtn: overlay.querySelector('.rloupe-enable'),
     errorBox: overlay.querySelector('.rloupe-error'),
+    errorMsg: overlay.querySelector('.rloupe-error-msg'),
+    retryBtn: overlay.querySelector('.rloupe-retry'),
     torchBtn: overlay.querySelector('.rloupe-torch'),
     zoomBtnsWrap: overlay.querySelector('.rloupe-zoom-btns'),
     zoomSlider: overlay.querySelector('.rloupe-zoom-slider'),
@@ -180,9 +181,10 @@ function ensureDom(){
     dom.magBtnsWrap.appendChild(b);
   });
 
-  dom.closeBtn.addEventListener('click', closeResearchLoupe);
-  dom.overlay.addEventListener('click', function(e){ if(e.target === dom.overlay) closeResearchLoupe(); });
-  dom.enableBtn.addEventListener('click', startLoupeCamera);
+  dom.closeBtn.addEventListener('click', requestCloseResearchLoupe);
+  dom.xBtn.addEventListener('click', requestCloseResearchLoupe);
+  dom.overlay.addEventListener('click', function(e){ if(e.target === dom.overlay) requestCloseResearchLoupe(); });
+  dom.retryBtn.addEventListener('click', startLoupeCamera);
   dom.torchBtn.addEventListener('click', function(){ setTorch(!state.torchOn); });
   dom.loupeToggle.addEventListener('click', toggleLoupeGlass);
   dom.zoomSlider.addEventListener('input', function(){ applyZoom(parseFloat(dom.zoomSlider.value) || 1); });
@@ -215,13 +217,27 @@ function ensureDom(){
     // pressure) do end it, so recover instead of leaving a dead preview.
     if(state.track && state.track.readyState === 'ended') startLoupeCamera();
   });
+  // Store request: "pressing the back button should close the loupe."
+  // Opening pushes one history entry; the phone/browser back button then
+  // fires a real popstate, which is the only place actual teardown happens
+  // -- the X/close-button/tap-outside paths below all go through
+  // requestCloseResearchLoupe, which just calls history.back() to trigger
+  // this same popstate rather than duplicating the close logic.
+  window.addEventListener('popstate', function(){
+    if(!state.open) return;
+    historyPushed = false;
+    performLoupeClose();
+  });
 
   return dom;
 }
 
 // ── Open / close ──────────────────────────────────────────────────────
+var historyPushed = false;
+
 function openResearchLoupe(){
   ensureDom();
+  if(state.open) return;
   state.open = true;
   dom.overlay.classList.add('on');
   document.body.style.overflow = 'hidden';
@@ -229,16 +245,28 @@ function openResearchLoupe(){
   var mainInput = document.getElementById('qpl-input');
   dom.input.value = mainInput ? mainInput.value : '';
   showError('');
-  if(!state.started){
-    dom.cta.hidden = false;
-    dom.video.style.display = 'none';
-  }
   // Covers the very first open, before stopLoupeCamera has ever run once
   // to put the controls row into its correct disabled/off state.
   renderControls();
+  try { history.pushState({ rloupeOpen: true }, ''); historyPushed = true; }
+  catch(e){ historyPushed = false; } // e.g. sandboxed context -- back button just won't close it there
+  // Store request: "if I open the loupe, the camera should already be on"
+  // -- no separate "enable camera" tap. Fires immediately; a failure (denied
+  // permission, no camera, in use elsewhere) surfaces as the error/retry
+  // panel, not a screen shown proactively before ever trying.
+  startLoupeCamera();
 }
 
-function closeResearchLoupe(){
+// UI-facing close (X button, header close, tap-outside): consumes the
+// history entry opening pushed, which is what actually triggers
+// performLoupeClose via the popstate listener above -- keeps the back
+// button and every other close path running through one code path.
+function requestCloseResearchLoupe(){
+  if(historyPushed){ historyPushed = false; history.back(); }
+  else performLoupeClose();
+}
+
+function performLoupeClose(){
   stopLoupeCamera();
   state.open = false;
   if(dom){ dom.overlay.classList.remove('on'); }
@@ -286,8 +314,6 @@ async function startLoupeCamera(){
   try { await dom.video.play(); } catch(e){ /* autoplay quirks -- video still becomes playable on interaction */ }
   try { await dom.glassVideo.play(); } catch(e){ /* ditto */ }
   state.started = true;
-  dom.cta.hidden = true;
-  dom.video.style.display = '';
   detectCapabilities();
   renderControls();
   // A fresh track never remembers last session's zoom on its own (hardware
@@ -300,13 +326,13 @@ async function startLoupeCamera(){
     state.track.addEventListener('ended', function(){
       if(!state.open) return;
       showError('Camera stopped unexpectedly (it may be in use by another app).');
-      stopLoupeCamera(true);
+      stopLoupeCamera();
     });
   }
   return true;
 }
 
-function stopLoupeCamera(keepOpenState){
+function stopLoupeCamera(){
   if(state.stream){ state.stream.getTracks().forEach(function(t){ t.stop(); }); }
   state.stream = null;
   state.track = null;
@@ -323,7 +349,6 @@ function stopLoupeCamera(keepOpenState){
     dom.video.srcObject = null;
     dom.glassVideo.srcObject = null;
     dom.video.style.transform = '';
-    if(!keepOpenState){ dom.cta.hidden = false; dom.video.style.display = 'none'; }
     // Unconditional, not just inside the loupeOn branch above -- torch/zoom
     // button enabled+active states must never survive past the stream that
     // backed them, whether or not the magnifier happened to be on.
@@ -342,7 +367,7 @@ function cameraErrorMessage(e){
 function showError(msg){
   if(!dom) return;
   dom.errorBox.hidden = !msg;
-  dom.errorBox.textContent = msg || '';
+  dom.errorMsg.textContent = msg || '';
 }
 
 // ── Capability detection (torch / hardware zoom) ─────────────────────────
@@ -524,9 +549,10 @@ function ensureStyles(){
     '.rloupe-glass{position:absolute;width:' + GLASS_SIZE + 'px;height:' + GLASS_SIZE + 'px;border-radius:50%;overflow:hidden;pointer-events:none;box-shadow:0 8px 26px rgba(0,0,0,.55);}',
     '.rloupe-glass-ring{position:absolute;inset:0;border-radius:50%;border:2px solid var(--g);box-shadow:inset 0 0 0 1px rgba(255,255,255,.12);pointer-events:none;}',
     '.rloupe-glass-mag{position:absolute;right:8px;bottom:6px;font-family:\'Orbitron\',monospace;font-size:10px;font-weight:900;color:var(--g);text-shadow:0 1px 3px rgba(0,0,0,.8);}',
-    '.rloupe-cta{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:20px;text-align:center;}',
-    '.rloupe-cta-copy{font-family:var(--font-mono);font-size:11px;color:var(--dim);max-width:280px;}',
-    '.rloupe-error{position:absolute;left:10px;right:10px;bottom:10px;background:rgba(255,77,109,.12);border:1px solid rgba(255,77,109,.35);color:var(--red);font-family:var(--font-mono);font-size:10px;padding:8px 10px;border-radius:8px;}',
+    '.rloupe-x{position:absolute;top:8px;right:8px;z-index:3;width:34px;height:34px;border-radius:50%;border:1px solid rgba(255,255,255,.18);background:rgba(0,0,0,.55);color:#fff;font-size:16px;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0;}',
+    '.rloupe-x:hover,.rloupe-x:active{background:rgba(0,0,0,.75);}',
+    '.rloupe-error{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:20px;text-align:center;background:rgba(5,6,7,.94);}',
+    '.rloupe-error-msg{font-family:var(--font-mono);font-size:11px;color:var(--red);max-width:280px;}',
     '.rloupe-controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:10px;}',
     '.rloupe-torch{white-space:nowrap;}',
     '.rloupe-torch.active{color:var(--g);border-color:rgba(0,255,179,.5);background:rgba(0,255,179,.12);}',
@@ -559,7 +585,7 @@ function openResearchLoupeEntry(){
 }
 
 window.openResearchLoupe = openResearchLoupeEntry;
-window.closeResearchLoupe = closeResearchLoupe;
+window.closeResearchLoupe = requestCloseResearchLoupe;
 // Exposed for tests only -- not part of the public feature surface.
 window.__researchLoupeInternals = { computeLoupeGeometry: computeLoupeGeometry, state: state };
 })();
