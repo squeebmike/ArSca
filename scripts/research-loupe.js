@@ -47,6 +47,31 @@ function computeLoupeGeometry(containerW, containerH, fx, fy, mag, glassSize){
 
 function clamp(n, lo, hi){ return Math.min(hi, Math.max(lo, n)); }
 
+// ── Persisted preferences ─────────────────────────────────────────────
+// Store request: leaving Loupe zoomed in on a set number should stay that
+// way next time, not silently reset to 1x. Only zoom + loupe magnification
+// persist -- deliberately NOT torch (a phone that auto-turns its flashlight
+// back on next time, possibly face-down in a pocket, is a worse default
+// than just tapping it again), and not loupeOn/position (those are
+// per-session framing, not a standing preference).
+var PREFS_KEY = 'research_loupe_prefs_v1';
+function loadPrefs(){
+  try {
+    var raw = window.localStorage && localStorage.getItem(PREFS_KEY);
+    if(!raw) return {};
+    var parsed = JSON.parse(raw);
+    return parsed && typeof parsed === 'object' ? parsed : {};
+  } catch(e){ return {}; }
+}
+function savePrefs(patch){
+  try {
+    if(!window.localStorage) return;
+    var current = loadPrefs();
+    localStorage.setItem(PREFS_KEY, JSON.stringify(Object.assign(current, patch)));
+  } catch(e){ /* private browsing / storage blocked -- zoom just won't persist */ }
+}
+var prefs = loadPrefs();
+
 // ── State ─────────────────────────────────────────────────────────────
 var state = {
   open: false,
@@ -57,10 +82,10 @@ var state = {
   torchSupported: null,    // null = unknown until camera starts
   zoomHwSupported: null,
   zoomHwMin: 1, zoomHwMax: 1, zoomHwStep: 0.1,
-  zoomLevel: 1,
+  zoomLevel: clamp(Number(prefs.zoom) || 1, MIN_ZOOM, DIGITAL_MAX_ZOOM),
   usingDigitalZoom: false,
   loupeOn: false,
-  loupeMag: DEFAULT_MAG,
+  loupeMag: MAG_LEVELS.includes(Number(prefs.mag)) ? Number(prefs.mag) : DEFAULT_MAG,
   loupeFx: 0.5, loupeFy: 0.38,
   error: '',
 };
@@ -151,7 +176,7 @@ function ensureDom(){
     var b = document.createElement('button');
     b.type = 'button'; b.className = 'hbtn rloupe-mag-btn'; b.textContent = m + '×';
     b.setAttribute('aria-label', 'Loupe magnification ' + m + 'x');
-    b.addEventListener('click', function(){ state.loupeMag = m; renderMagButtons(); updateGlassGeometry(); });
+    b.addEventListener('click', function(){ state.loupeMag = m; savePrefs({ mag: m }); renderMagButtons(); updateGlassGeometry(); });
     dom.magBtnsWrap.appendChild(b);
   });
 
@@ -265,6 +290,12 @@ async function startLoupeCamera(){
   dom.video.style.display = '';
   detectCapabilities();
   renderControls();
+  // A fresh track never remembers last session's zoom on its own (hardware
+  // zoom is a per-track constraint, and any digital-zoom CSS transform was
+  // cleared when the previous track stopped) -- reapply the remembered
+  // level explicitly so "leave it zoomed in" actually holds across closing
+  // and reopening Loupe, not just while one camera session stays open.
+  applyZoom(state.zoomLevel);
   if(state.track){
     state.track.addEventListener('ended', function(){
       if(!state.open) return;
@@ -283,7 +314,9 @@ function stopLoupeCamera(keepOpenState){
   state.torchOn = false;
   state.torchSupported = null;
   state.zoomHwSupported = null;
-  state.zoomLevel = 1;
+  // state.zoomLevel is deliberately NOT reset here -- it's the remembered
+  // "leave it zoomed in" preference (see startLoupeCamera, which reapplies
+  // it to whatever track opens next), not live session state.
   state.usingDigitalZoom = false;
   if(state.loupeOn) toggleLoupeGlass();
   if(dom){
@@ -341,6 +374,7 @@ async function setTorch(on){
 async function applyZoom(level){
   level = clamp(level, MIN_ZOOM, DIGITAL_MAX_ZOOM);
   state.zoomLevel = level;
+  savePrefs({ zoom: level });
   var usedHardware = false;
   if(state.track && state.zoomHwSupported && level <= state.zoomHwMax){
     try {

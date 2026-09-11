@@ -38,4 +38,16 @@ assert.doesNotMatch(src, /[^.\w]esc\(/, 'research-loupe.js should not call an es
 // leaves Loupe.
 assert.match(src, /getTracks\(\)\.forEach\(function\(t\)\{\s*t\.stop\(\);\s*\}\)/, 'stopLoupeCamera must stop every track on the stream');
 
+// Store request: "I need the zoom to remember where it was last... so I
+// can leave it zoomed to see set numbers better." Guards against the
+// original behavior (stopLoupeCamera hard-reset state.zoomLevel to 1 on
+// every close) regressing back in.
+const stopFnMatch = src.match(/function stopLoupeCamera\([\s\S]*?\n\}/);
+assert.ok(stopFnMatch, 'expected to find stopLoupeCamera');
+assert.doesNotMatch(stopFnMatch[0], /state\.zoomLevel\s*=\s*1\b/, 'stopLoupeCamera must not reset the remembered zoom level back to 1x on every close');
+assert.match(src, /applyZoom\(state\.zoomLevel\)/, 'startLoupeCamera must reapply the remembered zoom level to each newly-opened camera track');
+assert.match(src, /savePrefs\(\{\s*zoom:\s*level\s*\}\)/, 'applyZoom must persist the chosen zoom level so it survives closing and reopening Loupe');
+assert.match(src, /localStorage\.getItem\(PREFS_KEY\)/, 'zoom/magnification preferences must be read from localStorage on load');
+assert.match(src, /catch\(e\)\{\s*return \{\};\s*\}/, 'reading persisted prefs must degrade gracefully (private browsing / storage blocked), not throw');
+
 console.log('Research Loupe structural contract checks passed');
