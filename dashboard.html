@@ -20874,7 +20874,7 @@ function addCustomBulkLotToCart(){
 }
 
 function getScanImageUrl(scan){
-  return scan?.imageUrl || scan?.image_url || scan?.thumbnail || scan?.cover_image || scan?.photoUrl || scan?.frontImageUrl || scan?.img || null;
+  return scan?.imageUrl || scan?.image_url || scan?.image || scan?.thumbnail || scan?.cover_image || scan?.photoUrl || scan?.frontImageUrl || scan?.img || null;
 }
 
 function getScanMarket(scan){
@@ -21398,7 +21398,7 @@ async function renderResearchQueue(){
   list.innerHTML = items.slice(0,18).map(s => {
     const id = escHtml(String(s.id || s.scanId || s._scanQueueId || ''));
     const img = getScanImageUrl(s);
-    const title = s.name || s.queryUsed || s.rawExtractedText || 'Research item';
+    const title = s.name || s.title || s.queryUsed || s.rawExtractedText || 'Research item';
     const meta = [s.categoryIntent || s.category, s.set, s.card_number ? '#'+s.card_number : '', s.issue ? '#'+s.issue : '', s.priceSource].filter(Boolean).join(' / ');
     const confidence = Number(s.confidenceScore || 0);
     const price = Number(s.priceUsed || s.price || s.marketPrice || 0);
