@@ -647,7 +647,15 @@ function ensureStyles(){
     '.rloupe-glass-mag{position:absolute;right:8px;bottom:6px;font-family:\'Orbitron\',monospace;font-size:10px;font-weight:900;color:var(--g);text-shadow:0 1px 3px rgba(0,0,0,.8);}',
     '.rloupe-x{position:absolute;top:8px;right:8px;z-index:4;width:34px;height:34px;border-radius:50%;border:1px solid rgba(255,255,255,.18);background:rgba(0,0,0,.55);color:#fff;font-size:16px;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0;}',
     '.rloupe-x:hover,.rloupe-x:active{background:rgba(0,0,0,.75);}',
+    // Store report: "still darkened, I see the camera behind it" -- the
+    // actual bug, finally found. This class sets its own display:flex,
+    // which (being an author-stylesheet rule) overrides the browser's
+    // built-in "hidden means display:none" behavior entirely -- every fix
+    // upstream of this correctly computed dom.errorBox.hidden=true, and
+    // this CSS ignored it every single time. [hidden] on the same
+    // selector has higher specificity than the bare class and wins.
     '.rloupe-error{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:20px;text-align:center;background:rgba(5,6,7,.94);}',
+    '.rloupe-error[hidden]{display:none;}',
     '.rloupe-error-msg{font-family:var(--font-mono);font-size:11px;color:var(--red);max-width:280px;}',
     '.rloupe-controls{flex:0 0 auto;display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:10px;}',
     '.rloupe-torch{white-space:nowrap;}',

@@ -159,4 +159,25 @@ const stopIdx = cappedBranchMatch[0].indexOf('stopLoupeCamera()');
 const errIdx = cappedBranchMatch[0].indexOf('showError(');
 assert.ok(stopIdx !== -1 && errIdx !== -1 && stopIdx < errIdx, 'stopLoupeCamera() must run before showError() in the capped-restart branch, or the error gets silently swallowed by the started-check invariant');
 
+// Store report: "still darkened, I see the camera behind it" -- the real
+// bug behind every earlier report of this, finally found: .rloupe-error
+// set its own display:flex with no [hidden] override, so the browser's
+// native "hidden means display:none" behavior was silently overridden by
+// this file's own stylesheet. Every JS-side fix (generation-id guard,
+// silent restart, the started-aware showError invariant) was correctly
+// computing hidden=true; the CSS ignored it every time regardless. Guards
+// that every element in this file toggled via the hidden PROPERTY either
+// has no conflicting `display` in its own class rule, or has an explicit
+// `[hidden]{display:none}` override for that class.
+const hiddenToggledClasses = [...src.matchAll(/dom\.(\w+)\.hidden\s*=/g)].map(function(m){ return m[1]; });
+assert.ok(hiddenToggledClasses.length >= 2, 'sanity check: expected to find elements toggled via the hidden property');
+hiddenToggledClasses.forEach(function(domKey){
+  const domRefMatch = src.match(new RegExp(domKey + ":\\s*overlay\\.querySelector\\('\\.([\\w-]+)'\\)"));
+  assert.ok(domRefMatch, `expected to find the dom.${domKey} element's class name`);
+  const className = domRefMatch[1];
+  const bareRuleMatch = src.match(new RegExp("'\\." + className + "\\{[^']*display:", ));
+  if(!bareRuleMatch) return; // no conflicting display rule on the bare class -- the native [hidden] behavior works untouched
+  assert.match(src, new RegExp("'\\." + className + "\\[hidden\\]\\{display:none;?\\}'"), `.${className} sets its own display in its bare class rule, which overrides the native hidden-attribute behavior -- it must have an explicit .${className}[hidden]{display:none} override`);
+});
+
 console.log('Research Loupe structural contract checks passed');
