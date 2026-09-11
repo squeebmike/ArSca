@@ -133,4 +133,30 @@ assert.match(endedHandlerMatch[0], /endedRestartCount >= 3/, 'the ended handler 
 assert.match(endedHandlerMatch[0], /startLoupeCamera\(\);\s*\n\s*\}\);/, 'below the cap, the ended handler must attempt a silent restart, not immediately show an error');
 assert.match(src, /endedRestartCount = 0; \/\/ a track that's actually live resets the recovery budget/, 'a successful start must reset the recovery budget');
 
+// Store question: "why close button and an X?" -- two close controls was
+// leftover confusion from an earlier (mistaken) diagnosis; the icon on
+// the camera is the one real close control now, not a second header button.
+assert.doesNotMatch(src, /rloupe-close/, 'the redundant header CLOSE text button must be gone -- the camera\'s icon X is the only close control');
+assert.match(src, /class="rloupe-x"/, 'the icon close control on the camera must still exist');
+
+// Store report: "why is it TRY AGAIN even though I see camera?" -- shown
+// again despite the generation-id and silent-restart fixes, so showError
+// itself now has a hard invariant: it must never render the error/retry
+// panel while the camera is actually running, regardless of which code
+// path called it or why.
+const showErrorFnMatch = src.match(/function showError\(msg, blocked\)\{[\s\S]*?\n\}/);
+assert.ok(showErrorFnMatch, 'expected to find showError');
+assert.match(showErrorFnMatch[0], /var shouldShow = !!msg && !state\.started;/, 'showError must refuse to display anything while state.started is true');
+assert.match(showErrorFnMatch[0], /dom\.errorBox\.hidden = !shouldShow;/, 'the error box visibility must be driven by the started-aware shouldShow, not the raw message alone');
+
+// The capped-restart branch relies on stopLoupeCamera() running BEFORE
+// showError() so state.started is already false by the time the
+// invariant above checks it -- calling them in the other order would
+// silently swallow this specific error again.
+const cappedBranchMatch = src.match(/if\(endedRestartCount >= 3\)\{[\s\S]*?\n      \}/);
+assert.ok(cappedBranchMatch, 'expected to find the capped-restart branch');
+const stopIdx = cappedBranchMatch[0].indexOf('stopLoupeCamera()');
+const errIdx = cappedBranchMatch[0].indexOf('showError(');
+assert.ok(stopIdx !== -1 && errIdx !== -1 && stopIdx < errIdx, 'stopLoupeCamera() must run before showError() in the capped-restart branch, or the error gets silently swallowed by the started-check invariant');
+
 console.log('Research Loupe structural contract checks passed');

@@ -106,7 +106,6 @@ function ensureDom(){
     '<div class="rloupe-sheet" role="dialog" aria-label="Loupe visual inspection">' +
       '<div class="rloupe-head">' +
         '<div class="rloupe-title">LOUPE <span class="rloupe-title-sub">visual inspection</span></div>' +
-        '<button type="button" class="hbtn rloupe-close" aria-label="Close Loupe">CLOSE</button>' +
       '</div>' +
       '<div class="rloupe-camera">' +
         '<video class="rloupe-video" playsinline muted></video>' +
@@ -142,7 +141,6 @@ function ensureDom(){
   dom = {
     overlay: overlay,
     sheet: overlay.querySelector('.rloupe-sheet'),
-    closeBtn: overlay.querySelector('.rloupe-close'),
     xBtn: overlay.querySelector('.rloupe-x'),
     catSlot: overlay.querySelector('.rloupe-cat-slot'),
     camera: overlay.querySelector('.rloupe-camera'),
@@ -178,7 +176,6 @@ function ensureDom(){
     dom.magBtnsWrap.appendChild(b);
   });
 
-  dom.closeBtn.addEventListener('click', requestCloseResearchLoupe);
   dom.xBtn.addEventListener('click', requestCloseResearchLoupe);
   dom.overlay.addEventListener('click', function(e){ if(e.target === dom.overlay) requestCloseResearchLoupe(); });
   dom.retryBtn.addEventListener('click', function(){
@@ -375,8 +372,11 @@ async function startLoupeCamera(){
       // own error only if the restart genuinely fails too. Capped so a
       // camera that's truly gone doesn't restart-loop forever.
       if(endedRestartCount >= 3){
-        showError('Camera keeps stopping unexpectedly. It may be in use by another app.');
+        // stopLoupeCamera() first -- it clears state.started, which
+        // showError()'s own invariant checks before it will display
+        // anything, so this order is required, not just tidiness.
         stopLoupeCamera();
+        showError('Camera keeps stopping unexpectedly. It may be in use by another app.');
         return;
       }
       endedRestartCount++;
@@ -454,7 +454,15 @@ async function handleCameraStartError(e){
 
 function showError(msg, blocked){
   if(!dom) return;
-  dom.errorBox.hidden = !msg;
+  // Store report: "why is it TRY AGAIN even though I see camera?" -- shown
+  // twice now despite two different targeted race fixes (a generation-id
+  // guard on startLoupeCamera, then a silent-restart-first on a lost
+  // track), so rather than keep chasing the exact remaining path, this is
+  // a hard backstop: whatever code called showError() and however it got
+  // here, the error/retry panel is not allowed to render while the camera
+  // is actually running. A genuinely working camera always wins.
+  var shouldShow = !!msg && !state.started;
+  dom.errorBox.hidden = !shouldShow;
   dom.errorMsg.textContent = msg || '';
   dom.retryBtn.textContent = blocked ? 'RELOAD PAGE' : 'TRY AGAIN';
   dom.retryBtn.dataset.action = blocked ? 'reload' : 'retry';
