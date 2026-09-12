@@ -2258,8 +2258,19 @@ function itemNotFoundPage() {
   return new Response(html, { status: 404, headers: { 'Content-Type': 'text/html;charset=UTF-8' } });
 }
 
-function renderItemDetailPage(item) {
-  const canonicalPath = `/item/${encodeURIComponent(item.id)}`;
+// Reuses the generic mtgSlugify() (despite the name, it's just a plain
+// lowercase-dashes slugifier, not MTG-specific) so an item's URL reads
+// like /item/{id}/lazaro-montes-bpa-lm instead of a bare UUID -- Google
+// shows the URL in search results, and a keyword-bearing slug both looks
+// more trustworthy to searchers and is a small extra relevance signal.
+// The id, not the slug, is still the actual lookup key (see the route
+// handler below), so an outdated slug from a renamed item never 404s.
+function itemDetailSlug(item) {
+  return mtgSlugify(item.name);
+}
+
+function renderItemDetailPage(item, canonicalSlug) {
+  const canonicalPath = `/item/${encodeURIComponent(item.id)}/${canonicalSlug}`;
   const shopHref = `/shop?item=${encodeURIComponent(item.id)}`;
   const priceStr = item.price ? `$${item.price.toFixed(2)}` : '';
   const metaBits = [item.set, item.year, item.condition, item.variant].filter(Boolean).join(' · ');
@@ -5417,9 +5428,15 @@ export default {
     // inventory item (not the /mtg reference catalog). See the item-page
     // helpers above for why this exists and how it stays in sync with the
     // JSON API's price/stock rules.
-    const itemDetailMatch = url.pathname.match(/^\/item\/([^/]+)$/);
+    // Second segment (the slug) is optional and, when present, purely
+    // cosmetic -- the id is always the real lookup key, so a bookmarked
+    // bare /item/{id} link or a stale slug from a renamed item never 404s.
+    // Either one 301-redirects to the current canonical slug instead of
+    // serving duplicate content at multiple URLs for the same item.
+    const itemDetailMatch = url.pathname.match(/^\/item\/([^/]+)(?:\/([^/]+))?$/);
     if (itemDetailMatch && request.method === 'GET') {
       const itemId = decodeURIComponent(itemDetailMatch[1]);
+      const providedSlug = itemDetailMatch[2] ? decodeURIComponent(itemDetailMatch[2]) : '';
       const cacheKey = new Request(url.toString(), request);
       const cached = await caches.default.match(cacheKey);
       if (cached) return cached;
@@ -5429,7 +5446,13 @@ export default {
       const itemRow = itemRows?.[0];
       const item = itemRow ? shapeStorefrontItem(itemRow) : null;
       if (!item || !isStorefrontItemAvailable(item)) return itemNotFoundPage();
-      const response = mtgHtmlResponse(renderItemDetailPage(item));
+      const canonicalSlug = itemDetailSlug(item);
+      if (providedSlug !== canonicalSlug) {
+        const response = Response.redirect(`https://themanapocket.com/item/${encodeURIComponent(itemId)}/${canonicalSlug}`, 301);
+        ctx.waitUntil(caches.default.put(cacheKey, response.clone()));
+        return response;
+      }
+      const response = mtgHtmlResponse(renderItemDetailPage(item, canonicalSlug));
       // Real stock/price, not a reference catalog -- much shorter TTL than
       // the /mtg pages (21600s) so a sale or price change shows up soon.
       response.headers.set('Cache-Control', 'public, max-age=300');
@@ -5462,7 +5485,7 @@ export default {
       const urls = sitemapRows
         .map(shapeStorefrontItem)
         .filter(isStorefrontItemAvailable)
-        .map(item => `<url><loc>https://themanapocket.com/item/${mtgEscapeHtml(item.id)}</loc><lastmod>${mtgEscapeHtml((item.updatedAt || '').slice(0, 10))}</lastmod></url>`)
+        .map(item => `<url><loc>https://themanapocket.com/item/${mtgEscapeHtml(item.id)}/${mtgEscapeHtml(itemDetailSlug(item))}</loc><lastmod>${mtgEscapeHtml((item.updatedAt || '').slice(0, 10))}</lastmod></url>`)
         .join('');
       const xml = `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${urls}</urlset>`;
       const response = new Response(xml, { headers: { 'Content-Type': 'application/xml;charset=UTF-8' } });
