@@ -3105,6 +3105,9 @@ body.show-mode .inv-sync-badge{display:none;}
     <label style="margin-top:8px;display:block">Storage Location</label>
     <input type="text" id="edit-location" placeholder="Bin A3, Showcase...">
 
+    <label style="margin-top:8px;display:block">Custom Link URL</label>
+    <input type="url" id="edit-link-url" placeholder="https://... (clicking this item on the site goes straight here instead of the normal popup)">
+
     <div style="margin-top:10px;border:1px solid rgba(199,125,255,.28);background:rgba(199,125,255,.04);border-radius:8px;padding:10px">
       <div style="font-family:monospace;font-size:8px;color:var(--purple);letter-spacing:2px;margin-bottom:8px">ITEM OWNERSHIP</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
@@ -25280,6 +25283,7 @@ function openEditModal(id) {
   document.getElementById('edit-variant').value = item.variant || '';
   document.getElementById('edit-configuration').value = inferProductConfiguration(item);
   document.getElementById('edit-location').value = item.location || '';
+  document.getElementById('edit-link-url').value = item.linkUrl || item.customUrl || '';
   populateInventoryOwnerSelect(item);
   const linkedConsignment=consignItems.find(c=>c.status==='active'&&(c.inventoryId===item.id||c.id===item.consignmentId));
   document.getElementById('edit-owner-type').value=(item.ownershipType==='consignor'||item.consignorName||linkedConsignment)?'consignor':'store';
@@ -25367,6 +25371,7 @@ function openAddToInventoryModal(idx){
   document.getElementById('edit-variant').value = item.variant || '';
   document.getElementById('edit-configuration').value = inferProductConfiguration(item);
   document.getElementById('edit-location').value = item.location || '';
+  document.getElementById('edit-link-url').value = item.linkUrl || item.customUrl || '';
   populateInventoryOwnerSelect();
   document.getElementById('edit-owner-type').value = 'store';
   toggleInventoryOwnerFields();
@@ -25483,6 +25488,7 @@ async function confirmAddToInventoryFromModal(){
     variant: document.getElementById('edit-variant').value.trim(),
     configuration: document.getElementById('edit-configuration')?.value.trim() || '',
     location: document.getElementById('edit-location').value.trim(),
+    linkUrl: document.getElementById('edit-link-url').value.trim(),
     condition: document.getElementById('edit-condition').value,
     category: document.getElementById('edit-category').value,
     key_notes: document.getElementById('edit-notes').value.trim(),
@@ -25710,6 +25716,7 @@ async function confirmEditAndSync() {
     variant: document.getElementById('edit-variant').value.trim(),
     configuration: document.getElementById('edit-configuration')?.value.trim() || '',
     location: document.getElementById('edit-location').value.trim(),
+    linkUrl: document.getElementById('edit-link-url').value.trim(),
     condition: document.getElementById('edit-condition').value,
     category: document.getElementById('edit-category').value,
     key_notes: document.getElementById('edit-notes').value.trim(),
