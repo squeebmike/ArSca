@@ -735,6 +735,11 @@ function shapeStorefrontItem(row) {
     // so the item still passes isStorefrontItemAvailable()'s quantity>0
     // check without the storefront claiming a real, specific stock count.
     dropship: !!d.dropship,
+    // Lets an item point at its own dedicated page (e.g. a limited-run
+    // print preorder built as a real Webflow page) instead of the normal
+    // shop-grid modal / server-rendered /item/{id} page -- see the edit
+    // modal's "Custom Link URL" field in dashboard.html.
+    linkUrl: storefrontCleanUrl(d.linkUrl || d.customUrl || ''),
     comic: storefrontComicDetailFor(d),
     // Only explicit false excludes -- undefined/missing (every item that
     // existed before this field did) stays visible, so this can't silently
@@ -5446,6 +5451,14 @@ export default {
       const itemRow = itemRows?.[0];
       const item = itemRow ? shapeStorefrontItem(itemRow) : null;
       if (!item || !isStorefrontItemAvailable(item)) return itemNotFoundPage();
+      // Item points at its own dedicated page (e.g. a limited-run print
+      // preorder) -- send everyone straight there instead of rendering a
+      // second, competing page for the same product.
+      if (item.linkUrl) {
+        const response = Response.redirect(item.linkUrl, 301);
+        ctx.waitUntil(caches.default.put(cacheKey, response.clone()));
+        return response;
+      }
       const canonicalSlug = itemDetailSlug(item);
       if (providedSlug !== canonicalSlug) {
         const response = Response.redirect(`https://themanapocket.com/item/${encodeURIComponent(itemId)}/${canonicalSlug}`, 301);
@@ -5484,7 +5497,7 @@ export default {
       }
       const urls = sitemapRows
         .map(shapeStorefrontItem)
-        .filter(isStorefrontItemAvailable)
+        .filter(item => isStorefrontItemAvailable(item) && !item.linkUrl) // items with linkUrl 301 elsewhere -- not a page for Google to index here
         .map(item => `<url><loc>https://themanapocket.com/item/${mtgEscapeHtml(item.id)}/${mtgEscapeHtml(itemDetailSlug(item))}</loc><lastmod>${mtgEscapeHtml((item.updatedAt || '').slice(0, 10))}</lastmod></url>`)
         .join('');
       const xml = `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${urls}</urlset>`;
