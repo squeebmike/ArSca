@@ -22015,7 +22015,7 @@ function computeEbayListingFields(item){
   const condText = condLabelMap[item.condition] || item.condition || '';
   const lowerName = String(item.name||'').toLowerCase();
   const isSealed = /box|blaster|mega|hobby|pack|case|tin|sealed/.test(lowerName);
-  const inferManufacturer = item.manufacturer || (lowerName.includes('panini') ? 'Panini' : lowerName.includes('upper deck') ? 'Upper Deck' : lowerName.includes('bowman') ? 'Bowman' : lowerName.includes('topps') ? 'Topps' : lowerName.includes('pokemon') ? 'Pokemon' : lowerName.includes('magic') ? 'Wizards of the Coast' : '');
+  const inferManufacturer = item.manufacturer || item.brand || (lowerName.includes('panini') ? 'Panini' : lowerName.includes('upper deck') ? 'Upper Deck' : lowerName.includes('bowman') ? 'Bowman' : lowerName.includes('topps') ? 'Topps' : lowerName.includes('pokemon') ? 'Pokemon' : lowerName.includes('magic') ? 'Wizards of the Coast' : '');
   const inferConfig = item.configuration || (lowerName.includes('hobby') ? 'Hobby Box' : lowerName.includes('blaster') ? 'Blaster Box' : lowerName.includes('mega') ? 'Mega Box' : lowerName.includes('booster') ? 'Booster Box' : lowerName.includes('etb') || lowerName.includes('elite trainer') ? 'Elite Trainer Box' : lowerName.includes('tin') ? 'Tin' : lowerName.includes('pack') ? 'Pack' : '');
   const cat = item.category || 'Sports';
   const isComic = cat === 'Comic';
@@ -22047,7 +22047,12 @@ function computeEbayListingFields(item){
   // (Marvel/DC/Image is a real, common comic search term), same "append if
   // not already redundant with the name" rule buildFocPresaleDefaults
   // already uses for its own SEO publisher keyword.
-  const title = [item.year && !lowerName.includes(String(item.year)) ? item.year : null,item.name,item.set && !lowerName.includes(String(item.set).toLowerCase()) ? item.set : null,item.variant,(item.card_number || item.issue) ? '#'+(item.card_number || item.issue) : null,isComic && item.publisher && !lowerName.includes(String(item.publisher).toLowerCase()) ? item.publisher : null,isGraded?[item.grader,item.grade].filter(Boolean).join(' '):null,item.isRookie?'RC':null]
+  // Store report: a Pocket Scout item's name is model-written free text
+  // (e.g. "Blue Toad Plush Toy from Super Mario Series Blue Toad") that
+  // often already ends with the variant -- unlike set/publisher below,
+  // item.variant was appended here unconditionally, so the eBay title
+  // came out with the variant duplicated instead of just not adding it.
+  const title = [item.year && !lowerName.includes(String(item.year)) ? item.year : null,item.name,item.set && !lowerName.includes(String(item.set).toLowerCase()) ? item.set : null,item.variant && !lowerName.includes(String(item.variant).toLowerCase()) ? item.variant : null,(item.card_number || item.issue) ? '#'+(item.card_number || item.issue) : null,isComic && item.publisher && !lowerName.includes(String(item.publisher).toLowerCase()) ? item.publisher : null,isGraded?[item.grader,item.grade].filter(Boolean).join(' '):null,item.isRookie?'RC':null]
     .filter(Boolean).join(' ').replace(/\s+/g,' ').substring(0,80);
   const price = Number(item.market || item.salePrice || 0);
   // A presale item's real ship date is nowhere near "1 business day" --
@@ -22135,6 +22140,21 @@ async function generateAiEbayDescription(item, fields){
     item.team ? 'Team: '+item.team : '',
     item.issue ? 'Issue #: '+item.issue : '',
     item.publisher ? 'Publisher: '+item.publisher : '',
+    // General-collectible facts -- a Pocket Scout scan of a plush/figure/
+    // sealed box fills these (see scoutBuyAddInventory/scoutSendToBuyTab)
+    // but none of it was reaching this prompt before, leaving the AI with
+    // only title+variant+condition for anything that isn't a card or comic
+    // and producing thin, repetitive copy.
+    item.subcategory ? 'Item type: '+item.subcategory : '',
+    [item.brand, item.manufacturer].filter(Boolean).join(' / ') ? 'Brand/Manufacturer: '+[item.brand, item.manufacturer].filter((v,i,a)=>v&&a.indexOf(v)===i).join(' / ') : '',
+    item.productLine ? 'Product line/Franchise: '+item.productLine : '',
+    item.characterOrSubject ? 'Character/Subject: '+item.characterOrSubject : '',
+    item.model ? 'Model: '+item.model : '',
+    item.edition ? 'Edition: '+item.edition : '',
+    item.material ? 'Material: '+item.material : '',
+    item.size ? 'Size: '+item.size : '',
+    item.color ? 'Color: '+item.color : '',
+    item.upc ? 'UPC: '+item.upc : '',
     comicPeople,
     storyTitles.length ? 'Story: '+storyTitles.join(', ') : '',
     characters.length ? 'Featured characters: '+characters.join(', ') : '',
@@ -22409,6 +22429,28 @@ const DASH_EBAY_COVERED_ASPECTS = new Set([
   'publisher','writer','artist','cover artist','rookie','serial numbered',
 ]);
 
+// Best-effort match from eBay's per-category Item Specifics names to the
+// general-collectible facts Pocket Scout already captured (see
+// scoutBuyAddInventory/scoutSendToBuyTab) -- without this, a scanned plush/
+// figure/sealed item's Character/Franchise/Color/Material/Size showed up
+// as blank inputs the operator had to retype by hand even though the scan
+// already knew them. Purely a starting value: still a normal editable
+// input, so a wrong or unwanted guess is one keystroke to clear.
+const DASH_EBAY_ASPECT_AUTOFILL_MAP = {
+  'character':'characterOrSubject', 'character family':'characterOrSubject', 'theme':'characterOrSubject',
+  'franchise':'productLine', 'tv show':'productLine', 'movie':'productLine',
+  'video game title':'productLine', 'game title':'productLine', 'film':'productLine',
+  'color':'color', 'colour':'color',
+  'material':'material',
+  'size':'size', 'size type':'size',
+  'type':'subcategory',
+};
+function dashEbayAspectAutofillValue(aspectName, item){
+  if(!item) return '';
+  const field = DASH_EBAY_ASPECT_AUTOFILL_MAP[String(aspectName||'').toLowerCase().trim()];
+  return field ? String(item[field] || '') : '';
+}
+
 let _dashEbayAspectsTimer = null;
 function debounceDashboardEbayAspects(id, prefix='dash-eb'){
   clearTimeout(_dashEbayAspectsTimer);
@@ -22440,13 +22482,15 @@ async function loadDashboardEbayAspects(id, prefix='dash-eb'){
     if(!data.ok){ host.innerHTML = '<div style="font-family:monospace;font-size:9px;color:var(--dim)">Could not load eBay category fields (' + escHtml(data.error||'unknown error') + ')</div>'; return; }
     const extra = (data.aspects||[]).filter(a => !DASH_EBAY_COVERED_ASPECTS.has(String(a.name||'').toLowerCase()));
     if(!extra.length){ host.innerHTML = ''; return; }
+    const item = all.find(i => i.id === id);
     host.innerHTML = `<div style="font-family:monospace;font-size:8px;color:var(--purple);letter-spacing:.05em;margin-bottom:6px">MORE EBAY FIELDS FOR THIS CATEGORY</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
         ${extra.map(a => {
           const dlId = 'dl-' + a.name.replace(/[^a-z0-9]/gi,'').toLowerCase();
           const datalist = a.values.length ? `<datalist id="${dlId}">${a.values.map(v=>`<option value="${escHtml(v)}">`).join('')}</datalist>` : '';
+          const autofill = dashEbayAspectAutofillValue(a.name, item);
           return `<div><label style="font-family:monospace;font-size:8px;color:${a.required?'var(--gold)':'var(--dim)'}">${escHtml(a.name.toUpperCase())}${a.required?' (required)':''}</label>
-            <input data-dyn-aspect="${escHtml(a.name)}" list="${a.values.length?dlId:''}" style="width:100%;margin-top:3px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:7px;border-radius:6px;box-sizing:border-box">
+            <input data-dyn-aspect="${escHtml(a.name)}" list="${a.values.length?dlId:''}" value="${escHtml(autofill)}" style="width:100%;margin-top:3px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:7px;border-radius:6px;box-sizing:border-box">
             ${datalist}</div>`;
         }).join('')}
       </div>`;
@@ -28803,6 +28847,14 @@ async function scoutBuyAddInventory(){
       name: nameWithPrintRun(match?.name || identity.title || 'Pocket Scout item', match?.printRun), category, subcategory: identity.subcategory||'',
       brand: identity.brand||'', manufacturer: identity.manufacturer||'', model: identity.model||identity.modelNumber||'',
       year: identity.year||'', variant: match?.variant || identity.variant||'', edition: identity.edition||'',
+      // Not just card/comic fields -- a Pocket Scout scan of a general
+      // collectible (plush, figure, sealed box) surfaces these too, and
+      // they're what makes the AI eBay description and the category's
+      // "more eBay fields" actually fillable instead of blank for anything
+      // that isn't a trading card. Previously extracted by the vision
+      // model but dropped on the floor right here before reaching inventory.
+      productLine: identity.productLine||'', characterOrSubject: identity.characterOrSubject||'',
+      size: identity.size||'', color: identity.color||'', material: identity.material||'',
       upc: identity.upc||'', ean: identity.ean||'', isbn: identity.isbn||'', mpn: identity.mpn||'',
       set: match?.set || '', card_number: match?.card_number || '',
       // Store report: a numbered card's print run wasn't reaching inventory
@@ -28886,6 +28938,13 @@ function scoutSendToBuyTab(){
     ...readScoutGradingFields(),
     brand: identity.brand||'', manufacturer: identity.manufacturer||'', model: identity.model||identity.modelNumber||'',
     year: identity.year||'', variant: match?.variant || identity.variant||'', edition: identity.edition||'',
+    // Same general-collectible fields carried through on the direct-buy
+    // path (scoutBuyAddInventory) above -- this buy-tray hand-off was
+    // dropping them too, so an item queued here instead of bought direct
+    // lost productLine/character/size/color/material before it ever
+    // reached inventory.
+    productLine: identity.productLine||'', characterOrSubject: identity.characterOrSubject||'',
+    size: identity.size||'', color: identity.color||'', material: identity.material||'',
     upc: identity.upc||'', ean: identity.ean||'', isbn: identity.isbn||'', mpn: identity.mpn||'',
     set: match?.set || '', card_number: match?.card_number || '',
     // Store report: a numbered card's print run wasn't reaching inventory at
