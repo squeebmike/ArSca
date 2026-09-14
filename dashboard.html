@@ -22038,7 +22038,16 @@ function computeEbayListingFields(item){
   // unselected on a presale listing).
   const isPresaleItem = item.status === 'presale' || item.source === 'foc_presale';
   const conditionId = isPresaleItem ? '1000' : isGraded ? '2750' : (isEbayTradingCardCategory(catId) ? '4000' : '3000');
-  const title = [item.year && !lowerName.includes(String(item.year)) ? item.year : null,item.name,item.set && !lowerName.includes(String(item.set).toLowerCase()) ? item.set : null,item.variant,item.card_number?'#'+item.card_number:null,isGraded?[item.grader,item.grade].filter(Boolean).join(' '):null,item.isRookie?'RC':null]
+  // Store report: comic listings' actual eBay title (the #1 search-ranking
+  // field, per eBay's own Cassini docs -- description text barely counts)
+  // was silently missing the issue number. Comics store their issue in
+  // item.issue, never item.card_number (that's the sports/TCG field) -- this
+  // only ever checked card_number, so "Iron Man #10" listed with no "#10"
+  // in the title at all. Also adds Publisher for comics specifically
+  // (Marvel/DC/Image is a real, common comic search term), same "append if
+  // not already redundant with the name" rule buildFocPresaleDefaults
+  // already uses for its own SEO publisher keyword.
+  const title = [item.year && !lowerName.includes(String(item.year)) ? item.year : null,item.name,item.set && !lowerName.includes(String(item.set).toLowerCase()) ? item.set : null,item.variant,(item.card_number || item.issue) ? '#'+(item.card_number || item.issue) : null,isComic && item.publisher && !lowerName.includes(String(item.publisher).toLowerCase()) ? item.publisher : null,isGraded?[item.grader,item.grade].filter(Boolean).join(' '):null,item.isRookie?'RC':null]
     .filter(Boolean).join(' ').replace(/\s+/g,' ').substring(0,80);
   const price = Number(item.market || item.salePrice || 0);
   // A presale item's real ship date is nowhere near "1 business day" --
