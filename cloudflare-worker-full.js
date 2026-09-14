@@ -2458,8 +2458,8 @@ async function getEbayUserAccessToken(env) {
 function buildEbayAspects(b) {
   const {
     sport = '', year = '', manufacturer = '', set = '', parallel = '', cardNumber = '',
-    player = '', team = '', isRookie = false, serialNumber = '', grader = '', grade = '',
-    upc = '', league = '', season = '', productType = '', configuration = '', features = '',
+    player = '', team = '', isRookie = false, isAuto = false, serialNumber = '', grader = '', grade = '',
+    certNumber = '', upc = '', league = '', season = '', productType = '', configuration = '', features = '',
     conditionId = '', customAspects = {}, categoryId = '',
   } = b;
   const aspects = {};
@@ -2472,9 +2472,16 @@ function buildEbayAspects(b) {
   if (player) aspects['Player/Athlete'] = [player];
   if (team) aspects['Team'] = [team];
   if (isRookie) aspects['Rookie'] = ['Yes'];
+  if (isAuto) aspects['Autographed'] = ['Yes'];
   if (serialNumber) aspects['Serial Numbered'] = [serialNumber];
   if (grader) aspects['Professional Grader'] = [grader];
+  // Grade and Certification Number are two separate eBay aspects -- the
+  // dashboard used to send "10 Cert 12345678" as one combined string for
+  // Grade, which meant it never matched eBay's real Grade facet (buyers
+  // filter by exact value, e.g. "PSA 10") and Certification Number was
+  // never sent as its own searchable aspect at all.
   if (grade) aspects['Grade'] = [String(grade)];
+  if (certNumber) aspects['Certification Number'] = [String(certNumber)];
   if (upc) aspects['UPC'] = [String(upc)];
   if (league) aspects['League'] = [league];
   if (season) aspects['Season'] = [String(season)];

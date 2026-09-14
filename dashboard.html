@@ -22052,7 +22052,12 @@ function computeEbayListingFields(item){
   // often already ends with the variant -- unlike set/publisher below,
   // item.variant was appended here unconditionally, so the eBay title
   // came out with the variant duplicated instead of just not adding it.
-  const title = [item.year && !lowerName.includes(String(item.year)) ? item.year : null,item.name,item.set && !lowerName.includes(String(item.set).toLowerCase()) ? item.set : null,item.variant && !lowerName.includes(String(item.variant).toLowerCase()) ? item.variant : null,(item.card_number || item.issue) ? '#'+(item.card_number || item.issue) : null,isComic && item.publisher && !lowerName.includes(String(item.publisher).toLowerCase()) ? item.publisher : null,isGraded?[item.grader,item.grade].filter(Boolean).join(' '):null,item.isRookie?'RC':null]
+  // Auto/Patch are two of the highest-value search keywords on eBay sports
+  // cards (right up there with RC, already appended below) and were never
+  // making it into the title at all even though is_auto/is_patch are real,
+  // already-captured fields -- an autographed or relic card listed without
+  // either word in the title loses a huge share of buyer searches for it.
+  const title = [item.year && !lowerName.includes(String(item.year)) ? item.year : null,item.name,item.set && !lowerName.includes(String(item.set).toLowerCase()) ? item.set : null,item.variant && !lowerName.includes(String(item.variant).toLowerCase()) ? item.variant : null,(item.card_number || item.issue) ? '#'+(item.card_number || item.issue) : null,isComic && item.publisher && !lowerName.includes(String(item.publisher).toLowerCase()) ? item.publisher : null,isGraded?[item.grader,item.grade].filter(Boolean).join(' '):null,item.isRookie?'RC':null,item.is_auto&&!lowerName.includes('auto')?'Auto':null,item.is_patch&&!lowerName.includes('patch')&&!lowerName.includes('relic')?'Patch':null]
     .filter(Boolean).join(' ').replace(/\s+/g,' ').substring(0,80);
   const price = Number(item.market || item.salePrice || 0);
   // A presale item's real ship date is nowhere near "1 business day" --
@@ -22162,6 +22167,13 @@ async function generateAiEbayDescription(item, fields){
     fields.isGraded ? 'Grade: '+[item.grader,item.grade].filter(Boolean).join(' ') : '',
     fields.isGraded && item.cert_number ? 'Certification #: '+item.cert_number : '',
     item.isRookie ? 'Rookie card' : '',
+    // is_auto/is_patch were already collected by the sports intake form
+    // (Autograph/Sig and Patch/Jersey checkboxes) but never reached this
+    // prompt -- an autographed or relic/patch card is a fundamentally
+    // different, higher-value listing and buyers specifically search for
+    // both terms, so leaving them out understated the card completely.
+    item.is_auto ? 'Autographed'+(item.signed_by?' by '+item.signed_by:'') : '',
+    item.is_patch ? 'Patch/relic card' : '',
     fields.isSealed ? 'Factory sealed' : '',
   ].filter(Boolean).join('\n');
   const prompt = 'Write an eBay listing description for this collectible using ONLY the facts below -- do not invent details that are not listed. '
@@ -22298,9 +22310,10 @@ async function openEbayFromDash(id){
           <div><label style="font-family:monospace;font-size:8px;color:var(--dim)">CARD # / ISSUE #</label><input id="dash-eb-cardnum" value="${esc(aspectVal('Card Number', item.card_number || item.issue || ''))}" style="width:100%;margin-top:3px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:7px;border-radius:6px;box-sizing:border-box"></div>
           <div><label style="font-family:monospace;font-size:8px;color:var(--dim)">UPC / EAN</label><input id="dash-eb-upc" value="${esc(aspectVal('UPC', item.upc || ''))}" placeholder="Does not apply or barcode" style="width:100%;margin-top:3px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:7px;border-radius:6px;box-sizing:border-box"></div>
           <div><label style="font-family:monospace;font-size:8px;color:var(--dim)">CONFIGURATION</label><input id="dash-eb-config" value="${esc(aspectVal('Configuration', inferConfig))}" placeholder="Hobby Box, Blaster, Booster Box..." style="width:100%;margin-top:3px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:7px;border-radius:6px;box-sizing:border-box"></div>
-          <div><label style="font-family:monospace;font-size:8px;color:var(--dim)">FEATURES</label><input id="dash-eb-features" value="${esc((aspects['Features']||[]).join(', ') || [item.isRookie?'Rookie':null,item.is_auto?'Autograph':null,isSealed?'Sealed':''].filter(Boolean).join(', '))}" placeholder="Rookie, Sealed, Insert, Autograph" style="width:100%;margin-top:3px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:7px;border-radius:6px;box-sizing:border-box"></div>
+          <div><label style="font-family:monospace;font-size:8px;color:var(--dim)">FEATURES</label><input id="dash-eb-features" value="${esc((aspects['Features']||[]).join(', ') || [item.isRookie?'Rookie':null,item.is_auto?'Autograph':null,item.is_patch?'Patch/Relic':null,isSealed?'Sealed':''].filter(Boolean).join(', '))}" placeholder="Rookie, Sealed, Insert, Autograph, Patch/Relic" style="width:100%;margin-top:3px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:7px;border-radius:6px;box-sizing:border-box"></div>
           <div><label style="font-family:monospace;font-size:8px;color:var(--dim)">GRADER</label><input id="dash-eb-grader" value="${esc(item.grader || '')}" placeholder="PSA, BGS, CGC..." style="width:100%;margin-top:3px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:7px;border-radius:6px;box-sizing:border-box"></div>
-          <div><label style="font-family:monospace;font-size:8px;color:var(--dim)">GRADE / CERT</label><input id="dash-eb-grade" value="${esc([item.grade,item.cert_number].filter(Boolean).join(' Cert '))}" style="width:100%;margin-top:3px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:7px;border-radius:6px;box-sizing:border-box"></div>
+          <div><label style="font-family:monospace;font-size:8px;color:var(--dim)">GRADE</label><input id="dash-eb-grade" value="${esc(aspectVal('Grade', item.grade || ''))}" style="width:100%;margin-top:3px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:7px;border-radius:6px;box-sizing:border-box"></div>
+          <div><label style="font-family:monospace;font-size:8px;color:var(--dim)">CERT #</label><input id="dash-eb-cert" value="${esc(aspectVal('Certification Number', item.cert_number || ''))}" placeholder="Grader's certification/serial number" style="width:100%;margin-top:3px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:7px;border-radius:6px;box-sizing:border-box"></div>
           ${isComic ? `
           <div><label style="font-family:monospace;font-size:8px;color:var(--dim)">PUBLISHER</label><input id="dash-eb-publisher" value="${esc(aspectVal('Publisher', item.publisher || ''))}" style="width:100%;margin-top:3px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:7px;border-radius:6px;box-sizing:border-box"></div>
           <div><label style="font-family:monospace;font-size:8px;color:var(--dim)">WRITER</label><input id="dash-eb-writer" value="${esc(aspectVal('Writer', comicCreditList(item,'writers').join(', ')))}" style="width:100%;margin-top:3px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:7px;border-radius:6px;box-sizing:border-box"></div>
@@ -22427,6 +22440,7 @@ const DASH_EBAY_COVERED_ASPECTS = new Set([
   'sport','year','manufacturer','set','parallel/variety','card number','player/athlete',
   'team','upc','configuration','features','professional grader','grade','type',
   'publisher','writer','artist','cover artist','rookie','serial numbered',
+  'certification number','autographed',
 ]);
 
 // Best-effort match from eBay's per-category Item Specifics names to the
@@ -22603,7 +22617,9 @@ function collectDashboardEbayFormPayload(item){
     team:document.getElementById('dash-eb-team')?.value.trim() || item.team || '',
     grade:document.getElementById('dash-eb-grade')?.value.trim() || item.grade || '',
     grader:document.getElementById('dash-eb-grader')?.value.trim() || item.grader || '',
+    certNumber:document.getElementById('dash-eb-cert')?.value.trim() || item.cert_number || '',
     isRookie:!!item.isRookie,
+    isAuto:!!item.is_auto,
     serialNumber:item.serial_number||'',
     upc:document.getElementById('dash-eb-upc')?.value.trim() || '',
     features:document.getElementById('dash-eb-features')?.value.trim() || '',
@@ -22969,10 +22985,12 @@ async function submitEbayBulkReviewItem(id){
     team: item.team || '',
     grade: item.grade || '',
     grader: item.grader || '',
+    certNumber: item.cert_number || '',
     isRookie: !!item.isRookie,
+    isAuto: !!item.is_auto,
     serialNumber: item.serial_number || '',
     upc: '',
-    features: [item.isRookie?'Rookie':null,item.is_auto?'Autograph':null,fields.isSealed?'Sealed':''].filter(Boolean).join(', '),
+    features: [item.isRookie?'Rookie':null,item.is_auto?'Autograph':null,item.is_patch?'Patch/Relic':null,fields.isSealed?'Sealed':''].filter(Boolean).join(', '),
     productType: fields.isSealed ? 'sealed' : (fields.isComic ? 'comic' : 'single'),
     configuration: fields.inferConfig,
     customAspects: {
