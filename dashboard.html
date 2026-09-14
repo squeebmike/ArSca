@@ -22176,8 +22176,22 @@ async function generateAiEbayDescription(item, fields){
     item.is_patch ? 'Patch/relic card' : '',
     fields.isSealed ? 'Factory sealed' : '',
   ].filter(Boolean).join('\n');
-  const prompt = 'Write an eBay listing description for this collectible using ONLY the facts below -- do not invent details that are not listed. '
-    + 'Keep it under 150 words, factual, and SEO-friendly for eBay search. Plain text only, no markdown headers or asterisks. '
+  // Store report: with a short facts list (a plush/figure with barely any
+  // identified detail, or a comic with only a writer credit and nothing
+  // else notable) the model padded the description out with generic
+  // sales-pitch filler instead of just writing a short description --
+  // "The Blue Toad version gives collectors another version to hunt" and
+  // "This issue follows writer [X] -- that's why it belongs in your
+  // collection" are both invented reasoning, not facts, and neither helps
+  // eBay search (buyers search real keywords: names, sets, years,
+  // characters -- not "a great addition to any collection"). The fix is
+  // an explicit ban plus permission to just be short when the facts are
+  // short, rather than relying on "factual" alone to rule it out.
+  const prompt = 'Write an eBay listing description for this collectible using ONLY the facts below -- do not invent details that are not listed, and do not invent REASONS either. '
+    + 'Keep it under 150 words. Plain text only, no markdown headers, asterisks, or all-caps section labels. '
+    + 'SEO-friendly means packing in real keywords a buyer would search (names, sets, years, characters, grade) -- not sales-pitch language. '
+    + 'Never write generic filler reasoning like "why this belongs in your collection", "a great addition to any collection", "perfect for fans", "another one to chase", or similar -- state facts, never reasons to want the item. '
+    + 'If the facts list below is short, write a short description. Padding a thin fact list out with vague commentary is worse than just being brief. '
     + 'A short intro line followed by a brief bullet list of specifics is fine. Do not include a title line or a shipping line, those are added separately.\n\nFacts:\n' + facts;
   const res = await storeWorkerFetch('/anthropic/messages', {
     method:'POST',
