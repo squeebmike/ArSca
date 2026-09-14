@@ -2,6 +2,12 @@
 'use strict';
 
 var state={loaded:false,cycles:[],cycle:null,families:[],query:'',publisher:'all',flag:'all',ebay:'all',saving:new Set(),shipping:null};
+// Per-review-modal snapshot of whatever the description template needs to
+// be re-rendered with an AI paragraph slotted in (see focAiDescriptionCore
+// below) -- keyed by skuId for the single-cover modal, familyId for the
+// group one. Captured when each modal opens since the template/tokens are
+// only computed as local vars inside those functions otherwise.
+var focEbayAiState={};
 
 function esc(value){return String(value==null?'':value).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
 function money(cents){return '$'+(Number(cents||0)/100).toFixed(2);}
@@ -474,6 +480,15 @@ async function openEbayPresaleReview(skuId){
       }
     }
   }catch(e){/* template rendering is best-effort -- fall back to the server default below */}
+  focEbayAiState[skuId]={
+    title:preview.baseTitle||preview.title.replace(/ - PRESALE$/,''),
+    template:(typeof customTemplate!=='undefined')?customTemplate:'',
+    tokens:(typeof tokens!=='undefined')?tokens:null,
+    isHtmlTemplate:(typeof isHtmlTemplate!=='undefined')?isHtmlTemplate:false,
+    disclosure:(typeof disclosure!=='undefined')?disclosure:'',
+    synopsis:preview.synopsis||'',
+    publisher:asp.Publisher||'',writer:asp.Writer||'',artist:asp.Artist||'',coverArtist:asp['Cover Artist']||''
+  };
   // Remembers the last-typed eBay Seller Hub "Store category" (e.g. "Comic
   // Books") across listings so it only needs to be typed once, the same
   // last-used-value pattern the eBay shipping-label package picker already
@@ -529,7 +544,9 @@ async function openEbayPresaleReview(skuId){
     '</div></details>'+
     '<label style="font:9px var(--font-mono);color:var(--dim);display:block;margin-bottom:10px">EBAY STORE CATEGORY (optional -- your Seller Hub \'Store category\', not the eBay item category)<input id="foc-eb-store-category" class="tsi" value="'+esc(lastStoreCategory)+'" placeholder="e.g. Comic Books" style="margin-top:4px"></label>'+
     '<div style="display:flex;justify-content:space-between;align-items:baseline"><label style="font:9px var(--font-mono);color:var(--dim)">DESCRIPTION</label>'+
-    '<span style="font:8px var(--font-mono);color:var(--dim)">'+(usedCustomTemplate?'Using your saved Comic template (':'Using the built-in default (')+'<a href="#" onclick="openSettingsSection(\'profile\',\'vendor-profile-panel\');return false" style="color:var(--g)">edit in Settings → Vendor Info → EBAY LISTING SETTINGS</a>)</span></div>'+
+    '<div style="display:flex;align-items:center;gap:8px">'+
+    '<button type="button" class="hbtn" style="padding:4px 8px;font-size:9px" onclick="generateFocAiDescription(\''+esc(skuId)+'\')">✨ AI DESCRIPTION</button>'+
+    '<span style="font:8px var(--font-mono);color:var(--dim)">'+(usedCustomTemplate?'Using your saved Comic template (':'Using the built-in default (')+'<a href="#" onclick="openSettingsSection(\'profile\',\'vendor-profile-panel\');return false" style="color:var(--g)">edit in Settings → Vendor Info → EBAY LISTING SETTINGS</a>)</span></div></div>'+
     '<textarea id="foc-eb-desc" rows="6" style="width:100%;margin-top:4px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:9px;border-radius:6px;box-sizing:border-box;resize:vertical;font-size:11px">'+esc(description)+'</textarea>'+
     '<div id="foc-eb-status" style="display:none;margin:10px 0;padding:10px;border-radius:6px;font-family:monospace;font-size:10px;text-align:center"></div>'+
     '<div style="display:flex;gap:8px;margin-top:12px"><button class="hbtn" style="flex:1;padding:12px;background:rgba(255,209,102,.12);border-color:rgba(255,209,102,.35);color:var(--gold)" onclick="submitEbayPresaleReview(\''+esc(skuId)+'\')">LIST ON EBAY</button>'+
@@ -671,6 +688,15 @@ async function openFamilyEbayGroupReview(familyId){
       }
     }
   }catch(e){/* template rendering is best-effort -- fall back to the server default below */}
+  focEbayAiState[familyId]={
+    title:preview.title.replace(/ - PRESALE$/,''),
+    template:(typeof customTemplate!=='undefined')?customTemplate:'',
+    tokens:(typeof tokens!=='undefined')?tokens:null,
+    isHtmlTemplate:(typeof isHtmlTemplate!=='undefined')?isHtmlTemplate:false,
+    disclosure:(typeof disclosure!=='undefined')?disclosure:'',
+    synopsis:preview.synopsis||'',
+    publisher:asp.Publisher||'',writer:asp.Writer||'',artist:asp.Artist||'',coverArtist:asp['Cover Artist']||''
+  };
   // Store report (live eBay error): "Publish failed (400): Add at least 1
   // photo" -- a cover with no cover_image_url on file published with zero
   // images and eBay rejected the WHOLE shared listing over that one
@@ -769,8 +795,10 @@ async function openFamilyEbayGroupReview(familyId){
     '<input type="hidden" id="foc-eb-grp-bundle-image-url" value="">'+
     '</div></div>'+
     '</div></div>'+
-    '<label style="display:flex;justify-content:space-between;align-items:baseline;margin-top:12px"><span style="font:9px var(--font-mono);color:var(--dim)">DESCRIPTION (shared)</span>'+
-    '<span style="font:8px var(--font-mono);color:var(--dim)">'+(usedCustomTemplate?'Using your saved Comic template (':'Using the built-in default (')+'<a href="#" onclick="openSettingsSection(\'profile\',\'vendor-profile-panel\');return false" style="color:var(--g)">edit in Settings → Vendor Info → EBAY LISTING SETTINGS</a>)</span></label>'+
+    '<div style="display:flex;justify-content:space-between;align-items:baseline;margin-top:12px"><span style="font:9px var(--font-mono);color:var(--dim)">DESCRIPTION (shared)</span>'+
+    '<div style="display:flex;align-items:center;gap:8px">'+
+    '<button type="button" class="hbtn" style="padding:4px 8px;font-size:9px" onclick="generateFocGroupAiDescription(\''+esc(familyId)+'\')">✨ AI DESCRIPTION</button>'+
+    '<span style="font:8px var(--font-mono);color:var(--dim)">'+(usedCustomTemplate?'Using your saved Comic template (':'Using the built-in default (')+'<a href="#" onclick="openSettingsSection(\'profile\',\'vendor-profile-panel\');return false" style="color:var(--g)">edit in Settings → Vendor Info → EBAY LISTING SETTINGS</a>)</span></div></div>'+
     '<textarea id="foc-eb-grp-desc" rows="6" style="width:100%;margin-top:4px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:9px;border-radius:6px;box-sizing:border-box;resize:vertical;font-size:11px">'+esc(description)+'</textarea>'+
     '<div id="foc-eb-grp-status" style="display:none;margin:10px 0;padding:10px;border-radius:6px;font-family:monospace;font-size:10px;text-align:center"></div>'+
     '<div style="display:flex;gap:8px;margin-top:12px"><button class="hbtn" style="flex:1;padding:12px;background:rgba(255,209,102,.12);border-color:rgba(255,209,102,.35);color:var(--gold)" onclick="submitFamilyEbayGroupReview(\''+esc(familyId)+'\')">LIST ON EBAY (ONE LISTING)</button>'+
@@ -1099,6 +1127,68 @@ async function loadEbaySafeDays(){
     if(input&&data.value)input.value=data.value;
   }catch(e){}
 }
+// Shared by generateFocAiDescription (single-cover) and
+// generateFocGroupAiDescription (shared/multi-cover) -- both review modals
+// build the same shape of AI facts and the same "slot into the template
+// via {aiSummary}, or append if the template doesn't have it" behavior the
+// main inventory eBay modal uses (dashboard.html's
+// applyAiSummaryToDescription), just against FOC's own sku/aspect/extra
+// field shapes instead of an inventory item. aspectAttr/extraAttr are the
+// data-* attribute names each modal's inputs actually use (they differ
+// between the two modals) so this reads whatever the operator has
+// currently typed rather than the stale values from when the modal opened.
+async function focAiDescriptionCore(stateKey,prefix,aspectAttr,extraAttr){
+  var ta=document.getElementById(prefix+'-desc');
+  var status=document.getElementById(prefix+'-status');
+  if(!ta)return;
+  if(status){status.style.display='block';status.style.color='var(--gold)';status.style.border='1px solid rgba(255,209,102,.25)';status.style.background='rgba(255,209,102,.06)';status.textContent='Generating AI description...';}
+  try{
+    if(typeof callEbayAiDescription!=='function')throw new Error('AI description is unavailable on this page');
+    var state=focEbayAiState[stateKey]||{};
+    var asp={};
+    document.querySelectorAll('['+aspectAttr+']').forEach(function(el){var k=el.getAttribute(aspectAttr);if(k&&el.value.trim())asp[k]=el.value.trim();});
+    var extra={};
+    document.querySelectorAll('['+extraAttr+']').forEach(function(el){var k=el.getAttribute(extraAttr);if(k&&el.value.trim())extra[k]=el.value.trim();});
+    var facts=[
+      state.title||'',
+      (asp['Publisher']||state.publisher)?'Publisher: '+(asp['Publisher']||state.publisher):'',
+      (asp['Writer']||state.writer)?'Writer: '+(asp['Writer']||state.writer):'',
+      (asp['Artist']||state.artist)?'Artist: '+(asp['Artist']||state.artist):'',
+      (asp['Cover Artist']||state.coverArtist)?'Cover Artist: '+(asp['Cover Artist']||state.coverArtist):'',
+      asp['Series Title']?'Series: '+asp['Series Title']:'',
+      extra.series?'Series: '+extra.series:'',
+      extra.character?'Character: '+extra.character:'',
+      extra.genre?'Genre: '+extra.genre:'',
+      extra.format?'Format: '+extra.format:'',
+      extra.franchise?'Franchise: '+extra.franchise:'',
+      extra.edition?'Edition: '+extra.edition:'',
+      extra.exclusive?'Exclusive: '+extra.exclusive:'',
+      extra.coverType?'Cover Type: '+extra.coverType:'',
+      extra.keyIssue?'Key Issue: '+extra.keyIssue:'',
+      extra.firstAppearance?'First Appearance: '+extra.firstAppearance:'',
+      state.synopsis?'Solicitation text: '+state.synopsis:''
+    ].filter(Boolean).join('\n');
+    var aiText=await callEbayAiDescription(facts);
+    var hasToken=!!(state.template&&/\{aiSummary\}/.test(state.template)&&typeof renderEbayDescriptionTemplate==='function');
+    var newDesc;
+    if(hasToken){
+      var rendered=renderEbayDescriptionTemplate(state.template,Object.assign({},state.tokens,{aiSummary:aiText}));
+      newDesc=(state.disclosure||'')+(state.isHtmlTemplate?'':'\n\n')+rendered;
+    }else{
+      var existing=ta.value||'';
+      var looksHtml=/<\/?[a-z][\s\S]*>/i.test(existing);
+      var aiBlock=looksHtml?'<p>'+esc(aiText)+'</p>':aiText;
+      newDesc=existing?existing+(looksHtml?'':'\n\n')+aiBlock:aiBlock;
+    }
+    ta.value=newDesc;
+    if(status)status.style.display='none';
+  }catch(e){
+    if(status){status.style.color='var(--red)';status.style.border='1px solid rgba(255,77,109,.25)';status.style.background='rgba(255,77,109,.06)';status.textContent='AI description failed: '+e.message+' (kept existing description)';}
+  }
+}
+function generateFocAiDescription(skuId){return focAiDescriptionCore(skuId,'foc-eb','data-foc-eb-aspect','data-foc-eb-extra');}
+function generateFocGroupAiDescription(familyId){return focAiDescriptionCore(familyId,'foc-eb-grp','data-eb-grp-aspect','data-eb-grp-extra');}
+
 async function saveEbaySafeDays(){
   var input=document.getElementById('foc-ebay-safe-days');
   var val=parseInt(input&&input.value,10);
@@ -1114,6 +1204,7 @@ function renderShipping(){var s=state.shipping||{},f=s.from||{},p=s.parcel||{};d
 async function saveShipping(){var shipFrom={},parcel={};document.querySelectorAll('[data-ship-from]').forEach(function(el){shipFrom[el.dataset.shipFrom]=el.value;});document.querySelectorAll('[data-ship-parcel]').forEach(function(el){parcel[el.dataset.shipParcel]=el.value;});try{var d=await api('/foc/admin/shipping-settings',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({storeId:getActiveStoreId(),enabled:true,shipFrom:shipFrom,defaultParcel:parcel})});state.shipping=d.shipping;toast_dash(d.shipping.tokenConfigured?'Live carrier settings saved':'Address saved — add the Shippo token to enable rates');renderShipping();}catch(e){toast_dash(e.message);}}
 
 window.ensureFocPanel=function(){loadCycles(false);};window.loadFocCycles=loadCycles;window.openFocCycle=openCycle;window.handleFocImportFile=handleImport;window.filterFocAdmin=function(v){state.query=v;renderFamilies();};window.filterFocPublisher=function(v){state.publisher=v;renderFamilies();};window.filterFocFlag=function(v){state.flag=v;renderFamilies();};window.filterFocEbay=function(v){state.ebay=v;renderFamilies();};window.saveFocSku=saveSku;window.saveFocFamily=saveFamily;window.toggleFocCycle=toggleCycle;window.archiveFocCycle=archiveCycle;window.unarchiveFocCycle=unarchiveCycle;window.saveFocCycleCutoff=saveCutoff;window.exportFocPrh=exportPrh;window.loadFocShippingSettings=loadShipping;window.saveFocShippingSettings=saveShipping;window.openReceiveShipment=openReceiveShipment;window.confirmReceiveShipment=confirmReceiveShipment;window.createFocEbayPresale=openEbayPresaleReview;window.submitEbayPresaleReview=submitEbayPresaleReview;window.openFamilyEbayGroupReview=openFamilyEbayGroupReview;window.submitFamilyEbayGroupReview=submitFamilyEbayGroupReview;window.handleFocGroupMainImageFile=handleFocGroupMainImageFile;window.clearFocGroupMainImage=clearFocGroupMainImage;window.handleFocGroupBundleImageFile=handleFocGroupBundleImageFile;window.clearFocGroupBundleImage=clearFocGroupBundleImage;window.loadEbaySafeDays=loadEbaySafeDays;window.saveFocEbaySafeDays=saveEbaySafeDays;window.openFocReview=openFocReview;window.openFocIntelligence=openFocIntelligence;window.submitPrhOrder=submitPrhOrder;window.endFocEbayListings=endFocEbayListings;window.toggleFocEndEbayAll=toggleFocEndEbayAll;window.confirmEndFocEbayListings=confirmEndFocEbayListings;window.repairFocEbayGroupPhotos=repairFocEbayGroupPhotos;window.reviewStoreQtyChanged=reviewStoreQtyChanged;
+window.generateFocAiDescription=generateFocAiDescription;window.generateFocGroupAiDescription=generateFocGroupAiDescription;
 // Store report: "+ ADD TO INVENTORY" on a FOC cover-wall card threw
 // "quickAddFocSkuToInventory is not defined" -- this whole file is wrapped
 // in an IIFE (line 1), so every function it declares is private to that
