@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.09.14.01-ebay-seo-and-ai-description-quality-fixes">
+<meta name="version" content="2026.09.14.02-ai-description-preserves-html-template">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1635,19 +1635,19 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.09.14.01-ebay-seo-and-ai-description-quality-fixes" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.09.14.01-ebay-seo-and-ai-description-quality-fixes" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.09.14.01-ebay-seo-and-ai-description-quality-fixes" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.09.14.01-ebay-seo-and-ai-description-quality-fixes" defer></script>
-<script src="scripts/card-intake-dashboard.js?v=2026.09.14.01-ebay-seo-and-ai-description-quality-fixes" defer></script>
-<script src="scripts/mana-pocket-task-library.js?v=2026.09.14.01-ebay-seo-and-ai-description-quality-fixes" defer></script>
-<script src="scripts/daily-tasks-dashboard.js?v=2026.09.14.01-ebay-seo-and-ai-description-quality-fixes" defer></script>
+<script src="scripts/query-routing.js?v=2026.09.14.02-ai-description-preserves-html-template" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.09.14.02-ai-description-preserves-html-template" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.09.14.02-ai-description-preserves-html-template" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.09.14.02-ai-description-preserves-html-template" defer></script>
+<script src="scripts/card-intake-dashboard.js?v=2026.09.14.02-ai-description-preserves-html-template" defer></script>
+<script src="scripts/mana-pocket-task-library.js?v=2026.09.14.02-ai-description-preserves-html-template" defer></script>
+<script src="scripts/daily-tasks-dashboard.js?v=2026.09.14.02-ai-description-preserves-html-template" defer></script>
 <script src="scripts/research-loupe.js?v=a7de4ffe90" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.09.14.01-ebay-seo-and-ai-description-quality-fixes" defer></script>
-<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.09.14.01-ebay-seo-and-ai-description-quality-fixes" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.09.14.01-ebay-seo-and-ai-description-quality-fixes" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.09.14.01-ebay-seo-and-ai-description-quality-fixes" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.09.14.01-ebay-seo-and-ai-description-quality-fixes" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.09.14.02-ai-description-preserves-html-template" defer></script>
+<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.09.14.02-ai-description-preserves-html-template" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.09.14.02-ai-description-preserves-html-template" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.09.14.02-ai-description-preserves-html-template" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.09.14.02-ai-description-preserves-html-template" defer></script>
 </head>
 <body>
 
@@ -1676,11 +1676,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.09.14.01-ebay-seo-and-ai-description-quality-fixes</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.09.14.02-ai-description-preserves-html-template</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.09.14.01-ebay-seo-and-ai-description-quality-fixes</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.09.14.02-ai-description-preserves-html-template</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1699,7 +1699,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
 <div class="dsb-chip" id="dsb-tasks" title="Today's Roles &amp; Tasks — click to jump to Tasks tab" style="cursor:pointer;display:none" onclick="switchTab('tasks')">✅ <span>TASKS:</span> <b id="dsb-tasks-val">—</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.09.14.01-ebay-seo-and-ai-description-quality-fixes</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.09.14.02-ai-description-preserves-html-template</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3795,7 +3795,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.09.14.01-ebay-seo-and-ai-description-quality-fixes';
+const APP_VERSION = '2026.09.14.02-ai-description-preserves-html-template';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -6857,7 +6857,7 @@ function renderVendorProfilePanel(){
       <div style="display:grid;grid-template-columns:1fr 140px;gap:8px;margin-bottom:12px;align-items:center">
         ${getInventoryCategories().map(c => `<div style="font-family:var(--font-mono);font-size:11px;color:var(--text)">${escHtml(c)}</div><input class="tsi vp-ebaycat-input" data-cat="${escHtml(c)}" value="${escHtml((p.ebayCategoryMap||{})[c]||'')}" placeholder="eBay category ID" style="margin:0">`).join('')}
       </div>
-      <div style="font-family:var(--font-mono);font-size:9px;color:var(--dim);line-height:1.7;margin-bottom:8px">DESCRIPTION TEMPLATES -- one per category, plus a default for anything without its own. Tokens: {title} {category} {year} {set} {variant} {condition} {cardNumber} {serialNumber} {player} {team} {issue} {publisher} {grade} {sport} {manufacturer} {upc} {price} {quantity} {rarity} {finish} {language} {configuration} {writer} {artist} {coverArtist} {signedBy} {rookie} {autograph} {gradingCompany} {certNumber} {notes} {releaseDate} {shippingLine} ${EBAY_TEMPLATE_EXTRA_FIELDS.map(f=>'{'+f.token+'}').join(' ')}. {shippingLine} picks the right ship-timing sentence for this specific item (presale vs. in-stock) -- it's separate from the EBAY SHIPPING LINE box above, which is always appended to every listing regardless of template. A line whose only content is blank tokens is dropped automatically; a line mixing populated and blank tokens has doubled whitespace/stray punctuation cleaned up but isn't rewritten into a full sentence -- for a phrase that only makes sense when ALL its tokens are filled in (e.g. "features {character} from {franchise}"), wrap it as [[features {character} from {franchise}]] and the whole bracketed phrase disappears together instead of leaving "features from". Fill in the matching fields under "More Listing Details" on each item's edit screen.</div>
+      <div style="font-family:var(--font-mono);font-size:9px;color:var(--dim);line-height:1.7;margin-bottom:8px">DESCRIPTION TEMPLATES -- one per category, plus a default for anything without its own. Tokens: {title} {category} {year} {set} {variant} {condition} {cardNumber} {serialNumber} {player} {team} {issue} {publisher} {grade} {sport} {manufacturer} {upc} {price} {quantity} {rarity} {finish} {language} {configuration} {writer} {artist} {coverArtist} {signedBy} {rookie} {autograph} {gradingCompany} {certNumber} {notes} {releaseDate} {shippingLine} {aiSummary} ${EBAY_TEMPLATE_EXTRA_FIELDS.map(f=>'{'+f.token+'}').join(' ')}. {shippingLine} picks the right ship-timing sentence for this specific item (presale vs. in-stock) -- it's separate from the EBAY SHIPPING LINE box above, which is always appended to every listing regardless of template. {aiSummary} is where the ✨ AI DESCRIPTION button's generated paragraph lands -- if your template has real HTML (a branded layout, styled sections, etc), put {aiSummary} wherever that paragraph should appear and clicking the button re-renders your SAME template with it filled in, instead of replacing your template. If a template has no {aiSummary} at all, the button appends its text to the end of your rendered template rather than overwriting it. A line whose only content is blank tokens is dropped automatically; a line mixing populated and blank tokens has doubled whitespace/stray punctuation cleaned up but isn't rewritten into a full sentence -- for a phrase that only makes sense when ALL its tokens are filled in (e.g. "features {character} from {franchise}"), wrap it as [[features {character} from {franchise}]] and the whole bracketed phrase disappears together instead of leaving "features from". Fill in the matching fields under "More Listing Details" on each item's edit screen.</div>
       ${ebayDescriptionTemplateEditorHtml('default', 'Default (any category without its own template)', p)}
       ${getInventoryCategories().map(c => ebayDescriptionTemplateEditorHtml(c, c, p)).join('')}
       <div style="display:flex;gap:8px;margin-top:8px"><button class="hbtn" onclick="saveEbayListingSettings()">SAVE EBAY LISTING SETTINGS</button></div>
@@ -22120,7 +22120,39 @@ function computeEbayListingFields(item){
     ? ['This lot includes ' + bundleMemberNames.length + ' items:', bundleMemberNames.map(n => '• ' + n).join('\n'), 'All items in this lot ship together.'].join('\n\n')
     : renderEbayDescriptionTemplate(template, tokens);
   const desc = [bodyText, getVendorProfile().ebayShippingLine].filter(Boolean).join('\n\n');
-  return {condText, isSealed, inferManufacturer, inferConfig, cat, isComic, isTCG, isGraded, catId, conditionId, title, price, desc};
+  // template/tokens/bodyText are exposed (not just the final desc) so the
+  // AI DESCRIPTION button can re-render this SAME template with the AI's
+  // text slotted into it via {aiSummary}, instead of the button replacing
+  // a store's rich-HTML branded template wholesale with flat AI text --
+  // see applyAiSummaryToDescription.
+  return {condText, isSealed, inferManufacturer, inferConfig, cat, isComic, isTCG, isGraded, catId, conditionId, title, price, desc, template, tokens, bodyText, isBundle: !!(item.isBundle && bundleMemberNames.length)};
+}
+
+// Slots AI-generated text into the item's own eBay description template
+// instead of replacing it -- store report: clicking AI DESCRIPTION nuked a
+// store's whole hand-built rich-HTML template (branding, "why this one
+// belongs" styled section, everything) and replaced it with flat AI plain
+// text, because the button used to just do ta.value = <AI text>. If the
+// store's template (Settings -> Vendor Info -> EBAY LISTING SETTINGS)
+// contains the {aiSummary} token, this re-renders that SAME template with
+// the AI text slotted in there, so all the surrounding HTML/branding
+// survives untouched. Most templates won't have added that token yet
+// (it's new), so when it's absent this appends the AI text onto the
+// existing rendered template/bundle text instead of silently dropping it
+// -- still non-destructive, and matched to HTML vs. plain text so it
+// doesn't look broken next to real markup.
+function applyAiSummaryToDescription(fields, aiText){
+  const hasToken = !fields.isBundle && /\{aiSummary\}/.test(fields.template || '');
+  let bodyText;
+  if(hasToken){
+    bodyText = renderEbayDescriptionTemplate(fields.template, {...fields.tokens, aiSummary: aiText});
+  } else {
+    const existing = fields.bodyText || '';
+    const looksHtml = /<\/?[a-z][\s\S]*>/i.test(existing);
+    const aiBlock = looksHtml ? '<p>' + escHtml(aiText) + '</p>' : aiText;
+    bodyText = existing ? existing + (looksHtml ? '' : '\n\n') + aiBlock : aiBlock;
+  }
+  return [bodyText, getVendorProfile().ebayShippingLine].filter(Boolean).join('\n\n');
 }
 
 async function generateAiEbayDescription(item, fields){
@@ -22207,7 +22239,12 @@ async function generateAiEbayDescription(item, fields){
   const block = Array.isArray(data.content) ? data.content.find(b=>b.type==='text') : null;
   const text = block?.text?.trim();
   if(!text) throw new Error('AI returned no description');
-  return text + '\n\n' + getVendorProfile().ebayShippingLine;
+  // Returns just the AI-written paragraph now, not a full description --
+  // the shipping line and (see applyAiSummaryToDescription) the store's
+  // own template/HTML are layered on by the caller instead of being
+  // baked in here, so this text can be slotted into an existing template
+  // instead of always replacing the whole description.
+  return text;
 }
 
 async function generateAiEbayDescriptionForModal(id){
@@ -22217,8 +22254,8 @@ async function generateAiEbayDescriptionForModal(id){
   if(status){ status.style.display='block'; status.style.color='var(--gold)'; status.style.border='1px solid rgba(255,209,102,.25)'; status.style.background='rgba(255,209,102,.06)'; status.textContent='Generating AI description...'; }
   try{
     const fields = computeEbayListingFields(item);
-    const desc = await generateAiEbayDescription(item, fields);
-    if(ta) ta.value = desc;
+    const aiText = await generateAiEbayDescription(item, fields);
+    if(ta) ta.value = applyAiSummaryToDescription(fields, aiText);
     if(status) status.style.display='none';
   }catch(e){
     if(status){ status.style.color='var(--red)'; status.style.border='1px solid rgba(255,77,109,.25)'; status.style.background='rgba(255,77,109,.06)'; status.textContent='AI description failed: '+e.message+' (kept existing description)'; }
@@ -22939,7 +22976,7 @@ async function prepareEbayBulkReview(){
     const fields = computeEbayListingFields(item);
     let desc = fields.desc;
     if(useAi){
-      try { desc = await generateAiEbayDescription(item, fields); }
+      try { desc = applyAiSummaryToDescription(fields, await generateAiEbayDescription(item, fields)); }
       catch(_) { /* AI unavailable -- fall back to the standard template description */ }
     }
     cards.push({item, fields, desc});
@@ -46540,7 +46577,7 @@ async function toppsLoadParallels(cardId){
   window.__arscaCloseModal = closeModal;
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.09.14.01-ebay-seo-and-ai-description-quality-fixes" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.09.14.02-ai-description-preserves-html-template" defer></script>
 </body>
 </html>
 
