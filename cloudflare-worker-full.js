@@ -2458,8 +2458,8 @@ async function getEbayUserAccessToken(env) {
 function buildEbayAspects(b) {
   const {
     sport = '', year = '', manufacturer = '', set = '', parallel = '', cardNumber = '',
-    player = '', team = '', isRookie = false, serialNumber = '', grader = '', grade = '',
-    upc = '', league = '', season = '', productType = '', configuration = '', features = '',
+    player = '', team = '', isRookie = false, isAuto = false, serialNumber = '', grader = '', grade = '',
+    certNumber = '', upc = '', league = '', season = '', productType = '', configuration = '', features = '',
     conditionId = '', customAspects = {}, categoryId = '',
   } = b;
   const aspects = {};
@@ -2472,9 +2472,16 @@ function buildEbayAspects(b) {
   if (player) aspects['Player/Athlete'] = [player];
   if (team) aspects['Team'] = [team];
   if (isRookie) aspects['Rookie'] = ['Yes'];
+  if (isAuto) aspects['Autographed'] = ['Yes'];
   if (serialNumber) aspects['Serial Numbered'] = [serialNumber];
   if (grader) aspects['Professional Grader'] = [grader];
+  // Grade and Certification Number are two separate eBay aspects -- the
+  // dashboard used to send "10 Cert 12345678" as one combined string for
+  // Grade, which meant it never matched eBay's real Grade facet (buyers
+  // filter by exact value, e.g. "PSA 10") and Certification Number was
+  // never sent as its own searchable aspect at all.
   if (grade) aspects['Grade'] = [String(grade)];
+  if (certNumber) aspects['Certification Number'] = [String(certNumber)];
   if (upc) aspects['UPC'] = [String(upc)];
   if (league) aspects['League'] = [league];
   if (season) aspects['Season'] = [String(season)];
@@ -3357,7 +3364,7 @@ async function fetchEbayImageSearch(env, base64Image, opts = {}) {
 const POCKET_SCOUT_IDENTITY_PROMPT = 'You are helping a resale/thrift buyer identify a physical item from a photo -- plush toys, vintage toys, action figures, electronics, vintage advertising, tins, glassware, collectibles, sports memorabilia, figurines, sealed products, board games, books, cameras, or anything else sold secondhand. Trading cards are also possible but are handled by a separate specialist pipeline -- if this photo is clearly one or more trading cards (Pokemon/MTG/sports/One Piece) and nothing else, set category to "trading_card" and leave the rest of the fields minimal; a different tool will take over.\n\n'
   + 'Read every legible marking: brand/manufacturer names, model numbers, serial numbers, copyright years, country of origin, size/material tags, UPC/EAN/ISBN numbers, maker\'s marks, and any other printed or embossed text. Do not guess a value or price. Do not fabricate a field you cannot actually read or reasonably infer from what is visible -- leave it null.\n\n'
   + 'Respond with strict JSON only, no markdown fences, no prose, matching exactly this shape:\n'
-  + '{"category":null,"subcategory":null,"title":null,"brand":null,"manufacturer":null,"productLine":null,"characterOrSubject":null,"model":null,"year":null,"edition":null,"variant":null,"size":null,"color":null,"upc":null,"ean":null,"isbn":null,"mpn":null,"modelNumber":null,"serialNumber":null,"confidence":0,"textEvidence":[],"suggestedNextPhoto":null,"suggestedNextPhotoReason":null}\n\n'
+  + '{"category":null,"subcategory":null,"title":null,"brand":null,"manufacturer":null,"productLine":null,"characterOrSubject":null,"model":null,"year":null,"edition":null,"variant":null,"size":null,"color":null,"material":null,"upc":null,"ean":null,"isbn":null,"mpn":null,"modelNumber":null,"serialNumber":null,"confidence":0,"textEvidence":[],"suggestedNextPhoto":null,"suggestedNextPhotoReason":null}\n\n'
   + 'category is a short lowercase label (e.g. "plush", "action_figure", "electronics", "advertising_tin", "glassware", "board_game", "book", "camera", "video_game", "trading_card", "other"). title is your best single-line description a reseller would use as a listing title (e.g. "1999 Hasbro Talking Pikachu Plush"). confidence is 0-100: only score above 85 if brand+model/product-name are both clearly legible or otherwise certain, 50-84 if you can identify the general product family but not the exact variant, below 50 if you are largely guessing from visual style alone. textEvidence is an array of short strings for every distinct piece of printed/embossed text you actually read (e.g. "© 1999 HASBRO", "MADE IN CHINA", "MODEL NO. 12345"). suggestedNextPhoto is one of "front","back","tag","bottom","label","barcode","makers_mark","serial_number","damage","other" (or null if you are already confident) -- pick whichever single additional photo would most reduce uncertainty about brand, model, or edition. suggestedNextPhotoReason is one short sentence explaining why, written for a store employee with no collectibles knowledge (e.g. "Photograph the sewn-in tag to confirm the exact release year.").';
 
 async function pocketScoutVisionIdentify(env, base64Image) {
@@ -3402,6 +3409,7 @@ async function pocketScoutVisionIdentify(env, base64Image) {
     variant: str(parsed.variant, 60),
     size: str(parsed.size, 30),
     color: str(parsed.color, 30),
+    material: str(parsed.material, 40),
     upc: str(String(parsed.upc || '').replace(/\D/g, ''), 14) || null,
     ean: str(String(parsed.ean || '').replace(/\D/g, ''), 14) || null,
     isbn: str(String(parsed.isbn || '').replace(/[^0-9Xx]/g, ''), 13) || null,

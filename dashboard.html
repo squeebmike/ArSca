@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.09.09.18-ebay-character-genre-format-fields">
+<meta name="version" content="2026.09.14.01-ebay-seo-and-ai-description-quality-fixes">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1635,19 +1635,19 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.09.09.18-ebay-character-genre-format-fields" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.09.09.18-ebay-character-genre-format-fields" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.09.09.18-ebay-character-genre-format-fields" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.09.09.18-ebay-character-genre-format-fields" defer></script>
-<script src="scripts/card-intake-dashboard.js?v=2026.09.09.18-ebay-character-genre-format-fields" defer></script>
-<script src="scripts/mana-pocket-task-library.js?v=2026.09.09.18-ebay-character-genre-format-fields" defer></script>
-<script src="scripts/daily-tasks-dashboard.js?v=2026.09.09.18-ebay-character-genre-format-fields" defer></script>
+<script src="scripts/query-routing.js?v=2026.09.14.01-ebay-seo-and-ai-description-quality-fixes" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.09.14.01-ebay-seo-and-ai-description-quality-fixes" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.09.14.01-ebay-seo-and-ai-description-quality-fixes" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.09.14.01-ebay-seo-and-ai-description-quality-fixes" defer></script>
+<script src="scripts/card-intake-dashboard.js?v=2026.09.14.01-ebay-seo-and-ai-description-quality-fixes" defer></script>
+<script src="scripts/mana-pocket-task-library.js?v=2026.09.14.01-ebay-seo-and-ai-description-quality-fixes" defer></script>
+<script src="scripts/daily-tasks-dashboard.js?v=2026.09.14.01-ebay-seo-and-ai-description-quality-fixes" defer></script>
 <script src="scripts/research-loupe.js?v=a7de4ffe90" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.09.09.18-ebay-character-genre-format-fields" defer></script>
-<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.09.09.18-ebay-character-genre-format-fields" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.09.09.18-ebay-character-genre-format-fields" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.09.09.18-ebay-character-genre-format-fields" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.09.09.18-ebay-character-genre-format-fields" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.09.14.01-ebay-seo-and-ai-description-quality-fixes" defer></script>
+<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.09.14.01-ebay-seo-and-ai-description-quality-fixes" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.09.14.01-ebay-seo-and-ai-description-quality-fixes" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.09.14.01-ebay-seo-and-ai-description-quality-fixes" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.09.14.01-ebay-seo-and-ai-description-quality-fixes" defer></script>
 </head>
 <body>
 
@@ -1676,11 +1676,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.09.09.18-ebay-character-genre-format-fields</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.09.14.01-ebay-seo-and-ai-description-quality-fixes</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.09.09.18-ebay-character-genre-format-fields</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.09.14.01-ebay-seo-and-ai-description-quality-fixes</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1699,7 +1699,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
 <div class="dsb-chip" id="dsb-tasks" title="Today's Roles &amp; Tasks — click to jump to Tasks tab" style="cursor:pointer;display:none" onclick="switchTab('tasks')">✅ <span>TASKS:</span> <b id="dsb-tasks-val">—</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.09.09.18-ebay-character-genre-format-fields</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.09.14.01-ebay-seo-and-ai-description-quality-fixes</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3795,7 +3795,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.09.09.18-ebay-character-genre-format-fields';
+const APP_VERSION = '2026.09.14.01-ebay-seo-and-ai-description-quality-fixes';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -22015,7 +22015,7 @@ function computeEbayListingFields(item){
   const condText = condLabelMap[item.condition] || item.condition || '';
   const lowerName = String(item.name||'').toLowerCase();
   const isSealed = /box|blaster|mega|hobby|pack|case|tin|sealed/.test(lowerName);
-  const inferManufacturer = item.manufacturer || (lowerName.includes('panini') ? 'Panini' : lowerName.includes('upper deck') ? 'Upper Deck' : lowerName.includes('bowman') ? 'Bowman' : lowerName.includes('topps') ? 'Topps' : lowerName.includes('pokemon') ? 'Pokemon' : lowerName.includes('magic') ? 'Wizards of the Coast' : '');
+  const inferManufacturer = item.manufacturer || item.brand || (lowerName.includes('panini') ? 'Panini' : lowerName.includes('upper deck') ? 'Upper Deck' : lowerName.includes('bowman') ? 'Bowman' : lowerName.includes('topps') ? 'Topps' : lowerName.includes('pokemon') ? 'Pokemon' : lowerName.includes('magic') ? 'Wizards of the Coast' : '');
   const inferConfig = item.configuration || (lowerName.includes('hobby') ? 'Hobby Box' : lowerName.includes('blaster') ? 'Blaster Box' : lowerName.includes('mega') ? 'Mega Box' : lowerName.includes('booster') ? 'Booster Box' : lowerName.includes('etb') || lowerName.includes('elite trainer') ? 'Elite Trainer Box' : lowerName.includes('tin') ? 'Tin' : lowerName.includes('pack') ? 'Pack' : '');
   const cat = item.category || 'Sports';
   const isComic = cat === 'Comic';
@@ -22047,7 +22047,17 @@ function computeEbayListingFields(item){
   // (Marvel/DC/Image is a real, common comic search term), same "append if
   // not already redundant with the name" rule buildFocPresaleDefaults
   // already uses for its own SEO publisher keyword.
-  const title = [item.year && !lowerName.includes(String(item.year)) ? item.year : null,item.name,item.set && !lowerName.includes(String(item.set).toLowerCase()) ? item.set : null,item.variant,(item.card_number || item.issue) ? '#'+(item.card_number || item.issue) : null,isComic && item.publisher && !lowerName.includes(String(item.publisher).toLowerCase()) ? item.publisher : null,isGraded?[item.grader,item.grade].filter(Boolean).join(' '):null,item.isRookie?'RC':null]
+  // Store report: a Pocket Scout item's name is model-written free text
+  // (e.g. "Blue Toad Plush Toy from Super Mario Series Blue Toad") that
+  // often already ends with the variant -- unlike set/publisher below,
+  // item.variant was appended here unconditionally, so the eBay title
+  // came out with the variant duplicated instead of just not adding it.
+  // Auto/Patch are two of the highest-value search keywords on eBay sports
+  // cards (right up there with RC, already appended below) and were never
+  // making it into the title at all even though is_auto/is_patch are real,
+  // already-captured fields -- an autographed or relic card listed without
+  // either word in the title loses a huge share of buyer searches for it.
+  const title = [item.year && !lowerName.includes(String(item.year)) ? item.year : null,item.name,item.set && !lowerName.includes(String(item.set).toLowerCase()) ? item.set : null,item.variant && !lowerName.includes(String(item.variant).toLowerCase()) ? item.variant : null,(item.card_number || item.issue) ? '#'+(item.card_number || item.issue) : null,isComic && item.publisher && !lowerName.includes(String(item.publisher).toLowerCase()) ? item.publisher : null,isGraded?[item.grader,item.grade].filter(Boolean).join(' '):null,item.isRookie?'RC':null,item.is_auto&&!lowerName.includes('auto')?'Auto':null,item.is_patch&&!lowerName.includes('patch')&&!lowerName.includes('relic')?'Patch':null]
     .filter(Boolean).join(' ').replace(/\s+/g,' ').substring(0,80);
   const price = Number(item.market || item.salePrice || 0);
   // A presale item's real ship date is nowhere near "1 business day" --
@@ -22135,6 +22145,21 @@ async function generateAiEbayDescription(item, fields){
     item.team ? 'Team: '+item.team : '',
     item.issue ? 'Issue #: '+item.issue : '',
     item.publisher ? 'Publisher: '+item.publisher : '',
+    // General-collectible facts -- a Pocket Scout scan of a plush/figure/
+    // sealed box fills these (see scoutBuyAddInventory/scoutSendToBuyTab)
+    // but none of it was reaching this prompt before, leaving the AI with
+    // only title+variant+condition for anything that isn't a card or comic
+    // and producing thin, repetitive copy.
+    item.subcategory ? 'Item type: '+item.subcategory : '',
+    [item.brand, item.manufacturer].filter(Boolean).join(' / ') ? 'Brand/Manufacturer: '+[item.brand, item.manufacturer].filter((v,i,a)=>v&&a.indexOf(v)===i).join(' / ') : '',
+    item.productLine ? 'Product line/Franchise: '+item.productLine : '',
+    item.characterOrSubject ? 'Character/Subject: '+item.characterOrSubject : '',
+    item.model ? 'Model: '+item.model : '',
+    item.edition ? 'Edition: '+item.edition : '',
+    item.material ? 'Material: '+item.material : '',
+    item.size ? 'Size: '+item.size : '',
+    item.color ? 'Color: '+item.color : '',
+    item.upc ? 'UPC: '+item.upc : '',
     comicPeople,
     storyTitles.length ? 'Story: '+storyTitles.join(', ') : '',
     characters.length ? 'Featured characters: '+characters.join(', ') : '',
@@ -22142,10 +22167,31 @@ async function generateAiEbayDescription(item, fields){
     fields.isGraded ? 'Grade: '+[item.grader,item.grade].filter(Boolean).join(' ') : '',
     fields.isGraded && item.cert_number ? 'Certification #: '+item.cert_number : '',
     item.isRookie ? 'Rookie card' : '',
+    // is_auto/is_patch were already collected by the sports intake form
+    // (Autograph/Sig and Patch/Jersey checkboxes) but never reached this
+    // prompt -- an autographed or relic/patch card is a fundamentally
+    // different, higher-value listing and buyers specifically search for
+    // both terms, so leaving them out understated the card completely.
+    item.is_auto ? 'Autographed'+(item.signed_by?' by '+item.signed_by:'') : '',
+    item.is_patch ? 'Patch/relic card' : '',
     fields.isSealed ? 'Factory sealed' : '',
   ].filter(Boolean).join('\n');
-  const prompt = 'Write an eBay listing description for this collectible using ONLY the facts below -- do not invent details that are not listed. '
-    + 'Keep it under 150 words, factual, and SEO-friendly for eBay search. Plain text only, no markdown headers or asterisks. '
+  // Store report: with a short facts list (a plush/figure with barely any
+  // identified detail, or a comic with only a writer credit and nothing
+  // else notable) the model padded the description out with generic
+  // sales-pitch filler instead of just writing a short description --
+  // "The Blue Toad version gives collectors another version to hunt" and
+  // "This issue follows writer [X] -- that's why it belongs in your
+  // collection" are both invented reasoning, not facts, and neither helps
+  // eBay search (buyers search real keywords: names, sets, years,
+  // characters -- not "a great addition to any collection"). The fix is
+  // an explicit ban plus permission to just be short when the facts are
+  // short, rather than relying on "factual" alone to rule it out.
+  const prompt = 'Write an eBay listing description for this collectible using ONLY the facts below -- do not invent details that are not listed, and do not invent REASONS either. '
+    + 'Keep it under 150 words. Plain text only, no markdown headers, asterisks, or all-caps section labels. '
+    + 'SEO-friendly means packing in real keywords a buyer would search (names, sets, years, characters, grade) -- not sales-pitch language. '
+    + 'Never write generic filler reasoning like "why this belongs in your collection", "a great addition to any collection", "perfect for fans", "another one to chase", or similar -- state facts, never reasons to want the item. '
+    + 'If the facts list below is short, write a short description. Padding a thin fact list out with vague commentary is worse than just being brief. '
     + 'A short intro line followed by a brief bullet list of specifics is fine. Do not include a title line or a shipping line, those are added separately.\n\nFacts:\n' + facts;
   const res = await storeWorkerFetch('/anthropic/messages', {
     method:'POST',
@@ -22278,9 +22324,10 @@ async function openEbayFromDash(id){
           <div><label style="font-family:monospace;font-size:8px;color:var(--dim)">CARD # / ISSUE #</label><input id="dash-eb-cardnum" value="${esc(aspectVal('Card Number', item.card_number || item.issue || ''))}" style="width:100%;margin-top:3px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:7px;border-radius:6px;box-sizing:border-box"></div>
           <div><label style="font-family:monospace;font-size:8px;color:var(--dim)">UPC / EAN</label><input id="dash-eb-upc" value="${esc(aspectVal('UPC', item.upc || ''))}" placeholder="Does not apply or barcode" style="width:100%;margin-top:3px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:7px;border-radius:6px;box-sizing:border-box"></div>
           <div><label style="font-family:monospace;font-size:8px;color:var(--dim)">CONFIGURATION</label><input id="dash-eb-config" value="${esc(aspectVal('Configuration', inferConfig))}" placeholder="Hobby Box, Blaster, Booster Box..." style="width:100%;margin-top:3px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:7px;border-radius:6px;box-sizing:border-box"></div>
-          <div><label style="font-family:monospace;font-size:8px;color:var(--dim)">FEATURES</label><input id="dash-eb-features" value="${esc((aspects['Features']||[]).join(', ') || [item.isRookie?'Rookie':null,item.is_auto?'Autograph':null,isSealed?'Sealed':''].filter(Boolean).join(', '))}" placeholder="Rookie, Sealed, Insert, Autograph" style="width:100%;margin-top:3px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:7px;border-radius:6px;box-sizing:border-box"></div>
+          <div><label style="font-family:monospace;font-size:8px;color:var(--dim)">FEATURES</label><input id="dash-eb-features" value="${esc((aspects['Features']||[]).join(', ') || [item.isRookie?'Rookie':null,item.is_auto?'Autograph':null,item.is_patch?'Patch/Relic':null,isSealed?'Sealed':''].filter(Boolean).join(', '))}" placeholder="Rookie, Sealed, Insert, Autograph, Patch/Relic" style="width:100%;margin-top:3px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:7px;border-radius:6px;box-sizing:border-box"></div>
           <div><label style="font-family:monospace;font-size:8px;color:var(--dim)">GRADER</label><input id="dash-eb-grader" value="${esc(item.grader || '')}" placeholder="PSA, BGS, CGC..." style="width:100%;margin-top:3px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:7px;border-radius:6px;box-sizing:border-box"></div>
-          <div><label style="font-family:monospace;font-size:8px;color:var(--dim)">GRADE / CERT</label><input id="dash-eb-grade" value="${esc([item.grade,item.cert_number].filter(Boolean).join(' Cert '))}" style="width:100%;margin-top:3px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:7px;border-radius:6px;box-sizing:border-box"></div>
+          <div><label style="font-family:monospace;font-size:8px;color:var(--dim)">GRADE</label><input id="dash-eb-grade" value="${esc(aspectVal('Grade', item.grade || ''))}" style="width:100%;margin-top:3px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:7px;border-radius:6px;box-sizing:border-box"></div>
+          <div><label style="font-family:monospace;font-size:8px;color:var(--dim)">CERT #</label><input id="dash-eb-cert" value="${esc(aspectVal('Certification Number', item.cert_number || ''))}" placeholder="Grader's certification/serial number" style="width:100%;margin-top:3px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:7px;border-radius:6px;box-sizing:border-box"></div>
           ${isComic ? `
           <div><label style="font-family:monospace;font-size:8px;color:var(--dim)">PUBLISHER</label><input id="dash-eb-publisher" value="${esc(aspectVal('Publisher', item.publisher || ''))}" style="width:100%;margin-top:3px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:7px;border-radius:6px;box-sizing:border-box"></div>
           <div><label style="font-family:monospace;font-size:8px;color:var(--dim)">WRITER</label><input id="dash-eb-writer" value="${esc(aspectVal('Writer', comicCreditList(item,'writers').join(', ')))}" style="width:100%;margin-top:3px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:7px;border-radius:6px;box-sizing:border-box"></div>
@@ -22407,7 +22454,30 @@ const DASH_EBAY_COVERED_ASPECTS = new Set([
   'sport','year','manufacturer','set','parallel/variety','card number','player/athlete',
   'team','upc','configuration','features','professional grader','grade','type',
   'publisher','writer','artist','cover artist','rookie','serial numbered',
+  'certification number','autographed',
 ]);
+
+// Best-effort match from eBay's per-category Item Specifics names to the
+// general-collectible facts Pocket Scout already captured (see
+// scoutBuyAddInventory/scoutSendToBuyTab) -- without this, a scanned plush/
+// figure/sealed item's Character/Franchise/Color/Material/Size showed up
+// as blank inputs the operator had to retype by hand even though the scan
+// already knew them. Purely a starting value: still a normal editable
+// input, so a wrong or unwanted guess is one keystroke to clear.
+const DASH_EBAY_ASPECT_AUTOFILL_MAP = {
+  'character':'characterOrSubject', 'character family':'characterOrSubject', 'theme':'characterOrSubject',
+  'franchise':'productLine', 'tv show':'productLine', 'movie':'productLine',
+  'video game title':'productLine', 'game title':'productLine', 'film':'productLine',
+  'color':'color', 'colour':'color',
+  'material':'material',
+  'size':'size', 'size type':'size',
+  'type':'subcategory',
+};
+function dashEbayAspectAutofillValue(aspectName, item){
+  if(!item) return '';
+  const field = DASH_EBAY_ASPECT_AUTOFILL_MAP[String(aspectName||'').toLowerCase().trim()];
+  return field ? String(item[field] || '') : '';
+}
 
 let _dashEbayAspectsTimer = null;
 function debounceDashboardEbayAspects(id, prefix='dash-eb'){
@@ -22440,13 +22510,15 @@ async function loadDashboardEbayAspects(id, prefix='dash-eb'){
     if(!data.ok){ host.innerHTML = '<div style="font-family:monospace;font-size:9px;color:var(--dim)">Could not load eBay category fields (' + escHtml(data.error||'unknown error') + ')</div>'; return; }
     const extra = (data.aspects||[]).filter(a => !DASH_EBAY_COVERED_ASPECTS.has(String(a.name||'').toLowerCase()));
     if(!extra.length){ host.innerHTML = ''; return; }
+    const item = all.find(i => i.id === id);
     host.innerHTML = `<div style="font-family:monospace;font-size:8px;color:var(--purple);letter-spacing:.05em;margin-bottom:6px">MORE EBAY FIELDS FOR THIS CATEGORY</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
         ${extra.map(a => {
           const dlId = 'dl-' + a.name.replace(/[^a-z0-9]/gi,'').toLowerCase();
           const datalist = a.values.length ? `<datalist id="${dlId}">${a.values.map(v=>`<option value="${escHtml(v)}">`).join('')}</datalist>` : '';
+          const autofill = dashEbayAspectAutofillValue(a.name, item);
           return `<div><label style="font-family:monospace;font-size:8px;color:${a.required?'var(--gold)':'var(--dim)'}">${escHtml(a.name.toUpperCase())}${a.required?' (required)':''}</label>
-            <input data-dyn-aspect="${escHtml(a.name)}" list="${a.values.length?dlId:''}" style="width:100%;margin-top:3px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:7px;border-radius:6px;box-sizing:border-box">
+            <input data-dyn-aspect="${escHtml(a.name)}" list="${a.values.length?dlId:''}" value="${escHtml(autofill)}" style="width:100%;margin-top:3px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:7px;border-radius:6px;box-sizing:border-box">
             ${datalist}</div>`;
         }).join('')}
       </div>`;
@@ -22559,7 +22631,9 @@ function collectDashboardEbayFormPayload(item){
     team:document.getElementById('dash-eb-team')?.value.trim() || item.team || '',
     grade:document.getElementById('dash-eb-grade')?.value.trim() || item.grade || '',
     grader:document.getElementById('dash-eb-grader')?.value.trim() || item.grader || '',
+    certNumber:document.getElementById('dash-eb-cert')?.value.trim() || item.cert_number || '',
     isRookie:!!item.isRookie,
+    isAuto:!!item.is_auto,
     serialNumber:item.serial_number||'',
     upc:document.getElementById('dash-eb-upc')?.value.trim() || '',
     features:document.getElementById('dash-eb-features')?.value.trim() || '',
@@ -22925,10 +22999,12 @@ async function submitEbayBulkReviewItem(id){
     team: item.team || '',
     grade: item.grade || '',
     grader: item.grader || '',
+    certNumber: item.cert_number || '',
     isRookie: !!item.isRookie,
+    isAuto: !!item.is_auto,
     serialNumber: item.serial_number || '',
     upc: '',
-    features: [item.isRookie?'Rookie':null,item.is_auto?'Autograph':null,fields.isSealed?'Sealed':''].filter(Boolean).join(', '),
+    features: [item.isRookie?'Rookie':null,item.is_auto?'Autograph':null,item.is_patch?'Patch/Relic':null,fields.isSealed?'Sealed':''].filter(Boolean).join(', '),
     productType: fields.isSealed ? 'sealed' : (fields.isComic ? 'comic' : 'single'),
     configuration: fields.inferConfig,
     customAspects: {
@@ -28803,6 +28879,14 @@ async function scoutBuyAddInventory(){
       name: nameWithPrintRun(match?.name || identity.title || 'Pocket Scout item', match?.printRun), category, subcategory: identity.subcategory||'',
       brand: identity.brand||'', manufacturer: identity.manufacturer||'', model: identity.model||identity.modelNumber||'',
       year: identity.year||'', variant: match?.variant || identity.variant||'', edition: identity.edition||'',
+      // Not just card/comic fields -- a Pocket Scout scan of a general
+      // collectible (plush, figure, sealed box) surfaces these too, and
+      // they're what makes the AI eBay description and the category's
+      // "more eBay fields" actually fillable instead of blank for anything
+      // that isn't a trading card. Previously extracted by the vision
+      // model but dropped on the floor right here before reaching inventory.
+      productLine: identity.productLine||'', characterOrSubject: identity.characterOrSubject||'',
+      size: identity.size||'', color: identity.color||'', material: identity.material||'',
       upc: identity.upc||'', ean: identity.ean||'', isbn: identity.isbn||'', mpn: identity.mpn||'',
       set: match?.set || '', card_number: match?.card_number || '',
       // Store report: a numbered card's print run wasn't reaching inventory
@@ -28886,6 +28970,13 @@ function scoutSendToBuyTab(){
     ...readScoutGradingFields(),
     brand: identity.brand||'', manufacturer: identity.manufacturer||'', model: identity.model||identity.modelNumber||'',
     year: identity.year||'', variant: match?.variant || identity.variant||'', edition: identity.edition||'',
+    // Same general-collectible fields carried through on the direct-buy
+    // path (scoutBuyAddInventory) above -- this buy-tray hand-off was
+    // dropping them too, so an item queued here instead of bought direct
+    // lost productLine/character/size/color/material before it ever
+    // reached inventory.
+    productLine: identity.productLine||'', characterOrSubject: identity.characterOrSubject||'',
+    size: identity.size||'', color: identity.color||'', material: identity.material||'',
     upc: identity.upc||'', ean: identity.ean||'', isbn: identity.isbn||'', mpn: identity.mpn||'',
     set: match?.set || '', card_number: match?.card_number || '',
     // Store report: a numbered card's print run wasn't reaching inventory at
@@ -46449,7 +46540,7 @@ async function toppsLoadParallels(cardId){
   window.__arscaCloseModal = closeModal;
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.09.09.18-ebay-character-genre-format-fields" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.09.14.01-ebay-seo-and-ai-description-quality-fixes" defer></script>
 </body>
 </html>
 
