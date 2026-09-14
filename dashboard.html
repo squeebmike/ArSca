@@ -22080,6 +22080,12 @@ function computeEbayListingFields(item){
     // to know the internal field names to reference them.
     rookie:item.is_rookie?'Rookie Card':'',
     autograph:item.is_signed?'Autograph':'',
+    // The Comic template already has a {keyIssue} slot ("Key issue: ...")
+    // and the item edit modal already has a Key checkbox (is_key) -- they
+    // just were never connected, so checking that box never actually
+    // surfaced on the eBay listing. This is real buyer-search value (comic
+    // collectors specifically search "key issue") that was sitting unused.
+    keyIssue:item.is_key?'Key Issue':'',
     gradingCompany:item.grader||'',
     certNumber:item.cert_number||'',
     notes:item.key_notes||item.notes||'',
