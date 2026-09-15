@@ -30,6 +30,7 @@ import { handleAccountRequest, findLinkedCustomer } from './scripts/customer-acc
 import { handleFanClubRequest } from './scripts/fan-club.mjs';
 import { handleCardIntakeRequest } from './scripts/card-intake.mjs';
 import { handleDailyTasksRequest } from './scripts/daily-tasks.mjs';
+import { handleReceivingRequest } from './scripts/receiving.mjs';
 
 // Per-isolate rate limiter for PriceCharting API (no KV needed). _pcQueueTail
 // serializes the check-and-update of _pcLastCall itself so concurrent callers
@@ -4504,6 +4505,12 @@ export default {
 
     if (url.pathname === '/daily-tasks' || url.pathname.startsWith('/daily-tasks/')) {
       return await handleDailyTasksRequest(request, env, url, {
+        json, supabaseAdminFetch, requireStoreUser, readJsonWithLimit,
+      });
+    }
+
+    if (url.pathname.startsWith('/receiving/')) {
+      return await handleReceivingRequest(request, env, url, {
         json, supabaseAdminFetch, requireStoreUser, readJsonWithLimit,
       });
     }

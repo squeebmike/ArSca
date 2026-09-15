@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Receive Shipment</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="app-config.js"></script>
+<style>
+:root{color-scheme:dark;--bg:#070b0c;--panel:#101617;--panel2:#151d1f;--line:#253235;--text:#eef4f2;--muted:#8fa09d;--green:#00e6a0;--amber:#ffc857;--red:#ff5c75}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 Inter,ui-sans-serif,system-ui,sans-serif}
+button,input,select,textarea{font:inherit}
+button{cursor:pointer}
+.hidden{display:none!important}
+.top{position:sticky;top:0;z-index:10;display:flex;align-items:center;gap:12px;padding:12px 18px;background:#080d0eee;border-bottom:1px solid var(--line);backdrop-filter:blur(12px)}
+.brand{font-weight:800;letter-spacing:.08em;color:var(--green)}
+.spacer{flex:1}
+.btn{border:1px solid #24634f;background:#0b342b;color:var(--green);padding:9px 14px;border-radius:6px;font-weight:700}
+.btn.secondary{background:transparent;border-color:var(--line);color:var(--text)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.wrap{max-width:980px;margin:0 auto;padding:22px 18px 60px}
+h1{font-size:22px;margin:0 0 4px}
+.sub{color:var(--muted);margin:0 0 20px}
+.panel{border:1px solid var(--line);border-radius:8px;background:var(--panel);padding:18px;margin-bottom:18px}
+.field{display:grid;gap:5px;margin-bottom:14px}
+.field label{font-size:10px;text-transform:uppercase;letter-spacing:.12em;color:var(--muted)}
+input,select{width:100%;border:1px solid var(--line);border-radius:6px;background:#0b1112;color:var(--text);padding:10px}
+.row3{display:grid;grid-template-columns:2fr 1fr 1fr;gap:12px}
+.notice{margin:0 0 14px;padding:10px 12px;border:1px solid #6c5521;background:#241e0d;color:#ffd978;border-radius:6px}
+.notice.error{border-color:#713040;background:#281219;color:#ff9caf}
+.notice.ok{border-color:#26755e;background:#0b2721;color:#afffe2}
+.table-wrap{overflow:auto;border:1px solid var(--line);border-radius:6px;max-height:520px}
+table{width:100%;border-collapse:collapse;min-width:760px}
+th,td{padding:9px 10px;text-align:left;border-bottom:1px solid #1d282a;font-size:13px}
+th{position:sticky;top:0;background:var(--panel);font-size:10px;text-transform:uppercase;letter-spacing:.09em;color:var(--muted)}
+.err-row{color:var(--red)}
+.skip-row{color:var(--muted)}
+.tag{display:inline-block;font-size:10px;text-transform:uppercase;letter-spacing:.06em;padding:2px 6px;border-radius:4px;border:1px solid var(--line)}
+.tag.new{color:var(--green);border-color:#24634f}
+.tag.restock{color:var(--amber);border-color:#6c5521}
+.login{max-width:380px;margin:14vh auto;padding:24px}
+.login h1{margin-top:0}
+.drop{border:1px dashed var(--line);border-radius:8px;padding:26px;text-align:center;color:var(--muted);cursor:pointer}
+.drop:hover{border-color:var(--green);color:var(--text)}
+</style>
+</head>
+<body>
+<section id="login-view" class="login panel">
+  <div style="font-size:10px;text-transform:uppercase;letter-spacing:.12em;color:var(--muted)">Staff sign-in</div>
+  <h1>Receive Shipment</h1>
+  <p style="color:var(--muted)">Sign in with your store staff account.</p>
+  <form id="login-form">
+    <div class="field"><label>Email</label><input id="email" type="email" required autocomplete="username"></div>
+    <div class="field"><label>Password</label><input id="password" type="password" required autocomplete="current-password"></div>
+    <button class="btn" type="submit">Sign in</button>
+  </form>
+  <p id="login-error" class="notice error hidden"></p>
+</section>
+
+<div id="app" class="hidden">
+  <header class="top">
+    <div class="brand">RECEIVE SHIPMENT</div>
+    <div class="spacer"></div>
+    <span id="who" style="color:var(--muted);font-size:12px"></span>
+    <a class="btn secondary" href="dashboard.html">Back to dashboard</a>
+    <button id="logout" class="btn secondary">Log out</button>
+  </header>
+  <div class="wrap">
+    <h1>Turn a distributor's delivery report into inventory</h1>
+    <p class="sub">Upload the "Pre-Delivery Report" CSV/XLSX your distributor sends with each shipment. Each row's <b>Total Receiving Quantity</b> becomes on-hand stock: a UPC already on your shelf gets its quantity bumped, and anything new becomes a fresh in-stock item with title, publisher, price, and PO number attached.</p>
+
+    <div id="message"></div>
+
+    <div class="panel">
+      <div class="row3">
+        <div class="field"><label>Store ID</label><input id="store-id" placeholder="Paste your store ID"></div>
+        <div class="field"><label>Distributor / vendor label</label><input id="vendor" value="Distributor"></div>
+        <div class="field"><label>Your discount off list price (%)</label><input id="discount" type="number" min="0" max="90" step="1" value="50"></div>
+      </div>
+      <div class="field">
+        <label>Delivery report file (.csv, .xlsx)</label>
+        <div class="drop" id="drop-zone">Click to choose a file, or drag one here</div>
+        <input id="file-input" type="file" accept=".csv,.xlsx,.xls" hidden>
+      </div>
+    </div>
+
+    <div id="preview-panel" class="panel hidden">
+      <div style="display:flex;align-items:center;margin-bottom:10px;gap:10px;flex-wrap:wrap"><strong>Preview</strong><span class="spacer"></span><span id="preview-summary" style="color:var(--muted);font-size:12px"></span><button class="btn" id="import-btn" type="button" disabled>Receive shipment</button></div>
+      <div class="table-wrap"><table><thead><tr><th>UPC/ISBN</th><th>Title</th><th>Publisher</th><th>Qty</th><th>List (USD)</th><th>PO #</th><th>Status</th></tr></thead><tbody id="preview-body"></tbody></table></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const WORKER = window.WALKOFF_CONFIG?.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
+const sb = window.supabase.createClient(
+  window.WALKOFF_CONFIG?.supabaseUrl || 'https://vroknjrxubsqyexngwus.supabase.co',
+  window.WALKOFF_CONFIG?.supabaseAnonKey || 'sb_publishable_wbpX2nL8l-4NbXtZNG_bjA_nabSYaJ5',
+  { auth: { persistSession: true } }
+);
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>'"]/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;' }[c]));
+
+function message(text, error) {
+  $('message').innerHTML = text ? `<p class="notice ${error ? 'error' : 'ok'}">${esc(text)}</p>` : '';
+}
+
+async function api(path, options = {}) {
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) throw new Error('Please sign in again');
+  const r = await fetch(WORKER + path, {
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${session.access_token}`,
+      'X-Store-Id': $('store-id').value.trim(),
+      ...options.headers,
+    },
+  });
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok || data.ok === false) throw new Error(data.error || `Request failed (${r.status})`);
+  return data;
+}
+
+const REQUIRED_HEADERS = ['UPC/ISBN', 'Title', 'Total Receiving Quantity'];
+let previewRows = [];
+
+function cents(value) {
+  const n = Number(String(value == null ? '' : value).replace(/[$,]/g, ''));
+  return Number.isFinite(n) && n >= 0 ? Math.round(n * 100) : 0;
+}
+
+// Same raw:true read as the PRH FOC importer (scripts/foc-dashboard.js) --
+// without it SheetJS auto-detects the long UPC/ISBN and PO-number columns
+// as numbers, silently losing precision on 17-digit distributor UPCs (past
+// JS's 2^53 safe-integer range) right at the digits that distinguish one
+// variant cover from another.
+async function parseFile(file) {
+  const buffer = await file.arrayBuffer();
+  const wb = XLSX.read(buffer, { type: 'array', raw: true });
+  const sheet = wb.Sheets[wb.SheetNames[0]];
+  const matrix = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+  const headerIndex = matrix.findIndex(row => {
+    const values = row.map(v => String(v).trim());
+    return REQUIRED_HEADERS.every(h => values.includes(h));
+  });
+  if (headerIndex < 0) throw new Error('This does not look like a delivery report -- missing UPC/ISBN, Title, or Total Receiving Quantity columns');
+  const rows = XLSX.utils.sheet_to_json(sheet, { range: headerIndex, defval: '', raw: false });
+  if (!rows.length) throw new Error('No rows found in this file');
+  return rows;
+}
+
+function renderPreview(rows) {
+  previewRows = rows;
+  $('preview-panel').classList.remove('hidden');
+  const receivable = rows.filter(r => Number(r['Total Receiving Quantity']) > 0 && String(r['UPC/ISBN'] || r.UPC || r.ISBN || '').trim() && String(r.Title || '').trim());
+  const totalCopies = receivable.reduce((sum, r) => sum + (Number(r['Total Receiving Quantity']) || 0), 0);
+  $('preview-summary').textContent = `${receivable.length} of ${rows.length} row(s) will be received -- ${totalCopies} total copies`;
+  $('preview-body').innerHTML = rows.map(r => {
+    const upc = String(r['UPC/ISBN'] || r.UPC || r.ISBN || '').trim();
+    const title = String(r.Title || '').trim();
+    const qty = Number(r['Total Receiving Quantity']) || 0;
+    const ok = upc && title && qty > 0;
+    const listUsd = cents(r['USD List Price']) / 100;
+    return `<tr class="${ok ? '' : 'skip-row'}">` +
+      `<td>${esc(upc) || '—'}</td><td>${esc(title) || '(missing title)'}</td><td>${esc(r.Publisher || '')}</td>` +
+      `<td>${qty}</td><td>${listUsd ? '$' + listUsd.toFixed(2) : '—'}</td><td>${esc(r['Purchase Order Number'] || '')}</td>` +
+      `<td>${ok ? '<span class="tag new">receiving</span>' : '<span class="tag">skip</span>'}</td></tr>`;
+  }).join('') || '<tr><td colspan="7">Nothing to preview.</td></tr>';
+  $('import-btn').disabled = receivable.length === 0;
+}
+
+async function handleFile(file) {
+  if (!file) return;
+  if (!$('store-id').value.trim()) { message('Enter a store ID first.', true); return; }
+  message(`Reading ${file.name}…`);
+  try {
+    const rows = await parseFile(file);
+    renderPreview(rows);
+    message('');
+  } catch (e) {
+    message(e.message, true);
+  }
+}
+
+$('drop-zone').addEventListener('click', () => $('file-input').click());
+$('drop-zone').addEventListener('dragover', e => { e.preventDefault(); });
+$('drop-zone').addEventListener('drop', e => { e.preventDefault(); handleFile(e.dataTransfer.files?.[0]); });
+$('file-input').addEventListener('change', e => { handleFile(e.target.files?.[0]); e.target.value = ''; });
+
+$('import-btn').addEventListener('click', async () => {
+  if (!previewRows.length) return;
+  $('import-btn').disabled = true;
+  message('Receiving shipment…');
+  try {
+    const result = await api('/receiving/import', {
+      method: 'POST',
+      body: JSON.stringify({
+        storeId: $('store-id').value.trim(),
+        vendor: $('vendor').value.trim() || 'Distributor',
+        discountPercent: Number($('discount').value) || 0,
+        rows: previewRows,
+      }),
+    });
+    let text = `Received ${result.createdCopies + result.restockedCopies} cop${(result.createdCopies + result.restockedCopies) === 1 ? 'y' : 'ies'}: ${result.createdCount} new item(s) added, ${result.restockedCount} existing item(s) restocked.`;
+    if (result.poNumbers?.length) text += ` PO ${result.poNumbers.join(', ')}.`;
+    if (result.skipped?.length) text += ` Skipped ${result.skipped.length} row(s) (missing data or nothing received on that line).`;
+    message(text, false);
+    $('preview-panel').classList.add('hidden');
+    previewRows = [];
+  } catch (e) {
+    message(e.message, true);
+  } finally {
+    $('import-btn').disabled = previewRows.length === 0;
+  }
+});
+
+$('login-form').addEventListener('submit', async e => {
+  e.preventDefault();
+  $('login-error').classList.add('hidden');
+  const { error } = await sb.auth.signInWithPassword({ email: $('email').value.trim(), password: $('password').value });
+  if (error) { $('login-error').textContent = error.message; $('login-error').classList.remove('hidden'); return; }
+  await start();
+});
+
+$('logout').addEventListener('click', async () => { await sb.auth.signOut(); location.reload(); });
+
+async function start() {
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) return;
+  $('login-view').classList.add('hidden');
+  $('app').classList.remove('hidden');
+  $('who').textContent = session.user.email || '';
+  const savedStore = localStorage.getItem('walkoff_active_store_id');
+  if (savedStore) $('store-id').value = savedStore;
+}
+
+start();
+</script>
+</body>
+</html>
