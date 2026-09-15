@@ -431,12 +431,19 @@ async function loadCartForShipping(env, storeId, requestedItemsRaw) {
     const d = row.data || {};
     const availableQty = Number(d.quantity ?? d.qty ?? 1) || 0;
     const invStatus = String(d.lifecycle || d.status || row.status || 'in_stock').toLowerCase();
-    // 'consigned' is a physically-in-store, priced, sellable lifecycle state
-    // (see LIFECYCLE_LABELS in dashboard.html) -- it was being rejected here
-    // as if it meant "not for sale", when a consignor's item sitting in the
-    // shop with a price and quantity is exactly as purchasable online as
-    // store-owned inventory.
-    if (!['in_stock', 'consigned'].includes(invStatus) || availableQty < qty || d.soldAt || d.archivedAt) return { error: json({ ok:false, error:`"${d.name || 'An item'}" in your cart just sold out` }, 409) };
+    // Store report: an item marked 'listed_online' (also actively listed on
+    // eBay -- see setLifecycle(id,'listed_online',...) in dashboard.html,
+    // right after a successful eBay listing) showed as buyable in the shop
+    // grid (isStorefrontItemAvailable doesn't exclude it -- it's a normal,
+    // in-stock, sellable state; dashboard.html only warns staff with a
+    // confirm dialog before selling it through OTHER channels) but then
+    // failed here with a wrong "just sold out" message, because this used
+    // its OWN narrower allowlist ('in_stock'/'consigned' only) instead of
+    // the same exclusion list isStorefrontItemAvailable already uses. Any
+    // future lifecycle value would hit the identical mismatch -- switched
+    // to the one shared exclusion list so "shows as buyable" and "can
+    // actually check out" can't drift apart again.
+    if (['sold','archived','returned','deleted','sold_pending_pickup','sold_pending_shipment','hold','lost_damaged','presale','bundled'].includes(invStatus) || availableQty < qty || d.soldAt || d.archivedAt) return { error: json({ ok:false, error:`"${d.name || 'An item'}" in your cart just sold out` }, 409) };
     const checkoutBase = Number(d.priceOverride || 0) || roundUpToDollar(Number(d.market || d.marketPrice || d.rawMarketPrice || d.price || 0) || 0);
     const unitPrice = Math.max(checkoutBase, Number(d.minPrice || 0) || 0) + (Number(d.signature_value || 0) || 0);
     if (unitPrice <= 0) return { error: json({ ok:false, error:`"${d.name || 'An item'}" doesn't have a price set yet` }, 409) };
