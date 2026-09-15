@@ -749,6 +749,13 @@ function shapeStorefrontItem(row) {
     // deliberate PUBLISH TO STOREFRONT action before a customer can see or
     // buy it -- previously any in-stock item was live the instant it saved.
     onlineListed: d.onlineListed !== false,
+    // Opt-in only (default false) -- a sold-out item still disappears from
+    // every listing like normal unless a staff member deliberately set this,
+    // e.g. a limited-run drop (the Dougvana print) worth leaving up as a
+    // visible "sold out" card instead of vanishing the instant stock hits 0.
+    // See isStorefrontItemListable below -- isStorefrontItemAvailable (the
+    // gate actual purchasing still goes through) is untouched by this flag.
+    showSoldOut: !!d.showSoldOut,
     quantity, inventoryStatus, soldAt: d.soldAt || d.sold_at || '', archivedAt: d.archivedAt || '', addedAt: row.created_at || '', updatedAt: row.updated_at || ''
   };
   item.productTypeSlug = storefrontProductTypeSlug(item);
@@ -776,6 +783,17 @@ function isStorefrontItemAvailable(i) {
   // them is independently sellable anymore (they're only sellable as the
   // bundle container row, which has its own separate row and its own qty).
   return !!(i.name && i.quantity > 0 && i.onlineListed && !i.soldAt && !i.archivedAt && !['sold','archived','returned','deleted','sold_pending_pickup','sold_pending_shipment','hold','lost_damaged','presale','bundled'].includes(i.inventoryStatus));
+}
+// Gates what appears in the public listing (/public/storefront) -- everything
+// isStorefrontItemAvailable already allows, PLUS a zero-stock item that opted
+// into showSoldOut (see shapeStorefrontItem). Purchasing itself still goes
+// through isStorefrontItemAvailable untouched everywhere else (checkout,
+// /public/storefront/item, the sitemap, the /item/{id} detail page) -- this
+// only changes whether a sold-out item's card keeps showing up, never
+// whether it can actually be bought.
+function isStorefrontItemListable(i) {
+  if (isStorefrontItemAvailable(i)) return true;
+  return !!(i.showSoldOut && i.name && i.quantity <= 0 && i.onlineListed && !i.soldAt && !i.archivedAt && !['sold','archived','returned','deleted','sold_pending_pickup','sold_pending_shipment','hold','lost_damaged','presale','bundled'].includes(i.inventoryStatus));
 }
 
 function json(data, status = 200, extraHeaders = {}) {
@@ -4711,7 +4729,7 @@ export default {
       const response = lastResponse;
       if (!response?.ok) return json({ ok:false, error:'Inventory unavailable' }, 502);
       const linkedWfIds = new Set((rows || []).map(row => row.data?.wfId || row.data?.webflowId).filter(Boolean).map(String));
-      let items = (rows || []).map(shapeStorefrontItem).filter(isStorefrontItemAvailable);
+      let items = (rows || []).map(shapeStorefrontItem).filter(isStorefrontItemListable);
       const inventorySource = storefrontCleanText(settings?.[0]?.modules?.inventorySource || '',40).toLowerCase();
       if ((inventorySource === 'webflow' || inventorySource === 'hybrid') && env.WEBFLOW_TOKEN) {
         const webflowItems=[];
