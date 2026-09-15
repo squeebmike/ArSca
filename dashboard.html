@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.09.14.01-ebay-seo-and-ai-description-quality-fixes">
+<meta name="version" content="2026.09.14.03-foc-ai-desc-shipping-lines-team-autofill">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1635,19 +1635,19 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.09.14.01-ebay-seo-and-ai-description-quality-fixes" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.09.14.01-ebay-seo-and-ai-description-quality-fixes" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.09.14.01-ebay-seo-and-ai-description-quality-fixes" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.09.14.01-ebay-seo-and-ai-description-quality-fixes" defer></script>
-<script src="scripts/card-intake-dashboard.js?v=2026.09.14.01-ebay-seo-and-ai-description-quality-fixes" defer></script>
-<script src="scripts/mana-pocket-task-library.js?v=2026.09.14.01-ebay-seo-and-ai-description-quality-fixes" defer></script>
-<script src="scripts/daily-tasks-dashboard.js?v=2026.09.14.01-ebay-seo-and-ai-description-quality-fixes" defer></script>
+<script src="scripts/query-routing.js?v=2026.09.14.03-foc-ai-desc-shipping-lines-team-autofill" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.09.14.03-foc-ai-desc-shipping-lines-team-autofill" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.09.14.03-foc-ai-desc-shipping-lines-team-autofill" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.09.14.03-foc-ai-desc-shipping-lines-team-autofill" defer></script>
+<script src="scripts/card-intake-dashboard.js?v=2026.09.14.03-foc-ai-desc-shipping-lines-team-autofill" defer></script>
+<script src="scripts/mana-pocket-task-library.js?v=2026.09.14.03-foc-ai-desc-shipping-lines-team-autofill" defer></script>
+<script src="scripts/daily-tasks-dashboard.js?v=2026.09.14.03-foc-ai-desc-shipping-lines-team-autofill" defer></script>
 <script src="scripts/research-loupe.js?v=a7de4ffe90" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.09.14.01-ebay-seo-and-ai-description-quality-fixes" defer></script>
-<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.09.14.01-ebay-seo-and-ai-description-quality-fixes" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.09.14.01-ebay-seo-and-ai-description-quality-fixes" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.09.14.01-ebay-seo-and-ai-description-quality-fixes" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.09.14.01-ebay-seo-and-ai-description-quality-fixes" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.09.14.03-foc-ai-desc-shipping-lines-team-autofill" defer></script>
+<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.09.14.03-foc-ai-desc-shipping-lines-team-autofill" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.09.14.03-foc-ai-desc-shipping-lines-team-autofill" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.09.14.03-foc-ai-desc-shipping-lines-team-autofill" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.09.14.03-foc-ai-desc-shipping-lines-team-autofill" defer></script>
 </head>
 <body>
 
@@ -1676,11 +1676,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.09.14.01-ebay-seo-and-ai-description-quality-fixes</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.09.14.03-foc-ai-desc-shipping-lines-team-autofill</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.09.14.01-ebay-seo-and-ai-description-quality-fixes</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.09.14.03-foc-ai-desc-shipping-lines-team-autofill</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1699,7 +1699,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
 <div class="dsb-chip" id="dsb-tasks" title="Today's Roles &amp; Tasks — click to jump to Tasks tab" style="cursor:pointer;display:none" onclick="switchTab('tasks')">✅ <span>TASKS:</span> <b id="dsb-tasks-val">—</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.09.14.01-ebay-seo-and-ai-description-quality-fixes</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.09.14.03-foc-ai-desc-shipping-lines-team-autofill</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3795,7 +3795,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.09.14.01-ebay-seo-and-ai-description-quality-fixes';
+const APP_VERSION = '2026.09.14.03-foc-ai-desc-shipping-lines-team-autofill';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -5203,6 +5203,7 @@ const DEMO_VENDOR_PROFILE_DEFAULTS = {
   defaultShowMarkdown:0,
   receiptFooter:'Thank you for shopping with us!',
   ebayShippingLine:'',
+  ebayShippingLines:{},
   ebayCategoryMap:{},
   ebayDescriptionTemplate:'',
   ebayDescriptionTemplates:{},
@@ -5248,6 +5249,7 @@ const DEFAULT_VENDOR_PROFILE = {
   defaultShowMarkdown:0,
   receiptFooter:'Thank you for shopping with us!',
   ebayShippingLine:'',
+  ebayShippingLines:{},
   ebayCategoryMap:{},
   ebayDescriptionTemplate:'',
   ebayDescriptionTemplates:{},
@@ -5306,6 +5308,7 @@ async function saveVendorProfile(profile){
       logo:next.logo,
       receiptFooter:next.receiptFooter,
       ebayShippingLine:next.ebayShippingLine,
+      ebayShippingLines:next.ebayShippingLines || {},
       ebayCategoryMap:next.ebayCategoryMap || {},
       ebayDescriptionTemplate:next.ebayDescriptionTemplate || '',
       ebayDescriptionTemplates:next.ebayDescriptionTemplates || {},
@@ -6022,6 +6025,7 @@ function savePaymentSettings(settings){
       logo:next.logo,
       receiptFooter:next.receiptFooter,
       ebayShippingLine:next.ebayShippingLine,
+      ebayShippingLines:next.ebayShippingLines || {},
       ebayCategoryMap:next.ebayCategoryMap || {},
       ebayDescriptionTemplate:next.ebayDescriptionTemplate || '',
       ebayDescriptionTemplates:next.ebayDescriptionTemplates || {},
@@ -6857,7 +6861,10 @@ function renderVendorProfilePanel(){
       <div style="display:grid;grid-template-columns:1fr 140px;gap:8px;margin-bottom:12px;align-items:center">
         ${getInventoryCategories().map(c => `<div style="font-family:var(--font-mono);font-size:11px;color:var(--text)">${escHtml(c)}</div><input class="tsi vp-ebaycat-input" data-cat="${escHtml(c)}" value="${escHtml((p.ebayCategoryMap||{})[c]||'')}" placeholder="eBay category ID" style="margin:0">`).join('')}
       </div>
-      <div style="font-family:var(--font-mono);font-size:9px;color:var(--dim);line-height:1.7;margin-bottom:8px">DESCRIPTION TEMPLATES -- one per category, plus a default for anything without its own. Tokens: {title} {category} {year} {set} {variant} {condition} {cardNumber} {serialNumber} {player} {team} {issue} {publisher} {grade} {sport} {manufacturer} {upc} {price} {quantity} {rarity} {finish} {language} {configuration} {writer} {artist} {coverArtist} {signedBy} {rookie} {autograph} {gradingCompany} {certNumber} {notes} {releaseDate} {shippingLine} ${EBAY_TEMPLATE_EXTRA_FIELDS.map(f=>'{'+f.token+'}').join(' ')}. {shippingLine} picks the right ship-timing sentence for this specific item (presale vs. in-stock) -- it's separate from the EBAY SHIPPING LINE box above, which is always appended to every listing regardless of template. A line whose only content is blank tokens is dropped automatically; a line mixing populated and blank tokens has doubled whitespace/stray punctuation cleaned up but isn't rewritten into a full sentence -- for a phrase that only makes sense when ALL its tokens are filled in (e.g. "features {character} from {franchise}"), wrap it as [[features {character} from {franchise}]] and the whole bracketed phrase disappears together instead of leaving "features from". Fill in the matching fields under "More Listing Details" on each item's edit screen.</div>
+      <div style="font-family:var(--font-mono);font-size:9px;color:var(--dim);line-height:1.7;margin-bottom:8px">SHIPPING LINES -- one per category, plus a default for anything without its own. Appended to the end of every listing's description (the plain EBAY SHIPPING LINE box above still works too, as the overall fallback default). Leave one blank to fall back to a built-in packaging-aware default for that category (comics: rigid mailer/comic box, cards: toploader + bubble mailer, sealed product: boxed, graded slabs: bubble-wrapped and boxed) instead of the generic line every category used to share.</div>
+      ${ebayShippingLineEditorHtml('default', 'Default (any category without its own line)', p)}
+      ${getInventoryCategories().map(c => ebayShippingLineEditorHtml(c, c, p)).join('')}
+      <div style="font-family:var(--font-mono);font-size:9px;color:var(--dim);line-height:1.7;margin-bottom:8px;margin-top:14px">DESCRIPTION TEMPLATES -- one per category, plus a default for anything without its own. Tokens: {title} {category} {year} {set} {variant} {condition} {cardNumber} {serialNumber} {player} {team} {issue} {publisher} {grade} {sport} {manufacturer} {upc} {price} {quantity} {rarity} {finish} {language} {configuration} {writer} {artist} {coverArtist} {signedBy} {rookie} {autograph} {gradingCompany} {certNumber} {notes} {releaseDate} {shippingLine} {aiSummary} ${EBAY_TEMPLATE_EXTRA_FIELDS.map(f=>'{'+f.token+'}').join(' ')}. {shippingLine} picks the right ship-timing sentence for this specific item (presale vs. in-stock) -- it's separate from the EBAY SHIPPING LINE box above, which is always appended to every listing regardless of template. {aiSummary} is where the ✨ AI DESCRIPTION button's generated paragraph lands -- if your template has real HTML (a branded layout, styled sections, etc), put {aiSummary} wherever that paragraph should appear and clicking the button re-renders your SAME template with it filled in, instead of replacing your template. If a template has no {aiSummary} at all, the button appends its text to the end of your rendered template rather than overwriting it. A line whose only content is blank tokens is dropped automatically; a line mixing populated and blank tokens has doubled whitespace/stray punctuation cleaned up but isn't rewritten into a full sentence -- for a phrase that only makes sense when ALL its tokens are filled in (e.g. "features {character} from {franchise}"), wrap it as [[features {character} from {franchise}]] and the whole bracketed phrase disappears together instead of leaving "features from". Fill in the matching fields under "More Listing Details" on each item's edit screen.</div>
       ${ebayDescriptionTemplateEditorHtml('default', 'Default (any category without its own template)', p)}
       ${getInventoryCategories().map(c => ebayDescriptionTemplateEditorHtml(c, c, p)).join('')}
       <div style="display:flex;gap:8px;margin-top:8px"><button class="hbtn" onclick="saveEbayListingSettings()">SAVE EBAY LISTING SETTINGS</button></div>
@@ -6944,6 +6951,25 @@ async function loadEbayRepriceStatus(){
   } catch(e) { /* best-effort status line, not worth surfacing an error for */ }
 }
 
+function ebayShippingLineEditorHtml(key, label, p){
+  const lines = p.ebayShippingLines || {};
+  const value = lines[key] || (key === 'default' ? (p.ebayShippingLine || '') : '');
+  const id = 'vp-ebayship-' + key.replace(/[^a-z0-9]/gi, '_');
+  const lower = key.toLowerCase();
+  const suggestion = key === 'default' ? 'Carefully packed to prevent movement and damage in transit. Ships within 1 business day with tracking.'
+    : /comic/.test(lower) ? 'Ships in a rigid mailer or comic shipping box (Gemini-style) with a bag & board to prevent bending or creasing. In-stock comics ship within 1 business day with tracking.'
+    : /sealed|box|pack/.test(lower) ? 'Sealed product ships boxed with extra padding to protect the original packaging. Ships within 1 business day with tracking.'
+    : /tcg|sports|card|graded/.test(lower) ? 'Cards ship in a penny sleeve and toploader inside a bubble mailer to prevent bending. Ships within 1 business day with tracking.'
+    : 'Leave blank to use the default shipping line above.';
+  return `<details style="margin-bottom:6px;border:1px solid var(--border);border-radius:7px;background:var(--surf)">
+    <summary style="cursor:pointer;padding:8px 10px;font-family:var(--font-mono);font-size:10px;color:${value?'var(--g)':'var(--dim)'}">${escHtml(label)}${value?' ✓ customized':''}</summary>
+    <div style="padding:0 10px 10px">
+      <textarea id="${id}" class="vp-ebayship-input tsi" data-key="${escHtml(key)}" style="height:58px;font-family:var(--font-mono);white-space:pre;margin-top:4px" placeholder="${escHtml(suggestion)}">${escHtml(value)}</textarea>
+      ${value ? `<button class="hbtn" style="margin-top:6px;font-size:9px" onclick="document.getElementById('${id}').value=''">CLEAR</button>` : ''}
+    </div>
+  </details>`;
+}
+
 function ebayDescriptionTemplateEditorHtml(key, label, p){
   const templates = p.ebayDescriptionTemplates || {};
   const value = templates[key] || (key === 'default' ? (p.ebayDescriptionTemplate || '') : '');
@@ -6970,9 +6996,16 @@ async function saveEbayListingSettings(){
     const val = ta.value;
     if(key && val.trim()) ebayDescriptionTemplates[key] = val;
   });
-  // Old single-template field is kept in sync (mirrors 'default') so a
-  // rollback or any code that still reads the legacy field doesn't regress.
-  const cloudSaved = await saveVendorProfile({ ebayCategoryMap, ebayDescriptionTemplates, ebayDescriptionTemplate:ebayDescriptionTemplates.default || '' });
+  const ebayShippingLines = {};
+  document.querySelectorAll('.vp-ebayship-input').forEach(ta => {
+    const key = ta.dataset.key;
+    const val = ta.value.trim();
+    if(key && val) ebayShippingLines[key] = val;
+  });
+  // Old single-template/single-shipping-line fields are kept in sync (mirror
+  // 'default') so a rollback or any code that still reads the legacy field
+  // doesn't regress.
+  const cloudSaved = await saveVendorProfile({ ebayCategoryMap, ebayDescriptionTemplates, ebayDescriptionTemplate:ebayDescriptionTemplates.default || '', ebayShippingLines, ebayShippingLine:ebayShippingLines.default || getVendorProfile().ebayShippingLine || '' });
   // Previously this fired saveVendorProfile without awaiting it and always
   // showed "saved" -- a cloud write that silently failed (offline, RLS,
   // non-owner/admin role) looked identical to a real save, so templates
@@ -22004,6 +22037,29 @@ function renderEbayDescriptionTemplate(template, tokens){
   return out.join('\n').replace(/\n{3,}/g, '\n\n').trim();
 }
 
+// Store report: the shipping blurb appended to every eBay listing said "In-
+// stock comics ship within 1 business day with tracking" regardless of
+// category -- a sports card or a plush toy listed through this same tool
+// got the same "comics" wording, and nothing anywhere said HOW an item is
+// actually packaged (comics in a rigid mailer/box, cards in a toploader +
+// bubble mailer, sealed product boxed, everything else bubble-wrapped) --
+// real packaging detail buyers read as a trust signal before bidding, not
+// just a timing promise. A store can override any of these per-category
+// under Settings -> Vendor Info -> EBAY LISTING SETTINGS (or set one
+// legacy default for everything, same as before); these are only the
+// built-in fallback when nothing has been customized.
+function resolveEbayShippingLine(cat, isComic, isSealed, isGraded, catId){
+  const vp = getVendorProfile();
+  const perCategory = (vp.ebayShippingLines || {})[cat];
+  if(perCategory) return perCategory;
+  if(vp.ebayShippingLine) return vp.ebayShippingLine;
+  if(isComic) return 'Ships in a rigid mailer or comic shipping box (Gemini-style) with a bag & board to prevent bending or creasing. In-stock comics ship within 1 business day with tracking.';
+  if(isGraded) return 'Your graded slab ships bubble-wrapped and boxed for maximum protection in transit. Ships within 1 business day with tracking.';
+  if(isSealed) return 'Sealed product ships boxed with extra padding to protect the original packaging. Ships within 1 business day with tracking.';
+  if(isEbayTradingCardCategory(catId) || cat === 'TCG' || cat === 'Sports') return 'Cards ship in a penny sleeve and toploader inside a bubble mailer to prevent bending. Ships within 1 business day with tracking.';
+  return 'Carefully packed to prevent movement and damage in transit. Ships within 1 business day with tracking.';
+}
+
 function computeEbayListingFields(item){
   const condLabelMap = {
     '05cbd3bb538b65343a8f40c0fbe31282':'Near Mint',
@@ -22057,7 +22113,10 @@ function computeEbayListingFields(item){
   // making it into the title at all even though is_auto/is_patch are real,
   // already-captured fields -- an autographed or relic card listed without
   // either word in the title loses a huge share of buyer searches for it.
-  const title = [item.year && !lowerName.includes(String(item.year)) ? item.year : null,item.name,item.set && !lowerName.includes(String(item.set).toLowerCase()) ? item.set : null,item.variant && !lowerName.includes(String(item.variant).toLowerCase()) ? item.variant : null,(item.card_number || item.issue) ? '#'+(item.card_number || item.issue) : null,isComic && item.publisher && !lowerName.includes(String(item.publisher).toLowerCase()) ? item.publisher : null,isGraded?[item.grader,item.grade].filter(Boolean).join(' '):null,item.isRookie?'RC':null,item.is_auto&&!lowerName.includes('auto')?'Auto':null,item.is_patch&&!lowerName.includes('patch')&&!lowerName.includes('relic')?'Patch':null]
+  // Team was never in the title at all -- a real, heavily-searched sports
+  // card keyword ("Mike Trout Angels", "Lakers Kobe") that only ever
+  // reached the aspects/description, never the #1 search-ranking field.
+  const title = [item.year && !lowerName.includes(String(item.year)) ? item.year : null,item.name,!isComic && item.team && !lowerName.includes(String(item.team).toLowerCase()) ? item.team : null,item.set && !lowerName.includes(String(item.set).toLowerCase()) ? item.set : null,item.variant && !lowerName.includes(String(item.variant).toLowerCase()) ? item.variant : null,(item.card_number || item.issue) ? '#'+(item.card_number || item.issue) : null,isComic && item.publisher && !lowerName.includes(String(item.publisher).toLowerCase()) ? item.publisher : null,isGraded?[item.grader,item.grade].filter(Boolean).join(' '):null,item.isRookie?'RC':null,item.is_auto&&!lowerName.includes('auto')?'Auto':null,item.is_patch&&!lowerName.includes('patch')&&!lowerName.includes('relic')?'Patch':null]
     .filter(Boolean).join(' ').replace(/\s+/g,' ').substring(0,80);
   const price = Number(item.market || item.salePrice || 0);
   // A presale item's real ship date is nowhere near "1 business day" --
@@ -22119,8 +22178,40 @@ function computeEbayListingFields(item){
   const bodyText = (item.isBundle && bundleMemberNames.length)
     ? ['This lot includes ' + bundleMemberNames.length + ' items:', bundleMemberNames.map(n => '• ' + n).join('\n'), 'All items in this lot ship together.'].join('\n\n')
     : renderEbayDescriptionTemplate(template, tokens);
-  const desc = [bodyText, getVendorProfile().ebayShippingLine].filter(Boolean).join('\n\n');
-  return {condText, isSealed, inferManufacturer, inferConfig, cat, isComic, isTCG, isGraded, catId, conditionId, title, price, desc};
+  const desc = [bodyText, resolveEbayShippingLine(cat, isComic, isSealed, isGraded, catId)].filter(Boolean).join('\n\n');
+  // template/tokens/bodyText are exposed (not just the final desc) so the
+  // AI DESCRIPTION button can re-render this SAME template with the AI's
+  // text slotted into it via {aiSummary}, instead of the button replacing
+  // a store's rich-HTML branded template wholesale with flat AI text --
+  // see applyAiSummaryToDescription.
+  return {condText, isSealed, inferManufacturer, inferConfig, cat, isComic, isTCG, isGraded, catId, conditionId, title, price, desc, template, tokens, bodyText, isBundle: !!(item.isBundle && bundleMemberNames.length)};
+}
+
+// Slots AI-generated text into the item's own eBay description template
+// instead of replacing it -- store report: clicking AI DESCRIPTION nuked a
+// store's whole hand-built rich-HTML template (branding, "why this one
+// belongs" styled section, everything) and replaced it with flat AI plain
+// text, because the button used to just do ta.value = <AI text>. If the
+// store's template (Settings -> Vendor Info -> EBAY LISTING SETTINGS)
+// contains the {aiSummary} token, this re-renders that SAME template with
+// the AI text slotted in there, so all the surrounding HTML/branding
+// survives untouched. Most templates won't have added that token yet
+// (it's new), so when it's absent this appends the AI text onto the
+// existing rendered template/bundle text instead of silently dropping it
+// -- still non-destructive, and matched to HTML vs. plain text so it
+// doesn't look broken next to real markup.
+function applyAiSummaryToDescription(fields, aiText){
+  const hasToken = !fields.isBundle && /\{aiSummary\}/.test(fields.template || '');
+  let bodyText;
+  if(hasToken){
+    bodyText = renderEbayDescriptionTemplate(fields.template, {...fields.tokens, aiSummary: aiText});
+  } else {
+    const existing = fields.bodyText || '';
+    const looksHtml = /<\/?[a-z][\s\S]*>/i.test(existing);
+    const aiBlock = looksHtml ? '<p>' + escHtml(aiText) + '</p>' : aiText;
+    bodyText = existing ? existing + (looksHtml ? '' : '\n\n') + aiBlock : aiBlock;
+  }
+  return [bodyText, resolveEbayShippingLine(fields.cat, fields.isComic, fields.isSealed, fields.isGraded, fields.catId)].filter(Boolean).join('\n\n');
 }
 
 async function generateAiEbayDescription(item, fields){
@@ -22176,6 +22267,15 @@ async function generateAiEbayDescription(item, fields){
     item.is_patch ? 'Patch/relic card' : '',
     fields.isSealed ? 'Factory sealed' : '',
   ].filter(Boolean).join('\n');
+  return callEbayAiDescription(facts);
+}
+
+// Shared by generateAiEbayDescription above AND the FOC presale review
+// modals (scripts/foc-dashboard.js, which calls this same global function
+// -- comics presale listings have their own facts shape (sku fields, not
+// an inventory item) but need the exact same no-filler prompt rules, so
+// this is the one place those rules live rather than being copy-pasted.
+async function callEbayAiDescription(facts){
   // Store report: with a short facts list (a plush/figure with barely any
   // identified detail, or a comic with only a writer credit and nothing
   // else notable) the model padded the description out with generic
@@ -22207,7 +22307,12 @@ async function generateAiEbayDescription(item, fields){
   const block = Array.isArray(data.content) ? data.content.find(b=>b.type==='text') : null;
   const text = block?.text?.trim();
   if(!text) throw new Error('AI returned no description');
-  return text + '\n\n' + getVendorProfile().ebayShippingLine;
+  // Returns just the AI-written paragraph now, not a full description --
+  // the shipping line and (see applyAiSummaryToDescription) the store's
+  // own template/HTML are layered on by the caller instead of being
+  // baked in here, so this text can be slotted into an existing template
+  // instead of always replacing the whole description.
+  return text;
 }
 
 async function generateAiEbayDescriptionForModal(id){
@@ -22217,8 +22322,8 @@ async function generateAiEbayDescriptionForModal(id){
   if(status){ status.style.display='block'; status.style.color='var(--gold)'; status.style.border='1px solid rgba(255,209,102,.25)'; status.style.background='rgba(255,209,102,.06)'; status.textContent='Generating AI description...'; }
   try{
     const fields = computeEbayListingFields(item);
-    const desc = await generateAiEbayDescription(item, fields);
-    if(ta) ta.value = desc;
+    const aiText = await generateAiEbayDescription(item, fields);
+    if(ta) ta.value = applyAiSummaryToDescription(fields, aiText);
     if(status) status.style.display='none';
   }catch(e){
     if(status){ status.style.color='var(--red)'; status.style.border='1px solid rgba(255,77,109,.25)'; status.style.background='rgba(255,77,109,.06)'; status.textContent='AI description failed: '+e.message+' (kept existing description)'; }
@@ -22939,7 +23044,7 @@ async function prepareEbayBulkReview(){
     const fields = computeEbayListingFields(item);
     let desc = fields.desc;
     if(useAi){
-      try { desc = await generateAiEbayDescription(item, fields); }
+      try { desc = applyAiSummaryToDescription(fields, await generateAiEbayDescription(item, fields)); }
       catch(_) { /* AI unavailable -- fall back to the standard template description */ }
     }
     cards.push({item, fields, desc});
@@ -29518,6 +29623,17 @@ function cardSightFieldsToNoteDashboard(fields){
     .join(' · ');
 }
 
+// CardSight's field key names aren't documented anywhere we have access to
+// (same caveat as the cert-number lookup below) -- matches on whatever
+// plausible key text it actually sends rather than one exact name.
+function cardSightFieldValue(fields, ...keyContains){
+  for(const f of (Array.isArray(fields) ? fields : [])){
+    const k = String(f?.key || '').toLowerCase();
+    if(keyContains.some(p => k.includes(p)) && f.value != null && String(f.value).trim()) return String(f.value).trim();
+  }
+  return '';
+}
+
 function cardSightDetectionToQplRow(det){
   const card = det.card || {};
   const numberedTo = card.parallel?.numberedTo || card.numberedTo || null;
@@ -29543,6 +29659,15 @@ function cardSightDetectionToQplRow(det){
     confidence: det.confidence === 'High' ? 90 : det.confidence === 'Medium' ? 65 : 35,
     matchWhy: ['CardSight AI match'],
     note: fieldsNote ? 'Identified by CardSight AI — ' + fieldsNote : 'Identified by CardSight AI',
+    // Store report: "sports cards should auto land team/year for eBay" --
+    // CardSight already extracts these as raw fields below, but nothing
+    // ever pulled them out into the item's own team/player/rookie/auto
+    // fields, so every CardSight-scanned sports card still needed them
+    // typed in by hand despite the scan already knowing them.
+    team: cardSightFieldValue(card.fields, 'team'),
+    player: cardSightFieldValue(card.fields, 'player', 'athlete') || card.name || '',
+    is_rookie: /^(yes|true|y)$/i.test(cardSightFieldValue(card.fields, 'rookie')),
+    is_auto: /^(yes|true|y)$/i.test(cardSightFieldValue(card.fields, 'autograph', 'auto')),
     // Raw structured attributes CardSight extracted (player/team/rookie/
     // autograph/etc for sports, HP/stage/etc for Pokemon).
     cardsightFields: Array.isArray(card.fields) ? card.fields : [],
@@ -46540,7 +46665,7 @@ async function toppsLoadParallels(cardId){
   window.__arscaCloseModal = closeModal;
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.09.14.01-ebay-seo-and-ai-description-quality-fixes" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.09.14.03-foc-ai-desc-shipping-lines-team-autofill" defer></script>
 </body>
 </html>
 
