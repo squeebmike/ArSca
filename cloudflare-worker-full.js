@@ -1349,13 +1349,16 @@ async function fulfillStorefrontOrderInventory(env, saleId, storeId) {
   if (!order) return; // regular POS sale, not a storefront order — nothing more to do
   const { data: lines } = await supabaseAdminFetch(env, `pos_sale_lines?sale_id=eq.${encodeURIComponent(saleId)}&store_id=eq.${encodeURIComponent(storeId)}&select=item_id,quantity`);
   const nextStatus = order.fulfillment_method === 'shipping' ? 'sold_pending_shipment' : 'sold_pending_pickup';
-  for (const line of lines || []) {
-    if (!/^[0-9a-f-]{36}$/i.test(String(line.item_id || ''))) continue; // skip synthetic shipping-fee line
-    const { data: items } = await supabaseAdminFetch(env, `inventory_items?id=eq.${encodeURIComponent(line.item_id)}&store_id=eq.${encodeURIComponent(storeId)}&select=id,data,status&limit=1`);
+  // Decrements one inventory_items row by qty and writes it back -- shared by
+  // the actually-purchased line below and by that item's linkedStockIds (see
+  // there). Returns the row's own data.linkedStockIds so the caller can chain
+  // into those too, without a second read.
+  async function decrementInventoryRow(itemId, qty) {
+    const { data: items } = await supabaseAdminFetch(env, `inventory_items?id=eq.${encodeURIComponent(itemId)}&store_id=eq.${encodeURIComponent(storeId)}&select=id,data,status&limit=1`);
     const item = items?.[0];
-    if (!item) continue;
+    if (!item) return null;
     const data = { ...(item.data || {}) };
-    const remaining = Math.max(0, Number(data.quantity ?? data.qty ?? 1) - Number(line.quantity || 1));
+    const remaining = Math.max(0, Number(data.quantity ?? data.qty ?? 1) - qty);
     const depleted = remaining <= 0;
     const soldAt = new Date().toISOString();
     Object.assign(data, {
@@ -1369,7 +1372,25 @@ async function fulfillStorefrontOrderInventory(env, saleId, storeId) {
       // as an unrecognized, uncolored channel instead of counting as website sales.
       channel: depleted ? 'Website' : (data.channel || ''),
     });
-    await supabaseAdminFetch(env, `inventory_items?id=eq.${encodeURIComponent(line.item_id)}&store_id=eq.${encodeURIComponent(storeId)}`, { method:'PATCH', headers:{ Prefer:'return=minimal' }, body:JSON.stringify({ data, status: depleted ? nextStatus : 'in_stock' }) });
+    await supabaseAdminFetch(env, `inventory_items?id=eq.${encodeURIComponent(itemId)}&store_id=eq.${encodeURIComponent(storeId)}`, { method:'PATCH', headers:{ Prefer:'return=minimal' }, body:JSON.stringify({ data, status: depleted ? nextStatus : 'in_stock' }) });
+    return data.linkedStockIds;
+  }
+  for (const line of lines || []) {
+    if (!/^[0-9a-f-]{36}$/i.test(String(line.item_id || ''))) continue; // skip synthetic shipping-fee line
+    const qty = Number(line.quantity || 1);
+    const linkedStockIds = await decrementInventoryRow(line.item_id, qty);
+    // A handful of sibling rows sell the same physical stock under a
+    // different price/name -- e.g. the Dougvana print's remarque variants,
+    // separate catalog rows so each can carry its own price, but all three
+    // drawing from the same 100-print run. data.linkedStockIds on a row
+    // lists those siblings; selling any one decrements all of them by the
+    // same qty, so "how many are actually left" never drifts apart between
+    // rows just because customers picked different variants.
+    if (Array.isArray(linkedStockIds)) {
+      for (const linkedId of linkedStockIds) {
+        if (linkedId && linkedId !== line.item_id) await decrementInventoryRow(linkedId, qty);
+      }
+    }
   }
 }
 
