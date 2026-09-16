@@ -77,11 +77,13 @@ th{font-size:10px;text-transform:uppercase;letter-spacing:.09em;color:var(--mute
         <div class="field"><label>Category</label><input id="category" value="Supplies"></div>
       </div>
       <div class="field">
-        <label>Items — one per line: Name, Price, Image URL, Description</label>
+        <label>BCW catalog CSV file, or paste Name, Price, Image URL, Description</label>
+        <input id="csv-file" type="file" accept=".csv,text/csv">
         <textarea id="csv-input" placeholder="Ultra Pro 3&quot; 3-Ring Album Black, 24.99, https://example.com/album.jpg, Holds up to 360 cards
 BCW Standard Card Sleeves (100ct), 2.49, https://example.com/sleeves.jpg,"></textarea>
       </div>
-      <label class="check"><input type="checkbox" id="publish" checked> Publish these items to the shop immediately (uncheck to import for review first)</label>
+      <p class="sub">BCW exports preserve supplier SKUs, photos, pack sizes, cost, and availability. Repeat imports refresh supplier information while keeping your edited listing and selling price. Blank prices import as drafts. <a href="extensions/bcw-catalog/README.md">Collector setup</a></p>
+      <label class="check"><input type="checkbox" id="publish"> Publish new items that have a price, confirmed availability, and no review flags. Existing publication choices stay unchanged.</label>
       <div style="display:flex;gap:10px;margin-top:14px">
         <button class="btn secondary" id="parse-btn" type="button">Preview</button>
         <button class="btn" id="import-btn" type="button" disabled>Import previewed items</button>
@@ -95,7 +97,8 @@ BCW Standard Card Sleeves (100ct), 2.49, https://example.com/sleeves.jpg,"></tex
   </div>
 </div>
 
-<script>
+<script type="module">
+import { parseImportCSV } from './extensions/bcw-catalog/csv.mjs';
 const WORKER = window.WALKOFF_CONFIG?.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
 const sb = window.supabase.createClient(
   window.WALKOFF_CONFIG?.supabaseUrl || 'https://vroknjrxubsqyexngwus.supabase.co',
@@ -126,53 +129,36 @@ async function api(path, options = {}) {
   return data;
 }
 
-// Minimal CSV-ish line parser: comma-separated, double-quoted fields may
-// contain commas/escaped quotes ("" -> "). Good enough for a short pasted
-// vendor export; not a general CSV parser.
-function parseLine(line) {
-  const fields = [];
-  let cur = '', inQuotes = false;
-  for (let i = 0; i < line.length; i++) {
-    const ch = line[i];
-    if (inQuotes) {
-      if (ch === '"' && line[i + 1] === '"') { cur += '"'; i++; }
-      else if (ch === '"') { inQuotes = false; }
-      else { cur += ch; }
-    } else if (ch === '"') { inQuotes = true; }
-    else if (ch === ',') { fields.push(cur); cur = ''; }
-    else { cur += ch; }
-  }
-  fields.push(cur);
-  return fields.map(f => f.trim());
-}
-
 let previewItems = [];
 
 function parseInput() {
-  const raw = $('csv-input').value.split('\n').map(l => l.trim()).filter(Boolean);
-  // Skip an optional header row (first cell literally "name", case-insensitive).
-  const lines = raw.length && /^name$/i.test(parseLine(raw[0])[0] || '') ? raw.slice(1) : raw;
-  const rows = [];
-  for (const line of lines) {
-    const [name, priceRaw, image, description] = parseLine(line);
-    const price = Number(String(priceRaw || '').replace(/[^0-9.]/g, ''));
-    rows.push({ name: name || '', price, image: image || '', description: description || '', valid: !!name && Number.isFinite(price) && price > 0 });
-  }
-  return rows;
+  return parseImportCSV($('csv-input').value);
 }
 
 function renderPreview(rows) {
   previewItems = rows.filter(r => r.valid);
   $('preview-panel').classList.remove('hidden');
   $('preview-summary').textContent = `${previewItems.length} valid of ${rows.length} row(s)`;
-  $('preview-body').innerHTML = rows.map(r => `<tr class="${r.valid ? '' : 'err-row'}"><td>${esc(r.name) || '(missing name)'}</td><td>${Number.isFinite(r.price) && r.price > 0 ? '$' + r.price.toFixed(2) : '(invalid price)'}</td><td>${r.image ? 'yes' : '—'}</td><td>${esc((r.description || '').slice(0, 60))}</td></tr>`).join('') || '<tr><td colspan="4">Nothing to preview.</td></tr>';
+  $('preview-body').innerHTML = rows.slice(0,200).map(r => `<tr class="${r.valid ? '' : 'err-row'}"><td>${esc(r.name) || '(missing name)'}<br><small>${esc(r.sku || '')} ${esc(r.availability || '')}</small></td><td>${Number.isFinite(r.price) && r.price > 0 ? '$' + r.price.toFixed(2) : 'Draft: no price'}</td><td>${r.image ? 'yes' : '—'}</td><td>${esc(r.errors.join('; ') || r.review_notes || (r.description || '').slice(0, 60))}</td></tr>`).join('') || '<tr><td colspan="4">Nothing to preview.</td></tr>';
+  $('preview-summary').textContent += rows.length > 200 ? ' (first 200 shown)' : '';
   $('import-btn').disabled = previewItems.length === 0;
 }
 
 $('parse-btn').addEventListener('click', () => {
   message('');
   if (!$('store-id').value.trim()) { message('Enter a store ID first.', true); return; }
-  renderPreview(parseInput());
+  try { renderPreview(parseInput()); } catch(e) { previewItems = []; $('import-btn').disabled = true; message(e.message,true); }
+});
+
+function invalidatePreview() { previewItems = []; $('import-btn').disabled = true; $('preview-panel').classList.add('hidden'); }
+$('csv-input').addEventListener('input', invalidatePreview);
+for (const id of ['store-id','vendor','category','publish']) $(id).addEventListener('change',invalidatePreview);
+$('csv-file').addEventListener('change',async () => {
+  const file = $('csv-file').files[0]; if (!file) return;
+  invalidatePreview();
+  if (file.size > 30 * 1024 * 1024) { message('CSV exceeds 30 MB. Split it before importing.',true); return; }
+  $('csv-input').value = await file.text();
+  message('CSV loaded. Click Preview to review before importing.');
 });
 
 $('import-btn').addEventListener('click', async () => {
@@ -180,25 +166,33 @@ $('import-btn').addEventListener('click', async () => {
   $('import-btn').disabled = true;
   message('Importing…');
   try {
-    const result = await api('/inventory/dropship-import', {
+    const result = {imported:0,created:0,updated:0,skipped:[],failed:[]};
+    const items = [...previewItems];
+    const settings = {storeId:$('store-id').value.trim(),vendor:$('vendor').value.trim() || 'BCW',category:$('category').value.trim() || 'Supplies',publish:$('publish').checked};
+    // Disable edits while batches are in flight so they cannot switch stores.
+    for (const id of ['store-id','vendor','category','publish','csv-input','csv-file','parse-btn']) $(id).disabled = true;
+    for (let offset = 0; offset < items.length; offset += 50) {
+    message(`Importing ${offset + 1}–${Math.min(offset+50,items.length)} of ${items.length}…`);
+    const batch = await api('/inventory/dropship-import', {
       method: 'POST',
       body: JSON.stringify({
-        storeId: $('store-id').value.trim(),
-        items: previewItems,
-        vendor: $('vendor').value.trim() || 'BCW',
-        category: $('category').value.trim() || 'Supplies',
-        publish: $('publish').checked,
+        ...settings,
+        items: items.slice(offset,offset+50),
       }),
     });
-    let text = `Imported ${result.imported} item(s)${result.published ? ' — live on the shop now' : ' — saved for review, not yet published'}.`;
+    for (const key of ['imported','created','updated']) result[key] += batch[key] || 0;
+    result.skipped.push(...(batch.skipped || [])); result.failed.push(...(batch.failed || []));
+    }
+    let text = `${result.created} created; ${result.updated} refreshed. Existing selling prices and listing edits were preserved. New items ${settings.publish ? 'published only when eligible' : 'saved as drafts'}.`;
     if (result.skipped?.length) text += ` Skipped ${result.skipped.length}: ${result.skipped.slice(0, 5).join(', ')}${result.skipped.length > 5 ? '…' : ''}`;
-    message(text, false);
-    $('csv-input').value = '';
+    if (result.failed.length) text += ` Failed ${result.failed.length}: ${result.failed.slice(0,5).map(x=>x.sku+': '+x.error).join('; ')}. Reimport the CSV to retry these SKUs.`;
+    message(text, result.failed.length > 0);
     $('preview-panel').classList.add('hidden');
     previewItems = [];
   } catch (e) {
-    message(e.message, true);
+    message(e.message + ' Earlier batches may have saved. You can safely retry BCW SKU rows; legacy rows without SKUs may duplicate.', true);
   } finally {
+    for (const id of ['store-id','vendor','category','publish','csv-input','csv-file','parse-btn']) $(id).disabled = false;
     $('import-btn').disabled = previewItems.length === 0;
   }
 });

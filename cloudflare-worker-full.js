@@ -1,3 +1,5 @@
+import { importDropshipBatch } from './scripts/dropship-import.mjs';
+
 /**
  * LBA Proxy Worker - Cloudflare Worker
  * Worker URL: https://still-resonance-4f87.swarnerauto.workers.dev
@@ -5653,8 +5655,8 @@ export default {
 
     // POST /inventory/dropship-import -- staff bulk-import for vendor
     // drop-ship items (e.g. BCW supplies fulfilled by the vendor, never
-    // physically stocked). Each row gets a large fixed quantity so it
-    // always reads as purchasable, plus data.dropship=true, which
+    // physically stocked). Confirmed available SKU rows get a synthetic
+    // purchase quantity; unavailable/unknown rows get zero. data.dropship
     // shapeStorefrontItem()/the shop grid's itemCard() read to suppress a
     // fake "X in stock" count without hiding the item -- see the dropship
     // field comment above shapeStorefrontItem's isSealed/isSigned flags.
@@ -5667,35 +5669,17 @@ export default {
       if (auth.error) return auth.error;
       const rawItems = Array.isArray(body.items) ? body.items : [];
       if (!rawItems.length) return json({ ok: false, error: 'No items provided' }, 400);
-      if (rawItems.length > 500) return json({ ok: false, error: 'Import at most 500 items at a time' }, 400);
-      const publish = body.publish !== false;
+      if (rawItems.length > 50) return json({ ok: false, error: 'Import at most 50 items at a time' }, 400);
+      const publish = body.publish === true;
       const category = storefrontCleanText(body.category || 'Supplies', 80) || 'Supplies';
       const vendor = storefrontCleanText(body.vendor || 'BCW', 80);
       const nowIso = new Date().toISOString();
-      const rows = [];
-      const skipped = [];
-      for (const raw of rawItems) {
-        const name = storefrontCleanText(raw?.name, 200);
-        const price = Number(raw?.price);
-        if (!name || !Number.isFinite(price) || price <= 0) { skipped.push(String(raw?.name || '(missing name)')); continue; }
-        rows.push({
-          store_id: storeId, status: 'active',
-          data: {
-            name, category, priceOverride: Math.round(price * 100) / 100,
-            image: storefrontCleanUrl(raw?.image) || '', description: storefrontCleanText(raw?.description, 2000),
-            quantity: 999, dropship: true, vendor,
-            onlineListed: publish, source: 'dropship_import', importedAt: nowIso,
-          },
-        });
-      }
-      if (!rows.length) return json({ ok: false, error: 'No valid rows -- each needs a name and a price greater than 0', skipped }, 400);
-      let createdRows;
       try {
-        ({ data: createdRows } = await supabaseAdminFetch(env, 'inventory_items', { method: 'POST', headers: { Prefer: 'return=representation' }, body: JSON.stringify(rows) }));
+        const result = await importDropshipBatch(rawItems, {storeId,publish,category,vendor,nowIso}, (path, options) => supabaseAdminFetch(env,path,options));
+        return json({ok:true,...result,published:publish});
       } catch (e) {
         return json({ ok: false, error: 'Import failed: ' + e.message }, 502);
       }
-      return json({ ok: true, imported: Array.isArray(createdRows) ? createdRows.length : rows.length, skipped, published: publish });
     }
 
     if (url.pathname === '/catalog/topps/manifest') {
