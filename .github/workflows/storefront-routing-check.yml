@@ -1,0 +1,36 @@
+name: Inspect storefront routing
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Read route and zone status
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          node <<'NODE'
+          async function get(path) {
+            const res=await fetch('https://api.cloudflare.com/client/v4/'+path,{headers:{Authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN}});
+            const body=await res.json();
+            if(!body.success){console.log(JSON.stringify({path,status:res.status,errors:body.errors}));return null;}
+            return body.result;
+          }
+          (async()=>{
+            const zones=await get('zones?name=themanapocket.com');
+            for(const z of zones||[]){
+              console.log(JSON.stringify({zone:z.id,name:z.name,status:z.status,paused:z.paused,type:z.type,name_servers:z.name_servers}));
+              console.log(JSON.stringify({routes:await get('zones/'+z.id+'/workers/routes')}));
+              for(const name of ['themanapocket.com','www.themanapocket.com']){
+                const records=await get('zones/'+z.id+'/dns_records?name='+name);
+                console.log(JSON.stringify({dns:(records||[]).map(r=>({name:r.name,type:r.type,content:r.content,proxied:r.proxied}))}));
+              }
+            }
+          })().catch(e=>{console.error(e.message);process.exitCode=1;});
+          NODE
