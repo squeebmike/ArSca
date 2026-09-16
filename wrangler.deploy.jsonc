@@ -28,13 +28,39 @@
     }
   ],
   "triggers": {
-    "crons": ["0 */6 * * *"]
+    "crons": [
+      "0 */6 * * *"
+    ]
   },
   "workers_dev": true,
   "routes": [
-    { "pattern": "themanapocket.com/mtg*", "zone_name": "themanapocket.com" },
-    { "pattern": "themanapocket.com/preorder*", "zone_name": "themanapocket.com" },
-    { "pattern": "themanapocket.com/item*", "zone_name": "themanapocket.com" },
-    { "pattern": "themanapocket.com/sitemap-items.xml", "zone_name": "themanapocket.com" }
+    {
+      "pattern": "themanapocket.com/mtg*",
+      "zone_name": "themanapocket.com"
+    },
+    {
+      "pattern": "themanapocket.com/preorder*",
+      "zone_name": "themanapocket.com"
+    },
+    {
+      "pattern": "themanapocket.com/item*",
+      "zone_name": "themanapocket.com"
+    },
+    {
+      "pattern": "themanapocket.com/sitemap-items.xml",
+      "zone_name": "themanapocket.com"
+    },
+    {
+      "pattern": "themanapocket.com/bcw*",
+      "zone_name": "themanapocket.com"
+    },
+    {
+      "pattern": "themanapocket.com/supplies*",
+      "zone_name": "themanapocket.com"
+    },
+    {
+      "pattern": "themanapocket.com/shop*",
+      "zone_name": "themanapocket.com"
+    }
   ]
 }

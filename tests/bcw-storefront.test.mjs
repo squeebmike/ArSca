@@ -1,0 +1,67 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import vm from 'node:vm';
+import {DOMParser} from 'linkedom';
+import {catalogSelection,renderBcwCatalog,renderBcwProduct,productPath,isBcwPublished} from '../scripts/bcw-storefront.mjs';
+import {prepareDropship,refreshDropship} from '../scripts/dropship-import.mjs';
+const source=fs.readFileSync(new URL('../dashboard.html',import.meta.url),'utf8');
+const worker=fs.readFileSync(new URL('../cloudflare-worker-full.js',import.meta.url),'utf8');
+const fn=(src,name)=>{const start=src.indexOf('function '+name+'(');assert.ok(start>=0,name);for(let end=src.indexOf('}',start);end>=0;end=src.indexOf('}',end+1)){const candidate=src.slice(start,end+1);try{new Function(candidate);return candidate;}catch{}}throw Error('Cannot extract '+name);};
+const elements={};
+const ctx=vm.createContext({getLifecycle:(_,fallback)=>fallback,APP_VERSION:'test',document:{getElementById:id=>elements[id]||=( {textContent:'',innerHTML:''})},getUnlinkedTransactionRows:()=>[],getAlertSettings:()=>({}),computeSlowMovers:()=>[],f$:v=>String(v),fd$:v=>String(v),inventoryMarketPrice:i=>i.market,inventoryListPrice:i=>i.priceOverride||i.market});
+for(const name of ['BUILT_IN_ITEM_SIMPLE_FIELDS','BUILT_IN_ITEM_ALIASED_FIELDS']){
+ const start=source.indexOf('const '+name+' = [');const end=source.indexOf('];',start)+2;vm.runInContext(source.slice(start,end),ctx);
+}
+for(const name of ['inventoryIsDropship','readBuiltInSimpleField','mergeBuiltInSimpleField','mapBuiltInItem','builtInDataFromItem','inventoryMatchesStatus','inventoryCostBasis','dedupeLinkedInventoryItems','renderStats']) vm.runInContext(fn(source,name),ctx);
+const incoming=await prepareDropship({sku:'1-TEST',name:'BCW bags',price:15,cost:7,availability:'in_stock',category_paths:['Comics > Bags'],description:'Protect comics',image_urls:['https://example.com/front.jpg']},{storeId:'test',nowIso:new Date().toISOString(),publish:true});
+const mapped=ctx.mapBuiltInItem(incoming);
+assert.equal(mapped.dropship,true);assert.equal(mapped.status,'in_stock');assert.equal(mapped.lifecycle,'in_stock');assert.equal(mapped.supplierCost,7);
+const saved=ctx.builtInDataFromItem(mapped,{name:'Updated product'});
+assert.equal(saved.dropship,true);assert.equal(saved.supplierSku,'1-TEST');assert.equal(saved.supplierCost,7);assert.equal(saved.description,'Protect comics');
+const refreshed=refreshDropship({...incoming,data:saved},{...incoming,data:{...incoming.data,quantity:0}});
+assert.equal(refreshed.quantity,0);assert.equal(refreshed.qty,0);assert.equal(refreshed.name,'Updated product');
+assert.equal(ctx.inventoryMatchesStatus(mapped,'dropship'),true);assert.equal(ctx.inventoryMatchesStatus(mapped,'in_stock'),false);
+ctx.all=[{id:'owned',status:'in_stock',qty:2,market:20,cost:5}, {...mapped,cost:999,market:10000}];
+ctx.renderStats();
+assert.equal(elements.s1.textContent,1);assert.match(elements.s1b.textContent,/^2 units/);assert.equal(elements.s2.textContent,'40');assert.equal(elements.s7.textContent,'40');assert.equal(elements.s5.textContent,'10');
+assert.equal(ctx.inventoryCostBasis({...mapped,cost:999}),0);
+const publicCtx=vm.createContext({storefrontComicDetailFor:()=>null});
+for(const name of ['storefrontCleanText','storefrontCleanUrl','storefrontCategorySlug','storefrontProductTypeSlug','roundUpToDollar','shapeStorefrontItem']) vm.runInContext(fn(worker,name),publicCtx);
+const item=publicCtx.shapeStorefrontItem(incoming);
+assert.equal(item.supplierSku,'1-TEST');assert.equal(item.vendor,'BCW');
+for(const privateField of ['supplierCost','supplierPriceTiers','cost','supplierReviewNotes','notes'])assert.equal(privateField in item,false,privateField+' stays private');
+const selection=catalogSelection([item,{...item,id:'draft',onlineListed:false},{...item,id:'other',vendor:'Other'}],new URLSearchParams());
+assert.equal(selection.total,1);assert.equal(catalogSelection([item],new URLSearchParams('q=1-TEST')).total,1);
+assert.equal(isBcwPublished({...item,inventoryStatus:'archived'}),false);
+const many=Array.from({length:40},(_,n)=>({...item,id:String(n)}));
+assert.equal(catalogSelection(many,new URLSearchParams('page=2')).items.length,4);
+const html=renderBcwProduct({...item,name:'Bags </script><script>alert(1)</script>'});
+const doc=new DOMParser().parseFromString(html,'text/html');
+assert.equal(doc.querySelectorAll('script').length,3,'untrusted title cannot create scripts');
+const schema=JSON.parse(doc.querySelector('script[type="application/ld+json"]').textContent);
+assert.equal(schema[0].sku,'1-TEST');assert.equal(schema[0].offers.price,15);assert.equal(schema[0].offers.availability,'https://schema.org/InStock');
+assert.match(renderBcwProduct({...item,quantity:0}),/schema.org\/OutOfStock/);
+assert.match(renderBcwCatalog(selection),new RegExp(productPath(item)));
+assert.match(renderBcwCatalog(catalogSelection([],new URLSearchParams())),/noindex,follow/);
+assert.match(renderBcwCatalog(catalogSelection([item],new URLSearchParams('q=bags'))),/noindex,follow/);
+assert.equal(productPath({...item,name:'Café + bags'}).split('/').pop(),'cafe-bags');
+// Exercise the real Worker route, with only its database and edge cache mocked.
+const {default:api}=await import('../cloudflare-worker-full.js');
+const originalFetch=globalThis.fetch,originalCaches=globalThis.caches;
+const requests=[];
+globalThis.caches={default:{match:async()=>null,put:async()=>{}}};
+globalThis.fetch=async input=>{requests.push(String(input));return new Response(JSON.stringify([incoming]),{headers:{'Content-Type':'application/json'}});};
+const env={SUPABASE_URL:'https://database.example',SUPABASE_SERVICE_ROLE_KEY:'test-only'},edge={waitUntil:()=>{}};
+try{
+ const res=await api.fetch(new Request('https://themanapocket.com/bcw'),env,edge);
+ assert.equal(res.status,200);assert.match(await res.text(),/BCW bags/);
+ assert.match(requests[0],/store_id=eq\./);assert.match(requests[0],/dropship=eq.true/);
+ const redirect=await api.fetch(new Request('https://themanapocket.com/shop?cat=supplies'),env,edge);
+ assert.equal(redirect.status,301);assert.equal(redirect.headers.get('Location'),'https://themanapocket.com/bcw');
+ const detail=await api.fetch(new Request('https://themanapocket.com'+productPath(item)),env,edge);
+ assert.equal(detail.status,200);assert.match(await detail.text(),/data-bcw-product/);
+ globalThis.fetch=async()=>new Response('failure',{status:503});
+ const failed=await api.fetch(new Request('https://themanapocket.com/bcw'),env,edge);
+ assert.equal(failed.status,503,'database failures cannot look like an empty successful catalog');
+}finally{globalThis.fetch=originalFetch;globalThis.caches=originalCaches;}
+console.log('BCW dashboard round-trip, owned-stock totals, public privacy, catalog pagination, and product SEO tests passed');

@@ -1836,6 +1836,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <span class="inv-filter-group-label">STATUS</span>
     <button class="fb" data-filter-group="status" onclick="setF('status','all',this)">All</button>
     <button class="fb on" data-filter-group="status" onclick="setF('status','in_stock',this)">In Stock</button>
+    <button class="fb" data-filter-group="status" onclick="setF('status','dropship',this)">Dropshipping</button>
     <button class="fb" data-filter-group="status" onclick="setF('status','sold',this)">Sold</button>
     <button class="fb" data-filter-group="status" onclick="setF('status','archived',this)">Archived</button>
     <button class="fb" data-filter-group="status" onclick="setF('status','at_show',this)">At Show</button>
@@ -3129,7 +3130,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <div style="margin-top:10px;border:1px solid rgba(199,125,255,.28);background:rgba(199,125,255,.04);border-radius:8px;padding:10px">
       <div style="font-family:monospace;font-size:8px;color:var(--purple);letter-spacing:2px;margin-bottom:8px">ITEM OWNERSHIP</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-        <div><label>Owned By</label><select id="edit-owner-type" onchange="toggleInventoryOwnerFields()"><option value="store">Store Inventory</option><option value="consignor">Consignor / Another Person</option></select></div>
+        <div><label>Owned By</label><select id="edit-owner-type" onchange="toggleInventoryOwnerFields()"><option value="store">Store Inventory</option><option value="supplier">Dropshipping item (supplier-owned)</option><option value="consignor">Consignor / Another Person</option></select></div>
         <div id="edit-consignor-wrap"><label>Consignor</label><select id="edit-consignor"><option value="">Select a person...</option></select></div>
       </div>
       <div id="edit-owner-note" style="font-family:var(--font-mono);font-size:9px;color:var(--dim);margin-top:7px">Store-owned item. Sale profit belongs to the store.</div>
@@ -5190,7 +5191,9 @@ const LIFECYCLE_LABELS = {
 // accidentally sell something that's actually on hold for someone else).
 // One shared helper for both renderers so this can't drift out of sync
 // between them again.
+function inventoryIsDropship(i={}){ return i.dropship === true || i.raw?.dropship === true || i.ownershipType === 'supplier'; }
 function inventoryRowAvailability(i){
+  if(inventoryIsDropship(i) && !['sold','archived','bundled'].includes(i.status)) return {available:i.status==='in_stock' && Number(i.qty)>0 && (!i.supplierAvailability || i.supplierAvailability==='in_stock') && !['hold','archived','at_show','pulled_ebay'].includes(i.lifecycle),label:'DROPSHIPPING ITEM',color:'var(--purple)'};
   if(i.status !== 'in_stock') return { available:false, label: i.status==='bundled' ? 'IN BUNDLE' : ('SOLD'+(i.channel?' · '+i.channel:'')), color: i.status==='bundled' ? 'var(--gold)' : 'var(--dim)' };
   if(i.lifecycle === 'hold') return { available:false, label:'ON HOLD', color:'var(--gold)' };
   if(i.lifecycle === 'at_show') return { available:false, label:'AT SHOW', color:'var(--gold)' };
@@ -11279,7 +11282,7 @@ function updateDealerStatusBar(){
       drawerChip?.classList.remove('open'); drawerChip?.classList.add('closed');
     }
   }
-  if(invVal) invVal.textContent = (all||[]).filter(i=>i.status==='in_stock').length;
+  if(invVal) invVal.textContent = (all||[]).filter(i=>!inventoryIsDropship(i) && i.status==='in_stock').length;
   if(syncVal) {
     const pending = getSyncQueue().filter(x=>x.status!=='done').length;
     const syncChip = document.getElementById('dsb-sync');
@@ -11366,7 +11369,7 @@ function renderCardView(){
         </div>
         <div class="inv-card-meta">Mkt: ${money.market > 0 ? fd$(money.market) : '—'}${money.cost ? ` · Cost ${fd$(money.cost)}` : ''}</div>
         <div class="inv-card-meta">${inventoryImageSourceLabel(i)}${inventoryIsPriceStale(i) ? ' · stale price' : ''}</div>
-        ${i.qty > 1 ? `<div class="inv-card-meta" style="color:var(--g)">Qty: ${i.qty}</div>` : ''}
+        ${inventoryIsDropship(i) ? '<div class="inv-card-meta" style="color:var(--purple)">DROPSHIPPING ITEM · Supplier stock</div>' : i.qty > 1 ? `<div class="inv-card-meta" style="color:var(--g)">Qty: ${i.qty}</div>` : ''}
         <div class="inv-card-actions">
           ${ins ? `<button class="rab rab-cart" onclick="dashAddToCart('${i.id}')">ADD TO CART</button>` : `<div style="grid-column:1/-1;text-align:center;font-family:monospace;font-size:10px;color:${rowAvail.color};padding:8px">${rowAvail.label}</div>`}
           <button class="rab rab-edit" onclick="openEditModal('${i.id}')">EDIT</button>
@@ -16079,6 +16082,8 @@ const BUILT_IN_ITEM_SIMPLE_FIELDS = [
   // creation default and the storefront Worker's own `!== false` rule --
   // an item with no onlineListed on record at all reads as listed.
   ['onlineListed', true],
+  ['dropship', false, 'bool'], ['vendor',''], ['supplierSku',''], ['supplierAvailability',''],
+  ['supplierCost',0,'num'], ['supplierCheckedAt',''],
 ];
 // BUILT_IN_ITEM_ALIASED_FIELDS: the read side stays hand-written in
 // mapBuiltInItem below (a saved row might use an older key name, or the
@@ -16129,8 +16134,8 @@ function mapBuiltInItem(row){
     qty:Number(d.qty ?? d.quantity ?? d['inventory-count'] ?? 1),
     profit:isSold ? Number(d.profit || (Number(d.salePrice || market || 0) - cost)) : 0,
     priceSource:d.priceSource || d.marketPriceSource || d['price-source'] || '',
-    status:isArchived ? 'archived' : (isSold ? 'sold' : (row.status || d.status || 'in_stock')),
-    lifecycle:getLifecycle(id, isArchived ? 'archived' : (isSold ? 'sold' : (row.status || d.status || 'in_stock'))),
+    status:isArchived ? 'archived' : (isSold ? 'sold' : ((d.dropship && row.status === 'active') ? 'in_stock' : (row.status || d.status || 'in_stock'))),
+    lifecycle:getLifecycle(id, isArchived ? 'archived' : (isSold ? 'sold' : ((d.dropship && row.status === 'active') ? 'in_stock' : (row.status || d.status || 'in_stock')))),
     channel:d.channel || d.saleChannel || '',
     addedAt:d.addedAt || row.created_at || '',
     soldAt:d.soldAt || '',
@@ -16731,7 +16736,7 @@ function dedupeLinkedInventoryItems(items){
   return result;
 }
 function renderStats(){
-  const ins=all.filter(i=>i.status==='in_stock');
+  const ins=all.filter(i=>!inventoryIsDropship(i) && i.status==='in_stock');
   const insForValue=dedupeLinkedInventoryItems(ins);
   const inventorySold=all.filter(i=>i.status==='sold');
   const sol = inventorySold.concat(getUnlinkedTransactionRows(inventorySold));
@@ -16823,7 +16828,7 @@ async function computePulseData(){
   if(openAlerts.length) actions.push({ text:`Reprice ${openAlerts.length} item${openAlerts.length === 1 ? '' : 's'} flagged by a price-sync run`, tab:'alerts' });
 
   const soldAll = (all || []).filter(i => i.status === 'sold' && i.soldAt);
-  const insAll = (all || []).filter(i => i.status === 'in_stock');
+  const insAll = (all || []).filter(i=>!inventoryIsDropship(i) && i.status==='in_stock');
   const nameCount = {};
   soldAll.forEach(i => { nameCount[i.name] = (nameCount[i.name] || 0) + 1; });
   const restockCount = Object.entries(nameCount).filter(([name, count]) => count >= 2 && !insAll.some(i => i.name === name)).length;
@@ -16871,7 +16876,7 @@ async function renderPulse(){
 }
 
 function renderCats(){
-  const ins=all.filter(i=>i.status==='in_stock');
+  const ins=all.filter(i=>!inventoryIsDropship(i) && i.status==='in_stock');
   const cats=getInventoryCategories();
   const catColors=getInventoryCategoryColors();
   const vals = cats.map(c=>dedupeLinkedInventoryItems(ins.filter(i=>i.category===c)).reduce((a,i)=>a+(i.market||0)*(i.qty||1),0));
@@ -16919,7 +16924,7 @@ function renderCats(){
 }
 
 function renderTopVal(){
-  const top=all.filter(i=>i.status==='in_stock'&&i.market>0).sort((a,b)=>b.market-a.market).slice(0,8);
+  const top=all.filter(i=>!inventoryIsDropship(i) && i.status==='in_stock'&&i.market>0).sort((a,b)=>b.market-a.market).slice(0,8);
   const el=document.getElementById('top-val');
   if(!top.length){el.innerHTML='<div class="empty"><div class="empty-t">NO ITEMS</div></div>';return;}
   const max=top[0].market;
@@ -17013,7 +17018,7 @@ function syncConsignmentSaleForInventory(inv,salePrice,soldAt,channel){if(!inv)r
 
 function renderAlerts(){
   renderConsignmentSaleAlerts();
-  const ins=all.filter(i=>i.status==='in_stock');
+  const ins=all.filter(i=>!inventoryIsDropship(i) && i.status==='in_stock');
   // Low stock (qty = 1 and market > $10)
   const low=ins.filter(i=>(i.qty||1)===1&&(i.market||0)>10).sort((a,b)=>b.market-a.market).slice(0,10);
   const lowEl=document.getElementById('low-stock-list');
@@ -17166,7 +17171,7 @@ function inventoryImageSourceLabel(item={}){
   if(inventoryImageUrl(item)) return 'Catalog image';
   return 'No image';
 }
-function inventoryCostBasis(item={}){ return Number(item.cost ?? item.costBasis ?? item.raw?.cost ?? 0) || 0; }
+function inventoryCostBasis(item={}){ if(inventoryIsDropship(item)) return 0; return Number(item.cost ?? item.costBasis ?? item.raw?.cost ?? 0) || 0; }
 function inventoryMarketPrice(item={}){ return Number(item.market ?? item.marketPrice ?? item.rawMarketPrice ?? item.raw?.market ?? 0) || 0; }
 function inventoryMinPrice(item={}){ return Number(item.minPrice ?? item.raw?.minPrice ?? 0) || 0; }
 // The ceiling counterpart to inventoryMinPrice -- "never sell above this."
@@ -17271,6 +17276,7 @@ function inventoryIsPriceStale(item={}){
 // staleness (inventoryIsPriceStale) -- a $0-cost item added yesterday with
 // week-old pricing is "stale priced," not "aged stock," and vice versa.
 function inventoryDaysInStock(item={}){
+  if(inventoryIsDropship(item)) return null;
   const added = item.addedAt || item.raw?.addedAt || item.createdAt;
   if(!added) return null;
   const t = new Date(added).getTime();
@@ -17373,7 +17379,7 @@ function itemsWithBogusSportsCategory(items=all){
     && (i.category === 'Sports Card' || (!STANDARD_INVENTORY_CATEGORIES.includes(i.category) && sportsWord.test(String(i.category || '')))));
 }
 function inventoryHealthSummary(items=all){
-  const inStock = (items || []).filter(i=>i.status === 'in_stock' && i.lifecycle !== 'archived');
+  const inStock = (items || []).filter(i=>!inventoryIsDropship(i) && i.status==='in_stock' && i.lifecycle !== 'archived');
   return {
     total:inStock.length,
     noPhoto:inStock.filter(i=>!inventoryImageUrl(i)).length,
@@ -17522,7 +17528,7 @@ function getOwnerSaleRows(){
   return soldData.concat(getUnlinkedTransactionRows(soldData));
 }
 function ownerAnalyticsData(){
-  const inv = (all || []).filter(i=>i.status === 'in_stock' && i.lifecycle !== 'archived');
+  const inv = (all || []).filter(i=>!inventoryIsDropship(i) && i.status==='in_stock' && i.lifecycle !== 'archived');
   const sold = getOwnerSaleRows();
   const now = new Date();
   const todayKey = now.toDateString();
@@ -17914,7 +17920,7 @@ function computeCategoryHealth(categoryList){
     if(!byCategory.has(key)) byCategory.set(key, { key, revenue:0, cogs:0, profit:0, taxableRevenue:0, exemptRevenue:0, unsoldQty:0, unsoldCost:0, agedQty:0, agedCost:0 });
     return byCategory.get(key);
   };
-  (typeof all !== 'undefined' ? all : []).filter(inventoryItemIsSellable).forEach(item => {
+  (typeof all !== 'undefined' ? all : []).filter(i=>!inventoryIsDropship(i) && inventoryItemIsSellable(i)).forEach(item => {
     const c = getCategory(item.category || 'Uncategorized');
     const qty = inventoryAvailableQuantity(item);
     const cost = Number(item.cost || 0) * qty;
@@ -17971,7 +17977,7 @@ function computeSlowMovers(items, opts={}){
   const thresholdDays = opts.thresholdDays || 90;
   const limit = opts.limit || 25;
   return (items || [])
-    .filter(inventoryItemIsSellable)
+    .filter(i=>!inventoryIsDropship(i) && inventoryItemIsSellable(i))
     .map(item => ({ item, days: inventoryDaysInStock(item) }))
     .filter(x => x.days !== null && x.days >= thresholdDays)
     .map(x => {
@@ -18105,7 +18111,8 @@ function inventoryMatchesStatus(i, status){
   if(status === 'archived') return isArchived;
   if(isArchived) return false; // archived items only ever show under Status=Archived, same as before
   if(status === 'all') return true;
-  if(status === 'in_stock') return i.status === 'in_stock';
+  if(status === 'dropship') return inventoryIsDropship(i) && i.status !== 'sold';
+  if(status === 'in_stock') return i.status === 'in_stock' && !inventoryIsDropship(i);
   if(status === 'sold') return i.status === 'sold';
   if(LIFECYCLE_LABELS[status]) return i.lifecycle === status; // at_show / hold / pulled_ebay
   return true;
@@ -18212,9 +18219,9 @@ function renderTable(){
       <td><span class="dot ${ins?'in_stock':'sold'}"></span><span class="nc" title="${i.tcgCardId?'TCG ID: '+i.tcgCardId:''}" onclick="${researchClick}" style="cursor:pointer">${i.name}${i.isRookie?' <span style="color:var(--gold);font-size:8px">RC</span>':''}${i.tcgCardId?'<span style="font-family:monospace;font-size:7px;color:rgba(0,255,179,.4);margin-left:4px">●</span>':''}${i.isBundle?' <span style="color:var(--gold);font-size:8px">🎁 BUNDLE</span>':''}</span>${invSyncBadgeHtml(i.id)}<div class="sc2" style="margin:5px 0 0 12px">${escHtml([i.consignorName||i.inventoryOwner||'Store owned',i.inventorySku||i.sku||''].filter(Boolean).join(' · '))}</div>${i.status==='bundled'&&i.bundledIntoName?`<div class="sc2" style="margin-top:5px;color:var(--gold)">🎁 In bundle: ${escHtml(i.bundledIntoName)}</div>`:''}</td>
       <td><span class="sc2">${escHtml([i.set,i.variant].filter(Boolean).join(' · ')||'—')}</span><div class="sc2" style="margin-top:5px">${escHtml([i.year,i.condition,i.location].filter(Boolean).join(' · '))}</div>${comicPeople?`<div class="sc2" style="margin-top:5px;color:var(--purple)">${escHtml(comicPeople)}</div>`:''}</td>
       <td><span class="ct ${cat}">${i.category}</span></td>
-      <td style="text-align:center;font-family:var(--font-mono);font-size:11px;color:${(i.qty||1)>1?'var(--g)':'var(--dim)'}">${i.qty||1}</td>
+      <td style="text-align:center;font-family:var(--font-mono);font-size:11px;color:${(i.qty||1)>1?'var(--g)':'var(--dim)'}">${inventoryIsDropship(i)?'Supplier':(i.qty||1)}</td>
       <td class="pp pm">${money.list>0?fd$(money.list):(money.market>0?fd$(money.market):'—')}<br>${money.list>0&&money.market>0?`<span style="font-family:var(--font-mono);font-size:8px;color:var(--dim)">MKT ${fd$(money.market)}</span><br>`:''}${priceSourceBadge(i.priceSource, i.category)}${stale?'<br><span class="inv-warning-pill">STALE</span>':''}</td>
-      <td class="pp pd">${money.cost>0?fd$(money.cost):'<span class="inv-warning-pill">NO COST</span>'}</td>
+      <td class="pp pd">${inventoryIsDropship(i)?'Not owned':money.cost>0?fd$(money.cost):'<span class="inv-warning-pill">NO COST</span>'}</td>
       <td class="${ppc}">${money.cost>0||i.profit?(pft>=0?'+':'')+fd$(pft)+(money.list>0||money.cost>0?' ('+margin+')':''):'—'}</td>
       <td><span style="font-family:var(--font-mono);font-size:9px;color:${rowAvail.color}">${rowAvail.label}</span>${ins&&daysInStock!==null?`<div style="font-family:var(--font-mono);font-size:8px;color:${aged?'var(--red)':'var(--dim)'};margin-top:3px">${daysInStock}d in stock</div>`:''}${aged?'<span class="inv-warning-pill" style="margin-top:3px">AGED</span>':''}</td>
       <td><div class="row-act-v2">
@@ -18234,7 +18241,7 @@ function renderTable(){
     const cell = tr.children[8];
     if(!item || !cell) return;
     const current = item.lifecycle || (item.status === 'sold' ? 'sold' : 'in_stock');
-    cell.innerHTML = `<select class="min" style="width:138px;font-size:9px;padding:6px" onchange="setLifecycle('${item.id}', this.value)">
+    cell.innerHTML = `${inventoryIsDropship(item)?'<div style="color:var(--purple);font-size:10px;margin-bottom:5px">DROPSHIPPING ITEM</div>':''}<select class="min" style="width:138px;font-size:9px;padding:6px" onchange="setLifecycle('${item.id}', this.value)">
       ${Object.entries(LIFECYCLE_LABELS).map(([v,l])=>`<option value="${v}" ${current===v?'selected':''}>${l}</option>`).join('')}
     </select>`;
   });
@@ -25514,9 +25521,9 @@ function applyComicCandidateToEditForm(product){
 
 function consignmentOwnerDirectory(){const map=new Map();(consignorPeople||[]).forEach(p=>{const name=String(p.name||'').trim();if(name)map.set(name.toLowerCase(),{name,contact:p.contact||'',split:Number(p.split||25),personId:p.id||'',stripeOnboardingStatus:p.stripeOnboardingStatus||'not_started',stripeTransfersEnabled:!!p.stripeTransfersEnabled});});(consignItems||[]).forEach(c=>{const name=String(c.owner||'').trim();if(name&&!map.has(name.toLowerCase()))map.set(name.toLowerCase(),{name,contact:c.contact||'',split:Number(c.split||25)});});return [...map.values()].sort((a,b)=>a.name.localeCompare(b.name));}
 function populateInventoryOwnerSelect(item={}){const select=document.getElementById('edit-consignor');if(!select)return;const owners=consignmentOwnerDirectory(),current=item.consignorName||item.inventoryOwner||consignItems.find(c=>c.id===item.consignmentId||c.inventoryId===item.id)?.owner||'';select.innerHTML='<option value="">Select a person...</option>'+owners.map(o=>`<option value="${escHtml(o.name)}">${escHtml(o.name)}${o.contact?' · '+escHtml(o.contact):''}</option>`).join('');if(current&&!owners.some(o=>o.name===current))select.insertAdjacentHTML('beforeend',`<option value="${escHtml(current)}">${escHtml(current)}</option>`);select.value=current;}
-function toggleInventoryOwnerFields(){const type=document.getElementById('edit-owner-type')?.value||'store',wrap=document.getElementById('edit-consignor-wrap'),note=document.getElementById('edit-owner-note');if(wrap)wrap.style.display=type==='consignor'?'':'none';if(note)note.textContent=type==='consignor'?'This item will appear in that person’s consignment inventory. When it sells, a payout alert is created.':'Store-owned item. Sale profit belongs to the store.';}
-function inventoryOwnershipPatch(item={}){const type=document.getElementById('edit-owner-type')?.value||'store',owner=type==='consignor'?(document.getElementById('edit-consignor')?.value||''):'';return {ownershipType:type,inventoryOwner:type==='store'?'Store':owner,consignorName:owner};}
-function syncInventoryOwnershipToConsignment(item,updates){const type=updates.ownershipType||'store',owner=updates.consignorName||'',active=consignItems.find(c=>c.status==='active'&&(c.inventoryId===item.id||c.id===item.consignmentId));if(type==='store'){if(active){active.status='returned';active.returnedAt=new Date().toISOString();active.notes=[active.notes,'Ownership changed to Store in inventory editor'].filter(Boolean).join(' · ');}updates.consignmentId='';saveConsign();if(item.status!=='sold'&&item.lifecycle==='consigned')setLifecycle(item.id,'in_stock',true);return;}if(!owner)return;const profile=consignmentOwnerDirectory().find(o=>o.name===owner)||{name:owner,contact:'',split:25};const c=active||{id:'cs_'+Date.now(),status:'active',addedAt:new Date().toISOString(),soldAt:null,salePrice:null,paidOut:false};Object.assign(c,{item:item.name||'Inventory item',owner,contact:profile.contact||c.contact||'',split:Number(c.split||profile.split||25),price:Number(updates.listPrice||item.listPrice||item.salePrice||item.market||0),marketValue:Number(updates.market||item.market||0),costBasis:Number(updates.cost||item.cost||0),inventoryId:item.id,inventorySku:item.inventorySku||'',status:'active'});if(!active)consignItems.push(c);updates.consignmentId=c.id;saveConsign();if(item.status!=='sold'&&item.lifecycle!=='consigned')setLifecycle(item.id,'consigned',true);}
+function toggleInventoryOwnerFields(){const type=document.getElementById('edit-owner-type')?.value||'store',wrap=document.getElementById('edit-consignor-wrap'),note=document.getElementById('edit-owner-note');if(wrap)wrap.style.display=type==='consignor'?'':'none';if(note)note.textContent=type==='supplier'?'Supplier fulfilled. Excluded from owned-stock quantities, costs and values.':type==='consignor'?'This item will appear in that person’s consignment inventory. When it sells, a payout alert is created.':'Store-owned item. Sale profit belongs to the store.';}
+function inventoryOwnershipPatch(item={}){const type=document.getElementById('edit-owner-type')?.value||'store',owner=type==='consignor'?(document.getElementById('edit-consignor')?.value||''):'';return {ownershipType:type,dropship:type==='supplier',inventoryOwner:type==='supplier'?'Supplier':type==='store'?'Store':owner,consignorName:owner};}
+function syncInventoryOwnershipToConsignment(item,updates){const type=updates.ownershipType||'store',owner=updates.consignorName||'',active=consignItems.find(c=>c.status==='active'&&(c.inventoryId===item.id||c.id===item.consignmentId));if(type!=='consignor'){if(active){active.status='returned';active.returnedAt=new Date().toISOString();active.notes=[active.notes,'Ownership changed to Store in inventory editor'].filter(Boolean).join(' · ');}updates.consignmentId='';saveConsign();if(item.status!=='sold'&&item.lifecycle==='consigned')setLifecycle(item.id,'in_stock',true);return;}if(!owner)return;const profile=consignmentOwnerDirectory().find(o=>o.name===owner)||{name:owner,contact:'',split:25};const c=active||{id:'cs_'+Date.now(),status:'active',addedAt:new Date().toISOString(),soldAt:null,salePrice:null,paidOut:false};Object.assign(c,{item:item.name||'Inventory item',owner,contact:profile.contact||c.contact||'',split:Number(c.split||profile.split||25),price:Number(updates.listPrice||item.listPrice||item.salePrice||item.market||0),marketValue:Number(updates.market||item.market||0),costBasis:Number(updates.cost||item.cost||0),inventoryId:item.id,inventorySku:item.inventorySku||'',status:'active'});if(!active)consignItems.push(c);updates.consignmentId=c.id;saveConsign();if(item.status!=='sold'&&item.lifecycle!=='consigned')setLifecycle(item.id,'consigned',true);}
 
 function setInventoryEditPhoto(src='', source=''){
   const box = document.getElementById('edit-photo-preview');
@@ -25747,7 +25754,7 @@ function openEditModal(id) {
   document.getElementById('edit-link-url').value = item.linkUrl || item.customUrl || '';
   populateInventoryOwnerSelect(item);
   const linkedConsignment=consignItems.find(c=>c.status==='active'&&(c.inventoryId===item.id||c.id===item.consignmentId));
-  document.getElementById('edit-owner-type').value=(item.ownershipType==='consignor'||item.consignorName||linkedConsignment)?'consignor':'store';
+  document.getElementById('edit-owner-type').value=inventoryIsDropship(item)?'supplier':(item.ownershipType==='consignor'||item.consignorName||linkedConsignment)?'consignor':'store';
   if(linkedConsignment)document.getElementById('edit-consignor').value=linkedConsignment.owner||'';
   toggleInventoryOwnerFields();
   document.getElementById('edit-notes').value = item.key_notes || item.notes || '';
@@ -44121,7 +44128,7 @@ function sbIsOwned(card){
   if(!card || !Array.isArray(all) || !all.length) return false;
   // OWNED means "still in stock" -- a sold or archived copy shouldn't keep
   // showing the card as owned in the Set Browser forever.
-  const inStock = all.filter(i => i.status === 'in_stock');
+  const inStock = all.filter(i=>!inventoryIsDropship(i) && i.status==='in_stock');
   if(!inStock.length) return false;
   const tid = String(card.tcgPlayerId || '');
   if(tid && inStock.some(i => String(i.tcgPlayerId || i.tcgplayerId || i.raw?.tcgPlayerId || '') === tid)) return true;
@@ -45206,7 +45213,7 @@ function mtgsbIsOwned(card){
   if(!card || !Array.isArray(all) || !all.length) return false;
   // OWNED means "still in stock" -- a sold or archived copy shouldn't keep
   // showing the card as owned in the Set Browser forever.
-  const inStock = all.filter(i => i.status === 'in_stock');
+  const inStock = all.filter(i=>!inventoryIsDropship(i) && i.status==='in_stock');
   if(!inStock.length) return false;
   const tid = String(card.tcgplayer_id || '');
   if(tid && tid !== 'undefined' && inStock.some(i => String(i.tcgPlayerId || i.tcgplayerId || '') === tid)) return true;

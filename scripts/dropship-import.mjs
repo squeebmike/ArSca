@@ -36,7 +36,7 @@ export async function prepareDropship(raw, options) {
     store_id:storeId, status:'active',
     data:{name,category:clean(options.category || 'Supplies',80),priceOverride:price || 0,image:images[0] || '',photos:images,
       description:clean(raw?.description,10000),quantity:sku ? (availability === 'in_stock' ? 999 : 0) : 999,
-      dropship:true,vendor,onlineListed:publish === true && price>0 && (!sku || availability==='in_stock' && !supplier.supplierReviewNotes),
+      dropship:true,ownershipType:'supplier',inventoryOwner:vendor,vendor,onlineListed:publish === true && price>0 && (!sku || availability==='in_stock' && !supplier.supplierReviewNotes),
       source:'dropship_import',importedAt:nowIso,...supplier}
   };
 }
@@ -48,7 +48,7 @@ export function refreshDropship(existing, incoming) {
   if (Number.isFinite(oldTime) && (!Number.isFinite(newTime) || newTime < oldTime)) throw new Error('Older supplier snapshot; existing item was not changed');
   // Preserve edited title, descriptions, photos, selling price, publication,
   // lifecycle, and all other store fields. Availability gates purchasing.
-  return {...existing.data,...supplier,quantity:incoming.data.quantity};
+  return {...existing.data,...supplier,quantity:incoming.data.quantity,qty:incoming.data.quantity,'inventory-count':incoming.data.quantity};
 }
 export async function importDropshipBatch(rawItems, options, db) {
   const result = { imported:0, created:0, updated:0, skipped:[], failed:[] };

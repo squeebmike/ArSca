@@ -1,3 +1,4 @@
+import { isBcwItem, isBcwPublished, catalogSelection, renderBcwCatalog, renderBcwProduct } from './scripts/bcw-storefront.mjs';
 import { importDropshipBatch } from './scripts/dropship-import.mjs';
 
 /**
@@ -742,6 +743,14 @@ function shapeStorefrontItem(row) {
     // catalog-sourced image still shows up on the public storefront.
     price: Math.max(rowBase, Number(d.minPrice || 0) || 0) + rowSignatureValue, market: rowMarket, image: storefrontPhotos[0] || '',
     photos: storefrontPhotos,
+    vendor: storefrontCleanText(d.vendor || '',80),
+    description: storefrontCleanText(d.description || '',10000),
+    supplierSku: storefrontCleanText(d.supplierSku || d.sku || '',160),
+    supplierAvailability: storefrontCleanText(d.supplierAvailability || '',40),
+    supplierSellingUnit: storefrontCleanText(d.supplierSellingUnit || '',200),
+    supplierUpc: storefrontCleanText(d.supplierUpc || '',80),
+    supplierCategoryPaths: (Array.isArray(d.supplierCategoryPaths)?d.supplierCategoryPaths:[]).slice(0,50).map(v=>storefrontCleanText(v,300)),
+    supplierSpecifications: Object.fromEntries(Object.entries(d.supplierSpecifications && typeof d.supplierSpecifications==='object' && !Array.isArray(d.supplierSpecifications)?d.supplierSpecifications:{}).slice(0,60).map(([k,v])=>[storefrontCleanText(k,80),storefrontCleanText(v,500)])),
     isSealed: !!d.is_sealed, gradingCompany: storefrontCleanText(d.grading_company || d.grader || '', 40),
     isSigned: !!d.is_signed, signedBy: storefrontCleanText(d.signed_by || '', 120), signatureValue: rowSignatureValue,
     // Drop-ship items (vendor-fulfilled, e.g. BCW supplies) are never
@@ -777,6 +786,7 @@ function shapeStorefrontItem(row) {
   return item;
 }
 function isStorefrontItemAvailable(i) {
+  if(i.dropship && i.supplierAvailability && i.supplierAvailability !== 'in_stock') return false;
   // Store report: eBay-only FOC presale placeholder rows (status:'presale',
   // created by /foc/ebay/create-presale, name suffixed " - PRESALE") were
   // showing up on the general public storefront as regular ready-to-ship
@@ -2353,6 +2363,7 @@ function itemDetailSlug(item) {
 }
 
 function renderItemDetailPage(item, canonicalSlug) {
+  if(isBcwItem(item)) return renderBcwProduct(item, '/item/'+encodeURIComponent(item.id)+'/'+canonicalSlug);
   const canonicalPath = `/item/${encodeURIComponent(item.id)}/${canonicalSlug}`;
   const shopHref = `/shop?item=${encodeURIComponent(item.id)}`;
   const priceStr = item.price ? `$${item.price.toFixed(2)}` : '';
@@ -5584,6 +5595,36 @@ export default {
     // bare /item/{id} link or a stale slug from a renamed item never 404s.
     // Either one 301-redirects to the current canonical slug instead of
     // serving duplicate content at multiple URLs for the same item.
+    // Existing Supplies links use /shop?cat=supplies. Keep those entry points working.
+    if (['GET','HEAD'].includes(request.method) && (url.pathname === '/supplies' || url.pathname === '/supplies/' || url.pathname === '/bcw/' || (url.pathname === '/shop' && url.searchParams.get('cat') === 'supplies'))) {
+      return Response.redirect('https://themanapocket.com/bcw',301);
+    }
+    // Other shop requests continue to Webflow's origin through this zone route.
+    if (url.hostname === 'themanapocket.com' && url.pathname.startsWith('/shop')) {
+      const originResponse = await fetch(request);
+      if(request.method !== 'GET' || !originResponse.headers.get('Content-Type')?.includes('text/html')) return originResponse;
+      return new HTMLRewriter().on('body',{element(el){el.append(`<script>document.addEventListener('change',function(e){if(e.target.matches('select.wo-store-control-field')&&String(e.target.value).toLowerCase()==='supplies'){e.stopImmediatePropagation();location.href='/bcw';}},true);document.addEventListener('DOMContentLoaded',function(){var host=document.getElementById('wo-live-shop');if(host&&!document.getElementById('bcw-supplies-link')){var a=document.createElement('a');a.id='bcw-supplies-link';a.href='/bcw';a.textContent='Shop BCW supplies →';a.style.cssText='display:inline-block;margin:18px 0;padding:12px 18px;border:1px solid currentColor;border-radius:8px;font-weight:700';host.before(a);}});</script>`,{html:true});}}).transform(originResponse);
+    }
+    if (url.pathname === '/bcw' && request.method === 'GET') {
+      if (!(env.SUPABASE_URL && (env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SERVICE_KEY))) return new Response('Storefront service unavailable',{status:503});
+      const key = new Request(url.toString(),request);
+      const cached = await caches.default.match(key);
+      if(cached) return cached;
+      const rows=[];
+      for(let offset=0; ; offset+=1000){
+        const result=await supabaseAdminFetch(env, 'inventory_items?store_id=eq.'+encodeURIComponent(ITEM_DETAIL_STORE_ID)+'&data->>dropship=eq.true&data->>vendor=ilike.BCW&select=id,data,status,created_at,updated_at&order=id.asc&limit=1000&offset='+offset).catch(()=>({response:null}));
+        if(!result.response?.ok || offset>=50000) return new Response('Supplies are temporarily unavailable. Please try again shortly.',{status:503,headers:{'Retry-After':'60'}});
+        rows.push(...(result.data||[]));
+        if((result.data||[]).length<1000)break;
+      }
+      const selection=catalogSelection(rows.map(shapeStorefrontItem),url.searchParams);
+      if(selection.page>selection.pages)return new Response('Catalog page not found',{status:404});
+      const response=mtgHtmlResponse(renderBcwCatalog(selection));
+      response.headers.set('Cache-Control','public, max-age=120');
+      ctx.waitUntil(caches.default.put(key,response.clone()));
+      return response;
+    }
+
     const itemDetailMatch = url.pathname.match(/^\/item\/([^/]+)(?:\/([^/]+))?$/);
     if (itemDetailMatch && request.method === 'GET') {
       const itemId = decodeURIComponent(itemDetailMatch[1]);
@@ -5596,7 +5637,7 @@ export default {
       if (!itemSbResponse?.ok) return itemNotFoundPage();
       const itemRow = itemRows?.[0];
       const item = itemRow ? shapeStorefrontItem(itemRow) : null;
-      if (!item || !isStorefrontItemAvailable(item)) return itemNotFoundPage();
+      if (!item || !(isBcwItem(item) ? isBcwPublished(item) : isStorefrontItemAvailable(item))) return itemNotFoundPage();
       // Item points at its own dedicated page (e.g. a limited-run print
       // preorder) -- send everyone straight there instead of rendering a
       // second, competing page for the same product.
@@ -5643,10 +5684,10 @@ export default {
       }
       const urls = sitemapRows
         .map(shapeStorefrontItem)
-        .filter(item => isStorefrontItemAvailable(item) && !item.linkUrl) // items with linkUrl 301 elsewhere -- not a page for Google to index here
+        .filter(item => (isBcwItem(item) ? isBcwPublished(item) : isStorefrontItemAvailable(item)) && !item.linkUrl) // items with linkUrl 301 elsewhere -- not a page for Google to index here
         .map(item => `<url><loc>https://themanapocket.com/item/${mtgEscapeHtml(item.id)}/${mtgEscapeHtml(itemDetailSlug(item))}</loc><lastmod>${mtgEscapeHtml((item.updatedAt || '').slice(0, 10))}</lastmod></url>`)
         .join('');
-      const xml = `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${urls}</urlset>`;
+      const xml = `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>https://themanapocket.com/bcw</loc></url>${urls}</urlset>`;
       const response = new Response(xml, { headers: { 'Content-Type': 'application/xml;charset=UTF-8' } });
       response.headers.set('Cache-Control', 'public, max-age=1800');
       ctx.waitUntil(caches.default.put(cacheKey, response.clone()));
