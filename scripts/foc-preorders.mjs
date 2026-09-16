@@ -308,6 +308,14 @@ function ebayPresaleFields(row, presale, deps, safeBusinessDays) {
   const listed = !!presale && presale.originalQty > 0;
   const soldQty = listed ? Math.max(0, presale.originalQty - presale.remainingQty) : 0;
   const availableQty = listed ? presale.remainingQty : 0;
+  // Only set for a multi-cover "group/variation" listing (single-cover
+  // presale listings never get an inventory_item_group at all). Surfaced
+  // so the Cover Wall's health panel can flag a live group listing that
+  // has never had its per-cover photo binding repaired/verified -- see
+  // repairFocEbayGroupPhotos in foc-dashboard.js and the recurring photo-
+  // binding bug class it exists to catch.
+  const groupKey = presale?.groupKey || '';
+  const groupPhotosRepairedAt = presale?.groupPhotosRepairedAt || '';
   if (!onSaleDate || !Number.isFinite(onSaleDate.getTime())) {
     return { ebayPresaleStatus:'ACTION_REQUIRED', ebayPresaleNote:'No on-sale date on this SKU', ebayListed:listed, ebayPresold:soldQty, ebayAvailable:availableQty };
   }
@@ -315,7 +323,7 @@ function ebayPresaleFields(row, presale, deps, safeBusinessDays) {
     return { ebayPresaleStatus:'RELEASED', ebayListed:listed, ebayPresold:soldQty, ebayAvailable:availableQty };
   }
   if (listed) {
-    return { ebayPresaleStatus:availableQty > 0 ? 'LISTED' : 'SOLD_OUT', ebayListed:true, ebayPresold:soldQty, ebayAvailable:availableQty };
+    return { ebayPresaleStatus:availableQty > 0 ? 'LISTED' : 'SOLD_OUT', ebayListed:true, ebayPresold:soldQty, ebayAvailable:availableQty, ebayInventoryItemGroupKey:groupKey, ebayGroupPhotosRepairedAt:groupPhotosRepairedAt };
   }
   const eligibleDate = deps.addBusinessDays(onSaleDate, -safeBusinessDays);
   return {
@@ -403,8 +411,12 @@ async function buildCycleCatalog(db, cycle, includeAdmin = false, env, deps, sto
     const remainingQty = row.status === 'sold' ? 0 : Number(d.qty ?? d.quantity ?? 0);
     const skuIds = isBundle ? d.focBundleSkuIds : [d.focSkuId];
     for (const skuId of skuIds) {
-      const prior = presaleBySkuId.get(skuId) || { originalQty:0, remainingQty:0 };
-      presaleBySkuId.set(skuId, { originalQty:prior.originalQty + originalQty, remainingQty:prior.remainingQty + remainingQty });
+      const prior = presaleBySkuId.get(skuId) || { originalQty:0, remainingQty:0, groupKey:'', groupPhotosRepairedAt:'' };
+      presaleBySkuId.set(skuId, {
+        originalQty:prior.originalQty + originalQty, remainingQty:prior.remainingQty + remainingQty,
+        groupKey:prior.groupKey || d.ebayInventoryItemGroupKey || '',
+        groupPhotosRepairedAt:prior.groupPhotosRepairedAt || d.ebayGroupPhotosRepairedAt || '',
+      });
     }
   }
   const ebaySafeBusinessDays = includeAdmin && env && deps ? await deps.getEbayPresaleSafeBusinessDays(env, storeId) : 35;

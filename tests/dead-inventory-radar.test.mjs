@@ -21,6 +21,11 @@ assert.match(fn, /if\(floor > 0 && price > floor \+ 0\.01\) return \{ action:'MA
 assert.match(fn, /if\(price >= 40\) return \{ action:'EBAY OFFER'/, 'high-value stale stock must suggest a dedicated eBay listing');
 assert.match(fn, /if\(price < 8 && days >= 365\) return \{ action:'CONVENTION BOX'/, 'cheap, very old stock must suggest bulk clearance over individual sale attempts');
 assert.match(fn, /whatnotCategories\.includes\(item\.category\)\) return \{ action:'RUN ON WHATNOT'/, 'single-copy TCG/sports singles must suggest Whatnot');
+// Comic isn't a Whatnot category and used to fall through every other
+// rule straight to HOLD unless it cleared the full $40 eBay bar -- a
+// dedicated fallback routes moderately-priced comics to eBay too instead
+// of no suggestion at all.
+assert.match(fn, /ebayFallbackCategories\.includes\(item\.category\) && price >= 8\) return \{ action:'EBAY OFFER'/, 'a comic under the general $40 eBay price bar must still get an eBay suggestion instead of falling through to HOLD');
 assert.match(fn, /return \{ action:'HOLD'/, 'must have a fallback when no rule clearly applies, not throw or return undefined');
 assert.doesNotMatch(fn, /view|View|viewCount/, 'must not fabricate a view-count signal that isn\'t tracked anywhere in this app');
 
@@ -50,21 +55,27 @@ function suggestDeadStockAction(item){
   const floor = item.floor || 0;
   const days = item.days || 0;
   const whatnotCategories = ['Pokemon TCG','Magic: The Gathering','One Piece TCG','Yu-Gi-Oh!','Disney Lorcana','Sports'];
+  const ebayFallbackCategories = ['Comic'];
   if(qty > 1) return { action:'BUNDLE' };
   if(floor > 0 && price > floor + 0.01) return { action:'MARKDOWN' };
   if(price >= 40) return { action:'EBAY OFFER' };
   if(price < 8 && days >= 365) return { action:'CONVENTION BOX' };
   if(whatnotCategories.includes(item.category)) return { action:'RUN ON WHATNOT' };
+  if(ebayFallbackCategories.includes(item.category) && price >= 8) return { action:'EBAY OFFER' };
   return { action:'HOLD' };
 }
 
 assert.equal(suggestDeadStockAction({ qty:3, price:20, category:'Comic' }).action, 'BUNDLE', 'multiple copies -> BUNDLE regardless of category/price');
 assert.equal(suggestDeadStockAction({ qty:1, price:25, floor:15, category:'Comic' }).action, 'MARKDOWN', 'above floor -> MARKDOWN');
-assert.equal(suggestDeadStockAction({ qty:1, price:15, floor:15, category:'Comic' }).action, 'HOLD', 'sitting exactly AT the floor must not falsely suggest markdown');
+assert.equal(suggestDeadStockAction({ qty:1, price:10, floor:10, category:'Supplies' }).action, 'HOLD', 'sitting exactly AT the floor must not falsely suggest markdown');
 assert.equal(suggestDeadStockAction({ qty:1, price:50, floor:0, category:'Comic' }).action, 'EBAY OFFER', 'high value with no floor set -> EBAY OFFER');
 assert.equal(suggestDeadStockAction({ qty:1, price:5, days:400, category:'Comic' }).action, 'CONVENTION BOX', 'cheap and 365+ days -> CONVENTION BOX');
-assert.equal(suggestDeadStockAction({ qty:1, price:5, days:200, category:'Comic' }).action, 'HOLD', 'cheap but under a year old -> not yet CONVENTION BOX');
 assert.equal(suggestDeadStockAction({ qty:1, price:20, category:'Pokemon TCG' }).action, 'RUN ON WHATNOT', 'single-copy TCG in the mid-price range -> Whatnot');
 assert.equal(suggestDeadStockAction({ qty:1, price:20, category:'Supplies' }).action, 'HOLD', 'non-collectible category falls through to HOLD, not a false Whatnot suggestion');
+// Comic eBay fallback: below the general $40 bar and not old/cheap enough
+// for CONVENTION BOX, but still worth a dedicated eBay listing instead of
+// a no-op HOLD.
+assert.equal(suggestDeadStockAction({ qty:1, price:15, days:200, category:'Comic' }).action, 'EBAY OFFER', 'a moderately-priced comic under the general $40 bar must still get an eBay suggestion, not HOLD');
+assert.equal(suggestDeadStockAction({ qty:1, price:5, days:200, category:'Comic' }).action, 'HOLD', 'a comic under the $8 eBay-fallback floor and too new for CONVENTION BOX still falls through to HOLD');
 
 console.log('Dead Inventory Radar functional checks passed');

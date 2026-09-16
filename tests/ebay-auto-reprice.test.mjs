@@ -17,11 +17,24 @@ assert.match(worker, /async function ebayReviseOfferPrice\(env, offerId, newPric
 assert.doesNotMatch(worker, /ebayReviseOfferPrice[\s\S]{0,2000}?buildEbayInventoryItemBody/, 'auto-reprice must never call buildEbayInventoryItemBody (would touch title/condition/aspects/images)');
 assert.match(worker, /const body = buildEbayOfferBody\(\{[\s\S]*?description: offer\.listingDescription,\s*\n\s*price: newPrice,/, 'auto-reprice must build the offer body from the live offer, changing only price');
 
+// eBay's offer PUT is a full replace -- any field read from the live offer
+// but not threaded back into buildEbayOfferBody gets silently wiped from
+// the listing by the very first auto-reprice drop. Assert both the price
+// revise and the quantity revise carry fulfillmentPolicyId and
+// storeCategoryNames through from the GET into the PUT.
+for (const fnName of ['ebayReviseOfferPrice', 'ebayReviseOfferQuantity']) {
+  const fnMatch = worker.match(new RegExp(`async function ${fnName}\\([^)]*\\) \\{[\\s\\S]*?\\n\\}`));
+  assert.ok(fnMatch, `missing ${fnName}`);
+  const fnBody = fnMatch[0];
+  assert.match(fnBody, /fulfillmentPolicyId: offer\.listingPolicies\?\.fulfillmentPolicyId \|\| '',/, `${fnName} must carry the live offer's fulfillmentPolicyId through to the PUT, or auto-reprice silently reverts the listing's shipping policy`);
+  assert.match(fnBody, /storeCategoryNames: offer\.storeCategoryNames \|\| \[\],/, `${fnName} must carry the live offer's storeCategoryNames through to the PUT`);
+}
+
 console.log('eBay auto-reprice safety-boundary checks passed');
 
 // ── Scheduled job: opt-in per store, real guardrails, resilient ──────────
 assert.match(worker, /async function runScheduledEbayReprice\(env\) \{/, 'missing runScheduledEbayReprice');
-assert.match(worker, /ctx\.waitUntil\(Promise\.all\(\[runScheduledDealScans\(env\), runScheduledEbayReprice\(env\)\]\)\)/, 'runScheduledEbayReprice must be wired into the scheduled() cron handler alongside the existing deal scan job');
+assert.match(worker, /ctx\.waitUntil\(Promise\.all\(\[runScheduledDealScans\(env\), runScheduledEbayReprice\(env\), runScheduledEbayOrderSync\(env\)\]\)\)/, 'runScheduledEbayReprice must be wired into the scheduled() cron handler alongside the existing deal scan (and, later, order sync) jobs');
 assert.match(worker, /const cfg = settingsRows\?\.\[0\]\?\.receipt_settings\?\.ebayAutoReprice;\s*\n\s*if \(!cfg \|\| !cfg\.enabled\) continue;/, 'auto-reprice must be opt-in per store, skipped entirely when not explicitly enabled');
 assert.match(worker, /if \(repriceCount >= maxDrops\) \{ summary\.skipped\+\+; continue; \}/, 'auto-reprice must respect a max-drops-per-item cap');
 assert.match(worker, /const floor = cost > 0 \? cost \* \(1 \+ minMarginPct \/ 100\) : 0;/, 'auto-reprice must compute a cost-based price floor');

@@ -2118,6 +2118,24 @@ body.show-mode .inv-sync-badge{display:none;}
     <div id="ebay-bulk-results" style="margin-top:10px;display:grid;gap:8px"></div>
   </div>
 
+  <div class="panel" id="backoffice-ebay-bulk-end-panel" style="margin-top:4px;margin-bottom:14px">
+    <div class="ph">EBAY BULK END LISTINGS <span id="ebay-bulk-end-count" style="font-size:9px;color:var(--dim)"></span></div>
+    <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);margin-bottom:10px;line-height:1.55">
+      Check listings below, then END SELECTED LISTINGS to withdraw them from eBay in one pass. Already-sold copies are unaffected -- this only stops further eBay sales for the item.
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px">
+      <button class="hbtn" onclick="renderEbayBulkEndList()">LOAD LISTED ITEMS</button>
+      <button class="hbtn" onclick="toggleEbayBulkEndSelectAll(true)">SELECT ALL</button>
+      <button class="hbtn" onclick="toggleEbayBulkEndSelectAll(false)">SELECT NONE</button>
+    </div>
+    <input id="ebay-bulk-end-search" placeholder="Search live eBay listings by name, set, or category..." oninput="renderEbayBulkEndListDebounced()" style="width:100%;margin-bottom:8px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:8px;border-radius:6px;box-sizing:border-box;font-family:var(--font-mono);font-size:11px">
+    <div id="ebay-bulk-end-list" style="display:grid;gap:6px;max-height:360px;overflow-y:auto;margin-bottom:10px">
+      <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);padding:10px;border:1px dashed var(--border);border-radius:8px;text-align:center">Click LOAD LISTED ITEMS to see items currently live on eBay.</div>
+    </div>
+    <button class="hbtn" style="width:100%;padding:12px;background:rgba(255,77,109,.12);border-color:rgba(255,77,109,.35);color:var(--red)" onclick="submitEbayBulkEnd()">END SELECTED LISTINGS</button>
+    <div id="ebay-bulk-end-status" style="display:none;margin-top:10px;padding:10px;border-radius:6px;font-family:monospace;font-size:10px;text-align:center"></div>
+  </div>
+
   <div class="panel" id="backoffice-system-panel" style="margin-top:4px;margin-bottom:14px">
     <div class="ph">SYSTEM / BACKUP <span id="system-health-status" style="font-size:9px;color:var(--dim)">ready</span></div>
     <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);margin-bottom:10px;line-height:1.55">
@@ -5313,6 +5331,7 @@ async function saveVendorProfile(profile){
       ebayDescriptionTemplate:next.ebayDescriptionTemplate || '',
       ebayDescriptionTemplates:next.ebayDescriptionTemplates || {},
       ebayAutoReprice:next.ebayAutoReprice || {},
+      ebayAutoPromoteListings:next.ebayAutoPromoteListings || {},
       // Store request: /foc/ebay/convert-to-instock needs to know which
       // real eBay shipping policy to switch a listing to once it's out of
       // presale. receipt_settings is a full-replace write from BOTH this
@@ -6030,6 +6049,7 @@ function savePaymentSettings(settings){
       ebayDescriptionTemplate:next.ebayDescriptionTemplate || '',
       ebayDescriptionTemplates:next.ebayDescriptionTemplates || {},
       ebayAutoReprice:next.ebayAutoReprice || {},
+      ebayAutoPromoteListings:next.ebayAutoPromoteListings || {},
       // Store request: /foc/ebay/convert-to-instock needs to know which
       // real eBay shipping policy to switch a listing to once it's out of
       // presale. receipt_settings is a full-replace write from BOTH this
@@ -6883,6 +6903,11 @@ function renderVendorProfilePanel(){
         <button class="hbtn" onclick="saveEbayAutoRepriceSettings()">SAVE AUTO-REPRICE SETTINGS</button>
         <span id="ebay-reprice-status" style="font-family:var(--font-mono);font-size:9px;color:var(--dim)"></span>
       </div>
+    </div>
+    <div style="margin-top:14px;padding:14px;border:1px solid var(--border);border-radius:10px;background:var(--surf2)">
+      <div style="font-family:'Orbitron',monospace;font-size:11px;color:var(--gold);margin-bottom:7px">AUTO-PROMOTE NEW LISTINGS</div>
+      ${ebayAutoPromoteListingsSettingsHtml(p)}
+      <button class="hbtn" onclick="saveEbayAutoPromoteListingsSettings()">SAVE AUTO-PROMOTE SETTINGS</button>
     </div>`;
   loadEbayRepriceStatus();
   loadEbayNormalPolicyOptions(p.ebayNormalFulfillmentPolicyId || '');
@@ -6949,6 +6974,23 @@ async function loadEbayRepriceStatus(){
     if(!s) { el.textContent = 'No auto-reprice run yet'; return; }
     el.textContent = `Last run ${new Date(s.ranAt).toLocaleString()} · ${s.repriced} repriced · ${s.skipped} skipped${s.errors ? ' · ' + s.errors + ' errors' : ''}`;
   } catch(e) { /* best-effort status line, not worth surfacing an error for */ }
+}
+
+// Store gap: Promoted Listings only ever got added to a listing manually,
+// one at a time -- a freshly published item got no visibility boost until
+// someone noticed and added it by hand. Off by default like auto-reprice:
+// this spends real Cost Per Sale ad budget on every future sale of every
+// new listing, so it must be a deliberate opt-in, never a silent default.
+function ebayAutoPromoteListingsSettingsHtml(p){
+  const cfg = { enabled:false, ...(p.ebayAutoPromoteListings || {}) };
+  return `<label style="display:flex;align-items:center;gap:8px;font-family:var(--font-mono);font-size:11px;margin-bottom:4px"><input id="eap-enabled" type="checkbox" ${cfg.enabled?'checked':''}> Auto-add new listings to my active Promoted Listings campaign</label>
+    <div style="font-family:var(--font-mono);font-size:9px;color:var(--dim);margin-bottom:10px">Only acts when you have exactly one active Cost Per Sale campaign running -- spends real ad budget on every sale of a newly listed item. Manage campaigns under POS Tools → eBay.</div>`;
+}
+
+function saveEbayAutoPromoteListingsSettings(){
+  const ebayAutoPromoteListings = { enabled: !!document.getElementById('eap-enabled')?.checked };
+  saveVendorProfile({ ebayAutoPromoteListings });
+  toast_dash(ebayAutoPromoteListings.enabled ? 'Auto-promote new listings enabled' : 'Auto-promote settings saved');
 }
 
 function ebayShippingLineEditorHtml(key, label, p){
@@ -15315,7 +15357,7 @@ async function printEbayLabel(shipmentId, format){
 // estimates, not exact -- actual rates vary by category/store tier.
 const EXTERNAL_SALE_FEE_DEFAULTS = {
   Whatnot: { pct: 10.9, flat: 0.30, note: '8% commission + 2.9% payment processing + $0.30 flat (approx combined -- lower for electronics/coins)' },
-  eBay: { pct: 13.25, flat: 0, note: 'Typical eBay final value fee -- varies by category and store subscription' },
+  eBay: { pct: 13.25, flat: 0.30, note: 'Typical eBay final value fee + ~$0.30 fixed per-order fee -- varies by category and store subscription' },
   Mercari: { pct: 10, flat: 0, note: 'Approximate -- confirm your actual rate' },
   Poshmark: { pct: 20, flat: 0, note: 'Approximate -- confirm your actual rate' },
   'Facebook Marketplace': { pct: 5, flat: 0.40, note: 'Approximate shipped-order fee -- local pickup is usually free' },
@@ -16001,6 +16043,13 @@ const BUILT_IN_ITEM_SIMPLE_FIELDS = [
   // preserved-but-not-updatable via the ...item.raw spread in
   // builtInDataFromItem), so recomputing it had nowhere to actually save.
   ['profit',0,'num'],
+  // Escape hatch for itemsWithFeelessEbayProfit below: a legitimately
+  // fee-free eBay sale (a zero-fee promo listing, or a row someone already
+  // hand-corrected that happens to still match the fee-less-profit shape)
+  // would otherwise get its profit silently "corrected" by
+  // backfillEbayProfitFees, subtracting a fee that was never actually
+  // charged. Set once, it permanently excludes that row from the check.
+  ['ebayFeeExempt',false,'bool'],
   // eBay description-template detail fields (see EBAY_TEMPLATE_EXTRA_FIELDS
   // below, which drives both the edit-modal "More Listing Details" inputs
   // and the {token} list in computeEbayListingFields off this same list of
@@ -17336,13 +17385,31 @@ async function backfillPrintRunFromName(){
 // certainly never had a fee deducted, since eBay always charges one.
 function itemsWithFeelessEbayProfit(items=all){
   return (items || []).filter(i => i.status === 'sold' && i.channel === 'eBay' && Number(i.salePrice || 0) > 0
-    && Math.abs(Number(i.profit || 0) - (Number(i.salePrice || 0) - Number(i.cost || 0))) < 0.01);
+    && Math.abs(Number(i.profit || 0) - (Number(i.salePrice || 0) - Number(i.cost || 0))) < 0.01
+    // Escape hatch: a legitimately fee-free sale (zero-fee promo listing,
+    // or a row already hand-corrected) can still match the shape above --
+    // once marked exempt, it must never be auto-"corrected" again.
+    && !i.ebayFeeExempt);
 }
 async function backfillEbayProfitFees(){
   const matches = itemsWithFeelessEbayProfit();
   if(!matches.length){ toast_dash('No eBay sales found with a missing fee deduction'); return; }
   const pct = EXTERNAL_SALE_FEE_DEFAULTS.eBay.pct;
-  if(!confirm(`Found ${matches.length} eBay sale${matches.length===1?'':'s'} recorded with no eBay fee deducted from profit. Recompute profit for all of them now using the standard ${pct}% eBay fee?`)) return;
+  // Store risk: this used to apply to every match with only a bare count
+  // in the confirm dialog -- a legitimately fee-free sale that happened to
+  // match the shape got silently "corrected" right along with real ones,
+  // with nothing to catch it before the write. Listing the actual items
+  // and dollar amounts here lets staff eyeball it and cancel if something
+  // looks wrong (a promo/zero-fee sale in particular) before it applies to
+  // all of them at once. Permanently excluding a specific sale requires
+  // setting ebayFeeExempt on that row (e.g. via CSV import/bulk edit).
+  const preview = matches.slice(0, 10).map(i => {
+    const fee = Math.round(Number(i.salePrice || 0) * (pct / 100) * 100) / 100;
+    const newProfit = Number(i.salePrice || 0) - Number(i.cost || 0) - fee;
+    return `- ${i.name || i.id}: sold $${Number(i.salePrice||0).toFixed(2)}, profit $${Number(i.profit||0).toFixed(2)} -> $${newProfit.toFixed(2)} (fee $${fee.toFixed(2)})`;
+  }).join('\n');
+  const more = matches.length > 10 ? `\n...and ${matches.length - 10} more` : '';
+  if(!confirm(`Found ${matches.length} eBay sale${matches.length===1?'':'s'} recorded with no eBay fee deducted from profit. Recompute profit for all of them now using the standard ${pct}% eBay fee?\n\n${preview}${more}\n\nIf any of these were genuinely fee-free (e.g. a promo listing), cancel and flag that item as eBay-fee-exempt first.`)) return;
   let updated = 0;
   for(const item of matches){
     const fee = Math.round(Number(item.salePrice || 0) * (pct / 100) * 100) / 100;
@@ -17776,7 +17843,7 @@ function renderReportsResults(result, groupBy){
       <div class="owner-mini-panel">
         <div class="ph">SLOW MOVERS / DEAD STOCK <span style="font-size:9px;color:var(--dim)">in stock 90+ days, worst cash-tied-up first</span> <a class="ph-action" onclick="openBundleBrainModal()">🧠 Bundle Brain →</a></div>
         ${slowMovers.length ? `<div class="tbl-wrap" style="margin-top:6px"><table><thead><tr><th>ITEM</th><th>CATEGORY</th><th style="text-align:right">DAYS</th><th style="text-align:right">QTY</th><th style="text-align:right">CASH TIED UP</th><th style="text-align:right">LIST PRICE</th><th>SUGGESTED ACTION</th><th></th></tr></thead><tbody>
-          ${slowMovers.map(s => `<tr><td>${escHtml(s.name)}</td><td>${escHtml(s.category)}</td><td style="text-align:right">${s.days}</td><td style="text-align:right">${s.qty}</td><td style="text-align:right">${fd$(s.cashTiedUp)}</td><td style="text-align:right">${fd$(s.listPrice)}</td><td><span title="${escHtml(s.actionReason)}" style="font-family:monospace;font-size:9px;font-weight:700;color:var(--gold);border-bottom:1px dotted var(--gold);cursor:help">${escHtml(s.action)}</span></td><td><button class="ra rab-edit" onclick="openEditModal('${s.id}')">EDIT</button></td></tr>`).join('')}
+          ${slowMovers.map(s => `<tr><td>${escHtml(s.name)}</td><td>${escHtml(s.category)}</td><td style="text-align:right">${s.days}</td><td style="text-align:right">${s.qty}</td><td style="text-align:right">${fd$(s.cashTiedUp)}</td><td style="text-align:right">${fd$(s.listPrice)}</td><td>${slowMoverActionCellHtml(s)}</td><td><button class="ra rab-edit" onclick="openEditModal('${s.id}')">EDIT</button></td></tr>`).join('')}
         </tbody></table></div>` : `<div class="empty"><div class="empty-t">Nothing has been sitting 90+ days -- stock is turning over</div></div>`}
       </div>
     </div>`;
@@ -17888,6 +17955,27 @@ function computeSlowMovers(items, opts={}){
     .slice(0, limit);
 }
 
+// Store gap: the SUGGESTED ACTION cell was plain static text -- reading
+// "BUNDLE" or "EBAY OFFER" gave staff no way to actually act on it from
+// here, only a separate EDIT button. Both suggestions map onto the exact
+// same one-click action already in this dashboard: opening the eBay
+// listing modal, which already defaults QTY to the item's full on-hand
+// count (see qtyVal in openEbayFromDash) -- so "combine into one lot" for
+// a multi-copy BUNDLE row is just listing all N copies as one eBay
+// listing with quantity N, no separate multi-item Bundle Builder flow
+// needed (that tool is for combining DIFFERENT items, a different shape
+// of problem than "list my N copies of this one card together").
+const SLOW_MOVER_ACTION_HANDLERS = { BUNDLE: 'openEbayFromDash', 'EBAY OFFER': 'openEbayFromDash' };
+function slowMoverActionCellHtml(s){
+  const handler = SLOW_MOVER_ACTION_HANDLERS[s.action];
+  const label = escHtml(s.action);
+  const reason = escHtml(s.actionReason);
+  if(!handler){
+    return `<span title="${reason}" style="font-family:monospace;font-size:9px;font-weight:700;color:var(--gold);border-bottom:1px dotted var(--gold);cursor:help">${label}</span>`;
+  }
+  return `<span title="${reason} -- click to open the eBay listing form" style="font-family:monospace;font-size:9px;font-weight:700;color:var(--gold);border-bottom:1px dotted var(--gold);cursor:pointer" onclick="${handler}('${s.id}')">${label} →</span>`;
+}
+
 // Dead Inventory Radar: Slow Movers says WHAT is stuck; this says what to
 // DO about it. Deterministic, explainable rules built only from data this
 // app actually has (quantity on hand, current price vs. your own set
@@ -17899,11 +17987,20 @@ function suggestDeadStockAction(item){
   const floor = inventoryMinPrice(item);
   const days = inventoryDaysInStock(item) || 0;
   const whatnotCategories = ['Pokemon TCG','Magic: The Gathering','One Piece TCG','Yu-Gi-Oh!','Disney Lorcana','Sports'];
+  // Comics aren't a Whatnot category above (no live-auction audience for
+  // single back-issues) and used to need the full $40 EBAY OFFER bar to
+  // get any suggestion at all -- a single-copy $8-$39.99 comic fell
+  // through every other rule straight to a no-op HOLD, which is exactly
+  // the inventory this tool exists to act on. FOC's own eBay presale flow
+  // already lists plenty of books well under $40, so comics get their own
+  // lower bar instead of needing the general $40 price floor.
+  const ebayFallbackCategories = ['Comic'];
   if(qty > 1) return { action:'BUNDLE', reason:`${qty} copies on hand -- combine into one lot instead of selling one at a time` };
   if(floor > 0 && price > floor + 0.01) return { action:'MARKDOWN', reason:`Still above your own floor ($${floor.toFixed(2)}) -- move it down toward that` };
   if(price >= 40) return { action:'EBAY OFFER', reason:'High enough value to be worth a dedicated eBay listing with Best Offer enabled' };
   if(price < 8 && days >= 365) return { action:'CONVENTION BOX', reason:'Low value and over a year old -- bulk clearance beats individual sale attempts' };
   if(whatnotCategories.includes(item.category)) return { action:'RUN ON WHATNOT', reason:'Single-copy collectible -- a live audience often outperforms a static listing' };
+  if(ebayFallbackCategories.includes(item.category) && price >= 8) return { action:'EBAY OFFER', reason:'Comics sell better as a dedicated eBay listing than sitting on a shelf, even under the general $40 bar' };
   return { action:'HOLD', reason:'No clear signal yet -- keep an eye on it' };
 }
 
@@ -22853,11 +22950,35 @@ function clearEbayCatalogMatch(){
   const st = document.getElementById('dash-eb-epid-status'); if(st) st.textContent = 'optional -- not required to list';
 }
 
+// Store gap: computeEbayListingFields' own comments call out Player/Team/
+// Auto/Patch/RC as the highest-value eBay search (Cassini) terms for
+// sports cards, but nothing ever warned staff when one was about to
+// publish with those blank -- a listing with no Player filled in is far
+// harder for a buyer to find at all. Non-blocking (a real reason to list
+// without one exists, e.g. an unlicensed/team-set card) -- just a
+// confirm() before publish, same pattern as other "are you sure" checks
+// in this flow.
+function ebayMissingHighValueAspectsWarning(payload){
+  if(!payload || !payload.sport) return ''; // only applies to sports cards
+  const missing = [];
+  if(!payload.player) missing.push('Player');
+  if(!payload.team) missing.push('Team');
+  if(!missing.length) return '';
+  return `This sports card listing is missing ${missing.join(' and ')} -- Player/Team are among the highest-value eBay search terms for sports cards and this listing will be much harder for buyers to find without ${missing.length>1?'them':'it'}. List anyway?`;
+}
+
 async function submitDashboardEbayListing(id){
   const item=all.find(i=>i.id===id); if(!item) return;
   const status=document.getElementById('dash-eb-status');
   const { payload, error } = collectDashboardEbayFormPayload(item);
   if(error){ toast_dash(error); return; }
+  const aspectsWarning = ebayMissingHighValueAspectsWarning(payload);
+  if(aspectsWarning && !confirm(aspectsWarning)) return;
+  // Lets the Worker refuse a duplicate create for this exact inventory row
+  // (double-click, retry after a slow/failed response) instead of relying
+  // solely on the UI showing CREATE vs UPDATE, which can't see a listing
+  // that was just created a moment ago in another tab/device.
+  payload.itemId = item.supabaseRowId || item.id;
   status.style.display='block'; status.style.color='var(--gold)'; status.style.border='1px solid rgba(255,209,102,.25)'; status.style.background='rgba(255,209,102,.06)'; status.textContent='Creating eBay listing...';
   try{
     const res=await storeWorkerFetch('/ebay/list',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
@@ -23005,6 +23126,98 @@ function toggleEbayBulkSelectAll(checked){
   renderEbayBulkCount();
 }
 
+// Store gap: bulk LISTING (create) existed above, but ending a run of live
+// eBay listings (e.g. a dead-stock cleanup pass) had to be done one item
+// at a time, each its own "MANAGE EBAY LISTING" -> END click. Mirrors the
+// bulk-listing panel's own pattern (selection Set, debounced search,
+// render cap) against the opposite item set -- currently-listed items,
+// not listable ones.
+let ebayBulkEndSelectedIds = new Set();
+
+function ebayBulkEndableItems(){
+  return all.filter(i => i.ebayOfferId && i.lifecycle !== 'archived' && i.status !== 'sold');
+}
+
+function renderEbayBulkEndCount(){
+  const countEl = document.getElementById('ebay-bulk-end-count');
+  if(!countEl) return;
+  const total = ebayBulkEndableItems().length;
+  countEl.textContent = total + ' listed' + (ebayBulkEndSelectedIds.size ? ' · ' + ebayBulkEndSelectedIds.size + ' selected' : '');
+}
+
+function ebayBulkEndCheckboxChanged(cb){
+  if(cb.checked) ebayBulkEndSelectedIds.add(cb.value);
+  else ebayBulkEndSelectedIds.delete(cb.value);
+  renderEbayBulkEndCount();
+}
+
+function renderEbayBulkEndList(){
+  const host = document.getElementById('ebay-bulk-end-list');
+  if(!host) return;
+  const items = ebayBulkEndableItems();
+  const query = (document.getElementById('ebay-bulk-end-search')?.value || '').trim().toLowerCase();
+  const filtered = query
+    ? items.filter(i => [i.name, i.set, i.category].some(v => String(v||'').toLowerCase().includes(query)))
+    : items;
+  renderEbayBulkEndCount();
+  if(!filtered.length){
+    host.innerHTML = `<div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);padding:10px;border:1px dashed var(--border);border-radius:8px;text-align:center">${query?'No live eBay listings match "'+escHtml(query)+'".':'No items are currently listed on eBay.'}</div>`;
+    return;
+  }
+  const shown = filtered.slice(0, EBAY_BULK_LIST_RENDER_CAP);
+  const overflow = filtered.length - shown.length;
+  host.innerHTML = shown.map(i => {
+    const money = inventoryProfitStats(i);
+    const price = money.list>0?money.list:money.market;
+    const thumbSrc = inventoryImageUrl(i);
+    const checked = ebayBulkEndSelectedIds.has(i.id);
+    return `<label style="display:flex;align-items:center;gap:8px;padding:6px;border:1px solid var(--border);border-radius:6px;cursor:pointer">
+      <input type="checkbox" class="ebay-bulk-end-cb" value="${i.id}" ${checked?'checked':''} onchange="ebayBulkEndCheckboxChanged(this)">
+      ${thumbSrc?`<img src="${escHtml(thumbSrc)}" style="width:32px;height:40px;object-fit:cover;border-radius:4px;flex-shrink:0" loading="lazy">`:'<div style="width:32px;height:40px;background:#050507;border-radius:4px;flex-shrink:0"></div>'}
+      <div style="flex:1;min-width:0">
+        <div style="font-family:var(--font-mono);font-size:11px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(i.name||'Untitled')}</div>
+        <div style="font-family:var(--font-mono);font-size:9px;color:var(--dim)">${escHtml(i.category||'')}${price?' · '+fd$(price):''}</div>
+      </div>
+    </label>`;
+  }).join('') + (overflow > 0 ? `<div style="font-family:var(--font-mono);font-size:9px;color:var(--dim);padding:6px;text-align:center">+ ${overflow} more match -- refine your search to see them</div>` : '');
+}
+const renderEbayBulkEndListDebounced = debounce(renderEbayBulkEndList, 200);
+
+function toggleEbayBulkEndSelectAll(checked){
+  document.querySelectorAll('.ebay-bulk-end-cb').forEach(cb => {
+    cb.checked = checked;
+    if(checked) ebayBulkEndSelectedIds.add(cb.value); else ebayBulkEndSelectedIds.delete(cb.value);
+  });
+  renderEbayBulkEndCount();
+}
+
+async function submitEbayBulkEnd(){
+  const status = document.getElementById('ebay-bulk-end-status');
+  const items = ebayBulkEndableItems().filter(i => ebayBulkEndSelectedIds.has(i.id));
+  if(!items.length){ toast_dash('Select at least one listing to end'); return; }
+  if(!confirm(`End ${items.length} eBay listing${items.length===1?'':'s'}? They will no longer be visible or purchasable on eBay.`)) return;
+  if(status){ status.style.display='block'; status.style.color='var(--gold)'; status.style.border='1px solid rgba(255,209,102,.25)'; status.style.background='rgba(255,209,102,.06)'; status.textContent=`Ending ${items.length} eBay listing${items.length===1?'':'s'}...`; }
+  try{
+    const offerIds = items.map(i => i.ebayOfferId);
+    const res = await storeWorkerFetch('/ebay/bulk-end', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({offerIds})});
+    const data = await res.json().catch(()=>({}));
+    if(!res.ok || !data.ok){ throw new Error(data.error || ('eBay error '+res.status)); }
+    const endedSet = new Set(data.ended || []);
+    for(const item of items){
+      if(!endedSet.has(item.ebayOfferId)) continue;
+      try{ await updateBuiltInInventoryItem(item, { ebayListingId:'', ebayOfferId:'', ebaySku:'', ebayListedAt:'' }); }catch(_){}
+      setLifecycle(item.id, 'pulled_ebay', true);
+      ebayBulkEndSelectedIds.delete(item.id);
+    }
+    logOpsEvent('ebay_bulk_listing_end', `Bulk-ended ${endedSet.size} eBay listing(s)`, { count: endedSet.size, failed: (data.failed||[]).length });
+    if(status){ status.style.color='var(--g)'; status.style.border='1px solid rgba(0,255,179,.25)'; status.style.background='rgba(0,255,179,.06)'; status.textContent=`Ended ${endedSet.size} of ${items.length} listing${items.length===1?'':'s'}`+((data.failed||[]).length?` (${data.failed.length} failed -- see console)`:''); }
+    if((data.failed||[]).length) console.warn('eBay bulk-end failures:', data.failed);
+    renderEbayBulkEndList();
+  }catch(e){
+    if(status){ status.style.color='var(--red)'; status.style.border='1px solid rgba(255,77,109,.25)'; status.style.background='rgba(255,77,109,.06)'; status.textContent=e.message; }
+  }
+}
+
 function ebayBulkReviewCardHtml(item, fields, desc){
   const prefix = 'ebb-' + item.id;
   const thumbSrc = inventoryImageUrl(item);
@@ -23096,6 +23309,7 @@ async function submitEbayBulkReviewItem(id){
   const fields = computeEbayListingFields(item);
   if(status){ status.style.color='var(--gold)'; status.textContent='Creating eBay listing...'; }
   const payload = {
+    itemId: item.supabaseRowId || item.id,
     title,
     description: document.getElementById(prefix+'-desc')?.value || fields.desc,
     price: price.toFixed(2),

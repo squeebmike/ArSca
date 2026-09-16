@@ -121,6 +121,12 @@ const WF_STATUS_SOLD = 'e6b42f14fcb99aa2168a5f5672226f68';
 // sale) -- used as the default deduction for real, auto-synced eBay orders
 // below, which have no equivalent manual entry step to type a fee into.
 const EBAY_DEFAULT_FEE_PCT = 13.25;
+// eBay also charges a small fixed per-order fee on top of the percentage
+// final value fee (varies by category/promo, ~$0.30 is a reasonable
+// general default) -- this used to default to $0, understating the real
+// fee (and so overstating profit) on every auto-synced order unless a
+// store manually configured ebayFeeFlat.
+const EBAY_DEFAULT_FEE_FLAT = 0.30;
 // Standard escalating "buy more, save more" tiers for the FOC volume-pricing
 // promotion below (module scope, not nested in fetch(), so it's initialized
 // once at Worker load rather than only after execution reaches wherever it's
@@ -1374,6 +1380,21 @@ async function fulfillStorefrontOrderInventory(env, saleId, storeId) {
   if (!order) return; // regular POS sale, not a storefront order — nothing more to do
   const { data: lines } = await supabaseAdminFetch(env, `pos_sale_lines?sale_id=eq.${encodeURIComponent(saleId)}&store_id=eq.${encodeURIComponent(storeId)}&select=item_id,quantity`);
   const nextStatus = order.fulfillment_method === 'shipping' ? 'sold_pending_shipment' : 'sold_pending_pickup';
+  // Store risk: an item sold out on the storefront while still carrying a
+  // live eBay listing stayed live and buyable there too -- a buyer could
+  // purchase it on eBay after it was already gone, forcing a cancellation
+  // that hurts the seller's cancellation-rate/Item-as-Described/Top Rated
+  // Seller standing. The in-store POS checkout path already withdraws the
+  // eBay listing on sellout (see markInventoryRecordSold in dashboard.html);
+  // this is the same protection for storefront sales, which reach inventory
+  // through this Stripe-webhook-driven path instead of that client code.
+  // Fetched once, lazily, and best-effort: a token failure or eBay API
+  // error must never block recording the sale itself.
+  let ebayTokenPromise = null;
+  function getEbayTokenOnce() {
+    if (!ebayTokenPromise) ebayTokenPromise = getEbayUserAccessToken(env).catch(() => '');
+    return ebayTokenPromise;
+  }
   // Decrements one inventory_items row by qty and writes it back -- shared by
   // the actually-purchased line below and by that item's linkedStockIds (see
   // there). Returns the row's own data.linkedStockIds so the caller can chain
@@ -1386,6 +1407,15 @@ async function fulfillStorefrontOrderInventory(env, saleId, storeId) {
     const remaining = Math.max(0, Number(data.quantity ?? data.qty ?? 1) - qty);
     const depleted = remaining <= 0;
     const soldAt = new Date().toISOString();
+    if (depleted && data.ebayOfferId && !data.ebayWithdrawnAt) {
+      try {
+        const ebayToken = await getEbayTokenOnce();
+        if (ebayToken) {
+          await withdrawEbayOffer(env, ebayToken, data.ebayOfferId);
+          data.ebayWithdrawnAt = soldAt;
+        }
+      } catch (e) { console.warn('Could not auto-end eBay listing after storefront sale:', itemId, e.message); }
+    }
     Object.assign(data, {
       quantity: remaining, qty: remaining, 'inventory-count': remaining,
       status: depleted ? nextStatus : 'in_stock', lifecycle: depleted ? nextStatus : 'in_stock',
@@ -2460,6 +2490,32 @@ async function putStoredSecret(env, key, value) {
   if (!env.LBA_KV || !value) return false;
   await env.LBA_KV.put('secret:' + key, value);
   return true;
+}
+
+// Store risk: nothing in the eBay integration retried a rate-limited
+// (429) call -- a bulk operation that loops per-item (group photo repair,
+// scheduled auto-reprice/order-sync over many listings, a large bulk
+// listing batch from the dashboard) had no built-in throttling, so a
+// single 429 partway through just failed that one item permanently
+// instead of backing off and trying again a moment later. Drop-in
+// replacement for `fetch` at eBay API call sites that can legitimately
+// run in a loop over many items; callers use the returned Response
+// exactly like a normal fetch() result. Not applied to every eBay fetch
+// in this file -- interactive, single-shot calls (a staff member clicking
+// one button) are better served by surfacing the real error immediately
+// than by silently retrying for several seconds.
+async function ebayFetchWithRetry(url, options, maxRetries = 2) {
+  let lastRes;
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    lastRes = await fetch(url, options);
+    if (lastRes.status !== 429 || attempt === maxRetries) return lastRes;
+    const retryAfterHeader = Number(lastRes.headers.get('Retry-After'));
+    const delayMs = Number.isFinite(retryAfterHeader) && retryAfterHeader > 0
+      ? retryAfterHeader * 1000
+      : 500 * Math.pow(2, attempt);
+    await new Promise(r => setTimeout(r, delayMs));
+  }
+  return lastRes;
 }
 
 async function ebayTokenRequest(env, params) {
@@ -3930,6 +3986,23 @@ export default {
       // silently falling back to the auto-detect heuristic.
       const basePolicyId = (typeof body.basePolicyId === 'string' && body.basePolicyId.trim()) ? body.basePolicyId.trim() : '';
       if (!basePolicyId) return json({ ok: false, error: 'Pick a shipping policy in the review screen before publishing -- FOC listings no longer auto-detect one.' }, 400);
+
+      // Same double-sell risk /foc/ebay/create-presale-group guards against
+      // (a slow eBay response getting retried, or a double-tap on PUBLISH)
+      // -- this SKU already live under a different eBay listing blocks this
+      // create instead of silently spinning up a duplicate against the
+      // same physical stock.
+      {
+        const { data: alreadyListedRows } = await supabaseAdminFetch(env, `inventory_items?store_id=eq.${encodeURIComponent(storeId)}&status=in.(presale,in_stock)&select=id,status,data`);
+        const alreadyListed = (alreadyListedRows || []).find(row => {
+          const d = row.data || {};
+          return (d.source === 'foc_presale' || d.source === 'foc_presale_bundle') && d.focSkuId === sku.id && d.ebayListingId && !d.ebayWithdrawnAt;
+        });
+        if (alreadyListed) {
+          return json({ ok: false, error: `Already listed on eBay (listing ${alreadyListed.data.ebayListingId}). End that listing first if you want to re-list this cover.` }, 409);
+        }
+      }
+
       const fulfillmentResult = await getFocPresaleFulfillmentPolicyId(env, ebayToken, handlingBusinessDays, basePolicyId);
       const fulfillmentPolicyId = fulfillmentResult.id;
       const resolvedCondition = await resolveEbayNewConditionId(env, ebayToken, '259104');
@@ -4424,7 +4497,7 @@ export default {
       // repaired -- repairEbayGroupListingImages needs this same
       // store-wide set for every group, and re-fetching it per group
       // would be redundant I/O for a store with several live listings.
-      const { data: rows } = await supabaseAdminFetch(env, `inventory_items?store_id=eq.${encodeURIComponent(storeId)}&status=neq.sold&select=data`);
+      const { data: rows } = await supabaseAdminFetch(env, `inventory_items?store_id=eq.${encodeURIComponent(storeId)}&status=neq.sold&select=id,data`);
       let groupKeys;
       if (typeof body.groupKey === 'string' && body.groupKey.trim()) {
         groupKeys = [body.groupKey.trim()];
@@ -4435,7 +4508,24 @@ export default {
 
       const repaired = [], failed = [];
       for (const groupKey of groupKeys) {
-        try { repaired.push(await repairEbayGroupListingImages(env, ebayToken, storeId, groupKey, rows)); }
+        try {
+          repaired.push(await repairEbayGroupListingImages(env, ebayToken, storeId, groupKey, rows));
+          // Store idea: nothing ever surfaced WHICH live group listings
+          // still needed this repair -- it was a blind "run it and see"
+          // button. Recording when a group was last verified/repaired lets
+          // the Cover Wall's health panel (focEbayHealthIssues in
+          // foc-dashboard.js) flag any live group listing that has never
+          // been through this repair at all, instead of relying on staff
+          // to remember to click it periodically.
+          const repairedAt = new Date().toISOString();
+          const groupRows = (rows || []).filter(r => r.data?.ebayInventoryItemGroupKey === groupKey);
+          for (const row of groupRows) {
+            await supabaseAdminFetch(env, `inventory_items?id=eq.${encodeURIComponent(row.id)}&store_id=eq.${encodeURIComponent(storeId)}`, {
+              method: 'PATCH', headers: { Prefer: 'return=minimal' },
+              body: JSON.stringify({ data: { ...(row.data || {}), ebayGroupPhotosRepairedAt: repairedAt } }),
+            }).catch(() => {});
+          }
+        }
         catch (e) { failed.push({ groupKey, error: e.message }); }
       }
       return json({ ok: true, repaired, failed });
@@ -7472,6 +7562,14 @@ export default {
     // every route that creates or republishes an eBay listing -- single-cover
     // (createAndPublishEbayListing) and the multi-cover variation listing
     // creator below -- so there's exactly one place enforcing that rule.
+    //
+    // The business NAME sent with that address used to fall back to a
+    // hardcoded literal ("The Mana Pocket") whenever shipFrom.name was
+    // blank -- the exact same class of bug the address fallback above was
+    // already removed for: a real store's name silently sent as another
+    // store's eBay merchant location. shipFrom.name is a real, store-
+    // editable field on the same REAL SHIPPING SETUP panel, so it is now
+    // required alongside the address instead of guessing at it.
     async function ensureEbayMerchantLocation(env, storeId, ebayToken) {
       const locationKey = env.EBAY_LOCATION_KEY || 'walkoff-main';
       let shipFrom = null;
@@ -7479,11 +7577,11 @@ export default {
         try {
           const settings = await shippingSettings((path, options) => supabaseAdminFetch(env, path, options), env, storeId);
           const from = settings?.from || {};
-          if (from.street1 && from.city && from.state && from.zip) shipFrom = from;
+          if (from.name && from.street1 && from.city && from.state && from.zip) shipFrom = from;
         } catch (_) {}
       }
-      if (!shipFrom) { const e = new Error('Store address not set -- fill in the ship-from address under FOC → REAL SHIPPING SETUP before listing on eBay'); e.status = 409; throw e; }
-      await fetch(`https://api.ebay.com/sell/inventory/v1/location/${locationKey}`, {
+      if (!shipFrom) { const e = new Error('Store name/address not set -- fill in the business name and ship-from address under FOC → REAL SHIPPING SETUP before listing on eBay'); e.status = 409; throw e; }
+      const locationRes = await fetch(`https://api.ebay.com/sell/inventory/v1/location/${locationKey}`, {
         method: 'POST',
         headers: {
           'Authorization': 'Bearer ' + ebayToken,
@@ -7492,11 +7590,24 @@ export default {
         },
         body: JSON.stringify({
           location: { address: { addressLine1: shipFrom.street1, addressLine2: shipFrom.street2 || undefined, city: shipFrom.city, stateOrProvince: shipFrom.state, postalCode: shipFrom.zip, country: shipFrom.country || 'US' } },
-          name: shipFrom.name || 'The Mana Pocket',
+          name: shipFrom.name,
           merchantLocationStatus: 'ENABLED',
           locationTypes: ['STORE'],
         }),
-      }).catch(() => {});
+      }).catch(e => ({ ok: false, status: 0, text: async () => e?.message || 'network error' }));
+      // A 409 here means the location already exists (expected on every
+      // call after the first) and is not an error. Anything else failing
+      // silently used to mean createAndPublishEbayListing went on to
+      // reference a merchantLocationKey that might not actually exist or
+      // might hold stale data -- the resulting failure only ever surfaced
+      // later as an opaque error on the offer/publish call, far from its
+      // real cause. Surfaced here instead, where the cause is known.
+      if (!locationRes.ok && locationRes.status !== 409) {
+        const errTxt = await locationRes.text().catch(() => '');
+        const e = new Error('Could not create/verify eBay merchant location: ' + (errTxt || locationRes.status).toString().substring(0, 300));
+        e.status = 502;
+        throw e;
+      }
       return { locationKey, shipFrom };
     }
 
@@ -7674,7 +7785,48 @@ export default {
         }
       }
 
+      // Store gap: Promoted Listings was purely reactive -- a seller had to
+      // remember to manually add every new listing to their Promoted
+      // Listings campaign, so a freshly published item got none of that
+      // visibility boost until someone happened to notice and add it by
+      // hand. Best-effort, opt-in (spends real ad budget, see the
+      // ebayAutoPromoteListings setting): never blocks the listing itself
+      // from returning success.
+      try { await autoEnrollListingInActivePromotedCampaign(env, ebayToken, storeId, pubData.listingId); } catch (_) {}
+
       return { listingId: pubData.listingId, offerId, sku, warnings, requestedConditionId: String(itemBody.conditionId || ''), requestedCondition: String(itemBody.condition || ''), verifiedConditionId, verifyError, requestedFulfillmentPolicyId, verifiedFulfillmentPolicyId };
+    }
+
+    // Shared by createAndPublishEbayListing above -- store gap: a seller
+    // running an active Cost Per Sale Promoted Listings campaign had to
+    // manually add every single new listing to it, so anything published
+    // outside that manual step got zero promotion until someone noticed.
+    // Opt-in (receipt_settings.ebayAutoPromoteListings.enabled, off by
+    // default -- this spends real ad budget on every future sale of the
+    // listing) and conservative: only acts when there is EXACTLY ONE
+    // active COST_PER_SALE campaign, since auto-picking one of several
+    // would be guessing which the seller actually wants this listing in.
+    // Best-effort throughout -- a lookup/add failure must never surface as
+    // a listing-creation error, since the listing itself already
+    // succeeded by the time this runs.
+    async function autoEnrollListingInActivePromotedCampaign(env, ebayToken, storeId, listingId) {
+      if (!listingId) return;
+      const { data: settingsRows } = await supabaseAdminFetch(env, `store_settings?store_id=eq.${encodeURIComponent(storeId)}&select=receipt_settings&limit=1`);
+      if (!settingsRows?.[0]?.receipt_settings?.ebayAutoPromoteListings?.enabled) return;
+
+      const res = await fetch('https://api.ebay.com/sell/marketing/v1/ad_campaign?limit=50', {
+        headers: { 'Authorization': 'Bearer ' + ebayToken, 'Accept': 'application/json', 'X-EBAY-C-MARKETPLACE-ID': 'EBAY_US' },
+      });
+      if (!res.ok) return;
+      const data = await res.json().catch(() => null);
+      const running = (data?.campaigns || []).filter(c => c.campaignStatus === 'RUNNING' && c.fundingStrategy?.fundingModel === 'COST_PER_SALE');
+      if (running.length !== 1) return;
+
+      await fetch('https://api.ebay.com/sell/marketing/v1/ad_campaign/' + encodeURIComponent(running[0].campaignId) + '/bulk_create_ads_by_listing_id', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + ebayToken, 'Content-Type': 'application/json', 'X-EBAY-C-MARKETPLACE-ID': 'EBAY_US' },
+        body: JSON.stringify({ requests: [{ listingId }] }),
+      });
     }
 
     // Publishes several FOC covers of the SAME issue as ONE eBay listing
@@ -8185,7 +8337,7 @@ export default {
       if (groupRows.length && groupRows.every(r => r.data?.ebayApiSystem === 'trading')) {
         return await repairEbayTradingGroupListingPhotos(env, ebayToken, groupKey, groupRows);
       }
-      const getRes = await fetch(`https://api.ebay.com/sell/inventory/v1/inventory_item_group/${groupKey}`, {
+      const getRes = await ebayFetchWithRetry(`https://api.ebay.com/sell/inventory/v1/inventory_item_group/${groupKey}`, {
         headers: { 'Authorization': 'Bearer ' + ebayToken, 'Content-Type': 'application/json' },
       });
       const getTxt = await getRes.text();
@@ -8212,7 +8364,7 @@ export default {
       if (!fallbackImage) { const e = new Error('No usable cover image found on file for group listing ' + groupKey + ' -- cannot repair'); e.status = 400; throw e; }
       const correctedImageUrls = variantSKUs.map(sku => imageBySku[sku] || fallbackImage);
 
-      const putRes = await fetch(`https://api.ebay.com/sell/inventory/v1/inventory_item_group/${groupKey}`, {
+      const putRes = await ebayFetchWithRetry(`https://api.ebay.com/sell/inventory/v1/inventory_item_group/${groupKey}`, {
         method: 'PUT',
         headers: { 'Authorization': 'Bearer ' + ebayToken, 'Content-Type': 'application/json', 'Content-Language': 'en-US' },
         body: JSON.stringify({
@@ -8303,6 +8455,20 @@ export default {
 
       try {
         const b = await request.json();
+        // Same double-sell risk the FOC presale routes guard against (a
+        // slow eBay response getting retried, or a double-tap on the
+        // CREATE button) -- an inventory row already carrying a live,
+        // non-withdrawn eBay listing blocks this create instead of
+        // silently spinning up a second listing against the same
+        // physical stock. Best-effort: only checkable when the client
+        // sends the inventory row id (built-in Supabase inventory only).
+        if (b.itemId) {
+          const { data: rows } = await supabaseAdminFetch(env, `inventory_items?id=eq.${encodeURIComponent(b.itemId)}&store_id=eq.${encodeURIComponent(storeId)}&select=id,data`);
+          const existing = rows?.[0]?.data || {};
+          if (existing.ebayListingId && !existing.ebayWithdrawnAt) {
+            return json({ ok: false, error: `Already listed on eBay (listing ${existing.ebayListingId}). End that listing first, or use MANAGE EBAY LISTING to update it instead.` }, 409);
+          }
+        }
         const result = await createAndPublishEbayListing(b, ebayToken, env, storeId);
         return json({ ok: true, ...result });
       } catch (e) {
@@ -8503,6 +8669,34 @@ export default {
       }
     }
 
+    // Batch version of /ebay/end above -- store request: ending a run of
+    // listings (e.g. a whole dead-stock cleanup pass, or a FOC cycle's
+    // remaining unsold presale covers) only ever had a bulk CREATE path;
+    // ending had to be done one listing at a time, each its own request.
+    // One offerId failing (already ended on eBay directly, a stale id,
+    // etc.) must never block ending the rest of the batch.
+    if (url.pathname === '/ebay/bulk-end') {
+      if (request.method !== 'POST') return json({ error: 'POST only' }, 405);
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId, ['owner','admin']);
+      if (auth.error) return auth.error;
+      let ebayToken = '';
+      try { ebayToken = await getEbayUserAccessToken(env); }
+      catch (tokenErr) { return json({ needsToken: true, error: tokenErr.message }, 401); }
+      if (!ebayToken) return json({ needsToken: true, error: 'Connect eBay first: missing user access/refresh token' }, 401);
+
+      let body = {}; try { body = await request.json(); } catch (_) {}
+      const offerIds = [...new Set((Array.isArray(body.offerIds) ? body.offerIds : []).map(id => String(id || '').trim()).filter(Boolean))].slice(0, 200);
+      if (!offerIds.length) return json({ ok: false, error: 'offerIds (a non-empty array) is required' }, 400);
+
+      const ended = [], failed = [];
+      for (const offerId of offerIds) {
+        try { await withdrawEbayOffer(env, ebayToken, offerId); ended.push(offerId); }
+        catch (e) { failed.push({ offerId, error: e.message }); }
+      }
+      return json({ ok: true, ended, failed });
+    }
+
     // Reads back the CURRENT live state of a listing straight from eBay --
     // used so "manage this listing" can show/edit what's actually live right
     // now instead of just recomputing a fresh guess from local inventory data,
@@ -8685,9 +8879,28 @@ export default {
       if (!ebayToken) return json({ needsToken: true, error: 'Connect eBay first: missing user access/refresh token' }, 401);
       const { data: syncSettings } = await supabaseAdminFetch(env, `store_settings?store_id=eq.${encodeURIComponent(storeId)}&select=receipt_settings&limit=1`);
       const receiptSettings = syncSettings?.[0]?.receipt_settings || {};
-
+      const reconcile = url.searchParams.get('scope') === 'reconcile';
       try {
-        const { data: items } = await supabaseAdminFetch(env, `inventory_items?store_id=eq.${encodeURIComponent(storeId)}&status=neq.sold&select=id,data,status&limit=500`);
+        return json(await syncEbayOrdersForStore(env, storeId, ebayToken, receiptSettings, { reconcile, confirmedBy: auth.user.id }));
+      } catch (e) {
+        console.error('eBay order sync error:', e);
+        return json({ ok: false, error: e.message }, 500);
+      }
+    }
+
+    // Shared by the manual /ebay/orders/sync route above (an authenticated
+    // staff request, one store at a time) and runScheduledEbayOrderSync
+    // below (the 6h cron, every connected store) -- store request: eBay
+    // sales made directly through eBay's own app/site sat unrecorded in
+    // local inventory/profit stats until a staffer remembered to manually
+    // click SYNC EBAY ORDERS, which also meant a card sold on eBay could
+    // still show as available in-store or get sold again there before
+    // anyone noticed. confirmedBy is a real user id for the manual route
+    // and null for the scheduled run (pos_payments.confirmed_by is a
+    // nullable FK to auth.users, so this is a legitimate "no human
+    // confirmed this" value, not a workaround).
+    async function syncEbayOrdersForStore(env, storeId, ebayToken, receiptSettings, { reconcile, confirmedBy }) {
+      const { data: items } = await supabaseAdminFetch(env, `inventory_items?store_id=eq.${encodeURIComponent(storeId)}&status=neq.sold&select=id,data,status&limit=500`);
         const skuMap = new Map();
         for (const row of items || []) {
           const sku = row.data?.ebaySku;
@@ -8702,18 +8915,17 @@ export default {
         // to items still showing as available/listed in our own inventory, so this
         // can't create a duplicate sale record for something already reconciled by
         // hand -- it only catches items we still think are unsold.
-        const reconcile = url.searchParams.get('scope') === 'reconcile';
         const orderFilter = reconcile
           ? 'creationdate:[' + new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString() + '..]'
           : 'orderfulfillmentstatus:{NOT_STARTED|IN_PROGRESS}';
-        const res = await fetch('https://api.ebay.com/sell/fulfillment/v1/order?filter=' + encodeURIComponent(orderFilter) + '&limit=' + (reconcile ? 200 : 50), {
+        const res = await ebayFetchWithRetry('https://api.ebay.com/sell/fulfillment/v1/order?filter=' + encodeURIComponent(orderFilter) + '&limit=' + (reconcile ? 200 : 50), {
           headers: { 'Authorization': 'Bearer ' + ebayToken },
         });
         const txt = await res.text();
         let data; try { data = JSON.parse(txt); } catch (_) { data = { raw: txt }; }
         if (!res.ok) {
           const msg = data?.errors?.[0]?.longMessage || data?.errors?.[0]?.message || txt.substring(0, 300);
-          return json({ ok: false, error: 'eBay order lookup failed (' + res.status + '): ' + msg }, res.status);
+          const e = new Error('eBay order lookup failed (' + res.status + '): ' + msg); e.status = res.status; throw e;
         }
 
         const orders = data.orders || [];
@@ -8752,7 +8964,7 @@ export default {
               // EXTERNAL_SALE_FEE_DEFAULTS.eBay in dashboard.html) unless a
               // per-store override is configured.
               const ebayFeePct = Number(receiptSettings?.ebayFeePct ?? EBAY_DEFAULT_FEE_PCT);
-              const ebayFeeFlat = Number(receiptSettings?.ebayFeeFlat ?? 0);
+              const ebayFeeFlat = Number(receiptSettings?.ebayFeeFlat ?? EBAY_DEFAULT_FEE_FLAT);
               const feeAmount = Math.round((salePrice * (ebayFeePct / 100) + ebayFeeFlat) * 100) / 100;
               const profit = salePrice - cost - feeAmount;
               const itemName = d.name || li.title || 'eBay Item';
@@ -8763,7 +8975,7 @@ export default {
               await supabaseAdminFetch(env, 'pos_sale_lines', { method: 'POST', headers: { Prefer: 'return=minimal' },
                 body: JSON.stringify([{ id: crypto.randomUUID(), sale_id: saleId, store_id: storeId, item_id: invRow ? invRow.id : null, title: itemName, category: d.category || '', quantity: quantitySold, unit_price: salePrice / quantitySold, original_price: salePrice / quantitySold, adjusted_price: salePrice / quantitySold, discount_amount: 0, cost_basis: cost, profit, condition: d.condition || '', source_id: 'ebay:' + order.orderId, image_url: d.thumbnail || d.image || '' }]) });
               await supabaseAdminFetch(env, 'pos_payments', { method: 'POST', headers: { Prefer: 'return=minimal' },
-                body: JSON.stringify({ id: crypto.randomUUID(), sale_id: saleId, store_id: storeId, method: 'eBay', amount: salePrice, status: 'confirmed', provider: 'ebay', currency: 'USD', confirmed_by: auth.user.id, confirmed_at: soldAt, created_at: soldAt }) });
+                body: JSON.stringify({ id: crypto.randomUUID(), sale_id: saleId, store_id: storeId, method: 'eBay', amount: salePrice, status: 'confirmed', provider: 'ebay', currency: 'USD', confirmed_by: confirmedBy, confirmed_at: soldAt, created_at: soldAt }) });
 
               if (invRow) {
                 const currentQty = Number(d.quantity ?? d.qty ?? 1) || 0;
@@ -8790,10 +9002,29 @@ export default {
           }
         }
         const matchedCount = results.filter(r => r.matchedInventory).length;
-        return json({ ok: true, checked: orders.length, matched: matchedCount, recorded: results.length, results, errors });
-      } catch (e) {
-        console.error('eBay order sync error:', e);
-        return json({ ok: false, error: e.message }, 500);
+        return { ok: true, checked: orders.length, matched: matchedCount, recorded: results.length, results, errors };
+    }
+
+    // Store request: eBay sales made directly through eBay's own app/site
+    // sat unrecorded in local inventory/profit stats until a staffer
+    // remembered to manually click SYNC EBAY ORDERS -- meaning a card sold
+    // on eBay could still show as available in-store, or get sold again on
+    // eBay itself, until someone happened to sync. Runs alongside the
+    // existing deal-scan/reprice cron jobs; one store or one item failing
+    // must never block the rest, same convention as those jobs.
+    async function runScheduledEbayOrderSync(env) {
+      if (!(env.SUPABASE_URL && (env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SERVICE_KEY))) return;
+      const { data: members } = await supabaseAdminFetch(env, `store_members?active=eq.true&select=store_id`);
+      const storeIds = [...new Set((members || []).map(m => String(m.store_id || '')).filter(Boolean))];
+      for (const storeId of storeIds) {
+        try {
+          let ebayToken = '';
+          try { ebayToken = await getEbayUserAccessToken(env); } catch (_) { continue; }
+          if (!ebayToken) continue;
+          const { data: syncSettings } = await supabaseAdminFetch(env, `store_settings?store_id=eq.${encodeURIComponent(storeId)}&select=receipt_settings&limit=1`);
+          const receiptSettings = syncSettings?.[0]?.receipt_settings || {};
+          await syncEbayOrdersForStore(env, storeId, ebayToken, receiptSettings, { reconcile: false, confirmedBy: null });
+        } catch (e) { console.error('Scheduled eBay order sync failed for store', storeId, e.message); }
       }
     }
 
@@ -14380,7 +14611,7 @@ export default {
   // /dealscan/latest reads) instead of only ever being reachable by an
   // on-demand click.
   async scheduled(event, env, ctx) {
-    ctx.waitUntil(Promise.all([runScheduledDealScans(env), runScheduledEbayReprice(env)]));
+    ctx.waitUntil(Promise.all([runScheduledDealScans(env), runScheduledEbayReprice(env), runScheduledEbayOrderSync(env)]));
   },
 };
 
@@ -14396,7 +14627,7 @@ export default {
 async function ebayReviseOfferPrice(env, offerId, newPrice) {
   const ebayToken = await getEbayUserAccessToken(env);
   if (!ebayToken) throw new Error('eBay not connected');
-  const offerRes = await fetch(`https://api.ebay.com/sell/inventory/v1/offer/${encodeURIComponent(offerId)}`, { headers: { Authorization: 'Bearer ' + ebayToken } });
+  const offerRes = await ebayFetchWithRetry(`https://api.ebay.com/sell/inventory/v1/offer/${encodeURIComponent(offerId)}`, { headers: { Authorization: 'Bearer ' + ebayToken } });
   const offerTxt = await offerRes.text();
   let offer; try { offer = JSON.parse(offerTxt); } catch (_) { offer = null; }
   if (!offerRes.ok || !offer) throw new Error('Could not fetch live offer: ' + offerTxt.substring(0, 200));
@@ -14412,9 +14643,11 @@ async function ebayReviseOfferPrice(env, offerId, newPrice) {
     bestOfferEnabled: !!bestOfferTerms.bestOfferEnabled,
     autoAcceptPrice: bestOfferTerms.autoAcceptPrice?.value || '',
     autoDeclinePrice: bestOfferTerms.autoDeclinePrice?.value || '',
+    fulfillmentPolicyId: offer.listingPolicies?.fulfillmentPolicyId || '',
+    storeCategoryNames: offer.storeCategoryNames || [],
   }, '', locationKey, env);
   delete body.sku;
-  const putRes = await fetch(`https://api.ebay.com/sell/inventory/v1/offer/${encodeURIComponent(offerId)}`, {
+  const putRes = await ebayFetchWithRetry(`https://api.ebay.com/sell/inventory/v1/offer/${encodeURIComponent(offerId)}`, {
     method: 'PUT',
     headers: { 'Authorization': 'Bearer ' + ebayToken, 'Content-Type': 'application/json', 'Content-Language': 'en-US' },
     body: JSON.stringify(body),
@@ -14433,13 +14666,13 @@ async function ebayReviseOfferPrice(env, offerId, newPrice) {
 // the store's locked PRH order total (see the PRH-submission route) --
 // without touching title/description/condition, and without re-triggering
 // the FOC handling-time base-policy resolution this offer already has.
-// Unlike ebayReviseOfferPrice, this explicitly carries the existing
+// Like ebayReviseOfferPrice, this explicitly carries the existing
 // fulfillmentPolicyId and storeCategoryNames through from the GET into the
 // PUT -- eBay's offer PUT is a full replace, so a field silently dropped
 // here (neither one is otherwise passed into buildEbayOfferBody) would
 // wipe it from the live listing rather than leave it unchanged.
 async function ebayReviseOfferQuantity(env, ebayToken, offerId, newQuantity) {
-  const offerRes = await fetch(`https://api.ebay.com/sell/inventory/v1/offer/${encodeURIComponent(offerId)}`, { headers: { Authorization: 'Bearer ' + ebayToken } });
+  const offerRes = await ebayFetchWithRetry(`https://api.ebay.com/sell/inventory/v1/offer/${encodeURIComponent(offerId)}`, { headers: { Authorization: 'Bearer ' + ebayToken } });
   const offerTxt = await offerRes.text();
   let offer; try { offer = JSON.parse(offerTxt); } catch (_) { offer = null; }
   if (!offerRes.ok || !offer) throw new Error('Could not fetch live offer: ' + offerTxt.substring(0, 200));
@@ -14459,7 +14692,7 @@ async function ebayReviseOfferQuantity(env, ebayToken, offerId, newQuantity) {
     storeCategoryNames: offer.storeCategoryNames || [],
   }, '', locationKey, env);
   delete body.sku;
-  const putRes = await fetch(`https://api.ebay.com/sell/inventory/v1/offer/${encodeURIComponent(offerId)}`, {
+  const putRes = await ebayFetchWithRetry(`https://api.ebay.com/sell/inventory/v1/offer/${encodeURIComponent(offerId)}`, {
     method: 'PUT',
     headers: { 'Authorization': 'Bearer ' + ebayToken, 'Content-Type': 'application/json', 'Content-Language': 'en-US' },
     body: JSON.stringify(body),

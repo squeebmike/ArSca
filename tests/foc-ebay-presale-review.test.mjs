@@ -83,8 +83,15 @@ assert.match(createAndPublishBody, /await ensureEbayMerchantLocation\(env, store
 assert.match(worker, /async function createAndPublishEbayListing\(b, ebayToken, env, storeId\)/, 'createAndPublishEbayListing must take a storeId to look up this store\'s own address');
 assert.match(worker, /shippingSettings\(\(path, options\) => supabaseAdminFetch\(env, path, options\), env, storeId\)/,
   'must reuse the existing FOC "REAL SHIPPING SETUP" address instead of maintaining a second copy of it');
-assert.match(worker, /Store address not set -- fill in the ship-from address under FOC/,
-  'must fail loudly (not silently list under a wrong address) when no store address is configured yet');
+assert.match(worker, /Store name\/address not set -- fill in the business name and ship-from address under FOC/,
+  'must fail loudly (not silently list under a wrong name/address) when no store name/address is configured yet');
+// The business name sent alongside that address used to fall back to a
+// hardcoded literal ("The Mana Pocket") when blank -- the exact same class
+// of bug as the address fallback above, just for the name field. It must
+// now be required, not guessed at, same as the address fields.
+assert.doesNotMatch(ensureLocationBody, /name: shipFrom\.name \|\| 'The Mana Pocket'/, 'must not fall back to a hardcoded business name when shipFrom.name is blank');
+assert.match(ensureLocationBody, /if \(from\.name && from\.street1 && from\.city && from\.state && from\.zip\) shipFrom = from;/, 'shipFrom must only be considered configured once a business name is present, not just an address');
+assert.match(ensureLocationBody, /name: shipFrom\.name,/, 'the eBay location name must come from this store\'s own configured shipFrom.name, not a literal or a guessed fallback');
 assert.match(worker, /import \{ handleFocRequest, syncFocStripeEvent, shippingSettings \} from '\.\/scripts\/foc-preorders\.mjs'/,
   'shippingSettings must be imported from foc-preorders.mjs, not duplicated');
 
