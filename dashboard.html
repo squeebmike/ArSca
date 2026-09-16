@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.09.15.01-ai-description-mid-sentence-cutoff-fix">
+<meta name="version" content="2026.09.16.01-linked-stock-value-dedupe">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1635,19 +1635,19 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.09.15.01-ai-description-mid-sentence-cutoff-fix" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.09.15.01-ai-description-mid-sentence-cutoff-fix" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.09.15.01-ai-description-mid-sentence-cutoff-fix" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.09.15.01-ai-description-mid-sentence-cutoff-fix" defer></script>
-<script src="scripts/card-intake-dashboard.js?v=2026.09.15.01-ai-description-mid-sentence-cutoff-fix" defer></script>
-<script src="scripts/mana-pocket-task-library.js?v=2026.09.15.01-ai-description-mid-sentence-cutoff-fix" defer></script>
-<script src="scripts/daily-tasks-dashboard.js?v=2026.09.15.01-ai-description-mid-sentence-cutoff-fix" defer></script>
+<script src="scripts/query-routing.js?v=2026.09.16.01-linked-stock-value-dedupe" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.09.16.01-linked-stock-value-dedupe" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.09.16.01-linked-stock-value-dedupe" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.09.16.01-linked-stock-value-dedupe" defer></script>
+<script src="scripts/card-intake-dashboard.js?v=2026.09.16.01-linked-stock-value-dedupe" defer></script>
+<script src="scripts/mana-pocket-task-library.js?v=2026.09.16.01-linked-stock-value-dedupe" defer></script>
+<script src="scripts/daily-tasks-dashboard.js?v=2026.09.16.01-linked-stock-value-dedupe" defer></script>
 <script src="scripts/research-loupe.js?v=a7de4ffe90" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.09.15.01-ai-description-mid-sentence-cutoff-fix" defer></script>
-<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.09.15.01-ai-description-mid-sentence-cutoff-fix" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.09.15.01-ai-description-mid-sentence-cutoff-fix" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.09.15.01-ai-description-mid-sentence-cutoff-fix" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.09.15.01-ai-description-mid-sentence-cutoff-fix" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.09.16.01-linked-stock-value-dedupe" defer></script>
+<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.09.16.01-linked-stock-value-dedupe" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.09.16.01-linked-stock-value-dedupe" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.09.16.01-linked-stock-value-dedupe" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.09.16.01-linked-stock-value-dedupe" defer></script>
 </head>
 <body>
 
@@ -1676,11 +1676,11 @@ body.show-mode .inv-sync-badge{display:none;}
 
 <header>
   <div class="hdr">
-<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.09.15.01-ai-description-mid-sentence-cutoff-fix</span>
+<div class="logo">WALK-OFF <span class="dev-only">DASHBOARD · v2026.09.16.01-linked-stock-value-dedupe</span>
       <span class="show-mode-indicator">SHOW MODE</span>
     </div>
     <div class="hdr-right">
-      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.09.15.01-ai-description-mid-sentence-cutoff-fix</div>
+      <div id="v2-branch-stamp" class="v2-branch-stamp dev-info dev-only" data-branch-name="main">Branch: main · v2026.09.16.01-linked-stock-value-dedupe</div>
       <span id="store-user-chip" class="store-chip" style="display:none"></span>
       <select id="store-switcher" class="tsi" style="display:none;max-width:190px;margin:0" onchange="switchActiveStore(this.value)"></select>
       <span id="top-show-chip" class="top-state-chip dev-only">NO SHOW ACTIVE</span>
@@ -1699,7 +1699,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
 <div class="dsb-chip" id="dsb-tasks" title="Today's Roles &amp; Tasks — click to jump to Tasks tab" style="cursor:pointer;display:none" onclick="switchTab('tasks')">✅ <span>TASKS:</span> <b id="dsb-tasks-val">—</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.09.15.01-ai-description-mid-sentence-cutoff-fix</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.09.16.01-linked-stock-value-dedupe</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3795,7 +3795,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.09.15.01-ai-description-mid-sentence-cutoff-fix';
+const APP_VERSION = '2026.09.16.01-linked-stock-value-dedupe';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -15968,6 +15968,13 @@ const BUILT_IN_ITEM_SIMPLE_FIELDS = [
   ['signature_value',0,'num'], ['minPrice',0,'num'], ['ceilingPrice',0,'num'],
   ['expectedProfit',0,'num'],
   ['photos',[],'array'],
+  // Sibling rows selling the same physical stock at a different price (e.g.
+  // the Dougvana print's remarque variants) -- see fulfillStorefrontOrderInventory
+  // in cloudflare-worker-full.js, which decrements every id in this list
+  // together on a sale, and dedupeLinkedInventoryItems below, which keeps
+  // category value/ROI totals from counting the same physical units once
+  // per variant.
+  ['linkedStockIds',[],'array'],
   ['pokemonPriceTrackerPrices',null,'raw'], ['pokemonPriceTrackerVariants',null,'raw'],
   ['externalRefs',null,'raw'],
   // Metron comic record (writers/artists/synopsis/covers/etc) -- dropped
@@ -16653,17 +16660,39 @@ function getUnlinkedTransactionRows(inventorySoldItems){
   return [...oneOff, ...keptLinked, ...keptRemainder];
 }
 
+// Items sharing physical stock (data.linkedStockIds -- e.g. the Dougvana
+// print's remarque price variants: 3 separate rows, same 99 physical
+// prints) would otherwise get counted once per row in any qty*price total,
+// multiplying a shared pool's value by however many variants exist even
+// though it's the same units. Keeps exactly one representative per linked
+// group -- the lowest-priced variant, a guaranteed floor value every unit
+// is worth at minimum -- and drops the rest. Scoped to value/cost/ROI sums
+// only; item counts and every other list/filter still show every row.
+function dedupeLinkedInventoryItems(items){
+  const byId = new Map(items.map(i => [i.id, i]));
+  const seen = new Set();
+  const result = [];
+  for(const item of items){
+    if(seen.has(item.id)) continue;
+    const groupIds = [item.id, ...(Array.isArray(item.linkedStockIds) ? item.linkedStockIds : [])].filter(id => byId.has(id));
+    groupIds.forEach(id => seen.add(id));
+    const group = groupIds.map(id => byId.get(id));
+    result.push(group.reduce((cheapest, cur) => inventoryListPrice(cur) < inventoryListPrice(cheapest) ? cur : cheapest, group[0]));
+  }
+  return result;
+}
 function renderStats(){
   const ins=all.filter(i=>i.status==='in_stock');
+  const insForValue=dedupeLinkedInventoryItems(ins);
   const inventorySold=all.filter(i=>i.status==='sold');
   const sol = inventorySold.concat(getUnlinkedTransactionRows(inventorySold));
-  const totalQty=ins.reduce((a,i)=>a+(i.qty||1),0);
+  const totalQty=insForValue.reduce((a,i)=>a+(i.qty||1),0);
   // Two distinct totals, not blended: pure market reference vs. what we'd
   // actually collect at our real (floor/override/rounded) sell price.
-  const mkt=ins.reduce((a,i)=>a+inventoryMarketPrice(i)*(i.qty||1),0);
-  const sellVal=ins.reduce((a,i)=>a+inventoryListPrice(i)*(i.qty||1),0);
+  const mkt=insForValue.reduce((a,i)=>a+inventoryMarketPrice(i)*(i.qty||1),0);
+  const sellVal=insForValue.reduce((a,i)=>a+inventoryListPrice(i)*(i.qty||1),0);
   const pft=sol.reduce((a,i)=>a+(i.profit||0),0);
-  const cost=ins.reduce((a,i)=>a+(i.cost||0)*(i.qty||1),0);
+  const cost=insForValue.reduce((a,i)=>a+(i.cost||0)*(i.qty||1),0);
   // sol.length counts SALE ROWS, not units -- a single cart line can now sell
   // several units of the same item (quantity stepper), so "N sold" needs to
   // sum the actual quantity moved per row or a 3-unit sale reads as 1.
@@ -16796,16 +16825,21 @@ function renderCats(){
   const ins=all.filter(i=>i.status==='in_stock');
   const cats=getInventoryCategories();
   const catColors=getInventoryCategoryColors();
-  const vals = cats.map(c=>ins.filter(i=>i.category===c).reduce((a,i)=>a+(i.market||0)*(i.qty||1),0));
+  const vals = cats.map(c=>dedupeLinkedInventoryItems(ins.filter(i=>i.category===c)).reduce((a,i)=>a+(i.market||0)*(i.qty||1),0));
   const maxVal = Math.max(...vals,1);
   const panelEl=document.getElementById('cat-panel');
   if(panelEl){
     panelEl.innerHTML = cats.map((c,idx)=>{
       const items=ins.filter(i=>i.category===c);
       // Same "at our real price" math as the Home stat cards (floor/
-      // override/signature applied), scoped to just this category.
-      const catCost=items.reduce((a,i)=>a+(i.cost||0)*(i.qty||1),0);
-      const catSellVal=items.reduce((a,i)=>a+inventoryListPrice(i)*(i.qty||1),0);
+      // override/signature applied), scoped to just this category. Value/
+      // cost/ROI run over the deduped set (see dedupeLinkedInventoryItems)
+      // so a shared-stock family (e.g. the Dougvana print's remarque price
+      // variants) counts its physical units once, not once per row -- the
+      // item count below stays the real listing count.
+      const dedupedItems=dedupeLinkedInventoryItems(items);
+      const catCost=dedupedItems.reduce((a,i)=>a+(i.cost||0)*(i.qty||1),0);
+      const catSellVal=dedupedItems.reduce((a,i)=>a+inventoryListPrice(i)*(i.qty||1),0);
       const catPotentialRoi=catCost>0?((catSellVal-catCost)/catCost*100):0;
       return `<div class="cp" onclick="filterAndSwitch('category','${escHtml(c)}')">
         <div class="cp-n">${escHtml(c).toUpperCase()}</div>
@@ -46682,7 +46716,7 @@ async function toppsLoadParallels(cardId){
   window.__arscaCloseModal = closeModal;
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.09.15.01-ai-description-mid-sentence-cutoff-fix" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.09.16.01-linked-stock-value-dedupe" defer></script>
 </body>
 </html>
 
