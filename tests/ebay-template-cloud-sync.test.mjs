@@ -12,7 +12,7 @@ const dashboard = fs.readFileSync('dashboard.html', 'utf8');
 // reached other devices, which is exactly the bug being fixed here. ──
 assert.match(dashboard, /async function saveEbayListingSettings\(\)\{/, 'saveEbayListingSettings must be async so it can await the cloud save');
 const fnSrc = dashboard.match(/async function saveEbayListingSettings\(\)\{[\s\S]*?\n\}/)[0];
-assert.match(fnSrc, /const cloudSaved = await saveVendorProfile\(\{ ebayCategoryMap, ebayDescriptionTemplates, ebayDescriptionTemplate:ebayDescriptionTemplates\.default \|\| '' \}\);/, 'the eBay category map + description templates save must await saveVendorProfile and capture whether the cloud write succeeded');
+assert.match(fnSrc, /const cloudSaved = await saveVendorProfile\(\{ ebayCategoryMap, ebayDescriptionTemplates, ebayDescriptionTemplate:ebayDescriptionTemplates\.default \|\| '', ebayShippingLines, ebayShippingLine:ebayShippingLines\.default \|\| getVendorProfile\(\)\.ebayShippingLine \|\| '' \}\);/, 'the eBay category map + description templates + shipping lines save must await saveVendorProfile and capture whether the cloud write succeeded');
 assert.match(fnSrc, /toast_dash\(cloudSaved \? 'eBay listing settings saved' : 'Saved on this device only/, 'the save must be honest about a cloud-sync failure instead of always claiming success');
 
 // ── Contract: the underlying cloud-save path this depends on ──

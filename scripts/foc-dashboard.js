@@ -147,21 +147,34 @@ function renderFocEbayBulkCount(){
 // date on file), so they don't sit unnoticed until a customer asks where
 // their book is.
 function focEbayHealthIssues(){
-  var released=[],missingDate=[];
+  var released=[],missingDate=[],needsPhotoRepair=[];
+  var seenGroupKeys={};
   allFocSkus().forEach(function(v){
     if(v.ebayPresaleStatus==='RELEASED'&&Number(v.ebayAvailable||0)>0)released.push(v);
     else if(v.ebayPresaleStatus==='ACTION_REQUIRED'&&v.ebayPresaleNote)missingDate.push(v);
+    // Store idea: the photo-binding repair for multi-cover group listings
+    // (see repairFocEbayGroupPhotos below) is a manual, blind "run it and
+    // see" button -- nothing ever told staff WHICH live group listings
+    // actually still needed it. A group listing that has never been
+    // through that repair (ebayGroupPhotosRepairedAt unset) is flagged
+    // here, once per distinct group key, so it doesn't sit unnoticed.
+    if((v.ebayPresaleStatus==='LISTED'||v.ebayPresaleStatus==='SOLD_OUT')&&v.ebayInventoryItemGroupKey&&!v.ebayGroupPhotosRepairedAt&&!seenGroupKeys[v.ebayInventoryItemGroupKey]){
+      seenGroupKeys[v.ebayInventoryItemGroupKey]=true;
+      needsPhotoRepair.push(v);
+    }
   });
-  return {released:released,missingDate:missingDate};
+  return {released:released,missingDate:missingDate,needsPhotoRepair:needsPhotoRepair};
 }
 function focEbayHealthPanelHtml(){
   var issues=focEbayHealthIssues();
-  var total=issues.released.length+issues.missingDate.length;
+  var total=issues.released.length+issues.missingDate.length+issues.needsPhotoRepair.length;
   if(!total)return'';
   var rows=issues.released.map(function(v){
     return '<div style="padding:6px 0;border-bottom:1px solid var(--border);font:10px var(--font-mono)"><b style="color:var(--gold)">⚠ '+esc(v.title||v.variantLabel)+'</b> -- on-sale date passed but still live on eBay with '+Number(v.ebayAvailable||0)+' available. Receive the shipment or end the listing.</div>';
   }).concat(issues.missingDate.map(function(v){
     return '<div style="padding:6px 0;border-bottom:1px solid var(--border);font:10px var(--font-mono)"><b style="color:var(--red)">⚠ '+esc(v.title||v.variantLabel)+'</b> -- '+esc(v.ebayPresaleNote)+'.</div>';
+  })).concat(issues.needsPhotoRepair.map(function(v){
+    return '<div style="padding:6px 0;border-bottom:1px solid var(--border);font:10px var(--font-mono)"><b style="color:var(--gold)">⚠ '+esc(v.title||v.variantLabel)+'</b> -- multi-cover eBay listing has never had its per-cover photo binding verified. Run REPAIR LISTING PHOTOS below.</div>';
   })).join('');
   return '<div class="panel" style="margin-bottom:12px;padding:10px 14px">'+
     '<div style="font:900 11px \'Orbitron\',monospace;color:var(--gold);letter-spacing:1px;margin-bottom:6px">⚠ EBAY LISTING HEALTH ('+total+')</div>'+

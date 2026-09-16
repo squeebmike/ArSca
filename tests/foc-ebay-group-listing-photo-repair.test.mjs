@@ -18,7 +18,7 @@ assert.ok(repairFnStart !== -1, 'repairEbayGroupListingImages must exist');
 const repairFnEnd = worker.indexOf('// Ends (withdraws) an ENTIRE multi-variation listing at once', repairFnStart);
 const repairFnBody = worker.slice(repairFnStart, repairFnEnd);
 
-assert.match(repairFnBody, /fetch\(`https:\/\/api\.ebay\.com\/sell\/inventory\/v1\/inventory_item_group\/\$\{groupKey\}`, \{\s*headers:/,
+assert.match(repairFnBody, /ebayFetchWithRetry\(`https:\/\/api\.ebay\.com\/sell\/inventory\/v1\/inventory_item_group\/\$\{groupKey\}`, \{\s*headers:/,
   'must GET the group\'s current state from eBay first -- title/description/aspects/variesBy are preserved from what eBay already has, only imageUrls is corrected, so this can never accidentally drift the listing\'s other fields');
 assert.match(repairFnBody, /const variantSKUs = Array\.isArray\(group\.variantSKUs\)/, 'must read the live variantSKUs order from eBay -- that order defines the position each corrected image must land in');
 assert.match(repairFnBody, /imageBySku\[sku\] = r\.data\.image \|\| '';/,
@@ -141,13 +141,18 @@ const routeEnd = worker.indexOf('// Flips any eBay presale listings for a FOC cy
 const routeBody = worker.slice(routeStart, routeEnd);
 
 assert.match(routeBody, /requireStoreUser\(request, env, storeId, \['owner','admin'\]\)/, 'must require owner/admin auth, same as the other FOC eBay admin routes');
-assert.match(routeBody, /const \{ data: rows \} = await supabaseAdminFetch\(env, `inventory_items\?store_id=eq\.\$\{encodeURIComponent\(storeId\)\}&status=neq\.sold&select=data`\);/,
+assert.match(routeBody, /const \{ data: rows \} = await supabaseAdminFetch\(env, `inventory_items\?store_id=eq\.\$\{encodeURIComponent\(storeId\)\}&status=neq\.sold&select=id,data`\);/,
   'must fetch the store\'s inventory_items exactly once regardless of how many groups get repaired, and pass that same set into every repairEbayGroupListingImages call -- re-fetching this per group would be redundant I/O for a store with several live listings');
 assert.match(routeBody, /groupKeys = \[\.\.\.new Set\(\(rows \|\| \[\]\)\.map\(r => r\.data\?\.ebayInventoryItemGroupKey\)\.filter\(Boolean\)\)\]/,
   'when no specific groupKey is given, must discover every distinct group listing on file for the store and repair them all in one pass');
-assert.match(routeBody, /for \(const groupKey of groupKeys\) \{\s*try \{ repaired\.push\(await repairEbayGroupListingImages\(env, ebayToken, storeId, groupKey, rows\)\); \}/,
+assert.match(routeBody, /for \(const groupKey of groupKeys\) \{\s*try \{\s*repaired\.push\(await repairEbayGroupListingImages\(env, ebayToken, storeId, groupKey, rows\)\);/,
   'must attempt every group listing independently, passing the already-fetched rows through -- one listing failing (e.g. already ended on eBay) must not block repairing the rest');
 assert.match(routeBody, /catch \(e\) \{ failed\.push\(\{ groupKey, error: e\.message \}\); \}/, 'a failed repair must be reported back per-listing, not thrown and lost');
+// A repair success used to leave no trace anywhere -- nothing could tell
+// staff which live group listings had (or hadn't) ever been repaired.
+// Every row in a successfully-repaired group now gets a timestamp so the
+// Cover Wall's health panel can flag the ones that never got one.
+assert.match(routeBody, /ebayGroupPhotosRepairedAt: repairedAt/, 'a successful repair must record when it happened on every row in that group, not just fix eBay and forget');
 
 console.log('FOC eBay group-listing photo repair route checks passed');
 

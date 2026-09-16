@@ -15,8 +15,17 @@ const dashboard = fs.readFileSync('dashboard.html', 'utf8');
 // the fee-less figure gets its profit recomputed with the standard fee.
 assert.match(dashboard, /function itemsWithFeelessEbayProfit\(items=all\)\{/, 'missing itemsWithFeelessEbayProfit');
 assert.match(dashboard,
-  /return \(items \|\| \[\]\)\.filter\(i => i\.status === 'sold' && i\.channel === 'eBay' && Number\(i\.salePrice \|\| 0\) > 0\s*\n\s*&& Math\.abs\(Number\(i\.profit \|\| 0\) - \(Number\(i\.salePrice \|\| 0\) - Number\(i\.cost \|\| 0\)\)\) < 0\.01\);/,
+  /return \(items \|\| \[\]\)\.filter\(i => i\.status === 'sold' && i\.channel === 'eBay' && Number\(i\.salePrice \|\| 0\) > 0\s*\n\s*&& Math\.abs\(Number\(i\.profit \|\| 0\) - \(Number\(i\.salePrice \|\| 0\) - Number\(i\.cost \|\| 0\)\)\) < 0\.01/,
   'itemsWithFeelessEbayProfit must only flag sold eBay-channel items whose stored profit exactly matches the fee-less salePrice-cost figure');
+// Escape hatch: a legitimately fee-free sale (zero-fee promo listing, or a
+// row already hand-corrected) can still match the shape above -- once
+// marked exempt, it must never be auto-"corrected" again.
+{
+  const fnStart0 = dashboard.indexOf('function itemsWithFeelessEbayProfit(items=all){');
+  const fnEnd0 = dashboard.indexOf('\n}', fnStart0) + 2;
+  assert.match(dashboard.slice(fnStart0, fnEnd0), /&& !i\.ebayFeeExempt\);/, 'itemsWithFeelessEbayProfit must exclude items explicitly marked ebayFeeExempt');
+}
+assert.match(dashboard, /\['ebayFeeExempt',false,'bool'\],/, 'ebayFeeExempt must be a real persisted field, or the exemption above has nowhere to save to');
 
 assert.match(dashboard, /async function backfillEbayProfitFees\(\)\{/, 'missing backfillEbayProfitFees');
 {
@@ -60,9 +69,10 @@ console.log('eBay profit fee-backfill contract checks passed');
   const feelessButWhatnot = { id:'c', status:'sold', channel:'Whatnot', salePrice:4.99, cost:2.50, profit:2.49 };
   const feelessButInStock = { id:'d', status:'in_stock', channel:'eBay', salePrice:4.99, cost:2.50, profit:2.49 };
   const feelessNoSalePrice = { id:'e', status:'sold', channel:'eBay', salePrice:0, cost:0, profit:0 };
+  const feelessButExempt = { id:'f', status:'sold', channel:'eBay', salePrice:4.99, cost:2.50, profit:2.49, ebayFeeExempt:true };
 
-  const result = itemsWithFeelessEbayProfit([feelessEbaySale, properlyFeedEbaySale, feelessButWhatnot, feelessButInStock, feelessNoSalePrice]);
-  assert.deepEqual(result.map(i => i.id), ['a'], 'only a sold eBay-channel item with a priced sale and an exactly fee-less stored profit may be flagged');
+  const result = itemsWithFeelessEbayProfit([feelessEbaySale, properlyFeedEbaySale, feelessButWhatnot, feelessButInStock, feelessNoSalePrice, feelessButExempt]);
+  assert.deepEqual(result.map(i => i.id), ['a'], 'only a sold eBay-channel item with a priced sale, an exactly fee-less stored profit, and no exemption flag may be flagged');
 }
 
 console.log('eBay profit fee-backfill functional checks passed');

@@ -169,13 +169,20 @@ console.log('Fix 5 (storefront publish toggle + onlineListed default) checks pas
 // ════════════════════════════════════════════════════════════════════════
 {
   assert.match(worker, /const EBAY_DEFAULT_FEE_PCT = 13\.25;/, 'must define a default eBay fee rate, matching EXTERNAL_SALE_FEE_DEFAULTS.eBay in dashboard.html');
-  assert.match(dashboard, /eBay: \{ pct: 13\.25, flat: 0,/, 'the client-side eBay fee default (used for manual sale recording) must match the server-side default used for auto-synced orders');
+  // eBay also charges a small fixed per-order fee on top of the percentage
+  // final value fee -- this used to default to $0 (understating the real
+  // fee, overstating profit) on every auto-synced order unless a store
+  // manually configured ebayFeeFlat. Both defaults are kept in sync
+  // between the client's manual-sale preset and the server's auto-sync path.
+  assert.match(worker, /const EBAY_DEFAULT_FEE_FLAT = 0\.30;/, 'must define a default eBay flat fee, matching EXTERNAL_SALE_FEE_DEFAULTS.eBay in dashboard.html');
+  assert.match(dashboard, /eBay: \{ pct: 13\.25, flat: 0\.30,/, 'the client-side eBay fee default (used for manual sale recording) must match the server-side default used for auto-synced orders');
 
   const syncStart = worker.indexOf("if (url.pathname === '/ebay/orders/sync') {");
   assert(syncStart >= 0, '/ebay/orders/sync route must exist');
   const syncFn = worker.slice(syncStart, worker.indexOf("\n    if (url.pathname === '/ebay/orders/ship'", syncStart));
   assert.match(syncFn, /const \{ data: syncSettings \} = await supabaseAdminFetch\(env, `store_settings\?store_id=eq\.\$\{encodeURIComponent\(storeId\)\}&select=receipt_settings&limit=1`\);/, 'must load the store\'s receipt_settings so a per-store eBay fee override is possible');
   assert.match(syncFn, /const ebayFeePct = Number\(receiptSettings\?\.ebayFeePct \?\? EBAY_DEFAULT_FEE_PCT\);/, 'must use a configured fee rate when present, falling back to the shared default');
+  assert.match(syncFn, /const ebayFeeFlat = Number\(receiptSettings\?\.ebayFeeFlat \?\? EBAY_DEFAULT_FEE_FLAT\);/, 'must use a configured flat fee when present, falling back to the shared default (not $0)');
   assert.match(syncFn, /const feeAmount = Math\.round\(\(salePrice \* \(ebayFeePct \/ 100\) \+ ebayFeeFlat\) \* 100\) \/ 100;/, 'must compute the fee the same way the manual external-sale flow does (percent of sale price + flat)');
   assert.match(syncFn, /const profit = salePrice - cost - feeAmount;/, 'the fee must actually be subtracted from recorded profit -- this is the whole point of the fix');
   assert.doesNotMatch(syncFn, /const profit = salePrice - cost;\n/, 'the old fee-less profit calculation must be gone');
