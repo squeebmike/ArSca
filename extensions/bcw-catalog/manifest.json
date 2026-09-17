@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Mana Pocket • BCW Catalog",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Collect BCW categories and products into a resumable catalog and export a Supplies Import CSV.",
   "permissions": ["storage", "unlimitedStorage"],
   "host_permissions": ["https://www.bcwsupplies.com/*"],

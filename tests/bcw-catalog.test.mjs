@@ -21,6 +21,7 @@ const backorder = parsePage(fixture.replace('<div class="stock available"></div>
 assert.equal(backorder.availability,'backorder','Backorder overrides schema InStock');
 assert.equal(parsePage(fixture.replace('</body>','<select name="super_attribute[1]"></select></body>'),productURL,DOMParser).product.requires_options,true);
 assert.equal(catalogURL('/checkout/cart/add/'),''); assert.equal(catalogURL('https://evil.example/item'),'');
+for(const bad of [null,undefined,'','null','undefined','/comic-book-storage/null','https://www.bcwsupplies.com/null'])assert.equal(catalogURL(bad),'');
 assert.equal(catalogURL('/comic-book-storage?p=2&color=red'),ORIGIN+'/comic-book-storage?p=2');
 const parsedCategory = parsePage(category,ORIGIN+'/comic-book-storage',DOMParser);
 assert.equal(parsedCategory.productLinks.length,2); assert.equal(parsedCategory.next.length,1);

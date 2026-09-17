@@ -33,6 +33,11 @@ for(const privateField of ['supplierCost','supplierPriceTiers','cost','supplierR
 const selection=catalogSelection([item,{...item,id:'draft',onlineListed:false},{...item,id:'other',vendor:'Other'}],new URLSearchParams());
 assert.equal(selection.total,1);assert.equal(catalogSelection([item],new URLSearchParams('q=1-TEST')).total,1);
 assert.equal(isBcwPublished({...item,inventoryStatus:'archived'}),false);
+for(const supplierAvailability of ['backorder','preorder','out_of_stock','unknown','']){
+ assert.equal(isBcwPublished({...item,supplierAvailability}),false);
+ assert.equal(catalogSelection([{...item,supplierAvailability}],new URLSearchParams()).total,0);
+}
+assert.equal(isBcwPublished({...item,quantity:0}),false);
 const many=Array.from({length:40},(_,n)=>({...item,id:String(n)}));
 assert.equal(catalogSelection(many,new URLSearchParams('page=2')).items.length,4);
 const html=renderBcwProduct({...item,name:'Bags </script><script>alert(1)</script>'});

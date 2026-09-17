@@ -3,9 +3,11 @@ export const ORIGIN = 'https://www.bcwsupplies.com';
 const text = el => (el?.textContent || '').replace(/\s+/g, ' ').trim();
 const unique = values => [...new Set(values.filter(Boolean))];
 export function catalogURL(value, base = ORIGIN) {
+  if (typeof value !== 'string' || !value.trim() || /^(null|undefined|#)$/i.test(value.trim())) return '';
   try {
     const u = new URL(value, base);
     if (u.origin !== ORIGIN || u.username || u.password) return '';
+    if (/\/(null|undefined)\/?$/i.test(u.pathname)) return '';
     if (/\/(customer|checkout|wishlist|review|catalogsearch|blog|contact|sales|quickorder|product_compare|amasty|sendfriend|newsletter|rest)(\/|$)/i.test(u.pathname)) return '';
     u.hash = '';
     const page = u.searchParams.get('p'); u.search = '';

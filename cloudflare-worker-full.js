@@ -786,6 +786,7 @@ function shapeStorefrontItem(row) {
   return item;
 }
 function isStorefrontItemAvailable(i) {
+  if(i.dropship && String(i.vendor).toUpperCase()==='BCW' && i.supplierAvailability !== 'in_stock') return false;
   if(i.dropship && i.supplierAvailability && i.supplierAvailability !== 'in_stock') return false;
   // Store report: eBay-only FOC presale placeholder rows (status:'presale',
   // created by /foc/ebay/create-presale, name suffixed " - PRESALE") were
@@ -817,6 +818,8 @@ function isStorefrontItemAvailable(i) {
 // only changes whether a sold-out item's card keeps showing up, never
 // whether it can actually be bought.
 function isStorefrontItemListable(i) {
+  // Supplier backorders must never appear, even when showSoldOut was enabled.
+  if(i.dropship && String(i.vendor).toUpperCase()==='BCW' && (i.supplierAvailability !== 'in_stock' || !(i.quantity>0))) return false;
   if (isStorefrontItemAvailable(i)) return true;
   return !!(i.showSoldOut && i.name && i.quantity <= 0 && i.onlineListed && !i.soldAt && !i.archivedAt && !['sold','archived','returned','deleted','sold_pending_pickup','sold_pending_shipment','hold','lost_damaged','presale','bundled'].includes(i.inventoryStatus));
 }

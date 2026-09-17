@@ -1,0 +1,17 @@
+import assert from 'node:assert/strict';
+import {importCategories,filterImportRows,priceImportRow,exportImportRows} from '../scripts/bcw-import-selection.mjs';
+import {parseImportCSV} from '../extensions/bcw-catalog/csv.mjs';
+const rows=[{supplier:'BCW',sku:'1-SIL',name:'Silver bags',category_paths:['Comics','Comics > Bags'],availability:'in_stock',price:null,cost:4,msrp:8,image_url:'https://example.com/a.jpg',image_urls:['https://example.com/a.jpg'],description:'a,b\nnext',price_tiers:[],specifications:{}},{supplier:'BCW',sku:'1-BBSIL',name:'Silver boards',category_paths:['Comics','Comics > Boards'],availability:'backorder',price:10,msrp:12}];
+assert.deepEqual(importCategories(rows),['Comics','Comics > Bags','Comics > Boards']);
+assert.equal(filterImportRows(rows).length,1);
+assert.equal(filterImportRows(rows,{category:'Comics > Boards',inStock:false})[0].sku,'1-BBSIL');
+assert.equal(filterImportRows(rows,{query:'1-sil'})[0].sku,'1-SIL');
+assert.equal(priceImportRow(rows[0],'msrp').price,8);
+assert.equal(priceImportRow(rows[0],'discount',5).price,7.6);
+assert.equal(priceImportRow(rows[0]).price,null);
+assert.equal(rows[0].price,null,'pricing must not modify source rows');
+const imported=parseImportCSV(exportImportRows([priceImportRow(rows[0],'msrp')]));
+assert.equal(imported[0].valid,true);assert.equal(imported[0].price,8);
+assert.equal(imported[0].description,'a,b\nnext');assert.equal(imported[0].image,rows[0].image_url);
+assert.deepEqual(imported[0].category_paths,rows[0].category_paths);
+console.log('BCW category selection, pricing, and selected CSV round-trip passed');

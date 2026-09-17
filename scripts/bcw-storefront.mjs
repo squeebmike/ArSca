@@ -6,9 +6,9 @@ const money = v => '$'+Number(v||0).toFixed(2);
 export const isBcwItem = i => i.dropship === true && String(i.vendor).toUpperCase() === 'BCW';
 export const productPath = i => '/item/'+encodeURIComponent(i.id)+'/'+(String(i.name||'').normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'')||'card');
 export function isBcwPublished(i){
-  return isBcwItem(i) && i.onlineListed && i.price>0 && !i.soldAt && !i.archivedAt && !i.linkUrl && !['sold','archived','returned','deleted','sold_pending_pickup','sold_pending_shipment','hold','lost_damaged','presale','bundled'].includes(i.inventoryStatus);
+  return isBcwItem(i) && bcwAvailable(i) && i.onlineListed && i.price>0 && !i.soldAt && !i.archivedAt && !i.linkUrl && !['sold','archived','returned','deleted','sold_pending_pickup','sold_pending_shipment','hold','lost_damaged','presale','bundled'].includes(i.inventoryStatus);
 }
-export const bcwAvailable = i => i.quantity>0 && (!i.supplierAvailability || i.supplierAvailability==='in_stock');
+export const bcwAvailable = i => i.quantity>0 && i.supplierAvailability==='in_stock';
 export function catalogSelection(items, params){
   const q=(params.get('q')||'').trim().slice(0,120), category=(params.get('category')||'').slice(0,300);
   const published=items.filter(isBcwPublished).sort((a,b)=>a.name.localeCompare(b.name));

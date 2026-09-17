@@ -92,13 +92,20 @@ BCW Standard Card Sleeves (100ct), 2.49, https://example.com/sleeves.jpg,"></tex
 
     <div id="preview-panel" class="panel hidden">
       <div style="display:flex;align-items:center;margin-bottom:10px"><strong>Preview</strong><span class="spacer"></span><span id="preview-summary" style="color:var(--muted);font-size:12px"></span></div>
-      <div class="table-wrap"><table><thead><tr><th>Name</th><th>Price</th><th>Image</th><th>Description</th></tr></thead><tbody id="preview-body"></tbody></table></div>
+      <div class="row2"><label>BCW category<select id="filter-category"><option value="">All categories</option></select></label><label>Find name or SKU<input id="filter-query" type="search"></label></div>
+      <label class="check"><input type="checkbox" id="filter-stock" checked> Show in-stock products only</label>
+      <p class="sub">Selections stay selected when you change filters. Clear selection to start over. Availability is a snapshot. For stock refreshes, include unavailable rows too so previously listed products can be hidden.</p>
+      <div class="row2"><label>Price for this import<select id="price-mode"><option value="keep">Keep CSV prices / blank drafts</option><option value="msrp">Use MSRP</option><option value="discount">MSRP minus percentage</option></select></label><label>Discount %<input id="price-discount" type="number" min="0" max="100" value="5"></label></div>
+      <p class="sub">Prices apply to new listings only. Reimports preserve your existing selling prices. Shipping and payment fees are excluded.</p>
+      <p><button class="btn secondary" id="select-visible" type="button">Select filtered items</button> <button class="btn secondary" id="clear-selection" type="button">Clear selection</button> <button class="btn secondary" id="export-selected" type="button">Export selected CSV</button></p>
+      <div class="table-wrap" style="max-height:600px"><table><thead><tr><th>Select</th><th>Product</th><th>Sell / cost / MSRP</th><th>Review</th></tr></thead><tbody id="preview-body"></tbody></table></div>
     </div>
   </div>
 </div>
 
 <script type="module">
 import { parseImportCSV } from './extensions/bcw-catalog/csv.mjs';
+import { importCategories, filterImportRows, priceImportRow, exportImportRows } from './scripts/bcw-import-selection.mjs';
 const WORKER = window.WALKOFF_CONFIG?.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
 const sb = window.supabase.createClient(
   window.WALKOFF_CONFIG?.supabaseUrl || 'https://vroknjrxubsqyexngwus.supabase.co',
@@ -130,18 +137,37 @@ async function api(path, options = {}) {
 }
 
 let previewItems = [];
+let allPreviewRows = [], selectedRows = new Set();
+const visibleRows = () => filterImportRows(allPreviewRows,{category:$('filter-category').value,query:$('filter-query').value,inStock:$('filter-stock').checked});
+const priced = r => priceImportRow(r,$('price-mode').value,$('price-discount').value);
+function updateSelection() {
+  previewItems=allPreviewRows.filter(r=>r.valid && selectedRows.has(r.rowNumber)).map(priced);
+  $('preview-summary').textContent=`${previewItems.length} selected · ${visibleRows().length} shown · ${allPreviewRows.length} total`;
+  $('import-btn').textContent=`Import ${previewItems.length} selected items`;
+  $('import-btn').disabled=!previewItems.length;
+  $('export-selected').disabled=!previewItems.length;
+}
+function drawRows() {
+  const cash=v=>v>0?'$'+v.toFixed(2):'—';
+  $('preview-body').innerHTML=visibleRows().map(r=>`<tr><td><input type="checkbox" data-row="${r.rowNumber}" aria-label="Select ${esc(r.sku||r.name)}" ${selectedRows.has(r.rowNumber)?'checked':''} ${r.valid?'':'disabled'}></td><td>${/^https:\/\//i.test(r.image)?`<img src="${esc(r.image)}" alt="" loading="lazy" style="width:65px;height:65px;object-fit:contain;background:white">`:''}<br>${esc(r.name)}<br><small>${esc(r.sku)} · ${esc(r.availability)}<br>${esc(r.selling_unit)}</small></td><td>${cash(priced(r).price)} / ${cash(r.cost)} / ${cash(r.msrp)}</td><td>${esc(r.errors.join('; ')||r.review_notes||'Ready for review')}${!(priced(r).price>0)?'<br>Draft: needs selling price':''}</td></tr>`).join('')||'<tr><td colspan="4">No matches.</td></tr>';
+  updateSelection();
+}
+for(const id of ['filter-category','filter-stock','price-mode','price-discount'])$(id).addEventListener('change',drawRows);
+$('filter-query').addEventListener('input',drawRows);
+$('select-visible').addEventListener('click',()=>{visibleRows().filter(r=>r.valid).forEach(r=>selectedRows.add(r.rowNumber));drawRows();});
+$('clear-selection').addEventListener('click',()=>{selectedRows.clear();drawRows();});
+$('preview-body').addEventListener('change',e=>{if(!e.target.dataset.row)return;const n=Number(e.target.dataset.row);e.target.checked?selectedRows.add(n):selectedRows.delete(n);updateSelection();});
+$('export-selected').addEventListener('click',()=>{const url=URL.createObjectURL(new Blob([exportImportRows(previewItems)],{type:'text/csv;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download='bcw-selected-review.csv';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);});
 
 function parseInput() {
   return parseImportCSV($('csv-input').value);
 }
 
 function renderPreview(rows) {
-  previewItems = rows.filter(r => r.valid);
+  allPreviewRows=rows; selectedRows.clear();
   $('preview-panel').classList.remove('hidden');
-  $('preview-summary').textContent = `${previewItems.length} valid of ${rows.length} row(s)`;
-  $('preview-body').innerHTML = rows.slice(0,200).map(r => `<tr class="${r.valid ? '' : 'err-row'}"><td>${esc(r.name) || '(missing name)'}<br><small>${esc(r.sku || '')} ${esc(r.availability || '')}</small></td><td>${Number.isFinite(r.price) && r.price > 0 ? '$' + r.price.toFixed(2) : 'Draft: no price'}</td><td>${r.image ? 'yes' : '—'}</td><td>${esc(r.errors.join('; ') || r.review_notes || (r.description || '').slice(0, 60))}</td></tr>`).join('') || '<tr><td colspan="4">Nothing to preview.</td></tr>';
-  $('preview-summary').textContent += rows.length > 200 ? ' (first 200 shown)' : '';
-  $('import-btn').disabled = previewItems.length === 0;
+  $('filter-category').innerHTML='<option value="">All categories</option>'+importCategories(rows).map(c=>`<option>${esc(c)}</option>`).join('');
+  drawRows();
 }
 
 $('parse-btn').addEventListener('click', () => {
@@ -170,7 +196,7 @@ $('import-btn').addEventListener('click', async () => {
     const items = [...previewItems];
     const settings = {storeId:$('store-id').value.trim(),vendor:$('vendor').value.trim() || 'BCW',category:$('category').value.trim() || 'Supplies',publish:$('publish').checked};
     // Disable edits while batches are in flight so they cannot switch stores.
-    for (const id of ['store-id','vendor','category','publish','csv-input','csv-file','parse-btn']) $(id).disabled = true;
+    for (const el of document.querySelectorAll('#app input,#app select,#app textarea,#app button')) el.disabled = true;
     for (let offset = 0; offset < items.length; offset += 50) {
     message(`Importing ${offset + 1}–${Math.min(offset+50,items.length)} of ${items.length}…`);
     const batch = await api('/inventory/dropship-import', {
@@ -192,7 +218,8 @@ $('import-btn').addEventListener('click', async () => {
   } catch (e) {
     message(e.message + ' Earlier batches may have saved. You can safely retry BCW SKU rows; legacy rows without SKUs may duplicate.', true);
   } finally {
-    for (const id of ['store-id','vendor','category','publish','csv-input','csv-file','parse-btn']) $(id).disabled = false;
+    for (const el of document.querySelectorAll('#app input,#app select,#app textarea,#app button')) el.disabled = false;
+    if (previewItems.length) drawRows();
     $('import-btn').disabled = previewItems.length === 0;
   }
 });
