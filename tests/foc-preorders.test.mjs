@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { parse } from 'csv-parse/sync';
-import { normalizePrhRow, loadAllCatalogs, loadCycleSummaries, paginateCycleCatalog, focOrderConfirmationEmail, reconcileFocOrderPayment, syncFocStripeEvent, handleFocRequest } from '../scripts/foc-preorders.mjs';
+import { normalizePrhRow, normalizeLunarRow, loadAllCatalogs, loadCycleSummaries, paginateCycleCatalog, focOrderConfirmationEmail, reconcileFocOrderPayment, syncFocStripeEvent, handleFocRequest } from '../scripts/foc-preorders.mjs';
 
 const worker = fs.readFileSync('cloudflare-worker-full.js', 'utf8');
 const service = fs.readFileSync('scripts/foc-preorders.mjs', 'utf8');
@@ -67,6 +67,52 @@ const cleanSynopsis = 'Fallbacks' + String.fromCharCode(0x2019) + ' adventures r
 const doubleMangled = mangleOnceAsCp1252(mangleOnceAsCp1252(cleanSynopsis));
 const repairedDouble = normalizePrhRow({...representative, Description: doubleMangled});
 assert.equal(repairedDouble.description, cleanSynopsis, 'a synopsis mis-encoded through Windows-1252 TWICE must be fully repaired, not silently left broken');
+
+// ── Lunar's weekly comics FOC feed is a different, flatter shape than
+// PRH's -- one row per exact cover already (ProductCode), no
+// TitleFamilyID/SeriesName, no ratio-incentive columns. Rows below mirror
+// the real Lunar export (Data sheet: ProductCode, Title, RetailCost,
+// Publisher, InitialOrderDue, FinalOrderCutoff, InstoreDate, UPC/ISBN/EAN,
+// Writer, Artist, CoverArtist, Mature, Adult, ...).
+const lunarCoverA = normalizeLunarRow({
+  ProductCode:'0526IM0426', Title:'SAVAGE DRAGON #282 CVR A ERIK LARSEN (MR)', RetailCost:3.99,
+  Publisher:'Image Comics', Description:'The countdown to SAVAGE DRAGON #300 begins!',
+  InitialOrderDue:'05/28/2026', FinalOrderCutoff:'09/28/2026', InstoreDate:'10/21/2026',
+  UPC:'70985305211128211', Writer:'Erik Larsen', Artist:'Erik Larsen', CoverArtist:'Erik Larsen',
+  Mature:true, Adult:false,
+});
+assert.equal(lunarCoverA.distributorSku, '0526IM0426', 'Lunar ProductCode is the exact SKU');
+assert.equal(lunarCoverA.upc, '70985305211128211');
+assert.equal(lunarCoverA.publisher, 'Image Comics');
+assert.equal(lunarCoverA.focDate, '2026-09-28');
+assert.equal(lunarCoverA.onSaleDate, '2026-10-21');
+assert.equal(lunarCoverA.msrpCents, 399);
+assert.equal(lunarCoverA.isIncentive, false, 'Lunar has no ratio-incentive concept');
+assert.equal(lunarCoverA.flags.mature, true);
+
+const lunarCoverB = normalizeLunarRow({
+  ProductCode:'0526IM0427', Title:'SAVAGE DRAGON #282 CVR B ERIK LARSEN VAR (MR)', RetailCost:3.99,
+  Publisher:'Image Comics', FinalOrderCutoff:'09/28/2026', InstoreDate:'10/21/2026',
+  UPC:'70985305211128221', Writer:'Erik Larsen', Artist:'Erik Larsen', CoverArtist:'Erik Larsen',
+});
+assert.equal(lunarCoverB.distributorFamilyId, lunarCoverA.distributorFamilyId, 'both covers of #282 must group into one family from title/issue text alone');
+assert.notEqual(lunarCoverB.distributorSku, lunarCoverA.distributorSku);
+
+// A one-shot/TP with no issue number at all (e.g. an original graphic
+// novel) must still produce a distinct, non-empty family id and fall back
+// to a sane variant label instead of colliding with every other one-shot.
+const lunarOgn = normalizeLunarRow({
+  ProductCode:'0125IM472', Title:'DARK ROOM HC VOL 02', RetailCost:19.99, Publisher:'Image Comics',
+  FinalOrderCutoff:'09/28/2026', InstoreDate:'02/10/2027', ISBN:'9781534399396',
+});
+assert.equal(lunarOgn.upc, '9781534399396', 'UPC must fall back to ISBN when Lunar supplies no UPC');
+assert.notEqual(lunarOgn.distributorFamilyId, lunarCoverA.distributorFamilyId);
+assert.ok(lunarOgn.variantLabel, 'a one-shot with no cover variant must still get a non-empty label');
+
+const lunarNoIdentifier = normalizeLunarRow({ ProductCode:'', Title:'Untitled', FinalOrderCutoff:'09/28/2026' });
+assert.equal(lunarNoIdentifier.upc, '', 'no UPC/ISBN/EAN/ProductCode at all must fail import validation rather than fabricate an identifier');
+
+console.log('Lunar FOC row-normalization checks passed');
 
 assert.match(migration, /America\/Los_Angeles/);
 assert.match(migration, /p_foc_date::timestamp \+ interval '1 minute'/, 'default cutoff must be 12:01 AM Monday Pacific');
@@ -145,11 +191,11 @@ console.log('PRH FOC CSV date/identifier reformatting fix (real xlsx library) ve
 // dashboard's FOC Wall still lists both), but the live site had no way to
 // ask for anything but "the latest one", so from a customer's perspective
 // older weeks just vanished the moment a new week was imported. ──
-assert.match(service, /export async function loadAllCatalogs\(db, storeId, includeAdmin = false\) \{/, 'loadAllCatalogs must exist and be exported for the multi-week public route to use');
+assert.match(service, /export async function loadAllCatalogs\(db, storeId, includeAdmin = false, distributor = PRH\) \{/, 'loadAllCatalogs must exist and be exported for the multi-week public route to use');
 assert.match(service, /status=neq\.archived&order=foc_date\.desc&limit=26/, 'loadAllCatalogs must fetch multiple non-archived cycles, not just the single latest one');
 assert.match(worker, /handleFocRequest/, 'sanity: the worker still wires up the FOC route handler');
 assert.match(service, /if\(path==='\/public\/preorders\/weeks'&&request\.method==='GET'\)\{/, 'a public route to list every FOC week must exist alongside the existing single-week /public/preorders route');
-assert.match(service, /const cycles=await loadAllCatalogs\(db,storeId,false\);return deps\.json\(\{ok:true,cycles\}\);/, 'the weeks route must return every open/closed cycle\'s catalog, not just the newest');
+assert.match(service, /const cycles=await loadAllCatalogs\(db,storeId,false,distributor\);return deps\.json\(\{ok:true,cycles\}\);/, 'the weeks route must return every open/closed cycle\'s catalog, not just the newest');
 assert.match(service, /url\.searchParams\.get\('summary'\)==='1'/, 'the first customer request must support a metadata-only cycle index instead of returning every cover catalog');
 assert.match(service, /if \(!includeAdmin\) cycleQuery \+= '&status=neq\.archived'/, 'a hidden FOC must not be reachable through the public single-cycle route');
 
