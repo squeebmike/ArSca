@@ -1,10 +1,11 @@
-// The Mana Pocket PRH FOC preorder service.
+// The Mana Pocket PRH + Lunar FOC preorder service.
 //
 // This module stays deliberately independent of the dashboard DOM. The Worker
 // passes its existing Supabase/auth/Stripe helpers into handleFocRequest(), so
 // checkout continues to use the production payment and tenant foundations.
 
 const PRH = 'PRH';
+const LUNAR = 'Lunar';
 const ORDERED_STATUSES = new Set(['paid','reserved','ready_for_pickup','shipped','completed']);
 const CUSTOMER_STATUSES = new Set(['paid','reserved','ready_for_pickup','shipped','completed','cancelled','refunded','partially_refunded']);
 
@@ -178,6 +179,57 @@ export function normalizePrhRow(row = {}) {
   return normalized;
 }
 
+// Lunar's weekly FOC export is a flat comics feed (ProductCode, Title,
+// RetailCost, Publisher, InitialOrderDue, FinalOrderCutoff, InstoreDate,
+// UPC/ISBN/EAN, Writer, Artist, CoverArtist, ...) -- one row per exact
+// cover already, with none of PRH's ratio-incentive/order-requirement
+// columns and no series/family id to group by, so every family here is
+// derived from the title text the same way normalizePrhRow falls back to
+// when PRH itself doesn't supply a TitleFamilyID. Reuses titleWithoutVariant/
+// variantLabel/issueNumber since those already key off row.Title/CoverArtist
+// generically rather than any PRH-only field.
+export function normalizeLunarRow(row = {}) {
+  const distributorSku = exactIdentifier(row.ProductCode);
+  const issue = issueNumber(row);
+  const title = titleWithoutVariant(row, '', issue);
+  const normalized = {
+    distributorSku,
+    upc:exactIdentifier(row.UPC || row.ISBN || row.EAN || row.ProductCode),
+    isbn:exactIdentifier(row.ISBN),
+    distributorFamilyId:`${title || 'untitled'}|${issue || 'one-shot'}`.toLowerCase(),
+    title,
+    sourceTitle:text(row.Title, 800),
+    subtitle:'',
+    seriesName:'',
+    issueNumber:issue,
+    publisher:text(row.Publisher, 300),
+    imprint:'',
+    comicType:text(row.CoverType, 100),
+    variantType:'',
+    orderRequirement:'',
+    orderRequirementUpc:'',
+    ratioThreshold:null,
+    isIncentive:false,
+    writer:text(row.Writer, 1000),
+    interiorArtist:text(row.Artist, 1000),
+    coverArtist:text(row.CoverArtist, 1000),
+    description:text(row.Description, 12000),
+    coverImageUrl:'',
+    coverAvailable:false,
+    focDate:dateIso(row.FinalOrderCutoff),
+    onSaleDate:dateIso(row.InstoreDate),
+    msrpCents:cents(row.RetailCost),
+    maxOrderQuantity:'',
+  };
+  normalized.variantLabel = variantLabel(row, '', issue);
+  if (/^primary title$/i.test(normalized.variantLabel)) normalized.variantLabel = 'Cover A';
+  normalized.flags = {
+    mature:/^(y|yes|true|1)$/i.test(text(row.Mature, 20)),
+    adult:/^(y|yes|true|1)$/i.test(text(row.Adult, 20)),
+  };
+  return normalized;
+}
+
 function stableStringify(value) {
   if (Array.isArray(value)) return `[${value.map(stableStringify).join(',')}]`;
   if (value && typeof value === 'object') return `{${Object.keys(value).sort().map(key => `${JSON.stringify(key)}:${stableStringify(value[key])}`).join(',')}}`;
@@ -209,6 +261,7 @@ function publicSku(row, customerQty = 0) {
   return {
     id:row.id,
     familyId:row.family_id,
+    distributor:row.distributor,
     sku:row.distributor_sku,
     upc:row.upc,
     title:text(row.title, 800),
@@ -478,17 +531,22 @@ async function buildCycleCatalog(db, cycle, includeAdmin = false, env, deps, sto
   return { cycle:{ ...cycle, isOpen:cycleOpen(cycle), serverNow:new Date().toISOString() }, families:[...byFamily.values()], ...(pageMeta || {}) };
 }
 
-async function loadCatalog(db, storeId, requestedCycle, includeAdmin = false, env, deps, page = null) {
+// distributor only scopes the two "which cycle is this?" lookups that would
+// otherwise be ambiguous across PRH and Lunar (an explicit foc_date, or no
+// cycle requested at all -- "give me the latest"). A direct cycle_id lookup
+// (the admin dashboard opening a specific cycle it already knows the id of)
+// already names an unambiguous row, so it's left unfiltered by distributor.
+async function loadCatalog(db, storeId, requestedCycle, includeAdmin = false, env, deps, page = null, distributor = PRH) {
   let cycleQuery = `foc_cycles?store_id=eq.${encodeURIComponent(storeId)}&select=${catalogCycleSelect()}`;
   if (!includeAdmin) cycleQuery += '&status=neq.archived';
-  if (requestedCycle) {
-    const key = text(requestedCycle, 80);
-    cycleQuery += /^\d{4}-\d{2}-\d{2}$/.test(key) ? `&foc_date=eq.${key}` : `&id=eq.${encodeURIComponent(key)}`;
-  }
+  const key = text(requestedCycle, 80);
+  const isIdLookup = key && !/^\d{4}-\d{2}-\d{2}$/.test(key);
+  if (!isIdLookup) cycleQuery += `&distributor=eq.${encodeURIComponent(distributor)}`;
+  if (key) cycleQuery += isIdLookup ? `&id=eq.${encodeURIComponent(key)}` : `&foc_date=eq.${key}`;
   cycleQuery += '&order=foc_date.desc&limit=1';
   let { data:cycles } = await db(cycleQuery);
   if (!cycles?.length && !requestedCycle) {
-    ({ data:cycles } = await db(`foc_cycles?store_id=eq.${encodeURIComponent(storeId)}&select=${catalogCycleSelect()}&order=foc_date.desc&limit=1`));
+    ({ data:cycles } = await db(`foc_cycles?store_id=eq.${encodeURIComponent(storeId)}&distributor=eq.${encodeURIComponent(distributor)}&select=${catalogCycleSelect()}&order=foc_date.desc&limit=1`));
   }
   const cycle = cycles?.[0];
   if (!cycle) return null;
@@ -539,8 +597,8 @@ export function paginateCycleCatalog(catalog, requestedLimit, requestedOffset) {
 // the admin cycle PATCH) and are excluded; open and closed cycles both stay
 // visible so customers can see a running history, not just what's still
 // orderable.
-export async function loadAllCatalogs(db, storeId, includeAdmin = false) {
-  const { data:cycles } = await db(`foc_cycles?store_id=eq.${encodeURIComponent(storeId)}&select=${catalogCycleSelect()}&status=neq.archived&order=foc_date.desc&limit=26`);
+export async function loadAllCatalogs(db, storeId, includeAdmin = false, distributor = PRH) {
+  const { data:cycles } = await db(`foc_cycles?store_id=eq.${encodeURIComponent(storeId)}&distributor=eq.${encodeURIComponent(distributor)}&select=${catalogCycleSelect()}&status=neq.archived&order=foc_date.desc&limit=26`);
   if (!cycles?.length) return [];
   const sorted = cycles.slice().sort(compareCyclesForCustomer);
   return Promise.all(sorted.map(cycle => buildCycleCatalog(db, cycle, includeAdmin)));
@@ -550,8 +608,8 @@ export async function loadAllCatalogs(db, storeId, includeAdmin = false) {
 // catalogs are fetched from /public/preorders?cycle=<id> when the visitor
 // opens a week, preventing several megabytes of historical covers from being
 // assembled and downloaded before the first useful FOC is visible.
-export async function loadCycleSummaries(db, storeId) {
-  const { data:cycles } = await db(`foc_cycles?store_id=eq.${encodeURIComponent(storeId)}&select=${catalogCycleSelect()}&status=neq.archived&order=foc_date.desc&limit=26`);
+export async function loadCycleSummaries(db, storeId, distributor = PRH) {
+  const { data:cycles } = await db(`foc_cycles?store_id=eq.${encodeURIComponent(storeId)}&distributor=eq.${encodeURIComponent(distributor)}&select=${catalogCycleSelect()}&status=neq.archived&order=foc_date.desc&limit=26`);
   return (cycles || []).slice().sort(compareCyclesForCustomer).map(cycle => ({
     ...cycle,
     isOpen:cycleOpen(cycle),
@@ -645,6 +703,92 @@ async function importPrh(request, env, deps, storeId) {
   }
   await db('comic_skus?on_conflict=cycle_id,distributor_sku', { method:'POST', headers:{ Prefer:'resolution=merge-duplicates,return=minimal' }, body:JSON.stringify(skuRows) });
   const report = { processed:sourceRows.length, families:familyMap.size, newSkus, updatedSkus, unchanged, errors:0, incentives:skuRows.filter(row => row.is_incentive).length };
+  await db(`foc_cycles?id=eq.${cycle.id}`, { method:'PATCH', headers:{ Prefer:'return=minimal' }, body:JSON.stringify({ import_report:report }) });
+  return deps.json({ ok:true, duplicate:false, cycleId:cycle.id, focDate, customerCutoffAt:cycle.customer_cutoff_at || cutoff, report });
+}
+
+// Kept as its own function rather than a shared PRH/Lunar importer: the two
+// distributors' rows carry different columns and no ratio-incentive concept
+// exists here, and importPrh's price-preservation logic already carries a
+// lot of store-report-driven history (see hadCustomPrice above) that a
+// merged code path would put at risk for a distributor that doesn't need it.
+async function importLunar(request, env, deps, storeId) {
+  const auth = await deps.requireStoreUser(request, env, storeId, ['owner','admin','manager','employee']);
+  if (auth.error) return auth.error;
+  const limited = await deps.readJsonWithLimit(request, 2 * 1024 * 1024);
+  if (limited.error) return limited.error;
+  const body = limited.data || {};
+  const sourceRows = Array.isArray(body.rows) ? body.rows.slice(0, 2000) : [];
+  if (!sourceRows.length) return deps.json({ ok:false, error:'No Lunar rows were supplied' }, 400);
+  const normalized = sourceRows.map((row, index) => ({ row, index:index + 2, parsed:normalizeLunarRow(row) }));
+  const errors = normalized.filter(entry => !entry.parsed.distributorSku || !entry.parsed.upc || !entry.parsed.focDate || !entry.parsed.title);
+  if (errors.length) return deps.json({ ok:false, error:`${errors.length} row(s) are missing an exact identifier, title, or FOC date`, rows:errors.slice(0,20).map(entry => entry.index) }, 400);
+  const focDates = [...new Set(normalized.map(entry => entry.parsed.focDate))];
+  if (focDates.length !== 1) return deps.json({ ok:false, error:'A single import must contain exactly one FOC date', focDates }, 400);
+  const focDate = focDates[0];
+  const sourceSha256 = /^[a-f0-9]{64}$/i.test(text(body.sourceSha256, 64)) ? text(body.sourceSha256, 64).toLowerCase() : await sha256Hex(sourceRows);
+  const db = (path, options) => deps.supabaseAdminFetch(env, path, options);
+  const { data:existingCycles } = await db(`foc_cycles?store_id=eq.${encodeURIComponent(storeId)}&distributor=eq.${LUNAR}&foc_date=eq.${focDate}&select=*&limit=1`);
+  const existingCycle = existingCycles?.[0];
+  if (existingCycle?.source_sha256 === sourceSha256) {
+    return deps.json({ ok:true, duplicate:true, cycleId:existingCycle.id, focDate, report:existingCycle.import_report || { processed:sourceRows.length, newSkus:0, updatedSkus:0, unchanged:sourceRows.length, errors:0 } });
+  }
+  const cutoff = text(body.customerCutoffAt, 80) || existingCycle?.customer_cutoff_at || null;
+  const cycleRow = {
+    store_id:storeId, distributor:LUNAR, foc_date:focDate, customer_cutoff_at:cutoff,
+    status:existingCycle?.status || 'open', preorder_mode:existingCycle?.preorder_mode || 'pay_now',
+    source_filename:text(body.sourceFilename, 300) || null, source_sha256:sourceSha256,
+    source_row_count:sourceRows.length, imported_by:auth.user.id, imported_at:new Date().toISOString(),
+  };
+  const { data:cycleRows } = await db('foc_cycles?on_conflict=store_id,distributor,foc_date', { method:'POST', headers:{ Prefer:'resolution=merge-duplicates,return=representation' }, body:JSON.stringify(cycleRow) });
+  const cycle = cycleRows?.[0] || existingCycle;
+  if (!cycle?.id) return deps.json({ ok:false, error:'The FOC cycle could not be created' }, 502);
+
+  const familyMap = new Map();
+  for (const entry of normalized) {
+    const p = entry.parsed;
+    if (!familyMap.has(p.distributorFamilyId)) familyMap.set(p.distributorFamilyId, {
+      store_id:storeId, cycle_id:cycle.id, distributor_family_id:p.distributorFamilyId,
+      title:p.title, series_name:p.seriesName || null, issue_number:p.issueNumber || null,
+      publisher:p.publisher || null, imprint:p.imprint || null, comic_type:p.comicType || null,
+      description:p.description || null, writer:p.writer || null, interior_artist:p.interiorArtist || null,
+      on_sale_date:p.onSaleDate, is_first_issue:p.issueNumber === '1', is_new_series:false,
+    });
+  }
+  const { data:familyRows } = await db('comic_title_families?on_conflict=cycle_id,distributor_family_id', { method:'POST', headers:{ Prefer:'resolution=merge-duplicates,return=representation' }, body:JSON.stringify([...familyMap.values()]) });
+  const familyIds = new Map((familyRows || []).map(row => [row.distributor_family_id, row.id]));
+  if (familyIds.size !== familyMap.size) return deps.json({ ok:false, error:'Some title families could not be grouped during import' }, 502);
+
+  const { data:existingSkus } = await db(`comic_skus?cycle_id=eq.${encodeURIComponent(cycle.id)}&select=id,distributor_sku,row_sha256,msrp_cents,customer_price_cents`);
+  const existingBySku = new Map((existingSkus || []).map(row => [row.distributor_sku, row]));
+  let newSkus = 0, updatedSkus = 0, unchanged = 0;
+  const skuRows = [];
+  for (const entry of normalized) {
+    const p = entry.parsed;
+    const rowHash = await sha256Hex(entry.row);
+    const before = existingBySku.get(p.distributorSku);
+    if (!before) newSkus++;
+    else if (before.row_sha256 === rowHash) unchanged++;
+    else updatedSkus++;
+    // No ratio-incentive concept in Lunar's feed -- every SKU defaults to
+    // its MSRP as the customer price unless staff already changed it.
+    const hadCustomPrice = before && Number(before.customer_price_cents || 0) !== Number(before.msrp_cents || 0);
+    const customerPriceCents = hadCustomPrice ? Number(before.customer_price_cents || 0) : p.msrpCents;
+    skuRows.push({
+      store_id:storeId, cycle_id:cycle.id, family_id:familyIds.get(p.distributorFamilyId), distributor:LUNAR,
+      distributor_sku:p.distributorSku, upc:p.upc, isbn:p.isbn || null, title:p.sourceTitle || p.title,
+      subtitle:p.subtitle || null, variant_label:p.variantLabel || null, variant_type:p.variantType || null,
+      order_requirement:p.orderRequirement || null, order_requirement_upc:p.orderRequirementUpc || null,
+      ratio_threshold:p.ratioThreshold, is_incentive:p.isIncentive, cover_artist:p.coverArtist || null,
+      cover_image_url:p.coverImageUrl || null, cover_available:p.coverAvailable, writer:p.writer || null,
+      interior_artist:p.interiorArtist || null, publisher:p.publisher || null, imprint:p.imprint || null,
+      description:p.description || null, foc_date:p.focDate, on_sale_date:p.onSaleDate,
+      msrp_cents:p.msrpCents, customer_price_cents:customerPriceCents, raw_distributor_data:entry.row,
+      row_sha256:rowHash, flags:p.flags,
+    });
+  }
+  await db('comic_skus?on_conflict=cycle_id,distributor_sku', { method:'POST', headers:{ Prefer:'resolution=merge-duplicates,return=minimal' }, body:JSON.stringify(skuRows) });
+  const report = { processed:sourceRows.length, families:familyMap.size, newSkus, updatedSkus, unchanged, errors:0, incentives:0 };
   await db(`foc_cycles?id=eq.${cycle.id}`, { method:'PATCH', headers:{ Prefer:'return=minimal' }, body:JSON.stringify({ import_report:report }) });
   return deps.json({ ok:true, duplicate:false, cycleId:cycle.id, focDate, customerCutoffAt:cycle.customer_cutoff_at || cutoff, report });
 }
@@ -1846,12 +1990,15 @@ export async function handleFocRequest(request, env, url, deps) {
   }
   if(path==='/public/shipping/quotes'&&request.method==='POST')return quoteShipping(request,env,deps);
   if(path==='/public/preorders'&&request.method==='GET'){
-    const storeId=text(url.searchParams.get('store_id'),80);const db=(p,o)=>deps.supabaseAdminFetch(env,p,o);const requestedLimit=Number.parseInt(url.searchParams.get('limit'),10);const requestedPage=Number.isFinite(requestedLimit)&&requestedLimit>0?{limit:requestedLimit,offset:Number.parseInt(url.searchParams.get('offset'),10)||0}:null;const catalog=await loadCatalog(db,storeId,url.searchParams.get('cycle')||'',false,undefined,undefined,requestedPage);return catalog?deps.json({ok:true,...catalog}):deps.json({ok:false,error:'No FOC catalog is published yet'},404);
+    const storeId=text(url.searchParams.get('store_id'),80);const db=(p,o)=>deps.supabaseAdminFetch(env,p,o);const requestedLimit=Number.parseInt(url.searchParams.get('limit'),10);const requestedPage=Number.isFinite(requestedLimit)&&requestedLimit>0?{limit:requestedLimit,offset:Number.parseInt(url.searchParams.get('offset'),10)||0}:null;
+    const distributor=url.searchParams.get('distributor')===LUNAR?LUNAR:PRH;
+    const catalog=await loadCatalog(db,storeId,url.searchParams.get('cycle')||'',false,undefined,undefined,requestedPage,distributor);return catalog?deps.json({ok:true,...catalog}):deps.json({ok:false,error:'No FOC catalog is published yet'},404);
   }
   if(path==='/public/preorders/weeks'&&request.method==='GET'){
     const storeId=text(url.searchParams.get('store_id'),80);const db=(p,o)=>deps.supabaseAdminFetch(env,p,o);
-    if(url.searchParams.get('summary')==='1'){const cycles=await loadCycleSummaries(db,storeId);return deps.json({ok:true,cycles});}
-    const cycles=await loadAllCatalogs(db,storeId,false);return deps.json({ok:true,cycles});
+    const distributor=url.searchParams.get('distributor')===LUNAR?LUNAR:PRH;
+    if(url.searchParams.get('summary')==='1'){const cycles=await loadCycleSummaries(db,storeId,distributor);return deps.json({ok:true,cycles});}
+    const cycles=await loadAllCatalogs(db,storeId,false,distributor);return deps.json({ok:true,cycles});
   }
   if(path==='/public/preorders/checkout'&&request.method==='POST')return preorderCheckout(request,env,deps);
   if(path==='/public/preorders/picks'&&request.method==='GET')return savedPicks(request,env,deps,url);
@@ -1861,7 +2008,10 @@ export async function handleFocRequest(request, env, url, deps) {
   if(path==='/public/preorders/my'&&request.method==='GET')return myPreorders(request,env,deps,url);
   if(path==='/public/preorders/cancel'&&request.method==='POST')return cancelPreorder(request,env,deps);
   if(path==='/public/preorders/resume'&&request.method==='POST')return resumePreorderPayment(request,env,deps);
-  if(path==='/foc/admin/import'&&request.method==='POST')return importPrh(request,env,deps,text(request.headers.get('X-Store-Id'),80));
+  if(path==='/foc/admin/import'&&request.method==='POST'){
+    const storeId=text(request.headers.get('X-Store-Id'),80);
+    return url.searchParams.get('distributor')===LUNAR?importLunar(request,env,deps,storeId):importPrh(request,env,deps,storeId);
+  }
   if(path==='/foc/admin/cycles'&&(request.method==='GET'||request.method==='PATCH'))return adminCycle(request,env,deps,url);
   if(path==='/foc/admin/sku'&&request.method==='PATCH')return adminSku(request,env,deps);
   if(path==='/foc/admin/prh-submission'&&(request.method==='GET'||request.method==='POST'))return adminPrhSubmission(request,env,deps,url);
