@@ -5605,11 +5605,23 @@ export default {
       if(request.method !== 'GET' || !originResponse.headers.get('Content-Type')?.includes('text/html')) return originResponse;
       return new HTMLRewriter().on('body',{element(el){el.append(`<script>document.addEventListener('change',function(e){if(e.target.matches('select.wo-store-control-field')&&String(e.target.value).toLowerCase()==='supplies'){e.stopImmediatePropagation();location.href='/bcw';}},true);document.addEventListener('DOMContentLoaded',function(){var host=document.getElementById('wo-live-shop');if(host&&!document.getElementById('bcw-supplies-link')){var a=document.createElement('a');a.id='bcw-supplies-link';a.href='/bcw';a.textContent='Shop BCW supplies →';a.style.cssText='display:inline-block;margin:18px 0;padding:12px 18px;border:1px solid currentColor;border-radius:8px;font-weight:700';host.before(a);}});</script>`,{html:true});}}).transform(originResponse);
     }
-    if (url.pathname === '/bcw' && request.method === 'GET') {
+    // The customer-facing BCW page is a native Webflow page. Preserve it if
+    // the domain's DNS proxy is enabled later; workers.dev keeps the preview.
+    if (url.hostname === 'themanapocket.com' && url.pathname === '/bcw') return fetch(request);
+    if ((url.pathname === '/bcw' || url.pathname === '/public/bcw') && request.method === 'GET') {
       if (!(env.SUPABASE_URL && (env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SERVICE_KEY))) return new Response('Storefront service unavailable',{status:503});
       const key = new Request(url.toString(),request);
       const cached = await caches.default.match(key);
       if(cached) return cached;
+      const requestedItem=url.searchParams.get('item');
+      if(requestedItem){
+        if(!/^[a-zA-Z0-9-]{1,80}$/.test(requestedItem))return json({error:'Invalid item'},400);
+        const result=await supabaseAdminFetch(env,'inventory_items?store_id=eq.'+encodeURIComponent(ITEM_DETAIL_STORE_ID)+'&id=eq.'+encodeURIComponent(requestedItem)+'&select=id,data,status,created_at,updated_at&limit=1').catch(()=>null);
+        if(!result?.response?.ok)return json({error:'Catalog temporarily unavailable'},503);
+        const item=result.data?.[0]?shapeStorefrontItem(result.data[0]):null;
+        if(!item || !isBcwPublished(item))return json({error:'Product not found'},404);
+        return json({item},200,{'Cache-Control':'public, max-age=120'});
+      }
       const rows=[];
       for(let offset=0; ; offset+=1000){
         const result=await supabaseAdminFetch(env, 'inventory_items?store_id=eq.'+encodeURIComponent(ITEM_DETAIL_STORE_ID)+'&data->>dropship=eq.true&data->>vendor=ilike.BCW&select=id,data,status,created_at,updated_at&order=id.asc&limit=1000&offset='+offset).catch(()=>({response:null}));
@@ -5619,7 +5631,7 @@ export default {
       }
       const selection=catalogSelection(rows.map(shapeStorefrontItem),url.searchParams);
       if(selection.page>selection.pages)return new Response('Catalog page not found',{status:404});
-      const response=mtgHtmlResponse(renderBcwCatalog(selection));
+      const response=url.pathname==='/public/bcw'?json(selection):mtgHtmlResponse(renderBcwCatalog(selection));
       response.headers.set('Cache-Control','public, max-age=120');
       ctx.waitUntil(caches.default.put(key,response.clone()));
       return response;

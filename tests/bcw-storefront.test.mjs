@@ -53,15 +53,20 @@ globalThis.caches={default:{match:async()=>null,put:async()=>{}}};
 globalThis.fetch=async input=>{requests.push(String(input));return new Response(JSON.stringify([incoming]),{headers:{'Content-Type':'application/json'}});};
 const env={SUPABASE_URL:'https://database.example',SUPABASE_SERVICE_ROLE_KEY:'test-only'},edge={waitUntil:()=>{}};
 try{
- const res=await api.fetch(new Request('https://themanapocket.com/bcw'),env,edge);
+ const res=await api.fetch(new Request('https://still-resonance-4f87.swarnerauto.workers.dev/bcw'),env,edge);
  assert.equal(res.status,200);assert.match(await res.text(),/BCW bags/);
  assert.match(requests[0],/store_id=eq\./);assert.match(requests[0],/dropship=eq.true/);
+ const catalogApi=await api.fetch(new Request('https://still-resonance-4f87.swarnerauto.workers.dev/public/bcw'),env,edge);
+ assert.equal(catalogApi.headers.get('Access-Control-Allow-Origin'),'*');
+ assert.equal((await catalogApi.json()).items[0].supplierSku,'1-TEST');
+ const itemApi=await api.fetch(new Request('https://still-resonance-4f87.swarnerauto.workers.dev/public/bcw?item='+incoming.id),env,edge);
+ assert.equal((await itemApi.json()).item.id,incoming.id);
  const redirect=await api.fetch(new Request('https://themanapocket.com/shop?cat=supplies'),env,edge);
  assert.equal(redirect.status,301);assert.equal(redirect.headers.get('Location'),'https://themanapocket.com/bcw');
  const detail=await api.fetch(new Request('https://themanapocket.com'+productPath(item)),env,edge);
  assert.equal(detail.status,200);assert.match(await detail.text(),/data-bcw-product/);
  globalThis.fetch=async()=>new Response('failure',{status:503});
- const failed=await api.fetch(new Request('https://themanapocket.com/bcw'),env,edge);
+ const failed=await api.fetch(new Request('https://still-resonance-4f87.swarnerauto.workers.dev/public/bcw'),env,edge);
  assert.equal(failed.status,503,'database failures cannot look like an empty successful catalog');
 }finally{globalThis.fetch=originalFetch;globalThis.caches=originalCaches;}
 console.log('BCW dashboard round-trip, owned-stock totals, public privacy, catalog pagination, and product SEO tests passed');
