@@ -76,13 +76,13 @@ function cycleCard(c){
     '<div style="font:10px/1.5 var(--font-mono);color:var(--dim);text-align:right"><b style="color:var(--text)">'+Number(report.families||0)+'</b> title families<br><b style="color:var(--gold)">'+Number(report.incentives||0)+'</b> incentives</div></button>';
 }
 
-// PRH (books) and Lunar (single-issue comics) are kept as separate cycle
-// lists sharing the one FOC Wall UI/checkout/export plumbing -- distributor
-// tabs pick which list is visible rather than interleaving both weeks
-// together, which would otherwise mix a book's monthly-ish FOC cadence with
-// Lunar's weekly one under a single "latest cycle" view.
+// PRH and Lunar are both real comics distributors (not "books vs comics" --
+// PRH's own FOC test fixtures are Marvel single issues), kept as separate
+// cycle lists sharing the one FOC Wall UI/checkout/export plumbing --
+// distributor tabs pick which list is visible rather than interleaving both
+// distributors' weeks together under a single "latest cycle" view.
 function distributorTabs(){
-  return '<div class="foc-toolbar" style="margin-top:10px">'+[['PRH','BOOKS · PRH'],['Lunar','COMICS · LUNAR']].map(function(t){
+  return '<div class="foc-toolbar" style="margin-top:10px">'+[['PRH','PRH'],['Lunar','LUNAR']].map(function(t){
     var active=state.distributor===t[0];
     return '<button class="hbtn" style="'+(active?'background:var(--purple);color:#fff;border-color:var(--purple)':'')+'" onclick="switchFocDistributor(\''+t[0]+'\')">'+t[1]+'</button>';
   }).join('')+'</div>';
