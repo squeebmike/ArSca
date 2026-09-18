@@ -1886,11 +1886,18 @@ body.show-mode .inv-sync-badge{display:none;}
     <div class="inv-card-grid" id="inv-card-grid"></div>
     <div class="pager" id="pager-cards"></div>
   </div>
+  <!-- Bulk-action bar -- hidden until at least one row checkbox is checked. -->
+  <div id="inv-bulk-bar" class="tc" style="display:none;align-items:center;gap:8px">
+    <span id="inv-bulk-count" style="font-family:var(--font-mono);font-size:10px;color:var(--dim)"></span>
+    <button class="fb" onclick="exportSelectedToWhatnotCsv()">EXPORT TO WHATNOT CSV</button>
+    <button class="fb" onclick="toggleInvBulkSelectAllFiltered(true)">SELECT ALL MATCHING FILTER</button>
+    <button class="fb" onclick="clearInvBulkSelection()">CLEAR SELECTION</button>
+  </div>
   <!-- Table view -->
   <div class="tbl-wrap" id="inv-table-wrap">
     <table>
       <thead><tr>
-        <th class="th-thumb"></th>
+        <th class="th-thumb"><input type="checkbox" id="inv-bulk-select-all" title="Select all rows on this page" onchange="toggleInvBulkSelectAllPage(this.checked)"></th>
         <th onclick="srt('name')">NAME</th>
         <th onclick="srt('set')">SET / VARIANT</th>
         <th>CAT</th>
@@ -5115,6 +5122,12 @@ function shouldPollTab(tab){
 }
 let ts={col:'name',dir:1};
 const PER=50; let page=1;
+// Store request: staff prepping a Whatnot show needed to pick a specific
+// handful of items out of the main Inventory table (not "everything
+// currently filtered", which the existing "THIS VIEW" toolbar buttons
+// already cover) -- a Set survives paging/filtering/re-renders the same way
+// the eBay bulk-listing panel's own selection state does.
+let inventoryBulkSelectedIds = new Set();
 const DAILY_TABS = [
   ['overview', 'HOME'],
   ['research', 'RESEARCH'],
@@ -18231,9 +18244,12 @@ function renderTable(){
     // text next to it still opens Research, the image now opens the edit
     // modal instead, matching how a photo thumbnail usually behaves.
     const editClick = `openEditModal('${i.id}')`;
-    const thumbCell = thumbSrc
-      ? `<td class="td-thumb" onclick="${editClick}" style="cursor:pointer" title="Edit item"><img class="inv-thumb" src="${escHtml(thumbSrc)}" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><div class="inv-thumb-placeholder" style="display:none">NO IMG</div></td>`
-      : `<td class="td-thumb" onclick="${editClick}" style="cursor:pointer" title="Edit item"><div class="inv-thumb-placeholder">🔍</div></td>`;
+    const bulkChecked = inventoryBulkSelectedIds.has(i.id);
+    const bulkCb = `<input type="checkbox" class="inv-bulk-cb" value="${i.id}" ${bulkChecked?'checked':''} onchange="invBulkCheckboxChanged(this)" title="Select for bulk actions" style="display:block;margin-bottom:4px;cursor:pointer">`;
+    const thumbInner = thumbSrc
+      ? `<img class="inv-thumb" src="${escHtml(thumbSrc)}" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><div class="inv-thumb-placeholder" style="display:none">NO IMG</div>`
+      : `<div class="inv-thumb-placeholder">🔍</div>`;
+    const thumbCell = `<td class="td-thumb">${bulkCb}<div onclick="${editClick}" style="cursor:pointer" title="Edit item">${thumbInner}</div></td>`;
     return `<tr class="${ins?'':'sold'}" data-item-id="${i.id}">
       ${thumbCell}
       <td><span class="dot ${ins?'in_stock':'sold'}"></span><span class="nc" title="${i.tcgCardId?'TCG ID: '+i.tcgCardId:''}" onclick="${researchClick}" style="cursor:pointer">${i.name}${i.isRookie?' <span style="color:var(--gold);font-size:8px">RC</span>':''}${i.tcgCardId?'<span style="font-family:monospace;font-size:7px;color:rgba(0,255,179,.4);margin-left:4px">●</span>':''}${i.isBundle?' <span style="color:var(--gold);font-size:8px">🎁 BUNDLE</span>':''}</span>${invSyncBadgeHtml(i.id)}<div class="sc2" style="margin:5px 0 0 12px">${escHtml([i.consignorName||i.inventoryOwner||'Store owned',i.inventorySku||i.sku||''].filter(Boolean).join(' · '))}</div>${i.status==='bundled'&&i.bundledIntoName?`<div class="sc2" style="margin-top:5px;color:var(--gold)">🎁 In bundle: ${escHtml(i.bundledIntoName)}</div>`:''}</td>
@@ -18267,6 +18283,100 @@ function renderTable(){
   });
   const tot=Math.ceil(filtered.length/PER);
   document.getElementById('pager').innerHTML=tot<=1?'':Array.from({length:tot},(_,i)=>`<button class="pg${i+1===page?' on':''}" onclick="page=${i+1};renderTable()">${i+1}</button>`).join('');
+  renderInvBulkBar();
+  const selectAllCb = document.getElementById('inv-bulk-select-all');
+  if(selectAllCb){
+    const pageIds = rows.map(r => r.id);
+    selectAllCb.checked = pageIds.length>0 && pageIds.every(id => inventoryBulkSelectedIds.has(id));
+    selectAllCb.indeterminate = !selectAllCb.checked && pageIds.some(id => inventoryBulkSelectedIds.has(id));
+  }
+}
+
+// Bulk row-select on the main Inventory table -- distinct from the "THIS
+// VIEW" toolbar buttons above (which always act on the entire filtered
+// set): this lets staff hand-pick a specific handful of items, e.g. what's
+// actually going into tonight's Whatnot show, out of a much larger filtered
+// list. Selection is a Set of ids (not DOM state) so it survives paging,
+// re-filtering, and re-renders, same convention as ebayBulkSelectedIds.
+function invBulkCheckboxChanged(cb){
+  if(cb.checked) inventoryBulkSelectedIds.add(cb.value);
+  else inventoryBulkSelectedIds.delete(cb.value);
+  renderInvBulkBar();
+  const selectAllCb = document.getElementById('inv-bulk-select-all');
+  if(selectAllCb){
+    const pageIds = Array.from(document.querySelectorAll('#tbody .inv-bulk-cb')).map(el => el.value);
+    selectAllCb.checked = pageIds.length>0 && pageIds.every(id => inventoryBulkSelectedIds.has(id));
+    selectAllCb.indeterminate = !selectAllCb.checked && pageIds.some(id => inventoryBulkSelectedIds.has(id));
+  }
+}
+
+function toggleInvBulkSelectAllPage(checked){
+  document.querySelectorAll('#tbody .inv-bulk-cb').forEach(cb => {
+    cb.checked = checked;
+    if(checked) inventoryBulkSelectedIds.add(cb.value); else inventoryBulkSelectedIds.delete(cb.value);
+  });
+  renderInvBulkBar();
+}
+
+// Grabs every item matching the current search/category/status filters --
+// not just what's on the current page -- for a staffer who filtered down to
+// exactly what they want (e.g. Category=Pokemon, In Stock) and just wants
+// all of it, without paging through and checking each page by hand.
+function toggleInvBulkSelectAllFiltered(){
+  filtered.forEach(i => inventoryBulkSelectedIds.add(i.id));
+  renderTable();
+  toast_dash(`Selected ${filtered.length} item${filtered.length===1?'':'s'} matching the current filter`);
+}
+
+function clearInvBulkSelection(){
+  inventoryBulkSelectedIds.clear();
+  renderTable();
+}
+
+function renderInvBulkBar(){
+  const bar = document.getElementById('inv-bulk-bar');
+  const countEl = document.getElementById('inv-bulk-count');
+  if(!bar || !countEl) return;
+  const n = inventoryBulkSelectedIds.size;
+  bar.style.display = n>0 ? '' : 'none';
+  countEl.textContent = n>0 ? `${n} item${n===1?'':'s'} selected` : '';
+}
+
+// Builds a CSV in the shape of Whatnot's own bulk-import template (Seller
+// Hub -> Inventory -> Import from CSV) -- a free, native alternative to
+// their paid Shopify Sales Channel integration for a shop that only needs
+// inventory in Whatnot for occasional live shows, not a standing sync.
+//
+// NOTE: Title/Description/Quantity/Price/SKU/Condition/Image URL 1 are
+// filled from real inventory data. Category, Sub Category, Type, Shipping
+// Profile, and Offerable are left BLANK on purpose -- Whatnot enforces its
+// own controlled vocabulary for these (values must match exactly, see the
+// "Values" tab of Whatnot's own downloaded template) and this app has no
+// source of truth for Whatnot's specific category taxonomy or your
+// configured shipping profile names. Download Whatnot's current template
+// once from Seller Hub and compare column headers before the first real
+// upload -- Whatnot has changed this template's exact columns before.
+function whatnotCsvRowsFromItems(items){
+  const header = ['Title','Description','Quantity','Price','SKU','Category','Sub Category','Type','Condition','Shipping Profile','Offerable','Image URL 1','Image URL 2','Image URL 3','Image URL 4','Image URL 5','Image URL 6','Image URL 7','Image URL 8'];
+  const rows = items.map(i => {
+    const money = inventoryProfitStats(i);
+    const price = money.list>0 ? money.list : money.market;
+    const title = [i.name, i.set, i.variant].filter(Boolean).join(' - ').slice(0, 140);
+    const description = [i.year, i.condition, i.set, i.variant].filter(Boolean).join(' · ');
+    return [
+      title, description, i.qty||1, price>0?price.toFixed(2):'', i.id, '', '', '', i.condition||'', '', '',
+      inventoryImageUrl(i)||'', '', '', '', '', '', '',
+    ];
+  });
+  return [header, ...rows];
+}
+
+function exportSelectedToWhatnotCsv(){
+  const items = all.filter(i => inventoryBulkSelectedIds.has(i.id));
+  if(!items.length){ toast_dash('Select at least one item first'); return; }
+  downloadCSV(`whatnot-import-${new Date().toISOString().slice(0,10)}.csv`, whatnotCsvRowsFromItems(items));
+  logOpsEvent('whatnot_csv_export', `Exported ${items.length} item(s) to a Whatnot import CSV`, { count: items.length });
+  toast_dash(`Exported ${items.length} item${items.length===1?'':'s'} -- fill in Category/Sub Category/Type/Shipping Profile in the CSV to match your Whatnot template before uploading`);
 }
 
 function renderSoldTable(){

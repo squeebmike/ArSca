@@ -22,10 +22,15 @@ assert.match(dashboard, /name: document\.getElementById\('edit-name'\)\?\.value\
 // behave.
 assert.match(dashboard, /const editClick = `openEditModal\('\$\{i\.id\}'\)`;/,
   'the inventory table row must build an edit-modal click handler for its thumbnail');
-assert.match(dashboard, /<td class="td-thumb" onclick="\$\{editClick\}" style="cursor:pointer" title="Edit item"><img class="inv-thumb"/,
+// The thumbnail's own click handler now lives on a wrapping <div> inside
+// td-thumb (not the <td> itself) so a bulk-select checkbox can sit in the
+// same cell without also triggering the edit modal when checked.
+assert.match(dashboard, /const thumbInner = thumbSrc\s*\n\s*\? `<img class="inv-thumb"/,
   'a thumbnail with an image must open the edit modal on click, not Research');
-assert.match(dashboard, /<td class="td-thumb" onclick="\$\{editClick\}" style="cursor:pointer" title="Edit item"><div class="inv-thumb-placeholder">🔍<\/div><\/td>/,
+assert.match(dashboard, /: `<div class="inv-thumb-placeholder">🔍<\/div>`;/,
   'a thumbnail with no image must also open the edit modal on click, not Research');
+assert.match(dashboard, /const thumbCell = `<td class="td-thumb">\$\{bulkCb\}<div onclick="\$\{editClick\}" style="cursor:pointer" title="Edit item">\$\{thumbInner\}<\/div><\/td>`;/,
+  'the thumbnail click handler must be on the wrapping div, and the bulk-select checkbox must be a sibling of it, not inside it');
 // The item name text itself must still open Research -- only the image's
 // behavior changed, so a store used to clicking the name for comps isn't
 // surprised.
