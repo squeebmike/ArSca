@@ -2570,6 +2570,244 @@ async function getEbayUserAccessToken(env) {
   return accessToken || '';
 }
 
+// --- Shopify integration ----------------------------------------------
+// Shopify becomes a synced mirror of this store's own inventory_items so it
+// can plug into Whatnot's Shopify Sales Channel app (Whatnot has no direct
+// API of its own -- Shopify is the only catalog sync it supports).
+// Supabase/inventory_items stays the real source of truth: staff opt items
+// in from the dashboard (push, see /shopify/sync-item below), and a Shopify
+// order webhook decrements the same inventory_items row a Stripe/eBay sale
+// would (pull, see /shopify/webhook/orders). Mirrors the eBay integration's
+// shape -- getStoredSecret/putStoredSecret for credentials, a
+// *FetchWithRetry wrapper for loop/scheduled call sites, data.shopify*
+// fields on inventory_items -- but skips eBay's OAuth refresh dance: a
+// Shopify custom-app Admin API token doesn't expire, so SHOPIFY_SHOP_DOMAIN
+// and SHOPIFY_ADMIN_TOKEN are meant to be set as real Worker secrets
+// (`wrangler secret put`, same as EBAY_CLIENT_ID/EBAY_CLIENT_SECRET already
+// are) rather than entered through any dashboard flow -- getStoredSecret
+// already checks env[key] first, so no new storage path is needed.
+const SHOPIFY_API_VERSION = '2026-04';
+
+// Shopify's GraphQL Admin API throttles by request cost, not eBay's flat
+// 429 -- a throttled call still returns HTTP 200, with a THROTTLED user
+// error and an extensions.cost.throttleStatus block saying how fast the
+// bucket refills. Only wired into loop/scheduled call sites (bulk push, the
+// order-sync cron), same convention as ebayFetchWithRetry: a single
+// interactive push from the dashboard should surface a real error
+// immediately rather than silently retrying for several seconds.
+async function shopifyFetchWithRetry(url, options, maxRetries = 2) {
+  let lastRes, lastBody;
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    lastRes = await fetch(url, options);
+    lastBody = await lastRes.clone().json().catch(() => null);
+    const throttled = lastRes.status === 429 || (lastBody?.errors || []).some(e => e?.extensions?.code === 'THROTTLED');
+    if (!throttled || attempt === maxRetries) return lastRes;
+    const restoreRate = Number(lastBody?.extensions?.cost?.throttleStatus?.restoreRate || 0);
+    const delayMs = restoreRate > 0 ? Math.min(5000, Math.ceil(1000 / restoreRate) * 200) : 500 * Math.pow(2, attempt);
+    await new Promise(r => setTimeout(r, delayMs));
+  }
+  return lastRes;
+}
+
+async function shopifyGraphQL(env, query, variables = {}) {
+  const shop = await getStoredSecret(env, 'SHOPIFY_SHOP_DOMAIN');
+  const token = await getStoredSecret(env, 'SHOPIFY_ADMIN_TOKEN');
+  if (!shop || !token) { const e = new Error('Shopify not connected: set SHOPIFY_SHOP_DOMAIN and SHOPIFY_ADMIN_TOKEN'); e.status = 401; throw e; }
+  const res = await shopifyFetchWithRetry(`https://${shop}/admin/api/${SHOPIFY_API_VERSION}/graphql.json`, {
+    method: 'POST',
+    headers: { 'X-Shopify-Access-Token': token, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ query, variables }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || data.errors) {
+    const msg = data?.errors?.[0]?.message || `Shopify API error (${res.status})`;
+    const e = new Error(msg); e.status = res.status || 500; e.detail = data.errors; throw e;
+  }
+  const userErrors = Object.values(data.data || {}).flatMap(v => v?.userErrors || []);
+  if (userErrors.length) { const e = new Error(userErrors.map(u => u.message).join('; ')); e.status = 400; e.detail = userErrors; throw e; }
+  return data.data;
+}
+
+// The Location id is required by inventorySetQuantities but never changes
+// for a single-location store -- fetched once and cached under the same
+// secret: KV prefix as the credentials above instead of a GraphQL round
+// trip on every push.
+async function getShopifyLocationId(env) {
+  const cached = await getStoredSecret(env, 'SHOPIFY_LOCATION_ID');
+  if (cached) return cached;
+  const data = await shopifyGraphQL(env, `query { locations(first: 1) { nodes { id } } }`);
+  const id = data?.locations?.nodes?.[0]?.id || '';
+  if (id) await putStoredSecret(env, 'SHOPIFY_LOCATION_ID', id);
+  return id;
+}
+
+// Builds the Shopify product+variant from one inventory_items row and
+// upserts it via productSet, keyed by our own inventory item id as the
+// external identifier once a Shopify product already exists for it (or by
+// that identifier as a fresh customId on first push) -- so a re-push after
+// data.shopifyProductId somehow went stale still updates the same Shopify
+// product instead of creating a duplicate. inventorySetQuantities is always
+// called afterward as a separate step (not left to productSet's own create-
+// time inventory input) so a later re-push that only changed price/quantity
+// still lands the real count, not just whatever it was at first creation.
+//
+// NOTE: verify this mutation's exact field names against Shopify's live
+// GraphQL schema (Admin GraphiQL explorer, or shopify.dev) before first
+// real use -- ProductSetInput's shape has shifted across API versions and
+// this is written from documentation knowledge, not a live schema fetch.
+async function shopifyUpsertItem(env, invRow) {
+  const d = invRow.data || {};
+  const price = (Number(d.priceOverride || d.price || 0) || 0).toFixed(2);
+  const quantity = Math.max(0, Number(d.quantity ?? d.qty ?? 1));
+  const mutation = `mutation ProductSet($input: ProductSetInput!) {
+    productSet(input: $input) {
+      product { id variants(first: 1) { nodes { id sku inventoryItem { id } } } }
+      userErrors { field message }
+    }
+  }`;
+  const input = {
+    identifier: d.shopifyProductId ? { id: d.shopifyProductId } : { customId: invRow.id },
+    title: String(d.name || 'Item').slice(0, 255),
+    descriptionHtml: String(d.description || ''),
+    status: 'ACTIVE',
+    productOptions: [{ name: 'Title', values: [{ name: 'Default Title' }] }],
+    variants: [{
+      optionValues: [{ optionName: 'Title', name: 'Default Title' }],
+      price,
+      sku: invRow.id,
+      inventoryItem: { tracked: true },
+    }],
+  };
+  if (d.thumbnail || d.image) input.files = [{ originalSource: d.thumbnail || d.image, contentType: 'IMAGE' }];
+  const data = await shopifyGraphQL(env, mutation, { input });
+  const variant = data?.productSet?.product?.variants?.nodes?.[0];
+  const shopifyProductId = data?.productSet?.product?.id || '';
+  const shopifyVariantId = variant?.id || '';
+  const shopifyInventoryItemId = variant?.inventoryItem?.id || '';
+  const locationId = await getShopifyLocationId(env).catch(() => '');
+  if (shopifyInventoryItemId && locationId) {
+    await shopifyGraphQL(env, `mutation SetQty($input: InventorySetQuantitiesInput!) {
+      inventorySetQuantities(input: $input) { userErrors { field message } }
+    }`, { input: { name: 'available', reason: 'correction', ignoreCompareQuantity: true, quantities: [{ inventoryItemId: shopifyInventoryItemId, locationId, quantity }] } });
+  }
+  return { shopifyProductId, shopifyVariantId, shopifyInventoryItemId, shopifyListedAt: new Date().toISOString(), shopifyWithdrawnAt: '' };
+}
+
+// Sets a Shopify item's inventory to 0 and archives the product so it can no
+// longer sell there -- the Shopify-side counterpart to withdrawEbayOffer.
+// Called by /shopify/end (staff manually pulling a listing) and by the
+// cross-channel oversell guard in syncEbayOrdersForStore (an eBay sale
+// depleting an item that's also mirrored to Shopify/Whatnot). Best-effort:
+// inventory zeroing (the part that actually stops a sale) is attempted even
+// if archiving the product afterward fails.
+async function withdrawShopifyListing(env, data) {
+  if (!data?.shopifyProductId || data.shopifyWithdrawnAt) return false;
+  const locationId = await getShopifyLocationId(env).catch(() => '');
+  if (data.shopifyInventoryItemId && locationId) {
+    await shopifyGraphQL(env, `mutation SetQty($input: InventorySetQuantitiesInput!) {
+      inventorySetQuantities(input: $input) { userErrors { field message } }
+    }`, { input: { name: 'available', reason: 'correction', ignoreCompareQuantity: true, quantities: [{ inventoryItemId: data.shopifyInventoryItemId, locationId, quantity: 0 }] } }).catch(e => console.warn('Could not zero Shopify inventory:', e.message));
+  }
+  await shopifyGraphQL(env, `mutation Archive($product: ProductUpdateInput!) { productUpdate(product: $product) { userErrors { field message } } }`, { product: { id: data.shopifyProductId, status: 'ARCHIVED' } }).catch(e => console.warn('Could not archive Shopify product:', e.message));
+  return true;
+}
+
+// Shopify signs each webhook body with HMAC-SHA256/base64 (the
+// X-Shopify-Hmac-Sha256 header) using the app's webhook secret -- same Web
+// Crypto HMAC approach as verifyStripeWebhook above, but Shopify's isn't
+// timestamped/versioned like Stripe's, so this is a direct compare of the
+// whole signature against the whole body.
+async function verifyShopifyWebhookSignature(body, signatureHeader, secret) {
+  if (!secret || !signatureHeader) return false;
+  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  const signed = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(body));
+  const expected = btoa(String.fromCharCode(...new Uint8Array(signed)));
+  const provided = String(signatureHeader);
+  if (expected.length !== provided.length) return false;
+  let diff = 0;
+  for (let i = 0; i < expected.length; i++) diff |= expected.charCodeAt(i) ^ provided.charCodeAt(i);
+  return diff === 0;
+}
+
+// Shared by the webhook route (real-time) and the cron reconciliation
+// backstop (catches anything a missed webhook delivery didn't record) --
+// same role as syncEbayOrdersForStore, but Shopify's own order payload
+// already carries, on each line item, the sku we set at push time equal to
+// the inventory_items row's own id (see shopifyUpsertItem) -- so unlike
+// eBay's skuMap-over-every-item lookup, each line item's sku IS the row to
+// match, directly, with no store_id known up front.
+async function processShopifyOrder(env, order) {
+  const results = []; const errors = [];
+  const sourceName = String(order.source_name || order.sourceName || '').toLowerCase();
+  const channel = sourceName.includes('whatnot') ? 'Whatnot' : 'Shopify';
+  for (const li of (order.line_items || order.lineItems || [])) {
+    const itemId = String(li.sku || '');
+    if (!/^[0-9a-f-]{36}$/i.test(itemId)) continue; // not one of our own inventory rows
+    const orderKey = order.id || order.admin_graphql_api_id || order.name;
+    const trackKey = `shopify_order_synced:${orderKey}:${li.id}`;
+    if (env.LBA_KV && await env.LBA_KV.get(trackKey)) continue;
+    try {
+      const { data: rows } = await supabaseAdminFetch(env, `inventory_items?id=eq.${encodeURIComponent(itemId)}&select=id,data,status,store_id&limit=1`);
+      const invRow = rows?.[0];
+      if (!invRow || invRow.status === 'sold') { if (env.LBA_KV) await env.LBA_KV.put(trackKey, '1', { expirationTtl: 60 * 60 * 24 * 180 }); continue; }
+      const d = invRow.data || {};
+      const quantitySold = Math.max(1, Number(li.quantity || 1));
+      const salePrice = Number(li.price || 0) * quantitySold;
+      const soldAt = order.created_at || order.createdAt || new Date().toISOString();
+      const cost = Number(d.cost || 0);
+      // Shopify/Whatnot's own commission isn't in this payload -- unlike
+      // eBay's fixed, self-reported final value fee (EBAY_DEFAULT_FEE_PCT),
+      // there's no known-good default rate to assume here, so this records
+      // full sale price as profit until a real one is set per store in
+      // receipt_settings.shopifyFeePct/whatnotFeePct (same override shape
+      // eBay's ebayFeePct/ebayFeeFlat already use).
+      const { data: settingsRows } = await supabaseAdminFetch(env, `store_settings?store_id=eq.${encodeURIComponent(invRow.store_id)}&select=receipt_settings&limit=1`);
+      const receiptSettings = settingsRows?.[0]?.receipt_settings || {};
+      const feePct = Number(receiptSettings?.[channel.toLowerCase() + 'FeePct'] || 0);
+      const feeFlat = Number(receiptSettings?.[channel.toLowerCase() + 'FeeFlat'] || 0);
+      const feeAmount = Math.round((salePrice * (feePct / 100) + feeFlat) * 100) / 100;
+      const profit = salePrice - cost - feeAmount;
+      const saleId = crypto.randomUUID();
+      await supabaseAdminFetch(env, 'pos_sales', { method: 'POST', headers: { Prefer: 'return=minimal' },
+        body: JSON.stringify({ id: saleId, store_id: invRow.store_id, subtotal: salePrice, discount_total: 0, tax_total: 0, total: salePrice, status: 'completed', payment_status: 'paid', completed_at: soldAt, created_at: soldAt }) });
+      await supabaseAdminFetch(env, 'pos_sale_lines', { method: 'POST', headers: { Prefer: 'return=minimal' },
+        body: JSON.stringify([{ id: crypto.randomUUID(), sale_id: saleId, store_id: invRow.store_id, item_id: invRow.id, title: d.name || li.title || 'Item', category: d.category || '', quantity: quantitySold, unit_price: salePrice / quantitySold, original_price: salePrice / quantitySold, adjusted_price: salePrice / quantitySold, discount_amount: 0, cost_basis: cost, profit, condition: d.condition || '', source_id: `${channel.toLowerCase()}:${orderKey}`, image_url: d.thumbnail || d.image || '' }]) });
+      await supabaseAdminFetch(env, 'pos_payments', { method: 'POST', headers: { Prefer: 'return=minimal' },
+        body: JSON.stringify({ id: crypto.randomUUID(), sale_id: saleId, store_id: invRow.store_id, method: channel, amount: salePrice, status: 'confirmed', provider: channel.toLowerCase(), currency: 'USD', confirmed_by: null, confirmed_at: soldAt, created_at: soldAt }) });
+
+      const currentQty = Number(d.quantity ?? d.qty ?? 1) || 0;
+      const remaining = Math.max(0, currentQty - quantitySold);
+      const depleted = remaining <= 0;
+      const nextStatus = depleted ? 'sold' : 'in_stock';
+      const nextData = { ...d, status: nextStatus, lifecycle: nextStatus, qty: remaining, quantity: remaining, salePrice, profit, channel, soldAt: depleted ? soldAt : '' };
+      if (depleted) {
+        nextData.shopifyWithdrawnAt = soldAt;
+        // Cross-channel oversell guard: this item was also live on eBay --
+        // pull it the moment Shopify/Whatnot sells it, the same protection
+        // syncEbayOrdersForStore's own depleted branch gives in the reverse
+        // direction. Duplicates withdrawEbayOffer's small request body
+        // rather than calling it directly -- that function is declared
+        // inside the fetch() route handler and isn't reachable from this
+        // top-level one (same reason runScheduledEbayReprice has its own
+        // top-level eBay call instead of reusing a nested route helper).
+        if (d.ebayOfferId && !d.ebayWithdrawnAt) {
+          try {
+            const ebayToken = await getEbayUserAccessToken(env);
+            if (ebayToken) {
+              const res = await fetch(`https://api.ebay.com/sell/inventory/v1/offer/${encodeURIComponent(d.ebayOfferId)}/withdraw`, { method: 'POST', headers: { 'Authorization': 'Bearer ' + ebayToken, 'Content-Type': 'application/json' } });
+              if (res.ok) nextData.ebayWithdrawnAt = soldAt;
+            }
+          } catch (e) { console.warn('Could not auto-end eBay listing after Shopify/Whatnot sale:', invRow.id, e.message); }
+        }
+      }
+      await supabaseAdminFetch(env, `inventory_items?id=eq.${encodeURIComponent(invRow.id)}&store_id=eq.${encodeURIComponent(invRow.store_id)}`, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ data: nextData, status: nextStatus, updated_at: new Date().toISOString() }) });
+      if (env.LBA_KV) await env.LBA_KV.put(trackKey, '1', { expirationTtl: 60 * 60 * 24 * 180 });
+      results.push({ itemId: invRow.id, orderId: orderKey, salePrice, quantitySold, depleted, channel });
+    } catch (itemErr) { errors.push({ itemId, orderId: orderKey, error: itemErr.message }); }
+  }
+  return { results, errors };
+}
+
 // Shared by /ebay/list and /ebay/update so a listing created one way can be
 // revised the other -- both routes build the exact same aspects/product/offer
 // shape from the same request-body fields.
@@ -9030,7 +9268,17 @@ export default {
                 const preservePresale = !depleted && (invRow.status === 'presale' || d.source === 'foc_presale') && d.ebayPresaleConverted !== true;
                 const nextStatus = depleted ? 'sold' : preservePresale ? 'presale' : 'in_stock';
                 const nextData = { ...d, status: nextStatus, lifecycle: nextStatus, qty: remaining, quantity: remaining, salePrice, profit, channel: 'eBay', soldAt: depleted ? soldAt : '' };
-                if (depleted) { nextData.ebayListingId = ''; nextData.ebayOfferId = ''; nextData.ebaySku = ''; nextData.ebayListedAt = ''; }
+                if (depleted) {
+                  nextData.ebayListingId = ''; nextData.ebayOfferId = ''; nextData.ebaySku = ''; nextData.ebayListedAt = '';
+                  // Cross-channel oversell guard: this item was also mirrored to
+                  // Shopify/Whatnot -- pull it there too the moment eBay sells it,
+                  // the same protection processShopifyOrder's own depleted branch
+                  // gives in the reverse direction (see there).
+                  if (d.shopifyProductId && !d.shopifyWithdrawnAt) {
+                    try { await withdrawShopifyListing(env, d); nextData.shopifyWithdrawnAt = soldAt; }
+                    catch (e) { console.warn('Could not auto-end Shopify listing after eBay sale:', invRow.id, e.message); }
+                  }
+                }
                 await supabaseAdminFetch(env, `inventory_items?id=eq.${encodeURIComponent(invRow.id)}&store_id=eq.${encodeURIComponent(storeId)}`, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ data: nextData, status: nextStatus, updated_at: new Date().toISOString() }) });
               }
 
@@ -9065,6 +9313,84 @@ export default {
           const receiptSettings = syncSettings?.[0]?.receipt_settings || {};
           await syncEbayOrdersForStore(env, storeId, ebayToken, receiptSettings, { reconcile: false, confirmedBy: null });
         } catch (e) { console.error('Scheduled eBay order sync failed for store', storeId, e.message); }
+      }
+    }
+
+    // POST /shopify/sync-item { itemIds: [uuid, ...] } -- pushes one or more
+    // inventory_items rows to Shopify as an upsert (see shopifyUpsertItem),
+    // used both by a single item's own "PUSH TO SHOPIFY" button and by the
+    // dashboard's bulk-select panel (same shopifyBulkSelectedIds pattern as
+    // the existing eBay bulk-list tool). Staff-only, mirrors /ebay/list's
+    // auth. Runs sequentially rather than in parallel -- keeps each item's
+    // errors isolated and lets shopifyFetchWithRetry's own backoff actually
+    // pace the calls instead of firing a burst that immediately throttles.
+    if (url.pathname === '/shopify/sync-item') {
+      if (request.method !== 'POST') return json({ error: 'POST only' }, 405);
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId, ['owner','admin']);
+      if (auth.error) return auth.error;
+      const b = await request.json().catch(() => ({}));
+      const itemIds = Array.isArray(b.itemIds) ? b.itemIds.filter(id => /^[0-9a-f-]{36}$/i.test(String(id || ''))).slice(0, 200) : [];
+      if (!itemIds.length) return json({ ok: false, error: 'itemIds is required' }, 400);
+      const results = []; const errors = [];
+      for (const itemId of itemIds) {
+        try {
+          const { data: rows } = await supabaseAdminFetch(env, `inventory_items?id=eq.${encodeURIComponent(itemId)}&store_id=eq.${encodeURIComponent(storeId)}&select=id,data,status&limit=1`);
+          const invRow = rows?.[0];
+          if (!invRow) { errors.push({ itemId, error: 'Not found' }); continue; }
+          const shopifyFields = await shopifyUpsertItem(env, invRow);
+          const nextData = { ...(invRow.data || {}), ...shopifyFields };
+          await supabaseAdminFetch(env, `inventory_items?id=eq.${encodeURIComponent(itemId)}&store_id=eq.${encodeURIComponent(storeId)}`, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ data: nextData }) });
+          results.push({ itemId, ...shopifyFields });
+        } catch (e) { errors.push({ itemId, error: e.message }); }
+      }
+      return json({ ok: errors.length === 0, pushed: results.length, results, errors });
+    }
+
+    // POST /shopify/end { itemId } -- withdraws one item's Shopify listing
+    // (zeroes inventory, archives the product). Mirrors /ebay/end.
+    if (url.pathname === '/shopify/end') {
+      if (request.method !== 'POST') return json({ error: 'POST only' }, 405);
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId, ['owner','admin']);
+      if (auth.error) return auth.error;
+      try {
+        const b = await request.json();
+        const itemId = String(b.itemId || '');
+        const { data: rows } = await supabaseAdminFetch(env, `inventory_items?id=eq.${encodeURIComponent(itemId)}&store_id=eq.${encodeURIComponent(storeId)}&select=id,data&limit=1`);
+        const invRow = rows?.[0];
+        if (!invRow) return json({ ok: false, error: 'Not found' }, 404);
+        const d = invRow.data || {};
+        if (!d.shopifyProductId) return json({ ok: false, error: 'Not listed on Shopify' }, 409);
+        await withdrawShopifyListing(env, d);
+        const nextData = { ...d, shopifyWithdrawnAt: new Date().toISOString() };
+        await supabaseAdminFetch(env, `inventory_items?id=eq.${encodeURIComponent(itemId)}&store_id=eq.${encodeURIComponent(storeId)}`, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ data: nextData }) });
+        return json({ ok: true, itemId });
+      } catch (e) {
+        return json({ ok: false, error: e.message }, e.status || 500);
+      }
+    }
+
+    // POST /shopify/webhook/orders -- registered against Shopify's
+    // orders/paid (and optionally orders/create) topics via
+    // webhookSubscriptionCreate as a one-time setup step. No staff auth --
+    // this is called by Shopify itself, authenticated instead by the
+    // X-Shopify-Hmac-Sha256 signature over the raw body. Real-time
+    // counterpart to /ebay/orders/sync's polling (eBay has no webhook);
+    // runScheduledShopifyOrderSync below is the backstop for a delivery
+    // that never arrives.
+    if (url.pathname === '/shopify/webhook/orders' && request.method === 'POST') {
+      const body = await request.text();
+      const secret = await getStoredSecret(env, 'SHOPIFY_WEBHOOK_SECRET');
+      const verified = await verifyShopifyWebhookSignature(body, request.headers.get('x-shopify-hmac-sha256') || '', secret).catch(() => false);
+      if (!verified) return new Response('Invalid Shopify signature', { status: 401 });
+      let order; try { order = JSON.parse(body); } catch { return new Response('Bad JSON', { status: 400 }); }
+      try {
+        const { results, errors } = await processShopifyOrder(env, order);
+        return json({ ok: true, recorded: results.length, errors });
+      } catch (e) {
+        console.error('Shopify order webhook error:', e);
+        return json({ ok: false, error: e.message }, 500);
       }
     }
 
@@ -9774,6 +10100,26 @@ export default {
         const preservePresale = !depleted && (invRow.status === 'presale' || d.source === 'foc_presale') && d.ebayPresaleConverted !== true;
         const nextStatus = depleted ? 'sold' : preservePresale ? 'presale' : 'in_stock';
         const nextData = { ...d, status: nextStatus, lifecycle: nextStatus, qty: remaining, quantity: remaining, salePrice, profit, channel, soldAt: depleted ? soldAt : '' };
+        // Cross-channel oversell guard: a manually-recorded sale (Whatnot,
+        // Mercari, a direct eBay sale never auto-synced, etc.) can deplete an
+        // item that's still separately live on eBay and/or mirrored to
+        // Shopify/Whatnot -- pull both the same way the automated eBay and
+        // Shopify sync paths already do for each other.
+        if (depleted) {
+          if (d.ebayOfferId && !d.ebayWithdrawnAt) {
+            try {
+              const ebayToken = await getEbayUserAccessToken(env);
+              if (ebayToken) {
+                const res = await fetch(`https://api.ebay.com/sell/inventory/v1/offer/${encodeURIComponent(d.ebayOfferId)}/withdraw`, { method: 'POST', headers: { 'Authorization': 'Bearer ' + ebayToken, 'Content-Type': 'application/json' } });
+                if (res.ok) nextData.ebayWithdrawnAt = soldAt;
+              }
+            } catch (e) { console.warn('Could not auto-end eBay listing after external sale:', invRow.id, e.message); }
+          }
+          if (d.shopifyProductId && !d.shopifyWithdrawnAt) {
+            try { await withdrawShopifyListing(env, d); nextData.shopifyWithdrawnAt = soldAt; }
+            catch (e) { console.warn('Could not auto-end Shopify listing after external sale:', invRow.id, e.message); }
+          }
+        }
         await supabaseAdminFetch(env, `inventory_items?id=eq.${encodeURIComponent(invRow.id)}&store_id=eq.${encodeURIComponent(storeId)}`, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ data: nextData, status: nextStatus, updated_at: new Date().toISOString() }) });
 
         return json({ ok: true, itemId: invRow.id, saleId, salePrice, feeAmount, profit, depleted, channel });
@@ -14651,9 +14997,50 @@ export default {
   // /dealscan/latest reads) instead of only ever being reachable by an
   // on-demand click.
   async scheduled(event, env, ctx) {
-    ctx.waitUntil(Promise.all([runScheduledDealScans(env), runScheduledEbayReprice(env), runScheduledEbayOrderSync(env)]));
+    ctx.waitUntil(Promise.all([runScheduledDealScans(env), runScheduledEbayReprice(env), runScheduledEbayOrderSync(env), runScheduledShopifyOrderSync(env)]));
   },
 };
+
+// Reconciliation backstop for /shopify/webhook/orders -- catches any order a
+// missed or delayed webhook delivery never recorded (network hiccup, a
+// webhook re-registered against the wrong URL, etc). Queries Shopify orders
+// from the lookback window and re-runs them through processShopifyOrder,
+// which is idempotent per (order, line item) via the same shopify_order_synced
+// KV key the webhook route sets, so anything the webhook already recorded is
+// a no-op here. Unlike eBay's own scheduled sync, this doesn't need to loop
+// per-store first -- Shopify credentials are a single global secret (one
+// connected shop), same as eBay's, and processShopifyOrder resolves each
+// line item's store_id from the matched inventory_items row itself.
+async function runScheduledShopifyOrderSync(env) {
+  if (!(env.SUPABASE_URL && (env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SERVICE_KEY))) return;
+  const shop = await getStoredSecret(env, 'SHOPIFY_SHOP_DOMAIN');
+  const token = await getStoredSecret(env, 'SHOPIFY_ADMIN_TOKEN');
+  if (!shop || !token) return; // Shopify not connected yet
+  try {
+    const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    const data = await shopifyGraphQL(env, `query RecentOrders($query: String!) {
+      orders(first: 50, query: $query) {
+        nodes {
+          id name sourceName createdAt
+          lineItems(first: 50) { nodes { id sku quantity name discountedUnitPriceSet { shopMoney { amount } } } }
+        }
+      }
+    }`, { query: `created_at:>='${since}' AND financial_status:paid` });
+    const orders = data?.orders?.nodes || [];
+    for (const order of orders) {
+      try {
+        // processShopifyOrder reads REST-shaped fields (line_items[].price,
+        // source_name, created_at) -- normalize this GraphQL response into
+        // that same shape rather than forking the matching/decrement logic.
+        const normalized = {
+          id: order.id, name: order.name, source_name: order.sourceName, created_at: order.createdAt,
+          line_items: (order.lineItems?.nodes || []).map(li => ({ id: li.id, sku: li.sku, quantity: li.quantity, title: li.name, price: Number(li.discountedUnitPriceSet?.shopMoney?.amount || 0) })),
+        };
+        await processShopifyOrder(env, normalized);
+      } catch (e) { console.error('Scheduled Shopify order sync failed for order', order.id, e.message); }
+    }
+  } catch (e) { console.error('Scheduled Shopify order sync failed:', e.message); }
+}
 
 // Revises ONLY the offer (price/format/quantity/category/best-offer terms) --
 // never the inventory_item (title/description/condition/package/aspects).
