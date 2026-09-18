@@ -2137,6 +2137,24 @@ body.show-mode .inv-sync-badge{display:none;}
     <div id="ebay-bulk-end-status" style="display:none;margin-top:10px;padding:10px;border-radius:6px;font-family:monospace;font-size:10px;text-align:center"></div>
   </div>
 
+  <div class="panel" id="backoffice-shopify-bulk-panel" style="margin-top:4px;margin-bottom:14px">
+    <div class="ph">SHOPIFY / WHATNOT <span id="shopify-bulk-count" style="font-size:9px;color:var(--dim)"></span></div>
+    <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);margin-bottom:10px;line-height:1.55">
+      Check items below, then PUSH SELECTED TO SHOPIFY to mirror them into your Shopify store (title, price, image, and quantity) so they're sellable through Whatnot's Sales Channel. A sale there automatically decrements this same inventory record -- no separate step needed.
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px">
+      <button class="hbtn" onclick="renderShopifyBulkList()">LOAD PUSHABLE ITEMS</button>
+      <button class="hbtn" onclick="toggleShopifyBulkSelectAll(true)">SELECT ALL</button>
+      <button class="hbtn" onclick="toggleShopifyBulkSelectAll(false)">SELECT NONE</button>
+    </div>
+    <input id="shopify-bulk-search" placeholder="Search pushable items by name, set, or category..." oninput="renderShopifyBulkListDebounced()" style="width:100%;margin-bottom:8px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:8px;border-radius:6px;box-sizing:border-box;font-family:var(--font-mono);font-size:11px">
+    <div id="shopify-bulk-list" style="display:grid;gap:6px;max-height:360px;overflow-y:auto;margin-bottom:10px">
+      <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);padding:10px;border:1px dashed var(--border);border-radius:8px;text-align:center">Click LOAD PUSHABLE ITEMS to see in-stock items not already on Shopify.</div>
+    </div>
+    <button class="hbtn" style="width:100%;padding:12px;background:rgba(0,255,179,.12);border-color:rgba(0,255,179,.35);color:var(--g)" onclick="submitShopifyBulk()">PUSH SELECTED TO SHOPIFY</button>
+    <div id="shopify-bulk-status" style="display:none;margin-top:10px;padding:10px;border-radius:6px;font-family:monospace;font-size:10px;text-align:center"></div>
+  </div>
+
   <div class="panel" id="backoffice-system-panel" style="margin-top:4px;margin-bottom:14px">
     <div class="ph">SYSTEM / BACKUP <span id="system-health-status" style="font-size:9px;color:var(--dim)">ready</span></div>
     <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);margin-bottom:10px;line-height:1.55">
@@ -6635,6 +6653,7 @@ function organizeRegisterLayout(){
   moveNode('ebay-account-panel', channels);
   moveNode('backoffice-ebay-panel', channels);
   moveNode('backoffice-ebay-bulk-panel', channels);
+  moveNode('backoffice-shopify-bulk-panel', channels);
   moveNode('backoffice-tcg-sync-panel', channels);
   const ebayHubPanel = document.getElementById('ebay-hub-panel');
   if(ebayHubPanel && channels.firstChild !== ebayHubPanel) channels.insertBefore(ebayHubPanel, channels.firstChild);
@@ -8408,6 +8427,7 @@ function applyVendorConfig(){
   show('register-eod-panel', cfg.modules.closeout && manager);
   show('backoffice-ebay-panel', cfg.modules.ebay && manager);
   show('backoffice-ebay-bulk-panel', cfg.modules.ebay && manager);
+  show('backoffice-shopify-bulk-panel', manager);
   show('backoffice-system-panel', cfg.modules.backup && ownerAdmin);
   show('backoffice-ops-panel', cfg.modules.ops && manager);
   show('backoffice-tcg-sync-panel', cfg.modules.pricingSync && manager);
@@ -23254,6 +23274,94 @@ async function submitEbayBulkEnd(){
     if(status){ status.style.color='var(--g)'; status.style.border='1px solid rgba(0,255,179,.25)'; status.style.background='rgba(0,255,179,.06)'; status.textContent=`Ended ${endedSet.size} of ${items.length} listing${items.length===1?'':'s'}`+((data.failed||[]).length?` (${data.failed.length} failed -- see console)`:''); }
     if((data.failed||[]).length) console.warn('eBay bulk-end failures:', data.failed);
     renderEbayBulkEndList();
+  }catch(e){
+    if(status){ status.style.color='var(--red)'; status.style.border='1px solid rgba(255,77,109,.25)'; status.style.background='rgba(255,77,109,.06)'; status.textContent=e.message; }
+  }
+}
+
+// SHOPIFY / WHATNOT bulk push -- same Set-based selection, debounced
+// search, and render-cap pattern as the eBay bulk panels above, against
+// items not yet mirrored to Shopify (no data.shopifyProductId, or one
+// that's since been withdrawn).
+let shopifyBulkSelectedIds = new Set();
+
+function shopifyBulkListableItems(){
+  return all.filter(i => i.status==='in_stock' && i.lifecycle !== 'archived' && (!i.shopifyProductId || i.shopifyWithdrawnAt));
+}
+
+function renderShopifyBulkCount(){
+  const countEl = document.getElementById('shopify-bulk-count');
+  if(!countEl) return;
+  const total = shopifyBulkListableItems().length;
+  countEl.textContent = total + ' pushable' + (shopifyBulkSelectedIds.size ? ' · ' + shopifyBulkSelectedIds.size + ' selected' : '');
+}
+
+function shopifyBulkCheckboxChanged(cb){
+  if(cb.checked) shopifyBulkSelectedIds.add(cb.value);
+  else shopifyBulkSelectedIds.delete(cb.value);
+  renderShopifyBulkCount();
+}
+
+function renderShopifyBulkList(){
+  const host = document.getElementById('shopify-bulk-list');
+  if(!host) return;
+  const items = shopifyBulkListableItems();
+  const query = (document.getElementById('shopify-bulk-search')?.value || '').trim().toLowerCase();
+  const filtered = query
+    ? items.filter(i => [i.name, i.set, i.category].some(v => String(v||'').toLowerCase().includes(query)))
+    : items;
+  renderShopifyBulkCount();
+  if(!filtered.length){
+    host.innerHTML = `<div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);padding:10px;border:1px dashed var(--border);border-radius:8px;text-align:center">${query?'No pushable items match "'+escHtml(query)+'".':'No in-stock items are waiting to be pushed to Shopify.'}</div>`;
+    return;
+  }
+  const shown = filtered.slice(0, EBAY_BULK_LIST_RENDER_CAP);
+  const overflow = filtered.length - shown.length;
+  host.innerHTML = shown.map(i => {
+    const money = inventoryProfitStats(i);
+    const price = money.list>0?money.list:money.market;
+    const thumbSrc = inventoryImageUrl(i);
+    const checked = shopifyBulkSelectedIds.has(i.id);
+    return `<label style="display:flex;align-items:center;gap:8px;padding:6px;border:1px solid var(--border);border-radius:6px;cursor:pointer">
+      <input type="checkbox" class="shopify-bulk-cb" value="${i.id}" ${checked?'checked':''} onchange="shopifyBulkCheckboxChanged(this)">
+      ${thumbSrc?`<img src="${escHtml(thumbSrc)}" style="width:32px;height:40px;object-fit:cover;border-radius:4px;flex-shrink:0" loading="lazy">`:'<div style="width:32px;height:40px;background:#050507;border-radius:4px;flex-shrink:0"></div>'}
+      <div style="flex:1;min-width:0">
+        <div style="font-family:var(--font-mono);font-size:11px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(i.name||'Untitled')}</div>
+        <div style="font-family:var(--font-mono);font-size:9px;color:var(--dim)">${escHtml(i.category||'')}${price?' · '+fd$(price):''}</div>
+      </div>
+    </label>`;
+  }).join('') + (overflow > 0 ? `<div style="font-family:var(--font-mono);font-size:9px;color:var(--dim);padding:6px;text-align:center">+ ${overflow} more match -- refine your search to see them</div>` : '');
+}
+const renderShopifyBulkListDebounced = debounce(renderShopifyBulkList, 200);
+
+function toggleShopifyBulkSelectAll(checked){
+  document.querySelectorAll('.shopify-bulk-cb').forEach(cb => {
+    cb.checked = checked;
+    if(checked) shopifyBulkSelectedIds.add(cb.value); else shopifyBulkSelectedIds.delete(cb.value);
+  });
+  renderShopifyBulkCount();
+}
+
+async function submitShopifyBulk(){
+  const status = document.getElementById('shopify-bulk-status');
+  const items = shopifyBulkListableItems().filter(i => shopifyBulkSelectedIds.has(i.id));
+  if(!items.length){ toast_dash('Select at least one item first'); return; }
+  if(status){ status.style.display='block'; status.style.color='var(--gold)'; status.style.border='1px solid rgba(255,209,102,.25)'; status.style.background='rgba(255,209,102,.06)'; status.textContent=`Pushing ${items.length} item${items.length===1?'':'s'} to Shopify...`; }
+  try{
+    const res = await storeWorkerFetch('/shopify/sync-item', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({itemIds: items.map(i => i.id)})});
+    const data = await res.json().catch(()=>({}));
+    if(!res.ok) throw new Error(data.error || ('Shopify error '+res.status));
+    const okIds = new Set((data.results||[]).map(r => r.itemId));
+    for(const item of items){
+      if(!okIds.has(item.id)) continue;
+      const fields = (data.results||[]).find(r => r.itemId===item.id) || {};
+      try{ await updateBuiltInInventoryItem(item, { shopifyProductId: fields.shopifyProductId, shopifyVariantId: fields.shopifyVariantId, shopifyInventoryItemId: fields.shopifyInventoryItemId, shopifyListedAt: fields.shopifyListedAt, shopifyWithdrawnAt: '' }); }catch(_){}
+      shopifyBulkSelectedIds.delete(item.id);
+    }
+    logOpsEvent('shopify_bulk_push', `Pushed ${okIds.size} item(s) to Shopify`, { count: okIds.size, failed: (data.errors||[]).length });
+    if(status){ status.style.color='var(--g)'; status.style.border='1px solid rgba(0,255,179,.25)'; status.style.background='rgba(0,255,179,.06)'; status.textContent=`Pushed ${okIds.size} of ${items.length} item${items.length===1?'':'s'}`+((data.errors||[]).length?` (${data.errors.length} failed -- see console)`:''); }
+    if((data.errors||[]).length) console.warn('Shopify bulk push failures:', data.errors);
+    renderShopifyBulkList();
   }catch(e){
     if(status){ status.style.color='var(--red)'; status.style.border='1px solid rgba(255,77,109,.25)'; status.style.background='rgba(255,77,109,.06)'; status.textContent=e.message; }
   }
