@@ -112,6 +112,27 @@ assert.ok(lunarOgn.variantLabel, 'a one-shot with no cover variant must still ge
 const lunarNoIdentifier = normalizeLunarRow({ ProductCode:'', Title:'Untitled', FinalOrderCutoff:'09/28/2026' });
 assert.equal(lunarNoIdentifier.upc, '', 'no UPC/ISBN/EAN/ProductCode at all must fail import validation rather than fabricate an identifier');
 
+// ── Store report: Lunar incentive covers weren't showing up as incentives
+// at all -- confirmed against the real uploaded FOC files (85 ratio covers
+// across both weeks), Lunar has no separate OrderRequirement column like
+// PRH; the ratio is embedded directly in the title, e.g. "ABSOLUTE BATMAN
+// #25 CVR K INC 1:25 LEWIS LAROSA CARD STOCK VAR". ──
+const lunarIncentive = normalizeLunarRow({
+  ProductCode:'0926DE0148', Title:'ABSOLUTE BATMAN #25 CVR K INC 1:25 LEWIS LAROSA CARD STOCK VAR', RetailCost:9.99,
+  Publisher:'DC Comics', FinalOrderCutoff:'09/28/2026', InstoreDate:'11/25/2026', UPC:'76194138108825511',
+});
+assert.equal(lunarIncentive.isIncentive, true, 'a title containing INC 1:NN must be detected as a ratio incentive');
+assert.equal(lunarIncentive.ratioThreshold, 25);
+assert.equal(lunarIncentive.orderRequirement, '1:25');
+
+const lunarNonIncentive = normalizeLunarRow({
+  ProductCode:'0926DE0100', Title:'ABSOLUTE BATMAN #25 CVR A JIM LEE', RetailCost:4.99,
+  Publisher:'DC Comics', FinalOrderCutoff:'09/28/2026', InstoreDate:'11/25/2026', UPC:'76194138108825011',
+});
+assert.equal(lunarNonIncentive.isIncentive, false, 'a regular cover must not be misdetected as an incentive');
+
+assert.match(service, /const customerPriceCents = hadCustomPrice \? Number\(before\.customer_price_cents \|\| 0\) : \(p\.isIncentive \? 0 : p\.msrpCents\);/, 'a newly imported Lunar incentive cover must start request-only (price 0), not auto-priced at MSRP, same gating PRH already applies');
+
 console.log('Lunar FOC row-normalization checks passed');
 
 assert.match(migration, /America\/Los_Angeles/);
@@ -786,3 +807,54 @@ console.log('FOC resume-payment functional checks passed');
 }
 
 console.log('Durable saved-pull mutation checks passed');
+
+// ── Store request: covers weren't showing for Lunar FOC comics (Lunar's
+// feed supplies no cover-image column at all, unlike PRH's CoverLink), and
+// there was no way to fix it after import, nor any way to publish/hide a
+// weekly batch of covers to the website without clicking "SHOW TO
+// CUSTOMERS" one at a time. Functional coverage for both fixes on
+// /foc/admin/sku, driven through the real route dispatcher. ──
+{
+  // A bulk customerEnabled PATCH must touch only the requested, valid-UUID
+  // skus, scoped to the authenticated store -- never every sku in the
+  // cycle, and never a sku belonging to a different store.
+  const calls=[];
+  const deps=mockDeps({
+    requireStoreUser:async ()=>({user:{id:'user-1'}}),
+    supabaseAdminFetch:async (env,path,options={})=>{calls.push({path,options});return{data:[{id:'sku-1'},{id:'sku-2'}]};},
+  });
+  const skuIds=['11111111-1111-4111-8111-111111111111','22222222-2222-4222-8222-222222222222','not-a-real-uuid'];
+  const res=await handleFocRequest(mockRequest({storeId:'store-1',skuIds,customerEnabled:true},'PATCH'),{},new URL('https://x/foc/admin/sku'),deps);
+  assert.equal(res.status,200);
+  assert.equal(res.data.updated,2);
+  const patchCall=calls.find(call=>call.options.method==='PATCH');
+  assert.ok(patchCall,'bulk update must issue a PATCH');
+  assert.match(patchCall.path,/store_id=eq\.store-1/,'bulk update must stay scoped to the authenticated store');
+  assert.doesNotMatch(patchCall.path,/not-a-real-uuid/,'a malformed id must be dropped, not passed through to the database filter');
+  assert.deepEqual(JSON.parse(patchCall.options.body),{customer_enabled:true},'a bulk update must only ever touch customer_enabled, never price/quantity/heat in bulk');
+}
+{
+  // Bulk update with no customerEnabled must be rejected outright rather
+  // than silently doing nothing or touching unrelated fields.
+  const deps=mockDeps({requireStoreUser:async ()=>({user:{id:'user-1'}}), supabaseAdminFetch:async ()=>{throw new Error('must not reach the database');}});
+  const res=await handleFocRequest(mockRequest({storeId:'store-1',skuIds:['11111111-1111-4111-8111-111111111111']},'PATCH'),{},new URL('https://x/foc/admin/sku'),deps);
+  assert.equal(res.status,400);
+}
+{
+  // Manual cover-image-URL fix: a real https URL must be accepted and
+  // written to cover_image_url; clearing it (empty string) must also work.
+  const calls=[];
+  const deps=mockDeps({requireStoreUser:async ()=>({user:{id:'user-1'}}), supabaseAdminFetch:async (env,path,options={})=>{calls.push({path,options});return{data:[{id:'sku-1'}]};}});
+  const res=await handleFocRequest(mockRequest({storeId:'store-1',skuId:'11111111-1111-4111-8111-111111111111',coverImageUrl:'https://example.com/cover.jpg'},'PATCH'),{},new URL('https://x/foc/admin/sku'),deps);
+  assert.equal(res.status,200);
+  assert.equal(JSON.parse(calls[0].options.body).cover_image_url,'https://example.com/cover.jpg');
+}
+{
+  // A non-https value (or any arbitrary string) must be rejected, not
+  // silently stored as a broken/unsafe image src.
+  const deps=mockDeps({requireStoreUser:async ()=>({user:{id:'user-1'}}), supabaseAdminFetch:async ()=>{throw new Error('must not reach the database');}});
+  const res=await handleFocRequest(mockRequest({storeId:'store-1',skuId:'11111111-1111-4111-8111-111111111111',coverImageUrl:'javascript:alert(1)'},'PATCH'),{},new URL('https://x/foc/admin/sku'),deps);
+  assert.equal(res.status,400);
+}
+
+console.log('FOC admin bulk-publish and manual cover-image checks passed');
