@@ -11,7 +11,7 @@ assert.match(dashboard, /<script src="https:\/\/sdk\.twilio\.com\/js\/voice\/rel
 // tab is (a MORE_TABS entry, a panel container, a switchTab lazy-render
 // hook, and an explicit employee-role allow-list entry -- the allow-list is
 // hand-maintained, so a forgotten entry silently locks employees out) ──
-assert.match(dashboard, /\['pulllists', 'PULL LISTS'\],\s*\n\s*\['foc', 'COMICS \/ FOC'\],\s*\n\s*\['phone', 'PHONE'\],/, 'PHONE must be registered in MORE_TABS, alongside the other secondary tabs');
+assert.match(dashboard, /\['pulllists', 'PULL LISTS'\],\s*\n\s*\['foc', 'COMICS \/ FOC'\],\s*\n\s*\['backlist', 'BACKLIST BOOKS'\],\s*\n\s*\['phone', 'PHONE'\],/, 'PHONE must be registered in MORE_TABS, alongside the other secondary tabs');
 assert.match(dashboard, /<div id="tab-phone" class="tab-panel">\s*\n\s*<div class="sec">PHONE<\/div>\s*\n\s*<div id="phone-panels"/, 'missing the #tab-phone panel container / #phone-panels mount point');
 assert.match(dashboard, /if\(name === 'phone'\) setTimeout\(ensurePhonePanel, 0\);/, 'switchTab must lazily render the Phone panel the same way every other secondary tab does');
 assert.match(dashboard, /else if\(role === 'employee'\) allowed = \[[^\]]*'phone'[^\]]*\]\.includes\(tab\);/, 'employees must be explicitly allow-listed for the phone tab, or roleCanAccessTab silently locks them out');

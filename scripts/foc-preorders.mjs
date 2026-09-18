@@ -58,7 +58,7 @@ function repairMojibake(value) {
   return input;
 }
 
-function text(value, max = 4000) {
+export function text(value, max = 4000) {
   return repairMojibake(value).trim().slice(0, max);
 }
 
@@ -75,34 +75,34 @@ function dateOnlyLabel(value) {
   return new Intl.DateTimeFormat('en-US', { timeZone:'UTC', month:'short', day:'numeric', year:'numeric' }).format(new Date(value + 'T12:00:00Z'));
 }
 
-function exactIdentifier(value) {
+export function exactIdentifier(value) {
   return text(value, 80).replace(/\.0+$/, '');
 }
 
-function dateIso(value) {
+export function dateIso(value) {
   const raw = text(value, 40);
   if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
   const m = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
   return m ? `${m[3]}-${m[1].padStart(2,'0')}-${m[2].padStart(2,'0')}` : null;
 }
 
-function cents(value) {
+export function cents(value) {
   const number = Number(String(value == null ? '' : value).replace(/[$,]/g, ''));
   return Number.isFinite(number) && number >= 0 ? Math.round(number * 100) : 0;
 }
 
-function issueNumber(row) {
+export function issueNumber(row) {
   const direct = text(row.SeriesNumber || row['Series Number'], 40);
   if (direct) return direct.replace(/^#/, '');
   return (text(row.Title, 500).match(/#([0-9]+(?:\.[0-9]+)?[A-Za-z]?)/) || [,''])[1];
 }
 
-function titleWithoutVariant(row, series, issue) {
+export function titleWithoutVariant(row, series, issue) {
   if (series) return `${series}${issue ? ` #${issue}` : ''}`;
   return text(row.Title, 500).replace(/\s+(?:CVR|COVER|VARIANT|VAR)\b.*$/i, '').trim();
 }
 
-function variantLabel(row, series, issue) {
+export function variantLabel(row, series, issue) {
   const full = text(row.Title, 800);
   const base = [series, issue ? `#${issue}` : ''].filter(Boolean).join(' ').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   let label = base ? full.replace(new RegExp(`^${base}\\s*`, 'i'), '') : full;
@@ -118,7 +118,7 @@ function ratioThreshold(requirement) {
   return m ? Number(m[1]) : null;
 }
 
-function prhFlags(row, normalized) {
+export function prhFlags(row, normalized) {
   const haystack = [row.Title, row.SubTitle, row.VariantType, row.ComicType, row.Description].join(' ').toLowerCase();
   return {
     firstIssue: normalized.issueNumber === '1',
@@ -251,7 +251,7 @@ async function sha256Hex(value) {
   return [...new Uint8Array(digest)].map(byte => byte.toString(16).padStart(2,'0')).join('');
 }
 
-function inFilter(values) {
+export function inFilter(values) {
   return `in.(${values.map(value => encodeURIComponent(String(value))).join(',')})`;
 }
 
@@ -804,7 +804,7 @@ async function importLunar(request, env, deps, storeId) {
   return deps.json({ ok:true, duplicate:false, cycleId:cycle.id, focDate, customerCutoffAt:cycle.customer_cutoff_at || cutoff, report });
 }
 
-async function requireShippingRate(env, deps, storeId, address, rateId) {
+export async function requireShippingRate(env, deps, storeId, address, rateId) {
   if (!rateId || !env.LBA_KV) throw new Error('Choose a live carrier shipping rate');
   const cached = await env.LBA_KV.get(`shipping-rate:${rateId}`, 'json');
   if (!cached || cached.storeId !== storeId) throw new Error('That shipping quote expired; request a fresh rate');
