@@ -29,6 +29,7 @@ import { importDropshipBatch } from './scripts/dropship-import.mjs';
 // the Worker -- reused here instead of duplicating checklist-parsing logic.
 import { buildChecklistIndex, parseChecklistText, sha1Hex, slugify } from './scripts/topps-checklist-parser.js';
 import { handleFocRequest, syncFocStripeEvent, shippingSettings } from './scripts/foc-preorders.mjs';
+import { handleBacklistRequest, syncBacklistStripeEvent } from './scripts/backlist-catalog.mjs';
 import { handleAccountRequest, findLinkedCustomer } from './scripts/customer-account.mjs';
 import { handleFanClubRequest } from './scripts/fan-club.mjs';
 import { handleCardIntakeRequest } from './scripts/card-intake.mjs';
@@ -1479,6 +1480,7 @@ async function syncStripeWebhookPayment(env, event, mode) {
     }
   }
   await syncFocStripeEvent(env,event,{supabaseAdminFetch,sendEmail}).catch(error=>console.error(JSON.stringify({message:'FOC preorder Stripe sync failed',error:error.message,intentId})));
+  await syncBacklistStripeEvent(env,event,{supabaseAdminFetch,sendEmail,addBusinessDays}).catch(error=>console.error(JSON.stringify({message:'Backlist order Stripe sync failed',error:error.message,intentId})));
   if(event.type.startsWith('refund.')){await supabaseAdminFetch(env,`pos_refunds?stripe_refund_id=eq.${encodeURIComponent(object.id)}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({status:object.status||event.type.replace('refund.',''),failure_reason:object.failure_reason||'',updated_at:new Date().toISOString()})});}
   if(event.type==='account.updated'){const storeId=object.metadata?.arsca_store_id;if(storeId){const status=safeStripeAccount(object,mode);await saveStripeAccount(env,storeId,status);}}
 }
@@ -4868,6 +4870,13 @@ export default {
         readJsonWithLimit, enforceUsageLimit, stripeApi, stripeMode, stripeConfig, sendEmail,
         addBusinessDays, getEbayPresaleSafeBusinessDays, getEbayUserAccessToken, withdrawEbayOffer, withdrawEbayOfferGroup, endEbayVolumeDiscount, ebayReviseOfferQuantity,
         ebayReviseVariationQuantityTrading, endEbayListingTrading,
+      });
+    }
+
+    if (url.pathname.startsWith('/public/backlist/') || url.pathname.startsWith('/backlist/admin/')) {
+      return await handleBacklistRequest(request, env, url, {
+        CORS, json, supabaseAdminFetch, requireStoreUser, requireAuthenticatedUser,
+        readJsonWithLimit, stripeApi, stripeMode, stripeConfig, sendEmail, addBusinessDays,
       });
     }
 

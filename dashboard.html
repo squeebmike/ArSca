@@ -1639,6 +1639,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <script src="scripts/barcode-lookup.js?v=2026.09.18.01-lunar-foc-incentive-and-bulk-publish" defer></script>
 <script src="scripts/comic-issue-hub.js?v=2026.09.18.01-lunar-foc-incentive-and-bulk-publish" defer></script>
 <script src="scripts/foc-dashboard.js?v=2026.09.18.01-lunar-foc-incentive-and-bulk-publish" defer></script>
+<script src="scripts/backlist-dashboard.js?v=2026.09.19.01-backlist-catalog" defer></script>
 <script src="scripts/card-intake-dashboard.js?v=2026.09.18.01-lunar-foc-incentive-and-bulk-publish" defer></script>
 <script src="scripts/mana-pocket-task-library.js?v=2026.09.18.01-lunar-foc-incentive-and-bulk-publish" defer></script>
 <script src="scripts/daily-tasks-dashboard.js?v=2026.09.18.01-lunar-foc-incentive-and-bulk-publish" defer></script>
@@ -2931,6 +2932,12 @@ body.show-mode .inv-sync-badge{display:none;}
   <div id="foc-panels" class="foc-shell"></div>
 </div>
 
+<!-- PRH BACKLIST CATALOG TAB -->
+<div id="tab-backlist" class="tab-panel">
+  <div class="sec">PRH BACKLIST CATALOG</div>
+  <div id="backlist-panels" class="foc-shell"></div>
+</div>
+
 <!-- CARD INTAKE TAB -->
 <div id="tab-cardintake" class="tab-panel">
   <div class="sec">CARD INTAKE</div>
@@ -3839,7 +3846,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.09.18.01-lunar-foc-incentive-and-bulk-publish';
+const APP_VERSION = '2026.09.19.01-shopify-sync-whatnot-csv-prh-backlist';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -4107,7 +4114,7 @@ const SUBSCRIPTION_PLANS = {
   store:{ name:'Store', price:89, features:['Everything in Register','Inventory, buying and consignments','Staff, shows, tournaments and profit reporting'], capabilities:['research','checkout','sales','inventory','consignments','staff','shows','events','pulllists'] },
   pro:{ name:'Pro', price:149, features:['Everything in Store','Online listing tools','Advanced operations + multi-store'], capabilities:['research','checkout','sales','inventory','consignments','staff','shows','events','pulllists','marketplace','advanced'] }
 };
-const TAB_CAPABILITY = {research:'research',sets:'research',wantlist:'research',display:'checkout',browse:'checkout',pos:'checkout',whatnot:'checkout',sales:'sales',reports:'sales',orders:'sales',intake:'inventory',scout:'inventory',cardintake:'inventory',inventory:'inventory',locations:'inventory',restock:'inventory',grading:'inventory',consign:'consignments',shows:'shows',events:'events',pulllists:'pulllists',foc:'pulllists',channels:'marketplace'};
+const TAB_CAPABILITY = {research:'research',sets:'research',wantlist:'research',display:'checkout',browse:'checkout',pos:'checkout',whatnot:'checkout',sales:'sales',reports:'sales',orders:'sales',intake:'inventory',scout:'inventory',cardintake:'inventory',inventory:'inventory',locations:'inventory',restock:'inventory',grading:'inventory',consign:'consignments',shows:'shows',events:'events',pulllists:'pulllists',foc:'pulllists',backlist:'pulllists',channels:'marketplace'};
 function currentPlanCode(){ return SUBSCRIPTION_PLANS[window._subStatus?.plan_code] ? window._subStatus.plan_code : 'store'; }
 function hasPlanCapability(capability){ return !capability || SUBSCRIPTION_PLANS[currentPlanCode()].capabilities.includes(capability); }
 function planCanAccessTab(tab){ return hasPlanCapability(TAB_CAPABILITY[tab]); }
@@ -4122,7 +4129,7 @@ function roleCanAccessTab(tab){
   let allowed = false;
   if(role === 'owner' || role === 'admin') allowed = true;
   else if(role === 'manager') allowed = !['backoffice'].includes(tab);
-  else if(role === 'employee') allowed = ['overview','display','browse','inventory','research','pos','whatnot','scout','alerts','wantlist','locations','restock','grading','sets','events','pulllists','foc','phone','cardintake','tasks'].includes(tab);
+  else if(role === 'employee') allowed = ['overview','display','browse','inventory','research','pos','whatnot','scout','alerts','wantlist','locations','restock','grading','sets','events','pulllists','foc','backlist','phone','cardintake','tasks'].includes(tab);
   return allowed && planCanAccessTab(tab);
 }
 
@@ -5156,6 +5163,7 @@ const MORE_TABS = [
   ['events', 'TOURNAMENTS'],
   ['pulllists', 'PULL LISTS'],
   ['foc', 'COMICS / FOC'],
+  ['backlist', 'BACKLIST BOOKS'],
   ['phone', 'PHONE'],
   ['backoffice', 'SETTINGS / ADMIN'],
 ];
@@ -18523,6 +18531,7 @@ function switchTab(name, btn){
   if(name === 'pulllists') setTimeout(ensurePullListPanel, 0);
   if(name === 'grading') setTimeout(ensureGradingPanel, 0);
   if(name === 'foc') setTimeout(()=>window.ensureFocPanel?.(), 0);
+  if(name === 'backlist') setTimeout(()=>window.ensureBacklistPanel?.(), 0);
   if(name === 'cardintake') setTimeout(()=>window.ensureCardIntakePanel?.(), 0);
   if(name === 'tasks') setTimeout(()=>window.ensureDailyTasksPanel?.(), 0);
   if(name === 'orders') setTimeout(()=>{ renderFocPreorderOrders(); renderStorefrontOrders(); }, 0);
