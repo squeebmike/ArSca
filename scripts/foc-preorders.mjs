@@ -182,16 +182,26 @@ export function normalizePrhRow(row = {}) {
 // Lunar's weekly FOC export is a flat comics feed (ProductCode, Title,
 // RetailCost, Publisher, InitialOrderDue, FinalOrderCutoff, InstoreDate,
 // UPC/ISBN/EAN, Writer, Artist, CoverArtist, ...) -- one row per exact
-// cover already, with none of PRH's ratio-incentive/order-requirement
-// columns and no series/family id to group by, so every family here is
-// derived from the title text the same way normalizePrhRow falls back to
-// when PRH itself doesn't supply a TitleFamilyID. Reuses titleWithoutVariant/
-// variantLabel/issueNumber since those already key off row.Title/CoverArtist
-// generically rather than any PRH-only field.
+// cover already, with no series/family id to group by, so every family
+// here is derived from the title text the same way normalizePrhRow falls
+// back to when PRH itself doesn't supply a TitleFamilyID. Reuses
+// titleWithoutVariant/variantLabel/issueNumber since those already key off
+// row.Title/CoverArtist generically rather than any PRH-only field.
+//
+// Unlike PRH, Lunar has no separate OrderRequirement column -- but ratio
+// incentive covers are real here too (confirmed against real Lunar FOC
+// files: dozens of rows per week), just encoded directly in the title
+// text, e.g. "ABSOLUTE BATMAN #25 CVR K INC 1:25 LEWIS LAROSA CARD STOCK
+// VAR". lunarRatioThreshold() below pulls the ratio out of that pattern.
+function lunarRatioThreshold(title) {
+  const m = text(title, 800).match(/\bINC\w*\.?\s*1\s*:\s*(\d+)/i);
+  return m ? Number(m[1]) : null;
+}
 export function normalizeLunarRow(row = {}) {
   const distributorSku = exactIdentifier(row.ProductCode);
   const issue = issueNumber(row);
   const title = titleWithoutVariant(row, '', issue);
+  const ratio = lunarRatioThreshold(row.Title);
   const normalized = {
     distributorSku,
     upc:exactIdentifier(row.UPC || row.ISBN || row.EAN || row.ProductCode),
@@ -206,10 +216,10 @@ export function normalizeLunarRow(row = {}) {
     imprint:'',
     comicType:text(row.CoverType, 100),
     variantType:'',
-    orderRequirement:'',
+    orderRequirement:ratio ? `1:${ratio}` : '',
     orderRequirementUpc:'',
-    ratioThreshold:null,
-    isIncentive:false,
+    ratioThreshold:ratio,
+    isIncentive:!!ratio,
     writer:text(row.Writer, 1000),
     interiorArtist:text(row.Artist, 1000),
     coverArtist:text(row.CoverArtist, 1000),
@@ -770,10 +780,11 @@ async function importLunar(request, env, deps, storeId) {
     if (!before) newSkus++;
     else if (before.row_sha256 === rowHash) unchanged++;
     else updatedSkus++;
-    // No ratio-incentive concept in Lunar's feed -- every SKU defaults to
-    // its MSRP as the customer price unless staff already changed it.
+    // Ratio incentives start unpriced/request-only, same as PRH -- a new
+    // incentive cover must never auto-sell at MSRP the moment it's
+    // imported, before the store has actually secured/priced it.
     const hadCustomPrice = before && Number(before.customer_price_cents || 0) !== Number(before.msrp_cents || 0);
-    const customerPriceCents = hadCustomPrice ? Number(before.customer_price_cents || 0) : p.msrpCents;
+    const customerPriceCents = hadCustomPrice ? Number(before.customer_price_cents || 0) : (p.isIncentive ? 0 : p.msrpCents);
     skuRows.push({
       store_id:storeId, cycle_id:cycle.id, family_id:familyIds.get(p.distributorFamilyId), distributor:LUNAR,
       distributor_sku:p.distributorSku, upc:p.upc, isbn:p.isbn || null, title:p.sourceTitle || p.title,
@@ -788,7 +799,7 @@ async function importLunar(request, env, deps, storeId) {
     });
   }
   await db('comic_skus?on_conflict=cycle_id,distributor_sku', { method:'POST', headers:{ Prefer:'resolution=merge-duplicates,return=minimal' }, body:JSON.stringify(skuRows) });
-  const report = { processed:sourceRows.length, families:familyMap.size, newSkus, updatedSkus, unchanged, errors:0, incentives:0 };
+  const report = { processed:sourceRows.length, families:familyMap.size, newSkus, updatedSkus, unchanged, errors:0, incentives:skuRows.filter(row => row.is_incentive).length };
   await db(`foc_cycles?id=eq.${cycle.id}`, { method:'PATCH', headers:{ Prefer:'return=minimal' }, body:JSON.stringify({ import_report:report }) });
   return deps.json({ ok:true, duplicate:false, cycleId:cycle.id, focDate, customerCutoffAt:cycle.customer_cutoff_at || cutoff, report });
 }
@@ -1552,10 +1563,34 @@ async function adminCycle(request,env,deps,url){
 async function adminSku(request,env,deps){
   const limited=await deps.readJsonWithLimit(request,32*1024);if(limited.error)return limited.error;const body=limited.data||{};const storeId=text(body.storeId,80);
   const auth=await deps.requireStoreUser(request,env,storeId,['owner','admin','manager','employee']);if(auth.error)return auth.error;
-  const skuId=text(body.skuId,80),familyId=text(body.familyId,80);const db=(path,options)=>deps.supabaseAdminFetch(env,path,options);
+  const db=(path,options)=>deps.supabaseAdminFetch(env,path,options);
+  // Bulk website-visibility toggle -- a weekly Lunar/PRH import can be
+  // hundreds of covers, and flipping "SHOW TO CUSTOMERS" one at a time
+  // (the only option before this) doesn't scale. Deliberately narrow: only
+  // customer_enabled is bulk-editable, since price/quantity/heat are
+  // per-cover judgment calls that shouldn't have a "set them all at once"
+  // button.
+  const skuIds=Array.isArray(body.skuIds)?body.skuIds.filter(id=>/^[0-9a-f-]{36}$/i.test(id)).slice(0,500):null;
+  if(skuIds&&skuIds.length){
+    if(body.customerEnabled===undefined)return deps.json({ok:false,error:'customerEnabled is required for a bulk update'},400);
+    const {data:rows}=await db(`comic_skus?id=${inFilter(skuIds)}&store_id=eq.${encodeURIComponent(storeId)}`,{method:'PATCH',headers:{Prefer:'return=representation'},body:JSON.stringify({customer_enabled:!!body.customerEnabled})});
+    return deps.json({ok:true,updated:(rows||[]).length});
+  }
+  const skuId=text(body.skuId,80),familyId=text(body.familyId,80);
   if(familyId){const patch={};if(body.heat===null||Number(body.heat)>=1&&Number(body.heat)<=5)patch.heat=body.heat===null?null:Number(body.heat);if(body.heatCategory===null||['dont_sleep','sleeper_watch','solid_stock','special_order','pass'].includes(body.heatCategory))patch.heat_category=body.heatCategory;if(body.adminNote!==undefined)patch.admin_note=text(body.adminNote,4000)||null;const {data:rows}=await db(`comic_title_families?id=eq.${familyId}&store_id=eq.${encodeURIComponent(storeId)}`,{method:'PATCH',headers:{Prefer:'return=representation'},body:JSON.stringify(patch)});return deps.json({ok:true,family:rows?.[0]});}
   if(!skuId)return deps.json({ok:false,error:'skuId or familyId is required'},400);
   const patch={};if(body.storeQuantity!==undefined)patch.store_quantity=Math.max(0,Math.min(10000,Number(body.storeQuantity)||0));if(body.securedQuantity!==undefined)patch.secured_quantity=Math.max(0,Math.min(1000,Number(body.securedQuantity)||0));if(body.customerPrice!==undefined)patch.customer_price_cents=Math.max(0,Math.round(Number(body.customerPrice)*100));if(body.customerEnabled!==undefined)patch.customer_enabled=!!body.customerEnabled;if(body.qualificationOverrideTotal===null||body.qualificationOverrideTotal!==undefined)patch.qualification_override_total=body.qualificationOverrideTotal===null?null:Math.max(0,Number(body.qualificationOverrideTotal)||0);if(body.qualificationNote!==undefined)patch.qualification_note=text(body.qualificationNote,2000)||null;if(body.safetyStockQty!==undefined)patch.safety_stock_qty=Math.max(0,Math.min(1000,Number(body.safetyStockQty)||0));
+  // Manual cover-art fallback -- Lunar's FOC feed supplies no cover-image
+  // column at all (unlike PRH's CoverLink), and this was previously a
+  // write-once field set only at import time with no way to fix it after.
+  // Staff can paste a URL grabbed from the publisher's own solicitation
+  // page or Lunar's account portal. Empty clears it; anything else must be
+  // a real https image URL, not an arbitrary string.
+  if(body.coverImageUrl!==undefined){
+    const url=text(body.coverImageUrl,2000);
+    if(url&&!/^https:\/\//i.test(url))return deps.json({ok:false,error:'Cover image URL must start with https://'},400);
+    patch.cover_image_url=url;
+  }
   const {data:rows}=await db(`comic_skus?id=eq.${skuId}&store_id=eq.${encodeURIComponent(storeId)}`,{method:'PATCH',headers:{Prefer:'return=representation'},body:JSON.stringify(patch)});return deps.json({ok:true,sku:rows?.[0]});
 }
 
