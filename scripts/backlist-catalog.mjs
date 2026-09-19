@@ -417,8 +417,21 @@ async function backlistBookDetailPage(env, deps, id, providedSlug) {
       `${byline ? `<div class="mp-meta">${deps.mtgEscapeHtml(byline)}</div>` : ''}` +
       `${row.description ? `<p class="mp-sub">${deps.mtgEscapeHtml(text(row.description, 600))}</p>` : ''}` +
       skuRows +
-      `<a class="mp-card" style="display:inline-block;padding:12px 20px;margin-top:8px" href="${deps.mtgEscapeHtml(searchHref)}">Buy this book →</a>` +
-      `</div></div>`,
+      `<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px">` +
+      `<a class="mp-card" style="display:inline-block;padding:12px 20px" href="${deps.mtgEscapeHtml(searchHref)}">Buy this book →</a>` +
+      `<button id="mp-share-btn" style="padding:12px 20px;border-radius:12px;border:1px solid rgba(255,255,255,.2);background:transparent;color:inherit;cursor:pointer;font:inherit" data-title="${deps.mtgEscapeHtml(row.title)}" data-text="${deps.mtgEscapeHtml(description)}">Share</button>` +
+      `</div>` +
+      `</div></div>` +
+      // Same navigator.share / clipboard-copy / window.prompt fallback chain
+      // preorders.js's own shareSku() already established for the comic
+      // preorder pages -- kept identical here rather than inventing a
+      // second convention for the same interaction.
+      `<script>(function(){var b=document.getElementById('mp-share-btn');if(!b)return;b.addEventListener('click',function(){` +
+      `var url=location.href;` +
+      `if(navigator.share){navigator.share({title:b.dataset.title+' | The Mana Pocket',text:b.dataset.text,url:url}).catch(function(){});return;}` +
+      `if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(url).then(function(){var original=b.textContent;b.textContent='Link copied ✓';setTimeout(function(){b.textContent=original;},1400);}).catch(function(){window.prompt('Copy this link:',url);});return;}` +
+      `window.prompt('Copy this link:',url);` +
+      `});})();</script>`,
   });
   return new Response(html, { headers: { 'Content-Type': 'text/html;charset=UTF-8', 'Cache-Control': 'public, max-age=600' } });
 }

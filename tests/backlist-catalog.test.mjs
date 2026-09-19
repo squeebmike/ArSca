@@ -253,6 +253,14 @@ function mockGetRequest() { return { method:'GET', headers:{ get:() => null } };
   assert.match(html, /\$20\.00/, 'the page must show this sku\'s real price');
   assert.match(html, /"@type":"Book"/, 'must emit Book-typed JSON-LD, not a bare Product with no book-specific fields');
   assert.match(html, /rel="canonical" href="https:\/\/themanapocket\.com\/book\//, 'canonical must point at themanapocket.com, not the Worker\'s workers.dev subdomain (see the /preorder/{id} anti-pattern this deliberately avoids)');
+  // The page must actually carry the book's synopsis and a real share
+  // action, not just price/JSON-LD -- a customer landing here (from a
+  // card's "Details & share" link on /books) needs both.
+  assert.match(html, /A real cookbook\./, 'the page must show the book\'s synopsis, not just title/price');
+  assert.match(html, /id="mp-share-btn"/, 'missing the share button');
+  assert.match(html, /navigator\.share/, 'the share button must use the real Web Share API, not just a static link');
+  assert.match(html, /navigator\.clipboard/, 'must fall back to copying the link when navigator.share is unavailable (most desktop browsers)');
+  assert.match(html, /window\.prompt\('Copy this link:',url\)/, 'must fall back to a prompt when even clipboard is unavailable, same as preorders.js\'s shareSku()');
 }
 
 {
