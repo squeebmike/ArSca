@@ -10247,37 +10247,67 @@ export default {
       const storeId = requestStoreId(request, url);
       const auth = await requireStoreUser(request, env, storeId, ['owner','admin']);
       if (auth.error) return auth.error;
-      const [{ data: storefronts }, { data: focOrders }, { data: backlistOrders }] = await Promise.all([
+      const [{ data: roster }, { data: storefronts }, { data: focOrders }, { data: backlistOrders }] = await Promise.all([
+        supabaseAdminFetch(env, `customers?store_id=eq.${encodeURIComponent(storeId)}&select=id,name,phone,email,linked_user_id,loyalty_points_balance,trade_credit_balance,created_at&order=created_at.desc&limit=2000`),
         supabaseAdminFetch(env, `storefront_orders?store_id=eq.${encodeURIComponent(storeId)}&select=id,sale_id,confirmation_number,customer_name,customer_email,customer_phone,fulfillment_method,fulfillment_status,created_at&order=created_at.desc&limit=1000`),
         supabaseAdminFetch(env, `foc_preorder_orders?store_id=eq.${encodeURIComponent(storeId)}&select=id,order_number,user_id,customer_name,customer_email,status,fulfillment_method,total_cents,created_at&order=created_at.desc&limit=1000`),
         supabaseAdminFetch(env, `backlist_orders?store_id=eq.${encodeURIComponent(storeId)}&select=id,order_number,user_id,customer_name,customer_email,status,fulfillment_method,total_cents,created_at&order=created_at.desc&limit=1000`),
       ]);
       const customers = new Map();
-      const bucket = email => {
-        const key = String(email || '').trim().toLowerCase();
+      // Storefront guest checkout requires a phone but not an email, so email
+      // alone would silently drop phone-only guests -- fall back to phone,
+      // then (for roster rows with neither, e.g. a quick walk-in contact) the
+      // customers table's own row id, so nobody with a real record vanishes.
+      const normPhone = phone => String(phone || '').replace(/\D/g, '').slice(-10) || null;
+      const identityKey = (email, phone, fallbackId) => {
+        const e = String(email || '').trim().toLowerCase();
+        if (e) return 'email:' + e;
+        const p = normPhone(phone);
+        if (p) return 'phone:' + p;
+        return fallbackId ? 'id:' + fallbackId : null;
+      };
+      const bucket = key => {
         if (!key) return null;
-        if (!customers.has(key)) customers.set(key, { email: key, name: '', userId: null, storefrontOrders: [], focPreorders: [], backlistOrders: [] });
+        if (!customers.has(key)) customers.set(key, { email: '', phone: '', name: '', userId: null, isRosterCustomer: false, loyaltyPoints: 0, tradeCreditBalance: 0, signedUpAt: null, storefrontOrders: [], focPreorders: [], backlistOrders: [] });
         return customers.get(key);
       };
+      // Seed with every known customer first (including ones who've never
+      // ordered online -- walk-ins, buylist sellers, POS-only regulars) so
+      // an order below can enrich an existing row instead of creating a
+      // second one for the same person.
+      for (const r of roster || []) {
+        const key = identityKey(r.email, r.phone, r.id);
+        const c = bucket(key); if (!c) continue;
+        c.name = c.name || r.name || '';
+        c.email = c.email || String(r.email || '').trim().toLowerCase();
+        c.phone = c.phone || r.phone || '';
+        c.userId = c.userId || r.linked_user_id;
+        c.isRosterCustomer = true;
+        c.loyaltyPoints = r.loyalty_points_balance || 0;
+        c.tradeCreditBalance = Number(r.trade_credit_balance || 0);
+        c.signedUpAt = r.created_at;
+      }
       for (const o of storefronts || []) {
-        const c = bucket(o.customer_email); if (!c) continue;
+        const c = bucket(identityKey(o.customer_email, o.customer_phone)); if (!c) continue;
         c.name = c.name || o.customer_name;
+        c.email = c.email || String(o.customer_email || '').trim().toLowerCase();
+        c.phone = c.phone || o.customer_phone || '';
         c.storefrontOrders.push({ id: o.id, saleId: o.sale_id, confirmationNumber: o.confirmation_number, phone: o.customer_phone, fulfillmentMethod: o.fulfillment_method, status: o.fulfillment_status, createdAt: o.created_at });
       }
       for (const o of focOrders || []) {
-        const c = bucket(o.customer_email); if (!c) continue;
-        c.name = c.name || o.customer_name; c.userId = c.userId || o.user_id;
+        const c = bucket(identityKey(o.customer_email)); if (!c) continue;
+        c.name = c.name || o.customer_name; c.email = c.email || String(o.customer_email || '').trim().toLowerCase(); c.userId = c.userId || o.user_id;
         c.focPreorders.push({ id: o.id, orderNumber: o.order_number, status: o.status, fulfillmentMethod: o.fulfillment_method, totalCents: o.total_cents, createdAt: o.created_at });
       }
       for (const o of backlistOrders || []) {
-        const c = bucket(o.customer_email); if (!c) continue;
-        c.name = c.name || o.customer_name; c.userId = c.userId || o.user_id;
+        const c = bucket(identityKey(o.customer_email)); if (!c) continue;
+        c.name = c.name || o.customer_name; c.email = c.email || String(o.customer_email || '').trim().toLowerCase(); c.userId = c.userId || o.user_id;
         c.backlistOrders.push({ id: o.id, orderNumber: o.order_number, status: o.status, fulfillmentMethod: o.fulfillment_method, totalCents: o.total_cents, createdAt: o.created_at });
       }
-      const list = [...customers.values()].map(c => {
+      const list = [...customers.entries()].map(([key, c]) => {
         const all = [...c.storefrontOrders, ...c.focPreorders, ...c.backlistOrders];
-        const lastActivityAt = all.reduce((max, o) => (o.createdAt > max ? o.createdAt : max), '');
-        return { ...c, orderCount: all.length, lastActivityAt };
+        const lastActivityAt = all.reduce((max, o) => (o.createdAt > max ? o.createdAt : max), c.signedUpAt || '');
+        return { ...c, key, orderCount: all.length, lastActivityAt };
       });
       list.sort((a, b) => (b.lastActivityAt || '').localeCompare(a.lastActivityAt || ''));
       return json({ ok: true, customers: list });

@@ -38,19 +38,23 @@ const worker = fs.readFileSync('cloudflare-worker-full.js', 'utf8');
 }
 
 // GET /admin/customers -- the "DATABASE" tab's data source: a read-only
-// rollup of every order table keyed by customer email (storefront_orders is
-// guest checkout with no user_id, so email is the only field all three
-// order tables reliably share).
+// rollup of the store's customer roster (so people who've never ordered
+// online still show up) plus every order table, keyed by email with a
+// phone fallback (storefront_orders is guest checkout that requires a
+// phone but not an email).
 {
   const start = worker.indexOf("if (url.pathname === '/admin/customers' && request.method === 'GET') {");
   assert.notEqual(start, -1, 'missing GET /admin/customers route');
   const end = worker.indexOf('// POST /ebay/orders/ship', start);
   const body = worker.slice(start, end);
   assert.match(body, /requireStoreUser\(request, env, storeId, \['owner','admin'\]\)/, 'customer database must be owner/admin gated -- it is customer PII across every order type');
+  assert.match(body, /customers\?store_id=eq\./, 'must include the store\'s own customer roster, so a person with zero orders still shows up');
   assert.match(body, /storefront_orders\?store_id=eq\./, 'must include storefront (pickup/shipping) orders');
   assert.match(body, /foc_preorder_orders\?store_id=eq\./, 'must include FOC comic preorders');
   assert.match(body, /backlist_orders\?store_id=eq\./, 'must include PRH backlist (backorder) orders');
-  assert.match(body, /String\(email \|\| ''\)\.trim\(\)\.toLowerCase\(\)/, 'must key customers by normalized email so the same person is not split into multiple rows by casing');
+  assert.match(body, /const e = String\(email \|\| ''\)\.trim\(\)\.toLowerCase\(\);/, 'must key customers by normalized email so the same person is not split into multiple rows by casing');
+  assert.match(body, /const p = normPhone\(phone\);\s*\n\s*if \(p\) return 'phone:' \+ p;/, 'must fall back to phone when no email is on file, so phone-only storefront guests are not silently dropped');
+  assert.match(body, /for \(const r of roster \|\| \[\]\) \{/, 'roster rows must be seeded into the customer map before orders are applied, so orders enrich an existing person instead of duplicating them');
 }
 
 console.log('Stuck-payments and customer-database route checks passed');
