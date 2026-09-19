@@ -526,6 +526,40 @@ async function adminReceive(request, env, deps) {
   return deps.json({ ok: true, createdInventoryCount: (inserted || []).length });
 }
 
+// Staff need the same "did this import actually happen" answer on every
+// fresh page load, not just in the browser tab that ran the upload --
+// backlist-dashboard.js's own lastImportReport is in-memory session state
+// that a reload (or a different device) never sees, which is exactly why a
+// 29,603-SKU import that fully succeeded still looked like nothing had
+// happened. This just re-reads the most recent backlist_imports row.
+async function adminImportStatus(request, env, deps, url) {
+  const storeId = text(url.searchParams.get('store_id'), 80);
+  const auth = await deps.requireStoreUser(request, env, storeId, ['owner', 'admin', 'manager', 'employee']);
+  if (auth.error) return auth.error;
+  const { data: imports } = await deps.supabaseAdminFetch(env, `backlist_imports?store_id=eq.${encodeURIComponent(storeId)}&select=id,source_filename,status,source_row_count,import_report,started_at,completed_at&order=started_at.desc&limit=1`);
+  return deps.json({ ok: true, lastImport: imports?.[0] || null });
+}
+
+// Staff-facing catalog browser -- unlike /public/backlist/search (which
+// only ever shows is_published=true titles to a customer), this returns
+// every title regardless of publish state so staff can actually see what a
+// 29,603-row import produced, search it, and toggle publish/price per SKU
+// via the existing /backlist/admin/sku route.
+async function adminCatalog(request, env, deps, url) {
+  const storeId = text(url.searchParams.get('store_id'), 80);
+  const auth = await deps.requireStoreUser(request, env, storeId, ['owner', 'admin', 'manager', 'employee']);
+  if (auth.error) return auth.error;
+  const q = text(url.searchParams.get('q'), 200);
+  const limit = Math.min(100, Math.max(1, Number.parseInt(url.searchParams.get('limit'), 10) || 50));
+  const offset = Math.max(0, Number.parseInt(url.searchParams.get('offset'), 10) || 0);
+  const db = (path, options) => deps.supabaseAdminFetch(env, path, options);
+  let filter = `backlist_titles?store_id=eq.${encodeURIComponent(storeId)}&select=id,title,subtitle,series_name,publisher,writer,format_name,cover_image_url,is_published,backlist_skus(id,upc,isbn,format_name,msrp_cents,customer_price_cents,customer_enabled,is_published,is_orderable,sales_status,on_sale_date)&order=title.asc&limit=${limit}&offset=${offset}`;
+  if (q) filter += `&or=(title.ilike.*${encodeURIComponent(q)}*,writer.ilike.*${encodeURIComponent(q)}*,series_name.ilike.*${encodeURIComponent(q)}*,publisher.ilike.*${encodeURIComponent(q)}*)`;
+  const { data: titles, response } = await db(filter, { headers: { Prefer: 'count=exact' } });
+  const total = Number(String(response.headers.get('content-range') || '').split('/')[1] || (titles || []).length);
+  return deps.json({ ok: true, titles: titles || [], total, offset, limit });
+}
+
 export async function handleBacklistRequest(request, env, url, deps) {
   const path = url.pathname;
   if (path === '/public/backlist/search' && request.method === 'GET') return backlistSearch(request, env, deps, url);
@@ -534,6 +568,8 @@ export async function handleBacklistRequest(request, env, url, deps) {
   if (path === '/backlist/admin/import/start' && request.method === 'POST') return importStart(request, env, deps);
   if (path === '/backlist/admin/import/batch' && request.method === 'POST') return importBatch(request, env, deps);
   if (path === '/backlist/admin/import/finish' && request.method === 'POST') return importFinish(request, env, deps);
+  if (path === '/backlist/admin/import/status' && request.method === 'GET') return adminImportStatus(request, env, deps, url);
+  if (path === '/backlist/admin/catalog' && request.method === 'GET') return adminCatalog(request, env, deps, url);
   if (path === '/backlist/admin/sku' && request.method === 'PATCH') return adminSku(request, env, deps);
   if (path === '/backlist/admin/orders' && request.method === 'GET') return adminOrders(request, env, deps, url);
   if (path === '/backlist/admin/receive' && request.method === 'POST') return adminReceive(request, env, deps);

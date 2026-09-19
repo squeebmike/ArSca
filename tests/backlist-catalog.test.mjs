@@ -209,7 +209,19 @@ assert.match(service, /if \(path === '\/public\/backlist\/checkout' && request\.
 assert.match(service, /if \(path === '\/backlist\/admin\/import\/start' && request\.method === 'POST'\)/);
 assert.match(service, /if \(path === '\/backlist\/admin\/import\/batch' && request\.method === 'POST'\)/);
 assert.match(service, /if \(path === '\/backlist\/admin\/import\/finish' && request\.method === 'POST'\)/);
+assert.match(service, /if \(path === '\/backlist\/admin\/import\/status' && request\.method === 'GET'\)/, 'staff need to re-read the last import\'s real status on every page load, not rely on the uploading tab\'s own in-memory state');
+assert.match(service, /if \(path === '\/backlist\/admin\/catalog' && request\.method === 'GET'\)/, 'staff need a way to browse the imported catalog from the dashboard, not just via the customer-facing published-only search');
 assert.match(service, /if \(path === '\/backlist\/admin\/receive' && request\.method === 'POST'\)/);
+
+// Unlike /public/backlist/search (is_published=true only, customer-facing),
+// the staff catalog browser must show every title regardless of publish
+// state -- otherwise an accidentally-unpublished title would be invisible
+// to the one screen meant to let staff notice and fix that.
+assert.doesNotMatch(
+  service.slice(service.indexOf('async function adminCatalog'), service.indexOf('async function adminCatalog') + 1200),
+  /is_published=eq\.true/,
+  'adminCatalog must not filter to published-only titles the way the public search does'
+);
 
 // The chunked-import protocol exists because a single request cannot carry
 // this feed -- readJsonWithLimit caps a request body well below what tens
