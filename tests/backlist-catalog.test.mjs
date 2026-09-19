@@ -284,6 +284,8 @@ console.log('Backlist SEO detail-page and sitemap checks passed');
 // --- Route dispatch + import/unpublish-sweep wiring ------------------------
 
 assert.match(service, /if \(path === '\/public\/backlist\/search' && request\.method === 'GET'\)/);
+assert.match(service, /if \(path === '\/public\/backlist\/facets' && request\.method === 'GET'\)/, 'the browse page\'s publisher/format filter dropdowns need a facets route');
+assert.match(service, /if \(format\) filter \+= `&format_name=eq\.\$\{encodeURIComponent\(format\)\}`;/, 'backlistSearch must actually apply the format filter, not just accept the param');
 assert.match(service, /if \(path === '\/public\/backlist\/checkout' && request\.method === 'POST'\)/);
 assert.match(service, /if \(path === '\/backlist\/admin\/import\/start' && request\.method === 'POST'\)/);
 assert.match(service, /if \(path === '\/backlist\/admin\/import\/batch' && request\.method === 'POST'\)/);

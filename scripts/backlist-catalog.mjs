@@ -268,12 +268,19 @@ async function backlistSearch(request, env, deps, url) {
   const storeId = text(url.searchParams.get('store_id'), 80);
   const q = text(url.searchParams.get('q'), 200);
   const publisher = text(url.searchParams.get('publisher'), 200);
+  const format = text(url.searchParams.get('format'), 200);
   const limit = Math.min(48, Math.max(1, Number.parseInt(url.searchParams.get('limit'), 10) || 24));
   const offset = Math.max(0, Number.parseInt(url.searchParams.get('offset'), 10) || 0);
   const db = (path, options) => deps.supabaseAdminFetch(env, path, options);
+  // q is optional on purpose -- an empty q (with no other filter args) is a
+  // real, supported "browse everything" request, not an error state. The
+  // /books page used to only ever call this once someone typed something,
+  // which is exactly why it showed a "search to get started" wall instead
+  // of a real, scrollable catalog on first load.
   let filter = `backlist_titles?store_id=eq.${encodeURIComponent(storeId)}&is_published=eq.true&select=id,title,subtitle,series_name,publisher,format_name,cover_image_url,backlist_skus(id,upc,isbn,msrp_cents,customer_price_cents,on_sale_date,is_published)&order=title.asc&limit=${limit}&offset=${offset}`;
   if (q) filter += `&or=(title.ilike.*${encodeURIComponent(q)}*,writer.ilike.*${encodeURIComponent(q)}*,series_name.ilike.*${encodeURIComponent(q)}*)`;
   if (publisher) filter += `&publisher=eq.${encodeURIComponent(publisher)}`;
+  if (format) filter += `&format_name=eq.${encodeURIComponent(format)}`;
   const { data: titles } = await db(filter);
   const results = (titles || []).map(row => ({
     id: row.id, title: row.title, subtitle: row.subtitle, seriesName: row.series_name, publisher: row.publisher,
@@ -281,6 +288,31 @@ async function backlistSearch(request, env, deps, url) {
     skus: (row.backlist_skus || []).filter(s => s.is_published).map(s => ({ id: s.id, upc: s.upc, isbn: s.isbn, priceCents: Number(s.customer_price_cents || s.msrp_cents || 0), delivery: estimateBacklistDelivery(s.on_sale_date, new Date(), deps.addBusinessDays) })),
   })).filter(row => row.skus.length);
   return deps.json({ ok: true, results, offset, limit });
+}
+
+// GET /public/backlist/facets -- the publisher/format dropdown values for
+// the browse UI's filters. PostgREST has no cheap server-side DISTINCT, so
+// this pages through just the two skinny columns needed (not full title
+// rows) and dedupes here -- a few thousand short strings, nowhere near the
+// cost of the /sitemap-books.xml walk that already does the same paging
+// pattern over the same table.
+async function backlistFacets(env, deps, url) {
+  const storeId = text(url.searchParams.get('store_id'), 80);
+  const db = (path, options) => deps.supabaseAdminFetch(env, path, options);
+  const publishers = new Set(), formats = new Set();
+  let offset = 0;
+  while (true) {
+    const { data } = await db(`backlist_titles?store_id=eq.${encodeURIComponent(storeId)}&is_published=eq.true&select=publisher,format_name&limit=1000&offset=${offset}`);
+    const batch = data || [];
+    for (const row of batch) {
+      if (row.publisher) publishers.add(row.publisher);
+      if (row.format_name) formats.add(row.format_name);
+    }
+    if (batch.length < 1000) break;
+    offset += 1000;
+    if (offset >= 50000) break;
+  }
+  return deps.json({ ok: true, publishers: [...publishers].sort(), formats: [...formats].sort() });
 }
 
 async function backlistTitleDetail(env, deps, id) {
@@ -675,6 +707,7 @@ export async function handleBacklistRequest(request, env, url, deps) {
   }
   if (path === '/sitemap-books.xml' && request.method === 'GET') return backlistSitemap(env, deps);
   if (path === '/public/backlist/search' && request.method === 'GET') return backlistSearch(request, env, deps, url);
+  if (path === '/public/backlist/facets' && request.method === 'GET') return backlistFacets(env, deps, url);
   if (path.startsWith('/public/backlist/title/') && request.method === 'GET') return backlistTitleDetail(env, deps, decodeURIComponent(path.slice('/public/backlist/title/'.length).split('/')[0] || ''));
   if (path === '/public/backlist/checkout' && request.method === 'POST') return backlistCheckout(request, env, deps);
   if (path === '/backlist/admin/import/start' && request.method === 'POST') return importStart(request, env, deps);
