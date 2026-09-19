@@ -3,15 +3,27 @@ import fs from 'node:fs';
 
 const worker = fs.readFileSync('cloudflare-worker-full.js', 'utf8');
 
-// GET /admin/stuck-payments -- surfaces pos_payments rows Stripe's webhook
+// Every /admin/* path is unconditionally claimed by the platform-admin
+// catch-all (`url.pathname === '/admin/session' || url.pathname.startsWith
+// ('/admin/')` -> handlePlatformAdmin -> requirePlatformAdmin), which is a
+// wholly different, cross-tenant SaaS-operator role from a store's own
+// owner/admin. A store-scoped route ever named /admin/... is silently
+// unreachable for every real store owner -- it 403s as "Platform
+// administrator access required" before its own handler runs. These three
+// routes must live outside that prefix.
+for (const path of ['/store/stuck-payments', '/store/stuck-payments/resolve', '/store/customers']) {
+  assert.doesNotMatch(path, /^\/admin\//, `${path} must not sit under the reserved /admin/ prefix (platform-admin catch-all would swallow it)`);
+}
+
+// GET /store/stuck-payments -- surfaces pos_payments rows Stripe's webhook
 // never confirmed (the chronic issue behind the SpongeBob Cookbook incident:
 // stripe_webhook_events has never once recorded a processed event). It must
 // be owner/admin gated, only look at genuinely stale rows, and never touch
 // money/inventory itself (that's the resolve route's job).
 {
-  const start = worker.indexOf("if (url.pathname === '/admin/stuck-payments' && request.method === 'GET') {");
-  assert.notEqual(start, -1, 'missing GET /admin/stuck-payments route');
-  const end = worker.indexOf("if (url.pathname === '/admin/stuck-payments/resolve'", start);
+  const start = worker.indexOf("if (url.pathname === '/store/stuck-payments' && request.method === 'GET') {");
+  assert.notEqual(start, -1, 'missing GET /store/stuck-payments route');
+  const end = worker.indexOf("if (url.pathname === '/store/stuck-payments/resolve'", start);
   const body = worker.slice(start, end);
   assert.match(body, /requireStoreUser\(request, env, storeId, \['owner','admin'\]\)/, 'stuck-payments listing must be owner/admin gated -- it exposes customer names/emails and payment amounts');
   assert.match(body, /status=eq\.requires_payment_method/, 'must filter on the never-confirmed Stripe status');
@@ -20,12 +32,12 @@ const worker = fs.readFileSync('cloudflare-worker-full.js', 'utf8');
   assert.doesNotMatch(body, /PATCH/, 'the listing route must be read-only -- it must never PATCH a payment or sale itself');
 }
 
-// POST /admin/stuck-payments/resolve -- must re-verify against Stripe before
+// POST /store/stuck-payments/resolve -- must re-verify against Stripe before
 // writing anything (never trust the dashboard click alone), then replay the
 // same succeeded-payment reconciliation the webhook itself would have done.
 {
-  const start = worker.indexOf("if (url.pathname === '/admin/stuck-payments/resolve' && request.method === 'POST') {");
-  assert.notEqual(start, -1, 'missing POST /admin/stuck-payments/resolve route');
+  const start = worker.indexOf("if (url.pathname === '/store/stuck-payments/resolve' && request.method === 'POST') {");
+  assert.notEqual(start, -1, 'missing POST /store/stuck-payments/resolve route');
   const end = worker.indexOf('// POST /ebay/orders/ship', start);
   const body = worker.slice(start, end);
   assert.match(body, /requireStoreUser\(request, env, storeId, \['owner','admin'\]\)/, 'resolve route must be owner/admin gated');
@@ -37,14 +49,14 @@ const worker = fs.readFileSync('cloudflare-worker-full.js', 'utf8');
   assert.match(body, /action === 'abandon'/, 'must support dismissing a genuinely-abandoned checkout without a Stripe round-trip');
 }
 
-// GET /admin/customers -- the "DATABASE" tab's data source: a read-only
+// GET /store/customers -- the "DATABASE" tab's data source: a read-only
 // rollup of the store's customer roster (so people who've never ordered
 // online still show up) plus every order table, keyed by email with a
 // phone fallback (storefront_orders is guest checkout that requires a
 // phone but not an email).
 {
-  const start = worker.indexOf("if (url.pathname === '/admin/customers' && request.method === 'GET') {");
-  assert.notEqual(start, -1, 'missing GET /admin/customers route');
+  const start = worker.indexOf("if (url.pathname === '/store/customers' && request.method === 'GET') {");
+  assert.notEqual(start, -1, 'missing GET /store/customers route');
   const end = worker.indexOf('// POST /ebay/orders/ship', start);
   const body = worker.slice(start, end);
   assert.match(body, /requireStoreUser\(request, env, storeId, \['owner','admin'\]\)/, 'customer database must be owner/admin gated -- it is customer PII across every order type');

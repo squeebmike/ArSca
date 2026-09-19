@@ -10137,13 +10137,13 @@ export default {
       }
     }
 
-    // GET /admin/stuck-payments -- surfaces pos_payments rows still sitting in
+    // GET /store/stuck-payments -- surfaces pos_payments rows still sitting in
     // Stripe's initial 'requires_payment_method' status well after checkout,
     // the same signal that let us find historically-missed sales by hand via
     // SQL (the Stripe webhook that's supposed to flip this to 'succeeded'
     // has never once fired successfully -- see stripe_webhook_events). This
     // is a read-only listing; nothing here touches money or inventory.
-    if (url.pathname === '/admin/stuck-payments' && request.method === 'GET') {
+    if (url.pathname === '/store/stuck-payments' && request.method === 'GET') {
       const storeId = requestStoreId(request, url);
       const auth = await requireStoreUser(request, env, storeId, ['owner','admin']);
       if (auth.error) return auth.error;
@@ -10187,7 +10187,7 @@ export default {
       return json({ ok: true, payments: result });
     }
 
-    // POST /admin/stuck-payments/resolve -- staff have already confirmed a
+    // POST /store/stuck-payments/resolve -- staff have already confirmed a
     // payment in Stripe's own dashboard (the incident that motivated this
     // panel: a customer showed a "Succeeded" screenshot while ArSca still
     // thought nothing was paid). This route re-verifies directly against
@@ -10197,7 +10197,7 @@ export default {
     // pos_payments, then fulfillStorefrontOrderInventory). "abandon" is for
     // a payment staff have confirmed genuinely never went through (an
     // abandoned checkout), which just stops it cluttering this list.
-    if (url.pathname === '/admin/stuck-payments/resolve' && request.method === 'POST') {
+    if (url.pathname === '/store/stuck-payments/resolve' && request.method === 'POST') {
       const body = await request.json().catch(() => ({}));
       const storeId = requestStoreId(request, url, body);
       const auth = await requireStoreUser(request, env, storeId, ['owner','admin']);
@@ -10237,13 +10237,13 @@ export default {
       }
     }
 
-    // GET /admin/customers -- a database viewer for staff: every customer
+    // GET /store/customers -- a database viewer for staff: every customer
     // who's bought something (storefront pickup/shipping order, FOC comic
     // preorder, or PRH backlist order) grouped under one identity. This adds
     // no new "customers" table -- storefront_orders is guest checkout with
     // no user_id at all, so the only field all three order tables reliably
     // share is customer_email, and that's what this rolls up on.
-    if (url.pathname === '/admin/customers' && request.method === 'GET') {
+    if (url.pathname === '/store/customers' && request.method === 'GET') {
       const storeId = requestStoreId(request, url);
       const auth = await requireStoreUser(request, env, storeId, ['owner','admin']);
       if (auth.error) return auth.error;

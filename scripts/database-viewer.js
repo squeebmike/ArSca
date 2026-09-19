@@ -17,7 +17,7 @@ function panel(){return document.getElementById('database-panels');}
 function busy(message){var host=panel();if(host)host.innerHTML='<div class="panel" style="padding:36px;text-align:center;font-family:var(--font-mono);color:var(--dim)">'+esc(message||'Loading…')+'</div>';}
 
 async function loadCustomers(){
-  try{var data=await api('/admin/customers?store_id='+encodeURIComponent(getActiveStoreId()));state.customers=data.customers||[];}
+  try{var data=await api('/store/customers?store_id='+encodeURIComponent(getActiveStoreId()));state.customers=data.customers||[];}
   catch(e){state.customers=[];state.loadError=e.message;}
 }
 

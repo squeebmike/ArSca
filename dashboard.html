@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.09.19.04-database-viewer-includes-non-ordering-customers">
+<meta name="version" content="2026.09.19.06-recent-activity-reads-real-ledger">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1635,21 +1635,21 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.09.19.04-database-viewer-includes-non-ordering-customers" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.09.19.04-database-viewer-includes-non-ordering-customers" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.09.19.04-database-viewer-includes-non-ordering-customers" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.09.19.04-database-viewer-includes-non-ordering-customers" defer></script>
-<script src="scripts/backlist-dashboard.js?v=2026.09.19.04-database-viewer-includes-non-ordering-customers" defer></script>
-<script src="scripts/database-viewer.js?v=2026.09.19.04-database-viewer-includes-non-ordering-customers" defer></script>
-<script src="scripts/card-intake-dashboard.js?v=2026.09.19.04-database-viewer-includes-non-ordering-customers" defer></script>
-<script src="scripts/mana-pocket-task-library.js?v=2026.09.19.04-database-viewer-includes-non-ordering-customers" defer></script>
-<script src="scripts/daily-tasks-dashboard.js?v=2026.09.19.04-database-viewer-includes-non-ordering-customers" defer></script>
+<script src="scripts/query-routing.js?v=2026.09.19.06-recent-activity-reads-real-ledger" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.09.19.06-recent-activity-reads-real-ledger" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.09.19.06-recent-activity-reads-real-ledger" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.09.19.06-recent-activity-reads-real-ledger" defer></script>
+<script src="scripts/backlist-dashboard.js?v=2026.09.19.06-recent-activity-reads-real-ledger" defer></script>
+<script src="scripts/database-viewer.js?v=2026.09.19.06-recent-activity-reads-real-ledger" defer></script>
+<script src="scripts/card-intake-dashboard.js?v=2026.09.19.06-recent-activity-reads-real-ledger" defer></script>
+<script src="scripts/mana-pocket-task-library.js?v=2026.09.19.06-recent-activity-reads-real-ledger" defer></script>
+<script src="scripts/daily-tasks-dashboard.js?v=2026.09.19.06-recent-activity-reads-real-ledger" defer></script>
 <script src="scripts/research-loupe.js?v=a7de4ffe90" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.09.19.04-database-viewer-includes-non-ordering-customers" defer></script>
-<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.09.19.04-database-viewer-includes-non-ordering-customers" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.09.19.04-database-viewer-includes-non-ordering-customers" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.09.19.04-database-viewer-includes-non-ordering-customers" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.09.19.04-database-viewer-includes-non-ordering-customers" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.09.19.06-recent-activity-reads-real-ledger" defer></script>
+<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.09.19.06-recent-activity-reads-real-ledger" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.09.19.06-recent-activity-reads-real-ledger" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.09.19.06-recent-activity-reads-real-ledger" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.09.19.06-recent-activity-reads-real-ledger" defer></script>
 </head>
 <body>
 
@@ -1701,7 +1701,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
 <div class="dsb-chip" id="dsb-tasks" title="Today's Roles &amp; Tasks — click to jump to Tasks tab" style="cursor:pointer;display:none" onclick="switchTab('tasks')">✅ <span>TASKS:</span> <b id="dsb-tasks-val">—</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.09.19.04-database-viewer-includes-non-ordering-customers</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.09.19.06-recent-activity-reads-real-ledger</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3864,7 +3864,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.09.19.04-database-viewer-includes-non-ordering-customers';
+const APP_VERSION = '2026.09.19.06-recent-activity-reads-real-ledger';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -15726,7 +15726,7 @@ async function loadStuckPayments(){
   if(status){ status.textContent = 'checking...'; status.style.color = 'var(--gold)'; }
   if(list) list.innerHTML = '<div>Checking for stuck payments…</div>';
   try {
-    const res = await storeWorkerFetch('/admin/stuck-payments?store_id=' + encodeURIComponent(getActiveStoreId()));
+    const res = await storeWorkerFetch('/store/stuck-payments?store_id=' + encodeURIComponent(getActiveStoreId()));
     const data = await res.json().catch(()=>({}));
     if(!res.ok || data.ok === false) throw new Error(data.error || 'Stuck-payments check failed');
     const payments = data.payments || [];
@@ -15759,7 +15759,7 @@ function stuckPaymentRow(p){
 async function resolveStuckPayment(paymentId, action){
   if(action === 'abandon' && !confirm('Confirm this checkout was genuinely abandoned and never paid?')) return;
   try {
-    const res = await storeWorkerFetch('/admin/stuck-payments/resolve', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ storeId: getActiveStoreId(), paymentId, action }) });
+    const res = await storeWorkerFetch('/store/stuck-payments/resolve', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ storeId: getActiveStoreId(), paymentId, action }) });
     const data = await res.json().catch(()=>({}));
     if(!res.ok || data.ok === false) throw new Error(data.error || 'Could not resolve this payment');
     toast_dash(action === 'abandon' ? 'Marked abandoned' : 'Verified with Stripe -- marked paid and inventory updated');
@@ -16930,11 +16930,48 @@ function renderStats(){
 // ever set that exact string, so this tile silently undercounted every
 // online sale by design, not as a data-sync failure.
 const SOLD_STATUSES = new Set(['sold', 'sold_pending_pickup', 'sold_pending_shipment']);
+// inventory_items.data.profit/.salePrice are never reliably written at sale
+// time by ANY channel's checkout code -- markInventoryRecordSold's saleMeta
+// never includes a profit field, and fulfillStorefrontOrderInventory's
+// decrementInventoryRow (cloudflare-worker-full.js) only ever touches
+// quantity/status/channel, never salePrice/profit. Real sale rows in
+// pos_sales/pos_sale_lines DO carry the correct numbers (that's what the
+// Reports/P&L tab already reads, via aggregateReportsData) -- so Today's
+// gross/profit are computed the same way here instead of trusting the
+// inventory-item cache, which is why this used to show $0 profit on a real,
+// fully-recorded sale.
+async function computeSalesFromLedgerSince(sinceDate){
+  const sb = getSupabaseClient();
+  const storeId = getActiveStoreId();
+  if(!sb || !storeId) return null;
+  const { data: sales, error } = await sb.from('pos_sales')
+    .select('id,total,pos_sale_lines(quantity,adjusted_price,cost_basis,profit)')
+    .eq('store_id', storeId)
+    .in('status', ['completed','succeeded'])
+    .gte('completed_at', sinceDate.toISOString());
+  if(error) throw error;
+  let grossToday = 0, profitToday = 0, soldTodayCount = 0;
+  for(const sale of (sales || [])){
+    grossToday += Number(sale.total || 0);
+    for(const line of (sale.pos_sale_lines || [])){
+      const revenue = Number(line.adjusted_price || 0);
+      const cost = Number(line.cost_basis || 0);
+      profitToday += Number(line.profit ?? (revenue - cost));
+      soldTodayCount += Number(line.quantity || 1);
+    }
+  }
+  return { grossToday, profitToday, soldTodayCount };
+}
 async function computePulseData(){
   const startOfToday = new Date(); startOfToday.setHours(0, 0, 0, 0);
   const soldToday = (all || []).filter(i => SOLD_STATUSES.has(i.status) && i.soldAt && new Date(i.soldAt) >= startOfToday);
-  const grossToday = soldToday.reduce((s, i) => s + (i.salePrice || 0), 0);
-  const profitToday = soldToday.reduce((s, i) => s + (i.profit || 0), 0);
+  let grossToday = soldToday.reduce((s, i) => s + (i.salePrice || 0), 0);
+  let profitToday = soldToday.reduce((s, i) => s + (i.profit || 0), 0);
+  let soldTodayCount = soldToday.length;
+  try{
+    const ledger = await computeSalesFromLedgerSince(startOfToday);
+    if(ledger){ grossToday = ledger.grossToday; profitToday = ledger.profitToday; soldTodayCount = ledger.soldTodayCount; }
+  }catch(e){ /* best-effort -- fall back to the inventory-cache estimate above */ }
 
   const radar = computeSlowMovers(all, { limit:9999 });
   const trappedCash = radar.reduce((s, r) => s + r.cashTiedUp, 0);
@@ -16974,7 +17011,7 @@ async function computePulseData(){
     if(myTasks) actions.push(myTasks);
   }catch(e){ /* best-effort -- Pulse still shows everything else if this fails */ }
 
-  return { grossToday, profitToday, soldTodayCount:soldToday.length, trappedCash, actions:actions.slice(0, 5) };
+  return { grossToday, profitToday, soldTodayCount, trappedCash, actions:actions.slice(0, 5) };
 }
 async function renderPulse(){
   const el = document.getElementById('pulse-wrap');
@@ -17055,13 +17092,56 @@ function renderTopVal(){
   </div>`).join('');
 }
 
-function renderFeed(){
-  const sorted=[...all].sort((a,b)=>new Date(b.soldAt||b.addedAt||0)-new Date(a.soldAt||a.addedAt||0)).slice(0,8);
+// A multi-quantity item (an eBay/FOC presale with copies still left, a
+// storefront item with qty>1, etc.) never flips inventory_items.status to
+// 'sold' or stamps .soldAt/.channel on a partial sale -- only a full
+// depletion does (see decrementInventoryRow/syncEbayOrdersForStore's
+// preservePresale branch in cloudflare-worker-full.js). That's correct for
+// "is this still in stock", but it meant a real, fully-recorded sale could
+// be invisible here -- pos_sales/pos_sale_lines (the same ledger Reports
+// already reads) always has it regardless of remaining stock, so the "sold"
+// side of this feed is sourced from there instead of the inventory cache.
+function inferLedgerSaleChannel(line){
+  const src=String(line.source_id||'');
+  if(src.startsWith('ebay:'))return'eBay';
+  if(src.startsWith('backlist:')||src.startsWith('foc:'))return'Website';
+  const cached=line.item_id&&all.find(x=>x.id===line.item_id);
+  return(cached&&cached.channel)||'In-Store';
+}
+async function fetchRecentSoldLedgerEvents(limit){
+  const sb=getSupabaseClient();
+  const storeId=getActiveStoreId();
+  if(!sb||!storeId)return[];
+  const {data:sales,error}=await sb.from('pos_sales')
+    .select('completed_at,pos_sale_lines(item_id,title,category,adjusted_price,profit,source_id)')
+    .eq('store_id',storeId).in('status',['completed','succeeded'])
+    .order('completed_at',{ascending:false}).limit(limit);
+  if(error)throw error;
+  const events=[];
+  for(const sale of(sales||[])){
+    for(const line of(sale.pos_sale_lines||[])){
+      if(line.category==='Shipping')continue;
+      events.push({name:line.title||'Item',salePrice:Number(line.adjusted_price||0),profit:Number(line.profit||0),channel:inferLedgerSaleChannel(line),soldAt:sale.completed_at,itemId:line.item_id});
+    }
+  }
+  return events;
+}
+async function renderFeed(){
   const el=document.getElementById('feed');
+  const added=(all||[]).filter(i=>i.status!=='sold').map(i=>({type:'add',name:i.name,category:i.category,market:i.market,at:i.addedAt,id:i.id}));
+  let sold=[];
+  try{
+    sold=(await fetchRecentSoldLedgerEvents(20)).map(e=>({type:'sale',name:e.name,channel:e.channel,salePrice:e.salePrice,at:e.soldAt,id:e.itemId}));
+  }catch(e){
+    // Best-effort -- fall back to the inventory-cache view (misses partial
+    // sales, but still shows full depletions) rather than an empty feed.
+    sold=(all||[]).filter(i=>i.status==='sold').map(i=>({type:'sale',name:i.name,channel:i.channel,salePrice:i.salePrice,at:i.soldAt,id:i.id}));
+  }
+  const sorted=[...added,...sold].sort((a,b)=>new Date(b.at||0)-new Date(a.at||0)).slice(0,8);
   if(!sorted.length){el.innerHTML='<div class="empty"><div class="empty-t">NO ACTIVITY</div></div>';return;}
   el.innerHTML=sorted.map(i=>{
-    const isSale=i.status==='sold';
-    const d=new Date(i.soldAt||i.addedAt||0);
+    const isSale=i.type==='sale';
+    const d=new Date(i.at||0);
     const ds=d.getFullYear()>2000?d.toLocaleDateString('en-US',{month:'short',day:'numeric'}):'—';
     return `<div class="fi" style="cursor:pointer" onclick="openEditModal('${i.id}')">
       <div class="fi-i ${isSale?'sale':'add'}">${isSale?'$':'+'}</div>
@@ -17671,6 +17751,8 @@ function ownerAnalyticsData(){
   });
   return {
     inv, sold, salesToday, salesMonth, value, cost, unrealized:value-cost, listed, health:h,
+    todayCount:salesToday.length,
+    monthCount:salesMonth.length,
     revenueToday:salesToday.reduce((s,i)=>s+Number(i.salePrice || i.price || 0),0),
     profitToday:salesToday.reduce((s,i)=>s+Number(i.profit || ((i.salePrice || i.price || 0) - (i.cost || 0)) || 0),0),
     revenueMonth:salesMonth.reduce((s,i)=>s+Number(i.salePrice || i.price || 0),0),
@@ -17680,17 +17762,39 @@ function ownerAnalyticsData(){
     needsWork:inv.filter(i=>!inventoryImageUrl(i) || inventoryCostBasis(i)<=0 || inventoryMarketPrice(i)<=0 || inventoryIsPriceStale(i)).slice(0,5),
   };
 }
-function renderOwnerAnalyticsPanel(){
+// Today/Month Sales cards used to trust salesToday/salesMonth's own
+// revenue+profit (derived from the same never-reliably-written
+// inventory_items.data.salePrice/.profit fields computePulseData had to
+// stop trusting -- see computeSalesFromLedgerSince) -- overridden here with
+// the real pos_sales/pos_sale_lines numbers when reachable, same as the
+// Today Pulse tile. inv/value/cost/tender/cat/topValue/needsWork are
+// unaffected and left as ownerAnalyticsData already computed them.
+async function ownerAnalyticsDataWithLedger(){
+  const d = ownerAnalyticsData();
+  try{
+    const now = new Date();
+    const startOfToday = new Date(); startOfToday.setHours(0, 0, 0, 0);
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const [todayLedger, monthLedger] = await Promise.all([
+      computeSalesFromLedgerSince(startOfToday),
+      computeSalesFromLedgerSince(startOfMonth),
+    ]);
+    if(todayLedger){ d.revenueToday = todayLedger.grossToday; d.profitToday = todayLedger.profitToday; d.todayCount = todayLedger.soldTodayCount; }
+    if(monthLedger){ d.revenueMonth = monthLedger.grossToday; d.profitMonth = monthLedger.profitToday; d.monthCount = monthLedger.soldTodayCount; }
+  }catch(e){ /* best-effort -- fall back to the inventory-cache estimate ownerAnalyticsData() already computed */ }
+  return d;
+}
+async function renderOwnerAnalyticsPanel(){
   const el = document.getElementById('owner-analytics-panel');
   if(!el) return;
-  const d = ownerAnalyticsData();
+  const d = await ownerAnalyticsDataWithLedger();
   const tenderRows = Object.entries(d.tender).sort((a,b)=>b[1]-a[1]).slice(0,5);
   const catRows = Object.entries(d.cat).sort((a,b)=>b[1]-a[1]).slice(0,5);
   el.innerHTML = `
     <div class="owner-analytics-grid">
       <div class="owner-metric-card"><div class="owner-metric-label">Inventory Value</div><div class="owner-metric-value">${fd$(d.value)}</div><div class="owner-metric-sub">Cost ${fd$(d.cost)} · unrealized ${fd$(d.unrealized)}</div></div>
-      <div class="owner-metric-card"><div class="owner-metric-label">Today Sales</div><div class="owner-metric-value">${fd$(d.revenueToday)}</div><div class="owner-metric-sub">${d.salesToday.length} sold · profit ${fd$(d.profitToday)}</div></div>
-      <div class="owner-metric-card"><div class="owner-metric-label">Month Sales</div><div class="owner-metric-value">${fd$(d.revenueMonth)}</div><div class="owner-metric-sub">${d.salesMonth.length} sold · profit ${fd$(d.profitMonth)}</div></div>
+      <div class="owner-metric-card"><div class="owner-metric-label">Today Sales</div><div class="owner-metric-value">${fd$(d.revenueToday)}</div><div class="owner-metric-sub">${d.todayCount} sold · profit ${fd$(d.profitToday)}</div></div>
+      <div class="owner-metric-card"><div class="owner-metric-label">Month Sales</div><div class="owner-metric-value">${fd$(d.revenueMonth)}</div><div class="owner-metric-sub">${d.monthCount} sold · profit ${fd$(d.profitMonth)}</div></div>
       <div class="owner-metric-card" onclick="setInventoryHealthFilter('listing','not_listed')"><div class="owner-metric-label">Listing Coverage</div><div class="owner-metric-value">${d.listed}/${d.inv.length}</div><div class="owner-metric-sub">${d.health.notListed} in stock not listed</div></div>
     </div>
     <div class="owner-section-grid">
@@ -47243,7 +47347,7 @@ async function toppsLoadParallels(cardId){
   window.__arscaCloseModal = closeModal;
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.09.19.04-database-viewer-includes-non-ordering-customers" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.09.19.06-recent-activity-reads-real-ledger" defer></script>
 </body>
 </html>
 
