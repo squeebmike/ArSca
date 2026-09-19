@@ -10,6 +10,10 @@ on:
       - scripts/daily-tasks.mjs
       - scripts/bcw-storefront.mjs
       - scripts/dropship-import.mjs
+      - scripts/backlist-catalog.mjs
+      - scripts/customer-account.mjs
+      - scripts/fan-club.mjs
+      - scripts/topps-checklist-parser.js
       - wrangler.deploy.jsonc
       - .github/workflows/deploy-worker.yml
   workflow_dispatch:
