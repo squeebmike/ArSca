@@ -10137,6 +10137,152 @@ export default {
       }
     }
 
+    // GET /admin/stuck-payments -- surfaces pos_payments rows still sitting in
+    // Stripe's initial 'requires_payment_method' status well after checkout,
+    // the same signal that let us find historically-missed sales by hand via
+    // SQL (the Stripe webhook that's supposed to flip this to 'succeeded'
+    // has never once fired successfully -- see stripe_webhook_events). This
+    // is a read-only listing; nothing here touches money or inventory.
+    if (url.pathname === '/admin/stuck-payments' && request.method === 'GET') {
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId, ['owner','admin']);
+      if (auth.error) return auth.error;
+      const staleBefore = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+      const { data: payments } = await supabaseAdminFetch(env,
+        `pos_payments?store_id=eq.${encodeURIComponent(storeId)}&status=eq.requires_payment_method&provider=eq.stripe&created_at=lt.${encodeURIComponent(staleBefore)}&select=id,sale_id,amount_cents,amount,currency,stripe_mode,stripe_connected_account_id,stripe_payment_intent_id,created_at&order=created_at.asc&limit=200`);
+      const stuck = (payments || []).filter(p => p.stripe_payment_intent_id);
+      if (!stuck.length) return json({ ok: true, payments: [] });
+      const saleIds = [...new Set(stuck.map(p => p.sale_id).filter(Boolean))];
+      let salesById = {}, linesBySale = {}, storefrontBySale = {};
+      if (saleIds.length) {
+        const idList = saleIds.map(id => encodeURIComponent(id)).join(',');
+        const [{ data: sales }, { data: lines }, { data: storefronts }] = await Promise.all([
+          supabaseAdminFetch(env, `pos_sales?id=in.(${idList})&select=id,status,payment_status,total,created_at`),
+          supabaseAdminFetch(env, `pos_sale_lines?sale_id=in.(${idList})&select=sale_id,item_id,title,quantity,unit_price`),
+          supabaseAdminFetch(env, `storefront_orders?sale_id=in.(${idList})&select=sale_id,confirmation_number,customer_name,customer_email,fulfillment_method`),
+        ]);
+        for (const s of sales || []) salesById[s.id] = s;
+        for (const l of lines || []) (linesBySale[l.sale_id] ||= []).push(l);
+        for (const o of storefronts || []) storefrontBySale[o.sale_id] = o;
+      }
+      const result = stuck.map(p => {
+        const sale = salesById[p.sale_id] || null;
+        const order = storefrontBySale[p.sale_id] || null;
+        return {
+          paymentId: p.id,
+          saleId: p.sale_id,
+          amountCents: p.amount_cents || Math.round(Number(p.amount || 0) * 100),
+          currency: p.currency || 'usd',
+          stripeMode: p.stripe_mode,
+          paymentIntentId: p.stripe_payment_intent_id,
+          createdAt: p.created_at,
+          saleStatus: sale?.status || null,
+          salePaymentStatus: sale?.payment_status || null,
+          customerName: order?.customer_name || null,
+          customerEmail: order?.customer_email || null,
+          confirmationNumber: order?.confirmation_number || null,
+          items: (linesBySale[p.sale_id] || []).map(l => ({ itemId: l.item_id, title: l.title, quantity: l.quantity, unitPrice: l.unit_price })),
+        };
+      });
+      return json({ ok: true, payments: result });
+    }
+
+    // POST /admin/stuck-payments/resolve -- staff have already confirmed a
+    // payment in Stripe's own dashboard (the incident that motivated this
+    // panel: a customer showed a "Succeeded" screenshot while ArSca still
+    // thought nothing was paid). This route re-verifies directly against
+    // Stripe before writing anything -- it never trusts the click alone --
+    // then replays exactly what the webhook would have done:
+    // syncStripeWebhookPayment's own succeeded-payment branch (patch
+    // pos_payments, then fulfillStorefrontOrderInventory). "abandon" is for
+    // a payment staff have confirmed genuinely never went through (an
+    // abandoned checkout), which just stops it cluttering this list.
+    if (url.pathname === '/admin/stuck-payments/resolve' && request.method === 'POST') {
+      const body = await request.json().catch(() => ({}));
+      const storeId = requestStoreId(request, url, body);
+      const auth = await requireStoreUser(request, env, storeId, ['owner','admin']);
+      if (auth.error) return auth.error;
+      const paymentId = String(body.paymentId || '');
+      const action = body.action === 'abandon' ? 'abandon' : 'confirm';
+      if (!paymentId) return json({ ok: false, error: 'paymentId is required' }, 400);
+      try {
+        const { data: rows } = await supabaseAdminFetch(env, `pos_payments?id=eq.${encodeURIComponent(paymentId)}&store_id=eq.${encodeURIComponent(storeId)}&select=*&limit=1`);
+        const payment = rows?.[0];
+        if (!payment) return json({ ok: false, error: 'Payment not found for this store' }, 404);
+        if (payment.status !== 'requires_payment_method') return json({ ok: false, error: 'This payment is no longer stuck (status is ' + payment.status + ')' }, 409);
+
+        if (action === 'abandon') {
+          await supabaseAdminFetch(env, `pos_payments?id=eq.${encodeURIComponent(paymentId)}`, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ status: 'abandoned', updated_at: new Date().toISOString() }) });
+          return json({ ok: true, status: 'abandoned' });
+        }
+
+        if (!payment.stripe_payment_intent_id) return json({ ok: false, error: 'No Stripe payment intent on this record' }, 400);
+        const mode = stripeMode(env, payment.stripe_mode);
+        let pi;
+        try {
+          pi = await stripeApi(env, mode, `payment_intents/${encodeURIComponent(payment.stripe_payment_intent_id)}`, { account: payment.stripe_connected_account_id || undefined });
+        } catch (e) {
+          return json({ ok: false, error: 'Could not reach Stripe to verify this payment: ' + e.message }, 502);
+        }
+        if (pi.status !== 'succeeded') return json({ ok: false, error: 'Stripe reports this payment as "' + pi.status + '", not succeeded -- not marking it paid' }, 409);
+        const charge = pi.latest_charge ? await stripeApi(env, mode, `charges/${encodeURIComponent(pi.latest_charge)}`, { account: payment.stripe_connected_account_id || undefined }).catch(() => null) : null;
+        const card = charge?.payment_method_details?.card || {};
+        await supabaseAdminFetch(env, `pos_payments?id=eq.${encodeURIComponent(paymentId)}`, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ status: 'succeeded', stripe_charge_id: charge?.id || null, card_brand: card.brand || null, card_last4: card.last4 || null, confirmed_by: auth.user.id, confirmed_at: new Date().toISOString(), updated_at: new Date().toISOString() }) });
+        if (payment.sale_id) {
+          await fulfillStorefrontOrderInventory(env, payment.sale_id, storeId).catch(e => console.error('Stuck-payment fulfillment failed:', e.message));
+        }
+        return json({ ok: true, status: 'succeeded', saleId: payment.sale_id });
+      } catch (e) {
+        return json({ ok: false, error: 'Failed to resolve payment: ' + e.message }, 500);
+      }
+    }
+
+    // GET /admin/customers -- a database viewer for staff: every customer
+    // who's bought something (storefront pickup/shipping order, FOC comic
+    // preorder, or PRH backlist order) grouped under one identity. This adds
+    // no new "customers" table -- storefront_orders is guest checkout with
+    // no user_id at all, so the only field all three order tables reliably
+    // share is customer_email, and that's what this rolls up on.
+    if (url.pathname === '/admin/customers' && request.method === 'GET') {
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId, ['owner','admin']);
+      if (auth.error) return auth.error;
+      const [{ data: storefronts }, { data: focOrders }, { data: backlistOrders }] = await Promise.all([
+        supabaseAdminFetch(env, `storefront_orders?store_id=eq.${encodeURIComponent(storeId)}&select=id,sale_id,confirmation_number,customer_name,customer_email,customer_phone,fulfillment_method,fulfillment_status,created_at&order=created_at.desc&limit=1000`),
+        supabaseAdminFetch(env, `foc_preorder_orders?store_id=eq.${encodeURIComponent(storeId)}&select=id,order_number,user_id,customer_name,customer_email,status,fulfillment_method,total_cents,created_at&order=created_at.desc&limit=1000`),
+        supabaseAdminFetch(env, `backlist_orders?store_id=eq.${encodeURIComponent(storeId)}&select=id,order_number,user_id,customer_name,customer_email,status,fulfillment_method,total_cents,created_at&order=created_at.desc&limit=1000`),
+      ]);
+      const customers = new Map();
+      const bucket = email => {
+        const key = String(email || '').trim().toLowerCase();
+        if (!key) return null;
+        if (!customers.has(key)) customers.set(key, { email: key, name: '', userId: null, storefrontOrders: [], focPreorders: [], backlistOrders: [] });
+        return customers.get(key);
+      };
+      for (const o of storefronts || []) {
+        const c = bucket(o.customer_email); if (!c) continue;
+        c.name = c.name || o.customer_name;
+        c.storefrontOrders.push({ id: o.id, saleId: o.sale_id, confirmationNumber: o.confirmation_number, phone: o.customer_phone, fulfillmentMethod: o.fulfillment_method, status: o.fulfillment_status, createdAt: o.created_at });
+      }
+      for (const o of focOrders || []) {
+        const c = bucket(o.customer_email); if (!c) continue;
+        c.name = c.name || o.customer_name; c.userId = c.userId || o.user_id;
+        c.focPreorders.push({ id: o.id, orderNumber: o.order_number, status: o.status, fulfillmentMethod: o.fulfillment_method, totalCents: o.total_cents, createdAt: o.created_at });
+      }
+      for (const o of backlistOrders || []) {
+        const c = bucket(o.customer_email); if (!c) continue;
+        c.name = c.name || o.customer_name; c.userId = c.userId || o.user_id;
+        c.backlistOrders.push({ id: o.id, orderNumber: o.order_number, status: o.status, fulfillmentMethod: o.fulfillment_method, totalCents: o.total_cents, createdAt: o.created_at });
+      }
+      const list = [...customers.values()].map(c => {
+        const all = [...c.storefrontOrders, ...c.focPreorders, ...c.backlistOrders];
+        const lastActivityAt = all.reduce((max, o) => (o.createdAt > max ? o.createdAt : max), '');
+        return { ...c, orderCount: all.length, lastActivityAt };
+      });
+      list.sort((a, b) => (b.lastActivityAt || '').localeCompare(a.lastActivityAt || ''));
+      return json({ ok: true, customers: list });
+    }
+
     // POST /ebay/orders/ship -- pushes tracking back to eBay so a seller who
     // buys/prints their shipping label somewhere other than eBay's own
     // integrated label flow (and would otherwise have to remember to paste
