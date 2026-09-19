@@ -23,7 +23,7 @@ async function loadCustomers(){
 
 function matchesQuery(c,q){
   if(!q)return true;
-  var hay=[c.email,c.name].concat((c.storefrontOrders||[]).map(function(o){return o.confirmationNumber;}),(c.focPreorders||[]).concat(c.backlistOrders||[]).map(function(o){return o.orderNumber;})).join(' ').toLowerCase();
+  var hay=[c.email,c.phone,c.name].concat((c.storefrontOrders||[]).map(function(o){return o.confirmationNumber;}),(c.focPreorders||[]).concat(c.backlistOrders||[]).map(function(o){return o.orderNumber;})).join(' ').toLowerCase();
   return hay.indexOf(q)>-1;
 }
 
@@ -31,7 +31,7 @@ function render(){
   var host=panel();if(!host)return;
   var q=state.query.trim().toLowerCase();
   var rows=(state.customers||[]).filter(function(c){return matchesQuery(c,q);});
-  host.innerHTML='<section class="foc-hero"><div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap"><div><div style="font:900 22px/1.1 \'Orbitron\',monospace;color:var(--text)">CUSTOMER DATABASE</div><div style="font:10px/1.65 var(--font-mono);color:var(--dim);max-width:720px;margin-top:6px">Every customer who\'s placed a storefront order, a comic FOC preorder, or a PRH backlist (backorder) order, grouped by email. Matched by email since storefront pickup/shipping orders are guest checkout with no account.</div></div>'+
+  host.innerHTML='<section class="foc-hero"><div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap"><div><div style="font:900 22px/1.1 \'Orbitron\',monospace;color:var(--text)">CUSTOMER DATABASE</div><div style="font:10px/1.65 var(--font-mono);color:var(--dim);max-width:720px;margin-top:6px">Every known customer -- the in-store roster (walk-ins, buylist sellers, anyone with a phone/email on file) plus everyone who\'s placed a storefront order, a comic FOC preorder, or a PRH backlist (backorder) order -- even ones who\'ve never ordered online. Matched by email, then phone, since storefront guest checkout only requires a phone.</div></div>'+
     '<div class="foc-toolbar"><button class="hbtn" onclick="loadDatabaseCustomers()">REFRESH</button></div></div>'+
     '<input type="text" id="database-search-input" placeholder="Search name, email, or order number…" value="'+esc(state.query)+'" oninput="onDatabaseSearchInput(this.value)" style="width:100%;margin-top:10px;padding:10px;font-family:var(--font-mono);font-size:11px">'+
     '</section>'+
@@ -41,13 +41,18 @@ function render(){
 }
 
 function customerCard(c){
-  var key=c.email;
+  var key=c.key;
   var open=!!state.expanded[key];
   var totalOrders=c.orderCount||0;
+  var contact=[c.email,c.phone].filter(Boolean).join(' · ')||'(no contact info on file)';
+  var badges=[];
+  if(c.isRosterCustomer)badges.push('<span style="color:var(--gold)">IN-STORE CUSTOMER</span>');
+  if(c.userId)badges.push('<span style="color:var(--g)">HAS WEBSITE LOGIN</span>');
+  if(!totalOrders)badges.push('<span style="color:var(--dim)">NO ORDERS YET</span>');
   return '<div class="panel" style="margin-bottom:10px;padding:14px">'+
     '<div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;cursor:pointer" onclick="toggleDatabaseCustomer(\''+esc(key)+'\')">'+
-      '<div><b>'+esc(c.name||'(no name on file)')+'</b><div style="font:10px/1.6 var(--font-mono);color:var(--dim)">'+esc(c.email)+'</div></div>'+
-      '<div style="text-align:right;font:10px/1.6 var(--font-mono);color:var(--dim)">'+totalOrders+' order(s)<br>last: '+esc(displayDateTime(c.lastActivityAt))+'</div>'+
+      '<div><b>'+esc(c.name||'(no name on file)')+'</b><div style="font:10px/1.6 var(--font-mono);color:var(--dim)">'+esc(contact)+'</div><div style="font:9px var(--font-mono);margin-top:2px;display:flex;gap:8px">'+badges.join('')+'</div></div>'+
+      '<div style="text-align:right;font:10px/1.6 var(--font-mono);color:var(--dim)">'+totalOrders+' order(s)<br>last activity: '+esc(displayDateTime(c.lastActivityAt))+'</div>'+
     '</div>'+
     (open?customerDetail(c):'')+
   '</div>';
@@ -55,6 +60,7 @@ function customerCard(c){
 
 function customerDetail(c){
   var sections=[];
+  if(c.isRosterCustomer)sections.push('<div style="font:10px/1.6 var(--font-mono);color:var(--dim)">On the in-store customer roster since '+esc(displayDateTime(c.signedUpAt))+' · '+(c.loyaltyPoints||0)+' loyalty point(s) · '+money(Math.round((c.tradeCreditBalance||0)*100))+' trade credit'+(c.userId?' · has a themanapocket.com login':'')+'</div>');
   if((c.storefrontOrders||[]).length)sections.push(orderSection('STOREFRONT ORDERS',c.storefrontOrders,function(o){
     return esc(o.confirmationNumber||o.id)+' · '+esc(o.fulfillmentMethod||'')+' · '+esc(o.status||'')+' · '+esc(displayDateTime(o.createdAt));
   }));
