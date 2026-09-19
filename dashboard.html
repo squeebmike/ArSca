@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.09.19.02-prh-backlist-catalog-live">
+<meta name="version" content="2026.09.19.03-database-viewer-stuck-payments">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1635,20 +1635,21 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.09.18.01-lunar-foc-incentive-and-bulk-publish" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.09.18.01-lunar-foc-incentive-and-bulk-publish" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.09.18.01-lunar-foc-incentive-and-bulk-publish" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.09.18.01-lunar-foc-incentive-and-bulk-publish" defer></script>
-<script src="scripts/backlist-dashboard.js?v=2026.09.19.01-backlist-catalog" defer></script>
-<script src="scripts/card-intake-dashboard.js?v=2026.09.18.01-lunar-foc-incentive-and-bulk-publish" defer></script>
-<script src="scripts/mana-pocket-task-library.js?v=2026.09.18.01-lunar-foc-incentive-and-bulk-publish" defer></script>
-<script src="scripts/daily-tasks-dashboard.js?v=2026.09.18.01-lunar-foc-incentive-and-bulk-publish" defer></script>
+<script src="scripts/query-routing.js?v=2026.09.19.03-database-viewer-stuck-payments" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.09.19.03-database-viewer-stuck-payments" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.09.19.03-database-viewer-stuck-payments" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.09.19.03-database-viewer-stuck-payments" defer></script>
+<script src="scripts/backlist-dashboard.js?v=2026.09.19.03-database-viewer-stuck-payments" defer></script>
+<script src="scripts/database-viewer.js?v=2026.09.19.03-database-viewer-stuck-payments" defer></script>
+<script src="scripts/card-intake-dashboard.js?v=2026.09.19.03-database-viewer-stuck-payments" defer></script>
+<script src="scripts/mana-pocket-task-library.js?v=2026.09.19.03-database-viewer-stuck-payments" defer></script>
+<script src="scripts/daily-tasks-dashboard.js?v=2026.09.19.03-database-viewer-stuck-payments" defer></script>
 <script src="scripts/research-loupe.js?v=a7de4ffe90" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.09.18.01-lunar-foc-incentive-and-bulk-publish" defer></script>
-<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.09.18.01-lunar-foc-incentive-and-bulk-publish" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.09.18.01-lunar-foc-incentive-and-bulk-publish" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.09.18.01-lunar-foc-incentive-and-bulk-publish" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.09.18.01-lunar-foc-incentive-and-bulk-publish" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.09.19.03-database-viewer-stuck-payments" defer></script>
+<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.09.19.03-database-viewer-stuck-payments" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.09.19.03-database-viewer-stuck-payments" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.09.19.03-database-viewer-stuck-payments" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.09.19.03-database-viewer-stuck-payments" defer></script>
 </head>
 <body>
 
@@ -1700,7 +1701,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
 <div class="dsb-chip" id="dsb-tasks" title="Today's Roles &amp; Tasks — click to jump to Tasks tab" style="cursor:pointer;display:none" onclick="switchTab('tasks')">✅ <span>TASKS:</span> <b id="dsb-tasks-val">—</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.09.18.01-lunar-foc-incentive-and-bulk-publish</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.09.19.03-database-viewer-stuck-payments</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -2161,6 +2162,17 @@ body.show-mode .inv-sync-badge{display:none;}
     </div>
     <button class="hbtn" style="width:100%;padding:12px;background:rgba(0,255,179,.12);border-color:rgba(0,255,179,.35);color:var(--g)" onclick="submitShopifyBulk()">PUSH SELECTED TO SHOPIFY</button>
     <div id="shopify-bulk-status" style="display:none;margin-top:10px;padding:10px;border-radius:6px;font-family:monospace;font-size:10px;text-align:center"></div>
+  </div>
+
+  <div class="panel" id="backoffice-stuck-payments-panel" style="margin-top:4px;margin-bottom:14px">
+    <div class="ph">STUCK PAYMENTS <span id="stuck-payments-count" style="font-size:9px;color:var(--dim)">not checked</span></div>
+    <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);margin-bottom:10px;line-height:1.55">
+      A payment can show "Succeeded" in Stripe's own dashboard while ArSca never hears about it and keeps the sale open, the item listed, and the order out of every report. This checks for any payment still stuck in Stripe's initial not-yet-paid status well after checkout, so it doesn't take a manual database check to catch one.
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+      <button class="hbtn" onclick="loadStuckPayments()">CHECK FOR STUCK PAYMENTS</button>
+    </div>
+    <div id="stuck-payments-list" style="display:grid;gap:8px;font-family:var(--font-mono);font-size:10px;color:var(--dim)"></div>
   </div>
 
   <div class="panel" id="backoffice-system-panel" style="margin-top:4px;margin-bottom:14px">
@@ -2936,6 +2948,12 @@ body.show-mode .inv-sync-badge{display:none;}
 <div id="tab-backlist" class="tab-panel">
   <div class="sec">PRH BACKLIST CATALOG</div>
   <div id="backlist-panels" class="foc-shell"></div>
+</div>
+
+<!-- DATABASE VIEWER TAB (owner/admin only -- see roleCanAccessTab) -->
+<div id="tab-database" class="tab-panel">
+  <div class="sec">DATABASE</div>
+  <div id="database-panels" class="foc-shell"></div>
 </div>
 
 <!-- CARD INTAKE TAB -->
@@ -3846,7 +3864,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.09.19.02-prh-backlist-catalog-live';
+const APP_VERSION = '2026.09.19.03-database-viewer-stuck-payments';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -4128,7 +4146,7 @@ function roleCanAccessTab(tab){
   const role = currentRole();
   let allowed = false;
   if(role === 'owner' || role === 'admin') allowed = true;
-  else if(role === 'manager') allowed = !['backoffice'].includes(tab);
+  else if(role === 'manager') allowed = !['backoffice','database'].includes(tab);
   else if(role === 'employee') allowed = ['overview','display','browse','inventory','research','pos','whatnot','scout','alerts','wantlist','locations','restock','grading','sets','events','pulllists','foc','backlist','phone','cardintake','tasks'].includes(tab);
   return allowed && planCanAccessTab(tab);
 }
@@ -5165,6 +5183,7 @@ const MORE_TABS = [
   ['foc', 'COMICS / FOC'],
   ['backlist', 'BACKLIST BOOKS'],
   ['phone', 'PHONE'],
+  ['database', 'DATABASE'],
   ['backoffice', 'SETTINGS / ADMIN'],
 ];
 // Permanent, always-present categories -- every price-sync/routing function
@@ -8449,6 +8468,7 @@ function applyVendorConfig(){
   show('backoffice-ebay-panel', cfg.modules.ebay && manager);
   show('backoffice-ebay-bulk-panel', cfg.modules.ebay && manager);
   show('backoffice-shopify-bulk-panel', manager);
+  show('backoffice-stuck-payments-panel', ownerAdmin);
   show('backoffice-system-panel', cfg.modules.backup && ownerAdmin);
   show('backoffice-ops-panel', cfg.modules.ops && manager);
   show('backoffice-tcg-sync-panel', cfg.modules.pricingSync && manager);
@@ -15700,6 +15720,56 @@ async function runSystemCheck(){
   });
 }
 
+async function loadStuckPayments(){
+  const status = document.getElementById('stuck-payments-count');
+  const list = document.getElementById('stuck-payments-list');
+  if(status){ status.textContent = 'checking...'; status.style.color = 'var(--gold)'; }
+  if(list) list.innerHTML = '<div>Checking for stuck payments…</div>';
+  try {
+    const res = await storeWorkerFetch('/admin/stuck-payments?store_id=' + encodeURIComponent(getActiveStoreId()));
+    const data = await res.json().catch(()=>({}));
+    if(!res.ok || data.ok === false) throw new Error(data.error || 'Stuck-payments check failed');
+    const payments = data.payments || [];
+    if(status){ status.textContent = payments.length + ' found'; status.style.color = payments.length ? 'var(--red)' : 'var(--g)'; }
+    if(!list) return;
+    if(!payments.length){ list.innerHTML = '<div style="color:var(--g)">None found -- every payment older than 30 minutes has a final status.</div>'; return; }
+    list.innerHTML = payments.map(stuckPaymentRow).join('');
+  } catch(e) {
+    if(status){ status.textContent = 'error'; status.style.color = 'var(--red)'; }
+    if(list) list.innerHTML = '<div style="color:var(--red)">' + escHtml(e.message) + '</div>';
+  }
+}
+
+function stuckPaymentRow(p){
+  const amount = '$' + (Number(p.amountCents||0)/100).toFixed(2);
+  const age = p.createdAt ? new Date(p.createdAt).toLocaleString() : '—';
+  const items = (p.items||[]).map(i => (i.quantity||1) + 'x ' + escHtml(i.title||'Item')).join(', ');
+  const who = p.customerName ? escHtml(p.customerName) + (p.customerEmail ? ' (' + escHtml(p.customerEmail) + ')' : '') : (p.customerEmail ? escHtml(p.customerEmail) : 'Unknown customer');
+  return '<div style="border:1px solid var(--border);border-radius:8px;padding:10px">' +
+    '<div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><b style="color:var(--text)">' + amount + '</b><span>' + escHtml(age) + ' · ' + escHtml(p.stripeMode||'') + '</span></div>' +
+    '<div style="margin-top:4px">' + who + (p.confirmationNumber ? ' · ' + escHtml(p.confirmationNumber) : '') + '</div>' +
+    (items ? '<div style="margin-top:4px">' + items + '</div>' : '') +
+    '<div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">' +
+      '<button class="hbtn" style="background:rgba(0,255,179,.12);border-color:rgba(0,255,179,.35);color:var(--g)" onclick="resolveStuckPayment(\'' + escHtml(p.paymentId) + '\',\'confirm\')">VERIFY IN STRIPE &amp; MARK PAID</button>' +
+      '<button class="hbtn" style="background:rgba(255,77,109,.08);border-color:rgba(255,77,109,.2);color:var(--red)" onclick="resolveStuckPayment(\'' + escHtml(p.paymentId) + '\',\'abandon\')">ABANDONED -- DISMISS</button>' +
+    '</div>' +
+  '</div>';
+}
+
+async function resolveStuckPayment(paymentId, action){
+  if(action === 'abandon' && !confirm('Confirm this checkout was genuinely abandoned and never paid?')) return;
+  try {
+    const res = await storeWorkerFetch('/admin/stuck-payments/resolve', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ storeId: getActiveStoreId(), paymentId, action }) });
+    const data = await res.json().catch(()=>({}));
+    if(!res.ok || data.ok === false) throw new Error(data.error || 'Could not resolve this payment');
+    toast_dash(action === 'abandon' ? 'Marked abandoned' : 'Verified with Stripe -- marked paid and inventory updated');
+    logOpsEvent('stuck_payment_resolved', action + ' -- payment ' + paymentId, data);
+    await loadStuckPayments();
+  } catch(e) {
+    toast_dash(e.message);
+  }
+}
+
 async function buildVendorBackup(){
   let scanInbox = [];
   try { scanInbox = await readScanInbox(); } catch(e) {}
@@ -16852,9 +16922,17 @@ function renderStats(){
 // per-listing action, not a batch data source) -- and skips it rather
 // than fabricating a number, same principle as Dead Inventory Radar
 // skipping a "views" signal.
+// Store report: the home screen's "Today" tile never counted a website
+// order as sold, even a correctly-processed one -- a storefront sale (pickup
+// or shipping) lands on 'sold_pending_pickup'/'sold_pending_shipment'
+// (see fulfillStorefrontOrderInventory in cloudflare-worker-full.js), never
+// the literal 'sold' this filter checked for. Only an in-person POS sale
+// ever set that exact string, so this tile silently undercounted every
+// online sale by design, not as a data-sync failure.
+const SOLD_STATUSES = new Set(['sold', 'sold_pending_pickup', 'sold_pending_shipment']);
 async function computePulseData(){
   const startOfToday = new Date(); startOfToday.setHours(0, 0, 0, 0);
-  const soldToday = (all || []).filter(i => i.status === 'sold' && i.soldAt && new Date(i.soldAt) >= startOfToday);
+  const soldToday = (all || []).filter(i => SOLD_STATUSES.has(i.status) && i.soldAt && new Date(i.soldAt) >= startOfToday);
   const grossToday = soldToday.reduce((s, i) => s + (i.salePrice || 0), 0);
   const profitToday = soldToday.reduce((s, i) => s + (i.profit || 0), 0);
 
@@ -18532,6 +18610,7 @@ function switchTab(name, btn){
   if(name === 'grading') setTimeout(ensureGradingPanel, 0);
   if(name === 'foc') setTimeout(()=>window.ensureFocPanel?.(), 0);
   if(name === 'backlist') setTimeout(()=>window.ensureBacklistPanel?.(), 0);
+  if(name === 'database') setTimeout(()=>window.ensureDatabasePanel?.(), 0);
   if(name === 'cardintake') setTimeout(()=>window.ensureCardIntakePanel?.(), 0);
   if(name === 'tasks') setTimeout(()=>window.ensureDailyTasksPanel?.(), 0);
   if(name === 'orders') setTimeout(()=>{ renderFocPreorderOrders(); renderStorefrontOrders(); }, 0);
@@ -47164,7 +47243,7 @@ async function toppsLoadParallels(cardId){
   window.__arscaCloseModal = closeModal;
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.09.18.01-lunar-foc-incentive-and-bulk-publish" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.09.19.03-database-viewer-stuck-payments" defer></script>
 </body>
 </html>
 
