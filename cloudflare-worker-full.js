@@ -4873,10 +4873,11 @@ export default {
       });
     }
 
-    if (url.pathname.startsWith('/public/backlist/') || url.pathname.startsWith('/backlist/admin/')) {
+    if (url.pathname.startsWith('/public/backlist/') || url.pathname.startsWith('/backlist/admin/') || url.pathname.startsWith('/book/') || url.pathname === '/sitemap-books.xml') {
       return await handleBacklistRequest(request, env, url, {
         CORS, json, supabaseAdminFetch, requireStoreUser, requireAuthenticatedUser,
         readJsonWithLimit, stripeApi, stripeMode, stripeConfig, sendEmail, addBusinessDays,
+        mtgPageShell, mtgEscapeHtml, mtgSlugify, publicStoreId: ITEM_DETAIL_STORE_ID,
       });
     }
 

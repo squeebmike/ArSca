@@ -51,6 +51,14 @@
       "zone_name": "themanapocket.com"
     },
     {
+      "pattern": "themanapocket.com/book*",
+      "zone_name": "themanapocket.com"
+    },
+    {
+      "pattern": "themanapocket.com/sitemap-books.xml",
+      "zone_name": "themanapocket.com"
+    },
+    {
       "pattern": "themanapocket.com/bcw*",
       "zone_name": "themanapocket.com"
     },

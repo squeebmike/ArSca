@@ -202,6 +202,85 @@ console.log('syncBacklistStripeEvent checks passed');
 
 console.log('backlistOrderConfirmationEmail checks passed');
 
+// --- SEO / crawlable detail page --------------------------------------------
+// /books is a pure client-rendered SPA -- these routes exist so a search
+// engine (or a link-preview scraper) gets real per-book HTML at a permanent
+// URL on themanapocket.com's own domain, unlike /preorder/{id}'s thin,
+// self-redirecting, workers.dev-hosted share card.
+
+function fakeMtgEscapeHtml(v) { return String(v == null ? '' : v).replace(/[&<>"']/g, ch => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[ch])); }
+function fakeMtgSlugify(v) { return String(v || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'book'; }
+function fakeMtgPageShell({ title, description, canonicalPath, ogImage, jsonLd, bodyHtml }) {
+  return `<title>${fakeMtgEscapeHtml(title)}</title><meta name="description" content="${fakeMtgEscapeHtml(description)}">` +
+    `<link rel="canonical" href="https://themanapocket.com${canonicalPath}">` +
+    (ogImage ? `<meta property="og:image" content="${fakeMtgEscapeHtml(ogImage)}">` : '') +
+    (jsonLd ? `<script type="application/ld+json">${JSON.stringify(jsonLd)}</script>` : '') +
+    `<body>${bodyHtml}</body>`;
+}
+function seoDeps(overrides = {}) {
+  return { json:(data, status = 200) => ({ status, data }), supabaseAdminFetch:async () => ({ data:[] }),
+    mtgPageShell:fakeMtgPageShell, mtgEscapeHtml:fakeMtgEscapeHtml, mtgSlugify:fakeMtgSlugify,
+    publicStoreId:'store-1', addBusinessDays:fakeAddBusinessDays, ...overrides };
+}
+function mockGetRequest() { return { method:'GET', headers:{ get:() => null } }; }
+
+{
+  // A real, published, orderable title renders full content: title, price,
+  // canonical link, and Book-typed JSON-LD -- everything a crawler or a
+  // link-preview scraper needs from the initial HTTP response alone.
+  const titleId = '22222222-2222-4222-8222-222222222222';
+  const titleRow = {
+    id:titleId, title:'The Official SpongeBob SquarePants Cookbook', subtitle:null, writer:'Jay Johnson', publisher:'Random House',
+    description:'A real cookbook.', cover_image_url:'https://img/cover.jpg',
+    backlist_skus:[{ id:'sku-1', isbn:'9780000000001', upc:'000', format_name:'Paperback', msrp_cents:2000, customer_price_cents:2000, is_published:true, is_orderable:true, customer_enabled:true, on_sale_date:'2020-01-01' }],
+  };
+  const deps = seoDeps({ supabaseAdminFetch:async (env, path) => path.startsWith('backlist_titles?id=eq.') ? { data:[titleRow] } : { data:[] } });
+  const res = await handleBacklistRequest(mockGetRequest(), {}, new URL(`https://x/book/${titleId}/the-official-spongebob-squarepants-cookbook`), deps);
+  assert.equal(res instanceof Response, true, 'a matched title must render a real HTML Response, not a JSON error');
+  const html = await res.text();
+  assert.match(html, /SpongeBob SquarePants Cookbook/, 'the page must actually name this book, not a generic sitewide title');
+  assert.match(html, /\$20\.00/, 'the page must show this sku\'s real price');
+  assert.match(html, /"@type":"Book"/, 'must emit Book-typed JSON-LD, not a bare Product with no book-specific fields');
+  assert.match(html, /rel="canonical" href="https:\/\/themanapocket\.com\/book\//, 'canonical must point at themanapocket.com, not the Worker\'s workers.dev subdomain (see the /preorder/{id} anti-pattern this deliberately avoids)');
+}
+
+{
+  // A stale/renamed slug must 301 to the canonical one, not 404 -- the id
+  // is the real lookup key (matches itemDetailSlug's identical convention
+  // for /item/{id}/{slug}).
+  const titleId = '33333333-3333-4333-8333-333333333333';
+  const titleRow = { id:titleId, title:'Renamed Book', backlist_skus:[{ id:'sku-2', msrp_cents:1000, customer_price_cents:1000, is_published:true, is_orderable:true, customer_enabled:true }] };
+  const deps = seoDeps({ supabaseAdminFetch:async () => ({ data:[titleRow] }) });
+  const res = await handleBacklistRequest(mockGetRequest(), {}, new URL(`https://x/book/${titleId}/old-wrong-slug`), deps);
+  assert.equal(res.status, 301);
+  assert.match(res.headers.get('location'), /\/book\/.*renamed-book$/);
+}
+
+{
+  // An unpublished title (or one with no orderable/enabled sku left) must
+  // never render as a real page -- same customer-facing privacy convention
+  // backlistSearch/backlistTitleDetail already follow.
+  const deps = seoDeps({ supabaseAdminFetch:async () => ({ data:[] }) });
+  const res = await handleBacklistRequest(mockGetRequest(), {}, new URL('https://x/book/44444444-4444-4444-8444-444444444444/anything'), deps);
+  const html = await res.text();
+  assert.equal(res.status, 404);
+  assert.match(html, /not found/i);
+}
+
+{
+  // /sitemap-books.xml must list every published title's canonical URL so
+  // Google can discover books /books (a search box, not a browsable index)
+  // never links to on its own.
+  const rows = [{ id:'55555555-5555-4555-8555-555555555555', title:'Findable Book', updated_at:'2026-09-19T00:00:00Z' }];
+  const deps = seoDeps({ supabaseAdminFetch:async (env, path) => path.startsWith('backlist_titles?store_id=') ? { data:rows } : { data:[] } });
+  const res = await handleBacklistRequest(mockGetRequest(), {}, new URL('https://x/sitemap-books.xml'), deps);
+  const xml = await res.text();
+  assert.match(xml, /<loc>https:\/\/themanapocket\.com\/book\/55555555-5555-4555-8555-555555555555\/findable-book<\/loc>/);
+  assert.equal(res.headers.get('content-type'), 'application/xml;charset=UTF-8');
+}
+
+console.log('Backlist SEO detail-page and sitemap checks passed');
+
 // --- Route dispatch + import/unpublish-sweep wiring ------------------------
 
 assert.match(service, /if \(path === '\/public\/backlist\/search' && request\.method === 'GET'\)/);
@@ -244,4 +323,24 @@ assert.match(worker, /import \{ handleBacklistRequest, syncBacklistStripeEvent \
 assert.match(worker, /url\.pathname\.startsWith\('\/public\/backlist\/'\) \|\| url\.pathname\.startsWith\('\/backlist\/admin\/'\)/, 'the backlist route family must be dispatched from the Worker');
 assert.match(worker, /await syncBacklistStripeEvent\(env,event,\{supabaseAdminFetch,sendEmail,addBusinessDays\}\)/, 'the Stripe webhook handler must forward backlist events to syncBacklistStripeEvent, same as it already does for FOC');
 
+// The SEO detail page and sitemap must also be dispatched, and the Worker
+// must actually hand over its own mtgPageShell/mtgEscapeHtml/mtgSlugify
+// helpers and its single-tenant store id -- without these the module falls
+// back to nothing (there's no fallback) and every /book/ request 500s.
+assert.match(worker, /url\.pathname\.startsWith\('\/book\/'\) \|\| url\.pathname === '\/sitemap-books\.xml'/, '/book/ and /sitemap-books.xml must also be dispatched to handleBacklistRequest');
+assert.match(worker, /mtgPageShell, mtgEscapeHtml, mtgSlugify, publicStoreId: ITEM_DETAIL_STORE_ID/, 'the backlist deps must receive the same page-shell helpers and store id /item/ already uses, so the two SEO systems render consistently');
+
 console.log('Backlist Worker wiring checks passed');
+
+// --- Cloudflare route wiring -------------------------------------------------
+// A Worker route match with no corresponding Cloudflare route never gets a
+// request at all -- themanapocket.com/book/... would 404 at Cloudflare's
+// edge before this code ever runs, exactly like /preorder* and /item*
+// already needed their own route entries.
+
+const wranglerConfig = JSON.parse(fs.readFileSync('wrangler.deploy.jsonc', 'utf8'));
+const routePatterns = wranglerConfig.routes.map(r => r.pattern);
+assert.ok(routePatterns.includes('themanapocket.com/book*'), 'wrangler.deploy.jsonc must route themanapocket.com/book* to this Worker');
+assert.ok(routePatterns.includes('themanapocket.com/sitemap-books.xml'), 'wrangler.deploy.jsonc must route the books sitemap to this Worker');
+
+console.log('Backlist Cloudflare route wiring checks passed');
