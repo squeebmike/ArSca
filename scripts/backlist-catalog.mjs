@@ -46,11 +46,15 @@ export function normalizeBacklistRow(row = {}) {
   const salesStatus = text(row.SalesStatus, 60);
   const onSaleDate = dateIso(row.OnSaleDate || row['On-Sale Date']);
   const todayIso = new Date().toISOString().slice(0, 10);
+  const msrpCents = cents(row.PriceUSD || row['Retail Price (US)']);
   // The feed's own "Active" flag doesn't mean "available now" -- plenty of
   // real rows carry SalesStatus=Active with an OnSaleDate months in the
-  // future. Orderable requires both: PRH still calls it active, AND its
-  // street date has actually passed.
-  const isOrderable = /^active$/i.test(salesStatus) && !!onSaleDate && onSaleDate <= todayIso;
+  // future. Orderable requires all three: PRH still calls it active, its
+  // street date has actually passed, AND PRH's own feed actually carries a
+  // real price -- some rows (mostly long out-of-print titles the feed still
+  // lists) come through with PriceUSD blank/zero, which would otherwise sell
+  // as a free item.
+  const isOrderable = /^active$/i.test(salesStatus) && !!onSaleDate && onSaleDate <= todayIso && msrpCents > 0;
   const normalized = {
     distributorSku,
     upc,
@@ -84,7 +88,7 @@ export function normalizeBacklistRow(row = {}) {
     salesStatusCode, salesStatus, isOrderable,
     onSaleDate,
     catalogDate: dateIso(row.CatalogDate),
-    msrpCents: cents(row.PriceUSD || row['Retail Price (US)']),
+    msrpCents,
   };
   normalized.variantLabel = variantLabel(row, series, issue);
   if (/^primary title$/i.test(normalized.variantLabel)) normalized.variantLabel = 'Cover A';
@@ -277,7 +281,7 @@ async function backlistSearch(request, env, deps, url) {
   // /books page used to only ever call this once someone typed something,
   // which is exactly why it showed a "search to get started" wall instead
   // of a real, scrollable catalog on first load.
-  let filter = `backlist_titles?store_id=eq.${encodeURIComponent(storeId)}&is_published=eq.true&select=id,title,subtitle,series_name,publisher,format_name,cover_image_url,backlist_skus(id,upc,isbn,msrp_cents,customer_price_cents,on_sale_date,is_published)&order=title.asc&limit=${limit}&offset=${offset}`;
+  let filter = `backlist_titles?store_id=eq.${encodeURIComponent(storeId)}&is_published=eq.true&select=id,title,subtitle,series_name,publisher,format_name,cover_image_url,backlist_skus(id,upc,isbn,msrp_cents,customer_price_cents,on_sale_date,is_published,is_orderable,customer_enabled)&order=title.asc&limit=${limit}&offset=${offset}`;
   if (q) filter += `&or=(title.ilike.*${encodeURIComponent(q)}*,writer.ilike.*${encodeURIComponent(q)}*,series_name.ilike.*${encodeURIComponent(q)}*)`;
   if (publisher) filter += `&publisher=eq.${encodeURIComponent(publisher)}`;
   if (format) filter += `&format_name=eq.${encodeURIComponent(format)}`;
@@ -285,7 +289,13 @@ async function backlistSearch(request, env, deps, url) {
   const results = (titles || []).map(row => ({
     id: row.id, title: row.title, subtitle: row.subtitle, seriesName: row.series_name, publisher: row.publisher,
     formatName: row.format_name, coverImageUrl: row.cover_image_url,
-    skus: (row.backlist_skus || []).filter(s => s.is_published).map(s => ({ id: s.id, upc: s.upc, isbn: s.isbn, priceCents: Number(s.customer_price_cents || s.msrp_cents || 0), delivery: estimateBacklistDelivery(s.on_sale_date, new Date(), deps.addBusinessDays) })),
+    // is_orderable/customer_enabled AND a confirmed real price -- a title
+    // can be published (still shown as a title) while a specific SKU under
+    // it isn't actually sellable yet/anymore, or (see normalizeBacklistRow)
+    // came through PRH's feed with no real price at all. Never surface a
+    // sku here that checkout would reject.
+    skus: (row.backlist_skus || []).filter(s => s.is_published && s.is_orderable && s.customer_enabled !== false && Number(s.customer_price_cents || s.msrp_cents || 0) > 0)
+      .map(s => ({ id: s.id, upc: s.upc, isbn: s.isbn, priceCents: Number(s.customer_price_cents || s.msrp_cents || 0), delivery: estimateBacklistDelivery(s.on_sale_date, new Date(), deps.addBusinessDays) })),
   })).filter(row => row.skus.length);
   return deps.json({ ok: true, results, offset, limit });
 }
@@ -321,7 +331,7 @@ async function backlistTitleDetail(env, deps, id) {
   const { data: rows } = await db(`backlist_titles?id=eq.${encodeURIComponent(id)}&is_published=eq.true&select=*,backlist_skus(*)&limit=1`);
   const row = rows?.[0];
   if (!row) return deps.json({ ok: false, error: 'Not found' }, 404);
-  const skus = (row.backlist_skus || []).filter(s => s.is_published && s.is_orderable && s.customer_enabled).map(s => ({
+  const skus = (row.backlist_skus || []).filter(s => s.is_published && s.is_orderable && s.customer_enabled && Number(s.customer_price_cents || s.msrp_cents || 0) > 0).map(s => ({
     id: s.id, upc: s.upc, isbn: s.isbn, formatName: s.format_name, priceCents: Number(s.customer_price_cents || s.msrp_cents || 0),
     delivery: estimateBacklistDelivery(s.on_sale_date, new Date(), deps.addBusinessDays),
   }));
@@ -365,7 +375,7 @@ async function backlistBookDetailPage(env, deps, id, providedSlug) {
   // Never let a crawlable public page reveal a sku staff have unpublished
   // or disabled -- same privacy convention backlistTitleDetail/backlistSearch
   // already follow for the customer-facing search app.
-  const skus = (row.backlist_skus || []).filter(s => s.is_published && s.is_orderable && s.customer_enabled);
+  const skus = (row.backlist_skus || []).filter(s => s.is_published && s.is_orderable && s.customer_enabled && Number(s.customer_price_cents || s.msrp_cents || 0) > 0);
   if (!skus.length) return notFoundBacklistBookPage(deps);
   const canonicalSlug = backlistBookSlug(row.title, deps);
   const canonicalPath = `/book/${encodeURIComponent(row.id)}/${canonicalSlug}`;

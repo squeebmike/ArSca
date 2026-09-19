@@ -53,6 +53,17 @@ const inactiveRow = { ...comicRowPastOnSale, MainIdentifier:'99999999999999999',
   assert.equal(p.isOrderable, false, 'a non-Active status must never be orderable regardless of the on-sale date');
 }
 {
+  // Real PRH feed rows exist -- both a live, on-sale 2026 bundle and plenty
+  // of long out-of-print comics -- with PriceUSD blank/zero despite Active
+  // status and a past on-sale date. Confirmed via direct production data:
+  // 74 published/orderable/customer_enabled skus had $0.00 pricing before
+  // this guard existed, and were genuinely purchasable for free on the site.
+  const zeroPriceRow = { ...comicRowPastOnSale, MainIdentifier:'85007366401801010', UPC:'85007366401801010', PriceUSD:'', Title:'247 FIRST-LOOK Bundle #1 (Bundle of 25)' };
+  const p = normalizeBacklistRow(zeroPriceRow);
+  assert.equal(p.msrpCents, 0);
+  assert.equal(p.isOrderable, false, 'a $0/blank PRH feed price must never be orderable, or the item sells for free');
+}
+{
   // The real backlist feed carries "2:40"-style ratios, not just "1:N" --
   // foc-preorders.mjs's own ratioThreshold() only matches 1:N and would
   // silently miss this (a known, separately-flagged pre-existing gap left
@@ -286,6 +297,11 @@ console.log('Backlist SEO detail-page and sitemap checks passed');
 assert.match(service, /if \(path === '\/public\/backlist\/search' && request\.method === 'GET'\)/);
 assert.match(service, /if \(path === '\/public\/backlist\/facets' && request\.method === 'GET'\)/, 'the browse page\'s publisher/format filter dropdowns need a facets route');
 assert.match(service, /if \(format\) filter \+= `&format_name=eq\.\$\{encodeURIComponent\(format\)\}`;/, 'backlistSearch must actually apply the format filter, not just accept the param');
+// A published title can still have an unorderable/priceless sku under it
+// (see the $0-price PRH feed rows normalizeBacklistRow now excludes at
+// import time) -- the browse/search results must never surface one, since
+// a customer could see "ADD TO CART" for a sku checkout would then reject.
+assert.match(service, /skus: \(row\.backlist_skus \|\| \[\]\)\.filter\(s => s\.is_published && s\.is_orderable && s\.customer_enabled !== false && Number\(s\.customer_price_cents \|\| s\.msrp_cents \|\| 0\) > 0\)/, 'backlistSearch must only surface orderable, priced skus, not just published ones');
 assert.match(service, /if \(path === '\/public\/backlist\/checkout' && request\.method === 'POST'\)/);
 assert.match(service, /if \(path === '\/backlist\/admin\/import\/start' && request\.method === 'POST'\)/);
 assert.match(service, /if \(path === '\/backlist\/admin\/import\/batch' && request\.method === 'POST'\)/);
