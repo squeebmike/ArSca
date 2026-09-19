@@ -296,6 +296,113 @@ async function backlistTitleDetail(env, deps, id) {
   return deps.json({ ok: true, title: { id: row.id, title: row.title, subtitle: row.subtitle, seriesName: row.series_name, publisher: row.publisher, writer: row.writer, artist: row.artist, description: row.description, coverImageUrl: row.cover_image_url, ageRange: row.age_range }, skus });
 }
 
+// --- SEO / crawlable detail page --------------------------------------------
+// /books is a 100% client-rendered SPA -- nothing a search-engine crawler
+// (or a non-JS link-preview scraper) reads from it ever names an actual
+// book, only the one generic page-level heading, no matter which of the
+// catalog's titles someone meant to find. /preorder/{id} solved this for
+// comic preorders, but only as a thin share-card: it immediately
+// self-redirects via JS (built for Facebook/iMessage unfurls, not to be
+// indexed on its own) and its canonical/share URL points at the Worker's
+// own workers.dev subdomain rather than themanapocket.com, which is exactly
+// the opposite of what ranking for a book's own name needs. This instead
+// follows /item/{id}/{slug} (real inventory) and renderBcwProduct: a real,
+// permanent, content-ful page with no self-redirect, served directly under
+// themanapocket.com (see the themanapocket.com/book* route in
+// wrangler.deploy.jsonc) so Google indexes the actual page.
+function backlistBookSlug(title, deps) {
+  return deps.mtgSlugify(title);
+}
+
+function notFoundBacklistBookPage(deps) {
+  const html = deps.mtgPageShell({
+    title: 'Book not found | The Mana Pocket',
+    description: "This title is no longer available. Search our full PRH backlist catalog for what you're looking for.",
+    canonicalPath: '/books',
+    bodyHtml: `<div class="mp-crumb"><a href="/books">← Back to the catalog</a></div><h1>Book not found</h1><p class="mp-sub">This title may no longer be orderable. Search the full catalog for what you're looking for.</p>`,
+  });
+  return new Response(html, { status: 404, headers: { 'Content-Type': 'text/html;charset=UTF-8' } });
+}
+
+async function backlistBookDetailPage(env, deps, id, providedSlug) {
+  if (!/^[0-9a-f-]{36}$/i.test(id)) return notFoundBacklistBookPage(deps);
+  const db = (path, options) => deps.supabaseAdminFetch(env, path, options);
+  const { data: rows } = await db(`backlist_titles?id=eq.${encodeURIComponent(id)}&is_published=eq.true&select=*,backlist_skus(*)&limit=1`);
+  const row = rows?.[0];
+  if (!row) return notFoundBacklistBookPage(deps);
+  // Never let a crawlable public page reveal a sku staff have unpublished
+  // or disabled -- same privacy convention backlistTitleDetail/backlistSearch
+  // already follow for the customer-facing search app.
+  const skus = (row.backlist_skus || []).filter(s => s.is_published && s.is_orderable && s.customer_enabled);
+  if (!skus.length) return notFoundBacklistBookPage(deps);
+  const canonicalSlug = backlistBookSlug(row.title, deps);
+  const canonicalPath = `/book/${encodeURIComponent(row.id)}/${canonicalSlug}`;
+  // A renamed title's old slug must never 404 -- id is the real lookup key,
+  // the slug is just a relevance/trust signal in the URL (see itemDetailSlug's
+  // own comment for the same reasoning on /item/{id}/{slug}).
+  if (providedSlug !== canonicalSlug) return Response.redirect(`https://themanapocket.com${canonicalPath}`, 301);
+  const lowestCents = Math.min(...skus.map(s => Number(s.customer_price_cents || s.msrp_cents || 0)));
+  const byline = [row.writer, row.publisher].filter(Boolean).join(' · ');
+  const priceStr = lowestCents ? `$${(lowestCents / 100).toFixed(2)}` : '';
+  const description = [row.subtitle || null, byline || null, priceStr ? `From ${priceStr}` : null, text(row.description, 200) || null]
+    .filter(Boolean).join(' · ') || `${row.title} at The Mana Pocket.`;
+  const title = `${row.title}${row.writer ? ` by ${row.writer}` : ''} | The Mana Pocket`;
+  const image = row.cover_image_url || '';
+  const searchHref = `/books?q=${encodeURIComponent(row.title)}`;
+  const isbn = skus.find(s => s.isbn)?.isbn || undefined;
+  const skuRows = skus.map(s => {
+    const priceCents = Number(s.customer_price_cents || s.msrp_cents || 0);
+    const delivery = estimateBacklistDelivery(s.on_sale_date, new Date(), deps.addBusinessDays);
+    return `<div style="margin-top:10px"><b>${deps.mtgEscapeHtml(s.format_name || 'Edition')}</b> -- $${deps.mtgEscapeHtml((priceCents / 100).toFixed(2))}<div class="mp-meta">${deps.mtgEscapeHtml(delivery.headline)}</div></div>`;
+  }).join('');
+  const html = deps.mtgPageShell({
+    title, description, canonicalPath, ogImage: image || undefined,
+    jsonLd: {
+      '@context': 'https://schema.org', '@type': 'Book', name: row.title,
+      ...(image ? { image } : {}),
+      ...(row.writer ? { author: { '@type': 'Person', name: row.writer } } : {}),
+      ...(row.publisher ? { publisher: { '@type': 'Organization', name: row.publisher } } : {}),
+      ...(isbn ? { isbn } : {}),
+      description,
+      offers: skus.map(s => ({
+        '@type': 'Offer', priceCurrency: 'USD', price: Number(s.customer_price_cents || s.msrp_cents || 0) / 100,
+        availability: 'https://schema.org/PreOrder', url: `https://themanapocket.com${canonicalPath}`,
+      })),
+    },
+    bodyHtml: `<div class="mp-crumb"><a href="/books">← Full PRH catalog</a></div>` +
+      `<div class="mp-detail">${image ? `<img src="${deps.mtgEscapeHtml(image)}" alt="${deps.mtgEscapeHtml(row.title)}">` : ''}` +
+      `<div><h1>${deps.mtgEscapeHtml(row.title)}</h1>${row.subtitle ? `<div class="mp-meta">${deps.mtgEscapeHtml(row.subtitle)}</div>` : ''}` +
+      `${byline ? `<div class="mp-meta">${deps.mtgEscapeHtml(byline)}</div>` : ''}` +
+      `${row.description ? `<p class="mp-sub">${deps.mtgEscapeHtml(text(row.description, 600))}</p>` : ''}` +
+      skuRows +
+      `<a class="mp-card" style="display:inline-block;padding:12px 20px;margin-top:8px" href="${deps.mtgEscapeHtml(searchHref)}">Buy this book →</a>` +
+      `</div></div>`,
+  });
+  return new Response(html, { headers: { 'Content-Type': 'text/html;charset=UTF-8', 'Cache-Control': 'public, max-age=600' } });
+}
+
+// GET /sitemap-books.xml -- every published title's /book/{id}/{slug} URL,
+// same reasoning as /sitemap-items.xml: Google can't discover a page it has
+// no link to, and /books never links to a single title's own URL either
+// (it's a search box, not a browsable index) -- submit this in Google
+// Search Console's Sitemaps report alongside /sitemap-items.xml.
+async function backlistSitemap(env, deps) {
+  const db = (path, options) => deps.supabaseAdminFetch(env, path, options);
+  const rows = [];
+  let offset = 0;
+  while (true) {
+    const { data } = await db(`backlist_titles?store_id=eq.${encodeURIComponent(deps.publicStoreId)}&is_published=eq.true&select=id,title,updated_at&order=title.asc&limit=1000&offset=${offset}`);
+    const batch = data || [];
+    rows.push(...batch);
+    if (batch.length < 1000) break;
+    offset += 1000;
+    if (offset >= 50000) break; // sitemap.xml URL cap safety net
+  }
+  const urls = rows.map(row => `<url><loc>https://themanapocket.com/book/${deps.mtgEscapeHtml(row.id)}/${deps.mtgEscapeHtml(backlistBookSlug(row.title, deps))}</loc>${row.updated_at ? `<lastmod>${deps.mtgEscapeHtml(String(row.updated_at).slice(0, 10))}</lastmod>` : ''}</url>`).join('');
+  const xml = `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>https://themanapocket.com/books</loc></url>${urls}</urlset>`;
+  return new Response(xml, { headers: { 'Content-Type': 'application/xml;charset=UTF-8', 'Cache-Control': 'public, max-age=1800' } });
+}
+
 // --- Checkout / payment ---------------------------------------------------
 
 async function backlistCheckout(request, env, deps) {
@@ -562,6 +669,11 @@ async function adminCatalog(request, env, deps, url) {
 
 export async function handleBacklistRequest(request, env, url, deps) {
   const path = url.pathname;
+  if (path.startsWith('/book/') && request.method === 'GET') {
+    const rest = path.slice('/book/'.length).split('/');
+    return backlistBookDetailPage(env, deps, decodeURIComponent(rest[0] || ''), rest[1] ? decodeURIComponent(rest[1]) : '');
+  }
+  if (path === '/sitemap-books.xml' && request.method === 'GET') return backlistSitemap(env, deps);
   if (path === '/public/backlist/search' && request.method === 'GET') return backlistSearch(request, env, deps, url);
   if (path.startsWith('/public/backlist/title/') && request.method === 'GET') return backlistTitleDetail(env, deps, decodeURIComponent(path.slice('/public/backlist/title/'.length).split('/')[0] || ''));
   if (path === '/public/backlist/checkout' && request.method === 'POST') return backlistCheckout(request, env, deps);
