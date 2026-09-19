@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.09.19.06-recent-activity-reads-real-ledger">
+<meta name="version" content="2026.09.19.07-sales-charts-read-real-ledger">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1635,21 +1635,21 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.09.19.06-recent-activity-reads-real-ledger" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.09.19.06-recent-activity-reads-real-ledger" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.09.19.06-recent-activity-reads-real-ledger" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.09.19.06-recent-activity-reads-real-ledger" defer></script>
-<script src="scripts/backlist-dashboard.js?v=2026.09.19.06-recent-activity-reads-real-ledger" defer></script>
-<script src="scripts/database-viewer.js?v=2026.09.19.06-recent-activity-reads-real-ledger" defer></script>
-<script src="scripts/card-intake-dashboard.js?v=2026.09.19.06-recent-activity-reads-real-ledger" defer></script>
-<script src="scripts/mana-pocket-task-library.js?v=2026.09.19.06-recent-activity-reads-real-ledger" defer></script>
-<script src="scripts/daily-tasks-dashboard.js?v=2026.09.19.06-recent-activity-reads-real-ledger" defer></script>
+<script src="scripts/query-routing.js?v=2026.09.19.07-sales-charts-read-real-ledger" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.09.19.07-sales-charts-read-real-ledger" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.09.19.07-sales-charts-read-real-ledger" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.09.19.07-sales-charts-read-real-ledger" defer></script>
+<script src="scripts/backlist-dashboard.js?v=2026.09.19.07-sales-charts-read-real-ledger" defer></script>
+<script src="scripts/database-viewer.js?v=2026.09.19.07-sales-charts-read-real-ledger" defer></script>
+<script src="scripts/card-intake-dashboard.js?v=2026.09.19.07-sales-charts-read-real-ledger" defer></script>
+<script src="scripts/mana-pocket-task-library.js?v=2026.09.19.07-sales-charts-read-real-ledger" defer></script>
+<script src="scripts/daily-tasks-dashboard.js?v=2026.09.19.07-sales-charts-read-real-ledger" defer></script>
 <script src="scripts/research-loupe.js?v=a7de4ffe90" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.09.19.06-recent-activity-reads-real-ledger" defer></script>
-<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.09.19.06-recent-activity-reads-real-ledger" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.09.19.06-recent-activity-reads-real-ledger" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.09.19.06-recent-activity-reads-real-ledger" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.09.19.06-recent-activity-reads-real-ledger" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.09.19.07-sales-charts-read-real-ledger" defer></script>
+<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.09.19.07-sales-charts-read-real-ledger" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.09.19.07-sales-charts-read-real-ledger" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.09.19.07-sales-charts-read-real-ledger" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.09.19.07-sales-charts-read-real-ledger" defer></script>
 </head>
 <body>
 
@@ -1701,7 +1701,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
 <div class="dsb-chip" id="dsb-tasks" title="Today's Roles &amp; Tasks — click to jump to Tasks tab" style="cursor:pointer;display:none" onclick="switchTab('tasks')">✅ <span>TASKS:</span> <b id="dsb-tasks-val">—</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.09.19.06-recent-activity-reads-real-ledger</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.09.19.07-sales-charts-read-real-ledger</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3864,7 +3864,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.09.19.06-recent-activity-reads-real-ledger';
+const APP_VERSION = '2026.09.19.07-sales-charts-read-real-ledger';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -17154,14 +17154,26 @@ async function renderFeed(){
   }).join('');
 }
 
-function renderChannels(){
-  const sol=all.filter(i=>i.status==='sold');
+// Sales by Channel / Top Sold / Monthly Trend all used to read the same
+// inventory-item-cache fields (i.status==='sold', i.salePrice, i.profit,
+// i.channel) that renderFeed already had to stop trusting -- a partial
+// (non-depleting) sale on any channel never stamps them, so a store that
+// only ever sells single copies looks fine here by accident while a
+// presale/multi-quantity item's partial sales are invisible to all three.
+// Same ledger, same 1000-row recency cap as renderFeed's fetch (this is a
+// dashboard chart, not the Reports/P&L tab's fully-paginated export -- see
+// aggregateReportsData for the authoritative, unbounded version of these
+// same numbers).
+async function renderChannels(){
+  const el=document.getElementById('ch-bars');
+  let sol;
+  try{ sol=await fetchRecentSoldLedgerEvents(1000); }
+  catch(e){ sol=(all||[]).filter(i=>i.status==='sold').map(i=>({salePrice:i.salePrice,channel:i.channel})); }
   const chs={};
   sol.forEach(i=>{const c=i.channel||'In-Store';chs[c]=(chs[c]||0)+(i.salePrice||0);});
   const pairs=Object.entries(chs).sort((a,b)=>b[1]-a[1]);
   const max=pairs[0]?.[1]||1;
   const cols={'In-Store':'var(--g)','eBay':'var(--gold)','Whatnot':'var(--purple)','Website':'var(--blue)'};
-  const el=document.getElementById('ch-bars');
   if(!pairs.length){el.innerHTML='<div class="empty"><div class="empty-t">NO SALES YET</div></div>';return;}
   el.innerHTML=pairs.map(([c,v])=>`<div class="br">
     <span class="br-l">${c}</span>
@@ -17170,9 +17182,12 @@ function renderChannels(){
   </div>`).join('');
 }
 
-function renderTopSold(){
-  const sol=all.filter(i=>i.status==='sold'&&i.profit>0).sort((a,b)=>b.profit-a.profit).slice(0,8);
+async function renderTopSold(){
   const el=document.getElementById('top-sold');
+  let sol;
+  try{ sol=(await fetchRecentSoldLedgerEvents(1000)).filter(i=>i.profit>0); }
+  catch(e){ sol=(all||[]).filter(i=>i.status==='sold'&&i.profit>0).map(i=>({name:i.name,profit:i.profit})); }
+  sol=[...sol].sort((a,b)=>b.profit-a.profit).slice(0,8);
   if(!sol.length){el.innerHTML='<div class="empty"><div class="empty-t">NO SALES YET</div></div>';return;}
   const max=sol[0].profit;
   el.innerHTML=sol.map(i=>`<div class="br">
@@ -17182,17 +17197,20 @@ function renderTopSold(){
   </div>`).join('');
 }
 
-function renderMonthly(){
-  const sol=all.filter(i=>i.status==='sold'&&i.soldAt);
+async function renderMonthly(){
+  const el=document.getElementById('monthly-trend');
+  let sol;
+  try{ sol=await fetchRecentSoldLedgerEvents(1000); }
+  catch(e){ sol=(all||[]).filter(i=>i.status==='sold'&&i.soldAt).map(i=>({profit:i.profit,soldAt:i.soldAt})); }
   const months={};
   sol.forEach(i=>{
+    if(!i.soldAt) return;
     const d=new Date(i.soldAt);
     if(d.getFullYear()<2020) return;
     const k=d.getFullYear()+'-'+(d.getMonth()+1).toString().padStart(2,'0');
     months[k]=(months[k]||0)+(i.profit||0);
   });
   const pairs=Object.entries(months).sort((a,b)=>a[0].localeCompare(b[0])).slice(-6);
-  const el=document.getElementById('monthly-trend');
   if(!pairs.length){el.innerHTML='<div class="empty"><div class="empty-t">NO DATA YET</div></div>';return;}
   const max=Math.max(...pairs.map(p=>Math.abs(p[1])),1);
   el.innerHTML=pairs.map(([k,v])=>{
@@ -47347,7 +47365,7 @@ async function toppsLoadParallels(cardId){
   window.__arscaCloseModal = closeModal;
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.09.19.06-recent-activity-reads-real-ledger" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.09.19.07-sales-charts-read-real-ledger" defer></script>
 </body>
 </html>
 

@@ -64,11 +64,33 @@ assert.match(dashboard, /if\(line\.category==='Shipping'\)continue;/, 'must skip
 {
   const start = dashboard.indexOf('async function renderFeed(){');
   assert.notEqual(start, -1, 'renderFeed must be async to await the ledger fetch');
-  const end = dashboard.indexOf('\nfunction renderChannels(){', start);
+  const end = dashboard.indexOf('\nasync function renderChannels(){', start);
+  assert.notEqual(end, -1, 'renderChannels must also be async now (fire-and-forget, same as renderPulse/renderOwnerAnalyticsPanel next to it)');
   const fn = dashboard.slice(start, end);
   assert.match(fn, /i\.status!=='sold'\)\.map\(i=>\(\{type:'add'/, 'the "added" side of the feed still comes from the inventory cache -- that part was never broken');
   assert.match(fn, /await fetchRecentSoldLedgerEvents\(20\)/, 'the "sold" side must come from the real ledger so a partial (non-depleting) sale on any channel still shows up here, not just full depletions');
   assert.match(fn, /catch\(e\)\{[\s\S]{0,260}i\.status==='sold'\)\.map/, 'a ledger fetch failure must fall back to the old inventory-cache view rather than showing an empty feed');
+}
+
+// Sales by Channel / Top Sold / Monthly Trend (Sales tab) had the identical
+// gap as Recent Activity -- same inventory-cache fields, same blindness to
+// a partial (non-depleting) sale on any channel. All three now share
+// renderFeed's fetchRecentSoldLedgerEvents helper (a larger recency cap,
+// since these summarize broader activity than an 8-row recent feed) with
+// the same inventory-cache fallback on a query failure.
+for (const [fnName, nextFnMarker, mustContain, label] of [
+  ['renderChannels', '\nasync function renderTopSold(){', /const c=i\.channel\|\|'In-Store';chs\[c\]=\(chs\[c\]\|\|0\)\+\(i\.salePrice\|\|0\);/, 'Sales by Channel'],
+  ['renderTopSold', '\nasync function renderMonthly(){', /\.filter\(i=>i\.profit>0\);/, 'Top Sold Items'],
+  ['renderMonthly', '\nfunction renderConsignmentSaleAlerts', /if\(!i\.soldAt\) return;/, 'Monthly Trend'],
+]) {
+  const start = dashboard.indexOf(`async function ${fnName}(){`);
+  assert.notEqual(start, -1, `${fnName} must be async`);
+  const end = dashboard.indexOf(nextFnMarker, start);
+  assert.notEqual(end, -1, `could not find the function after ${fnName} -- delimiter marker is stale`);
+  const fn = dashboard.slice(start, end);
+  assert.match(fn, /await fetchRecentSoldLedgerEvents\(1000\)/, `${label} (${fnName}) must be ledger-sourced, not the inventory cache`);
+  assert.match(fn, /catch\(e\)\{ sol=\(all\|\|\[\]\)\.filter\(i=>i\.status==='sold'/, `${label} (${fnName}) must fall back to the old inventory-cache view if the ledger query fails`);
+  assert.match(fn, mustContain, `${label} (${fnName}) lost its own aggregation logic in the rewrite`);
 }
 
 console.log('Home/Sales-tab real-ledger sourcing checks passed');
