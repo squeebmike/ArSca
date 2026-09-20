@@ -34,3 +34,25 @@ jobs:
             }
           })().catch(e=>{console.error(e.message);process.exitCode=1;});
           NODE
+      - name: Probe live production paths (does the Worker route actually intercept these, or does Webflow 404 them?)
+        shell: bash
+        run: |
+          node <<'NODE'
+          async function probe(url) {
+            try {
+              const res = await fetch(url, { redirect: 'manual' });
+              const text = await res.text();
+              console.log(JSON.stringify({ url, status: res.status, location: res.headers.get('location') || null, snippet: text.slice(0, 200) }));
+            } catch (e) {
+              console.log(JSON.stringify({ url, error: e.message }));
+            }
+          }
+          (async () => {
+            await probe('https://themanapocket.com/bcw');
+            await probe('https://themanapocket.com/sitemap-items.xml');
+            await probe('https://themanapocket.com/item/00000000-0000-0000-0000-000000000000/test');
+            await probe('https://themanapocket.com/book/00000000-0000-0000-0000-000000000000/test');
+            await probe('https://themanapocket.com/preorder/00000000-0000-0000-0000-000000000000/test');
+            await probe('https://themanapocket.com/sitemap-preorders.xml');
+          })();
+          NODE
