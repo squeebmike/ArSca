@@ -303,34 +303,57 @@ function publicSku(row, customerQty = 0) {
   };
 }
 
-// GET /preorder/{skuId} -- a single comic preorder's real, crawlable share
-// page. The actual shopping UI (/preorders, /shop) is 100% client-rendered,
-// so a link to either of those always shows Facebook/iMessage/etc. the same
-// generic sitewide preview no matter which cover someone meant to share --
-// there is no per-item HTML for a non-JS link-preview scraper to read, only
-// one static page-level og:title/og:description with no image. This route
-// exists solely to give a scraper real per-cover og:title/og:description/
-// og:image in the initial HTTP response; a real visitor with JS gets bounced
-// straight into the interactive app (/preorders?sku=...), which now opens
-// this exact cover's detail modal automatically (see handleDeepLink in
-// preorders.js) instead of just scrolling/filtering to it.
-async function preorderDetailPage(env, deps, skuId) {
+// GET /preorder/{skuId}/{slug} -- a single comic preorder's real, permanent,
+// crawlable page. The actual shopping UI (/preorders, /shop) is 100%
+// client-rendered, so nothing here ever named an actual cover for Google or
+// a link-preview scraper to read -- only one static page-level heading no
+// matter which cover someone meant to find or share. This used to be a
+// thin, workers.dev-canonical share card that self-redirected via JS the
+// instant it loaded (built only for Facebook/iMessage unfurls, never meant
+// to be indexed on its own) -- exactly backwards for actually ranking on a
+// book's own name. This instead follows /book/{id}/{slug} and /item/{id}/
+// {slug}: a real, permanent, content-ful page with no self-redirect, served
+// directly under themanapocket.com (see the themanapocket.com/preorder*
+// route in wrangler.deploy.jsonc) so Google indexes the page itself.
+function preorderDetailSlug(name, deps) {
+  return deps.mtgSlugify(name);
+}
+
+function notFoundPreorderPage(deps) {
+  const html = deps.mtgPageShell({
+    title: 'Not found | The Mana Pocket',
+    description: 'That comic preorder is no longer available. Browse our current comic preorders for what you’re looking for.',
+    canonicalPath: '/preorders',
+    bodyHtml: `<div class="mp-crumb"><a href="/preorders">← Back to comic preorders</a></div><h1>Preorder not found</h1><p class="mp-sub">That cover may no longer be orderable. Browse current comic preorders for what you're looking for.</p>`,
+  });
+  return new Response(html, { status:404, headers:{ 'Content-Type':'text/html;charset=UTF-8' } });
+}
+
+async function preorderDetailPage(env, deps, skuId, providedSlug) {
+  if (!/^[0-9a-f-]{36}$/i.test(skuId)) return notFoundPreorderPage(deps);
   const db = (p, o) => deps.supabaseAdminFetch(env, p, o);
   const { data:skuRows } = await db(`comic_skus?id=eq.${encodeURIComponent(skuId)}&customer_enabled=eq.true&select=*&limit=1`);
   const skuRow = skuRows?.[0];
-  if (!skuRow) return notFoundPreorderPage();
+  if (!skuRow) return notFoundPreorderPage(deps);
   const [{ data:familyRows }, { data:cycleRows }] = await Promise.all([
     db(`comic_title_families?id=eq.${encodeURIComponent(skuRow.family_id)}&select=*&limit=1`),
     db(`foc_cycles?id=eq.${encodeURIComponent(skuRow.cycle_id)}&select=${catalogCycleSelect()}&limit=1`),
   ]);
   const familyRow = familyRows?.[0];
   const cycleRow = cycleRows?.[0];
-  if (!familyRow || !cycleRow) return notFoundPreorderPage();
+  if (!familyRow || !cycleRow) return notFoundPreorderPage(deps);
   const sku = publicSku(skuRow);
   const seriesName = text(familyRow.series_name, 300) || text(familyRow.title, 800);
   const issueNumber = familyRow.issue_number || '';
   const publisher = [text(familyRow.publisher, 300), text(familyRow.imprint, 300)].filter(Boolean).join(' · ');
   const name = seriesName + (issueNumber ? ' #' + issueNumber : '') + ' · ' + (sku.variantLabel || 'Cover A');
+  const canonicalSlug = preorderDetailSlug(name, deps);
+  const canonicalPath = `/preorder/${encodeURIComponent(skuId)}/${canonicalSlug}`;
+  // A retitled series or an old bare-ID share link must never 404 -- skuId is
+  // the real lookup key, the slug is just a relevance/trust signal in the
+  // URL (see itemDetailSlug's/backlistBookSlug's own comments for the same
+  // reasoning on /item/{id}/{slug} and /book/{id}/{slug}).
+  if (providedSlug !== canonicalSlug) return Response.redirect(`https://themanapocket.com${canonicalPath}`, 301);
   const priceText = sku.priceRequired ? 'Price coming soon' : moneyLabel(sku.priceCents);
   const description = [
     priceText,
@@ -341,22 +364,78 @@ async function preorderDetailPage(env, deps, skuId) {
   const title = `${name} | The Mana Pocket Comic Preorders`;
   const appUrl = `https://themanapocket.com/preorders?sku=${encodeURIComponent(skuId)}`;
   const image = sku.coverImageUrl || '';
-  const shareUrl = `https://still-resonance-4f87.swarnerauto.workers.dev/preorder/${encodeURIComponent(skuId)}`;
-  const html = `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">` +
-    `<title>${escapeHtml(title)}</title><meta name="description" content="${escapeHtml(description)}">` +
-    `<link rel="canonical" href="${shareUrl}">` +
-    `<meta property="og:type" content="product"><meta property="og:site_name" content="The Mana Pocket">` +
-    `<meta property="og:title" content="${escapeHtml(title)}"><meta property="og:description" content="${escapeHtml(description)}">` +
-    (image ? `<meta property="og:image" content="${escapeHtml(image)}"><meta name="twitter:card" content="summary_large_image">` : `<meta name="twitter:card" content="summary">`) +
-    `<style>body{margin:0;background:#10121a;color:#f5f5f2;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;padding:32px 20px}a{color:#8f55bd}.wrap{max-width:520px;margin:0 auto;text-align:center}img{max-width:220px;border-radius:12px;margin-bottom:16px}</style>` +
-    `</head><body><div class="wrap">${image ? `<img src="${escapeHtml(image)}" alt="">` : ''}<h1>${escapeHtml(name)}</h1><p>${escapeHtml(description)}</p><p><a href="${escapeHtml(appUrl)}">View &amp; preorder this cover →</a></p></div>` +
-    `<script>location.replace(${JSON.stringify(appUrl)});</script></body></html>`;
+  const html = deps.mtgPageShell({
+    title, description, canonicalPath, ogImage: image || undefined,
+    jsonLd: {
+      '@context': 'https://schema.org', '@type': 'Product', name,
+      ...(image ? { image } : {}),
+      ...(publisher ? { brand: { '@type': 'Organization', name: publisher } } : {}),
+      description,
+      offers: {
+        '@type': 'Offer', priceCurrency: 'USD',
+        price: sku.priceRequired ? undefined : sku.priceCents / 100,
+        availability: sku.canPreorder ? 'https://schema.org/PreOrder' : 'https://schema.org/OutOfStock',
+        url: `https://themanapocket.com${canonicalPath}`,
+      },
+    },
+    bodyHtml: `<div class="mp-crumb"><a href="/preorders">← All comic preorders</a></div>` +
+      `<div class="mp-detail">${image ? `<img src="${deps.mtgEscapeHtml(image)}" alt="${deps.mtgEscapeHtml(name)}">` : ''}` +
+      `<div><h1>${deps.mtgEscapeHtml(name)}</h1>${publisher ? `<div class="mp-meta">${deps.mtgEscapeHtml(publisher)}</div>` : ''}` +
+      `<div class="mp-meta">Preorder deadline ${deps.mtgEscapeHtml(dateOnlyLabel(cycleRow.foc_date))}</div>` +
+      `<div class="mp-prices"><span class="mp-price-pill">${deps.mtgEscapeHtml(priceText)}</span></div>` +
+      `${(text(skuRow.description, 600) || text(familyRow.description, 600)) ? `<p class="mp-sub">${deps.mtgEscapeHtml(text(skuRow.description, 600) || text(familyRow.description, 600))}</p>` : ''}` +
+      `<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px">` +
+      `<a class="mp-card" style="display:inline-block;padding:12px 20px" href="${deps.mtgEscapeHtml(appUrl)}">${sku.canPreorder ? 'Preorder this cover →' : 'View this cover →'}</a>` +
+      `<button id="mp-share-btn" style="padding:12px 20px;border-radius:12px;border:1px solid rgba(255,255,255,.2);background:transparent;color:inherit;cursor:pointer;font:inherit" data-title="${deps.mtgEscapeHtml(name)}" data-text="${deps.mtgEscapeHtml(description)}">Share</button>` +
+      `</div>` +
+      `</div></div>` +
+      // Same navigator.share / clipboard-copy / window.prompt fallback chain
+      // as /book/{id}/{slug}'s own share button -- kept identical rather than
+      // inventing a second convention for the same interaction.
+      `<script>(function(){var b=document.getElementById('mp-share-btn');if(!b)return;b.addEventListener('click',function(){` +
+      `var url=location.href;` +
+      `if(navigator.share){navigator.share({title:b.dataset.title+' | The Mana Pocket',text:b.dataset.text,url:url}).catch(function(){});return;}` +
+      `if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(url).then(function(){var original=b.textContent;b.textContent='Link copied ✓';setTimeout(function(){b.textContent=original;},1400);}).catch(function(){window.prompt('Copy this link:',url);});return;}` +
+      `window.prompt('Copy this link:',url);` +
+      `});})();</script>`,
+  });
   return new Response(html, { status:200, headers:{ 'Content-Type':'text/html;charset=UTF-8', 'Cache-Control':'public, max-age=300' } });
 }
 
-function notFoundPreorderPage() {
-  const html = `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>Not found | The Mana Pocket</title></head><body><p>That comic preorder was not found. <a href="/preorders">Browse comic preorders</a></p></body></html>`;
-  return new Response(html, { status:404, headers:{ 'Content-Type':'text/html;charset=UTF-8' } });
+// GET /sitemap-preorders.xml -- every currently customer-visible comic
+// preorder's /preorder/{id}/{slug} URL, same reasoning as /sitemap-books.xml
+// and /sitemap-items.xml: Google can't discover a page it has no link to,
+// and /preorders never links to a single cover's own URL either (it's a
+// client-rendered catalog, not a set of crawlable pages) -- submit this in
+// Google Search Console's Sitemaps report alongside the others.
+async function preorderSitemap(env, deps) {
+  const db = (p, o) => deps.supabaseAdminFetch(env, p, o);
+  const rows = [];
+  let offset = 0;
+  while (true) {
+    const { data } = await db(`comic_skus?store_id=eq.${encodeURIComponent(deps.publicStoreId)}&customer_enabled=eq.true&select=id,title,variant_label,updated_at,family_id&order=updated_at.desc&limit=1000&offset=${offset}`);
+    const batch = data || [];
+    rows.push(...batch);
+    if (batch.length < 1000) break;
+    offset += 1000;
+    if (offset >= 50000) break; // sitemap.xml URL cap safety net
+  }
+  const familyIds = [...new Set(rows.map(row => row.family_id).filter(Boolean))];
+  const familyById = {};
+  if (familyIds.length) {
+    const { data:familyRows } = await db(`comic_title_families?id=${inFilter(familyIds)}&select=id,series_name,title,issue_number`);
+    (familyRows || []).forEach(row => { familyById[row.id] = row; });
+  }
+  const urls = rows.map(row => {
+    const family = familyById[row.family_id];
+    const seriesName = text(family?.series_name, 300) || text(family?.title, 800) || text(row.title, 800);
+    const issueNumber = family?.issue_number || '';
+    const name = seriesName + (issueNumber ? ' #' + issueNumber : '') + ' · ' + (row.variant_label || 'Cover A');
+    const slug = preorderDetailSlug(name, deps);
+    return `<url><loc>https://themanapocket.com/preorder/${deps.mtgEscapeHtml(row.id)}/${deps.mtgEscapeHtml(slug)}</loc>${row.updated_at ? `<lastmod>${deps.mtgEscapeHtml(String(row.updated_at).slice(0, 10))}</lastmod>` : ''}</url>`;
+  }).join('');
+  const xml = `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>https://themanapocket.com/preorders</loc></url>${urls}</urlset>`;
+  return new Response(xml, { headers: { 'Content-Type':'application/xml;charset=UTF-8', 'Cache-Control':'public, max-age=1800' } });
 }
 
 // eBay presale status per SKU for the admin FOC dashboard -- ELIGIBLE_NOW /
@@ -2020,9 +2099,12 @@ export async function syncFocStripeEvent(env, event, deps) {
 export async function handleFocRequest(request, env, url, deps) {
   const path=url.pathname;
   if(path.startsWith('/preorder/')&&request.method==='GET'){
-    const skuId=decodeURIComponent(path.slice('/preorder/'.length).split('/')[0]||'');
-    return skuId?preorderDetailPage(env,deps,skuId):notFoundPreorderPage();
+    const rest=path.slice('/preorder/'.length).split('/');
+    const skuId=decodeURIComponent(rest[0]||'');
+    const providedSlug=rest[1]?decodeURIComponent(rest[1]):'';
+    return skuId?preorderDetailPage(env,deps,skuId,providedSlug):notFoundPreorderPage(deps);
   }
+  if(path==='/sitemap-preorders.xml'&&request.method==='GET')return preorderSitemap(env,deps);
   if(path==='/public/shipping/quotes'&&request.method==='POST')return quoteShipping(request,env,deps);
   if(path==='/public/preorders'&&request.method==='GET'){
     const storeId=text(url.searchParams.get('store_id'),80);const db=(p,o)=>deps.supabaseAdminFetch(env,p,o);const requestedLimit=Number.parseInt(url.searchParams.get('limit'),10);const requestedPage=Number.isFinite(requestedLimit)&&requestedLimit>0?{limit:requestedLimit,offset:Number.parseInt(url.searchParams.get('offset'),10)||0}:null;

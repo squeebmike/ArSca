@@ -43,6 +43,10 @@
       "zone_name": "themanapocket.com"
     },
     {
+      "pattern": "themanapocket.com/sitemap-preorders.xml",
+      "zone_name": "themanapocket.com"
+    },
+    {
       "pattern": "themanapocket.com/item*",
       "zone_name": "themanapocket.com"
     },

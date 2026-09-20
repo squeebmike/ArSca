@@ -4864,12 +4864,13 @@ export default {
       });
     }
 
-    if (url.pathname === '/public/preorders' || url.pathname.startsWith('/public/preorders/') || url.pathname === '/public/shipping/quotes' || url.pathname.startsWith('/foc/admin/') || url.pathname.startsWith('/preorder/')) {
+    if (url.pathname === '/public/preorders' || url.pathname.startsWith('/public/preorders/') || url.pathname === '/public/shipping/quotes' || url.pathname.startsWith('/foc/admin/') || url.pathname.startsWith('/preorder/') || url.pathname === '/sitemap-preorders.xml') {
       return await handleFocRequest(request, env, url, {
         CORS, json, supabaseAdminFetch, requireStoreUser, requireAuthenticatedUser,
         readJsonWithLimit, enforceUsageLimit, stripeApi, stripeMode, stripeConfig, sendEmail,
         addBusinessDays, getEbayPresaleSafeBusinessDays, getEbayUserAccessToken, withdrawEbayOffer, withdrawEbayOfferGroup, endEbayVolumeDiscount, ebayReviseOfferQuantity,
         ebayReviseVariationQuantityTrading, endEbayListingTrading,
+        mtgPageShell, mtgEscapeHtml, mtgSlugify, publicStoreId: ITEM_DETAIL_STORE_ID,
       });
     }
 

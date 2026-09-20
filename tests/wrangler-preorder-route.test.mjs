@@ -27,4 +27,12 @@ assert.match(preorderRoute.pattern, /^themanapocket\.com\/preorder\*$/, 'the pat
 const mtgRoute = config.routes.find(r => /mtg/.test(r.pattern || ''));
 assert.ok(mtgRoute, 'the pre-existing /mtg* route binding must not have been removed');
 
-console.log('wrangler.deploy.jsonc /preorder* route binding contract check passed');
+// Same class of bug, same fix: /sitemap-preorders.xml is served by this
+// Worker too (see preorderSitemap in scripts/foc-preorders.mjs), and would
+// silently 404 at the zone level without its own exact-match route, exactly
+// like /sitemap-books.xml and /sitemap-items.xml already have.
+const sitemapRoute = config.routes.find(r => r.pattern === 'themanapocket.com/sitemap-preorders.xml');
+assert.ok(sitemapRoute, 'a route binding for themanapocket.com/sitemap-preorders.xml must exist, or Google can never fetch it');
+assert.equal(sitemapRoute.zone_name, 'themanapocket.com');
+
+console.log('wrangler.deploy.jsonc /preorder* and /sitemap-preorders.xml route binding contract checks passed');
