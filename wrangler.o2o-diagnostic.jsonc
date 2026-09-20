@@ -5,7 +5,11 @@
   "workers_dev": true,
   "routes": [
     {
-      "pattern": "*/*",
+      "pattern": "themanapocket.com/*",
+      "zone_name": "themanapocket.com"
+    },
+    {
+      "pattern": "www.themanapocket.com/*",
       "zone_name": "themanapocket.com"
     }
   ]
