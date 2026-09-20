@@ -38,21 +38,39 @@ jobs:
         shell: bash
         run: |
           node <<'NODE'
-          async function probe(url) {
+          async function probe(url, dumpHeaders) {
             try {
               const res = await fetch(url, { redirect: 'manual' });
               const text = await res.text();
-              console.log(JSON.stringify({ url, status: res.status, location: res.headers.get('location') || null, snippet: text.slice(0, 200) }));
+              const out = { url, status: res.status, location: res.headers.get('location') || null, snippet: text.slice(0, 200) };
+              if (dumpHeaders) out.headers = Object.fromEntries(res.headers.entries());
+              console.log(JSON.stringify(out));
             } catch (e) {
               console.log(JSON.stringify({ url, error: e.message }));
             }
           }
           (async () => {
+            // Confirm the Worker itself is healthy at its own workers.dev domain
+            // (bypasses Cloudflare Routes/DNS entirely -- isolates "is the Worker
+            // broken" from "does themanapocket.com actually route to it").
+            await probe('https://still-resonance-4f87.swarnerauto.workers.dev/health');
+            await probe('https://still-resonance-4f87.swarnerauto.workers.dev/preorder/00000000-0000-0000-0000-000000000000/test');
+            // The oldest bound route (since February) -- if this also falls
+            // through to Webflow, the problem is systemic, not specific to the
+            // routes added this session.
+            await probe('https://themanapocket.com/mtg', true);
             await probe('https://themanapocket.com/bcw');
             await probe('https://themanapocket.com/sitemap-items.xml');
-            await probe('https://themanapocket.com/item/00000000-0000-0000-0000-000000000000/test');
+            await probe('https://themanapocket.com/item/00000000-0000-0000-0000-000000000000/test', true);
             await probe('https://themanapocket.com/book/00000000-0000-0000-0000-000000000000/test');
             await probe('https://themanapocket.com/preorder/00000000-0000-0000-0000-000000000000/test');
             await probe('https://themanapocket.com/sitemap-preorders.xml');
+            // Webflow's own dashboard flags the bare apex domain with "Update
+            // needed" (a DNS problem) while www shows "Proxied" with no
+            // warning -- test whether the Worker Routes (bound only to the
+            // bare "themanapocket.com" pattern, no www) actually intercept on
+            // www at all, since that's the domain Webflow says is healthy.
+            await probe('https://www.themanapocket.com/mtg', true);
+            await probe('https://www.themanapocket.com/preorder/00000000-0000-0000-0000-000000000000/test', true);
           })();
           NODE
