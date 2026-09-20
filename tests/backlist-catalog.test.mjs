@@ -7,6 +7,7 @@ import {
 
 const service = fs.readFileSync('scripts/backlist-catalog.mjs', 'utf8');
 const worker = fs.readFileSync('cloudflare-worker-full.js', 'utf8');
+const dashboard = fs.readFileSync('scripts/backlist-dashboard.js', 'utf8');
 
 // --- normalizeBacklistRow / orderability gate ---------------------------
 // Real column schema, real sample values from the actual PRH backlist file
@@ -300,10 +301,88 @@ function mockGetRequest() { return { method:'GET', headers:{ get:() => null } };
 
 console.log('Backlist SEO detail-page and sitemap checks passed');
 
+// --- Curated homepage shelves ------------------------------------------------
+// /books used to be one alphabetical wall over ~23,000 titles with nothing
+// to click before typing something -- these three shelves give it a real
+// starting point. New Arrivals/Under $10 read signals PRH's own feed
+// already gives us (first_seen_at, customer_price_cents); Staff Picks reads
+// a real staff choice (is_featured/featured_rank) since nothing in the feed
+// can answer "which books does this store want to push" on its own.
+
+{
+  const newTitle = { id:'aaaaaaaa-0000-4000-8000-000000000001', title:'New Book', backlist_skus:[{ id:'sku-new', msrp_cents:1000, customer_price_cents:1000, is_published:true, is_orderable:true, customer_enabled:true, on_sale_date:'2020-01-01' }] };
+  const cheapSku = { id:'sku-cheap', upc:'999', msrp_cents:500, customer_price_cents:500, on_sale_date:'2020-01-01', backlist_titles:{ id:'bbbbbbbb-0000-4000-8000-000000000002', title:'Cheap Book', is_published:true } };
+  const pickTitle = { id:'cccccccc-0000-4000-8000-000000000003', title:'Featured Book', backlist_skus:[{ id:'sku-pick', msrp_cents:2000, customer_price_cents:2000, is_published:true, is_orderable:true, customer_enabled:true, on_sale_date:'2020-01-01' }] };
+  const deps = seoDeps({
+    supabaseAdminFetch: async (env, path) => {
+      if (path.includes('order=first_seen_at.desc')) return { data:[newTitle] };
+      if (path.startsWith('backlist_skus?')) return { data:[cheapSku] };
+      if (path.includes('is_featured=eq.true')) return { data:[pickTitle] };
+      return { data:[] };
+    },
+  });
+  const res = await handleBacklistRequest(mockGetRequest(), {}, new URL('https://x/public/backlist/shelves?store_id=store-1'), deps);
+  assert.equal(res.data.ok, true);
+  const byKey = Object.fromEntries(res.data.shelves.map(s => [s.key, s]));
+  assert.equal(byKey.new.titles.length, 1, 'New Arrivals must surface the first_seen_at-ordered title');
+  assert.equal(byKey.new.titles[0].title, 'New Book');
+  assert.equal(byKey.under10.titles.length, 1, 'Under $10 must surface the cheap sku\'s title');
+  assert.equal(byKey.under10.titles[0].skus[0].priceCents, 500);
+  assert.equal(byKey.picks.titles.length, 1, 'Staff Picks must surface the is_featured title');
+  assert.equal(byKey.picks.titles[0].title, 'Featured Book');
+}
+{
+  // Same "never surface a sku checkout would reject" guard every other
+  // customer-facing backlist route already applies -- a shelf is just
+  // another catalog listing, not a separate trust boundary.
+  const unorderableNew = { id:'dddddddd-0000-4000-8000-000000000004', title:'Not Orderable', backlist_skus:[{ id:'sku-x', msrp_cents:0, customer_price_cents:0, is_published:true, is_orderable:false, customer_enabled:true }] };
+  const deps = seoDeps({
+    supabaseAdminFetch: async (env, path) => {
+      if (path.includes('order=first_seen_at.desc')) return { data:[unorderableNew] };
+      return { data:[] };
+    },
+  });
+  const res = await handleBacklistRequest(mockGetRequest(), {}, new URL('https://x/public/backlist/shelves?store_id=store-1'), deps);
+  const byKey = Object.fromEntries(res.data.shelves.map(s => [s.key, s]));
+  assert.equal(byKey.new.titles.length, 0, 'a title with no orderable/priced sku must never appear on a shelf');
+}
+
+console.log('Backlist curated-shelves checks passed');
+
+// --- Staff Picks admin toggle ------------------------------------------------
+
+{
+  const patches = [];
+  const deps = mockDeps({ supabaseAdminFetch: async (env, path, options) => { patches.push({ path, body: options?.body ? JSON.parse(options.body) : null }); return { data:[] }; } });
+  const res = await handleBacklistRequest(mockRequest({ storeId:'store-1', id:'11111111-1111-4111-8111-111111111111', isFeatured:true }, 'PATCH'), {}, new URL('https://x/backlist/admin/title'), deps);
+  assert.equal(res.data.ok, true);
+  const patch = patches.find(p => p.path.startsWith('backlist_titles?'));
+  assert.ok(patch, 'must patch the backlist_titles row');
+  assert.equal(patch.body.is_featured, true);
+}
+{
+  // Same staff-role gate every other admin route uses -- a customer session
+  // must never be able to feature/unfeature a title.
+  const deps = mockDeps({ requireStoreUser: async () => ({ error: { status:403 } }) });
+  const res = await handleBacklistRequest(mockRequest({ storeId:'store-1', id:'11111111-1111-4111-8111-111111111111', isFeatured:true }, 'PATCH'), {}, new URL('https://x/backlist/admin/title'), deps);
+  assert.equal(res.status, 403);
+}
+
+console.log('Backlist Staff Picks admin-toggle checks passed');
+
+// --- Dashboard Feature toggle wiring -----------------------------------------
+// Staff need a way to actually set is_featured -- otherwise the whole Staff
+// Picks shelf can never have anything in it.
+assert.match(dashboard, /onchange="toggleBacklistFeatured\(\\'/, 'each title card must have a Feature-on-homepage checkbox');
+assert.match(dashboard, /async function toggleBacklistFeatured\(titleId,checked\)\{/, 'missing the Feature toggle handler');
+assert.match(dashboard, /api\('\/backlist\/admin\/title',\{method:'PATCH'/, 'the Feature toggle must call the new admin/title route, not admin/sku');
+assert.match(dashboard, /window\.toggleBacklistFeatured=toggleBacklistFeatured;/, 'missing the window export the inline onchange handler needs');
+
 // --- Route dispatch + import/unpublish-sweep wiring ------------------------
 
 assert.match(service, /if \(path === '\/public\/backlist\/search' && request\.method === 'GET'\)/);
 assert.match(service, /if \(path === '\/public\/backlist\/facets' && request\.method === 'GET'\)/, 'the browse page\'s publisher/format filter dropdowns need a facets route');
+assert.match(service, /if \(path === '\/public\/backlist\/shelves' && request\.method === 'GET'\)/, 'the /books homepage needs a shelves route to replace the bare alphabetical wall');
 assert.match(service, /if \(format\) filter \+= `&format_name=eq\.\$\{encodeURIComponent\(format\)\}`;/, 'backlistSearch must actually apply the format filter, not just accept the param');
 // A published title can still have an unorderable/priceless sku under it
 // (see the $0-price PRH feed rows normalizeBacklistRow now excludes at
@@ -317,6 +396,7 @@ assert.match(service, /if \(path === '\/backlist\/admin\/import\/finish' && requ
 assert.match(service, /if \(path === '\/backlist\/admin\/import\/status' && request\.method === 'GET'\)/, 'staff need to re-read the last import\'s real status on every page load, not rely on the uploading tab\'s own in-memory state');
 assert.match(service, /if \(path === '\/backlist\/admin\/catalog' && request\.method === 'GET'\)/, 'staff need a way to browse the imported catalog from the dashboard, not just via the customer-facing published-only search');
 assert.match(service, /if \(path === '\/backlist\/admin\/receive' && request\.method === 'POST'\)/);
+assert.match(service, /if \(path === '\/backlist\/admin\/title' && request\.method === 'PATCH'\)/, 'missing the Staff Picks toggle route');
 
 // Unlike /public/backlist/search (is_published=true only, customer-facing),
 // the staff catalog browser must show every title regardless of publish

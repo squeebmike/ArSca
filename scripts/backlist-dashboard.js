@@ -86,7 +86,11 @@ function titleCard(t){
     '</div>';
   }).join('');
   return '<div class="panel" style="margin-bottom:10px;padding:14px">'+
-    '<div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap"><b>'+esc(t.title)+(t.subtitle?' <span style="color:var(--dim);font-weight:400">-- '+esc(t.subtitle)+'</span>':'')+'</b>'+(t.is_published?'':'<span class="foc-badge" style="color:var(--red)">UNPUBLISHED</span>')+'</div>'+
+    '<div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap"><b>'+esc(t.title)+(t.subtitle?' <span style="color:var(--dim);font-weight:400">-- '+esc(t.subtitle)+'</span>':'')+'</b>'+
+    '<div style="display:flex;gap:8px;align-items:center">'+
+      '<label style="font:9px var(--font-mono);color:var(--dim);display:flex;gap:4px;align-items:center"><input type="checkbox" '+(t.is_featured?'checked':'')+' onchange="toggleBacklistFeatured(\''+esc(t.id)+'\',this.checked)"> ★ FEATURE ON HOMEPAGE</label>'+
+      (t.is_published?'':'<span class="foc-badge" style="color:var(--red)">UNPUBLISHED</span>')+
+    '</div></div>'+
     '<div style="font:10px/1.6 var(--font-mono);color:var(--dim);margin-top:2px">'+esc([t.writer,t.publisher,t.series_name].filter(Boolean).join(' · '))+'</div>'+
     skuRows+
     '</div>';
@@ -184,6 +188,14 @@ async function toggleBacklistSkuPublish(skuId,checked){
   }catch(e){toast_dash(e.message);render();}
 }
 
+async function toggleBacklistFeatured(titleId,checked){
+  try{
+    await api('/backlist/admin/title',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({storeId:getActiveStoreId(),id:titleId,isFeatured:checked})});
+    toast_dash(checked?'Added to Staff Picks':'Removed from Staff Picks');
+    await loadCatalog();render();
+  }catch(e){toast_dash(e.message);render();}
+}
+
 async function updateBacklistSkuPrice(skuId,value){
   var cents=Math.round(Number(value||0)*100);
   if(!(cents>=0)){toast_dash('Enter a valid price');render();return;}
@@ -201,6 +213,7 @@ window.openBacklistReceive=openBacklistReceive;
 window.confirmBacklistReceive=confirmBacklistReceive;
 window.toggleBacklistSkuPublish=toggleBacklistSkuPublish;
 window.updateBacklistSkuPrice=updateBacklistSkuPrice;
+window.toggleBacklistFeatured=toggleBacklistFeatured;
 window.onBacklistCatalogSearch=function(value){
   state.query=value;
   state.catalogOffset=0;

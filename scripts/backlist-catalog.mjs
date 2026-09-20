@@ -325,6 +325,68 @@ async function backlistFacets(env, deps, url) {
   return deps.json({ ok: true, publishers: [...publishers].sort(), formats: [...formats].sort() });
 }
 
+// GET /public/backlist/shelves -- curated rows for the /books homepage's
+// default (no query/filter typed yet) state: at ~23,000 titles, a bare
+// search box with no starting point isn't real discovery. New Arrivals and
+// Under $10 both read signals PRH's own feed already gives us (first_seen_at
+// and customer_price_cents) -- no schema change needed for either. Staff
+// Picks is the one shelf nothing in the feed can answer on its own, so it
+// reads a real staff choice (is_featured/featured_rank, set from the
+// dashboard's catalog browser via PATCH /backlist/admin/title) instead of
+// guessing at "popular" from data this store doesn't track yet.
+async function backlistShelves(env, deps, url) {
+  const storeId = text(url.searchParams.get('store_id'), 80);
+  const db = (path, options) => deps.supabaseAdminFetch(env, path, options);
+  const TITLE_SELECT = 'id,title,subtitle,series_name,publisher,format_name,cover_image_url,backlist_skus(id,upc,isbn,msrp_cents,customer_price_cents,on_sale_date,is_published,is_orderable,customer_enabled)';
+
+  // Same "never surface a sku checkout would reject" guard backlistSearch
+  // already applies -- a shelf is just another catalog listing, not a
+  // separate trust boundary.
+  function toShelfTitle(row) {
+    const skus = (row.backlist_skus || []).filter(s => s.is_published && s.is_orderable && s.customer_enabled !== false && Number(s.customer_price_cents || s.msrp_cents || 0) > 0);
+    if (!skus.length) return null;
+    const cheapest = skus.reduce((a, b) => (Number(a.customer_price_cents || a.msrp_cents || 0) <= Number(b.customer_price_cents || b.msrp_cents || 0) ? a : b));
+    return {
+      id: row.id, title: row.title, subtitle: row.subtitle, seriesName: row.series_name, publisher: row.publisher,
+      formatName: row.format_name, coverImageUrl: row.cover_image_url,
+      skus: [{ id: cheapest.id, upc: cheapest.upc, isbn: cheapest.isbn, priceCents: Number(cheapest.customer_price_cents || cheapest.msrp_cents || 0), delivery: estimateBacklistDelivery(cheapest.on_sale_date, new Date(), deps.addBusinessDays) }],
+    };
+  }
+
+  const [newRes, cheapRes, picksRes] = await Promise.all([
+    db(`backlist_titles?store_id=eq.${encodeURIComponent(storeId)}&is_published=eq.true&select=${TITLE_SELECT}&order=first_seen_at.desc&limit=40`),
+    // Price lives on the sku, not the title -- one title can carry both a
+    // $6 paperback and a $28 hardcover -- so this shelf has to start from
+    // backlist_skus, not backlist_titles, unlike the other two.
+    db(`backlist_skus?store_id=eq.${encodeURIComponent(storeId)}&is_published=eq.true&is_orderable=eq.true&customer_enabled=eq.true&customer_price_cents=gt.0&customer_price_cents=lt.1000&order=customer_price_cents.asc&limit=60&select=id,upc,isbn,msrp_cents,customer_price_cents,on_sale_date,backlist_titles(id,title,subtitle,series_name,publisher,format_name,cover_image_url,is_published)`),
+    db(`backlist_titles?store_id=eq.${encodeURIComponent(storeId)}&is_published=eq.true&is_featured=eq.true&select=${TITLE_SELECT}&order=featured_rank.asc.nullslast&limit=40`),
+  ]);
+
+  const newArrivals = (newRes.data || []).map(toShelfTitle).filter(Boolean).slice(0, 12);
+
+  const seenTitles = new Set();
+  const underTen = [];
+  for (const sku of cheapRes.data || []) {
+    const t = sku.backlist_titles;
+    if (!t || !t.is_published || seenTitles.has(t.id)) continue;
+    seenTitles.add(t.id);
+    underTen.push({
+      id: t.id, title: t.title, subtitle: t.subtitle, seriesName: t.series_name, publisher: t.publisher,
+      formatName: t.format_name, coverImageUrl: t.cover_image_url,
+      skus: [{ id: sku.id, upc: sku.upc, isbn: sku.isbn, priceCents: Number(sku.customer_price_cents || sku.msrp_cents || 0), delivery: estimateBacklistDelivery(sku.on_sale_date, new Date(), deps.addBusinessDays) }],
+    });
+    if (underTen.length >= 12) break;
+  }
+
+  const staffPicks = (picksRes.data || []).map(toShelfTitle).filter(Boolean).slice(0, 12);
+
+  return deps.json({ ok: true, shelves: [
+    { key: 'new', label: 'New Arrivals', titles: newArrivals },
+    { key: 'under10', label: 'Under $10', titles: underTen },
+    { key: 'picks', label: 'Staff Picks', titles: staffPicks },
+  ] });
+}
+
 async function backlistTitleDetail(env, deps, id) {
   if (!/^[0-9a-f-]{36}$/i.test(id)) return deps.json({ ok: false, error: 'Not found' }, 404);
   const db = (path, options) => deps.supabaseAdminFetch(env, path, options);
@@ -715,11 +777,33 @@ async function adminCatalog(request, env, deps, url) {
   const limit = Math.min(100, Math.max(1, Number.parseInt(url.searchParams.get('limit'), 10) || 50));
   const offset = Math.max(0, Number.parseInt(url.searchParams.get('offset'), 10) || 0);
   const db = (path, options) => deps.supabaseAdminFetch(env, path, options);
-  let filter = `backlist_titles?store_id=eq.${encodeURIComponent(storeId)}&select=id,title,subtitle,series_name,publisher,writer,format_name,cover_image_url,is_published,backlist_skus(id,upc,isbn,format_name,msrp_cents,customer_price_cents,customer_enabled,is_published,is_orderable,sales_status,on_sale_date)&order=title.asc&limit=${limit}&offset=${offset}`;
+  let filter = `backlist_titles?store_id=eq.${encodeURIComponent(storeId)}&select=id,title,subtitle,series_name,publisher,writer,format_name,cover_image_url,is_published,is_featured,featured_rank,backlist_skus(id,upc,isbn,format_name,msrp_cents,customer_price_cents,customer_enabled,is_published,is_orderable,sales_status,on_sale_date)&order=title.asc&limit=${limit}&offset=${offset}`;
   if (q) filter += `&or=(title.ilike.*${encodeURIComponent(q)}*,writer.ilike.*${encodeURIComponent(q)}*,series_name.ilike.*${encodeURIComponent(q)}*,publisher.ilike.*${encodeURIComponent(q)}*)`;
   const { data: titles, response } = await db(filter, { headers: { Prefer: 'count=exact' } });
   const total = Number(String(response.headers.get('content-range') || '').split('/')[1] || (titles || []).length);
   return deps.json({ ok: true, titles: titles || [], total, offset, limit });
+}
+
+// Staff-set "Staff Picks" homepage shelf -- unlike New Arrivals/Under $10
+// (both real signals already on file: first_seen_at, customer_price_cents),
+// nothing in PRH's feed tells us which books a store actually wants to push,
+// so this is the one shelf that needs a deliberate staff choice rather than
+// a query over existing data.
+async function adminTitle(request, env, deps) {
+  const limited = await deps.readJsonWithLimit(request, 4 * 1024);
+  if (limited.error) return limited.error;
+  const body = limited.data || {};
+  const storeId = text(body.storeId, 80);
+  const auth = await deps.requireStoreUser(request, env, storeId, ['owner', 'admin', 'manager', 'employee']);
+  if (auth.error) return auth.error;
+  const id = text(body.id, 80);
+  if (!/^[0-9a-f-]{36}$/i.test(id)) return deps.json({ ok: false, error: 'Invalid title id' }, 400);
+  const patch = {};
+  if (body.isFeatured !== undefined) patch.is_featured = !!body.isFeatured;
+  if (body.featuredRank !== undefined) patch.featured_rank = body.featuredRank === null ? null : Math.max(0, Number(body.featuredRank) || 0);
+  if (!Object.keys(patch).length) return deps.json({ ok: false, error: 'No changes supplied' }, 400);
+  await deps.supabaseAdminFetch(env, `backlist_titles?id=eq.${encodeURIComponent(id)}&store_id=eq.${encodeURIComponent(storeId)}`, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify(patch) });
+  return deps.json({ ok: true, id });
 }
 
 export async function handleBacklistRequest(request, env, url, deps) {
@@ -731,6 +815,7 @@ export async function handleBacklistRequest(request, env, url, deps) {
   if (path === '/sitemap-books.xml' && request.method === 'GET') return backlistSitemap(env, deps);
   if (path === '/public/backlist/search' && request.method === 'GET') return backlistSearch(request, env, deps, url);
   if (path === '/public/backlist/facets' && request.method === 'GET') return backlistFacets(env, deps, url);
+  if (path === '/public/backlist/shelves' && request.method === 'GET') return backlistShelves(env, deps, url);
   if (path.startsWith('/public/backlist/title/') && request.method === 'GET') return backlistTitleDetail(env, deps, decodeURIComponent(path.slice('/public/backlist/title/'.length).split('/')[0] || ''));
   if (path === '/public/backlist/checkout' && request.method === 'POST') return backlistCheckout(request, env, deps);
   if (path === '/backlist/admin/import/start' && request.method === 'POST') return importStart(request, env, deps);
@@ -739,6 +824,7 @@ export async function handleBacklistRequest(request, env, url, deps) {
   if (path === '/backlist/admin/import/status' && request.method === 'GET') return adminImportStatus(request, env, deps, url);
   if (path === '/backlist/admin/catalog' && request.method === 'GET') return adminCatalog(request, env, deps, url);
   if (path === '/backlist/admin/sku' && request.method === 'PATCH') return adminSku(request, env, deps);
+  if (path === '/backlist/admin/title' && request.method === 'PATCH') return adminTitle(request, env, deps);
   if (path === '/backlist/admin/orders' && request.method === 'GET') return adminOrders(request, env, deps, url);
   if (path === '/backlist/admin/receive' && request.method === 'POST') return adminReceive(request, env, deps);
   return deps.json({ ok: false, error: 'Backlist route not found' }, 404);
