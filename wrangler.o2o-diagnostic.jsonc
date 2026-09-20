@@ -1,0 +1,12 @@
+{
+  "name": "mp-o2o-diagnostic",
+  "main": "diagnostic-o2o-test-worker.js",
+  "compatibility_date": "2026-08-20",
+  "workers_dev": true,
+  "routes": [
+    {
+      "pattern": "*/*",
+      "zone_name": "themanapocket.com"
+    }
+  ]
+}

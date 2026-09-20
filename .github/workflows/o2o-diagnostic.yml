@@ -1,0 +1,65 @@
+name: O2O routing diagnostic (temporary, self-cleaning)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  diagnose:
+    name: Deploy disposable */* worker, test, then tear it down
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Deploy disposable diagnostic worker with a */* route
+        run: npx wrangler deploy --config wrangler.o2o-diagnostic.jsonc
+
+      - name: Probe the unique test path and a normal page (confirms passthrough keeps the real site working)
+        run: |
+          node <<'NODE'
+          async function probe(url) {
+            const res = await fetch(url, { redirect: 'manual' });
+            const text = await res.text();
+            console.log(JSON.stringify({ url, status: res.status, header: res.headers.get('x-mana-worker-test'), snippet: text.slice(0, 150) }));
+          }
+          (async () => {
+            await probe('https://themanapocket.com/mp-o2o-diagnostic-test-92841');
+            await probe('https://themanapocket.com/bcw');
+          })();
+          NODE
+
+      - name: Remove the */* route immediately (runs even if the probe step fails)
+        if: always()
+        run: |
+          node <<'NODE'
+          async function api(method, path, body) {
+            const res = await fetch('https://api.cloudflare.com/client/v4/' + path, {
+              method,
+              headers: { Authorization: 'Bearer ' + process.env.CLOUDFLARE_API_TOKEN, 'Content-Type': 'application/json' },
+              body: body ? JSON.stringify(body) : undefined,
+            });
+            const json = await res.json();
+            console.log(JSON.stringify({ method, path, status: res.status, success: json.success, errors: json.errors }));
+            return json;
+          }
+          (async () => {
+            const zones = await api('GET', 'zones?name=themanapocket.com');
+            const zoneId = zones.result?.[0]?.id;
+            if (!zoneId) { console.log('No zone found -- nothing to clean up on the route side.'); return; }
+            const routes = await api('GET', `zones/${zoneId}/workers/routes`);
+            const mine = (routes.result || []).filter(r => r.script === 'mp-o2o-diagnostic');
+            for (const route of mine) {
+              await api('DELETE', `zones/${zoneId}/workers/routes/${route.id}`);
+            }
+          })();
+          NODE
+
+      - name: Delete the disposable worker itself (runs even if earlier steps fail)
+        if: always()
+        run: npx wrangler delete --config wrangler.o2o-diagnostic.jsonc --force || true
