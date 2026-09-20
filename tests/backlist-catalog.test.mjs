@@ -370,6 +370,68 @@ console.log('Backlist curated-shelves checks passed');
 
 console.log('Backlist Staff Picks admin-toggle checks passed');
 
+// --- Customer wishlist ("Save for later") -----------------------------------
+// Deliberately independent of the cart -- mirrors foc-preorders.mjs's
+// savedPicks/mutateSavedPicks contract, but flat (no cycle grouping) since
+// backlist has no FOC deadline to group saved books by.
+
+{
+  const auth = { user:{ id:'user-1' } };
+  const deps = mockDeps({
+    requireAuthenticatedUser: async () => auth,
+    supabaseAdminFetch: async (env, path) => path.startsWith('backlist_picks?') ? { data:[{ id:'pick-1', sku_id:'sku-1', quantity:1, sku:{ id:'sku-1', customer_price_cents:1000, backlist_titles:{ title:'Froggy' } } }] } : { data:[] },
+  });
+  const res = await handleBacklistRequest(mockGetRequest(), {}, new URL('https://x/public/backlist/picks?store_id=store-1'), deps);
+  assert.equal(res.data.ok, true);
+  assert.equal(res.data.picks.length, 1);
+  assert.equal(res.data.picks[0].sku.backlist_titles.title, 'Froggy');
+}
+{
+  // Signed-out customers must be prompted to sign in, not silently see an
+  // empty wishlist -- same auth gate every other customer-scoped route uses.
+  const deps = mockDeps({ requireAuthenticatedUser: async () => ({ error: { status:401 } }) });
+  const res = await handleBacklistRequest(mockGetRequest(), {}, new URL('https://x/public/backlist/picks?store_id=store-1'), deps);
+  assert.equal(res.status, 401);
+}
+{
+  const inserts = [];
+  const deps = mockDeps({
+    requireAuthenticatedUser: async () => ({ user:{ id:'user-1' } }),
+    supabaseAdminFetch: async (env, path, options) => {
+      if (path.startsWith('backlist_skus?')) return { data:[{ id:'11111111-1111-4111-8111-111111111111', title_id:'title-1' }] };
+      if (options?.method === 'POST') { inserts.push({ path, body: JSON.parse(options.body) }); return { data:[] }; }
+      return { data:[] };
+    },
+  });
+  const res = await handleBacklistRequest(mockRequest({ storeId:'store-1', skuId:'11111111-1111-4111-8111-111111111111', quantity:1 }, 'PATCH'), {}, new URL('https://x/public/backlist/picks'), deps);
+  assert.equal(res.data.ok, true);
+  const insert = inserts.find(i => i.path.startsWith('backlist_picks'));
+  assert.ok(insert, 'must upsert a backlist_picks row');
+  assert.equal(insert.body.sku_id, '11111111-1111-4111-8111-111111111111');
+  assert.equal(insert.body.title_id, 'title-1', 'must carry the sku\'s real title_id, not leave it blank');
+  assert.match(insert.path, /on_conflict=user_id,sku_id/, 'must upsert on (user_id, sku_id) so saving twice never creates a duplicate row');
+}
+{
+  // Saving a sku that no longer exists/is unpublished must fail clearly,
+  // not silently create an orphaned pick.
+  const deps = mockDeps({ requireAuthenticatedUser: async () => ({ user:{ id:'user-1' } }), supabaseAdminFetch: async (env, path) => path.startsWith('backlist_skus?') ? { data:[] } : { data:[] } });
+  const res = await handleBacklistRequest(mockRequest({ storeId:'store-1', skuId:'22222222-2222-4222-8222-222222222222' }, 'PATCH'), {}, new URL('https://x/public/backlist/picks'), deps);
+  assert.equal(res.data.ok, false);
+  assert.equal(res.status, 404);
+}
+{
+  const deletes = [];
+  const deps = mockDeps({
+    requireAuthenticatedUser: async () => ({ user:{ id:'user-1' } }),
+    supabaseAdminFetch: async (env, path, options) => { if (options?.method === 'DELETE') deletes.push(path); return { data:[] }; },
+  });
+  const res = await handleBacklistRequest(mockRequest({ storeId:'store-1', skuIds:['11111111-1111-4111-8111-111111111111'] }, 'DELETE'), {}, new URL('https://x/public/backlist/picks'), deps);
+  assert.equal(res.data.ok, true);
+  assert.ok(deletes.some(p => p.startsWith('backlist_picks?') && p.includes('user_id=eq.user-1')), 'must only ever delete the authenticated user\'s own picks');
+}
+
+console.log('Backlist customer wishlist checks passed');
+
 // --- Dashboard Feature toggle wiring -----------------------------------------
 // Staff need a way to actually set is_featured -- otherwise the whole Staff
 // Picks shelf can never have anything in it.
@@ -383,6 +445,8 @@ assert.match(dashboard, /window\.toggleBacklistFeatured=toggleBacklistFeatured;/
 assert.match(service, /if \(path === '\/public\/backlist\/search' && request\.method === 'GET'\)/);
 assert.match(service, /if \(path === '\/public\/backlist\/facets' && request\.method === 'GET'\)/, 'the browse page\'s publisher/format filter dropdowns need a facets route');
 assert.match(service, /if \(path === '\/public\/backlist\/shelves' && request\.method === 'GET'\)/, 'the /books homepage needs a shelves route to replace the bare alphabetical wall');
+assert.match(service, /if \(path === '\/public\/backlist\/picks' && request\.method === 'GET'\)/, 'missing the wishlist read route');
+assert.match(service, /if \(path === '\/public\/backlist\/picks' && \(request\.method === 'PATCH' \|\| request\.method === 'DELETE'\)\)/, 'missing the wishlist save/remove route');
 assert.match(service, /if \(format\) filter \+= `&format_name=eq\.\$\{encodeURIComponent\(format\)\}`;/, 'backlistSearch must actually apply the format filter, not just accept the param');
 // A published title can still have an unorderable/priceless sku under it
 // (see the $0-price PRH feed rows normalizeBacklistRow now excludes at

@@ -387,6 +387,53 @@ async function backlistShelves(env, deps, url) {
   ] });
 }
 
+// --- Customer wishlist ("Save for later") -----------------------------------
+// Mirrors foc-preorders.mjs's savedPicks/mutateSavedPicks in shape (same
+// GET/PATCH/DELETE contract), but flat -- backlist has no FOC cycle to group
+// saved items by the way comics' foc_pick_lists does, since every book is
+// always orderable. Deliberately independent of the cart: saving a book
+// here never touches mp-backlist-cart-v1, and adding a book to the cart
+// never touches this table -- "save for later" and "buy now" are separate
+// customer decisions here, unlike comics' savePick()/addPreorderLine() pair.
+async function loadBacklistPicks(db, storeId, userId) {
+  const { data } = await db(`backlist_picks?store_id=eq.${encodeURIComponent(storeId)}&user_id=eq.${encodeURIComponent(userId)}&select=id,sku_id,quantity,created_at,sku:backlist_skus(id,upc,isbn,format_name,msrp_cents,customer_price_cents,is_published,is_orderable,customer_enabled,on_sale_date,backlist_titles(id,title,cover_image_url))&order=created_at.desc`);
+  return data || [];
+}
+
+async function backlistPicks(request, env, deps, url) {
+  const auth = await deps.requireAuthenticatedUser(request, env);
+  if (auth.error) return auth.error;
+  const storeId = text(url.searchParams.get('store_id'), 80);
+  if (!storeId) return deps.json({ ok: false, error: 'store_id is required' }, 400);
+  const db = (path, options) => deps.supabaseAdminFetch(env, path, options);
+  return deps.json({ ok: true, picks: await loadBacklistPicks(db, storeId, auth.user.id) });
+}
+
+async function mutateBacklistPicks(request, env, deps) {
+  const auth = await deps.requireAuthenticatedUser(request, env);
+  if (auth.error) return auth.error;
+  const limited = await deps.readJsonWithLimit(request, 4 * 1024);
+  if (limited.error) return limited.error;
+  const body = limited.data || {};
+  const storeId = text(body.storeId, 80);
+  if (!storeId) return deps.json({ ok: false, error: 'storeId is required' }, 400);
+  const db = (path, options) => deps.supabaseAdminFetch(env, path, options);
+  if (request.method === 'DELETE') {
+    const skuIds = [...new Set((Array.isArray(body.skuIds) ? body.skuIds : [body.skuId]).map(id => text(id, 80)).filter(Boolean))].slice(0, 200);
+    if (!skuIds.length || skuIds.some(id => !/^[0-9a-f-]{36}$/i.test(id))) return deps.json({ ok: false, error: 'At least one valid sku id is required' }, 400);
+    await db(`backlist_picks?store_id=eq.${encodeURIComponent(storeId)}&user_id=eq.${encodeURIComponent(auth.user.id)}&sku_id=${inFilter(skuIds)}`, { method: 'DELETE', headers: { Prefer: 'return=minimal' } });
+    return deps.json({ ok: true, picks: await loadBacklistPicks(db, storeId, auth.user.id), message: skuIds.length === 1 ? 'Book removed from your saved list.' : 'Books removed from your saved list.' });
+  }
+  const skuId = text(body.skuId, 80);
+  if (!/^[0-9a-f-]{36}$/i.test(skuId)) return deps.json({ ok: false, error: 'A valid sku id is required' }, 400);
+  const quantity = Math.max(1, Math.min(50, Number(body.quantity || 1)));
+  const { data: skuRows } = await db(`backlist_skus?id=eq.${encodeURIComponent(skuId)}&store_id=eq.${encodeURIComponent(storeId)}&is_published=eq.true&select=id,title_id&limit=1`);
+  const sku = skuRows?.[0];
+  if (!sku) return deps.json({ ok: false, error: 'That book is no longer available' }, 404);
+  await db('backlist_picks?on_conflict=user_id,sku_id', { method: 'POST', headers: { Prefer: 'resolution=merge-duplicates,return=minimal' }, body: JSON.stringify({ store_id: storeId, user_id: auth.user.id, title_id: sku.title_id, sku_id: skuId, quantity }) });
+  return deps.json({ ok: true, picks: await loadBacklistPicks(db, storeId, auth.user.id), message: 'Book saved for later.' });
+}
+
 async function backlistTitleDetail(env, deps, id) {
   if (!/^[0-9a-f-]{36}$/i.test(id)) return deps.json({ ok: false, error: 'Not found' }, 404);
   const db = (path, options) => deps.supabaseAdminFetch(env, path, options);
@@ -816,6 +863,8 @@ export async function handleBacklistRequest(request, env, url, deps) {
   if (path === '/public/backlist/search' && request.method === 'GET') return backlistSearch(request, env, deps, url);
   if (path === '/public/backlist/facets' && request.method === 'GET') return backlistFacets(env, deps, url);
   if (path === '/public/backlist/shelves' && request.method === 'GET') return backlistShelves(env, deps, url);
+  if (path === '/public/backlist/picks' && request.method === 'GET') return backlistPicks(request, env, deps, url);
+  if (path === '/public/backlist/picks' && (request.method === 'PATCH' || request.method === 'DELETE')) return mutateBacklistPicks(request, env, deps);
   if (path.startsWith('/public/backlist/title/') && request.method === 'GET') return backlistTitleDetail(env, deps, decodeURIComponent(path.slice('/public/backlist/title/'.length).split('/')[0] || ''));
   if (path === '/public/backlist/checkout' && request.method === 'POST') return backlistCheckout(request, env, deps);
   if (path === '/backlist/admin/import/start' && request.method === 'POST') return importStart(request, env, deps);
