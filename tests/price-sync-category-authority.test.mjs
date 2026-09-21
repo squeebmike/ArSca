@@ -78,3 +78,28 @@ console.log('Pokemon price-sync category-authority functional checks passed');
 }
 
 console.log('Sports price-sync pinned-id-before-category-gate structural check passed');
+
+// Store report (follow-up): "the sync is dumb still, its in there!" -- a
+// card with a verified, pinned PriceCharting/SportsCardsPro link still got
+// the exact same generic "Could not find a confident price match ... via
+// CardSight/PriceCharting/JustTCG" wording as a card with no link at all,
+// reading as if the pin was never even checked. What actually happens for
+// a newer/low-profile card: PriceCharting resolves the pinned product
+// fine, it just has no ungraded guide value on file yet. The pinned-id
+// branch must surface that distinction (pinnedNoPrice) instead of falling
+// through to a message that implies nothing was matched at all.
+{
+  const fnStart = dashboard.indexOf('async function fetchOtherTcgOrSportsLivePrice(item){');
+  const fnEnd = dashboard.indexOf('\nasync function runOtherLivePriceSync', fnStart);
+  const fn = dashboard.slice(fnStart, fnEnd);
+  assert.match(fn, /return \{ market:0, pinnedNoPrice:true, source:'PriceCharting \(pinned #' \+ pcId \+ '\)', productName:data\.product\.productName \|\| '', productUrl:data\.product\.url \|\| '' \};/,
+    'a pinned id that resolves to a real product with no ungraded price must be flagged pinnedNoPrice, not silently treated the same as no match at all');
+
+  const buildStart = dashboard.indexOf('async function buildOtherTcgSportsPriceSyncProposal(options = {}){');
+  const buildEnd = dashboard.indexOf('\nasync function runOtherLivePriceSync', buildStart);
+  const buildFn = dashboard.slice(buildStart, buildEnd);
+  assert.match(buildFn, /live\?\.pinnedNoPrice/, 'the sync proposal builder must check for the pinnedNoPrice case');
+  assert.match(buildFn, /title:'Pinned match found — no guide value yet'/, 'a pinned-but-priceless card must get an honest, distinct title instead of the generic "No live match found"');
+}
+
+console.log('Sports price-sync pinned-but-priceless distinction checks passed');

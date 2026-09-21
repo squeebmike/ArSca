@@ -760,7 +760,7 @@ async function importPrh(request, env, deps, storeId) {
   const familyIds = new Map((familyRows || []).map(row => [row.distributor_family_id, row.id]));
   if (familyIds.size !== familyMap.size) return deps.json({ ok:false, error:'Some title families could not be grouped during import' }, 502);
 
-  const { data:existingSkus } = await db(`comic_skus?cycle_id=eq.${encodeURIComponent(cycle.id)}&select=id,distributor_sku,row_sha256,msrp_cents,customer_price_cents`);
+  const { data:existingSkus } = await db(`comic_skus?cycle_id=eq.${encodeURIComponent(cycle.id)}&select=id,distributor_sku,row_sha256,msrp_cents,customer_price_cents,cover_image_url`);
   const existingBySku = new Map((existingSkus || []).map(row => [row.distributor_sku, row]));
   let newSkus = 0, updatedSkus = 0, unchanged = 0;
   const skuRows = [];
@@ -777,13 +777,21 @@ async function importPrh(request, env, deps, storeId) {
     // PRH imports instead of being reset to MSRP.
     const hadCustomPrice = before && Number(before.customer_price_cents || 0) !== Number(before.msrp_cents || 0);
     const customerPriceCents = hadCustomPrice ? Number(before.customer_price_cents || 0) : ((p.isIncentive || p.flags.foil) ? 0 : p.msrpCents);
+    // Store report: a re-import (a corrected file, or PRH's own feed
+    // temporarily missing CoverLink for a row) wiped out a cover image the
+    // store had already confirmed was showing -- this always overwrote
+    // cover_image_url with whatever the new row had, including blank, with
+    // no preservation of a value that was already there. A later import
+    // with a real image still wins; only a genuinely blank new value falls
+    // back to whatever was already saved instead of clobbering it.
+    const coverImageUrl = p.coverImageUrl || before?.cover_image_url || null;
     skuRows.push({
       store_id:storeId, cycle_id:cycle.id, family_id:familyIds.get(p.distributorFamilyId), distributor:PRH,
       distributor_sku:p.distributorSku, upc:p.upc, isbn:p.isbn || null, title:p.sourceTitle || p.title,
       subtitle:p.subtitle || null, variant_label:p.variantLabel || null, variant_type:p.variantType || null,
       order_requirement:p.orderRequirement || null, order_requirement_upc:p.orderRequirementUpc || null,
       ratio_threshold:p.ratioThreshold, is_incentive:p.isIncentive, cover_artist:p.coverArtist || null,
-      cover_image_url:p.coverImageUrl || null, cover_available:p.coverAvailable, writer:p.writer || null,
+      cover_image_url:coverImageUrl, cover_available:p.coverAvailable, writer:p.writer || null,
       interior_artist:p.interiorArtist || null, publisher:p.publisher || null, imprint:p.imprint || null,
       description:p.description || null, foc_date:p.focDate, on_sale_date:p.onSaleDate,
       msrp_cents:p.msrpCents, customer_price_cents:customerPriceCents, raw_distributor_data:entry.row,
@@ -848,7 +856,7 @@ async function importLunar(request, env, deps, storeId) {
   const familyIds = new Map((familyRows || []).map(row => [row.distributor_family_id, row.id]));
   if (familyIds.size !== familyMap.size) return deps.json({ ok:false, error:'Some title families could not be grouped during import' }, 502);
 
-  const { data:existingSkus } = await db(`comic_skus?cycle_id=eq.${encodeURIComponent(cycle.id)}&select=id,distributor_sku,row_sha256,msrp_cents,customer_price_cents`);
+  const { data:existingSkus } = await db(`comic_skus?cycle_id=eq.${encodeURIComponent(cycle.id)}&select=id,distributor_sku,row_sha256,msrp_cents,customer_price_cents,cover_image_url`);
   const existingBySku = new Map((existingSkus || []).map(row => [row.distributor_sku, row]));
   let newSkus = 0, updatedSkus = 0, unchanged = 0;
   const skuRows = [];
@@ -864,13 +872,22 @@ async function importLunar(request, env, deps, storeId) {
     // imported, before the store has actually secured/priced it.
     const hadCustomPrice = before && Number(before.customer_price_cents || 0) !== Number(before.msrp_cents || 0);
     const customerPriceCents = hadCustomPrice ? Number(before.customer_price_cents || 0) : (p.isIncentive ? 0 : p.msrpCents);
+    // Store report: "I imported the Lunar FOC and it didn't show images" --
+    // Lunar's own feed carries no cover-image column at all (normalizeLunarRow
+    // always sets coverImageUrl:''), so a re-import (an updated file for the
+    // same cycle, or the store re-running the same file) always overwrote
+    // cover_image_url back to null, silently erasing a cover the store had
+    // already pasted in by hand via the per-cover COVER IMAGE URL field.
+    // Same preservation rule as importPrh above: a blank new value falls
+    // back to whatever was already saved instead of clobbering it.
+    const coverImageUrl = p.coverImageUrl || before?.cover_image_url || null;
     skuRows.push({
       store_id:storeId, cycle_id:cycle.id, family_id:familyIds.get(p.distributorFamilyId), distributor:LUNAR,
       distributor_sku:p.distributorSku, upc:p.upc, isbn:p.isbn || null, title:p.sourceTitle || p.title,
       subtitle:p.subtitle || null, variant_label:p.variantLabel || null, variant_type:p.variantType || null,
       order_requirement:p.orderRequirement || null, order_requirement_upc:p.orderRequirementUpc || null,
       ratio_threshold:p.ratioThreshold, is_incentive:p.isIncentive, cover_artist:p.coverArtist || null,
-      cover_image_url:p.coverImageUrl || null, cover_available:p.coverAvailable, writer:p.writer || null,
+      cover_image_url:coverImageUrl, cover_available:p.coverAvailable, writer:p.writer || null,
       interior_artist:p.interiorArtist || null, publisher:p.publisher || null, imprint:p.imprint || null,
       description:p.description || null, foc_date:p.focDate, on_sale_date:p.onSaleDate,
       msrp_cents:p.msrpCents, customer_price_cents:customerPriceCents, raw_distributor_data:entry.row,
