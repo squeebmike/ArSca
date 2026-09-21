@@ -39,9 +39,22 @@ const openGroupBody = focDash.slice(openGroupStart, openGroupEnd);
 assert.match(openGroupBody, /var templates=vp\.ebayDescriptionTemplates\|\|\{\};/, 'the group review modal must read the store\'s saved eBay description templates, same as the single-cover modal');
 assert.match(openGroupBody, /var customTemplate=templates\.Comic\|\|templates\.default\|\|'';/, 'must prefer the store\'s Comic template, falling back to a generic default template');
 assert.match(openGroupBody, /renderEbayDescriptionTemplate\(customTemplate,tokens\)/, 'must actually render the custom template through the shared token-renderer, not just read it');
-assert.match(openGroupBody, /description=disclosure\+\(isHtmlTemplate\?'':'\\n\\n'\)\+renderedBody;/, 'a successfully rendered custom template must replace the plain-text server default, with the mandatory presale disclosure still prepended');
+// Same fix as the single-cover modal: a store's own branded template that
+// already discloses presale status (its own banner, or the {shippingLine}
+// token) must not get a second, differently-styled disclosure stacked on
+// top of it -- the fallback only fires when the rendered body doesn't
+// already say "presale" anywhere.
+assert.match(openGroupBody, /var templateAlreadyDisclosesPresale=\/presale\/i\.test\(renderedBody\);/, 'must check the rendered body for an existing presale disclosure before falling back to the plain one');
+assert.match(openGroupBody, /description=disclosure\+\(disclosure&&!isHtmlTemplate\?'\\n\\n':''\)\+renderedBody;/, 'a successfully rendered custom template must replace the plain-text server default, with any fallback disclosure only prepended when the template did not already disclose presale status');
 assert.match(openGroupBody, /usedCustomTemplate=true;/, 'must track whether a custom template was actually used, so the modal can tell the store which source is in the textarea');
 assert.match(openGroupBody, /esc\(description\)/, 'the description textarea must be filled from the (possibly template-rendered) description variable, not the raw un-rendered server default');
 assert.match(openGroupBody, /\(usedCustomTemplate\?'Using your saved Comic template \(':'Using the built-in default \('\)/, 'the modal must tell the store which description source is currently shown, matching the single-cover modal\'s own label');
+
+// Real per-cover data (not fabricated) for a template's own cover-chooser
+// section -- every eligible cover a buyer will actually see in this
+// listing's real eBay dropdown, built from the same preview.covers list
+// the checkbox rows below render from.
+assert.match(openGroupBody, /var eligibleCoverList=\(preview\.covers\|\|\[\]\)\.filter\(function\(c\)\{return c\.eligible;\}\);/, 'must build the cover-choice token from the real eligible covers in this listing, not a fabricated list');
+assert.match(openGroupBody, /coverChoices:coverChoices,/, 'the tokens map must expose the real cover-choice list to the template as {coverChoices}');
 
 console.log('FOC eBay group-listing custom description template checks passed');

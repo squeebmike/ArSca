@@ -1704,6 +1704,110 @@ async function adminEndFocEbayListings(request,env,deps){
   return deps.json({ok:true,endedCount,failedCount:errors.length,errors});
 }
 
+// Store report: an eBay presale listing for a cover that never got
+// ordered stayed live indefinitely ("we didn't order any Shredder #13 --
+// why is it still presale?"). Both the PRH cart import's auto-sweep
+// (syncFocEbayListingsToOrder) and the manual END REMAINING EBAY LISTINGS
+// button (adminEndFocEbayListings above) are deliberately scoped to
+// whichever cycle is currently OPEN in the dashboard -- neither one has
+// ever looked at a listing tied to an older, already-closed cycle, even
+// one that predates this whole reconciliation feature. This scans every
+// live FOC presale listing across EVERY cycle (not just the open one) and
+// cross-checks each against that cycle's own locked PRH order
+// (foc_prh_submissions.line_items, the same finalQty snapshot
+// syncFocEbayListingsToOrder already trusts) to surface the ones nothing
+// was actually ordered for, in one place, instead of requiring someone to
+// reopen every old cycle by hand to find them.
+async function adminScanOrphanedEbayListings(request,env,deps,url){
+  const db=(path,options)=>deps.supabaseAdminFetch(env,path,options);
+  const storeId=text(url.searchParams.get('store_id'),80);
+  const auth=await deps.requireStoreUser(request,env,storeId,['owner','admin','manager','employee']);if(auth.error)return auth.error;
+  const {data:cycles}=await db(`foc_cycles?store_id=eq.${encodeURIComponent(storeId)}&select=id,foc_date,status,customer_cutoff_at&order=foc_date.desc&limit=500`);
+  const cycleById=new Map((cycles||[]).map(c=>[c.id,c]));
+  const {data:presaleRows}=await db(`inventory_items?store_id=eq.${encodeURIComponent(storeId)}&status=eq.presale&select=id,data`);
+  const live=(presaleRows||[]).filter(row=>{
+    const d=row.data||{};
+    const hasLiveEbayListing=d.ebayOfferId||(d.ebayApiSystem==='trading'&&d.ebayListingId&&d.ebaySku);
+    return (d.source==='foc_presale'||d.source==='foc_presale_bundle')&&d.focCycleId&&hasLiveEbayListing&&Number(d.qty??d.quantity??0)>0;
+  });
+  // Only cycles that are NOT the currently-open one -- a live listing in
+  // the open cycle is already fully covered by the existing per-cycle
+  // tools above, so it's not an orphan, just business as usual.
+  const closedCycleIds=[...new Set(live.map(row=>row.data.focCycleId))].filter(id=>{const c=cycleById.get(id);return !c||!cycleOpen(c);});
+  if(!closedCycleIds.length)return deps.json({ok:true,cycles:[],orphanedCount:0});
+  const {data:submissions}=await db(`foc_prh_submissions?store_id=eq.${encodeURIComponent(storeId)}&cycle_id=in.(${closedCycleIds.map(id=>encodeURIComponent(id)).join(',')})&select=cycle_id,line_items,submitted_at`);
+  const submissionByCycle=new Map((submissions||[]).map(s=>[s.cycle_id,s]));
+  const groups=new Map();
+  for(const row of live){
+    const d=row.data;const cycleId=d.focCycleId;
+    if(!closedCycleIds.includes(cycleId))continue;
+    const sub=submissionByCycle.get(cycleId);
+    const isBundle=d.source==='foc_presale_bundle';
+    // 'unknown' (no submission on file for this cycle at all -- it closed
+    // without ever running SUBMIT PRH ORDER) can't be definitively called
+    // ordered or not from data alone, so it's surfaced but never
+    // auto-selected for the bulk end action below; 'ordered'/'orphaned'
+    // are both decided directly from the locked order snapshot, the same
+    // ground truth syncFocEbayListingsToOrder already trusts.
+    let reason='unknown',orderedFinalQty=null;
+    if(sub){
+      const lineItems=sub.line_items||[];
+      if(isBundle){
+        const bundleSkuIds=Array.isArray(d.focBundleSkuIds)?d.focBundleSkuIds:[];
+        reason=lineItems.some(li=>bundleSkuIds.includes(li.skuId)&&Number(li.finalQty||0)>0)?'ordered':'orphaned';
+      }else{
+        const li=lineItems.find(x=>x.skuId===d.focSkuId);
+        orderedFinalQty=li?Number(li.finalQty||0):0;
+        reason=orderedFinalQty>0?'ordered':'orphaned';
+      }
+    }
+    if(!groups.has(cycleId))groups.set(cycleId,[]);
+    groups.get(cycleId).push({rowId:row.id,title:d.title||'',isBundle,focSkuId:d.focSkuId||null,qty:Number(d.qty??d.quantity??0),reason,orderedFinalQty});
+  }
+  const result=[...groups.entries()].map(([cycleId,listings])=>{
+    const cycle=cycleById.get(cycleId);const sub=submissionByCycle.get(cycleId);
+    return {cycleId,focDate:cycle?.foc_date||null,cycleStatus:cycle?.status||'unknown',hasSubmission:!!sub,submittedAt:sub?.submitted_at||null,listings};
+  }).sort((a,b)=>String(b.focDate||'').localeCompare(String(a.focDate||'')));
+  const orphanedCount=result.reduce((sum,c)=>sum+c.listings.filter(l=>l.reason==='orphaned').length,0);
+  return deps.json({ok:true,cycles:result,orphanedCount});
+}
+
+// One-click end for whatever the dealer selected off the scan above --
+// deliberately keyed by explicit inventory_items row ids (not a cycle +
+// allow-list, like adminEndFocEbayListings) since these rows already span
+// many different cycles and the dealer has already reviewed each one's
+// reason on the scan screen before confirming.
+async function adminEndOrphanedEbayListings(request,env,deps){
+  const db=(path,options)=>deps.supabaseAdminFetch(env,path,options);
+  if(request.method!=='POST')return deps.json({ok:false,error:'POST only'},405);
+  const limited=await deps.readJsonWithLimit(request,32*1024);if(limited.error)return limited.error;const body=limited.data||{};
+  const storeId=text(body.storeId,80);
+  const auth=await deps.requireStoreUser(request,env,storeId,['owner','admin']);if(auth.error)return auth.error;
+  const rowIds=Array.isArray(body.rowIds)?[...new Set(body.rowIds.map(String))].slice(0,500):[];
+  if(!rowIds.length)return deps.json({ok:false,error:'rowIds is required'},400);
+  const {data:allPresaleRows}=await db(`inventory_items?store_id=eq.${encodeURIComponent(storeId)}&status=eq.presale&select=id,data`);
+  const toWithdraw=(allPresaleRows||[]).filter(row=>rowIds.includes(row.id));
+  if(!toWithdraw.length)return deps.json({ok:true,endedCount:0,failedCount:0});
+  if(!deps.getEbayUserAccessToken||!deps.withdrawEbayOffer)return deps.json({ok:false,error:'eBay is not configured for this store'},503);
+  let ebayToken='';
+  try{ebayToken=await deps.getEbayUserAccessToken(env);}catch(e){return deps.json({ok:false,error:'Could not get an eBay access token: '+e.message},502);}
+  if(!ebayToken)return deps.json({ok:false,error:'eBay is not connected for this store'},503);
+  let endedCount=0;const errors=[];
+  const withdrawingIds=new Set(toWithdraw.map(r=>r.id));
+  for(const row of toWithdraw){
+    try{
+      await withdrawFocPresaleRow(env,deps,ebayToken,row,allPresaleRows,withdrawingIds);
+      const alreadySoldBeforeWithdraw=Math.max(0,Number(row.data.focPresaleOriginalQty||0)-Number(row.data.qty??row.data.quantity??0));
+      await db(`inventory_items?id=eq.${row.id}&store_id=eq.${encodeURIComponent(storeId)}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({data:{...row.data,qty:0,quantity:0,focPresaleOriginalQty:alreadySoldBeforeWithdraw,ebayWithdrawnAt:new Date().toISOString(),ebayWithdrawnReason:'orphaned_cycle_cleanup'}})});
+      endedCount++;
+    }catch(e){
+      console.error('FOC orphaned eBay listing cleanup: could not withdraw listing',row.id,e);
+      errors.push({title:row.data.title||row.id,error:e.message});
+    }
+  }
+  return deps.json({ok:true,endedCount,failedCount:errors.length,errors});
+}
+
 async function adminCycle(request,env,deps,url){
   const storeId=text(url.searchParams.get('store_id'),80);const auth=await deps.requireStoreUser(request,env,storeId,['owner','admin','manager','employee']);if(auth.error)return auth.error;
   const db=(path,options)=>deps.supabaseAdminFetch(env,path,options);
@@ -2213,6 +2317,8 @@ export async function handleFocRequest(request, env, url, deps) {
   if(path==='/foc/admin/prh-submission'&&(request.method==='GET'||request.method==='POST'))return adminPrhSubmission(request,env,deps,url);
   if(path==='/foc/admin/end-ebay-listings'&&request.method==='POST')return adminEndFocEbayListings(request,env,deps);
   if(path==='/foc/admin/prh-cart-import'&&request.method==='POST')return adminImportPrhCart(request,env,deps);
+  if(path==='/foc/admin/orphaned-ebay-listings'&&request.method==='GET')return adminScanOrphanedEbayListings(request,env,deps,url);
+  if(path==='/foc/admin/orphaned-ebay-listings/end'&&request.method==='POST')return adminEndOrphanedEbayListings(request,env,deps);
   if(path==='/foc/admin/export'&&request.method==='GET')return exportPrh(env,deps,url,request);
   if(path==='/foc/admin/intelligence'&&request.method==='GET')return focIntelligence(request,env,deps,url);
   if(path==='/foc/admin/orders'&&(request.method==='GET'||request.method==='PATCH'))return adminOrders(request,env,deps,url);

@@ -92,7 +92,7 @@ function renderCycles(){
   var host=panel();if(!host)return;
   var isLunar=state.distributor==='Lunar';
   var visibleCycles=state.cycles.filter(function(c){return (c.distributor||'PRH')===state.distributor;});
-  host.innerHTML='<section class="foc-hero"><div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap"><div><div style="font:900 22px/1.1 \'Orbitron\',monospace;color:var(--text)">THE FOC WALL</div><div style="font:10px/1.65 var(--font-mono);color:var(--dim);max-width:720px;margin-top:6px">'+(isLunar?'Upload Lunar\'s weekly comics FOC file, review exact covers, set shelf quantities, and export the clean order.':'Upload Monday\'s PRH metadata file, review exact covers, set shelf quantities, secure incentives, and export the clean UPC order.')+'</div>'+distributorTabs()+'</div><div class="foc-toolbar"><input type="file" id="foc-import-file" accept=".csv,.xlsx,.xls" hidden onchange="'+(isLunar?'handleLunarFocImportFile(event)':'handleFocImportFile(event)')+'"><button class="hbtn" onclick="document.getElementById(\'foc-import-file\').click()">'+(isLunar?'IMPORT LUNAR FOC':'IMPORT PRH FOC')+'</button><button class="hbtn" onclick="loadFocCycles(true)">REFRESH</button></div></div><div id="foc-import-status" class="foc-import-report" style="display:none"></div></section>'+
+  host.innerHTML='<section class="foc-hero"><div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap"><div><div style="font:900 22px/1.1 \'Orbitron\',monospace;color:var(--text)">THE FOC WALL</div><div style="font:10px/1.65 var(--font-mono);color:var(--dim);max-width:720px;margin-top:6px">'+(isLunar?'Upload Lunar\'s weekly comics FOC file, review exact covers, set shelf quantities, and export the clean order.':'Upload Monday\'s PRH metadata file, review exact covers, set shelf quantities, secure incentives, and export the clean UPC order.')+'</div>'+distributorTabs()+'</div><div class="foc-toolbar"><input type="file" id="foc-import-file" accept=".csv,.xlsx,.xls" hidden onchange="'+(isLunar?'handleLunarFocImportFile(event)':'handleFocImportFile(event)')+'"><button class="hbtn" onclick="document.getElementById(\'foc-import-file\').click()">'+(isLunar?'IMPORT LUNAR FOC':'IMPORT PRH FOC')+'</button><button class="hbtn" onclick="loadFocCycles(true)">REFRESH</button><button class="hbtn" style="color:var(--red)" title="Scans every past FOC cycle (not just the one you have open) for eBay presale listings nothing was actually ordered for" onclick="openOrphanedEbayScan()">FIND ORPHANED EBAY LISTINGS</button></div></div><div id="foc-import-status" class="foc-import-report" style="display:none"></div></section>'+
     '<details class="panel" style="margin-bottom:14px"><summary style="cursor:pointer;font-family:\'Orbitron\',monospace;color:var(--purple);font-size:11px">REAL SHIPPING SETUP</summary><div id="foc-shipping-settings" style="padding-top:12px"><button class="hbtn" onclick="loadFocShippingSettings()">LOAD SHIPPING SETTINGS</button></div></details>'+
     (isLunar?
       '<details class="panel" style="margin-bottom:14px" ontoggle="if(this.open)loadLunarDiscountSettings()"><summary style="cursor:pointer;font-family:\'Orbitron\',monospace;color:var(--purple);font-size:11px">LUNAR COST ESTIMATE SETTINGS</summary><div style="padding-top:12px;font:10px/1.6 var(--font-mono);color:var(--dim)">A staff-only estimate shown on each cover below -- never shown to customers, and not a substitute for your actual Lunar invoice. Every other publisher uses a fixed default discount; DC and Image are tiered by trailing spend and change over time, so those two stay editable here.<div style="display:flex;gap:8px;align-items:end;flex-wrap:wrap;margin-top:8px"><label style="font:8px var(--font-mono);color:var(--dim)">DC DISCOUNT %<input id="foc-lunar-dc" class="tsi" type="number" min="0" max="90" value="'+lunarDcDiscount+'" style="width:80px"></label><label style="font:8px var(--font-mono);color:var(--dim)">IMAGE DISCOUNT %<input id="foc-lunar-image" class="tsi" type="number" min="0" max="90" value="'+lunarImageDiscount+'" style="width:80px"></label><button class="hbtn" onclick="saveLunarDiscountSettings()">SAVE</button></div></div></details>'
@@ -102,6 +102,76 @@ function renderCycles(){
     '<div class="ph">FOC CYCLES</div>'+(visibleCycles.length?visibleCycles.map(cycleCard).join(''):'<div class="panel" style="padding:30px;text-align:center;color:var(--dim)">No '+(isLunar?'Lunar':'PRH')+' FOC file has been imported yet.</div>');
 }
 function switchDistributor(d){state.distributor=d==='Lunar'?'Lunar':'PRH';renderCycles();}
+
+// Store report: "we didn't order any Shredder #13 -- why is it still
+// presale?" Every other eBay cleanup tool (PRH cart import's auto-sweep,
+// END REMAINING EBAY LISTINGS) only ever looks at the ONE cycle currently
+// open on screen -- a listing from an older, already-closed cycle (one
+// that predates this reconciliation feature entirely, or that simply
+// never got a final cleanup pass) is invisible to both. This scans every
+// FOC eBay presale listing across every past cycle at once and cross-
+// checks each against that cycle's own locked PRH order, so orphaned ones
+// can be found and ended from one screen instead of reopening every old
+// cycle by hand.
+var focOrphanScanCycles=[];
+async function openOrphanedEbayScan(){
+  var modalOld=document.getElementById('foc-orphan-scan-modal');if(modalOld)modalOld.remove();
+  var modal=document.createElement('div');
+  modal.id='foc-orphan-scan-modal';
+  modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:9999;display:flex;align-items:flex-start;justify-content:center;overflow-y:auto;padding:24px 12px';
+  modal.innerHTML='<div style="width:100%;max-width:680px;background:var(--surf);border:1px solid var(--border);border-radius:10px;padding:16px">'+
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><div style="font-family:\'Orbitron\',monospace;color:var(--red);font-size:13px;letter-spacing:2px">ORPHANED EBAY LISTINGS</div><button onclick="document.getElementById(\'foc-orphan-scan-modal\').remove()" style="background:none;border:none;color:var(--dim);font-size:22px;cursor:pointer">×</button></div>'+
+    '<div id="foc-orphan-scan-body" style="font:10px var(--font-mono);color:var(--dim);padding:20px 0;text-align:center">Scanning every past FOC cycle…</div></div>';
+  document.body.appendChild(modal);
+  try{
+    var d=await api('/foc/admin/orphaned-ebay-listings?store_id='+encodeURIComponent(getActiveStoreId()));
+    focOrphanScanCycles=d.cycles||[];
+    renderOrphanedEbayScan(d.orphanedCount||0);
+  }catch(e){
+    var body=document.getElementById('foc-orphan-scan-body');
+    if(body)body.innerHTML='<div style="color:var(--red)">Could not scan: '+esc(e.message)+'</div>';
+  }
+}
+function orphanReasonBadge(reason){
+  if(reason==='orphaned')return '<span class="foc-badge" style="color:var(--red);border-color:var(--red)">NOT ORDERED</span>';
+  if(reason==='ordered')return '<span class="foc-badge" style="color:var(--g);border-color:var(--g)">ORDERED</span>';
+  return '<span class="foc-badge" style="color:var(--gold);border-color:var(--gold)">NO PRH ORDER ON FILE</span>';
+}
+function renderOrphanedEbayScan(orphanedCount){
+  var body=document.getElementById('foc-orphan-scan-body');if(!body)return;
+  if(!focOrphanScanCycles.length){body.innerHTML='<div style="padding:10px 0">No live eBay presale listings outside your currently-open cycle -- nothing to clean up.</div>';return;}
+  var totalListings=focOrphanScanCycles.reduce(function(s,c){return s+c.listings.length;},0);
+  body.innerHTML='<div style="text-align:left;font:9px var(--font-mono);color:var(--dim);margin-bottom:10px">'+totalListings+' live listing'+(totalListings===1?'':'s')+' outside your currently-open cycle, across '+focOrphanScanCycles.length+' past cycle'+(focOrphanScanCycles.length===1?'':'s')+'. <b style="color:var(--red)">'+orphanedCount+' NOT ORDERED</b> (pre-checked below) -- nothing came from the distributor for these, they were just never ended. <span style="color:var(--gold)">NO PRH ORDER ON FILE</span> means that cycle closed without ever running SUBMIT PRH ORDER, so it can\'t be confirmed either way from data alone -- review those by hand.</div>'+
+    '<div style="text-align:left;max-height:440px;overflow-y:auto;border-top:1px solid var(--border);padding-top:8px">'+
+    focOrphanScanCycles.map(function(c){
+      return '<div style="margin-bottom:14px"><div style="font-weight:800;color:var(--text);font-size:11px;margin-bottom:4px">FOC '+esc(displayDate(c.focDate))+' · '+(c.hasSubmission?'PRH order submitted':'never submitted')+'</div>'+
+        c.listings.map(function(l){
+          return '<label style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid var(--border);font:10px var(--font-mono);color:var(--text);cursor:pointer;opacity:'+(l.reason==='ordered'?'.6':'1')+'">'+
+            '<input type="checkbox" class="foc-orphan-cb" value="'+esc(l.rowId)+'" '+(l.reason==='orphaned'?'checked':'')+'>'+
+            '<span style="flex:1;min-width:0">'+esc(l.title||l.rowId)+(l.isBundle?' (bundle)':'')+'</span>'+
+            orphanReasonBadge(l.reason)+
+            '</label>';
+        }).join('')+
+      '</div>';
+    }).join('')+
+    '</div>'+
+    '<div style="display:flex;gap:8px;margin-top:12px"><button class="hbtn" style="flex:1;padding:12px;background:rgba(255,77,109,.12);border-color:rgba(255,77,109,.35);color:var(--red)" onclick="endSelectedOrphanedEbayListings()">END SELECTED</button>'+
+    '<button class="hbtn" style="padding:12px" onclick="document.getElementById(\'foc-orphan-scan-modal\').remove()">CLOSE</button></div>';
+}
+async function endSelectedOrphanedEbayListings(){
+  var rowIds=Array.from(document.querySelectorAll('.foc-orphan-cb:checked')).map(function(cb){return cb.value;});
+  if(!rowIds.length){toast_dash('Nothing selected');return;}
+  if(!confirm('End '+rowIds.length+' eBay listing'+(rowIds.length===1?'':'s')+'? This cannot be undone.'))return;
+  var body=document.getElementById('foc-orphan-scan-body');
+  if(body)body.innerHTML='<div style="padding:20px 0;text-align:center">Ending '+rowIds.length+' listing'+(rowIds.length===1?'':'s')+'…</div>';
+  try{
+    var d=await api('/foc/admin/orphaned-ebay-listings/end',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({storeId:getActiveStoreId(),rowIds:rowIds})});
+    toast_dash(d.endedCount+' listing'+(d.endedCount===1?'':'s')+' ended'+(d.failedCount?' · '+d.failedCount+' failed':''));
+    await openOrphanedEbayScan();
+  }catch(e){
+    if(body)body.innerHTML='<div style="color:var(--red)">Could not end listings: '+esc(e.message)+'</div>';
+  }
+}
 
 // Shared by both distributors' file pickers -- reading/hashing the sheet and
 // reporting the import result back is identical either way; only the header
@@ -585,25 +655,36 @@ async function openEbayPresaleReview(skuId){
     var templates=vp.ebayDescriptionTemplates||{};
     var customTemplate=templates.Comic||templates.default||'';
     if(customTemplate&&typeof renderEbayDescriptionTemplate==='function'){
+      var isHtmlTemplate=/<\/?[a-z][\s\S]*>/i.test(customTemplate);
       var presaleShippingLine=['For presale comics, orders ship promptly once the title reaches its official release date and inventory has been received from our distributor.',preview.onSaleLabel?('Release Date: '+preview.onSaleLabel):'','Publisher and distributor release dates may change. If a presale title is delayed, your order will ship as soon as the book becomes available.'].filter(Boolean).join('\n\n');
+      // Single-cover listing has no dropdown of covers to choose from, so
+      // there's nothing to offer here -- an empty token lets a shared
+      // template's "[[...{coverChoices}...]]" cover-picker section vanish
+      // cleanly (see renderEbayDescriptionTemplate's [[...]] handling)
+      // instead of showing a "CHOOSE YOUR COVER" section with one option.
       var tokens={title:preview.baseTitle||preview.title.replace(/ - PRESALE$/,''),category:'Comic',price:preview.price,upc:preview.upc,
-        variant:preview.variantLabel||'',releaseDate:preview.onSaleLabel||'',shippingLine:presaleShippingLine,
+        variant:preview.variantLabel||'',releaseDate:preview.onSaleLabel||'',shippingLine:presaleShippingLine,coverChoices:'',
         publisher:asp.Publisher||'',writer:asp.Writer||'',artist:asp.Artist||'',coverArtist:asp['Cover Artist']||'',
         synopsis:preview.synopsis||'',condition:'New',quantity:'1'};
       var renderedBody=renderEbayDescriptionTemplate(customTemplate,tokens);
       if(renderedBody){
-        // A store's saved Comic template can be plain text OR a hand-built
-        // rich-HTML design (real <div>/<table> markup) -- the mandatory
-        // presale disclosure this always prepends needs to match whichever
-        // one it's about to sit next to, or the server's HTML formatter
-        // (which only escapes/converts plain text, and otherwise passes
-        // real HTML straight through untouched) treats the combined string
-        // as one blob and gets it wrong for whichever half doesn't match.
-        var isHtmlTemplate=/<\/?[a-z][\s\S]*>/i.test(customTemplate);
-        var disclosure=isHtmlTemplate
+        // Store report (live listing screenshot): a store's own branded
+        // template -- one that already opens with its own prominent
+        // "PRESALE -- releases <date>" banner, or that renders the
+        // {shippingLine} token (whose own wording already says "presale")
+        // -- still got ANOTHER, differently-styled presale paragraph
+        // stacked on top of it, because this used to prepend the mandatory
+        // disclosure unconditionally. eBay's policy only requires presale
+        // status disclosed somewhere in the description, not disclosed
+        // twice -- checking the RENDERED body (after token substitution,
+        // so a template that pulls it in only via {shippingLine} still
+        // counts) is what decides whether the fallback plain-text version
+        // below is still needed at all.
+        var templateAlreadyDisclosesPresale=/presale/i.test(renderedBody);
+        var disclosure=templateAlreadyDisclosesPresale?'':(isHtmlTemplate
           ? '<p>PRESALE -- This comic has not been released yet and is not currently in stock.</p><p>Expected on-sale/ship date: '+preview.onSaleLabel+'. Your order ships promptly once we receive stock from the distributor on or shortly after that date.</p>'
-          : 'PRESALE -- This comic has not been released yet and is not currently in stock.\n\nExpected on-sale/ship date: '+preview.onSaleLabel+'. Your order ships promptly once we receive stock from the distributor on or shortly after that date.';
-        description=disclosure+(isHtmlTemplate?'':'\n\n')+renderedBody;
+          : 'PRESALE -- This comic has not been released yet and is not currently in stock.\n\nExpected on-sale/ship date: '+preview.onSaleLabel+'. Your order ships promptly once we receive stock from the distributor on or shortly after that date.');
+        description=disclosure+(disclosure&&!isHtmlTemplate?'\n\n':'')+renderedBody;
         usedCustomTemplate=true;
       }
     }
@@ -800,18 +881,35 @@ async function openFamilyEbayGroupReview(familyId){
     var templates=vp.ebayDescriptionTemplates||{};
     var customTemplate=templates.Comic||templates.default||'';
     if(customTemplate&&typeof renderEbayDescriptionTemplate==='function'){
+      var isHtmlTemplate=/<\/?[a-z][\s\S]*>/i.test(customTemplate);
       var presaleShippingLine=['For presale comics, orders ship promptly once the title reaches its official release date and inventory has been received from our distributor.',preview.onSaleLabel?('Release Date: '+preview.onSaleLabel):'','Publisher and distributor release dates may change. If a presale title is delayed, your order will ship as soon as the book becomes available.'].filter(Boolean).join('\n\n');
+      // Real per-cover data (not fabricated) for a template's own "choose
+      // your cover" section -- every eligible cover a buyer will actually
+      // see in this listing's real eBay dropdown, same eligible-only list
+      // coverRows below renders as checkboxes. Only worth showing when
+      // there's an actual choice to make.
+      var eligibleCoverList=(preview.covers||[]).filter(function(c){return c.eligible;});
+      var coverChoices=eligibleCoverList.length>1?(isHtmlTemplate
+        ? eligibleCoverList.map(function(c){return '<div style="margin-bottom:7px"><b>'+esc(c.variantLabel)+'</b>'+(c.coverArtist?'<br><span style="font-size:12px">Cover art by '+esc(c.coverArtist)+'</span>':'')+'</div>';}).join('')
+        : eligibleCoverList.map(function(c){return '- '+c.variantLabel+(c.coverArtist?' (cover art by '+c.coverArtist+')':'');}).join('\n')
+      ):'';
       var tokens={title:preview.title.replace(/ - PRESALE$/,''),category:'Comic',price:'',upc:'',
-        variant:'',releaseDate:preview.onSaleLabel||'',shippingLine:presaleShippingLine,
+        variant:'',releaseDate:preview.onSaleLabel||'',shippingLine:presaleShippingLine,coverChoices:coverChoices,
         publisher:asp.Publisher||'',writer:asp.Writer||'',artist:asp.Artist||'',coverArtist:asp['Cover Artist']||'',
         synopsis:preview.synopsis||'',condition:'New',quantity:'1'};
       var renderedBody=renderEbayDescriptionTemplate(customTemplate,tokens);
       if(renderedBody){
-        var isHtmlTemplate=/<\/?[a-z][\s\S]*>/i.test(customTemplate);
-        var disclosure=isHtmlTemplate
+        // Same fix as the single-cover review modal: only fall back to the
+        // plain mandatory disclosure paragraph when the rendered template
+        // doesn't already disclose presale status itself (its own banner,
+        // or the {shippingLine} token) -- otherwise a store's own branded
+        // template got a second, differently-styled disclosure stacked on
+        // top of its own.
+        var templateAlreadyDisclosesPresale=/presale/i.test(renderedBody);
+        var disclosure=templateAlreadyDisclosesPresale?'':(isHtmlTemplate
           ? '<p>PRESALE -- This comic has not been released yet and is not currently in stock.</p><p>Expected on-sale/ship date: '+preview.onSaleLabel+'. Your order ships promptly once we receive stock from the distributor on or shortly after that date.</p>'
-          : 'PRESALE -- This comic has not been released yet and is not currently in stock.\n\nExpected on-sale/ship date: '+preview.onSaleLabel+'. Your order ships promptly once we receive stock from the distributor on or shortly after that date.';
-        description=disclosure+(isHtmlTemplate?'':'\n\n')+renderedBody;
+          : 'PRESALE -- This comic has not been released yet and is not currently in stock.\n\nExpected on-sale/ship date: '+preview.onSaleLabel+'. Your order ships promptly once we receive stock from the distributor on or shortly after that date.');
+        description=disclosure+(disclosure&&!isHtmlTemplate?'\n\n':'')+renderedBody;
         usedCustomTemplate=true;
       }
     }
@@ -1432,7 +1530,7 @@ async function loadShipping(){var host=document.getElementById('foc-shipping-set
 function renderShipping(){var s=state.shipping||{},f=s.from||{},p=s.parcel||{};document.getElementById('foc-shipping-settings').innerHTML='<div class="foc-import-report"><b style="color:'+(s.tokenConfigured?'var(--g)':'var(--gold)')+'">SHIPPO TOKEN '+(s.tokenConfigured?'CONNECTED':'NEEDS SETUP')+'</b><br>The API token stays in the Worker secret. This form stores only your ship-from address and package preset.</div><div class="foc-sku-fields" style="grid-template-columns:repeat(auto-fit,minmax(180px,1fr));margin-top:10px">'+[['name','Store / sender',f.name],['line1','Street',f.street1],['line2','Suite / unit',f.street2],['city','City',f.city],['state','State',f.state],['zip','ZIP',f.zip],['phone','Phone',f.phone],['email','Email',f.email]].map(function(x){return'<label>'+x[1]+'<input class="tsi" data-ship-from="'+x[0]+'" value="'+esc(x[2]||'')+'"></label>';}).join('')+'</div><div class="foc-sku-fields" style="grid-template-columns:repeat(4,minmax(0,1fr));margin-top:10px">'+[['length','Length',p.length||12],['width','Width',p.width||9],['height','Height',p.height||1],['weight','Weight lb',p.weight||1]].map(function(x){return'<label>'+x[1]+'<input class="tsi" type="number" min=".1" step=".1" data-ship-parcel="'+x[0]+'" value="'+esc(x[2])+'"></label>';}).join('')+'</div><button class="hbtn" style="margin-top:10px" onclick="saveFocShippingSettings()">SAVE LIVE SHIPPING SETUP</button>';}
 async function saveShipping(){var shipFrom={},parcel={};document.querySelectorAll('[data-ship-from]').forEach(function(el){shipFrom[el.dataset.shipFrom]=el.value;});document.querySelectorAll('[data-ship-parcel]').forEach(function(el){parcel[el.dataset.shipParcel]=el.value;});try{var d=await api('/foc/admin/shipping-settings',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({storeId:getActiveStoreId(),enabled:true,shipFrom:shipFrom,defaultParcel:parcel})});state.shipping=d.shipping;toast_dash(d.shipping.tokenConfigured?'Live carrier settings saved':'Address saved — add the Shippo token to enable rates');renderShipping();}catch(e){toast_dash(e.message);}}
 
-window.ensureFocPanel=function(){loadCycles(false);};window.loadFocCycles=loadCycles;window.openFocCycle=openCycle;window.handleFocImportFile=handleImport;window.handleLunarFocImportFile=handleLunarImport;window.switchFocDistributor=switchDistributor;window.loadLunarDiscountSettings=loadLunarDiscountSettings;window.saveLunarDiscountSettings=saveLunarDiscountSettings;window.filterFocAdmin=function(v){state.query=v;renderFamilies();};window.filterFocPublisher=function(v){state.publisher=v;renderFamilies();};window.filterFocFlag=function(v){state.flag=v;renderFamilies();};window.filterFocEbay=function(v){state.ebay=v;renderFamilies();};window.saveFocSku=saveSku;window.saveFocFamily=saveFamily;window.toggleFocCycle=toggleCycle;window.archiveFocCycle=archiveCycle;window.unarchiveFocCycle=unarchiveCycle;window.saveFocCycleCutoff=saveCutoff;window.exportFocPrh=exportPrh;window.loadFocShippingSettings=loadShipping;window.saveFocShippingSettings=saveShipping;window.openReceiveShipment=openReceiveShipment;window.confirmReceiveShipment=confirmReceiveShipment;window.createFocEbayPresale=openEbayPresaleReview;window.submitEbayPresaleReview=submitEbayPresaleReview;window.openFamilyEbayGroupReview=openFamilyEbayGroupReview;window.submitFamilyEbayGroupReview=submitFamilyEbayGroupReview;window.handleFocGroupMainImageFile=handleFocGroupMainImageFile;window.clearFocGroupMainImage=clearFocGroupMainImage;window.handleFocGroupBundleImageFile=handleFocGroupBundleImageFile;window.clearFocGroupBundleImage=clearFocGroupBundleImage;window.loadEbaySafeDays=loadEbaySafeDays;window.saveFocEbaySafeDays=saveEbaySafeDays;window.openFocReview=openFocReview;window.openFocIntelligence=openFocIntelligence;window.submitPrhOrder=submitPrhOrder;window.handleFocPrhCartImportFile=handleFocPrhCartImportFile;window.endFocEbayListings=endFocEbayListings;window.toggleFocEndEbayAll=toggleFocEndEbayAll;window.confirmEndFocEbayListings=confirmEndFocEbayListings;window.repairFocEbayGroupPhotos=repairFocEbayGroupPhotos;window.reviewStoreQtyChanged=reviewStoreQtyChanged;window.focPublishBulkCheckboxChanged=focPublishBulkCheckboxChanged;window.toggleFocPublishBulkSelectAll=toggleFocPublishBulkSelectAll;window.bulkSetCustomerEnabled=bulkSetCustomerEnabled;
+window.ensureFocPanel=function(){loadCycles(false);};window.loadFocCycles=loadCycles;window.openFocCycle=openCycle;window.handleFocImportFile=handleImport;window.handleLunarFocImportFile=handleLunarImport;window.switchFocDistributor=switchDistributor;window.loadLunarDiscountSettings=loadLunarDiscountSettings;window.saveLunarDiscountSettings=saveLunarDiscountSettings;window.filterFocAdmin=function(v){state.query=v;renderFamilies();};window.filterFocPublisher=function(v){state.publisher=v;renderFamilies();};window.filterFocFlag=function(v){state.flag=v;renderFamilies();};window.filterFocEbay=function(v){state.ebay=v;renderFamilies();};window.saveFocSku=saveSku;window.saveFocFamily=saveFamily;window.toggleFocCycle=toggleCycle;window.archiveFocCycle=archiveCycle;window.unarchiveFocCycle=unarchiveCycle;window.saveFocCycleCutoff=saveCutoff;window.exportFocPrh=exportPrh;window.loadFocShippingSettings=loadShipping;window.saveFocShippingSettings=saveShipping;window.openReceiveShipment=openReceiveShipment;window.confirmReceiveShipment=confirmReceiveShipment;window.createFocEbayPresale=openEbayPresaleReview;window.submitEbayPresaleReview=submitEbayPresaleReview;window.openFamilyEbayGroupReview=openFamilyEbayGroupReview;window.submitFamilyEbayGroupReview=submitFamilyEbayGroupReview;window.handleFocGroupMainImageFile=handleFocGroupMainImageFile;window.clearFocGroupMainImage=clearFocGroupMainImage;window.handleFocGroupBundleImageFile=handleFocGroupBundleImageFile;window.clearFocGroupBundleImage=clearFocGroupBundleImage;window.loadEbaySafeDays=loadEbaySafeDays;window.saveFocEbaySafeDays=saveEbaySafeDays;window.openFocReview=openFocReview;window.openFocIntelligence=openFocIntelligence;window.submitPrhOrder=submitPrhOrder;window.handleFocPrhCartImportFile=handleFocPrhCartImportFile;window.endFocEbayListings=endFocEbayListings;window.toggleFocEndEbayAll=toggleFocEndEbayAll;window.confirmEndFocEbayListings=confirmEndFocEbayListings;window.repairFocEbayGroupPhotos=repairFocEbayGroupPhotos;window.reviewStoreQtyChanged=reviewStoreQtyChanged;window.focPublishBulkCheckboxChanged=focPublishBulkCheckboxChanged;window.toggleFocPublishBulkSelectAll=toggleFocPublishBulkSelectAll;window.bulkSetCustomerEnabled=bulkSetCustomerEnabled;window.openOrphanedEbayScan=openOrphanedEbayScan;window.endSelectedOrphanedEbayListings=endSelectedOrphanedEbayListings;
 window.generateFocAiDescription=generateFocAiDescription;window.generateFocGroupAiDescription=generateFocGroupAiDescription;
 // Store report: "+ ADD TO INVENTORY" on a FOC cover-wall card threw
 // "quickAddFocSkuToInventory is not defined" -- this whole file is wrapped

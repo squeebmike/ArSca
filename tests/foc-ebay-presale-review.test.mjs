@@ -370,18 +370,27 @@ assert.match(worker, /if \(!aspects\['Condition'\] && CONDITION_ASPECT_LABEL\[St
 // template settings UI (Settings -> Vendor Info -> EBAY LISTING SETTINGS)
 // used by the regular "list on eBay" tool -- the FOC presale review modal
 // must use the same {token} template system for Comic when one is
-// configured, per store request for parity with that existing tool. The
-// mandatory presale disclosure must always be prepended regardless, since
-// a custom template that doesn't mention presale status must never
-// silently drop eBay's required description-level disclosure.
+// configured, per store request for parity with that existing tool.
+//
+// Store report (live listing screenshot): a store's own branded template
+// -- one that already opens with its own prominent presale banner, or
+// pulls in the {shippingLine} token (whose own wording already discloses
+// presale status) -- still got a second, differently-styled disclosure
+// paragraph stacked on top of it, because this used to prepend the
+// mandatory disclosure unconditionally. eBay's policy only requires
+// presale status disclosed SOMEWHERE in the description, not disclosed
+// twice -- the fallback plain-text disclosure below must only fire when
+// the rendered template doesn't already say "presale" anywhere.
 assert.match(focDash, /var templates=vp\.ebayDescriptionTemplates\|\|\{\};/, 'must read the same per-category template settings the regular eBay listing tool uses');
 assert.match(focDash, /var customTemplate=templates\.Comic\|\|templates\.default\|\|'';/, 'must prefer a Comic-specific template, falling back to the default template');
 assert.match(focDash, /renderEbayDescriptionTemplate\(customTemplate,tokens\)/, 'must render the custom template through the shared {token} renderer');
+assert.match(focDash, /var templateAlreadyDisclosesPresale=\/presale\/i\.test\(renderedBody\);/, 'must check the RENDERED body (after token substitution) for an existing presale disclosure, not just the raw template text');
+assert.match(focDash, /var disclosure=templateAlreadyDisclosesPresale\?'':\(isHtmlTemplate/, 'the fallback disclosure must be skipped entirely when the template already discloses presale status');
 assert.match(focDash, /'<p>PRESALE -- This comic has not been released yet and is not currently in stock\.<\/p>/,
-  'the mandatory presale disclosure must always be prepended, even when a custom template is used (HTML-template form)');
+  'the fallback presale disclosure must still exist as real HTML paragraphs for templates that do not mention presale');
 assert.match(focDash, /'PRESALE -- This comic has not been released yet and is not currently in stock\.\\n\\nExpected/,
-  'the mandatory presale disclosure must always be prepended, even when a custom template is used (plain-text form)');
-assert.match(focDash, /description=disclosure\+\(isHtmlTemplate\?'':'\\n\\n'\)\+renderedBody;\s*\n\s*usedCustomTemplate=true;/, 'the rendered custom template body must be appended after the mandatory disclosure');
+  'the fallback presale disclosure must still exist in plain-text form for templates that do not mention presale');
+assert.match(focDash, /description=disclosure\+\(disclosure&&!isHtmlTemplate\?'\\n\\n':''\)\+renderedBody;\s*\n\s*usedCustomTemplate=true;/, 'the rendered custom template body must be appended after any fallback disclosure, with no stray separator when there is none');
 assert.match(focDash, /openSettingsSection\(\\'profile\\',\\'vendor-profile-panel\\'\)/, 'the modal must link to where the template is actually edited');
 
 // Store owner asked: what happens to an eBay presale listing for a book we
@@ -675,8 +684,8 @@ assert.match(worker, /if \(\/<\\\/\?\[a-z\]\[\\s\\S\]\*>\/i\.test\(raw\)\) retur
 // text vs. a store's rich-HTML template), or the combined string is a
 // mismatched blob the server-side formatter can't get right for both halves.
 assert.match(focDash, /var isHtmlTemplate=\/<\\\/\?\[a-z\]\[\\s\\S\]\*>\/i\.test\(customTemplate\);/, 'must detect whether the store\'s saved template is plain text or real HTML');
-assert.match(focDash, /disclosure=isHtmlTemplate\s*\n\s*\? '<p>PRESALE/, 'the mandatory disclosure must be built as real HTML paragraphs when sitting next to an HTML template');
-assert.match(focDash, /description=disclosure\+\(isHtmlTemplate\?'':'\\n\\n'\)\+renderedBody;/, 'the disclosure and template body must be joined without a stray plain-text separator when both are already HTML');
+assert.match(focDash, /\? '<p>PRESALE/, 'the fallback disclosure must be built as real HTML paragraphs when sitting next to an HTML template');
+assert.match(focDash, /description=disclosure\+\(disclosure&&!isHtmlTemplate\?'\\n\\n':''\)\+renderedBody;/, 'the disclosure and template body must be joined without a stray plain-text separator when both are already HTML (or there is no disclosure at all)');
 
 // Store built a real rich-HTML Comic template using [[...]] to wrap whole
 // multi-line blocks (an entire optional <tr> row, a multi-line <div>
