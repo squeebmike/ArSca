@@ -476,6 +476,18 @@ function startFocEbayBulkListing(){
   focEbayBulkQueue=ids;
   focEbayBulkAdvance();
 }
+// LIST THESE ON EBAY button on the "still needs an eBay listing" panel --
+// loads every currently-eligible, not-yet-listed cover with leftover stock
+// straight into the same bulk queue the manual checkbox picker above
+// builds, so it's the identical one-at-a-time review-then-list flow instead
+// of a second, separate listing path.
+function startFocNeedsListingBulk(){
+  var ids=allFocSkus().filter(function(v){return v.ebayPresaleStatus==='ELIGIBLE_NOW'&&Number(v.storeQuantity||0)>0;}).map(function(v){return v.id;});
+  if(!ids.length){toast_dash('Nothing currently needs a new eBay listing');return;}
+  focEbayBulkSelectedIds=new Set(ids);
+  renderFocEbayBulkCount();
+  startFocEbayBulkListing();
+}
 function focEbayBulkAdvance(){
   if(!focEbayBulkQueue||!focEbayBulkQueue.length){focEbayBulkQueue=null;return;}
   var next=focEbayBulkQueue.shift();
@@ -1071,11 +1083,26 @@ function renderFocReview(){
   var relevantFamilies=state.families.filter(function(f){
     return f.variants.some(function(v){return v.isIncentive;})||f.variants.some(function(v){return !v.isIncentive&&(Number(v.customerQty||0)+Number(v.ebayPresold||0)+Number(v.storeQuantity||0))>0;});
   });
+  // Live, not a one-time snapshot: recomputed from the current cycle state
+  // every time this screen renders (after a PRH cart import, after a manual
+  // Whatnot/store qty edit, after navigating back to this cycle later) --
+  // ELIGIBLE_NOW is the same bar the bulk-select checkboxes already use, so
+  // this never offers to queue up a cover eBay itself would reject (no
+  // on-sale date yet, not released yet, etc).
+  var needsListing=regular.filter(function(v){return v.ebayPresaleStatus==='ELIGIBLE_NOW'&&Number(v.storeQuantity||0)>0;});
   panel().innerHTML='<section class="foc-hero"><div class="foc-toolbar"><button class="hbtn" onclick="openFocCycle(\''+esc(c.id)+'\')">← COVER WALL</button><button class="hbtn" style="color:var(--g)" onclick="submitPrhOrder()">SUBMIT PRH ORDER</button><input type="file" id="foc-prh-cart-file" accept=".csv,.xlsx,.xls" hidden onchange="handleFocPrhCartImportFile(event)"><button class="hbtn" title="Upload the cart export from PRH\'s own ordering site (what you actually ordered) -- sets secured/store quantities to match, ends eBay listings for anything left out, and adjusts ordered covers\' listings to the real total, all in one go" onclick="document.getElementById(\'foc-prh-cart-file\').click()">UPLOAD PRH CART</button><button class="hbtn" style="color:var(--red)" onclick="endFocEbayListings()">END REMAINING EBAY LISTINGS</button><button class="hbtn" title="Fixes multi-cover eBay listings published before the photo-to-cover binding fix, where the wrong (or missing) photo shows for some covers" onclick="repairFocEbayGroupPhotos()">REPAIR LISTING PHOTOS</button></div>'+
     '<div style="font:900 20px/1.1 \'Orbitron\',monospace;color:var(--text);margin-top:10px">Final FOC Review · '+esc(displayDate(c.foc_date))+'</div>'+
     '<div class="foc-stats" style="margin-top:12px"><div class="foc-stat"><b>'+regular.length+'</b><span>SKUs</span></div><div class="foc-stat"><b>'+totalUnits+'</b><span>Total Units</span></div><div class="foc-stat"><b>$'+(estCents/100).toFixed(2)+'</b><span>Est. Wholesale</span></div><div class="foc-stat"><b>'+totalWebsite+'</b><span>Website Presold</span></div><div class="foc-stat"><b>'+totalEbay+'</b><span>eBay Presold</span></div><div class="foc-stat"><b>'+totalStore+'</b><span>Whatnot/Store</span></div><div class="foc-stat"><b>'+qualifiedCount+' / '+incentivesAll.length+'</b><span>Incentives Qualified</span></div></div>'+
     '<div id="foc-review-status" style="font:10px var(--font-mono);color:var(--dim);margin-top:8px">Checking submission status…</div>'+
-    '<div id="foc-prh-cart-result"></div></section>'+
+    '<div id="foc-prh-cart-result"></div>'+
+    (needsListing.length?'<div class="panel" style="margin-top:10px;padding:12px 16px;border-color:rgba(255,209,102,.35)">'+
+      '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:6px">'+
+      '<div style="font:900 11px \'Orbitron\',monospace;color:var(--gold);letter-spacing:1px">STILL NEEDS AN EBAY LISTING ('+needsListing.length+')</div>'+
+      '<button class="hbtn" style="padding:6px 10px;font-size:9px" onclick="startFocNeedsListingBulk()">LIST THESE ON EBAY</button></div>'+
+      '<div style="font:9px var(--font-mono);color:var(--dim);margin-bottom:6px">Ordered, with copies left over after website/eBay demand, but no live eBay presale listing yet.</div>'+
+      needsListing.map(function(v){return '<div style="font:9px var(--font-mono);color:var(--text);padding:2px 0">'+esc(v.title)+(v.variantLabel&&v.variantLabel!=='Cover A'?' · '+esc(v.variantLabel):'')+' · '+Number(v.storeQuantity||0)+' available</div>';}).join('')+
+      '</div>':'')+
+    '</section>'+
     (relevantFamilies.length?relevantFamilies.map(function(f){
       return '<section class="foc-family"><header class="foc-family-head"><div class="foc-family-title">'+esc(f.title)+'</div></header>'+incentiveTrackerHtml(f)+f.variants.filter(function(v){return !v.isIncentive;}).map(focReviewLineHtml).join('')+'</section>';
     }).join(''):'<div class="panel" style="padding:28px;text-align:center;color:var(--dim)">Nothing was ordered or qualifying this week.</div>');
@@ -1222,13 +1249,10 @@ function focPrhCartResultHtml(d){
       d.unmatchedRows.map(function(r){return '<div style="font:9px var(--font-mono);color:var(--text);padding:2px 0">UPC '+esc(r.upc)+' · qty '+r.quantity+'</div>';}).join('')+
       '</div>');
   }
-  if(d.needsListing&&d.needsListing.length){
-    parts.push('<div class="panel" style="margin-top:10px;padding:12px 16px;border-color:rgba(255,209,102,.35)">'+
-      '<div style="font:900 11px \'Orbitron\',monospace;color:var(--gold);letter-spacing:1px;margin-bottom:6px">STILL NEEDS AN EBAY LISTING ('+d.needsListing.length+')</div>'+
-      '<div style="font:9px var(--font-mono);color:var(--dim);margin-bottom:6px">Ordered, with copies left over after website/eBay demand, but no live eBay presale listing yet -- nothing was auto-created.</div>'+
-      d.needsListing.map(function(r){return '<div style="font:9px var(--font-mono);color:var(--text);padding:2px 0">'+esc(r.title)+(r.variantLabel&&r.variantLabel!=='Cover A'?' · '+esc(r.variantLabel):'')+' · '+r.availableQty+' available</div>';}).join('')+
-      '</div>');
-  }
+  // needsListing itself is rendered by renderFocReview() as a persistent,
+  // always-live panel (not just right after an import) -- see the "STILL
+  // NEEDS AN EBAY LISTING" block above the family cards, with the LIST
+  // THESE ON EBAY button wired to startFocNeedsListingBulk().
   return parts.join('');
 }
 // Store report: ending eBay listings used to be all-or-nothing for the
@@ -1422,5 +1446,5 @@ window.generateFocAiDescription=generateFocAiDescription;window.generateFocGroup
 // with the exact same bug, all clustered around the eBay bulk-listing
 // workflow on the wall (select-all, per-checkbox, start/skip/cancel) --
 // that whole feature has been non-functional the same way.
-window.quickAddFocSkuToInventory=quickAddFocSkuToInventory;window.focEbayBulkCheckboxChanged=focEbayBulkCheckboxChanged;window.toggleFocEbayBulkSelectAll=toggleFocEbayBulkSelectAll;window.startFocEbayBulkListing=startFocEbayBulkListing;window.cancelFocEbayBulkListing=cancelFocEbayBulkListing;window.skipFocEbayBulkItem=skipFocEbayBulkItem;
+window.quickAddFocSkuToInventory=quickAddFocSkuToInventory;window.focEbayBulkCheckboxChanged=focEbayBulkCheckboxChanged;window.toggleFocEbayBulkSelectAll=toggleFocEbayBulkSelectAll;window.startFocEbayBulkListing=startFocEbayBulkListing;window.startFocNeedsListingBulk=startFocNeedsListingBulk;window.cancelFocEbayBulkListing=cancelFocEbayBulkListing;window.skipFocEbayBulkItem=skipFocEbayBulkItem;
 })();
