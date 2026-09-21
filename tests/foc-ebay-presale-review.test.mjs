@@ -229,7 +229,7 @@ assert.match(preorders, /export async function shippingSettings\(db, env, storeI
 // default description. Truncated at a word boundary (never mid-word/PRH's
 // field can run to 12000 chars) to leave room under eBay's 4000-char cap.
 assert.match(worker, /function truncateAtWordBoundary\(text, maxLen\)/, 'must truncate the distributor synopsis at a word boundary, not a blind substring');
-assert.match(worker, /const synopsis = truncateAtWordBoundary\(sku\.description \|\| '', 400\)/, 'the synopsis token must be sourced from the PRH-imported sku.description field');
+assert.match(worker, /const synopsis = truncateAtWordBoundary\(sku\.description \|\| '', 2000\)/, 'the synopsis token must be sourced from the PRH-imported sku.description field, with real headroom under eBay\'s 4000-char description cap for a long anthology-style solicitation');
 assert.match(worker, /return \{ title, description, customAspects, onSaleLabel, synopsis, \.\.\.weight \};/, 'synopsis must be returned so the preview endpoint (and thus the review-modal token object) receives it');
 assert.match(focDash, /synopsis:preview\.synopsis\|\|''/, 'the review-modal token object must feed {synopsis} from the preview response');
 

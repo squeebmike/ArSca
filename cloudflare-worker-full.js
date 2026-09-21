@@ -4115,7 +4115,16 @@ export default {
       // description template can place it, separate from the plain-text
       // `description` fallback above (which already folds the same source
       // text in unbounded, for stores with no custom template at all).
-      const synopsis = truncateAtWordBoundary(sku.description || '', 400);
+      // Store report: PRH's real solicitation text for an anthology title
+      // (e.g. a "Presents" one-shot) routinely runs to a full story-by-
+      // story, creator-by-creator breakdown -- genuine, valuable, SEO-rich
+      // copy, not filler -- and a 400-char cap was cutting it off well
+      // before it said anything useful. eBay's own description cap is
+      // 4000 chars (see the create-presale route's own substring(0, 4000)
+      // below); leaving real headroom under that lets the actual
+      // distributor copy come through a custom template's {synopsis}
+      // token close to whole, instead of a stub.
+      const synopsis = truncateAtWordBoundary(sku.description || '', 2000);
       // No page-count/format field exists on comic_skus to size packages
       // exactly, so this buckets by cover price as a proxy: cheap == single
       // floppy issue, mid == trade paperback, expensive == hardcover or
