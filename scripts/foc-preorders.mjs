@@ -1418,28 +1418,47 @@ async function adminPrhSubmission(request,env,deps,url){
   }
   // Submitting the PRH order is the decisive "we are/aren't ordering this"
   // moment -- a SKU with finalQty<=0 got skipped from lineItems above, so
-  // nothing is coming from the distributor for it. If it still has a live,
-  // UNSOLD eBay presale listing (an active one that already sold copies
-  // would have ebayPresold>0, pulling it above zero and into lineItems),
-  // that listing needs to come down now: otherwise it sits on eBay,
-  // purchasable, for a book the store will never receive to ship. This is
-  // best-effort and never blocks the submission itself -- the submission
-  // above is the authoritative distributor-order record regardless of
-  // whether eBay cleanup succeeds.
+  // nothing is coming from the distributor for it. Reconcile every live FOC
+  // eBay presale listing in this cycle against that decision: end listings
+  // for anything not ordered, and adjust still-live ordered-cover listings
+  // down to the real total minus what's already sold. Best-effort and never
+  // blocks the submission itself -- the submission above is the
+  // authoritative distributor-order record regardless of whether eBay
+  // cleanup succeeds.
+  const finalQtyBySku=new Map(lineItems.map(li=>[li.skuId,li.finalQty]));
+  const {ebayWithdrawnSkuIds,ebayQuantityUpdatedSkuIds}=await syncFocEbayListingsToOrder(env,deps,db,storeId,cycleId,finalQtyBySku);
+  return deps.json({ok:true,submission:inserted,ebayWithdrawnCount:ebayWithdrawnSkuIds.length,ebayQuantityUpdatedCount:ebayQuantityUpdatedSkuIds.length});
+}
+
+// Reconciles every live FOC eBay presale listing in a cycle against a given
+// per-sku "how many are actually coming from the distributor" map: ends
+// listings for any sku no longer being ordered at all (not present in the
+// map, or present with 0), and adjusts still-live ordered-cover listings
+// down (or up) to the real total minus what's already sold. Deliberately
+// does NOT create or touch any real inventory_items stock -- only the
+// still-presale eBay listing's own available-to-buy count -- same "presale
+// is a commitment, not physical stock" boundary receiveShipment draws;
+// receiving the shipment and converting to in-stock is a separate, later
+// step. Shared by adminPrhSubmission's own auto-sweep (driven by the
+// store's own computed demand: website presales + eBay presold + whatnot
+// store stock) and adminImportPrhCart (driven by the store's real,
+// actually-placed PRH order, which can differ from computed demand --
+// carton minimums, a judgment call to order a few extra, etc.).
+async function syncFocEbayListingsToOrder(env,deps,db,storeId,cycleId,finalQtyBySku){
   let ebayWithdrawnSkuIds=[];
   try{
-    const includedSkuIds=new Set(lineItems.map(li=>li.skuId));
     const {data:presaleRows}=await db(`inventory_items?store_id=eq.${encodeURIComponent(storeId)}&status=eq.presale&select=id,data`);
     const toWithdraw=(presaleRows||[]).filter(row=>{
       const d=row.data||{};
       // Trading-API-built group listings (ebayApiSystem:'trading') carry no
       // ebayOfferId at all -- see the matching (d.ebayOfferId||...) check
-      // already used for the quantity-sync/receive-shipment sweeps below.
-      // Without this, an unordered cover on a Trading-built listing never
-      // gets auto-withdrawn here, staying live and purchasable on eBay for
-      // a book the distributor was never actually asked to ship.
+      // already used for the quantity-sync candidates below. Without this,
+      // an unordered cover on a Trading-built listing never gets
+      // auto-withdrawn here, staying live and purchasable on eBay for a
+      // book the distributor was never actually asked to ship.
       const hasLiveEbayListing=d.ebayOfferId||(d.ebayApiSystem==='trading'&&d.ebayListingId&&d.ebaySku);
-      return d.source==='foc_presale'&&d.focCycleId===cycleId&&hasLiveEbayListing&&!includedSkuIds.has(d.focSkuId)&&Number(d.qty??d.quantity??0)>0;
+      const orderedTotal=finalQtyBySku.get(d.focSkuId);
+      return d.source==='foc_presale'&&d.focCycleId===cycleId&&hasLiveEbayListing&&!(orderedTotal>0)&&Number(d.qty??d.quantity??0)>0;
     });
     if(toWithdraw.length&&deps.getEbayUserAccessToken&&deps.withdrawEbayOffer){
       let ebayToken='';
@@ -1464,21 +1483,11 @@ async function adminPrhSubmission(request,env,deps,url){
             const alreadySoldBeforeWithdraw=Math.max(0,Number(row.data.focPresaleOriginalQty||0)-Number(row.data.qty??row.data.quantity??0));
             await db(`inventory_items?id=eq.${row.id}&store_id=eq.${encodeURIComponent(storeId)}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({data:{...row.data,qty:0,quantity:0,focPresaleOriginalQty:alreadySoldBeforeWithdraw,ebayWithdrawnAt:new Date().toISOString(),ebayWithdrawnReason:'not_included_in_prh_order'}})});
             ebayWithdrawnSkuIds.push(row.data.focSkuId);
-          }catch(e){console.error('FOC PRH submission: could not withdraw unordered eBay presale listing',row.id,e);}
+          }catch(e){console.error('FOC eBay sync: could not withdraw unordered eBay presale listing',row.id,e);}
         }
       }
     }
-  }catch(e){console.error('FOC PRH submission: eBay withdrawal sweep failed',e);}
-  // Store request: once the PRH order is locked in, a live FOC presale
-  // listing's buyable quantity should immediately reflect the real ordered
-  // total for that cover -- not just whatever guess was typed in when the
-  // presale was first listed -- so customers can keep buying presale
-  // copies up to what's actually coming, right up until the books
-  // physically arrive. Deliberately does NOT create or touch any real
-  // inventory_items stock here -- only the still-presale eBay listing's
-  // own available-to-buy count -- same "presale is a commitment, not
-  // physical stock" boundary receiveShipment already draws; receiving the
-  // shipment and converting to in-stock is a separate, later step.
+  }catch(e){console.error('FOC eBay sync: withdrawal sweep failed',e);}
   // alreadySold (this SKU's presale sales so far) is subtracted from the
   // new ordered total rather than just setting availableQuantity to it
   // outright, so a listing that's already sold some copies never shows
@@ -1491,14 +1500,13 @@ async function adminPrhSubmission(request,env,deps,url){
       return d.source==='foc_presale'&&d.focCycleId===cycleId&&(d.ebayOfferId||(d.ebayApiSystem==='trading'&&d.ebayListingId&&d.ebaySku));
     });
     if(candidatesForQty.length&&deps.getEbayUserAccessToken&&deps.ebayReviseOfferQuantity){
-      const finalQtyBySku=new Map(lineItems.map(li=>[li.skuId,li.finalQty]));
       let ebayToken='';
       try{ebayToken=await deps.getEbayUserAccessToken(env);}catch(_){}
       if(ebayToken){
         for(const row of candidatesForQty){
           const d=row.data||{};
           const orderedTotal=finalQtyBySku.get(d.focSkuId);
-          if(orderedTotal===undefined)continue; // not in this order -- the withdrawal sweep above handles it instead
+          if(!(orderedTotal>0))continue; // not ordered -- the withdrawal sweep above handles it instead
           const currentAvailable=Number(d.qty??d.quantity??0);
           const alreadySold=Math.max(0,Number(d.focPresaleOriginalQty||currentAvailable)-currentAvailable);
           const newAvailable=Math.max(0,orderedTotal-alreadySold);
@@ -1508,12 +1516,83 @@ async function adminPrhSubmission(request,env,deps,url){
             else await deps.ebayReviseOfferQuantity(env,ebayToken,d.ebayOfferId,newAvailable);
             await db(`inventory_items?id=eq.${row.id}&store_id=eq.${encodeURIComponent(storeId)}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({data:{...d,qty:newAvailable,quantity:newAvailable,focPresaleOriginalQty:orderedTotal}})});
             ebayQuantityUpdatedSkuIds.push(d.focSkuId);
-          }catch(e){console.error('FOC PRH submission: could not update eBay presale listing quantity',row.id,e);}
+          }catch(e){console.error('FOC eBay sync: could not update eBay presale listing quantity',row.id,e);}
         }
       }
     }
-  }catch(e){console.error('FOC PRH submission: eBay quantity sync sweep failed',e);}
-  return deps.json({ok:true,submission:inserted,ebayWithdrawnCount:ebayWithdrawnSkuIds.length,ebayQuantityUpdatedCount:ebayQuantityUpdatedSkuIds.length});
+  }catch(e){console.error('FOC eBay sync: quantity sync sweep failed',e);}
+  return {ebayWithdrawnSkuIds,ebayQuantityUpdatedSkuIds};
+}
+
+// Store report: after placing the real order on PRH's own ordering site
+// (their cart export gives quantities that can differ from this store's own
+// computed demand -- carton minimums, a judgment call to buy a few extra),
+// getting that reality back into the dashboard meant clicking into every
+// single cover and retyping its store-stock quantity by hand, one at a
+// time -- the exact thing adminSku's storeQuantity field already supports,
+// just with no bulk path in. This ingests PRH's own cart-export CSV
+// (columns: "ISBN / UPC", "Quantity", ...) directly: matches each row to
+// this cycle's comic_skus by UPC, records the real ordered total as
+// secured_quantity (ground truth of what's coming, same field the
+// disappeared-title/incentive-gating logic elsewhere already reads), and
+// recomputes store_quantity as whatever's left over after subtracting
+// committed demand (website presales + eBay presold) -- exactly what a
+// staffer would have hand-typed. Then reuses syncFocEbayListingsToOrder
+// (the same reconciliation adminPrhSubmission's own auto-sweep runs) so
+// covers left out of the real order get their eBay listings ended, and
+// covers that were ordered get their live listing's buyable quantity
+// adjusted to match reality, in this one upload.
+async function adminImportPrhCart(request,env,deps){
+  const db=(path,options)=>deps.supabaseAdminFetch(env,path,options);
+  if(request.method!=='POST')return deps.json({ok:false,error:'POST only'},405);
+  const limited=await deps.readJsonWithLimit(request,2*1024*1024);if(limited.error)return limited.error;const body=limited.data||{};
+  const storeId=text(body.storeId,80);const cycleId=text(body.cycleId,80);
+  const auth=await deps.requireStoreUser(request,env,storeId,['owner','admin','manager','employee']);if(auth.error)return auth.error;
+  if(!cycleId)return deps.json({ok:false,error:'cycleId is required'},400);
+  const rows=(Array.isArray(body.rows)?body.rows:[]).slice(0,5000);
+  if(!rows.length)return deps.json({ok:false,error:'No rows were supplied -- is this the right file?'},400);
+  // A UPC can in principle repeat within one cart export (the same cover
+  // added to the cart twice, or PRH itself splitting a large quantity across
+  // rows) -- sum rather than overwrite, so the real total ordered is never
+  // silently understated to whichever row happened to be read last.
+  const orderedByUpc=new Map();
+  for(const row of rows){
+    const upc=exactIdentifier(row?.upc);const quantity=Math.max(0,Math.min(100000,Number(row?.quantity)||0));
+    if(!upc||!quantity)continue;
+    orderedByUpc.set(upc,(orderedByUpc.get(upc)||0)+quantity);
+  }
+  if(!orderedByUpc.size)return deps.json({ok:false,error:'No row had both a UPC/ISBN and a positive quantity -- is this the right file?'},400);
+  const {data:skus}=await db(`comic_skus?cycle_id=eq.${encodeURIComponent(cycleId)}&store_id=eq.${encodeURIComponent(storeId)}&select=id,upc,title,variant_label`);
+  if(!skus?.length)return deps.json({ok:false,error:'FOC cycle not found, or it has no covers yet'},404);
+  const customerQty=await orderedQtyBySku(db,cycleId);
+  const ebayPresold=await ebayPresoldBySku(db,storeId);
+  const matchedUpcs=new Set();
+  const updated=[];const finalQtyBySku=new Map();
+  for(const sku of skus){
+    const upc=exactIdentifier(sku.upc);
+    const orderedTotal=orderedByUpc.get(upc)||0;
+    if(upc&&orderedByUpc.has(upc))matchedUpcs.add(upc);
+    const committed=Number(customerQty.get(sku.id)||0)+Number(ebayPresold.get(sku.id)||0);
+    const newStoreQuantity=Math.max(0,orderedTotal-committed);
+    if(orderedTotal>0)finalQtyBySku.set(sku.id,orderedTotal);
+    await db(`comic_skus?id=eq.${sku.id}&store_id=eq.${encodeURIComponent(storeId)}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({secured_quantity:orderedTotal,store_quantity:newStoreQuantity})});
+    updated.push({skuId:sku.id,title:sku.title,variantLabel:sku.variant_label||'',orderedTotal,websitePresold:Number(customerQty.get(sku.id)||0),ebayPresold:Number(ebayPresold.get(sku.id)||0),storeQuantity:newStoreQuantity});
+  }
+  // Rows whose UPC matched nothing in this cycle's catalog -- almost always
+  // non-comic lines PRH's own cart mixes in (posters, merchandise) that
+  // never entered comic_skus to begin with, but surfaced rather than
+  // silently dropped in case a real cover's UPC just doesn't match (a
+  // reprint, a distributor UPC change) and needs a human look.
+  const unmatchedRows=[...orderedByUpc.entries()].filter(([upc])=>!matchedUpcs.has(upc)).map(([upc,quantity])=>({upc,quantity}));
+  const {ebayWithdrawnSkuIds,ebayQuantityUpdatedSkuIds}=await syncFocEbayListingsToOrder(env,deps,db,storeId,cycleId,finalQtyBySku);
+  // Covers that were ordered and still have copies left to sell (after
+  // committed demand) but have no live eBay presale listing at all yet --
+  // informational only, never auto-created (listing a cover is its own
+  // deliberate step elsewhere, complete with photos/description choices).
+  const {data:presaleRows}=await db(`inventory_items?store_id=eq.${encodeURIComponent(storeId)}&status=eq.presale&select=data`);
+  const listedSkuIds=new Set((presaleRows||[]).filter(row=>{const d=row.data||{};return d.source==='foc_presale'&&d.focCycleId===cycleId&&(d.ebayOfferId||(d.ebayApiSystem==='trading'&&d.ebayListingId&&d.ebaySku));}).map(row=>row.data.focSkuId));
+  const needsListing=updated.filter(item=>item.storeQuantity>0&&!listedSkuIds.has(item.skuId)).map(item=>({skuId:item.skuId,title:item.title,variantLabel:item.variantLabel,availableQty:item.storeQuantity}));
+  return deps.json({ok:true,matchedCount:updated.filter(u=>u.orderedTotal>0).length,updated,unmatchedRows,ebayWithdrawnCount:ebayWithdrawnSkuIds.length,ebayQuantityUpdatedCount:ebayQuantityUpdatedSkuIds.length,needsListing});
 }
 
 // Manual, one-click sibling to the auto-sweep inside adminPrhSubmission
@@ -2133,6 +2212,7 @@ export async function handleFocRequest(request, env, url, deps) {
   if(path==='/foc/admin/sku'&&request.method==='PATCH')return adminSku(request,env,deps);
   if(path==='/foc/admin/prh-submission'&&(request.method==='GET'||request.method==='POST'))return adminPrhSubmission(request,env,deps,url);
   if(path==='/foc/admin/end-ebay-listings'&&request.method==='POST')return adminEndFocEbayListings(request,env,deps);
+  if(path==='/foc/admin/prh-cart-import'&&request.method==='POST')return adminImportPrhCart(request,env,deps);
   if(path==='/foc/admin/export'&&request.method==='GET')return exportPrh(env,deps,url,request);
   if(path==='/foc/admin/intelligence'&&request.method==='GET')return focIntelligence(request,env,deps,url);
   if(path==='/foc/admin/orders'&&(request.method==='GET'||request.method==='PATCH'))return adminOrders(request,env,deps,url);

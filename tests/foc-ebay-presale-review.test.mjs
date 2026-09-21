@@ -394,21 +394,30 @@ assert.match(focDash, /openSettingsSection\(\\'profile\\',\\'vendor-profile-pane
 // exact moment the PRH order is locked -- that's the decisive
 // "not ordering this" moment.
 const prhSubmissionStart = preorders.indexOf('async function adminPrhSubmission');
-const prhSubmissionEnd = preorders.indexOf('async function adminCycle', prhSubmissionStart);
+const prhSubmissionEnd = preorders.indexOf('async function syncFocEbayListingsToOrder', prhSubmissionStart);
 const prhSubmissionBody = preorders.slice(prhSubmissionStart, prhSubmissionEnd);
 assert.match(prhSubmissionBody, /if\(finalQty<=0\)continue;/, 'unordered SKUs must still be excluded from the distributor order itself');
-assert.match(prhSubmissionBody, /const includedSkuIds=new Set\(lineItems\.map\(li=>li\.skuId\)\);/, 'must know which SKUs actually got ordered before deciding what to withdraw');
+assert.match(prhSubmissionBody, /const finalQtyBySku=new Map\(lineItems\.map\(li=>\[li\.skuId,li\.finalQty\]\)\);/, 'must know which SKUs actually got ordered, and how many, before reconciling eBay against the order');
+assert.match(prhSubmissionBody, /await syncFocEbayListingsToOrder\(env,deps,db,storeId,cycleId,finalQtyBySku\)/, 'must reconcile eBay listings against the locked order via the shared sync helper, not duplicate the sweep inline');
+assert.match(prhSubmissionBody, /return deps\.json\(\{ok:true,submission:inserted,ebayWithdrawnCount:ebayWithdrawnSkuIds\.length,ebayQuantityUpdatedCount:ebayQuantityUpdatedSkuIds\.length\}\)/, 'the response must report how many listings were withdrawn and how many had their quantity synced');
+
 // Store report: this sweep silently never withdrew a Trading-API-built
 // listing at all -- ebayOfferId is always empty for ebayApiSystem:'trading'
 // rows (Trading has no "offer" concept), so the old ebayOfferId-only check
 // excluded them entirely. Must recognize a live Trading listing the same
-// way the quantity-sync sweep already does.
-assert.match(prhSubmissionBody, /const hasLiveEbayListing=d\.ebayOfferId\|\|\(d\.ebayApiSystem==='trading'&&d\.ebayListingId&&d\.ebaySku\);/,
+// way the quantity-sync sweep already does. This logic now lives in the
+// shared syncFocEbayListingsToOrder helper (called by both adminPrhSubmission
+// above and adminImportPrhCart, the real-PRH-cart reconciliation below) --
+// so it's the shared body, not adminPrhSubmission's own, that must match.
+const syncHelperStart = preorders.indexOf('async function syncFocEbayListingsToOrder');
+const syncHelperEnd = preorders.indexOf('async function adminImportPrhCart', syncHelperStart);
+const syncHelperBody = preorders.slice(syncHelperStart, syncHelperEnd);
+assert.match(syncHelperBody, /const hasLiveEbayListing=d\.ebayOfferId\|\|\(d\.ebayApiSystem==='trading'&&d\.ebayListingId&&d\.ebaySku\);/,
   'must recognize a live Trading-API-built listing (no ebayOfferId, but a real ebayListingId+ebaySku) same as a live REST one');
-assert.match(prhSubmissionBody, /d\.source==='foc_presale'&&d\.focCycleId===cycleId&&hasLiveEbayListing&&!includedSkuIds\.has\(d\.focSkuId\)&&Number\(d\.qty\?\?d\.quantity\?\?0\)>0/,
-  'must only withdraw presale listings for SKUs that did not make it into this cycle\'s PRH order, now including Trading-built ones');
-assert.match(prhSubmissionBody, /await withdrawFocPresaleRow\(env,deps,ebayToken,row,presaleRows,withdrawingIds\)/, 'must actually withdraw the eBay offer (via the group-aware helper, not just flag it locally)');
-assert.match(prhSubmissionBody, /ebayWithdrawnReason:'not_included_in_prh_order'/, 'the withdrawn row must record why, for later auditing');
+assert.match(syncHelperBody, /const orderedTotal=finalQtyBySku\.get\(d\.focSkuId\);\s*\n\s*return d\.source==='foc_presale'&&d\.focCycleId===cycleId&&hasLiveEbayListing&&!\(orderedTotal>0\)&&Number\(d\.qty\?\?d\.quantity\?\?0\)>0/,
+  'must only withdraw presale listings for SKUs not present (or present at zero) in the given ordered-quantity map, now including Trading-built ones');
+assert.match(syncHelperBody, /await withdrawFocPresaleRow\(env,deps,ebayToken,row,presaleRows,withdrawingIds\)/, 'must actually withdraw the eBay offer (via the group-aware helper, not just flag it locally)');
+assert.match(syncHelperBody, /ebayWithdrawnReason:'not_included_in_prh_order'/, 'the withdrawn row must record why, for later auditing');
 // Store report: submitting the PRH order withdrew unordered eBay listings
 // as designed, but the very next PRH export showed those SAME never-sold
 // covers back as full-quantity "orders". Root cause: ebayPresoldBySku
@@ -419,11 +428,10 @@ assert.match(prhSubmissionBody, /ebayWithdrawnReason:'not_included_in_prh_order'
 // only what had genuinely sold *before* the withdrawal at the moment
 // qty gets zeroed, so nothing withdrawn-but-unsold is ever misread as
 // distributor demand again.
-assert.match(prhSubmissionBody, /const alreadySoldBeforeWithdraw=Math\.max\(0,Number\(row\.data\.focPresaleOriginalQty\|\|0\)-Number\(row\.data\.qty\?\?row\.data\.quantity\?\?0\)\);/,
+assert.match(syncHelperBody, /const alreadySoldBeforeWithdraw=Math\.max\(0,Number\(row\.data\.focPresaleOriginalQty\|\|0\)-Number\(row\.data\.qty\?\?row\.data\.quantity\?\?0\)\);/,
   'withdrawing an unordered listing must compute what had genuinely sold before zeroing it out');
-assert.match(prhSubmissionBody, /focPresaleOriginalQty:alreadySoldBeforeWithdraw,ebayWithdrawnAt:/,
+assert.match(syncHelperBody, /focPresaleOriginalQty:alreadySoldBeforeWithdraw,ebayWithdrawnAt:/,
   'withdrawing an unordered listing must pin focPresaleOriginalQty down to the real sold-so-far count, not leave it at the full original listing quantity');
-assert.match(prhSubmissionBody, /return deps\.json\(\{ok:true,submission:inserted,ebayWithdrawnCount:ebayWithdrawnSkuIds\.length,ebayQuantityUpdatedCount:ebayQuantityUpdatedSkuIds\.length\}\)/, 'the response must report how many listings were withdrawn and how many had their quantity synced');
 assert.match(worker, /async function withdrawEbayOffer\(env, ebayToken, offerId\)/, 'must have a reusable withdraw helper, not just the /ebay/end route inline');
 assert.match(worker, /getEbayUserAccessToken, withdrawEbayOffer, withdrawEbayOfferGroup, endEbayVolumeDiscount, ebayReviseOfferQuantity,\s*\n\s*ebayReviseVariationQuantityTrading, endEbayListingTrading,\s*\n[^}]*\}\);/, 'the withdraw helper, group-withdraw helper, quantity-revise helper, token getter, and the Trading-API-native quantity-revise/end helpers must all be injected into the FOC module\'s deps');
 
@@ -435,13 +443,11 @@ assert.match(worker, /getEbayUserAccessToken, withdrawEbayOffer, withdrawEbayOff
 // physically arrive. Deliberately only touches the still-presale eBay
 // listing's own quantity counter, never real inventory_items stock --
 // receiving the shipment is a separate, later step.
-assert.match(prhSubmissionBody, /const finalQtyBySku=new Map\(lineItems\.map\(li=>\[li\.skuId,li\.finalQty\]\)\);/,
-  'must know the final locked order total per SKU to sync the listing to');
-assert.match(prhSubmissionBody, /const alreadySold=Math\.max\(0,Number\(d\.focPresaleOriginalQty\|\|currentAvailable\)-currentAvailable\);/,
+assert.match(syncHelperBody, /const alreadySold=Math\.max\(0,Number\(d\.focPresaleOriginalQty\|\|currentAvailable\)-currentAvailable\);/,
   'must subtract copies already sold via this presale listing so it never shows more available than what is actually left to sell');
-assert.match(prhSubmissionBody, /const newAvailable=Math\.max\(0,orderedTotal-alreadySold\);/, 'the new available quantity must be the ordered total minus what already sold');
-assert.match(prhSubmissionBody, /await deps\.ebayReviseOfferQuantity\(env,ebayToken,d\.ebayOfferId,newAvailable\)/, 'must actually push the new quantity to the live eBay offer, not just update the local row');
-assert.match(prhSubmissionBody, /qty:newAvailable,quantity:newAvailable,focPresaleOriginalQty:orderedTotal/, 'the local row and its sold-so-far baseline must both be updated to match');
+assert.match(syncHelperBody, /const newAvailable=Math\.max\(0,orderedTotal-alreadySold\);/, 'the new available quantity must be the ordered total minus what already sold');
+assert.match(syncHelperBody, /await deps\.ebayReviseOfferQuantity\(env,ebayToken,d\.ebayOfferId,newAvailable\)/, 'must actually push the new quantity to the live eBay offer, not just update the local row');
+assert.match(syncHelperBody, /qty:newAvailable,quantity:newAvailable,focPresaleOriginalQty:orderedTotal/, 'the local row and its sold-so-far baseline must both be updated to match');
 assert.match(focDash, /if\(d\.ebayWithdrawnCount>0\)toast_dash/, 'the dashboard must surface when a listing was auto-withdrawn, not just silently succeed');
 
 // Store category: eBay's Seller Hub "Store category" (distinct from the

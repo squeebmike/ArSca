@@ -1071,10 +1071,11 @@ function renderFocReview(){
   var relevantFamilies=state.families.filter(function(f){
     return f.variants.some(function(v){return v.isIncentive;})||f.variants.some(function(v){return !v.isIncentive&&(Number(v.customerQty||0)+Number(v.ebayPresold||0)+Number(v.storeQuantity||0))>0;});
   });
-  panel().innerHTML='<section class="foc-hero"><div class="foc-toolbar"><button class="hbtn" onclick="openFocCycle(\''+esc(c.id)+'\')">← COVER WALL</button><button class="hbtn" style="color:var(--g)" onclick="submitPrhOrder()">SUBMIT PRH ORDER</button><button class="hbtn" style="color:var(--red)" onclick="endFocEbayListings()">END REMAINING EBAY LISTINGS</button><button class="hbtn" title="Fixes multi-cover eBay listings published before the photo-to-cover binding fix, where the wrong (or missing) photo shows for some covers" onclick="repairFocEbayGroupPhotos()">REPAIR LISTING PHOTOS</button></div>'+
+  panel().innerHTML='<section class="foc-hero"><div class="foc-toolbar"><button class="hbtn" onclick="openFocCycle(\''+esc(c.id)+'\')">← COVER WALL</button><button class="hbtn" style="color:var(--g)" onclick="submitPrhOrder()">SUBMIT PRH ORDER</button><input type="file" id="foc-prh-cart-file" accept=".csv,.xlsx,.xls" hidden onchange="handleFocPrhCartImportFile(event)"><button class="hbtn" title="Upload the cart export from PRH\'s own ordering site (what you actually ordered) -- sets secured/store quantities to match, ends eBay listings for anything left out, and adjusts ordered covers\' listings to the real total, all in one go" onclick="document.getElementById(\'foc-prh-cart-file\').click()">UPLOAD PRH CART</button><button class="hbtn" style="color:var(--red)" onclick="endFocEbayListings()">END REMAINING EBAY LISTINGS</button><button class="hbtn" title="Fixes multi-cover eBay listings published before the photo-to-cover binding fix, where the wrong (or missing) photo shows for some covers" onclick="repairFocEbayGroupPhotos()">REPAIR LISTING PHOTOS</button></div>'+
     '<div style="font:900 20px/1.1 \'Orbitron\',monospace;color:var(--text);margin-top:10px">Final FOC Review · '+esc(displayDate(c.foc_date))+'</div>'+
     '<div class="foc-stats" style="margin-top:12px"><div class="foc-stat"><b>'+regular.length+'</b><span>SKUs</span></div><div class="foc-stat"><b>'+totalUnits+'</b><span>Total Units</span></div><div class="foc-stat"><b>$'+(estCents/100).toFixed(2)+'</b><span>Est. Wholesale</span></div><div class="foc-stat"><b>'+totalWebsite+'</b><span>Website Presold</span></div><div class="foc-stat"><b>'+totalEbay+'</b><span>eBay Presold</span></div><div class="foc-stat"><b>'+totalStore+'</b><span>Whatnot/Store</span></div><div class="foc-stat"><b>'+qualifiedCount+' / '+incentivesAll.length+'</b><span>Incentives Qualified</span></div></div>'+
-    '<div id="foc-review-status" style="font:10px var(--font-mono);color:var(--dim);margin-top:8px">Checking submission status…</div></section>'+
+    '<div id="foc-review-status" style="font:10px var(--font-mono);color:var(--dim);margin-top:8px">Checking submission status…</div>'+
+    '<div id="foc-prh-cart-result"></div></section>'+
     (relevantFamilies.length?relevantFamilies.map(function(f){
       return '<section class="foc-family"><header class="foc-family-head"><div class="foc-family-title">'+esc(f.title)+'</div></header>'+incentiveTrackerHtml(f)+f.variants.filter(function(v){return !v.isIncentive;}).map(focReviewLineHtml).join('')+'</section>';
     }).join(''):'<div class="panel" style="padding:28px;text-align:center;color:var(--dim)">Nothing was ordered or qualifying this week.</div>');
@@ -1164,6 +1165,71 @@ async function submitPrhOrder(){
     if(d.ebayWithdrawnCount>0)toast_dash(d.ebayWithdrawnCount+' unsold eBay presale listing'+(d.ebayWithdrawnCount===1?'':'s')+' ended -- no copies were ordered for '+(d.ebayWithdrawnCount===1?'it':'them'));
     await loadPrhSubmissionStatus();
   }catch(e){if(status)status.textContent='';toast_dash('Could not submit: '+e.message);}
+}
+// Store report: after placing the real order on PRH's own ordering site
+// (their cart export gives quantities that can differ from this store's
+// own computed demand -- carton minimums, a judgment call to buy a few
+// extra), getting that reality back into the dashboard meant clicking
+// into every single cover and retyping its Whatnot/store quantity by
+// hand, one at a time. This reads PRH's own cart-export CSV directly
+// (same file the "Cart" screen on their ordering site lets you download)
+// and reconciles secured/store quantities, eBay listings, and everything
+// in between in one upload -- see adminImportPrhCart in foc-preorders.mjs.
+async function handleFocPrhCartImportFile(event){
+  var file=event.target.files&&event.target.files[0];event.target.value='';if(!file||!state.cycle)return;
+  var status=document.getElementById('foc-review-status');
+  var resultHost=document.getElementById('foc-prh-cart-result');
+  if(status)status.textContent='Reading '+file.name+'…';
+  if(resultHost)resultHost.innerHTML='';
+  try{
+    if(typeof XLSX==='undefined')throw new Error('Spreadsheet reader is still loading');
+    // raw:true is required here for the same reason handleFocFileImport
+    // needs it for the big catalog import -- without it, SheetJS type-infers
+    // the big numeric-looking "ISBN / UPC" column and silently corrupts its
+    // last digit through float coercion, which would then match nothing.
+    var buffer=await file.arrayBuffer();var wb=XLSX.read(buffer,{type:'array',raw:true});var sheet=wb.Sheets[wb.SheetNames[0]];
+    var parsed=XLSX.utils.sheet_to_json(sheet,{defval:'',raw:false});
+    if(!parsed.length)throw new Error('No rows found in this file');
+    var upcKey=Object.keys(parsed[0]).find(function(k){return k.replace(/\s+/g,' ').trim().toLowerCase()==='isbn / upc';});
+    var qtyKey=Object.keys(parsed[0]).find(function(k){return k.trim().toLowerCase()==='quantity';});
+    if(!upcKey||!qtyKey)throw new Error('This does not look like a PRH cart export -- expected "ISBN / UPC" and "Quantity" columns');
+    var rows=parsed.map(function(row){return{upc:String(row[upcKey]||'').trim(),quantity:Number(row[qtyKey])||0};}).filter(function(r){return r.upc&&r.quantity>0;});
+    if(!rows.length)throw new Error('No row had both a UPC/ISBN and a positive quantity -- is this the right file?');
+    if(status)status.textContent='Matching '+rows.length+' cart rows against this cycle…';
+    var d=await api('/foc/admin/prh-cart-import',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({storeId:getActiveStoreId(),cycleId:state.cycle.id,rows:rows})});
+    if(status)status.textContent='';
+    toast_dash(d.matchedCount+' cover'+(d.matchedCount===1?'':'s')+' matched and updated'+(d.ebayWithdrawnCount?' · '+d.ebayWithdrawnCount+' listing'+(d.ebayWithdrawnCount===1?'':'s')+' ended':'')+(d.ebayQuantityUpdatedCount?' · '+d.ebayQuantityUpdatedCount+' listing'+(d.ebayQuantityUpdatedCount===1?'':'s')+' quantity-synced':''));
+    // Refetch this cycle so every per-cover card reflects the new secured/
+    // store quantities, then re-render the review screen (not the cover
+    // wall openCycle itself renders) with the import result attached.
+    await openCycle(state.cycle.id);
+    renderFocReview();
+    var resultHostAfterRefresh=document.getElementById('foc-prh-cart-result');
+    if(resultHostAfterRefresh)resultHostAfterRefresh.innerHTML=focPrhCartResultHtml(d);
+  }catch(e){if(status)status.textContent='';toast_dash('Could not import PRH cart: '+e.message);}
+}
+function focPrhCartResultHtml(d){
+  var parts=['<div class="panel" style="margin-top:10px;padding:12px 16px">'+
+    '<div style="font:900 11px \'Orbitron\',monospace;color:var(--g);letter-spacing:1px;margin-bottom:6px">PRH CART IMPORTED</div>'+
+    '<div style="font:10px var(--font-mono);color:var(--dim)">'+d.matchedCount+' cover'+(d.matchedCount===1?'':'s')+' matched to this cycle and had secured/store quantities set to match your real order.'+
+    (d.ebayWithdrawnCount?'<br>'+d.ebayWithdrawnCount+' eBay listing'+(d.ebayWithdrawnCount===1?'':'s')+' ended -- left out of the cart, so nothing is coming from the distributor.':'')+
+    (d.ebayQuantityUpdatedCount?'<br>'+d.ebayQuantityUpdatedCount+' eBay listing'+(d.ebayQuantityUpdatedCount===1?'':'s')+' had its buyable quantity adjusted to the real ordered total.':'')+
+    '</div></div>'];
+  if(d.unmatchedRows&&d.unmatchedRows.length){
+    parts.push('<div class="panel" style="margin-top:10px;padding:12px 16px;border-color:rgba(255,209,102,.35)">'+
+      '<div style="font:900 11px \'Orbitron\',monospace;color:var(--gold);letter-spacing:1px;margin-bottom:6px">⚠ '+d.unmatchedRows.length+' CART ROW'+(d.unmatchedRows.length===1?'':'S')+' NOT MATCHED</div>'+
+      '<div style="font:9px var(--font-mono);color:var(--dim);margin-bottom:6px">Usually non-comic lines PRH\'s own cart mixes in (posters, merchandise) that were never part of this catalog import -- but double-check a UPC below isn\'t a real cover that just doesn\'t match (a reprint, a distributor UPC change).</div>'+
+      d.unmatchedRows.map(function(r){return '<div style="font:9px var(--font-mono);color:var(--text);padding:2px 0">UPC '+esc(r.upc)+' · qty '+r.quantity+'</div>';}).join('')+
+      '</div>');
+  }
+  if(d.needsListing&&d.needsListing.length){
+    parts.push('<div class="panel" style="margin-top:10px;padding:12px 16px;border-color:rgba(255,209,102,.35)">'+
+      '<div style="font:900 11px \'Orbitron\',monospace;color:var(--gold);letter-spacing:1px;margin-bottom:6px">STILL NEEDS AN EBAY LISTING ('+d.needsListing.length+')</div>'+
+      '<div style="font:9px var(--font-mono);color:var(--dim);margin-bottom:6px">Ordered, with copies left over after website/eBay demand, but no live eBay presale listing yet -- nothing was auto-created.</div>'+
+      d.needsListing.map(function(r){return '<div style="font:9px var(--font-mono);color:var(--text);padding:2px 0">'+esc(r.title)+(r.variantLabel&&r.variantLabel!=='Cover A'?' · '+esc(r.variantLabel):'')+' · '+r.availableQty+' available</div>';}).join('')+
+      '</div>');
+  }
+  return parts.join('');
 }
 // Store report: ending eBay listings used to be all-or-nothing for the
 // whole cycle -- no way to keep a specific cover's presale running while
@@ -1342,7 +1408,7 @@ async function loadShipping(){var host=document.getElementById('foc-shipping-set
 function renderShipping(){var s=state.shipping||{},f=s.from||{},p=s.parcel||{};document.getElementById('foc-shipping-settings').innerHTML='<div class="foc-import-report"><b style="color:'+(s.tokenConfigured?'var(--g)':'var(--gold)')+'">SHIPPO TOKEN '+(s.tokenConfigured?'CONNECTED':'NEEDS SETUP')+'</b><br>The API token stays in the Worker secret. This form stores only your ship-from address and package preset.</div><div class="foc-sku-fields" style="grid-template-columns:repeat(auto-fit,minmax(180px,1fr));margin-top:10px">'+[['name','Store / sender',f.name],['line1','Street',f.street1],['line2','Suite / unit',f.street2],['city','City',f.city],['state','State',f.state],['zip','ZIP',f.zip],['phone','Phone',f.phone],['email','Email',f.email]].map(function(x){return'<label>'+x[1]+'<input class="tsi" data-ship-from="'+x[0]+'" value="'+esc(x[2]||'')+'"></label>';}).join('')+'</div><div class="foc-sku-fields" style="grid-template-columns:repeat(4,minmax(0,1fr));margin-top:10px">'+[['length','Length',p.length||12],['width','Width',p.width||9],['height','Height',p.height||1],['weight','Weight lb',p.weight||1]].map(function(x){return'<label>'+x[1]+'<input class="tsi" type="number" min=".1" step=".1" data-ship-parcel="'+x[0]+'" value="'+esc(x[2])+'"></label>';}).join('')+'</div><button class="hbtn" style="margin-top:10px" onclick="saveFocShippingSettings()">SAVE LIVE SHIPPING SETUP</button>';}
 async function saveShipping(){var shipFrom={},parcel={};document.querySelectorAll('[data-ship-from]').forEach(function(el){shipFrom[el.dataset.shipFrom]=el.value;});document.querySelectorAll('[data-ship-parcel]').forEach(function(el){parcel[el.dataset.shipParcel]=el.value;});try{var d=await api('/foc/admin/shipping-settings',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({storeId:getActiveStoreId(),enabled:true,shipFrom:shipFrom,defaultParcel:parcel})});state.shipping=d.shipping;toast_dash(d.shipping.tokenConfigured?'Live carrier settings saved':'Address saved — add the Shippo token to enable rates');renderShipping();}catch(e){toast_dash(e.message);}}
 
-window.ensureFocPanel=function(){loadCycles(false);};window.loadFocCycles=loadCycles;window.openFocCycle=openCycle;window.handleFocImportFile=handleImport;window.handleLunarFocImportFile=handleLunarImport;window.switchFocDistributor=switchDistributor;window.loadLunarDiscountSettings=loadLunarDiscountSettings;window.saveLunarDiscountSettings=saveLunarDiscountSettings;window.filterFocAdmin=function(v){state.query=v;renderFamilies();};window.filterFocPublisher=function(v){state.publisher=v;renderFamilies();};window.filterFocFlag=function(v){state.flag=v;renderFamilies();};window.filterFocEbay=function(v){state.ebay=v;renderFamilies();};window.saveFocSku=saveSku;window.saveFocFamily=saveFamily;window.toggleFocCycle=toggleCycle;window.archiveFocCycle=archiveCycle;window.unarchiveFocCycle=unarchiveCycle;window.saveFocCycleCutoff=saveCutoff;window.exportFocPrh=exportPrh;window.loadFocShippingSettings=loadShipping;window.saveFocShippingSettings=saveShipping;window.openReceiveShipment=openReceiveShipment;window.confirmReceiveShipment=confirmReceiveShipment;window.createFocEbayPresale=openEbayPresaleReview;window.submitEbayPresaleReview=submitEbayPresaleReview;window.openFamilyEbayGroupReview=openFamilyEbayGroupReview;window.submitFamilyEbayGroupReview=submitFamilyEbayGroupReview;window.handleFocGroupMainImageFile=handleFocGroupMainImageFile;window.clearFocGroupMainImage=clearFocGroupMainImage;window.handleFocGroupBundleImageFile=handleFocGroupBundleImageFile;window.clearFocGroupBundleImage=clearFocGroupBundleImage;window.loadEbaySafeDays=loadEbaySafeDays;window.saveFocEbaySafeDays=saveEbaySafeDays;window.openFocReview=openFocReview;window.openFocIntelligence=openFocIntelligence;window.submitPrhOrder=submitPrhOrder;window.endFocEbayListings=endFocEbayListings;window.toggleFocEndEbayAll=toggleFocEndEbayAll;window.confirmEndFocEbayListings=confirmEndFocEbayListings;window.repairFocEbayGroupPhotos=repairFocEbayGroupPhotos;window.reviewStoreQtyChanged=reviewStoreQtyChanged;window.focPublishBulkCheckboxChanged=focPublishBulkCheckboxChanged;window.toggleFocPublishBulkSelectAll=toggleFocPublishBulkSelectAll;window.bulkSetCustomerEnabled=bulkSetCustomerEnabled;
+window.ensureFocPanel=function(){loadCycles(false);};window.loadFocCycles=loadCycles;window.openFocCycle=openCycle;window.handleFocImportFile=handleImport;window.handleLunarFocImportFile=handleLunarImport;window.switchFocDistributor=switchDistributor;window.loadLunarDiscountSettings=loadLunarDiscountSettings;window.saveLunarDiscountSettings=saveLunarDiscountSettings;window.filterFocAdmin=function(v){state.query=v;renderFamilies();};window.filterFocPublisher=function(v){state.publisher=v;renderFamilies();};window.filterFocFlag=function(v){state.flag=v;renderFamilies();};window.filterFocEbay=function(v){state.ebay=v;renderFamilies();};window.saveFocSku=saveSku;window.saveFocFamily=saveFamily;window.toggleFocCycle=toggleCycle;window.archiveFocCycle=archiveCycle;window.unarchiveFocCycle=unarchiveCycle;window.saveFocCycleCutoff=saveCutoff;window.exportFocPrh=exportPrh;window.loadFocShippingSettings=loadShipping;window.saveFocShippingSettings=saveShipping;window.openReceiveShipment=openReceiveShipment;window.confirmReceiveShipment=confirmReceiveShipment;window.createFocEbayPresale=openEbayPresaleReview;window.submitEbayPresaleReview=submitEbayPresaleReview;window.openFamilyEbayGroupReview=openFamilyEbayGroupReview;window.submitFamilyEbayGroupReview=submitFamilyEbayGroupReview;window.handleFocGroupMainImageFile=handleFocGroupMainImageFile;window.clearFocGroupMainImage=clearFocGroupMainImage;window.handleFocGroupBundleImageFile=handleFocGroupBundleImageFile;window.clearFocGroupBundleImage=clearFocGroupBundleImage;window.loadEbaySafeDays=loadEbaySafeDays;window.saveFocEbaySafeDays=saveEbaySafeDays;window.openFocReview=openFocReview;window.openFocIntelligence=openFocIntelligence;window.submitPrhOrder=submitPrhOrder;window.handleFocPrhCartImportFile=handleFocPrhCartImportFile;window.endFocEbayListings=endFocEbayListings;window.toggleFocEndEbayAll=toggleFocEndEbayAll;window.confirmEndFocEbayListings=confirmEndFocEbayListings;window.repairFocEbayGroupPhotos=repairFocEbayGroupPhotos;window.reviewStoreQtyChanged=reviewStoreQtyChanged;window.focPublishBulkCheckboxChanged=focPublishBulkCheckboxChanged;window.toggleFocPublishBulkSelectAll=toggleFocPublishBulkSelectAll;window.bulkSetCustomerEnabled=bulkSetCustomerEnabled;
 window.generateFocAiDescription=generateFocAiDescription;window.generateFocGroupAiDescription=generateFocGroupAiDescription;
 // Store report: "+ ADD TO INVENTORY" on a FOC cover-wall card threw
 // "quickAddFocSkuToInventory is not defined" -- this whole file is wrapped
