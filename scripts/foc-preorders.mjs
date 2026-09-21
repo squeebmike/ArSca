@@ -224,7 +224,16 @@ export function normalizeLunarRow(row = {}) {
     interiorArtist:text(row.Artist, 1000),
     coverArtist:text(row.CoverArtist, 1000),
     description:text(row.Description, 12000),
-    coverImageUrl:'',
+    // Lunar's own feed carries no cover-image data at all -- what shows up
+    // here as row.CoverLink (same field name PRH's own real column uses)
+    // is never something Lunar sent; it's a real https:// URL the client
+    // already uploaded, stitched onto each row client-side after
+    // extracting Lunar's embedded "picture in cell" covers straight out of
+    // the uploaded XLSX file (see extractXlsxCellImages/
+    // uploadExtractedCoverImages in foc-dashboard.js) -- SheetJS itself
+    // can only ever read cell VALUES, never an anchored picture object, so
+    // there was no column for this importer to read on its own.
+    coverImageUrl:/^https:\/\//i.test(text(row.CoverLink, 2000)) ? text(row.CoverLink, 2000) : '',
     coverAvailable:false,
     focDate:dateIso(row.FinalOrderCutoff),
     onSaleDate:dateIso(row.InstoreDate),

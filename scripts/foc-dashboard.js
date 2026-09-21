@@ -173,6 +173,90 @@ async function endSelectedOrphanedEbayListings(){
   }
 }
 
+// Store report: "I imported the Lunar FOC and it didn't show images" --
+// Lunar's real export embeds each cover as a picture object anchored
+// directly to its row's cell (confirmed: clicking one of those cells shows
+// a blank formula bar -- not a URL, not a =DISPIMG() cell-image formula
+// either). SheetJS (the XLSX reader this app already uses) only ever reads
+// cell VALUES; an anchored drawing object has no cell value at all, so it
+// was structurally invisible to every FOC importer, not just missing a
+// column name. An XLSX file is a zip archive underneath -- the real image
+// bytes live in xl/media/*, anchored to a specific row via
+// xl/drawings/drawingN.xml + its .rels relationship file (the standard
+// OOXML DrawingML anchor format both Excel and Google Sheets write for a
+// "picture in cell"). This reads that structure directly to recover what
+// SheetJS cannot, returning a Map of 0-indexed SHEET row -> the image file
+// found inside the zip for it.
+async function extractXlsxCellImages(buffer){
+  var byRow=new Map();
+  if(typeof JSZip==='undefined')return byRow;
+  var zip;
+  try{zip=await JSZip.loadAsync(buffer);}catch(e){return byRow;}
+  var drawingFiles=zip.file(/^xl\/drawings\/drawing\d+\.xml$/);
+  var drawingFile=drawingFiles&&drawingFiles[0];
+  if(!drawingFile)return byRow;
+  var drawingName=drawingFile.name.split('/').pop();
+  var drawingRelsFile=zip.file('xl/drawings/_rels/'+drawingName+'.rels');
+  if(!drawingRelsFile)return byRow;
+  var parser=new DOMParser();
+  var drawingDoc,relsDoc;
+  try{
+    drawingDoc=parser.parseFromString(await drawingFile.async('text'),'application/xml');
+    relsDoc=parser.parseFromString(await drawingRelsFile.async('text'),'application/xml');
+  }catch(e){return byRow;}
+  var targetById={};
+  Array.from(relsDoc.getElementsByTagName('Relationship')).forEach(function(r){targetById[r.getAttribute('Id')]=r.getAttribute('Target');});
+  var anchors=Array.from(drawingDoc.getElementsByTagName('xdr:twoCellAnchor')).concat(Array.from(drawingDoc.getElementsByTagName('xdr:oneCellAnchor')));
+  var NS_R='http://schemas.openxmlformats.org/officeDocument/2006/relationships';
+  for(var i=0;i<anchors.length&&byRow.size<2000;i++){
+    var fromEl=anchors[i].getElementsByTagName('xdr:from')[0];
+    var rowEl=fromEl&&fromEl.getElementsByTagName('xdr:row')[0];
+    if(!rowEl)continue;
+    var row=parseInt(rowEl.textContent,10);
+    if(!Number.isFinite(row)||byRow.has(row))continue; // first image anchored to a row wins
+    var blip=anchors[i].getElementsByTagName('a:blip')[0];
+    var embedId=blip&&(blip.getAttribute('r:embed')||blip.getAttributeNS(NS_R,'embed'));
+    var target=embedId&&targetById[embedId];
+    if(!target)continue;
+    var mediaPath='xl/media/'+target.split('/').pop();
+    var mediaFile=zip.file(mediaPath);
+    if(!mediaFile)continue;
+    byRow.set(row,{file:mediaFile,ext:(mediaPath.split('.').pop()||'jpg').toLowerCase()});
+  }
+  return byRow;
+}
+function xlsxImageContentType(ext){
+  return ext==='png'?'image/png':ext==='gif'?'image/gif':ext==='webp'?'image/webp':ext==='bmp'?'image/bmp':'image/jpeg';
+}
+// Uploads every extracted cover to this store's own photo storage (same
+// route the inventory photo editor already uses -- it just stores bytes
+// under a key and hands back a real, permanently-hosted URL, with no
+// other coupling to "inventory" specifically) so each cover gets a normal
+// https:// URL comic_skus.cover_image_url already expects, instead of
+// bytes trapped inside the uploaded spreadsheet. Small bounded concurrency
+// (not fully sequential, not unbounded) keeps a few-hundred-cover file
+// from taking minutes while not hammering the Worker with everything at
+// once.
+async function uploadExtractedCoverImages(imagesByRow,onProgress){
+  var urlsByRow=new Map();
+  var entries=Array.from(imagesByRow.entries());
+  var next=0,done=0;
+  async function worker(){
+    while(next<entries.length){
+      var idx=next++;
+      var row=entries[idx][0],info=entries[idx][1];
+      try{
+        var blob=await info.file.async('blob');
+        var res=await api('/inventory/photo/upload',{method:'POST',headers:{'Content-Type':xlsxImageContentType(info.ext)},body:blob});
+        if(res&&res.url)urlsByRow.set(row,res.url);
+      }catch(e){ /* skip this one cover -- the rest of the import still proceeds */ }
+      done++;if(onProgress)onProgress(done,entries.length);
+    }
+  }
+  await Promise.all(Array.from({length:Math.min(4,entries.length)},worker));
+  return urlsByRow;
+}
+
 // Shared by both distributors' file pickers -- reading/hashing the sheet and
 // reporting the import result back is identical either way; only the header
 // fingerprint that confirms "this is really a <distributor> FOC file" and
@@ -198,6 +282,18 @@ async function handleFocFileImport(event,config){
     if(headerIndex<0)throw new Error('This does not look like a '+config.label+' FOC metadata CSV/XLSX');
     var rows=XLSX.utils.sheet_to_json(sheet,{range:headerIndex,defval:'',raw:false});if(!rows.length)throw new Error('No '+config.label+' rows found');
     var hashBuffer=await crypto.subtle.digest('SHA-256',buffer);var sourceSha256=Array.from(new Uint8Array(hashBuffer)).map(function(b){return b.toString(16).padStart(2,'0');}).join('');
+    if(config.extractCellImages){
+      if(status)status.textContent='Looking for cover images embedded in the file…';
+      var imagesByRow=await extractXlsxCellImages(buffer);
+      if(imagesByRow.size){
+        var uploadedByRow=await uploadExtractedCoverImages(imagesByRow,function(done,total){if(status)status.textContent='Uploading cover images… '+done+' of '+total;});
+        // sheet_to_json({range:headerIndex,...}) starts data at the row right
+        // after the header -- rows[i] is always sheet row (headerIndex+1+i),
+        // 0-indexed the same way the drawing anchors above are.
+        rows.forEach(function(row,i){var url=uploadedByRow.get(headerIndex+1+i);if(url)row.CoverLink=url;});
+        if(status)status.textContent='Matched '+uploadedByRow.size+' embedded cover'+(uploadedByRow.size===1?'':'s')+' to their rows. Importing and grouping title families…';
+      }
+    }
     if(status)status.textContent='Found '+rows.length+' exact cover SKUs. Importing and grouping title families…';
     var result=await api('/foc/admin/import'+config.query,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sourceFilename:file.name,sourceSha256:sourceSha256,rows:rows})});
     var r=result.report||{};if(status)status.innerHTML='<b style="color:var(--g)">'+(result.duplicate?'Already imported — no duplicates created.':'Import complete.')+'</b><br>'+Number(r.processed||0)+' rows processed · '+Number(r.families||0)+' title families · '+Number(r.newSkus||0)+' new · '+Number(r.updatedSkus||0)+' updated · '+Number(r.unchanged||0)+' unchanged · '+Number(r.incentives||0)+' incentives';
@@ -208,7 +304,7 @@ function handleImport(event){
   return handleFocFileImport(event,{label:'PRH',query:'',matchesHeader:function(values){return values.indexOf('MainIdentifier')>-1&&values.indexOf('Title')>-1&&(values.indexOf('FOCDate')>-1||values.indexOf('FOC Date')>-1);}});
 }
 function handleLunarImport(event){
-  return handleFocFileImport(event,{label:'Lunar',query:'?distributor=Lunar',matchesHeader:function(values){return values.indexOf('ProductCode')>-1&&values.indexOf('Title')>-1&&values.indexOf('FinalOrderCutoff')>-1;}});
+  return handleFocFileImport(event,{label:'Lunar',query:'?distributor=Lunar',extractCellImages:true,matchesHeader:function(values){return values.indexOf('ProductCode')>-1&&values.indexOf('Title')>-1&&values.indexOf('FinalOrderCutoff')>-1;}});
 }
 
 async function openCycle(id){

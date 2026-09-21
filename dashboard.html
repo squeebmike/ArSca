@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.09.21.06-cover-image-and-pinned-price-fix">
+<meta name="version" content="2026.09.21.07-lunar-embedded-cover-images">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1612,6 +1612,11 @@ body.show-mode .inv-sync-badge{display:none;}
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js" defer></script>
 <!-- Parses distributor FOC-list exports (Pull Lists > IMPORT PRH LIST) -->
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js" defer></script>
+<!-- Reads the raw XLSX zip structure to pull out cover images Lunar embeds
+     directly into cells (a "picture in cell" object, not a URL/formula) --
+     SheetJS above only ever reads cell VALUES, never anchored drawing
+     objects, so this is the only way those covers are reachable at all. -->
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js" defer></script>
 <!-- Renders scannable CODE128 barcodes for printed shelf/price labels (Inventory > PRINT LABELS) -->
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js" defer></script>
 <!-- Twilio Voice JS SDK -- the PHONE tab's browser softphone. Loaded on every
@@ -1635,21 +1640,21 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.09.21.06-cover-image-and-pinned-price-fix" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.09.21.06-cover-image-and-pinned-price-fix" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.09.21.06-cover-image-and-pinned-price-fix" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.09.21.06-cover-image-and-pinned-price-fix" defer></script>
-<script src="scripts/backlist-dashboard.js?v=2026.09.21.06-cover-image-and-pinned-price-fix" defer></script>
-<script src="scripts/database-viewer.js?v=2026.09.21.06-cover-image-and-pinned-price-fix" defer></script>
-<script src="scripts/card-intake-dashboard.js?v=2026.09.21.06-cover-image-and-pinned-price-fix" defer></script>
-<script src="scripts/mana-pocket-task-library.js?v=2026.09.21.06-cover-image-and-pinned-price-fix" defer></script>
-<script src="scripts/daily-tasks-dashboard.js?v=2026.09.21.06-cover-image-and-pinned-price-fix" defer></script>
+<script src="scripts/query-routing.js?v=2026.09.21.07-lunar-embedded-cover-images" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.09.21.07-lunar-embedded-cover-images" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.09.21.07-lunar-embedded-cover-images" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.09.21.07-lunar-embedded-cover-images" defer></script>
+<script src="scripts/backlist-dashboard.js?v=2026.09.21.07-lunar-embedded-cover-images" defer></script>
+<script src="scripts/database-viewer.js?v=2026.09.21.07-lunar-embedded-cover-images" defer></script>
+<script src="scripts/card-intake-dashboard.js?v=2026.09.21.07-lunar-embedded-cover-images" defer></script>
+<script src="scripts/mana-pocket-task-library.js?v=2026.09.21.07-lunar-embedded-cover-images" defer></script>
+<script src="scripts/daily-tasks-dashboard.js?v=2026.09.21.07-lunar-embedded-cover-images" defer></script>
 <script src="scripts/research-loupe.js?v=a7de4ffe90" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.09.21.06-cover-image-and-pinned-price-fix" defer></script>
-<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.09.21.06-cover-image-and-pinned-price-fix" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.09.21.06-cover-image-and-pinned-price-fix" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.09.21.06-cover-image-and-pinned-price-fix" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.09.21.06-cover-image-and-pinned-price-fix" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.09.21.07-lunar-embedded-cover-images" defer></script>
+<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.09.21.07-lunar-embedded-cover-images" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.09.21.07-lunar-embedded-cover-images" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.09.21.07-lunar-embedded-cover-images" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.09.21.07-lunar-embedded-cover-images" defer></script>
 </head>
 <body>
 
@@ -1701,7 +1706,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
 <div class="dsb-chip" id="dsb-tasks" title="Today's Roles &amp; Tasks — click to jump to Tasks tab" style="cursor:pointer;display:none" onclick="switchTab('tasks')">✅ <span>TASKS:</span> <b id="dsb-tasks-val">—</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.09.21.06-cover-image-and-pinned-price-fix</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.09.21.07-lunar-embedded-cover-images</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3864,7 +3869,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.09.21.06-cover-image-and-pinned-price-fix';
+const APP_VERSION = '2026.09.21.07-lunar-embedded-cover-images';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -47412,7 +47417,7 @@ async function toppsLoadParallels(cardId){
   window.__arscaCloseModal = closeModal;
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.09.21.06-cover-image-and-pinned-price-fix" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.09.21.07-lunar-embedded-cover-images" defer></script>
 </body>
 </html>
 
