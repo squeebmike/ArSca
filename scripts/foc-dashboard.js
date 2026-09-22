@@ -253,7 +253,13 @@ async function uploadExtractedCoverImages(imagesByRow,onProgress){
       done++;if(onProgress)onProgress(done,entries.length);
     }
   }
-  await Promise.all(Array.from({length:Math.min(4,entries.length)},worker));
+  // A real Lunar file runs 400-550+ covers, ~15KB JPEG average -- at 4-way
+  // concurrency that's several minutes of a status line quietly ticking up
+  // with nothing else visibly happening, easy to mistake for stalled.
+  // Small files, so a higher parallel count is safe and cuts wall-clock
+  // time substantially without meaningfully increasing load on the Worker
+  // per request.
+  await Promise.all(Array.from({length:Math.min(10,entries.length)},worker));
   return urlsByRow;
 }
 
@@ -282,21 +288,38 @@ async function handleFocFileImport(event,config){
     if(headerIndex<0)throw new Error('This does not look like a '+config.label+' FOC metadata CSV/XLSX');
     var rows=XLSX.utils.sheet_to_json(sheet,{range:headerIndex,defval:'',raw:false});if(!rows.length)throw new Error('No '+config.label+' rows found');
     var hashBuffer=await crypto.subtle.digest('SHA-256',buffer);var sourceSha256=Array.from(new Uint8Array(hashBuffer)).map(function(b){return b.toString(16).padStart(2,'0');}).join('');
+    // Store report: "still no images" after the first version of this --
+    // extraction and row-matching were both actually correct (verified
+    // against a real ~500-cover file), but every embedded image was
+    // uploaded through its own separate round trip at only 4-way
+    // concurrency, which for a full week's file (Lunar files run 400-550+
+    // covers) can genuinely take minutes with no clear indication it was
+    // still working, not stalled -- easy to read as "did nothing." Higher
+    // concurrency for a small (~15KB average) JPEG cuts that wall-clock
+    // time substantially; wrapping the whole step in its own try/catch
+    // means a real failure here degrades to a visible warning instead of
+    // either failing the entire import or silently vanishing.
+    var coverImageCount=0;
     if(config.extractCellImages){
-      if(status)status.textContent='Looking for cover images embedded in the file…';
-      var imagesByRow=await extractXlsxCellImages(buffer);
-      if(imagesByRow.size){
-        var uploadedByRow=await uploadExtractedCoverImages(imagesByRow,function(done,total){if(status)status.textContent='Uploading cover images… '+done+' of '+total;});
-        // sheet_to_json({range:headerIndex,...}) starts data at the row right
-        // after the header -- rows[i] is always sheet row (headerIndex+1+i),
-        // 0-indexed the same way the drawing anchors above are.
-        rows.forEach(function(row,i){var url=uploadedByRow.get(headerIndex+1+i);if(url)row.CoverLink=url;});
-        if(status)status.textContent='Matched '+uploadedByRow.size+' embedded cover'+(uploadedByRow.size===1?'':'s')+' to their rows. Importing and grouping title families…';
+      try{
+        if(status)status.textContent='Looking for cover images embedded in the file…';
+        var imagesByRow=await extractXlsxCellImages(buffer);
+        if(imagesByRow.size){
+          var uploadedByRow=await uploadExtractedCoverImages(imagesByRow,function(done,total){if(status)status.textContent='Uploading cover images… '+done+' of '+total;});
+          // sheet_to_json({range:headerIndex,...}) starts data at the row
+          // right after the header -- rows[i] is always sheet row
+          // (headerIndex+1+i), 0-indexed the same way the drawing anchors
+          // extracted above are.
+          rows.forEach(function(row,i){var url=uploadedByRow.get(headerIndex+1+i);if(url)row.CoverLink=url;});
+          coverImageCount=uploadedByRow.size;
+        }
+      }catch(e){
+        if(status)status.textContent='Could not extract embedded cover images ('+(e&&e.message||e)+') -- continuing the import without them…';
       }
     }
-    if(status)status.textContent='Found '+rows.length+' exact cover SKUs. Importing and grouping title families…';
+    if(status)status.textContent='Found '+rows.length+' exact cover SKUs'+(config.extractCellImages?' · '+coverImageCount+' cover image'+(coverImageCount===1?'':'s')+' matched':'')+'. Importing and grouping title families…';
     var result=await api('/foc/admin/import'+config.query,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sourceFilename:file.name,sourceSha256:sourceSha256,rows:rows})});
-    var r=result.report||{};if(status)status.innerHTML='<b style="color:var(--g)">'+(result.duplicate?'Already imported — no duplicates created.':'Import complete.')+'</b><br>'+Number(r.processed||0)+' rows processed · '+Number(r.families||0)+' title families · '+Number(r.newSkus||0)+' new · '+Number(r.updatedSkus||0)+' updated · '+Number(r.unchanged||0)+' unchanged · '+Number(r.incentives||0)+' incentives';
+    var r=result.report||{};if(status)status.innerHTML='<b style="color:var(--g)">'+(result.duplicate?'Already imported — no duplicates created.':'Import complete.')+'</b><br>'+Number(r.processed||0)+' rows processed · '+Number(r.families||0)+' title families · '+Number(r.newSkus||0)+' new · '+Number(r.updatedSkus||0)+' updated · '+Number(r.unchanged||0)+' unchanged · '+Number(r.incentives||0)+' incentives'+(config.extractCellImages?'<br>'+coverImageCount+' embedded cover image'+(coverImageCount===1?'':'s')+' extracted and attached':'');
     state.loaded=false;await loadCycles(true);await openCycle(result.cycleId);
   }catch(e){if(status){status.style.display='block';status.innerHTML='<b style="color:var(--red)">Import failed:</b> '+esc(e.message);}}
 }

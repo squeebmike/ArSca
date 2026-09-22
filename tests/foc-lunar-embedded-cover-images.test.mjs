@@ -22,7 +22,8 @@ global.JSZip = JSZip;
 global.DOMParser = DOMParser;
 
 function extractFn(name) {
-  const start = dashboard.indexOf('async function ' + name + '(');
+  let start = dashboard.indexOf('async function ' + name + '(');
+  if (start < 0) start = dashboard.indexOf('function ' + name + '(');
   assert.ok(start >= 0, name + ' must exist');
   const end = dashboard.indexOf('\n}', start) + 2;
   return dashboard.slice(start, end);
@@ -40,7 +41,10 @@ async function buildFakeXlsxWithCellImages(anchors) {
       <xdr:to><xdr:col>1</xdr:col><xdr:colOff>0</xdr:colOff><xdr:row>${a.row + 1}</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:to>
       <xdr:pic><xdr:blipFill><a:blip r:embed="rId${i + 1}"/></xdr:blipFill></xdr:pic>
     </xdr:twoCellAnchor>`).join('');
-  zip.file('xl/drawings/drawing1.xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+  // Real Lunar files (verified against an actual ~500-cover export) write
+  // drawing1.xml with a leading UTF-8 BOM before the XML declaration --
+  // must not break parsing.
+  zip.file('xl/drawings/drawing1.xml', `﻿<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
     <xdr:wsDr xmlns:xdr="http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">${anchorXml}</xdr:wsDr>`);
   for (const a of anchors) zip.file('xl/media/' + a.mediaFile, Buffer.from('fake-image-bytes-for-' + a.mediaFile));
   return zip.generateAsync({ type: 'nodebuffer' });
@@ -77,6 +81,38 @@ async function buildFakeXlsxWithCellImages(anchors) {
 }
 
 console.log('Lunar embedded-cover-image extraction functional checks passed');
+
+// ── Functional: the upload step actually uploads every extracted image and
+// tolerates one failing without losing the rest (real files run 400-550+
+// covers -- one bad blob or a transient network error must not sink the
+// whole batch) ──
+{
+  global.xlsxImageContentType = new Function(extractFn('xlsxImageContentType') + '\nreturn xlsxImageContentType;')();
+  const uploadExtractedCoverImages = new Function(extractFn('uploadExtractedCoverImages') + '\nreturn uploadExtractedCoverImages;')();
+
+  const calls = [];
+  global.api = async (path, opts) => {
+    calls.push({ path, contentType: opts.headers['Content-Type'] });
+    if (calls.length === 3) throw new Error('simulated upload failure');
+    return { url: 'https://example.com/photo/' + calls.length + '.jpg' };
+  };
+
+  const zip = new JSZip();
+  const imagesByRow = new Map();
+  for (let i = 0; i < 12; i++) {
+    zip.file('fake' + i + '.jpg', Buffer.from('bytes' + i));
+    imagesByRow.set(i, { file: zip.file('fake' + i + '.jpg'), ext: 'jpg' });
+  }
+  const progressCalls = [];
+  const urlsByRow = await uploadExtractedCoverImages(imagesByRow, (done, total) => progressCalls.push([done, total]));
+  assert.equal(calls.length, 12, 'every extracted image must be uploaded, one call each');
+  assert.equal(urlsByRow.size, 11, 'the one simulated failure must be skipped, not lose the other 11');
+  assert.equal(progressCalls.length, 12, 'progress must be reported once per image, success or failure');
+  assert.deepEqual(progressCalls[progressCalls.length - 1], [12, 12], 'the final progress call must show all 12 done');
+  assert.ok(calls.every(c => c.contentType === 'image/jpeg'), 'a .jpg extraction must upload with an image/jpeg content type');
+}
+
+console.log('Lunar embedded-cover-image upload functional checks passed');
 
 // ── Structural: the upload step and the import-flow wiring ──
 {
