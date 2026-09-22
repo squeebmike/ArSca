@@ -351,12 +351,16 @@ assert.match(worker, /if \(candidates\.length > 1\) \{\s*\n\s*console\.error\('r
 
 // "Sport: Trading Cards" was showing up as an item specific on comic
 // listings -- buildEbayAspects unconditionally defaulted Sport for every
-// category, sports/TCG cards and comics alike. It must not default Sport
-// for eBay's Comics category (259104), and it must still default it for
-// everything else (a sports/TCG card with no sport set) so this doesn't
-// regress non-comic listings.
-assert.match(worker, /if \(categoryId !== '259104'\) aspects\['Sport'\] = aspects\['Sport'\] \|\| \['Trading Cards'\]/,
-  'must not default the Sport aspect on comic listings');
+// category except Comics, sports/TCG cards and unrelated Collectibles
+// (Funko/Lego/coins/video games) alike, even though the comment right
+// above it always said the default should be scoped to the sports/TCG
+// card categories this app lists to. Fixed to a real allowlist instead of
+// a Comics-only exclusion, so a Collectibles listing no longer gets a
+// bogus "Sport: Trading Cards" item specific either.
+assert.match(worker, /const EBAY_TRADING_CARD_CATEGORY_IDS = new Set\(\['261328', '261329', '183454'\]\);/,
+  'must scope the Sport default to a real allowlist of card-shaped eBay category IDs');
+assert.match(worker, /if \(EBAY_TRADING_CARD_CATEGORY_IDS\.has\(String\(categoryId\)\)\) aspects\['Sport'\] = aspects\['Sport'\] \|\| \['Trading Cards'\]/,
+  'must only default the Sport aspect for known card-shaped categories, never Comics or an unrelated Collectibles category');
 
 // "Condition: --" was showing blank on a comic listing even though
 // conditionId was correctly set to New (1000) -- some categories expect
@@ -514,7 +518,7 @@ assert.match(rendererBody, /\.replace\(\/\\n\{3,\}\/g, '\\n\\n'\)/, 'must collap
 // "Release Date" extra field, which shares the same {releaseDate} token
 // name and is usually blank -- the forEach that layers in extra fields
 // must be non-destructive (computed value wins, extra field is a fallback).
-assert.match(dashboard, /tokens\[f\.token\] = tokens\[f\.token\] \|\| item\[f\.key\] \|\| '';/, 'extra-field merge must not clobber an already-computed token like releaseDate');
+assert.match(dashboard, /tokens\[f\.token\] = tokens\[f\.token\] \|\| item\[f\.key\] \|\| \(f\.alias \? item\[f\.alias\] : ''\) \|\| '';/, 'extra-field merge must not clobber an already-computed token like releaseDate');
 
 // Store asked for real (manual-entry, never auto-guessed) Cover Type / Key
 // Issue / First Appearance fields, since eBay/collectors take those claims

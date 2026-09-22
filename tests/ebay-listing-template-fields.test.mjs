@@ -5,7 +5,7 @@ const dashboard = fs.readFileSync('dashboard.html', 'utf8');
 
 // ── Contract: the new template fields exist as one shared, config-driven list ──
 assert.match(dashboard, /const EBAY_TEMPLATE_EXTRA_FIELDS = \[/, 'EBAY_TEMPLATE_EXTRA_FIELDS must exist as the single source of truth for the new optional listing-detail fields');
-const expectedKeys = ['brand','character','franchise','series','card_name','card_type','parallel','insert','edition','numbered','memorabilia','release_date','isbn','exclusive','platform'];
+const expectedKeys = ['brand','character','franchise','series','card_name','card_type','parallel','insert','edition','numbered','memorabilia','release_date','isbn','exclusive','platform','material','size','color','model'];
 for(const key of expectedKeys){
   assert.match(dashboard, new RegExp(`key:'${key}'`), `EBAY_TEMPLATE_EXTRA_FIELDS must define a "${key}" field`);
 }
@@ -39,8 +39,30 @@ assert.match(dashboard, /autograph:item\.is_signed\?'Autograph':'',/, 'autograph
 assert.match(dashboard, /gradingCompany:item\.grader\|\|'',/, 'gradingCompany must expose the existing grader field as its own token');
 assert.match(dashboard, /certNumber:item\.cert_number\|\|'',/, 'certNumber must expose the existing cert_number field as its own token');
 assert.match(dashboard, /notes:item\.key_notes\|\|item\.notes\|\|'',/, 'notes must be a real template token, not just an internal-only field');
-assert.match(dashboard, /EBAY_TEMPLATE_EXTRA_FIELDS\.forEach\(f=>\{ tokens\[f\.token\] = tokens\[f\.token\] \|\| item\[f\.key\] \|\| ''; \}\);/,
-  'every new free-text field must also become a template token, without clobbering an already-computed token of the same name (e.g. releaseDate)');
+assert.match(dashboard, /EBAY_TEMPLATE_EXTRA_FIELDS\.forEach\(f=>\{ tokens\[f\.token\] = tokens\[f\.token\] \|\| item\[f\.key\] \|\| \(f\.alias \? item\[f\.alias\] : ''\) \|\| ''; \}\);/,
+  'every new free-text field must also become a template token, without clobbering an already-computed token of the same name (e.g. releaseDate), falling back to a real Pocket Scout field alias (character/franchise) when the manual override was never filled in');
+
+// ── Contract: character/franchise fall back to the real Pocket Scout fields
+// (characterOrSubject/productLine) they're really the same fact as -- both
+// in the token resolution AND in what the edit-modal input shows as its
+// starting value, and material/size/color/model expose Pocket Scout's own
+// general-collectible fields as real tokens for the first time ──
+assert.match(dashboard, /key:'character', token:'character', alias:'characterOrSubject'/, 'the character field must alias the real characterOrSubject item field');
+assert.match(dashboard, /key:'franchise', token:'franchise', alias:'productLine'/, 'the franchise field must alias the real productLine item field');
+assert.match(dashboard, /if\(el\) el\.value = item\?\.\[f\.key\] \|\| \(f\.alias \? item\?\.\[f\.alias\] : ''\) \|\| '';/,
+  'the edit-modal input must show the aliased real field as a starting value when the manual override box was never filled in');
+assert.match(dashboard, /brand:item\.brand\|\|inferManufacturer\|\|'',/, 'brand token must exist on the main tokens object with an inferManufacturer fallback');
+assert.match(dashboard, /productLine:item\.productLine\|\|'', characterOrSubject:item\.characterOrSubject\|\|'',/, 'productLine and characterOrSubject must be first-class tokens');
+assert.match(dashboard, /material:item\.material\|\|'', itemSize:item\.size\|\|'', color:item\.color\|\|'', model:item\.model\|\|'',/, 'material/itemSize/color/model must be first-class tokens sourced from the real Pocket Scout fields');
+
+// ── Contract: these general-collectible fields must survive a later edit,
+// not just the initial Pocket Scout scan-to-inventory creation (the exact
+// "silently freezes on next edit" bug class the providerUrl comment in
+// BUILT_IN_ITEM_SIMPLE_FIELDS already documents) ──
+const simpleFieldsSrc2 = dashboard.match(/const BUILT_IN_ITEM_SIMPLE_FIELDS = \[[\s\S]*?\n\];/)[0];
+for(const key of ['material','size','color','model','productLine','characterOrSubject']){
+  assert.match(simpleFieldsSrc2, new RegExp(`\\['${key}',''\\]`), `"${key}" must be registered in BUILT_IN_ITEM_SIMPLE_FIELDS or it will silently freeze/vanish on the next item edit`);
+}
 
 console.log('eBay listing template fields contract checks passed');
 

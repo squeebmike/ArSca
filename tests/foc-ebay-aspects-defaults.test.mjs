@@ -123,6 +123,17 @@ console.log('buildFocPresaleDefaults aspects functional checks passed');
   // Same person as both writer and artist must not produce a duplicate value.
   const dedupResult = buildEbayAspects({ categoryId: '259104', conditionId: '3000', customAspects: { Writer: 'Todd McFarlane', Artist: 'Todd McFarlane' } });
   assert.deepEqual(dedupResult['Artist/Writer'], ['Todd McFarlane'], 'must not send a duplicate value when the same person wrote and drew the book');
+
+  // "Sport: Trading Cards" must only default for real card-shaped eBay
+  // categories -- a Collectibles listing (Funko categoryId, or any category
+  // this app doesn't recognize) must not get it stamped on just because it
+  // isn't Comics.
+  const sportsResult = buildEbayAspects({ categoryId: '261328', conditionId: '4000' });
+  assert.deepEqual(sportsResult.Sport, ['Trading Cards'], 'a real sports-card category must still get the Sport default');
+  const collectibleResult = buildEbayAspects({ categoryId: '149372', conditionId: '3000' });
+  assert.ok(!('Sport' in collectibleResult), 'an unrelated Collectibles category must NOT get a bogus Sport: Trading Cards aspect');
+  const comicResult = buildEbayAspects({ categoryId: '259104', conditionId: '1000' });
+  assert.ok(!('Sport' in comicResult), 'Comics must still never get the Sport default');
 }
 
 console.log('buildEbayAspects Artist/Writer merge checks passed');

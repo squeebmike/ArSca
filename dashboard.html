@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.09.22.01-lunar-cover-upload-speed-and-diagnostics">
+<meta name="version" content="2026.09.22.02-ebay-collectibles-exposure">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1640,21 +1640,21 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.09.22.01-lunar-cover-upload-speed-and-diagnostics" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.09.22.01-lunar-cover-upload-speed-and-diagnostics" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.09.22.01-lunar-cover-upload-speed-and-diagnostics" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.09.22.01-lunar-cover-upload-speed-and-diagnostics" defer></script>
-<script src="scripts/backlist-dashboard.js?v=2026.09.22.01-lunar-cover-upload-speed-and-diagnostics" defer></script>
-<script src="scripts/database-viewer.js?v=2026.09.22.01-lunar-cover-upload-speed-and-diagnostics" defer></script>
-<script src="scripts/card-intake-dashboard.js?v=2026.09.22.01-lunar-cover-upload-speed-and-diagnostics" defer></script>
-<script src="scripts/mana-pocket-task-library.js?v=2026.09.22.01-lunar-cover-upload-speed-and-diagnostics" defer></script>
-<script src="scripts/daily-tasks-dashboard.js?v=2026.09.22.01-lunar-cover-upload-speed-and-diagnostics" defer></script>
+<script src="scripts/query-routing.js?v=2026.09.22.02-ebay-collectibles-exposure" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.09.22.02-ebay-collectibles-exposure" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.09.22.02-ebay-collectibles-exposure" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.09.22.02-ebay-collectibles-exposure" defer></script>
+<script src="scripts/backlist-dashboard.js?v=2026.09.22.02-ebay-collectibles-exposure" defer></script>
+<script src="scripts/database-viewer.js?v=2026.09.22.02-ebay-collectibles-exposure" defer></script>
+<script src="scripts/card-intake-dashboard.js?v=2026.09.22.02-ebay-collectibles-exposure" defer></script>
+<script src="scripts/mana-pocket-task-library.js?v=2026.09.22.02-ebay-collectibles-exposure" defer></script>
+<script src="scripts/daily-tasks-dashboard.js?v=2026.09.22.02-ebay-collectibles-exposure" defer></script>
 <script src="scripts/research-loupe.js?v=a7de4ffe90" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.09.22.01-lunar-cover-upload-speed-and-diagnostics" defer></script>
-<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.09.22.01-lunar-cover-upload-speed-and-diagnostics" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.09.22.01-lunar-cover-upload-speed-and-diagnostics" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.09.22.01-lunar-cover-upload-speed-and-diagnostics" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.09.22.01-lunar-cover-upload-speed-and-diagnostics" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.09.22.02-ebay-collectibles-exposure" defer></script>
+<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.09.22.02-ebay-collectibles-exposure" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.09.22.02-ebay-collectibles-exposure" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.09.22.02-ebay-collectibles-exposure" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.09.22.02-ebay-collectibles-exposure" defer></script>
 </head>
 <body>
 
@@ -1706,7 +1706,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
 <div class="dsb-chip" id="dsb-tasks" title="Today's Roles &amp; Tasks — click to jump to Tasks tab" style="cursor:pointer;display:none" onclick="switchTab('tasks')">✅ <span>TASKS:</span> <b id="dsb-tasks-val">—</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.09.22.01-lunar-cover-upload-speed-and-diagnostics</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.09.22.02-ebay-collectibles-exposure</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3869,7 +3869,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.09.22.01-lunar-cover-upload-speed-and-diagnostics';
+const APP_VERSION = '2026.09.22.02-ebay-collectibles-exposure';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -6466,6 +6466,7 @@ const FEATURE_LOG = [
     { title:'More description-template fields', status:'new', desc:'15 new optional fields (Brand, Character, Franchise, Series, Card/Item Name, Card Type, Parallel, Insert Set, Edition, Numbered, Memorabilia Type, Release Date, ISBN, Exclusive, Platform) under "More Listing Details" on each item, plus new {rookie} {autograph} {gradingCompany} {certNumber} {notes} tokens exposing data that already existed. A template line whose only content is a blank field is dropped automatically -- an empty field never shows the raw {token} text in a live listing.' },
     { title:'Honest save status for eBay listing settings', status:'new', desc:'SAVE EBAY LISTING SETTINGS (category map + description templates) now tells you when the cloud sync actually fails instead of always saying "saved" -- previously a failed cloud write looked identical to a successful one, so templates could sit local-only on one device and never reach the others.' },
     { title:'Bulk eBay listing uses your saved templates by default', status:'new', desc:'"Use AI descriptions" in EBAY BULK LISTING silently replaced your saved description template with freshly AI-written copy whenever it was checked -- and it defaulted to checked, so a seller who set up a custom template could prepare a listing and never see it used. Now off by default and labeled "overrides your saved templates" so the override is a deliberate choice, not a surprise.' },
+    { title:'More eBay exposure for Sports & Collectibles listings', status:'new', desc:'Several search-ranking gaps closed for non-comic listings: (1) the eBay title now appends Brand/Character/Franchise for Collectibles items the same way it already does Team/Publisher for Sports/Comics, instead of leaving that keyword value out of the #1 search-ranking field entirely. (2) A scanned item\'s Character/Franchise now correctly feeds the {character}/{franchise} description tokens even before you type anything into "More Listing Details" -- they were silently reading from a different, almost-always-blank field. (3) New {material} {itemSize} {color} {model} tokens expose fields Pocket Scout already captures but no template could reference. (4) Material/Size/Color/Model/Character/Franchise/Product Line now actually survive a later edit instead of silently freezing back to blank the next time the item is saved. (5) A missing-Brand/Character warning (like the existing Sports Player/Team one) now appears before publishing a Collectibles listing with neither filled in. (6) Fixed a bug stamping a bogus "Sport: Trading Cards" item specific onto Collectibles listings that have nothing to do with sports cards.' },
     { title:'Order/inventory webhooks', status:'working', desc:'Real-time eBay notifications instead of waiting on the next manual sync.' },
     { title:'Auto-reprice aged stock', status:'working', desc:'Automatically nudges the price down on eBay listings that have sat unsold past a configurable age.' },
     { title:'eBay deal scanner', status:'working', desc:'Scans active eBay listings for underpriced Pokemon/MTG cards vs. real market value, can run on a schedule in the background.' },
@@ -16231,6 +16232,15 @@ const BUILT_IN_ITEM_SIMPLE_FIELDS = [
   ['card_name',''], ['card_type',''], ['parallel',''], ['insert',''],
   ['edition',''], ['numbered',''], ['memorabilia',''], ['release_date',''],
   ['isbn',''], ['exclusive',''], ['platform',''],
+  // Pocket Scout's own general-collectible identification fields
+  // (material/size/color/model, plus productLine/characterOrSubject) were
+  // never registered here at all -- only ever set by the raw object spread
+  // at initial scan-to-inventory creation (scoutBuyAddInventory), same
+  // "silently freezes/vanishes on the next edit" bug class the providerUrl
+  // comment above already describes, since any UPDATE path (saveInventoryEdit,
+  // restock merges) only persists fields on this list.
+  ['material',''], ['size',''], ['color',''], ['model',''],
+  ['productLine',''], ['characterOrSubject',''],
   // Store report: publishing an item to the storefront (the row-menu
   // toggle, the bulk PUBLISH THIS VIEW action, and Force Publish) always
   // reported success but never actually showed up live -- onlineListed was
@@ -22463,8 +22473,14 @@ Grade: {grade}`;
 // naming style (cardNumber, serialNumber, etc).
 const EBAY_TEMPLATE_EXTRA_FIELDS = [
   { key:'brand', token:'brand', label:'Brand', placeholder:'e.g. Funko, Ultra Pro, Nerf (when different from Manufacturer)' },
-  { key:'character', token:'character', label:'Character', placeholder:'e.g. Pikachu, Spider-Man' },
-  { key:'franchise', token:'franchise', label:'Franchise', placeholder:'e.g. Pokémon, Marvel, Star Wars' },
+  // alias: Pocket Scout's AI item-ID already captures this same fact onto a
+  // differently-named real item field (characterOrSubject/productLine, see
+  // scoutBuyAddInventory/scoutSendToBuyTab) -- without the alias fallback, a
+  // freshly-scanned collectible's {character}/{franchise} description-
+  // template tokens rendered blank even though the real data was sitting
+  // right there on the item, just under a different key.
+  { key:'character', token:'character', alias:'characterOrSubject', label:'Character', placeholder:'e.g. Pikachu, Spider-Man' },
+  { key:'franchise', token:'franchise', alias:'productLine', label:'Franchise', placeholder:'e.g. Pokémon, Marvel, Star Wars' },
   { key:'series', token:'series', label:'Series', placeholder:'When distinct from Set / Series above' },
   { key:'card_name', token:'cardName', label:'Card / Item Name', placeholder:'When different from the listing title' },
   { key:'card_type', token:'cardType', label:'Card Type', placeholder:'e.g. Pokémon, Trainer, Energy, Creature, Artifact' },
@@ -22478,6 +22494,16 @@ const EBAY_TEMPLATE_EXTRA_FIELDS = [
   { key:'exclusive', token:'exclusive', label:'Exclusive', placeholder:'e.g. Walmart, Target, Convention, Secret Lair' },
   { key:'platform', token:'platform', label:'Platform', placeholder:'General collectibles -- console/system, etc.' },
   { key:'cover_type', token:'coverType', label:'Cover Type', placeholder:'e.g. Cover A, Cover B, Virgin, Foil, 1:25 Incentive' },
+  // Real Pocket Scout fields (identity.material/size/color/model) that had
+  // no description-template token at all -- generateAiEbayDescription's own
+  // AI facts already reference item.material/item.size/item.color/item.model
+  // (see the "General-collectible facts" block below), but nothing exposed
+  // them as {token}s a store's own HTML template could reference directly,
+  // and the edit screen had no way to review/correct them before listing.
+  { key:'material', token:'material', label:'Material', placeholder:'e.g. Vinyl, Plastic, Metal, Ceramic' },
+  { key:'size', token:'itemSize', label:'Size', placeholder:'e.g. 6 inch, Large, XL' },
+  { key:'color', token:'color', label:'Color', placeholder:'e.g. Blue, Multicolor' },
+  { key:'model', token:'model', label:'Model / Set Number', placeholder:'e.g. Lego set #75192' },
   // Manual-only, deliberately -- these are claims eBay/collectors take
   // seriously and a wrong guess is real misinformation, so there is no
   // auto-detection here. Only fill these in once verified for this
@@ -22494,7 +22520,7 @@ function populateEbayExtraFieldInputs(item){
   renderEbayExtraFieldInputs();
   EBAY_TEMPLATE_EXTRA_FIELDS.forEach(f=>{
     const el = document.getElementById('edit-ebay-'+f.key);
-    if(el) el.value = item?.[f.key] || '';
+    if(el) el.value = item?.[f.key] || (f.alias ? item?.[f.alias] : '') || '';
   });
 }
 function readEbayExtraFieldUpdates(){
@@ -22646,7 +22672,18 @@ function computeEbayListingFields(item){
   // Team was never in the title at all -- a real, heavily-searched sports
   // card keyword ("Mike Trout Angels", "Lakers Kobe") that only ever
   // reached the aspects/description, never the #1 search-ranking field.
-  const title = [item.year && !lowerName.includes(String(item.year)) ? item.year : null,item.name,!isComic && item.team && !lowerName.includes(String(item.team).toLowerCase()) ? item.team : null,item.set && !lowerName.includes(String(item.set).toLowerCase()) ? item.set : null,item.variant && !lowerName.includes(String(item.variant).toLowerCase()) ? item.variant : null,(item.card_number || item.issue) ? '#'+(item.card_number || item.issue) : null,isComic && item.publisher && !lowerName.includes(String(item.publisher).toLowerCase()) ? item.publisher : null,isGraded?[item.grader,item.grade].filter(Boolean).join(' '):null,item.isRookie?'RC':null,item.is_auto&&!lowerName.includes('auto')?'Auto':null,item.is_patch&&!lowerName.includes('patch')&&!lowerName.includes('relic')?'Patch':null]
+  // Anything outside the card/comic shapes (Funko, Lego, coins, video games,
+  // plush, etc.) got NONE of this same SEO-keyword treatment -- Pocket
+  // Scout already captures brand/characterOrSubject/productLine on these
+  // items (see scoutBuyAddInventory), but the title builder never looked at
+  // any of them, so a scanned Funko listed as just its bare item name lost
+  // the "Funko", the character name, and the franchise as search terms --
+  // exactly the keywords a buyer actually searches eBay for.
+  const isGeneralCollectible = !isKnownCardCategory;
+  const title = [item.year && !lowerName.includes(String(item.year)) ? item.year : null,item.name,!isComic && item.team && !lowerName.includes(String(item.team).toLowerCase()) ? item.team : null,item.set && !lowerName.includes(String(item.set).toLowerCase()) ? item.set : null,item.variant && !lowerName.includes(String(item.variant).toLowerCase()) ? item.variant : null,(item.card_number || item.issue) ? '#'+(item.card_number || item.issue) : null,isComic && item.publisher && !lowerName.includes(String(item.publisher).toLowerCase()) ? item.publisher : null,isGraded?[item.grader,item.grade].filter(Boolean).join(' '):null,item.isRookie?'RC':null,item.is_auto&&!lowerName.includes('auto')?'Auto':null,item.is_patch&&!lowerName.includes('patch')&&!lowerName.includes('relic')?'Patch':null,
+    isGeneralCollectible && item.brand && !lowerName.includes(String(item.brand).toLowerCase()) ? item.brand : null,
+    isGeneralCollectible && item.characterOrSubject && !lowerName.includes(String(item.characterOrSubject).toLowerCase()) ? item.characterOrSubject : null,
+    isGeneralCollectible && item.productLine && !lowerName.includes(String(item.productLine).toLowerCase()) ? item.productLine : null]
     .filter(Boolean).join(' ').replace(/\s+/g,' ').substring(0,80);
   const price = Number(item.market || item.salePrice || 0);
   // A presale item's real ship date is nowhere near "1 business day" --
@@ -22688,14 +22725,26 @@ function computeEbayListingFields(item){
     gradingCompany:item.grader||'',
     certNumber:item.cert_number||'',
     notes:item.key_notes||item.notes||'',
+    // First-class tokens for the general-collectible facts Pocket Scout
+    // already captures (brand/productLine/characterOrSubject/material/size/
+    // color) -- these previously only reached the AI-description prompt
+    // (see generateAiEbayDescription's facts list below), never a store's
+    // own HTML template, so a Sports/Collectibles template had no token to
+    // reference them by at all.
+    brand:item.brand||inferManufacturer||'',
+    productLine:item.productLine||'', characterOrSubject:item.characterOrSubject||'',
+    material:item.material||'', itemSize:item.size||'', color:item.color||'', model:item.model||'',
   };
   // Non-destructive: {releaseDate} is computed above from the item's real
   // on-sale date for presale items, and the extra-fields list separately
   // has its own manually-entered "Release Date" field with the same
   // token -- an unconditional overwrite here would silently clobber the
   // computed presale date with that field's usual blank value. Whichever
-  // is already set wins; the extra field is only a fallback.
-  EBAY_TEMPLATE_EXTRA_FIELDS.forEach(f=>{ tokens[f.token] = tokens[f.token] || item[f.key] || ''; });
+  // is already set wins; the extra field is only a fallback. Aliased fields
+  // (character/franchise) fall back to the real Pocket Scout field
+  // (characterOrSubject/productLine) when the manual override box was never
+  // filled in -- see EBAY_TEMPLATE_EXTRA_FIELDS' alias property.
+  EBAY_TEMPLATE_EXTRA_FIELDS.forEach(f=>{ tokens[f.token] = tokens[f.token] || item[f.key] || (f.alias ? item[f.alias] : '') || ''; });
   const templates = getVendorProfile().ebayDescriptionTemplates || {};
   const legacyTemplate = getVendorProfile().ebayDescriptionTemplate || '';
   const template = templates[item.category] || templates.default || legacyTemplate || DEFAULT_EBAY_DESCRIPTION_TEMPLATE;
@@ -23306,6 +23355,13 @@ function collectDashboardEbayFormPayload(item){
     // policy (store report: wrong shipping policy on a presale listing).
     isPresale:item.status === 'presale' || item.source === 'foc_presale',
     onSaleDate:item.onSaleDate || '',
+    // Store category (not the eBay category ID) plus the two general-
+    // collectible high-value search fields -- used only by
+    // ebayMissingHighValueAspectsWarning below, same non-sports-card
+    // equivalent of the Player/Team check.
+    category:item.category || '',
+    brand:item.brand || '',
+    characterOrSubject:item.characterOrSubject || '',
     customAspects:{
       'Product':document.getElementById('dash-eb-product-type')?.value === 'sealed' ? 'Box' : '',
       'Configuration':document.getElementById('dash-eb-config')?.value.trim() || (document.getElementById('dash-eb-product-type')?.value === 'sealed' ? 'Box' : ''),
@@ -23392,12 +23448,26 @@ function clearEbayCatalogMatch(){
 // confirm() before publish, same pattern as other "are you sure" checks
 // in this flow.
 function ebayMissingHighValueAspectsWarning(payload){
-  if(!payload || !payload.sport) return ''; // only applies to sports cards
+  if(!payload) return '';
+  if(payload.sport){
+    const missing = [];
+    if(!payload.player) missing.push('Player');
+    if(!payload.team) missing.push('Team');
+    if(!missing.length) return '';
+    return `This sports card listing is missing ${missing.join(' and ')} -- Player/Team are among the highest-value eBay search terms for sports cards and this listing will be much harder for buyers to find without ${missing.length>1?'them':'it'}. List anyway?`;
+  }
+  // Same gap, Collectibles side: Brand and Character/Subject are the
+  // equivalent highest-value Cassini search terms for this bucket (Funko,
+  // Lego, coins, plush, etc) -- eBay's own dynamic aspect autofill already
+  // knows to fill these in from real item data when they're on hand (see
+  // DASH_EBAY_ASPECT_AUTOFILL_MAP), but nothing warned when a listing was
+  // about to publish with both genuinely blank.
+  if(payload.category !== 'Collectibles') return '';
   const missing = [];
-  if(!payload.player) missing.push('Player');
-  if(!payload.team) missing.push('Team');
+  if(!payload.brand) missing.push('Brand');
+  if(!payload.characterOrSubject) missing.push('Character/Subject');
   if(!missing.length) return '';
-  return `This sports card listing is missing ${missing.join(' and ')} -- Player/Team are among the highest-value eBay search terms for sports cards and this listing will be much harder for buyers to find without ${missing.length>1?'them':'it'}. List anyway?`;
+  return `This listing is missing ${missing.join(' and ')} -- these are among the highest-value eBay search terms for collectibles and this listing will be much harder for buyers to find without ${missing.length>1?'them':'it'}. List anyway?`;
 }
 
 async function submitDashboardEbayListing(id){
@@ -47417,7 +47487,7 @@ async function toppsLoadParallels(cardId){
   window.__arscaCloseModal = closeModal;
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.09.22.01-lunar-cover-upload-speed-and-diagnostics" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.09.22.02-ebay-collectibles-exposure" defer></script>
 </body>
 </html>
 

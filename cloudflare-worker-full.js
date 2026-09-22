@@ -2870,8 +2870,14 @@ function buildEbayAspects(b) {
   // categoryId 259104 is eBay's Comics category -- "Sport" has no business
   // being on a comic listing at all (confirmed live: a comic presale was
   // showing "Sport: Trading Cards" as an item specific). This default only
-  // belongs on the sports/TCG card categories this app also lists to.
-  if (categoryId !== '259104') aspects['Sport'] = aspects['Sport'] || ['Trading Cards'];
+  // belongs on the sports/TCG card categories this app also lists to --
+  // the comment above always said so, but the actual check only ever
+  // excluded Comics, so it silently stamped "Sport: Trading Cards" onto
+  // EVERY other category too, Collectibles (Funko/Lego/coins/video games)
+  // included, the same kind of irrelevant cross-category contamination
+  // already fixed once this session for price-sync category matching.
+  const EBAY_TRADING_CARD_CATEGORY_IDS = new Set(['261328', '261329', '183454']);
+  if (EBAY_TRADING_CARD_CATEGORY_IDS.has(String(categoryId))) aspects['Sport'] = aspects['Sport'] || ['Trading Cards'];
   // Some categories (Comics among them) show a blank "Condition" row among
   // the item specifics unless it's also sent as an aspect, even though
   // conditionId already sets the formal listing condition -- fill it in
