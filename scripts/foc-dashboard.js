@@ -1008,8 +1008,16 @@ async function openFamilyEbayGroupReview(familyId){
       // coverRows below renders as checkboxes. Only worth showing when
       // there's an actual choice to make.
       var eligibleCoverList=(preview.covers||[]).filter(function(c){return c.eligible;});
+      // Store report: a naive per-cover block (its own <div>/<span> pair,
+      // "Cover art by" spelled out, per cover) cost ~170 chars/cover -- a
+      // 5-cover bundle alone pushed the WHOLE rendered description past
+      // eBay's 4000-char cap, so truncateHtmlSafely silently cut the
+      // template's closing sections (shipping info, Q&A, tagline) to make
+      // room. A one-line-per-cover <li> costs under half that, so even an
+      // 8-cover bundle stays comfortably under the cap alongside the rest
+      // of the template's fixed content.
       var coverChoices=eligibleCoverList.length>1?(isHtmlTemplate
-        ? eligibleCoverList.map(function(c){return '<div style="margin-bottom:7px"><b>'+esc(c.variantLabel)+'</b>'+(c.coverArtist?'<br><span style="font-size:12px">Cover art by '+esc(c.coverArtist)+'</span>':'')+'</div>';}).join('')
+        ? '<ul style="margin:4px 0 0;padding-left:18px">'+eligibleCoverList.map(function(c){return '<li><b>'+esc(c.variantLabel)+'</b>'+(c.coverArtist?' -- '+esc(c.coverArtist):'')+'</li>';}).join('')+'</ul>'
         : eligibleCoverList.map(function(c){return '- '+c.variantLabel+(c.coverArtist?' (cover art by '+c.coverArtist+')':'');}).join('\n')
       ):'';
       var tokens={title:preview.title.replace(/ - PRESALE$/,''),category:'Comic',price:'',upc:'',
