@@ -7893,18 +7893,30 @@ export default {
           locationTypes: ['STORE'],
         }),
       }).catch(e => ({ ok: false, status: 0, text: async () => e?.message || 'network error' }));
-      // A 409 here means the location already exists (expected on every
-      // call after the first) and is not an error. Anything else failing
-      // silently used to mean createAndPublishEbayListing went on to
-      // reference a merchantLocationKey that might not actually exist or
-      // might hold stale data -- the resulting failure only ever surfaced
-      // later as an opaque error on the offer/publish call, far from its
-      // real cause. Surfaced here instead, where the cause is known.
-      if (!locationRes.ok && locationRes.status !== 409) {
+      // Store report: listing still failed with "merchantLocationKey
+      // already exists" (eBay error 25803) even after the 409 check below
+      // was added -- eBay actually returns this as HTTP 400 with errorId
+      // 25803 in the body, never 409, so `status !== 409` was true on
+      // every single call after the first and it hard-failed every listing
+      // forever. Reads the actual error body instead of trusting the HTTP
+      // status to say what kind of failure this is -- "already exists" is
+      // the expected steady state (not an error) on every call after the
+      // first; anything else failing silently used to mean
+      // createAndPublishEbayListing went on to reference a
+      // merchantLocationKey that might not actually exist or might hold
+      // stale data -- the resulting failure only ever surfaced later as an
+      // opaque error on the offer/publish call, far from its real cause.
+      // Surfaced here instead, where the cause is known.
+      if (!locationRes.ok) {
         const errTxt = await locationRes.text().catch(() => '');
-        const e = new Error('Could not create/verify eBay merchant location: ' + (errTxt || locationRes.status).toString().substring(0, 300));
-        e.status = 502;
-        throw e;
+        let errData; try { errData = JSON.parse(errTxt); } catch (_) { errData = null; }
+        const alreadyExists = locationRes.status === 409
+          || (errData?.errors || []).some(err => err?.errorId === 25803 || /already exists/i.test(err?.message || ''));
+        if (!alreadyExists) {
+          const e = new Error('Could not create/verify eBay merchant location: ' + (errData?.errors?.[0]?.longMessage || errData?.errors?.[0]?.message || errTxt || locationRes.status).toString().substring(0, 300));
+          e.status = 502;
+          throw e;
+        }
       }
       return { locationKey, shipFrom };
     }
