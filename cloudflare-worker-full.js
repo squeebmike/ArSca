@@ -2247,6 +2247,36 @@ function mtgPriceLines(card) {
 // combine multiple schema types on one page, rather than nesting them into
 // one object) are additive and default to the old plain-website behavior, so
 // every existing caller of this shell is unaffected.
+// Reproduces the live site's real global nav/footer/theme system (Webflow
+// Symbols "New NavBar"/"Footer" + the wo-ui.js theme picker every other page
+// already loads) instead of this shell's old bare, disconnected dark page --
+// same classnames wo-ui.js's applyTheme() already targets sitewide
+// (.navbar6_component, .navbar6_link, .wo-team-btn, .footer/.Footer), and the
+// same [data-wo-theme] "My Pocket" button/localStorage key, so a visitor's
+// team/Pokemon/MTG theme choice carries over here exactly as it does on every
+// Webflow page, with zero separate theme logic to maintain in this Worker.
+const WO_UI_SCRIPT_URL = 'https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@08bbbfc/wo-ui.js';
+function mtgSiteHeader() {
+  return `<div id="navbarID" class="navbar6_component"><div class="navbar6_container">` +
+    `<a class="navbar6_logo-link" href="/"><span class="mp-wordmark">The Mana Pocket</span></a>` +
+    `<nav class="navbar6_menu"><div class="navbar6_menu-left">` +
+    `<a class="navbar6_link" href="/">Home</a>` +
+    `<a class="navbar6_link" href="/shop">Shop</a>` +
+    `<a class="navbar6_link" href="/shop?cat=sports-cards">Sports Cards</a>` +
+    `<a class="navbar6_link" href="/shop?cat=tcg">Pokémon &amp; MTG</a>` +
+    `<a class="navbar6_link" href="/shop?cat=comics">Comics</a>` +
+    `</div><div class="navbar6_menu-right"><a data-wo-theme="true" class="wo-team-btn">My Pocket</a></div></nav>` +
+    `</div></div>`;
+}
+function mtgSiteFooter() {
+  return `<footer class="Footer Section"><div class="Footer"><div class="Content Wrapper"><div class="Flex Space">` +
+    `<div class="footer-links"><a class="footer-link" href="/">Home</a><a class="footer-link" href="/shop">Shop</a><a class="footer-link" href="/account">My Pocket</a></div>` +
+    `<div class="Social Icons">` +
+    `<a href="https://www.facebook.com/profile.php?id=61592114016361" aria-label="Facebook">Facebook</a>` +
+    `<a href="https://www.instagram.com/walkoffsportscards" aria-label="Instagram">Instagram</a>` +
+    `<a href="https://whatnot.com/invite/walkoffsportscards" aria-label="Whatnot">Whatnot</a>` +
+    `</div></div></div></div></footer>`;
+}
 function mtgPageShell({ title, description, canonicalPath, ogImage, ogType, jsonLd, bodyHtml, robotsNoindex }) {
   const jsonLdList = Array.isArray(jsonLd) ? jsonLd.filter(Boolean) : (jsonLd ? [jsonLd] : []);
   const jsonLdBlock = jsonLdList.map(block => `<script type="application/ld+json">${JSON.stringify(block)}</script>`).join('');
@@ -2264,8 +2294,24 @@ function mtgPageShell({ title, description, canonicalPath, ogImage, ogType, json
     `<meta property="og:type" content="${mtgEscapeHtml(ogType || 'website')}"><meta property="og:site_name" content="The Mana Pocket">` +
     `<meta property="og:title" content="${mtgEscapeHtml(title)}"><meta property="og:description" content="${mtgEscapeHtml(description)}">${ogImageTag}${twitterTags}` +
     `${jsonLdBlock}` +
-    `<style>*{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#0a0710;color:#f2eefc;padding:24px 16px 64px}a{color:#8bd450}.mp-wrap{max-width:1080px;margin:0 auto}.mp-crumb{font-size:13px;opacity:.65;margin-bottom:16px}.mp-crumb a{color:#c8b8ff}h1{font-size:clamp(22px,4vw,32px);margin:0 0 8px}.mp-sub{opacity:.7;font-size:14px;margin-bottom:24px}.mp-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:16px}.mp-card{display:block;border:1px solid rgba(255,255,255,.12);border-radius:12px;overflow:hidden;background:rgba(255,255,255,.03);text-decoration:none;color:inherit}.mp-card img{width:100%;display:block;background:#16101f}.mp-card-body{padding:10px 12px}.mp-card-name{font-size:13px;font-weight:700;line-height:1.3}.mp-card-price{font-size:12px;color:#8bd450;font-weight:700;margin-top:4px}.mp-set-list{display:grid;gap:10px}.mp-set-row{display:flex;justify-content:space-between;gap:12px;padding:12px 16px;border:1px solid rgba(255,255,255,.1);border-radius:10px;text-decoration:none;color:inherit}.mp-set-row:hover{border-color:#8bd450}.mp-detail{display:grid;grid-template-columns:280px 1fr;gap:32px}@media(max-width:640px){.mp-detail{grid-template-columns:1fr}}.mp-detail img{width:100%;border-radius:14px}.mp-prices{display:flex;gap:10px;flex-wrap:wrap;margin:16px 0}.mp-price-pill{background:rgba(139,212,80,.15);color:#8bd450;font-weight:800;padding:8px 14px;border-radius:999px;font-size:14px}.mp-oracle{white-space:pre-wrap;line-height:1.6;font-size:14px;opacity:.9;margin-top:16px}.mp-meta{font-size:13px;opacity:.65;margin-top:8px}</style></head>` +
-    `<body><div class="mp-wrap">${bodyHtml}</div></body></html>`;
+    `<style>*{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#0a0710;color:#f2eefc;padding:0 0 64px}a{color:#8bd450}` +
+    // Base nav/footer look before wo-ui.js's theme picker (if the visitor
+    // has never picked one) applies its own !important overrides on these
+    // same selectors -- matches the site's default navy/dark chrome.
+    `#navbarID.navbar6_component{position:sticky;top:0;z-index:999;background:#001A72;padding:14px 20px;display:flex;border-bottom:1px solid rgba(255,255,255,.1)}` +
+    `.navbar6_container{display:flex;align-items:center;justify-content:space-between;width:100%;max-width:1200px;margin:0 auto;gap:16px;flex-wrap:wrap}` +
+    `.navbar6_logo-link{text-decoration:none}.mp-wordmark{font-weight:800;font-size:18px;color:#fff;letter-spacing:.02em}` +
+    `.navbar6_menu{display:flex;align-items:center;gap:20px;flex-wrap:wrap}.navbar6_menu-left{display:flex;gap:16px;flex-wrap:wrap}` +
+    `.navbar6_link{color:#e8e6f4;text-decoration:none;font-size:14px;font-weight:600}.navbar6_link:hover{color:#8bd450}` +
+    `.wo-team-btn{display:inline-block;border-radius:100px;padding:7px 16px;font-size:13px;font-weight:800;background:#8bd450;color:#001A72;text-decoration:none;cursor:pointer}` +
+    `.Footer.Section{margin-top:48px;background:#080808;padding:28px 20px;border-top:1px solid rgba(255,255,255,.08)}` +
+    `.Footer .Content.Wrapper{max-width:1200px;margin:0 auto}.Footer .Flex.Space{display:flex;justify-content:space-between;flex-wrap:wrap;gap:16px}` +
+    `.footer-links{display:flex;gap:18px;flex-wrap:wrap}.footer-link{color:#fff;font-size:14px;font-weight:600;text-decoration:none}.footer-link:hover{color:#8bd450}` +
+    `.Social.Icons{display:flex;gap:14px}.Social.Icons a{color:#c8c4dc;font-size:13px;text-decoration:none}.Social.Icons a:hover{color:#8bd450}` +
+    `.mp-wrap{max-width:1080px;margin:0 auto;padding:24px 16px 0}.mp-crumb{font-size:13px;opacity:.65;margin-bottom:16px}.mp-crumb a{color:#c8b8ff}h1{font-size:clamp(22px,4vw,32px);margin:0 0 8px}.mp-sub{opacity:.7;font-size:14px;margin-bottom:24px}.mp-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:16px}.mp-card{display:block;border:1px solid rgba(255,255,255,.12);border-radius:12px;overflow:hidden;background:rgba(255,255,255,.03);text-decoration:none;color:inherit}.mp-card img{width:100%;display:block;background:#16101f}.mp-card-body{padding:10px 12px}.mp-card-name{font-size:13px;font-weight:700;line-height:1.3}.mp-card-price{font-size:12px;color:#8bd450;font-weight:700;margin-top:4px}.mp-set-list{display:grid;gap:10px}.mp-set-row{display:flex;justify-content:space-between;gap:12px;padding:12px 16px;border:1px solid rgba(255,255,255,.1);border-radius:10px;text-decoration:none;color:inherit}.mp-set-row:hover{border-color:#8bd450}.mp-detail{display:grid;grid-template-columns:280px 1fr;gap:32px}@media(max-width:640px){.mp-detail{grid-template-columns:1fr}}.mp-detail img{width:100%;border-radius:14px}.mp-prices{display:flex;gap:10px;flex-wrap:wrap;margin:16px 0}.mp-price-pill{background:rgba(139,212,80,.15);color:#8bd450;font-weight:800;padding:8px 14px;border-radius:999px;font-size:14px}.mp-oracle{white-space:pre-wrap;line-height:1.6;font-size:14px;opacity:.9;margin-top:16px}.mp-meta{font-size:13px;opacity:.65;margin-top:8px}</style></head>` +
+    `<body>${mtgSiteHeader()}<div class="mp-wrap">${bodyHtml}</div>${mtgSiteFooter()}` +
+    `<script defer src="${WO_UI_SCRIPT_URL}"></script>` +
+    `</body></html>`;
 }
 
 function mtgHtmlResponse(html) {
