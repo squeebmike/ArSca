@@ -26,7 +26,7 @@ const rows = [
   row('item-c-gone', { name: 'Gone Item', category: 'Comics', priceOverride: 12, quantity: 0, onlineListed: true }), // not showSoldOut -- must 404, not list
   row('item-d', { name: 'Batman #1', category: 'Comics', priceOverride: 10, quantity: 2, onlineListed: true }),
   row('item-e', { name: 'Charizard VMAX', category: 'Pokemon', priceOverride: 99, quantity: 1, onlineListed: true }),
-  row('item-f-reviewed', { name: 'Reviewed Comic', category: 'Comics', priceOverride: 5, quantity: 1, onlineListed: true, reviews: [{ author: 'Alex', rating: 5, text: 'Great condition, fast shipping!', date: '2026-08-01' }] }),
+  row('item-f-reviewed', { name: 'Reviewed Comic', category: 'Comics', priceOverride: 5, quantity: 1, onlineListed: true, reviews: [{ author: 'Alex', rating: 5, text: 'Great condition, fast shipping!', date: '2026-08-01', approved: true }, { author: 'Spammer', rating: 5, text: 'Not yet approved by staff', date: '2026-08-02', approved: false }] }),
 ];
 
 const originalFetch = globalThis.fetch, originalCaches = globalThis.caches;
@@ -101,10 +101,11 @@ try {
     const html = await res.text();
     const product = jsonLdBlocks(html).find(b => b['@type'] === 'Product');
     assert.ok(product.aggregateRating, 'a real saved review must produce AggregateRating schema');
-    assert.equal(product.aggregateRating.reviewCount, 1);
+    assert.equal(product.aggregateRating.reviewCount, 1, 'an unapproved review must not count toward the public rating');
     assert.equal(product.review[0].reviewBody, 'Great condition, fast shipping!');
     assert.match(html, /Reviews<\/h2>/);
     assert.match(html, /Great condition, fast shipping!/, 'the visible page must show the same review the schema claims -- never schema without matching visible content');
+    assert.doesNotMatch(html, /Not yet approved by staff/, 'an unapproved review must never be publicly visible');
   }
 
   // Category landing pages: real written copy + a live grid of only the

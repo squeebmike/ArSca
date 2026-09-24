@@ -786,7 +786,12 @@ function shapeStorefrontItem(row) {
     // dashboard flow does today. Never fabricated; see reviewSchemaAndHtml
     // in the /item/{id} detail-page rendering for how this is (and isn't)
     // used once real reviews exist.
-    reviews: (Array.isArray(d.reviews) ? d.reviews : []).slice(0, 50)
+    // A submission from /public/storefront/review starts life with
+    // approved:false -- filtered out here BEFORE the public-facing map
+    // below, so an unapproved review is never publicly visible or rendered
+    // into schema.org markup, only ever seen by staff moderating it in the
+    // dashboard (see the "Reviews" panel there).
+    reviews: (Array.isArray(d.reviews) ? d.reviews : []).filter(r => r?.approved === true).slice(0, 50)
       .map(r => ({ author: storefrontCleanText(r?.author || 'Verified buyer', 80), rating: Math.round(Number(r?.rating) || 0), text: storefrontCleanText(r?.text || '', 2000), date: storefrontCleanText(r?.date || '', 20) }))
       .filter(r => r.rating >= 1 && r.rating <= 5 && r.text),
   };
@@ -6002,6 +6007,102 @@ export default {
       await fulfillStorefrontOrderInventory(env,saleId,storeId);
 
       return json({ ok:true, saleId, confirmationNumber });
+    }
+
+    // GET /review?token=... -- customer-facing review-submission page,
+    // reached via the link in the post-purchase review-request email (see
+    // runScheduledStorefrontReviewRequests below). token is an unguessable
+    // random UUID looked up directly against storefront_orders.review_token
+    // -- same pattern already used for /notify/email-unsubscribe, no HMAC/
+    // signing needed for a token nobody can feasibly guess.
+    if (url.pathname === '/review' && request.method === 'GET') {
+      const token = (url.searchParams.get('token') || '').trim();
+      const reviewInfoPage = (message) => mtgHtmlResponse(mtgPageShell({
+        title: 'Leave a Review | The Mana Pocket', description: message, canonicalPath: '/review', robotsNoindex: true,
+        bodyHtml: `<h1>Leave a review</h1><p class="mp-sub">${mtgEscapeHtml(message)}</p>`,
+      }));
+      if (!/^[0-9a-f-]{36}$/i.test(token)) return reviewInfoPage('This review link is incomplete or invalid.');
+      if (!(env.SUPABASE_URL && (env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SERVICE_KEY))) return reviewInfoPage('This page is temporarily unavailable. Please try again shortly.');
+      const { data: reviewOrders } = await supabaseAdminFetch(env, `storefront_orders?review_token=eq.${encodeURIComponent(token)}&select=id,sale_id,customer_name&limit=1`);
+      const reviewOrder = reviewOrders?.[0];
+      if (!reviewOrder) return reviewInfoPage('This review link is no longer valid.');
+      const { data: reviewLines } = await supabaseAdminFetch(env, `pos_sale_lines?sale_id=eq.${encodeURIComponent(reviewOrder.sale_id)}&item_id=not.is.null&select=item_id,title,image_url`);
+      const reviewItems = (reviewLines || []).filter(line => line.item_id);
+      if (!reviewItems.length) return reviewInfoPage('No reviewable items were found for this order.');
+      const firstName = mtgEscapeHtml((reviewOrder.customer_name || '').trim().split(/\s+/)[0] || '');
+      const forms = reviewItems.map(item => {
+        const itemIdAttr = mtgEscapeHtml(item.item_id);
+        return `<div class="mp-detail" style="margin-bottom:28px;padding-bottom:24px;border-bottom:1px solid rgba(255,255,255,.1)">` +
+          `${item.image_url ? `<img src="${mtgEscapeHtml(item.image_url)}" alt="${mtgEscapeHtml(item.title)}" style="max-width:120px;border-radius:10px">` : ''}` +
+          `<div><h2 style="font-size:16px;margin:0 0 10px">${mtgEscapeHtml(item.title)}</h2>` +
+          `<form data-review-form data-item-id="${itemIdAttr}" style="display:grid;gap:8px;max-width:420px">` +
+          `<label style="font-size:12px;opacity:.7">Rating<select name="rating" required style="width:100%;margin-top:4px;padding:8px;border-radius:6px;background:var(--wo-surface-alt,#222);color:inherit;border:1px solid rgba(255,255,255,.2)">` +
+          `<option value="">Choose a rating</option><option value="5">5 - Excellent</option><option value="4">4 - Good</option><option value="3">3 - Okay</option><option value="2">2 - Not great</option><option value="1">1 - Poor</option></select></label>` +
+          `<label style="font-size:12px;opacity:.7">Your review<textarea name="text" maxlength="2000" rows="3" required style="width:100%;margin-top:4px;padding:8px;border-radius:6px;box-sizing:border-box;background:var(--wo-surface-alt,#222);color:inherit;border:1px solid rgba(255,255,255,.2)"></textarea></label>` +
+          `<label style="font-size:12px;opacity:.7">Your name (optional)<input name="name" maxlength="80" style="width:100%;margin-top:4px;padding:8px;border-radius:6px;box-sizing:border-box;background:var(--wo-surface-alt,#222);color:inherit;border:1px solid rgba(255,255,255,.2)"></label>` +
+          `<button type="submit" class="mp-card" style="padding:10px;text-align:center;cursor:pointer;background:rgba(139,212,80,.15);border:none;color:#8bd450;font-weight:700">Submit review</button>` +
+          `<div data-review-status style="font-size:12px;color:#ff9db0"></div>` +
+          `</form></div></div>`;
+      }).join('');
+      const script = `<script>document.querySelectorAll('[data-review-form]').forEach(function(form){form.addEventListener('submit',function(e){e.preventDefault();var status=form.querySelector('[data-review-status]');var btn=form.querySelector('button');btn.disabled=true;status.textContent='Submitting...';fetch('/public/storefront/review',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:${JSON.stringify(token)},itemId:form.dataset.itemId,rating:form.rating.value,text:form.text.value,name:form.name.value})}).then(function(r){return r.json();}).then(function(data){if(data.ok){form.innerHTML='<div style="color:#8bd450;font-weight:700">Thanks for your review!</div>';}else{status.textContent=data.error||'Something went wrong -- please try again.';btn.disabled=false;}}).catch(function(){status.textContent='Something went wrong -- please try again.';btn.disabled=false;});});});</script>`;
+      const html = mtgPageShell({
+        title: 'Leave a Review | The Mana Pocket',
+        description: 'Share your experience with your recent order from The Mana Pocket.',
+        canonicalPath: '/review',
+        robotsNoindex: true,
+        bodyHtml: `<h1>How was your order${firstName ? `, ${firstName}` : ''}?</h1><p class="mp-sub">Leave a review for each item below -- it only takes a minute and really helps a small shop.</p>${forms}${script}`,
+      });
+      return mtgHtmlResponse(html);
+    }
+
+    // POST /public/storefront/review -- public (unauthenticated, token-
+    // gated) review submission. Starts life unapproved (see
+    // shapeStorefrontItem's reviews filter) -- never publicly visible or
+    // rendered into schema.org markup until a staff member approves it in
+    // the dashboard, so a guessed/leaked token can't put live spam or
+    // abuse directly in front of customers or Google.
+    if (url.pathname === '/public/storefront/review' && request.method === 'POST') {
+      if (!(env.SUPABASE_URL && (env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SERVICE_KEY))) return json({ ok:false, error:'Storefront service unavailable' }, 503);
+      const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
+      const limited = await readJsonWithLimit(request, 8 * 1024);
+      if (limited.error) return limited.error;
+      const body = limited.data || {};
+      const token = String(body.token || '').trim();
+      if (!/^[0-9a-f-]{36}$/i.test(token)) return json({ ok:false, error:'Invalid review link' }, 400);
+      const rateError = await enforceUsageLimit(env, `storefront-review:${token}:${ip}`, 10, 60);
+      if (rateError) return rateError;
+      const itemId = String(body.itemId || '').trim();
+      if (!/^[0-9a-f-]{36}$/i.test(itemId)) return json({ ok:false, error:'Invalid item' }, 400);
+      const rating = Math.round(Number(body.rating));
+      if (!(rating >= 1 && rating <= 5)) return json({ ok:false, error:'Choose a rating from 1 to 5' }, 400);
+      const reviewText = String(body.text || '').trim().slice(0, 2000);
+      if (!reviewText) return json({ ok:false, error:'Please write a short review' }, 400);
+      const author = String(body.name || '').trim().slice(0, 80) || 'Verified buyer';
+
+      const { data: reviewOrders } = await supabaseAdminFetch(env, `storefront_orders?review_token=eq.${encodeURIComponent(token)}&select=id,store_id,sale_id&limit=1`);
+      const reviewOrder = reviewOrders?.[0];
+      if (!reviewOrder) return json({ ok:false, error:'This review link is no longer valid' }, 404);
+
+      // Confirms the item was actually part of THIS order -- a valid token
+      // for order A must never be usable to post a review onto some other
+      // item the customer never bought.
+      const { data: matchingLines } = await supabaseAdminFetch(env, `pos_sale_lines?sale_id=eq.${encodeURIComponent(reviewOrder.sale_id)}&item_id=eq.${encodeURIComponent(itemId)}&limit=1`);
+      if (!matchingLines?.length) return json({ ok:false, error:'That item was not part of this order' }, 400);
+
+      const { data: itemRows } = await supabaseAdminFetch(env, `inventory_items?id=eq.${encodeURIComponent(itemId)}&store_id=eq.${encodeURIComponent(reviewOrder.store_id)}&select=id,data&limit=1`);
+      const itemRow = itemRows?.[0];
+      if (!itemRow) return json({ ok:false, error:'This item is no longer available' }, 404);
+
+      const existingReviews = Array.isArray(itemRow.data?.reviews) ? itemRow.data.reviews : [];
+      // One review per (order, item) -- reopening/resubmitting the same
+      // link is a no-op instead of stacking duplicate entries.
+      if (existingReviews.some(r => r?.orderId === reviewOrder.id && r?.itemId === itemId)) return json({ ok:true, alreadySubmitted:true });
+      const nextData = {
+        ...(itemRow.data || {}),
+        reviews: [...existingReviews, { orderId: reviewOrder.id, itemId, author, rating, text: reviewText, date: new Date().toISOString().slice(0, 10), approved: false }].slice(-50),
+      };
+      await supabaseAdminFetch(env, `inventory_items?id=eq.${encodeURIComponent(itemId)}&store_id=eq.${encodeURIComponent(reviewOrder.store_id)}`, { method:'PATCH', headers:{ Prefer:'return=minimal' }, body:JSON.stringify({ data: nextData }) });
+      return json({ ok:true });
     }
 
     if (url.pathname === '/catalog/mtg/manifest') {
