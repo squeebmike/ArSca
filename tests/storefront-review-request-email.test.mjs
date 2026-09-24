@@ -30,7 +30,7 @@ console.log('Storefront review-request scheduled-email contract checks passed');
 function storefrontReviewRequestEmail(order, lines) {
   const itemNames = (lines || []).map(l => l.title).filter(Boolean);
   const itemsText = itemNames.length ? `\n${itemNames.map(n => `  - ${n}`).join('\n')}\n` : '';
-  const link = `https://themanapocket.com/review?token=${order.review_token}`;
+  const link = `https://www.themanapocket.com/review?token=${order.review_token}`;
   const body = `Hi ${order.customer_name || ''},\n\nThanks again for your order from The Mana Pocket!${itemsText}\nIf you have a minute, we'd love to hear what you thought -- it really helps a small shop:\n\n${link}\n\nThanks for supporting us!`;
   return { subject: 'How was your order from The Mana Pocket?', body };
 }
@@ -42,7 +42,7 @@ function storefrontReviewRequestEmail(order, lines) {
   assert.match(subject, /How was your order/);
   assert.match(body, /Amazing Spider-Man #1/);
   assert.match(body, /Batman #1/);
-  assert.match(body, /https:\/\/themanapocket\.com\/review\?token=11111111-1111-1111-1111-111111111111/, 'the email must link to the real /review page with the real per-order token');
+  assert.match(body, /https:\/\/www\.themanapocket\.com\/review\?token=11111111-1111-1111-1111-111111111111/, 'the email must link to the real /review page with the real per-order token');
 }
 
 console.log('Storefront review-request email content checks passed');

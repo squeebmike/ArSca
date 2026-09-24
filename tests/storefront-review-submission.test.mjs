@@ -1,4 +1,19 @@
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+
+// Same class of bug as every other "page works but 404s on the real
+// domain" fix this session -- /review and /public/storefront/review need
+// their own zone route bindings, or a real review-request email link
+// 404s no matter how correct the handler itself is.
+const config = JSON.parse(
+  fs.readFileSync('wrangler.deploy.jsonc', 'utf8').replace(/\/\/.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '')
+);
+for (const pattern of ['www.themanapocket.com/review', 'www.themanapocket.com/public/storefront/review']) {
+  const route = config.routes.find(r => r.pattern === pattern);
+  assert.ok(route, `wrangler.deploy.jsonc must bind ${pattern}, or it 404s on the real domain`);
+  assert.equal(route.zone_name, 'themanapocket.com');
+}
+console.log('Review route bindings present in wrangler.deploy.jsonc');
 
 const STORE_ID = '0f9dd4bc-42a7-487e-a972-2905d24513e9';
 const TOKEN = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
@@ -49,8 +64,8 @@ const edge = { waitUntil: () => {} };
 
 try {
   const { default: api } = await import('../cloudflare-worker-full.js');
-  const get = (path) => api.fetch(new Request('https://themanapocket.com' + path), env, edge);
-  const post = (path, body) => api.fetch(new Request('https://themanapocket.com' + path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }), env, edge);
+  const get = (path) => api.fetch(new Request('https://www.themanapocket.com' + path), env, edge);
+  const post = (path, body) => api.fetch(new Request('https://www.themanapocket.com' + path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }), env, edge);
 
   // GET /review renders the real purchased item(s), not fabricated ones.
   {

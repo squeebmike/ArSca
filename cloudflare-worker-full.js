@@ -2260,7 +2260,7 @@ function mtgPageShell({ title, description, canonicalPath, ogImage, ogType, json
   const robotsTag = robotsNoindex ? `<meta name="robots" content="noindex,follow">` : '';
   return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">` +
     `<title>${mtgEscapeHtml(title)}</title><meta name="description" content="${mtgEscapeHtml(description)}">${robotsTag}` +
-    `<link rel="canonical" href="https://themanapocket.com${canonicalPath}">` +
+    `<link rel="canonical" href="https://www.themanapocket.com${canonicalPath}">` +
     `<meta property="og:type" content="${mtgEscapeHtml(ogType || 'website')}"><meta property="og:site_name" content="The Mana Pocket">` +
     `<meta property="og:title" content="${mtgEscapeHtml(title)}"><meta property="og:description" content="${mtgEscapeHtml(description)}">${ogImageTag}${twitterTags}` +
     `${jsonLdBlock}` +
@@ -2343,7 +2343,7 @@ function renderMtgCardPage(card) {
       '@context': 'https://schema.org', '@type': 'Product', name: card.name, image: img || undefined,
       sku: card.scryfallId, brand: { '@type': 'Brand', name: 'Magic: The Gathering' },
       description: card.oracleText || card.typeLine || undefined,
-      ...(priceNum ? { offers: { '@type': 'Offer', priceCurrency: 'USD', price: priceNum, url: `https://themanapocket.com${canonicalPath}` } } : {}),
+      ...(priceNum ? { offers: { '@type': 'Offer', priceCurrency: 'USD', price: priceNum, url: `https://www.themanapocket.com${canonicalPath}` } } : {}),
     },
     bodyHtml: `<div class="mp-crumb"><a href="/mtg">All MTG sets</a> / <a href="/mtg/${mtgEscapeHtml(card.setCode)}">${mtgEscapeHtml(card.setName || card.setCode)}</a></div>` +
       `<div class="mp-detail">${img ? `<img src="${mtgEscapeHtml(img)}" alt="${mtgEscapeHtml(card.name)}">` : ''}` +
@@ -2515,9 +2515,9 @@ function renderItemDetailPage(item, canonicalSlug, allListable) {
   const breadcrumbJsonLd = {
     '@context': 'https://schema.org', '@type': 'BreadcrumbList',
     itemListElement: [
-      { '@type': 'ListItem', position: 1, name: 'Shop', item: 'https://themanapocket.com/shop' },
-      { '@type': 'ListItem', position: 2, name: categoryLabel, item: `https://themanapocket.com${categoryHref}` },
-      { '@type': 'ListItem', position: 3, name: item.name, item: `https://themanapocket.com${canonicalPath}` },
+      { '@type': 'ListItem', position: 1, name: 'Shop', item: 'https://www.themanapocket.com/shop' },
+      { '@type': 'ListItem', position: 2, name: categoryLabel, item: `https://www.themanapocket.com${categoryHref}` },
+      { '@type': 'ListItem', position: 3, name: item.name, item: `https://www.themanapocket.com${canonicalPath}` },
     ],
   };
   const { jsonLdFields: reviewJsonLdFields, html: reviewHtml } = reviewSchemaAndHtml(item);
@@ -2533,7 +2533,7 @@ function renderItemDetailPage(item, canonicalSlug, allListable) {
       image: item.image || undefined, sku: item.id,
       brand: item.brand ? { '@type': 'Brand', name: item.brand } : undefined,
       description,
-      ...(item.price ? { offers: { '@type': 'Offer', priceCurrency: 'USD', price: item.price, availability: available ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock', url: `https://themanapocket.com${canonicalPath}` } } : {}),
+      ...(item.price ? { offers: { '@type': 'Offer', priceCurrency: 'USD', price: item.price, availability: available ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock', url: `https://www.themanapocket.com${canonicalPath}` } } : {}),
       ...reviewJsonLdFields,
     }, breadcrumbJsonLd],
     bodyHtml: `<div class="mp-crumb"><a href="/shop">Shop</a> / <a href="${categoryHref}">${mtgEscapeHtml(categoryLabel)}</a> / ${mtgEscapeHtml(item.name)}</div>` +
@@ -2582,8 +2582,8 @@ function renderCategoryLandingPage(slug, items) {
     jsonLd: [
       { '@context': 'https://schema.org', '@type': 'CollectionPage', name: label, description: copy },
       { '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: [
-        { '@type': 'ListItem', position: 1, name: 'Shop', item: 'https://themanapocket.com/shop' },
-        { '@type': 'ListItem', position: 2, name: label, item: `https://themanapocket.com${canonicalPath}` },
+        { '@type': 'ListItem', position: 1, name: 'Shop', item: 'https://www.themanapocket.com/shop' },
+        { '@type': 'ListItem', position: 2, name: label, item: `https://www.themanapocket.com${canonicalPath}` },
       ] },
     ],
     bodyHtml: `<div class="mp-crumb"><a href="/shop">← Shop</a></div><h1>${mtgEscapeHtml(label)}</h1><p class="mp-sub">${mtgEscapeHtml(copy)}</p>` +
@@ -2642,7 +2642,7 @@ function renderFaqPage() {
 // news page's own sitemap entry sits alongside) -- never a placeholder or
 // fabricated customer-facing claim.
 const NEWS_POSTS = [
-  ['2026-09-24', 'Every in-stock item now has its own page', 'Every card, comic, and collectible in stock now has its own dedicated, shareable page at themanapocket.com/item/... -- easier to link directly to a specific item instead of pointing someone at the whole shop grid.'],
+  ['2026-09-24', 'Every in-stock item now has its own page', 'Every card, comic, and collectible in stock now has its own dedicated, shareable page at www.themanapocket.com/item/... -- easier to link directly to a specific item instead of pointing someone at the whole shop grid.'],
   ['2026-09-11', 'BCW supplies now available to order', 'Sleeves, top loaders, binders, and other storage from BCW are now orderable directly through our shop, drop-shipped straight from BCW.'],
   ['2026-08-01', 'FOC presale now open for upcoming comics', 'Order upcoming comic issues ahead of their release through our FOC presale program -- see the FAQ for how it works.'],
 ];
@@ -6216,17 +6216,23 @@ export default {
     // serving duplicate content at multiple URLs for the same item.
     // Existing Supplies links use /shop?cat=supplies. Keep those entry points working.
     if (['GET','HEAD'].includes(request.method) && (url.pathname === '/supplies' || url.pathname === '/supplies/' || url.pathname === '/bcw/' || (url.pathname === '/shop' && url.searchParams.get('cat') === 'supplies'))) {
-      return Response.redirect('https://themanapocket.com/bcw',301);
+      return Response.redirect('https://www.themanapocket.com/bcw',301);
     }
     // Other shop requests continue to Webflow's origin through this zone route.
-    if (url.hostname === 'themanapocket.com' && url.pathname.startsWith('/shop')) {
+    // Store report: the bare "themanapocket.com" apex is Webflow-managed and
+    // its DNS record can't stay proxied through Cloudflare (Webflow's own
+    // automated domain management reverts it) -- every worker route,
+    // including this one, only actually reaches this Worker via
+    // "www.themanapocket.com", which IS stably proxied. The apex now just
+    // redirects to www (a Cloudflare Redirect Rule, not code in this file).
+    if (url.hostname === 'www.themanapocket.com' && url.pathname.startsWith('/shop')) {
       const originResponse = await fetch(request);
       if(request.method !== 'GET' || !originResponse.headers.get('Content-Type')?.includes('text/html')) return originResponse;
       return new HTMLRewriter().on('body',{element(el){el.append(`<script>document.addEventListener('change',function(e){if(e.target.matches('select.wo-store-control-field')&&String(e.target.value).toLowerCase()==='supplies'){e.stopImmediatePropagation();location.href='/bcw';}},true);document.addEventListener('DOMContentLoaded',function(){var host=document.getElementById('wo-live-shop');if(!host)return;if(!document.getElementById('bcw-supplies-link')){var a=document.createElement('a');a.id='bcw-supplies-link';a.href='/bcw';a.textContent='Shop BCW supplies →';a.style.cssText='display:inline-block;margin:18px 0;padding:12px 18px;border:1px solid currentColor;border-radius:8px;font-weight:700';host.before(a);}if(!document.getElementById('mp-category-nav')){var links=[['/category/comics','Comics'],['/category/pokemon','Pokémon'],['/category/sports-cards','Sports Cards'],['/category/mtg','Magic: The Gathering'],['/category/collectibles','Collectibles'],['/faq','FAQ']];var nav=document.createElement('div');nav.id='mp-category-nav';nav.style.cssText='display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 18px';links.forEach(function(pair){var link=document.createElement('a');link.href=pair[0];link.textContent=pair[1];link.style.cssText='padding:8px 14px;border:1px solid currentColor;border-radius:8px;text-decoration:none;color:inherit;font-size:13px;font-weight:600';nav.appendChild(link);});host.before(nav);}});</script>`,{html:true});}}).transform(originResponse);
     }
-    // The customer-facing BCW page is a native Webflow page. Preserve it if
-    // the domain's DNS proxy is enabled later; workers.dev keeps the preview.
-    if (url.hostname === 'themanapocket.com' && url.pathname === '/bcw') return fetch(request);
+    // The customer-facing BCW page is a native Webflow page, reached through
+    // Cloudflare via www.themanapocket.com (see the store report above).
+    if (url.hostname === 'www.themanapocket.com' && url.pathname === '/bcw') return fetch(request);
     if ((url.pathname === '/bcw' || url.pathname === '/public/bcw') && request.method === 'GET') {
       if (!(env.SUPABASE_URL && (env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SERVICE_KEY))) return new Response('Storefront service unavailable',{status:503});
       const key = new Request(url.toString(),request);
@@ -6284,7 +6290,7 @@ export default {
       }
       const canonicalSlug = itemDetailSlug(item);
       if (providedSlug !== canonicalSlug) {
-        const response = Response.redirect(`https://themanapocket.com/item/${encodeURIComponent(itemId)}/${canonicalSlug}`, 301);
+        const response = Response.redirect(`https://www.themanapocket.com/item/${encodeURIComponent(itemId)}/${canonicalSlug}`, 301);
         ctx.waitUntil(caches.default.put(cacheKey, response.clone()));
         return response;
       }
@@ -6358,9 +6364,9 @@ export default {
       const allListable = await fetchAllListableStorefrontItems(env);
       const urls = allListable
         .filter(item => !item.linkUrl) // items with linkUrl 301 elsewhere -- not a page for Google to index here
-        .map(item => `<url><loc>https://themanapocket.com/item/${mtgEscapeHtml(item.id)}/${mtgEscapeHtml(itemDetailSlug(item))}</loc><lastmod>${mtgEscapeHtml((item.updatedAt || '').slice(0, 10))}</lastmod></url>`)
+        .map(item => `<url><loc>https://www.themanapocket.com/item/${mtgEscapeHtml(item.id)}/${mtgEscapeHtml(itemDetailSlug(item))}</loc><lastmod>${mtgEscapeHtml((item.updatedAt || '').slice(0, 10))}</lastmod></url>`)
         .join('');
-      const xml = `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>https://themanapocket.com/bcw</loc></url>${urls}</urlset>`;
+      const xml = `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>https://www.themanapocket.com/bcw</loc></url>${urls}</urlset>`;
       const response = new Response(xml, { headers: { 'Content-Type': 'application/xml;charset=UTF-8' } });
       response.headers.set('Cache-Control', 'public, max-age=1800');
       ctx.waitUntil(caches.default.put(cacheKey, response.clone()));
@@ -6377,7 +6383,7 @@ export default {
       // visited directly, just not worth asking Google to index separately.
       const skippedCategorySlugs = ['supplies', 'other'];
       const staticUrls = ['/faq', '/news', '/category', ...Object.keys(CATEGORY_LANDING_LABELS).filter(slug => !skippedCategorySlugs.includes(slug)).map(slug => categoryLandingHref(slug))]
-        .map(path => `<url><loc>https://themanapocket.com${path}</loc></url>`).join('');
+        .map(path => `<url><loc>https://www.themanapocket.com${path}</loc></url>`).join('');
       const xml = `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${staticUrls}</urlset>`;
       return new Response(xml, { headers: { 'Content-Type': 'application/xml;charset=UTF-8', 'Cache-Control': 'public, max-age=3600' } });
     }
@@ -15630,7 +15636,7 @@ export default {
 function storefrontReviewRequestEmail(order, lines) {
   const itemNames = (lines || []).map(l => l.title).filter(Boolean);
   const itemsText = itemNames.length ? `\n${itemNames.map(n => `  - ${n}`).join('\n')}\n` : '';
-  const link = `https://themanapocket.com/review?token=${order.review_token}`;
+  const link = `https://www.themanapocket.com/review?token=${order.review_token}`;
   const body = `Hi ${order.customer_name || ''},\n\nThanks again for your order from The Mana Pocket!${itemsText}\nIf you have a minute, we'd love to hear what you thought -- it really helps a small shop:\n\n${link}\n\nThanks for supporting us!`;
   return { subject: 'How was your order from The Mana Pocket?', body };
 }

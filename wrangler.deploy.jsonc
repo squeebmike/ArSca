@@ -33,61 +33,76 @@
     ]
   },
   "workers_dev": true,
+  // Store report: the bare "themanapocket.com" apex is Webflow-managed --
+  // its DNS record can't stay proxied through Cloudflare (Webflow's own
+  // automated domain management reverts any attempt to proxy it), so every
+  // route below only ever actually reaches this Worker via
+  // "www.themanapocket.com", which is proxied and stable. The apex
+  // redirects to www via a Cloudflare Redirect Rule (not code in this
+  // repo) rather than DNS, so it never fights Webflow's management again.
   "routes": [
     {
-      "pattern": "themanapocket.com/mtg*",
+      "pattern": "www.themanapocket.com/mtg*",
       "zone_name": "themanapocket.com"
     },
     {
-      "pattern": "themanapocket.com/preorder*",
+      "pattern": "www.themanapocket.com/preorder*",
       "zone_name": "themanapocket.com"
     },
     {
-      "pattern": "themanapocket.com/sitemap-preorders.xml",
+      "pattern": "www.themanapocket.com/sitemap-preorders.xml",
       "zone_name": "themanapocket.com"
     },
     {
-      "pattern": "themanapocket.com/item*",
+      "pattern": "www.themanapocket.com/item*",
       "zone_name": "themanapocket.com"
     },
     {
-      "pattern": "themanapocket.com/sitemap-items.xml",
+      "pattern": "www.themanapocket.com/sitemap-items.xml",
       "zone_name": "themanapocket.com"
     },
     {
-      "pattern": "themanapocket.com/book*",
+      "pattern": "www.themanapocket.com/book*",
       "zone_name": "themanapocket.com"
     },
     {
-      "pattern": "themanapocket.com/sitemap-books.xml",
+      "pattern": "www.themanapocket.com/sitemap-books.xml",
       "zone_name": "themanapocket.com"
     },
     {
-      "pattern": "themanapocket.com/bcw*",
+      "pattern": "www.themanapocket.com/bcw*",
       "zone_name": "themanapocket.com"
     },
     {
-      "pattern": "themanapocket.com/supplies*",
+      "pattern": "www.themanapocket.com/supplies*",
       "zone_name": "themanapocket.com"
     },
     {
-      "pattern": "themanapocket.com/shop*",
+      "pattern": "www.themanapocket.com/shop*",
       "zone_name": "themanapocket.com"
     },
     {
-      "pattern": "themanapocket.com/category*",
+      "pattern": "www.themanapocket.com/category*",
       "zone_name": "themanapocket.com"
     },
     {
-      "pattern": "themanapocket.com/faq",
+      "pattern": "www.themanapocket.com/faq",
       "zone_name": "themanapocket.com"
     },
     {
-      "pattern": "themanapocket.com/news",
+      "pattern": "www.themanapocket.com/news",
       "zone_name": "themanapocket.com"
     },
     {
-      "pattern": "themanapocket.com/sitemap-pages.xml",
+      "pattern": "www.themanapocket.com/sitemap-pages.xml",
+      "zone_name": "themanapocket.com"
+    },
+    {
+      "pattern": "www.themanapocket.com/review",
+      "zone_name": "themanapocket.com"
+    },
+    {
+      "pattern": "www.themanapocket.com/public/storefront/review",
       "zone_name": "themanapocket.com"
     }
   ]

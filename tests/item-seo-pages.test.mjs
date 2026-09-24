@@ -8,7 +8,7 @@ import fs from 'node:fs';
 const config = JSON.parse(
   fs.readFileSync('wrangler.deploy.jsonc', 'utf8').replace(/\/\/.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '')
 );
-for (const pattern of ['themanapocket.com/category*', 'themanapocket.com/faq', 'themanapocket.com/news', 'themanapocket.com/sitemap-pages.xml']) {
+for (const pattern of ['www.themanapocket.com/category*', 'www.themanapocket.com/faq', 'www.themanapocket.com/news', 'www.themanapocket.com/sitemap-pages.xml']) {
   const route = config.routes.find(r => r.pattern === pattern);
   assert.ok(route, `wrangler.deploy.jsonc must bind ${pattern}, or it 404s on the real domain even though the Worker handles it`);
   assert.equal(route.zone_name, 'themanapocket.com');
@@ -47,7 +47,7 @@ const edge = { waitUntil: () => {} };
 
 try {
   const { default: api } = await import('../cloudflare-worker-full.js');
-  const get = (path) => api.fetch(new Request('https://themanapocket.com' + path), env, edge);
+  const get = (path) => api.fetch(new Request('https://www.themanapocket.com' + path), env, edge);
   const jsonLdBlocks = (html) => [...html.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)].map(m => JSON.parse(m[1]));
 
   // Available item: real page, breadcrumb + product schema, Twitter Card,
@@ -67,7 +67,7 @@ try {
     assert.ok(breadcrumb, 'item page must emit BreadcrumbList JSON-LD');
     assert.equal(breadcrumb.itemListElement.length, 3);
     assert.equal(breadcrumb.itemListElement[1].name, 'Comics');
-    assert.equal(breadcrumb.itemListElement[1].item, 'https://themanapocket.com/category/comics');
+    assert.equal(breadcrumb.itemListElement[1].item, 'https://www.themanapocket.com/category/comics');
     assert.match(html, /Batman #1/, 'same-category item must appear in the related-items module');
     assert.match(html, /\/item\/item-d\//, 'related item must link to a real /item/{id} page');
     assert.doesNotMatch(html, /Reviews<\/h2>/, 'no Reviews section without real review data');
