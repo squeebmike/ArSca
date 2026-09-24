@@ -178,5 +178,17 @@ jobs:
           await request('Topps R2 manifest', '/catalog/topps/manifest', {}, res => res.ok || res.status === 404);
           await request('Topps R2 file validation', '/catalog/topps/download?file=invalid', {}, res => res.status === 400);
           await request('PokemonPriceTracker cards route', '/pricing/pokemonpricetracker/cards?search=charizard&language=english&limit=1', {}, res => res.status !== 404);
+          // These paths are zone-routed to themanapocket.com in
+          // wrangler.deploy.jsonc, but workers_dev:true exposes every route
+          // this Worker's fetch() handles on *.workers.dev too, so checking
+          // them here (against real internet access, unlike this
+          // repository's own sandboxed dev environment) is real proof they
+          // actually render, not just that the code parses.
+          await request('FAQ page', '/faq', {}, res => res.ok);
+          await request('News page', '/news', {}, res => res.ok);
+          await request('Category index page', '/category', {}, res => res.ok);
+          await request('Comics category page', '/category/comics', {}, res => res.ok);
+          await request('Unknown category 404s', '/category/not-a-real-category', {}, res => res.status === 404);
+          await request('Pages sitemap', '/sitemap-pages.xml', {}, res => res.ok);
           console.log(JSON.stringify({ ok: true, workerUrl, checkedAt: new Date().toISOString() }));
           NODE
