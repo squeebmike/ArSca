@@ -32,7 +32,7 @@
   }
   function renderProduct(i){
     const photos=(i.photos||[i.image]).map(safeImage).filter(Boolean);
-    const productUrl='https://themanapocket.com/bcw?item='+encodeURIComponent(i.id);
+    const productUrl='https://www.themanapocket.com/bcw?item='+encodeURIComponent(i.id);
     document.title=i.name+' | BCW Supplies | The Mana Pocket';
     let canonical=document.querySelector('link[rel="canonical"]');if(!canonical){canonical=document.createElement('link');canonical.rel='canonical';document.head.appendChild(canonical);}canonical.href=productUrl;
     const description=String(i.description||i.name+' from BCW at The Mana Pocket.').replace(/\s+/g,' ').slice(0,160);

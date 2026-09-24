@@ -2586,7 +2586,7 @@ function renderItemDetailPage(item, canonicalSlug, allListable) {
       `<div class="mp-detail">${item.image ? `<img src="${mtgEscapeHtml(item.image)}" alt="${mtgEscapeHtml(item.name)}" width="600" height="600" style="aspect-ratio:1/1;object-fit:contain;background:#16101f" fetchpriority="high">` : ''}` +
       `<div><h1>${mtgEscapeHtml(item.name)}</h1>${metaBits ? `<div class="mp-meta">${mtgEscapeHtml(metaBits)}</div>` : ''}` +
       `<div class="mp-prices">${priceStr ? `<span class="mp-price-pill">${mtgEscapeHtml(priceStr)}</span>` : '<span class="mp-meta">Contact the shop for price</span>'}${!available ? `<span class="mp-price-pill" style="background:rgba(255,77,109,.15);color:#ff9db0">Sold</span>` : ''}</div>` +
-      (available ? `<a class="mp-card" style="display:inline-block;padding:12px 20px;margin-top:8px" href="/shop?item=${encodeURIComponent(item.id)}">View in shop →</a>` : `<p class="mp-sub">This exact copy has sold. Browse ${mtgEscapeHtml(categoryLabel)} for what's currently in stock.</p>`) +
+      (available ? `<a class="mp-card" style="display:inline-block;padding:12px 20px;margin-top:8px" href="/shop?item=${encodeURIComponent(item.id)}">Add to cart →</a>` : `<p class="mp-sub">This exact copy has sold. Browse ${mtgEscapeHtml(categoryLabel)} for what's currently in stock.</p>`) +
       `${reviewHtml}` +
       `</div></div>` +
       renderRelatedItemsHtml(related),
@@ -16014,7 +16014,7 @@ const SUPABASE_EMAIL_HOOK_COPY = {
 // resolves to one of these two known apps; anything else (including an
 // obsolete/misconfigured Supabase Site URL, which Auth Hooks also fall back
 // into this same field) still falls through to the safe customer default.
-const TRUSTED_EMAIL_REDIRECT_ORIGINS = ['https://themanapocket.com', 'https://squeebmike.github.io'];
+const TRUSTED_EMAIL_REDIRECT_ORIGINS = ['https://themanapocket.com', 'https://www.themanapocket.com', 'https://squeebmike.github.io'];
 
 function supabaseEmailRedirectUrl(action, requestedRedirectTo) {
   if (requestedRedirectTo) {
@@ -16025,8 +16025,8 @@ function supabaseEmailRedirectUrl(action, requestedRedirectTo) {
   // Recovery needs the authenticated account settings screen; every other
   // email action should open the account overview.
   return action === 'recovery'
-    ? 'https://themanapocket.com/account-profile'
-    : 'https://themanapocket.com/account';
+    ? 'https://www.themanapocket.com/account-profile'
+    : 'https://www.themanapocket.com/account';
 }
 
 async function handleSupabaseEmailHook(request, env) {
