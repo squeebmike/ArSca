@@ -22654,10 +22654,16 @@ function computeEbayListingFields(item){
   // status instead of a template needing two contradictory hardcoded
   // sentences that both always render (store report: an in-stock line and
   // a presale line both showing on the same listing).
+  //
+  // Store report: this token was hardcoded to always say "comics" --
+  // "In-stock comics ship within 1 business day with tracking." on a
+  // Sports or Pokemon TCG listing, wrong category and confusing. Uses the
+  // same real, category-aware resolveEbayShippingLine() the trailing line
+  // below already uses, instead of its own separate wrong copy of it.
   const releaseDateLabel = item.onSaleDate ? (() => { try { return new Date(/^\d{4}-\d{2}-\d{2}$/.test(item.onSaleDate) ? item.onSaleDate+'T12:00:00' : item.onSaleDate).toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'}); } catch(e){ return ''; } })() : '';
   const shippingLine = isPresaleItem
     ? ['For presale comics, orders ship promptly once the title reaches its official release date and inventory has been received from our distributor.', releaseDateLabel ? ('Release Date: '+releaseDateLabel) : '', 'Publisher and distributor release dates may change. If a presale title is delayed, your order will ship as soon as the book becomes available.'].filter(Boolean).join('\n\n')
-    : 'In-stock comics ship within 1 business day with tracking.';
+    : resolveEbayShippingLine(cat, isComic, isSealed, isGraded, catId);
   const tokens = {
     title, category:item.category||'', year:item.year||'', set:item.set||'', variant:item.variant||'',
     releaseDate:releaseDateLabel, shippingLine,
@@ -22708,7 +22714,18 @@ function computeEbayListingFields(item){
   const bodyText = (item.isBundle && bundleMemberNames.length)
     ? ['This lot includes ' + bundleMemberNames.length + ' items:', bundleMemberNames.map(n => '• ' + n).join('\n'), 'All items in this lot ship together.'].join('\n\n')
     : renderEbayDescriptionTemplate(template, tokens);
-  const desc = [bodyText, resolveEbayShippingLine(cat, isComic, isSealed, isGraded, catId)].filter(Boolean).join('\n\n');
+  // Store report: a template that renders {shippingLine} itself (now every
+  // built-in category template does -- see the token above) got a SECOND,
+  // differently-worded shipping paragraph appended right after it
+  // unconditionally -- redundant on a normal listing, and actively
+  // contradictory on a presale one (a "ships within 1 business day"
+  // trailing line stacked under a paragraph that just said the opposite).
+  // Same "don't double-disclose" fix already used for presale disclosure
+  // in the FOC group-listing flow (see openFamilyEbayGroupReview in
+  // scripts/foc-dashboard.js) -- only append the generic fallback line when
+  // the rendered body doesn't already say anything about shipping.
+  const bodyAlreadyMentionsShipping = /ship/i.test(bodyText);
+  const desc = [bodyText, bodyAlreadyMentionsShipping ? '' : resolveEbayShippingLine(cat, isComic, isSealed, isGraded, catId)].filter(Boolean).join('\n\n');
   // template/tokens/bodyText are exposed (not just the final desc) so the
   // AI DESCRIPTION button can re-render this SAME template with the AI's
   // text slotted into it via {aiSummary}, instead of the button replacing
