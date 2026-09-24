@@ -4,8 +4,8 @@ import fs from 'node:fs';
 const worker = fs.readFileSync(new URL('../cloudflare-worker-full.js', import.meta.url), 'utf8');
 
 assert.match(worker, /function supabaseEmailRedirectUrl\(action, requestedRedirectTo\)/, 'auth email redirects should be selected centrally');
-assert.match(worker, /https:\/\/themanapocket\.com\/account-profile/, 'password recovery should open account settings');
-assert.match(worker, /https:\/\/themanapocket\.com\/account/, 'signup confirmations should open account overview');
+assert.match(worker, /https:\/\/www\.themanapocket\.com\/account-profile/, 'password recovery should open account settings');
+assert.match(worker, /https:\/\/www\.themanapocket\.com\/account/, 'signup confirmations should open account overview');
 assert.match(worker, /redirect_to=\$\{encodeURIComponent\(supabaseEmailRedirectUrl\(action, data\.redirect_to\)\)\}/, 'verification links should use the centrally-selected redirect, passing through what the caller actually requested');
 
 const hookStart = worker.indexOf('async function handleSupabaseEmailHook');
@@ -26,6 +26,6 @@ const redirectFnStart = worker.indexOf('function supabaseEmailRedirectUrl(action
 const redirectFnEnd = worker.indexOf('\nasync function handleSupabaseEmailHook', redirectFnStart);
 const redirectFn = worker.slice(redirectFnStart, redirectFnEnd);
 assert.match(redirectFn, /TRUSTED_EMAIL_REDIRECT_ORIGINS/, 'requestedRedirectTo must be checked against an explicit allowlist, not trusted unconditionally');
-assert.match(worker, /TRUSTED_EMAIL_REDIRECT_ORIGINS\s*=\s*\[['"]https:\/\/themanapocket\.com['"],\s*['"]https:\/\/squeebmike\.github\.io['"]\]/, 'allowlist must cover both the customer storefront and the staff dashboard origins');
+assert.match(worker, /TRUSTED_EMAIL_REDIRECT_ORIGINS\s*=\s*\[['"]https:\/\/themanapocket\.com['"],\s*['"]https:\/\/www\.themanapocket\.com['"],\s*['"]https:\/\/squeebmike\.github\.io['"]\]/, 'allowlist must cover both the apex and www customer storefront origins, plus the staff dashboard origin');
 
 console.log('auth email redirect tests passed');

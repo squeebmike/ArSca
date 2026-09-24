@@ -1,5 +1,5 @@
 // Public rendering receives only shapeStorefrontItem's allowlisted fields.
-const origin = 'https://themanapocket.com';
+const origin = 'https://www.themanapocket.com';
 export const escapeHtml = v => String(v ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const json = v => JSON.stringify(v).replace(/</g,'\\u003c');
 const money = v => '$'+Number(v||0).toFixed(2);

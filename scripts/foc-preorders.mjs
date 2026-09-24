@@ -362,7 +362,7 @@ async function preorderDetailPage(env, deps, skuId, providedSlug) {
   // the real lookup key, the slug is just a relevance/trust signal in the
   // URL (see itemDetailSlug's/backlistBookSlug's own comments for the same
   // reasoning on /item/{id}/{slug} and /book/{id}/{slug}).
-  if (providedSlug !== canonicalSlug) return Response.redirect(`https://themanapocket.com${canonicalPath}`, 301);
+  if (providedSlug !== canonicalSlug) return Response.redirect(`https://www.themanapocket.com${canonicalPath}`, 301);
   const priceText = sku.priceRequired ? 'Price coming soon' : moneyLabel(sku.priceCents);
   const description = [
     priceText,
@@ -371,7 +371,7 @@ async function preorderDetailPage(env, deps, skuId, providedSlug) {
     text(skuRow.description, 220) || text(familyRow.description, 220) || null,
   ].filter(Boolean).join(' · ');
   const title = `${name} | The Mana Pocket Comic Preorders`;
-  const appUrl = `https://themanapocket.com/preorders?sku=${encodeURIComponent(skuId)}`;
+  const appUrl = `https://www.themanapocket.com/preorders?sku=${encodeURIComponent(skuId)}`;
   const image = sku.coverImageUrl || '';
   const html = deps.mtgPageShell({
     title, description, canonicalPath, ogImage: image || undefined,
@@ -384,7 +384,7 @@ async function preorderDetailPage(env, deps, skuId, providedSlug) {
         '@type': 'Offer', priceCurrency: 'USD',
         price: sku.priceRequired ? undefined : sku.priceCents / 100,
         availability: sku.canPreorder ? 'https://schema.org/PreOrder' : 'https://schema.org/OutOfStock',
-        url: `https://themanapocket.com${canonicalPath}`,
+        url: `https://www.themanapocket.com${canonicalPath}`,
       },
     },
     bodyHtml: `<div class="mp-crumb"><a href="/preorders">← All comic preorders</a></div>` +
@@ -441,9 +441,9 @@ async function preorderSitemap(env, deps) {
     const issueNumber = family?.issue_number || '';
     const name = seriesName + (issueNumber ? ' #' + issueNumber : '') + ' · ' + (row.variant_label || 'Cover A');
     const slug = preorderDetailSlug(name, deps);
-    return `<url><loc>https://themanapocket.com/preorder/${deps.mtgEscapeHtml(row.id)}/${deps.mtgEscapeHtml(slug)}</loc>${row.updated_at ? `<lastmod>${deps.mtgEscapeHtml(String(row.updated_at).slice(0, 10))}</lastmod>` : ''}</url>`;
+    return `<url><loc>https://www.themanapocket.com/preorder/${deps.mtgEscapeHtml(row.id)}/${deps.mtgEscapeHtml(slug)}</loc>${row.updated_at ? `<lastmod>${deps.mtgEscapeHtml(String(row.updated_at).slice(0, 10))}</lastmod>` : ''}</url>`;
   }).join('');
-  const xml = `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>https://themanapocket.com/preorders</loc></url>${urls}</urlset>`;
+  const xml = `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>https://www.themanapocket.com/preorders</loc></url>${urls}</urlset>`;
   return new Response(xml, { headers: { 'Content-Type':'application/xml;charset=UTF-8', 'Cache-Control':'public, max-age=1800' } });
 }
 
