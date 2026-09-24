@@ -491,7 +491,7 @@ async function backlistBookDetailPage(env, deps, id, providedSlug) {
   // A renamed title's old slug must never 404 -- id is the real lookup key,
   // the slug is just a relevance/trust signal in the URL (see itemDetailSlug's
   // own comment for the same reasoning on /item/{id}/{slug}).
-  if (providedSlug !== canonicalSlug) return Response.redirect(`https://themanapocket.com${canonicalPath}`, 301);
+  if (providedSlug !== canonicalSlug) return Response.redirect(`https://www.themanapocket.com${canonicalPath}`, 301);
   const lowestCents = Math.min(...skus.map(s => Number(s.customer_price_cents || s.msrp_cents || 0)));
   const byline = [row.writer, row.publisher].filter(Boolean).join(' · ');
   const priceStr = lowestCents ? `$${(lowestCents / 100).toFixed(2)}` : '';
@@ -517,7 +517,7 @@ async function backlistBookDetailPage(env, deps, id, providedSlug) {
       description,
       offers: skus.map(s => ({
         '@type': 'Offer', priceCurrency: 'USD', price: Number(s.customer_price_cents || s.msrp_cents || 0) / 100,
-        availability: 'https://schema.org/PreOrder', url: `https://themanapocket.com${canonicalPath}`,
+        availability: 'https://schema.org/PreOrder', url: `https://www.themanapocket.com${canonicalPath}`,
       })),
     },
     bodyHtml: `<div class="mp-crumb"><a href="/books">← Full PRH catalog</a></div>` +
@@ -562,8 +562,8 @@ async function backlistSitemap(env, deps) {
     offset += 1000;
     if (offset >= 50000) break; // sitemap.xml URL cap safety net
   }
-  const urls = rows.map(row => `<url><loc>https://themanapocket.com/book/${deps.mtgEscapeHtml(row.id)}/${deps.mtgEscapeHtml(backlistBookSlug(row.title, deps))}</loc>${row.updated_at ? `<lastmod>${deps.mtgEscapeHtml(String(row.updated_at).slice(0, 10))}</lastmod>` : ''}</url>`).join('');
-  const xml = `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>https://themanapocket.com/books</loc></url>${urls}</urlset>`;
+  const urls = rows.map(row => `<url><loc>https://www.themanapocket.com/book/${deps.mtgEscapeHtml(row.id)}/${deps.mtgEscapeHtml(backlistBookSlug(row.title, deps))}</loc>${row.updated_at ? `<lastmod>${deps.mtgEscapeHtml(String(row.updated_at).slice(0, 10))}</lastmod>` : ''}</url>`).join('');
+  const xml = `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>https://www.themanapocket.com/books</loc></url>${urls}</urlset>`;
   return new Response(xml, { headers: { 'Content-Type': 'application/xml;charset=UTF-8', 'Cache-Control': 'public, max-age=1800' } });
 }
 
