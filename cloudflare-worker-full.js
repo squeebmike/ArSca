@@ -2256,17 +2256,73 @@ function mtgPriceLines(card) {
 // team/Pokemon/MTG theme choice carries over here exactly as it does on every
 // Webflow page, with zero separate theme logic to maintain in this Worker.
 const WO_UI_SCRIPT_URL = 'https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@08bbbfc/wo-ui.js';
+// Site logo (Webflow asset 6a7277b68122bcc9cf4797bf, bound to the live
+// NavBar symbol's "Brand Logo" prop) -- the same file every Webflow page
+// renders, not a substitute.
+const SITE_LOGO_URL = 'https://s3.amazonaws.com/webflow-prod-assets/65b15ee0228d06647ca7e4ce/6a7277b68122bcc9cf4797bf_themanapocket.avif';
 function mtgSiteHeader() {
+  const dropdown = (label, links) => `<div class="navbar6_menu-dropdown" data-mp-dropdown>` +
+    `<button type="button" class="navbar6_dropdown-toggle" data-mp-dropdown-toggle>${label} <span class="mp-caret">▾</span></button>` +
+    `<div class="navbar6_dropdown-list" data-mp-dropdown-list>${links.map(([href, text]) => `<a class="navbar6_dropdown-link" href="${href}">${text}</a>`).join('')}</div>` +
+    `</div>`;
   return `<div id="navbarID" class="navbar6_component"><div class="navbar6_container">` +
-    `<a class="navbar6_logo-link" href="/"><span class="mp-wordmark">The Mana Pocket</span></a>` +
-    `<nav class="navbar6_menu"><div class="navbar6_menu-left">` +
+    `<a class="navbar6_logo-link" href="/"><img class="navbar6_logo" src="${SITE_LOGO_URL}" alt="The Mana Pocket" width="120" height="60"></a>` +
+    `<nav class="navbar6_menu" id="mp-nav-menu"><div class="navbar6_menu-left">` +
     `<a class="navbar6_link" href="/">Home</a>` +
-    `<a class="navbar6_link" href="/shop">Shop</a>` +
-    `<a class="navbar6_link" href="/shop?cat=sports-cards">Sports Cards</a>` +
-    `<a class="navbar6_link" href="/shop?cat=tcg">Pokémon &amp; MTG</a>` +
-    `<a class="navbar6_link" href="/shop?cat=comics">Comics</a>` +
+    dropdown('Shop', [
+      ['/shop?cat=sports-cards', 'Sports Cards'],
+      ['/shop?cat=tcg', 'Pokémon &amp; MTG'],
+      ['/shop?cat=comics', 'Comics'],
+      ['/shop', 'Shop All Products'],
+    ]) +
+    dropdown('Cool Stuff', [
+      ['/pokemon-new-releases', 'Pokémon New Releases'],
+      ['/mtg-new-releases', 'MTG New Releases'],
+      ['/publishing', 'Publishing'],
+      ['/fan-club', 'Fan Club'],
+    ]) +
     `</div><div class="navbar6_menu-right"><a data-wo-theme="true" class="wo-team-btn">My Pocket</a></div></nav>` +
+    `<button type="button" class="navbar6_menu-button" id="mp-nav-toggle" aria-label="Menu" aria-expanded="false">` +
+    `<div class="menu-icon"><div class="menu-icon_line-top"></div><div class="menu-icon_line-middle"></div><div class="menu-icon_line-bottom"></div></div>` +
+    `</button>` +
     `</div></div>`;
+}
+// Replicates the live site's real nav behavior (scroll-hide/blur on scroll,
+// mutually-exclusive dropdowns, mobile hamburger menu) rather than loading
+// Webflow's own runtime, which these bare server-rendered pages don't have.
+// The scroll-hide logic below is copied verbatim from the site's own
+// site-wide footer custom-code block; the dropdown/hamburger logic
+// reproduces what's native Webflow `.w-nav`/`.w-dropdown` behavior there
+// (this shell has no Webflow runtime to drive that natively) plus the same
+// outside-click/Escape/resize-close rules the site's own custom code adds
+// on top of it.
+function mtgSiteNavScript() {
+  return `<script>(function(){` +
+    `var navbar=document.getElementById('navbarID');if(!navbar)return;` +
+    `function measureNav(){document.documentElement.style.setProperty('--nav-height',navbar.offsetHeight+'px');}` +
+    `measureNav();window.addEventListener('resize',measureNav,{passive:true});` +
+    `var toggle=document.getElementById('mp-nav-toggle'),menu=document.getElementById('mp-nav-menu');` +
+    `function menuOpen(){return!!(menu&&menu.classList.contains('is-open'));}` +
+    `function closeMenu(){if(menu)menu.classList.remove('is-open');if(toggle){toggle.classList.remove('is-open');toggle.setAttribute('aria-expanded','false');}}` +
+    `function closeDropdowns(){document.querySelectorAll('[data-mp-dropdown]').forEach(function(d){d.classList.remove('is-open');});}` +
+    `var lastY=window.pageYOffset||0,threshold=6;` +
+    `function onScroll(){var y=window.pageYOffset||0;navbar.classList.toggle('scrolled',y>0);` +
+    `if(!menuOpen()){if(y-lastY>threshold)navbar.classList.add('is-hidden');else if(lastY-y>threshold)navbar.classList.remove('is-hidden');}` +
+    `else navbar.classList.remove('is-hidden');lastY=Math.max(0,y);}` +
+    `onScroll();window.addEventListener('scroll',onScroll,{passive:true});` +
+    `if(toggle)toggle.addEventListener('click',function(){var open=!menuOpen();if(menu)menu.classList.toggle('is-open',open);toggle.classList.toggle('is-open',open);toggle.setAttribute('aria-expanded',open?'true':'false');if(open)closeDropdowns();});` +
+    `function isMobileBP(){return window.innerWidth<=991;}` +
+    `document.addEventListener('click',function(e){` +
+    `var dd=e.target.closest('[data-mp-dropdown-toggle]');` +
+    `if(dd){var wrap=dd.closest('[data-mp-dropdown]');var willOpen=!wrap.classList.contains('is-open');` +
+    `closeDropdowns();wrap.classList.toggle('is-open',willOpen);return;}` +
+    `if(!e.target.closest('[data-mp-dropdown]'))closeDropdowns();` +
+    `if(!isMobileBP()||!menuOpen())return;` +
+    `if(!e.target.closest('#mp-nav-menu')&&!e.target.closest('#mp-nav-toggle'))closeMenu();` +
+    `});` +
+    `document.addEventListener('keydown',function(e){if(e.key==='Escape'){closeMenu();closeDropdowns();}});` +
+    `window.addEventListener('resize',function(){if(menuOpen()&&!isMobileBP())closeMenu();},{passive:true});` +
+    `})();</script>`;
 }
 function mtgSiteFooter() {
   return `<footer class="Footer Section"><div class="Footer"><div class="Content Wrapper"><div class="Flex Space">` +
@@ -2294,22 +2350,40 @@ function mtgPageShell({ title, description, canonicalPath, ogImage, ogType, json
     `<meta property="og:type" content="${mtgEscapeHtml(ogType || 'website')}"><meta property="og:site_name" content="The Mana Pocket">` +
     `<meta property="og:title" content="${mtgEscapeHtml(title)}"><meta property="og:description" content="${mtgEscapeHtml(description)}">${ogImageTag}${twitterTags}` +
     `${jsonLdBlock}` +
-    `<style>*{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#0a0710;color:#f2eefc;padding:0 0 64px}a{color:#8bd450}` +
+    `<style>*{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#0a0710;color:#f2eefc;padding:0 0 64px;padding-top:var(--nav-height,92px)}a{color:#8bd450}` +
     // Base nav/footer look before wo-ui.js's theme picker (if the visitor
     // has never picked one) applies its own !important overrides on these
-    // same selectors -- matches the site's default navy/dark chrome.
-    `#navbarID.navbar6_component{position:sticky;top:0;z-index:999;background:#001A72;padding:14px 20px;display:flex;border-bottom:1px solid rgba(255,255,255,.1)}` +
-    `.navbar6_container{display:flex;align-items:center;justify-content:space-between;width:100%;max-width:1200px;margin:0 auto;gap:16px;flex-wrap:wrap}` +
-    `.navbar6_logo-link{text-decoration:none}.mp-wordmark{font-weight:800;font-size:18px;color:#fff;letter-spacing:.02em}` +
-    `.navbar6_menu{display:flex;align-items:center;gap:20px;flex-wrap:wrap}.navbar6_menu-left{display:flex;gap:16px;flex-wrap:wrap}` +
+    // same selectors -- matches the site's default navy/dark chrome. Fixed
+    // (not sticky) + the scrolled/is-hidden classes below replicate the real
+    // site's own scroll-hide/blur nav behavior (see mtgSiteNavScript).
+    `#navbarID.navbar6_component{position:fixed;top:0;left:0;right:0;z-index:9999;background:#001A72;padding:14px 20px;display:flex;border-bottom:1px solid rgba(255,255,255,.1);transition:transform .28s ease,background .25s ease,backdrop-filter .25s ease}` +
+    `#navbarID.scrolled{background:rgba(0,26,114,.85);backdrop-filter:blur(8px)}#navbarID.is-hidden{transform:translateY(-110%)}` +
+    `.navbar6_container{display:flex;align-items:center;justify-content:space-between;width:100%;max-width:1200px;margin:0 auto;gap:16px;position:relative}` +
+    `.navbar6_logo-link{text-decoration:none;display:flex;align-items:center}.navbar6_logo{max-height:60px;max-width:220px;width:auto;height:auto;object-fit:contain;display:block}` +
+    `.navbar6_menu{display:flex;align-items:center;gap:20px}.navbar6_menu-left{display:flex;align-items:center;gap:16px}` +
     `.navbar6_link{color:#e8e6f4;text-decoration:none;font-size:14px;font-weight:600}.navbar6_link:hover{color:#8bd450}` +
-    `.wo-team-btn{display:inline-block;border-radius:100px;padding:7px 16px;font-size:13px;font-weight:800;background:#8bd450;color:#001A72;text-decoration:none;cursor:pointer}` +
+    `.navbar6_menu-dropdown{position:relative}.navbar6_dropdown-toggle{background:none;border:none;color:#e8e6f4;font:inherit;font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:4px;padding:0}.navbar6_dropdown-toggle:hover{color:#8bd450}` +
+    `.mp-caret{font-size:10px;transition:transform .2s ease}.navbar6_menu-dropdown.is-open .mp-caret{transform:rotate(180deg)}` +
+    `.navbar6_dropdown-list{position:absolute;top:calc(100% + 12px);left:0;min-width:200px;background:#0b0f2e;border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:8px;display:none;flex-direction:column;gap:2px;box-shadow:0 12px 30px rgba(0,0,0,.45)}` +
+    `.navbar6_menu-dropdown.is-open .navbar6_dropdown-list{display:flex}` +
+    `.navbar6_dropdown-link{padding:8px 10px;border-radius:6px;color:#e8e6f4;text-decoration:none;font-size:14px;white-space:nowrap}.navbar6_dropdown-link:hover{background:rgba(255,255,255,.06);color:#8bd450}` +
+    `.wo-team-btn{display:inline-block;border-radius:100px;padding:7px 16px;font-size:13px;font-weight:800;background:#8bd450;color:#001A72;text-decoration:none;cursor:pointer;white-space:nowrap}` +
+    `.navbar6_menu-button{display:none;background:none;border:none;cursor:pointer;padding:8px;margin-left:4px}` +
+    `.menu-icon{width:22px;height:16px;position:relative}.menu-icon_line-top,.menu-icon_line-middle,.menu-icon_line-bottom{position:absolute;left:0;right:0;height:2px;background:#fff;transition:transform .25s ease,opacity .25s ease}` +
+    `.menu-icon_line-top{top:0}.menu-icon_line-middle{top:7px}.menu-icon_line-bottom{top:14px}` +
+    `#mp-nav-toggle.is-open .menu-icon_line-top{transform:translateY(7px) rotate(45deg)}#mp-nav-toggle.is-open .menu-icon_line-middle{opacity:0}#mp-nav-toggle.is-open .menu-icon_line-bottom{transform:translateY(-7px) rotate(-45deg)}` +
+    `@media(max-width:900px){.navbar6_menu-button{display:block}` +
+    `.navbar6_menu{position:fixed;top:var(--nav-height,92px);left:0;right:0;bottom:0;background:#001A72;flex-direction:column;align-items:stretch;padding:20px;gap:16px;overflow-y:auto;transform:translateX(100%);transition:transform .25s ease;display:flex}` +
+    `.navbar6_menu.is-open{transform:translateX(0)}.navbar6_menu-left{flex-direction:column;align-items:flex-start;gap:16px;width:100%}` +
+    `.navbar6_menu-dropdown{width:100%}.navbar6_dropdown-list{position:static;display:none;margin-top:8px;box-shadow:none;border:none;background:rgba(255,255,255,.04);top:auto;left:auto}` +
+    `.navbar6_menu-dropdown.is-open .navbar6_dropdown-list{display:flex}.navbar6_menu-right{width:100%}.wo-team-btn{display:block;text-align:center}}` +
     `.Footer.Section{margin-top:48px;background:#080808;padding:28px 20px;border-top:1px solid rgba(255,255,255,.08)}` +
     `.Footer .Content.Wrapper{max-width:1200px;margin:0 auto}.Footer .Flex.Space{display:flex;justify-content:space-between;flex-wrap:wrap;gap:16px}` +
     `.footer-links{display:flex;gap:18px;flex-wrap:wrap}.footer-link{color:#fff;font-size:14px;font-weight:600;text-decoration:none}.footer-link:hover{color:#8bd450}` +
     `.Social.Icons{display:flex;gap:14px}.Social.Icons a{color:#c8c4dc;font-size:13px;text-decoration:none}.Social.Icons a:hover{color:#8bd450}` +
     `.mp-wrap{max-width:1080px;margin:0 auto;padding:24px 16px 0}.mp-crumb{font-size:13px;opacity:.65;margin-bottom:16px}.mp-crumb a{color:#c8b8ff}h1{font-size:clamp(22px,4vw,32px);margin:0 0 8px}.mp-sub{opacity:.7;font-size:14px;margin-bottom:24px}.mp-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:16px}.mp-card{display:block;border:1px solid rgba(255,255,255,.12);border-radius:12px;overflow:hidden;background:rgba(255,255,255,.03);text-decoration:none;color:inherit}.mp-card img{width:100%;display:block;background:#16101f}.mp-card-body{padding:10px 12px}.mp-card-name{font-size:13px;font-weight:700;line-height:1.3}.mp-card-price{font-size:12px;color:#8bd450;font-weight:700;margin-top:4px}.mp-set-list{display:grid;gap:10px}.mp-set-row{display:flex;justify-content:space-between;gap:12px;padding:12px 16px;border:1px solid rgba(255,255,255,.1);border-radius:10px;text-decoration:none;color:inherit}.mp-set-row:hover{border-color:#8bd450}.mp-detail{display:grid;grid-template-columns:280px 1fr;gap:32px}@media(max-width:640px){.mp-detail{grid-template-columns:1fr}}.mp-detail img{width:100%;border-radius:14px}.mp-prices{display:flex;gap:10px;flex-wrap:wrap;margin:16px 0}.mp-price-pill{background:rgba(139,212,80,.15);color:#8bd450;font-weight:800;padding:8px 14px;border-radius:999px;font-size:14px}.mp-oracle{white-space:pre-wrap;line-height:1.6;font-size:14px;opacity:.9;margin-top:16px}.mp-meta{font-size:13px;opacity:.65;margin-top:8px}</style></head>` +
     `<body>${mtgSiteHeader()}<div class="mp-wrap">${bodyHtml}</div>${mtgSiteFooter()}` +
+    `${mtgSiteNavScript()}` +
     `<script defer src="${WO_UI_SCRIPT_URL}"></script>` +
     `</body></html>`;
 }
