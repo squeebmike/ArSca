@@ -2256,17 +2256,18 @@ function mtgPriceLines(card) {
 // team/Pokemon/MTG theme choice carries over here exactly as it does on every
 // Webflow page, with zero separate theme logic to maintain in this Worker.
 const WO_UI_SCRIPT_URL = 'https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@08bbbfc/wo-ui.js';
-// Site logo (Webflow asset 6a7277b68122bcc9cf4797bf, bound to the live
-// NavBar symbol's "Brand Logo" prop) -- the same file every Webflow page
-// renders, not a substitute.
-const SITE_LOGO_URL = 'https://s3.amazonaws.com/webflow-prod-assets/65b15ee0228d06647ca7e4ce/6a7277b68122bcc9cf4797bf_themanapocket.avif';
+// Site logo -- the same asset wo-ui.js's own MANA_LOGO/BRAND_LOGO constants
+// and every JS-built fallback nav (account.js, preorders.js) already use
+// sitewide, served from Webflow's actual CDN host (not the raw S3 bucket
+// URL the Assets API returns, which isn't meant for direct browser use).
+const SITE_LOGO_URL = 'https://cdn.prod.website-files.com/65b15ee0228d06647ca7e4ce/6a7ce98ab3d4819b7565620e_the_mana_pocket_patch_1024x1024.png';
 function mtgSiteHeader() {
   const dropdown = (label, links) => `<div class="navbar6_menu-dropdown" data-mp-dropdown>` +
     `<button type="button" class="navbar6_dropdown-toggle" data-mp-dropdown-toggle>${label} <span class="mp-caret">▾</span></button>` +
     `<div class="navbar6_dropdown-list" data-mp-dropdown-list>${links.map(([href, text]) => `<a class="navbar6_dropdown-link" href="${href}">${text}</a>`).join('')}</div>` +
     `</div>`;
   return `<div id="navbarID" class="navbar6_component"><div class="navbar6_container">` +
-    `<a class="navbar6_logo-link" href="/"><img class="navbar6_logo" src="${SITE_LOGO_URL}" alt="The Mana Pocket" width="120" height="60"></a>` +
+    `<a class="navbar6_logo-link" href="/"><img class="navbar6_logo" src="${SITE_LOGO_URL}" alt="The Mana Pocket" width="56" height="56"></a>` +
     `<nav class="navbar6_menu" id="mp-nav-menu"><div class="navbar6_menu-left">` +
     `<a class="navbar6_link" href="/">Home</a>` +
     dropdown('Shop', [
@@ -2281,7 +2282,14 @@ function mtgSiteHeader() {
       ['/publishing', 'Publishing'],
       ['/fan-club', 'Fan Club'],
     ]) +
-    `</div><div class="navbar6_menu-right"><a data-wo-theme="true" class="wo-team-btn">My Pocket</a></div></nav>` +
+    // A direct link to /account rather than data-wo-theme (which opens
+    // wo-ui.js's JS-built theme-picker modal) -- wo-ui.js's applyTheme()
+    // still colors this button/page from the visitor's saved theme, but
+    // reusing its modal open behavior here proved unreliable on these bare
+    // pages (no visible effect on click), so this gets a plain, guaranteed
+    // navigation instead of depending on debugging a script this repo
+    // doesn't own.
+    `</div><div class="navbar6_menu-right"><a href="/account" class="wo-team-btn">My Pocket</a></div></nav>` +
     `<button type="button" class="navbar6_menu-button" id="mp-nav-toggle" aria-label="Menu" aria-expanded="false">` +
     `<div class="menu-icon"><div class="menu-icon_line-top"></div><div class="menu-icon_line-middle"></div><div class="menu-icon_line-bottom"></div></div>` +
     `</button>` +
