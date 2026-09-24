@@ -191,5 +191,12 @@ jobs:
           await request('Comics category page', '/category/comics', {}, res => res.ok);
           await request('Unknown category 404s', '/category/not-a-real-category', {}, res => res.status === 404);
           await request('Pages sitemap', '/sitemap-pages.xml', {}, res => res.ok);
+          // /books' default (no ?q= typed) state depends on this returning a
+          // real, non-empty shelves payload -- it silently swallows any
+          // failure client-side (see backlist.js's loadShelves()), so a
+          // regression here shows up to customers as "nothing loads until I
+          // hit Search" with no error anywhere, and previously had no CI
+          // coverage at all.
+          await request('Backlist shelves (New Arrivals / Under $10 / Staff Picks)', '/public/backlist/shelves?store_id=0f9dd4bc-42a7-487e-a972-2905d24513e9', {}, (res, body) => res.ok && body?.ok === true && Array.isArray(body.shelves));
           console.log(JSON.stringify({ ok: true, workerUrl, checkedAt: new Date().toISOString() }));
           NODE

@@ -224,7 +224,7 @@ function fakeMtgEscapeHtml(v) { return String(v == null ? '' : v).replace(/[&<>"
 function fakeMtgSlugify(v) { return String(v || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'book'; }
 function fakeMtgPageShell({ title, description, canonicalPath, ogImage, jsonLd, bodyHtml }) {
   return `<title>${fakeMtgEscapeHtml(title)}</title><meta name="description" content="${fakeMtgEscapeHtml(description)}">` +
-    `<link rel="canonical" href="https://themanapocket.com${canonicalPath}">` +
+    `<link rel="canonical" href="https://www.themanapocket.com${canonicalPath}">` +
     (ogImage ? `<meta property="og:image" content="${fakeMtgEscapeHtml(ogImage)}">` : '') +
     (jsonLd ? `<script type="application/ld+json">${JSON.stringify(jsonLd)}</script>` : '') +
     `<body>${bodyHtml}</body>`;
@@ -253,7 +253,7 @@ function mockGetRequest() { return { method:'GET', headers:{ get:() => null } };
   assert.match(html, /SpongeBob SquarePants Cookbook/, 'the page must actually name this book, not a generic sitewide title');
   assert.match(html, /\$20\.00/, 'the page must show this sku\'s real price');
   assert.match(html, /"@type":"Book"/, 'must emit Book-typed JSON-LD, not a bare Product with no book-specific fields');
-  assert.match(html, /rel="canonical" href="https:\/\/themanapocket\.com\/book\//, 'canonical must point at themanapocket.com, not the Worker\'s workers.dev subdomain (see the /preorder/{id} anti-pattern this deliberately avoids)');
+  assert.match(html, /rel="canonical" href="https:\/\/www\.themanapocket\.com\/book\//, 'canonical must point at www.themanapocket.com, not the Worker\'s workers.dev subdomain (see the /preorder/{id} anti-pattern this deliberately avoids)');
   // The page must actually carry the book's synopsis and a real share
   // action, not just price/JSON-LD -- a customer landing here (from a
   // card's "Details & share" link on /books) needs both.
@@ -295,7 +295,7 @@ function mockGetRequest() { return { method:'GET', headers:{ get:() => null } };
   const deps = seoDeps({ supabaseAdminFetch:async (env, path) => path.startsWith('backlist_titles?store_id=') ? { data:rows } : { data:[] } });
   const res = await handleBacklistRequest(mockGetRequest(), {}, new URL('https://x/sitemap-books.xml'), deps);
   const xml = await res.text();
-  assert.match(xml, /<loc>https:\/\/themanapocket\.com\/book\/55555555-5555-4555-8555-555555555555\/findable-book<\/loc>/);
+  assert.match(xml, /<loc>https:\/\/www\.themanapocket\.com\/book\/55555555-5555-4555-8555-555555555555\/findable-book<\/loc>/);
   assert.equal(res.headers.get('content-type'), 'application/xml;charset=UTF-8');
 }
 
