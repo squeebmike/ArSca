@@ -786,7 +786,12 @@ function shapeStorefrontItem(row) {
     // dashboard flow does today. Never fabricated; see reviewSchemaAndHtml
     // in the /item/{id} detail-page rendering for how this is (and isn't)
     // used once real reviews exist.
-    reviews: (Array.isArray(d.reviews) ? d.reviews : []).slice(0, 50)
+    // A submission from /public/storefront/review starts life with
+    // approved:false -- filtered out here BEFORE the public-facing map
+    // below, so an unapproved review is never publicly visible or rendered
+    // into schema.org markup, only ever seen by staff moderating it in the
+    // dashboard (see the "Reviews" panel there).
+    reviews: (Array.isArray(d.reviews) ? d.reviews : []).filter(r => r?.approved === true).slice(0, 50)
       .map(r => ({ author: storefrontCleanText(r?.author || 'Verified buyer', 80), rating: Math.round(Number(r?.rating) || 0), text: storefrontCleanText(r?.text || '', 2000), date: storefrontCleanText(r?.date || '', 20) }))
       .filter(r => r.rating >= 1 && r.rating <= 5 && r.text),
   };
@@ -2255,7 +2260,7 @@ function mtgPageShell({ title, description, canonicalPath, ogImage, ogType, json
   const robotsTag = robotsNoindex ? `<meta name="robots" content="noindex,follow">` : '';
   return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">` +
     `<title>${mtgEscapeHtml(title)}</title><meta name="description" content="${mtgEscapeHtml(description)}">${robotsTag}` +
-    `<link rel="canonical" href="https://themanapocket.com${canonicalPath}">` +
+    `<link rel="canonical" href="https://www.themanapocket.com${canonicalPath}">` +
     `<meta property="og:type" content="${mtgEscapeHtml(ogType || 'website')}"><meta property="og:site_name" content="The Mana Pocket">` +
     `<meta property="og:title" content="${mtgEscapeHtml(title)}"><meta property="og:description" content="${mtgEscapeHtml(description)}">${ogImageTag}${twitterTags}` +
     `${jsonLdBlock}` +
@@ -2338,7 +2343,7 @@ function renderMtgCardPage(card) {
       '@context': 'https://schema.org', '@type': 'Product', name: card.name, image: img || undefined,
       sku: card.scryfallId, brand: { '@type': 'Brand', name: 'Magic: The Gathering' },
       description: card.oracleText || card.typeLine || undefined,
-      ...(priceNum ? { offers: { '@type': 'Offer', priceCurrency: 'USD', price: priceNum, url: `https://themanapocket.com${canonicalPath}` } } : {}),
+      ...(priceNum ? { offers: { '@type': 'Offer', priceCurrency: 'USD', price: priceNum, url: `https://www.themanapocket.com${canonicalPath}` } } : {}),
     },
     bodyHtml: `<div class="mp-crumb"><a href="/mtg">All MTG sets</a> / <a href="/mtg/${mtgEscapeHtml(card.setCode)}">${mtgEscapeHtml(card.setName || card.setCode)}</a></div>` +
       `<div class="mp-detail">${img ? `<img src="${mtgEscapeHtml(img)}" alt="${mtgEscapeHtml(card.name)}">` : ''}` +
@@ -2510,9 +2515,9 @@ function renderItemDetailPage(item, canonicalSlug, allListable) {
   const breadcrumbJsonLd = {
     '@context': 'https://schema.org', '@type': 'BreadcrumbList',
     itemListElement: [
-      { '@type': 'ListItem', position: 1, name: 'Shop', item: 'https://themanapocket.com/shop' },
-      { '@type': 'ListItem', position: 2, name: categoryLabel, item: `https://themanapocket.com${categoryHref}` },
-      { '@type': 'ListItem', position: 3, name: item.name, item: `https://themanapocket.com${canonicalPath}` },
+      { '@type': 'ListItem', position: 1, name: 'Shop', item: 'https://www.themanapocket.com/shop' },
+      { '@type': 'ListItem', position: 2, name: categoryLabel, item: `https://www.themanapocket.com${categoryHref}` },
+      { '@type': 'ListItem', position: 3, name: item.name, item: `https://www.themanapocket.com${canonicalPath}` },
     ],
   };
   const { jsonLdFields: reviewJsonLdFields, html: reviewHtml } = reviewSchemaAndHtml(item);
@@ -2528,7 +2533,7 @@ function renderItemDetailPage(item, canonicalSlug, allListable) {
       image: item.image || undefined, sku: item.id,
       brand: item.brand ? { '@type': 'Brand', name: item.brand } : undefined,
       description,
-      ...(item.price ? { offers: { '@type': 'Offer', priceCurrency: 'USD', price: item.price, availability: available ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock', url: `https://themanapocket.com${canonicalPath}` } } : {}),
+      ...(item.price ? { offers: { '@type': 'Offer', priceCurrency: 'USD', price: item.price, availability: available ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock', url: `https://www.themanapocket.com${canonicalPath}` } } : {}),
       ...reviewJsonLdFields,
     }, breadcrumbJsonLd],
     bodyHtml: `<div class="mp-crumb"><a href="/shop">Shop</a> / <a href="${categoryHref}">${mtgEscapeHtml(categoryLabel)}</a> / ${mtgEscapeHtml(item.name)}</div>` +
@@ -2577,8 +2582,8 @@ function renderCategoryLandingPage(slug, items) {
     jsonLd: [
       { '@context': 'https://schema.org', '@type': 'CollectionPage', name: label, description: copy },
       { '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: [
-        { '@type': 'ListItem', position: 1, name: 'Shop', item: 'https://themanapocket.com/shop' },
-        { '@type': 'ListItem', position: 2, name: label, item: `https://themanapocket.com${canonicalPath}` },
+        { '@type': 'ListItem', position: 1, name: 'Shop', item: 'https://www.themanapocket.com/shop' },
+        { '@type': 'ListItem', position: 2, name: label, item: `https://www.themanapocket.com${canonicalPath}` },
       ] },
     ],
     bodyHtml: `<div class="mp-crumb"><a href="/shop">← Shop</a></div><h1>${mtgEscapeHtml(label)}</h1><p class="mp-sub">${mtgEscapeHtml(copy)}</p>` +
@@ -2637,7 +2642,7 @@ function renderFaqPage() {
 // news page's own sitemap entry sits alongside) -- never a placeholder or
 // fabricated customer-facing claim.
 const NEWS_POSTS = [
-  ['2026-09-24', 'Every in-stock item now has its own page', 'Every card, comic, and collectible in stock now has its own dedicated, shareable page at themanapocket.com/item/... -- easier to link directly to a specific item instead of pointing someone at the whole shop grid.'],
+  ['2026-09-24', 'Every in-stock item now has its own page', 'Every card, comic, and collectible in stock now has its own dedicated, shareable page at www.themanapocket.com/item/... -- easier to link directly to a specific item instead of pointing someone at the whole shop grid.'],
   ['2026-09-11', 'BCW supplies now available to order', 'Sleeves, top loaders, binders, and other storage from BCW are now orderable directly through our shop, drop-shipped straight from BCW.'],
   ['2026-08-01', 'FOC presale now open for upcoming comics', 'Order upcoming comic issues ahead of their release through our FOC presale program -- see the FAQ for how it works.'],
 ];
@@ -6004,6 +6009,102 @@ export default {
       return json({ ok:true, saleId, confirmationNumber });
     }
 
+    // GET /review?token=... -- customer-facing review-submission page,
+    // reached via the link in the post-purchase review-request email (see
+    // runScheduledStorefrontReviewRequests below). token is an unguessable
+    // random UUID looked up directly against storefront_orders.review_token
+    // -- same pattern already used for /notify/email-unsubscribe, no HMAC/
+    // signing needed for a token nobody can feasibly guess.
+    if (url.pathname === '/review' && request.method === 'GET') {
+      const token = (url.searchParams.get('token') || '').trim();
+      const reviewInfoPage = (message) => mtgHtmlResponse(mtgPageShell({
+        title: 'Leave a Review | The Mana Pocket', description: message, canonicalPath: '/review', robotsNoindex: true,
+        bodyHtml: `<h1>Leave a review</h1><p class="mp-sub">${mtgEscapeHtml(message)}</p>`,
+      }));
+      if (!/^[0-9a-f-]{36}$/i.test(token)) return reviewInfoPage('This review link is incomplete or invalid.');
+      if (!(env.SUPABASE_URL && (env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SERVICE_KEY))) return reviewInfoPage('This page is temporarily unavailable. Please try again shortly.');
+      const { data: reviewOrders } = await supabaseAdminFetch(env, `storefront_orders?review_token=eq.${encodeURIComponent(token)}&select=id,sale_id,customer_name&limit=1`);
+      const reviewOrder = reviewOrders?.[0];
+      if (!reviewOrder) return reviewInfoPage('This review link is no longer valid.');
+      const { data: reviewLines } = await supabaseAdminFetch(env, `pos_sale_lines?sale_id=eq.${encodeURIComponent(reviewOrder.sale_id)}&item_id=not.is.null&select=item_id,title,image_url`);
+      const reviewItems = (reviewLines || []).filter(line => line.item_id);
+      if (!reviewItems.length) return reviewInfoPage('No reviewable items were found for this order.');
+      const firstName = mtgEscapeHtml((reviewOrder.customer_name || '').trim().split(/\s+/)[0] || '');
+      const forms = reviewItems.map(item => {
+        const itemIdAttr = mtgEscapeHtml(item.item_id);
+        return `<div class="mp-detail" style="margin-bottom:28px;padding-bottom:24px;border-bottom:1px solid rgba(255,255,255,.1)">` +
+          `${item.image_url ? `<img src="${mtgEscapeHtml(item.image_url)}" alt="${mtgEscapeHtml(item.title)}" style="max-width:120px;border-radius:10px">` : ''}` +
+          `<div><h2 style="font-size:16px;margin:0 0 10px">${mtgEscapeHtml(item.title)}</h2>` +
+          `<form data-review-form data-item-id="${itemIdAttr}" style="display:grid;gap:8px;max-width:420px">` +
+          `<label style="font-size:12px;opacity:.7">Rating<select name="rating" required style="width:100%;margin-top:4px;padding:8px;border-radius:6px;background:var(--wo-surface-alt,#222);color:inherit;border:1px solid rgba(255,255,255,.2)">` +
+          `<option value="">Choose a rating</option><option value="5">5 - Excellent</option><option value="4">4 - Good</option><option value="3">3 - Okay</option><option value="2">2 - Not great</option><option value="1">1 - Poor</option></select></label>` +
+          `<label style="font-size:12px;opacity:.7">Your review<textarea name="text" maxlength="2000" rows="3" required style="width:100%;margin-top:4px;padding:8px;border-radius:6px;box-sizing:border-box;background:var(--wo-surface-alt,#222);color:inherit;border:1px solid rgba(255,255,255,.2)"></textarea></label>` +
+          `<label style="font-size:12px;opacity:.7">Your name (optional)<input name="name" maxlength="80" style="width:100%;margin-top:4px;padding:8px;border-radius:6px;box-sizing:border-box;background:var(--wo-surface-alt,#222);color:inherit;border:1px solid rgba(255,255,255,.2)"></label>` +
+          `<button type="submit" class="mp-card" style="padding:10px;text-align:center;cursor:pointer;background:rgba(139,212,80,.15);border:none;color:#8bd450;font-weight:700">Submit review</button>` +
+          `<div data-review-status style="font-size:12px;color:#ff9db0"></div>` +
+          `</form></div></div>`;
+      }).join('');
+      const script = `<script>document.querySelectorAll('[data-review-form]').forEach(function(form){form.addEventListener('submit',function(e){e.preventDefault();var status=form.querySelector('[data-review-status]');var btn=form.querySelector('button');btn.disabled=true;status.textContent='Submitting...';fetch('/public/storefront/review',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:${JSON.stringify(token)},itemId:form.dataset.itemId,rating:form.rating.value,text:form.text.value,name:form.name.value})}).then(function(r){return r.json();}).then(function(data){if(data.ok){form.innerHTML='<div style="color:#8bd450;font-weight:700">Thanks for your review!</div>';}else{status.textContent=data.error||'Something went wrong -- please try again.';btn.disabled=false;}}).catch(function(){status.textContent='Something went wrong -- please try again.';btn.disabled=false;});});});</script>`;
+      const html = mtgPageShell({
+        title: 'Leave a Review | The Mana Pocket',
+        description: 'Share your experience with your recent order from The Mana Pocket.',
+        canonicalPath: '/review',
+        robotsNoindex: true,
+        bodyHtml: `<h1>How was your order${firstName ? `, ${firstName}` : ''}?</h1><p class="mp-sub">Leave a review for each item below -- it only takes a minute and really helps a small shop.</p>${forms}${script}`,
+      });
+      return mtgHtmlResponse(html);
+    }
+
+    // POST /public/storefront/review -- public (unauthenticated, token-
+    // gated) review submission. Starts life unapproved (see
+    // shapeStorefrontItem's reviews filter) -- never publicly visible or
+    // rendered into schema.org markup until a staff member approves it in
+    // the dashboard, so a guessed/leaked token can't put live spam or
+    // abuse directly in front of customers or Google.
+    if (url.pathname === '/public/storefront/review' && request.method === 'POST') {
+      if (!(env.SUPABASE_URL && (env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SERVICE_KEY))) return json({ ok:false, error:'Storefront service unavailable' }, 503);
+      const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
+      const limited = await readJsonWithLimit(request, 8 * 1024);
+      if (limited.error) return limited.error;
+      const body = limited.data || {};
+      const token = String(body.token || '').trim();
+      if (!/^[0-9a-f-]{36}$/i.test(token)) return json({ ok:false, error:'Invalid review link' }, 400);
+      const rateError = await enforceUsageLimit(env, `storefront-review:${token}:${ip}`, 10, 60);
+      if (rateError) return rateError;
+      const itemId = String(body.itemId || '').trim();
+      if (!/^[0-9a-f-]{36}$/i.test(itemId)) return json({ ok:false, error:'Invalid item' }, 400);
+      const rating = Math.round(Number(body.rating));
+      if (!(rating >= 1 && rating <= 5)) return json({ ok:false, error:'Choose a rating from 1 to 5' }, 400);
+      const reviewText = String(body.text || '').trim().slice(0, 2000);
+      if (!reviewText) return json({ ok:false, error:'Please write a short review' }, 400);
+      const author = String(body.name || '').trim().slice(0, 80) || 'Verified buyer';
+
+      const { data: reviewOrders } = await supabaseAdminFetch(env, `storefront_orders?review_token=eq.${encodeURIComponent(token)}&select=id,store_id,sale_id&limit=1`);
+      const reviewOrder = reviewOrders?.[0];
+      if (!reviewOrder) return json({ ok:false, error:'This review link is no longer valid' }, 404);
+
+      // Confirms the item was actually part of THIS order -- a valid token
+      // for order A must never be usable to post a review onto some other
+      // item the customer never bought.
+      const { data: matchingLines } = await supabaseAdminFetch(env, `pos_sale_lines?sale_id=eq.${encodeURIComponent(reviewOrder.sale_id)}&item_id=eq.${encodeURIComponent(itemId)}&limit=1`);
+      if (!matchingLines?.length) return json({ ok:false, error:'That item was not part of this order' }, 400);
+
+      const { data: itemRows } = await supabaseAdminFetch(env, `inventory_items?id=eq.${encodeURIComponent(itemId)}&store_id=eq.${encodeURIComponent(reviewOrder.store_id)}&select=id,data&limit=1`);
+      const itemRow = itemRows?.[0];
+      if (!itemRow) return json({ ok:false, error:'This item is no longer available' }, 404);
+
+      const existingReviews = Array.isArray(itemRow.data?.reviews) ? itemRow.data.reviews : [];
+      // One review per (order, item) -- reopening/resubmitting the same
+      // link is a no-op instead of stacking duplicate entries.
+      if (existingReviews.some(r => r?.orderId === reviewOrder.id && r?.itemId === itemId)) return json({ ok:true, alreadySubmitted:true });
+      const nextData = {
+        ...(itemRow.data || {}),
+        reviews: [...existingReviews, { orderId: reviewOrder.id, itemId, author, rating, text: reviewText, date: new Date().toISOString().slice(0, 10), approved: false }].slice(-50),
+      };
+      await supabaseAdminFetch(env, `inventory_items?id=eq.${encodeURIComponent(itemId)}&store_id=eq.${encodeURIComponent(reviewOrder.store_id)}`, { method:'PATCH', headers:{ Prefer:'return=minimal' }, body:JSON.stringify({ data: nextData }) });
+      return json({ ok:true });
+    }
+
     if (url.pathname === '/catalog/mtg/manifest') {
       if (request.method !== 'GET') return json({ ok: false, error: 'GET only' }, 405);
       if (!env.MTG_CATALOG_R2) return json({ ok: false, error: 'MTG_CATALOG_R2 binding is not configured' }, 503);
@@ -6115,17 +6216,23 @@ export default {
     // serving duplicate content at multiple URLs for the same item.
     // Existing Supplies links use /shop?cat=supplies. Keep those entry points working.
     if (['GET','HEAD'].includes(request.method) && (url.pathname === '/supplies' || url.pathname === '/supplies/' || url.pathname === '/bcw/' || (url.pathname === '/shop' && url.searchParams.get('cat') === 'supplies'))) {
-      return Response.redirect('https://themanapocket.com/bcw',301);
+      return Response.redirect('https://www.themanapocket.com/bcw',301);
     }
     // Other shop requests continue to Webflow's origin through this zone route.
-    if (url.hostname === 'themanapocket.com' && url.pathname.startsWith('/shop')) {
+    // Store report: the bare "themanapocket.com" apex is Webflow-managed and
+    // its DNS record can't stay proxied through Cloudflare (Webflow's own
+    // automated domain management reverts it) -- every worker route,
+    // including this one, only actually reaches this Worker via
+    // "www.themanapocket.com", which IS stably proxied. The apex now just
+    // redirects to www (a Cloudflare Redirect Rule, not code in this file).
+    if (url.hostname === 'www.themanapocket.com' && url.pathname.startsWith('/shop')) {
       const originResponse = await fetch(request);
       if(request.method !== 'GET' || !originResponse.headers.get('Content-Type')?.includes('text/html')) return originResponse;
       return new HTMLRewriter().on('body',{element(el){el.append(`<script>document.addEventListener('change',function(e){if(e.target.matches('select.wo-store-control-field')&&String(e.target.value).toLowerCase()==='supplies'){e.stopImmediatePropagation();location.href='/bcw';}},true);document.addEventListener('DOMContentLoaded',function(){var host=document.getElementById('wo-live-shop');if(!host)return;if(!document.getElementById('bcw-supplies-link')){var a=document.createElement('a');a.id='bcw-supplies-link';a.href='/bcw';a.textContent='Shop BCW supplies →';a.style.cssText='display:inline-block;margin:18px 0;padding:12px 18px;border:1px solid currentColor;border-radius:8px;font-weight:700';host.before(a);}if(!document.getElementById('mp-category-nav')){var links=[['/category/comics','Comics'],['/category/pokemon','Pokémon'],['/category/sports-cards','Sports Cards'],['/category/mtg','Magic: The Gathering'],['/category/collectibles','Collectibles'],['/faq','FAQ']];var nav=document.createElement('div');nav.id='mp-category-nav';nav.style.cssText='display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 18px';links.forEach(function(pair){var link=document.createElement('a');link.href=pair[0];link.textContent=pair[1];link.style.cssText='padding:8px 14px;border:1px solid currentColor;border-radius:8px;text-decoration:none;color:inherit;font-size:13px;font-weight:600';nav.appendChild(link);});host.before(nav);}});</script>`,{html:true});}}).transform(originResponse);
     }
-    // The customer-facing BCW page is a native Webflow page. Preserve it if
-    // the domain's DNS proxy is enabled later; workers.dev keeps the preview.
-    if (url.hostname === 'themanapocket.com' && url.pathname === '/bcw') return fetch(request);
+    // The customer-facing BCW page is a native Webflow page, reached through
+    // Cloudflare via www.themanapocket.com (see the store report above).
+    if (url.hostname === 'www.themanapocket.com' && url.pathname === '/bcw') return fetch(request);
     if ((url.pathname === '/bcw' || url.pathname === '/public/bcw') && request.method === 'GET') {
       if (!(env.SUPABASE_URL && (env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SERVICE_KEY))) return new Response('Storefront service unavailable',{status:503});
       const key = new Request(url.toString(),request);
@@ -6183,7 +6290,7 @@ export default {
       }
       const canonicalSlug = itemDetailSlug(item);
       if (providedSlug !== canonicalSlug) {
-        const response = Response.redirect(`https://themanapocket.com/item/${encodeURIComponent(itemId)}/${canonicalSlug}`, 301);
+        const response = Response.redirect(`https://www.themanapocket.com/item/${encodeURIComponent(itemId)}/${canonicalSlug}`, 301);
         ctx.waitUntil(caches.default.put(cacheKey, response.clone()));
         return response;
       }
@@ -6257,9 +6364,9 @@ export default {
       const allListable = await fetchAllListableStorefrontItems(env);
       const urls = allListable
         .filter(item => !item.linkUrl) // items with linkUrl 301 elsewhere -- not a page for Google to index here
-        .map(item => `<url><loc>https://themanapocket.com/item/${mtgEscapeHtml(item.id)}/${mtgEscapeHtml(itemDetailSlug(item))}</loc><lastmod>${mtgEscapeHtml((item.updatedAt || '').slice(0, 10))}</lastmod></url>`)
+        .map(item => `<url><loc>https://www.themanapocket.com/item/${mtgEscapeHtml(item.id)}/${mtgEscapeHtml(itemDetailSlug(item))}</loc><lastmod>${mtgEscapeHtml((item.updatedAt || '').slice(0, 10))}</lastmod></url>`)
         .join('');
-      const xml = `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>https://themanapocket.com/bcw</loc></url>${urls}</urlset>`;
+      const xml = `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>https://www.themanapocket.com/bcw</loc></url>${urls}</urlset>`;
       const response = new Response(xml, { headers: { 'Content-Type': 'application/xml;charset=UTF-8' } });
       response.headers.set('Cache-Control', 'public, max-age=1800');
       ctx.waitUntil(caches.default.put(cacheKey, response.clone()));
@@ -6276,7 +6383,7 @@ export default {
       // visited directly, just not worth asking Google to index separately.
       const skippedCategorySlugs = ['supplies', 'other'];
       const staticUrls = ['/faq', '/news', '/category', ...Object.keys(CATEGORY_LANDING_LABELS).filter(slug => !skippedCategorySlugs.includes(slug)).map(slug => categoryLandingHref(slug))]
-        .map(path => `<url><loc>https://themanapocket.com${path}</loc></url>`).join('');
+        .map(path => `<url><loc>https://www.themanapocket.com${path}</loc></url>`).join('');
       const xml = `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${staticUrls}</urlset>`;
       return new Response(xml, { headers: { 'Content-Type': 'application/xml;charset=UTF-8', 'Cache-Control': 'public, max-age=3600' } });
     }
@@ -15519,9 +15626,59 @@ export default {
   // /dealscan/latest reads) instead of only ever being reachable by an
   // on-demand click.
   async scheduled(event, env, ctx) {
-    ctx.waitUntil(Promise.all([runScheduledDealScans(env), runScheduledEbayReprice(env), runScheduledEbayOrderSync(env), runScheduledShopifyOrderSync(env)]));
+    ctx.waitUntil(Promise.all([runScheduledDealScans(env), runScheduledEbayReprice(env), runScheduledEbayOrderSync(env), runScheduledShopifyOrderSync(env), runScheduledStorefrontReviewRequests(env)]));
   },
 };
+
+// Builds the review-request email content from a real order + its real
+// purchased line items (pos_sale_lines, snapshotted at sale time) -- never
+// invents or assumes what was bought.
+function storefrontReviewRequestEmail(order, lines) {
+  const itemNames = (lines || []).map(l => l.title).filter(Boolean);
+  const itemsText = itemNames.length ? `\n${itemNames.map(n => `  - ${n}`).join('\n')}\n` : '';
+  const link = `https://www.themanapocket.com/review?token=${order.review_token}`;
+  const body = `Hi ${order.customer_name || ''},\n\nThanks again for your order from The Mana Pocket!${itemsText}\nIf you have a minute, we'd love to hear what you thought -- it really helps a small shop:\n\n${link}\n\nThanks for supporting us!`;
+  return { subject: 'How was your order from The Mana Pocket?', body };
+}
+
+// Sends the review-request email once per order, a fixed number of days
+// after staff marked it fulfilled (long enough that a shipped order has
+// actually arrived, not just left the shop) -- picked up by this store's
+// existing 6-hour scheduled() cron (see the crons trigger in
+// wrangler.deploy.jsonc), same as every other runScheduled* job here.
+const STOREFRONT_REVIEW_REQUEST_DELAY_DAYS = 5;
+async function runScheduledStorefrontReviewRequests(env) {
+  if (!(env.SUPABASE_URL && (env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SERVICE_KEY))) return;
+  const cutoffIso = new Date(Date.now() - STOREFRONT_REVIEW_REQUEST_DELAY_DAYS * 24 * 60 * 60 * 1000).toISOString();
+  let candidates;
+  try {
+    const { data } = await supabaseAdminFetch(env, `storefront_orders?fulfillment_status=eq.fulfilled&review_email_sent_at=is.null&customer_email=not.is.null&fulfilled_at=lte.${encodeURIComponent(cutoffIso)}&select=id,store_id,sale_id,customer_name,customer_email,review_token&order=fulfilled_at.asc&limit=50`);
+    candidates = data || [];
+  } catch (e) { console.error('Scheduled storefront review-request scan failed:', e.message); return; }
+  for (const order of candidates) {
+    try {
+      const { data: lines } = await supabaseAdminFetch(env, `pos_sale_lines?sale_id=eq.${encodeURIComponent(order.sale_id)}&item_id=not.is.null&select=title`);
+      if (!lines?.length) {
+        // Nothing reviewable on this order (e.g. shipping-only line) --
+        // marks it sent anyway so the scan doesn't keep re-considering it
+        // every 6 hours forever.
+        await supabaseAdminFetch(env, `storefront_orders?id=eq.${encodeURIComponent(order.id)}`, { method:'PATCH', headers:{ Prefer:'return=minimal' }, body:JSON.stringify({ review_email_sent_at: new Date().toISOString() }) }).catch(() => {});
+        continue;
+      }
+      const { subject, body } = storefrontReviewRequestEmail(order, lines);
+      await sendEmail(env, order.customer_email, subject, body);
+      // Guarded so an overlapping run (two scheduled() invocations firing
+      // close together) can't both send -- only the run that still finds
+      // review_email_sent_at null actually marks it, though the email
+      // itself is still best-effort sent before this guard, same tradeoff
+      // the FOC confirmation-email path already accepts.
+      await supabaseAdminFetch(env, `storefront_orders?id=eq.${encodeURIComponent(order.id)}&review_email_sent_at=is.null`, { method:'PATCH', headers:{ Prefer:'return=minimal' }, body:JSON.stringify({ review_email_sent_at: new Date().toISOString(), review_email_error: null }) });
+    } catch (e) {
+      await supabaseAdminFetch(env, `storefront_orders?id=eq.${encodeURIComponent(order.id)}`, { method:'PATCH', headers:{ Prefer:'return=minimal' }, body:JSON.stringify({ review_email_error: String(e.message || e).slice(0, 500) }) }).catch(() => {});
+      console.error('Storefront review-request email failed for order', order.id, e.message);
+    }
+  }
+}
 
 // Reconciliation backstop for /shopify/webhook/orders -- catches any order a
 // missed or delayed webhook delivery never recorded (network hiccup, a

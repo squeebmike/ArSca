@@ -67,7 +67,7 @@ try{
  const itemApi=await api.fetch(new Request('https://still-resonance-4f87.swarnerauto.workers.dev/public/bcw?item='+incoming.id),env,edge);
  assert.equal((await itemApi.json()).item.id,incoming.id);
  const redirect=await api.fetch(new Request('https://themanapocket.com/shop?cat=supplies'),env,edge);
- assert.equal(redirect.status,301);assert.equal(redirect.headers.get('Location'),'https://themanapocket.com/bcw');
+ assert.equal(redirect.status,301);assert.equal(redirect.headers.get('Location'),'https://www.themanapocket.com/bcw');
  const detail=await api.fetch(new Request('https://themanapocket.com'+productPath(item)),env,edge);
  assert.equal(detail.status,200);assert.match(await detail.text(),/data-bcw-product/);
  globalThis.fetch=async()=>new Response('failure',{status:503});

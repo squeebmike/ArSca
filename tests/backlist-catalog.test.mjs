@@ -508,9 +508,15 @@ console.log('Backlist Worker wiring checks passed');
 // edge before this code ever runs, exactly like /preorder* and /item*
 // already needed their own route entries.
 
-const wranglerConfig = JSON.parse(fs.readFileSync('wrangler.deploy.jsonc', 'utf8'));
+// JSONC (comments allowed, as Wrangler itself supports for this file) --
+// strip them before parsing, same as every other test reading this file.
+const wranglerConfig = JSON.parse(fs.readFileSync('wrangler.deploy.jsonc', 'utf8').replace(/\/\/.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, ''));
 const routePatterns = wranglerConfig.routes.map(r => r.pattern);
-assert.ok(routePatterns.includes('themanapocket.com/book*'), 'wrangler.deploy.jsonc must route themanapocket.com/book* to this Worker');
-assert.ok(routePatterns.includes('themanapocket.com/sitemap-books.xml'), 'wrangler.deploy.jsonc must route the books sitemap to this Worker');
+// Store report: the bare "themanapocket.com" apex is Webflow-managed and
+// can't stay proxied through Cloudflare -- every route now binds to
+// "www.themanapocket.com" instead (see wrangler.deploy.jsonc's own
+// comment for the full story).
+assert.ok(routePatterns.includes('www.themanapocket.com/book*'), 'wrangler.deploy.jsonc must route www.themanapocket.com/book* to this Worker');
+assert.ok(routePatterns.includes('www.themanapocket.com/sitemap-books.xml'), 'wrangler.deploy.jsonc must route the books sitemap to this Worker');
 
 console.log('Backlist Cloudflare route wiring checks passed');

@@ -6,7 +6,12 @@ const worker = fs.readFileSync('cloudflare-worker-full.js', 'utf8');
 const dashboard = fs.readFileSync('dashboard.html', 'utf8');
 const browser = fs.readFileSync('scripts/mtg/mtg-offline-browser.js', 'utf8');
 const workflow = fs.readFileSync('.github/workflows/mtg-offline-daily.yml', 'utf8');
-const wrangler = JSON.parse(fs.readFileSync('wrangler.deploy.jsonc', 'utf8'));
+// wrangler.deploy.jsonc is JSONC (comments allowed, as Wrangler itself
+// supports for this exact file) -- strip them before parsing, same as
+// every other test here that reads this file (e.g.
+// wrangler-preorder-route.test.mjs), or a real, valid `//` comment in the
+// file (not previously present) breaks this test's naive JSON.parse.
+const wrangler = JSON.parse(fs.readFileSync('wrangler.deploy.jsonc', 'utf8').replace(/\/\/.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, ''));
 
 assert.match(worker, /\/catalog\/mtg\/manifest/);
 assert.match(worker, /\/catalog\/mtg\/download/);

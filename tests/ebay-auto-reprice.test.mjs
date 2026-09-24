@@ -34,7 +34,7 @@ console.log('eBay auto-reprice safety-boundary checks passed');
 
 // ── Scheduled job: opt-in per store, real guardrails, resilient ──────────
 assert.match(worker, /async function runScheduledEbayReprice\(env\) \{/, 'missing runScheduledEbayReprice');
-assert.match(worker, /ctx\.waitUntil\(Promise\.all\(\[runScheduledDealScans\(env\), runScheduledEbayReprice\(env\), runScheduledEbayOrderSync\(env\), runScheduledShopifyOrderSync\(env\)\]\)\)/, 'runScheduledEbayReprice must be wired into the scheduled() cron handler alongside the existing deal scan, order sync, and Shopify order sync jobs');
+assert.match(worker, /ctx\.waitUntil\(Promise\.all\(\[runScheduledDealScans\(env\), runScheduledEbayReprice\(env\), runScheduledEbayOrderSync\(env\), runScheduledShopifyOrderSync\(env\), runScheduledStorefrontReviewRequests\(env\)\]\)\)/, 'runScheduledEbayReprice must be wired into the scheduled() cron handler alongside the existing deal scan, order sync, and Shopify order sync jobs');
 assert.match(worker, /const cfg = settingsRows\?\.\[0\]\?\.receipt_settings\?\.ebayAutoReprice;\s*\n\s*if \(!cfg \|\| !cfg\.enabled\) continue;/, 'auto-reprice must be opt-in per store, skipped entirely when not explicitly enabled');
 assert.match(worker, /if \(repriceCount >= maxDrops\) \{ summary\.skipped\+\+; continue; \}/, 'auto-reprice must respect a max-drops-per-item cap');
 assert.match(worker, /const floor = cost > 0 \? cost \* \(1 \+ minMarginPct \/ 100\) : 0;/, 'auto-reprice must compute a cost-based price floor');
