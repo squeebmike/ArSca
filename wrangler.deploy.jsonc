@@ -73,6 +73,22 @@
     {
       "pattern": "themanapocket.com/shop*",
       "zone_name": "themanapocket.com"
+    },
+    {
+      "pattern": "themanapocket.com/category*",
+      "zone_name": "themanapocket.com"
+    },
+    {
+      "pattern": "themanapocket.com/faq",
+      "zone_name": "themanapocket.com"
+    },
+    {
+      "pattern": "themanapocket.com/news",
+      "zone_name": "themanapocket.com"
+    },
+    {
+      "pattern": "themanapocket.com/sitemap-pages.xml",
+      "zone_name": "themanapocket.com"
     }
   ]
 }
