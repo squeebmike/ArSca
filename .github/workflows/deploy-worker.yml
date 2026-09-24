@@ -69,7 +69,8 @@ jobs:
           set -euo pipefail
           node <<'NODE'
           const fs = require('fs');
-          const config = JSON.parse(fs.readFileSync('wrangler.deploy.jsonc', 'utf8'));
+          const raw = fs.readFileSync('wrangler.deploy.jsonc', 'utf8').replace(/\/\/.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '');
+          const config = JSON.parse(raw);
           const required = [];
           if (!config.name) required.push('name');
           if (config.name !== 'still-resonance-4f87') throw new Error(`Worker name mismatch: ${config.name}`);
