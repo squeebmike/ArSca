@@ -31,6 +31,6 @@ assert.match(schedBody, /await syncEbayOrdersForStore\(env, storeId, ebayToken, 
 assert.match(schedBody, /\} catch \(e\) \{ console\.error\('Scheduled eBay order sync failed for store', storeId, e\.message\); \}/, 'one store failing (e.g. a lookup error) must not block syncing the rest');
 
 // Wired into the same cron handler as the existing scheduled jobs.
-assert.match(worker, /ctx\.waitUntil\(Promise\.all\(\[runScheduledDealScans\(env\), runScheduledEbayReprice\(env\), runScheduledEbayOrderSync\(env\), runScheduledShopifyOrderSync\(env\)\]\)\);/, 'runScheduledEbayOrderSync must be wired into the scheduled() cron handler alongside the existing jobs');
+assert.match(worker, /ctx\.waitUntil\(Promise\.all\(\[runScheduledDealScans\(env\), runScheduledEbayReprice\(env\), runScheduledEbayOrderSync\(env\), runScheduledShopifyOrderSync\(env\), runScheduledStorefrontReviewRequests\(env\)\]\)\);/, 'runScheduledEbayOrderSync must be wired into the scheduled() cron handler alongside the existing jobs');
 
 console.log('eBay scheduled order-sync checks passed');

@@ -15620,9 +15620,59 @@ export default {
   // /dealscan/latest reads) instead of only ever being reachable by an
   // on-demand click.
   async scheduled(event, env, ctx) {
-    ctx.waitUntil(Promise.all([runScheduledDealScans(env), runScheduledEbayReprice(env), runScheduledEbayOrderSync(env), runScheduledShopifyOrderSync(env)]));
+    ctx.waitUntil(Promise.all([runScheduledDealScans(env), runScheduledEbayReprice(env), runScheduledEbayOrderSync(env), runScheduledShopifyOrderSync(env), runScheduledStorefrontReviewRequests(env)]));
   },
 };
+
+// Builds the review-request email content from a real order + its real
+// purchased line items (pos_sale_lines, snapshotted at sale time) -- never
+// invents or assumes what was bought.
+function storefrontReviewRequestEmail(order, lines) {
+  const itemNames = (lines || []).map(l => l.title).filter(Boolean);
+  const itemsText = itemNames.length ? `\n${itemNames.map(n => `  - ${n}`).join('\n')}\n` : '';
+  const link = `https://themanapocket.com/review?token=${order.review_token}`;
+  const body = `Hi ${order.customer_name || ''},\n\nThanks again for your order from The Mana Pocket!${itemsText}\nIf you have a minute, we'd love to hear what you thought -- it really helps a small shop:\n\n${link}\n\nThanks for supporting us!`;
+  return { subject: 'How was your order from The Mana Pocket?', body };
+}
+
+// Sends the review-request email once per order, a fixed number of days
+// after staff marked it fulfilled (long enough that a shipped order has
+// actually arrived, not just left the shop) -- picked up by this store's
+// existing 6-hour scheduled() cron (see the crons trigger in
+// wrangler.deploy.jsonc), same as every other runScheduled* job here.
+const STOREFRONT_REVIEW_REQUEST_DELAY_DAYS = 5;
+async function runScheduledStorefrontReviewRequests(env) {
+  if (!(env.SUPABASE_URL && (env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SERVICE_KEY))) return;
+  const cutoffIso = new Date(Date.now() - STOREFRONT_REVIEW_REQUEST_DELAY_DAYS * 24 * 60 * 60 * 1000).toISOString();
+  let candidates;
+  try {
+    const { data } = await supabaseAdminFetch(env, `storefront_orders?fulfillment_status=eq.fulfilled&review_email_sent_at=is.null&customer_email=not.is.null&fulfilled_at=lte.${encodeURIComponent(cutoffIso)}&select=id,store_id,sale_id,customer_name,customer_email,review_token&order=fulfilled_at.asc&limit=50`);
+    candidates = data || [];
+  } catch (e) { console.error('Scheduled storefront review-request scan failed:', e.message); return; }
+  for (const order of candidates) {
+    try {
+      const { data: lines } = await supabaseAdminFetch(env, `pos_sale_lines?sale_id=eq.${encodeURIComponent(order.sale_id)}&item_id=not.is.null&select=title`);
+      if (!lines?.length) {
+        // Nothing reviewable on this order (e.g. shipping-only line) --
+        // marks it sent anyway so the scan doesn't keep re-considering it
+        // every 6 hours forever.
+        await supabaseAdminFetch(env, `storefront_orders?id=eq.${encodeURIComponent(order.id)}`, { method:'PATCH', headers:{ Prefer:'return=minimal' }, body:JSON.stringify({ review_email_sent_at: new Date().toISOString() }) }).catch(() => {});
+        continue;
+      }
+      const { subject, body } = storefrontReviewRequestEmail(order, lines);
+      await sendEmail(env, order.customer_email, subject, body);
+      // Guarded so an overlapping run (two scheduled() invocations firing
+      // close together) can't both send -- only the run that still finds
+      // review_email_sent_at null actually marks it, though the email
+      // itself is still best-effort sent before this guard, same tradeoff
+      // the FOC confirmation-email path already accepts.
+      await supabaseAdminFetch(env, `storefront_orders?id=eq.${encodeURIComponent(order.id)}&review_email_sent_at=is.null`, { method:'PATCH', headers:{ Prefer:'return=minimal' }, body:JSON.stringify({ review_email_sent_at: new Date().toISOString(), review_email_error: null }) });
+    } catch (e) {
+      await supabaseAdminFetch(env, `storefront_orders?id=eq.${encodeURIComponent(order.id)}`, { method:'PATCH', headers:{ Prefer:'return=minimal' }, body:JSON.stringify({ review_email_error: String(e.message || e).slice(0, 500) }) }).catch(() => {});
+      console.error('Storefront review-request email failed for order', order.id, e.message);
+    }
+  }
+}
 
 // Reconciliation backstop for /shopify/webhook/orders -- catches any order a
 // missed or delayed webhook delivery never recorded (network hiccup, a
