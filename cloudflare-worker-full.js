@@ -781,7 +781,14 @@ function shapeStorefrontItem(row) {
     // See isStorefrontItemListable below -- isStorefrontItemAvailable (the
     // gate actual purchasing still goes through) is untouched by this flag.
     showSoldOut: !!d.showSoldOut,
-    quantity, inventoryStatus, soldAt: d.soldAt || d.sold_at || '', archivedAt: d.archivedAt || '', addedAt: row.created_at || '', updatedAt: row.updated_at || ''
+    quantity, inventoryStatus, soldAt: d.soldAt || d.sold_at || '', archivedAt: d.archivedAt || '', addedAt: row.created_at || '', updatedAt: row.updated_at || '',
+    // Dormant until something actually writes reviews onto an item -- no
+    // dashboard flow does today. Never fabricated; see reviewSchemaAndHtml
+    // in the /item/{id} detail-page rendering for how this is (and isn't)
+    // used once real reviews exist.
+    reviews: (Array.isArray(d.reviews) ? d.reviews : []).slice(0, 50)
+      .map(r => ({ author: storefrontCleanText(r?.author || 'Verified buyer', 80), rating: Math.round(Number(r?.rating) || 0), text: storefrontCleanText(r?.text || '', 2000), date: storefrontCleanText(r?.date || '', 20) }))
+      .filter(r => r.rating >= 1 && r.rating <= 5 && r.text),
   };
   item.productTypeSlug = storefrontProductTypeSlug(item);
   return item;
@@ -2228,13 +2235,29 @@ function mtgPriceLines(card) {
   return lines;
 }
 
-function mtgPageShell({ title, description, canonicalPath, ogImage, jsonLd, bodyHtml }) {
-  const jsonLdBlock = jsonLd ? `<script type="application/ld+json">${JSON.stringify(jsonLd)}</script>` : '';
+// ogType/twitterCard/robotsNoindex/jsonLd (accepts a single schema.org object
+// or an array of them, e.g. Product + BreadcrumbList together on one page --
+// each renders as its own <script type="application/ld+json"> block, which
+// is what Google's Rich Results docs call out as the supported way to
+// combine multiple schema types on one page, rather than nesting them into
+// one object) are additive and default to the old plain-website behavior, so
+// every existing caller of this shell is unaffected.
+function mtgPageShell({ title, description, canonicalPath, ogImage, ogType, jsonLd, bodyHtml, robotsNoindex }) {
+  const jsonLdList = Array.isArray(jsonLd) ? jsonLd.filter(Boolean) : (jsonLd ? [jsonLd] : []);
+  const jsonLdBlock = jsonLdList.map(block => `<script type="application/ld+json">${JSON.stringify(block)}</script>`).join('');
   const ogImageTag = ogImage ? `<meta property="og:image" content="${mtgEscapeHtml(ogImage)}">` : '';
+  // Twitter falls back to the Open Graph tags above for title/description/
+  // image when its own og:*-equivalent isn't present, but summary_large_image
+  // must still be declared explicitly -- Twitter/X never infers card type
+  // from og:type, so this was simply missing on every page before.
+  const twitterTags = `<meta name="twitter:card" content="summary_large_image">` +
+    (ogImage ? `<meta name="twitter:image" content="${mtgEscapeHtml(ogImage)}">` : '');
+  const robotsTag = robotsNoindex ? `<meta name="robots" content="noindex,follow">` : '';
   return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">` +
-    `<title>${mtgEscapeHtml(title)}</title><meta name="description" content="${mtgEscapeHtml(description)}">` +
+    `<title>${mtgEscapeHtml(title)}</title><meta name="description" content="${mtgEscapeHtml(description)}">${robotsTag}` +
     `<link rel="canonical" href="https://themanapocket.com${canonicalPath}">` +
-    `<meta property="og:title" content="${mtgEscapeHtml(title)}"><meta property="og:description" content="${mtgEscapeHtml(description)}">${ogImageTag}` +
+    `<meta property="og:type" content="${mtgEscapeHtml(ogType || 'website')}"><meta property="og:site_name" content="The Mana Pocket">` +
+    `<meta property="og:title" content="${mtgEscapeHtml(title)}"><meta property="og:description" content="${mtgEscapeHtml(description)}">${ogImageTag}${twitterTags}` +
     `${jsonLdBlock}` +
     `<style>*{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#0a0710;color:#f2eefc;padding:24px 16px 64px}a{color:#8bd450}.mp-wrap{max-width:1080px;margin:0 auto}.mp-crumb{font-size:13px;opacity:.65;margin-bottom:16px}.mp-crumb a{color:#c8b8ff}h1{font-size:clamp(22px,4vw,32px);margin:0 0 8px}.mp-sub{opacity:.7;font-size:14px;margin-bottom:24px}.mp-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:16px}.mp-card{display:block;border:1px solid rgba(255,255,255,.12);border-radius:12px;overflow:hidden;background:rgba(255,255,255,.03);text-decoration:none;color:inherit}.mp-card img{width:100%;display:block;background:#16101f}.mp-card-body{padding:10px 12px}.mp-card-name{font-size:13px;font-weight:700;line-height:1.3}.mp-card-price{font-size:12px;color:#8bd450;font-weight:700;margin-top:4px}.mp-set-list{display:grid;gap:10px}.mp-set-row{display:flex;justify-content:space-between;gap:12px;padding:12px 16px;border:1px solid rgba(255,255,255,.1);border-radius:10px;text-decoration:none;color:inherit}.mp-set-row:hover{border-color:#8bd450}.mp-detail{display:grid;grid-template-columns:280px 1fr;gap:32px}@media(max-width:640px){.mp-detail{grid-template-columns:1fr}}.mp-detail img{width:100%;border-radius:14px}.mp-prices{display:flex;gap:10px;flex-wrap:wrap;margin:16px 0}.mp-price-pill{background:rgba(139,212,80,.15);color:#8bd450;font-weight:800;padding:8px 14px;border-radius:999px;font-size:14px}.mp-oracle{white-space:pre-wrap;line-height:1.6;font-size:14px;opacity:.9;margin-top:16px}.mp-meta{font-size:13px;opacity:.65;margin-top:8px}</style></head>` +
     `<body><div class="mp-wrap">${bodyHtml}</div></body></html>`;
@@ -2249,6 +2272,7 @@ function mtgNotFoundPage(message) {
     title: 'Not found | The Mana Pocket',
     description: message,
     canonicalPath: '/mtg',
+    robotsNoindex: true,
     bodyHtml: `<div class="mp-crumb"><a href="/mtg">← All MTG sets</a></div><h1>Not found</h1><p class="mp-sub">${mtgEscapeHtml(message)}</p>`,
   });
   return new Response(html, { status: 404, headers: { 'Content-Type': 'text/html;charset=UTF-8' } });
@@ -2340,10 +2364,65 @@ function renderMtgCardPage(card) {
 // reused by a second store.
 const ITEM_DETAIL_STORE_ID = '0f9dd4bc-42a7-487e-a972-2905d24513e9'; // The Mana Pocket
 
+// Shared by the /category/{slug} landing pages, the breadcrumb on every item
+// page, and the nav strip injected into /shop -- one place for the slug <->
+// display-name mapping instead of it drifting between call sites.
+const CATEGORY_LANDING_LABELS = {
+  pokemon: 'Pokémon', mtg: 'Magic: The Gathering', 'one-piece': 'One Piece', yugioh: 'Yu-Gi-Oh!',
+  lorcana: 'Lorcana', 'sports-cards': 'Sports Cards', comics: 'Comics', supplies: 'Supplies',
+  collectibles: 'Collectibles', other: 'Other Items',
+};
+function categoryLandingLabel(slug) { return CATEGORY_LANDING_LABELS[slug] || 'Shop'; }
+function categoryLandingHref(slug) { return `/category/${encodeURIComponent(slug)}`; }
+
+// Shared paginated fetch of every item that has a real, indexable page today
+// -- available-to-buy items plus any item that opted into staying visible
+// once sold out (see isStorefrontItemListable) -- so the /item/{id} detail
+// page's own availability gate, the sitemap, the category landing pages, and
+// each item's "more like this" module all agree on the exact same set.
+// Before this, the sitemap/detail-page gate used isStorefrontItemAvailable
+// (which excludes showSoldOut items) while the shop grid itself used
+// isStorefrontItemListable (which includes them) -- so a showSoldOut item
+// visibly sat in the live shop grid as a clickable card that 404'd the
+// instant it was clicked. See the /item/{id} route handler below for the
+// other half of that fix.
+async function fetchAllListableStorefrontItems(env) {
+  const rows = [];
+  let offset = 0;
+  while (true) {
+    const page = await supabaseAdminFetch(env, `inventory_items?store_id=eq.${encodeURIComponent(ITEM_DETAIL_STORE_ID)}&select=id,data,status,created_at,updated_at&order=updated_at.desc&limit=1000&offset=${offset}`);
+    if (!page.response?.ok) break;
+    const batch = page.data || [];
+    rows.push(...batch);
+    if (batch.length < 1000) break;
+    offset += 1000;
+    if (offset >= 50000) break;
+  }
+  return rows.map(shapeStorefrontItem).filter(item => (isBcwItem(item) ? isBcwPublished(item) : isStorefrontItemListable(item)));
+}
+
+// Every /item/{id} page view used to mean a full 1000-row-paged catalog
+// fetch just to compute its "more like this" row -- fine at low traffic, but
+// a real per-page-view cost that scales with total inventory size instead of
+// staying flat. Cached behind one synthetic, request-independent cache key
+// (Cache API, not KV -- same tool every other route here already uses for
+// this) so many item/category page views within the TTL window share one
+// catalog fetch instead of each re-querying Supabase from scratch.
+const ALL_LISTABLE_ITEMS_CACHE_KEY = new Request('https://internal.themanapocket.com/__cache/all-listable-storefront-items');
+async function fetchAllListableStorefrontItemsCached(env, ctx) {
+  const cached = await caches.default.match(ALL_LISTABLE_ITEMS_CACHE_KEY);
+  if (cached) return cached.json();
+  const items = await fetchAllListableStorefrontItems(env);
+  const response = json(items, 200, { 'Cache-Control': 'public, max-age=180' });
+  if (ctx?.waitUntil) ctx.waitUntil(caches.default.put(ALL_LISTABLE_ITEMS_CACHE_KEY, response.clone()));
+  return items;
+}
+
 function itemDetailDescription(item) {
   const bits = [item.set, item.year, item.condition].filter(Boolean).join(' · ');
   const priceBit = item.price ? ` $${item.price.toFixed(2)} at The Mana Pocket.` : ' At The Mana Pocket.';
-  return `${item.name}${bits ? ` — ${bits}.` : '.'}${priceBit}`.trim();
+  const soldBit = !isStorefrontItemAvailable(item) ? ' Currently sold.' : '';
+  return `${item.name}${bits ? ` — ${bits}.` : '.'}${priceBit}${soldBit}`.trim();
 }
 
 function itemNotFoundPage() {
@@ -2351,6 +2430,7 @@ function itemNotFoundPage() {
     title: 'Item not found | The Mana Pocket',
     description: 'This item has sold or is no longer listed. Browse the shop for what’s currently in stock.',
     canonicalPath: '/shop',
+    robotsNoindex: true,
     bodyHtml: `<div class="mp-crumb"><a href="/shop">← Back to shop</a></div><h1>Item not found</h1><p class="mp-sub">This item may have sold or is no longer listed. Browse the shop for what's currently in stock.</p>`,
   });
   return new Response(html, { status: 404, headers: { 'Content-Type': 'text/html;charset=UTF-8' } });
@@ -2367,31 +2447,208 @@ function itemDetailSlug(item) {
   return mtgSlugify(item.name);
 }
 
-function renderItemDetailPage(item, canonicalSlug) {
+// "More like this" -- same category, excludes the item itself and any BCW
+// dropship supply (a customer looking at a graded card shouldn't get top
+// loaders recommended), newest-updated first. Real internal links to other
+// real /item/{id} pages -- the single biggest lever available here for
+// getting Google to actually crawl deeper than whatever it lands on first,
+// and it doubles as a soft landing for anyone who arrives at a since-sold
+// item (see the sold-state branch in renderItemDetailPage below).
+function relatedStorefrontItems(item, allListable, limit = 6) {
+  return allListable
+    .filter(other => other.id !== item.id && other.categorySlug === item.categorySlug && !other.dropship && isStorefrontItemAvailable(other))
+    .slice(0, limit);
+}
+
+function renderRelatedItemsHtml(related) {
+  if (!related.length) return '';
+  const tiles = related.map(other => {
+    const href = `/item/${encodeURIComponent(other.id)}/${encodeURIComponent(itemDetailSlug(other))}`;
+    const priceStr = other.price ? `$${other.price.toFixed(2)}` : '';
+    return `<a class="mp-card" href="${href}">${other.image ? `<img loading="lazy" src="${mtgEscapeHtml(other.image)}" alt="${mtgEscapeHtml(other.name)}">` : ''}<div class="mp-card-body"><div class="mp-card-name">${mtgEscapeHtml(other.name)}</div>${priceStr ? `<div class="mp-card-price">${mtgEscapeHtml(priceStr)}</div>` : ''}</div></a>`;
+  }).join('');
+  return `<div style="margin-top:40px"><h2 style="font-size:18px;margin-bottom:12px">More like this</h2><div class="mp-grid">${tiles}</div></div>`;
+}
+
+// Dormant until a real review-collection flow writes to an item's saved
+// `reviews` (see shapeStorefrontItem) -- nothing in this codebase does that
+// yet, so this renders nothing and adds no schema for any item today. Never
+// fabricates a rating or review text; only ever reflects data a customer
+// actually left. Both the visible HTML and the JSON-LD below are built from
+// the exact same array, so the structured data never claims a rating that
+// isn't also shown on the page -- Google's review-snippet guidelines
+// require that match, and diverging is treated as spam.
+function reviewSchemaAndHtml(item) {
+  const reviews = item.reviews || [];
+  if (!reviews.length) return { jsonLdFields: {}, html: '' };
+  const avg = reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length;
+  const jsonLdFields = {
+    aggregateRating: { '@type': 'AggregateRating', ratingValue: avg.toFixed(1), reviewCount: reviews.length },
+    review: reviews.slice(0, 20).map(r => ({
+      '@type': 'Review',
+      author: { '@type': 'Person', name: r.author },
+      reviewRating: { '@type': 'Rating', ratingValue: r.rating, bestRating: 5, worstRating: 1 },
+      reviewBody: r.text,
+      ...(r.date ? { datePublished: r.date } : {}),
+    })),
+  };
+  const stars = n => '★'.repeat(n) + '☆'.repeat(5 - n);
+  const rows = reviews.slice(0, 20).map(r => `<div style="padding:12px 0;border-top:1px solid rgba(255,255,255,.1)"><div style="color:#ffd166;letter-spacing:2px">${stars(r.rating)}</div><div style="font-size:13px;margin-top:4px">${mtgEscapeHtml(r.text)}</div><div class="mp-meta">${mtgEscapeHtml(r.author)}${r.date ? ` · ${mtgEscapeHtml(r.date)}` : ''}</div></div>`).join('');
+  const html = `<div style="margin-top:32px"><h2 style="font-size:18px;margin-bottom:4px">Reviews</h2><div class="mp-meta">${stars(Math.round(avg))} ${avg.toFixed(1)} out of 5 (${reviews.length} review${reviews.length === 1 ? '' : 's'})</div>${rows}</div>`;
+  return { jsonLdFields, html };
+}
+
+function renderItemDetailPage(item, canonicalSlug, allListable) {
   if(isBcwItem(item)) return renderBcwProduct(item, '/item/'+encodeURIComponent(item.id)+'/'+canonicalSlug);
   const canonicalPath = `/item/${encodeURIComponent(item.id)}/${canonicalSlug}`;
-  const shopHref = `/shop?item=${encodeURIComponent(item.id)}`;
   const priceStr = item.price ? `$${item.price.toFixed(2)}` : '';
   const metaBits = [item.set, item.year, item.condition, item.variant].filter(Boolean).join(' · ');
   const description = itemDetailDescription(item);
+  const available = isStorefrontItemAvailable(item);
+  const categoryLabel = categoryLandingLabel(item.categorySlug);
+  const categoryHref = categoryLandingHref(item.categorySlug);
+  const breadcrumbJsonLd = {
+    '@context': 'https://schema.org', '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Shop', item: 'https://themanapocket.com/shop' },
+      { '@type': 'ListItem', position: 2, name: categoryLabel, item: `https://themanapocket.com${categoryHref}` },
+      { '@type': 'ListItem', position: 3, name: item.name, item: `https://themanapocket.com${canonicalPath}` },
+    ],
+  };
+  const { jsonLdFields: reviewJsonLdFields, html: reviewHtml } = reviewSchemaAndHtml(item);
+  const related = allListable ? relatedStorefrontItems(item, allListable) : [];
   return mtgPageShell({
     title: `${item.name}${item.set ? ` (${item.set})` : ''}${priceStr ? ` — ${priceStr}` : ''} | The Mana Pocket`,
     description,
     canonicalPath,
     ogImage: item.image || undefined,
-    jsonLd: {
+    ogType: 'product',
+    jsonLd: [{
       '@context': 'https://schema.org', '@type': 'Product', name: item.name,
       image: item.image || undefined, sku: item.id,
       brand: item.brand ? { '@type': 'Brand', name: item.brand } : undefined,
       description,
-      ...(item.price ? { offers: { '@type': 'Offer', priceCurrency: 'USD', price: item.price, availability: 'https://schema.org/InStock', url: `https://themanapocket.com${canonicalPath}` } } : {}),
-    },
-    bodyHtml: `<div class="mp-crumb"><a href="/shop">← Back to shop</a></div>` +
-      `<div class="mp-detail">${item.image ? `<img src="${mtgEscapeHtml(item.image)}" alt="${mtgEscapeHtml(item.name)}">` : ''}` +
+      ...(item.price ? { offers: { '@type': 'Offer', priceCurrency: 'USD', price: item.price, availability: available ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock', url: `https://themanapocket.com${canonicalPath}` } } : {}),
+      ...reviewJsonLdFields,
+    }, breadcrumbJsonLd],
+    bodyHtml: `<div class="mp-crumb"><a href="/shop">Shop</a> / <a href="${categoryHref}">${mtgEscapeHtml(categoryLabel)}</a> / ${mtgEscapeHtml(item.name)}</div>` +
+      `<div class="mp-detail">${item.image ? `<img src="${mtgEscapeHtml(item.image)}" alt="${mtgEscapeHtml(item.name)}" width="600" height="600" style="aspect-ratio:1/1;object-fit:contain;background:#16101f" fetchpriority="high">` : ''}` +
       `<div><h1>${mtgEscapeHtml(item.name)}</h1>${metaBits ? `<div class="mp-meta">${mtgEscapeHtml(metaBits)}</div>` : ''}` +
-      `<div class="mp-prices">${priceStr ? `<span class="mp-price-pill">${mtgEscapeHtml(priceStr)}</span>` : '<span class="mp-meta">Contact the shop for price</span>'}</div>` +
-      `<a class="mp-card" style="display:inline-block;padding:12px 20px;margin-top:8px" href="${mtgEscapeHtml(shopHref)}">View in shop →</a>` +
-      `</div></div>`,
+      `<div class="mp-prices">${priceStr ? `<span class="mp-price-pill">${mtgEscapeHtml(priceStr)}</span>` : '<span class="mp-meta">Contact the shop for price</span>'}${!available ? `<span class="mp-price-pill" style="background:rgba(255,77,109,.15);color:#ff9db0">Sold</span>` : ''}</div>` +
+      (available ? `<a class="mp-card" style="display:inline-block;padding:12px 20px;margin-top:8px" href="/shop?item=${encodeURIComponent(item.id)}">View in shop →</a>` : `<p class="mp-sub">This exact copy has sold. Browse ${mtgEscapeHtml(categoryLabel)} for what's currently in stock.</p>`) +
+      `${reviewHtml}` +
+      `</div></div>` +
+      renderRelatedItemsHtml(related),
+  });
+}
+
+// ─── Category landing pages (/category/{slug}) ──────────────────────────────
+// Real, crawlable, server-rendered category pages with actual on-page copy
+// (not just a filtered view of the client-side shop grid, which has no URL
+// of its own for Google to index) -- separate from /mtg above, which is the
+// full Scryfall reference catalog (every MTG card ever printed), not this
+// store's actual live inventory.
+const CATEGORY_LANDING_COPY = {
+  pokemon: 'Pokémon singles, sealed product, and graded slabs -- from current sets to vintage. New stock is added as it comes in, so check back often for singles you can\'t find anywhere else locally.',
+  mtg: 'Magic: The Gathering singles and sealed product across every format, from Commander staples to vintage reserve-list cards. Looking for full set/price reference data instead of what\'s in stock right now? See the full MTG card catalog.',
+  'one-piece': 'One Piece Card Game singles and sealed booster boxes, stocked as new sets release and demand grows.',
+  yugioh: 'Yu-Gi-Oh! singles and sealed product, from staple meta cards to older nostalgia pulls.',
+  lorcana: 'Disney Lorcana singles and sealed product for collectors and players building their next deck.',
+  'sports-cards': 'Baseball, basketball, football, hockey and more -- graded and raw sports cards, from modern rookies to vintage hits.',
+  comics: 'Comic books old and new, including variant covers, key issues, and signed copies. Pair this with our FOC presale program for upcoming releases before they even hit shelves.',
+  supplies: 'Sleeves, top loaders, binders, storage boxes and more from BCW -- see the full Supplies catalog.',
+  collectibles: 'Figures, plush, apparel and other collectibles alongside our cards and comics.',
+};
+function renderCategoryLandingPage(slug, items) {
+  const label = categoryLandingLabel(slug);
+  const canonicalPath = categoryLandingHref(slug);
+  const copy = CATEGORY_LANDING_COPY[slug] || `Browse everything currently in stock in ${label}.`;
+  const shown = items.slice(0, 60);
+  const tiles = shown.map(item => {
+    const href = `/item/${encodeURIComponent(item.id)}/${encodeURIComponent(itemDetailSlug(item))}`;
+    const priceStr = item.price ? `$${item.price.toFixed(2)}` : '';
+    return `<a class="mp-card" href="${href}">${item.image ? `<img loading="lazy" src="${mtgEscapeHtml(item.image)}" alt="${mtgEscapeHtml(item.name)}">` : ''}<div class="mp-card-body"><div class="mp-card-name">${mtgEscapeHtml(item.name)}</div>${priceStr ? `<div class="mp-card-price">${mtgEscapeHtml(priceStr)}</div>` : ''}</div></a>`;
+  }).join('');
+  const description = `${label} for sale at The Mana Pocket -- ${items.length.toLocaleString()} item${items.length === 1 ? '' : 's'} currently listed. ${copy}`.slice(0, 300);
+  return mtgPageShell({
+    title: `${label} | The Mana Pocket`,
+    description,
+    canonicalPath,
+    jsonLd: [
+      { '@context': 'https://schema.org', '@type': 'CollectionPage', name: label, description: copy },
+      { '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: [
+        { '@type': 'ListItem', position: 1, name: 'Shop', item: 'https://themanapocket.com/shop' },
+        { '@type': 'ListItem', position: 2, name: label, item: `https://themanapocket.com${canonicalPath}` },
+      ] },
+    ],
+    bodyHtml: `<div class="mp-crumb"><a href="/shop">← Shop</a></div><h1>${mtgEscapeHtml(label)}</h1><p class="mp-sub">${mtgEscapeHtml(copy)}</p>` +
+      (shown.length
+        ? `<div class="mp-grid">${tiles}</div>${items.length > shown.length ? `<p class="mp-meta" style="margin-top:20px">Showing ${shown.length} of ${items.length.toLocaleString()} -- <a href="/shop?cat=${encodeURIComponent(slug)}">see everything in the live shop →</a></p>` : ''}`
+        : `<p class="mp-sub">Nothing in stock in this category right now -- <a href="/shop">browse the full shop</a> instead.</p>`),
+  });
+}
+
+function renderCategoryIndexPage(counts) {
+  const rows = Object.keys(CATEGORY_LANDING_LABELS).filter(slug => counts[slug] > 0).map(slug => {
+    return `<a class="mp-set-row" href="${categoryLandingHref(slug)}"><span>${mtgEscapeHtml(categoryLandingLabel(slug))}</span><span style="opacity:.6">${counts[slug].toLocaleString()} item${counts[slug] === 1 ? '' : 's'}</span></a>`;
+  }).join('');
+  return mtgPageShell({
+    title: 'Shop by Category | The Mana Pocket',
+    description: 'Browse cards, comics, and collectibles by category at The Mana Pocket.',
+    canonicalPath: '/category',
+    jsonLd: { '@context': 'https://schema.org', '@type': 'CollectionPage', name: 'Shop by Category' },
+    bodyHtml: `<div class="mp-crumb"><a href="/shop">← Shop</a></div><h1>Shop by category</h1><div class="mp-set-list">${rows}</div>`,
+  });
+}
+
+// ─── FAQ page (/faq) ─────────────────────────────────────────────────────────
+// Genuine questions about how this specific store actually operates, based
+// on features that actually exist in this codebase (FOC presale, BCW
+// dropship supplies, graded-card fields, signed-item fields). Deliberately
+// avoids stating a specific policy number (a return window, a ship-by time)
+// that isn't verifiable from anything in this codebase -- those point to
+// "contact us" instead of guessing, rather than publishing a policy the
+// store may not actually honor.
+const FAQ_ITEMS = [
+  ['Do you ship internationally?', 'Domestic shipping is available on every in-stock item. For international orders, message us before ordering so we can confirm rates and delivery time for your country.'],
+  ['What\'s your return policy?', 'If an item arrives damaged or not as described, message us through the shop or eBay and we\'ll make it right. Contact us before returning anything so we can help directly.'],
+  ['How do you grade card and comic condition?', 'Graded slabs are graded by the issuing company (PSA, BGS, CGC, or SGC) and sold exactly as labeled -- we don\'t re-grade them ourselves. Raw (ungraded) cards and comics are described as accurately as we can from photos and in-hand inspection; message us for more detail or additional photos on any specific listing before buying.'],
+  ['What is FOC presale, and how does it work?', 'FOC ("Final Order Cutoff") presale lets you order upcoming comic issues before they\'re released -- your order ships once we receive stock from the distributor on or shortly after the book\'s official release date. Presale listings are always clearly marked, both on our site and on eBay.'],
+  ['Is your eBay stock the same as your website stock?', 'Yes -- our eBay listings and our website draw from the same live inventory, so an item shown in stock here is the same item available on our eBay store.'],
+  ['Do you do live sales?', 'Yes, we run live shows on Whatnot -- follow our store there to catch upcoming streams and live-exclusive deals.'],
+  ['How do BCW supply orders work?', 'BCW supplies (sleeves, top loaders, binders, and other storage) ship directly from BCW rather than from our own shelf, so handling time can run a little longer than an in-stock card or comic. Availability shown reflects BCW\'s own current stock.'],
+  ['How can I tell if an item is signed or authenticated?', 'Signed items are noted directly on the listing, including who signed it when that information is available. Message us if you\'d like more detail on a specific item\'s signature or provenance before buying.'],
+];
+function renderFaqPage() {
+  const rows = FAQ_ITEMS.map(([q, a]) => `<div style="margin-bottom:20px"><div style="font-weight:700;margin-bottom:4px">${mtgEscapeHtml(q)}</div><div class="mp-sub" style="margin-bottom:0">${mtgEscapeHtml(a)}</div></div>`).join('');
+  return mtgPageShell({
+    title: 'Frequently Asked Questions | The Mana Pocket',
+    description: 'Shipping, returns, grading, FOC presale, BCW supplies, and more -- answers to common questions about ordering from The Mana Pocket.',
+    canonicalPath: '/faq',
+    jsonLd: { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: FAQ_ITEMS.map(([q, a]) => ({ '@type': 'Question', name: q, acceptedAnswer: { '@type': 'Answer', text: a } })) },
+    bodyHtml: `<div class="mp-crumb"><a href="/shop">← Shop</a></div><h1>Frequently asked questions</h1>${rows}`,
+  });
+}
+
+// ─── News page (/news) ───────────────────────────────────────────────────────
+// Hand-maintained, not a CMS -- add a new [date, title, body] entry here as
+// real announcements happen. Existing entries below are all genuine, already
+// shipped features (FOC presale, BCW dropship, the /item/{id} pages this
+// news page's own sitemap entry sits alongside) -- never a placeholder or
+// fabricated customer-facing claim.
+const NEWS_POSTS = [
+  ['2026-09-24', 'Every in-stock item now has its own page', 'Every card, comic, and collectible in stock now has its own dedicated, shareable page at themanapocket.com/item/... -- easier to link directly to a specific item instead of pointing someone at the whole shop grid.'],
+  ['2026-09-11', 'BCW supplies now available to order', 'Sleeves, top loaders, binders, and other storage from BCW are now orderable directly through our shop, drop-shipped straight from BCW.'],
+  ['2026-08-01', 'FOC presale now open for upcoming comics', 'Order upcoming comic issues ahead of their release through our FOC presale program -- see the FAQ for how it works.'],
+];
+function renderNewsPage() {
+  const rows = NEWS_POSTS.map(([date, title, body]) => `<div style="margin-bottom:24px;padding-bottom:24px;border-bottom:1px solid rgba(255,255,255,.1)"><div class="mp-meta">${mtgEscapeHtml(date)}</div><h2 style="font-size:16px;margin:4px 0 6px">${mtgEscapeHtml(title)}</h2><p class="mp-sub" style="margin-bottom:0">${mtgEscapeHtml(body)}</p></div>`).join('');
+  return mtgPageShell({
+    title: 'Store News | The Mana Pocket',
+    description: 'What\'s new at The Mana Pocket -- new features, new categories, and store announcements.',
+    canonicalPath: '/news',
+    jsonLd: { '@context': 'https://schema.org', '@type': 'CollectionPage', name: 'Store News' },
+    bodyHtml: `<div class="mp-crumb"><a href="/shop">← Shop</a></div><h1>Store news</h1>${rows}`,
   });
 }
 
@@ -5864,7 +6121,7 @@ export default {
     if (url.hostname === 'themanapocket.com' && url.pathname.startsWith('/shop')) {
       const originResponse = await fetch(request);
       if(request.method !== 'GET' || !originResponse.headers.get('Content-Type')?.includes('text/html')) return originResponse;
-      return new HTMLRewriter().on('body',{element(el){el.append(`<script>document.addEventListener('change',function(e){if(e.target.matches('select.wo-store-control-field')&&String(e.target.value).toLowerCase()==='supplies'){e.stopImmediatePropagation();location.href='/bcw';}},true);document.addEventListener('DOMContentLoaded',function(){var host=document.getElementById('wo-live-shop');if(host&&!document.getElementById('bcw-supplies-link')){var a=document.createElement('a');a.id='bcw-supplies-link';a.href='/bcw';a.textContent='Shop BCW supplies →';a.style.cssText='display:inline-block;margin:18px 0;padding:12px 18px;border:1px solid currentColor;border-radius:8px;font-weight:700';host.before(a);}});</script>`,{html:true});}}).transform(originResponse);
+      return new HTMLRewriter().on('body',{element(el){el.append(`<script>document.addEventListener('change',function(e){if(e.target.matches('select.wo-store-control-field')&&String(e.target.value).toLowerCase()==='supplies'){e.stopImmediatePropagation();location.href='/bcw';}},true);document.addEventListener('DOMContentLoaded',function(){var host=document.getElementById('wo-live-shop');if(!host)return;if(!document.getElementById('bcw-supplies-link')){var a=document.createElement('a');a.id='bcw-supplies-link';a.href='/bcw';a.textContent='Shop BCW supplies →';a.style.cssText='display:inline-block;margin:18px 0;padding:12px 18px;border:1px solid currentColor;border-radius:8px;font-weight:700';host.before(a);}if(!document.getElementById('mp-category-nav')){var links=[['/category/comics','Comics'],['/category/pokemon','Pokémon'],['/category/sports-cards','Sports Cards'],['/category/mtg','Magic: The Gathering'],['/category/collectibles','Collectibles'],['/faq','FAQ']];var nav=document.createElement('div');nav.id='mp-category-nav';nav.style.cssText='display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 18px';links.forEach(function(pair){var link=document.createElement('a');link.href=pair[0];link.textContent=pair[1];link.style.cssText='padding:8px 14px;border:1px solid currentColor;border-radius:8px;text-decoration:none;color:inherit;font-size:13px;font-weight:600';nav.appendChild(link);});host.before(nav);}});</script>`,{html:true});}}).transform(originResponse);
     }
     // The customer-facing BCW page is a native Webflow page. Preserve it if
     // the domain's DNS proxy is enabled later; workers.dev keeps the preview.
@@ -5910,7 +6167,12 @@ export default {
       if (!itemSbResponse?.ok) return itemNotFoundPage();
       const itemRow = itemRows?.[0];
       const item = itemRow ? shapeStorefrontItem(itemRow) : null;
-      if (!item || !(isBcwItem(item) ? isBcwPublished(item) : isStorefrontItemAvailable(item))) return itemNotFoundPage();
+      // Store report: a showSoldOut item (see shapeStorefrontItem/
+      // isStorefrontItemListable) sits right in the live shop grid as a
+      // normal, clickable card -- but this gate used to check
+      // isStorefrontItemAvailable, which excludes showSoldOut items, so
+      // clicking that exact card 404'd. Matches the shop grid's own gate now.
+      if (!item || !(isBcwItem(item) ? isBcwPublished(item) : isStorefrontItemListable(item))) return itemNotFoundPage();
       // Item points at its own dedicated page (e.g. a limited-run print
       // preorder) -- send everyone straight there instead of rendering a
       // second, competing page for the same product.
@@ -5925,11 +6187,56 @@ export default {
         ctx.waitUntil(caches.default.put(cacheKey, response.clone()));
         return response;
       }
-      const response = mtgHtmlResponse(renderItemDetailPage(item, canonicalSlug));
+      const allListable = await fetchAllListableStorefrontItemsCached(env, ctx).catch(() => []);
+      const response = mtgHtmlResponse(renderItemDetailPage(item, canonicalSlug, allListable));
       // Real stock/price, not a reference catalog -- much shorter TTL than
       // the /mtg pages (21600s) so a sale or price change shows up soon.
       response.headers.set('Cache-Control', 'public, max-age=300');
       ctx.waitUntil(caches.default.put(cacheKey, response.clone()));
+      return response;
+    }
+
+    // GET /category and /category/{slug} -- real, crawlable, server-rendered
+    // category landing pages with actual on-page copy, distinct from the
+    // client-side-only shop grid (no URL of its own to index) and from /mtg
+    // above (the full reference catalog, not this store's live inventory).
+    if ((url.pathname === '/category' || url.pathname.startsWith('/category/')) && request.method === 'GET') {
+      if (!(env.SUPABASE_URL && (env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SERVICE_KEY))) return new Response('Storefront service unavailable', { status: 503 });
+      const cacheKey = new Request(url.toString(), request);
+      const cached = await caches.default.match(cacheKey);
+      if (cached) return cached;
+      const allListable = await fetchAllListableStorefrontItemsCached(env, ctx).catch(() => []);
+      let html;
+      if (url.pathname === '/category') {
+        const counts = {};
+        for (const item of allListable) counts[item.categorySlug] = (counts[item.categorySlug] || 0) + 1;
+        html = renderCategoryIndexPage(counts);
+      } else {
+        const slug = decodeURIComponent(url.pathname.slice('/category/'.length));
+        if (!CATEGORY_LANDING_LABELS[slug]) return mtgNotFoundPage('No such category.');
+        const items = allListable.filter(item => item.categorySlug === slug && !item.linkUrl);
+        html = renderCategoryLandingPage(slug, items);
+      }
+      const response = mtgHtmlResponse(html);
+      response.headers.set('Cache-Control', 'public, max-age=300');
+      ctx.waitUntil(caches.default.put(cacheKey, response.clone()));
+      return response;
+    }
+
+    // GET /faq -- real FAQPage schema, eligible for Google's FAQ rich result.
+    if (url.pathname === '/faq' && request.method === 'GET') {
+      const response = mtgHtmlResponse(renderFaqPage());
+      response.headers.set('Cache-Control', 'public, max-age=3600');
+      return response;
+    }
+
+    // GET /news -- a short, real, dated list of store announcements. Static
+    // hand-maintained content (see NEWS_POSTS below), not a full CMS/blog --
+    // exists mainly to give search engines a page that visibly changes over
+    // time, which a pure product catalog never does on its own.
+    if (url.pathname === '/news' && request.method === 'GET') {
+      const response = mtgHtmlResponse(renderNewsPage());
+      response.headers.set('Cache-Control', 'public, max-age=3600');
       return response;
     }
 
@@ -5944,20 +6251,12 @@ export default {
       const cached = await caches.default.match(cacheKey);
       if (cached) return cached;
       if (!(env.SUPABASE_URL && (env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SERVICE_KEY))) return new Response('Storefront service unavailable', { status: 503 });
-      const sitemapRows = [];
-      let sitemapOffset = 0;
-      while (true) {
-        const page = await supabaseAdminFetch(env, `inventory_items?store_id=eq.${encodeURIComponent(ITEM_DETAIL_STORE_ID)}&select=id,data,status,created_at,updated_at&order=updated_at.desc&limit=1000&offset=${sitemapOffset}`);
-        if (!page.response?.ok) break;
-        const batch = page.data || [];
-        sitemapRows.push(...batch);
-        if (batch.length < 1000) break;
-        sitemapOffset += 1000;
-        if (sitemapOffset >= 50000) break; // sitemap.xml URL cap safety net
-      }
-      const urls = sitemapRows
-        .map(shapeStorefrontItem)
-        .filter(item => (isBcwItem(item) ? isBcwPublished(item) : isStorefrontItemAvailable(item)) && !item.linkUrl) // items with linkUrl 301 elsewhere -- not a page for Google to index here
+      // Matches the /item/{id} route's own gate (isStorefrontItemListable,
+      // not isStorefrontItemAvailable) -- a showSoldOut item has a real,
+      // 200-rendering page now (see above), so it belongs in the sitemap too.
+      const allListable = await fetchAllListableStorefrontItems(env);
+      const urls = allListable
+        .filter(item => !item.linkUrl) // items with linkUrl 301 elsewhere -- not a page for Google to index here
         .map(item => `<url><loc>https://themanapocket.com/item/${mtgEscapeHtml(item.id)}/${mtgEscapeHtml(itemDetailSlug(item))}</loc><lastmod>${mtgEscapeHtml((item.updatedAt || '').slice(0, 10))}</lastmod></url>`)
         .join('');
       const xml = `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>https://themanapocket.com/bcw</loc></url>${urls}</urlset>`;
@@ -5965,6 +6264,21 @@ export default {
       response.headers.set('Cache-Control', 'public, max-age=1800');
       ctx.waitUntil(caches.default.put(cacheKey, response.clone()));
       return response;
+    }
+
+    // GET /sitemap-pages.xml -- the handful of non-item pages (category
+    // landing pages, FAQ, news) that also deserve their own sitemap entry.
+    // Kept separate from sitemap-items.xml, matching the existing pattern of
+    // one sitemap per page-type (see sitemap-books.xml/sitemap-preorders.xml).
+    if (url.pathname === '/sitemap-pages.xml' && request.method === 'GET') {
+      // 'supplies' duplicates /bcw's own already-indexed catalog, and
+      // 'other' is a low-value catch-all bucket -- both routes still work if
+      // visited directly, just not worth asking Google to index separately.
+      const skippedCategorySlugs = ['supplies', 'other'];
+      const staticUrls = ['/faq', '/news', '/category', ...Object.keys(CATEGORY_LANDING_LABELS).filter(slug => !skippedCategorySlugs.includes(slug)).map(slug => categoryLandingHref(slug))]
+        .map(path => `<url><loc>https://themanapocket.com${path}</loc></url>`).join('');
+      const xml = `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${staticUrls}</urlset>`;
+      return new Response(xml, { headers: { 'Content-Type': 'application/xml;charset=UTF-8', 'Cache-Control': 'public, max-age=3600' } });
     }
 
     // POST /inventory/dropship-import -- staff bulk-import for vendor
