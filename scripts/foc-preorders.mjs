@@ -489,9 +489,24 @@ async function newReleasesCatalog(env, deps, url) {
   // full merch feed for this store (graphic novels/collections, apparel,
   // toys, oracle decks, etc.), which has no "cover"/ratio/artist to show
   // and isn't what a comic-show reference needs.
+  //
+  // PRH vs Lunar need different signals here. PRH's own comic_type field
+  // genuinely means what it says (Ongoing/Limited/One-shot/... vs
+  // Softcover/Hardcover collections). Lunar's feed has no equivalent field
+  // -- normalizeLunarRow maps Lunar's CoverType into this same comic_type
+  // column, but CoverType is a paper-stock attribute (every Lunar row is
+  // just "SOFTCOVER" or "HARDCOVER" regardless of whether it's a single
+  // issue or a collected edition), so it can't distinguish periodicals for
+  // Lunar at all. issue_number does: it's parsed from a "#123"-style
+  // pattern in the title (see issueNumber()), which real single issues
+  // have and collections (titled "... TP VOL 01" / "... HC" etc.) don't --
+  // verified against the live Lunar data (a clean ~75/25 split, not
+  // guesswork).
   const filtered = (skuRows || []).filter(row => {
     const family = familyById.get(row.family_id);
-    return family?.comic_type && NEW_RELEASE_PERIODICAL_TYPES.has(String(family.comic_type).toUpperCase());
+    if (!family) return false;
+    if (distributor === LUNAR) return !!family.issue_number;
+    return !!family.comic_type && NEW_RELEASE_PERIODICAL_TYPES.has(String(family.comic_type).toUpperCase());
   });
 
   const upcs = [...new Set(filtered.map(row => row.upc).filter(Boolean))];
