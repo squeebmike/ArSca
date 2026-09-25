@@ -25,10 +25,19 @@ console.log('Comic new-release week-boundary math checks passed');
 
 // --- Route wiring -------------------------------------------------------------
 
-assert.match(service, /\/public\/comics\/new-releases/, 'new-releases route must be reachable');
+assert.match(service, /\/public\/comics\/new-releases/, 'new-releases route must be reachable inside handleFocRequest\'s own router');
 
 const worker = fs.readFileSync('cloudflare-worker-full.js', 'utf8');
 assert.match(worker, /\/comic-new-releases-the-mana-pocket/, 'the real Webflow page URL must be listed in sitemap-pages.xml');
+
+// handleFocRequest's own internal router isn't enough on its own -- the
+// top-level Worker dispatcher decides which paths ever reach it at all
+// (matched live: this route 404'd in production because it was added to
+// handleFocRequest's router but never added to this dispatcher condition,
+// so every request fell through to the Worker's generic "Not found").
+const dispatchMatch = worker.match(/if \(url\.pathname === '\/public\/preorders'[\s\S]{0,400}?return await handleFocRequest/);
+assert.ok(dispatchMatch, 'must find the dispatcher condition that forwards requests to handleFocRequest');
+assert.match(dispatchMatch[0], /\/public\/comics\/new-releases/, 'the top-level Worker dispatcher must actually forward /public/comics/new-releases to handleFocRequest, not just handleFocRequest\'s own internal router');
 
 // --- Catalog endpoint ---------------------------------------------------------
 

@@ -2279,6 +2279,7 @@ function mtgSiteHeader() {
     dropdown('Cool Stuff', [
       ['/pokemon-new-releases', 'Pokémon New Releases'],
       ['/mtg-new-releases', 'MTG New Releases'],
+      ['/comic-new-releases-the-mana-pocket', 'Comic New Releases'],
       ['/publishing', 'Publishing'],
       ['/fan-club', 'Fan Club'],
     ]) +
@@ -5263,7 +5264,7 @@ export default {
       });
     }
 
-    if (url.pathname === '/public/preorders' || url.pathname.startsWith('/public/preorders/') || url.pathname === '/public/shipping/quotes' || url.pathname.startsWith('/foc/admin/') || url.pathname.startsWith('/preorder/') || url.pathname === '/sitemap-preorders.xml') {
+    if (url.pathname === '/public/preorders' || url.pathname.startsWith('/public/preorders/') || url.pathname === '/public/comics/new-releases' || url.pathname === '/public/shipping/quotes' || url.pathname.startsWith('/foc/admin/') || url.pathname.startsWith('/preorder/') || url.pathname === '/sitemap-preorders.xml') {
       return await handleFocRequest(request, env, url, {
         CORS, json, supabaseAdminFetch, requireStoreUser, requireAuthenticatedUser,
         readJsonWithLimit, enforceUsageLimit, stripeApi, stripeMode, stripeConfig, sendEmail,
