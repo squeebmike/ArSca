@@ -2277,9 +2277,11 @@ function mtgSiteHeader() {
       ['/shop', 'Shop All Products'],
     ]) +
     dropdown('Cool Stuff', [
+      ['/comic-new-releases-the-mana-pocket', 'Comic New Releases'],
+      ['/preorders', 'Comic Preorders'],
+      ['/books', 'Book Backlist'],
       ['/pokemon-new-releases', 'Pokémon New Releases'],
       ['/mtg-new-releases', 'MTG New Releases'],
-      ['/comic-new-releases-the-mana-pocket', 'Comic New Releases'],
       ['/publishing', 'Publishing'],
       ['/fan-club', 'Fan Club'],
     ]) +
