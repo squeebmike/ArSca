@@ -6510,7 +6510,7 @@ export default {
       // 'other' is a low-value catch-all bucket -- both routes still work if
       // visited directly, just not worth asking Google to index separately.
       const skippedCategorySlugs = ['supplies', 'other'];
-      const staticUrls = ['/faq', '/news', '/category', ...Object.keys(CATEGORY_LANDING_LABELS).filter(slug => !skippedCategorySlugs.includes(slug)).map(slug => categoryLandingHref(slug))]
+      const staticUrls = ['/faq', '/news', '/category', '/comic-new-releases-the-mana-pocket', ...Object.keys(CATEGORY_LANDING_LABELS).filter(slug => !skippedCategorySlugs.includes(slug)).map(slug => categoryLandingHref(slug))]
         .map(path => `<url><loc>https://www.themanapocket.com${path}</loc></url>`).join('');
       const xml = `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${staticUrls}</urlset>`;
       return new Response(xml, { headers: { 'Content-Type': 'application/xml;charset=UTF-8', 'Cache-Control': 'public, max-age=3600' } });

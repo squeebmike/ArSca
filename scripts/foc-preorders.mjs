@@ -447,6 +447,99 @@ async function preorderSitemap(env, deps) {
   return new Response(xml, { headers: { 'Content-Type':'application/xml;charset=UTF-8', 'Cache-Control':'public, max-age=1800' } });
 }
 
+// GET /public/comics/new-releases -- built for two real uses: a quick
+// lookup during a live Whatnot show ("what is this exact cover, who drew
+// it, is it a ratio") and a real crawlable page. Distinct from /preorders:
+// this shows books whose on_sale_date falls in a given week (what's
+// actually shipping/available now), not what's still open for order.
+// New comic book day is a national Wednesday street date anchored to
+// Eastern time regardless of where a customer is -- computed by reading
+// "now" as an Eastern calendar date, then doing plain date-string math
+// from there, rather than juggling UTC offsets/DST directly.
+const NEW_RELEASE_PERIODICAL_TYPES = new Set(['ONGOING', 'LIMITED', 'ONE-SHOT', 'TWICE MONTHLY']);
+function easternCalendarDate(date) {
+  return new Intl.DateTimeFormat('en-CA', { timeZone:'America/New_York', year:'numeric', month:'2-digit', day:'2-digit' }).format(date);
+}
+function addDaysToDateString(dateStr, days) {
+  const d = new Date(dateStr + 'T00:00:00Z');
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+export function mondayOfWeekContaining(dateStr) {
+  const day = new Date(dateStr + 'T00:00:00Z').getUTCDay(); // 0=Sun..6=Sat
+  return addDaysToDateString(dateStr, day === 0 ? -6 : 1 - day);
+}
+export function currentReleaseWeekStart(now = new Date()) {
+  return mondayOfWeekContaining(easternCalendarDate(now));
+}
+
+async function newReleasesCatalog(env, deps, url) {
+  const storeId = text(url.searchParams.get('store_id'), 80);
+  const distributor = url.searchParams.get('distributor') === LUNAR ? LUNAR : PRH;
+  const requestedWeek = text(url.searchParams.get('week'), 20);
+  const weekStart = /^\d{4}-\d{2}-\d{2}$/.test(requestedWeek) ? mondayOfWeekContaining(requestedWeek) : currentReleaseWeekStart();
+  const weekEndExclusive = addDaysToDateString(weekStart, 7);
+  const db = (p, o) => deps.supabaseAdminFetch(env, p, o);
+
+  const { data:skuRows } = await db(`comic_skus?store_id=eq.${encodeURIComponent(storeId)}&distributor=eq.${encodeURIComponent(distributor)}&customer_enabled=eq.true&on_sale_date=gte.${weekStart}&on_sale_date=lt.${weekEndExclusive}&select=*&order=title.asc`);
+  const familyIds = [...new Set((skuRows || []).map(row => row.family_id).filter(Boolean))];
+  const { data:families } = familyIds.length ? await db(`comic_title_families?id=${inFilter(familyIds)}&select=*`) : { data:[] };
+  const familyById = new Map((families || []).map(family => [family.id, family]));
+  // Real single-issue periodicals only -- comic_skus also carries PRH's
+  // full merch feed for this store (graphic novels/collections, apparel,
+  // toys, oracle decks, etc.), which has no "cover"/ratio/artist to show
+  // and isn't what a comic-show reference needs.
+  const filtered = (skuRows || []).filter(row => {
+    const family = familyById.get(row.family_id);
+    return family?.comic_type && NEW_RELEASE_PERIODICAL_TYPES.has(String(family.comic_type).toUpperCase());
+  });
+
+  const upcs = [...new Set(filtered.map(row => row.upc).filter(Boolean))];
+  const cycleIds = [...new Set(filtered.map(row => row.cycle_id).filter(Boolean))];
+  const [{ data:cycles }, { data:invByUpc }, { data:invByBarcode }, { data:backlistByUpc }, { data:backlistByIsbn }] = await Promise.all([
+    cycleIds.length ? db(`foc_cycles?id=${inFilter(cycleIds)}&select=id,status,customer_cutoff_at`) : Promise.resolve({ data:[] }),
+    upcs.length ? db(`inventory_items?store_id=eq.${encodeURIComponent(storeId)}&data->>upc=${inFilter(upcs)}&select=id,data,status`) : Promise.resolve({ data:[] }),
+    upcs.length ? db(`inventory_items?store_id=eq.${encodeURIComponent(storeId)}&data->>barcode=${inFilter(upcs)}&select=id,data,status`) : Promise.resolve({ data:[] }),
+    upcs.length ? db(`backlist_skus?store_id=eq.${encodeURIComponent(storeId)}&is_published=eq.true&is_orderable=eq.true&customer_enabled=eq.true&upc=${inFilter(upcs)}&select=id,upc,isbn,title_id`) : Promise.resolve({ data:[] }),
+    upcs.length ? db(`backlist_skus?store_id=eq.${encodeURIComponent(storeId)}&is_published=eq.true&is_orderable=eq.true&customer_enabled=eq.true&isbn=${inFilter(upcs)}&select=id,upc,isbn,title_id`) : Promise.resolve({ data:[] }),
+  ]);
+  const cycleById = new Map((cycles || []).map(cycle => [cycle.id, cycle]));
+  const NOT_SELLABLE_STATUSES = new Set(['sold', 'archived', 'deleted', 'returned', 'lost_damaged']);
+  const inventoryByCode = new Map();
+  for (const row of [...(invByUpc || []), ...(invByBarcode || [])]) {
+    const code = row.data?.upc || row.data?.barcode;
+    if (code && !inventoryByCode.has(code) && !NOT_SELLABLE_STATUSES.has(row.status)) inventoryByCode.set(code, row);
+  }
+  const backlistByCode = new Map();
+  for (const row of [...(backlistByUpc || []), ...(backlistByIsbn || [])]) {
+    if (row.upc) backlistByCode.set(row.upc, row);
+    if (row.isbn) backlistByCode.set(row.isbn, row);
+  }
+
+  const covers = filtered.map(row => {
+    const family = familyById.get(row.family_id) || {};
+    const sku = publicSku(row, 0);
+    const cycle = cycleById.get(row.cycle_id);
+    const inv = inventoryByCode.get(row.upc);
+    const backlist = backlistByCode.get(row.upc);
+    let linkType = null, linkHref = null;
+    if (cycle && cycleOpen(cycle)) { linkType = 'preorder'; linkHref = `/preorders?sku=${encodeURIComponent(row.id)}`; }
+    else if (inv) { linkType = 'shop'; linkHref = `/shop?item=${encodeURIComponent(inv.id)}`; }
+    else if (backlist) { linkType = 'backlist'; linkHref = `/books?q=${encodeURIComponent(family.title || row.title)}`; }
+    return {
+      ...sku,
+      seriesName:text(family.series_name, 300) || text(family.title, 800),
+      issueNumber:family.issue_number || '',
+      writer:text(family.writer, 1000),
+      description:text(row.description, 4000) || text(family.description, 4000),
+      onSaleDate:row.on_sale_date,
+      linkType, linkHref,
+    };
+  }).sort((a, b) => a.seriesName.localeCompare(b.seriesName) || a.variantLabel.localeCompare(b.variantLabel));
+
+  return deps.json({ ok:true, weekStart, weekEndExclusive, distributor, covers });
+}
+
 // eBay presale status per SKU for the admin FOC dashboard -- ELIGIBLE_NOW /
 // TOO_EARLY use the on-sale date vs the configurable business-day buffer
 // (same math /foc/ebay/create-presale enforces server-side, via
@@ -2320,6 +2413,7 @@ export async function handleFocRequest(request, env, url, deps) {
     const distributor=url.searchParams.get('distributor')===LUNAR?LUNAR:PRH;
     const catalog=await loadCatalog(db,storeId,url.searchParams.get('cycle')||'',false,undefined,undefined,requestedPage,distributor);return catalog?deps.json({ok:true,...catalog}):deps.json({ok:false,error:'No FOC catalog is published yet'},404);
   }
+  if(path==='/public/comics/new-releases'&&request.method==='GET')return newReleasesCatalog(env,deps,url);
   if(path==='/public/preorders/weeks'&&request.method==='GET'){
     const storeId=text(url.searchParams.get('store_id'),80);const db=(p,o)=>deps.supabaseAdminFetch(env,p,o);
     const distributor=url.searchParams.get('distributor')===LUNAR?LUNAR:PRH;
