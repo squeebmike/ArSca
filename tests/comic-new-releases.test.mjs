@@ -139,4 +139,35 @@ function depsFor(rows) {
   assert.equal(res.data.covers[0].linkType, null, 'a sold-out inventory row must not be treated as purchasable');
 }
 
+// --- Lunar periodical filtering (distributor-branched signal) -----------------
+// Lunar's own comic_type column is populated from CoverType, a paper-stock
+// attribute -- every Lunar row is just SOFTCOVER/HARDCOVER regardless of
+// whether it's a real single issue or a collected edition, so it can't be
+// used to find periodicals for Lunar the way it can for PRH. issue_number
+// (parsed from a "#123" pattern in the title) is the reliable signal there.
+{
+  const familyLunarIssue = { id:'fam-l1', series_name:'Radiant Black', title:'Radiant Black #25', issue_number:'25', writer:'Kyle Higgins', comic_type:'SOFTCOVER', description:'A synopsis.' };
+  const familyLunarCollection = { id:'fam-l2', series_name:'Radiant Black', title:'Radiant Black TP Vol 01', issue_number:null, comic_type:'SOFTCOVER', description:'A collection.' };
+  const skuLunarIssue = {
+    id:'sku-lunar-issue', family_id:'fam-l1', cycle_id:'cycle-open', distributor:'Lunar', distributor_sku:'RB25',
+    upc:'850000000001', title:'Radiant Black #25', variant_label:'Cover A', variant_type:'Primary Title',
+    cover_artist:'Marcelo Costa', cover_image_url:'https://example.com/rb25.jpg', flags:{},
+    on_sale_date:'2026-10-01', customer_price_cents:399, is_incentive:false, customer_enabled:true, description:'',
+  };
+  const skuLunarCollection = {
+    id:'sku-lunar-collection', family_id:'fam-l2', cycle_id:'cycle-open', distributor:'Lunar', distributor_sku:'RBV1',
+    upc:'850000000002', title:'Radiant Black TP Vol 01', variant_label:'Cover A', customer_enabled:true,
+    on_sale_date:'2026-10-01', customer_price_cents:1699, description:'',
+  };
+  const deps = depsFor({
+    skus: [skuLunarIssue, skuLunarCollection],
+    families: [familyLunarIssue, familyLunarCollection],
+    cycles: [{ id:'cycle-open', status:'open', customer_cutoff_at:new Date(Date.now() + 3600000).toISOString() }],
+  });
+  const res = await handleFocRequest({ method:'GET' }, {}, new URL(`https://x/public/comics/new-releases?store_id=${storeId}&week=2026-09-28&distributor=Lunar`), deps);
+  assert.equal(res.data.distributor, 'Lunar');
+  assert.equal(res.data.covers.some(c => c.id === 'sku-lunar-issue'), true, 'a Lunar single issue (has issue_number) must appear even though comic_type is mislabeled SOFTCOVER');
+  assert.equal(res.data.covers.some(c => c.id === 'sku-lunar-collection'), false, 'a Lunar collection (no issue_number) must not appear, regardless of comic_type');
+}
+
 console.log('Comic new-releases catalog endpoint checks passed');
