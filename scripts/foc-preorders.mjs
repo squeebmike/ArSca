@@ -4,6 +4,8 @@
 // passes its existing Supabase/auth/Stripe helpers into handleFocRequest(), so
 // checkout continues to use the production payment and tenant foundations.
 
+import { awardWebOrderLoyalty } from './web-loyalty.mjs';
+
 const PRH = 'PRH';
 const LUNAR = 'Lunar';
 const ORDERED_STATUSES = new Set(['paid','reserved','ready_for_pickup','shipped','completed']);
@@ -2381,7 +2383,12 @@ export async function syncFocStripeEvent(env, event, deps) {
   if(status==='paid'){
     const {data:orders}=await deps.supabaseAdminFetch(env,`foc_preorder_orders?id=eq.${encodeURIComponent(orderId)}&stripe_payment_intent_id=eq.${encodeURIComponent(object.id)}&select=*&limit=1`);
     const existingOrder=orders?.[0];
-    if(existingOrder)paidItems=await recordPaidFocSale(env,{...existingOrder,paid_at:existingOrder.paid_at||paidAt},object,deps);
+    if(existingOrder){
+      paidItems=await recordPaidFocSale(env,{...existingOrder,paid_at:existingOrder.paid_at||paidAt},object,deps);
+      // Points on the comics themselves, not shipping. recordPaidFocSale has
+      // just written the pos_sales row (id = order id) the award hangs off.
+      await awardWebOrderLoyalty(env,deps.supabaseAdminFetch,{storeId:existingOrder.store_id,saleId:existingOrder.id,amountDollars:Number(existingOrder.subtotal_cents||0)/100,userId:existingOrder.user_id,name:existingOrder.customer_name,email:existingOrder.customer_email,phone:existingOrder.customer_phone});
+    }
   }
   // status=neq.paid on the paid transition doubles as the idempotency guard --
   // Stripe can and does redeliver the same webhook event more than once. If
