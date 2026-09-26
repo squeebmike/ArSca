@@ -19,6 +19,7 @@ import {
   text, exactIdentifier, dateIso, cents, issueNumber, titleWithoutVariant,
   variantLabel, prhFlags, inFilter, requireShippingRate,
 } from './foc-preorders.mjs';
+import { awardWebOrderLoyalty } from './web-loyalty.mjs';
 
 // PRH's OrderRequirement ratio text isn't always "1:N" -- the real backlist
 // feed also carries "2:40"-style ratios foc-preorders.mjs's own
@@ -698,7 +699,15 @@ export async function syncBacklistStripeEvent(env, event, deps) {
   if (status === 'paid') {
     const { data: orders } = await deps.supabaseAdminFetch(env, `backlist_orders?id=eq.${encodeURIComponent(orderId)}&stripe_payment_intent_id=eq.${encodeURIComponent(object.id)}&select=*&limit=1`);
     const existingOrder = orders?.[0];
-    if (existingOrder) paidItems = await recordPaidBacklistSale(env, { ...existingOrder, paid_at: existingOrder.paid_at || paidAt }, object, deps);
+    if (existingOrder) {
+      paidItems = await recordPaidBacklistSale(env, { ...existingOrder, paid_at: existingOrder.paid_at || paidAt }, object, deps);
+      // Points on the books themselves, not shipping; the pos_sales row the
+      // award hangs off (id = order id) was just written above.
+      await awardWebOrderLoyalty(env, deps.supabaseAdminFetch, {
+        storeId: existingOrder.store_id, saleId: existingOrder.id, amountDollars: Number(existingOrder.subtotal_cents || 0) / 100,
+        userId: existingOrder.user_id, name: existingOrder.customer_name, email: existingOrder.customer_email, phone: existingOrder.customer_phone,
+      });
+    }
   }
   // status=neq.paid is the idempotency guard against a redelivered webhook,
   // same pattern as syncFocStripeEvent -- a second delivery matches zero

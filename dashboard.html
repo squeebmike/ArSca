@@ -42963,7 +42963,9 @@ async function saveReceiptCapture(){
 async function accrueLoyaltyForContact(contact, name, saleId, total){
   if(getAccountContext().isDemo) return;
   const rate = getLoyaltyRate();
-  const points = Math.round(Number(total || 0) * rate / 100);
+  // rate is "% back" and points redeem at LOYALTY_POINTS_PER_DOLLAR (100 = $1),
+  // so each $1 earns `rate` points: 3% back on $50 is 150 points ($1.50).
+  const points = Math.round(Number(total || 0) * rate * LOYALTY_POINTS_PER_DOLLAR / 100);
   const storeId = getActiveStoreId();
   if(!contact || !storeId) return;
   try {

@@ -31,6 +31,7 @@ import { buildChecklistIndex, parseChecklistText, sha1Hex, slugify } from './scr
 import { handleFocRequest, syncFocStripeEvent, shippingSettings } from './scripts/foc-preorders.mjs';
 import { handleBacklistRequest, syncBacklistStripeEvent } from './scripts/backlist-catalog.mjs';
 import { handleAccountRequest, findLinkedCustomer } from './scripts/customer-account.mjs';
+import { awardWebOrderLoyalty } from './scripts/web-loyalty.mjs';
 import { handleFanClubRequest } from './scripts/fan-club.mjs';
 import { handleCardIntakeRequest } from './scripts/card-intake.mjs';
 import { handleDailyTasksRequest } from './scripts/daily-tasks.mjs';
@@ -1399,13 +1400,18 @@ async function verifyStripeWebhook(body, signatureHeader, secret) {
 // Idempotent: no-ops if the sale is already completed, so a redelivered
 // Stripe webhook event can't double-decrement stock.
 async function fulfillStorefrontOrderInventory(env, saleId, storeId) {
-  const { data: sales } = await supabaseAdminFetch(env, `pos_sales?id=eq.${encodeURIComponent(saleId)}&store_id=eq.${encodeURIComponent(storeId)}&select=id,status&limit=1`);
+  const { data: sales } = await supabaseAdminFetch(env, `pos_sales?id=eq.${encodeURIComponent(saleId)}&store_id=eq.${encodeURIComponent(storeId)}&select=id,status,subtotal,discount_total&limit=1`);
   const sale = sales?.[0];
   if (!sale || sale.status === 'completed') return;
   await supabaseAdminFetch(env, `pos_sales?id=eq.${encodeURIComponent(saleId)}&store_id=eq.${encodeURIComponent(storeId)}`, { method:'PATCH', headers:{ Prefer:'return=minimal' }, body:JSON.stringify({ status:'completed', payment_status:'paid', completed_at:new Date().toISOString() }) });
-  const { data: orders } = await supabaseAdminFetch(env, `storefront_orders?sale_id=eq.${encodeURIComponent(saleId)}&store_id=eq.${encodeURIComponent(storeId)}&select=id,fulfillment_method&limit=1`);
+  const { data: orders } = await supabaseAdminFetch(env, `storefront_orders?sale_id=eq.${encodeURIComponent(saleId)}&store_id=eq.${encodeURIComponent(storeId)}&select=id,fulfillment_method,customer_name,customer_email,customer_phone&limit=1`);
   const order = orders?.[0];
   if (!order) return; // regular POS sale, not a storefront order — nothing more to do
+  // Points on the merchandise (after discounts), not shipping.
+  await awardWebOrderLoyalty(env, supabaseAdminFetch, {
+    storeId, saleId, amountDollars: Number(sale.subtotal || 0) - Number(sale.discount_total || 0),
+    name: order.customer_name, email: order.customer_email, phone: order.customer_phone,
+  });
   const { data: lines } = await supabaseAdminFetch(env, `pos_sale_lines?sale_id=eq.${encodeURIComponent(saleId)}&store_id=eq.${encodeURIComponent(storeId)}&select=item_id,quantity`);
   const nextStatus = order.fulfillment_method === 'shipping' ? 'sold_pending_shipment' : 'sold_pending_pickup';
   // Store risk: an item sold out on the storefront while still carrying a
