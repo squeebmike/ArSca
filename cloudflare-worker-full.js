@@ -33,6 +33,7 @@ import { handleBacklistRequest, syncBacklistStripeEvent } from './scripts/backli
 import { handleAccountRequest, findLinkedCustomer } from './scripts/customer-account.mjs';
 import { handleArticlesRequest, articleSitemapPaths } from './scripts/comic-articles.mjs';
 import { extractSiteChrome, SITE_CHROME_SOURCE } from './scripts/site-chrome.mjs';
+import { handlePublicPokemonRequest } from './scripts/public-pokemon-sets.mjs';
 import { EditError, editSaleLine, editInventoryItem, adjustCustomerPoints, editHistory } from './scripts/database-edits.mjs';
 import { awardWebOrderLoyalty, planWebRedemption, holdWebOrderPoints, releaseWebOrderPoints, recordWebPointsTender, pointsHoldActive } from './scripts/web-loyalty.mjs';
 import { customerProfile, searchInventory, itemProfile } from './scripts/database-explorer.mjs';
@@ -13548,6 +13549,10 @@ async function routeRequest(request, env, ctx) {
     // the cron out on the very next run). The only real fix: devices don't
     // get a path to PPT's export endpoint at all, ever. Only the cron calls
     // it now, directly with the server-side key, never through this Worker.
+    // The public Pokémon Set Guide's set list and set cards (no sign-in).
+    const publicPokemon = await handlePublicPokemonRequest(request, env, url, json);
+    if (publicPokemon) return publicPokemon;
+
     if (url.pathname.startsWith('/pricing/pokemonpricetracker/') || url.pathname.startsWith('/pricing/pokemon/')) {
       // Docs: docs/api/pokemon-price-tracker-openapi.json
       // Clean aliases: /pricing/pokemon/* → canonical /pricing/pokemonpricetracker/*
