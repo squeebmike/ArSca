@@ -37,6 +37,10 @@ const deps = (skus, items = []) => ({
   ]), 'X-Men: Incursions #1');
   assert.equal(s.state, 'preorder');
   assert.equal(s.href, '/preorder/a', 'links the main (Cover A) cover');
+  assert.deepEqual(s.options.map(o => o.id), ['a', 'b', 'r'], 'every cover of this book, main cover first, the incentive last; not the other series');
+  assert.deepEqual(s.options.map(o => o.kind), ['pick', 'pick', 'request'], 'incentives are requests, not purchases');
+  assert.equal(s.options[0].label, 'Cover A by Gleb Melnikov');
+  assert.equal(s.options[0].cover, 'https://c/a.jpg');
   assert.equal(s.priceCents, 499);
   assert.equal(s.covers, 3, "the '92 book is not counted as a cover of this one");
   assert.equal(s.cover, 'https://c/a.jpg');
@@ -87,7 +91,12 @@ const get = async path => handleArticlesRequest({ method: 'GET' }, { WEBFLOW_TOK
   assert.match(html, /"@type":"Article"/);
   assert.match(html, /<h1>Big &lt;News&gt;<\/h1>/, 'title is escaped');
   assert.doesNotMatch(html, /<script>x<\/script>/);
-  assert.match(html, /href="\/preorder\/a">Preorder now/);
+  assert.match(html, /href="#book-x-men-incursions-1">Pick your cover/, 'buy box jumps to the cover picker');
+  assert.match(html, /id="book-x-men-incursions-1"[\s\S]*data-picker data-cutoff="[^"]+"[\s\S]*data-sku="a"/, 'every open cover is pickable on the article');
+  assert.doesNotMatch(html, /href="\/preorder\/a"/, 'no trip to another page to preorder');
+  assert.match(html, /<script>\(function\(\)\{var C=\{"api":"https:\/\/still-resonance-4f87\.swarnerauto\.workers\.dev"[^}]*"store":"store-1"\}/, 'picker script saves to this store');
+  assert.match(html, /\?'\/public\/preorders\/waitlist':'\/public\/preorders\/picks'\),\{method:req\?'POST':'PATCH'/, 'covers save to the account pulls API; incentives go to the request list');
+  assert.match(html, /mp-foc-session-v1/, 'same sign-in as the preorders page');
   assert.match(html, /Nope #9[\s\S]*Get notified/);
   assert.match(res.headers.get('Cache-Control'), /max-age=300/);
 }
