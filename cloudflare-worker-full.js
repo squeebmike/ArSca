@@ -3253,11 +3253,15 @@ async function fetchEbayFinanceTransactions(ebayToken, days = 90, maxPages = 10)
   return transactions;
 }
 
-async function applyEbayPaymentUpdate(env, storeId, payment, meta) {
-  const { data: lines } = await supabaseAdminFetch(env, `pos_sale_lines?sale_id=eq.${encodeURIComponent(payment.sale_id)}&store_id=eq.${encodeURIComponent(storeId)}&select=id,cost_basis&limit=2`);
+async function applyEbayPaymentUpdate(env, storeId, payment, meta, { onlyIfProfitChanged = false } = {}) {
+  const { data: lines } = await supabaseAdminFetch(env, `pos_sale_lines?sale_id=eq.${encodeURIComponent(payment.sale_id)}&store_id=eq.${encodeURIComponent(storeId)}&select=id,cost_basis,profit&limit=2`);
   if ((lines || []).length !== 1) return false;
   const profit = ebayLineProfit(meta, Number(lines[0].cost_basis || 0));
-  await supabaseAdminFetch(env, `pos_payments?id=eq.${encodeURIComponent(payment.id)}`, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ provider_metadata: meta }) });
+  if (onlyIfProfitChanged) {
+    if (Math.abs(Number(lines[0].profit) - profit) < 0.005) return false;
+  } else {
+    await supabaseAdminFetch(env, `pos_payments?id=eq.${encodeURIComponent(payment.id)}`, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ provider_metadata: meta }) });
+  }
   await supabaseAdminFetch(env, `pos_sale_lines?id=eq.${encodeURIComponent(lines[0].id)}`, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ profit }) });
   return true;
 }
@@ -3293,7 +3297,16 @@ async function reconcileEbayFinancesForStore(env, storeId, ebayToken) {
       if (await applyEbayPaymentUpdate(env, storeId, p, meta)) feesApplied++;
     }
   }
-  return { labelsApplied, feesApplied };
+  // Keep every linked eBay sale's profit in line with its recorded money
+  // (e.g. after the rule for not-yet-bought labels changed). Last 120 days.
+  let profitsCorrected = 0;
+  const since = new Date(Date.now() - 120 * 24 * 60 * 60 * 1000).toISOString();
+  const { data: linked } = await supabaseAdminFetch(env, `pos_payments?store_id=eq.${encodeURIComponent(storeId)}&provider=eq.ebay&reference=not.is.null&created_at=gte.${encodeURIComponent(since)}&select=id,sale_id,provider_metadata&limit=500`);
+  for (const p of linked || []) {
+    if (p.provider_metadata?.itemPrice == null) continue;
+    if (await applyEbayPaymentUpdate(env, storeId, p, p.provider_metadata, { onlyIfProfitChanged: true })) profitsCorrected++;
+  }
+  return { labelsApplied, feesApplied, profitsCorrected };
 }
 
 async function runScheduledEbayFinanceReconcile(env) {

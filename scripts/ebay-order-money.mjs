@@ -59,8 +59,13 @@ export function ebayOrderMoney(order, { feePct, feeFlat } = {}) {
 }
 
 // Profit for one line: item + shipping paid - cost - eBay fee - label.
+// Until the label bought on eBay shows up (a presale's can be weeks away),
+// it's assumed to cost what the buyer paid for shipping, so shipping money
+// never shows up as profit on its own. A voided label with no replacement
+// (net label cost back to 0) goes back to that assumption.
 export function ebayLineProfit({ itemPrice, shipping, fee, labelCost = 0 }, cost) {
-  return dollars(cents(itemPrice) + cents(shipping) - cents(cost) - cents(fee) - cents(labelCost));
+  const label = cents(labelCost) > 0 ? cents(labelCost) : cents(shipping);
+  return dollars(cents(itemPrice) + cents(shipping) - cents(cost) - cents(fee) - label);
 }
 
 // Finances API transactions -> what to apply to recorded sales, by order.
