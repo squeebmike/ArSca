@@ -113,6 +113,6 @@ for (const [name, src, ref] of [['foc', foc, 'foc:'], ['backlist', backlist, 'ba
 assert.match(worker, /amount:String\(chargeCents\)/, 'shop: card charged the remainder');
 assert.match(worker, /points_redeemed:pointsRedeemed, fulfillment_status:'pending'/);
 assert.match(worker, /releaseStorefrontPointsIfUnpayable/);
-assert.match(worker, /runScheduledPointsHoldSweep\(env\)\]\)/, 'abandoned holds are swept by the cron');
+assert.match(worker, /ctx\.waitUntil\(Promise\.all\(\[[^\]]*runScheduledPointsHoldSweep\(env\)[^\]]*\]\)\)/, 'abandoned holds are swept by the cron');
 assert.match(worker, /redeemRequested && request\.headers\.get\('Authorization'\)/, 'guest checkout never requires sign-in');
 console.log('Checkout wiring checks passed');

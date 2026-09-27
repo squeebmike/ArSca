@@ -80,7 +80,8 @@ console.log('FOC eBay presale partial-sale functional checks passed');
 // The source of the original leak is fixed at both marketplace-sale entry
 // points: a remaining FOC presale balance stays presale until the explicit
 // receive/convert workflow sets ebayPresaleConverted=true.
-const ebaySync = worker.slice(worker.indexOf("url.pathname === '/ebay/orders/sync'"), worker.indexOf("url.pathname === '/ebay/listing-performance'"));
+// The route calls syncEbayOrdersForStore, a top-level function (so the cron can reach it too).
+const ebaySync = worker.slice(worker.indexOf('async function syncEbayOrdersForStore('), worker.indexOf('async function runScheduledEbayOrderSync('));
 assert.match(ebaySync, /const preservePresale = !depleted && \(invRow\.status === 'presale' \|\| d\.source === 'foc_presale'\) && d\.ebayPresaleConverted !== true;/,
   'automatic eBay order sync must preserve the remaining FOC presale balance');
 assert.match(ebaySync, /const nextStatus = depleted \? 'sold' : preservePresale \? 'presale' : 'in_stock';/,

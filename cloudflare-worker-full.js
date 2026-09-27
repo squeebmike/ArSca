@@ -34,6 +34,7 @@ import { handleAccountRequest, findLinkedCustomer } from './scripts/customer-acc
 import { handleArticlesRequest, articleSitemapPaths } from './scripts/comic-articles.mjs';
 import { extractSiteChrome, SITE_CHROME_SOURCE } from './scripts/site-chrome.mjs';
 import { handlePublicPokemonRequest } from './scripts/public-pokemon-sets.mjs';
+import { ebayOrderMoney, ebayLineProfit, financeAdjustments, splitCents } from './scripts/ebay-order-money.mjs';
 import { EditError, editSaleLine, editInventoryItem, adjustCustomerPoints, editHistory } from './scripts/database-edits.mjs';
 import { awardWebOrderLoyalty, planWebRedemption, holdWebOrderPoints, releaseWebOrderPoints, recordWebPointsTender, pointsHoldActive } from './scripts/web-loyalty.mjs';
 import { customerProfile, searchInventory, itemProfile } from './scripts/database-explorer.mjs';
@@ -3094,6 +3095,41 @@ async function loadInventoryByEbaySku(env, storeId, orders) {
   return skuMap;
 }
 
+// What's kept on an eBay sale's payment: its order and line, and the money
+// behind its profit, so the fee, shipping and label can be corrected later.
+function ebaySaleMetadata(order, m, previous = {}) {
+  return {
+    ...previous,
+    ebayOrderId: String(order.orderId || previous.ebayOrderId || ''),
+    ebayLineItemId: m.lineItemId || previous.ebayLineItemId || '',
+    itemPrice: m.itemPrice, shipping: m.shipping, fee: m.fee, feeSource: m.feeSource,
+    labelCost: Number(previous.labelCost || 0), labelTransactionIds: previous.labelTransactionIds || [],
+  };
+}
+
+// A sale recorded before sales carried their eBay order: find it by the
+// order's creation time (what the sync used as its sale time) and item
+// price, then attach the order and redo its profit with the real fee and
+// shipping. Only ever touches an unlinked eBay payment, so it runs once.
+async function linkRecordedEbaySale(env, storeId, order, li, m) {
+  const soldAt = order.creationDate;
+  if (!soldAt) return false;
+  const { data: payments } = await supabaseAdminFetch(env, `pos_payments?store_id=eq.${encodeURIComponent(storeId)}&provider=eq.ebay&reference=is.null&created_at=eq.${encodeURIComponent(soldAt)}&select=id,sale_id,amount`);
+  const matches = (payments || []).filter(p => Math.abs(Number(p.amount) - m.itemPrice) < 0.005);
+  if (matches.length !== 1) return false;
+  const payment = matches[0];
+  const { data: lines } = await supabaseAdminFetch(env, `pos_sale_lines?sale_id=eq.${encodeURIComponent(payment.sale_id)}&store_id=eq.${encodeURIComponent(storeId)}&select=id,cost_basis&limit=2`);
+  if ((lines || []).length !== 1) return false;
+  const profit = ebayLineProfit(m, Number(lines[0].cost_basis || 0));
+  const total = Math.round((m.itemPrice + m.shipping) * 100) / 100;
+  const { data: claimed } = await supabaseAdminFetch(env, `pos_payments?id=eq.${encodeURIComponent(payment.id)}&reference=is.null`, { method: 'PATCH', headers: { Prefer: 'return=representation' },
+    body: JSON.stringify({ reference: String(order.orderId), amount: total, provider_metadata: ebaySaleMetadata(order, m) }) });
+  if (!claimed?.length) return false;
+  await supabaseAdminFetch(env, `pos_sale_lines?id=eq.${encodeURIComponent(lines[0].id)}`, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ profit }) });
+  await supabaseAdminFetch(env, `pos_sales?id=eq.${encodeURIComponent(payment.sale_id)}`, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ total }) });
+  return true;
+}
+
 async function syncEbayOrdersForStore(env, storeId, ebayToken, receiptSettings, { reconcile, confirmedBy }) {
     // Regular sync only looks at orders eBay itself hasn't marked fulfilled yet.
     // Reconcile mode additionally covers orders already fulfilled (through eBay's
@@ -3112,9 +3148,13 @@ async function syncEbayOrdersForStore(env, storeId, ebayToken, receiptSettings, 
     const errors = [];
     for (const order of orders) {
       if (order.orderPaymentStatus !== 'PAID') continue;
-      for (const li of (order.lineItems || [])) {
+      // Real eBay fee (or an estimate on the full order total), and the
+      // shipping the buyer paid, per line item. See ebay-order-money.mjs.
+      const money = ebayOrderMoney(order, { feePct: receiptSettings?.ebayFeePct ?? EBAY_DEFAULT_FEE_PCT, feeFlat: receiptSettings?.ebayFeeFlat });
+      for (const [lineIndex, li] of (order.lineItems || []).entries()) {
         const sku = String(li.sku || '');
         const invRow = skuMap.get(sku) || null;
+        const m = money[lineIndex];
 
         // Keyed by sku (as before) whenever one exists -- preserves the exact
         // KV key every previously-synced matched sale was already recorded
@@ -3123,7 +3163,13 @@ async function syncEbayOrdersForStore(env, storeId, ebayToken, receiptSettings, 
         // eBay's own lineItemId so different items in the same order don't
         // collide when sku is blank.
         const trackKey = `ebay_order_synced:${storeId}:${order.orderId}:${sku || li.lineItemId || 'noid'}`;
-        if (env.LBA_KV && await env.LBA_KV.get(trackKey)) continue;
+        if (env.LBA_KV && await env.LBA_KV.get(trackKey)) {
+          // Recorded before sales carried their eBay order: link it now and
+          // correct its fee and shipping. No-op once linked.
+          try { await linkRecordedEbaySale(env, storeId, order, li, m); }
+          catch (linkErr) { errors.push({ sku, orderId: order.orderId, error: 'link: ' + linkErr.message }); }
+          continue;
+        }
 
         try {
           const quantitySold = Math.max(1, Number(li.quantity || 1));
@@ -3133,28 +3179,20 @@ async function syncEbayOrdersForStore(env, storeId, ebayToken, receiptSettings, 
           const d = invRow ? (invRow.data || {}) : {};
           let remaining = 0, depleted = false;
           const cost = invRow ? Number(d.cost || 0) : 0;
-          // eBay's own final value fee never showed up here -- profit was
-          // gross sale price minus cost only, overstating real money made
-          // by the full fee percentage on every auto-synced order. Manual
-          // "Record External Sale"/"Sold on Whatnot" already deduct a fee
-          // the dealer enters; a real eBay order has no equivalent manual
-          // step, so apply the same default rate used as eBay's preset
-          // there (EBAY_DEFAULT_FEE_PCT, kept in sync with
-          // EXTERNAL_SALE_FEE_DEFAULTS.eBay in dashboard.html) unless a
-          // per-store override is configured.
-          const ebayFeePct = Number(receiptSettings?.ebayFeePct ?? EBAY_DEFAULT_FEE_PCT);
-          const ebayFeeFlat = Number(receiptSettings?.ebayFeeFlat ?? EBAY_DEFAULT_FEE_FLAT);
-          const feeAmount = Math.round((salePrice * (ebayFeePct / 100) + ebayFeeFlat) * 100) / 100;
-          const profit = salePrice - cost - feeAmount;
+          // Item + the shipping the buyer paid - cost - eBay's fee. The label
+          // bought on eBay comes off later (runScheduledEbayFinanceReconcile).
+          const feeAmount = m.fee;
+          const orderTotal = Math.round((salePrice + m.shipping) * 100) / 100;
+          const profit = ebayLineProfit(m, cost);
           const itemName = d.name || li.title || 'eBay Item';
 
           const saleId = crypto.randomUUID();
           await supabaseAdminFetch(env, 'pos_sales', { method: 'POST', headers: { Prefer: 'return=minimal' },
-            body: JSON.stringify({ id: saleId, store_id: storeId, subtotal: salePrice, discount_total: 0, tax_total: 0, total: salePrice, status: 'completed', payment_status: 'paid', completed_at: soldAt, created_at: soldAt }) });
+            body: JSON.stringify({ id: saleId, store_id: storeId, subtotal: salePrice, discount_total: 0, tax_total: 0, total: orderTotal, status: 'completed', payment_status: 'paid', completed_at: soldAt, created_at: soldAt }) });
           await supabaseAdminFetch(env, 'pos_sale_lines', { method: 'POST', headers: { Prefer: 'return=minimal' },
             body: JSON.stringify([{ id: crypto.randomUUID(), sale_id: saleId, store_id: storeId, item_id: invRow ? invRow.id : null, title: itemName, category: d.category || guessSaleCategoryFromTitle(itemName), quantity: quantitySold, unit_price: salePrice / quantitySold, original_price: salePrice / quantitySold, adjusted_price: salePrice / quantitySold, discount_amount: 0, cost_basis: cost, profit, condition: d.condition || '', source_id: 'ebay:' + order.orderId, image_url: d.thumbnail || d.image || '' }]) });
           await supabaseAdminFetch(env, 'pos_payments', { method: 'POST', headers: { Prefer: 'return=minimal' },
-            body: JSON.stringify({ id: crypto.randomUUID(), sale_id: saleId, store_id: storeId, method: 'eBay', amount: salePrice, status: 'confirmed', provider: 'ebay', currency: 'USD', confirmed_by: confirmedBy, confirmed_at: soldAt, created_at: soldAt }) });
+            body: JSON.stringify({ id: crypto.randomUUID(), sale_id: saleId, store_id: storeId, method: 'eBay', amount: orderTotal, reference: order.orderId, provider_metadata: ebaySaleMetadata(order, m), status: 'confirmed', provider: 'ebay', currency: 'USD', confirmed_by: confirmedBy, confirmed_at: soldAt, created_at: soldAt }) });
 
           if (invRow) {
             const currentQty = Number(d.quantity ?? d.qty ?? 1) || 0;
@@ -3184,7 +3222,7 @@ async function syncEbayOrdersForStore(env, storeId, ebayToken, receiptSettings, 
           }
 
           if (env.LBA_KV) await env.LBA_KV.put(trackKey, '1', { expirationTtl: 60 * 60 * 24 * 180 });
-          results.push({ itemId: invRow ? invRow.id : null, name: itemName, sku, orderId: order.orderId, salePrice, quantitySold, depleted, matchedInventory: !!invRow });
+          results.push({ itemId: invRow ? invRow.id : null, name: itemName, sku, orderId: order.orderId, salePrice, shipping: m.shipping, fee: feeAmount, feeSource: m.feeSource, quantitySold, depleted, matchedInventory: !!invRow });
         } catch (itemErr) {
           errors.push({ sku, orderId: order.orderId, error: itemErr.message });
         }
@@ -3192,6 +3230,84 @@ async function syncEbayOrdersForStore(env, storeId, ebayToken, receiptSettings, 
     }
     const matchedCount = results.filter(r => r.matchedInventory).length;
     return { ok: true, checked: orders.length, matched: matchedCount, recorded: results.length, results, errors };
+}
+
+// Label costs (and real fees for any sale recorded with an estimate) come
+// from eBay's Finances API, often weeks after the sale -- a presale's label
+// is bought on release day. Each SHIPPING_LABEL transaction is applied once
+// (its id is kept on the sale), a voided label's credit takes it back off,
+// and a SALE transaction's per-line marketplace fees replace an estimate.
+async function fetchEbayFinanceTransactions(ebayToken, days = 90, maxPages = 10) {
+  const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+  const filter = 'transactionDate:[' + since + '..],transactionType:{SALE|SHIPPING_LABEL}';
+  let next = 'https://apiz.ebay.com/sell/finances/v1/transaction?filter=' + encodeURIComponent(filter) + '&limit=200';
+  const transactions = [];
+  for (let page = 0; next && page < maxPages; page++) {
+    const res = await ebayFetchWithRetry(next, { headers: { 'Authorization': 'Bearer ' + ebayToken } });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error('eBay finances lookup failed (' + res.status + '): ' + (data?.errors?.[0]?.message || ''));
+    const batch = data.transactions || [];
+    transactions.push(...batch);
+    next = batch.length && typeof data.next === 'string' && data.next.startsWith('https://apiz.ebay.com/') ? data.next : null;
+  }
+  return transactions;
+}
+
+async function applyEbayPaymentUpdate(env, storeId, payment, meta) {
+  const { data: lines } = await supabaseAdminFetch(env, `pos_sale_lines?sale_id=eq.${encodeURIComponent(payment.sale_id)}&store_id=eq.${encodeURIComponent(storeId)}&select=id,cost_basis&limit=2`);
+  if ((lines || []).length !== 1) return false;
+  const profit = ebayLineProfit(meta, Number(lines[0].cost_basis || 0));
+  await supabaseAdminFetch(env, `pos_payments?id=eq.${encodeURIComponent(payment.id)}`, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ provider_metadata: meta }) });
+  await supabaseAdminFetch(env, `pos_sale_lines?id=eq.${encodeURIComponent(lines[0].id)}`, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ profit }) });
+  return true;
+}
+
+async function reconcileEbayFinancesForStore(env, storeId, ebayToken) {
+  const { labels, fees } = financeAdjustments(await fetchEbayFinanceTransactions(ebayToken));
+  let labelsApplied = 0, feesApplied = 0;
+  const orderIds = [...labels.keys()];
+  for (let i = 0; i < orderIds.length; i += 40) {
+    const list = orderIds.slice(i, i + 40).map(id => '"' + String(id).replace(/["\\]/g, '') + '"').join(',');
+    const { data: payments } = await supabaseAdminFetch(env, `pos_payments?store_id=eq.${encodeURIComponent(storeId)}&provider=eq.ebay&reference=in.(${encodeURIComponent(list)})&select=id,sale_id,reference,provider_metadata`);
+    const byOrder = new Map();
+    for (const p of payments || []) { if (!byOrder.has(p.reference)) byOrder.set(p.reference, []); byOrder.get(p.reference).push(p); }
+    for (const [orderId, rows] of byOrder) {
+      const seen = new Set(rows.flatMap(p => p.provider_metadata?.labelTransactionIds || []));
+      const fresh = (labels.get(orderId) || []).filter(t => !seen.has(t.id));
+      if (!fresh.length) continue;
+      const shares = splitCents(fresh.reduce((a, t) => a + t.cents, 0), rows.map(p => Math.round(Number(p.provider_metadata?.itemPrice || 0) * 100)));
+      for (const [k, p] of rows.entries()) {
+        const meta = { ...(p.provider_metadata || {}) };
+        meta.labelCost = Math.round((Number(meta.labelCost || 0) * 100 + shares[k])) / 100;
+        meta.labelTransactionIds = [...(meta.labelTransactionIds || []), ...fresh.map(t => t.id)];
+        if (await applyEbayPaymentUpdate(env, storeId, p, meta)) labelsApplied++;
+      }
+    }
+  }
+  if (fees.size) {
+    const { data: estimated } = await supabaseAdminFetch(env, `pos_payments?store_id=eq.${encodeURIComponent(storeId)}&provider=eq.ebay&provider_metadata->>feeSource=eq.estimate&select=id,sale_id,reference,provider_metadata&limit=500`);
+    for (const p of estimated || []) {
+      const lineItemId = String(p.provider_metadata?.ebayLineItemId || '');
+      if (!fees.has(lineItemId)) continue;
+      const meta = { ...p.provider_metadata, fee: fees.get(lineItemId) / 100, feeSource: 'ebay' };
+      if (await applyEbayPaymentUpdate(env, storeId, p, meta)) feesApplied++;
+    }
+  }
+  return { labelsApplied, feesApplied };
+}
+
+async function runScheduledEbayFinanceReconcile(env) {
+  if (!(env.SUPABASE_URL && (env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SERVICE_KEY))) return;
+  const { data: members } = await supabaseAdminFetch(env, `store_members?active=eq.true&select=store_id`);
+  const storeIds = [...new Set((members || []).map(m => String(m.store_id || '')).filter(Boolean))];
+  for (const storeId of storeIds) {
+    try {
+      let ebayToken = '';
+      try { ebayToken = await getEbayUserAccessToken(env); } catch (_) { continue; }
+      if (!ebayToken) continue;
+      await reconcileEbayFinancesForStore(env, storeId, ebayToken);
+    } catch (e) { console.error('Scheduled eBay finance reconcile failed for store', storeId, e.message); }
+  }
 }
 
 // Store request: eBay sales made directly through eBay's own app/site
@@ -10092,7 +10208,10 @@ async function routeRequest(request, env, ctx) {
       const receiptSettings = syncSettings?.[0]?.receipt_settings || {};
       const reconcile = url.searchParams.get('scope') === 'reconcile';
       try {
-        return json(await syncEbayOrdersForStore(env, storeId, ebayToken, receiptSettings, { reconcile, confirmedBy: auth.user.id }));
+        const result = await syncEbayOrdersForStore(env, storeId, ebayToken, receiptSettings, { reconcile, confirmedBy: auth.user.id });
+        // Label costs and real fees from eBay's payouts ledger; never blocks the sync result.
+        result.finances = await reconcileEbayFinancesForStore(env, storeId, ebayToken).catch(e => ({ error: e.message }));
+        return json(result);
       } catch (e) {
         console.error('eBay order sync error:', e);
         return json({ ok: false, error: e.message }, 500);
@@ -16033,7 +16152,7 @@ export default {
   // /dealscan/latest reads) instead of only ever being reachable by an
   // on-demand click.
   async scheduled(event, env, ctx) {
-    ctx.waitUntil(Promise.all([runScheduledDealScans(env), runScheduledEbayReprice(env), runScheduledEbayOrderSync(env), runScheduledShopifyOrderSync(env), runScheduledStorefrontReviewRequests(env), runScheduledPointsHoldSweep(env)]));
+    ctx.waitUntil(Promise.all([runScheduledDealScans(env), runScheduledEbayReprice(env), runScheduledEbayOrderSync(env), runScheduledShopifyOrderSync(env), runScheduledStorefrontReviewRequests(env), runScheduledPointsHoldSweep(env), runScheduledEbayFinanceReconcile(env)]));
   },
 };
 
