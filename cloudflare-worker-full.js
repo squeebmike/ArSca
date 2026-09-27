@@ -707,26 +707,26 @@ function guessSaleCategoryFromTitle(title) {
   return '';
 }
 
-// Database viewer allowlist (see /store/db/table). Keys are what the dashboard
-// asks for; table/select/order are fixed here, never taken from the request.
-const DATABASE_VIEWER_TABLES = Object.fromEntries([
-  ['loyalty_ledger', 'Loyalty points history', '*,customer:customers(name,phone,email)'],
-  ['customers', 'Customers', '*'],
-  ['pos_sales', 'Sales', '*'],
-  ['pos_sale_lines', 'Sale line items', '*'],
-  ['pos_payments', 'Payments', '*'],
-  ['storefront_orders', 'Website shop orders', '*'],
-  ['foc_preorder_orders', 'Comic preorder orders', '*'],
-  ['backlist_orders', 'Backlist book orders', '*'],
-  ['gift_cards', 'Gift cards', '*'],
-  ['gift_card_transactions', 'Gift card transactions', '*'],
-  ['customer_receipts', 'Text receipts', '*'],
-  ['buylist_submissions', 'Buylist submissions', '*'],
-  ['pull_list_subscriptions', 'Pull lists', '*'],
-  ['event_registrations', 'Event registrations', '*'],
-  ['inventory_items', 'Inventory items', '*'],
-  ['comic_skus', 'FOC comic catalog', '*'],
-].map(([key, label, select]) => [key, { table: key, label, select, order: 'created_at' }]));
+// Database viewer allowlist (see /store/db/table). Every store-scoped table
+// except ones holding secrets (payment-account links, phone verification
+// codes, staff invite tokens, phone/Twilio config, scanner device tokens,
+// store settings) or internal lock rows. Keys are what the dashboard asks
+// for; table/select/order are fixed here, never taken from the request.
+const DATABASE_VIEWER_GROUPS = [
+  ['Sales & money', [['pos_sales','Sales'],['pos_sale_lines','Sale line items'],['pos_payments','Payments'],['pos_refunds','Refunds'],['sales','Legacy sales log'],['pos_drawer_sessions','Cash drawer sessions'],['pos_drawer_movements','Cash drawer movements'],['gift_cards','Gift cards'],['gift_card_transactions','Gift card transactions'],['pos_audit_log','Register audit log']]],
+  ['Customers', [['customers','Customers'],['loyalty_ledger','Loyalty points history','*,customer:customers(name,phone,email)'],['trade_credit_ledger','Trade credit history','*,customer:customers(name,phone,email)'],['customer_receipts','Text receipts'],['customer_wants','Customer want list'],['email_notify_contacts','Email notify contacts'],['storefront_notify_requests','Back-in-stock requests'],['fan_club_subscribers','Fan club subscribers'],['messages','Messages'],['calls','Phone calls'],['voicemails','Voicemails']]],
+  ['Website orders', [['storefront_orders','Website shop orders'],['foc_preorder_orders','Comic preorder orders'],['foc_preorder_items','Comic preorder items'],['backlist_orders','Backlist book orders'],['backlist_order_items','Backlist order items'],['backlist_picks','Backlist wishlists'],['foc_favorites','Preorder favorites'],['foc_pick_lists','Preorder pick lists'],['foc_incentive_requests','Ratio-cover requests']]],
+  ['Inventory', [['inventory_items','Inventory items'],['inventory_movements','Inventory movements'],['price_change_alerts','Price change alerts'],['pricing_snapshots','Pricing snapshots'],['collection_buys','Collection buys'],['buylist_submissions','Buylist submissions'],['acquisition_rules','Acquisition rules'],['grading_submissions','Grading submissions'],['consignor_people','Consignors'],['consignment_items','Consignment items'],['consignment_alerts','Consignment alerts']]],
+  ['Comics & books catalog', [['comic_skus','FOC comic covers'],['comic_title_families','FOC comic series'],['foc_cycles','FOC weeks'],['foc_prh_submissions','PRH order submissions'],['foc_ebay_stock','FOC eBay stock'],['pull_list_series','Pull list series'],['pull_list_subscriptions','Pull list subscribers'],['pull_list_items','Pull list items'],['backlist_titles','Backlist titles'],['backlist_skus','Backlist SKUs'],['backlist_imports','Backlist imports']]],
+  ['Events & shows', [['events','Events'],['event_registrations','Event registrations'],['event_matches','Event matches'],['whatnot_shows','Whatnot shows'],['whatnot_show_items','Whatnot show items']]],
+  ['Scanning & intake', [['scan_sessions','Scan sessions'],['scan_queue','Scan queue'],['card_intake_batches','Card intake batches'],['card_intake_items','Card intake items'],['card_identification_attempts','Card ID attempts'],['card_reviews','Card reviews'],['pocket_scout_images','Pocket Scout images']]],
+  ['Staff & tasks', [['store_members','Store members'],['daily_task_roles','Daily task roles'],['daily_task_items','Daily task items'],['daily_task_completions','Daily task completions'],['daily_task_overrides','Daily task overrides']]],
+];
+// Tables with no created_at sort by updated_at, or unsorted.
+const DATABASE_VIEWER_ORDER = { card_intake_items:'updated_at', consignment_items:'updated_at', daily_task_completions:null, foc_ebay_stock:null, pricing_snapshots:null };
+const DATABASE_VIEWER_TABLES = Object.fromEntries(DATABASE_VIEWER_GROUPS.flatMap(([group, tables]) => tables.map(([key, label, select]) => [key, {
+  table: key, label, group, select: select || '*', order: key in DATABASE_VIEWER_ORDER ? DATABASE_VIEWER_ORDER[key] : 'created_at',
+}])));
 
 // Presale items built from FOC data never get a Metron record, so the shop's
 // "Book Details, Story & Creators" block had nothing to show for them. The
@@ -10897,6 +10897,12 @@ export default {
       const profile = await itemProfile(env, supabaseAdminFetch, storeId, p.get('id') || '');
       return profile ? json({ ok: true, profile }) : json({ ok: false, error: 'Item not found' }, 404);
     }
+    if (url.pathname === '/store/db/tables' && request.method === 'GET') {
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId, ['owner','admin']);
+      if (auth.error) return auth.error;
+      return json({ ok: true, groups: DATABASE_VIEWER_GROUPS.map(([group, tables]) => ({ group, tables: tables.map(([key, label]) => ({ key, label })) })) });
+    }
     if (url.pathname === '/store/db/table' && request.method === 'GET') {
       const storeId = requestStoreId(request, url);
       const auth = await requireStoreUser(request, env, storeId, ['owner','admin']);
@@ -10905,7 +10911,8 @@ export default {
       if (!spec) return json({ ok: false, error: 'Unknown table' }, 400);
       const limit = Math.min(200, Math.max(1, Number(url.searchParams.get('limit')) || 50));
       const offset = Math.max(0, Number(url.searchParams.get('offset')) || 0);
-      const { data, response } = await supabaseAdminFetch(env, `${spec.table}?store_id=eq.${encodeURIComponent(storeId)}&select=${spec.select}&order=${spec.order}.desc.nullslast&limit=${limit}&offset=${offset}`, { headers: { Prefer: 'count=exact' } });
+      const order = spec.order ? `&order=${spec.order}.desc.nullslast` : '';
+      const { data, response } = await supabaseAdminFetch(env, `${spec.table}?store_id=eq.${encodeURIComponent(storeId)}&select=${spec.select}${order}&limit=${limit}&offset=${offset}`, { headers: { Prefer: 'count=exact' } });
       const total = Number(String(response.headers.get('content-range') || '').split('/')[1]) || null;
       return json({ ok: true, table: url.searchParams.get('table'), rows: data || [], total, limit, offset });
     }
