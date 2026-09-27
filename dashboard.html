@@ -3379,11 +3379,14 @@ body.show-mode .inv-sync-badge{display:none;}
     <select id="oneoff-category">
       <option value="">Select category…</option>
       <option value="Pokemon TCG">Pokémon</option>
-      <option value="Sports Card">Sports Card</option>
+      <option value="Sports">Sports</option>
       <option value="Comic">Comic</option>
       <option value="Magic: The Gathering">MTG</option>
-      <option value="Sealed">Sealed / Pack</option>
+      <option value="One Piece TCG">One Piece</option>
+      <option value="Yu-Gi-Oh!">Yu-Gi-Oh!</option>
+      <option value="Disney Lorcana">Lorcana</option>
       <option value="Collectibles">Collectibles</option>
+      <option value="Supplies">Supplies</option>
       <option value="Other">Other</option>
     </select>
     <label>Sale Price ($) *</label>
@@ -16607,6 +16610,7 @@ function renderAll(opts){
   // (there are 30+, after edits/sales/syncs) keeps the old fully-synchronous
   // behavior so nothing that reads DOM state right after calling it breaks.
   const deferHeavy = opts && opts.deferHeavy === true;
+  markLedgerSoldRowsStale(); // renderAll runs after sales/voids/syncs -- re-read the ledger
   renderPriceChangeAlerts();
   renderStats(); renderCats(); renderTopVal(); renderFeed(); renderPulse();
   const renderHeavy = () => {
@@ -16852,6 +16856,76 @@ function dedupeTransactionRows(txRows, inventorySoldItems){
 //    alone) isn't lost just because it can't be matched by id, while a
 //    genuine already-counted sellout still gets excluded when it fuzzy-
 //    matches the real sold record.
+// Sale-line categories collapsed onto the inventory's own category names.
+// One-off sales used to save "Sports Card"/"Sealed", which split a category's
+// profit across two labels -- and "Sports Card" isn't an inventory category,
+// so Profit by Category dropped those sales entirely.
+function canonicalSaleCategory(value){
+  const raw = String(value || '').trim();
+  if(!raw) return 'Other';
+  if(STANDARD_INVENTORY_CATEGORIES.includes(raw)) return raw;
+  const s = raw.toLowerCase();
+  if(/^sports?( cards?)?$|baseball|basketball|football|hockey|soccer/.test(s)) return 'Sports';
+  if(/pok[eé]mon/.test(s)) return 'Pokemon TCG';
+  if(/^magic|^mtg$/.test(s)) return 'Magic: The Gathering';
+  if(/^comics?$/.test(s)) return 'Comic';
+  if(/^collectibles?$/.test(s)) return 'Collectibles';
+  if(/^suppl(y|ies)$/.test(s)) return 'Supplies';
+  return raw;
+}
+
+// The Sales list and Profit by Category read the real sales ledger
+// (pos_sales/pos_sale_lines) -- the same source as Reports and the Home
+// tiles. Merging sold inventory rows with local register logs showed a sold
+// item twice whenever the two couldn't be matched, and the inventory row
+// carried its stale pre-sale list price instead of what it actually sold for.
+// null means "not loaded" (offline, demo, or query failed): callers fall back
+// to that older local merge.
+let ledgerSoldRows = null;
+let ledgerSoldRowsAt = 0;
+let ledgerSoldRowsLoading = null;
+async function loadLedgerSoldRows(){
+  const sb = getSupabaseClient();
+  const storeId = getActiveStoreId();
+  if(!sb || !storeId || getAccountContext().isDemo) return null;
+  const { data: sales, error } = await sb.from('pos_sales')
+    .select('id,completed_at,created_at,pos_sale_lines(id,title,category,quantity,adjusted_price,cost_basis,profit,item_id),pos_payments(method,status)')
+    .eq('store_id', storeId)
+    .in('status', ['completed','succeeded'])
+    .order('completed_at', { ascending:false })
+    .limit(1000);
+  if(error) throw error;
+  const itemsById = new Map((all || []).map(i => [String(i.id), i]));
+  const rows = [];
+  for(const sale of (sales || [])){
+    const channel = [...new Set((sale.pos_payments || []).map(p => p.method).filter(Boolean))].join(' + ');
+    for(const line of (sale.pos_sale_lines || [])){
+      const quantity = Math.max(1, Number(line.quantity || 1));
+      const salePrice = Number(line.adjusted_price || 0);
+      const profit = Number(line.profit ?? (salePrice - Number(line.cost_basis || 0)));
+      const item = line.item_id ? itemsById.get(String(line.item_id)) : null;
+      const category = canonicalSaleCategory(line.category || item?.category);
+      rows.push({
+        id:'ledger_' + line.id, name:line.title || item?.name || 'Sale item', set:item?.set || '',
+        category, categoryName:category, quantity, salePrice,
+        // Per-unit, like every other sold row -- renderSoldTable multiplies by quantity.
+        cost:(salePrice - profit) / quantity, profit,
+        channel, soldAt:sale.completed_at || sale.created_at || '', status:'sold',
+        source:'ledger', shopId:line.item_id || '', saleId:sale.id,
+      });
+    }
+  }
+  return rows;
+}
+function markLedgerSoldRowsStale(){ ledgerSoldRowsAt = 0; }
+function requestLedgerSoldRows(){
+  if(ledgerSoldRowsLoading || Date.now() - ledgerSoldRowsAt < 3000) return;
+  ledgerSoldRowsLoading = loadLedgerSoldRows()
+    .then(rows => { if(rows) ledgerSoldRows = rows; })
+    .catch(e => console.warn('[sales] ledger load failed, using local sale records:', e?.message || e))
+    .finally(() => { ledgerSoldRowsAt = Date.now(); ledgerSoldRowsLoading = null; renderSoldTable(); renderProfitMeter(); });
+}
+
 function getUnlinkedTransactionRows(inventorySoldItems){
   const txRows = transactionSoldRows();
   // Precise shopId matching used to be skipped entirely whenever the store
@@ -17115,13 +17189,21 @@ function renderCats(){
   }
   document.getElementById('ct-total').textContent=ins.length+' in stock';
 
-  // Profit meter — same sourceType-tagged logic as renderStats (keep one-off/
-  // non-inventory transaction rows always; skip inventory-linked ones, already
-  // counted in invSold)
-  const invSold=all.filter(i=>i.status==='sold');
-  const sol=invSold.concat(getUnlinkedTransactionRows(invSold));
+  renderProfitMeter();
+}
+
+function renderProfitMeter(){
   const profitMeter=document.getElementById('profit-meter');
-  const catProfits=cats.map(c=>({c,p:sol.filter(i=>i.category===c).reduce((a,i)=>a+(i.profit||0),0)}));
+  if(!profitMeter) return;
+  const cats=getInventoryCategories();
+  const catColors=getInventoryCategoryColors();
+  // Real ledger when loaded (see loadLedgerSoldRows); otherwise the older
+  // local merge -- keep one-off/non-inventory transaction rows always, skip
+  // inventory-linked ones already counted in invSold.
+  requestLedgerSoldRows();
+  const invSold=all.filter(i=>i.status==='sold');
+  const sol=ledgerSoldRows || invSold.concat(getUnlinkedTransactionRows(invSold));
+  const catProfits=cats.map(c=>({c,p:sol.filter(i=>canonicalSaleCategory(i.category)===c).reduce((a,i)=>a+(i.profit||0),0)}));
   const maxP=Math.max(...catProfits.map(x=>Math.abs(x.p)),1);
   profitMeter.innerHTML=catProfits.map(({c,p})=>`
     <div class="pm-row" style="cursor:pointer" onclick="viewSalesByCategory('${escHtml(c)}')">
@@ -18071,7 +18153,7 @@ function aggregateReportsData(saleRows, lines, payments, saleMap, groupBy, fromV
     p.grossProfit += profit;
     if(cost <= 0) p.missingCostLines += 1;
 
-    const c = getCategory(line.category || 'Uncategorized');
+    const c = getCategory(line.category ? canonicalSaleCategory(line.category) : 'Uncategorized');
     c.revenue += revenue; c.cogs += cost; c.profit += profit;
     if(line.taxable === false) c.exemptRevenue += revenue; else c.taxableRevenue += revenue;
 
@@ -18646,8 +18728,9 @@ function renderSoldTable(){
   // soldData, so suppressing them here made money that was actually charged
   // invisible in the Sold Items list for every store using Supabase-backed
   // inventory.
-  const txRows=getUnlinkedTransactionRows(soldData);
-  const rows=soldData.concat(txRows).filter(i=>!q||(i.name||'').toLowerCase().includes(q)||(i.category||'').toLowerCase().includes(q)).sort((a,b)=>new Date(b.soldAt||0)-new Date(a.soldAt||0));
+  requestLedgerSoldRows();
+  const sourceRows=ledgerSoldRows || soldData.concat(getUnlinkedTransactionRows(soldData));
+  const rows=sourceRows.filter(i=>!q||(i.name||'').toLowerCase().includes(q)||(i.category||'').toLowerCase().includes(q)).sort((a,b)=>new Date(b.soldAt||0)-new Date(a.soldAt||0));
   const tb=document.getElementById('sold-body');
   if(!rows.length){tb.innerHTML=`<tr><td colspan="9"><div class="empty"><div class="empty-t">NO SALES YET</div></div></td></tr>`;return;}
   const isVoidableSaleId=id=>/^[0-9a-f-]{36}$/i.test(id||'');
@@ -18742,6 +18825,7 @@ async function confirmVoidSale(saleId){
     const withoutVoided = txLog.filter(t => String(t.id) !== String(saleId));
     if(withoutVoided.length !== txLog.length) localStorage.setItem('pos_transactions', JSON.stringify(withoutVoided));
     await loadInventory();
+    markLedgerSoldRowsStale();
     renderStats(); renderTodayMode(); renderSoldTable();
   } catch(e) {
     if(statusEl){ statusEl.style.color = 'var(--red)'; statusEl.textContent = 'Void failed: ' + (e.message || e); }
@@ -42070,7 +42154,7 @@ function customerSafeLine(item){
     item_id:item.shopId || item.wfId || item.id || '',
     source_type:item.sourceType || 'inventory',
     title:item.name || 'Item',
-    category:item.categoryName || item.category || '',
+    category:canonicalSaleCategory(item.categoryName || item.category),
     quantity:lineQuantity,
     unit_price:Number(item.price || 0),
     original_price:Number(item.originalPrice ?? item.price ?? 0),
