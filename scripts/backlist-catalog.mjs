@@ -19,7 +19,7 @@ import {
   text, exactIdentifier, dateIso, cents, issueNumber, titleWithoutVariant,
   variantLabel, prhFlags, inFilter, requireShippingRate,
 } from './foc-preorders.mjs';
-import { awardWebOrderLoyalty } from './web-loyalty.mjs';
+import { awardWebOrderLoyalty, planWebRedemption, holdWebOrderPoints, releaseWebOrderPoints, recordWebPointsTender } from './web-loyalty.mjs';
 
 // PRH's OrderRequirement ratio text isn't always "1:N" -- the real backlist
 // feed also carries "2:40"-style ratios foc-preorders.mjs's own
@@ -606,7 +606,12 @@ async function backlistCheckout(request, env, deps) {
   try { if (method === 'shipping') shipping = await requireShippingRate(env, deps, storeId, shippingAddress, text(fulfillment.shippingRateId, 100)); }
   catch (error) { return deps.json({ ok: false, error: error.message }, 409); }
   const shippingCents = Number(shipping?.amountCents || 0);
-  const totalCents = subtotalCents + shippingCents;
+  const orderCents = subtotalCents + shippingCents;
+  const plan = await planWebRedemption(env, deps.supabaseAdminFetch, { storeId, userId: auth.user.id, requested: body.redeemPoints, merchandiseCents: subtotalCents, totalCents: orderCents });
+  if (plan.error) return deps.json({ ok: false, error: plan.error }, 409);
+  const pointsRedeemed = plan.points;
+  // total_cents is what goes on the card; the points cover the rest.
+  const totalCents = orderCents - pointsRedeemed;
   const orderId = crypto.randomUUID();
   const orderNumber = `BL-${new Date().toISOString().slice(0, 10).replaceAll('-', '')}-${orderId.slice(0, 8).toUpperCase()}`;
   const mode = deps.stripeMode(env);
@@ -617,7 +622,7 @@ async function backlistCheckout(request, env, deps) {
     status: 'payment_pending', customer_name: customerName, customer_email: customerEmail, customer_phone: customerPhone || null,
     fulfillment_method: method, shipping_address: shippingAddress, shipping_provider: shipping?.provider || null,
     shipping_rate_id: shipping?.rateId || null, shipping_service: shipping ? [shipping.carrier, shipping.service].filter(Boolean).join(' ') : null,
-    subtotal_cents: subtotalCents, shipping_cents: shippingCents, total_cents: totalCents, stripe_mode: mode,
+    subtotal_cents: subtotalCents, shipping_cents: shippingCents, total_cents: totalCents, points_redeemed: pointsRedeemed, stripe_mode: mode,
     estimated_ship_earliest: latestDelivery?.earliestAvailable || null, estimated_ship_latest: latestDelivery?.latestAvailable || null,
   };
   await db('backlist_orders', { method: 'POST', headers: { Prefer: 'return=minimal' }, body: JSON.stringify(orderRow) });
@@ -625,14 +630,24 @@ async function backlistCheckout(request, env, deps) {
     order_id: orderId, store_id: storeId, sku_id: line.sku.id, quantity: line.quantity, unit_price_cents: line.unitPriceCents,
     sku_snapshot: { title: line.sku.backlist_titles?.title, upc: line.sku.upc, msrpCents: Number(line.sku.msrp_cents || 0), coverImageUrl: line.sku.backlist_titles?.cover_image_url, delivery: line.delivery },
   }))) });
+  const orderRef = `backlist:${orderId}`;
+  if (pointsRedeemed) {
+    try { await holdWebOrderPoints(env, deps.supabaseAdminFetch, { storeId, customerId: plan.customer.id, points: pointsRedeemed, orderRef }); }
+    catch (error) {
+      await db(`backlist_orders?id=eq.${orderId}`, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ status: 'cancelled', cancelled_at: new Date().toISOString(), admin_note: text(`Points hold failed: ${error.message}`, 500) }) }).catch(() => {});
+      return deps.json({ ok: false, error: /insufficient/i.test(error.message) ? 'Your points balance changed -- refresh and try again' : 'Could not apply your points' }, 409);
+    }
+  }
   try {
     const params = new URLSearchParams({ amount: String(totalCents), currency: 'usd', 'automatic_payment_methods[enabled]': 'true', 'receipt_email': customerEmail,
-      'metadata[source]': 'backlist_order', 'metadata[backlist_order_id]': orderId, 'metadata[arsca_store_id]': storeId, 'metadata[order_number]': orderNumber });
+      'metadata[source]': 'backlist_order', 'metadata[backlist_order_id]': orderId, 'metadata[arsca_store_id]': storeId, 'metadata[order_number]': orderNumber, 'metadata[points_redeemed]': String(pointsRedeemed) });
     const intent = await deps.stripeApi(env, mode, 'payment_intents', { method: 'POST', params, idempotencyKey: `arsca-backlist-${mode}-${orderId}` });
     await db(`backlist_orders?id=eq.${orderId}`, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ stripe_payment_intent_id: intent.id }) });
-    return deps.json({ ok: true, orderId, orderNumber, clientSecret: intent.client_secret, paymentIntentId: intent.id, publishableKey: cfg.publishableKey, amountCents: totalCents, shippingCents, mode, delivery: latestDelivery });
+    return deps.json({ ok: true, orderId, orderNumber, clientSecret: intent.client_secret, paymentIntentId: intent.id, publishableKey: cfg.publishableKey, amountCents: totalCents, shippingCents, pointsRedeemed, mode, delivery: latestDelivery });
   } catch (error) {
-    await db(`backlist_orders?id=eq.${orderId}`, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ status: 'payment_failed', admin_note: text(error.message, 500) }) }).catch(() => {});
+    // No payment exists to finish this order, so it's over: give the points back.
+    await db(`backlist_orders?id=eq.${orderId}`, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ status: pointsRedeemed ? 'cancelled' : 'payment_failed', admin_note: text(error.message, 500) }) }).catch(() => {});
+    if (pointsRedeemed) await releaseWebOrderPoints(env, deps.supabaseAdminFetch, storeId, orderRef);
     return deps.json({ ok: false, error: `Payment setup failed: ${error.message}` }, 502);
   }
 }
@@ -652,6 +667,7 @@ export function backlistOrderConfirmationEmail(order, items) {
     + `Order ${order.order_number}\n\n${lines}\n\n`
     + `Subtotal: $${(Number(order.subtotal_cents || 0) / 100).toFixed(2)}\n`
     + (order.shipping_cents ? `Shipping: $${(Number(order.shipping_cents) / 100).toFixed(2)}\n` : '')
+    + (order.points_redeemed ? `Loyalty points used: ${order.points_redeemed} (-$${(Number(order.points_redeemed) / 100).toFixed(2)})\n` : '')
     + `Total charged: $${(Number(order.total_cents || 0) / 100).toFixed(2)}\n\n`
     + `${fulfillmentLine}\n\n`
     + `This order ships with our next weekly publisher order, not from shelf stock, so it takes longer than an in-stock item. ${window}We'll email you when it's ready.`;
@@ -662,7 +678,9 @@ async function recordPaidBacklistSale(env, order, paymentIntent, deps) {
   const db = deps.supabaseAdminFetch;
   const { data: items } = await db(env, `backlist_order_items?order_id=eq.${encodeURIComponent(order.id)}&select=id,sku_id,quantity,unit_price_cents,line_total_cents,sku_snapshot`);
   const paidAt = order.paid_at || new Date().toISOString();
-  await db(env, 'pos_sales?on_conflict=id', { method: 'POST', headers: { Prefer: 'resolution=merge-duplicates,return=minimal' }, body: JSON.stringify({ id: order.id, store_id: order.store_id, subtotal: Number(order.subtotal_cents || 0) / 100, discount_total: 0, tax_total: 0, total: Number(order.total_cents || 0) / 100, status: 'completed', payment_status: 'paid', refundable_remaining_cents: Number(order.total_cents || 0), created_by: order.user_id || null, created_at: order.created_at || paidAt, completed_at: paidAt }) });
+  // The sale total is the whole order; points are one tender, the card the other.
+  const pointsCents = Math.max(0, Number(order.points_redeemed || 0));
+  await db(env, 'pos_sales?on_conflict=id', { method: 'POST', headers: { Prefer: 'resolution=merge-duplicates,return=minimal' }, body: JSON.stringify({ id: order.id, store_id: order.store_id, subtotal: Number(order.subtotal_cents || 0) / 100, discount_total: 0, tax_total: 0, total: (Number(order.total_cents || 0) + pointsCents) / 100, status: 'completed', payment_status: 'paid', refundable_remaining_cents: Number(order.total_cents || 0), created_by: order.user_id || null, created_at: order.created_at || paidAt, completed_at: paidAt }) });
   const lines = (items || []).map(item => {
     const quantity = Math.max(1, Number(item.quantity || 1));
     const unitPriceCents = Math.max(0, Number(item.unit_price_cents || 0));
@@ -679,6 +697,7 @@ async function recordPaidBacklistSale(env, order, paymentIntent, deps) {
   if (shippingCents) lines.push({ id: `bl-shipping-${order.id}`, sale_id: order.id, store_id: order.store_id, item_id: null, title: 'Shipping', category: 'Shipping', quantity: 1, unit_price: shippingCents / 100, original_price: shippingCents / 100, adjusted_price: shippingCents / 100, discount_amount: 0, cost_basis: shippingCents / 100, profit: 0, source_id: `backlist:${order.order_number}` });
   if (lines.length) await db(env, 'pos_sale_lines?on_conflict=id', { method: 'POST', headers: { Prefer: 'resolution=merge-duplicates,return=minimal' }, body: JSON.stringify(lines) });
   await db(env, 'pos_payments?on_conflict=id', { method: 'POST', headers: { Prefer: 'resolution=merge-duplicates,return=minimal' }, body: JSON.stringify({ id: `bl-payment-${order.id}`, sale_id: order.id, store_id: order.store_id, method: 'Website · Backlist Order', amount: Number(order.total_cents || 0) / 100, status: 'succeeded', provider: 'stripe', stripe_mode: order.stripe_mode || null, stripe_payment_intent_id: paymentIntent.id, stripe_charge_id: paymentIntent.latest_charge || null, currency: paymentIntent.currency || order.currency || 'usd', amount_cents: Number(order.total_cents || 0), processing_fee_paid_by: 'platform_account', confirmed_at: paidAt, created_at: order.created_at || paidAt }) });
+  await recordWebPointsTender(env, db, { storeId: order.store_id, orderRef: `backlist:${order.id}`, saleId: order.id, paymentId: `bl-points-${order.id}`, points: pointsCents, at: paidAt });
   return items || [];
 }
 
@@ -704,7 +723,8 @@ export async function syncBacklistStripeEvent(env, event, deps) {
       // Points on the books themselves, not shipping; the pos_sales row the
       // award hangs off (id = order id) was just written above.
       await awardWebOrderLoyalty(env, deps.supabaseAdminFetch, {
-        storeId: existingOrder.store_id, saleId: existingOrder.id, amountDollars: Number(existingOrder.subtotal_cents || 0) / 100,
+        // Nothing is earned on the part paid with points.
+        storeId: existingOrder.store_id, saleId: existingOrder.id, amountDollars: Math.max(0, Number(existingOrder.subtotal_cents || 0) - Number(existingOrder.points_redeemed || 0)) / 100,
         userId: existingOrder.user_id, name: existingOrder.customer_name, email: existingOrder.customer_email, phone: existingOrder.customer_phone,
       });
     }
@@ -715,6 +735,8 @@ export async function syncBacklistStripeEvent(env, event, deps) {
   const guard = status === 'paid' ? '&status=neq.paid' : '';
   const { data: updated } = await deps.supabaseAdminFetch(env, `backlist_orders?id=eq.${encodeURIComponent(orderId)}&stripe_payment_intent_id=eq.${encodeURIComponent(object.id)}${guard}`, { method: 'PATCH', headers: { Prefer: 'return=representation' }, body: JSON.stringify(patch) });
   const order = updated?.[0];
+  // A cancelled PaymentIntent can never be paid, so held points go back.
+  if (status === 'cancelled' && order?.points_redeemed) await releaseWebOrderPoints(env, deps.supabaseAdminFetch, order.store_id, `backlist:${order.id}`);
   if (status === 'paid' && order?.customer_email && typeof deps.sendEmail === 'function') {
     try {
       const items = paidItems.length ? paidItems : (await deps.supabaseAdminFetch(env, `backlist_order_items?order_id=eq.${encodeURIComponent(orderId)}&select=quantity,unit_price_cents,sku_snapshot`)).data;

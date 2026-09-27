@@ -4,7 +4,7 @@
 // passes its existing Supabase/auth/Stripe helpers into handleFocRequest(), so
 // checkout continues to use the production payment and tenant foundations.
 
-import { awardWebOrderLoyalty } from './web-loyalty.mjs';
+import { awardWebOrderLoyalty, planWebRedemption, holdWebOrderPoints, releaseWebOrderPoints, recordWebPointsTender, pointsHoldActive } from './web-loyalty.mjs';
 
 const PRH = 'PRH';
 const LUNAR = 'Lunar';
@@ -1145,7 +1145,12 @@ async function preorderCheckout(request, env, deps) {
   try { if (method === 'shipping') shipping = await requireShippingRate(env, deps, storeId, shippingAddress, text(fulfillment.shippingRateId,100)); }
   catch (error) { return deps.json({ ok:false, error:error.message }, 409); }
   const shippingCents = Number(shipping?.amountCents || 0);
-  const totalCents = subtotalCents + shippingCents;
+  const orderCents = subtotalCents + shippingCents;
+  const plan = await planWebRedemption(env, deps.supabaseAdminFetch, { storeId, userId:auth.user.id, requested:body.redeemPoints, merchandiseCents:subtotalCents, totalCents:orderCents });
+  if (plan.error) return deps.json({ ok:false, error:plan.error }, 409);
+  const pointsRedeemed = plan.points;
+  // total_cents is what goes on the card; the points cover the rest.
+  const totalCents = orderCents - pointsRedeemed;
   const orderId = crypto.randomUUID();
   const orderNumber = `FOC-${cycle.foc_date.replaceAll('-','')}-${orderId.slice(0,8).toUpperCase()}`;
   const mode = deps.stripeMode(env);
@@ -1156,21 +1161,32 @@ async function preorderCheckout(request, env, deps) {
     status:'payment_pending', customer_name:customerName, customer_email:customerEmail, customer_phone:customerPhone || null,
     fulfillment_method:method, shipping_address:shippingAddress, shipping_provider:shipping?.provider || null,
     shipping_rate_id:shipping?.rateId || null, shipping_service:shipping ? [shipping.carrier,shipping.service].filter(Boolean).join(' ') : null,
-    subtotal_cents:subtotalCents, shipping_cents:shippingCents, total_cents:totalCents, stripe_mode:mode,
+    subtotal_cents:subtotalCents, shipping_cents:shippingCents, total_cents:totalCents, points_redeemed:pointsRedeemed, stripe_mode:mode,
   };
   await db('foc_preorder_orders', { method:'POST', headers:{ Prefer:'return=minimal' }, body:JSON.stringify(orderRow) });
   await db('foc_preorder_items', { method:'POST', headers:{ Prefer:'return=minimal' }, body:JSON.stringify(lines.map(line => ({
     order_id:orderId, store_id:storeId, cycle_id:cycleId, sku_id:line.sku.id, quantity:line.quantity,
     unit_price_cents:line.unitPriceCents, sku_snapshot:{ title:line.sku.title, variantLabel:line.sku.variant_label, coverArtist:line.sku.cover_artist, coverImageUrl:line.sku.cover_image_url, upc:line.sku.upc, onSaleDate:line.sku.on_sale_date, msrpCents:Number(line.sku.msrp_cents||0) },
   }))) });
+  const orderRef = `foc:${orderId}`;
+  if (pointsRedeemed) {
+    try { await holdWebOrderPoints(env, deps.supabaseAdminFetch, { storeId, customerId:plan.customer.id, points:pointsRedeemed, orderRef }); }
+    catch (error) {
+      await db(`foc_preorder_orders?id=eq.${orderId}`, { method:'PATCH', headers:{ Prefer:'return=minimal' }, body:JSON.stringify({ status:'cancelled', cancelled_at:new Date().toISOString(), admin_note:text(`Points hold failed: ${error.message}`,500) }) }).catch(() => {});
+      return deps.json({ ok:false, error:/insufficient/i.test(error.message) ? 'Your points balance changed -- refresh and try again' : 'Could not apply your points' }, 409);
+    }
+  }
   try {
     const params = new URLSearchParams({ amount:String(totalCents), currency:'usd', 'automatic_payment_methods[enabled]':'true', 'receipt_email':customerEmail,
-      'metadata[source]':'foc_preorder', 'metadata[foc_order_id]':orderId, 'metadata[foc_cycle_id]':cycleId, 'metadata[arsca_store_id]':storeId, 'metadata[order_number]':orderNumber });
+      'metadata[source]':'foc_preorder', 'metadata[foc_order_id]':orderId, 'metadata[foc_cycle_id]':cycleId, 'metadata[arsca_store_id]':storeId, 'metadata[order_number]':orderNumber, 'metadata[points_redeemed]':String(pointsRedeemed) });
     const intent = await deps.stripeApi(env, mode, 'payment_intents', { method:'POST', params, idempotencyKey:`arsca-foc-${mode}-${orderId}` });
     await db(`foc_preorder_orders?id=eq.${orderId}`, { method:'PATCH', headers:{ Prefer:'return=minimal' }, body:JSON.stringify({ stripe_payment_intent_id:intent.id }) });
-    return deps.json({ ok:true, orderId, orderNumber, clientSecret:intent.client_secret, paymentIntentId:intent.id, publishableKey:cfg.publishableKey, amountCents:totalCents, shippingCents, mode, totalQuantity });
+    return deps.json({ ok:true, orderId, orderNumber, clientSecret:intent.client_secret, paymentIntentId:intent.id, publishableKey:cfg.publishableKey, amountCents:totalCents, shippingCents, pointsRedeemed, mode, totalQuantity });
   } catch (error) {
-    await db(`foc_preorder_orders?id=eq.${orderId}`, { method:'PATCH', headers:{ Prefer:'return=minimal' }, body:JSON.stringify({ status:'payment_failed', admin_note:text(error.message,500) }) }).catch(() => {});
+    // No payment exists to finish this order; an order holding points is
+    // over, so the points go back rather than sitting on a dead order.
+    await db(`foc_preorder_orders?id=eq.${orderId}`, { method:'PATCH', headers:{ Prefer:'return=minimal' }, body:JSON.stringify({ status:pointsRedeemed ? 'cancelled' : 'payment_failed', admin_note:text(error.message,500) }) }).catch(() => {});
+    if (pointsRedeemed) await releaseWebOrderPoints(env, deps.supabaseAdminFetch, storeId, orderRef);
     return deps.json({ ok:false, error:`Payment setup failed: ${error.message}` }, 502);
   }
 }
@@ -1315,8 +1331,13 @@ async function cancelPreorder(request, env, deps) {
   const order=orders?.[0];if(!order)return deps.json({ok:false,error:'Preorder not found'},404);
   if(['cancelled','refunded'].includes(order.status))return deps.json({ok:true,status:order.status});
   if(order.status==='payment_pending'||order.status==='payment_failed'){
-    if(order.stripe_payment_intent_id)await deps.stripeApi(env,order.stripe_mode||deps.stripeMode(env),`payment_intents/${encodeURIComponent(order.stripe_payment_intent_id)}/cancel`,{method:'POST',params:new URLSearchParams()}).catch(()=>{});
+    let intentDead=!order.stripe_payment_intent_id;
+    if(order.stripe_payment_intent_id)intentDead=await deps.stripeApi(env,order.stripe_mode||deps.stripeMode(env),`payment_intents/${encodeURIComponent(order.stripe_payment_intent_id)}/cancel`,{method:'POST',params:new URLSearchParams()}).then(()=>true,()=>false);
     await db(`foc_preorder_orders?id=eq.${order.id}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({status:'cancelled',cancelled_at:new Date().toISOString()})});
+    // Points go back only once the payment provably can't complete; if the
+    // cancel call failed, the payment_intent.canceled webhook (or the
+    // abandoned-hold sweep) releases them instead.
+    if(intentDead&&order.points_redeemed)await releaseWebOrderPoints(env,deps.supabaseAdminFetch,order.store_id,`foc:${order.id}`);
     return deps.json({ok:true,status:'cancelled'});
   }
   return deps.json({ok:false,error:'Paid comic preorders are final and cannot be cancelled online. Contact the store only if an exceptional correction is needed.'},409);
@@ -1346,9 +1367,17 @@ async function resumePreorderPayment(request, env, deps) {
   const cfg=deps.stripeConfig(env,mode);
   if(!cfg.secretKey||!cfg.publishableKey)return deps.json({ok:false,error:'Online preorder payments are not configured'},503);
   let intent=null;
+  // If this order's points were already given back, it's paid in full by card.
+  if(order.points_redeemed&&!(await pointsHoldActive(env,deps.supabaseAdminFetch,order.store_id,`foc:${order.id}`))){
+    const fullCents=Number(order.total_cents||0)+Number(order.points_redeemed||0);
+    await db(`foc_preorder_orders?id=eq.${order.id}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({total_cents:fullCents,points_redeemed:0})});
+    Object.assign(order,{total_cents:fullCents,points_redeemed:0});
+  }
   if(order.stripe_payment_intent_id){
     try{
-      const existing=await deps.stripeApi(env,mode,`payment_intents/${encodeURIComponent(order.stripe_payment_intent_id)}`,{method:'GET'});
+      let existing=await deps.stripeApi(env,mode,`payment_intents/${encodeURIComponent(order.stripe_payment_intent_id)}`,{method:'GET'});
+      // Never leave a still-payable intent at an amount the order no longer owes.
+      if(RESUMABLE_INTENT_STATUSES.has(existing.status)&&existing.amount!=null&&Number(existing.amount)!==Number(order.total_cents))existing=await deps.stripeApi(env,mode,`payment_intents/${encodeURIComponent(existing.id)}`,{method:'POST',params:new URLSearchParams({amount:String(order.total_cents)})});
       if(RESUMABLE_INTENT_STATUSES.has(existing.status))intent=existing;
     }catch(_){/* fall through to minting a fresh intent below */}
   }
@@ -2341,6 +2370,7 @@ export function focOrderConfirmationEmail(order, items) {
     + `Order ${order.order_number}\n\n${lines}\n\n`
     + `Subtotal: $${(Number(order.subtotal_cents || 0) / 100).toFixed(2)}\n`
     + (order.shipping_cents ? `Shipping: $${(Number(order.shipping_cents) / 100).toFixed(2)}\n` : '')
+    + (order.points_redeemed ? `Loyalty points used: ${order.points_redeemed} (-$${(Number(order.points_redeemed) / 100).toFixed(2)})\n` : '')
     + `Total charged: $${(Number(order.total_cents || 0) / 100).toFixed(2)}\n\n`
     + `${fulfillmentLine}\n\n`
     + `We'll be in touch when your comics arrive.`;
@@ -2371,7 +2401,9 @@ async function recordPaidFocSale(env, order, paymentIntent, deps) {
     (skuRows||[]).forEach(row=>msrpBySkuId.set(row.id,Number(row.msrp_cents||0)));
   }
   const paidAt=order.paid_at||new Date().toISOString();
-  await db(env,'pos_sales?on_conflict=id',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify({id:order.id,store_id:order.store_id,subtotal:Number(order.subtotal_cents||0)/100,discount_total:0,tax_total:0,total:Number(order.total_cents||0)/100,status:'completed',payment_status:'paid',refundable_remaining_cents:Number(order.total_cents||0),created_by:order.user_id||null,created_at:order.created_at||paidAt,completed_at:paidAt})});
+  // The sale total is the whole order; points are one tender, the card the other.
+  const pointsCents=Math.max(0,Number(order.points_redeemed||0));
+  await db(env,'pos_sales?on_conflict=id',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify({id:order.id,store_id:order.store_id,subtotal:Number(order.subtotal_cents||0)/100,discount_total:0,tax_total:0,total:(Number(order.total_cents||0)+pointsCents)/100,status:'completed',payment_status:'paid',refundable_remaining_cents:Number(order.total_cents||0),created_by:order.user_id||null,created_at:order.created_at||paidAt,completed_at:paidAt})});
   const lines=(items||[]).map(item=>{
     const quantity=Math.max(1,Number(item.quantity||1));
     const unitPriceCents=Math.max(0,Number(item.unit_price_cents||0));
@@ -2385,6 +2417,7 @@ async function recordPaidFocSale(env, order, paymentIntent, deps) {
   if(shippingCents)lines.push({id:`foc-shipping-${order.id}`,sale_id:order.id,store_id:order.store_id,item_id:null,title:'Shipping',category:'Shipping',quantity:1,unit_price:shippingCents/100,original_price:shippingCents/100,adjusted_price:shippingCents/100,discount_amount:0,cost_basis:shippingCents/100,profit:0,source_id:`foc:${order.order_number}`});
   if(lines.length)await db(env,'pos_sale_lines?on_conflict=id',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify(lines)});
   await db(env,'pos_payments?on_conflict=id',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify({id:`foc-payment-${order.id}`,sale_id:order.id,store_id:order.store_id,method:'Website · Comic Preorder',amount:Number(order.total_cents||0)/100,status:'succeeded',provider:'stripe',stripe_mode:order.stripe_mode||null,stripe_payment_intent_id:paymentIntent.id,stripe_charge_id:paymentIntent.latest_charge||null,currency:paymentIntent.currency||order.currency||'usd',amount_cents:Number(order.total_cents||0),processing_fee_paid_by:'platform_account',confirmed_at:paidAt,created_at:order.created_at||paidAt})});
+  await recordWebPointsTender(env,db,{storeId:order.store_id,orderRef:`foc:${order.id}`,saleId:order.id,paymentId:`foc-points-${order.id}`,points:pointsCents,at:paidAt});
   return items||[];
 }
 
@@ -2401,7 +2434,8 @@ export async function syncFocStripeEvent(env, event, deps) {
       paidItems=await recordPaidFocSale(env,{...existingOrder,paid_at:existingOrder.paid_at||paidAt},object,deps);
       // Points on the comics themselves, not shipping. recordPaidFocSale has
       // just written the pos_sales row (id = order id) the award hangs off.
-      await awardWebOrderLoyalty(env,deps.supabaseAdminFetch,{storeId:existingOrder.store_id,saleId:existingOrder.id,amountDollars:Number(existingOrder.subtotal_cents||0)/100,userId:existingOrder.user_id,name:existingOrder.customer_name,email:existingOrder.customer_email,phone:existingOrder.customer_phone});
+      // Nothing is earned on the part paid with points.
+      await awardWebOrderLoyalty(env,deps.supabaseAdminFetch,{storeId:existingOrder.store_id,saleId:existingOrder.id,amountDollars:Math.max(0,Number(existingOrder.subtotal_cents||0)-Number(existingOrder.points_redeemed||0))/100,userId:existingOrder.user_id,name:existingOrder.customer_name,email:existingOrder.customer_email,phone:existingOrder.customer_phone});
     }
   }
   // status=neq.paid on the paid transition doubles as the idempotency guard --
@@ -2412,6 +2446,8 @@ export async function syncFocStripeEvent(env, event, deps) {
   const guard = status==='paid' ? '&status=neq.paid' : '';
   const { data:updated } = await deps.supabaseAdminFetch(env,`foc_preorder_orders?id=eq.${encodeURIComponent(orderId)}&stripe_payment_intent_id=eq.${encodeURIComponent(object.id)}${guard}`,{method:'PATCH',headers:{Prefer:'return=representation'},body:JSON.stringify(patch)});
   const order = updated?.[0];
+  // A cancelled PaymentIntent can never be paid, so held points go back.
+  if(status==='cancelled'&&order?.points_redeemed)await releaseWebOrderPoints(env,deps.supabaseAdminFetch,order.store_id,`foc:${order.id}`);
   if(status==='paid'&&order){
     await deps.supabaseAdminFetch(env,`foc_preorder_items?order_id=eq.${encodeURIComponent(orderId)}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({status:'committed'})});
     const skuIds=[...new Set((paidItems||[]).map(item=>item.sku_id).filter(Boolean))];

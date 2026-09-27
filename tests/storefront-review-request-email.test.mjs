@@ -9,7 +9,7 @@ const worker = fs.readFileSync('cloudflare-worker-full.js', 'utf8');
 // customer. This is that trigger -- picked up by the existing 6-hour
 // scheduled() cron, same as every other runScheduled* job.
 
-assert.match(worker, /ctx\.waitUntil\(Promise\.all\(\[runScheduledDealScans\(env\), runScheduledEbayReprice\(env\), runScheduledEbayOrderSync\(env\), runScheduledShopifyOrderSync\(env\), runScheduledStorefrontReviewRequests\(env\)\]\)\);/,
+assert.match(worker, /ctx\.waitUntil\(Promise\.all\(\[runScheduledDealScans\(env\), runScheduledEbayReprice\(env\), runScheduledEbayOrderSync\(env\), runScheduledShopifyOrderSync\(env\), runScheduledStorefrontReviewRequests\(env\)(?:, runScheduled\w+\(env\))*\]\)\);/,
   'runScheduledStorefrontReviewRequests must be wired into the scheduled() cron handler alongside the existing jobs');
 
 const fnStart = worker.indexOf('async function runScheduledStorefrontReviewRequests');

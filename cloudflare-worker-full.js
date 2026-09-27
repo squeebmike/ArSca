@@ -31,7 +31,7 @@ import { buildChecklistIndex, parseChecklistText, sha1Hex, slugify } from './scr
 import { handleFocRequest, syncFocStripeEvent, shippingSettings } from './scripts/foc-preorders.mjs';
 import { handleBacklistRequest, syncBacklistStripeEvent } from './scripts/backlist-catalog.mjs';
 import { handleAccountRequest, findLinkedCustomer } from './scripts/customer-account.mjs';
-import { awardWebOrderLoyalty } from './scripts/web-loyalty.mjs';
+import { awardWebOrderLoyalty, planWebRedemption, holdWebOrderPoints, releaseWebOrderPoints, recordWebPointsTender, pointsHoldActive } from './scripts/web-loyalty.mjs';
 import { customerProfile, searchInventory, itemProfile } from './scripts/database-explorer.mjs';
 import { handleFanClubRequest } from './scripts/fan-club.mjs';
 import { handleCardIntakeRequest } from './scripts/card-intake.mjs';
@@ -1457,12 +1457,16 @@ async function fulfillStorefrontOrderInventory(env, saleId, storeId) {
   const sale = sales?.[0];
   if (!sale || sale.status === 'completed') return;
   await supabaseAdminFetch(env, `pos_sales?id=eq.${encodeURIComponent(saleId)}&store_id=eq.${encodeURIComponent(storeId)}`, { method:'PATCH', headers:{ Prefer:'return=minimal' }, body:JSON.stringify({ status:'completed', payment_status:'paid', completed_at:new Date().toISOString() }) });
-  const { data: orders } = await supabaseAdminFetch(env, `storefront_orders?sale_id=eq.${encodeURIComponent(saleId)}&store_id=eq.${encodeURIComponent(storeId)}&select=id,fulfillment_method,customer_name,customer_email,customer_phone&limit=1`);
+  const { data: orders } = await supabaseAdminFetch(env, `storefront_orders?sale_id=eq.${encodeURIComponent(saleId)}&store_id=eq.${encodeURIComponent(storeId)}&select=id,fulfillment_method,customer_name,customer_email,customer_phone,points_redeemed&limit=1`);
   const order = orders?.[0];
   if (!order) return; // regular POS sale, not a storefront order — nothing more to do
-  // Points on the merchandise (after discounts), not shipping.
+  const pointsCents = Math.max(0, Number(order.points_redeemed || 0));
+  const spender = pointsCents ? await recordWebPointsTender(env, supabaseAdminFetch, { storeId, orderRef:`shop:${saleId}`, saleId, paymentId:`shop-points-${saleId}`, points:pointsCents, at:new Date().toISOString() }) : null;
+  // Points on the merchandise (after discounts), not shipping, and not on
+  // the part paid with points -- credited to whoever spent them, if anyone.
   await awardWebOrderLoyalty(env, supabaseAdminFetch, {
-    storeId, saleId, amountDollars: Number(sale.subtotal || 0) - Number(sale.discount_total || 0),
+    storeId, saleId, amountDollars: Math.max(0, Number(sale.subtotal || 0) - Number(sale.discount_total || 0) - (spender ? pointsCents / 100 : 0)),
+    customerId: spender || undefined,
     name: order.customer_name, email: order.customer_email, phone: order.customer_phone,
   });
   const { data: lines } = await supabaseAdminFetch(env, `pos_sale_lines?sale_id=eq.${encodeURIComponent(saleId)}&store_id=eq.${encodeURIComponent(storeId)}&select=item_id,quantity`);
@@ -1536,6 +1540,21 @@ async function fulfillStorefrontOrderInventory(env, saleId, storeId) {
   }
 }
 
+// A shop order's held points go back once none of its card payments can
+// still go through. Checked against every Stripe payment on the sale, since
+// resuming checkout can leave an older, cancelled intent next to a live one.
+// 'failed' is stored for payment_intent.payment_failed, which Stripe lets
+// the customer retry on the same intent -- still live.
+const LIVE_STRIPE_PAYMENT_STATUSES = new Set(['requires_payment_method','requires_confirmation','requires_action','processing','requires_capture','succeeded','failed']);
+async function releaseStorefrontPointsIfUnpayable(env, saleId, storeId) {
+  const enc = encodeURIComponent;
+  const { data: sales } = await supabaseAdminFetch(env, `pos_sales?id=eq.${enc(saleId)}&store_id=eq.${enc(storeId)}&select=status&limit=1`);
+  if (!sales?.[0] || sales[0].status === 'completed') return null;
+  const { data: payments } = await supabaseAdminFetch(env, `pos_payments?sale_id=eq.${enc(saleId)}&store_id=eq.${enc(storeId)}&provider=eq.stripe&select=status`);
+  if ((payments || []).some(p => LIVE_STRIPE_PAYMENT_STATUSES.has(String(p.status || '')))) return null;
+  return releaseWebOrderPoints(env, supabaseAdminFetch, storeId, `shop:${saleId}`);
+}
+
 async function syncStripeWebhookPayment(env, event, mode) {
   const object=event.data?.object||{};const account=event.account||'';
   let intentId='';let patch={updated_at:new Date().toISOString()};
@@ -1548,6 +1567,9 @@ async function syncStripeWebhookPayment(env, event, mode) {
     const payment=paymentRows?.[0];
     if(payment?.sale_id&&payment?.store_id&&patch.status==='succeeded'){
       await fulfillStorefrontOrderInventory(env,payment.sale_id,payment.store_id).catch(e=>console.error('Storefront order fulfillment failed:',e.message));
+    }
+    if(payment?.sale_id&&payment?.store_id&&patch.status==='canceled'){
+      await releaseStorefrontPointsIfUnpayable(env,payment.sale_id,payment.store_id).catch(e=>console.error('Storefront points release failed:',e.message));
     }
   }
   await syncFocStripeEvent(env,event,{supabaseAdminFetch,sendEmail}).catch(error=>console.error(JSON.stringify({message:'FOC preorder Stripe sync failed',error:error.message,intentId})));
@@ -5695,6 +5717,15 @@ export default {
       const shippingFeeCents = shippingQuote.cents;
       const totalCents = subtotalCents + shippingFeeCents;
 
+      // Guest checkout stays guest; only a signed-in shopper can spend points.
+      const redeemRequested = Math.floor(Number(body.redeemPoints) || 0) > 0;
+      const shopper = redeemRequested && request.headers.get('Authorization') ? await requireAuthenticatedUser(request, env) : null;
+      const plan = await planWebRedemption(env, supabaseAdminFetch, { storeId, userId:shopper?.user?.id || null, requested:body.redeemPoints, merchandiseCents:subtotalCents, totalCents });
+      if (plan.error) return json({ ok:false, error:plan.error }, 409);
+      const pointsRedeemed = plan.points;
+      // What goes on the card; the sale total stays the whole order.
+      const chargeCents = totalCents - pointsRedeemed;
+
       // No Stripe Connect yet -- this charges directly to the platform's own
       // Stripe account (env.STRIPE_SECRET_KEY_LIVE/TEST), same as any other
       // direct integration. Revisit once storefronts move to Connect.
@@ -5710,18 +5741,31 @@ export default {
       if (shippingFeeCents > 0) { const shipping=shippingFeeCents/100;saleLines.push({ id:crypto.randomUUID(), sale_id:saleId, store_id:storeId, item_id:null, title:'Shipping', category:'Shipping', quantity:1, unit_price:shipping, original_price:shipping, adjusted_price:shipping, discount_amount:0, cost_basis:shipping, profit:0 }); }
       await supabaseAdminFetch(env, 'pos_sale_lines', { method:'POST', headers:{ Prefer:'return=minimal' }, body:JSON.stringify(saleLines) });
 
+      const orderRef = `shop:${saleId}`;
+      if (pointsRedeemed) {
+        try { await holdWebOrderPoints(env, supabaseAdminFetch, { storeId, customerId:plan.customer.id, points:pointsRedeemed, orderRef }); }
+        catch (e) {
+          await supabaseAdminFetch(env, `pos_sales?id=eq.${encodeURIComponent(saleId)}&store_id=eq.${encodeURIComponent(storeId)}`, { method:'PATCH', headers:{ Prefer:'return=minimal' }, body:JSON.stringify({ status:'cancelled' }) }).catch(() => {});
+          return json({ ok:false, error:/insufficient/i.test(e.message) ? 'Your points balance changed -- refresh and try again' : 'Could not apply your points' }, 409);
+        }
+      }
+
       let pi;
       try {
-        const params = new URLSearchParams({ amount:String(totalCents), currency:'usd', 'automatic_payment_methods[enabled]':'true', 'metadata[arsca_sale_id]':saleId, 'metadata[arsca_store_id]':storeId, 'metadata[source]':'storefront_order', 'metadata[confirmation_number]':confirmationNumber });
+        const params = new URLSearchParams({ amount:String(chargeCents), currency:'usd', 'automatic_payment_methods[enabled]':'true', 'metadata[arsca_sale_id]':saleId, 'metadata[arsca_store_id]':storeId, 'metadata[source]':'storefront_order', 'metadata[confirmation_number]':confirmationNumber, 'metadata[points_redeemed]':String(pointsRedeemed) });
         pi = await stripeApi(env, mode, 'payment_intents', { method:'POST', params, idempotencyKey:`arsca-storefront-${mode}-${saleId}` });
-        await supabaseAdminFetch(env, 'pos_payments', { method:'POST', headers:{ Prefer:'return=minimal' }, body:JSON.stringify({ id:crypto.randomUUID(), sale_id:saleId, store_id:storeId, method:'Stripe Card', amount:totalCents/100, status:pi.status, provider:'stripe', stripe_mode:mode, stripe_payment_intent_id:pi.id, currency:pi.currency, amount_cents:totalCents, processing_fee_paid_by:'platform_account' }) });
+        await supabaseAdminFetch(env, 'pos_payments', { method:'POST', headers:{ Prefer:'return=minimal' }, body:JSON.stringify({ id:crypto.randomUUID(), sale_id:saleId, store_id:storeId, method:'Stripe Card', amount:chargeCents/100, status:pi.status, provider:'stripe', stripe_mode:mode, stripe_payment_intent_id:pi.id, currency:pi.currency, amount_cents:chargeCents, processing_fee_paid_by:'platform_account' }) });
       } catch (e) {
+        if (pointsRedeemed) {
+          await supabaseAdminFetch(env, `pos_sales?id=eq.${encodeURIComponent(saleId)}&store_id=eq.${encodeURIComponent(storeId)}`, { method:'PATCH', headers:{ Prefer:'return=minimal' }, body:JSON.stringify({ status:'cancelled' }) }).catch(() => {});
+          await releaseWebOrderPoints(env, supabaseAdminFetch, storeId, orderRef);
+        }
         return json({ ok:false, error:'Payment setup failed: ' + e.message }, 502);
       }
 
-      await supabaseAdminFetch(env, 'storefront_orders', { method:'POST', headers:{ Prefer:'return=minimal' }, body:JSON.stringify({ id:crypto.randomUUID(), store_id:storeId, sale_id:saleId, confirmation_number:confirmationNumber, customer_name:customerName, customer_phone:customerPhone, customer_email:customerEmail || null, fulfillment_method:method, shipping_address:shippingAddress, shipping_fee_cents:shippingFeeCents, fulfillment_status:'pending' }) });
+      await supabaseAdminFetch(env, 'storefront_orders', { method:'POST', headers:{ Prefer:'return=minimal' }, body:JSON.stringify({ id:crypto.randomUUID(), store_id:storeId, sale_id:saleId, confirmation_number:confirmationNumber, customer_name:customerName, customer_phone:customerPhone, customer_email:customerEmail || null, fulfillment_method:method, shipping_address:shippingAddress, shipping_fee_cents:shippingFeeCents, points_redeemed:pointsRedeemed, fulfillment_status:'pending' }) });
 
-      return json({ ok:true, clientSecret:pi.client_secret, publishableKey:stripeConfig(env, mode).publishableKey, confirmationNumber, amountCents:totalCents, shippingFeeCents, mode });
+      return json({ ok:true, clientSecret:pi.client_secret, publishableKey:stripeConfig(env, mode).publishableKey, confirmationNumber, amountCents:chargeCents, shippingFeeCents, pointsRedeemed, mode });
     }
 
     // POST /public/storefront/resume — a checkout interrupted mid-Stripe-
@@ -5763,14 +5807,26 @@ export default {
       const mode = stripeMode(env);
       const cfg = stripeConfig(env, mode);
       if (!cfg.secretKey || !cfg.publishableKey) return json({ ok:false, error:'Online payments are not configured' }, 503);
-      const totalCents = Math.round(Number(sale.total || 0) * 100);
+      // sale.total is the whole order; held points cover part of it. Points
+      // already given back mean the card pays it all.
+      let pointsRedeemed = Number(order.points_redeemed || 0);
+      if (pointsRedeemed && !(await pointsHoldActive(env, supabaseAdminFetch, storeId, `shop:${sale.id}`))) {
+        await db(`storefront_orders?id=eq.${encodeURIComponent(order.id)}`, { method:'PATCH', headers:{ Prefer:'return=minimal' }, body:JSON.stringify({ points_redeemed:0 }) });
+        pointsRedeemed = 0;
+      }
+      const totalCents = Math.round(Number(sale.total || 0) * 100) - pointsRedeemed;
       const { data:payments } = await db(`pos_payments?sale_id=eq.${encodeURIComponent(order.sale_id)}&store_id=eq.${encodeURIComponent(storeId)}&provider=eq.stripe&order=created_at.desc&limit=1`);
       const lastPayment = payments?.[0];
       const RESUMABLE_INTENT_STATUSES = new Set(['requires_payment_method', 'requires_confirmation', 'requires_action']);
       let intent = null;
       if (lastPayment?.stripe_payment_intent_id) {
         try {
-          const existing = await stripeApi(env, mode, `payment_intents/${encodeURIComponent(lastPayment.stripe_payment_intent_id)}`, { method:'GET' });
+          let existing = await stripeApi(env, mode, `payment_intents/${encodeURIComponent(lastPayment.stripe_payment_intent_id)}`, { method:'GET' });
+          // Never leave a still-payable intent at an amount the order no longer owes.
+          if (RESUMABLE_INTENT_STATUSES.has(existing.status) && existing.amount != null && Number(existing.amount) !== totalCents) {
+            existing = await stripeApi(env, mode, `payment_intents/${encodeURIComponent(existing.id)}`, { method:'POST', params:new URLSearchParams({ amount:String(totalCents) }) });
+            await db(`pos_payments?id=eq.${encodeURIComponent(lastPayment.id)}`, { method:'PATCH', headers:{ Prefer:'return=minimal' }, body:JSON.stringify({ amount:totalCents / 100, amount_cents:totalCents }) });
+          }
           if (RESUMABLE_INTENT_STATUSES.has(existing.status)) intent = existing;
         } catch (_) { /* fall through to minting a fresh intent below */ }
       }
@@ -15856,9 +15912,61 @@ export default {
   // /dealscan/latest reads) instead of only ever being reachable by an
   // on-demand click.
   async scheduled(event, env, ctx) {
-    ctx.waitUntil(Promise.all([runScheduledDealScans(env), runScheduledEbayReprice(env), runScheduledEbayOrderSync(env), runScheduledShopifyOrderSync(env), runScheduledStorefrontReviewRequests(env)]));
+    ctx.waitUntil(Promise.all([runScheduledDealScans(env), runScheduledEbayReprice(env), runScheduledEbayOrderSync(env), runScheduledShopifyOrderSync(env), runScheduledStorefrontReviewRequests(env), runScheduledPointsHoldSweep(env)]));
   },
 };
+
+// Points held by a website checkout that was never paid go back after a day:
+// the order is cancelled, its payment cancelled at Stripe first so it can't
+// complete afterwards. An order whose payment actually succeeded is left
+// alone -- the webhook (or a staff "stuck payment" fix) finishes it.
+const POINTS_HOLD_TTL_HOURS = 24;
+async function cancelIntentIfUnpaid(env, mode, intentId) {
+  if (!intentId) return true;
+  try {
+    const intent = await stripeApi(env, mode, `payment_intents/${encodeURIComponent(intentId)}`);
+    if (intent.status === 'canceled') return true;
+    if (['succeeded', 'processing', 'requires_capture'].includes(intent.status)) return false;
+    await stripeApi(env, mode, `payment_intents/${encodeURIComponent(intentId)}/cancel`, { method:'POST', params:new URLSearchParams() });
+    return true;
+  } catch (e) {
+    console.error('Points sweep: could not cancel payment', intentId, e.message);
+    return false;
+  }
+}
+async function runScheduledPointsHoldSweep(env) {
+  if (!(env.SUPABASE_URL && (env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SERVICE_KEY))) return;
+  const enc = encodeURIComponent;
+  const cutoff = enc(new Date(Date.now() - POINTS_HOLD_TTL_HOURS * 3600 * 1000).toISOString());
+  const now = () => new Date().toISOString();
+  for (const [table, prefix] of [['foc_preorder_orders', 'foc'], ['backlist_orders', 'backlist']]) {
+    try {
+      const { data: orders } = await supabaseAdminFetch(env, `${table}?points_redeemed=gt.0&status=in.(payment_pending,payment_failed)&created_at=lt.${cutoff}&select=id,store_id,stripe_mode,stripe_payment_intent_id&limit=50`);
+      for (const order of orders || []) {
+        if (!(await cancelIntentIfUnpaid(env, stripeMode(env, order.stripe_mode), order.stripe_payment_intent_id))) continue;
+        await supabaseAdminFetch(env, `${table}?id=eq.${enc(order.id)}&status=in.(payment_pending,payment_failed)`, { method:'PATCH', headers:{ Prefer:'return=minimal' }, body:JSON.stringify({ status:'cancelled', cancelled_at:now(), admin_note:'Unpaid for a day -- cancelled and points returned' }) });
+        await releaseWebOrderPoints(env, supabaseAdminFetch, order.store_id, `${prefix}:${order.id}`);
+      }
+    } catch (e) { console.error(`Points sweep (${table}) failed:`, e.message); }
+  }
+  try {
+    const { data: orders } = await supabaseAdminFetch(env, `storefront_orders?points_redeemed=gt.0&created_at=lt.${cutoff}&select=sale_id,store_id,created_at&order=created_at.desc&limit=200`);
+    for (const order of orders || []) {
+      const { data: sales } = await supabaseAdminFetch(env, `pos_sales?id=eq.${enc(order.sale_id)}&store_id=eq.${enc(order.store_id)}&status=eq.pending&select=id&limit=1`);
+      if (!sales?.[0]) continue;
+      const { data: payments } = await supabaseAdminFetch(env, `pos_payments?sale_id=eq.${enc(order.sale_id)}&store_id=eq.${enc(order.store_id)}&provider=eq.stripe&select=id,stripe_mode,stripe_payment_intent_id`);
+      let allDead = true;
+      for (const payment of payments || []) {
+        const dead = await cancelIntentIfUnpaid(env, stripeMode(env, payment.stripe_mode), payment.stripe_payment_intent_id);
+        if (dead) await supabaseAdminFetch(env, `pos_payments?id=eq.${enc(payment.id)}&status=neq.succeeded`, { method:'PATCH', headers:{ Prefer:'return=minimal' }, body:JSON.stringify({ status:'canceled', updated_at:now() }) });
+        allDead = allDead && dead;
+      }
+      if (!allDead) continue;
+      await supabaseAdminFetch(env, `pos_sales?id=eq.${enc(order.sale_id)}&store_id=eq.${enc(order.store_id)}&status=eq.pending`, { method:'PATCH', headers:{ Prefer:'return=minimal' }, body:JSON.stringify({ status:'cancelled' }) });
+      await releaseWebOrderPoints(env, supabaseAdminFetch, order.store_id, `shop:${order.sale_id}`);
+    }
+  } catch (e) { console.error('Points sweep (shop) failed:', e.message); }
+}
 
 // Builds the review-request email content from a real order + its real
 // purchased line items (pos_sale_lines, snapshotted at sale time) -- never
