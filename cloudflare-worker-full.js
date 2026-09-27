@@ -2423,7 +2423,7 @@ function mtgSiteFooter() {
     `<div class="Social Icons">` +
     `<a href="https://www.facebook.com/profile.php?id=61592114016361" aria-label="Facebook">Facebook</a>` +
     `<a href="https://www.instagram.com/shopthemanapocket" aria-label="Instagram">Instagram</a>` +
-    `<a href="https://whatnot.com/invite/walkoffsportscards" aria-label="Whatnot">Whatnot</a>` +
+    `<a href="https://whatnot.com/invite/themanapocket" aria-label="Whatnot">Whatnot</a>` +
     `</div></div></div></div></footer>`;
 }
 function mtgPageShell({ title, description, canonicalPath, ogImage, ogType, jsonLd, bodyHtml, robotsNoindex }) {
