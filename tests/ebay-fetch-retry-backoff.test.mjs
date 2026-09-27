@@ -72,6 +72,9 @@ assert.equal((repairBody.match(/ebayFetchWithRetry\(/g) || []).length, 2, 'both 
 
 const syncStart = worker.indexOf('async function syncEbayOrdersForStore(env, storeId, ebayToken, receiptSettings, { reconcile, confirmedBy }) {');
 const syncEnd = worker.indexOf('async function runScheduledEbayOrderSync', syncStart);
-assert.match(worker.slice(syncStart, syncEnd), /ebayFetchWithRetry\('https:\/\/api\.ebay\.com\/sell\/fulfillment\/v1\/order\?filter=/, 'syncEbayOrdersForStore (run per store on the scheduled cron) must use the retrying fetch for its order lookup');
+// It reads every page through fetchAllEbayOrders, which retries each page.
+assert.match(worker.slice(syncStart, syncEnd), /await fetchAllEbayOrders\(ebayToken, orderFilter,/, 'syncEbayOrdersForStore (run per store on the scheduled cron) must use the paging, retrying order lookup');
+const pagerStart = worker.indexOf('async function fetchAllEbayOrders(');
+assert.match(worker.slice(pagerStart, worker.indexOf('\n}\n', pagerStart)), /await ebayFetchWithRetry\(next,/, 'every page of the order lookup uses the retrying fetch');
 
 console.log('eBay retry/backoff call-site wiring checks passed');
