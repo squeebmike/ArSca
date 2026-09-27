@@ -72,6 +72,14 @@ const pageDeps = { ...deps([{ id: 'a', title: 'X-MEN: INCURSIONS #1 COVER A', cu
   pageShell: o => JSON.stringify({ title: o.title, canonicalPath: o.canonicalPath, ogType: o.ogType, robotsNoindex: !!o.robotsNoindex, jsonLd: o.jsonLd }) + o.bodyHtml };
 const get = async path => handleArticlesRequest({ method: 'GET' }, { WEBFLOW_TOKEN: 't' }, null, new URL('https://www.themanapocket.com' + path), pageDeps);
 {
+  // Two books on the page, one inventory load: each is the whole catalog.
+  let loads = 0;
+  const counted = { ...pageDeps, listItems: async () => { loads++; return []; } };
+  const res = await handleArticlesRequest({ method: 'GET' }, { WEBFLOW_TOKEN: 't' }, null, new URL('https://www.themanapocket.com/articles/big-news'), counted);
+  assert.equal(res.status, 200);
+  assert.equal(loads, 1, 'store inventory is loaded once per article page, not once per book');
+}
+{
   const res = await get('/articles/big-news');
   const html = await res.text();
   assert.equal(res.status, 200);
