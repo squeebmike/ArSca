@@ -31,6 +31,7 @@ import { buildChecklistIndex, parseChecklistText, sha1Hex, slugify } from './scr
 import { handleFocRequest, syncFocStripeEvent, shippingSettings } from './scripts/foc-preorders.mjs';
 import { handleBacklistRequest, syncBacklistStripeEvent } from './scripts/backlist-catalog.mjs';
 import { handleAccountRequest, findLinkedCustomer } from './scripts/customer-account.mjs';
+import { handleArticlesRequest, articleSitemapPaths } from './scripts/comic-articles.mjs';
 import { EditError, editSaleLine, editInventoryItem, adjustCustomerPoints, editHistory } from './scripts/database-edits.mjs';
 import { awardWebOrderLoyalty, planWebRedemption, holdWebOrderPoints, releaseWebOrderPoints, recordWebPointsTender, pointsHoldActive } from './scripts/web-loyalty.mjs';
 import { customerProfile, searchInventory, itemProfile } from './scripts/database-explorer.mjs';
@@ -2362,6 +2363,7 @@ function mtgSiteHeader() {
       ['/comic-new-releases-the-mana-pocket', 'Comic New Releases'],
       ['/preorders', 'Comic Preorders'],
       ['/books', 'Book Backlist'],
+      ['/articles', 'Comic Articles'],
       ['/pokemon-new-releases', 'Pokémon New Releases'],
       ['/mtg-new-releases', 'MTG New Releases'],
       ['/publishing', 'Publishing'],
@@ -6592,6 +6594,16 @@ export default {
     // hand-maintained content (see NEWS_POSTS below), not a full CMS/blog --
     // exists mainly to give search engines a page that visibly changes over
     // time, which a pure product catalog never does on its own.
+    // /articles, /articles/{slug} -- comic articles written in Webflow's CMS,
+    // rendered here with a live preorder/buy box (scripts/comic-articles.mjs).
+    if (url.pathname === '/articles' || url.pathname.startsWith('/articles/')) {
+      const articleResponse = await handleArticlesRequest(request, env, ctx, url, {
+        esc: mtgEscapeHtml, pageShell: mtgPageShell, supabaseAdminFetch, storeId: ITEM_DETAIL_STORE_ID,
+        listItems: e => fetchAllListableStorefrontItemsCached(e, ctx), isAvailable: isStorefrontItemAvailable, itemSlug: itemDetailSlug,
+      });
+      if (articleResponse) return articleResponse;
+    }
+
     if (url.pathname === '/news' && request.method === 'GET') {
       const response = mtgHtmlResponse(renderNewsPage());
       response.headers.set('Cache-Control', 'public, max-age=3600');
@@ -6633,7 +6645,7 @@ export default {
       // 'other' is a low-value catch-all bucket -- both routes still work if
       // visited directly, just not worth asking Google to index separately.
       const skippedCategorySlugs = ['supplies', 'other'];
-      const staticUrls = ['/faq', '/news', '/category', '/comic-new-releases-the-mana-pocket', ...Object.keys(CATEGORY_LANDING_LABELS).filter(slug => !skippedCategorySlugs.includes(slug)).map(slug => categoryLandingHref(slug))]
+      const staticUrls = ['/faq', '/news', '/category', '/comic-new-releases-the-mana-pocket', ...(await articleSitemapPaths(env)), ...Object.keys(CATEGORY_LANDING_LABELS).filter(slug => !skippedCategorySlugs.includes(slug)).map(slug => categoryLandingHref(slug))]
         .map(path => `<url><loc>https://www.themanapocket.com${path}</loc></url>`).join('');
       const xml = `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${staticUrls}</urlset>`;
       return new Response(xml, { headers: { 'Content-Type': 'application/xml;charset=UTF-8', 'Cache-Control': 'public, max-age=3600' } });
