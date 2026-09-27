@@ -12,8 +12,8 @@ var state={
   table:'loyalty_ledger',tableRows:[],tableTotal:null,tableOffset:0,tableFilter:'',tableError:''
 };
 var TABLE_PAGE=50;
-// Mirrors DATABASE_VIEWER_TABLES in cloudflare-worker-full.js (the Worker enforces the real allowlist).
-var TABLES=[['loyalty_ledger','Loyalty points history'],['customers','Customers'],['pos_sales','Sales'],['pos_sale_lines','Sale line items'],['pos_payments','Payments'],['storefront_orders','Website shop orders'],['foc_preorder_orders','Comic preorder orders'],['backlist_orders','Backlist book orders'],['gift_cards','Gift cards'],['gift_card_transactions','Gift card transactions'],['customer_receipts','Text receipts'],['buylist_submissions','Buylist submissions'],['pull_list_subscriptions','Pull lists'],['event_registrations','Event registrations'],['inventory_items','Inventory items'],['comic_skus','FOC comic catalog']];
+// Grouped table list comes from the Worker (/store/db/tables), which owns the allowlist.
+var tableGroups=[];
 
 function esc(value){return String(value==null?'':value).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
 function money(cents){return '$'+(Number(cents||0)/100).toFixed(2);}
@@ -259,6 +259,7 @@ function renderItemProfile(host){
 async function loadTable(){
   state.tableError='';
   try{
+    if(!tableGroups.length)tableGroups=(await api('/store/db/tables?'+storeParam())).groups||[];
     var data=await api('/store/db/table?'+storeParam()+'&table='+encodeURIComponent(state.table)+'&limit='+TABLE_PAGE+'&offset='+state.tableOffset);
     state.tableRows=data.rows||[];state.tableTotal=data.total;
   }catch(e){state.tableRows=[];state.tableTotal=null;state.tableError=e.message;}
@@ -269,8 +270,8 @@ function renderTables(host){
   var cols=[];rows.forEach(function(r){Object.keys(r).forEach(function(k){if(cols.indexOf(k)<0&&k!=='store_id')cols.push(k);});});
   var from=state.tableRows.length?state.tableOffset+1:0,to=state.tableOffset+state.tableRows.length;
   var atEnd=state.tableTotal!=null?to>=state.tableTotal:state.tableRows.length<TABLE_PAGE;
-  host.innerHTML=hero('DATABASE TABLES','Read-only view of this store\'s raw records, newest first.',
-      '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"><select id="database-table-select" onchange="setDatabaseTable(this.value)" style="padding:9px;font-family:var(--font-mono);font-size:11px">'+TABLES.map(function(t){return '<option value="'+t[0]+'"'+(t[0]===state.table?' selected':'')+'>'+esc(t[1])+'</option>';}).join('')+'</select>'+
+  host.innerHTML=hero('DATABASE TABLES','Read-only view of every table holding this store\'s data ('+tableGroups.reduce(function(n,g){return n+g.tables.length;},0)+' tables), newest first. Tables holding secrets -- payment account links, verification codes, invite tokens -- are left out.',
+      '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"><select id="database-table-select" onchange="setDatabaseTable(this.value)" style="padding:9px;font-family:var(--font-mono);font-size:11px">'+tableGroups.map(function(g){return '<optgroup label="'+esc(g.group)+'">'+g.tables.map(function(t){return '<option value="'+esc(t.key)+'"'+(t.key===state.table?' selected':'')+'>'+esc(t.label)+'</option>';}).join('')+'</optgroup>';}).join('')+'</select>'+
       '<input type="text" id="database-table-filter" placeholder="Filter this page…" value="'+esc(state.tableFilter)+'" oninput="onDatabaseTableFilter(this.value)" style="flex:1;min-width:180px;padding:9px;font-family:var(--font-mono);font-size:11px"><button class="hbtn" onclick="reloadDatabaseTable()">REFRESH</button></div>')+
     errorBox(state.tableError)+
     '<div class="ph">ROWS <span style="font-size:9px;color:var(--dim)">'+from+'–'+to+(state.tableTotal!=null?' of '+state.tableTotal:'')+'</span>'+

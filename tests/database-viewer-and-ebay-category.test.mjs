@@ -10,11 +10,15 @@ assert.match(route, /requireStoreUser\(request, env, storeId, \['owner','admin'\
 assert.match(route, /const spec = DATABASE_VIEWER_TABLES\[url\.searchParams\.get\('table'\) \|\| ''\];\s*\n\s*if \(!spec\) return json\(\{ ok: false, error: 'Unknown table' \}, 400\);/, 'unknown table names must be rejected, never passed through');
 assert.match(route, /\$\{spec\.table\}\?store_id=eq\.\$\{encodeURIComponent\(storeId\)\}&select=\$\{spec\.select\}/, 'every query is scoped to the caller\'s store and uses the fixed select');
 assert.match(route, /Math\.min\(200,/, 'page size is capped');
-assert.match(worker, /\['loyalty_ledger', 'Loyalty points history', '\*,customer:customers\(name,phone,email\)'\]/);
-const viewer = fs.readFileSync('scripts/database-viewer.js', 'utf8');
-for (const [key] of [...worker.matchAll(/^  \['([a-z_]+)', '[^']+', '[^']+'\],$/gm)].map(m => [m[1]])) {
-  assert.ok(viewer.includes(`['${key}',`), `dashboard table picker must list ${key}`);
+const tablesSrc = worker.slice(worker.indexOf('const DATABASE_VIEWER_GROUPS'), worker.indexOf('// Presale items built from FOC data'));
+const TABLES = new Function(`${tablesSrc}; return DATABASE_VIEWER_TABLES;`)();
+assert.ok(Object.keys(TABLES).length >= 60, 'the viewer should cover (nearly) every store-scoped table');
+for (const secret of ['store_stripe_accounts', 'phone_verifications', 'store_invites', 'phone_settings', 'phone_endpoints', 'scanner_workstations', 'store_settings']) {
+  assert.equal(TABLES[secret], undefined, `${secret} holds secrets and must never be browsable`);
 }
+assert.equal(TABLES.loyalty_ledger.select, '*,customer:customers(name,phone,email)');
+const viewer = fs.readFileSync('scripts/database-viewer.js', 'utf8');
+assert.match(viewer, /api\('\/store\/db\/tables\?'/, 'the table picker must come from the server allowlist, not a copied list');
 assert.match(viewer, /PTS \('\+money\(c\.loyaltyPoints\)/, 'customer cards show their points balance');
 console.log('Database viewer checks passed');
 
