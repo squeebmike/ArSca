@@ -22,7 +22,9 @@ assert.match(routeBody, /return json\(await syncEbayOrdersForStore\(env, storeId
 
 assert.match(worker, /async function runScheduledEbayOrderSync\(env\) \{/, 'missing runScheduledEbayOrderSync');
 const schedStart = worker.indexOf('async function runScheduledEbayOrderSync(env) {');
-const schedEnd = worker.indexOf('\n    }', worker.indexOf('await syncEbayOrdersForStore(env, storeId, ebayToken, receiptSettings', schedStart));
+// Top level (not nested inside the fetch handler), so scheduled() can reach it.
+const schedEnd = worker.indexOf('\n}\n', schedStart);
+assert.match(worker, /\nasync function runScheduledEbayOrderSync\(env\) \{/, 'must be a top-level function: nested inside fetch it was undefined in scheduled() and the cron threw');
 const schedBody = worker.slice(schedStart, schedEnd);
 
 assert.match(schedBody, /const \{ data: members \} = await supabaseAdminFetch\(env, `store_members\?active=eq\.true&select=store_id`\);/, 'must iterate every active store, same pattern as runScheduledEbayReprice/runScheduledDealScans');

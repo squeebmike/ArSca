@@ -3040,6 +3040,170 @@ async function putStoredSecret(env, key, value) {
 // in this file -- interactive, single-shot calls (a staff member clicking
 // one button) are better served by surfacing the real error immediately
 // than by silently retrying for several seconds.
+// Every page of an eBay getOrders query. Only the first page (50 or 200
+// orders) used to be read, so once more orders matched than fit -- presales
+// sit unshipped for weeks until release -- newer sales could fall off the end
+// and never reach the dashboard.
+async function fetchAllEbayOrders(ebayToken, filter, pageSize = 200, maxPages = 10) {
+  const orders = [];
+  let total = 0;
+  let next = 'https://api.ebay.com/sell/fulfillment/v1/order?filter=' + encodeURIComponent(filter) + '&limit=' + pageSize;
+  for (let page = 0; next && page < maxPages; page++) {
+    const res = await ebayFetchWithRetry(next, { headers: { 'Authorization': 'Bearer ' + ebayToken } });
+    const txt = await res.text();
+    let data; try { data = JSON.parse(txt); } catch (_) { data = { raw: txt }; }
+    if (!res.ok) {
+      const msg = data?.errors?.[0]?.longMessage || data?.errors?.[0]?.message || txt.substring(0, 300);
+      const e = new Error('eBay order lookup failed (' + res.status + '): ' + msg); e.status = res.status; throw e;
+    }
+    const batch = data.orders || [];
+    orders.push(...batch);
+    total = Number(data.total || orders.length);
+    next = batch.length && typeof data.next === 'string' && data.next.startsWith('https://api.ebay.com/') ? data.next : null;
+  }
+  return { orders, total };
+}
+
+// Shared by the manual /ebay/orders/sync route above (an authenticated
+// staff request, one store at a time) and runScheduledEbayOrderSync
+// below (the 6h cron, every connected store) -- store request: eBay
+// sales made directly through eBay's own app/site sat unrecorded in
+// local inventory/profit stats until a staffer remembered to manually
+// click SYNC EBAY ORDERS, which also meant a card sold on eBay could
+// still show as available in-store or get sold again there before
+// anyone noticed. confirmedBy is a real user id for the manual route
+// and null for the scheduled run (pos_payments.confirmed_by is a
+// nullable FK to auth.users, so this is a legitimate "no human
+// confirmed this" value, not a workaround).
+async function syncEbayOrdersForStore(env, storeId, ebayToken, receiptSettings, { reconcile, confirmedBy }) {
+  const { data: items } = await supabaseAdminFetch(env, `inventory_items?store_id=eq.${encodeURIComponent(storeId)}&status=neq.sold&select=id,data,status&limit=500`);
+    const skuMap = new Map();
+    for (const row of items || []) {
+      const sku = row.data?.ebaySku;
+      if (sku) skuMap.set(String(sku), row);
+    }
+
+    // Regular sync only looks at orders eBay itself hasn't marked fulfilled yet.
+    // Reconcile mode additionally covers orders already fulfilled (through eBay's
+    // own app, or from before this sync existed) within the last 90 days --
+    // bounded by date since dropping the fulfillment filter can otherwise return
+    // a long account history. The status=neq.sold guard above already limits this
+    // to items still showing as available/listed in our own inventory, so this
+    // can't create a duplicate sale record for something already reconciled by
+    // hand -- it only catches items we still think are unsold.
+    const orderFilter = reconcile
+      ? 'creationdate:[' + new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString() + '..]'
+      : 'orderfulfillmentstatus:{NOT_STARTED|IN_PROGRESS}';
+    const { orders } = await fetchAllEbayOrders(ebayToken, orderFilter, reconcile ? 200 : 50);
+    const results = [];
+    const errors = [];
+    for (const order of orders) {
+      if (order.orderPaymentStatus !== 'PAID') continue;
+      for (const li of (order.lineItems || [])) {
+        const sku = String(li.sku || '');
+        const invRow = skuMap.get(sku) || null;
+
+        // Keyed by sku (as before) whenever one exists -- preserves the exact
+        // KV key every previously-synced matched sale was already recorded
+        // under, so this change can't cause those to be double-recorded.
+        // Unmatched line items (which never got a key before) fall back to
+        // eBay's own lineItemId so different items in the same order don't
+        // collide when sku is blank.
+        const trackKey = `ebay_order_synced:${storeId}:${order.orderId}:${sku || li.lineItemId || 'noid'}`;
+        if (env.LBA_KV && await env.LBA_KV.get(trackKey)) continue;
+
+        try {
+          const quantitySold = Math.max(1, Number(li.quantity || 1));
+          const salePrice = Number(li.lineItemCost?.value || li.total?.value || 0);
+          const soldAt = order.creationDate || new Date().toISOString();
+
+          const d = invRow ? (invRow.data || {}) : {};
+          let remaining = 0, depleted = false;
+          const cost = invRow ? Number(d.cost || 0) : 0;
+          // eBay's own final value fee never showed up here -- profit was
+          // gross sale price minus cost only, overstating real money made
+          // by the full fee percentage on every auto-synced order. Manual
+          // "Record External Sale"/"Sold on Whatnot" already deduct a fee
+          // the dealer enters; a real eBay order has no equivalent manual
+          // step, so apply the same default rate used as eBay's preset
+          // there (EBAY_DEFAULT_FEE_PCT, kept in sync with
+          // EXTERNAL_SALE_FEE_DEFAULTS.eBay in dashboard.html) unless a
+          // per-store override is configured.
+          const ebayFeePct = Number(receiptSettings?.ebayFeePct ?? EBAY_DEFAULT_FEE_PCT);
+          const ebayFeeFlat = Number(receiptSettings?.ebayFeeFlat ?? EBAY_DEFAULT_FEE_FLAT);
+          const feeAmount = Math.round((salePrice * (ebayFeePct / 100) + ebayFeeFlat) * 100) / 100;
+          const profit = salePrice - cost - feeAmount;
+          const itemName = d.name || li.title || 'eBay Item';
+
+          const saleId = crypto.randomUUID();
+          await supabaseAdminFetch(env, 'pos_sales', { method: 'POST', headers: { Prefer: 'return=minimal' },
+            body: JSON.stringify({ id: saleId, store_id: storeId, subtotal: salePrice, discount_total: 0, tax_total: 0, total: salePrice, status: 'completed', payment_status: 'paid', completed_at: soldAt, created_at: soldAt }) });
+          await supabaseAdminFetch(env, 'pos_sale_lines', { method: 'POST', headers: { Prefer: 'return=minimal' },
+            body: JSON.stringify([{ id: crypto.randomUUID(), sale_id: saleId, store_id: storeId, item_id: invRow ? invRow.id : null, title: itemName, category: d.category || guessSaleCategoryFromTitle(itemName), quantity: quantitySold, unit_price: salePrice / quantitySold, original_price: salePrice / quantitySold, adjusted_price: salePrice / quantitySold, discount_amount: 0, cost_basis: cost, profit, condition: d.condition || '', source_id: 'ebay:' + order.orderId, image_url: d.thumbnail || d.image || '' }]) });
+          await supabaseAdminFetch(env, 'pos_payments', { method: 'POST', headers: { Prefer: 'return=minimal' },
+            body: JSON.stringify({ id: crypto.randomUUID(), sale_id: saleId, store_id: storeId, method: 'eBay', amount: salePrice, status: 'confirmed', provider: 'ebay', currency: 'USD', confirmed_by: confirmedBy, confirmed_at: soldAt, created_at: soldAt }) });
+
+          if (invRow) {
+            const currentQty = Number(d.quantity ?? d.qty ?? 1) || 0;
+            remaining = Math.max(0, currentQty - quantitySold);
+            depleted = remaining <= 0;
+            // A partial marketplace sale must not turn the unsold balance of
+            // an FOC eBay presale into ordinary shelf inventory. That made
+            // the remaining copies leak into the public shop before the
+            // books arrived. The explicit receive/convert workflow marks a
+            // received presale with ebayPresaleConverted; only that state is
+            // allowed to become in_stock while quantity remains.
+            const preservePresale = !depleted && (invRow.status === 'presale' || d.source === 'foc_presale') && d.ebayPresaleConverted !== true;
+            const nextStatus = depleted ? 'sold' : preservePresale ? 'presale' : 'in_stock';
+            const nextData = { ...d, status: nextStatus, lifecycle: nextStatus, qty: remaining, quantity: remaining, salePrice, profit, channel: 'eBay', soldAt: depleted ? soldAt : '' };
+            if (depleted) {
+              nextData.ebayListingId = ''; nextData.ebayOfferId = ''; nextData.ebaySku = ''; nextData.ebayListedAt = '';
+              // Cross-channel oversell guard: this item was also mirrored to
+              // Shopify/Whatnot -- pull it there too the moment eBay sells it,
+              // the same protection processShopifyOrder's own depleted branch
+              // gives in the reverse direction (see there).
+              if (d.shopifyProductId && !d.shopifyWithdrawnAt) {
+                try { await withdrawShopifyListing(env, d); nextData.shopifyWithdrawnAt = soldAt; }
+                catch (e) { console.warn('Could not auto-end Shopify listing after eBay sale:', invRow.id, e.message); }
+              }
+            }
+            await supabaseAdminFetch(env, `inventory_items?id=eq.${encodeURIComponent(invRow.id)}&store_id=eq.${encodeURIComponent(storeId)}`, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ data: nextData, status: nextStatus, updated_at: new Date().toISOString() }) });
+          }
+
+          if (env.LBA_KV) await env.LBA_KV.put(trackKey, '1', { expirationTtl: 60 * 60 * 24 * 180 });
+          results.push({ itemId: invRow ? invRow.id : null, name: itemName, sku, orderId: order.orderId, salePrice, quantitySold, depleted, matchedInventory: !!invRow });
+        } catch (itemErr) {
+          errors.push({ sku, orderId: order.orderId, error: itemErr.message });
+        }
+      }
+    }
+    const matchedCount = results.filter(r => r.matchedInventory).length;
+    return { ok: true, checked: orders.length, matched: matchedCount, recorded: results.length, results, errors };
+}
+
+// Store request: eBay sales made directly through eBay's own app/site
+// sat unrecorded in local inventory/profit stats until a staffer
+// remembered to manually click SYNC EBAY ORDERS -- meaning a card sold
+// on eBay could still show as available in-store, or get sold again on
+// eBay itself, until someone happened to sync. Runs alongside the
+// existing deal-scan/reprice cron jobs; one store or one item failing
+// must never block the rest, same convention as those jobs.
+async function runScheduledEbayOrderSync(env) {
+  if (!(env.SUPABASE_URL && (env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SERVICE_KEY))) return;
+  const { data: members } = await supabaseAdminFetch(env, `store_members?active=eq.true&select=store_id`);
+  const storeIds = [...new Set((members || []).map(m => String(m.store_id || '')).filter(Boolean))];
+  for (const storeId of storeIds) {
+    try {
+      let ebayToken = '';
+      try { ebayToken = await getEbayUserAccessToken(env); } catch (_) { continue; }
+      if (!ebayToken) continue;
+      const { data: syncSettings } = await supabaseAdminFetch(env, `store_settings?store_id=eq.${encodeURIComponent(storeId)}&select=receipt_settings&limit=1`);
+      const receiptSettings = syncSettings?.[0]?.receipt_settings || {};
+      await syncEbayOrdersForStore(env, storeId, ebayToken, receiptSettings, { reconcile: false, confirmedBy: null });
+    } catch (e) { console.error('Scheduled eBay order sync failed for store', storeId, e.message); }
+  }
+}
+
 async function ebayFetchWithRetry(url, options, maxRetries = 2) {
   let lastRes;
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
@@ -9922,155 +10086,6 @@ async function routeRequest(request, env, ctx) {
       }
     }
 
-    // Shared by the manual /ebay/orders/sync route above (an authenticated
-    // staff request, one store at a time) and runScheduledEbayOrderSync
-    // below (the 6h cron, every connected store) -- store request: eBay
-    // sales made directly through eBay's own app/site sat unrecorded in
-    // local inventory/profit stats until a staffer remembered to manually
-    // click SYNC EBAY ORDERS, which also meant a card sold on eBay could
-    // still show as available in-store or get sold again there before
-    // anyone noticed. confirmedBy is a real user id for the manual route
-    // and null for the scheduled run (pos_payments.confirmed_by is a
-    // nullable FK to auth.users, so this is a legitimate "no human
-    // confirmed this" value, not a workaround).
-    async function syncEbayOrdersForStore(env, storeId, ebayToken, receiptSettings, { reconcile, confirmedBy }) {
-      const { data: items } = await supabaseAdminFetch(env, `inventory_items?store_id=eq.${encodeURIComponent(storeId)}&status=neq.sold&select=id,data,status&limit=500`);
-        const skuMap = new Map();
-        for (const row of items || []) {
-          const sku = row.data?.ebaySku;
-          if (sku) skuMap.set(String(sku), row);
-        }
-
-        // Regular sync only looks at orders eBay itself hasn't marked fulfilled yet.
-        // Reconcile mode additionally covers orders already fulfilled (through eBay's
-        // own app, or from before this sync existed) within the last 90 days --
-        // bounded by date since dropping the fulfillment filter can otherwise return
-        // a long account history. The status=neq.sold guard above already limits this
-        // to items still showing as available/listed in our own inventory, so this
-        // can't create a duplicate sale record for something already reconciled by
-        // hand -- it only catches items we still think are unsold.
-        const orderFilter = reconcile
-          ? 'creationdate:[' + new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString() + '..]'
-          : 'orderfulfillmentstatus:{NOT_STARTED|IN_PROGRESS}';
-        const res = await ebayFetchWithRetry('https://api.ebay.com/sell/fulfillment/v1/order?filter=' + encodeURIComponent(orderFilter) + '&limit=' + (reconcile ? 200 : 50), {
-          headers: { 'Authorization': 'Bearer ' + ebayToken },
-        });
-        const txt = await res.text();
-        let data; try { data = JSON.parse(txt); } catch (_) { data = { raw: txt }; }
-        if (!res.ok) {
-          const msg = data?.errors?.[0]?.longMessage || data?.errors?.[0]?.message || txt.substring(0, 300);
-          const e = new Error('eBay order lookup failed (' + res.status + '): ' + msg); e.status = res.status; throw e;
-        }
-
-        const orders = data.orders || [];
-        const results = [];
-        const errors = [];
-        for (const order of orders) {
-          if (order.orderPaymentStatus !== 'PAID') continue;
-          for (const li of (order.lineItems || [])) {
-            const sku = String(li.sku || '');
-            const invRow = skuMap.get(sku) || null;
-
-            // Keyed by sku (as before) whenever one exists -- preserves the exact
-            // KV key every previously-synced matched sale was already recorded
-            // under, so this change can't cause those to be double-recorded.
-            // Unmatched line items (which never got a key before) fall back to
-            // eBay's own lineItemId so different items in the same order don't
-            // collide when sku is blank.
-            const trackKey = `ebay_order_synced:${storeId}:${order.orderId}:${sku || li.lineItemId || 'noid'}`;
-            if (env.LBA_KV && await env.LBA_KV.get(trackKey)) continue;
-
-            try {
-              const quantitySold = Math.max(1, Number(li.quantity || 1));
-              const salePrice = Number(li.lineItemCost?.value || li.total?.value || 0);
-              const soldAt = order.creationDate || new Date().toISOString();
-
-              const d = invRow ? (invRow.data || {}) : {};
-              let remaining = 0, depleted = false;
-              const cost = invRow ? Number(d.cost || 0) : 0;
-              // eBay's own final value fee never showed up here -- profit was
-              // gross sale price minus cost only, overstating real money made
-              // by the full fee percentage on every auto-synced order. Manual
-              // "Record External Sale"/"Sold on Whatnot" already deduct a fee
-              // the dealer enters; a real eBay order has no equivalent manual
-              // step, so apply the same default rate used as eBay's preset
-              // there (EBAY_DEFAULT_FEE_PCT, kept in sync with
-              // EXTERNAL_SALE_FEE_DEFAULTS.eBay in dashboard.html) unless a
-              // per-store override is configured.
-              const ebayFeePct = Number(receiptSettings?.ebayFeePct ?? EBAY_DEFAULT_FEE_PCT);
-              const ebayFeeFlat = Number(receiptSettings?.ebayFeeFlat ?? EBAY_DEFAULT_FEE_FLAT);
-              const feeAmount = Math.round((salePrice * (ebayFeePct / 100) + ebayFeeFlat) * 100) / 100;
-              const profit = salePrice - cost - feeAmount;
-              const itemName = d.name || li.title || 'eBay Item';
-
-              const saleId = crypto.randomUUID();
-              await supabaseAdminFetch(env, 'pos_sales', { method: 'POST', headers: { Prefer: 'return=minimal' },
-                body: JSON.stringify({ id: saleId, store_id: storeId, subtotal: salePrice, discount_total: 0, tax_total: 0, total: salePrice, status: 'completed', payment_status: 'paid', completed_at: soldAt, created_at: soldAt }) });
-              await supabaseAdminFetch(env, 'pos_sale_lines', { method: 'POST', headers: { Prefer: 'return=minimal' },
-                body: JSON.stringify([{ id: crypto.randomUUID(), sale_id: saleId, store_id: storeId, item_id: invRow ? invRow.id : null, title: itemName, category: d.category || guessSaleCategoryFromTitle(itemName), quantity: quantitySold, unit_price: salePrice / quantitySold, original_price: salePrice / quantitySold, adjusted_price: salePrice / quantitySold, discount_amount: 0, cost_basis: cost, profit, condition: d.condition || '', source_id: 'ebay:' + order.orderId, image_url: d.thumbnail || d.image || '' }]) });
-              await supabaseAdminFetch(env, 'pos_payments', { method: 'POST', headers: { Prefer: 'return=minimal' },
-                body: JSON.stringify({ id: crypto.randomUUID(), sale_id: saleId, store_id: storeId, method: 'eBay', amount: salePrice, status: 'confirmed', provider: 'ebay', currency: 'USD', confirmed_by: confirmedBy, confirmed_at: soldAt, created_at: soldAt }) });
-
-              if (invRow) {
-                const currentQty = Number(d.quantity ?? d.qty ?? 1) || 0;
-                remaining = Math.max(0, currentQty - quantitySold);
-                depleted = remaining <= 0;
-                // A partial marketplace sale must not turn the unsold balance of
-                // an FOC eBay presale into ordinary shelf inventory. That made
-                // the remaining copies leak into the public shop before the
-                // books arrived. The explicit receive/convert workflow marks a
-                // received presale with ebayPresaleConverted; only that state is
-                // allowed to become in_stock while quantity remains.
-                const preservePresale = !depleted && (invRow.status === 'presale' || d.source === 'foc_presale') && d.ebayPresaleConverted !== true;
-                const nextStatus = depleted ? 'sold' : preservePresale ? 'presale' : 'in_stock';
-                const nextData = { ...d, status: nextStatus, lifecycle: nextStatus, qty: remaining, quantity: remaining, salePrice, profit, channel: 'eBay', soldAt: depleted ? soldAt : '' };
-                if (depleted) {
-                  nextData.ebayListingId = ''; nextData.ebayOfferId = ''; nextData.ebaySku = ''; nextData.ebayListedAt = '';
-                  // Cross-channel oversell guard: this item was also mirrored to
-                  // Shopify/Whatnot -- pull it there too the moment eBay sells it,
-                  // the same protection processShopifyOrder's own depleted branch
-                  // gives in the reverse direction (see there).
-                  if (d.shopifyProductId && !d.shopifyWithdrawnAt) {
-                    try { await withdrawShopifyListing(env, d); nextData.shopifyWithdrawnAt = soldAt; }
-                    catch (e) { console.warn('Could not auto-end Shopify listing after eBay sale:', invRow.id, e.message); }
-                  }
-                }
-                await supabaseAdminFetch(env, `inventory_items?id=eq.${encodeURIComponent(invRow.id)}&store_id=eq.${encodeURIComponent(storeId)}`, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ data: nextData, status: nextStatus, updated_at: new Date().toISOString() }) });
-              }
-
-              if (env.LBA_KV) await env.LBA_KV.put(trackKey, '1', { expirationTtl: 60 * 60 * 24 * 180 });
-              results.push({ itemId: invRow ? invRow.id : null, name: itemName, sku, orderId: order.orderId, salePrice, quantitySold, depleted, matchedInventory: !!invRow });
-            } catch (itemErr) {
-              errors.push({ sku, orderId: order.orderId, error: itemErr.message });
-            }
-          }
-        }
-        const matchedCount = results.filter(r => r.matchedInventory).length;
-        return { ok: true, checked: orders.length, matched: matchedCount, recorded: results.length, results, errors };
-    }
-
-    // Store request: eBay sales made directly through eBay's own app/site
-    // sat unrecorded in local inventory/profit stats until a staffer
-    // remembered to manually click SYNC EBAY ORDERS -- meaning a card sold
-    // on eBay could still show as available in-store, or get sold again on
-    // eBay itself, until someone happened to sync. Runs alongside the
-    // existing deal-scan/reprice cron jobs; one store or one item failing
-    // must never block the rest, same convention as those jobs.
-    async function runScheduledEbayOrderSync(env) {
-      if (!(env.SUPABASE_URL && (env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SERVICE_KEY))) return;
-      const { data: members } = await supabaseAdminFetch(env, `store_members?active=eq.true&select=store_id`);
-      const storeIds = [...new Set((members || []).map(m => String(m.store_id || '')).filter(Boolean))];
-      for (const storeId of storeIds) {
-        try {
-          let ebayToken = '';
-          try { ebayToken = await getEbayUserAccessToken(env); } catch (_) { continue; }
-          if (!ebayToken) continue;
-          const { data: syncSettings } = await supabaseAdminFetch(env, `store_settings?store_id=eq.${encodeURIComponent(storeId)}&select=receipt_settings&limit=1`);
-          const receiptSettings = syncSettings?.[0]?.receipt_settings || {};
-          await syncEbayOrdersForStore(env, storeId, ebayToken, receiptSettings, { reconcile: false, confirmedBy: null });
-        } catch (e) { console.error('Scheduled eBay order sync failed for store', storeId, e.message); }
-      }
-    }
 
     // POST /shopify/sync-item { itemIds: [uuid, ...] } -- pushes one or more
     // inventory_items rows to Shopify as an upsert (see shopifyUpsertItem),
@@ -10311,16 +10326,13 @@ async function routeRequest(request, env, ctx) {
         const days = Math.min(365, Math.max(1, Number(url.searchParams.get('days')) || 90));
         const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
         const filter = 'creationdate:[' + since + '..]';
-        const res = await fetch('https://api.ebay.com/sell/fulfillment/v1/order?filter=' + encodeURIComponent(filter) + '&limit=200&sort=creationdate', {
-          headers: { 'Authorization': 'Bearer ' + ebayToken },
-        });
-        const txt = await res.text();
-        let data; try { data = JSON.parse(txt); } catch (_) { data = { raw: txt }; }
-        if (!res.ok) {
-          const msg = data?.errors?.[0]?.longMessage || data?.errors?.[0]?.message || txt.substring(0, 300);
-          return json({ ok: false, error: 'eBay order lookup failed (' + res.status + '): ' + msg }, res.status);
-        }
-        const orders = (data.orders || []).map(o => ({
+        let page;
+        try { page = await fetchAllEbayOrders(ebayToken, filter, 200); }
+        catch (e) { return json({ ok: false, error: e.message }, e.status || 502); }
+        // Oldest first, as before (the dashboard reverses it); every page now.
+        page.orders.sort((a, b) => String(a.creationDate || '').localeCompare(String(b.creationDate || '')));
+        const data = { total: page.total };
+        const orders = page.orders.map(o => ({
           orderId: o.orderId,
           creationDate: o.creationDate,
           fulfillmentStatus: o.orderFulfillmentStatus,

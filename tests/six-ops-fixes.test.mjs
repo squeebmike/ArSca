@@ -179,7 +179,12 @@ console.log('Fix 5 (storefront publish toggle + onlineListed default) checks pas
 
   const syncStart = worker.indexOf("if (url.pathname === '/ebay/orders/sync') {");
   assert(syncStart >= 0, '/ebay/orders/sync route must exist');
-  const syncFn = worker.slice(syncStart, worker.indexOf("\n    if (url.pathname === '/ebay/orders/ship'", syncStart));
+  // The route plus the shared per-store sync it calls (now a top-level
+  // function so the scheduled cron can reach it too).
+  const sharedStart = worker.indexOf('async function syncEbayOrdersForStore(');
+  assert(sharedStart >= 0, 'syncEbayOrdersForStore must exist');
+  const syncFn = worker.slice(syncStart, worker.indexOf("\n    if (url.pathname === '/ebay/orders/ship'", syncStart)) +
+    worker.slice(sharedStart, worker.indexOf('async function runScheduledEbayOrderSync', sharedStart));
   assert.match(syncFn, /const \{ data: syncSettings \} = await supabaseAdminFetch\(env, `store_settings\?store_id=eq\.\$\{encodeURIComponent\(storeId\)\}&select=receipt_settings&limit=1`\);/, 'must load the store\'s receipt_settings so a per-store eBay fee override is possible');
   assert.match(syncFn, /const ebayFeePct = Number\(receiptSettings\?\.ebayFeePct \?\? EBAY_DEFAULT_FEE_PCT\);/, 'must use a configured fee rate when present, falling back to the shared default');
   assert.match(syncFn, /const ebayFeeFlat = Number\(receiptSettings\?\.ebayFeeFlat \?\? EBAY_DEFAULT_FEE_FLAT\);/, 'must use a configured flat fee when present, falling back to the shared default (not $0)');
