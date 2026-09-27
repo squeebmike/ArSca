@@ -15938,6 +15938,11 @@ export default {
       }
     }
 
+    // The www routes are prefix wildcards (/preorder*, /book*, /mtg*, ...), so
+    // they also catch Webflow's own pages that share a prefix -- /preorders,
+    // /books, /mtg-new-releases. Any page this Worker doesn't serve goes on to
+    // Webflow rather than a JSON 404.
+    if (url.hostname === 'www.themanapocket.com' && (request.method === 'GET' || request.method === 'HEAD')) return fetch(request);
     if (env.ASSETS && (request.method === 'GET' || request.method === 'HEAD')) return env.ASSETS.fetch(request);
     return json({ error: 'Not found' }, 404);
     } catch(e) {
