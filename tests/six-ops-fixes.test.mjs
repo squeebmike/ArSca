@@ -186,10 +186,11 @@ console.log('Fix 5 (storefront publish toggle + onlineListed default) checks pas
   const syncFn = worker.slice(syncStart, worker.indexOf("\n    if (url.pathname === '/ebay/orders/ship'", syncStart)) +
     worker.slice(sharedStart, worker.indexOf('async function runScheduledEbayOrderSync', sharedStart));
   assert.match(syncFn, /const \{ data: syncSettings \} = await supabaseAdminFetch\(env, `store_settings\?store_id=eq\.\$\{encodeURIComponent\(storeId\)\}&select=receipt_settings&limit=1`\);/, 'must load the store\'s receipt_settings so a per-store eBay fee override is possible');
-  assert.match(syncFn, /const ebayFeePct = Number\(receiptSettings\?\.ebayFeePct \?\? EBAY_DEFAULT_FEE_PCT\);/, 'must use a configured fee rate when present, falling back to the shared default');
-  assert.match(syncFn, /const ebayFeeFlat = Number\(receiptSettings\?\.ebayFeeFlat \?\? EBAY_DEFAULT_FEE_FLAT\);/, 'must use a configured flat fee when present, falling back to the shared default (not $0)');
-  assert.match(syncFn, /const feeAmount = Math\.round\(\(salePrice \* \(ebayFeePct \/ 100\) \+ ebayFeeFlat\) \* 100\) \/ 100;/, 'must compute the fee the same way the manual external-sale flow does (percent of sale price + flat)');
-  assert.match(syncFn, /const profit = salePrice - cost - feeAmount;/, 'the fee must actually be subtracted from recorded profit -- this is the whole point of the fix');
+  // The fee is eBay's real fee for the order (totalMarketplaceFee), or an
+  // estimate on the whole order total using the store's configured rate,
+  // never the item price alone (scripts/ebay-order-money.mjs).
+  assert.match(syncFn, /const money = ebayOrderMoney\(order, \{ feePct: receiptSettings\?\.ebayFeePct \?\? EBAY_DEFAULT_FEE_PCT, feeFlat: receiptSettings\?\.ebayFeeFlat \}\);/, 'must use a configured fee rate when present, falling back to the shared default');
+  assert.match(syncFn, /const profit = ebayLineProfit\(m, cost\);/, 'the fee (and shipping) must actually be in recorded profit');
   assert.doesNotMatch(syncFn, /const profit = salePrice - cost;\n/, 'the old fee-less profit calculation must be gone');
 }
 console.log('Fix 6 (eBay auto-sync fee deduction) checks passed');

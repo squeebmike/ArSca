@@ -20,6 +20,7 @@ on:
       - scripts/comic-articles.mjs
       - scripts/site-chrome.mjs
       - scripts/public-pokemon-sets.mjs
+      - scripts/ebay-order-money.mjs
       - wrangler.deploy.jsonc
       - .github/workflows/deploy-worker.yml
   workflow_dispatch:

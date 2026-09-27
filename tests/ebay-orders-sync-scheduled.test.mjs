@@ -18,7 +18,7 @@ assert.match(worker, /async function syncEbayOrdersForStore\(env, storeId, ebayT
 const routeStart = worker.indexOf("if (url.pathname === '/ebay/orders/sync') {");
 const routeEnd = worker.indexOf('async function syncEbayOrdersForStore', routeStart);
 const routeBody = worker.slice(routeStart, routeEnd);
-assert.match(routeBody, /return json\(await syncEbayOrdersForStore\(env, storeId, ebayToken, receiptSettings, \{ reconcile, confirmedBy: auth\.user\.id \}\)\);/, 'the manual route must call the shared function with the real authenticated user as confirmedBy');
+assert.match(routeBody, /= await syncEbayOrdersForStore\(env, storeId, ebayToken, receiptSettings, \{ reconcile, confirmedBy: auth\.user\.id \}\);/, 'the manual route must call the shared function with the real authenticated user as confirmedBy');
 
 assert.match(worker, /async function runScheduledEbayOrderSync\(env\) \{/, 'missing runScheduledEbayOrderSync');
 const schedStart = worker.indexOf('async function runScheduledEbayOrderSync(env) {');
