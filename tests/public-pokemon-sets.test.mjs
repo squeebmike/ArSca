@@ -66,8 +66,24 @@ try {
   assert.equal(body.cache, 'stale');
   assert.equal(body.data.length, 2);
 
-  // The dashboard's pricing proxy still requires sign-in.
-  res = await get('/pricing/pokemon/sets');
-  assert.notEqual(res.status, 200, 'the paid pricing proxy stays gated');
+  upstreamUp = true;
+  // The live page's embed still calls the old paths, signed out: those two
+  // exact calls get the public cached answer, in the shape it reads.
+  res = await get('/pricing/pokemon/sets?sortBy=releaseDate&sortOrder=desc&limit=400');
+  assert.equal(res.status, 200);
+  assert.equal((await res.json()).data.length, 2);
+  res = await get('/pricing/pokemon/cards?set=Mega+Evolution&fetchAllInSet=true&limit=500');
+  assert.equal(res.status, 200);
+  assert.equal((await res.json()).data[0].name, 'Mega Lucario ex');
+
+  // Every other pricing lookup still requires sign-in.
+  const paid = calls.length;
+  for (const path of ['/pricing/pokemon/cards?search=charizard', '/pricing/pokemon/cards?tcgPlayerId=1', '/pricing/pokemon/sealed-products', '/pricing/pokemon/cards?set=Mega+Evolution&fetchAllInSet=true&search=x']) {
+    res = await get(path);
+    assert.notEqual(res.status, 200, path + ' stays gated');
+  }
+  res = await api.fetch(new Request('https://still-resonance-4f87.swarnerauto.workers.dev/pricing/pokemon/sets', { headers: { 'X-Store-Id': 'store-1' } }), env, { waitUntil: () => {} });
+  assert.notEqual(res.status, 200, 'a dashboard (store) request still goes through the signed-in proxy');
+  assert.equal(calls.length, paid, 'no paid API calls for gated requests');
 } finally { globalThis.fetch = originalFetch; globalThis.caches = originalCaches; }
 console.log('Public Pokémon set guide route checks passed');
