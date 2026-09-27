@@ -94,6 +94,10 @@
       "zone_name": "themanapocket.com"
     },
     {
+      "pattern": "www.themanapocket.com/articles*",
+      "zone_name": "themanapocket.com"
+    },
+    {
       "pattern": "www.themanapocket.com/sitemap-pages.xml",
       "zone_name": "themanapocket.com"
     },
