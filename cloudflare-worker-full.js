@@ -31,6 +31,7 @@ import { buildChecklistIndex, parseChecklistText, sha1Hex, slugify } from './scr
 import { handleFocRequest, syncFocStripeEvent, shippingSettings } from './scripts/foc-preorders.mjs';
 import { handleBacklistRequest, syncBacklistStripeEvent } from './scripts/backlist-catalog.mjs';
 import { handleAccountRequest, findLinkedCustomer } from './scripts/customer-account.mjs';
+import { EditError, editSaleLine, editInventoryItem, adjustCustomerPoints, editHistory } from './scripts/database-edits.mjs';
 import { awardWebOrderLoyalty, planWebRedemption, holdWebOrderPoints, releaseWebOrderPoints, recordWebPointsTender, pointsHoldActive } from './scripts/web-loyalty.mjs';
 import { customerProfile, searchInventory, itemProfile } from './scripts/database-explorer.mjs';
 import { handleFanClubRequest } from './scripts/fan-club.mjs';
@@ -713,7 +714,7 @@ function guessSaleCategoryFromTitle(title) {
 // store settings) or internal lock rows. Keys are what the dashboard asks
 // for; table/select/order are fixed here, never taken from the request.
 const DATABASE_VIEWER_GROUPS = [
-  ['Sales & money', [['pos_sales','Sales'],['pos_sale_lines','Sale line items'],['pos_payments','Payments'],['pos_refunds','Refunds'],['sales','Legacy sales log'],['pos_drawer_sessions','Cash drawer sessions'],['pos_drawer_movements','Cash drawer movements'],['gift_cards','Gift cards'],['gift_card_transactions','Gift card transactions'],['pos_audit_log','Register audit log']]],
+  ['Sales & money', [['pos_sales','Sales'],['pos_sale_lines','Sale line items'],['pos_payments','Payments'],['pos_refunds','Refunds'],['sales','Legacy sales log'],['pos_drawer_sessions','Cash drawer sessions'],['pos_drawer_movements','Cash drawer movements'],['gift_cards','Gift cards'],['gift_card_transactions','Gift card transactions'],['pos_audit_log','Register audit log'],['database_edit_log','Database viewer edits']]],
   ['Customers', [['customers','Customers'],['loyalty_ledger','Loyalty points history','*,customer:customers(name,phone,email)'],['trade_credit_ledger','Trade credit history','*,customer:customers(name,phone,email)'],['customer_receipts','Text receipts'],['customer_wants','Customer want list'],['email_notify_contacts','Email notify contacts'],['storefront_notify_requests','Back-in-stock requests'],['fan_club_subscribers','Fan club subscribers'],['messages','Messages'],['calls','Phone calls'],['voicemails','Voicemails']]],
   ['Website orders', [['storefront_orders','Website shop orders'],['foc_preorder_orders','Comic preorder orders'],['foc_preorder_items','Comic preorder items'],['backlist_orders','Backlist book orders'],['backlist_order_items','Backlist order items'],['backlist_picks','Backlist wishlists'],['foc_favorites','Preorder favorites'],['foc_pick_lists','Preorder pick lists'],['foc_incentive_requests','Ratio-cover requests']]],
   ['Inventory', [['inventory_items','Inventory items'],['inventory_movements','Inventory movements'],['price_change_alerts','Price change alerts'],['pricing_snapshots','Pricing snapshots'],['collection_buys','Collection buys'],['buylist_submissions','Buylist submissions'],['acquisition_rules','Acquisition rules'],['grading_submissions','Grading submissions'],['consignor_people','Consignors'],['consignment_items','Consignment items'],['consignment_alerts','Consignment alerts']]],
@@ -10952,6 +10953,33 @@ export default {
       if (url.pathname === '/store/db/items') return json({ ok: true, items: await searchInventory(env, supabaseAdminFetch, storeId, p.get('q')) });
       const profile = await itemProfile(env, supabaseAdminFetch, storeId, p.get('id') || '');
       return profile ? json({ ok: true, profile }) : json({ ok: false, error: 'Item not found' }, 404);
+    }
+    // Safe edits: sale line / item cost + category, customer points. No
+    // deletes. Each change is logged old -> new with who made it.
+    if (url.pathname === '/store/db/edit' && request.method === 'POST') {
+      const limited = await readJsonWithLimit(request, 8 * 1024);
+      if (limited.error) return limited.error;
+      const body = limited.data || {};
+      const storeId = requestStoreId(request, url, body);
+      const auth = await requireStoreUser(request, env, storeId, ['owner','admin']);
+      if (auth.error) return auth.error;
+      const user = { id: auth.user.id, email: auth.user.email || null };
+      try {
+        if (body.kind === 'sale_line') return json({ ok: true, ...(await editSaleLine(env, supabaseAdminFetch, storeId, user, body)) });
+        if (body.kind === 'item') return json({ ok: true, ...(await editInventoryItem(env, supabaseAdminFetch, storeId, user, body)) });
+        if (body.kind === 'points') return json({ ok: true, ...(await adjustCustomerPoints(env, supabaseAdminFetch, storeId, user, body)) });
+        return json({ ok: false, error: 'Unknown edit' }, 400);
+      } catch (e) {
+        if (e instanceof EditError) return json({ ok: false, error: e.message }, e.status);
+        throw e;
+      }
+    }
+    if (url.pathname === '/store/db/edits' && request.method === 'GET') {
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId, ['owner','admin']);
+      if (auth.error) return auth.error;
+      const p = url.searchParams;
+      return json({ ok: true, edits: await editHistory(env, supabaseAdminFetch, storeId, { table: p.get('table'), rowId: p.get('row_id'), limit: p.get('limit') }) });
     }
     if (url.pathname === '/store/db/tables' && request.method === 'GET') {
       const storeId = requestStoreId(request, url);
