@@ -3075,14 +3075,25 @@ async function fetchAllEbayOrders(ebayToken, filter, pageSize = 200, maxPages = 
 // and null for the scheduled run (pos_payments.confirmed_by is a
 // nullable FK to auth.users, so this is a legitimate "no human
 // confirmed this" value, not a workaround).
-async function syncEbayOrdersForStore(env, storeId, ebayToken, receiptSettings, { reconcile, confirmedBy }) {
-  const { data: items } = await supabaseAdminFetch(env, `inventory_items?store_id=eq.${encodeURIComponent(storeId)}&status=neq.sold&select=id,data,status&limit=500`);
-    const skuMap = new Map();
-    for (const row of items || []) {
+// The unsold inventory rows for the eBay SKUs these orders carry, by SKU.
+// This used to be the first 500 unsold items (of 1,400+), so a sale of any
+// item past that point recorded with no cost and never reduced its stock or
+// its FOC presold count. Looked up by SKU now, 40 at a time.
+async function loadInventoryByEbaySku(env, storeId, orders) {
+  const wanted = [...new Set(orders.flatMap(order => (order.lineItems || []).map(li => String(li.sku || ''))).filter(Boolean))];
+  const skuMap = new Map();
+  for (let i = 0; i < wanted.length; i += 40) {
+    const list = wanted.slice(i, i + 40).map(sku => '"' + sku.replace(/["\\]/g, '') + '"').join(',');
+    const { data: rows } = await supabaseAdminFetch(env, `inventory_items?store_id=eq.${encodeURIComponent(storeId)}&status=neq.sold&data->>ebaySku=in.(${encodeURIComponent(list)})&select=id,data,status`);
+    for (const row of rows || []) {
       const sku = row.data?.ebaySku;
       if (sku) skuMap.set(String(sku), row);
     }
+  }
+  return skuMap;
+}
 
+async function syncEbayOrdersForStore(env, storeId, ebayToken, receiptSettings, { reconcile, confirmedBy }) {
     // Regular sync only looks at orders eBay itself hasn't marked fulfilled yet.
     // Reconcile mode additionally covers orders already fulfilled (through eBay's
     // own app, or from before this sync existed) within the last 90 days --
@@ -3095,6 +3106,7 @@ async function syncEbayOrdersForStore(env, storeId, ebayToken, receiptSettings, 
       ? 'creationdate:[' + new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString() + '..]'
       : 'orderfulfillmentstatus:{NOT_STARTED|IN_PROGRESS}';
     const { orders } = await fetchAllEbayOrders(ebayToken, orderFilter, reconcile ? 200 : 50);
+    const skuMap = await loadInventoryByEbaySku(env, storeId, orders);
     const results = [];
     const errors = [];
     for (const order of orders) {
