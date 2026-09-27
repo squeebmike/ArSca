@@ -2422,7 +2422,7 @@ function mtgSiteFooter() {
     `<div class="footer-links"><a class="footer-link" href="/">Home</a><a class="footer-link" href="/shop">Shop</a><a class="footer-link" href="/account">My Pocket</a></div>` +
     `<div class="Social Icons">` +
     `<a href="https://www.facebook.com/profile.php?id=61592114016361" aria-label="Facebook">Facebook</a>` +
-    `<a href="https://www.instagram.com/walkoffsportscards" aria-label="Instagram">Instagram</a>` +
+    `<a href="https://www.instagram.com/shopthemanapocket" aria-label="Instagram">Instagram</a>` +
     `<a href="https://whatnot.com/invite/walkoffsportscards" aria-label="Whatnot">Whatnot</a>` +
     `</div></div></div></div></footer>`;
 }
