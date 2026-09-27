@@ -17,8 +17,9 @@ const order = (extra = {}) => ({
 // eBay's own fee for the order wins.
 let [m] = ebayOrderMoney(order({ totalMarketplaceFee: { value: '1.74' } }));
 assert.deepEqual(m, { lineItemId: 'L1', itemPrice: 4.99, shipping: 4.99, fee: 1.74, feeSource: 'ebay' });
-assert.equal(ebayLineProfit(m, 2.5), 5.74, '$4.99 item + $4.99 shipping - $2.50 cost - $1.74 fee');
-assert.equal(ebayLineProfit({ ...m, labelCost: 4.25 }, 2.5), 1.49, 'and the label comes off');
+assert.equal(ebayLineProfit(m, 2.5), 0.75, 'no label yet: assumed to cost the $4.99 shipping, so $4.99 - $2.50 cost - $1.74 fee');
+assert.equal(ebayLineProfit({ ...m, labelCost: 4.25 }, 2.5), 1.49, 'the real $4.25 label replaces the assumption: $4.99 + $4.99 - $2.50 - $1.74 - $4.25');
+assert.ok(ebayLineProfit(m, 2.5) < m.itemPrice, 'profit never above the item price while the label is pending');
 // No fee from eBay: estimated on item + shipping + tax, not the item alone.
 [m] = ebayOrderMoney(order());
 assert.equal(m.feeSource, 'estimate');
@@ -81,7 +82,7 @@ try {
   await cron();
   assert.equal(db.pos_sales.length, 1);
   assert.equal(db.pos_sales[0].total, 9.98, 'item + shipping the buyer paid');
-  assert.equal(db.pos_sale_lines[0].profit, 5.74);
+  assert.equal(db.pos_sale_lines[0].profit, 0.75, 'label pending: shipping nets to zero');
   const pay = db.pos_payments[0];
   assert.equal(pay.reference, '27-1');
   assert.equal(pay.amount, 9.98);
@@ -98,7 +99,7 @@ try {
   financeTxns.push({ transactionId: 'T2', transactionType: 'SHIPPING_LABEL', bookingEntry: 'CREDIT', amount: { value: '4.25' }, orderId: '27-1' });
   await cron();
   assert.equal(pay.provider_metadata.labelCost, 0);
-  assert.equal(db.pos_sale_lines[0].profit, 5.74);
+  assert.equal(db.pos_sale_lines[0].profit, 0.75, 'voided with no replacement: back to the assumption');
 
   // A sale recorded before this (no order on it, item price only, old fee):
   // linked and corrected when the sync sees its order again.
@@ -111,7 +112,7 @@ try {
   const old = db.pos_payments.find(p => p.id === 'p-old');
   assert.equal(old.reference, '27-9');
   assert.equal(old.amount, 9.98);
-  assert.equal(db.pos_sale_lines.find(l => l.id === 'l-old').profit, 5.74);
+  assert.equal(db.pos_sale_lines.find(l => l.id === 'l-old').profit, 0.75);
   assert.equal(db.pos_sales.find(s => s.id === 's-old').total, 9.98);
   assert.equal(db.pos_sales.length, 2, 'linked, not recorded a second time');
 
@@ -121,6 +122,12 @@ try {
   await cron();
   assert.equal(old.provider_metadata.fee, 1.5);
   assert.equal(old.provider_metadata.feeSource, 'ebay');
-  assert.equal(db.pos_sale_lines.find(l => l.id === 'l-old').profit, 5.98);
+  assert.equal(db.pos_sale_lines.find(l => l.id === 'l-old').profit, 0.99, '$4.99 - $2.50 - $1.50 real fee, label pending');
+
+  // Profit follows each linked sale's recorded money on every run.
+  db.pos_sale_lines.find(l => l.id === 'l-old').profit = 6.34;
+  financeTxns = [];
+  await cron();
+  assert.equal(db.pos_sale_lines.find(l => l.id === 'l-old').profit, 0.99);
 } finally { globalThis.fetch = originalFetch; globalThis.caches = originalCaches; }
 console.log('eBay fees, shipping and label reconcile checks passed');
