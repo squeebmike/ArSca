@@ -112,6 +112,12 @@ function searchWord(book) {
 // What the button should say for one book, in order of preference:
 // in the shop now > open for preorder > preorders closed (on its way) > not
 // solicited yet.
+// "X-MEN: INCURSIONS #1 COVER B BY ..." -> "Cover B by ..." for the picker.
+function coverLabel(sku) {
+  const label = String(sku.variant_label || '').trim() || String(sku.title || '').replace(/^.*?#\s*\d+\s*/, '').trim() || 'Main cover';
+  return label.toLowerCase().replace(/(^|[\s(/-])([a-z])/g, (m, a, b) => a + b.toUpperCase()).replace(/\b(By|And|Of|The)\b(?!$)/g, w => w.toLowerCase()).replace(/^(.)/, c => c.toUpperCase()).replace(/\b(Tbd|Tba|Nycc|Sdcc)\b/g, w => w.toUpperCase());
+}
+
 export async function bookStatus(env, deps, book, now = Date.now()) {
   const word = searchWord(book);
   const status = { name: book, state: 'coming', href: '', priceCents: 0, cover: '', covers: 0, cutoff: null, onSale: null };
@@ -141,7 +147,14 @@ export async function bookStatus(env, deps, book, now = Date.now()) {
   if (orderable.length) {
     const pick = orderable.includes(main) ? main : orderable[0];
     const cheapest = Math.min(...orderable.map(s => Number(s.customer_price_cents)));
-    return { ...status, state: 'preorder', href: `/preorder/${enc(pick.id)}`, priceCents: cheapest, covers: skus.length, cutoff: pick.cycle?.customer_cutoff_at || status.cutoff };
+    // Every cover the customer can save from the article, main cover first.
+    // Incentives (1:25 etc.) aren't sold; they're requests, same as on the
+    // preorders page, so they show as "Request" cards.
+    const requestable = skus.filter(s => s.is_incentive && s.customer_enabled && !orderable.includes(s) && s.cycle?.status === 'open' && Date.parse(s.cycle?.customer_cutoff_at || '') > now);
+    const options = [pick, ...orderable.filter(s => s !== pick)].map(s => ({
+      id: s.id, label: coverLabel(s), cover: s.cover_image_url || '', priceCents: Number(s.customer_price_cents), kind: 'pick',
+    })).concat(requestable.map(s => ({ id: s.id, label: coverLabel(s), cover: s.cover_image_url || '', priceCents: 0, kind: 'request' })));
+    return { ...status, state: 'preorder', href: `/preorder/${enc(pick.id)}`, priceCents: cheapest, covers: skus.length, cutoff: pick.cycle?.customer_cutoff_at || status.cutoff, options };
   }
   if (skus.length) return { ...status, state: 'closed', covers: skus.length };
   return status;
@@ -176,6 +189,25 @@ const STYLE = `<style>
 .mp-book-row{display:flex;gap:12px;align-items:center;justify-content:space-between;padding:12px 0;border-top:1px solid rgba(255,255,255,.1)}
 .mp-book-row b{display:block;font-size:15px}.mp-book-row span{font-size:12px;opacity:.7}
 .mp-book-row .mp-btn{margin:0;white-space:nowrap}
+.mp-book{border-top:1px solid rgba(255,255,255,.1);scroll-margin-top:calc(var(--nav-height,90px) + 12px)}.mp-book .mp-book-row{border-top:0}
+.mp-book-main{display:flex;gap:12px;align-items:center}
+.mp-book-img{width:54px;height:82px;object-fit:cover;border-radius:5px;flex:none;background:#15101f}
+.mp-book-noimg{display:flex;align-items:center;justify-content:center;text-align:center;font-size:10px;opacity:.55;border:1px dashed rgba(255,255,255,.2);padding:4px}
+.mp-picker{padding:0 0 18px}
+.mp-covers{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:12px;margin:4px 0 14px}
+.mp-cover{position:relative;display:flex;flex-direction:column;gap:4px;text-align:left;padding:6px;border-radius:10px;border:2px solid rgba(255,255,255,.12);background:rgba(255,255,255,.03);color:inherit;font:inherit;cursor:pointer}
+.mp-cover img,.mp-cover-blank{width:100%;aspect-ratio:2/3;object-fit:cover;border-radius:6px;background:#15101f}
+.mp-cover-blank{display:flex;align-items:center;justify-content:center;font-size:12px;opacity:.5}
+.mp-cover-l{font-size:12px;line-height:1.3;font-weight:700}.mp-cover-p{font-size:12px;color:#8bd450;font-weight:800}
+.mp-cover-tick{position:absolute;top:10px;right:10px;width:26px;height:26px;border-radius:50%;background:#8bd450;color:#111;font-weight:900;display:none;align-items:center;justify-content:center}
+.mp-cover[aria-pressed="true"]{border-color:#8bd450;background:rgba(139,212,80,.10)}.mp-cover[aria-pressed="true"] .mp-cover-tick{display:flex}
+.mp-cover.is-saved .mp-cover-tick{display:flex;background:#fff}
+.mp-picker-bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center}.mp-picker-bar .mp-btn{margin:0}
+.mp-btn[disabled]{opacity:.45;cursor:default}
+.mp-picker-msg{font-size:14px;margin-top:10px;line-height:1.5}.mp-picker-msg.ok{color:#8bd450}.mp-picker-msg.err{color:#ff8a8a}
+.mp-auth{display:grid;gap:8px;max-width:360px;margin-top:12px;padding:14px;border:1px solid rgba(255,255,255,.15);border-radius:12px;background:rgba(255,255,255,.04)}
+.mp-auth input{font:inherit;font-size:16px;padding:10px 12px;border-radius:8px;border:1px solid rgba(255,255,255,.2);background:#15101f;color:#fff}
+.mp-auth b{font-size:15px}.mp-auth p{margin:0;font-size:13px;opacity:.75}.mp-auth .mp-btn{margin:0}
 .mp-art-list{display:grid;gap:18px;max-width:900px;margin:0 auto}
 .mp-art-card{display:flex;gap:18px;padding:16px;border:1px solid rgba(255,255,255,.12);border-radius:14px;text-decoration:none;color:inherit;background:rgba(255,255,255,.03)}
 .mp-art-card:hover{border-color:#8bd450}
@@ -193,7 +225,7 @@ function statusLine(s, esc) {
 }
 function button(s) {
   if (s.state === 'in_stock') return `<a class="mp-btn" href="${s.href}">Buy now</a>`;
-  if (s.state === 'preorder') return `<a class="mp-btn" href="${s.href}">Preorder now</a>`;
+  if (s.state === 'preorder') return `<a class="mp-btn" href="#${bookAnchor(s)}">Pick your cover</a>`;
   if (s.state === 'closed') return `<a class="mp-btn ghost" href="/shop?cat=comics">Shop comics</a>`;
   return `<a class="mp-btn ghost" href="/fan-club">Get notified</a>`;
 }
@@ -212,9 +244,62 @@ export function renderBuyBox(article, main, esc) {
   return `<aside class="mp-buy">${main.cover ? `<img src="${esc(main.cover)}" alt="${esc(main.name)} cover" loading="lazy">` : ''}<div><div class="mp-buy-k">${kicker}</div><div class="mp-buy-t">${esc(main.name)}</div><div class="mp-buy-s">${sub}</div>${actions}</div></aside>`;
 }
 
+function bookAnchor(s) { return 'book-' + comicKey(s.name).series.replace(/ /g, '-') + '-' + (comicKey(s.name).issue || '0'); }
+
+// Every open cover as a tappable card; the picked ones are saved to the
+// customer's account (their comic pulls) right here -- see PICKER_SCRIPT.
+function renderCoverPicker(s, esc) {
+  const covers = (s.options || []).map(o => `<button type="button" class="mp-cover" data-sku="${esc(o.id)}" data-kind="${o.kind === 'request' ? 'request' : 'pick'}" aria-pressed="false">` +
+    (o.cover ? `<img src="${esc(o.cover)}" alt="${esc(s.name)} ${esc(o.label)}" loading="lazy">` : `<span class="mp-cover-blank">No image yet</span>`) +
+    `<span class="mp-cover-l">${esc(o.label)}</span><span class="mp-cover-p">${o.kind === 'request' ? 'Incentive · request' : money(o.priceCents)}</span><span class="mp-cover-tick" aria-hidden="true">✓</span></button>`).join('');
+  return `<div class="mp-picker" data-picker data-cutoff="${esc(s.cutoff ? shortDate(s.cutoff) : '')}">` +
+    `<div class="mp-covers">${covers}</div>` +
+    `<div class="mp-picker-bar"><button type="button" class="mp-btn" data-save disabled>Pick a cover</button>` +
+    `<a class="mp-btn ghost" href="/preorders">See all my preorders</a></div>` +
+    `<div class="mp-picker-msg" data-msg role="status"></div></div>`;
+}
+
+// Saves the picked covers to the customer's account with the same session
+// (localStorage "mp-foc-session-v1") and API the preorders page uses, so a
+// visitor already signed in there is signed in here. Paying still happens on
+// the preorders page before FOC.
+const PICKER_API = 'https://still-resonance-4f87.swarnerauto.workers.dev';
+const SUPABASE_URL = 'https://vroknjrxubsqyexngwus.supabase.co';
+const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_wbpX2nL8l-4NbXtZNG_bjA_nabSYaJ5';
+export function pickerScript(storeId) {
+  const cfg = JSON.stringify({ api: PICKER_API, sb: SUPABASE_URL, key: SUPABASE_PUBLISHABLE_KEY, store: storeId }).replace(/</g, '\\u003c');
+  return `<script>(function(){var C=${cfg},SK='mp-foc-session-v1';
+function read(){try{return JSON.parse(localStorage.getItem(SK)||'null')}catch(e){return null}}
+function write(v){try{v?localStorage.setItem(SK,JSON.stringify(v)):localStorage.removeItem(SK)}catch(e){}}
+function auth(path,body){return fetch(C.sb+'/auth/v1/'+path,{method:'POST',headers:{apikey:C.key,'Content-Type':'application/json'},body:JSON.stringify(body)}).then(function(r){return r.json().catch(function(){return{}}).then(function(d){if(!r.ok)throw new Error(d.error_description||d.msg||d.message||'Sign in failed');return d;});});}
+function session(){var s=read();if(!s||!s.access_token)return Promise.resolve(null);if(!s.expires_at||s.expires_at*1000>Date.now()+60000)return Promise.resolve(s);
+return auth('token?grant_type=refresh_token',{refresh_token:s.refresh_token}).then(function(n){if(!n.access_token)throw 0;write(n);return n;}).catch(function(){write(null);return null;});}
+function msg(p,text,kind){var m=p.querySelector('[data-msg]');m.className='mp-picker-msg'+(kind?' '+kind:'');m.innerHTML=text;}
+function picked(p){return Array.prototype.slice.call(p.querySelectorAll('.mp-cover[aria-pressed="true"]'));}
+function refresh(p){var n=picked(p).length,b=p.querySelector('[data-save]');b.disabled=!n;b.textContent=n?('Save '+(n>1?n+' covers':'this cover')+' to my preorders'):'Pick a cover';}
+function signIn(p){if(p.querySelector('.mp-auth'))return;var f=document.createElement('form');f.className='mp-auth';
+f.innerHTML='<b>Sign in to save your covers</b><p>Same account as the preorders page. New here? Create one in a second.</p><input name="email" type="email" autocomplete="email" placeholder="Email" required><input name="password" type="password" autocomplete="current-password" minlength="8" placeholder="Password · 8+ characters" required><div class="mp-picker-bar"><button class="mp-btn" type="submit">Sign in &amp; save</button><button class="mp-btn ghost" type="button" data-signup>Create account</button></div>';
+p.appendChild(f);f.querySelector('input').focus();
+function go(kind){var email=f.email.value.trim(),pw=f.password.value;if(!email||pw.length<8){msg(p,'Enter your email and a password with at least 8 characters.','err');return;}msg(p,kind==='signup'?'Creating your account…':'Signing in…');
+(kind==='signup'?auth('signup',{email:email,password:pw}):auth('token?grant_type=password',{email:email,password:pw})).then(function(s){if(!s.access_token){msg(p,'Check your email to confirm your account, then sign in here.','ok');return;}write(s);f.remove();save(p);}).catch(function(e){msg(p,e.message,'err');});}
+f.addEventListener('submit',function(e){e.preventDefault();go('signin');});f.querySelector('[data-signup]').addEventListener('click',function(){go('signup');});}
+function save(p){var covers=picked(p);if(!covers.length)return;session().then(function(s){if(!s){msg(p,'');signIn(p);return;}
+var b=p.querySelector('[data-save]'),kept=0,asked=0;b.disabled=true;b.textContent='Saving…';msg(p,'');
+return covers.reduce(function(chain,c){return chain.then(function(){var req=c.getAttribute('data-kind')==='request';return fetch(C.api+(req?'/public/preorders/waitlist':'/public/preorders/picks'),{method:req?'POST':'PATCH',headers:{'Content-Type':'application/json',Authorization:'Bearer '+s.access_token},body:JSON.stringify({storeId:C.store,skuId:c.getAttribute('data-sku'),quantity:1})}).then(function(r){return r.json().catch(function(){return{}}).then(function(d){if(r.status===401){write(null);throw new Error('SIGNIN');}if(!r.ok||d.ok===false)throw new Error(d.error||'That cover could not be saved');c.setAttribute('aria-pressed','false');c.classList.add('is-saved');if(req)asked++;else kept++;});});});},Promise.resolve())
+.then(function(){var due=p.getAttribute('data-cutoff'),t=[];if(kept)t.push('Saved to your account ✓ Pay for your preorders'+(due?' by '+due:'')+' on the <a href="/preorders">preorders page</a> to lock them in.');if(asked)t.push('Incentive request'+(asked>1?'s':'')+' sent ✓ You are not charged unless we secure a copy for you.');msg(p,t.join(' '),'ok');})
+.catch(function(e){if(e.message==='SIGNIN'){msg(p,'');signIn(p);}else msg(p,e.message,'err');})
+.then(function(){refresh(p);});});}
+document.querySelectorAll('[data-picker]').forEach(function(p){p.addEventListener('click',function(e){var c=e.target.closest('.mp-cover');if(c){c.setAttribute('aria-pressed',c.getAttribute('aria-pressed')==='true'?'false':'true');refresh(p);return;}if(e.target.closest('[data-save]'))save(p);});});
+})();</script>`;
+}
+
 function renderBooks(statuses, esc) {
-  if (statuses.length < 2) return '';
-  return `<section class="mp-books"><h2>Get the books</h2>${statuses.map(s => `<div class="mp-book-row"><div><b>${esc(s.name)}</b><span>${statusLine(s, esc)}</span></div>${button(s)}</div>`).join('')}</section>`;
+  if (!statuses.length) return '';
+  return `<section class="mp-books"><h2>Get the books</h2>${statuses.map(s => `<div class="mp-book" id="${bookAnchor(s)}"><div class="mp-book-row">` +
+    `<div class="mp-book-main">${s.cover ? `<img class="mp-book-img" src="${esc(s.cover)}" alt="${esc(s.name)} cover" loading="lazy">` : `<span class="mp-book-img mp-book-noimg">Cover coming</span>`}` +
+    `<div><b>${esc(s.name)}</b><span>${statusLine(s, esc)}</span></div></div>` +
+    `${s.state === 'preorder' ? '' : button(s)}</div>` +
+    `${s.state === 'preorder' && s.options?.length ? renderCoverPicker(s, esc) : ''}</div>`).join('')}</section>`;
 }
 
 export function renderArticlePage(article, statuses, related, deps) {
@@ -252,7 +337,8 @@ export function renderArticlePage(article, statuses, related, deps) {
       `<h1>${esc(article.title)}</h1><div class="mp-art-meta">${esc(article.author)}${article.publishedAt ? ` · ${esc(dateLabel(article.publishedAt))}` : ''} · ${readingMinutes(article.bodyHtml)} min read</div>` +
       (article.image ? `<img class="mp-art-hero" src="${esc(article.image)}" alt="${esc(article.imageAlt || article.title)}">` : '') +
       renderBuyBox(article, main, esc) +
-      `<div class="mp-art-body">${article.bodyHtml}</div>` + facts + renderBooks(statuses, esc) + more + `</article>`,
+      `<div class="mp-art-body">${article.bodyHtml}</div>` + facts + renderBooks(statuses, esc) + more + `</article>` +
+      (statuses.some(st => st.options?.length) ? pickerScript(deps.storeId) : ''),
   });
 }
 
