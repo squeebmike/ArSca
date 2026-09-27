@@ -8,6 +8,7 @@ const fnSource = name => { let s = dashboard.indexOf(`function ${name}(`); if (d
 const STANDARD_INVENTORY_CATEGORIES = JSON.parse(dashboard.match(/const STANDARD_INVENTORY_CATEGORIES = (\[[^\]]+\]);/)[1].replace(/'/g, '"'));
 const canonicalSaleCategory = new Function('STANDARD_INVENTORY_CATEGORIES', `${fnSource('canonicalSaleCategory')}; return canonicalSaleCategory;`)(STANDARD_INVENTORY_CATEGORIES);
 for (const v of ['Sports Card', 'Sports Cards', 'sports', 'Baseball']) assert.equal(canonicalSaleCategory(v), 'Sports', v);
+assert.equal(canonicalSaleCategory('Comic Preorder'), 'Comic', 'website preorder sales count as Comic');
 assert.equal(canonicalSaleCategory('Pokemon TCG'), 'Pokemon TCG');
 assert.equal(canonicalSaleCategory('Pokémon'), 'Pokemon TCG');
 assert.equal(canonicalSaleCategory('Gift Card'), 'Gift Card', 'unknown categories pass through unchanged');

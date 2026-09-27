@@ -50,11 +50,25 @@ function repairMojibakeOnce(input) {
 // Repeats the repair while it keeps making progress (capped so genuinely
 // clean text -- which stops matching the suspicious-character check after
 // the first pass -- can never loop needlessly).
+// One mis-decoded UTF-8 character: a lead byte (U+00C2-U+00F4 as Latin-1)
+// followed by 1-3 continuation bytes, which show up either as C1 controls
+// (U+0080-U+00BF, read as ISO-8859-1) or as their Windows-1252 look-alikes.
+const MOJIBAKE_SEQUENCE = /[Â-ô](?:[\u0080-¿ŒœŠšŸŽžƒˆ˜–—‘-„†-•…‰‹›€™]){1,3}/g;
+
 function repairMojibake(value) {
   let input = String(value == null ? '' : value);
   for (let pass = 0; pass < 3 && /[ÃÂâ]/.test(input); pass++) {
     const repaired = repairMojibakeOnce(input);
     if (!repaired || repaired === input) break;
+    input = repaired;
+  }
+  // The whole-string repair above gives up if ANY character can't be a
+  // mis-decoded byte -- so one genuine "—" next to a garbled "â\u0080\u0099"
+  // left the whole description garbled. Repair each garbled sequence on its
+  // own too, keeping it only when it decodes to real UTF-8.
+  for (let pass = 0; pass < 2 && /[ÃÂâ]/.test(input); pass++) {
+    const repaired = input.replace(MOJIBAKE_SEQUENCE, sequence => repairMojibakeOnce(sequence) ?? sequence);
+    if (repaired === input) break;
     input = repaired;
   }
   return input;
