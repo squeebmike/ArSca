@@ -296,7 +296,12 @@ export async function handleArticlesRequest(request, env, ctx, url, deps) {
       html = deps.pageShell({ title: 'Article not found | The Mana Pocket', description: 'That article is not available.', canonicalPath: '/articles', robotsNoindex: true,
         bodyHtml: `<div class="mp-crumb"><a href="/articles">← Comic articles</a></div><h1>Article not found</h1><p class="mp-sub">It may have been renamed or taken down. <a href="/articles">See all comic articles</a>.</p>` });
     } else {
-      const statuses = await Promise.all(article.books.map(book => bookStatus(env, deps, book).catch(() => ({ name: book, state: 'coming', href: '' }))));
+      // One inventory load shared by every book on the page. Each is the
+      // whole store catalog (~5MB); five in parallel ran the Worker out of
+      // memory, so the article page failed while the list page worked.
+      let stock;
+      const pageDeps = { ...deps, listItems: e => (stock ||= deps.listItems(e)) };
+      const statuses = await Promise.all(article.books.map(book => bookStatus(env, pageDeps, book).catch(() => ({ name: book, state: 'coming', href: '' }))));
       const related = articles.filter(a => a.slug !== slug).slice(0, 4);
       html = renderArticlePage(article, statuses, related, deps);
     }

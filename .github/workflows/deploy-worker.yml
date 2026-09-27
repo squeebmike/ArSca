@@ -18,6 +18,7 @@ on:
       - scripts/database-edits.mjs
       - scripts/database-explorer.mjs
       - scripts/comic-articles.mjs
+      - scripts/site-chrome.mjs
       - wrangler.deploy.jsonc
       - .github/workflows/deploy-worker.yml
   workflow_dispatch:

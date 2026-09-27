@@ -32,6 +32,7 @@ import { handleFocRequest, syncFocStripeEvent, shippingSettings } from './script
 import { handleBacklistRequest, syncBacklistStripeEvent } from './scripts/backlist-catalog.mjs';
 import { handleAccountRequest, findLinkedCustomer } from './scripts/customer-account.mjs';
 import { handleArticlesRequest, articleSitemapPaths } from './scripts/comic-articles.mjs';
+import { extractSiteChrome, SITE_CHROME_SOURCE } from './scripts/site-chrome.mjs';
 import { EditError, editSaleLine, editInventoryItem, adjustCustomerPoints, editHistory } from './scripts/database-edits.mjs';
 import { awardWebOrderLoyalty, planWebRedemption, holdWebOrderPoints, releaseWebOrderPoints, recordWebPointsTender, pointsHoldActive } from './scripts/web-loyalty.mjs';
 import { customerProfile, searchInventory, itemProfile } from './scripts/database-explorer.mjs';
@@ -2428,30 +2429,42 @@ function mtgSiteFooter() {
     `<a href="https://whatnot.com/invite/themanapocket" aria-label="Whatnot">Whatnot</a>` +
     `</div></div></div></div></footer>`;
 }
-function mtgPageShell({ title, description, canonicalPath, ogImage, ogType, jsonLd, bodyHtml, robotsNoindex }) {
-  const jsonLdList = Array.isArray(jsonLd) ? jsonLd.filter(Boolean) : (jsonLd ? [jsonLd] : []);
-  const jsonLdBlock = jsonLdList.map(block => `<script type="application/ld+json">${JSON.stringify(block)}</script>`).join('');
-  const ogImageTag = ogImage ? `<meta property="og:image" content="${mtgEscapeHtml(ogImage)}">` : '';
-  // Twitter falls back to the Open Graph tags above for title/description/
-  // image when its own og:*-equivalent isn't present, but summary_large_image
-  // must still be declared explicitly -- Twitter/X never infers card type
-  // from og:type, so this was simply missing on every page before.
-  const twitterTags = `<meta name="twitter:card" content="summary_large_image">` +
-    (ogImage ? `<meta name="twitter:image" content="${mtgEscapeHtml(ogImage)}">` : '');
-  const robotsTag = robotsNoindex ? `<meta name="robots" content="noindex,follow">` : '';
-  return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">` +
-    `<title>${mtgEscapeHtml(title)}</title><meta name="description" content="${mtgEscapeHtml(description)}">${robotsTag}` +
-    `<link rel="canonical" href="https://www.themanapocket.com${canonicalPath}">` +
-    `<meta property="og:type" content="${mtgEscapeHtml(ogType || 'website')}"><meta property="og:site_name" content="The Mana Pocket">` +
-    `<meta property="og:title" content="${mtgEscapeHtml(title)}"><meta property="og:description" content="${mtgEscapeHtml(description)}">${ogImageTag}${twitterTags}` +
-    `${jsonLdBlock}` +
-    `<style>*{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#0a0710;color:#f2eefc;padding:0 0 64px;padding-top:var(--nav-height,92px)}a{color:#8bd450}` +
-    // Base nav/footer look before wo-ui.js's theme picker (if the visitor
-    // has never picked one) applies its own !important overrides on these
-    // same selectors -- matches the site's default navy/dark chrome. Fixed
-    // (not sticky) + the scrolled/is-hidden classes below replicate the real
-    // site's own scroll-hide/blur nav behavior (see mtgSiteNavScript).
-    `#navbarID.navbar6_component{position:fixed;top:0;left:0;right:0;z-index:9999;background:#001A72;padding:14px 20px;display:flex;border-bottom:1px solid rgba(255,255,255,.1);transition:transform .28s ease,background .25s ease,backdrop-filter .25s ease}` +
+// The real Webflow navbar/footer for these pages (scripts/site-chrome.mjs).
+// Kept as plain data per isolate and in the edge cache for 10 minutes; while
+// it's missing (cold start that couldn't reach Webflow) pages fall back to
+// the hand-built header above instead of failing.
+const SITE_CHROME_CACHE_KEY = new Request('https://internal.themanapocket.com/__cache/site-chrome-v1');
+const SITE_CHROME_TTL_MS = 10 * 60 * 1000;
+let siteChrome = null, siteChromeAt = 0, siteChromeFailedAt = 0;
+function currentSiteChrome() { return siteChrome; }
+async function loadSiteChrome(ctx) {
+  const cached = await caches.default.match(SITE_CHROME_CACHE_KEY).catch(() => null);
+  if (cached) { const data = await cached.json().catch(() => null); if (data?.nav) return data; }
+  const res = await fetch(SITE_CHROME_SOURCE, { headers: { Accept: 'text/html' } });
+  if (!res.ok) throw new Error(`site chrome page answered ${res.status}`);
+  const chrome = extractSiteChrome(await res.text());
+  if (!chrome) throw new Error('navbar not found on the site chrome page');
+  const store = new Response(JSON.stringify(chrome), { headers: { 'Content-Type': 'application/json', 'Cache-Control': `public, max-age=${SITE_CHROME_TTL_MS / 1000}` } });
+  if (ctx?.waitUntil) ctx.waitUntil(caches.default.put(SITE_CHROME_CACHE_KEY, store).catch(() => {}));
+  return chrome;
+}
+// Only page loads on the real site need it. A stale copy is served while a
+// fresh one loads in the background; a failure waits a minute before retrying.
+async function ensureSiteChrome(request, url, ctx) {
+  if (url.hostname !== 'www.themanapocket.com' || !['GET', 'HEAD'].includes(request.method)) return;
+  const now = Date.now();
+  if (siteChrome && now - siteChromeAt < SITE_CHROME_TTL_MS) return;
+  if (!siteChrome && now - siteChromeFailedAt < 60 * 1000) return;
+  const load = loadSiteChrome(ctx).then(
+    chrome => { siteChrome = chrome; siteChromeAt = Date.now(); },
+    error => { siteChromeFailedAt = Date.now(); console.warn('Site chrome unavailable:', error.message); });
+  if (siteChrome) { siteChromeAt = now; if (ctx?.waitUntil) ctx.waitUntil(load); return; }
+  await load;
+}
+// The hand-built header/footer look, used only when the real Webflow nav
+// couldn't be loaded (see loadSiteChrome).
+function mtgFallbackChromeCss() {
+  return `#navbarID.navbar6_component{position:fixed;top:0;left:0;right:0;z-index:9999;background:#001A72;padding:14px 20px;display:flex;border-bottom:1px solid rgba(255,255,255,.1);transition:transform .28s ease,background .25s ease,backdrop-filter .25s ease}` +
     `#navbarID.scrolled{background:rgba(0,26,114,.85);backdrop-filter:blur(8px)}#navbarID.is-hidden{transform:translateY(-110%)}` +
     `.navbar6_container{display:flex;align-items:center;justify-content:space-between;width:100%;max-width:1200px;margin:0 auto;gap:16px;position:relative}` +
     `.navbar6_logo-link{text-decoration:none;display:flex;align-items:center}.navbar6_logo{max-height:60px;max-width:220px;width:auto;height:auto;object-fit:contain;display:block}` +
@@ -2475,12 +2488,40 @@ function mtgPageShell({ title, description, canonicalPath, ogImage, ogType, json
     `.Footer.Section{margin-top:48px;background:#080808;padding:28px 20px;border-top:1px solid rgba(255,255,255,.08)}` +
     `.Footer .Content.Wrapper{max-width:1200px;margin:0 auto}.Footer .Flex.Space{display:flex;justify-content:space-between;flex-wrap:wrap;gap:16px}` +
     `.footer-links{display:flex;gap:18px;flex-wrap:wrap}.footer-link{color:#fff;font-size:14px;font-weight:600;text-decoration:none}.footer-link:hover{color:#8bd450}` +
-    `.Social.Icons{display:flex;gap:14px}.Social.Icons a{color:#c8c4dc;font-size:13px;text-decoration:none}.Social.Icons a:hover{color:#8bd450}` +
+    `.Social.Icons{display:flex;gap:14px}.Social.Icons a{color:#c8c4dc;font-size:13px;text-decoration:none}.Social.Icons a:hover{color:#8bd450}`;
+}
+function mtgPageShell({ title, description, canonicalPath, ogImage, ogType, jsonLd, bodyHtml, robotsNoindex }) {
+  const jsonLdList = Array.isArray(jsonLd) ? jsonLd.filter(Boolean) : (jsonLd ? [jsonLd] : []);
+  const jsonLdBlock = jsonLdList.map(block => `<script type="application/ld+json">${JSON.stringify(block)}</script>`).join('');
+  const ogImageTag = ogImage ? `<meta property="og:image" content="${mtgEscapeHtml(ogImage)}">` : '';
+  // Twitter falls back to the Open Graph tags above for title/description/
+  // image when its own og:*-equivalent isn't present, but summary_large_image
+  // must still be declared explicitly -- Twitter/X never infers card type
+  // from og:type, so this was simply missing on every page before.
+  const twitterTags = `<meta name="twitter:card" content="summary_large_image">` +
+    (ogImage ? `<meta name="twitter:image" content="${mtgEscapeHtml(ogImage)}">` : '');
+  const robotsTag = robotsNoindex ? `<meta name="robots" content="noindex,follow">` : '';
+  const chrome = currentSiteChrome();
+  return `<!DOCTYPE html><html lang="en"${chrome ? chrome.htmlAttrs : ''}><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">${chrome ? chrome.head : ''}` +
+    `<title>${mtgEscapeHtml(title)}</title><meta name="description" content="${mtgEscapeHtml(description)}">${robotsTag}` +
+    `<link rel="canonical" href="https://www.themanapocket.com${canonicalPath}">` +
+    `<meta property="og:type" content="${mtgEscapeHtml(ogType || 'website')}"><meta property="og:site_name" content="The Mana Pocket">` +
+    `<meta property="og:title" content="${mtgEscapeHtml(title)}"><meta property="og:description" content="${mtgEscapeHtml(description)}">${ogImageTag}${twitterTags}` +
+    `${jsonLdBlock}` +
+    `<style>*{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#0a0710;color:#f2eefc;padding:0 0 64px;padding-top:var(--nav-height,92px)}a{color:#8bd450}` +
+    // Base nav/footer look before wo-ui.js's theme picker (if the visitor
+    // has never picked one) applies its own !important overrides on these
+    // same selectors -- matches the site's default navy/dark chrome. Fixed
+    // (not sticky) + the scrolled/is-hidden classes below replicate the real
+    // site's own scroll-hide/blur nav behavior (see mtgSiteNavScript).
+    (chrome ? '' : mtgFallbackChromeCss()) +
     `.mp-wrap{max-width:1080px;margin:0 auto;padding:24px 16px 0}.mp-crumb{font-size:13px;opacity:.65;margin-bottom:16px}.mp-crumb a{color:#c8b8ff}h1{font-size:clamp(22px,4vw,32px);margin:0 0 8px}.mp-sub{opacity:.7;font-size:14px;margin-bottom:24px}.mp-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:16px}.mp-card{display:block;border:1px solid rgba(255,255,255,.12);border-radius:12px;overflow:hidden;background:rgba(255,255,255,.03);text-decoration:none;color:inherit}.mp-card img{width:100%;display:block;background:#16101f}.mp-card-body{padding:10px 12px}.mp-card-name{font-size:13px;font-weight:700;line-height:1.3}.mp-card-price{font-size:12px;color:#8bd450;font-weight:700;margin-top:4px}.mp-set-list{display:grid;gap:10px}.mp-set-row{display:flex;justify-content:space-between;gap:12px;padding:12px 16px;border:1px solid rgba(255,255,255,.1);border-radius:10px;text-decoration:none;color:inherit}.mp-set-row:hover{border-color:#8bd450}.mp-detail{display:grid;grid-template-columns:280px 1fr;gap:32px}@media(max-width:640px){.mp-detail{grid-template-columns:1fr}}.mp-detail img{width:100%;border-radius:14px}.mp-prices{display:flex;gap:10px;flex-wrap:wrap;margin:16px 0}.mp-price-pill{background:rgba(139,212,80,.15);color:#8bd450;font-weight:800;padding:8px 14px;border-radius:999px;font-size:14px}.mp-oracle{white-space:pre-wrap;line-height:1.6;font-size:14px;opacity:.9;margin-top:16px}.mp-meta{font-size:13px;opacity:.65;margin-top:8px}</style></head>` +
-    `<body>${mtgSiteHeader()}<div class="mp-wrap">${bodyHtml}</div>${mtgSiteFooter()}` +
-    `${mtgSiteNavScript()}` +
-    `<script defer src="${WO_UI_SCRIPT_URL}"></script>` +
-    `</body></html>`;
+    (chrome
+      ? `<body>${chrome.nav}<div class="mp-wrap">${bodyHtml}</div>${chrome.footer || mtgSiteFooter()}${chrome.bodyEnd}</body></html>`
+      : `<body>${mtgSiteHeader()}<div class="mp-wrap">${bodyHtml}</div>${mtgSiteFooter()}` +
+        `${mtgSiteNavScript()}` +
+        `<script defer src="${WO_UI_SCRIPT_URL}"></script>` +
+        `</body></html>`);
 }
 
 function mtgHtmlResponse(html) {
@@ -4487,8 +4528,7 @@ async function fetchSoldCompsWithFallback(env, query, limit = 40) {
   return result;
 }
 
-export default {
-  async fetch(request, env, ctx) {
+async function routeRequest(request, env, ctx) {
     if (request.method === 'OPTIONS') {
       return new Response(null, { status: 204, headers: CORS });
     }
@@ -15948,6 +15988,13 @@ export default {
     } catch(e) {
       return json({ ok: false, error: e?.message || 'Internal error' }, 500);
     }
+}
+
+export default {
+  async fetch(request, env, ctx) {
+    // Before routing, so every Worker-rendered page on www gets the real nav.
+    await ensureSiteChrome(request, new URL(request.url), ctx).catch(() => {});
+    return routeRequest(request, env, ctx);
   },
 
   // Runs the same deal scan the SCAN EBAY FOR DEALS button triggers, on a

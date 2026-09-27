@@ -9,6 +9,7 @@ const origin = [];
 globalThis.caches = { default: { match: async () => null, put: async () => {} } };
 globalThis.fetch = async input => {
   const url = String(input.url || input);
+  if (url === 'https://www.themanapocket.com/privacy-policy') return new Response('<html><body>no nav</body></html>', { headers: { 'Content-Type': 'text/html' } }); // the real-nav source (site-chrome test)
   if (url.startsWith('https://www.themanapocket.com/')) { origin.push(url); return new Response('<html>webflow page</html>', { headers: { 'Content-Type': 'text/html' } }); }
   return new Response('[]', { headers: { 'Content-Type': 'application/json' } });
 };
