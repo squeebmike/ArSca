@@ -75,7 +75,8 @@ export async function awardWebOrderLoyalty(env, fetch, order) {
     const enc = encodeURIComponent;
     const { data: settings } = await fetch(env, `store_settings?store_id=eq.${enc(storeId)}&select=receipt_settings&limit=1`);
     const rate = storeLoyaltyRate(settings?.[0]?.receipt_settings);
-    const customer = await findOrCreateWebCustomer(env, fetch, order);
+    // An order paid partly with points earns on the account that spent them.
+    const customer = order.customerId ? { id: order.customerId } : await findOrCreateWebCustomer(env, fetch, order);
     if (!customer?.id) return null;
     // Stamped regardless of points, same as an in-store sale: it's what ties
     // the purchase to the customer's history.
@@ -91,6 +92,130 @@ export async function awardWebOrderLoyalty(env, fetch, order) {
     return { customerId: customer.id, points: balance == null ? 0 : points, balance };
   } catch (error) {
     console.error('Web order loyalty failed:', error?.message || error);
+    return null;
+  }
+}
+
+// --- Spending points online ----------------------------------------------
+//
+// Same value as the register: 100 points = $1, so one point is one cent.
+export const POINTS_PER_DOLLAR = 100;
+// Stripe won't charge less than 50 cents, and points don't (yet) cover a
+// whole order on their own -- so at least this much always goes on the card.
+export const MIN_CARD_CHARGE_CENTS = 50;
+
+// Points go toward the merchandise, not shipping, and never below the card
+// minimum. Asking for more than allowed just uses the most allowed.
+export function redeemablePoints({ requested, balance, merchandiseCents, totalCents }) {
+  const cap = Math.min(
+    Math.floor(Number(balance) || 0),
+    Math.floor(Number(merchandiseCents) || 0),
+    Math.floor((Number(totalCents) || 0) - MIN_CARD_CHARGE_CENTS),
+  );
+  const want = Math.floor(Number(requested) || 0);
+  return Math.max(0, Math.min(want, cap));
+}
+
+// Only the customer record linked to the signed-in account can spend -- that
+// is the balance My Pocket shows, and linking is guarded by phone
+// verification. Email/phone matches earn points but never spend them.
+export async function linkedWebCustomer(env, fetch, storeId, userId) {
+  if (!storeId || !userId) return null;
+  const enc = encodeURIComponent;
+  const { data } = await fetch(env, `customers?store_id=eq.${enc(storeId)}&linked_user_id=eq.${enc(userId)}&select=id,loyalty_points_balance&limit=1`);
+  return data?.[0] || null;
+}
+
+// Throws on failure (not enough points, say) so checkout can stop before a
+// payment is created.
+export async function holdWebOrderPoints(env, fetch, { storeId, customerId, points, orderRef }) {
+  const { data } = await fetch(env, 'rpc/hold_web_order_points', {
+    method: 'POST',
+    body: JSON.stringify({ p_store_id: storeId, p_customer_id: customerId, p_points: points, p_order_ref: orderRef }),
+  });
+  return data;
+}
+
+// Never throws; safe to call for orders that never held any points.
+export async function releaseWebOrderPoints(env, fetch, storeId, orderRef) {
+  try {
+    if (!storeId || !orderRef) return null;
+    const { data } = await fetch(env, 'rpc/release_web_order_points', {
+      method: 'POST', body: JSON.stringify({ p_store_id: storeId, p_order_ref: orderRef }),
+    });
+    return data;
+  } catch (error) {
+    console.error('Releasing held points failed:', orderRef, error?.message || error);
+    return null;
+  }
+}
+
+export async function finalizeWebOrderPoints(env, fetch, storeId, orderRef, saleId) {
+  try {
+    const { data } = await fetch(env, 'rpc/finalize_web_order_points', {
+      method: 'POST', body: JSON.stringify({ p_store_id: storeId, p_order_ref: orderRef, p_sale_id: saleId }),
+    });
+    if (data === false) console.error('Paid order had no active points hold:', orderRef);
+    return data;
+  } catch (error) {
+    console.error('Finalizing points failed:', orderRef, error?.message || error);
+    return null;
+  }
+}
+
+// The points part of a paid web order, recorded as a "Loyalty Points" tender
+// the same way the register records one (method loyalty_redeem, reference =
+// customer id), so tender reports count it alongside in-store redemptions.
+export function loyaltyPaymentRow({ id, saleId, storeId, points, customerId, at }) {
+  return {
+    id, sale_id: saleId, store_id: storeId, method: 'loyalty_redeem', amount: points / POINTS_PER_DOLLAR,
+    amount_cents: points, reference: customerId || '', status: 'succeeded', provider: 'loyalty',
+    confirmed_at: at, created_at: at,
+  };
+}
+
+// Lets a checkout request carry a points amount only from a signed-in user.
+// Returns { customer, points } or an { error } message for the shopper.
+export async function planWebRedemption(env, fetch, { storeId, userId, requested, merchandiseCents, totalCents }) {
+  const want = Math.floor(Number(requested) || 0);
+  if (want <= 0) return { customer: null, points: 0 };
+  if (!userId) return { error: 'Sign in to use your points' };
+  const { data: settings } = await fetch(env, `store_settings?store_id=eq.${encodeURIComponent(storeId)}&select=receipt_settings&limit=1`);
+  if (storeLoyaltyRate(settings?.[0]?.receipt_settings) <= 0) return { error: 'Points are not being accepted right now' };
+  const customer = await linkedWebCustomer(env, fetch, storeId, userId);
+  if (!customer) return { error: 'Link your account to your store profile in My Pocket to use points' };
+  const points = redeemablePoints({ requested: want, balance: customer.loyalty_points_balance, merchandiseCents, totalCents });
+  return { customer, points };
+}
+
+// True while an order's points are held (taken off the balance, not given
+// back). A resumed payment must not charge the discounted amount once the
+// points have gone back to the customer.
+export async function pointsHoldActive(env, fetch, storeId, orderRef) {
+  const enc = encodeURIComponent;
+  const { data } = await fetch(env, `loyalty_ledger?store_id=eq.${enc(storeId)}&order_ref=eq.${enc(orderRef)}&select=reason`);
+  const reasons = (data || []).map(r => r.reason);
+  return reasons.includes('web_redeem') && !reasons.includes('web_redeem_release');
+}
+
+// On a paid order that used points: lock the hold in (so it can't be
+// released) and record the points as a Loyalty Points tender on the sale.
+// Returns the spending customer's id, or null if no hold was in effect.
+// Never throws -- the card payment already went through.
+export async function recordWebPointsTender(env, fetch, { storeId, orderRef, saleId, paymentId, points, at }) {
+  try {
+    if (!(points > 0)) return null;
+    const enc = encodeURIComponent;
+    const { data: holds } = await fetch(env, `loyalty_ledger?store_id=eq.${enc(storeId)}&order_ref=eq.${enc(orderRef)}&reason=eq.web_redeem&select=customer_id&limit=1`);
+    const customerId = holds?.[0]?.customer_id || null;
+    if (!customerId || (await finalizeWebOrderPoints(env, fetch, storeId, orderRef, saleId)) !== true) return null;
+    await fetch(env, 'pos_payments?on_conflict=id', {
+      method: 'POST', headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
+      body: JSON.stringify(loyaltyPaymentRow({ id: paymentId, saleId, storeId, points, customerId, at })),
+    });
+    return customerId;
+  } catch (error) {
+    console.error('Recording points tender failed:', orderRef, error?.message || error);
     return null;
   }
 }

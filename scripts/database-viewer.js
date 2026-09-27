@@ -1,7 +1,10 @@
 (function(){
 'use strict';
 
-// Read-only database explorer. Three views:
+// Database explorer. Everything is read-only except three safe edits (a
+// sale line's or item's cost/category, and a customer's points), each saved
+// through the Worker with an audit row of who changed what. No deletes.
+// Three views:
 //   Customers -- everyone known, tap one for their whole history
 //   Inventory -- search any item, tap it for every field + its sales
 //   Tables    -- raw rows of any allowlisted table
@@ -62,6 +65,128 @@ function fieldList(obj){
 }
 function statusChip(s){var ok=/completed|succeeded|paid|fulfilled|shipped|in_stock|active/i.test(s||'');var bad=/cancel|fail|void|refund/i.test(s||'');return '<span style="color:'+(ok?'var(--g)':bad?'var(--red)':'var(--gold)')+'">'+esc(s||'—')+'</span>';}
 
+// ---------- Safe edits ----------
+// Lines touched by an edit button, by id, so the editor can prefill them.
+var editLines={};
+// Mirrors lineCostIsPerUnit in scripts/database-edits.mjs: website lines
+// store cost per unit, in-store lines per line. The editor always shows and
+// takes the whole line's cost.
+function lineTotalCost(l){
+  var qty=Math.max(1,Number(l.quantity||1)),adj=Number(l.adjusted_price||0),cost=Number(l.cost_basis||0),profit=Number(l.profit||0);
+  var perUnit=qty>1&&Math.abs(profit-(adj-cost*qty))+0.005<Math.abs(profit-(adj-cost));
+  return Math.round((perUnit?cost*qty:cost)*100)/100;
+}
+function editLink(onclick){return '<a href="#" onclick="'+onclick+';return false" style="color:var(--g);font-weight:700">EDIT</a>';}
+function lineEditLink(l){if(!l||!l.id)return '';editLines[l.id]=l;return editLink("editDatabaseSaleLine('"+esc(String(l.id).replace(/'/g,''))+"')");}
+function categoryOptions(){
+  var list=[];try{list=typeof getInventoryCategories==='function'?getInventoryCategories():[];}catch(_){}
+  return '<datalist id="database-edit-categories">'+list.map(function(c){return '<option value="'+esc(c)+'">';}).join('')+'</datalist>';
+}
+function editorField(label,input){return '<label style="display:block;font:10px var(--font-mono);color:var(--dim);margin:10px 0 4px">'+esc(label)+'</label>'+input;}
+var INPUT_STYLE='width:100%;box-sizing:border-box;padding:9px;font-family:var(--font-mono);font-size:12px';
+function openEditor(title,note,fieldsHtml,onSave){
+  closeEditor();
+  var wrap=document.createElement('div');wrap.id='database-editor';
+  wrap.style.cssText='position:fixed;inset:0;z-index:10050;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:16px';
+  wrap.innerHTML='<div class="panel" role="dialog" aria-modal="true" style="width:min(440px,100%);padding:18px;margin:0;max-height:90vh;overflow:auto"><div style="font:900 15px/1.3 \'Orbitron\',monospace;color:var(--text)">'+esc(title)+'</div>'+
+    '<div style="font:10px/1.6 var(--font-mono);color:var(--dim);margin-top:6px">'+note+'</div>'+fieldsHtml+categoryOptions()+
+    '<div data-editor-status style="min-height:18px;margin-top:10px;font:10px var(--font-mono)"></div>'+
+    '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px"><button class="hbtn" data-editor-cancel>CANCEL</button><button class="hbtn" data-editor-save style="border-color:var(--g);color:var(--g)">SAVE</button></div></div>';
+  document.body.appendChild(wrap);
+  wrap.addEventListener('click',function(e){if(e.target===wrap)closeEditor();});
+  wrap.querySelector('[data-editor-cancel]').onclick=closeEditor;
+  wrap.addEventListener('keydown',function(e){if(e.key==='Escape')closeEditor();});
+  var saveBtn=wrap.querySelector('[data-editor-save]'),status=wrap.querySelector('[data-editor-status]');
+  saveBtn.onclick=async function(){
+    saveBtn.disabled=true;status.style.color='var(--dim)';status.textContent='Saving…';
+    try{await onSave(wrap);closeEditor();}
+    catch(e){status.style.color='var(--red)';status.textContent=e.message;saveBtn.disabled=false;}
+  };
+  var first=wrap.querySelector('input');if(first)first.focus();
+}
+function closeEditor(){var el=document.getElementById('database-editor');if(el)el.remove();}
+function fieldValue(wrap,name){var el=wrap.querySelector('[name="'+name+'"]');return el?el.value:'';}
+async function saveEdit(body){
+  var data=await api('/store/db/edit',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.assign({storeId:getActiveStoreId()},body))});
+  var summary=(data.changes||[]).filter(function(c){return c.field!=='profit';}).map(function(c){return c.field+': '+cellText(c.old)+' → '+cellText(c.new);}).join(', ');
+  if(typeof toast_dash==='function')toast_dash('Saved · '+summary,3500);
+  return data;
+}
+function reopenCurrent(){
+  if(state.mode==='item'&&state.item&&state.item.item)return openItem(state.item.item.id);
+  if(state.mode==='customer'&&state.lastCustomer)return openCustomer(state.lastCustomer);
+}
+function editSaleLine(id){
+  var l=editLines[id];if(!l)return;
+  var cost=lineTotalCost(l);
+  openEditor('Edit sale line',esc(l.title||'Item')+' · qty '+esc(l.quantity||1)+' · sold for '+dollars(l.adjusted_price)+'<br>Profit is recalculated from the new cost. Price and payment can\'t be changed here -- use void / refund for those.',
+    editorField('Line cost (whole line, $)','<input name="cost" type="number" min="0" step="0.01" value="'+esc(cost)+'" style="'+INPUT_STYLE+'">')+
+    editorField('Category','<input name="category" list="database-edit-categories" value="'+esc(l.category||'')+'" style="'+INPUT_STYLE+'">')+
+    editorField('Reason (optional)','<input name="reason" maxlength="300" style="'+INPUT_STYLE+'">'),
+    async function(wrap){
+      var body={kind:'sale_line',id:l.id,reason:fieldValue(wrap,'reason')};
+      var newCost=fieldValue(wrap,'cost'),newCat=fieldValue(wrap,'category').trim();
+      if(newCost!==''&&Number(newCost)!==cost)body.cost=Number(newCost);
+      if(newCat&&newCat!==(l.category||''))body.category=newCat;
+      if(body.cost===undefined&&body.category===undefined)throw new Error('Nothing changed');
+      await saveEdit(body);reopenCurrent();
+    });
+}
+function editItem(){
+  var row=state.item&&state.item.item;if(!row)return;var d=row.data||{};
+  openEditor('Edit item',esc(d.name||'Item')+'<br>Changes the item\'s own cost and category (future sales and reports). Past sale lines keep theirs -- edit those one by one if they were wrong too.',
+    editorField('Cost ($)','<input name="cost" type="number" min="0" step="0.01" value="'+esc(d.cost==null?'':d.cost)+'" style="'+INPUT_STYLE+'">')+
+    editorField('Category','<input name="category" list="database-edit-categories" value="'+esc(d.category||'')+'" style="'+INPUT_STYLE+'">')+
+    editorField('Reason (optional)','<input name="reason" maxlength="300" style="'+INPUT_STYLE+'">'),
+    async function(wrap){
+      var body={kind:'item',id:row.id,reason:fieldValue(wrap,'reason')};
+      var newCost=fieldValue(wrap,'cost'),newCat=fieldValue(wrap,'category').trim();
+      if(newCost!==''&&Number(newCost)!==Number(d.cost))body.cost=Number(newCost);
+      if(newCat&&newCat!==(d.category||''))body.category=newCat;
+      if(body.cost===undefined&&body.category===undefined)throw new Error('Nothing changed');
+      await saveEdit(body);
+      // The dashboard's own inventory picks the change up on its next sync.
+      reopenCurrent();
+    });
+}
+function adjustPoints(){
+  var p=state.profile,id=p&&p.identity&&p.identity.customerId;if(!id)return;
+  var balance=Number(p.summary&&p.summary.loyaltyPoints||0);
+  openEditor('Adjust points',esc(p.identity.name||'Customer')+' has <b>'+balance.toLocaleString()+' pts</b> ('+money(balance)+'). 100 points = $1.<br>Use a minus sign to remove points. The change goes into their points history with your reason.',
+    editorField('Points to add (or -remove)','<input name="delta" type="number" step="1" placeholder="e.g. 250 or -100" style="'+INPUT_STYLE+'">')+
+    editorField('Reason (required)','<input name="reason" maxlength="300" placeholder="e.g. Refund on order FOC-… / goodwill" style="'+INPUT_STYLE+'">'),
+    async function(wrap){
+      var delta=Math.trunc(Number(fieldValue(wrap,'delta')));
+      if(!delta)throw new Error('Enter a points amount');
+      if(fieldValue(wrap,'reason').trim().length<3)throw new Error('Give a short reason');
+      await saveEdit({kind:'points',id:id,delta:delta,reason:fieldValue(wrap,'reason')});reopenCurrent();
+    });
+}
+// Edit history for one record, filled in after the page renders.
+function historySlot(table,rowId){
+  if(!rowId)return '';
+  var slot='database-history-'+Math.random().toString(36).slice(2);
+  setTimeout(function(){
+    api('/store/db/edits?'+storeParam()+'&table='+encodeURIComponent(table)+'&row_id='+encodeURIComponent(rowId)).then(function(data){
+      var el=document.getElementById(slot);if(!el)return;
+      var rows=data.edits||[];
+      el.innerHTML=rows.length?section('EDIT HISTORY',rows.length,editHistoryTable(rows)):'';
+    }).catch(function(){});
+  },0);
+  return '<div id="'+slot+'"></div>';
+}
+function editHistoryTable(rows){
+  return miniTable([
+    {label:'When',render:function(r){return esc(displayDateTime(r.created_at));}},
+    {label:'Record',render:function(r){return esc(r.table_name)+' '+esc(String(r.row_id).slice(0,12));}},
+    {label:'Field',render:function(r){return esc(r.field);}},
+    {label:'Old',align:'right',render:function(r){return esc(cellText(r.old_value));}},
+    {label:'New',align:'right',render:function(r){return '<b>'+esc(cellText(r.new_value))+'</b>';}},
+    {label:'By',render:function(r){return esc(r.edited_by_email||r.edited_by||'');}},
+    {label:'Reason',wrap:true,render:function(r){return esc(r.reason||'');}},
+  ],rows);
+}
+
 // ---------- Customers ----------
 async function loadCustomers(){
   state.loadError='';
@@ -99,6 +224,7 @@ function customerCard(c){
 }
 
 async function openCustomer(c){
+  state.lastCustomer=c;
   state.profile=null;state.profileError='';state.mode='customer';
   busy('Loading everything on file for '+(c.name||c.email||c.phone||'this customer')+'…');
   var qs=[storeParam()];
@@ -118,7 +244,7 @@ function renderCustomerProfile(host){
   var id=p.identity||{},s=p.summary||{},cust=p.customer||{};
   var header='<section class="foc-hero"><div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:flex-start"><div><div style="font:900 22px/1.1 \'Orbitron\',monospace;color:var(--text)">'+esc(id.name||cust.name||'(no name on file)')+'</div>'+
     '<div style="font:10px/1.7 var(--font-mono);color:var(--dim);margin-top:6px">'+esc([id.email,id.phone].filter(Boolean).join(' · ')||'(no contact info)')+(id.userId?' · <span style="color:var(--g)">website login</span>':'')+(id.customerId?' · customer id '+esc(id.customerId):' · <span style="color:var(--gold)">not on the in-store roster</span>')+'</div></div>'+
-    '<div class="foc-toolbar">'+back+'</div></div>'+
+    '<div class="foc-toolbar">'+(id.customerId?'<button class="hbtn" onclick="adjustDatabasePoints()">ADJUST POINTS</button>':'')+back+'</div></div>'+
     tiles([
       tile('LOYALTY POINTS',Number(s.loyaltyPoints||0).toLocaleString()+' <span style="font-size:11px;color:var(--dim)">('+money(s.loyaltyPoints)+')</span>','var(--purple)'),
       tile('TRADE CREDIT',dollars(s.tradeCredit),'var(--g)'),
@@ -135,7 +261,9 @@ function renderCustomerProfile(host){
         {label:'Category',render:function(l){return esc(l.category||'—');}},
         {label:'Qty',align:'right',render:function(l){return esc(l.quantity||1);}},
         {label:'Price',align:'right',render:function(l){return dollars(l.adjusted_price);}},
+        {label:'Cost',align:'right',render:function(l){return dollars(lineTotalCost(l));}},
         {label:'Profit',align:'right',render:function(l){var v=Number(l.profit||0);return '<span style="color:'+(v>=0?'var(--g)':'var(--red)')+'">'+dollars(v)+'</span>';}},
+        {label:'',render:lineEditLink},
       ],sale.lines||[])+'</div>';
   }).join('');
   var loyalty=miniTable([
@@ -188,6 +316,7 @@ function renderCustomerProfile(host){
       {label:'Date',render:function(r){return esc(displayDateTime(r.created_at));}},{label:'Status',render:function(r){return statusChip(r.status);}},
       {label:'Items',wrap:true,render:function(r){return esc(cellText(r.items).slice(0,200));}},
     ],p.buylist)):'')+
+    historySlot('customers',id.customerId)+
     (p.customer?section('CUSTOMER RECORD (ALL FIELDS)',null,fieldList(p.customer)):'');
 }
 
@@ -228,7 +357,7 @@ function renderItemProfile(host){
   host.innerHTML='<section class="foc-hero"><div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:flex-start"><div style="display:flex;gap:14px;align-items:flex-start">'+
       (img&&!/^data:/.test(img)?'<img src="'+esc(img)+'" alt="" style="width:90px;height:120px;object-fit:contain;border-radius:8px;background:var(--surf)">':'')+
       '<div><div style="font:900 20px/1.2 \'Orbitron\',monospace;color:var(--text)">'+esc(d.name||'(no name)')+'</div><div style="font:10px/1.7 var(--font-mono);color:var(--dim);margin-top:4px">'+esc([d.category,d.set,d.year,d.variant,d.condition].filter(Boolean).join(' · '))+'</div><div style="font:10px var(--font-mono);margin-top:4px">'+statusChip(row.status)+' · id '+esc(row.id)+'</div></div></div>'+
-      '<div class="foc-toolbar">'+back+'</div></div>'+
+      '<div class="foc-toolbar"><button class="hbtn" onclick="editDatabaseItem()">EDIT COST / CATEGORY</button>'+back+'</div></div>'+
     tiles([
       tile('LIST PRICE',dollars(d.priceOverride||d.salePrice||d.market),'var(--gold)'),
       tile('COST',dollars(d.cost)),
@@ -243,10 +372,13 @@ function renderItemProfile(host){
       {label:'Status',render:function(h){return statusChip(h.sale_status);}},
       {label:'Qty',align:'right',render:function(h){return esc(h.quantity||1);}},
       {label:'Price',align:'right',render:function(h){return dollars(h.adjusted_price);}},
-      {label:'Cost',align:'right',render:function(h){return dollars(h.cost_basis);}},
+      {label:'Cost',align:'right',render:function(h){return dollars(lineTotalCost(h));}},
       {label:'Profit',align:'right',render:function(h){var v=Number(h.profit||0);return '<span style="color:'+(v>=0?'var(--g)':'var(--red)')+'">'+dollars(v)+'</span>';}},
+      {label:'Category',render:function(h){return esc(h.category||'—');}},
       {label:'Sale id',render:function(h){return esc(h.sale_id);}},
+      {label:'',render:lineEditLink},
     ],p.history||[]))+
+    historySlot('inventory_items',row.id)+
     (p.focSku?section('FOC CATALOG RECORD',null,fieldList(p.focSku)):'')+
     ((p.preorderItems||[]).length?section('CUSTOMER PREORDERS OF THIS COVER',p.preorderItems.length,miniTable([
       {label:'Date',render:function(r){return esc(displayDateTime(r.created_at));}},{label:'Order',render:function(r){return esc(r.order_id);}},
@@ -270,7 +402,7 @@ function renderTables(host){
   var cols=[];rows.forEach(function(r){Object.keys(r).forEach(function(k){if(cols.indexOf(k)<0&&k!=='store_id')cols.push(k);});});
   var from=state.tableRows.length?state.tableOffset+1:0,to=state.tableOffset+state.tableRows.length;
   var atEnd=state.tableTotal!=null?to>=state.tableTotal:state.tableRows.length<TABLE_PAGE;
-  host.innerHTML=hero('DATABASE TABLES','Read-only view of every table holding this store\'s data ('+tableGroups.reduce(function(n,g){return n+g.tables.length;},0)+' tables), newest first. Tables holding secrets -- payment account links, verification codes, invite tokens -- are left out.',
+  host.innerHTML=hero('DATABASE TABLES','Read-only view of every table holding this store\'s data ('+tableGroups.reduce(function(n,g){return n+g.tables.length;},0)+' tables), newest first. Tables holding secrets -- payment account links, verification codes, invite tokens -- are left out. To fix a cost, category or points balance, open that customer or item -- every change is recorded under Database viewer edits.',
       '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"><select id="database-table-select" onchange="setDatabaseTable(this.value)" style="padding:9px;font-family:var(--font-mono);font-size:11px">'+tableGroups.map(function(g){return '<optgroup label="'+esc(g.group)+'">'+g.tables.map(function(t){return '<option value="'+esc(t.key)+'"'+(t.key===state.table?' selected':'')+'>'+esc(t.label)+'</option>';}).join('')+'</optgroup>';}).join('')+'</select>'+
       '<input type="text" id="database-table-filter" placeholder="Filter this page…" value="'+esc(state.tableFilter)+'" oninput="onDatabaseTableFilter(this.value)" style="flex:1;min-width:180px;padding:9px;font-family:var(--font-mono);font-size:11px"><button class="hbtn" onclick="reloadDatabaseTable()">REFRESH</button></div>')+
     errorBox(state.tableError)+
@@ -304,6 +436,9 @@ window.setDatabaseMode=function(mode){
 window.onDatabaseItemQuery=function(value){state.itemQuery=value;};
 window.runDatabaseItemSearch=function(){busy('Searching…');searchItems().then(function(){render();focusEnd('database-item-search');});};
 window.openDatabaseItem=function(id){openItem(id);};
+window.editDatabaseSaleLine=function(id){editSaleLine(id);};
+window.editDatabaseItem=function(){editItem();};
+window.adjustDatabasePoints=function(){adjustPoints();};
 window.setDatabaseTable=function(table){state.table=table;state.tableOffset=0;state.tableFilter='';busy('Loading table…');loadTable().then(render);};
 window.reloadDatabaseTable=function(){busy('Refreshing…');loadTable().then(render);};
 window.pageDatabaseTable=function(dir){state.tableOffset=Math.max(0,state.tableOffset+dir*TABLE_PAGE);busy('Loading table…');loadTable().then(render);};
