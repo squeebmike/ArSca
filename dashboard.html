@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.09.22.01-lunar-cover-upload-speed-and-diagnostics">
+<meta name="version" content="2026.09.27.01-sales-ledger-db-viewer">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -357,6 +357,10 @@ tr.sold:hover td{opacity:.7;}
 .ct.Graded{background:rgba(72,202,228,.1);color:var(--blue);}
 .ct.Supplies{background:rgba(255,255,255,.06);color:var(--dim);}
 .ct.Collectibles{background:rgba(255,149,0,.1);color:#ff9500;}
+/* Class names are the category with every non-letter stripped ("Magic: The Gathering" -> MagicTheGathering). */
+.ct.MagicTheGathering{background:rgba(138,180,255,.12);color:#8ab4ff;}
+.ct.YuGiOh{background:rgba(255,215,0,.1);color:#ffd700;}
+.ct.DisneyLorcana{background:rgba(64,156,255,.1);color:#409cff;}
 .pp{font-family:var(--font-mono);font-size:11px;text-align:right;}
 .pm{color:var(--gold);}
 .pd{color:var(--blue);}
@@ -1640,21 +1644,21 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.09.22.01-lunar-cover-upload-speed-and-diagnostics" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.09.22.01-lunar-cover-upload-speed-and-diagnostics" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.09.22.01-lunar-cover-upload-speed-and-diagnostics" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.09.22.01-lunar-cover-upload-speed-and-diagnostics" defer></script>
-<script src="scripts/backlist-dashboard.js?v=2026.09.22.01-lunar-cover-upload-speed-and-diagnostics" defer></script>
-<script src="scripts/database-viewer.js?v=2026.09.22.01-lunar-cover-upload-speed-and-diagnostics" defer></script>
-<script src="scripts/card-intake-dashboard.js?v=2026.09.22.01-lunar-cover-upload-speed-and-diagnostics" defer></script>
-<script src="scripts/mana-pocket-task-library.js?v=2026.09.22.01-lunar-cover-upload-speed-and-diagnostics" defer></script>
-<script src="scripts/daily-tasks-dashboard.js?v=2026.09.22.01-lunar-cover-upload-speed-and-diagnostics" defer></script>
+<script src="scripts/query-routing.js?v=2026.09.27.01-sales-ledger-db-viewer" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.09.27.01-sales-ledger-db-viewer" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.09.27.01-sales-ledger-db-viewer" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.09.27.01-sales-ledger-db-viewer" defer></script>
+<script src="scripts/backlist-dashboard.js?v=2026.09.27.01-sales-ledger-db-viewer" defer></script>
+<script src="scripts/database-viewer.js?v=2026.09.27.01-sales-ledger-db-viewer" defer></script>
+<script src="scripts/card-intake-dashboard.js?v=2026.09.27.01-sales-ledger-db-viewer" defer></script>
+<script src="scripts/mana-pocket-task-library.js?v=2026.09.27.01-sales-ledger-db-viewer" defer></script>
+<script src="scripts/daily-tasks-dashboard.js?v=2026.09.27.01-sales-ledger-db-viewer" defer></script>
 <script src="scripts/research-loupe.js?v=a7de4ffe90" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.09.22.01-lunar-cover-upload-speed-and-diagnostics" defer></script>
-<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.09.22.01-lunar-cover-upload-speed-and-diagnostics" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.09.22.01-lunar-cover-upload-speed-and-diagnostics" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.09.22.01-lunar-cover-upload-speed-and-diagnostics" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.09.22.01-lunar-cover-upload-speed-and-diagnostics" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.09.27.01-sales-ledger-db-viewer" defer></script>
+<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.09.27.01-sales-ledger-db-viewer" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.09.27.01-sales-ledger-db-viewer" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.09.27.01-sales-ledger-db-viewer" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.09.27.01-sales-ledger-db-viewer" defer></script>
 </head>
 <body>
 
@@ -1706,7 +1710,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
 <div class="dsb-chip" id="dsb-tasks" title="Today's Roles &amp; Tasks — click to jump to Tasks tab" style="cursor:pointer;display:none" onclick="switchTab('tasks')">✅ <span>TASKS:</span> <b id="dsb-tasks-val">—</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.09.22.01-lunar-cover-upload-speed-and-diagnostics</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.09.27.01-sales-ledger-db-viewer</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3872,7 +3876,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.09.22.01-lunar-cover-upload-speed-and-diagnostics';
+const APP_VERSION = '2026.09.27.01-sales-ledger-db-viewer';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -18573,7 +18577,7 @@ function renderTable(){
     const money = inventoryProfitStats(i);
     const pft=ins?money.profit:i.profit;
     const ppc=pft>=0?'pp pos':'pp neg';
-    const cat=String(i.category||'TCG').replace(/\s+/g,'');
+    const cat=String(i.category||'TCG').replace(/[^A-Za-z]/g,'');
     const margin=money.list>0?money.margin.toFixed(0)+'%':(money.cost>0?((pft/money.cost)*100).toFixed(0)+'%':'—');
     const thumbSrc = inventoryImageUrl(i);
     const stale = inventoryIsPriceStale(i);
@@ -18750,7 +18754,7 @@ function renderSoldTable(){
     return `<tr>
       <td><span class="nc">${i.name}</span></td>
       <td><span class="sc2">${i.set||'—'}</span></td>
-      <td><span class="ct ${String(i.categoryName || i.category || '').replace(/\s/g,'')}">${i.categoryName || i.category || 'Unknown'}</span></td>
+      <td><span class="ct ${String(i.categoryName || i.category || '').replace(/[^A-Za-z]/g,'')}">${i.categoryName || i.category || 'Unknown'}</span></td>
       <td class="pp pm">${i.salePrice>0?fd$(i.salePrice):'—'}</td>
       <td class="pp pd">${totalCost>0?fd$(totalCost):'—'}</td>
       <td class="pp ${pft>=0?'pos':'neg'}">${pft?(pft>=0?'+':'')+fd$(pft):'—'}</td>
@@ -47520,7 +47524,7 @@ async function toppsLoadParallels(cardId){
   window.__arscaCloseModal = closeModal;
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.09.22.01-lunar-cover-upload-speed-and-diagnostics" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.09.27.01-sales-ledger-db-viewer" defer></script>
 </body>
 </html>
 

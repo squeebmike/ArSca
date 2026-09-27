@@ -691,8 +691,60 @@ function filterStorefrontCatalog(allItems, params) {
 // Same book-detail fields the dashboard's own item editor already shows
 // (Metron-sourced), trimmed for public payload size -- only attached for
 // comic rows, and only when the item actually has a saved comic record.
+// An eBay order whose listing isn't linked to an inventory item has no
+// category to copy, so it landed as "Other" and never counted toward its
+// real category's profit. Best-effort guess from the listing title; order
+// matters (sports card titles contain "#", so check them before comics).
+function guessSaleCategoryFromTitle(title) {
+  const t = String(title || '').toLowerCase();
+  if (!t) return '';
+  if (/\b(topps|bowman|panini|upper deck|donruss|prizm|baseball|basketball|football|hockey|soccer|rookie|\bpsa\b|auto(graph)?)\b/.test(t)) return 'Sports';
+  if (/pok[eé]mon|pikachu|charizard|elite trainer|\betb\b|booster bundle/.test(t)) return 'Pokemon TCG';
+  if (/\bmtg\b|magic: the gathering|secret lair|commander deck/.test(t)) return 'Magic: The Gathering';
+  if (/plush|funko|figure|figurine|\btoy\b|statue|collectible/.test(t)) return 'Collectibles';
+  if (/comic|\bcvr\b|\bcover [a-z]\b|\bvariant\b|#\d+|- presale$/.test(t)) return 'Comic';
+  return '';
+}
+
+// Database viewer allowlist (see /store/db/table). Keys are what the dashboard
+// asks for; table/select/order are fixed here, never taken from the request.
+const DATABASE_VIEWER_TABLES = Object.fromEntries([
+  ['loyalty_ledger', 'Loyalty points history', '*,customer:customers(name,phone,email)'],
+  ['customers', 'Customers', '*'],
+  ['pos_sales', 'Sales', '*'],
+  ['pos_sale_lines', 'Sale line items', '*'],
+  ['pos_payments', 'Payments', '*'],
+  ['storefront_orders', 'Website shop orders', '*'],
+  ['foc_preorder_orders', 'Comic preorder orders', '*'],
+  ['backlist_orders', 'Backlist book orders', '*'],
+  ['gift_cards', 'Gift cards', '*'],
+  ['gift_card_transactions', 'Gift card transactions', '*'],
+  ['customer_receipts', 'Text receipts', '*'],
+  ['buylist_submissions', 'Buylist submissions', '*'],
+  ['pull_list_subscriptions', 'Pull lists', '*'],
+  ['event_registrations', 'Event registrations', '*'],
+  ['inventory_items', 'Inventory items', '*'],
+  ['comic_skus', 'FOC comic catalog', '*'],
+].map(([key, label, select]) => [key, { table: key, label, select, order: 'created_at' }]));
+
+// Presale items built from FOC data never get a Metron record, so the shop's
+// "Book Details, Story & Creators" block had nothing to show for them. The
+// FOC feed already carries synopsis/writer/cover artist; keep it in its own
+// field (not comicMetadata, whose presence the dashboard reads as "Metron
+// lookup done") and let the storefront fall back to it.
+function focPresaleComicDetail(sku, family) {
+  const split = value => String(value || '').split(/\s*(?:,|;|&| and )\s*/i).map(s => s.trim()).filter(Boolean);
+  const description = String(sku?.description || family?.description || '').trim();
+  const writers = split(family?.writer);
+  const coverArtists = split(sku?.cover_artist);
+  if (!description && !writers.length && !coverArtists.length) return undefined;
+  return {
+    source: 'foc', description, writers, coverArtists, publisher: sku?.publisher || '',
+    seriesName: family?.series_name || '', number: family?.issue_number || '', storeDate: sku?.on_sale_date || '', upc: sku?.upc || '',
+  };
+}
 function storefrontComicDetailFor(d) {
-  const m = d.comicMetadata;
+  const m = d.comicMetadata || d.focComicDetail;
   if (!m || !/comic/i.test(String(d.category || ''))) return null;
   const credits = (Array.isArray(m.credits) ? m.credits : []).slice(0, 20).map(c => ({ creator: storefrontCleanText(c?.creator, 80), roles: storefrontCleanList(c?.roles, 6) })).filter(c => c.creator);
   return {
@@ -4581,11 +4633,13 @@ export default {
       // comment below for the full story).
       let issueNumber = '';
       let seriesName = '';
+      let skuFamily = null;
       if (sku.family_id) {
         try {
-          const { data: familyRows } = await supabaseAdminFetch(env, `comic_title_families?id=eq.${encodeURIComponent(sku.family_id)}&select=issue_number,series_name`);
-          issueNumber = familyRows?.[0]?.issue_number || '';
-          seriesName = familyRows?.[0]?.series_name || '';
+          const { data: familyRows } = await supabaseAdminFetch(env, `comic_title_families?id=eq.${encodeURIComponent(sku.family_id)}&select=issue_number,series_name,writer,description`);
+          skuFamily = familyRows?.[0] || null;
+          issueNumber = skuFamily?.issue_number || '';
+          seriesName = skuFamily?.series_name || '';
         } catch (_) {}
       }
 
@@ -4745,6 +4799,7 @@ export default {
               market: priceCents / 100, salePrice: priceCents / 100,
               qty: quantity, quantity, image: sku.cover_image_url || '',
               source: 'foc_presale', focSkuId: sku.id, focCycleId: sku.cycle_id, onSaleDate: sku.on_sale_date,
+              focComicDetail: focPresaleComicDetail(sku, skuFamily),
               focPresaleOriginalQty: quantity,
               ebayListingId: listingResult.listingId, ebayOfferId: listingResult.offerId,
               ebaySku: listingResult.sku, ebayListedAt: nowIso,
@@ -4816,7 +4871,7 @@ export default {
 
       let family, skuRows;
       try {
-        const { data: familyRows } = await supabaseAdminFetch(env, `comic_title_families?id=eq.${encodeURIComponent(familyId)}&store_id=eq.${encodeURIComponent(storeId)}&select=id,title,issue_number,series_name`);
+        const { data: familyRows } = await supabaseAdminFetch(env, `comic_title_families?id=eq.${encodeURIComponent(familyId)}&store_id=eq.${encodeURIComponent(storeId)}&select=id,title,issue_number,series_name,writer,description`);
         family = Array.isArray(familyRows) ? familyRows[0] : null;
         const { data: skus } = await supabaseAdminFetch(env, `comic_skus?family_id=eq.${encodeURIComponent(familyId)}&store_id=eq.${encodeURIComponent(storeId)}&select=*`);
         skuRows = skus || [];
@@ -5107,6 +5162,7 @@ export default {
                 source: v.skuId ? 'foc_presale' : 'foc_presale_bundle',
                 focSkuId: v.skuId || null, focCycleId: repSku.cycle_id || null,
                 focBundleSkuIds: v.skuId ? undefined : built.filter(x => x.skuId).map(x => x.skuId),
+                focComicDetail: focPresaleComicDetail(skuRow || repSku, family),
                 onSaleDate: skuRow?.on_sale_date || repSku.on_sale_date || null,
                 focPresaleOriginalQty: v.quantity,
                 ebayListingId: listingResult.listingId, ebayOfferId: matched.offerId,
@@ -9841,7 +9897,7 @@ export default {
               await supabaseAdminFetch(env, 'pos_sales', { method: 'POST', headers: { Prefer: 'return=minimal' },
                 body: JSON.stringify({ id: saleId, store_id: storeId, subtotal: salePrice, discount_total: 0, tax_total: 0, total: salePrice, status: 'completed', payment_status: 'paid', completed_at: soldAt, created_at: soldAt }) });
               await supabaseAdminFetch(env, 'pos_sale_lines', { method: 'POST', headers: { Prefer: 'return=minimal' },
-                body: JSON.stringify([{ id: crypto.randomUUID(), sale_id: saleId, store_id: storeId, item_id: invRow ? invRow.id : null, title: itemName, category: d.category || '', quantity: quantitySold, unit_price: salePrice / quantitySold, original_price: salePrice / quantitySold, adjusted_price: salePrice / quantitySold, discount_amount: 0, cost_basis: cost, profit, condition: d.condition || '', source_id: 'ebay:' + order.orderId, image_url: d.thumbnail || d.image || '' }]) });
+                body: JSON.stringify([{ id: crypto.randomUUID(), sale_id: saleId, store_id: storeId, item_id: invRow ? invRow.id : null, title: itemName, category: d.category || guessSaleCategoryFromTitle(itemName), quantity: quantitySold, unit_price: salePrice / quantitySold, original_price: salePrice / quantitySold, adjusted_price: salePrice / quantitySold, discount_amount: 0, cost_basis: cost, profit, condition: d.condition || '', source_id: 'ebay:' + order.orderId, image_url: d.thumbnail || d.image || '' }]) });
               await supabaseAdminFetch(env, 'pos_payments', { method: 'POST', headers: { Prefer: 'return=minimal' },
                 body: JSON.stringify({ id: crypto.randomUUID(), sale_id: saleId, store_id: storeId, method: 'eBay', amount: salePrice, status: 'confirmed', provider: 'ebay', currency: 'USD', confirmed_by: confirmedBy, confirmed_at: soldAt, created_at: soldAt }) });
 
@@ -10824,6 +10880,21 @@ export default {
     // no new "customers" table -- storefront_orders is guest checkout with
     // no user_id at all, so the only field all three order tables reliably
     // share is customer_email, and that's what this rolls up on.
+    // Read-only table browser for the dashboard's Database viewer. Fixed
+    // allowlist (never a caller-supplied table name or select), always
+    // scoped to the caller's own store, owner/admin only.
+    if (url.pathname === '/store/db/table' && request.method === 'GET') {
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId, ['owner','admin']);
+      if (auth.error) return auth.error;
+      const spec = DATABASE_VIEWER_TABLES[url.searchParams.get('table') || ''];
+      if (!spec) return json({ ok: false, error: 'Unknown table' }, 400);
+      const limit = Math.min(200, Math.max(1, Number(url.searchParams.get('limit')) || 50));
+      const offset = Math.max(0, Number(url.searchParams.get('offset')) || 0);
+      const { data, response } = await supabaseAdminFetch(env, `${spec.table}?store_id=eq.${encodeURIComponent(storeId)}&select=${spec.select}&order=${spec.order}.desc.nullslast&limit=${limit}&offset=${offset}`, { headers: { Prefer: 'count=exact' } });
+      const total = Number(String(response.headers.get('content-range') || '').split('/')[1]) || null;
+      return json({ ok: true, table: url.searchParams.get('table'), rows: data || [], total, limit, offset });
+    }
     if (url.pathname === '/store/customers' && request.method === 'GET') {
       const storeId = requestStoreId(request, url);
       const auth = await requireStoreUser(request, env, storeId, ['owner','admin']);
