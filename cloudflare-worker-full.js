@@ -32,6 +32,7 @@ import { handleFocRequest, syncFocStripeEvent, shippingSettings } from './script
 import { handleBacklistRequest, syncBacklistStripeEvent } from './scripts/backlist-catalog.mjs';
 import { handleAccountRequest, findLinkedCustomer } from './scripts/customer-account.mjs';
 import { awardWebOrderLoyalty } from './scripts/web-loyalty.mjs';
+import { customerProfile, searchInventory, itemProfile } from './scripts/database-explorer.mjs';
 import { handleFanClubRequest } from './scripts/fan-club.mjs';
 import { handleCardIntakeRequest } from './scripts/card-intake.mjs';
 import { handleDailyTasksRequest } from './scripts/daily-tasks.mjs';
@@ -10883,6 +10884,19 @@ export default {
     // Read-only table browser for the dashboard's Database viewer. Fixed
     // allowlist (never a caller-supplied table name or select), always
     // scoped to the caller's own store, owner/admin only.
+    if ((url.pathname === '/store/db/customer' || url.pathname === '/store/db/items' || url.pathname === '/store/db/item') && request.method === 'GET') {
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId, ['owner','admin']);
+      if (auth.error) return auth.error;
+      const p = url.searchParams;
+      if (url.pathname === '/store/db/customer') {
+        const profile = await customerProfile(env, supabaseAdminFetch, storeId, { customerId: p.get('customer_id') || '', userId: p.get('user_id') || '', email: p.get('email') || '', phone: p.get('phone') || '', name: p.get('name') || '' });
+        return json({ ok: true, profile });
+      }
+      if (url.pathname === '/store/db/items') return json({ ok: true, items: await searchInventory(env, supabaseAdminFetch, storeId, p.get('q')) });
+      const profile = await itemProfile(env, supabaseAdminFetch, storeId, p.get('id') || '');
+      return profile ? json({ ok: true, profile }) : json({ ok: false, error: 'Item not found' }, 404);
+    }
     if (url.pathname === '/store/db/table' && request.method === 'GET') {
       const storeId = requestStoreId(request, url);
       const auth = await requireStoreUser(request, env, storeId, ['owner','admin']);
@@ -10934,6 +10948,7 @@ export default {
         c.email = c.email || String(r.email || '').trim().toLowerCase();
         c.phone = c.phone || r.phone || '';
         c.userId = c.userId || r.linked_user_id;
+        c.customerId = c.customerId || r.id;
         c.isRosterCustomer = true;
         c.loyaltyPoints = r.loyalty_points_balance || 0;
         c.tradeCreditBalance = Number(r.trade_credit_balance || 0);
