@@ -56,7 +56,23 @@ async function loadSets(env, now) {
   return cached(env, SETS_KEY, SETS_FRESH_MS, () => upstream(env, '/sets', { sortBy: 'releaseDate', sortOrder: 'desc', limit: '400' }), now);
 }
 
+// The Set Guide embed on the live page calls the older paths below, signed
+// out. Those two exact calls get the public cached answer; every other
+// /pricing/pokemon/* request still goes to the signed-in pricing proxy.
+export function publicPokemonAlias(request, url) {
+  if (request.method !== 'GET' || request.headers.get('Authorization') || request.headers.get('X-Store-Id')) return null;
+  if (url.pathname === '/pricing/pokemon/sets') return new URL('/public/pokemon/sets', url);
+  if (url.pathname === '/pricing/pokemon/cards' && url.searchParams.get('fetchAllInSet') === 'true' && url.searchParams.get('set')
+    && !url.searchParams.get('search') && !url.searchParams.get('tcgPlayerId') && !url.searchParams.get('cardId')) {
+    const target = new URL('/public/pokemon/set-cards', url);
+    target.searchParams.set('set', url.searchParams.get('set'));
+    return target;
+  }
+  return null;
+}
+
 export async function handlePublicPokemonRequest(request, env, url, json, now = Date.now()) {
+  url = publicPokemonAlias(request, url) || url;
   if (url.pathname !== '/public/pokemon/sets' && url.pathname !== '/public/pokemon/set-cards') return null;
   if (request.method !== 'GET') return json({ ok: false, error: 'GET only' }, 405);
   const headers = { 'Cache-Control': 'public, max-age=900' };
