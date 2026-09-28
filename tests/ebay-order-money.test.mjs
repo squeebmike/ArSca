@@ -68,6 +68,7 @@ globalThis.fetch = async (input, init = {}) => {
   if (url.host === 'apiz.ebay.com') return ok({ transactions: financeTxns });
   const table = url.pathname.split('/rest/v1/')[1];
   if (table === 'store_members') return ok([{ store_id: 'store-1' }]);
+  if (table === 'inventory_items' && url.searchParams.has('or')) return ok([{ id: 'item-1' }]);
   if (table === 'store_settings' || table === 'inventory_items' && !init.method) return ok(table === 'inventory_items' ? [{ id: 'item-1', status: 'presale', data: { name: 'He-Man #4', ebaySku: 'lba-1', quantity: 10, cost: 2.5, source: 'foc_presale' } }] : []);
   if (!db[table]) return ok([]);
   if (init.method === 'POST') { db[table].push(...[].concat(JSON.parse(init.body))); return ok([]); }
