@@ -81,11 +81,12 @@ try {
   ebayOrders = [{ ...order({ totalMarketplaceFee: { value: '1.74' } }), orderPaymentStatus: 'PAID', lineItems: [{ ...order().lineItems[0], title: 'He-Man #4' }] }];
   await cron();
   assert.equal(db.pos_sales.length, 1);
-  assert.equal(db.pos_sales[0].total, 9.98, 'item + shipping the buyer paid');
+  assert.equal(db.pos_sales[0].total, 4.99, 'sales count the item price; shipping is not a sale');
   assert.equal(db.pos_sale_lines[0].profit, 0.75, 'label pending: shipping nets to zero');
   const pay = db.pos_payments[0];
   assert.equal(pay.reference, '27-1');
-  assert.equal(pay.amount, 9.98);
+  assert.equal(pay.amount, 4.99);
+  assert.equal(pay.provider_metadata.shipping, 4.99, 'shipping kept in the breakdown');
   assert.equal(pay.provider_metadata.feeSource, 'ebay');
 
   // The label bought on eBay later comes off -- once, however often the job runs.
@@ -111,9 +112,9 @@ try {
   await cron();
   const old = db.pos_payments.find(p => p.id === 'p-old');
   assert.equal(old.reference, '27-9');
-  assert.equal(old.amount, 9.98);
+  assert.equal(old.amount, 4.99);
   assert.equal(db.pos_sale_lines.find(l => l.id === 'l-old').profit, 0.75);
-  assert.equal(db.pos_sales.find(s => s.id === 's-old').total, 9.98);
+  assert.equal(db.pos_sales.find(s => s.id === 's-old').total, 4.99);
   assert.equal(db.pos_sales.length, 2, 'linked, not recorded a second time');
 
   // An estimated fee is replaced by eBay's real one from its SALE transaction.
@@ -126,8 +127,11 @@ try {
 
   // Profit follows each linked sale's recorded money on every run.
   db.pos_sale_lines.find(l => l.id === 'l-old').profit = 6.34;
+  old.amount = 10.71; db.pos_sales.find(s => s.id === 's-old').total = 10.71;
   financeTxns = [];
   await cron();
   assert.equal(db.pos_sale_lines.find(l => l.id === 'l-old').profit, 0.99);
+  assert.equal(old.amount, 4.99, 'a sale recorded as item + shipping goes back to the item price');
+  assert.equal(db.pos_sales.find(s => s.id === 's-old').total, 4.99);
 } finally { globalThis.fetch = originalFetch; globalThis.caches = originalCaches; }
 console.log('eBay fees, shipping and label reconcile checks passed');
