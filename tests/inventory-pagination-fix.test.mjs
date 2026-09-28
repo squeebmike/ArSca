@@ -7,10 +7,12 @@ const worker = fs.readFileSync('cloudflare-worker-full.js', 'utf8');
 // ── Contract: loadBuiltInInventoryItems pages fully instead of a single
 // capped query -- a store past 1000 rows used to have older stock silently
 // missing from the client entirely, not just slow to appear.
-const loadFnSrc = dashboard.match(/async function loadBuiltInInventoryItems\(\)\{[\s\S]*?\r?\n\}\r?\n/)[0];
-assert.match(loadFnSrc, /const PAGE = 1000;/, 'loadBuiltInInventoryItems must page in fixed-size batches');
-assert.match(loadFnSrc, /\.range\(offset, offset \+ PAGE - 1\)/, 'loadBuiltInInventoryItems must use .range() pagination, not a single .limit()');
-assert.match(loadFnSrc, /if\(!data \|\| data\.length < PAGE\) break;/, 'the pagination loop must stop on a short page, not an arbitrary fixed count');
+const loadFnSrc = dashboard.match(/async function fetchBuiltInInventoryRows\(sb, storeId\)\{[\s\S]*?\r?\n\}\r?\n/)[0];
+assert.match(loadFnSrc, /const PAGE = 1000;/, 'fetchBuiltInInventoryRows must page in fixed-size batches');
+assert.match(loadFnSrc, /\.range\(offset, offset \+ PAGE - 1\)/, 'fetchBuiltInInventoryRows must use .range() pagination, not a single .limit()');
+assert.match(loadFnSrc, /if\(!data \|\| data\.length < PAGE\) return \{ rows, error:null \};/, 'the pagination loop must stop on a short page, not an arbitrary fixed count');
+assert.match(loadFnSrc, /\.order\('id', \{ ascending:true \}\)/, 'pages need a stable tie-breaker so rows with the same updated_at cannot shift between pages');
+assert.match(dashboard, /async function loadBuiltInInventoryItems\(\)\{[\s\S]*?fetchBuiltInInventoryRows\(sb, storeId\)/, 'loadBuiltInInventoryItems must load through the paged fetch');
 
 console.log('Inventory load pagination (worker+dashboard) contract checks passed');
 
@@ -78,3 +80,28 @@ assert.equal(afterError.length, 0, 'an error must stop pagination cleanly, not t
 assert.equal(calls, 1, 'an error on the first page must not retry forever');
 
 console.log('Pagination algorithm functional checks passed');
+
+// ── Functional: the real fetchBuiltInInventoryRows against a mock client.
+{
+  const fetchRows = new Function(`${loadFnSrc}; return fetchBuiltInInventoryRows;`)();
+  const mockClient = (total, { failAt = -1 } = {}) => {
+    const ranges = [];
+    const rows = Array.from({ length: total }, (_, i) => ({ id: 'r' + i }));
+    const q = { from: () => q, select: () => q, eq: () => q, order: () => q,
+      range: (a, b) => { ranges.push(a); return Promise.resolve(a === failAt ? { data: null, error: new Error('boom') } : { data: rows.slice(a, b + 1), error: null }); } };
+    return { sb: q, ranges };
+  };
+  for (const total of [0, 999, 1000, 1581, 2000, 2500, 4001]) {
+    const { sb, ranges } = mockClient(total);
+    const { rows, error } = await fetchRows(sb, 'store');
+    assert.equal(error, null);
+    assert.deepEqual(rows.map(r => r.id), Array.from({ length: total }, (_, i) => 'r' + i), `all ${total} rows, in order, no duplicates`);
+    assert.ok(ranges.length <= Math.floor(total / 1000) + 2, `${total} rows must not over-fetch pages`);
+  }
+  const { sb: failing } = mockClient(2500, { failAt: 1000 });
+  const failed = await fetchRows(failing, 'store');
+  assert.ok(failed.error, 'a failed page must be reported');
+  assert.equal(failed.rows.length, 1000, 'rows loaded before the failed page are kept');
+}
+
+console.log('fetchBuiltInInventoryRows functional checks passed');

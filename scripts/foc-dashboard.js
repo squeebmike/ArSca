@@ -189,6 +189,8 @@ async function endSelectedOrphanedEbayListings(){
 // found inside the zip for it.
 async function extractXlsxCellImages(buffer){
   var byRow=new Map();
+  // JSZip loads async; give it a moment if an import starts right after the page opens.
+  for(var wait=0;wait<40&&typeof JSZip==='undefined';wait++)await new Promise(function(r){setTimeout(r,250);});
   if(typeof JSZip==='undefined')return byRow;
   var zip;
   try{zip=await JSZip.loadAsync(buffer);}catch(e){return byRow;}

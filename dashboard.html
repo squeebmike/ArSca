@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.09.27.05-safe-edits">
+<meta name="version" content="2026.09.28.01-fast-boot">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1613,20 +1613,22 @@ body.show-mode .inv-sync-badge{display:none;}
 @media(max-width:650px){.foc-shell{padding:0 9px 90px}.foc-toolbar>*{width:100%!important}.foc-cycle-card{grid-template-columns:1fr}.foc-sku-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;padding:7px}.foc-sku{padding:6px}.foc-sku-fields{grid-template-columns:1fr}.foc-family-head{display:block}.foc-family-head .foc-toolbar{margin-top:8px}.foc-stat b{font-size:16px}}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
-<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js" async></script>
 <!-- Parses distributor FOC-list exports (Pull Lists > IMPORT PRH LIST) -->
-<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js" async></script>
 <!-- Reads the raw XLSX zip structure to pull out cover images Lunar embeds
      directly into cells (a "picture in cell" object, not a URL/formula) --
      SheetJS above only ever reads cell VALUES, never anchored drawing
      objects, so this is the only way those covers are reachable at all. -->
-<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js" async></script>
 <!-- Renders scannable CODE128 barcodes for printed shelf/price labels (Inventory > PRINT LABELS) -->
-<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js" defer></script>
-<!-- Twilio Voice JS SDK -- the PHONE tab's browser softphone. Loaded on every
-     page load like the other CDN libraries here, but only actually used once
-     a staff member enables browser calling (see initPhoneDevice()). -->
-<script src="https://sdk.twilio.com/js/voice/releases/2.11.1/twilio.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js" async></script>
+<!-- Twilio Voice JS SDK -- the PHONE tab's browser softphone. Only used once
+     a staff member enables browser calling (see initPhoneDevice(), which
+     waits for it). Like html2canvas, SheetJS, JSZip and JsBarcode above,
+     it's async so startup never waits for it; every feature that uses one
+     of them checks it's there first. -->
+<script src="https://sdk.twilio.com/js/voice/releases/2.11.1/twilio.min.js" async></script>
 <!-- QR code option for the same labels -- a linear CODE128 barcode encoding a
      long value (e.g. an item's internal UUID, used when there's no real
      UPC/SKU) compresses to unreadably-thin bars once squeezed onto a small
@@ -1644,21 +1646,21 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.09.27.05-safe-edits" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.09.27.05-safe-edits" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.09.27.05-safe-edits" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.09.27.05-safe-edits" defer></script>
-<script src="scripts/backlist-dashboard.js?v=2026.09.27.05-safe-edits" defer></script>
-<script src="scripts/database-viewer.js?v=2026.09.27.05-safe-edits" defer></script>
-<script src="scripts/card-intake-dashboard.js?v=2026.09.27.05-safe-edits" defer></script>
-<script src="scripts/mana-pocket-task-library.js?v=2026.09.27.05-safe-edits" defer></script>
-<script src="scripts/daily-tasks-dashboard.js?v=2026.09.27.05-safe-edits" defer></script>
+<script src="scripts/query-routing.js?v=2026.09.28.01-fast-boot" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.09.28.01-fast-boot" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.09.28.01-fast-boot" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.09.28.01-fast-boot" defer></script>
+<script src="scripts/backlist-dashboard.js?v=2026.09.28.01-fast-boot" defer></script>
+<script src="scripts/database-viewer.js?v=2026.09.28.01-fast-boot" defer></script>
+<script src="scripts/card-intake-dashboard.js?v=2026.09.28.01-fast-boot" defer></script>
+<script src="scripts/mana-pocket-task-library.js?v=2026.09.28.01-fast-boot" defer></script>
+<script src="scripts/daily-tasks-dashboard.js?v=2026.09.28.01-fast-boot" defer></script>
 <script src="scripts/research-loupe.js?v=a7de4ffe90" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.09.27.05-safe-edits" defer></script>
-<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.09.27.05-safe-edits" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.09.27.05-safe-edits" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.09.27.05-safe-edits" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.09.27.05-safe-edits" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.09.28.01-fast-boot" defer></script>
+<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.09.28.01-fast-boot" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.09.28.01-fast-boot" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.09.28.01-fast-boot" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.09.28.01-fast-boot" defer></script>
 </head>
 <body>
 
@@ -1710,7 +1712,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
 <div class="dsb-chip" id="dsb-tasks" title="Today's Roles &amp; Tasks — click to jump to Tasks tab" style="cursor:pointer;display:none" onclick="switchTab('tasks')">✅ <span>TASKS:</span> <b id="dsb-tasks-val">—</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.09.27.05-safe-edits</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.09.28.01-fast-boot</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3876,7 +3878,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.09.27.05-safe-edits';
+const APP_VERSION = '2026.09.28.01-fast-boot';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -16094,6 +16096,57 @@ async function loadWebflowInventoryItems(){
 // (photos included) every 60 seconds regardless of whether anything
 // actually changed.
 let _builtInSyncWatermark = null;
+
+// Every inventory_items row for the store. A single .limit(1000) query used
+// to silently truncate the store once it grew past 1000 rows -- older
+// untouched stock never made it into the client at all, not "loaded slowly,"
+// genuinely absent -- so this pages with .range() until a short page comes
+// back. Pages are requested two at a time instead of one after another (a
+// store of 1000-2000 items gets everything in one round trip), and the id
+// tie-breaker keeps rows with the same updated_at from shifting between
+// pages. Returns { rows, error }; on an error, rows holds what loaded first.
+async function fetchBuiltInInventoryRows(sb, storeId){
+  const PAGE = 1000;
+  const WAVE = 2;
+  const rows = [];
+  const seen = new Set();
+  const page = offset => sb
+    .from('inventory_items')
+    .select('id,data,status,created_at,updated_at')
+    .eq('store_id', storeId)
+    .order('updated_at', { ascending:false })
+    .order('id', { ascending:true })
+    .range(offset, offset + PAGE - 1);
+  let offset = 0;
+  while(true){
+    const wave = await Promise.all(Array.from({ length:WAVE }, (_, i) => page(offset + i * PAGE)));
+    for(const { data, error } of wave){
+      if(error) return { rows, error };
+      for(const row of data || []) if(!seen.has(row.id)) { seen.add(row.id); rows.push(row); }
+      if(!data || data.length < PAGE) return { rows, error:null };
+    }
+    offset += WAVE * PAGE;
+  }
+}
+
+// The first inventory load's rows, requested at boot at the same time as the
+// settings batch: the download doesn't depend on that batch, only turning
+// rows into items does (mapBuiltInItem reads lifecycle data). Used once, only
+// for the same store and only while fresh; anything else loads normally.
+let _builtInRowsPrefetch = null;
+function prefetchBuiltInInventoryRows(){
+  const source = getInventorySource();
+  if(source !== 'built_in' && source !== 'hybrid') return;
+  const sb = getSupabaseClient();
+  const storeId = getActiveStoreId();
+  if(!sb || !storeId || !getAuthSession()?.supabase) return;
+  _builtInRowsPrefetch = {
+    storeId,
+    startedAt:Date.now(),
+    result:fetchBuiltInInventoryRows(sb, storeId).catch(error => ({ rows:[], error })),
+  };
+}
+
 async function loadBuiltInInventoryItems(){
   const sb = getSupabaseClient();
   const session = getAuthSession();
@@ -16103,28 +16156,18 @@ async function loadBuiltInInventoryItems(){
     console.warn('[INV] session.supabase not set — Supabase inventory skipped. Re-login may be needed.');
     return [];
   }
-  // A single .limit(1000) query used to silently truncate the store once it
-  // grew past 1000 rows -- older untouched stock never made it into the
-  // client at all, not "loaded slowly," genuinely absent. Page through with
-  // .range() until a short page comes back instead.
-  const PAGE = 1000;
-  const rows = [];
-  let offset = 0;
-  while(true){
-    const { data, error } = await sb
-      .from('inventory_items')
-      .select('id,data,status,created_at,updated_at')
-      .eq('store_id', storeId)
-      .order('updated_at', { ascending:false })
-      .range(offset, offset + PAGE - 1);
-    if(error) {
-      console.warn('[INV] Built-in inventory load failed:', error.message, { storeId, code:error.code });
-      toast_dash('Supabase inventory load failed (' + error.code + '): ' + error.message + ' — re-login may fix this.');
-      break;
-    }
-    rows.push(...(data || []));
-    if(!data || data.length < PAGE) break;
-    offset += PAGE;
+  const prefetch = _builtInRowsPrefetch;
+  _builtInRowsPrefetch = null;
+  let result = null;
+  if(prefetch && prefetch.storeId === storeId && Date.now() - prefetch.startedAt < 60000) {
+    result = await prefetch.result;
+    if(result.error) result = null; // retry below with a fresh request
+  }
+  if(!result) result = await fetchBuiltInInventoryRows(sb, storeId);
+  const { rows, error } = result;
+  if(error) {
+    console.warn('[INV] Built-in inventory load failed:', error.message, { storeId, code:error.code });
+    toast_dash('Supabase inventory load failed (' + error.code + '): ' + error.message + ' — re-login may fix this.');
   }
   if(rows.length === 0) {
     console.info('[INV] Supabase returned 0 inventory_items for store_id=' + storeId + '. RLS or empty store.');
@@ -16392,13 +16435,20 @@ function builtInDataFromItem(item, updates={}){
   return out;
 }
 
-window.addEventListener('load', async function(){
+// Boot on DOMContentLoaded, not 'load': 'load' also waits for the fonts and
+// the feature-only libraries (spreadsheet reader, phone SDK, screenshots,
+// zip, barcodes -- loaded async below), none of which startup uses. Every
+// deferred script (supabase-js included) has already run by this point.
+window.addEventListener('DOMContentLoaded', async function(){
   if(await handleAuthRecoveryRedirect()) return;
   // Clear any leftover pre-removal demo session BEFORE ensureAuthReady() touches
   // any storeId. Must run here so drawerState (set at module parse time) gets
   // nulled before drawer UI renders.
   purgeLegacyDemoSessionIfNeeded();
   if(!(await ensureAuthReady())) return;
+  // Start downloading inventory now, alongside the settings batch below;
+  // loadInventory picks the rows up once that batch is done.
+  prefetchBuiltInInventoryRows();
   // Paint the shell (theme, version stamp) and land on the user's chosen tab
   // immediately -- neither depends on any network round trip, so there's no
   // reason to make either one wait behind the cloud syncs below.
@@ -47524,7 +47574,7 @@ async function toppsLoadParallels(cardId){
   window.__arscaCloseModal = closeModal;
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.09.27.05-safe-edits" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.09.28.01-fast-boot" defer></script>
 </body>
 </html>
 
