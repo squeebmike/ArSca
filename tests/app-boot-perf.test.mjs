@@ -10,8 +10,26 @@ const dashboard = fs.readFileSync('dashboard.html', 'utf8');
 // sequentially just summed up their round trips before the Overview tab
 // ever got real numbers. They must run together via Promise.all instead.
 
-const bootListener = dashboard.match(/window\.addEventListener\('load', async function\(\)\{[\s\S]*?\n\}\);/)?.[0];
-assert.ok(bootListener, 'could not find the boot load listener');
+const bootListener = dashboard.match(/window\.addEventListener\('DOMContentLoaded', async function\(\)\{[\s\S]*?\n\}\);/)?.[0];
+assert.ok(bootListener, 'could not find the boot DOMContentLoaded listener');
+
+// Boot must not wait for the 'load' event: that waits for fonts and every
+// feature-only library, none of which startup needs.
+assert.doesNotMatch(dashboard, /window\.addEventListener\('load', async function\(\)\{\s*\n\s*if\(await handleAuthRecoveryRedirect\(\)\) return;/, 'boot must run on DOMContentLoaded, not load');
+
+// Feature-only libraries load async so they never hold up startup; the
+// libraries startup itself needs (supabase-js) stay deferred.
+for (const lib of ['html2canvas.min.js', 'xlsx.full.min.js', 'jszip.min.js', 'JsBarcode.all.min.js', 'twilio.min.js']) {
+  assert.match(dashboard, new RegExp('<script src="[^"]*' + lib.replace(/\./g, '\\.') + '" async></script>'), lib + ' must load async');
+}
+assert.match(dashboard, /<script src="https:\/\/cdn\.jsdelivr\.net\/npm\/@supabase\/supabase-js@2" defer><\/script>/, 'supabase-js must stay deferred -- boot needs it');
+
+// Inventory rows start downloading right after sign-in, alongside the
+// settings batch, instead of waiting for that batch to finish.
+const authIdx = bootListener.indexOf('if(!(await ensureAuthReady())) return;');
+const prefetchIdx = bootListener.indexOf('prefetchBuiltInInventoryRows();');
+assert.ok(authIdx >= 0 && prefetchIdx > authIdx, 'inventory prefetch must start right after sign-in is confirmed');
+assert.ok(prefetchIdx < bootListener.indexOf('Promise.all(['), 'inventory prefetch must start before the settings batch');
 
 assert.match(bootListener, /Promise\.all\(\[\s*\n\s*loadStoreSettingsFromSupabase\(\),\s*\n\s*loadConsignmentsFromCloud\(\),\s*\n\s*loadPriceChangeAlertsFromCloud\(\),\s*\n\s*syncShowModeFromWorker\(\),\s*\n\s*syncStoreCreditsFromWorker\(\),\s*\n\s*syncLifecycleFromWorker\(\),\s*\n\s*\]\)/, 'boot must run the independent cloud syncs together via Promise.all, not one at a time');
 assert.match(bootListener, /\.then\(renderShowMode\)\.finally\(loadInventory\)/, 'loadInventory must only start once the whole sync batch settles (it reads lifecycle data synchronously while building each item)');
