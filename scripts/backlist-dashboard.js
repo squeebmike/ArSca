@@ -122,7 +122,6 @@ async function handleBacklistImportFile(event){
   var setStatus=function(text,color){if(!status)return;status.style.display='block';status.style.color=color||'var(--gold)';status.textContent=text;};
   try{
     setStatus('Reading '+file.name+'…');
-    if(typeof XLSX==='undefined')throw new Error('Spreadsheet reader is still loading -- try again in a moment');
     var buffer=await file.arrayBuffer();
     var wb=XLSX.read(buffer,{type:'array',raw:true});
     var sheet=wb.Sheets[wb.SheetNames[0]];
