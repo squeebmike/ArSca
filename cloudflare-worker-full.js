@@ -3121,7 +3121,7 @@ async function linkRecordedEbaySale(env, storeId, order, li, m) {
   const { data: lines } = await supabaseAdminFetch(env, `pos_sale_lines?sale_id=eq.${encodeURIComponent(payment.sale_id)}&store_id=eq.${encodeURIComponent(storeId)}&select=id,cost_basis&limit=2`);
   if ((lines || []).length !== 1) return false;
   const profit = ebayLineProfit(m, Number(lines[0].cost_basis || 0));
-  const total = Math.round((m.itemPrice + m.shipping) * 100) / 100;
+  const total = m.itemPrice;
   const { data: claimed } = await supabaseAdminFetch(env, `pos_payments?id=eq.${encodeURIComponent(payment.id)}&reference=is.null`, { method: 'PATCH', headers: { Prefer: 'return=representation' },
     body: JSON.stringify({ reference: String(order.orderId), amount: total, provider_metadata: ebaySaleMetadata(order, m) }) });
   if (!claimed?.length) return false;
@@ -3182,7 +3182,9 @@ async function syncEbayOrdersForStore(env, storeId, ebayToken, receiptSettings, 
           // Item + the shipping the buyer paid - cost - eBay's fee. The label
           // bought on eBay comes off later (runScheduledEbayFinanceReconcile).
           const feeAmount = m.fee;
-          const orderTotal = Math.round((salePrice + m.shipping) * 100) / 100;
+          // Sales count the item only; the shipping the buyer paid (and the
+          // label it pays for) lives in the payment's breakdown and profit.
+          const orderTotal = salePrice;
           const profit = ebayLineProfit(m, cost);
           const itemName = d.name || li.title || 'eBay Item';
 
@@ -3301,10 +3303,17 @@ async function reconcileEbayFinancesForStore(env, storeId, ebayToken) {
   // (e.g. after the rule for not-yet-bought labels changed). Last 120 days.
   let profitsCorrected = 0;
   const since = new Date(Date.now() - 120 * 24 * 60 * 60 * 1000).toISOString();
-  const { data: linked } = await supabaseAdminFetch(env, `pos_payments?store_id=eq.${encodeURIComponent(storeId)}&provider=eq.ebay&reference=not.is.null&created_at=gte.${encodeURIComponent(since)}&select=id,sale_id,provider_metadata&limit=500`);
+  const { data: linked } = await supabaseAdminFetch(env, `pos_payments?store_id=eq.${encodeURIComponent(storeId)}&provider=eq.ebay&reference=not.is.null&created_at=gte.${encodeURIComponent(since)}&select=id,sale_id,amount,provider_metadata&limit=500`);
   for (const p of linked || []) {
     if (p.provider_metadata?.itemPrice == null) continue;
     if (await applyEbayPaymentUpdate(env, storeId, p, p.provider_metadata, { onlyIfProfitChanged: true })) profitsCorrected++;
+    // Sales are the item price (shipping isn't a sale); fixes ones recorded as item + shipping.
+    const item = Number(p.provider_metadata.itemPrice);
+    if (Math.abs(Number(p.amount) - item) >= 0.005) {
+      await supabaseAdminFetch(env, `pos_payments?id=eq.${encodeURIComponent(p.id)}`, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ amount: item }) });
+      await supabaseAdminFetch(env, `pos_sales?id=eq.${encodeURIComponent(p.sale_id)}&store_id=eq.${encodeURIComponent(storeId)}`, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ total: item }) });
+      profitsCorrected++;
+    }
   }
   return { labelsApplied, feesApplied, profitsCorrected };
 }
