@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.09.28.02-startup-timer">
+<meta name="version" content="2026.09.28.04-inventory-copy">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1655,21 +1655,21 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.09.28.02-startup-timer" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.09.28.02-startup-timer" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.09.28.02-startup-timer" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.09.28.02-startup-timer" defer></script>
-<script src="scripts/backlist-dashboard.js?v=2026.09.28.02-startup-timer" defer></script>
-<script src="scripts/database-viewer.js?v=2026.09.28.02-startup-timer" defer></script>
-<script src="scripts/card-intake-dashboard.js?v=2026.09.28.02-startup-timer" defer></script>
-<script src="scripts/mana-pocket-task-library.js?v=2026.09.28.02-startup-timer" defer></script>
-<script src="scripts/daily-tasks-dashboard.js?v=2026.09.28.02-startup-timer" defer></script>
+<script src="scripts/query-routing.js?v=2026.09.28.04-inventory-copy" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.09.28.04-inventory-copy" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.09.28.04-inventory-copy" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.09.28.04-inventory-copy" defer></script>
+<script src="scripts/backlist-dashboard.js?v=2026.09.28.04-inventory-copy" defer></script>
+<script src="scripts/database-viewer.js?v=2026.09.28.04-inventory-copy" defer></script>
+<script src="scripts/card-intake-dashboard.js?v=2026.09.28.04-inventory-copy" defer></script>
+<script src="scripts/mana-pocket-task-library.js?v=2026.09.28.04-inventory-copy" defer></script>
+<script src="scripts/daily-tasks-dashboard.js?v=2026.09.28.04-inventory-copy" defer></script>
 <script src="scripts/research-loupe.js?v=a7de4ffe90" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.09.28.02-startup-timer" defer></script>
-<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.09.28.02-startup-timer" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.09.28.02-startup-timer" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.09.28.02-startup-timer" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.09.28.02-startup-timer" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.09.28.04-inventory-copy" defer></script>
+<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.09.28.04-inventory-copy" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.09.28.04-inventory-copy" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.09.28.04-inventory-copy" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.09.28.04-inventory-copy" defer></script>
 </head>
 <body>
 
@@ -1721,7 +1721,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
 <div class="dsb-chip" id="dsb-tasks" title="Today's Roles &amp; Tasks — click to jump to Tasks tab" style="cursor:pointer;display:none" onclick="switchTab('tasks')">✅ <span>TASKS:</span> <b id="dsb-tasks-val">—</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.09.28.02-startup-timer</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.09.28.04-inventory-copy</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3887,7 +3887,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.09.28.02-startup-timer';
+const APP_VERSION = '2026.09.28.04-inventory-copy';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -4754,15 +4754,17 @@ function openTeamThemePicker(){
   renderTeamThemePicker();
 }
 async function resetBrandTheme(){ setThemeForm(DEFAULT_STORE_THEME); applyStoreTheme(DEFAULT_STORE_THEME, true); await saveStoreSettingsToSupabase({ theme:DEFAULT_STORE_THEME }); toast_dash('Default theme restored'); }
-function ensureBrandingPanel(backoffice){
-  if(!backoffice || document.getElementById('branding-theme-panel')) return;
+// Settings that apply to this device only (display size, the tab it opens
+// on, the startup timer) -- their own section so they're easy to find, not
+// buried under store Theme & Branding.
+function ensureThisDevicePanel(backoffice){
+  if(!backoffice || document.getElementById('this-device-panel')) return;
   const panel = document.createElement('div');
   panel.className = 'panel';
-  panel.id = 'branding-theme-panel';
+  panel.id = 'this-device-panel';
   panel.style.marginBottom = '14px';
-  const fields = [['Primary','theme-primary'],['Secondary','theme-secondary'],['Accent','theme-accent'],['Background','theme-bg'],['Panel','theme-surface'],['Panel 2','theme-surface2'],['Text','theme-text'],['Success','theme-success'],['Warning','theme-warning'],['Danger','theme-danger'],['Info','theme-info']];
   panel.innerHTML = `
-    <div class="ph">BRANDING & THEME <span style="font-size:9px;color:var(--dim)">store colors and customer screen branding</span></div>
+    <div class="ph">THIS DEVICE <span style="font-size:9px;color:var(--dim)">saved on this phone/computer only, not synced</span></div>
     <div style="border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:14px;background:var(--surf2)">
       <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);margin-bottom:8px">DISPLAY SIZE <span style="color:var(--text)">— this device only</span>, not synced to other devices</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
@@ -4781,6 +4783,19 @@ function ensureBrandingPanel(backoffice){
       <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);margin-bottom:8px">STARTUP TIMER <span style="color:var(--text)">— this device only</span>, how long each step took the last few times the app opened here</div>
       <button class="hbtn" onclick="showBootTimings()" style="margin-bottom:0">SHOW STARTUP TIMES</button>
     </div>
+  `;
+  backoffice.appendChild(panel);
+  applyUiScale(getUiScale(), false);
+}
+function ensureBrandingPanel(backoffice){
+  if(!backoffice || document.getElementById('branding-theme-panel')) return;
+  const panel = document.createElement('div');
+  panel.className = 'panel';
+  panel.id = 'branding-theme-panel';
+  panel.style.marginBottom = '14px';
+  const fields = [['Primary','theme-primary'],['Secondary','theme-secondary'],['Accent','theme-accent'],['Background','theme-bg'],['Panel','theme-surface'],['Panel 2','theme-surface2'],['Text','theme-text'],['Success','theme-success'],['Warning','theme-warning'],['Danger','theme-danger'],['Info','theme-info']];
+  panel.innerHTML = `
+    <div class="ph">BRANDING & THEME <span style="font-size:9px;color:var(--dim)">store colors and customer screen branding</span></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;font-family:var(--font-mono);font-size:10px;color:var(--dim)">
       <span>Current: <b style="color:var(--text)" id="theme-current-name">${escHtml(getStoreTheme().themeName || 'Custom')}</b></span>
       <span id="theme-unsaved" style="color:var(--gold)"></span>
@@ -4937,6 +4952,7 @@ function selectPickedStore(){
 async function logoutAccount(){
   const sb = getSupabaseClient();
   if(sb) await sb.auth.signOut().catch(()=>{});
+  await clearInventoryCache();
   localStorage.removeItem(WALKOFF_AUTH_SESSION_KEY);
   document.getElementById('auth-screen')?.classList.add('on');
   toast_dash('Logged out');
@@ -6367,6 +6383,7 @@ function moveNode(id, target){
 const SETTINGS_SECTIONS = [
   {id:'overview',label:'Overview',subtitle:'Store readiness and health at a glance.',keywords:'status health setup stripe refunds sync consignments pokemon mtg pricecharting theme imports users cash bag debug'},
   {id:'whatsnew',label:"What's New",subtitle:'Every feature in ArSca, grouped by area -- what it does, and what\'s still on the roadmap.',keywords:'changelog updates new features roadmap planned history log release notes whats new feature log'},
+  {id:'device',label:'This Device',subtitle:'Display size, the tab this device opens on, and the startup timer -- saved on this device only.',keywords:'this device default tab landing open start startup timer speed slow loading load time display size zoom text scale phone tablet'},
   {id:'profile',label:'Store Profile',subtitle:'Store identity, receipts, operational defaults, and public contact details.',keywords:'store vendor profile logo name website phone email location tax buy markdown receipt shipping venmo paypal cash app'},
   {id:'payments',label:'Checkout & Payments',subtitle:'Tender methods, QR payment links, Stripe Connect status, and refund access.',keywords:'checkout payments cash card stripe qr venmo paypal cash app refunds fee payer webhook cash bag receipt customer display'},
   {id:'sync',label:'Data Sync',subtitle:'Store Data Sync keeps inventory, sales, settings, users, queues, and consignment data consistent across devices and cloud.',keywords:'sync queue cloud inventory pull push pending failed conflicts consignments sql device webflow'},
@@ -6386,6 +6403,7 @@ const SETTINGS_PANEL_MAP = {
   catalogs:['backoffice-research-panel','offline-catalog-manager-panel'],
   inventory:['inventory-tools-panel','spreadsheet-panel'],
   users:['store-members-panel'],
+  device:['this-device-panel'],
   theme:['branding-theme-panel'],
   subscription:['subscription-panel'],
   advanced:['admin-lock-panel','vendor-config-panel','backoffice-system-panel','backoffice-ops-panel','pricing-qa-panel','data-mode-panel','customer-panel','data-health-panel','help-walkthrough-panel']
@@ -6729,6 +6747,7 @@ function organizeRegisterLayout(){
   moveNode('backoffice-system-panel', backoffice);
   moveNode('backoffice-ops-panel', backoffice);
   ensureVendorProfilePanel(backoffice);
+  ensureThisDevicePanel(backoffice);
   ensureBrandingPanel(backoffice);
   ensurePaymentSettingsPanel(backoffice);
   ensureResearchSettingsPanel(backoffice);
@@ -16109,6 +16128,130 @@ async function loadWebflowInventoryItems(){
 // (photos included) every 60 seconds regardless of whether anything
 // actually changed.
 let _builtInSyncWatermark = null;
+// ── Inventory copy on this device ────────────────────────────────────────
+// Every open used to download every item's full record (~11 MB for ~1,600
+// items) -- measured on the store phone, that download was nearly all of
+// the startup wait. Now the last full set of rows is kept in this browser
+// (IndexedDB), and an open only downloads:
+//   1. the id list (small) -- so items deleted elsewhere drop out,
+//   2. rows changed since the copy was saved (every UPDATE bumps updated_at
+//      via trg_inventory_items_updated_at; the window reaches back 10 extra
+//      minutes so a slow transaction that committed late still gets picked
+//      up), and
+//   3. any row whose id is in the list but not in the copy (a row inserted
+//      with an older timestamp).
+// The rows are the same full records a full load returns, so edits and
+// saves (which write back item.raw) keep every field. Any failure, a copy
+// older than a day, or a count that doesn't add up falls back to the normal
+// full download. Kept per store and per signed-in user; cleared on log out.
+const INV_CACHE_DB = 'mp-inventory-cache';
+const INV_CACHE_STORE = 'rows';
+const INV_CACHE_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+const INV_CACHE_OVERLAP_MS = 10 * 60 * 1000;
+const INV_ROW_COLUMNS = 'id,data,status,created_at,updated_at';
+let _invCacheDbPromise = null;
+function inventoryCacheDb(){
+  if(!_invCacheDbPromise) _invCacheDbPromise = new Promise(resolve => {
+    try {
+      if(!window.indexedDB) return resolve(null);
+      const req = indexedDB.open(INV_CACHE_DB, 1);
+      req.onupgradeneeded = () => req.result.createObjectStore(INV_CACHE_STORE);
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => resolve(null);
+      req.onblocked = () => resolve(null);
+    } catch(e) { resolve(null); }
+  });
+  return _invCacheDbPromise;
+}
+function inventoryCacheKey(storeId){
+  return storeId + ':' + (getAuthSession()?.user?.id || '');
+}
+async function readInventoryCache(storeId){
+  const db = await inventoryCacheDb();
+  if(!db) return null;
+  return new Promise(resolve => {
+    try {
+      const req = db.transaction(INV_CACHE_STORE, 'readonly').objectStore(INV_CACHE_STORE).get(inventoryCacheKey(storeId));
+      req.onsuccess = () => resolve(req.result || null);
+      req.onerror = () => resolve(null);
+    } catch(e) { resolve(null); }
+  });
+}
+async function writeInventoryCache(storeId, rows, fullLoadedAt){
+  const db = await inventoryCacheDb();
+  if(!db) return;
+  try {
+    db.transaction(INV_CACHE_STORE, 'readwrite').objectStore(INV_CACHE_STORE)
+      .put({ v:1, rows, fullLoadedAt, savedAt:Date.now() }, inventoryCacheKey(storeId));
+  } catch(e) { console.warn('[INV] could not save the inventory copy on this device', e); }
+}
+async function clearInventoryCache(){
+  const db = await inventoryCacheDb();
+  if(!db) return;
+  await new Promise(resolve => {
+    try { const tx = db.transaction(INV_CACHE_STORE, 'readwrite'); tx.objectStore(INV_CACHE_STORE).clear(); tx.oncomplete = tx.onerror = tx.onabort = () => resolve(); }
+    catch(e) { resolve(); }
+  });
+}
+function newestUpdatedAt(rows){
+  let best = null, bestMs = -Infinity;
+  for(const row of rows){ const ms = Date.parse(row.updated_at); if(ms > bestMs){ bestMs = ms; best = row.updated_at; } }
+  return best;
+}
+// Every id in the store. Pages by what actually came back and stops at the
+// exact count, so it's right whatever row cap the API enforces.
+async function fetchInventoryIdList(sb, storeId){
+  const ids = [];
+  let total = null;
+  while(true){
+    const { data, error, count } = await sb.from('inventory_items')
+      .select('id', total === null ? { count:'exact' } : undefined)
+      .eq('store_id', storeId)
+      .order('id', { ascending:true })
+      .range(ids.length, ids.length + 999);
+    if(error) throw error;
+    if(total === null) total = Number.isFinite(count) ? count : null;
+    ids.push(...(data || []).map(r => r.id));
+    if(!data || !data.length) break;
+    if(total !== null ? ids.length >= total : data.length < 1000) break;
+  }
+  if(total !== null && ids.length !== total) throw new Error('inventory id list incomplete');
+  return ids;
+}
+// Brings a saved copy up to date. Returns the full current row set (newest
+// first, like a full load) or throws so the caller does a full download.
+async function syncInventoryCopy(sb, storeId, cachedRows){
+  const newest = newestUpdatedAt(cachedRows);
+  if(!newest) throw new Error('empty inventory copy');
+  const since = new Date(Date.parse(newest) - INV_CACHE_OVERLAP_MS).toISOString();
+  const fetchChanged = async () => {
+    const out = [];
+    while(true){
+      const { data, error } = await sb.from('inventory_items').select(INV_ROW_COLUMNS)
+        .eq('store_id', storeId).gt('updated_at', since)
+        .order('updated_at', { ascending:true }).order('id', { ascending:true })
+        .range(out.length, out.length + 999);
+      if(error) throw error;
+      out.push(...(data || []));
+      if(!data || data.length < 1000) break;
+    }
+    return out;
+  };
+  const [ids, changed] = await Promise.all([fetchInventoryIdList(sb, storeId), fetchChanged()]);
+  const byId = new Map(cachedRows.map(r => [r.id, r]));
+  changed.forEach(r => byId.set(r.id, r));
+  const missing = ids.filter(id => !byId.has(id));
+  for(let i = 0; i < missing.length; i += 100){
+    const { data, error } = await sb.from('inventory_items').select(INV_ROW_COLUMNS).eq('store_id', storeId).in('id', missing.slice(i, i + 100));
+    if(error) throw error;
+    (data || []).forEach(r => byId.set(r.id, r));
+  }
+  const rows = ids.map(id => byId.get(id)).filter(Boolean);
+  if(rows.length !== ids.length) throw new Error('inventory copy could not be completed');
+  rows.sort((a, b) => (Date.parse(b.updated_at) - Date.parse(a.updated_at)) || String(a.id).localeCompare(String(b.id)));
+  return { rows, changed:changed.length + missing.length };
+}
+
 async function loadBuiltInInventoryItems(){
   const sb = getSupabaseClient();
   const session = getAuthSession();
@@ -16118,6 +16261,21 @@ async function loadBuiltInInventoryItems(){
     console.warn('[INV] session.supabase not set — Supabase inventory skipped. Re-login may be needed.');
     return [];
   }
+  const bootTimer = window.__bootTimer && !window.__bootTimer.done ? window.__bootTimer : null;
+  // Saved copy first (see "Inventory copy on this device" above).
+  try {
+    const cached = await readInventoryCache(storeId);
+    if(cached?.v === 1 && Array.isArray(cached.rows) && cached.rows.length && Date.now() - Number(cached.fullLoadedAt || 0) < INV_CACHE_MAX_AGE_MS) {
+      const { rows, changed } = await syncInventoryCopy(sb, storeId, cached.rows);
+      console.info('[INV] Loaded ' + rows.length + ' built-in items from this device (' + changed + ' downloaded) for store ' + storeId);
+      if(rows.length) _builtInSyncWatermark = rows[0].updated_at;
+      if(bootTimer) { bootTimer.mark('inventory-downloaded'); Object.assign(bootTimer.info, { inventoryRows:rows.length, inventoryFrom:'device copy', inventoryChanged:changed }); }
+      setTimeout(() => writeInventoryCache(storeId, rows, cached.fullLoadedAt), 3000);
+      return rows.map(mapBuiltInItem);
+    }
+  } catch(e) {
+    console.warn('[INV] device copy could not be used, downloading everything:', e?.message || e);
+  }
   // A single .limit(1000) query used to silently truncate the store once it
   // grew past 1000 rows -- older untouched stock never made it into the
   // client at all, not "loaded slowly," genuinely absent. Page through with
@@ -16125,6 +16283,7 @@ async function loadBuiltInInventoryItems(){
   const PAGE = 1000;
   const rows = [];
   let offset = 0;
+  let loadFailed = false;
   while(true){
     const { data, error } = await sb
       .from('inventory_items')
@@ -16135,6 +16294,7 @@ async function loadBuiltInInventoryItems(){
     if(error) {
       console.warn('[INV] Built-in inventory load failed:', error.message, { storeId, code:error.code });
       toast_dash('Supabase inventory load failed (' + error.code + '): ' + error.message + ' — re-login may fix this.');
+      loadFailed = true;
       break;
     }
     rows.push(...(data || []));
@@ -16147,7 +16307,9 @@ async function loadBuiltInInventoryItems(){
   console.info('[INV] Loaded ' + rows.length + ' built-in items from Supabase for store ' + storeId);
   // Rows are ordered updated_at DESC, so the first row is the newest.
   if(rows.length) _builtInSyncWatermark = rows[0].updated_at;
-  if(window.__bootTimer && !window.__bootTimer.done) { window.__bootTimer.mark('inventory-downloaded'); window.__bootTimer.info.inventoryRows = rows.length; }
+  if(bootTimer) { bootTimer.mark('inventory-downloaded'); Object.assign(bootTimer.info, { inventoryRows:rows.length, inventoryFrom:'full download' }); }
+  // Save the complete set for next time -- never a partial one.
+  if(!loadFailed && rows.length) { const fullLoadedAt = Date.now(); setTimeout(() => writeInventoryCache(storeId, rows, fullLoadedAt), 3000); }
   return rows.map(mapBuiltInItem);
 }
 
@@ -16529,7 +16691,7 @@ function showBootTimings(){
     html += `<div style="color:var(--dim);margin-bottom:6px">Last open: ${escHtml(new Date(last.at).toLocaleString())} · ${escHtml(last.mobile ? 'phone/tablet' : 'computer')} ${escHtml(last.connection || '')} · landing tab: ${escHtml(last.tab || '')}</div>`;
     html += '<div style="color:var(--dim);margin:6px 0 2px">Time since you opened it:</div>';
     BOOT_STEP_LABELS.forEach(([key, label]) => { if(last.marks && last.marks[key]) html += row(label, secs(last.marks[key]), key === 'tab-shown' || key === 'inventory-on-screen'); });
-    if(last.inventoryRows != null) html += row('Inventory items', String(last.inventoryRows));
+    if(last.inventoryRows != null) html += row('Inventory items', String(last.inventoryRows) + (last.inventoryFrom === 'device copy' ? ' · saved copy, ' + (last.inventoryChanged || 0) + ' downloaded' : last.inventoryFrom ? ' · ' + last.inventoryFrom : ''));
     if(last.slowestInventoryRequestMs) html += row('Slowest inventory download', secs(last.slowestInventoryRequestMs));
     if(last.slowestAddOnMs) html += row('Slowest add-on library', secs(last.slowestAddOnMs));
     html += last.busySupported ? row('Frozen (too busy to respond)', secs(last.busyMs) + ' · longest ' + secs(last.longestBusyMs), true) : row('Frozen time', 'not measurable in this browser');
@@ -47651,7 +47813,7 @@ async function toppsLoadParallels(cardId){
   window.__arscaCloseModal = closeModal;
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.09.28.02-startup-timer" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.09.28.04-inventory-copy" defer></script>
 </body>
 </html>
 
