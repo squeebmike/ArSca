@@ -3318,11 +3318,24 @@ async function reconcileEbayFinancesForStore(env, storeId, ebayToken) {
   return { labelsApplied, feesApplied, profitsCorrected };
 }
 
-async function runScheduledEbayFinanceReconcile(env) {
-  if (!(env.SUPABASE_URL && (env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SERVICE_KEY))) return;
+// The eBay login is one account for the whole Worker, so only stores that
+// actually list on it may sync its orders. Looping every active store
+// recorded each eBay order again in an unrelated store (an old second store
+// with no eBay listings got a copy of the He-Man #4 sale).
+async function storesWithEbayListings(env) {
   const { data: members } = await supabaseAdminFetch(env, `store_members?active=eq.true&select=store_id`);
   const storeIds = [...new Set((members || []).map(m => String(m.store_id || '')).filter(Boolean))];
+  const listed = [];
   for (const storeId of storeIds) {
+    const { data: rows } = await supabaseAdminFetch(env, `inventory_items?store_id=eq.${encodeURIComponent(storeId)}&or=(data->>ebaySku.neq.,data->>ebayListingId.neq.)&select=id&limit=1`);
+    if ((rows || []).length) listed.push(storeId);
+  }
+  return listed;
+}
+
+async function runScheduledEbayFinanceReconcile(env) {
+  if (!(env.SUPABASE_URL && (env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SERVICE_KEY))) return;
+  for (const storeId of await storesWithEbayListings(env)) {
     try {
       let ebayToken = '';
       try { ebayToken = await getEbayUserAccessToken(env); } catch (_) { continue; }
@@ -3341,9 +3354,8 @@ async function runScheduledEbayFinanceReconcile(env) {
 // must never block the rest, same convention as those jobs.
 async function runScheduledEbayOrderSync(env) {
   if (!(env.SUPABASE_URL && (env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SERVICE_KEY))) return;
-  const { data: members } = await supabaseAdminFetch(env, `store_members?active=eq.true&select=store_id`);
-  const storeIds = [...new Set((members || []).map(m => String(m.store_id || '')).filter(Boolean))];
-  for (const storeId of storeIds) {
+  // Only stores listing on the connected eBay account (see storesWithEbayListings).
+  for (const storeId of await storesWithEbayListings(env)) {
     try {
       let ebayToken = '';
       try { ebayToken = await getEbayUserAccessToken(env); } catch (_) { continue; }

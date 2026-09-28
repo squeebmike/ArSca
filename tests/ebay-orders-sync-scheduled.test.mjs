@@ -27,7 +27,8 @@ const schedEnd = worker.indexOf('\n}\n', schedStart);
 assert.match(worker, /\nasync function runScheduledEbayOrderSync\(env\) \{/, 'must be a top-level function: nested inside fetch it was undefined in scheduled() and the cron threw');
 const schedBody = worker.slice(schedStart, schedEnd);
 
-assert.match(schedBody, /const \{ data: members \} = await supabaseAdminFetch\(env, `store_members\?active=eq\.true&select=store_id`\);/, 'must iterate every active store, same pattern as runScheduledEbayReprice/runScheduledDealScans');
+assert.match(schedBody, /for \(const storeId of await storesWithEbayListings\(env\)\) \{/, 'only stores listing on the connected eBay account sync its orders (one eBay login, several stores)');
+assert.match(worker, /async function storesWithEbayListings\(env\) \{[\s\S]*?store_members\?active=eq\.true[\s\S]*?data->>ebaySku\.neq\.,data->>ebayListingId\.neq\./);
 assert.match(schedBody, /try \{ ebayToken = await getEbayUserAccessToken\(env\); \} catch \(_\) \{ continue; \}/, 'a store with no/expired eBay connection must be skipped, not abort the whole run');
 assert.match(schedBody, /await syncEbayOrdersForStore\(env, storeId, ebayToken, receiptSettings, \{ reconcile: false, confirmedBy: null \}\);/, 'the scheduled run must use confirmedBy:null -- there is no real authenticated user for a cron job, and pos_payments.confirmed_by is a nullable FK for exactly this reason');
 assert.match(schedBody, /\} catch \(e\) \{ console\.error\('Scheduled eBay order sync failed for store', storeId, e\.message\); \}/, 'one store failing (e.g. a lookup error) must not block syncing the rest');
