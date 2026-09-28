@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.09.27.05-safe-edits">
+<meta name="version" content="2026.09.28.02-startup-timer">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -11,6 +11,17 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22><rect width=%2264%22 height=%2264%22 rx=%2212%22 fill=%22%2307080a%22/><path d=%22M10 34h18l7-18 7 32 5-14h7%22 fill=%22none%22 stroke=%22%2300ffb3%22 stroke-width=%226%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22/></svg>">
 <title>Walk-Off Dashboard</title>
+<script>
+// Startup timer (Settings > Startup timer): records when each step of opening
+// the dashboard happens on this device, and how long the page was too busy to
+// respond. Measuring only -- it changes nothing about how the page loads.
+(function(){
+  var t = window.__bootTimer = { marks:[], longTasks:[], firstInput:null, info:{} };
+  t.mark = function(name){ try { t.marks.push([name, Math.round(performance.now())]); } catch(e) {} };
+  try { new PerformanceObserver(function(list){ list.getEntries().forEach(function(e){ t.longTasks.push([Math.round(e.startTime), Math.round(e.duration)]); }); }).observe({ type:'longtask', buffered:true }); } catch(e) {}
+  try { new PerformanceObserver(function(list){ list.getEntries().forEach(function(e){ if(!t.firstInput) t.firstInput = { type:e.name, at:Math.round(e.startTime), waited:Math.round(e.processingStart - e.startTime) }; }); }).observe({ type:'first-input', buffered:true }); } catch(e) {}
+})();
+</script>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root{--app-bg:#07080a;--app-surface:#0d0f14;--app-surface-2:#141720;--app-text:#e4e4e8;--app-muted:rgba(228,228,232,.4);--app-primary:#00ffb3;--app-secondary:#ffd166;--app-accent:#c77dff;--app-success:#00ffb3;--app-warning:#ffd166;--app-danger:#ff4d6d;--app-border:rgba(255,255,255,.07);--app-button-text:#050507;--app-radius:10px;--app-font:'DM Sans',sans-serif;--customer-bg-image:none;--customer-bg-overlay:rgba(247,248,250,.88);--brand-primary:var(--app-primary);--brand-secondary:var(--app-secondary);--brand-accent:var(--app-accent);--brand-background:var(--app-bg);--brand-surface:var(--app-surface);--brand-surface-2:var(--app-surface-2);--brand-text:var(--app-text);--brand-muted:var(--app-muted);--brand-success:var(--app-success);--brand-warning:var(--app-warning);--brand-danger:var(--app-danger);--brand-info:#48cae4;--brand-border:var(--app-border);--brand-card-radius:var(--app-radius);--brand-button-radius:6px;--brand-font-family:var(--app-font);--btn-height:38px;--btn-height-lg:52px;--font-mono:'DM Mono',monospace;--g:var(--brand-primary);--gd:rgba(0,255,179,.1);--gold:var(--brand-warning);--red:var(--brand-danger);--blue:var(--brand-info);--purple:var(--brand-accent);--bg:var(--brand-background);--surf:var(--brand-surface);--surf2:var(--brand-surface-2);--border:var(--brand-border);--text:var(--brand-text);--dim:var(--brand-muted);}
@@ -1644,21 +1655,21 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.09.27.05-safe-edits" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.09.27.05-safe-edits" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.09.27.05-safe-edits" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.09.27.05-safe-edits" defer></script>
-<script src="scripts/backlist-dashboard.js?v=2026.09.27.05-safe-edits" defer></script>
-<script src="scripts/database-viewer.js?v=2026.09.27.05-safe-edits" defer></script>
-<script src="scripts/card-intake-dashboard.js?v=2026.09.27.05-safe-edits" defer></script>
-<script src="scripts/mana-pocket-task-library.js?v=2026.09.27.05-safe-edits" defer></script>
-<script src="scripts/daily-tasks-dashboard.js?v=2026.09.27.05-safe-edits" defer></script>
+<script src="scripts/query-routing.js?v=2026.09.28.02-startup-timer" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.09.28.02-startup-timer" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.09.28.02-startup-timer" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.09.28.02-startup-timer" defer></script>
+<script src="scripts/backlist-dashboard.js?v=2026.09.28.02-startup-timer" defer></script>
+<script src="scripts/database-viewer.js?v=2026.09.28.02-startup-timer" defer></script>
+<script src="scripts/card-intake-dashboard.js?v=2026.09.28.02-startup-timer" defer></script>
+<script src="scripts/mana-pocket-task-library.js?v=2026.09.28.02-startup-timer" defer></script>
+<script src="scripts/daily-tasks-dashboard.js?v=2026.09.28.02-startup-timer" defer></script>
 <script src="scripts/research-loupe.js?v=a7de4ffe90" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.09.27.05-safe-edits" defer></script>
-<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.09.27.05-safe-edits" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.09.27.05-safe-edits" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.09.27.05-safe-edits" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.09.27.05-safe-edits" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.09.28.02-startup-timer" defer></script>
+<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.09.28.02-startup-timer" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.09.28.02-startup-timer" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.09.28.02-startup-timer" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.09.28.02-startup-timer" defer></script>
 </head>
 <body>
 
@@ -1710,7 +1721,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
 <div class="dsb-chip" id="dsb-tasks" title="Today's Roles &amp; Tasks — click to jump to Tasks tab" style="cursor:pointer;display:none" onclick="switchTab('tasks')">✅ <span>TASKS:</span> <b id="dsb-tasks-val">—</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.09.27.05-safe-edits</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.09.28.02-startup-timer</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3876,7 +3887,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.09.27.05-safe-edits';
+const APP_VERSION = '2026.09.28.02-startup-timer';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -4765,6 +4776,10 @@ function ensureBrandingPanel(backoffice){
       <select id="default-landing-tab-select" class="tsi" style="margin-bottom:0;max-width:260px" onchange="setDefaultLandingTab(this.value)">
         ${LANDING_TAB_OPTIONS.map(([id,label])=>`<option value="${escHtml(id)}"${id===getDefaultLandingTab()?' selected':''}>${escHtml(label)}</option>`).join('')}
       </select>
+    </div>
+    <div style="border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:14px;background:var(--surf2)">
+      <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);margin-bottom:8px">STARTUP TIMER <span style="color:var(--text)">— this device only</span>, how long each step took the last few times the app opened here</div>
+      <button class="hbtn" onclick="showBootTimings()" style="margin-bottom:0">SHOW STARTUP TIMES</button>
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;font-family:var(--font-mono);font-size:10px;color:var(--dim)">
       <span>Current: <b style="color:var(--text)" id="theme-current-name">${escHtml(getStoreTheme().themeName || 'Custom')}</b></span>
@@ -16132,6 +16147,7 @@ async function loadBuiltInInventoryItems(){
   console.info('[INV] Loaded ' + rows.length + ' built-in items from Supabase for store ' + storeId);
   // Rows are ordered updated_at DESC, so the first row is the newest.
   if(rows.length) _builtInSyncWatermark = rows[0].updated_at;
+  if(window.__bootTimer && !window.__bootTimer.done) { window.__bootTimer.mark('inventory-downloaded'); window.__bootTimer.info.inventoryRows = rows.length; }
   return rows.map(mapBuiltInItem);
 }
 
@@ -16393,18 +16409,21 @@ function builtInDataFromItem(item, updates={}){
 }
 
 window.addEventListener('load', async function(){
+  window.__bootTimer?.mark('startup-began');
   if(await handleAuthRecoveryRedirect()) return;
   // Clear any leftover pre-removal demo session BEFORE ensureAuthReady() touches
   // any storeId. Must run here so drawerState (set at module parse time) gets
   // nulled before drawer UI renders.
   purgeLegacyDemoSessionIfNeeded();
   if(!(await ensureAuthReady())) return;
+  window.__bootTimer?.mark('signed-in');
   // Paint the shell (theme, version stamp) and land on the user's chosen tab
   // immediately -- neither depends on any network round trip, so there's no
   // reason to make either one wait behind the cloud syncs below.
   setupAppShell();
   setInvView(_invView);
   switchTab(getDefaultLandingTab());
+  window.__bootTimer?.mark('tab-shown');
   checkAndApplySubscriptionState().catch(console.warn);
   applyResearchDefaultCategory();
   maybeShowSetupPrompt();
@@ -16430,6 +16449,107 @@ window.addEventListener('load', async function(){
     syncLifecycleFromWorker(),
   ]).then(renderShowMode).finally(loadInventory);
 });
+
+// ── Startup timer ────────────────────────────────────────────────────────
+// Finishes the record window.__bootTimer (top of <head>) has been collecting,
+// keeps the last 10 on this device, and shows them from Settings (or right
+// away with ?timing=1 in the address). Measuring only.
+const BOOT_TIMINGS_KEY = 'mp_boot_timings_v1';
+const BOOT_STEP_LABELS = [
+  ['html-downloaded', 'Page downloaded'],
+  ['page-parsed', 'Page read by the phone'],
+  ['page-loaded', 'Page + add-ons loaded'],
+  ['startup-began', 'Startup began'],
+  ['signed-in', 'Signed in + store found'],
+  ['tab-shown', 'Your tab shown'],
+  ['inventory-requested', 'Settings loaded, inventory requested'],
+  ['inventory-downloaded', 'Inventory downloaded'],
+  ['inventory-processed', 'Inventory processed'],
+  ['inventory-on-screen', 'Inventory on screen'],
+  ['everything-drawn', 'Everything drawn'],
+];
+function finishBootTimer(){
+  const t = window.__bootTimer;
+  if(!t || t.done) return;
+  t.done = true;
+  // Give trailing busy periods a moment to be reported before saving.
+  setTimeout(() => {
+    try {
+      const nav = performance.getEntriesByType('navigation')[0] || {};
+      const marks = Object.fromEntries([
+        ['html-downloaded', Math.round(nav.responseEnd || 0)],
+        ['page-parsed', Math.round(nav.domContentLoadedEventEnd || 0)],
+        ['page-loaded', Math.round(nav.loadEventStart || 0)],
+        ...t.marks,
+      ]);
+      const end = marks['everything-drawn'] || Math.round(performance.now());
+      const busy = t.longTasks.filter(([at]) => at <= end);
+      const resources = performance.getEntriesByType('resource');
+      const slowest = (match) => Math.round(Math.max(0, ...resources.filter(r => match(r.name)).map(r => r.responseEnd - r.startTime)));
+      const record = {
+        at:new Date().toISOString(),
+        version:APP_VERSION,
+        tab:getDefaultLandingTab(),
+        screen:window.innerWidth + 'x' + window.innerHeight,
+        mobile:/Android|iPhone|iPad|Mobile/i.test(navigator.userAgent),
+        connection:navigator.connection ? (navigator.connection.effectiveType || '') + (navigator.connection.downlink ? ' ' + navigator.connection.downlink + 'Mbps' : '') : '',
+        pageKB:Math.round((nav.transferSize || 0) / 1024),
+        marks,
+        busyMs:busy.reduce((sum, [, ms]) => sum + ms, 0),
+        longestBusyMs:busy.reduce((max, [, ms]) => Math.max(max, ms), 0),
+        busyCount:busy.length,
+        busySupported:typeof PerformanceObserver !== 'undefined' && (PerformanceObserver.supportedEntryTypes || []).includes('longtask'),
+        firstInput:t.firstInput,
+        slowestInventoryRequestMs:slowest(n => n.includes('/rest/v1/inventory_items')),
+        slowestAddOnMs:slowest(n => /xlsx|twilio|html2canvas|jszip|jsbarcode/i.test(n)),
+        ...t.info,
+      };
+      const list = [record, ...(safeLocalJson(BOOT_TIMINGS_KEY, []) || [])].slice(0, 10);
+      localStorage.setItem(BOOT_TIMINGS_KEY, JSON.stringify(list));
+      console.info('[startup timer]', record);
+      if(new URLSearchParams(location.search).get('timing') === '1') showBootTimings();
+    } catch(e) { console.warn('[startup timer] could not save', e); }
+  }, 1500);
+}
+function showBootTimings(){
+  const list = safeLocalJson(BOOT_TIMINGS_KEY, []) || [];
+  const secs = ms => (ms / 1000).toFixed(1) + 's';
+  document.getElementById('boot-timings-overlay')?.remove();
+  const box = document.createElement('div');
+  box.id = 'boot-timings-overlay';
+  box.style.cssText = 'position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,.72);display:flex;align-items:flex-start;justify-content:center;padding:16px;overflow:auto';
+  const card = document.createElement('div');
+  card.style.cssText = 'background:var(--surf);border:1px solid var(--border);border-radius:12px;padding:14px;max-width:460px;width:100%;font:12px/1.5 var(--font-mono);color:var(--text)';
+  const row = (label, value, strong) => `<div style="display:flex;justify-content:space-between;gap:10px;padding:3px 0;border-bottom:1px solid var(--border)"><span style="color:${strong ? 'var(--text)' : 'var(--dim)'}">${escHtml(label)}</span><b>${escHtml(value)}</b></div>`;
+  let html = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><b style="font-size:13px">STARTUP TIMES</b><button class="hbtn" style="margin:0" onclick="this.closest(\'#boot-timings-overlay\').remove()">CLOSE</button></div>';
+  if(!list.length) {
+    html += '<div style="color:var(--dim)">Nothing recorded yet on this device. Reload the app once, then open this again.</div>';
+  } else {
+    const last = list[0];
+    html += `<div style="color:var(--dim);margin-bottom:6px">Last open: ${escHtml(new Date(last.at).toLocaleString())} · ${escHtml(last.mobile ? 'phone/tablet' : 'computer')} ${escHtml(last.connection || '')} · landing tab: ${escHtml(last.tab || '')}</div>`;
+    html += '<div style="color:var(--dim);margin:6px 0 2px">Time since you opened it:</div>';
+    BOOT_STEP_LABELS.forEach(([key, label]) => { if(last.marks && last.marks[key]) html += row(label, secs(last.marks[key]), key === 'tab-shown' || key === 'inventory-on-screen'); });
+    if(last.inventoryRows != null) html += row('Inventory items', String(last.inventoryRows));
+    if(last.slowestInventoryRequestMs) html += row('Slowest inventory download', secs(last.slowestInventoryRequestMs));
+    if(last.slowestAddOnMs) html += row('Slowest add-on library', secs(last.slowestAddOnMs));
+    html += last.busySupported ? row('Frozen (too busy to respond)', secs(last.busyMs) + ' · longest ' + secs(last.longestBusyMs), true) : row('Frozen time', 'not measurable in this browser');
+    if(last.firstInput) html += row('Your first tap waited', last.firstInput.waited + 'ms at ' + secs(last.firstInput.at), true);
+    if(last.inventoryError) html += row('Inventory error', last.inventoryError);
+    if(list.length > 1) {
+      html += '<div style="color:var(--dim);margin:10px 0 2px">Recent opens (tab shown → inventory on screen · frozen):</div>';
+      list.slice(0, 10).forEach(r => { html += row(new Date(r.at).toLocaleString([], { month:'numeric', day:'numeric', hour:'numeric', minute:'2-digit' }), secs(r.marks?.['tab-shown'] || 0) + ' → ' + secs(r.marks?.['inventory-on-screen'] || 0) + ' · ' + (r.busySupported ? secs(r.busyMs || 0) : '?')); });
+    }
+    html += '<div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap"><button class="hbtn" style="margin:0" id="boot-timings-copy">COPY DETAILS</button></div>';
+  }
+  card.innerHTML = html;
+  box.appendChild(card);
+  box.addEventListener('click', e => { if(e.target === box) box.remove(); });
+  document.body.appendChild(box);
+  document.getElementById('boot-timings-copy')?.addEventListener('click', async () => {
+    try { await navigator.clipboard.writeText(JSON.stringify(list, null, 1)); toast_dash('Startup times copied'); }
+    catch(e) { toast_dash('Could not copy -- take a screenshot instead'); }
+  });
+}
 
 async function loadInventory(){
   // Demo mode: skip Webflow entirely — only show locally-seeded demo items.
@@ -16482,6 +16602,8 @@ async function loadInventory(){
 }
 
 async function loadInventoryByConfiguredSource(){
+  const bootTimer = window.__bootTimer && !window.__bootTimer.done ? window.__bootTimer : null;
+  bootTimer?.mark('inventory-requested');
   document.getElementById('sync-status').textContent = 'Loading...';
   try {
     const source = getInventorySource();
@@ -16534,15 +16656,20 @@ async function loadInventoryByConfiguredSource(){
       }
     }
 
+    bootTimer?.mark('inventory-processed');
     all = applyInventoryEditOverrides(parts);
     soldData = all.filter(i=>i.status==='sold');
     filtered = [...all];
     renderAll({ deferHeavy:true });
     renderInventoryCategoryFilters();
     document.getElementById('sync-status').textContent = 'v'+APP_VERSION+' · '+source.replace('_',' ')+' · '+counts.join(' · ')+' · '+new Date().toLocaleTimeString();
+    if(bootTimer){ bootTimer.info.inventorySource = source; bootTimer.mark('inventory-on-screen'); }
   } catch(e){
     document.getElementById('sync-status').textContent = '⚠ '+e.message;
+    if(bootTimer) bootTimer.info.inventoryError = String(e.message || e).slice(0, 120);
   }
+  // Queued behind renderAll's deferred heavy render, so this lands after it.
+  if(bootTimer) setTimeout(() => { bootTimer.mark('everything-drawn'); finishBootTimer(); }, 0);
 }
 loadInventory = loadInventoryByConfiguredSource;
 
@@ -47524,7 +47651,7 @@ async function toppsLoadParallels(cardId){
   window.__arscaCloseModal = closeModal;
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.09.27.05-safe-edits" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.09.28.02-startup-timer" defer></script>
 </body>
 </html>
 
