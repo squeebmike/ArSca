@@ -66,6 +66,9 @@ jobs:
         continue-on-error: true
         run: npm run test:parse
 
+      - name: Verify SEO discovery
+        run: node --test tests/seo-discovery-regressions.test.mjs tests/foc-preorder-share-page.test.mjs tests/backlist-catalog.test.mjs tests/comic-new-releases.test.mjs tests/bcw-storefront.test.mjs tests/item-seo-pages.test.mjs
+
       - name: Smoke tests are manual only
         run: |
           echo "::notice title=Smoke tests skipped::Playwright smoke tests are available through npm run test:smoke:manual and are not a deploy gate."

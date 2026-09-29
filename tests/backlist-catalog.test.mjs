@@ -252,7 +252,7 @@ function mockGetRequest() { return { method:'GET', headers:{ get:() => null } };
   const html = await res.text();
   assert.match(html, /SpongeBob SquarePants Cookbook/, 'the page must actually name this book, not a generic sitewide title');
   assert.match(html, /\$20\.00/, 'the page must show this sku\'s real price');
-  assert.match(html, /"@type":"Book"/, 'must emit Book-typed JSON-LD, not a bare Product with no book-specific fields');
+  assert.match(html, /"@type":\["Book","Product"\]/, 'must preserve Book metadata and identify the purchasable Product');
   assert.match(html, /rel="canonical" href="https:\/\/www\.themanapocket\.com\/book\//, 'canonical must point at www.themanapocket.com, not the Worker\'s workers.dev subdomain (see the /preorder/{id} anti-pattern this deliberately avoids)');
   // The page must actually carry the book's synopsis and a real share
   // action, not just price/JSON-LD -- a customer landing here (from a

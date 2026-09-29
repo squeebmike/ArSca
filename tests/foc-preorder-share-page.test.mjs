@@ -45,7 +45,7 @@ function fakeMtgEscapeHtml(v) { return String(v == null ? '' : v).replace(/[&<>"
 function fakeMtgSlugify(v) { return String(v || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'preorder'; }
 function fakeMtgPageShell({ title, description, canonicalPath, ogImage, jsonLd, bodyHtml }) {
   return `<title>${fakeMtgEscapeHtml(title)}</title><meta name="description" content="${fakeMtgEscapeHtml(description)}">` +
-    `<link rel="canonical" href="https://themanapocket.com${canonicalPath}">` +
+    `<link rel="canonical" href="https://www.themanapocket.com${canonicalPath}">` +
     (ogImage ? `<meta property="og:image" content="${fakeMtgEscapeHtml(ogImage)}">` : '') +
     (jsonLd ? `<script type="application/ld+json">${JSON.stringify(jsonLd)}</script>` : '') +
     `<body>${bodyHtml}</body>`;
@@ -89,7 +89,7 @@ function catalogDeps(overrides = {}) {
   assert.match(html, /Test Comic #20/, 'the page must actually name this comic, not a generic sitewide title');
   assert.match(html, /\$4\.99/, 'the page must show this sku\'s real price');
   assert.match(html, /"@type":"Product"/, 'must emit real Product JSON-LD, not just the static sitewide meta tags');
-  assert.match(html, /rel="canonical" href="https:\/\/themanapocket\.com\/preorder\//, 'canonical must point at themanapocket.com, not the Worker\'s workers.dev subdomain');
+  assert.match(html, /rel="canonical" href="https:\/\/www\.themanapocket\.com\/preorder\//, 'canonical must point at themanapocket.com, not the Worker\'s workers.dev subdomain');
   assert.match(html, /A really good comic\./, 'the page must show the sku\'s synopsis, not just name/price');
   assert.match(html, /id="mp-share-btn"/, 'missing the share button');
   assert.match(html, /navigator\.share/, 'the share button must use the real Web Share API, not just a static link');
@@ -134,7 +134,7 @@ function catalogDeps(overrides = {}) {
   });
   const res = await handleFocRequest(mockGetRequest(), {}, new URL('https://x/sitemap-preorders.xml'), deps);
   const xml = await res.text();
-  assert.match(xml, /<loc>https:\/\/themanapocket\.com\/preorder\/55555555-5555-4555-8555-555555555555\/findable-comic-1-cover-a<\/loc>/);
+  assert.match(xml, /<loc>https:\/\/www\.themanapocket\.com\/preorder\/55555555-5555-4555-8555-555555555555\/findable-comic-1-cover-a<\/loc>/);
   assert.equal(res.headers.get('content-type'), 'application/xml;charset=UTF-8');
 }
 

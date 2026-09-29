@@ -22,7 +22,7 @@ assert.ok(Array.isArray(config.routes) && config.routes.length, 'wrangler.deploy
 const preorderRoute = config.routes.find(r => /preorder/.test(r.pattern || ''));
 assert.ok(preorderRoute, 'a route pattern covering /preorder* must be bound, or GET /preorder/{skuId} never reaches this Worker on themanapocket.com');
 assert.equal(preorderRoute.zone_name, 'themanapocket.com', 'the /preorder* route must be bound to the real production zone, not just workers.dev');
-assert.match(preorderRoute.pattern, /^themanapocket\.com\/preorder\*$/, 'the pattern must actually cover every /preorder/{id} path, mirroring the existing /mtg* binding');
+assert.match(preorderRoute.pattern, /^www\.themanapocket\.com\/preorder\*$/, 'the pattern must actually cover every /preorder/{id} path, mirroring the existing /mtg* binding');
 
 const mtgRoute = config.routes.find(r => /mtg/.test(r.pattern || ''));
 assert.ok(mtgRoute, 'the pre-existing /mtg* route binding must not have been removed');
@@ -31,7 +31,7 @@ assert.ok(mtgRoute, 'the pre-existing /mtg* route binding must not have been rem
 // Worker too (see preorderSitemap in scripts/foc-preorders.mjs), and would
 // silently 404 at the zone level without its own exact-match route, exactly
 // like /sitemap-books.xml and /sitemap-items.xml already have.
-const sitemapRoute = config.routes.find(r => r.pattern === 'themanapocket.com/sitemap-preorders.xml');
+const sitemapRoute = config.routes.find(r => r.pattern === 'www.themanapocket.com/sitemap-preorders.xml');
 assert.ok(sitemapRoute, 'a route binding for themanapocket.com/sitemap-preorders.xml must exist, or Google can never fetch it');
 assert.equal(sitemapRoute.zone_name, 'themanapocket.com');
 
