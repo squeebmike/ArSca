@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.09.29.02-inventory-copy-fast-read">
+<meta name="version" content="2026.09.29.03-inventory-list-early">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1655,21 +1655,21 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.09.29.02-inventory-copy-fast-read" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.09.29.02-inventory-copy-fast-read" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.09.29.02-inventory-copy-fast-read" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.09.29.02-inventory-copy-fast-read" defer></script>
-<script src="scripts/backlist-dashboard.js?v=2026.09.29.02-inventory-copy-fast-read" defer></script>
-<script src="scripts/database-viewer.js?v=2026.09.29.02-inventory-copy-fast-read" defer></script>
-<script src="scripts/card-intake-dashboard.js?v=2026.09.29.02-inventory-copy-fast-read" defer></script>
-<script src="scripts/mana-pocket-task-library.js?v=2026.09.29.02-inventory-copy-fast-read" defer></script>
-<script src="scripts/daily-tasks-dashboard.js?v=2026.09.29.02-inventory-copy-fast-read" defer></script>
+<script src="scripts/query-routing.js?v=2026.09.29.03-inventory-list-early" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.09.29.03-inventory-list-early" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.09.29.03-inventory-list-early" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.09.29.03-inventory-list-early" defer></script>
+<script src="scripts/backlist-dashboard.js?v=2026.09.29.03-inventory-list-early" defer></script>
+<script src="scripts/database-viewer.js?v=2026.09.29.03-inventory-list-early" defer></script>
+<script src="scripts/card-intake-dashboard.js?v=2026.09.29.03-inventory-list-early" defer></script>
+<script src="scripts/mana-pocket-task-library.js?v=2026.09.29.03-inventory-list-early" defer></script>
+<script src="scripts/daily-tasks-dashboard.js?v=2026.09.29.03-inventory-list-early" defer></script>
 <script src="scripts/research-loupe.js?v=a7de4ffe90" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.09.29.02-inventory-copy-fast-read" defer></script>
-<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.09.29.02-inventory-copy-fast-read" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.09.29.02-inventory-copy-fast-read" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.09.29.02-inventory-copy-fast-read" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.09.29.02-inventory-copy-fast-read" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.09.29.03-inventory-list-early" defer></script>
+<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.09.29.03-inventory-list-early" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.09.29.03-inventory-list-early" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.09.29.03-inventory-list-early" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.09.29.03-inventory-list-early" defer></script>
 </head>
 <body>
 
@@ -1721,7 +1721,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
 <div class="dsb-chip" id="dsb-tasks" title="Today's Roles &amp; Tasks — click to jump to Tasks tab" style="cursor:pointer;display:none" onclick="switchTab('tasks')">✅ <span>TASKS:</span> <b id="dsb-tasks-val">—</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.09.29.02-inventory-copy-fast-read</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.09.29.03-inventory-list-early</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3887,7 +3887,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.09.29.02-inventory-copy-fast-read';
+const APP_VERSION = '2026.09.29.03-inventory-list-early';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -16195,13 +16195,19 @@ function inventoryCacheRows(cached){
   else if(cached.v === 1) rows = cached.rows;
   return Array.isArray(rows) && rows.length ? rows : null;
 }
-// Reading the copy starts when startup begins, alongside sign-in and the
-// settings downloads, instead of after them.
+// Reading the copy -- and downloading the small item list it's checked
+// against -- start when startup begins, alongside sign-in and the settings
+// downloads, instead of after them. Both are only used if they turn out to
+// be for the store and user that actually signed in.
 let _invCopyRead = null;
 function startInventoryCopyRead(){
   try {
     const storeId = getActiveStoreId();
-    if(storeId) _invCopyRead = { key:inventoryCacheKey(storeId), promise:readInventoryCache(storeId) };
+    if(!storeId) return;
+    const sb = getSupabaseClient();
+    let versions = null;
+    if(sb && getAuthSession()?.supabase) { versions = fetchInventoryVersions(sb, storeId); versions.catch(() => {}); }
+    _invCopyRead = { key:inventoryCacheKey(storeId), promise:readInventoryCache(storeId), versions };
   } catch(e) { _invCopyRead = null; }
 }
 async function clearInventoryCache(){
@@ -16212,25 +16218,36 @@ async function clearInventoryCache(){
     catch(e) { resolve(); }
   });
 }
-// Every item's id + updated_at. Pages by what actually came back and stops
-// at the exact count, so it's right whatever row cap the API enforces.
+// Every item's id + updated_at (~100 KB). The first two pages go out
+// together -- most stores fit in 2,000 items, so that's one round trip
+// instead of two -- and anything beyond (a bigger store, or a smaller row
+// cap than 1,000) pages normally by what actually came back, up to the
+// exact count. Duplicates from rows shifting between pages are dropped, and
+// a list that doesn't add up throws so the caller does a full download.
 async function fetchInventoryVersions(sb, storeId){
-  const versions = [];
-  let total = null;
-  while(true){
-    const { data, error, count } = await sb.from('inventory_items')
-      .select('id,updated_at', total === null ? { count:'exact' } : undefined)
-      .eq('store_id', storeId)
-      .order('id', { ascending:true })
-      .range(versions.length, versions.length + 999);
-    if(error) throw error;
-    if(total === null) total = Number.isFinite(count) ? count : null;
-    versions.push(...(data || []));
-    if(!data || !data.length) break;
-    if(total !== null ? versions.length >= total : data.length < 1000) break;
+  const page = (from, withCount) => sb.from('inventory_items')
+    .select('id,updated_at', withCount ? { count:'exact' } : undefined)
+    .eq('store_id', storeId)
+    .order('id', { ascending:true })
+    .range(from, from + 999);
+  const [first, second] = await Promise.all([page(0, true), page(1000, false)]);
+  if(first.error) throw first.error;
+  const total = Number.isFinite(first.count) ? first.count : null;
+  const versions = [...(first.data || [])];
+  if(versions.length === 1000) {
+    if(second.error) throw second.error;
+    versions.push(...(second.data || []));
   }
-  if(total !== null && versions.length !== total) throw new Error('inventory list incomplete');
-  return versions;
+  while(total !== null ? versions.length < total : (versions.length > 0 && versions.length % 1000 === 0)){
+    const { data, error } = await page(versions.length, false);
+    if(error) throw error;
+    if(!data || !data.length) break;
+    versions.push(...data);
+    if(total === null && data.length < 1000) break;
+  }
+  const unique = [...new Map(versions.map(v => [v.id, v])).values()];
+  if(total !== null && unique.length !== total) throw new Error('inventory list incomplete');
+  return unique;
 }
 // Brings a saved copy up to date. Returns the full current row set (newest
 // first, like a full load) or throws so the caller does a full download.
@@ -16268,9 +16285,14 @@ async function loadBuiltInInventoryItems(){
   // Saved copy first (see "Inventory copy on this device" above). The item
   // list download starts right away, at the same time as reading the copy.
   try {
-    const early = _invCopyRead && _invCopyRead.key === inventoryCacheKey(storeId) ? _invCopyRead.promise : null;
+    const earlyRead = _invCopyRead && _invCopyRead.key === inventoryCacheKey(storeId) ? _invCopyRead : null;
     _invCopyRead = null;
-    const versionsPromise = fetchInventoryVersions(sb, storeId);
+    const early = earlyRead?.promise || null;
+    // The list started at startup if there was one (retried once if that
+    // early request failed, e.g. before a token refresh finished).
+    const versionsPromise = earlyRead?.versions
+      ? earlyRead.versions.catch(() => fetchInventoryVersions(sb, storeId))
+      : fetchInventoryVersions(sb, storeId);
     versionsPromise.then(() => bootTimer?.mark('inventory-list-downloaded'), () => {});
     const cached = await (early || readInventoryCache(storeId));
     bootTimer?.mark('copy-read');
@@ -47829,7 +47851,7 @@ async function toppsLoadParallels(cardId){
   window.__arscaCloseModal = closeModal;
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.09.29.02-inventory-copy-fast-read" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.09.29.03-inventory-list-early" defer></script>
 </body>
 </html>
 
