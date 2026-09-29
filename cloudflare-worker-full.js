@@ -2653,7 +2653,7 @@ async function fetchAllListableStorefrontItems(env) {
   const rows = [];
   let offset = 0;
   while (true) {
-    const page = await supabaseAdminFetch(env, `inventory_items?store_id=eq.${encodeURIComponent(ITEM_DETAIL_STORE_ID)}&select=id,data,status,created_at,updated_at&order=updated_at.desc&limit=1000&offset=${offset}`);
+    const page = await supabaseAdminFetch(env, `inventory_items?store_id=eq.${encodeURIComponent(ITEM_DETAIL_STORE_ID)}&select=id,data,status,created_at,updated_at&order=updated_at.desc,id.asc&limit=1000&offset=${offset}`);
     if (!page.response?.ok) break;
     const batch = page.data || [];
     rows.push(...batch);
@@ -5721,12 +5721,30 @@ async function routeRequest(request, env, ctx) {
       });
     }
 
+    if (url.hostname === 'www.themanapocket.com' && url.pathname === '/robots.txt' && ['GET', 'HEAD'].includes(request.method)) {
+      const origin = await fetch(request);
+      if (!origin.ok) return origin;
+      const existing = request.method === 'HEAD' ? '' : await origin.text();
+      const additions = ['sitemap-items.xml', 'sitemap-preorders.xml', 'sitemap-books.xml', 'sitemap-pages.xml']
+        .map(path => 'Sitemap: https://www.themanapocket.com/' + path).filter(line => !existing.includes(line));
+      const headers = new Headers(origin.headers);
+      for (const name of ['content-length', 'content-encoding', 'etag']) headers.delete(name);
+      headers.set('Content-Type', 'text/plain; charset=utf-8');
+      headers.set('Cache-Control', 'public, max-age=300');
+      return new Response(request.method === 'HEAD' ? null : existing.trimEnd() + '\n' + additions.join('\n') + '\n', { headers });
+    }
+
     if (url.pathname === '/public/preorders' || url.pathname.startsWith('/public/preorders/') || url.pathname === '/public/comics/new-releases' || url.pathname === '/public/shipping/quotes' || url.pathname.startsWith('/foc/admin/') || url.pathname.startsWith('/preorder/') || url.pathname === '/sitemap-preorders.xml') {
       return await handleFocRequest(request, env, url, {
         CORS, json, supabaseAdminFetch, requireStoreUser, requireAuthenticatedUser,
         readJsonWithLimit, enforceUsageLimit, stripeApi, stripeMode, stripeConfig, sendEmail,
         addBusinessDays, getEbayPresaleSafeBusinessDays, getEbayUserAccessToken, withdrawEbayOffer, withdrawEbayOfferGroup, endEbayVolumeDiscount, ebayReviseOfferQuantity,
         ebayReviseVariationQuantityTrading, endEbayListingTrading,
+        inventoryDetailHref: row => {
+          const item = shapeStorefrontItem(row);
+          if (!(isBcwItem(item) ? isBcwPublished(item) : isStorefrontItemListable(item))) return null;
+          return item.linkUrl || '/item/' + encodeURIComponent(item.id) + '/' + itemDetailSlug(item);
+        },
         mtgPageShell, mtgEscapeHtml, mtgSlugify, publicStoreId: ITEM_DETAIL_STORE_ID,
       });
     }
@@ -6848,11 +6866,19 @@ async function routeRequest(request, env, ctx) {
     if (url.hostname === 'www.themanapocket.com' && url.pathname.startsWith('/shop')) {
       const originResponse = await fetch(request);
       if(request.method !== 'GET' || !originResponse.headers.get('Content-Type')?.includes('text/html')) return originResponse;
-      return new HTMLRewriter().on('body',{element(el){el.append(`<script>document.addEventListener('change',function(e){if(e.target.matches('select.wo-store-control-field')&&String(e.target.value).toLowerCase()==='supplies'){e.stopImmediatePropagation();location.href='/bcw';}},true);document.addEventListener('DOMContentLoaded',function(){var host=document.getElementById('wo-live-shop');if(!host)return;if(!document.getElementById('bcw-supplies-link')){var a=document.createElement('a');a.id='bcw-supplies-link';a.href='/bcw';a.textContent='Shop BCW supplies →';a.style.cssText='display:inline-block;margin:18px 0;padding:12px 18px;border:1px solid currentColor;border-radius:8px;font-weight:700';host.before(a);}if(!document.getElementById('mp-category-nav')){var links=[['/category/comics','Comics'],['/category/pokemon','Pokémon'],['/category/sports-cards','Sports Cards'],['/category/mtg','Magic: The Gathering'],['/category/collectibles','Collectibles'],['/faq','FAQ']];var nav=document.createElement('div');nav.id='mp-category-nav';nav.style.cssText='display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 18px';links.forEach(function(pair){var link=document.createElement('a');link.href=pair[0];link.textContent=pair[1];link.style.cssText='padding:8px 14px;border:1px solid currentColor;border-radius:8px;text-decoration:none;color:inherit;font-size:13px;font-weight:600';nav.appendChild(link);});host.before(nav);}});</script>`,{html:true});}}).transform(originResponse);
+      let navigationAdded = false;
+      return new HTMLRewriter().on('#wo-live-shop', {element(el){if(!navigationAdded){el.before(`<nav id="mp-category-nav" aria-label="Shop categories" style="display:flex;flex-wrap:wrap;gap:16px;padding:20px"><a href="/category/comics">Comics</a><a href="/category/pokemon">Pokémon</a><a href="/category/sports-cards">Sports cards</a><a href="/category/mtg">Magic: The Gathering</a><a href="/category/collectibles">Collectibles</a><a href="/bcw">BCW supplies</a><a href="/faq">Ordering help</a></nav>`,{html:true});navigationAdded=true;}}}).on('body',{element(el){el.append(`<script>document.addEventListener('change',function(e){if(e.target.matches('select.wo-store-control-field')&&String(e.target.value).toLowerCase()==='supplies'){e.stopImmediatePropagation();location.href='/bcw';}},true);document.addEventListener('DOMContentLoaded',function(){var host=document.getElementById('wo-live-shop');if(!host)return;if(!document.getElementById('bcw-supplies-link')){var a=document.createElement('a');a.id='bcw-supplies-link';a.href='/bcw';a.textContent='Shop BCW supplies →';a.style.cssText='display:inline-block;margin:18px 0;padding:12px 18px;border:1px solid currentColor;border-radius:8px;font-weight:700';host.before(a);}if(!document.getElementById('mp-category-nav')){var links=[['/category/comics','Comics'],['/category/pokemon','Pokémon'],['/category/sports-cards','Sports Cards'],['/category/mtg','Magic: The Gathering'],['/category/collectibles','Collectibles'],['/faq','FAQ']];var nav=document.createElement('div');nav.id='mp-category-nav';nav.style.cssText='display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 18px';links.forEach(function(pair){var link=document.createElement('a');link.href=pair[0];link.textContent=pair[1];link.style.cssText='padding:8px 14px;border:1px solid currentColor;border-radius:8px;text-decoration:none;color:inherit;font-size:13px;font-weight:600';nav.appendChild(link);});host.before(nav);}});</script>`,{html:true});}}).transform(originResponse);
     }
     // The customer-facing BCW page is a native Webflow page, reached through
     // Cloudflare via www.themanapocket.com (see the store report above).
-    if (url.hostname === 'www.themanapocket.com' && url.pathname === '/bcw') return fetch(request);
+    if (url.hostname === 'www.themanapocket.com' && url.pathname === '/bcw') {
+      const id = url.searchParams.get('item');
+      if (id && ['GET', 'HEAD'].includes(request.method)) {
+        if (!/^[a-zA-Z0-9-]{1,80}$/.test(id)) return new Response('Invalid item', { status: 400 });
+        return Response.redirect('https://www.themanapocket.com/item/' + encodeURIComponent(id), 301);
+      }
+      return fetch(request);
+    }
     if ((url.pathname === '/bcw' || url.pathname === '/public/bcw') && request.method === 'GET') {
       if (!(env.SUPABASE_URL && (env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SERVICE_KEY))) return new Response('Storefront service unavailable',{status:503});
       const key = new Request(url.toString(),request);

@@ -389,19 +389,20 @@ async function preorderDetailPage(env, deps, skuId, providedSlug) {
   const title = `${name} | The Mana Pocket Comic Preorders`;
   const appUrl = `https://www.themanapocket.com/preorders?sku=${encodeURIComponent(skuId)}`;
   const image = sku.coverImageUrl || '';
+  const canPreorder = cycleOpen(cycleRow) && sku.canPreorder;
   const html = deps.mtgPageShell({
     title, description, canonicalPath, ogImage: image || undefined,
     jsonLd: {
-      '@context': 'https://schema.org', '@type': 'Product', name,
+      '@context': 'https://schema.org', '@type': 'Product', name, sku: sku.sku || sku.upc || skuId,
       ...(image ? { image } : {}),
       ...(publisher ? { brand: { '@type': 'Organization', name: publisher } } : {}),
       description,
-      offers: {
+      ...(!sku.priceRequired ? { offers: {
         '@type': 'Offer', priceCurrency: 'USD',
-        price: sku.priceRequired ? undefined : sku.priceCents / 100,
-        availability: sku.canPreorder ? 'https://schema.org/PreOrder' : 'https://schema.org/OutOfStock',
+        price: sku.priceCents / 100,
+        availability: canPreorder ? 'https://schema.org/PreOrder' : 'https://schema.org/OutOfStock',
         url: `https://www.themanapocket.com${canonicalPath}`,
-      },
+      } } : {}),
     },
     bodyHtml: `<div class="mp-crumb"><a href="/preorders">← All comic preorders</a></div>` +
       `<div class="mp-detail">${image ? `<img src="${deps.mtgEscapeHtml(image)}" alt="${deps.mtgEscapeHtml(name)}">` : ''}` +
@@ -410,7 +411,7 @@ async function preorderDetailPage(env, deps, skuId, providedSlug) {
       `<div class="mp-prices"><span class="mp-price-pill">${deps.mtgEscapeHtml(priceText)}</span></div>` +
       `${(text(skuRow.description, 600) || text(familyRow.description, 600)) ? `<p class="mp-sub">${deps.mtgEscapeHtml(text(skuRow.description, 600) || text(familyRow.description, 600))}</p>` : ''}` +
       `<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px">` +
-      `<a class="mp-card" style="display:inline-block;padding:12px 20px" href="${deps.mtgEscapeHtml(appUrl)}">${sku.canPreorder ? 'Preorder this cover →' : 'View this cover →'}</a>` +
+      `<a class="mp-card" style="display:inline-block;padding:12px 20px" href="${deps.mtgEscapeHtml(appUrl)}">${canPreorder ? 'Preorder this cover →' : 'View this cover →'}</a>` +
       `<button id="mp-share-btn" style="padding:12px 20px;border-radius:12px;border:1px solid rgba(255,255,255,.2);background:transparent;color:inherit;cursor:pointer;font:inherit" data-title="${deps.mtgEscapeHtml(name)}" data-text="${deps.mtgEscapeHtml(description)}">Share</button>` +
       `</div>` +
       `</div></div>` +
@@ -438,7 +439,7 @@ async function preorderSitemap(env, deps) {
   const rows = [];
   let offset = 0;
   while (true) {
-    const { data } = await db(`comic_skus?store_id=eq.${encodeURIComponent(deps.publicStoreId)}&customer_enabled=eq.true&select=id,title,variant_label,updated_at,family_id&order=updated_at.desc&limit=1000&offset=${offset}`);
+    const { data } = await db(`comic_skus?store_id=eq.${encodeURIComponent(deps.publicStoreId)}&customer_enabled=eq.true&select=id,title,variant_label,updated_at,family_id&order=updated_at.desc,id.asc&limit=1000&offset=${offset}`);
     const batch = data || [];
     rows.push(...batch);
     if (batch.length < 1000) break;
@@ -447,11 +448,11 @@ async function preorderSitemap(env, deps) {
   }
   const familyIds = [...new Set(rows.map(row => row.family_id).filter(Boolean))];
   const familyById = {};
-  if (familyIds.length) {
-    const { data:familyRows } = await db(`comic_title_families?id=${inFilter(familyIds)}&select=id,series_name,title,issue_number`);
+  for (let start = 0; start < familyIds.length; start += 100) {
+    const { data:familyRows } = await db(`comic_title_families?id=${inFilter(familyIds.slice(start, start + 100))}&select=id,series_name,title,issue_number`);
     (familyRows || []).forEach(row => { familyById[row.id] = row; });
   }
-  const urls = rows.map(row => {
+  const urls = [...new Map(rows.map(row => [row.id, row])).values()].map(row => {
     const family = familyById[row.family_id];
     const seriesName = text(family?.series_name, 300) || text(family?.title, 800) || text(row.title, 800);
     const issueNumber = family?.issue_number || '';
@@ -539,7 +540,7 @@ async function newReleasesCatalog(env, deps, url) {
   const inventoryByCode = new Map();
   for (const row of [...(invByUpc || []), ...(invByBarcode || [])]) {
     const code = row.data?.upc || row.data?.barcode;
-    if (code && !inventoryByCode.has(code) && !NOT_SELLABLE_STATUSES.has(row.status)) inventoryByCode.set(code, row);
+    if (code && !inventoryByCode.has(code) && !NOT_SELLABLE_STATUSES.has(row.status) && (!deps.inventoryDetailHref || deps.inventoryDetailHref(row))) inventoryByCode.set(code, row);
   }
   const backlistByCode = new Map();
   for (const row of [...(backlistByUpc || []), ...(backlistByIsbn || [])]) {
@@ -554,9 +555,9 @@ async function newReleasesCatalog(env, deps, url) {
     const inv = inventoryByCode.get(row.upc);
     const backlist = backlistByCode.get(row.upc);
     let linkType = null, linkHref = null;
-    if (cycle && cycleOpen(cycle)) { linkType = 'preorder'; linkHref = `/preorders?sku=${encodeURIComponent(row.id)}`; }
-    else if (inv) { linkType = 'shop'; linkHref = `/shop?item=${encodeURIComponent(inv.id)}`; }
-    else if (backlist) { linkType = 'backlist'; linkHref = `/books?q=${encodeURIComponent(family.title || row.title)}`; }
+    if (cycle && cycleOpen(cycle)) { linkType = 'preorder'; linkHref = `/preorder/${encodeURIComponent(row.id)}`; }
+    else if (inv) { linkType = 'shop'; linkHref = deps.inventoryDetailHref ? deps.inventoryDetailHref(inv) : `/item/${encodeURIComponent(inv.id)}`; }
+    else if (backlist) { linkType = 'backlist'; linkHref = `/book/${encodeURIComponent(backlist.title_id)}`; }
     return {
       ...sku,
       seriesName:text(family.series_name, 300) || text(family.title, 800),
@@ -564,7 +565,7 @@ async function newReleasesCatalog(env, deps, url) {
       writer:text(family.writer, 1000),
       description:text(row.description, 4000) || text(family.description, 4000),
       onSaleDate:row.on_sale_date,
-      linkType, linkHref,
+      linkType, linkHref, detailHref: `/preorder/${encodeURIComponent(row.id)}`,
     };
   }).sort((a, b) => a.seriesName.localeCompare(b.seriesName) || a.variantLabel.localeCompare(b.variantLabel));
 

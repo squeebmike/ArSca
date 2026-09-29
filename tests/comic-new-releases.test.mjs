@@ -114,9 +114,9 @@ function depsFor(rows) {
 
   const byId = Object.fromEntries(covers.map(c => [c.id, c]));
   assert.equal(byId['sku-open'].linkType, 'preorder', 'a cover still inside an open FOC cycle must link to the preorder page');
-  assert.equal(byId['sku-open'].linkHref, '/preorders?sku=sku-open');
+  assert.equal(byId['sku-open'].linkHref, '/preorder/sku-open');
   assert.equal(byId['sku-stock'].linkType, 'shop', 'a cover with a real in-stock inventory match must link into the shop');
-  assert.equal(byId['sku-stock'].linkHref, '/shop?item=inv-1');
+  assert.equal(byId['sku-stock'].linkHref, '/item/inv-1');
   assert.equal(byId['sku-backlist'].linkType, 'backlist', 'a cover PRH can still reorder as backlist must link to /books');
   assert.equal(byId['sku-none'].linkType, null, 'a cover with no open cycle, no stock, and no backlist match must have no link');
   assert.equal(byId['sku-none'].linkHref, null);
