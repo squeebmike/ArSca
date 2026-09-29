@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.09.29.03-inventory-list-early">
+<meta name="version" content="2026.09.29.04-inventory-refresh-cap">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1655,21 +1655,21 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.09.29.03-inventory-list-early" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.09.29.03-inventory-list-early" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.09.29.03-inventory-list-early" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.09.29.03-inventory-list-early" defer></script>
-<script src="scripts/backlist-dashboard.js?v=2026.09.29.03-inventory-list-early" defer></script>
-<script src="scripts/database-viewer.js?v=2026.09.29.03-inventory-list-early" defer></script>
-<script src="scripts/card-intake-dashboard.js?v=2026.09.29.03-inventory-list-early" defer></script>
-<script src="scripts/mana-pocket-task-library.js?v=2026.09.29.03-inventory-list-early" defer></script>
-<script src="scripts/daily-tasks-dashboard.js?v=2026.09.29.03-inventory-list-early" defer></script>
+<script src="scripts/query-routing.js?v=2026.09.29.04-inventory-refresh-cap" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.09.29.04-inventory-refresh-cap" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.09.29.04-inventory-refresh-cap" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.09.29.04-inventory-refresh-cap" defer></script>
+<script src="scripts/backlist-dashboard.js?v=2026.09.29.04-inventory-refresh-cap" defer></script>
+<script src="scripts/database-viewer.js?v=2026.09.29.04-inventory-refresh-cap" defer></script>
+<script src="scripts/card-intake-dashboard.js?v=2026.09.29.04-inventory-refresh-cap" defer></script>
+<script src="scripts/mana-pocket-task-library.js?v=2026.09.29.04-inventory-refresh-cap" defer></script>
+<script src="scripts/daily-tasks-dashboard.js?v=2026.09.29.04-inventory-refresh-cap" defer></script>
 <script src="scripts/research-loupe.js?v=a7de4ffe90" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.09.29.03-inventory-list-early" defer></script>
-<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.09.29.03-inventory-list-early" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.09.29.03-inventory-list-early" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.09.29.03-inventory-list-early" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.09.29.03-inventory-list-early" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.09.29.04-inventory-refresh-cap" defer></script>
+<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.09.29.04-inventory-refresh-cap" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.09.29.04-inventory-refresh-cap" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.09.29.04-inventory-refresh-cap" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.09.29.04-inventory-refresh-cap" defer></script>
 </head>
 <body>
 
@@ -1721,7 +1721,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
 <div class="dsb-chip" id="dsb-tasks" title="Today's Roles &amp; Tasks — click to jump to Tasks tab" style="cursor:pointer;display:none" onclick="switchTab('tasks')">✅ <span>TASKS:</span> <b id="dsb-tasks-val">—</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.09.29.03-inventory-list-early</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.09.29.04-inventory-refresh-cap</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3887,7 +3887,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.09.29.03-inventory-list-early';
+const APP_VERSION = '2026.09.29.04-inventory-refresh-cap';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -17014,40 +17014,42 @@ async function refreshBuiltInInventoryDelta(){
   const session = getAuthSession();
   const storeId = getActiveStoreId();
   if(!sb || !storeId || !session?.supabase) return false;
-  const PAGE = 2000;
-  // Cheap id-only manifest (no data blob) -- the only way to notice an item
-  // deleted elsewhere without pulling every row's full record. A capped
-  // single page here was a real correctness bug, not just a load-time one:
-  // any store past the cap had real, still-existing items silently dropped
-  // from `all` below every 60s, because their id just never showed up in an
-  // incomplete manifest. Page through fully instead.
-  const manifest = [];
-  let manifestOffset = 0;
-  let manifestError = null;
-  while(true){
-    const { data, error } = await sb.from('inventory_items').select('id').eq('store_id', storeId).range(manifestOffset, manifestOffset + PAGE - 1);
-    if(error) { manifestError = error; break; }
-    manifest.push(...(data || []));
-    if(!data || data.length < PAGE) break;
-    manifestOffset += PAGE;
-  }
-  // Same idea for changed rows -- a single capped page after a big bulk edit
-  // (or a long stretch offline) used to trickle in at 1000 rows per 60s poll
-  // instead of catching up in one pass.
+  // The API returns at most 1,000 rows per request, whatever limit is
+  // asked for -- this used to ask for 2,000, got 1,000 back for a store of
+  // ~1,600, took that as "all of them", and dropped every other built-in
+  // item from `all` below on every 60s tick. The id list now comes from
+  // fetchInventoryVersions, which pages to the exact count (and throws if
+  // it doesn't add up, so nothing is dropped on a bad list), and changed
+  // rows page in steps of the real cap.
+  const PAGE = 1000;
+  let manifest;
+  try { manifest = await fetchInventoryVersions(sb, storeId); }
+  catch(e) { return false; }
   const changedRows = [];
   let changedOffset = 0;
   let changedError = null;
   while(true){
-    const { data, error } = await sb.from('inventory_items').select('id,data,status,created_at,updated_at').eq('store_id', storeId).gt('updated_at', _builtInSyncWatermark).order('updated_at', { ascending:true }).range(changedOffset, changedOffset + PAGE - 1);
+    const { data, error } = await sb.from('inventory_items').select('id,data,status,created_at,updated_at').eq('store_id', storeId).gt('updated_at', _builtInSyncWatermark).order('updated_at', { ascending:true }).order('id', { ascending:true }).range(changedOffset, changedOffset + PAGE - 1);
     if(error) { changedError = error; break; }
     changedRows.push(...(data || []));
     if(!data || data.length < PAGE) break;
     changedOffset += PAGE;
   }
-  if(changedError || manifestError) return false;
+  if(changedError) return false;
+  // Items that exist but aren't in `all` (dropped by the old capped list, or
+  // a row inserted with an older timestamp) come back here too.
+  const shownIds = new Set(all.filter(i => i.source === 'built_in').map(i => i.id));
+  changedRows.forEach(r => shownIds.add(r.id));
+  const missingIds = manifest.map(v => v.id).filter(id => !shownIds.has(id));
+  const recoveredRows = [];
+  for(let i = 0; i < missingIds.length; i += 100){
+    const { data, error } = await sb.from('inventory_items').select('id,data,status,created_at,updated_at').eq('store_id', storeId).in('id', missingIds.slice(i, i + 100));
+    if(error) return false;
+    recoveredRows.push(...(data || []));
+  }
 
   const liveIds = new Set((manifest || []).map(r => r.id));
-  const changedItems = applyInventoryEditOverrides((changedRows || []).map(mapBuiltInItem));
+  const changedItems = applyInventoryEditOverrides([...changedRows, ...recoveredRows].map(mapBuiltInItem));
   changedItems.forEach(item => {
     const idx = all.findIndex(i => i.id === item.id);
     if(idx >= 0) all[idx] = item; else all.push(item);
@@ -47851,7 +47853,7 @@ async function toppsLoadParallels(cardId){
   window.__arscaCloseModal = closeModal;
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.09.29.03-inventory-list-early" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.09.29.04-inventory-refresh-cap" defer></script>
 </body>
 </html>
 

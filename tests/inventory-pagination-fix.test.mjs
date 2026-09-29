@@ -20,10 +20,15 @@ console.log('Inventory load pagination (worker+dashboard) contract checks passed
 // from `all` every 60s because their id never appeared in an incomplete
 // manifest, not merely absent from a fresh load.
 const deltaFnSrc = dashboard.match(/async function refreshBuiltInInventoryDelta\(\)\{[\s\S]*?\r?\n  return true;\r?\n\}\r?\n/)[0];
-assert.match(deltaFnSrc, /const manifest = \[\];/, 'the deletion-detection manifest must be accumulated across pages');
+// The API caps every request at 1,000 rows no matter the limit asked for
+// (seen live: content-range 0-999 for a limit=2000 request), so the id list
+// must come from the exact-count pager, never a single big page.
+assert.match(deltaFnSrc, /try \{ manifest = await fetchInventoryVersions\(sb, storeId\); \}\s*\n\s*catch\(e\) \{ return false; \}/, 'the deletion-detection id list must come from fetchInventoryVersions (exact count, throws when incomplete)');
+assert.doesNotMatch(deltaFnSrc, /PAGE = 2000/, 'no page size above the API\'s 1,000-row cap');
+assert.match(deltaFnSrc, /const PAGE = 1000;/, 'changed rows must page in steps of the real 1,000-row cap');
 assert.match(deltaFnSrc, /const changedRows = \[\];/, 'the changed-rows query must be accumulated across pages too');
-assert.match(deltaFnSrc, /\.range\(manifestOffset, manifestOffset \+ PAGE - 1\)/, 'the manifest query must use .range() pagination, not a single .limit()');
 assert.match(deltaFnSrc, /\.range\(changedOffset, changedOffset \+ PAGE - 1\)/, 'the changed-rows query must use .range() pagination, not a single .limit()');
+assert.match(deltaFnSrc, /const missingIds = manifest\.map\(v => v\.id\)\.filter\(id => !shownIds\.has\(id\)\);/, 'items that exist but are missing from the dashboard must be fetched back');
 
 console.log('Delta refresh pagination contract checks passed');
 
