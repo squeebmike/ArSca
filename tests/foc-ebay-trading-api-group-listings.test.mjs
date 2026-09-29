@@ -278,6 +278,8 @@ console.log('PRH quantity-sync + receive-shipment Trading-API recognition checks
 
 // ── Deps wiring: both new Trading-API functions must actually be injected
 // into the FOC module, or every branch above throws "not a function" ────
-assert.match(worker, /ebayReviseVariationQuantityTrading, endEbayListingTrading,\s*\n[^}]*\}\);/,
+// (Other deps after these, like #473's inventoryDetailHref, can contain their
+// own braces, so only the call site and the two names are pinned here.)
+assert.match(worker.slice(worker.indexOf('handleFocRequest(')), /^handleFocRequest\([\s\S]*?ebayReviseVariationQuantityTrading, endEbayListingTrading,/,
   'both Trading-API-native functions must be passed into handleFocRequest\'s deps');
 console.log('Deps wiring checks passed');
