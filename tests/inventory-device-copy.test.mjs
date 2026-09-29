@@ -2,18 +2,17 @@ import fs from 'node:fs';
 import assert from 'node:assert/strict';
 
 // The dashboard keeps the last full set of inventory rows on the device and,
-// on open, downloads only the id list + rows changed since then (plus any id
-// missing from the copy). These checks run the real syncInventoryCopy /
-// fetchInventoryIdList against a mock Supabase client that honours the
-// filters, and check the result always equals what a full download returns.
+// on open, downloads every item's id + updated_at and the full record only
+// for items whose updated_at differs from the copy (or that it lacks). These
+// checks run the real syncInventoryCopy / fetchInventoryVersions against a
+// mock Supabase client that honours the filters, and check the result always
+// equals what a full download returns.
 
 const dashboard = fs.readFileSync('dashboard.html', 'utf8');
 const grab = re => { const m = dashboard.match(re); assert.ok(m, 'missing ' + re); return m[0]; };
 const src = [
-  grab(/const INV_CACHE_OVERLAP_MS = [^\n]+\n/),
   grab(/const INV_ROW_COLUMNS = [^\n]+\n/),
-  grab(/function newestUpdatedAt\(rows\)\{[\s\S]*?\n\}\n/),
-  grab(/async function fetchInventoryIdList\(sb, storeId\)\{[\s\S]*?\n\}\n/),
+  grab(/async function fetchInventoryVersions\(sb, storeId\)\{[\s\S]*?\n\}\n/),
   grab(/async function syncInventoryCopy\(sb, storeId, cachedRows\)\{[\s\S]*?\n\}\n/),
 ].join('\n');
 const { syncInventoryCopy } = new Function(`${src}; return { syncInventoryCopy };`)();
@@ -37,7 +36,7 @@ function mockClient(table, { cap = 1000, failOn = null } = {}) {
         const total = rows.length;
         rows = [...rows].sort((x, y) => { for (const [c, asc] of st.orders) { const d = (c === 'updated_at' ? Date.parse(x[c]) - Date.parse(y[c]) : String(x[c]).localeCompare(String(y[c]))); if (d) return asc ? d : -d; } return 0; });
         if (st.range) rows = rows.slice(st.range[0], Math.min(st.range[1] + 1, st.range[0] + cap));
-        const data = rows.map(r => st.cols === 'id' ? { id: r.id } : { ...r });
+        const data = rows.map(r => st.cols === 'id,updated_at' ? { id: r.id, updated_at: r.updated_at } : { ...r });
         return Promise.resolve({ data, error: null, count: st.count ? total : null }).then(res, rej);
       },
     };
@@ -79,25 +78,29 @@ for (const cap of [1000, 500]) {
   const { rows, changed } = await syncInventoryCopy(sb, 'S', copy);
   assert.deepEqual(asKeys(rows), fullDownload(server), `cap ${cap}: synced copy must equal a full download (edits, deletes, adds, old-timestamp insert, late commit)`);
   assert.ok(changed < 20, `cap ${cap}: only the changed rows are downloaded, not all ${rows.length} (got ${changed})`);
-  const fullRowCalls = calls.filter(c => c.cols !== 'id');
-  assert.ok(fullRowCalls.length <= 3, `cap ${cap}: at most a couple of full-row requests (got ${fullRowCalls.length})`);
+  assert.equal(changed, 7, `cap ${cap}: exactly the 3 edits, 2 new items, the old-timestamp insert and the late commit are downloaded (got ${changed})`);
+  const fullRowCalls = calls.filter(c => c.cols !== 'id,updated_at');
+  assert.equal(fullRowCalls.length, 1, `cap ${cap}: one full-row request for the changed items (got ${fullRowCalls.length})`);
 }
 
-// Nothing changed: no full rows downloaded beyond the overlap window, result identical.
+// Nothing changed -- even right after a bulk edit of 600 items in one
+// minute -- means no full rows downloaded at all, and the same result.
 {
-  const server = Array.from({ length: 1200 }, (_, i) => makeRow(i, i));
+  const server = Array.from({ length: 1200 }, (_, i) => makeRow(i, i < 600 ? 5000 : i));
   const copy = server.map(r => ({ ...r }));
-  const { sb } = mockClient(server);
-  const { rows } = await syncInventoryCopy(sb, 'S', copy);
+  const { sb, calls } = mockClient(server);
+  const { rows, changed } = await syncInventoryCopy(sb, 'S', copy);
   assert.deepEqual(asKeys(rows), fullDownload(server));
+  assert.equal(changed, 0, 'an unchanged store downloads no full records');
+  assert.equal(calls.filter(c => c.cols !== 'id,updated_at').length, 0, 'no full-row requests when nothing changed');
 }
 
 // Failures must throw (caller falls back to a full download), never return a partial set.
 {
   const server = Array.from({ length: 1500 }, (_, i) => makeRow(i, i));
   const copy = server.map(r => ({ ...r }));
-  for (const failOn of [st => st.cols === 'id' && st.range?.[0] === 1000, st => st.cols !== 'id' && !st.ins, st => !!st.ins]) {
-    const extra = [...server, makeRow(9000, 1)]; // forces the missing-id fetch
+  for (const failOn of [st => st.cols === 'id,updated_at' && st.range?.[0] === 1000, st => !!st.ins]) {
+    const extra = [...server, makeRow(9000, 1)]; // forces a full-row fetch
     const { sb } = mockClient(extra, { failOn });
     await assert.rejects(() => syncInventoryCopy(sb, 'S', copy), 'a failed request must throw');
   }
