@@ -116,7 +116,8 @@ assert.match(loader, /const versionsPromise = earlyRead\?\.versions\s*\n\s*\? ea
 assert.match(dashboard, /function startInventoryCopyRead\(\)\{[\s\S]*?versions = fetchInventoryVersions\(sb, storeId\); versions\.catch\(\(\) => \{\}\);[\s\S]*?_invCopyRead = \{ key:inventoryCacheKey\(storeId\), promise:readInventoryCache\(storeId\), versions \};/, 'the item list download starts when startup begins, keyed to the store + user');
 assert.match(dashboard, /window\.__bootTimer\?\.mark\('startup-began'\);\s*\n\s*startInventoryCopyRead\(\);/, 'reading the copy starts when startup begins');
 assert.match(dashboard, /\.put\(\{ v:2, json:JSON\.stringify\(rows\), count:rows\.length, fullLoadedAt, savedAt:Date\.now\(\) \}/, 'the copy is stored as one JSON string');
-assert.match(loader, /Date\.now\(\) - Number\(cached\.fullLoadedAt \|\| 0\) < INV_CACHE_MAX_AGE_MS/, 'an old copy (over a day) must trigger a full download');
+assert.match(loader, /Date\.now\(\) - Number\(cached\.fullLoadedAt \|\| 0\) < INV_CACHE_MAX_AGE_MS/, 'an old copy (over a week) must trigger a full download');
+assert.match(dashboard, /const INV_CACHE_MAX_AGE_MS = 7 \* 24 \* 60 \* 60 \* 1000;/, 'the saved copy is trusted for up to a week');
 assert.match(loader, /if\(!loadFailed && rows\.length\) \{ const fullLoadedAt = Date\.now\(\); setTimeout\(\(\) => writeInventoryCache\(storeId, rows, fullLoadedAt\)/, 'only a complete full download may be saved as a fresh copy');
 assert.match(dashboard, /await sb\.auth\.signOut\(\)\.catch\(\(\)=>\{\}\);\s*\n\s*await clearInventoryCache\(\);/, 'log out must clear the device copy');
 assert.match(dashboard, /function inventoryCacheKey\(storeId\)\{\s*\n\s*return storeId \+ ':' \+ \(getAuthSession\(\)\?\.user\?\.id \|\| ''\);/, 'the copy is kept per store and per user');

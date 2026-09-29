@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.09.29.05-row-cap-paging">
+<meta name="version" content="2026.09.29.06-weekly-full-refresh">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1655,21 +1655,21 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.09.29.05-row-cap-paging" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.09.29.05-row-cap-paging" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.09.29.05-row-cap-paging" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.09.29.05-row-cap-paging" defer></script>
-<script src="scripts/backlist-dashboard.js?v=2026.09.29.05-row-cap-paging" defer></script>
-<script src="scripts/database-viewer.js?v=2026.09.29.05-row-cap-paging" defer></script>
-<script src="scripts/card-intake-dashboard.js?v=2026.09.29.05-row-cap-paging" defer></script>
-<script src="scripts/mana-pocket-task-library.js?v=2026.09.29.05-row-cap-paging" defer></script>
-<script src="scripts/daily-tasks-dashboard.js?v=2026.09.29.05-row-cap-paging" defer></script>
+<script src="scripts/query-routing.js?v=2026.09.29.06-weekly-full-refresh" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.09.29.06-weekly-full-refresh" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.09.29.06-weekly-full-refresh" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.09.29.06-weekly-full-refresh" defer></script>
+<script src="scripts/backlist-dashboard.js?v=2026.09.29.06-weekly-full-refresh" defer></script>
+<script src="scripts/database-viewer.js?v=2026.09.29.06-weekly-full-refresh" defer></script>
+<script src="scripts/card-intake-dashboard.js?v=2026.09.29.06-weekly-full-refresh" defer></script>
+<script src="scripts/mana-pocket-task-library.js?v=2026.09.29.06-weekly-full-refresh" defer></script>
+<script src="scripts/daily-tasks-dashboard.js?v=2026.09.29.06-weekly-full-refresh" defer></script>
 <script src="scripts/research-loupe.js?v=a7de4ffe90" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.09.29.05-row-cap-paging" defer></script>
-<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.09.29.05-row-cap-paging" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.09.29.05-row-cap-paging" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.09.29.05-row-cap-paging" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.09.29.05-row-cap-paging" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.09.29.06-weekly-full-refresh" defer></script>
+<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.09.29.06-weekly-full-refresh" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.09.29.06-weekly-full-refresh" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.09.29.06-weekly-full-refresh" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.09.29.06-weekly-full-refresh" defer></script>
 </head>
 <body>
 
@@ -1721,7 +1721,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
 <div class="dsb-chip" id="dsb-tasks" title="Today's Roles &amp; Tasks — click to jump to Tasks tab" style="cursor:pointer;display:none" onclick="switchTab('tasks')">✅ <span>TASKS:</span> <b id="dsb-tasks-val">—</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.09.29.05-row-cap-paging</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.09.29.06-weekly-full-refresh</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3887,7 +3887,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.09.29.05-row-cap-paging';
+const APP_VERSION = '2026.09.29.06-weekly-full-refresh';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -16156,12 +16156,15 @@ let _builtInSyncWatermark = null;
 // deleted and drop out. This compares exact values, so it doesn't depend on
 // either clock, and a bulk edit is only downloaded once. The rows are the
 // same full records a full load returns, so edits and saves (which write
-// back item.raw) keep every field. Any failure, a copy older than a day, or
+// back item.raw) keep every field. Any failure, a copy older than a week, or
 // a count that doesn't add up falls back to the normal full download. Kept
 // per store and per signed-in user; cleared on log out.
 const INV_CACHE_DB = 'mp-inventory-cache';
 const INV_CACHE_STORE = 'rows';
-const INV_CACHE_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+// A full download at least weekly as a safety net. The id + updated_at
+// comparison is exact, so this isn't needed for correctness -- it only
+// bounds how long any one copy is trusted.
+const INV_CACHE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 const INV_ROW_COLUMNS = 'id,data,status,created_at,updated_at';
 let _invCacheDbPromise = null;
 function inventoryCacheDb(){
@@ -47868,7 +47871,7 @@ async function toppsLoadParallels(cardId){
   window.__arscaCloseModal = closeModal;
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.09.29.05-row-cap-paging" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.09.29.06-weekly-full-refresh" defer></script>
 </body>
 </html>
 
