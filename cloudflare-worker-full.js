@@ -30,6 +30,7 @@ import { importDropshipBatch } from './scripts/dropship-import.mjs';
 import { buildChecklistIndex, parseChecklistText, sha1Hex, slugify } from './scripts/topps-checklist-parser.js';
 import { handleFocRequest, syncFocStripeEvent, shippingSettings } from './scripts/foc-preorders.mjs';
 import { handleBacklistRequest, syncBacklistStripeEvent } from './scripts/backlist-catalog.mjs';
+import { searchComics, comicSearchShell, comicSearchScriptResponse, injectComicSearch } from './scripts/comic-search.mjs';
 import { handleAccountRequest, findLinkedCustomer } from './scripts/customer-account.mjs';
 import { handleArticlesRequest, articleSitemapPaths } from './scripts/comic-articles.mjs';
 import { extractSiteChrome, SITE_CHROME_SOURCE } from './scripts/site-chrome.mjs';
@@ -5734,6 +5735,19 @@ async function routeRequest(request, env, ctx) {
       return new Response(request.method === 'HEAD' ? null : existing.trimEnd() + '\n' + additions.join('\n') + '\n', { headers });
     }
 
+    if (request.method === 'GET' && url.pathname === '/comics/search.js') return comicSearchScriptResponse();
+    if (request.method === 'GET' && url.pathname === '/comics/search.json') {
+      const data = await searchComics(url, {
+        storeId: ITEM_DETAIL_STORE_ID, db: path => supabaseAdminFetch(env, path),
+        listItems: () => fetchAllListableStorefrontItemsCached(env, ctx), isAvailable: isStorefrontItemAvailable, itemSlug: itemDetailSlug,
+      });
+      return json(data, 200, { 'Cache-Control': 'no-store' });
+    }
+    if (request.method === 'GET' && url.pathname === '/comics/search') {
+      const response = mtgHtmlResponse(mtgPageShell({title:'Search All Comics | The Mana Pocket',description:'Search in-stock comics, upcoming covers, and publisher backorders together.',canonicalPath:'/comics/search',bodyHtml:comicSearchShell()}));
+      response.headers.set('X-Robots-Tag', 'noindex, follow');
+      return response;
+    }
     if (url.pathname === '/public/preorders' || url.pathname.startsWith('/public/preorders/') || url.pathname === '/public/comics/new-releases' || url.pathname === '/public/shipping/quotes' || url.pathname.startsWith('/foc/admin/') || url.pathname.startsWith('/preorder/') || url.pathname === '/sitemap-preorders.xml') {
       return await handleFocRequest(request, env, url, {
         CORS, json, supabaseAdminFetch, requireStoreUser, requireAuthenticatedUser,
@@ -16202,7 +16216,7 @@ export default {
   async fetch(request, env, ctx) {
     // Before routing, so every Worker-rendered page on www gets the real nav.
     await ensureSiteChrome(request, new URL(request.url), ctx).catch(() => {});
-    return routeRequest(request, env, ctx);
+    return injectComicSearch(await routeRequest(request, env, ctx), request);
   },
 
   // Runs the same deal scan the SCAN EBAY FOR DEALS button triggers, on a

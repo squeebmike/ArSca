@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import './helpers/mock-body-html-rewriter.mjs';
 
 // wrangler.deploy.jsonc route-binding contract, same class of bug as the
 // /preorder* fix documented in wrangler-preorder-route.test.mjs -- a page
