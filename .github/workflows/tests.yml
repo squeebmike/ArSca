@@ -1,0 +1,35 @@
+name: Tests
+
+# Runs the unit/contract suite (npm test, ~1 minute) on every pull request
+# and every push to main, so a change that breaks another area's tests is
+# caught before or right after it merges instead of whenever someone next
+# runs the suite by hand. Browser smoke tests stay manual (see qa.yml); this
+# does not gate or change any deploy.
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+        env:
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+      - run: npm test
