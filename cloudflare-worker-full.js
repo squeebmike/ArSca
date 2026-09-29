@@ -962,6 +962,26 @@ function supabaseAdminConfig(env) {
   return { base, key };
 }
 
+// Every row a PostgREST read matches. The API returns at most 1,000 rows
+// per request whatever limit is asked for, so a single limit=1000 read
+// silently stops at 1,000 (the store is past 1,600 items). `path` must not
+// carry its own limit/offset and should include a stable order (e.g.
+// order=id.asc). Returns { data, response } like supabaseAdminFetch; on a
+// failed page, response is that page's (not ok) and data holds what loaded.
+async function supabaseAdminFetchAll(env, path, maxRows = 50000) {
+  const rows = [];
+  let response = null;
+  for (let offset = 0; offset < maxRows; offset += 1000) {
+    const page = await supabaseAdminFetch(env, `${path}${path.includes('?') ? '&' : '?'}limit=1000&offset=${offset}`);
+    response = page.response;
+    if (!response?.ok) break;
+    const batch = page.data || [];
+    rows.push(...batch);
+    if (batch.length < 1000) break;
+  }
+  return { data: rows, response };
+}
+
 async function supabaseAdminFetch(env, path, options = {}) {
   const { base, key } = supabaseAdminConfig(env);
   const headers = new Headers(options.headers || {});
@@ -16473,7 +16493,7 @@ async function runScheduledEbayReprice(env) {
       const minMarginPct = Math.max(0, Number(cfg.minMarginPct) || 10);
       const maxDrops = Math.max(1, Number(cfg.maxDrops) || 5);
 
-      const { data: rows, response } = await supabaseAdminFetch(env, `inventory_items?store_id=eq.${encodeURIComponent(storeId)}&status=eq.in_stock&select=id,data,updated_at&limit=1000`);
+      const { data: rows, response } = await supabaseAdminFetchAll(env, `inventory_items?store_id=eq.${encodeURIComponent(storeId)}&status=eq.in_stock&select=id,data,updated_at&order=id.asc`);
       if (!response?.ok) continue;
       const cutoffMs = days * 86400000;
       for (const row of (rows || [])) {
@@ -17088,7 +17108,7 @@ async function runScheduledDealScans(env) {
   const storeIds = [...new Set((members || []).map(m => String(m.store_id || '')).filter(Boolean))];
   for (const storeId of storeIds) {
     try {
-      const { data: rows, response } = await supabaseAdminFetch(env, `inventory_items?store_id=eq.${encodeURIComponent(storeId)}&status=neq.sold&select=id,data,status,created_at,updated_at&limit=1000`);
+      const { data: rows, response } = await supabaseAdminFetchAll(env, `inventory_items?store_id=eq.${encodeURIComponent(storeId)}&status=neq.sold&select=id,data,status,created_at,updated_at&order=id.asc`);
       if (!response?.ok) continue;
       const items = (rows || []).map(shapeStorefrontItem).filter(isStorefrontItemAvailable);
       // Scanned and cached per game -- mixing Pokemon and MTG into one scan

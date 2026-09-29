@@ -84,6 +84,7 @@
     "test:sale-cart-index-poll-race": "node tests/sale-cart-index-poll-race.test.mjs",
     "test:inventory-pagination-fix": "node tests/inventory-pagination-fix.test.mjs",
     "test:inventory-device-copy": "node tests/inventory-device-copy.test.mjs",
+    "test:row-cap-paging": "node tests/row-cap-paging.test.mjs",
     "test:kv-index-atomicity-batch": "node tests/kv-index-atomicity-batch.test.mjs",
     "test:storefront-perf-fixes": "node tests/storefront-perf-fixes.test.mjs",
     "test:staff-list-search-debounce": "node tests/staff-list-search-debounce.test.mjs",
