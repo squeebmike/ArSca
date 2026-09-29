@@ -1,0 +1,36 @@
+name: SEO fetch probe (temporary)
+on:
+  pull_request:
+    paths: ['.github/workflows/seo-fetch-probe.yml']
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch as Googlebot and as a browser
+        run: |
+          GB='Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)'
+          BR='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140 Safari/537.36'
+          for u in \
+            https://www.themanapocket.com/robots.txt \
+            https://www.themanapocket.com/sitemap.xml \
+            https://www.themanapocket.com/sitemap-pages.xml \
+            https://www.themanapocket.com/sitemap-books.xml \
+            https://www.themanapocket.com/sitemap-preorders.xml \
+            https://www.themanapocket.com/sitemap-items.xml \
+            https://themanapocket.com/sitemap.xml \
+            https://themanapocket.com/robots.txt ; do
+            for ua in "$GB" "$BR"; do
+              echo "=== $u  [$( [ "$ua" = "$GB" ] && echo googlebot || echo browser )]"
+              curl -sS -o body.txt -D headers.txt --max-time 45 -A "$ua" "$u" -w 'status=%{http_code} type=%{content_type} bytes=%{size_download} time=%{time_total}s redirect=%{redirect_url}\n' || echo "curl failed: $?"
+              grep -iE '^(server|cf-cache-status|x-robots-tag|location|cf-mitigated|content-encoding):' headers.txt || true
+              echo "locs: $(grep -o '<loc>' body.txt | wc -l)"
+              head -c 400 body.txt; echo; echo
+            done
+          done
+          for p in / /toploader-size-guide /shop /comic-bags-boards-size-guide; do
+            echo "=== page $p [googlebot]"
+            curl -sS -L --max-time 45 -A "$GB" "https://www.themanapocket.com$p" -o page.html -w 'status=%{http_code} final=%{url_effective}\n' || echo "curl failed"
+            grep -oiE '<link[^>]+rel="canonical"[^>]*>' page.html || echo "(no canonical)"
+            grep -oiE '<meta[^>]+name="robots"[^>]*>' page.html || echo "(no meta robots)"
+            echo
+          done
