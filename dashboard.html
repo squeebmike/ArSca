@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.09.28.04-inventory-copy">
+<meta name="version" content="2026.09.29.01-inventory-copy-exact">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1655,21 +1655,21 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.09.28.04-inventory-copy" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.09.28.04-inventory-copy" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.09.28.04-inventory-copy" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.09.28.04-inventory-copy" defer></script>
-<script src="scripts/backlist-dashboard.js?v=2026.09.28.04-inventory-copy" defer></script>
-<script src="scripts/database-viewer.js?v=2026.09.28.04-inventory-copy" defer></script>
-<script src="scripts/card-intake-dashboard.js?v=2026.09.28.04-inventory-copy" defer></script>
-<script src="scripts/mana-pocket-task-library.js?v=2026.09.28.04-inventory-copy" defer></script>
-<script src="scripts/daily-tasks-dashboard.js?v=2026.09.28.04-inventory-copy" defer></script>
+<script src="scripts/query-routing.js?v=2026.09.29.01-inventory-copy-exact" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.09.29.01-inventory-copy-exact" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.09.29.01-inventory-copy-exact" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.09.29.01-inventory-copy-exact" defer></script>
+<script src="scripts/backlist-dashboard.js?v=2026.09.29.01-inventory-copy-exact" defer></script>
+<script src="scripts/database-viewer.js?v=2026.09.29.01-inventory-copy-exact" defer></script>
+<script src="scripts/card-intake-dashboard.js?v=2026.09.29.01-inventory-copy-exact" defer></script>
+<script src="scripts/mana-pocket-task-library.js?v=2026.09.29.01-inventory-copy-exact" defer></script>
+<script src="scripts/daily-tasks-dashboard.js?v=2026.09.29.01-inventory-copy-exact" defer></script>
 <script src="scripts/research-loupe.js?v=a7de4ffe90" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.09.28.04-inventory-copy" defer></script>
-<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.09.28.04-inventory-copy" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.09.28.04-inventory-copy" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.09.28.04-inventory-copy" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.09.28.04-inventory-copy" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.09.29.01-inventory-copy-exact" defer></script>
+<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.09.29.01-inventory-copy-exact" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.09.29.01-inventory-copy-exact" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.09.29.01-inventory-copy-exact" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.09.29.01-inventory-copy-exact" defer></script>
 </head>
 <body>
 
@@ -1721,7 +1721,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
 <div class="dsb-chip" id="dsb-tasks" title="Today's Roles &amp; Tasks — click to jump to Tasks tab" style="cursor:pointer;display:none" onclick="switchTab('tasks')">✅ <span>TASKS:</span> <b id="dsb-tasks-val">—</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.09.28.04-inventory-copy</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.09.29.01-inventory-copy-exact</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3887,7 +3887,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.09.28.04-inventory-copy';
+const APP_VERSION = '2026.09.29.01-inventory-copy-exact';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -16132,22 +16132,21 @@ let _builtInSyncWatermark = null;
 // Every open used to download every item's full record (~11 MB for ~1,600
 // items) -- measured on the store phone, that download was nearly all of
 // the startup wait. Now the last full set of rows is kept in this browser
-// (IndexedDB), and an open only downloads:
-//   1. the id list (small) -- so items deleted elsewhere drop out,
-//   2. rows changed since the copy was saved (every UPDATE bumps updated_at
-//      via trg_inventory_items_updated_at; the window reaches back 10 extra
-//      minutes so a slow transaction that committed late still gets picked
-//      up), and
-//   3. any row whose id is in the list but not in the copy (a row inserted
-//      with an older timestamp).
-// The rows are the same full records a full load returns, so edits and
-// saves (which write back item.raw) keep every field. Any failure, a copy
-// older than a day, or a count that doesn't add up falls back to the normal
-// full download. Kept per store and per signed-in user; cleared on log out.
+// (IndexedDB), and an open downloads:
+//   1. every item's id + updated_at (small, ~100 KB), and
+//   2. the full record only for items whose updated_at differs from the
+//      copy, or that the copy doesn't have.
+// Every UPDATE bumps updated_at (trg_inventory_items_updated_at), so an
+// item whose updated_at matches is unchanged; items not in the list were
+// deleted and drop out. This compares exact values, so it doesn't depend on
+// either clock, and a bulk edit is only downloaded once. The rows are the
+// same full records a full load returns, so edits and saves (which write
+// back item.raw) keep every field. Any failure, a copy older than a day, or
+// a count that doesn't add up falls back to the normal full download. Kept
+// per store and per signed-in user; cleared on log out.
 const INV_CACHE_DB = 'mp-inventory-cache';
 const INV_CACHE_STORE = 'rows';
 const INV_CACHE_MAX_AGE_MS = 24 * 60 * 60 * 1000;
-const INV_CACHE_OVERLAP_MS = 10 * 60 * 1000;
 const INV_ROW_COLUMNS = 'id,data,status,created_at,updated_at';
 let _invCacheDbPromise = null;
 function inventoryCacheDb(){
@@ -16193,63 +16192,47 @@ async function clearInventoryCache(){
     catch(e) { resolve(); }
   });
 }
-function newestUpdatedAt(rows){
-  let best = null, bestMs = -Infinity;
-  for(const row of rows){ const ms = Date.parse(row.updated_at); if(ms > bestMs){ bestMs = ms; best = row.updated_at; } }
-  return best;
-}
-// Every id in the store. Pages by what actually came back and stops at the
-// exact count, so it's right whatever row cap the API enforces.
-async function fetchInventoryIdList(sb, storeId){
-  const ids = [];
+// Every item's id + updated_at. Pages by what actually came back and stops
+// at the exact count, so it's right whatever row cap the API enforces.
+async function fetchInventoryVersions(sb, storeId){
+  const versions = [];
   let total = null;
   while(true){
     const { data, error, count } = await sb.from('inventory_items')
-      .select('id', total === null ? { count:'exact' } : undefined)
+      .select('id,updated_at', total === null ? { count:'exact' } : undefined)
       .eq('store_id', storeId)
       .order('id', { ascending:true })
-      .range(ids.length, ids.length + 999);
+      .range(versions.length, versions.length + 999);
     if(error) throw error;
     if(total === null) total = Number.isFinite(count) ? count : null;
-    ids.push(...(data || []).map(r => r.id));
+    versions.push(...(data || []));
     if(!data || !data.length) break;
-    if(total !== null ? ids.length >= total : data.length < 1000) break;
+    if(total !== null ? versions.length >= total : data.length < 1000) break;
   }
-  if(total !== null && ids.length !== total) throw new Error('inventory id list incomplete');
-  return ids;
+  if(total !== null && versions.length !== total) throw new Error('inventory list incomplete');
+  return versions;
 }
 // Brings a saved copy up to date. Returns the full current row set (newest
 // first, like a full load) or throws so the caller does a full download.
 async function syncInventoryCopy(sb, storeId, cachedRows){
-  const newest = newestUpdatedAt(cachedRows);
-  if(!newest) throw new Error('empty inventory copy');
-  const since = new Date(Date.parse(newest) - INV_CACHE_OVERLAP_MS).toISOString();
-  const fetchChanged = async () => {
-    const out = [];
-    while(true){
-      const { data, error } = await sb.from('inventory_items').select(INV_ROW_COLUMNS)
-        .eq('store_id', storeId).gt('updated_at', since)
-        .order('updated_at', { ascending:true }).order('id', { ascending:true })
-        .range(out.length, out.length + 999);
-      if(error) throw error;
-      out.push(...(data || []));
-      if(!data || data.length < 1000) break;
-    }
-    return out;
-  };
-  const [ids, changed] = await Promise.all([fetchInventoryIdList(sb, storeId), fetchChanged()]);
+  if(!cachedRows?.length) throw new Error('empty inventory copy');
+  const versions = await fetchInventoryVersions(sb, storeId);
   const byId = new Map(cachedRows.map(r => [r.id, r]));
-  changed.forEach(r => byId.set(r.id, r));
-  const missing = ids.filter(id => !byId.has(id));
-  for(let i = 0; i < missing.length; i += 100){
-    const { data, error } = await sb.from('inventory_items').select(INV_ROW_COLUMNS).eq('store_id', storeId).in('id', missing.slice(i, i + 100));
-    if(error) throw error;
-    (data || []).forEach(r => byId.set(r.id, r));
+  const stale = versions.filter(v => byId.get(v.id)?.updated_at !== v.updated_at).map(v => v.id);
+  const chunks = [];
+  for(let i = 0; i < stale.length; i += 100) chunks.push(stale.slice(i, i + 100));
+  for(let i = 0; i < chunks.length; i += 4){
+    const results = await Promise.all(chunks.slice(i, i + 4).map(ids =>
+      sb.from('inventory_items').select(INV_ROW_COLUMNS).eq('store_id', storeId).in('id', ids)));
+    for(const { data, error } of results){
+      if(error) throw error;
+      (data || []).forEach(r => byId.set(r.id, r));
+    }
   }
-  const rows = ids.map(id => byId.get(id)).filter(Boolean);
-  if(rows.length !== ids.length) throw new Error('inventory copy could not be completed');
+  const rows = versions.map(v => byId.get(v.id)).filter(Boolean);
+  if(rows.length !== versions.length) throw new Error('inventory copy could not be completed');
   rows.sort((a, b) => (Date.parse(b.updated_at) - Date.parse(a.updated_at)) || String(a.id).localeCompare(String(b.id)));
-  return { rows, changed:changed.length + missing.length };
+  return { rows, changed:stale.length };
 }
 
 async function loadBuiltInInventoryItems(){
@@ -47813,7 +47796,7 @@ async function toppsLoadParallels(cardId){
   window.__arscaCloseModal = closeModal;
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.09.28.04-inventory-copy" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.09.29.01-inventory-copy-exact" defer></script>
 </body>
 </html>
 
