@@ -3141,14 +3141,71 @@ async function linkRecordedEbaySale(env, storeId, order, li, m) {
   const payment = matches[0];
   const { data: lines } = await supabaseAdminFetch(env, `pos_sale_lines?sale_id=eq.${encodeURIComponent(payment.sale_id)}&store_id=eq.${encodeURIComponent(storeId)}&select=id,cost_basis&limit=2`);
   if ((lines || []).length !== 1) return false;
-  const profit = ebayLineProfit(m, Number(lines[0].cost_basis || 0));
+  return attachEbaySaleToOrder(env, storeId, payment, lines[0], order, m);
+}
+
+// Attaches one recorded eBay sale to its order line: the order on the
+// payment, sales = the item price, profit from the real fee and shipping.
+// Claims the payment only while it is still unlinked, so it runs once.
+async function attachEbaySaleToOrder(env, storeId, payment, line, order, m) {
+  const profit = ebayLineProfit(m, Number(line.cost_basis || 0));
   const total = m.itemPrice;
-  const { data: claimed } = await supabaseAdminFetch(env, `pos_payments?id=eq.${encodeURIComponent(payment.id)}&reference=is.null`, { method: 'PATCH', headers: { Prefer: 'return=representation' },
+  const { data: claimed } = await supabaseAdminFetch(env, `pos_payments?id=eq.${encodeURIComponent(payment.id)}&store_id=eq.${encodeURIComponent(storeId)}&reference=is.null`, { method: 'PATCH', headers: { Prefer: 'return=representation' },
     body: JSON.stringify({ reference: String(order.orderId), amount: total, provider_metadata: ebaySaleMetadata(order, m) }) });
   if (!claimed?.length) return false;
-  await supabaseAdminFetch(env, `pos_sale_lines?id=eq.${encodeURIComponent(lines[0].id)}`, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ profit }) });
-  await supabaseAdminFetch(env, `pos_sales?id=eq.${encodeURIComponent(payment.sale_id)}`, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ total }) });
+  await supabaseAdminFetch(env, `pos_sale_lines?id=eq.${encodeURIComponent(line.id)}&store_id=eq.${encodeURIComponent(storeId)}`, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ profit }) });
+  await supabaseAdminFetch(env, `pos_sales?id=eq.${encodeURIComponent(payment.sale_id)}&store_id=eq.${encodeURIComponent(storeId)}`, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ total }) });
   return true;
+}
+
+// eBay sales still not attached to their order. The regular sync only sees
+// unshipped orders, so a sale recorded before sales carried their order and
+// shipped since then never came past linkRecordedEbaySale again (a $149 plush
+// from 9/25 sat with an estimated fee and no label). Each such sale's line
+// kept its order id (source_id "ebay:<orderId>"), so this looks up exactly
+// those orders and attaches each sale to the one line item it matches: same
+// item price, or the order's only line item. It never records a new sale,
+// and a sale it can't match to exactly one line is left alone.
+async function linkUnlinkedEbaySalesForStore(env, storeId, ebayToken, { days = 120 } = {}) {
+  const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+  const { data: unlinked } = await supabaseAdminFetch(env, `pos_payments?store_id=eq.${encodeURIComponent(storeId)}&provider=eq.ebay&reference=is.null&created_at=gte.${encodeURIComponent(since)}&select=id,sale_id,amount&limit=200`);
+  if (!unlinked?.length) return 0;
+  const linesBySale = new Map();
+  for (let i = 0; i < unlinked.length; i += 40) {
+    const ids = unlinked.slice(i, i + 40).map(p => p.sale_id).join(',');
+    const { data: lines } = await supabaseAdminFetch(env, `pos_sale_lines?store_id=eq.${encodeURIComponent(storeId)}&sale_id=in.(${encodeURIComponent(ids)})&select=id,sale_id,cost_basis,source_id`);
+    for (const line of lines || []) {
+      if (!linesBySale.has(line.sale_id)) linesBySale.set(line.sale_id, []);
+      linesBySale.get(line.sale_id).push(line);
+    }
+  }
+  const work = [];
+  for (const payment of unlinked) {
+    const lines = linesBySale.get(payment.sale_id) || [];
+    const orderId = lines.length === 1 ? String(lines[0].source_id || '').replace(/^ebay:/, '') : '';
+    if (lines.length === 1 && String(lines[0].source_id || '').startsWith('ebay:') && /^[\w-]+$/.test(orderId)) work.push({ payment, line: lines[0], orderId });
+  }
+  if (!work.length) return 0;
+  const orders = new Map();
+  const orderIds = [...new Set(work.map(w => w.orderId))];
+  for (let i = 0; i < orderIds.length; i += 50) {
+    const res = await ebayFetchWithRetry('https://api.ebay.com/sell/fulfillment/v1/order?orderIds=' + encodeURIComponent(orderIds.slice(i, i + 50).join(',')), { headers: { 'Authorization': 'Bearer ' + ebayToken } });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error('eBay order lookup failed (' + res.status + ')');
+    for (const order of data.orders || []) orders.set(String(order.orderId), order);
+  }
+  const { data: settings } = await supabaseAdminFetch(env, `store_settings?store_id=eq.${encodeURIComponent(storeId)}&select=receipt_settings&limit=1`);
+  const receiptSettings = settings?.[0]?.receipt_settings || {};
+  let linked = 0;
+  for (const { payment, line, orderId } of work) {
+    const order = orders.get(orderId);
+    if (!order || order.orderPaymentStatus !== 'PAID') continue;
+    const money = ebayOrderMoney(order, { feePct: receiptSettings.ebayFeePct ?? EBAY_DEFAULT_FEE_PCT, feeFlat: receiptSettings.ebayFeeFlat });
+    const byPrice = money.filter(m => Math.abs(m.itemPrice - Number(payment.amount)) < 0.005);
+    const m = byPrice.length === 1 ? byPrice[0] : money.length === 1 ? money[0] : null;
+    if (m && await attachEbaySaleToOrder(env, storeId, payment, line, order, m)) linked++;
+  }
+  return linked;
 }
 
 async function syncEbayOrdersForStore(env, storeId, ebayToken, receiptSettings, { reconcile, confirmedBy }) {
@@ -3290,6 +3347,10 @@ async function applyEbayPaymentUpdate(env, storeId, payment, meta, { onlyIfProfi
 }
 
 async function reconcileEbayFinancesForStore(env, storeId, ebayToken) {
+  // First attach any eBay sale still missing its order, so the label, fee
+  // and profit passes below include it. Never blocks the rest.
+  const olderLinked = await linkUnlinkedEbaySalesForStore(env, storeId, ebayToken)
+    .catch(e => { console.warn('Linking unlinked eBay sales failed for store', storeId, e.message); return 0; });
   const { labels, fees } = financeAdjustments(await fetchEbayFinanceTransactions(ebayToken));
   let labelsApplied = 0, feesApplied = 0;
   const orderIds = [...labels.keys()];
@@ -3336,7 +3397,7 @@ async function reconcileEbayFinancesForStore(env, storeId, ebayToken) {
       profitsCorrected++;
     }
   }
-  return { labelsApplied, feesApplied, profitsCorrected };
+  return { olderLinked, labelsApplied, feesApplied, profitsCorrected };
 }
 
 // The eBay login is one account for the whole Worker, so only stores that
