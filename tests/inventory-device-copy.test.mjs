@@ -112,7 +112,8 @@ for (const cap of [1000, 500]) {
 // saves only complete full downloads, and log out clears the copy.
 const loader = grab(/async function loadBuiltInInventoryItems\(\)\{[\s\S]*?\r?\n\}\r?\n/);
 assert.match(loader, /readInventoryCache\(storeId\)[\s\S]*syncInventoryCopy\(sb, storeId, cachedRows, versionsPromise\)[\s\S]*catch\(e\)[\s\S]*const PAGE = 1000;/, 'copy first, full download as the fallback');
-assert.match(loader, /const versionsPromise = fetchInventoryVersions\(sb, storeId\);[\s\S]*const cached = await \(early \|\| readInventoryCache\(storeId\)\);/, 'the item list download starts before waiting on the copy');
+assert.match(loader, /const versionsPromise = earlyRead\?\.versions\s*\n\s*\? earlyRead\.versions\.catch\(\(\) => fetchInventoryVersions\(sb, storeId\)\)\s*\n\s*: fetchInventoryVersions\(sb, storeId\);[\s\S]*const cached = await \(early \|\| readInventoryCache\(storeId\)\);/, 'the item list started at startup is used (retried once if it failed), before waiting on the copy');
+assert.match(dashboard, /function startInventoryCopyRead\(\)\{[\s\S]*?versions = fetchInventoryVersions\(sb, storeId\); versions\.catch\(\(\) => \{\}\);[\s\S]*?_invCopyRead = \{ key:inventoryCacheKey\(storeId\), promise:readInventoryCache\(storeId\), versions \};/, 'the item list download starts when startup begins, keyed to the store + user');
 assert.match(dashboard, /window\.__bootTimer\?\.mark\('startup-began'\);\s*\n\s*startInventoryCopyRead\(\);/, 'reading the copy starts when startup begins');
 assert.match(dashboard, /\.put\(\{ v:2, json:JSON\.stringify\(rows\), count:rows\.length, fullLoadedAt, savedAt:Date\.now\(\) \}/, 'the copy is stored as one JSON string');
 assert.match(loader, /Date\.now\(\) - Number\(cached\.fullLoadedAt \|\| 0\) < INV_CACHE_MAX_AGE_MS/, 'an old copy (over a day) must trigger a full download');
@@ -137,6 +138,28 @@ assert.match(dashboard, /function inventoryCacheKey\(storeId\)\{\s*\n\s*return s
   const result = await syncInventoryCopy(pre, 'S', server.map(r => ({ ...r })), early);
   assert.equal(result.rows.length, 50);
   assert.equal(listCalls, 0, 'no second item-list download when one was already started');
+}
+
+// Item list: first two pages together (one round trip for up to 2,000
+// items), exact for bigger stores and smaller row caps, and a list that
+// shifts mid-download is caught.
+{
+  const { fetchInventoryVersions } = new Function(`${grab(/async function fetchInventoryVersions\(sb, storeId\)\{[\s\S]*?\n\}\n/)}; return { fetchInventoryVersions };`)();
+  for (const [n, cap, maxCalls] of [[0, 1000, 2], [999, 1000, 2], [1000, 1000, 2], [1588, 1000, 2], [2000, 1000, 3], [4321, 1000, 5], [1588, 500, 5]]) {
+    const server = Array.from({ length: n }, (_, i) => makeRow(i, i));
+    const { sb, calls } = mockClient(server, { cap });
+    const list = await fetchInventoryVersions(sb, 'S');
+    assert.equal(list.length, n, `${n} items (cap ${cap}): complete list`);
+    assert.equal(new Set(list.map(v => v.id)).size, n, `${n} items (cap ${cap}): no duplicates`);
+    assert.ok(calls.length <= maxCalls, `${n} items (cap ${cap}): at most ${maxCalls} requests (got ${calls.length})`);
+  }
+  // A row deleted between the two page requests shifts page 2 left by one,
+  // so an existing item would be skipped: the count check catches it and
+  // forces a full download.
+  const server = Array.from({ length: 1500 }, (_, i) => makeRow(i + 10, i));
+  const { sb } = mockClient(server);
+  const shifting = { from: (...a) => { const q = sb.from(...a); const range = q.range, then = q.then; let from = 0; q.range = (x, y) => { from = x; range(x, y); return q; }; q.then = (res, rej) => { if (from === 1000) server.splice(0, 1); return then(res, rej); }; return q; } };
+  await assert.rejects(() => fetchInventoryVersions(shifting, 'S'), 'a list that shifted mid-download must not be trusted');
 }
 
 console.log('Inventory device copy checks passed');
