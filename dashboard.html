@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.09.29.01-inventory-copy-exact">
+<meta name="version" content="2026.09.29.02-inventory-copy-fast-read">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1655,21 +1655,21 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.09.29.01-inventory-copy-exact" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.09.29.01-inventory-copy-exact" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.09.29.01-inventory-copy-exact" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.09.29.01-inventory-copy-exact" defer></script>
-<script src="scripts/backlist-dashboard.js?v=2026.09.29.01-inventory-copy-exact" defer></script>
-<script src="scripts/database-viewer.js?v=2026.09.29.01-inventory-copy-exact" defer></script>
-<script src="scripts/card-intake-dashboard.js?v=2026.09.29.01-inventory-copy-exact" defer></script>
-<script src="scripts/mana-pocket-task-library.js?v=2026.09.29.01-inventory-copy-exact" defer></script>
-<script src="scripts/daily-tasks-dashboard.js?v=2026.09.29.01-inventory-copy-exact" defer></script>
+<script src="scripts/query-routing.js?v=2026.09.29.02-inventory-copy-fast-read" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.09.29.02-inventory-copy-fast-read" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.09.29.02-inventory-copy-fast-read" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.09.29.02-inventory-copy-fast-read" defer></script>
+<script src="scripts/backlist-dashboard.js?v=2026.09.29.02-inventory-copy-fast-read" defer></script>
+<script src="scripts/database-viewer.js?v=2026.09.29.02-inventory-copy-fast-read" defer></script>
+<script src="scripts/card-intake-dashboard.js?v=2026.09.29.02-inventory-copy-fast-read" defer></script>
+<script src="scripts/mana-pocket-task-library.js?v=2026.09.29.02-inventory-copy-fast-read" defer></script>
+<script src="scripts/daily-tasks-dashboard.js?v=2026.09.29.02-inventory-copy-fast-read" defer></script>
 <script src="scripts/research-loupe.js?v=a7de4ffe90" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.09.29.01-inventory-copy-exact" defer></script>
-<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.09.29.01-inventory-copy-exact" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.09.29.01-inventory-copy-exact" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.09.29.01-inventory-copy-exact" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.09.29.01-inventory-copy-exact" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.09.29.02-inventory-copy-fast-read" defer></script>
+<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.09.29.02-inventory-copy-fast-read" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.09.29.02-inventory-copy-fast-read" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.09.29.02-inventory-copy-fast-read" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.09.29.02-inventory-copy-fast-read" defer></script>
 </head>
 <body>
 
@@ -1721,7 +1721,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
 <div class="dsb-chip" id="dsb-tasks" title="Today's Roles &amp; Tasks — click to jump to Tasks tab" style="cursor:pointer;display:none" onclick="switchTab('tasks')">✅ <span>TASKS:</span> <b id="dsb-tasks-val">—</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.09.29.01-inventory-copy-exact</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.09.29.02-inventory-copy-fast-read</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3887,7 +3887,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.09.29.01-inventory-copy-exact';
+const APP_VERSION = '2026.09.29.02-inventory-copy-fast-read';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -16180,9 +16180,29 @@ async function writeInventoryCache(storeId, rows, fullLoadedAt){
   const db = await inventoryCacheDb();
   if(!db) return;
   try {
+    // One JSON string instead of ~1,600 nested objects: the browser stores
+    // and reads a single string back much faster than it rebuilds that
+    // many objects from its structured-clone format.
     db.transaction(INV_CACHE_STORE, 'readwrite').objectStore(INV_CACHE_STORE)
-      .put({ v:1, rows, fullLoadedAt, savedAt:Date.now() }, inventoryCacheKey(storeId));
+      .put({ v:2, json:JSON.stringify(rows), count:rows.length, fullLoadedAt, savedAt:Date.now() }, inventoryCacheKey(storeId));
   } catch(e) { console.warn('[INV] could not save the inventory copy on this device', e); }
+}
+// The rows in a saved copy, or null if it isn't a usable copy.
+function inventoryCacheRows(cached){
+  if(!cached) return null;
+  let rows = null;
+  if(cached.v === 2 && typeof cached.json === 'string') { try { rows = JSON.parse(cached.json); } catch(e) { return null; } }
+  else if(cached.v === 1) rows = cached.rows;
+  return Array.isArray(rows) && rows.length ? rows : null;
+}
+// Reading the copy starts when startup begins, alongside sign-in and the
+// settings downloads, instead of after them.
+let _invCopyRead = null;
+function startInventoryCopyRead(){
+  try {
+    const storeId = getActiveStoreId();
+    if(storeId) _invCopyRead = { key:inventoryCacheKey(storeId), promise:readInventoryCache(storeId) };
+  } catch(e) { _invCopyRead = null; }
 }
 async function clearInventoryCache(){
   const db = await inventoryCacheDb();
@@ -16214,9 +16234,9 @@ async function fetchInventoryVersions(sb, storeId){
 }
 // Brings a saved copy up to date. Returns the full current row set (newest
 // first, like a full load) or throws so the caller does a full download.
-async function syncInventoryCopy(sb, storeId, cachedRows){
+async function syncInventoryCopy(sb, storeId, cachedRows, versionsPromise){
   if(!cachedRows?.length) throw new Error('empty inventory copy');
-  const versions = await fetchInventoryVersions(sb, storeId);
+  const versions = await (versionsPromise || fetchInventoryVersions(sb, storeId));
   const byId = new Map(cachedRows.map(r => [r.id, r]));
   const stale = versions.filter(v => byId.get(v.id)?.updated_at !== v.updated_at).map(v => v.id);
   const chunks = [];
@@ -16245,11 +16265,20 @@ async function loadBuiltInInventoryItems(){
     return [];
   }
   const bootTimer = window.__bootTimer && !window.__bootTimer.done ? window.__bootTimer : null;
-  // Saved copy first (see "Inventory copy on this device" above).
+  // Saved copy first (see "Inventory copy on this device" above). The item
+  // list download starts right away, at the same time as reading the copy.
   try {
-    const cached = await readInventoryCache(storeId);
-    if(cached?.v === 1 && Array.isArray(cached.rows) && cached.rows.length && Date.now() - Number(cached.fullLoadedAt || 0) < INV_CACHE_MAX_AGE_MS) {
-      const { rows, changed } = await syncInventoryCopy(sb, storeId, cached.rows);
+    const early = _invCopyRead && _invCopyRead.key === inventoryCacheKey(storeId) ? _invCopyRead.promise : null;
+    _invCopyRead = null;
+    const versionsPromise = fetchInventoryVersions(sb, storeId);
+    versionsPromise.then(() => bootTimer?.mark('inventory-list-downloaded'), () => {});
+    const cached = await (early || readInventoryCache(storeId));
+    bootTimer?.mark('copy-read');
+    const cachedRows = cached && Date.now() - Number(cached.fullLoadedAt || 0) < INV_CACHE_MAX_AGE_MS ? inventoryCacheRows(cached) : null;
+    if(bootTimer) bootTimer.info.copyStatus = !cached ? 'none' : cachedRows ? 'used' : 'expired or unreadable';
+    if(cachedRows) {
+      bootTimer?.mark('copy-unpacked');
+      const { rows, changed } = await syncInventoryCopy(sb, storeId, cachedRows, versionsPromise);
       console.info('[INV] Loaded ' + rows.length + ' built-in items from this device (' + changed + ' downloaded) for store ' + storeId);
       if(rows.length) _builtInSyncWatermark = rows[0].updated_at;
       if(bootTimer) { bootTimer.mark('inventory-downloaded'); Object.assign(bootTimer.info, { inventoryRows:rows.length, inventoryFrom:'device copy', inventoryChanged:changed }); }
@@ -16555,6 +16584,7 @@ function builtInDataFromItem(item, updates={}){
 
 window.addEventListener('load', async function(){
   window.__bootTimer?.mark('startup-began');
+  startInventoryCopyRead();
   if(await handleAuthRecoveryRedirect()) return;
   // Clear any leftover pre-removal demo session BEFORE ensureAuthReady() touches
   // any storeId. Must run here so drawerState (set at module parse time) gets
@@ -16607,8 +16637,11 @@ const BOOT_STEP_LABELS = [
   ['startup-began', 'Startup began'],
   ['signed-in', 'Signed in + store found'],
   ['tab-shown', 'Your tab shown'],
+  ['copy-read', 'Saved copy read from the phone'],
+  ['copy-unpacked', 'Saved copy unpacked'],
   ['inventory-requested', 'Settings loaded, inventory requested'],
-  ['inventory-downloaded', 'Inventory downloaded'],
+  ['inventory-list-downloaded', 'Item list downloaded'],
+  ['inventory-downloaded', 'Inventory up to date'],
   ['inventory-processed', 'Inventory processed'],
   ['inventory-on-screen', 'Inventory on screen'],
   ['everything-drawn', 'Everything drawn'],
@@ -47796,7 +47829,7 @@ async function toppsLoadParallels(cardId){
   window.__arscaCloseModal = closeModal;
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.09.29.01-inventory-copy-exact" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.09.29.02-inventory-copy-fast-read" defer></script>
 </body>
 </html>
 

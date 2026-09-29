@@ -13,9 +13,10 @@ const grab = re => { const m = dashboard.match(re); assert.ok(m, 'missing ' + re
 const src = [
   grab(/const INV_ROW_COLUMNS = [^\n]+\n/),
   grab(/async function fetchInventoryVersions\(sb, storeId\)\{[\s\S]*?\n\}\n/),
-  grab(/async function syncInventoryCopy\(sb, storeId, cachedRows\)\{[\s\S]*?\n\}\n/),
+  grab(/async function syncInventoryCopy\(sb, storeId, cachedRows, versionsPromise\)\{[\s\S]*?\n\}\n/),
+  grab(/function inventoryCacheRows\(cached\)\{[\s\S]*?\n\}\n/),
 ].join('\n');
-const { syncInventoryCopy } = new Function(`${src}; return { syncInventoryCopy };`)();
+const { syncInventoryCopy, inventoryCacheRows } = new Function(`${src}; return { syncInventoryCopy, inventoryCacheRows };`)();
 
 // Mock table + query builder (store_id eq, gt updated_at, in id, order, range, count, a row cap).
 function mockClient(table, { cap = 1000, failOn = null } = {}) {
@@ -110,10 +111,32 @@ for (const cap of [1000, 500]) {
 // Wiring: the loader tries the copy first, falls back to the full download,
 // saves only complete full downloads, and log out clears the copy.
 const loader = grab(/async function loadBuiltInInventoryItems\(\)\{[\s\S]*?\r?\n\}\r?\n/);
-assert.match(loader, /readInventoryCache\(storeId\)[\s\S]*syncInventoryCopy\(sb, storeId, cached\.rows\)[\s\S]*catch\(e\)[\s\S]*const PAGE = 1000;/, 'copy first, full download as the fallback');
+assert.match(loader, /readInventoryCache\(storeId\)[\s\S]*syncInventoryCopy\(sb, storeId, cachedRows, versionsPromise\)[\s\S]*catch\(e\)[\s\S]*const PAGE = 1000;/, 'copy first, full download as the fallback');
+assert.match(loader, /const versionsPromise = fetchInventoryVersions\(sb, storeId\);[\s\S]*const cached = await \(early \|\| readInventoryCache\(storeId\)\);/, 'the item list download starts before waiting on the copy');
+assert.match(dashboard, /window\.__bootTimer\?\.mark\('startup-began'\);\s*\n\s*startInventoryCopyRead\(\);/, 'reading the copy starts when startup begins');
+assert.match(dashboard, /\.put\(\{ v:2, json:JSON\.stringify\(rows\), count:rows\.length, fullLoadedAt, savedAt:Date\.now\(\) \}/, 'the copy is stored as one JSON string');
 assert.match(loader, /Date\.now\(\) - Number\(cached\.fullLoadedAt \|\| 0\) < INV_CACHE_MAX_AGE_MS/, 'an old copy (over a day) must trigger a full download');
 assert.match(loader, /if\(!loadFailed && rows\.length\) \{ const fullLoadedAt = Date\.now\(\); setTimeout\(\(\) => writeInventoryCache\(storeId, rows, fullLoadedAt\)/, 'only a complete full download may be saved as a fresh copy');
 assert.match(dashboard, /await sb\.auth\.signOut\(\)\.catch\(\(\)=>\{\}\);\s*\n\s*await clearInventoryCache\(\);/, 'log out must clear the device copy');
 assert.match(dashboard, /function inventoryCacheKey\(storeId\)\{\s*\n\s*return storeId \+ ':' \+ \(getAuthSession\(\)\?\.user\?\.id \|\| ''\);/, 'the copy is kept per store and per user');
+
+// Saved-copy formats: v2 (JSON string), v1 (rows array) still readable, junk rejected.
+{
+  const rows = [{ id: 'a', updated_at: at(1), data: { name: 'x' } }];
+  assert.deepEqual(inventoryCacheRows({ v: 2, json: JSON.stringify(rows) }), rows);
+  assert.deepEqual(inventoryCacheRows({ v: 1, rows }), rows);
+  assert.equal(inventoryCacheRows({ v: 2, json: '{broken' }), null);
+  assert.equal(inventoryCacheRows({ v: 2, json: '[]' }), null);
+  assert.equal(inventoryCacheRows(null), null);
+  // A pre-started item list is used instead of a second download.
+  let listCalls = 0;
+  const server = Array.from({ length: 50 }, (_, i) => makeRow(i, i));
+  const { sb } = mockClient(server);
+  const pre = { from: (...a) => { listCalls++; return sb.from(...a); } };
+  const early = (async () => { const out = []; const { data } = await sb.from().select('id,updated_at').eq('store_id', 'S').order('id', { ascending: true }).range(0, 999); out.push(...data); return out; })();
+  const result = await syncInventoryCopy(pre, 'S', server.map(r => ({ ...r })), early);
+  assert.equal(result.rows.length, 50);
+  assert.equal(listCalls, 0, 'no second item-list download when one was already started');
+}
 
 console.log('Inventory device copy checks passed');
