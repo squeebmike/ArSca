@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import './helpers/mock-body-html-rewriter.mjs';
 
 // The www routes are prefix wildcards, so Webflow pages that share a prefix
 // (/preorders under /preorder*, /books under /book*, /mtg-new-releases under
@@ -10,7 +11,7 @@ globalThis.caches = { default: { match: async () => null, put: async () => {} } 
 globalThis.fetch = async input => {
   const url = String(input.url || input);
   if (url === 'https://www.themanapocket.com/privacy-policy') return new Response('<html><body>no nav</body></html>', { headers: { 'Content-Type': 'text/html' } }); // the real-nav source (site-chrome test)
-  if (url.startsWith('https://www.themanapocket.com/')) { origin.push(url); return new Response('<html>webflow page</html>', { headers: { 'Content-Type': 'text/html' } }); }
+  if (url.startsWith('https://www.themanapocket.com/')) { origin.push(url); return new Response('<html><body>webflow page</body></html>', { headers: { 'Content-Type': 'text/html' } }); }
   return new Response('[]', { headers: { 'Content-Type': 'application/json' } });
 };
 const edge = { waitUntil: () => {} };
@@ -18,7 +19,9 @@ try {
   for (const path of ['/preorders', '/books', '/mtg-new-releases', '/mtg-ai-deck-builder']) {
     const res = await api.fetch(new Request('https://www.themanapocket.com' + path), {}, edge);
     assert.equal(res.status, 200, `${path} reaches Webflow`);
-    assert.equal(await res.text(), '<html>webflow page</html>');
+    const html = await res.text();
+    assert.ok(html.includes('webflow page'));
+    assert.equal(html.includes('/comics/search.js'), ['/books','/preorders'].includes(path));
     assert.equal(origin.pop(), 'https://www.themanapocket.com' + path);
   }
   const post = await api.fetch(new Request('https://www.themanapocket.com/preorders', { method: 'POST' }), {}, edge);
