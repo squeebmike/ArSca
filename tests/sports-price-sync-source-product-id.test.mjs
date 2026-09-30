@@ -21,8 +21,11 @@ assert.match(dashboard, /async function fetchOtherTcgOrSportsLivePrice\(item\)\{
   const fnStart = dashboard.indexOf('async function fetchOtherTcgOrSportsLivePrice(item){');
   const fnEnd = dashboard.indexOf('\n}', fnStart) + 2;
   const fn = dashboard.slice(fnStart, fnEnd);
-  assert.match(fn, /const pcId = String\(item\.pricechartingProductId \|\| item\.raw\?\.pricechartingProductId \|\| item\.sourceProductId \|\| item\.raw\?\.sourceProductId \|\| ''\)\.trim\(\);/,
-    'the pinned-id lookup must also fall back to sourceProductId (and item.raw.sourceProductId), or every Scout/buy-tray-sourced sports card never uses its own pinned exact match at price-sync time');
+  assert.match(fn, /const link = sportsPcLinkForItem\(item\);\s*const pcId = await resolveSportsPcProductId\(link\);/,
+    'the pinned-id lookup must read every saved link field (sportsPcLinkForItem), or every Scout/buy-tray-sourced sports card never uses its own pinned exact match at price-sync time');
+  const linkFn = dashboard.slice(dashboard.indexOf('function sportsPcLinkForItem('), dashboard.indexOf('\n}', dashboard.indexOf('function sportsPcLinkForItem(')) + 2);
+  assert.match(linkFn, /\[item\.pricechartingProductId, item\.raw\?\.pricechartingProductId, item\.sourceProductId, item\.raw\?\.sourceProductId\]/,
+    'sportsPcLinkForItem must check pricechartingProductId first, then sourceProductId (and their raw copies)');
 }
 
 console.log('fetchOtherTcgOrSportsLivePrice sourceProductId fallback contract check passed');
@@ -30,7 +33,8 @@ console.log('fetchOtherTcgOrSportsLivePrice sourceProductId fallback contract ch
 // ── Functional: prove the fallback chain picks the right field in priority
 // order, independent of DOM/network state ──
 {
-  const resolvePcId = (item) => String(item.pricechartingProductId || item.raw?.pricechartingProductId || item.sourceProductId || item.raw?.sourceProductId || '').trim();
+  const resolvePcId = (item) => [item.pricechartingProductId, item.raw?.pricechartingProductId, item.sourceProductId, item.raw?.sourceProductId]
+    .map(v => String(v || '').trim()).find(v => /^\d+$/.test(v)) || '';
 
   assert.equal(resolvePcId({ sourceProductId:'5970222' }), '5970222', 'a Scout/buy-tray item with only sourceProductId must still resolve to its pinned id');
   assert.equal(resolvePcId({ pricechartingProductId:'111', sourceProductId:'222' }), '111', 'an explicitly-verified pricechartingProductId must win over sourceProductId when both exist');
