@@ -73,7 +73,9 @@ export function comicSearchShell() {
 }
 
 export function comicSearchScriptResponse() {
-  return new Response('(' + comicSearchClient.toString() + ')(' + JSON.stringify(COMIC_SEARCH_CSS) + ',' + JSON.stringify(comicSearchShell()) + ');', { headers: { 'Content-Type': 'application/javascript; charset=utf-8', 'Cache-Control': 'public, max-age=300' } });
+  // Wrangler's keepNames transform inserts __name calls inside serialized functions.
+  // Supply the helper in the browser closure as well as the Worker bundle.
+  return new Response('(()=>{const __name=(fn,name)=>Object.defineProperty(fn,"name",{value:name,configurable:true});(' + comicSearchClient.toString() + ')(' + JSON.stringify(COMIC_SEARCH_CSS) + ',' + JSON.stringify(comicSearchShell()) + ');})();', { headers: { 'Content-Type': 'application/javascript; charset=utf-8', 'Cache-Control': 'public, max-age=300' } });
 }
 
 export function injectComicSearch(response, request) {
