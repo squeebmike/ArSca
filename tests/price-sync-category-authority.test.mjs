@@ -20,12 +20,21 @@ function extractFn(name) {
   return dashboard.slice(start, end);
 }
 
-const isPokemonInventorySyncItem = new Function(
+const merchConst = dashboard.match(/const PRICE_SYNC_MERCH_CATEGORY = [^\n]+\n/)[0];
+const helperSrc = merchConst + ['priceSyncCategory','isPriceSyncMerchCategory','isPokemonCardCategory','isMtgCardCategory','isSportsCardCategory'].map(extractFn).join('\n');
+const syncFns = new Function(
   extractFn('inventoryCardName') + '\n' +
   extractFn('inventorySetName') + '\n' +
+  helperSrc + '\n' +
+  extractFn('mtgInventoryScryfallId') + '\n' +
+  extractFn('mtgInventoryOracleId') + '\n' +
+  extractFn('qplCategoryKey') + '\n' +
   extractFn('isPokemonInventorySyncItem') + '\n' +
-  'return isPokemonInventorySyncItem;'
+  extractFn('isMtgInventorySyncItem') + '\n' +
+  extractFn('isOtherTcgSportsInventorySyncItem') + '\n' +
+  'return { isPokemonInventorySyncItem, isMtgInventorySyncItem, isOtherTcgSportsInventorySyncItem };'
 )();
+const { isPokemonInventorySyncItem, isMtgInventorySyncItem, isOtherTcgSportsInventorySyncItem } = syncFns;
 
 {
   const plush = { category:'Collectibles', name:'Pokemon Center Pikachu Plush', brand:'Pokemon', manufacturer:'The Pokemon Company' };
@@ -52,7 +61,38 @@ const isPokemonInventorySyncItem = new Function(
   assert.equal(isPokemonInventorySyncItem(legacyGenericTcg), true, 'a legacy generic "TCG" category (predates the game-specific split) must still fall back to sniffing');
 }
 
+// Store report (later): "sports and pokemon should never cross ... pokemon
+// plush shouldn't be synced with pokemon tcg. They are different
+// categories." A category that merely MENTIONS a game is not that game's
+// card category, and merch never gets a card price.
+{
+  assert.equal(isPokemonInventorySyncItem({ category:'Pokemon Plush', name:'Pikachu Plush' }), false, 'a "Pokemon Plush" category is not the Pokemon card category');
+  assert.equal(isPokemonInventorySyncItem({ category:'Pokémon', name:'Charizard' }), true, 'the plain game name still counts as its card category');
+  assert.equal(isMtgInventorySyncItem({ category:'Magic Playmats', name:'Secret Lair Playmat' }), false);
+  assert.equal(isMtgInventorySyncItem({ category:'Magic: The Gathering', name:'Sol Ring' }), true);
+  assert.equal(isOtherTcgSportsInventorySyncItem({ category:'Sports', name:'2011 Topps Update Mike Trout' }), true, 'Sports cards go to the Sports sync');
+  assert.equal(isOtherTcgSportsInventorySyncItem({ category:'Sports Memorabilia', name:'Signed Jersey' }), false, 'memorabilia is not a sports card');
+  assert.equal(isOtherTcgSportsInventorySyncItem({ category:'Collectibles', name:'Pokemon Center Baseball Hat Pikachu' }), false, 'a hat is never card-synced, even with "baseball" in its name');
+  assert.equal(isOtherTcgSportsInventorySyncItem({ category:'Pokemon TCG', name:'Charizard' }), false, 'Pokemon cards never go to the Sports sync');
+  assert.equal(isPokemonInventorySyncItem({ category:'Sports', name:'Pikachu Topps Promo' }), false, 'Sports items never go to the Pokemon sync');
+}
 console.log('Pokemon price-sync category-authority functional checks passed');
+
+// SCAN CACHED PRICES matches against the PokemonPriceTracker cache, so it
+// may only ever consider items the Pokemon sync owns -- never Sports cards
+// (the old Sports checkbox sent them into Pokemon matching) or, with no box
+// ticked, every item in the store.
+{
+  const fnStart = dashboard.indexOf('async function buildPriceSyncProposal(');
+  const fn = dashboard.slice(fnStart, dashboard.indexOf('\n}', fnStart));
+  assert.match(fn, /items = items\.filter\(isPokemonInventorySyncItem\);/);
+  assert.doesNotMatch(fn, /normalizePokemonText\(i\.category/, 'no substring category matching');
+  assert.doesNotMatch(dashboard, /cats\.push\('Sports'\)/, 'the cached scan no longer takes Sports items');
+  const liveStart = dashboard.indexOf('async function fetchOtherTcgOrSportsLivePrice(');
+  const live = dashboard.slice(liveStart, dashboard.indexOf('\nasync function ', liveStart + 10));
+  assert.match(live, /if\(!gameLabel \|\| gameLabel === 'TCG'\) return null;/, 'name search never runs across every game');
+}
+console.log('Cached scan and live search stay inside the item category');
 
 // Store report: "syncing prices for sports cards says there is nothing in
 // PriceCharting connected to it" even though a PriceCharting link was
