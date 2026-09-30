@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import vm from 'node:vm';
-import { searchComics, searchTerms, comicSearchScriptResponse } from '../scripts/comic-search.mjs';
+import { parseHTML } from 'linkedom';
+import { searchComics, searchTerms, comicSearchScriptResponse, comicSearchShell } from '../scripts/comic-search.mjs';
 import { comicSearchClient } from '../scripts/comic-search-client.mjs';
 
 const deps = {
@@ -63,6 +64,15 @@ test('served script supplies the keepNames helper used by the deployed bundle',a
 });
 
 function fakeElement(){return {children:[],textContent:'',value:'',hidden:false,classList:{add(){},toggle(){}},appendChild(n){this.children.push(n);return n;},replaceChildren(...children){this.children=children;},addEventListener(name,fn){this[name]=fn;},focus(){}};}
+test('comic category mounts before its server-rendered grid without a main element',()=>{
+  const {document}=parseHTML('<html><head></head><body><div class="mp-wrap"><h1>Comics</h1><div class="mp-grid"><a>Existing comic</a></div></div></body></html>');
+  const context={window:{},document,location:{pathname:'/category/comics',search:''},URLSearchParams};
+  vm.runInNewContext('('+comicSearchClient.toString()+')('+JSON.stringify('')+','+JSON.stringify(comicSearchShell())+')',context);
+  const host=document.getElementById('mp-comic-search');
+  assert.ok(host);
+  assert.equal(host.nextElementSibling.className,'mp-grid mp-comic-category-grid');
+  assert.equal(host.querySelectorAll('input').length,1);
+});
 test('rapid typing ignores stale responses, and clearing restores the catalog',async()=>{
   const input=fakeElement(),output=fakeElement(),status=fakeElement(),clear=fakeElement(),form=fakeElement();
   const host={querySelector:s=>({'input':input,'[data-cs-results]':output,'[data-cs-status]':status,'[data-cs-clear]':clear,form})[s]};
