@@ -353,7 +353,11 @@ function afterDownloadHtml(count){
   var steps = state.dest === 'show'
     ? 'On whatnot.com: Seller Hub -> Shows -> open your show -> Add -> Create Temporary Listing -> Upload CSV -> pick this file.'
     : 'On whatnot.com: Seller Hub -> Inventory -> Upload CSV (the cloud icon) -> pick this file -> Import. They arrive as drafts; check them and publish.';
-  return '<div style="margin-top:8px;padding:10px;border:1px solid var(--border);border-radius:8px;color:var(--text)">Downloaded ' + count + ' item' + (count === 1 ? '' : 's') + '. ' + esc(steps) + ' After the show, bring the results back below with IMPORT SHOW RESULTS.</div>';
+  // Whatnot's CSV has no flash-sale column (and rejects extra columns), but
+  // its Inventory bulk-edit table has a per-row Price & Format popup with the
+  // Flash Sale switch.
+  var flash = state.type === 'Buy It Now' ? ' For flash sales: Seller Hub -> Inventory -> turn on Bulk edit -> on each row, the Price & Format arrow -> Flash Sale on -> pick the discount and duration -> Apply.' : '';
+  return '<div style="margin-top:8px;padding:10px;border:1px solid var(--border);border-radius:8px;color:var(--text)">Downloaded ' + count + ' item' + (count === 1 ? '' : 's') + '. ' + esc(steps) + esc(flash) + ' After the show, bring the results back below with IMPORT SHOW RESULTS.</div>';
 }
 
 // ── Part 2: import the show report ───────────────────────────────────────
