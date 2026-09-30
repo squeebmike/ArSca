@@ -25,6 +25,8 @@ function makeContext() {
       { id: 'aaaaaaaa-0000-0000-0000-000000000002', name: 'Mike Trout', set: 'Baseball Cards 2011 Topps Update', category: 'Sports', qty: 1, status: 'in_stock', cost: 0, condition: 'Excellent', listPrice: 40, market: 40 },
       { id: 'aaaaaaaa-0000-0000-0000-000000000004', name: 'Julio Rodriguez', set: 'Baseball Cards 2022 Topps Update', category: 'Sports', qty: 1, status: 'in_stock', grader: 'PSA', condition: 'NM', listPrice: 90, market: 90 },
       { id: 'aaaaaaaa-0000-0000-0000-000000000005', name: 'Bin of stuff', category: 'Collectibles', qty: 1, status: 'in_stock', listPrice: 5, market: 5 },
+      { id: '54c8313b-d067-410c-a12a-5eede06c1217', name: 'ADVENTURE TIME HALLOWEEN SPECIAL #1 CVR A SEAN DOVE - PRESALE', category: 'Comic', qty: 1, status: 'in_stock', condition: 'NM', cost: 4, listPrice: 6, market: 6,
+        raw: { publisher: 'Oni Press', onSaleDate: '2026-09-30', focComicDetail: { source: 'foc', number: '1', writers: ['Jeremy Melloul'], coverArtists: ['Sean Dove'], publisher: 'Oni Press', storeDate: '2026-09-30', seriesName: 'Adventure Time (2025)', description: 'BOO . . . FROM THE LAND OF OOO! Finn and Jake enter their trickiest situation yet.' } } },
       { id: 'aaaaaaaa-0000-0000-0000-000000000003', name: 'Sold Thing', category: 'Sports', qty: 0, status: 'sold' },
     ],
     inventoryBulkSelectedIds: new Set(['aaaaaaaa-0000-0000-0000-000000000001', 'aaaaaaaa-0000-0000-0000-000000000002', 'aaaaaaaa-0000-0000-0000-000000000004', 'aaaaaaaa-0000-0000-0000-000000000005']),
@@ -157,6 +159,33 @@ assert.equal(sales[0].body.soldAt, '2026-10-02T02:00:00.000Z');
 await ctx.WB.loadReport({ text: report });
 await ctx.WB.recordSales();
 assert.match(elements['whatnot-bridge'].innerHTML, /Already recorded/);
+// Comics: a full description with the synopsis, and (opt-in) Whatnot's
+// extra item-detail columns filled from the same saved comic details.
+ctx.inventoryBulkSelectedIds = new Set(['54c8313b-d067-410c-a12a-5eede06c1217']);
+ctx.WB.set('extraFields', true);
+ctx.WB.download();
+const comicSheet = downloads[downloads.length - 1].rows;
+const comicRow = comicSheet[1];
+const desc = comicRow[col('Description')];
+assert.match(desc, /^ADVENTURE TIME HALLOWEEN SPECIAL #1 CVR A SEAN DOVE - PRESALE\nAdventure Time \(2025\) #1\n/);
+assert.match(desc, /Publisher: Oni Press · Release date: 2026-09-30/);
+assert.match(desc, /Writer: Jeremy Melloul · Cover artist: Sean Dove/);
+assert.match(desc, /Condition: NM/);
+assert.match(desc, /\n\nBOO \. \. \. FROM THE LAND OF OOO! Finn and Jake/, 'the synopsis follows the details');
+assert.equal(comicRow[col('Condition')], 'Near Mint');
+assert.equal(comicRow[col('Sub Category')], 'Modern Comics');
+const extraHeader = [...comicSheet[0]].slice(templateHeader.length);
+assert.deepEqual(extraHeader, ['Publisher','Publication Year','Series Title','Issue Number','Character','Artist or Writer','Grading Company','Grade','Cert','Signed','Signed By']);
+const extra = Object.fromEntries(extraHeader.map((h, n) => [h, comicRow[templateHeader.length + n]]));
+assert.equal(extra.Publisher, 'Oni Press');
+assert.equal(extra['Publication Year'], '2026');
+assert.equal(extra['Series Title'], 'Adventure Time (2025)');
+assert.equal(extra['Issue Number'], '1');
+assert.equal(extra['Artist or Writer'], 'Jeremy Melloul');
+ctx.WB.set('extraFields', false);
+ctx.WB.download();
+assert.equal(downloads[downloads.length - 1].rows[0].length, templateHeader.length, 'extra columns only when turned on');
+
 console.log('Whatnot bridge export/import checks passed');
 
 // Worker: a repeated externalRef is a no-op, and the ref is stored.
