@@ -13339,6 +13339,26 @@ function comicInventoryFullUpc(item = {}){
   return digits.length===17?digits:'';
 }
 const COMIC_UPC_LOOKUP_BATCH_SIZE = 15;
+// Store report: every FOC book came back "Not on PriceCharting yet" -- the
+// full 17-digit barcode is often not saved on PriceCharting's product even
+// once the cover is listed. So an unlinked book also sends its series, issue
+// and cover wording; the Worker only accepts a title match when the exact
+// series + issue number AND the cover (letter, ratio, artist) single out one
+// PriceCharting product -- it never guesses between covers.
+function comicInventoryTitleHint(item = {}){
+  const detail=item.focComicDetail||item.raw?.focComicDetail||{};
+  const metadata=item.comicMetadata||item.raw?.comicMetadata||{};
+  const name=String(item.name||item.title||item.raw?.name||'').replace(/\s+/g,' ').trim();
+  const series=String(item.series||metadata.seriesName||metadata.series||detail.seriesName||'').replace(/\s+/g,' ').trim();
+  if(!series)return null;
+  let issue=String(item.issue||item.issueNumber||metadata.number||metadata.issueNumber||detail.number||'').replace(/^#/,'').trim();
+  if(!issue)issue=(name.match(/#\s*(\d+(?:\.\d+)?[a-z]?)\b/i)||[])[1]||'';
+  const escaped=series.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+  const cover=[name.replace(new RegExp(escaped,'i'),' '),item.variant||'']
+    .join(' ').replace(/#\s*\d+(?:\.\d+)?[a-z]?\b/i,' ').replace(/--/g,' ').replace(/\s+/g,' ').trim();
+  // FOC one-shots carry no issue number; PriceCharting lists them as #1.
+  return {series,issue:issue||'1',cover};
+}
 
 function comicSyncedGuidePrice(item = {}, product = {}){
   const prices=product.comicPrices||{};
@@ -13385,31 +13405,38 @@ async function buildLiveComicPriceSyncProposal(options = {}){
   // this sync skipped every one. They do carry their full barcode, which
   // names the exact cover, so an unlinked book is looked up by that first.
   const byUpc=[];
+  const lookupKey=item=>String(item.id||item.wfId||comicInventoryFullUpc(item));
   for(const item of items){
-    if(!comicInventoryPricechartingId(item)&&comicInventoryFullUpc(item))byUpc.push(item);
+    if(!comicInventoryPricechartingId(item)&&(comicInventoryFullUpc(item)||comicInventoryTitleHint(item)))byUpc.push(item);
   }
   const upcProducts=new Map();
   for(let i=0;i<byUpc.length;i+=COMIC_UPC_LOOKUP_BATCH_SIZE){
     const batch=byUpc.slice(i,i+COMIC_UPC_LOOKUP_BATCH_SIZE);
     try{
-      const response=await storeWorkerFetch('/pricing/pricecharting/comics/by-upc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({upcs:batch.map(comicInventoryFullUpc)})});
+      const response=await storeWorkerFetch('/pricing/pricecharting/comics/by-upc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+        items:batch.map(item=>({key:lookupKey(item),upc:comicInventoryFullUpc(item),...(comicInventoryTitleHint(item)||{})})),
+        upcs:batch.map(comicInventoryFullUpc).filter(Boolean),
+      })});
       const data=await response.json().catch(()=>({}));
-      if(response.ok&&data.ok)Object.entries(data.products||{}).forEach(([upc,result])=>upcProducts.set(upc,result));
+      if(response.ok&&data.ok)Object.entries(data.products||{}).forEach(([key,result])=>upcProducts.set(key,result));
     }catch(error){ /* reported per book below */ }
+    if(typeof options.onProgress==='function')options.onProgress(Math.min(i+batch.length,byUpc.length),summary.checked);
   }
   for(const item of items){
     let productId=comicInventoryPricechartingId(item);
-    let viaUpc=false;
-    const upcResult=!productId?upcProducts.get(comicInventoryFullUpc(item)):null;
+    let viaUpc=false,viaTitle=false;
+    const upcResult=!productId?(upcProducts.get(lookupKey(item))||upcProducts.get(comicInventoryFullUpc(item))):null;
     if(upcResult?.ok&&upcResult.product?.productId){
       productId=String(upcResult.product.productId);
       productsById.set(productId,upcResult);
       viaUpc=true;
+      viaTitle=upcResult.via==='title';
     }
-    if(!productId&&comicInventoryFullUpc(item)){
+    if(!productId&&(comicInventoryFullUpc(item)||comicInventoryTitleHint(item))){
+      const hint=comicInventoryTitleHint(item);
       summary.noMatch++;
       summary.processed++;
-      summary.issues.push({item:{...item},type:'no-match',title:'Not on PriceCharting yet',reason:'No PriceCharting comic has this exact barcode ('+comicInventoryFullUpc(item)+') yet. New releases and ratio variants usually show up a few weeks after release -- the next sync will pick it up, or link the exact cover in Research now.'});
+      summary.issues.push({item:{...item},type:'no-match',title:'Not on PriceCharting yet',reason:(comicInventoryFullUpc(item)?'No PriceCharting comic has this exact barcode ('+comicInventoryFullUpc(item)+') yet'+(hint?', and ':'. '):'')+(hint?(upcResult?.error||('No PriceCharting comic for '+hint.series+' #'+hint.issue+' yet'))+'. ':'')+'New releases and ratio variants usually show up a few weeks after release -- the next sync will pick it up, or link the exact cover in Research now.'});
       if(typeof options.onProgress==='function')options.onProgress(summary.processed,summary.checked);
       continue;
     }
@@ -13420,7 +13447,7 @@ async function buildLiveComicPriceSyncProposal(options = {}){
       if(typeof options.onProgress==='function')options.onProgress(summary.processed,summary.checked);
       continue;
     }
-    linked.push({item,productId,viaUpc});
+    linked.push({item,productId,viaUpc,viaTitle});
   }
 
   const toFetch=linked.filter(x=>!x.viaUpc);
@@ -13439,7 +13466,7 @@ async function buildLiveComicPriceSyncProposal(options = {}){
     if(typeof options.onProgress==='function')options.onProgress(summary.processed,summary.checked);
   }
 
-  for(const {item,productId,viaUpc} of linked){
+  for(const {item,productId,viaUpc,viaTitle} of linked){
     try{
       const result=productsById.get(productId);
       if(!result?.ok||!result.product?.productId)throw new Error(result?.error||'PriceCharting product unavailable');
@@ -13459,12 +13486,13 @@ async function buildLiveComicPriceSyncProposal(options = {}){
       if(Math.abs(freshPrice-oldPrice)<.01){
         summary.unchanged++;
         // Keep a barcode match so the next sync goes straight to the product.
-        if(viaUpc)await saveInventoryEdit(item,{pricechartingProductId:String(product.productId),pricechartingProductName:product.productName||'',providerUrl:item.providerUrl||product.url||''}).catch(()=>{});
+        // A title match waits for the dealer to confirm it in the review list.
+        if(viaUpc&&!viaTitle)await saveInventoryEdit(item,{pricechartingProductId:String(product.productId),pricechartingProductName:product.productName||'',providerUrl:item.providerUrl||product.url||''}).catch(()=>{});
         continue;
       }
       const delta=freshPrice-oldPrice,deltaPct=oldPrice>0?Math.abs(delta/oldPrice)*100:100,direction=delta>=0?'up':'down',big=isBigPriceChange(oldPrice,freshPrice);
       summary.changed++;
-      proposal.push({item:{...item},mode:'comic-live',provider:'comic',source:resolved.label,oldPrice,newPrice:freshPrice,rawNewPrice:resolved.rawPrice,delta,deltaPct,direction,isBig:big,label:big?(direction==='up'?'BIG INCREASE':'BIG DROP'):(direction==='up'?'increase':'drop'),matchStatus:viaUpc?'exact barcode match':'exact saved PriceCharting ID',lastUpdated:product.lastUpdated||new Date().toISOString(),pricechartingProductId:String(product.productId),pricechartingProductName:product.productName||'',pricechartingComicPrices:product.comicPrices||{},pricechartingPrices:product.prices||{},pricechartingRetail:product.retail||{},pricechartingDemand:product.demand||{},providerUrl:product.url||item.providerUrl||'',coverImageUrl:product.imageUrl||item.coverImageUrl||item.thumbnail||'',pricePath:resolved.pricePath,selected:true});
+      proposal.push({item:{...item},mode:'comic-live',provider:'comic',source:resolved.label,oldPrice,newPrice:freshPrice,rawNewPrice:resolved.rawPrice,delta,deltaPct,direction,isBig:big,label:big?(direction==='up'?'BIG INCREASE':'BIG DROP'):(direction==='up'?'increase':'drop'),matchStatus:viaTitle?'series + issue + cover title match: '+(product.productName||''):viaUpc?'exact barcode match':'exact saved PriceCharting ID',lastUpdated:product.lastUpdated||new Date().toISOString(),pricechartingProductId:String(product.productId),pricechartingProductName:product.productName||'',pricechartingComicPrices:product.comicPrices||{},pricechartingPrices:product.prices||{},pricechartingRetail:product.retail||{},pricechartingDemand:product.demand||{},providerUrl:product.url||item.providerUrl||'',coverImageUrl:product.imageUrl||item.coverImageUrl||item.thumbnail||'',pricePath:resolved.pricePath,selected:true});
     }catch(error){
       summary.errors++;
       summary.issues.push({item:{...item},type:'error',title:'Comic price lookup failed',reason:String(error.message||error),providerId:productId?'PriceCharting #'+productId:''});
@@ -13696,6 +13724,28 @@ function resolveMtgLiveRowPrice(item = {}, row = {}){
   const price=firstMoneyValue(exact?.marketPrice,exact?.price,exact?.market,condition==='NM'&&family==='normal'?row.market:0);
   return {price,basePrice:price,finish,condition,source:'TCGplayer live · '+qplFinishLabel(finish)+' · '+condition,pricePath:exact?.pricePath||'justtcg.availableVariants.marketPrice',variant:exact};
 }
+// Store report: SYNC MTG PRICES proposed Enduring Vitality at $7.80 and
+// Birds of Paradise (DMR) at $6.37 while their TCGplayer product pages show a
+// $16.87 / $11.59 Near Mint market. Those numbers came from JustTCG's
+// per-variant "price", which isn't TCGplayer's Market Price. For an NM single
+// the exact product's own marketplace pricepoints (the same Normal/Foil
+// numbers on the product page) are the real answer, so they're tried first;
+// JustTCG stays the source for LP/MP/HP/DMG, which pricepoints don't split out.
+async function fetchMtgTcgplayerPricepointPrice(item = {}, tcgPlayerId = ''){
+  const condition=pokemonPptConditionCode(item.selectedCondition||item.condition||item.raw?.condition||'NM');
+  if(condition!=='NM'||!tcgPlayerId||!navigator.onLine)return null;
+  const finish=mtgInventoryFinish(item),family=mtgFinishPriceFamily(finish);
+  try{
+    const res=await fetch(WORKER+'/pricing/tcgplayer/product/'+encodeURIComponent(tcgPlayerId),{cache:'no-store'});
+    const data=await res.json().catch(()=>({}));
+    if(!res.ok||!data.ok)return null;
+    const wanted=family==='normal'?'normal':'foil';
+    const point=(data.pricepoints||[]).find(p=>String(p.printingType||'').toLowerCase()===wanted);
+    const price=firstMoneyValue(point?.marketPrice);
+    if(!price)return null;
+    return {price,basePrice:price,finish,condition,source:'TCGplayer Market Price · '+qplFinishLabel(finish)+' · NM',pricePath:'tcgplayer.pricepoints.'+wanted+'.marketPrice'};
+  }catch(e){return null;}
+}
 async function fetchLiveMtgInventoryPrice(item = {}, offlineMatch = null){
   if(!navigator.onLine)return null;
   const sealed=isMtgSealedInventorySyncItem(item);
@@ -13706,6 +13756,10 @@ async function fetchLiveMtgInventoryPrice(item = {}, offlineMatch = null){
     if(response?.ok)liveScryfall=await response.json().catch(()=>null);
   }
   const tcgPlayerId=inventoryTcgPlayerId(item)||liveScryfall?.tcgplayer_id||offlineMatch?.tcgplayerId||'';
+  if(tcgPlayerId&&!sealed){
+    const pricepoint=await fetchMtgTcgplayerPricepointPrice(item,tcgPlayerId);
+    if(pricepoint)return {row:null,resolved:pricepoint,matchStatus:'live exact TCGplayer ID',tcgPlayerId:String(tcgPlayerId),scryfallId};
+  }
   if(tcgPlayerId){
     const product={productId:String(tcgPlayerId),name:inventoryCardName(item),canonicalUrl:item.tcgPlayerUrl||`https://www.tcgplayer.com/product/${tcgPlayerId}`,isMtg:true,isSealed:sealed,game:'magic',category:sealed?'MTG Sealed Product':'TCG',condition:pokemonPptConditionCode(item.selectedCondition||item.condition||'NM'),finish:mtgFinishPriceFamily(mtgInventoryFinish(item)),language:item.selectedLanguage||item.language||'English'};
     const row=await resolveExactTcgplayerProduct(product).catch(()=>null);
@@ -13779,7 +13833,7 @@ async function buildOfflineMtgPriceSyncProposal(options = {}){
         live=await fetchLiveMtgInventoryPrice(item,match).catch(()=>null);
         if(live){
           summary.liveMatched++;
-          match=live.row||match;
+          match=live.row||match||{tcgplayerId:live.tcgPlayerId,scryfallId:live.scryfallId,tcgPlayerUrl:item.tcgPlayerUrl||('https://www.tcgplayer.com/product/'+live.tcgPlayerId)};
           resolved=live.resolved;
           matchStatus=live.matchStatus;
         }else if(match)summary.offlineFallback++;
@@ -14137,6 +14191,33 @@ async function buildLivePokemonPriceSyncProposal(options = {}){
 
 const PRICE_SYNC_PENDING_KEY = 'price_sync_pending_v1';
 let _priceSyncProposal = [];
+// Store report: running SYNC MTG PRICES listed Pokemon changes (still pending
+// from an earlier Pokemon sync) right alongside the MTG ones, so the review
+// list never matched the button just pressed. Pending changes from other
+// syncs are still kept, just hidden while one category's results are shown;
+// null means "show everything" (reopening the modal, or the current-view sync).
+let _priceSyncView = null;
+const PRICE_SYNC_VIEW_LABELS = { pokemon:'Pokémon', mtg:'MTG', comic:'comic', other:'sports/other-TCG', scout:'Pocket Scout' };
+function priceSyncProposalGroup(p = {}){
+  const mode = p.mode || '', provider = p.provider || '';
+  if(mode === 'mtg-live' || mode === 'mtg-offline' || provider === 'mtg') return 'mtg';
+  if(mode === 'comic-live' || provider === 'comic') return 'comic';
+  if(mode === 'pocket-scout' || provider === 'pocket_scout') return 'scout';
+  if(mode === 'other-live') return 'other';
+  return 'pokemon';
+}
+function isPriceSyncProposalVisible(p){
+  return !_priceSyncView || priceSyncProposalGroup(p) === _priceSyncView;
+}
+function visiblePriceSyncProposals(){
+  return _priceSyncProposal.filter(isPriceSyncProposalVisible);
+}
+function showAllPriceSyncProposals(){
+  _priceSyncView = null;
+  renderPriceSyncProposal();
+  const applyBtn = document.getElementById('price-sync-apply-btn');
+  if(applyBtn && _priceSyncProposal.length) applyBtn.style.display = '';
+}
 
 function priceSyncProposalKey(p = {}){
   const item = p.item || {};
@@ -14172,6 +14253,7 @@ function openPriceSyncModal(){
   const statusEl = document.getElementById('price-sync-status');
   const applyBtn = document.getElementById('price-sync-apply-btn');
   restorePendingPriceSyncProposals();
+  _priceSyncView = null;
   if(_priceSyncProposal.length) {
     if(statusEl) statusEl.textContent = _priceSyncProposal.length + ' pending price change' + (_priceSyncProposal.length===1?'':'s') + ' restored for review.';
     if(applyBtn) applyBtn.style.display = '';
@@ -14206,6 +14288,7 @@ async function runPriceSyncForFilteredItems(){
   const propEl = document.getElementById('price-sync-proposal');
   const applyBtn = document.getElementById('price-sync-apply-btn');
   const pendingBeforeRun = [..._priceSyncProposal];
+  _priceSyncView = null;
   if(statusEl) statusEl.textContent = 'Looking up current market prices for ' + items.length + ' item' + (items.length===1?'':'s') + ' in this view...';
   if(propEl) propEl.innerHTML = '';
   if(applyBtn) applyBtn.style.display = 'none';
@@ -14250,6 +14333,7 @@ async function runPriceSyncScan(){
   const propEl   = document.getElementById('price-sync-proposal');
   const applyBtn = document.getElementById('price-sync-apply-btn');
   if(!btn || !statusEl || !propEl) return;
+  _priceSyncView = 'pokemon';
   btn.disabled  = true;
   btn.textContent = 'Scanning...';
   statusEl.textContent = 'Reading inventory and cached prices...';
@@ -14259,14 +14343,17 @@ async function runPriceSyncScan(){
   // SPORTS / OTHER TCG instead.
   const cats = document.getElementById('pso-tcg')?.checked === false ? [] : ['Pokemon'];
   try {
-    _priceSyncProposal = await buildPriceSyncProposal({ categories: cats });
+    restorePendingPriceSyncProposals();
+    const otherPending = _priceSyncProposal.filter(p => priceSyncProposalGroup(p) !== 'pokemon');
+    _priceSyncProposal = mergePendingPriceSyncProposals(otherPending, await buildPriceSyncProposal({ categories: cats }));
     savePendingPriceSyncProposals();
-    if(!_priceSyncProposal.length) {
+    const cachedChanges = visiblePriceSyncProposals();
+    if(!cachedChanges.length) {
       statusEl.textContent = 'Cached sync found no changes. This did not fetch live prices.';
       propEl.innerHTML = '<div style="color:var(--dim);font-size:12px;padding:12px 0">All cached prices match current inventory pricing. Use FETCH LIVE POKEMON to check current Worker/PokemonPriceTracker data.</div>';
     } else {
-      const bigCount = _priceSyncProposal.filter(p => p.isBig).length;
-      statusEl.textContent = _priceSyncProposal.length + ' price change' + (_priceSyncProposal.length === 1 ? '' : 's') + ' found'
+      const bigCount = cachedChanges.filter(p => p.isBig).length;
+      statusEl.textContent = cachedChanges.length + ' price change' + (cachedChanges.length === 1 ? '' : 's') + ' found'
         + (bigCount ? ' · ' + bigCount + ' big change' + (bigCount === 1 ? '' : 's') : '')
         + '. Review below, then click UPDATE SELECTED.';
       if(applyBtn) applyBtn.style.display = '';
@@ -14287,6 +14374,7 @@ async function runLiveComicPriceSync(){
   const propEl=document.getElementById('price-sync-proposal');
   const applyBtn=document.getElementById('price-sync-apply-btn');
   if(!btn||!statusEl||!propEl)return;
+  _priceSyncView = 'comic';
   restorePendingPriceSyncProposals();
   const pendingBeforeRun=[..._priceSyncProposal];
   btn.disabled=true;
@@ -14299,10 +14387,10 @@ async function runLiveComicPriceSync(){
     const s=_priceSyncLastSummary||{checked:0,changed:0,unchanged:0,noMatch:0,noPrice:0,errors:0,issues:[]};
     _priceSyncProposal=mergePendingPriceSyncProposals(pendingBeforeRun,freshProposal);
     savePendingPriceSyncProposals();
-    statusEl.textContent='Comic sync checked '+s.checked+' item'+(s.checked===1?'':'s')+'. '+s.changed+' changed, '+s.unchanged+' unchanged, '+s.noMatch+' need an exact cover link, '+s.noPrice+' matched without the required guide price, '+s.errors+' errors.'+(_priceSyncProposal.length?' Review below, then click UPDATE SELECTED.':'');
+    statusEl.textContent='Comic sync checked '+s.checked+' item'+(s.checked===1?'':'s')+'. '+s.changed+' changed, '+s.unchanged+' unchanged, '+s.noMatch+' need an exact cover link, '+s.noPrice+' matched without the required guide price, '+s.errors+' errors.'+(visiblePriceSyncProposals().length?' Review below, then click UPDATE SELECTED.':'');
     renderPriceSyncProposal();
-    if(!_priceSyncProposal.length&&!(s.issues||[]).length)propEl.innerHTML='<div style="color:var(--dim);font-size:12px;padding:12px 0">All exact-linked comic prices already match inventory.</div>';
-    if(applyBtn&&_priceSyncProposal.length)applyBtn.style.display='';
+    if(!visiblePriceSyncProposals().length&&!(s.issues||[]).length)propEl.innerHTML='<div style="color:var(--dim);font-size:12px;padding:12px 0">All exact-linked comic prices already match inventory.</div>';
+    if(applyBtn&&visiblePriceSyncProposals().length)applyBtn.style.display='';
     updatePriceAlertBanner();
   }catch(error){statusEl.textContent='Comic sync failed: '+(error.message||error);}
   finally{btn.disabled=false;btn.textContent='SYNC COMIC PRICES';}
@@ -14314,6 +14402,7 @@ async function runPocketScoutPriceSync(){
   const propEl=document.getElementById('price-sync-proposal');
   const applyBtn=document.getElementById('price-sync-apply-btn');
   if(!btn||!statusEl||!propEl)return;
+  _priceSyncView = 'scout';
   restorePendingPriceSyncProposals();
   const pendingBeforeRun=[..._priceSyncProposal];
   const items=pocketScoutPriceSyncItems();
@@ -14332,10 +14421,10 @@ async function runPocketScoutPriceSync(){
     const s=_priceSyncLastSummary||{checked:0,changed:0,unchanged:0,noMatch:0,noPrice:0,errors:0,issues:[]};
     _priceSyncProposal=mergePendingPriceSyncProposals(pendingBeforeRun,freshProposal);
     savePendingPriceSyncProposals();
-    statusEl.textContent='Pocket Scout sync checked '+s.checked+' item'+(s.checked===1?'':'s')+'. '+s.changed+' changed, '+s.unchanged+' unchanged, '+s.noPrice+' with no recent sold comps, '+s.errors+' errors.'+(_priceSyncProposal.length?' Review below, then click UPDATE SELECTED.':'');
+    statusEl.textContent='Pocket Scout sync checked '+s.checked+' item'+(s.checked===1?'':'s')+'. '+s.changed+' changed, '+s.unchanged+' unchanged, '+s.noPrice+' with no recent sold comps, '+s.errors+' errors.'+(visiblePriceSyncProposals().length?' Review below, then click UPDATE SELECTED.':'');
     renderPriceSyncProposal();
-    if(!_priceSyncProposal.length&&!(s.issues||[]).length)propEl.innerHTML='<div style="color:var(--dim);font-size:12px;padding:12px 0">All Pocket Scout items already match their most recent eBay sold comps.</div>';
-    if(applyBtn&&_priceSyncProposal.length)applyBtn.style.display='';
+    if(!visiblePriceSyncProposals().length&&!(s.issues||[]).length)propEl.innerHTML='<div style="color:var(--dim);font-size:12px;padding:12px 0">All Pocket Scout items already match their most recent eBay sold comps.</div>';
+    if(applyBtn&&visiblePriceSyncProposals().length)applyBtn.style.display='';
     updatePriceAlertBanner();
   }catch(e){statusEl.textContent='Pocket Scout sync failed: '+(e.message||e);}
   finally{btn.disabled=false;btn.textContent='SYNC POCKET SCOUT PRICES';}
@@ -14347,6 +14436,7 @@ async function runOfflineMtgPriceSync(){
   const propEl=document.getElementById('price-sync-proposal');
   const applyBtn=document.getElementById('price-sync-apply-btn');
   if(!btn||!statusEl||!propEl)return;
+  _priceSyncView = 'mtg';
   restorePendingPriceSyncProposals();
   const pendingBeforeRun=[..._priceSyncProposal];
   if(!window.ArsCaMtgOffline){statusEl.textContent='MTG offline catalog module is unavailable.';return;}
@@ -14368,10 +14458,10 @@ async function runOfflineMtgPriceSync(){
     _priceSyncProposal=mergePendingPriceSyncProposals(pendingBeforeRun,freshProposal);
     savePendingPriceSyncProposals();
     const summaryText=(useOnline?'MTG sync':'Offline MTG sync')+' checked '+s.checked+' item'+(s.checked===1?'':'s')+'. '+s.changed+' changed, '+s.unchanged+' unchanged, '+s.noMatch+' not matched, '+s.noPrice+' matched without the selected finish price, '+s.errors+' errors.'+(useOnline?' Live matches: '+s.liveMatched+'. Offline fallbacks: '+s.offlineFallback+'.':'')+(s.sealedChecked?' Sealed checked: '+s.sealedChecked+'.':'');
-    statusEl.textContent=summaryText+(_priceSyncProposal.length?' Review price changes below, then click UPDATE SELECTED.':'');
+    statusEl.textContent=summaryText+(visiblePriceSyncProposals().length?' Review price changes below, then click UPDATE SELECTED.':'');
     renderPriceSyncProposal();
-    if(!_priceSyncProposal.length&&!(s.issues||[]).length)propEl.innerHTML='<div style="color:var(--dim);font-size:12px;padding:12px 0">All offline MTG prices already match inventory.</div>';
-    if(applyBtn&&_priceSyncProposal.length)applyBtn.style.display='';
+    if(!visiblePriceSyncProposals().length&&!(s.issues||[]).length)propEl.innerHTML='<div style="color:var(--dim);font-size:12px;padding:12px 0">All offline MTG prices already match inventory.</div>';
+    if(applyBtn&&visiblePriceSyncProposals().length)applyBtn.style.display='';
     updatePriceAlertBanner();
   }catch(e){statusEl.textContent='Offline MTG sync failed: '+(e.message||e);}
   finally{btn.disabled=false;btn.textContent='SYNC MTG PRICES';}
@@ -14383,6 +14473,7 @@ async function runLivePokemonPriceSync(){
   const propEl   = document.getElementById('price-sync-proposal');
   const applyBtn = document.getElementById('price-sync-apply-btn');
   if(!btn || !statusEl || !propEl) return;
+  _priceSyncView = 'pokemon';
   restorePendingPriceSyncProposals();
   if(pokemonPriceTrackerDailyQuotaBlocked()) {
     statusEl.textContent = 'PokemonPriceTracker reports that the daily quota is exhausted. '
@@ -14407,7 +14498,9 @@ async function runLivePokemonPriceSync(){
       onRateLimit:(seconds, done, total) => { statusEl.textContent = 'PPT short rate limit reached after ' + done + ' of ' + total + '. Resuming automatically in ' + seconds + ' second' + (seconds===1?'':'s') + '...'; }
     });
     const s = _priceSyncLastSummary || { checked:0, changed:0, unchanged:0, noMatch:0, noPrice:0, errors:0, issues:[] };
-    _priceSyncProposal = (s.quotaBlocked || s.rateLimitBlocked) ? mergePendingPriceSyncProposals(pendingBeforeRun, freshProposal) : freshProposal;
+    // A complete run replaces the older Pokemon pending changes; pending
+    // changes from the other syncs (MTG, comics...) are always kept.
+    _priceSyncProposal = mergePendingPriceSyncProposals((s.quotaBlocked || s.rateLimitBlocked) ? pendingBeforeRun : pendingBeforeRun.filter(p => priceSyncProposalGroup(p) !== 'pokemon'), freshProposal);
     savePendingPriceSyncProposals();
     const summaryText = (s.quotaBlocked
       ? 'Live sync paused after ' + s.processed + ' of ' + s.checked + ' Pokemon items because the daily provider quota was exhausted. '
@@ -14418,7 +14511,7 @@ async function runLivePokemonPriceSync(){
       + (s.sealedChecked ? ' Sealed: ' + s.sealedMatched + ' of ' + s.sealedChecked + ' matched through /sealed-products.' : '')
       + (s.reusedLookups ? ' ' + s.reusedLookups + ' duplicate product lookup' + (s.reusedLookups===1?' was':'s were') + ' reused.' : '')
       + (s.rateLimitPauses ? ' Automatically resumed after ' + s.rateLimitPauses + ' short rate-limit pause' + (s.rateLimitPauses===1?'':'s') + '.' : '');
-    if(!_priceSyncProposal.length) {
+    if(!visiblePriceSyncProposals().length) {
       statusEl.textContent = summaryText;
       renderPriceSyncProposal();
       if(!(s.issues || []).length) propEl.innerHTML = '<div style="color:var(--dim);font-size:12px;padding:12px 0">No live price updates to apply.</div>';
@@ -14681,6 +14774,7 @@ async function runOtherLivePriceSync(){
   const propEl = document.getElementById('price-sync-proposal');
   const applyBtn = document.getElementById('price-sync-apply-btn');
   if(!btn || !statusEl || !propEl) return;
+  _priceSyncView = 'other';
   restorePendingPriceSyncProposals();
   const pendingBeforeRun = [..._priceSyncProposal];
   if(!navigator.onLine){ statusEl.textContent = 'Connect to the internet to fetch live sports/other-TCG prices.'; return; }
@@ -14695,10 +14789,10 @@ async function runOtherLivePriceSync(){
     _priceSyncProposal = mergePendingPriceSyncProposals(pendingBeforeRun, freshProposal);
     savePendingPriceSyncProposals();
     const summaryText = 'Sports/other-TCG sync checked ' + s.checked + ' item' + (s.checked===1?'':'s') + '. ' + s.changed + ' changed, ' + s.unchanged + ' unchanged, ' + s.noMatch + ' not matched, ' + s.errors + ' errors.';
-    statusEl.textContent = summaryText + (_priceSyncProposal.length ? ' Review price changes below, then click UPDATE SELECTED.' : '');
+    statusEl.textContent = summaryText + (visiblePriceSyncProposals().length ? ' Review price changes below, then click UPDATE SELECTED.' : '');
     renderPriceSyncProposal();
-    if(!_priceSyncProposal.length && !(s.issues || []).length) propEl.innerHTML = '<div style="color:var(--dim);font-size:12px;padding:12px 0">All sports/other-TCG prices already match inventory.</div>';
-    if(applyBtn && _priceSyncProposal.length) applyBtn.style.display = '';
+    if(!visiblePriceSyncProposals().length && !(s.issues || []).length) propEl.innerHTML = '<div style="color:var(--dim);font-size:12px;padding:12px 0">All sports/other-TCG prices already match inventory.</div>';
+    if(applyBtn && visiblePriceSyncProposals().length) applyBtn.style.display = '';
     updatePriceAlertBanner();
   } catch(e) {
     statusEl.textContent = 'Sports/other-TCG sync failed: ' + (e.message || e);
@@ -14719,8 +14813,12 @@ function renderPriceSyncProposal(){
   const el = document.getElementById('price-sync-proposal');
   if(!el) return;
   const issues = _priceSyncLastSummary?.issues || [];
-  if(!_priceSyncProposal.length && !issues.length){ el.innerHTML = ''; return; }
+  const visible = visiblePriceSyncProposals();
+  const hiddenCount = _priceSyncProposal.length - visible.length;
+  const hiddenHtml = hiddenCount ? `<div style="font-size:10px;color:var(--dim);margin-bottom:8px">${hiddenCount} pending change${hiddenCount===1?'':'s'} from other syncs hidden while ${escHtml(PRICE_SYNC_VIEW_LABELS[_priceSyncView]||'this category')} results are shown. <a href="#" onclick="showAllPriceSyncProposals();return false" style="color:var(--g)">Show all</a></div>` : '';
+  if(!visible.length && !issues.length){ el.innerHTML = hiddenHtml; return; }
   const rows = _priceSyncProposal.map((p, idx) => {
+    if(!isPriceSyncProposalVisible(p)) return '';
     const col   = p.direction === 'up' ? 'var(--g)' : 'var(--red)';
     const arrow = p.direction === 'up' ? '▲' : '▼';
     const deltaAmount = Math.abs(Number(p.delta || 0));
@@ -14745,11 +14843,11 @@ function renderPriceSyncProposal(){
       </div>
     </div>`;
   }).join('');
-  const changesHtml = _priceSyncProposal.length ? `<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
-    <label style="font-size:11px;cursor:pointer"><input type="checkbox" id="pso-select-all" checked onchange="toggleAllPriceSyncItems(this.checked)"> SELECT ALL</label>
-    <span style="font-size:10px;color:var(--dim)">${_priceSyncProposal.length} item${_priceSyncProposal.length===1?'':'s'}</span>
+  const changesHtml = visible.length ? `<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+    <label style="font-size:11px;cursor:pointer"><input type="checkbox" id="pso-select-all" ${visible.every(p => p.selected)?'checked':''} onchange="toggleAllPriceSyncItems(this.checked)"> SELECT ALL</label>
+    <span style="font-size:10px;color:var(--dim)">${visible.length} item${visible.length===1?'':'s'}</span>
   </div>` + rows : '';
-  const issuesHtml = issues.length ? `<div style="margin:${_priceSyncProposal.length?'14px':'0'} 0 8px;padding-top:${_priceSyncProposal.length?'12px':'0'};border-top:${_priceSyncProposal.length?'1px solid var(--border)':'0'};font-size:10px;font-weight:700;color:var(--gold);letter-spacing:.6px">NOT UPDATED · ${issues.length} ITEM${issues.length===1?'':'S'}</div>` + issues.map(issue => {
+  const issuesHtml = issues.length ? `<div style="margin:${visible.length?'14px':'0'} 0 8px;padding-top:${visible.length?'12px':'0'};border-top:${visible.length?'1px solid var(--border)':'0'};font-size:10px;font-weight:700;color:var(--gold);letter-spacing:.6px">NOT UPDATED · ${issues.length} ITEM${issues.length===1?'':'S'}</div>` + issues.map(issue => {
     const id = issue.tcgPlayerId ? ' · TCGplayer #' + escHtml(issue.tcgPlayerId) : (issue.providerId ? ' · ' + escHtml(issue.providerId) : '');
     return `<div style="background:var(--bg2);border:1px solid ${issue.type==='error'?'rgba(255,60,60,.45)':'rgba(255,180,0,.35)'};border-radius:8px;padding:9px 12px;margin-bottom:6px">
       <div style="font-size:12px;font-weight:700;color:var(--text)">${escHtml(priceSyncItemTitle(issue.item))}</div>
@@ -14757,18 +14855,18 @@ function renderPriceSyncProposal(){
       <div style="font-size:10px;color:var(--dim);line-height:1.45;margin-top:3px">${escHtml(issue.reason)}</div>
     </div>`;
   }).join('') : '';
-  el.innerHTML = changesHtml + issuesHtml;
+  el.innerHTML = hiddenHtml + changesHtml + issuesHtml;
 }
 
 function toggleAllPriceSyncItems(checked){
-  _priceSyncProposal.forEach(p => { p.selected = checked; });
+  visiblePriceSyncProposals().forEach(p => { p.selected = checked; });
   document.querySelectorAll('[data-pso-idx]').forEach(cb => { cb.checked = checked; });
   savePendingPriceSyncProposals();
 }
 
 function togglePriceSyncItem(idx, checked){
   if(_priceSyncProposal[idx]) _priceSyncProposal[idx].selected = checked;
-  const allChecked = _priceSyncProposal.every(p => p.selected);
+  const allChecked = visiblePriceSyncProposals().every(p => p.selected);
   const cb = document.getElementById('pso-select-all');
   if(cb) cb.checked = allChecked;
   savePendingPriceSyncProposals();
@@ -14862,21 +14960,24 @@ async function applyPriceSyncEntry(p){
 }
 
 async function applySelectedPriceSyncUpdates(){
-  const selected = _priceSyncProposal.filter(p => p.selected);
+  // Only what's on screen -- a hidden pending change from another
+  // category's sync is never applied behind the dealer's back.
+  const selected = visiblePriceSyncProposals().filter(p => p.selected);
   if(!selected.length){ toast_dash('No items selected'); return; }
   let ok = 0;
   for(const p of selected){
     if(await applyPriceSyncEntry(p)) ok++;
   }
-  _priceSyncProposal = _priceSyncProposal.filter(p => !p.selected);
+  const applied = new Set(selected);
+  _priceSyncProposal = _priceSyncProposal.filter(p => !applied.has(p));
   savePendingPriceSyncProposals();
   renderPriceSyncProposal();
   updatePriceAlertBanner();
   const statusEl = document.getElementById('price-sync-status');
   if(statusEl) statusEl.textContent = ok + ' price' + (ok===1?'':'s') + ' updated.'
-    + (_priceSyncProposal.length ? '  ' + _priceSyncProposal.length + ' remaining.' : '  All done. ✓');
+    + (visiblePriceSyncProposals().length ? '  ' + visiblePriceSyncProposals().length + ' remaining.' : '  All done. ✓');
   const applyBtn = document.getElementById('price-sync-apply-btn');
-  if(applyBtn && !_priceSyncProposal.length) applyBtn.style.display = 'none';
+  if(applyBtn && !visiblePriceSyncProposals().length) applyBtn.style.display = 'none';
   toast_dash('Updated ' + ok + ' price' + (ok===1?'':'s'));
   loadInventory();
 }
