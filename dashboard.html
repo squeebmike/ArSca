@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.09.30.16-beckett-grade">
+<meta name="version" content="2026.09.30.17-price-sync-fixes">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1655,22 +1655,22 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.09.30.16-beckett-grade" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.09.30.16-beckett-grade" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.09.30.16-beckett-grade" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.09.30.16-beckett-grade" defer></script>
-<script src="scripts/backlist-dashboard.js?v=2026.09.30.16-beckett-grade" defer></script>
-<script src="scripts/database-viewer.js?v=2026.09.30.16-beckett-grade" defer></script>
-<script src="scripts/card-intake-dashboard.js?v=2026.09.30.16-beckett-grade" defer></script>
-<script src="scripts/mana-pocket-task-library.js?v=2026.09.30.16-beckett-grade" defer></script>
-<script src="scripts/daily-tasks-dashboard.js?v=2026.09.30.16-beckett-grade" defer></script>
-<script src="scripts/whatnot-bridge.js?v=2026.09.30.16-beckett-grade" defer></script>
+<script src="scripts/query-routing.js?v=2026.09.30.17-price-sync-fixes" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.09.30.17-price-sync-fixes" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.09.30.17-price-sync-fixes" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.09.30.17-price-sync-fixes" defer></script>
+<script src="scripts/backlist-dashboard.js?v=2026.09.30.17-price-sync-fixes" defer></script>
+<script src="scripts/database-viewer.js?v=2026.09.30.17-price-sync-fixes" defer></script>
+<script src="scripts/card-intake-dashboard.js?v=2026.09.30.17-price-sync-fixes" defer></script>
+<script src="scripts/mana-pocket-task-library.js?v=2026.09.30.17-price-sync-fixes" defer></script>
+<script src="scripts/daily-tasks-dashboard.js?v=2026.09.30.17-price-sync-fixes" defer></script>
+<script src="scripts/whatnot-bridge.js?v=2026.09.30.17-price-sync-fixes" defer></script>
 <script src="scripts/research-loupe.js?v=a7de4ffe90" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.09.30.16-beckett-grade" defer></script>
-<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.09.30.16-beckett-grade" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.09.30.16-beckett-grade" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.09.30.16-beckett-grade" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.09.30.16-beckett-grade" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.09.30.17-price-sync-fixes" defer></script>
+<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.09.30.17-price-sync-fixes" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.09.30.17-price-sync-fixes" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.09.30.17-price-sync-fixes" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.09.30.17-price-sync-fixes" defer></script>
 </head>
 <body>
 
@@ -1722,7 +1722,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
 <div class="dsb-chip" id="dsb-tasks" title="Today's Roles &amp; Tasks — click to jump to Tasks tab" style="cursor:pointer;display:none" onclick="switchTab('tasks')">✅ <span>TASKS:</span> <b id="dsb-tasks-val">—</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.09.30.16-beckett-grade</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.09.30.17-price-sync-fixes</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3889,7 +3889,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.09.30.16-beckett-grade';
+const APP_VERSION = '2026.09.30.17-price-sync-fixes';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -14197,6 +14197,9 @@ let _priceSyncProposal = [];
 // syncs are still kept, just hidden while one category's results are shown;
 // null means "show everything" (reopening the modal, or the current-view sync).
 let _priceSyncView = null;
+// A finished category sync replaces that category's older pending rows --
+// otherwise a row from an earlier run (e.g. an old MTG price) lingered on
+// screen whenever the new run found nothing to replace it with.
 const PRICE_SYNC_VIEW_LABELS = { pokemon:'Pokémon', mtg:'MTG', comic:'comic', other:'sports/other-TCG', scout:'Pocket Scout' };
 function priceSyncProposalGroup(p = {}){
   const mode = p.mode || '', provider = p.provider || '';
@@ -14385,7 +14388,7 @@ async function runLiveComicPriceSync(){
   try{
     const freshProposal=await buildLiveComicPriceSyncProposal({onProgress:(done,total)=>{statusEl.textContent='Fetching exact comic prices... '+done+' of '+total;}});
     const s=_priceSyncLastSummary||{checked:0,changed:0,unchanged:0,noMatch:0,noPrice:0,errors:0,issues:[]};
-    _priceSyncProposal=mergePendingPriceSyncProposals(pendingBeforeRun,freshProposal);
+    _priceSyncProposal=mergePendingPriceSyncProposals(pendingBeforeRun.filter(p=>priceSyncProposalGroup(p)!=='comic'),freshProposal);
     savePendingPriceSyncProposals();
     statusEl.textContent='Comic sync checked '+s.checked+' item'+(s.checked===1?'':'s')+'. '+s.changed+' changed, '+s.unchanged+' unchanged, '+s.noMatch+' need an exact cover link, '+s.noPrice+' matched without the required guide price, '+s.errors+' errors.'+(visiblePriceSyncProposals().length?' Review below, then click UPDATE SELECTED.':'');
     renderPriceSyncProposal();
@@ -14419,7 +14422,7 @@ async function runPocketScoutPriceSync(){
   try{
     const freshProposal=await buildPocketScoutPriceSyncProposal({onProgress:(done,total)=>{statusEl.textContent='Checking sold comps... '+done+' of '+total;}});
     const s=_priceSyncLastSummary||{checked:0,changed:0,unchanged:0,noMatch:0,noPrice:0,errors:0,issues:[]};
-    _priceSyncProposal=mergePendingPriceSyncProposals(pendingBeforeRun,freshProposal);
+    _priceSyncProposal=mergePendingPriceSyncProposals(pendingBeforeRun.filter(p=>priceSyncProposalGroup(p)!=='scout'),freshProposal);
     savePendingPriceSyncProposals();
     statusEl.textContent='Pocket Scout sync checked '+s.checked+' item'+(s.checked===1?'':'s')+'. '+s.changed+' changed, '+s.unchanged+' unchanged, '+s.noPrice+' with no recent sold comps, '+s.errors+' errors.'+(visiblePriceSyncProposals().length?' Review below, then click UPDATE SELECTED.':'');
     renderPriceSyncProposal();
@@ -14455,7 +14458,7 @@ async function runOfflineMtgPriceSync(){
   try{
     const freshProposal=await buildOfflineMtgPriceSyncProposal({preferOnline:useOnline,onProgress:(done,total)=>{statusEl.textContent=(useOnline?'Fetching live MTG prices... ':'Scanning offline MTG prices... ')+done+' of '+total;}});
     const s=_priceSyncLastSummary||{checked:0,changed:0,unchanged:0,noMatch:0,noPrice:0,errors:0,issues:[]};
-    _priceSyncProposal=mergePendingPriceSyncProposals(pendingBeforeRun,freshProposal);
+    _priceSyncProposal=mergePendingPriceSyncProposals(pendingBeforeRun.filter(p=>priceSyncProposalGroup(p)!=='mtg'),freshProposal);
     savePendingPriceSyncProposals();
     const summaryText=(useOnline?'MTG sync':'Offline MTG sync')+' checked '+s.checked+' item'+(s.checked===1?'':'s')+'. '+s.changed+' changed, '+s.unchanged+' unchanged, '+s.noMatch+' not matched, '+s.noPrice+' matched without the selected finish price, '+s.errors+' errors.'+(useOnline?' Live matches: '+s.liveMatched+'. Offline fallbacks: '+s.offlineFallback+'.':'')+(s.sealedChecked?' Sealed checked: '+s.sealedChecked+'.':'');
     statusEl.textContent=summaryText+(visiblePriceSyncProposals().length?' Review price changes below, then click UPDATE SELECTED.':'');
@@ -14786,7 +14789,7 @@ async function runOtherLivePriceSync(){
   try {
     const freshProposal = await buildOtherTcgSportsPriceSyncProposal({ onProgress:(done,total) => { statusEl.textContent = 'Fetching live prices... ' + done + ' of ' + total + ' checked'; } });
     const s = _priceSyncLastSummary || { checked:0, changed:0, unchanged:0, noMatch:0, errors:0, issues:[] };
-    _priceSyncProposal = mergePendingPriceSyncProposals(pendingBeforeRun, freshProposal);
+    _priceSyncProposal = mergePendingPriceSyncProposals(pendingBeforeRun.filter(p=>priceSyncProposalGroup(p)!=='other'), freshProposal);
     savePendingPriceSyncProposals();
     const summaryText = 'Sports/other-TCG sync checked ' + s.checked + ' item' + (s.checked===1?'':'s') + '. ' + s.changed + ' changed, ' + s.unchanged + ' unchanged, ' + s.noMatch + ' not matched, ' + s.errors + ' errors.';
     statusEl.textContent = summaryText + (visiblePriceSyncProposals().length ? ' Review price changes below, then click UPDATE SELECTED.' : '');
@@ -48243,7 +48246,7 @@ async function toppsLoadParallels(cardId){
   window.__arscaCloseModal = closeModal;
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.09.30.16-beckett-grade" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.09.30.17-price-sync-fixes" defer></script>
 </body>
 </html>
 

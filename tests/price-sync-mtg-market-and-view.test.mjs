@@ -71,5 +71,8 @@ function extractFn(name, prefix = 'function ') {
   assert.match(apply, /visiblePriceSyncProposals\(\)\.filter\(p => p\.selected\)/, 'UPDATE SELECTED never applies hidden changes');
   const pokemonLive = extractFn('runLivePokemonPriceSync', 'async function ');
   assert.match(pokemonLive, /priceSyncProposalGroup\(p\) !== 'pokemon'/, 'a Pokemon run keeps pending MTG/comic changes');
+  const mtgRun = extractFn('runOfflineMtgPriceSync', 'async function ');
+  assert.match(mtgRun, /pendingBeforeRun\.filter\(p=>priceSyncProposalGroup\(p\)!=='mtg'\)/,
+    'a finished MTG sync replaces older pending MTG rows instead of keeping stale prices on screen');
   console.log('Price sync review list category scoping checks passed');
 }
