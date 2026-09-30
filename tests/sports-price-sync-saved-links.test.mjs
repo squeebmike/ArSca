@@ -156,6 +156,8 @@ const product = (prices, extra = {}) => reply({ ok:true, product:{ productName:'
   const { pcGradeBucket } = load(() => reply({}));
   assert.equal(pcGradeBucket('PSA', '10'), 'psa10');
   assert.equal(pcGradeBucket('SGC', '10'), 'sgc10');
+  assert.equal(pcGradeBucket('BECKETT', '10'), 'bgs10', 'Beckett is BGS');
+  assert.equal(pcGradeBucket('BECKETT', '9.5'), 'grade9_5');
   assert.equal(pcGradeBucket('CGC', '10'), 'cgc10');
   assert.equal(pcGradeBucket('BGS', '9.5'), 'grade9_5');
   assert.equal(pcGradeBucket('PSA', 'PSA 8'), 'grade8');
