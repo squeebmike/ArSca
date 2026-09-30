@@ -26,6 +26,8 @@ function makeContext() {
       { id: 'aaaaaaaa-0000-0000-0000-000000000004', name: 'Julio Rodriguez', set: 'Baseball Cards 2022 Topps Update', category: 'Sports', qty: 1, status: 'in_stock', grader: 'PSA', condition: 'NM', listPrice: 90, market: 90 },
       { id: 'foc-2', name: 'SAGA #70 CVR A', category: 'Comic', qty: 2, status: 'in_stock', condition: 'NM', listPrice: 5, market: 5, raw: { focCycleId: 'cycle-sep', focReceivedAt: '2026-09-29T18:00:00Z' } },
       { id: 'foc-old', name: 'OLD WEEK #1', category: 'Comic', qty: 1, status: 'in_stock', listPrice: 5, market: 5, raw: { focCycleId: 'cycle-aug', focReceivedAt: '2026-08-20T18:00:00Z' } },
+      { id: 'foc-presale', name: 'NOT OUT YET #1 - PRESALE', category: 'Comic', qty: 10, status: 'presale', lifecycle: 'presale', listPrice: 5, market: 5, raw: { source: 'foc_presale', focCycleId: 'cycle-sep' } },
+      { id: 'foc-presale-only', name: 'OCTOBER BOOK #2 - PRESALE', category: 'Comic', qty: 20, status: 'presale', listPrice: 5, market: 5, raw: { source: 'foc_presale', focCycleId: 'cycle-oct' } },
       { id: 'foc-sold', name: 'SOLD WEEK BOOK', category: 'Comic', qty: 0, status: 'sold', raw: { focCycleId: 'cycle-sep' } },
       { id: 'aaaaaaaa-0000-0000-0000-000000000005', name: 'Bin of stuff', category: 'Collectibles', qty: 1, status: 'in_stock', listPrice: 5, market: 5 },
       { id: '54c8313b-d067-410c-a12a-5eede06c1217', name: 'ADVENTURE TIME HALLOWEEN SPECIAL #1 CVR A SEAN DOVE - PRESALE', category: 'Comic', qty: 1, status: 'in_stock', condition: 'NM', cost: 4, listPrice: 6, market: 6,
@@ -193,10 +195,15 @@ let shipHtml = elements['whatnot-bridge'].innerHTML;
 assert.match(shipHtml, /PRH FOC 2026-09-07 · received 2026-09-30 · 2 books in stock/);
 assert.match(shipHtml, /Lunar FOC 2026-08-03 · received 2026-08-20 · 1 book in stock/);
 assert.ok(shipHtml.indexOf('2026-09-07') < shipHtml.indexOf('2026-08-03'), 'newest shipment first');
+assert.doesNotMatch(shipHtml, /cycle-oct/, 'a week with only presale placeholders is not a shipment');
 ctx.WB.set('shipment', 'cycle-sep');
 ctx.WB.download();
 const shipRows = downloads[downloads.length - 1].rows.slice(1).map(r => r[col('SKU')]);
-assert.deepEqual([...shipRows].sort(), ['54c8313b-d067-410c-a12a-5eede06c1217', 'foc-2'], 'only that week\'s in-stock books');
+assert.deepEqual([...shipRows].sort(), ['54c8313b-d067-410c-a12a-5eede06c1217', 'foc-2'], 'only that week\'s in-stock books, never presale placeholders');
+shipHtml = elements['whatnot-bridge'].innerHTML;
+assert.match(shipHtml, /See the 2 items going in this file/);
+assert.match(shipHtml, /SAGA #70 CVR A ×2/);
+assert.doesNotMatch(shipHtml, /NOT OUT YET/);
 
 // The FOC cover wall's SEND TO WHATNOT button lands on the same selection.
 ctx.WB.set('source', 'selected');
