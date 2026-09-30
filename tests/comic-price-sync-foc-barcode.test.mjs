@@ -76,6 +76,8 @@ function loadSync({ items, upcProducts = {}, batchProducts = {} }) {
       calls.upc.push(body.upcs);
       const products = {};
       body.upcs.forEach(u => { products[u] = upcProducts[u] || { ok:false, error:'none' }; });
+      (body.items || []).forEach(item => { if(upcProducts[item.key]) products[item.key] = upcProducts[item.key]; });
+      calls.items = (calls.items || []).concat(body.items || []);
       return { ok:true, json:async () => ({ ok:true, products }) };
     }
     if(path === '/pricing/pricecharting/products/batch'){
@@ -94,6 +96,7 @@ function loadSync({ items, upcProducts = {}, batchProducts = {} }) {
     extractFn('comicInventoryPricechartingId'),
     extractFn('comicInventoryPriceSyncItems'),
     extractFn('comicInventoryFullUpc'),
+    extractFn('comicInventoryTitleHint'),
     extractFn('comicSyncedGuidePrice'),
     extractFn('buildLiveComicPriceSyncProposal', 'async function '),
     'return { build: buildLiveComicPriceSyncProposal, items: comicInventoryPriceSyncItems, summary: () => _priceSyncLastSummary };',
@@ -137,6 +140,75 @@ const comicProduct = (id, ungraded, name = 'Book') => ({ ok:true, product:{ prod
   assert.equal(s.processed, 4);
   const missing = s.issues.find(i => i.item.id === 'r3');
   assert.equal(missing.title, 'Not on PriceCharting yet');
+}
+
+// ── Worker: title fallback when PriceCharting hasn't saved the barcode ──
+// Store report: every FOC book came back "Not on PriceCharting yet" even
+// though the covers were listed -- PriceCharting just hadn't stored their
+// full barcode. A title match is only taken when series + issue + cover
+// single out one product.
+{
+  const searchCalls = [];
+  const products = [
+    { id:'700', 'product-name':'Teenage Mutant Ninja Turtles: The Hunger #1', 'console-name':'Comic Books Teenage Mutant Ninja Turtles: The Hunger', 'loose-price':600 },
+    { id:'701', 'product-name':'Teenage Mutant Ninja Turtles: The Hunger #1 [Madan]', 'console-name':'Comic Books Teenage Mutant Ninja Turtles: The Hunger', 'loose-price':1200 },
+    { id:'702', 'product-name':'Teenage Mutant Ninja Turtles: The Hunger #1 [Eastman 1:25]', 'console-name':'Comic Books Teenage Mutant Ninja Turtles: The Hunger', 'loose-price':4000 },
+    { id:'703', 'product-name':'Teenage Mutant Ninja Turtles: The Hunger #1 [Eastman 1:50]', 'console-name':'Comic Books Teenage Mutant Ninja Turtles: The Hunger', 'loose-price':8000 },
+    { id:'800', 'product-name':'Teenage Mutant Ninja Turtles: The Hunger Games #1 [Madan]', 'console-name':'Comic Books Hunger Games', 'loose-price':99900 },
+  ];
+  const originalFetch = globalThis.fetch, originalCaches = globalThis.caches;
+  globalThis.caches = { default: { match: async () => null, put: async () => {} } };
+  globalThis.fetch = async (input) => {
+    const url = new URL(String(input));
+    if (url.hostname.endsWith('pricecharting.com') && url.pathname === '/api/product') {
+      return new Response(JSON.stringify({ status:'error', 'error-message':'No such product' }), { headers:{ 'Content-Type':'application/json' } });
+    }
+    if (url.hostname.endsWith('pricecharting.com') && url.pathname === '/api/products') {
+      searchCalls.push(url.searchParams.get('q'));
+      return new Response(JSON.stringify({ status:'success', products }), { headers:{ 'Content-Type':'application/json' } });
+    }
+    return new Response('{}', { headers:{ 'Content-Type':'application/json' } });
+  };
+  try {
+    const { default: api } = await import('../cloudflare-worker-full.js');
+    const env = { PRICECHARTING_TOKEN:'test-only' };
+    const res = await api.fetch(new Request('https://worker.test/pricing/pricecharting/comics/by-upc', { method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify({ items:[
+      { key:'a', upc:'82771403593300111', series:'Teenage Mutant Ninja Turtles: The Hunger', issue:'1', cover:'Cover A (Smith)' },
+      { key:'b', upc:'82771403593300121', series:'Teenage Mutant Ninja Turtles: The Hunger', issue:'1', cover:'Variant B (Madan) Variant Title' },
+      { key:'c', upc:'', series:'Teenage Mutant Ninja Turtles: The Hunger', issue:'1', cover:'Cover C 1:25 Eastman' },
+      { key:'d', upc:'', series:'Teenage Mutant Ninja Turtles: The Hunger', issue:'1', cover:'Cover E Eastman' },
+    ] }) }), env, { waitUntil(){} });
+    const data = await res.json();
+    assert.equal(data.ok, true);
+    assert.equal(data.products.a.product.productId, '700', 'Cover A is the plain issue');
+    assert.equal(data.products.a.via, 'title');
+    assert.equal(data.products.b.product.productId, '701', 'the artist names the variant cover');
+    assert.equal(data.products.c.product.productId, '702', 'the ratio picks between same-artist covers');
+    assert.equal(data.products.d.ok, false, 'two equally good covers are never guessed between');
+    assert.match(data.products.d.error, /no single cover matched/);
+    assert.equal(new Set(searchCalls).size, searchCalls.length, 'each title search is only paid for once per batch');
+  } finally {
+    globalThis.fetch = originalFetch; globalThis.caches = originalCaches;
+  }
+  console.log('Worker comic title fallback checks passed');
+}
+
+// ── Dashboard: FOC books send their series/issue/cover hint ──
+{
+  const hint = new Function(extractFn('comicInventoryTitleHint') + '\nreturn comicInventoryTitleHint;')();
+  assert.deepEqual(hint({ name:'Teenage Mutant Ninja Turtles: The Hunger Variant B (Madan) -- Variant Title', series:'Teenage Mutant Ninja Turtles: The Hunger', issue:'' }),
+    { series:'Teenage Mutant Ninja Turtles: The Hunger', issue:'1', cover:'Variant B (Madan) Variant Title' });
+  assert.deepEqual(hint({ name:'MIDNIGHT FANTASTIC FOUR #1 COVER F CLAYTON CRAIN 3-PART CONNECTING VARIANT', series:'Midnight Fantastic Four' }),
+    { series:'Midnight Fantastic Four', issue:'1', cover:'COVER F CLAYTON CRAIN 3-PART CONNECTING VARIANT' });
+  assert.equal(hint({ name:'Loose book' }), null, 'no series, no title lookup');
+
+  const book = { id:'t1', category:'Comic', source:'foc_receive', status:'in_stock', name:'Teenage Mutant Ninja Turtles: The Hunger Variant B (Madan)', series:'Teenage Mutant Ninja Turtles: The Hunger', upc:'82771403593300121', market:4.99 };
+  const { build, calls } = loadSync({ items:[book], upcProducts:{ t1:{ ...comicProduct('701', 12, 'Teenage Mutant Ninja Turtles: The Hunger #1 [Madan]'), via:'title' } } });
+  const proposal = await build({});
+  assert.deepEqual(calls.items[0], { key:'t1', upc:'82771403593300121', series:'Teenage Mutant Ninja Turtles: The Hunger', issue:'1', cover:'Variant B (Madan)' });
+  assert.equal(proposal[0].newPrice, 12);
+  assert.match(proposal[0].matchStatus, /title match: .*\[Madan\]/, 'a title match is labelled so the dealer can check the cover');
+  assert.deepEqual(calls.saves, [], 'a title match is never saved without review');
 }
 
 console.log('Comic price sync links FOC books by barcode checks passed');

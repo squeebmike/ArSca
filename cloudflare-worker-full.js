@@ -12629,6 +12629,40 @@ async function routeRequest(request, env, ctx) {
         }).filter(match => match.seriesMatch && match.numberMatch && match.yearMatch)
           .sort((a, b) => b.score - a.score).map(match => ({ ...match.candidate, comicMatchScore:match.score }));
       };
+      // Cover hint from an inventory comic's own title, e.g. "Cover F Clayton
+      // Crain 3-Part Connecting Variant" or "Variant B (Madan)": the cover
+      // letter, a 1:N ratio, and the remaining descriptive words (artist...).
+      const COMIC_COVER_STOP_WORDS = new Set(['cover','cvr','variant','var','title','the','and','issue','comic','comics','edition','part','copy','regular']);
+      const comicCoverHint = text => {
+        const raw = String(text || '');
+        const letter = (raw.match(/\b(?:cover|cvr|variant|var)\s+([a-z])\b/i)?.[1] || '').toLowerCase();
+        const ratio = raw.match(/\b1\s*:\s*(\d{1,4})\b/)?.[1] || '';
+        const words = [...new Set(normalizeComicRunText(raw.replace(/\b1\s*:\s*\d+\b/g, ' ')).split(' ')
+          .filter(word => word.length > 2 && !COMIC_COVER_STOP_WORDS.has(word) && !/^\d+$/.test(word)))];
+        return { letter, ratio, words };
+      };
+      // Picks exactly one PriceCharting cover among same-series, same-issue
+      // candidates, or none -- a bulk price sync never guesses between covers.
+      const pickComicCoverCandidate = (candidates, seriesName, cover) => {
+        const seriesWords = new Set(normalizeComicRunText(seriesName).split(' '));
+        const scored = (candidates || []).map(product => {
+          const name = String(product.productName || '');
+          const afterIssue = name.replace(/^.*?#\s*[0-9]+(?:\.[0-9]+)?[a-z]?/i, ' ');
+          const extraWords = normalizeComicRunText(afterIssue + ' ' + (comicPcIdentity(product).descriptor || '')).split(' ').filter(word => word && !seriesWords.has(word));
+          const extra = ' ' + extraWords.join(' ') + ' ';
+          let score = cover.words.filter(word => extra.includes(' ' + word + ' ')).length;
+          if (cover.ratio && new RegExp('\\b1\\s*:\\s*' + cover.ratio + '\\b').test(name)) score += 2;
+          if (cover.letter && new RegExp(' (?:cover|cvr|variant|var) ' + cover.letter + ' ').test(extra)) score += 2;
+          return { product, score, plain: !extraWords.length };
+        });
+        const plain = scored.filter(row => row.plain);
+        const wantsMainCover = (!cover.letter || cover.letter === 'a') && !cover.ratio;
+        if (wantsMainCover && plain.length === 1 && (cover.letter === 'a' || !cover.words.length)) return { product: plain[0].product, candidates: [] };
+        const ranked = scored.filter(row => row.score > 0).sort((a, b) => b.score - a.score);
+        if (ranked.length && (ranked.length === 1 || ranked[0].score > ranked[1].score)) return { product: ranked[0].product, candidates: [] };
+        if (wantsMainCover && plain.length === 1 && !ranked.length) return { product: plain[0].product, candidates: [] };
+        return { product: null, candidates: (ranked.length ? ranked : scored).map(row => row.product) };
+      };
       const bestComicPcCandidate = (candidates, issue) => {
         return matchingComicPcCandidates(candidates, issue)[0] || null;
       };
@@ -13855,20 +13889,61 @@ async function routeRequest(request, env, ctx) {
         if (url.pathname === '/pricing/pricecharting/comics/by-upc' && request.method === 'POST') {
           let body = {};
           try { body = await request.json(); } catch (_) {}
-          const upcs = Array.isArray(body.upcs) ? [...new Set(body.upcs.map(v => String(v || '').replace(/\D/g, '')).filter(v => v.length === 17))].slice(0, 15) : [];
-          if (!upcs.length) return json({ ok: false, error: 'upcs required (17-digit comic barcodes, max 15 per batch)' }, 400);
-          const products = {};
-          for (const upc of upcs) {
-            let found = null, lastError = '';
-            for (const code of [upc, upc.slice(0, 12)]) {
-              try {
-                const data = await pcFetch('/api/product', { upc: code });
-                const product = normalizePcProduct(data, data['product-name'] || '');
-                const savedUpc = String(data.upc || '').replace(/\D/g, '');
-                if (product.productId && /^comic books\b/i.test(product.consoleName || '') && savedUpc === upc) { found = product; break; }
-              } catch (error) { lastError = String(error.message || error); }
+          // body.items (current dashboards): [{ key, upc, series, issue, cover }]
+          // -- barcode first, then an exact series + issue + cover title match.
+          // body.upcs (older dashboards): barcode only, keyed by barcode.
+          const cleanText = (v, max) => String(v || '').replace(/\s+/g, ' ').trim().slice(0, max);
+          const requests = Array.isArray(body.items)
+            ? body.items.slice(0, 15).map(item => ({
+                key: cleanText(item?.key, 80),
+                upc: String(item?.upc || '').replace(/\D/g, ''),
+                series: cleanText(item?.series, 160),
+                issue: cleanText(item?.issue, 20).replace(/^#/, ''),
+                cover: cleanText(item?.cover, 200),
+              })).filter(item => item.key && (item.upc.length === 17 || (item.series && item.issue)))
+            : [...new Set((Array.isArray(body.upcs) ? body.upcs : []).map(v => String(v || '').replace(/\D/g, '')).filter(v => v.length === 17))].slice(0, 15).map(upc => ({ key: upc, upc }));
+          if (!requests.length) return json({ ok: false, error: 'items (or upcs) required -- 17-digit comic barcodes or series + issue, max 15 per batch' }, 400);
+          const searchCache = new Map();
+          const searchComics = async q => {
+            if (!searchCache.has(q)) {
+              searchCache.set(q, pcFetch('/api/products', { q })
+                .then(data => (data.products || []).map(p => normalizePcProduct(p, q)).filter(isComicPcCandidate))
+                .catch(() => []));
             }
-            products[upc] = found ? { ok: true, product: found } : { ok: false, error: lastError || 'No PriceCharting comic with this exact barcode yet' };
+            return searchCache.get(q);
+          };
+          const products = {};
+          for (const req of requests) {
+            let found = null, lastError = '', via = '';
+            if (req.upc.length === 17) {
+              for (const code of [req.upc, req.upc.slice(0, 12)]) {
+                try {
+                  const data = await pcFetch('/api/product', { upc: code });
+                  const product = normalizePcProduct(data, data['product-name'] || '');
+                  // PriceCharting can store several barcodes on one product.
+                  const savedUpcs = String(data.upc || '').split(/[^0-9]+/).filter(Boolean);
+                  if (product.productId && /^comic books\b/i.test(product.consoleName || '') && savedUpcs.includes(req.upc)) { found = product; via = 'barcode'; break; }
+                } catch (error) { lastError = String(error.message || error); }
+              }
+            }
+            let ambiguous = [];
+            if (!found && req.series && req.issue) {
+              const issue = { seriesName: req.series, number: req.issue };
+              const cover = comicCoverHint(req.cover);
+              const queries = [[req.series, '#' + req.issue].join(' ')];
+              if (cover.words.length) queries.push([req.series, '#' + req.issue, ...cover.words.slice(0, 2)].join(' '));
+              const seen = new Map();
+              for (const q of queries) {
+                (await searchComics(q)).forEach(p => { if (p.productId && !seen.has(p.productId)) seen.set(p.productId, p); });
+                const pick = pickComicCoverCandidate(matchingComicPcCandidates([...seen.values()], issue), req.series, cover);
+                if (pick.product) { found = pick.product; via = 'title'; break; }
+                ambiguous = pick.candidates;
+              }
+              if (!found && !lastError) lastError = ambiguous.length
+                ? 'PriceCharting lists ' + req.series + ' #' + req.issue + ' but no single cover matched "' + (req.cover || 'Cover A') + '": ' + ambiguous.slice(0, 4).map(p => p.productName).join(' | ')
+                : 'No PriceCharting comic for ' + req.series + ' #' + req.issue + ' yet';
+            }
+            products[req.key] = found ? { ok: true, via, product: found } : { ok: false, error: lastError || 'No PriceCharting comic with this exact barcode yet' };
           }
           return json({ ok: true, source: 'PriceCharting', products });
         }
