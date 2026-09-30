@@ -1,0 +1,166 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import vm from 'node:vm';
+
+// Whatnot bridge: the export must match Whatnot's own template exactly, and
+// the show-report import must record each sale once, only for matched,
+// non-cancelled rows.
+const src = fs.readFileSync('scripts/whatnot-bridge.js', 'utf8');
+const dash = fs.readFileSync('dashboard.html', 'utf8');
+const templateHeader = fs.readFileSync('tests/fixtures/whatnot-csv-template.csv', 'utf8').split(/\r?\n/)[0].split(',');
+
+// Same parser the dashboard uses.
+const parseStart = dash.indexOf('function parseCSV(text){');
+const parseCSVSrc = dash.slice(parseStart, dash.indexOf('\n}', parseStart) + 2);
+
+function makeContext() {
+  const elements = {};
+  const downloads = [];
+  const calls = [];
+  const payments = new Set();
+  const ctx = {
+    console, Set, Map, Promise, JSON, Math, Number, String, Date, Array, Object, RegExp, isNaN,
+    all: [
+      { id: 'aaaaaaaa-0000-0000-0000-000000000001', name: 'Charizard', set: 'Base Set', card_number: '4', category: 'Pokemon TCG', qty: 1, status: 'in_stock', cost: 50, condition: 'NM', photos: ['https://img.example/c.jpg', 'blob:local'], listPrice: 300, market: 280 },
+      { id: 'aaaaaaaa-0000-0000-0000-000000000002', name: 'Mike Trout', set: '2011 Topps Update', category: 'Sports', qty: 1, status: 'in_stock', cost: 0, listPrice: 40, market: 40 },
+      { id: 'aaaaaaaa-0000-0000-0000-000000000003', name: 'Sold Thing', category: 'Sports', qty: 0, status: 'sold' },
+    ],
+    inventoryBulkSelectedIds: new Set(['aaaaaaaa-0000-0000-0000-000000000001', 'aaaaaaaa-0000-0000-0000-000000000002']),
+    activeTab: 'whatnot',
+    inventoryProfitStats: i => ({ list: Number(i.listPrice || 0), market: Number(i.market || 0) }),
+    inventoryImageUrl: () => '',
+    whatnotFeeSettings: () => ({ pct: 10, flat: 0.5 }),
+    downloadCSV: (name, rows) => downloads.push({ name, rows }),
+    toast_dash: () => {}, logOpsEvent: () => {}, loadInventory: async () => {},
+    confirm: () => true,
+    storeWorkerFetch: async (path, opts = {}) => {
+      const body = opts.body ? JSON.parse(opts.body) : null;
+      calls.push({ path, body });
+      if (path === '/store/whatnot-settings') return new Response(JSON.stringify({ ok: true, settings: body ? body.settings : {} }), { status: 200 });
+      if (path === '/inventory/record-external-sale') {
+        if (payments.has(body.externalRef)) return new Response(JSON.stringify({ ok: true, duplicate: true }), { status: 200 });
+        payments.add(body.externalRef);
+        return new Response(JSON.stringify({ ok: true, profit: 1 }), { status: 200 });
+      }
+      return new Response('{}', { status: 404 });
+    },
+    FileReader: class { readAsText(file) { this.result = file.text; setTimeout(() => this.onload(), 0); } },
+    document: { getElementById: id => (elements[id] ||= { innerHTML: '', id }) },
+    setTimeout,
+    Response,
+  };
+  ctx.window = ctx;
+  vm.createContext(ctx);
+  vm.runInContext(parseCSVSrc, ctx);
+  vm.runInContext(src, ctx);
+  return { ctx, downloads, calls, elements };
+}
+
+const { ctx, downloads, calls, elements } = makeContext();
+await new Promise(r => setTimeout(r, 10));
+assert.match(elements['whatnot-bridge'].innerHTML, /SEND ITEMS TO WHATNOT/);
+assert.match(elements['whatnot-bridge'].innerHTML, /IMPORT SHOW RESULTS/);
+
+// Export: only the user's own mapping fills Whatnot's controlled columns.
+ctx.WB.setMap('Pokemon TCG', 'category', 'Trading Card Games');
+ctx.WB.setMap('Pokemon TCG', 'shippingProfile', '0-1 oz');
+ctx.WB.setMap('Pokemon TCG', 'condition', 'New');
+ctx.WB.set('type', 'Auction');
+ctx.WB.set('auctionRule', 'one');
+ctx.WB.download();
+assert.equal(downloads.length, 1);
+const [header, pokemon, sports] = downloads[0].rows;
+assert.deepEqual([...header], templateHeader, 'columns must be exactly Whatnot\'s template order');
+const col = name => header.indexOf(name);
+assert.equal(pokemon[col('Category')], 'Trading Card Games');
+assert.equal(pokemon[col('Shipping Profile')], '0-1 oz');
+assert.equal(pokemon[col('Type')], 'Auction');
+assert.equal(pokemon[col('Price')], '1', 'a $1 starting bid');
+assert.equal(pokemon[col('SKU')], 'aaaaaaaa-0000-0000-0000-000000000001', 'SKU is the dashboard id so the show report can be matched back');
+assert.equal(pokemon[col('Cost Per Item')], '50.00');
+assert.equal(pokemon[col('Hazmat')], 'Not Hazmat');
+assert.equal(pokemon[col('Image URL 1')], 'https://img.example/c.jpg');
+assert.equal(pokemon[col('Image URL 2')], '', 'non-web image URLs are never exported');
+assert.equal(sports[col('Category')], '', 'an unmapped category is left blank, never guessed');
+assert.equal(downloads[0].rows.length, 3, 'sold items are never exported');
+
+// Buy it Now uses the list price, rounded up to whole dollars.
+ctx.WB.set('type', 'Buy it Now');
+ctx.WB.download();
+assert.equal(downloads[1].rows[1][col('Price')], '300');
+assert.equal(downloads[1].rows[1][col('Type')], 'Buy it Now');
+
+// Loading Whatnot's Values tab switches to Whatnot's exact spelling.
+await ctx.WB.loadValues({ text: 'Categories,Sub-categories,Type,Shipping Profile,Condition,Hazmat\nTrading Card Games,Pokémon Cards,Buy It Now,0-1 oz,New,Not Hazmat\nSports Cards,Baseball Cards,Auction,1-3 oz,Used,Hazmat\n' });
+ctx.WB.download();
+assert.equal(downloads[2].rows[1][col('Type')], 'Buy It Now');
+assert.ok(calls.some(c => c.path === '/store/whatnot-settings' && c.body?.settings?.values?.shippingProfiles?.includes('1-3 oz')), 'values are saved for the store');
+
+// Import: SKU rows record; cancelled/unmatched skip; title matches wait for a tick.
+const report = [
+  'Order ID,Order Numeric ID,Product Name,SKU,Sold Price,Quantity,Placed At,Cancelled Or Failed',
+  'W1,111,Charizard - Base Set - #4,aaaaaaaa-0000-0000-0000-000000000001,$120.00,1,2026-10-02T02:00:00Z,false',
+  'W2,112,Mike Trout,,$35.00,1,2026-10-02T02:05:00Z,false',
+  'W3,113,Something Else,,$9.00,1,2026-10-02T02:06:00Z,false',
+  'W4,114,Charizard - Base Set - #4,aaaaaaaa-0000-0000-0000-000000000001,$99.00,1,2026-10-02T02:07:00Z,true',
+].join('\n');
+await ctx.WB.loadReport({ text: report });
+const html = elements['whatnot-bridge'].innerHTML;
+assert.match(html, /1 matched by SKU/);
+assert.match(html, /1 matched by title/);
+assert.match(html, /RECORD 1 SALE</);
+await ctx.WB.recordSales();
+const sales = calls.filter(c => c.path === '/inventory/record-external-sale');
+assert.equal(sales.length, 1, 'only the SKU-matched, non-cancelled row is recorded');
+assert.equal(sales[0].body.channel, 'Whatnot');
+assert.equal(sales[0].body.salePrice, 120);
+assert.equal(sales[0].body.feeAmount, 12.5, 'fee estimated from the Whatnot fee setting when the report has none');
+assert.equal(sales[0].body.externalRef, 'whatnot:W1:aaaaaaaa-0000-0000-0000-000000000001');
+assert.equal(sales[0].body.soldAt, '2026-10-02T02:00:00.000Z');
+
+// Loading and recording the same report again records nothing new.
+await ctx.WB.loadReport({ text: report });
+await ctx.WB.recordSales();
+assert.match(elements['whatnot-bridge'].innerHTML, /Already recorded/);
+console.log('Whatnot bridge export/import checks passed');
+
+// Worker: a repeated externalRef is a no-op, and the ref is stored.
+const originalFetch = globalThis.fetch, originalCaches = globalThis.caches;
+const posts = [];
+let existingRef = false;
+globalThis.caches = { default: { match: async () => null, put: async () => {} } };
+globalThis.fetch = async (input, init = {}) => {
+  const url = String(input);
+  const ok = d => new Response(JSON.stringify(d), { headers: { 'Content-Type': 'application/json' } });
+  if (url.includes('/auth/v1/user')) return ok({ id: 'user-1', email: 'staff@example.com' });
+  if (url.includes('store_members')) return ok([{ role: 'owner' }]);
+  if (url.includes('pos_payments?store_id=') && url.includes('reference=eq.')) return ok(existingRef ? [{ id: 'p1', sale_id: 's1' }] : []);
+  if (url.includes('inventory_items?id=eq.')) {
+    if ((init.method || 'GET') === 'GET') return ok([{ id: 'item-1', status: 'in_stock', data: { name: 'Charizard', qty: 1, cost: 50 } }]);
+    return ok([]);
+  }
+  if ((init.method || 'GET') === 'POST') { posts.push({ url, body: JSON.parse(init.body) }); return ok([]); }
+  return ok([]);
+};
+try {
+  const { default: api } = await import('../cloudflare-worker-full.js');
+  const env = { SUPABASE_URL: 'https://database.example', SUPABASE_SERVICE_ROLE_KEY: 'test-only' };
+  const call = () => api.fetch(new Request('https://api.example/inventory/record-external-sale', { method: 'POST', headers: { Authorization: 'Bearer t', 'X-Store-Id': 'store-1', 'Content-Type': 'application/json' }, body: JSON.stringify({ itemId: 'item-1', channel: 'Whatnot', salePrice: 120, feeAmount: 12, externalRef: 'whatnot:W1:item-1' }) }), env, { waitUntil() {} });
+  let data = await (await call()).json();
+  assert.equal(data.ok, true);
+  const payment = posts.find(p => p.url.includes('/pos_payments'));
+  assert.equal(payment.body.reference, 'whatnot:W1:item-1', 'the Whatnot order reference is saved on the payment');
+  existingRef = true; posts.length = 0;
+  data = await (await call()).json();
+  assert.equal(data.duplicate, true);
+  assert.equal(posts.length, 0, 'a repeated reference writes nothing');
+} finally {
+  globalThis.fetch = originalFetch;
+  globalThis.caches = originalCaches;
+}
+console.log('record-external-sale duplicate guard checks passed');
+
+// Dashboard wiring.
+assert.match(dash, /<div id="whatnot-bridge"><\/div>/);
+assert.match(dash, /<script src="scripts\/whatnot-bridge\.js\?v=[^"]+" defer><\/script>/);
+assert.match(dash, /if\(name === 'whatnot' && window\.renderWhatnotBridge\)/);

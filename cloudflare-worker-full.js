@@ -11175,6 +11175,27 @@ async function routeRequest(request, env, ctx) {
     // and in-store POS checkout already write, so it shows up in sales
     // history and profit stats identically -- no separate code path to keep
     // in sync later.
+    // GET/POST /store/whatnot-settings -- the Whatnot export mapping (each
+    // dashboard category -> Whatnot Category/Sub Category/Shipping Profile/
+    // Condition), export defaults, and the allowed values loaded from
+    // Whatnot's own template. Its own KV key per store, so saving it can
+    // never overwrite other store settings.
+    if (url.pathname === '/store/whatnot-settings' && (request.method === 'GET' || request.method === 'POST')) {
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId, request.method === 'GET' ? undefined : ['owner','admin','manager']);
+      if (auth.error) return auth.error;
+      if (!env.LBA_KV) return json({ ok: false, error: 'Settings storage is not configured' }, 503);
+      const key = `whatnot-settings:${storeId}`;
+      if (request.method === 'GET') return json({ ok: true, settings: await env.LBA_KV.get(key, 'json').catch(() => null) || {} });
+      const parsed = await readJsonWithLimit(request, 256 * 1024);
+      if (parsed.error) return parsed.error;
+      const settings = parsed.data?.settings;
+      if (!settings || typeof settings !== 'object' || Array.isArray(settings)) return json({ ok: false, error: 'settings object is required' }, 400);
+      const saved = { ...settings, updatedAt: new Date().toISOString(), updatedBy: auth.user?.email || auth.user?.id || '' };
+      await env.LBA_KV.put(key, JSON.stringify(saved));
+      return json({ ok: true, settings: saved });
+    }
+
     if (url.pathname === '/inventory/record-external-sale' && request.method === 'POST') {
       const storeId = requestStoreId(request, url);
       const auth = await requireStoreUser(request, env, storeId, ['owner','admin','manager','employee']);
@@ -11189,6 +11210,14 @@ async function routeRequest(request, env, ctx) {
         if (!itemId) return json({ ok: false, error: 'itemId is required' }, 400);
         if (!channel) return json({ ok: false, error: 'channel is required' }, 400);
         if (!(salePrice > 0)) return json({ ok: false, error: 'salePrice must be greater than 0' }, 400);
+        // Optional marketplace order reference (e.g. "whatnot:<order id>"
+        // from an imported Whatnot show report). Re-importing the same
+        // report finds the payment already recorded and does nothing.
+        const externalRef = String(body.externalRef || '').trim().slice(0, 120);
+        if (externalRef) {
+          const { data: existingPayments } = await supabaseAdminFetch(env, `pos_payments?store_id=eq.${encodeURIComponent(storeId)}&reference=eq.${encodeURIComponent(externalRef)}&select=id,sale_id&limit=1`);
+          if (existingPayments?.length) return json({ ok: true, duplicate: true, itemId, saleId: existingPayments[0].sale_id, channel });
+        }
 
         const { data: rows } = await supabaseAdminFetch(env, `inventory_items?id=eq.${encodeURIComponent(itemId)}&store_id=eq.${encodeURIComponent(storeId)}&select=id,data,status&limit=1`);
         const invRow = rows?.[0];
@@ -11206,7 +11235,7 @@ async function routeRequest(request, env, ctx) {
         await supabaseAdminFetch(env, 'pos_sale_lines', { method: 'POST', headers: { Prefer: 'return=minimal' },
           body: JSON.stringify([{ id: crypto.randomUUID(), sale_id: saleId, store_id: storeId, item_id: invRow.id, title: d.name || 'Item', category: d.category || '', quantity: quantitySold, unit_price: salePrice / quantitySold, original_price: salePrice / quantitySold, adjusted_price: salePrice / quantitySold, discount_amount: 0, cost_basis: cost, profit, condition: d.condition || '', image_url: d.thumbnail || d.image || '' }]) });
         await supabaseAdminFetch(env, 'pos_payments', { method: 'POST', headers: { Prefer: 'return=minimal' },
-          body: JSON.stringify({ id: crypto.randomUUID(), sale_id: saleId, store_id: storeId, method: channel, amount: salePrice, status: 'confirmed', provider: channel.toLowerCase(), currency: 'USD', confirmed_by: auth.user.id, confirmed_at: soldAt, created_at: soldAt }) });
+          body: JSON.stringify({ id: crypto.randomUUID(), sale_id: saleId, store_id: storeId, method: channel, amount: salePrice, status: 'confirmed', provider: channel.toLowerCase(), currency: 'USD', confirmed_by: auth.user.id, confirmed_at: soldAt, created_at: soldAt, ...(externalRef ? { reference: externalRef } : {}) }) });
 
         const currentQty = Number(d.quantity ?? d.qty ?? 1) || 0;
         const remaining = Math.max(0, currentQty - quantitySold);
