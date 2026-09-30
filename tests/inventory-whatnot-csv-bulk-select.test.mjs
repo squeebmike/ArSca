@@ -35,27 +35,18 @@ assert.match(dashboard.slice(barStart, barStart + 200), /style="display:none;/, 
 assert.match(dashboard, /function renderInvBulkBar\(\)\{/, 'missing renderInvBulkBar');
 assert.match(dashboard, /bar\.style\.display = n>0 \? '' : 'none';/, 'renderInvBulkBar must toggle the bar\'s visibility based on selection count');
 
-// The CSV export itself.
-assert.match(dashboard, /function whatnotCsvRowsFromItems\(items\)\{/, 'missing whatnotCsvRowsFromItems');
-const fnStart = dashboard.indexOf('function whatnotCsvRowsFromItems(items){');
-const fnEnd = dashboard.indexOf('\n}', fnStart) + 2;
-const fn = dashboard.slice(fnStart, fnEnd);
-for (const col of ['Title','Description','Quantity','Price','SKU','Category','Sub Category','Type','Condition','Shipping Profile','Offerable','Image URL 1','Image URL 8']) {
-  assert.ok(fn.includes(`'${col}'`), `Whatnot CSV header must include column "${col}"`);
-}
-// Columns Whatnot enforces its own controlled vocabulary for (this app has
-// no source of truth for Whatnot's own category taxonomy or shipping
-// profile names) must be left blank rather than guessed -- a wrong value
-// there risks the row being silently mis-categorized or rejected on import.
-assert.match(fn, /title, description, i\.qty\|\|1, price>0\?price\.toFixed\(2\):'', i\.id, '', '', '', i\.condition\|\|'', '', '',/, 'Category/Sub Category/Type/Shipping Profile/Offerable must be left blank, not guessed from this app\'s own unrelated category field');
-
+// The bulk bar's EXPORT TO WHATNOT CSV hands the checked items to the
+// Whatnot tab's export panel (scripts/whatnot-bridge.js), which writes
+// Whatnot's exact template columns -- see tests/whatnot-bridge.test.mjs for
+// the CSV itself, including that unmapped Whatnot categories stay blank
+// rather than guessed from this app's own category names.
 assert.match(dashboard, /function exportSelectedToWhatnotCsv\(\)\{/, 'missing exportSelectedToWhatnotCsv');
 const exportStart = dashboard.indexOf('function exportSelectedToWhatnotCsv(){');
 const exportEnd = dashboard.indexOf('\n}', exportStart) + 2;
 const exportFn = dashboard.slice(exportStart, exportEnd);
 assert.match(exportFn, /const items = all\.filter\(i => inventoryBulkSelectedIds\.has\(i\.id\)\);/, 'must export exactly the checked items, not the whole filtered view');
 assert.match(exportFn, /if\(!items\.length\)\{ toast_dash\('Select at least one item first'\); return; \}/, 'must guard against exporting with nothing selected');
-assert.match(exportFn, /downloadCSV\(`whatnot-import-/, 'must reuse the existing downloadCSV helper, not a bespoke download implementation');
-assert.match(exportFn, /logOpsEvent\('whatnot_csv_export',/, 'must log to the ops audit trail like the other bulk actions (eBay bulk list/end, Shopify bulk push)');
+assert.match(exportFn, /switchTab\('whatnot'\);/, 'opens the Whatnot tab export panel');
+assert.match(exportFn, /window\.WB\.set\('source', 'selected'\)/, 'with the checked items chosen');
 
 console.log('Inventory bulk-select and Whatnot CSV export checks passed');

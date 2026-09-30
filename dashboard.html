@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.09.30.02-web-order-alert">
+<meta name="version" content="2026.09.30.03-whatnot-bridge">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1655,21 +1655,22 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.09.30.02-web-order-alert" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.09.30.02-web-order-alert" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.09.30.02-web-order-alert" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.09.30.02-web-order-alert" defer></script>
-<script src="scripts/backlist-dashboard.js?v=2026.09.30.02-web-order-alert" defer></script>
-<script src="scripts/database-viewer.js?v=2026.09.30.02-web-order-alert" defer></script>
-<script src="scripts/card-intake-dashboard.js?v=2026.09.30.02-web-order-alert" defer></script>
-<script src="scripts/mana-pocket-task-library.js?v=2026.09.30.02-web-order-alert" defer></script>
-<script src="scripts/daily-tasks-dashboard.js?v=2026.09.30.02-web-order-alert" defer></script>
+<script src="scripts/query-routing.js?v=2026.09.30.03-whatnot-bridge" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.09.30.03-whatnot-bridge" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.09.30.03-whatnot-bridge" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.09.30.03-whatnot-bridge" defer></script>
+<script src="scripts/backlist-dashboard.js?v=2026.09.30.03-whatnot-bridge" defer></script>
+<script src="scripts/database-viewer.js?v=2026.09.30.03-whatnot-bridge" defer></script>
+<script src="scripts/card-intake-dashboard.js?v=2026.09.30.03-whatnot-bridge" defer></script>
+<script src="scripts/mana-pocket-task-library.js?v=2026.09.30.03-whatnot-bridge" defer></script>
+<script src="scripts/daily-tasks-dashboard.js?v=2026.09.30.03-whatnot-bridge" defer></script>
+<script src="scripts/whatnot-bridge.js?v=2026.09.30.03-whatnot-bridge" defer></script>
 <script src="scripts/research-loupe.js?v=a7de4ffe90" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.09.30.02-web-order-alert" defer></script>
-<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.09.30.02-web-order-alert" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.09.30.02-web-order-alert" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.09.30.02-web-order-alert" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.09.30.02-web-order-alert" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.09.30.03-whatnot-bridge" defer></script>
+<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.09.30.03-whatnot-bridge" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.09.30.03-whatnot-bridge" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.09.30.03-whatnot-bridge" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.09.30.03-whatnot-bridge" defer></script>
 </head>
 <body>
 
@@ -1721,7 +1722,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
 <div class="dsb-chip" id="dsb-tasks" title="Today's Roles &amp; Tasks — click to jump to Tasks tab" style="cursor:pointer;display:none" onclick="switchTab('tasks')">✅ <span>TASKS:</span> <b id="dsb-tasks-val">—</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.09.30.02-web-order-alert</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.09.30.03-whatnot-bridge</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -2766,6 +2767,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <div id="tab-whatnot" class="tab-panel">
   <div class="sec">WHATNOT MODE</div>
   <div style="max-width:640px;margin:0 auto;padding:0 20px 40px">
+    <div id="whatnot-bridge"></div>
     <div id="whatnot-show-panel" style="margin-bottom:14px"></div>
     <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);margin-bottom:12px">Scan an item, punch in what it sold for on Whatnot, hit CONFIRM. Marks it sold immediately -- no cart, no extra checkout steps.</div>
 
@@ -3887,7 +3889,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.09.30.02-web-order-alert';
+const APP_VERSION = '2026.09.30.03-whatnot-bridge';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -19139,41 +19141,17 @@ function renderInvBulkBar(){
   countEl.textContent = n>0 ? `${n} item${n===1?'':'s'} selected` : '';
 }
 
-// Builds a CSV in the shape of Whatnot's own bulk-import template (Seller
-// Hub -> Inventory -> Import from CSV) -- a free, native alternative to
-// their paid Shopify Sales Channel integration for a shop that only needs
-// inventory in Whatnot for occasional live shows, not a standing sync.
-//
-// NOTE: Title/Description/Quantity/Price/SKU/Condition/Image URL 1 are
-// filled from real inventory data. Category, Sub Category, Type, Shipping
-// Profile, and Offerable are left BLANK on purpose -- Whatnot enforces its
-// own controlled vocabulary for these (values must match exactly, see the
-// "Values" tab of Whatnot's own downloaded template) and this app has no
-// source of truth for Whatnot's specific category taxonomy or your
-// configured shipping profile names. Download Whatnot's current template
-// once from Seller Hub and compare column headers before the first real
-// upload -- Whatnot has changed this template's exact columns before.
-function whatnotCsvRowsFromItems(items){
-  const header = ['Title','Description','Quantity','Price','SKU','Category','Sub Category','Type','Condition','Shipping Profile','Offerable','Image URL 1','Image URL 2','Image URL 3','Image URL 4','Image URL 5','Image URL 6','Image URL 7','Image URL 8'];
-  const rows = items.map(i => {
-    const money = inventoryProfitStats(i);
-    const price = money.list>0 ? money.list : money.market;
-    const title = [i.name, i.set, i.variant].filter(Boolean).join(' - ').slice(0, 140);
-    const description = [i.year, i.condition, i.set, i.variant].filter(Boolean).join(' · ');
-    return [
-      title, description, i.qty||1, price>0?price.toFixed(2):'', i.id, '', '', '', i.condition||'', '', '',
-      inventoryImageUrl(i)||'', '', '', '', '', '', '',
-    ];
-  });
-  return [header, ...rows];
-}
-
+// EXPORT TO WHATNOT CSV (Inventory bulk bar) hands the checked items to the
+// Whatnot tab's SEND ITEMS TO WHATNOT panel (scripts/whatnot-bridge.js),
+// which writes Whatnot's exact template columns and fills Category / Sub
+// Category / Shipping Profile / Condition only from the store's own saved
+// mapping -- never guessed from this app's categories.
 function exportSelectedToWhatnotCsv(){
   const items = all.filter(i => inventoryBulkSelectedIds.has(i.id));
   if(!items.length){ toast_dash('Select at least one item first'); return; }
-  downloadCSV(`whatnot-import-${new Date().toISOString().slice(0,10)}.csv`, whatnotCsvRowsFromItems(items));
-  logOpsEvent('whatnot_csv_export', `Exported ${items.length} item(s) to a Whatnot import CSV`, { count: items.length });
-  toast_dash(`Exported ${items.length} item${items.length===1?'':'s'} -- fill in Category/Sub Category/Type/Shipping Profile in the CSV to match your Whatnot template before uploading`);
+  switchTab('whatnot');
+  if(window.WB) window.WB.set('source', 'selected');
+  toast_dash(`${items.length} item${items.length===1?'':'s'} ready -- pick show or shop and listing type, then DOWNLOAD WHATNOT CSV`);
 }
 
 function renderSoldTable(){
@@ -19327,6 +19305,7 @@ function switchTab(name, btn){
   if(name === 'cardintake') setTimeout(()=>window.ensureCardIntakePanel?.(), 0);
   if(name === 'tasks') setTimeout(()=>window.ensureDailyTasksPanel?.(), 0);
   if(name === 'orders') setTimeout(()=>{ renderFocPreorderOrders(); renderStorefrontOrders(); }, 0);
+  if(name === 'whatnot' && window.renderWhatnotBridge) setTimeout(()=>window.renderWhatnotBridge(), 0);
   if(name === 'reports') setTimeout(ensureReportsPanel, 0);
   if(name === 'phone') setTimeout(ensurePhonePanel, 0);
 }
@@ -48008,7 +47987,7 @@ async function toppsLoadParallels(cardId){
   window.__arscaCloseModal = closeModal;
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.09.30.02-web-order-alert" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.09.30.03-whatnot-bridge" defer></script>
 </body>
 </html>
 
