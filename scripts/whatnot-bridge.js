@@ -20,7 +20,9 @@
 //    reference, so importing the same report twice records nothing new.
 
 var TEMPLATE_HEADER = ['Category','Sub Category','Title','Description','Quantity','Type','Price','Shipping Profile','Offerable','Hazmat','Condition','Cost Per Item','SKU','Image URL 1','Image URL 2','Image URL 3','Image URL 4','Image URL 5','Image URL 6','Image URL 7','Image URL 8'];
-var UNSELLABLE = ['sold','archived','returned','deleted','hold','lost_damaged','bundled','sold_pending_pickup','sold_pending_shipment'];
+// presale: a FOC presale placeholder for a book that hasn't arrived --
+// never exported until RECEIVE SHIPMENT turns it into real stock.
+var UNSELLABLE = ['sold','archived','returned','deleted','hold','lost_damaged','bundled','sold_pending_pickup','sold_pending_shipment','presale'];
 // Sports cards: pick "<Sport> Singles" from the card's own set/name text
 // ("Baseball Cards 2023 Topps Chrome") instead of one sub-category for all.
 var SPORT_AUTO = 'Auto by sport';
@@ -63,7 +65,8 @@ function host(){ return document.getElementById('whatnot-bridge'); }
 
 function isSellable(i){
   var status = String(i.status || i.inventoryStatus || '');
-  return Number(i.qty || 0) > 0 && !i.archivedAt && UNSELLABLE.indexOf(status) < 0;
+  var lifecycle = String(i.lifecycle || '');
+  return Number(i.qty || 0) > 0 && !i.archivedAt && UNSELLABLE.indexOf(status) < 0 && UNSELLABLE.indexOf(lifecycle) < 0;
 }
 function categoryOf(i){ return String(i.category || '').trim() || 'Uncategorized'; }
 
@@ -365,7 +368,7 @@ function renderSend(){
         opt('source', 'shipment', 'A FOC shipment', state.source) +
         opt('source', 'category', 'A whole category', state.source) +
         opt('source', 'search', 'Search', state.source) +
-        (state.source === 'shipment' ? (shipments().length ? '<select class="tsi" style="margin:6px 0 0;max-width:420px" onchange="WB.set(\'shipment\',this.value)"><option value="">Pick a shipment</option>' + shipments().map(function(g){ return '<option value="' + esc(g.id) + '"' + (g.id === state.shipment ? ' selected' : '') + '>' + esc(shipmentLabel(g)) + '</option>'; }).join('') + '</select>' : '<div style="margin-top:6px">No in-stock books from a FOC shipment yet -- receive one on the Comics / FOC tab first.</div>') : '') +
+        (state.source === 'shipment' ? (shipments().length ? '<select class="tsi" style="margin:6px 0 0;max-width:420px" onchange="WB.set(\'shipment\',this.value)"><option value="">Pick a shipment</option>' + shipments().map(function(g){ return '<option value="' + esc(g.id) + '"' + (g.id === state.shipment ? ' selected' : '') + '>' + esc(shipmentLabel(g)) + '</option>'; }).join('') + '</select>' : '<div style="margin-top:6px">No received books in stock from a FOC week yet. Presale placeholders don\'t count -- they show up here after RECEIVE SHIPMENT on the Comics / FOC tab.</div>') : '') +
         (state.source === 'category' ? '<select class="tsi" style="margin:6px 0 0;max-width:260px" onchange="WB.set(\'category\',this.value)"><option value="">Pick a category</option>' + allCats.map(function(x){ return '<option' + (x === state.category ? ' selected' : '') + '>' + esc(x) + '</option>'; }).join('') + '</select>' : '') +
         (state.source === 'search' ? '<input class="tsi" style="margin:6px 0 0" placeholder="Name, set, number..." value="' + esc(state.query) + '" onchange="WB.set(\'query\',this.value)">' : '') +
       '</div>' +
@@ -382,10 +385,22 @@ function renderSend(){
         '<button class="hbtn" style="margin-bottom:0" onclick="WB.saveMapping()">SAVE CATEGORY SETTINGS</button></div>' : '') +
       '<div>' + (valuesLoaded ? '<span style="color:var(--g)">Using Whatnot\'s allowed values' + (customValues ? ' (your uploaded Values file)' : ' (Whatnot template, Sep 2026)') + '</span> -- the boxes offer Whatnot\'s own choices and turn red if a value isn\'t on its list. If Whatnot changes its lists, load the new <b>Values</b> tab here.' : 'Load the <b>Values</b> tab of Whatnot\'s CSV template (in Google Sheets: File -> Download -> CSV while on the Values tab).') +
         ' <label class="hbtn" style="display:inline-block;margin:6px 0 0;cursor:pointer">LOAD WHATNOT VALUES<input type="file" accept=".csv,text/csv" style="display:none" onchange="WB.loadValues(this.files[0]);this.value=\'\'"></label></div>' +
+      previewHtml(list) +
       (warn.length ? '<div style="color:var(--gold)">' + warn.join('<br>') + '</div>' : '') +
       '<button class="hbtn" style="width:100%;padding:12px;margin-bottom:0;background:rgba(0,255,179,.12);border-color:rgba(0,255,179,.35);color:var(--g)"' + (list.length ? '' : ' disabled') + ' onclick="WB.download()">DOWNLOAD WHATNOT CSV (' + list.length + ' item' + (list.length === 1 ? '' : 's') + ')</button>' +
       '<div id="wb-after-download"></div>' +
     '</div></div>';
+}
+
+// What will actually go in the file, so the choice isn't a blind count.
+function previewHtml(list){
+  if(!list.length) return '';
+  var rows = list.slice(0, 200).map(function(i){
+    var price = priceFor(i);
+    var photo = imageUrls(i).length ? '' : ' <span style="color:var(--gold)">· no photo</span>';
+    return '<div style="display:flex;justify-content:space-between;gap:8px;padding:4px 0;border-bottom:1px solid var(--border)"><span style="color:var(--text)">' + esc(i.name || 'Item') + (Number(i.qty) > 1 ? ' ×' + Number(i.qty) : '') + photo + '</span><span>' + (price ? '$' + esc(price) : '') + '</span></div>';
+  }).join('');
+  return '<details' + (list.length <= 12 ? ' open' : '') + ' style="border:1px solid var(--border);border-radius:8px;padding:6px 10px"><summary style="cursor:pointer;color:var(--text)">See the ' + list.length + ' item' + (list.length === 1 ? '' : 's') + ' going in this file</summary><div style="max-height:260px;overflow:auto;margin-top:6px">' + rows + '</div>' + (list.length > 200 ? '<div style="margin-top:4px">…and ' + (list.length - 200) + ' more</div>' : '') + '</details>';
 }
 
 function afterDownloadHtml(count){
