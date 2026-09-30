@@ -56,6 +56,7 @@ export async function searchComics(url, deps) {
           and: searchFilter(terms, ['title', 'writer', 'series_name']), order: 'title.asc,id.asc', limit: limit + 1, offset,
         });
         rows = rows.map(row => ({ id: row.id, title: row.title, image: row.cover_image_url,
+          purchaseOptions: row.backlist_skus.map(s => ({ skuId: s.id, priceCents: Number(s.customer_price_cents || s.msrp_cents) })),
           priceCents: Math.min(...row.backlist_skus.map(s => Number(s.customer_price_cents || s.msrp_cents))),
           detail: [row.format_name, row.publisher, 'Ordered from publisher'].filter(Boolean).join(' · '), href: '/book/' + encodeURIComponent(row.id) }));
       }

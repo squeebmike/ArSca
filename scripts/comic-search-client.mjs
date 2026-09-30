@@ -14,7 +14,7 @@ export function comicSearchClient(css, shell) {
   window.__mpComicSearch = true;
   var labels = { stock: 'In stock', preorder: 'Preorder', backorder: 'Backorder' };
   var actions = { stock: 'View in-stock item →', preorder: 'View cover & preorder →', backorder: 'View book & order →' };
-  var host, input, output, status, clear, timer, controller, revision = 0, current = '', sections = {};
+  var host, input, output, status, clear, timer, controller, revision = 0, current = '', sections = {}, bookCartChanged = false;
   var style = document.createElement('style'); style.textContent = css; document.head.appendChild(style);
   function safeUrl(value) { try { var u = new URL(value, location.origin); return ['http:', 'https:'].includes(u.protocol) ? u.href : ''; } catch (_) { return ''; } }
   function node(tag, text, cls) { var el = document.createElement(tag); if (text) el.textContent = text; if (cls) el.className = cls; return el; }
@@ -25,7 +25,35 @@ export function comicSearchClient(css, shell) {
     link.appendChild(node('h3', item.title)); el.appendChild(link);
     el.appendChild(node('p', item.priceCents > 0 ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(item.priceCents / 100) : 'Price coming soon', 'mp-cs-price'));
     el.appendChild(node('p', item.detail));
-    var action = node('a', actions[kind], 'mp-cs-action'); action.href = href; el.appendChild(action); return el;
+    if (kind === 'backorder' && item.purchaseOptions && item.purchaseOptions.length) {
+      var options = item.purchaseOptions, choice;
+      if (options.length > 1) {
+        choice = node('select'); choice.setAttribute('aria-label', 'Choose edition for ' + item.title);
+        options.forEach(function (option, index) { var entry = node('option', 'Edition ' + (index + 1) + ' — $' + (option.priceCents / 100).toFixed(2)); entry.value = String(index); choice.appendChild(entry); });
+        el.appendChild(choice);
+      }
+      var add = node('button', 'Add to cart'), feedback = node('p'); add.type = 'button'; feedback.setAttribute('role', 'status');
+      add.onclick = function () {
+        try {
+          var option = options[choice ? Number(choice.value) : 0];
+          if (!option || !option.skuId || !(option.priceCents > 0)) throw new Error('Edition unavailable');
+          var cart = JSON.parse(localStorage.getItem('mp-backlist-cart-v1') || '[]');
+          if (!Array.isArray(cart)) throw new Error('Cart unavailable');
+          var id = 'backlist:' + option.skuId, existing = cart.find(function (line) { return line.id === id; });
+          if (existing && Number(existing.qty) >= 20) { feedback.textContent = 'Maximum 20 copies per book.'; return; }
+          if (existing) existing.qty = Math.min(20, Number(existing.qty || 1) + 1);
+          else cart.push({ id: id, kind: 'backlist', skuId: option.skuId, name: item.title, image: item.image || '', price: option.priceCents / 100, qty: 1 });
+          localStorage.setItem('mp-backlist-cart-v1', JSON.stringify(cart));
+          bookCartChanged = true;
+          add.textContent = 'Added ✓'; feedback.textContent = 'Added to your book cart.';
+        } catch (_) { feedback.textContent = 'Could not save your cart. Please try again.'; }
+      };
+      el.appendChild(add); el.appendChild(feedback);
+      var cartLink = node('a', 'View book cart →', 'mp-cs-action'); cartLink.href = '/books?cart=1'; el.appendChild(cartLink);
+    } else {
+      var action = node('a', actions[kind], 'mp-cs-action'); action.href = href; el.appendChild(action);
+    }
+    return el;
   }
   function render() {
     output.replaceChildren();
@@ -67,7 +95,11 @@ export function comicSearchClient(css, shell) {
     clearTimeout(timer); revision++; if (controller) controller.abort(); controller = new AbortController();
     var q = input.value.trim(); clear.hidden = !q; document.body.classList.toggle('mp-comic-searching', !!q);
     var u = new URL(location.href); if (q) u.searchParams.set('comic_q', q); else u.searchParams.delete('comic_q'); history.replaceState(history.state, '', u);
-    if (!q) { current = ''; sections = {}; output.replaceChildren(); status.textContent = ''; return; }
+    if (!q) {
+      // Reload the native book catalog's in-memory cart before restoring it.
+      if (bookCartChanged && location.pathname === '/books') { location.assign('/books?cart=1'); return; }
+      current = ''; sections = {}; output.replaceChildren(); status.textContent = ''; return;
+    }
     status.textContent = 'Searching all three catalogs…'; output.replaceChildren();
     if (immediate) run(); else timer = setTimeout(run, 300);
   }

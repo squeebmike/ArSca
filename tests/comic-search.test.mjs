@@ -50,6 +50,24 @@ test('punctuation cannot inject database filters; empty query does no work',asyn
 });
 test('served script parses',async()=>{new vm.Script(await comicSearchScriptResponse().text());});
 
+test('backorder search adds the exact SKU directly and preserves other cart lines',async()=>{
+  const {document}=parseHTML('<html><head></head><body>'+comicSearchShell()+'</body></html>');
+  let saved=JSON.stringify([{id:'backlist:other',skuId:'other',qty:1,price:3}]);
+  const context={window:{},document,URL,URLSearchParams,AbortController,Intl,
+    location:{pathname:'/comics/search',search:'?q=spider',href:'https://site/comics/search?q=spider',origin:'https://site'},
+    history:{replaceState(){}},clearTimeout(){},
+    localStorage:{getItem:()=>saved,setItem:(key,value)=>{assert.equal(key,'mp-backlist-cart-v1');saved=value;}},
+    fetch:async()=>({ok:true,json:async()=>({sections:{backorder:{results:[{id:'book',title:'Spider Book',priceCents:1299,href:'/book/book',purchaseOptions:[{skuId:'exact-sku',priceCents:1299}]}],hasMore:false}}})})};
+  vm.runInNewContext('('+comicSearchClient.toString()+')("", "")',context);
+  await new Promise(setImmediate);
+  const add=[...document.querySelectorAll('button')].find(button=>button.textContent==='Add to cart');
+  assert.ok(add);add.onclick();
+  const cart=JSON.parse(saved);assert.equal(cart.length,2);assert.equal(cart[1].skuId,'exact-sku');assert.equal(cart[1].price,12.99);assert.equal(cart[1].qty,1);
+  assert.equal(add.textContent,'Added ✓');add.onclick();assert.equal(JSON.parse(saved)[1].qty,2);
+  assert.ok(document.querySelector('a[href="/books?cart=1"]'));
+  saved='broken';add.onclick();assert.equal(saved,'broken');assert.match(document.body.textContent,/Could not save your cart/);
+});
+
 test('served script supplies the keepNames helper used by the deployed bundle',async()=>{
   const original=Object.getOwnPropertyDescriptor(comicSearchClient,'toString');
   try {
