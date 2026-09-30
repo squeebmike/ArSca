@@ -16366,7 +16366,7 @@ export default {
   // /dealscan/latest reads) instead of only ever being reachable by an
   // on-demand click.
   async scheduled(event, env, ctx) {
-    ctx.waitUntil(Promise.all([runScheduledDealScans(env), runScheduledEbayReprice(env), runScheduledEbayOrderSync(env), runScheduledShopifyOrderSync(env), runScheduledStorefrontReviewRequests(env), runScheduledPointsHoldSweep(env), runScheduledEbayFinanceReconcile(env)]));
+    ctx.waitUntil(Promise.all([runScheduledDealScans(env), runScheduledEbayReprice(env), runScheduledEbayOrderSync(env), runScheduledShopifyOrderSync(env), runScheduledStorefrontReviewRequests(env), runScheduledPointsHoldSweep(env), runScheduledEbayFinanceReconcile(env), runScheduledStaleWebOrderReminders(env)]));
   },
 };
 
@@ -16388,6 +16388,63 @@ async function cancelIntentIfUnpaid(env, mode, intentId) {
     return false;
   }
 }
+// Paid website orders that nobody has marked picked up or shipped after 2
+// days: one reminder email a day to the store's email (Settings -> receipt
+// email), listing each one, so a paid order can't sit unnoticed. Unpaid
+// checkouts are skipped -- the order row is saved before payment, so an
+// abandoned or test checkout is not an order anyone needs to hand over.
+// Sent from the late-morning (Pacific) cron run on; a per-store, per-day KV
+// key keeps it to one email a day.
+const STALE_WEB_ORDER_DAYS = 2;
+function staleWebOrderReminderEmail(orders, now = Date.now()) {
+  const methodLabel = { pickup_fedway:'Pickup, Fed Way Commons', pickup_kitsap:'Pickup, Kitsap County', shipping:'Shipping' };
+  const lines = orders.map(o => {
+    const days = Math.max(STALE_WEB_ORDER_DAYS, Math.floor((now - Date.parse(o.created_at)) / 86400000));
+    return `- ${o.confirmation_number || 'Order'} - ${o.customer_name || 'Customer'} - ${methodLabel[o.fulfillment_method] || o.fulfillment_method || ''} - $${Number(o.total || 0).toFixed(2)} - waiting ${days} days`;
+  });
+  const n = orders.length;
+  return {
+    subject: `${n} paid website order${n === 1 ? '' : 's'} waiting to be picked up or shipped`,
+    body: `${n === 1 ? 'This paid website order has' : 'These paid website orders have'} been waiting more than ${STALE_WEB_ORDER_DAYS} days:\n\n${lines.join('\n')}\n\nOpen the dashboard, tap the WEB ORDERS WAITING button at the top (or MORE > ORDERS), and tap MARK FULFILLED once each order is picked up or shipped. You'll get this reminder once a day until they're all marked.`,
+  };
+}
+
+async function runScheduledStaleWebOrderReminders(env, now = Date.now()) {
+  if (!(env.SUPABASE_URL && (env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SERVICE_KEY)) || !env.LBA_KV) return;
+  // 16:00 UTC or later (9am PDT / 8am PST) -- the cron fires every 6 hours,
+  // so the first send of the day lands on the 18:00 UTC run.
+  if (new Date(now).getUTCHours() < 16) return;
+  const cutoff = new Date(now - STALE_WEB_ORDER_DAYS * 86400000).toISOString();
+  try {
+    const { data: orders } = await supabaseAdminFetch(env, `storefront_orders?fulfillment_status=neq.fulfilled&created_at=lte.${encodeURIComponent(cutoff)}&select=id,store_id,sale_id,confirmation_number,customer_name,fulfillment_method,created_at&order=created_at.asc&limit=200`);
+    if (!orders?.length) return;
+    const saleIds = [...new Set(orders.map(o => o.sale_id).filter(Boolean))];
+    const { data: sales } = await supabaseAdminFetch(env, `pos_sales?id=in.(${saleIds.map(encodeURIComponent).join(',')})&status=eq.completed&select=id,total`);
+    const paid = new Map((sales || []).map(sale => [sale.id, sale]));
+    const byStore = new Map();
+    for (const order of orders) {
+      const sale = paid.get(order.sale_id);
+      if (!sale) continue;
+      if (!byStore.has(order.store_id)) byStore.set(order.store_id, []);
+      byStore.get(order.store_id).push({ ...order, total: sale.total });
+    }
+    const today = new Date(now).toISOString().slice(0, 10);
+    for (const [storeId, storeOrders] of byStore) {
+      const key = `stale-web-orders:${storeId}:${today}`;
+      if (await env.LBA_KV.get(key)) continue;
+      const { data: settings } = await supabaseAdminFetch(env, `store_settings?store_id=eq.${encodeURIComponent(storeId)}&select=receipt_settings&limit=1`);
+      const to = String(settings?.[0]?.receipt_settings?.email || '').trim();
+      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(to)) continue;
+      // Claimed before sending so two overlapping runs can't both email;
+      // released again if the send fails so the next run retries.
+      await env.LBA_KV.put(key, '1', { expirationTtl: 2 * 86400 });
+      const { subject, body } = staleWebOrderReminderEmail(storeOrders, now);
+      try { await sendEmail(env, to, subject, body); }
+      catch (e) { await env.LBA_KV.delete(key).catch(() => {}); console.error('Stale web order reminder failed for store', storeId, e.message); }
+    }
+  } catch (e) { console.error('Stale web order reminder scan failed:', e.message); }
+}
+
 async function runScheduledPointsHoldSweep(env) {
   if (!(env.SUPABASE_URL && (env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SERVICE_KEY))) return;
   const enc = encodeURIComponent;
