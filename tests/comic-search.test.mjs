@@ -73,6 +73,13 @@ test('comic category mounts before its server-rendered grid without a main eleme
   assert.equal(host.nextElementSibling.className,'mp-grid mp-comic-category-grid');
   assert.equal(host.querySelectorAll('input').length,1);
 });
+test('book purchase q parameter leaves native catalog cart controls visible',()=>{
+  const {document}=parseHTML('<html><head></head><body>'+comicSearchShell()+'<div data-bl-dynamic>Buy this book</div></body></html>');
+  const context={window:{},document,location:{pathname:'/books',search:'?q=Spider-Man'},URLSearchParams};
+  vm.runInNewContext('('+comicSearchClient.toString()+')("", "")',context);
+  assert.equal(document.querySelector('#mp-comic-query').value,'');
+  assert.equal(document.body.classList.contains('mp-comic-searching'),false);
+});
 test('rapid typing ignores stale responses, and clearing restores the catalog',async()=>{
   const input=fakeElement(),output=fakeElement(),status=fakeElement(),clear=fakeElement(),form=fakeElement();
   const host={querySelector:s=>({'input':input,'[data-cs-results]':output,'[data-cs-status]':status,'[data-cs-clear]':clear,form})[s]};
