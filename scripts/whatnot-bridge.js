@@ -53,7 +53,7 @@ var CONDITION_ALIASES = [
   [/^(new|sealed|factory sealed|brand new)$/, ['New', 'Brand New', 'Mint']],
 ];
 
-var state = { settings:null, loading:false, source:'selected', category:'', query:'', dest:'show', type:'Auction', auctionRule:'one', auctionPct:50, offerable:false, includeCost:true, wholeDollars:true, report:null };
+var state = { settings:null, loading:false, source:'selected', category:'', query:'', dest:'show', type:'Auction', auctionRule:'one', auctionPct:50, offerable:false, includeCost:true, wholeDollars:true, extraFields:false, report:null };
 
 function esc(v){ return String(v == null ? '' : v).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
 function norm(v){ return String(v || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim(); }
@@ -178,10 +178,79 @@ function conditionFor(i, map){
   return allowed.indexOf(map.condition) >= 0 ? map.condition : '';
 }
 
+// Comic details saved on the item: comicMetadata (Metron lookup) or
+// focComicDetail (from the FOC/Lunar catalog for presales). Same shape.
+function comicDetail(i){
+  var raw = i.raw || {};
+  var m = i.comicMetadata || raw.comicMetadata || raw.focComicDetail || null;
+  if(!m || typeof m !== 'object') return null;
+  function list(v){ return (Array.isArray(v) ? v : []).map(function(x){ return String(x && (x.name || x.creator) || x || '').trim(); }).filter(Boolean); }
+  return {
+    series: String(m.seriesName || m.series || '').trim(), number: String(m.number || m.issueNumber || '').trim(),
+    publisher: String(m.publisher || raw.publisher || i.publisher || '').trim(),
+    date: String(m.storeDate || m.coverDate || raw.onSaleDate || '').trim(),
+    writers: list(m.writers), artists: list(m.artists), coverArtists: list(m.coverArtists), characters: list(m.characters),
+    synopsis: String(m.description || '').replace(/\s+/g, ' ').trim(),
+  };
+}
+function gradeText(i){
+  var raw = i.raw || {};
+  var grader = String(i.grader || raw.grader || '').trim();
+  var grade = String(raw.grade || i.comic_grade || raw.comic_grade || '').trim();
+  var cert = String(i.cert_number || raw.cert_number || '').trim();
+  if(!grader && !grade) return '';
+  return [grader, grade].filter(Boolean).join(' ') + (cert ? ' (cert #' + cert + ')' : '');
+}
+// A full, readable description: what it is, the key facts a buyer asks
+// about, then the synopsis for comics. Plain text with line breaks.
+function descriptionFor(i){
+  var raw = i.raw || {};
+  var lines = [String(i.name || '').trim()];
+  var c = comicDetail(i);
+  if(c){
+    var issue = [c.series, c.number ? '#' + c.number : ''].filter(Boolean).join(' ');
+    if(issue && lines[0].toLowerCase().indexOf(issue.toLowerCase()) < 0) lines.push(issue);
+    if(i.variant) lines.push('Cover: ' + i.variant);
+    var facts = [c.publisher ? 'Publisher: ' + c.publisher : '', c.date ? 'Release date: ' + c.date : ''].filter(Boolean).join(' · ');
+    if(facts) lines.push(facts);
+    var credits = [c.writers.length ? 'Writer: ' + c.writers.join(', ') : '', c.artists.length ? 'Artist: ' + c.artists.join(', ') : '', c.coverArtists.length ? 'Cover artist: ' + c.coverArtists.join(', ') : ''].filter(Boolean).join(' · ');
+    if(credits) lines.push(credits);
+  } else {
+    var what = [i.set, i.card_number ? 'Card #' + i.card_number : '', i.variant, raw.parallel, raw.numbered ? 'Numbered ' + raw.numbered : ''].filter(Boolean).join(' · ');
+    if(what) lines.push(what);
+    var flags = [i.is_rookie || raw.is_rookie ? 'Rookie' : '', i.is_auto || raw.is_auto ? 'Autograph' : '', i.is_patch || raw.is_patch ? 'Patch' : '', i.is_signed || raw.is_signed ? 'Signed' + (i.signed_by || raw.signed_by ? ' by ' + (i.signed_by || raw.signed_by) : '') : ''].filter(Boolean).join(' · ');
+    if(flags) lines.push(flags);
+  }
+  var graded = gradeText(i);
+  lines.push(graded ? 'Graded: ' + graded : (i.condition ? 'Condition: ' + i.condition : ''));
+  if(raw.key_notes) lines.push('Key: ' + raw.key_notes);
+  var text = lines.filter(Boolean).join('\n');
+  if(c && c.synopsis) text += '\n\n' + c.synopsis;
+  return text.slice(0, 2000);
+}
+
+// Whatnot's listing form has more fields (Publisher, Series Title, Issue
+// Number...) than its CSV template has columns. These extra columns use the
+// form's own field names; they're off by default until a test upload shows
+// Whatnot's importer reads them.
+var EXTRA_HEADER = ['Publisher','Publication Year','Series Title','Issue Number','Character','Artist or Writer','Grading Company','Grade','Cert','Signed','Signed By'];
+function extraFieldsFor(i){
+  var raw = i.raw || {};
+  var c = comicDetail(i) || { series:'', number:'', publisher:'', date:'', writers:[], artists:[], characters:[] };
+  var graded = !!String(i.grader || raw.grader || '').trim();
+  var signedBy = String(i.signed_by || raw.signed_by || '').trim();
+  return [
+    c.publisher || String(raw.publisher || '').trim(), (c.date || String(i.year || '')).slice(0, 4), c.series, c.number || String(raw.issue || '').trim(),
+    c.characters.slice(0, 3).join(', ') || String(raw.character || '').trim(), c.writers.concat(c.artists).slice(0, 3).join(', '),
+    graded ? String(i.grader || raw.grader).trim() : '', graded ? String(raw.grade || i.comic_grade || '').trim() : '', graded ? String(i.cert_number || raw.cert_number || '').trim() : '',
+    signedBy || i.is_signed || raw.is_signed ? 'Yes' : '', signedBy,
+  ];
+}
+
 function rowFor(i){
   var map = mappingFor(categoryOf(i)).map;
   var title = [i.name, i.set, i.card_number ? '#' + i.card_number : '', i.variant].filter(Boolean).join(' - ').slice(0, 140);
-  var description = [i.name, i.set, i.card_number ? 'Card #' + i.card_number : '', i.variant, i.year, i.condition, i.comic_grade ? 'Grade ' + i.comic_grade : ''].filter(Boolean).join(' · ');
+  var description = descriptionFor(i);
   var imgs = imageUrls(i);
   var cost = Number(i.cost || 0);
   return [
@@ -190,7 +259,7 @@ function rowFor(i){
     state.type === 'Buy It Now' && state.offerable ? 'TRUE' : 'FALSE',
     (state.settings.defaults && state.settings.defaults.hazmat) || 'Not Hazmat',
     conditionFor(i, map), state.includeCost && cost > 0 ? cost.toFixed(2) : '', i.id,
-  ].concat([0,1,2,3,4,5,6,7].map(function(n){ return imgs[n] || ''; }));
+  ].concat([0,1,2,3,4,5,6,7].map(function(n){ return imgs[n] || ''; })).concat(state.extraFields ? extraFieldsFor(i) : []);
 }
 
 function checks(list){
@@ -280,7 +349,8 @@ function renderSend(){
           (state.auctionRule === 'pct' ? '<input type="number" min="1" max="200" value="' + esc(state.auctionPct) + '" style="width:64px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:4px;border-radius:4px" onchange="WB.set(\'auctionPct\',this.value)"> %' : '') + '</div>' : '') +
         (state.type === 'Buy It Now' ? '<label style="display:block;margin-top:6px"><input type="checkbox"' + (state.offerable ? ' checked' : '') + ' onchange="WB.set(\'offerable\',this.checked)"> Let buyers make offers</label>' : '') +
       '</div>' +
-      '<div><label><input type="checkbox"' + (state.wholeDollars ? ' checked' : '') + ' onchange="WB.set(\'wholeDollars\',this.checked)"> Round prices up to whole dollars</label> &nbsp; <label><input type="checkbox"' + (state.includeCost ? ' checked' : '') + ' onchange="WB.set(\'includeCost\',this.checked)"> Include my cost (Whatnot uses it for your profit reports; buyers never see it)</label></div>' +
+      '<div><label><input type="checkbox"' + (state.wholeDollars ? ' checked' : '') + ' onchange="WB.set(\'wholeDollars\',this.checked)"> Round prices up to whole dollars</label> &nbsp; <label><input type="checkbox"' + (state.includeCost ? ' checked' : '') + ' onchange="WB.set(\'includeCost\',this.checked)"> Include my cost (Whatnot uses it for your profit reports; buyers never see it)</label>' +
+        '<br><label><input type="checkbox"' + (state.extraFields ? ' checked' : '') + ' onchange="WB.set(\'extraFields\',this.checked)"> Try filling Whatnot\'s extra item details (Publisher, Series Title, Issue Number, Artist or Writer, Grading Company, Grade, Cert, Signed By) -- these aren\'t in Whatnot\'s template, so test with one item first</label></div>' +
       (cats.length ? '<div><b style="color:var(--text)">WHATNOT CATEGORY FOR EACH OF YOUR CATEGORIES</b> <span>(set once, saved for every export)</span>' +
         '<div style="margin-top:6px;overflow-x:auto">' + mappingRows(cats) + '</div>' +
         '<button class="hbtn" style="margin-bottom:0" onclick="WB.saveMapping()">SAVE CATEGORY SETTINGS</button></div>' : '') +
@@ -453,7 +523,7 @@ window.WB = {
   download: function(){
     var list = chosenItems();
     if(!list.length){ toast('No items to export'); return; }
-    var rows = [TEMPLATE_HEADER].concat(list.map(rowFor));
+    var rows = [TEMPLATE_HEADER.concat(state.extraFields ? EXTRA_HEADER : [])].concat(list.map(rowFor));
     downloadCSV('whatnot-' + (state.dest === 'show' ? 'show' : 'shop') + '-' + new Date().toISOString().slice(0, 10) + '.csv', rows);
     if(typeof logOpsEvent === 'function') logOpsEvent('whatnot_csv_export', 'Exported ' + list.length + ' item(s) to a Whatnot CSV', { count:list.length, dest:state.dest, type:state.type });
     var after = document.getElementById('wb-after-download'); if(after) after.innerHTML = afterDownloadHtml(list.length);
