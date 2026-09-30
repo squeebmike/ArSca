@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.09.30.12-foc-receive-comic-details">
+<meta name="version" content="2026.09.30.13-price-sync-category-lock">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1655,22 +1655,22 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.09.30.12-foc-receive-comic-details" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.09.30.12-foc-receive-comic-details" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.09.30.12-foc-receive-comic-details" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.09.30.12-foc-receive-comic-details" defer></script>
-<script src="scripts/backlist-dashboard.js?v=2026.09.30.12-foc-receive-comic-details" defer></script>
-<script src="scripts/database-viewer.js?v=2026.09.30.12-foc-receive-comic-details" defer></script>
-<script src="scripts/card-intake-dashboard.js?v=2026.09.30.12-foc-receive-comic-details" defer></script>
-<script src="scripts/mana-pocket-task-library.js?v=2026.09.30.12-foc-receive-comic-details" defer></script>
-<script src="scripts/daily-tasks-dashboard.js?v=2026.09.30.12-foc-receive-comic-details" defer></script>
-<script src="scripts/whatnot-bridge.js?v=2026.09.30.12-foc-receive-comic-details" defer></script>
+<script src="scripts/query-routing.js?v=2026.09.30.13-price-sync-category-lock" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.09.30.13-price-sync-category-lock" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.09.30.13-price-sync-category-lock" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.09.30.13-price-sync-category-lock" defer></script>
+<script src="scripts/backlist-dashboard.js?v=2026.09.30.13-price-sync-category-lock" defer></script>
+<script src="scripts/database-viewer.js?v=2026.09.30.13-price-sync-category-lock" defer></script>
+<script src="scripts/card-intake-dashboard.js?v=2026.09.30.13-price-sync-category-lock" defer></script>
+<script src="scripts/mana-pocket-task-library.js?v=2026.09.30.13-price-sync-category-lock" defer></script>
+<script src="scripts/daily-tasks-dashboard.js?v=2026.09.30.13-price-sync-category-lock" defer></script>
+<script src="scripts/whatnot-bridge.js?v=2026.09.30.13-price-sync-category-lock" defer></script>
 <script src="scripts/research-loupe.js?v=a7de4ffe90" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.09.30.12-foc-receive-comic-details" defer></script>
-<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.09.30.12-foc-receive-comic-details" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.09.30.12-foc-receive-comic-details" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.09.30.12-foc-receive-comic-details" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.09.30.12-foc-receive-comic-details" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.09.30.13-price-sync-category-lock" defer></script>
+<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.09.30.13-price-sync-category-lock" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.09.30.13-price-sync-category-lock" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.09.30.13-price-sync-category-lock" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.09.30.13-price-sync-category-lock" defer></script>
 </head>
 <body>
 
@@ -1722,7 +1722,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
 <div class="dsb-chip" id="dsb-tasks" title="Today's Roles &amp; Tasks — click to jump to Tasks tab" style="cursor:pointer;display:none" onclick="switchTab('tasks')">✅ <span>TASKS:</span> <b id="dsb-tasks-val">—</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.09.30.12-foc-receive-comic-details</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.09.30.13-price-sync-category-lock</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3278,10 +3278,10 @@ body.show-mode .inv-sync-badge{display:none;}
     <p style="font-size:11px;color:var(--dim);margin:0 0 12px">Offline MTG uses the downloaded Scryfall + PriceCharting catalog without provider credits. Cached scan uses saved lookup data; Live Pokémon fetches current PokemonPriceTracker prices through the Worker.</p>
     <p style="font-size:11px;color:var(--gold);margin:0 0 12px;font-family:var(--font-mono)">Updates change market/list price fields only. Cost basis stays unchanged.</p>
     <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:12px;align-items:center">
-      <label style="display:flex;align-items:center;gap:5px;font-size:11px;cursor:pointer"><input type="checkbox" id="pso-tcg" checked> TCG / Pokémon</label>
-      <label style="display:flex;align-items:center;gap:5px;font-size:11px;cursor:pointer"><input type="checkbox" id="pso-sports" checked> Sports Cards</label>
-      <label style="display:flex;align-items:center;gap:5px;font-size:11px;cursor:pointer"><input type="checkbox" id="pso-comics"> Comics</label>
-      <span style="font-size:10px;color:var(--dim);font-family:var(--font-mono)">All eligible inventory items are checked</span>
+      <label style="display:flex;align-items:center;gap:5px;font-size:11px;cursor:pointer"><input type="checkbox" id="pso-tcg" checked> Pokémon (cached scan)</label>
+      
+      
+      <span style="font-size:10px;color:var(--dim);font-family:var(--font-mono)">Each button only prices items filed under its own category (Pokemon TCG, Magic, Sports, Comic). Plush, hats and other collectibles are never card-synced.</span>
     </div>
     <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
       <button class="hbtn" id="price-sync-scan-btn" onclick="runPriceSyncScan()">SCAN CACHED PRICES</button>
@@ -3889,7 +3889,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.09.30.12-foc-receive-comic-details';
+const APP_VERSION = '2026.09.30.13-price-sync-category-lock';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -12960,6 +12960,19 @@ async function fetchGradedSlabPriceForItem(item = {}){
     };
   } catch(e) { return null; }
 }
+// Store rule: the category the store picked decides which price sync may
+// touch an item -- never words in its name. A card sync only takes items
+// filed under that game's own card category ("Pokemon TCG", "Magic: The
+// Gathering", "Sports"...), so a category that merely mentions the game
+// ("Pokemon Plush", "Sports Memorabilia") or is merch of any kind never
+// gets a card price.
+const PRICE_SYNC_MERCH_CATEGORY = /plush|figure|funko|\bpop\b|toy|apparel|shirt|hat|hoodie|poster|\bpins?\b|memorabilia|jersey|bobble|backpack|bag|accessor|supplies|supply|artwork|lego/i;
+function priceSyncCategory(item = {}){ return String(item.category || item.raw?.category || '').trim(); }
+function isPriceSyncMerchCategory(category){ return PRICE_SYNC_MERCH_CATEGORY.test(String(category || '')); }
+function isPokemonCardCategory(category){ return /^pok[eé]mon(\s+(tcg|cards?|trading card game|singles|sealed))?$/i.test(String(category || '').trim()); }
+function isMtgCardCategory(category){ return /^(magic(:?\s*the gathering)?|mtg)(\s+(tcg|cards?|singles|sealed))?$/i.test(String(category || '').trim()); }
+function isSportsCardCategory(category){ return /^(sports?|baseball|basketball|football|hockey|soccer|wrestling|ufc|mma|racing|golf|tennis)(\s+cards?)?$/i.test(String(category || '').trim()); }
+
 function isPokemonInventorySyncItem(item = {}){
   // Same category-first rule isMtgInventorySyncItem already uses. Store
   // report: a Pokemon-branded plush/hat/other merch item -- correctly filed
@@ -12971,9 +12984,9 @@ function isPokemonInventorySyncItem(item = {}){
   // definitive answer for what an item IS; only a blank or the old generic
   // "TCG" category (which doesn't say which game) falls through to
   // sniffing text for a guess.
-  const category = String(item.category || item.raw?.category || '').trim();
+  const category = priceSyncCategory(item);
   if(category && category !== 'TCG'){
-    return /pokemon|pok[eé]mon/i.test(category);
+    return isPokemonCardCategory(category) && !isPriceSyncMerchCategory(category);
   }
   const text = [
     item.itemType, item.inventoryType, item.product_line, item.productLine,
@@ -13481,10 +13494,11 @@ async function buildPriceSyncProposal(options = {}){
     const st = i.lifecycle || i.status || 'in_stock';
     return (st === 'in_stock' || !st) && inventoryReferenceMarketPrice(i) > 0;
   });
-  if(categories && categories.length) {
-    const normCats = categories.map(c => normalizePokemonText(c));
-    items = items.filter(i => normCats.some(nc => normalizePokemonText(i.category || '').includes(nc)));
-  }
+  // The cache below is PokemonPriceTracker data -- it only has Pokemon
+  // prices, so only items the Pokemon sync owns may be matched against it
+  // (a Sports card or a Pokemon plush must never get a Pokemon card price).
+  items = items.filter(isPokemonInventorySyncItem);
+  if(categories && !categories.length) items = [];
   // Prioritise highest-value items first
   items = items.sort((a, b) => inventoryReferenceMarketPrice(b) - inventoryReferenceMarketPrice(a));
   if(Number(limit) > 0) items = items.slice(0, Number(limit));
@@ -13551,7 +13565,7 @@ function isMtgInventorySyncItem(item = {}){
   // non-MTG category. "TCG" and blank are the old pre-category-split values
   // that don't tell us which game, so those still fall through to sniffing.
   if(category && category !== 'TCG'){
-    return /magic|mtg/i.test(category);
+    return isMtgCardCategory(category) && !isPriceSyncMerchCategory(category);
   }
   const text = [item.game,item.productLine,item.priceSource,item.pricingSource,item.source,item.setName,item.set,item.raw?.game,item.raw?.source]
     .filter(Boolean).join(' ').toLowerCase();
@@ -14192,11 +14206,11 @@ async function runPriceSyncScan(){
   statusEl.textContent = 'Reading inventory and cached prices...';
   propEl.innerHTML = '';
   if(applyBtn) applyBtn.style.display = 'none';
-  const cats = [];
-  if(document.getElementById('pso-tcg')?.checked)    cats.push('TCG', 'Pokemon');
-  if(document.getElementById('pso-sports')?.checked) cats.push('Sports');
+  // Cached prices are Pokemon-only; Sports cards sync with FETCH LIVE
+  // SPORTS / OTHER TCG instead.
+  const cats = document.getElementById('pso-tcg')?.checked === false ? [] : ['Pokemon'];
   try {
-    _priceSyncProposal = await buildPriceSyncProposal({ categories: cats.length ? cats : null });
+    _priceSyncProposal = await buildPriceSyncProposal({ categories: cats });
     savePendingPriceSyncProposals();
     if(!_priceSyncProposal.length) {
       statusEl.textContent = 'Cached sync found no changes. This did not fetch live prices.';
@@ -14382,9 +14396,11 @@ function isOtherTcgSportsInventorySyncItem(item = {}){
   const st = String(item.lifecycle || item.status || 'in_stock').toLowerCase();
   if(['sold','archived','returned','deleted'].includes(st)) return false;
   if(isMtgInventorySyncItem(item) || isPokemonInventorySyncItem(item)) return false;
-  const key = qplCategoryKey(item.category || '');
-  if(key === 'sports' || ['yugioh','lorcana','one_piece'].includes(key)) return true;
   const cat = String(item.category || '').trim();
+  if(isPriceSyncMerchCategory(cat)) return false;
+  if(isSportsCardCategory(cat)) return true;
+  const key = qplCategoryKey(cat);
+  if(['yugioh','lorcana','one_piece'].includes(key)) return true;
   return cat === 'TCG' || cat === '';
 }
 
@@ -14461,8 +14477,13 @@ async function fetchOtherTcgOrSportsLivePrice(item){
   }
   const q = [inventoryCardName(item), inventorySetName(item), inventoryCardNumber(item) ? '#' + inventoryCardNumber(item) : ''].filter(Boolean).join(' ');
   if(!q) return null;
+  // A name search across every game can hand a sports or uncategorized item
+  // a Pokemon card's price. Only search within a game the item's category
+  // names; a blank/generic "TCG" item needs a real category (or a pinned
+  // TCGplayer ID, tried above) to sync.
+  if(!gameLabel || gameLabel === 'TCG') return null;
   try {
-    const params = new URLSearchParams({ q, category:gameLabel === 'TCG' ? '' : gameLabel, storeId:getActiveStoreId() });
+    const params = new URLSearchParams({ q, category:gameLabel, storeId:getActiveStoreId() });
     const res = await fetch(WORKER + '/pricing/justtcg/search?' + params.toString(), { cache:'no-store' });
     const data = await res.json().catch(() => ({}));
     const match = (data.matches || [])[0];
@@ -47996,7 +48017,7 @@ async function toppsLoadParallels(cardId){
   window.__arscaCloseModal = closeModal;
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.09.30.12-foc-receive-comic-details" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.09.30.13-price-sync-category-lock" defer></script>
 </body>
 </html>
 
