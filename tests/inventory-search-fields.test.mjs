@@ -15,7 +15,8 @@ const expandSrc = dashboard.match(/function expandSmartQuery\(q\)\{[\s\S]*?\n\}/
 const normalizeSrc = dashboard.match(/function smartNormalizeText\(\w+\)\{[\s\S]*?\n\}/)[0];
 const levenshteinSrc = dashboard.match(/function levenshtein\(a,b\)\{[\s\S]*?\n\}/)[0];
 const inventoryComicSearchFieldsSrc = dashboard.match(/function inventoryComicSearchFields\(item=\{\}\)\{[\s\S]*?\n\}/)[0];
-const { scoreSmartItem } = new Function(`${synonymsSrc}\n${normalizeSrc}\n${expandSrc}\n${needlesSrc}\n${levenshteinSrc}\n${inventoryComicSearchFieldsSrc}\n${scoreSrc}\nreturn { scoreSmartItem };`)();
+const inventoryComicRecordSrc = dashboard.match(/function inventoryComicRecord\(item=\{\}\)\{[\s\S]*?\n\}/)[0];
+const { scoreSmartItem } = new Function(`${synonymsSrc}\n${normalizeSrc}\n${expandSrc}\n${needlesSrc}\n${levenshteinSrc}\n${inventoryComicRecordSrc}\n${inventoryComicSearchFieldsSrc}\n${scoreSrc}\nreturn { scoreSmartItem };`)();
 
 const secretLairItem = { name:'Spider-Man Venom Unleashed', set:'Secret Lair Drop', configuration:'Secret Lair', category:'Magic: The Gathering' };
 assert.ok(scoreSmartItem(secretLairItem, 'secret lair').score > 0, 'must find an item by its Product Type (configuration) when nothing else in the name matches');

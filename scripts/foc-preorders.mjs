@@ -2045,6 +2045,31 @@ async function adminSku(request,env,deps){
 // points would give the store phantom stock for books it may never receive.
 // Copies that match a paid customer preorder are reserved for that customer
 // first (oldest order first) rather than being sold off the shelf twice.
+// The comic's own details from the FOC catalog, saved on the inventory row
+// a received copy becomes -- same shape (focComicDetail) as the worker's
+// focPresaleComicDetail and Metron's comicMetadata, which the storefront,
+// item pages, eBay and Whatnot descriptions all read. The cover row's own
+// credits win; the title family fills in what the cover row doesn't carry.
+export function focReceivedInventoryFields(sku,family){
+  const detail=focReceivedComicDetail(sku,family);
+  const release=detail.storeDate?String(detail.storeDate).slice(0,10):'';
+  return {
+    focComicDetail:detail,
+    series:detail.seriesName,issue:detail.number,variant:sku?.variant_label||'',isbn:sku?.isbn||'',
+    onSaleDate:release,release_date:release,year:release.slice(0,4),
+  };
+}
+export function focReceivedComicDetail(sku,family){
+  const s=sku||{},f=family||{};
+  const names=value=>String(value||'').split(/\s*(?:,|;|&| and )\s*/i).map(n=>n.trim()).filter(Boolean);
+  return {
+    source:'foc',description:String(s.description||f.description||'').trim(),
+    writers:names(s.writer||f.writer),artists:names(s.interior_artist||f.interior_artist),coverArtists:names(s.cover_artist),
+    publisher:s.publisher||f.publisher||'',imprint:s.imprint||f.imprint||'',
+    seriesName:f.series_name||'',number:f.issue_number||'',storeDate:s.on_sale_date||f.on_sale_date||'',upc:s.upc||'',
+  };
+}
+
 async function receiveShipment(request,env,deps){
   const limited=await deps.readJsonWithLimit(request,32*1024);if(limited.error)return limited.error;
   const body=limited.data||{};const storeId=text(body.storeId,80),cycleId=text(body.cycleId,80);
@@ -2056,6 +2081,9 @@ async function receiveShipment(request,env,deps){
   if(!ids.length)return deps.json({ok:false,error:'No valid cover selections were supplied'},400);
   const { data:skuRows }=await db(`comic_skus?id=${inFilter(ids)}&cycle_id=eq.${encodeURIComponent(cycleId)}&store_id=eq.${encodeURIComponent(storeId)}&select=*`);
   const skuById=new Map((skuRows||[]).map(row=>[row.id,row]));
+  const familyIds=[...new Set((skuRows||[]).map(row=>row.family_id).filter(Boolean))];
+  const { data:familyRows }=familyIds.length?await db(`comic_title_families?id=${inFilter(familyIds)}&select=*`):{data:[]};
+  const familyById=new Map((familyRows||[]).map(row=>[row.id,row]));
   const { data:paidItems }=await db(`foc_preorder_items?cycle_id=eq.${encodeURIComponent(cycleId)}&sku_id=${inFilter(ids)}&status=eq.committed&select=id,sku_id,order_id,quantity,created_at,order:foc_preorder_orders(id,status,fulfillment_method)`);
   // eBay presale placeholder rows (created by /foc/ebay/create-presale)
   // that have already sold are a fulfillment obligation too, exactly like a
@@ -2163,6 +2191,9 @@ async function receiveShipment(request,env,deps){
         market:Number(sku.customer_price_cents||0)/100,salePrice:Number(sku.customer_price_cents||0)/100,
         qty:newStandaloneCount,quantity:newStandaloneCount,image:sku.cover_image_url||'',
         source:'foc_receive',focSkuId:sku.id,focCycleId:cycleId,focReceivedAt:new Date().toISOString(),
+        // Synopsis, writer/artist/cover artist, series, issue and release
+        // date from the FOC catalog, so the received book isn't a bare title.
+        ...focReceivedInventoryFields(sku,familyById.get(sku.family_id)),
       },
     }]:[];
     const { data:inserted }=rows.length?await db('inventory_items',{method:'POST',headers:{Prefer:'return=representation'},body:JSON.stringify(rows)}):{data:[]};

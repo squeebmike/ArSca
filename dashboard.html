@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.09.30.11-foc-quick-add-no-rebuild">
+<meta name="version" content="2026.09.30.12-foc-receive-comic-details">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1655,22 +1655,22 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.09.30.11-foc-quick-add-no-rebuild" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.09.30.11-foc-quick-add-no-rebuild" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.09.30.11-foc-quick-add-no-rebuild" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.09.30.11-foc-quick-add-no-rebuild" defer></script>
-<script src="scripts/backlist-dashboard.js?v=2026.09.30.11-foc-quick-add-no-rebuild" defer></script>
-<script src="scripts/database-viewer.js?v=2026.09.30.11-foc-quick-add-no-rebuild" defer></script>
-<script src="scripts/card-intake-dashboard.js?v=2026.09.30.11-foc-quick-add-no-rebuild" defer></script>
-<script src="scripts/mana-pocket-task-library.js?v=2026.09.30.11-foc-quick-add-no-rebuild" defer></script>
-<script src="scripts/daily-tasks-dashboard.js?v=2026.09.30.11-foc-quick-add-no-rebuild" defer></script>
-<script src="scripts/whatnot-bridge.js?v=2026.09.30.11-foc-quick-add-no-rebuild" defer></script>
+<script src="scripts/query-routing.js?v=2026.09.30.12-foc-receive-comic-details" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.09.30.12-foc-receive-comic-details" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.09.30.12-foc-receive-comic-details" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.09.30.12-foc-receive-comic-details" defer></script>
+<script src="scripts/backlist-dashboard.js?v=2026.09.30.12-foc-receive-comic-details" defer></script>
+<script src="scripts/database-viewer.js?v=2026.09.30.12-foc-receive-comic-details" defer></script>
+<script src="scripts/card-intake-dashboard.js?v=2026.09.30.12-foc-receive-comic-details" defer></script>
+<script src="scripts/mana-pocket-task-library.js?v=2026.09.30.12-foc-receive-comic-details" defer></script>
+<script src="scripts/daily-tasks-dashboard.js?v=2026.09.30.12-foc-receive-comic-details" defer></script>
+<script src="scripts/whatnot-bridge.js?v=2026.09.30.12-foc-receive-comic-details" defer></script>
 <script src="scripts/research-loupe.js?v=a7de4ffe90" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.09.30.11-foc-quick-add-no-rebuild" defer></script>
-<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.09.30.11-foc-quick-add-no-rebuild" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.09.30.11-foc-quick-add-no-rebuild" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.09.30.11-foc-quick-add-no-rebuild" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.09.30.11-foc-quick-add-no-rebuild" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.09.30.12-foc-receive-comic-details" defer></script>
+<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.09.30.12-foc-receive-comic-details" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.09.30.12-foc-receive-comic-details" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.09.30.12-foc-receive-comic-details" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.09.30.12-foc-receive-comic-details" defer></script>
 </head>
 <body>
 
@@ -1722,7 +1722,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
 <div class="dsb-chip" id="dsb-tasks" title="Today's Roles &amp; Tasks — click to jump to Tasks tab" style="cursor:pointer;display:none" onclick="switchTab('tasks')">✅ <span>TASKS:</span> <b id="dsb-tasks-val">—</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.09.30.11-foc-quick-add-no-rebuild</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.09.30.12-foc-receive-comic-details</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3889,7 +3889,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.09.30.11-foc-quick-add-no-rebuild';
+const APP_VERSION = '2026.09.30.12-foc-receive-comic-details';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -26731,12 +26731,21 @@ async function removeInventoryEditGalleryPhoto(index){
   }
 }
 
+// The comic details to SHOW for an item: the Metron record when there is one,
+// otherwise the FOC catalog's details saved when the copy was received
+// (focComicDetail -- synopsis, credits, series, issue, release date). Display
+// only: code that checks whether a Metron lookup was done still reads
+// comicMetadata itself.
+function inventoryComicRecord(item={}){
+  return item.comicMetadata||item.raw?.comicMetadata||item.raw?.focComicDetail||item.focComicDetail||null;
+}
 function inventoryComicInfoHtml(item={}){
-  const m=item.comicMetadata||item.raw?.comicMetadata;if(!m)return '';
+  const m=inventoryComicRecord(item);if(!m)return '';
+  const fromFoc=!item.comicMetadata&&!item.raw?.comicMetadata;
   const credits=(m.credits||[]).map(c=>[c.creator,(c.roles||[]).join(', ')].filter(Boolean).join(' - ')).join('; ');
-  const fields=[['Writer',(m.writers||[]).join(', ')],['Artist',(m.artists||[]).join(', ')],['Cover artist',(m.coverArtists||[]).join(', ')],['Story titles',(m.storyTitles||[]).join(' / ')],['Characters',(m.characters||[]).join(', ')],['Story arcs',(m.arcs||[]).join(', ')],['UPC',m.upc],['SKU',m.sku],['Metron ID',m.metronIssueId||m.id],['PriceCharting product',item.pricechartingProductName||m.pricechartingProductName||'']].filter(([,value])=>value);
+  const fields=[...(fromFoc?[['Series',[m.seriesName,m.number?'#'+m.number:''].filter(Boolean).join(' ')],['Publisher',m.publisher],['Release date',m.storeDate]]:[]),['Writer',(m.writers||[]).join(', ')],['Artist',(m.artists||[]).join(', ')],['Cover artist',(m.coverArtists||[]).join(', ')],['Story titles',(m.storyTitles||[]).join(' / ')],['Characters',(m.characters||[]).join(', ')],['Story arcs',(m.arcs||[]).join(', ')],['UPC',m.upc],['SKU',m.sku],['Metron ID',m.metronIssueId||m.id],['PriceCharting product',item.pricechartingProductName||m.pricechartingProductName||'']].filter(([,value])=>value);
   const covers=m.availableCovers||[];
-  return `<section style="margin-top:12px;border:1px solid rgba(199,125,255,.35);border-radius:9px;padding:11px;background:rgba(199,125,255,.04)"><div style="display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap"><b style="font-family:'Orbitron';font-size:10px;color:var(--purple)">SAVED COMIC RECORD</b><button class="hbtn" type="button" onclick="openEditingComicInResearch()">OPEN IN RESEARCH / CHANGE COVER &amp; PRICE</button></div>${m.description?`<p style="font-size:10px;line-height:1.55">${escHtml(m.description)}</p>`:''}<div style="font-size:10px;line-height:1.65">${fields.map(([label,value])=>`<div><b>${label}:</b> ${escHtml(String(value))}</div>`).join('')}${credits?`<details><summary>All creator credits</summary>${escHtml(credits)}</details>`:''}</div>${covers.length?`<div style="font-size:9px;color:var(--dim);margin-top:7px">${covers.length} cover record${covers.length===1?'':'s'} saved. Selected: ${escHtml(m.selectedCover?.issueName||m.selectedCover?.name||item.variant||'main cover')}.</div>`:''}</section>`;
+  return `<section style="margin-top:12px;border:1px solid rgba(199,125,255,.35);border-radius:9px;padding:11px;background:rgba(199,125,255,.04)"><div style="display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap"><b style="font-family:'Orbitron';font-size:10px;color:var(--purple)">${fromFoc?'FROM THE FOC CATALOG':'SAVED COMIC RECORD'}</b><button class="hbtn" type="button" onclick="openEditingComicInResearch()">OPEN IN RESEARCH / CHANGE COVER &amp; PRICE</button></div>${m.description?`<p style="font-size:10px;line-height:1.55">${escHtml(m.description)}</p>`:''}<div style="font-size:10px;line-height:1.65">${fields.map(([label,value])=>`<div><b>${label}:</b> ${escHtml(String(value))}</div>`).join('')}${credits?`<details><summary>All creator credits</summary>${escHtml(credits)}</details>`:''}</div>${covers.length?`<div style="font-size:9px;color:var(--dim);margin-top:7px">${covers.length} cover record${covers.length===1?'':'s'} saved. Selected: ${escHtml(m.selectedCover?.issueName||m.selectedCover?.name||item.variant||'main cover')}.</div>`:''}</section>`;
 }
 
 function openEditingComicInResearch(){
@@ -26747,19 +26756,19 @@ function openEditingComicInResearch(){
 }
 
 function inventoryComicSearchFields(item={}){
-  const m=item.comicMetadata||{};
+  const m=inventoryComicRecord(item)||{};
   const list=value=>Array.isArray(value)?value:(value?[String(value)]:[]);
   const credits=(m.credits||[]).flatMap(c=>[c?.creator,...(c?.roles||[])]).filter(Boolean);
   return [
     ...list(item.writers),...list(item.artists),...list(item.coverArtists),
     ...list(m.writers),...list(m.artists),...list(m.coverArtists),...credits,
-    m.series,m.publisher,m.imprint,m.description,m.issueName,m.issueNumber,
+    m.series,m.seriesName,m.publisher,m.imprint,m.description,m.issueName,m.issueNumber,
     ...list(m.storyTitles),...list(m.characters),...list(m.teams),...list(m.arcs),...list(m.genres),
   ].filter(Boolean);
 }
 
 function inventoryComicPeopleLine(item={}){
-  const m=item.comicMetadata||{};
+  const m=inventoryComicRecord(item)||{};
   const list=value=>Array.isArray(value)?value:(value?[String(value)]:[]);
   const writers=list(item.writers).length?list(item.writers):list(m.writers);
   const artists=list(item.artists).length?list(item.artists):list(m.artists);
@@ -26774,7 +26783,7 @@ function comicCreditList(item={}, key){
   const list=value=>Array.isArray(value)?value:(value?[String(value)]:[]);
   const own=list(item[key]);
   if(own.length) return own;
-  return list((item.comicMetadata||{})[key]);
+  return list((inventoryComicRecord(item)||{})[key]);
 }
 
 function renderInventoryComicInfo(item){const host=document.getElementById('edit-comic-info');if(host)host.innerHTML=inventoryComicInfoHtml(item);}
@@ -47987,7 +47996,7 @@ async function toppsLoadParallels(cardId){
   window.__arscaCloseModal = closeModal;
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.09.30.11-foc-quick-add-no-rebuild" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.09.30.12-foc-receive-comic-details" defer></script>
 </body>
 </html>
 
