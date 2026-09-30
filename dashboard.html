@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.09.29.06-weekly-full-refresh">
+<meta name="version" content="2026.09.30.01-customer-reviews">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1655,21 +1655,21 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.09.29.06-weekly-full-refresh" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.09.29.06-weekly-full-refresh" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.09.29.06-weekly-full-refresh" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.09.29.06-weekly-full-refresh" defer></script>
-<script src="scripts/backlist-dashboard.js?v=2026.09.29.06-weekly-full-refresh" defer></script>
-<script src="scripts/database-viewer.js?v=2026.09.29.06-weekly-full-refresh" defer></script>
-<script src="scripts/card-intake-dashboard.js?v=2026.09.29.06-weekly-full-refresh" defer></script>
-<script src="scripts/mana-pocket-task-library.js?v=2026.09.29.06-weekly-full-refresh" defer></script>
-<script src="scripts/daily-tasks-dashboard.js?v=2026.09.29.06-weekly-full-refresh" defer></script>
+<script src="scripts/query-routing.js?v=2026.09.30.01-customer-reviews" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.09.30.01-customer-reviews" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.09.30.01-customer-reviews" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.09.30.01-customer-reviews" defer></script>
+<script src="scripts/backlist-dashboard.js?v=2026.09.30.01-customer-reviews" defer></script>
+<script src="scripts/database-viewer.js?v=2026.09.30.01-customer-reviews" defer></script>
+<script src="scripts/card-intake-dashboard.js?v=2026.09.30.01-customer-reviews" defer></script>
+<script src="scripts/mana-pocket-task-library.js?v=2026.09.30.01-customer-reviews" defer></script>
+<script src="scripts/daily-tasks-dashboard.js?v=2026.09.30.01-customer-reviews" defer></script>
 <script src="scripts/research-loupe.js?v=a7de4ffe90" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.09.29.06-weekly-full-refresh" defer></script>
-<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.09.29.06-weekly-full-refresh" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.09.29.06-weekly-full-refresh" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.09.29.06-weekly-full-refresh" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.09.29.06-weekly-full-refresh" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.09.30.01-customer-reviews" defer></script>
+<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.09.30.01-customer-reviews" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.09.30.01-customer-reviews" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.09.30.01-customer-reviews" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.09.30.01-customer-reviews" defer></script>
 </head>
 <body>
 
@@ -1721,7 +1721,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
 <div class="dsb-chip" id="dsb-tasks" title="Today's Roles &amp; Tasks — click to jump to Tasks tab" style="cursor:pointer;display:none" onclick="switchTab('tasks')">✅ <span>TASKS:</span> <b id="dsb-tasks-val">—</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.09.29.06-weekly-full-refresh</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.09.30.01-customer-reviews</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3887,7 +3887,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.09.29.06-weekly-full-refresh';
+const APP_VERSION = '2026.09.30.01-customer-reviews';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -4786,6 +4786,109 @@ function ensureThisDevicePanel(backoffice){
   `;
   backoffice.appendChild(panel);
   applyUiScale(getUiScale(), false);
+}
+// Customer reviews from the post-purchase email link (/review) arrive on
+// the item that was bought (data.reviews[], approved:false) and stay off the
+// website until approved here. Approved reviews show on themanapocket.com/
+// reviews and on the item's own page while it's still for sale. Hide keeps
+// the review on file but never shows it (nothing is deleted).
+let _customerReviews = [];
+function ensureCustomerReviewsPanel(backoffice){
+  if(!backoffice || document.getElementById('customer-reviews-panel')) return;
+  const panel = document.createElement('div');
+  panel.className = 'panel';
+  panel.id = 'customer-reviews-panel';
+  panel.style.marginBottom = '14px';
+  panel.innerHTML = `
+    <div class="ph"><span>CUSTOMER REVIEWS <span style="font-size:9px;color:var(--dim)">approve before they show on the website</span></span><button class="hbtn" style="padding:4px 10px;font-size:9px;flex:none;margin-bottom:0" onclick="loadCustomerReviews()">↻ CHECK</button></div>
+    <div id="customer-reviews-body" style="font-family:var(--font-mono);font-size:11px;color:var(--dim)">Tap CHECK to load reviews.</div>
+  `;
+  backoffice.appendChild(panel);
+  // Loads the first time the panel is scrolled into view, not at startup.
+  if('IntersectionObserver' in window){
+    const io = new IntersectionObserver(entries => {
+      if(entries.some(e => e.isIntersecting)){ io.disconnect(); loadCustomerReviews(); }
+    });
+    io.observe(panel);
+  }
+}
+function customerReviewState(r){ return r?.hidden === true ? 'hidden' : (r?.approved === true ? 'showing' : 'waiting'); }
+function customerReviewMatches(a, b){
+  return a && b && String(a.orderId || '') === String(b.orderId || '') && String(a.itemId || '') === String(b.itemId || '') && String(a.date || '') === String(b.date || '') && String(a.text || '') === String(b.text || '');
+}
+async function loadCustomerReviews(){
+  const body = document.getElementById('customer-reviews-body');
+  if(!body) return;
+  const sb = getSupabaseClient(), storeId = getActiveStoreId();
+  if(!sb || !getAuthSession()?.supabase || !storeId){ body.textContent = 'Sign in to the cloud store to see reviews.'; return; }
+  body.textContent = 'Loading reviews…';
+  const { data, error } = await sb.from('inventory_items').select('id,data').eq('store_id', storeId).not('data->reviews', 'is', null).limit(1000);
+  if(error){ body.textContent = 'Could not load reviews: ' + error.message; return; }
+  _customerReviews = [];
+  (data || []).forEach(row => {
+    (Array.isArray(row.data?.reviews) ? row.data.reviews : []).forEach(review => {
+      _customerReviews.push({ rowId:row.id, itemName:row.data?.name || row.data?.title || 'Item', review });
+    });
+  });
+  const order = { waiting:0, showing:1, hidden:2 };
+  _customerReviews.sort((a, b) => (order[customerReviewState(a.review)] - order[customerReviewState(b.review)]) || String(b.review.date || '').localeCompare(String(a.review.date || '')));
+  renderCustomerReviews();
+}
+function renderCustomerReviews(){
+  const body = document.getElementById('customer-reviews-body');
+  if(!body) return;
+  if(!_customerReviews.length){
+    body.innerHTML = 'No reviews yet. Customers get a review link by email 7 days after an online order is marked fulfilled (picked up or delivered).';
+    return;
+  }
+  const waiting = _customerReviews.filter(x => customerReviewState(x.review) === 'waiting').length;
+  const label = { waiting:'<span style="color:var(--gold)">WAITING</span>', showing:'<span style="color:var(--g)">SHOWING ON SITE</span>', hidden:'<span style="color:var(--dim)">HIDDEN</span>' };
+  const canModerate = requireManager();
+  body.innerHTML = `
+    <div style="margin-bottom:10px">${waiting} waiting for approval · <a href="https://www.themanapocket.com/reviews" target="_blank" rel="noopener" style="color:var(--g)">see the reviews page</a></div>
+    ${_customerReviews.map((x, i) => {
+      const r = x.review || {}, state = customerReviewState(r), rating = Math.max(0, Math.min(5, Math.round(Number(r.rating) || 0)));
+      return `<div style="border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:8px;background:var(--surf2)">
+        <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><span style="color:#ffd166;letter-spacing:2px">${'★'.repeat(rating)}${'☆'.repeat(5 - rating)}</span><span>${label[state]}</span></div>
+        <div style="color:var(--text);font-size:12px;margin:6px 0;white-space:pre-line">${escHtml(r.text || '')}</div>
+        <div>${escHtml(r.author || 'Verified buyer')}${r.date ? ' · ' + escHtml(r.date) : ''} · ${escHtml(x.itemName)}</div>
+        ${canModerate ? `<div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
+          ${state !== 'showing' ? `<button class="hbtn" style="margin-bottom:0" onclick="setCustomerReviewState(${i},'showing')">APPROVE</button>` : ''}
+          ${state !== 'hidden' ? `<button class="hbtn danger" style="margin-bottom:0" onclick="setCustomerReviewState(${i},'hidden')">HIDE</button>` : ''}
+        </div>` : ''}
+      </div>`;
+    }).join('')}
+  `;
+}
+// Re-reads the row and writes only if it hasn't changed since (updated_at
+// match), so an approval never overwrites an edit or a new review that
+// landed in between -- on a clash it re-reads and tries once more.
+async function setCustomerReviewState(index, state){
+  if(!requireManager()){ toast_dash('Only a manager or owner can approve reviews'); return; }
+  const entry = _customerReviews[index];
+  const sb = getSupabaseClient(), storeId = getActiveStoreId();
+  if(!entry || !sb || !storeId) return;
+  for(let attempt = 0; attempt < 2; attempt++){
+    const { data:row, error:readError } = await sb.from('inventory_items').select('id,data,updated_at').eq('id', entry.rowId).eq('store_id', storeId).single();
+    if(readError){ toast_dash('Review update failed: ' + readError.message); return; }
+    const reviews = Array.isArray(row.data?.reviews) ? row.data.reviews : [];
+    const at = reviews.findIndex(r => customerReviewMatches(r, entry.review));
+    if(at < 0){ toast_dash('That review changed -- reloading'); loadCustomerReviews(); return; }
+    const nextReview = { ...reviews[at], approved:state === 'showing', hidden:state === 'hidden', moderatedAt:new Date().toISOString() };
+    const nextReviews = reviews.slice(); nextReviews[at] = nextReview;
+    const { data:updated, error } = await sb.from('inventory_items')
+      .update({ data:{ ...row.data, reviews:nextReviews }, updated_at:new Date().toISOString() })
+      .eq('id', entry.rowId).eq('store_id', storeId).eq('updated_at', row.updated_at)
+      .select('id');
+    if(error){ toast_dash('Review update failed: ' + error.message); return; }
+    if(updated?.length){
+      entry.review = nextReview;
+      renderCustomerReviews();
+      toast_dash(state === 'showing' ? 'Review approved -- on the website within about 10 minutes' : 'Review hidden');
+      return;
+    }
+  }
+  toast_dash('That item was just edited -- tap CHECK and try again');
 }
 function ensureBrandingPanel(backoffice){
   if(!backoffice || document.getElementById('branding-theme-panel')) return;
@@ -6748,6 +6851,7 @@ function organizeRegisterLayout(){
   moveNode('backoffice-ops-panel', backoffice);
   ensureVendorProfilePanel(backoffice);
   ensureThisDevicePanel(backoffice);
+  ensureCustomerReviewsPanel(backoffice);
   ensureBrandingPanel(backoffice);
   ensurePaymentSettingsPanel(backoffice);
   ensureResearchSettingsPanel(backoffice);
@@ -47871,7 +47975,7 @@ async function toppsLoadParallels(cardId){
   window.__arscaCloseModal = closeModal;
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.09.29.06-weekly-full-refresh" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.09.30.01-customer-reviews" defer></script>
 </body>
 </html>
 
