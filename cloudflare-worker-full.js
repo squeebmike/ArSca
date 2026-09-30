@@ -12547,7 +12547,7 @@ async function routeRequest(request, env, ctx) {
       const gradeKey = (company = 'PSA', grade = '') => {
         const g = String(grade || '').toLowerCase().replace(/^psa|^bgs|^cgc|^sgc/g, '').trim();
         const c = String(company || '').toLowerCase();
-        if (c.includes('bgs') && g === '10') return 'bgs10';
+        if ((c.includes('bgs') || c.includes('beckett')) && g === '10') return 'bgs10';
         if (c.includes('cgc') && g === '10') return 'cgc10';
         if (c.includes('sgc') && g === '10') return 'sgc10';
         if (g === '10') return 'psa10';
