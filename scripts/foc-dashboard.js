@@ -644,7 +644,10 @@ async function quickAddFocSkuToInventory(skuId){
       if(conv.converted>0)toast_dash(conv.converted+' eBay presale listing'+(conv.converted===1?'':'s')+' switched to in stock');
       if(conv.shippingPolicyWarning)toast_dash(conv.shippingPolicyWarning);
     }catch(e){/* eBay not connected or similar -- the add itself already succeeded, don't alarm over this */}
-    await openCycle(state.cycle.id);
+    // Store report: adding one book rebuilt the whole cover wall ("Building
+    // the cover wall…") and jumped back to the top -- same one-cover refresh
+    // as a field save or single eBay listing instead.
+    await refreshCycleFamilies();
   }catch(e){toast_dash('Could not add to inventory: '+e.message);}
 }
 
