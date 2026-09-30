@@ -22,10 +22,16 @@ function makeContext() {
     console, Set, Map, Promise, JSON, Math, Number, String, Date, Array, Object, RegExp, isNaN,
     all: [
       { id: 'aaaaaaaa-0000-0000-0000-000000000001', name: 'Charizard', set: 'Base Set', card_number: '4', category: 'Pokemon TCG', qty: 1, status: 'in_stock', cost: 50, condition: 'NM', photos: ['https://img.example/c.jpg', 'blob:local'], listPrice: 300, market: 280 },
-      { id: 'aaaaaaaa-0000-0000-0000-000000000002', name: 'Mike Trout', set: '2011 Topps Update', category: 'Sports', qty: 1, status: 'in_stock', cost: 0, listPrice: 40, market: 40 },
+      { id: 'aaaaaaaa-0000-0000-0000-000000000002', name: 'Mike Trout', set: 'Baseball Cards 2011 Topps Update', category: 'Sports', qty: 1, status: 'in_stock', cost: 0, condition: 'Excellent', listPrice: 40, market: 40 },
+      { id: 'aaaaaaaa-0000-0000-0000-000000000004', name: 'Julio Rodriguez', set: 'Baseball Cards 2022 Topps Update', category: 'Sports', qty: 1, status: 'in_stock', grader: 'PSA', condition: 'NM', listPrice: 90, market: 90 },
+      { id: 'aaaaaaaa-0000-0000-0000-000000000005', name: 'Bin of stuff', category: 'Collectibles', qty: 1, status: 'in_stock', listPrice: 5, market: 5 },
       { id: 'aaaaaaaa-0000-0000-0000-000000000003', name: 'Sold Thing', category: 'Sports', qty: 0, status: 'sold' },
     ],
-    inventoryBulkSelectedIds: new Set(['aaaaaaaa-0000-0000-0000-000000000001', 'aaaaaaaa-0000-0000-0000-000000000002']),
+    inventoryBulkSelectedIds: new Set(['aaaaaaaa-0000-0000-0000-000000000001', 'aaaaaaaa-0000-0000-0000-000000000002', 'aaaaaaaa-0000-0000-0000-000000000004', 'aaaaaaaa-0000-0000-0000-000000000005']),
+    fetch: async (url) => {
+      assert.match(String(url), /^scripts\/whatnot-values\.json/);
+      return new Response(fs.readFileSync('scripts/whatnot-values.json', 'utf8'), { status: 200 });
+    },
     activeTab: 'whatnot',
     inventoryProfitStats: i => ({ list: Number(i.listPrice || 0), market: Number(i.market || 0) }),
     inventoryImageUrl: () => '',
@@ -61,19 +67,27 @@ await new Promise(r => setTimeout(r, 10));
 assert.match(elements['whatnot-bridge'].innerHTML, /SEND ITEMS TO WHATNOT/);
 assert.match(elements['whatnot-bridge'].innerHTML, /IMPORT SHOW RESULTS/);
 
-// Export: only the user's own mapping fills Whatnot's controlled columns.
-ctx.WB.setMap('Pokemon TCG', 'category', 'Trading Card Games');
-ctx.WB.setMap('Pokemon TCG', 'shippingProfile', '0-1 oz');
-ctx.WB.setMap('Pokemon TCG', 'condition', 'New');
+// Built-in values are Whatnot's own Values tab, parsed with the same code
+// the LOAD WHATNOT VALUES button uses.
+const builtIn = JSON.parse(fs.readFileSync('scripts/whatnot-values.json', 'utf8'));
+assert.equal(builtIn.categories.length, 35);
+assert.ok(builtIn.subCategoriesByCategory['Trading Card Games'].includes('Pokémon Cards'));
+assert.deepEqual(builtIn.conditionsBySubCategory['Baseball Singles'], ['Graded', 'Raw - Near Mint or Better', 'Raw - Excellent', 'Raw - Very Good', 'Raw - Poor']);
+
+// Suggested mappings apply before anything is saved, and say so.
+assert.match(elements['whatnot-bridge'].innerHTML, /suggested -- check, then SAVE/);
+assert.match(elements['whatnot-bridge'].innerHTML, /Using Whatnot's allowed values \(Whatnot template, Sep 2026\)/);
 ctx.WB.set('type', 'Auction');
 ctx.WB.set('auctionRule', 'one');
 ctx.WB.download();
 assert.equal(downloads.length, 1);
-const [header, pokemon, sports] = downloads[0].rows;
+const [header, pokemon, trout, julio, bin] = downloads[0].rows;
 assert.deepEqual([...header], templateHeader, 'columns must be exactly Whatnot\'s template order');
 const col = name => header.indexOf(name);
 assert.equal(pokemon[col('Category')], 'Trading Card Games');
+assert.equal(pokemon[col('Sub Category')], 'Pokémon Cards');
 assert.equal(pokemon[col('Shipping Profile')], '0-1 oz');
+assert.equal(pokemon[col('Condition')], 'Near Mint', 'NM becomes Whatnot\'s "Near Mint" for Pokémon');
 assert.equal(pokemon[col('Type')], 'Auction');
 assert.equal(pokemon[col('Price')], '1', 'a $1 starting bid');
 assert.equal(pokemon[col('SKU')], 'aaaaaaaa-0000-0000-0000-000000000001', 'SKU is the dashboard id so the show report can be matched back');
@@ -81,8 +95,27 @@ assert.equal(pokemon[col('Cost Per Item')], '50.00');
 assert.equal(pokemon[col('Hazmat')], 'Not Hazmat');
 assert.equal(pokemon[col('Image URL 1')], 'https://img.example/c.jpg');
 assert.equal(pokemon[col('Image URL 2')], '', 'non-web image URLs are never exported');
-assert.equal(sports[col('Category')], '', 'an unmapped category is left blank, never guessed');
-assert.equal(downloads[0].rows.length, 3, 'sold items are never exported');
+assert.equal(trout[col('Category')], 'Sports Cards');
+assert.equal(trout[col('Sub Category')], 'Baseball Singles', 'sport read from the set name');
+assert.equal(trout[col('Shipping Profile')], 'Sports singles (3oz)');
+assert.equal(trout[col('Condition')], 'Raw - Excellent', 'Excellent becomes Whatnot\'s raw-card wording for baseball');
+assert.equal(julio[col('Condition')], 'Graded', 'an item with a grader is Graded');
+assert.equal(bin[col('Category')], '', 'a category with no mapping is left blank, never guessed');
+assert.equal(bin[col('Condition')], '');
+assert.equal(downloads[0].rows.length, 5, 'sold items are never exported');
+assert.match(elements['whatnot-bridge'].innerHTML, /Set a Whatnot category and shipping profile for: Collectibles/);
+
+// A value Whatnot wouldn't accept is flagged red; saving stores the mapping.
+ctx.WB.setMap('Collectibles', 'category', 'Toys & Hobbies');
+ctx.WB.setMap('Collectibles', 'subCategory', 'Not A Real Subcategory');
+assert.match(elements['whatnot-bridge'].innerHTML, /value="Not A Real Subcategory"[^>]*border-color:var\(--red\)/);
+ctx.WB.setMap('Collectibles', 'subCategory', 'Other Toys');
+ctx.WB.setMap('Collectibles', 'shippingProfile', '8-11 oz');
+ctx.WB.saveMapping();
+await new Promise(r => setTimeout(r, 10));
+const saved = calls.filter(c => c.path === '/store/whatnot-settings' && c.body).pop().body.settings.mapping;
+assert.equal(saved.Collectibles.subCategory, 'Other Toys');
+assert.equal(saved['Pokemon TCG'].subCategory, 'Pokémon Cards', 'saving keeps the suggestions that were in use');
 
 // Buy it Now uses the list price, rounded up to whole dollars.
 ctx.WB.set('type', 'Buy it Now');
@@ -90,11 +123,13 @@ ctx.WB.download();
 assert.equal(downloads[1].rows[1][col('Price')], '300');
 assert.equal(downloads[1].rows[1][col('Type')], 'Buy it Now');
 
-// Loading Whatnot's Values tab switches to Whatnot's exact spelling.
-await ctx.WB.loadValues({ text: 'Categories,Sub-categories,Type,Shipping Profile,Condition,Hazmat\nTrading Card Games,Pokémon Cards,Buy It Now,0-1 oz,New,Not Hazmat\nSports Cards,Baseball Cards,Auction,1-3 oz,Used,Hazmat\n' });
-ctx.WB.download();
-assert.equal(downloads[2].rows[1][col('Type')], 'Buy It Now');
-assert.ok(calls.some(c => c.path === '/store/whatnot-settings' && c.body?.settings?.values?.shippingProfiles?.includes('1-3 oz')), 'values are saved for the store');
+// Loading the Values tab file itself gives the same lists as the built-in copy.
+await ctx.WB.loadValues({ text: fs.readFileSync('tests/fixtures/whatnot-csv-values.csv', 'utf8').replace(/^\uFEFF/, '') });
+const uploaded = calls.filter(c => c.path === '/store/whatnot-settings' && c.body?.settings?.values).pop().body.settings.values;
+assert.deepEqual(JSON.parse(JSON.stringify(uploaded.subCategoriesByCategory)), builtIn.subCategoriesByCategory);
+assert.deepEqual(JSON.parse(JSON.stringify(uploaded.conditionsBySubCategory)), builtIn.conditionsBySubCategory);
+assert.deepEqual([...uploaded.categories], builtIn.categories);
+assert.match(elements['whatnot-bridge'].innerHTML, /your uploaded Values file/);
 
 // Import: SKU rows record; cancelled/unmatched skip; title matches wait for a tick.
 const report = [
