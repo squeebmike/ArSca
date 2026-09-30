@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.09.30.01-customer-reviews">
+<meta name="version" content="2026.09.30.02-web-order-alert">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1655,21 +1655,21 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.09.30.01-customer-reviews" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.09.30.01-customer-reviews" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.09.30.01-customer-reviews" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.09.30.01-customer-reviews" defer></script>
-<script src="scripts/backlist-dashboard.js?v=2026.09.30.01-customer-reviews" defer></script>
-<script src="scripts/database-viewer.js?v=2026.09.30.01-customer-reviews" defer></script>
-<script src="scripts/card-intake-dashboard.js?v=2026.09.30.01-customer-reviews" defer></script>
-<script src="scripts/mana-pocket-task-library.js?v=2026.09.30.01-customer-reviews" defer></script>
-<script src="scripts/daily-tasks-dashboard.js?v=2026.09.30.01-customer-reviews" defer></script>
+<script src="scripts/query-routing.js?v=2026.09.30.02-web-order-alert" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.09.30.02-web-order-alert" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.09.30.02-web-order-alert" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.09.30.02-web-order-alert" defer></script>
+<script src="scripts/backlist-dashboard.js?v=2026.09.30.02-web-order-alert" defer></script>
+<script src="scripts/database-viewer.js?v=2026.09.30.02-web-order-alert" defer></script>
+<script src="scripts/card-intake-dashboard.js?v=2026.09.30.02-web-order-alert" defer></script>
+<script src="scripts/mana-pocket-task-library.js?v=2026.09.30.02-web-order-alert" defer></script>
+<script src="scripts/daily-tasks-dashboard.js?v=2026.09.30.02-web-order-alert" defer></script>
 <script src="scripts/research-loupe.js?v=a7de4ffe90" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.09.30.01-customer-reviews" defer></script>
-<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.09.30.01-customer-reviews" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.09.30.01-customer-reviews" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.09.30.01-customer-reviews" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.09.30.01-customer-reviews" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.09.30.02-web-order-alert" defer></script>
+<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.09.30.02-web-order-alert" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.09.30.02-web-order-alert" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.09.30.02-web-order-alert" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.09.30.02-web-order-alert" defer></script>
 </head>
 <body>
 
@@ -1721,7 +1721,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
 <div class="dsb-chip" id="dsb-tasks" title="Today's Roles &amp; Tasks — click to jump to Tasks tab" style="cursor:pointer;display:none" onclick="switchTab('tasks')">✅ <span>TASKS:</span> <b id="dsb-tasks-val">—</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.09.30.01-customer-reviews</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.09.30.02-web-order-alert</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3887,7 +3887,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.09.30.01-customer-reviews';
+const APP_VERSION = '2026.09.30.02-web-order-alert';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -22681,6 +22681,32 @@ renderScanInbox();
 
 const FULFILLMENT_METHOD_LABELS = { pickup_fedway:'Pickup — Fed Way Commons', pickup_kitsap:'Pickup — Kitsap County', shipping:'Shipping' };
 
+// Paid web orders not yet marked picked up/shipped. The Orders tab lives in
+// the MORE menu, so the count also shows as a button in the header on every
+// tab (red once any order has waited WEB_ORDER_STALE_DAYS or more); the
+// worker emails the store a daily reminder for the same orders.
+const WEB_ORDER_STALE_DAYS = 2;
+function webOrderWaitingDays(order){
+  const created = Date.parse(order?.created_at || '');
+  return Number.isFinite(created) ? Math.floor((Date.now() - created) / 86400000) : 0;
+}
+function updateWebOrdersAlert(pendingCount, staleCount){
+  let btn = document.getElementById('web-orders-alert-btn');
+  const hdrRight = document.querySelector('.hdr-right');
+  if(!btn && hdrRight && pendingCount > 0){
+    btn = document.createElement('button');
+    btn.id = 'web-orders-alert-btn';
+    btn.type = 'button';
+    btn.onclick = () => switchTab('orders');
+    hdrRight.insertBefore(btn, hdrRight.firstChild);
+  }
+  if(!btn) return;
+  btn.style.display = pendingCount > 0 ? '' : 'none';
+  btn.className = 'hbtn' + (staleCount > 0 ? ' danger' : '');
+  btn.textContent = `${pendingCount} WEB ORDER${pendingCount === 1 ? '' : 'S'} WAITING`;
+  btn.title = staleCount > 0 ? `${staleCount} paid order${staleCount === 1 ? ' has' : 's have'} waited ${WEB_ORDER_STALE_DAYS}+ days -- tap to open Orders` : 'Paid website orders to hand over or ship -- tap to open Orders';
+}
+
 async function renderStorefrontOrders(){
   const list = document.getElementById('storefront-orders-list');
   const count = document.getElementById('storefront-orders-count');
@@ -22703,7 +22729,9 @@ async function renderStorefrontOrders(){
     return pendingDiff || new Date(b.created_at || 0) - new Date(a.created_at || 0);
   });
   const pending = orders.filter(o => o.fulfillment_status !== 'fulfilled');
-  if(count) count.textContent = (pending.length ? pending.length + ' pending' : 'all caught up') + ' · ' + orders.length + ' total';
+  const stale = pending.filter(o => webOrderWaitingDays(o) >= WEB_ORDER_STALE_DAYS);
+  if(count) count.textContent = (pending.length ? pending.length + ' pending' + (stale.length ? ` (${stale.length} waiting ${WEB_ORDER_STALE_DAYS}+ days)` : '') : 'all caught up') + ' · ' + orders.length + ' total';
+  updateWebOrdersAlert(pending.length, stale.length);
   if(!orders.length) {
     list.innerHTML = '<div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);padding:10px;border:1px dashed var(--border);border-radius:8px;text-align:center">No storefront orders yet</div>';
     return;
@@ -22721,6 +22749,7 @@ async function renderStorefrontOrders(){
         <div style="display:flex;gap:6px">
           <span class="qpl-badge ${paid?'good':'warn'}">${paid?'PAID':'AWAITING PAYMENT'}</span>
           <span class="qpl-badge ${fulfilled?'good':'warn'}">${fulfilled?'FULFILLED':'PENDING'}</span>
+          ${!fulfilled && webOrderWaitingDays(o) >= WEB_ORDER_STALE_DAYS ? `<span class="qpl-badge bad">WAITING ${webOrderWaitingDays(o)} DAYS</span>` : ''}
         </div>
       </div>
       <div style="font-size:12px;font-weight:700;color:var(--text)">${escHtml(o.customer_name)} · ${escHtml(o.customer_phone)}${o.customer_email?' · '+escHtml(o.customer_email):''}</div>
@@ -22748,6 +22777,10 @@ window.fulfillStorefrontOrder = async function(orderId){
 };
 
 setInterval(() => { if(shouldPollTab('orders')) renderStorefrontOrders(); }, 30000);
+// Off the Orders tab, re-check every 5 minutes so the header button stays
+// current (and catches up once sign-in finishes after the first check).
+setInterval(() => { if(!document.hidden && activeTab !== 'orders') renderStorefrontOrders(); }, 5 * 60000);
+setTimeout(() => { if(!document.hidden) renderStorefrontOrders(); }, 20000);
 renderStorefrontOrders();
 
 let focPreorderOrdersCache = [];
@@ -47975,7 +48008,7 @@ async function toppsLoadParallels(cardId){
   window.__arscaCloseModal = closeModal;
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.09.30.01-customer-reviews" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.09.30.02-web-order-alert" defer></script>
 </body>
 </html>
 
