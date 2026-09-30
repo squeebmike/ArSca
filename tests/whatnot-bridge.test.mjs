@@ -24,9 +24,12 @@ function makeContext() {
       { id: 'aaaaaaaa-0000-0000-0000-000000000001', name: 'Charizard', set: 'Base Set', card_number: '4', category: 'Pokemon TCG', qty: 1, status: 'in_stock', cost: 50, condition: 'NM', photos: ['https://img.example/c.jpg', 'blob:local'], listPrice: 300, market: 280 },
       { id: 'aaaaaaaa-0000-0000-0000-000000000002', name: 'Mike Trout', set: 'Baseball Cards 2011 Topps Update', category: 'Sports', qty: 1, status: 'in_stock', cost: 0, condition: 'Excellent', listPrice: 40, market: 40 },
       { id: 'aaaaaaaa-0000-0000-0000-000000000004', name: 'Julio Rodriguez', set: 'Baseball Cards 2022 Topps Update', category: 'Sports', qty: 1, status: 'in_stock', grader: 'PSA', condition: 'NM', listPrice: 90, market: 90 },
+      { id: 'foc-2', name: 'SAGA #70 CVR A', category: 'Comic', qty: 2, status: 'in_stock', condition: 'NM', listPrice: 5, market: 5, raw: { focCycleId: 'cycle-sep', focReceivedAt: '2026-09-29T18:00:00Z' } },
+      { id: 'foc-old', name: 'OLD WEEK #1', category: 'Comic', qty: 1, status: 'in_stock', listPrice: 5, market: 5, raw: { focCycleId: 'cycle-aug', focReceivedAt: '2026-08-20T18:00:00Z' } },
+      { id: 'foc-sold', name: 'SOLD WEEK BOOK', category: 'Comic', qty: 0, status: 'sold', raw: { focCycleId: 'cycle-sep' } },
       { id: 'aaaaaaaa-0000-0000-0000-000000000005', name: 'Bin of stuff', category: 'Collectibles', qty: 1, status: 'in_stock', listPrice: 5, market: 5 },
       { id: '54c8313b-d067-410c-a12a-5eede06c1217', name: 'ADVENTURE TIME HALLOWEEN SPECIAL #1 CVR A SEAN DOVE - PRESALE', category: 'Comic', qty: 1, status: 'in_stock', condition: 'NM', cost: 4, listPrice: 6, market: 6,
-        raw: { publisher: 'Oni Press', onSaleDate: '2026-09-30', focComicDetail: { source: 'foc', number: '1', writers: ['Jeremy Melloul'], coverArtists: ['Sean Dove'], publisher: 'Oni Press', storeDate: '2026-09-30', seriesName: 'Adventure Time (2025)', description: 'BOO . . . FROM THE LAND OF OOO! Finn and Jake enter their trickiest situation yet.' } } },
+        raw: { publisher: 'Oni Press', onSaleDate: '2026-09-30', focCycleId: 'cycle-sep', focReceivedAt: '2026-09-30T18:00:00Z', focComicDetail: { source: 'foc', number: '1', writers: ['Jeremy Melloul'], coverArtists: ['Sean Dove'], publisher: 'Oni Press', storeDate: '2026-09-30', seriesName: 'Adventure Time (2025)', description: 'BOO . . . FROM THE LAND OF OOO! Finn and Jake enter their trickiest situation yet.' } } },
       { id: 'aaaaaaaa-0000-0000-0000-000000000003', name: 'Sold Thing', category: 'Sports', qty: 0, status: 'sold' },
     ],
     inventoryBulkSelectedIds: new Set(['aaaaaaaa-0000-0000-0000-000000000001', 'aaaaaaaa-0000-0000-0000-000000000002', 'aaaaaaaa-0000-0000-0000-000000000004', 'aaaaaaaa-0000-0000-0000-000000000005']),
@@ -35,6 +38,14 @@ function makeContext() {
       return new Response(fs.readFileSync('scripts/whatnot-values.json', 'utf8'), { status: 200 });
     },
     activeTab: 'whatnot',
+    getActiveStoreId: () => 'store-1',
+    getSupabaseClient: () => ({ from: table => {
+      assert.equal(table, 'foc_cycles');
+      const q = { select: () => q, eq: () => q, order: () => q, limit: async () => ({ data: [{ id: 'cycle-sep', foc_date: '2026-09-07', distributor: 'PRH' }, { id: 'cycle-aug', foc_date: '2026-08-03', distributor: 'Lunar' }] }) };
+      return q;
+    } }),
+    switchTab: name => { ctx.activeTab = name; },
+    refreshBuiltInInventoryDelta: async () => true,
     inventoryProfitStats: i => ({ list: Number(i.listPrice || 0), market: Number(i.market || 0) }),
     inventoryImageUrl: () => '',
     whatnotFeeSettings: () => ({ pct: 10, flat: 0.5 }),
@@ -175,6 +186,25 @@ assert.equal(comicRow[col('Condition')], 'Near Mint');
 assert.equal(comicRow[col('Sub Category')], 'Modern Comics');
 assert.deepEqual([...comicSheet[0]], templateHeader, 'exactly the template columns, nothing extra');
 assert.ok(comicSheet.every(r => r.length === templateHeader.length));
+
+// FOC shipment: pick a received week and get exactly its in-stock books.
+ctx.WB.set('source', 'shipment');
+let shipHtml = elements['whatnot-bridge'].innerHTML;
+assert.match(shipHtml, /PRH FOC 2026-09-07 · received 2026-09-30 · 2 books in stock/);
+assert.match(shipHtml, /Lunar FOC 2026-08-03 · received 2026-08-20 · 1 book in stock/);
+assert.ok(shipHtml.indexOf('2026-09-07') < shipHtml.indexOf('2026-08-03'), 'newest shipment first');
+ctx.WB.set('shipment', 'cycle-sep');
+ctx.WB.download();
+const shipRows = downloads[downloads.length - 1].rows.slice(1).map(r => r[col('SKU')]);
+assert.deepEqual([...shipRows].sort(), ['54c8313b-d067-410c-a12a-5eede06c1217', 'foc-2'], 'only that week\'s in-stock books');
+
+// The FOC cover wall's SEND TO WHATNOT button lands on the same selection.
+ctx.WB.set('source', 'selected');
+ctx.activeTab = 'foc';
+await ctx.sendFocShipmentToWhatnot('cycle-aug');
+assert.equal(ctx.activeTab, 'whatnot');
+ctx.WB.download();
+assert.deepEqual([...downloads[downloads.length - 1].rows.slice(1).map(r => r[col('SKU')])], ['foc-old']);
 
 console.log('Whatnot bridge export/import checks passed');
 

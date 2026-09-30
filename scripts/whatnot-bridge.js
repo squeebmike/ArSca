@@ -53,7 +53,7 @@ var CONDITION_ALIASES = [
   [/^(new|sealed|factory sealed|brand new)$/, ['New', 'Brand New', 'Mint']],
 ];
 
-var state = { settings:null, loading:false, source:'selected', category:'', query:'', dest:'show', type:'Auction', auctionRule:'one', auctionPct:50, offerable:false, includeCost:true, wholeDollars:true, report:null };
+var state = { settings:null, loading:false, source:'selected', category:'', query:'', shipment:'', cycles:null, dest:'show', type:'Auction', auctionRule:'one', auctionPct:50, offerable:false, includeCost:true, wholeDollars:true, report:null };
 
 function esc(v){ return String(v == null ? '' : v).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
 function norm(v){ return String(v || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim(); }
@@ -120,9 +120,46 @@ function chosenItems(){
     return list.filter(function(i){ return ids.has(i.id); });
   }
   if(state.source === 'category') return list.filter(function(i){ return categoryOf(i) === state.category; });
+  if(state.source === 'shipment') return state.shipment ? list.filter(function(i){ return focCycleOf(i) === state.shipment; }) : [];
   var q = norm(state.query);
   if(!q) return [];
   return list.filter(function(i){ return norm([i.name, i.set, i.card_number, i.variant, i.category].join(' ')).indexOf(q) >= 0; });
+}
+
+// FOC shipments: books created by RECEIVE SHIPMENT (source foc_receive) and
+// eBay presale rows switched to in stock both carry the cycle they came in.
+function focCycleOf(i){ var raw = i.raw || {}; return String(raw.focCycleId || i.focCycleId || ''); }
+function shipments(){
+  var groups = {};
+  items().filter(isSellable).forEach(function(i){
+    var id = focCycleOf(i); if(!id) return;
+    var g = groups[id] = groups[id] || { id:id, count:0, receivedAt:'' };
+    g.count++;
+    var at = String((i.raw || {}).focReceivedAt || '');
+    if(at > g.receivedAt) g.receivedAt = at;
+  });
+  return Object.keys(groups).map(function(k){ return groups[k]; }).sort(function(a, b){ return b.receivedAt.localeCompare(a.receivedAt); });
+}
+function shipmentLabel(g){
+  var cycle = (state.cycles || {})[g.id];
+  var parts = [];
+  if(cycle) parts.push((cycle.distributor || 'FOC') + ' FOC ' + cycle.foc_date);
+  if(g.receivedAt) parts.push('received ' + g.receivedAt.slice(0, 10));
+  if(!parts.length) parts.push('FOC shipment');
+  return parts.join(' · ') + ' · ' + g.count + ' book' + (g.count === 1 ? '' : 's') + ' in stock';
+}
+// FOC week names for the shipment list; best-effort (the list still works
+// with receive dates alone).
+async function loadCycles(){
+  if(state.cycles) return;
+  state.cycles = {};
+  try {
+    var sb = typeof getSupabaseClient === 'function' ? getSupabaseClient() : null;
+    var storeId = typeof getActiveStoreId === 'function' ? getActiveStoreId() : '';
+    if(!sb || !storeId) return;
+    var res = await sb.from('foc_cycles').select('id,foc_date,distributor').eq('store_id', storeId).order('foc_date', { ascending:false }).limit(200);
+    (res.data || []).forEach(function(c){ state.cycles[c.id] = c; });
+  } catch(e) { /* labels fall back to receive dates */ }
 }
 
 function imageUrls(i){
@@ -325,8 +362,10 @@ function renderSend(){
     '<div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);display:grid;gap:10px">' +
       '<div><b style="color:var(--text)">ITEMS</b><br>' +
         opt('source', 'selected', 'Checked in Inventory (' + selectedCount + ')', state.source) +
+        opt('source', 'shipment', 'A FOC shipment', state.source) +
         opt('source', 'category', 'A whole category', state.source) +
         opt('source', 'search', 'Search', state.source) +
+        (state.source === 'shipment' ? (shipments().length ? '<select class="tsi" style="margin:6px 0 0;max-width:420px" onchange="WB.set(\'shipment\',this.value)"><option value="">Pick a shipment</option>' + shipments().map(function(g){ return '<option value="' + esc(g.id) + '"' + (g.id === state.shipment ? ' selected' : '') + '>' + esc(shipmentLabel(g)) + '</option>'; }).join('') + '</select>' : '<div style="margin-top:6px">No in-stock books from a FOC shipment yet -- receive one on the Comics / FOC tab first.</div>') : '') +
         (state.source === 'category' ? '<select class="tsi" style="margin:6px 0 0;max-width:260px" onchange="WB.set(\'category\',this.value)"><option value="">Pick a category</option>' + allCats.map(function(x){ return '<option' + (x === state.category ? ' selected' : '') + '>' + esc(x) + '</option>'; }).join('') + '</select>' : '') +
         (state.source === 'search' ? '<input class="tsi" style="margin:6px 0 0" placeholder="Name, set, number..." value="' + esc(state.query) + '" onchange="WB.set(\'query\',this.value)">' : '') +
       '</div>' +
@@ -452,7 +491,7 @@ function renderImport(){
 
 async function render(){
   var el = host(); if(!el) return;
-  if(!state.settings){ el.innerHTML = '<div class="panel" style="padding:14px;font-family:var(--font-mono);font-size:10px;color:var(--dim)">Loading Whatnot tools…</div>'; await loadSettings(); }
+  if(!state.settings){ el.innerHTML = '<div class="panel" style="padding:14px;font-family:var(--font-mono);font-size:10px;color:var(--dim)">Loading Whatnot tools…</div>'; await Promise.all([loadSettings(), loadCycles()]); }
   el.innerHTML = renderSend() + renderImport();
 }
 
@@ -556,6 +595,16 @@ window.WB = {
     render();
     if(recorded && typeof loadInventory === 'function') loadInventory().catch(function(){});
   },
+};
+// From the FOC cover wall: SEND TO WHATNOT opens this panel with that
+// week's received books chosen (fetching just-received rows first).
+window.sendFocShipmentToWhatnot = async function(cycleId){
+  if(typeof refreshBuiltInInventoryDelta === 'function'){ try { await refreshBuiltInInventoryDelta(); } catch(e){} }
+  state.source = 'shipment'; state.shipment = String(cycleId || '');
+  if(typeof switchTab === 'function') switchTab('whatnot');
+  await render();
+  var count = chosenItems().length;
+  toast(count ? count + ' book' + (count === 1 ? '' : 's') + ' from this shipment ready for Whatnot' : 'No in-stock books from this shipment yet -- receive it first');
 };
 window.renderWhatnotBridge = render;
 if(typeof activeTab !== 'undefined' && activeTab === 'whatnot') render();
