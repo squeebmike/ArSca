@@ -2936,6 +2936,46 @@ function renderNewsPage() {
   });
 }
 
+// Every approved customer review across the store, newest first. Reviews
+// are saved on the item that was bought (data.reviews, see
+// /public/storefront/review), and a sold item's own /item page is a 404 --
+// so without this page an approved review on a one-of-a-kind card would
+// never be shown anywhere. Only approved, not-hidden reviews are shown.
+function collectApprovedStoreReviews(rows) {
+  const out = [];
+  for (const row of Array.isArray(rows) ? rows : []) {
+    const d = row?.data || {};
+    for (const r of Array.isArray(d.reviews) ? d.reviews : []) {
+      if (r?.approved !== true || r?.hidden === true) continue;
+      const rating = Math.round(Number(r.rating));
+      if (!(rating >= 1 && rating <= 5) || !String(r.text || '').trim()) continue;
+      out.push({ itemId: row.id, itemName: String(d.name || d.title || ''), author: String(r.author || 'Verified buyer'), rating, text: String(r.text), date: String(r.date || '') });
+    }
+  }
+  return out.sort((a, b) => b.date.localeCompare(a.date));
+}
+
+// Visible reviews only, no star markup: Google ignores (and may penalize)
+// review stars a business puts on its own reviews page ("self-serving"
+// reviews), so the rating schema stays on item pages only (see
+// reviewSchemaAndHtml). noindex while empty so a blank page is never indexed.
+function renderStoreReviewsPage(reviews) {
+  const stars = n => '\u2605'.repeat(n) + '\u2606'.repeat(5 - n);
+  const count = reviews.length;
+  const avg = count ? reviews.reduce((sum, r) => sum + r.rating, 0) / count : 0;
+  const summary = count
+    ? `<div class="mp-meta" style="margin-bottom:18px"><span style="color:#ffd166;letter-spacing:2px">${stars(Math.round(avg))}</span> ${avg.toFixed(1)} out of 5 from ${count} verified buyer${count === 1 ? '' : 's'}</div>`
+    : '<p class="mp-sub">No reviews yet. After an online order is picked up or delivered, we email a link to leave one.</p>';
+  const rows = reviews.slice(0, 200).map(r => `<div style="padding:14px 0;border-top:1px solid rgba(255,255,255,.1)"><div style="color:#ffd166;letter-spacing:2px">${stars(r.rating)}</div><div style="font-size:14px;margin-top:6px;white-space:pre-line">${mtgEscapeHtml(r.text)}</div><div class="mp-meta" style="margin-top:6px">${mtgEscapeHtml(r.author)}${r.date ? ` \u00b7 ${mtgEscapeHtml(r.date)}` : ''}${r.itemName ? ` \u00b7 bought ${mtgEscapeHtml(r.itemName)}` : ''}</div></div>`).join('');
+  return mtgPageShell({
+    title: 'Customer Reviews | The Mana Pocket',
+    description: count ? `Reviews from ${count} verified buyer${count === 1 ? '' : 's'} of The Mana Pocket -- comics, cards, and collectibles.` : 'Customer reviews from verified buyers of The Mana Pocket.',
+    canonicalPath: '/reviews',
+    robotsNoindex: !count,
+    bodyHtml: `<div class="mp-crumb"><a href="/shop">\u2190 Shop</a></div><h1>Customer reviews</h1><p class="mp-sub">Every review here is from a real order, left through the link we email after pickup or delivery.</p>${summary}${rows}`,
+  });
+}
+
 function compactToppsSet(row = {}, generatedAt) {
   return { id: row.id, year: row.year, brand: row.brand, product: row.product, sport: row.sport, setName: row.setName, releaseName: row.releaseName, cardCount: Number(row.cardCount || 0), updatedAt: row.updatedAt || generatedAt };
 }
@@ -7090,6 +7130,25 @@ async function routeRequest(request, env, ctx) {
         listItems: e => fetchAllListableStorefrontItemsCached(e, ctx), isAvailable: isStorefrontItemAvailable, itemSlug: itemDetailSlug,
       });
       if (articleResponse) return articleResponse;
+    }
+
+    // GET /reviews -- approved customer reviews from every order (see
+    // collectApprovedStoreReviews). Cached 10 minutes, so an approval in the
+    // dashboard shows up here within about that long.
+    if (url.pathname === '/reviews' && request.method === 'GET') {
+      const cacheKey = new Request(url.toString(), request);
+      const cached = await caches.default.match(cacheKey);
+      if (cached) return cached;
+      let reviewRows = [];
+      if (env.SUPABASE_URL && (env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SERVICE_KEY)) {
+        try {
+          ({ data: reviewRows } = await supabaseAdminFetchAll(env, `inventory_items?store_id=eq.${encodeURIComponent(ITEM_DETAIL_STORE_ID)}&data->reviews=not.is.null&select=id,data&order=id.asc`, 5000));
+        } catch (e) { console.error('Store reviews page read failed:', e.message); }
+      }
+      const response = mtgHtmlResponse(renderStoreReviewsPage(collectApprovedStoreReviews(reviewRows)));
+      response.headers.set('Cache-Control', 'public, max-age=600');
+      ctx.waitUntil(caches.default.put(cacheKey, response.clone()));
+      return response;
     }
 
     if (url.pathname === '/news' && request.method === 'GET') {
