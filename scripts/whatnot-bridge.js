@@ -82,7 +82,7 @@ async function loadSettings(){
   // from the Values tab of Whatnot's CSV template); a store that loads a newer
   // Values file uses that instead.
   try {
-    var builtIn = await fetch('scripts/whatnot-values.json?v=2026-09-30');
+    var builtIn = await fetch('scripts/whatnot-values.json?v=2026-09-30b');
     state.builtInValues = builtIn.ok ? await builtIn.json() : null;
   } catch(e) { state.builtInValues = null; }
   state.loading = false;
@@ -150,7 +150,7 @@ function priceFor(i){
 }
 
 // Uses Whatnot's own spelling of the type once its values are loaded
-// ("Buy it Now" vs "Buy It Now"), matched ignoring case and spaces.
+// (e.g. "Buy It Now"), matched ignoring case and spaces.
 function typeValue(){
   var allowed = values().types || [];
   var want = norm(state.type).replace(/ /g, '');
@@ -187,7 +187,7 @@ function rowFor(i){
   return [
     map.category || '', subCategoryFor(i, map), title, description, String(Math.max(1, Number(i.qty || 1))),
     typeValue(), priceFor(i), map.shippingProfile || '',
-    state.type === 'Buy it Now' && state.offerable ? 'TRUE' : 'FALSE',
+    state.type === 'Buy It Now' && state.offerable ? 'TRUE' : 'FALSE',
     (state.settings.defaults && state.settings.defaults.hazmat) || 'Not Hazmat',
     conditionFor(i, map), state.includeCost && cost > 0 ? cost.toFixed(2) : '', i.id,
   ].concat([0,1,2,3,4,5,6,7].map(function(n){ return imgs[n] || ''; }));
@@ -275,10 +275,10 @@ function renderSend(){
         (state.source === 'search' ? '<input class="tsi" style="margin:6px 0 0" placeholder="Name, set, number..." value="' + esc(state.query) + '" onchange="WB.set(\'query\',this.value)">' : '') +
       '</div>' +
       '<div><b style="color:var(--text)">GOING TO</b><br>' + opt('dest', 'show', 'A live show (temporary listings)', state.dest) + opt('dest', 'shop', 'My Whatnot shop (inventory drafts)', state.dest) + '</div>' +
-      '<div><b style="color:var(--text)">LISTING TYPE</b><br>' + opt('type', 'Auction', 'Auction', state.type) + opt('type', 'Buy it Now', 'Buy it Now', state.type) + opt('type', 'Giveaway', 'Giveaway', state.type) +
+      '<div><b style="color:var(--text)">LISTING TYPE</b><br>' + opt('type', 'Auction', 'Auction', state.type) + opt('type', 'Buy It Now', 'Buy It Now', state.type) + opt('type', 'Giveaway', 'Giveaway', state.type) +
         (state.type === 'Auction' ? '<div style="margin-top:6px">Starting bid: ' + opt('auctionRule', 'one', '$1', state.auctionRule) + opt('auctionRule', 'pct', '% of market', state.auctionRule) + opt('auctionRule', 'list', 'my list price', state.auctionRule) +
           (state.auctionRule === 'pct' ? '<input type="number" min="1" max="200" value="' + esc(state.auctionPct) + '" style="width:64px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:4px;border-radius:4px" onchange="WB.set(\'auctionPct\',this.value)"> %' : '') + '</div>' : '') +
-        (state.type === 'Buy it Now' ? '<label style="display:block;margin-top:6px"><input type="checkbox"' + (state.offerable ? ' checked' : '') + ' onchange="WB.set(\'offerable\',this.checked)"> Let buyers make offers</label>' : '') +
+        (state.type === 'Buy It Now' ? '<label style="display:block;margin-top:6px"><input type="checkbox"' + (state.offerable ? ' checked' : '') + ' onchange="WB.set(\'offerable\',this.checked)"> Let buyers make offers</label>' : '') +
       '</div>' +
       '<div><label><input type="checkbox"' + (state.wholeDollars ? ' checked' : '') + ' onchange="WB.set(\'wholeDollars\',this.checked)"> Round prices up to whole dollars</label> &nbsp; <label><input type="checkbox"' + (state.includeCost ? ' checked' : '') + ' onchange="WB.set(\'includeCost\',this.checked)"> Include my cost (Whatnot uses it for your profit reports; buyers never see it)</label></div>' +
       (cats.length ? '<div><b style="color:var(--text)">WHATNOT CATEGORY FOR EACH OF YOUR CATEGORIES</b> <span>(set once, saved for every export)</span>' +
@@ -400,7 +400,7 @@ async function render(){
 // categories" + "conditions" (which sub-category each condition belongs to).
 function parseWhatnotValues(rows){
   var header = (rows[0] || []).map(function(h){ return norm(h); });
-  var out = { categories:[], shippingProfiles:[], hazmat:[], types:['Auction','Buy it Now','Giveaway'], subCategoriesByCategory:{}, conditionsBySubCategory:{} };
+  var out = { categories:[], shippingProfiles:[], hazmat:[], types:['Auction','Buy It Now','Giveaway'], subCategoriesByCategory:{}, conditionsBySubCategory:{} };
   function column(n){ var list = []; rows.slice(1).forEach(function(r){ var v = String(r[n] || '').trim(); if(v && list.indexOf(v) < 0) list.push(v); }); return list; }
   function pairs(keyCol, valCol, target){
     rows.slice(1).forEach(function(r){

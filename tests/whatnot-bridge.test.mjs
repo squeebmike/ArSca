@@ -117,11 +117,11 @@ const saved = calls.filter(c => c.path === '/store/whatnot-settings' && c.body).
 assert.equal(saved.Collectibles.subCategory, 'Other Toys');
 assert.equal(saved['Pokemon TCG'].subCategory, 'Pokémon Cards', 'saving keeps the suggestions that were in use');
 
-// Buy it Now uses the list price, rounded up to whole dollars.
-ctx.WB.set('type', 'Buy it Now');
+// Buy It Now uses the list price, rounded up to whole dollars.
+ctx.WB.set('type', 'Buy It Now');
 ctx.WB.download();
 assert.equal(downloads[1].rows[1][col('Price')], '300');
-assert.equal(downloads[1].rows[1][col('Type')], 'Buy it Now');
+assert.equal(downloads[1].rows[1][col('Type')], 'Buy It Now');
 
 // Loading the Values tab file itself gives the same lists as the built-in copy.
 await ctx.WB.loadValues({ text: fs.readFileSync('tests/fixtures/whatnot-csv-values.csv', 'utf8').replace(/^\uFEFF/, '') });
