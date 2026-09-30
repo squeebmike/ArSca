@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.09.30.14-sports-saved-links">
+<meta name="version" content="2026.09.30.15-comic-barcode-sync">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1655,22 +1655,22 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.09.30.14-sports-saved-links" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.09.30.14-sports-saved-links" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.09.30.14-sports-saved-links" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.09.30.14-sports-saved-links" defer></script>
-<script src="scripts/backlist-dashboard.js?v=2026.09.30.14-sports-saved-links" defer></script>
-<script src="scripts/database-viewer.js?v=2026.09.30.14-sports-saved-links" defer></script>
-<script src="scripts/card-intake-dashboard.js?v=2026.09.30.14-sports-saved-links" defer></script>
-<script src="scripts/mana-pocket-task-library.js?v=2026.09.30.14-sports-saved-links" defer></script>
-<script src="scripts/daily-tasks-dashboard.js?v=2026.09.30.14-sports-saved-links" defer></script>
-<script src="scripts/whatnot-bridge.js?v=2026.09.30.14-sports-saved-links" defer></script>
+<script src="scripts/query-routing.js?v=2026.09.30.15-comic-barcode-sync" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.09.30.15-comic-barcode-sync" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.09.30.15-comic-barcode-sync" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.09.30.15-comic-barcode-sync" defer></script>
+<script src="scripts/backlist-dashboard.js?v=2026.09.30.15-comic-barcode-sync" defer></script>
+<script src="scripts/database-viewer.js?v=2026.09.30.15-comic-barcode-sync" defer></script>
+<script src="scripts/card-intake-dashboard.js?v=2026.09.30.15-comic-barcode-sync" defer></script>
+<script src="scripts/mana-pocket-task-library.js?v=2026.09.30.15-comic-barcode-sync" defer></script>
+<script src="scripts/daily-tasks-dashboard.js?v=2026.09.30.15-comic-barcode-sync" defer></script>
+<script src="scripts/whatnot-bridge.js?v=2026.09.30.15-comic-barcode-sync" defer></script>
 <script src="scripts/research-loupe.js?v=a7de4ffe90" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.09.30.14-sports-saved-links" defer></script>
-<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.09.30.14-sports-saved-links" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.09.30.14-sports-saved-links" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.09.30.14-sports-saved-links" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.09.30.14-sports-saved-links" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.09.30.15-comic-barcode-sync" defer></script>
+<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.09.30.15-comic-barcode-sync" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.09.30.15-comic-barcode-sync" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.09.30.15-comic-barcode-sync" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.09.30.15-comic-barcode-sync" defer></script>
 </head>
 <body>
 
@@ -1722,7 +1722,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
 <div class="dsb-chip" id="dsb-tasks" title="Today's Roles &amp; Tasks — click to jump to Tasks tab" style="cursor:pointer;display:none" onclick="switchTab('tasks')">✅ <span>TASKS:</span> <b id="dsb-tasks-val">—</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.09.30.14-sports-saved-links</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.09.30.15-comic-barcode-sync</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3889,7 +3889,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.09.30.14-sports-saved-links';
+const APP_VERSION = '2026.09.30.15-comic-barcode-sync';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -13325,10 +13325,20 @@ function comicInventoryPriceSyncItems(){
     .map(i=>{const patch=overrides[i.id]||overrides[i.wfId];return patch?{...i,...patch}:i;})
     .filter(i=>{
       const status=String(i.lifecycle||i.status||'in_stock').toLowerCase();
-      return !['sold','archived','returned','deleted'].includes(status) && qplCategoryKey(i.category||'')==='comic';
+      // FOC presale placeholders aren't books on the shelf yet -- they sell
+      // at the preorder price and are priced for real once received.
+      return !['sold','archived','returned','deleted','presale'].includes(status) && !/^foc_presale/.test(String(i.source||'')) && qplCategoryKey(i.category||'')==='comic';
     })
     .sort((a,b)=>inventoryReferenceMarketPrice(b)-inventoryReferenceMarketPrice(a));
 }
+// A comic's full barcode: 12-digit UPC + 5-digit supplement (issue, cover,
+// printing). Only the full 17 digits name one exact cover, e.g. a ratio
+// variant rather than its Cover A.
+function comicInventoryFullUpc(item = {}){
+  const digits=String(item.upc||item.raw?.upc||item.barcode||item.raw?.barcode||'').replace(/\D/g,'');
+  return digits.length===17?digits:'';
+}
+const COMIC_UPC_LOOKUP_BATCH_SIZE = 15;
 
 function comicSyncedGuidePrice(item = {}, product = {}){
   const prices=product.comicPrices||{};
@@ -13368,8 +13378,41 @@ async function buildLiveComicPriceSyncProposal(options = {}){
   const proposal=[];
 
   const linked=[];
+  const productsById=new Map();
+  // Store ask: "how can we sync up prices for FOC comics we put in
+  // inventory -- ratios where the prices have gone up?" Books received from
+  // FOC (and other distributor imports) never had a PriceCharting link, so
+  // this sync skipped every one. They do carry their full barcode, which
+  // names the exact cover, so an unlinked book is looked up by that first.
+  const byUpc=[];
   for(const item of items){
-    const productId=comicInventoryPricechartingId(item);
+    if(!comicInventoryPricechartingId(item)&&comicInventoryFullUpc(item))byUpc.push(item);
+  }
+  const upcProducts=new Map();
+  for(let i=0;i<byUpc.length;i+=COMIC_UPC_LOOKUP_BATCH_SIZE){
+    const batch=byUpc.slice(i,i+COMIC_UPC_LOOKUP_BATCH_SIZE);
+    try{
+      const response=await storeWorkerFetch('/pricing/pricecharting/comics/by-upc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({upcs:batch.map(comicInventoryFullUpc)})});
+      const data=await response.json().catch(()=>({}));
+      if(response.ok&&data.ok)Object.entries(data.products||{}).forEach(([upc,result])=>upcProducts.set(upc,result));
+    }catch(error){ /* reported per book below */ }
+  }
+  for(const item of items){
+    let productId=comicInventoryPricechartingId(item);
+    let viaUpc=false;
+    const upcResult=!productId?upcProducts.get(comicInventoryFullUpc(item)):null;
+    if(upcResult?.ok&&upcResult.product?.productId){
+      productId=String(upcResult.product.productId);
+      productsById.set(productId,upcResult);
+      viaUpc=true;
+    }
+    if(!productId&&comicInventoryFullUpc(item)){
+      summary.noMatch++;
+      summary.processed++;
+      summary.issues.push({item:{...item},type:'no-match',title:'Not on PriceCharting yet',reason:'No PriceCharting comic has this exact barcode ('+comicInventoryFullUpc(item)+') yet. New releases and ratio variants usually show up a few weeks after release -- the next sync will pick it up, or link the exact cover in Research now.'});
+      if(typeof options.onProgress==='function')options.onProgress(summary.processed,summary.checked);
+      continue;
+    }
     if(!productId){
       summary.noMatch++;
       summary.processed++;
@@ -13377,12 +13420,13 @@ async function buildLiveComicPriceSyncProposal(options = {}){
       if(typeof options.onProgress==='function')options.onProgress(summary.processed,summary.checked);
       continue;
     }
-    linked.push({item,productId});
+    linked.push({item,productId,viaUpc});
   }
 
-  const productsById=new Map();
-  for(let i=0;i<linked.length;i+=COMIC_PRICE_SYNC_BATCH_SIZE){
-    const batch=linked.slice(i,i+COMIC_PRICE_SYNC_BATCH_SIZE);
+  const toFetch=linked.filter(x=>!x.viaUpc);
+  summary.processed+=linked.length-toFetch.length;
+  for(let i=0;i<toFetch.length;i+=COMIC_PRICE_SYNC_BATCH_SIZE){
+    const batch=toFetch.slice(i,i+COMIC_PRICE_SYNC_BATCH_SIZE);
     try{
       const response=await storeWorkerFetch('/pricing/pricecharting/products/batch',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ids:batch.map(x=>x.productId)})});
       const data=await response.json().catch(()=>({}));
@@ -13395,7 +13439,7 @@ async function buildLiveComicPriceSyncProposal(options = {}){
     if(typeof options.onProgress==='function')options.onProgress(summary.processed,summary.checked);
   }
 
-  for(const {item,productId} of linked){
+  for(const {item,productId,viaUpc} of linked){
     try{
       const result=productsById.get(productId);
       if(!result?.ok||!result.product?.productId)throw new Error(result?.error||'PriceCharting product unavailable');
@@ -13412,10 +13456,15 @@ async function buildLiveComicPriceSyncProposal(options = {}){
         continue;
       }
       const oldPrice=inventoryReferenceMarketPrice(item),freshPrice=resolved.price;
-      if(Math.abs(freshPrice-oldPrice)<.01){summary.unchanged++;continue;}
+      if(Math.abs(freshPrice-oldPrice)<.01){
+        summary.unchanged++;
+        // Keep a barcode match so the next sync goes straight to the product.
+        if(viaUpc)await saveInventoryEdit(item,{pricechartingProductId:String(product.productId),pricechartingProductName:product.productName||'',providerUrl:item.providerUrl||product.url||''}).catch(()=>{});
+        continue;
+      }
       const delta=freshPrice-oldPrice,deltaPct=oldPrice>0?Math.abs(delta/oldPrice)*100:100,direction=delta>=0?'up':'down',big=isBigPriceChange(oldPrice,freshPrice);
       summary.changed++;
-      proposal.push({item:{...item},mode:'comic-live',provider:'comic',source:resolved.label,oldPrice,newPrice:freshPrice,rawNewPrice:resolved.rawPrice,delta,deltaPct,direction,isBig:big,label:big?(direction==='up'?'BIG INCREASE':'BIG DROP'):(direction==='up'?'increase':'drop'),matchStatus:'exact saved PriceCharting ID',lastUpdated:product.lastUpdated||new Date().toISOString(),pricechartingProductId:String(product.productId),pricechartingProductName:product.productName||'',pricechartingComicPrices:product.comicPrices||{},pricechartingPrices:product.prices||{},pricechartingRetail:product.retail||{},pricechartingDemand:product.demand||{},providerUrl:product.url||item.providerUrl||'',coverImageUrl:product.imageUrl||item.coverImageUrl||item.thumbnail||'',pricePath:resolved.pricePath,selected:true});
+      proposal.push({item:{...item},mode:'comic-live',provider:'comic',source:resolved.label,oldPrice,newPrice:freshPrice,rawNewPrice:resolved.rawPrice,delta,deltaPct,direction,isBig:big,label:big?(direction==='up'?'BIG INCREASE':'BIG DROP'):(direction==='up'?'increase':'drop'),matchStatus:viaUpc?'exact barcode match':'exact saved PriceCharting ID',lastUpdated:product.lastUpdated||new Date().toISOString(),pricechartingProductId:String(product.productId),pricechartingProductName:product.productName||'',pricechartingComicPrices:product.comicPrices||{},pricechartingPrices:product.prices||{},pricechartingRetail:product.retail||{},pricechartingDemand:product.demand||{},providerUrl:product.url||item.providerUrl||'',coverImageUrl:product.imageUrl||item.coverImageUrl||item.thumbnail||'',pricePath:resolved.pricePath,selected:true});
     }catch(error){
       summary.errors++;
       summary.issues.push({item:{...item},type:'error',title:'Comic price lookup failed',reason:String(error.message||error),providerId:productId?'PriceCharting #'+productId:''});
@@ -48093,7 +48142,7 @@ async function toppsLoadParallels(cardId){
   window.__arscaCloseModal = closeModal;
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.09.30.14-sports-saved-links" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.09.30.15-comic-barcode-sync" defer></script>
 </body>
 </html>
 

@@ -13845,6 +13845,33 @@ async function routeRequest(request, env, ctx) {
           }
           return json({ ok: true, source: 'PriceCharting', products });
         }
+        // Comic price sync for books that came in without a PriceCharting
+        // link (FOC receive, distributor imports): a comic's full 17-digit
+        // barcode -- 12-digit UPC plus the 5-digit issue/cover/printing
+        // supplement -- names exactly one cover. The 12 digits alone are
+        // shared by every issue and cover of a series, so a product only
+        // counts as a match when its own saved barcode carries the same
+        // supplement; anything else is left unlinked rather than guessed.
+        if (url.pathname === '/pricing/pricecharting/comics/by-upc' && request.method === 'POST') {
+          let body = {};
+          try { body = await request.json(); } catch (_) {}
+          const upcs = Array.isArray(body.upcs) ? [...new Set(body.upcs.map(v => String(v || '').replace(/\D/g, '')).filter(v => v.length === 17))].slice(0, 15) : [];
+          if (!upcs.length) return json({ ok: false, error: 'upcs required (17-digit comic barcodes, max 15 per batch)' }, 400);
+          const products = {};
+          for (const upc of upcs) {
+            let found = null, lastError = '';
+            for (const code of [upc, upc.slice(0, 12)]) {
+              try {
+                const data = await pcFetch('/api/product', { upc: code });
+                const product = normalizePcProduct(data, data['product-name'] || '');
+                const savedUpc = String(data.upc || '').replace(/\D/g, '');
+                if (product.productId && /^comic books\b/i.test(product.consoleName || '') && savedUpc === upc) { found = product; break; }
+              } catch (error) { lastError = String(error.message || error); }
+            }
+            products[upc] = found ? { ok: true, product: found } : { ok: false, error: lastError || 'No PriceCharting comic with this exact barcode yet' };
+          }
+          return json({ ok: true, source: 'PriceCharting', products });
+        }
         if (url.pathname === '/pricing/pricecharting/slab-prices') {
           const q = [url.searchParams.get('q'), url.searchParams.get('setName'), url.searchParams.get('cardNumber') ? '#' + url.searchParams.get('cardNumber') : ''].filter(Boolean).join(' ').trim();
           const company = url.searchParams.get('company') || 'PSA';
