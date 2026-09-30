@@ -159,10 +159,9 @@ assert.equal(sales[0].body.soldAt, '2026-10-02T02:00:00.000Z');
 await ctx.WB.loadReport({ text: report });
 await ctx.WB.recordSales();
 assert.match(elements['whatnot-bridge'].innerHTML, /Already recorded/);
-// Comics: a full description with the synopsis, and (opt-in) Whatnot's
-// extra item-detail columns filled from the same saved comic details.
+// Comics: a full description with the synopsis. The CSV never gets extra
+// columns -- Whatnot rejects any file that isn't exactly its template.
 ctx.inventoryBulkSelectedIds = new Set(['54c8313b-d067-410c-a12a-5eede06c1217']);
-ctx.WB.set('extraFields', true);
 ctx.WB.download();
 const comicSheet = downloads[downloads.length - 1].rows;
 const comicRow = comicSheet[1];
@@ -174,17 +173,8 @@ assert.match(desc, /Condition: NM/);
 assert.match(desc, /\n\nBOO \. \. \. FROM THE LAND OF OOO! Finn and Jake/, 'the synopsis follows the details');
 assert.equal(comicRow[col('Condition')], 'Near Mint');
 assert.equal(comicRow[col('Sub Category')], 'Modern Comics');
-const extraHeader = [...comicSheet[0]].slice(templateHeader.length);
-assert.deepEqual(extraHeader, ['Publisher','Publication Year','Series Title','Issue Number','Character','Artist or Writer','Grading Company','Grade','Cert','Signed','Signed By']);
-const extra = Object.fromEntries(extraHeader.map((h, n) => [h, comicRow[templateHeader.length + n]]));
-assert.equal(extra.Publisher, 'Oni Press');
-assert.equal(extra['Publication Year'], '2026');
-assert.equal(extra['Series Title'], 'Adventure Time (2025)');
-assert.equal(extra['Issue Number'], '1');
-assert.equal(extra['Artist or Writer'], 'Jeremy Melloul');
-ctx.WB.set('extraFields', false);
-ctx.WB.download();
-assert.equal(downloads[downloads.length - 1].rows[0].length, templateHeader.length, 'extra columns only when turned on');
+assert.deepEqual([...comicSheet[0]], templateHeader, 'exactly the template columns, nothing extra');
+assert.ok(comicSheet.every(r => r.length === templateHeader.length));
 
 console.log('Whatnot bridge export/import checks passed');
 
