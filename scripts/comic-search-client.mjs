@@ -88,7 +88,9 @@ export function comicSearchClient(css, shell) {
     clear.onclick = function () { input.value = ''; changed(true); input.focus(); };
     document.body.classList.add('mp-comic-search-ready');
     var params = new URLSearchParams(location.search);
-    input.value = params.get('comic_q') || ((location.pathname === '/comics/search' || location.pathname === '/books') ? params.get('q') || '' : '');
+    // /books?q= is the book detail page's purchase handoff. Let its native
+    // catalog expose variant/cart controls instead of reopening discovery.
+    input.value = params.get('comic_q') || (location.pathname === '/comics/search' ? params.get('q') || '' : '');
     if (input.value) changed(true); return true;
   }
   if (!mount()) { var observer = new MutationObserver(function () { if (mount()) observer.disconnect(); }); observer.observe(document.body, { childList: true, subtree: true }); setTimeout(function () { observer.disconnect(); }, 15000); }
