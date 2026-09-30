@@ -21,7 +21,37 @@
 
 var TEMPLATE_HEADER = ['Category','Sub Category','Title','Description','Quantity','Type','Price','Shipping Profile','Offerable','Hazmat','Condition','Cost Per Item','SKU','Image URL 1','Image URL 2','Image URL 3','Image URL 4','Image URL 5','Image URL 6','Image URL 7','Image URL 8'];
 var UNSELLABLE = ['sold','archived','returned','deleted','hold','lost_damaged','bundled','sold_pending_pickup','sold_pending_shipment'];
-var VALUE_KEYS = { categories:'Category', subCategories:'Sub Category', shippingProfiles:'Shipping Profile', conditions:'Condition', types:'Type', hazmat:'Hazmat' };
+// Sports cards: pick "<Sport> Singles" from the card's own set/name text
+// ("Baseball Cards 2023 Topps Chrome") instead of one sub-category for all.
+var SPORT_AUTO = 'Auto by sport';
+var SPORT_SUBCATEGORIES = [
+  [/\bbaseball\b|\bmlb\b/, 'Baseball Singles'], [/\bbasketball\b|\bnba\b|\bwnba\b/, 'Basketball Singles'],
+  [/\bfootball\b|\bnfl\b/, 'Football Singles'], [/\bhockey\b|\bnhl\b/, 'Hockey Singles'],
+  [/\bsoccer\b|\bmls\b|premier league|\bfifa\b/, 'Soccer Singles'], [/\bwrestling\b|\bwwe\b|\baew\b/, 'Wrestling Singles'],
+  [/\bufc\b|\bmma\b/, 'UFC Singles'], [/\btennis\b/, 'Tennis Singles'], [/\bnascar\b/, 'NASCAR Cards'], [/\bformula 1\b|\bf1\b/, 'F1 Cards'],
+];
+// Suggested starting mapping for this store's categories, all values taken
+// from Whatnot's Values tab. Shown as "suggested" until the store saves it;
+// categories not listed here start blank.
+var SUGGESTED_MAPPING = {
+  'Pokemon TCG': { category:'Trading Card Games', subCategory:'Pokémon Cards', shippingProfile:'0-1 oz', condition:'Near Mint' },
+  'Magic: The Gathering': { category:'Trading Card Games', subCategory:'Magic: The Gathering', shippingProfile:'0-1 oz', condition:'Near Mint' },
+  'One Piece TCG': { category:'Trading Card Games', subCategory:'One Piece Cards', shippingProfile:'0-1 oz', condition:'Near Mint' },
+  'Yu-Gi-Oh!': { category:'Trading Card Games', subCategory:'Yu-Gi-Oh! Cards', shippingProfile:'0-1 oz', condition:'Near Mint' },
+  'Disney Lorcana': { category:'Trading Card Games', subCategory:'Lorcana', shippingProfile:'0-1 oz', condition:'Near Mint' },
+  'Sports': { category:'Sports Cards', subCategory:SPORT_AUTO, shippingProfile:'Sports singles (3oz)', condition:'Raw - Near Mint or Better' },
+  'Comic': { category:'Comics & Manga', subCategory:'Modern Comics', shippingProfile:'4-7 oz', condition:'Near Mint' },
+};
+// The store's own condition codes -> Whatnot's wording, in order of
+// preference; the first one allowed for the item's sub-category wins.
+var CONDITION_ALIASES = [
+  [/^(nm|near mint|nm\/m|mint)$/, ['Near Mint', 'Raw - Near Mint or Better', 'Like New']],
+  [/^(ex|excellent|lp|light(ly)? played)$/, ['Light Played', 'Raw - Excellent', 'Very Fine', 'Very Good']],
+  [/^(mp|moderately played|played|vg|very good)$/, ['Moderately Played', 'Raw - Very Good', 'Very Good', 'Good']],
+  [/^(hp|heavily played|fair)$/, ['Heavily Played', 'Fair', 'Raw - Poor', 'Poor']],
+  [/^(dmg|damaged|poor)$/, ['Damaged', 'Poor', 'Raw - Poor']],
+  [/^(new|sealed|factory sealed|brand new)$/, ['New', 'Brand New', 'Mint']],
+];
 
 var state = { settings:null, loading:false, source:'selected', category:'', query:'', dest:'show', type:'Auction', auctionRule:'one', auctionPct:50, offerable:false, includeCost:true, wholeDollars:true, report:null };
 
@@ -37,7 +67,7 @@ function isSellable(i){
 }
 function categoryOf(i){ return String(i.category || '').trim() || 'Uncategorized'; }
 
-function defaultSettings(){ return { mapping:{}, values:{}, defaults:{ hazmat:'Not Hazmat' } }; }
+function defaultSettings(){ return { mapping:{}, values:null, defaults:{ hazmat:'Not Hazmat' } }; }
 async function loadSettings(){
   if(state.settings || state.loading) return;
   state.loading = true;
@@ -47,8 +77,32 @@ async function loadSettings(){
     state.settings = Object.assign(defaultSettings(), (data && data.ok && data.settings) || {});
   } catch(e) {
     state.settings = defaultSettings();
-  } finally { state.loading = false; }
+  }
+  // Whatnot's allowed values ship with the dashboard (scripts/whatnot-values.json,
+  // from the Values tab of Whatnot's CSV template); a store that loads a newer
+  // Values file uses that instead.
+  try {
+    var builtIn = await fetch('scripts/whatnot-values.json?v=2026-09-30');
+    state.builtInValues = builtIn.ok ? await builtIn.json() : null;
+  } catch(e) { state.builtInValues = null; }
+  state.loading = false;
 }
+function values(){
+  var saved = state.settings && state.settings.values;
+  var v = saved && saved.categories && saved.categories.length ? saved : state.builtInValues;
+  return v || { categories:[], shippingProfiles:[], hazmat:[], types:[], subCategoriesByCategory:{}, conditionsBySubCategory:{} };
+}
+function mappingFor(cat){
+  var saved = state.settings.mapping[cat];
+  if(saved) return { map:saved, suggested:false };
+  return SUGGESTED_MAPPING[cat] ? { map:SUGGESTED_MAPPING[cat], suggested:true } : { map:{}, suggested:false };
+}
+function sportSubCategory(i){
+  var text = [i.sport, i.set, i.name, i.team, i.tags].join(' ').toLowerCase();
+  var hit = SPORT_SUBCATEGORIES.find(function(pair){ return pair[0].test(text); });
+  return hit ? hit[1] : 'Other Sports Cards';
+}
+function subCategoryFor(i, map){ return map.subCategory === SPORT_AUTO ? sportSubCategory(i) : (map.subCategory || ''); }
 async function saveSettings(){
   try {
     var res = await storeWorkerFetch('/store/whatnot-settings', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ settings:state.settings }) });
@@ -98,29 +152,40 @@ function priceFor(i){
 // Uses Whatnot's own spelling of the type once its values are loaded
 // ("Buy it Now" vs "Buy It Now"), matched ignoring case and spaces.
 function typeValue(){
-  var allowed = (state.settings.values && state.settings.values.types) || [];
+  var allowed = values().types || [];
   var want = norm(state.type).replace(/ /g, '');
   return allowed.find(function(v){ return norm(v).replace(/ /g, '') === want; }) || state.type;
 }
 
+function isGraded(i){
+  var raw = i.raw || {};
+  return !!String(i.grader || raw.grader || '').trim() || /^(psa|bgs|cgc|sgc|beckett|tag|cbcs)\b/i.test(String(i.condition || ''));
+}
+// Whatnot's allowed conditions depend on the sub-category (Pokémon Cards:
+// "Near Mint"; Baseball Singles: "Raw - Near Mint or Better"). A graded item
+// is "Graded"; otherwise the item's own condition is translated; otherwise
+// the mapping's default. Blank when the sub-category has no condition list.
 function conditionFor(i, map){
-  var allowed = (state.settings.values && state.settings.values.conditions) || [];
-  var own = String(i.condition || '').trim();
-  if(own && allowed.length){
-    var hit = allowed.find(function(v){ return v.toLowerCase() === own.toLowerCase(); });
-    if(hit) return hit;
-  }
-  return map.condition || '';
+  var allowed = (values().conditionsBySubCategory || {})[subCategoryFor(i, map)] || [];
+  if(!allowed.length) return values().categories.length ? '' : (map.condition || '');
+  if(isGraded(i) && allowed.indexOf('Graded') >= 0) return 'Graded';
+  var own = String(i.condition || '').trim().toLowerCase();
+  var exact = allowed.find(function(v){ return v.toLowerCase() === own; });
+  if(own && exact) return exact;
+  var alias = CONDITION_ALIASES.find(function(pair){ return pair[0].test(own); });
+  var preferred = alias && alias[1].find(function(v){ return allowed.indexOf(v) >= 0; });
+  if(preferred) return preferred;
+  return allowed.indexOf(map.condition) >= 0 ? map.condition : '';
 }
 
 function rowFor(i){
-  var map = state.settings.mapping[categoryOf(i)] || {};
+  var map = mappingFor(categoryOf(i)).map;
   var title = [i.name, i.set, i.card_number ? '#' + i.card_number : '', i.variant].filter(Boolean).join(' - ').slice(0, 140);
   var description = [i.name, i.set, i.card_number ? 'Card #' + i.card_number : '', i.variant, i.year, i.condition, i.comic_grade ? 'Grade ' + i.comic_grade : ''].filter(Boolean).join(' · ');
   var imgs = imageUrls(i);
   var cost = Number(i.cost || 0);
   return [
-    map.category || '', map.subCategory || '', title, description, String(Math.max(1, Number(i.qty || 1))),
+    map.category || '', subCategoryFor(i, map), title, description, String(Math.max(1, Number(i.qty || 1))),
     typeValue(), priceFor(i), map.shippingProfile || '',
     state.type === 'Buy it Now' && state.offerable ? 'TRUE' : 'FALSE',
     (state.settings.defaults && state.settings.defaults.hazmat) || 'Not Hazmat',
@@ -129,43 +194,57 @@ function rowFor(i){
 }
 
 function checks(list){
-  var mapping = state.settings.mapping;
-  var unmapped = {};
+  var unmapped = {}, bySport = {};
   var noPhoto = 0, noPrice = 0;
   list.forEach(function(i){
-    var m = mapping[categoryOf(i)] || {};
-    if(!m.category || !m.shippingProfile) unmapped[categoryOf(i)] = true;
+    var m = mappingFor(categoryOf(i)).map;
+    if(!m.category || !m.shippingProfile || mappingProblems(m).length) unmapped[categoryOf(i)] = true;
+    if(m.subCategory === SPORT_AUTO){ var sub = sportSubCategory(i); bySport[sub] = (bySport[sub] || 0) + 1; }
     if(!imageUrls(i).length) noPhoto++;
     if(state.type !== 'Giveaway' && !priceFor(i)) noPrice++;
   });
-  return { unmapped:Object.keys(unmapped), noPhoto:noPhoto, noPrice:noPrice };
+  return { unmapped:Object.keys(unmapped), noPhoto:noPhoto, noPrice:noPrice, bySport:bySport };
 }
 
-function notAllowed(key, value){
-  var allowed = (state.settings.values && state.settings.values[key]) || [];
-  return !!value && allowed.length > 0 && allowed.indexOf(value) < 0;
+// Which of a mapping's values Whatnot would reject.
+function mappingProblems(m){
+  var v = values();
+  if(!v.categories.length) return [];
+  var out = [];
+  if(m.category && v.categories.indexOf(m.category) < 0) out.push('category');
+  var subs = (v.subCategoriesByCategory || {})[m.category] || [];
+  if(m.subCategory && m.subCategory !== SPORT_AUTO && subs.indexOf(m.subCategory) < 0) out.push('subCategory');
+  if(m.subCategory === SPORT_AUTO && m.category !== 'Sports Cards') out.push('subCategory');
+  if(m.shippingProfile && v.shippingProfiles.indexOf(m.shippingProfile) < 0) out.push('shippingProfile');
+  var conds = (v.conditionsBySubCategory || {})[m.subCategory === SPORT_AUTO ? 'Baseball Singles' : m.subCategory] || [];
+  if(m.condition && conds.length && conds.indexOf(m.condition) < 0) out.push('condition');
+  return out;
 }
 
+function datalist(id, list){ return '<datalist id="' + id + '">' + (list || []).map(function(x){ return '<option value="' + esc(x) + '">'; }).join('') + '</datalist>'; }
 function datalists(){
-  var v = state.settings.values || {};
-  return Object.keys(VALUE_KEYS).map(function(key){
-    return '<datalist id="wb-values-' + key + '">' + (v[key] || []).map(function(x){ return '<option value="' + esc(x) + '">'; }).join('') + '</datalist>';
-  }).join('');
+  var v = values();
+  return datalist('wb-values-categories', v.categories) + datalist('wb-values-shippingProfiles', v.shippingProfiles);
 }
 
 function mappingRows(categories){
-  var mapping = state.settings.mapping;
-  return categories.map(function(cat){
-    var m = mapping[cat] || {};
-    function input(field, key, placeholder){
-      var bad = notAllowed(key, m[field]);
-      return '<input class="tsi" list="wb-values-' + key + '" value="' + esc(m[field] || '') + '" placeholder="' + esc(placeholder) + '" style="margin-bottom:0;' + (bad ? 'border-color:var(--red);' : '') + '" title="' + (bad ? 'Not in the Whatnot values you loaded' : '') + '" onchange="WB.setMap(' + esc(JSON.stringify(cat)) + ',\'' + field + '\',this.value)">';
+  var v = values();
+  return categories.map(function(cat, n){
+    var entry = mappingFor(cat), m = entry.map, problems = mappingProblems(m);
+    var subs = ((v.subCategoriesByCategory || {})[m.category] || []).slice();
+    if(m.category === 'Sports Cards') subs.unshift(SPORT_AUTO);
+    var conds = (v.conditionsBySubCategory || {})[m.subCategory === SPORT_AUTO ? 'Baseball Singles' : m.subCategory] || [];
+    function input(field, listId, placeholder){
+      var bad = problems.indexOf(field) >= 0;
+      return '<input class="tsi" list="' + listId + '" value="' + esc(m[field] || '') + '" placeholder="' + esc(placeholder) + '" style="margin-bottom:0;' + (bad ? 'border-color:var(--red);' : '') + '" title="' + (bad ? 'Not on Whatnot\'s list for this category' : '') + '" onchange="WB.setMap(' + esc(JSON.stringify(cat)) + ',\'' + field + '\',this.value)">';
     }
-    return '<div style="display:grid;grid-template-columns:minmax(110px,1fr) repeat(4,minmax(120px,1fr));gap:6px;align-items:center;margin-bottom:6px">' +
-      '<div style="font-family:var(--font-mono);font-size:10px;color:var(--text)">' + esc(cat) + '</div>' +
-      input('category', 'categories', 'Whatnot category') + input('subCategory', 'subCategories', 'Sub category') +
-      input('shippingProfile', 'shippingProfiles', 'Shipping profile') + input('condition', 'conditions', 'Condition') + '</div>';
-  }).join('');
+    return datalist('wb-sub-' + n, subs) + datalist('wb-cond-' + n, conds) +
+      '<div style="display:grid;grid-template-columns:minmax(110px,1fr) repeat(4,minmax(120px,1fr));gap:6px;align-items:center;margin-bottom:6px">' +
+      '<div style="font-family:var(--font-mono);font-size:10px;color:var(--text)">' + esc(cat) + (entry.suggested ? '<br><span style="color:var(--gold)">suggested -- check, then SAVE</span>' : '') + '</div>' +
+      input('category', 'wb-values-categories', 'Whatnot category') + input('subCategory', 'wb-sub-' + n, 'Sub category') +
+      input('shippingProfile', 'wb-values-shippingProfiles', 'Shipping profile') + input('condition', 'wb-cond-' + n, 'Default condition') + '</div>';
+  }).join('') +
+  '<div style="margin-top:2px">Each item\'s own condition is translated to Whatnot\'s wording for its sub-category (NM becomes "Near Mint" for Pokémon, "Raw - Near Mint or Better" for baseball); graded items become "Graded". The default condition is used only when an item has none.</div>';
 }
 
 function renderSend(){
@@ -177,11 +256,13 @@ function renderSend(){
   allCats.sort();
   var c = checks(list);
   var selectedCount = (typeof inventoryBulkSelectedIds !== 'undefined' && inventoryBulkSelectedIds) ? inventoryBulkSelectedIds.size : 0;
-  var valuesLoaded = Object.keys(state.settings.values || {}).some(function(k){ return (state.settings.values[k] || []).length; });
+  var valuesLoaded = values().categories.length > 0;
+  var customValues = !!(state.settings.values && state.settings.values.categories && state.settings.values.categories.length);
   function opt(name, value, label, current){ return '<label style="display:inline-flex;gap:4px;align-items:center;margin-right:12px"><input type="radio" name="' + name + '" value="' + esc(value) + '"' + (current === value ? ' checked' : '') + ' onchange="WB.set(\'' + name + '\',this.value)"> ' + esc(label) + '</label>'; }
   var warn = [];
   if(c.unmapped.length) warn.push('Set a Whatnot category and shipping profile for: ' + c.unmapped.map(esc).join(', '));
   if(c.noPhoto) warn.push(c.noPhoto + ' item' + (c.noPhoto === 1 ? ' has' : 's have') + ' no photo -- Whatnot needs one before a shop listing can be published');
+  Object.keys(c.bySport).length && warn.push('Sports sub-categories: ' + Object.keys(c.bySport).map(function(k){ return c.bySport[k] + ' ' + esc(k); }).join(', '));
   if(c.noPrice) warn.push(c.noPrice + ' item' + (c.noPrice === 1 ? ' has' : 's have') + ' no price');
   return '<div class="panel" style="margin-bottom:14px">' +
     '<div class="ph">SEND ITEMS TO WHATNOT <span style="font-size:9px;color:var(--dim)">CSV in Whatnot\'s own template format</span></div>' + datalists() +
@@ -203,7 +284,7 @@ function renderSend(){
       (cats.length ? '<div><b style="color:var(--text)">WHATNOT CATEGORY FOR EACH OF YOUR CATEGORIES</b> <span>(set once, saved for every export)</span>' +
         '<div style="margin-top:6px;overflow-x:auto">' + mappingRows(cats) + '</div>' +
         '<button class="hbtn" style="margin-bottom:0" onclick="WB.saveMapping()">SAVE CATEGORY SETTINGS</button></div>' : '') +
-      '<div>' + (valuesLoaded ? '<span style="color:var(--g)">Whatnot\'s allowed values are loaded</span> -- boxes turn red if a value isn\'t on Whatnot\'s list.' : 'For exact matching, load the <b>Values</b> tab of Whatnot\'s CSV template (in Google Sheets: File -> Download -> CSV while on the Values tab).') +
+      '<div>' + (valuesLoaded ? '<span style="color:var(--g)">Using Whatnot\'s allowed values' + (customValues ? ' (your uploaded Values file)' : ' (Whatnot template, Sep 2026)') + '</span> -- the boxes offer Whatnot\'s own choices and turn red if a value isn\'t on its list. If Whatnot changes its lists, load the new <b>Values</b> tab here.' : 'Load the <b>Values</b> tab of Whatnot\'s CSV template (in Google Sheets: File -> Download -> CSV while on the Values tab).') +
         ' <label class="hbtn" style="display:inline-block;margin:6px 0 0;cursor:pointer">LOAD WHATNOT VALUES<input type="file" accept=".csv,text/csv" style="display:none" onchange="WB.loadValues(this.files[0]);this.value=\'\'"></label></div>' +
       (warn.length ? '<div style="color:var(--gold)">' + warn.join('<br>') + '</div>' : '') +
       '<button class="hbtn" style="width:100%;padding:12px;margin-bottom:0;background:rgba(0,255,179,.12);border-color:rgba(0,255,179,.35);color:var(--g)"' + (list.length ? '' : ' disabled') + ' onclick="WB.download()">DOWNLOAD WHATNOT CSV (' + list.length + ' item' + (list.length === 1 ? '' : 's') + ')</button>' +
@@ -314,6 +395,32 @@ async function render(){
   el.innerHTML = renderSend() + renderImport();
 }
 
+// The Values tab pairs columns: "subcategory categories" + "subcategories"
+// (which category each sub-category belongs to), and "condition
+// categories" + "conditions" (which sub-category each condition belongs to).
+function parseWhatnotValues(rows){
+  var header = (rows[0] || []).map(function(h){ return norm(h); });
+  var out = { categories:[], shippingProfiles:[], hazmat:[], types:['Auction','Buy it Now','Giveaway'], subCategoriesByCategory:{}, conditionsBySubCategory:{} };
+  function column(n){ var list = []; rows.slice(1).forEach(function(r){ var v = String(r[n] || '').trim(); if(v && list.indexOf(v) < 0) list.push(v); }); return list; }
+  function pairs(keyCol, valCol, target){
+    rows.slice(1).forEach(function(r){
+      var k = String(r[keyCol] || '').trim(), v = String(r[valCol] || '').trim();
+      if(!k || !v) return;
+      var list = target[k] = target[k] || [];
+      if(list.indexOf(v) < 0) list.push(v);
+    });
+  }
+  header.forEach(function(h, n){
+    if(h === 'categories' || h === 'category') out.categories = column(n);
+    else if(/^ship/.test(h)) out.shippingProfiles = column(n);
+    else if(/^hazmat/.test(h)) out.hazmat = column(n);
+    else if(/^types?$/.test(h)) out.types = column(n);
+    else if(/^sub ?categor(y|ies) categor/.test(h) && header[n + 1]) pairs(n, n + 1, out.subCategoriesByCategory);
+    else if(/^condition categor/.test(h) && header[n + 1]) pairs(n, n + 1, out.conditionsBySubCategory);
+  });
+  return out;
+}
+
 function readFile(file){ return new Promise(function(resolve, reject){ var r = new FileReader(); r.onload = function(){ resolve(String(r.result || '')); }; r.onerror = function(){ reject(r.error); }; r.readAsText(file); }); }
 
 window.WB = {
@@ -322,29 +429,24 @@ window.WB = {
     state[key] = value; render();
   },
   setMap: function(cat, field, value){
-    var m = state.settings.mapping[cat] = state.settings.mapping[cat] || {};
+    if(!state.settings.mapping[cat]) state.settings.mapping[cat] = Object.assign({}, SUGGESTED_MAPPING[cat] || {});
+    var m = state.settings.mapping[cat];
     m[field] = String(value || '').trim();
+    if(field === 'category' && m.subCategory && mappingProblems(m).indexOf('subCategory') >= 0) m.subCategory = '';
     render();
   },
-  saveMapping: function(){ saveSettings(); },
+  saveMapping: function(){
+    chosenItems().forEach(function(i){ var cat = categoryOf(i); if(!state.settings.mapping[cat] && SUGGESTED_MAPPING[cat]) state.settings.mapping[cat] = Object.assign({}, SUGGESTED_MAPPING[cat]); });
+    saveSettings().then(render);
+  },
   loadValues: async function(file){
     if(!file) return;
     try {
-      var rows = parseCSV(await readFile(file));
-      if(rows.length < 2) throw new Error('That file has no values in it');
-      var header = rows[0].map(function(h){ return norm(h); });
-      var values = {};
-      header.forEach(function(h, col){
-        var key = /sub/.test(h) ? 'subCategories' : /categor/.test(h) ? 'categories' : /ship/.test(h) ? 'shippingProfiles' : /condition/.test(h) ? 'conditions' : /hazmat/.test(h) ? 'hazmat' : /type/.test(h) ? 'types' : '';
-        if(!key) return;
-        var list = values[key] || [];
-        rows.slice(1).forEach(function(r){ var v = String(r[col] || '').trim(); if(v && list.indexOf(v) < 0) list.push(v); });
-        values[key] = list;
-      });
-      if(!Object.keys(values).length) throw new Error('No Category, Shipping Profile or Condition columns found -- make sure you downloaded the Values tab');
-      state.settings.values = values;
+      var parsed = parseWhatnotValues(parseCSV(await readFile(file)));
+      if(!parsed.categories.length) throw new Error('No "categories" column found -- make sure you downloaded the Values tab');
+      state.settings.values = parsed;
       await saveSettings();
-      toast('Loaded Whatnot values: ' + Object.keys(values).map(function(k){ return values[k].length + ' ' + VALUE_KEYS[k]; }).join(', '));
+      toast('Loaded Whatnot values: ' + parsed.categories.length + ' categories, ' + Object.keys(parsed.subCategoriesByCategory).length + ' with sub-categories, ' + parsed.shippingProfiles.length + ' shipping profiles');
       render();
     } catch(e) { toast('Could not read that file: ' + e.message); }
   },
