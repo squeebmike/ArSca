@@ -4,7 +4,7 @@ export const COMIC_SEARCH_CSS = `
 #mp-comic-search button{cursor:pointer;min-height:44px;padding:10px 16px;border:1px solid #ac7bcc;border-radius:7px;background:#53366b;color:white;font:700 14px system-ui}#mp-comic-search button:disabled{opacity:.6;cursor:wait}#mp-comic-search [hidden]{display:none!important}
 .mp-cs-section{margin-top:24px}.mp-cs-section h2{font:800 22px system-ui;color:#f5f5f2;margin:0 0 14px}.mp-cs-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(175px,1fr));gap:14px}.mp-cs-card{display:flex;flex-direction:column;border:1px solid #44364e;padding:12px;border-radius:8px;background:#20212b;min-width:0}.mp-cs-card a{color:#fff;text-decoration:none}.mp-cs-card img{width:100%;height:220px;object-fit:contain;background:#12131a;border-radius:4px}.mp-cs-card h3{font:700 16px/1.35 system-ui;margin:10px 0;overflow-wrap:anywhere}.mp-cs-card p{font-size:13px}.mp-cs-price{font-weight:800;color:#fff!important}.mp-cs-card .mp-cs-action{margin-top:auto;padding-top:10px;text-decoration:underline;color:#d7b5f0}.mp-cs-section>button{margin-top:14px}
 body.mp-comic-searching [data-bl-dynamic],body.mp-comic-searching [data-foc-dynamic],body.mp-comic-searching [data-cnr-dynamic],body.mp-comic-searching #wo-live-shop{display:none!important}
-body.mp-comic-search-ready .mp-bl-searchbar{display:none!important}
+body.mp-comic-search-ready .mp-bl-searchbar,body.mp-comic-search-ready #mp-foc-search{display:none!important}
 @media(max-width:520px){#mp-comic-search{padding:14px;margin:16px auto}.mp-cs-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.mp-cs-card{padding:9px}.mp-cs-card img{height:170px}.mp-cs-input input{flex-basis:100%}}
 `;
 
