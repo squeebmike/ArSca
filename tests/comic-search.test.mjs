@@ -49,6 +49,19 @@ test('punctuation cannot inject database filters; empty query does no work',asyn
 });
 test('served script parses',async()=>{new vm.Script(await comicSearchScriptResponse().text());});
 
+test('served script supplies the keepNames helper used by the deployed bundle',async()=>{
+  const original=Object.getOwnPropertyDescriptor(comicSearchClient,'toString');
+  try {
+    Object.defineProperty(comicSearchClient,'toString',{configurable:true,value:()=> 'function(){ const run=__name(()=>{window.started=true},"run"); run(); }'});
+    const context={window:{}};
+    vm.runInNewContext(await comicSearchScriptResponse().text(),context);
+    assert.equal(context.window.started,true);
+  } finally {
+    if(original) Object.defineProperty(comicSearchClient,'toString',original);
+    else delete comicSearchClient.toString;
+  }
+});
+
 function fakeElement(){return {children:[],textContent:'',value:'',hidden:false,classList:{add(){},toggle(){}},appendChild(n){this.children.push(n);return n;},replaceChildren(...children){this.children=children;},addEventListener(name,fn){this[name]=fn;},focus(){}};}
 test('rapid typing ignores stale responses, and clearing restores the catalog',async()=>{
   const input=fakeElement(),output=fakeElement(),status=fakeElement(),clear=fakeElement(),form=fakeElement();
