@@ -27,7 +27,8 @@ assert.match(fn, /var flagged=\(d\.receivedSummary\|\|\[\]\)\.filter\(function\(
   'must surface a short-ship/incentive-not-received mismatch the same way the bulk receive flow does');
 assert.match(fn, /api\('\/foc\/ebay\/convert-to-instock',\{method:'POST',headers:\{'Content-Type':'application\/json'\},body:JSON\.stringify\(\{storeId:getActiveStoreId\(\),cycleId:state\.cycle\.id\}\)\}\)/,
   'must also sweep any still-live eBay presale listings to in-stock wording, same as the bulk receive flow');
-assert.match(fn, /await openCycle\(state\.cycle\.id\);/, 'must refresh the wall after adding so the new inventory/counts are visible');
+assert.match(fn, /await refreshCycleFamilies\(\);/, 'must refresh the covers after adding so the new inventory/counts are visible');
+assert.doesNotMatch(fn, /await openCycle\(state\.cycle\.id\);/, 'must not rebuild the whole cover wall (and jump to the top) for one added book');
 assert.match(fn, /catch\(e\)\{toast_dash\('Could not add to inventory: '\+e\.message\);\}/, 'a failure must surface a real error, not fail silently');
 
 console.log('FOC quick-add-to-inventory contract checks passed');
