@@ -7781,7 +7781,8 @@ async function routeRequest(request, env, ctx) {
         const body = await request.text();
         if (new TextEncoder().encode(body).byteLength > 1024 * 1024) return json({ ok:false, error:'KV payload is too large' }, 413);
         if (env.LBA_KV) {
-          const expirationTtl = key.startsWith('show_session') ? 60 * 60 * 24 * 180 : key.startsWith('comic_') ? 60 * 60 * 24 * 365 : 604800;
+          // Confirmed barcode matches are store memory, not session state.
+          const expirationTtl = key.startsWith('show_session') ? 60 * 60 * 24 * 180 : (key.startsWith('comic_') || key.startsWith('barcode_link_')) ? 60 * 60 * 24 * 365 : 604800;
           await env.LBA_KV.put(scopedKey, body, { expirationTtl });
         } else {
           globalThis['_' + scopedKey] = body;
