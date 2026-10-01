@@ -1,0 +1,20 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Whatnot Live Stickers</title><link rel="stylesheet" href="popup.css"></head>
+<body>
+  <h1>WHATNOT LIVE STICKERS</h1>
+  <label class="row"><input type="checkbox" id="enabled"> Print a sticker for every sale</label>
+  <label class="row"><input type="checkbox" id="giveaways"> Also print giveaway winners</label>
+  <label class="row">Label size
+    <select id="size"><option value="2x1">2" x 1"</option><option value="3x2">3" x 2"</option><option value="4x6">4" x 6"</option></select>
+  </label>
+  <div class="buttons">
+    <button id="test">TEST PRINT</button>
+    <button id="capture" title="Copies what your open Whatnot page says, so detection can be tuned">CAPTURE PAGE</button>
+    <button id="export">EXPORT CSV</button>
+    <button id="clear" class="danger">CLEAR LOG</button>
+  </div>
+  <div id="status" class="status"></div>
+  <h2>THIS SHOW (<span id="count">0</span>)</h2>
+  <div id="sales"></div>
+  <script src="popup.js"></script>
+</body></html>
