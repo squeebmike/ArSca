@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.10.01.4-barcode-inventory-shared">
+<meta name="version" content="2026.10.01.5-edit-barcode-language">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1655,22 +1655,22 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.10.01.4-barcode-inventory-shared" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.10.01.4-barcode-inventory-shared" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.10.01.4-barcode-inventory-shared" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.10.01.4-barcode-inventory-shared" defer></script>
-<script src="scripts/backlist-dashboard.js?v=2026.10.01.4-barcode-inventory-shared" defer></script>
-<script src="scripts/database-viewer.js?v=2026.10.01.4-barcode-inventory-shared" defer></script>
-<script src="scripts/card-intake-dashboard.js?v=2026.10.01.4-barcode-inventory-shared" defer></script>
-<script src="scripts/mana-pocket-task-library.js?v=2026.10.01.4-barcode-inventory-shared" defer></script>
-<script src="scripts/daily-tasks-dashboard.js?v=2026.10.01.4-barcode-inventory-shared" defer></script>
-<script src="scripts/whatnot-bridge.js?v=2026.10.01.4-barcode-inventory-shared" defer></script>
+<script src="scripts/query-routing.js?v=2026.10.01.5-edit-barcode-language" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.10.01.5-edit-barcode-language" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.10.01.5-edit-barcode-language" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.10.01.5-edit-barcode-language" defer></script>
+<script src="scripts/backlist-dashboard.js?v=2026.10.01.5-edit-barcode-language" defer></script>
+<script src="scripts/database-viewer.js?v=2026.10.01.5-edit-barcode-language" defer></script>
+<script src="scripts/card-intake-dashboard.js?v=2026.10.01.5-edit-barcode-language" defer></script>
+<script src="scripts/mana-pocket-task-library.js?v=2026.10.01.5-edit-barcode-language" defer></script>
+<script src="scripts/daily-tasks-dashboard.js?v=2026.10.01.5-edit-barcode-language" defer></script>
+<script src="scripts/whatnot-bridge.js?v=2026.10.01.5-edit-barcode-language" defer></script>
 <script src="scripts/research-loupe.js?v=a7de4ffe90" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.10.01.4-barcode-inventory-shared" defer></script>
-<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.10.01.4-barcode-inventory-shared" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.10.01.4-barcode-inventory-shared" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.10.01.4-barcode-inventory-shared" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.10.01.4-barcode-inventory-shared" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.10.01.5-edit-barcode-language" defer></script>
+<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.10.01.5-edit-barcode-language" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.10.01.5-edit-barcode-language" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.10.01.5-edit-barcode-language" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.10.01.5-edit-barcode-language" defer></script>
 </head>
 <body>
 
@@ -1722,7 +1722,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
 <div class="dsb-chip" id="dsb-tasks" title="Today's Roles &amp; Tasks — click to jump to Tasks tab" style="cursor:pointer;display:none" onclick="switchTab('tasks')">✅ <span>TASKS:</span> <b id="dsb-tasks-val">—</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.10.01.4-barcode-inventory-shared</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.10.01.5-edit-barcode-language</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3221,6 +3221,8 @@ body.show-mode .inv-sync-badge{display:none;}
         <div><label>Issue # / Item #</label><input type="text" id="edit-issue" placeholder="#1, SKU..."></div>
         <div><label>Serial # / Numbered</label><input type="text" id="edit-serial" placeholder="023/150"></div>
         <div><label>Card # / Language</label><input type="text" id="edit-cardnum" placeholder="123/200, Japanese"></div>
+        <div><label>Barcode / UPC</label><div style="display:flex;gap:6px"><input type="text" id="edit-upc" inputmode="numeric" autocomplete="off" placeholder="Scan or type the product barcode" style="flex:1;min-width:0"><button class="hbtn" type="button" onclick="scanBarcodeIntoField('edit-upc')">SCAN</button></div></div>
+        <div><label>Language</label><select id="edit-language"><option>English</option><option>Japanese</option><option>Chinese (Simplified)</option><option>Chinese (Traditional)</option><option>Korean</option><option>German</option><option>French</option><option>Italian</option><option>Spanish</option><option>Portuguese</option><option>Other</option></select></div>
       </div>
       <div style="display:flex;gap:12px;flex-wrap:wrap">
         <label style="display:flex;align-items:center;gap:5px;font-family:monospace;font-size:10px;color:var(--dim);cursor:pointer"><input type="checkbox" id="edit-rookie"> RC</label>
@@ -3890,7 +3892,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.10.01.4-barcode-inventory-shared';
+const APP_VERSION = '2026.10.01.5-edit-barcode-language';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -16866,7 +16868,7 @@ async function loadBuiltInInventoryItems(){
 // [fieldName, default, type] -- type is 'num'|'bool'|'array'|'raw'|omitted(string).
 const BUILT_IN_ITEM_SIMPLE_FIELDS = [
   ['year',''], ['condition',''], ['team',''], ['sport',''],
-  ['configuration',''], ['upc',''], ['publisher',''], ['tags',''],
+  ['configuration',''], ['upc',''], ['language',''], ['selectedLanguage',''], ['publisher',''], ['tags',''],
   ['comic_grade',''], ['serial_number',''], ['productType',''],
   ['priceLabel',''], ['marketPriceSource',''], ['lastPriceUpdate',''],
   ['priceUpdatedAt',''], ['livePriceStatus',''], ['priceSyncRequestPath',''],
@@ -27160,6 +27162,93 @@ function comicCreditList(item={}, key){
   return list((inventoryComicRecord(item)||{})[key]);
 }
 
+// Store ask: boxes already in stock had no way to get a barcode -- only
+// Quick Add had the field -- so they never turned up when scanned. The Edit
+// modal now carries the barcode (typed, a scanner gun, or the camera) and the
+// product language the Pokemon syncs key off.
+function setEditBarcodeAndLanguage(item = {}){
+  const upc = document.getElementById('edit-upc');
+  if(upc) upc.value = String(item.upc || item.raw?.upc || item.barcode || item.barcodePrimary || '').trim();
+  const select = document.getElementById('edit-language');
+  if(!select) return;
+  const language = String(item.language || item.selectedLanguage || item.raw?.language || item.raw?.selectedLanguage || 'English').trim() || 'English';
+  if(![...select.options].some(o => o.value === language)) select.add(new Option(language, language));
+  select.value = language;
+}
+function readEditBarcodeAndLanguage(){
+  const language = document.getElementById('edit-language')?.value || 'English';
+  return { upc:(document.getElementById('edit-upc')?.value || '').replace(/\D/g, ''), language, selectedLanguage:language };
+}
+// A barcode saved on an item that's pinned to a PriceCharting product also
+// becomes that barcode's confirmed, store-wide match -- so it still resolves
+// to the right product after the last copy sells.
+async function rememberInventoryBarcodeLink(item = {}){
+  const digits = String(item.upc || '').replace(/\D/g, '');
+  const productId = String(item.pricechartingProductId || item.raw?.pricechartingProductId || '').trim();
+  const normalize = window.ArsCaBarcode?.normalizeBarcode;
+  if(!digits || !/^\d+$/.test(productId) || typeof normalize !== 'function') return;
+  const n = normalize(digits);
+  if(![8,12,13].includes(String(n?.primary || '').length)) return;
+  const now = new Date().toISOString();
+  const sealed = !!(item.is_sealed || /^(sealed|lot)$/i.test(String(item.productType || '')));
+  const title = item.pricechartingProductName || item.name || '';
+  const candidate = {
+    provider:'pricecharting', providerProductId:productId, title, consoleName:item.set || '',
+    category:sealed ? 'sealed' : 'collectibles', imageUrl:item.imageUrl || item.thumbnail || '',
+    providerUrl:item.providerUrl || '', priceSummary:{ ungraded:Number(item.market || 0) || null },
+    confidence:100, matchReason:['Barcode saved on inventory item ' + (item.name || '')],
+  };
+  await barcodeLinkPutShared({ id:barcodeLinkId(n), barcodePrimary:n.primary, barcodeSupplement:n.supplement || '', normalizedBarcode:n.cleaned,
+    category:candidate.category, provider:'pricecharting', providerProductId:productId, title, consoleName:candidate.consoleName,
+    imageUrl:candidate.imageUrl, imageSource:candidate.imageUrl ? 'inventory' : 'placeholder', confidence:100, confirmed:true,
+    confirmedAt:now, lastUsedAt:now, notes:'Saved from the inventory Edit modal', candidate });
+}
+// Small camera scanner that fills one input (Edit modal barcode field).
+let _fieldScan = null;
+async function scanBarcodeIntoField(inputId){
+  const input = document.getElementById(inputId);
+  if(!input) return;
+  if(!navigator.mediaDevices?.getUserMedia || !('BarcodeDetector' in window)){
+    toast_dash('Camera barcode scanning isn\'t available in this browser -- type the barcode or use a scanner gun.');
+    input.focus(); return;
+  }
+  closeFieldBarcodeScanner();
+  const overlay = document.createElement('div');
+  overlay.className = 'barcode-modal-overlay on';
+  overlay.id = 'field-scan-modal';
+  overlay.style.zIndex = '10050';
+  overlay.innerHTML = '<div class="barcode-sheet"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><div style="font-family:\'Orbitron\',monospace;font-size:12px;color:var(--g)">SCAN BARCODE</div><button class="hbtn" type="button" onclick="closeFieldBarcodeScanner()">CLOSE</button></div><div class="barcode-camera active"><video id="field-scan-video" playsinline muted></video><div class="barcode-scan-line"></div></div><div id="field-scan-status" style="font-family:var(--font-mono);font-size:10px;color:var(--dim);min-height:18px">Point the camera at the product barcode.</div></div>';
+  overlay.addEventListener('click', e => { if(e.target === overlay) closeFieldBarcodeScanner(); });
+  document.body.appendChild(overlay);
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ video:{ facingMode:{ ideal:'environment' }, width:{ ideal:1280 }, height:{ ideal:720 } }, audio:false });
+    if(typeof applyContinuousAutofocus === 'function') await applyContinuousAutofocus(stream).catch(() => {});
+    const video = document.getElementById('field-scan-video');
+    video.srcObject = stream; await video.play();
+    const supported = typeof BarcodeDetector.getSupportedFormats === 'function' ? await BarcodeDetector.getSupportedFormats().catch(() => []) : [];
+    const formats = ['upc_a','upc_e','ean_13','ean_8'].filter(x => !supported.length || supported.includes(x));
+    _fieldScan = { stream, detector:new BarcodeDetector(formats.length ? { formats } : undefined), active:true };
+    const tick = async () => {
+      if(!_fieldScan?.active) return;
+      try {
+        if(video.readyState >= 2){
+          const value = (await _fieldScan.detector.detect(video))?.[0]?.rawValue || '';
+          if(/\d{8,}/.test(value)){ input.value = value.replace(/\D/g, ''); closeFieldBarcodeScanner(); toast_dash('Barcode ' + input.value + ' scanned'); return; }
+        }
+      } catch(e) {}
+      requestAnimationFrame(tick);
+    };
+    tick();
+  } catch(e) {
+    const status = document.getElementById('field-scan-status');
+    if(status){ status.style.color = 'var(--gold)'; status.textContent = /notallowed|permission|denied/i.test(String(e?.name || e?.message || '')) ? 'Camera permission denied. Type the barcode instead.' : 'Camera not available. Type the barcode instead.'; }
+  }
+}
+function closeFieldBarcodeScanner(){
+  if(_fieldScan){ _fieldScan.active = false; (_fieldScan.stream?.getTracks?.() || []).forEach(t => t.stop()); _fieldScan = null; }
+  document.getElementById('field-scan-modal')?.remove();
+}
+
 function renderInventoryComicInfo(item){const host=document.getElementById('edit-comic-info');if(host)host.innerHTML=inventoryComicInfoHtml(item);}
 
 function openEditModal(id) {
@@ -27195,6 +27284,7 @@ function openEditModal(id) {
   document.getElementById('edit-issue').value = item.issue || '';
   document.getElementById('edit-serial').value = item.serial_number || '';
   document.getElementById('edit-cardnum').value = item.card_number || '';
+  setEditBarcodeAndLanguage(item);
   document.getElementById('edit-grader').value = item.grader || '';
   document.getElementById('edit-grade').value = item.grade || item.comic_grade || '';
   document.getElementById('edit-cert').value = item.cert_number || '';
@@ -27289,6 +27379,7 @@ function openAddToInventoryModal(idx){
   // of only being visible as leftover text buried in the item name.
   document.getElementById('edit-serial').value = item.serial_number || (item.printRun ? '/' + item.printRun : '');
   document.getElementById('edit-cardnum').value = item.card_number || '';
+  setEditBarcodeAndLanguage(item);
   document.getElementById('edit-grader').value = item.grader || '';
   document.getElementById('edit-grade').value = item.grade || item.comic_grade || '';
   document.getElementById('edit-cert').value = item.cert_number || '';
@@ -27396,6 +27487,7 @@ async function confirmAddToInventoryFromModal(){
     issue: document.getElementById('edit-issue').value.trim(),
     serial_number: document.getElementById('edit-serial').value.trim(),
     card_number: document.getElementById('edit-cardnum').value.trim(),
+    ...readEditBarcodeAndLanguage(),
     ...readEditGradingFields(),
     ...readEbayExtraFieldUpdates(),
     is_rookie: document.getElementById('edit-rookie').checked,
@@ -27624,6 +27716,7 @@ async function confirmEditAndSync() {
     issue: document.getElementById('edit-issue').value.trim(),
     serial_number: document.getElementById('edit-serial').value.trim(),
     card_number: document.getElementById('edit-cardnum').value.trim(),
+    ...readEditBarcodeAndLanguage(),
     ...readEditGradingFields(),
     ...readEbayExtraFieldUpdates(),
     is_rookie: document.getElementById('edit-rookie').checked,
@@ -27640,6 +27733,7 @@ async function confirmEditAndSync() {
   };
   if(updates.ownershipType==='consignor'&&!updates.consignorName){toast_dash('Select a consignor or choose Store Inventory');return;}
   syncInventoryOwnershipToConsignment(item,updates);
+  rememberInventoryBarcodeLink({ ...item, ...updates }).catch(() => {});
 
   const statusEl = document.getElementById('edit-sync-status');
   statusEl.style.color = 'var(--gold)';
@@ -48485,7 +48579,7 @@ async function toppsLoadParallels(cardId){
   window.__arscaCloseModal = closeModal;
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.10.01.4-barcode-inventory-shared" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.10.01.5-edit-barcode-language" defer></script>
 </body>
 </html>
 
