@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.09.30.17-price-sync-fixes">
+<meta name="version" content="2026.10.01.1-chinese-sealed">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1655,22 +1655,22 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.09.30.17-price-sync-fixes" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.09.30.17-price-sync-fixes" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.09.30.17-price-sync-fixes" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.09.30.17-price-sync-fixes" defer></script>
-<script src="scripts/backlist-dashboard.js?v=2026.09.30.17-price-sync-fixes" defer></script>
-<script src="scripts/database-viewer.js?v=2026.09.30.17-price-sync-fixes" defer></script>
-<script src="scripts/card-intake-dashboard.js?v=2026.09.30.17-price-sync-fixes" defer></script>
-<script src="scripts/mana-pocket-task-library.js?v=2026.09.30.17-price-sync-fixes" defer></script>
-<script src="scripts/daily-tasks-dashboard.js?v=2026.09.30.17-price-sync-fixes" defer></script>
-<script src="scripts/whatnot-bridge.js?v=2026.09.30.17-price-sync-fixes" defer></script>
+<script src="scripts/query-routing.js?v=2026.10.01.1-chinese-sealed" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.10.01.1-chinese-sealed" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.10.01.1-chinese-sealed" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.10.01.1-chinese-sealed" defer></script>
+<script src="scripts/backlist-dashboard.js?v=2026.10.01.1-chinese-sealed" defer></script>
+<script src="scripts/database-viewer.js?v=2026.10.01.1-chinese-sealed" defer></script>
+<script src="scripts/card-intake-dashboard.js?v=2026.10.01.1-chinese-sealed" defer></script>
+<script src="scripts/mana-pocket-task-library.js?v=2026.10.01.1-chinese-sealed" defer></script>
+<script src="scripts/daily-tasks-dashboard.js?v=2026.10.01.1-chinese-sealed" defer></script>
+<script src="scripts/whatnot-bridge.js?v=2026.10.01.1-chinese-sealed" defer></script>
 <script src="scripts/research-loupe.js?v=a7de4ffe90" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.09.30.17-price-sync-fixes" defer></script>
-<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.09.30.17-price-sync-fixes" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.09.30.17-price-sync-fixes" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.09.30.17-price-sync-fixes" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.09.30.17-price-sync-fixes" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.10.01.1-chinese-sealed" defer></script>
+<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.10.01.1-chinese-sealed" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.10.01.1-chinese-sealed" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.10.01.1-chinese-sealed" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.10.01.1-chinese-sealed" defer></script>
 </head>
 <body>
 
@@ -1722,7 +1722,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
 <div class="dsb-chip" id="dsb-tasks" title="Today's Roles &amp; Tasks — click to jump to Tasks tab" style="cursor:pointer;display:none" onclick="switchTab('tasks')">✅ <span>TASKS:</span> <b id="dsb-tasks-val">—</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.09.30.17-price-sync-fixes</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.10.01.1-chinese-sealed</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3889,7 +3889,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.09.30.17-price-sync-fixes';
+const APP_VERSION = '2026.10.01.1-chinese-sealed';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -8730,6 +8730,12 @@ function ensureSpreadsheetPanel(backoffice){
         <input id="built-location" class="tsi" placeholder="Location">
         <button class="hbtn" onclick="addManualBuiltInInventory()">ADD ITEM</button>
       </div>
+      <div style="display:grid;grid-template-columns:2fr 1fr;gap:8px;margin-top:8px">
+        <input id="built-upc" class="tsi" inputmode="numeric" placeholder="Barcode / UPC / EAN (optional -- scan to cart finds it)">
+        <select id="built-language" class="tsi" title="Product language">
+          <option>English</option><option>Japanese</option><option>Chinese (Simplified)</option><option>Chinese (Traditional)</option><option>Korean</option><option>Other</option>
+        </select>
+      </div>
       <div id="built-single-row" style="display:grid;grid-template-columns:1fr 2fr 2fr;gap:8px;margin-top:8px">
         <input id="built-condition" class="tsi" placeholder="Condition (e.g. NM)">
         <input id="built-image" class="tsi" placeholder="Image URL (optional)">
@@ -8845,6 +8851,11 @@ async function addManualBuiltInInventory(){
     image:(isSealed ? document.getElementById('built-image-sealed')?.value.trim() : document.getElementById('built-image')?.value.trim()) || '',
     notes:(isSealed ? document.getElementById('built-notes-sealed')?.value.trim() : document.getElementById('built-notes')?.value.trim()) || '',
     is_sealed:isSealed,
+    // The product's own barcode doubles as its label barcode
+    // (labelBarcodeValue reads upc first), so SCAN TO CART finds a sealed
+    // box by scanning the box itself.
+    upc:(document.getElementById('built-upc')?.value || '').replace(/\D/g,''),
+    language:document.getElementById('built-language')?.value || 'English',
     // Graded fields — populated when "This item is graded" is checked, not
     // tied to category (any category can be graded).
     grader:document.getElementById('built-is-graded')?.checked ? (document.getElementById('built-grader')?.value.trim() || '') : '',
@@ -8853,7 +8864,7 @@ async function addManualBuiltInInventory(){
   };
   try {
     const id = await createBuiltInInventoryItem(item, item, 'manual_quick_add');
-    ['built-name','built-set','built-year','built-condition','built-location','built-cost','built-price','built-qty','built-image','built-notes','built-image-sealed','built-notes-sealed','built-grader','built-grade','built-cert'].forEach(k => { const el=document.getElementById(k); if(el) el.value=k==='built-qty' ? '1' : ''; });
+    ['built-name','built-set','built-year','built-condition','built-location','built-cost','built-price','built-qty','built-image','built-notes','built-image-sealed','built-notes-sealed','built-grader','built-grade','built-cert','built-upc'].forEach(k => { const el=document.getElementById(k); if(el) el.value=k==='built-qty' ? '1' : ''; });
     const gradedCheckbox = document.getElementById('built-is-graded'); if(gradedCheckbox){ gradedCheckbox.checked=false; toggleBuiltGradedRow(); }
     logOpsEvent('inventory_add', 'Manual built-in inventory item added: ' + item.name, { id, category:item.category, productType, cost:item.cost, price:item.market });
     toast_dash('Added: ' + item.name);
@@ -12973,6 +12984,21 @@ function isPokemonCardCategory(category){ return /^pok[eé]mon(\s+(tcg|cards?|tr
 function isMtgCardCategory(category){ return /^(magic(:?\s*the gathering)?|mtg)(\s+(tcg|cards?|singles|sealed))?$/i.test(String(category || '').trim()); }
 function isSportsCardCategory(category){ return /^(sports?|baseball|basketball|football|hockey|soccer|wrestling|ufc|mma|racing|golf|tennis)(\s+cards?)?$/i.test(String(category || '').trim()); }
 
+// PokemonPriceTracker (live and cached) only prices English and Japanese
+// product. Store ask: a sealed Simplified Chinese 30th Celebration booster
+// box -- searched by name it would land on the English/Japanese product of
+// the same name and be repriced from the wrong market entirely. Such items
+// are left out of the Pokemon syncs and reported, so their price stays
+// whatever the store set (sold comps), never a different region's guide.
+function pokemonUnpricedLanguage(item = {}){
+  const language = [item.language, item.selectedLanguage, item.raw?.language, item.raw?.selectedLanguage].filter(Boolean).join(' ');
+  const text = language + ' ' + [inventoryCardName(item), inventorySetName(item)].filter(Boolean).join(' ');
+  if(/traditional chinese|chinese \(traditional\)|\bt-chinese\b|繁體/i.test(text)) return 'Traditional Chinese';
+  if(/chinese|\bs-chinese\b|简体|中文/i.test(text)) return 'Chinese';
+  if(/\bkorean\b|한국어/i.test(text)) return 'Korean';
+  const other = language.match(/\b(thai|indonesian|german|french|italian|spanish|portuguese)\b/i);
+  return other ? other[1][0].toUpperCase() + other[1].slice(1).toLowerCase() : '';
+}
 function isPokemonInventorySyncItem(item = {}){
   // Same category-first rule isMtgInventorySyncItem already uses. Store
   // report: a Pokemon-branded plush/hat/other merch item -- correctly filed
@@ -13574,7 +13600,7 @@ async function buildPriceSyncProposal(options = {}){
   // The cache below is PokemonPriceTracker data -- it only has Pokemon
   // prices, so only items the Pokemon sync owns may be matched against it
   // (a Sports card or a Pokemon plush must never get a Pokemon card price).
-  items = items.filter(isPokemonInventorySyncItem);
+  items = items.filter(i => isPokemonInventorySyncItem(i) && !pokemonUnpricedLanguage(i));
   if(categories && !categories.length) items = [];
   // Prioritise highest-value items first
   items = items.sort((a, b) => inventoryReferenceMarketPrice(b) - inventoryReferenceMarketPrice(a));
@@ -13933,6 +13959,16 @@ async function buildLivePokemonPriceSyncProposal(options = {}){
     try {
       const exactId = inventoryTcgPlayerId(item);
       const sealed = isPokemonSealedInventorySyncItem(item);
+      const unpricedLanguage = pokemonUnpricedLanguage(item);
+      if(unpricedLanguage) {
+        summary.noPrice++;
+        summary.issues.push({
+          item:{ ...item }, type:'no-price', tcgPlayerId:exactId,
+          title:unpricedLanguage + ' product -- price kept as set',
+          reason:'PokemonPriceTracker only prices English and Japanese product, so a lookup would return the English/Japanese version instead. Price this item from eBay sold comps (SOLD COMPS in Research) and edit it by hand.',
+        });
+        return;
+      }
       if(isGradedInventoryItem(item)) {
         const gradeInfo = inventoryGradingInfo(item);
         const slab = await fetchGradedSlabPriceForItem(item);
@@ -48246,7 +48282,7 @@ async function toppsLoadParallels(cardId){
   window.__arscaCloseModal = closeModal;
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.09.30.17-price-sync-fixes" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.10.01.1-chinese-sealed" defer></script>
 </body>
 </html>
 
