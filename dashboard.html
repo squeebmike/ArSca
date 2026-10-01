@@ -12999,6 +12999,14 @@ function pokemonUnpricedLanguage(item = {}){
   const other = language.match(/\b(thai|indonesian|german|french|italian|spanish|portuguese)\b/i);
   return other ? other[1][0].toUpperCase() + other[1].slice(1).toLowerCase() : '';
 }
+// PokemonPriceTracker prices English and Japanese separately, and the
+// Worker defaults every request to English -- so a Japanese single without a
+// saved TCGplayer ID was searched by name in English and could be repriced
+// from the English card. Every inventory lookup now says which one it wants.
+function pokemonInventoryPptLanguage(item = {}){
+  const language = [item.language, item.selectedLanguage, item.raw?.language, item.raw?.selectedLanguage].filter(Boolean).join(' ');
+  return /japanese|\bjpn?\b/i.test(language) || /\bjapanese\b|\bjpn\b/i.test(inventoryCardName(item) + ' ' + inventorySetName(item)) ? 'japanese' : 'english';
+}
 function isPokemonInventorySyncItem(item = {}){
   // Same category-first rule isMtgInventorySyncItem already uses. Store
   // report: a Pokemon-branded plush/hat/other merch item -- correctly filed
@@ -13119,6 +13127,7 @@ async function fetchLivePokemonInventoryCard(item = {}){
   let query = '';
   let attemptedQueries = [];
   let result;
+  const language = pokemonInventoryPptLanguage(item);
   // This is the ONLY caller of pokemonPriceTrackerCardsRequest/
   // pokemonPriceTrackerSealedProductsRequest that's supposed to be "live" --
   // it backs the FETCH LIVE POKEMON button, distinct from SCAN CACHED
@@ -13132,6 +13141,7 @@ async function fetchLivePokemonInventoryCard(item = {}){
     const params = new URLSearchParams();
     params.set('tcgPlayerId', tcgPlayerId);
     params.set('limit', '1');
+    params.set('language', language);
     if(!sealed) params.set('includeBoth', 'true');
     result = sealed
       ? await pokemonPriceTrackerSealedProductsRequest(params, 'inventory.sync.sealed.tcgPlayerId', { fresh:true })
@@ -13143,14 +13153,14 @@ async function fetchLivePokemonInventoryCard(item = {}){
       const queries = pokemonSealedInventorySearchQueries(item);
       for(const candidateQuery of queries) {
         attemptedQueries.push(candidateQuery);
-        const params = new URLSearchParams({ search:candidateQuery, limit:'20' });
+        const params = new URLSearchParams({ search:candidateQuery, limit:'20', language });
         result = await pokemonPriceTrackerSealedProductsRequest(params, 'inventory.sync.sealed.search', { fresh:true });
         query = candidateQuery;
         if(result.cards?.length) break;
       }
     } else {
       attemptedQueries = [query];
-      const params = new URLSearchParams({ search:query, limit:'20' });
+      const params = new URLSearchParams({ search:query, limit:'20', language });
       result = await pokemonPriceTrackerCardsRequest(params, 'inventory.sync.search', { fresh:true });
     }
   }
@@ -13293,6 +13303,9 @@ function findCachedCardForInventoryItem(item, storeCards){
     });
     if(byId) return byId;
   }
+  // The cache is mostly English rows; a Japanese card only ever takes an
+  // exact TCGplayer-ID match, never a same-name English card.
+  if(pokemonInventoryPptLanguage(item) === 'japanese') return null;
   // Fuzzy match by name + set + card number
   const normName = normalizePokemonText(item.name || '');
   const normSet  = normalizePokemonText(item.set  || '');

@@ -35,4 +35,16 @@ assert.match(add, /upc:\(document\.getElementById\('built-upc'\)/, 'quick add sa
 assert.match(add, /language:document\.getElementById\('built-language'\)/, 'quick add saves the language');
 assert.match(dashboard, /<option>Chinese \(Simplified\)<\/option>/);
 assert.match(extractFn('labelBarcodeValue'), /item\.upc/, 'scan to cart matches on the saved barcode');
+// Japanese singles: lookups must ask PokemonPriceTracker for Japanese,
+// never fall back to an English card of the same name.
+const pptLanguage = new Function('inventoryCardName', 'inventorySetName',
+  extractFn('pokemonInventoryPptLanguage') + '\nreturn pokemonInventoryPptLanguage;')(i => i.name || '', i => i.set || '');
+assert.equal(pptLanguage({ name:'Pikachu', language:'Japanese' }), 'japanese');
+assert.equal(pptLanguage({ name:'Pikachu 001/SV-P Japanese' }), 'japanese');
+assert.equal(pptLanguage({ name:'Pikachu' }), 'english');
+const fetchLive = extractFn('fetchLivePokemonInventoryCard', 'async function ');
+assert.match(fetchLive, /params\.set\('language', language\)/, 'exact-ID lookups send the language');
+assert.equal((fetchLive.match(/limit:'20', language \}/g) || []).length, 2, 'card and sealed name searches send the language');
+assert.match(extractFn('findCachedCardForInventoryItem'), /pokemonInventoryPptLanguage\(item\) === 'japanese'\) return null;/,
+  'cached scan never name-matches a Japanese card to an English one');
 console.log('Pokemon Chinese sealed product checks passed');
