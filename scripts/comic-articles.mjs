@@ -125,7 +125,7 @@ export async function bookStatus(env, deps, book, now = Date.now()) {
   const enc = encodeURIComponent;
   const [skuRes, items] = await Promise.all([
     deps.supabaseAdminFetch(env, `comic_skus?store_id=eq.${enc(deps.storeId)}&title=ilike.${enc('*' + word + '*')}&select=id,title,variant_label,cover_image_url,customer_price_cents,customer_enabled,is_incentive,on_sale_date,cycle:foc_cycles(status,customer_cutoff_at)&order=on_sale_date.desc&limit=300`).catch(() => ({ data: [] })),
-    deps.listItems(env).catch(() => []),
+    (deps.listItemsForBook ? deps.listItemsForBook(env, word) : deps.listItems(env)).catch(() => []),
   ]);
   const skus = (skuRes.data || []).filter(s => sameComic(s.title, book));
   const stock = items.filter(i => deps.isAvailable(i) && sameComic(i.name, book))
@@ -163,7 +163,7 @@ export async function bookStatus(env, deps, book, now = Date.now()) {
 // ---------- rendering ----------
 
 const STYLE = `<style>
-.mp-art{max-width:760px;margin:0 auto}
+.mp-art-shortcuts{display:flex;flex-wrap:wrap;gap:10px;margin:18px 0 24px}.mp-art-shortcuts a{padding:10px 14px;border:1px solid var(--wo-border,#777);border-radius:24px;color:var(--wo-text,#fff);font-size:14px;text-decoration:none}.mp-art{max-width:760px;margin:0 auto}
 .mp-art h1{font-size:clamp(28px,5vw,44px);line-height:1.08;margin:6px 0 12px;letter-spacing:-.01em}
 .mp-art-meta{font-size:13px;opacity:.65;margin-bottom:22px}
 .mp-art-hero{width:100%;max-height:520px;object-fit:contain;border-radius:14px;background:#15101f;margin:0 0 24px}
@@ -227,7 +227,7 @@ function button(s) {
   if (s.state === 'in_stock') return `<a class="mp-btn" href="${s.href}">Buy now</a>`;
   if (s.state === 'preorder') return `<a class="mp-btn" href="#${bookAnchor(s)}">Pick your cover</a>`;
   if (s.state === 'closed') return `<a class="mp-btn ghost" href="/shop?cat=comics">Shop comics</a>`;
-  return `<a class="mp-btn ghost" href="/fan-club">Get notified</a>`;
+  return `<a class="mp-btn ghost" href="#book-updates" data-update-book="${encodeURIComponent(s.name)}">Request updates for this book</a>`;
 }
 
 export function renderBuyBox(article, main, esc) {
@@ -335,11 +335,17 @@ export function renderArticlePage(article, statuses, related, deps) {
     ],
     bodyHtml: STYLE + `<article class="mp-art"><div class="mp-crumb"><a href="/articles">← Comic articles</a></div>` +
       `<h1>${esc(article.title)}</h1><div class="mp-art-meta">${esc(article.author)}${article.publishedAt ? ` · ${esc(dateLabel(article.publishedAt))}` : ''} · ${readingMinutes(article.bodyHtml)} min read</div>` +
-      (article.image ? `<img class="mp-art-hero" src="${esc(article.image)}" alt="${esc(article.imageAlt || article.title)}">` : '') +
+      (image ? `<a href="${esc(image)}" target="_blank" rel="noopener" aria-label="Open full-size book cover"><img class="mp-art-hero" fetchpriority="high" decoding="async" src="${esc(image)}" alt="${esc(article.imageAlt || article.title)}"></a><p class="mp-art-meta">Tap the cover to see it full size.</p>` : '') +
       renderBuyBox(article, main, esc) +
-      `<div class="mp-art-body">${article.bodyHtml}</div>` + facts + renderBooks(statuses, esc) + more + `</article>` +
+      (main ? `<nav class="mp-art-shortcuts" aria-label="Book actions"><a href="#${bookAnchor(main)}">Covers &amp; availability</a><a href="/comics/search?q=${encodeURIComponent(comicKey(main.name).series)}">Find related comics</a><a href="#book-updates">Book updates</a></nav>` : '') +
+      `<div class="mp-art-body">${article.bodyHtml}</div>` + facts + renderBooks(statuses, esc) + renderBookUpdates(article, deps.storeId, esc) + more + `</article>` +
       (statuses.some(st => st.options?.length) ? pickerScript(deps.storeId) : ''),
   });
+}
+
+export function renderBookUpdates(article, storeId, esc) {
+  if (!article.books.length) return '';
+  return `<section class="mp-books" id="book-updates"><h2>Keep me posted about this book</h2><p>Tell the Pocket which book and update you want. Your request goes to our staff, separate from general email news.</p><form id="mp-book-update-form"><label>Book<select name="book" required>${article.books.map(book => `<option>${esc(book)}</option>`).join('')}</select></label><label>Update<select name="event"><option value="Preorder opening">When preorders open</option><option value="Preorder cutoff">Before the preorder cutoff</option><option value="Arrival or restock">When copies arrive or return to stock</option></select></label><label>Email<input name="email" type="email" autocomplete="email" maxlength="200" required></label><label><input name="consent" type="checkbox" required> Email me about this book request.</label><button class="mp-btn" type="submit">Save my request</button><p role="status" data-update-status></p></form></section><style>#mp-book-update-form{display:grid;gap:14px;max-width:560px}#mp-book-update-form label{display:grid;gap:6px}#mp-book-update-form input:not([type=checkbox]),#mp-book-update-form select{width:100%;min-height:44px;padding:10px;background:var(--wo-surface,#252332);color:var(--wo-text,#fff);border:1px solid var(--wo-border,#777);border-radius:8px}#mp-book-update-form label:has([type=checkbox]){display:flex;align-items:center}.mp-art-hero{object-fit:contain!important;max-height:520px;background:var(--wo-surface,#252332)}</style><script>(function(){var form=document.getElementById('mp-book-update-form');document.querySelectorAll('[data-update-book]').forEach(function(link){link.addEventListener('click',function(){form.elements.book.value=decodeURIComponent(link.getAttribute('data-update-book'));});});form.addEventListener('submit',async function(e){e.preventDefault();var out=form.querySelector('[data-update-status]'),button=form.querySelector('button');if(!form.reportValidity())return;button.disabled=true;out.textContent='Saving…';try{var data=new FormData(form);var response=await fetch('https://still-resonance-4f87.swarnerauto.workers.dev/public/storefront/notify',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({storeId:${JSON.stringify(storeId).replace(/</g, '\\u003c')},itemText:String(data.get('event'))+': '+String(data.get('book')),contactEmail:data.get('email')})});if(!response.ok)throw new Error('Your request could not be saved. Please try again.');out.textContent='Saved. Our staff can follow up about this book. You have not joined the general email list.';form.reset();}catch(error){out.textContent=error.message;}finally{button.disabled=false;}});})();</script>`;
 }
 
 export function renderArticleList(articles, deps) {

@@ -97,7 +97,7 @@ const get = async path => handleArticlesRequest({ method: 'GET' }, { WEBFLOW_TOK
   assert.match(html, /<script>\(function\(\)\{var C=\{"api":"https:\/\/still-resonance-4f87\.swarnerauto\.workers\.dev"[^}]*"store":"store-1"\}/, 'picker script saves to this store');
   assert.match(html, /\?'\/public\/preorders\/waitlist':'\/public\/preorders\/picks'\),\{method:req\?'POST':'PATCH'/, 'covers save to the account pulls API; incentives go to the request list');
   assert.match(html, /mp-foc-session-v1/, 'same sign-in as the preorders page');
-  assert.match(html, /Nope #9[\s\S]*Get notified/);
+  assert.match(html, /Nope #9[\s\S]*Request updates for this book/);
   assert.match(res.headers.get('Cache-Control'), /max-age=300/);
 }
 {
