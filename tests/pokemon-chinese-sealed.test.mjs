@@ -47,4 +47,39 @@ assert.match(fetchLive, /params\.set\('language', language\)/, 'exact-ID lookups
 assert.equal((fetchLive.match(/limit:'20', language \}/g) || []).length, 2, 'card and sealed name searches send the language');
 assert.match(extractFn('findCachedCardForInventoryItem'), /pokemonInventoryPptLanguage\(item\) === 'japanese'\) return null;/,
   'cached scan never name-matches a Japanese card to an English one');
+// Research: a Chinese Pokemon search goes to PriceCharting and keeps only its
+// Chinese Pokemon products.
+{
+  const queries = [];
+  const products = [
+    { productId:'1', productName:'Pikachu #001', consoleName:'Pokemon Chinese 30th Celebration', prices:{ ungraded:12.5 } },
+    { productId:'2', productName:'30th Celebration Booster Box', consoleName:'Pokemon Chinese 30th Celebration', prices:{ ungraded:180 } },
+    { productId:'3', productName:'Pikachu #001', consoleName:'Pokemon 30th Celebration', prices:{ ungraded:40 } },
+    { productId:'4', productName:'Pikachu #001', consoleName:'Pokemon Japanese 30th Celebration', prices:{ ungraded:30 } },
+  ];
+  const fetchStub = async url => { queries.push(new URL(url).searchParams.get('q')); return { json:async () => ({ ok:true, products }) }; };
+  const search = new Function('fetch', 'WORKER', 'isSealedProductIntent',
+    extractFn('searchChinesePokemonPriceCharting', 'async function ') + '\nreturn searchChinesePokemonPriceCharting;')(
+    fetchStub, 'https://worker.test', name => /booster box/i.test(name));
+  const rows = await search('Pikachu 30th Celebration Simplified Chinese');
+  assert.deepEqual(rows.map(r => r.productId), ['1', '2'], 'English and Japanese products are never offered for a Chinese search');
+  assert.equal(queries[0], 'pokemon chinese Pikachu 30th Celebration');
+  assert.equal(rows[0].language, 'Chinese (Simplified)');
+  assert.equal(rows[0].market, 12.5);
+  assert.equal(rows[1].is_sealed, true);
+  assert.equal(rows[1].condition, 'Factory Sealed');
+  assert.equal(rows[1].pricecharting.productId, '2', 'the PriceCharting link rides along into inventory');
+  const catalog = extractFn('searchQuickCatalog', 'async function ');
+  assert.ok(catalog.indexOf('isChinesePokemonQuery(q)') < catalog.indexOf('const isJapanese'), 'Chinese searches skip PokemonPriceTracker');
+}
+
+// Sync: a Chinese item linked to PriceCharting is priced from that product.
+{
+  const live = extractFn('buildLivePokemonPriceSyncProposal', 'async function ');
+  assert.ok(live.indexOf("mode:'pc-live'") > 0 && live.indexOf("mode:'pc-live'") < live.indexOf('fetchLivePokemonInventoryCard(item)'));
+  assert.match(live, /\/pricing\/pricecharting\/products\/batch/);
+  assert.match(extractFn('applyPriceSyncEntry', 'async function '), /p\.mode === 'other-live' \|\| p\.mode === 'pc-live'/,
+    'applying keeps the PriceCharting link and marks the price live');
+  assert.doesNotMatch(dashboard, /: `<option value="English">English<\/option>`/, 'a Chinese result is not saved as English');
+}
 console.log('Pokemon Chinese sealed product checks passed');
