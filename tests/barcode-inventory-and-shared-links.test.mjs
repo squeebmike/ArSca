@@ -69,4 +69,29 @@ function extractFn(name, prefix = 'function ') {
   assert.match(dashboard, /await barcodeLinkDeleteShared\(barcodeLinkId\(barcodeCurrentNormalized\)\)/);
   assert.match(worker, /key\.startsWith\('barcode_link_'\)\) \? 60 \* 60 \* 24 \* 365/, 'saved matches last a year, not the 7-day default');
 }
+// ── Edit modal: barcode + language on existing items ──
+{
+  assert.match(dashboard, /id="edit-upc"/);
+  assert.match(dashboard, /onclick="scanBarcodeIntoField\('edit-upc'\)"/);
+  assert.match(dashboard, /<select id="edit-language">[^]*?<option>Chinese \(Simplified\)<\/option>/);
+  assert.equal((dashboard.match(/setEditBarcodeAndLanguage\(item\);/g) || []).length, 2, 'both Edit modal open paths fill the fields');
+  assert.equal((dashboard.match(/\.\.\.readEditBarcodeAndLanguage\(\),/g) || []).length, 2, 'both save paths keep them');
+  assert.match(dashboard, /\['upc',''\], \['language',''\], \['selectedLanguage',''\]/, 'language survives a cloud save');
+
+  const doc = { el:{ 'edit-upc':{ value:' 0 84133-312604 0 ' }, 'edit-language':{ value:'Chinese (Simplified)' } } };
+  const read = new Function('document', extractFn('readEditBarcodeAndLanguage') + '\nreturn readEditBarcodeAndLanguage;')({ getElementById:id => doc.el[id] });
+  assert.deepEqual(read(), { upc:'0841333126040', language:'Chinese (Simplified)', selectedLanguage:'Chinese (Simplified)' });
+
+  const puts = [];
+  const remember = new Function('window', 'barcodeLinkPutShared', 'barcodeLinkId', extractFn('rememberInventoryBarcodeLink', 'async function ') + '\nreturn rememberInventoryBarcodeLink;')(
+    { ArsCaBarcode:{ normalizeBarcode:v => ({ primary:v, cleaned:v, supplement:'' }) } }, async v => puts.push(v), n => n.primary + '|');
+  await remember({ name:'Best Buddies Bundle', upc:'4050368987654', pricechartingProductId:'777', is_sealed:true, market:80 });
+  assert.equal(puts.length, 1);
+  assert.equal(puts[0].id, '4050368987654|');
+  assert.equal(puts[0].providerProductId, '777');
+  assert.equal(puts[0].category, 'sealed');
+  await remember({ name:'Unpinned', upc:'4050368987654' });
+  assert.equal(puts.length, 1, 'no PriceCharting pin, nothing to remember beyond the inventory match');
+  assert.match(dashboard, /rememberInventoryBarcodeLink\(\{ \.\.\.item, \.\.\.updates \}\)/);
+}
 console.log('Barcode inventory-first + shared link checks passed');
