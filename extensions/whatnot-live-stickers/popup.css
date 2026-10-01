@@ -1,0 +1,12 @@
+body { width:340px; margin:0; padding:12px; background:#0b0d10; color:#e8eef5; font:12px/1.4 Arial, sans-serif; }
+h1 { font-size:13px; letter-spacing:1px; color:#00ffb3; margin:0 0 10px; }
+h2 { font-size:11px; color:#8a96a3; margin:12px 0 6px; }
+.row { display:flex; align-items:center; gap:8px; margin:6px 0; }
+select { margin-left:auto; background:#151a20; color:#e8eef5; border:1px solid #2a323c; padding:3px; border-radius:4px; }
+.buttons { display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-top:10px; }
+button { background:#151a20; color:#e8eef5; border:1px solid #2a323c; border-radius:6px; padding:7px 6px; font-size:11px; cursor:pointer; }
+button:hover { border-color:#00ffb3; }
+.danger { color:#ff6b6b; }
+.status { min-height:16px; margin-top:8px; color:#ffd166; font-size:11px; }
+.sale { display:flex; justify-content:space-between; gap:8px; align-items:center; border-bottom:1px solid #1d232a; padding:6px 0; }
+.sale b { color:#fff; } .sale small { color:#8a96a3; display:block; }

@@ -1,0 +1,12 @@
+@page { margin:0; }
+html, body { margin:0; padding:0; background:#fff; color:#000; font-family:Arial, Helvetica, sans-serif; }
+.label { box-sizing:border-box; overflow:hidden; display:flex; flex-direction:column; justify-content:center; padding:0.04in 0.07in; }
+.size-2x1 { width:2in; height:1in; }
+.size-3x2 { width:3in; height:2in; padding:0.1in 0.14in; }
+.size-4x6 { width:4in; height:6in; padding:0.3in; }
+.buyer { font-weight:900; line-height:1.05; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.title { line-height:1.1; overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; }
+.meta { display:flex; justify-content:space-between; gap:4px; color:#000; }
+.size-2x1 .buyer { font-size:15pt; } .size-2x1 .title { font-size:8.5pt; margin-top:2px; } .size-2x1 .meta { font-size:7pt; margin-top:2px; }
+.size-3x2 .buyer { font-size:24pt; } .size-3x2 .title { font-size:13pt; margin-top:6px; } .size-3x2 .meta { font-size:10pt; margin-top:6px; }
+.size-4x6 .buyer { font-size:36pt; } .size-4x6 .title { font-size:20pt; margin-top:14px; -webkit-line-clamp:4; } .size-4x6 .meta { font-size:14pt; margin-top:14px; }

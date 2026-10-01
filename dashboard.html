@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.10.01.6-foc-connecting-covers">
+<meta name="version" content="2026.10.01.7-whatnot-live-stickers">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1655,22 +1655,22 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.10.01.6-foc-connecting-covers" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.10.01.6-foc-connecting-covers" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.10.01.6-foc-connecting-covers" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.10.01.6-foc-connecting-covers" defer></script>
-<script src="scripts/backlist-dashboard.js?v=2026.10.01.6-foc-connecting-covers" defer></script>
-<script src="scripts/database-viewer.js?v=2026.10.01.6-foc-connecting-covers" defer></script>
-<script src="scripts/card-intake-dashboard.js?v=2026.10.01.6-foc-connecting-covers" defer></script>
-<script src="scripts/mana-pocket-task-library.js?v=2026.10.01.6-foc-connecting-covers" defer></script>
-<script src="scripts/daily-tasks-dashboard.js?v=2026.10.01.6-foc-connecting-covers" defer></script>
-<script src="scripts/whatnot-bridge.js?v=2026.10.01.6-foc-connecting-covers" defer></script>
+<script src="scripts/query-routing.js?v=2026.10.01.7-whatnot-live-stickers" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.10.01.7-whatnot-live-stickers" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.10.01.7-whatnot-live-stickers" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.10.01.7-whatnot-live-stickers" defer></script>
+<script src="scripts/backlist-dashboard.js?v=2026.10.01.7-whatnot-live-stickers" defer></script>
+<script src="scripts/database-viewer.js?v=2026.10.01.7-whatnot-live-stickers" defer></script>
+<script src="scripts/card-intake-dashboard.js?v=2026.10.01.7-whatnot-live-stickers" defer></script>
+<script src="scripts/mana-pocket-task-library.js?v=2026.10.01.7-whatnot-live-stickers" defer></script>
+<script src="scripts/daily-tasks-dashboard.js?v=2026.10.01.7-whatnot-live-stickers" defer></script>
+<script src="scripts/whatnot-bridge.js?v=2026.10.01.7-whatnot-live-stickers" defer></script>
 <script src="scripts/research-loupe.js?v=a7de4ffe90" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.10.01.6-foc-connecting-covers" defer></script>
-<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.10.01.6-foc-connecting-covers" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.10.01.6-foc-connecting-covers" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.10.01.6-foc-connecting-covers" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.10.01.6-foc-connecting-covers" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.10.01.7-whatnot-live-stickers" defer></script>
+<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.10.01.7-whatnot-live-stickers" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.10.01.7-whatnot-live-stickers" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.10.01.7-whatnot-live-stickers" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.10.01.7-whatnot-live-stickers" defer></script>
 </head>
 <body>
 
@@ -1722,7 +1722,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
 <div class="dsb-chip" id="dsb-tasks" title="Today's Roles &amp; Tasks — click to jump to Tasks tab" style="cursor:pointer;display:none" onclick="switchTab('tasks')">✅ <span>TASKS:</span> <b id="dsb-tasks-val">—</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.10.01.6-foc-connecting-covers</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.10.01.7-whatnot-live-stickers</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -2768,6 +2768,21 @@ body.show-mode .inv-sync-badge{display:none;}
 <div id="tab-whatnot" class="tab-panel">
   <div class="sec">WHATNOT MODE</div>
   <div style="max-width:640px;margin:0 auto;padding:0 20px 40px">
+    <details class="panel" style="margin-bottom:14px">
+      <summary style="cursor:pointer;font-family:'Orbitron',monospace;color:var(--purple);font-size:11px">🏷️ LIVE BUYER STICKERS (CHROME HELPER)</summary>
+      <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);line-height:1.6;margin-top:8px">
+        Prints a 2" x 1" sticker with <b style="color:var(--text)">@buyer, item and price</b> the moment a sale happens on your Whatnot show -- nothing to type. It runs in Chrome on the computer your MUNBYN is plugged into, reading your own show page (watching your stream there works; you can still run the show from your phone).
+        <ol style="margin:8px 0 8px 18px;padding:0">
+          <li>Download the extension below and unzip it to a folder you'll keep.</li>
+          <li>Chrome: <b>chrome://extensions</b> → Developer mode → <b>Load unpacked</b> → pick that folder.</li>
+          <li>Make the MUNBYN the default printer with paper size <b>2 x 1 in</b>.</li>
+          <li>Start Chrome with <b>--kiosk-printing</b> so stickers print with no dialog (steps in the README inside the zip).</li>
+          <li>Click the extension icon → <b>TEST PRINT</b>.</li>
+        </ol>
+        If a sale shows but no sticker prints (Buy It Now especially), click <b>CAPTURE PAGE</b> in the extension right then and send it to Claude to tune.
+      </div>
+      <button class="hbtn" style="margin-top:6px;color:var(--g)" onclick="downloadWhatnotStickerExtension()">DOWNLOAD EXTENSION</button>
+    </details>
     <div id="whatnot-bridge"></div>
     <div id="whatnot-show-panel" style="margin-bottom:14px"></div>
     <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);margin-bottom:12px">Scan an item, punch in what it sold for on Whatnot, hit CONFIRM. Marks it sold immediately -- no cart, no extra checkout steps.</div>
@@ -3892,7 +3907,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.10.01.6-foc-connecting-covers';
+const APP_VERSION = '2026.10.01.7-whatnot-live-stickers';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -27249,6 +27264,51 @@ function closeFieldBarcodeScanner(){
   document.getElementById('field-scan-modal')?.remove();
 }
 
+// Packs extensions/whatnot-live-stickers (served next to this page) into a
+// ZIP right in the browser, so installing the sticker helper needs no
+// GitHub steps. Plain "stored" ZIP entries -- the files are tiny text.
+const WHATNOT_STICKER_EXTENSION_FILES = ['manifest.json','detector.js','content.js','background.js','label.html','label.css','label.js','popup.html','popup.css','popup.js','README.md'];
+function zipCrc32(bytes){
+  let crc = -1;
+  for(let i = 0; i < bytes.length; i++){
+    crc ^= bytes[i];
+    for(let k = 0; k < 8; k++) crc = (crc >>> 1) ^ (0xEDB88320 & -(crc & 1));
+  }
+  return (crc ^ -1) >>> 0;
+}
+function buildStoredZip(files){
+  const enc = new TextEncoder(), chunks = [], central = [];
+  let offset = 0;
+  const u16 = n => [n & 255, (n >>> 8) & 255], u32 = n => [n & 255, (n >>> 8) & 255, (n >>> 16) & 255, (n >>> 24) & 255];
+  files.forEach(f => {
+    const name = enc.encode(f.name), data = f.data, crc = zipCrc32(data);
+    const header = [...u32(0x04034b50), ...u16(20), ...u16(0x0800), ...u16(0), ...u16(0), ...u16(0x21), ...u32(crc), ...u32(data.length), ...u32(data.length), ...u16(name.length), ...u16(0)];
+    chunks.push(new Uint8Array(header), name, data);
+    central.push(new Uint8Array([...u32(0x02014b50), ...u16(20), ...u16(20), ...u16(0x0800), ...u16(0), ...u16(0), ...u16(0x21), ...u32(crc), ...u32(data.length), ...u32(data.length), ...u16(name.length), ...u16(0), ...u16(0), ...u16(0), ...u16(0), ...u32(0), ...u32(offset)]), name);
+    offset += header.length + name.length + data.length;
+  });
+  const centralSize = central.reduce((n, c) => n + c.length, 0);
+  const end = new Uint8Array([...u32(0x06054b50), ...u16(0), ...u16(0), ...u16(files.length), ...u16(files.length), ...u32(centralSize), ...u32(offset), ...u16(0)]);
+  return new Blob([...chunks, ...central, end], { type:'application/zip' });
+}
+async function downloadWhatnotStickerExtension(){
+  try {
+    const files = await Promise.all(WHATNOT_STICKER_EXTENSION_FILES.map(async name => {
+      const res = await fetch('extensions/whatnot-live-stickers/' + name + '?v=' + encodeURIComponent(APP_VERSION), { cache:'no-store' });
+      if(!res.ok) throw new Error(name + ' (' + res.status + ')');
+      return { name:'whatnot-live-stickers/' + name, data:new Uint8Array(await res.arrayBuffer()) };
+    }));
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(buildStoredZip(files));
+    a.download = 'whatnot-live-stickers.zip';
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+    toast_dash('Extension downloaded -- unzip it, then Load unpacked in chrome://extensions');
+  } catch(e) {
+    toast_dash('Could not package the extension: ' + (e.message || e));
+  }
+}
+
 function renderInventoryComicInfo(item){const host=document.getElementById('edit-comic-info');if(host)host.innerHTML=inventoryComicInfoHtml(item);}
 
 function openEditModal(id) {
@@ -48579,7 +48639,7 @@ async function toppsLoadParallels(cardId){
   window.__arscaCloseModal = closeModal;
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.10.01.6-foc-connecting-covers" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.10.01.7-whatnot-live-stickers" defer></script>
 </body>
 </html>
 

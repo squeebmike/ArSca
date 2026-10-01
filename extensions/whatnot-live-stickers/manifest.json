@@ -1,0 +1,13 @@
+{
+  "manifest_version": 3,
+  "name": "Mana Pocket • Whatnot Live Stickers",
+  "version": "1.0.0",
+  "description": "Prints a 2x1 sticker with the buyer's name and item the moment a sale happens on your Whatnot live show.",
+  "permissions": ["storage", "clipboardWrite"],
+  "host_permissions": ["https://www.whatnot.com/*"],
+  "background": { "service_worker": "background.js" },
+  "action": { "default_title": "Whatnot Live Stickers", "default_popup": "popup.html" },
+  "content_scripts": [
+    { "matches": ["https://www.whatnot.com/*"], "js": ["detector.js", "content.js"], "run_at": "document_idle" }
+  ]
+}
