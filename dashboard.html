@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.10.01.2-chinese-pricecharting">
+<meta name="version" content="2026.10.01.3-tcgplayer-market-sealed">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1655,22 +1655,22 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.10.01.2-chinese-pricecharting" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.10.01.2-chinese-pricecharting" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.10.01.2-chinese-pricecharting" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.10.01.2-chinese-pricecharting" defer></script>
-<script src="scripts/backlist-dashboard.js?v=2026.10.01.2-chinese-pricecharting" defer></script>
-<script src="scripts/database-viewer.js?v=2026.10.01.2-chinese-pricecharting" defer></script>
-<script src="scripts/card-intake-dashboard.js?v=2026.10.01.2-chinese-pricecharting" defer></script>
-<script src="scripts/mana-pocket-task-library.js?v=2026.10.01.2-chinese-pricecharting" defer></script>
-<script src="scripts/daily-tasks-dashboard.js?v=2026.10.01.2-chinese-pricecharting" defer></script>
-<script src="scripts/whatnot-bridge.js?v=2026.10.01.2-chinese-pricecharting" defer></script>
+<script src="scripts/query-routing.js?v=2026.10.01.3-tcgplayer-market-sealed" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.10.01.3-tcgplayer-market-sealed" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.10.01.3-tcgplayer-market-sealed" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.10.01.3-tcgplayer-market-sealed" defer></script>
+<script src="scripts/backlist-dashboard.js?v=2026.10.01.3-tcgplayer-market-sealed" defer></script>
+<script src="scripts/database-viewer.js?v=2026.10.01.3-tcgplayer-market-sealed" defer></script>
+<script src="scripts/card-intake-dashboard.js?v=2026.10.01.3-tcgplayer-market-sealed" defer></script>
+<script src="scripts/mana-pocket-task-library.js?v=2026.10.01.3-tcgplayer-market-sealed" defer></script>
+<script src="scripts/daily-tasks-dashboard.js?v=2026.10.01.3-tcgplayer-market-sealed" defer></script>
+<script src="scripts/whatnot-bridge.js?v=2026.10.01.3-tcgplayer-market-sealed" defer></script>
 <script src="scripts/research-loupe.js?v=a7de4ffe90" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.10.01.2-chinese-pricecharting" defer></script>
-<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.10.01.2-chinese-pricecharting" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.10.01.2-chinese-pricecharting" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.10.01.2-chinese-pricecharting" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.10.01.2-chinese-pricecharting" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.10.01.3-tcgplayer-market-sealed" defer></script>
+<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.10.01.3-tcgplayer-market-sealed" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.10.01.3-tcgplayer-market-sealed" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.10.01.3-tcgplayer-market-sealed" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.10.01.3-tcgplayer-market-sealed" defer></script>
 </head>
 <body>
 
@@ -1722,7 +1722,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
 <div class="dsb-chip" id="dsb-tasks" title="Today's Roles &amp; Tasks — click to jump to Tasks tab" style="cursor:pointer;display:none" onclick="switchTab('tasks')">✅ <span>TASKS:</span> <b id="dsb-tasks-val">—</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.10.01.2-chinese-pricecharting</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.10.01.3-tcgplayer-market-sealed</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3889,7 +3889,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.10.01.2-chinese-pricecharting';
+const APP_VERSION = '2026.10.01.3-tcgplayer-market-sealed';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -13690,9 +13690,17 @@ function isMtgInventorySyncItem(item = {}){
 }
 function isMtgSealedInventorySyncItem(item = {}){
   if(item.is_sealed || item.isSealed || item.raw?.is_sealed || item.raw?.isSealed) return true;
-  if(/^(sealed|lot)$/i.test(String(item.productType || item.itemType || item.inventoryType || ''))) return true;
+  const productType = String(item.productType || item.itemType || item.inventoryType || '');
+  if(/^(sealed|lot)$/i.test(productType)) return true;
+  if(/^(single|card)$/i.test(productType)) return false;
+  // Store report: an MTG sync of 24 items said "Sealed checked: 18". The set
+  // name was part of the text below, so every single from a set named
+  // "Secret Lair Drop", "... Commander Decks" or "... Bundle" promos was
+  // priced as a sealed product. A collector number or Scryfall printing id
+  // means one card, and only the item's own name decides otherwise.
+  if(mtgInventoryScryfallId(item) || inventoryCardNumber(item)) return false;
   return /\b(secret lair|booster (box|display|bundle|pack)|collector booster|draft booster|play booster|commander deck|starter kit|precon|sealed|bundle|display|case)\b/i
-    .test([inventoryCardName(item),inventorySetName(item),item.variant,item.configuration].filter(Boolean).join(' '));
+    .test([inventoryCardName(item),item.variant,item.configuration].filter(Boolean).join(' '));
 }
 function mtgInventoryFinish(item = {}){
   const text = [item.selectedFinish,item.finish,item.printing,item.selectedPrinting,item.variant,item.raw?.selectedFinish,item.raw?.finish].filter(Boolean).join(' ').toLowerCase();
@@ -13770,6 +13778,19 @@ function resolveMtgLiveRowPrice(item = {}, row = {}){
 // the exact product's own marketplace pricepoints (the same Normal/Foil
 // numbers on the product page) are the real answer, so they're tried first;
 // JustTCG stays the source for LP/MP/HP/DMG, which pricepoints don't split out.
+// Same TCGplayer pricepoints, for any game: { normal, foil } NM market
+// prices for one exact product, or null.
+async function fetchTcgplayerNmMarkets(productId = ''){
+  if(!productId || !navigator.onLine) return null;
+  try {
+    const res = await fetch(WORKER + '/pricing/tcgplayer/product/' + encodeURIComponent(productId), { cache:'no-store' });
+    const data = await res.json().catch(() => ({}));
+    if(!res.ok || !data.ok) return null;
+    const pick = type => firstMoneyValue((data.pricepoints || []).find(p => String(p.printingType || '').toLowerCase() === type)?.marketPrice);
+    const markets = { normal:pick('normal'), foil:pick('foil') };
+    return markets.normal || markets.foil ? markets : null;
+  } catch(e) { return null; }
+}
 async function fetchMtgTcgplayerPricepointPrice(item = {}, tcgPlayerId = ''){
   const condition=pokemonPptConditionCode(item.selectedCondition||item.condition||item.raw?.condition||'NM');
   if(condition!=='NM'||!tcgPlayerId||!navigator.onLine)return null;
@@ -14625,7 +14646,18 @@ function isOtherTcgSportsInventorySyncItem(item = {}){
   if(isSportsCardCategory(cat)) return true;
   const key = qplCategoryKey(cat);
   if(['yugioh','lorcana','one_piece'].includes(key)) return true;
-  return cat === 'TCG' || cat === '';
+  if(cat === 'TCG' || cat === '') return true;
+  // Store ask: dynamic pricing for a Star Wars Unlimited premium collection
+  // (or anything else outside the named games). Comics have their own sync;
+  // anything else pinned to an exact PriceCharting product is priced from it.
+  if(key === 'comic') return false;
+  const link = sportsPcLinkForItem(item);
+  return !!(link.id || (link.url && !link.built));
+}
+function isOtherSyncSealedItem(item = {}){
+  if(item.is_sealed || item.isSealed || item.raw?.is_sealed || item.raw?.isSealed) return true;
+  if(/^(sealed|lot)$/i.test(String(item.productType || item.itemType || item.inventoryType || ''))) return true;
+  return isSealedProductIntent([inventoryCardName(item), item.variant].filter(Boolean).join(' '));
 }
 
 // Store report: "lots of sports say they can't be matched, but they ALL
@@ -14750,6 +14782,15 @@ async function fetchOtherTcgOrSportsLivePrice(item){
   }
   const gameLabel = tcgLineFromText([item.category, item.game, item.raw?.game].filter(Boolean).join(' ')).label;
   const tcgPlayerId = inventoryTcgPlayerId(item);
+  // JustTCG/the name search below only know single cards -- a sealed box
+  // searched by name took the price of whatever card matched first.
+  if(isOtherSyncSealedItem(item)) return null;
+  if(tcgPlayerId && pokemonPptConditionCode(item.selectedCondition || item.condition || 'NM') === 'NM'){
+    const markets = await fetchTcgplayerNmMarkets(tcgPlayerId);
+    const foil = /foil|holo|enchanted|cold/i.test([item.selectedFinish, item.finish, item.printing, item.variant].filter(Boolean).join(' '));
+    const price = markets ? (foil ? markets.foil : markets.normal) : 0;
+    if(price > 0) return { market:price, source:'TCGplayer Market Price', matchStatus:'exact TCGplayer ID match' };
+  }
   if(tcgPlayerId){
     try {
       const res = await fetch(WORKER + '/pricing/justtcg/tcgplayer/' + encodeURIComponent(tcgPlayerId) + '?' + new URLSearchParams({ storeId:getActiveStoreId() }).toString(), { cache:'no-store' });
@@ -14781,6 +14822,7 @@ function otherSyncLinkHint(item = {}){
   const link = sportsPcLinkForItem(item);
   if(link.id || (link.url && !link.built)) return ' The saved PriceCharting/SportsCardsPro link didn\'t return a price for this card.';
   if(link.built) return ' No PriceCharting/SportsCardsPro link is saved on this card, and its name/set didn\'t open a SportsCardsPro product page. Paste the card\'s link in Edit > PriceCharting to pin it.';
+  if(isOtherSyncSealedItem(item)) return ' Sealed product is only priced from its own PriceCharting page -- paste that link in Edit > PriceCharting to pin it.';
   return ' No PriceCharting/SportsCardsPro link is saved on this card. Paste the card\'s link in Edit > PriceCharting to pin it.';
 }
 
@@ -32967,7 +33009,19 @@ async function resolveExactTcgplayerProduct(product={}){
     const res=await fetch(WORKER+'/pricing/justtcg/tcgplayer/'+encodeURIComponent(product.productId)+'?'+new URLSearchParams({priceHistoryDuration:'90d',storeId:getActiveStoreId()}).toString(),{cache:'no-store'});
     const data=await res.json().catch(()=>({}));
     const match=data.matches?.[0]||data.card||null;
-    return res.ok&&match?justTcgExactMatchToQplRow(match,product):null;
+    if(!res.ok||!match)return null;
+    // JustTCG's variant price ran ~half of TCGplayer's Market Price for MTG
+    // NM cards (see fetchMtgTcgplayerPricepointPrice); the NM rows take the
+    // exact product's own TCGplayer market instead. LP/MP/HP/DMG keep JustTCG.
+    const row=justTcgExactMatchToQplRow(match,product);
+    const markets=await fetchTcgplayerNmMarkets(product.productId);
+    if(!markets)return row;
+    row.availableVariants=(row.availableVariants||[]).map(v=>{
+      if(pokemonPptConditionCode(v.condition||'NM')!=='NM')return v;
+      const price=normalizeQplFinish(v.finish||v.printing||'normal')==='normal'?markets.normal:markets.foil;
+      return price?{...v,marketPrice:price,price,priceSource:'TCGplayer Market Price',priceConfidence:'high'}:v;
+    });
+    return applyQplSelectedVariant(row);
   }catch(e){return null;}
 }
 
@@ -36152,7 +36206,10 @@ async function fetchPriceChartingLiveCatalog(q, cat, searchPlan = qplLastSearchP
       .filter(r => isSealedProductIntent([r.name,r.set,r.category,r.variant,r.note].filter(Boolean).join(' '), cat))
       .map(r => ({
         ...r,
-        category:isMtgSealedSearchIntent(q, cat) ? 'Magic: The Gathering' : isPokemonSealedSearchIntent(q, cat) ? 'Pokemon TCG' : 'Collectibles',
+        // The product's own PriceCharting set says which game it is (a
+        // Lorcana bundle used to land in "Collectibles").
+        category:isMtgSealedSearchIntent(q, cat) ? 'Magic: The Gathering' : isPokemonSealedSearchIntent(q, cat) ? 'Pokemon TCG'
+          : /lorcana/i.test(r.set) ? 'Disney Lorcana' : /one piece/i.test(r.set) ? 'One Piece TCG' : /yu-?gi-?oh/i.test(r.set) ? 'Yu-Gi-Oh!' : 'Collectibles',
         condition:'Factory Sealed',
         selectedCondition:'Factory Sealed',
         finish:'sealed',
@@ -48376,7 +48433,7 @@ async function toppsLoadParallels(cardId){
   window.__arscaCloseModal = closeModal;
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.10.01.2-chinese-pricecharting" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.10.01.3-tcgplayer-market-sealed" defer></script>
 </body>
 </html>
 

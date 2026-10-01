@@ -29,6 +29,9 @@ const syncFns = new Function(
   extractFn('mtgInventoryScryfallId') + '\n' +
   extractFn('mtgInventoryOracleId') + '\n' +
   extractFn('qplCategoryKey') + '\n' +
+  dashboard.match(/const SPORTS_PC_CONSOLE = [^\n]+\n/)[0] +
+  extractFn('sportsPcSlug') + '\n' +
+  extractFn('sportsPcLinkForItem') + '\n' +
   extractFn('isPokemonInventorySyncItem') + '\n' +
   extractFn('isMtgInventorySyncItem') + '\n' +
   extractFn('isOtherTcgSportsInventorySyncItem') + '\n' +
