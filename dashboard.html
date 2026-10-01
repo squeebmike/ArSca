@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.10.01.3-tcgplayer-market-sealed">
+<meta name="version" content="2026.10.01.4-barcode-inventory-shared">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1655,22 +1655,22 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.10.01.3-tcgplayer-market-sealed" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.10.01.3-tcgplayer-market-sealed" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.10.01.3-tcgplayer-market-sealed" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.10.01.3-tcgplayer-market-sealed" defer></script>
-<script src="scripts/backlist-dashboard.js?v=2026.10.01.3-tcgplayer-market-sealed" defer></script>
-<script src="scripts/database-viewer.js?v=2026.10.01.3-tcgplayer-market-sealed" defer></script>
-<script src="scripts/card-intake-dashboard.js?v=2026.10.01.3-tcgplayer-market-sealed" defer></script>
-<script src="scripts/mana-pocket-task-library.js?v=2026.10.01.3-tcgplayer-market-sealed" defer></script>
-<script src="scripts/daily-tasks-dashboard.js?v=2026.10.01.3-tcgplayer-market-sealed" defer></script>
-<script src="scripts/whatnot-bridge.js?v=2026.10.01.3-tcgplayer-market-sealed" defer></script>
+<script src="scripts/query-routing.js?v=2026.10.01.4-barcode-inventory-shared" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.10.01.4-barcode-inventory-shared" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.10.01.4-barcode-inventory-shared" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.10.01.4-barcode-inventory-shared" defer></script>
+<script src="scripts/backlist-dashboard.js?v=2026.10.01.4-barcode-inventory-shared" defer></script>
+<script src="scripts/database-viewer.js?v=2026.10.01.4-barcode-inventory-shared" defer></script>
+<script src="scripts/card-intake-dashboard.js?v=2026.10.01.4-barcode-inventory-shared" defer></script>
+<script src="scripts/mana-pocket-task-library.js?v=2026.10.01.4-barcode-inventory-shared" defer></script>
+<script src="scripts/daily-tasks-dashboard.js?v=2026.10.01.4-barcode-inventory-shared" defer></script>
+<script src="scripts/whatnot-bridge.js?v=2026.10.01.4-barcode-inventory-shared" defer></script>
 <script src="scripts/research-loupe.js?v=a7de4ffe90" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.10.01.3-tcgplayer-market-sealed" defer></script>
-<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.10.01.3-tcgplayer-market-sealed" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.10.01.3-tcgplayer-market-sealed" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.10.01.3-tcgplayer-market-sealed" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.10.01.3-tcgplayer-market-sealed" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.10.01.4-barcode-inventory-shared" defer></script>
+<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.10.01.4-barcode-inventory-shared" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.10.01.4-barcode-inventory-shared" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.10.01.4-barcode-inventory-shared" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.10.01.4-barcode-inventory-shared" defer></script>
 </head>
 <body>
 
@@ -1722,7 +1722,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
 <div class="dsb-chip" id="dsb-tasks" title="Today's Roles &amp; Tasks — click to jump to Tasks tab" style="cursor:pointer;display:none" onclick="switchTab('tasks')">✅ <span>TASKS:</span> <b id="dsb-tasks-val">—</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.10.01.3-tcgplayer-market-sealed</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.10.01.4-barcode-inventory-shared</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -2567,6 +2567,7 @@ body.show-mode .inv-sync-badge{display:none;}
     </div>
     <label style="display:block;font-size:9px;color:var(--dim);margin-top:8px">OPTIONAL PRODUCT WORDS (fallback when UPC has no match)<input id="barcode-query-hint" class="tsi" placeholder="e.g. Spider-Man comic, Pokemon booster box"></label>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"><button class="hbtn" id="barcode-camera-toggle" onclick="toggleBarcodeCamera()">START CAMERA</button><button class="hbtn" onclick="resetBarcodeLookup()">SEARCH AGAIN</button><button class="hbtn" id="barcode-forget-link" onclick="forgetConfirmedBarcodeLink()" style="display:none;color:var(--gold)">WRONG ITEM / FORGET SAVED MATCH</button></div>
+    <div id="barcode-inventory-hits" style="margin-top:10px"></div>
     <div id="barcode-candidates" style="margin-top:10px"></div>
   </div>
 </div>
@@ -3889,7 +3890,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.10.01.3-tcgplayer-market-sealed';
+const APP_VERSION = '2026.10.01.4-barcode-inventory-shared';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -29120,6 +29121,55 @@ async function barcodeLinkGet(id){const db=await barcodeLinksDb();return new Pro
 async function barcodeLinkPut(value){const db=await barcodeLinksDb();return new Promise((resolve,reject)=>{const req=db.transaction('links','readwrite').objectStore('links').put(value);req.onsuccess=()=>resolve(value);req.onerror=e=>reject(e.target.error);});}
 async function barcodeLinkDelete(id){const db=await barcodeLinksDb();return new Promise((resolve,reject)=>{const req=db.transaction('links','readwrite').objectStore('links').delete(id);req.onsuccess=()=>resolve();req.onerror=e=>reject(e.target.error);});}
 function barcodeLinkId(n){return [n?.primary||'',n?.supplement||''].join('|');}
+// Store ask: a confirmed barcode match only lived on the device that made it,
+// so every phone/computer had to be taught the same box again. Confirmed
+// matches are now also kept in the store's own Worker KV, which every
+// signed-in device of the store reads; the device copy keeps offline scans
+// working. A match forgotten on one device is forgotten everywhere.
+function barcodeLinkCloudKey(id){return 'barcode_link_'+String(id||'').replace(/[^0-9|]/g,'').replace('|','_');}
+async function barcodeLinkGetShared(id){
+  const local=await barcodeLinkGet(id).catch(()=>null);
+  if(!navigator.onLine)return local;
+  try{
+    const res=await storeWorkerFetch('/kv/'+barcodeLinkCloudKey(id),{cache:'no-store'});
+    const raw=res.ok?(await res.json().catch(()=>({}))).value:null;
+    const cloud=raw?JSON.parse(raw):null;
+    if(cloud?.id===id&&cloud.confirmed){barcodeLinkPut(cloud).catch(()=>{});return cloud;}
+    if(cloud?.id===id&&cloud.forgottenAt){barcodeLinkDelete(id).catch(()=>{});return null;}
+  }catch(e){}
+  return local;
+}
+async function barcodeLinkPutShared(value){
+  await barcodeLinkPut(value);
+  storeWorkerFetch('/kv/'+barcodeLinkCloudKey(value.id),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(value)}).catch(()=>{});
+}
+async function barcodeLinkDeleteShared(id){
+  await barcodeLinkDelete(id);
+  storeWorkerFetch('/kv/'+barcodeLinkCloudKey(id),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id,confirmed:false,forgottenAt:new Date().toISOString()})}).catch(()=>{});
+}
+// Store ask: scanning a box that's already on the shelf in Research should
+// pull it up. The scan only ever asked PriceCharting, so a box PriceCharting
+// has no barcode for (new releases, imports) came back empty even though the
+// store had saved that exact barcode on the item. Any form of the code
+// (UPC-A, EAN-13, UPC-E) matches.
+function inventoryItemsForBarcode(n){
+  const codes=new Set((n?.candidates||[n?.primary]).filter(Boolean).map(String));
+  if(!codes.size)return [];
+  return (all||[]).filter(i=>{
+    const status=String(i.lifecycle||i.status||'in_stock').toLowerCase();
+    if(['sold','archived','returned','deleted'].includes(status))return false;
+    return [i.upc,i.barcode,i.barcodePrimary,i.raw?.upc,i.raw?.barcode].some(v=>{const d=String(v||'').replace(/\D/g,'');return d&&codes.has(d);});
+  }).slice(0,10);
+}
+function renderBarcodeInventoryHits(items=[]){
+  const host=document.getElementById('barcode-inventory-hits');if(!host)return;
+  if(!items.length){host.innerHTML='';return;}
+  host.innerHTML=`<div style="font:700 10px var(--font-mono);color:var(--g);letter-spacing:.6px;margin-bottom:6px">IN YOUR INVENTORY · ${items.length}</div>`+items.map(i=>{
+    const id=escHtml(JSON.stringify(String(i.id||'')));
+    const image=i.thumbnail||i.image||i.imageUrl||'';
+    return `<div class="barcode-candidate"><div>${image?`<img src="${escHtml(image)}" alt="${escHtml(i.name||'Inventory item')}">`:'<div style="width:90px;height:120px;display:grid;place-items:center;background:#050607;color:var(--dim)">NO IMAGE</div>'}</div><div><div style="font-weight:800;color:var(--text)">${escHtml(i.name||'Inventory item')}</div><div style="font-size:10px;color:var(--dim);margin-top:3px">${escHtml([i.category,i.set||i.setName].filter(Boolean).join(' · '))}</div><div style="font-size:13px;margin-top:7px">$${Number(inventoryListPrice(i)||0).toFixed(2)} · ${Number(inventoryAvailableQuantity(i)||0)} in stock</div></div><div class="barcode-candidate-actions"><button class="hbtn" onclick="closeBarcodeScanner();openEditModal(${id})">OPEN ITEM</button><button class="hbtn" onclick="dashAddToCart(${id})">ADD TO CART</button></div></div>`;
+  }).join('');
+}
 function setBarcodeStatus(message,tone=''){const el=document.getElementById('barcode-status');if(el){el.textContent=message||'';el.style.color=tone||'var(--dim)';}}
 
 async function openBarcodeScanner(){
@@ -30996,9 +31046,10 @@ async function lookupBarcodeProduct(){
     return;
   }
   const n=normalize(raw);barcodeCurrentNormalized=n;
+  const inventoryHits=inventoryItemsForBarcode(n);renderBarcodeInventoryHits(inventoryHits);
   if(![8,12,13].includes(n.primary.length)){setBarcodeStatus('Barcode read looks too short or malformed. Correct it manually and try again.','var(--gold)');return;}
   setBarcodeStatus(n.isValidLikely?'Looking up UPC...':'Check digit looks unusual; treating this as evidence and trying the entered code.','var(--gold)');
-  const saved=await barcodeLinkGet(barcodeLinkId(n)).catch(()=>null);let rows=saved?.confirmed?[{...saved.candidate,savedConfirmed:true,confidence:100,matchReason:['Saved confirmed barcode match',...(saved.candidate?.matchReason||[])]}]:[];
+  const saved=await barcodeLinkGetShared(barcodeLinkId(n)).catch(()=>null);let rows=saved?.confirmed?[{...saved.candidate,savedConfirmed:true,confidence:100,matchReason:['Saved confirmed barcode match',...(saved.candidate?.matchReason||[])]}]:[];
   if(!navigator.onLine){barcodeCandidates=rows;renderBarcodeCandidates();setBarcodeStatus(rows.length?'Offline: showing last-known confirmed match.':'Offline. No saved match for this barcode.',rows.length?'var(--gold)':'var(--red)');return;}
   try{
     const body={barcode:n.raw,categoryHint:document.getElementById('barcode-category-hint')?.value||'auto',supplement:n.supplement||'',query:document.getElementById('barcode-query-hint')?.value.trim()||'',source:'research-tab'};
@@ -31006,6 +31057,7 @@ async function lookupBarcodeProduct(){
     if(!res.ok||data.status!=='success')throw new Error(data.error||'PriceCharting unavailable');
     const seen=new Set(rows.map(x=>[x.provider||'',x.providerProductId||''].join(':')));rows.push(...(data.candidates||[]).filter(x=>{const key=[x.provider||'',x.providerProductId||''].join(':');if(seen.has(key))return false;seen.add(key);return true;}));
     barcodeCandidates=rows;barcodeCurrentNormalized={...n,...(data.barcode||{})};renderBarcodeCandidates();setBarcodeStatus(rows.length?(rows.length>1?'Multiple possible matches found. Confirm the product and cover where applicable.':'UPC match found. Confirm before saving.'):'No product found by UPC. Add product words and search again.',rows.length?'var(--g)':'var(--gold)');
+    if(!rows.length&&inventoryHits.length)setBarcodeStatus('Found in your inventory. PriceCharting has no product with this barcode yet.','var(--g)');
     enrichPokemonSealedBarcodeCandidates();
   }catch(e){barcodeCandidates=rows;renderBarcodeCandidates();setBarcodeStatus(rows.length?'Live lookup failed; showing saved confirmed match.':'PriceCharting unavailable. Try again or use saved matches offline.','var(--gold)');}
 }
@@ -31773,13 +31825,13 @@ function openBarcodeComicIssueHub(idx){const c=barcodeCandidates[idx],n=barcodeC
 async function confirmBarcodeCandidate(idx,action='view'){
   const candidate=barcodeCandidates[idx],n=barcodeCurrentNormalized;if(!candidate||!n)return;
   const coverConfirmed=action==='cover';candidate.coverConfirmed=coverConfirmed||!!candidate.coverConfirmed;candidate.needsCoverConfirmation=candidate.category==='comics'&&!candidate.coverConfirmed;
-  const now=new Date().toISOString();await barcodeLinkPut({id:barcodeLinkId(n),barcodePrimary:n.primary,barcodeSupplement:n.supplement||'',normalizedBarcode:n.cleaned,category:candidate.category,provider:candidate.provider||'pricecharting',providerProductId:candidate.providerProductId||'',title:candidate.title||'',consoleName:candidate.consoleName||'',imageUrl:candidate.imageUrl||'',imageSource:candidate.imageUrl?'pricecharting':'placeholder',confidence:100,confirmed:true,confirmedAt:now,lastUsedAt:now,notes:'Confirmed in Research barcode lookup',candidate:{...candidate,savedConfirmed:false,confidence:100}});
+  const now=new Date().toISOString();await barcodeLinkPutShared({id:barcodeLinkId(n),barcodePrimary:n.primary,barcodeSupplement:n.supplement||'',normalizedBarcode:n.cleaned,category:candidate.category,provider:candidate.provider||'pricecharting',providerProductId:candidate.providerProductId||'',title:candidate.title||'',consoleName:candidate.consoleName||'',imageUrl:candidate.imageUrl||'',imageSource:candidate.imageUrl?'pricecharting':'placeholder',confidence:100,confirmed:true,confirmedAt:now,lastUsedAt:now,notes:'Confirmed in Research barcode lookup',candidate:{...candidate,savedConfirmed:false,confidence:100}});
   const result=barcodeCandidateToResearch(candidate,n);result.barcodeConfirmedAt=now;result.coverConfirmed=!!candidate.coverConfirmed;if(result.barcodeEvidence)result.barcodeEvidence.confirmed=true;
   if(result.category==='Comic'){const appraisal=comicAppraisalState(result);appraisal.coverConfirmed=!!candidate.coverConfirmed;result.coverConfidence=candidate.coverConfirmed?'confirmed':'needs-confirmation';}
   qplMasterResults=[result];qplResults=[result];qplLastSearch=n.primary;const cat=document.getElementById('qpl-cat');if(cat)cat.value=candidate.category==='sealed'?'Sealed':result.category;renderQuickLookupResults(qplResults);renderUniversalSearchExplain(qplLastSearchPlan,qplResults);closeBarcodeScanner();setTimeout(()=>selectQuickLookupResult(0),0);
   if(action==='inventory')setTimeout(()=>addQuickLookupToInventory(0),80);else if(action==='buy')setTimeout(()=>addQuickLookupToBuyOffer(0),80);else if(action==='cart')setTimeout(()=>addQuickLookupToSaleCart(0),80);else if(action==='photo'){toast_dash('Candidate selected. Use My Photo is ready in the comic appraisal panel.');setTimeout(()=>document.querySelector('.comic-appraisal input[type=file]')?.click(),120);}else if(action==='appraise'||action==='cover')setTimeout(()=>document.querySelector('.comic-appraisal')?.scrollIntoView({behavior:'smooth',block:'center'}),120);
 }
-async function forgetConfirmedBarcodeLink(){if(!barcodeCurrentNormalized)return;await barcodeLinkDelete(barcodeLinkId(barcodeCurrentNormalized)).catch(()=>{});barcodeCandidates=barcodeCandidates.filter(x=>!x.savedConfirmed);renderBarcodeCandidates();setBarcodeStatus('Saved match forgotten. Run lookup to choose a different product.','var(--gold)');}
+async function forgetConfirmedBarcodeLink(){if(!barcodeCurrentNormalized)return;await barcodeLinkDeleteShared(barcodeLinkId(barcodeCurrentNormalized)).catch(()=>{});barcodeCandidates=barcodeCandidates.filter(x=>!x.savedConfirmed);renderBarcodeCandidates();setBarcodeStatus('Saved match forgotten. Run lookup to choose a different product.','var(--gold)');}
 
 let qplTimer = null;
 let qplHistory = [];
@@ -48433,7 +48485,7 @@ async function toppsLoadParallels(cardId){
   window.__arscaCloseModal = closeModal;
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.10.01.3-tcgplayer-market-sealed" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.10.01.4-barcode-inventory-shared" defer></script>
 </body>
 </html>
 
