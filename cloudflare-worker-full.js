@@ -7145,6 +7145,12 @@ async function routeRequest(request, env, ctx) {
     if (url.pathname === '/articles' || url.pathname.startsWith('/articles/')) {
       const articleResponse = await handleArticlesRequest(request, env, ctx, url, {
         esc: mtgEscapeHtml, pageShell: mtgPageShell, supabaseAdminFetch, storeId: ITEM_DETAIL_STORE_ID,
+        listItemsForBook: async (e, word) => {
+          const term = encodeURIComponent('*' + word.replace(/[^a-z0-9 ]/gi, '') + '*');
+          const { data, response } = await supabaseAdminFetch(e, `inventory_items?store_id=eq.${encodeURIComponent(ITEM_DETAIL_STORE_ID)}&or=(data->>name.ilike.${term},data->>title.ilike.${term})&select=id,data,status,created_at,updated_at&limit=300`);
+          if (!response?.ok) throw new Error('Article inventory unavailable');
+          return (data || []).map(shapeStorefrontItem).filter(isStorefrontItemAvailable);
+        },
         listItems: e => fetchAllListableStorefrontItemsCached(e, ctx), isAvailable: isStorefrontItemAvailable, itemSlug: itemDetailSlug,
       });
       if (articleResponse) return articleResponse;
