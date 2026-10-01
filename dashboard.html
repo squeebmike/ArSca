@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.10.01.7-whatnot-live-stickers">
+<meta name="version" content="2026.10.01.8-whatnot-sales-to-dashboard">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1655,22 +1655,22 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.10.01.7-whatnot-live-stickers" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.10.01.7-whatnot-live-stickers" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.10.01.7-whatnot-live-stickers" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.10.01.7-whatnot-live-stickers" defer></script>
-<script src="scripts/backlist-dashboard.js?v=2026.10.01.7-whatnot-live-stickers" defer></script>
-<script src="scripts/database-viewer.js?v=2026.10.01.7-whatnot-live-stickers" defer></script>
-<script src="scripts/card-intake-dashboard.js?v=2026.10.01.7-whatnot-live-stickers" defer></script>
-<script src="scripts/mana-pocket-task-library.js?v=2026.10.01.7-whatnot-live-stickers" defer></script>
-<script src="scripts/daily-tasks-dashboard.js?v=2026.10.01.7-whatnot-live-stickers" defer></script>
-<script src="scripts/whatnot-bridge.js?v=2026.10.01.7-whatnot-live-stickers" defer></script>
+<script src="scripts/query-routing.js?v=2026.10.01.8-whatnot-sales-to-dashboard" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.10.01.8-whatnot-sales-to-dashboard" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.10.01.8-whatnot-sales-to-dashboard" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.10.01.8-whatnot-sales-to-dashboard" defer></script>
+<script src="scripts/backlist-dashboard.js?v=2026.10.01.8-whatnot-sales-to-dashboard" defer></script>
+<script src="scripts/database-viewer.js?v=2026.10.01.8-whatnot-sales-to-dashboard" defer></script>
+<script src="scripts/card-intake-dashboard.js?v=2026.10.01.8-whatnot-sales-to-dashboard" defer></script>
+<script src="scripts/mana-pocket-task-library.js?v=2026.10.01.8-whatnot-sales-to-dashboard" defer></script>
+<script src="scripts/daily-tasks-dashboard.js?v=2026.10.01.8-whatnot-sales-to-dashboard" defer></script>
+<script src="scripts/whatnot-bridge.js?v=2026.10.01.8-whatnot-sales-to-dashboard" defer></script>
 <script src="scripts/research-loupe.js?v=a7de4ffe90" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.10.01.7-whatnot-live-stickers" defer></script>
-<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.10.01.7-whatnot-live-stickers" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.10.01.7-whatnot-live-stickers" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.10.01.7-whatnot-live-stickers" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.10.01.7-whatnot-live-stickers" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.10.01.8-whatnot-sales-to-dashboard" defer></script>
+<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.10.01.8-whatnot-sales-to-dashboard" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.10.01.8-whatnot-sales-to-dashboard" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.10.01.8-whatnot-sales-to-dashboard" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.10.01.8-whatnot-sales-to-dashboard" defer></script>
 </head>
 <body>
 
@@ -1722,7 +1722,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
 <div class="dsb-chip" id="dsb-tasks" title="Today's Roles &amp; Tasks — click to jump to Tasks tab" style="cursor:pointer;display:none" onclick="switchTab('tasks')">✅ <span>TASKS:</span> <b id="dsb-tasks-val">—</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.10.01.7-whatnot-live-stickers</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.10.01.8-whatnot-sales-to-dashboard</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -2781,7 +2781,8 @@ body.show-mode .inv-sync-badge{display:none;}
         </ol>
         If a sale shows but no sticker prints (Buy It Now especially), click <b>CAPTURE PAGE</b> in the extension right then and send it to Claude to tune.
       </div>
-      <button class="hbtn" style="margin-top:6px;color:var(--g)" onclick="downloadWhatnotStickerExtension()">DOWNLOAD EXTENSION</button>
+      <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);line-height:1.6;margin-top:6px">Keep this dashboard open in the same Chrome and each sale is also recorded here automatically: the buyer goes on the live show (one is started for you if none is live), and an inventory item whose name matches the Whatnot title exactly is marked sold. Sales made while the dashboard was closed are recorded the next time you open it.</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px"><button class="hbtn" style="color:var(--g)" onclick="downloadWhatnotStickerExtension()">DOWNLOAD EXTENSION</button><button class="hbtn" onclick="openWhatnotPackList()">PACK LIST</button></div>
     </details>
     <div id="whatnot-bridge"></div>
     <div id="whatnot-show-panel" style="margin-bottom:14px"></div>
@@ -3907,7 +3908,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.10.01.7-whatnot-live-stickers';
+const APP_VERSION = '2026.10.01.8-whatnot-sales-to-dashboard';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -27264,10 +27265,12 @@ function closeFieldBarcodeScanner(){
   document.getElementById('field-scan-modal')?.remove();
 }
 
+function renderInventoryComicInfo(item){const host=document.getElementById('edit-comic-info');if(host)host.innerHTML=inventoryComicInfoHtml(item);}
+
 // Packs extensions/whatnot-live-stickers (served next to this page) into a
 // ZIP right in the browser, so installing the sticker helper needs no
 // GitHub steps. Plain "stored" ZIP entries -- the files are tiny text.
-const WHATNOT_STICKER_EXTENSION_FILES = ['manifest.json','detector.js','content.js','background.js','label.html','label.css','label.js','popup.html','popup.css','popup.js','README.md'];
+const WHATNOT_STICKER_EXTENSION_FILES = ['manifest.json','detector.js','content.js','background.js','dashboard-relay.js','label.html','label.css','label.js','popup.html','popup.css','popup.js','README.md'];
 function zipCrc32(bytes){
   let crc = -1;
   for(let i = 0; i < bytes.length; i++){
@@ -27291,6 +27294,129 @@ function buildStoredZip(files){
   const end = new Uint8Array([...u32(0x06054b50), ...u16(0), ...u16(0), ...u16(files.length), ...u16(files.length), ...u32(centralSize), ...u32(offset), ...u16(0)]);
   return new Blob([...chunks, ...central, end], { type:'application/zip' });
 }
+// ── Whatnot Live Stickers -> dashboard ──
+// Store ask: "I don't want to type anything." The sticker extension posts
+// each sale it saw (buyer, title, price) to this page through its
+// dashboard-relay content script. Each one lands in the live show with the
+// buyer filled in (Whale Dashboard / repeat-buyer stats), and an inventory
+// item whose name matches the title exactly is marked sold through the same
+// idempotent record-external-sale path as everything else. Only sales this
+// page actually saved are acknowledged; the rest stay queued in the
+// extension and are offered again.
+const WLS_RECORDED_KEY = 'wls_recorded_sale_ids';
+function wlsRecordedIds(){ return new Set(safeLocalJson(WLS_RECORDED_KEY, [])); }
+function wlsMarkRecorded(id){ const ids = [...wlsRecordedIds(), id].slice(-3000); try { localStorage.setItem(WLS_RECORDED_KEY, JSON.stringify(ids)); } catch(e) {} }
+function wlsNormalize(v){ return String(v || '').toLowerCase().replace(/[^a-z0-9#]+/g, ' ').trim(); }
+function wlsMatchInventoryItem(title){
+  const want = wlsNormalize(title);
+  if(!want) return null;
+  const hits = (all || []).filter(i => wlsNormalize(i.name) === want && inventoryItemIsSellable(i));
+  return hits.length === 1 ? hits[0] : null;
+}
+async function wlsEnsureLiveShow(){
+  if(!whatnotActiveShow) await loadActiveWhatnotShow();
+  if(whatnotActiveShow) return whatnotActiveShow;
+  const sb = getSupabaseClient(), storeId = getActiveStoreId();
+  if(!sb || !storeId) return null;
+  const now = new Date();
+  const { data, error } = await sb.from('whatnot_shows').insert({ store_id:storeId, platform:'whatnot', title:'Whatnot live ' + now.toLocaleDateString(), category:'Mixed', status:'live', started_at:now.toISOString() }).select('*').limit(1);
+  if(error) throw error;
+  whatnotActiveShow = data[0];
+  whatnotShowItems = [];
+  renderWhatnotShowPanel();
+  return whatnotActiveShow;
+}
+async function recordWhatnotLiveSale(sale){
+  if(wlsRecordedIds().has(sale.id)) return true;
+  const sb = getSupabaseClient(), storeId = getActiveStoreId();
+  if(!sb || !storeId) return false;
+  const giveaway = sale.type === 'giveaway';
+  const price = Math.max(0, Number(sale.price || 0));
+  const title = giveaway ? 'Giveaway' : (sale.title || 'Whatnot item');
+  const item = giveaway ? null : wlsMatchInventoryItem(sale.title);
+  if(item && price > 0){
+    const fee = whatnotFeeSettings();
+    const res = await storeWorkerFetch('/inventory/record-external-sale', { method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify({ itemId:item.id, channel:'Whatnot', salePrice:price, feeAmount:Math.round((price * (fee.pct / 100) + fee.flat) * 100) / 100, soldAt:sale.at || undefined, externalRef:'whatnot-live:' + sale.id }) });
+    const d = await res.json().catch(() => ({}));
+    if(!(res.ok && d.ok) && res.status !== 409) throw new Error(d.error || 'Could not record the inventory sale');
+    if(res.ok && d.ok && !d.duplicate){ whatnotSession.count++; whatnotSession.gross += price; whatnotSession.profit += Number(d.profit || 0); renderWhatnotSessionTally(); }
+  }
+  const show = await wlsEnsureLiveShow();
+  if(!show) return false;
+  const soldAt = sale.at || new Date().toISOString();
+  const fields = { status:giveaway ? 'giveaway' : 'sold', sold_price_cents:giveaway ? 0 : Math.round(price * 100), sold_at:soldAt, buyer_name:sale.buyer || null };
+  const queued = whatnotShowItems.find(r => r.status === 'queued' && ((item && r.inventory_item_id === item.id) || wlsNormalize(r.name) === wlsNormalize(title)));
+  let rowId;
+  if(queued){
+    const { error } = await sb.from('whatnot_show_items').update(fields).eq('id', queued.id);
+    if(error) throw error;
+    Object.assign(queued, fields); rowId = queued.id;
+  } else {
+    const position = whatnotShowItems.length ? Math.max(...whatnotShowItems.map(r => Number(r.position || 0))) + 1 : 1;
+    const row = { show_id:show.id, store_id:storeId, inventory_item_id:item?.id || null, name:title, category:item?.category || null, image_url:item ? (item.thumbnail || item.imageUrl || '') : '', cost_cents:item ? Math.round(Number(item.cost || 0) * 100) : 0, market_price_cents:item ? Math.round(inventoryListPrice(item) * 100) : 0, role:giveaway ? 'giveaway' : 'engagement', position, ...fields };
+    const { data, error } = await sb.from('whatnot_show_items').insert(row).select('*').limit(1);
+    if(error) throw error;
+    whatnotShowItems.push(data[0]); rowId = data[0].id;
+  }
+  wlsMarkRecorded(sale.id);
+  if(sale.buyer) upsertCustomer(sale.buyer, '', 'Whatnot show purchase: ' + title, 'whatnot-show').then(c => { if(c?.id) sb.from('whatnot_show_items').update({ buyer_customer_id:c.id }).eq('id', rowId).then(() => {}, () => {}); }).catch(() => {});
+  renderWhatnotShowPanel();
+  return true;
+}
+let _wlsQueue = Promise.resolve();
+window.addEventListener('message', e => {
+  if(e.source !== window || !e.data || e.data.source !== 'wls-extension' || e.data.type !== 'wls-sales') return;
+  const sales = (Array.isArray(e.data.sales) ? e.data.sales : []).filter(x => x && x.id && x.buyer);
+  _wlsQueue = _wlsQueue.then(async () => {
+    if(!getSupabaseClient() || !getActiveStoreId()) return;
+    const acked = [];
+    for(const sale of sales){
+      try { if(await recordWhatnotLiveSale(sale)) acked.push(sale.id); }
+      catch(err){ console.warn('[WLS] could not record sale', sale.id, err?.message || err); }
+    }
+    if(acked.length){
+      window.postMessage({ source:'wls-dashboard', type:'wls-ack', ids:acked }, location.origin);
+      toast_dash(acked.length + ' Whatnot sale' + (acked.length === 1 ? '' : 's') + ' recorded from live stickers');
+      if(acked.length) loadInventory().catch(() => {});
+    }
+  });
+});
+// Ask the extension for anything queued once this page is signed in.
+setTimeout(() => window.postMessage({ source:'wls-dashboard', type:'wls-ready' }, location.origin), 4000);
+
+// PACK LIST: the current (or most recent) show's sales grouped by buyer --
+// what to pull together for each person, printable.
+async function openWhatnotPackList(){
+  const sb = getSupabaseClient(), storeId = getActiveStoreId();
+  if(!sb || !storeId){ toast_dash('Sign in to see the pack list'); return; }
+  let show = whatnotActiveShow;
+  if(!show){
+    const { data } = await sb.from('whatnot_shows').select('*').eq('store_id', storeId).order('started_at', { ascending:false, nullsFirst:false }).limit(1);
+    show = data?.[0];
+  }
+  if(!show){ toast_dash('No Whatnot show yet'); return; }
+  const { data:rows, error } = await sb.from('whatnot_show_items').select('name,status,sold_price_cents,sold_at,buyer_name').eq('show_id', show.id).in('status', ['sold','giveaway']).order('sold_at', { ascending:true });
+  if(error){ toast_dash('Could not load the pack list: ' + error.message); return; }
+  const groups = whatnotPackListGroups(rows || []);
+  const body = groups.length ? groups.map(g => `<section style="break-inside:avoid;border-bottom:1px solid #ccc;padding:8px 0"><h2 style="margin:0 0 4px;font:900 16px Arial">@${escHtml(g.buyer)} <span style="font:400 12px Arial;color:#555">${g.items.length} item${g.items.length === 1 ? '' : 's'} · $${(g.totalCents / 100).toFixed(2)}</span></h2>${g.items.map(r => `<div style="font:13px/1.5 Arial">☐ ${escHtml(r.name || 'Item')}${r.status === 'giveaway' ? ' <b>(giveaway)</b>' : ' — $' + (Number(r.sold_price_cents || 0) / 100).toFixed(2)}</div>`).join('')}</section>`).join('') : '<p style="font:13px Arial">No sales recorded for this show yet.</p>';
+  const w = window.open('', '_blank', 'width=720,height=900');
+  if(!w){ toast_dash('Allow pop-ups to open the pack list'); return; }
+  w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Pack list</title></head><body style="margin:24px;color:#000"><h1 style="font:900 20px Arial;margin:0 0 4px">PACK LIST · ${escHtml(show.title || 'Whatnot show')}</h1><div style="font:12px Arial;color:#555;margin-bottom:12px">${groups.length} buyer${groups.length === 1 ? '' : 's'} · ${(rows || []).length} item${(rows || []).length === 1 ? '' : 's'} · <button onclick="print()">PRINT</button></div>${body}</body></html>`);
+  w.document.close();
+}
+function whatnotPackListGroups(rows = []){
+  const byBuyer = new Map();
+  rows.forEach(r => {
+    const buyer = String(r.buyer_name || '').trim() || '(no buyer name)';
+    const key = buyer.toLowerCase();
+    if(!byBuyer.has(key)) byBuyer.set(key, { buyer, items:[], totalCents:0 });
+    const g = byBuyer.get(key);
+    g.items.push(r);
+    g.totalCents += r.status === 'giveaway' ? 0 : Number(r.sold_price_cents || 0);
+  });
+  return [...byBuyer.values()].sort((a, b) => a.buyer.localeCompare(b.buyer));
+}
+
 async function downloadWhatnotStickerExtension(){
   try {
     const files = await Promise.all(WHATNOT_STICKER_EXTENSION_FILES.map(async name => {
@@ -27308,8 +27434,6 @@ async function downloadWhatnotStickerExtension(){
     toast_dash('Could not package the extension: ' + (e.message || e));
   }
 }
-
-function renderInventoryComicInfo(item){const host=document.getElementById('edit-comic-info');if(host)host.innerHTML=inventoryComicInfoHtml(item);}
 
 function openEditModal(id) {
   const item = all.find(i => i.id === id);
@@ -48639,7 +48763,7 @@ async function toppsLoadParallels(cardId){
   window.__arscaCloseModal = closeModal;
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.10.01.7-whatnot-live-stickers" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.10.01.8-whatnot-sales-to-dashboard" defer></script>
 </body>
 </html>
 
