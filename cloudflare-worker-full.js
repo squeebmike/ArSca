@@ -1,5 +1,6 @@
 import { isBcwItem, isBcwPublished, catalogSelection, renderBcwCatalog, renderBcwProduct } from './scripts/bcw-storefront.mjs';
 import { importDropshipBatch } from './scripts/dropship-import.mjs';
+import { cachedCatalogSitemap } from './scripts/sitemap-cache.mjs';
 
 /**
  * LBA Proxy Worker - Cloudflare Worker
@@ -16506,6 +16507,8 @@ async function routeRequest(request, env, ctx) {
 
 export default {
   async fetch(request, env, ctx) {
+    const sitemap = await cachedCatalogSitemap(request, ctx, get => routeRequest(get, env, ctx));
+    if (sitemap) return sitemap;
     // Before routing, so every Worker-rendered page on www gets the real nav.
     await ensureSiteChrome(request, new URL(request.url), ctx).catch(() => {});
     return injectComicSearch(await routeRequest(request, env, ctx), request);
