@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.10.01.1-chinese-sealed">
+<meta name="version" content="2026.10.01.2-chinese-pricecharting">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1655,22 +1655,22 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.10.01.1-chinese-sealed" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.10.01.1-chinese-sealed" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.10.01.1-chinese-sealed" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.10.01.1-chinese-sealed" defer></script>
-<script src="scripts/backlist-dashboard.js?v=2026.10.01.1-chinese-sealed" defer></script>
-<script src="scripts/database-viewer.js?v=2026.10.01.1-chinese-sealed" defer></script>
-<script src="scripts/card-intake-dashboard.js?v=2026.10.01.1-chinese-sealed" defer></script>
-<script src="scripts/mana-pocket-task-library.js?v=2026.10.01.1-chinese-sealed" defer></script>
-<script src="scripts/daily-tasks-dashboard.js?v=2026.10.01.1-chinese-sealed" defer></script>
-<script src="scripts/whatnot-bridge.js?v=2026.10.01.1-chinese-sealed" defer></script>
+<script src="scripts/query-routing.js?v=2026.10.01.2-chinese-pricecharting" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.10.01.2-chinese-pricecharting" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.10.01.2-chinese-pricecharting" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.10.01.2-chinese-pricecharting" defer></script>
+<script src="scripts/backlist-dashboard.js?v=2026.10.01.2-chinese-pricecharting" defer></script>
+<script src="scripts/database-viewer.js?v=2026.10.01.2-chinese-pricecharting" defer></script>
+<script src="scripts/card-intake-dashboard.js?v=2026.10.01.2-chinese-pricecharting" defer></script>
+<script src="scripts/mana-pocket-task-library.js?v=2026.10.01.2-chinese-pricecharting" defer></script>
+<script src="scripts/daily-tasks-dashboard.js?v=2026.10.01.2-chinese-pricecharting" defer></script>
+<script src="scripts/whatnot-bridge.js?v=2026.10.01.2-chinese-pricecharting" defer></script>
 <script src="scripts/research-loupe.js?v=a7de4ffe90" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.10.01.1-chinese-sealed" defer></script>
-<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.10.01.1-chinese-sealed" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.10.01.1-chinese-sealed" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.10.01.1-chinese-sealed" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.10.01.1-chinese-sealed" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.10.01.2-chinese-pricecharting" defer></script>
+<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.10.01.2-chinese-pricecharting" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.10.01.2-chinese-pricecharting" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.10.01.2-chinese-pricecharting" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.10.01.2-chinese-pricecharting" defer></script>
 </head>
 <body>
 
@@ -1722,7 +1722,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
 <div class="dsb-chip" id="dsb-tasks" title="Today's Roles &amp; Tasks — click to jump to Tasks tab" style="cursor:pointer;display:none" onclick="switchTab('tasks')">✅ <span>TASKS:</span> <b id="dsb-tasks-val">—</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.10.01.1-chinese-sealed</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.10.01.2-chinese-pricecharting</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3889,7 +3889,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.10.01.1-chinese-sealed';
+const APP_VERSION = '2026.10.01.2-chinese-pricecharting';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -13973,12 +13973,42 @@ async function buildLivePokemonPriceSyncProposal(options = {}){
       const exactId = inventoryTcgPlayerId(item);
       const sealed = isPokemonSealedInventorySyncItem(item);
       const unpricedLanguage = pokemonUnpricedLanguage(item);
+      const pcLinkId = String(item.pricechartingProductId || item.raw?.pricechartingProductId || '').trim();
+      if(unpricedLanguage && pcLinkId && !isGradedInventoryItem(item)) {
+        // Linked to its own PriceCharting product (e.g. a Chinese box picked
+        // from a Chinese search) -- price from that exact product.
+        const res = await storeWorkerFetch('/pricing/pricecharting/products/batch', { method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify({ ids:[pcLinkId] }) });
+        const data = await res.json().catch(() => ({}));
+        const product = data.products?.[pcLinkId]?.product;
+        if(!res.ok || !product) throw new Error(data.products?.[pcLinkId]?.error || data.error || 'PriceCharting product #' + pcLinkId + ' unavailable');
+        const freshPrice = Number(product.prices?.ungraded || 0);
+        if(!freshPrice) {
+          summary.noPrice++;
+          summary.issues.push({ item:{ ...item }, type:'no-price', providerId:'PriceCharting #' + pcLinkId, title:'Linked PriceCharting product has no price yet', reason:(product.productName || 'The linked product') + ' has no ungraded/sealed guide value on PriceCharting yet.' });
+          return;
+        }
+        const oldPrice = inventoryReferenceMarketPrice(item);
+        if(oldPrice > 0 && Math.abs(freshPrice - oldPrice) < 0.01) { summary.unchanged++; return; }
+        const delta = freshPrice - oldPrice, deltaPct = oldPrice > 0 ? Math.abs(delta / oldPrice) * 100 : 100;
+        const big = oldPrice > 0 ? isBigPriceChange(oldPrice, freshPrice) : false, direction = delta >= 0 ? 'up' : 'down';
+        summary.changed++;
+        proposal.push({
+          item:{ ...item }, mode:'pc-live', provider:'pokemon-pricecharting', source:'PriceCharting ' + unpricedLanguage + ' guide',
+          oldPrice, newPrice:Math.round(freshPrice * 100) / 100, rawNewPrice:freshPrice, delta, deltaPct, isBig:big, direction,
+          label:big ? (direction === 'up' ? 'BIG INCREASE' : 'BIG DROP') : (direction === 'up' ? 'increase' : 'drop'),
+          matchStatus:'exact saved PriceCharting ID: ' + (product.productName || pcLinkId),
+          lastUpdated:product.lastUpdated || new Date().toISOString(),
+          linkFields:{ pricechartingProductId:pcLinkId, pricechartingProductName:product.productName || '', ...(product.url && !String(item.providerUrl || '').trim() ? { providerUrl:product.url } : {}) },
+          selected:true,
+        });
+        return;
+      }
       if(unpricedLanguage) {
         summary.noPrice++;
         summary.issues.push({
           item:{ ...item }, type:'no-price', tcgPlayerId:exactId,
           title:unpricedLanguage + ' product -- price kept as set',
-          reason:'PokemonPriceTracker only prices English and Japanese product, so a lookup would return the English/Japanese version instead. Price this item from eBay sold comps (SOLD COMPS in Research) and edit it by hand.',
+          reason:'PokemonPriceTracker only prices English and Japanese product, so a lookup would return the English/Japanese version instead. Link it to its PriceCharting product (search it in Research with "Chinese" and add it from there) or price it from eBay sold comps by hand.',
         });
         return;
       }
@@ -14883,7 +14913,7 @@ function renderPriceSyncProposal(){
       <input type="checkbox" data-pso-idx="${idx}" ${p.selected?'checked':''} onchange="togglePriceSyncItem(${idx},this.checked)" style="width:16px;height:16px;flex-shrink:0">
       <div style="flex:1;min-width:0">
         <div style="font-size:12px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(priceSyncItemTitle(p.item))}</div>
-        <div style="font-size:10px;color:var(--dim)">${escHtml(p.item.set||'')}${(p.item.card_number || p.item.cardNumber)?' · #'+escHtml(p.item.card_number || p.item.cardNumber):''} · ${escHtml(p.mode === 'live' ? 'live ' + (p.matchStatus || 'match') : p.mode === 'mtg-live' ? (p.matchStatus || 'live MTG match') : p.mode === 'mtg-offline' ? (p.matchStatus || 'offline MTG match') : p.mode === 'comic-live' ? (p.matchStatus || 'live comic match') : p.mode === 'pocket-scout' ? (p.matchStatus || 'eBay sold comp match') : p.mode === 'other-live' ? (p.matchStatus || 'live match') : 'cached')} · ${escHtml(p.source || '')}${p.lastUpdated?' · '+escHtml(String(p.lastUpdated).slice(0,10)):''}</div>
+        <div style="font-size:10px;color:var(--dim)">${escHtml(p.item.set||'')}${(p.item.card_number || p.item.cardNumber)?' · #'+escHtml(p.item.card_number || p.item.cardNumber):''} · ${escHtml(p.mode === 'live' ? 'live ' + (p.matchStatus || 'match') : p.mode === 'mtg-live' ? (p.matchStatus || 'live MTG match') : p.mode === 'mtg-offline' ? (p.matchStatus || 'offline MTG match') : p.mode === 'comic-live' ? (p.matchStatus || 'live comic match') : p.mode === 'pocket-scout' ? (p.matchStatus || 'eBay sold comp match') : (p.mode === 'other-live' || p.mode === 'pc-live') ? (p.matchStatus || 'live match') : 'cached')} · ${escHtml(p.source || '')}${p.lastUpdated?' · '+escHtml(String(p.lastUpdated).slice(0,10)):''}</div>
         ${p.mode === 'live' && p.sealed && (p.isBig || showAdminDebug()) ? `<div style="font-size:8px;color:var(--gold);margin-top:3px;font-family:monospace">Debug: attemptedQueries [${escHtml((p.attemptedQueries||[]).join(' | ')||'none')}] / matchedProduct="${escHtml(p.matchedProductName||'')}" / matchedSet="${escHtml(p.matchedProductSet||'')}" / matchedTcgPlayerId=${escHtml(p.matchedTcgPlayerId||'')} / prices.market=${escHtml(String(p.prices?.market?.price ?? p.prices?.market ?? ''))} / card.marketPrice=${escHtml(String(p.rawDebug?.marketPrice ?? ''))} / card.price=${escHtml(String(p.rawDebug?.price ?? ''))} / unopenedPrice=${escHtml(String(p.rawDebug?.unopenedPrice ?? ''))}</div>` : ''}
         ${p.mode === 'live' && !p.sealed && (p.isBig || showAdminDebug()) ? `<div style="font-size:8px;color:var(--gold);margin-top:3px;font-family:monospace">Debug: itemCondition=${escHtml(p.item.condition||'NM')} / primaryPrinting=${escHtml(p.prices?.primaryPrinting||'')} / variant printings [${escHtml(Object.keys(p.variants||{}).join(', ')||'none')}] / matchedVariantCondition=${escHtml(String(pokemonPriceTrackerVariantConditionPrice({prices:p.prices}, p.item.condition||'NM')||''))} / legacy conditions keys [${escHtml(Object.keys(p.prices?.conditions||{}).join(', ')||'none')}] / matchedLegacyCondition=${escHtml(String(pokemonPptPriceValue(pokemonPptObjectMatch(p.prices?.conditions||{}, pokemonPptConditionLabel(p.item.condition||'NM')))||''))} / prices.market=${escHtml(String(p.prices?.market?.price ?? p.prices?.market ?? ''))} / card.marketPrice=${escHtml(String(p.rawDebug?.marketPrice ?? ''))}</div>` : ''}
       </div>
@@ -14936,7 +14966,9 @@ async function applyPriceSyncEntry(p){
     const isMtgPriceSync = p.mode === 'mtg-offline' || p.mode === 'mtg-live' || p.provider === 'mtg';
     const isComicPriceSync = p.mode === 'comic-live' || p.provider === 'comic';
     const isPocketScoutSync = p.mode === 'pocket-scout' || p.provider === 'pocket_scout';
-    const isOtherLiveSync = p.mode === 'other-live';
+    // pc-live: a Chinese/Korean Pokemon item priced from its linked
+    // PriceCharting product -- same fields as the sports/other-TCG sync.
+    const isOtherLiveSync = p.mode === 'other-live' || p.mode === 'pc-live';
     const source = isOtherLiveSync ? (p.source || 'PriceCharting') : isComicPriceSync ? (p.source || 'PriceCharting comic sync') : isMtgPriceSync ? (p.source || 'MTG price sync') : isPocketScoutSync ? (p.source || 'eBay sold comps') : p.mode === 'live' ? 'PokemonPriceTracker' : (p.source || 'PokemonPriceTracker cache');
     const lastUpdated = p.lastUpdated || now;
     // Sports/other-TCG: keep the exact PriceCharting product the sync priced
@@ -33865,6 +33897,48 @@ function qplComicBookInfoPanel(r,idx){
   return `<section style="margin-top:12px;border:1px solid rgba(199,125,255,.42);border-radius:10px;padding:14px;background:rgba(199,125,255,.055)"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center"><div><b style="font-family:'Orbitron',monospace;font-size:13px;color:var(--purple)">SELECT THE EXACT COVER & VARIANT</b><div style="font-size:10px;color:var(--dim);margin-top:4px">Metron cover records plus exact PriceCharting variants, including foil editions when available.</div></div><span class="qpl-badge">${covers.length} COVER${covers.length===1?'':'S'} · METRON #${escHtml(r.metronIssueId||m.id||'')}</span></div>${covers.length?`<div class="comic-cover-picker-grid">${coverCards}</div>`:'<div style="color:var(--dim);font-size:10px;margin-top:10px">No additional cover records were returned for this issue.</div>'}${links}<details class="comic-book-facts"><summary>BOOK DETAILS, STORY & CREATORS</summary><div class="comic-book-facts-body"><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:7px">${facts.map(([label,value])=>`<div style="background:var(--surf);border:1px solid var(--border);border-radius:7px;padding:8px"><small style="display:block;color:var(--dim);font-size:8px">${escHtml(label)}</small><b style="font-size:11px">${escHtml(String(value))}</b></div>`).join('')}</div><div style="margin-top:12px"><b style="font-size:10px;color:var(--purple)">STORY / SYNOPSIS</b><p style="font-size:11px;line-height:1.65;margin:5px 0;color:${m.description?'var(--text)':'var(--dim)'}">${escHtml(m.description||'Metron does not currently have a synopsis for this issue.')}</p></div>${row('Story title',m.storyTitles||[])}${grouped.map(([label,names])=>row(label,names)).join('')}${credits?`<details style="font-size:10px;margin-top:8px"><summary>All creator credits</summary><div style="line-height:1.55;margin-top:5px">${escHtml(credits)}</div></details>`:''}${row('Story arc',m.arcs||[])}${row('Genre',m.genres||[])}${row('Character',m.characters||[])}${row('Team',m.teams||[])}${row('Universe',m.universes||[])}<div style="margin-top:12px"><span class="qpl-badge warn">KEY ISSUE STATUS NEEDS A VERIFIED SOURCE</span><div style="font-size:9px;color:var(--dim);margin-top:4px">Metron supplies bibliographic facts, credits, and story data. Record a separately verified key-issue reason below.</div></div></div></details></section>`;
 }
 
+// Store ask: "add Chinese singles to PriceCharting search". PokemonPriceTracker
+// has no Chinese product at all, so a Chinese Pokemon search goes to
+// PriceCharting instead and only keeps its Chinese Pokemon products -- never
+// the English/Japanese card or box of the same name.
+function isChinesePokemonQuery(q = ''){
+  return /chinese|\bs-?chn\b|简体|繁體|中文/i.test(String(q || ''));
+}
+async function searchChinesePokemonPriceCharting(q = ''){
+  const language = /traditional|\bt-chinese\b|繁/i.test(q) ? 'Chinese (Traditional)' : 'Chinese (Simplified)';
+  const base = String(q).replace(/\b(simplified|traditional|s-chinese|t-chinese|chinese|pokemon|pokémon)\b|简体|繁體|中文/gi, ' ').replace(/\s+/g, ' ').trim();
+  const isChinesePc = p => /pok[eé]mon/i.test(p.consoleName || '') && /chinese/i.test((p.consoleName || '') + ' ' + (p.productName || ''));
+  const products = [], seen = new Set();
+  for(const query of [...new Set([('pokemon chinese ' + base).trim(), String(q).trim()])]){
+    try {
+      const res = await fetch(WORKER + '/pricing/pricecharting/search?' + new URLSearchParams({ q:query, live:'true' }), { cache:'no-store' });
+      const data = await res.json().catch(() => ({}));
+      (data.products || data.matches || []).forEach(p => {
+        const id = String(p.productId || p.id || '');
+        if(id && !seen.has(id)){ seen.add(id); products.push(p); }
+      });
+    } catch(e) {}
+    if(products.some(isChinesePc)) break;
+  }
+  return products.filter(isChinesePc).map(m => {
+    const name = m.productName || '';
+    const sealed = isSealedProductIntent(name);
+    const market = Number(m.prices?.ungraded || 0);
+    return {
+      source:'PriceCharting', name, category:'Pokemon TCG', set:m.consoleName || '',
+      year:m.releaseDate ? String(m.releaseDate).slice(0, 4) : '',
+      card_number:(name.match(/#\s*([A-Za-z0-9-]+)/) || [])[1] || '',
+      condition:sealed ? 'Factory Sealed' : 'NM', language, selectedLanguage:language,
+      is_sealed:sealed, productType:sealed ? 'sealed' : 'single',
+      market, priceSource:market ? 'PriceCharting Guide Value' : 'No Guide Value Available',
+      note:'Chinese Pokémon product priced from PriceCharting -- PokemonPriceTracker has no Chinese data. Adding it saves the PriceCharting link so price sync keeps it current.',
+      confidence:80, matchWhy:['PriceCharting Chinese Pokémon product'],
+      imageUrl:(() => { const raw = m.imageUrl || ''; return /^\/\//.test(raw) ? 'https:' + raw : /^\//.test(raw) ? 'https://www.pricecharting.com' + raw : raw; })(),
+      pricecharting:m, productId:m.productId || '', productUrl:m.url || '', raw:m,
+    };
+  });
+}
+
 async function searchQuickCatalog(q, cat, searchPlan = buildUniversalSearchPlan(q, cat)){
   const results = [];
   const wants = qplCategoryKey(cat);
@@ -33892,6 +33966,13 @@ async function searchQuickCatalog(q, cat, searchPlan = buildUniversalSearchPlan(
       const toppsRows = await searchToppsSportsChecklist(q, cat);
       toppsRows.forEach(add);
     } catch(e) {}
+  }
+
+  if((plannedCategories.has('pokemon') || pokemonSealedIntent || isPokemonLookupIntent(q, cat) || wants === 'pokemon') && isChinesePokemonQuery(q)) {
+    const rows = await searchChinesePokemonPriceCharting(q);
+    rows.forEach(add);
+    recordSearchPlanRoute(searchPlan, '/pricing/pricecharting/search', q, rows.length);
+    return results;
   }
 
   if(plannedCategories.has('pokemon') || pokemonSealedIntent || isPokemonLookupIntent(q, cat)) {
@@ -38645,7 +38726,7 @@ function quickLookupResultCard(r, idx){
           ${r.availableVariants?.length ? qplVariantSelectOptions(r, 'finish', r.selectedFinish || r.finish) : `<option value="${escHtml(r.finish||'normal')}">${escHtml(qplFinishLabel(r.finish||'normal'))}</option>`}
         </select>
         <select onchange="updateQplVariant(${idx},{selectedLanguage:this.value})" aria-label="Language">
-          ${r.availableVariants?.length ? qplVariantSelectOptions(r, 'language', r.selectedLanguage || r.language || 'English') : `<option value="English">English</option>`}
+          ${r.availableVariants?.length ? qplVariantSelectOptions(r, 'language', r.selectedLanguage || r.language || 'English') : `<option value="${escHtml(r.selectedLanguage || r.language || 'English')}">${escHtml(r.selectedLanguage || r.language || 'English')}</option>`}
         </select>
         <input type="number" min="1" step="1" value="${Number(r.qty || 1)}" onchange="qplResults[${idx}].qty=parseInt(this.value,10)||1" aria-label="Quantity">
         `}
@@ -39711,7 +39792,7 @@ async function selectQuickLookupResult(idx){
         ${r.availableVariants?.length ? qplVariantSelectOptions(r, 'finish', r.selectedFinish || r.finish) : `<option value="${escHtml(r.finish||'normal')}">${escHtml(qplFinishLabel(r.finish||'normal'))}</option>`}
       </select>
       <select id="qpl-edit-language" onchange="updateSelectedQplEditVariant(${idx})" style="background:var(--surf);border:1px solid var(--border);color:var(--text);padding:12px;border-radius:8px;font-size:14px;min-height:48px">
-        ${r.availableVariants?.length ? qplVariantSelectOptions(r, 'language', r.selectedLanguage || r.language || 'English') : `<option value="English">English</option>`}
+        ${r.availableVariants?.length ? qplVariantSelectOptions(r, 'language', r.selectedLanguage || r.language || 'English') : `<option value="${escHtml(r.selectedLanguage || r.language || 'English')}">${escHtml(r.selectedLanguage || r.language || 'English')}</option>`}
       </select>
       <input id="qpl-edit-sku" value="${escHtml(r.skuId || r.productConditionId || '')}" readonly placeholder="SKU / productConditionId" style="background:var(--surf);border:1px solid var(--border);color:var(--dim);padding:12px;border-radius:8px;font-size:12px;min-height:48px">
     </div>
@@ -48295,7 +48376,7 @@ async function toppsLoadParallels(cardId){
   window.__arscaCloseModal = closeModal;
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.10.01.1-chinese-sealed" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.10.01.2-chinese-pricecharting" defer></script>
 </body>
 </html>
 
