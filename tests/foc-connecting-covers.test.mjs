@@ -85,3 +85,25 @@ import { connectingCoverInfo, groupConnectingCovers, handleFocRequest } from '..
   assert.equal(connectStatus({ id:'a', orderedQty:0, foc_date:past }, { skip:{ a:true } }), 'skipped');
 }
 console.log('FOC connecting covers checks passed');
+
+// ── Overview alert: don't miss the next part ──
+{
+  const dash = fs.readFileSync('dashboard.html', 'utf8');
+  const s = dash.indexOf('function connectingCoverAlerts(');
+  const alerts = new Function(dash.slice(s, dash.indexOf('\n}', s) + 2) + '\nreturn connectingCoverAlerts;')();
+  const today = '2026-10-01';
+  const covers = [
+    { id:'a', title:'MIDNIGHT FF #1', foc_date:'2026-09-21', orderedQty:2 },
+    { id:'b', title:'MIDNIGHT X-MEN #1', foc_date:'2026-10-05', orderedQty:0 },
+    { id:'c', title:'MIDNIGHT AVENGERS #1', foc_date:'2026-10-20', orderedQty:0 },
+    { id:'d', title:'MIDNIGHT THOR #1', foc_date:'2026-10-12', orderedQty:0 },
+    { id:'e', title:'MIDNIGHT HULK #1', foc_date:'2026-10-04', orderedQty:0 },
+  ];
+  const sets = [{ name:'Crain 5-part', skuIds:['a','b','c','e'], have:{}, skip:{ e:true } }];
+  const suggested = [{ skuIds:['a','b','d'] }];
+  const r = alerts(sets, covers, suggested, today);
+  assert.deepEqual(r.due.map(x => x.cover.id), ['b'], 'only an unordered part with FOC in the next 7 days, never a skipped one');
+  assert.deepEqual(r.fresh.map(x => x.cover.id), ['d'], 'a newly solicited part of a tracked set');
+  assert.match(dash, /const connecting = await connectingCoverPulseAction\(\);/);
+}
+console.log('Connecting cover alert checks passed');

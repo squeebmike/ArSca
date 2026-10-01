@@ -167,7 +167,7 @@ const product = (prices, extra = {}) => reply({ ok:true, product:{ productName:'
 // ── Applying the change keeps the exact product on the card ──
 {
   const applyFn = extractFn('applyPriceSyncEntry', 'async function ');
-  assert.match(applyFn, /const isOtherLiveSync = p\.mode === 'other-live'( \|\| p\.mode === 'pc-live')?;/);
+  assert.match(applyFn, /const isOtherLiveSync = p\.mode === 'other-live'/);
   assert.match(applyFn, /isOtherLiveSync \? \{\s*\.\.\.\(p\.linkFields \|\| \{\}\),/,
     'an applied sports price saves the product id it was priced from');
   const buildFn = extractFn('buildOtherTcgSportsPriceSyncProposal', 'async function ');
