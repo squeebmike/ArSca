@@ -44,6 +44,13 @@ globalThis.fetch = async () => new Response('User-agent: *\nDisallow: /private\n
 try {
   const {default: worker} = await import('../cloudflare-worker-full.js');
   const get = path => worker.fetch(new Request('https://www.themanapocket.com'+path), {}, {waitUntil(){}});
+  const home = await get('/index.html?utm_source=legacy');
+  assert.equal(home.status, 301);
+  assert.equal(home.headers.get('location'), 'https://www.themanapocket.com/?utm_source=legacy');
+  const preorder = await get('/preorders?sku=abd35ca7-7aa5-4bb9-8353-521f3248bda0&utm_source=legacy');
+  assert.equal(preorder.status, 301);
+  assert.equal(preorder.headers.get('location'), 'https://www.themanapocket.com/preorder/abd35ca7-7aa5-4bb9-8353-521f3248bda0?utm_source=legacy');
+  assert.notEqual((await get('/preorders?sku=%2Fevil')).status, 301);
   const redirect = await get('/bcw?item=59d79df5-6ed0-8db0-8174-2fc51ecaa9ff');
   assert.equal(redirect.status, 301);
   assert.equal(redirect.headers.get('location'), 'https://www.themanapocket.com/item/59d79df5-6ed0-8db0-8174-2fc51ecaa9ff');

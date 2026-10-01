@@ -4984,6 +4984,23 @@ async function routeRequest(request, env, ctx) {
     try {
     const url = new URL(request.url);
 
+    // Retired entry points must resolve to the same public page for crawlers
+    // and customers. Leave non-GET requests and unrelated query state alone.
+    if (url.hostname === 'www.themanapocket.com' && ['GET', 'HEAD'].includes(request.method)) {
+      if (url.pathname === '/index.html') {
+        const destination = new URL(url);
+        destination.pathname = '/';
+        return Response.redirect(destination.toString(), 301);
+      }
+      const legacySku = url.searchParams.get('sku');
+      if (url.pathname === '/preorders' && legacySku && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(legacySku)) {
+        const destination = new URL(url);
+        destination.pathname = '/preorder/' + legacySku;
+        destination.searchParams.delete('sku');
+        return Response.redirect(destination.toString(), 301);
+      }
+    }
+
     if (url.pathname === '/admin/session' || url.pathname.startsWith('/admin/')) {
       return await handlePlatformAdmin(request, env, url);
     }
