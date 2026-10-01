@@ -12,7 +12,7 @@ async function load(){
     var info = document.createElement('div');
     var who = document.createElement('b'); who.textContent = '@' + sale.buyer;
     var what = document.createElement('small');
-    what.textContent = (sale.type === 'giveaway' ? 'Giveaway' : sale.title || 'Item') + (sale.price ? ' · $' + sale.price : '') + ' · ' + new Date(sale.at).toLocaleTimeString([], { hour:'numeric', minute:'2-digit' });
+    what.textContent = (sale.type === 'giveaway' ? 'Giveaway' : sale.title || 'Item') + (sale.price ? ' · $' + sale.price : '') + ' · ' + new Date(sale.at).toLocaleTimeString([], { hour:'numeric', minute:'2-digit' }) + (sale.test ? '' : sale.synced ? ' \u00b7 \u2713 in dashboard' : ' \u00b7 waiting for dashboard');
     info.appendChild(who); info.appendChild(what);
     var btn = document.createElement('button'); btn.textContent = 'REPRINT';
     btn.addEventListener('click', function(){ chrome.runtime.sendMessage({ type:'wls-reprint', id:sale.id }); });
