@@ -50,10 +50,25 @@ test('punctuation cannot inject database filters; empty query does no work',asyn
 });
 test('served script parses',async()=>{new vm.Script(await comicSearchScriptResponse().text());});
 
+test('stock and standard preorder use direct cart APIs while limited covers retain details',async()=>{
+  const {document}=parseHTML('<html><head></head><body>'+comicSearchShell()+'</body></html>');
+  const stock=[],preorders=[];
+  const context={window:{WO:{getCart:()=>stock,addToCart:item=>stock.push({...item,qty:1}),addComicPreorder:(payload,button,done)=>{preorders.push(payload);done(null);}}},document,URL,URLSearchParams,AbortController,Intl,
+    location:{pathname:'/comics/search',search:'?q=spider',href:'https://site/comics/search?q=spider',origin:'https://site'},history:{replaceState(){}},clearTimeout(){},
+    fetch:async()=>({ok:true,json:async()=>({sections:{stock:{results:[{id:'stock',title:'Stock',available:1,priceCents:700,href:'/item/stock'}]},preorder:{results:[{id:'pre',title:'Preorder',canAdd:true,cycleId:'cycle',focDate:'2026-10-05',priceCents:499,href:'/preorder/pre'},{id:'limited',title:'Limited',canAdd:false,priceCents:10000,href:'/preorder/limited'}]}}})})};
+  vm.runInNewContext('('+comicSearchClient.toString()+')("", "")',context);await new Promise(setImmediate);
+  const buttons=[...document.querySelectorAll('button')];
+  const add=buttons.find(b=>b.textContent==='Add to cart');await add.onclick();await add.onclick();
+  assert.equal(stock.length,1);assert.equal(stock[0].price,7);assert.match(document.body.textContent,/All available copies/);
+  await buttons.find(b=>b.textContent==='Add preorder').onclick();
+  assert.equal(preorders[0].skuId,'pre');assert.equal(preorders[0].cycleId,'cycle');assert.equal(preorders[0].price,4.99);
+  assert.ok(document.querySelector('a[href="https://site/preorder/limited"]'));
+});
+
 test('backorder search adds the exact SKU directly and preserves other cart lines',async()=>{
   const {document}=parseHTML('<html><head></head><body>'+comicSearchShell()+'</body></html>');
   let saved=JSON.stringify([{id:'backlist:other',skuId:'other',qty:1,price:3}]);
-  const context={window:{},document,URL,URLSearchParams,AbortController,Intl,
+  const context={window:{dispatchEvent(){}},Event,document,URL,URLSearchParams,AbortController,Intl,
     location:{pathname:'/comics/search',search:'?q=spider',href:'https://site/comics/search?q=spider',origin:'https://site'},
     history:{replaceState(){}},clearTimeout(){},
     localStorage:{getItem:()=>saved,setItem:(key,value)=>{assert.equal(key,'mp-backlist-cart-v1');saved=value;}},

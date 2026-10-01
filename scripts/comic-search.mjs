@@ -36,15 +36,16 @@ export async function searchComics(url, deps) {
           .filter(item => { const text = [item.name, item.set, item.brand, item.cardNumber].join(' ').normalize('NFKC').toLowerCase(); return terms.every(term => text.includes(term)); })
           .sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id))
           .slice(offset, offset + limit + 1)
-          .map(item => ({ id: item.id, title: item.name, image: item.image, priceCents: Math.round(item.price * 100), detail: item.condition || 'Ready to ship', href: item.linkUrl || '/item/' + encodeURIComponent(item.id) + '/' + deps.itemSlug(item) }));
+          .map(item => ({ id: item.id, title: item.name, image: item.image, available: Math.max(1, Number(item.quantity)||1), priceCents: Math.round(item.price * 100), detail: item.condition || 'Ready to ship', href: item.linkUrl || '/item/' + encodeURIComponent(item.id) + '/' + deps.itemSlug(item) }));
       } else if (key === 'preorder') {
         rows = await query(deps.db, 'comic_skus', {
           store_id: 'eq.' + deps.storeId, customer_enabled: 'eq.true',
-          select: 'id,title,variant_label,cover_image_url,customer_price_cents,is_incentive,on_sale_date,publisher,foc_cycles!inner(status,customer_cutoff_at)',
+          select: 'id,title,cycle_id,upc,variant_label,cover_image_url,customer_price_cents,is_incentive,on_sale_date,publisher,foc_cycles!inner(status,customer_cutoff_at,foc_date)',
           'foc_cycles.status': 'eq.open', 'foc_cycles.customer_cutoff_at': 'gt.' + new Date().toISOString(),
           and: searchFilter(terms, ['title', 'writer', 'publisher', 'upc']), order: 'title.asc,id.asc', limit: limit + 1, offset,
         });
         rows = rows.map(row => ({ id: row.id, title: row.title, image: row.cover_image_url, priceCents: Number(row.customer_price_cents) || null,
+          canAdd: !row.is_incentive && Number(row.customer_price_cents) > 0, cycleId: row.cycle_id, focDate: row.foc_cycles?.foc_date, upc: row.upc,
           detail: [row.variant_label, row.publisher, row.is_incentive ? 'Limited cover — check availability' : '', row.on_sale_date ? 'Releases ' + row.on_sale_date : ''].filter(Boolean).join(' · '), href: '/preorder/' + encodeURIComponent(row.id) }));
       } else {
         rows = await query(deps.db, 'backlist_titles', {
