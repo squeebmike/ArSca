@@ -37,7 +37,9 @@ console.log('FOC receive saves comic details checks passed');
 const dash = fs.readFileSync('dashboard.html', 'utf8');
 const start = dash.indexOf('function inventoryComicRecord(');
 const end = dash.indexOf('function renderInventoryComicInfo(');
-const ctx = { escHtml: v => String(v), console };
+// Browser globals, so a top-level listener/timer that lands in this range
+// of dashboard.html doesn't break a test that only reads the helpers.
+const ctx = { escHtml: v => String(v), console, window:{ addEventListener(){}, postMessage(){} }, document:{ getElementById(){ return null; } }, setTimeout(){}, setInterval(){}, location:{ origin:'' } };
 vm.createContext(ctx);
 vm.runInContext(dash.slice(start, end), ctx);
 const focItem = { name: 'ADVENTURE TIME HALLOWEEN SPECIAL #1', raw: { focComicDetail: fields.focComicDetail } };

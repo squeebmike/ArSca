@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.10.01.8-whatnot-sales-to-dashboard">
+<meta name="version" content="2026.10.01.9-connecting-cover-alerts">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -913,6 +913,9 @@ body.show-mode .show-mode-toggle { border-color:rgba(0,255,179,.4); color:var(--
 .modal label{font-family:var(--font-mono);font-size:9px;color:var(--dim);display:block;margin-bottom:4px;margin-top:10px;}
 .modal input,.modal select{width:100%;background:rgba(0,0,0,.4);border:1px solid var(--border);color:var(--text);padding:9px 12px;font-family:var(--font-mono);font-size:12px;outline:none;border-radius:6px;}
 .modal input:focus,.modal select:focus{border-color:rgba(0,255,179,.3);}
+/* Checkboxes/radios keep their natural size -- the full-width rule above made
+   each one stretch across its row, far from its own label (phone layout pass). */
+.modal input[type=checkbox],.modal input[type=radio]{width:auto;flex:0 0 auto;padding:0;}
 .modal-btns{display:flex;gap:8px;margin-top:16px;}
 .modal-btn{flex:1;padding:11px;font-family:'Orbitron',monospace;font-size:10px;font-weight:700;letter-spacing:1px;cursor:pointer;border:none;border-radius:6px;}
 .modal-btn.confirm{background:var(--g);color:#000;}
@@ -1655,22 +1658,22 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.10.01.8-whatnot-sales-to-dashboard" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.10.01.8-whatnot-sales-to-dashboard" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.10.01.8-whatnot-sales-to-dashboard" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.10.01.8-whatnot-sales-to-dashboard" defer></script>
-<script src="scripts/backlist-dashboard.js?v=2026.10.01.8-whatnot-sales-to-dashboard" defer></script>
-<script src="scripts/database-viewer.js?v=2026.10.01.8-whatnot-sales-to-dashboard" defer></script>
-<script src="scripts/card-intake-dashboard.js?v=2026.10.01.8-whatnot-sales-to-dashboard" defer></script>
-<script src="scripts/mana-pocket-task-library.js?v=2026.10.01.8-whatnot-sales-to-dashboard" defer></script>
-<script src="scripts/daily-tasks-dashboard.js?v=2026.10.01.8-whatnot-sales-to-dashboard" defer></script>
-<script src="scripts/whatnot-bridge.js?v=2026.10.01.8-whatnot-sales-to-dashboard" defer></script>
+<script src="scripts/query-routing.js?v=2026.10.01.9-connecting-cover-alerts" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.10.01.9-connecting-cover-alerts" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.10.01.9-connecting-cover-alerts" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.10.01.9-connecting-cover-alerts" defer></script>
+<script src="scripts/backlist-dashboard.js?v=2026.10.01.9-connecting-cover-alerts" defer></script>
+<script src="scripts/database-viewer.js?v=2026.10.01.9-connecting-cover-alerts" defer></script>
+<script src="scripts/card-intake-dashboard.js?v=2026.10.01.9-connecting-cover-alerts" defer></script>
+<script src="scripts/mana-pocket-task-library.js?v=2026.10.01.9-connecting-cover-alerts" defer></script>
+<script src="scripts/daily-tasks-dashboard.js?v=2026.10.01.9-connecting-cover-alerts" defer></script>
+<script src="scripts/whatnot-bridge.js?v=2026.10.01.9-connecting-cover-alerts" defer></script>
 <script src="scripts/research-loupe.js?v=a7de4ffe90" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.10.01.8-whatnot-sales-to-dashboard" defer></script>
-<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.10.01.8-whatnot-sales-to-dashboard" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.10.01.8-whatnot-sales-to-dashboard" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.10.01.8-whatnot-sales-to-dashboard" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.10.01.8-whatnot-sales-to-dashboard" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.10.01.9-connecting-cover-alerts" defer></script>
+<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.10.01.9-connecting-cover-alerts" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.10.01.9-connecting-cover-alerts" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.10.01.9-connecting-cover-alerts" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.10.01.9-connecting-cover-alerts" defer></script>
 </head>
 <body>
 
@@ -1722,7 +1725,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
 <div class="dsb-chip" id="dsb-tasks" title="Today's Roles &amp; Tasks — click to jump to Tasks tab" style="cursor:pointer;display:none" onclick="switchTab('tasks')">✅ <span>TASKS:</span> <b id="dsb-tasks-val">—</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.10.01.8-whatnot-sales-to-dashboard</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.10.01.9-connecting-cover-alerts</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3237,7 +3240,7 @@ body.show-mode .inv-sync-badge{display:none;}
         <div><label>Issue # / Item #</label><input type="text" id="edit-issue" placeholder="#1, SKU..."></div>
         <div><label>Serial # / Numbered</label><input type="text" id="edit-serial" placeholder="023/150"></div>
         <div><label>Card # / Language</label><input type="text" id="edit-cardnum" placeholder="123/200, Japanese"></div>
-        <div><label>Barcode / UPC</label><div style="display:flex;gap:6px"><input type="text" id="edit-upc" inputmode="numeric" autocomplete="off" placeholder="Scan or type the product barcode" style="flex:1;min-width:0"><button class="hbtn" type="button" onclick="scanBarcodeIntoField('edit-upc')">SCAN</button></div></div>
+        <div style="grid-column:1/-1"><label>Barcode / UPC</label><div style="display:flex;gap:6px"><input type="text" id="edit-upc" inputmode="numeric" autocomplete="off" placeholder="Scan or type the product barcode" style="flex:1;min-width:0"><button class="hbtn" type="button" onclick="scanBarcodeIntoField('edit-upc')">SCAN</button></div></div>
         <div><label>Language</label><select id="edit-language"><option>English</option><option>Japanese</option><option>Chinese (Simplified)</option><option>Chinese (Traditional)</option><option>Korean</option><option>German</option><option>French</option><option>Italian</option><option>Spanish</option><option>Portuguese</option><option>Other</option></select></div>
       </div>
       <div style="display:flex;gap:12px;flex-wrap:wrap">
@@ -3908,7 +3911,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.10.01.8-whatnot-sales-to-dashboard';
+const APP_VERSION = '2026.10.01.9-connecting-cover-alerts';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -14830,6 +14833,12 @@ async function fetchOtherTcgOrSportsLivePrice(item){
     const res = await fetch(WORKER + '/pricing/justtcg/search?' + params.toString(), { cache:'no-store' });
     const data = await res.json().catch(() => ({}));
     const match = (data.matches || [])[0];
+    if(match && match.tcgplayerId && pokemonPptConditionCode(item.selectedCondition || item.condition || 'NM') === 'NM'){
+      const markets = await fetchTcgplayerNmMarkets(match.tcgplayerId);
+      const foil = /foil|holo|enchanted|cold/i.test([item.selectedFinish, item.finish, item.printing, item.variant].filter(Boolean).join(' '));
+      const price = markets ? (foil ? markets.foil : markets.normal) : 0;
+      if(price > 0) return { market:price, source:'TCGplayer Market Price', matchStatus:'name/set search match' };
+    }
     if(match) return { market:Number(match.selectedVariant?.marketPrice || 0), source:'JustTCG', matchStatus:'name/set search match' };
   } catch(e) { /* give up on this item */ }
   return null;
@@ -17982,11 +17991,62 @@ async function computePulseData(){
   }catch(e){ /* best-effort -- Pulse still shows everything else if this fails */ }
 
   try{
+    const connecting = await connectingCoverPulseAction();
+    if(connecting) actions.push(connecting);
+  }catch(e){ /* best-effort -- Pulse still shows everything else if this fails */ }
+
+  try{
     const myTasks = typeof getMyDailyTasksAction === 'function' ? await getMyDailyTasksAction() : null;
     if(myTasks) actions.push(myTasks);
   }catch(e){ /* best-effort -- Pulse still shows everything else if this fails */ }
 
   return { grossToday, profitToday, soldTodayCount, trappedCash, actions:actions.slice(0, 5) };
+}
+// Store ask: don't miss the next part of a connecting-cover set. For the
+// sets tracked on the FOC Wall's CONNECTING COVERS screen: a part whose FOC
+// is within 7 days with none ordered (and not marked HAVE IT / SKIP), and a
+// newly solicited cover that the Worker groups with a tracked set but isn't
+// in it yet.
+function connectingCoverAlerts(sets = [], covers = [], suggested = [], today = new Date().toISOString().slice(0, 10)){
+  const byId = new Map(covers.map(c => [c.id, c]));
+  const soon = new Date(Date.parse(today + 'T12:00:00Z') + 7 * 864e5).toISOString().slice(0, 10);
+  const due = [], fresh = [];
+  const tracked = new Set();
+  sets.forEach(set => (set.skuIds || []).forEach(id => tracked.add(id)));
+  sets.forEach(set => {
+    (set.skuIds || []).forEach(id => {
+      const c = byId.get(id);
+      if(!c || Number(c.orderedQty || 0) > 0 || set.have?.[id] || set.skip?.[id]) return;
+      if(c.foc_date && c.foc_date >= today && c.foc_date <= soon) due.push({ set:set.name, cover:c });
+    });
+    suggested.filter(g => (g.skuIds || []).some(id => (set.skuIds || []).includes(id))).forEach(g => {
+      g.skuIds.filter(id => !tracked.has(id)).forEach(id => {
+        const c = byId.get(id);
+        if(c && c.foc_date && c.foc_date >= today && !fresh.some(f => f.cover.id === id)) fresh.push({ set:set.name, cover:c });
+      });
+    });
+  });
+  return { due, fresh };
+}
+let _connectingPulseCache = { at:0, value:null };
+async function connectingCoverPulseAction(){
+  if(Date.now() - _connectingPulseCache.at < 15 * 60 * 1000) return _connectingPulseCache.value;
+  let value = null;
+  const res = await storeWorkerFetch('/kv/foc_connecting_sets', { cache:'no-store' });
+  const raw = res.ok ? (await res.json().catch(() => ({}))).value : null;
+  const sets = raw ? (JSON.parse(raw).sets || []) : [];
+  if(sets.length){
+    const ids = [...new Set(sets.flatMap(st => st.skuIds || []))].slice(0, 100);
+    const r = await storeWorkerFetch('/foc/admin/connecting-covers?store_id=' + encodeURIComponent(getActiveStoreId()) + (ids.length ? '&ids=' + encodeURIComponent(ids.join(',')) : ''));
+    const data = await r.json().catch(() => ({}));
+    const { due, fresh } = connectingCoverAlerts(sets, data.covers || [], data.suggestedSets || []);
+    const parts = [];
+    if(due.length) parts.push(due.length + ' tracked part' + (due.length === 1 ? '' : 's') + ' hit FOC within 7 days with none ordered');
+    if(fresh.length) parts.push(fresh.length + ' new part' + (fresh.length === 1 ? '' : 's') + ' solicited for a tracked set');
+    if(parts.length) value = { text:'Connecting covers: ' + parts.join('; ') + ' -- FOC Wall > CONNECTING COVERS', tab:'foc' };
+  }
+  _connectingPulseCache = { at:Date.now(), value };
+  return value;
 }
 async function renderPulse(){
   const el = document.getElementById('pulse-wrap');
@@ -35778,6 +35838,23 @@ function normalizeQplVariantMatrix(card){
   return row;
 }
 
+// JustTCG's per-variant price ran well under TCGplayer's own Market Price
+// (found on MTG). For any game, a JustTCG row with a TCGplayer product id
+// takes that product's NM market (Normal/Foil) for its NM variants;
+// LP/MP/HP/DMG keep JustTCG, which pricepoints don't split out.
+async function withTcgplayerNmMarket(row, productId){
+  if(!row || !productId) return row;
+  const markets = await fetchTcgplayerNmMarkets(productId);
+  if(!markets) return row;
+  row.availableVariants = (row.availableVariants || []).map(v => {
+    if(pokemonPptConditionCode(v.condition || 'NM') !== 'NM') return v;
+    const price = normalizeQplFinish(v.finish || v.printing || 'normal') === 'normal' ? markets.normal : markets.foil;
+    return price ? { ...v, marketPrice:price, price, priceSource:'TCGplayer Market Price', priceConfidence:'high' } : v;
+  });
+  row.tcgPlayerId = row.tcgPlayerId || String(productId);
+  row.tcgplayerId = row.tcgplayerId || String(productId);
+  return applyQplSelectedVariant(row);
+}
 async function hydrateQplVariantMatrix(idx, duration='90d'){
   const r = qplResults[idx];
   const id = r?.justtcgCardId || r?.productId;
@@ -35790,6 +35867,7 @@ async function hydrateQplVariantMatrix(idx, duration='90d'){
     if(res.ok && card) {
       const hydrated = normalizeQplVariantMatrix(card);
       qplResults[idx] = applyQplSelectedVariant({ ...r, ...hydrated, name:r.name || hydrated.name, imageUrl:r.imageUrl || hydrated.imageUrl });
+      qplResults[idx] = await withTcgplayerNmMarket(qplResults[idx], r.tcgPlayerId || r.tcgplayerId || card.tcgplayerId || card.raw?.tcgplayerId || '');
       qplMasterResults = qplMasterResults.map(x => (x.productId && x.productId === r.productId) ? qplResults[idx] : x);
     }
   } catch(e) {
@@ -38437,6 +38515,9 @@ async function fetchWorkerTcgCatalog(q, cat){
       year:m.releaseDate ? String(m.releaseDate).slice(0,4) : '',
       variant:m.rarity || '',
       card_number:m.cardNumber || '',
+      // Kept so the item can later be priced straight from TCGplayer.
+      tcgPlayerId:m.tcgplayerId ? String(m.tcgplayerId) : '',
+      tcgplayerId:m.tcgplayerId ? String(m.tcgplayerId) : '',
       condition:m.selectedVariant?.condition || 'NM',
       finish:m.selectedVariant?.finish || '',
       language:m.selectedVariant?.language || 'English',
@@ -48763,7 +48844,7 @@ async function toppsLoadParallels(cardId){
   window.__arscaCloseModal = closeModal;
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.10.01.8-whatnot-sales-to-dashboard" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.10.01.9-connecting-cover-alerts" defer></script>
 </body>
 </html>
 

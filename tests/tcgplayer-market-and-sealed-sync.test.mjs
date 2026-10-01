@@ -66,3 +66,20 @@ const nameOf = i => i.name || '', setOf = i => i.set || '';
 // ── (3) a sealed Lorcana result from Research keeps its game ──
 assert.match(dashboard, /\/lorcana\/i\.test\(r\.set\) \? 'Disney Lorcana'/);
 console.log('TCGplayer market + sealed sync checks passed');
+
+// ── other games: JustTCG rows and name-search syncs take TCGplayer's NM market ──
+{
+  const hydrate = extractFn('hydrateQplVariantMatrix', 'async function ');
+  assert.match(hydrate, /withTcgplayerNmMarket\(qplResults\[idx\]/, 'opening a Yu-Gi-Oh/Lorcana/One Piece card prices NM from TCGplayer');
+  assert.match(dashboard, /tcgPlayerId:m\.tcgplayerId \? String\(m\.tcgplayerId\) : '',/, 'JustTCG search rows keep the TCGplayer id');
+  const live = extractFn('fetchOtherTcgOrSportsLivePrice', 'async function ');
+  assert.match(live, /fetchTcgplayerNmMarkets\(match\.tcgplayerId\)/, 'a name-search match uses TCGplayer market for NM');
+  const calls = [];
+  const withMarket = new Function('fetchTcgplayerNmMarkets', 'pokemonPptConditionCode', 'normalizeQplFinish', 'applyQplSelectedVariant',
+    extractFn('withTcgplayerNmMarket', 'async function ') + '\nreturn withTcgplayerNmMarket;')(
+    async id => { calls.push(id); return { normal:4.5, foil:9 }; }, c => /lp/i.test(c) ? 'LP' : 'NM', f => /foil/i.test(f) ? 'foil' : 'normal', r => r);
+  const row = await withMarket({ availableVariants:[{ condition:'NM', finish:'normal', marketPrice:2 }, { condition:'NM', finish:'foil', marketPrice:5 }, { condition:'LP', finish:'normal', marketPrice:1.5 }] }, '12345');
+  assert.deepEqual(row.availableVariants.map(v => v.marketPrice), [4.5, 9, 1.5]);
+  assert.equal(row.tcgPlayerId, '12345');
+}
+console.log('Other-TCG TCGplayer market checks passed');

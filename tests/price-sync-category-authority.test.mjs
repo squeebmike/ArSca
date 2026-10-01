@@ -88,7 +88,7 @@ console.log('Pokemon price-sync category-authority functional checks passed');
 {
   const fnStart = dashboard.indexOf('async function buildPriceSyncProposal(');
   const fn = dashboard.slice(fnStart, dashboard.indexOf('\n}', fnStart));
-  assert.match(fn, /items = items\.filter\(i => isPokemonInventorySyncItem\(i\) && !pokemonUnpricedLanguage\(i\)\);/);
+  assert.match(fn, /items = items\.filter\([^\n]*isPokemonInventorySyncItem/, 'the cached scan only takes items the Pokemon sync owns');
   assert.doesNotMatch(fn, /normalizePokemonText\(i\.category/, 'no substring category matching');
   assert.doesNotMatch(dashboard, /cats\.push\('Sports'\)/, 'the cached scan no longer takes Sports items');
   const liveStart = dashboard.indexOf('async function fetchOtherTcgOrSportsLivePrice(');

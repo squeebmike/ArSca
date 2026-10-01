@@ -1728,10 +1728,12 @@ function connectCoverRow(c,set,saved){
     actions+='<button class="hbtn" style="color:var(--red)" onclick="focConnectRemove(\''+esc(set.id)+'\',\''+esc(c.id)+'\')">REMOVE</button>';
   }
   if(st==='upcoming'&&c.cycle_id)actions+='<button class="hbtn" style="color:var(--gold)" onclick="focConnectOpenCycle(\''+esc(c.cycle_id)+'\')">ORDER IN FOC</button>';
-  return '<div style="display:grid;grid-template-columns:44px minmax(0,1fr) auto;gap:8px;align-items:center;padding:6px;border:1px solid var(--border);border-radius:7px;background:var(--bg);margin-top:5px">'+
+  // Status + buttons sit on their own wrapping line under the title, so
+  // three buttons never squeeze the title to nothing on a phone.
+  return '<div style="display:grid;grid-template-columns:44px minmax(0,1fr);gap:8px;align-items:start;padding:6px;border:1px solid var(--border);border-radius:7px;background:var(--bg);margin-top:5px">'+
     (c.cover_image_url?'<img src="'+esc(c.cover_image_url)+'" alt="" loading="lazy" style="width:44px;height:64px;object-fit:contain;border-radius:4px;background:#050607">':'<div style="width:44px;height:64px;display:grid;place-items:center;border:1px solid var(--border);border-radius:4px;font-size:8px;color:var(--dim)">'+(c.part?'#'+c.part:'COVER')+'</div>')+
-    '<div style="min-width:0;overflow-wrap:anywhere"><b style="font-size:11px">'+(c.part?'Part '+c.part+' · ':'')+esc(c.title||'')+'</b><div style="font:9px/1.5 var(--font-mono);color:var(--dim)">'+esc(c.variant_label||'')+'<br>'+esc(meta)+'</div></div>'+
-    '<div style="text-align:right;display:grid;gap:4px;justify-items:end"><span class="foc-badge" style="color:'+badge[1]+';border-color:'+badge[1]+'">'+badge[0]+(st==='bought'?' · '+Number(c.orderedQty||0):'')+'</span><div style="display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end">'+actions+'</div></div></div>';
+    '<div style="min-width:0;overflow-wrap:anywhere"><b style="font-size:11px">'+(c.part?'Part '+c.part+' · ':'')+esc(c.title||'')+'</b><div style="font:9px/1.5 var(--font-mono);color:var(--dim)">'+esc(c.variant_label||'')+'<br>'+esc(meta)+'</div>'+
+    '<div style="display:flex;gap:5px;flex-wrap:wrap;align-items:center;margin-top:6px"><span class="foc-badge" style="color:'+badge[1]+';border-color:'+badge[1]+'">'+badge[0]+(st==='bought'?' · '+Number(c.orderedQty||0):'')+'</span>'+actions.replace(/class="hbtn" style="/g,'class="hbtn" style="flex:0 0 auto;width:auto;min-height:0;padding:5px 9px;font-size:9px;').replace(/class="hbtn" onclick/g,'class="hbtn" style="flex:0 0 auto;width:auto;min-height:0;padding:5px 9px;font-size:9px" onclick')+'</div></div></div>';
 }
 function connectSetCard(set,saved,suggestIdx){
   var sum=connectSetSummary(set);
@@ -1761,11 +1763,11 @@ function renderConnecting(){
     if(f==='incomplete'&&sum.complete)return false;
     return !q||(set.name+' '+sum.covers.map(function(c){return c.title+' '+c.variant_label+' '+c.cover_artist;}).join(' ')).toLowerCase().indexOf(q)>-1;
   };
-  var filters=[['all','ALL'],['upcoming','HAS UPCOMING'],['missed','HAS MISSED'],['incomplete','INCOMPLETE'],['complete','COMPLETE']].map(function(f){return '<button class="hbtn" style="'+(connectState.filter===f[0]?'background:var(--purple);color:#fff;border-color:var(--purple)':'')+'" onclick="focConnectFilter(\''+f[0]+'\')">'+f[1]+'</button>';}).join('');
+  var filters=[['all','ALL'],['upcoming','HAS UPCOMING'],['missed','HAS MISSED'],['incomplete','INCOMPLETE'],['complete','COMPLETE']].map(function(f){return '<button class="hbtn" style="flex:0 0 auto;width:auto;min-height:0;padding:6px 10px;font-size:9px;'+(connectState.filter===f[0]?'background:var(--purple);color:#fff;border-color:var(--purple)':'')+'" onclick="focConnectFilter(\''+f[0]+'\')">'+f[1]+'</button>';}).join('');
   var savedCards=connectState.saved.sets.filter(matches).map(function(s){return connectSetCard(s,true);}).join('');
   var suggestCards=suggestions.filter(function(x){return matches(x.set);}).map(function(x){return connectSetCard(x.set,false,x.idx);}).join('');
   body.innerHTML='<div style="font:10px/1.6 var(--font-mono);color:var(--dim)">Covers come from every FOC import whose wording says they connect, across titles. <b style="color:var(--g)">Bought</b> = ordered for the shelf or by customers; <b style="color:var(--red)">missed</b> = FOC passed with none ordered; <b style="color:var(--gold)">upcoming</b> = FOC still ahead. Mark covers you got elsewhere as HAVE IT.</div>'+
-    '<div class="foc-toolbar" style="margin-top:8px;flex-wrap:wrap">'+filters+'<input class="tsi" placeholder="Filter sets" value="'+esc(connectState.query)+'" oninput="focConnectQuery(this.value)" style="min-width:160px"><button class="hbtn" onclick="focConnectNewSet()">+ NEW SET</button></div>'+
+    '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;align-items:center">'+filters+'</div><div style="display:flex;gap:6px;margin-top:6px;align-items:center"><input class="tsi" placeholder="Filter sets" value="'+esc(connectState.query)+'" oninput="focConnectQuery(this.value)" style="flex:1;min-width:0"><button class="hbtn" style="flex:0 0 auto;width:auto" onclick="focConnectNewSet()">+ NEW SET</button></div>'+
     '<div class="ph" style="margin-top:12px">TRACKED SETS ('+connectState.saved.sets.length+')</div>'+(savedCards||'<div style="color:var(--dim);font:10px var(--font-mono);padding:8px 0">'+(connectState.saved.sets.length?'No tracked set matches this filter.':'No sets tracked yet -- choose TRACK THIS SET on a suggestion below, or + NEW SET.')+'</div>')+
     '<div class="ph" style="margin-top:14px">SUGGESTED FROM YOUR FOC IMPORTS ('+suggestions.length+')</div>'+(suggestCards||'<div style="color:var(--dim);font:10px var(--font-mono);padding:8px 0">No untracked connecting covers found.</div>');
 }
