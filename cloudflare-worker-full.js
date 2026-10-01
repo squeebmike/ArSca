@@ -7782,8 +7782,11 @@ async function routeRequest(request, env, ctx) {
         if (new TextEncoder().encode(body).byteLength > 1024 * 1024) return json({ ok:false, error:'KV payload is too large' }, 413);
         if (env.LBA_KV) {
           // Confirmed barcode matches are store memory, not session state.
+          // A store's saved connecting-cover sets are a running collection
+          // record, so they never expire.
+          const permanent = key.startsWith('foc_connecting');
           const expirationTtl = key.startsWith('show_session') ? 60 * 60 * 24 * 180 : (key.startsWith('comic_') || key.startsWith('barcode_link_')) ? 60 * 60 * 24 * 365 : 604800;
-          await env.LBA_KV.put(scopedKey, body, { expirationTtl });
+          await env.LBA_KV.put(scopedKey, body, permanent ? undefined : { expirationTtl });
         } else {
           globalThis['_' + scopedKey] = body;
         }

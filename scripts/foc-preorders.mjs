@@ -280,6 +280,56 @@ export function inFilter(values) {
   return `in.(${values.map(value => encodeURIComponent(String(value))).join(',')})`;
 }
 
+// ── Connecting covers ──
+// Store ask: "an easy to use connecting covers [tracker] in the FOC area ...
+// covers I bought, covers I missed and upcoming covers that connect. Some go
+// across multiple titles." A connecting cover is solicited as one variant of
+// one issue, so the set only exists by reading the cover's own wording.
+const CONNECTING_RE = /\bconnecting\b|\binterlock(?:ing|s)?\b|\bconnects? (?:with|to)\b[^.]{0,40}\b(?:cover|image|variant)s?\b|\bforms? (?:a|one) (?:larger|single|bigger) (?:image|picture)\b/i;
+const NUMBER_WORDS = { two:2, three:3, four:4, five:5, six:6, seven:7, eight:8, nine:9, ten:10, twelve:12 };
+const toCount = value => Number(NUMBER_WORDS[String(value || '').toLowerCase()] || value) || 0;
+export function connectingCoverInfo(sku = {}) {
+  // Fields joined with a sentence break so a number at the end of one
+  // (an issue "#30") never reads as the start of the next ("30 Part 2...").
+  // Issue numbers ("#30") are dropped before any part-count matching.
+  const clean = value => String(value || '').replace(/#\s*\d+[a-z]?/gi, ' ');
+  const label = [sku.variant_label, sku.title, sku.subtitle].filter(Boolean).map(clean).join(' . ');
+  const all = label + ' . ' + clean(sku.description);
+  const isConnecting = CONNECTING_RE.test(all);
+  let part = 0, partCount = 0;
+  const NUM = '(\\d{1,2}|two|three|four|five|six|seven|eight|nine|ten|twelve)';
+  const partOf = all.match(new RegExp('\\bpart\\s*(\\d{1,2})\\s*(?:of|/)\\s*(?:a\\s+|the\\s+)?' + NUM + '\\b', 'i')) || label.match(/\b(\d{1,2})\s*(?:of|\/)\s*(\d{1,2})\b/);
+  if (partOf) { part = Number(partOf[1]); partCount = toCount(partOf[2]); }
+  const nPart = all.match(/\b(\d{1,2}|two|three|four|five|six|seven|eight|nine|ten|twelve)[\s-]*(?:part|piece|panel|cover)s?\b(?=[^.]{0,40}connect|\s+connecting|\s+interlocking)/i)
+    || all.match(/\b(\d{1,2}|two|three|four|five|six|seven|eight|nine|ten|twelve)[\s-]*(?:part|piece|panel)\b/i);
+  if (!partCount && nPart) partCount = toCount(nPart[1]);
+  if (!part) { const p = all.match(/\bpart\s*(\d{1,2})\b/i); if (p) part = Number(p[1]); }
+  if (partCount && part > partCount) part = 0;
+  return { isConnecting, part, partCount };
+}
+const artistKey = value => String(value || '').toLowerCase().split(/\s*(?:,|&|\/| and )\s*/)[0].replace(/[^a-z ]+/g, '').trim();
+// Same publisher + same cover artist + compatible part count, FOC within ~75
+// days of the set's first cover -- deliberately NOT the title, since a
+// connecting set often runs across several titles in the same event month.
+export function groupConnectingCovers(covers = []) {
+  const groups = [];
+  const sorted = [...covers].sort((a, b) => String(a.foc_date || '').localeCompare(String(b.foc_date || '')));
+  for (const cover of sorted) {
+    const info = connectingCoverInfo(cover);
+    const key = String(cover.publisher || '').toLowerCase().trim() + '|' + (artistKey(cover.cover_artist) || 'title:' + String(cover.title || '').toLowerCase().replace(/#.*$/, '').trim());
+    const day = Date.parse((cover.foc_date || '') + 'T12:00:00Z') || 0;
+    const group = groups.find(g => g.key === key && (!g.partCount || !info.partCount || g.partCount === info.partCount) && Math.abs(day - g.firstDay) <= 75 * 864e5);
+    if (group) {
+      group.skuIds.push(cover.id);
+      if (!group.partCount && info.partCount) group.partCount = info.partCount;
+    } else {
+      groups.push({ key, firstDay:day, partCount:info.partCount, skuIds:[cover.id],
+        name:[cover.cover_artist || cover.title || 'Connecting', info.partCount ? info.partCount + '-part connecting' : 'connecting covers', cover.publisher ? '(' + cover.publisher + ')' : ''].filter(Boolean).join(' ') });
+    }
+  }
+  return groups.map(({ key, firstDay, ...g }) => ({ id:'auto:' + key + '|' + new Date(firstDay || 0).toISOString().slice(0, 10), ...g }));
+}
+
 function cycleOpen(cycle, now = new Date()) {
   return cycle?.status === 'open' && new Date(cycle.customer_cutoff_at).getTime() > now.getTime();
 }
@@ -1434,6 +1484,38 @@ function focIntelTitlesRelated(a,b){
   return focIntelSignificantWords(b).some(w=>wa.has(w));
 }
 const FOC_INTEL_ACTION_ORDER={ORDER:0,SPEC:1,REDUCE:2,SKIP:3};
+const CONNECTING_SKU_SELECT='id,cycle_id,family_id,title,subtitle,variant_label,cover_artist,cover_image_url,publisher,description,foc_date,on_sale_date,store_quantity,secured_quantity,is_incentive,ratio_threshold,upc,customer_price_cents';
+async function adminConnectingCovers(request,env,deps,url){
+  const storeId=text(url.searchParams.get('store_id'),80);
+  const auth=await deps.requireStoreUser(request,env,storeId,['owner','admin','manager','employee']);if(auth.error)return auth.error;
+  const db=(path,options)=>deps.supabaseAdminFetch(env,path,options);
+  const store=`store_id=eq.${encodeURIComponent(storeId)}`;
+  // q: search any FOC cover by title/variant to add to a set by hand.
+  const q=text(url.searchParams.get('q'),80).replace(/[(),*]/g,' ').trim();
+  if(q){
+    const like=encodeURIComponent(`*${q}*`);
+    const {data}=await db(`comic_skus?${store}&or=(title.ilike.${like},variant_label.ilike.${like},cover_artist.ilike.${like})&select=${CONNECTING_SKU_SELECT}&order=foc_date.desc&limit=40`);
+    return deps.json({ok:true,covers:await withOrderedQty(db,data||[])});
+  }
+  const ids=text(url.searchParams.get('ids'),4000).split(',').map(id=>id.trim()).filter(id=>/^[0-9a-f-]{36}$/i.test(id)).slice(0,200);
+  const words=['connect','interlock'];
+  const ors=words.flatMap(w=>['title','variant_label','description'].map(f=>`${f}.ilike.${encodeURIComponent('*'+w+'*')}`));
+  const [{data:found},{data:pinned}]=await Promise.all([
+    db(`comic_skus?${store}&or=(${ors.join(',')})&select=${CONNECTING_SKU_SELECT}&order=foc_date.desc&limit=1000`),
+    ids.length?db(`comic_skus?${store}&id=${inFilter(ids)}&select=${CONNECTING_SKU_SELECT}`):Promise.resolve({data:[]}),
+  ]);
+  const byId=new Map();
+  for(const sku of [...(found||[]).filter(s=>connectingCoverInfo(s).isConnecting),...(pinned||[])])byId.set(sku.id,sku);
+  const covers=await withOrderedQty(db,[...byId.values()]);
+  return deps.json({ok:true,covers,suggestedSets:groupConnectingCovers(covers.filter(c=>connectingCoverInfo(c).isConnecting))});
+}
+async function withOrderedQty(db,skus){
+  const cycleIds=[...new Set(skus.map(s=>s.cycle_id).filter(Boolean))];
+  const totals=new Map();
+  for(const cycleId of cycleIds){for(const [skuId,qty] of await orderedQtyBySku(db,cycleId))totals.set(skuId,(totals.get(skuId)||0)+qty);}
+  return skus.map(s=>{const info=connectingCoverInfo(s);return {...s,description:String(s.description||'').slice(0,600),preorderQty:totals.get(s.id)||0,orderedQty:Number(s.store_quantity||0)+(totals.get(s.id)||0),part:info.part,partCount:info.partCount};});
+}
+
 async function focIntelligence(request,env,deps,url){
   const storeId=text(url.searchParams.get('store_id'),80);
   const cycleId=text(url.searchParams.get('cycle_id'),80);
@@ -2545,6 +2627,7 @@ export async function handleFocRequest(request, env, url, deps) {
   if(path==='/foc/admin/orphaned-ebay-listings/end'&&request.method==='POST')return adminEndOrphanedEbayListings(request,env,deps);
   if(path==='/foc/admin/export'&&request.method==='GET')return exportPrh(env,deps,url,request);
   if(path==='/foc/admin/intelligence'&&request.method==='GET')return focIntelligence(request,env,deps,url);
+  if(path==='/foc/admin/connecting-covers'&&request.method==='GET')return adminConnectingCovers(request,env,deps,url);
   if(path==='/foc/admin/orders'&&(request.method==='GET'||request.method==='PATCH'))return adminOrders(request,env,deps,url);
   if(path==='/foc/admin/orders/email'&&request.method==='POST')return resendAdminOrderEmail(request,env,deps);
   if(path==='/foc/admin/orders/label'&&request.method==='POST')return adminShippingLabel(request,env,deps);
