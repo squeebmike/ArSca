@@ -18,6 +18,21 @@ export function comicSearchClient(css, shell) {
   var style = document.createElement('style'); style.textContent = css; document.head.appendChild(style);
   function safeUrl(value) { try { var u = new URL(value, location.origin); return ['http:', 'https:'].includes(u.protocol) ? u.href : ''; } catch (_) { return ''; } }
   function node(tag, text, cls) { var el = document.createElement(tag); if (text) el.textContent = text; if (cls) el.className = cls; return el; }
+  async function preorderHelpers() {
+    if (window.WO && window.WO.addComicPreorder) return;
+    var script = document.querySelector('script[data-mp-preorders]');
+    if (!script) {
+      var base = Array.from(document.scripts).find(function (s) { return /\/wo-ui\.js(?:\?|$)/.test(s.src); });
+      if (!base) throw new Error('Cart is still loading. Please try again.');
+      var css = document.createElement('link'); css.rel='stylesheet'; css.href=base.src.replace(/wo-ui\.js(?:\?.*)?$/, 'preorders.css'); document.head.appendChild(css);
+      script=document.createElement('script');script.setAttribute('data-mp-preorders','');script.src=base.src.replace(/wo-ui\.js(?:\?.*)?$/, 'preorders.js');document.head.appendChild(script);
+    }
+    await new Promise(function(resolve,reject){
+      if(window.WO&&window.WO.addComicPreorder){resolve();return;}
+      script.addEventListener('load',resolve,{once:true});script.addEventListener('error',function(){reject(new Error('Could not load preorder sign-in. Please retry.'));},{once:true});
+      setTimeout(function(){if(window.WO&&window.WO.addComicPreorder)resolve();else reject(new Error('Cart is still loading. Please try again.'));},10000);
+    });
+  }
   function card(item, kind) {
     var el = node('article', '', 'mp-cs-card'), link = node('a'), href = safeUrl(item.href);
     link.href = href;
@@ -44,12 +59,34 @@ export function comicSearchClient(css, shell) {
           if (existing) existing.qty = Math.min(20, Number(existing.qty || 1) + 1);
           else cart.push({ id: id, kind: 'backlist', skuId: option.skuId, name: item.title, image: item.image || '', price: option.priceCents / 100, qty: 1 });
           localStorage.setItem('mp-backlist-cart-v1', JSON.stringify(cart));
+          if(window.WO&&window.WO.refreshCart)window.WO.refreshCart();
+          window.dispatchEvent(new Event('mp-book-cart-changed'));
           bookCartChanged = true;
           add.textContent = 'Added ✓'; feedback.textContent = 'Added to your book cart.';
         } catch (_) { feedback.textContent = 'Could not save your cart. Please try again.'; }
       };
       el.appendChild(add); el.appendChild(feedback);
-      var cartLink = node('a', 'View book cart →', 'mp-cs-action'); cartLink.href = '/books?cart=1'; el.appendChild(cartLink);
+      var cartLink = node('a', 'View cart →', 'mp-cs-action'); cartLink.href = '/books?cart=1'; cartLink.onclick=function(event){if(window.WO&&window.WO.openCart){event.preventDefault();window.WO.openCart();}}; el.appendChild(cartLink);
+    } else if ((kind==='stock'||(kind==='preorder'&&item.canAdd)) && item.priceCents>0) {
+      var buy=node('button',kind==='stock'?'Add to cart':'Add preorder'),message=node('p');buy.type='button';message.setAttribute('role','status');
+      buy.onclick=async function(){
+        buy.disabled=true;message.textContent='';
+        try{
+          if(kind==='stock'){
+            if(!window.WO||!window.WO.addToCart)throw new Error('Cart is still loading. Please retry.');
+            var prior=window.WO.getCart().find(function(line){return line.id===item.id;});
+            if(prior&&prior.qty>=item.available)throw new Error('All available copies are already in your cart.');
+            window.WO.addToCart({id:item.id,name:item.title,image:item.image||'',price:item.priceCents/100,available:item.available},buy);
+            buy.textContent='Added ✓';message.textContent='Added to your cart.';
+          }else{
+            await preorderHelpers();
+            message.textContent='Sign in if prompted to save your preorder.';
+            window.WO.addComicPreorder({skuId:item.id,cycleId:item.cycleId,focDate:item.focDate,name:item.title,image:item.image||'',upc:item.upc||'',price:item.priceCents/100,quantity:1},buy,function(error){if(error){message.textContent=error.message;return;}buy.textContent='Added ✓';message.textContent='Preorder saved to your cart.';});
+          }
+        }catch(error){message.textContent=error.message;}
+        finally{buy.disabled=false;}
+      };
+      el.appendChild(buy);el.appendChild(message);
     } else {
       var action = node('a', actions[kind], 'mp-cs-action'); action.href = href; el.appendChild(action);
     }
