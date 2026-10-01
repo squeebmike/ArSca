@@ -92,7 +92,7 @@ function renderCycles(){
   var host=panel();if(!host)return;
   var isLunar=state.distributor==='Lunar';
   var visibleCycles=state.cycles.filter(function(c){return (c.distributor||'PRH')===state.distributor;});
-  host.innerHTML='<section class="foc-hero"><div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap"><div><div style="font:900 22px/1.1 \'Orbitron\',monospace;color:var(--text)">THE FOC WALL</div><div style="font:10px/1.65 var(--font-mono);color:var(--dim);max-width:720px;margin-top:6px">'+(isLunar?'Upload Lunar\'s weekly comics FOC file, review exact covers, set shelf quantities, and export the clean order.':'Upload Monday\'s PRH metadata file, review exact covers, set shelf quantities, secure incentives, and export the clean UPC order.')+'</div>'+distributorTabs()+'</div><div class="foc-toolbar"><input type="file" id="foc-import-file" accept=".csv,.xlsx,.xls" hidden onchange="'+(isLunar?'handleLunarFocImportFile(event)':'handleFocImportFile(event)')+'"><button class="hbtn" onclick="document.getElementById(\'foc-import-file\').click()">'+(isLunar?'IMPORT LUNAR FOC':'IMPORT PRH FOC')+'</button><button class="hbtn" onclick="loadFocCycles(true)">REFRESH</button><button class="hbtn" style="color:var(--red)" title="Scans every past FOC cycle (not just the one you have open) for eBay presale listings nothing was actually ordered for" onclick="openOrphanedEbayScan()">FIND ORPHANED EBAY LISTINGS</button></div></div><div id="foc-import-status" class="foc-import-report" style="display:none"></div></section>'+
+  host.innerHTML='<section class="foc-hero"><div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap"><div><div style="font:900 22px/1.1 \'Orbitron\',monospace;color:var(--text)">THE FOC WALL</div><div style="font:10px/1.65 var(--font-mono);color:var(--dim);max-width:720px;margin-top:6px">'+(isLunar?'Upload Lunar\'s weekly comics FOC file, review exact covers, set shelf quantities, and export the clean order.':'Upload Monday\'s PRH metadata file, review exact covers, set shelf quantities, secure incentives, and export the clean UPC order.')+'</div>'+distributorTabs()+'</div><div class="foc-toolbar"><input type="file" id="foc-import-file" accept=".csv,.xlsx,.xls" hidden onchange="'+(isLunar?'handleLunarFocImportFile(event)':'handleFocImportFile(event)')+'"><button class="hbtn" onclick="document.getElementById(\'foc-import-file\').click()">'+(isLunar?'IMPORT LUNAR FOC':'IMPORT PRH FOC')+'</button><button class="hbtn" onclick="loadFocCycles(true)">REFRESH</button><button class="hbtn" style="color:var(--purple)" title="Track connecting-cover sets across titles: bought, missed and upcoming" onclick="openConnectingCovers()">CONNECTING COVERS</button><button class="hbtn" style="color:var(--red)" title="Scans every past FOC cycle (not just the one you have open) for eBay presale listings nothing was actually ordered for" onclick="openOrphanedEbayScan()">FIND ORPHANED EBAY LISTINGS</button></div></div><div id="foc-import-status" class="foc-import-report" style="display:none"></div></section>'+
     '<details class="panel" style="margin-bottom:14px"><summary style="cursor:pointer;font-family:\'Orbitron\',monospace;color:var(--purple);font-size:11px">REAL SHIPPING SETUP</summary><div id="foc-shipping-settings" style="padding-top:12px"><button class="hbtn" onclick="loadFocShippingSettings()">LOAD SHIPPING SETTINGS</button></div></details>'+
     (isLunar?
       '<details class="panel" style="margin-bottom:14px" ontoggle="if(this.open)loadLunarDiscountSettings()"><summary style="cursor:pointer;font-family:\'Orbitron\',monospace;color:var(--purple);font-size:11px">LUNAR COST ESTIMATE SETTINGS</summary><div style="padding-top:12px;font:10px/1.6 var(--font-mono);color:var(--dim)">A staff-only estimate shown on each cover below -- never shown to customers, and not a substitute for your actual Lunar invoice. Every other publisher uses a fixed default discount; DC and Image are tiered by trailing spend and change over time, so those two stay editable here.<div style="display:flex;gap:8px;align-items:end;flex-wrap:wrap;margin-top:8px"><label style="font:8px var(--font-mono);color:var(--dim)">DC DISCOUNT %<input id="foc-lunar-dc" class="tsi" type="number" min="0" max="90" value="'+lunarDcDiscount+'" style="width:80px"></label><label style="font:8px var(--font-mono);color:var(--dim)">IMAGE DISCOUNT %<input id="foc-lunar-image" class="tsi" type="number" min="0" max="90" value="'+lunarImageDiscount+'" style="width:80px"></label><button class="hbtn" onclick="saveLunarDiscountSettings()">SAVE</button></div></div></details>'
@@ -1660,6 +1660,165 @@ async function loadShipping(){var host=document.getElementById('foc-shipping-set
 function renderShipping(){var s=state.shipping||{},f=s.from||{},p=s.parcel||{};document.getElementById('foc-shipping-settings').innerHTML='<div class="foc-import-report"><b style="color:'+(s.tokenConfigured?'var(--g)':'var(--gold)')+'">SHIPPO TOKEN '+(s.tokenConfigured?'CONNECTED':'NEEDS SETUP')+'</b><br>The API token stays in the Worker secret. This form stores only your ship-from address and package preset.</div><div class="foc-sku-fields" style="grid-template-columns:repeat(auto-fit,minmax(180px,1fr));margin-top:10px">'+[['name','Store / sender',f.name],['line1','Street',f.street1],['line2','Suite / unit',f.street2],['city','City',f.city],['state','State',f.state],['zip','ZIP',f.zip],['phone','Phone',f.phone],['email','Email',f.email]].map(function(x){return'<label>'+x[1]+'<input class="tsi" data-ship-from="'+x[0]+'" value="'+esc(x[2]||'')+'"></label>';}).join('')+'</div><div class="foc-sku-fields" style="grid-template-columns:repeat(4,minmax(0,1fr));margin-top:10px">'+[['length','Length',p.length||12],['width','Width',p.width||9],['height','Height',p.height||1],['weight','Weight lb',p.weight||1]].map(function(x){return'<label>'+x[1]+'<input class="tsi" type="number" min=".1" step=".1" data-ship-parcel="'+x[0]+'" value="'+esc(x[2])+'"></label>';}).join('')+'</div><button class="hbtn" style="margin-top:10px" onclick="saveFocShippingSettings()">SAVE LIVE SHIPPING SETUP</button>';}
 async function saveShipping(){var shipFrom={},parcel={};document.querySelectorAll('[data-ship-from]').forEach(function(el){shipFrom[el.dataset.shipFrom]=el.value;});document.querySelectorAll('[data-ship-parcel]').forEach(function(el){parcel[el.dataset.shipParcel]=el.value;});try{var d=await api('/foc/admin/shipping-settings',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({storeId:getActiveStoreId(),enabled:true,shipFrom:shipFrom,defaultParcel:parcel})});state.shipping=d.shipping;toast_dash(d.shipping.tokenConfigured?'Live carrier settings saved':'Address saved — add the Shippo token to enable rates');renderShipping();}catch(e){toast_dash(e.message);}}
 
+// ── Connecting covers tracker ──
+// Store ask: "an easy to use connecting covers [tracker] in the FOC area. It
+// needs to keep track of covers I bought, covers I missed and upcoming covers
+// that connect. Some go across multiple titles." The Worker finds every FOC
+// cover whose wording says it connects (any cycle, any title) and suggests
+// sets by publisher + cover artist + part count; the store saves, renames,
+// edits and grows sets here. Saved sets live in the store's Worker KV
+// (foc_connecting_sets, never expires) so every device sees the same list.
+var connectState={covers:{},suggested:[],saved:{sets:[]},filter:'all',query:'',search:{}};
+function connectToday(){return new Date().toISOString().slice(0,10);}
+function connectStatus(cover,set){
+  if(set&&set.have&&set.have[cover.id])return 'have';
+  if(Number(cover.orderedQty||0)>0)return 'bought';
+  if(set&&set.skip&&set.skip[cover.id])return 'skipped';
+  if(cover.foc_date&&cover.foc_date>=connectToday())return 'upcoming';
+  return 'missed';
+}
+var CONNECT_BADGE={have:['HAVE IT','var(--g)'],bought:['BOUGHT','var(--g)'],upcoming:['UPCOMING','var(--gold)'],missed:['MISSED','var(--red)'],skipped:['SKIPPED','var(--dim)']};
+function connectSetCovers(set){
+  return (set.skuIds||[]).map(function(id){return connectState.covers[id];}).filter(Boolean).sort(function(a,b){
+    return (Number(a.part||99)-Number(b.part||99))||String(a.foc_date||'').localeCompare(String(b.foc_date||''));
+  });
+}
+function connectSetSummary(set){
+  var covers=connectSetCovers(set),counts={have:0,bought:0,upcoming:0,missed:0,skipped:0};
+  covers.forEach(function(c){counts[connectStatus(c,set)]++;});
+  var partCount=Number(set.partCount||0),unsolicited=partCount>covers.length?partCount-covers.length:0;
+  return {covers:covers,counts:counts,owned:counts.have+counts.bought,unsolicited:unsolicited,complete:partCount>0&&counts.have+counts.bought>=partCount};
+}
+async function loadConnectSaved(){
+  try{var res=await storeWorkerFetch('/kv/foc_connecting_sets',{cache:'no-store'});var raw=(await res.json().catch(function(){return{};})).value;var parsed=raw?JSON.parse(raw):null;connectState.saved=parsed&&Array.isArray(parsed.sets)?parsed:{sets:[]};}
+  catch(e){connectState.saved={sets:[]};}
+}
+async function saveConnectSets(){
+  connectState.saved.updatedAt=new Date().toISOString();
+  try{await storeWorkerFetch('/kv/foc_connecting_sets',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(connectState.saved)});}
+  catch(e){toast_dash('Could not save connecting sets: '+e.message);}
+}
+function connectSetById(id){return connectState.saved.sets.find(function(s){return s.id===id;});}
+async function openConnectingCovers(){
+  var old=document.getElementById('foc-connect-modal');if(old)old.remove();
+  var modal=document.createElement('div');modal.id='foc-connect-modal';
+  modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:9999;display:flex;align-items:flex-start;justify-content:center;overflow-y:auto;padding:24px 12px';
+  modal.innerHTML='<div style="width:100%;max-width:880px;background:var(--surf);border:1px solid var(--border);border-radius:10px;padding:16px"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px"><div style="font-family:\'Orbitron\',monospace;color:var(--purple);font-size:13px;letter-spacing:2px">CONNECTING COVERS</div><button onclick="closeFocConnecting()" style="background:none;border:none;color:var(--dim);font-size:22px;cursor:pointer">×</button></div><div id="foc-connect-body" style="font:10px var(--font-mono);color:var(--dim);padding:20px 0;text-align:center">Finding connecting covers across every FOC cycle…</div></div>';
+  document.body.appendChild(modal);
+  await loadConnectSaved();
+  await reloadConnectCovers();
+}
+async function reloadConnectCovers(){
+  var ids=[];connectState.saved.sets.forEach(function(s){(s.skuIds||[]).forEach(function(id){if(ids.indexOf(id)<0)ids.push(id);});});
+  try{
+    var data=await api('/foc/admin/connecting-covers?store_id='+encodeURIComponent(getActiveStoreId())+(ids.length?'&ids='+encodeURIComponent(ids.slice(0,100).join(',')):''));
+    connectState.covers={};(data.covers||[]).forEach(function(c){connectState.covers[c.id]=c;});
+    connectState.suggested=data.suggestedSets||[];
+    renderConnecting();
+  }catch(e){var body=document.getElementById('foc-connect-body');if(body)body.innerHTML='<div style="color:var(--red)">Could not load connecting covers: '+esc(e.message)+'</div>';}
+}
+function closeFocConnecting(){var m=document.getElementById('foc-connect-modal');if(m)m.remove();}
+function connectCoverRow(c,set,saved){
+  var st=connectStatus(c,set),badge=CONNECT_BADGE[st];
+  var meta=[c.cover_artist,c.publisher,'FOC '+displayDate(c.foc_date),c.on_sale_date?'on sale '+displayDate(c.on_sale_date):''].filter(Boolean).join(' · ');
+  var actions='';
+  if(saved){
+    actions+=st==='have'?'<button class="hbtn" onclick="focConnectToggle(\''+esc(set.id)+'\',\''+esc(c.id)+'\',\'have\')">UNDO HAVE</button>':(st!=='bought'?'<button class="hbtn" style="color:var(--g)" onclick="focConnectToggle(\''+esc(set.id)+'\',\''+esc(c.id)+'\',\'have\')">HAVE IT</button>':'');
+    if(st==='missed'||st==='skipped')actions+='<button class="hbtn" onclick="focConnectToggle(\''+esc(set.id)+'\',\''+esc(c.id)+'\',\'skip\')">'+(st==='skipped'?'UNSKIP':'SKIP')+'</button>';
+    actions+='<button class="hbtn" style="color:var(--red)" onclick="focConnectRemove(\''+esc(set.id)+'\',\''+esc(c.id)+'\')">REMOVE</button>';
+  }
+  if(st==='upcoming'&&c.cycle_id)actions+='<button class="hbtn" style="color:var(--gold)" onclick="focConnectOpenCycle(\''+esc(c.cycle_id)+'\')">ORDER IN FOC</button>';
+  return '<div style="display:grid;grid-template-columns:44px minmax(0,1fr) auto;gap:8px;align-items:center;padding:6px;border:1px solid var(--border);border-radius:7px;background:var(--bg);margin-top:5px">'+
+    (c.cover_image_url?'<img src="'+esc(c.cover_image_url)+'" alt="" loading="lazy" style="width:44px;height:64px;object-fit:contain;border-radius:4px;background:#050607">':'<div style="width:44px;height:64px;display:grid;place-items:center;border:1px solid var(--border);border-radius:4px;font-size:8px;color:var(--dim)">'+(c.part?'#'+c.part:'COVER')+'</div>')+
+    '<div style="min-width:0;overflow-wrap:anywhere"><b style="font-size:11px">'+(c.part?'Part '+c.part+' · ':'')+esc(c.title||'')+'</b><div style="font:9px/1.5 var(--font-mono);color:var(--dim)">'+esc(c.variant_label||'')+'<br>'+esc(meta)+'</div></div>'+
+    '<div style="text-align:right;display:grid;gap:4px;justify-items:end"><span class="foc-badge" style="color:'+badge[1]+';border-color:'+badge[1]+'">'+badge[0]+(st==='bought'?' · '+Number(c.orderedQty||0):'')+'</span><div style="display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end">'+actions+'</div></div></div>';
+}
+function connectSetCard(set,saved,suggestIdx){
+  var sum=connectSetSummary(set);
+  var head='<div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center"><div><b style="font-size:12px;color:var(--text)">'+esc(set.name||'Connecting set')+'</b>'+(saved?'':' <span class="foc-badge">SUGGESTED</span>')+(sum.complete?' <span class="foc-badge" style="color:var(--g);border-color:var(--g)">COMPLETE</span>':'')+
+    '<div style="font:9px/1.6 var(--font-mono);color:var(--dim)">'+(set.partCount?set.partCount+' parts · ':'')+sum.owned+' owned · '+sum.counts.upcoming+' upcoming · '+sum.counts.missed+' missed'+(sum.unsolicited?' · '+sum.unsolicited+' not solicited yet':'')+'</div></div><div style="display:flex;gap:5px;flex-wrap:wrap">'+
+    (saved?'<button class="hbtn" onclick="focConnectRename(\''+esc(set.id)+'\')">RENAME / PARTS</button><button class="hbtn" style="color:var(--red)" onclick="focConnectDelete(\''+esc(set.id)+'\')">DELETE SET</button>':'<button class="hbtn" style="color:var(--g)" onclick="focConnectSaveSuggested('+suggestIdx+')">TRACK THIS SET</button>')+'</div></div>';
+  var rows=sum.covers.map(function(c){return connectCoverRow(c,set,saved);}).join('');
+  var add='';
+  if(saved){
+    var results=connectState.search[set.id]||[];
+    add='<div style="display:flex;gap:6px;margin-top:8px"><input class="tsi" id="foc-connect-q-'+esc(set.id)+'" placeholder="Add a cover: search title, variant or artist" style="flex:1" onkeydown="if(event.key===\'Enter\'){event.preventDefault();focConnectSearch(\''+esc(set.id)+'\')}"><button class="hbtn" onclick="focConnectSearch(\''+esc(set.id)+'\')">SEARCH</button></div>'+
+      results.filter(function(c){return (set.skuIds||[]).indexOf(c.id)<0;}).slice(0,12).map(function(c){return '<div style="display:flex;justify-content:space-between;gap:8px;align-items:center;font:9px/1.5 var(--font-mono);padding:5px 0;border-bottom:1px solid var(--border)"><span>'+esc(c.title||'')+' · '+esc(c.variant_label||'')+' · FOC '+esc(displayDate(c.foc_date))+'</span><button class="hbtn" onclick="focConnectAdd(\''+esc(set.id)+'\',\''+esc(c.id)+'\')">ADD</button></div>';}).join('');
+  }
+  return '<div class="panel" style="margin-top:10px">'+head+rows+add+'</div>';
+}
+function renderConnecting(){
+  var body=document.getElementById('foc-connect-body');if(!body)return;
+  body.style.cssText='font:inherit;color:inherit;text-align:left';
+  var savedIds={};connectState.saved.sets.forEach(function(s){(s.skuIds||[]).forEach(function(id){savedIds[id]=1;});});
+  var suggestions=connectState.suggested.map(function(g,i){return {set:{id:g.id,name:g.name,partCount:g.partCount,skuIds:g.skuIds.filter(function(id){return !savedIds[id];})},idx:i};}).filter(function(x){return x.set.skuIds.length;});
+  var q=connectState.query.toLowerCase();
+  var matches=function(set){
+    var sum=connectSetSummary(set),f=connectState.filter;
+    if(f==='upcoming'&&!sum.counts.upcoming)return false;
+    if(f==='missed'&&!sum.counts.missed)return false;
+    if(f==='complete'&&!sum.complete)return false;
+    if(f==='incomplete'&&sum.complete)return false;
+    return !q||(set.name+' '+sum.covers.map(function(c){return c.title+' '+c.variant_label+' '+c.cover_artist;}).join(' ')).toLowerCase().indexOf(q)>-1;
+  };
+  var filters=[['all','ALL'],['upcoming','HAS UPCOMING'],['missed','HAS MISSED'],['incomplete','INCOMPLETE'],['complete','COMPLETE']].map(function(f){return '<button class="hbtn" style="'+(connectState.filter===f[0]?'background:var(--purple);color:#fff;border-color:var(--purple)':'')+'" onclick="focConnectFilter(\''+f[0]+'\')">'+f[1]+'</button>';}).join('');
+  var savedCards=connectState.saved.sets.filter(matches).map(function(s){return connectSetCard(s,true);}).join('');
+  var suggestCards=suggestions.filter(function(x){return matches(x.set);}).map(function(x){return connectSetCard(x.set,false,x.idx);}).join('');
+  body.innerHTML='<div style="font:10px/1.6 var(--font-mono);color:var(--dim)">Covers come from every FOC import whose wording says they connect, across titles. <b style="color:var(--g)">Bought</b> = ordered for the shelf or by customers; <b style="color:var(--red)">missed</b> = FOC passed with none ordered; <b style="color:var(--gold)">upcoming</b> = FOC still ahead. Mark covers you got elsewhere as HAVE IT.</div>'+
+    '<div class="foc-toolbar" style="margin-top:8px;flex-wrap:wrap">'+filters+'<input class="tsi" placeholder="Filter sets" value="'+esc(connectState.query)+'" oninput="focConnectQuery(this.value)" style="min-width:160px"><button class="hbtn" onclick="focConnectNewSet()">+ NEW SET</button></div>'+
+    '<div class="ph" style="margin-top:12px">TRACKED SETS ('+connectState.saved.sets.length+')</div>'+(savedCards||'<div style="color:var(--dim);font:10px var(--font-mono);padding:8px 0">'+(connectState.saved.sets.length?'No tracked set matches this filter.':'No sets tracked yet -- choose TRACK THIS SET on a suggestion below, or + NEW SET.')+'</div>')+
+    '<div class="ph" style="margin-top:14px">SUGGESTED FROM YOUR FOC IMPORTS ('+suggestions.length+')</div>'+(suggestCards||'<div style="color:var(--dim);font:10px var(--font-mono);padding:8px 0">No untracked connecting covers found.</div>');
+}
+async function focConnectSaveSuggested(idx){
+  var g=connectState.suggested[idx];if(!g)return;
+  var tracked={};connectState.saved.sets.forEach(function(s){(s.skuIds||[]).forEach(function(id){tracked[id]=1;});});
+  var name=prompt('Name this connecting set',g.name);if(name===null)return;
+  connectState.saved.sets.unshift({id:'set_'+Date.now().toString(36),name:name.trim()||g.name,partCount:g.partCount||0,skuIds:g.skuIds.filter(function(id){return !tracked[id];}),have:{},skip:{},createdAt:new Date().toISOString()});
+  await saveConnectSets();renderConnecting();toast_dash('Tracking '+(name.trim()||g.name));
+}
+async function focConnectNewSet(){
+  var name=prompt('Name the connecting set (e.g. "Midnight Crain 3-part")');if(!name||!name.trim())return;
+  var parts=Number(prompt('How many covers connect? (leave blank if unknown)')||0)||0;
+  connectState.saved.sets.unshift({id:'set_'+Date.now().toString(36),name:name.trim(),partCount:parts,skuIds:[],have:{},skip:{},createdAt:new Date().toISOString()});
+  await saveConnectSets();renderConnecting();
+}
+async function focConnectRename(setId){
+  var set=connectSetById(setId);if(!set)return;
+  var name=prompt('Set name',set.name);if(name===null)return;
+  var parts=prompt('How many covers connect? (blank = unknown)',set.partCount?String(set.partCount):'');if(parts===null)return;
+  set.name=name.trim()||set.name;set.partCount=Number(parts)||0;
+  await saveConnectSets();renderConnecting();
+}
+async function focConnectDelete(setId){
+  var set=connectSetById(setId);if(!set||!confirm('Stop tracking "'+set.name+'"? Its covers go back to the suggestions.'))return;
+  connectState.saved.sets=connectState.saved.sets.filter(function(s){return s.id!==setId;});
+  await saveConnectSets();renderConnecting();
+}
+async function focConnectToggle(setId,skuId,kind){
+  var set=connectSetById(setId);if(!set)return;
+  set[kind]=set[kind]||{};if(set[kind][skuId])delete set[kind][skuId];else set[kind][skuId]=true;
+  await saveConnectSets();renderConnecting();
+}
+async function focConnectRemove(setId,skuId){
+  var set=connectSetById(setId);if(!set)return;
+  set.skuIds=(set.skuIds||[]).filter(function(id){return id!==skuId;});
+  await saveConnectSets();renderConnecting();
+}
+async function focConnectSearch(setId){
+  var input=document.getElementById('foc-connect-q-'+setId);var q=input?input.value.trim():'';if(q.length<2){toast_dash('Type at least 2 characters');return;}
+  try{var data=await api('/foc/admin/connecting-covers?store_id='+encodeURIComponent(getActiveStoreId())+'&q='+encodeURIComponent(q));connectState.search[setId]=data.covers||[];(data.covers||[]).forEach(function(c){connectState.covers[c.id]=c;});renderConnecting();var again=document.getElementById('foc-connect-q-'+setId);if(again){again.value=q;}}
+  catch(e){toast_dash('Search failed: '+e.message);}
+}
+async function focConnectAdd(setId,skuId){
+  var set=connectSetById(setId);if(!set)return;
+  if((set.skuIds||[]).indexOf(skuId)<0)set.skuIds=(set.skuIds||[]).concat(skuId);
+  await saveConnectSets();renderConnecting();
+}
+function focConnectFilter(value){connectState.filter=value;renderConnecting();}
+function focConnectQuery(value){connectState.query=value||'';var pos=value.length;renderConnecting();var input=document.querySelector('#foc-connect-body input[placeholder="Filter sets"]');if(input){input.focus();input.setSelectionRange(pos,pos);}}
+function focConnectOpenCycle(cycleId){closeFocConnecting();openCycle(cycleId);}
+
+window.openConnectingCovers=openConnectingCovers;window.closeFocConnecting=closeFocConnecting;window.focConnectSaveSuggested=focConnectSaveSuggested;window.focConnectNewSet=focConnectNewSet;window.focConnectRename=focConnectRename;window.focConnectDelete=focConnectDelete;window.focConnectToggle=focConnectToggle;window.focConnectRemove=focConnectRemove;window.focConnectSearch=focConnectSearch;window.focConnectAdd=focConnectAdd;window.focConnectFilter=focConnectFilter;window.focConnectQuery=focConnectQuery;window.focConnectOpenCycle=focConnectOpenCycle;
 window.ensureFocPanel=function(){loadCycles(false);};window.loadFocCycles=loadCycles;window.openFocCycle=openCycle;window.handleFocImportFile=handleImport;window.handleLunarFocImportFile=handleLunarImport;window.switchFocDistributor=switchDistributor;window.loadLunarDiscountSettings=loadLunarDiscountSettings;window.saveLunarDiscountSettings=saveLunarDiscountSettings;window.filterFocAdmin=function(v){state.query=v;renderFamilies();};window.filterFocPublisher=function(v){state.publisher=v;renderFamilies();};window.filterFocFlag=function(v){state.flag=v;renderFamilies();};window.filterFocEbay=function(v){state.ebay=v;renderFamilies();};window.saveFocSku=saveSku;window.saveFocFamily=saveFamily;window.toggleFocCycle=toggleCycle;window.archiveFocCycle=archiveCycle;window.unarchiveFocCycle=unarchiveCycle;window.saveFocCycleCutoff=saveCutoff;window.exportFocPrh=exportPrh;window.loadFocShippingSettings=loadShipping;window.saveFocShippingSettings=saveShipping;window.openReceiveShipment=openReceiveShipment;window.confirmReceiveShipment=confirmReceiveShipment;window.createFocEbayPresale=openEbayPresaleReview;window.submitEbayPresaleReview=submitEbayPresaleReview;window.openFamilyEbayGroupReview=openFamilyEbayGroupReview;window.submitFamilyEbayGroupReview=submitFamilyEbayGroupReview;window.handleFocGroupMainImageFile=handleFocGroupMainImageFile;window.clearFocGroupMainImage=clearFocGroupMainImage;window.handleFocGroupBundleImageFile=handleFocGroupBundleImageFile;window.clearFocGroupBundleImage=clearFocGroupBundleImage;window.loadEbaySafeDays=loadEbaySafeDays;window.saveFocEbaySafeDays=saveEbaySafeDays;window.openFocReview=openFocReview;window.openFocIntelligence=openFocIntelligence;window.submitPrhOrder=submitPrhOrder;window.handleFocPrhCartImportFile=handleFocPrhCartImportFile;window.endFocEbayListings=endFocEbayListings;window.toggleFocEndEbayAll=toggleFocEndEbayAll;window.confirmEndFocEbayListings=confirmEndFocEbayListings;window.repairFocEbayGroupPhotos=repairFocEbayGroupPhotos;window.reviewStoreQtyChanged=reviewStoreQtyChanged;window.focPublishBulkCheckboxChanged=focPublishBulkCheckboxChanged;window.toggleFocPublishBulkSelectAll=toggleFocPublishBulkSelectAll;window.bulkSetCustomerEnabled=bulkSetCustomerEnabled;window.openOrphanedEbayScan=openOrphanedEbayScan;window.endSelectedOrphanedEbayListings=endSelectedOrphanedEbayListings;
 window.generateFocAiDescription=generateFocAiDescription;window.generateFocGroupAiDescription=generateFocGroupAiDescription;
 // Store report: "+ ADD TO INVENTORY" on a FOC cover-wall card threw
