@@ -112,30 +112,30 @@ jobs:
             r2Bindings: config.r2_buckets.map(binding => ({ binding: binding.binding, bucket: binding.bucket_name })),
           }, null, 2));
           NODE
-          npx wrangler deploy --config wrangler.deploy.jsonc --dry-run
+          npx --yes wrangler@4.145.0 deploy --config wrangler.deploy.jsonc --dry-run
 
       - name: Validate Wrangler authentication
         shell: bash
         run: |
           set -euo pipefail
-          npx wrangler whoami
+          npx --yes wrangler@4.145.0 whoami
 
       - name: Ensure MTG R2 bucket exists
         shell: bash
         run: |
           set -euo pipefail
-          buckets="$(npx wrangler r2 bucket list --config wrangler.deploy.jsonc)"
+          buckets="$(npx --yes wrangler@4.145.0 r2 bucket list --config wrangler.deploy.jsonc)"
           if grep -Fq "arsca-offline-catalogs" <<< "$buckets"; then
             echo "MTG R2 bucket already exists."
           else
-            npx wrangler r2 bucket create arsca-offline-catalogs --config wrangler.deploy.jsonc
+            npx --yes wrangler@4.145.0 r2 bucket create arsca-offline-catalogs --config wrangler.deploy.jsonc
           fi
 
       - name: Deploy Worker
         shell: bash
         run: |
           set -euo pipefail
-          npx wrangler deploy --config wrangler.deploy.jsonc --keep-vars
+          npx --yes wrangler@4.145.0 deploy --config wrangler.deploy.jsonc --keep-vars
           echo "Deployed Worker URL: ${WORKER_URL}"
 
       - name: Validate live endpoints
