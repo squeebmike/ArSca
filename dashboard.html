@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.10.02.3-whatnot-random-lots-labels">
+<meta name="version" content="2026.10.02.4-whatnot-enter-show">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1658,22 +1658,22 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.10.02.3-whatnot-random-lots-labels" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.10.02.3-whatnot-random-lots-labels" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.10.02.3-whatnot-random-lots-labels" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.10.02.3-whatnot-random-lots-labels" defer></script>
-<script src="scripts/backlist-dashboard.js?v=2026.10.02.3-whatnot-random-lots-labels" defer></script>
-<script src="scripts/database-viewer.js?v=2026.10.02.3-whatnot-random-lots-labels" defer></script>
-<script src="scripts/card-intake-dashboard.js?v=2026.10.02.3-whatnot-random-lots-labels" defer></script>
-<script src="scripts/mana-pocket-task-library.js?v=2026.10.02.3-whatnot-random-lots-labels" defer></script>
-<script src="scripts/daily-tasks-dashboard.js?v=2026.10.02.3-whatnot-random-lots-labels" defer></script>
-<script src="scripts/whatnot-bridge.js?v=2026.10.02.3-whatnot-random-lots-labels" defer></script>
+<script src="scripts/query-routing.js?v=2026.10.02.4-whatnot-enter-show" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.10.02.4-whatnot-enter-show" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.10.02.4-whatnot-enter-show" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.10.02.4-whatnot-enter-show" defer></script>
+<script src="scripts/backlist-dashboard.js?v=2026.10.02.4-whatnot-enter-show" defer></script>
+<script src="scripts/database-viewer.js?v=2026.10.02.4-whatnot-enter-show" defer></script>
+<script src="scripts/card-intake-dashboard.js?v=2026.10.02.4-whatnot-enter-show" defer></script>
+<script src="scripts/mana-pocket-task-library.js?v=2026.10.02.4-whatnot-enter-show" defer></script>
+<script src="scripts/daily-tasks-dashboard.js?v=2026.10.02.4-whatnot-enter-show" defer></script>
+<script src="scripts/whatnot-bridge.js?v=2026.10.02.4-whatnot-enter-show" defer></script>
 <script src="scripts/research-loupe.js?v=a7de4ffe90" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.10.02.3-whatnot-random-lots-labels" defer></script>
-<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.10.02.3-whatnot-random-lots-labels" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.10.02.3-whatnot-random-lots-labels" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.10.02.3-whatnot-random-lots-labels" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.10.02.3-whatnot-random-lots-labels" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.10.02.4-whatnot-enter-show" defer></script>
+<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.10.02.4-whatnot-enter-show" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.10.02.4-whatnot-enter-show" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.10.02.4-whatnot-enter-show" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.10.02.4-whatnot-enter-show" defer></script>
 </head>
 <body>
 
@@ -1725,7 +1725,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
 <div class="dsb-chip" id="dsb-tasks" title="Today's Roles &amp; Tasks — click to jump to Tasks tab" style="cursor:pointer;display:none" onclick="switchTab('tasks')">✅ <span>TASKS:</span> <b id="dsb-tasks-val">—</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.10.02.3-whatnot-random-lots-labels</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.10.02.4-whatnot-enter-show</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3911,7 +3911,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.10.02.3-whatnot-random-lots-labels';
+const APP_VERSION = '2026.10.02.4-whatnot-enter-show';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -29593,13 +29593,13 @@ let cartScanStream=null, cartScanDetector=null, cartScanDetecting=false;
 // see openInventoryFindScanner() and the branch in handleCartScanValue().
 let cartScanMode='cart';
 function openCartScanModal(mode){
-  cartScanMode=mode==='find'?'find':'cart';
+  cartScanMode=mode==='find'||mode==='show'?mode:'cart';
   const modal=document.getElementById('cart-scan-modal');
   if(!modal) return;
   const titleEl=document.getElementById('cart-scan-title');
   const descEl=document.getElementById('cart-scan-desc');
-  if(titleEl) titleEl.textContent=cartScanMode==='find'?'SCAN TO FIND':'SCAN TO CART';
-  if(descEl) descEl.textContent=cartScanMode==='find'?"Scan a printed shelf/price label's barcode to jump straight to that item in the inventory list.":"Scan a printed shelf/price label's barcode to add that exact item to the active cart. Stays open between scans.";
+  if(titleEl) titleEl.textContent=cartScanMode==='find'?'SCAN TO FIND':cartScanMode==='show'?'SCAN INTO SHOW':'SCAN TO CART';
+  if(descEl) descEl.textContent=cartScanMode==='show'?"Scan each sold book's price sticker to add it to this Whatnot show. Stays open between scans; scan a book twice for 2 copies. Nothing leaves stock until you SAVE SHOW.":cartScanMode==='find'?"Scan a printed shelf/price label's barcode to jump straight to that item in the inventory list.":"Scan a printed shelf/price label's barcode to add that exact item to the active cart. Stays open between scans.";
   modal.classList.add('on');
   document.body.style.overflow='hidden';
   const log=document.getElementById('cart-scan-log'); if(log) log.innerHTML='';
@@ -29686,7 +29686,9 @@ async function handleCartScanValue(rawValue){
   _cartScanLastValue=lookupValue;_cartScanLastAt=now;
   const input=document.getElementById('cart-scan-manual-input');if(input)input.value='';
   const log=document.getElementById('cart-scan-log');
-  const item=(all||[]).find(i=>i.status==='in_stock'&&labelBarcodeValue(i)===lookupValue);
+  // A show can sell anything still sellable (a received FOC book, a presale
+  // copy); the cart only takes in-stock items.
+  const item=(all||[]).find(i=>(cartScanMode==='show'?inventoryItemIsSellable(i):i.status==='in_stock')&&labelBarcodeValue(i)===lookupValue);
   if(!item){
     setCartScanStatus('No in-stock item matches that barcode.','var(--red)');
     if(log)log.innerHTML=`<div style="color:var(--red)">✕ No match for "${escHtml(lookupValue)}"</div>`+log.innerHTML;
@@ -29694,6 +29696,14 @@ async function handleCartScanValue(rawValue){
   }
   if(cartScanMode==='find'){
     jumpToInventoryItem(item);
+    return;
+  }
+  if(cartScanMode==='show'){
+    const added=typeof window.WB?.entryAdd==='function'?window.WB.entryAdd(item.id):false;
+    if(!added){ setCartScanStatus('No more copies of '+item.name+' in stock.','var(--gold)'); return; }
+    showCartScanPokeball();
+    setCartScanStatus('Added to show: '+item.name,'var(--g)');
+    if(log)log.innerHTML=`<div style="color:var(--g)">✓ ${escHtml(item.name)}</div>`+log.innerHTML;
     return;
   }
   dashAddToCart(item.id);
@@ -48897,7 +48907,7 @@ async function toppsLoadParallels(cardId){
   window.__arscaCloseModal = closeModal;
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.10.02.3-whatnot-random-lots-labels" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.10.02.4-whatnot-enter-show" defer></script>
 </body>
 </html>
 
