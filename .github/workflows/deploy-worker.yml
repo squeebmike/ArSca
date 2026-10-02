@@ -18,6 +18,7 @@ on:
       - scripts/database-edits.mjs
       - scripts/database-explorer.mjs
       - scripts/comic-articles.mjs
+      - scripts/book-alerts.mjs
       - scripts/site-chrome.mjs
       - scripts/comic-search.mjs
       - scripts/comic-search-client.mjs
@@ -70,6 +71,9 @@ jobs:
 
       - name: Verify SEO discovery
         run: node --test tests/seo-discovery-regressions.test.mjs tests/foc-preorder-share-page.test.mjs tests/backlist-catalog.test.mjs tests/comic-new-releases.test.mjs tests/bcw-storefront.test.mjs tests/item-seo-pages.test.mjs
+
+      - name: Verify automatic book alerts
+        run: node --test tests/book-alerts.test.mjs tests/comic-articles.test.mjs
 
       - name: Verify unified comic search
         run: node --test tests/comic-search.test.mjs
