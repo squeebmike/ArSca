@@ -11264,9 +11264,15 @@ async function routeRequest(request, env, ctx) {
         const salePrice = Number(body.salePrice);
         const feeAmount = Math.max(0, Number(body.feeAmount) || 0);
         const quantitySold = Math.max(1, Number(body.quantitySold) || 1);
-        if (!itemId) return json({ ok: false, error: 'itemId is required' }, 400);
+        // A giveaway is recorded at $0 so its cost (and any fee) counts
+        // against the show. A sale with no inventory item (something listed
+        // straight on Whatnot) is recorded from its title and a cost typed in
+        // at import, so the show's profit isn't missing it.
+        const giveaway = body.giveaway === true;
+        const unlinkedTitle = String(body.title || '').trim().slice(0, 200);
+        if (!itemId && !unlinkedTitle) return json({ ok: false, error: 'itemId is required' }, 400);
         if (!channel) return json({ ok: false, error: 'channel is required' }, 400);
-        if (!(salePrice > 0)) return json({ ok: false, error: 'salePrice must be greater than 0' }, 400);
+        if (giveaway ? !(salePrice >= 0) : !(salePrice > 0)) return json({ ok: false, error: 'salePrice must be greater than 0' }, 400);
         // Optional marketplace order reference (e.g. "whatnot:<order id>"
         // from an imported Whatnot show report). Re-importing the same
         // report finds the payment already recorded and does nothing.
@@ -11274,6 +11280,20 @@ async function routeRequest(request, env, ctx) {
         if (externalRef) {
           const { data: existingPayments } = await supabaseAdminFetch(env, `pos_payments?store_id=eq.${encodeURIComponent(storeId)}&reference=eq.${encodeURIComponent(externalRef)}&select=id,sale_id&limit=1`);
           if (existingPayments?.length) return json({ ok: true, duplicate: true, itemId, saleId: existingPayments[0].sale_id, channel });
+        }
+
+        if (!itemId) {
+          const cost = Math.max(0, Number(body.cost) || 0);
+          const profit = Math.round((salePrice - feeAmount - cost) * 100) / 100;
+          const soldAt = body.soldAt || new Date().toISOString();
+          const saleId = crypto.randomUUID();
+          await supabaseAdminFetch(env, 'pos_sales', { method: 'POST', headers: { Prefer: 'return=minimal' },
+            body: JSON.stringify({ id: saleId, store_id: storeId, subtotal: salePrice, discount_total: 0, tax_total: 0, total: salePrice, status: 'completed', payment_status: 'paid', completed_at: soldAt, created_at: soldAt }) });
+          await supabaseAdminFetch(env, 'pos_sale_lines', { method: 'POST', headers: { Prefer: 'return=minimal' },
+            body: JSON.stringify([{ id: crypto.randomUUID(), sale_id: saleId, store_id: storeId, item_id: null, title: (giveaway ? 'Giveaway: ' : '') + unlinkedTitle, category: String(body.category || '').slice(0, 60) || guessSaleCategoryFromTitle(unlinkedTitle), quantity: quantitySold, unit_price: salePrice / quantitySold, original_price: salePrice / quantitySold, adjusted_price: salePrice / quantitySold, discount_amount: 0, cost_basis: cost, profit, condition: '', image_url: '' }]) });
+          await supabaseAdminFetch(env, 'pos_payments', { method: 'POST', headers: { Prefer: 'return=minimal' },
+            body: JSON.stringify({ id: crypto.randomUUID(), sale_id: saleId, store_id: storeId, method: channel, amount: salePrice, status: 'confirmed', provider: channel.toLowerCase(), currency: 'USD', confirmed_by: auth.user.id, confirmed_at: soldAt, created_at: soldAt, ...(externalRef ? { reference: externalRef } : {}) }) });
+          return json({ ok: true, itemId: null, saleId, salePrice, feeAmount, profit, depleted: false, channel, unlinked: true });
         }
 
         const { data: rows } = await supabaseAdminFetch(env, `inventory_items?id=eq.${encodeURIComponent(itemId)}&store_id=eq.${encodeURIComponent(storeId)}&select=id,data,status&limit=1`);
@@ -11290,7 +11310,7 @@ async function routeRequest(request, env, ctx) {
         await supabaseAdminFetch(env, 'pos_sales', { method: 'POST', headers: { Prefer: 'return=minimal' },
           body: JSON.stringify({ id: saleId, store_id: storeId, subtotal: salePrice, discount_total: 0, tax_total: 0, total: salePrice, status: 'completed', payment_status: 'paid', completed_at: soldAt, created_at: soldAt }) });
         await supabaseAdminFetch(env, 'pos_sale_lines', { method: 'POST', headers: { Prefer: 'return=minimal' },
-          body: JSON.stringify([{ id: crypto.randomUUID(), sale_id: saleId, store_id: storeId, item_id: invRow.id, title: d.name || 'Item', category: d.category || '', quantity: quantitySold, unit_price: salePrice / quantitySold, original_price: salePrice / quantitySold, adjusted_price: salePrice / quantitySold, discount_amount: 0, cost_basis: cost, profit, condition: d.condition || '', image_url: d.thumbnail || d.image || '' }]) });
+          body: JSON.stringify([{ id: crypto.randomUUID(), sale_id: saleId, store_id: storeId, item_id: invRow.id, title: (giveaway ? 'Giveaway: ' : '') + (d.name || 'Item'), category: d.category || '', quantity: quantitySold, unit_price: salePrice / quantitySold, original_price: salePrice / quantitySold, adjusted_price: salePrice / quantitySold, discount_amount: 0, cost_basis: cost, profit, condition: d.condition || '', image_url: d.thumbnail || d.image || '' }]) });
         await supabaseAdminFetch(env, 'pos_payments', { method: 'POST', headers: { Prefer: 'return=minimal' },
           body: JSON.stringify({ id: crypto.randomUUID(), sale_id: saleId, store_id: storeId, method: channel, amount: salePrice, status: 'confirmed', provider: channel.toLowerCase(), currency: 'USD', confirmed_by: auth.user.id, confirmed_at: soldAt, created_at: soldAt, ...(externalRef ? { reference: externalRef } : {}) }) });
 

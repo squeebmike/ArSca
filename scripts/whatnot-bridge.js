@@ -55,7 +55,7 @@ var CONDITION_ALIASES = [
   [/^(new|sealed|factory sealed|brand new)$/, ['New', 'Brand New', 'Mint']],
 ];
 
-var state = { settings:null, loading:false, source:'selected', category:'', query:'', shipment:'', cycles:null, dest:'show', type:'Auction', auctionRule:'one', auctionPct:50, offerable:false, includeCost:true, wholeDollars:true, report:null };
+var state = { settings:null, loading:false, source:'selected', category:'', query:'', shipment:'', cycles:null, dest:'show', type:'Auction', auctionRule:'one', auctionPct:50, offerable:false, includeCost:true, wholeDollars:true, report:null, shows:null };
 
 function esc(v){ return String(v == null ? '' : v).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
 function norm(v){ return String(v || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim(); }
@@ -415,8 +415,15 @@ function afterDownloadHtml(count){
 }
 
 // ── Part 2: import the show report ───────────────────────────────────────
+// Every non-cancelled row counts toward the show's profit, recorded or not:
+// SKU and hand-linked rows record against their item, rows with no item
+// (listed straight on Whatnot) record from their title and a typed-in cost,
+// and $0 rows are giveaways whose cost comes off the show. Sales the live
+// sticker helper already recorded during the show are recognised and never
+// recorded a second time.
 var COLUMN_GUESSES = {
   sku: [/^sku$/, /sku/],
+  buyer: [/buyer user ?name/, /^buyer$/, /buyer name/, /^username$/, /buyer/],
   title: [/product name/, /listing title/, /item name/, /^title$/, /^product$/, /name/],
   price: [/sold price/, /sale price/, /winning bid/, /final price/, /item price/, /^price$/, /subtotal/, /price/],
   quantity: [/^quantity$/, /quantity/, /^qty$/],
@@ -441,6 +448,36 @@ function guessColumns(header){
 }
 function money(v){ var n = Number(String(v || '').replace(/[^0-9.\-]/g, '')); return Number.isFinite(n) ? n : 0; }
 function isCancelled(v){ var s = String(v || '').trim().toLowerCase(); return /cancel|refund|fail|void/.test(s) || s === 'true' || s === 'yes'; }
+function round2(n){ return Math.round(n * 100) / 100; }
+function sb(){ return typeof getSupabaseClient === 'function' ? getSupabaseClient() : null; }
+function storeId(){ return typeof getActiveStoreId === 'function' ? getActiveStoreId() : ''; }
+
+// Sales the live sticker helper recorded (reference "whatnot-live:<id>"),
+// as { itemId, amount }, so the report import can skip them.
+async function loadLiveSales(){
+  var client = sb(), store = storeId();
+  if(!client || !store) return [];
+  try {
+    var since = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString();
+    var res = await client.from('pos_payments').select('sale_id,amount,reference').eq('store_id', store).like('reference', 'whatnot-live:%').gte('created_at', since).limit(1000);
+    var pays = (res && res.data) || [];
+    var itemBySale = {};
+    for(var i = 0; i < pays.length; i += 100){
+      var ids = pays.slice(i, i + 100).map(function(p){ return p.sale_id; });
+      var lr = await client.from('pos_sale_lines').select('sale_id,item_id').in('sale_id', ids);
+      ((lr && lr.data) || []).forEach(function(l){ itemBySale[l.sale_id] = l.item_id; });
+    }
+    return pays.map(function(p){ return { itemId:String(itemBySale[p.sale_id] || ''), amount:Number(p.amount || 0) }; }).filter(function(x){ return x.itemId; });
+  } catch(e) { return []; }
+}
+async function loadShows(){
+  var client = sb(), store = storeId();
+  if(!client || !store) return [];
+  try {
+    var res = await client.from('whatnot_shows').select('id,title,started_at,ended_at,status,report_summary').eq('store_id', store).order('started_at', { ascending:false }).limit(25);
+    return (res && res.data) || [];
+  } catch(e) { return []; }
+}
 
 function buildReportRows(){
   var r = state.report; if(!r) return [];
@@ -448,29 +485,124 @@ function buildReportRows(){
   var fee = typeof whatnotFeeSettings === 'function' ? whatnotFeeSettings() : { pct:10.9, flat:0.3 };
   var byId = {};
   items().forEach(function(i){ byId[i.id] = i; });
+  var live = (r.live || []).map(function(x){ return { itemId:x.itemId, amount:x.amount, used:false }; });
+  r.links = r.links || {}; r.costs = r.costs || {}; r.picks = r.picks || {};
   return r.rows.map(function(cells, n){
     function cell(key){ return cols[key] >= 0 ? String(cells[cols[key]] || '').trim() : ''; }
-    var sku = cell('sku'), title = cell('title'), price = money(cell('price'));
+    var sku = cell('sku'), title = cell('title'), price = money(cell('price')), buyer = cell('buyer').replace(/^@/, '');
     var qty = Math.max(1, Math.round(money(cell('quantity'))) || 1);
     var item = sku ? (byId[sku] || items().find(function(i){ return i.raw && i.raw.sku === sku; })) : null;
     var how = item ? 'sku' : '';
+    if(!item && r.links[n] && byId[r.links[n]]){ item = byId[r.links[n]]; how = 'manual'; }
     if(!item && title){
       var t = norm(title);
       var hits = items().filter(function(i){ return isSellable(i) && norm([i.name, i.set, i.card_number ? '#' + i.card_number : '', i.variant].filter(Boolean).join(' - ')) === t || isSellable(i) && norm(i.name) === t; });
       if(hits.length === 1){ item = hits[0]; how = 'title'; }
     }
+    var cancelled = cols.status >= 0 && isCancelled(cell('status'));
+    var giveaway = !cancelled && (!(price > 0) || /giveaway/i.test(title));
     var feeCol = cell('fee');
-    var feeAmount = feeCol ? Math.abs(money(feeCol)) : Math.round((price * fee.pct / 100 + fee.flat) * 100) / 100;
+    var feeAmount = feeCol ? Math.abs(money(feeCol)) : giveaway ? 0 : round2(price * fee.pct / 100 + fee.flat);
     var order = cell('order');
     var ref = 'whatnot:' + (order || [cell('date'), sku || norm(title), price].join('|')) + (order && (sku || title) ? ':' + (sku || norm(title)).slice(0, 40) : '');
+    var liveHit = null;
+    if(item && !cancelled && !giveaway) liveHit = live.find(function(l){ return !l.used && l.itemId === String(item.id) && Math.abs(l.amount - price) < 0.01; }) || null;
+    if(liveHit) liveHit.used = true;
     var reason = '';
-    if(cols.status >= 0 && isCancelled(cell('status'))) reason = 'Cancelled or refunded';
-    else if(!(price > 0)) reason = 'No sale price';
-    else if(!item) reason = 'No matching item';
-    else if(!isSellable(item)) reason = 'Already sold in the dashboard';
+    if(cancelled) reason = 'Cancelled or refunded';
+    else if(liveHit) reason = 'Recorded live during the show';
+    else if(item && !isSellable(item)) reason = 'Already sold in the dashboard';
+    var cost = item ? round2(Number(item.cost || 0) * qty) : (r.costs[n] != null && r.costs[n] !== '' ? Math.max(0, Number(r.costs[n]) || 0) : null);
     var soldAt = cell('date') && !isNaN(Date.parse(cell('date'))) ? new Date(cell('date')).toISOString() : '';
-    return { n:n, sku:sku, title:title, price:price, qty:qty, item:item, how:how, feeAmount:feeAmount, ref:ref.slice(0, 120), soldAt:soldAt, reason:reason, include: !reason && how === 'sku', done:false, result:'' };
+    // Default: SKU, hand-linked and no-item rows go in; a title match waits for a tick.
+    var include = !reason && (r.picks[n] != null ? r.picks[n] : how !== 'title');
+    return { n:n, sku:sku, title:title, buyer:buyer, price:price, qty:qty, item:item, how:how, giveaway:giveaway, cancelled:cancelled, cost:cost, feeAmount:feeAmount, ref:ref.slice(0, 120), soldAt:soldAt, reason:reason, include:include, done:false, result:'' };
   });
+}
+
+// The show's money, from every non-cancelled row of the report.
+function showSummary(rows){
+  var s = { gross:0, fees:0, cogs:0, giveawayCost:0, net:0, sold:0, giveaways:0, cancelled:0, missingCost:0, buyers:[] };
+  var byBuyer = {};
+  rows.forEach(function(x){
+    if(x.cancelled){ s.cancelled++; return; }
+    if(x.cost == null) s.missingCost++;
+    var cost = x.cost || 0;
+    s.fees += x.feeAmount;
+    if(x.giveaway){ s.giveaways++; s.giveawayCost += cost; }
+    else { s.sold += x.qty; s.gross += x.price; s.cogs += cost; }
+    if(x.buyer){ var b = byBuyer[x.buyer] || (byBuyer[x.buyer] = { buyer:x.buyer, items:0, total:0 }); b.items += x.qty; b.total += x.giveaway ? 0 : x.price; }
+  });
+  ['gross','fees','cogs','giveawayCost'].forEach(function(k){ s[k] = round2(s[k]); });
+  s.net = round2(s.gross - s.fees - s.cogs - s.giveawayCost);
+  s.margin = s.gross > 0 ? Math.round(s.net / s.gross * 1000) / 10 : 0;
+  s.buyers = Object.keys(byBuyer).map(function(k){ byBuyer[k].total = round2(byBuyer[k].total); return byBuyer[k]; }).sort(function(a, b){ return b.total - a.total; });
+  return s;
+}
+function reportDates(rows){
+  var ds = rows.map(function(x){ return x.soldAt; }).filter(Boolean).sort();
+  return { first:ds[0] || '', last:ds[ds.length - 1] || '' };
+}
+// The show this report belongs to: one started the same day, if any.
+function guessShowId(shows, rows){
+  var first = reportDates(rows).first;
+  if(!first) return '';
+  var day = new Date(first).toDateString();
+  var hit = shows.find(function(sh){ return sh.started_at && new Date(sh.started_at).toDateString() === day; });
+  return hit ? hit.id : '';
+}
+function usd(n){ return (n < 0 ? '-$' : '$') + Math.abs(n).toFixed(2); }
+function showLabel(sh){ return (sh.started_at ? new Date(sh.started_at).toLocaleDateString() + ' · ' : '') + (sh.title || 'Whatnot show'); }
+
+function summaryHtml(s){
+  var line = function(label, v, color){ return '<div style="display:flex;justify-content:space-between;gap:8px"><span>' + label + '</span><b style="color:' + (color || 'var(--text)') + '">' + v + '</b></div>'; };
+  return '<div style="border:1px solid var(--border);border-radius:8px;padding:10px;margin:8px 0;display:grid;gap:4px;color:var(--text)">' +
+    '<div class="ph" style="margin:0">SHOW PROFIT</div>' +
+    line('Sales (' + s.sold + ' item' + (s.sold === 1 ? '' : 's') + ')', usd(s.gross)) +
+    line('Whatnot fees', '-' + usd(s.fees)) +
+    line('Cost of goods', '-' + usd(s.cogs)) +
+    line('Giveaways (' + s.giveaways + ')', '-' + usd(s.giveawayCost)) +
+    line('Net profit', usd(s.net) + (s.gross > 0 ? ' (' + s.margin + '%)' : ''), s.net >= 0 ? 'var(--g)' : 'var(--red)') +
+    (s.missingCost ? '<div style="color:var(--gold)">' + s.missingCost + ' row' + (s.missingCost === 1 ? ' has' : 's have') + ' no cost yet -- type it in below (or link the item) or profit reads high.</div>' : '') +
+    (s.cancelled ? '<div style="color:var(--dim)">' + s.cancelled + ' cancelled/refunded row' + (s.cancelled === 1 ? '' : 's') + ' left out.</div>' : '') +
+    (s.buyers.length ? '<div style="color:var(--dim)">Top buyers: ' + s.buyers.slice(0, 5).map(function(b){ return '@' + esc(b.buyer) + ' ' + usd(b.total) + ' (' + b.items + ')'; }).join(' · ') + '</div>' : '') +
+  '</div>';
+}
+
+function rowHtml(x){
+  var status = x.done ? '<span style="color:var(--g)">' + esc(x.result) + '</span>'
+    : x.reason ? '<span style="color:var(--dim)">' + esc(x.reason) + '</span>'
+    : x.how === 'title' ? '<span style="color:var(--gold)">matched by title</span>'
+    : x.how === 'manual' ? '<span style="color:var(--g)">linked</span>'
+    : x.item ? '<span style="color:var(--g)">matched</span>'
+    : '<span style="color:var(--gold)">not in inventory</span>';
+  var name = x.item ? x.item.name : x.title || x.sku || 'Row ' + (x.n + 1);
+  var extra = '';
+  if(!x.item && !x.cancelled && !x.done){
+    extra = '<div style="grid-column:2 / -1;display:flex;gap:6px;flex-wrap:wrap">' +
+      '<input class="tsi" style="margin:0;flex:0 0 110px;width:110px" type="number" min="0" step="0.01" placeholder="cost $" value="' + (x.cost == null ? '' : esc(x.cost)) + '" onchange="WB.setCost(' + x.n + ',this.value)">' +
+      '<input class="tsi" style="margin:0;flex:1 1 150px;min-width:0" list="wb-inventory" placeholder="or link to an item…" onchange="WB.linkRow(' + x.n + ',this.value)">' +
+    '</div>';
+  }
+  return '<div style="display:grid;grid-template-columns:24px 1fr auto;gap:6px;padding:6px 8px;border-bottom:1px solid var(--border);align-items:start">' +
+    '<input type="checkbox"' + (x.include ? ' checked' : '') + (x.reason || x.done ? ' disabled' : '') + ' onchange="WB.toggleRow(' + x.n + ',this.checked)">' +
+    '<span style="color:var(--text);min-width:0">' + esc(name) + (x.qty > 1 ? ' ×' + x.qty : '') + (x.giveaway ? ' <b style="color:var(--gold)">GIVEAWAY</b>' : '') +
+      '<br><span style="color:var(--dim)">' + esc(x.title) + (x.buyer ? ' · @' + esc(x.buyer) : '') + (x.cost != null ? ' · cost ' + usd(x.cost) : '') + '</span></span>' +
+    '<span style="text-align:right">' + (x.giveaway ? '$0' : '$' + x.price.toFixed(2)) + '<br>' + status + '</span>' + extra + '</div>';
+}
+
+function inventoryDatalist(){
+  return '<datalist id="wb-inventory">' + items().filter(isSellable).slice(0, 3000).map(function(i){ return '<option value="' + esc((i.name || 'Item') + ' — ' + i.id) + '">'; }).join('') + '</datalist>';
+}
+
+function pastShowsHtml(){
+  var list = (state.shows || []).filter(function(sh){ return sh.report_summary && typeof sh.report_summary === 'object'; });
+  if(!list.length) return '';
+  return '<div style="margin-top:12px"><div class="ph" style="margin:0 0 4px">PAST SHOWS</div>' + list.slice(0, 12).map(function(sh){
+    var s = sh.report_summary;
+    return '<div style="display:flex;justify-content:space-between;gap:8px;padding:5px 0;border-bottom:1px solid var(--border)"><span style="color:var(--text);min-width:0">' + esc(showLabel(sh)) + '<br><span style="color:var(--dim)">' + (s.sold || 0) + ' sold · ' + (s.giveaways || 0) + ' giveaways · fees ' + usd(Number(s.fees || 0)) + '</span></span>' +
+      '<span style="text-align:right">' + usd(Number(s.gross || 0)) + '<br><b style="color:' + (Number(s.net || 0) >= 0 ? 'var(--g)' : 'var(--red)') + '">net ' + usd(Number(s.net || 0)) + '</b></span></div>';
+  }).join('') + '</div>';
 }
 
 function renderImport(){
@@ -483,30 +615,28 @@ function renderImport(){
       return '<label style="display:grid;gap:2px">' + label + '<select class="tsi" style="margin-bottom:0" onchange="WB.setCol(\'' + key + '\',this.value)"><option value="-1">(none)</option>' +
         r.header.map(function(h, n){ return '<option value="' + n + '"' + (r.cols[key] === n ? ' selected' : '') + '>' + esc(h) + '</option>'; }).join('') + '</select></label>';
     };
+    var count = function(fn){ return rows.filter(fn).length; };
     body = '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:6px;margin:8px 0">' +
         colSelect('sku', 'SKU') + colSelect('title', 'Item title') + colSelect('price', 'Sold price') + colSelect('quantity', 'Quantity') +
-        colSelect('order', 'Order ID') + colSelect('date', 'Date') + colSelect('status', 'Cancelled / status') + colSelect('fee', 'Fees (optional)') + '</div>' +
-      '<div style="margin-bottom:6px">' + rows.length + ' rows · ' + rows.filter(function(x){ return x.how === 'sku' && !x.reason; }).length + ' matched by SKU · ' + rows.filter(function(x){ return x.how === 'title' && !x.reason; }).length + ' matched by title (tick to include) · ' + rows.filter(function(x){ return x.reason; }).length + ' skipped</div>' +
-      '<div style="max-height:360px;overflow:auto;border:1px solid var(--border);border-radius:8px">' + rows.slice(0, 300).map(function(x){
-        var status = x.done ? '<span style="color:var(--g)">' + esc(x.result) + '</span>' : x.reason ? '<span style="color:var(--dim)">' + esc(x.reason) + '</span>' : (x.how === 'title' ? '<span style="color:var(--gold)">matched by title</span>' : '<span style="color:var(--g)">matched</span>');
-        return '<label style="display:grid;grid-template-columns:24px 1fr auto;gap:6px;padding:6px 8px;border-bottom:1px solid var(--border);align-items:center">' +
-          '<input type="checkbox"' + (x.include ? ' checked' : '') + (x.reason || x.done ? ' disabled' : '') + ' onchange="WB.toggleRow(' + x.n + ',this.checked)">' +
-          '<span style="color:var(--text)">' + esc(x.item ? x.item.name : x.title || x.sku || 'Row ' + (x.n + 1)) + (x.qty > 1 ? ' ×' + x.qty : '') + '<br><span style="color:var(--dim)">' + esc(x.title) + '</span></span>' +
-          '<span style="text-align:right">$' + x.price.toFixed(2) + '<br>' + status + '</span></label>';
-      }).join('') + '</div>' +
-      '<div style="margin-top:6px">Fees: taken from the report when it has a fee column, otherwise estimated with your Whatnot fee setting below. Items you already rang up in Whatnot Mode during the show show as "Already sold".</div>' +
+        colSelect('buyer', 'Buyer') + colSelect('order', 'Order ID') + colSelect('date', 'Date') + colSelect('status', 'Cancelled / status') + colSelect('fee', 'Fees (optional)') + '</div>' +
+      summaryHtml(showSummary(rows)) +
+      '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:8px">Show: <select class="tsi" style="margin:0;max-width:320px" onchange="WB.setShow(this.value)"><option value="">New show from this report</option>' +
+        (state.shows || []).map(function(sh){ return '<option value="' + esc(sh.id) + '"' + (sh.id === r.showId ? ' selected' : '') + '>' + esc(showLabel(sh)) + '</option>'; }).join('') + '</select>' +
+        '<button class="hbtn" style="margin:0" onclick="WB.saveSummary()">SAVE SHOW PROFIT</button>' + (r.savedAt ? '<span style="color:var(--g)">saved</span>' : '') + '</div>' +
+      '<div style="margin-bottom:6px">' + rows.length + ' rows · ' + count(function(x){ return x.how === 'sku' && !x.reason; }) + ' matched by SKU · ' + count(function(x){ return x.how === 'title' && !x.reason; }) + ' matched by title (tick to include) · ' + count(function(x){ return !x.item && !x.reason; }) + ' not in inventory · ' + count(function(x){ return x.reason === 'Recorded live during the show'; }) + ' recorded live · ' + count(function(x){ return x.reason && x.reason !== 'Recorded live during the show'; }) + ' skipped</div>' +
+      '<div style="max-height:420px;overflow:auto;border:1px solid var(--border);border-radius:8px">' + rows.slice(0, 300).map(rowHtml).join('') + '</div>' + inventoryDatalist() +
+      '<div style="margin-top:6px">Fees: taken from the report when it has a fee column, otherwise estimated with your Whatnot fee setting. Sales the live sticker helper already recorded are skipped, so nothing counts twice. Rows not in inventory are recorded as sales with the cost you type in; $0 rows are giveaways and their cost comes off the show.</div>' +
       '<button class="hbtn" style="width:100%;padding:12px;margin:8px 0 0;background:rgba(255,209,102,.12);border-color:rgba(255,209,102,.35);color:var(--gold)"' + (ready.length && !state.importing ? '' : ' disabled') + ' onclick="WB.recordSales()">' + (state.importing ? 'RECORDING…' : 'RECORD ' + ready.length + ' SALE' + (ready.length === 1 ? '' : 'S')) + '</button>';
   }
   return '<div class="panel" style="margin-bottom:14px">' +
-    '<div class="ph">IMPORT SHOW RESULTS <span style="font-size:9px;color:var(--dim)">marks sold items and records the sales</span></div>' +
+    '<div class="ph">IMPORT SHOW RESULTS <span style="font-size:9px;color:var(--dim)">records the sales and works out the show\'s profit</span></div>' +
     '<div style="font-family:var(--font-mono);font-size:10px;color:var(--dim)">After the show, export the report from Whatnot (Seller Hub -> your show -> Export Show Report) and load it here. Sales are recorded once, even if you load the same report again.' +
     ' <label class="hbtn" style="display:inline-block;margin:6px 0 0;cursor:pointer">LOAD SHOW REPORT CSV<input type="file" accept=".csv,text/csv" style="display:none" onchange="WB.loadReport(this.files[0]);this.value=\'\'"></label>' +
-    body + '</div></div>';
+    body + pastShowsHtml() + '</div></div>';
 }
-
 async function render(){
   var el = host(); if(!el) return;
-  if(!state.settings){ el.innerHTML = '<div class="panel" style="padding:14px;font-family:var(--font-mono);font-size:10px;color:var(--dim)">Loading Whatnot tools…</div>'; await Promise.all([loadSettings(), loadCycles()]); }
+  if(!state.settings){ el.innerHTML = '<div class="panel" style="padding:14px;font-family:var(--font-mono);font-size:10px;color:var(--dim)">Loading Whatnot tools…</div>'; await Promise.all([loadSettings(), loadCycles(), loadShows().then(function(list){ if(!state.shows) state.shows = list; })]); }
   el.innerHTML = renderSend() + renderImport();
 }
 
@@ -578,14 +708,56 @@ window.WB = {
     try {
       var rows = parseCSV(await readFile(file));
       if(rows.length < 2) throw new Error('That file has no rows');
-      state.report = { header:rows[0], rows:rows.slice(1), cols:guessColumns(rows[0]) };
+      var loaded = await Promise.all([loadLiveSales(), loadShows()]);
+      state.shows = loaded[1];
+      state.report = { header:rows[0], rows:rows.slice(1).filter(function(r){ return r.some(function(c){ return String(c || '').trim(); }); }), cols:guessColumns(rows[0]), live:loaded[0], fileName:file.name || '' };
       if(state.report.cols.sku < 0 && state.report.cols.title < 0) toast('Could not find a SKU or title column -- pick them from the dropdowns');
       state.report.built = buildReportRows();
+      state.report.showId = guessShowId(state.shows, state.report.built);
       render();
     } catch(e) { toast('Could not read that report: ' + e.message); }
   },
   setCol: function(key, value){ state.report.cols[key] = Number(value); state.report.built = buildReportRows(); render(); },
-  toggleRow: function(n, on){ var x = state.report.built.find(function(r){ return r.n === n; }); if(x) x.include = on; render(); },
+  toggleRow: function(n, on){ state.report.picks[n] = !!on; var x = state.report.built.find(function(r){ return r.n === n; }); if(x) x.include = on; render(); },
+  setCost: function(n, value){ state.report.costs[n] = value; WB.rebuild(); },
+  linkRow: function(n, value){
+    var m = String(value || '').match(/ — (\S+)$/);
+    if(!m){ if(value) toast('Pick an item from the list'); return; }
+    state.report.links[n] = m[1]; delete state.report.picks[n]; WB.rebuild();
+  },
+  // Rebuild after a cost/link change, keeping what was already recorded.
+  rebuild: function(){
+    var done = {};
+    state.report.built.forEach(function(x){ if(x.done) done[x.n] = x; });
+    state.report.built = buildReportRows().map(function(x){ return done[x.n] || x; });
+    render();
+  },
+  setShow: function(id){ state.report.showId = String(id || ''); state.report.savedAt = ''; render(); },
+  saveSummary: async function(silent){
+    var r = state.report, client = sb(), store = storeId();
+    if(!r) return false;
+    if(!client || !store){ if(!silent) toast('Sign in to save the show'); return false; }
+    try {
+      var summary = showSummary(r.built);
+      var dates = reportDates(r.built);
+      if(!r.showId){
+        var day = dates.first ? new Date(dates.first) : new Date();
+        var ins = await client.from('whatnot_shows').insert({ store_id:store, platform:'whatnot', title:'Whatnot show ' + day.toLocaleDateString(), category:'Mixed', status:'ended', started_at:day.toISOString(), ended_at:dates.last || day.toISOString() }).select('*').limit(1);
+        if(ins.error) throw ins.error;
+        r.showId = ins.data[0].id;
+        state.shows = [ins.data[0]].concat(state.shows || []);
+      }
+      var saved = Object.assign({}, summary, { savedAt:new Date().toISOString(), fileName:r.fileName || '', firstSaleAt:dates.first, lastSaleAt:dates.last,
+        items:r.built.filter(function(x){ return !x.cancelled; }).slice(0, 400).map(function(x){ return { title:x.item ? x.item.name : x.title, buyer:x.buyer, price:x.price, qty:x.qty, cost:x.cost, fee:x.feeAmount, giveaway:x.giveaway, itemId:x.item ? x.item.id : null }; }) });
+      var up = await client.from('whatnot_shows').update({ report_summary:saved }).eq('id', r.showId).eq('store_id', store);
+      if(up && up.error) throw up.error;
+      (state.shows || []).forEach(function(sh){ if(sh.id === r.showId) sh.report_summary = saved; });
+      r.savedAt = saved.savedAt;
+      if(!silent) toast('Show profit saved: net ' + usd(summary.net));
+      render();
+      return true;
+    } catch(e) { if(!silent) toast('Could not save the show: ' + (e.message || e)); return false; }
+  },
   recordSales: async function(){
     if(state.importing || !state.report) return;
     var rows = state.report.built.filter(function(x){ return x.include && !x.done; });
@@ -596,7 +768,11 @@ window.WB = {
     for(var k = 0; k < rows.length; k++){
       var x = rows[k];
       try {
-        var res = await storeWorkerFetch('/inventory/record-external-sale', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ itemId:x.item.id, channel:'Whatnot', salePrice:x.price, feeAmount:x.feeAmount, quantitySold:x.qty, soldAt:x.soldAt || undefined, externalRef:x.ref }) });
+        var payload = { channel:'Whatnot', salePrice:x.giveaway ? 0 : x.price, feeAmount:x.feeAmount, quantitySold:x.qty, soldAt:x.soldAt || undefined, externalRef:x.ref };
+        if(x.giveaway) payload.giveaway = true;
+        if(x.item) payload.itemId = x.item.id;
+        else { payload.title = x.title || x.sku || 'Whatnot item'; payload.cost = x.cost || 0; }
+        var res = await storeWorkerFetch('/inventory/record-external-sale', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
         var d = await res.json().catch(function(){ return {}; });
         if(d.ok && d.duplicate){ x.done = true; x.result = 'Already recorded'; dupes++; }
         else if(d.ok){ x.done = true; x.result = 'Recorded'; recorded++; }
@@ -607,6 +783,7 @@ window.WB = {
     state.importing = false;
     toast('Whatnot import: ' + recorded + ' recorded' + (dupes ? ', ' + dupes + ' already recorded' : '') + (failed ? ', ' + failed + ' failed' : ''));
     if(typeof logOpsEvent === 'function') logOpsEvent('whatnot_report_import', 'Imported Whatnot show report', { recorded:recorded, duplicates:dupes, failed:failed });
+    await WB.saveSummary(true);
     render();
     if(recorded && typeof loadInventory === 'function') loadInventory().catch(function(){});
   },
