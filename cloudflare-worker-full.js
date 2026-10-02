@@ -3262,7 +3262,28 @@ async function syncEbayOrdersForStore(env, storeId, ebayToken, receiptSettings, 
       ? 'creationdate:[' + new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString() + '..]'
       : 'orderfulfillmentstatus:{NOT_STARTED|IN_PROGRESS}';
     const { orders } = await fetchAllEbayOrders(ebayToken, orderFilter, reconcile ? 200 : 50);
+    // eBay returns orders oldest first, and presales sit unshipped for weeks,
+    // so a new sale used to be the last thing reached -- after a lookup for
+    // every older open order. A page refresh mid-sync then cut it off before
+    // today's sale was recorded (a $11.06 presale on 10/2). Newest first.
+    orders.sort((a, b) => String(b.creationDate || '').localeCompare(String(a.creationDate || '')));
     const skuMap = await loadInventoryByEbaySku(env, storeId, orders);
+    // Which order lines are already recorded, read all at once instead of one
+    // KV round trip per line.
+    const lineKey = (order, li) => `ebay_order_synced:${storeId}:${order.orderId}:${String(li.sku || '') || li.lineItemId || 'noid'}`;
+    const allKeys = orders.filter(o => o.orderPaymentStatus === 'PAID').flatMap(o => (o.lineItems || []).map(li => lineKey(o, li)));
+    const alreadySynced = new Set();
+    if (env.LBA_KV) {
+      for (let i = 0; i < allKeys.length; i += 50) {
+        const chunk = allKeys.slice(i, i + 50);
+        const values = await Promise.all(chunk.map(k => env.LBA_KV.get(k).catch(() => null)));
+        chunk.forEach((k, j) => { if (values[j]) alreadySynced.add(k); });
+      }
+    }
+    // Linking an older recorded sale to its order only matters while an
+    // unlinked eBay sale exists; skip that per-line lookup otherwise.
+    const { data: unlinkedSample } = await supabaseAdminFetch(env, `pos_payments?store_id=eq.${encodeURIComponent(storeId)}&provider=eq.ebay&reference=is.null&select=id&limit=1`);
+    const anyUnlinked = (unlinkedSample || []).length > 0;
     const results = [];
     const errors = [];
     for (const order of orders) {
@@ -3281,11 +3302,11 @@ async function syncEbayOrdersForStore(env, storeId, ebayToken, receiptSettings, 
         // Unmatched line items (which never got a key before) fall back to
         // eBay's own lineItemId so different items in the same order don't
         // collide when sku is blank.
-        const trackKey = `ebay_order_synced:${storeId}:${order.orderId}:${sku || li.lineItemId || 'noid'}`;
-        if (env.LBA_KV && await env.LBA_KV.get(trackKey)) {
+        const trackKey = lineKey(order, li);
+        if (alreadySynced.has(trackKey)) {
           // Recorded before sales carried their eBay order: link it now and
           // correct its fee and shipping. No-op once linked.
-          try { await linkRecordedEbaySale(env, storeId, order, li, m); }
+          try { if (anyUnlinked) await linkRecordedEbaySale(env, storeId, order, li, m); }
           catch (linkErr) { errors.push({ sku, orderId: order.orderId, error: 'link: ' + linkErr.message }); }
           continue;
         }
@@ -10450,9 +10471,17 @@ async function routeRequest(request, env, ctx) {
       const receiptSettings = syncSettings?.[0]?.receipt_settings || {};
       const reconcile = url.searchParams.get('scope') === 'reconcile';
       try {
-        const result = await syncEbayOrdersForStore(env, storeId, ebayToken, receiptSettings, { reconcile, confirmedBy: auth.user.id });
-        // Label costs and real fees from eBay's payouts ledger; never blocks the sync result.
-        result.finances = await reconcileEbayFinancesForStore(env, storeId, ebayToken).catch(e => ({ error: e.message }));
+        // Kept running after the page goes away: a refresh or a phone
+        // backgrounding the tab drops the connection, and Cloudflare stops a
+        // request's work when its client leaves unless it's handed to waitUntil.
+        const run = (async () => {
+          const result = await syncEbayOrdersForStore(env, storeId, ebayToken, receiptSettings, { reconcile, confirmedBy: auth.user.id });
+          // Label costs and real fees from eBay's payouts ledger; never blocks the sync result.
+          result.finances = await reconcileEbayFinancesForStore(env, storeId, ebayToken).catch(e => ({ error: e.message }));
+          return result;
+        })();
+        if (ctx?.waitUntil) ctx.waitUntil(run.catch(() => {}));
+        const result = await run;
         return json(result);
       } catch (e) {
         console.error('eBay order sync error:', e);
