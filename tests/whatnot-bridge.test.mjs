@@ -13,6 +13,30 @@ const templateHeader = fs.readFileSync('tests/fixtures/whatnot-csv-template.csv'
 const parseStart = dash.indexOf('function parseCSV(text){');
 const parseCSVSrc = dash.slice(parseStart, dash.indexOf('\n}', parseStart) + 2);
 
+// A chainable, awaitable stand-in for the Supabase client.
+const dbCalls = [];
+function dbResult(table, ops) {
+  const op = name => ops.find(o => o[0] === name);
+  if (table === 'foc_cycles') return { data: [{ id: 'cycle-sep', foc_date: '2026-09-07', distributor: 'PRH' }, { id: 'cycle-aug', foc_date: '2026-08-03', distributor: 'Lunar' }] };
+  // One sale the live sticker helper already recorded: Bin of stuff, $5.
+  if (table === 'pos_payments') return { data: [{ sale_id: 'live-sale-1', amount: 5, reference: 'whatnot-live:abc' }] };
+  if (table === 'pos_sale_lines') return { data: [{ sale_id: 'live-sale-1', item_id: 'aaaaaaaa-0000-0000-0000-000000000005' }] };
+  if (table === 'whatnot_shows') {
+    if (op('insert')) return { data: [{ id: 'show-new', ...op('insert')[1][0] }], error: null };
+    if (op('update')) return { data: null, error: null };
+    return { data: [{ id: 'show-old', title: 'Older show', started_at: '2026-09-01T01:00:00Z', report_summary: { gross: 50, net: 20, sold: 4, giveaways: 1, fees: 5 } }] };
+  }
+  throw new Error('unexpected table ' + table);
+}
+function dbQuery(table) {
+  const ops = [];
+  const chain = new Proxy({}, { get(_, key) {
+    if (key === 'then') { dbCalls.push({ table, ops }); const res = dbResult(table, ops); return (a, b) => Promise.resolve(res).then(a, b); }
+    return (...args) => { ops.push([key, args]); return chain; };
+  } });
+  return chain;
+}
+
 function makeContext() {
   const elements = {};
   const downloads = [];
@@ -41,11 +65,7 @@ function makeContext() {
     },
     activeTab: 'whatnot',
     getActiveStoreId: () => 'store-1',
-    getSupabaseClient: () => ({ from: table => {
-      assert.equal(table, 'foc_cycles');
-      const q = { select: () => q, eq: () => q, order: () => q, limit: async () => ({ data: [{ id: 'cycle-sep', foc_date: '2026-09-07', distributor: 'PRH' }, { id: 'cycle-aug', foc_date: '2026-08-03', distributor: 'Lunar' }] }) };
-      return q;
-    } }),
+    getSupabaseClient: () => ({ from: table => dbQuery(table) }),
     switchTab: name => { ctx.activeTab = name; },
     refreshBuiltInInventoryDelta: async () => true,
     inventoryProfitStats: i => ({ list: Number(i.listPrice || 0), market: Number(i.market || 0) }),
@@ -146,27 +166,68 @@ assert.deepEqual(JSON.parse(JSON.stringify(uploaded.conditionsBySubCategory)), b
 assert.deepEqual([...uploaded.categories], builtIn.categories);
 assert.match(elements['whatnot-bridge'].innerHTML, /your uploaded Values file/);
 
-// Import: SKU rows record; cancelled/unmatched skip; title matches wait for a tick.
+// Import: SKU rows record; title matches wait for a tick; rows with no item
+// record from their title and a typed-in cost; $0 rows are giveaways; a sale
+// the live sticker helper already recorded is skipped; cancelled rows are out.
 const report = [
-  'Order ID,Order Numeric ID,Product Name,SKU,Sold Price,Quantity,Placed At,Cancelled Or Failed',
-  'W1,111,Charizard - Base Set - #4,aaaaaaaa-0000-0000-0000-000000000001,$120.00,1,2026-10-02T02:00:00Z,false',
-  'W2,112,Mike Trout,,$35.00,1,2026-10-02T02:05:00Z,false',
-  'W3,113,Something Else,,$9.00,1,2026-10-02T02:06:00Z,false',
-  'W4,114,Charizard - Base Set - #4,aaaaaaaa-0000-0000-0000-000000000001,$99.00,1,2026-10-02T02:07:00Z,true',
+  'Order ID,Order Numeric ID,Product Name,SKU,Buyer,Sold Price,Quantity,Placed At,Cancelled Or Failed',
+  'W1,111,Charizard - Base Set - #4,aaaaaaaa-0000-0000-0000-000000000001,alice,$120.00,1,2026-10-02T02:00:00Z,false',
+  'W2,112,Mike Trout,,bob,$35.00,1,2026-10-02T02:05:00Z,false',
+  'W3,113,Something Else,,alice,$9.00,1,2026-10-02T02:06:00Z,false',
+  'W4,114,Charizard - Base Set - #4,aaaaaaaa-0000-0000-0000-000000000001,carl,$99.00,1,2026-10-02T02:07:00Z,true',
+  'W5,115,Giveaway pack,,dana,$0.00,1,2026-10-02T02:08:00Z,false',
+  'W6,116,Bin of stuff,aaaaaaaa-0000-0000-0000-000000000005,bob,$5.00,1,2026-10-02T02:09:00Z,false',
 ].join('\n');
-await ctx.WB.loadReport({ text: report });
-const html = elements['whatnot-bridge'].innerHTML;
+await ctx.WB.loadReport({ text: report, name: 'show.csv' });
+let html = elements['whatnot-bridge'].innerHTML;
 assert.match(html, /1 matched by SKU/);
 assert.match(html, /1 matched by title/);
-assert.match(html, /RECORD 1 SALE</);
+assert.match(html, /2 not in inventory/);
+assert.match(html, /1 recorded live/);
+assert.match(html, /Recorded live during the show/);
+assert.match(html, /GIVEAWAY/);
+assert.match(html, /2 rows have no cost yet/);
+assert.match(html, /PAST SHOWS[\s\S]*Older show/);
+assert.match(html, /Top buyers: @alice \$129\.00 \(2\)/);
+assert.match(html, /RECORD 3 SALES</);
+ctx.WB.setCost(2, '3');
+ctx.WB.setCost(4, '1');
+html = elements['whatnot-bridge'].innerHTML;
+// Sales 120+35+9+5; fees 12.5+4+1.4+1 (giveaway none); cost 50+0+3+0; giveaway 1.
+assert.match(html, /Sales \(4 items\)<\/span><b[^>]*>\$169\.00/);
+assert.match(html, /Whatnot fees<\/span><b[^>]*>-\$18\.90/);
+assert.match(html, /Cost of goods<\/span><b[^>]*>-\$53\.00/);
+assert.match(html, /Giveaways \(1\)<\/span><b[^>]*>-\$1\.00/);
+assert.match(html, /Net profit<\/span><b[^>]*>\$96\.10 \(56\.9%\)/);
+assert.doesNotMatch(html, /no cost yet/);
 await ctx.WB.recordSales();
 const sales = calls.filter(c => c.path === '/inventory/record-external-sale');
-assert.equal(sales.length, 1, 'only the SKU-matched, non-cancelled row is recorded');
+assert.equal(sales.length, 3, 'the SKU row, the no-item row and the giveaway; never the live-recorded, title-only or cancelled rows');
 assert.equal(sales[0].body.channel, 'Whatnot');
 assert.equal(sales[0].body.salePrice, 120);
 assert.equal(sales[0].body.feeAmount, 12.5, 'fee estimated from the Whatnot fee setting when the report has none');
 assert.equal(sales[0].body.externalRef, 'whatnot:W1:aaaaaaaa-0000-0000-0000-000000000001');
 assert.equal(sales[0].body.soldAt, '2026-10-02T02:00:00.000Z');
+assert.equal(sales[1].body.itemId, undefined);
+assert.equal(sales[1].body.title, 'Something Else');
+assert.equal(sales[1].body.cost, 3);
+assert.equal(sales[2].body.giveaway, true);
+assert.equal(sales[2].body.salePrice, 0);
+assert.ok(!sales.some(c => c.body.itemId === 'aaaaaaaa-0000-0000-0000-000000000005'), 'a sale recorded live is not recorded again');
+// The show's profit is saved to a new show for that day.
+const ins = dbCalls.find(c => c.table === 'whatnot_shows' && c.ops.some(o => o[0] === 'insert'));
+assert.ok(ins, 'a show is created for the report');
+const upd = dbCalls.find(c => c.table === 'whatnot_shows' && c.ops.some(o => o[0] === 'update'));
+const savedSummary = upd.ops.find(o => o[0] === 'update')[1][0].report_summary;
+assert.equal(savedSummary.net, 96.1);
+assert.equal(savedSummary.gross, 169);
+assert.equal(savedSummary.fileName, 'show.csv');
+assert.equal(savedSummary.items.length, 5, 'every non-cancelled row is kept on the show');
+
+// Linking a no-item row to inventory records it against that item.
+await ctx.WB.loadReport({ text: report });
+ctx.WB.linkRow(1, 'Mike Trout — aaaaaaaa-0000-0000-0000-000000000002');
+assert.match(elements['whatnot-bridge'].innerHTML, /linked/);
 
 // Loading and recording the same report again records nothing new.
 await ctx.WB.loadReport({ text: report });
@@ -250,6 +311,50 @@ try {
   globalThis.caches = originalCaches;
 }
 console.log('record-external-sale duplicate guard checks passed');
+
+// Worker: a sale with no inventory item records from its title and cost;
+// a giveaway records at $0 with its cost against it.
+{
+  const originalFetch2 = globalThis.fetch, originalCaches2 = globalThis.caches;
+  const writes = [];
+  globalThis.caches = { default: { match: async () => null, put: async () => {} } };
+  globalThis.fetch = async (input, init = {}) => {
+    const url = String(input);
+    const ok = d => new Response(JSON.stringify(d), { headers: { 'Content-Type': 'application/json' } });
+    if (url.includes('/auth/v1/user')) return ok({ id: 'user-1', email: 'staff@example.com' });
+    if (url.includes('store_members')) return ok([{ role: 'owner' }]);
+    if (url.includes('pos_payments?store_id=') && url.includes('reference=eq.')) return ok([]);
+    if (url.includes('inventory_items?id=eq.')) {
+      if ((init.method || 'GET') === 'GET') return ok([{ id: 'item-1', status: 'in_stock', data: { name: 'Charizard', qty: 1, cost: 50 } }]);
+      writes.push({ url, body: JSON.parse(init.body) }); return ok([]);
+    }
+    if ((init.method || 'GET') === 'POST') { writes.push({ url, body: JSON.parse(init.body) }); return ok([]); }
+    return ok([]);
+  };
+  try {
+    const { default: api } = await import('../cloudflare-worker-full.js');
+    const env = { SUPABASE_URL: 'https://database.example', SUPABASE_SERVICE_ROLE_KEY: 'test-only' };
+    const post = body => api.fetch(new Request('https://api.example/inventory/record-external-sale', { method: 'POST', headers: { Authorization: 'Bearer t', 'X-Store-Id': 'store-1', 'Content-Type': 'application/json' }, body: JSON.stringify(body) }), env, { waitUntil() {} });
+    let d = await (await post({ channel: 'Whatnot', title: 'Mystery slab', cost: 3, salePrice: 9, feeAmount: 1.4, externalRef: 'whatnot:W3:x' })).json();
+    assert.equal(d.ok, true); assert.equal(d.unlinked, true); assert.equal(d.profit, 4.6);
+    const line = writes.find(w => w.url.includes('/pos_sale_lines')).body[0];
+    assert.equal(line.item_id, null); assert.equal(line.title, 'Mystery slab'); assert.equal(line.cost_basis, 3);
+    assert.ok(!writes.some(w => w.url.includes('inventory_items')), 'no inventory row is touched');
+    writes.length = 0;
+    d = await (await post({ channel: 'Whatnot', itemId: 'item-1', giveaway: true, salePrice: 0, feeAmount: 0, externalRef: 'whatnot:W5:x' })).json();
+    assert.equal(d.ok, true); assert.equal(d.profit, -50, 'a giveaway costs the item');
+    assert.match(writes.find(w => w.url.includes('/pos_sale_lines')).body[0].title, /^Giveaway: Charizard/);
+    assert.equal(writes.find(w => w.url.includes('inventory_items')).body.status, 'sold');
+    d = await (await post({ channel: 'Whatnot', itemId: 'item-1', salePrice: 0 })).json();
+    assert.equal(d.ok, false, 'a $0 sale that is not a giveaway is still refused');
+    d = await (await post({ channel: 'Whatnot', salePrice: 5 })).json();
+    assert.equal(d.ok, false, 'no item and no title is refused');
+  } finally {
+    globalThis.fetch = originalFetch2;
+    globalThis.caches = originalCaches2;
+  }
+  console.log('record-external-sale unlinked/giveaway checks passed');
+}
 
 // Dashboard wiring.
 assert.match(dash, /<div id="whatnot-bridge"><\/div>/);
