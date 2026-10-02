@@ -282,6 +282,54 @@ assert.equal((await ctx.whatnotRandomPoolItem('Random comic')).id, 'aaaaaaaa-000
 assert.equal(await ctx.whatnotRandomPoolItem('Charizard'), null, 'a normal title never uses the pool');
 assert.equal(ctx.whatnotIsRandomTitle('Grab bag $5'), true);
 assert.equal(ctx.whatnotIsRandomTitle('Spider-Woman #1'), false);
+
+// ENTER A SHOW: Whatnot's Sales and Est. Earnings plus what went out. Profit
+// is earnings minus cost; books scanned/picked leave stock, randoms never do.
+ctx.WB.entryReset();
+ctx.WB.entrySet('date', '2026-10-01');
+ctx.WB.entrySet('sales', '31.60');
+ctx.WB.entrySet('earnings', '16.38');
+assert.equal(ctx.WB.entryAdd('aaaaaaaa-0000-0000-0000-000000000001'), true);
+assert.equal(ctx.WB.entryAdd('aaaaaaaa-0000-0000-0000-000000000001'), false, 'only 1 Charizard in stock');
+assert.equal(ctx.WB.entryAdd('foc-2'), true);
+assert.equal(ctx.WB.entryAdd('foc-2'), true);
+assert.equal(ctx.WB.entryAdd('foc-2'), false, 'only 2 SAGA in stock');
+assert.equal(ctx.WB.entryAdd('foc-sold'), false, 'a sold item cannot go on a show');
+ctx.WB.entryItem(0, 'price', '20');
+ctx.WB.entrySet('randoms', '3');
+ctx.WB.entrySet('giveaways', '2');
+ctx.WB.entrySet('giveawayCost', '1');
+html = elements['whatnot-bridge'].innerHTML;
+assert.match(html, /ENTER A SHOW/);
+assert.match(html, /SCAN PRICE STICKERS/);
+assert.match(html, /Whatnot fees \+ shipping<\/span><b[^>]*>-\$15\.22/);
+assert.match(html, /Whatnot pays you<\/span><b[^>]*>\$16\.38/);
+assert.match(html, /Cost of books<\/span><b[^>]*>-\$50\.00/);
+assert.match(html, /Randoms \(3\)<\/span><b[^>]*>-\$4\.50/);
+assert.match(html, /Giveaways \(2\)<\/span><b[^>]*>-\$2\.00/);
+assert.match(html, /Profit<\/span><b[^>]*>-\$40\.12 · -\$6\.69\/item/);
+calls.length = 0; dbCalls.length = 0;
+await ctx.WB.entrySave();
+const showSales = calls.filter(c => c.path === '/inventory/record-external-sale').map(c => c.body);
+assert.equal(showSales.length, 4, 'Charizard, the 2 SAGA, the randoms, the giveaways');
+const byRef = Object.fromEntries(showSales.map(b => [b.externalRef.split(':').pop(), b]));
+assert.equal(byRef['aaaaaaaa-0000-0000-0000-000000000001'].salePrice, 20, 'a typed sold-for price is used');
+assert.equal(byRef['foc-2'].quantitySold, 2);
+assert.equal(byRef['foc-2'].salePrice, 4.64, 'the rest of Sales is shared evenly: 11.60 / 5 units');
+assert.equal(byRef.random.itemId, undefined, 'randoms never take a book (the pool bin has too few)');
+assert.equal(byRef.random.cost, 4.5);
+assert.equal(byRef.random.salePrice, 6.96);
+assert.equal(byRef.giveaways.giveaway, true);
+assert.equal(byRef.giveaways.cost, 2);
+assert.equal(Math.round(showSales.reduce((a, b) => a + b.feeAmount, 0) * 100), 1522, "Whatnot's whole cut is on the ledger");
+assert.ok(showSales.every(b => b.soldAt === new Date('2026-10-01T12:00:00').toISOString()));
+assert.ok(dbCalls.some(c => c.table === 'whatnot_shows' && c.ops.some(o => o[0] === 'insert')), 'the show is created');
+const manual = dbCalls.find(c => c.table === 'whatnot_shows' && c.ops.some(o => o[0] === 'update')).ops.find(o => o[0] === 'update')[1][0].report_summary;
+assert.equal(manual.source, 'manual');
+assert.equal(manual.net, -40.12);
+assert.equal(manual.earnings, 16.38);
+assert.equal(manual.sold, 6);
+assert.doesNotMatch(elements['whatnot-bridge'].innerHTML, /Cost of books<\/span><b[^>]*>-\$50\.00/, 'a saved show starts a fresh entry');
 // Comics: a full description with the synopsis. The CSV never gets extra
 // columns -- Whatnot rejects any file that isn't exactly its template.
 ctx.inventoryBulkSelectedIds = new Set(['54c8313b-d067-410c-a12a-5eede06c1217']);

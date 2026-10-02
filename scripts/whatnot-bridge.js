@@ -649,7 +649,7 @@ function pastShowsHtml(){
   if(!list.length) return '';
   return '<div style="margin-top:12px"><div class="ph" style="margin:0 0 4px">PAST SHOWS</div>' + list.slice(0, 12).map(function(sh){
     var s = sh.report_summary;
-    return '<div style="display:flex;justify-content:space-between;gap:8px;padding:5px 0;border-bottom:1px solid var(--border)"><span style="color:var(--text);min-width:0">' + esc(showLabel(sh)) + '<br><span style="color:var(--dim)">' + (s.sold || 0) + ' sold · ' + (s.giveaways || 0) + ' giveaways · fees ' + usd(Number(s.fees || 0)) + '</span></span>' +
+    return '<div style="display:flex;justify-content:space-between;gap:8px;padding:5px 0;border-bottom:1px solid var(--border)"><span style="color:var(--text);min-width:0">' + esc(showLabel(sh)) + '<br><span style="color:var(--dim)">' + (s.sold || 0) + ' sold · ' + (s.giveaways || 0) + ' giveaways · ' + (s.earnings != null ? 'Whatnot paid ' + usd(Number(s.earnings)) : 'fees ' + usd(Number(s.fees || 0))) + (s.perItem ? ' · ' + usd(Number(s.perItem)) + '/item' : '') + '</span></span>' +
       '<span style="text-align:right">' + usd(Number(s.gross || 0)) + '<br><b style="color:' + (Number(s.net || 0) >= 0 ? 'var(--g)' : 'var(--red)') + '">net ' + usd(Number(s.net || 0)) + '</b></span></div>';
   }).join('') + '</div>';
 }
@@ -669,12 +669,11 @@ function renderImport(){
         colSelect('sku', 'SKU') + colSelect('title', 'Item title') + colSelect('price', 'Sold price') + colSelect('quantity', 'Quantity') +
         colSelect('buyer', 'Buyer') + colSelect('order', 'Order ID') + colSelect('date', 'Date') + colSelect('status', 'Cancelled / status') + colSelect('fee', 'Fees (optional)') + '</div>' +
       summaryHtml(showSummary(rows)) +
-      randomSettingsHtml() +
       '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:8px">Show: <select class="tsi" style="margin:0;max-width:320px" onchange="WB.setShow(this.value)"><option value="">New show from this report</option>' +
         (state.shows || []).map(function(sh){ return '<option value="' + esc(sh.id) + '"' + (sh.id === r.showId ? ' selected' : '') + '>' + esc(showLabel(sh)) + '</option>'; }).join('') + '</select>' +
         '<button class="hbtn" style="margin:0" onclick="WB.saveSummary()">SAVE SHOW PROFIT</button>' + (r.savedAt ? '<span style="color:var(--g)">saved</span>' : '') + '</div>' +
       '<div style="margin-bottom:6px">' + rows.length + ' rows · ' + count(function(x){ return x.how === 'sku' && !x.reason; }) + ' matched by SKU · ' + count(function(x){ return x.how === 'title' && !x.reason; }) + ' matched by title (tick to include) · ' + count(function(x){ return !x.item && !x.reason && x.mode !== 'random'; }) + ' not in inventory · ' + count(function(x){ return x.mode === 'random' && !x.cancelled; }) + ' random · ' + count(function(x){ return x.reason === 'Recorded live during the show'; }) + ' recorded live · ' + count(function(x){ return x.reason && x.reason !== 'Recorded live during the show'; }) + ' skipped</div>' +
-      '<div style="max-height:420px;overflow:auto;border:1px solid var(--border);border-radius:8px">' + rows.slice(0, 300).map(rowHtml).join('') + '</div>' + inventoryDatalist() +
+      '<div style="max-height:420px;overflow:auto;border:1px solid var(--border);border-radius:8px">' + rows.slice(0, 300).map(rowHtml).join('') + '</div>' +
       '<div style="margin-top:6px">Fees: taken from the report when it has a fee column, otherwise estimated with your Whatnot fee setting. Sales the live sticker helper already recorded are skipped, so nothing counts twice. Rows not in inventory are recorded as sales with the cost you type in; $0 rows are giveaways and their cost comes off the show.</div>' +
       '<button class="hbtn" style="width:100%;padding:12px;margin:8px 0 0;background:rgba(255,209,102,.12);border-color:rgba(255,209,102,.35);color:var(--gold)"' + (ready.length && !state.importing ? '' : ' disabled') + ' onclick="WB.recordSales()">' + (state.importing ? 'RECORDING…' : 'RECORD ' + ready.length + ' SALE' + (ready.length === 1 ? '' : 'S')) + '</button>';
   }
@@ -684,10 +683,120 @@ function renderImport(){
     ' <label class="hbtn" style="display:inline-block;margin:6px 0 0;cursor:pointer">LOAD SHOW REPORT CSV<input type="file" accept=".csv,text/csv" style="display:none" onchange="WB.loadReport(this.files[0]);this.value=\'\'"></label>' +
     body + pastShowsHtml() + '</div></div>';
 }
+// ── Part 3: enter a show by hand ─────────────────────────────────────────
+// Whatnot has no per-order export, so a show is entered from what its
+// Shipments page shows: Sales and Est. Earnings (Whatnot's payout, after its
+// fees and the shipping it charged you). Add what went out -- books scanned
+// or picked from stock, a count of randoms, giveaways -- and profit is the
+// earnings minus what those cost. SAVE SHOW records the sales (books leave
+// stock), and keeps the show for PAST SHOWS. Re-saving never records twice.
+var ENTRY_KEY = 'wb_show_entry_v1';
+function todayLocal(){ var d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+function newEntry(){ return { id:'e' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), date:todayLocal(), title:'', sales:'', earnings:'', items:[], randoms:0, giveaways:0, giveawayCost:'', showId:'', done:{} }; }
+function entry(){
+  if(!state.entry){
+    try { state.entry = JSON.parse(localStorage.getItem(ENTRY_KEY) || 'null'); } catch(e) { state.entry = null; }
+    if(!state.entry || !state.entry.id) state.entry = newEntry();
+  }
+  return state.entry;
+}
+function saveEntryDraft(){ try { localStorage.setItem(ENTRY_KEY, JSON.stringify(state.entry)); } catch(e) {} }
+function availableQty(i){ var q = Number(i.qty != null ? i.qty : i.quantity != null ? i.quantity : 1); return Number.isFinite(q) ? q : 1; }
+function itemById(id){ return items().find(function(i){ return String(i.id) === String(id); }) || null; }
+
+// Everything about the entry's money, and the sales it records.
+function entryMath(e){
+  var sales = Math.max(0, Number(e.sales) || 0);
+  var hasEarnings = e.earnings !== '' && e.earnings != null && Number.isFinite(Number(e.earnings));
+  var fee = typeof whatnotFeeSettings === 'function' ? whatnotFeeSettings() : { pct:10.9, flat:0.3 };
+  var rs = randomSettings(), pool = randomPoolItem();
+  var books = e.items.map(function(x){ return { x:x, item:itemById(x.id) }; }).filter(function(b){ return b.item; });
+  var sold = books.filter(function(b){ return !b.x.giveaway; }), given = books.filter(function(b){ return b.x.giveaway; });
+  var randoms = Math.max(0, Math.round(Number(e.randoms) || 0)), giveaways = Math.max(0, Math.round(Number(e.giveaways) || 0));
+  var soldUnits = sold.reduce(function(a, b){ return a + b.x.qty; }, 0) + randoms;
+  var giveUnits = given.reduce(function(a, b){ return a + b.x.qty; }, 0) + giveaways;
+  var bookCost = round2(sold.reduce(function(a, b){ return a + Number(b.item.cost || 0) * b.x.qty; }, 0));
+  var randomUnitCost = pool && Number(pool.cost) > 0 ? Number(pool.cost) : rs.cost;
+  var randomCost = round2(randoms * randomUnitCost);
+  var giveawayCost = round2(given.reduce(function(a, b){ return a + Number(b.item.cost || 0) * b.x.qty; }, 0) + giveaways * Math.max(0, Number(e.giveawayCost) || 0));
+  // What Whatnot kept: fees plus the shipping it charged (giveaway labels).
+  var took = hasEarnings ? round2(sales - Number(e.earnings)) : round2(sales * fee.pct / 100 + fee.flat * soldUnits);
+  var earnings = round2(sales - took);
+  var net = round2(earnings - bookCost - randomCost - giveawayCost);
+  // Each sold unit's price: what was typed for it, else an even share of what's left.
+  var typed = sold.filter(function(b){ return b.x.price !== '' && b.x.price != null; });
+  var typedTotal = typed.reduce(function(a, b){ return a + Math.max(0, Number(b.x.price) || 0) * b.x.qty; }, 0);
+  var openUnits = soldUnits - typed.reduce(function(a, b){ return a + b.x.qty; }, 0);
+  var each = openUnits > 0 ? Math.max(0, sales - typedTotal) / openUnits : 0;
+  var records = [];
+  sold.forEach(function(b){ var unit = b.x.price !== '' && b.x.price != null ? Math.max(0, Number(b.x.price) || 0) : each; records.push({ key:b.item.id, itemId:b.item.id, name:b.item.name, quantitySold:b.x.qty, salePrice:round2(unit * b.x.qty) }); });
+  if(randoms){
+    var r = { key:'random', name:'Random books ×' + randoms, quantitySold:randoms, salePrice:round2(each * randoms) };
+    if(pool && isSellable(pool) && availableQty(pool) >= randoms) r.itemId = pool.id; else { r.title = 'Random books ×' + randoms; r.cost = randomCost; }
+    records.push(r);
+  }
+  given.forEach(function(b){ records.push({ key:'give:' + b.item.id, itemId:b.item.id, name:b.item.name, quantitySold:b.x.qty, salePrice:0, giveaway:true }); });
+  if(giveaways) records.push({ key:'giveaways', title:'Giveaways ×' + giveaways, name:'Giveaways ×' + giveaways, quantitySold:giveaways, salePrice:0, giveaway:true, cost:round2(giveaways * Math.max(0, Number(e.giveawayCost) || 0)) });
+  // Whatnot's cut, split across the sales by price (all on the first record if nothing sold).
+  var weights = records.map(function(x){ return x.salePrice; }), wsum = weights.reduce(function(a, w){ return a + w; }, 0);
+  if(records.length){
+    var parts = wsum > 0 ? splitMoney(Math.max(0, took), weights.map(function(w){ return w || 0; }), wsum) : records.map(function(_, k){ return k === 0 ? Math.max(0, took) : 0; });
+    records.forEach(function(x, k){ x.feeAmount = parts[k]; });
+  }
+  return { sales:round2(sales), earnings:earnings, hasEarnings:hasEarnings, took:took, bookCost:bookCost, randomCost:randomCost, randomUnitCost:randomUnitCost, giveawayCost:giveawayCost, net:net,
+    soldUnits:soldUnits, giveUnits:giveUnits, randoms:randoms, perItem:soldUnits ? round2(net / soldUnits) : 0, records:records, zeroPriced:records.filter(function(x){ return !x.giveaway && !(x.salePrice > 0); }).length };
+}
+
+function renderEntry(){
+  var e = entry(), m = entryMath(e);
+  var field = function(label, key, type, extra){ return '<label style="display:grid;gap:2px;min-width:0">' + label + '<input class="tsi" style="margin:0;width:100%;box-sizing:border-box;min-width:0" type="' + type + '"' + (extra || '') + ' value="' + esc(e[key]) + '" onchange="WB.entrySet(\'' + key + '\',this.value)"></label>'; };
+  var line = function(label, v, color){ return '<div style="display:flex;justify-content:space-between;gap:8px"><span>' + label + '</span><b style="color:' + (color || 'var(--text)') + '">' + v + '</b></div>'; };
+  var rows = e.items.map(function(x, k){
+    var i = itemById(x.id);
+    if(!i) return '';
+    return '<div style="display:grid;grid-template-columns:1fr auto;gap:6px;padding:6px 8px;border-bottom:1px solid var(--border);align-items:center">' +
+      '<span style="color:var(--text);min-width:0">' + esc(i.name) + '<br><span style="color:var(--dim)">cost ' + usd(Number(i.cost || 0)) + ' · ' + availableQty(i) + ' in stock</span></span>' +
+      '<span style="display:flex;gap:4px;align-items:center"><button class="hbtn" style="margin:0;padding:4px 9px" onclick="WB.entryQty(' + k + ',-1)">−</button><b style="min-width:18px;text-align:center">' + x.qty + '</b><button class="hbtn" style="margin:0;padding:4px 9px" onclick="WB.entryQty(' + k + ',1)">+</button></span>' +
+      '<div style="grid-column:1 / -1;display:flex;gap:8px;flex-wrap:wrap;align-items:center">' +
+        (x.giveaway ? '' : '<input class="tsi" style="margin:0;width:120px" type="number" min="0" step="0.01" placeholder="sold for $ (optional)" value="' + esc(x.price == null ? '' : x.price) + '" onchange="WB.entryItem(' + k + ',\'price\',this.value)">') +
+        '<label style="display:inline-flex;gap:4px;align-items:center"><input type="checkbox"' + (x.giveaway ? ' checked' : '') + ' onchange="WB.entryItem(' + k + ',\'giveaway\',this.checked)"> giveaway</label>' +
+        '<button class="hbtn" style="margin:0;padding:4px 8px;font-size:9px" onclick="WB.entryRemove(' + k + ')">REMOVE</button></div></div>';
+  }).join('');
+  return '<div class="panel" style="margin-bottom:14px">' +
+    '<div class="ph">ENTER A SHOW <span style="font-size:9px;color:var(--dim)">from Whatnot\'s Shipments page -- works out real profit</span></div>' +
+    '<div style="font-family:var(--font-mono);font-size:10px;color:var(--dim)">' +
+      '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(140px,100%),1fr));gap:6px">' +
+        field('Show date', 'date', 'date') + field('Show name (optional)', 'title', 'text', ' placeholder="Whatnot show"') +
+        field('Sales (Whatnot)', 'sales', 'number', ' min="0" step="0.01" placeholder="31.60"') + field('Est. Earnings (Whatnot)', 'earnings', 'number', ' step="0.01" placeholder="16.38"') + '</div>' +
+      '<div style="margin:10px 0 4px"><b style="color:var(--text)">BOOKS FROM STOCK</b> -- they leave stock when you save</div>' +
+      '<div style="display:flex;gap:6px;flex-wrap:wrap"><button class="hbtn" style="margin:0;color:var(--g)" onclick="openCartScanModal(\'show\')">📷 SCAN PRICE STICKERS</button>' +
+        '<input class="tsi" style="margin:0;flex:1 1 180px;min-width:0" list="wb-inventory" placeholder="or search and add a book…" onchange="WB.entryAddPick(this.value);this.value=\'\'"></div>' +
+      (rows ? '<div style="border:1px solid var(--border);border-radius:8px;margin-top:6px">' + rows + '</div>' : '') +
+      '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(140px,100%),1fr));gap:6px;margin-top:10px">' +
+        '<label style="display:grid;gap:2px;min-width:0">Randoms sold<input class="tsi" style="margin:0;width:100%;box-sizing:border-box;min-width:0" type="number" min="0" step="1" value="' + esc(e.randoms || '') + '" placeholder="0" onchange="WB.entrySet(\'randoms\',this.value)"></label>' +
+        '<label style="display:grid;gap:2px;min-width:0">Giveaways (count)<input class="tsi" style="margin:0;width:100%;box-sizing:border-box;min-width:0" type="number" min="0" step="1" value="' + esc(e.giveaways || '') + '" placeholder="0" onchange="WB.entrySet(\'giveaways\',this.value)"></label>' +
+        field('Cost per giveaway $', 'giveawayCost', 'number', ' min="0" step="0.01" placeholder="0.00"') + '</div>' +
+      '<div style="margin-top:4px">Randoms never take a book from stock and cost ' + usd(m.randomUnitCost) + ' each' + (randomPoolItem() ? ' (taken from your pool bin)' : '') + '. A giveaway book you scanned: tick its giveaway box instead.</div>' + randomSettingsHtml() +
+      '<div style="border:1px solid var(--border);border-radius:8px;padding:10px;margin:10px 0;display:grid;gap:4px;color:var(--text)">' +
+        line('Sales (' + m.soldUnits + ' item' + (m.soldUnits === 1 ? '' : 's') + ')', usd(m.sales)) +
+        line('Whatnot fees + shipping' + (m.hasEarnings ? '' : ' (estimated)'), '-' + usd(m.took)) +
+        line('Whatnot pays you', usd(m.earnings)) +
+        line('Cost of books', '-' + usd(m.bookCost)) +
+        line('Randoms (' + m.randoms + ')', '-' + usd(m.randomCost)) +
+        line('Giveaways (' + m.giveUnits + ')', '-' + usd(m.giveawayCost)) +
+        line('Profit', usd(m.net) + (m.soldUnits ? ' · ' + usd(m.perItem) + '/item' : ''), m.net >= 0 ? 'var(--g)' : 'var(--red)') +
+        (m.hasEarnings ? '' : '<div style="color:var(--gold)">Type Whatnot\'s Est. Earnings for the real fees and shipping.</div>') +
+        (m.zeroPriced ? '<div style="color:var(--red)">Sold-for prices add up to all of Sales, so some items would record at $0 -- clear a price or raise Sales.</div>' : '') +
+      '</div>' +
+      '<div style="display:flex;gap:6px;flex-wrap:wrap"><button class="hbtn" style="margin:0;flex:1;padding:12px;background:rgba(0,255,179,.12);border-color:rgba(0,255,179,.35);color:var(--g)"' + (state.entrySaving || !(m.records.length) || m.zeroPriced ? ' disabled' : '') + ' onclick="WB.entrySave()">' + (state.entrySaving ? 'SAVING…' : 'SAVE SHOW') + '</button>' +
+        '<button class="hbtn" style="margin:0" onclick="WB.entryReset()">START OVER</button></div>' +
+    '</div></div>';
+}
+
 async function render(){
   var el = host(); if(!el) return;
   if(!state.settings){ el.innerHTML = '<div class="panel" style="padding:14px;font-family:var(--font-mono);font-size:10px;color:var(--dim)">Loading Whatnot tools…</div>'; await Promise.all([loadSettings(), loadCycles(), loadShows().then(function(list){ if(!state.shows) state.shows = list; })]); }
-  el.innerHTML = renderSend() + renderImport();
+  el.innerHTML = renderSend() + renderEntry() + renderImport() + inventoryDatalist();
 }
 
 // The Values tab pairs columns: "subcategory categories" + "subcategories"
@@ -821,6 +930,76 @@ window.WB = {
       render();
       return true;
     } catch(e) { if(!silent) toast('Could not save the show: ' + (e.message || e)); return false; }
+  },
+  // ENTER A SHOW
+  entrySet: function(key, value){ var e = entry(); e[key] = key === 'randoms' || key === 'giveaways' ? Math.max(0, Math.round(Number(value) || 0)) : String(value == null ? '' : value).trim(); saveEntryDraft(); render(); },
+  // Adds one copy of an item; false when every copy in stock is already on the show.
+  entryAdd: function(id){
+    var e = entry(), i = itemById(id);
+    if(!i || !isSellable(i)) return false;
+    var row = e.items.find(function(x){ return String(x.id) === String(id); });
+    if(row){ if(row.qty >= availableQty(i)) return false; row.qty++; }
+    else e.items.push({ id:String(id), qty:1, price:'', giveaway:false });
+    saveEntryDraft(); render();
+    return true;
+  },
+  entryAddPick: function(value){
+    var m = String(value || '').match(/ — (\S+)$/);
+    if(!m){ if(value) toast('Pick a book from the list'); return; }
+    if(!WB.entryAdd(m[1])) toast('No more copies of that in stock');
+  },
+  entryQty: function(k, delta){
+    var e = entry(), x = e.items[k]; if(!x) return;
+    var i = itemById(x.id), next = x.qty + delta;
+    if(next <= 0) e.items.splice(k, 1);
+    else if(i && next > availableQty(i)) toast('Only ' + availableQty(i) + ' in stock');
+    else x.qty = next;
+    saveEntryDraft(); render();
+  },
+  entryItem: function(k, key, value){ var x = entry().items[k]; if(!x) return; x[key] = key === 'giveaway' ? !!value : String(value == null ? '' : value).trim(); saveEntryDraft(); render(); },
+  entryRemove: function(k){ entry().items.splice(k, 1); saveEntryDraft(); render(); },
+  entryReset: function(){ if(entry().items.length && !confirm('Clear this show entry?')) return; state.entry = newEntry(); saveEntryDraft(); render(); },
+  entrySave: async function(){
+    var e = entry(), m = entryMath(e), client = sb(), store = storeId();
+    if(state.entrySaving || !m.records.length) return;
+    if(!client || !store){ toast('Sign in to save the show'); return; }
+    if(m.zeroPriced){ toast('Some items would record at $0 -- fix the sold-for prices'); return; }
+    if(!m.hasEarnings && !confirm('No Est. Earnings typed -- use estimated fees instead of Whatnot\'s real number?')) return;
+    if(!confirm('Save this show? ' + m.records.length + ' sale record' + (m.records.length === 1 ? '' : 's') + ', books leave stock. Profit ' + usd(m.net) + '.')) return;
+    state.entrySaving = true; render();
+    var soldAt = new Date((e.date || todayLocal()) + 'T12:00:00').toISOString();
+    var failed = 0;
+    try {
+      if(!e.showId){
+        var ins = await client.from('whatnot_shows').insert({ store_id:store, platform:'whatnot', title:e.title || ('Whatnot show ' + new Date(soldAt).toLocaleDateString()), category:'Mixed', status:'ended', started_at:soldAt, ended_at:soldAt }).select('*').limit(1);
+        if(ins.error) throw ins.error;
+        e.showId = ins.data[0].id; saveEntryDraft();
+      }
+      for(var k = 0; k < m.records.length; k++){
+        var r = m.records[k];
+        if(e.done[r.key]) continue;
+        var body = { channel:'Whatnot', salePrice:r.salePrice, feeAmount:r.feeAmount, quantitySold:r.quantitySold, soldAt:soldAt, externalRef:('whatnot-show:' + e.id + ':' + r.key).slice(0, 120) };
+        if(r.giveaway) body.giveaway = true;
+        if(r.itemId) body.itemId = r.itemId; else { body.title = r.title; body.cost = r.cost || 0; }
+        var res = await storeWorkerFetch('/inventory/record-external-sale', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) });
+        var d = await res.json().catch(function(){ return {}; });
+        if(d.ok || res.status === 409){ e.done[r.key] = true; saveEntryDraft(); }
+        else failed++;
+      }
+      var summary = { source:'manual', savedAt:new Date().toISOString(), gross:m.sales, earnings:m.earnings, earningsFromWhatnot:m.hasEarnings, fees:m.took, cogs:round2(m.bookCost + m.randomCost), randomCost:m.randomCost, giveawayCost:m.giveawayCost, shipping:0, net:m.net, margin:m.sales > 0 ? Math.round(m.net / m.sales * 1000) / 10 : 0,
+        sold:m.soldUnits, giveaways:m.giveUnits, random:m.randoms, perItem:m.perItem, items:m.records.map(function(r){ return { title:r.name, qty:r.quantitySold, price:r.salePrice, fee:r.feeAmount, giveaway:!!r.giveaway, itemIds:r.itemId ? [r.itemId] : [] }; }) };
+      var up = await client.from('whatnot_shows').update({ report_summary:summary }).eq('id', e.showId).eq('store_id', store);
+      if(up && up.error) throw up.error;
+    } catch(err) { failed++; toast('Could not finish saving: ' + (err.message || err) + ' -- press SAVE SHOW again, nothing is recorded twice'); }
+    state.entrySaving = false;
+    if(!failed){
+      toast('Show saved: profit ' + usd(m.net));
+      if(typeof logOpsEvent === 'function') logOpsEvent('whatnot_show_entered', 'Entered Whatnot show by hand', { sales:m.sales, earnings:m.earnings, net:m.net, items:m.soldUnits });
+      state.entry = newEntry(); saveEntryDraft();
+      state.shows = await loadShows();
+    } else if(failed) toast(failed + ' part' + (failed === 1 ? '' : 's') + ' did not save -- press SAVE SHOW again');
+    render();
+    if(typeof loadInventory === 'function') loadInventory().catch(function(){});
   },
   recordSales: async function(){
     if(state.importing || !state.report) return;
