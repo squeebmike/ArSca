@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.10.02.2-whatnot-show-profit">
+<meta name="version" content="2026.10.02.3-whatnot-random-lots-labels">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1658,22 +1658,22 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.10.02.2-whatnot-show-profit" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.10.02.2-whatnot-show-profit" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.10.02.2-whatnot-show-profit" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.10.02.2-whatnot-show-profit" defer></script>
-<script src="scripts/backlist-dashboard.js?v=2026.10.02.2-whatnot-show-profit" defer></script>
-<script src="scripts/database-viewer.js?v=2026.10.02.2-whatnot-show-profit" defer></script>
-<script src="scripts/card-intake-dashboard.js?v=2026.10.02.2-whatnot-show-profit" defer></script>
-<script src="scripts/mana-pocket-task-library.js?v=2026.10.02.2-whatnot-show-profit" defer></script>
-<script src="scripts/daily-tasks-dashboard.js?v=2026.10.02.2-whatnot-show-profit" defer></script>
-<script src="scripts/whatnot-bridge.js?v=2026.10.02.2-whatnot-show-profit" defer></script>
+<script src="scripts/query-routing.js?v=2026.10.02.3-whatnot-random-lots-labels" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.10.02.3-whatnot-random-lots-labels" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.10.02.3-whatnot-random-lots-labels" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.10.02.3-whatnot-random-lots-labels" defer></script>
+<script src="scripts/backlist-dashboard.js?v=2026.10.02.3-whatnot-random-lots-labels" defer></script>
+<script src="scripts/database-viewer.js?v=2026.10.02.3-whatnot-random-lots-labels" defer></script>
+<script src="scripts/card-intake-dashboard.js?v=2026.10.02.3-whatnot-random-lots-labels" defer></script>
+<script src="scripts/mana-pocket-task-library.js?v=2026.10.02.3-whatnot-random-lots-labels" defer></script>
+<script src="scripts/daily-tasks-dashboard.js?v=2026.10.02.3-whatnot-random-lots-labels" defer></script>
+<script src="scripts/whatnot-bridge.js?v=2026.10.02.3-whatnot-random-lots-labels" defer></script>
 <script src="scripts/research-loupe.js?v=a7de4ffe90" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.10.02.2-whatnot-show-profit" defer></script>
-<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.10.02.2-whatnot-show-profit" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.10.02.2-whatnot-show-profit" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.10.02.2-whatnot-show-profit" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.10.02.2-whatnot-show-profit" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.10.02.3-whatnot-random-lots-labels" defer></script>
+<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.10.02.3-whatnot-random-lots-labels" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.10.02.3-whatnot-random-lots-labels" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.10.02.3-whatnot-random-lots-labels" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.10.02.3-whatnot-random-lots-labels" defer></script>
 </head>
 <body>
 
@@ -1725,7 +1725,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
 <div class="dsb-chip" id="dsb-tasks" title="Today's Roles &amp; Tasks — click to jump to Tasks tab" style="cursor:pointer;display:none" onclick="switchTab('tasks')">✅ <span>TASKS:</span> <b id="dsb-tasks-val">—</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.10.02.2-whatnot-show-profit</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.10.02.3-whatnot-random-lots-labels</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -2785,7 +2785,7 @@ body.show-mode .inv-sync-badge{display:none;}
         If a sale shows but no sticker prints (Buy It Now especially), click <b>CAPTURE PAGE</b> in the extension right then and send it to Claude to tune.
       </div>
       <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);line-height:1.6;margin-top:6px">Keep this dashboard open in the same Chrome and each sale is also recorded here automatically: the buyer goes on the live show (one is started for you if none is live), and an inventory item whose name matches the Whatnot title exactly is marked sold. Sales made while the dashboard was closed are recorded the next time you open it.</div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px"><button class="hbtn" style="color:var(--g)" onclick="downloadWhatnotStickerExtension()">DOWNLOAD EXTENSION</button><button class="hbtn" onclick="openWhatnotPackList()">PACK LIST</button></div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px"><button class="hbtn" style="color:var(--g)" onclick="downloadWhatnotStickerExtension()">DOWNLOAD EXTENSION</button><button class="hbtn" onclick="openWhatnotPackList()">PACK LIST</button><button class="hbtn" onclick="printWhatnotBagLabels()">BAG LABELS</button></div>
     </details>
     <div id="whatnot-bridge"></div>
     <div id="whatnot-show-panel" style="margin-bottom:14px"></div>
@@ -3911,7 +3911,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.10.02.2-whatnot-show-profit';
+const APP_VERSION = '2026.10.02.3-whatnot-random-lots-labels';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -27396,7 +27396,12 @@ async function recordWhatnotLiveSale(sale){
   const giveaway = sale.type === 'giveaway';
   const price = Math.max(0, Number(sale.price || 0));
   const title = giveaway ? 'Giveaway' : (sale.title || 'Whatnot item');
-  const item = giveaway ? null : wlsMatchInventoryItem(sale.title);
+  // A random/mystery listing never takes a specific book: it comes out of
+  // the random pool bin when one is set (Whatnot tab -> RANDOM BOOKS), or
+  // is only logged on the show for the report import to record.
+  const W = typeof window !== 'undefined' ? window : {};
+  const isRandom = !giveaway && typeof W.whatnotIsRandomTitle === 'function' && W.whatnotIsRandomTitle(sale.title);
+  const item = giveaway ? null : isRandom ? (typeof W.whatnotRandomPoolItem === 'function' ? await W.whatnotRandomPoolItem(sale.title).catch(() => null) : null) : wlsMatchInventoryItem(sale.title);
   if(item && price > 0){
     const fee = whatnotFeeSettings();
     const res = await storeWorkerFetch('/inventory/record-external-sale', { method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify({ itemId:item.id, channel:'Whatnot', salePrice:price, feeAmount:Math.round((price * (fee.pct / 100) + fee.flat) * 100) / 100, soldAt:sale.at || undefined, externalRef:'whatnot-live:' + sale.id }) });
@@ -27449,10 +27454,19 @@ setTimeout(() => window.postMessage({ source:'wls-dashboard', type:'wls-ready' }
 
 // PACK LIST: the current (or most recent) show's sales grouped by buyer --
 // what to pull together for each person, printable.
-async function openWhatnotPackList(){
+// The show a pack list / bag labels are for: the given one, else the live
+// one, else the most recent.
+async function whatnotPackListShow(showId){
+  const sb = getSupabaseClient(), storeId = getActiveStoreId();
+  if(showId){ const { data } = await sb.from('whatnot_shows').select('*').eq('id', showId).eq('store_id', storeId).limit(1); return data?.[0] || null; }
+  if(whatnotActiveShow) return whatnotActiveShow;
+  const { data } = await sb.from('whatnot_shows').select('*').eq('store_id', storeId).order('started_at', { ascending:false, nullsFirst:false }).limit(1);
+  return data?.[0] || null;
+}
+async function openWhatnotPackList(showId){
   const sb = getSupabaseClient(), storeId = getActiveStoreId();
   if(!sb || !storeId){ toast_dash('Sign in to see the pack list'); return; }
-  let show = whatnotActiveShow;
+  let show = typeof showId === 'string' && showId ? await whatnotPackListShow(showId) : whatnotActiveShow;
   if(!show){
     const { data } = await sb.from('whatnot_shows').select('*').eq('store_id', storeId).order('started_at', { ascending:false, nullsFirst:false }).limit(1);
     show = data?.[0];
@@ -27464,7 +27478,7 @@ async function openWhatnotPackList(){
   const body = groups.length ? groups.map(g => `<section style="break-inside:avoid;border-bottom:1px solid #ccc;padding:8px 0"><h2 style="margin:0 0 4px;font:900 16px Arial">@${escHtml(g.buyer)} <span style="font:400 12px Arial;color:#555">${g.items.length} item${g.items.length === 1 ? '' : 's'} · $${(g.totalCents / 100).toFixed(2)}</span></h2>${g.items.map(r => `<div style="font:13px/1.5 Arial">☐ ${escHtml(r.name || 'Item')}${r.status === 'giveaway' ? ' <b>(giveaway)</b>' : ' — $' + (Number(r.sold_price_cents || 0) / 100).toFixed(2)}</div>`).join('')}</section>`).join('') : '<p style="font:13px Arial">No sales recorded for this show yet.</p>';
   const w = window.open('', '_blank', 'width=720,height=900');
   if(!w){ toast_dash('Allow pop-ups to open the pack list'); return; }
-  w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Pack list</title></head><body style="margin:24px;color:#000"><h1 style="font:900 20px Arial;margin:0 0 4px">PACK LIST · ${escHtml(show.title || 'Whatnot show')}</h1><div style="font:12px Arial;color:#555;margin-bottom:12px">${groups.length} buyer${groups.length === 1 ? '' : 's'} · ${(rows || []).length} item${(rows || []).length === 1 ? '' : 's'} · <button onclick="print()">PRINT</button></div>${body}</body></html>`);
+  w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Pack list</title></head><body style="margin:24px;color:#000"><h1 style="font:900 20px Arial;margin:0 0 4px">PACK LIST · ${escHtml(show.title || 'Whatnot show')}</h1><div style="font:12px Arial;color:#555;margin-bottom:12px">${groups.length} buyer${groups.length === 1 ? '' : 's'} · ${(rows || []).length} item${(rows || []).length === 1 ? '' : 's'} · <button onclick="print()">PRINT</button> <button onclick="opener && opener.printWhatnotBagLabels(${escHtml(JSON.stringify(String(show.id)))})">BAG LABELS (2x1)</button></div>${body}</body></html>`);
   w.document.close();
 }
 function whatnotPackListGroups(rows = []){
@@ -27478,6 +27492,26 @@ function whatnotPackListGroups(rows = []){
     g.totalCents += r.status === 'giveaway' ? 0 : Number(r.sold_price_cents || 0);
   });
   return [...byBuyer.values()].sort((a, b) => a.buyer.localeCompare(b.buyer));
+}
+
+// One 2x1 label per buyer for their bag: @name, how many items, the show.
+function whatnotBagLabelsHtml(groups, show){
+  const day = show?.started_at ? new Date(show.started_at).toLocaleDateString() : '';
+  const labels = groups.map(g => `<div class="l"><div class="b">@${escHtml(g.buyer)}</div><div class="m">${g.items.length} item${g.items.length === 1 ? '' : 's'}${g.items.some(r => r.status === 'giveaway') ? ' · incl. giveaway' : ''}</div><div class="s">${escHtml(show?.title || 'Whatnot')}${day ? ' · ' + escHtml(day) : ''}</div></div>`).join('');
+  return `<!doctype html><html><head><meta charset="utf-8"><title>Bag labels</title><style>@page{size:2in 1in;margin:0}html,body{margin:0;padding:0}.l{width:2in;height:1in;box-sizing:border-box;padding:.06in .1in;page-break-after:always;break-after:page;display:flex;flex-direction:column;justify-content:center;overflow:hidden;font-family:Arial,sans-serif;color:#000}.b{font-weight:900;font-size:15pt;line-height:1.05;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.m{font-size:9pt;margin-top:2px}.s{font-size:7pt;color:#000;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}@media screen{body{background:#eee;padding:10px}.l{background:#fff;margin:0 0 8px;border:1px solid #999}}</style></head><body>${labels || '<p>No buyers recorded for this show.</p>'}<script>setTimeout(()=>print(),300)<\/script></body></html>`;
+}
+async function printWhatnotBagLabels(showId){
+  const sb = getSupabaseClient(), storeId = getActiveStoreId();
+  if(!sb || !storeId){ toast_dash('Sign in to print bag labels'); return; }
+  const show = await whatnotPackListShow(showId);
+  if(!show){ toast_dash('No Whatnot show yet'); return; }
+  const { data:rows, error } = await sb.from('whatnot_show_items').select('name,status,sold_price_cents,buyer_name').eq('show_id', show.id).in('status', ['sold','giveaway']);
+  if(error){ toast_dash('Could not load buyers: ' + error.message); return; }
+  const groups = whatnotPackListGroups(rows || []).filter(g => g.buyer !== '(no buyer name)');
+  const w = window.open('', '_blank', 'width=420,height=600');
+  if(!w){ toast_dash('Allow pop-ups to print bag labels'); return; }
+  w.document.write(whatnotBagLabelsHtml(groups, show));
+  w.document.close();
 }
 
 async function downloadWhatnotStickerExtension(){
@@ -30232,7 +30266,21 @@ async function endWhatnotShow(){
   const fee = whatnotFeeSettings();
   const estFees = sold.reduce((s, r) => { const p = Number(r.sold_price_cents || 0) / 100; return s + (p * (fee.pct / 100) + fee.flat); }, 0);
   const giveawayCost = giveaways.reduce((s, r) => s + Number(r.cost_cents || 0) / 100, 0);
-  const profit = gross - cogs - estFees;
+  // Giveaways cost real books, so they come off the show's profit too.
+  const profit = gross - cogs - estFees - giveawayCost;
+  const endedShow = whatnotActiveShow;
+  // Keep this summary on the show for PAST SHOWS, unless an imported Whatnot
+  // report (which has the real fees) already saved one.
+  try{
+    if(sb){
+      const { data:cur } = await sb.from('whatnot_shows').select('report_summary').eq('id', endedShow.id).limit(1);
+      if(!cur?.[0]?.report_summary){
+        const buyers = whatnotPackListGroups(whatnotShowItems.filter(r => r.status === 'sold' || r.status === 'giveaway')).filter(g => g.buyer !== '(no buyer name)').map(g => ({ buyer:g.buyer, items:g.items.length, total:Math.round(g.totalCents) / 100 })).sort((a, b) => b.total - a.total);
+        const r2 = n => Math.round(n * 100) / 100;
+        await sb.from('whatnot_shows').update({ report_summary:{ source:'live', savedAt:endedAt, gross:r2(gross), fees:r2(estFees), cogs:r2(cogs), giveawayCost:r2(giveawayCost), shipping:0, net:r2(profit), margin:gross > 0 ? Math.round(profit / gross * 1000) / 10 : 0, sold:sold.length, giveaways:giveaways.length, buyers } }).eq('id', endedShow.id);
+      }
+    }
+  }catch(e){}
   const startedMs = whatnotActiveShow.started_at ? new Date(whatnotActiveShow.started_at).getTime() : Date.now();
   const hours = Math.max(1 / 60, (Date.now() - startedMs) / 3600000);
   const profitPerHour = profit / hours;
@@ -30253,7 +30301,9 @@ async function endWhatnotShow(){
     rows.forEach(([k, v]) => {
       w.document.write('<div class="row"><span>' + k + '</span><b>' + v + '</b></div>');
     });
-    w.document.write('<script>window.print();<\/script></body></html>');
+    const showArg = JSON.stringify(String(endedShow.id)).replace(/"/g, '&quot;');
+    w.document.write('<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:14px"><button onclick="window.print()">PRINT</button><button onclick="opener && opener.openWhatnotPackList(' + showArg + ')">PACK LIST</button><button onclick="opener && opener.printWhatnotBagLabels(' + showArg + ')">BAG LABELS (2x1)</button><button onclick="opener && (opener.switchTab(\'whatnot\'), opener.focus())">IMPORT WHATNOT REPORT</button></div>');
+    w.document.write('<div style="color:#666;margin-top:8px">Fees here are estimated. Import the Whatnot show report (Whatnot tab -> IMPORT SHOW RESULTS) for the real fees.</div></body></html>');
   }
   whatnotActiveShow = null;
   whatnotShowItems = [];
@@ -48847,7 +48897,7 @@ async function toppsLoadParallels(cardId){
   window.__arscaCloseModal = closeModal;
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.10.02.2-whatnot-show-profit" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.10.02.3-whatnot-random-lots-labels" defer></script>
 </body>
 </html>
 
