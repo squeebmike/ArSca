@@ -449,6 +449,13 @@ function guessColumns(header){
 function money(v){ var n = Number(String(v || '').replace(/[^0-9.\-]/g, '')); return Number.isFinite(n) ? n : 0; }
 function isCancelled(v){ var s = String(v || '').trim().toLowerCase(); return /cancel|refund|fail|void/.test(s) || s === 'true' || s === 'yes'; }
 function round2(n){ return Math.round(n * 100) / 100; }
+// Random / mystery listings ("random comic", "mystery pack", "grab bag",
+// "blind bag") are sold without picking a book: they never take a specific
+// book from stock. Each one costs the saved random-book cost, or comes out of
+// a "random pool" bin item when one is set (one per sale).
+var RANDOM_RE = /\b(random|mystery|grab ?bag|blind ?(bag|box|pull|pack)?)\b/i;
+function randomSettings(){ var r = (state.settings && state.settings.random) || {}; return { cost:Math.max(0, Number(r.cost) || 0), poolItemId:String(r.poolItemId || '') }; }
+function randomPoolItem(){ var id = randomSettings().poolItemId; return id ? items().find(function(i){ return String(i.id) === id; }) || null : null; }
 function sb(){ return typeof getSupabaseClient === 'function' ? getSupabaseClient() : null; }
 function storeId(){ return typeof getActiveStoreId === 'function' ? getActiveStoreId() : ''; }
 
@@ -486,18 +493,30 @@ function buildReportRows(){
   var byId = {};
   items().forEach(function(i){ byId[i.id] = i; });
   var live = (r.live || []).map(function(x){ return { itemId:x.itemId, amount:x.amount, used:false }; });
-  r.links = r.links || {}; r.costs = r.costs || {}; r.picks = r.picks || {};
+  r.links = r.links || {}; r.costs = r.costs || {}; r.picks = r.picks || {}; r.modes = r.modes || {};
   return r.rows.map(function(cells, n){
     function cell(key){ return cols[key] >= 0 ? String(cells[cols[key]] || '').trim() : ''; }
     var sku = cell('sku'), title = cell('title'), price = money(cell('price')), buyer = cell('buyer').replace(/^@/, '');
     var qty = Math.max(1, Math.round(money(cell('quantity'))) || 1);
     var item = sku ? (byId[sku] || items().find(function(i){ return i.raw && i.raw.sku === sku; })) : null;
     var how = item ? 'sku' : '';
-    if(!item && r.links[n] && byId[r.links[n]]){ item = byId[r.links[n]]; how = 'manual'; }
-    if(!item && title){
-      var t = norm(title);
-      var hits = items().filter(function(i){ return isSellable(i) && norm([i.name, i.set, i.card_number ? '#' + i.card_number : '', i.variant].filter(Boolean).join(' - ')) === t || isSellable(i) && norm(i.name) === t; });
-      if(hits.length === 1){ item = hits[0]; how = 'title'; }
+    // Random unless this row was told otherwise; a SKU match is a real item.
+    var mode = r.modes[n] || (!item && RANDOM_RE.test(title) ? 'random' : 'stock');
+    var lot = null;
+    if(mode === 'random'){ item = randomPoolItem(); how = item ? 'pool' : ''; }
+    else {
+      var linked = (r.links[n] || []).map(function(id){ return byId[id]; }).filter(Boolean);
+      if(linked.length){
+        var base = item && linked.indexOf(item) < 0 ? [item] : [];
+        lot = base.concat(linked);
+        item = lot[0]; how = lot.length > 1 ? 'lot' : (how || 'manual');
+        if(lot.length < 2) lot = null;
+      }
+      if(!item && title){
+        var t = norm(title);
+        var hits = items().filter(function(i){ return isSellable(i) && norm([i.name, i.set, i.card_number ? '#' + i.card_number : '', i.variant].filter(Boolean).join(' - ')) === t || isSellable(i) && norm(i.name) === t; });
+        if(hits.length === 1){ item = hits[0]; how = 'title'; }
+      }
     }
     var cancelled = cols.status >= 0 && isCancelled(cell('status'));
     var giveaway = !cancelled && (!(price > 0) || /giveaway/i.test(title));
@@ -506,27 +525,34 @@ function buildReportRows(){
     var order = cell('order');
     var ref = 'whatnot:' + (order || [cell('date'), sku || norm(title), price].join('|')) + (order && (sku || title) ? ':' + (sku || norm(title)).slice(0, 40) : '');
     var liveHit = null;
-    if(item && !cancelled && !giveaway) liveHit = live.find(function(l){ return !l.used && l.itemId === String(item.id) && Math.abs(l.amount - price) < 0.01; }) || null;
+    if(item && !lot && !cancelled && !giveaway) liveHit = live.find(function(l){ return !l.used && l.itemId === String(item.id) && Math.abs(l.amount - price) < 0.01; }) || null;
     if(liveHit) liveHit.used = true;
     var reason = '';
     if(cancelled) reason = 'Cancelled or refunded';
     else if(liveHit) reason = 'Recorded live during the show';
+    else if(how === 'pool' && !isSellable(item)) reason = 'Random pool bin is empty -- add books to it';
+    else if(lot && lot.some(function(i){ return !isSellable(i); })) reason = 'An item in this lot is already sold';
     else if(item && !isSellable(item)) reason = 'Already sold in the dashboard';
-    var cost = item ? round2(Number(item.cost || 0) * qty) : (r.costs[n] != null && r.costs[n] !== '' ? Math.max(0, Number(r.costs[n]) || 0) : null);
+    var typed = r.costs[n] != null && r.costs[n] !== '' ? Math.max(0, Number(r.costs[n]) || 0) : null;
+    var cost = lot ? round2(lot.reduce(function(a, i){ return a + Number(i.cost || 0); }, 0))
+      : item ? round2(Number(item.cost || 0) * qty)
+      : typed != null ? typed
+      : mode === 'random' ? round2(randomSettings().cost * qty) : null;
     var soldAt = cell('date') && !isNaN(Date.parse(cell('date'))) ? new Date(cell('date')).toISOString() : '';
     // Default: SKU, hand-linked and no-item rows go in; a title match waits for a tick.
     var include = !reason && (r.picks[n] != null ? r.picks[n] : how !== 'title');
-    return { n:n, sku:sku, title:title, buyer:buyer, price:price, qty:qty, item:item, how:how, giveaway:giveaway, cancelled:cancelled, cost:cost, feeAmount:feeAmount, ref:ref.slice(0, 120), soldAt:soldAt, reason:reason, include:include, done:false, result:'' };
+    return { n:n, sku:sku, title:title, buyer:buyer, price:price, qty:qty, item:item, lot:lot, mode:mode, how:how, giveaway:giveaway, cancelled:cancelled, cost:cost, feeAmount:feeAmount, ref:ref.slice(0, 120), soldAt:soldAt, reason:reason, include:include, done:false, result:'' };
   });
 }
 
 // The show's money, from every non-cancelled row of the report.
 function showSummary(rows){
-  var s = { gross:0, fees:0, cogs:0, giveawayCost:0, net:0, sold:0, giveaways:0, cancelled:0, missingCost:0, buyers:[] };
+  var s = { gross:0, fees:0, cogs:0, giveawayCost:0, shipping:round2(Math.max(0, Number(state.report && state.report.shipping) || 0)), net:0, sold:0, giveaways:0, random:0, cancelled:0, missingCost:0, buyers:[] };
   var byBuyer = {};
   rows.forEach(function(x){
     if(x.cancelled){ s.cancelled++; return; }
     if(x.cost == null) s.missingCost++;
+    if(x.mode === 'random') s.random += x.qty;
     var cost = x.cost || 0;
     s.fees += x.feeAmount;
     if(x.giveaway){ s.giveaways++; s.giveawayCost += cost; }
@@ -534,7 +560,7 @@ function showSummary(rows){
     if(x.buyer){ var b = byBuyer[x.buyer] || (byBuyer[x.buyer] = { buyer:x.buyer, items:0, total:0 }); b.items += x.qty; b.total += x.giveaway ? 0 : x.price; }
   });
   ['gross','fees','cogs','giveawayCost'].forEach(function(k){ s[k] = round2(s[k]); });
-  s.net = round2(s.gross - s.fees - s.cogs - s.giveawayCost);
+  s.net = round2(s.gross - s.fees - s.cogs - s.giveawayCost - s.shipping);
   s.margin = s.gross > 0 ? Math.round(s.net / s.gross * 1000) / 10 : 0;
   s.buyers = Object.keys(byBuyer).map(function(k){ byBuyer[k].total = round2(byBuyer[k].total); return byBuyer[k]; }).sort(function(a, b){ return b.total - a.total; });
   return s;
@@ -551,6 +577,12 @@ function guessShowId(shows, rows){
   var hit = shows.find(function(sh){ return sh.started_at && new Date(sh.started_at).toDateString() === day; });
   return hit ? hit.id : '';
 }
+// Splits an amount by weight in cents; the parts add up exactly.
+function splitMoney(amount, weights, total){
+  var cents = Math.round(amount * 100), parts = weights.map(function(w){ return Math.floor(cents * w / total); });
+  parts[parts.length - 1] += cents - parts.reduce(function(a, p){ return a + p; }, 0);
+  return parts.map(function(c){ return c / 100; });
+}
 function usd(n){ return (n < 0 ? '-$' : '$') + Math.abs(n).toFixed(2); }
 function showLabel(sh){ return (sh.started_at ? new Date(sh.started_at).toLocaleDateString() + ' · ' : '') + (sh.title || 'Whatnot show'); }
 
@@ -562,8 +594,10 @@ function summaryHtml(s){
     line('Whatnot fees', '-' + usd(s.fees)) +
     line('Cost of goods', '-' + usd(s.cogs)) +
     line('Giveaways (' + s.giveaways + ')', '-' + usd(s.giveawayCost)) +
+    '<div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><span>Shipping you paid</span><input class="tsi" style="margin:0;width:110px;text-align:right" type="number" min="0" step="0.01" placeholder="$0.00" value="' + (s.shipping ? esc(s.shipping) : '') + '" onchange="WB.setShipping(this.value)"></div>' +
     line('Net profit', usd(s.net) + (s.gross > 0 ? ' (' + s.margin + '%)' : ''), s.net >= 0 ? 'var(--g)' : 'var(--red)') +
     (s.missingCost ? '<div style="color:var(--gold)">' + s.missingCost + ' row' + (s.missingCost === 1 ? ' has' : 's have') + ' no cost yet -- type it in below (or link the item) or profit reads high.</div>' : '') +
+    (s.random ? '<div style="color:var(--dim)">' + s.random + ' random/mystery sale' + (s.random === 1 ? '' : 's') + ' -- never taken from a specific book.</div>' : '') +
     (s.cancelled ? '<div style="color:var(--dim)">' + s.cancelled + ' cancelled/refunded row' + (s.cancelled === 1 ? '' : 's') + ' left out.</div>' : '') +
     (s.buyers.length ? '<div style="color:var(--dim)">Top buyers: ' + s.buyers.slice(0, 5).map(function(b){ return '@' + esc(b.buyer) + ' ' + usd(b.total) + ' (' + b.items + ')'; }).join(' · ') + '</div>' : '') +
   '</div>';
@@ -572,16 +606,22 @@ function summaryHtml(s){
 function rowHtml(x){
   var status = x.done ? '<span style="color:var(--g)">' + esc(x.result) + '</span>'
     : x.reason ? '<span style="color:var(--dim)">' + esc(x.reason) + '</span>'
+    : x.mode === 'random' ? '<span style="color:var(--gold)">random' + (x.how === 'pool' ? ' · from pool' : '') + '</span>'
     : x.how === 'title' ? '<span style="color:var(--gold)">matched by title</span>'
+    : x.how === 'lot' ? '<span style="color:var(--g)">lot of ' + x.lot.length + '</span>'
     : x.how === 'manual' ? '<span style="color:var(--g)">linked</span>'
     : x.item ? '<span style="color:var(--g)">matched</span>'
     : '<span style="color:var(--gold)">not in inventory</span>';
-  var name = x.item ? x.item.name : x.title || x.sku || 'Row ' + (x.n + 1);
+  var name = x.mode === 'random' ? (x.title || 'Random') : x.lot ? x.lot.map(function(i){ return i.name; }).join(' + ') : x.item ? x.item.name : x.title || x.sku || 'Row ' + (x.n + 1);
   var extra = '';
-  if(!x.item && !x.cancelled && !x.done){
-    extra = '<div style="grid-column:2 / -1;display:flex;gap:6px;flex-wrap:wrap">' +
-      '<input class="tsi" style="margin:0;flex:0 0 110px;width:110px" type="number" min="0" step="0.01" placeholder="cost $" value="' + (x.cost == null ? '' : esc(x.cost)) + '" onchange="WB.setCost(' + x.n + ',this.value)">' +
-      '<input class="tsi" style="margin:0;flex:1 1 150px;min-width:0" list="wb-inventory" placeholder="or link to an item…" onchange="WB.linkRow(' + x.n + ',this.value)">' +
+  if(!x.cancelled && !x.done){
+    var btn = function(mode, label){ return '<button class="hbtn" style="margin:0;padding:4px 8px;font-size:9px' + (x.mode === mode ? ';border-color:var(--g);color:var(--g)' : '') + '" onclick="WB.setMode(' + x.n + ',\'' + mode + '\')">' + label + '</button>'; };
+    var needCost = !x.item || (x.mode === 'random' && x.how !== 'pool');
+    extra = '<div style="grid-column:2 / -1;display:flex;gap:6px;flex-wrap:wrap;align-items:center">' +
+      btn('stock', 'FROM STOCK') + btn('random', 'RANDOM – NOT FROM STOCK') +
+      (needCost ? '<input class="tsi" style="margin:0;flex:0 0 110px;width:110px" type="number" min="0" step="0.01" placeholder="cost $" value="' + (x.cost == null ? '' : esc(x.cost)) + '" onchange="WB.setCost(' + x.n + ',this.value)">' : '') +
+      (x.mode === 'stock' ? '<input class="tsi" style="margin:0;flex:1 1 150px;min-width:0" list="wb-inventory" placeholder="' + (x.item ? '+ add another item (lot)…' : 'or link to an item…') + '" onchange="WB.linkRow(' + x.n + ',this.value)">' : '') +
+      ((state.report.links[x.n] || []).length ? '<button class="hbtn" style="margin:0;padding:4px 8px;font-size:9px" onclick="WB.unlink(' + x.n + ')">CLEAR LINKS</button>' : '') +
     '</div>';
   }
   return '<div style="display:grid;grid-template-columns:24px 1fr auto;gap:6px;padding:6px 8px;border-bottom:1px solid var(--border);align-items:start">' +
@@ -589,6 +629,15 @@ function rowHtml(x){
     '<span style="color:var(--text);min-width:0">' + esc(name) + (x.qty > 1 ? ' ×' + x.qty : '') + (x.giveaway ? ' <b style="color:var(--gold)">GIVEAWAY</b>' : '') +
       '<br><span style="color:var(--dim)">' + esc(x.title) + (x.buyer ? ' · @' + esc(x.buyer) : '') + (x.cost != null ? ' · cost ' + usd(x.cost) : '') + '</span></span>' +
     '<span style="text-align:right">' + (x.giveaway ? '$0' : '$' + x.price.toFixed(2)) + '<br>' + status + '</span>' + extra + '</div>';
+}
+
+function randomSettingsHtml(){
+  var rs = randomSettings(), pool = randomPoolItem();
+  return '<div style="border:1px solid var(--border);border-radius:8px;padding:8px;margin:8px 0;display:flex;gap:6px;flex-wrap:wrap;align-items:center">' +
+    '<b style="color:var(--text)">RANDOM BOOKS</b> cost each $<input class="tsi" style="margin:0;width:90px" type="number" min="0" step="0.01" value="' + (rs.cost || '') + '" placeholder="0.00" onchange="WB.setRandom(\'cost\',this.value)">' +
+    ' pool bin <input class="tsi" style="margin:0;flex:1 1 180px;min-width:0" list="wb-inventory" placeholder="none -- pick an item to count random books down" value="' + (pool ? esc(pool.name + ' — ' + pool.id) : '') + '" onchange="WB.setRandom(\'pool\',this.value)">' +
+    (pool ? '<span style="color:var(--dim)">' + esc(String(pool.qty != null ? pool.qty : pool.quantity != null ? pool.quantity : '?')) + ' left</span>' : '') +
+    '<div style="flex-basis:100%;color:var(--dim)">Titles with "random", "mystery", "grab bag" or "blind" start as RANDOM: they never take a specific book. With a pool bin set, each one takes 1 from the bin (at the bin\'s cost) instead.</div></div>';
 }
 
 function inventoryDatalist(){
@@ -620,10 +669,11 @@ function renderImport(){
         colSelect('sku', 'SKU') + colSelect('title', 'Item title') + colSelect('price', 'Sold price') + colSelect('quantity', 'Quantity') +
         colSelect('buyer', 'Buyer') + colSelect('order', 'Order ID') + colSelect('date', 'Date') + colSelect('status', 'Cancelled / status') + colSelect('fee', 'Fees (optional)') + '</div>' +
       summaryHtml(showSummary(rows)) +
+      randomSettingsHtml() +
       '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:8px">Show: <select class="tsi" style="margin:0;max-width:320px" onchange="WB.setShow(this.value)"><option value="">New show from this report</option>' +
         (state.shows || []).map(function(sh){ return '<option value="' + esc(sh.id) + '"' + (sh.id === r.showId ? ' selected' : '') + '>' + esc(showLabel(sh)) + '</option>'; }).join('') + '</select>' +
         '<button class="hbtn" style="margin:0" onclick="WB.saveSummary()">SAVE SHOW PROFIT</button>' + (r.savedAt ? '<span style="color:var(--g)">saved</span>' : '') + '</div>' +
-      '<div style="margin-bottom:6px">' + rows.length + ' rows · ' + count(function(x){ return x.how === 'sku' && !x.reason; }) + ' matched by SKU · ' + count(function(x){ return x.how === 'title' && !x.reason; }) + ' matched by title (tick to include) · ' + count(function(x){ return !x.item && !x.reason; }) + ' not in inventory · ' + count(function(x){ return x.reason === 'Recorded live during the show'; }) + ' recorded live · ' + count(function(x){ return x.reason && x.reason !== 'Recorded live during the show'; }) + ' skipped</div>' +
+      '<div style="margin-bottom:6px">' + rows.length + ' rows · ' + count(function(x){ return x.how === 'sku' && !x.reason; }) + ' matched by SKU · ' + count(function(x){ return x.how === 'title' && !x.reason; }) + ' matched by title (tick to include) · ' + count(function(x){ return !x.item && !x.reason && x.mode !== 'random'; }) + ' not in inventory · ' + count(function(x){ return x.mode === 'random' && !x.cancelled; }) + ' random · ' + count(function(x){ return x.reason === 'Recorded live during the show'; }) + ' recorded live · ' + count(function(x){ return x.reason && x.reason !== 'Recorded live during the show'; }) + ' skipped</div>' +
       '<div style="max-height:420px;overflow:auto;border:1px solid var(--border);border-radius:8px">' + rows.slice(0, 300).map(rowHtml).join('') + '</div>' + inventoryDatalist() +
       '<div style="margin-top:6px">Fees: taken from the report when it has a fee column, otherwise estimated with your Whatnot fee setting. Sales the live sticker helper already recorded are skipped, so nothing counts twice. Rows not in inventory are recorded as sales with the cost you type in; $0 rows are giveaways and their cost comes off the show.</div>' +
       '<button class="hbtn" style="width:100%;padding:12px;margin:8px 0 0;background:rgba(255,209,102,.12);border-color:rgba(255,209,102,.35);color:var(--gold)"' + (ready.length && !state.importing ? '' : ' disabled') + ' onclick="WB.recordSales()">' + (state.importing ? 'RECORDING…' : 'RECORD ' + ready.length + ' SALE' + (ready.length === 1 ? '' : 'S')) + '</button>';
@@ -720,10 +770,24 @@ window.WB = {
   setCol: function(key, value){ state.report.cols[key] = Number(value); state.report.built = buildReportRows(); render(); },
   toggleRow: function(n, on){ state.report.picks[n] = !!on; var x = state.report.built.find(function(r){ return r.n === n; }); if(x) x.include = on; render(); },
   setCost: function(n, value){ state.report.costs[n] = value; WB.rebuild(); },
+  // Links a row to an item; a second item makes it a lot.
   linkRow: function(n, value){
     var m = String(value || '').match(/ — (\S+)$/);
     if(!m){ if(value) toast('Pick an item from the list'); return; }
-    state.report.links[n] = m[1]; delete state.report.picks[n]; WB.rebuild();
+    var list = state.report.links[n] || [];
+    if(list.indexOf(m[1]) < 0) list.push(m[1]);
+    state.report.links[n] = list; state.report.modes[n] = 'stock'; delete state.report.picks[n]; WB.rebuild();
+  },
+  unlink: function(n){ delete state.report.links[n]; WB.rebuild(); },
+  setMode: function(n, mode){ state.report.modes[n] = mode === 'random' ? 'random' : 'stock'; delete state.report.picks[n]; WB.rebuild(); },
+  setShipping: function(value){ state.report.shipping = Math.max(0, Number(value) || 0); state.report.savedAt = ''; render(); },
+  setRandom: async function(field, value){
+    var r = Object.assign({}, (state.settings && state.settings.random) || {});
+    if(field === 'cost') r.cost = Math.max(0, Number(value) || 0);
+    else { var m = String(value || '').match(/ — (\S+)$/); r.poolItemId = m ? m[1] : ''; }
+    state.settings.random = r;
+    await saveSettings();
+    if(state.report) WB.rebuild(); else render();
   },
   // Rebuild after a cost/link change, keeping what was already recorded.
   rebuild: function(){
@@ -748,7 +812,7 @@ window.WB = {
         state.shows = [ins.data[0]].concat(state.shows || []);
       }
       var saved = Object.assign({}, summary, { savedAt:new Date().toISOString(), fileName:r.fileName || '', firstSaleAt:dates.first, lastSaleAt:dates.last,
-        items:r.built.filter(function(x){ return !x.cancelled; }).slice(0, 400).map(function(x){ return { title:x.item ? x.item.name : x.title, buyer:x.buyer, price:x.price, qty:x.qty, cost:x.cost, fee:x.feeAmount, giveaway:x.giveaway, itemId:x.item ? x.item.id : null }; }) });
+        items:r.built.filter(function(x){ return !x.cancelled; }).slice(0, 400).map(function(x){ return { title:x.mode === 'random' ? x.title : x.lot ? x.lot.map(function(i){ return i.name; }).join(' + ') : x.item ? x.item.name : x.title, buyer:x.buyer, price:x.price, qty:x.qty, cost:x.cost, fee:x.feeAmount, giveaway:x.giveaway, random:x.mode === 'random', itemIds:x.lot ? x.lot.map(function(i){ return i.id; }) : x.item ? [x.item.id] : [] }; }) });
       var up = await client.from('whatnot_shows').update({ report_summary:saved }).eq('id', r.showId).eq('store_id', store);
       if(up && up.error) throw up.error;
       (state.shows || []).forEach(function(sh){ if(sh.id === r.showId) sh.report_summary = saved; });
@@ -768,12 +832,30 @@ window.WB = {
     for(var k = 0; k < rows.length; k++){
       var x = rows[k];
       try {
-        var payload = { channel:'Whatnot', salePrice:x.giveaway ? 0 : x.price, feeAmount:x.feeAmount, quantitySold:x.qty, soldAt:x.soldAt || undefined, externalRef:x.ref };
-        if(x.giveaway) payload.giveaway = true;
-        if(x.item) payload.itemId = x.item.id;
-        else { payload.title = x.title || x.sku || 'Whatnot item'; payload.cost = x.cost || 0; }
-        var res = await storeWorkerFetch('/inventory/record-external-sale', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
-        var d = await res.json().catch(function(){ return {}; });
+        var res, d;
+        if(x.lot){
+          // A lot: each item comes out of stock, the price and fee split by list price.
+          var weights = x.lot.map(function(i){ return Math.max(0.01, Number(priceFor(i)) || 0); });
+          var total = weights.reduce(function(a, w){ return a + w; }, 0);
+          var priceParts = splitMoney(x.giveaway ? 0 : x.price, weights, total), feeParts = splitMoney(x.feeAmount, weights, total);
+          var allOk = true, anyNew = false, err = '';
+          for(var j = 0; j < x.lot.length; j++){
+            var part = { channel:'Whatnot', itemId:x.lot[j].id, salePrice:priceParts[j], feeAmount:feeParts[j], quantitySold:1, soldAt:x.soldAt || undefined, externalRef:(x.ref.slice(0, 110) + ':lot' + j) };
+            if(x.giveaway || !(priceParts[j] > 0)) part.giveaway = true;
+            res = await storeWorkerFetch('/inventory/record-external-sale', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(part) });
+            d = await res.json().catch(function(){ return {}; });
+            if(d.ok && !d.duplicate) anyNew = true;
+            else if(!(d.ok || res.status === 409)){ allOk = false; err = d.error || 'Failed'; }
+          }
+          d = allOk ? { ok:true, duplicate:!anyNew } : { ok:false, error:err };
+        } else {
+          var payload = { channel:'Whatnot', salePrice:x.giveaway ? 0 : x.price, feeAmount:x.feeAmount, quantitySold:x.qty, soldAt:x.soldAt || undefined, externalRef:x.ref };
+          if(x.giveaway) payload.giveaway = true;
+          if(x.item) payload.itemId = x.item.id;
+          else { payload.title = (x.mode === 'random' ? 'Random: ' : '') + (x.title || x.sku || 'Whatnot item'); payload.cost = x.cost || 0; }
+          res = await storeWorkerFetch('/inventory/record-external-sale', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
+          d = await res.json().catch(function(){ return {}; });
+        }
         if(d.ok && d.duplicate){ x.done = true; x.result = 'Already recorded'; dupes++; }
         else if(d.ok){ x.done = true; x.result = 'Recorded'; recorded++; }
         else if(res.status === 409){ x.done = true; x.result = 'Already sold'; dupes++; }
@@ -799,5 +881,15 @@ window.sendFocShipmentToWhatnot = async function(cycleId){
   toast(count ? count + ' book' + (count === 1 ? '' : 's') + ' from this shipment ready for Whatnot' : 'No in-stock books from this shipment yet -- receive it first');
 };
 window.renderWhatnotBridge = render;
+// The live sticker helper asks this for a random/mystery sale: the random
+// pool bin when one is set and still has books, else nothing (the sale is
+// then only logged on the show and the report import records it).
+window.whatnotRandomPoolItem = async function(title){
+  if(!RANDOM_RE.test(String(title || ''))) return null;
+  if(!state.settings) await loadSettings();
+  var pool = randomPoolItem();
+  return pool && isSellable(pool) ? pool : null;
+};
+window.whatnotIsRandomTitle = function(title){ return RANDOM_RE.test(String(title || '')); };
 if(typeof activeTab !== 'undefined' && activeTab === 'whatnot') render();
 })();

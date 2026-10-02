@@ -233,6 +233,55 @@ assert.match(elements['whatnot-bridge'].innerHTML, /linked/);
 await ctx.WB.loadReport({ text: report });
 await ctx.WB.recordSales();
 assert.match(elements['whatnot-bridge'].innerHTML, /Already recorded/);
+
+// Random books never take a specific book: they cost the saved random cost,
+// or come out of the random pool bin when one is set. A lot takes each of
+// its items from stock, splitting the price by list price. Shipping the
+// store paid comes off the show's profit.
+await ctx.WB.setRandom('cost', '1.5');
+const report2 = [
+  'Order ID,Product Name,SKU,Buyer,Sold Price,Quantity,Placed At',
+  'R1,Random comic,,eve,$4.00,1,2026-10-03T02:00:00Z',
+  'R2,Mystery pack,,eve,$6.00,1,2026-10-03T02:01:00Z',
+  'R3,Two card lot,,finn,$26.00,1,2026-10-03T02:02:00Z',
+].join('\n');
+await ctx.WB.loadReport({ text: report2, name: 'r2.csv' });
+html = elements['whatnot-bridge'].innerHTML;
+assert.match(html, /2 random · /);
+assert.match(html, /RANDOM – NOT FROM STOCK/);
+assert.match(html, /RANDOM BOOKS/);
+ctx.WB.linkRow(2, 'Mike Trout — aaaaaaaa-0000-0000-0000-000000000002');
+ctx.WB.linkRow(2, 'Julio Rodriguez — aaaaaaaa-0000-0000-0000-000000000004');
+assert.match(elements['whatnot-bridge'].innerHTML, /lot of 2/);
+ctx.WB.setShipping('5');
+html = elements['whatnot-bridge'].innerHTML;
+// Sales 36; fees .9+1.1+3.1; cost 1.5+1.5+0; shipping 5.
+assert.match(html, /Cost of goods<\/span><b[^>]*>-\$3\.00/);
+assert.match(html, /Net profit<\/span><b[^>]*>\$22\.90/);
+assert.match(html, /2 random\/mystery sales -- never taken from a specific book/);
+calls.length = 0;
+await ctx.WB.recordSales();
+const sales2 = calls.filter(c => c.path === '/inventory/record-external-sale').map(c => c.body);
+assert.equal(sales2.length, 4, 'two random rows and the two items of the lot');
+assert.equal(sales2[0].itemId, undefined, 'a random sale takes no book');
+assert.equal(sales2[0].title, 'Random: Random comic');
+assert.equal(sales2[0].cost, 1.5);
+const lotParts = sales2.filter(b => /:lot\d$/.test(b.externalRef));
+assert.deepEqual(lotParts.map(b => b.itemId), ['aaaaaaaa-0000-0000-0000-000000000002', 'aaaaaaaa-0000-0000-0000-000000000004']);
+assert.deepEqual(lotParts.map(b => b.salePrice), [8, 18], 'lot price split by list price (40 / 90)');
+assert.equal(Math.round((lotParts[0].feeAmount + lotParts[1].feeAmount) * 100), 310, 'lot fee split adds up');
+// A FROM STOCK choice turns a random-looking row back into a normal one.
+await ctx.WB.loadReport({ text: report2 });
+ctx.WB.setMode(0, 'stock');
+assert.match(elements['whatnot-bridge'].innerHTML, /1 random · /);
+// With a pool bin set, random sales come out of the bin instead.
+await ctx.WB.setRandom('pool', 'Bin of stuff — aaaaaaaa-0000-0000-0000-000000000005');
+await ctx.WB.loadReport({ text: report2 });
+assert.match(elements['whatnot-bridge'].innerHTML, /random · from pool/);
+assert.equal((await ctx.whatnotRandomPoolItem('Random comic')).id, 'aaaaaaaa-0000-0000-0000-000000000005');
+assert.equal(await ctx.whatnotRandomPoolItem('Charizard'), null, 'a normal title never uses the pool');
+assert.equal(ctx.whatnotIsRandomTitle('Grab bag $5'), true);
+assert.equal(ctx.whatnotIsRandomTitle('Spider-Woman #1'), false);
 // Comics: a full description with the synopsis. The CSV never gets extra
 // columns -- Whatnot rejects any file that isn't exactly its template.
 ctx.inventoryBulkSelectedIds = new Set(['54c8313b-d067-410c-a12a-5eede06c1217']);
