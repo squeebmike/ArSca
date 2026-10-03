@@ -344,7 +344,7 @@ async function readSlipImages(env,images){
   let parsed;try{parsed=JSON.parse(block?.text||'');}catch(_){throw new Error('The slip reading came back unreadable -- try again');}
   return { invoice:text(parsed.invoice,60), onSaleDate:dateIso(parsed.onSaleDate)||'', totalUnits:Math.max(0,Number(parsed.totalUnits)||0), lines:Array.isArray(parsed.lines)?parsed.lines:[] };
 }
-const SLIP_SKU_FIELDS='id,cycle_id,upc,isbn,title,variant_label,foc_date,store_quantity,msrp_cents';
+const SLIP_SKU_FIELDS='id,cycle_id,upc,isbn,title,variant_label,foc_date,store_quantity,secured_quantity,is_incentive,msrp_cents';
 async function readPackingSlip(request,env,deps){
   const limited=await deps.readJsonWithLimit(request,24*1024*1024);if(limited.error)return limited.error;
   const body=limited.data||{};const storeId=text(body.storeId,80);
@@ -392,16 +392,23 @@ async function readPackingSlip(request,env,deps){
   const { data:submissions }=cycleIds.length?await db(`foc_prh_submissions?store_id=eq.${encodeURIComponent(storeId)}&cycle_id=${inFilter(cycleIds)}&select=cycle_id,line_items`):{data:[]};
   const submittedCycles=new Set();const submittedQty=new Map();
   for(const sub of submissions||[]){ submittedCycles.add(sub.cycle_id); for(const item of Array.isArray(sub.line_items)?sub.line_items:[]) if(item?.skuId) submittedQty.set(item.skuId,(submittedQty.get(item.skuId)||0)+Number(item.finalQty||0)); }
+  // A week ordered on PRH's own site whose cart export was imported (FINAL
+  // FOC REVIEW -> UPLOAD PRH CART): that import writes every cover's PRH
+  // quantity to secured_quantity, which a regular (non-incentive) cover
+  // gets from nowhere else.
+  const cartCycles=new Set(cycleSkus.filter(sku=>!sku.is_incentive&&Number(sku.secured_quantity||0)>0).map(sku=>sku.cycle_id));
   const customerQty=new Map();for(const item of committed)customerQty.set(item.sku_id,(customerQty.get(item.sku_id)||0)+Number(item.quantity||0));
   const receivedAt=new Map();for(const row of receivedRows)if(row.focSkuId&&!receivedAt.has(row.focSkuId))receivedAt.set(row.focSkuId,row.created_at);
   const cover=sku=>({skuId:sku.id,cycleId:sku.cycle_id,focDate:sku.foc_date,title:sku.title,variantLabel:sku.variant_label||'',upc:sku.upc||'',
-    orderOnFile:submittedCycles.has(sku.cycle_id),
-    orderedQty:submittedCycles.has(sku.cycle_id)?Number(submittedQty.get(sku.id)||0):Number(sku.store_quantity||0)+Number(customerQty.get(sku.id)||0),customerQty:Number(customerQty.get(sku.id)||0),receivedAt:receivedAt.get(sku.id)||'',coverPrice:Number(sku.msrp_cents||0)/100});
+    orderOnFile:submittedCycles.has(sku.cycle_id)||cartCycles.has(sku.cycle_id),
+    orderedQty:submittedCycles.has(sku.cycle_id)?Number(submittedQty.get(sku.id)||0)
+      :cartCycles.has(sku.cycle_id)?Number(sku.secured_quantity||0)
+      :Number(sku.store_quantity||0)+Number(customerQty.get(sku.id)||0),customerQty:Number(customerQty.get(sku.id)||0),receivedAt:receivedAt.get(sku.id)||'',coverPrice:Number(sku.msrp_cents||0)/100});
   const onSlip=new Set(matched.map(m=>m.sku?.id).filter(Boolean));
   const missing=cycleSkus.filter(sku=>!onSlip.has(sku.id)&&!receivedAt.has(sku.id)).map(cover).filter(c=>c.orderedQty>0);
   return deps.json({ok:true,invoice:read.invoice,onSaleDate:read.onSaleDate,totalUnits:read.totalUnits,unitsRead:lines.reduce((a,l)=>a+l.qty,0),
     lines:matched.map(m=>({code:m.code,title:m.title,qty:m.qty,netUnitPrice:m.netUnitPrice,how:m.how,cover:m.sku?cover(m.sku):null})),
-    cycles:(cycles||[]).map(c=>({id:c.id,focDate:c.foc_date,distributor:c.distributor||'PRH',orderOnFile:submittedCycles.has(c.id)})),missing});
+    cycles:(cycles||[]).map(c=>({id:c.id,focDate:c.foc_date,distributor:c.distributor||'PRH',orderOnFile:submittedCycles.has(c.id)||cartCycles.has(c.id)})),missing});
 }
 
 // ── Connecting covers ──
