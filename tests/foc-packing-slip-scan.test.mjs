@@ -69,6 +69,7 @@ globalThis.fetch = async (input, init = {}) => {
   if (url.includes('comic_skus?')) return ok([]);
   if (url.includes('foc_preorder_items?')) return ok([{ sku_id:'s-crain', quantity:2 }]);
   if (url.includes('inventory_items?')) return ok([{ created_at:'2026-09-30T18:00:00Z', focSkuId:'s-sabg' }]);
+  if (url.includes('foc_prh_submissions?')) return ok([{ cycle_id:'c-sep07', line_items:[{ skuId:'s-gdz', finalQty:3 }] }]);
   if (url.includes('foc_cycles?')) return ok([{ id:'c-aug31', foc_date:'2026-08-31', distributor:'PRH' }, { id:'c-sep07', foc_date:'2026-09-07', distributor:'PRH' }]);
   return ok([]);
 };
@@ -89,6 +90,12 @@ try {
   assert.equal(line('75960621668000151').cover.orderedQty, 7, 'store 5 + customers 2');
   assert.equal(line('75960621668000151').cover.customerQty, 2);
   assert.equal(line('75960621668000151').netUnitPrice, 2.99);
+  // Aug 31 was ordered straight with PRH: no saved order, so the order is
+  // what's known (store + customers). Sep 7's saved PRH order is the order.
+  assert.equal(line('75960621668000151').cover.orderOnFile, false);
+  assert.equal(line('82771403587200151').cover.orderOnFile, true);
+  assert.equal(line('82771403587200151').cover.orderedQty, 3, 'the saved PRH order quantity, not the store quantity');
+  assert.equal(d.cycles.find(c => c.id === 'c-sep07').orderOnFile, true);
   assert.equal(line('64985600909801071').cover.receivedAt, '2026-09-30T18:00:00Z', 'already received is flagged');
   assert.equal(line('75960621681900151').cover, null);
   assert.deepEqual(d.missing.map(c => c.skuId).sort(), ['s-stegman', 's-xm-a'], 'ordered covers in those weeks that are not on the slip');
@@ -108,4 +115,5 @@ const dash = fs.readFileSync('scripts/foc-dashboard.js', 'utf8');
 assert.match(dash, /onclick="openPackingSlipScan\(\)">📷 SCAN PACKING SLIP<\/button>/);
 assert.ok(dash.includes("api('/foc/admin/receive',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({storeId:getActiveStoreId(),cycleId:ids[i],lines:byCycle[ids[i]]})})"), 'each FOC week on the slip is received through the normal receive path');
 assert.match(dash, /unitCost:l\.netUnitPrice>0\?l\.netUnitPrice:undefined/);
+assert.match(dash, /c\.orderOnFile\?'<span style="color:var\(--gold\)">not on your PRH order<\/span>':'<span>no saved order for this week<\/span>'/, 'a week ordered straight with PRH is not flagged as off-order');
 console.log('Packing slip receive wiring checks passed');
