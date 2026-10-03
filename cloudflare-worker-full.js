@@ -1,3 +1,4 @@
+import { handleBookAlertRequest, runBookAlerts } from './scripts/book-alerts.mjs';
 import { isBcwItem, isBcwPublished, catalogSelection, renderBcwCatalog, renderBcwProduct } from './scripts/bcw-storefront.mjs';
 import { importDropshipBatch } from './scripts/dropship-import.mjs';
 import { cachedCatalogSitemap } from './scripts/sitemap-cache.mjs';
@@ -6196,6 +6197,11 @@ async function routeRequest(request, env, ctx) {
       const item = shapeStorefrontItem(row);
       if (!isStorefrontItemAvailable(item)) return json({ ok:false, error:'Item is not currently available', item }, 409);
       return json({ ok:true, item });
+    }
+
+    if (url.pathname === '/public/book-alerts' || url.pathname === '/public/book-alerts/unsubscribe') {
+      const response = await handleBookAlertRequest(request,env,url,{...bookAlertDeps(),json,readJsonWithLimit,enforceUsageLimit});
+      if (response) return response;
     }
 
     // POST /public/storefront/notify — public (unauthenticated) self-service
@@ -16576,7 +16582,7 @@ export default {
   // /dealscan/latest reads) instead of only ever being reachable by an
   // on-demand click.
   async scheduled(event, env, ctx) {
-    ctx.waitUntil(Promise.all([runScheduledDealScans(env), runScheduledEbayReprice(env), runScheduledEbayOrderSync(env), runScheduledShopifyOrderSync(env), runScheduledStorefrontReviewRequests(env), runScheduledPointsHoldSweep(env), runScheduledEbayFinanceReconcile(env), runScheduledStaleWebOrderReminders(env)]));
+    ctx.waitUntil(Promise.all([runScheduledDealScans(env), runScheduledEbayReprice(env), runScheduledEbayOrderSync(env), runScheduledShopifyOrderSync(env), runScheduledStorefrontReviewRequests(env), runScheduledPointsHoldSweep(env), runScheduledEbayFinanceReconcile(env), runScheduledStaleWebOrderReminders(env), runScheduledBookAlerts(env)]));
   },
 };
 
@@ -18409,4 +18415,23 @@ async function extractPdfText(arrayBuffer) {
   }
 
   return allText.join('\n');
+}
+
+// Automatic book alerts share the catalog's exact title/issue matching.
+function bookAlertDeps() {
+  return {
+    storeId: ITEM_DETAIL_STORE_ID, supabaseAdminFetch, sendEmail, completeShippoOrigin,
+    emailReady: env => !!(env.TWILIO_ACCOUNT_SID && env.TWILIO_AUTH_TOKEN && (env.TWILIO_EMAIL_FROM_ADDRESS || env.SENDGRID_FROM_EMAIL)),
+    isAvailable: isStorefrontItemAvailable, itemSlug: itemDetailSlug,
+    listItemsForBook: async (env,word,storeId) => {
+      const term = encodeURIComponent('*'+word.replace(/[^a-z0-9 ]/gi,'')+'*');
+      const {data} = await supabaseAdminFetch(env,`inventory_items?store_id=eq.${encodeURIComponent(storeId)}&or=(data->>name.ilike.${term},data->>title.ilike.${term})&select=id,data,status,created_at,updated_at&limit=300`);
+      if (!Array.isArray(data)) throw new Error('Inventory unavailable');
+      return data.map(shapeStorefrontItem);
+    },
+  };
+}
+
+async function runScheduledBookAlerts(env) {
+  return runBookAlerts(env,bookAlertDeps());
 }
