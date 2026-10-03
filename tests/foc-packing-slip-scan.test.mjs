@@ -79,8 +79,17 @@ globalThis.fetch = async (input, init = {}) => {
   if (url.includes('comic_skus?') && url.includes('cycle_id=in.')) return ok([...skus, ...cartWeek].filter(s => url.includes(s.cycle_id)));
   if (url.includes('comic_skus?') && url.includes('upc=in.')) return ok([...skus, ...cartWeek].filter(s => url.includes(s.upc) && s.cycle_id !== 'c-aug24'));
   if (url.includes('comic_skus?')) return ok([]);
-  if (url.includes('foc_preorder_items?')) return ok([{ sku_id:'s-crain', quantity:2 }]);
-  if (url.includes('inventory_items?')) return ok([{ created_at:'2026-09-30T18:00:00Z', focSkuId:'s-sabg' }]);
+  if (url.includes('foc_preorder_items?')) return ok([
+    { sku_id:'s-crain', quantity:1, order:{ status:'paid', fulfillment_method:'shipping' } },
+    { sku_id:'s-crain', quantity:1, order:{ status:'paid', fulfillment_method:'pickup' } },
+    { sku_id:'s-crain', quantity:3, order:{ status:'pending', fulfillment_method:'shipping' } }, // never paid
+  ]);
+  if (url.includes('inventory_items?') && url.includes('foc_receive')) return ok([{ created_at:'2026-09-30T18:00:00Z', focSkuId:'s-sabg' }]);
+  if (url.includes('inventory_items?') && url.includes('status=in.(presale,sold,in_stock)')) return ok([
+    { id:'p1', status:'presale', data:{ source:'foc_presale', focSkuId:'s-flux', focPresaleOriginalQty:5, qty:2 } }, // 3 sold on eBay
+    { id:'p2', status:'sold', data:{ source:'foc_presale_bundle', focBundleSkuIds:['s-flux','s-flux-c'], focPresaleOriginalQty:1, qty:0 } }, // 1 all-covers bundle
+    { id:'p3', status:'in_stock', data:{ source:'manual' } },
+  ]);
   if (url.includes('foc_prh_submissions?')) return ok([{ cycle_id:'c-sep07', line_items:[{ skuId:'s-gdz', finalQty:3 }] }]);
   if (url.includes('foc_cycles?')) return ok([{ id:'c-aug31', foc_date:'2026-08-31', distributor:'PRH' }, { id:'c-sep07', foc_date:'2026-09-07', distributor:'PRH' }, { id:'c-sep14', foc_date:'2026-09-14', distributor:'PRH' }, { id:'c-sep21', foc_date:'2026-09-21', distributor:'PRH' }]);
   return ok([]);
@@ -99,8 +108,13 @@ try {
   assert.equal(d.totalUnits, 21);
   const line = code => d.lines.find(l => l.code === code);
   assert.equal(line('75960621668000151').cover.skuId, 's-crain');
-  assert.equal(line('75960621668000151').cover.orderedQty, 7, 'store 5 + customers 2');
+  assert.equal(line('75960621668000151').cover.orderedQty, 7, 'store 5 + paid customers 2 (an unpaid order is not counted)');
   assert.equal(line('75960621668000151').cover.customerQty, 2);
+  assert.equal(line('75960621668000151').cover.customerShip, 1);
+  assert.equal(line('75960621668000151').cover.customerPickup, 1);
+  assert.equal(line('64985600917300121').cover.ebayPresold, 4, 'Flux: 3 sold on its eBay presale + 1 all-covers bundle -- to pack and ship');
+  assert.equal(line('82771403584100111').cover.ebayPresold, 0);
+  assert.equal(line('64985600917300121').cover.coverImage, '', 'cover image passed through (none on this test cover)');
   assert.equal(line('75960621668000151').netUnitPrice, 2.99);
   // Aug 31 was ordered straight with PRH: no saved order, so the order is
   // what's known (store + customers). Sep 7's saved PRH order is the order.
@@ -133,5 +147,11 @@ const dash = fs.readFileSync('scripts/foc-dashboard.js', 'utf8');
 assert.match(dash, /onclick="openPackingSlipScan\(\)">📷 SCAN PACKING SLIP<\/button>/);
 assert.ok(dash.includes("api('/foc/admin/receive',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({storeId:getActiveStoreId(),cycleId:ids[i],lines:byCycle[ids[i]]})})"), 'each FOC week on the slip is received through the normal receive path');
 assert.match(dash, /unitCost:l\.netUnitPrice>0\?l\.netUnitPrice:undefined/);
+assert.match(dash, /focThumbHtml\(c\.coverImage,c\.title\)/, 'the slip checklist shows each cover');
+assert.match(dash, /'<div class="foc-sku-fields" data-receive-row[^\n]*focThumbHtml\(v\.coverImageUrl,v\.variantLabel\)/, 'RECEIVE SHIPMENT shows each cover');
+assert.match(dash, /var ebay=Number\(v\.ebayPresold\|\|0\),total=Number\(v\.customerQty\|\|0\)\+ebay\+Number\(v\.storeQuantity\|\|0\);/, 'eBay presold copies count toward what RECEIVE SHIPMENT expects');
+assert.match(dash, /sold on eBay -- pack &amp; ship/);
+assert.match(dash, /renderSlipReceived\(done,s\)/, 'after receiving, a pack-and-ship list');
+assert.match(dash, /nothing here adds sales or profit/);
 assert.match(dash, /c\.orderOnFile\?'<span style="color:var\(--gold\)">not on your PRH order<\/span>':'<span>no saved order for this week<\/span>'/, 'a week ordered straight with PRH is not flagged as off-order');
 console.log('Packing slip receive wiring checks passed');

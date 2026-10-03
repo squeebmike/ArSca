@@ -344,7 +344,7 @@ async function readSlipImages(env,images){
   let parsed;try{parsed=JSON.parse(block?.text||'');}catch(_){throw new Error('The slip reading came back unreadable -- try again');}
   return { invoice:text(parsed.invoice,60), onSaleDate:dateIso(parsed.onSaleDate)||'', totalUnits:Math.max(0,Number(parsed.totalUnits)||0), lines:Array.isArray(parsed.lines)?parsed.lines:[] };
 }
-const SLIP_SKU_FIELDS='id,cycle_id,upc,isbn,title,variant_label,foc_date,store_quantity,secured_quantity,is_incentive,msrp_cents';
+const SLIP_SKU_FIELDS='id,cycle_id,upc,isbn,title,variant_label,foc_date,store_quantity,secured_quantity,is_incentive,msrp_cents,cover_image_url';
 async function readPackingSlip(request,env,deps){
   const limited=await deps.readJsonWithLimit(request,24*1024*1024);if(limited.error)return limited.error;
   const body=limited.data||{};const storeId=text(body.storeId,80);
@@ -383,7 +383,9 @@ async function readPackingSlip(request,env,deps){
   // and what's already been received -- so the review shows short or
   // missing books and never receives a cover twice by accident.
   const cycleSkus=cycleIds.length?(await db(`comic_skus?store_id=eq.${encodeURIComponent(storeId)}&cycle_id=${inFilter(cycleIds)}&select=${SLIP_SKU_FIELDS}`)).data||[]:[];
-  const committed=cycleIds.length?(await db(`foc_preorder_items?cycle_id=${inFilter(cycleIds)}&status=eq.committed&select=sku_id,quantity`)).data||[]:[];
+  const committed=cycleIds.length?(await db(`foc_preorder_items?cycle_id=${inFilter(cycleIds)}&status=eq.committed&select=sku_id,quantity,order:foc_preorder_orders(status,fulfillment_method)`)).data||[]:[];
+  // eBay presale copies already sold -- they need packing and shipping.
+  const ebayPresold=cycleIds.length?await ebayPresoldBySku(db,storeId):new Map();
   const receivedRows=cycleIds.length?(await db(`inventory_items?store_id=eq.${encodeURIComponent(storeId)}&data->>focCycleId=${inFilter(cycleIds)}&data->>source=eq.foc_receive&select=created_at,focSkuId:data->>focSkuId`)).data||[]:[];
   const { data:cycles }=cycleIds.length?await db(`foc_cycles?id=${inFilter(cycleIds)}&select=id,foc_date,distributor`):{data:[]};
   // The PRH order submitted from the dashboard, when there is one, is the
@@ -397,10 +399,19 @@ async function readPackingSlip(request,env,deps){
   // quantity to secured_quantity, which a regular (non-incentive) cover
   // gets from nowhere else.
   const cartCycles=new Set(cycleSkus.filter(sku=>!sku.is_incentive&&Number(sku.secured_quantity||0)>0).map(sku=>sku.cycle_id));
-  const customerQty=new Map();for(const item of committed)customerQty.set(item.sku_id,(customerQty.get(item.sku_id)||0)+Number(item.quantity||0));
+  // Paid website preorders, split by how each customer gets theirs.
+  const customerQty=new Map(),shipQty=new Map();
+  for(const item of committed){
+    if(item.order&&item.order.status&&item.order.status!=='paid')continue;
+    const n=Number(item.quantity||0);
+    customerQty.set(item.sku_id,(customerQty.get(item.sku_id)||0)+n);
+    if(item.order?.fulfillment_method&&item.order.fulfillment_method!=='pickup')shipQty.set(item.sku_id,(shipQty.get(item.sku_id)||0)+n);
+  }
   const receivedAt=new Map();for(const row of receivedRows)if(row.focSkuId&&!receivedAt.has(row.focSkuId))receivedAt.set(row.focSkuId,row.created_at);
   const cover=sku=>({skuId:sku.id,cycleId:sku.cycle_id,focDate:sku.foc_date,title:sku.title,variantLabel:sku.variant_label||'',upc:sku.upc||'',
     orderOnFile:submittedCycles.has(sku.cycle_id)||cartCycles.has(sku.cycle_id),
+    coverImage:sku.cover_image_url||'',
+    ebayPresold:Number(ebayPresold.get(sku.id)||0),customerShip:Number(shipQty.get(sku.id)||0),customerPickup:Math.max(0,Number(customerQty.get(sku.id)||0)-Number(shipQty.get(sku.id)||0)),
     orderedQty:submittedCycles.has(sku.cycle_id)?Number(submittedQty.get(sku.id)||0)
       :cartCycles.has(sku.cycle_id)?Number(sku.secured_quantity||0)
       :Number(sku.store_quantity||0)+Number(customerQty.get(sku.id)||0),customerQty:Number(customerQty.get(sku.id)||0),receivedAt:receivedAt.get(sku.id)||'',coverPrice:Number(sku.msrp_cents||0)/100});
