@@ -1898,7 +1898,9 @@ function renderSlip(){
   var cycleLabel=function(id){var c=(s.cycles||[]).find(function(x){return x.id===id;});return c?(c.distributor||'PRH')+' FOC '+displayDate(c.focDate):'FOC week';};
   var groups={};matched.forEach(function(l){(groups[l.cover.cycleId]=groups[l.cover.cycleId]||[]).push(l);});
   var sections=Object.keys(groups).sort(function(a,b){return String(groups[a][0].cover.focDate).localeCompare(String(groups[b][0].cover.focDate));}).map(function(id){
-    return '<section class="foc-family"><header class="foc-family-head"><div class="foc-family-title">'+esc(cycleLabel(id))+' · '+groups[id].length+' cover'+(groups[id].length===1?'':'s')+'</div></header>'+groups[id].map(slipLineHtml).join('')+'</section>';
+    var cyc=(s.cycles||[]).find(function(x){return x.id===id;});
+    var tip=cyc&&!cyc.orderOnFile?'<div style="font:9px/1.6 var(--font-mono);color:var(--dim);padding:6px 8px">No PRH order saved for this week, so quantities can\'t be checked against it. Next time, after ordering on PRH: download the cart from PRH\'s Cart screen and load it with UPLOAD PRH CART on this week\'s FINAL FOC REVIEW. One upload, and slips get checked against it.</div>':'';
+    return '<section class="foc-family"><header class="foc-family-head"><div class="foc-family-title">'+esc(cycleLabel(id))+' · '+groups[id].length+' cover'+(groups[id].length===1?'':'s')+'</div></header>'+tip+groups[id].map(slipLineHtml).join('')+'</section>';
   }).join('');
   var notMine=unmatched.length?'<section class="foc-family"><header class="foc-family-head"><div class="foc-family-title" style="color:var(--red)">Not one of your FOC books ('+unmatched.length+')</div></header><div style="font:9px/1.6 var(--font-mono);color:var(--dim);padding:6px 8px">These barcodes aren\'t on any imported FOC week. They won\'t be received here; add them by hand, or import that FOC file first and scan again.</div>'+
     unmatched.map(function(l){return '<div style="padding:6px 8px;border-bottom:1px solid var(--border);font:10px var(--font-mono);color:var(--text)">'+esc(l.title)+' <span style="color:var(--dim)">· '+esc(l.code)+' · qty '+l.qty+'</span></div>';}).join('')+'</section>':'';

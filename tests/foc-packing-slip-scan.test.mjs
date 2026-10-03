@@ -45,6 +45,15 @@ console.log('Packing slip matching checks passed');
 
 // The Worker route: reads the photo with Claude (structured JSON), matches,
 // and returns covers with what was ordered, customers, and what's already in.
+// Ordered on PRH's site, cart imported: every cover carries its PRH quantity
+// in secured_quantity (0 when not ordered). An incentive's secured count alone
+// would not mean the cart was imported.
+const cartWeek = [
+  { id:'s-flux', cycle_id:'c-sep14', foc_date:'2026-09-14', upc:'64985600917300121', title:'FLUX HOUSE PRESENTS #1 CVR B', store_quantity:0, secured_quantity:4, msrp_cents:999 },
+  { id:'s-flux-c', cycle_id:'c-sep14', foc_date:'2026-09-14', upc:'64985600917300131', title:'FLUX HOUSE PRESENTS #1 CVR C', store_quantity:0, secured_quantity:2, msrp_cents:999 },
+  { id:'s-bttwns', cycle_id:'c-sep14', foc_date:'2026-09-14', upc:'82771403584100111', title:'BENEATH THE TREES HALLOWEEN A', store_quantity:0, secured_quantity:0, msrp_cents:799 },
+  { id:'s-inc', cycle_id:'c-sep21', foc_date:'2026-09-21', upc:'82771403584100999', title:'SOME INCENTIVE 1:25', store_quantity:0, secured_quantity:1, is_incentive:true, msrp_cents:799 },
+];
 const originalFetch = globalThis.fetch, originalCaches = globalThis.caches;
 globalThis.caches = { default: { match: async () => null, put: async () => {} } };
 let claudeBody = null;
@@ -54,23 +63,26 @@ globalThis.fetch = async (input, init = {}) => {
   const ok = d => new Response(JSON.stringify(d), { headers: { 'Content-Type': 'application/json' } });
   if (url.startsWith('https://api.anthropic.com/v1/messages')) {
     claudeBody = JSON.parse(init.body);
-    return ok({ stop_reason:'end_turn', content:[{ type:'text', text:JSON.stringify({ invoice:'1075016466', onSaleDate:'2026-10-07', totalUnits:14, lines:[
+    return ok({ stop_reason:'end_turn', content:[{ type:'text', text:JSON.stringify({ invoice:'1075016466', onSaleDate:'2026-10-07', totalUnits:21, lines:[
       { code:'75960621668000151', title:'MIDNIGHT XM 1 CRAIN', qty:7, netUnitPrice:2.99 },
       { code:'64985600909801071', title:'SABRINA #1 CVR G', qty:2, netUnitPrice:4.49 },
       { code:'82771403587200151', title:'GDZ MONSTERPIECE KAI', qty:1, netUnitPrice:3.99 },
       { code:'75960621681900151', title:'MIDNIGHT SPDRM 1 CRA', qty:4, netUnitPrice:2.99 },
+      { code:'64985600917300121', title:'FLUX HOUSE PRESENTS', qty:4, netUnitPrice:4.99 },
+      { code:'82771403584100111', title:'BTTWNS HALLOWEEN A', qty:2, netUnitPrice:3.99 },
+      { code:'82771403584100999', title:'SOME INCENTIVE', qty:1, netUnitPrice:3.99 },
     ] }) }] });
   }
   if (url.includes('/auth/v1/user')) return ok({ id:'user-1', email:'staff@example.com' });
   if (url.includes('store_members')) return ok([{ role:'owner' }]);
   if (url.includes('/rest/v1/')) dbUrls.push(url);
-  if (url.includes('comic_skus?') && url.includes('cycle_id=in.')) return ok(skus.filter(s => /c-aug31|c-sep07/.test(url) && url.includes(s.cycle_id)));
-  if (url.includes('comic_skus?') && url.includes('upc=in.')) return ok(skus.filter(s => url.includes(s.upc) && s.cycle_id !== 'c-aug24'));
+  if (url.includes('comic_skus?') && url.includes('cycle_id=in.')) return ok([...skus, ...cartWeek].filter(s => url.includes(s.cycle_id)));
+  if (url.includes('comic_skus?') && url.includes('upc=in.')) return ok([...skus, ...cartWeek].filter(s => url.includes(s.upc) && s.cycle_id !== 'c-aug24'));
   if (url.includes('comic_skus?')) return ok([]);
   if (url.includes('foc_preorder_items?')) return ok([{ sku_id:'s-crain', quantity:2 }]);
   if (url.includes('inventory_items?')) return ok([{ created_at:'2026-09-30T18:00:00Z', focSkuId:'s-sabg' }]);
   if (url.includes('foc_prh_submissions?')) return ok([{ cycle_id:'c-sep07', line_items:[{ skuId:'s-gdz', finalQty:3 }] }]);
-  if (url.includes('foc_cycles?')) return ok([{ id:'c-aug31', foc_date:'2026-08-31', distributor:'PRH' }, { id:'c-sep07', foc_date:'2026-09-07', distributor:'PRH' }]);
+  if (url.includes('foc_cycles?')) return ok([{ id:'c-aug31', foc_date:'2026-08-31', distributor:'PRH' }, { id:'c-sep07', foc_date:'2026-09-07', distributor:'PRH' }, { id:'c-sep14', foc_date:'2026-09-14', distributor:'PRH' }, { id:'c-sep21', foc_date:'2026-09-21', distributor:'PRH' }]);
   return ok([]);
 };
 try {
@@ -83,8 +95,8 @@ try {
   assert.equal(claudeBody.output_config.format.type, 'json_schema', 'structured output, not free text');
   assert.equal(claudeBody.messages[0].content[0].type, 'image');
   assert.equal(d.invoice, '1075016466');
-  assert.equal(d.unitsRead, 14);
-  assert.equal(d.totalUnits, 14);
+  assert.equal(d.unitsRead, 21);
+  assert.equal(d.totalUnits, 21);
   const line = code => d.lines.find(l => l.code === code);
   assert.equal(line('75960621668000151').cover.skuId, 's-crain');
   assert.equal(line('75960621668000151').cover.orderedQty, 7, 'store 5 + customers 2');
@@ -96,9 +108,15 @@ try {
   assert.equal(line('82771403587200151').cover.orderOnFile, true);
   assert.equal(line('82771403587200151').cover.orderedQty, 3, 'the saved PRH order quantity, not the store quantity');
   assert.equal(d.cycles.find(c => c.id === 'c-sep07').orderOnFile, true);
+  assert.equal(line('64985600917300121').cover.orderOnFile, true, 'an imported PRH cart is the order');
+  assert.equal(line('64985600917300121').cover.orderedQty, 4, 'its PRH cart quantity');
+  assert.equal(line('82771403584100111').cover.orderOnFile, true);
+  assert.equal(line('82771403584100111').cover.orderedQty, 0, 'shipped but not in the imported cart: really not ordered');
+  assert.equal(line('82771403584100999').cover.orderOnFile, false, 'an incentive\'s secured count alone is not an imported cart');
+  assert.ok(d.missing.some(c => c.skuId === 's-flux-c' && c.orderedQty === 2), 'cart covers missing from the slip are listed');
   assert.equal(line('64985600909801071').cover.receivedAt, '2026-09-30T18:00:00Z', 'already received is flagged');
   assert.equal(line('75960621681900151').cover, null);
-  assert.deepEqual(d.missing.map(c => c.skuId).sort(), ['s-stegman', 's-xm-a'], 'ordered covers in those weeks that are not on the slip');
+  assert.deepEqual(d.missing.map(c => c.skuId).sort(), ['s-flux-c', 's-stegman', 's-xm-a'], 'ordered covers in those weeks that are not on the slip');
   assert.ok(dbUrls.some(u => u.includes('data->>source=eq.foc_receive')));
   const noKey = await api.fetch(new Request('https://api.example/foc/admin/read-slip', { method:'POST', headers:{ Authorization:'Bearer t', 'X-Store-Id':'store-1', 'Content-Type':'application/json' }, body:JSON.stringify({ storeId:'store-1', images:[{ data:'x'.repeat(200) }] }) }), { ...env, ANTHROPIC_API_KEY:'' }, { waitUntil() {} });
   assert.equal(noKey.status, 503);
