@@ -1867,8 +1867,10 @@ function slipLineHtml(l){
   var c=l.cover,k=esc(slipLineKey(l)),qty=slipQty(l),chips=[];
   if(c.receivedAt) chips.push('<span style="color:var(--red)">already received '+esc(new Date(c.receivedAt).toLocaleDateString())+'</span>');
   if(l.how==='close') chips.push('<span style="color:var(--gold)">barcode read 1 digit off -- check it</span>');
-  if(!c.orderedQty) chips.push('<span style="color:var(--gold)">not on your order</span>');
-  else if(l.qty!==c.orderedQty) chips.push('<span style="color:var(--gold)">ordered '+c.orderedQty+', slip says '+l.qty+'</span>');
+  // Only a week whose PRH order was submitted from the dashboard knows what
+  // was ordered; a week ordered straight with PRH just shows what's known.
+  if(!c.orderedQty) chips.push(c.orderOnFile?'<span style="color:var(--gold)">not on your PRH order</span>':'<span>no saved order for this week</span>');
+  else if(l.qty!==c.orderedQty) chips.push('<span style="color:var(--gold)">'+(c.orderOnFile?'ordered ':'expected ')+c.orderedQty+', slip says '+l.qty+'</span>');
   else if(l.how==='exact'&&!c.receivedAt) chips.push('<span style="color:var(--g)">matches your order</span>');
   if(c.customerQty) chips.push('<span>'+c.customerQty+' for customers</span>');
   return '<div style="display:grid;grid-template-columns:22px 1fr auto;gap:8px;align-items:center;padding:8px;border-bottom:1px solid var(--border)">'+
