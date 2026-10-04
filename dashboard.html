@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.10.03.4-slip-presold-covers">
+<meta name="version" content="2026.10.04.1-shows-stay-shared">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1658,22 +1658,22 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.10.03.4-slip-presold-covers" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.10.03.4-slip-presold-covers" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.10.03.4-slip-presold-covers" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.10.03.4-slip-presold-covers" defer></script>
-<script src="scripts/backlist-dashboard.js?v=2026.10.03.4-slip-presold-covers" defer></script>
-<script src="scripts/database-viewer.js?v=2026.10.03.4-slip-presold-covers" defer></script>
-<script src="scripts/card-intake-dashboard.js?v=2026.10.03.4-slip-presold-covers" defer></script>
-<script src="scripts/mana-pocket-task-library.js?v=2026.10.03.4-slip-presold-covers" defer></script>
-<script src="scripts/daily-tasks-dashboard.js?v=2026.10.03.4-slip-presold-covers" defer></script>
-<script src="scripts/whatnot-bridge.js?v=2026.10.03.4-slip-presold-covers" defer></script>
+<script src="scripts/query-routing.js?v=2026.10.04.1-shows-stay-shared" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.10.04.1-shows-stay-shared" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.10.04.1-shows-stay-shared" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.10.04.1-shows-stay-shared" defer></script>
+<script src="scripts/backlist-dashboard.js?v=2026.10.04.1-shows-stay-shared" defer></script>
+<script src="scripts/database-viewer.js?v=2026.10.04.1-shows-stay-shared" defer></script>
+<script src="scripts/card-intake-dashboard.js?v=2026.10.04.1-shows-stay-shared" defer></script>
+<script src="scripts/mana-pocket-task-library.js?v=2026.10.04.1-shows-stay-shared" defer></script>
+<script src="scripts/daily-tasks-dashboard.js?v=2026.10.04.1-shows-stay-shared" defer></script>
+<script src="scripts/whatnot-bridge.js?v=2026.10.04.1-shows-stay-shared" defer></script>
 <script src="scripts/research-loupe.js?v=a7de4ffe90" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.10.03.4-slip-presold-covers" defer></script>
-<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.10.03.4-slip-presold-covers" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.10.03.4-slip-presold-covers" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.10.03.4-slip-presold-covers" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.10.03.4-slip-presold-covers" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.10.04.1-shows-stay-shared" defer></script>
+<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.10.04.1-shows-stay-shared" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.10.04.1-shows-stay-shared" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.10.04.1-shows-stay-shared" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.10.04.1-shows-stay-shared" defer></script>
 </head>
 <body>
 
@@ -1725,7 +1725,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
 <div class="dsb-chip" id="dsb-tasks" title="Today's Roles &amp; Tasks — click to jump to Tasks tab" style="cursor:pointer;display:none" onclick="switchTab('tasks')">✅ <span>TASKS:</span> <b id="dsb-tasks-val">—</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.10.03.4-slip-presold-covers</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.10.04.1-shows-stay-shared</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3911,7 +3911,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.10.03.4-slip-presold-covers';
+const APP_VERSION = '2026.10.04.1-shows-stay-shared';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -12607,6 +12607,8 @@ function getShowMode(){
 }
 
 let knownShowSessionIndex = [];
+// Shows this device has open that the Worker no longer knows about.
+const showMissingFromWorker = {};
 
 function saveShowMode(show, { publish=true } = {}){
   localStorage.setItem('pos_show_mode', JSON.stringify(show));
@@ -12632,8 +12634,17 @@ async function syncShowModeFromWorker(){
         if(drawerState?.showSessionId===selected.id){ drawerState=null;localStorage.removeItem('pos_drawer'); }
         toast_dash('That shared show was ended on another device');
       }
+    } else if(res.ok && selected.status==='open') {
+      // The Worker has no record of this device's show (expired, or never
+      // shared). Silently keeping it left a Sep 6 show "open" on one device
+      // for a month that no other device could see or join. A recent show
+      // is re-shared; an old one waits for a decision (see renderShowMode).
+      if(!showIsStale(selected)) await keepShowShared(selected);
+      else showMissingFromWorker[selected.id]=true;
     }
   } catch(e) {}
+  const current=getShowMode();
+  if(current?.status==='open'&&!showMissingFromWorker[current.id]&&!showIsStale(current)) await keepShowShared(current);
   renderShowMode();
   await fetchSharedCashBags().catch(()=>{});
   await syncSharedShowTransactions().catch(()=>{});
@@ -12643,18 +12654,43 @@ function showSessionIndexEntry(show={}){
   return { id:show.id,eventName:show.eventName||'Show',booth:show.booth||'',priceRulePct:Number(show.priceRulePct||0),status:show.status||'open',startedAt:show.startedAt||'',startedBy:show.startedBy||'',updatedAt:show.updatedAt||new Date().toISOString(),closedAt:show.closedAt||'' };
 }
 
+// Both writes must be accepted by the Worker, or other devices can't see
+// the show. storeWorkerFetch resolves even on a 401/403/500, so a rejected
+// publish used to look like success ("Shared show started") and was never
+// retried; now it throws, and every caller queues it for the sync retry.
 async function publishShowSession(show){
-  await storeWorkerFetch(scopedWorkerPath('/kv/show_session_'+show.id),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(show),signal:AbortSignal.timeout(4000)});
+  const res=await storeWorkerFetch(scopedWorkerPath('/kv/show_session_'+show.id),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(show),signal:AbortSignal.timeout(4000)});
+  if(!res.ok){const d=await res.json().catch(()=>({}));throw new Error(d.error||('Show not shared (HTTP '+res.status+')'));}
   // Atomic upsert route -- the old client-side GET-modify-POST-whole-blob
   // could have one device's show update wiped out by another's stale copy
   // if they published around the same time.
   const entry=showSessionIndexEntry(show);
-  try{
-    const response=await storeWorkerFetch(scopedWorkerPath('/kv/show-sessions-index/upsert'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({entry}),signal:AbortSignal.timeout(4000)});
-    const data=await response.json();
-    if(data?.ok&&Array.isArray(data.index))knownShowSessionIndex=data.index;
-  }catch(e){}
+  const response=await storeWorkerFetch(scopedWorkerPath('/kv/show-sessions-index/upsert'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({entry}),signal:AbortSignal.timeout(4000)});
+  const data=await response.json().catch(()=>({}));
+  if(!response.ok||!data?.ok)throw new Error(data?.error||('Show list not updated (HTTP '+response.status+')'));
+  if(Array.isArray(data.index))knownShowSessionIndex=data.index;
+  showSharedConfirmedAt[show.id]=Date.now();
   renderShowSessionSwitcher();
+}
+// When this device last confirmed its open show is on the shared list.
+const showSharedConfirmedAt={};
+// An open show older than this is probably one nobody ended.
+const SHOW_STALE_MS=2*24*60*60*1000;
+function showAgeMs(show){const t=Date.parse(show?.startedAt||'');return Number.isFinite(t)?Date.now()-t:0;}
+// A days-old open show counts as current for a day after someone confirms
+// it's still running (a multi-day convention), so the warning doesn't nag.
+function showIsStale(show){const ok=Date.parse(show?.stillRunningAt||'');return showAgeMs(show)>=SHOW_STALE_MS&&!(Number.isFinite(ok)&&Date.now()-ok<24*60*60*1000);}
+// Keeps an open show on the shared list: the list expires after 7 days on
+// the Worker, so an open show is re-published at least daily, and right
+// away if it has fallen off the list (expired, or never made it there).
+async function keepShowShared(show){
+  if(!show?.id||show.status!=='open'||getAccountContext().isDemo)return;
+  const listed=(knownShowSessionIndex||[]).some(row=>row.id===show.id&&row.status==='open');
+  const last=showSharedConfirmedAt[show.id]||0;
+  if(listed&&Date.now()-last<24*60*60*1000){if(!last)showSharedConfirmedAt[show.id]=Date.now();return;}
+  const fresh={...show,updatedAt:new Date().toISOString()};
+  try{await publishShowSession(fresh);localStorage.setItem('pos_show_mode',JSON.stringify(fresh));}
+  catch(e){enqueueOrReplaceSync('show-session-kv',show.id,'Re-share show session',{show:fresh},e.message||'Show session sync failed');}
 }
 
 async function fetchShowSessionIndex(notify=false){
@@ -12805,6 +12841,7 @@ function renderShowMode(){
   if(!status) return;
   renderShowSessionSwitcher();
   if(!show) {
+    renderShowStaleWarning(null);
     status.textContent = 'not joined';
     status.style.color = 'var(--dim)';
     renderCashBagSwitcher();
@@ -12819,8 +12856,34 @@ function renderShowMode(){
   status.textContent = (show.eventName || 'Show') + (show.booth ? ' · ' + show.booth : '');
   status.textContent = 'JOINED · ' + (show.eventName || 'Show') + (show.booth ? ' · ' + show.booth : '');
   status.style.color = 'var(--gold)';
+  renderShowStaleWarning(show);
   updateTopStateChips();
   updateRegisterCommandCenter();
+}
+
+// An open show that's days old, or that other devices can't see, says so:
+// a forgotten show keeps taking this device's sales and cash bags out of
+// everyone else's view.
+function renderShowStaleWarning(show){
+  const status=document.getElementById('show-mode-status');if(!status)return;
+  let box=document.getElementById('show-stale-warning');
+  const missing=show&&showMissingFromWorker[show.id];
+  const old=show&&showIsStale(show);
+  if(!show||(!missing&&!old)){if(box)box.remove();return;}
+  if(!box){box=document.createElement('div');box.id='show-stale-warning';box.style.cssText='margin:6px 0 10px;padding:9px;border:1px solid var(--gold);border-radius:8px;background:rgba(255,209,102,.08);font-family:var(--font-mono);font-size:10px;line-height:1.6;color:var(--text)';status.closest('.ph')?.insertAdjacentElement('afterend',box);}
+  const started=Date.parse(show.startedAt||'');const days=Math.floor(showAgeMs(show)/86400000);
+  box.innerHTML='<b style="color:var(--gold)">⚠ '+escHtml(show.eventName||'This show')+' has been open since '+(Number.isFinite(started)?escHtml(new Date(started).toLocaleDateString()):'an earlier day')+(days?' ('+days+' day'+(days===1?'':'s')+')':'')+'.</b> '+
+    (missing?'Other devices can\'t see or join it -- it is no longer on the shared show list. ':'')+
+    'If that show is over, leave the Cash Bag (close it in the Cash Bag panel first), END SHOW, and start a new one. If it really is still running, share it again.'+
+    '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px"><button class="hbtn" style="margin:0" onclick="reshareStaleShow()">STILL RUNNING -- SHARE IT AGAIN</button><button class="hbtn" style="margin:0;color:var(--red)" onclick="endShowMode()">END THIS SHOW</button></div>';
+}
+async function reshareStaleShow(){
+  const show=getShowMode();if(!show)return;
+  const now=new Date().toISOString(),fresh={...show,updatedAt:now,stillRunningAt:now};
+  localStorage.setItem('pos_show_mode',JSON.stringify(fresh));delete showMissingFromWorker[show.id];
+  try{await publishShowSession(fresh);toast_dash('Show shared again -- other devices can join it now');}
+  catch(e){enqueueOrReplaceSync('show-session-kv',show.id,'Re-share show session',{show:fresh},e.message||'Show session sync failed');toast_dash('Could not share it yet: '+e.message+' -- queued to retry');}
+  renderShowMode();
 }
 
 async function startShowMode(){
@@ -48907,7 +48970,7 @@ async function toppsLoadParallels(cardId){
   window.__arscaCloseModal = closeModal;
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.10.03.4-slip-presold-covers" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.10.04.1-shows-stay-shared" defer></script>
 </body>
 </html>
 
