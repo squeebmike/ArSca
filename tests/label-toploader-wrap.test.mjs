@@ -46,7 +46,7 @@ assert.match(dashboard, /const isWrap = layout === 'wrap';/, 'printInventoryLabe
 // can't tell two different items' labels apart. The SKU is always unique,
 // so it's what actually lets a loose label get matched back to the exact
 // inventory record.
-assert.match(dashboard, /<div class="wrap-front">\s*\n\s*<div class="wrap-name">\$\{escHtml\(b\.name\)\}<\/div>\s*\n\s*\$\{b\.badge \? `<div class="wrap-badge">\$\{escHtml\(b\.badge\)\}<\/div>` : ''\}\s*\n\s*<div class="wrap-price">\$\{escHtml\(fdLabelPrice\$\(b\.price\)\.slice\(1\)\)\}<\/div>\s*\n\s*<div class="wrap-bottom-row"><span class="wrap-condition">\$\{escHtml\(b\.condition \|\| ''\)\}<\/span><span class="wrap-meta">\$\{escHtml\(b\.meta \|\| ''\)\}<\/span><\/div>\s*\n\s*<\/div>/, 'the front face must show the item name, an optional badge, a whole-dollar price with no "$" glyph, and a condition+meta row in that order');
+assert.match(dashboard, /<div class="wrap-front">\s*\n\s*<div class="wrap-name">\$\{escHtml\(labelNameKeepNumber\(b\.name, b\.badge \? 24 : 36\)\)\}<\/div>\s*\n\s*\$\{b\.badge \? `<div class="wrap-badge">\$\{escHtml\(b\.badge\)\}<\/div>` : ''\}\s*\n\s*<div class="wrap-price">\$\{escHtml\(fdLabelPrice\$\(b\.price\)\.slice\(1\)\)\}<\/div>\s*\n\s*<div class="wrap-bottom-row"><span class="wrap-condition">\$\{escHtml\(b\.condition \|\| ''\)\}<\/span><span class="wrap-meta">\$\{escHtml\(b\.meta \|\| ''\)\}<\/span><\/div>\s*\n\s*<\/div>/, 'the front face must show the item name, an optional badge, a whole-dollar price with no "$" glyph, and a condition+meta row in that order');
 assert.ok(!/<div class="wrap-front">[\s\S]{0,20}label-store/.test(dashboard), 'the wrap front face must not carry the store name header the standard layout uses');
 assert.match(dashboard, /<div class="wrap-back">\s*\n\s*<div class="wrap-shopname">THE MANA POCKET<\/div>\s*\n\s*\$\{barcodeImg\}\s*\n\s*<\/div>/, 'the back face must carry only the shop name as plain text and the scan code -- no image logo, no separate SKU text (the SKU lives on the front face now)');
 assert.ok(!/wrap-logo/.test(dashboard), 'the illustrated logo image class must be fully removed -- it was confirmed unreadable on a real printed label');
@@ -80,7 +80,7 @@ assert.match(dashboard, /\.label\.wrap \{ flex-direction:row !important; padding
 // black; this brings the browser-print path in line with it.
 assert.match(dashboard, /border-right:2px dashed #000;/, 'a solid-black dashed fold line must separate the front and back faces so it actually survives a monochrome print, not a gray line that fades away');
 assert.ok(!/border-right:1px dashed #999;/.test(dashboard.slice(dashboard.indexOf('const wrapStyle'), dashboard.indexOf('w.document.write'))), 'the wrap fold line must not still be the old barely-visible gray');
-assert.match(dashboard, /\.label\.wrap \.wrap-front \{ width:44%; padding:10px 8px 5px; justify-content:flex-start; gap:5px;/, 'the front face must have extra top padding so the item name isn\'t flush against the label edge, and a bit more gap between stacked elements to leave room for longer names');
+assert.match(dashboard, /\.label\.wrap \.wrap-front \{ width:44%; padding:10px 8px 5px; justify-content:flex-start; gap:3px;/, 'the front face must have extra top padding so the item name isn\'t flush against the label edge, and a bit more gap between stacked elements to leave room for longer names');
 // Padding/gap tightened (was 12px 6px 5px / gap:8px) -- store report: the
 // old, more generous spacing left less real room for the QR than the fixed
 // imgHeight guess assumed, which is exactly what caused a real print to
@@ -107,8 +107,8 @@ assert.match(dashboard, /\.label\.wrap \.wrap-back \{ width:56%; padding:6px 4px
 assert.match(dashboard, /\.wrap-shopname \{ font-size:8px; font-weight:700; letter-spacing:\.01em; text-align:center; white-space:nowrap; \}/, 'the shop name must use the same real bold weight as every other element on the label, sized and spaced to fit on one line, with nowrap as the actual guarantee it never wraps to two');
 // 3 lines now (was 2, max-height 18px) so a long item name has more room
 // before truncating.
-assert.match(dashboard, /\.wrap-name \{ font-size:8px; font-weight:700; line-height:1\.1; max-height:27px; overflow:hidden; text-align:center; \}/, 'the item name must allow up to 3 lines before truncating, not just 2');
-assert.match(dashboard, /\.wrap-badge \{ font-size:6px; font-weight:700; text-transform:uppercase; text-align:center; \}/, 'the badge (whichever one applies) must be bold -- an unbolded pass printed noticeably less crisp than every other element on a real thermal print');
+assert.match(dashboard, /\.wrap-name \{ font-size:8px; font-weight:700; line-height:1\.1; max-height:27px; overflow:hidden; text-align:center; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:3; flex-shrink:0; \}/, 'the item name must allow up to 3 lines before truncating, not just 2');
+assert.match(dashboard, /\.wrap-badge \{ font-size:7px; font-weight:700; line-height:1\.1; max-height:16px; overflow:hidden; text-transform:uppercase; text-align:center; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; flex-shrink:0; \}/, 'the badge (whichever one applies) must be bold -- an unbolded pass printed noticeably less crisp than every other element on a real thermal print');
 assert.match(dashboard, /\.wrap-bottom-row \{ width:100%; display:flex; justify-content:space-between; align-items:baseline; gap:4px; \}/, 'condition and SKU must share one full-width row so SKU doesn\'t need its own extra vertical space');
 assert.match(dashboard, /\.wrap-condition \{ font-size:11px; font-weight:700; text-transform:uppercase; flex-shrink:0; \}/, 'the condition must use the same real bold weight as every other element on the label, not a synthesized 800, and must never shrink -- it\'s short and always needs to render fully');
 // The SKU/UPC that used to render here is gone -- store report: nobody
@@ -138,7 +138,7 @@ assert.ok(!/WRAP_LOGO_SRC/.test(dashboard), 'the illustrated logo image asset mu
 assert.ok(!/loadWrapLogoImage/.test(dashboard), 'the logo-preload helper must be fully removed along with the image-based logo');
 assert.ok(!/wrapLogoImg/.test(dashboard), 'no wrap-logo-image variable may remain in the download path');
 assert.match(dashboard, /const nameFont = Math\.round\(h \* 0\.085\);/, 'the item name must be drawn a bit bigger than before');
-assert.match(dashboard, /if\(b\.badge\)\{\s*\n(?:[^\n]*\n)*?\s*let badgeText = b\.badge\.toUpperCase\(\), badgeSize = Math\.round\(h \* 0\.06\);\s*\n\s*tctx\.font = `bold \$\{badgeSize\}px \$\{LABEL_FONT_STACK\}`;[\s\S]{0,500}?tctx\.fillText\(badgeText, halfW \/ 2, h \* 0\.24\);\s*\n\s*\}/, 'the front face must draw whichever single badge applies, and it must be bold -- an unbolded pass printed noticeably less crisp than everything else on a real thermal print');
+assert.match(dashboard, /if\(b\.badge\)\{\s*\n(?:[^\n]*\n)*?\s*let badgeSize = Math\.round\(h \* 0\.06\);\s*\n\s*tctx\.font = `bold \$\{badgeSize\}px \$\{LABEL_FONT_STACK\}`;[\s\S]{0,1200}?fitted\.lines\.forEach\(\(l, i\) => tctx\.fillText\(l, halfW \/ 2, badgeY \+ i \* Math\.round\(badgeSize \* 1\.15\)\)\);/, 'the front face must draw whichever single badge applies, and it must be bold -- an unbolded pass printed noticeably less crisp than everything else on a real thermal print');
 // The device's real system UI font (San Francisco/Segoe UI/Roboto) instead
 // of a bare "sans-serif" generic -- these are specifically hinted/optimized
 // for small-size legibility. Shared between this canvas path and the
@@ -151,14 +151,9 @@ assert.match(dashboard, /const priceBigFont = Math\.round\(h \* 0\.33\);/, 'the 
 assert.match(dashboard, /tctx\.textAlign = 'center'; tctx\.textBaseline = 'alphabetic';/, 'the digits must be centered around the front face\'s horizontal center, not right-aligned toward the fold line');
 assert.match(dashboard, /tctx\.fillText\(priceDigits, halfW \/ 2, priceBaseline\);/, 'the whole-dollar digits must be drawn centered at the big font size');
 assert.match(dashboard, /tctx\.textAlign = 'left'; tctx\.textBaseline = 'top';\s*\n\s*tctx\.font = `bold \$\{Math\.round\(h \* 0\.13\)\}px \$\{LABEL_FONT_STACK\}`;\s*\n\s*if\(b\.condition\) tctx\.fillText\(String\(b\.condition\)\.toUpperCase\(\), padX, h \* 0\.8\);/, 'the condition must be drawn at the left edge of the front face, not centered');
-// The SKU is drawn small, right-aligned toward the fold line, alongside
-// condition -- guarded on b.sku so a batch entry with no resolvable SKU/ID
-// doesn't draw an empty string. Left conservatively at a fixed position
-// rather than reflowing with a longer name, unlike the CSS path's flexbox
-// layout -- this canvas path has no auto-reflow safety net, so it keeps the
-// name at 2 lines (unchanged) to avoid any risk of the badge/price
-// colliding with a 3rd name line at fixed y-coordinates.
-assert.match(dashboard, /if\(b\.sku\)\{\s*\n\s*tctx\.textAlign = 'right';\s*\n\s*tctx\.font = `\$\{Math\.round\(h \* 0\.045\)\}px \$\{LABEL_FONT_STACK\}`;\s*\n\s*tctx\.fillText\(b\.sku, halfW - padX, h \* 0\.84\);\s*\n\s*tctx\.textAlign = 'left';\s*\n\s*\}/, 'the SKU must be drawn on the front face next to condition -- some pricing sources give a generic product name shared across many items, and the SKU is the only thing that reliably tells two such labels apart');
+// No SKU digits on the front face (store ask: "I don't care about the bar
+// code numbers on any label") -- the QR on the back already carries it.
+assert.ok(!/tctx\.fillText\(b\.sku/.test(dashboard), 'the SKU digits must not be drawn on the label');
 assert.match(dashboard, /const shopFont = Math\.round\(h \* 0\.065\), shopPad = h \* 0\.032;/, 'the shop name must be drawn a bit bigger than before, with an explicit symmetric padding value');
 assert.match(dashboard, /tctx\.fillText\('THE MANA POCKET', halfW \+ halfW \/ 2, shopPad\);/, 'the back face shop name must be drawn as plain bold text, not an illustrated logo image, using the symmetric top padding');
 assert.match(dashboard, /const logoBottom = shopPad \+ shopFont \* 1\.2 \+ shopPad;/, 'the code region must start below a band with equal padding above and below the shop-name text, not eyeballed constants');

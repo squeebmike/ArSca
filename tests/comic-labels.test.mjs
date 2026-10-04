@@ -29,6 +29,13 @@ assert.equal(ctx.isComic({ category:'Pokemon TCG' }), false);
 // Wiring: comics use these parts, other items are unchanged; the thermal
 // (canvas) label fits a long badge and shows publisher · year instead of condition.
 assert.match(d, /return isComicLabelItem\(item\) \? \{ \.\.\.entry, \.\.\.comicLabelParts\(item\) \} : entry;/);
-assert.match(d, /while\(tctx\.measureText\(badgeText\)\.width > maxBadge && badgeSize > Math\.round\(h \* 0\.042\)\)/);
+assert.match(d, /while\(wrapCanvasText\(tctx, badgeText, 0, 0, maxBadge, 0, 2, true\)\.cut && badgeSize > Math\.round\(h \* 0\.05\)\)/, 'a long badge wraps to 2 lines and never shrinks below a readable size');
+assert.match(d, /const priceBaseline = h \* \(nameLines \+ badgeLines > 3 \? 0\.39 : 0\.34\) \+ priceBigFont \* 0\.78;/, 'the price drops to clear a 2-line name plus a 2-line badge');
 assert.match(d, /if\(b\.condition\) tctx\.fillText\(String\(b\.condition\)\.toUpperCase\(\), padX, h \* 0\.8\);\n\s*else if\(b\.meta\)\{/);
+// The browser-print label keeps "#issue" on a long name too.
+const kn = d.match(/function labelNameKeepNumber\(name, max\)\{[\s\S]*?\n\}/)[0];
+const keep = new Function(kn + ';return labelNameKeepNumber;')();
+assert.equal(keep('Spider-Woman #1', 24), 'Spider-Woman #1');
+assert.equal(keep('SABRINA THE TEENAGE WITCH #1', 24), 'SABRINA THE TEENAGE… #1');
+assert.equal(keep('A very long trading card name without a number', 24), 'A very long trading card name without a number', 'unnumbered names are left to the CSS clamp');
 console.log('Comic label checks passed');
