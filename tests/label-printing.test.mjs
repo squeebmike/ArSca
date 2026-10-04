@@ -71,6 +71,7 @@ console.log('labelBarcodeValue functional checks passed');
      ${badgeSrc}
      ${metaSrc}
      ${entrySrc}
+     function isComicLabelItem(){ return false; }
      ${addSrc}
      ${removeSrc}
      ${qtySrc}

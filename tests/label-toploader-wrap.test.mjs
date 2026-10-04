@@ -138,7 +138,7 @@ assert.ok(!/WRAP_LOGO_SRC/.test(dashboard), 'the illustrated logo image asset mu
 assert.ok(!/loadWrapLogoImage/.test(dashboard), 'the logo-preload helper must be fully removed along with the image-based logo');
 assert.ok(!/wrapLogoImg/.test(dashboard), 'no wrap-logo-image variable may remain in the download path');
 assert.match(dashboard, /const nameFont = Math\.round\(h \* 0\.085\);/, 'the item name must be drawn a bit bigger than before');
-assert.match(dashboard, /if\(b\.badge\)\{\s*\n(?:[^\n]*\n)*?\s*tctx\.font = `bold \$\{Math\.round\(h \* 0\.06\)\}px \$\{LABEL_FONT_STACK\}`;\s*\n\s*tctx\.fillText\(b\.badge\.toUpperCase\(\), halfW \/ 2, h \* 0\.24\);\s*\n\s*\}/, 'the front face must draw whichever single badge applies, and it must be bold -- an unbolded pass printed noticeably less crisp than everything else on a real thermal print');
+assert.match(dashboard, /if\(b\.badge\)\{\s*\n(?:[^\n]*\n)*?\s*let badgeText = b\.badge\.toUpperCase\(\), badgeSize = Math\.round\(h \* 0\.06\);\s*\n\s*tctx\.font = `bold \$\{badgeSize\}px \$\{LABEL_FONT_STACK\}`;[\s\S]{0,500}?tctx\.fillText\(badgeText, halfW \/ 2, h \* 0\.24\);\s*\n\s*\}/, 'the front face must draw whichever single badge applies, and it must be bold -- an unbolded pass printed noticeably less crisp than everything else on a real thermal print');
 // The device's real system UI font (San Francisco/Segoe UI/Roboto) instead
 // of a bare "sans-serif" generic -- these are specifically hinted/optimized
 // for small-size legibility. Shared between this canvas path and the
@@ -150,7 +150,7 @@ assert.match(dashboard, /const priceDigits = fdLabelPrice\$\(b\.price\)\.slice\(
 assert.match(dashboard, /const priceBigFont = Math\.round\(h \* 0\.33\);/, 'the price must be sized up slightly from before, at one single big font size now that there\'s no smaller $ sign to size separately');
 assert.match(dashboard, /tctx\.textAlign = 'center'; tctx\.textBaseline = 'alphabetic';/, 'the digits must be centered around the front face\'s horizontal center, not right-aligned toward the fold line');
 assert.match(dashboard, /tctx\.fillText\(priceDigits, halfW \/ 2, priceBaseline\);/, 'the whole-dollar digits must be drawn centered at the big font size');
-assert.match(dashboard, /tctx\.textAlign = 'left'; tctx\.textBaseline = 'top';\s*\n\s*tctx\.font = `bold \$\{Math\.round\(h \* 0\.13\)\}px \$\{LABEL_FONT_STACK\}`;\s*\n\s*tctx\.fillText\(String\(b\.condition \|\| ''\)\.toUpperCase\(\), padX, h \* 0\.8\);/, 'the condition must be drawn at the left edge of the front face, not centered');
+assert.match(dashboard, /tctx\.textAlign = 'left'; tctx\.textBaseline = 'top';\s*\n\s*tctx\.font = `bold \$\{Math\.round\(h \* 0\.13\)\}px \$\{LABEL_FONT_STACK\}`;\s*\n\s*if\(b\.condition\) tctx\.fillText\(String\(b\.condition\)\.toUpperCase\(\), padX, h \* 0\.8\);/, 'the condition must be drawn at the left edge of the front face, not centered');
 // The SKU is drawn small, right-aligned toward the fold line, alongside
 // condition -- guarded on b.sku so a batch entry with no resolvable SKU/ID
 // doesn't draw an empty string. Left conservatively at a fixed position
