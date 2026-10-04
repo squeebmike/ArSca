@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.10.04.3-costs-images-links">
+<meta name="version" content="2026.10.04.4-comic-labels">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1658,23 +1658,23 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.10.04.3-costs-images-links" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.10.04.3-costs-images-links" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.10.04.3-costs-images-links" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.10.04.3-costs-images-links" defer></script>
-<script src="scripts/backlist-dashboard.js?v=2026.10.04.3-costs-images-links" defer></script>
-<script src="scripts/database-viewer.js?v=2026.10.04.3-costs-images-links" defer></script>
-<script src="scripts/card-intake-dashboard.js?v=2026.10.04.3-costs-images-links" defer></script>
-<script src="scripts/mana-pocket-task-library.js?v=2026.10.04.3-costs-images-links" defer></script>
-<script src="scripts/daily-tasks-dashboard.js?v=2026.10.04.3-costs-images-links" defer></script>
-<script src="scripts/expenses.js?v=2026.10.04.3-costs-images-links" defer></script>
-<script src="scripts/whatnot-bridge.js?v=2026.10.04.3-costs-images-links" defer></script>
+<script src="scripts/query-routing.js?v=2026.10.04.4-comic-labels" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.10.04.4-comic-labels" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.10.04.4-comic-labels" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.10.04.4-comic-labels" defer></script>
+<script src="scripts/backlist-dashboard.js?v=2026.10.04.4-comic-labels" defer></script>
+<script src="scripts/database-viewer.js?v=2026.10.04.4-comic-labels" defer></script>
+<script src="scripts/card-intake-dashboard.js?v=2026.10.04.4-comic-labels" defer></script>
+<script src="scripts/mana-pocket-task-library.js?v=2026.10.04.4-comic-labels" defer></script>
+<script src="scripts/daily-tasks-dashboard.js?v=2026.10.04.4-comic-labels" defer></script>
+<script src="scripts/expenses.js?v=2026.10.04.4-comic-labels" defer></script>
+<script src="scripts/whatnot-bridge.js?v=2026.10.04.4-comic-labels" defer></script>
 <script src="scripts/research-loupe.js?v=a7de4ffe90" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.10.04.3-costs-images-links" defer></script>
-<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.10.04.3-costs-images-links" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.10.04.3-costs-images-links" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.10.04.3-costs-images-links" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.10.04.3-costs-images-links" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.10.04.4-comic-labels" defer></script>
+<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.10.04.4-comic-labels" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.10.04.4-comic-labels" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.10.04.4-comic-labels" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.10.04.4-comic-labels" defer></script>
 </head>
 <body>
 
@@ -1726,7 +1726,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
 <div class="dsb-chip" id="dsb-tasks" title="Today's Roles &amp; Tasks — click to jump to Tasks tab" style="cursor:pointer;display:none" onclick="switchTab('tasks')">✅ <span>TASKS:</span> <b id="dsb-tasks-val">—</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.10.04.3-costs-images-links</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.10.04.4-comic-labels</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3913,7 +3913,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.10.04.3-costs-images-links';
+const APP_VERSION = '2026.10.04.4-comic-labels';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -45444,7 +45444,61 @@ function labelBadgeText(item){
 function labelMetaText(item){ return [item.set, item.year].filter(Boolean).join(' · '); }
 
 function labelBatchEntryFromItem(item){
-  return { id:item.id, name:item.name, condition:item.condition||'', sku:labelBarcodeValue(item), price:inventoryListPrice ? inventoryListPrice(item) : (item.salePrice || item.market || 0), badge:labelBadgeText(item), meta:labelMetaText(item), qty:1 };
+  const entry = { id:item.id, name:item.name, condition:item.condition||'', sku:labelBarcodeValue(item), price:inventoryListPrice ? inventoryListPrice(item) : (item.salePrice || item.market || 0), badge:labelBadgeText(item), meta:labelMetaText(item), qty:1 };
+  return isComicLabelItem(item) ? { ...entry, ...comicLabelParts(item) } : entry;
+}
+
+// ── Comic labels ──
+// Store ask: on a comic's label, what matters is the book, its ratio and
+// its cover artist or variant name -- not condition. A received FOC book's
+// name is the whole solicitation ("SPIDER-WOMAN #1 -- COVER F MARK BROOKS
+// VIRGIN 1:100 VARIANT"), so on a 2x1 the part that tells covers apart got
+// cut off. Comics print the book (series #issue), then one line with the
+// ratio, cover letter and artist/variant name, and publisher · year below.
+function isComicLabelItem(item={}){
+  const key = typeof qplCategoryKey === 'function' ? qplCategoryKey(item.category || item.raw?.category || '') : '';
+  return key === 'comic' || /\bcomic/i.test(String(item.category || item.raw?.category || ''));
+}
+function comicLabelParts(item={}){
+  const raw = item.raw || {}, detail = raw.focComicDetail || item.focComicDetail || {};
+  // Some distributor files put the placeholder "Variant Title" where the
+  // variant label belongs; it says nothing, so it's dropped.
+  const fullName = String(item.name || raw.name || '').replace(/\s+--\s+variant title\s*$/i, '').trim();
+  const variantText = String(item.variant || raw.variant || '').trim();
+  const text = [fullName, variantText].join(' ');
+  const series = String(item.series || raw.series || detail.seriesName || '').trim();
+  const issue = String(item.issue || raw.issue || detail.number || '').replace(/^#/, '').trim();
+  // The book: series #issue, else the name up to its cover/variant part.
+  let book = series && issue ? series + ' #' + issue : fullName.split(/\s+--\s+/)[0];
+  book = book.replace(/\s+(?:COVER|CVR)\s+[A-Z]{1,2}\b.*$/i, '').replace(/\s+(?:\(?(?:INC|RI)\b.*|VARIANT.*|VAR\b.*)$/i, '').trim() || fullName;
+  // Ratio: 1:25 / INC 1:25 / "RI (10)".
+  const ratioMatch = text.match(/\b1\s*:\s*(\d{1,4})\b/) || text.match(/\bRI\s*\(?\s*(\d{1,4})\s*\)?/i);
+  const ratio = ratioMatch ? '1:' + ratioMatch[1] : '';
+  const letter = (text.match(/\b(?:COVER|CVR)\s+([A-Z]{1,2})\b/i) || [])[1] || '';
+  const artist = (Array.isArray(detail.coverArtists) && detail.coverArtists[0]) || String(item.cover_artist || raw.cover_artist || raw.coverArtist || '').trim();
+  // What's left of the variant text once the cover letter, ratio and the
+  // words "variant/cover/incentive" are gone: the artist and/or the variant
+  // name ("MARK BROOKS VIRGIN", "MIDNIGHT HORROR HOMAGE", "KANO FOIL").
+  const esc = v => String(v).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  let source = variantText && !/^variant title$/i.test(variantText) ? variantText : (fullName.split(/\s+--\s+/)[1] || fullName);
+  // Drop the book itself from the front, however it was written.
+  [series, fullName.split(/\s+--\s+/)[0].replace(/\s+(?:COVER|CVR)\s+[A-Z]{1,2}\b.*$/i, '').replace(/\s+(?:\(?(?:INC|RI)\b.*|VARIANT.*|VAR\b.*)$/i, '')].filter(Boolean).forEach(prefix => { source = source.replace(new RegExp('^\\s*' + esc(prefix) + '\\s*', 'i'), ''); });
+  source = source.replace(/^#?\s*\d+[A-Z]?\b\s*/i, '');
+  let rest = String(source)
+    .replace(/\b(?:COVER|CVR)\s+[A-Z]{1,2}\b/gi, ' ').replace(/\b(?:INC(?:ENTIVE)?\s*)?1\s*:\s*\d{1,4}\b/gi, ' ').replace(/\bRI\s*\(?\s*\d{1,4}\s*\)?/gi, ' ')
+    .replace(/\b(?:VARIANT|VAR|CVR|COVER|EDITION)\b/gi, ' ').replace(/[()]/g, ' ').replace(/\s+/g, ' ').trim();
+  rest = rest.replace(/^variant title$/i, '').trim();
+  if(artist && !new RegExp(esc(artist.split(/\s+/).pop()), 'i').test(rest)) rest = (artist + ' ' + rest).trim();
+  const cover = [letter ? 'CVR ' + letter.toUpperCase() : '', rest].filter(Boolean).join(' ');
+  // Badge: signed / numbered / key still lead when present, then the ratio,
+  // then the cover. Condition is left off comics.
+  const lead = item.is_signed ? 'SIGNED' + (item.signed_by ? ' ' + item.signed_by : '')
+    : item.serial_number ? (String(item.serial_number).trim().startsWith('/') ? String(item.serial_number).trim() : '#' + String(item.serial_number).trim())
+    : item.is_key ? 'KEY' : '';
+  const badge = [lead, ratio, cover].filter(Boolean).join(' · ');
+  const publisher = String(item.publisher || raw.publisher || detail.publisher || '').trim();
+  const year = String(item.year || raw.year || String(detail.storeDate || '').slice(0, 4) || '').trim();
+  return { name:book, badge, meta:[publisher, year].filter(Boolean).join(' · '), condition:'' };
 }
 
 function openLabelPrintModal(seedItemId, presetBatch){
@@ -46072,8 +46126,14 @@ async function downloadInventoryLabelPngs(){
         // Bold -- thin/regular weight is the one thing on this label that
         // isn't already bold, and it printed noticeably less crisp than
         // everything else on a real thermal print.
-        tctx.font = `bold ${Math.round(h * 0.06)}px ${LABEL_FONT_STACK}`;
-        tctx.fillText(b.badge.toUpperCase(), halfW / 2, h * 0.24);
+        // A comic's badge (ratio · cover · artist) can be long: shrink it to
+        // fit the face, and cut it with an ellipsis only past the smallest size.
+        const maxBadge = halfW - padX * 2;
+        let badgeText = b.badge.toUpperCase(), badgeSize = Math.round(h * 0.06);
+        tctx.font = `bold ${badgeSize}px ${LABEL_FONT_STACK}`;
+        while(tctx.measureText(badgeText).width > maxBadge && badgeSize > Math.round(h * 0.042)){ badgeSize--; tctx.font = `bold ${badgeSize}px ${LABEL_FONT_STACK}`; }
+        while(tctx.measureText(badgeText).width > maxBadge && badgeText.length > 4) badgeText = badgeText.slice(0, -2).trim() + '…';
+        tctx.fillText(badgeText, halfW / 2, h * 0.24);
       }
       // Just the digits, no "$" glyph -- centered under the fold line as one
       // unit. Font weight is "bold" (700), not "900" -- confirmed against a
@@ -46093,7 +46153,12 @@ async function downloadInventoryLabelPngs(){
       tctx.fillText(priceDigits, halfW / 2, priceBaseline);
       tctx.textAlign = 'left'; tctx.textBaseline = 'top';
       tctx.font = `bold ${Math.round(h * 0.13)}px ${LABEL_FONT_STACK}`;
-      tctx.fillText(String(b.condition || '').toUpperCase(), padX, h * 0.8);
+      if(b.condition) tctx.fillText(String(b.condition).toUpperCase(), padX, h * 0.8);
+      else if(b.meta){
+        // Comics carry no condition: publisher · year sits there instead.
+        tctx.font = `bold ${Math.round(h * 0.06)}px ${LABEL_FONT_STACK}`;
+        tctx.fillText(String(b.meta).toUpperCase().slice(0, 28), padX, h * 0.84);
+      }
       // Small SKU alongside condition -- some pricing sources (PriceCharting's
       // own Secret Lair Drop entries, for example) only give a generic
       // product name shared across many different physical items, so the
@@ -49048,7 +49113,7 @@ async function toppsLoadParallels(cardId){
   window.__arscaCloseModal = closeModal;
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.10.04.3-costs-images-links" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.10.04.4-comic-labels" defer></script>
 </body>
 </html>
 
