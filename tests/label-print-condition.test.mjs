@@ -8,16 +8,14 @@ assert.match(dashboard, /function labelBatchEntryFromItem\(item\)\{\s*\n\s*const
 assert.match(dashboard, /if\(item\) labelPrintBatch\.push\(labelBatchEntryFromItem\(item\)\);/, 'openLabelPrintModal must add batch entries via the shared builder');
 assert.match(dashboard, /else labelPrintBatch\.push\(labelBatchEntryFromItem\(item\)\);/, 'addToLabelPrintBatch must add batch entries via the shared builder too');
 
-// ── Contract: the printed label shows condition alongside the SKU ──
-assert.match(dashboard, /<span class="label-sku">\$\{escHtml\(b\.sku \|\| ''\)\}\$\{b\.condition\?' · '\+escHtml\(b\.condition\):''\}<\/span>/, 'printInventoryLabels must render condition on the printed label when present');
+// ── Contract: the printed label shows condition (or a comic's publisher · year) -- no SKU digits (store ask) ──
+assert.match(dashboard, /<span class="label-sku">\$\{escHtml\(b\.condition \|\| b\.meta \|\| ''\)\}<\/span>/, 'printInventoryLabels must render condition on the printed label when present');
 
 console.log('Label print condition contract checks passed');
 
-// ── Functional: the label bottom-row text builds correctly with and without a condition ──
-function labelBottomText(sku, condition){
-  return `${sku || ''}${condition ? ' · ' + condition : ''}`;
-}
-assert.equal(labelBottomText('WO-1001', 'NM'), 'WO-1001 · NM', 'a graded/conditioned item must show SKU and condition together');
-assert.equal(labelBottomText('WO-1002', ''), 'WO-1002', 'an item with no condition set must not show a stray separator');
+// ── Functional: the label bottom-row text is the condition alone ──
+const labelBottomText = b => String(b.condition || b.meta || '');
+assert.equal(labelBottomText({ sku:'WO-1001', condition:'NM' }), 'NM', 'no SKU digits on the label -- the QR carries it');
+assert.equal(labelBottomText({ sku:'WO-1002', condition:'' }), '', 'an item with no condition set shows nothing');
 
 console.log('Label print condition functional checks passed');

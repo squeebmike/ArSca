@@ -10,7 +10,7 @@ const dashboard = fs.readFileSync('dashboard.html', 'utf8');
 // nothing. Confirmed against a real phone + Bluetooth thermal printer. ──
 assert.match(dashboard, /const LABEL_PNG_DPI = 203;/, 'must define the print-head DPI used to size the downloaded PNG in real dots');
 assert.match(dashboard, /async function downloadInventoryLabelPngs\(\)\{/, 'missing downloadInventoryLabelPngs');
-assert.match(dashboard, /function wrapCanvasText\(ctx, text, x, y, maxWidth, lineHeight, maxLines\)\{/, 'missing wrapCanvasText helper (canvas text has no built-in wrapping)');
+assert.match(dashboard, /function wrapCanvasText\(ctx, text, x, y, maxWidth, lineHeight, maxLines, measureOnly\)\{/, 'missing wrapCanvasText helper (canvas text has no built-in wrapping)');
 
 // ── Contract: the button is wired up and gives feedback the same way the
 // existing PRINT button does (disable + relabel during generation) ──
@@ -50,7 +50,7 @@ console.log('Label PNG download contract checks passed');
 // and the physical label size (in real dots at LABEL_PNG_DPI) matches the same
 // roll/sheet width the existing print path already uses. ──
 {
-  const src = dashboard.match(/function wrapCanvasText\(ctx, text, x, y, maxWidth, lineHeight, maxLines\)\{[\s\S]*?\n\}/)?.[0];
+  const src = dashboard.match(/function wrapCanvasText\(ctx, text, x, y, maxWidth, lineHeight, maxLines, measureOnly\)\{[\s\S]*?\n\}/)?.[0];
   assert.ok(src, 'could not extract wrapCanvasText for functional testing');
   const { wrapCanvasText } = new Function(`${src}\nreturn { wrapCanvasText };`)();
 
@@ -72,6 +72,17 @@ console.log('Label PNG download contract checks passed');
   const ctx2 = fakeCtx(10);
   wrapCanvasText(ctx2, 'Short', 5, 100, 90, 12, 2);
   assert.equal(ctx2.calls.length, 1, 'a name that fits on one line must not produce a stray empty second line');
+
+  // A long name keeps its trailing number: the series is shortened instead.
+  const ctx3 = fakeCtx(10);
+  wrapCanvasText(ctx3, 'Amazing Fantastic Spectacular Spider-Man #300', 5, 100, 90, 12, 2);
+  assert.equal(ctx3.calls.length, 2);
+  assert.match(ctx3.calls[1].text, /… #300$/, 'the issue number must survive a name that runs out of room');
+  const ctx4 = fakeCtx(10);
+  const measured = wrapCanvasText(ctx4, 'Charizard VMAX Rainbow Rare', 5, 100, 90, 12, 2, true);
+  assert.equal(ctx4.calls.length, 0, 'measureOnly must not draw');
+  assert.equal(measured.cut, true);
+  assert.equal(measured.lines.length, 2);
 }
 
 const LABEL_PNG_DPI = 203;
