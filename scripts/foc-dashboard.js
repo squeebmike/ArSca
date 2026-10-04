@@ -1948,7 +1948,8 @@ async function confirmSlipReceive(){
   var total=ids.reduce(function(a,id){return a+byCycle[id].reduce(function(b,x){return b+x.receivedQty;},0);},0);
   if(!confirm('Receive '+total+' cop'+(total===1?'y':'ies')+' into inventory'+(ids.length>1?' across '+ids.length+' FOC weeks':'')+'?'))return;
   var status=document.getElementById('foc-slip-receive-status');
-  var created=0,flagged=[],failed=[],done=[];
+  var created=0,flagged=[],failed=[],done=[],spent=0;
+  var coverBySku={};s.lines.forEach(function(l){if(l.cover)coverBySku[l.cover.skuId]=l.cover;});
   for(var i=0;i<ids.length;i++){
     if(status)status.textContent='Receiving FOC week '+(i+1)+' of '+ids.length+'…';
     try{
@@ -1958,10 +1959,23 @@ async function confirmSlipReceive(){
       try{await api('/foc/ebay/convert-to-instock',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({storeId:getActiveStoreId(),cycleId:ids[i]})});}catch(e){}
       // Received lines drop off this list, so a retry only re-sends what failed.
       s.lines.forEach(function(l){if(l.cover&&l.cover.cycleId===ids[i]&&slipIncluded(l))l.cover.receivedAt=new Date().toISOString();});
+      // What these copies cost: the invoice's net price, else 50% of cover.
+      byCycle[ids[i]].forEach(function(x){var unit=Number(x.unitCost)>0?Number(x.unitCost):Math.round(Number((coverBySku[x.skuId]||{}).coverPrice||0)*50)/100;spent+=unit*x.receivedQty;});
     }catch(e){failed.push(e.message);}
   }
   if(status)status.textContent='';
   toast_dash(created+' cop'+(created===1?'y':'ies')+' added to inventory'+(failed.length?' · '+failed.length+' FOC week(s) failed':''));
+  // The shipment is money spent on stock: record it as an inventory
+  // purchase (Sales -> EXPENSES & CASH FLOW), added to the same invoice's
+  // entry if part of it was received before.
+  spent=Math.round(spent*100)/100;
+  if(spent>0&&typeof window.addStoreInventoryPurchase==='function'){
+    try{
+      var inv=String(s.invoice||'').trim();
+      var r=await window.addStoreInventoryPurchase({amount:spent,key:inv?'invoice '+inv:'',note:(inv?'PRH invoice '+inv:'Distributor shipment')+' · packing slip',category:'Comics (distributor)'});
+      if(r&&r.ok)toast_dash('Inventory purchase recorded: $'+spent.toFixed(2)+(r.updated?' (added to invoice '+inv+', now $'+Number(r.amount).toFixed(2)+')':''));
+    }catch(e){}
+  }
   if(flagged.length)alert(flagged.join('\n'));
   if(failed.length){alert('Some FOC weeks did not receive:\n\n'+failed.join('\n')+'\n\nThe rest are in. Press CONFIRM again to retry only what failed.');s.picks={};renderSlip();return;}
   if(typeof logOpsEvent==='function')logOpsEvent('foc_slip_received','Received '+created+' copies from a packing slip',{invoice:s.invoice,weeks:ids.length,copies:total});

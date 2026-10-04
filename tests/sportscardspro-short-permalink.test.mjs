@@ -24,7 +24,7 @@ assert.ok(fnStart !== -1, 'the /pricing/sportscardspro/resolve-url route must ex
 
 assert.match(fnBody, /const slugMatch = parsed\.pathname\.match\(\/\^\\\/game\\\/\(\[\^\/\]\+\)\\\/\(\[\^\/\]\+\)\/\);/, 'the long slug form (.../game/<console>/<product>) must still be recognized -- the 100+ existing saved links in this shape must keep working');
 assert.match(fnBody, /const shortIdMatch = !slugMatch \? parsed\.pathname\.match\(\/\^\\\/game\\\/\(\\d\+\)\\\/\?\$\/\) : null;/, 'the short permalink form (.../game/<numeric-id>, no slug) must be recognized as its own valid case');
-assert.match(fnBody, /if \(!slugMatch && !shortIdMatch\) return json/, 'the 400 must only fire when NEITHER shape matched');
+assert.match(fnBody, /if \(!slugMatch && !shortIdMatch\) \{[\s\S]{0,300}?return json/, 'the 400 must only fire when NEITHER shape matched');
 
 console.log('SportsCardsPro short-permalink contract checks passed');
 
