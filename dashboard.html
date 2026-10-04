@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.10.04.2-expenses-cash-flow">
+<meta name="version" content="2026.10.04.3-costs-images-links">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1658,23 +1658,23 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.10.04.2-expenses-cash-flow" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.10.04.2-expenses-cash-flow" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.10.04.2-expenses-cash-flow" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.10.04.2-expenses-cash-flow" defer></script>
-<script src="scripts/backlist-dashboard.js?v=2026.10.04.2-expenses-cash-flow" defer></script>
-<script src="scripts/database-viewer.js?v=2026.10.04.2-expenses-cash-flow" defer></script>
-<script src="scripts/card-intake-dashboard.js?v=2026.10.04.2-expenses-cash-flow" defer></script>
-<script src="scripts/mana-pocket-task-library.js?v=2026.10.04.2-expenses-cash-flow" defer></script>
-<script src="scripts/daily-tasks-dashboard.js?v=2026.10.04.2-expenses-cash-flow" defer></script>
-<script src="scripts/expenses.js?v=2026.10.04.2-expenses-cash-flow" defer></script>
-<script src="scripts/whatnot-bridge.js?v=2026.10.04.2-expenses-cash-flow" defer></script>
+<script src="scripts/query-routing.js?v=2026.10.04.3-costs-images-links" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.10.04.3-costs-images-links" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.10.04.3-costs-images-links" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.10.04.3-costs-images-links" defer></script>
+<script src="scripts/backlist-dashboard.js?v=2026.10.04.3-costs-images-links" defer></script>
+<script src="scripts/database-viewer.js?v=2026.10.04.3-costs-images-links" defer></script>
+<script src="scripts/card-intake-dashboard.js?v=2026.10.04.3-costs-images-links" defer></script>
+<script src="scripts/mana-pocket-task-library.js?v=2026.10.04.3-costs-images-links" defer></script>
+<script src="scripts/daily-tasks-dashboard.js?v=2026.10.04.3-costs-images-links" defer></script>
+<script src="scripts/expenses.js?v=2026.10.04.3-costs-images-links" defer></script>
+<script src="scripts/whatnot-bridge.js?v=2026.10.04.3-costs-images-links" defer></script>
 <script src="scripts/research-loupe.js?v=a7de4ffe90" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.10.04.2-expenses-cash-flow" defer></script>
-<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.10.04.2-expenses-cash-flow" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.10.04.2-expenses-cash-flow" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.10.04.2-expenses-cash-flow" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.10.04.2-expenses-cash-flow" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.10.04.3-costs-images-links" defer></script>
+<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.10.04.3-costs-images-links" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.10.04.3-costs-images-links" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.10.04.3-costs-images-links" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.10.04.3-costs-images-links" defer></script>
 </head>
 <body>
 
@@ -1726,7 +1726,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
 <div class="dsb-chip" id="dsb-tasks" title="Today's Roles &amp; Tasks — click to jump to Tasks tab" style="cursor:pointer;display:none" onclick="switchTab('tasks')">✅ <span>TASKS:</span> <b id="dsb-tasks-val">—</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.10.04.2-expenses-cash-flow</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.10.04.3-costs-images-links</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3913,7 +3913,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.10.04.2-expenses-cash-flow';
+const APP_VERSION = '2026.10.04.3-costs-images-links';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -17194,6 +17194,9 @@ function builtInDataFromItem(item, updates={}){
   [...BUILT_IN_ITEM_SIMPLE_FIELDS, ...BUILT_IN_ITEM_ALIASED_FIELDS].forEach(([field, def, type]) => {
     out[field] = mergeBuiltInSimpleField(updates, item, field, def, type);
   });
+  // No saved image at all: keep the catalog image for its product id.
+  const hasImage=[out.image,out.imageUrl,out.thumbnail,out.photoDataUrl,out.userPhoto,out.uploadedPhotoUrl,out.userPhotoBlobKey,out.cover_image_url].some(v=>String(v||'').trim())||(Array.isArray(out.images)&&out.images.length)||(Array.isArray(out.photos)&&out.photos.length);
+  if(!hasImage){const img=catalogImageFromIds({...item,...out,raw:item.raw});if(img){out.image=img;out.imageUrl=img;out.thumbnail=img;}}
   return out;
 }
 
@@ -18451,6 +18454,23 @@ function useOfflineRowImage(row, blob){
   row.imageUrl = URL.createObjectURL(blob);
 }
 
+// A catalog image from the item's product ids when no image was saved:
+// TCGplayer's product image by product id (also read from a saved
+// tcgplayer.com/product/<id> link), else Scryfall's card image for an MTG
+// card. Cards added from a pasted TCGplayer link carried the id but no
+// image, so they showed blank everywhere.
+function catalogImageFromIds(item={}){
+  const raw=item.raw||{};
+  let tcg=String(item.tcgPlayerId||item.tcgplayerId||item.tcgplayerProductId||raw.tcgPlayerId||raw.tcgplayerId||raw.tcgplayerProductId||'').trim();
+  if(!/^\d{3,9}$/.test(tcg)){
+    const link=[item.tcgPlayerUrl,item.tcgUrl,item.providerUrl,item.productUrl,raw.tcgPlayerUrl,raw.tcgUrl,raw.providerUrl,raw.productUrl].map(v=>String(v||'')).find(v=>/tcgplayer\.com\/product\/\d+/i.test(v));
+    tcg=link?link.match(/tcgplayer\.com\/product\/(\d+)/i)[1]:'';
+  }
+  if(/^\d{3,9}$/.test(tcg))return 'https://product-images.tcgplayer.com/fit-in/437x437/'+tcg+'.jpg';
+  const scry=String(item.scryfallId||raw.scryfallId||'').trim();
+  if(/^[0-9a-f-]{36}$/i.test(scry))return 'https://api.scryfall.com/cards/'+scry+'?format=image&version=normal';
+  return '';
+}
 function inventoryImageUrl(item={}){
   const raw = item.raw || {};
   const comicPhotoKey=item.userPhotoBlobKey||raw.userPhotoBlobKey||'';
@@ -18490,7 +18510,8 @@ function inventoryImageUrl(item={}){
   return durableImageUrl(item.photoDataUrl) || durableImageUrl(item.userPhoto) || durableImageUrl(item.uploadedPhotoUrl) || durableImageUrl(item.photoUrl) ||
     durableImageUrl(item.thumbnail) || durableImageUrl(item.imageUrl) || durableImageUrl(item.liveImageUrl) || durableImageUrl(item.image_url) || durableImageUrl(item.image) || durableImageUrl(item.images?.[0]) ||
     durableImageUrl(raw.photoDataUrl) || durableImageUrl(raw.userPhoto) || durableImageUrl(raw.uploadedPhotoUrl) || durableImageUrl(raw.photoUrl) ||
-    durableImageUrl(raw.thumbnail) || durableImageUrl(raw.imageUrl) || durableImageUrl(raw.liveImageUrl) || durableImageUrl(raw.image_url) || durableImageUrl(raw.image) || durableImageUrl(raw.images?.[0]) || '';
+    durableImageUrl(raw.thumbnail) || durableImageUrl(raw.imageUrl) || durableImageUrl(raw.liveImageUrl) || durableImageUrl(raw.image_url) || durableImageUrl(raw.image) || durableImageUrl(raw.images?.[0]) ||
+    catalogImageFromIds(item);
 }
 function inventoryImageSourceLabel(item={}){
   const raw = item.raw || {};
@@ -26786,6 +26807,10 @@ async function verifyInventoryTcgplayerReference(){
     variant:document.getElementById('edit-variant')?.value || baseItem.variant,
     condition:document.getElementById('edit-condition')?.value || baseItem.condition,
   };
+  // Store report: MTG (and sports/other TCG) TCGplayer links never verified
+  // -- this only ever asked Pokémon sources, so any other game's real
+  // product came back "No exact Pokémon card or sealed product found".
+  if(!/pok[eé]mon/i.test(String(formItem.category || ''))) return verifyTcgplayerProductAnyGame(id, formItem, { input, status, button });
   const preferSealed = isPokemonSealedInventorySyncItem(formItem);
   if(button) button.disabled = true;
   if(status) { status.style.color='var(--gold)'; status.textContent='Checking exact Pokémon product #' + id + '…'; }
@@ -26813,6 +26838,42 @@ async function verifyInventoryTcgplayerReference(){
       status.style.color='var(--g)';
       status.textContent='✓ #' + id + ' · ' + (match.name || match.productName || 'Exact Pokémon product') + ' · ' + (productType === 'sealed' ? 'Sealed' : 'Single') + (price ? ' · $' + price.toFixed(2) : '');
     }
+    return inventoryTcgReferenceState.verified;
+  } catch(error) {
+    inventoryTcgReferenceState.verified = null;
+    if(status) { status.style.color='var(--red)'; status.textContent='Could not verify TCGplayer #' + id + ': ' + (error.message || error); }
+    return null;
+  } finally {
+    if(button) button.disabled = false;
+  }
+}
+
+// Any game: TCGplayer's own marketplace data confirms the product exists
+// (and its NM price); an MTG card's name and set come from Scryfall, which
+// indexes cards by TCGplayer product id.
+async function verifyTcgplayerProductAnyGame(id, formItem = {}, { input, status, button } = {}){
+  if(button) button.disabled = true;
+  if(status) { status.style.color='var(--gold)'; status.textContent='Checking TCGplayer product #' + id + '…'; }
+  try {
+    const res = await fetch(WORKER + '/pricing/tcgplayer/product/' + encodeURIComponent(id), { cache:'no-store' });
+    const data = await res.json().catch(() => ({}));
+    if(!res.ok || !data.ok) throw new Error(res.status === 404 ? 'TCGplayer has no product #' + id : (data.error || 'TCGplayer lookup failed'));
+    let name = '', setName = '';
+    if(/magic|\bmtg\b/i.test(String(formItem.category || ''))) {
+      try {
+        const sf = await fetch('https://api.scryfall.com/cards/tcgplayer/' + encodeURIComponent(id));
+        if(sf.ok) { const card = await sf.json(); name = card.name || ''; setName = card.set_name || ''; }
+      } catch(e) {}
+    }
+    const points = Array.isArray(data.pricepoints) ? data.pricepoints : [];
+    const finish = String(formItem.selectedFinish || formItem.variant || '').toLowerCase();
+    const point = points.find(p => String(p.printingType || '').toLowerCase() === (/foil/.test(finish) ? 'foil' : 'normal')) || points[0] || null;
+    const price = Number(point?.marketPrice || 0) || 0;
+    const url = 'https://www.tcgplayer.com/product/' + id;
+    const sealed = /sealed|booster|bundle|box|pack|deck|collection/i.test([formItem.productType, formItem.variant, formItem.name, name].join(' '));
+    inventoryTcgReferenceState.verified = { id, url, match:{ name, productName:name, setName, imageUrl:data.imageUrl || '', tcgPlayerUrl:url, marketPrice:price }, productType:sealed ? 'sealed' : 'card' };
+    if(input && !/tcgplayer\.com\/product\//i.test(input.value || '')) input.value = url;
+    if(status) { status.style.color='var(--g)'; status.textContent='✓ TCGplayer #' + id + (name ? ' · ' + name : ' · product found') + (setName ? ' · ' + setName : '') + (price ? ' · NM market $' + price.toFixed(2) : ''); }
     return inventoryTcgReferenceState.verified;
   } catch(error) {
     inventoryTcgReferenceState.verified = null;
@@ -26915,7 +26976,12 @@ function inventoryPcReferenceChanged(){
 // Falls back to showing the saved link itself when there's no numeric id.
 function populateInventoryPcReference(item = {}){
   const id = String(item.pricechartingProductId || item.raw?.pricechartingProductId || '').trim();
-  const url = !id ? String(item.providerUrl || item.raw?.providerUrl || '').trim() : '';
+  // Only a PriceCharting/SportsCardsPro product page belongs here -- an MTG
+  // card's providerUrl is often its TCGplayer link, which this box then
+  // refused to verify ("Only pricecharting.com or sportscardspro.com...").
+  // That link lives in the TCGplayer box instead.
+  const savedUrl = String(item.providerUrl || item.raw?.providerUrl || '').trim();
+  const url = !id && /(?:pricecharting|sportscardspro)\.com\/game\//i.test(savedUrl) ? savedUrl : '';
   const displayValue = id || url;
   const input = document.getElementById('edit-pricecharting-ref');
   if(input) input.value = displayValue;
@@ -26978,6 +27044,15 @@ async function inventoryPcReferencePatch(item = {}){
   let verified = inventoryPcReferenceState.verified?.key === key ? inventoryPcReferenceState.verified : null;
   if(!verified && key !== inventoryPcReferenceState.originalId) verified = await verifyInventoryPriceChartingReference();
   if(!verified && key !== inventoryPcReferenceState.originalId) throw new Error('Verify the changed PriceCharting product before saving.');
+  // Store report: sports cards lost their PriceCharting id after an
+  // unrelated edit (Ohtani /99, Cole Young, Ichiro...): an untouched,
+  // unverified reference used to save pricechartingProductId:'' -- wiping
+  // the id price sync needs. Unchanged means keep what's saved (and an id
+  // a short /game/<id> link carries).
+  if(key === inventoryPcReferenceState.originalId && !verified?.id) {
+    const keptId = inventoryPcIdFromRaw(raw) || String(item.pricechartingProductId || item.raw?.pricechartingProductId || '').trim() || (String(key).match(/(?:pricecharting|sportscardspro)\.com\/game\/(\d+)\/?$/i)?.[1] || '');
+    return { pricechartingProductId:keptId, pricechartingProductName:item.pricechartingProductName || item.raw?.pricechartingProductName || '', providerUrl:item.providerUrl || item.raw?.providerUrl || '' };
+  }
   // Store report: pinning a sports card by its numeric PriceCharting ID
   // verified fine and showed the product name, but the actual product page
   // link was never in this patch at all -- verifyInventoryPriceCharting
@@ -42718,10 +42793,10 @@ function buyItemToInventoryUpdates(item){
     // mapBuiltInItem), but not before that reload happens -- set explicitly
     // here so the image is never dependent on which fallback chain a given
     // read path happens to have.
-    imageUrl:item.imageUrl || item.images?.[0] || '',
-    thumbnail:item.imageUrl || item.images?.[0] || '',
-    image:item.imageUrl || item.images?.[0] || '',
-    images:(item.images && item.images.length) ? item.images : (item.imageUrl ? [item.imageUrl] : []),
+    imageUrl:item.imageUrl || item.images?.[0] || catalogImageFromIds(item),
+    thumbnail:item.imageUrl || item.images?.[0] || catalogImageFromIds(item),
+    image:item.imageUrl || item.images?.[0] || catalogImageFromIds(item),
+    images:(item.images && item.images.length) ? item.images : ((item.imageUrl || catalogImageFromIds(item)) ? [item.imageUrl || catalogImageFromIds(item)] : []),
     location,
     key_notes:[
       'Buy/trade intake',
@@ -48973,7 +49048,7 @@ async function toppsLoadParallels(cardId){
   window.__arscaCloseModal = closeModal;
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.10.04.2-expenses-cash-flow" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.10.04.3-costs-images-links" defer></script>
 </body>
 </html>
 

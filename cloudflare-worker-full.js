@@ -7818,7 +7818,9 @@ async function routeRequest(request, env, ctx) {
           // Confirmed barcode matches are store memory, not session state.
           // A store's saved connecting-cover sets are a running collection
           // record, so they never expire.
-          const permanent = key.startsWith('foc_connecting');
+          // Recurring monthly costs (expense_recurring) are standing store
+          // settings, so they never expire either.
+          const permanent = key.startsWith('foc_connecting') || key.startsWith('expense_');
           const expirationTtl = key.startsWith('show_session') ? 60 * 60 * 24 * 180 : (key.startsWith('comic_') || key.startsWith('barcode_link_')) ? 60 * 60 * 24 * 365 : 604800;
           await env.LBA_KV.put(scopedKey, body, permanent ? undefined : { expirationTtl });
         } else {
@@ -8714,11 +8716,18 @@ async function routeRequest(request, env, ctx) {
       // with no need to scrape the page for it.
       const slugMatch = parsed.pathname.match(/^\/game\/([^/]+)\/([^/]+)/);
       const shortIdMatch = !slugMatch ? parsed.pathname.match(/^\/game\/(\d+)\/?$/) : null;
-      if (!slugMatch && !shortIdMatch) return json({ ok: false, error: 'That doesn\'t look like a product page URL (expected .../game/<console>/<product> or .../game/<id>)' }, 400);
+      if (!slugMatch && !shortIdMatch) {
+        if (/^\/search-products/.test(parsed.pathname)) return json({ ok: false, error: 'That\'s a search results page, not a card\'s page -- open the card on PriceCharting and paste that page\'s link (or its numeric product ID).' }, 400);
+        return json({ ok: false, error: 'That doesn\'t look like a product page URL (expected .../game/<console>/<product> or .../game/<id>)' }, 400);
+      }
       const [, consoleSlug, productSlug] = slugMatch || [];
+      // Read the page on the site the link is for: pricecharting.com has every
+      // game (MTG, Pokémon, comics...), sportscardspro.com only sports, so a
+      // PriceCharting MTG link scraped from sportscardspro.com found nothing.
+      const siteHost = host === 'pricecharting.com' ? 'www.pricecharting.com' : 'www.sportscardspro.com';
       const scrapeUrl = slugMatch
-        ? `https://www.sportscardspro.com/game/${consoleSlug}/${productSlug}`
-        : `https://www.sportscardspro.com/game/${shortIdMatch[1]}`;
+        ? `https://${siteHost}/game/${consoleSlug}/${productSlug}`
+        : `https://${siteHost}/game/${shortIdMatch[1]}`;
 
       let imageUrl = null, cardNumber = '', printRun = '', priceChartingId = shortIdMatch ? shortIdMatch[1] : '';
       try {
@@ -8746,6 +8755,27 @@ async function routeRequest(request, env, ctx) {
       } catch (_) {}
 
       let productName = '', consoleName = '', market = 0;
+      // The page read didn't give the id (the site may block automated
+      // reads): find it through the PriceCharting API instead -- search the
+      // link's own names and keep only the product whose console and name
+      // slugs are exactly the link's. 12 sports cards had been saved with a
+      // link but no id this way, so price sync could never price them.
+      if (!priceChartingId && slugMatch) {
+        const pcToken = env.PRICECHARTING_TOKEN || env.PRICECHARTING_API_KEY;
+        const norm = v => { let t = String(v || ''); try { t = decodeURIComponent(t); } catch (_) {} return t.toLowerCase().replace(/['’]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, ''); };
+        const words = v => norm(v).replace(/-/g, ' ');
+        if (pcToken) {
+          try {
+            const q = `${words(productSlug)} ${words(consoleSlug).replace(/\bcards?\b/g, ' ')}`.replace(/\s+/g, ' ').trim().slice(0, 200);
+            const searchRes = await fetch(`https://www.pricecharting.com/api/products?q=${encodeURIComponent(q)}&t=${encodeURIComponent(pcToken)}`, { headers: { 'Accept': 'application/json', 'User-Agent': 'Walk-Off Sports Cards Dealer App/2026' }, cf: { cacheTtl: 7200 } });
+            if (searchRes.ok) {
+              const found = await searchRes.json().catch(() => null);
+              const hit = (found?.products || []).find(p => norm(p['console-name']) === norm(consoleSlug) && norm(p['product-name']) === norm(productSlug));
+              if (hit?.id) priceChartingId = String(hit.id);
+            }
+          } catch (_) {}
+        }
+      }
       if (priceChartingId) {
         const pcToken = env.PRICECHARTING_TOKEN || env.PRICECHARTING_API_KEY;
         if (pcToken) {

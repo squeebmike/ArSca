@@ -73,7 +73,7 @@ import { connectingCoverInfo, groupConnectingCovers, handleFocRequest } from '..
   assert.match(dash, /onclick="openConnectingCovers\(\)">CONNECTING COVERS<\/button>/);
   assert.match(dash, /storeWorkerFetch\('\/kv\/foc_connecting_sets'/, 'sets are shared through the store KV');
   const worker = fs.readFileSync('cloudflare-worker-full.js', 'utf8');
-  assert.match(worker, /const permanent = key\.startsWith\('foc_connecting'\);/, 'saved sets never expire');
+  assert.match(worker, /const permanent = key\.startsWith\('foc_connecting'\)( \|\| key\.startsWith\('expense_'\))?;/, 'saved sets never expire');
   // status rules
   const src = dash.slice(dash.indexOf('function connectToday'), dash.indexOf('var CONNECT_BADGE'));
   const { connectStatus } = new Function(src + '\nreturn { connectStatus };')();
