@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.10.05.5-labels-per-copy">
+<meta name="version" content="2026.10.05.6-trades-dupes-lang">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -277,6 +277,9 @@ html.ui-scale-large{zoom:1.3;}
 .auth-title{font-family:'Orbitron',monospace;font-size:18px;font-weight:900;color:var(--g);letter-spacing:2px;margin-bottom:6px;}
 .auth-sub{font-family:var(--font-mono);font-size:10px;color:var(--dim);line-height:1.7;margin-bottom:14px;}
 .auth-row{display:grid;gap:8px;margin-bottom:10px;}
+/* EMAIL and PASSWORD captions sit above their boxes, lined up the same way. */
+.auth-row>label{display:grid;gap:4px;}
+.auth-row>label .tsi{margin:0;width:100%;box-sizing:border-box;}
 .auth-meta{font-family:var(--font-mono);font-size:9px;color:var(--dim);line-height:1.6;margin-top:10px;}
 .store-chip{border:1px solid var(--border);background:var(--surf2);color:var(--text);border-radius:8px;padding:7px 10px;font-family:var(--font-mono);font-size:10px;min-height:34px;}
 .top-state-chip{border:1px solid var(--border);background:rgba(255,255,255,.035);color:var(--dim);border-radius:8px;padding:7px 10px;font-family:var(--font-mono);font-size:9px;min-height:34px;display:flex;align-items:center;white-space:nowrap;}
@@ -1658,23 +1661,23 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.10.05.5-labels-per-copy" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.10.05.5-labels-per-copy" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.10.05.5-labels-per-copy" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.10.05.5-labels-per-copy" defer></script>
-<script src="scripts/backlist-dashboard.js?v=2026.10.05.5-labels-per-copy" defer></script>
-<script src="scripts/database-viewer.js?v=2026.10.05.5-labels-per-copy" defer></script>
-<script src="scripts/card-intake-dashboard.js?v=2026.10.05.5-labels-per-copy" defer></script>
-<script src="scripts/mana-pocket-task-library.js?v=2026.10.05.5-labels-per-copy" defer></script>
-<script src="scripts/daily-tasks-dashboard.js?v=2026.10.05.5-labels-per-copy" defer></script>
-<script src="scripts/expenses.js?v=2026.10.05.5-labels-per-copy" defer></script>
-<script src="scripts/whatnot-bridge.js?v=2026.10.05.5-labels-per-copy" defer></script>
+<script src="scripts/query-routing.js?v=2026.10.05.6-trades-dupes-lang" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.10.05.6-trades-dupes-lang" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.10.05.6-trades-dupes-lang" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.10.05.6-trades-dupes-lang" defer></script>
+<script src="scripts/backlist-dashboard.js?v=2026.10.05.6-trades-dupes-lang" defer></script>
+<script src="scripts/database-viewer.js?v=2026.10.05.6-trades-dupes-lang" defer></script>
+<script src="scripts/card-intake-dashboard.js?v=2026.10.05.6-trades-dupes-lang" defer></script>
+<script src="scripts/mana-pocket-task-library.js?v=2026.10.05.6-trades-dupes-lang" defer></script>
+<script src="scripts/daily-tasks-dashboard.js?v=2026.10.05.6-trades-dupes-lang" defer></script>
+<script src="scripts/expenses.js?v=2026.10.05.6-trades-dupes-lang" defer></script>
+<script src="scripts/whatnot-bridge.js?v=2026.10.05.6-trades-dupes-lang" defer></script>
 <script src="scripts/research-loupe.js?v=a7de4ffe90" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.10.05.5-labels-per-copy" defer></script>
-<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.10.05.5-labels-per-copy" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.10.05.5-labels-per-copy" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.10.05.5-labels-per-copy" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.10.05.5-labels-per-copy" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.10.05.6-trades-dupes-lang" defer></script>
+<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.10.05.6-trades-dupes-lang" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.10.05.6-trades-dupes-lang" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.10.05.6-trades-dupes-lang" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.10.05.6-trades-dupes-lang" defer></script>
 </head>
 <body>
 
@@ -1726,7 +1729,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
 <div class="dsb-chip" id="dsb-tasks" title="Today's Roles &amp; Tasks — click to jump to Tasks tab" style="cursor:pointer;display:none" onclick="switchTab('tasks')">✅ <span>TASKS:</span> <b id="dsb-tasks-val">—</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.10.05.5-labels-per-copy</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.10.05.6-trades-dupes-lang</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3914,7 +3917,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.10.05.5-labels-per-copy';
+const APP_VERSION = '2026.10.05.6-trades-dupes-lang';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -8851,6 +8854,26 @@ function toggleBuiltSealedFields(){
   if(sealedRow) sealedRow.style.display = isSealed ? 'grid' : 'none';
 }
 
+// An in-stock item Quick Add would duplicate: same barcode, or the same
+// name, category, condition and language. Graded slabs are one-of-a-kind
+// (their own cert), so they never match.
+function findQuickAddDuplicate(item){
+  if(item.cert_number || item.grade) return null;
+  const norm = v => String(v || '').toLowerCase().replace(/[^a-z0-9#]+/g, ' ').trim();
+  const digits = v => String(v || '').replace(/\D/g, '');
+  const code = digits(item.upc);
+  const live = (all || []).filter(i => inventoryItemIsSellable(i) && !i.cert_number && !i.grade);
+  if(code.length >= 8){
+    const byCode = live.find(i => [i.upc, i.barcode, i.raw?.upc, i.raw?.barcode].some(v => digits(v) === code));
+    if(byCode) return byCode;
+  }
+  const name = norm(item.name);
+  if(!name) return null;
+  return live.find(i => norm(i.name) === name
+    && norm(i.category) === norm(item.category)
+    && norm(i.condition) === norm(item.condition)
+    && norm(i.language || 'English') === norm(item.language || 'English')) || null;
+}
 async function addManualBuiltInInventory(){
   const name = document.getElementById('built-name')?.value.trim();
   if(!name){ toast_dash('Enter an item name'); return; }
@@ -8886,6 +8909,30 @@ async function addManualBuiltInInventory(){
     grade:document.getElementById('built-is-graded')?.checked ? (document.getElementById('built-grade')?.value.trim() || '') : '',
     cert_number:document.getElementById('built-is-graded')?.checked ? (document.getElementById('built-cert')?.value.trim() || '') : '',
   };
+  // Already in stock? Offer to add the copies to that item instead of making
+  // a second record of the same thing -- a duplicate splits the stock count
+  // (and the one-label-per-copy count) across two items.
+  const dupe = findQuickAddDuplicate(item);
+  if(dupe){
+    const have = inventoryAvailableQuantity(dupe);
+    if(confirm('"' + (dupe.name || item.name) + '" is already in stock (' + have + ' on hand' + (dupe.upc && dupe.upc === item.upc ? ', same barcode' : '') + ').\n\nOK = add ' + item.qty + ' to that item (' + (have + item.qty) + ' total)\nCancel = create a separate item anyway')){
+      try {
+        const total = have + item.qty;
+        const oldCost = Number(dupe.cost || 0), newCost = Number(item.cost || 0);
+        // Per-copy cost becomes the average across old and new copies.
+        const cost = newCost > 0 ? Math.round(((oldCost * have) + (newCost * item.qty)) / total * 100) / 100 : oldCost;
+        const updates = { qty:total, quantity:total, cost };
+        if(item.upc && !dupe.upc) updates.upc = item.upc;
+        await saveInventoryEdit(dupe, updates);
+        Object.assign(dupe, updates);
+        ['built-name','built-cost','built-price','built-qty','built-upc'].forEach(fid => { const el = document.getElementById(fid); if(el) el.value = fid === 'built-qty' ? '1' : ''; });
+        logOpsEvent('inventory_add', 'Quick Add merged into existing item: ' + (dupe.name || item.name), { id:dupe.id, added:item.qty, total });
+        toast_dash('Added ' + item.qty + ' to ' + (dupe.name || item.name) + ' -- ' + total + ' in stock');
+        loadInventory();
+      } catch(e) { toast_dash('Could not update the existing item: ' + (e.message || e)); }
+      return;
+    }
+  }
   try {
     const id = await createBuiltInInventoryItem(item, item, 'manual_quick_add');
     ['built-name','built-set','built-year','built-condition','built-location','built-cost','built-price','built-qty','built-image','built-notes','built-image-sealed','built-notes-sealed','built-grader','built-grade','built-cert','built-upc'].forEach(k => { const el=document.getElementById(k); if(el) el.value=k==='built-qty' ? '1' : ''; });
@@ -12807,6 +12854,65 @@ function getPendingTradePurchase(cartData = null){
   const credit = ledgerCredit || (embedded && Number(embedded.remainingBalance ?? embedded.amount ?? 0) > 0 ? embedded : null);
   return credit ? { handoff:{ ...(handoff || {}), creditId }, credit } : null;
 }
+// A trade-in that was accepted but never checked out: the customer's cards
+// are already in inventory and they haven't been paid. Shown on the register
+// once the trade is 30+ minutes old (or right away with nothing in the cart
+// to spend it on), with a way to finish, pay the value in cash, or cancel.
+const PENDING_TRADE_STALE_MS = 30 * 60 * 1000;
+function pendingTradeAgeMs(pending){
+  const t = Date.parse(pending?.credit?.createdAt || pending?.handoff?.createdAt || '');
+  return Number.isFinite(t) ? Date.now() - t : Infinity;
+}
+function renderPendingTradeNotice(trade, itemCount){
+  const lines = document.getElementById('dealer-cart-lines');
+  if(!lines) return;
+  let box = document.getElementById('pending-trade-notice');
+  const pending = trade?.pending;
+  const show = pending && (pendingTradeAgeMs(pending) >= PENDING_TRADE_STALE_MS || !itemCount);
+  if(!show){ if(box) box.remove(); return; }
+  if(!box){
+    box = document.createElement('div');
+    box.id = 'pending-trade-notice';
+    box.style.cssText = 'margin:0 0 10px;padding:10px;border:1px solid var(--gold);border-radius:8px;background:rgba(255,209,102,.08);font-family:var(--font-mono);font-size:11px;line-height:1.5;color:var(--text)';
+    lines.parentNode.insertBefore(box, lines);
+  }
+  const amount = Number(pending.credit.remainingBalance ?? pending.credit.amount ?? 0);
+  const who = pending.credit.customerName || 'a customer';
+  const age = pendingTradeAgeMs(pending);
+  const ago = Number.isFinite(age) ? (age < 3600000 ? Math.max(1, Math.round(age / 60000)) + ' min' : Math.round(age / 3600000) + ' hr') + ' ago' : 'earlier';
+  box.innerHTML = `<b style="color:var(--gold)">⚠ Unused trade-in: $${amount.toFixed(2)} for ${escHtml(who)}</b> (accepted ${escHtml(ago)}). Their cards are already in inventory and they haven't been paid yet.`
+    + `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">`
+    + (itemCount ? `<button class="hbtn" style="margin:0" onclick="lockCheckoutForPayment()">FINISH CHECKOUT</button>` : '')
+    + `<button class="hbtn" style="margin:0" onclick="payOutPendingTradeInCash()">PAY $${amount.toFixed(2)} IN CASH</button>`
+    + `<button class="hbtn" style="margin:0;color:var(--red)" onclick="cancelPendingTrade()">CANCEL TRADE</button></div>`;
+}
+async function clearPendingTrade(){
+  localStorage.removeItem('pos_pending_trade_purchase');
+  const cart = ensureActiveSaleCart();
+  cart.tradeCredit = null;
+  upsertLocalSaleCart(cart);
+  await syncActiveSaleCartToWorker(cart).catch(() => {});
+  renderDealerCartTools(getCartDataLocal());
+}
+async function payOutPendingTradeInCash(){
+  const pending = getPendingTradePurchase(getCartDataLocal());
+  if(!pending) return renderDealerCartTools(getCartDataLocal());
+  const amount = Math.round(Number(pending.credit.remainingBalance ?? pending.credit.amount ?? 0) * 100) / 100;
+  if(!drawerState) return toast_dash('Open or join the Cash Bag first, so the cash payout is recorded');
+  if(!confirm('Pay ' + (pending.credit.customerName || 'the customer') + ' $' + amount.toFixed(2) + ' in cash from the Cash Bag for their trade-in?')) return;
+  payTradeInLeftoverAsCash(amount, { customerName:pending.credit.customerName || '' });
+  logOpsEvent('trade_paid_in_cash', 'Paid an unused trade-in in cash', { creditId:pending.credit.id, buySessionId:pending.credit.buySessionId || '', amount });
+  await clearPendingTrade();
+  toast_dash('Paid $' + amount.toFixed(2) + ' in cash -- trade-in closed');
+}
+async function cancelPendingTrade(){
+  const pending = getPendingTradePurchase(getCartDataLocal());
+  if(!pending) return renderDealerCartTools(getCartDataLocal());
+  if(!confirm('Cancel this trade-in? Only do this if the customer was paid another way or took their cards back -- the cards stay in inventory either way (remove them there if they went back).')) return;
+  logOpsEvent('trade_cancelled', 'Cancelled an unused trade-in', { creditId:pending.credit.id, buySessionId:pending.credit.buySessionId || '' });
+  await clearPendingTrade();
+  toast_dash('Trade-in cancelled');
+}
 function pendingTradeAmounts(total, cartData = null){
   const pending = getPendingTradePurchase(cartData);
   const purchaseTotal = Math.max(0, Number(total || 0));
@@ -13139,6 +13245,24 @@ function pokemonUnpricedLanguage(item = {}){
 // Worker defaults every request to English -- so a Japanese single without a
 // saved TCGplayer ID was searched by name in English and could be repriced
 // from the English card. Every inventory lookup now says which one it wants.
+// Short language code for a non-English item (JP, CN, KR...), '' for English.
+// Reads the item's saved language first, then the name/set as a fallback
+// (an older item may only say "Japanese" in its name).
+function inventoryLanguageCode(item = {}){
+  const saved = [item.language, item.selectedLanguage, item.raw?.language, item.raw?.selectedLanguage].filter(Boolean).join(' ');
+  const text = saved || [inventoryCardName(item), inventorySetName(item)].filter(Boolean).join(' ');
+  if(/japanese|\bjpn\b|日本語/i.test(text)) return 'JP';
+  if(/traditional chinese|chinese \(traditional\)|\bt-chinese\b|繁體/i.test(text)) return 'TW';
+  if(/chinese|\bs-chinese\b|简体|中文/i.test(text)) return 'CN';
+  if(/\bkorean\b|한국어/i.test(text)) return 'KR';
+  const other = { german:'DE', french:'FR', italian:'IT', spanish:'ES', portuguese:'PT', thai:'TH', indonesian:'ID' };
+  const m = saved.match(/\b(german|french|italian|spanish|portuguese|thai|indonesian)\b/i);
+  return m ? other[m[1].toLowerCase()] : '';
+}
+function inventoryLanguageBadgeHtml(item){
+  const code = inventoryLanguageCode(item);
+  return code ? ` <span title="${escHtml(item.language || item.selectedLanguage || code)}" style="font-family:var(--font-mono);font-size:8px;font-weight:700;color:var(--blue);border:1px solid var(--blue);border-radius:3px;padding:0 3px;margin-left:3px">${code}</span>` : '';
+}
 function pokemonInventoryPptLanguage(item = {}){
   const language = [item.language, item.selectedLanguage, item.raw?.language, item.raw?.selectedLanguage].filter(Boolean).join(' ');
   return /japanese|\bjpn?\b/i.test(language) || /\bjapanese\b|\bjpn\b/i.test(inventoryCardName(item) + ' ' + inventorySetName(item)) ? 'japanese' : 'english';
@@ -19641,7 +19765,7 @@ function renderTable(){
     const thumbCell = `<td class="td-thumb">${bulkCb}<div onclick="${editClick}" style="cursor:pointer" title="Edit item">${thumbInner}</div></td>`;
     return `<tr class="${ins?'':'sold'}" data-item-id="${i.id}">
       ${thumbCell}
-      <td><span class="dot ${ins?'in_stock':'sold'}"></span><span class="nc" title="${i.tcgCardId?'TCG ID: '+i.tcgCardId:''}" onclick="${researchClick}" style="cursor:pointer">${i.name}${i.isRookie?' <span style="color:var(--gold);font-size:8px">RC</span>':''}${i.tcgCardId?'<span style="font-family:monospace;font-size:7px;color:rgba(0,255,179,.4);margin-left:4px">●</span>':''}${i.isBundle?' <span style="color:var(--gold);font-size:8px">🎁 BUNDLE</span>':''}</span>${invSyncBadgeHtml(i.id)}<div class="sc2" style="margin:5px 0 0 12px">${escHtml([i.consignorName||i.inventoryOwner||'Store owned',i.inventorySku||i.sku||''].filter(Boolean).join(' · '))}</div>${i.status==='bundled'&&i.bundledIntoName?`<div class="sc2" style="margin-top:5px;color:var(--gold)">🎁 In bundle: ${escHtml(i.bundledIntoName)}</div>`:''}</td>
+      <td><span class="dot ${ins?'in_stock':'sold'}"></span><span class="nc" title="${i.tcgCardId?'TCG ID: '+i.tcgCardId:''}" onclick="${researchClick}" style="cursor:pointer">${i.name}${i.isRookie?' <span style="color:var(--gold);font-size:8px">RC</span>':''}${i.tcgCardId?'<span style="font-family:monospace;font-size:7px;color:rgba(0,255,179,.4);margin-left:4px">●</span>':''}${i.isBundle?' <span style="color:var(--gold);font-size:8px">🎁 BUNDLE</span>':''}${inventoryLanguageBadgeHtml(i)}</span>${invSyncBadgeHtml(i.id)}<div class="sc2" style="margin:5px 0 0 12px">${escHtml([i.consignorName||i.inventoryOwner||'Store owned',i.inventorySku||i.sku||''].filter(Boolean).join(' · '))}</div>${i.status==='bundled'&&i.bundledIntoName?`<div class="sc2" style="margin-top:5px;color:var(--gold)">🎁 In bundle: ${escHtml(i.bundledIntoName)}</div>`:''}</td>
       <td><span class="sc2">${escHtml([i.set,i.variant].filter(Boolean).join(' · ')||'—')}</span><div class="sc2" style="margin-top:5px">${escHtml([i.year,i.condition,i.location].filter(Boolean).join(' · '))}</div>${comicPeople?`<div class="sc2" style="margin-top:5px;color:var(--purple)">${escHtml(comicPeople)}</div>`:''}</td>
       <td><span class="ct ${cat}">${i.category}</span></td>
       <td style="text-align:center;font-family:var(--font-mono);font-size:11px;color:${(i.qty||1)>1?'var(--g)':'var(--dim)'}">${inventoryIsDropship(i)?'Supplier':(i.qty||1)}</td>
@@ -42158,6 +42282,7 @@ function payCustomerForBuySession(method){
       customerName: session.customerName || '',
       customerPhone: session.customerPhone || '',
       buySessionId: session.buySessionId,
+      createdAt: new Date().toISOString(),
     };
     logOpsEvent('trade_credit_same_visit', 'Trade-in value ready for this visit only (not saved)', { buySessionId:session.buySessionId, amount, customerName:session.customerName });
     toast_dash('Trade-in value ready: $' + amount.toFixed(2) + ' — add purchase items, then checkout');
@@ -44068,6 +44193,7 @@ function renderDealerCartTools(cartData = getCartDataLocal()){
   const totals = normalizeCartTotals(JSON.parse(JSON.stringify(cartData || {items:[]})));
   const total = Number(totals.total || 0);
   const trade = pendingTradeAmounts(total, cartData);
+  renderPendingTradeNotice(trade, items.length);
   if(stateEl) stateEl.innerHTML = `<span class="checkout-state-pill ${checkoutState===CHECKOUT_STATES.OFFLINE_QUEUED?'bad':locked?'warn':''}">${checkoutState}</span><span>${lockedCheckoutSnapshot ? 'Snapshot ' + String(lockedCheckoutSnapshot.id).slice(0,8) : 'No locked snapshot'}</span><span>${items.length} line${items.length===1?'':'s'}</span>`;
   if(!items.length) el.innerHTML = '<div style="border:1px dashed var(--border);border-radius:8px;padding:10px;text-align:center">Cart is empty.</div>';
   else {
@@ -49268,7 +49394,7 @@ async function toppsLoadParallels(cardId){
   window.__arscaCloseModal = closeModal;
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.10.05.5-labels-per-copy" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.10.05.6-trades-dupes-lang" defer></script>
 </body>
 </html>
 
