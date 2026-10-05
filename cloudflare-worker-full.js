@@ -3015,6 +3015,14 @@ function normalizeWebflowItemId(item) {
   return item?.shopId || item?.wfId || item?.webflowId || null;
 }
 
+async function buyTrayIsClosed(env, storeId, id) {
+  if (!id) return false;
+  const scopedKey = `lba:${safeStoreKey(storeId)}:buy_tray_${String(id).replace(/[^a-zA-Z0-9:_-]/g, '-')}`;
+  const raw = env.LBA_KV ? await env.LBA_KV.get(scopedKey) : (globalThis['_' + scopedKey] || null);
+  if (!raw) return false;
+  try { return JSON.parse(raw)?.status === 'closed'; } catch (e) { return false; }
+}
+
 function safeStoreKey(s) {
   return String(s || 'main').replace(/[^a-zA-Z0-9:_-]/g, '-').slice(0, 80);
 }
@@ -7715,8 +7723,14 @@ async function routeRequest(request, env, ctx) {
       if (url.pathname.endsWith('/upsert')) {
         const entry = body.entry;
         if (!entry || !entry.id) return json({ ok: false, error: 'entry.id is required' }, 400);
-        const idx = index.findIndex(e => e.id === entry.id);
-        if (idx >= 0) index[idx] = entry; else index.push(entry);
+        // A late upsert for a tray that's already finished (its record was
+        // written closed) must not re-list it -- that brought a completed
+        // buy's items back on every device.
+        if (await buyTrayIsClosed(env, storeId, entry.id)) index = index.filter(e => e.id !== entry.id);
+        else {
+          const idx = index.findIndex(e => e.id === entry.id);
+          if (idx >= 0) index[idx] = entry; else index.push(entry);
+        }
         index = index.slice(0, 50);
       } else {
         const id = body.id;
@@ -7814,6 +7828,12 @@ async function routeRequest(request, env, ctx) {
       if (request.method === 'POST') {
         const body = await request.text();
         if (new TextEncoder().encode(body).byteLength > 1024 * 1024) return json({ ok:false, error:'KV payload is too large' }, 413);
+        // A finished buy tray stays finished: a save still in flight from
+        // before it was closed must not put its items back.
+        if (key.startsWith('buy_tray_') && await buyTrayIsClosed(env, storeId, key.slice('buy_tray_'.length))) {
+          let incoming = null; try { incoming = JSON.parse(body); } catch (e) {}
+          if (incoming?.status !== 'closed') return json({ ok: true, closed: true });
+        }
         if (env.LBA_KV) {
           // Confirmed barcode matches are store memory, not session state.
           // A store's saved connecting-cover sets are a running collection

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.10.05.1-trade-in-no-bonus">
+<meta name="version" content="2026.10.05.2-shows-and-trays">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1658,23 +1658,23 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.10.05.1-trade-in-no-bonus" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.10.05.1-trade-in-no-bonus" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.10.05.1-trade-in-no-bonus" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.10.05.1-trade-in-no-bonus" defer></script>
-<script src="scripts/backlist-dashboard.js?v=2026.10.05.1-trade-in-no-bonus" defer></script>
-<script src="scripts/database-viewer.js?v=2026.10.05.1-trade-in-no-bonus" defer></script>
-<script src="scripts/card-intake-dashboard.js?v=2026.10.05.1-trade-in-no-bonus" defer></script>
-<script src="scripts/mana-pocket-task-library.js?v=2026.10.05.1-trade-in-no-bonus" defer></script>
-<script src="scripts/daily-tasks-dashboard.js?v=2026.10.05.1-trade-in-no-bonus" defer></script>
-<script src="scripts/expenses.js?v=2026.10.05.1-trade-in-no-bonus" defer></script>
-<script src="scripts/whatnot-bridge.js?v=2026.10.05.1-trade-in-no-bonus" defer></script>
+<script src="scripts/query-routing.js?v=2026.10.05.2-shows-and-trays" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.10.05.2-shows-and-trays" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.10.05.2-shows-and-trays" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.10.05.2-shows-and-trays" defer></script>
+<script src="scripts/backlist-dashboard.js?v=2026.10.05.2-shows-and-trays" defer></script>
+<script src="scripts/database-viewer.js?v=2026.10.05.2-shows-and-trays" defer></script>
+<script src="scripts/card-intake-dashboard.js?v=2026.10.05.2-shows-and-trays" defer></script>
+<script src="scripts/mana-pocket-task-library.js?v=2026.10.05.2-shows-and-trays" defer></script>
+<script src="scripts/daily-tasks-dashboard.js?v=2026.10.05.2-shows-and-trays" defer></script>
+<script src="scripts/expenses.js?v=2026.10.05.2-shows-and-trays" defer></script>
+<script src="scripts/whatnot-bridge.js?v=2026.10.05.2-shows-and-trays" defer></script>
 <script src="scripts/research-loupe.js?v=a7de4ffe90" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.10.05.1-trade-in-no-bonus" defer></script>
-<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.10.05.1-trade-in-no-bonus" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.10.05.1-trade-in-no-bonus" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.10.05.1-trade-in-no-bonus" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.10.05.1-trade-in-no-bonus" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.10.05.2-shows-and-trays" defer></script>
+<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.10.05.2-shows-and-trays" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.10.05.2-shows-and-trays" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.10.05.2-shows-and-trays" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.10.05.2-shows-and-trays" defer></script>
 </head>
 <body>
 
@@ -1726,7 +1726,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
 <div class="dsb-chip" id="dsb-tasks" title="Today's Roles &amp; Tasks — click to jump to Tasks tab" style="cursor:pointer;display:none" onclick="switchTab('tasks')">✅ <span>TASKS:</span> <b id="dsb-tasks-val">—</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.10.05.1-trade-in-no-bonus</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.10.05.2-shows-and-trays</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3913,7 +3913,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.10.05.1-trade-in-no-bonus';
+const APP_VERSION = '2026.10.05.2-shows-and-trays';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -12637,15 +12637,16 @@ async function syncShowModeFromWorker(){
       }
     } else if(res.ok && selected.status==='open') {
       // The Worker has no record of this device's show (expired, or never
-      // shared). Silently keeping it left a Sep 6 show "open" on one device
-      // for a month that no other device could see or join. A recent show
-      // is re-shared; an old one waits for a decision (see renderShowMode).
-      if(!showIsStale(selected)) await keepShowShared(selected);
-      else showMissingFromWorker[selected.id]=true;
+      // shared). An open show is always shared again, whatever its age:
+      // holding back an old one (waiting for END / STILL RUNNING) is what
+      // kept the Oct 3-4 show and its cash bag invisible to every other
+      // device while this one kept selling under it. An old show still
+      // gets the "open since..." warning (renderShowStaleWarning).
+      await keepShowShared(selected);
     }
   } catch(e) {}
   const current=getShowMode();
-  if(current?.status==='open'&&!showMissingFromWorker[current.id]&&!showIsStale(current)) await keepShowShared(current);
+  if(current?.status==='open') await keepShowShared(current);
   renderShowMode();
   await fetchSharedCashBags().catch(()=>{});
   await syncSharedShowTransactions().catch(()=>{});
@@ -12690,8 +12691,8 @@ async function keepShowShared(show){
   const last=showSharedConfirmedAt[show.id]||0;
   if(listed&&Date.now()-last<24*60*60*1000){if(!last)showSharedConfirmedAt[show.id]=Date.now();return;}
   const fresh={...show,updatedAt:new Date().toISOString()};
-  try{await publishShowSession(fresh);localStorage.setItem('pos_show_mode',JSON.stringify(fresh));}
-  catch(e){enqueueOrReplaceSync('show-session-kv',show.id,'Re-share show session',{show:fresh},e.message||'Show session sync failed');}
+  try{await publishShowSession(fresh);localStorage.setItem('pos_show_mode',JSON.stringify(fresh));delete showMissingFromWorker[show.id];}
+  catch(e){showMissingFromWorker[show.id]=true;enqueueOrReplaceSync('show-session-kv',show.id,'Re-share show session',{show:fresh},e.message||'Show session sync failed');}
 }
 
 async function fetchShowSessionIndex(notify=false){
@@ -12701,10 +12702,28 @@ async function fetchShowSessionIndex(notify=false){
     const data=await response.json();
     const parsed=JSON.parse(data?.value||'[]');
     knownShowSessionIndex=Array.isArray(parsed)?parsed:[];
+    await addShowsWithOpenCashBags();
     if(notify)toast_dash('Shared shows refreshed');
   }catch(e){if(notify)toast_dash('Could not refresh shows: '+(e.message||e));}
   renderShowSessionSwitcher();
   return knownShowSessionIndex;
+}
+
+// A show with an open Cash Bag is joinable even when the Worker's shared show
+// list has lost it (that list expires, and a device can fail to publish):
+// open bags live in the database, which every device reads the same way.
+async function addShowsWithOpenCashBags(){
+  const sb=typeof getSupabaseClient==='function'?getSupabaseClient():null;if(!sb)return;
+  const {data,error}=await sb.from('pos_drawer_sessions').select('show_session_id,opened_at').eq('store_id',getActiveStoreId()).eq('status','open').not('show_session_id','is',null).order('opened_at',{ascending:false}).limit(20);
+  if(error||!Array.isArray(data))return;
+  const listed=new Set((knownShowSessionIndex||[]).map(row=>row.id));
+  for(const bag of data){
+    const id=bag.show_session_id;if(!id||listed.has(id))continue;listed.add(id);
+    let show=null;
+    try{const res=await storeWorkerFetch(scopedWorkerPath('/kv/show_session_'+id),{cache:'no-store',signal:AbortSignal.timeout(4000)});const d=await res.json().catch(()=>({}));if(d?.value)show=typeof d.value==='string'?JSON.parse(d.value):d.value;}catch(e){}
+    if(show&&show.status!=='open')continue;
+    knownShowSessionIndex.push(showSessionIndexEntry(show||{id,eventName:'Show (cash bag open)',status:'open',startedAt:bag.opened_at||''}));
+  }
 }
 
 function renderShowSessionSwitcher(){
@@ -22601,7 +22620,7 @@ async function autoJoinSharedBuyTray(){
   const current = ensureActiveBuyTray();
   if((current.items || []).length > 0) return;
   const openRemote = (knownBuyTrayIndex || [])
-    .filter(e => e.id && e.id !== current.buySessionId && e.status !== 'complete' && e.status !== 'closed' && (e.itemCount || 0) > 0)
+    .filter(e => e.id && e.id !== current.buySessionId && !['complete','closed','accepted','rejected'].includes(e.status) && !isBuyTrayClosed(e.id) && (e.itemCount || 0) > 0)
     .sort((a, b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0))[0];
   if(openRemote) await switchBuyTray(openRemote.id);
 }
@@ -22615,14 +22634,50 @@ function loadBuyList(){
 
 async function syncBuyListToWorker(){
   const tray = ensureActiveBuyTray();
+  if(isBuyTrayClosed(tray.buySessionId)) return;
   try {
     await storeWorkerFetch(scopedWorkerPath('/kv/buy_tray_' + tray.buySessionId), {
       method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify(tray),
       signal: AbortSignal.timeout(4000),
     });
+    // Store report: a finished buy's items came back in the tray. Accepting
+    // saves the tray (this sync), then closes it right away -- this POST and
+    // its index upsert used to land AFTER the close, re-listing the tray
+    // with all its items for every device to pick back up. A tray closed
+    // meanwhile is written closed again instead.
+    if(isBuyTrayClosed(tray.buySessionId)) { writeClosedBuyTray(tray.buySessionId); return; }
     upsertBuyTrayIndexEntry(tray);
   } catch(e) { /* offline/demo — localStorage already has the latest */ }
+}
+
+// Trays this device finished (accepted, rejected, paid out, deleted): never
+// synced, listed or joined again. Kept a week, like the Worker's tray copy.
+function closedBuyTrays(){
+  const map = safeLocalJson('pos_closed_buy_trays', {}) || {};
+  const now = Date.now(), week = 7 * 24 * 60 * 60 * 1000;
+  Object.keys(map).forEach(id => { if(now - Number(map[id] || 0) > week) delete map[id]; });
+  return map;
+}
+function isBuyTrayClosed(id){ return !!(id && closedBuyTrays()[id]); }
+function markBuyTrayClosed(id){
+  if(!id) return;
+  const map = closedBuyTrays(); map[id] = Date.now();
+  localStorage.setItem('pos_closed_buy_trays', JSON.stringify(map));
+}
+// The Worker's copy of a finished tray becomes an empty "closed" record, so
+// any device still holding it drops it (fetchBuyListFromWorker) and the
+// Worker refuses to bring it back (its buy_tray_ and index routes).
+async function writeClosedBuyTray(id){
+  if(!id) return;
+  try {
+    await storeWorkerFetch(scopedWorkerPath('/kv/buy_tray_' + id), {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ buySessionId:id, status:'closed', items:[], itemCount:0, closedAt:new Date().toISOString() }),
+      signal: AbortSignal.timeout(4000),
+    });
+  } catch(e) { /* offline/demo */ }
+  removeBuyTrayFromIndex(id);
 }
 
 // Merges in items the server has that this device doesn't, instead of
@@ -22649,6 +22704,13 @@ async function fetchBuyListFromWorker(){
     if(!d?.value) return;
     const remote = JSON.parse(d.value);
     if(!remote || !Array.isArray(remote.items)) return;
+    // Finished on another device (or on this one before a reload): drop it.
+    if(remote.status === 'closed' || isBuyTrayClosed(tray.buySessionId)) {
+      markBuyTrayClosed(tray.buySessionId);
+      if(getActiveBuyTrayId() === tray.buySessionId) closeActiveBuyTray();
+      else saveBuyTraysLocal(getBuyTrays().filter(t => t.buySessionId !== tray.buySessionId));
+      return;
+    }
     const now = Date.now();
     const localRemovedIds = tray.removedIds || [];
     const remoteRemovedIds = Array.isArray(remote.removedIds) ? remote.removedIds : [];
@@ -22694,6 +22756,7 @@ async function fetchBuyTrayIndex(){
 }
 
 async function upsertBuyTrayIndexEntry(tray){
+  if(isBuyTrayClosed(tray.buySessionId)) return;
   const entry = {
     id: tray.buySessionId,
     customerName: tray.customerName || '',
@@ -22785,7 +22848,7 @@ function renderBuyTraySwitcher(){
   const activeId = getActiveBuyTrayId();
   const localTrays = getBuyTrays();
   const localIds = new Set(localTrays.map(t=>t.buySessionId));
-  const remoteOnly = (knownBuyTrayIndex || []).filter(e => !localIds.has(e.id));
+  const remoteOnly = (knownBuyTrayIndex || []).filter(e => !localIds.has(e.id) && e.status !== 'closed' && !isBuyTrayClosed(e.id));
   const pills = [
     ...localTrays.map(t => ({ id:t.buySessionId, label:t.customerName || 'Walk-in', count:(t.items||[]).length, total:Number(t.offerTotal||0), remote:false })),
     ...remoteOnly.map(e => ({ id:e.id, label:e.customerName || 'Walk-in', count:e.itemCount||0, total:Number(e.offerTotal||0), remote:true })),
@@ -41848,8 +41911,9 @@ function saveActiveBuySession(session){
 // this device and the shared index, then hands off to another open tray
 // on this device if one exists, or leaves a clean slate for the next one.
 function removeBuyTrayEverywhere(id){
+  markBuyTrayClosed(id);
   saveBuyTraysLocal(getBuyTrays().filter(t => t.buySessionId !== id));
-  removeBuyTrayFromIndex(id);
+  writeClosedBuyTray(id);
 }
 function closeActiveBuyTray(){
   const id = getActiveBuyTrayId();
@@ -49138,7 +49202,7 @@ async function toppsLoadParallels(cardId){
   window.__arscaCloseModal = closeModal;
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.10.05.1-trade-in-no-bonus" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.10.05.2-shows-and-trays" defer></script>
 </body>
 </html>
 

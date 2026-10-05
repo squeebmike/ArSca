@@ -77,27 +77,44 @@ const showOf = (id, ageDays) => ({ id, eventName: 'Tacoma Mall Show', status: 'o
   assert.ok(JSON.parse(w.kv.get('show_sessions_index')).some(r => r.id === 's2' && r.status === 'open'), 'and it is back on the shared list');
 }
 
-// 2. The Worker lost a month-old show: not silently kept or silently
-// re-shared -- the device says so and offers END / SHARE AGAIN.
+// 2. The Worker lost a month-old show that this device still has open: it
+// is shared again anyway (an open show must always be joinable -- holding it
+// back hid the Oct 3-4 show and its cash bag from every other device), and
+// the device still warns that it's been open a long time.
 {
   const w = makeWorld();
   w.store.set('pos_show_mode', JSON.stringify(showOf('s3', 27)));
   await w.ctx.syncShowModeFromWorker();
-  assert.equal(w.posts.length, 0, 'an old forgotten show is not re-shared on its own');
-  assert.equal(w.ctx.missing.s3, true);
+  assert.ok(JSON.parse(w.kv.get('show_sessions_index')).some(r => r.id === 's3' && r.status === 'open'), 'an old open show is shared again too');
+  assert.equal(w.ctx.missing.s3, undefined);
   w.ctx.renderShowStaleWarning(w.ctx.getShowMode());
   const box = w.elements['show-stale-warning'];
   assert.ok(box, 'a warning is shown');
   assert.match(box.innerHTML, /open since .* \(27 days\)/);
-  assert.match(box.innerHTML, /Other devices can't see or join it/);
+  assert.doesNotMatch(box.innerHTML, /Other devices can't see or join it/, 'it is shared, so no such claim');
   assert.match(box.innerHTML, /END THIS SHOW/);
-  // Still running (a multi-day convention): one tap shares it again and the
-  // warning goes quiet.
+  // Still running (a multi-day convention): one tap quiets the warning.
   await w.ctx.reshareStaleShow();
-  assert.ok(JSON.parse(w.kv.get('show_sessions_index')).some(r => r.id === 's3'));
   assert.equal(w.ctx.showIsStale(w.ctx.getShowMode()), false);
   assert.equal(w.elements['show-stale-warning'], undefined, 'warning cleared');
 }
+
+// A publish that fails says other devices can't see the show.
+{
+  const w = makeWorld();
+  w.setFail(true);
+  w.store.set('pos_show_mode', JSON.stringify(showOf('s5', 27)));
+  await w.ctx.syncShowModeFromWorker();
+  assert.equal(w.ctx.missing.s5, true);
+  assert.ok(w.queued.some(q => q.id === 's5'), 'queued for retry');
+  w.ctx.renderShowStaleWarning(w.ctx.getShowMode());
+  assert.match(w.elements['show-stale-warning'].innerHTML, /Other devices can't see or join it/);
+}
+
+// Shows with an open cash bag in the database are listed even when the
+// shared show list lost them.
+assert.match(dashboard, /async function addShowsWithOpenCashBags\(\)\{/);
+assert.match(dashboard, /knownShowSessionIndex=Array\.isArray\(parsed\)\?parsed:\[\];\n    await addShowsWithOpenCashBags\(\);/);
 
 // 3. An open show that fell off the shared list (it expires after 7 days)
 // is put back; one already listed and confirmed today isn't re-written.
