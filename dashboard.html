@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.10.05.4-buys-in-costs">
+<meta name="version" content="2026.10.05.5-labels-per-copy">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1658,23 +1658,23 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.10.05.4-buys-in-costs" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.10.05.4-buys-in-costs" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.10.05.4-buys-in-costs" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.10.05.4-buys-in-costs" defer></script>
-<script src="scripts/backlist-dashboard.js?v=2026.10.05.4-buys-in-costs" defer></script>
-<script src="scripts/database-viewer.js?v=2026.10.05.4-buys-in-costs" defer></script>
-<script src="scripts/card-intake-dashboard.js?v=2026.10.05.4-buys-in-costs" defer></script>
-<script src="scripts/mana-pocket-task-library.js?v=2026.10.05.4-buys-in-costs" defer></script>
-<script src="scripts/daily-tasks-dashboard.js?v=2026.10.05.4-buys-in-costs" defer></script>
-<script src="scripts/expenses.js?v=2026.10.05.4-buys-in-costs" defer></script>
-<script src="scripts/whatnot-bridge.js?v=2026.10.05.4-buys-in-costs" defer></script>
+<script src="scripts/query-routing.js?v=2026.10.05.5-labels-per-copy" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.10.05.5-labels-per-copy" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.10.05.5-labels-per-copy" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.10.05.5-labels-per-copy" defer></script>
+<script src="scripts/backlist-dashboard.js?v=2026.10.05.5-labels-per-copy" defer></script>
+<script src="scripts/database-viewer.js?v=2026.10.05.5-labels-per-copy" defer></script>
+<script src="scripts/card-intake-dashboard.js?v=2026.10.05.5-labels-per-copy" defer></script>
+<script src="scripts/mana-pocket-task-library.js?v=2026.10.05.5-labels-per-copy" defer></script>
+<script src="scripts/daily-tasks-dashboard.js?v=2026.10.05.5-labels-per-copy" defer></script>
+<script src="scripts/expenses.js?v=2026.10.05.5-labels-per-copy" defer></script>
+<script src="scripts/whatnot-bridge.js?v=2026.10.05.5-labels-per-copy" defer></script>
 <script src="scripts/research-loupe.js?v=a7de4ffe90" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.10.05.4-buys-in-costs" defer></script>
-<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.10.05.4-buys-in-costs" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.10.05.4-buys-in-costs" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.10.05.4-buys-in-costs" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.10.05.4-buys-in-costs" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.10.05.5-labels-per-copy" defer></script>
+<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.10.05.5-labels-per-copy" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.10.05.5-labels-per-copy" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.10.05.5-labels-per-copy" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.10.05.5-labels-per-copy" defer></script>
 </head>
 <body>
 
@@ -1726,7 +1726,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
 <div class="dsb-chip" id="dsb-tasks" title="Today's Roles &amp; Tasks — click to jump to Tasks tab" style="cursor:pointer;display:none" onclick="switchTab('tasks')">✅ <span>TASKS:</span> <b id="dsb-tasks-val">—</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.10.05.4-buys-in-costs</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.10.05.5-labels-per-copy</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3555,6 +3555,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <label>Add item</label>
     <input type="text" id="label-print-search" class="tsi" placeholder="Search in-stock items..." oninput="renderLabelPrintSearchResults(this.value)">
     <div id="label-print-search-results" style="max-height:160px;overflow-y:auto;margin-bottom:10px"></div>
+    <label style="display:flex;align-items:center;gap:8px;margin-bottom:6px;font-weight:normal"><input type="checkbox" id="label-print-per-stock" onchange="setLabelPrintPerStock(this.checked)"> One label per copy in stock (10 of the same comic = 10 labels)</label>
     <label>Batch (<span id="label-print-batch-count">0</span> items)</label>
     <div id="label-print-batch-list" style="display:grid;gap:6px;max-height:220px;overflow-y:auto;margin-bottom:10px"></div>
     <label>Label size / printer</label>
@@ -3913,7 +3914,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.10.05.4-buys-in-costs';
+const APP_VERSION = '2026.10.05.5-labels-per-copy';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -45563,7 +45564,10 @@ function labelBadgeText(item){
 function labelMetaText(item){ return [item.set, item.year].filter(Boolean).join(' · '); }
 
 function labelBatchEntryFromItem(item){
-  const entry = { id:item.id, name:item.name, condition:item.condition||'', sku:labelBarcodeValue(item), price:inventoryListPrice ? inventoryListPrice(item) : (item.salePrice || item.market || 0), badge:labelBadgeText(item), meta:labelMetaText(item), qty:1 };
+  // stockQty: how many copies are in stock; with "one label per copy" on,
+  // that's how many labels this item prints.
+  const stockQty = Math.max(1, inventoryAvailableQuantity(item));
+  const entry = { id:item.id, name:item.name, condition:item.condition||'', sku:labelBarcodeValue(item), price:inventoryListPrice ? inventoryListPrice(item) : (item.salePrice || item.market || 0), badge:labelBadgeText(item), meta:labelMetaText(item), qty:labelPrintPerStock() ? stockQty : 1, stockQty };
   return isComicLabelItem(item) ? { ...entry, ...comicLabelParts(item) } : entry;
 }
 
@@ -45639,6 +45643,7 @@ function openLabelPrintModal(seedItemId, presetBatch){
   const layoutEl = document.getElementById('label-print-layout'); if(layoutEl) layoutEl.value = localStorage.getItem('label_print_layout') || 'wrap';
   const codeStyleEl = document.getElementById('label-print-code-style'); if(codeStyleEl) codeStyleEl.value = localStorage.getItem('label_print_code_style') || 'qr';
   const rotateEl = document.getElementById('label-print-rotate'); if(rotateEl) rotateEl.checked = localStorage.getItem('label_print_rotate') === '1';
+  const perStockEl = document.getElementById('label-print-per-stock'); if(perStockEl) perStockEl.checked = labelPrintPerStock();
   renderLabelPrintBatchList();
   document.getElementById('label-print-modal')?.classList.add('on');
   setTimeout(() => document.getElementById('label-print-search')?.focus(), 100);
@@ -45656,7 +45661,7 @@ function closeLabelPrintModal(){
 function printLabelsForFilteredItems(){
   const items = (typeof filtered !== 'undefined' ? filtered : []).filter(i => i.status === 'in_stock');
   if(!items.length){ toast_dash('No in-stock items in the current view to label'); return; }
-  const batch = items.map(item => ({ id:item.id, name:item.name, condition:item.condition||'', sku:labelBarcodeValue(item), price:inventoryListPrice ? inventoryListPrice(item) : (item.salePrice || item.market || 0), badge:labelBadgeText(item), qty:1 }));
+  const batch = items.map(item => labelBatchEntryFromItem(item));
   openLabelPrintModal(null, batch);
 }
 
@@ -45703,6 +45708,14 @@ function removeFromLabelPrintBatch(itemId){
   labelPrintBatch = labelPrintBatch.filter(b => b.id !== itemId);
   renderLabelPrintBatchList();
 }
+// Remembered per device; on by default -- a stack of the same comic needs a
+// label on every copy.
+function labelPrintPerStock(){ try { return localStorage.getItem('label_print_per_stock') !== '0'; } catch(e) { return true; } }
+function setLabelPrintPerStock(on){
+  try { localStorage.setItem('label_print_per_stock', on ? '1' : '0'); } catch(e) {}
+  labelPrintBatch.forEach(b => { b.qty = on ? Math.max(1, Number(b.stockQty) || 1) : 1; });
+  renderLabelPrintBatchList();
+}
 function setLabelPrintQty(itemId, qty){
   const entry = labelPrintBatch.find(b => b.id === itemId);
   if(!entry) return;
@@ -45742,13 +45755,14 @@ async function setLabelPrintPrice(itemId, rawVal){
 function renderLabelPrintBatchList(){
   const el = document.getElementById('label-print-batch-list');
   const countEl = document.getElementById('label-print-batch-count');
-  if(countEl) countEl.textContent = String(labelPrintBatch.length);
+  const totalLabels = labelPrintBatch.reduce((a, b) => a + (Number(b.qty) || 1), 0);
+  if(countEl) countEl.textContent = labelPrintBatch.length + (totalLabels !== labelPrintBatch.length ? ' · ' + totalLabels + ' labels' : '');
   if(!el) return;
   el.innerHTML = labelPrintBatch.length
     ? labelPrintBatch.map(b => `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 8px;border:1px solid var(--border);border-radius:6px">
         <span style="font-size:11px;flex:1">${escHtml(b.name)}</span>
         <input type="number" min="0" step="0.01" value="${b.price}" style="width:64px;font-family:monospace;font-size:9px" class="tsi" onchange="setLabelPrintPrice('${b.id}', this.value)">
-        <input type="number" min="1" value="${b.qty}" style="width:50px;font-size:11px" class="tsi" onchange="setLabelPrintQty('${b.id}', this.value)">
+        <input type="number" min="1" value="${b.qty}" style="width:50px;font-size:11px" class="tsi" title="Labels to print" onchange="setLabelPrintQty('${b.id}', this.value);renderLabelPrintBatchList()">${Number(b.stockQty) > 1 ? `<span style="font-size:9px;color:var(--dim);white-space:nowrap">/ ${Number(b.stockQty)} in stock</span>` : ''}
         <button class="hbtn danger" style="min-height:28px;padding:2px 8px;font-size:9px" onclick="removeFromLabelPrintBatch('${b.id}')">✕</button>
       </div>`).join('')
     : '<div class="empty" style="padding:8px"><div class="empty-t" style="font-size:9px">NO ITEMS YET -- SEARCH ABOVE TO ADD SOME</div></div>';
@@ -49254,7 +49268,7 @@ async function toppsLoadParallels(cardId){
   window.__arscaCloseModal = closeModal;
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.10.05.4-buys-in-costs" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.10.05.5-labels-per-copy" defer></script>
 </body>
 </html>
 
