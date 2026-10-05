@@ -72,6 +72,8 @@ console.log('labelBarcodeValue functional checks passed');
      ${metaSrc}
      ${entrySrc}
      function isComicLabelItem(){ return false; }
+     function inventoryAvailableQuantity(){ return 1; }
+     function labelPrintPerStock(){ return true; }
      ${addSrc}
      ${removeSrc}
      ${qtySrc}
