@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.10.04.5-label-fit">
+<meta name="version" content="2026.10.05.1-trade-in-no-bonus">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1658,23 +1658,23 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.10.04.5-label-fit" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.10.04.5-label-fit" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.10.04.5-label-fit" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.10.04.5-label-fit" defer></script>
-<script src="scripts/backlist-dashboard.js?v=2026.10.04.5-label-fit" defer></script>
-<script src="scripts/database-viewer.js?v=2026.10.04.5-label-fit" defer></script>
-<script src="scripts/card-intake-dashboard.js?v=2026.10.04.5-label-fit" defer></script>
-<script src="scripts/mana-pocket-task-library.js?v=2026.10.04.5-label-fit" defer></script>
-<script src="scripts/daily-tasks-dashboard.js?v=2026.10.04.5-label-fit" defer></script>
-<script src="scripts/expenses.js?v=2026.10.04.5-label-fit" defer></script>
-<script src="scripts/whatnot-bridge.js?v=2026.10.04.5-label-fit" defer></script>
+<script src="scripts/query-routing.js?v=2026.10.05.1-trade-in-no-bonus" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.10.05.1-trade-in-no-bonus" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.10.05.1-trade-in-no-bonus" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.10.05.1-trade-in-no-bonus" defer></script>
+<script src="scripts/backlist-dashboard.js?v=2026.10.05.1-trade-in-no-bonus" defer></script>
+<script src="scripts/database-viewer.js?v=2026.10.05.1-trade-in-no-bonus" defer></script>
+<script src="scripts/card-intake-dashboard.js?v=2026.10.05.1-trade-in-no-bonus" defer></script>
+<script src="scripts/mana-pocket-task-library.js?v=2026.10.05.1-trade-in-no-bonus" defer></script>
+<script src="scripts/daily-tasks-dashboard.js?v=2026.10.05.1-trade-in-no-bonus" defer></script>
+<script src="scripts/expenses.js?v=2026.10.05.1-trade-in-no-bonus" defer></script>
+<script src="scripts/whatnot-bridge.js?v=2026.10.05.1-trade-in-no-bonus" defer></script>
 <script src="scripts/research-loupe.js?v=a7de4ffe90" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.10.04.5-label-fit" defer></script>
-<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.10.04.5-label-fit" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.10.04.5-label-fit" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.10.04.5-label-fit" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.10.04.5-label-fit" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.10.05.1-trade-in-no-bonus" defer></script>
+<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.10.05.1-trade-in-no-bonus" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.10.05.1-trade-in-no-bonus" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.10.05.1-trade-in-no-bonus" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.10.05.1-trade-in-no-bonus" defer></script>
 </head>
 <body>
 
@@ -1726,7 +1726,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
 <div class="dsb-chip" id="dsb-tasks" title="Today's Roles &amp; Tasks — click to jump to Tasks tab" style="cursor:pointer;display:none" onclick="switchTab('tasks')">✅ <span>TASKS:</span> <b id="dsb-tasks-val">—</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.10.04.5-label-fit</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.10.05.1-trade-in-no-bonus</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3913,7 +3913,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.10.04.5-label-fit';
+const APP_VERSION = '2026.10.05.1-trade-in-no-bonus';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -5518,7 +5518,7 @@ const DEFAULT_PAYMENT_SETTINGS = {
   paypal:{ enabled:true, emailOrHandle:'', displayName:'PayPal', qrImageUrl:'' },
   cashApp:{ enabled:true, cashtag:'', displayName:'Cash App', qrImageUrl:'' },
   card:{ enabled:true, provider:'stripe', stripeMode:'test', stripePublishableKey:'', stripeAccountId:'', squareLocationId:'', manualCardNote:'' },
-  tradeCredit:{ enabled:true, defaultBonusMultiplier:1.15 },
+  tradeCredit:{ enabled:true },
   tax:{ enabled:false, defaultRate:0, label:'Sales Tax' },
   receipt:{ storeName:'', footer:'Thanks for shopping with us!', showPaymentInstructions:true, captureEnabled:true },
   customerDisplay:{ showPaymentMethods:true, showQrCodes:true, showStoreLogo:true, wantsCaptureEnabled:true, checkoutTimeoutMinutes:10 },
@@ -6608,7 +6608,7 @@ const FEATURE_LOG = [
     { title:'$0 comp / giveaway sales', status:'working', desc:'Zero out a cart line\'s price with a required reason -- the item still depletes from stock and shows as a real (negative) loss in reporting instead of just vanishing unexplained.' },
     { title:'Gift cards', status:'working', desc:'Issue a gift card at sale, redeem it (fully or partially) at a later checkout.' },
     { title:'Loyalty points', status:'working', desc:'Earn points on purchases, redeem them as a checkout discount, configurable accrual rate.' },
-    { title:'Store credit / trade-in credit', status:'working', desc:'Apply a customer\'s trade-in credit balance directly toward a purchase at checkout.' },
+    { title:'Trade-in toward a purchase', status:'working', desc:'A trade-in\'s value (same as the cash offer) applies to that same visit\'s purchase; any leftover is paid in cash. No saved credit balances.' },
     { title:'Fixed: changing a cart line\'s quantity could undo a manual price edit', status:'new', desc:'Editing a line\'s price via Edit Price, then bumping its quantity with the +/- stepper, silently threw the edit away and reverted to the original market-derived price -- the stepper always recalculated from the price captured when the item was first added to cart, never the edited one.' },
   ]},
   { area:'Buy Counter / Trade-Ins', items:[
@@ -6893,7 +6893,6 @@ function organizeRegisterLayout(){
   ensureSpreadsheetPanel(backoffice);
   ensureSyncQueuePanel(backoffice);
   ensureCustomerPanel(backoffice);
-  ensureStoreCreditPanel(backoffice);
   ensureDataHealthPanel(backoffice);
   ensurePermissionLockPanels(backoffice, shows, channels);
   ensureSettingsShell(backoffice);
@@ -41961,12 +41960,13 @@ function snapshotBuySession(status, pctOverride){
     priceUsed:Number(i.priceUsed || i.market || 0),
     priceLabel:i.priceLabel || (i.priceSource || i.pricingSource || 'Manual Price'),
     cashOffer:buyItemOfferValue(i, pctOverride),
-    tradeCreditOffer:Math.round(buyItemOfferValue(i, pctOverride) * 1.15 * 100) / 100,
+    // Trade-in value is the same as the cash offer -- no trade bonus (store policy).
+    tradeCreditOffer:buyItemOfferValue(i, pctOverride),
     status:i.inventoryId ? 'converted_to_inventory' : 'offered',
   }));
   const marketTotal = Math.round(items.reduce((a,i)=>a+buyItemMarketValue(i),0) * 100) / 100;
   const cashOfferTotal = Math.round(items.reduce((a,i)=>a+Number(i.cashOffer || 0),0) * 100) / 100;
-  const tradeCreditTotal = Math.round(cashOfferTotal * 1.15 * 100) / 100;
+  const tradeCreditTotal = cashOfferTotal;
   return {
     buySessionId:existing.buySessionId || makeBuySessionId(),
     storeId:getActiveStoreId(),
@@ -42095,7 +42095,7 @@ function openBuyAcceptConfirm(mode){
   const frozen = getBuyOfferTotals();
   const prior = lastRenderedBuyOfferSnapshot;
   const mismatch = prior && Math.abs(prior.offer - frozen.offerTotal) > 0.005;
-  const payTotal = mode === 'trade' ? Math.round(frozen.offerTotal * 1.15 * 100) / 100 : frozen.offerTotal;
+  const payTotal = frozen.offerTotal;
   pendingBuyAcceptConfirm = { mode, frozen };
   const el = document.getElementById('buy-accept-confirm-overlay');
   if(!el) return;
@@ -42213,7 +42213,7 @@ function showBuyPaymentConfirm(session){
       <button onclick="printLabelsForAcceptedBuy()" style="width:100%;background:rgba(0,255,179,.1);color:var(--g);border:1px solid rgba(0,255,179,.45);border-radius:10px;font-family:'Orbitron',monospace;font-size:13px;font-weight:800;padding:14px;cursor:pointer;letter-spacing:.04em;margin-bottom:10px">🏷️ PRINT LABELS (${items.length})</button>
       <div style="display:flex;gap:10px;flex-wrap:wrap">
         <button onclick="confirmBuyPayout('${escHtml(method)}')" style="flex:1;background:var(--g);color:#000;border:none;border-radius:10px;font-family:'Orbitron',monospace;font-size:14px;font-weight:800;padding:18px;cursor:pointer;letter-spacing:.05em">${isTradeCredit?'ISSUE TRADE CREDIT':'CONFIRM PAYMENT'}</button>
-        ${isTradeCredit ? '' : `<button onclick="confirmBuyPayout('Trade Credit',true)" style="flex:1 0 100%;background:rgba(255,190,70,.12);color:var(--gold);border:1px solid rgba(255,190,70,.55);border-radius:10px;font-family:'Orbitron',monospace;font-size:12px;font-weight:800;padding:15px;cursor:pointer;letter-spacing:.04em">APPLY $${tradeTotal.toFixed(2)} TO PURCHASE${total>0?` (+${Math.round((tradeTotal/total-1)*100)}% TRADE BONUS)`:''}</button>`}
+        ${isTradeCredit ? '' : `<button onclick="confirmBuyPayout('Trade Credit',true)" style="flex:1 0 100%;background:rgba(255,190,70,.12);color:var(--gold);border:1px solid rgba(255,190,70,.55);border-radius:10px;font-family:'Orbitron',monospace;font-size:12px;font-weight:800;padding:15px;cursor:pointer;letter-spacing:.04em">APPLY $${tradeTotal.toFixed(2)} TO PURCHASE</button>`}
         <button onclick="newCustomerReset()" style="flex:0 0 auto;background:var(--surf2);color:var(--dim);border:1px solid var(--border);border-radius:10px;font-family:var(--font-mono);font-size:11px;padding:12px 16px;cursor:pointer">SKIP</button>
       </div>
       <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);line-height:1.5;margin-top:12px;text-align:center">Apply to Purchase issues customer-linked trade credit, then opens POS. At checkout choose Trade Credit and apply it before taking any remaining balance.</div>
@@ -42252,6 +42252,9 @@ function syncBuyConfirmCustomer(field, value){
 async function confirmBuyPayout(method, applyToPurchase=false){
   const result = payCustomerForBuySession(method);
   if(!result) return;
+  // A trade credit only exists for this visit's purchase, so it always goes
+  // onto the sale -- "ISSUE TRADE CREDIT" used to create it and then drop it.
+  if(result.credit) applyToPurchase = true;
   if(applyToPurchase && result.credit) {
     localStorage.setItem('pos_pending_trade_purchase', JSON.stringify({
       creditId:result.credit.id,
@@ -49135,7 +49138,7 @@ async function toppsLoadParallels(cardId){
   window.__arscaCloseModal = closeModal;
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.10.04.5-label-fit" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.10.05.1-trade-in-no-bonus" defer></script>
 </body>
 </html>
 
