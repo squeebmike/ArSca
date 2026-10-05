@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.10.05.3-end-any-show">
+<meta name="version" content="2026.10.05.4-buys-in-costs">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1658,23 +1658,23 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.10.05.3-end-any-show" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.10.05.3-end-any-show" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.10.05.3-end-any-show" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.10.05.3-end-any-show" defer></script>
-<script src="scripts/backlist-dashboard.js?v=2026.10.05.3-end-any-show" defer></script>
-<script src="scripts/database-viewer.js?v=2026.10.05.3-end-any-show" defer></script>
-<script src="scripts/card-intake-dashboard.js?v=2026.10.05.3-end-any-show" defer></script>
-<script src="scripts/mana-pocket-task-library.js?v=2026.10.05.3-end-any-show" defer></script>
-<script src="scripts/daily-tasks-dashboard.js?v=2026.10.05.3-end-any-show" defer></script>
-<script src="scripts/expenses.js?v=2026.10.05.3-end-any-show" defer></script>
-<script src="scripts/whatnot-bridge.js?v=2026.10.05.3-end-any-show" defer></script>
+<script src="scripts/query-routing.js?v=2026.10.05.4-buys-in-costs" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.10.05.4-buys-in-costs" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.10.05.4-buys-in-costs" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.10.05.4-buys-in-costs" defer></script>
+<script src="scripts/backlist-dashboard.js?v=2026.10.05.4-buys-in-costs" defer></script>
+<script src="scripts/database-viewer.js?v=2026.10.05.4-buys-in-costs" defer></script>
+<script src="scripts/card-intake-dashboard.js?v=2026.10.05.4-buys-in-costs" defer></script>
+<script src="scripts/mana-pocket-task-library.js?v=2026.10.05.4-buys-in-costs" defer></script>
+<script src="scripts/daily-tasks-dashboard.js?v=2026.10.05.4-buys-in-costs" defer></script>
+<script src="scripts/expenses.js?v=2026.10.05.4-buys-in-costs" defer></script>
+<script src="scripts/whatnot-bridge.js?v=2026.10.05.4-buys-in-costs" defer></script>
 <script src="scripts/research-loupe.js?v=a7de4ffe90" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.10.05.3-end-any-show" defer></script>
-<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.10.05.3-end-any-show" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.10.05.3-end-any-show" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.10.05.3-end-any-show" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.10.05.3-end-any-show" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.10.05.4-buys-in-costs" defer></script>
+<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.10.05.4-buys-in-costs" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.10.05.4-buys-in-costs" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.10.05.4-buys-in-costs" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.10.05.4-buys-in-costs" defer></script>
 </head>
 <body>
 
@@ -1726,7 +1726,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
 <div class="dsb-chip" id="dsb-tasks" title="Today's Roles &amp; Tasks — click to jump to Tasks tab" style="cursor:pointer;display:none" onclick="switchTab('tasks')">✅ <span>TASKS:</span> <b id="dsb-tasks-val">—</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.10.05.3-end-any-show</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.10.05.4-buys-in-costs</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3913,7 +3913,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.10.05.3-end-any-show';
+const APP_VERSION = '2026.10.05.4-buys-in-costs';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -10782,6 +10782,10 @@ async function processSyncItem(item){
   }
   if(item.type === 'show-session-kv') {
     await publishShowSession(item.payload.show);
+    return;
+  }
+  if(item.type === 'buy-inventory-cost') {
+    await postBuyInventoryCost(item.payload);
     return;
   }
   if(item.type === 'inventory-sold') {
@@ -42220,6 +42224,26 @@ async function confirmBuyAcceptLocked(){
   else await acceptBuySession(pending.frozen.pct);
 }
 
+// An accepted buy is money spent on inventory, whatever it's paid with
+// (cash, Venmo, card, or a trade-in toward a purchase): it goes into Costs as
+// an inventory purchase so the month's cash flow counts it. One row per buy
+// acceptance (the Worker sets, never adds, so a retry can't double it),
+// queued for retry if offline.
+async function postBuyInventoryCost(payload){
+  const res = await storeWorkerFetch(scopedWorkerPath('/expenses/buy-purchase'), { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload), signal:AbortSignal.timeout(8000) });
+  const data = await res.json().catch(() => ({}));
+  if(!res.ok || !data.ok) throw new Error(data.error || ('Buy cost not saved (HTTP ' + res.status + ')'));
+  return data;
+}
+function recordBuyInventoryCost(session, method){
+  const amount = Math.round(Number(session?.cashOfferTotal || 0) * 100) / 100;
+  if(!session?.buySessionId || !(amount > 0) || getAccountContext().isDemo) return;
+  // Keyed per acceptance, not per tray: a tray accepted twice (more cards
+  // added later) is two real payouts, and each one is recorded.
+  const payload = { buySessionId:session.buySessionId + '-' + Date.now().toString(36), amount, method:method || '', customerName:session.customerName || '', date:new Date().toLocaleDateString('en-CA') };
+  postBuyInventoryCost(payload).catch(e => enqueueOrReplaceSync('buy-inventory-cost', session.buySessionId, 'Record buy as inventory purchase', payload, e.message || 'Buy cost sync failed'));
+}
+
 async function acceptBuySession(lockedPct){
   if(!buyList.length){ toast_dash('No buy offer items'); return; }
   const missing = buyList.filter(i => !Number(i.market || i.priceUsed || 0));
@@ -42232,6 +42256,7 @@ async function acceptBuySession(lockedPct){
   saveBuySessionHistory(session);
   logOpsEvent('buy_session_accepted', 'Accepted buy session', { buySessionId:session.buySessionId, items:session.items.length, cashOfferTotal:session.cashOfferTotal });
   await bulkAddBuyListToInventory(true);
+  recordBuyInventoryCost(session, session.paymentType || document.getElementById('buy-session-pay-method')?.value || 'Buy');
   saveBuySessionHistory(snapshotBuySession('accepted', lockedPct));
   showBuyPaymentConfirm(session);
 }
@@ -42254,6 +42279,7 @@ async function acceptBuyAsTrade(lockedPct){
   saveBuySessionHistory(session);
   logOpsEvent('buy_session_accepted', 'Accepted buy session as trade', { buySessionId:session.buySessionId, items:session.items.length, tradeCreditTotal:session.tradeCreditTotal });
   await bulkAddBuyListToInventory(true);
+  recordBuyInventoryCost(session, 'Trade-in');
   saveBuySessionHistory(snapshotBuySession('accepted', lockedPct));
   const result = payCustomerForBuySession('Trade Credit');
   if(!result?.credit) return;
@@ -49228,7 +49254,7 @@ async function toppsLoadParallels(cardId){
   window.__arscaCloseModal = closeModal;
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.10.05.3-end-any-show" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.10.05.4-buys-in-costs" defer></script>
 </body>
 </html>
 
