@@ -7743,6 +7743,42 @@ async function routeRequest(request, env, ctx) {
       return json({ ok: true, index });
     }
 
+    // Every accepted customer buy (cash, Venmo, card, or a trade-in) is money
+    // spent on inventory: it's recorded in Costs as an inventory purchase so
+    // the month's cash flow counts it. Done here with the service key so any
+    // staff role can record it (store_expenses only lets managers+ write).
+    // One row per accepted buy (the id is unique per acceptance) -- a retried call sets the amount, never adds.
+    if (url.pathname === '/expenses/buy-purchase') {
+      if (request.method !== 'POST') return json({ error: 'POST only' }, 405);
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId, ['owner','admin','manager','employee']);
+      if (auth.error) return auth.error;
+      const limited = await readJsonWithLimit(request, 16 * 1024);
+      if (limited.error) return limited.error;
+      const body = limited.data || {};
+      const id = String(body.buySessionId || '');
+      const amount = Math.round(Number(body.amount || 0) * 100) / 100;
+      if (!/^[A-Za-z0-9_-]{1,80}$/.test(id)) return json({ ok: false, error: 'buySessionId is required' }, 400);
+      if (!(amount > 0) || amount > 100000) return json({ ok: false, error: 'amount must be between 0 and 100000' }, 400);
+      const date = /^\d{4}-\d{2}-\d{2}$/.test(String(body.date || '')) ? body.date : new Date().toISOString().slice(0, 10);
+      const key = `buy ${id}`;
+      const who = String(body.customerName || '').replace(/[\r\n]/g, ' ').slice(0, 80);
+      const how = String(body.method || '').replace(/[\r\n]/g, ' ').slice(0, 40);
+      const note = `Customer buy${who ? ': ' + who : ''}${how ? ' · ' + how : ''} · ${key}`;
+      try {
+        const found = await supabaseAdminFetch(env, `store_expenses?store_id=eq.${encodeURIComponent(storeId)}&kind=eq.inventory&note=like.*${encodeURIComponent(key)}&select=id,amount&limit=1`);
+        const prev = (found.data || [])[0];
+        if (prev) {
+          await supabaseAdminFetch(env, `store_expenses?id=eq.${encodeURIComponent(prev.id)}&store_id=eq.${encodeURIComponent(storeId)}`, { method: 'PATCH', body: JSON.stringify({ amount, note }) });
+          return json({ ok: true, updated: true, amount });
+        }
+        await supabaseAdminFetch(env, 'store_expenses', { method: 'POST', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ store_id: storeId, spent_on: date, kind: 'inventory', category: 'Customer buys', amount, note, created_by: auth.user?.id || null }) });
+        return json({ ok: true, amount });
+      } catch (e) {
+        return json({ ok: false, error: e.message || String(e) }, 500);
+      }
+    }
+
     if (url.pathname === '/kv/show-sessions-index/upsert') {
       if (request.method !== 'POST') return json({ error: 'POST only' }, 405);
       const storeId = requestStoreId(request, url);
