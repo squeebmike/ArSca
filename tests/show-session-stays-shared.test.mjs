@@ -130,6 +130,14 @@ assert.match(dashboard, /knownShowSessionIndex=Array\.isArray\(parsed\)\?parsed:
   assert.equal(w.posts.length, before, 'no re-write while it is listed and confirmed today');
 }
 
+// Any device can end any listed show (END next to it), and a show still
+// taking sales lately is listed even without an open bag.
+assert.match(dashboard, /async function endSharedShow\(id\)\{/);
+assert.match(dashboard, /onclick="endSharedShow\('\$\{escHtml\(show\.id\)\}'\)">END<\/button>/);
+assert.match(dashboard, /closed=\{\.\.\.show,id,status:'closed'/);
+assert.match(dashboard, /from\('pos_sales'\)\.select\('show_session_id,completed_at'\)\.eq\('store_id',getActiveStoreId\(\)\)/);
+assert.match(dashboard, /if\(!show\)return toast_dash\('This device is not in a show\./, 'END SHOW says why instead of doing nothing');
+
 // The retry queue re-runs the same publish, which now really reports failure.
 assert.match(dashboard, /if\(item\.type === 'show-session-kv'\) \{\n    await publishShowSession\(item\.payload\.show\);/);
 console.log('Shared show stays shared checks passed');

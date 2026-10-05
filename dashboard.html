@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.10.05.2-shows-and-trays">
+<meta name="version" content="2026.10.05.3-end-any-show">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1658,23 +1658,23 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.10.05.2-shows-and-trays" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.10.05.2-shows-and-trays" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.10.05.2-shows-and-trays" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.10.05.2-shows-and-trays" defer></script>
-<script src="scripts/backlist-dashboard.js?v=2026.10.05.2-shows-and-trays" defer></script>
-<script src="scripts/database-viewer.js?v=2026.10.05.2-shows-and-trays" defer></script>
-<script src="scripts/card-intake-dashboard.js?v=2026.10.05.2-shows-and-trays" defer></script>
-<script src="scripts/mana-pocket-task-library.js?v=2026.10.05.2-shows-and-trays" defer></script>
-<script src="scripts/daily-tasks-dashboard.js?v=2026.10.05.2-shows-and-trays" defer></script>
-<script src="scripts/expenses.js?v=2026.10.05.2-shows-and-trays" defer></script>
-<script src="scripts/whatnot-bridge.js?v=2026.10.05.2-shows-and-trays" defer></script>
+<script src="scripts/query-routing.js?v=2026.10.05.3-end-any-show" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.10.05.3-end-any-show" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.10.05.3-end-any-show" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.10.05.3-end-any-show" defer></script>
+<script src="scripts/backlist-dashboard.js?v=2026.10.05.3-end-any-show" defer></script>
+<script src="scripts/database-viewer.js?v=2026.10.05.3-end-any-show" defer></script>
+<script src="scripts/card-intake-dashboard.js?v=2026.10.05.3-end-any-show" defer></script>
+<script src="scripts/mana-pocket-task-library.js?v=2026.10.05.3-end-any-show" defer></script>
+<script src="scripts/daily-tasks-dashboard.js?v=2026.10.05.3-end-any-show" defer></script>
+<script src="scripts/expenses.js?v=2026.10.05.3-end-any-show" defer></script>
+<script src="scripts/whatnot-bridge.js?v=2026.10.05.3-end-any-show" defer></script>
 <script src="scripts/research-loupe.js?v=a7de4ffe90" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.10.05.2-shows-and-trays" defer></script>
-<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.10.05.2-shows-and-trays" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.10.05.2-shows-and-trays" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.10.05.2-shows-and-trays" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.10.05.2-shows-and-trays" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.10.05.3-end-any-show" defer></script>
+<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.10.05.3-end-any-show" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.10.05.3-end-any-show" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.10.05.3-end-any-show" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.10.05.3-end-any-show" defer></script>
 </head>
 <body>
 
@@ -1726,7 +1726,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
 <div class="dsb-chip" id="dsb-tasks" title="Today's Roles &amp; Tasks — click to jump to Tasks tab" style="cursor:pointer;display:none" onclick="switchTab('tasks')">✅ <span>TASKS:</span> <b id="dsb-tasks-val">—</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.10.05.2-shows-and-trays</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.10.05.3-end-any-show</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3913,7 +3913,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.10.05.2-shows-and-trays';
+const APP_VERSION = '2026.10.05.3-end-any-show';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -12716,13 +12716,19 @@ async function addShowsWithOpenCashBags(){
   const sb=typeof getSupabaseClient==='function'?getSupabaseClient():null;if(!sb)return;
   const {data,error}=await sb.from('pos_drawer_sessions').select('show_session_id,opened_at').eq('store_id',getActiveStoreId()).eq('status','open').not('show_session_id','is',null).order('opened_at',{ascending:false}).limit(20);
   if(error||!Array.isArray(data))return;
+  // A show that took sales in the last 2 days is still being sold under
+  // somewhere, even with no open bag -- list it so any device can see it
+  // (and END it, if it's a forgotten one).
+  const since=new Date(Date.now()-2*24*60*60*1000).toISOString();
+  const recent=await sb.from('pos_sales').select('show_session_id,completed_at').eq('store_id',getActiveStoreId()).not('show_session_id','is',null).gte('completed_at',since).order('completed_at',{ascending:false}).limit(200);
+  (recent.data||[]).forEach(row=>data.push({show_session_id:row.show_session_id,opened_at:''}));
   const listed=new Set((knownShowSessionIndex||[]).map(row=>row.id));
   for(const bag of data){
     const id=bag.show_session_id;if(!id||listed.has(id))continue;listed.add(id);
     let show=null;
     try{const res=await storeWorkerFetch(scopedWorkerPath('/kv/show_session_'+id),{cache:'no-store',signal:AbortSignal.timeout(4000)});const d=await res.json().catch(()=>({}));if(d?.value)show=typeof d.value==='string'?JSON.parse(d.value):d.value;}catch(e){}
     if(show&&show.status!=='open')continue;
-    knownShowSessionIndex.push(showSessionIndexEntry(show||{id,eventName:'Show (cash bag open)',status:'open',startedAt:bag.opened_at||''}));
+    knownShowSessionIndex.push(showSessionIndexEntry(show||{id,eventName:bag.opened_at?'Show (cash bag open)':'Show (recent sales)',status:'open',startedAt:bag.opened_at||''}));
   }
 }
 
@@ -12730,7 +12736,11 @@ function renderShowSessionSwitcher(){
   const host=document.getElementById('show-session-switcher');if(!host)return;
   const selected=getShowMode(),active=(knownShowSessionIndex||[]).filter(show=>show.status==='open');
   if(selected?.id&&!active.some(show=>show.id===selected.id))active.unshift(showSessionIndexEntry(selected));
-  host.innerHTML=active.length?active.map(show=>`<button class="buy-tray-pill${show.id===selected?.id?' active':''}" onclick="joinShowSession('${escHtml(show.id)}')"><span class="buy-tray-pill-name">${escHtml(show.eventName||'Show')}</span><span class="buy-tray-pill-meta">${escHtml(show.booth||'No booth')}${show.id===selected?.id?' · JOINED':' · JOIN'}</span></button>`).join(''):'<span style="color:var(--dim);font-size:10px">No active shared shows. Anyone on the store team can start one below.</span>';
+  // Each show has its own END: a show left open on one device (the Sep 6
+  // show that took Oct 3-4's sales) can be ended from any device, not just
+  // the one that has it -- END SHOW below only knows this device's show.
+  const started=show=>{const t=Date.parse(show.startedAt||'');return Number.isFinite(t)?' · since '+new Date(t).toLocaleDateString():'';};
+  host.innerHTML=active.length?active.map(show=>`<span style="display:inline-flex;gap:4px;align-items:stretch"><button class="buy-tray-pill${show.id===selected?.id?' active':''}" onclick="joinShowSession('${escHtml(show.id)}')"><span class="buy-tray-pill-name">${escHtml(show.eventName||'Show')}</span><span class="buy-tray-pill-meta">${escHtml(show.booth||'No booth')}${escHtml(started(show))}${show.id===selected?.id?' · JOINED':' · JOIN'}</span></button><button class="hbtn" style="margin:0;padding:4px 8px;font-size:9px;color:var(--red)" onclick="endSharedShow('${escHtml(show.id)}')">END</button></span>`).join(''):'<span style="color:var(--dim);font-size:10px">No active shared shows. Anyone on the store team can start one below.</span>';
 }
 
 async function joinShowSession(id){
@@ -12944,9 +12954,25 @@ async function startShowMode(){
   });
 }
 
+// Ends any open shared show from any device. Every device in it drops it on
+// its next sync ("That shared show was ended on another device").
+async function endSharedShow(id){
+  if(!id)return;
+  if(getShowMode()?.id===id)return endShowMode();
+  let show=(knownShowSessionIndex||[]).find(row=>row.id===id)||null;
+  try{const res=await storeWorkerFetch(scopedWorkerPath('/kv/show_session_'+id),{cache:'no-store',signal:AbortSignal.timeout(4000)});const d=await res.json().catch(()=>({}));if(d?.value)show=typeof d.value==='string'?JSON.parse(d.value):d.value;}catch(e){}
+  if(!show){toast_dash('That show was not found');return fetchShowSessionIndex();}
+  if(!confirm('End "'+(show.eventName||'Show')+'" for every device? Any device still in it stops adding sales to it.'))return;
+  const now=new Date().toISOString(),closed={...show,id,status:'closed',closedAt:now,closedBy:getCurrentUserLabel(),updatedAt:now};
+  try{await publishShowSession(closed);toast_dash('Show ended for all devices');}
+  catch(e){enqueueOrReplaceSync('show-session-kv',id,'End shared show session',{show:closed},e.message||'Show close sync failed');toast_dash('Could not end it yet: '+e.message+' -- queued to retry');}
+  logOpsEvent('show_end','Ended shared show from another device',{showId:id});
+  await fetchShowSessionIndex();
+}
+
 async function endShowMode(){
   const show=getShowMode();
-  if(!show)return;
+  if(!show)return toast_dash('This device is not in a show. To end a show running on another device, tap END next to it above.');
   if(drawerState)return toast_dash('Close or leave the joined Cash Bag before ending this show');
   if(!confirm('End current show mode? Generate/export closeout first if needed.')) return;
   const closed={...show,status:'closed',closedAt:new Date().toISOString(),closedBy:getCurrentUserLabel(),updatedAt:new Date().toISOString()};
@@ -49202,7 +49228,7 @@ async function toppsLoadParallels(cardId){
   window.__arscaCloseModal = closeModal;
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.10.05.2-shows-and-trays" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.10.05.3-end-any-show" defer></script>
 </body>
 </html>
 
