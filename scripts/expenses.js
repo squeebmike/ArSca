@@ -116,13 +116,36 @@ async function loadShows(client, store){
     var index = typeof knownShowSessionIndex !== 'undefined' && Array.isArray(knownShowSessionIndex) ? knownShowSessionIndex : [];
     index.forEach(function(sh){ add({ id:sh.id, kind:'in-person', name:sh.eventName || 'Show', startedAt:sh.startedAt || '' }); });
   } catch(e) {}
+  // Shows with sales in the last 90 days. The shared show list only keeps a
+  // show for a week after it's touched, so an earlier show (or one never
+  // shared) would otherwise be missing here even though its sales count
+  // under SHOWS THIS MONTH. The name comes from the saved show record when
+  // there is one, else it's labeled by the date of its last sale.
+  try {
+    var since = new Date(Date.now() - 90 * 86400000).toISOString();
+    var sold = await client.from('pos_sales').select('show_session_id,completed_at').eq('store_id', store).not('show_session_id', 'is', null).gte('completed_at', since).order('completed_at', { ascending:false }).limit(1000);
+    var lastSale = {};
+    (sold.data || []).forEach(function(r){ if(r.show_session_id && !lastSale[r.show_session_id]) lastSale[r.show_session_id] = r.completed_at; });
+    out.forEach(function(sh){ if(lastSale[sh.id]) sh.lastAt = lastSale[sh.id]; });
+    var missing = Object.keys(lastSale).filter(function(id){ return !seen[id]; });
+    var named = await Promise.all(missing.slice(0, 20).map(async function(id){
+      try {
+        var res = await storeWorkerFetch(scopedWorkerPath('/kv/show_session_' + id), { cache:'no-store' });
+        var data = await res.json().catch(function(){ return {}; });
+        var rec = data && data.value ? (typeof data.value === 'string' ? JSON.parse(data.value) : data.value) : null;
+        return rec && (rec.eventName || rec.name) || '';
+      } catch(e) { return ''; }
+    }));
+    missing.forEach(function(id, i){ add({ id:id, kind:'in-person', name:named[i] || 'Show', startedAt:'', lastAt:lastSale[id] }); });
+  } catch(e) {}
   try {
     var res = await client.from('whatnot_shows').select('id,title,started_at,report_summary').eq('store_id', store).order('started_at', { ascending:false }).limit(30);
     (res.data || []).forEach(function(sh){ add({ id:sh.id, kind:'whatnot', name:sh.title || 'Whatnot show', startedAt:sh.started_at || '', summary:sh.report_summary || null }); });
   } catch(e) {}
-  return out;
+  var when = function(sh){ return Date.parse(sh.lastAt || sh.startedAt || '') || 0; };
+  return out.sort(function(a, b){ return when(b) - when(a); });
 }
-function showLabel(sh){ var d = Date.parse(sh.startedAt || ''); return (sh.kind === 'whatnot' ? 'Whatnot · ' : '') + (sh.name || 'Show') + (isFinite(d) ? ' · ' + new Date(d).toLocaleDateString() : ''); }
+function showLabel(sh){ var d = Date.parse(sh.lastAt || sh.startedAt || ''); return (sh.kind === 'whatnot' ? 'Whatnot · ' : '') + (sh.name || 'Show') + (isFinite(d) ? ' · ' + new Date(d).toLocaleDateString() : ''); }
 
 // Each show's money this month: in-person sales tagged with the show, or a
 // Whatnot show's saved summary, less the costs tagged to it.

@@ -108,8 +108,6 @@ assert.match(html, /value="skip">Skip duplicates/, 'CSV import must default to s
   // an offer amount must format it with cents (toFixed(2)), not Math.round(),
   // which rounds 0.5 UP to 1 (JS round-half-up) and would silently turn a
   // $0.50 bargain-bin offer into a displayed $1.00.
-  // (tradeCreditOffer's Math.round(buyItemOfferValue(i) * 1.15 * 100) / 100
-  // is a safe cents-preserving round, not the whole-dollar-corrupting kind.)
   assert.doesNotMatch(html, /Math\.round\(buyItemOfferValue\(i\)\)/, 'no display site may wrap buyItemOfferValue in a bare Math.round() -- it corrupts a real $0.50 bracket offer up to $1 on screen');
   assert.doesNotMatch(html, /Math\.round\(offer\)/, 'the Your Offer stat must not Math.round() the tray total -- use toFixed(2) so a $0.50 contribution displays correctly');
   assert.doesNotMatch(html, /Math\.round\(total\)/, 'the PAY CUSTOMER total must not Math.round() -- use toFixed(2) so a $0.50 bracket contribution displays correctly');
