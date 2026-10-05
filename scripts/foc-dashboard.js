@@ -1319,7 +1319,7 @@ function renderFocReview(){
   // this never offers to queue up a cover eBay itself would reject (no
   // on-sale date yet, not released yet, etc).
   var needsListing=regular.filter(function(v){return v.ebayPresaleStatus==='ELIGIBLE_NOW'&&Number(v.storeQuantity||0)>0;});
-  panel().innerHTML='<section class="foc-hero"><div class="foc-toolbar"><button class="hbtn" onclick="openFocCycle(\''+esc(c.id)+'\')">← COVER WALL</button><button class="hbtn" style="color:var(--g)" onclick="submitPrhOrder()">SUBMIT PRH ORDER</button><input type="file" id="foc-prh-cart-file" accept=".csv,.xlsx,.xls" hidden onchange="handleFocPrhCartImportFile(event)"><button class="hbtn" title="Upload the cart export from PRH\'s own ordering site (what you actually ordered) -- sets secured/store quantities to match, ends eBay listings for anything left out, and adjusts ordered covers\' listings to the real total, all in one go" onclick="document.getElementById(\'foc-prh-cart-file\').click()">UPLOAD PRH CART</button><button class="hbtn" style="color:var(--red)" onclick="endFocEbayListings()">END REMAINING EBAY LISTINGS</button><button class="hbtn" title="Fixes multi-cover eBay listings published before the photo-to-cover binding fix, where the wrong (or missing) photo shows for some covers" onclick="repairFocEbayGroupPhotos()">REPAIR LISTING PHOTOS</button></div>'+
+  panel().innerHTML='<section class="foc-hero"><div class="foc-toolbar"><button class="hbtn" onclick="openFocCycle(\''+esc(c.id)+'\')">← COVER WALL</button><button class="hbtn" style="color:var(--g)" onclick="submitPrhOrder()">SUBMIT PRH ORDER</button><input type="file" id="foc-prh-cart-file" accept=".csv,.xlsx,.xls" hidden onchange="handleFocPrhCartImportFile(event)"><button class="hbtn" title="Upload the cart export from PRH\'s own ordering site (what you actually ordered) -- sets secured/store quantities to match, ends eBay listings for anything left out, and adjusts ordered covers\' listings to the real total, all in one go" onclick="document.getElementById(\'foc-prh-cart-file\').click()">'+(c.distributor==='Lunar'?'UPLOAD LUNAR ORDER':'UPLOAD PRH CART')+'</button><button class="hbtn" style="color:var(--red)" onclick="endFocEbayListings()">END REMAINING EBAY LISTINGS</button><button class="hbtn" title="Fixes multi-cover eBay listings published before the photo-to-cover binding fix, where the wrong (or missing) photo shows for some covers" onclick="repairFocEbayGroupPhotos()">REPAIR LISTING PHOTOS</button></div>'+
     '<div style="font:900 20px/1.1 \'Orbitron\',monospace;color:var(--text);margin-top:10px">Final FOC Review · '+esc(displayDate(c.foc_date))+'</div>'+
     '<div class="foc-stats" style="margin-top:12px"><div class="foc-stat"><b>'+regular.length+'</b><span>SKUs</span></div><div class="foc-stat"><b>'+totalUnits+'</b><span>Total Units</span></div><div class="foc-stat"><b>$'+(estCents/100).toFixed(2)+'</b><span>Est. Wholesale</span></div><div class="foc-stat"><b>'+totalWebsite+'</b><span>Website Presold</span></div><div class="foc-stat"><b>'+totalEbay+'</b><span>eBay Presold</span></div><div class="foc-stat"><b>'+totalStore+'</b><span>Whatnot/Store</span></div><div class="foc-stat"><b>'+qualifiedCount+' / '+incentivesAll.length+'</b><span>Incentives Qualified</span></div></div>'+
     '<div id="foc-review-status" style="font:10px var(--font-mono);color:var(--dim);margin-top:8px">Checking submission status…</div>'+
@@ -1446,11 +1446,14 @@ async function handleFocPrhCartImportFile(event){
     var buffer=await file.arrayBuffer();var wb=XLSX.read(buffer,{type:'array',raw:true});var sheet=wb.Sheets[wb.SheetNames[0]];
     var parsed=XLSX.utils.sheet_to_json(sheet,{defval:'',raw:false});
     if(!parsed.length)throw new Error('No rows found in this file');
-    var upcKey=Object.keys(parsed[0]).find(function(k){return k.replace(/\s+/g,' ').trim().toLowerCase()==='isbn / upc';});
-    var qtyKey=Object.keys(parsed[0]).find(function(k){return k.trim().toLowerCase()==='quantity';});
-    if(!upcKey||!qtyKey)throw new Error('This does not look like a PRH cart export -- expected "ISBN / UPC" and "Quantity" columns');
-    var rows=parsed.map(function(row){return{upc:String(row[upcKey]||'').trim(),quantity:Number(row[qtyKey])||0};}).filter(function(r){return r.upc&&r.quantity>0;});
-    if(!rows.length)throw new Error('No row had both a UPC/ISBN and a positive quantity -- is this the right file?');
+    // PRH's cart export ("ISBN / UPC", "Quantity") or Lunar's order export
+    // ("Code", "Title", "Qty", ..., "UPC") -- either one.
+    var keys=Object.keys(parsed[0]);var keyFor=function(names){return keys.find(function(k){return names.indexOf(k.replace(/\s+/g,' ').trim().toLowerCase())>-1;});};
+    var upcKey=keyFor(['isbn / upc','upc','isbn']);var codeKey=keyFor(['code','item code','diamond code']);var titleKey=keyFor(['title','description']);
+    var qtyKey=keyFor(['quantity','qty','order qty']);
+    if((!upcKey&&!codeKey)||!qtyKey)throw new Error('This does not look like a PRH cart or Lunar order export -- expected a UPC (or Code) column and a Quantity/Qty column');
+    var rows=parsed.map(function(row){return{upc:upcKey?String(row[upcKey]||'').trim():'',code:codeKey?String(row[codeKey]||'').trim():'',title:titleKey?String(row[titleKey]||'').trim():'',quantity:Number(row[qtyKey])||0};}).filter(function(r){return (r.upc||r.code)&&r.quantity>0;});
+    if(!rows.length)throw new Error('No row had both a UPC (or Code) and a positive quantity -- is this the right file?');
     if(status)status.textContent='Matching '+rows.length+' cart rows against this cycle…';
     var d=await api('/foc/admin/prh-cart-import',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({storeId:getActiveStoreId(),cycleId:state.cycle.id,rows:rows})});
     if(status)status.textContent='';
@@ -1462,11 +1465,11 @@ async function handleFocPrhCartImportFile(event){
     renderFocReview();
     var resultHostAfterRefresh=document.getElementById('foc-prh-cart-result');
     if(resultHostAfterRefresh)resultHostAfterRefresh.innerHTML=focPrhCartResultHtml(d);
-  }catch(e){if(status)status.textContent='';toast_dash('Could not import PRH cart: '+e.message);}
+  }catch(e){if(status)status.textContent='';toast_dash('Could not import the order: '+e.message);}
 }
 function focPrhCartResultHtml(d){
   var parts=['<div class="panel" style="margin-top:10px;padding:12px 16px">'+
-    '<div style="font:900 11px \'Orbitron\',monospace;color:var(--g);letter-spacing:1px;margin-bottom:6px">PRH CART IMPORTED</div>'+
+    '<div style="font:900 11px \'Orbitron\',monospace;color:var(--g);letter-spacing:1px;margin-bottom:6px">'+esc(((state.cycle&&state.cycle.distributor)||'PRH').toUpperCase())+' ORDER IMPORTED</div>'+
     '<div style="font:10px var(--font-mono);color:var(--dim)">'+d.matchedCount+' cover'+(d.matchedCount===1?'':'s')+' matched to this cycle and had secured/store quantities set to match your real order.'+
     (d.ebayWithdrawnCount?'<br>'+d.ebayWithdrawnCount+' eBay listing'+(d.ebayWithdrawnCount===1?'':'s')+' ended -- left out of the cart, so nothing is coming from the distributor.':'')+
     (d.ebayQuantityUpdatedCount?'<br>'+d.ebayQuantityUpdatedCount+' eBay listing'+(d.ebayQuantityUpdatedCount===1?'':'s')+' had its buyable quantity adjusted to the real ordered total.':'')+
@@ -1475,7 +1478,7 @@ function focPrhCartResultHtml(d){
     parts.push('<div class="panel" style="margin-top:10px;padding:12px 16px;border-color:rgba(255,209,102,.35)">'+
       '<div style="font:900 11px \'Orbitron\',monospace;color:var(--gold);letter-spacing:1px;margin-bottom:6px">⚠ '+d.unmatchedRows.length+' CART ROW'+(d.unmatchedRows.length===1?'':'S')+' NOT MATCHED</div>'+
       '<div style="font:9px var(--font-mono);color:var(--dim);margin-bottom:6px">Usually non-comic lines PRH\'s own cart mixes in (posters, merchandise) that were never part of this catalog import -- but double-check a UPC below isn\'t a real cover that just doesn\'t match (a reprint, a distributor UPC change).</div>'+
-      d.unmatchedRows.map(function(r){return '<div style="font:9px var(--font-mono);color:var(--text);padding:2px 0">UPC '+esc(r.upc)+' · qty '+r.quantity+'</div>';}).join('')+
+      d.unmatchedRows.map(function(r){return '<div style="font:9px var(--font-mono);color:var(--text);padding:2px 0">'+(r.title?esc(r.title)+' · ':'')+(r.upc?'UPC '+esc(r.upc):'Code '+esc(r.code||''))+' · qty '+r.quantity+'</div>';}).join('')+
       '</div>');
   }
   // needsListing itself is rendered by renderFocReview() as a persistent,

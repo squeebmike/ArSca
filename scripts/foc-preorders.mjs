@@ -1959,14 +1959,22 @@ async function adminImportPrhCart(request,env,deps){
   // added to the cart twice, or PRH itself splitting a large quantity across
   // rows) -- sum rather than overwrite, so the real total ordered is never
   // silently understated to whichever row happened to be read last.
-  const orderedByUpc=new Map();
+  // Lunar's order export (Code, Title, Qty, ..., UPC) is accepted too: a row
+  // matches by UPC, or by the distributor's own item code (Lunar's
+  // "0926DC0056") when the UPC doesn't. Each row is keyed by whichever
+  // identifier it has, preferring UPC.
+  const orderedByUpc=new Map();const codeForUpc=new Map();const titleForKey=new Map();
   for(const row of rows){
-    const upc=exactIdentifier(row?.upc);const quantity=Math.max(0,Math.min(100000,Number(row?.quantity)||0));
-    if(!upc||!quantity)continue;
-    orderedByUpc.set(upc,(orderedByUpc.get(upc)||0)+quantity);
+    const upc=exactIdentifier(row?.upc);const code=exactIdentifier(row?.code).toUpperCase();const quantity=Math.max(0,Math.min(100000,Number(row?.quantity)||0));
+    const key=upc||(code?'code:'+code:'');
+    if(!key||!quantity)continue;
+    orderedByUpc.set(key,(orderedByUpc.get(key)||0)+quantity);
+    if(code)codeForUpc.set(key,code);
+    if(row?.title)titleForKey.set(key,text(row.title,200));
   }
-  if(!orderedByUpc.size)return deps.json({ok:false,error:'No row had both a UPC/ISBN and a positive quantity -- is this the right file?'},400);
-  const {data:skus}=await db(`comic_skus?cycle_id=eq.${encodeURIComponent(cycleId)}&store_id=eq.${encodeURIComponent(storeId)}&select=id,upc,title,variant_label`);
+  if(!orderedByUpc.size)return deps.json({ok:false,error:'No row had both a UPC/ISBN (or item code) and a positive quantity -- is this the right file?'},400);
+  const {data:skus}=await db(`comic_skus?cycle_id=eq.${encodeURIComponent(cycleId)}&store_id=eq.${encodeURIComponent(storeId)}&select=id,upc,distributor_sku,title,variant_label`);
+  const keyByCode=new Map([...codeForUpc.entries()].map(([key,code])=>[code,key]));
   if(!skus?.length)return deps.json({ok:false,error:'FOC cycle not found, or it has no covers yet'},404);
   const customerQty=await orderedQtyBySku(db,cycleId);
   const ebayPresold=await ebayPresoldBySku(db,storeId);
@@ -1974,8 +1982,10 @@ async function adminImportPrhCart(request,env,deps){
   const updated=[];const finalQtyBySku=new Map();
   for(const sku of skus){
     const upc=exactIdentifier(sku.upc);
-    const orderedTotal=orderedByUpc.get(upc)||0;
-    if(upc&&orderedByUpc.has(upc))matchedUpcs.add(upc);
+    const code=exactIdentifier(sku.distributor_sku).toUpperCase();
+    const key=upc&&orderedByUpc.has(upc)?upc:(code&&keyByCode.has(code)?keyByCode.get(code):'');
+    const orderedTotal=key?(orderedByUpc.get(key)||0):0;
+    if(key)matchedUpcs.add(key);
     const committed=Number(customerQty.get(sku.id)||0)+Number(ebayPresold.get(sku.id)||0);
     const newStoreQuantity=Math.max(0,orderedTotal-committed);
     if(orderedTotal>0)finalQtyBySku.set(sku.id,orderedTotal);
@@ -1987,7 +1997,7 @@ async function adminImportPrhCart(request,env,deps){
   // never entered comic_skus to begin with, but surfaced rather than
   // silently dropped in case a real cover's UPC just doesn't match (a
   // reprint, a distributor UPC change) and needs a human look.
-  const unmatchedRows=[...orderedByUpc.entries()].filter(([upc])=>!matchedUpcs.has(upc)).map(([upc,quantity])=>({upc,quantity}));
+  const unmatchedRows=[...orderedByUpc.entries()].filter(([key])=>!matchedUpcs.has(key)).map(([key,quantity])=>({upc:key.startsWith('code:')?'':key,code:codeForUpc.get(key)||'',title:titleForKey.get(key)||'',quantity}));
   const {ebayWithdrawnSkuIds,ebayQuantityUpdatedSkuIds}=await syncFocEbayListingsToOrder(env,deps,db,storeId,cycleId,finalQtyBySku);
   // Covers that were ordered and still have copies left to sell (after
   // committed demand) but have no live eBay presale listing at all yet --

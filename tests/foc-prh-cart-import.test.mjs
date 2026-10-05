@@ -72,7 +72,7 @@ function buildDb(patchCalls) {
   const res = await handleFocRequest(mockRequest({ storeId:'store-1', cycleId:'cycle-1', rows }), {}, new URL('https://x/foc/admin/prh-cart-import'), deps);
   assert.equal(res.data.ok, true, JSON.stringify(res.data));
   assert.equal(res.data.matchedCount, 3, 'sku-A, sku-C, sku-D were matched and ordered; sku-B was not');
-  assert.deepEqual(res.data.unmatchedRows, [{ upc:'999', quantity:7 }], 'a UPC matching nothing in this cycle must be reported, not silently dropped');
+  assert.deepEqual(res.data.unmatchedRows, [{ upc:'999', code:'', title:'', quantity:7 }], 'a UPC matching nothing in this cycle must be reported, not silently dropped');
 
   const patchBySku = Object.fromEntries(patchCalls.filter(c => c.path.startsWith('comic_skus?id=eq.')).map(c => [c.path.match(/id=eq\.([^&]+)/)[1], c.body]));
   assert.deepEqual(patchBySku['sku-A'], { secured_quantity:4, store_quantity:3 }, 'sku-A: 4 ordered minus 1 committed = 3 left over for store/eBay');
