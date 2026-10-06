@@ -1720,6 +1720,190 @@ async function adminComicSellThrough(request,env,deps,url){
   return deps.json({ok:true,...computeComicSellThrough(items||[],soldByItem),pullLists});
 }
 
+// ═══════════════════════════════════════════════════════
+// RECEIVING DAY -- who each arriving book is for (pick list), "your books
+// are in" texts, and presales whose on-sale date passed without the book.
+// ═══════════════════════════════════════════════════════
+function firstName(name){return text(name,60).split(/\s+/)[0]||'there';}
+export function arrivalTitleList(titles=[]){
+  const list=[...new Set(titles.filter(Boolean))];
+  return list.length>3?list.slice(0,3).join(', ')+' and '+(list.length-3)+' more':list.join(', ');
+}
+export function arrivalMessage(kind,{name,orderNumber,titles,fulfillment}={}){
+  const books=arrivalTitleList(titles);
+  if(kind==='pull')return `Hi ${firstName(name)}, new books for your pull list are in at The Mana Pocket: ${books}. Come by and grab them! Reply STOP to opt out.`;
+  const where=fulfillment==='pickup'?'It\'s ready for pickup at the shop.':'It will ship out soon.';
+  return `Hi ${firstName(name)}, your Mana Pocket preorder${orderNumber?' #'+orderNumber:''} is in: ${books}. ${where} Reply STOP to opt out.`;
+}
+// Text if there's a phone that hasn't opted out, email if there's an email.
+async function sendArrivalNotice(env,deps,storeId,{phone,email,message,staffUserId}){
+  const sent={sms:false,email:false,errors:[]};
+  if(phone&&deps.sendSms){
+    try{
+      const consent=deps.smsConsentStatus?await deps.smsConsentStatus(env,storeId,phone):{optedOut:false};
+      if(consent.optedOut)sent.errors.push('opted out of texts');
+      else{
+        const result=await deps.sendSms(env,phone,message);sent.sms=true;
+        if(deps.persistMessageRecord)await deps.persistMessageRecord(env,{store_id:storeId,message_sid:result?.sid||null,direction:'outbound',from_number:env.TWILIO_FROM_NUMBER||null,to_number:phone,body:message,customer_id:consent.customerId||null,staff_user_id:staffUserId||null,status:'sent'});
+      }
+    }catch(e){sent.errors.push('text: '+e.message);}
+  }
+  if(email&&deps.sendEmail){
+    try{await deps.sendEmail(env,email,'Your books are in -- The Mana Pocket',message.replace(/ Reply STOP to opt out\.$/,''));sent.email=true;}
+    catch(e){sent.errors.push('email: '+e.message);}
+  }
+  return sent;
+}
+async function notifyOrdersReady(env,deps,db,storeId,orderIds,staffUserId){
+  if(!orderIds.length)return [];
+  const {data:orders}=await db(`foc_preorder_orders?id=${inFilter(orderIds)}&select=id,order_number,customer_name,customer_phone,customer_email,fulfillment_method`);
+  const {data:items}=await db(`foc_preorder_items?order_id=${inFilter(orderIds)}&select=order_id,sku:comic_skus(title,variant_label)`);
+  const results=[];
+  for(const o of orders||[]){
+    const titles=(items||[]).filter(i=>i.order_id===o.id).map(i=>[i.sku?.title,i.sku?.variant_label&&!/^cover a$/i.test(i.sku.variant_label)?i.sku.variant_label:''].filter(Boolean).join(' '));
+    const message=arrivalMessage('order',{name:o.customer_name,orderNumber:o.order_number,titles,fulfillment:o.fulfillment_method});
+    const sent=await sendArrivalNotice(env,deps,storeId,{phone:o.customer_phone,email:o.customer_email,message,staffUserId});
+    if(env.LBA_KV)try{await env.LBA_KV.put(`foc-arrival-notified:${o.id}`,JSON.stringify({at:new Date().toISOString(),...sent}),{expirationTtl:60*60*24*120});}catch(_){}
+    results.push({orderId:o.id,orderNumber:o.order_number,name:o.customer_name,...sent});
+  }
+  return results;
+}
+
+// Everything owed out of one or more cycles' books, per cover: website
+// preorders, eBay presale orders (grouped by eBay order, with the books in
+// that order that aren't in this shipment), and pull-list customers.
+export function buildPickList({skus=[],families=[],preorderItems=[],presaleRows=[],ebayLines=[],orderLines=[],labelled=new Set(),pullSubs=[],notified=new Set()}){
+  const famById=new Map(families.map(f=>[f.id,f]));
+  const skuIds=new Set(skus.map(s=>s.id));
+  const rowSku=new Map();
+  for(const r of presaleRows){const d=r.data||{};rowSku.set(r.id,d.source==='foc_presale_bundle'?(d.focBundleSkuIds||[]).filter(id=>skuIds.has(id)):[d.focSkuId]);}
+  const label=s=>[s.title,s.variant_label&&!/^cover a$/i.test(s.variant_label)?s.variant_label:''].filter(Boolean).join(' · ');
+  const covers=new Map(skus.map(s=>[s.id,{skuId:s.id,title:label(s),familyId:s.family_id,onSaleDate:s.on_sale_date||'',website:[],ebay:[],pull:[]}]));
+  for(const it of preorderItems){
+    const c=covers.get(it.sku_id),o=it.order;if(!c||!o||!['paid','reserved','ready_for_pickup'].includes(o.status))continue;
+    c.website.push({orderId:o.id,orderNumber:o.order_number,name:text(o.customer_name,80)||'Customer',phone:o.customer_phone||'',email:o.customer_email||'',qty:Number(it.quantity||1),method:o.fulfillment_method,status:o.status,notified:notified.has(o.id)});
+  }
+  const orderBooks=new Map();
+  for(const l of orderLines){const id=String(l.source_id||'').replace(/^ebay:/,'');if(!id)continue;const list=orderBooks.get(id)||[];list.push({itemId:l.item_id,title:text(l.title,120).replace(/\s*-\s*PRESALE\s*$/i,'')});orderBooks.set(id,list);}
+  const presaleIds=new Set(rowSku.keys());
+  for(const l of ebayLines){
+    const orderId=String(l.source_id||'').replace(/^ebay:/,'');if(!orderId)continue;
+    for(const skuId of rowSku.get(l.item_id)||[]){
+      const c=covers.get(skuId);if(!c)continue;
+      const others=(orderBooks.get(orderId)||[]).filter(b=>b.itemId!==l.item_id);
+      const waitingOn=others.filter(b=>!presaleIds.has(b.itemId)||!(rowSku.get(b.itemId)||[]).some(id=>skuIds.has(id))).map(b=>b.title);
+      c.ebay.push({orderId,qty:Math.max(1,Number(l.quantity||1)),soldAt:l.created_at,shipped:labelled.has(orderId),alsoInOrder:others.map(b=>b.title),waitingOn});
+    }
+  }
+  const subsBySeries=new Map();
+  for(const s of pullSubs){const k=comicSeriesKey({series:s.series?.title});if(!k)continue;const list=subsBySeries.get(k)||[];list.push({subscriptionId:s.id,name:text(s.customer_name||s.customer?.name,80)||'Customer',phone:s.customer?.phone||'',email:s.customer?.email||'',optedOut:!!s.customer?.sms_opted_out,notified:notified.has(s.id)});subsBySeries.set(k,list);}
+  // Pull-list customers get Cover A of each issue: attach them to the
+  // family's first regular cover only.
+  const seenFamily=new Set();
+  for(const c of [...covers.values()].sort((a,b)=>a.title.localeCompare(b.title))){
+    if(!c.familyId||seenFamily.has(c.familyId))continue;
+    const f=famById.get(c.familyId);if(!f)continue;
+    const k=comicSeriesKey({series:f.series_name||String(f.title||'').replace(/#.*$/,'')});
+    if(subsBySeries.has(k)){c.pull=subsBySeries.get(k);seenFamily.add(c.familyId);}
+  }
+  return [...covers.values()].filter(c=>c.website.length||c.ebay.length||c.pull.length).map(c=>({...c,
+    totalOwed:c.website.reduce((n,w)=>n+w.qty,0)+c.ebay.filter(e=>!e.shipped).reduce((n,e)=>n+e.qty,0)+c.pull.length}))
+    .sort((a,b)=>a.title.localeCompare(b.title));
+}
+async function adminPickList(request,env,deps,url){
+  const storeId=text(url.searchParams.get('store_id'),80);
+  const auth=await deps.requireStoreUser(request,env,storeId,['owner','admin','manager','employee']);if(auth.error)return auth.error;
+  const cycleIds=String(url.searchParams.get('cycle_ids')||'').split(',').map(s=>s.trim()).filter(id=>/^[0-9a-f-]{36}$/i.test(id)).slice(0,10);
+  if(!cycleIds.length)return deps.json({ok:false,error:'cycle_ids required'},400);
+  const db=(path,options)=>deps.supabaseAdminFetch(env,path,options);
+  const {data:skus}=await db(`comic_skus?store_id=eq.${encodeURIComponent(storeId)}&cycle_id=${inFilter(cycleIds)}&select=id,title,variant_label,family_id,on_sale_date,is_incentive&limit=2000`);
+  const ids=(skus||[]).map(s=>s.id);
+  if(!ids.length)return deps.json({ok:true,covers:[]});
+  const familyIds=[...new Set((skus||[]).map(s=>s.family_id).filter(Boolean))];
+  const {data:families}=familyIds.length?await db(`comic_title_families?id=${inFilter(familyIds)}&select=id,series_name,title`):{data:[]};
+  const {data:preorderItems}=await db(`foc_preorder_items?cycle_id=${inFilter(cycleIds)}&select=sku_id,quantity,order:foc_preorder_orders(id,order_number,status,customer_name,customer_phone,customer_email,fulfillment_method)`);
+  const {data:presaleRows}=await db(`inventory_items?store_id=eq.${encodeURIComponent(storeId)}&data->>source=in.(foc_presale,foc_presale_bundle)&data->>focCycleId=${inFilter(cycleIds)}&select=id,data`);
+  const rowIds=(presaleRows||[]).map(r=>r.id);let ebayLines=[];
+  for(let i=0;i<rowIds.length;i+=150){const {data}=await db(`pos_sale_lines?store_id=eq.${encodeURIComponent(storeId)}&item_id=${inFilter(rowIds.slice(i,i+150))}&source_id=like.ebay*&select=item_id,quantity,source_id,title,created_at`);ebayLines=ebayLines.concat(data||[]);}
+  const sources=[...new Set(ebayLines.map(l=>l.source_id))];let orderLines=[],labelled=new Set();
+  if(sources.length){
+    const quoted=sources.map(s=>'"'+String(s).replace(/"/g,'')+'"').join(',');
+    ({data:orderLines}=await db(`pos_sale_lines?store_id=eq.${encodeURIComponent(storeId)}&source_id=in.(${quoted})&select=item_id,title,source_id`));
+    const refs=sources.map(s=>'"'+String(s).replace(/^ebay:/,'').replace(/"/g,'')+'"').join(',');
+    const {data:pays}=await db(`pos_payments?store_id=eq.${encodeURIComponent(storeId)}&provider=eq.ebay&reference=in.(${refs})&select=reference,provider_metadata`);
+    for(const p of pays||[])if((p.provider_metadata?.labelTransactionIds||[]).length)labelled.add(String(p.reference));
+  }
+  let pullSubs=[];
+  try{({data:pullSubs}=await db(`pull_list_subscriptions?store_id=eq.${encodeURIComponent(storeId)}&active=eq.true&select=id,customer_name,series:pull_list_series(title),customer:customers(name,phone,email,sms_opted_out)`));}catch(_){}
+  const notified=new Set();
+  if(env.LBA_KV){
+    const keys=[...new Set((preorderItems||[]).map(i=>i.order?.id).filter(Boolean))].map(id=>'foc-arrival-notified:'+id)
+      .concat((pullSubs||[]).map(s=>`foc-arrival-notified:${s.id}:${cycleIds.join('+')}`));
+    for(const k of keys.slice(0,200)){try{if(await env.LBA_KV.get(k))notified.add(k.split(':')[1]);}catch(_){}}
+  }
+  return deps.json({ok:true,covers:buildPickList({skus:skus||[],families:families||[],preorderItems:preorderItems||[],presaleRows:presaleRows||[],ebayLines,orderLines:orderLines||[],labelled,pullSubs:pullSubs||[],notified})});
+}
+// One-tap "your books are in" for pull-list customers (matched by series
+// name, so staff confirm who gets it) or a website order to re-send.
+async function adminNotifyArrivals(request,env,deps){
+  const limited=await deps.readJsonWithLimit(request,32*1024);if(limited.error)return limited.error;
+  const body=limited.data||{};const storeId=text(body.storeId,80);
+  const auth=await deps.requireStoreUser(request,env,storeId,['owner','admin','manager','employee']);if(auth.error)return auth.error;
+  const db=(path,options)=>deps.supabaseAdminFetch(env,path,options);
+  const cycleKey=(Array.isArray(body.cycleIds)?body.cycleIds:[]).map(id=>text(id,80)).join('+');
+  const results=[];
+  const pulls=(Array.isArray(body.pull)?body.pull:[]).slice(0,100);
+  const subIds=pulls.map(p=>text(p.subscriptionId,80)).filter(id=>/^[0-9a-f-]{36}$/i.test(id));
+  if(subIds.length){
+    const {data:subs}=await db(`pull_list_subscriptions?store_id=eq.${encodeURIComponent(storeId)}&id=${inFilter(subIds)}&select=id,customer_name,customer:customers(name,phone,email)`);
+    for(const s of subs||[]){
+      const p=pulls.find(x=>x.subscriptionId===s.id)||{};
+      const name=s.customer_name||s.customer?.name;
+      const message=arrivalMessage('pull',{name,titles:(Array.isArray(p.titles)?p.titles:[]).map(t=>text(t,120))});
+      const sent=await sendArrivalNotice(env,deps,storeId,{phone:s.customer?.phone,email:s.customer?.email,message,staffUserId:auth.user?.id});
+      if(env.LBA_KV&&(sent.sms||sent.email))try{await env.LBA_KV.put(`foc-arrival-notified:${s.id}:${cycleKey}`,new Date().toISOString(),{expirationTtl:60*60*24*120});}catch(_){}
+      results.push({subscriptionId:s.id,name,...sent});
+    }
+  }
+  const orderIds=(Array.isArray(body.orderIds)?body.orderIds:[]).map(id=>text(id,80)).filter(id=>/^[0-9a-f-]{36}$/i.test(id)).slice(0,50);
+  if(orderIds.length){
+    const {data:own}=await db(`foc_preorder_orders?store_id=eq.${encodeURIComponent(storeId)}&id=${inFilter(orderIds)}&select=id`);
+    results.push(...await notifyOrdersReady(env,deps,db,storeId,(own||[]).map(o=>o.id),auth.user?.id));
+  }
+  return deps.json({ok:true,results});
+}
+
+// Books people already paid for (eBay presale or website preorder) whose
+// on-sale date has passed but that were never received.
+export function findLateBooks({presaleRows=[],receivedSkuIds=new Set(),preorderItems=[],today}){
+  const late=[];
+  for(const r of presaleRows){
+    const d=r.data||{};if(!d.onSaleDate||d.onSaleDate>=today||d.ebayPresaleConverted)continue;
+    const sold=Math.max(0,Number(d.focPresaleOriginalQty||0)-Number(d.qty??d.quantity??0));
+    if(!sold||receivedSkuIds.has(d.focSkuId))continue;
+    late.push({kind:'ebay',title:text(d.name,200).replace(/\s*-\s*PRESALE\s*$/i,''),onSaleDate:d.onSaleDate,waiting:sold,cycleId:d.focCycleId||''});
+  }
+  const web=new Map();
+  for(const it of preorderItems){
+    const s=it.sku||{};if(!s.on_sale_date||s.on_sale_date>=today||it.order?.status!=='paid')continue;
+    const k=it.sku_id;const prev=web.get(k)||{kind:'website',title:[s.title,s.variant_label].filter(Boolean).join(' · '),onSaleDate:s.on_sale_date,waiting:0,cycleId:it.cycle_id||''};
+    prev.waiting+=Number(it.quantity||1);web.set(k,prev);
+  }
+  return late.concat([...web.values()]).sort((a,b)=>a.onSaleDate.localeCompare(b.onSaleDate));
+}
+async function adminLateBooks(request,env,deps,url){
+  const storeId=text(url.searchParams.get('store_id'),80);
+  const auth=await deps.requireStoreUser(request,env,storeId,['owner','admin','manager','employee']);if(auth.error)return auth.error;
+  const db=(path,options)=>deps.supabaseAdminFetch(env,path,options);
+  const today=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Los_Angeles'}).format(new Date());
+  const {data:presaleRows}=await db(`inventory_items?store_id=eq.${encodeURIComponent(storeId)}&status=eq.presale&data->>source=eq.foc_presale&data->>onSaleDate=lt.${today}&select=id,data`);
+  const skuIds=[...new Set((presaleRows||[]).map(r=>r.data?.focSkuId).filter(Boolean))];
+  const receivedSkuIds=new Set();
+  for(let i=0;i<skuIds.length;i+=150){const {data}=await db(`inventory_items?store_id=eq.${encodeURIComponent(storeId)}&data->>source=eq.foc_receive&data->>focSkuId=${inFilter(skuIds.slice(i,i+150))}&select=data`);for(const r of data||[])receivedSkuIds.add(r.data?.focSkuId);}
+  const {data:preorderItems}=await db(`foc_preorder_items?status=eq.committed&select=sku_id,cycle_id,quantity,ord:foc_preorder_orders!inner(status,store_id),sku:comic_skus!inner(title,variant_label,on_sale_date)&ord.store_id=eq.${encodeURIComponent(storeId)}&ord.status=eq.paid&sku.on_sale_date=lt.${today}`);
+  return deps.json({ok:true,today,late:findLateBooks({presaleRows:presaleRows||[],receivedSkuIds,preorderItems:(preorderItems||[]).map(it=>({...it,order:it.ord})),today})});
+}
+
 // Lunar lists the same cover again in later FOC weeks (same UPC, new row) --
 // one cover, shown once: the copy that was actually ordered, else the latest
 // listing. aliases maps every other row's id to it, so a set saved with an
@@ -2599,6 +2783,7 @@ async function receiveShipment(request,env,deps){
   // and staff both see accurate status instead of a paid order sitting there
   // looking identical whether the books are in or still weeks away.
   const orderIds=[...new Set((paidItems||[]).map(item=>item.order_id))];
+  const readyOrderIds=[];
   if(orderIds.length){
     const { data:allItems }=await db(`foc_preorder_items?order_id=${inFilter(orderIds)}&select=order_id,status`);
     const { data:orders }=await db(`foc_preorder_orders?id=${inFilter(orderIds)}&select=id,status,fulfillment_method`);
@@ -2608,9 +2793,14 @@ async function receiveShipment(request,env,deps){
       if(!items.length||!items.every(item=>item.status==='received'))continue;
       const nextStatus=order.fulfillment_method==='pickup'?'ready_for_pickup':'reserved';
       await db(`foc_preorder_orders?id=eq.${order.id}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({status:nextStatus})});
+      readyOrderIds.push(order.id);
     }
   }
-  return deps.json({ok:true,createdInventoryCount:created.length,receivedSummary});
+  // "Your books are in" -- each order is told once, the moment its last
+  // book arrives (the paid -> ready flip above only ever happens once).
+  let notified=[];
+  try{notified=await notifyOrdersReady(env,deps,db,storeId,readyOrderIds,auth.user?.id);}catch(e){console.error('FOC receive: arrival notices failed',e);}
+  return deps.json({ok:true,createdInventoryCount:created.length,receivedSummary,notified});
 }
 
 async function saveShippingSettings(request,env,deps){
@@ -2901,6 +3091,9 @@ export async function handleFocRequest(request, env, url, deps) {
   if(path==='/foc/admin/intelligence'&&request.method==='GET')return focIntelligence(request,env,deps,url);
   if(path==='/foc/admin/connecting-covers'&&request.method==='GET')return adminConnectingCovers(request,env,deps,url);
   if(path==='/foc/admin/comic-sell-through'&&request.method==='GET')return adminComicSellThrough(request,env,deps,url);
+  if(path==='/foc/admin/pick-list'&&request.method==='GET')return adminPickList(request,env,deps,url);
+  if(path==='/foc/admin/notify-arrivals'&&request.method==='POST')return adminNotifyArrivals(request,env,deps);
+  if(path==='/foc/admin/late-books'&&request.method==='GET')return adminLateBooks(request,env,deps,url);
   if(path==='/foc/admin/orders'&&(request.method==='GET'||request.method==='PATCH'))return adminOrders(request,env,deps,url);
   if(path==='/foc/admin/orders/email'&&request.method==='POST')return resendAdminOrderEmail(request,env,deps);
   if(path==='/foc/admin/orders/label'&&request.method==='POST')return adminShippingLabel(request,env,deps);

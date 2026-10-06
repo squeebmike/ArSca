@@ -5972,6 +5972,7 @@ async function routeRequest(request, env, ctx) {
         readJsonWithLimit, enforceUsageLimit, stripeApi, stripeMode, stripeConfig, sendEmail,
         addBusinessDays, getEbayPresaleSafeBusinessDays, getEbayUserAccessToken, withdrawEbayOffer, withdrawEbayOfferGroup, endEbayVolumeDiscount, ebayReviseOfferQuantity,
         ebayReviseVariationQuantityTrading, endEbayListingTrading,
+        sendSms, smsConsentStatus, persistMessageRecord,
         inventoryDetailHref: row => {
           const item = shapeStorefrontItem(row);
           if (!(isBcwItem(item) ? isBcwPublished(item) : isStorefrontItemListable(item))) return null;

@@ -508,7 +508,7 @@ function familyCard(f){
 
 function renderCycle(){
   var c=state.cycle;if(!c)return;var publishers=Array.from(new Set(state.families.map(function(f){return f.publisher;}).filter(Boolean))).sort();var allSkus=state.families.reduce(function(a,f){return a.concat(f.variants);},[]);var customerQty=allSkus.reduce(function(s,v){return s+Number(v.customerQty||0);},0);var storeQty=allSkus.reduce(function(s,v){return s+Number(v.storeQuantity||0);},0);var incentiveReq=allSkus.reduce(function(s,v){return s+Number(v.waitlistRequests||0);},0);
-  panel().innerHTML='<section class="foc-hero"><div class="foc-toolbar"><button class="hbtn" onclick="loadFocCycles()">← CYCLES</button><button class="hbtn" style="color:var(--purple)" onclick="openFocReview()">FINAL FOC REVIEW</button><button class="hbtn" style="color:var(--blue)" onclick="openFocIntelligence()">🧠 FOC INTELLIGENCE</button>'+(c.distributor==="Lunar"?"":"<button class=\"hbtn\" onclick=\"exportFocPrh()\">EXPORT PRH ORDER</button>")+'<button class="hbtn" style="color:var(--g)" onclick="openReceiveShipment()">RECEIVE SHIPMENT</button>'+'<button class="hbtn" title="Open the Whatnot tab with this week\'s received, in-stock books chosen" onclick="sendFocShipmentToWhatnot(\''+esc(c.id)+'\')">SEND TO WHATNOT</button>'+(c.status!=='archived'?'<button class="hbtn" onclick="toggleFocCycle()">'+(c.isOpen?'LOCK ORDERS':'UNLOCK ORDERS')+'</button>':'')+(c.status==='archived'?'<button class="hbtn" onclick="unarchiveFocCycle()">SHOW ON SITE (LOCKED)</button>':'<button class="hbtn danger" onclick="archiveFocCycle()">HIDE FROM SITE</button>')+'<a class="hbtn" href="https://www.themanapocket.com/preorders?cycle='+encodeURIComponent(c.foc_date)+'" target="_blank" rel="noopener" style="text-decoration:none">VIEW CUSTOMER PAGE</a></div><div style="display:flex;justify-content:space-between;gap:12px;align-items:end;flex-wrap:wrap;margin-top:14px"><div><div style="font:900 22px/1.1 \'Orbitron\',monospace;color:var(--text)">FOC '+esc(displayDate(c.foc_date))+'</div><div style="font:10px/1.6 var(--font-mono);color:var(--dim)">'+esc(c.source_filename||(c.distributor||'PRH'))+' · '+(c.status==='archived'?'HIDDEN FROM SITE':(c.isOpen?'UNLOCKED FOR ORDERS':'VISIBLE BUT LOCKED'))+'</div></div><label style="font:8px var(--font-mono);color:var(--dim)">CUSTOMER CUTOFF · PACIFIC<input id="foc-cycle-cutoff" class="tsi" type="datetime-local" value="'+esc(pacificDateTimeInput(c.customer_cutoff_at))+'" onchange="saveFocCycleCutoff()" style="margin:3px 0 0"><span style="display:block;margin-top:4px">Set a future cutoff before unlocking an expired FOC.</span></label></div><div class="foc-stats"><div class="foc-stat"><b>'+allSkus.length+'</b><span>Exact cover SKUs</span></div><div class="foc-stat"><b>'+state.families.length+'</b><span>Title families</span></div><div class="foc-stat"><b>'+customerQty+'</b><span>Customer copies</span></div><div class="foc-stat"><b>'+storeQty+'</b><span>Store copies</span></div><div class="foc-stat"><b>'+incentiveReq+'</b><span>Incentive requests</span></div></div></section>'+focEbayHealthPanelHtml()+'<div class="panel foc-toolbar" style="margin-bottom:12px"><input id="foc-admin-search" class="tsi" placeholder="Search title, writer, artist…" value="'+esc(state.query)+'" oninput="filterFocAdmin(this.value)"><select class="tsi" onchange="filterFocPublisher(this.value)"><option value="all" '+(state.publisher==='all'?'selected':'')+'>All publishers</option>'+publishers.map(function(p){return'<option value="'+esc(p.toLowerCase())+'" '+(state.publisher===p.toLowerCase()?'selected':'')+'>'+esc(p)+'</option>';}).join('')+'</select><select class="tsi" onchange="filterFocFlag(this.value)"><option value="all" '+(state.flag==='all'?'selected':'')+'>All comics</option><option value="first" '+(state.flag==='first'?'selected':'')+'>#1 issues</option><option value="foil" '+(state.flag==='foil'?'selected':'')+'>Foil covers</option><option value="incentive" '+(state.flag==='incentive'?'selected':'')+'>Incentives</option><option value="demand" '+(state.flag==='demand'?'selected':'')+'>Customer demand</option></select><select class="tsi" onchange="filterFocEbay(this.value)"><option value="all" '+(state.ebay==='all'?'selected':'')+'>All eBay statuses</option><option value="ELIGIBLE_NOW" '+(state.ebay==='ELIGIBLE_NOW'?'selected':'')+'>Eligible, not listed</option><option value="TOO_EARLY" '+(state.ebay==='TOO_EARLY'?'selected':'')+'>Too early</option><option value="LISTED" '+(state.ebay==='LISTED'?'selected':'')+'>Already listed</option><option value="SOLD_OUT" '+(state.ebay==='SOLD_OUT'?'selected':'')+'>Presale sold out</option><option value="RELEASED" '+(state.ebay==='RELEASED'?'selected':'')+'>Released (on sale)</option><option value="ACTION_REQUIRED" '+(state.ebay==='ACTION_REQUIRED'?'selected':'')+'>Action required</option></select><span id="foc-visible-count" style="font:9px var(--font-mono);color:var(--dim)"></span></div>'+
+  panel().innerHTML='<section class="foc-hero"><div class="foc-toolbar"><button class="hbtn" onclick="loadFocCycles()">← CYCLES</button><button class="hbtn" style="color:var(--purple)" onclick="openFocReview()">FINAL FOC REVIEW</button><button class="hbtn" style="color:var(--blue)" onclick="openFocIntelligence()">🧠 FOC INTELLIGENCE</button>'+(c.distributor==="Lunar"?"":"<button class=\"hbtn\" onclick=\"exportFocPrh()\">EXPORT PRH ORDER</button>")+'<button class="hbtn" style="color:var(--g)" onclick="openReceiveShipment()">RECEIVE SHIPMENT</button><button class="hbtn" title="Who each copy in this FOC week is for: eBay orders, website preorders, pull lists" onclick="openFocPickList()">📋 PICK LIST</button>'+'<button class="hbtn" title="Open the Whatnot tab with this week\'s received, in-stock books chosen" onclick="sendFocShipmentToWhatnot(\''+esc(c.id)+'\')">SEND TO WHATNOT</button>'+(c.status!=='archived'?'<button class="hbtn" onclick="toggleFocCycle()">'+(c.isOpen?'LOCK ORDERS':'UNLOCK ORDERS')+'</button>':'')+(c.status==='archived'?'<button class="hbtn" onclick="unarchiveFocCycle()">SHOW ON SITE (LOCKED)</button>':'<button class="hbtn danger" onclick="archiveFocCycle()">HIDE FROM SITE</button>')+'<a class="hbtn" href="https://www.themanapocket.com/preorders?cycle='+encodeURIComponent(c.foc_date)+'" target="_blank" rel="noopener" style="text-decoration:none">VIEW CUSTOMER PAGE</a></div><div style="display:flex;justify-content:space-between;gap:12px;align-items:end;flex-wrap:wrap;margin-top:14px"><div><div style="font:900 22px/1.1 \'Orbitron\',monospace;color:var(--text)">FOC '+esc(displayDate(c.foc_date))+'</div><div style="font:10px/1.6 var(--font-mono);color:var(--dim)">'+esc(c.source_filename||(c.distributor||'PRH'))+' · '+(c.status==='archived'?'HIDDEN FROM SITE':(c.isOpen?'UNLOCKED FOR ORDERS':'VISIBLE BUT LOCKED'))+'</div></div><label style="font:8px var(--font-mono);color:var(--dim)">CUSTOMER CUTOFF · PACIFIC<input id="foc-cycle-cutoff" class="tsi" type="datetime-local" value="'+esc(pacificDateTimeInput(c.customer_cutoff_at))+'" onchange="saveFocCycleCutoff()" style="margin:3px 0 0"><span style="display:block;margin-top:4px">Set a future cutoff before unlocking an expired FOC.</span></label></div><div class="foc-stats"><div class="foc-stat"><b>'+allSkus.length+'</b><span>Exact cover SKUs</span></div><div class="foc-stat"><b>'+state.families.length+'</b><span>Title families</span></div><div class="foc-stat"><b>'+customerQty+'</b><span>Customer copies</span></div><div class="foc-stat"><b>'+storeQty+'</b><span>Store copies</span></div><div class="foc-stat"><b>'+incentiveReq+'</b><span>Incentive requests</span></div></div></section>'+focEbayHealthPanelHtml()+'<div class="panel foc-toolbar" style="margin-bottom:12px"><input id="foc-admin-search" class="tsi" placeholder="Search title, writer, artist…" value="'+esc(state.query)+'" oninput="filterFocAdmin(this.value)"><select class="tsi" onchange="filterFocPublisher(this.value)"><option value="all" '+(state.publisher==='all'?'selected':'')+'>All publishers</option>'+publishers.map(function(p){return'<option value="'+esc(p.toLowerCase())+'" '+(state.publisher===p.toLowerCase()?'selected':'')+'>'+esc(p)+'</option>';}).join('')+'</select><select class="tsi" onchange="filterFocFlag(this.value)"><option value="all" '+(state.flag==='all'?'selected':'')+'>All comics</option><option value="first" '+(state.flag==='first'?'selected':'')+'>#1 issues</option><option value="foil" '+(state.flag==='foil'?'selected':'')+'>Foil covers</option><option value="incentive" '+(state.flag==='incentive'?'selected':'')+'>Incentives</option><option value="demand" '+(state.flag==='demand'?'selected':'')+'>Customer demand</option></select><select class="tsi" onchange="filterFocEbay(this.value)"><option value="all" '+(state.ebay==='all'?'selected':'')+'>All eBay statuses</option><option value="ELIGIBLE_NOW" '+(state.ebay==='ELIGIBLE_NOW'?'selected':'')+'>Eligible, not listed</option><option value="TOO_EARLY" '+(state.ebay==='TOO_EARLY'?'selected':'')+'>Too early</option><option value="LISTED" '+(state.ebay==='LISTED'?'selected':'')+'>Already listed</option><option value="SOLD_OUT" '+(state.ebay==='SOLD_OUT'?'selected':'')+'>Presale sold out</option><option value="RELEASED" '+(state.ebay==='RELEASED'?'selected':'')+'>Released (on sale)</option><option value="ACTION_REQUIRED" '+(state.ebay==='ACTION_REQUIRED'?'selected':'')+'>Action required</option></select><span id="foc-visible-count" style="font:9px var(--font-mono);color:var(--dim)"></span></div>'+
     // Store request: listing eligible FOC covers on eBay one at a time
     // (open the review modal, edit, LIST, close, find the next one, repeat)
     // was too much clicking for a whole cycle's worth of ratio/incentive
@@ -611,7 +611,9 @@ async function confirmReceiveShipment(){
       if(conv.failed&&conv.failed.length)toast_dash(conv.failed.length+' eBay listing'+(conv.failed.length===1?'':'s')+' could not be switched to in stock -- check the eBay tab');
       if(conv.shippingPolicyWarning)toast_dash(conv.shippingPolicyWarning);
     }catch(e){/* eBay not connected or similar -- receiving itself already succeeded, don't alarm over this */}
+    var told=pickNoticeLine(d.notified);if(told)toast_dash(told);
     await openCycle(state.cycle.id);
+    openFocPickList([state.cycle.id]);
   }catch(e){if(status)status.textContent='';toast_dash('Could not receive shipment: '+e.message);}
 }
 // Store report: no way existed to add a single book straight to inventory
@@ -1476,11 +1478,17 @@ function renderComicSellThrough(data){
       }).join(''):'<div style="font:10px var(--font-mono);color:var(--dim)">Nothing here yet.</div>')+'</section>'+
     '<section class="panel" style="padding:10px 14px;margin-top:10px"><div style="font:900 11px \'Orbitron\',monospace;color:var(--red);letter-spacing:1px;margin-bottom:6px">NOT SELLING · 3+ WEEKS, ZERO SOLD ('+(data.slowItems||[]).length+')</div>'+
       ((data.slowItems||[]).length?(data.slowItems||[]).map(function(it){
-        return '<div style="display:flex;justify-content:space-between;gap:8px;font:10px var(--font-mono);padding:3px 0;border-bottom:1px solid var(--border)"><span style="color:var(--text)">'+esc(it.name)+'</span><span style="color:var(--dim);white-space:nowrap">'+it.onHand+' on shelf · '+it.days+' days</span></div>';
+        var done=slowActed[it.id]||'';
+        return '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;font:10px var(--font-mono);padding:4px 0;border-bottom:1px solid var(--border)"><span style="color:var(--text)">'+esc(it.name)+'</span><span style="display:flex;gap:6px;align-items:center;white-space:nowrap"><span style="color:var(--dim)">'+it.onHand+' on shelf · '+it.days+' days</span>'+
+          (done?'<span style="color:var(--g)">'+esc(done)+'</span>':'<button class="hbtn" style="padding:3px 7px;font-size:8px" onclick="focSlowMarkDown(\''+esc(it.id)+'\')">MARK DOWN</button><button class="hbtn" style="padding:3px 7px;font-size:8px;color:var(--purple)" onclick="focSlowWhatnot(\''+esc(it.id)+'\')">→ WHATNOT</button>')+'</span></div>';
       }).join(''):'<div style="font:10px var(--font-mono);color:var(--dim)">Everything received has sold at least one copy.</div>')+
-    '<div style="font:9px var(--font-mono);color:var(--dim);margin-top:6px">Ideas: mark these down, bundle them into a Whatnot lot, or order fewer of the next issue.</div></section>';
+    '<div style="font:9px var(--font-mono);color:var(--dim);margin-top:6px">MARK DOWN lowers the price by a percent you pick. → WHATNOT puts it in the next show (or tonight\'s, if one is live).</div></section>';
 }
 function focSellThroughFilter(key){sellThroughFilter=key;renderComicSellThrough();}
+var slowActed={};
+async function focSlowMarkDown(id){if(typeof window.markDownSlowSeller!=='function')return;if(await window.markDownSlowSeller(id)){slowActed[id]='marked down ✓';renderComicSellThrough();}}
+async function focSlowWhatnot(id){if(typeof window.flagSlowSellerForWhatnot!=='function')return;if(await window.flagSlowSellerForWhatnot(id)){slowActed[id]='next Whatnot show ✓';renderComicSellThrough();}}
+window.focSlowMarkDown=focSlowMarkDown;window.focSlowWhatnot=focSlowWhatnot;
 window.focSuggestOrder=focSuggestOrder;window.focApplySuggested=focApplySuggested;window.openComicSellThrough=openComicSellThrough;window.focSellThroughFilter=focSellThroughFilter;
 
 // Store idea (FOC Intelligence 2.0): when a new PRH file comes in, compare
@@ -2186,13 +2194,14 @@ async function confirmSlipReceive(){
   var total=ids.reduce(function(a,id){return a+byCycle[id].reduce(function(b,x){return b+x.receivedQty;},0);},0);
   if(!confirm('Receive '+total+' cop'+(total===1?'y':'ies')+' into inventory'+(ids.length>1?' across '+ids.length+' FOC weeks':'')+'?'))return;
   var status=document.getElementById('foc-slip-receive-status');
-  var created=0,flagged=[],failed=[],done=[],spent=0;
+  var created=0,flagged=[],failed=[],done=[],spent=0,notifiedAll=[];
   var coverBySku={};s.lines.forEach(function(l){if(l.cover)coverBySku[l.cover.skuId]=l.cover;});
   for(var i=0;i<ids.length;i++){
     if(status)status.textContent='Receiving FOC week '+(i+1)+' of '+ids.length+'…';
     try{
       var d=await api('/foc/admin/receive',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({storeId:getActiveStoreId(),cycleId:ids[i],lines:byCycle[ids[i]]})});
       created+=Number(d.createdInventoryCount||0);
+      notifiedAll=notifiedAll.concat(d.notified||[]);
       (d.receivedSummary||[]).forEach(function(r){done.push(r);if(r.incentiveNotReceived)flagged.push(r.title+(r.variantLabel?' -- '+r.variantLabel:'')+': INCENTIVE NOT RECEIVED');});
       try{await api('/foc/ebay/convert-to-instock',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({storeId:getActiveStoreId(),cycleId:ids[i]})});}catch(e){}
       // Received lines drop off this list, so a retry only re-sends what failed.
@@ -2217,9 +2226,69 @@ async function confirmSlipReceive(){
   if(flagged.length)alert(flagged.join('\n'));
   if(failed.length){alert('Some FOC weeks did not receive:\n\n'+failed.join('\n')+'\n\nThe rest are in. Press CONFIRM again to retry only what failed.');s.picks={};renderSlip();return;}
   if(typeof logOpsEvent==='function')logOpsEvent('foc_slip_received','Received '+created+' copies from a packing slip',{invoice:s.invoice,weeks:ids.length,copies:total});
+  var told=pickNoticeLine(notifiedAll);if(told)toast_dash(told);
+  pickState.cycleIds=ids;
   renderSlipReceived(done,s);
   state.slip=null;
 }
+// RECEIVING-DAY PICK LIST -- every copy that's already spoken for, per
+// cover: eBay orders to ship (grouped by order), website preorders to hold
+// or ship, and pull-list customers to bag. Print it and tick books off.
+var pickState={cycleIds:[],covers:[]};
+function pickNoticeLine(list){
+  var sent=(list||[]).filter(function(n){return n.sms||n.email;});
+  return sent.length?sent.length+' customer'+(sent.length===1?'':'s')+' told their books are in':'';
+}
+async function openFocPickList(cycleIds){
+  cycleIds=(cycleIds||[]).filter(Boolean);if(!cycleIds.length&&state.cycle)cycleIds=[state.cycle.id];
+  pickState.cycleIds=cycleIds;
+  busy('Building the pick list…');
+  try{var d=await api('/foc/admin/pick-list?store_id='+encodeURIComponent(getActiveStoreId())+'&cycle_ids='+encodeURIComponent(cycleIds.join(',')));pickState.covers=d.covers||[];renderFocPickList();}
+  catch(e){panel().innerHTML='<button class="hbtn" onclick="loadFocCycles()">← FOC WALL</button><div class="panel" style="margin-top:10px;color:var(--red)">Could not build the pick list: '+esc(e.message)+'</div>';}
+}
+function focPickListHtml(covers){
+  var tick='<span style="display:inline-block;width:12px;height:12px;border:1px solid var(--dim);border-radius:3px;margin-right:6px;vertical-align:middle"></span>';
+  return covers.map(function(c){
+    var rows=[];
+    c.ebay.forEach(function(e){
+      rows.push('<div style="padding:3px 0">'+tick+'<b style="color:var(--blue,#5ab0ff)">eBay</b> order '+esc(e.orderId)+' · '+e.qty+' cop'+(e.qty===1?'y':'ies')+
+        (e.shipped?' · <span style="color:var(--g)">label bought</span>':'')+
+        (e.waitingOn&&e.waitingOn.length?' · <span style="color:var(--gold)">same order also waiting on: '+esc(e.waitingOn.join(', '))+'</span>':(e.alsoInOrder&&e.alsoInOrder.length?' · ship with: '+esc(e.alsoInOrder.join(', ')):''))+'</div>');
+    });
+    c.website.forEach(function(w){
+      rows.push('<div style="padding:3px 0">'+tick+'<b style="color:var(--purple)">Website</b> #'+esc(w.orderNumber||'')+' · '+esc(w.name)+' · '+w.qty+' · '+(w.method==='pickup'?'HOLD FOR PICKUP':'SHIP')+(w.notified?' · <span style="color:var(--g)">told ✓</span>':'')+'</div>');
+    });
+    c.pull.forEach(function(p){
+      rows.push('<div style="padding:3px 0">'+tick+'<b style="color:var(--g)">Pull list</b> · '+esc(p.name)+(p.notified?' · <span style="color:var(--g)">told ✓</span>':(p.phone||p.email?'':' · <span style="color:var(--dim)">no phone/email</span>'))+'</div>');
+    });
+    return '<div style="padding:8px 10px;border-bottom:1px solid var(--border)"><div style="display:flex;justify-content:space-between;gap:8px"><b style="font-size:11px;color:var(--text)">'+esc(c.title)+'</b><span style="font:10px var(--font-mono);color:var(--gold);white-space:nowrap">'+c.totalOwed+' owed</span></div><div style="font:10px/1.5 var(--font-mono);color:var(--text)">'+rows.join('')+'</div></div>';
+  }).join('');
+}
+function renderFocPickList(){
+  var covers=pickState.covers||[];
+  var pullToTell=[];covers.forEach(function(c){c.pull.forEach(function(p){if(!p.notified&&(p.phone||p.email)&&pullToTell.indexOf(p.subscriptionId)<0)pullToTell.push(p.subscriptionId);});});
+  var owed=covers.reduce(function(n,c){return n+c.totalOwed;},0);
+  panel().innerHTML='<section class="foc-hero"><div class="foc-toolbar"><button class="hbtn" onclick="'+(state.cycle?'openFocCycle(\''+esc(state.cycle.id)+'\')':'loadFocCycles()')+'">← BACK</button><button class="hbtn" onclick="window.print()">🖨 PRINT</button>'+
+    (pullToTell.length?'<button class="hbtn" style="color:var(--g)" onclick="focNotifyPullList()">📱 TELL '+pullToTell.length+' PULL-LIST CUSTOMER'+(pullToTell.length===1?'':'S')+'</button>':'')+'</div>'+
+    '<div style="font:900 20px/1.1 \'Orbitron\',monospace;color:var(--text);margin-top:10px">Pick list · '+owed+' cop'+(owed===1?'y':'ies')+' spoken for</div>'+
+    '<div style="font:10px/1.6 var(--font-mono);color:var(--dim);margin-top:4px">Pull these first, before anything goes on the shelf. Website customers are texted/emailed automatically once their whole order is in.</div></section>'+
+    '<section class="panel" style="padding:0">'+(covers.length?focPickListHtml(covers):'<div style="padding:20px;font:10px var(--font-mono);color:var(--dim)">Nothing in this shipment is spoken for -- it can all go on the shelf.</div>')+'</section>';
+}
+async function focNotifyPullList(){
+  var bySub={};
+  (pickState.covers||[]).forEach(function(c){c.pull.forEach(function(p){if(p.notified||!(p.phone||p.email))return;(bySub[p.subscriptionId]=bySub[p.subscriptionId]||{subscriptionId:p.subscriptionId,name:p.name,titles:[]}).titles.push(c.title);});});
+  var list=Object.keys(bySub).map(function(k){return bySub[k];});
+  if(!list.length)return;
+  if(!confirm('Text/email '+list.length+' pull-list customer'+(list.length===1?'':'s')+' that their books are in?\n\n'+list.map(function(p){return p.name+': '+p.titles.join(', ');}).join('\n')))return;
+  try{
+    var d=await api('/foc/admin/notify-arrivals',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({storeId:getActiveStoreId(),cycleIds:pickState.cycleIds,pull:list})});
+    var line=pickNoticeLine(d.results);toast_dash(line||'Nobody could be reached');
+    var bad=(d.results||[]).filter(function(r){return !(r.sms||r.email);});
+    if(bad.length)alert('Not reached:\n'+bad.map(function(r){return r.name+' -- '+(r.errors||[]).join('; ');}).join('\n'));
+    openFocPickList(pickState.cycleIds);
+  }catch(e){toast_dash('Could not send: '+e.message);}
+}
+window.openFocPickList=openFocPickList;window.openFocPickListLast=function(){openFocPickList(pickState.cycleIds);};window.focNotifyPullList=focNotifyPullList;
 // After receiving: what each cover's copies are for. eBay and website
 // buyers' copies only need packing (their sales were recorded when they
 // bought); the rest went into stock.
@@ -2239,7 +2308,7 @@ function renderSlipReceived(summary,slip){
       '<div><div style="font-weight:700;font-size:11px;color:var(--text)">'+esc(r.title)+(r.variantLabel&&r.title.indexOf(r.variantLabel)<0?' -- '+esc(r.variantLabel):'')+'</div><div style="font:9px/1.6 var(--font-mono);display:flex;gap:8px;flex-wrap:wrap">Received '+r.receivedQty+' · '+parts.join(' · ')+'</div></div></div>';
   };
   var shipCount=toShip.reduce(function(a,x){return a+Number(x.r.reservedForEbayPresale||0);},0);
-  host.innerHTML='<section class="foc-hero"><div class="foc-toolbar"><button class="hbtn" onclick="loadFocCycles(true)">← FOC WALL</button><button class="hbtn" onclick="window.print()">PRINT</button></div>'+
+  host.innerHTML='<section class="foc-hero"><div class="foc-toolbar"><button class="hbtn" onclick="loadFocCycles(true)">← FOC WALL</button><button class="hbtn" onclick="window.print()">PRINT</button>'+(pickState.cycleIds.length?'<button class="hbtn" style="color:var(--g)" onclick="openFocPickListLast()">📋 PICK LIST -- WHO GETS WHAT</button>':'')+'</div>'+
     '<div style="font:900 20px/1.1 \'Orbitron\',monospace;color:var(--text);margin-top:10px">Shipment received</div>'+
     '<div style="font:10px/1.6 var(--font-mono);color:var(--dim);margin-top:4px">Presold copies were already counted as sales when they sold -- nothing here adds sales or profit. '+(shipCount?'Buy the labels for the '+shipCount+' eBay cop'+(shipCount===1?'y':'ies')+' from ALL EBAY ORDERS on the eBay tab.':'')+'</div></section>'+
     (toShip.length?'<section class="foc-family"><header class="foc-family-head"><div class="foc-family-title">TO PACK &amp; SHIP / SET ASIDE ('+toShip.length+')</div></header>'+toShip.map(line).join('')+'</section>':'')+
