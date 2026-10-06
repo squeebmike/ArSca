@@ -1672,7 +1672,7 @@ async function saveShipping(){var shipFrom={},parcel={};document.querySelectorAl
 // sets by publisher + cover artist + part count; the store saves, renames,
 // edits and grows sets here. Saved sets live in the store's Worker KV
 // (foc_connecting_sets, never expires) so every device sees the same list.
-var connectState={covers:{},suggested:[],saved:{sets:[]},filter:'all',query:'',search:{}};
+var connectState={covers:{},aliases:{},suggested:[],saved:{sets:[]},filter:'all',query:'',search:{}};
 function connectToday(){return new Date().toISOString().slice(0,10);}
 function connectStatus(cover,set){
   if(set&&set.have&&set.have[cover.id])return 'have';
@@ -1683,7 +1683,10 @@ function connectStatus(cover,set){
 }
 var CONNECT_BADGE={have:['HAVE IT','var(--g)'],bought:['BOUGHT','var(--g)'],upcoming:['UPCOMING','var(--gold)'],missed:['MISSED','var(--red)'],skipped:['SKIPPED','var(--dim)']};
 function connectSetCovers(set){
-  return (set.skuIds||[]).map(function(id){return connectState.covers[id];}).filter(Boolean).sort(function(a,b){
+  // An id saved from an older listing of the same cover resolves to the one
+  // shown now (see dedupeConnectingCovers), and is listed once.
+  var seen={};
+  return (set.skuIds||[]).map(function(id){return connectState.covers[connectState.aliases[id]||id];}).filter(function(c){if(!c||seen[c.id])return false;seen[c.id]=1;return true;}).sort(function(a,b){
     return (Number(a.part||99)-Number(b.part||99))||String(a.foc_date||'').localeCompare(String(b.foc_date||''));
   });
 }
@@ -1691,7 +1694,11 @@ function connectSetSummary(set){
   var covers=connectSetCovers(set),counts={have:0,bought:0,upcoming:0,missed:0,skipped:0};
   covers.forEach(function(c){counts[connectStatus(c,set)]++;});
   var partCount=Number(set.partCount||0),unsolicited=partCount>covers.length?partCount-covers.length:0;
-  return {covers:covers,counts:counts,owned:counts.have+counts.bought,unsolicited:unsolicited,complete:partCount>0&&counts.have+counts.bought>=partCount};
+  // How many full sets you're building: the most copies ordered of any part.
+  // A part ordered short of that leaves sets you can't complete.
+  var target=covers.reduce(function(m,c){return Math.max(m,Number(c.orderedQty||0));},0);
+  var short=covers.filter(function(c){var st=connectStatus(c,set);return (st==='bought'||st==='upcoming')&&target>0&&Number(c.orderedQty||0)<target;});
+  return {covers:covers,counts:counts,owned:counts.have+counts.bought,unsolicited:unsolicited,target:target,short:short,complete:partCount>0&&counts.have+counts.bought>=partCount};
 }
 async function loadConnectSaved(){
   try{var res=await storeWorkerFetch('/kv/foc_connecting_sets',{cache:'no-store'});var raw=(await res.json().catch(function(){return{};})).value;var parsed=raw?JSON.parse(raw):null;connectState.saved=parsed&&Array.isArray(parsed.sets)?parsed:{sets:[]};}
@@ -1717,6 +1724,7 @@ async function reloadConnectCovers(){
   try{
     var data=await api('/foc/admin/connecting-covers?store_id='+encodeURIComponent(getActiveStoreId())+(ids.length?'&ids='+encodeURIComponent(ids.slice(0,100).join(',')):''));
     connectState.covers={};(data.covers||[]).forEach(function(c){connectState.covers[c.id]=c;});
+    connectState.aliases=data.aliases||{};
     connectState.suggested=data.suggestedSets||[];
     renderConnecting();
   }catch(e){var body=document.getElementById('foc-connect-body');if(body)body.innerHTML='<div style="color:var(--red)">Could not load connecting covers: '+esc(e.message)+'</div>';}
@@ -1736,15 +1744,68 @@ function connectCoverRow(c,set,saved){
   // three buttons never squeeze the title to nothing on a phone.
   return '<div style="display:grid;grid-template-columns:44px minmax(0,1fr);gap:8px;align-items:start;padding:6px;border:1px solid var(--border);border-radius:7px;background:var(--bg);margin-top:5px">'+
     (c.cover_image_url?'<img src="'+esc(c.cover_image_url)+'" alt="" loading="lazy" style="width:44px;height:64px;object-fit:contain;border-radius:4px;background:#050607">':'<div style="width:44px;height:64px;display:grid;place-items:center;border:1px solid var(--border);border-radius:4px;font-size:8px;color:var(--dim)">'+(c.part?'#'+c.part:'COVER')+'</div>')+
-    '<div style="min-width:0;overflow-wrap:anywhere"><b style="font-size:11px">'+(c.part?'Part '+c.part+' · ':'')+esc(c.title||'')+'</b><div style="font:9px/1.5 var(--font-mono);color:var(--dim)">'+esc(c.variant_label||'')+'<br>'+esc(meta)+'</div>'+
+    '<div style="min-width:0;overflow-wrap:anywhere"><b style="font-size:11px">'+(c.part?'Part '+c.part+' · ':'')+esc(c.title||'')+'</b><div style="font:9px/1.5 var(--font-mono);color:var(--dim)">'+esc(c.variant_label||'')+'<br>'+esc(meta)+connectCoverFacts(c,set)+'</div>'+
     '<div style="display:flex;gap:5px;flex-wrap:wrap;align-items:center;margin-top:6px"><span class="foc-badge" style="color:'+badge[1]+';border-color:'+badge[1]+'">'+badge[0]+(st==='bought'?' · '+Number(c.orderedQty||0):'')+'</span>'+actions.replace(/class="hbtn" style="/g,'class="hbtn" style="flex:0 0 auto;width:auto;min-height:0;padding:5px 9px;font-size:9px;').replace(/class="hbtn" onclick/g,'class="hbtn" style="flex:0 0 auto;width:auto;min-height:0;padding:5px 9px;font-size:9px" onclick')+'</div></div></div>';
+}
+// The numbers that matter for one cover: ordered (from the distributor
+// order you uploaded, else store + preorders), in stock, sold on eBay,
+// and who preordered it -- plus a warning when it's short of the set.
+function connectCoverFacts(c,set){
+  var bits=[];
+  if(Number(c.orderedQty||0))bits.push('ordered '+Number(c.orderedQty)+(Number(c.securedQty||0)?' (distributor)':''));
+  if(Number(c.inStock||0))bits.push(Number(c.inStock)+' in stock');
+  if(Number(c.ebaySold||0))bits.push(Number(c.ebaySold)+' sold on eBay');
+  var out=bits.length?'<br>'+esc(bits.join(' · ')):'';
+  if((c.customers||[]).length)out+='<br><span style="color:var(--purple)">Preordered by '+esc(c.customers.slice(0,4).join(', ')+(c.customers.length>4?' +'+(c.customers.length-4)+' more':''))+'</span>';
+  if(set){var sum=connectSetSummary(set);if(sum.short.some(function(x){return x.id===c.id;}))out+='<br><span style="color:var(--gold)">Short: '+Number(c.orderedQty||0)+' of '+sum.target+' -- '+(sum.target-Number(c.orderedQty||0))+' more to finish every set</span>';}
+  return out;
+}
+// The whole picture in part order: each cover's art, and a dashed gap for a
+// part you don't have, missed, or that isn't solicited yet.
+function connectSetStrip(set){
+  var sum=connectSetSummary(set),covers=sum.covers,n=Math.max(Number(set.partCount||0),covers.length);if(!n)return '';
+  var byPart={},loose=[];covers.forEach(function(c){if(c.part&&!byPart[c.part])byPart[c.part]=c;else loose.push(c);});
+  var slots=[];for(var i=1;i<=n;i++)slots.push(byPart[i]||loose.shift()||null);
+  var color={have:'var(--g)',bought:'var(--g)',upcoming:'var(--gold)',missed:'var(--red)',skipped:'var(--dim)'};
+  return '<div style="display:flex;gap:3px;margin:8px 0 2px;overflow-x:auto">'+slots.map(function(c,i){
+    if(!c)return '<div title="Part '+(i+1)+' not solicited yet" style="flex:0 0 46px;height:68px;border:1px dashed var(--border);border-radius:4px;display:grid;place-items:center;font:8px var(--font-mono);color:var(--dim)">#'+(i+1)+'<br>TBA</div>';
+    var st=connectStatus(c,set);
+    return '<div title="'+esc((c.part?'Part '+c.part+' · ':'')+(c.title||'')+' · '+CONNECT_BADGE[st][0])+'" style="flex:0 0 46px;height:68px;border:2px solid '+color[st]+';border-radius:4px;overflow:hidden;background:#050607;position:relative'+(st==='missed'||st==='skipped'?';opacity:.45':'')+'">'+(c.cover_image_url?'<img src="'+esc(c.cover_image_url)+'" alt="" loading="lazy" style="width:100%;height:100%;object-fit:cover">':'<div style="display:grid;place-items:center;height:100%;font:8px var(--font-mono);color:var(--dim)">#'+(c.part||i+1)+'</div>')+'</div>';
+  }).join('')+'</div>';
+}
+// UP NEXT: every part still to order, soonest FOC first, with how many to
+// order to match the parts you already have. Covers both tracked sets and
+// suggested sets you've already started buying.
+function connectUpNext(){
+  var list=[],seen={};
+  var consider=function(set,tracked){
+    var sum=connectSetSummary(set);if(!tracked&&!sum.owned)return;
+    sum.covers.forEach(function(c){
+      if(seen[c.id]||connectStatus(c,set)!=='upcoming')return;seen[c.id]=1;
+      var days=Math.round((Date.parse(c.foc_date+'T12:00:00')-Date.parse(connectToday()+'T12:00:00'))/864e5);
+      list.push({c:c,set:set,tracked:tracked,days:days,target:sum.target,ordered:Number(c.orderedQty||0)});
+    });
+  };
+  connectState.saved.sets.forEach(function(s){consider(s,true);});
+  var savedIds={};connectState.saved.sets.forEach(function(s){(s.skuIds||[]).forEach(function(id){savedIds[connectState.aliases[id]||id]=1;});});
+  connectState.suggested.forEach(function(g){consider({id:g.id,name:g.name,partCount:g.partCount,skuIds:g.skuIds.filter(function(id){return !savedIds[id];})},false);});
+  list.sort(function(a,b){return a.days-b.days;});
+  if(!list.length)return '';
+  return '<div class="ph" style="margin-top:12px;color:var(--gold)">UP NEXT -- PARTS TO ORDER ('+list.length+')</div>'+list.slice(0,25).map(function(x){
+    var c=x.c,need=x.target>x.ordered?x.target-x.ordered:0;
+    var when=x.days<=0?'<b style="color:var(--red)">FOC TODAY</b>':x.days===1?'<b style="color:var(--red)">FOC TOMORROW</b>':'FOC in '+x.days+' days ('+esc(displayDate(c.foc_date))+')';
+    return '<div style="display:grid;grid-template-columns:34px minmax(0,1fr) auto;gap:8px;align-items:center;padding:6px;border:1px solid rgba(255,209,102,.35);border-radius:7px;margin-top:5px">'+
+      (c.cover_image_url?'<img src="'+esc(c.cover_image_url)+'" alt="" loading="lazy" style="width:34px;height:50px;object-fit:cover;border-radius:3px">':'<div style="width:34px;height:50px;border:1px solid var(--border);border-radius:3px"></div>')+
+      '<div style="min-width:0;font:9px/1.5 var(--font-mono);color:var(--dim);overflow-wrap:anywhere"><b style="font-size:10px;color:var(--text)">'+(c.part?'Part '+c.part+' · ':'')+esc(c.title||'')+'</b><br>'+esc(x.set.name||'')+(x.tracked?'':' (suggested)')+'<br>'+when+(x.target?' · you have '+x.target+' of the earlier parts':'')+(x.ordered?' · ordered '+x.ordered:'')+(need?' · <b style="color:var(--gold)">order '+need+' more</b>':'')+'</div>'+
+      (c.cycle_id?'<button class="hbtn" style="flex:0 0 auto;width:auto;min-height:0;padding:5px 9px;font-size:9px;color:var(--gold)" onclick="focConnectOpenCycle(\''+esc(c.cycle_id)+'\')">ORDER</button>':'')+'</div>';
+  }).join('');
 }
 function connectSetCard(set,saved,suggestIdx){
   var sum=connectSetSummary(set);
   var head='<div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center"><div><b style="font-size:12px;color:var(--text)">'+esc(set.name||'Connecting set')+'</b>'+(saved?'':' <span class="foc-badge">SUGGESTED</span>')+(sum.complete?' <span class="foc-badge" style="color:var(--g);border-color:var(--g)">COMPLETE</span>':'')+
-    '<div style="font:9px/1.6 var(--font-mono);color:var(--dim)">'+(set.partCount?set.partCount+' parts · ':'')+sum.owned+' owned · '+sum.counts.upcoming+' upcoming · '+sum.counts.missed+' missed'+(sum.unsolicited?' · '+sum.unsolicited+' not solicited yet':'')+'</div></div><div style="display:flex;gap:5px;flex-wrap:wrap">'+
+    '<div style="font:9px/1.6 var(--font-mono);color:var(--dim)">'+(set.partCount?set.partCount+' parts · ':'')+sum.owned+' owned · '+sum.counts.upcoming+' upcoming · '+sum.counts.missed+' missed'+(sum.unsolicited?' · '+sum.unsolicited+' not solicited yet':'')+(sum.target?' · building '+sum.target+' set'+(sum.target===1?'':'s'):'')+(sum.short.length?' · <span style="color:var(--gold)">'+sum.short.length+' part'+(sum.short.length===1?'':'s')+' short</span>':'')+'</div></div><div style="display:flex;gap:5px;flex-wrap:wrap">'+
     (saved?'<button class="hbtn" onclick="focConnectRename(\''+esc(set.id)+'\')">RENAME / PARTS</button><button class="hbtn" style="color:var(--red)" onclick="focConnectDelete(\''+esc(set.id)+'\')">DELETE SET</button>':'<button class="hbtn" style="color:var(--g)" onclick="focConnectSaveSuggested('+suggestIdx+')">TRACK THIS SET</button>')+'</div></div>';
-  var rows=sum.covers.map(function(c){return connectCoverRow(c,set,saved);}).join('');
+  var rows=connectSetStrip(set)+sum.covers.map(function(c){return connectCoverRow(c,set,saved);}).join('');
   var add='';
   if(saved){
     var results=connectState.search[set.id]||[];
@@ -1772,8 +1833,9 @@ function renderConnecting(){
   var suggestCards=suggestions.filter(function(x){return matches(x.set);}).map(function(x){return connectSetCard(x.set,false,x.idx);}).join('');
   body.innerHTML='<div style="font:10px/1.6 var(--font-mono);color:var(--dim)">Covers come from every FOC import whose wording says they connect, across titles. <b style="color:var(--g)">Bought</b> = ordered for the shelf or by customers; <b style="color:var(--red)">missed</b> = FOC passed with none ordered; <b style="color:var(--gold)">upcoming</b> = FOC still ahead. Mark covers you got elsewhere as HAVE IT.</div>'+
     '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;align-items:center">'+filters+'</div><div style="display:flex;gap:6px;margin-top:6px;align-items:center"><input class="tsi" placeholder="Filter sets" value="'+esc(connectState.query)+'" oninput="focConnectQuery(this.value)" style="flex:1;min-width:0"><button class="hbtn" style="flex:0 0 auto;width:auto" onclick="focConnectNewSet()">+ NEW SET</button></div>'+
+    connectUpNext()+
     '<div class="ph" style="margin-top:12px">TRACKED SETS ('+connectState.saved.sets.length+')</div>'+(savedCards||'<div style="color:var(--dim);font:10px var(--font-mono);padding:8px 0">'+(connectState.saved.sets.length?'No tracked set matches this filter.':'No sets tracked yet -- choose TRACK THIS SET on a suggestion below, or + NEW SET.')+'</div>')+
-    '<div class="ph" style="margin-top:14px">SUGGESTED FROM YOUR FOC IMPORTS ('+suggestions.length+')</div>'+(suggestCards||'<div style="color:var(--dim);font:10px var(--font-mono);padding:8px 0">No untracked connecting covers found.</div>');
+    '<div class="ph" style="margin-top:14px;display:flex;justify-content:space-between;align-items:center;gap:8px">SUGGESTED FROM YOUR FOC IMPORTS ('+suggestions.length+')'+(suggestions.length?'<button class="hbtn" style="flex:0 0 auto;width:auto;min-height:0;padding:5px 9px;font-size:9px;color:var(--g)" onclick="focConnectTrackAll()">TRACK ALL</button>':'')+'</div>'+(suggestCards||'<div style="color:var(--dim);font:10px var(--font-mono);padding:8px 0">No untracked connecting covers found.</div>');
 }
 async function focConnectSaveSuggested(idx){
   var g=connectState.suggested[idx];if(!g)return;
@@ -1781,6 +1843,21 @@ async function focConnectSaveSuggested(idx){
   var name=prompt('Name this connecting set',g.name);if(name===null)return;
   connectState.saved.sets.unshift({id:'set_'+Date.now().toString(36),name:name.trim()||g.name,partCount:g.partCount||0,skuIds:g.skuIds.filter(function(id){return !tracked[id];}),have:{},skip:{},createdAt:new Date().toISOString()});
   await saveConnectSets();renderConnecting();toast_dash('Tracking '+(name.trim()||g.name));
+}
+// Tracks every suggested set at once, with its suggested name.
+async function focConnectTrackAll(){
+  var tracked={};connectState.saved.sets.forEach(function(s){(s.skuIds||[]).forEach(function(id){tracked[connectState.aliases[id]||id]=1;});});
+  var fresh=[];
+  connectState.suggested.forEach(function(g,i){
+    var ids=g.skuIds.filter(function(id){return !tracked[id];});if(!ids.length)return;
+    ids.forEach(function(id){tracked[id]=1;});
+    fresh.push({id:'set_'+Date.now().toString(36)+'_'+i,name:g.name,partCount:g.partCount||0,skuIds:ids,have:{},skip:{},createdAt:new Date().toISOString()});
+  });
+  var added=fresh.length;
+  if(!added){toast_dash('Nothing new to track');return;}
+  if(!confirm('Track '+added+' suggested set'+(added===1?'':'s')+'? You can rename or delete any of them after.'))return;
+  connectState.saved.sets=connectState.saved.sets.concat(fresh);
+  await saveConnectSets();renderConnecting();toast_dash('Tracking '+added+' set'+(added===1?'':'s'));
 }
 async function focConnectNewSet(){
   var name=prompt('Name the connecting set (e.g. "Midnight Crain 3-part")');if(!name||!name.trim())return;
@@ -1824,7 +1901,7 @@ function focConnectFilter(value){connectState.filter=value;renderConnecting();}
 function focConnectQuery(value){connectState.query=value||'';var pos=value.length;renderConnecting();var input=document.querySelector('#foc-connect-body input[placeholder="Filter sets"]');if(input){input.focus();input.setSelectionRange(pos,pos);}}
 function focConnectOpenCycle(cycleId){closeFocConnecting();openCycle(cycleId);}
 
-window.openConnectingCovers=openConnectingCovers;window.closeFocConnecting=closeFocConnecting;window.focConnectSaveSuggested=focConnectSaveSuggested;window.focConnectNewSet=focConnectNewSet;window.focConnectRename=focConnectRename;window.focConnectDelete=focConnectDelete;window.focConnectToggle=focConnectToggle;window.focConnectRemove=focConnectRemove;window.focConnectSearch=focConnectSearch;window.focConnectAdd=focConnectAdd;window.focConnectFilter=focConnectFilter;window.focConnectQuery=focConnectQuery;window.focConnectOpenCycle=focConnectOpenCycle;
+window.focConnectTrackAll=focConnectTrackAll;window.openConnectingCovers=openConnectingCovers;window.closeFocConnecting=closeFocConnecting;window.focConnectSaveSuggested=focConnectSaveSuggested;window.focConnectNewSet=focConnectNewSet;window.focConnectRename=focConnectRename;window.focConnectDelete=focConnectDelete;window.focConnectToggle=focConnectToggle;window.focConnectRemove=focConnectRemove;window.focConnectSearch=focConnectSearch;window.focConnectAdd=focConnectAdd;window.focConnectFilter=focConnectFilter;window.focConnectQuery=focConnectQuery;window.focConnectOpenCycle=focConnectOpenCycle;
 // A small cover thumbnail for receiving checklists.
 function focThumbHtml(url,alt){
   return url?'<img src="'+esc(url)+'" alt="'+esc(alt||'')+'" loading="lazy" style="width:48px;aspect-ratio:2/3;object-fit:cover;border-radius:4px;border:1px solid var(--border)" onerror="this.style.opacity=.16">'

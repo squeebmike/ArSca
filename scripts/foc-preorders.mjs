@@ -447,6 +447,11 @@ export function connectingCoverInfo(sku = {}) {
     || all.match(/\b(\d{1,2}|two|three|four|five|six|seven|eight|nine|ten|twelve)[\s-]*(?:part|piece|panel)\b/i);
   if (!partCount && nPart) partCount = toCount(nPart[1]);
   if (!part) { const p = all.match(/\bpart\s*(\d{1,2})\b/i); if (p) part = Number(p[1]); }
+  // "LEFT / MIDDLE / RIGHT CONNECTING" panels (a triptych): parts 1-3 of 3.
+  if (isConnecting && !part) {
+    const side = label.match(/\b(left|middle|center|centre|right)\b(?=[^.]{0,30}connect)/i);
+    if (side) { part = { left:1, middle:2, center:2, centre:2, right:3 }[side[1].toLowerCase()]; if (!partCount) partCount = 3; }
+  }
   if (partCount && part > partCount) part = 0;
   return { isConnecting, part, partCount };
 }
@@ -1628,7 +1633,7 @@ function focIntelTitlesRelated(a,b){
   return focIntelSignificantWords(b).some(w=>wa.has(w));
 }
 const FOC_INTEL_ACTION_ORDER={ORDER:0,SPEC:1,REDUCE:2,SKIP:3};
-const CONNECTING_SKU_SELECT='id,cycle_id,family_id,title,subtitle,variant_label,cover_artist,cover_image_url,publisher,description,foc_date,on_sale_date,store_quantity,secured_quantity,is_incentive,ratio_threshold,upc,customer_price_cents';
+const CONNECTING_SKU_SELECT='id,cycle_id,family_id,distributor,title,subtitle,variant_label,cover_artist,cover_image_url,publisher,description,foc_date,on_sale_date,store_quantity,secured_quantity,is_incentive,ratio_threshold,upc,customer_price_cents';
 async function adminConnectingCovers(request,env,deps,url){
   const storeId=text(url.searchParams.get('store_id'),80);
   const auth=await deps.requireStoreUser(request,env,storeId,['owner','admin','manager','employee']);if(auth.error)return auth.error;
@@ -1650,14 +1655,58 @@ async function adminConnectingCovers(request,env,deps,url){
   ]);
   const byId=new Map();
   for(const sku of [...(found||[]).filter(s=>connectingCoverInfo(s).isConnecting),...(pinned||[])])byId.set(sku.id,sku);
-  const covers=await withOrderedQty(db,[...byId.values()]);
-  return deps.json({ok:true,covers,suggestedSets:groupConnectingCovers(covers.filter(c=>connectingCoverInfo(c).isConnecting))});
+  const {covers,aliases}=dedupeConnectingCovers(await withOrderedQty(db,[...byId.values()]));
+  await addConnectingCoverStock(db,storeId,covers);
+  return deps.json({ok:true,covers,aliases,suggestedSets:groupConnectingCovers(covers.filter(c=>connectingCoverInfo(c).isConnecting))});
+}
+// Lunar lists the same cover again in later FOC weeks (same UPC, new row) --
+// one cover, shown once: the copy that was actually ordered, else the latest
+// listing. aliases maps every other row's id to it, so a set saved with an
+// older id still finds the cover.
+export function dedupeConnectingCovers(covers=[]){
+  const keep=new Map(),aliases={};
+  const rank=c=>[Number(c.orderedQty||0)>0?1:0,String(c.foc_date||'')];
+  for(const c of covers){
+    const key=c.upc?'upc:'+c.upc:'id:'+c.id;
+    const prev=keep.get(key);
+    if(!prev){keep.set(key,c);continue;}
+    const [a,b]=[rank(c),rank(prev)];
+    const better=a[0]!==b[0]?a[0]>b[0]:a[1]>b[1];
+    const winner=better?c:prev,loser=better?prev:c;
+    aliases[loser.id]=winner.id;
+    winner.orderedQty=Math.max(Number(winner.orderedQty||0),Number(loser.orderedQty||0));
+    keep.set(key,winner);
+  }
+  for(const [from,to] of Object.entries(aliases)){let t=to;while(aliases[t])t=aliases[t];aliases[from]=t;}
+  return {covers:[...keep.values()],aliases};
+}
+// What the shop has of each cover now: copies in stock (received from the
+// FOC, linked by focSkuId) and eBay presale copies already sold, plus who
+// preordered it -- so the tracker can say who's collecting the set.
+async function addConnectingCoverStock(db,storeId,covers){
+  const ids=covers.map(c=>c.id);if(!ids.length)return;
+  try{
+    const {data:rows}=await db(`inventory_items?store_id=eq.${encodeURIComponent(storeId)}&data->>focSkuId=${inFilter(ids)}&status=in.(in_stock,presale,sold)&select=status,data`);
+    const stock=new Map(),sold=new Map();
+    for(const row of rows||[]){const d=row.data||{},id=d.focSkuId,q=Math.max(0,Number(d.qty??d.quantity??1));
+      if(row.status==='in_stock')stock.set(id,(stock.get(id)||0)+q);
+      if(d.source==='foc_presale'){const orig=Number(d.focPresaleOriginalQty||0);sold.set(id,(sold.get(id)||0)+Math.max(0,orig-(row.status==='sold'?0:q)));}}
+    const {data:items}=await db(`foc_preorder_items?sku_id=${inFilter(ids)}&status=eq.committed&select=sku_id,quantity,order_id`);
+    const orderIds=[...new Set((items||[]).map(i=>i.order_id))];
+    const {data:orders}=orderIds.length?await db(`foc_preorder_orders?id=${inFilter(orderIds)}&status=${inFilter([...ORDERED_STATUSES])}&select=id,customer_name`):{data:[]};
+    const who=new Map((orders||[]).map(o=>[o.id,text(o.customer_name,60)||'Customer']));
+    const customers=new Map();
+    for(const it of items||[]){if(!who.has(it.order_id))continue;const list=customers.get(it.sku_id)||[];list.push(who.get(it.order_id)+(Number(it.quantity)>1?' ×'+it.quantity:''));customers.set(it.sku_id,list);}
+    for(const c of covers){c.inStock=stock.get(c.id)||0;c.ebaySold=sold.get(c.id)||0;c.customers=customers.get(c.id)||[];}
+  }catch(e){console.error('connecting covers: stock lookup failed',e);}
 }
 async function withOrderedQty(db,skus){
   const cycleIds=[...new Set(skus.map(s=>s.cycle_id).filter(Boolean))];
   const totals=new Map();
   for(const cycleId of cycleIds){for(const [skuId,qty] of await orderedQtyBySku(db,cycleId))totals.set(skuId,(totals.get(skuId)||0)+qty);}
-  return skus.map(s=>{const info=connectingCoverInfo(s);return {...s,description:String(s.description||'').slice(0,600),preorderQty:totals.get(s.id)||0,orderedQty:Number(s.store_quantity||0)+(totals.get(s.id)||0),part:info.part,partCount:info.partCount};});
+  // Ordered = the real distributor order when one was uploaded (PRH cart /
+  // Lunar order -> secured_quantity), else store copies + customer preorders.
+  return skus.map(s=>{const info=connectingCoverInfo(s);const planned=Number(s.store_quantity||0)+(totals.get(s.id)||0);return {...s,description:String(s.description||'').slice(0,600),preorderQty:totals.get(s.id)||0,securedQty:Number(s.secured_quantity||0),orderedQty:Math.max(Number(s.secured_quantity||0),planned),part:info.part,partCount:info.partCount};});
 }
 
 async function focIntelligence(request,env,deps,url){
