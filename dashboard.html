@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.10.06.1-show-days-buy-names">
+<meta name="version" content="2026.10.06.2-price-sync-daily">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1661,23 +1661,23 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.10.06.1-show-days-buy-names" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.10.06.1-show-days-buy-names" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.10.06.1-show-days-buy-names" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.10.06.1-show-days-buy-names" defer></script>
-<script src="scripts/backlist-dashboard.js?v=2026.10.06.1-show-days-buy-names" defer></script>
-<script src="scripts/database-viewer.js?v=2026.10.06.1-show-days-buy-names" defer></script>
-<script src="scripts/card-intake-dashboard.js?v=2026.10.06.1-show-days-buy-names" defer></script>
-<script src="scripts/mana-pocket-task-library.js?v=2026.10.06.1-show-days-buy-names" defer></script>
-<script src="scripts/daily-tasks-dashboard.js?v=2026.10.06.1-show-days-buy-names" defer></script>
-<script src="scripts/expenses.js?v=2026.10.06.1-show-days-buy-names" defer></script>
-<script src="scripts/whatnot-bridge.js?v=2026.10.06.1-show-days-buy-names" defer></script>
+<script src="scripts/query-routing.js?v=2026.10.06.2-price-sync-daily" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.10.06.2-price-sync-daily" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.10.06.2-price-sync-daily" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.10.06.2-price-sync-daily" defer></script>
+<script src="scripts/backlist-dashboard.js?v=2026.10.06.2-price-sync-daily" defer></script>
+<script src="scripts/database-viewer.js?v=2026.10.06.2-price-sync-daily" defer></script>
+<script src="scripts/card-intake-dashboard.js?v=2026.10.06.2-price-sync-daily" defer></script>
+<script src="scripts/mana-pocket-task-library.js?v=2026.10.06.2-price-sync-daily" defer></script>
+<script src="scripts/daily-tasks-dashboard.js?v=2026.10.06.2-price-sync-daily" defer></script>
+<script src="scripts/expenses.js?v=2026.10.06.2-price-sync-daily" defer></script>
+<script src="scripts/whatnot-bridge.js?v=2026.10.06.2-price-sync-daily" defer></script>
 <script src="scripts/research-loupe.js?v=a7de4ffe90" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.10.06.1-show-days-buy-names" defer></script>
-<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.10.06.1-show-days-buy-names" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.10.06.1-show-days-buy-names" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.10.06.1-show-days-buy-names" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.10.06.1-show-days-buy-names" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.10.06.2-price-sync-daily" defer></script>
+<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.10.06.2-price-sync-daily" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.10.06.2-price-sync-daily" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.10.06.2-price-sync-daily" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.10.06.2-price-sync-daily" defer></script>
 </head>
 <body>
 
@@ -1729,7 +1729,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
 <div class="dsb-chip" id="dsb-tasks" title="Today's Roles &amp; Tasks — click to jump to Tasks tab" style="cursor:pointer;display:none" onclick="switchTab('tasks')">✅ <span>TASKS:</span> <b id="dsb-tasks-val">—</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.10.06.1-show-days-buy-names</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.10.06.2-price-sync-daily</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3318,6 +3318,7 @@ body.show-mode .inv-sync-badge{display:none;}
       <button class="hbtn" id="price-sync-other-btn" onclick="runOtherLivePriceSync()">FETCH LIVE SPORTS / OTHER TCG</button>
       <button class="hbtn" id="price-sync-scout-btn" onclick="runPocketScoutPriceSync()">SYNC POCKET SCOUT PRICES</button>
       <button class="hbtn" id="price-sync-apply-btn" onclick="applySelectedPriceSyncUpdates()" style="display:none;background:rgba(0,255,179,.12);border-color:rgba(0,255,179,.4);color:var(--g)">✓ UPDATE SELECTED</button>
+      <label style="font-size:10px;color:var(--dim);display:flex;align-items:center;gap:6px;font-family:var(--font-mono)"><input type="checkbox" id="price-sync-daily-toggle" checked onchange="setDailyPriceSyncEnabled(this.checked)"> Check all prices once a day and approve changes under 10% automatically</label>
       <button class="modal-btn cancel" onclick="closePriceSyncModal()" style="margin-left:auto">CLOSE</button>
     </div>
     <div id="price-sync-status" style="font-size:11px;color:var(--dim);min-height:16px;margin-bottom:8px"></div>
@@ -3917,7 +3918,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.10.06.1-show-days-buy-names';
+const APP_VERSION = '2026.10.06.2-price-sync-daily';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -4119,7 +4120,10 @@ async function storeWorkerFetch(path, options = {}){
 
 function getAuthSession(){ try { return JSON.parse(localStorage.getItem(WALKOFF_AUTH_SESSION_KEY) || 'null'); } catch(e) { return null; } }
 function getActiveStoreId(){ return localStorage.getItem(WALKOFF_ACTIVE_STORE_KEY) || getAuthSession()?.activeStoreId || ''; }
-function getActiveStore(){ const session = getAuthSession(); const id = getActiveStoreId(); return session?.stores?.find(s => s.id === id); }
+// Never undefined: before sign-in finishes (or for a store id not in the
+// session yet) callers get a blank store, not a crash -- the scanner inbox
+// read .displayName off undefined on every page load.
+function getActiveStore(){ const session = getAuthSession(); const id = getActiveStoreId(); return session?.stores?.find(s => s.id === id) || { id:id || '', displayName:'' }; }
 function scopedStorageKey(key, storeId = getActiveStoreId()){ return WALKOFF_SCOPED_KEYS.has(key) && storeId ? 'walkoff:' + storeId + ':' + key : key; }
 function currentRole(){ return getAuthSession()?.user?.role || 'owner'; }
 function requireOwnerAdmin(){ const role = currentRole(); return role === 'owner' || role === 'admin'; }
@@ -14611,6 +14615,7 @@ function mergePendingPriceSyncProposals(previous = [], fresh = []){
 }
 
 function openPriceSyncModal(){
+  const dailyToggle = document.getElementById('price-sync-daily-toggle'); if(dailyToggle) dailyToggle.checked = dailyPriceSyncEnabled();
   const modal = document.getElementById('price-sync-modal');
   if(!modal) return;
   modal.classList.add('on');
@@ -15238,6 +15243,7 @@ function renderPriceSyncProposal(){
   const changesHtml = visible.length ? `<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
     <label style="font-size:11px;cursor:pointer"><input type="checkbox" id="pso-select-all" ${visible.every(p => p.selected)?'checked':''} onchange="toggleAllPriceSyncItems(this.checked)"> SELECT ALL</label>
     <span style="font-size:10px;color:var(--dim)">${visible.length} item${visible.length===1?'':'s'}</span>
+    ${visible.some(p => Math.abs(Number(p.deltaPct || 0)) < SMALL_PRICE_CHANGE_PCT) ? `<button class="hbtn" style="margin:0 0 0 auto;font-size:9px;padding:5px 10px;color:var(--g)" onclick="applySmallPriceSyncUpdates()">✓ APPROVE ALL UNDER ${SMALL_PRICE_CHANGE_PCT}% (${visible.filter(p => Math.abs(Number(p.deltaPct || 0)) < SMALL_PRICE_CHANGE_PCT).length})</button>` : ''}
   </div>` + rows : '';
   const issuesHtml = issues.length ? `<div style="margin:${visible.length?'14px':'0'} 0 8px;padding-top:${visible.length?'12px':'0'};border-top:${visible.length?'1px solid var(--border)':'0'};font-size:10px;font-weight:700;color:var(--gold);letter-spacing:.6px">NOT UPDATED · ${issues.length} ITEM${issues.length===1?'':'S'}</div>` + issues.map(issue => {
     const id = issue.tcgPlayerId ? ' · TCGplayer #' + escHtml(issue.tcgPlayerId) : (issue.providerId ? ' · ' + escHtml(issue.providerId) : '');
@@ -15353,6 +15359,77 @@ async function applyPriceSyncEntry(p){
   } catch(e){ console.warn('[syncPrices] Apply failed:', priceSyncItemTitle(p.item), e); return false; }
 }
 
+// Small moves (under 10% either way) are routine market drift -- one tap
+// approves them all and leaves only the bigger changes to look at.
+const SMALL_PRICE_CHANGE_PCT = 10;
+function isSmallPriceChange(p){ return Math.abs(Number(p?.deltaPct || 0)) < SMALL_PRICE_CHANGE_PCT; }
+async function applyPriceSyncList(list){
+  let ok = 0;
+  for(const p of list){ if(await applyPriceSyncEntry(p)) ok++; }
+  const applied = new Set(list);
+  _priceSyncProposal = _priceSyncProposal.filter(p => !applied.has(p));
+  savePendingPriceSyncProposals();
+  return ok;
+}
+async function applySmallPriceSyncUpdates(){
+  const small = visiblePriceSyncProposals().filter(isSmallPriceChange);
+  if(!small.length){ toast_dash('No changes under ' + SMALL_PRICE_CHANGE_PCT + '%'); return; }
+  const ok = await applyPriceSyncList(small);
+  renderPriceSyncProposal();
+  updatePriceAlertBanner();
+  const statusEl = document.getElementById('price-sync-status');
+  const left = visiblePriceSyncProposals().length;
+  if(statusEl) statusEl.textContent = ok + ' small change' + (ok===1?'':'s') + ' approved.' + (left ? '  ' + left + ' bigger change' + (left===1?'':'s') + ' left to review.' : '  All done. ✓');
+  const applyBtn = document.getElementById('price-sync-apply-btn');
+  if(applyBtn && !left) applyBtn.style.display = 'none';
+  toast_dash('Approved ' + ok + ' price change' + (ok===1?'':'s') + ' under ' + SMALL_PRICE_CHANGE_PCT + '%');
+  loadInventory();
+}
+
+// ── Daily automatic price sync ──
+// Once a day (the first time a store device has the dashboard open after
+// 3am, or overnight on a device left open), every price check runs on its
+// own: cached Pokemon, MTG, comics, live Pokemon, sports/other TCG and
+// Pocket Scout. Changes under 10% are approved automatically; bigger ones
+// wait in SYNC PRICES with the banner on Home. One device per store per
+// day does it (shared marker on the Worker).
+const DAILY_PRICE_SYNC_KEY = 'price_sync_daily_last';
+let dailyPriceSyncRunning = false;
+function dailyPriceSyncEnabled(){ try { return localStorage.getItem('price_sync_daily_off') !== '1'; } catch(e) { return true; } }
+function setDailyPriceSyncEnabled(on){ try { localStorage.setItem('price_sync_daily_off', on ? '0' : '1'); } catch(e) {} toast_dash('Daily price sync ' + (on ? 'ON' : 'OFF') + ' on this device'); }
+function localDayKey(d = new Date()){ return d.toLocaleDateString('en-CA'); }
+async function maybeRunDailyPriceSync(){
+  if(dailyPriceSyncRunning || !dailyPriceSyncEnabled() || getAccountContext().isDemo || !getAuthSession()?.user) return;
+  const now = new Date();
+  if(now.getHours() < 3) return;
+  const today = localDayKey(now);
+  if(localStorage.getItem(DAILY_PRICE_SYNC_KEY) === today) return;
+  let shared = '';
+  try { const r = await storeWorkerFetch(scopedWorkerPath('/kv/' + DAILY_PRICE_SYNC_KEY), { cache:'no-store' }); const d = await r.json().catch(() => ({})); shared = String(d?.value || '').replace(/"/g, ''); } catch(e) { return; }
+  if(shared.slice(0, 10) === today){ localStorage.setItem(DAILY_PRICE_SYNC_KEY, today); return; }
+  // Claim today's run before starting, so a second device doesn't repeat it.
+  try { await storeWorkerFetch(scopedWorkerPath('/kv/' + DAILY_PRICE_SYNC_KEY), { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(today + ' ' + REGISTER_ID) }); } catch(e) { return; }
+  localStorage.setItem(DAILY_PRICE_SYNC_KEY, today);
+  dailyPriceSyncRunning = true;
+  try {
+    for(const run of [runPriceSyncScan, runOfflineMtgPriceSync, runLiveComicPriceSync, runLivePokemonPriceSync, runOtherLivePriceSync, runPocketScoutPriceSync]){
+      try { await run(); } catch(e) { console.warn('[daily price sync]', run.name, e.message || e); }
+    }
+    _priceSyncView = null;
+    const small = _priceSyncProposal.filter(isSmallPriceChange);
+    const ok = small.length ? await applyPriceSyncList(small) : 0;
+    const left = _priceSyncProposal.length;
+    try { localStorage.setItem('price_sync_daily_result', JSON.stringify({ day:today, approved:ok, waiting:left, at:new Date().toISOString() })); } catch(e) {}
+    renderPriceSyncProposal();
+    updatePriceAlertBanner();
+    if(ok) loadInventory();
+    logOpsEvent('price_sync_daily', 'Daily price sync', { approved:ok, waiting:left });
+    if(ok || left) toast_dash('Daily price sync: ' + ok + ' small change' + (ok===1?'':'s') + ' approved' + (left ? ', ' + left + ' waiting for review' : ''));
+  } finally { dailyPriceSyncRunning = false; }
+}
+setInterval(() => { if(document.visibilityState === 'visible') maybeRunDailyPriceSync().catch(() => {}); }, 30 * 60 * 1000);
+setTimeout(() => maybeRunDailyPriceSync().catch(() => {}), 90 * 1000);
+
 async function applySelectedPriceSyncUpdates(){
   // Only what's on screen -- a hidden pending change from another
   // category's sync is never applied behind the dealer's back.
@@ -15410,7 +15487,7 @@ async function refreshInventoryItemPriceFromMarket(itemId){
 }
 
 function updatePriceAlertBanner(){
-  const bigChanges = _priceSyncProposal.filter(p => p.isBig);
+  const bigChanges = _priceSyncProposal.filter(p => p.isBig || !isSmallPriceChange(p));
   const banner     = document.getElementById('price-change-alerts');
   if(!banner) return;
   if(bigChanges.length){
@@ -49409,7 +49486,7 @@ async function toppsLoadParallels(cardId){
   window.__arscaCloseModal = closeModal;
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.10.06.1-show-days-buy-names" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.10.06.2-price-sync-daily" defer></script>
 </body>
 </html>
 
