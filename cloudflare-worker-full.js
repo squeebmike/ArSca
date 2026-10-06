@@ -3017,6 +3017,14 @@ function normalizeWebflowItemId(item) {
   return item?.shopId || item?.wfId || item?.webflowId || null;
 }
 
+async function buyTrayIsClosed(env, storeId, id) {
+  if (!id) return false;
+  const scopedKey = `lba:${safeStoreKey(storeId)}:buy_tray_${String(id).replace(/[^a-zA-Z0-9:_-]/g, '-')}`;
+  const raw = env.LBA_KV ? await env.LBA_KV.get(scopedKey) : (globalThis['_' + scopedKey] || null);
+  if (!raw) return false;
+  try { return JSON.parse(raw)?.status === 'closed'; } catch (e) { return false; }
+}
+
 function safeStoreKey(s) {
   return String(s || 'main').replace(/[^a-zA-Z0-9:_-]/g, '-').slice(0, 80);
 }
@@ -7726,8 +7734,14 @@ async function routeRequest(request, env, ctx) {
       if (url.pathname.endsWith('/upsert')) {
         const entry = body.entry;
         if (!entry || !entry.id) return json({ ok: false, error: 'entry.id is required' }, 400);
-        const idx = index.findIndex(e => e.id === entry.id);
-        if (idx >= 0) index[idx] = entry; else index.push(entry);
+        // A late upsert for a tray that's already finished (its record was
+        // written closed) must not re-list it -- that brought a completed
+        // buy's items back on every device.
+        if (await buyTrayIsClosed(env, storeId, entry.id)) index = index.filter(e => e.id !== entry.id);
+        else {
+          const idx = index.findIndex(e => e.id === entry.id);
+          if (idx >= 0) index[idx] = entry; else index.push(entry);
+        }
         index = index.slice(0, 50);
       } else {
         const id = body.id;
@@ -7738,6 +7752,51 @@ async function routeRequest(request, env, ctx) {
       if (env.LBA_KV) await env.LBA_KV.put(scopedKey, nextRaw, { expirationTtl: 604800 });
       else globalThis['_' + scopedKey] = nextRaw;
       return json({ ok: true, index });
+    }
+
+    // Every accepted customer buy (cash, Venmo, card, or a trade-in) is money
+    // spent on inventory: it's recorded in Costs as an inventory purchase so
+    // the month's cash flow counts it. Done here with the service key so any
+    // staff role can record it (store_expenses only lets managers+ write).
+    // One row per accepted buy (the id is unique per acceptance) -- a retried call sets the amount, never adds.
+    if (url.pathname === '/expenses/buy-purchase') {
+      if (request.method !== 'POST') return json({ error: 'POST only' }, 405);
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId, ['owner','admin','manager','employee']);
+      if (auth.error) return auth.error;
+      const limited = await readJsonWithLimit(request, 16 * 1024);
+      if (limited.error) return limited.error;
+      const body = limited.data || {};
+      const id = String(body.buySessionId || '');
+      const amount = Math.round(Number(body.amount || 0) * 100) / 100;
+      if (!/^[A-Za-z0-9_-]{1,80}$/.test(id)) return json({ ok: false, error: 'buySessionId is required' }, 400);
+      if (!(amount > 0) || amount > 100000) return json({ ok: false, error: 'amount must be between 0 and 100000' }, 400);
+      const date = /^\d{4}-\d{2}-\d{2}$/.test(String(body.date || '')) ? body.date : new Date().toISOString().slice(0, 10);
+      // kind 'add': stock added straight to inventory (Quick Add, Research ->
+      // Add to inventory) with a cost -- also money spent on inventory.
+      const isAdd = body.kind === 'add';
+      const key = `${isAdd ? 'add' : 'buy'} ${id}`;
+      const clean = (v, n) => String(v || '').replace(/[\r\n]/g, ' ').trim().slice(0, n);
+      const who = clean(body.customerName, 80);
+      const how = clean(body.method, 40);
+      // What was bought, by name ("Jirachi, Primarina GX +3 more"), so the
+      // Costs list says what the money went on.
+      const names = (Array.isArray(body.items) ? body.items : []).map(n => clean(n, 80)).filter(Boolean);
+      const what = names.length ? names.slice(0, 4).join(', ') + (names.length > 4 ? ` +${names.length - 4} more` : '') : '';
+      const head = isAdd ? 'Added to inventory' : `Customer buy${who ? ': ' + who : ''}`;
+      const note = `${head}${what ? ' · ' + what : ''}${how ? ' · ' + how : ''} · ${key}`.slice(0, 600);
+      try {
+        const found = await supabaseAdminFetch(env, `store_expenses?store_id=eq.${encodeURIComponent(storeId)}&kind=eq.inventory&note=like.*${encodeURIComponent(key)}&select=id,amount&limit=1`);
+        const prev = (found.data || [])[0];
+        if (prev) {
+          await supabaseAdminFetch(env, `store_expenses?id=eq.${encodeURIComponent(prev.id)}&store_id=eq.${encodeURIComponent(storeId)}`, { method: 'PATCH', body: JSON.stringify({ amount, note }) });
+          return json({ ok: true, updated: true, amount });
+        }
+        await supabaseAdminFetch(env, 'store_expenses', { method: 'POST', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ store_id: storeId, spent_on: date, kind: 'inventory', category: isAdd ? 'Inventory added' : 'Customer buys', amount, note, created_by: auth.user?.id || null }) });
+        return json({ ok: true, amount });
+      } catch (e) {
+        return json({ ok: false, error: e.message || String(e) }, 500);
+      }
     }
 
     if (url.pathname === '/kv/show-sessions-index/upsert') {
@@ -7825,11 +7884,19 @@ async function routeRequest(request, env, ctx) {
       if (request.method === 'POST') {
         const body = await request.text();
         if (new TextEncoder().encode(body).byteLength > 1024 * 1024) return json({ ok:false, error:'KV payload is too large' }, 413);
+        // A finished buy tray stays finished: a save still in flight from
+        // before it was closed must not put its items back.
+        if (key.startsWith('buy_tray_') && await buyTrayIsClosed(env, storeId, key.slice('buy_tray_'.length))) {
+          let incoming = null; try { incoming = JSON.parse(body); } catch (e) {}
+          if (incoming?.status !== 'closed') return json({ ok: true, closed: true });
+        }
         if (env.LBA_KV) {
           // Confirmed barcode matches are store memory, not session state.
           // A store's saved connecting-cover sets are a running collection
           // record, so they never expire.
-          const permanent = key.startsWith('foc_connecting');
+          // Recurring monthly costs (expense_recurring) are standing store
+          // settings, so they never expire either.
+          const permanent = key.startsWith('foc_connecting') || key.startsWith('expense_');
           const expirationTtl = key.startsWith('show_session') ? 60 * 60 * 24 * 180 : (key.startsWith('comic_') || key.startsWith('barcode_link_')) ? 60 * 60 * 24 * 365 : 604800;
           await env.LBA_KV.put(scopedKey, body, permanent ? undefined : { expirationTtl });
         } else {
@@ -8725,11 +8792,18 @@ async function routeRequest(request, env, ctx) {
       // with no need to scrape the page for it.
       const slugMatch = parsed.pathname.match(/^\/game\/([^/]+)\/([^/]+)/);
       const shortIdMatch = !slugMatch ? parsed.pathname.match(/^\/game\/(\d+)\/?$/) : null;
-      if (!slugMatch && !shortIdMatch) return json({ ok: false, error: 'That doesn\'t look like a product page URL (expected .../game/<console>/<product> or .../game/<id>)' }, 400);
+      if (!slugMatch && !shortIdMatch) {
+        if (/^\/search-products/.test(parsed.pathname)) return json({ ok: false, error: 'That\'s a search results page, not a card\'s page -- open the card on PriceCharting and paste that page\'s link (or its numeric product ID).' }, 400);
+        return json({ ok: false, error: 'That doesn\'t look like a product page URL (expected .../game/<console>/<product> or .../game/<id>)' }, 400);
+      }
       const [, consoleSlug, productSlug] = slugMatch || [];
+      // Read the page on the site the link is for: pricecharting.com has every
+      // game (MTG, Pokémon, comics...), sportscardspro.com only sports, so a
+      // PriceCharting MTG link scraped from sportscardspro.com found nothing.
+      const siteHost = host === 'pricecharting.com' ? 'www.pricecharting.com' : 'www.sportscardspro.com';
       const scrapeUrl = slugMatch
-        ? `https://www.sportscardspro.com/game/${consoleSlug}/${productSlug}`
-        : `https://www.sportscardspro.com/game/${shortIdMatch[1]}`;
+        ? `https://${siteHost}/game/${consoleSlug}/${productSlug}`
+        : `https://${siteHost}/game/${shortIdMatch[1]}`;
 
       let imageUrl = null, cardNumber = '', printRun = '', priceChartingId = shortIdMatch ? shortIdMatch[1] : '';
       try {
@@ -8757,6 +8831,27 @@ async function routeRequest(request, env, ctx) {
       } catch (_) {}
 
       let productName = '', consoleName = '', market = 0;
+      // The page read didn't give the id (the site may block automated
+      // reads): find it through the PriceCharting API instead -- search the
+      // link's own names and keep only the product whose console and name
+      // slugs are exactly the link's. 12 sports cards had been saved with a
+      // link but no id this way, so price sync could never price them.
+      if (!priceChartingId && slugMatch) {
+        const pcToken = env.PRICECHARTING_TOKEN || env.PRICECHARTING_API_KEY;
+        const norm = v => { let t = String(v || ''); try { t = decodeURIComponent(t); } catch (_) {} return t.toLowerCase().replace(/['’]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, ''); };
+        const words = v => norm(v).replace(/-/g, ' ');
+        if (pcToken) {
+          try {
+            const q = `${words(productSlug)} ${words(consoleSlug).replace(/\bcards?\b/g, ' ')}`.replace(/\s+/g, ' ').trim().slice(0, 200);
+            const searchRes = await fetch(`https://www.pricecharting.com/api/products?q=${encodeURIComponent(q)}&t=${encodeURIComponent(pcToken)}`, { headers: { 'Accept': 'application/json', 'User-Agent': 'Walk-Off Sports Cards Dealer App/2026' }, cf: { cacheTtl: 7200 } });
+            if (searchRes.ok) {
+              const found = await searchRes.json().catch(() => null);
+              const hit = (found?.products || []).find(p => norm(p['console-name']) === norm(consoleSlug) && norm(p['product-name']) === norm(productSlug));
+              if (hit?.id) priceChartingId = String(hit.id);
+            }
+          } catch (_) {}
+        }
+      }
       if (priceChartingId) {
         const pcToken = env.PRICECHARTING_TOKEN || env.PRICECHARTING_API_KEY;
         if (pcToken) {

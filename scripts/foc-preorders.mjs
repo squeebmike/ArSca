@@ -281,6 +281,148 @@ export function inFilter(values) {
   return `in.(${values.map(value => encodeURIComponent(String(value))).join(',')})`;
 }
 
+// ── Packing slip ──
+// Store ask: "take a pic of the slip ... import the books I got and connect
+// the amount I just received into stock, linked to the FOC info." A PRH
+// invoice/packing list prints each book's full 17-digit barcode (UPC + the
+// 5-digit issue/cover add-on), the quantity shipped and the net unit price;
+// the barcode is exactly what each FOC cover already stores, so lines match
+// by barcode, never by the slip's cut-off titles. One slip can carry books
+// from several FOC weeks.
+export function slipCode(value){ return String(value||'').replace(/\D/g,''); }
+function digitsOff(a,b){ if(a.length!==b.length)return 99; let n=0; for(let i=0;i<a.length;i++) if(a[i]!==b[i]) n++; return n; }
+// Each slip line with its cover: the exact barcode, else a barcode one digit
+// off (a misread photo) when exactly one cover is that close -- flagged
+// 'close' so it gets a look. A barcode on several covers (same book in two
+// FOC weeks) goes to the newest week.
+export function matchSlipLines(lines,skus){
+  const byCode=new Map();
+  for(const sku of skus||[]) for(const code of [slipCode(sku.upc),slipCode(sku.isbn)]) if(code){ if(!byCode.has(code))byCode.set(code,[]); byCode.get(code).push(sku); }
+  const newest=list=>list.slice().sort((a,b)=>String(b.foc_date||'').localeCompare(String(a.foc_date||'')))[0];
+  return (lines||[]).map(line=>{
+    const code=slipCode(line.code);
+    let sku=null,how='';
+    if(code&&byCode.has(code)){ sku=newest(byCode.get(code)); how='exact'; }
+    else if(code.length>=12){
+      const close=(skus||[]).filter(s=>[slipCode(s.upc),slipCode(s.isbn)].some(c=>c&&digitsOff(c,code)===1));
+      if(close.length===1){ sku=close[0]; how='close'; }
+    }
+    return { ...line, code, sku, how };
+  });
+}
+// The same line read twice (overlapping photos of one page) counts once.
+export function mergeSlipLines(lines){
+  const out=[];const seen=new Map();
+  for(const line of lines||[]){
+    const code=slipCode(line.code); const qty=Math.max(0,Math.round(Number(line.qty)||0));
+    if(!code){ out.push({ ...line, code, qty }); continue; }
+    if(seen.has(code)){ const prev=seen.get(code); prev.qty=Math.max(prev.qty,qty); if(!(prev.netUnitPrice>0)) prev.netUnitPrice=Number(line.netUnitPrice)||0; continue; }
+    const row={ code, title:text(line.title,200), qty, netUnitPrice:Math.max(0,Number(line.netUnitPrice)||0) };
+    seen.set(code,row); out.push(row);
+  }
+  return out;
+}
+const SLIP_SCHEMA={type:'object',additionalProperties:false,required:['invoice','onSaleDate','totalUnits','lines'],properties:{
+  invoice:{type:'string'},onSaleDate:{type:'string'},totalUnits:{type:'integer'},
+  lines:{type:'array',items:{type:'object',additionalProperties:false,required:['code','title','qty','netUnitPrice'],properties:{code:{type:'string'},title:{type:'string'},qty:{type:'integer'},netUnitPrice:{type:'number'}}}}}};
+const SLIP_PROMPT='These photos show a comic book distributor packing slip or invoice (for example Penguin Random House or Lunar), possibly several pages, or a carton label. Read every book line on them.\n\n'+
+  'For each book line:\n- code: the barcode number exactly as printed in the "ISBN 13/EAN", "UPC" or "ISBN" column, digits only. Comic barcodes are usually 17 digits (a 12-digit UPC followed by a 5-digit add-on); copy every digit carefully, since this is what matches the book.\n- title: the title as printed.\n- qty: the quantity shipped.\n- netUnitPrice: the "NET UNIT PRICE" (what the store pays per copy), or 0 if the photo does not show one.\n\n'+
+  'If two photos overlap and show the same line, list it once. Skip headers, addresses, totals and anything that is not a book line.\n'+
+  'invoice: the invoice or delivery number, or "" if none. onSaleDate: any printed on-sale date as YYYY-MM-DD, or "". totalUnits: the printed "Total Units" or "Total Books", or 0 if none is visible.';
+async function readSlipImages(env,images){
+  const request={model:'claude-opus-5-5',max_tokens:16000,output_config:{effort:'high',format:{type:'json_schema',schema:SLIP_SCHEMA}},
+    messages:[{role:'user',content:[...images.map(img=>({type:'image',source:{type:'base64',media_type:img.mediaType,data:img.data}})),{type:'text',text:SLIP_PROMPT}]}]};
+  const headers={'x-api-key':env.ANTHROPIC_API_KEY,'anthropic-version':'2023-06-01','content-type':'application/json'};
+  // Server-side fallback: if the model declines, another model reads it in
+  // the same call. An account without that option gets one plain retry.
+  let res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{...headers,'anthropic-beta':'server-side-fallback-2026-07-01'},body:JSON.stringify({...request,fallbacks:'default'})});
+  if(res.status===400)res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers,body:JSON.stringify(request)});
+  const data=await res.json().catch(()=>({}));
+  if(!res.ok)throw new Error('Could not read the slip ('+res.status+')'+(data?.error?.message?': '+data.error.message:''));
+  if(data.stop_reason==='refusal')throw new Error('The slip photo could not be read -- try another photo');
+  if(data.stop_reason==='max_tokens')throw new Error('That slip is too long for one read -- scan fewer pages at a time');
+  const block=(data.content||[]).find(b=>b.type==='text');
+  let parsed;try{parsed=JSON.parse(block?.text||'');}catch(_){throw new Error('The slip reading came back unreadable -- try again');}
+  return { invoice:text(parsed.invoice,60), onSaleDate:dateIso(parsed.onSaleDate)||'', totalUnits:Math.max(0,Number(parsed.totalUnits)||0), lines:Array.isArray(parsed.lines)?parsed.lines:[] };
+}
+const SLIP_SKU_FIELDS='id,cycle_id,upc,isbn,title,variant_label,foc_date,store_quantity,secured_quantity,is_incentive,msrp_cents,cover_image_url';
+async function readPackingSlip(request,env,deps){
+  const limited=await deps.readJsonWithLimit(request,24*1024*1024);if(limited.error)return limited.error;
+  const body=limited.data||{};const storeId=text(body.storeId,80);
+  const auth=await deps.requireStoreUser(request,env,storeId,['owner','admin','manager','employee']);if(auth.error)return auth.error;
+  if(!env.ANTHROPIC_API_KEY)return deps.json({ok:false,error:'Reading slip photos needs the ANTHROPIC_API_KEY secret on the Worker'},503);
+  const db=(path,options)=>deps.supabaseAdminFetch(env,path,options);
+  let read=null;
+  if(Array.isArray(body.lines)){
+    // Re-match lines already read (after adding another page).
+    read={ invoice:text(body.invoice,60), onSaleDate:dateIso(body.onSaleDate)||'', totalUnits:Math.max(0,Number(body.totalUnits)||0), lines:body.lines.slice(0,500) };
+  } else {
+    const images=(Array.isArray(body.images)?body.images:[]).slice(0,6).map(img=>({data:String(img?.data||'').replace(/^data:[^,]*,/,''),mediaType:/^image\/(jpeg|png|webp)$/.test(String(img?.mediaType||''))?img.mediaType:'image/jpeg'})).filter(img=>img.data.length>100);
+    if(!images.length)return deps.json({ok:false,error:'Add a photo of the slip'},400);
+    const limitError=deps.enforceUsageLimit?await deps.enforceUsageLimit(env,`foc-slip:${storeId}:${auth.user.id}`,40,3600):null;if(limitError)return limitError;
+    try{read=await readSlipImages(env,images);}catch(e){return deps.json({ok:false,error:e.message},502);}
+  }
+  const lines=mergeSlipLines(read.lines);
+  const codes=[...new Set(lines.map(l=>l.code).filter(c=>c.length>=10))];
+  const skuById=new Map();
+  const addRows=rows=>{for(const row of rows||[])skuById.set(row.id,row);};
+  for(let i=0;i<codes.length;i+=40){
+    const chunk=codes.slice(i,i+40);
+    addRows((await db(`comic_skus?store_id=eq.${encodeURIComponent(storeId)}&upc=${inFilter(chunk)}&select=${SLIP_SKU_FIELDS}`)).data);
+    addRows((await db(`comic_skus?store_id=eq.${encodeURIComponent(storeId)}&isbn=${inFilter(chunk)}&select=${SLIP_SKU_FIELDS}`)).data);
+  }
+  // Same book, one digit misread: everything sharing the 12-digit UPC.
+  const matchedCodes=new Set([...skuById.values()].flatMap(s=>[slipCode(s.upc),slipCode(s.isbn)]));
+  const bases=[...new Set(codes.filter(c=>!matchedCodes.has(c)&&c.length===17).map(c=>c.slice(0,12)))];
+  for(let i=0;i<bases.length;i+=20){
+    const or='('+bases.slice(i,i+20).map(b=>'upc.like.'+b+'*').join(',')+')';
+    addRows((await db(`comic_skus?store_id=eq.${encodeURIComponent(storeId)}&or=${encodeURIComponent(or)}&select=${SLIP_SKU_FIELDS}`)).data);
+  }
+  const matched=matchSlipLines(lines,[...skuById.values()]);
+  const cycleIds=[...new Set(matched.map(m=>m.sku?.cycle_id).filter(Boolean))];
+  // Every ordered cover in those FOC weeks, what customers have paid for,
+  // and what's already been received -- so the review shows short or
+  // missing books and never receives a cover twice by accident.
+  const cycleSkus=cycleIds.length?(await db(`comic_skus?store_id=eq.${encodeURIComponent(storeId)}&cycle_id=${inFilter(cycleIds)}&select=${SLIP_SKU_FIELDS}`)).data||[]:[];
+  const committed=cycleIds.length?(await db(`foc_preorder_items?cycle_id=${inFilter(cycleIds)}&status=eq.committed&select=sku_id,quantity,order:foc_preorder_orders(status,fulfillment_method)`)).data||[]:[];
+  // eBay presale copies already sold -- they need packing and shipping.
+  const ebayPresold=cycleIds.length?await ebayPresoldBySku(db,storeId):new Map();
+  const receivedRows=cycleIds.length?(await db(`inventory_items?store_id=eq.${encodeURIComponent(storeId)}&data->>focCycleId=${inFilter(cycleIds)}&data->>source=eq.foc_receive&select=created_at,focSkuId:data->>focSkuId`)).data||[]:[];
+  const { data:cycles }=cycleIds.length?await db(`foc_cycles?id=${inFilter(cycleIds)}&select=id,foc_date,distributor`):{data:[]};
+  // The PRH order submitted from the dashboard, when there is one, is the
+  // real order (website + eBay presales + store copies). A week ordered
+  // straight with PRH has none, so its covers' order is unknown, not zero.
+  const { data:submissions }=cycleIds.length?await db(`foc_prh_submissions?store_id=eq.${encodeURIComponent(storeId)}&cycle_id=${inFilter(cycleIds)}&select=cycle_id,line_items`):{data:[]};
+  const submittedCycles=new Set();const submittedQty=new Map();
+  for(const sub of submissions||[]){ submittedCycles.add(sub.cycle_id); for(const item of Array.isArray(sub.line_items)?sub.line_items:[]) if(item?.skuId) submittedQty.set(item.skuId,(submittedQty.get(item.skuId)||0)+Number(item.finalQty||0)); }
+  // A week ordered on PRH's own site whose cart export was imported (FINAL
+  // FOC REVIEW -> UPLOAD PRH CART): that import writes every cover's PRH
+  // quantity to secured_quantity, which a regular (non-incentive) cover
+  // gets from nowhere else.
+  const cartCycles=new Set(cycleSkus.filter(sku=>!sku.is_incentive&&Number(sku.secured_quantity||0)>0).map(sku=>sku.cycle_id));
+  // Paid website preorders, split by how each customer gets theirs.
+  const customerQty=new Map(),shipQty=new Map();
+  for(const item of committed){
+    if(item.order&&item.order.status&&item.order.status!=='paid')continue;
+    const n=Number(item.quantity||0);
+    customerQty.set(item.sku_id,(customerQty.get(item.sku_id)||0)+n);
+    if(item.order?.fulfillment_method&&item.order.fulfillment_method!=='pickup')shipQty.set(item.sku_id,(shipQty.get(item.sku_id)||0)+n);
+  }
+  const receivedAt=new Map();for(const row of receivedRows)if(row.focSkuId&&!receivedAt.has(row.focSkuId))receivedAt.set(row.focSkuId,row.created_at);
+  const cover=sku=>({skuId:sku.id,cycleId:sku.cycle_id,focDate:sku.foc_date,title:sku.title,variantLabel:sku.variant_label||'',upc:sku.upc||'',
+    orderOnFile:submittedCycles.has(sku.cycle_id)||cartCycles.has(sku.cycle_id),
+    coverImage:sku.cover_image_url||'',
+    ebayPresold:Number(ebayPresold.get(sku.id)||0),customerShip:Number(shipQty.get(sku.id)||0),customerPickup:Math.max(0,Number(customerQty.get(sku.id)||0)-Number(shipQty.get(sku.id)||0)),
+    orderedQty:submittedCycles.has(sku.cycle_id)?Number(submittedQty.get(sku.id)||0)
+      :cartCycles.has(sku.cycle_id)?Number(sku.secured_quantity||0)
+      :Number(sku.store_quantity||0)+Number(customerQty.get(sku.id)||0),customerQty:Number(customerQty.get(sku.id)||0),receivedAt:receivedAt.get(sku.id)||'',coverPrice:Number(sku.msrp_cents||0)/100});
+  const onSlip=new Set(matched.map(m=>m.sku?.id).filter(Boolean));
+  const missing=cycleSkus.filter(sku=>!onSlip.has(sku.id)&&!receivedAt.has(sku.id)).map(cover).filter(c=>c.orderedQty>0);
+  return deps.json({ok:true,invoice:read.invoice,onSaleDate:read.onSaleDate,totalUnits:read.totalUnits,unitsRead:lines.reduce((a,l)=>a+l.qty,0),
+    lines:matched.map(m=>({code:m.code,title:m.title,qty:m.qty,netUnitPrice:m.netUnitPrice,how:m.how,cover:m.sku?cover(m.sku):null})),
+    cycles:(cycles||[]).map(c=>({id:c.id,focDate:c.foc_date,distributor:c.distributor||'PRH',orderOnFile:submittedCycles.has(c.id)||cartCycles.has(c.id)})),missing});
+}
+
 // ── Connecting covers ──
 // Store ask: "an easy to use connecting covers [tracker] in the FOC area ...
 // covers I bought, covers I missed and upcoming covers that connect. Some go
@@ -1819,14 +1961,22 @@ async function adminImportPrhCart(request,env,deps){
   // added to the cart twice, or PRH itself splitting a large quantity across
   // rows) -- sum rather than overwrite, so the real total ordered is never
   // silently understated to whichever row happened to be read last.
-  const orderedByUpc=new Map();
+  // Lunar's order export (Code, Title, Qty, ..., UPC) is accepted too: a row
+  // matches by UPC, or by the distributor's own item code (Lunar's
+  // "0926DC0056") when the UPC doesn't. Each row is keyed by whichever
+  // identifier it has, preferring UPC.
+  const orderedByUpc=new Map();const codeForUpc=new Map();const titleForKey=new Map();
   for(const row of rows){
-    const upc=exactIdentifier(row?.upc);const quantity=Math.max(0,Math.min(100000,Number(row?.quantity)||0));
-    if(!upc||!quantity)continue;
-    orderedByUpc.set(upc,(orderedByUpc.get(upc)||0)+quantity);
+    const upc=exactIdentifier(row?.upc);const code=exactIdentifier(row?.code).toUpperCase();const quantity=Math.max(0,Math.min(100000,Number(row?.quantity)||0));
+    const key=upc||(code?'code:'+code:'');
+    if(!key||!quantity)continue;
+    orderedByUpc.set(key,(orderedByUpc.get(key)||0)+quantity);
+    if(code)codeForUpc.set(key,code);
+    if(row?.title)titleForKey.set(key,text(row.title,200));
   }
-  if(!orderedByUpc.size)return deps.json({ok:false,error:'No row had both a UPC/ISBN and a positive quantity -- is this the right file?'},400);
-  const {data:skus}=await db(`comic_skus?cycle_id=eq.${encodeURIComponent(cycleId)}&store_id=eq.${encodeURIComponent(storeId)}&select=id,upc,title,variant_label`);
+  if(!orderedByUpc.size)return deps.json({ok:false,error:'No row had both a UPC/ISBN (or item code) and a positive quantity -- is this the right file?'},400);
+  const {data:skus}=await db(`comic_skus?cycle_id=eq.${encodeURIComponent(cycleId)}&store_id=eq.${encodeURIComponent(storeId)}&select=id,upc,distributor_sku,title,variant_label`);
+  const keyByCode=new Map([...codeForUpc.entries()].map(([key,code])=>[code,key]));
   if(!skus?.length)return deps.json({ok:false,error:'FOC cycle not found, or it has no covers yet'},404);
   const customerQty=await orderedQtyBySku(db,cycleId);
   const ebayPresold=await ebayPresoldBySku(db,storeId);
@@ -1834,8 +1984,10 @@ async function adminImportPrhCart(request,env,deps){
   const updated=[];const finalQtyBySku=new Map();
   for(const sku of skus){
     const upc=exactIdentifier(sku.upc);
-    const orderedTotal=orderedByUpc.get(upc)||0;
-    if(upc&&orderedByUpc.has(upc))matchedUpcs.add(upc);
+    const code=exactIdentifier(sku.distributor_sku).toUpperCase();
+    const key=upc&&orderedByUpc.has(upc)?upc:(code&&keyByCode.has(code)?keyByCode.get(code):'');
+    const orderedTotal=key?(orderedByUpc.get(key)||0):0;
+    if(key)matchedUpcs.add(key);
     const committed=Number(customerQty.get(sku.id)||0)+Number(ebayPresold.get(sku.id)||0);
     const newStoreQuantity=Math.max(0,orderedTotal-committed);
     if(orderedTotal>0)finalQtyBySku.set(sku.id,orderedTotal);
@@ -1847,7 +1999,7 @@ async function adminImportPrhCart(request,env,deps){
   // never entered comic_skus to begin with, but surfaced rather than
   // silently dropped in case a real cover's UPC just doesn't match (a
   // reprint, a distributor UPC change) and needs a human look.
-  const unmatchedRows=[...orderedByUpc.entries()].filter(([upc])=>!matchedUpcs.has(upc)).map(([upc,quantity])=>({upc,quantity}));
+  const unmatchedRows=[...orderedByUpc.entries()].filter(([key])=>!matchedUpcs.has(key)).map(([key,quantity])=>({upc:key.startsWith('code:')?'':key,code:codeForUpc.get(key)||'',title:titleForKey.get(key)||'',quantity}));
   const {ebayWithdrawnSkuIds,ebayQuantityUpdatedSkuIds}=await syncFocEbayListingsToOrder(env,deps,db,storeId,cycleId,finalQtyBySku);
   // Covers that were ordered and still have copies left to sell (after
   // committed demand) but have no live eBay presale listing at all yet --
@@ -2270,8 +2422,9 @@ async function receiveShipment(request,env,deps){
         // checks item.category==='Comic', and 'Comics' (plural) here meant a
         // freshly-received FOC comic never auto-picked the Comics category.
         category:'Comic',publisher:sku.publisher||'',upc:sku.upc||'',
-        // PRH cost is 50% of cover price -- our real wholesale rate, not an estimate.
-        cost:Math.round(Number(sku.msrp_cents||0)*0.5)/100,
+        // The invoice's net unit price when receiving from a scanned packing
+        // slip; otherwise PRH's 50% of cover price, our real wholesale rate.
+        cost:Number(line.unitCost)>0&&Number(line.unitCost)<1000?Math.round(Number(line.unitCost)*100)/100:Math.round(Number(sku.msrp_cents||0)*0.5)/100,
         market:Number(sku.customer_price_cents||0)/100,salePrice:Number(sku.customer_price_cents||0)/100,
         qty:newStandaloneCount,quantity:newStandaloneCount,image:sku.cover_image_url||'',
         source:'foc_receive',focSkuId:sku.id,focCycleId:cycleId,focReceivedAt:new Date().toISOString(),
@@ -2634,6 +2787,7 @@ export async function handleFocRequest(request, env, url, deps) {
   if(path==='/foc/admin/orders/email'&&request.method==='POST')return resendAdminOrderEmail(request,env,deps);
   if(path==='/foc/admin/orders/label'&&request.method==='POST')return adminShippingLabel(request,env,deps);
   if(path==='/foc/admin/receive'&&request.method==='POST')return receiveShipment(request,env,deps);
+  if(path==='/foc/admin/read-slip'&&request.method==='POST')return readPackingSlip(request,env,deps);
   if(path==='/foc/admin/shipping-settings'&&request.method==='GET')return getShippingSettings(request,env,deps,url);
   if(path==='/foc/admin/shipping-settings'&&request.method==='PATCH')return saveShippingSettings(request,env,deps);
   return deps.json({ok:false,error:'FOC route not found'},404);

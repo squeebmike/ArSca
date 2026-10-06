@@ -503,7 +503,7 @@ async function loadAccountSummary(){
 }
 function renderPhoneLinkForm(){
   return `<div class="sheet-title">Link Your Account</div>
-    <p style="font-size:13px;color:var(--muted);margin-top:-6px">Verify your phone number to see your orders, trade credit, loyalty points and more from ${esc(payload.store.name||'this store')}.</p>
+    <p style="font-size:13px;color:var(--muted);margin-top:-6px">Verify your phone number to see your orders, loyalty points and more from ${esc(payload.store.name||'this store')}.</p>
     <div class="error-box" id="phone-error"></div>
     <div class="field"><label>Phone number</label><input id="phone-input" type="tel" placeholder="(555) 555-5555"></div>
     <div class="btn-row"><button class="btn" onclick="submitStartPhoneVerify()">SEND CODE</button></div>
@@ -588,7 +588,6 @@ function renderAccountTabContent(){
     if(!c) return '<div class="empty">No account details yet.</div>';
     return `<div style="display:grid;gap:2px">
       <div class="cart-total-row"><span>Loyalty points</span><span>${Number(c.loyaltyPointsBalance||0)}</span></div>
-      <div class="cart-total-row"><span>Trade credit</span><span>$${Number(c.tradeCreditBalance||0).toFixed(2)}</span></div>
       ${accountState.giftCards.length?`<div style="margin-top:10px"><div style="font-weight:800;font-size:13px;margin-bottom:6px">Gift Cards</div>${accountState.giftCards.map(g=>`<div class="cart-total-row"><span>${esc(g.code)}</span><span>$${Number(g.balance).toFixed(2)}</span></div>`).join('')}</div>`:''}
     </div>`;
   }

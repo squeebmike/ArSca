@@ -3,14 +3,11 @@ import assert from 'node:assert/strict';
 
 const dashboard = fs.readFileSync('dashboard.html', 'utf8');
 
-// ── Trade-credit bonus label ──
-// Store report: the buy-accept screen showed "PAY CUSTOMER $11.00" and,
-// right below it, "APPLY $12.65 TO PURCHASE" with no explanation -- that
-// second figure is the SAME offer with the trade-credit bonus multiplier
-// (1.15x) applied, not a different/wrong number, but nothing on screen said
-// so. Now labeled with the actual bonus percentage.
-assert(dashboard.includes("APPLY $${tradeTotal.toFixed(2)} TO PURCHASE${total>0?` (+${Math.round((tradeTotal/total-1)*100)}% TRADE BONUS)`:''}"),
-  'the trade-credit "Apply to Purchase" button must explain the bonus percentage, not just show a bigger unexplained number');
+// ── No trade bonus ──
+// Store policy: trade-in value is the same as the cash offer, so the
+// "Apply to Purchase" button shows that one number with no bonus label.
+assert(dashboard.includes("APPLY $${tradeTotal.toFixed(2)} TO PURCHASE</button>"), 'the Apply to Purchase button shows the trade value with no bonus');
+assert(!/TRADE BONUS|(?:offerTotal|pctOverride\)) \* 1\.15/.test(dashboard), 'no 1.15x trade bonus anywhere');
 
 // ── Print run in the item name ──
 // Store report: a numbered parallel's print run was captured into the

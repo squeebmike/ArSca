@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.10.02.4-whatnot-enter-show">
+<meta name="version" content="2026.10.06.1-show-days-buy-names">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -277,6 +277,9 @@ html.ui-scale-large{zoom:1.3;}
 .auth-title{font-family:'Orbitron',monospace;font-size:18px;font-weight:900;color:var(--g);letter-spacing:2px;margin-bottom:6px;}
 .auth-sub{font-family:var(--font-mono);font-size:10px;color:var(--dim);line-height:1.7;margin-bottom:14px;}
 .auth-row{display:grid;gap:8px;margin-bottom:10px;}
+/* EMAIL and PASSWORD captions sit above their boxes, lined up the same way. */
+.auth-row>label{display:grid;gap:4px;}
+.auth-row>label .tsi{margin:0;width:100%;box-sizing:border-box;}
 .auth-meta{font-family:var(--font-mono);font-size:9px;color:var(--dim);line-height:1.6;margin-top:10px;}
 .store-chip{border:1px solid var(--border);background:var(--surf2);color:var(--text);border-radius:8px;padding:7px 10px;font-family:var(--font-mono);font-size:10px;min-height:34px;}
 .top-state-chip{border:1px solid var(--border);background:rgba(255,255,255,.035);color:var(--dim);border-radius:8px;padding:7px 10px;font-family:var(--font-mono);font-size:9px;min-height:34px;display:flex;align-items:center;white-space:nowrap;}
@@ -1658,22 +1661,23 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.10.02.4-whatnot-enter-show" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.10.02.4-whatnot-enter-show" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.10.02.4-whatnot-enter-show" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.10.02.4-whatnot-enter-show" defer></script>
-<script src="scripts/backlist-dashboard.js?v=2026.10.02.4-whatnot-enter-show" defer></script>
-<script src="scripts/database-viewer.js?v=2026.10.02.4-whatnot-enter-show" defer></script>
-<script src="scripts/card-intake-dashboard.js?v=2026.10.02.4-whatnot-enter-show" defer></script>
-<script src="scripts/mana-pocket-task-library.js?v=2026.10.02.4-whatnot-enter-show" defer></script>
-<script src="scripts/daily-tasks-dashboard.js?v=2026.10.02.4-whatnot-enter-show" defer></script>
-<script src="scripts/whatnot-bridge.js?v=2026.10.02.4-whatnot-enter-show" defer></script>
+<script src="scripts/query-routing.js?v=2026.10.06.1-show-days-buy-names" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.10.06.1-show-days-buy-names" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.10.06.1-show-days-buy-names" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.10.06.1-show-days-buy-names" defer></script>
+<script src="scripts/backlist-dashboard.js?v=2026.10.06.1-show-days-buy-names" defer></script>
+<script src="scripts/database-viewer.js?v=2026.10.06.1-show-days-buy-names" defer></script>
+<script src="scripts/card-intake-dashboard.js?v=2026.10.06.1-show-days-buy-names" defer></script>
+<script src="scripts/mana-pocket-task-library.js?v=2026.10.06.1-show-days-buy-names" defer></script>
+<script src="scripts/daily-tasks-dashboard.js?v=2026.10.06.1-show-days-buy-names" defer></script>
+<script src="scripts/expenses.js?v=2026.10.06.1-show-days-buy-names" defer></script>
+<script src="scripts/whatnot-bridge.js?v=2026.10.06.1-show-days-buy-names" defer></script>
 <script src="scripts/research-loupe.js?v=a7de4ffe90" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.10.02.4-whatnot-enter-show" defer></script>
-<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.10.02.4-whatnot-enter-show" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.10.02.4-whatnot-enter-show" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.10.02.4-whatnot-enter-show" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.10.02.4-whatnot-enter-show" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.10.06.1-show-days-buy-names" defer></script>
+<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.10.06.1-show-days-buy-names" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.10.06.1-show-days-buy-names" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.10.06.1-show-days-buy-names" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.10.06.1-show-days-buy-names" defer></script>
 </head>
 <body>
 
@@ -1725,7 +1729,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
 <div class="dsb-chip" id="dsb-tasks" title="Today's Roles &amp; Tasks — click to jump to Tasks tab" style="cursor:pointer;display:none" onclick="switchTab('tasks')">✅ <span>TASKS:</span> <b id="dsb-tasks-val">—</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.10.02.4-whatnot-enter-show</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.10.06.1-show-days-buy-names</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -1944,6 +1948,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <div id="tab-sales" class="tab-panel">
   <div class="sec">SALES ANALYTICS</div>
   <div id="owner-analytics-panel"></div>
+  <div id="expenses-panel"></div>
   <div class="three">
     <div class="panel">
       <div class="ph">SALES BY CHANNEL</div>
@@ -3553,6 +3558,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <label>Add item</label>
     <input type="text" id="label-print-search" class="tsi" placeholder="Search in-stock items..." oninput="renderLabelPrintSearchResults(this.value)">
     <div id="label-print-search-results" style="max-height:160px;overflow-y:auto;margin-bottom:10px"></div>
+    <label style="display:flex;align-items:center;gap:8px;margin-bottom:6px;font-weight:normal"><input type="checkbox" id="label-print-per-stock" onchange="setLabelPrintPerStock(this.checked)"> One label per copy in stock (10 of the same comic = 10 labels)</label>
     <label>Batch (<span id="label-print-batch-count">0</span> items)</label>
     <div id="label-print-batch-list" style="display:grid;gap:6px;max-height:220px;overflow-y:auto;margin-bottom:10px"></div>
     <label>Label size / printer</label>
@@ -3911,7 +3917,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.10.02.4-whatnot-enter-show';
+const APP_VERSION = '2026.10.06.1-show-days-buy-names';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -5516,7 +5522,7 @@ const DEFAULT_PAYMENT_SETTINGS = {
   paypal:{ enabled:true, emailOrHandle:'', displayName:'PayPal', qrImageUrl:'' },
   cashApp:{ enabled:true, cashtag:'', displayName:'Cash App', qrImageUrl:'' },
   card:{ enabled:true, provider:'stripe', stripeMode:'test', stripePublishableKey:'', stripeAccountId:'', squareLocationId:'', manualCardNote:'' },
-  tradeCredit:{ enabled:true, defaultBonusMultiplier:1.15 },
+  tradeCredit:{ enabled:true },
   tax:{ enabled:false, defaultRate:0, label:'Sales Tax' },
   receipt:{ storeName:'', footer:'Thanks for shopping with us!', showPaymentInstructions:true, captureEnabled:true },
   customerDisplay:{ showPaymentMethods:true, showQrCodes:true, showStoreLogo:true, wantsCaptureEnabled:true, checkoutTimeoutMinutes:10 },
@@ -6606,7 +6612,7 @@ const FEATURE_LOG = [
     { title:'$0 comp / giveaway sales', status:'working', desc:'Zero out a cart line\'s price with a required reason -- the item still depletes from stock and shows as a real (negative) loss in reporting instead of just vanishing unexplained.' },
     { title:'Gift cards', status:'working', desc:'Issue a gift card at sale, redeem it (fully or partially) at a later checkout.' },
     { title:'Loyalty points', status:'working', desc:'Earn points on purchases, redeem them as a checkout discount, configurable accrual rate.' },
-    { title:'Store credit / trade-in credit', status:'working', desc:'Apply a customer\'s trade-in credit balance directly toward a purchase at checkout.' },
+    { title:'Trade-in toward a purchase', status:'working', desc:'A trade-in\'s value (same as the cash offer) applies to that same visit\'s purchase; any leftover is paid in cash. No saved credit balances.' },
     { title:'Fixed: changing a cart line\'s quantity could undo a manual price edit', status:'new', desc:'Editing a line\'s price via Edit Price, then bumping its quantity with the +/- stepper, silently threw the edit away and reverted to the original market-derived price -- the stepper always recalculated from the price captured when the item was first added to cart, never the edited one.' },
   ]},
   { area:'Buy Counter / Trade-Ins', items:[
@@ -6891,7 +6897,6 @@ function organizeRegisterLayout(){
   ensureSpreadsheetPanel(backoffice);
   ensureSyncQueuePanel(backoffice);
   ensureCustomerPanel(backoffice);
-  ensureStoreCreditPanel(backoffice);
   ensureDataHealthPanel(backoffice);
   ensurePermissionLockPanels(backoffice, shows, channels);
   ensureSettingsShell(backoffice);
@@ -8849,6 +8854,26 @@ function toggleBuiltSealedFields(){
   if(sealedRow) sealedRow.style.display = isSealed ? 'grid' : 'none';
 }
 
+// An in-stock item Quick Add would duplicate: same barcode, or the same
+// name, category, condition and language. Graded slabs are one-of-a-kind
+// (their own cert), so they never match.
+function findQuickAddDuplicate(item){
+  if(item.cert_number || item.grade) return null;
+  const norm = v => String(v || '').toLowerCase().replace(/[^a-z0-9#]+/g, ' ').trim();
+  const digits = v => String(v || '').replace(/\D/g, '');
+  const code = digits(item.upc);
+  const live = (all || []).filter(i => inventoryItemIsSellable(i) && !i.cert_number && !i.grade);
+  if(code.length >= 8){
+    const byCode = live.find(i => [i.upc, i.barcode, i.raw?.upc, i.raw?.barcode].some(v => digits(v) === code));
+    if(byCode) return byCode;
+  }
+  const name = norm(item.name);
+  if(!name) return null;
+  return live.find(i => norm(i.name) === name
+    && norm(i.category) === norm(item.category)
+    && norm(i.condition) === norm(item.condition)
+    && norm(i.language || 'English') === norm(item.language || 'English')) || null;
+}
 async function addManualBuiltInInventory(){
   const name = document.getElementById('built-name')?.value.trim();
   if(!name){ toast_dash('Enter an item name'); return; }
@@ -8884,8 +8909,34 @@ async function addManualBuiltInInventory(){
     grade:document.getElementById('built-is-graded')?.checked ? (document.getElementById('built-grade')?.value.trim() || '') : '',
     cert_number:document.getElementById('built-is-graded')?.checked ? (document.getElementById('built-cert')?.value.trim() || '') : '',
   };
+  // Already in stock? Offer to add the copies to that item instead of making
+  // a second record of the same thing -- a duplicate splits the stock count
+  // (and the one-label-per-copy count) across two items.
+  const dupe = findQuickAddDuplicate(item);
+  if(dupe){
+    const have = inventoryAvailableQuantity(dupe);
+    if(confirm('"' + (dupe.name || item.name) + '" is already in stock (' + have + ' on hand' + (dupe.upc && dupe.upc === item.upc ? ', same barcode' : '') + ').\n\nOK = add ' + item.qty + ' to that item (' + (have + item.qty) + ' total)\nCancel = create a separate item anyway')){
+      try {
+        const total = have + item.qty;
+        const oldCost = Number(dupe.cost || 0), newCost = Number(item.cost || 0);
+        // Per-copy cost becomes the average across old and new copies.
+        const cost = newCost > 0 ? Math.round(((oldCost * have) + (newCost * item.qty)) / total * 100) / 100 : oldCost;
+        const updates = { qty:total, quantity:total, cost };
+        if(item.upc && !dupe.upc) updates.upc = item.upc;
+        await saveInventoryEdit(dupe, updates);
+        Object.assign(dupe, updates);
+        recordInventoryAddCost({ name:dupe.name || item.name }, item.qty, newCost, dupe.id);
+        ['built-name','built-cost','built-price','built-qty','built-upc'].forEach(fid => { const el = document.getElementById(fid); if(el) el.value = fid === 'built-qty' ? '1' : ''; });
+        logOpsEvent('inventory_add', 'Quick Add merged into existing item: ' + (dupe.name || item.name), { id:dupe.id, added:item.qty, total });
+        toast_dash('Added ' + item.qty + ' to ' + (dupe.name || item.name) + ' -- ' + total + ' in stock');
+        loadInventory();
+      } catch(e) { toast_dash('Could not update the existing item: ' + (e.message || e)); }
+      return;
+    }
+  }
   try {
     const id = await createBuiltInInventoryItem(item, item, 'manual_quick_add');
+    recordInventoryAddCost(item, item.qty, item.cost, id);
     ['built-name','built-set','built-year','built-condition','built-location','built-cost','built-price','built-qty','built-image','built-notes','built-image-sealed','built-notes-sealed','built-grader','built-grade','built-cert','built-upc'].forEach(k => { const el=document.getElementById(k); if(el) el.value=k==='built-qty' ? '1' : ''; });
     const gradedCheckbox = document.getElementById('built-is-graded'); if(gradedCheckbox){ gradedCheckbox.checked=false; toggleBuiltGradedRow(); }
     logOpsEvent('inventory_add', 'Manual built-in inventory item added: ' + item.name, { id, category:item.category, productType, cost:item.cost, price:item.market });
@@ -10783,6 +10834,10 @@ async function processSyncItem(item){
     await publishShowSession(item.payload.show);
     return;
   }
+  if(item.type === 'buy-inventory-cost') {
+    await postBuyInventoryCost(item.payload);
+    return;
+  }
   if(item.type === 'inventory-sold') {
     await markInventoryRecordSold({ id:item.payload.id, source:item.payload.inventorySource === 'built_in' ? 'built_in' : '' }, item.payload.fieldData, item.payload.saleMeta || {});
     return;
@@ -12607,6 +12662,8 @@ function getShowMode(){
 }
 
 let knownShowSessionIndex = [];
+// Shows this device has open that the Worker no longer knows about.
+const showMissingFromWorker = {};
 
 function saveShowMode(show, { publish=true } = {}){
   localStorage.setItem('pos_show_mode', JSON.stringify(show));
@@ -12632,8 +12689,18 @@ async function syncShowModeFromWorker(){
         if(drawerState?.showSessionId===selected.id){ drawerState=null;localStorage.removeItem('pos_drawer'); }
         toast_dash('That shared show was ended on another device');
       }
+    } else if(res.ok && selected.status==='open') {
+      // The Worker has no record of this device's show (expired, or never
+      // shared). An open show is always shared again, whatever its age:
+      // holding back an old one (waiting for END / STILL RUNNING) is what
+      // kept the Oct 3-4 show and its cash bag invisible to every other
+      // device while this one kept selling under it. An old show still
+      // gets the "open since..." warning (renderShowStaleWarning).
+      await keepShowShared(selected);
     }
   } catch(e) {}
+  const current=getShowMode();
+  if(current?.status==='open') await keepShowShared(current);
   renderShowMode();
   await fetchSharedCashBags().catch(()=>{});
   await syncSharedShowTransactions().catch(()=>{});
@@ -12643,18 +12710,43 @@ function showSessionIndexEntry(show={}){
   return { id:show.id,eventName:show.eventName||'Show',booth:show.booth||'',priceRulePct:Number(show.priceRulePct||0),status:show.status||'open',startedAt:show.startedAt||'',startedBy:show.startedBy||'',updatedAt:show.updatedAt||new Date().toISOString(),closedAt:show.closedAt||'' };
 }
 
+// Both writes must be accepted by the Worker, or other devices can't see
+// the show. storeWorkerFetch resolves even on a 401/403/500, so a rejected
+// publish used to look like success ("Shared show started") and was never
+// retried; now it throws, and every caller queues it for the sync retry.
 async function publishShowSession(show){
-  await storeWorkerFetch(scopedWorkerPath('/kv/show_session_'+show.id),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(show),signal:AbortSignal.timeout(4000)});
+  const res=await storeWorkerFetch(scopedWorkerPath('/kv/show_session_'+show.id),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(show),signal:AbortSignal.timeout(4000)});
+  if(!res.ok){const d=await res.json().catch(()=>({}));throw new Error(d.error||('Show not shared (HTTP '+res.status+')'));}
   // Atomic upsert route -- the old client-side GET-modify-POST-whole-blob
   // could have one device's show update wiped out by another's stale copy
   // if they published around the same time.
   const entry=showSessionIndexEntry(show);
-  try{
-    const response=await storeWorkerFetch(scopedWorkerPath('/kv/show-sessions-index/upsert'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({entry}),signal:AbortSignal.timeout(4000)});
-    const data=await response.json();
-    if(data?.ok&&Array.isArray(data.index))knownShowSessionIndex=data.index;
-  }catch(e){}
+  const response=await storeWorkerFetch(scopedWorkerPath('/kv/show-sessions-index/upsert'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({entry}),signal:AbortSignal.timeout(4000)});
+  const data=await response.json().catch(()=>({}));
+  if(!response.ok||!data?.ok)throw new Error(data?.error||('Show list not updated (HTTP '+response.status+')'));
+  if(Array.isArray(data.index))knownShowSessionIndex=data.index;
+  showSharedConfirmedAt[show.id]=Date.now();
   renderShowSessionSwitcher();
+}
+// When this device last confirmed its open show is on the shared list.
+const showSharedConfirmedAt={};
+// An open show older than this is probably one nobody ended.
+const SHOW_STALE_MS=2*24*60*60*1000;
+function showAgeMs(show){const t=Date.parse(show?.startedAt||'');return Number.isFinite(t)?Date.now()-t:0;}
+// A days-old open show counts as current for a day after someone confirms
+// it's still running (a multi-day convention), so the warning doesn't nag.
+function showIsStale(show){const ok=Date.parse(show?.stillRunningAt||'');return showAgeMs(show)>=SHOW_STALE_MS&&!(Number.isFinite(ok)&&Date.now()-ok<24*60*60*1000);}
+// Keeps an open show on the shared list: the list expires after 7 days on
+// the Worker, so an open show is re-published at least daily, and right
+// away if it has fallen off the list (expired, or never made it there).
+async function keepShowShared(show){
+  if(!show?.id||show.status!=='open'||getAccountContext().isDemo)return;
+  const listed=(knownShowSessionIndex||[]).some(row=>row.id===show.id&&row.status==='open');
+  const last=showSharedConfirmedAt[show.id]||0;
+  if(listed&&Date.now()-last<24*60*60*1000){if(!last)showSharedConfirmedAt[show.id]=Date.now();return;}
+  const fresh={...show,updatedAt:new Date().toISOString()};
+  try{await publishShowSession(fresh);localStorage.setItem('pos_show_mode',JSON.stringify(fresh));delete showMissingFromWorker[show.id];}
+  catch(e){showMissingFromWorker[show.id]=true;enqueueOrReplaceSync('show-session-kv',show.id,'Re-share show session',{show:fresh},e.message||'Show session sync failed');}
 }
 
 async function fetchShowSessionIndex(notify=false){
@@ -12664,17 +12756,45 @@ async function fetchShowSessionIndex(notify=false){
     const data=await response.json();
     const parsed=JSON.parse(data?.value||'[]');
     knownShowSessionIndex=Array.isArray(parsed)?parsed:[];
+    await addShowsWithOpenCashBags();
     if(notify)toast_dash('Shared shows refreshed');
   }catch(e){if(notify)toast_dash('Could not refresh shows: '+(e.message||e));}
   renderShowSessionSwitcher();
   return knownShowSessionIndex;
 }
 
+// A show with an open Cash Bag is joinable even when the Worker's shared show
+// list has lost it (that list expires, and a device can fail to publish):
+// open bags live in the database, which every device reads the same way.
+async function addShowsWithOpenCashBags(){
+  const sb=typeof getSupabaseClient==='function'?getSupabaseClient():null;if(!sb)return;
+  const {data,error}=await sb.from('pos_drawer_sessions').select('show_session_id,opened_at').eq('store_id',getActiveStoreId()).eq('status','open').not('show_session_id','is',null).order('opened_at',{ascending:false}).limit(20);
+  if(error||!Array.isArray(data))return;
+  // A show that took sales in the last 2 days is still being sold under
+  // somewhere, even with no open bag -- list it so any device can see it
+  // (and END it, if it's a forgotten one).
+  const since=new Date(Date.now()-2*24*60*60*1000).toISOString();
+  const recent=await sb.from('pos_sales').select('show_session_id,completed_at').eq('store_id',getActiveStoreId()).not('show_session_id','is',null).gte('completed_at',since).order('completed_at',{ascending:false}).limit(200);
+  (recent.data||[]).forEach(row=>data.push({show_session_id:row.show_session_id,opened_at:''}));
+  const listed=new Set((knownShowSessionIndex||[]).map(row=>row.id));
+  for(const bag of data){
+    const id=bag.show_session_id;if(!id||listed.has(id))continue;listed.add(id);
+    let show=null;
+    try{const res=await storeWorkerFetch(scopedWorkerPath('/kv/show_session_'+id),{cache:'no-store',signal:AbortSignal.timeout(4000)});const d=await res.json().catch(()=>({}));if(d?.value)show=typeof d.value==='string'?JSON.parse(d.value):d.value;}catch(e){}
+    if(show&&show.status!=='open')continue;
+    knownShowSessionIndex.push(showSessionIndexEntry(show||{id,eventName:bag.opened_at?'Show (cash bag open)':'Show (recent sales)',status:'open',startedAt:bag.opened_at||''}));
+  }
+}
+
 function renderShowSessionSwitcher(){
   const host=document.getElementById('show-session-switcher');if(!host)return;
   const selected=getShowMode(),active=(knownShowSessionIndex||[]).filter(show=>show.status==='open');
   if(selected?.id&&!active.some(show=>show.id===selected.id))active.unshift(showSessionIndexEntry(selected));
-  host.innerHTML=active.length?active.map(show=>`<button class="buy-tray-pill${show.id===selected?.id?' active':''}" onclick="joinShowSession('${escHtml(show.id)}')"><span class="buy-tray-pill-name">${escHtml(show.eventName||'Show')}</span><span class="buy-tray-pill-meta">${escHtml(show.booth||'No booth')}${show.id===selected?.id?' · JOINED':' · JOIN'}</span></button>`).join(''):'<span style="color:var(--dim);font-size:10px">No active shared shows. Anyone on the store team can start one below.</span>';
+  // Each show has its own END: a show left open on one device (the Sep 6
+  // show that took Oct 3-4's sales) can be ended from any device, not just
+  // the one that has it -- END SHOW below only knows this device's show.
+  const started=show=>{const t=Date.parse(show.startedAt||'');return Number.isFinite(t)?' · since '+new Date(t).toLocaleDateString():'';};
+  host.innerHTML=active.length?active.map(show=>`<span style="display:inline-flex;gap:4px;align-items:stretch"><button class="buy-tray-pill${show.id===selected?.id?' active':''}" onclick="joinShowSession('${escHtml(show.id)}')"><span class="buy-tray-pill-name">${escHtml(show.eventName||'Show')}</span><span class="buy-tray-pill-meta">${escHtml(show.booth||'No booth')}${escHtml(started(show))}${show.id===selected?.id?' · JOINED':' · JOIN'}</span></button><button class="hbtn" style="margin:0;padding:4px 8px;font-size:9px;color:var(--red)" onclick="endSharedShow('${escHtml(show.id)}')">END</button></span>`).join(''):'<span style="color:var(--dim);font-size:10px">No active shared shows. Anyone on the store team can start one below.</span>';
 }
 
 async function joinShowSession(id){
@@ -12735,6 +12855,65 @@ function getPendingTradePurchase(cartData = null){
   const ledgerCredit = getStoreCredits().find(c => c.id === creditId && Number(c.remainingBalance || 0) > 0);
   const credit = ledgerCredit || (embedded && Number(embedded.remainingBalance ?? embedded.amount ?? 0) > 0 ? embedded : null);
   return credit ? { handoff:{ ...(handoff || {}), creditId }, credit } : null;
+}
+// A trade-in that was accepted but never checked out: the customer's cards
+// are already in inventory and they haven't been paid. Shown on the register
+// once the trade is 30+ minutes old (or right away with nothing in the cart
+// to spend it on), with a way to finish, pay the value in cash, or cancel.
+const PENDING_TRADE_STALE_MS = 30 * 60 * 1000;
+function pendingTradeAgeMs(pending){
+  const t = Date.parse(pending?.credit?.createdAt || pending?.handoff?.createdAt || '');
+  return Number.isFinite(t) ? Date.now() - t : Infinity;
+}
+function renderPendingTradeNotice(trade, itemCount){
+  const lines = document.getElementById('dealer-cart-lines');
+  if(!lines) return;
+  let box = document.getElementById('pending-trade-notice');
+  const pending = trade?.pending;
+  const show = pending && (pendingTradeAgeMs(pending) >= PENDING_TRADE_STALE_MS || !itemCount);
+  if(!show){ if(box) box.remove(); return; }
+  if(!box){
+    box = document.createElement('div');
+    box.id = 'pending-trade-notice';
+    box.style.cssText = 'margin:0 0 10px;padding:10px;border:1px solid var(--gold);border-radius:8px;background:rgba(255,209,102,.08);font-family:var(--font-mono);font-size:11px;line-height:1.5;color:var(--text)';
+    lines.parentNode.insertBefore(box, lines);
+  }
+  const amount = Number(pending.credit.remainingBalance ?? pending.credit.amount ?? 0);
+  const who = pending.credit.customerName || 'a customer';
+  const age = pendingTradeAgeMs(pending);
+  const ago = Number.isFinite(age) ? (age < 3600000 ? Math.max(1, Math.round(age / 60000)) + ' min' : Math.round(age / 3600000) + ' hr') + ' ago' : 'earlier';
+  box.innerHTML = `<b style="color:var(--gold)">⚠ Unused trade-in: $${amount.toFixed(2)} for ${escHtml(who)}</b> (accepted ${escHtml(ago)}). Their cards are already in inventory and they haven't been paid yet.`
+    + `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">`
+    + (itemCount ? `<button class="hbtn" style="margin:0" onclick="lockCheckoutForPayment()">FINISH CHECKOUT</button>` : '')
+    + `<button class="hbtn" style="margin:0" onclick="payOutPendingTradeInCash()">PAY $${amount.toFixed(2)} IN CASH</button>`
+    + `<button class="hbtn" style="margin:0;color:var(--red)" onclick="cancelPendingTrade()">CANCEL TRADE</button></div>`;
+}
+async function clearPendingTrade(){
+  localStorage.removeItem('pos_pending_trade_purchase');
+  const cart = ensureActiveSaleCart();
+  cart.tradeCredit = null;
+  upsertLocalSaleCart(cart);
+  await syncActiveSaleCartToWorker(cart).catch(() => {});
+  renderDealerCartTools(getCartDataLocal());
+}
+async function payOutPendingTradeInCash(){
+  const pending = getPendingTradePurchase(getCartDataLocal());
+  if(!pending) return renderDealerCartTools(getCartDataLocal());
+  const amount = Math.round(Number(pending.credit.remainingBalance ?? pending.credit.amount ?? 0) * 100) / 100;
+  if(!drawerState) return toast_dash('Open or join the Cash Bag first, so the cash payout is recorded');
+  if(!confirm('Pay ' + (pending.credit.customerName || 'the customer') + ' $' + amount.toFixed(2) + ' in cash from the Cash Bag for their trade-in?')) return;
+  payTradeInLeftoverAsCash(amount, { customerName:pending.credit.customerName || '' });
+  logOpsEvent('trade_paid_in_cash', 'Paid an unused trade-in in cash', { creditId:pending.credit.id, buySessionId:pending.credit.buySessionId || '', amount });
+  await clearPendingTrade();
+  toast_dash('Paid $' + amount.toFixed(2) + ' in cash -- trade-in closed');
+}
+async function cancelPendingTrade(){
+  const pending = getPendingTradePurchase(getCartDataLocal());
+  if(!pending) return renderDealerCartTools(getCartDataLocal());
+  if(!confirm('Cancel this trade-in? Only do this if the customer was paid another way or took their cards back -- the cards stay in inventory either way (remove them there if they went back).')) return;
+  logOpsEvent('trade_cancelled', 'Cancelled an unused trade-in', { creditId:pending.credit.id, buySessionId:pending.credit.buySessionId || '' });
+  await clearPendingTrade();
+  toast_dash('Trade-in cancelled');
 }
 function pendingTradeAmounts(total, cartData = null){
   const pending = getPendingTradePurchase(cartData);
@@ -12805,6 +12984,7 @@ function renderShowMode(){
   if(!status) return;
   renderShowSessionSwitcher();
   if(!show) {
+    renderShowStaleWarning(null);
     status.textContent = 'not joined';
     status.style.color = 'var(--dim)';
     renderCashBagSwitcher();
@@ -12819,8 +12999,34 @@ function renderShowMode(){
   status.textContent = (show.eventName || 'Show') + (show.booth ? ' · ' + show.booth : '');
   status.textContent = 'JOINED · ' + (show.eventName || 'Show') + (show.booth ? ' · ' + show.booth : '');
   status.style.color = 'var(--gold)';
+  renderShowStaleWarning(show);
   updateTopStateChips();
   updateRegisterCommandCenter();
+}
+
+// An open show that's days old, or that other devices can't see, says so:
+// a forgotten show keeps taking this device's sales and cash bags out of
+// everyone else's view.
+function renderShowStaleWarning(show){
+  const status=document.getElementById('show-mode-status');if(!status)return;
+  let box=document.getElementById('show-stale-warning');
+  const missing=show&&showMissingFromWorker[show.id];
+  const old=show&&showIsStale(show);
+  if(!show||(!missing&&!old)){if(box)box.remove();return;}
+  if(!box){box=document.createElement('div');box.id='show-stale-warning';box.style.cssText='margin:6px 0 10px;padding:9px;border:1px solid var(--gold);border-radius:8px;background:rgba(255,209,102,.08);font-family:var(--font-mono);font-size:10px;line-height:1.6;color:var(--text)';status.closest('.ph')?.insertAdjacentElement('afterend',box);}
+  const started=Date.parse(show.startedAt||'');const days=Math.floor(showAgeMs(show)/86400000);
+  box.innerHTML='<b style="color:var(--gold)">⚠ '+escHtml(show.eventName||'This show')+' has been open since '+(Number.isFinite(started)?escHtml(new Date(started).toLocaleDateString()):'an earlier day')+(days?' ('+days+' day'+(days===1?'':'s')+')':'')+'.</b> '+
+    (missing?'Other devices can\'t see or join it -- it is no longer on the shared show list. ':'')+
+    'If that show is over, leave the Cash Bag (close it in the Cash Bag panel first), END SHOW, and start a new one. If it really is still running, share it again.'+
+    '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px"><button class="hbtn" style="margin:0" onclick="reshareStaleShow()">STILL RUNNING -- SHARE IT AGAIN</button><button class="hbtn" style="margin:0;color:var(--red)" onclick="endShowMode()">END THIS SHOW</button></div>';
+}
+async function reshareStaleShow(){
+  const show=getShowMode();if(!show)return;
+  const now=new Date().toISOString(),fresh={...show,updatedAt:now,stillRunningAt:now};
+  localStorage.setItem('pos_show_mode',JSON.stringify(fresh));delete showMissingFromWorker[show.id];
+  try{await publishShowSession(fresh);toast_dash('Show shared again -- other devices can join it now');}
+  catch(e){enqueueOrReplaceSync('show-session-kv',show.id,'Re-share show session',{show:fresh},e.message||'Show session sync failed');toast_dash('Could not share it yet: '+e.message+' -- queued to retry');}
+  renderShowMode();
 }
 
 async function startShowMode(){
@@ -12861,9 +13067,25 @@ async function startShowMode(){
   });
 }
 
+// Ends any open shared show from any device. Every device in it drops it on
+// its next sync ("That shared show was ended on another device").
+async function endSharedShow(id){
+  if(!id)return;
+  if(getShowMode()?.id===id)return endShowMode();
+  let show=(knownShowSessionIndex||[]).find(row=>row.id===id)||null;
+  try{const res=await storeWorkerFetch(scopedWorkerPath('/kv/show_session_'+id),{cache:'no-store',signal:AbortSignal.timeout(4000)});const d=await res.json().catch(()=>({}));if(d?.value)show=typeof d.value==='string'?JSON.parse(d.value):d.value;}catch(e){}
+  if(!show){toast_dash('That show was not found');return fetchShowSessionIndex();}
+  if(!confirm('End "'+(show.eventName||'Show')+'" for every device? Any device still in it stops adding sales to it.'))return;
+  const now=new Date().toISOString(),closed={...show,id,status:'closed',closedAt:now,closedBy:getCurrentUserLabel(),updatedAt:now};
+  try{await publishShowSession(closed);toast_dash('Show ended for all devices');}
+  catch(e){enqueueOrReplaceSync('show-session-kv',id,'End shared show session',{show:closed},e.message||'Show close sync failed');toast_dash('Could not end it yet: '+e.message+' -- queued to retry');}
+  logOpsEvent('show_end','Ended shared show from another device',{showId:id});
+  await fetchShowSessionIndex();
+}
+
 async function endShowMode(){
   const show=getShowMode();
-  if(!show)return;
+  if(!show)return toast_dash('This device is not in a show. To end a show running on another device, tap END next to it above.');
   if(drawerState)return toast_dash('Close or leave the joined Cash Bag before ending this show');
   if(!confirm('End current show mode? Generate/export closeout first if needed.')) return;
   const closed={...show,status:'closed',closedAt:new Date().toISOString(),closedBy:getCurrentUserLabel(),updatedAt:new Date().toISOString()};
@@ -13025,6 +13247,24 @@ function pokemonUnpricedLanguage(item = {}){
 // Worker defaults every request to English -- so a Japanese single without a
 // saved TCGplayer ID was searched by name in English and could be repriced
 // from the English card. Every inventory lookup now says which one it wants.
+// Short language code for a non-English item (JP, CN, KR...), '' for English.
+// Reads the item's saved language first, then the name/set as a fallback
+// (an older item may only say "Japanese" in its name).
+function inventoryLanguageCode(item = {}){
+  const saved = [item.language, item.selectedLanguage, item.raw?.language, item.raw?.selectedLanguage].filter(Boolean).join(' ');
+  const text = saved || [inventoryCardName(item), inventorySetName(item)].filter(Boolean).join(' ');
+  if(/japanese|\bjpn\b|日本語/i.test(text)) return 'JP';
+  if(/traditional chinese|chinese \(traditional\)|\bt-chinese\b|繁體/i.test(text)) return 'TW';
+  if(/chinese|\bs-chinese\b|简体|中文/i.test(text)) return 'CN';
+  if(/\bkorean\b|한국어/i.test(text)) return 'KR';
+  const other = { german:'DE', french:'FR', italian:'IT', spanish:'ES', portuguese:'PT', thai:'TH', indonesian:'ID' };
+  const m = saved.match(/\b(german|french|italian|spanish|portuguese|thai|indonesian)\b/i);
+  return m ? other[m[1].toLowerCase()] : '';
+}
+function inventoryLanguageBadgeHtml(item){
+  const code = inventoryLanguageCode(item);
+  return code ? ` <span title="${escHtml(item.language || item.selectedLanguage || code)}" style="font-family:var(--font-mono);font-size:8px;font-weight:700;color:var(--blue);border:1px solid var(--blue);border-radius:3px;padding:0 3px;margin-left:3px">${code}</span>` : '';
+}
 function pokemonInventoryPptLanguage(item = {}){
   const language = [item.language, item.selectedLanguage, item.raw?.language, item.raw?.selectedLanguage].filter(Boolean).join(' ');
   return /japanese|\bjpn?\b/i.test(language) || /\bjapanese\b|\bjpn\b/i.test(inventoryCardName(item) + ' ' + inventorySetName(item)) ? 'japanese' : 'english';
@@ -17129,6 +17369,9 @@ function builtInDataFromItem(item, updates={}){
   [...BUILT_IN_ITEM_SIMPLE_FIELDS, ...BUILT_IN_ITEM_ALIASED_FIELDS].forEach(([field, def, type]) => {
     out[field] = mergeBuiltInSimpleField(updates, item, field, def, type);
   });
+  // No saved image at all: keep the catalog image for its product id.
+  const hasImage=[out.image,out.imageUrl,out.thumbnail,out.photoDataUrl,out.userPhoto,out.uploadedPhotoUrl,out.userPhotoBlobKey,out.cover_image_url].some(v=>String(v||'').trim())||(Array.isArray(out.images)&&out.images.length)||(Array.isArray(out.photos)&&out.photos.length);
+  if(!hasImage){const img=catalogImageFromIds({...item,...out,raw:item.raw});if(img){out.image=img;out.imageUrl=img;out.thumbnail=img;}}
   return out;
 }
 
@@ -18386,6 +18629,23 @@ function useOfflineRowImage(row, blob){
   row.imageUrl = URL.createObjectURL(blob);
 }
 
+// A catalog image from the item's product ids when no image was saved:
+// TCGplayer's product image by product id (also read from a saved
+// tcgplayer.com/product/<id> link), else Scryfall's card image for an MTG
+// card. Cards added from a pasted TCGplayer link carried the id but no
+// image, so they showed blank everywhere.
+function catalogImageFromIds(item={}){
+  const raw=item.raw||{};
+  let tcg=String(item.tcgPlayerId||item.tcgplayerId||item.tcgplayerProductId||raw.tcgPlayerId||raw.tcgplayerId||raw.tcgplayerProductId||'').trim();
+  if(!/^\d{3,9}$/.test(tcg)){
+    const link=[item.tcgPlayerUrl,item.tcgUrl,item.providerUrl,item.productUrl,raw.tcgPlayerUrl,raw.tcgUrl,raw.providerUrl,raw.productUrl].map(v=>String(v||'')).find(v=>/tcgplayer\.com\/product\/\d+/i.test(v));
+    tcg=link?link.match(/tcgplayer\.com\/product\/(\d+)/i)[1]:'';
+  }
+  if(/^\d{3,9}$/.test(tcg))return 'https://product-images.tcgplayer.com/fit-in/437x437/'+tcg+'.jpg';
+  const scry=String(item.scryfallId||raw.scryfallId||'').trim();
+  if(/^[0-9a-f-]{36}$/i.test(scry))return 'https://api.scryfall.com/cards/'+scry+'?format=image&version=normal';
+  return '';
+}
 function inventoryImageUrl(item={}){
   const raw = item.raw || {};
   const comicPhotoKey=item.userPhotoBlobKey||raw.userPhotoBlobKey||'';
@@ -18425,7 +18685,8 @@ function inventoryImageUrl(item={}){
   return durableImageUrl(item.photoDataUrl) || durableImageUrl(item.userPhoto) || durableImageUrl(item.uploadedPhotoUrl) || durableImageUrl(item.photoUrl) ||
     durableImageUrl(item.thumbnail) || durableImageUrl(item.imageUrl) || durableImageUrl(item.liveImageUrl) || durableImageUrl(item.image_url) || durableImageUrl(item.image) || durableImageUrl(item.images?.[0]) ||
     durableImageUrl(raw.photoDataUrl) || durableImageUrl(raw.userPhoto) || durableImageUrl(raw.uploadedPhotoUrl) || durableImageUrl(raw.photoUrl) ||
-    durableImageUrl(raw.thumbnail) || durableImageUrl(raw.imageUrl) || durableImageUrl(raw.liveImageUrl) || durableImageUrl(raw.image_url) || durableImageUrl(raw.image) || durableImageUrl(raw.images?.[0]) || '';
+    durableImageUrl(raw.thumbnail) || durableImageUrl(raw.imageUrl) || durableImageUrl(raw.liveImageUrl) || durableImageUrl(raw.image_url) || durableImageUrl(raw.image) || durableImageUrl(raw.images?.[0]) ||
+    catalogImageFromIds(item);
 }
 function inventoryImageSourceLabel(item={}){
   const raw = item.raw || {};
@@ -19506,7 +19767,7 @@ function renderTable(){
     const thumbCell = `<td class="td-thumb">${bulkCb}<div onclick="${editClick}" style="cursor:pointer" title="Edit item">${thumbInner}</div></td>`;
     return `<tr class="${ins?'':'sold'}" data-item-id="${i.id}">
       ${thumbCell}
-      <td><span class="dot ${ins?'in_stock':'sold'}"></span><span class="nc" title="${i.tcgCardId?'TCG ID: '+i.tcgCardId:''}" onclick="${researchClick}" style="cursor:pointer">${i.name}${i.isRookie?' <span style="color:var(--gold);font-size:8px">RC</span>':''}${i.tcgCardId?'<span style="font-family:monospace;font-size:7px;color:rgba(0,255,179,.4);margin-left:4px">●</span>':''}${i.isBundle?' <span style="color:var(--gold);font-size:8px">🎁 BUNDLE</span>':''}</span>${invSyncBadgeHtml(i.id)}<div class="sc2" style="margin:5px 0 0 12px">${escHtml([i.consignorName||i.inventoryOwner||'Store owned',i.inventorySku||i.sku||''].filter(Boolean).join(' · '))}</div>${i.status==='bundled'&&i.bundledIntoName?`<div class="sc2" style="margin-top:5px;color:var(--gold)">🎁 In bundle: ${escHtml(i.bundledIntoName)}</div>`:''}</td>
+      <td><span class="dot ${ins?'in_stock':'sold'}"></span><span class="nc" title="${i.tcgCardId?'TCG ID: '+i.tcgCardId:''}" onclick="${researchClick}" style="cursor:pointer">${i.name}${i.isRookie?' <span style="color:var(--gold);font-size:8px">RC</span>':''}${i.tcgCardId?'<span style="font-family:monospace;font-size:7px;color:rgba(0,255,179,.4);margin-left:4px">●</span>':''}${i.isBundle?' <span style="color:var(--gold);font-size:8px">🎁 BUNDLE</span>':''}${inventoryLanguageBadgeHtml(i)}</span>${invSyncBadgeHtml(i.id)}<div class="sc2" style="margin:5px 0 0 12px">${escHtml([i.consignorName||i.inventoryOwner||'Store owned',i.inventorySku||i.sku||''].filter(Boolean).join(' · '))}</div>${i.status==='bundled'&&i.bundledIntoName?`<div class="sc2" style="margin-top:5px;color:var(--gold)">🎁 In bundle: ${escHtml(i.bundledIntoName)}</div>`:''}</td>
       <td><span class="sc2">${escHtml([i.set,i.variant].filter(Boolean).join(' · ')||'—')}</span><div class="sc2" style="margin-top:5px">${escHtml([i.year,i.condition,i.location].filter(Boolean).join(' · '))}</div>${comicPeople?`<div class="sc2" style="margin-top:5px;color:var(--purple)">${escHtml(comicPeople)}</div>`:''}</td>
       <td><span class="ct ${cat}">${i.category}</span></td>
       <td style="text-align:center;font-family:var(--font-mono);font-size:11px;color:${(i.qty||1)>1?'var(--g)':'var(--dim)'}">${inventoryIsDropship(i)?'Supplier':(i.qty||1)}</td>
@@ -19761,6 +20022,7 @@ function switchTab(name, btn){
   if(name === 'tasks') setTimeout(()=>window.ensureDailyTasksPanel?.(), 0);
   if(name === 'orders') setTimeout(()=>{ renderFocPreorderOrders(); renderStorefrontOrders(); }, 0);
   if(name === 'whatnot' && window.renderWhatnotBridge) setTimeout(()=>window.renderWhatnotBridge(), 0);
+  if(name === 'sales' && window.renderExpensesPanel) setTimeout(()=>window.renderExpensesPanel(), 0);
   if(name === 'reports') setTimeout(ensureReportsPanel, 0);
   if(name === 'phone') setTimeout(ensurePhonePanel, 0);
 }
@@ -22515,7 +22777,7 @@ async function autoJoinSharedBuyTray(){
   const current = ensureActiveBuyTray();
   if((current.items || []).length > 0) return;
   const openRemote = (knownBuyTrayIndex || [])
-    .filter(e => e.id && e.id !== current.buySessionId && e.status !== 'complete' && e.status !== 'closed' && (e.itemCount || 0) > 0)
+    .filter(e => e.id && e.id !== current.buySessionId && !['complete','closed','accepted','rejected'].includes(e.status) && !isBuyTrayClosed(e.id) && (e.itemCount || 0) > 0)
     .sort((a, b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0))[0];
   if(openRemote) await switchBuyTray(openRemote.id);
 }
@@ -22529,14 +22791,50 @@ function loadBuyList(){
 
 async function syncBuyListToWorker(){
   const tray = ensureActiveBuyTray();
+  if(isBuyTrayClosed(tray.buySessionId)) return;
   try {
     await storeWorkerFetch(scopedWorkerPath('/kv/buy_tray_' + tray.buySessionId), {
       method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify(tray),
       signal: AbortSignal.timeout(4000),
     });
+    // Store report: a finished buy's items came back in the tray. Accepting
+    // saves the tray (this sync), then closes it right away -- this POST and
+    // its index upsert used to land AFTER the close, re-listing the tray
+    // with all its items for every device to pick back up. A tray closed
+    // meanwhile is written closed again instead.
+    if(isBuyTrayClosed(tray.buySessionId)) { writeClosedBuyTray(tray.buySessionId); return; }
     upsertBuyTrayIndexEntry(tray);
   } catch(e) { /* offline/demo — localStorage already has the latest */ }
+}
+
+// Trays this device finished (accepted, rejected, paid out, deleted): never
+// synced, listed or joined again. Kept a week, like the Worker's tray copy.
+function closedBuyTrays(){
+  const map = safeLocalJson('pos_closed_buy_trays', {}) || {};
+  const now = Date.now(), week = 7 * 24 * 60 * 60 * 1000;
+  Object.keys(map).forEach(id => { if(now - Number(map[id] || 0) > week) delete map[id]; });
+  return map;
+}
+function isBuyTrayClosed(id){ return !!(id && closedBuyTrays()[id]); }
+function markBuyTrayClosed(id){
+  if(!id) return;
+  const map = closedBuyTrays(); map[id] = Date.now();
+  localStorage.setItem('pos_closed_buy_trays', JSON.stringify(map));
+}
+// The Worker's copy of a finished tray becomes an empty "closed" record, so
+// any device still holding it drops it (fetchBuyListFromWorker) and the
+// Worker refuses to bring it back (its buy_tray_ and index routes).
+async function writeClosedBuyTray(id){
+  if(!id) return;
+  try {
+    await storeWorkerFetch(scopedWorkerPath('/kv/buy_tray_' + id), {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ buySessionId:id, status:'closed', items:[], itemCount:0, closedAt:new Date().toISOString() }),
+      signal: AbortSignal.timeout(4000),
+    });
+  } catch(e) { /* offline/demo */ }
+  removeBuyTrayFromIndex(id);
 }
 
 // Merges in items the server has that this device doesn't, instead of
@@ -22563,6 +22861,13 @@ async function fetchBuyListFromWorker(){
     if(!d?.value) return;
     const remote = JSON.parse(d.value);
     if(!remote || !Array.isArray(remote.items)) return;
+    // Finished on another device (or on this one before a reload): drop it.
+    if(remote.status === 'closed' || isBuyTrayClosed(tray.buySessionId)) {
+      markBuyTrayClosed(tray.buySessionId);
+      if(getActiveBuyTrayId() === tray.buySessionId) closeActiveBuyTray();
+      else saveBuyTraysLocal(getBuyTrays().filter(t => t.buySessionId !== tray.buySessionId));
+      return;
+    }
     const now = Date.now();
     const localRemovedIds = tray.removedIds || [];
     const remoteRemovedIds = Array.isArray(remote.removedIds) ? remote.removedIds : [];
@@ -22608,6 +22913,7 @@ async function fetchBuyTrayIndex(){
 }
 
 async function upsertBuyTrayIndexEntry(tray){
+  if(isBuyTrayClosed(tray.buySessionId)) return;
   const entry = {
     id: tray.buySessionId,
     customerName: tray.customerName || '',
@@ -22699,7 +23005,7 @@ function renderBuyTraySwitcher(){
   const activeId = getActiveBuyTrayId();
   const localTrays = getBuyTrays();
   const localIds = new Set(localTrays.map(t=>t.buySessionId));
-  const remoteOnly = (knownBuyTrayIndex || []).filter(e => !localIds.has(e.id));
+  const remoteOnly = (knownBuyTrayIndex || []).filter(e => !localIds.has(e.id) && e.status !== 'closed' && !isBuyTrayClosed(e.id));
   const pills = [
     ...localTrays.map(t => ({ id:t.buySessionId, label:t.customerName || 'Walk-in', count:(t.items||[]).length, total:Number(t.offerTotal||0), remote:false })),
     ...remoteOnly.map(e => ({ id:e.id, label:e.customerName || 'Walk-in', count:e.itemCount||0, total:Number(e.offerTotal||0), remote:true })),
@@ -26720,6 +27026,10 @@ async function verifyInventoryTcgplayerReference(){
     variant:document.getElementById('edit-variant')?.value || baseItem.variant,
     condition:document.getElementById('edit-condition')?.value || baseItem.condition,
   };
+  // Store report: MTG (and sports/other TCG) TCGplayer links never verified
+  // -- this only ever asked Pokémon sources, so any other game's real
+  // product came back "No exact Pokémon card or sealed product found".
+  if(!/pok[eé]mon/i.test(String(formItem.category || ''))) return verifyTcgplayerProductAnyGame(id, formItem, { input, status, button });
   const preferSealed = isPokemonSealedInventorySyncItem(formItem);
   if(button) button.disabled = true;
   if(status) { status.style.color='var(--gold)'; status.textContent='Checking exact Pokémon product #' + id + '…'; }
@@ -26747,6 +27057,42 @@ async function verifyInventoryTcgplayerReference(){
       status.style.color='var(--g)';
       status.textContent='✓ #' + id + ' · ' + (match.name || match.productName || 'Exact Pokémon product') + ' · ' + (productType === 'sealed' ? 'Sealed' : 'Single') + (price ? ' · $' + price.toFixed(2) : '');
     }
+    return inventoryTcgReferenceState.verified;
+  } catch(error) {
+    inventoryTcgReferenceState.verified = null;
+    if(status) { status.style.color='var(--red)'; status.textContent='Could not verify TCGplayer #' + id + ': ' + (error.message || error); }
+    return null;
+  } finally {
+    if(button) button.disabled = false;
+  }
+}
+
+// Any game: TCGplayer's own marketplace data confirms the product exists
+// (and its NM price); an MTG card's name and set come from Scryfall, which
+// indexes cards by TCGplayer product id.
+async function verifyTcgplayerProductAnyGame(id, formItem = {}, { input, status, button } = {}){
+  if(button) button.disabled = true;
+  if(status) { status.style.color='var(--gold)'; status.textContent='Checking TCGplayer product #' + id + '…'; }
+  try {
+    const res = await fetch(WORKER + '/pricing/tcgplayer/product/' + encodeURIComponent(id), { cache:'no-store' });
+    const data = await res.json().catch(() => ({}));
+    if(!res.ok || !data.ok) throw new Error(res.status === 404 ? 'TCGplayer has no product #' + id : (data.error || 'TCGplayer lookup failed'));
+    let name = '', setName = '';
+    if(/magic|\bmtg\b/i.test(String(formItem.category || ''))) {
+      try {
+        const sf = await fetch('https://api.scryfall.com/cards/tcgplayer/' + encodeURIComponent(id));
+        if(sf.ok) { const card = await sf.json(); name = card.name || ''; setName = card.set_name || ''; }
+      } catch(e) {}
+    }
+    const points = Array.isArray(data.pricepoints) ? data.pricepoints : [];
+    const finish = String(formItem.selectedFinish || formItem.variant || '').toLowerCase();
+    const point = points.find(p => String(p.printingType || '').toLowerCase() === (/foil/.test(finish) ? 'foil' : 'normal')) || points[0] || null;
+    const price = Number(point?.marketPrice || 0) || 0;
+    const url = 'https://www.tcgplayer.com/product/' + id;
+    const sealed = /sealed|booster|bundle|box|pack|deck|collection/i.test([formItem.productType, formItem.variant, formItem.name, name].join(' '));
+    inventoryTcgReferenceState.verified = { id, url, match:{ name, productName:name, setName, imageUrl:data.imageUrl || '', tcgPlayerUrl:url, marketPrice:price }, productType:sealed ? 'sealed' : 'card' };
+    if(input && !/tcgplayer\.com\/product\//i.test(input.value || '')) input.value = url;
+    if(status) { status.style.color='var(--g)'; status.textContent='✓ TCGplayer #' + id + (name ? ' · ' + name : ' · product found') + (setName ? ' · ' + setName : '') + (price ? ' · NM market $' + price.toFixed(2) : ''); }
     return inventoryTcgReferenceState.verified;
   } catch(error) {
     inventoryTcgReferenceState.verified = null;
@@ -26849,7 +27195,12 @@ function inventoryPcReferenceChanged(){
 // Falls back to showing the saved link itself when there's no numeric id.
 function populateInventoryPcReference(item = {}){
   const id = String(item.pricechartingProductId || item.raw?.pricechartingProductId || '').trim();
-  const url = !id ? String(item.providerUrl || item.raw?.providerUrl || '').trim() : '';
+  // Only a PriceCharting/SportsCardsPro product page belongs here -- an MTG
+  // card's providerUrl is often its TCGplayer link, which this box then
+  // refused to verify ("Only pricecharting.com or sportscardspro.com...").
+  // That link lives in the TCGplayer box instead.
+  const savedUrl = String(item.providerUrl || item.raw?.providerUrl || '').trim();
+  const url = !id && /(?:pricecharting|sportscardspro)\.com\/game\//i.test(savedUrl) ? savedUrl : '';
   const displayValue = id || url;
   const input = document.getElementById('edit-pricecharting-ref');
   if(input) input.value = displayValue;
@@ -26912,6 +27263,15 @@ async function inventoryPcReferencePatch(item = {}){
   let verified = inventoryPcReferenceState.verified?.key === key ? inventoryPcReferenceState.verified : null;
   if(!verified && key !== inventoryPcReferenceState.originalId) verified = await verifyInventoryPriceChartingReference();
   if(!verified && key !== inventoryPcReferenceState.originalId) throw new Error('Verify the changed PriceCharting product before saving.');
+  // Store report: sports cards lost their PriceCharting id after an
+  // unrelated edit (Ohtani /99, Cole Young, Ichiro...): an untouched,
+  // unverified reference used to save pricechartingProductId:'' -- wiping
+  // the id price sync needs. Unchanged means keep what's saved (and an id
+  // a short /game/<id> link carries).
+  if(key === inventoryPcReferenceState.originalId && !verified?.id) {
+    const keptId = inventoryPcIdFromRaw(raw) || String(item.pricechartingProductId || item.raw?.pricechartingProductId || '').trim() || (String(key).match(/(?:pricecharting|sportscardspro)\.com\/game\/(\d+)\/?$/i)?.[1] || '');
+    return { pricechartingProductId:keptId, pricechartingProductName:item.pricechartingProductName || item.raw?.pricechartingProductName || '', providerUrl:item.providerUrl || item.raw?.providerUrl || '' };
+  }
   // Store report: pinning a sports card by its numeric PriceCharting ID
   // verified fine and showed the product name, but the actual product page
   // link was never in this patch at all -- verifyInventoryPriceCharting
@@ -27788,6 +28148,7 @@ async function confirmAddToInventoryFromModal(){
 
   const statusEl = document.getElementById('edit-sync-status');
   if(statusEl) { statusEl.style.color = 'var(--gold)'; statusEl.textContent = 'Adding inventory...'; }
+  recordInventoryAddCost(item, item.qty, item.cost, item.id || item.name);
   try {
     const productId = await createInventoryRecord(item, item);
     logOpsEvent('inventory_add', 'Added quick lookup item: ' + item.name, { productId, category:item.category, market:item.market, inventorySource:getInventorySource() });
@@ -41708,8 +42069,9 @@ function saveActiveBuySession(session){
 // this device and the shared index, then hands off to another open tray
 // on this device if one exists, or leaves a clean slate for the next one.
 function removeBuyTrayEverywhere(id){
+  markBuyTrayClosed(id);
   saveBuyTraysLocal(getBuyTrays().filter(t => t.buySessionId !== id));
-  removeBuyTrayFromIndex(id);
+  writeClosedBuyTray(id);
 }
 function closeActiveBuyTray(){
   const id = getActiveBuyTrayId();
@@ -41820,12 +42182,13 @@ function snapshotBuySession(status, pctOverride){
     priceUsed:Number(i.priceUsed || i.market || 0),
     priceLabel:i.priceLabel || (i.priceSource || i.pricingSource || 'Manual Price'),
     cashOffer:buyItemOfferValue(i, pctOverride),
-    tradeCreditOffer:Math.round(buyItemOfferValue(i, pctOverride) * 1.15 * 100) / 100,
+    // Trade-in value is the same as the cash offer -- no trade bonus (store policy).
+    tradeCreditOffer:buyItemOfferValue(i, pctOverride),
     status:i.inventoryId ? 'converted_to_inventory' : 'offered',
   }));
   const marketTotal = Math.round(items.reduce((a,i)=>a+buyItemMarketValue(i),0) * 100) / 100;
   const cashOfferTotal = Math.round(items.reduce((a,i)=>a+Number(i.cashOffer || 0),0) * 100) / 100;
-  const tradeCreditTotal = Math.round(cashOfferTotal * 1.15 * 100) / 100;
+  const tradeCreditTotal = cashOfferTotal;
   return {
     buySessionId:existing.buySessionId || makeBuySessionId(),
     storeId:getActiveStoreId(),
@@ -41922,6 +42285,7 @@ function payCustomerForBuySession(method){
       customerName: session.customerName || '',
       customerPhone: session.customerPhone || '',
       buySessionId: session.buySessionId,
+      createdAt: new Date().toISOString(),
     };
     logOpsEvent('trade_credit_same_visit', 'Trade-in value ready for this visit only (not saved)', { buySessionId:session.buySessionId, amount, customerName:session.customerName });
     toast_dash('Trade-in value ready: $' + amount.toFixed(2) + ' — add purchase items, then checkout');
@@ -41954,7 +42318,7 @@ function openBuyAcceptConfirm(mode){
   const frozen = getBuyOfferTotals();
   const prior = lastRenderedBuyOfferSnapshot;
   const mismatch = prior && Math.abs(prior.offer - frozen.offerTotal) > 0.005;
-  const payTotal = mode === 'trade' ? Math.round(frozen.offerTotal * 1.15 * 100) / 100 : frozen.offerTotal;
+  const payTotal = frozen.offerTotal;
   pendingBuyAcceptConfirm = { mode, frozen };
   const el = document.getElementById('buy-accept-confirm-overlay');
   if(!el) return;
@@ -41989,6 +42353,38 @@ async function confirmBuyAcceptLocked(){
   else await acceptBuySession(pending.frozen.pct);
 }
 
+// An accepted buy is money spent on inventory, whatever it's paid with
+// (cash, Venmo, card, or a trade-in toward a purchase): it goes into Costs as
+// an inventory purchase so the month's cash flow counts it. One row per buy
+// acceptance (the Worker sets, never adds, so a retry can't double it),
+// queued for retry if offline.
+async function postBuyInventoryCost(payload){
+  const res = await storeWorkerFetch(scopedWorkerPath('/expenses/buy-purchase'), { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload), signal:AbortSignal.timeout(8000) });
+  const data = await res.json().catch(() => ({}));
+  if(!res.ok || !data.ok) throw new Error(data.error || ('Buy cost not saved (HTTP ' + res.status + ')'));
+  return data;
+}
+// Stock added straight to inventory with a cost (Quick Add, Research ->
+// Add to inventory) is inventory spend too, same as a buy -- recorded the
+// same way, by item name. CSV imports (stock already owned) and FOC
+// receiving (counted by invoice) don't come through here.
+function recordInventoryAddCost(item, qty, unitCost, refId){
+  const amount = Math.round(Math.max(0, Number(unitCost) || 0) * Math.max(1, Number(qty) || 1) * 100) / 100;
+  if(!(amount > 0) || getAccountContext().isDemo) return;
+  const id = String(refId || item?.id || 'item').replace(/[^A-Za-z0-9_-]/g, '').slice(0, 50) + '-' + Date.now().toString(36);
+  const n = Math.max(1, Number(qty) || 1);
+  const payload = { kind:'add', buySessionId:id, amount, items:[(n > 1 ? n + 'x ' : '') + (item?.name || 'Item')], date:new Date().toLocaleDateString('en-CA') };
+  postBuyInventoryCost(payload).catch(e => enqueueOrReplaceSync('buy-inventory-cost', id, 'Record inventory added as a purchase', payload, e.message || 'Inventory cost sync failed'));
+}
+function recordBuyInventoryCost(session, method){
+  const amount = Math.round(Number(session?.cashOfferTotal || 0) * 100) / 100;
+  if(!session?.buySessionId || !(amount > 0) || getAccountContext().isDemo) return;
+  // Keyed per acceptance, not per tray: a tray accepted twice (more cards
+  // added later) is two real payouts, and each one is recorded.
+  const payload = { buySessionId:session.buySessionId + '-' + Date.now().toString(36), amount, method:method || '', customerName:session.customerName || '', items:(session.items || []).map(i => i.name || i.title || '').filter(Boolean).slice(0, 50), date:new Date().toLocaleDateString('en-CA') };
+  postBuyInventoryCost(payload).catch(e => enqueueOrReplaceSync('buy-inventory-cost', session.buySessionId, 'Record buy as inventory purchase', payload, e.message || 'Buy cost sync failed'));
+}
+
 async function acceptBuySession(lockedPct){
   if(!buyList.length){ toast_dash('No buy offer items'); return; }
   const missing = buyList.filter(i => !Number(i.market || i.priceUsed || 0));
@@ -42001,6 +42397,7 @@ async function acceptBuySession(lockedPct){
   saveBuySessionHistory(session);
   logOpsEvent('buy_session_accepted', 'Accepted buy session', { buySessionId:session.buySessionId, items:session.items.length, cashOfferTotal:session.cashOfferTotal });
   await bulkAddBuyListToInventory(true);
+  recordBuyInventoryCost(session, session.paymentType || document.getElementById('buy-session-pay-method')?.value || 'Buy');
   saveBuySessionHistory(snapshotBuySession('accepted', lockedPct));
   showBuyPaymentConfirm(session);
 }
@@ -42023,6 +42420,7 @@ async function acceptBuyAsTrade(lockedPct){
   saveBuySessionHistory(session);
   logOpsEvent('buy_session_accepted', 'Accepted buy session as trade', { buySessionId:session.buySessionId, items:session.items.length, tradeCreditTotal:session.tradeCreditTotal });
   await bulkAddBuyListToInventory(true);
+  recordBuyInventoryCost(session, 'Trade-in');
   saveBuySessionHistory(snapshotBuySession('accepted', lockedPct));
   const result = payCustomerForBuySession('Trade Credit');
   if(!result?.credit) return;
@@ -42072,7 +42470,7 @@ function showBuyPaymentConfirm(session){
       <button onclick="printLabelsForAcceptedBuy()" style="width:100%;background:rgba(0,255,179,.1);color:var(--g);border:1px solid rgba(0,255,179,.45);border-radius:10px;font-family:'Orbitron',monospace;font-size:13px;font-weight:800;padding:14px;cursor:pointer;letter-spacing:.04em;margin-bottom:10px">🏷️ PRINT LABELS (${items.length})</button>
       <div style="display:flex;gap:10px;flex-wrap:wrap">
         <button onclick="confirmBuyPayout('${escHtml(method)}')" style="flex:1;background:var(--g);color:#000;border:none;border-radius:10px;font-family:'Orbitron',monospace;font-size:14px;font-weight:800;padding:18px;cursor:pointer;letter-spacing:.05em">${isTradeCredit?'ISSUE TRADE CREDIT':'CONFIRM PAYMENT'}</button>
-        ${isTradeCredit ? '' : `<button onclick="confirmBuyPayout('Trade Credit',true)" style="flex:1 0 100%;background:rgba(255,190,70,.12);color:var(--gold);border:1px solid rgba(255,190,70,.55);border-radius:10px;font-family:'Orbitron',monospace;font-size:12px;font-weight:800;padding:15px;cursor:pointer;letter-spacing:.04em">APPLY $${tradeTotal.toFixed(2)} TO PURCHASE${total>0?` (+${Math.round((tradeTotal/total-1)*100)}% TRADE BONUS)`:''}</button>`}
+        ${isTradeCredit ? '' : `<button onclick="confirmBuyPayout('Trade Credit',true)" style="flex:1 0 100%;background:rgba(255,190,70,.12);color:var(--gold);border:1px solid rgba(255,190,70,.55);border-radius:10px;font-family:'Orbitron',monospace;font-size:12px;font-weight:800;padding:15px;cursor:pointer;letter-spacing:.04em">APPLY $${tradeTotal.toFixed(2)} TO PURCHASE</button>`}
         <button onclick="newCustomerReset()" style="flex:0 0 auto;background:var(--surf2);color:var(--dim);border:1px solid var(--border);border-radius:10px;font-family:var(--font-mono);font-size:11px;padding:12px 16px;cursor:pointer">SKIP</button>
       </div>
       <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);line-height:1.5;margin-top:12px;text-align:center">Apply to Purchase issues customer-linked trade credit, then opens POS. At checkout choose Trade Credit and apply it before taking any remaining balance.</div>
@@ -42111,6 +42509,9 @@ function syncBuyConfirmCustomer(field, value){
 async function confirmBuyPayout(method, applyToPurchase=false){
   const result = payCustomerForBuySession(method);
   if(!result) return;
+  // A trade credit only exists for this visit's purchase, so it always goes
+  // onto the sale -- "ISSUE TRADE CREDIT" used to create it and then drop it.
+  if(result.credit) applyToPurchase = true;
   if(applyToPurchase && result.credit) {
     localStorage.setItem('pos_pending_trade_purchase', JSON.stringify({
       creditId:result.credit.id,
@@ -42652,10 +43053,10 @@ function buyItemToInventoryUpdates(item){
     // mapBuiltInItem), but not before that reload happens -- set explicitly
     // here so the image is never dependent on which fallback chain a given
     // read path happens to have.
-    imageUrl:item.imageUrl || item.images?.[0] || '',
-    thumbnail:item.imageUrl || item.images?.[0] || '',
-    image:item.imageUrl || item.images?.[0] || '',
-    images:(item.images && item.images.length) ? item.images : (item.imageUrl ? [item.imageUrl] : []),
+    imageUrl:item.imageUrl || item.images?.[0] || catalogImageFromIds(item),
+    thumbnail:item.imageUrl || item.images?.[0] || catalogImageFromIds(item),
+    image:item.imageUrl || item.images?.[0] || catalogImageFromIds(item),
+    images:(item.images && item.images.length) ? item.images : ((item.imageUrl || catalogImageFromIds(item)) ? [item.imageUrl || catalogImageFromIds(item)] : []),
     location,
     key_notes:[
       'Buy/trade intake',
@@ -43807,6 +44208,7 @@ function renderDealerCartTools(cartData = getCartDataLocal()){
   const totals = normalizeCartTotals(JSON.parse(JSON.stringify(cartData || {items:[]})));
   const total = Number(totals.total || 0);
   const trade = pendingTradeAmounts(total, cartData);
+  renderPendingTradeNotice(trade, items.length);
   if(stateEl) stateEl.innerHTML = `<span class="checkout-state-pill ${checkoutState===CHECKOUT_STATES.OFFLINE_QUEUED?'bad':locked?'warn':''}">${checkoutState}</span><span>${lockedCheckoutSnapshot ? 'Snapshot ' + String(lockedCheckoutSnapshot.id).slice(0,8) : 'No locked snapshot'}</span><span>${items.length} line${items.length===1?'':'s'}</span>`;
   if(!items.length) el.innerHTML = '<div style="border:1px dashed var(--border);border-radius:8px;padding:10px;text-align:center">Cart is empty.</div>';
   else {
@@ -45303,7 +45705,64 @@ function labelBadgeText(item){
 function labelMetaText(item){ return [item.set, item.year].filter(Boolean).join(' · '); }
 
 function labelBatchEntryFromItem(item){
-  return { id:item.id, name:item.name, condition:item.condition||'', sku:labelBarcodeValue(item), price:inventoryListPrice ? inventoryListPrice(item) : (item.salePrice || item.market || 0), badge:labelBadgeText(item), meta:labelMetaText(item), qty:1 };
+  // stockQty: how many copies are in stock; with "one label per copy" on,
+  // that's how many labels this item prints.
+  const stockQty = Math.max(1, inventoryAvailableQuantity(item));
+  const entry = { id:item.id, name:item.name, condition:item.condition||'', sku:labelBarcodeValue(item), price:inventoryListPrice ? inventoryListPrice(item) : (item.salePrice || item.market || 0), badge:labelBadgeText(item), meta:labelMetaText(item), qty:labelPrintPerStock() ? stockQty : 1, stockQty };
+  return isComicLabelItem(item) ? { ...entry, ...comicLabelParts(item) } : entry;
+}
+
+// ── Comic labels ──
+// Store ask: on a comic's label, what matters is the book, its ratio and
+// its cover artist or variant name -- not condition. A received FOC book's
+// name is the whole solicitation ("SPIDER-WOMAN #1 -- COVER F MARK BROOKS
+// VIRGIN 1:100 VARIANT"), so on a 2x1 the part that tells covers apart got
+// cut off. Comics print the book (series #issue), then one line with the
+// ratio, cover letter and artist/variant name, and publisher · year below.
+function isComicLabelItem(item={}){
+  const key = typeof qplCategoryKey === 'function' ? qplCategoryKey(item.category || item.raw?.category || '') : '';
+  return key === 'comic' || /\bcomic/i.test(String(item.category || item.raw?.category || ''));
+}
+function comicLabelParts(item={}){
+  const raw = item.raw || {}, detail = raw.focComicDetail || item.focComicDetail || {};
+  // Some distributor files put the placeholder "Variant Title" where the
+  // variant label belongs; it says nothing, so it's dropped.
+  const fullName = String(item.name || raw.name || '').replace(/\s+--\s+variant title\s*$/i, '').trim();
+  const variantText = String(item.variant || raw.variant || '').trim();
+  const text = [fullName, variantText].join(' ');
+  const series = String(item.series || raw.series || detail.seriesName || '').trim();
+  const issue = String(item.issue || raw.issue || detail.number || '').replace(/^#/, '').trim();
+  // The book: series #issue, else the name up to its cover/variant part.
+  let book = series && issue ? series + ' #' + issue : fullName.split(/\s+--\s+/)[0];
+  book = book.replace(/\s+(?:COVER|CVR)\s+[A-Z]{1,2}\b.*$/i, '').replace(/\s+(?:\(?(?:INC|RI)\b.*|VARIANT.*|VAR\b.*)$/i, '').trim() || fullName;
+  // Ratio: 1:25 / INC 1:25 / "RI (10)".
+  const ratioMatch = text.match(/\b1\s*:\s*(\d{1,4})\b/) || text.match(/\bRI\s*\(?\s*(\d{1,4})\s*\)?/i);
+  const ratio = ratioMatch ? '1:' + ratioMatch[1] : '';
+  const letter = (text.match(/\b(?:COVER|CVR)\s+([A-Z]{1,2})\b/i) || [])[1] || '';
+  const artist = (Array.isArray(detail.coverArtists) && detail.coverArtists[0]) || String(item.cover_artist || raw.cover_artist || raw.coverArtist || '').trim();
+  // What's left of the variant text once the cover letter, ratio and the
+  // words "variant/cover/incentive" are gone: the artist and/or the variant
+  // name ("MARK BROOKS VIRGIN", "MIDNIGHT HORROR HOMAGE", "KANO FOIL").
+  const esc = v => String(v).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  let source = variantText && !/^variant title$/i.test(variantText) ? variantText : (fullName.split(/\s+--\s+/)[1] || fullName);
+  // Drop the book itself from the front, however it was written.
+  [series, fullName.split(/\s+--\s+/)[0].replace(/\s+(?:COVER|CVR)\s+[A-Z]{1,2}\b.*$/i, '').replace(/\s+(?:\(?(?:INC|RI)\b.*|VARIANT.*|VAR\b.*)$/i, '')].filter(Boolean).forEach(prefix => { source = source.replace(new RegExp('^\\s*' + esc(prefix) + '\\s*', 'i'), ''); });
+  source = source.replace(/^#?\s*\d+[A-Z]?\b\s*/i, '');
+  let rest = String(source)
+    .replace(/\b(?:COVER|CVR)\s+[A-Z]{1,2}\b/gi, ' ').replace(/\b(?:INC(?:ENTIVE)?\s*)?1\s*:\s*\d{1,4}\b/gi, ' ').replace(/\bRI\s*\(?\s*\d{1,4}\s*\)?/gi, ' ')
+    .replace(/\b(?:VARIANT|VAR|CVR|COVER|EDITION)\b/gi, ' ').replace(/[()]/g, ' ').replace(/\s+/g, ' ').trim();
+  rest = rest.replace(/^variant title$/i, '').trim();
+  if(artist && !new RegExp(esc(artist.split(/\s+/).pop()), 'i').test(rest)) rest = (artist + ' ' + rest).trim();
+  const cover = [letter ? 'CVR ' + letter.toUpperCase() : '', rest].filter(Boolean).join(' ');
+  // Badge: signed / numbered / key still lead when present, then the ratio,
+  // then the cover. Condition is left off comics.
+  const lead = item.is_signed ? 'SIGNED' + (item.signed_by ? ' ' + item.signed_by : '')
+    : item.serial_number ? (String(item.serial_number).trim().startsWith('/') ? String(item.serial_number).trim() : '#' + String(item.serial_number).trim())
+    : item.is_key ? 'KEY' : '';
+  const badge = [lead, ratio, cover].filter(Boolean).join(' · ');
+  const publisher = String(item.publisher || raw.publisher || detail.publisher || '').trim();
+  const year = String(item.year || raw.year || String(detail.storeDate || '').slice(0, 4) || '').trim();
+  return { name:book, badge, meta:[publisher, year].filter(Boolean).join(' · '), condition:'' };
 }
 
 function openLabelPrintModal(seedItemId, presetBatch){
@@ -45325,6 +45784,7 @@ function openLabelPrintModal(seedItemId, presetBatch){
   const layoutEl = document.getElementById('label-print-layout'); if(layoutEl) layoutEl.value = localStorage.getItem('label_print_layout') || 'wrap';
   const codeStyleEl = document.getElementById('label-print-code-style'); if(codeStyleEl) codeStyleEl.value = localStorage.getItem('label_print_code_style') || 'qr';
   const rotateEl = document.getElementById('label-print-rotate'); if(rotateEl) rotateEl.checked = localStorage.getItem('label_print_rotate') === '1';
+  const perStockEl = document.getElementById('label-print-per-stock'); if(perStockEl) perStockEl.checked = labelPrintPerStock();
   renderLabelPrintBatchList();
   document.getElementById('label-print-modal')?.classList.add('on');
   setTimeout(() => document.getElementById('label-print-search')?.focus(), 100);
@@ -45342,7 +45802,7 @@ function closeLabelPrintModal(){
 function printLabelsForFilteredItems(){
   const items = (typeof filtered !== 'undefined' ? filtered : []).filter(i => i.status === 'in_stock');
   if(!items.length){ toast_dash('No in-stock items in the current view to label'); return; }
-  const batch = items.map(item => ({ id:item.id, name:item.name, condition:item.condition||'', sku:labelBarcodeValue(item), price:inventoryListPrice ? inventoryListPrice(item) : (item.salePrice || item.market || 0), badge:labelBadgeText(item), qty:1 }));
+  const batch = items.map(item => labelBatchEntryFromItem(item));
   openLabelPrintModal(null, batch);
 }
 
@@ -45389,6 +45849,14 @@ function removeFromLabelPrintBatch(itemId){
   labelPrintBatch = labelPrintBatch.filter(b => b.id !== itemId);
   renderLabelPrintBatchList();
 }
+// Remembered per device; on by default -- a stack of the same comic needs a
+// label on every copy.
+function labelPrintPerStock(){ try { return localStorage.getItem('label_print_per_stock') !== '0'; } catch(e) { return true; } }
+function setLabelPrintPerStock(on){
+  try { localStorage.setItem('label_print_per_stock', on ? '1' : '0'); } catch(e) {}
+  labelPrintBatch.forEach(b => { b.qty = on ? Math.max(1, Number(b.stockQty) || 1) : 1; });
+  renderLabelPrintBatchList();
+}
 function setLabelPrintQty(itemId, qty){
   const entry = labelPrintBatch.find(b => b.id === itemId);
   if(!entry) return;
@@ -45428,13 +45896,14 @@ async function setLabelPrintPrice(itemId, rawVal){
 function renderLabelPrintBatchList(){
   const el = document.getElementById('label-print-batch-list');
   const countEl = document.getElementById('label-print-batch-count');
-  if(countEl) countEl.textContent = String(labelPrintBatch.length);
+  const totalLabels = labelPrintBatch.reduce((a, b) => a + (Number(b.qty) || 1), 0);
+  if(countEl) countEl.textContent = labelPrintBatch.length + (totalLabels !== labelPrintBatch.length ? ' · ' + totalLabels + ' labels' : '');
   if(!el) return;
   el.innerHTML = labelPrintBatch.length
     ? labelPrintBatch.map(b => `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 8px;border:1px solid var(--border);border-radius:6px">
         <span style="font-size:11px;flex:1">${escHtml(b.name)}</span>
         <input type="number" min="0" step="0.01" value="${b.price}" style="width:64px;font-family:monospace;font-size:9px" class="tsi" onchange="setLabelPrintPrice('${b.id}', this.value)">
-        <input type="number" min="1" value="${b.qty}" style="width:50px;font-size:11px" class="tsi" onchange="setLabelPrintQty('${b.id}', this.value)">
+        <input type="number" min="1" value="${b.qty}" style="width:50px;font-size:11px" class="tsi" title="Labels to print" onchange="setLabelPrintQty('${b.id}', this.value);renderLabelPrintBatchList()">${Number(b.stockQty) > 1 ? `<span style="font-size:9px;color:var(--dim);white-space:nowrap">/ ${Number(b.stockQty)} in stock</span>` : ''}
         <button class="hbtn danger" style="min-height:28px;padding:2px 8px;font-size:9px" onclick="removeFromLabelPrintBatch('${b.id}')">✕</button>
       </div>`).join('')
     : '<div class="empty" style="padding:8px"><div class="empty-t" style="font-size:9px">NO ITEMS YET -- SEARCH ABOVE TO ADD SOME</div></div>';
@@ -45560,6 +46029,14 @@ async function generateLabelCodeCanvas(value, style, size = 220){
   return canvas;
 }
 
+// The browser-print label can't measure text, so a long name is shortened by
+// length -- in front of its trailing "#300", which always stays.
+function labelNameKeepNumber(name, max){
+  const text = String(name || '');
+  const numbered = text.match(/^(.+?)\s+(#\S+)$/);
+  if(text.length <= max || !numbered) return text;
+  return numbered[1].slice(0, Math.max(1, max - numbered[2].length - 2)).trimEnd() + '… ' + numbered[2];
+}
 async function printInventoryLabels(){
   if(!labelPrintBatch.length) return alert('Add at least one item to print');
   // The wrap layout's back face always uses QR (see isWrap below), which
@@ -45657,7 +46134,7 @@ async function printInventoryLabels(){
     } catch(e) { barcodeImg = ''; }
     const labelHtml = isWrap ? `<div class="label wrap">
         <div class="wrap-front">
-          <div class="wrap-name">${escHtml(b.name)}</div>
+          <div class="wrap-name">${escHtml(labelNameKeepNumber(b.name, b.badge ? 24 : 36))}</div>
           ${b.badge ? `<div class="wrap-badge">${escHtml(b.badge)}</div>` : ''}
           <div class="wrap-price">${escHtml(fdLabelPrice$(b.price).slice(1))}</div>
           <div class="wrap-bottom-row"><span class="wrap-condition">${escHtml(b.condition || '')}</span><span class="wrap-meta">${escHtml(b.meta || '')}</span></div>
@@ -45670,7 +46147,7 @@ async function printInventoryLabels(){
       ${storeName ? `<div class="label-store">${escHtml(storeName)}</div>` : ''}
       <div class="label-name">${escHtml(b.name)}</div>
       ${barcodeImg}
-      <div class="label-bottom"><span class="label-sku">${escHtml(b.sku || '')}${b.condition?' · '+escHtml(b.condition):''}</span><span class="label-price">${fdLabelPrice$(b.price)}</span></div>
+      <div class="label-bottom"><span class="label-sku">${escHtml(b.condition || b.meta || '')}</span><span class="label-price">${fdLabelPrice$(b.price)}</span></div>
     </div>`;
     // Rotated roll printing needs each label's own "page" footprint swapped
     // to match the rotated @page size below -- wrapping (rather than
@@ -45754,11 +46231,12 @@ async function printInventoryLabels(){
   const wrapStyle = `
       .label.wrap { flex-direction:row !important; padding:0 !important; }
       .label.wrap .wrap-front, .label.wrap .wrap-back { height:100%; box-sizing:border-box; display:flex; flex-direction:column; align-items:center; overflow:hidden; }
-      .label.wrap .wrap-front { width:44%; padding:10px 8px 5px; justify-content:flex-start; gap:5px; border-right:2px dashed #000; }
+      .label.wrap .wrap-front { width:44%; padding:10px 8px 5px; justify-content:flex-start; gap:3px; border-right:2px dashed #000; }
       .label.wrap .wrap-back { width:56%; padding:6px 4px 4px; justify-content:flex-start; gap:4px; }
       .wrap-shopname { font-size:8px; font-weight:700; letter-spacing:.01em; text-align:center; white-space:nowrap; }
-      .wrap-name { font-size:8px; font-weight:700; line-height:1.1; max-height:27px; overflow:hidden; text-align:center; }
-      .wrap-badge { font-size:6px; font-weight:700; text-transform:uppercase; text-align:center; }
+      .wrap-name { font-size:8px; font-weight:700; line-height:1.1; max-height:27px; overflow:hidden; text-align:center; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:3; flex-shrink:0; }
+      .wrap-name:has(+ .wrap-badge) { max-height:18px; -webkit-line-clamp:2; }
+      .wrap-badge { font-size:7px; font-weight:700; line-height:1.1; max-height:16px; overflow:hidden; text-transform:uppercase; text-align:center; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; flex-shrink:0; }
       .wrap-price { font-size:24px; font-weight:700; line-height:1; margin-top:auto; }
       .wrap-bottom-row { width:100%; display:flex; justify-content:space-between; align-items:baseline; gap:4px; }
       .wrap-condition { font-size:11px; font-weight:700; text-transform:uppercase; flex-shrink:0; }
@@ -45786,21 +46264,37 @@ async function printInventoryLabels(){
 
 // Wraps text onto up to maxLines lines within maxWidth -- canvas text has no
 // built-in wrapping, unlike the HTML/CSS label path above.
-function wrapCanvasText(ctx, text, x, y, maxWidth, lineHeight, maxLines){
+function wrapCanvasText(ctx, text, x, y, maxWidth, lineHeight, maxLines, measureOnly){
   maxLines = maxLines || 2;
-  const words = String(text || '').split(' ');
-  const lines = [];
-  let line = '';
-  for(const word of words){
-    const test = line ? line + ' ' + word : word;
-    if(ctx.measureText(test).width > maxWidth && line){
+  const fit = t => {
+    const words = String(t || '').split(' ').filter(Boolean);
+    const lines = [];
+    let line = '';
+    for(const word of words){
+      const test = line ? line + ' ' + word : word;
+      if(ctx.measureText(test).width <= maxWidth || !line){ line = test; continue; }
       lines.push(line);
       line = word;
-      if(lines.length >= maxLines - 1) break;
-    } else line = test;
+      if(lines.length === maxLines) return { lines, cut:true };
+    }
+    if(line) lines.push(line);
+    return { lines, cut:false };
+  };
+  let result = fit(text);
+  // A name that runs out of room keeps its trailing issue/card number
+  // ("#300") -- the series in front of it is shortened instead, since the
+  // number is what tells two books in the same series apart.
+  const numbered = String(text || '').match(/^(.+?)\s+(#\S+)$/);
+  if(result.cut && numbered){
+    let head = numbered[1];
+    while(head.length > 1){
+      head = head.slice(0, -1).trimEnd();
+      const shorter = fit(`${head}… ${numbered[2]}`);
+      if(!shorter.cut){ result = shorter; break; }
+    }
   }
-  lines.push(line);
-  lines.slice(0, maxLines).forEach((l, i) => ctx.fillText(l, x, y + i * lineHeight));
+  if(!measureOnly) result.lines.forEach((l, i) => ctx.fillText(l, x, y + i * lineHeight));
+  return result;
 }
 
 // Matches the RW403B and most small direct-thermal label printers -- their
@@ -45926,13 +46420,28 @@ async function downloadInventoryLabelPngs(){
       tctx.textAlign = 'center'; tctx.textBaseline = 'top';
       const nameFont = Math.round(h * 0.085);
       tctx.font = `bold ${nameFont}px ${LABEL_FONT_STACK}`;
-      wrapCanvasText(tctx, b.name, halfW / 2, padY, halfW - padX * 2, Math.round(nameFont * 1.15), 2);
+      const nameLines = wrapCanvasText(tctx, b.name, halfW / 2, padY, halfW - padX * 2, Math.round(nameFont * 1.15), 2).lines.length;
+      let badgeLines = 0;
       if(b.badge){
         // Bold -- thin/regular weight is the one thing on this label that
         // isn't already bold, and it printed noticeably less crisp than
         // everything else on a real thermal print.
-        tctx.font = `bold ${Math.round(h * 0.06)}px ${LABEL_FONT_STACK}`;
-        tctx.fillText(b.badge.toUpperCase(), halfW / 2, h * 0.24);
+        // A comic's badge (ratio · cover · artist) can be long: it wraps onto
+        // a second line before it shrinks, and never below a size that still
+        // prints readably -- past that the last line ends in an ellipsis.
+        const maxBadge = halfW - padX * 2, badgeText = b.badge.toUpperCase();
+        let badgeSize = Math.round(h * 0.06);
+        tctx.font = `bold ${badgeSize}px ${LABEL_FONT_STACK}`;
+        while(wrapCanvasText(tctx, badgeText, 0, 0, maxBadge, 0, 2, true).cut && badgeSize > Math.round(h * 0.05)){ badgeSize--; tctx.font = `bold ${badgeSize}px ${LABEL_FONT_STACK}`; }
+        let fitted = wrapCanvasText(tctx, badgeText, 0, 0, maxBadge, 0, 2, true);
+        if(fitted.cut){
+          let last = fitted.lines[fitted.lines.length - 1] + '…';
+          while(tctx.measureText(last).width > maxBadge && last.length > 2) last = last.slice(0, -2).trimEnd() + '…';
+          fitted.lines[fitted.lines.length - 1] = last;
+        }
+        const badgeY = padY + nameLines * Math.round(nameFont * 1.15) + h * 0.015;
+        fitted.lines.forEach((l, i) => tctx.fillText(l, halfW / 2, badgeY + i * Math.round(badgeSize * 1.15)));
+        badgeLines = fitted.lines.length;
       }
       // Just the digits, no "$" glyph -- centered under the fold line as one
       // unit. Font weight is "bold" (700), not "900" -- confirmed against a
@@ -45948,22 +46457,15 @@ async function downloadInventoryLabelPngs(){
       const priceBigFont = Math.round(h * 0.33);
       tctx.textAlign = 'center'; tctx.textBaseline = 'alphabetic';
       tctx.font = `bold ${priceBigFont}px ${LABEL_FONT_STACK}`;
-      const priceBaseline = h * 0.34 + priceBigFont * 0.78;
+      const priceBaseline = h * (nameLines + badgeLines > 3 ? 0.39 : 0.34) + priceBigFont * 0.78;
       tctx.fillText(priceDigits, halfW / 2, priceBaseline);
       tctx.textAlign = 'left'; tctx.textBaseline = 'top';
       tctx.font = `bold ${Math.round(h * 0.13)}px ${LABEL_FONT_STACK}`;
-      tctx.fillText(String(b.condition || '').toUpperCase(), padX, h * 0.8);
-      // Small SKU alongside condition -- some pricing sources (PriceCharting's
-      // own Secret Lair Drop entries, for example) only give a generic
-      // product name shared across many different physical items, so the
-      // name text alone isn't enough to match a loose label back to the
-      // right inventory record. The SKU is always unique, so it's what
-      // actually makes that possible regardless of how generic the name is.
-      if(b.sku){
-        tctx.textAlign = 'right';
-        tctx.font = `${Math.round(h * 0.045)}px ${LABEL_FONT_STACK}`;
-        tctx.fillText(b.sku, halfW - padX, h * 0.84);
-        tctx.textAlign = 'left';
+      if(b.condition) tctx.fillText(String(b.condition).toUpperCase(), padX, h * 0.8);
+      else if(b.meta){
+        // Comics carry no condition: publisher · year sits there instead.
+        tctx.font = `bold ${Math.round(h * 0.07)}px ${LABEL_FONT_STACK}`;
+        tctx.fillText(String(b.meta).toUpperCase().slice(0, 24), padX, h * 0.82);
       }
       // The shop-name text sits in a band with equal padding above (from the
       // top edge) and below (before the code starts) -- symmetric spacing,
@@ -45993,7 +46495,7 @@ async function downloadInventoryLabelPngs(){
       codeDraw = { canvas: codeCanvas, x: (w - codeW) / 2, y: h * 0.44, w: codeW, h: codeH };
       tctx.font = `${Math.round(h * 0.08)}px ${LABEL_FONT_STACK}`;
       tctx.textAlign = 'left';
-      tctx.fillText(`${b.sku || ''}${b.condition ? ' · ' + b.condition : ''}`, pad, h * 0.82);
+      tctx.fillText(String(b.condition || b.meta || ''), pad, h * 0.82);
       tctx.font = `bold ${Math.round(h * 0.16)}px ${LABEL_FONT_STACK}`;
       tctx.textAlign = 'right';
       tctx.fillText(fdLabelPrice$(b.price), w - pad, h * 0.78);
@@ -48907,7 +49409,7 @@ async function toppsLoadParallels(cardId){
   window.__arscaCloseModal = closeModal;
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.10.02.4-whatnot-enter-show" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.10.06.1-show-days-buy-names" defer></script>
 </body>
 </html>
 
