@@ -2999,6 +2999,14 @@ function pokemonQuotaHeaders(headers) {
   return out;
 }
 
+// FOC presale names/titles end in " - PRESALE" (see /foc/ebay/create-presale);
+// once the book is in stock that has to come off.
+function stripPresaleSuffix(name) {
+  return String(name || '').replace(/\s*-\s*PRESALE\s*$/i, '').trim();
+}
+function xmlUnescape(s) {
+  return String(s || '').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&amp;/g, '&');
+}
 function errorMessageFromApi(data, fallback = 'API error') {
   return data?.msg
     || data?.message
@@ -5835,15 +5843,29 @@ async function routeRequest(request, env, ctx) {
       if (!cycleId) return json({ ok: false, error: 'cycleId required' }, 400);
 
       let candidates = [];
+      const tradingGroups = new Map();
       try {
         const { data } = await supabaseAdminFetch(env, `inventory_items?store_id=eq.${encodeURIComponent(storeId)}&status=eq.presale&select=id,data`);
         candidates = (data || []).filter(row => {
           const d = row.data || {};
-          return d.source === 'foc_presale' && d.focCycleId === cycleId && d.ebaySku && d.ebayOfferId && Number(d.qty ?? d.quantity ?? 0) > 0;
+          return d.source === 'foc_presale' && d.focCycleId === cycleId && d.ebayApiSystem !== 'trading' && d.ebaySku && d.ebayOfferId && Number(d.qty ?? d.quantity ?? 0) > 0;
         });
+        // Multi-cover listings (Trading API) have no offerId -- they used to
+        // be skipped here and stayed "presale" with the long handling time
+        // forever. One eBay listing per family, so group the rows by it.
+        for (const row of data || []) {
+          const d = row.data || {};
+          if (d.ebayApiSystem !== 'trading' || d.focCycleId !== cycleId || !d.ebayListingId || d.ebayWithdrawnAt) continue;
+          if (d.source !== 'foc_presale' && d.source !== 'foc_presale_bundle') continue;
+          const list = tradingGroups.get(d.ebayListingId) || [];
+          list.push(row); tradingGroups.set(d.ebayListingId, list);
+        }
+        for (const [listingId, rows] of tradingGroups) {
+          if (!rows.some(r => Number(r.data.qty ?? r.data.quantity ?? 0) > 0)) tradingGroups.delete(listingId);
+        }
       } catch (e) { return json({ ok: false, error: 'Could not load presale listings: ' + e.message }, 500); }
 
-      if (!candidates.length) return json({ ok: true, converted: 0, failed: [] });
+      if (!candidates.length && !tradingGroups.size) return json({ ok: true, converted: 0, failed: [] });
 
       let ebayToken = '';
       try { ebayToken = await getEbayUserAccessToken(env); }
@@ -5867,10 +5889,11 @@ async function routeRequest(request, env, ctx) {
       for (const row of candidates) {
         const d = row.data || {};
         try {
+          const inStockName = stripPresaleSuffix(d.name) || 'Comic';
           await reviseEbayListing({
             sku: d.ebaySku, offerId: d.ebayOfferId,
-            title: d.name || 'Comic',
-            description: [d.name, 'In stock now and ships promptly.'].filter(Boolean).join('\n\n'),
+            title: inStockName,
+            description: [inStockName, 'In stock now and ships promptly.'].filter(Boolean).join('\n\n'),
             price: (Number(d.market || d.salePrice || 0)).toFixed(2),
             quantity: Number(d.qty ?? d.quantity ?? 0),
             categoryId: '259104', conditionId, condition: 'NEW',
@@ -5879,12 +5902,36 @@ async function routeRequest(request, env, ctx) {
           }, ebayToken, env);
           await supabaseAdminFetch(env, `inventory_items?id=eq.${row.id}&store_id=eq.${encodeURIComponent(storeId)}`, {
             method: 'PATCH', headers: { Prefer: 'return=minimal' },
-            body: JSON.stringify({ status: 'in_stock', data: { ...d, status: 'in_stock', ebayPresaleConverted: true, ebayConvertedAt: new Date().toISOString() } }),
+            body: JSON.stringify({ status: 'in_stock', data: { ...d, name: inStockName, status: 'in_stock', ebayPresaleConverted: true, ebayConvertedAt: new Date().toISOString() } }),
           });
           converted++;
         } catch (e) {
           console.error('FOC eBay presale->in-stock conversion failed for', row.id, e);
           failed.push({ inventoryItemId: row.id, name: d.name || '', error: e.message });
+        }
+      }
+      for (const [listingId, rows] of tradingGroups) {
+        try {
+          const result = await convertEbayVariationListingToInStockTrading(ebayToken, listingId, normalFulfillmentPolicyId);
+          if (result.titleError) failed.push({ ebayListingId: listingId, name: rows[0].data.name || '', error: 'Shipping switched, but eBay kept the PRESALE title: ' + result.titleError });
+        } catch (e) {
+          console.error('FOC eBay multi-cover presale->in-stock conversion failed for', listingId, e);
+          for (const row of rows) failed.push({ inventoryItemId: row.id, name: row.data.name || '', error: e.message });
+          continue;
+        }
+        const convertedAt = new Date().toISOString();
+        for (const row of rows) {
+          const d = row.data || {};
+          // The "All Covers Bundle" row is a listing option, not a book --
+          // it stays out of sellable stock; only real covers flip.
+          if (d.source === 'foc_presale_bundle' || !(Number(d.qty ?? d.quantity ?? 0) > 0)) continue;
+          try {
+            await supabaseAdminFetch(env, `inventory_items?id=eq.${row.id}&store_id=eq.${encodeURIComponent(storeId)}`, {
+              method: 'PATCH', headers: { Prefer: 'return=minimal' },
+              body: JSON.stringify({ status: 'in_stock', data: { ...d, name: stripPresaleSuffix(d.name) || d.name, status: 'in_stock', ebayPresaleConverted: true, ebayConvertedAt: convertedAt } }),
+            });
+            converted++;
+          } catch (e) { failed.push({ inventoryItemId: row.id, name: d.name || '', error: e.message }); }
         }
       }
       return json({
@@ -9983,6 +10030,30 @@ async function routeRequest(request, env, ctx) {
     async function ebayReviseVariationQuantityTrading(ebayToken, listingId, sku, newQuantity) {
       const body = `<Item><ItemID>${xmlEscape(listingId)}</ItemID><Variations><Variation><SKU>${xmlEscape(sku)}</SKU><Quantity>${xmlEscape(String(Math.max(0, parseInt(newQuantity, 10) || 0)))}</Quantity></Variation></Variations></Item>`;
       return await ebayTradingApiCall(ebayToken, 'ReviseFixedPriceItem', body);
+    }
+
+    // Presale -> in stock for a multi-cover (Trading API) listing: drop the
+    // " - PRESALE" off the shared title and switch to the normal shipping
+    // policy. If eBay won't take the new title (it can refuse title edits on
+    // a listing with recent sales) the shipping change still goes through.
+    async function convertEbayVariationListingToInStockTrading(ebayToken, listingId, fulfillmentPolicyId) {
+      let title = '';
+      try {
+        const got = await ebayTradingApiCall(ebayToken, 'GetItem', `<ItemID>${xmlEscape(listingId)}</ItemID>`);
+        title = xmlUnescape((got.raw.match(/<Item>[\s\S]*?<Title>([^<]*)<\/Title>/) || [])[1] || '');
+      } catch (_) {}
+      const newTitle = stripPresaleSuffix(title);
+      const titleXml = newTitle && newTitle !== title ? `<Title>${xmlEscape(newTitle)}</Title>` : '';
+      const profileXml = fulfillmentPolicyId ? `<SellerProfiles><SellerShippingProfile><ShippingProfileID>${xmlEscape(fulfillmentPolicyId)}</ShippingProfileID></SellerShippingProfile></SellerProfiles>` : '';
+      if (!titleXml && !profileXml) return { titleChanged: false };
+      try {
+        await ebayTradingApiCall(ebayToken, 'ReviseFixedPriceItem', `<Item><ItemID>${xmlEscape(listingId)}</ItemID>${titleXml}${profileXml}</Item>`);
+        return { titleChanged: !!titleXml };
+      } catch (e) {
+        if (!titleXml || !profileXml) throw e;
+        await ebayTradingApiCall(ebayToken, 'ReviseFixedPriceItem', `<Item><ItemID>${xmlEscape(listingId)}</ItemID>${profileXml}</Item>`);
+        return { titleChanged: false, titleError: e.message };
+      }
     }
 
     async function endEbayListingTrading(ebayToken, listingId) {
