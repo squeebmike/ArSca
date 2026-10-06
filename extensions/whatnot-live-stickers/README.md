@@ -49,3 +49,12 @@ Whatnot can change its page wording. When a sale shows on screen but no
 sticker prints (Buy It Now especially), click **CAPTURE PAGE** in the popup
 right then. It copies what the page says; paste that to Claude to update the
 detection.
+
+## Missed stickers
+
+Each sticker reports back once it has gone to the printer. A sale whose
+sticker hasn't printed within a minute (printer off, out of labels, print
+preview left open) counts as **missed**: the extension icon shows a red
+number, the sale is marked "sticker not printed" in the popup, and
+**PRINT MISSED** reprints all of them, one after another. After updating the
+extension, reload it on `chrome://extensions`.

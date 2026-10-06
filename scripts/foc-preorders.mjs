@@ -1697,7 +1697,14 @@ async function addConnectingCoverStock(db,storeId,covers){
     const who=new Map((orders||[]).map(o=>[o.id,text(o.customer_name,60)||'Customer']));
     const customers=new Map();
     for(const it of items||[]){if(!who.has(it.order_id))continue;const list=customers.get(it.sku_id)||[];list.push(who.get(it.order_id)+(Number(it.quantity)>1?' ×'+it.quantity:''));customers.set(it.sku_id,list);}
-    for(const c of covers){c.inStock=stock.get(c.id)||0;c.ebaySold=sold.get(c.id)||0;c.customers=customers.get(c.id)||[];}
+    // Pull-list subscribers of a cover's series ("DNX #4 ..." -> series "DNX").
+    const seriesKey=v=>String(v||'').toLowerCase().replace(/#.*$/,'').replace(/\(.*?\)/g,' ').replace(/[^a-z0-9]+/g,' ').trim();
+    const subscribers=new Map();
+    try{
+      const {data:subs}=await db(`pull_list_subscriptions?store_id=eq.${encodeURIComponent(storeId)}&active=eq.true&select=customer_name,series:pull_list_series(title)`);
+      for(const sub of subs||[]){const k=seriesKey(sub.series?.title);if(!k)continue;const list=subscribers.get(k)||[];list.push(text(sub.customer_name,60)||'Customer');subscribers.set(k,list);}
+    }catch(e){}
+    for(const c of covers){c.inStock=stock.get(c.id)||0;c.ebaySold=sold.get(c.id)||0;c.customers=customers.get(c.id)||[];c.pullSubscribers=subscribers.get(seriesKey(c.title))||[];}
   }catch(e){console.error('connecting covers: stock lookup failed',e);}
 }
 async function withOrderedQty(db,skus){

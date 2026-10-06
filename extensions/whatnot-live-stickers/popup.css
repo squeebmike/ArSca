@@ -10,3 +10,6 @@ button:hover { border-color:#00ffb3; }
 .status { min-height:16px; margin-top:8px; color:#ffd166; font-size:11px; }
 .sale { display:flex; justify-content:space-between; gap:8px; align-items:center; border-bottom:1px solid #1d232a; padding:6px 0; }
 .sale b { color:#fff; } .sale small { color:#8a96a3; display:block; }
+.missed { display:flex; justify-content:space-between; align-items:center; gap:8px; margin-top:10px; padding:8px; border:1px solid #ff4d6d; border-radius:6px; color:#ff8fa3; }
+.missed button { color:#ff8fa3; border-color:#ff4d6d; }
+.miss { color:#ff8fa3 !important; }

@@ -23,6 +23,8 @@
   var right = document.createElement('span'); right.textContent = stamp;
   meta.appendChild(left); meta.appendChild(right);
   el.appendChild(buyer); el.appendChild(title); el.appendChild(meta);
-  window.addEventListener('afterprint', function(){ setTimeout(function(){ window.close(); }, 200); });
+  // Tell the extension this sticker went to the printer (anything that never
+  // reports back shows up as missed).
+  window.addEventListener('afterprint', function(){ try { chrome.runtime.sendMessage({ type:'wls-printed', id:id }); } catch(e) {} setTimeout(function(){ window.close(); }, 200); });
   setTimeout(function(){ window.print(); }, 150);
 })();
