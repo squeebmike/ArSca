@@ -331,8 +331,12 @@ function showsHtml(){
     var perDay = (r.dayList || []).length > 1 ? r.dayList.map(function(d){
       return '<div style="display:flex;justify-content:space-between;gap:8px;padding:2px 0 2px 12px;color:var(--dim)"><span>' + esc(d.label) + ': sales ' + usd(d.sales) + ' · profit ' + usd(d.profit) + (d.costs ? ' · costs -' + usd(d.costs) : '') + '</span><b style="color:' + (d.net >= 0 ? 'var(--g)' : 'var(--red)') + ';white-space:nowrap">' + usd(d.net) + '</b></div>';
     }).join('') + (r.costs ? '<div style="padding:0 0 2px 12px;color:var(--dim);font-size:9px">Show costs are split evenly across the days.</div>' : '') : '';
+    var btn = function(label, call){ return '<button class="hbtn" style="margin:0;padding:2px 8px;font-size:9px" onclick="' + call + '">' + label + '</button>'; };
+    var tools = r.hasSummary ? '' : '<div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:4px">' + btn('RENAME', "EXP.renameShow('" + esc(r.id) + "')") +
+      ((r.dayList || []).length > 1 ? r.dayList.map(function(d){ return btn('SPLIT OFF ' + esc(d.label).toUpperCase(), "EXP.splitShowDay('" + esc(r.id) + "','" + esc(d.day) + "')"); }).join('') : '') +
+      btn('MERGE INTO…', "EXP.mergeShow('" + esc(r.id) + "')") + '</div>';
     return '<div style="padding:4px 0;border-bottom:1px solid var(--border)"><div style="display:flex;justify-content:space-between;gap:8px"><span style="min-width:0">' + esc(r.name) + '<br><span style="color:var(--dim)">sales ' + usd(r.sales) + ' · ' + (r.hasSummary ? 'Whatnot profit ' : 'profit ') + usd(r.profit) + (r.costs ? ' · show costs -' + usd(r.costs) : '') + '</span></span>' +
-      '<b style="color:' + (r.net >= 0 ? 'var(--g)' : 'var(--red)') + ';white-space:nowrap">' + usd(r.net) + '</b></div>' + perDay + '</div>';
+      '<b style="color:' + (r.net >= 0 ? 'var(--g)' : 'var(--red)') + ';white-space:nowrap">' + usd(r.net) + '</b></div>' + perDay + tools + '</div>';
   }).join('') + '<div style="color:var(--dim);margin-top:4px">Each show\'s profit after the costs tagged to it (table fee, gas…). Tag a cost with "For a show" when adding it.</div></div>';
 }
 function recurringHtml(){
@@ -343,7 +347,63 @@ function recurringHtml(){
   }).join('') + '</div>';
 }
 
+// ── Fixing a show after the fact ──
+// Rename it (its saved show record), split one day off into its own show, or
+// merge it into another show. Splits and merges move the sales (and, for a
+// merge, its tagged costs and cash bags) by updating their show id.
+async function readShowRecord(id){
+  try { var r = await storeWorkerFetch(scopedWorkerPath('/kv/show_session_' + id), { cache:'no-store' }); var d = await r.json().catch(function(){ return {}; }); return d && d.value ? (typeof d.value === 'string' ? JSON.parse(d.value) : d.value) : null; } catch(e) { return null; }
+}
+async function writeShowRecord(rec){
+  var r = await storeWorkerFetch(scopedWorkerPath('/kv/show_session_' + rec.id), { method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify(rec) });
+  if(!r.ok) throw new Error('Could not save the show (HTTP ' + r.status + ')');
+}
+function newShowId(){ return (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : 'show_' + Date.now().toString(36); }
 window.EXP = {
+  renameShow:async function(id){
+    var rec = await readShowRecord(id);
+    var current = (rec && rec.eventName) || ((state.shows || []).find(function(x){ return x.id === id; }) || {}).name || 'Show';
+    var name = prompt('Show name', current === 'Show (recent sales)' || current === 'Show (cash bag open)' ? '' : current);
+    if(name === null || !name.trim()) return;
+    try {
+      // An open show keeps its open state; a show with no saved record gets a closed one.
+      await writeShowRecord(Object.assign({ id:id, status:'closed', startedAt:'' }, rec || {}, { eventName:name.trim(), updatedAt:new Date().toISOString() }));
+      toast('Show renamed'); load();
+    } catch(e) { toast(e.message || String(e)); }
+  },
+  splitShowDay:async function(id, day){
+    var client = sb(), store = storeId();
+    var res = await client.from('pos_sales').select('id,completed_at').eq('store_id', store).eq('show_session_id', id).limit(2000);
+    if(res.error){ toast('Could not load the show: ' + res.error.message); return; }
+    var ids = (res.data || []).filter(function(r){ return pacificDay(r.completed_at) === day; }).map(function(r){ return r.id; });
+    if(!ids.length){ toast('No sales on that day'); return; }
+    var rec = await readShowRecord(id), base = (rec && rec.eventName) || 'Show';
+    var name = prompt('Move ' + ids.length + ' sale' + (ids.length === 1 ? '' : 's') + ' from ' + shortDay(day) + ' to their own show. Name it:', base + ' ' + shortDay(day));
+    if(name === null) return;
+    var nid = newShowId();
+    try {
+      await writeShowRecord({ id:nid, eventName:(name.trim() || base + ' ' + shortDay(day)), status:'closed', startedAt:day + 'T12:00:00', splitFrom:id, updatedAt:new Date().toISOString() });
+      var up = await client.from('pos_sales').update({ show_session_id:nid }).eq('store_id', store).in('id', ids);
+      if(up.error) throw up.error;
+      toast(ids.length + ' sale' + (ids.length === 1 ? '' : 's') + ' moved to "' + (name.trim() || base) + '". Costs stay on the original show -- delete and re-add any that belong to this day.');
+      load();
+    } catch(e) { toast('Split failed: ' + (e.message || e)); }
+  },
+  mergeShow:async function(id){
+    var others = showResults(state.sales, state.entries, state.shows).filter(function(r){ return r.id !== id; });
+    if(!others.length){ toast('No other show this month to merge into'); return; }
+    var pick = prompt('Merge this show into which show?\n' + others.map(function(r, i){ return (i + 1) + '. ' + r.name; }).join('\n') + '\n\nType the number:');
+    var target = others[Number(pick) - 1];
+    if(!target) return;
+    if(!confirm('Move every sale, cost and cash bag from this show into "' + target.name + '"?')) return;
+    var client = sb(), store = storeId();
+    try {
+      var a = await client.from('pos_sales').update({ show_session_id:target.id }).eq('store_id', store).eq('show_session_id', id); if(a.error) throw a.error;
+      var b = await client.from('store_expenses').update({ show_session_id:target.id }).eq('store_id', store).eq('show_session_id', id); if(b.error && !isMissingTable(b.error)) throw b.error;
+      var c = await client.from('pos_drawer_sessions').update({ show_session_id:target.id }).eq('store_id', store).eq('show_session_id', id); if(c.error) throw c.error;
+      toast('Merged into "' + target.name + '"'); load();
+    } catch(e) { toast('Merge failed: ' + (e.message || e)); }
+  },
   setMonth:function(month){ state.month = month; load(); },
   refresh:function(){ load(); },
   add:async function(){

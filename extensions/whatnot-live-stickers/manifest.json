@@ -1,11 +1,12 @@
 {
   "manifest_version": 3,
   "name": "Mana Pocket \u2022 Whatnot Live Stickers",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Prints a sticker with the buyer's name and item the moment a sale happens on your Whatnot live show, and records the sale in the Mana Pocket dashboard.",
   "permissions": [
     "storage",
-    "clipboardWrite"
+    "clipboardWrite",
+    "alarms"
   ],
   "host_permissions": [
     "https://www.whatnot.com/*",

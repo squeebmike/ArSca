@@ -1803,6 +1803,19 @@ function connectUpNext(){
       (c.cycle_id?'<button class="hbtn" style="flex:0 0 auto;width:auto;min-height:0;padding:5px 9px;font-size:9px;color:var(--gold)" onclick="focConnectOpenCycle(\''+esc(c.cycle_id)+'\')">ORDER</button>':'')+'</div>';
   }).join('');
 }
+// COLLECTORS TO CALL: customers who have one part of a tracked set (or are
+// on the pull list for one of its titles) but haven't preordered an
+// upcoming part -- see connectingCollectorAlerts in dashboard-app.js.
+function connectCollectorsHtml(){
+  if(typeof window.connectingCollectorAlerts!=='function')return '';
+  var covers=Object.keys(connectState.covers).map(function(id){return connectState.covers[id];});
+  var alerts=window.connectingCollectorAlerts(connectState.saved.sets,covers,connectState.aliases,connectToday());
+  if(!alerts.length)return '';
+  return '<div class="ph" style="margin-top:12px;color:var(--purple)">COLLECTORS TO CALL ('+alerts.length+')</div>'+alerts.slice(0,30).map(function(a){
+    var c=a.cover;
+    return '<div style="padding:6px;border:1px solid rgba(199,125,255,.35);border-radius:7px;margin-top:5px;font:9px/1.5 var(--font-mono);color:var(--dim)"><b style="font-size:10px;color:var(--text)">'+esc(a.name)+'</b> '+(a.pull?'is on the pull list for '+esc(a.set):'has '+esc(a.has.join(', ')))+'<br>Not preordered yet: <b style="color:var(--text)">'+(c.part?'Part '+c.part+' · ':'')+esc(c.title||'')+'</b> · FOC '+esc(displayDate(c.foc_date))+'</div>';
+  }).join('');
+}
 function connectSetCard(set,saved,suggestIdx){
   var sum=connectSetSummary(set);
   var head='<div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center"><div><b style="font-size:12px;color:var(--text)">'+esc(set.name||'Connecting set')+'</b>'+(saved?'':' <span class="foc-badge">SUGGESTED</span>')+(sum.complete?' <span class="foc-badge" style="color:var(--g);border-color:var(--g)">COMPLETE</span>':'')+
@@ -1836,7 +1849,7 @@ function renderConnecting(){
   var suggestCards=suggestions.filter(function(x){return matches(x.set);}).map(function(x){return connectSetCard(x.set,false,x.idx);}).join('');
   body.innerHTML='<div style="font:10px/1.6 var(--font-mono);color:var(--dim)">Covers come from every FOC import whose wording says they connect, across titles. <b style="color:var(--g)">Bought</b> = ordered for the shelf or by customers; <b style="color:var(--red)">missed</b> = FOC passed with none ordered; <b style="color:var(--gold)">upcoming</b> = FOC still ahead. Mark covers you got elsewhere as HAVE IT.</div>'+
     '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;align-items:center">'+filters+'</div><div style="display:flex;gap:6px;margin-top:6px;align-items:center"><input class="tsi" placeholder="Filter sets" value="'+esc(connectState.query)+'" oninput="focConnectQuery(this.value)" style="flex:1;min-width:0"><button class="hbtn" style="flex:0 0 auto;width:auto" onclick="focConnectNewSet()">+ NEW SET</button></div>'+
-    connectUpNext()+
+    connectUpNext()+connectCollectorsHtml()+
     '<div class="ph" style="margin-top:12px">TRACKED SETS ('+connectState.saved.sets.length+')</div>'+(savedCards||'<div style="color:var(--dim);font:10px var(--font-mono);padding:8px 0">'+(connectState.saved.sets.length?'No tracked set matches this filter.':'No sets tracked yet -- choose TRACK THIS SET on a suggestion below, or + NEW SET.')+'</div>')+
     '<div class="ph" style="margin-top:14px;display:flex;justify-content:space-between;align-items:center;gap:8px">SUGGESTED FROM YOUR FOC IMPORTS ('+suggestions.length+')'+(suggestions.length?'<button class="hbtn" style="flex:0 0 auto;width:auto;min-height:0;padding:5px 9px;font-size:9px;color:var(--g)" onclick="focConnectTrackAll()">TRACK ALL</button>':'')+'</div>'+(suggestCards||'<div style="color:var(--dim);font:10px var(--font-mono);padding:8px 0">No untracked connecting covers found.</div>');
 }

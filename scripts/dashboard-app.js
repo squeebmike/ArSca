@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.10.06.5-app-file';
+const APP_VERSION = '2026.10.06.6-stickers-collectors-shows';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -14436,6 +14436,33 @@ function connectingCoverAlerts(sets = [], covers = [], suggested = [], today = n
   });
   return { due, fresh };
 }
+// Collectors missing a part: a customer who preordered one part of a tracked
+// set (or subscribes to a pull list for one of its titles) but hasn't
+// preordered an upcoming part yet -- someone to call before that FOC.
+// Shared by the Home alert and the FOC Wall's CONNECTING COVERS screen.
+function connectingCollectorAlerts(sets = [], covers = [], aliases = {}, today = new Date().toISOString().slice(0, 10)){
+  const byId = new Map(covers.map(c => [c.id, c]));
+  const nameOf = v => String(v || '').replace(/\s*×\d+$/, '').trim();
+  const alerts = [];
+  sets.forEach(set => {
+    const seen = new Set();
+    const parts = (set.skuIds || []).map(id => byId.get(aliases[id] || id)).filter(c => c && !seen.has(c.id) && seen.add(c.id));
+    const collectors = new Map();
+    parts.forEach(c => {
+      (c.customers || []).forEach(n => { const k = nameOf(n); if(k){ const e = collectors.get(k) || { has:new Set(), pull:false }; e.has.add(c.id); collectors.set(k, e); } });
+      (c.pullSubscribers || []).forEach(n => { const k = nameOf(n); if(k){ const e = collectors.get(k) || { has:new Set(), pull:false }; e.pull = true; collectors.set(k, e); } });
+    });
+    parts.filter(c => c.foc_date && c.foc_date >= today).forEach(c => {
+      const onIt = new Set((c.customers || []).map(nameOf));
+      collectors.forEach((e, name) => {
+        if(onIt.has(name) || (!e.has.size && !e.pull)) return;
+        const hasTitles = parts.filter(p => e.has.has(p.id)).map(p => (p.part ? 'part ' + p.part + ' ' : '') + (p.title || ''));
+        alerts.push({ name, set:set.name, setId:set.id, cover:c, has:hasTitles, pull:e.pull && !e.has.size });
+      });
+    });
+  });
+  return alerts.sort((a, b) => String(a.cover.foc_date).localeCompare(String(b.cover.foc_date)) || a.name.localeCompare(b.name));
+}
 let _connectingPulseCache = { at:0, value:null };
 async function connectingCoverPulseAction(){
   if(Date.now() - _connectingPulseCache.at < 15 * 60 * 1000) return _connectingPulseCache.value;
@@ -14447,8 +14474,12 @@ async function connectingCoverPulseAction(){
     const ids = [...new Set(sets.flatMap(st => st.skuIds || []))].slice(0, 100);
     const r = await storeWorkerFetch('/foc/admin/connecting-covers?store_id=' + encodeURIComponent(getActiveStoreId()) + (ids.length ? '&ids=' + encodeURIComponent(ids.join(',')) : ''));
     const data = await r.json().catch(() => ({}));
-    const { due, fresh } = connectingCoverAlerts(sets, data.covers || [], data.suggestedSets || []);
+    const aliases = data.aliases || {};
+    const resolved = sets.map(st => ({ ...st, skuIds:(st.skuIds || []).map(id => aliases[id] || id) }));
+    const { due, fresh } = connectingCoverAlerts(resolved, data.covers || [], data.suggestedSets || []);
+    const collectors = connectingCollectorAlerts(sets, data.covers || [], aliases);
     const parts = [];
+    if(collectors.length) parts.push(collectors.length + ' collector' + (collectors.length === 1 ? '' : 's') + ' missing an upcoming part (' + [...new Set(collectors.map(a => a.name))].slice(0, 3).join(', ') + ')');
     if(due.length) parts.push(due.length + ' tracked part' + (due.length === 1 ? '' : 's') + ' hit FOC within 7 days with none ordered');
     if(fresh.length) parts.push(fresh.length + ' new part' + (fresh.length === 1 ? '' : 's') + ' solicited for a tracked set');
     if(parts.length) value = { text:'Connecting covers: ' + parts.join('; ') + ' -- FOC Wall > CONNECTING COVERS', tab:'foc' };

@@ -6,13 +6,18 @@ async function load(){
   var s = Object.assign({}, DEFAULTS, data.settings);
   $('enabled').checked = s.enabled; $('giveaways').checked = s.giveaways; $('size').value = s.size;
   $('count').textContent = data.sales.length;
+  var now = Date.now();
+  var missedOf = function(sale){ return !sale.test && !sale.printedAt && (!sale.printRequestedAt || now - Date.parse(sale.printRequestedAt) >= 60000); };
+  var missed = data.sales.filter(missedOf).length;
+  $('missed-box').hidden = !missed; $('missed-count').textContent = missed;
   var host = $('sales'); host.textContent = '';
   data.sales.slice(0, 100).forEach(function(sale){
     var row = document.createElement('div'); row.className = 'sale';
     var info = document.createElement('div');
     var who = document.createElement('b'); who.textContent = '@' + sale.buyer;
     var what = document.createElement('small');
-    what.textContent = (sale.type === 'giveaway' ? 'Giveaway' : sale.title || 'Item') + (sale.price ? ' · $' + sale.price : '') + ' · ' + new Date(sale.at).toLocaleTimeString([], { hour:'numeric', minute:'2-digit' }) + (sale.test ? '' : sale.synced ? ' \u00b7 \u2713 in dashboard' : ' \u00b7 waiting for dashboard');
+    what.textContent = (sale.type === 'giveaway' ? 'Giveaway' : sale.title || 'Item') + (sale.price ? ' · $' + sale.price : '') + ' · ' + new Date(sale.at).toLocaleTimeString([], { hour:'numeric', minute:'2-digit' }) + (sale.test ? '' : sale.synced ? ' \u00b7 \u2713 in dashboard' : ' \u00b7 waiting for dashboard') + (missedOf(sale) ? ' \u00b7 \u26a0 sticker not printed' : '');
+    if(missedOf(sale)) what.className = 'miss';
     info.appendChild(who); info.appendChild(what);
     var btn = document.createElement('button'); btn.textContent = 'REPRINT';
     btn.addEventListener('click', function(){ chrome.runtime.sendMessage({ type:'wls-reprint', id:sale.id }); });
@@ -23,6 +28,10 @@ async function saveSettings(){
   await chrome.storage.local.set({ settings:{ enabled:$('enabled').checked, giveaways:$('giveaways').checked, size:$('size').value } });
   say('Saved');
 }
+$('print-missed').addEventListener('click', function(){
+  say('Printing missed stickers…');
+  chrome.runtime.sendMessage({ type:'wls-print-missed' }, function(r){ say((r && r.count ? r.count : 0) + ' missed sticker(s) sent to the printer'); load(); });
+});
 ['enabled','giveaways','size'].forEach(function(id){ $(id).addEventListener('change', saveSettings); });
 $('test').addEventListener('click', async function(){
   var data = await chrome.storage.local.get({ sales:[] });
