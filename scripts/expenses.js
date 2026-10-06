@@ -149,19 +149,41 @@ function showLabel(sh){ var d = Date.parse(sh.lastAt || sh.startedAt || ''); ret
 
 // Each show's money this month: in-person sales tagged with the show, or a
 // Whatnot show's saved summary, less the costs tagged to it.
+// The store's own calendar day (Pacific) a sale happened on.
+function pacificDay(iso){
+  var t = Date.parse(iso || '');
+  return isFinite(t) ? new Date(t).toLocaleDateString('en-CA', { timeZone:'America/Los_Angeles' }) : '';
+}
+// Buy/add notes end with an internal key (" · buy buy_session_..."), kept so
+// a retry never doubles a row -- not something to read on screen.
+function displayNote(note){ return String(note || '').replace(/ · (backfill · )?(buy|add) [A-Za-z0-9_-]+$/, '').replace(/ · backfill$/, ''); }
+function shortDay(day){ var p = String(day || '').split('-'); return p.length === 3 ? Number(p[1]) + '/' + Number(p[2]) : day; }
+// Each show, plus each day of it (a weekend show = Saturday and Sunday).
+// Costs tagged to the show (a weekend's table fee) are split evenly across
+// the days it sold on.
 function showResults(sales, entries, shows){
   var byId = {};
-  var get = function(id){ return byId[id] || (byId[id] = { id:id, sales:0, profit:0, costs:0, hasSummary:false }); };
+  var get = function(id){ return byId[id] || (byId[id] = { id:id, sales:0, profit:0, costs:0, hasSummary:false, days:{} }); };
   (sales || []).forEach(function(sale){
     if(!sale.show_session_id) return;
-    var r = get(sale.show_session_id); r.sales += Number(sale.total || 0);
-    (sale.pos_sale_lines || []).forEach(function(l){ r.profit += Number(l.profit != null ? l.profit : Number(l.adjusted_price || 0) - Number(l.cost_basis || 0)); });
+    var r = get(sale.show_session_id), day = pacificDay(sale.completed_at);
+    var d = r.days[day] || (r.days[day] = { day:day, sales:0, profit:0, costs:0 });
+    var total = Number(sale.total || 0), profit = 0;
+    (sale.pos_sale_lines || []).forEach(function(l){ profit += Number(l.profit != null ? l.profit : Number(l.adjusted_price || 0) - Number(l.cost_basis || 0)); });
+    r.sales += total; r.profit += profit; d.sales += total; d.profit += profit;
   });
   (entries || []).forEach(function(e){ if(e.show_session_id && e.kind !== 'inventory') get(e.show_session_id).costs += Number(e.amount || 0); });
   var list = Object.keys(byId).map(function(id){
     var r = byId[id], sh = (shows || []).find(function(x){ return x.id === id; }) || { id:id, name:'Show', kind:'in-person' };
     if(!r.sales && sh.summary && sh.kind === 'whatnot'){ r.sales = Number(sh.summary.gross || 0); r.profit = Number(sh.summary.net || 0); r.hasSummary = true; }
-    r.name = showLabel(sh); r.net = round2(r.profit - r.costs); r.sales = round2(r.sales); r.profit = round2(r.profit); r.costs = round2(r.costs);
+    var days = Object.keys(r.days).filter(Boolean).sort();
+    var share = days.length ? r.costs / days.length : 0;
+    r.dayList = days.map(function(k){ var d = r.days[k]; d.costs = round2(share); d.sales = round2(d.sales); d.profit = round2(d.profit); d.net = round2(d.profit - d.costs); d.label = new Date(k + 'T12:00:00').toLocaleDateString('en-US', { weekday:'short' }) + ' ' + shortDay(k); return d; });
+    // Named by its own sale dates ("Oct 3-4"), not the last sale alone.
+    var base = sh.kind === 'whatnot' ? showLabel(sh) : (sh.name || 'Show');
+    r.name = days.length && sh.kind !== 'whatnot' ? base + ' · ' + shortDay(days[0]) + (days.length > 1 ? '–' + shortDay(days[days.length - 1]) : '') : base;
+    r.net = round2(r.profit - r.costs); r.sales = round2(r.sales); r.profit = round2(r.profit); r.costs = round2(r.costs);
+    delete r.days;
     return r;
   });
   return list.sort(function(a, b){ return b.sales - a.sales; });
@@ -259,7 +281,7 @@ function render(){
   var rows = state.entries.map(function(e){
     return '<div style="display:grid;grid-template-columns:1fr auto;gap:8px;padding:7px 0;border-bottom:1px solid var(--border)">' +
       '<span style="min-width:0"><b style="color:var(--text)">' + esc(e.category) + '</b> <span style="font-size:9px;padding:1px 6px;border-radius:9px;border:1px solid ' + (e.kind === 'inventory' ? 'var(--blue,#5ab0ff)' : 'var(--gold)') + ';color:' + (e.kind === 'inventory' ? 'var(--blue,#5ab0ff)' : 'var(--gold)') + '">' + (e.kind === 'inventory' ? 'INVENTORY' : 'EXPENSE') + '</span><br>' +
-        '<span style="color:var(--dim)">' + esc(e.spent_on) + (e.note ? ' · ' + esc(e.note) : '') + '</span></span>' +
+        '<span style="color:var(--dim)">' + esc(e.spent_on) + (e.note ? ' · ' + esc(displayNote(e.note)) : '') + '</span></span>' +
       '<span style="text-align:right"><b style="color:var(--text)">' + usd(e.amount) + '</b>' + (canDelete() ? '<br><button class="hbtn" style="margin:2px 0 0;padding:2px 8px;font-size:9px" onclick="EXP.remove(\'' + esc(e.id) + '\')">DELETE</button>' : '') + '</span></div>';
   }).join('');
   el.innerHTML = '<div class="panel" style="margin-bottom:14px"><div class="ph">EXPENSES &amp; CASH FLOW <span style="font-size:9px;color:var(--dim)">what you spent, and what you really kept</span></div>' +
@@ -306,8 +328,11 @@ function showsHtml(){
   var list = showResults(state.sales, state.entries, state.shows);
   if(!list.length) return '';
   return '<div style="margin-top:8px"><b>SHOWS THIS MONTH</b>' + list.map(function(r){
-    return '<div style="display:flex;justify-content:space-between;gap:8px;padding:4px 0;border-bottom:1px solid var(--border)"><span style="min-width:0">' + esc(r.name) + '<br><span style="color:var(--dim)">sales ' + usd(r.sales) + ' · ' + (r.hasSummary ? 'Whatnot profit ' : 'profit ') + usd(r.profit) + (r.costs ? ' · show costs -' + usd(r.costs) : '') + '</span></span>' +
-      '<b style="color:' + (r.net >= 0 ? 'var(--g)' : 'var(--red)') + ';white-space:nowrap">' + usd(r.net) + '</b></div>';
+    var perDay = (r.dayList || []).length > 1 ? r.dayList.map(function(d){
+      return '<div style="display:flex;justify-content:space-between;gap:8px;padding:2px 0 2px 12px;color:var(--dim)"><span>' + esc(d.label) + ': sales ' + usd(d.sales) + ' · profit ' + usd(d.profit) + (d.costs ? ' · costs -' + usd(d.costs) : '') + '</span><b style="color:' + (d.net >= 0 ? 'var(--g)' : 'var(--red)') + ';white-space:nowrap">' + usd(d.net) + '</b></div>';
+    }).join('') + (r.costs ? '<div style="padding:0 0 2px 12px;color:var(--dim);font-size:9px">Show costs are split evenly across the days.</div>' : '') : '';
+    return '<div style="padding:4px 0;border-bottom:1px solid var(--border)"><div style="display:flex;justify-content:space-between;gap:8px"><span style="min-width:0">' + esc(r.name) + '<br><span style="color:var(--dim)">sales ' + usd(r.sales) + ' · ' + (r.hasSummary ? 'Whatnot profit ' : 'profit ') + usd(r.profit) + (r.costs ? ' · show costs -' + usd(r.costs) : '') + '</span></span>' +
+      '<b style="color:' + (r.net >= 0 ? 'var(--g)' : 'var(--red)') + ';white-space:nowrap">' + usd(r.net) + '</b></div>' + perDay + '</div>';
   }).join('') + '<div style="color:var(--dim);margin-top:4px">Each show\'s profit after the costs tagged to it (table fee, gas…). Tag a cost with "For a show" when adding it.</div></div>';
 }
 function recurringHtml(){

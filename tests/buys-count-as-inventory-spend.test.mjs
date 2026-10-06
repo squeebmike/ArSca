@@ -22,7 +22,7 @@ const route = w.slice(w.indexOf("if (url.pathname === '/expenses/buy-purchase') 
 assert.ok(route.length > 200, 'missing the buy-purchase route');
 assert.ok(w.indexOf("if (url.pathname === '/expenses/buy-purchase') {") < w.indexOf("if (url.pathname.startsWith('/kv/')) {"));
 assert.match(route, /requireStoreUser\(request, env, storeId, \['owner','admin','manager','employee'\]\)/);
-assert.match(route, /kind: 'inventory', category: 'Customer buys'/);
+assert.match(route, /kind: 'inventory', category: isAdd \? 'Inventory added' : 'Customer buys'/);
 assert.match(route, /method: 'PATCH', body: JSON\.stringify\(\{ amount, note \}\)/, 'a retry sets the amount instead of adding');
 assert.match(route, /if \(!\(amount > 0\) \|\| amount > 100000\)/);
 console.log('Buys count as inventory spend checks passed');

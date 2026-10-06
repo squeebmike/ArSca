@@ -7761,10 +7761,19 @@ async function routeRequest(request, env, ctx) {
       if (!/^[A-Za-z0-9_-]{1,80}$/.test(id)) return json({ ok: false, error: 'buySessionId is required' }, 400);
       if (!(amount > 0) || amount > 100000) return json({ ok: false, error: 'amount must be between 0 and 100000' }, 400);
       const date = /^\d{4}-\d{2}-\d{2}$/.test(String(body.date || '')) ? body.date : new Date().toISOString().slice(0, 10);
-      const key = `buy ${id}`;
-      const who = String(body.customerName || '').replace(/[\r\n]/g, ' ').slice(0, 80);
-      const how = String(body.method || '').replace(/[\r\n]/g, ' ').slice(0, 40);
-      const note = `Customer buy${who ? ': ' + who : ''}${how ? ' · ' + how : ''} · ${key}`;
+      // kind 'add': stock added straight to inventory (Quick Add, Research ->
+      // Add to inventory) with a cost -- also money spent on inventory.
+      const isAdd = body.kind === 'add';
+      const key = `${isAdd ? 'add' : 'buy'} ${id}`;
+      const clean = (v, n) => String(v || '').replace(/[\r\n]/g, ' ').trim().slice(0, n);
+      const who = clean(body.customerName, 80);
+      const how = clean(body.method, 40);
+      // What was bought, by name ("Jirachi, Primarina GX +3 more"), so the
+      // Costs list says what the money went on.
+      const names = (Array.isArray(body.items) ? body.items : []).map(n => clean(n, 80)).filter(Boolean);
+      const what = names.length ? names.slice(0, 4).join(', ') + (names.length > 4 ? ` +${names.length - 4} more` : '') : '';
+      const head = isAdd ? 'Added to inventory' : `Customer buy${who ? ': ' + who : ''}`;
+      const note = `${head}${what ? ' · ' + what : ''}${how ? ' · ' + how : ''} · ${key}`.slice(0, 600);
       try {
         const found = await supabaseAdminFetch(env, `store_expenses?store_id=eq.${encodeURIComponent(storeId)}&kind=eq.inventory&note=like.*${encodeURIComponent(key)}&select=id,amount&limit=1`);
         const prev = (found.data || [])[0];
@@ -7772,7 +7781,7 @@ async function routeRequest(request, env, ctx) {
           await supabaseAdminFetch(env, `store_expenses?id=eq.${encodeURIComponent(prev.id)}&store_id=eq.${encodeURIComponent(storeId)}`, { method: 'PATCH', body: JSON.stringify({ amount, note }) });
           return json({ ok: true, updated: true, amount });
         }
-        await supabaseAdminFetch(env, 'store_expenses', { method: 'POST', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ store_id: storeId, spent_on: date, kind: 'inventory', category: 'Customer buys', amount, note, created_by: auth.user?.id || null }) });
+        await supabaseAdminFetch(env, 'store_expenses', { method: 'POST', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ store_id: storeId, spent_on: date, kind: 'inventory', category: isAdd ? 'Inventory added' : 'Customer buys', amount, note, created_by: auth.user?.id || null }) });
         return json({ ok: true, amount });
       } catch (e) {
         return json({ ok: false, error: e.message || String(e) }, 500);

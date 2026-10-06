@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.10.05.7-lunar-order-upload">
+<meta name="version" content="2026.10.06.1-show-days-buy-names">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1661,23 +1661,23 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.10.05.7-lunar-order-upload" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.10.05.7-lunar-order-upload" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.10.05.7-lunar-order-upload" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.10.05.7-lunar-order-upload" defer></script>
-<script src="scripts/backlist-dashboard.js?v=2026.10.05.7-lunar-order-upload" defer></script>
-<script src="scripts/database-viewer.js?v=2026.10.05.7-lunar-order-upload" defer></script>
-<script src="scripts/card-intake-dashboard.js?v=2026.10.05.7-lunar-order-upload" defer></script>
-<script src="scripts/mana-pocket-task-library.js?v=2026.10.05.7-lunar-order-upload" defer></script>
-<script src="scripts/daily-tasks-dashboard.js?v=2026.10.05.7-lunar-order-upload" defer></script>
-<script src="scripts/expenses.js?v=2026.10.05.7-lunar-order-upload" defer></script>
-<script src="scripts/whatnot-bridge.js?v=2026.10.05.7-lunar-order-upload" defer></script>
+<script src="scripts/query-routing.js?v=2026.10.06.1-show-days-buy-names" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.10.06.1-show-days-buy-names" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.10.06.1-show-days-buy-names" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.10.06.1-show-days-buy-names" defer></script>
+<script src="scripts/backlist-dashboard.js?v=2026.10.06.1-show-days-buy-names" defer></script>
+<script src="scripts/database-viewer.js?v=2026.10.06.1-show-days-buy-names" defer></script>
+<script src="scripts/card-intake-dashboard.js?v=2026.10.06.1-show-days-buy-names" defer></script>
+<script src="scripts/mana-pocket-task-library.js?v=2026.10.06.1-show-days-buy-names" defer></script>
+<script src="scripts/daily-tasks-dashboard.js?v=2026.10.06.1-show-days-buy-names" defer></script>
+<script src="scripts/expenses.js?v=2026.10.06.1-show-days-buy-names" defer></script>
+<script src="scripts/whatnot-bridge.js?v=2026.10.06.1-show-days-buy-names" defer></script>
 <script src="scripts/research-loupe.js?v=a7de4ffe90" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.10.05.7-lunar-order-upload" defer></script>
-<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.10.05.7-lunar-order-upload" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.10.05.7-lunar-order-upload" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.10.05.7-lunar-order-upload" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.10.05.7-lunar-order-upload" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.10.06.1-show-days-buy-names" defer></script>
+<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.10.06.1-show-days-buy-names" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.10.06.1-show-days-buy-names" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.10.06.1-show-days-buy-names" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.10.06.1-show-days-buy-names" defer></script>
 </head>
 <body>
 
@@ -1729,7 +1729,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
 <div class="dsb-chip" id="dsb-tasks" title="Today's Roles &amp; Tasks — click to jump to Tasks tab" style="cursor:pointer;display:none" onclick="switchTab('tasks')">✅ <span>TASKS:</span> <b id="dsb-tasks-val">—</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.10.05.7-lunar-order-upload</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.10.06.1-show-days-buy-names</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3917,7 +3917,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.10.05.7-lunar-order-upload';
+const APP_VERSION = '2026.10.06.1-show-days-buy-names';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -8925,6 +8925,7 @@ async function addManualBuiltInInventory(){
         if(item.upc && !dupe.upc) updates.upc = item.upc;
         await saveInventoryEdit(dupe, updates);
         Object.assign(dupe, updates);
+        recordInventoryAddCost({ name:dupe.name || item.name }, item.qty, newCost, dupe.id);
         ['built-name','built-cost','built-price','built-qty','built-upc'].forEach(fid => { const el = document.getElementById(fid); if(el) el.value = fid === 'built-qty' ? '1' : ''; });
         logOpsEvent('inventory_add', 'Quick Add merged into existing item: ' + (dupe.name || item.name), { id:dupe.id, added:item.qty, total });
         toast_dash('Added ' + item.qty + ' to ' + (dupe.name || item.name) + ' -- ' + total + ' in stock');
@@ -8935,6 +8936,7 @@ async function addManualBuiltInInventory(){
   }
   try {
     const id = await createBuiltInInventoryItem(item, item, 'manual_quick_add');
+    recordInventoryAddCost(item, item.qty, item.cost, id);
     ['built-name','built-set','built-year','built-condition','built-location','built-cost','built-price','built-qty','built-image','built-notes','built-image-sealed','built-notes-sealed','built-grader','built-grade','built-cert','built-upc'].forEach(k => { const el=document.getElementById(k); if(el) el.value=k==='built-qty' ? '1' : ''; });
     const gradedCheckbox = document.getElementById('built-is-graded'); if(gradedCheckbox){ gradedCheckbox.checked=false; toggleBuiltGradedRow(); }
     logOpsEvent('inventory_add', 'Manual built-in inventory item added: ' + item.name, { id, category:item.category, productType, cost:item.cost, price:item.market });
@@ -28146,6 +28148,7 @@ async function confirmAddToInventoryFromModal(){
 
   const statusEl = document.getElementById('edit-sync-status');
   if(statusEl) { statusEl.style.color = 'var(--gold)'; statusEl.textContent = 'Adding inventory...'; }
+  recordInventoryAddCost(item, item.qty, item.cost, item.id || item.name);
   try {
     const productId = await createInventoryRecord(item, item);
     logOpsEvent('inventory_add', 'Added quick lookup item: ' + item.name, { productId, category:item.category, market:item.market, inventorySource:getInventorySource() });
@@ -42361,12 +42364,24 @@ async function postBuyInventoryCost(payload){
   if(!res.ok || !data.ok) throw new Error(data.error || ('Buy cost not saved (HTTP ' + res.status + ')'));
   return data;
 }
+// Stock added straight to inventory with a cost (Quick Add, Research ->
+// Add to inventory) is inventory spend too, same as a buy -- recorded the
+// same way, by item name. CSV imports (stock already owned) and FOC
+// receiving (counted by invoice) don't come through here.
+function recordInventoryAddCost(item, qty, unitCost, refId){
+  const amount = Math.round(Math.max(0, Number(unitCost) || 0) * Math.max(1, Number(qty) || 1) * 100) / 100;
+  if(!(amount > 0) || getAccountContext().isDemo) return;
+  const id = String(refId || item?.id || 'item').replace(/[^A-Za-z0-9_-]/g, '').slice(0, 50) + '-' + Date.now().toString(36);
+  const n = Math.max(1, Number(qty) || 1);
+  const payload = { kind:'add', buySessionId:id, amount, items:[(n > 1 ? n + 'x ' : '') + (item?.name || 'Item')], date:new Date().toLocaleDateString('en-CA') };
+  postBuyInventoryCost(payload).catch(e => enqueueOrReplaceSync('buy-inventory-cost', id, 'Record inventory added as a purchase', payload, e.message || 'Inventory cost sync failed'));
+}
 function recordBuyInventoryCost(session, method){
   const amount = Math.round(Number(session?.cashOfferTotal || 0) * 100) / 100;
   if(!session?.buySessionId || !(amount > 0) || getAccountContext().isDemo) return;
   // Keyed per acceptance, not per tray: a tray accepted twice (more cards
   // added later) is two real payouts, and each one is recorded.
-  const payload = { buySessionId:session.buySessionId + '-' + Date.now().toString(36), amount, method:method || '', customerName:session.customerName || '', date:new Date().toLocaleDateString('en-CA') };
+  const payload = { buySessionId:session.buySessionId + '-' + Date.now().toString(36), amount, method:method || '', customerName:session.customerName || '', items:(session.items || []).map(i => i.name || i.title || '').filter(Boolean).slice(0, 50), date:new Date().toLocaleDateString('en-CA') };
   postBuyInventoryCost(payload).catch(e => enqueueOrReplaceSync('buy-inventory-cost', session.buySessionId, 'Record buy as inventory purchase', payload, e.message || 'Buy cost sync failed'));
 }
 
@@ -49394,7 +49409,7 @@ async function toppsLoadParallels(cardId){
   window.__arscaCloseModal = closeModal;
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.10.05.7-lunar-order-upload" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.10.06.1-show-days-buy-names" defer></script>
 </body>
 </html>
 
