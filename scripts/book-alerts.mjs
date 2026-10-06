@@ -8,6 +8,34 @@ const EVENTS = new Set(['preorder_open','preorder_cutoff','in_stock']);
 const enc = encodeURIComponent;
 const iso = n => new Date(n).toISOString();
 
+// The verified Auth email is the ownership boundary, never a client email.
+export async function handleAccountBookAlerts(request,env,url,deps) {
+  const auth = await deps.requireAuthenticatedUser(request,env);
+  if (auth.error) return auth.error;
+  if (!auth.user.email || !auth.user.email_confirmed_at) return deps.json({ok:false,error:'Verify your account email to manage book alerts.'},403);
+  const email = auth.user.email.trim().toLowerCase();
+  const scope = `store_id=eq.${enc(deps.storeId)}&email=eq.${enc(email)}`;
+  if (request.method === 'GET') {
+    const offset = Number(url.searchParams.get('offset') || 0);
+    if (!Number.isInteger(offset) || offset < 0 || offset > 10000) return deps.json({ok:false,error:'Invalid page.'},400);
+    const rows = await db(env,deps,`${TABLE}?${scope}&select=id,book,event,status,created_at,sent_at&order=created_at.desc,id.asc&limit=51&offset=${offset}`);
+    const response = deps.json({ok:true,alerts:rows.slice(0,50),nextOffset:rows.length>50?offset+50:null});
+    response.headers.set('Cache-Control','private, no-store');
+    return response;
+  }
+  if (request.method === 'PATCH') {
+    const limited = await deps.readJsonWithLimit(request,1024);
+    if (limited.error) return limited.error;
+    const id = String(limited.data?.id || '');
+    if (!UUID.test(id)) return deps.json({ok:false,error:'Invalid alert.'},400);
+    const rows = await db(env,deps,`${TABLE}?${scope}&id=eq.${enc(id)}&status=in.(active,checking,sending)`,{
+      method:'PATCH',headers:{Prefer:'return=representation'},body:JSON.stringify({status:'unsubscribed',lease_token:null,lease_until:null}),
+    });
+    return deps.json({ok:!!rows?.length,...(!rows?.length?{error:'Alert unavailable or already stopped.'}:{})},rows?.length?200:404);
+  }
+  return deps.json({ok:false,error:'Method not allowed.'},405);
+}
+
 export function validateBookAlert(body, storeId) {
   const book = String(body.book || '').trim();
   const email = String(body.contactEmail || '').trim().toLowerCase();

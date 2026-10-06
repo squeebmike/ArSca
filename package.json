@@ -202,7 +202,7 @@
     "test:stale-web-order-alert": "node tests/stale-web-order-alert.test.mjs",
     "test:whatnot-bridge": "node tests/whatnot-bridge.test.mjs",
     "test:foc-receive-comic-details": "node tests/foc-receive-comic-details.test.mjs",
-    "test:book-alerts": "node --test tests/book-alerts.test.mjs"
+    "test:book-alerts": "node --test tests/book-alerts.test.mjs tests/book-alert-management.test.mjs"
   },
   "devDependencies": {
     "@playwright/test": "^1.52.0",

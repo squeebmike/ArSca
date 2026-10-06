@@ -1,3 +1,4 @@
+import { renderBookAlertForm, alertBookTitle } from './book-alert-ui.mjs';
 // The Mana Pocket PRH backlist catalog service.
 //
 // PRH's backlist feed (DM_BIZ_Backlist-US_PRH_metadata_full.csv) lists
@@ -532,6 +533,7 @@ async function backlistBookDetailPage(env, deps, id, providedSlug) {
       `<button id="mp-share-btn" style="padding:12px 20px;border-radius:12px;border:1px solid rgba(255,255,255,.2);background:transparent;color:inherit;cursor:pointer;font:inherit" data-title="${deps.mtgEscapeHtml(row.title)}" data-text="${deps.mtgEscapeHtml(description)}">Share</button>` +
       `</div>` +
       `</div></div>` +
+      renderBookAlertForm([alertBookTitle(row.title)],deps.publicStoreId,deps.mtgEscapeHtml) +
       // Same navigator.share / clipboard-copy / window.prompt fallback chain
       // preorders.js's own shareSku() already established for the comic
       // preorder pages -- kept identical here rather than inventing a

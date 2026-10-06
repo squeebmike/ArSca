@@ -90,6 +90,7 @@ export function comicSearchClient(css, shell) {
     } else {
       var action = node('a', actions[kind], 'mp-cs-action'); action.href = href; el.appendChild(action);
     }
+    var alerts = node('a', 'Book alerts'); alerts.href = '/book-alerts?book=' + encodeURIComponent(item.title.replace(/(#\s*\d+).*$/, '$1').slice(0,200)); alerts.className='mp-cs-alert'; el.appendChild(alerts);
     return el;
   }
   function render() {
