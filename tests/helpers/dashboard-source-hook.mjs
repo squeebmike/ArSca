@@ -3,8 +3,8 @@
 // by one <script src> tag at the exact spot it used to sit inline.
 //
 // Hundreds of tests check the dashboard's code by reading dashboard.html.
-// This preload (wired up in .npmrc as node-options, so every `npm test`
-// script gets it) makes any read of dashboard.html return the page with the
+// This preload (applied to the whole `npm test` run by run-tests.mjs, and
+// by the deploy workflow's one dashboard check) makes any read of dashboard.html return the page with the
 // app code back inline in place of that tag -- byte-for-byte the page as it
 // was before the move -- so those tests keep checking the real code.
 import fs from 'node:fs';
