@@ -1,4 +1,5 @@
-import { handleBookAlertRequest, runBookAlerts } from './scripts/book-alerts.mjs';
+import { renderBookAlertForm, alertBookTitle } from './scripts/book-alert-ui.mjs';
+import { handleBookAlertRequest, handleAccountBookAlerts, runBookAlerts } from './scripts/book-alerts.mjs';
 import { isBcwItem, isBcwPublished, catalogSelection, renderBcwCatalog, renderBcwProduct } from './scripts/bcw-storefront.mjs';
 import { importDropshipBatch } from './scripts/dropship-import.mjs';
 import { cachedCatalogSitemap } from './scripts/sitemap-cache.mjs';
@@ -2824,6 +2825,7 @@ function renderItemDetailPage(item, canonicalSlug, allListable) {
       (available ? `<a class="mp-card" style="display:inline-block;padding:12px 20px;margin-top:8px" href="/shop?item=${encodeURIComponent(item.id)}">Add to cart →</a>` : `<p class="mp-sub">This exact copy has sold. Browse ${mtgEscapeHtml(categoryLabel)} for what's currently in stock.</p>`) +
       `${reviewHtml}` +
       `</div></div>` +
+      (item.categorySlug === 'comics' ? renderBookAlertForm([alertBookTitle(item.name)],ITEM_DETAIL_STORE_ID,mtgEscapeHtml) : '') +
       renderRelatedItemsHtml(related),
   });
 }
@@ -5932,6 +5934,15 @@ async function routeRequest(request, env, ctx) {
       });
     }
 
+    if (url.pathname === '/public/account/book-alerts') {
+      return handleAccountBookAlerts(request,env,url,{...bookAlertDeps(),json,readJsonWithLimit,requireAuthenticatedUser});
+    }
+    if (url.pathname === '/book-alerts' && request.method === 'GET') {
+      const book=alertBookTitle(url.searchParams.get('book'));
+      if (!book || /[<>\r\n]/.test(book)) return new Response('Choose a book from comic search.',{status:400});
+      const html=mtgPageShell({title:'Book alerts | The Mana Pocket',description:'Choose an email update for a book.',canonicalPath:'/book-alerts',bodyHtml:renderBookAlertForm([book],ITEM_DETAIL_STORE_ID,mtgEscapeHtml)});
+      return new Response(html,{headers:{'Content-Type':'text/html;charset=UTF-8','X-Robots-Tag':'noindex, follow','Cache-Control':'no-store'}});
+    }
     if (url.pathname.startsWith('/public/account/')) {
       return await handleAccountRequest(request, env, url, {
         CORS, json, supabaseAdminFetch, requireAuthenticatedUser, readJsonWithLimit,
