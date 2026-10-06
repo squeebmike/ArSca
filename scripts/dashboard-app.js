@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.10.06.7-foc-order-helper';
+const APP_VERSION = '2026.10.06.8-receiving-day';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -14404,6 +14404,11 @@ async function computePulseData(){
   }catch(e){ /* best-effort -- Pulse still shows everything else if this fails */ }
 
   try{
+    const late = await lateBooksPulseAction();
+    if(late) actions.unshift(late);
+  }catch(e){ /* best-effort -- Pulse still shows everything else if this fails */ }
+
+  try{
     const myTasks = typeof getMyDailyTasksAction === 'function' ? await getMyDailyTasksAction() : null;
     if(myTasks) actions.push(myTasks);
   }catch(e){ /* best-effort -- Pulse still shows everything else if this fails */ }
@@ -14462,6 +14467,25 @@ function connectingCollectorAlerts(sets = [], covers = [], aliases = {}, today =
     });
   });
   return alerts.sort((a, b) => String(a.cover.foc_date).localeCompare(String(b.cover.foc_date)) || a.name.localeCompare(b.name));
+}
+// Books people already paid for (eBay presale or website preorder) whose
+// on-sale date passed and still haven't been received -- the buyer is
+// waiting. Checked at most every 30 minutes.
+let _lateBooksPulseCache = { at:0, value:null };
+function lateBooksPulseText(late = []){
+  if(!late.length) return '';
+  const copies = late.reduce((n, b) => n + Number(b.waiting || 0), 0);
+  const names = [...new Set(late.map(b => b.title))].slice(0, 2).join('; ');
+  return 'LATE BOOKS: ' + copies + ' paid cop' + (copies === 1 ? 'y' : 'ies') + ' past on-sale and not received (' + names + (late.length > 2 ? ' +' + (late.length - 2) + ' more' : '') + ') -- receive them or check with the distributor';
+}
+async function lateBooksPulseAction(){
+  if(Date.now() - _lateBooksPulseCache.at < 30 * 60 * 1000) return _lateBooksPulseCache.value;
+  const res = await storeWorkerFetch('/foc/admin/late-books?store_id=' + encodeURIComponent(getActiveStoreId()));
+  const data = await res.json().catch(() => ({}));
+  const text = res.ok ? lateBooksPulseText(data.late || []) : '';
+  const value = text ? { text, tab:'foc' } : null;
+  _lateBooksPulseCache = { at:Date.now(), value };
+  return value;
 }
 let _connectingPulseCache = { at:0, value:null };
 async function connectingCoverPulseAction(){
@@ -26352,7 +26376,9 @@ function buildShowRunOfShow(items, opts={}){
   const byValueAsc = [...priced].sort((a, b) => a.price - b.price);
   const giveaway = take(byValueAsc, giveawayCount);
   const engagementTarget = Math.max(0, targetCount - anchors.length - closer.length - opener.length - giveaway.length);
-  const engagement = take(byValueAsc.filter(x => !used.has(x.item.id)), engagementTarget);
+  // Slow sellers flagged from the sell-through report go in first.
+  const flaggedFirst = [...byValueAsc].sort((a, b) => (b.item.raw?.whatnotNextShow ? 1 : 0) - (a.item.raw?.whatnotNextShow ? 1 : 0));
+  const engagement = take(flaggedFirst.filter(x => !used.has(x.item.id)), engagementTarget);
 
   const half = Math.ceil(engagement.length / 2);
   const order = [
@@ -26445,6 +26471,45 @@ async function loadActiveWhatnotShow(){
   }catch(e){ console.warn('[SHOW] load failed:', e.message); }
   renderWhatnotShowPanel();
 }
+// Slow sellers (FOC wall > SELL-THROUGH): mark a book down by a percent
+// (as a price override, so the floor price still wins), or flag it for the
+// next Whatnot show -- the Show Builder puts flagged books into the
+// engagement slots first, and a live show takes it right away.
+function slowSellerItem(itemId){ return (all || []).find(i => i.id === itemId || i.supabaseRowId === itemId) || null; }
+function slowSellerMarkdownPrice(price, pct, floor = 0){
+  const next = Math.round(Number(price || 0) * (1 - Number(pct || 0) / 100) * 100) / 100;
+  return { next, blockedByFloor: floor > 0 && next < floor };
+}
+async function markDownSlowSeller(itemId){
+  const item = slowSellerItem(itemId);
+  if(!item){ toast_dash('Item not found -- refresh inventory first'); return false; }
+  const price = inventoryListPrice(item);
+  if(!(price > 0)){ toast_dash('This item has no price to mark down'); return false; }
+  const pctRaw = prompt('Mark down "' + item.name + '" (now $' + price.toFixed(2) + ') by what percent?', '25');
+  if(pctRaw == null) return false;
+  const pct = Math.max(1, Math.min(90, parseFloat(pctRaw) || 0));
+  const { next, blockedByFloor } = slowSellerMarkdownPrice(price, pct, inventoryMinPrice(item));
+  if(blockedByFloor){ toast_dash('$' + next.toFixed(2) + ' is below this item\'s floor price -- lower the floor first'); return false; }
+  try{
+    item.raw = { ...(item.raw || {}), markdownFrom:price, markdownAt:new Date().toISOString() };
+    await updateBuiltInInventoryItem(item, { priceOverride:next });
+    toast_dash(item.name + ' marked down to $' + next.toFixed(2));
+    return true;
+  }catch(e){ toast_dash('Could not mark down: ' + e.message); return false; }
+}
+async function flagSlowSellerForWhatnot(itemId){
+  const item = slowSellerItem(itemId);
+  if(!item){ toast_dash('Item not found -- refresh inventory first'); return false; }
+  if(whatnotActiveShow){ await addItemToActiveShow(item.id); return true; }
+  try{
+    item.raw = { ...(item.raw || {}), whatnotNextShow:true, whatnotNextShowAt:new Date().toISOString() };
+    await updateBuiltInInventoryItem(item, {});
+    toast_dash(item.name + ' will go into the next Whatnot show');
+    return true;
+  }catch(e){ toast_dash('Could not flag: ' + e.message); return false; }
+}
+window.markDownSlowSeller = markDownSlowSeller;
+window.flagSlowSellerForWhatnot = flagSlowSellerForWhatnot;
 // Store idea (Show Inventory Bucket): drop a specific item into tonight's
 // show on the fly, on top of whatever the Show Builder auto-drafted --
 // reachable from any in-stock item's row menu once a show is live, e.g.
