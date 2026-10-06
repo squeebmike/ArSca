@@ -71,7 +71,9 @@ jobs:
         run: npm run test:parse
 
       - name: Verify SEO discovery
-        run: node --test tests/seo-discovery-regressions.test.mjs tests/foc-preorder-share-page.test.mjs tests/backlist-catalog.test.mjs tests/comic-new-releases.test.mjs tests/bcw-storefront.test.mjs tests/item-seo-pages.test.mjs
+        # dashboard.html's app code is in scripts/dashboard-app.js; this
+        # preload puts it back inline for tests that read dashboard.html.
+        run: node --import=./tests/helpers/dashboard-source-hook.mjs --test tests/seo-discovery-regressions.test.mjs tests/foc-preorder-share-page.test.mjs tests/backlist-catalog.test.mjs tests/comic-new-releases.test.mjs tests/bcw-storefront.test.mjs tests/item-seo-pages.test.mjs
 
       - name: Verify automatic book alerts
         run: node --test tests/book-alerts.test.mjs tests/book-alert-management.test.mjs tests/comic-articles.test.mjs
