@@ -24,7 +24,7 @@ assert.match(dashboard, /if\(btn\)\{ btn\.disabled = false; btn\.textContent = b
 // one item in the batch before doing any work ──
 {
   const fnStart = dashboard.indexOf('async function downloadInventoryLabelPngs(){');
-  const head = dashboard.slice(fnStart, fnStart + 400);
+  const head = dashboard.slice(fnStart, fnStart + 600);
   assert.match(head, /if\(!labelPrintBatch\.length\) return alert\('Add at least one item to print'\);/, 'downloadInventoryLabelPngs must guard on an empty batch');
   assert.match(head, /if\(typeof JsBarcode === 'undefined' \|\| typeof qrcode === 'undefined'\) return alert\('Barcode library still loading -- try again in a moment'\);/, 'downloadInventoryLabelPngs must guard on both not-yet-loaded code libraries, same as printInventoryLabels');
 }

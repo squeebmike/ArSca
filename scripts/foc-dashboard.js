@@ -189,6 +189,7 @@ async function endSelectedOrphanedEbayListings(){
 // found inside the zip for it.
 async function extractXlsxCellImages(buffer){
   var byRow=new Map();
+  if(typeof JSZip==='undefined'&&window.vendorReady)await window.vendorReady('JSZip').catch(function(){});
   if(typeof JSZip==='undefined')return byRow;
   var zip;
   try{zip=await JSZip.loadAsync(buffer);}catch(e){return byRow;}
@@ -271,6 +272,7 @@ async function handleFocFileImport(event,config){
   var file=event.target.files&&event.target.files[0];event.target.value='';if(!file)return;
   var status=document.getElementById('foc-import-status');if(status){status.style.display='block';status.textContent='Reading '+file.name+'…';}
   try{
+    if(typeof XLSX==='undefined'&&window.vendorReady)await window.vendorReady('XLSX').catch(function(){});
     if(typeof XLSX==='undefined')throw new Error('Spreadsheet reader is still loading');
     // raw:true at read time is required for PRH's CSV export specifically --
     // without it, SheetJS "helpfully" type-infers date-looking cells (FOCDate,
@@ -1438,6 +1440,7 @@ async function handleFocPrhCartImportFile(event){
   if(status)status.textContent='Reading '+file.name+'…';
   if(resultHost)resultHost.innerHTML='';
   try{
+    if(typeof XLSX==='undefined'&&window.vendorReady)await window.vendorReady('XLSX').catch(function(){});
     if(typeof XLSX==='undefined')throw new Error('Spreadsheet reader is still loading');
     // raw:true is required here for the same reason handleFocFileImport
     // needs it for the big catalog import -- without it, SheetJS type-infers
