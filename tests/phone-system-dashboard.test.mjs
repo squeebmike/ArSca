@@ -5,7 +5,8 @@ const dashboard = fs.readFileSync('dashboard.html', 'utf8');
 
 // ── Contract: the Twilio Voice JS SDK is loaded like every other CDN library
 // in this file, and only actually connects once a staff member opts in ──
-assert.match(dashboard, /<script src="https:\/\/sdk\.twilio\.com\/js\/voice\/releases\/[0-9.]+\/twilio\.min\.js" defer><\/script>/, 'missing the Twilio Voice JS SDK script tag');
+assert.match(dashboard, /Twilio:'https:\/\/sdk\.twilio\.com\/js\/voice\/releases\/[0-9.]+\/twilio\.min\.js'/, 'missing the Twilio Voice JS SDK (loaded on demand by vendorReady when the phone is turned on)');
+assert.match(dashboard, /if\(typeof Twilio === 'undefined' \|\| !Twilio\.Device\) \{ try \{ await window\.vendorReady\('Twilio'\); \}/, 'initPhoneDevice loads the SDK when it needs it');
 
 // ── Contract: PHONE is wired into the tab system the same way every other
 // tab is (a MORE_TABS entry, a panel container, a switchTab lazy-render

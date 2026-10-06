@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.10.06.3-connecting-tracker">
+<meta name="version" content="2026.10.06.4-faster-startup">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -22,6 +22,13 @@
   try { new PerformanceObserver(function(list){ list.getEntries().forEach(function(e){ if(!t.firstInput) t.firstInput = { type:e.name, at:Math.round(e.startTime), waited:Math.round(e.processingStart - e.startTime) }; }); }).observe({ type:'first-input', buffered:true }); } catch(e) {}
 })();
 </script>
+<!-- Speed: open connections to the servers the dashboard talks to right
+     away, in parallel, instead of one after another as each is first used. -->
+<link rel="preconnect" href="https://vroknjrxubsqyexngwus.supabase.co" crossorigin>
+<link rel="preconnect" href="https://still-resonance-4f87.swarnerauto.workers.dev" crossorigin>
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root{--app-bg:#07080a;--app-surface:#0d0f14;--app-surface-2:#141720;--app-text:#e4e4e8;--app-muted:rgba(228,228,232,.4);--app-primary:#00ffb3;--app-secondary:#ffd166;--app-accent:#c77dff;--app-success:#00ffb3;--app-warning:#ffd166;--app-danger:#ff4d6d;--app-border:rgba(255,255,255,.07);--app-button-text:#050507;--app-radius:10px;--app-font:'DM Sans',sans-serif;--customer-bg-image:none;--customer-bg-overlay:rgba(247,248,250,.88);--brand-primary:var(--app-primary);--brand-secondary:var(--app-secondary);--brand-accent:var(--app-accent);--brand-background:var(--app-bg);--brand-surface:var(--app-surface);--brand-surface-2:var(--app-surface-2);--brand-text:var(--app-text);--brand-muted:var(--app-muted);--brand-success:var(--app-success);--brand-warning:var(--app-warning);--brand-danger:var(--app-danger);--brand-info:#48cae4;--brand-border:var(--app-border);--brand-card-radius:var(--app-radius);--brand-button-radius:6px;--brand-font-family:var(--app-font);--btn-height:38px;--btn-height-lg:52px;--font-mono:'DM Mono',monospace;--g:var(--brand-primary);--gd:rgba(0,255,179,.1);--gold:var(--brand-warning);--red:var(--brand-danger);--blue:var(--brand-info);--purple:var(--brand-accent);--bg:var(--brand-background);--surf:var(--brand-surface);--surf2:var(--brand-surface-2);--border:var(--brand-border);--text:var(--brand-text);--dim:var(--brand-muted);}
@@ -1630,20 +1637,52 @@ body.show-mode .inv-sync-badge{display:none;}
 @media(max-width:650px){.foc-shell{padding:0 9px 90px}.foc-toolbar>*{width:100%!important}.foc-cycle-card{grid-template-columns:1fr}.foc-sku-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;padding:7px}.foc-sku{padding:6px}.foc-sku-fields{grid-template-columns:1fr}.foc-family-head{display:block}.foc-family-head .foc-toolbar{margin-top:8px}.foc-stat b{font-size:16px}}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
-<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js" defer></script>
+<script>
+// Speed: big add-on libraries (spreadsheet reader, screenshot, zip, barcode,
+// phone calling) are only needed for occasional jobs. They used to be
+// "defer" tags, which the browser had to download and run before the
+// dashboard could start -- about 1.7 MB on every open. Now the dashboard
+// starts first and they load in the background right after; anything that
+// needs one early waits for it (vendorReady). Phone calling loads only when
+// the phone is turned on.
+(function(){
+  var LIBS = {
+    XLSX:'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js',
+    JSZip:'https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js',
+    html2canvas:'https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js',
+    JsBarcode:'https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js',
+    Twilio:'https://sdk.twilio.com/js/voice/releases/2.11.1/twilio.min.js'
+  };
+  var pending = {};
+  window.vendorReady = function(name){
+    if(window[name]) return Promise.resolve(window[name]);
+    if(pending[name]) return pending[name];
+    var url = LIBS[name];
+    if(!url) return Promise.reject(new Error('Unknown library ' + name));
+    pending[name] = new Promise(function(resolve, reject){
+      var tag = document.createElement('script');
+      tag.src = url; tag.async = true;
+      tag.onload = function(){ if(window[name]) resolve(window[name]); else { delete pending[name]; reject(new Error(name + ' did not load')); } };
+      tag.onerror = function(){ delete pending[name]; tag.remove(); reject(new Error(name + ' failed to load')); };
+      document.head.appendChild(tag);
+    });
+    return pending[name];
+  };
+  window.addEventListener('load', function(){
+    var go = function(){ ['JsBarcode','XLSX','JSZip','html2canvas'].forEach(function(n){ window.vendorReady(n).catch(function(){}); }); };
+    if(window.requestIdleCallback) window.requestIdleCallback(go, { timeout:4000 }); else setTimeout(go, 1500);
+  });
+})();
+</script>
 <!-- Parses distributor FOC-list exports (Pull Lists > IMPORT PRH LIST) -->
-<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js" defer></script>
 <!-- Reads the raw XLSX zip structure to pull out cover images Lunar embeds
      directly into cells (a "picture in cell" object, not a URL/formula) --
      SheetJS above only ever reads cell VALUES, never anchored drawing
      objects, so this is the only way those covers are reachable at all. -->
-<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js" defer></script>
 <!-- Renders scannable CODE128 barcodes for printed shelf/price labels (Inventory > PRINT LABELS) -->
-<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js" defer></script>
 <!-- Twilio Voice JS SDK -- the PHONE tab's browser softphone. Loaded on every
      page load like the other CDN libraries here, but only actually used once
      a staff member enables browser calling (see initPhoneDevice()). -->
-<script src="https://sdk.twilio.com/js/voice/releases/2.11.1/twilio.min.js" defer></script>
 <!-- QR code option for the same labels -- a linear CODE128 barcode encoding a
      long value (e.g. an item's internal UUID, used when there's no real
      UPC/SKU) compresses to unreadably-thin bars once squeezed onto a small
@@ -1661,23 +1700,23 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.10.06.3-connecting-tracker" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.10.06.3-connecting-tracker" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.10.06.3-connecting-tracker" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.10.06.3-connecting-tracker" defer></script>
-<script src="scripts/backlist-dashboard.js?v=2026.10.06.3-connecting-tracker" defer></script>
-<script src="scripts/database-viewer.js?v=2026.10.06.3-connecting-tracker" defer></script>
-<script src="scripts/card-intake-dashboard.js?v=2026.10.06.3-connecting-tracker" defer></script>
-<script src="scripts/mana-pocket-task-library.js?v=2026.10.06.3-connecting-tracker" defer></script>
-<script src="scripts/daily-tasks-dashboard.js?v=2026.10.06.3-connecting-tracker" defer></script>
-<script src="scripts/expenses.js?v=2026.10.06.3-connecting-tracker" defer></script>
-<script src="scripts/whatnot-bridge.js?v=2026.10.06.3-connecting-tracker" defer></script>
+<script src="scripts/query-routing.js?v=2026.10.06.4-faster-startup" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.10.06.4-faster-startup" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.10.06.4-faster-startup" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.10.06.4-faster-startup" defer></script>
+<script src="scripts/backlist-dashboard.js?v=2026.10.06.4-faster-startup" defer></script>
+<script src="scripts/database-viewer.js?v=2026.10.06.4-faster-startup" defer></script>
+<script src="scripts/card-intake-dashboard.js?v=2026.10.06.4-faster-startup" defer></script>
+<script src="scripts/mana-pocket-task-library.js?v=2026.10.06.4-faster-startup" defer></script>
+<script src="scripts/daily-tasks-dashboard.js?v=2026.10.06.4-faster-startup" defer></script>
+<script src="scripts/expenses.js?v=2026.10.06.4-faster-startup" defer></script>
+<script src="scripts/whatnot-bridge.js?v=2026.10.06.4-faster-startup" defer></script>
 <script src="scripts/research-loupe.js?v=a7de4ffe90" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.10.06.3-connecting-tracker" defer></script>
-<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.10.06.3-connecting-tracker" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.10.06.3-connecting-tracker" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.10.06.3-connecting-tracker" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.10.06.3-connecting-tracker" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.10.06.4-faster-startup" defer></script>
+<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.10.06.4-faster-startup" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.10.06.4-faster-startup" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.10.06.4-faster-startup" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.10.06.4-faster-startup" defer></script>
 </head>
 <body>
 
@@ -1729,7 +1768,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
 <div class="dsb-chip" id="dsb-tasks" title="Today's Roles &amp; Tasks — click to jump to Tasks tab" style="cursor:pointer;display:none" onclick="switchTab('tasks')">✅ <span>TASKS:</span> <b id="dsb-tasks-val">—</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.10.06.3-connecting-tracker</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.10.06.4-faster-startup</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3918,7 +3957,7 @@ body.show-mode .inv-sync-badge{display:none;}
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.10.06.3-connecting-tracker';
+const APP_VERSION = '2026.10.06.4-faster-startup';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -9755,6 +9794,7 @@ function buildBugReportText(note, severity, screenshotNote = ''){
 }
 
 async function captureBugScreenshot(){
+  if(!window.html2canvas) await window.vendorReady('html2canvas').catch(() => {});
   if(window.html2canvas) {
     const canvas = await window.html2canvas(document.body, { useCORS:true, backgroundColor:'#07080a' });
     return await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
@@ -21851,7 +21891,7 @@ function parsePrhFocRows(rows){
 let pendingPrhImportRows = [];
 
 function openPrhImportPicker(){
-  if(typeof XLSX === 'undefined') return toast_dash('Spreadsheet reader is still loading -- try again in a moment');
+  if(typeof XLSX === 'undefined') window.vendorReady('XLSX').catch(() => {});
   document.getElementById('pulllist-prh-import-file')?.click();
 }
 
@@ -21859,6 +21899,7 @@ async function handlePrhImportFile(event){
   const file = event.target.files?.[0];
   event.target.value = '';
   if(!file) return;
+  if(typeof XLSX === 'undefined') await window.vendorReady('XLSX').catch(() => {});
   if(typeof XLSX === 'undefined') return toast_dash('Spreadsheet reader failed to load -- try refreshing the page');
   try {
     const buf = await file.arrayBuffer();
@@ -45415,7 +45456,8 @@ async function startCallFromMyPhone(){
 // permission prompt immediately on login).
 async function initPhoneDevice(){
   if(_phoneDevice) return;
-  if(typeof Twilio === 'undefined' || !Twilio.Device) { setTimeout(initPhoneDevice, 500); return; }
+  if(typeof Twilio === 'undefined' || !Twilio.Device) { try { await window.vendorReady('Twilio'); } catch(e) { setTimeout(initPhoneDevice, 5000); return; } }
+  if(_phoneDevice || typeof Twilio === 'undefined' || !Twilio.Device) return;
   const statusEl = () => document.getElementById('phone-device-status');
   try {
     const res = await storeWorkerFetch('/api/phone/token', { method:'POST' });
@@ -46124,6 +46166,7 @@ async function printInventoryLabels(){
   // generation fails for any reason, so a missing library here produced no
   // error at all, just an invisible code nobody noticed until the label was
   // already printed.
+  if(typeof JsBarcode === 'undefined') await window.vendorReady('JsBarcode').catch(() => {});
   if(typeof JsBarcode === 'undefined' || typeof qrcode === 'undefined') return alert('Barcode library still loading -- try again in a moment');
   const vendorProfile = getVendorProfile();
   const storeName = vendorProfile.storeName || '';
@@ -46422,6 +46465,7 @@ async function downloadInventoryLabelPngs(){
   if(!labelPrintBatch.length) return alert('Add at least one item to print');
   // See the same guard in printInventoryLabels for why qrcode is checked
   // here too, not just JsBarcode.
+  if(typeof JsBarcode === 'undefined') await window.vendorReady('JsBarcode').catch(() => {});
   if(typeof JsBarcode === 'undefined' || typeof qrcode === 'undefined') return alert('Barcode library still loading -- try again in a moment');
   const vendorProfile = getVendorProfile();
   const storeName = vendorProfile.storeName || '';
@@ -49486,7 +49530,7 @@ async function toppsLoadParallels(cardId){
   window.__arscaCloseModal = closeModal;
 })();
 </script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.10.06.3-connecting-tracker" defer></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.10.06.4-faster-startup" defer></script>
 </body>
 </html>
 

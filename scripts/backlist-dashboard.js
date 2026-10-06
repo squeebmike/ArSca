@@ -123,6 +123,7 @@ async function handleBacklistImportFile(event){
   try{
     setStatus('Reading '+file.name+'…');
     var buffer=await file.arrayBuffer();
+    if(typeof XLSX==='undefined'&&window.vendorReady)await window.vendorReady('XLSX').catch(function(){});
     var wb=XLSX.read(buffer,{type:'array',raw:true});
     var sheet=wb.Sheets[wb.SheetNames[0]];
     var matrix=XLSX.utils.sheet_to_json(sheet,{header:1,defval:''});

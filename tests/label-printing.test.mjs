@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 const dashboard = fs.readFileSync('dashboard.html', 'utf8');
 
 // ── Barcode library + entry points ──────────────────────────────────
-assert.match(dashboard, /<script src="https:\/\/cdn\.jsdelivr\.net\/npm\/jsbarcode@3\.11\.6\/dist\/JsBarcode\.all\.min\.js" defer><\/script>/, 'missing the JsBarcode CDN script');
+assert.match(dashboard, /JsBarcode:'https:\/\/cdn\.jsdelivr\.net\/npm\/jsbarcode@3\.11\.6\/dist\/JsBarcode\.all\.min\.js'/, 'missing the JsBarcode CDN script (loaded in the background by vendorReady)');
 assert.match(dashboard, /id="label-print-modal"/, 'missing the label print batch modal');
 assert.match(dashboard, /onclick="openLabelPrintModal\(\)" title="Build a batch of barcode\/price labels to print"/, 'missing the inventory toolbar PRINT LABELS button');
 assert.match(dashboard, /onclick="openLabelPrintModal\('\$\{id\}'\);closeInvRowMenu\(\)">🏷️ Print Label<\/button>/, 'missing the per-row quick Print Label action');
