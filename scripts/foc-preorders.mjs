@@ -1659,6 +1659,67 @@ async function adminConnectingCovers(request,env,deps,url){
   await addConnectingCoverStock(db,storeId,covers);
   return deps.json({ok:true,covers,aliases,suggestedSets:groupConnectingCovers(covers.filter(c=>connectingCoverInfo(c).isConnecting))});
 }
+// ── Comic sell-through ──
+// How each series actually sells once it's on the shelf: copies received
+// from the FOC (received, presold on eBay), copies sold (register sales
+// linked to the item, eBay presales), and copies still on hand. Feeds the
+// FOC order helper (how many to order of the next issue) and the slow-seller
+// report (what's sitting, what always sells out).
+export function comicSeriesKey(item={}){
+  const d=item.data||item;
+  const raw=String(d.series||d.seriesName||'').trim()||String(d.name||d.title||'').replace(/\s+-\s+PRESALE\s*$/i,'').replace(/#.*$/,'').replace(/\bVol\.?\s*\d.*$/i,'');
+  return raw.toUpperCase().replace(/\(.*?\)/g,' ').replace(/[^A-Z0-9]+/g,' ').trim();
+}
+export function computeComicSellThrough(items=[],soldByItem=new Map(),now=Date.now()){
+  const series=new Map(),slow=[];
+  for(const row of items){
+    const d=row.data||{},key=comicSeriesKey(row);if(!key)continue;
+    const qty=Math.max(0,Number(d.qty??d.quantity??0));
+    const isPresale=d.source==='foc_presale';
+    const posSold=Number(soldByItem.get(row.id)||0);
+    const presaleSold=isPresale?Math.max(0,Number(d.focPresaleOriginalQty||0)-(row.status==='sold'?0:qty)):0;
+    const sold=posSold+presaleSold;
+    const onHand=row.status==='in_stock'?qty:0;
+    const received=isPresale?Math.max(Number(d.focPresaleOriginalQty||0),sold):onHand+sold;
+    if(!received)continue;
+    const at=Date.parse(row.created_at||'')||now;
+    const s=series.get(key)||{series:key,issues:new Set(),received:0,sold:0,onHand:0,firstAt:at,lastAt:at};
+    const issue=d.issue||(String(d.name||'').match(/#\s*(\d+)/)||[])[1];
+    if(issue)s.issues.add(String(issue));
+    s.received+=received;s.sold+=sold;s.onHand+=onHand;s.firstAt=Math.min(s.firstAt,at);s.lastAt=Math.max(s.lastAt,at);
+    series.set(key,s);
+    const days=Math.floor((now-at)/864e5);
+    if(onHand>0&&!sold&&days>=21)slow.push({id:row.id,name:text(d.name,200),series:key,issue:d.issue||'',onHand,days,receivedAt:row.created_at,price:Number(d.salePrice||d.market||d.price||0)});
+  }
+  const list=[...series.values()].map(s=>{
+    const issues=Math.max(1,s.issues.size);
+    const sellThrough=s.received?Math.round(s.sold/s.received*100):0;
+    return {series:s.series,issues:s.issues.size,received:s.received,sold:s.sold,onHand:s.onHand,sellThrough,perIssueSold:Math.round(s.sold/issues*10)/10,
+      daysOnShelf:Math.floor((now-s.firstAt)/864e5),lastReceivedAt:new Date(s.lastAt).toISOString(),
+      flag:s.received>=2&&sellThrough>=90?'sells-out':(sellThrough<35&&Math.floor((now-s.firstAt)/864e5)>=21?'slow':'')};
+  }).sort((a,b)=>b.sold-a.sold||a.series.localeCompare(b.series));
+  return {series:list,slowItems:slow.sort((a,b)=>b.days-a.days).slice(0,200)};
+}
+async function adminComicSellThrough(request,env,deps,url){
+  const storeId=text(url.searchParams.get('store_id'),80);
+  const auth=await deps.requireStoreUser(request,env,storeId,['owner','admin','manager','employee']);if(auth.error)return auth.error;
+  const db=(path,options)=>deps.supabaseAdminFetch(env,path,options);
+  const since=new Date(Date.now()-240*864e5).toISOString();
+  const {data:items}=await db(`inventory_items?store_id=eq.${encodeURIComponent(storeId)}&data->>source=in.(foc_receive,foc_presale)&status=in.(in_stock,sold,presale)&created_at=gte.${since}&select=id,status,created_at,data&order=created_at.desc&limit=5000`);
+  const ids=(items||[]).map(i=>i.id),soldByItem=new Map();
+  for(let i=0;i<ids.length;i+=150){
+    const {data:lines}=await db(`pos_sale_lines?store_id=eq.${encodeURIComponent(storeId)}&item_id=${inFilter(ids.slice(i,i+150))}&select=item_id,quantity`);
+    for(const l of lines||[])soldByItem.set(l.item_id,(soldByItem.get(l.item_id)||0)+Math.max(1,Number(l.quantity||1)));
+  }
+  // Active pull-list subscribers per series, keyed the same way as series.
+  const pullLists={};
+  try{
+    const {data:subs}=await db(`pull_list_subscriptions?store_id=eq.${encodeURIComponent(storeId)}&active=eq.true&select=series:pull_list_series(title)`);
+    for(const sub of subs||[]){const k=comicSeriesKey({series:sub.series?.title});if(k)pullLists[k]=(pullLists[k]||0)+1;}
+  }catch(e){}
+  return deps.json({ok:true,...computeComicSellThrough(items||[],soldByItem),pullLists});
+}
+
 // Lunar lists the same cover again in later FOC weeks (same UPC, new row) --
 // one cover, shown once: the copy that was actually ordered, else the latest
 // listing. aliases maps every other row's id to it, so a set saved with an
@@ -2839,6 +2900,7 @@ export async function handleFocRequest(request, env, url, deps) {
   if(path==='/foc/admin/export'&&request.method==='GET')return exportPrh(env,deps,url,request);
   if(path==='/foc/admin/intelligence'&&request.method==='GET')return focIntelligence(request,env,deps,url);
   if(path==='/foc/admin/connecting-covers'&&request.method==='GET')return adminConnectingCovers(request,env,deps,url);
+  if(path==='/foc/admin/comic-sell-through'&&request.method==='GET')return adminComicSellThrough(request,env,deps,url);
   if(path==='/foc/admin/orders'&&(request.method==='GET'||request.method==='PATCH'))return adminOrders(request,env,deps,url);
   if(path==='/foc/admin/orders/email'&&request.method==='POST')return resendAdminOrderEmail(request,env,deps);
   if(path==='/foc/admin/orders/label'&&request.method==='POST')return adminShippingLabel(request,env,deps);
