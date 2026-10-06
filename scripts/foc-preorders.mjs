@@ -1,3 +1,4 @@
+import { renderBookAlertForm, alertBookTitle } from './book-alert-ui.mjs';
 // The Mana Pocket PRH + Lunar FOC preorder service.
 //
 // This module stays deliberately independent of the dashboard DOM. The Worker
@@ -607,6 +608,7 @@ async function preorderDetailPage(env, deps, skuId, providedSlug) {
       `<button id="mp-share-btn" style="padding:12px 20px;border-radius:12px;border:1px solid rgba(255,255,255,.2);background:transparent;color:inherit;cursor:pointer;font:inherit" data-title="${deps.mtgEscapeHtml(name)}" data-text="${deps.mtgEscapeHtml(description)}">Share</button>` +
       `</div>` +
       `</div></div>` +
+      renderBookAlertForm([alertBookTitle(name)],deps.publicStoreId,deps.mtgEscapeHtml) +
       // Same navigator.share / clipboard-copy / window.prompt fallback chain
       // as /book/{id}/{slug}'s own share button -- kept identical rather than
       // inventing a second convention for the same interaction.

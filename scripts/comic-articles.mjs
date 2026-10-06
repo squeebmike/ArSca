@@ -1,3 +1,4 @@
+import { renderBookAlertForm } from './book-alert-ui.mjs';
 // Comic articles at www.themanapocket.com/articles.
 //
 // Written in Webflow's CMS ("Comic Articles" collection) so they're edited in
@@ -75,12 +76,14 @@ const money = cents => '$' + (Number(cents || 0) / 100).toFixed(2);
 
 export function shapeArticle(item) {
   const f = item?.fieldData || {};
+  // Use existing article art when an editor has not picked a card image yet.
+  const bodyImage = String(f[F.body] || '').match(/<img\b[^>]*\ssrc=["'](https?:\/\/[^"']+)["']/i)?.[1] || '';
   if (!f.slug || !f.name) return null;
   return {
     id: item.id, slug: String(f.slug), title: String(f.name),
     summary: String(f[F.summary] || '').trim(),
     bodyHtml: sanitizeRichText(f[F.body] || ''),
-    image: f[F.image]?.url || '', imageAlt: f[F.image]?.alt || '',
+    image: f[F.image]?.url || bodyImage, imageAlt: f[F.image]?.alt || '',
     author: String(f[F.author] || '').trim() || 'The Mana Pocket',
     publishedAt: f[F.published] || item.lastPublished || item.createdOn || null,
     updatedAt: item.lastUpdated || item.lastPublished || null,
@@ -336,7 +339,7 @@ export function renderArticlePage(article, statuses, related, deps) {
     ],
     bodyHtml: STYLE + `<article class="mp-art"><div class="mp-crumb"><a href="/articles">← Comic articles</a></div>` +
       `<h1>${esc(article.title)}</h1><div class="mp-art-meta">${esc(article.author)}${article.publishedAt ? ` · ${esc(dateLabel(article.publishedAt))}` : ''} · ${readingMinutes(article.bodyHtml)} min read</div>` +
-      (image ? `<a href="${esc(image)}" target="_blank" rel="noopener" aria-label="Open full-size book cover"><img class="mp-art-hero" fetchpriority="high" decoding="async" src="${esc(image)}" alt="${esc(article.imageAlt || article.title)}"></a><p class="mp-art-meta">Tap the cover to see it full size.</p>` : '') +
+      (image ? `<a href="${esc(image)}" target="_blank" rel="noopener" aria-label="Open full-size book cover"><img class="mp-art-hero" width="660" height="1000" fetchpriority="high" decoding="async" src="${esc(image)}" alt="${esc(article.imageAlt || article.title)}"></a><p class="mp-art-meta">Tap the cover to see it full size.</p>` : '') +
       renderBuyBox(article, main, esc) +
       (main ? `<nav class="mp-art-shortcuts" aria-label="Book actions"><a href="#${bookAnchor(main)}">Covers &amp; availability</a><a href="/comics/search?q=${encodeURIComponent(comicKey(main.name).series)}">Find related comics</a><a href="#book-updates">Book updates</a></nav>` : '') +
       `<div class="mp-art-body">${article.bodyHtml}</div>` + facts + renderBooks(statuses, esc) + renderBookUpdates(article, deps.storeId, esc) + more + `</article>` +
@@ -344,10 +347,7 @@ export function renderArticlePage(article, statuses, related, deps) {
   });
 }
 
-export function renderBookUpdates(article, storeId, esc) {
-  if (!article.books.length) return '';
-  return `<section class="mp-books" id="book-updates"><h2>Keep me posted about this book</h2><p>Choose one automatic email for this book: when preorders open, within 48 hours of the cutoff, or when copies are in stock. We check every six hours. This is separate from general email news.</p><form id="mp-book-update-form"><label>Book<select name="book" required>${article.books.map(book => `<option>${esc(book)}</option>`).join('')}</select></label><label>Update<select name="event"><option value="preorder_open">When preorders open</option><option value="preorder_cutoff">Before the preorder cutoff</option><option value="in_stock">When copies arrive or return to stock</option></select></label><label>Email<input name="email" type="email" autocomplete="email" maxlength="200" required></label><label><input name="consent" type="checkbox" required> Email me once about this book update. I can unsubscribe at any time.</label><button class="mp-btn" type="submit">Set my book alert</button><p role="status" data-update-status></p></form></section><style>#mp-book-update-form{display:grid;gap:14px;max-width:560px}#mp-book-update-form label{display:grid;gap:6px}#mp-book-update-form input:not([type=checkbox]),#mp-book-update-form select{width:100%;min-height:44px;padding:10px;background:var(--wo-surface,#252332);color:var(--wo-text,#fff);border:1px solid var(--wo-border,#777);border-radius:8px}#mp-book-update-form label:has([type=checkbox]){display:flex;align-items:center}.mp-art-hero{object-fit:contain!important;max-height:520px;background:var(--wo-surface,#252332)}</style><script>(function(){var form=document.getElementById('mp-book-update-form');document.querySelectorAll('[data-update-book]').forEach(function(link){link.addEventListener('click',function(){form.elements.book.value=decodeURIComponent(link.getAttribute('data-update-book'));});});form.addEventListener('submit',async function(e){e.preventDefault();var out=form.querySelector('[data-update-status]'),button=form.querySelector('button');if(!form.reportValidity())return;button.disabled=true;out.textContent='Saving…';try{var data=new FormData(form);var response=await fetch('https://still-resonance-4f87.swarnerauto.workers.dev/public/book-alerts',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({storeId:${JSON.stringify(storeId).replace(/</g, '\\u003c')},book:data.get('book'),event:data.get('event'),contactEmail:data.get('email'),consent:data.get('consent')==='on'})});if(!response.ok)throw new Error('Your request could not be saved. Please try again.');out.textContent='Request received. You will get one email when this update is available, unless you previously unsubscribed. You have not joined the general email list.';form.reset();}catch(error){out.textContent=error.message;}finally{button.disabled=false;}});})();</script>`;
-}
+export function renderBookUpdates(article,storeId,esc) { return renderBookAlertForm(article.books,storeId,esc); }
 
 export function renderArticleList(articles, deps) {
   const esc = deps.esc;
