@@ -517,7 +517,7 @@ function renderCycle(){
     // already trusted for one-at-a-time listings, just chained: submitting
     // one automatically opens the next selected cover's review instead of
     // just closing, until the queue is empty.
-    '<div class="panel foc-toolbar" style="margin-bottom:12px"><button class="hbtn" onclick="toggleFocEbayBulkSelectAll(true)">SELECT ALL ELIGIBLE</button><button class="hbtn" onclick="toggleFocEbayBulkSelectAll(false)">SELECT NONE</button><button class="hbtn" style="background:rgba(255,209,102,.12);border-color:rgba(255,209,102,.35);color:var(--gold)" onclick="startFocEbayBulkListing()">LIST SELECTED ON EBAY</button><span id="foc-ebay-bulk-count" style="font:9px var(--font-mono);color:var(--dim)"></span></div>'+
+    '<div class="panel foc-toolbar" style="margin-bottom:12px"><button class="hbtn" onclick="toggleFocEbayBulkSelectAll(true)">SELECT ALL ELIGIBLE</button><button class="hbtn" onclick="toggleFocEbayBulkSelectAll(false)">SELECT NONE</button><button class="hbtn" style="background:rgba(255,209,102,.12);border-color:rgba(255,209,102,.35);color:var(--gold)" onclick="startFocEbayBulkListing()">LIST SELECTED ON EBAY</button><button class="hbtn" onclick="refreshFocPresaleEbayDescriptions()" title="Adds the PRESALE banner, the bagged &amp; boarded / Gemini mailer line and the Gemini box size to presales already live on eBay">UPDATE LIVE PRESALE DESCRIPTIONS</button><span id="foc-ebay-bulk-count" style="font:9px var(--font-mono);color:var(--dim)"></span></div>'+
     '<div class="panel foc-toolbar" style="margin-bottom:12px"><button class="hbtn" onclick="toggleFocPublishBulkSelectAll(true)">SELECT ALL VISIBLE COVERS</button><button class="hbtn" onclick="toggleFocPublishBulkSelectAll(false)">SELECT NONE</button><button class="hbtn" style="background:rgba(120,220,150,.12);border-color:rgba(120,220,150,.35);color:var(--g)" onclick="bulkSetCustomerEnabled(true)">SHOW SELECTED ON WEBSITE</button><button class="hbtn" onclick="bulkSetCustomerEnabled(false)">HIDE SELECTED FROM WEBSITE</button><span id="foc-publish-bulk-count" style="font:9px var(--font-mono);color:var(--dim)"></span></div>'+
     '<div id="foc-family-list"></div>';
   renderFamilies();
@@ -667,6 +667,21 @@ async function quickAddFocSkuToInventory(skuId){
 // review/edit chance a one-off listing gets -- only the "what happens after
 // LIST ON EBAY" step changes, from closing to opening the next one.
 var focEbayBulkQueue=null;
+// Presales already live on eBay keep whatever description they were
+// published with; this brings them up to date (PRESALE banner, the bagged
+// & boarded / Gemini mailer line in the shipping section, Gemini box size)
+// without touching anything else on the listing.
+async function refreshFocPresaleEbayDescriptions(){
+  if(!confirm('Update the description on every presale that is live on eBay?\n\nAdds the PRESALE banner and the "bagged & boarded, shipped in a Gemini mailer" line to the shipping section, and the Gemini box size. Price, quantity, photos and everything else stay as they are.'))return;
+  toast_dash('Updating live presale listings on eBay…');
+  try{
+    var d=await api('/foc/ebay/refresh-presale-descriptions',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({storeId:getActiveStoreId()})});
+    var msg=d.updated.length+' listing'+(d.updated.length===1?'':'s')+' updated'+(d.unchanged?' · '+d.unchanged+' already up to date':'')+(d.skippedMultiCover?' · '+d.skippedMultiCover+' multi-cover skipped':'')+(d.failed.length?' · '+d.failed.length+' failed':'');
+    toast_dash(msg);
+    if(d.failed.length)alert(msg+'\n\n'+d.failed.map(function(f){return f.name+': '+f.error;}).join('\n'));
+  }catch(e){toast_dash('Could not update listings: '+e.message);}
+}
+window.refreshFocPresaleEbayDescriptions=refreshFocPresaleEbayDescriptions;
 function startFocEbayBulkListing(){
   var ids=Array.from(focEbayBulkSelectedIds);
   if(!ids.length){toast_dash('Select at least one eligible cover first');return;}
@@ -849,7 +864,7 @@ async function openEbayPresaleReview(skuId){
     '<div><label style="font:9px var(--font-mono);color:var(--dim)">TITLE (eBay requires "PRESALE" disclosed here)</label>'+
     '<input id="foc-eb-title" maxlength="80" value="'+esc(preview.title)+'" style="width:100%;margin-top:4px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:9px;border-radius:6px;font-size:12px;box-sizing:border-box">'+
     '<div id="foc-eb-title-count" style="font:8px var(--font-mono);color:var(--dim);text-align:right;margin-top:3px">'+preview.title.length+'/80</div></div></div>'+
-    '<div class="foc-sku-fields" style="grid-template-columns:1fr 1fr 1fr;margin-bottom:6px"><label>QUANTITY<input id="foc-eb-qty" class="tsi" type="number" min="1" max="200" value="10"></label>'+
+    '<div class="foc-sku-fields" style="grid-template-columns:1fr 1fr 1fr;margin-bottom:6px"><label>QUANTITY<input id="foc-eb-qty" class="tsi" type="number" min="1" max="200" value="'+focDefaultEbayQty(skuId)+'"></label>'+
     '<label>PRICE<input class="tsi" value="$'+esc(preview.price)+'" disabled></label>'+
     '<label>SHIP-BY<input class="tsi" value="'+esc(preview.onSaleLabel)+'" disabled></label></div>'+
     '<div style="font:8px/1.5 var(--font-mono);color:var(--dim);margin-bottom:10px">eBay handling time on this listing: <b style="color:var(--text)">'+Number(preview.handlingBusinessDays||0)+' business days</b> from purchase -- this is what keeps eBay\'s delivery estimate from promising the book before it\'s released.</div>'+
@@ -1090,7 +1105,7 @@ async function openFamilyEbayGroupReview(familyId){
       thumb+
       '<div style="min-width:0;overflow-wrap:break-word"><div style="font-weight:700;color:var(--text)">'+esc(c.variantLabel)+'</div><div style="font:8px var(--font-mono);color:var(--dim);overflow-wrap:break-word">'+(c.eligible?'UPC '+esc(c.upc)+(c.imageUrl?'':' · borrowing another cover\'s photo -- add its own cover art later'):esc(c.reason))+'</div></div>'+
       '<label>PRICE<input class="tsi" data-eb-cover-price="'+esc(c.skuId)+'" type="number" min="0" step=".01" value="'+esc(c.price)+'" '+disabled+'></label>'+
-      '<label>QTY<input class="tsi" data-eb-cover-qty="'+esc(c.skuId)+'" type="number" min="1" max="200" value="10" '+disabled+'></label>'+
+      '<label>QTY<input class="tsi" data-eb-cover-qty="'+esc(c.skuId)+'" type="number" min="1" max="200" value="'+focDefaultEbayQty(c.skuId)+'" '+disabled+'></label>'+
       '</div>';
   }).join('');
   modal.innerHTML='<div style="width:100%;max-width:640px;background:var(--surf);border:1px solid var(--border);border-radius:10px;padding:16px">'+
@@ -1282,6 +1297,9 @@ async function submitFamilyEbayGroupReview(familyId){
 // per cover, ratio-incentive progress per family, then lock the order.
 // ═══════════════════════════════════════════════════════
 function allFocSkus(){return state.families.reduce(function(a,f){return a.concat(f.variants);},[]);}
+// Store ask: incentive (ratio) covers default to listing 1 copy on eBay --
+// they're scarce, so 10 was almost never right. Regular covers stay at 10.
+function focDefaultEbayQty(skuId){var v=allFocSkus().find(function(x){return x.id===skuId;});return v&&v.isIncentive?1:10;}
 function focReviewLineHtml(v){
   var website=Number(v.customerQty||0),ebay=Number(v.ebayPresold||0),whatnot=Number(v.storeQuantity||0);
   var finalQty=website+ebay+whatnot;
