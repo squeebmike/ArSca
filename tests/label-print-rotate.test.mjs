@@ -23,13 +23,13 @@ const openModalBody = html.slice(openModalStart, openModalStart + 2000);
 assert.match(openModalBody, /localStorage\.getItem\('label_print_rotate'\) === '1'/, 'opening the modal must restore the saved rotate preference, same as size/layout/code-style');
 
 const printFnStart = html.indexOf('async function printInventoryLabels()');
-const printFnEnd = html.indexOf('\n}\n', printFnStart) + 2;
+const printFnEnd = html.indexOf('\nasync function ', printFnStart + 10);
 const printFnBody = html.slice(printFnStart, printFnEnd);
 
 assert.match(printFnBody, /const rotateForRoll = isRoll && \(document\.getElementById\('label-print-rotate'\)\?\.checked \|\| false\);/,
   'rotation must only ever apply in roll mode -- sheet mode has no single-label @page to mismatch');
 assert.match(printFnBody, /labelParts\.push\(rotateForRoll \? `<div class="label-rotate-outer">\$\{labelHtml\}<\/div>` : labelHtml\);/,
-  'each label must be wrapped for rotation without altering the label image itself');
+  'each label must be wrapped for rotation without altering its own internal layout markup');
 assert.match(printFnBody, /@page \{ size: \$\{rotateForRoll \? '1in 2in' : '2in 1in'\}; margin: 0; \}/,
   'the printed @page itself must swap dimensions when rotating, not just the visual content');
 assert.match(printFnBody, /\.label-rotate-outer \.label \{ position:absolute; top:50%; left:50%; transform:translate\(-50%,-50%\) rotate\(90deg\); page-break-after:avoid; \}/,
@@ -40,7 +40,7 @@ assert.match(printFnBody, /\.label-rotate-outer \.label \{ position:absolute; to
 // rotating it would misinterpret a problem that only exists for the
 // browser-print path.
 const pngFnStart = html.indexOf('async function downloadInventoryLabelPngs()');
-const pngFnEnd = html.indexOf('\n}\n', pngFnStart) + 2;
+const pngFnEnd = html.indexOf('\nasync function ', pngFnStart + 10);
 const pngFnBody = html.slice(pngFnStart, pngFnEnd === -1 ? pngFnStart + 6000 : pngFnEnd);
 assert.doesNotMatch(pngFnBody, /rotateForRoll|label-print-rotate/, 'the PNG-download path must not reference the print-dialog rotation setting at all');
 

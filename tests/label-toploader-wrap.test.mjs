@@ -46,28 +46,85 @@ assert.match(dashboard, /const isWrap = layout === 'wrap';/, 'printInventoryLabe
 // can't tell two different items' labels apart. The SKU is always unique,
 // so it's what actually lets a loose label get matched back to the exact
 // inventory record.
-// Store report: "the labels suck printed from phone vs pc -- shouldn't they
-// be exactly the same?" PRINT used to build the wrap label as its own
-// HTML/CSS design while DOWNLOAD PNGs drew a different one on a canvas.
-// Both now print the one canvas drawing (checked in detail below), so the
-// browser-print path carries no label layout of its own.
-{
-  const printStart = dashboard.indexOf('async function printInventoryLabels(){');
-  const printFn = dashboard.slice(printStart, dashboard.indexOf('\n}\n', printStart) + 2);
-  assert.match(printFn, /const canvas = await renderInventoryLabelCanvas\(labelSpecs\[i\], opts\);/, 'PRINT must print the same drawing DOWNLOAD PNGs saves');
-  assert.match(printFn, /<img class="label" alt="" src="\$\{canvas\.toDataURL\('image\/png'\)\}">/, 'each printed label is that drawing as one image');
-  assert.match(printFn, /img\.label \{ display:block; width:\$\{widthIn\}in; height:\$\{heightIn\}in; image-rendering:pixelated; image-rendering:crisp-edges; \}/,
-    'the image is placed at exactly the label\'s physical size, dot for dot (it is already pure black and white at the printer\'s 203 DPI)');
-  assert.ok(!/wrap-front|wrap-back|wrap-name|wrapStyle/.test(printFn), 'the old HTML/CSS wrap design must be gone from the print path');
-  const pngStart = dashboard.indexOf('async function downloadInventoryLabelPngs(){');
-  const pngFn = dashboard.slice(pngStart, dashboard.indexOf('\n}\n', pngStart) + 2);
-  assert.match(pngFn, /const canvas = await renderInventoryLabelCanvas\(b, opts\);/, 'DOWNLOAD PNGs must save the shared drawing');
-  assert.match(dashboard, /const LABEL_FONT_FAMILY = "'DM Sans'";/, 'labels are drawn in the dashboard\'s own DM Sans on every device, not each device\'s system font');
-  assert.match(dashboard, /const LABEL_FONT_STACK = LABEL_FONT_FAMILY \+ ", /, 'system fonts are only a fallback after DM Sans');
-  assert.match(dashboard, /async function renderInventoryLabelCanvas\(b, opts = labelRenderOptions\(\)\)\{\s*\n\s*const \{ isWrap, codeStyle, storeName \} = opts;\s*\n\s*await labelFontReady\(\);/, 'the drawing waits for DM Sans to load before drawing any text');
-}
+assert.match(dashboard, /<div class="wrap-front">\s*\n\s*<div class="wrap-name">\$\{escHtml\(labelNameKeepNumber\(b\.name, b\.badge \? 24 : 36\)\)\}<\/div>\s*\n\s*\$\{b\.badge \? `<div class="wrap-badge">\$\{escHtml\(b\.badge\)\}<\/div>` : ''\}\s*\n\s*<div class="wrap-price">\$\{escHtml\(fdLabelPrice\$\(b\.price\)\.slice\(1\)\)\}<\/div>\s*\n\s*<div class="wrap-bottom-row"><span class="wrap-condition">\$\{escHtml\(b\.condition \|\| ''\)\}<\/span><span class="wrap-meta">\$\{escHtml\(b\.meta \|\| ''\)\}<\/span><\/div>\s*\n\s*<\/div>/, 'the front face must show the item name, an optional badge, a whole-dollar price with no "$" glyph, and a condition+meta row in that order');
+assert.ok(!/<div class="wrap-front">[\s\S]{0,20}label-store/.test(dashboard), 'the wrap front face must not carry the store name header the standard layout uses');
+assert.match(dashboard, /<div class="wrap-back">\s*\n\s*<div class="wrap-shopname">THE MANA POCKET<\/div>\s*\n\s*\$\{barcodeImg\}\s*\n\s*<\/div>/, 'the back face must carry only the shop name as plain text and the scan code -- no image logo, no separate SKU text (the SKU lives on the front face now)');
 assert.ok(!/wrap-logo/.test(dashboard), 'the illustrated logo image class must be fully removed -- it was confirmed unreadable on a real printed label');
-assert.match(dashboard, /const codeStyle = isWrap \? 'qr' : \(document\.getElementById\('label-print-code-style'\)\?\.value \|\| 'qr'\);/, 'the wrap back face must always use QR regardless of the barcode-style dropdown');
+assert.match(dashboard, /const codeStyle = isWrap \? 'qr' : \(document\.getElementById\('label-print-code-style'\)\?\.value \|\| 'qr'\);/, 'the wrap back face must always use QR regardless of the barcode-style dropdown -- a linear barcode reads worse than a QR at that size, and QR is now the default for the standard layout too');
+assert.match(dashboard, /const codeGenSize = isWrap \? 500 : 260;/, 'the wrap QR must be generated at a much bigger native size than the standard layout\'s code -- undersized generation followed by scaling is what made a confirmed-real QR fail to scan');
+// The code image is always generated much bigger than its on-label display
+// size, so the browser is always downscaling it, never upscaling -- unlike
+// the earlier small-then-upscale bug, a large source downscaled has plenty
+// of detail for smooth resampling to average cleanly. Forcing nearest-
+// neighbor (image-rendering:pixelated) on that downscale instead produced
+// visible aliasing/speckle on the dense QR pattern, confirmed against a real
+// print-preview screenshot.
+assert.ok(!/image-rendering:pixelated/.test(dashboard.slice(dashboard.indexOf('const codeGenSize'), dashboard.indexOf('} catch(e) { barcodeImg'))),
+  'the print-preview code image must not force nearest-neighbor rendering while being downscaled from its oversized generation size -- that aliases the QR instead of cleanly averaging it');
+// Store report: a fixed height guess here (62px/70px) was actually taller
+// than the real remaining room on the back face once the shop name line,
+// the gap, and the face's own padding were accounted for -- .wrap-back
+// clips overflow, so a real print sliced off the last couple rows of QR
+// modules. flex:1 (min-height:0 overrides a flex item's default refusal to
+// shrink below its content size) hands the image whatever space layout
+// actually leaves, computed by the browser instead of guessed here.
+assert.match(dashboard, /const imgStyle = isWrap \? 'width:100%;flex:1;min-height:0;object-fit:contain' : `width:100%;height:\$\{imgHeight\}px;object-fit:contain`;/,
+  'the wrap back face\'s code image must flex to fill whatever space is actually left, not a fixed height guess that can overflow and get clipped');
+assert.match(dashboard, /barcodeImg = `<img src="\$\{canvas\.toDataURL\('image\/png'\)\}" style="\$\{imgStyle\}">`;/,
+  'the print-preview code image must let the browser use its own smooth downscaling');
+assert.match(dashboard, /\.label\.wrap \{ flex-direction:row !important; padding:0 !important; \}/, 'the wrap layout must lay the two faces out side by side with a fold line between them');
+// Solid black, not the earlier #999 gray -- gray barely survives a
+// monochrome thermal print the same way pure-black text/QR does, which is
+// exactly why the fold line was nearly invisible on a real printed label.
+// The canvas-drawn download path already drew its own fold line in solid
+// black; this brings the browser-print path in line with it.
+assert.match(dashboard, /border-right:2px dashed #000;/, 'a solid-black dashed fold line must separate the front and back faces so it actually survives a monochrome print, not a gray line that fades away');
+assert.ok(!/border-right:1px dashed #999;/.test(dashboard.slice(dashboard.indexOf('const wrapStyle'), dashboard.indexOf('w.document.write'))), 'the wrap fold line must not still be the old barely-visible gray');
+assert.match(dashboard, /\.label\.wrap \.wrap-front \{ width:44%; padding:10px 8px 5px; justify-content:flex-start; gap:3px;/, 'the front face must have extra top padding so the item name isn\'t flush against the label edge, and a bit more gap between stacked elements to leave room for longer names');
+// Padding/gap tightened (was 12px 6px 5px / gap:8px) -- store report: the
+// old, more generous spacing left less real room for the QR than the fixed
+// imgHeight guess assumed, which is exactly what caused a real print to
+// clip the QR. Still enough top padding to keep the shop name off the edge.
+// Width shifted from an even 50/50 split (was 44/56 -- store report: the QR
+// still looked small even once it stopped clipping. A square code inside
+// an evenly-split face is capped by whichever is tighter, width or height
+// -- here it's width, and the front face's own content doesn't need as
+// much room as an even split gave it.
+assert.match(dashboard, /\.label\.wrap \.wrap-back \{ width:56%; padding:6px 4px 4px; justify-content:flex-start; gap:4px; \}/, 'the back face must get more than half the label\'s width so the QR has real room to grow into, and still have some top padding so the shop name isn\'t flush against the label edge');
+// Every wrap-face text weight must be a real "700" (bold) -- confirmed
+// against a real print-preview screenshot that wrap-shopname and
+// wrap-condition (previously 800, unlike every other element here) looked
+// noticeably softer/grainier: "sans-serif" has no guaranteed real 800/900
+// face, so a requested weight with no matching real face gets synthesized
+// by algorithmically over-thickening the true 700 outline.
+// One line, not two -- store report: "THE MANA POCKET" was wrapping to
+// "THE MANA" / "POCKET" on a real print, eating an extra line of height
+// the QR could otherwise have. Shrunk from 9px and the letter-spacing
+// pulled in (was pushing width right up against the face's, which is
+// exactly what forced the wrap); white-space:nowrap is the actual
+// guarantee -- the smaller size/spacing just keeps that from clipping
+// instead of wrapping.
+assert.match(dashboard, /\.wrap-shopname \{ font-size:8px; font-weight:700; letter-spacing:\.01em; text-align:center; white-space:nowrap; \}/, 'the shop name must use the same real bold weight as every other element on the label, sized and spaced to fit on one line, with nowrap as the actual guarantee it never wraps to two');
+// 3 lines now (was 2, max-height 18px) so a long item name has more room
+// before truncating.
+assert.match(dashboard, /\.wrap-name \{ font-size:8px; font-weight:700; line-height:1\.1; max-height:27px; overflow:hidden; text-align:center; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:3; flex-shrink:0; \}/, 'the item name must allow up to 3 lines before truncating, not just 2');
+assert.match(dashboard, /\.wrap-badge \{ font-size:7px; font-weight:700; line-height:1\.1; max-height:16px; overflow:hidden; text-transform:uppercase; text-align:center; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; flex-shrink:0; \}/, 'the badge (whichever one applies) must be bold -- an unbolded pass printed noticeably less crisp than every other element on a real thermal print');
+assert.match(dashboard, /\.wrap-bottom-row \{ width:100%; display:flex; justify-content:space-between; align-items:baseline; gap:4px; \}/, 'condition and SKU must share one full-width row so SKU doesn\'t need its own extra vertical space');
+assert.match(dashboard, /\.wrap-condition \{ font-size:11px; font-weight:700; text-transform:uppercase; flex-shrink:0; \}/, 'the condition must use the same real bold weight as every other element on the label, not a synthesized 800, and must never shrink -- it\'s short and always needs to render fully');
+// The SKU/UPC that used to render here is gone -- store report: nobody
+// reads a long id off a shelf, and (even after an earlier word-break fix)
+// it kept crowding condition and contributing to real print cutoff. It's
+// set/year now, truncated with an ellipsis if too long rather than any
+// wrapping/breaking trick, so it can never visually overflow this row no
+// matter what text lands in it.
+assert.match(dashboard, /\.wrap-meta \{ font-size:6px; font-weight:400; color:#555; flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-align:right; \}/, 'meta must truncate with an ellipsis instead of any wrap/word-break trick, so it can never overflow through the condition badge');
+assert.ok(!/font-weight:800/.test(dashboard.slice(dashboard.indexOf('const wrapStyle'), dashboard.indexOf('w.document.write'))), 'no wrap-face text may request a synthesized 800 weight');
+// Sized down slightly from 27px to 24px (still clearly the label's dominant
+// element) specifically to free up a bit more vertical room above it for
+// longer item names/badges, on top of the extra front-face gap above.
+assert.match(dashboard, /\.wrap-price \{ font-size:24px; font-weight:700; line-height:1; margin-top:auto; \}/, 'the price must be a real 700 (bold), not a 900 that has no guaranteed matching real face and can render synthetically thickened/grainy, and sized to leave headroom for longer names');
+assert.ok(!/wrap-price-dollar/.test(dashboard), 'the $-sign-specific CSS class must be fully removed along with the glyph itself');
+assert.ok(!/wrap-price-num/.test(dashboard), 'the digits-specific nested-span CSS class must be fully removed -- the price is one plain text node now');
 
 console.log('Label toploader-wrap contract checks passed');
 
@@ -80,33 +137,33 @@ console.log('Label toploader-wrap contract checks passed');
 assert.ok(!/WRAP_LOGO_SRC/.test(dashboard), 'the illustrated logo image asset must no longer be referenced from the PNG download path -- it was confirmed unreadable on a real printed label');
 assert.ok(!/loadWrapLogoImage/.test(dashboard), 'the logo-preload helper must be fully removed along with the image-based logo');
 assert.ok(!/wrapLogoImg/.test(dashboard), 'no wrap-logo-image variable may remain in the download path');
-assert.match(dashboard, /const nameFont = Math\.round\(h \* 0\.085\);/, 'the item name must be drawn a bit bigger than before');
-assert.match(dashboard, /if\(b\.badge\)\{\s*\n(?:[^\n]*\n)*?\s*let badgeSize = Math\.round\(h \* 0\.06\);\s*\n\s*tctx\.font = `bold \$\{badgeSize\}px \$\{LABEL_FONT_STACK\}`;[\s\S]{0,1200}?fitted\.lines\.forEach\(\(l, i\) => tctx\.fillText\(l, halfW \/ 2, badgeY \+ i \* Math\.round\(badgeSize \* 1\.15\)\)\);/, 'the front face must draw whichever single badge applies, and it must be bold -- an unbolded pass printed noticeably less crisp than everything else on a real thermal print');
-// The device's real system UI font (San Francisco/Segoe UI/Roboto) instead
-// of a bare "sans-serif" generic -- these are specifically hinted/optimized
-// for small-size legibility. Shared between this canvas path and the
-// browser-print path (both need the same treatment, since both draw text at
-// a small physical size).
-assert.match(dashboard, /const LABEL_FONT_STACK = LABEL_FONT_FAMILY \+ ", -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";/, 'a shared font stack must exist for label text -- DM Sans first, then system UI fonts, never a bare "sans-serif" generic');
-assert.ok(!/px sans-serif`/.test(dashboard.slice(dashboard.indexOf('async function renderInventoryLabelCanvas'))), 'no canvas-drawn label text may fall back to a bare "sans-serif" font string once LABEL_FONT_STACK exists');
-assert.match(dashboard, /const priceDigits = fdLabelPrice\$\(b\.price\)\.slice\(1\);/, 'the price must render as whole-dollar digits only, with the "$" glyph dropped');
-assert.match(dashboard, /const priceBigFont = Math\.round\(h \* 0\.33\);/, 'the price must be sized up slightly from before, at one single big font size now that there\'s no smaller $ sign to size separately');
-assert.match(dashboard, /tctx\.textAlign = 'center'; tctx\.textBaseline = 'alphabetic';/, 'the digits must be centered around the front face\'s horizontal center, not right-aligned toward the fold line');
-assert.match(dashboard, /tctx\.fillText\(priceDigits, halfW \/ 2, priceBaseline\);/, 'the whole-dollar digits must be drawn centered at the big font size');
-assert.match(dashboard, /tctx\.textAlign = 'left'; tctx\.textBaseline = 'top';\s*\n\s*tctx\.font = `bold \$\{Math\.round\(h \* 0\.13\)\}px \$\{LABEL_FONT_STACK\}`;\s*\n\s*if\(b\.condition\) tctx\.fillText\(String\(b\.condition\)\.toUpperCase\(\), padX, h \* 0\.8\);/, 'the condition must be drawn at the left edge of the front face, not centered');
-// No SKU digits on the front face (store ask: "I don't care about the bar
-// code numbers on any label") -- the QR on the back already carries it.
-assert.ok(!/tctx\.fillText\(b\.sku/.test(dashboard), 'the SKU digits must not be drawn on the label');
-assert.match(dashboard, /const shopFont = Math\.round\(h \* 0\.065\), shopPad = h \* 0\.032;/, 'the shop name must be drawn a bit bigger than before, with an explicit symmetric padding value');
-assert.match(dashboard, /tctx\.fillText\('THE MANA POCKET', halfW \+ halfW \/ 2, shopPad\);/, 'the back face shop name must be drawn as plain bold text, not an illustrated logo image, using the symmetric top padding');
-assert.match(dashboard, /const logoBottom = shopPad \+ shopFont \* 1\.2 \+ shopPad;/, 'the code region must start below a band with equal padding above and below the shop-name text, not eyeballed constants');
-assert.match(dashboard, /const codeSize = Math\.min\(h - logoBottom - codeMargin \* 2, halfW - codeMargin \* 2\);/, 'the code must be sized to fill essentially all of the remaining back-face room below the shop name');
-assert.match(dashboard, /const codeCanvas = await generateLabelCodeCanvas\(codeValue, codeStyle, Math\.round\(codeSize\)\);/, 'the code canvas must be generated at exactly its real on-label pixel size, not a fixed size scaled down at draw time -- that scale-then-threshold combination is what broke a real scan');
-assert.match(dashboard, /const TEXT_SUPERSAMPLE = 3;/, 'text must be rendered supersampled and smoothly downsampled before thresholding, so anti-aliased glyphs don\'t come out grainy/speckled at the label\'s real small pixel size');
-assert.match(dashboard, /tctx\.scale\(TEXT_SUPERSAMPLE, TEXT_SUPERSAMPLE\);/, 'the offscreen text canvas must be scaled up so all the existing text-drawing math (based on the real, unscaled w/h) renders at the higher supersampled resolution without needing separate scaled coordinates');
-assert.match(dashboard, /ctx\.imageSmoothingEnabled = true;\s*\n\s*ctx\.imageSmoothingQuality = 'high';\s*\n\s*ctx\.drawImage\(textCanvas, 0, 0, w, h\);\s*\n\s*ctx\.imageSmoothingEnabled = false;/, 'the supersampled text layer must be downsampled onto the real canvas WITH smoothing on AND explicitly requesting high quality -- some browsers default to a cheap/low-quality resample even with smoothing merely enabled -- then smoothing must be turned back off before the code is drawn');
-assert.ok(!/tctx\.font = `900 /.test(dashboard), 'no canvas-drawn label text may request font-weight 900 -- confirmed against a real download that it renders visibly grainier than the "bold" (700) used everywhere else on the label, since "sans-serif" has no guaranteed real black/900 face and a missing weight gets synthetically (and roughly) thickened by the renderer');
-assert.match(dashboard, /ctx\.drawImage\(codeDraw\.canvas, codeDraw\.x, codeDraw\.y, codeDraw\.w, codeDraw\.h\);/, 'the code must be drawn onto the real canvas after the text composite step, at its own exact size with smoothing off -- unlike text, the code must never be scaled at all');
+// Store ask: "The pc works and is the best" -- the phone (PNG) label must be
+// the PC label, not a design of its own. Every size here is the CSS pixel
+// value from printInventoryLabels' own wrapStyle, scaled to printer dots.
+{
+  const fnStart = dashboard.indexOf('async function renderInventoryLabelCanvas(');
+  assert.ok(fnStart >= 0, 'renderInventoryLabelCanvas must exist');
+  const fn = dashboard.slice(fnStart, dashboard.indexOf('\n}\n', fnStart) + 2);
+  assert.match(fn, /const K = LABEL_PNG_DPI \/ 96;/, 'CSS pixels (96 per inch) are scaled to the printer\'s real dots');
+  assert.match(fn, /t\.scale\(K \* TEXT_SUPERSAMPLE, K \* TEXT_SUPERSAMPLE\);/, 'the text layer is drawn in CSS pixels, supersampled');
+  assert.match(fn, /const frontW = iW \* 0\.44, fx = border, fy = border;\s*\n\s*const fPadT = 10, fPadX = 8, fPadB = 5, gap = 3;/, 'front face: 44% wide, padding 10px 8px 5px, gap 3px -- same as .wrap-front');
+  assert.match(fn, /t\.strokeStyle = '#000'; t\.lineWidth = 2; t\.setLineDash\(\[6, 6\]\);/, 'a 2px black dashed fold line, same as border-right:2px dashed #000');
+  assert.match(fn, /setFont\(8\);\s*\n\s*const nameLines = labelFitLines\(t, labelNameKeepNumber\(b\.name, b\.badge \? 24 : 36\), contentW, b\.badge \? 2 : 3\);\s*\n\s*drawLines\(nameLines, cx, y, 8, 8\.8, 'center'\);/,
+    'name: 8px bold, line-height 1.1, 3 lines (2 with a badge), shortened like the PC label');
+  assert.match(fn, /setFont\(7\);\s*\n\s*const badgeLines = labelFitLines\(t, String\(b\.badge\)\.toUpperCase\(\), contentW, 2\);\s*\n\s*drawLines\(badgeLines, cx, y, 7, 7\.7, 'center'\);/, 'badge: 7px bold uppercase, 2 lines');
+  assert.match(fn, /setFont\(24\);\s*\n\s*drawLines\(\[fdLabelPrice\$\(b\.price\)\.slice\(1\)\], cx, Math\.max\(y \+ gap, rowTop - gap - 24\), 24, 24, 'center'\);/, 'price: 24px bold, whole dollars with no "$", sitting right above the bottom row (margin-top:auto)');
+  assert.match(fn, /setFont\(11\);/, 'condition: 11px bold');
+  assert.match(fn, /setFont\(6, false\);\s*\n\s*t\.fillStyle = LABEL_PNG_MUTED;/, 'meta: 6px regular, muted');
+  assert.match(fn, /const bPadT = 6, bPadX = 4, bPadB = 4;/, 'back face: padding 6px 4px 4px, same as .wrap-back');
+  assert.match(fn, /drawLines\(\['THE MANA POCKET'\], bx \+ backW \/ 2, fy \+ bPadT, 8, shopH, 'center'\);/, 'shop name: one line of 8px bold text');
+  assert.match(fn, /const size = Math\.min\(boxW, boxH\);/, 'the QR is the largest square left in the back face, like object-fit:contain');
+  assert.ok(!/tctx\.fillText\(b\.sku|t\.fillText\(b\.sku/.test(fn), 'the SKU digits must not be drawn on the label');
+  assert.ok(!/`900 /.test(fn), 'no label text may request a synthesized 900 weight');
+  assert.match(fn, /ctx\.imageSmoothingEnabled = true;\s*\n\s*ctx\.imageSmoothingQuality = 'high';\s*\n\s*ctx\.drawImage\(textCanvas, 0, 0, w, h\);/, 'the supersampled text layer is downsampled with high-quality smoothing');
+  assert.match(fn, /ctx\.imageSmoothingEnabled = false;\s*\n\s*ctx\.drawImage\(codeCanvas, /, 'the code is drawn at its own exact size with smoothing off');
+}
+assert.match(dashboard, /const LABEL_FONT_STACK = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";/, 'the shared system-UI font stack the PC label uses');
+assert.ok(!/px sans-serif`/.test(dashboard.slice(dashboard.indexOf('async function renderInventoryLabelCanvas'))), 'no canvas-drawn label text may fall back to a bare "sans-serif" font string');
 
 console.log('Label toploader-wrap PNG-download contract checks passed');
 

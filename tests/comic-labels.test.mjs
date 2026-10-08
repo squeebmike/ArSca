@@ -29,9 +29,9 @@ assert.equal(ctx.isComic({ category:'Pokemon TCG' }), false);
 // Wiring: comics use these parts, other items are unchanged; the thermal
 // (canvas) label fits a long badge and shows publisher · year instead of condition.
 assert.match(d, /return isComicLabelItem\(item\) \? \{ \.\.\.entry, \.\.\.comicLabelParts\(item\) \} : entry;/);
-assert.match(d, /while\(wrapCanvasText\(tctx, badgeText, 0, 0, maxBadge, 0, 2, true\)\.cut && badgeSize > Math\.round\(h \* 0\.05\)\)/, 'a long badge wraps to 2 lines and never shrinks below a readable size');
-assert.match(d, /const priceBaseline = h \* \(nameLines \+ badgeLines > 3 \? 0\.39 : 0\.34\) \+ priceBigFont \* 0\.78;/, 'the price drops to clear a 2-line name plus a 2-line badge');
-assert.match(d, /if\(b\.condition\) tctx\.fillText\(String\(b\.condition\)\.toUpperCase\(\), padX, h \* 0\.8\);\n\s*else if\(b\.meta\)\{/);
+assert.match(d, /const badgeLines = labelFitLines\(t, String\(b\.badge\)\.toUpperCase\(\), contentW, 2\);/, 'a long badge wraps to 2 lines and ends in "…" past that, like the PC label');
+assert.match(d, /drawLines\(\[fdLabelPrice\$\(b\.price\)\.slice\(1\)\], cx, Math\.max\(y \+ gap, rowTop - gap - 24\)/, 'the price never overlaps a 2-line name plus a 2-line badge');
+assert.match(d, /if\(b\.meta\)\{\s*\n\s*setFont\(6, false\);/, 'publisher · year shows in the bottom row (comics carry no condition)');
 // The browser-print label keeps "#issue" on a long name too.
 const kn = d.match(/function labelNameKeepNumber\(name, max\)\{[\s\S]*?\n\}/)[0];
 const keep = new Function(kn + ';return labelNameKeepNumber;')();

@@ -10,7 +10,7 @@ const dashboard = fs.readFileSync('dashboard.html', 'utf8');
 // nothing. Confirmed against a real phone + Bluetooth thermal printer. ──
 assert.match(dashboard, /const LABEL_PNG_DPI = 203;/, 'must define the print-head DPI used to size the downloaded PNG in real dots');
 assert.match(dashboard, /async function downloadInventoryLabelPngs\(\)\{/, 'missing downloadInventoryLabelPngs');
-assert.match(dashboard, /function wrapCanvasText\(ctx, text, x, y, maxWidth, lineHeight, maxLines, measureOnly\)\{/, 'missing wrapCanvasText helper (canvas text has no built-in wrapping)');
+assert.match(dashboard, /function labelFitLines\(ctx, text, maxWidth, maxLines, ellipsis = true\)\{/, 'missing labelFitLines helper (canvas text has no built-in wrapping)');
 
 // ── Contract: the button is wired up and gives feedback the same way the
 // existing PRINT button does (disable + relabel during generation) ──
@@ -29,12 +29,11 @@ assert.match(dashboard, /if\(btn\)\{ btn\.disabled = false; btn\.textContent = b
   assert.match(head, /if\(typeof JsBarcode === 'undefined' \|\| typeof qrcode === 'undefined'\) return alert\('Barcode library still loading -- try again in a moment'\);/, 'downloadInventoryLabelPngs must guard on both not-yet-loaded code libraries, same as printInventoryLabels');
 }
 assert.match(dashboard, /const codeValue = codeStyle === 'qr' \? labelQrPayload\(b\) : \(b\.sku \|\| b\.id\);/, 'the code value must be resolved once before either layout branch generates its code image');
-assert.match(dashboard, /const codeCanvas = await generateLabelCodeCanvas\(codeValue, codeStyle, Math\.round\(codeSize\)\);/, 'the wrap layout must render its scan code onto an offscreen canvas at the code\'s real on-label size, not a fixed size that then gets blurrily scaled to fit');
-assert.match(dashboard, /const codeCanvas = await generateLabelCodeCanvas\(codeValue, codeStyle, Math\.round\(codeStyle === 'qr' \? codeH : Math\.max\(codeW, codeH\)\)\);/, 'the standard layout must likewise generate its scan code at its real on-label size');
+assert.match(dashboard, /const codeCanvas = await generateLabelCodeCanvas\(codeValue, codeStyle, codeStyle === 'qr' \? Math\.min\(boxW, boxH\) : Math\.max\(boxW, boxH\)\);/, 'both layouts must render the scan code at its real on-label size in dots, not a fixed size that then gets blurrily scaled to fit');
 
 // ── Contract: downloaded label prices are always whole dollars, no cents ──
-assert.match(dashboard, /const priceDigits = fdLabelPrice\$\(b\.price\)\.slice\(1\);/, 'the wrap front face price must render via the whole-dollar formatter, with the "$" glyph dropped');
-assert.match(dashboard, /ctx\.fillText\(fdLabelPrice\$\(b\.price\), w - pad, h \* 0\.78\);/, 'the standard layout price must render via the whole-dollar formatter');
+assert.match(dashboard, /drawLines\(\[fdLabelPrice\$\(b\.price\)\.slice\(1\)\], cx, /, 'the wrap front face price must render via the whole-dollar formatter, with the "$" glyph dropped');
+assert.match(dashboard, /t\.fillText\(fdLabelPrice\$\(b\.price\), left \+ contentW, y \+ rowH \/ 2\);/, 'the standard layout price must render via the whole-dollar formatter');
 
 // ── Contract: each label is downloaded as its own file via a Blob + <a download>
 // link, not routed through window.print() -- that is the whole point of this
@@ -46,43 +45,18 @@ assert.match(dashboard, /if\(i < labelSpecs\.length - 1\) await new Promise\(res
 
 console.log('Label PNG download contract checks passed');
 
-// ── Functional: wrapCanvasText wraps onto multiple lines and respects maxLines,
-// and the physical label size (in real dots at LABEL_PNG_DPI) matches the same
-// roll/sheet width the existing print path already uses. ──
+// ── Functional: labelFitLines wraps onto at most maxLines lines and ends a
+// cut last line in "…", like the PC label's CSS line clamp. ──
 {
-  const src = dashboard.match(/function wrapCanvasText\(ctx, text, x, y, maxWidth, lineHeight, maxLines, measureOnly\)\{[\s\S]*?\n\}/)?.[0];
-  assert.ok(src, 'could not extract wrapCanvasText for functional testing');
-  const { wrapCanvasText } = new Function(`${src}\nreturn { wrapCanvasText };`)();
+  const src = dashboard.match(/function labelFitLines\(ctx, text, maxWidth, maxLines, ellipsis = true\)\{[\s\S]*?\n\}/)?.[0];
+  assert.ok(src, 'could not extract labelFitLines for functional testing');
+  const labelFitLines = new Function(`${src}\nreturn labelFitLines;`)();
+  const ctx = { measureText: s => ({ width: s.length * 10 }) };
 
-  function fakeCtx(charWidth){
-    const calls = [];
-    return {
-      calls,
-      measureText: (s) => ({ width: s.length * charWidth }),
-      fillText: (text, x, y) => calls.push({ text, x, y }),
-    };
-  }
-
-  const ctx1 = fakeCtx(10);
-  wrapCanvasText(ctx1, 'Charizard VMAX Rainbow Rare', 5, 100, 90, 12, 2);
-  assert.equal(ctx1.calls.length, 2, 'a long name must wrap onto exactly maxLines (2) lines, not spill past it');
-  assert.equal(ctx1.calls[0].y, 100, 'the first line must sit at the given y');
-  assert.equal(ctx1.calls[1].y, 112, 'the second line must be offset by exactly one lineHeight');
-
-  const ctx2 = fakeCtx(10);
-  wrapCanvasText(ctx2, 'Short', 5, 100, 90, 12, 2);
-  assert.equal(ctx2.calls.length, 1, 'a name that fits on one line must not produce a stray empty second line');
-
-  // A long name keeps its trailing number: the series is shortened instead.
-  const ctx3 = fakeCtx(10);
-  wrapCanvasText(ctx3, 'Amazing Fantastic Spectacular Spider-Man #300', 5, 100, 90, 12, 2);
-  assert.equal(ctx3.calls.length, 2);
-  assert.match(ctx3.calls[1].text, /… #300$/, 'the issue number must survive a name that runs out of room');
-  const ctx4 = fakeCtx(10);
-  const measured = wrapCanvasText(ctx4, 'Charizard VMAX Rainbow Rare', 5, 100, 90, 12, 2, true);
-  assert.equal(ctx4.calls.length, 0, 'measureOnly must not draw');
-  assert.equal(measured.cut, true);
-  assert.equal(measured.lines.length, 2);
+  assert.deepEqual([...labelFitLines(ctx, 'Charizard VMAX Rainbow Rare', 90, 2)], ['Charizard', 'VMAX…'], 'a long name stops at maxLines and its last line ends in an ellipsis');
+  assert.deepEqual([...labelFitLines(ctx, 'Short', 90, 2)], ['Short'], 'a name that fits on one line makes no stray second line');
+  assert.deepEqual([...labelFitLines(ctx, 'Charizard VMAX Rainbow Rare', 90, 2, false)], ['Charizard', 'VMAX'], 'without an ellipsis the extra words are simply clipped, like max-height');
+  assert.deepEqual([...labelFitLines(ctx, 'Charizard VMAX Rainbow', 140, 3)], ['Charizard VMAX', 'Rainbow'], 'up to 3 lines when allowed');
 }
 
 const LABEL_PNG_DPI = 203;
