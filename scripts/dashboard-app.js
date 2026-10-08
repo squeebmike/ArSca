@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.10.08.3-comics-gemini-mailer';
+const APP_VERSION = '2026.10.08.4-comic-listing-text';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -20108,7 +20108,30 @@ function renderEbayDescriptionTemplate(template, tokens){
 // under Settings -> Vendor Info -> EBAY LISTING SETTINGS (or set one
 // legacy default for everything, same as before); these are only the
 // built-in fallback when nothing has been customized.
+// Store ask: comic listings should say they're bagged & boarded and shipped
+// in a Gemini mailer, and a presale should say PRESALE in the listing
+// itself -- visible in the description box, whatever template made it.
+const COMIC_GEMINI_LINE = 'Bagged & boarded and shipped in a Gemini mailer.';
+function comicPresaleBannerText(onSaleLabel = ''){
+  return 'PRESALE -- This comic has not been released yet.' + (onSaleLabel ? ' Expected release/ship date: ' + onSaleLabel + '.' : '') + ' Your order ships once it arrives from our distributor.';
+}
+function comicPresaleBannerHtml(onSaleLabel = ''){
+  return '<div style="max-width:760px;margin:0 auto 8px;background:#ffd166;color:#171717;border:2px solid #171717;padding:12px 16px;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:900;text-align:center">' + escHtml(comicPresaleBannerText(onSaleLabel)) + '</div>';
+}
+// A banner goes on top unless the description already has its own
+// (an upper-case "PRESALE" -- the shipping sentence's "presale comics"
+// doesn't count as one).
+function withComicPresaleBanner(body, onSaleLabel = ''){
+  const text = String(body || '');
+  if(/\bPRESALE\b/.test(text)) return text;
+  return /<\/?[a-z][\s\S]*>/i.test(text) ? comicPresaleBannerHtml(onSaleLabel) + text : comicPresaleBannerText(onSaleLabel) + (text ? '\n\n' + text : '');
+}
 function resolveEbayShippingLine(cat, isComic, isSealed, isGraded, catId){
+  const line = resolveEbayShippingLineBase(cat, isComic, isSealed, isGraded, catId);
+  // A store-wide shipping line (Settings) still gets the comic packaging.
+  return isComic && !/gemini/i.test(line) ? COMIC_GEMINI_LINE + ' ' + line : line;
+}
+function resolveEbayShippingLineBase(cat, isComic, isSealed, isGraded, catId){
   const vp = getVendorProfile();
   const perCategory = (vp.ebayShippingLines || {})[cat];
   if(perCategory) return perCategory;
@@ -20192,7 +20215,7 @@ function computeEbayListingFields(item){
   // below already uses, instead of its own separate wrong copy of it.
   const releaseDateLabel = item.onSaleDate ? (() => { try { return new Date(/^\d{4}-\d{2}-\d{2}$/.test(item.onSaleDate) ? item.onSaleDate+'T12:00:00' : item.onSaleDate).toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'}); } catch(e){ return ''; } })() : '';
   const shippingLine = isPresaleItem
-    ? ['For presale comics, orders ship promptly once the title reaches its official release date and inventory has been received from our distributor.', releaseDateLabel ? ('Release Date: '+releaseDateLabel) : '', 'Publisher and distributor release dates may change. If a presale title is delayed, your order will ship as soon as the book becomes available.'].filter(Boolean).join('\n\n')
+    ? [isComic ? COMIC_GEMINI_LINE : '', 'For presale comics, orders ship promptly once the title reaches its official release date and inventory has been received from our distributor.', releaseDateLabel ? ('Release Date: '+releaseDateLabel) : '', 'Publisher and distributor release dates may change. If a presale title is delayed, your order will ship as soon as the book becomes available.'].filter(Boolean).join('\n\n')
     : resolveEbayShippingLine(cat, isComic, isSealed, isGraded, catId);
   const tokens = {
     title, category:item.category||'', year:item.year||'', set:item.set||'', variant:item.variant||'',
@@ -20241,9 +20264,11 @@ function computeEbayListingFields(item){
   // actually sells a multi-item lot is seeing exactly what's in it, so this
   // lists the bundled items by name instead of pretending it's one card.
   const bundleMemberNames = Array.isArray(item.bundleMemberNames) ? item.bundleMemberNames.filter(Boolean) : [];
-  const bodyText = (item.isBundle && bundleMemberNames.length)
+  const renderedBodyText = (item.isBundle && bundleMemberNames.length)
     ? ['This lot includes ' + bundleMemberNames.length + ' items:', bundleMemberNames.map(n => '• ' + n).join('\n'), 'All items in this lot ship together.'].join('\n\n')
     : renderEbayDescriptionTemplate(template, tokens);
+  const comicPresaleLabel = isComic && isPresaleItem ? (releaseDateLabel || '') : null;
+  const bodyText = comicPresaleLabel === null ? renderedBodyText : withComicPresaleBanner(renderedBodyText, comicPresaleLabel);
   // Store report: a template that renders {shippingLine} itself (now every
   // built-in category template does -- see the token above) got a SECOND,
   // differently-worded shipping paragraph appended right after it
@@ -20261,7 +20286,7 @@ function computeEbayListingFields(item){
   // text slotted into it via {aiSummary}, instead of the button replacing
   // a store's rich-HTML branded template wholesale with flat AI text --
   // see applyAiSummaryToDescription.
-  return {condText, isSealed, inferManufacturer, inferConfig, cat, isComic, isTCG, isGraded, catId, conditionId, title, price, desc, template, tokens, bodyText, isBundle: !!(item.isBundle && bundleMemberNames.length)};
+  return {condText, isSealed, inferManufacturer, inferConfig, cat, isComic, isTCG, isGraded, catId, conditionId, title, price, desc, template, tokens, bodyText, comicPresaleLabel, isBundle: !!(item.isBundle && bundleMemberNames.length)};
 }
 
 // Slots AI-generated text into the item's own eBay description template
@@ -20282,6 +20307,7 @@ function applyAiSummaryToDescription(fields, aiText){
   let bodyText;
   if(hasToken){
     bodyText = renderEbayDescriptionTemplate(fields.template, {...fields.tokens, aiSummary: aiText});
+    if(fields.comicPresaleLabel !== null && fields.comicPresaleLabel !== undefined) bodyText = withComicPresaleBanner(bodyText, fields.comicPresaleLabel);
   } else {
     const existing = fields.bodyText || '';
     const looksHtml = /<\/?[a-z][\s\S]*>/i.test(existing);
