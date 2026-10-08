@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.10.08.5-incentive-qty-live-desc';
+const APP_VERSION = '2026.10.08.6-presale-bar-bottom';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -20116,15 +20116,16 @@ function comicPresaleBannerText(onSaleLabel = ''){
   return 'PRESALE -- This comic has not been released yet.' + (onSaleLabel ? ' Expected release/ship date: ' + onSaleLabel + '.' : '') + ' Your order ships once it arrives from our distributor.';
 }
 function comicPresaleBannerHtml(onSaleLabel = ''){
-  return '<div style="max-width:760px;margin:0 auto 8px;background:#ffd166;color:#171717;border:2px solid #171717;padding:12px 16px;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:900;text-align:center">' + escHtml(comicPresaleBannerText(onSaleLabel)) + '</div>';
+  return '<div style="max-width:760px;margin:8px auto 0;background:#ffd166;color:#171717;border:2px solid #171717;padding:12px 16px;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:900;text-align:center">' + escHtml(comicPresaleBannerText(onSaleLabel)) + '</div>';
 }
-// A banner goes on top unless the description already has its own
+// Store ask: the yellow PRESALE bar goes at the bottom, not the top.
+// A banner goes on the end unless the description already has its own
 // (an upper-case "PRESALE" -- the shipping sentence's "presale comics"
 // doesn't count as one).
 function withComicPresaleBanner(body, onSaleLabel = ''){
   const text = String(body || '');
   if(/\bPRESALE\b/.test(text)) return text;
-  return /<\/?[a-z][\s\S]*>/i.test(text) ? comicPresaleBannerHtml(onSaleLabel) + text : comicPresaleBannerText(onSaleLabel) + (text ? '\n\n' + text : '');
+  return /<\/?[a-z][\s\S]*>/i.test(text) ? text + comicPresaleBannerHtml(onSaleLabel) : (text ? text + '\n\n' : '') + comicPresaleBannerText(onSaleLabel);
 }
 function resolveEbayShippingLine(cat, isComic, isSealed, isGraded, catId){
   const line = resolveEbayShippingLineBase(cat, isComic, isSealed, isGraded, catId);

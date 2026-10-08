@@ -39,18 +39,18 @@ assert.equal(COMIC_GEMINI_MAILER.dimHeight, 1.25);
 // ── Description notices ──
 {
   const presale = withComicListingNotices('Story text.', { presale:true, onSaleLabel:'November 5, 2026' });
-  assert.match(presale, /^PRESALE -- This comic has not been released yet/, 'a presale says PRESALE in the listing body, not only the title');
+  assert.match(presale, /\n\nPRESALE -- This comic has not been released yet[^\n]*$/, 'a presale says PRESALE in the listing body, not only the title -- at the bottom (store ask)');
   assert.match(presale, /Expected on-sale\/ship date: November 5, 2026\./, 'with the ship date eBay\'s presale policy asks for');
-  assert.match(presale, /Story text\.\n\nBagged & boarded and shipped in a Gemini mailer\.$/);
+  assert.match(presale, /^Story text\.\n\nBagged & boarded and shipped in a Gemini mailer\.\n\nPRESALE/);
   const already = withComicListingNotices('PRESALE! Ships Nov 5.\n\nBagged and boarded, shipped in a Gemini mailer.', { presale:true, onSaleLabel:'November 5, 2026' });
   assert.equal(already, 'PRESALE! Ships Nov 5.\n\nBagged and boarded, shipped in a Gemini mailer.', 'nothing is added twice');
   assert.doesNotMatch(withComicListingNotices('In stock.', {}), /PRESALE/, 'an in-stock comic is never called a presale');
   const html = withComicListingNotices('<h2>Saga #1</h2><p>Story.</p>', { presale:true, onSaleLabel:'November 5, 2026' });
-  assert.match(html, /^<div style="[^"]*background:#ffd166[^"]*">PRESALE -- /, 'an HTML template gets the notice as a PRESALE banner');
-  assert.match(html, /<p>Bagged &amp; boarded and shipped in a Gemini mailer\.<\/p>$/);
+  assert.match(html, /<div style="[^"]*background:#ffd166[^"]*">PRESALE -- [^<]*<\/div>$/, 'an HTML template gets the notice as a PRESALE bar at the bottom');
+  assert.match(html, /<p>Bagged &amp; boarded and shipped in a Gemini mailer\.<\/p><div style/);
   const long = withComicListingNotices('word '.repeat(1200), { presale:true, onSaleLabel:'November 5, 2026' });
   assert.ok(long.length <= 4000, 'stays inside eBay\'s 4000-character limit');
-  assert.match(long, /^PRESALE/); assert.match(long, /Gemini mailer\.$/, 'both notices survive a long description');
+  assert.match(long, /PRESALE -- [^\n]*$/); assert.match(long, /Gemini mailer\.\n\nPRESALE/, 'both notices survive a long description');
 }
 
 // ── Placement: in the store template's FAST, SECURE SHIPPING section ──
@@ -59,7 +59,9 @@ assert.equal(COMIC_GEMINI_MAILER.dimHeight, 1.25);
   const out = withComicListingNotices(template, { presale:true, onSaleLabel:'December 2, 2026' });
   assert.match(out, /FAST, SECURE SHIPPING<\/div>\nBagged &amp; boarded and shipped in a Gemini mailer\. \nWe pack every comic/, 'the Gemini line goes in the shipping section, not at the bottom');
   assert.doesNotMatch(out, /Questions before ordering\?<\/div><p>Bagged/, 'and not again at the bottom');
-  assert.match(out, /^<div style="[^"]*background:#ffd166[^"]*">PRESALE -- /, 'the lower-case "presale comics" sentence alone doesn\'t stop the PRESALE banner');
+  assert.match(out, /Questions before ordering\?<\/div><div style="[^"]*background:#ffd166[^"]*">PRESALE -- [^<]*<\/div>$/, 'the PRESALE bar goes at the very bottom, and the lower-case "presale comics" sentence alone doesn\'t stop it');
+  const rerun = out.replace(/<div style="max-width:760px;margin:[^"]*background:#ffd166;[^"]*">[^<]*<\/div>/g, '');
+  assert.ok(!/ffd166/.test(rerun), 'the refresh route\'s pattern takes an earlier bar off before placing it again');
 }
 
 // ── Already-live presales can be brought up to date ──
@@ -68,8 +70,9 @@ assert.equal(COMIC_GEMINI_MAILER.dimHeight, 1.25);
   assert.ok(start >= 0, 'missing the live-listing description refresh route');
   const route = worker.slice(start, worker.indexOf("if (url.pathname === '/foc/ebay/convert-to-instock') {", start));
   assert.match(route, /requireStoreUser\(request, env, storeId, \['owner','admin'\]\)/, 'owner/admin only');
-  assert.match(route, /const current = String\(offer\.listingDescription \|\| item\.product\?\.description \|\| ''\);\s*\n\s*const next = withComicListingNotices\(current\.replace\(oldBottomNote, ''\), \{ presale: true, onSaleLabel: ebayOnSaleLabel\(d\.onSaleDate\) \}\);/,
-    'reads the description eBay actually has, drops the old bottom-of-page Gemini line, then adds the banner and the shipping-section line');
+  assert.match(route, /const current = String\(offer\.listingDescription \|\| item\.product\?\.description \|\| ''\);/, 'reads the description eBay actually has');
+  assert.match(route, /const withoutOldBar = current\.replace\(oldBottomNote, ''\)\.replace\(\/<div style="max-width:760px;margin:\[\^"\]\*background:#ffd166;\[\^"\]\*">\[\^<\]\*<\\\/div>\/g, ''\);\s*\n\s*const next = withComicListingNotices\(withoutOldBar, \{ presale: true, onSaleLabel: ebayOnSaleLabel\(d\.onSaleDate\) \}\);/,
+    'drops the old bottom-of-page Gemini line and an earlier top PRESALE bar, then adds the bar at the bottom and the shipping-section line');
   assert.match(route, /const itemBody = \{ \.\.\.item \};/, 'the inventory item goes back exactly as eBay had it, apart from the description and package');
   assert.match(route, /for \(const k of OFFER_FIELDS\) if \(offer\[k\] !== undefined\) offerBody\[k\] = offer\[k\];/, 'the offer keeps every editable field it had');
   assert.match(route, /if \(d\.ebayApiSystem === 'trading' \|\| !d\.ebaySku \|\| !d\.ebayOfferId\) \{ result\.skippedMultiCover\+\+; continue; \}/, 'multi-cover listings are reported, not changed');
