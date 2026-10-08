@@ -3014,11 +3014,28 @@ function comicPresaleNotice(onSaleLabel = '') {
 }
 function withComicListingNotices(description, { presale = false, onSaleLabel = '' } = {}) {
   let body = String(description || '').trim();
-  // A store template can be HTML; the notices then go in as paragraphs.
+  // A store template can be HTML; the notices then go in as HTML.
   const isHtml = /<\/?[a-z][\s\S]*>/i.test(body);
-  const asPara = (text, bold) => isHtml ? `<p>${bold ? '<b>' : ''}${text.replace(/&/g, '&amp;').replace(/</g, '&lt;')}${bold ? '</b>' : ''}</p>` : text;
-  const head = presale && !/\bpre-?sale\b/i.test(body) ? asPara(comicPresaleNotice(onSaleLabel), true) : '';
-  const tail = /gemini/i.test(body) ? '' : asPara(COMIC_SHIPPING_NOTE, false);
+  const escape = t => t.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+  // Only a real banner (upper-case PRESALE) counts as one -- a shipping
+  // sentence's "presale comics" alone isn't the disclosure a buyer sees.
+  const head = presale && !/\bPRESALE\b/.test(body)
+    ? (isHtml
+      ? `<div style="max-width:760px;margin:0 auto 8px;background:#ffd166;color:#171717;border:2px solid #171717;padding:12px 16px;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:900;text-align:center">${escape(comicPresaleNotice(onSaleLabel))}</div>`
+      : comicPresaleNotice(onSaleLabel))
+    : '';
+  let tail = '';
+  if (!/gemini/i.test(body)) {
+    // Store ask: "it should be in the fast secure section", not stuck at
+    // the bottom -- an HTML template's shipping heading gets it right after.
+    const shippingHeading = isHtml ? body.match(/SHIPPING\s*<\/(?:div|h\d|p|b|strong|span)>/i) : null;
+    if (shippingHeading) {
+      const at = shippingHeading.index + shippingHeading[0].length;
+      body = body.slice(0, at) + '\n' + escape(COMIC_SHIPPING_NOTE) + ' ' + body.slice(at);
+    } else {
+      tail = isHtml ? `<p>${escape(COMIC_SHIPPING_NOTE)}</p>` : COMIC_SHIPPING_NOTE;
+    }
+  }
   // eBay caps a description at 4000 characters -- the notices always fit.
   const room = 4000 - [head, tail].filter(Boolean).reduce((n, t) => n + t.length + 2, 0);
   if (body.length > room) body = isHtml ? truncateHtmlSafely(body, room) : body.slice(0, Math.max(0, room - 1)).trimEnd() + '…';
@@ -5874,6 +5891,90 @@ async function routeRequest(request, env, ctx) {
     // presale has nothing left to relist); reuses the same
     // reviseEbayListing() PUT-in-place mechanics /ebay/update already uses,
     // so this never creates a second/duplicate listing for the same sku.
+    // Store report: "It didn't when I read it on ebay" -- presales listed
+    // before the Gemini/PRESALE notices existed (or before they moved into
+    // the shipping section) keep their old description on eBay. This
+    // re-reads each live single-cover presale listing exactly as eBay has
+    // it and changes only its description (PRESALE banner on top, the
+    // "bagged & boarded / Gemini mailer" line in the shipping section, an
+    // old bottom-of-page copy removed) and, when it still has the old
+    // card-sized package, the Gemini mailer size. Everything else on the
+    // listing goes back to eBay untouched. Multi-cover (Trading API)
+    // listings are reported, not changed.
+    if (url.pathname === '/foc/ebay/refresh-presale-descriptions') {
+      if (request.method !== 'POST') return json({ error: 'POST only' }, 405);
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId, ['owner','admin']);
+      if (auth.error) return auth.error;
+      let ebayToken = '';
+      try { ebayToken = await getEbayUserAccessToken(env); }
+      catch (tokenErr) { return json({ needsToken: true, error: tokenErr.message }, 401); }
+      if (!ebayToken) return json({ needsToken: true, error: 'Connect eBay first: missing user access/refresh token' }, 401);
+
+      const { data: rows } = await supabaseAdminFetch(env, `inventory_items?store_id=eq.${encodeURIComponent(storeId)}&status=eq.presale&select=id,data`);
+      const live = (rows || []).filter(r => {
+        const d = r.data || {};
+        return d.source === 'foc_presale' && d.ebayListingId && !d.ebayWithdrawnAt;
+      });
+      const result = { updated: [], unchanged: 0, skippedMultiCover: 0, failed: [] };
+      const headers = { 'Authorization': 'Bearer ' + ebayToken, 'Content-Type': 'application/json', 'Content-Language': 'en-US' };
+      const OFFER_FIELDS = ['availableQuantity', 'categoryId', 'charity', 'extendedProducerResponsibility', 'hideBuyerDetails', 'includeCatalogProductDetails', 'listingDescription', 'listingDuration', 'listingPolicies', 'listingStartDate', 'lotSize', 'merchantLocationKey', 'pricingSummary', 'quantityLimitPerBuyer', 'regulatory', 'secondaryCategoryId', 'storeCategoryNames', 'tax'];
+      const oldBottomNote = /(?:<p>\s*Bagged &amp; boarded and shipped in a Gemini mailer\.\s*<\/p>\s*|\n*Bagged & boarded and shipped in a Gemini mailer\.\s*)$/;
+      for (const row of live) {
+        const d = row.data || {};
+        const name = d.name || '';
+        if (d.ebayApiSystem === 'trading' || !d.ebaySku || !d.ebayOfferId) { result.skippedMultiCover++; continue; }
+        try {
+          const [itemRes, offerRes] = await Promise.all([
+            fetch(`https://api.ebay.com/sell/inventory/v1/inventory_item/${encodeURIComponent(d.ebaySku)}`, { headers }),
+            fetch(`https://api.ebay.com/sell/inventory/v1/offer/${encodeURIComponent(d.ebayOfferId)}`, { headers }),
+          ]);
+          const item = await itemRes.json().catch(() => null);
+          const offer = await offerRes.json().catch(() => null);
+          if (!itemRes.ok || !item || !offerRes.ok || !offer) throw new Error('Could not read the listing from eBay (' + itemRes.status + '/' + offerRes.status + ')');
+          const current = String(offer.listingDescription || item.product?.description || '');
+          const next = withComicListingNotices(current.replace(oldBottomNote, ''), { presale: true, onSaleLabel: ebayOnSaleLabel(d.onSaleDate) });
+          const pkg = item.packageWeightAndSize || {};
+          const dims = pkg.dimensions || {};
+          const oldCardSize = !(Number(dims.length) > 0) || (Number(dims.length) === 6.5 && Number(dims.width) === 4 && Number(dims.height) === 0.1);
+          if (next === current && !oldCardSize) { result.unchanged++; continue; }
+          const itemBody = { ...item };
+          delete itemBody.sku; delete itemBody.groupIds; delete itemBody.inventoryItemGroupKeys;
+          itemBody.product = { ...(item.product || {}), description: next };
+          if (oldCardSize) {
+            const weight = pkg.weight || {};
+            const unit = String(weight.unit || 'POUND').toUpperCase();
+            const bumped = unit === 'POUND' && Number(weight.value) > 0 && Number(weight.value) < 0.5 ? Number(weight.value) + COMIC_GEMINI_MAILER.emptyWeightLb
+              : unit === 'OUNCE' && Number(weight.value) > 0 && Number(weight.value) < 8 ? Number(weight.value) + 5 : Number(weight.value) || 0.5625;
+            itemBody.packageWeightAndSize = {
+              ...pkg,
+              dimensions: { length: COMIC_GEMINI_MAILER.dimLength, width: COMIC_GEMINI_MAILER.dimWidth, height: COMIC_GEMINI_MAILER.dimHeight, unit: 'INCH' },
+              weight: { value: bumped, unit: weight.unit || 'POUND' },
+            };
+          }
+          const putItem = await fetch(`https://api.ebay.com/sell/inventory/v1/inventory_item/${encodeURIComponent(d.ebaySku)}`, { method: 'PUT', headers, body: JSON.stringify(itemBody) });
+          if (!putItem.ok && putItem.status !== 204) {
+            const t = await putItem.text().catch(() => '');
+            throw new Error('eBay refused the item update (' + putItem.status + '): ' + t.substring(0, 200));
+          }
+          if (offer.listingDescription) {
+            const offerBody = {};
+            for (const k of OFFER_FIELDS) if (offer[k] !== undefined) offerBody[k] = offer[k];
+            offerBody.listingDescription = next;
+            const putOffer = await fetch(`https://api.ebay.com/sell/inventory/v1/offer/${encodeURIComponent(d.ebayOfferId)}`, { method: 'PUT', headers, body: JSON.stringify(offerBody) });
+            if (!putOffer.ok && putOffer.status !== 204) {
+              const t = await putOffer.text().catch(() => '');
+              throw new Error('eBay refused the description update (' + putOffer.status + '): ' + t.substring(0, 200));
+            }
+          }
+          result.updated.push({ id: row.id, name, ebayListingId: d.ebayListingId, packageFixed: oldCardSize });
+        } catch (e) {
+          result.failed.push({ id: row.id, name, ebayListingId: d.ebayListingId, error: String(e.message || e) });
+        }
+      }
+      return json({ ok: true, checked: live.length, ...result });
+    }
+
     if (url.pathname === '/foc/ebay/convert-to-instock') {
       if (request.method !== 'POST') return json({ error: 'POST only' }, 405);
       const storeId = requestStoreId(request, url);

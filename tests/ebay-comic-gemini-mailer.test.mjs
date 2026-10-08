@@ -46,11 +46,49 @@ assert.equal(COMIC_GEMINI_MAILER.dimHeight, 1.25);
   assert.equal(already, 'PRESALE! Ships Nov 5.\n\nBagged and boarded, shipped in a Gemini mailer.', 'nothing is added twice');
   assert.doesNotMatch(withComicListingNotices('In stock.', {}), /PRESALE/, 'an in-stock comic is never called a presale');
   const html = withComicListingNotices('<h2>Saga #1</h2><p>Story.</p>', { presale:true, onSaleLabel:'November 5, 2026' });
-  assert.match(html, /^<p><b>PRESALE -- /, 'an HTML template gets the notice as an HTML paragraph');
+  assert.match(html, /^<div style="[^"]*background:#ffd166[^"]*">PRESALE -- /, 'an HTML template gets the notice as a PRESALE banner');
   assert.match(html, /<p>Bagged &amp; boarded and shipped in a Gemini mailer\.<\/p>$/);
   const long = withComicListingNotices('word '.repeat(1200), { presale:true, onSaleLabel:'November 5, 2026' });
   assert.ok(long.length <= 4000, 'stays inside eBay\'s 4000-character limit');
   assert.match(long, /^PRESALE/); assert.match(long, /Gemini mailer\.$/, 'both notices survive a long description');
+}
+
+// ── Placement: in the store template's FAST, SECURE SHIPPING section ──
+{
+  const template = '<div>THE MANA POCKET</div><div style="background:#171717;color:#fff"><div style="color:#c391ff;font-weight:900">FAST, SECURE SHIPPING</div>\nWe pack every comic to arrive protected. For presale comics, orders ship once…</div><div>Questions before ordering?</div>';
+  const out = withComicListingNotices(template, { presale:true, onSaleLabel:'December 2, 2026' });
+  assert.match(out, /FAST, SECURE SHIPPING<\/div>\nBagged &amp; boarded and shipped in a Gemini mailer\. \nWe pack every comic/, 'the Gemini line goes in the shipping section, not at the bottom');
+  assert.doesNotMatch(out, /Questions before ordering\?<\/div><p>Bagged/, 'and not again at the bottom');
+  assert.match(out, /^<div style="[^"]*background:#ffd166[^"]*">PRESALE -- /, 'the lower-case "presale comics" sentence alone doesn\'t stop the PRESALE banner');
+}
+
+// ── Already-live presales can be brought up to date ──
+{
+  const start = worker.indexOf("if (url.pathname === '/foc/ebay/refresh-presale-descriptions') {");
+  assert.ok(start >= 0, 'missing the live-listing description refresh route');
+  const route = worker.slice(start, worker.indexOf("if (url.pathname === '/foc/ebay/convert-to-instock') {", start));
+  assert.match(route, /requireStoreUser\(request, env, storeId, \['owner','admin'\]\)/, 'owner/admin only');
+  assert.match(route, /const current = String\(offer\.listingDescription \|\| item\.product\?\.description \|\| ''\);\s*\n\s*const next = withComicListingNotices\(current\.replace\(oldBottomNote, ''\), \{ presale: true, onSaleLabel: ebayOnSaleLabel\(d\.onSaleDate\) \}\);/,
+    'reads the description eBay actually has, drops the old bottom-of-page Gemini line, then adds the banner and the shipping-section line');
+  assert.match(route, /const itemBody = \{ \.\.\.item \};/, 'the inventory item goes back exactly as eBay had it, apart from the description and package');
+  assert.match(route, /for \(const k of OFFER_FIELDS\) if \(offer\[k\] !== undefined\) offerBody\[k\] = offer\[k\];/, 'the offer keeps every editable field it had');
+  assert.match(route, /if \(d\.ebayApiSystem === 'trading' \|\| !d\.ebaySku \|\| !d\.ebayOfferId\) \{ result\.skippedMultiCover\+\+; continue; \}/, 'multi-cover listings are reported, not changed');
+  const oldBottomNote = new Function('return ' + route.match(/const oldBottomNote = (\/.*\/);/)[1])();
+  assert.equal('<p>Body</p><p>Bagged &amp; boarded and shipped in a Gemini mailer.</p>'.replace(oldBottomNote, ''), '<p>Body</p>', 'the old bottom copy is removed before the line is placed again');
+  const foc = fs.readFileSync('scripts/foc-dashboard.js', 'utf8');
+  assert.match(foc, /onclick="refreshFocPresaleEbayDescriptions\(\)"[^>]*>UPDATE LIVE PRESALE DESCRIPTIONS<\/button>/, 'the FOC eBay toolbar has the button');
+  assert.match(foc, /window\.refreshFocPresaleEbayDescriptions=refreshFocPresaleEbayDescriptions;/);
+}
+
+// ── Incentive covers default to listing 1 ──
+{
+  const foc = fs.readFileSync('scripts/foc-dashboard.js', 'utf8');
+  const fn = foc.slice(foc.indexOf('function focDefaultEbayQty('), foc.indexOf('\n', foc.indexOf('function focDefaultEbayQty(')));
+  const focDefaultEbayQty = new Function('allFocSkus', fn + '\nreturn focDefaultEbayQty;')(() => [{ id:'inc', isIncentive:true }, { id:'reg', isIncentive:false }]);
+  assert.equal(focDefaultEbayQty('inc'), 1, 'an incentive cover defaults to 1');
+  assert.equal(focDefaultEbayQty('reg'), 10, 'a regular cover stays at 10');
+  assert.match(foc, /<label>QUANTITY<input id="foc-eb-qty" class="tsi" type="number" min="1" max="200" value="'\+focDefaultEbayQty\(skuId\)\+'"><\/label>/, 'single-cover review uses it');
+  assert.match(foc, /data-eb-cover-qty="'\+esc\(c\.skuId\)\+'" type="number" min="1" max="200" value="'\+focDefaultEbayQty\(c\.skuId\)\+'"/, 'multi-cover review uses it per cover');
 }
 
 // ── Wiring ──
