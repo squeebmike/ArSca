@@ -32,11 +32,10 @@ assert.match(api.resolveEbayShippingLine('Comic', true, false, false, ''), /^Bag
 // ── PRESALE banner ──
 {
   const html = api.withComicPresaleBanner('<div>For presale comics, orders ship promptly once…</div>', 'December 2, 2026');
-  assert.match(html, /^<div style="[^"]*background:#ffd166[^"]*">PRESALE -- This comic has not been released yet\. Expected release\/ship date: December 2, 2026\. Your order ships once it arrives from our distributor\.<\/div><div>For presale/,
-    'an HTML template gets a PRESALE banner on top -- the shipping sentence\'s lower-case "presale comics" alone doesn\'t count');
+  assert.match(html, /^<div>For presale comics, orders ship promptly once…<\/div><div style="[^"]*background:#ffd166[^"]*">PRESALE -- This comic has not been released yet\. Expected release\/ship date: December 2, 2026\. Your order ships once it arrives from our distributor\.<\/div>$/,
+    'an HTML template gets a PRESALE bar at the bottom (store ask) -- the shipping sentence\'s lower-case "presale comics" alone doesn\'t count');
   const text = api.withComicPresaleBanner('Saga #1\n\nGreat book.', 'December 2, 2026');
-  assert.match(text, /^PRESALE -- This comic has not been released yet\. Expected release\/ship date: December 2, 2026\./);
-  assert.match(text, /\n\nSaga #1/);
+  assert.match(text, /^Saga #1\n\nGreat book\.\n\nPRESALE -- This comic has not been released yet\. Expected release\/ship date: December 2, 2026\./, 'plain text gets it at the bottom too');
   const own = '<div>PRESALE -- releases Dec 2</div><div>Body</div>';
   assert.equal(api.withComicPresaleBanner(own, 'December 2, 2026'), own, 'a template with its own PRESALE banner gets no second one');
 }

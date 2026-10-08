@@ -828,7 +828,8 @@ async function openEbayPresaleReview(skuId){
         var disclosure=templateAlreadyDisclosesPresale?'':(isHtmlTemplate
           ? (typeof comicPresaleBannerHtml==='function'?comicPresaleBannerHtml(preview.onSaleLabel||''):'<p>PRESALE -- This comic has not been released yet and is not currently in stock.</p><p>Expected on-sale/ship date: '+preview.onSaleLabel+'. Your order ships promptly once we receive stock from the distributor on or shortly after that date.</p>')
           : 'PRESALE -- This comic has not been released yet and is not currently in stock.\n\nExpected on-sale/ship date: '+preview.onSaleLabel+'. Your order ships promptly once we receive stock from the distributor on or shortly after that date.');
-        description=disclosure+(disclosure&&!isHtmlTemplate?'\n\n':'')+renderedBody;
+        // Store ask: the PRESALE bar goes at the bottom, not the top.
+        description=renderedBody+(disclosure&&!isHtmlTemplate?'\n\n':'')+disclosure;
         usedCustomTemplate=true;
       }
     }
@@ -1063,7 +1064,8 @@ async function openFamilyEbayGroupReview(familyId){
         var disclosure=templateAlreadyDisclosesPresale?'':(isHtmlTemplate
           ? (typeof comicPresaleBannerHtml==='function'?comicPresaleBannerHtml(preview.onSaleLabel||''):'<p>PRESALE -- This comic has not been released yet and is not currently in stock.</p><p>Expected on-sale/ship date: '+preview.onSaleLabel+'. Your order ships promptly once we receive stock from the distributor on or shortly after that date.</p>')
           : 'PRESALE -- This comic has not been released yet and is not currently in stock.\n\nExpected on-sale/ship date: '+preview.onSaleLabel+'. Your order ships promptly once we receive stock from the distributor on or shortly after that date.');
-        description=disclosure+(disclosure&&!isHtmlTemplate?'\n\n':'')+renderedBody;
+        // Store ask: the PRESALE bar goes at the bottom, not the top.
+        description=renderedBody+(disclosure&&!isHtmlTemplate?'\n\n':'')+disclosure;
         usedCustomTemplate=true;
       }
     }
@@ -1786,7 +1788,7 @@ async function focAiDescriptionCore(stateKey,prefix,aspectAttr,extraAttr){
     var newDesc;
     if(hasToken){
       var rendered=renderEbayDescriptionTemplate(state.template,Object.assign({},state.tokens,{aiSummary:aiText}));
-      newDesc=(state.disclosure||'')+(state.isHtmlTemplate?'':'\n\n')+rendered;
+      newDesc=rendered+(state.disclosure&&!state.isHtmlTemplate?'\n\n':'')+(state.disclosure||'');
     }else{
       var existing=ta.value||'';
       var looksHtml=/<\/?[a-z][\s\S]*>/i.test(existing);

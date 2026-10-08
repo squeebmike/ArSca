@@ -3021,7 +3021,7 @@ function withComicListingNotices(description, { presale = false, onSaleLabel = '
   // sentence's "presale comics" alone isn't the disclosure a buyer sees.
   const head = presale && !/\bPRESALE\b/.test(body)
     ? (isHtml
-      ? `<div style="max-width:760px;margin:0 auto 8px;background:#ffd166;color:#171717;border:2px solid #171717;padding:12px 16px;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:900;text-align:center">${escape(comicPresaleNotice(onSaleLabel))}</div>`
+      ? `<div style="max-width:760px;margin:8px auto 0;background:#ffd166;color:#171717;border:2px solid #171717;padding:12px 16px;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:900;text-align:center">${escape(comicPresaleNotice(onSaleLabel))}</div>`
       : comicPresaleNotice(onSaleLabel))
     : '';
   let tail = '';
@@ -3039,7 +3039,8 @@ function withComicListingNotices(description, { presale = false, onSaleLabel = '
   // eBay caps a description at 4000 characters -- the notices always fit.
   const room = 4000 - [head, tail].filter(Boolean).reduce((n, t) => n + t.length + 2, 0);
   if (body.length > room) body = isHtml ? truncateHtmlSafely(body, room) : body.slice(0, Math.max(0, room - 1)).trimEnd() + '…';
-  return [head, body, tail].filter(Boolean).join(isHtml ? '' : '\n\n');
+  // Store ask: the yellow PRESALE bar goes at the bottom, not the top.
+  return [body, tail, head].filter(Boolean).join(isHtml ? '' : '\n\n');
 }
 function ebayOnSaleLabel(onSaleDate) {
   const d = new Date(String(onSaleDate || '').includes('T') ? onSaleDate : String(onSaleDate || '') + 'T00:00:00Z');
@@ -5933,7 +5934,10 @@ async function routeRequest(request, env, ctx) {
           const offer = await offerRes.json().catch(() => null);
           if (!itemRes.ok || !item || !offerRes.ok || !offer) throw new Error('Could not read the listing from eBay (' + itemRes.status + '/' + offerRes.status + ')');
           const current = String(offer.listingDescription || item.product?.description || '');
-          const next = withComicListingNotices(current.replace(oldBottomNote, ''), { presale: true, onSaleLabel: ebayOnSaleLabel(d.onSaleDate) });
+          // A yellow PRESALE bar from an earlier run sat at the top; it's
+          // taken off and put back at the bottom.
+          const withoutOldBar = current.replace(oldBottomNote, '').replace(/<div style="max-width:760px;margin:[^"]*background:#ffd166;[^"]*">[^<]*<\/div>/g, '');
+          const next = withComicListingNotices(withoutOldBar, { presale: true, onSaleLabel: ebayOnSaleLabel(d.onSaleDate) });
           const pkg = item.packageWeightAndSize || {};
           const dims = pkg.dimensions || {};
           const oldCardSize = !(Number(dims.length) > 0) || (Number(dims.length) === 6.5 && Number(dims.width) === 4 && Number(dims.height) === 0.1);
