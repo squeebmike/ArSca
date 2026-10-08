@@ -18,14 +18,14 @@ for (const fn of ['labelBarcodeValue', 'openLabelPrintModal', 'closeLabelPrintMo
 }
 
 // Labels must actually render a scannable code via generateLabelCodeCanvas (CODE128 barcode or QR), not just text.
-assert.match(dashboard, /const codeGenSize = isWrap \? 500 : 260;/, 'the wrap layout must generate its QR at a much bigger native size than the standard layout, so it is not blurrily downscaled to fit');
-assert.match(dashboard, /const canvas = await generateLabelCodeCanvas\(codeStyle === 'qr' \? labelQrPayload\(b\) : \(b\.sku \|\| b\.id\), codeStyle, codeGenSize\);/, 'printed labels must render a real scan code via generateLabelCodeCanvas, generated at its real target size');
+assert.match(dashboard, /const codeCanvas = await generateLabelCodeCanvas\(codeValue, codeStyle, Math\.round\(codeSize\)\);/, 'labels must render a real scan code via generateLabelCodeCanvas, generated at its real on-label size so it is never blurrily scaled');
+assert.match(dashboard, /const canvas = await renderInventoryLabelCanvas\(labelSpecs\[i\], opts\);/, 'printed labels are the shared label drawing, scan code included');
 assert.match(dashboard, /JsBarcode\(canvas, value, \{ format:'CODE128', displayValue:false, margin:0 \}\);/, 'generateLabelCodeCanvas must fall back to a real CODE128 barcode');
 assert.match(dashboard, /if\(typeof JsBarcode === 'undefined' \|\| typeof qrcode === 'undefined'\) return alert/, 'printing must fail gracefully if either code library has not finished loading yet (the wrap layout always needs qrcode), not silently produce blank codes');
 
 // Printed prices are always whole dollars, no cents.
 assert.match(dashboard, /const fdLabelPrice\$ = n => '\$' \+ Math\.round\(Number\(n \|\| 0\)\);/, 'a dedicated whole-dollar formatter must exist for label prices');
-assert.match(dashboard, /<span class="label-price">\$\{fdLabelPrice\$\(b\.price\)\}<\/span>/, 'the standard label layout must render price via the whole-dollar formatter, not fd$');
+assert.match(dashboard, /tctx\.fillText\(fdLabelPrice\$\(b\.price\), w - pad, h \* 0\.78\);/, 'the standard label layout must render price via the whole-dollar formatter, not fd$');
 
 console.log('Label printing core function checks passed');
 
