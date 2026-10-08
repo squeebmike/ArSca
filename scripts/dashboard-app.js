@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.10.08.1-labels-match-everywhere';
+const APP_VERSION = '2026.10.08.2-phone-labels-match-pc';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -42299,105 +42299,228 @@ function labelNameKeepNumber(name, max){
 }
 async function printInventoryLabels(){
   if(!labelPrintBatch.length) return alert('Add at least one item to print');
-  // The wrap layout's back face always uses QR, which depends on the
-  // separate local qrcode-generator.js, not JsBarcode -- a print once went
-  // out with a completely blank back face because only JsBarcode was
-  // checked here. generateLabelCodeCanvas() silently falls back to an
-  // untouched blank canvas when its code generation fails, so a missing
-  // library produced no error at all.
+  // The wrap layout's back face always uses QR (see isWrap below), which
+  // depends on the separate local qrcode-generator.js, not JsBarcode --
+  // store report: a print went out with a completely blank back face
+  // because only JsBarcode was checked here. generateLabelCodeCanvas()
+  // silently falls back to an untouched blank canvas when its code
+  // generation fails for any reason, so a missing library here produced no
+  // error at all, just an invisible code nobody noticed until the label was
+  // already printed.
   if(typeof JsBarcode === 'undefined') await window.vendorReady('JsBarcode').catch(() => {});
   if(typeof JsBarcode === 'undefined' || typeof qrcode === 'undefined') return alert('Barcode library still loading -- try again in a moment');
+  const vendorProfile = getVendorProfile();
+  const storeName = vendorProfile.storeName || '';
   // Sheet mode (Avery-style cut sheets) and roll mode (Rollo/Zebra direct-
-  // thermal, fed one label at a time) are different print jobs: a roll
-  // printer's "page" IS the label, so it needs zero page margin, no dashed
-  // cut outline, and exactly one label per page.
-  const opts = labelRenderOptions();
-  const { isRoll, widthIn, heightIn } = opts;
-  // Most direct-thermal Mac drivers (Rollo/Zebra/etc.) register their own
-  // fixed portrait media size and ignore a page's requested orientation.
-  // Opt-in rotation (persisted, so it's a one-time fix) declares the @page
-  // already-rotated (1in x 2in) and turns each label 90deg inside it.
+  // thermal, fed one label at a time) are fundamentally different print
+  // jobs, not just a size tweak -- a roll printer's "page" IS the label, so
+  // it needs zero page margin, no dashed cut border (nothing to cut), and
+  // exactly one label per page instead of a flex-wrapped sheet layout.
+  const mode = document.getElementById('label-print-size')?.value || 'roll-2x1';
+  const isRoll = mode === 'roll-2x1';
+  // Store report: "why doesn't it just come" without rotating the Mac print
+  // dialog's orientation by hand every time. Root cause: this roll job's
+  // @page declares a landscape 2in x 1in page, but most direct-thermal
+  // label-printer Mac drivers (Rollo/Zebra/etc.) register their own fixed
+  // portrait media size and ignore a page's requested orientation entirely
+  // -- there's no reliable way for this app to detect or override that from
+  // inside the browser, and the driver's own orientation toggle is buried in
+  // a printer-specific pane, not the main print dialog. Opt-in rotation
+  // (persisted, so it's a one-time fix) sidesteps the OS dialog completely:
+  // the @page itself is declared already-rotated (1in x 2in) to match what
+  // those drivers actually expect, with each label's real content rotated
+  // 90deg (centered) to still render correctly within it. Sheet mode is
+  // unaffected -- it's multi-label-per-Letter-page, not a single page sized
+  // to the label, so there's no orientation mismatch to fix there. PNG
+  // download (for phone Bluetooth printer apps) is unaffected too -- that
+  // path never goes through the OS print dialog at all.
   const rotateForRoll = isRoll && (document.getElementById('label-print-rotate')?.checked || false);
+  // "Wrap" is a content layout, independent of sheet/roll sizing: the label
+  // physically folds around a toploader's edge, so the two halves need to
+  // work as separate FACES rather than one continuous strip -- price and
+  // condition on the face that ends up out front, the logo and scan code
+  // (no other text -- nobody reads a code or a logo caption by eye) on the
+  // face that wraps to the back.
+  const layout = document.getElementById('label-print-layout')?.value || 'wrap';
+  const isWrap = layout === 'wrap';
+  // The wrap back face is always QR, regardless of the dropdown -- a linear
+  // barcode squeezed into a square-ish back face reads worse than a QR does,
+  // and the dropdown only makes sense as a real choice on the standard
+  // single-face layout.
+  const codeStyle = isWrap ? 'qr' : (document.getElementById('label-print-code-style')?.value || 'qr');
+  // Expand batch entries (item + qty) into one spec per physical label --
+  // cheap, no canvas work yet, so no need to chunk this part.
   const labelSpecs = labelPrintBatch.flatMap(b => Array.from({ length:b.qty }, () => b));
   const btn = document.getElementById('label-print-btn');
   if(btn){ btn.disabled = true; btn.textContent = 'GENERATING...'; }
   const labelParts = [];
-  try {
-    for(let i = 0; i < labelSpecs.length; i++){
-      // The exact image DOWNLOAD PNGs saves -- see renderInventoryLabelCanvas.
-      const canvas = await renderInventoryLabelCanvas(labelSpecs[i], opts);
-      const labelHtml = `<img class="label" alt="" src="${canvas.toDataURL('image/png')}">`;
-      labelParts.push(rotateForRoll ? `<div class="label-rotate-outer">${labelHtml}</div>` : labelHtml);
-      if((i + 1) % LABEL_PRINT_YIELD_EVERY === 0) await new Promise(resolve => setTimeout(resolve, 0));
-    }
-  } finally {
-    if(btn){ btn.disabled = false; btn.textContent = 'PRINT'; }
+  for(let i = 0; i < labelSpecs.length; i++){
+    const b = labelSpecs[i];
+    let barcodeImg = '';
+    try {
+      // Generated at a much bigger native size than it's ever displayed at,
+      // so the browser is always downscaling here, never upscaling -- that's
+      // the case that was broken before: generating SMALL and letting the
+      // browser smooth-scale UP blurred adjacent modules together and broke
+      // real scans. Downscaling a source this much bigger than the display
+      // size is the opposite situation: there's abundant source detail for
+      // the browser's own smooth resampling to average cleanly, and forcing
+      // image-rendering:pixelated (nearest-neighbor) here was actively
+      // wrong -- nearest-neighbor point-samples individual pixels instead of
+      // averaging a region, which is exactly what produces visible aliasing/
+      // speckle on a dense QR pattern at a non-integer scale ratio (confirmed
+      // against a real print-preview screenshot: the QR and small text both
+      // looked grainy on screen, while the plain-barcode standard layout --
+      // generated at a much closer-to-display size, so barely downscaled at
+      // all -- stayed clean). Leaving image-rendering at its default lets the
+      // browser's own high-quality downsampling handle it instead.
+      const codeGenSize = isWrap ? 500 : 260;
+      const canvas = await generateLabelCodeCanvas(codeStyle === 'qr' ? labelQrPayload(b) : (b.sku || b.id), codeStyle, codeGenSize);
+      // Store report: the QR was cutting off a little on a real direct
+      // print. A hardcoded height guess (62px/70px) here was actually
+      // TALLER than the real remaining room on the back face once the shop
+      // name line, the gap, and the face's own padding were accounted for
+      // -- .wrap-back clips overflow, so the last couple rows of modules
+      // were silently sliced off. flex:1 (with min-height:0, which
+      // overrides a flex item's default refusal to shrink below its
+      // content size) hands the image whatever space is actually left
+      // after layout, computed by the browser instead of guessed here, so
+      // it can never overflow -- and, freed from a conservative fixed
+      // guess, fills noticeably more of the face than before. The standard
+      // (non-wrap) layout isn't flexed the same way, so it keeps its fixed
+      // on-label height.
+      const imgHeight = isRoll ? 30 : 36;
+      const imgStyle = isWrap ? 'width:100%;flex:1;min-height:0;object-fit:contain' : `width:100%;height:${imgHeight}px;object-fit:contain`;
+      barcodeImg = `<img src="${canvas.toDataURL('image/png')}" style="${imgStyle}">`;
+    } catch(e) { barcodeImg = ''; }
+    const labelHtml = isWrap ? `<div class="label wrap">
+        <div class="wrap-front">
+          <div class="wrap-name">${escHtml(labelNameKeepNumber(b.name, b.badge ? 24 : 36))}</div>
+          ${b.badge ? `<div class="wrap-badge">${escHtml(b.badge)}</div>` : ''}
+          <div class="wrap-price">${escHtml(fdLabelPrice$(b.price).slice(1))}</div>
+          <div class="wrap-bottom-row"><span class="wrap-condition">${escHtml(b.condition || '')}</span><span class="wrap-meta">${escHtml(b.meta || '')}</span></div>
+        </div>
+        <div class="wrap-back">
+          <div class="wrap-shopname">THE MANA POCKET</div>
+          ${barcodeImg}
+        </div>
+      </div>` : `<div class="label">
+      ${storeName ? `<div class="label-store">${escHtml(storeName)}</div>` : ''}
+      <div class="label-name">${escHtml(b.name)}</div>
+      ${barcodeImg}
+      <div class="label-bottom"><span class="label-sku">${escHtml(b.condition || b.meta || '')}</span><span class="label-price">${fdLabelPrice$(b.price)}</span></div>
+    </div>`;
+    // Rotated roll printing needs each label's own "page" footprint swapped
+    // to match the rotated @page size below -- wrapping (rather than
+    // rotating .label itself) keeps the label's own internal layout
+    // completely untouched, so nothing about how it looks has to change,
+    // only how it's positioned on the physical page.
+    labelParts.push(rotateForRoll ? `<div class="label-rotate-outer">${labelHtml}</div>` : labelHtml);
+    if((i + 1) % LABEL_PRINT_YIELD_EVERY === 0) await new Promise(resolve => setTimeout(resolve, 0));
   }
   const labelsHtml = labelParts.join('');
+  if(btn){ btn.disabled = false; btn.textContent = 'PRINT'; }
   const w = window.open('', '_blank', 'width=600,height=800');
-  // Each image is drawn at the label's real size in printer dots (203 DPI,
-  // already pure black and white), so it is placed at exactly that size and
-  // never smoothed -- a 203-DPI thermal head prints it dot for dot.
-  const baseStyle = `
-      body { margin:0; }
-      img.label { display:block; width:${widthIn}in; height:${heightIn}in; image-rendering:pixelated; image-rendering:crisp-edges; }`;
   const sheetStyle = `
       @page { margin: 0.25in; }
+      body { margin:0; font-family:${LABEL_FONT_STACK}; }
       .label-sheet { display:flex; flex-wrap:wrap; gap:0.0625in; }
-      img.label { outline:1px dashed #999; outline-offset:-1px; break-inside:avoid; page-break-inside:avoid; }`;
+      .label { width:2.625in; height:1in; border:1px dashed #999; box-sizing:border-box; padding:6px 8px; display:flex; flex-direction:column; justify-content:space-between; overflow:hidden; page-break-inside:avoid; }
+      .label-store { font-size:7px; letter-spacing:.05em; text-transform:uppercase; color:#555; }
+      .label-name { font-size:10px; font-weight:700; line-height:1.15; max-height:24px; overflow:hidden; }
+      .label-bottom { display:flex; justify-content:space-between; align-items:center; }
+      .label-sku { font-size:7px; color:#555; }
+      .label-price { font-size:14px; font-weight:700; }`;
   const rollStyle = `
       @page { size: ${rotateForRoll ? '1in 2in' : '2in 1in'}; margin: 0; }
+      body { margin:0; font-family:${LABEL_FONT_STACK}; }
       .label-sheet { display:block; }
-      .label { page-break-after:always; }
+      .label { width:2in; height:1in; box-sizing:border-box; padding:5px 7px; display:flex; flex-direction:column; justify-content:space-between; overflow:hidden; page-break-after:always; }
+      .label-store { font-size:6px; letter-spacing:.05em; text-transform:uppercase; color:#555; }
+      .label-name { font-size:9px; font-weight:700; line-height:1.1; max-height:20px; overflow:hidden; }
+      .label-bottom { display:flex; justify-content:space-between; align-items:center; }
+      .label-sku { font-size:6px; color:#555; }
+      .label-price { font-size:12px; font-weight:700; }
       ${rotateForRoll ? `
-      .label-rotate-outer { width:1in; height:2in; position:relative; overflow:hidden; page-break-after:always; }
+      /* Each label keeps its own normal 2in x 1in layout untouched; only its
+         position on the now-rotated 1in x 2in page changes, via a centered
+         rotate -- avoids re-deriving corner-offset math for a 90deg turn. */
+      .label-rotate-outer { width:1in; height:2in; position:relative; page-break-after:always; }
       .label-rotate-outer .label { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%) rotate(90deg); page-break-after:avoid; }` : ''}`;
+  // Splits the label into two equal-width faces divided by a dashed fold
+  // line, on top of whichever size (sheet or roll) is already active above --
+  // percentage widths so this adapts to either total label width automatically.
+  // The fold line itself is solid black now (was #999 gray) -- gray barely
+  // survives a monochrome thermal print the same way the pure-black text and
+  // QR do, which is exactly why it was hard to even spot. The canvas-drawn
+  // download path already drew its own fold line in solid black; this
+  // brings the browser-print path in line with it.
+  // Front/back top padding bumped up (was 6px/8px) so the item name and shop
+  // name aren't flush against the label's top edge.
+  // Every text weight here is exactly "700" (bold), never 800/900 -- the
+  // canvas-drawn download path already learned this the hard way (see
+  // TEXT_SUPERSAMPLE below): "sans-serif" has no guaranteed real 800/900
+  // face on every platform, so a requested weight with no matching real face
+  // gets synthesized by algorithmically over-thickening the 700 outline,
+  // which renders visibly rougher/grainier than the real weight. wrap-
+  // shopname and wrap-condition were still at 800 here even though the rest
+  // of this stylesheet (and the entire canvas path) had already standardized
+  // on 700 -- confirmed against a real print-preview screenshot that those
+  // two elements looked noticeably softer than everything else on the label.
+  // Item name allowed up to 3 lines now (was 2) so a long name has more room
+  // before truncating.
+  // Set/year sits next to condition in a small muted font -- store report:
+  // the raw SKU/UPC that used to be here wasn't something anyone actually
+  // read off a shelf, and its length was crowding condition and contributing
+  // to real print cutoff. The back face's QR/barcode already carries the
+  // exact id for matching a loose label back to its inventory record; this
+  // spot is for a human glancing at the shelf, not a scanner.
+  // Store report, after the QR stopped clipping: it still looked small. A
+  // square code inside an evenly-split 50/50 face is capped by whichever is
+  // tighter, width or height -- here it's width. The front face's own
+  // content (price, name, condition+meta) doesn't need as much room as an
+  // even split gives it, so the back face now gets more of the label's
+  // width, letting the code actually grow into the vertical room flex:1
+  // already frees up.
+  // wrap-shopname is one line now, not two -- "THE MANA POCKET" was
+  // wrapping to "THE MANA" / "POCKET" on a real print, eating an extra line
+  // of height the QR could otherwise have. Shrunk from 9px and the
+  // letter-spacing pulled in (was pushing width right up against the
+  // face's, which is exactly what forced the wrap); white-space:nowrap is
+  // the actual guarantee -- the smaller size/spacing just keeps that from
+  // clipping instead of wrapping.
+  const wrapStyle = `
+      .label.wrap { flex-direction:row !important; padding:0 !important; }
+      .label.wrap .wrap-front, .label.wrap .wrap-back { height:100%; box-sizing:border-box; display:flex; flex-direction:column; align-items:center; overflow:hidden; }
+      .label.wrap .wrap-front { width:44%; padding:10px 8px 5px; justify-content:flex-start; gap:3px; border-right:2px dashed #000; }
+      .label.wrap .wrap-back { width:56%; padding:6px 4px 4px; justify-content:flex-start; gap:4px; }
+      .wrap-shopname { font-size:8px; font-weight:700; letter-spacing:.01em; text-align:center; white-space:nowrap; }
+      .wrap-name { font-size:8px; font-weight:700; line-height:1.1; max-height:27px; overflow:hidden; text-align:center; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:3; flex-shrink:0; }
+      .wrap-name:has(+ .wrap-badge) { max-height:18px; -webkit-line-clamp:2; }
+      .wrap-badge { font-size:7px; font-weight:700; line-height:1.1; max-height:16px; overflow:hidden; text-transform:uppercase; text-align:center; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; flex-shrink:0; }
+      .wrap-price { font-size:24px; font-weight:700; line-height:1; margin-top:auto; }
+      .wrap-bottom-row { width:100%; display:flex; justify-content:space-between; align-items:baseline; gap:4px; }
+      .wrap-condition { font-size:11px; font-weight:700; text-transform:uppercase; flex-shrink:0; }
+      .wrap-meta { font-size:6px; font-weight:400; color:#555; flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-align:right; }`;
   w.document.write(`<html><head><title>Labels</title>
-    <style>${baseStyle}${isRoll ? rollStyle : sheetStyle}</style>
+    <style>${isRoll ? rollStyle : sheetStyle}${isWrap ? wrapStyle : ''}</style>
   </head><body><div class="label-sheet">${labelsHtml}</div></body></html>`);
   w.document.close();
-  // The images are inline data: URIs, but the browser still has to decode
-  // and paint each one before print() can capture it -- printing straight
-  // away once came out with the code area blank. Waiting for every <img>'s
-  // own decode() promise removes that race.
+  // The QR/barcode images are inline data: URIs, already fully generated
+  // above with no network fetch needed -- but the browser still has to
+  // decode and paint each one before print() can capture it. The old
+  // trailing inline print-on-load script fired print immediately once
+  // the parser reached it, racing that decode on a batch with several
+  // large (500x500 for wrap) QR images: a real direct print came out with
+  // the entire code area blank, no error, nothing for the try/catch around
+  // code *generation* to even catch, since generation had already finished
+  // by then -- this is purely about the browser finishing painting what it
+  // already had. Waiting for every <img>'s own decode() promise (a
+  // stronger guarantee than the load event, which can fire before a large
+  // image is actually fully rasterized) removes that race.
   const printImgs = Array.from(w.document.images);
   await Promise.all(printImgs.map(img => img.decode ? img.decode().catch(() => {}) : Promise.resolve()));
   w.print();
-}
-
-// Wraps text onto up to maxLines lines within maxWidth -- canvas text has no
-// built-in wrapping, unlike the HTML/CSS label path above.
-function wrapCanvasText(ctx, text, x, y, maxWidth, lineHeight, maxLines, measureOnly){
-  maxLines = maxLines || 2;
-  const fit = t => {
-    const words = String(t || '').split(' ').filter(Boolean);
-    const lines = [];
-    let line = '';
-    for(const word of words){
-      const test = line ? line + ' ' + word : word;
-      if(ctx.measureText(test).width <= maxWidth || !line){ line = test; continue; }
-      lines.push(line);
-      line = word;
-      if(lines.length === maxLines) return { lines, cut:true };
-    }
-    if(line) lines.push(line);
-    return { lines, cut:false };
-  };
-  let result = fit(text);
-  // A name that runs out of room keeps its trailing issue/card number
-  // ("#300") -- the series in front of it is shortened instead, since the
-  // number is what tells two books in the same series apart.
-  const numbered = String(text || '').match(/^(.+?)\s+(#\S+)$/);
-  if(result.cut && numbered){
-    let head = numbered[1];
-    while(head.length > 1){
-      head = head.slice(0, -1).trimEnd();
-      const shorter = fit(`${head}… ${numbered[2]}`);
-      if(!shorter.cut){ result = shorter; break; }
-    }
-  }
-  if(!measureOnly) result.lines.forEach((l, i) => ctx.fillText(l, x, y + i * lineHeight));
-  return result;
 }
 
 // Matches the RW403B and most small direct-thermal label printers -- their
@@ -42413,11 +42536,7 @@ const LABEL_PNG_DPI = 203;
 // network fetch/webfont involved, so this can't fail to load or delay a
 // print -- it only ever picks among fonts already on the device, same as
 // "sans-serif" already did.
-// Every label is drawn in DM Sans, the font the dashboard already loads, so
-// a label comes out the same on a PC, an iPhone and an Android phone; the
-// system fonts after it are only a fallback for drawing while offline.
-const LABEL_FONT_FAMILY = "'DM Sans'";
-const LABEL_FONT_STACK = LABEL_FONT_FAMILY + ", -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
+const LABEL_FONT_STACK = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
 // Android's own "Save as PDF" print path only offers full page sizes (Letter,
 // A4, Index Card, ...) with no way to enter a label's actual tiny dimensions --
 // confirmed against a real device, where the label rendered microscopic because
@@ -42448,196 +42567,217 @@ function thresholdCanvasToBW(canvas, cutoff = 128){
   ctx.putImageData(img, 0, 0);
 }
 
-// Store report: "the labels suck printed from phone vs pc -- shouldn't
-// they be exactly the same?" They should, and they weren't: PRINT (PC)
-// built each label with HTML/CSS while DOWNLOAD PNGs (phone printer apps)
-// drew it on a canvas -- two separate designs with different font sizes,
-// line counts and spacing -- and both used each device's own system font
-// (Segoe UI, San Francisco, Roboto...). Every label is now drawn once,
-// here, in the dashboard's own DM Sans, and both buttons print that same
-// image: PRINT places it on the page at exactly the label's size, DOWNLOAD
-// saves it as the PNG.
+// Store report: "the labels suck printed from phone vs pc -- shouldn't they
+// be exactly the same?" ... "The pc works and is the best." PRINT (PC)
+// lays each label out with HTML/CSS (printInventoryLabels above); DOWNLOAD
+// PNGs (phone thermal-printer apps) can't use that page, so it draws the
+// label on a canvas -- and that canvas used to be a separate design of its
+// own, with different sizes, line counts and spacing. This draws the PC
+// design instead: every size, padding, gap and line limit below is the
+// same CSS pixel value printInventoryLabels' stylesheets use, scaled from
+// CSS pixels (96 per inch) to the printer's real dots, so a phone label
+// comes out laid out exactly like the PC one.
 function labelRenderOptions(){
   const mode = document.getElementById('label-print-size')?.value || 'roll-2x1';
   const isRoll = mode === 'roll-2x1';
-  // "Wrap" is a content layout, independent of sheet/roll sizing: the label
-  // physically folds around a toploader's edge, so the two halves work as
-  // separate FACES -- price and condition on the face that ends up out
-  // front, the shop name and scan code on the face that wraps to the back.
   const layout = document.getElementById('label-print-layout')?.value || 'wrap';
   const isWrap = layout === 'wrap';
-  // The wrap back face is always QR, regardless of the dropdown -- a linear
-  // barcode squeezed into a square-ish back face reads worse than a QR does,
-  // and the dropdown only makes sense as a real choice on the standard
-  // single-face layout.
+  // The wrap back face is always QR, regardless of the dropdown -- see the
+  // same override in printInventoryLabels for why.
   const codeStyle = isWrap ? 'qr' : (document.getElementById('label-print-code-style')?.value || 'qr');
   const widthIn = isRoll ? 2 : 2.625;
   return { isRoll, isWrap, codeStyle, widthIn, heightIn:1, storeName:getVendorProfile().storeName || '' };
 }
-let _labelFontReady = null;
-function labelFontReady(){
-  // Canvas text only uses a web font once it has actually loaded; asking
-  // for it explicitly keeps the first label of a session from being drawn
-  // in a fallback font. Offline, this resolves anyway and the system
-  // fallbacks in LABEL_FONT_STACK take over.
-  if(!_labelFontReady){
-    _labelFontReady = (document.fonts?.load
-      ? Promise.all([document.fonts.load(`700 24px ${LABEL_FONT_FAMILY}`), document.fonts.load(`400 24px ${LABEL_FONT_FAMILY}`)]).catch(() => {})
-      : Promise.resolve());
+// Words onto at most maxLines lines within maxWidth; a cut last line ends
+// in "…", like the PC label's line clamp.
+function labelFitLines(ctx, text, maxWidth, maxLines, ellipsis = true){
+  const words = String(text || '').split(/\s+/).filter(Boolean);
+  const lines = [];
+  let line = '', cut = false;
+  for(let i = 0; i < words.length; i++){
+    const test = line ? line + ' ' + words[i] : words[i];
+    if(!line || ctx.measureText(test).width <= maxWidth){ line = test; continue; }
+    if(lines.length === maxLines - 1){ cut = true; break; }
+    lines.push(line);
+    line = words[i];
   }
-  return _labelFontReady;
+  if(line) lines.push(line);
+  if(cut && ellipsis){
+    let last = lines[lines.length - 1] + '…';
+    while(ctx.measureText(last).width > maxWidth && last.length > 2) last = last.slice(0, -2).trimEnd() + '…';
+    lines[lines.length - 1] = last;
+  }
+  return lines;
 }
+function labelEllipsize(ctx, text, maxWidth){
+  let t = String(text || '');
+  if(ctx.measureText(t).width <= maxWidth) return t;
+  while(t.length > 1 && ctx.measureText(t + '…').width > maxWidth) t = t.slice(0, -1);
+  return t.trimEnd() + '…';
+}
+// The PC label's muted text is #555 gray, which a 1-bit thermal print turns
+// to black anyway; drawn black here, it survives the black/white pass whole.
+const LABEL_PNG_MUTED = '#000';
+const LABEL_PNG_BW_CUTOFF = 170;
 async function renderInventoryLabelCanvas(b, opts = labelRenderOptions()){
-  const { isWrap, codeStyle, storeName } = opts;
-  await labelFontReady();
-  const w = Math.round(opts.widthIn * LABEL_PNG_DPI);
-  const h = Math.round(opts.heightIn * LABEL_PNG_DPI);
-  // Text is drawn anti-aliased (soft gray edges) no matter what -- canvas
-  // font rendering isn't affected by imageSmoothingEnabled. Thresholding
-  // that straight to 1-bit at the label's real, small pixel size makes it
-  // look grainy/speckled. So all TEXT goes onto an offscreen canvas at
-  // TEXT_SUPERSAMPLE times the real size, then is smoothly downsampled onto
-  // the real canvas before the threshold pass. The QR/barcode is exempt: it
-  // is generated directly at its exact final pixel size and drawn with
-  // smoothing off -- any scaling there risks blurring module/bar edges into
-  // the gray zone the threshold pass then cuts unpredictably.
+  const { isRoll, isWrap, codeStyle, storeName } = opts;
+  // CSS pixels -> printer dots.
+  const K = LABEL_PNG_DPI / 96;
+  const W = opts.widthIn * 96, H = opts.heightIn * 96;
+  const w = Math.round(W * K), h = Math.round(H * K);
+  // Text is drawn anti-aliased (soft gray edges) no matter what. Thresholding
+  // that straight to 1-bit at the label's real, small pixel size looks
+  // grainy, so all TEXT goes onto an offscreen canvas at TEXT_SUPERSAMPLE
+  // times the real size and is smoothly downsampled before the threshold
+  // pass. The QR/barcode is exempt: it is generated directly at its exact
+  // final dot size and drawn with smoothing off.
   const TEXT_SUPERSAMPLE = 3;
   const canvas = document.createElement('canvas');
   canvas.width = w; canvas.height = h;
   const ctx = canvas.getContext('2d');
-  ctx.imageSmoothingEnabled = false;
   ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, w, h);
-  ctx.fillStyle = '#000';
   const textCanvas = document.createElement('canvas');
   textCanvas.width = w * TEXT_SUPERSAMPLE; textCanvas.height = h * TEXT_SUPERSAMPLE;
-  const tctx = textCanvas.getContext('2d');
-  tctx.scale(TEXT_SUPERSAMPLE, TEXT_SUPERSAMPLE);
-  tctx.fillStyle = '#fff'; tctx.fillRect(0, 0, w, h);
-  tctx.fillStyle = '#000';
-  let codeDraw = null;
+  const t = textCanvas.getContext('2d');
+  t.scale(K * TEXT_SUPERSAMPLE, K * TEXT_SUPERSAMPLE);
+  t.fillStyle = '#fff'; t.fillRect(0, 0, W, H);
+  // From here on, everything is in CSS pixels.
+  const setFont = (size, bold = true) => { t.font = `${bold ? 'bold ' : ''}${size}px ${LABEL_FONT_STACK}`; };
+  // CSS centers each line's glyphs in its line box: baseline = box top +
+  // half the leftover leading + the font's ascent.
+  const metrics = size => {
+    const m = t.measureText('Hg');
+    const asc = m.fontBoundingBoxAscent || size * 0.8, desc = m.fontBoundingBoxDescent || size * 0.2;
+    return { asc, desc, normal:asc + desc };
+  };
+  const drawLines = (lines, x, top, size, lineHeight, align) => {
+    const { asc, desc } = metrics(size);
+    t.textAlign = align; t.textBaseline = 'alphabetic';
+    lines.forEach((l, i) => t.fillText(l, x, top + i * lineHeight + (lineHeight - asc - desc) / 2 + asc));
+  };
   const codeValue = codeStyle === 'qr' ? labelQrPayload(b) : (b.sku || b.id);
-  if(isWrap){
-    // Front face: item name (so a loose label is still identifiable by
-    // eye), a small "Signed by" badge when set, then price (the biggest,
-    // most dominant element) and condition at the bottom. Back face: the
-    // shop name as plain bold TEXT, not the illustrated logo image -- a
-    // detailed graffiti-style wordmark with outlines and drop shadows
-    // cannot survive being shrunk to ~40px and forced to pure black/white
-    // for a 203-DPI thermal print (confirmed against a real printed
-    // label: it came out as an unreadable blob, while every text element
-    // on the same label stayed crisp). Plain text has none of that
-    // problem. The scan code gets everything else, sized as large as the
-    // back face allows -- confirmed on a real device that a code
-    // generated at a fixed size and then blurrily downscaled to fit here
-    // could fail to scan; generating it directly at its real on-label
-    // size (below) fixes that, and a much bigger real size besides gives
-    // the printer more dots per module to work with.
-    const halfW = w / 2;
-    // 2 dots wide: a 1-dot line drawn on the supersampled layer comes out
-    // light gray once downsampled, and the black/white pass erased it, so
-    // the fold line never printed.
-    tctx.strokeStyle = '#000'; tctx.lineWidth = 2; tctx.setLineDash([6, 4]);
-    tctx.beginPath(); tctx.moveTo(halfW, 0); tctx.lineTo(halfW, h); tctx.stroke();
-    tctx.setLineDash([]);
-    // Extra side padding (padX) so text never touches the fold line/edge;
-    // the name sits close to the top (padY) since it no longer has to
-    // share that space with a store-name header.
-    const padX = w * 0.045, padY = h * 0.02;
-    tctx.textAlign = 'center'; tctx.textBaseline = 'top';
-    const nameFont = Math.round(h * 0.085);
-    tctx.font = `bold ${nameFont}px ${LABEL_FONT_STACK}`;
-    const nameLines = wrapCanvasText(tctx, b.name, halfW / 2, padY, halfW - padX * 2, Math.round(nameFont * 1.15), 2).lines.length;
-    let badgeLines = 0;
-    if(b.badge){
-      // Bold -- thin/regular weight is the one thing on this label that
-      // isn't already bold, and it printed noticeably less crisp than
-      // everything else on a real thermal print.
-      // A comic's badge (ratio · cover · artist) can be long: it wraps onto
-      // a second line before it shrinks, and never below a size that still
-      // prints readably -- past that the last line ends in an ellipsis.
-      const maxBadge = halfW - padX * 2, badgeText = b.badge.toUpperCase();
-      let badgeSize = Math.round(h * 0.06);
-      tctx.font = `bold ${badgeSize}px ${LABEL_FONT_STACK}`;
-      while(wrapCanvasText(tctx, badgeText, 0, 0, maxBadge, 0, 2, true).cut && badgeSize > Math.round(h * 0.05)){ badgeSize--; tctx.font = `bold ${badgeSize}px ${LABEL_FONT_STACK}`; }
-      let fitted = wrapCanvasText(tctx, badgeText, 0, 0, maxBadge, 0, 2, true);
-      if(fitted.cut){
-        let last = fitted.lines[fitted.lines.length - 1] + '…';
-        while(tctx.measureText(last).width > maxBadge && last.length > 2) last = last.slice(0, -2).trimEnd() + '…';
-        fitted.lines[fitted.lines.length - 1] = last;
-      }
-      const badgeY = padY + nameLines * Math.round(nameFont * 1.15) + h * 0.015;
-      fitted.lines.forEach((l, i) => tctx.fillText(l, halfW / 2, badgeY + i * Math.round(badgeSize * 1.15)));
-      badgeLines = fitted.lines.length;
-    }
-    // Just the digits, no "$" glyph -- centered under the fold line as one
-    // unit. Font weight is "bold" (700), not "900" -- confirmed against a
-    // real download that 900 renders visibly grainier than every other
-    // text element on the label (all of which use "bold"). The system UI
-    // font stack (LABEL_FONT_STACK) has no guaranteed real black/900
-    // weight on every platform, and when the requested weight has no
-    // matching real face the renderer synthesizes one by algorithmically
-    // over-thickening the glyph outline, which produces a rougher edge
-    // than a real weight does -- worse than none of this supersampling/
-    // downsampling pass can fully clean up.
-    const priceDigits = fdLabelPrice$(b.price).slice(1);
-    const priceBigFont = Math.round(h * 0.33);
-    tctx.textAlign = 'center'; tctx.textBaseline = 'alphabetic';
-    tctx.font = `bold ${priceBigFont}px ${LABEL_FONT_STACK}`;
-    const priceBaseline = h * (nameLines + badgeLines > 3 ? 0.39 : 0.34) + priceBigFont * 0.78;
-    tctx.fillText(priceDigits, halfW / 2, priceBaseline);
-    tctx.textAlign = 'left'; tctx.textBaseline = 'top';
-    tctx.font = `bold ${Math.round(h * 0.13)}px ${LABEL_FONT_STACK}`;
-    if(b.condition) tctx.fillText(String(b.condition).toUpperCase(), padX, h * 0.8);
-    else if(b.meta){
-      // Comics carry no condition: publisher · year sits there instead.
-      tctx.font = `bold ${Math.round(h * 0.07)}px ${LABEL_FONT_STACK}`;
-      tctx.fillText(String(b.meta).toUpperCase().slice(0, 24), padX, h * 0.82);
-    }
-    // The shop-name text sits in a band with equal padding above (from the
-    // top edge) and below (before the code starts) -- symmetric spacing,
-    // computed from the actual text size rather than eyeballed constants,
-    // and sized to land on the same total height the code already used to
-    // size itself against, so the code doesn't shrink.
-    const shopFont = Math.round(h * 0.065), shopPad = h * 0.032;
-    tctx.textAlign = 'center';
-    tctx.font = `bold ${shopFont}px ${LABEL_FONT_STACK}`;
-    tctx.fillText('THE MANA POCKET', halfW + halfW / 2, shopPad);
-    const logoBottom = shopPad + shopFont * 1.2 + shopPad;
-    // Square code, as large as the remaining back-face room allows --
-    // bounded by both the leftover height below the shop name and the
-    // face's own width, whichever is tighter.
-    const codeMargin = w * 0.015;
-    const codeSize = Math.min(h - logoBottom - codeMargin * 2, halfW - codeMargin * 2);
-    const codeCanvas = await generateLabelCodeCanvas(codeValue, codeStyle, Math.round(codeSize));
-    codeDraw = { canvas: codeCanvas, x: halfW + (halfW - codeSize) / 2, y: h - codeMargin - codeSize, w: codeSize, h: codeSize };
-  } else {
-    const pad = w * 0.02;
-    tctx.textBaseline = 'top'; tctx.textAlign = 'left';
-    if(storeName){ tctx.font = `${Math.round(h * 0.07)}px ${LABEL_FONT_STACK}`; tctx.fillText(storeName.toUpperCase(), pad, pad); }
-    tctx.font = `bold ${Math.round(h * 0.12)}px ${LABEL_FONT_STACK}`;
-    wrapCanvasText(tctx, b.name, pad, pad + h * 0.12, w - pad * 2, Math.round(h * 0.14));
-    const codeH = h * 0.32, codeW = codeStyle === 'qr' ? codeH : w * 0.7;
-    const codeCanvas = await generateLabelCodeCanvas(codeValue, codeStyle, Math.round(codeStyle === 'qr' ? codeH : Math.max(codeW, codeH)));
-    codeDraw = { canvas: codeCanvas, x: (w - codeW) / 2, y: h * 0.44, w: codeW, h: codeH };
-    tctx.font = `${Math.round(h * 0.08)}px ${LABEL_FONT_STACK}`;
-    tctx.textAlign = 'left';
-    tctx.fillText(String(b.condition || b.meta || ''), pad, h * 0.82);
-    tctx.font = `bold ${Math.round(h * 0.16)}px ${LABEL_FONT_STACK}`;
-    tctx.textAlign = 'right';
-    tctx.fillText(fdLabelPrice$(b.price), w - pad, h * 0.78);
+  let codeBox = null;
+  // .label (sheet): 1px dashed #999 cut outline, box-sizing:border-box.
+  const border = isRoll ? 0 : 1;
+  if(border){
+    t.strokeStyle = '#999'; t.lineWidth = 1; t.setLineDash([3, 3]);
+    t.strokeRect(0.5, 0.5, W - 1, H - 1);
+    t.setLineDash([]);
   }
-  // Downsample the supersampled text layer onto the real canvas with
-  // smoothing on -- this is what turns hard-edged, jagged anti-aliased
-  // text into cleanly averaged gray edges that threshold much more
-  // smoothly below. The code is drawn straight onto the real canvas
-  // afterward at its exact size, smoothing off, completely untouched by
-  // this pass.
+  const iW = W - border * 2, iH = H - border * 2;
+  if(isWrap){
+    // .label.wrap .wrap-front { width:44%; padding:10px 8px 5px; gap:3px;
+    //   border-right:2px dashed #000 }
+    const frontW = iW * 0.44, fx = border, fy = border;
+    const fPadT = 10, fPadX = 8, fPadB = 5, gap = 3;
+    const contentW = frontW - fPadX * 2 - 2;
+    const cx = fx + (frontW - 2) / 2;
+    t.fillStyle = '#000';
+    t.strokeStyle = '#000'; t.lineWidth = 2; t.setLineDash([6, 6]);
+    t.beginPath(); t.moveTo(fx + frontW - 1, fy); t.lineTo(fx + frontW - 1, fy + iH); t.stroke();
+    t.setLineDash([]);
+    // .wrap-name { 8px bold; line-height:1.1; 3 lines, or 2 with a badge }
+    let y = fy + fPadT;
+    setFont(8);
+    const nameLines = labelFitLines(t, labelNameKeepNumber(b.name, b.badge ? 24 : 36), contentW, b.badge ? 2 : 3);
+    drawLines(nameLines, cx, y, 8, 8.8, 'center');
+    y += nameLines.length * 8.8;
+    // .wrap-badge { 7px bold uppercase; line-height:1.1; 2 lines }
+    if(b.badge){
+      y += gap;
+      setFont(7);
+      const badgeLines = labelFitLines(t, String(b.badge).toUpperCase(), contentW, 2);
+      drawLines(badgeLines, cx, y, 7, 7.7, 'center');
+      y += badgeLines.length * 7.7;
+    }
+    // .wrap-bottom-row (condition 11px bold uppercase | meta 6px #555,
+    // ellipsis) sits at the bottom; .wrap-price { 24px bold; line-height:1;
+    // margin-top:auto } sits right above it.
+    setFont(11);
+    const rowH = metrics(11).normal;
+    const rowTop = fy + iH - fPadB - rowH;
+    const { asc:condAsc, desc:condDesc } = metrics(11);
+    const rowBaseline = rowTop + (rowH - condAsc - condDesc) / 2 + condAsc;
+    const left = fx + fPadX;
+    let condW = 0;
+    if(b.condition){
+      const cond = String(b.condition).toUpperCase();
+      t.textAlign = 'left'; t.textBaseline = 'alphabetic';
+      t.fillText(cond, left, rowBaseline);
+      condW = t.measureText(cond).width;
+    }
+    if(b.meta){
+      setFont(6, false);
+      t.fillStyle = LABEL_PNG_MUTED;
+      t.textAlign = 'right'; t.textBaseline = 'alphabetic';
+      t.fillText(labelEllipsize(t, b.meta, Math.max(0, contentW - condW - 4)), left + contentW, rowBaseline);
+      t.fillStyle = '#000';
+    }
+    setFont(24);
+    drawLines([fdLabelPrice$(b.price).slice(1)], cx, Math.max(y + gap, rowTop - gap - 24), 24, 24, 'center');
+    // .label.wrap .wrap-back { width:56%; padding:6px 4px 4px; gap:4px }
+    const bx = fx + frontW, backW = iW - frontW;
+    const bPadT = 6, bPadX = 4, bPadB = 4;
+    // .wrap-shopname { 8px bold; one line }
+    setFont(8);
+    const shopH = metrics(8).normal;
+    drawLines(['THE MANA POCKET'], bx + backW / 2, fy + bPadT, 8, shopH, 'center');
+    // The code image: width:100%, flex:1, object-fit:contain -- the largest
+    // square that fits in what's left of the face.
+    const boxTop = fy + bPadT + shopH + 4, boxBottom = fy + iH - bPadB;
+    const boxW = backW - bPadX * 2, boxH = boxBottom - boxTop;
+    const size = Math.min(boxW, boxH);
+    codeBox = { x:bx + bPadX + (boxW - size) / 2, y:boxTop + (boxH - size) / 2, w:size, h:size };
+  } else {
+    // .label { padding:5px 7px (roll) / 6px 8px (sheet); space-between }
+    const s = isRoll
+      ? { padY:5, padX:7, store:6, name:9, nameLh:9.9, nameMax:20, code:30, sku:6, price:12 }
+      : { padY:6, padX:8, store:7, name:10, nameLh:11.5, nameMax:24, code:36, sku:7, price:14 };
+    const left = border + s.padX, contentW = iW - s.padX * 2;
+    const top = border + s.padY, bottom = border + iH - s.padY;
+    setFont(s.store, false); const storeH = storeName ? metrics(s.store).normal : 0;
+    setFont(s.name);
+    // max-height clips the name to whole lines (no ellipsis on this layout).
+    const nameLines = labelFitLines(t, b.name, contentW, Math.max(1, Math.floor(s.nameMax / s.nameLh)), false);
+    const nameH = Math.min(nameLines.length * s.nameLh, s.nameMax);
+    setFont(s.price); const rowH = Math.max(metrics(s.price).normal, (setFont(s.sku, false), metrics(s.sku).normal));
+    const blocks = [storeName ? storeH : null, nameH, s.code, rowH].filter(v => v !== null);
+    const spare = Math.max(0, (bottom - top) - blocks.reduce((a, v) => a + v, 0)) / Math.max(1, blocks.length - 1);
+    let y = top;
+    t.fillStyle = LABEL_PNG_MUTED;
+    if(storeName){ setFont(s.store, false); drawLines([storeName.toUpperCase()], left, y, s.store, storeH, 'left'); y += storeH + spare; }
+    t.fillStyle = '#000';
+    setFont(s.name); drawLines(nameLines, left, y, s.name, s.nameLh, 'left'); y += nameH + spare;
+    codeBox = { x:left, y, w:contentW, h:s.code, contain:true };
+    y += s.code + spare;
+    setFont(s.price);
+    t.textAlign = 'right'; t.textBaseline = 'middle';
+    t.fillText(fdLabelPrice$(b.price), left + contentW, y + rowH / 2);
+    setFont(s.sku, false);
+    t.fillStyle = LABEL_PNG_MUTED; t.textAlign = 'left';
+    t.fillText(String(b.condition || b.meta || ''), left, y + rowH / 2);
+    t.fillStyle = '#000';
+  }
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = 'high';
   ctx.drawImage(textCanvas, 0, 0, w, h);
-  ctx.imageSmoothingEnabled = false;
-  ctx.drawImage(codeDraw.canvas, codeDraw.x, codeDraw.y, codeDraw.w, codeDraw.h);
-  thresholdCanvasToBW(canvas);
+  // The code, generated at its exact on-label size in dots and drawn
+  // without smoothing so its modules stay sharp.
+  if(codeBox){
+    const boxW = Math.round(codeBox.w * K), boxH = Math.round(codeBox.h * K);
+    const codeCanvas = await generateLabelCodeCanvas(codeValue, codeStyle, codeStyle === 'qr' ? Math.min(boxW, boxH) : Math.max(boxW, boxH));
+    let dw = boxW, dh = boxH;
+    if(codeBox.contain || codeStyle === 'qr'){
+      const r = Math.min(boxW / codeCanvas.width, boxH / codeCanvas.height);
+      dw = Math.round(codeCanvas.width * r); dh = Math.round(codeCanvas.height * r);
+    }
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(codeCanvas, Math.round(codeBox.x * K + (boxW - dw) / 2), Math.round(codeBox.y * K + (boxH - dh) / 2), dw, dh);
+  }
+  // A slightly higher cutoff than the default keeps the 6-7px regular-weight
+  // text (set/year, store name) solid -- at 128 its thin strokes broke up
+  // into specks.
+  thresholdCanvasToBW(canvas, LABEL_PNG_BW_CUTOFF);
   return canvas;
 }
 
