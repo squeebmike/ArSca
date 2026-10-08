@@ -2999,6 +2999,47 @@ function pokemonQuotaHeaders(headers) {
   return out;
 }
 
+// Store ask: "comics should ship size Gemini boxes ... the listings should
+// say board bagged and shipped in gemini mailer", and a presale has to say
+// presale in the listing itself, not only its title (eBay's presale policy
+// wants it, with the ship date, in both). Every comic listing gets the
+// Gemini Comic Flash Mailer's outside size (12.75 x 7.75 x 1.25 in, about
+// 5 oz empty) unless the caller set its own, and its description always
+// carries both notices -- whatever description template produced it.
+const COMIC_GEMINI_MAILER = { dimLength: 12.75, dimWidth: 7.75, dimHeight: 1.25, dimUnit: 'INCH', emptyWeightLb: 0.3125 };
+const COMIC_SHIPPING_NOTE = 'Bagged & boarded and shipped in a Gemini mailer.';
+function comicPresaleNotice(onSaleLabel = '') {
+  return 'PRESALE -- This comic has not been released yet and is not currently in stock.'
+    + (onSaleLabel ? ` Expected on-sale/ship date: ${onSaleLabel}. Your order ships once we receive it from the distributor.` : '');
+}
+function withComicListingNotices(description, { presale = false, onSaleLabel = '' } = {}) {
+  let body = String(description || '').trim();
+  // A store template can be HTML; the notices then go in as paragraphs.
+  const isHtml = /<\/?[a-z][\s\S]*>/i.test(body);
+  const asPara = (text, bold) => isHtml ? `<p>${bold ? '<b>' : ''}${text.replace(/&/g, '&amp;').replace(/</g, '&lt;')}${bold ? '</b>' : ''}</p>` : text;
+  const head = presale && !/\bpre-?sale\b/i.test(body) ? asPara(comicPresaleNotice(onSaleLabel), true) : '';
+  const tail = /gemini/i.test(body) ? '' : asPara(COMIC_SHIPPING_NOTE, false);
+  // eBay caps a description at 4000 characters -- the notices always fit.
+  const room = 4000 - [head, tail].filter(Boolean).reduce((n, t) => n + t.length + 2, 0);
+  if (body.length > room) body = isHtml ? truncateHtmlSafely(body, room) : body.slice(0, Math.max(0, room - 1)).trimEnd() + '…';
+  return [head, body, tail].filter(Boolean).join(isHtml ? '' : '\n\n');
+}
+function ebayOnSaleLabel(onSaleDate) {
+  const d = new Date(String(onSaleDate || '').includes('T') ? onSaleDate : String(onSaleDate || '') + 'T00:00:00Z');
+  return Number.isFinite(d.getTime()) ? d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' }) : '';
+}
+function isComicEbayListing(b = {}) {
+  return !!b.isComic || String(b.categoryId || '') === '259104';
+}
+// Gemini package size + both notices for a comic; anything else unchanged.
+function applyComicListingDefaults(b = {}) {
+  if (!isComicEbayListing(b)) return b;
+  const out = { ...b };
+  if (!(Number(out.dimLength) > 0)) Object.assign(out, { dimLength: COMIC_GEMINI_MAILER.dimLength, dimWidth: COMIC_GEMINI_MAILER.dimWidth, dimHeight: COMIC_GEMINI_MAILER.dimHeight, dimUnit: COMIC_GEMINI_MAILER.dimUnit });
+  out.description = withComicListingNotices(out.description || '', { presale: !!out.isPresale, onSaleLabel: ebayOnSaleLabel(out.onSaleDate) });
+  return out;
+}
+
 // FOC presale names/titles end in " - PRESALE" (see /foc/ebay/create-presale);
 // once the book is in stock that has to come off.
 function stripPresaleSuffix(name) {
@@ -5098,11 +5139,11 @@ async function routeRequest(request, env, ctx) {
         const withPublisher = [titleBase, publisherKeyword].join(' ') + PRESALE_TITLE_SUFFIX;
         if (withPublisher.length <= 80) title = withPublisher;
       }
-      const description = [
+      const description = withComicListingNotices([
         'PRESALE -- This comic has not been released yet and is not currently in stock.',
         `Expected on-sale/ship date: ${onSaleLabel}. Your order ships promptly once we receive stock from the distributor on or shortly after that date.`,
         sku.description || '',
-      ].filter(Boolean).join('\n\n');
+      ].filter(Boolean).join('\n\n'), { presale: true, onSaleLabel });
       // Store report: every FOC eBay listing showed a full page of unchecked
       // "Suggested item specifics -- powered by eBay.ai" (Tradition, Era,
       // Language, Signed, Type, Unit of Sale, etc), forcing a manual check-
@@ -5155,9 +5196,9 @@ async function routeRequest(request, env, ctx) {
       // compendium -- real-world comic shipping weights, picked to avoid
       // undercharging shipping on the heavier end rather than a single flat
       // guess. Always editable on the review screen before publishing.
-      const weight = priceCents >= 2000 ? { weightValue: 1.5, weightUnit: 'POUND' }
-        : priceCents >= 1000 ? { weightValue: 0.625, weightUnit: 'POUND' }
-        : { weightValue: 0.25, weightUnit: 'POUND' };
+      // Plus the Gemini mailer it ships in (about 5 oz).
+      const bookLb = priceCents >= 2000 ? 1.5 : priceCents >= 1000 ? 0.625 : 0.25;
+      const weight = { weightValue: bookLb + COMIC_GEMINI_MAILER.emptyWeightLb, weightUnit: 'POUND' };
       return { title, description, customAspects, onSaleLabel, synopsis, ...weight };
     }
 
@@ -5261,7 +5302,9 @@ async function routeRequest(request, env, ctx) {
       // eligibility/price above always come from the trusted DB row, only
       // the listing *content* is user-editable.
       const title = (typeof body.title === 'string' && body.title.trim()) ? body.title.trim().substring(0, 80) : defaults.title;
-      const description = (typeof body.description === 'string' && body.description.trim()) ? body.description.trim().substring(0, 4000) : defaults.description;
+      // A store's own description template may leave the presale notice
+      // out -- it always goes back in, with the ship date.
+      const description = withComicListingNotices((typeof body.description === 'string' && body.description.trim()) ? body.description.trim().substring(0, 4000) : defaults.description, { presale: true, onSaleLabel: defaults.onSaleLabel });
       const customAspects = (body.customAspects && typeof body.customAspects === 'object') ? { ...defaults.customAspects, ...body.customAspects } : defaults.customAspects;
       const bestOfferEnabled = body.bestOfferEnabled !== false;
       const weightValue = Number(body.weightValue) > 0 ? Number(body.weightValue) : defaults.weightValue;
@@ -5637,7 +5680,7 @@ async function routeRequest(request, env, ctx) {
       const coversListText = 'This listing includes ' + realCovers.length + ' cover option' + (realCovers.length === 1 ? '' : 's') + ' -- pick yours from the "Cover" dropdown above:\n'
         + realCovers.map(v => `- ${v.label} -- $${v.price}`).join('\n')
         + (bundleVariant ? `\n\nAlso available as a bundle: ${bundleVariant.label} -- $${bundleVariant.price} (all ${realCovers.length} covers together).` : '');
-      const description = [descriptionBase, coversListText].filter(Boolean).join('\n\n').substring(0, 4000);
+      const description = withComicListingNotices([descriptionBase, coversListText].filter(Boolean).join('\n\n'), { presale: true, onSaleLabel: defaults.onSaleLabel });
       const customAspects = (body.customAspects && typeof body.customAspects === 'object') ? { ...defaults.customAspects, ...body.customAspects } : defaults.customAspects;
       const bestOfferEnabled = body.bestOfferEnabled !== false;
       const weightValue = Number(body.weightValue) > 0 ? Number(body.weightValue) : defaults.weightValue;
@@ -9362,6 +9405,7 @@ async function routeRequest(request, env, ctx) {
     }
 
     async function createAndPublishEbayListing(b, ebayToken, env, storeId) {
+      b = applyComicListingDefaults(b);
       const { title, price } = b;
       if (!title || !price) { const e = new Error('title and price required'); e.status = 400; throw e; }
 
@@ -9898,6 +9942,7 @@ async function routeRequest(request, env, ctx) {
     }
 
     async function createAndPublishEbayVariationListingTrading(b, ebayToken, env, storeId) {
+      b = applyComicListingDefaults(b);
       const { groupTitle, variants, variantAspectName } = b;
       if (!groupTitle) { const e = new Error('groupTitle required'); e.status = 400; throw e; }
       if (!Array.isArray(variants) || variants.length < 2) { const e = new Error('At least 2 variants are required for a variation listing'); e.status = 400; throw e; }
@@ -9957,6 +10002,13 @@ async function routeRequest(request, env, ctx) {
         `<VariationSpecifics><NameValueList><Name>${xmlEscape(variantAspectName)}</Name><Value>${xmlEscape(v.label)}</Value></NameValueList></VariationSpecifics></Variation>`
       ).join('');
       const weightXml = buildEbayWeightXml(b.weightValue, b.weightUnit);
+      // Package size (a comic gets the Gemini mailer's, see
+      // applyComicListingDefaults) -- the Trading API wants each side as its
+      // own element, in inches or cm.
+      const dimUnitXml = String(b.dimUnit || 'INCH').toUpperCase() === 'CENTIMETER' ? 'cm' : 'in';
+      const dimsXml = Number(b.dimLength) > 0 && Number(b.dimWidth) > 0 && Number(b.dimHeight) > 0
+        ? `<PackageDepth unit="${dimUnitXml}">${Number(b.dimHeight)}</PackageDepth><PackageLength unit="${dimUnitXml}">${Number(b.dimLength)}</PackageLength><PackageWidth unit="${dimUnitXml}">${Number(b.dimWidth)}</PackageWidth>`
+        : '';
       // Store report: "its not listing the multi listing in the correct
       // store category" -- b.storeCategoryNames reached this function (the
       // dashboard's EBAY STORE CATEGORY field sends it same as the
@@ -9990,7 +10042,7 @@ async function routeRequest(request, env, ctx) {
         (itemSpecificsXml ? `<ItemSpecifics>${itemSpecificsXml}</ItemSpecifics>` : '') +
         storefrontXml +
         (sellerProfilesXml ? `<SellerProfiles>${sellerProfilesXml}</SellerProfiles>` : '') +
-        (weightXml ? `<ShippingPackageDetails>${weightXml}</ShippingPackageDetails>` : '') +
+        (weightXml || dimsXml ? `<ShippingPackageDetails>${dimsXml}${weightXml}</ShippingPackageDetails>` : '') +
         (b.bestOfferEnabled ? `<BestOfferDetails><BestOfferEnabled>true</BestOfferEnabled></BestOfferDetails>` : '') +
         // Store report (live error, again, after the VariationSpecificName
         // fix above): "Variation specific name "" used for pictures does
