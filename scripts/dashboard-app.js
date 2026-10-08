@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.10.08.2-phone-labels-match-pc';
+const APP_VERSION = '2026.10.08.3-comics-gemini-mailer';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -3328,7 +3328,7 @@ function ebayShippingLineEditorHtml(key, label, p){
   const id = 'vp-ebayship-' + key.replace(/[^a-z0-9]/gi, '_');
   const lower = key.toLowerCase();
   const suggestion = key === 'default' ? 'Carefully packed to prevent movement and damage in transit. Ships within 1 business day with tracking.'
-    : /comic/.test(lower) ? 'Ships in a rigid mailer or comic shipping box (Gemini-style) with a bag & board to prevent bending or creasing. In-stock comics ship within 1 business day with tracking.'
+    : /comic/.test(lower) ? 'Bagged & boarded and shipped in a Gemini mailer to prevent bending or creasing. In-stock comics ship within 1 business day with tracking.'
     : /sealed|box|pack/.test(lower) ? 'Sealed product ships boxed with extra padding to protect the original packaging. Ships within 1 business day with tracking.'
     : /tcg|sports|card|graded/.test(lower) ? 'Cards ship in a penny sleeve and toploader inside a bubble mailer to prevent bending. Ships within 1 business day with tracking.'
     : 'Leave blank to use the default shipping line above.';
@@ -20113,7 +20113,7 @@ function resolveEbayShippingLine(cat, isComic, isSealed, isGraded, catId){
   const perCategory = (vp.ebayShippingLines || {})[cat];
   if(perCategory) return perCategory;
   if(vp.ebayShippingLine) return vp.ebayShippingLine;
-  if(isComic) return 'Ships in a rigid mailer or comic shipping box (Gemini-style) with a bag & board to prevent bending or creasing. In-stock comics ship within 1 business day with tracking.';
+  if(isComic) return 'Bagged & boarded and shipped in a Gemini mailer to prevent bending or creasing. In-stock comics ship within 1 business day with tracking.';
   if(isGraded) return 'Your graded slab ships bubble-wrapped and boxed for maximum protection in transit. Ships within 1 business day with tracking.';
   if(isSealed) return 'Sealed product ships boxed with extra padding to protect the original packaging. Ships within 1 business day with tracking.';
   if(isEbayTradingCardCategory(catId) || cat === 'TCG' || cat === 'Sports') return 'Cards ship in a penny sleeve and toploader inside a bubble mailer to prevent bending. Ships within 1 business day with tracking.';
@@ -20457,12 +20457,14 @@ async function openEbayFromDash(id){
   // Packaging defaults: a single card ships in a thin bubble mailer/toploader;
   // a sealed box needs a real box. Both are just starting points -- fully
   // editable below, same as picking package/weight/dims in the eBay app.
+  // Comics ship bagged & boarded in a Gemini Comic Flash Mailer: 12.75 x
+  // 7.75 x 1.25 in outside, about 9 oz with a single issue in it.
   const packageTypeVal = (liveOk && live.item?.packageType) || '';
-  const weightVal = (liveOk && live.item?.weightValue) || (isSealed ? 1 : 0.1);
+  const weightVal = (liveOk && live.item?.weightValue) || (isComic ? 0.5625 : isSealed ? 1 : 0.1);
   const weightUnitVal = (liveOk && live.item?.weightUnit) || 'POUND';
-  const dimLengthVal = (liveOk && live.item?.dimLength) || (isSealed ? 8 : 6.5);
-  const dimWidthVal = (liveOk && live.item?.dimWidth) || (isSealed ? 6 : 4);
-  const dimHeightVal = (liveOk && live.item?.dimHeight) || (isSealed ? 3 : 0.1);
+  const dimLengthVal = (liveOk && live.item?.dimLength) || (isComic ? 12.75 : isSealed ? 8 : 6.5);
+  const dimWidthVal = (liveOk && live.item?.dimWidth) || (isComic ? 7.75 : isSealed ? 6 : 4);
+  const dimHeightVal = (liveOk && live.item?.dimHeight) || (isComic ? 1.25 : isSealed ? 3 : 0.1);
   const dimUnitVal = (liveOk && live.item?.dimUnit) || 'INCH';
 
   document.getElementById('dash-ebay-modal')?.remove();
@@ -20852,6 +20854,8 @@ function collectDashboardEbayFormPayload(item){
     // was otherwise silently getting the store's normal fast-handling
     // policy (store report: wrong shipping policy on a presale listing).
     isPresale:item.status === 'presale' || item.source === 'foc_presale',
+    // Gets the Worker's Gemini mailer size and "bagged & boarded" line.
+    isComic:computeEbayListingFields(item).isComic,
     onSaleDate:item.onSaleDate || '',
     customAspects:{
       'Product':document.getElementById('dash-eb-product-type')?.value === 'sealed' ? 'Box' : '',

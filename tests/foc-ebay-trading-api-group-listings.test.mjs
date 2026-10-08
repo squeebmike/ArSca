@@ -108,7 +108,7 @@ console.log('buildEbayWeightXml checks passed');
   // rate table -- a SellerShippingProfile reference alone isn't enough.
   assert.match(body, /const weightXml = buildEbayWeightXml\(b\.weightValue, b\.weightUnit\);/,
     'must convert this app\'s own weightValue/weightUnit input into eBay\'s WeightMajor/WeightMinor shape');
-  assert.match(body, /\(weightXml \? `<ShippingPackageDetails>\$\{weightXml\}<\/ShippingPackageDetails>` : ''\) \+\s*\n\s*\(b\.bestOfferEnabled/,
+  assert.match(body, /\(weightXml \|\| dimsXml \? `<ShippingPackageDetails>\$\{dimsXml\}\$\{weightXml\}<\/ShippingPackageDetails>` : ''\) \+\s*\n\s*\(b\.bestOfferEnabled/,
     'ShippingPackageDetails must actually be included in the published itemXml, or the weight is computed but never sent');
   assert.match(body, /<Description><!\[CDATA\[\$\{descriptionCdata\}\]\]><\/Description>/, 'the HTML description must ride in a CDATA section so it does not need per-character XML escaping');
   assert.match(body, /descriptionCdata = toEbayHtmlDescription\(b\.description \|\| groupTitle\)\.replace\(\/\]\]>\/g, '\]\]\]\]><!\[CDATA\[>'\)/,
