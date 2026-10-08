@@ -44,9 +44,9 @@ assert.match(dashboard, /JsBarcode\(canvas, value, \{ format:'CODE128', displayV
 // back face always forces QR regardless of that dropdown -- a linear barcode reads worse
 // than a QR does on that smaller, more square-ish back face ──
 const codeStyleReads = dashboard.match(/const codeStyle = isWrap \? 'qr' : \(document\.getElementById\('label-print-code-style'\)\?\.value \|\| 'qr'\);/g) || [];
-assert.equal(codeStyleReads.length, 2, 'both printInventoryLabels and downloadInventoryLabelPngs must force QR for wrap and otherwise read the code-style dropdown');
-assert.match(dashboard, /const canvas = await generateLabelCodeCanvas\(codeStyle === 'qr' \? labelQrPayload\(b\) : \(b\.sku \|\| b\.id\), codeStyle, codeGenSize\);/, 'printInventoryLabels must generate its code image via the shared helper');
-assert.match(dashboard, /const codeCanvas = await generateLabelCodeCanvas\(codeValue, codeStyle, Math\.round\(codeSize\)\);/, 'downloadInventoryLabelPngs must generate its wrap-layout code image via the shared helper, at the code\'s real on-label size');
+assert.equal(codeStyleReads.length, 1, 'labelRenderOptions (shared by print and PNG download) must force QR for wrap and otherwise read the code-style dropdown');
+assert.match(dashboard, /function labelRenderOptions\(\)\{/, 'print and PNG download must share one set of label options');
+assert.match(dashboard, /const codeCanvas = await generateLabelCodeCanvas\(codeValue, codeStyle, Math\.round\(codeSize\)\);/, 'the shared label drawing must generate its wrap-layout code image via the shared helper, at the code\'s real on-label size');
 
 // ── Contract: scan-to-cart (reading our own printed labels back into the cart) must
 // accept QR as a detectable format alongside the existing linear formats -- this is

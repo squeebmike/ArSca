@@ -30,18 +30,15 @@ assert.match(html, /else labelPrintBatch\.push\(labelBatchEntryFromItem\(item\)\
 
 console.log('label batch entry contract checks passed');
 
-// ── The actual printed wrap label ──
+// ── The actual wrap label (PRINT and DOWNLOAD PNGs share one drawing) ──
 {
-  const fnStart = html.indexOf('async function printInventoryLabels(){');
-  const fnEnd = html.indexOf('\n}', fnStart) + 2;
-  const fn = html.slice(fnStart, fnEnd);
-  assert.match(fn, /<span class="wrap-condition">\$\{escHtml\(b\.condition \|\| ''\)\}<\/span><span class="wrap-meta">\$\{escHtml\(b\.meta \|\| ''\)\}<\/span>/,
-    'the wrap label bottom row must render meta (set/year), not the old raw sku/UPC text');
-  assert.doesNotMatch(fn, /class="wrap-sku"/, 'the old wrap-sku span must be fully removed, not left dangling alongside the new one');
+  const fnStart = html.indexOf('async function renderInventoryLabelCanvas(');
+  const fn = html.slice(fnStart, html.indexOf('\n}\n', fnStart) + 2);
+  assert.match(fn, /if\(b\.condition\) tctx\.fillText\(String\(b\.condition\)\.toUpperCase\(\), padX, h \* 0\.8\);\s*\n\s*else if\(b\.meta\)\{/,
+    'the wrap label bottom row must render condition, or meta (set/year) when there is none -- not the old raw sku/UPC text');
+  assert.doesNotMatch(fn, /b\.sku\b(?! \|\| b\.id)/, 'the raw SKU is only ever the scan code value, never printed as text');
 }
 
-assert.match(html, /\.wrap-meta \{ font-size:6px; font-weight:400; color:#555; flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-align:right; \}/,
-  'wrap-meta must truncate gracefully with ellipsis instead of raw-overflowing the label edge like the old unbounded wrap-sku could');
 assert.doesNotMatch(html, /wrap-sku\b/, 'no remaining references to the removed wrap-sku class');
 
 console.log('printed wrap label contract checks passed');

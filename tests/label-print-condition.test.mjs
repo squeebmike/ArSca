@@ -9,7 +9,8 @@ assert.match(dashboard, /if\(item\) labelPrintBatch\.push\(labelBatchEntryFromIt
 assert.match(dashboard, /else labelPrintBatch\.push\(labelBatchEntryFromItem\(item\)\);/, 'addToLabelPrintBatch must add batch entries via the shared builder too');
 
 // ── Contract: the printed label shows condition (or a comic's publisher · year) -- no SKU digits (store ask) ──
-assert.match(dashboard, /<span class="label-sku">\$\{escHtml\(b\.condition \|\| b\.meta \|\| ''\)\}<\/span>/, 'printInventoryLabels must render condition on the printed label when present');
+assert.match(dashboard, /tctx\.fillText\(String\(b\.condition \|\| b\.meta \|\| ''\), pad, h \* 0\.82\);/, 'the shared label drawing must render condition (or meta) on the standard label when present');
+assert.match(dashboard, /const canvas = await renderInventoryLabelCanvas\(labelSpecs\[i\], opts\);/, 'printInventoryLabels must print the shared label drawing');
 
 console.log('Label print condition contract checks passed');
 

@@ -11,7 +11,8 @@ const dashboard = fs.readFileSync('dashboard.html', 'utf8');
 assert.match(dashboard, /function thresholdCanvasToBW\(canvas, cutoff = 128\)\{/, 'missing thresholdCanvasToBW helper');
 assert.match(dashboard, /const luminance = 0\.299 \* d\[i\] \+ 0\.587 \* d\[i \+ 1\] \+ 0\.114 \* d\[i \+ 2\];/, 'must use a real luminance-weighted formula, not a flat average, so colored logo pixels threshold sensibly');
 assert.match(dashboard, /const v = luminance < cutoff \? 0 : 255;/, 'each pixel must resolve to pure black (0) or pure white (255), nothing in between');
-assert.match(dashboard, /thresholdCanvasToBW\(canvas\);\s*\n\s*const blob = await new Promise\(resolve => canvas\.toBlob\(resolve, 'image\/png'\)\);/, 'thresholdCanvasToBW must run on the fully-composed label canvas right before it is encoded to PNG, so it catches every element (text, code, logo) in one pass');
+assert.match(dashboard, /thresholdCanvasToBW\(canvas\);\s*\n\s*return canvas;\s*\n\}/, 'thresholdCanvasToBW must run on the fully-composed label canvas as the last step of renderInventoryLabelCanvas, so it catches every element (text, code, logo) in one pass');
+assert.match(dashboard, /const canvas = await renderInventoryLabelCanvas\(b, opts\);\s*\n\s*const blob = await new Promise\(resolve => canvas\.toBlob\(resolve, 'image\/png'\)\);/, 'the PNG download must encode the shared, already-thresholded label canvas');
 
 console.log('Label PNG black/white threshold contract checks passed');
 
