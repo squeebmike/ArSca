@@ -24,7 +24,7 @@ assert.match(d, /onclick="applySmallPriceSyncUpdates\(\)">✓ APPROVE ALL UNDER 
 const daily = grab(/async function maybeRunDailyPriceSync\(\)\{[\s\S]*?\n\}/);
 assert.match(daily, /if\(now\.getHours\(\) < 3\) return;/);
 assert.match(daily, /if\(shared\.slice\(0, 10\) === today\)/, 'another device already ran it today');
-assert.match(daily, /for\(const run of \[runPriceSyncScan, runOfflineMtgPriceSync, runLiveComicPriceSync, runLivePokemonPriceSync, runOtherLivePriceSync, runPocketScoutPriceSync\]\)/);
+assert.match(daily, /for\(const run of \[runPriceSyncScan, runOfflineMtgPriceSync, runLiveComicPriceSync, runLivePokemonPriceSync, runSportsPriceSync, runOtherLivePriceSync, runPocketScoutPriceSync\]\)/);
 assert.match(daily, /const small = _priceSyncProposal\.filter\(isSmallPriceChange\);/);
 assert.match(d, /setInterval\(\(\) => \{ if\(document\.visibilityState === 'visible'\) maybeRunDailyPriceSync\(\)/);
 assert.match(d, /id="price-sync-daily-toggle"/);

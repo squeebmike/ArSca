@@ -21,7 +21,7 @@ assert.match(dashboard, /async function fetchOtherTcgOrSportsLivePrice\(item\)\{
   const fnStart = dashboard.indexOf('async function fetchOtherTcgOrSportsLivePrice(item){');
   const fnEnd = dashboard.indexOf('\n}', fnStart) + 2;
   const fn = dashboard.slice(fnStart, fnEnd);
-  assert.match(fn, /const link = sportsPcLinkForItem\(item\);\s*const pcId = await resolveSportsPcProductId\(link\);/,
+  assert.match(fn, /const link = sportsPcLinkForItem\(item\);\s*const found = await findSportsPcProduct\(item\);\s*const pcId = found\.id;/,
     'the pinned-id lookup must read every saved link field (sportsPcLinkForItem), or every Scout/buy-tray-sourced sports card never uses its own pinned exact match at price-sync time');
   const linkFn = dashboard.slice(dashboard.indexOf('function sportsPcLinkForItem('), dashboard.indexOf('\n}', dashboard.indexOf('function sportsPcLinkForItem(')) + 2);
   assert.match(linkFn, /\[item\.pricechartingProductId, item\.raw\?\.pricechartingProductId, item\.sourceProductId, item\.raw\?\.sourceProductId\]/,

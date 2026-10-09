@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.10.08.6-presale-bar-bottom';
+const APP_VERSION = '2026.10.09.1-sports-own-sync-links';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -9905,7 +9905,9 @@ function pocketScoutPriceSyncItems(){
     .map(i=>{const patch=overrides[i.id]||overrides[i.wfId];return patch?{...i,...patch}:i;})
     .filter(i=>{
       const status=String(i.lifecycle||i.status||'in_stock').toLowerCase();
-      return !['sold','archived','returned','deleted'].includes(status) && String(i.pocketScoutQuery||'').trim();
+      // Store ask: Pocket Scout is how sports cards get FOUND, but they
+      // price from PriceCharting (SYNC SPORTS PRICES), never eBay comps.
+      return !['sold','archived','returned','deleted'].includes(status) && String(i.pocketScoutQuery||'').trim() && !isSportsPriceSyncItem(i);
     })
     .sort((a,b)=>inventoryReferenceMarketPrice(b)-inventoryReferenceMarketPrice(a));
 }
@@ -10651,12 +10653,13 @@ let _priceSyncView = null;
 // A finished category sync replaces that category's older pending rows --
 // otherwise a row from an earlier run (e.g. an old MTG price) lingered on
 // screen whenever the new run found nothing to replace it with.
-const PRICE_SYNC_VIEW_LABELS = { pokemon:'Pokémon', mtg:'MTG', comic:'comic', other:'sports/other-TCG', scout:'Pocket Scout' };
+const PRICE_SYNC_VIEW_LABELS = { pokemon:'Pokémon', mtg:'MTG', comic:'comic', sports:'sports', other:'other-TCG', scout:'Pocket Scout' };
 function priceSyncProposalGroup(p = {}){
   const mode = p.mode || '', provider = p.provider || '';
   if(mode === 'mtg-live' || mode === 'mtg-offline' || provider === 'mtg') return 'mtg';
   if(mode === 'comic-live' || provider === 'comic') return 'comic';
   if(mode === 'pocket-scout' || provider === 'pocket_scout') return 'scout';
+  if(mode === 'sports-live') return 'sports';
   if(mode === 'other-live') return 'other';
   return 'pokemon';
 }
@@ -11076,6 +11079,72 @@ function pcGradeBucket(company = '', grade = ''){
   return '';
 }
 
+// Store ask: "I need all the correct PriceCharting links in the system ...
+// It has the title and what it is. You should be able to connect them
+// all." A sports card with no saved link (and whose name/set don't open a
+// SportsCardsPro page) is looked up by name on PriceCharting, and a match
+// only counts when it's unambiguous: the card's own name -- parallel
+// included ("[Green]", "Refractor"), so a different parallel never matches
+// -- card number and year all agree, and exactly one product does.
+function sportsPcNorm(value){
+  return String(value || '').toLowerCase().replace(/['’.]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
+}
+function sportsCardCleanName(item = {}){
+  return String(inventoryCardName(item) || '').replace(/\s+\/\s*\d+\s*$/, '').trim();
+}
+function sportsPcSearchQuery(item = {}){
+  const name = sportsCardCleanName(item);
+  const number = String(inventoryCardNumber(item) || '').replace(/^#/, '');
+  const set = String(inventorySetName(item) || '').replace(/^(baseball|basketball|football|hockey|soccer|racing|wrestling|ufc|golf|tennis|boxing) cards\s+/i, '');
+  return [name, set, number && !sportsPcNorm(name).includes(sportsPcNorm(number)) ? '#' + number : ''].filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
+}
+function pickSportsPcMatch(item = {}, products = []){
+  const has = (hay, needle) => (' ' + hay + ' ').includes(' ' + needle + ' ');
+  const name = sportsPcNorm(sportsCardCleanName(item));
+  const set = sportsPcNorm(inventorySetName(item));
+  const number = sportsPcNorm(String(inventoryCardNumber(item) || '').replace(/^#/, ''));
+  const year = String(item.year || (String(inventorySetName(item)).match(/\b(19|20)\d{2}\b/) || [])[0] || '');
+  const list = (products || []).filter(p => p && p.productId);
+  const exact = list.filter(p => sportsPcNorm(p.productName) === name && (!set || sportsPcNorm(p.consoleName) === set));
+  if(exact.length === 1) return { product:exact[0], how:'exact name and set match', candidates:[] };
+  const words = name.split(' ').filter(w => w.length > 1);
+  const close = list.filter(p => {
+    const pn = sportsPcNorm(p.productName), pc = sportsPcNorm(p.consoleName);
+    return words.length && words.every(w => has(pn, w) || has(pc, w))
+      && (!number || has(pn, number))
+      && (!year || has(pc, year));
+  });
+  if(close.length === 1) return { product:close[0], how:'name, card number and year match', candidates:[] };
+  return { product:null, how:'', candidates:(close.length ? close : list).slice(0, 6) };
+}
+const _sportsPcSearchCache = new Map();
+async function searchSportsPcProduct(item = {}){
+  const q = sportsPcSearchQuery(item);
+  if(!q) return { product:null, candidates:[] };
+  if(!_sportsPcSearchCache.has(q)){
+    let products = [];
+    try {
+      const res = await fetch(WORKER + '/pricing/pricecharting/search?' + new URLSearchParams({ q }).toString(), { cache:'no-store' });
+      const data = await res.json().catch(() => ({}));
+      products = res.ok && data.ok !== false ? (data.products || data.matches || []) : [];
+    } catch(e) { products = []; }
+    _sportsPcSearchCache.set(q, products);
+  }
+  return pickSportsPcMatch(item, _sportsPcSearchCache.get(q));
+}
+// Finds the exact PriceCharting product for a sports card: its saved
+// link, then its SportsCardsPro page (from its own name/set), then the
+// name search above. Returns the id and how it was found.
+async function findSportsPcProduct(item = {}){
+  const link = sportsPcLinkForItem(item);
+  const id = await resolveSportsPcProductId(link);
+  if(id) return { id, url:link.url || '', how:link.id ? 'saved link' : link.built ? 'SportsCardsPro page' : 'saved link', candidates:[] };
+  if(!isSportsCardCategory(priceSyncCategory(item))) return { id:'', url:'', how:'', candidates:[] };
+  const found = await searchSportsPcProduct(item);
+  if(found.product) return { id:String(found.product.productId), url:found.product.url || '', name:found.product.productName || '', how:found.how, candidates:[] };
+  return { id:'', url:'', how:'', candidates:found.candidates || [] };
+}
+
 async function fetchOtherTcgOrSportsLivePrice(item){
   // Pinned to an exact PriceCharting product? Use that directly instead of a
   // fuzzy name search -- the whole point of pinning is so sync doesn't have
@@ -11086,8 +11155,11 @@ async function fetchOtherTcgOrSportsLivePrice(item){
   // for a name search that often came back empty ("no graded slab match").
   const graded = isGradedInventoryItem(item);
   const link = sportsPcLinkForItem(item);
-  const pcId = await resolveSportsPcProductId(link);
+  const found = await findSportsPcProduct(item);
+  const pcId = found.id;
   if(pcId){
+    if(found.url && !link.url) link.url = found.url;
+    if(found.how && !link.id) link.how = found.how;
     const linkFields = { pricechartingProductId:pcId, ...(link.url && !String(item.providerUrl || '').trim() ? { providerUrl:link.url } : {}) };
     try {
       const res = await fetch(WORKER + '/pricing/pricecharting/product/' + encodeURIComponent(pcId), { cache:'no-store' });
@@ -11104,7 +11176,7 @@ async function fetchOtherTcgOrSportsLivePrice(item){
       } else {
         const price = Number(prices.ungraded || 0);
         if(res.ok && data.ok && price > 0) {
-          return { market:price, source:'PriceCharting (pinned #' + pcId + ')', matchStatus:link.built ? 'exact PriceCharting page match' : 'exact PriceCharting ID match', productUrl, linkFields };
+          return { market:price, source:'PriceCharting (pinned #' + pcId + ')', matchStatus:link.how && link.how !== 'saved link' ? (link.how === 'SportsCardsPro page' ? 'exact PriceCharting page match' : link.how) : link.built ? 'exact PriceCharting page match' : 'exact PriceCharting ID match', productUrl, linkFields };
         }
         // Store report: a card with a verified, pinned PriceCharting/
         // SportsCardsPro link ("its in there!") still showed the exact same
@@ -11114,7 +11186,7 @@ async function fetchOtherTcgOrSportsLivePrice(item){
         // it yet (common for a newer/low-profile card). Flagged here so the
         // caller can tell the two apart.
         if(res.ok && data.ok && data.product) {
-          return { market:0, pinnedNoPrice:true, source:'PriceCharting (pinned #' + pcId + ')', productName:data.product.productName || '', productUrl };
+          return { market:0, pinnedNoPrice:true, source:'PriceCharting (pinned #' + pcId + ')', productName:data.product.productName || '', productUrl, linkFields };
         }
       }
     } catch(e) { /* fall through to the searches below */ }
@@ -11184,6 +11256,13 @@ function otherSyncLinkHint(item = {}){
   return ' No PriceCharting/SportsCardsPro link is saved on this card. Paste the card\'s link in Edit > PriceCharting to pin it.';
 }
 
+// Store ask: "Sports should be its own thing for sync." A sports card (by
+// its category) syncs from the SPORTS button; everything else this
+// builder covers (Yu-Gi-Oh!, Lorcana, One Piece...) from OTHER TCG.
+function isSportsPriceSyncItem(item = {}){
+  const category = priceSyncCategory(item);
+  return isOtherTcgSportsInventorySyncItem(item) && (isSportsCardCategory(category) || qplCategoryKey(category) === 'sports');
+}
 async function buildOtherTcgSportsPriceSyncProposal(options = {}){
   const { onProgress = null } = options;
   const localRawItems = safeLocalJson('walkoff_universal_inventory', []);
@@ -11198,6 +11277,8 @@ async function buildOtherTcgSportsPriceSyncProposal(options = {}){
     return patch ? { ...i, ...patch } : i;
   });
   items = items.filter(i => isOtherTcgSportsInventorySyncItem(i) && (!options.restrictToIds || options.restrictToIds.has(i.id)));
+  if(options.group === 'sports') items = items.filter(isSportsPriceSyncItem);
+  else if(options.group === 'other') items = items.filter(i => !isSportsPriceSyncItem(i));
   items = items.sort((a,b) => inventoryReferenceMarketPrice(b) - inventoryReferenceMarketPrice(a));
 
   const summary = { checked:items.length, processed:0, changed:0, unchanged:0, errors:0, noMatch:0, noPrice:0, issues:[] };
@@ -11207,6 +11288,11 @@ async function buildOtherTcgSportsPriceSyncProposal(options = {}){
     if(onProgress) onProgress(summary.processed, summary.checked);
     try {
       const live = await fetchOtherTcgOrSportsLivePrice(item);
+      // A link found along the way is kept right away, whatever happens
+      // with the price -- so every sports card ends up linked.
+      if(live?.linkFields && String(item.pricechartingProductId || '').trim() !== String(live.linkFields.pricechartingProductId)){
+        await saveInventoryEdit(item, live.linkFields).catch(() => {});
+      }
       if(!live || !(live.market > 0)){
         summary.noMatch++;
         const graded = isGradedInventoryItem(item);
@@ -11229,7 +11315,7 @@ async function buildOtherTcgSportsPriceSyncProposal(options = {}){
       summary.changed++;
       proposal.push({
         item:{ ...item },
-        mode:'other-live',
+        mode:options.group === 'sports' ? 'sports-live' : 'other-live',
         source:live.source,
         linkFields:live.linkFields || null,
         oldPrice,
@@ -11250,37 +11336,151 @@ async function buildOtherTcgSportsPriceSyncProposal(options = {}){
   return proposal;
 }
 
-async function runOtherLivePriceSync(){
-  const btn = document.getElementById('price-sync-other-btn');
+// LINK SPORTS CARDS: goes through every sports card in inventory and
+// makes sure it has its exact PriceCharting product saved -- from its
+// saved link, its SportsCardsPro page, or an unambiguous name search (see
+// findSportsPcProduct). Anything it can't be sure of is listed with the
+// closest PriceCharting products to pick from, or a box to paste the link.
+const _sportsLinkReview = new Map();
+function sportsLinkInventoryItems(){
+  const overrides = getInventoryEditOverrides();
+  return (all || []).map(i => { const patch = overrides[i.id] || overrides[i.wfId]; return patch ? { ...i, ...patch } : i; })
+    .filter(i => {
+      const status = String(i.lifecycle || i.status || 'in_stock').toLowerCase();
+      return !['sold','archived','returned','deleted'].includes(status) && isSportsPriceSyncItem(i);
+    });
+}
+function sportsLinkModalEl(){
+  let modal = document.getElementById('sports-link-modal');
+  if(!modal){
+    modal = document.createElement('div');
+    modal.id = 'sports-link-modal';
+    modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:9999;display:flex;align-items:flex-start;justify-content:center;overflow-y:auto;padding:24px 12px';
+    document.body.appendChild(modal);
+  }
+  return modal;
+}
+function renderSportsLinkModal(state){
+  const modal = sportsLinkModalEl();
+  const review = [..._sportsLinkReview.values()];
+  const rows = review.map(r => {
+    const it = r.item;
+    const cands = (r.candidates || []).map(c => `<div style="display:flex;gap:8px;align-items:center;padding:4px 0;border-top:1px dashed var(--border)">
+        <div style="flex:1;min-width:0;font-size:11px"><b>${escHtml(c.productName || '')}</b><div style="font-size:9px;color:var(--dim)">${escHtml(c.consoleName || '')}${c.prices?.ungraded ? ' · $' + Number(c.prices.ungraded).toFixed(2) + ' ungraded' : ''}</div></div>
+        <button class="hbtn" style="font-size:9px" onclick="useSportsPcCandidate('${escHtml(it.id)}','${escHtml(String(c.productId))}')">USE THIS</button>
+      </div>`).join('');
+    return `<div style="border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:8px;background:var(--surf2)" id="sports-link-row-${escHtml(it.id)}">
+      <div style="font-weight:700;font-size:12px">${escHtml(inventoryCardName(it) || it.name || 'Card')}</div>
+      <div style="font-size:9px;color:var(--dim);margin-bottom:4px">${escHtml(inventorySetName(it) || 'no set')}${inventoryCardNumber(it) ? ' · #' + escHtml(String(inventoryCardNumber(it)).replace(/^#/, '')) : ''}${it.grader ? ' · ' + escHtml(it.grader + ' ' + (it.grade || '')) : ''}</div>
+      ${cands || '<div style="font-size:10px;color:var(--dim)">No close PriceCharting products found.</div>'}
+      <div style="display:flex;gap:6px;margin-top:6px"><input class="tsi" id="sports-link-paste-${escHtml(it.id)}" placeholder="…or paste the SportsCardsPro / PriceCharting link or ID" style="flex:1;font-size:10px"><button class="hbtn" style="font-size:9px" onclick="useSportsPcPastedLink('${escHtml(it.id)}')">USE LINK</button></div>
+    </div>`;
+  }).join('');
+  modal.innerHTML = `<div style="width:100%;max-width:640px;background:var(--surf);border:1px solid var(--border);border-radius:10px;padding:16px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <div style="font-family:'Orbitron',monospace;color:var(--gold);font-size:13px;letter-spacing:2px">LINK SPORTS CARDS</div>
+      <button onclick="document.getElementById('sports-link-modal').remove()" style="background:none;border:none;color:var(--dim);font-size:22px;cursor:pointer">×</button>
+    </div>
+    <div style="font-family:var(--font-mono);font-size:10px;color:var(--text);margin-bottom:10px;line-height:1.6">${escHtml(state.status || '')}</div>
+    ${review.length ? `<div style="font-family:var(--font-mono);font-size:9px;color:var(--gold);margin-bottom:8px">NEEDS YOU (${review.length}) -- pick the exact card, or paste its link:</div>${rows}` : ''}
+  </div>`;
+}
+async function linkSportsCardsToPriceCharting(){
+  if(!navigator.onLine){ toast_dash('Connect to the internet to link sports cards.'); return; }
+  const items = sportsLinkInventoryItems();
+  _sportsLinkReview.clear();
+  const counts = { already:0, linked:0, review:0, failed:0 };
+  const status = () => `Checked ${counts.already + counts.linked + counts.review + counts.failed} of ${items.length} sports cards · ${counts.already} already linked · ${counts.linked} newly linked · ${counts.review} need you${counts.failed ? ' · ' + counts.failed + ' failed' : ''}`;
+  renderSportsLinkModal({ status:'Checking ' + items.length + ' sports cards…' });
+  for(const item of items){
+    try {
+      const savedId = String(item.pricechartingProductId || item.raw?.pricechartingProductId || '').trim();
+      if(/^\d+$/.test(savedId)){ counts.already++; continue; }
+      const found = await findSportsPcProduct(item);
+      if(found.id){
+        const patch = { pricechartingProductId:found.id };
+        if(found.url && !String(item.providerUrl || '').trim()) patch.providerUrl = found.url;
+        if(found.name) patch.pricechartingProductName = found.name;
+        await saveInventoryEdit(item, patch);
+        if(found.how === 'saved link') counts.already++; else counts.linked++;
+      } else {
+        _sportsLinkReview.set(item.id, { item, candidates:found.candidates || [] });
+        counts.review++;
+      }
+    } catch(e) { counts.failed++; }
+    renderSportsLinkModal({ status:status() });
+  }
+  renderSportsLinkModal({ status:'Done. ' + status() + (counts.review ? '' : ' -- every sports card is linked.') });
+  loadInventory();
+}
+async function saveSportsPcLink(itemId, productId){
+  const entry = _sportsLinkReview.get(itemId);
+  if(!entry) return;
+  let product = null;
+  try {
+    const res = await fetch(WORKER + '/pricing/pricecharting/product/' + encodeURIComponent(productId), { cache:'no-store' });
+    const data = await res.json().catch(() => ({}));
+    if(res.ok && data.ok && data.product) product = data.product;
+  } catch(e) {}
+  if(!product){ toast_dash('Could not load PriceCharting #' + productId); return; }
+  await saveInventoryEdit(entry.item, { pricechartingProductId:String(productId), pricechartingProductName:product.productName || '', ...(String(entry.item.providerUrl || '').trim() ? {} : { providerUrl:product.url || '' }) });
+  _sportsLinkReview.delete(itemId);
+  document.getElementById('sports-link-row-' + itemId)?.remove();
+  toast_dash('Linked to ' + (product.productName || 'PriceCharting #' + productId));
+}
+async function useSportsPcCandidate(itemId, productId){ return saveSportsPcLink(itemId, productId); }
+async function useSportsPcPastedLink(itemId){
+  const raw = String(document.getElementById('sports-link-paste-' + itemId)?.value || '').trim();
+  if(!raw) return;
+  let id = /^\d+$/.test(raw) ? raw : '';
+  if(!id){
+    const shortId = raw.match(/(?:pricecharting|sportscardspro)\.com\/game\/(\d+)\/?(?:[?#].*)?$/i);
+    id = shortId ? shortId[1] : await resolveSportsPcProductId({ id:'', url:raw, built:false });
+  }
+  if(!id){ toast_dash('Could not read a PriceCharting product from that link'); return; }
+  return saveSportsPcLink(itemId, id);
+}
+window.linkSportsCardsToPriceCharting = linkSportsCardsToPriceCharting;
+window.useSportsPcCandidate = useSportsPcCandidate;
+window.useSportsPcPastedLink = useSportsPcPastedLink;
+window.runSportsPriceSync = runSportsPriceSync;
+
+async function runOtherLivePriceSync(){ return runLivePriceSyncGroup('other'); }
+async function runSportsPriceSync(){ return runLivePriceSyncGroup('sports'); }
+async function runLivePriceSyncGroup(group){
+  const isSports = group === 'sports';
+  const label = isSports ? 'sports' : 'other-TCG';
+  const btnText = isSports ? 'SYNC SPORTS PRICES' : 'FETCH LIVE OTHER TCG';
+  const btn = document.getElementById(isSports ? 'price-sync-sports-btn' : 'price-sync-other-btn');
   const statusEl = document.getElementById('price-sync-status');
   const propEl = document.getElementById('price-sync-proposal');
   const applyBtn = document.getElementById('price-sync-apply-btn');
   if(!btn || !statusEl || !propEl) return;
-  _priceSyncView = 'other';
+  _priceSyncView = group;
   restorePendingPriceSyncProposals();
   const pendingBeforeRun = [..._priceSyncProposal];
-  if(!navigator.onLine){ statusEl.textContent = 'Connect to the internet to fetch live sports/other-TCG prices.'; return; }
+  if(!navigator.onLine){ statusEl.textContent = 'Connect to the internet to fetch live ' + label + ' prices.'; return; }
   btn.disabled = true;
   btn.textContent = 'Fetching...';
-  statusEl.textContent = 'Fetching live sports/other-TCG prices...';
+  statusEl.textContent = 'Fetching live ' + label + ' prices...';
   propEl.innerHTML = '';
   if(applyBtn) applyBtn.style.display = 'none';
   try {
-    const freshProposal = await buildOtherTcgSportsPriceSyncProposal({ onProgress:(done,total) => { statusEl.textContent = 'Fetching live prices... ' + done + ' of ' + total + ' checked'; } });
+    const freshProposal = await buildOtherTcgSportsPriceSyncProposal({ group, onProgress:(done,total) => { statusEl.textContent = 'Fetching live ' + label + ' prices... ' + done + ' of ' + total + ' checked'; } });
     const s = _priceSyncLastSummary || { checked:0, changed:0, unchanged:0, noMatch:0, errors:0, issues:[] };
-    _priceSyncProposal = mergePendingPriceSyncProposals(pendingBeforeRun.filter(p=>priceSyncProposalGroup(p)!=='other'), freshProposal);
+    _priceSyncProposal = mergePendingPriceSyncProposals(pendingBeforeRun.filter(p=>priceSyncProposalGroup(p)!==group), freshProposal);
     savePendingPriceSyncProposals();
-    const summaryText = 'Sports/other-TCG sync checked ' + s.checked + ' item' + (s.checked===1?'':'s') + '. ' + s.changed + ' changed, ' + s.unchanged + ' unchanged, ' + s.noMatch + ' not matched, ' + s.errors + ' errors.';
+    const summaryText = (isSports ? 'Sports' : 'Other-TCG') + ' sync checked ' + s.checked + ' item' + (s.checked===1?'':'s') + '. ' + s.changed + ' changed, ' + s.unchanged + ' unchanged, ' + s.noMatch + ' not matched, ' + s.errors + ' errors.';
     statusEl.textContent = summaryText + (visiblePriceSyncProposals().length ? ' Review price changes below, then click UPDATE SELECTED.' : '');
     renderPriceSyncProposal();
-    if(!visiblePriceSyncProposals().length && !(s.issues || []).length) propEl.innerHTML = '<div style="color:var(--dim);font-size:12px;padding:12px 0">All sports/other-TCG prices already match inventory.</div>';
+    if(!visiblePriceSyncProposals().length && !(s.issues || []).length) propEl.innerHTML = '<div style="color:var(--dim);font-size:12px;padding:12px 0">All ' + label + ' prices already match inventory.</div>';
     if(applyBtn && visiblePriceSyncProposals().length) applyBtn.style.display = '';
     updatePriceAlertBanner();
   } catch(e) {
-    statusEl.textContent = 'Sports/other-TCG sync failed: ' + (e.message || e);
+    statusEl.textContent = (isSports ? 'Sports' : 'Other-TCG') + ' sync failed: ' + (e.message || e);
   } finally {
     btn.disabled = false;
-    btn.textContent = 'FETCH LIVE SPORTS / OTHER TCG';
+    btn.textContent = btnText;
   }
 }
 
@@ -11313,7 +11513,7 @@ function renderPriceSyncProposal(){
       <input type="checkbox" data-pso-idx="${idx}" ${p.selected?'checked':''} onchange="togglePriceSyncItem(${idx},this.checked)" style="width:16px;height:16px;flex-shrink:0">
       <div style="flex:1;min-width:0">
         <div style="font-size:12px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(priceSyncItemTitle(p.item))}</div>
-        <div style="font-size:10px;color:var(--dim)">${escHtml(p.item.set||'')}${(p.item.card_number || p.item.cardNumber)?' · #'+escHtml(p.item.card_number || p.item.cardNumber):''} · ${escHtml(p.mode === 'live' ? 'live ' + (p.matchStatus || 'match') : p.mode === 'mtg-live' ? (p.matchStatus || 'live MTG match') : p.mode === 'mtg-offline' ? (p.matchStatus || 'offline MTG match') : p.mode === 'comic-live' ? (p.matchStatus || 'live comic match') : p.mode === 'pocket-scout' ? (p.matchStatus || 'eBay sold comp match') : (p.mode === 'other-live' || p.mode === 'pc-live') ? (p.matchStatus || 'live match') : 'cached')} · ${escHtml(p.source || '')}${p.lastUpdated?' · '+escHtml(String(p.lastUpdated).slice(0,10)):''}</div>
+        <div style="font-size:10px;color:var(--dim)">${escHtml(p.item.set||'')}${(p.item.card_number || p.item.cardNumber)?' · #'+escHtml(p.item.card_number || p.item.cardNumber):''} · ${escHtml(p.mode === 'live' ? 'live ' + (p.matchStatus || 'match') : p.mode === 'mtg-live' ? (p.matchStatus || 'live MTG match') : p.mode === 'mtg-offline' ? (p.matchStatus || 'offline MTG match') : p.mode === 'comic-live' ? (p.matchStatus || 'live comic match') : p.mode === 'pocket-scout' ? (p.matchStatus || 'eBay sold comp match') : (p.mode === 'other-live' || p.mode === 'sports-live' || p.mode === 'pc-live') ? (p.matchStatus || 'live match') : 'cached')} · ${escHtml(p.source || '')}${p.lastUpdated?' · '+escHtml(String(p.lastUpdated).slice(0,10)):''}</div>
         ${p.mode === 'live' && p.sealed && (p.isBig || showAdminDebug()) ? `<div style="font-size:8px;color:var(--gold);margin-top:3px;font-family:monospace">Debug: attemptedQueries [${escHtml((p.attemptedQueries||[]).join(' | ')||'none')}] / matchedProduct="${escHtml(p.matchedProductName||'')}" / matchedSet="${escHtml(p.matchedProductSet||'')}" / matchedTcgPlayerId=${escHtml(p.matchedTcgPlayerId||'')} / prices.market=${escHtml(String(p.prices?.market?.price ?? p.prices?.market ?? ''))} / card.marketPrice=${escHtml(String(p.rawDebug?.marketPrice ?? ''))} / card.price=${escHtml(String(p.rawDebug?.price ?? ''))} / unopenedPrice=${escHtml(String(p.rawDebug?.unopenedPrice ?? ''))}</div>` : ''}
         ${p.mode === 'live' && !p.sealed && (p.isBig || showAdminDebug()) ? `<div style="font-size:8px;color:var(--gold);margin-top:3px;font-family:monospace">Debug: itemCondition=${escHtml(p.item.condition||'NM')} / primaryPrinting=${escHtml(p.prices?.primaryPrinting||'')} / variant printings [${escHtml(Object.keys(p.variants||{}).join(', ')||'none')}] / matchedVariantCondition=${escHtml(String(pokemonPriceTrackerVariantConditionPrice({prices:p.prices}, p.item.condition||'NM')||''))} / legacy conditions keys [${escHtml(Object.keys(p.prices?.conditions||{}).join(', ')||'none')}] / matchedLegacyCondition=${escHtml(String(pokemonPptPriceValue(pokemonPptObjectMatch(p.prices?.conditions||{}, pokemonPptConditionLabel(p.item.condition||'NM')))||''))} / prices.market=${escHtml(String(p.prices?.market?.price ?? p.prices?.market ?? ''))} / card.marketPrice=${escHtml(String(p.rawDebug?.marketPrice ?? ''))}</div>` : ''}
       </div>
@@ -11369,7 +11569,7 @@ async function applyPriceSyncEntry(p){
     const isPocketScoutSync = p.mode === 'pocket-scout' || p.provider === 'pocket_scout';
     // pc-live: a Chinese/Korean Pokemon item priced from its linked
     // PriceCharting product -- same fields as the sports/other-TCG sync.
-    const isOtherLiveSync = p.mode === 'other-live' || p.mode === 'pc-live';
+    const isOtherLiveSync = p.mode === 'other-live' || p.mode === 'pc-live' || p.mode === 'sports-live';
     const source = isOtherLiveSync ? (p.source || 'PriceCharting') : isComicPriceSync ? (p.source || 'PriceCharting comic sync') : isMtgPriceSync ? (p.source || 'MTG price sync') : isPocketScoutSync ? (p.source || 'eBay sold comps') : p.mode === 'live' ? 'PokemonPriceTracker' : (p.source || 'PokemonPriceTracker cache');
     const lastUpdated = p.lastUpdated || now;
     // Sports/other-TCG: keep the exact PriceCharting product the sync priced
@@ -11497,7 +11697,7 @@ async function maybeRunDailyPriceSync(){
   localStorage.setItem(DAILY_PRICE_SYNC_KEY, today);
   dailyPriceSyncRunning = true;
   try {
-    for(const run of [runPriceSyncScan, runOfflineMtgPriceSync, runLiveComicPriceSync, runLivePokemonPriceSync, runOtherLivePriceSync, runPocketScoutPriceSync]){
+    for(const run of [runPriceSyncScan, runOfflineMtgPriceSync, runLiveComicPriceSync, runLivePokemonPriceSync, runSportsPriceSync, runOtherLivePriceSync, runPocketScoutPriceSync]){
       try { await run(); } catch(e) { console.warn('[daily price sync]', run.name, e.message || e); }
     }
     _priceSyncView = null;
