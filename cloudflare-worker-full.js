@@ -6006,6 +6006,108 @@ async function routeRequest(request, env, ctx) {
       return json({ ok: true, checked: live.length, ...result });
     }
 
+    // Store report: one book switched to in stock before the conversion
+    // kept the listing (Adventure Time Halloween Special #1, Sep 18) lost
+    // its description, item specifics and Gemini package size -- the old
+    // rebuild sent one line. This puts a FOC comic's listing back together
+    // from its catalog row the same way the presale was first built:
+    // the store's description (rendered by the dashboard from its Comic
+    // template, else the built-in one), every item specific, the Gemini
+    // mailer size and weight, and the in-stock title. Photos, condition,
+    // price, quantity and policies stay as eBay has them.
+    if (url.pathname === '/foc/ebay/rebuild-listing') {
+      if (request.method !== 'POST') return json({ error: 'POST only' }, 405);
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId, ['owner','admin']);
+      if (auth.error) return auth.error;
+      let body = {};
+      try { body = await request.json(); } catch (_) {}
+      const itemId = String(body.inventoryItemId || '').trim();
+      if (!itemId) return json({ ok: false, error: 'inventoryItemId required' }, 400);
+      const { data: rows } = await supabaseAdminFetch(env, `inventory_items?id=eq.${encodeURIComponent(itemId)}&store_id=eq.${encodeURIComponent(storeId)}&select=id,status,data`);
+      const row = rows?.[0];
+      if (!row) return json({ ok: false, error: 'Inventory item not found' }, 404);
+      const d = row.data || {};
+      if (!d.focSkuId) return json({ ok: false, error: 'Only books that came from FOC can be rebuilt from the catalog' }, 400);
+      if (d.ebayApiSystem === 'trading' || !d.ebaySku || !d.ebayOfferId) return json({ ok: false, error: 'This book has no single-cover eBay listing to rebuild' }, 400);
+      const { data: skuRows } = await supabaseAdminFetch(env, `comic_skus?id=eq.${encodeURIComponent(d.focSkuId)}&store_id=eq.${encodeURIComponent(storeId)}&select=*`);
+      const sku = skuRows?.[0];
+      if (!sku) return json({ ok: false, error: 'FOC catalog entry not found for this book' }, 404);
+      let issueNumber = '', seriesName = '';
+      if (sku.family_id) {
+        try {
+          const { data: familyRows } = await supabaseAdminFetch(env, `comic_title_families?id=eq.${encodeURIComponent(sku.family_id)}&select=issue_number,series_name`);
+          issueNumber = familyRows?.[0]?.issue_number || '';
+          seriesName = familyRows?.[0]?.series_name || '';
+        } catch (_) {}
+      }
+      const onSaleRaw = String(sku.on_sale_date || d.onSaleDate || '');
+      const onSaleDate = new Date(onSaleRaw.includes('T') ? onSaleRaw : onSaleRaw + 'T00:00:00Z');
+      if (!Number.isFinite(onSaleDate.getTime())) return json({ ok: false, error: "This book has no on-sale date" }, 400);
+      const priceCents = Number(sku.customer_price_cents || sku.msrp_cents || 0) || Math.round(Number(d.market || d.price || 0) * 100);
+      const defaults = buildFocPresaleDefaults(sku, priceCents, onSaleDate, issueNumber, seriesName);
+      const presale = row.status === 'presale';
+      const sent = (typeof body.description === 'string' && body.description.trim()) ? body.description.trim() : defaults.description;
+      const description = toEbayHtmlDescription(presale
+        ? withComicListingNotices(sent, { presale: true, onSaleLabel: defaults.onSaleLabel })
+        : comicPresaleToInStockDescription(sent));
+      const title = presale ? defaults.title : (stripPresaleSuffix(defaults.title) || defaults.title);
+
+      let ebayToken = '';
+      try { ebayToken = await getEbayUserAccessToken(env); }
+      catch (tokenErr) { return json({ needsToken: true, error: tokenErr.message }, 401); }
+      if (!ebayToken) return json({ needsToken: true, error: 'Connect eBay first: missing user access/refresh token' }, 401);
+      const headers = { 'Authorization': 'Bearer ' + ebayToken, 'Content-Type': 'application/json', 'Content-Language': 'en-US' };
+      const [itemRes, offerRes] = await Promise.all([
+        fetch(`https://api.ebay.com/sell/inventory/v1/inventory_item/${encodeURIComponent(d.ebaySku)}`, { headers }),
+        fetch(`https://api.ebay.com/sell/inventory/v1/offer/${encodeURIComponent(d.ebayOfferId)}`, { headers }),
+      ]);
+      const item = await itemRes.json().catch(() => null);
+      const offer = await offerRes.json().catch(() => null);
+      if (!itemRes.ok || !item || !offerRes.ok || !offer) return json({ ok: false, error: 'Could not read the listing from eBay (' + itemRes.status + '/' + offerRes.status + ') -- it may have ended' }, 502);
+
+      const itemBody = { ...item };
+      delete itemBody.sku; delete itemBody.groupIds; delete itemBody.inventoryItemGroupKeys;
+      const product = { ...(item.product || {}) };
+      const conditionId = String(item.condition === 'NEW' || !item.condition ? '1000' : '');
+      product.aspects = { ...(product.aspects || {}), ...buildEbayAspects({ customAspects: defaults.customAspects, categoryId: '259104', conditionId, upc: sku.upc || d.upc || '' }) };
+      product.title = title;
+      product.description = description;
+      const cover = sku.cover_image_url || d.image || d.imageUrl || '';
+      if (!(product.imageUrls || []).length && cover) product.imageUrls = [cover];
+      if (!product.upc && (sku.upc || d.upc)) product.upc = [String(sku.upc || d.upc)];
+      itemBody.product = product;
+      itemBody.packageWeightAndSize = {
+        ...(item.packageWeightAndSize || {}),
+        dimensions: { length: COMIC_GEMINI_MAILER.dimLength, width: COMIC_GEMINI_MAILER.dimWidth, height: COMIC_GEMINI_MAILER.dimHeight, unit: 'INCH' },
+        weight: { value: defaults.weightValue, unit: defaults.weightUnit },
+      };
+      const putItem = await fetch(`https://api.ebay.com/sell/inventory/v1/inventory_item/${encodeURIComponent(d.ebaySku)}`, { method: 'PUT', headers, body: JSON.stringify(itemBody) });
+      if (!putItem.ok && putItem.status !== 204) {
+        const t = await putItem.text().catch(() => '');
+        return json({ ok: false, error: 'eBay refused the item update (' + putItem.status + '): ' + t.substring(0, 300) }, 502);
+      }
+      const OFFER_FIELDS = ['availableQuantity', 'categoryId', 'charity', 'extendedProducerResponsibility', 'hideBuyerDetails', 'includeCatalogProductDetails', 'listingDescription', 'listingDuration', 'listingPolicies', 'listingStartDate', 'lotSize', 'merchantLocationKey', 'pricingSummary', 'quantityLimitPerBuyer', 'regulatory', 'secondaryCategoryId', 'storeCategoryNames', 'tax'];
+      const offerBody = {};
+      for (const k of OFFER_FIELDS) if (offer[k] !== undefined) offerBody[k] = offer[k];
+      offerBody.listingDescription = description;
+      if (!(offerBody.storeCategoryNames || []).length) offerBody.storeCategoryNames = ['Comic Books'];
+      const putOffer = await fetch(`https://api.ebay.com/sell/inventory/v1/offer/${encodeURIComponent(d.ebayOfferId)}`, { method: 'PUT', headers, body: JSON.stringify(offerBody) });
+      if (!putOffer.ok && putOffer.status !== 204) {
+        const t = await putOffer.text().catch(() => '');
+        return json({ ok: false, error: 'Item specifics saved, but eBay refused the description (' + putOffer.status + '): ' + t.substring(0, 300) }, 502);
+      }
+      // The old conversion also left " - PRESALE" on the store's own name.
+      if (!presale && /-\s*PRESALE\s*$/i.test(String(d.name || d.title || ''))) {
+        const clean = stripPresaleSuffix(d.name || d.title);
+        await supabaseAdminFetch(env, `inventory_items?id=eq.${encodeURIComponent(row.id)}&store_id=eq.${encodeURIComponent(storeId)}`, {
+          method: 'PATCH', headers: { Prefer: 'return=minimal' },
+          body: JSON.stringify({ data: { ...d, name: clean, title: clean, ebayListingRebuiltAt: new Date().toISOString() } }),
+        }).catch(() => {});
+      }
+      return json({ ok: true, ebayListingId: d.ebayListingId || '', title, aspects: Object.keys(product.aspects).length });
+    }
+
     if (url.pathname === '/foc/ebay/convert-to-instock') {
       if (request.method !== 'POST') return json({ error: 'POST only' }, 405);
       const storeId = requestStoreId(request, url);

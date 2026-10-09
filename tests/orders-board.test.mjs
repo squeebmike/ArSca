@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import assert from 'node:assert/strict';
-import { orderItemState, orderStatus, buildOrdersBoard, handleOrdersBoard, handleOrderMarkShipped, SHIP_LATE_AFTER_DAYS } from '../scripts/orders-board.mjs';
+import { orderItemState, orderStatus, buildOrdersBoard, handleOrdersBoard, handleOrderMarkShipped, SHIP_LATE_AFTER_DAYS, presaleTitleKey } from '../scripts/orders-board.mjs';
 
 // Store ask: "Need organized area for ebay, whatnot, and website orders..
 // Need to know whats in. When itll be in.. and whats late."
@@ -120,6 +120,70 @@ assert.equal(buildOrdersBoard({ today, payments:[{ sale_id:'s5', provider:'whatn
   assert.equal((await handleOrderMarkShipped(req({ storeId:'store1', channel:'website', orderId:'X' }), env, deps)).status, 400, 'website orders are managed in their own panels');
 }
 
+
+// ── Found checking the store's real orders ──
+// A pickup order with everything in is waiting on the customer, not late.
+{
+  const s = orderStatus({ items:[{ state:'in' }], createdAt:'2026-07-24T00:00:00Z', today, pickup:true });
+  assert.deepEqual({ ...s }, { status:'ready', reason:'ready for pickup', expectedDate:'' });
+  assert.equal(orderStatus({ items:[{ state:'late', onSaleDate:'2026-10-07' }], today, pickup:true }).status, 'late', 'a pickup still goes late when a book never came in');
+  const board = buildOrdersBoard({
+    storefrontOrders:[{ id:'sf-p', sale_id:'s-p', confirmation_number:'ORD-P', customer_name:'A', fulfillment_method:'pickup_fedway', fulfillment_status:'pending', created_at:'2026-07-24T00:00:00Z' }],
+    storefrontLines:[{ sale_id:'s-p', item_id:'i-p', title:'Booster Pack', quantity:1, unit_price:7.88 }],
+    inventoryById:new Map([['i-p', { id:'i-p', status:'in_stock', src:'built_in' }]]), today,
+  });
+  assert.equal(board.channels.website[0].status, 'ready');
+  assert.equal(board.channels.website[0].pickup, true);
+}
+// A sale line never tied to inventory (Sonic x Godzilla #3 RI, eBay Sep 2)
+// gets its due date from the FOC catalog by title.
+{
+  assert.equal(presaleTitleKey('Sonic the Hedgehog x Godzilla #3 Variant RI (15) (Haines) - PRESALE'), 'sonic the hedgehog x godzilla #3 variant ri (15) (haines)');
+  const skuByTitle = new Map([[presaleTitleKey('Sonic the Hedgehog x Godzilla #3 Variant RI (15) (Haines)'), { id:'sku-sonic', on_sale_date:'2026-10-14' }]]);
+  const args = {
+    payments:[{ sale_id:'s-s', reference:'11-1', provider:'ebay', amount:17.99, created_at:'2026-09-02T00:00:00Z', provider_metadata:{ ebayOrderId:'11-1', labelTransactionIds:[] } }],
+    lines:[{ sale_id:'s-s', item_id:null, title:'Sonic the Hedgehog x Godzilla #3 Variant RI (15) (Haines) - PRESALE', quantity:1, unit_price:17.99 }],
+    skuByTitle, today,
+  };
+  const o = buildOrdersBoard(args).channels.ebay[0];
+  assert.equal(o.status, 'waiting');
+  assert.equal(o.expectedDate, '2026-10-14');
+  assert.equal(o.items[0].onSaleDate, '2026-10-14');
+  const inNow = buildOrdersBoard({ ...args, receivedSkuIds:new Set(['sku-sonic']) }).channels.ebay[0];
+  assert.equal(inNow.items[0].state, 'in', 'and is in once a copy of that book is');
+}
+// The route counts any real copy of a book as in -- a connecting cover
+// entered by hand and put straight into its bundle (Midnight X-Men #1
+// Cover F) -- but never the presale listing itself; and looks unlinked
+// presale lines up in the catalog.
+{
+  const calls = [];
+  const deps = {
+    requireStoreUser: async () => ({ user:{ id:'u1' } }), json:(body, status = 200) => ({ status, body }),
+    supabaseAdminFetch: async (env, path) => {
+      calls.push(path);
+      if (path.startsWith('pos_payments')) return { data:[{ sale_id:'s-s', reference:'11-1', provider:'ebay', amount:17.99, created_at:new Date().toISOString(), provider_metadata:{ ebayOrderId:'11-1' } }] };
+      if (path.startsWith('pos_sale_lines')) return { data:[{ sale_id:'s-s', item_id:null, title:'Sonic #3 RI - PRESALE', quantity:1, unit_price:17.99 }] };
+      if (path.startsWith('comic_skus')) return { data:[{ id:'sku-sonic', title:'Sonic #3 RI', on_sale_date:'2099-10-14' }] };
+      if (path.startsWith('foc_preorder_orders')) return { data:[{ id:'fo1', order_number:'FOC-1', status:'paid', fulfillment_method:'pickup', created_at:new Date().toISOString() }] };
+      if (path.startsWith('foc_preorder_items')) return { data:[{ order_id:'fo1', sku_id:'sku-f', quantity:1, unit_price_cents:599, sku:{ title:'MIDNIGHT X-MEN #1 COVER F', on_sale_date:'2020-10-07' } }, { order_id:'fo1', sku_id:'sku-i', quantity:1, unit_price_cents:599, sku:{ title:'MIDNIGHT X-MEN #1 COVER I', on_sale_date:'2020-10-07' } }] };
+      if (path.startsWith('inventory_items') && path.includes('data->>focSkuId=')) return { data:[{ sku:'sku-f', src:'built_in' }, { sku:'sku-sonic', src:'foc_presale' }] };
+      return { data:[] };
+    },
+  };
+  const res = await handleOrdersBoard({}, {}, deps, new URL('https://w.test/orders/board?store_id=store1'));
+  assert.ok(calls.some(p => /^comic_skus\?store_id=eq\.store1&title=in\.\("Sonic #3 RI"\)/.test(p)), 'unlinked presale titles are looked up in this store\'s catalog');
+  const lookup = calls.find(p => p.startsWith('inventory_items') && p.includes('data->>focSkuId='));
+  assert.doesNotMatch(lookup, /data->>source=eq\.foc_receive/, 'not only FOC-received copies count');
+  const sonic = res.body.channels.ebay[0];
+  assert.equal(sonic.status, 'waiting', 'the presale listing row itself is not a copy in hand');
+  assert.equal(sonic.expectedDate, '2099-10-14');
+  const pre = res.body.channels.website[0];
+  assert.equal(pre.items[0].state, 'in', 'cover F is in the store');
+  assert.equal(pre.items[1].state, 'late', 'cover I never came in');
+  assert.equal(pre.status, 'late');
+}
+
 // ── Wiring ──
 const worker = fs.readFileSync('cloudflare-worker-full.js', 'utf8');
 assert.match(worker, /import \{ handleOrdersBoard, handleOrderMarkShipped \} from '\.\/scripts\/orders-board\.mjs';/);
@@ -128,5 +192,6 @@ const dashboard = fs.readFileSync('dashboard.html', 'utf8');
 assert.match(dashboard, /<div class="panel" id="orders-board-panel"/, 'the Orders tab has the board');
 assert.match(dashboard, /if\(name === 'orders'\) setTimeout\(\(\)=>\{ renderOrdersBoard\(\);/, 'and loads it when opened');
 assert.match(dashboard, /await storeWorkerFetch\('\/orders\/board\?store_id=' \+ encodeURIComponent\(getActiveStoreId\(\)\)/);
+assert.match(dashboard, /\$\{o\.status === 'ready' && o\.pickup \? 'READY FOR PICKUP' : st\.label\}/, 'a pickup order says so');
 
 console.log('Orders board checks passed');
