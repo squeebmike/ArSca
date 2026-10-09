@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.10.09.4-price-site-by-type';
+const APP_VERSION = '2026.10.09.5-orders-board';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -16479,7 +16479,7 @@ function switchTab(name, btn){
   if(name === 'database') setTimeout(()=>window.ensureDatabasePanel?.(), 0);
   if(name === 'cardintake') setTimeout(()=>window.ensureCardIntakePanel?.(), 0);
   if(name === 'tasks') setTimeout(()=>window.ensureDailyTasksPanel?.(), 0);
-  if(name === 'orders') setTimeout(()=>{ renderFocPreorderOrders(); renderStorefrontOrders(); }, 0);
+  if(name === 'orders') setTimeout(()=>{ renderOrdersBoard(); renderFocPreorderOrders(); renderStorefrontOrders(); }, 0);
   if(name === 'whatnot' && window.renderWhatnotBridge) setTimeout(()=>window.renderWhatnotBridge(), 0);
   if(name === 'sales' && window.renderExpensesPanel) setTimeout(()=>window.renderExpensesPanel(), 0);
   if(name === 'reports') setTimeout(ensureReportsPanel, 0);
@@ -20026,6 +20026,121 @@ function renderFocPreorderOrdersFromCache(){
     return `<article style="display:grid;gap:8px;background:var(--surf2);border:1px solid var(--border);border-radius:9px;padding:11px"><div style="display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap"><div><b style="font-family:var(--font-mono);color:var(--purple)">${escHtml(order.order_number)}</b><div style="font:9px/1.5 var(--font-mono);color:var(--dim)">FOC ${escHtml(order.cycle?.foc_date||'—')} · ${new Date(order.created_at).toLocaleString()}</div></div><div style="display:flex;gap:6px;flex-wrap:wrap"><span class="qpl-badge ${paid?'good':'warn'}">${focOrderStatusLabel(order.status)}</span>${emailBadge}${labelBadge}</div></div><div style="font-size:12px;font-weight:800">${escHtml(order.customer_name||'Unnamed customer')} · ${escHtml(order.customer_email||'')}${order.customer_phone?' · '+escHtml(order.customer_phone):''}</div><div style="font:10px/1.55 var(--font-mono);color:var(--dim)">${order.fulfillment_method==='shipping'?'SHIP':'PICKUP'}${order.shipping_service?' · '+escHtml(order.shipping_service):''}${order.shipping_cents?' · customer paid $'+(Number(order.shipping_cents)/100).toFixed(2):''}${address.length?'<br>'+address.map(escHtml).join('<br>'):''}${order.shipping_tracking_number?'<br>Tracking '+escHtml(order.shipping_tracking_number):''}</div>${pendingNote}${order.shipping_label_error?'<div style="font:9px/1.5 var(--font-mono);color:var(--red)">'+escHtml(order.shipping_label_error)+'</div>':''}<div style="display:grid;gap:5px">${items||'<div style="color:var(--dim)">No book lines recorded.</div>'}</div><div style="display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap"><b>$${(Number(order.total_cents||0)/100).toFixed(2)} · ${(order.items||[]).reduce((n,i)=>n+Number(i.quantity||0),0)} book(s)</b><div style="display:flex;gap:6px;flex-wrap:wrap">${labelAction}${resend}${action}</div></div></article>`;
   }).join('');
 }
+// ── ALL ORDERS board ──────────────────────────────────────────────
+// Store ask: "Need organized area for ebay, whatnot, and website orders..
+// Need to know whats in. When itll be in.. and whats late." Built by the
+// Worker's /orders/board (scripts/orders-board.mjs); this only shows it.
+let _ordersBoard = null;
+let _ordersBoardChannel = 'all';
+const ORDER_CHANNEL_LABEL = { ebay:'eBay', whatnot:'Whatnot', website:'Website' };
+const ORDER_CHANNEL_COLOR = { ebay:'var(--gold)', whatnot:'var(--purple, #c77dff)', website:'var(--g)' };
+const ORDER_STATUS_STYLE = {
+  late:{ label:'LATE', color:'var(--red)', bg:'rgba(255,77,109,.1)' },
+  ready:{ label:'READY TO SHIP', color:'var(--g)', bg:'rgba(0,255,179,.08)' },
+  waiting:{ label:'WAITING ON BOOKS', color:'var(--gold)', bg:'rgba(255,209,102,.08)' },
+  shipped:{ label:'SHIPPED', color:'var(--dim)', bg:'transparent' },
+};
+function orderBoardDate(day){
+  if(!day) return '';
+  try { return new Date(String(day).slice(0,10) + 'T12:00:00').toLocaleDateString('en-US', { month:'short', day:'numeric' }); } catch(e) { return String(day).slice(0,10); }
+}
+async function renderOrdersBoard(){
+  const list = document.getElementById('orders-board-list');
+  if(!list) return;
+  const updated = document.getElementById('orders-board-updated');
+  if(updated) updated.textContent = 'loading…';
+  try {
+    const res = await storeWorkerFetch('/orders/board?store_id=' + encodeURIComponent(getActiveStoreId()), { cache:'no-store' });
+    const data = await res.json().catch(() => ({}));
+    if(!res.ok || !data.ok) throw new Error(data.error || 'Could not load orders');
+    _ordersBoard = data;
+    if(updated) updated.textContent = 'updated ' + new Date().toLocaleTimeString([], { hour:'numeric', minute:'2-digit' });
+    renderOrdersBoardFromCache();
+  } catch(e) {
+    if(updated) updated.textContent = '';
+    list.innerHTML = '<div style="color:var(--red);font-family:var(--font-mono);font-size:10px">' + escHtml(e.message || String(e)) + '</div>';
+  }
+}
+function setOrdersBoardChannel(channel){ _ordersBoardChannel = channel; renderOrdersBoardFromCache(); }
+function renderOrdersBoardFromCache(){
+  const data = _ordersBoard;
+  const list = document.getElementById('orders-board-list');
+  if(!data || !list) return;
+  const filter = document.getElementById('orders-board-filter')?.value || 'open';
+  const channels = ['ebay','whatnot','website'];
+  const total = key => channels.reduce((n, c) => n + Number(data.counts?.[c]?.[key] || 0), 0);
+  const summary = document.getElementById('orders-board-summary');
+  if(summary){
+    const tile = (key, label, filterTo) => { const st = ORDER_STATUS_STYLE[key]; return `<button class="hbtn" onclick="document.getElementById('orders-board-filter').value='${filterTo}';renderOrdersBoardFromCache()" style="border-color:${st.color};color:${st.color};background:${st.bg};font-size:11px"><b style="font-size:16px">${total(key)}</b> ${label}</button>`; };
+    summary.innerHTML = tile('late', 'late', 'late') + tile('ready', 'ready to ship', 'ready') + tile('waiting', 'waiting on books', 'waiting');
+  }
+  const chanEl = document.getElementById('orders-board-channels');
+  if(chanEl){
+    const open = c => ['late','ready','waiting'].reduce((n, k) => n + Number(data.counts?.[c]?.[k] || 0), 0);
+    chanEl.innerHTML = ['all'].concat(channels).map(c => {
+      const on = _ordersBoardChannel === c;
+      const n = c === 'all' ? channels.reduce((m, ch) => m + open(ch), 0) : open(c);
+      return `<button class="hbtn" onclick="setOrdersBoardChannel('${c}')" style="${on ? 'background:rgba(0,255,179,.12);border-color:var(--g);color:var(--g)' : ''}">${c === 'all' ? 'ALL' : escHtml(ORDER_CHANNEL_LABEL[c].toUpperCase())} <span style="opacity:.7">${n}</span></button>`;
+    }).join('');
+  }
+  let orders = (_ordersBoardChannel === 'all' ? channels : [_ordersBoardChannel]).flatMap(c => data.channels?.[c] || []);
+  if(filter === 'open') orders = orders.filter(o => o.status !== 'shipped');
+  else if(filter !== 'all') orders = orders.filter(o => o.status === filter);
+  const rank = { late:0, ready:1, waiting:2, shipped:3 };
+  orders.sort((a, b) => (rank[a.status] - rank[b.status]) || String(a.expectedDate || '9999').localeCompare(String(b.expectedDate || '9999')) || String(b.createdAt).localeCompare(String(a.createdAt)));
+  if(!orders.length){
+    list.innerHTML = '<div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);padding:10px;border:1px dashed var(--border);border-radius:8px;text-align:center">Nothing here.' + (data.channels?.whatnot?.length ? '' : ' Whatnot orders show up once a show report is imported (Whatnot tab).') + '</div>';
+    return;
+  }
+  list.innerHTML = orders.map(o => {
+    const st = ORDER_STATUS_STYLE[o.status] || ORDER_STATUS_STYLE.ready;
+    const items = (o.items || []).map(it => {
+      const chip = it.state === 'in' ? '<span style="color:var(--g)">✓ IN</span>'
+        : it.state === 'late' ? `<span style="color:var(--red)">LATE · due ${escHtml(orderBoardDate(it.onSaleDate))}</span>`
+        : `<span style="color:var(--gold)">DUE ${escHtml(orderBoardDate(it.onSaleDate) || 'TBD')}</span>`;
+      return `<div style="display:flex;gap:8px;align-items:center;font-size:11px;padding:3px 0;border-top:1px dashed var(--border)">
+        ${it.image ? `<img src="${escHtml(it.image)}" alt="" style="width:26px;height:36px;object-fit:cover;border-radius:3px">` : ''}
+        <span style="flex:1;min-width:0">${it.qty > 1 ? '<b>' + it.qty + '×</b> ' : ''}${escHtml(it.title || 'Item')}</span>
+        <span style="font-family:var(--font-mono);font-size:9px;white-space:nowrap">${chip}</span>
+      </div>`;
+    }).join('') || '<div style="font-size:10px;color:var(--dim)">No item details saved for this order.</div>';
+    const actions = [];
+    if(o.channel === 'ebay') actions.push(`<a class="hbtn" style="font-size:9px;text-decoration:none" href="https://www.ebay.com/sh/ord/details?orderid=${encodeURIComponent(o.id)}" target="_blank" rel="noopener">OPEN ON EBAY</a>`);
+    if((o.channel === 'ebay' || o.channel === 'whatnot') && o.shippedBy !== 'eBay label'){
+      actions.push(o.shipped
+        ? `<button class="hbtn" style="font-size:9px" onclick="markOrderShipped('${o.channel}','${escHtml(o.id)}',false)">UNDO SHIPPED</button>`
+        : `<button class="hbtn" style="font-size:9px;color:var(--g)" onclick="markOrderShipped('${o.channel}','${escHtml(o.id)}',true)">MARK SHIPPED</button>`);
+    }
+    if(o.channel === 'website') actions.push(`<span style="font-size:9px;color:var(--dim)">${o.kind === 'preorder' ? 'Manage in COMIC PREORDER ORDERS below' : 'Manage in website orders below'}</span>`);
+    return `<div style="border:1px solid ${o.status === 'late' ? 'rgba(255,77,109,.45)' : 'var(--border)'};border-radius:8px;padding:10px;background:var(--surf2)">
+      <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start;flex-wrap:wrap">
+        <div style="min-width:0">
+          <span style="font-family:var(--font-mono);font-size:9px;font-weight:700;color:${ORDER_CHANNEL_COLOR[o.channel]};border:1px solid ${ORDER_CHANNEL_COLOR[o.channel]};border-radius:4px;padding:1px 5px">${escHtml(ORDER_CHANNEL_LABEL[o.channel] || o.channel)}${o.kind === 'preorder' ? ' · PREORDER' : ''}</span>
+          <b style="margin-left:6px;font-size:12px">#${escHtml(o.number || o.id)}</b>
+          <span style="font-size:10px;color:var(--dim)">${o.buyer ? ' · ' + escHtml(o.buyer) : ''} · ${escHtml(orderBoardDate(o.createdAt))}${o.total ? ' · $' + Number(o.total).toFixed(2) : ''}${o.method ? ' · ' + escHtml(String(o.method).replace(/_/g, ' ')) : ''}</span>
+        </div>
+        <span style="font-family:var(--font-mono);font-size:9px;font-weight:700;color:${st.color};background:${st.bg};border:1px solid ${st.color};border-radius:4px;padding:2px 6px;white-space:nowrap">${st.label}${o.status === 'waiting' && o.expectedDate ? ' · IN BY ' + escHtml(orderBoardDate(o.expectedDate).toUpperCase()) : ''}</span>
+      </div>
+      <div style="font-size:10px;color:${st.color};margin:4px 0 2px">${escHtml(o.reason || '')}${o.shipped && o.shippedBy ? ' · ' + escHtml(o.shippedBy) : ''}</div>
+      ${items}
+      ${actions.length ? `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;align-items:center">${actions.join('')}</div>` : ''}
+    </div>`;
+  }).join('');
+}
+async function markOrderShipped(channel, orderId, shipped){
+  try {
+    const res = await storeWorkerFetch('/orders/mark-shipped', { method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify({ storeId:getActiveStoreId(), channel, orderId, shipped }) });
+    const data = await res.json().catch(() => ({}));
+    if(!res.ok || !data.ok) throw new Error(data.error || 'Could not update the order');
+    toast_dash(shipped ? 'Marked shipped' : 'Marked not shipped');
+    renderOrdersBoard();
+  } catch(e) { toast_dash(e.message || String(e)); }
+}
+window.renderOrdersBoard = renderOrdersBoard;
+window.renderOrdersBoardFromCache = renderOrdersBoardFromCache;
+window.setOrdersBoardChannel = setOrdersBoardChannel;
+window.markOrderShipped = markOrderShipped;
+
 async function renderFocPreorderOrders(){
   const list=document.getElementById('foc-orders-list'),count=document.getElementById('foc-orders-count');if(!list)return;
   if(count)count.textContent='loading…';

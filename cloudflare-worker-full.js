@@ -32,6 +32,7 @@ import { cachedCatalogSitemap } from './scripts/sitemap-cache.mjs';
 // the Worker -- reused here instead of duplicating checklist-parsing logic.
 import { buildChecklistIndex, parseChecklistText, sha1Hex, slugify } from './scripts/topps-checklist-parser.js';
 import { handleFocRequest, syncFocStripeEvent, shippingSettings } from './scripts/foc-preorders.mjs';
+import { handleOrdersBoard, handleOrderMarkShipped } from './scripts/orders-board.mjs';
 import { handleBacklistRequest, syncBacklistStripeEvent } from './scripts/backlist-catalog.mjs';
 import { searchComics, comicSearchShell, comicSearchScriptResponse, injectComicSearch } from './scripts/comic-search.mjs';
 import { handleAccountRequest, findLinkedCustomer } from './scripts/customer-account.mjs';
@@ -11666,6 +11667,14 @@ async function routeRequest(request, env, ctx) {
       return json({ ok: true, settings: saved });
     }
 
+    // Orders board: eBay, Whatnot and website orders -- what's in, when
+    // the rest is due, what's late (see scripts/orders-board.mjs).
+    if (url.pathname === '/orders/board' && request.method === 'GET') {
+      return await handleOrdersBoard(request, env, { requireStoreUser, supabaseAdminFetch, json }, url);
+    }
+    if (url.pathname === '/orders/mark-shipped' && request.method === 'POST') {
+      return await handleOrderMarkShipped(request, env, { requireStoreUser, supabaseAdminFetch, json });
+    }
     if (url.pathname === '/inventory/record-external-sale' && request.method === 'POST') {
       const storeId = requestStoreId(request, url);
       const auth = await requireStoreUser(request, env, storeId, ['owner','admin','manager','employee']);
