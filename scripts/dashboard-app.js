@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.10.09.6-rebuild-ebay-listing';
+const APP_VERSION = '2026.10.09.7-sticker-tracking';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -7907,6 +7907,9 @@ function showInvRowMenu(e, id, isInStock){
     (isInStock && item?.category==='Sealed')?`<button class="hbtn" style="${btnStyle};color:var(--gold)" onclick="breakBoosterBox('${id}');closeInvRowMenu()">📦 Break into Packs</button>`:'',
     `<button class="hbtn" style="${btnStyle}" onclick="openItemTimeline('${id}');closeInvRowMenu()">📋 History</button>`,
     `<button class="hbtn" style="${btnStyle}" onclick="openLabelPrintModal('${id}');closeInvRowMenu()">🏷️ Print Label</button>`,
+    (item && item.status === 'in_stock') ? (inventoryStickerPrinted(item)
+      ? `<button class="hbtn" style="${btnStyle};color:var(--dim)" onclick="setInventoryStickerPrinted('${id}', false);closeInvRowMenu()">🏷️ Mark Needs Sticker</button>`
+      : `<button class="hbtn" style="${btnStyle};color:var(--gold)" onclick="setInventoryStickerPrinted('${id}', true);closeInvRowMenu()">✓ Mark Sticker Printed</button>`) : '',
     isInStock?`<button class="hbtn" style="${btnStyle};color:var(--blue)" onclick="refreshInventoryItemPriceFromMarket('${id}');closeInvRowMenu()">💹 Refresh Price</button>`:'',
     // Store report: a store not using Webflow for inventory (the common
     // case -- the public storefront reads straight from Supabase, see
@@ -13683,6 +13686,8 @@ const BUILT_IN_ITEM_SIMPLE_FIELDS = [
   ['onlineListed', true],
   ['dropship', false, 'bool'], ['vendor',''], ['supplierSku',''], ['supplierAvailability',''],
   ['supplierCost',0,'num'], ['supplierCheckedAt',''],
+  // Shelf sticker printed? null = no record (see inventoryStickerPrinted).
+  ['stickerPrinted', null], ['stickerPrintedAt',''],
 ];
 // BUILT_IN_ITEM_ALIASED_FIELDS: the read side stays hand-written in
 // mapBuiltInItem below (a saved row might use an older key name, or the
@@ -15411,6 +15416,7 @@ function inventoryHealthSummary(items=all){
   return {
     total:inStock.length,
     noPhoto:inStock.filter(i=>!inventoryImageUrl(i)).length,
+    needsSticker:inStock.filter(inventoryNeedsSticker).length,
     noConfig:inStock.filter(i=>!i.configuration).length,
     noCost:inStock.filter(i=>inventoryCostBasis(i) <= 0).length,
     noMarket:inStock.filter(i=>inventoryMarketPrice(i) <= 0).length,
@@ -15515,6 +15521,7 @@ function renderInventoryHealthPanel(){
   if(!el) return;
   const h = inventoryHealthSummary(all);
   const cards = [
+    ['needs_sticker','Needs Sticker',h.needsSticker,'no price sticker printed'],
     ['no_photo','No Photo',h.noPhoto,'needs item image'],
     ['no_config','No Product Type',h.noConfig,'needs Single/Booster/etc'],
     ['no_cost','No Cost',h.noCost,'missing buy basis'],
@@ -15537,7 +15544,7 @@ function renderInventoryHealthPanel(){
     // useful way to browse the table.
     ['bogus_sports_category','Sports Category Fix',h.bogusSportsCategory,'tap to repair','backfillBogusSportsCategory()'],
   ];
-  const flagged = h.noPhoto + h.noConfig + h.noCost + h.noMarket + h.stale + h.notListed + h.belowCost;
+  const flagged = h.needsSticker + h.noPhoto + h.noConfig + h.noCost + h.noMarket + h.stale + h.notListed + h.belowCost;
   // Re-rendered on every filterTable() call (every keystroke in the search box),
   // so the open/closed state has to survive a re-render or expanding this on
   // mobile would collapse itself again on the next character typed.
@@ -16182,11 +16189,65 @@ function inventoryMatchesGrading(i, grading){
   const graded = !!(i.grader || i.grade);
   return grading === 'graded' ? graded : !graded;
 }
+// ── Shelf stickers ──
+// Store ask: "a thing that tells us if we printed an initial sticker or not"
+// -- a buy, trade or new item that went on the shelf without its price
+// label. Printing or downloading an item's label marks it; the Needs Sticker
+// filter lists what's still bare. Items already in stock when this started
+// had no record: comics and sports were all stickered, the rest (Pokemon,
+// MTG, collectibles, ...) start out as needing one.
+const STICKER_TRACKING_START = '2026-10-09T23:00:00Z';
+function inventoryStickerPrinted(item = {}){
+  const raw = item.raw || {};
+  const flag = item.stickerPrinted ?? raw.stickerPrinted;
+  if(flag === true || flag === false) return flag;
+  if(item.stickerPrintedAt || raw.stickerPrintedAt) return true;
+  const added = Date.parse(item.addedAt || raw.addedAt || item.createdAt || '');
+  if(Number.isFinite(added) && added >= Date.parse(STICKER_TRACKING_START)) return false;
+  return qplCategoryKey(item.category) === 'comic' || qplCategoryKey(item.category) === 'sports' || isSportsCardCategory(item.category);
+}
+function inventoryNeedsSticker(item = {}){
+  return item.status === 'in_stock' && item.lifecycle !== 'archived' && !inventoryIsDropship(item) && !inventoryStickerPrinted(item);
+}
+// Called when labels go to the printer (or download): every item in the
+// batch now has its sticker.
+async function markInventoryStickersPrinted(entries = []){
+  const at = new Date().toISOString();
+  const ids = [...new Set((entries || []).map(b => String(b?.id || '')).filter(Boolean))];
+  let marked = 0;
+  for(const id of ids){
+    const item = (all || []).find(i => String(i.id) === id);
+    if(!item || (item.stickerPrinted === true || item.raw?.stickerPrinted === true)) continue;
+    try {
+      await saveInventoryEdit(item, { stickerPrinted:true, stickerPrintedAt:at });
+      item.stickerPrinted = true; item.stickerPrintedAt = at;
+      if(item.raw) { item.raw.stickerPrinted = true; item.raw.stickerPrintedAt = at; }
+      marked++;
+    } catch(e) { /* the next print marks it */ }
+  }
+  if(marked && typeof filterTable === 'function') filterTable();
+  return marked;
+}
+// ⋯ menu: fix it by hand (a sticker written out, or one that fell off).
+async function setInventoryStickerPrinted(id, printed){
+  const item = (all || []).find(i => String(i.id) === String(id));
+  if(!item) return;
+  const updates = printed ? { stickerPrinted:true, stickerPrintedAt:new Date().toISOString() } : { stickerPrinted:false, stickerPrintedAt:'' };
+  try {
+    await saveInventoryEdit(item, updates);
+    Object.assign(item, updates);
+    if(item.raw) Object.assign(item.raw, updates);
+    toast_dash(printed ? 'Marked as stickered' : 'Marked as needing a sticker');
+    filterTable();
+  } catch(e) { toast_dash('Could not save: ' + e.message); }
+}
+window.setInventoryStickerPrinted = setInventoryStickerPrinted;
 function inventoryMatchesFlag(i, flag){
   if(flag === 'all') return true;
   if(flag === 'needs_cover') return qplCategoryKey(i.category)==='comic' && (!inventoryImageUrl(i) || (!i.coverConfirmed && i.coverConfidence!=='confirmed'));
   if(i.status !== 'in_stock') return false; // every other flag was always in-stock-only, same as before
   if(flag === 'no_photo') return !inventoryImageUrl(i);
+  if(flag === 'needs_sticker') return inventoryNeedsSticker(i);
   if(flag === 'no_config') return !i.configuration;
   if(flag === 'no_cost') return inventoryCostBasis(i) <= 0;
   if(flag === 'no_market') return inventoryMarketPrice(i) <= 0;
@@ -42800,6 +42861,7 @@ async function printInventoryLabels(){
   // Expand batch entries (item + qty) into one spec per physical label --
   // cheap, no canvas work yet, so no need to chunk this part.
   const labelSpecs = labelPrintBatch.flatMap(b => Array.from({ length:b.qty }, () => b));
+  markInventoryStickersPrinted(labelPrintBatch.slice());
   const btn = document.getElementById('label-print-btn');
   if(btn){ btn.disabled = true; btn.textContent = 'GENERATING...'; }
   const labelParts = [];
@@ -43238,6 +43300,7 @@ async function downloadInventoryLabelPngs(){
   if(typeof JsBarcode === 'undefined' || typeof qrcode === 'undefined') return alert('Barcode library still loading -- try again in a moment');
   const opts = labelRenderOptions();
   const labelSpecs = labelPrintBatch.flatMap(b => Array.from({ length:b.qty }, () => b));
+  markInventoryStickersPrinted(labelPrintBatch.slice());
   const btn = document.getElementById('label-download-btn');
   const btnLabel = '⬇️ DOWNLOAD PNGs (for phone thermal-printer app)';
   if(btn){ btn.disabled = true; btn.textContent = 'GENERATING...'; }
