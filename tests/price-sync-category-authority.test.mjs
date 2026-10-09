@@ -112,7 +112,7 @@ console.log('Cached scan and live search stay inside the item category');
   assert.ok(fnStart >= 0, 'fetchOtherTcgOrSportsLivePrice must exist');
   const fnEnd = dashboard.indexOf('\nasync function runOtherLivePriceSync', fnStart);
   const fn = dashboard.slice(fnStart, fnEnd);
-  const pcIdIdx = fn.indexOf('const pcId = await resolveSportsPcProductId(link);');
+  const pcIdIdx = fn.indexOf('const found = await findSportsPcProduct(item);');
   const keyIdx = fn.indexOf("const key = qplCategoryKey(item.category || '');");
   const sportsGateIdx = fn.indexOf("if(key === 'sports'){");
   assert.ok(pcIdIdx >= 0, 'the pinned PriceCharting id lookup must still exist');
@@ -135,7 +135,7 @@ console.log('Sports price-sync pinned-id-before-category-gate structural check p
   const fnStart = dashboard.indexOf('async function fetchOtherTcgOrSportsLivePrice(item){');
   const fnEnd = dashboard.indexOf('\nasync function runOtherLivePriceSync', fnStart);
   const fn = dashboard.slice(fnStart, fnEnd);
-  assert.match(fn, /return \{ market:0, pinnedNoPrice:true, source:'PriceCharting \(pinned #' \+ pcId \+ '\)', productName:data\.product\.productName \|\| '', productUrl \};/,
+  assert.match(fn, /return \{ market:0, pinnedNoPrice:true, source:'PriceCharting \(pinned #' \+ pcId \+ '\)', productName:data\.product\.productName \|\| '', productUrl, linkFields \};/,
     'a pinned id that resolves to a real product with no ungraded price must be flagged pinnedNoPrice, not silently treated the same as no match at all');
 
   const buildStart = dashboard.indexOf('async function buildOtherTcgSportsPriceSyncProposal(options = {}){');
