@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.10.09.8-scan-inbox';
+const APP_VERSION = '2026.10.09.9-more-tab';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -1423,16 +1423,17 @@ const DAILY_TABS = [
   ['intake', 'BUY'],
   ['display', 'SELL'],
   ['scout', 'POCKET SCOUT'],
-  ['cardintake', 'CARD INTAKE'],
-  ['tasks', 'TASKS'],
   ['inventory', 'INVENTORY'],
-  ['sets', 'SETS'],
   ['shows', 'SHOWS'],
   ['whatnot', 'WHATNOT'],
   ['channels', 'EBAY / LISTINGS'],
 ];
 const MORE_TABS = [
   ['browse', 'CUSTOMER BROWSE'],
+  // Store ask: card intake, tasks and sets live under MORE, not the main bar.
+  ['cardintake', 'CARD INTAKE'],
+  ['tasks', 'TASKS'],
+  ['sets', 'SETS'],
   ['sales', 'SALES'],
   ['reports', 'REPORTS'],
   ['orders', 'ORDERS'],
