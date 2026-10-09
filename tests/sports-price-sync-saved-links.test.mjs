@@ -38,6 +38,7 @@ function load(fetchImpl, slab = null) {
     extractFn('sportsCardCleanName'),
     extractFn('sportsPcSearchQuery'),
     extractFn('pickSportsPcMatch'),
+    extractFn('sportsCardHasNoRealName'),
     dashboard.match(/const _sportsPcSearchCache = [^\n]+\n/)[0],
     extractFn('searchSportsPcProduct', 'async function '),
     extractFn('findSportsPcProduct', 'async function '),
