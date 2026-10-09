@@ -3058,6 +3058,32 @@ function applyComicListingDefaults(b = {}) {
   return out;
 }
 
+// Store report: a presale that came in and was switched to in stock kept
+// telling buyers it hadn't been released -- the yellow PRESALE bar, the
+// "PRESALE -- This comic has not been released yet" paragraphs and the
+// template's presale shipping sentences all stayed in the description.
+// This takes those out (and the presale-only "release dates may change"
+// line), says it's in stock instead, and leaves the rest of the store's
+// description exactly as it was.
+const COMIC_IN_STOCK_SHIPPING = 'In stock and ships within 1 business day with tracking.';
+function comicPresaleToInStockDescription(description) {
+  let d = String(description || '');
+  const isHtml = /<\/?[a-z][\s\S]*>/i.test(d);
+  d = d
+    // the yellow PRESALE bar
+    .replace(/<div style="max-width:760px;margin:[^"]*background:#ffd166;[^"]*">[^<]*<\/div>/g, '')
+    // presale notice paragraphs (HTML, then plain text)
+    .replace(/<p>(?:<b>)?\s*PRESALE -- [^<]*(?:<\/b>)?<\/p>/g, '')
+    .replace(/<p>\s*Expected on-sale\/ship date:[^<]*<\/p>/g, '')
+    .replace(/^PRESALE -- [^\n]*(?:\n+|$)/gm, '')
+    .replace(/^Expected on-sale\/ship date:[^\n]*(?:\n+|$)/gm, '')
+    // the template's {shippingLine} presale wording
+    .replace(/For presale comics, orders ship promptly once the title reaches its official release date and inventory has been received from our distributor\./g, COMIC_IN_STOCK_SHIPPING)
+    .replace(/\s*Publisher and distributor release dates may change\. If a presale title is delayed, your order will ship as soon as the book becomes available\./g, '');
+  if (!isHtml) d = d.replace(/\n{3,}/g, '\n\n');
+  return withComicListingNotices(d.trim(), { presale: false });
+}
+
 // FOC presale names/titles end in " - PRESALE" (see /foc/ebay/create-presale);
 // once the book is in stock that has to come off.
 function stripPresaleSuffix(name) {
@@ -6038,16 +6064,16 @@ async function routeRequest(request, env, ctx) {
         const d = row.data || {};
         try {
           const inStockName = stripPresaleSuffix(d.name) || 'Comic';
-          await reviseEbayListing({
+          // Edits the listing eBay already has instead of rebuilding it --
+          // a rebuild replaced the store's whole description with one line
+          // and dropped the item specifics, extra photos and Gemini
+          // package size along with it.
+          await convertEbayRestListingToInStock(ebayToken, {
             sku: d.ebaySku, offerId: d.ebayOfferId,
-            title: inStockName,
-            description: [inStockName, 'In stock now and ships promptly.'].filter(Boolean).join('\n\n'),
-            price: (Number(d.market || d.salePrice || 0)).toFixed(2),
             quantity: Number(d.qty ?? d.quantity ?? 0),
-            categoryId: '259104', conditionId, condition: 'NEW',
-            imageUrl: d.image || undefined, upc: d.upc || '',
-            fulfillmentPolicyId: normalFulfillmentPolicyId || undefined,
-          }, ebayToken, env);
+            price: Number(d.market || d.salePrice || 0),
+            fulfillmentPolicyId: normalFulfillmentPolicyId,
+          });
           await supabaseAdminFetch(env, `inventory_items?id=eq.${row.id}&store_id=eq.${encodeURIComponent(storeId)}`, {
             method: 'PATCH', headers: { Prefer: 'return=minimal' },
             body: JSON.stringify({ status: 'in_stock', data: { ...d, name: inStockName, status: 'in_stock', ebayPresaleConverted: true, ebayConvertedAt: new Date().toISOString() } }),
@@ -10195,13 +10221,17 @@ async function routeRequest(request, env, ctx) {
     // policy. If eBay won't take the new title (it can refuse title edits on
     // a listing with recent sales) the shipping change still goes through.
     async function convertEbayVariationListingToInStockTrading(ebayToken, listingId, fulfillmentPolicyId) {
-      let title = '';
+      let title = '', description = '';
       try {
-        const got = await ebayTradingApiCall(ebayToken, 'GetItem', `<ItemID>${xmlEscape(listingId)}</ItemID>`);
+        const got = await ebayTradingApiCall(ebayToken, 'GetItem', `<ItemID>${xmlEscape(listingId)}</ItemID><DetailLevel>ReturnAll</DetailLevel>`);
         title = xmlUnescape((got.raw.match(/<Item>[\s\S]*?<Title>([^<]*)<\/Title>/) || [])[1] || '');
+        description = xmlUnescape((got.raw.match(/<Description>([\s\S]*?)<\/Description>/) || [])[1] || '');
       } catch (_) {}
       const newTitle = stripPresaleSuffix(title);
-      const titleXml = newTitle && newTitle !== title ? `<Title>${xmlEscape(newTitle)}</Title>` : '';
+      // The presale wording comes out of the description too.
+      const newDescription = description ? comicPresaleToInStockDescription(description) : '';
+      const titleXml = (newTitle && newTitle !== title ? `<Title>${xmlEscape(newTitle)}</Title>` : '')
+        + (newDescription && newDescription !== description ? `<Description><![CDATA[${newDescription.replace(/]]>/g, ']]]]><![CDATA[>')}]]></Description>` : '');
       const profileXml = fulfillmentPolicyId ? `<SellerProfiles><SellerShippingProfile><ShippingProfileID>${xmlEscape(fulfillmentPolicyId)}</ShippingProfileID></SellerShippingProfile></SellerProfiles>` : '';
       if (!titleXml && !profileXml) return { titleChanged: false };
       try {
@@ -10522,6 +10552,48 @@ async function routeRequest(request, env, ctx) {
     // sku/offerId -- no re-publish needed, a live offer picks up PUT changes
     // immediately. Throws Error with a .status on failure, same convention
     // as createAndPublishEbayListing.
+    // Presale -> in stock for a single-cover (Inventory API) listing: reads
+    // the item and offer exactly as eBay has them and changes only the
+    // title (" - PRESALE" off), the description's presale wording, the
+    // quantity, the price (when the store has one) and the shipping
+    // policy (the store's normal one). Everything else goes back as-is.
+    async function convertEbayRestListingToInStock(ebayToken, { sku, offerId, quantity, price, fulfillmentPolicyId }) {
+      const headers = { 'Authorization': 'Bearer ' + ebayToken, 'Content-Type': 'application/json', 'Content-Language': 'en-US' };
+      const [itemRes, offerRes] = await Promise.all([
+        fetch(`https://api.ebay.com/sell/inventory/v1/inventory_item/${encodeURIComponent(sku)}`, { headers }),
+        fetch(`https://api.ebay.com/sell/inventory/v1/offer/${encodeURIComponent(offerId)}`, { headers }),
+      ]);
+      const item = await itemRes.json().catch(() => null);
+      const offer = await offerRes.json().catch(() => null);
+      if (!itemRes.ok || !item || !offerRes.ok || !offer) throw new Error('Could not read the listing from eBay (' + itemRes.status + '/' + offerRes.status + ')');
+      const itemBody = { ...item };
+      delete itemBody.sku; delete itemBody.groupIds; delete itemBody.inventoryItemGroupKeys;
+      const product = { ...(item.product || {}) };
+      product.title = stripPresaleSuffix(product.title || '') || product.title;
+      if (product.description) product.description = comicPresaleToInStockDescription(product.description);
+      itemBody.product = product;
+      if (Number.isFinite(quantity) && quantity >= 0) {
+        itemBody.availability = { ...(item.availability || {}), shipToLocationAvailability: { ...(item.availability?.shipToLocationAvailability || {}), quantity } };
+      }
+      const putItem = await fetch(`https://api.ebay.com/sell/inventory/v1/inventory_item/${encodeURIComponent(sku)}`, { method: 'PUT', headers, body: JSON.stringify(itemBody) });
+      if (!putItem.ok && putItem.status !== 204) {
+        const t = await putItem.text().catch(() => '');
+        const e = new Error('Item update failed (' + putItem.status + '): ' + t.substring(0, 200)); e.status = putItem.status; throw e;
+      }
+      const OFFER_FIELDS = ['availableQuantity', 'categoryId', 'charity', 'extendedProducerResponsibility', 'hideBuyerDetails', 'includeCatalogProductDetails', 'listingDescription', 'listingDuration', 'listingPolicies', 'listingStartDate', 'lotSize', 'merchantLocationKey', 'pricingSummary', 'quantityLimitPerBuyer', 'regulatory', 'secondaryCategoryId', 'storeCategoryNames', 'tax'];
+      const offerBody = {};
+      for (const k of OFFER_FIELDS) if (offer[k] !== undefined) offerBody[k] = offer[k];
+      if (offerBody.listingDescription) offerBody.listingDescription = comicPresaleToInStockDescription(offerBody.listingDescription);
+      if (Number.isFinite(quantity) && quantity >= 0) offerBody.availableQuantity = quantity;
+      if (price > 0) offerBody.pricingSummary = { ...(offer.pricingSummary || {}), price: { value: Number(price).toFixed(2), currency: offer.pricingSummary?.price?.currency || 'USD' } };
+      if (fulfillmentPolicyId) offerBody.listingPolicies = { ...(offer.listingPolicies || {}), fulfillmentPolicyId };
+      const putOffer = await fetch(`https://api.ebay.com/sell/inventory/v1/offer/${encodeURIComponent(offerId)}`, { method: 'PUT', headers, body: JSON.stringify(offerBody) });
+      if (!putOffer.ok && putOffer.status !== 204) {
+        const t = await putOffer.text().catch(() => '');
+        const e = new Error('Offer update failed (' + putOffer.status + '): ' + t.substring(0, 200)); e.status = putOffer.status; throw e;
+      }
+    }
+
     async function reviseEbayListing(b, ebayToken, env) {
       const { sku, offerId, title, price } = b;
       if (!sku || !offerId) { const e = new Error('sku and offerId are required'); e.status = 400; throw e; }
