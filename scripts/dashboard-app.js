@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.10.09.7-sticker-tracking';
+const APP_VERSION = '2026.10.09.8-scan-inbox';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -13237,6 +13237,10 @@ async function readScanInbox(){
       .select('id,payload,status,created_at')
       .eq('store_id', storeId)
       .eq('status', 'pending')
+      // Phone-scanner hand-offs only. Pocket Scout keeps its eBay comp
+      // candidates in this same table (with a session_id, also "pending"),
+      // and the newest 50 rows were all of those -- 14,700+ of them.
+      .is('session_id', null)
       .order('created_at', { ascending:false })
       .limit(50);
     if(!error) {
