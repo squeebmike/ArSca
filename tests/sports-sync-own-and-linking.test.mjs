@@ -62,7 +62,17 @@ assert.match(dashboard, /if\(live\?\.linkFields && String\(item\.pricechartingPr
   const tool = extractFn('linkSportsCardsToPriceCharting', 'async function ');
   assert.match(tool, /if\(\/\^\\d\+\$\/\.test\(savedId\)\)\{ counts\.already\+\+; continue; \}/, 'cards already linked are left alone');
   assert.match(tool, /await saveInventoryEdit\(item, patch\);/, 'a found link is saved');
-  assert.match(tool, /_sportsLinkReview\.set\(item\.id, \{ item, candidates:found\.candidates \|\| \[\] \}\);/, 'anything unsure is listed for the store to pick');
+  assert.match(tool, /_sportsLinkReview\.set\(item\.id, \{ item, candidates:found\.candidates \|\| \[\], noName:!!found\.noName \}\);/, 'anything unsure is listed for the store to pick');
+  const modal = extractFn('renderSportsLinkModal');
+  assert.match(modal, /<img src="\$\{escHtml\(photo\)\}"/, 'each card to review shows its own photo');
+  assert.match(modal, /\$\{price \? ' · \$' \+ price\.toFixed\(2\) : ''\}/, 'and its price');
+}
+{
+  const noName = new Function(extractFn('inventoryCardName') + extractFn('inventorySetName') + extractFn('inventoryCardNumber') + extractFn('sportsPcNorm') + extractFn('sportsCardCleanName') + extractFn('sportsCardHasNoRealName') + 'return sportsCardHasNoRealName;')();
+  assert.equal(noName({ name:'Pocket Scout item' }), true, 'a photo-only "Pocket Scout item" isn\'t searched by that name');
+  assert.equal(noName({ name:'Pocket Scout item', set:'2023 Topps' }), false);
+  assert.equal(noName({ name:'Julio Rodriguez' }), false);
+  assert.match(extractFn('findSportsPcProduct', 'async function '), /if\(sportsCardHasNoRealName\(item\)\) return \{ id:'', url:'', how:'', candidates:\[\], noName:true \};/);
 }
 
 console.log('Sports sync and linking checks passed');

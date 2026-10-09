@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.10.09.2-sports-label-qr">
+<meta name="version" content="2026.10.09.3-sports-link-review-photos">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1700,23 +1700,23 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.10.09.2-sports-label-qr" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.10.09.2-sports-label-qr" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.10.09.2-sports-label-qr" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.10.09.2-sports-label-qr" defer></script>
-<script src="scripts/backlist-dashboard.js?v=2026.10.09.2-sports-label-qr" defer></script>
-<script src="scripts/database-viewer.js?v=2026.10.09.2-sports-label-qr" defer></script>
-<script src="scripts/card-intake-dashboard.js?v=2026.10.09.2-sports-label-qr" defer></script>
-<script src="scripts/mana-pocket-task-library.js?v=2026.10.09.2-sports-label-qr" defer></script>
-<script src="scripts/daily-tasks-dashboard.js?v=2026.10.09.2-sports-label-qr" defer></script>
-<script src="scripts/expenses.js?v=2026.10.09.2-sports-label-qr" defer></script>
-<script src="scripts/whatnot-bridge.js?v=2026.10.09.2-sports-label-qr" defer></script>
+<script src="scripts/query-routing.js?v=2026.10.09.3-sports-link-review-photos" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.10.09.3-sports-link-review-photos" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.10.09.3-sports-link-review-photos" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.10.09.3-sports-link-review-photos" defer></script>
+<script src="scripts/backlist-dashboard.js?v=2026.10.09.3-sports-link-review-photos" defer></script>
+<script src="scripts/database-viewer.js?v=2026.10.09.3-sports-link-review-photos" defer></script>
+<script src="scripts/card-intake-dashboard.js?v=2026.10.09.3-sports-link-review-photos" defer></script>
+<script src="scripts/mana-pocket-task-library.js?v=2026.10.09.3-sports-link-review-photos" defer></script>
+<script src="scripts/daily-tasks-dashboard.js?v=2026.10.09.3-sports-link-review-photos" defer></script>
+<script src="scripts/expenses.js?v=2026.10.09.3-sports-link-review-photos" defer></script>
+<script src="scripts/whatnot-bridge.js?v=2026.10.09.3-sports-link-review-photos" defer></script>
 <script src="scripts/research-loupe.js?v=a7de4ffe90" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.10.09.2-sports-label-qr" defer></script>
-<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.10.09.2-sports-label-qr" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.10.09.2-sports-label-qr" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.10.09.2-sports-label-qr" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.10.09.2-sports-label-qr" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.10.09.3-sports-link-review-photos" defer></script>
+<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.10.09.3-sports-link-review-photos" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.10.09.3-sports-link-review-photos" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.10.09.3-sports-link-review-photos" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.10.09.3-sports-link-review-photos" defer></script>
 </head>
 <body>
 
@@ -1768,7 +1768,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
 <div class="dsb-chip" id="dsb-tasks" title="Today's Roles &amp; Tasks — click to jump to Tasks tab" style="cursor:pointer;display:none" onclick="switchTab('tasks')">✅ <span>TASKS:</span> <b id="dsb-tasks-val">—</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.10.09.2-sports-label-qr</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.10.09.3-sports-link-review-photos</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3955,8 +3955,8 @@ body.show-mode .inv-sync-badge{display:none;}
   <a class="lba-nav-btn active" href="dashboard.html"><span class="nav-ico">▦</span>DASHBOARD</a>
 </div>
 
-<script src="scripts/dashboard-app.js?v=2026.10.09.2-sports-label-qr"></script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.10.09.2-sports-label-qr" defer></script>
+<script src="scripts/dashboard-app.js?v=2026.10.09.3-sports-link-review-photos"></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.10.09.3-sports-link-review-photos" defer></script>
 </body>
 </html>
 

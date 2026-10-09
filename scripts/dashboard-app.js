@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.10.09.2-sports-label-qr';
+const APP_VERSION = '2026.10.09.3-sports-link-review-photos';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -11132,6 +11132,10 @@ async function searchSportsPcProduct(item = {}){
   }
   return pickSportsPcMatch(item, _sportsPcSearchCache.get(q));
 }
+function sportsCardHasNoRealName(item = {}){
+  const name = sportsPcNorm(sportsCardCleanName(item));
+  return !name || /^(pocket scout item|item|card|sports card|untitled)$/.test(name) && !inventorySetName(item) && !inventoryCardNumber(item);
+}
 // Finds the exact PriceCharting product for a sports card: its saved
 // link, then its SportsCardsPro page (from its own name/set), then the
 // name search above. Returns the id and how it was found.
@@ -11140,6 +11144,10 @@ async function findSportsPcProduct(item = {}){
   const id = await resolveSportsPcProductId(link);
   if(id) return { id, url:link.url || '', how:link.id ? 'saved link' : link.built ? 'SportsCardsPro page' : 'saved link', candidates:[] };
   if(!isSportsCardCategory(priceSyncCategory(item))) return { id:'', url:'', how:'', candidates:[] };
+  // A card saved with only a photo ("Pocket Scout item", no player/set/
+  // number) has nothing real to search for -- a search on that name only
+  // turned up unrelated comics.
+  if(sportsCardHasNoRealName(item)) return { id:'', url:'', how:'', candidates:[], noName:true };
   const found = await searchSportsPcProduct(item);
   if(found.product) return { id:String(found.product.productId), url:found.product.url || '', name:found.product.productName || '', how:found.how, candidates:[] };
   return { id:'', url:'', how:'', candidates:found.candidates || [] };
@@ -11369,10 +11377,20 @@ function renderSportsLinkModal(state){
         <div style="flex:1;min-width:0;font-size:11px"><b>${escHtml(c.productName || '')}</b><div style="font-size:9px;color:var(--dim)">${escHtml(c.consoleName || '')}${c.prices?.ungraded ? ' · $' + Number(c.prices.ungraded).toFixed(2) + ' ungraded' : ''}</div></div>
         <button class="hbtn" style="font-size:9px" onclick="useSportsPcCandidate('${escHtml(it.id)}','${escHtml(String(c.productId))}')">USE THIS</button>
       </div>`).join('');
+    const photo = it.image || it.imageUrl || it.thumbnail || (Array.isArray(it.images) && it.images[0]) || '';
+    const price = Number(inventoryListPrice ? inventoryListPrice(it) : (it.market || 0)) || 0;
+    // Store report: "how do I know what card is what here?" -- the card's
+    // own photo, price and date added sit next to its name.
     return `<div style="border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:8px;background:var(--surf2)" id="sports-link-row-${escHtml(it.id)}">
-      <div style="font-weight:700;font-size:12px">${escHtml(inventoryCardName(it) || it.name || 'Card')}</div>
-      <div style="font-size:9px;color:var(--dim);margin-bottom:4px">${escHtml(inventorySetName(it) || 'no set')}${inventoryCardNumber(it) ? ' · #' + escHtml(String(inventoryCardNumber(it)).replace(/^#/, '')) : ''}${it.grader ? ' · ' + escHtml(it.grader + ' ' + (it.grade || '')) : ''}</div>
-      ${cands || '<div style="font-size:10px;color:var(--dim)">No close PriceCharting products found.</div>'}
+      <div style="display:flex;gap:10px;align-items:flex-start">
+        ${photo ? `<a href="${escHtml(photo)}" target="_blank" rel="noopener"><img src="${escHtml(photo)}" alt="" style="width:64px;height:88px;object-fit:cover;border-radius:4px;border:1px solid var(--border)"></a>` : ''}
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:700;font-size:12px">${escHtml(inventoryCardName(it) || it.name || 'Card')}</div>
+          <div style="font-size:9px;color:var(--dim);margin-bottom:4px">${escHtml(inventorySetName(it) || 'no set')}${inventoryCardNumber(it) ? ' · #' + escHtml(String(inventoryCardNumber(it)).replace(/^#/, '')) : ''}${it.grader ? ' · ' + escHtml(it.grader + ' ' + (it.grade || '')) : ''}${price ? ' · $' + price.toFixed(2) : ''}${it.addedAt ? ' · added ' + escHtml(String(it.addedAt).slice(0, 10)) : ''}</div>
+          ${r.noName ? '<div style="font-size:10px;color:var(--gold)">No player, set or card number saved -- only a photo. Tap the photo to see the card, then paste its SportsCardsPro link below (or add its name in Edit and run this again).</div>' : ''}
+        </div>
+      </div>
+      ${r.noName ? '' : (cands || '<div style="font-size:10px;color:var(--dim)">No close PriceCharting products found.</div>')}
       <div style="display:flex;gap:6px;margin-top:6px"><input class="tsi" id="sports-link-paste-${escHtml(it.id)}" placeholder="…or paste the SportsCardsPro / PriceCharting link or ID" style="flex:1;font-size:10px"><button class="hbtn" style="font-size:9px" onclick="useSportsPcPastedLink('${escHtml(it.id)}')">USE LINK</button></div>
     </div>`;
   }).join('');
@@ -11404,7 +11422,7 @@ async function linkSportsCardsToPriceCharting(){
         await saveInventoryEdit(item, patch);
         if(found.how === 'saved link') counts.already++; else counts.linked++;
       } else {
-        _sportsLinkReview.set(item.id, { item, candidates:found.candidates || [] });
+        _sportsLinkReview.set(item.id, { item, candidates:found.candidates || [], noName:!!found.noName });
         counts.review++;
       }
     } catch(e) { counts.failed++; }
