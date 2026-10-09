@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.10.09.1-sports-own-sync-links';
+const APP_VERSION = '2026.10.09.2-sports-label-qr';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -42434,6 +42434,22 @@ function labelQrPayload(batchEntry){
     const key = typeof qplCategoryKey === 'function' ? qplCategoryKey(item.category || '') : '';
     const pricedByPriceCharting = key === 'comic' || key === 'sports';
     const pcUrl = item.providerUrl || '';
+    // Store ask: a sports card's QR goes to its PriceCharting page when the
+    // card is linked. Most sports links are SportsCardsPro's (PriceCharting's
+    // sports site) -- the check below only knew pricecharting.com, so they
+    // all fell to the shop page. The short /game/<id> link is used when the
+    // id is known: same product page, and a much less dense QR.
+    const isSportsCard = key === 'sports' || (typeof isSportsCardCategory === 'function' && isSportsCardCategory(item.category || ''));
+    if(isSportsCard){
+      const savedId = [item.pricechartingProductId, item.sourceProductId].map(v => String(v || '').trim()).find(v => /^\d+$/.test(v)) || '';
+      const urlId = (pcUrl.match(/(?:pricecharting|sportscardspro)\.com\/game\/(\d+)\/?(?:[?#].*)?$/i) || [])[1] || '';
+      const pcId = savedId || urlId;
+      if(pcId) return 'https://www.sportscardspro.com/game/' + pcId + '?wo_sku=' + encodeURIComponent(sku);
+      const pageUrl = pcUrl.split('#')[0];
+      if(/^https?:\/\/(www\.)?(pricecharting|sportscardspro)\.com\/game\/[^/]+\/[^/?#]+/i.test(pageUrl)){
+        return pageUrl + (pageUrl.includes('?') ? '&' : '?') + 'wo_sku=' + encodeURIComponent(sku);
+      }
+    }
     // Exact PriceCharting product page (comics/sports) -- never its
     // /search-products fallback, which is a guess, not a match.
     if(pricedByPriceCharting && /^https?:\/\/(www\.)?pricecharting\.com\/game\//i.test(pcUrl)){
