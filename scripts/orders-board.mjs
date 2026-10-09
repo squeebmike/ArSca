@@ -25,7 +25,7 @@ export function orderItemState({ isPresale = false, received = false, onSaleDate
 }
 
 // Rolls an order's lines up to one status the board can sort on.
-export function orderStatus({ items = [], shipped = false, createdAt = '', today }) {
+export function orderStatus({ items = [], shipped = false, createdAt = '', today, pickup = false }) {
   if (shipped) return { status: 'shipped', reason: '', expectedDate: '' };
   const late = items.filter(i => i.state === 'late');
   if (late.length) {
@@ -37,6 +37,8 @@ export function orderStatus({ items = [], shipped = false, createdAt = '', today
     const due = coming.map(i => i.onSaleDate).filter(Boolean).sort().pop() || '';
     return { status: 'waiting', reason: due ? 'waiting on ' + coming.length + ' book' + (coming.length === 1 ? '' : 's') : 'waiting on a book with no release date', expectedDate: due };
   }
+  // A pickup order with everything in waits on the customer, not the store.
+  if (pickup) return { status: 'ready', reason: 'ready for pickup', expectedDate: '' };
   // Everything is in: due out a few days after the later of the order and
   // its last book's release.
   const lastDue = items.map(i => i.onSaleDate).filter(Boolean).sort().pop() || '';
@@ -47,21 +49,28 @@ export function orderStatus({ items = [], shipped = false, createdAt = '', today
 }
 
 const PRESALE_SOURCES = new Set(['foc_presale', 'foc_presale_bundle']);
+export const presaleTitleKey = t => String(t || '').replace(/\s*-\s*PRESALE\s*$/i, '').replace(/\s+/g, ' ').trim().toLowerCase();
 
 // payments/lines/inventory come from pos_* + inventory_items; website orders
 // from storefront_orders and foc_preorder_orders. Pure, so it's testable.
 export function buildOrdersBoard({
   payments = [], lines = [], inventoryById = new Map(), receivedSkuIds = new Set(),
   storefrontOrders = [], storefrontLines = [], focOrders = [], focItems = [],
-  shippedMarks = new Set(), today,
+  shippedMarks = new Set(), skuByTitle = new Map(), today,
 }) {
   const linesBySale = new Map();
   for (const l of lines) { const list = linesBySale.get(l.sale_id) || []; list.push(l); linesBySale.set(l.sale_id, list); }
   const itemFromLine = l => {
-    const row = inventoryById.get(l.item_id) || null;
+    let row = inventoryById.get(l.item_id) || null;
     // A sale line not linked to inventory still says what it was: a
-    // " - PRESALE" title is a book that hasn't come in.
-    const isPresale = row ? (row.status === 'presale' || PRESALE_SOURCES.has(row.src)) && row.converted !== 'true' : /-\s*PRESALE\s*$/i.test(String(l.title || ''));
+    // " - PRESALE" title is a book that hasn't come in -- and the FOC
+    // catalog, matched by title, says which one and when it's due.
+    const unlinkedPresale = !row && /-\s*PRESALE\s*$/i.test(String(l.title || ''));
+    if (unlinkedPresale) {
+      const sku = skuByTitle.get(presaleTitleKey(l.title));
+      if (sku) row = { status: 'presale', src: 'foc_presale', focSkuId: sku.id, onSaleDate: sku.on_sale_date };
+    }
+    const isPresale = row ? (row.status === 'presale' || PRESALE_SOURCES.has(row.src)) && row.converted !== 'true' : unlinkedPresale;
     const received = !!row && (row.converted === 'true' || (row.focSkuId && receivedSkuIds.has(row.focSkuId)));
     const st = orderItemState({ isPresale, received, onSaleDate: dayOf(row?.onSaleDate) }, today);
     return { title: text(l.title || row?.name, 160).replace(/\s*-\s*PRESALE\s*$/i, ''), qty: Math.max(1, Number(l.quantity || 1)), price: Number(l.unit_price || 0), image: l.image_url || '', itemId: l.item_id || '', ...st };
@@ -88,7 +97,7 @@ export function buildOrdersBoard({
   }
   const finish = o => {
     const shipped = !!o.shipped || o.labelled || shippedMarks.has(o.channel + ':' + o.id);
-    const { status, reason, expectedDate } = orderStatus({ items: o.items, shipped, createdAt: o.createdAt, today });
+    const { status, reason, expectedDate } = orderStatus({ items: o.items, shipped, createdAt: o.createdAt, today, pickup: !!o.pickup });
     const { saleIds, labelled, ...rest } = o;
     return { ...rest, total: Math.round(Number(o.total || 0) * 100) / 100, shipped, shippedBy: o.labelled ? 'eBay label' : shipped ? (o.shippedBy || 'marked shipped') : '', status, reason, expectedDate };
   };
@@ -103,7 +112,7 @@ export function buildOrdersBoard({
     website.push(finish({
       channel: 'website', kind: 'shop', id: s.id, number: s.confirmation_number || s.id.slice(0, 8), buyer: text(s.customer_name, 80),
       createdAt: s.created_at, total: (sfLinesBySale.get(s.sale_id) || []).reduce((n, l) => n + Number(l.unit_price || 0) * Math.max(1, Number(l.quantity || 1)), 0) + Number(s.shipping_fee_cents || 0) / 100,
-      method: s.fulfillment_method || '', items: (sfLinesBySale.get(s.sale_id) || []).map(itemFromLine),
+      method: s.fulfillment_method || '', pickup: /pickup/i.test(s.fulfillment_method || ''), items: (sfLinesBySale.get(s.sale_id) || []).map(itemFromLine),
       shipped: s.fulfillment_status === 'fulfilled', shippedBy: s.fulfillment_method && /pickup/i.test(s.fulfillment_method) ? 'picked up' : 'fulfilled',
     }));
   }
@@ -118,7 +127,7 @@ export function buildOrdersBoard({
     });
     website.push(finish({
       channel: 'website', kind: 'preorder', id: o.id, number: o.order_number || o.id.slice(0, 8), buyer: text(o.customer_name, 80),
-      createdAt: o.paid_at || o.created_at, total: Number(o.total_cents || 0) / 100, method: o.fulfillment_method || '', items,
+      createdAt: o.paid_at || o.created_at, total: Number(o.total_cents || 0) / 100, method: o.fulfillment_method || '', pickup: /pickup/i.test(o.fulfillment_method || ''), items,
       shipped: o.status === 'fulfilled', shippedBy: o.fulfillment_method === 'pickup' ? 'picked up' : 'shipped',
     }));
   }
@@ -172,11 +181,20 @@ export async function handleOrdersBoard(request, env, deps, url) {
     const { data } = await db(`foc_preorder_items?order_id=${inFilter(focIds.slice(i, i + 150))}&select=order_id,sku_id,quantity,unit_price_cents,sku:comic_skus(title,variant_label,on_sale_date,cover_image_url)`);
     focItems = focItems.concat(data || []);
   }
-  const skuIds = [...new Set([...inventoryById.values()].map(r => r.focSkuId).concat(focItems.map(it => it.sku_id)).filter(Boolean))];
+  const skuByTitle = new Map();
+  const unlinkedTitles = [...new Set(lines.concat(storefrontLines).filter(l => !inventoryById.has(l.item_id) && /-\s*PRESALE\s*$/i.test(String(l.title || ''))).map(l => String(l.title).replace(/\s*-\s*PRESALE\s*$/i, '').trim()))];
+  for (let i = 0; i < unlinkedTitles.length; i += 50) {
+    const { data } = await db(`comic_skus?store_id=eq.${sid}&title=${inFilter(unlinkedTitles.slice(i, i + 50))}&select=id,title,on_sale_date`);
+    for (const k of data || []) skuByTitle.set(presaleTitleKey(k.title), k);
+  }
+  const skuIds = [...new Set([...inventoryById.values()].map(r => r.focSkuId).concat(focItems.map(it => it.sku_id), [...skuByTitle.values()].map(k => k.id)).filter(Boolean))];
+  // A book is in once any real copy of it is: received from FOC, or entered
+  // by hand and tied to the catalog (a connecting cover that went straight
+  // into its bundle, say) -- anything but the presale listing itself.
   const receivedSkuIds = new Set();
   for (let i = 0; i < skuIds.length; i += 150) {
-    const { data } = await db(`inventory_items?store_id=eq.${sid}&data->>source=eq.foc_receive&data->>focSkuId=${inFilter(skuIds.slice(i, i + 150))}&select=sku:data->>focSkuId`);
-    for (const r of data || []) receivedSkuIds.add(r.sku);
+    const { data } = await db(`inventory_items?store_id=eq.${sid}&data->>focSkuId=${inFilter(skuIds.slice(i, i + 150))}&select=sku:data->>focSkuId,src:data->>source`);
+    for (const r of data || []) if (!PRESALE_SOURCES.has(r.src)) receivedSkuIds.add(r.sku);
   }
   const shippedMarks = new Set();
   if (env.LBA_KV) {
@@ -189,7 +207,7 @@ export async function handleOrdersBoard(request, env, deps, url) {
       } while (cursor);
     } catch (_) {}
   }
-  const board = buildOrdersBoard({ payments: payments || [], lines, inventoryById, receivedSkuIds, storefrontOrders: storefrontOrders || [], storefrontLines, focOrders: focOrders || [], focItems, shippedMarks, today });
+  const board = buildOrdersBoard({ payments: payments || [], lines, inventoryById, receivedSkuIds, storefrontOrders: storefrontOrders || [], storefrontLines, focOrders: focOrders || [], focItems, shippedMarks, skuByTitle, today });
   // Shipped orders older than 30 days just clutter the board.
   const cutoff = new Date(Date.now() - 30 * DAY).toISOString();
   for (const k of Object.keys(board.channels)) board.channels[k] = board.channels[k].filter(o => o.status !== 'shipped' || String(o.createdAt) >= cutoff);

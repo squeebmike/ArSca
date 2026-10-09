@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.10.09.5-orders-board';
+const APP_VERSION = '2026.10.09.6-rebuild-ebay-listing';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -7832,6 +7832,50 @@ function openInventoryPriceSite(id){
   window.open(link.url,'_blank','noopener');
 }
 function openInventoryTcgplayer(id){ return openInventoryPriceSite(id); }
+// A FOC comic's single-cover eBay listing, rebuilt from its catalog row:
+// the store's Comic description template, every item specific and the
+// Gemini mailer size. For a listing an old in-stock switch stripped down
+// to one line (see /foc/ebay/rebuild-listing in the Worker).
+function canRebuildFocEbayListing(item){
+  return !!(item && item.focSkuId && item.ebaySku && item.ebayOfferId && item.ebayApiSystem !== 'trading' && !item.ebayWithdrawnAt && qplCategoryKey(item.category || '') === 'comic');
+}
+async function rebuildFocEbayListing(id){
+  const item = (all || []).find(candidate => String(candidate.id || candidate.wfId) === String(id));
+  if(!canRebuildFocEbayListing(item)){ toast_dash('Only FOC comics with their own eBay listing can be rebuilt'); return; }
+  if(!confirm('Rebuild the eBay listing for "' + (item.name || 'this comic') + '"?\n\nThe description, item specifics and Gemini package size are rebuilt from the FOC catalog. Photos, price, quantity and shipping stay as they are.')) return;
+  toast_dash('Rebuilding eBay listing…', 4000);
+  try{
+    const isPresale = item.status === 'presale';
+    let description = '';
+    try{
+      const pr = await storeWorkerFetch('/foc/ebay/presale-preview', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ storeId:getActiveStoreId(), skuId:item.focSkuId, quantity:1 }) });
+      const preview = await pr.json().catch(() => ({}));
+      const templates = (getVendorProfile() || {}).ebayDescriptionTemplates || {};
+      const template = templates.Comic || templates.default || '';
+      if(pr.ok && preview.ok && template){
+        const asp = preview.customAspects || {};
+        const shippingLine = isPresale
+          ? [COMIC_GEMINI_LINE, 'For presale comics, orders ship promptly once the title reaches its official release date and inventory has been received from our distributor.'].join('\n\n')
+          : resolveEbayShippingLine('Comic', true, false, false, '259104');
+        description = renderEbayDescriptionTemplate(template, {
+          title:preview.baseTitle || String(preview.title || '').replace(/ - PRESALE$/, ''), category:'Comic', price:preview.price, upc:preview.upc,
+          variant:preview.variantLabel || '', releaseDate:preview.onSaleLabel || '', shippingLine, coverChoices:'',
+          publisher:asp.Publisher || '', writer:asp.Writer || '', artist:asp.Artist || '', coverArtist:asp['Cover Artist'] || '',
+          synopsis:preview.synopsis || '', condition:'New', quantity:String(item.qty ?? item.quantity ?? 1),
+        }) || '';
+      }
+    }catch(e){ /* the Worker falls back to the built-in description */ }
+    const res = await storeWorkerFetch('/foc/ebay/rebuild-listing', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ storeId:getActiveStoreId(), inventoryItemId:item.id, description }) });
+    const data = await res.json().catch(() => ({}));
+    if(!res.ok || !data.ok) throw new Error(data.error || ('HTTP ' + res.status));
+    if(!isPresale && /-\s*PRESALE\s*$/i.test(String(item.name || ''))){ item.name = item.name.replace(/\s*-\s*PRESALE\s*$/i, '').trim(); item.title = item.name; }
+    toast_dash('eBay listing rebuilt: ' + data.title + ' (' + data.aspects + ' item specifics)', 5000);
+    renderAll();
+  }catch(e){
+    toast_dash('Could not rebuild the eBay listing: ' + e.message, 6000);
+  }
+}
+window.rebuildFocEbayListing = rebuildFocEbayListing;
 function closeInvRowMenu(){ document.querySelectorAll('.inv-row-menu-backdrop').forEach(m => m.remove()); }
 function showInvRowMenu(e, id, isInStock){
   e.stopPropagation();
@@ -7853,6 +7897,7 @@ function showInvRowMenu(e, id, isInStock){
     (() => { const site = item ? inventoryPriceSiteLink(item) : { label:'TCGplayer', icon:'🛒' }; return `<button class="hbtn" style="${btnStyle};color:var(--g)" onclick="openInventoryPriceSite('${id}');closeInvRowMenu()">${site.icon} ${escHtml(site.label)}</button>`; })(),
     `<button class="hbtn" style="${btnStyle};color:var(--blue)" onclick="openInventoryItemInResearch('${id}');closeInvRowMenu()">🔍 Research</button>`,
     `<button class="hbtn" style="${btnStyle}" onclick="openEbayFromDash('${id}');closeInvRowMenu()">📦 ${item?.ebayListingId?'Manage eBay Listing':'eBay List'}</button>`,
+    canRebuildFocEbayListing(item)?`<button class="hbtn" style="${btnStyle};color:var(--gold)" onclick="rebuildFocEbayListing('${id}');closeInvRowMenu()" title="Rebuilds the description, item specifics and Gemini package size from the FOC catalog">🛠️ Rebuild eBay Listing</button>`:'',
     isInStock?`<button class="hbtn" style="${btnStyle};color:var(--purple)" onclick="markSoldOnWhatnot('${id}');closeInvRowMenu()">📦 Sold on Whatnot</button>`:'',
     isInStock?`<button class="hbtn" style="${btnStyle};color:var(--gold)" onclick="openExternalSaleModal('${id}');closeInvRowMenu()">💰 Record External Sale (other)</button>`:'',
     (isInStock && whatnotActiveShow)?`<button class="hbtn" style="${btnStyle};color:var(--g)" onclick="addItemToActiveShow('${id}');closeInvRowMenu()" title="Drop this item into tonight's live show queue">🎬 Add to Tonight's Show</button>`:'',
@@ -20119,7 +20164,7 @@ function renderOrdersBoardFromCache(){
           <b style="margin-left:6px;font-size:12px">#${escHtml(o.number || o.id)}</b>
           <span style="font-size:10px;color:var(--dim)">${o.buyer ? ' · ' + escHtml(o.buyer) : ''} · ${escHtml(orderBoardDate(o.createdAt))}${o.total ? ' · $' + Number(o.total).toFixed(2) : ''}${o.method ? ' · ' + escHtml(String(o.method).replace(/_/g, ' ')) : ''}</span>
         </div>
-        <span style="font-family:var(--font-mono);font-size:9px;font-weight:700;color:${st.color};background:${st.bg};border:1px solid ${st.color};border-radius:4px;padding:2px 6px;white-space:nowrap">${st.label}${o.status === 'waiting' && o.expectedDate ? ' · IN BY ' + escHtml(orderBoardDate(o.expectedDate).toUpperCase()) : ''}</span>
+        <span style="font-family:var(--font-mono);font-size:9px;font-weight:700;color:${st.color};background:${st.bg};border:1px solid ${st.color};border-radius:4px;padding:2px 6px;white-space:nowrap">${o.status === 'ready' && o.pickup ? 'READY FOR PICKUP' : st.label}${o.status === 'waiting' && o.expectedDate ? ' · IN BY ' + escHtml(orderBoardDate(o.expectedDate).toUpperCase()) : ''}</span>
       </div>
       <div style="font-size:10px;color:${st.color};margin:4px 0 2px">${escHtml(o.reason || '')}${o.shipped && o.shippedBy ? ' · ' + escHtml(o.shippedBy) : ''}</div>
       ${items}
