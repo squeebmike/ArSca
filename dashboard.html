@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.10.09.4-price-site-by-type">
+<meta name="version" content="2026.10.09.5-orders-board">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1700,23 +1700,23 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.10.09.4-price-site-by-type" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.10.09.4-price-site-by-type" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.10.09.4-price-site-by-type" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.10.09.4-price-site-by-type" defer></script>
-<script src="scripts/backlist-dashboard.js?v=2026.10.09.4-price-site-by-type" defer></script>
-<script src="scripts/database-viewer.js?v=2026.10.09.4-price-site-by-type" defer></script>
-<script src="scripts/card-intake-dashboard.js?v=2026.10.09.4-price-site-by-type" defer></script>
-<script src="scripts/mana-pocket-task-library.js?v=2026.10.09.4-price-site-by-type" defer></script>
-<script src="scripts/daily-tasks-dashboard.js?v=2026.10.09.4-price-site-by-type" defer></script>
-<script src="scripts/expenses.js?v=2026.10.09.4-price-site-by-type" defer></script>
-<script src="scripts/whatnot-bridge.js?v=2026.10.09.4-price-site-by-type" defer></script>
+<script src="scripts/query-routing.js?v=2026.10.09.5-orders-board" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.10.09.5-orders-board" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.10.09.5-orders-board" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.10.09.5-orders-board" defer></script>
+<script src="scripts/backlist-dashboard.js?v=2026.10.09.5-orders-board" defer></script>
+<script src="scripts/database-viewer.js?v=2026.10.09.5-orders-board" defer></script>
+<script src="scripts/card-intake-dashboard.js?v=2026.10.09.5-orders-board" defer></script>
+<script src="scripts/mana-pocket-task-library.js?v=2026.10.09.5-orders-board" defer></script>
+<script src="scripts/daily-tasks-dashboard.js?v=2026.10.09.5-orders-board" defer></script>
+<script src="scripts/expenses.js?v=2026.10.09.5-orders-board" defer></script>
+<script src="scripts/whatnot-bridge.js?v=2026.10.09.5-orders-board" defer></script>
 <script src="scripts/research-loupe.js?v=a7de4ffe90" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.10.09.4-price-site-by-type" defer></script>
-<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.10.09.4-price-site-by-type" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.10.09.4-price-site-by-type" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.10.09.4-price-site-by-type" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.10.09.4-price-site-by-type" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.10.09.5-orders-board" defer></script>
+<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.10.09.5-orders-board" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.10.09.5-orders-board" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.10.09.5-orders-board" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.10.09.5-orders-board" defer></script>
 </head>
 <body>
 
@@ -1768,7 +1768,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
 <div class="dsb-chip" id="dsb-tasks" title="Today's Roles &amp; Tasks — click to jump to Tasks tab" style="cursor:pointer;display:none" onclick="switchTab('tasks')">✅ <span>TASKS:</span> <b id="dsb-tasks-val">—</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.10.09.4-price-site-by-type</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.10.09.5-orders-board</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -2029,6 +2029,21 @@ body.show-mode .inv-sync-badge{display:none;}
 <!-- ORDERS TAB -->
 <div id="tab-orders" class="tab-panel">
   <div class="sec">ORDERS</div>
+  <div class="panel" id="orders-board-panel" style="margin-top:4px;margin-bottom:14px;border-color:rgba(0,255,179,.3)">
+    <div class="ph">ALL ORDERS <span id="orders-board-updated" style="font-size:9px;color:var(--dim)">open Orders to load</span></div>
+    <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);line-height:1.6;margin-bottom:10px">eBay, Whatnot and website orders in one place -- what's in and ready to go, what's waiting on a book and when it's due, and what's late.</div>
+    <div id="orders-board-summary" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px"></div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;align-items:center">
+      <div id="orders-board-channels" style="display:flex;gap:6px;flex-wrap:wrap"></div>
+      <select id="orders-board-filter" class="tsi" style="width:auto;margin:0" onchange="renderOrdersBoardFromCache()">
+        <option value="open">Open (late, ready, waiting)</option><option value="late">Late</option><option value="ready">Ready to ship</option><option value="waiting">Waiting on books</option><option value="shipped">Shipped (last 30 days)</option><option value="all">Everything</option>
+      </select>
+      <button class="hbtn" onclick="renderOrdersBoard()">REFRESH ORDERS</button>
+    </div>
+    <div id="orders-board-list" style="display:grid;gap:8px">
+      <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);padding:10px;border:1px dashed var(--border);border-radius:8px;text-align:center">Open this Orders tab to load orders.</div>
+    </div>
+  </div>
   <div class="panel" id="comic-preorder-orders-panel" style="margin-top:4px;margin-bottom:14px;border-color:rgba(199,125,255,.35)">
     <div class="ph">COMIC PREORDER ORDERS <span id="foc-orders-count" style="font-size:9px;color:var(--dim)">open Orders to load</span></div>
     <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);line-height:1.6;margin-bottom:10px">
@@ -3955,8 +3970,8 @@ body.show-mode .inv-sync-badge{display:none;}
   <a class="lba-nav-btn active" href="dashboard.html"><span class="nav-ico">▦</span>DASHBOARD</a>
 </div>
 
-<script src="scripts/dashboard-app.js?v=2026.10.09.4-price-site-by-type"></script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.10.09.4-price-site-by-type" defer></script>
+<script src="scripts/dashboard-app.js?v=2026.10.09.5-orders-board"></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.10.09.5-orders-board" defer></script>
 </body>
 </html>
 
