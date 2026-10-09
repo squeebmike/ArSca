@@ -53,7 +53,7 @@ assert.match(route, /d\.ebayApiSystem !== 'trading' && d\.ebaySku && d\.ebayOffe
 assert.match(route, /tradingGroups\.set\(d\.ebayListingId, list\)/, 'multi-cover rows grouped by listing');
 assert.match(route, /convertEbayVariationListingToInStockTrading\(ebayToken, listingId, normalFulfillmentPolicyId\)/);
 assert.match(route, /const inStockName = stripPresaleSuffix\(d\.name\) \|\| 'Comic';/);
-assert.match(route, /title: inStockName,/);
+assert.match(route, /await convertEbayRestListingToInStock\(ebayToken, \{/, 'single-cover listings are edited in place, not rebuilt (see foc-instock-keeps-listing)');
 assert.match(route, /data: \{ \.\.\.d, name: inStockName, status: 'in_stock'/);
 assert.match(route, /if \(d\.source === 'foc_presale_bundle' \|\| !\(Number\(d\.qty \?\? d\.quantity \?\? 0\) > 0\)\) continue;/, 'bundle option never becomes stock');
 console.log('Presale to in-stock conversion checks passed');
