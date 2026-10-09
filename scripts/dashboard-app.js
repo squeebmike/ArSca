@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.10.09.9-more-tab';
+const APP_VERSION = '2026.10.09.10-trade-new-cart';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -8746,13 +8746,45 @@ function renderSaleCartSwitcher(){
   const input = document.getElementById('sale-cart-customer');
   if(input && document.activeElement !== input) input.value = active.customerName || '';
 }
+// Store ask: a trade taken while another customer's sale is open goes on
+// its own cart instead of landing on theirs. "Walk-in trade XXXX" is the
+// placeholder name an unnamed trade gets, so it doesn't count as a name.
+function tradeCustomerKey(name){
+  const n = String(name || '').trim().toLowerCase().replace(/\s+/g, ' ');
+  return /^walk-in trade\b/.test(n) ? '' : n;
+}
+// 'use' the open cart, start a 'new' one, or 'ask' when it can't be told.
+function tradeCartDecision(cart = {}, credit = {}){
+  if(cart.tradeCredit?.id && cart.tradeCredit.id !== credit.id) return 'new';
+  const cartName = tradeCustomerKey(cart.customerName), tradeName = tradeCustomerKey(credit.customerName);
+  if(cartName && tradeName) return cartName === tradeName ? 'use' : 'new';
+  if(!(cart.items || []).length && !cartName) return 'use';
+  return 'ask';
+}
 async function attachTradeToActiveSaleCart(credit){
-  if(!credit) return;
-  const cart = ensureActiveSaleCart();
+  if(!credit) return null;
+  let cart = ensureActiveSaleCart();
+  const decision = tradeCartDecision(cart, credit);
+  const n = (cart.items || []).length;
+  const useOpen = decision === 'use' || (decision === 'ask' && confirm('A sale is already open: ' + saleCartLabel(cart) + (n ? ' (' + n + ' item' + (n === 1 ? '' : 's') + ')' : '') + '.\n\nIs this trade for that same customer?\n\nOK = put the trade on that sale\nCancel = start a new cart for this trade'));
+  let movedFrom = '';
+  if(!useOpen){
+    // Not startNewSaleCart(): that clears the pending-trade hand-off the
+    // caller just saved for this trade.
+    movedFrom = saleCartLabel(cart);
+    cart = newSaleCartRecord({ customerName:credit.customerName || '' });
+    upsertLocalSaleCart(cart);
+    setActiveSaleCartId(cart.cartId);
+    localStorage.setItem('pos_cart_v2', JSON.stringify(cart));
+  }
   cart.tradeCredit = { ...credit, amount:Number(credit.amount || 0), remainingBalance:Number(credit.remainingBalance ?? credit.amount ?? 0) };
   cart.customerName = cart.customerName || credit.customerName || '';
   await syncActiveSaleCartToWorker(cart);
   renderSaleCartSwitcher();
+  return { newCart:!useOpen, movedFrom };
+}
+function tradeNewCartNote(placed){
+  return placed?.newCart ? ' (new cart -- ' + placed.movedFrom + ' is still open in the cart row)' : '';
 }
 
 function cartWorkerPath(){
@@ -39189,15 +39221,15 @@ async function acceptBuyAsTrade(lockedPct){
     buySessionId:result.session.buySessionId,
     createdAt:new Date().toISOString(),
   }));
-  await attachTradeToActiveSaleCart(result.credit);
+  const placed = await attachTradeToActiveSaleCart(result.credit);
   closeActiveBuyTray();
   switchTab('display');
   renderDealerCartTools(getCartDataLocal());
   const cart = getCartDataLocal();
   const saleCount = (cart.items || []).length;
-  toast_dash(saleCount
+  toast_dash((saleCount
     ? 'Trade applied to sale — ' + saleCount + ' purchase item' + (saleCount===1?'':'s') + ' ready'
-    : 'Trade ready — add the customer’s purchase items');
+    : 'Trade ready — add the customer’s purchase items') + tradeNewCartNote(placed), placed?.newCart ? 6000 : 2500);
 }
 
 function showBuyPaymentConfirm(session){
@@ -39267,6 +39299,7 @@ function syncBuyConfirmCustomer(field, value){
 async function confirmBuyPayout(method, applyToPurchase=false){
   const result = payCustomerForBuySession(method);
   if(!result) return;
+  let placed = null;
   // A trade credit only exists for this visit's purchase, so it always goes
   // onto the sale -- "ISSUE TRADE CREDIT" used to create it and then drop it.
   if(result.credit) applyToPurchase = true;
@@ -39278,12 +39311,12 @@ async function confirmBuyPayout(method, applyToPurchase=false){
       buySessionId:result.session.buySessionId,
       createdAt:new Date().toISOString(),
     }));
-    await attachTradeToActiveSaleCart(result.credit);
+    placed = await attachTradeToActiveSaleCart(result.credit);
   }
   newCustomerReset();
   if(applyToPurchase) {
     switchTab('pos');
-    toast_dash('Trade-in credit ready — add purchase items, then checkout');
+    toast_dash('Trade-in credit ready — add purchase items, then checkout' + tradeNewCartNote(placed), placed?.newCart ? 6000 : 2500);
   }
 }
 
