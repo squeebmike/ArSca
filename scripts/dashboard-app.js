@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.10.09.3-sports-link-review-photos';
+const APP_VERSION = '2026.10.09.4-price-site-by-type';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -7801,13 +7801,37 @@ function renderTable(){
 }
 
 // Inventory row ⋯ more menu
-function openInventoryTcgplayer(id){
+// Store report: the ⋯ menu on a SPORTS card offered "TCGplayer" -- the
+// price site has to match what the item is. Sports cards open their
+// SportsCardsPro page (PriceCharting's sports site), comics their
+// PriceCharting page, and only TCG cards go to TCGplayer. With no saved
+// link it opens that site's search for the card instead.
+function inventoryPriceSiteLink(item = {}){
+  const category = String(item.category || item.raw?.category || '');
+  const key = typeof qplCategoryKey === 'function' ? qplCategoryKey(category) : '';
+  const providerUrl = String(item.providerUrl || item.raw?.providerUrl || '').split('#')[0];
+  const query = [inventoryCardName(item), inventorySetName(item), inventoryCardNumber(item) ? '#' + String(inventoryCardNumber(item)).replace(/^#/, '') : ''].filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
+  if(key === 'sports' || isSportsCardCategory(category)){
+    const id = [item.pricechartingProductId, item.raw?.pricechartingProductId, item.sourceProductId].map(v => String(v || '').trim()).find(v => /^\d+$/.test(v))
+      || (providerUrl.match(/(?:pricecharting|sportscardspro)\.com\/game\/(\d+)\/?(?:\?.*)?$/i) || [])[1] || '';
+    if(id) return { label:'SportsCardsPro', icon:'📈', url:'https://www.sportscardspro.com/game/' + id };
+    if(/^https?:\/\/(www\.)?(pricecharting|sportscardspro)\.com\/game\/[^/]+\/[^/?]+/i.test(providerUrl)) return { label:'SportsCardsPro', icon:'📈', url:providerUrl };
+    return { label:'SportsCardsPro (search)', icon:'📈', url:query ? 'https://www.sportscardspro.com/search-products?type=prices&q=' + encodeURIComponent(query) : '' };
+  }
+  if(key === 'comic'){
+    if(/^https?:\/\/(www\.)?pricecharting\.com\/game\/[^/]+\/[^/?]+/i.test(providerUrl)) return { label:'PriceCharting', icon:'📈', url:providerUrl };
+    return { label:'PriceCharting (search)', icon:'📈', url:query ? 'https://www.pricecharting.com/search-products?type=prices&q=' + encodeURIComponent(query) : '' };
+  }
+  return { label:'TCGplayer', icon:'🛒', url:buildTcgExternalLink(item).url || '' };
+}
+function openInventoryPriceSite(id){
   const item=(all||[]).find(candidate=>String(candidate.id||candidate.wfId)===String(id));
   if(!item){toast_dash('Inventory item not found');return;}
-  const built=buildTcgExternalLink(item);
-  if(!built.url){toast_dash('No TCGplayer link or searchable card details');return;}
-  window.open(built.url,'_blank','noopener');
+  const link=inventoryPriceSiteLink(item);
+  if(!link.url){toast_dash('No '+link.label.replace(/ \(search\)$/,'')+' link or searchable details on this item');return;}
+  window.open(link.url,'_blank','noopener');
 }
+function openInventoryTcgplayer(id){ return openInventoryPriceSite(id); }
 function closeInvRowMenu(){ document.querySelectorAll('.inv-row-menu-backdrop').forEach(m => m.remove()); }
 function showInvRowMenu(e, id, isInStock){
   e.stopPropagation();
@@ -7826,7 +7850,7 @@ function showInvRowMenu(e, id, isInStock){
   const btnStyle = 'width:100%;min-height:40px;font-size:11px;margin-bottom:4px;text-align:left;padding:0 12px';
   menu.innerHTML = [
     `<div style="display:flex;align-items:center;justify-content:space-between;padding:2px 6px 8px"><span style="font-family:monospace;font-size:8px;color:var(--dim);letter-spacing:.06em">MORE ACTIONS</span><button onclick="closeInvRowMenu()" style="background:none;border:none;color:var(--dim);font-size:20px;cursor:pointer;line-height:1;padding:0 4px">×</button></div>`,
-    `<button class="hbtn" style="${btnStyle};color:var(--g)" onclick="openInventoryTcgplayer('${id}');closeInvRowMenu()">🛒 TCGplayer</button>`,
+    (() => { const site = item ? inventoryPriceSiteLink(item) : { label:'TCGplayer', icon:'🛒' }; return `<button class="hbtn" style="${btnStyle};color:var(--g)" onclick="openInventoryPriceSite('${id}');closeInvRowMenu()">${site.icon} ${escHtml(site.label)}</button>`; })(),
     `<button class="hbtn" style="${btnStyle};color:var(--blue)" onclick="openInventoryItemInResearch('${id}');closeInvRowMenu()">🔍 Research</button>`,
     `<button class="hbtn" style="${btnStyle}" onclick="openEbayFromDash('${id}');closeInvRowMenu()">📦 ${item?.ebayListingId?'Manage eBay Listing':'eBay List'}</button>`,
     isInStock?`<button class="hbtn" style="${btnStyle};color:var(--purple)" onclick="markSoldOnWhatnot('${id}');closeInvRowMenu()">📦 Sold on Whatnot</button>`:'',

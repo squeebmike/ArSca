@@ -61,7 +61,7 @@ assert.match(dashboard, /SYNC MTG PRICES/);
 assert.match(dashboard, /mtgOfflinePriceUpdatedAt/);
 assert.match(dashboard, /No exact offline MTG match/);
 assert.match(dashboard, /function openInventoryTcgplayer/);
-assert.match(dashboard, /🛒 TCGplayer/);
+assert.match(dashboard, /return \{ label:'TCGplayer', icon:'🛒', url:buildTcgExternalLink\(item\)\.url \|\| '' \};/, 'MTG and other TCG cards keep the TCGplayer button');
 assert.match(dashboard, /async function refreshResearchPrice/);
 assert.match(dashboard, /onclick="refreshResearchPrice\(\$\{idx\}\)"/);
 
