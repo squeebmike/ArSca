@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.10.10.7-trade-payout-fix';
+const APP_VERSION = '2026.10.10.8-split-payment';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -8054,8 +8054,9 @@ function stripeQrMarkPaid(){
 function stripeQrComplete(){
   clearInterval(_stripeQrPollTimer);
   document.getElementById('stripe-qr-modal')?.classList.remove('on');
-  // Route through the existing locked-checkout confirmation
-  confirmLockedPayment('card');
+  // Route through the existing locked-checkout confirmation, for the amount
+  // the QR charged (all of what was due, or one part of a split payment).
+  confirmLockedPayment('card', _stripeQrAmount / 100);
 }
 
 function stripeQrCancel(){
@@ -8124,7 +8125,7 @@ function launchP2pQrModal(method, handle, totalDollars, deepLink){
     completeBtn.style.display = '';
     completeBtn.onclick = () => {
       document.getElementById('stripe-qr-modal')?.classList.remove('on');
-      confirmLockedPayment(method);
+      confirmLockedPayment(method, totalDollars);
     };
   }
   if(cancelBtn) cancelBtn.style.display = '';
@@ -41227,7 +41228,13 @@ function renderCustomerDisplaySnapshot(){
   if(totalEl) totalEl.textContent = '$' + trade.due.toFixed(2);
   if(countEl) countEl.textContent = s.lines.length + ' item' + (s.lines.length===1?'':'s') + ' locked for checkout';
   if(breakdownEl) breakdownEl.innerHTML = `Subtotal $${s.subtotal.toFixed(2)}${s.discount_total ? ' / Discount -$' + s.discount_total.toFixed(2) : ''}${s.tax_total ? ' / Tax $' + s.tax_total.toFixed(2) : ''}${trade.pending ? ' / Trade credit -$' + trade.applied.toFixed(2) : ''}`;
-  renderCustomerPaymentLinks(trade.due, payEl);
+  // Split payment: what's already been paid, and only what's left as the total.
+  const splitParts = selectedTenderLines.filter(t => isSplitTenderMethod(t.method) && Number(t.amount) > 0);
+  if(splitParts.length){
+    if(totalEl) totalEl.textContent = '$' + remainingCheckoutDue().toFixed(2);
+    if(breakdownEl) breakdownEl.innerHTML += splitParts.map(t => ' / ' + escHtml(formatTenderLabel(t.method)) + ' paid -$' + Number(t.amount).toFixed(2)).join('');
+  }
+  renderCustomerPaymentLinks(splitParts.length ? remainingCheckoutDue() : trade.due, payEl);
   if(setupEl) setupEl.textContent = checkoutState === CHECKOUT_STATES.PAYMENT_PENDING ? 'Payment pending dealer confirmation.' : '';
 }
 
@@ -41267,10 +41274,9 @@ async function startStripeCardPayment(){if(stripePosRuntime?.busy)return;const w
 async function confirmStripeCardPayment(){const rt=stripePosRuntime;if(!rt||rt.busy)return;rt.busy=true;const btn=document.getElementById('stripe-pos-pay'),errorEl=document.getElementById('stripe-payment-error');if(btn){btn.disabled=true;btn.textContent='PROCESSING…';}try{const result=await rt.stripe.confirmPayment({elements:rt.elements,redirect:'if_required'});if(result.error)throw new Error(result.error.message);const verified=await stripeWorkerFetch('/stripe/payments/status',{mode:rt.intent.mode,paymentIntentId:rt.intent.paymentIntentId});if(verified.status!=='succeeded')throw new Error('Stripe status is '+verified.status+'. The sale was not finalized.');rt.bundle.payments=[{id:rt.paymentId,sale_id:rt.bundle.sale.id,store_id:rt.bundle.sale.store_id,method:'Stripe Card',amount:rt.bundle.sale.total,reference:verified.paymentIntentId,status:'succeeded',provider:'stripe',stripe_mode:rt.intent.mode,stripe_connected_account_id:rt.intent.stripeAccount,stripe_payment_intent_id:verified.paymentIntentId,stripe_charge_id:verified.chargeId,card_brand:verified.brand,card_last4:verified.last4,confirmed_at:new Date().toISOString()}];selectedTenderLines=[{method:'stripe_card',amount:rt.bundle.sale.total,reference:verified.paymentIntentId}];checkoutState=CHECKOUT_STATES.PAYMENT_CONFIRMED;await finalizeCompletedCheckout(rt.bundle,false);stripePosRuntime=null;}catch(e){if(errorEl)errorEl.textContent=e.message;if(btn){btn.disabled=false;btn.textContent='RETRY PAYMENT';}rt.busy=false;}}
 function cancelStripeCardPayment(){if(stripePosRuntime?.busy)return toast_dash('Wait for the current Stripe request to finish');stripePosRuntime=null;selectedTenderLines=[];checkoutState=CHECKOUT_STATES.PAYMENT_METHOD_SELECTED;const wb=document.getElementById('customer-payment-workbench');if(wb)wb.innerHTML='<div style="text-align:center;font-family:var(--font-mono);padding:14px">Choose another payment method above.</div>';}
 
-// Amount still owed on the locked checkout after any tender lines already queued
-// (currently only ever populated by a same-visit trade-in auto-applied by
-// lockCheckoutForPayment). Every other tender flow starts from an empty
-// selectedTenderLines, so this is just the full total in the common case.
+// Amount still owed on the locked checkout after any tender lines already
+// queued -- a trade-in, loyalty points, a gift card, or earlier parts of a
+// split payment.
 function remainingCheckoutDue(){
   if(!lockedCheckoutSnapshot) return 0;
   const total = Number(lockedCheckoutSnapshot.total || 0);
@@ -41278,6 +41284,45 @@ function remainingCheckoutDue(){
   return Math.max(0, Math.round((total - applied) * 100) / 100);
 }
 
+// ── Split payment ──
+// Store ask: "how to do partial payment, ie some cash some card Venmo etc."
+// Each part of a payment is its own tender line; the sale completes once the
+// parts add up to the total. Trade credit, loyalty points and gift cards were
+// already parts -- cash, card and Venmo/PayPal/Cash App can be now too.
+// (Functions, not consts: the checkout screens that use them sit earlier in
+// this file and can render before a const below them would exist.)
+function isSplitTenderMethod(m){ return ['cash','card','venmo','paypal','cashapp'].includes(m); }
+function roundCents(n){ return Math.round(Number(n || 0) * 100) / 100; }
+// The "amount on this method" box, defaulting to everything still owed.
+function splitPartInputHtml(method, due){
+  return `<label style="display:block;font-family:var(--font-mono);font-size:10px;color:var(--dim);margin-top:10px">AMOUNT ON ${escHtml(formatTenderLabel(method).toUpperCase())}
+      <input id="split-part-amount" type="number" step="0.01" min="0.01" max="${due.toFixed(2)}" value="${due.toFixed(2)}" oninput="updateLockedCashChange()" style="width:100%;min-height:44px;border:1px solid #cfd7e3;border-radius:7px;padding:8px 12px;font-size:16px;margin-top:4px"></label>
+    <div style="font-family:var(--font-mono);font-size:9px;color:var(--dim);margin-top:4px">Paying part another way? Enter just this part -- the rest goes on the next method.</div>`;
+}
+function readSplitPartAmount(due){
+  const el = document.getElementById('split-part-amount');
+  if(!el || el.value === '') return roundCents(due);
+  return roundCents(el.value);
+}
+// The parts already taken, each removable until the sale completes.
+function splitPaymentsSoFarHtml(){
+  const parts = selectedTenderLines.map((t, i) => ({ t, i })).filter(x => isSplitTenderMethod(x.t.method) && Number(x.t.amount) > 0);
+  if(!parts.length) return '';
+  return `<div style="border:1px solid rgba(0,255,179,.3);border-radius:8px;padding:8px 10px;margin-bottom:10px;font-family:var(--font-mono);font-size:11px">
+      <div style="font-size:9px;color:var(--dim);margin-bottom:4px">PAID SO FAR</div>
+      ${parts.map(({ t, i }) => `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:2px 0"><span>✓ ${escHtml(formatTenderLabel(t.method))} $${Number(t.amount).toFixed(2)}</span><button class="hbtn danger" style="min-height:26px;padding:2px 8px;font-size:9px" onclick="removeSplitTender(${i})">REMOVE</button></div>`).join('')}
+      <div style="margin-top:4px;color:var(--gold)">Still due $${remainingCheckoutDue().toFixed(2)}</div>
+    </div>`;
+}
+function removeSplitTender(index){
+  const t = selectedTenderLines[index];
+  if(!t || !isSplitTenderMethod(t.method)) return;
+  if(!confirm('Remove the ' + formatTenderLabel(t.method) + ' payment of $' + Number(t.amount).toFixed(2) + '? Only do this if it was not actually taken (or you gave it back).')) return;
+  selectedTenderLines = selectedTenderLines.filter((_, i) => i !== index);
+  renderCustomerDisplaySnapshot();
+  selectLockedPaymentMethod(t.method);
+}
+window.removeSplitTender = removeSplitTender;
 function selectLockedPaymentMethod(method){
   if(!lockedCheckoutSnapshot) return toast_dash('Lock checkout first');
   checkoutState = CHECKOUT_STATES.PAYMENT_METHOD_SELECTED;
@@ -41333,9 +41378,10 @@ function selectLockedPaymentMethod(method){
     return;
   }
   if(method === 'cash') {
-    wb.innerHTML = `<div style="font-weight:800;text-align:center;margin-bottom:8px">Cash payment</div>
+    wb.innerHTML = splitPaymentsSoFarHtml() + `<div style="font-weight:800;text-align:center;margin-bottom:8px">Cash payment</div>
       <div style="text-align:center;color:var(--dim);font-family:var(--font-mono)">Amount due $${total.toFixed(2)}</div>
-      <input id="locked-cash-received" type="number" step="0.01" min="0" placeholder="Amount received" oninput="updateLockedCashChange()" style="width:100%;min-height:50px;border:1px solid #cfd7e3;border-radius:7px;padding:10px 12px;font-size:18px;margin-top:10px">
+      ${splitPartInputHtml('cash', total)}
+      <input id="locked-cash-received" type="number" step="0.01" min="0" placeholder="Cash received" oninput="updateLockedCashChange()" style="width:100%;min-height:50px;border:1px solid #cfd7e3;border-radius:7px;padding:10px 12px;font-size:18px;margin-top:10px">
       <div id="locked-cash-change" style="text-align:center;font-family:'Orbitron',monospace;font-size:24px;color:var(--g);margin-top:10px">Enter amount received</div>
       <div class="payment-confirm-row"><button class="hbtn" onclick="confirmLockedPayment('cash')">CONFIRM CASH PAYMENT</button></div>`;
   } else if(['venmo','paypal','cashapp'].includes(method)) {
@@ -41344,6 +41390,14 @@ function selectLockedPaymentMethod(method){
     // either a usable amount URL or a clear { error } — never a blank/stale QR.
     const built = buildAmountPaymentUrl(method, cfg, total, 'Order ' + (lockedCheckoutSnapshot?.id || ''));
     if(built.url) {
+      // Behind the QR: change the amount to take just part of the sale here.
+      wb.innerHTML = splitPaymentsSoFarHtml() + `<div style="font-weight:800;text-align:center;margin-bottom:8px">${escHtml(formatTenderLabel(method))}</div>
+        <div style="text-align:center;color:var(--dim);font-family:var(--font-mono)">Amount due $${total.toFixed(2)}</div>
+        ${splitPartInputHtml(method, total)}
+        <div class="payment-confirm-row" style="flex-direction:column;gap:8px">
+          <button class="hbtn" onclick="showSplitP2pQr('${method}')">SHOW ${escHtml(formatTenderLabel(method).toUpperCase())} QR FOR THIS AMOUNT</button>
+          <button class="hbtn" style="font-size:11px;color:var(--dim)" onclick="confirmLockedPayment('${method}')">Manual confirm (handled outside the app)</button>
+        </div>`;
       launchP2pQrModal(method, built.handle, total, built.url);
     } else {
       wb.innerHTML = `<div style="font-weight:800;text-align:center;margin-bottom:8px">${escHtml(formatTenderLabel(method))}</div>
@@ -41352,10 +41406,14 @@ function selectLockedPaymentMethod(method){
           <button class="hbtn" onclick="openSettingsSection('payments','payment-settings-panel')">⚙ OPEN PAYMENT SETTINGS</button>
           <button class="hbtn" style="font-size:11px;color:var(--dim)" onclick="confirmLockedPayment('${method}')">Manual confirm (handled outside the app)</button>
         </div>`;
+      wb.innerHTML = splitPaymentsSoFarHtml() + wb.innerHTML.replace('<div class="payment-confirm-row" style="flex-direction:column;gap:8px">', splitPartInputHtml(method, total) + '<div class="payment-confirm-row" style="flex-direction:column;gap:8px">');
     }
   } else {
     // Card / Stripe — show QR checkout launcher or manual fallback
-    wb.innerHTML = `<div style="font-weight:800;text-align:center;margin-bottom:8px">Stripe Card</div><div style="text-align:center;color:var(--dim);font-family:var(--font-mono);font-size:12px;margin-bottom:12px">Verified card payment. The sale completes only after Stripe confirms success.</div><div class="payment-confirm-row"><button class="hbtn" style="min-height:52px;font-size:14px" onclick="startStripeCardPayment()">ENTER CARD SECURELY</button><button class="hbtn" onclick="launchStripeQrCheckout(${total.toFixed(2)})">STRIPE QR</button></div>`;
+    // Secure card entry always charges the whole sale, so once part of it
+    // is paid (a trade-in, cash...) card goes through STRIPE QR for the rest.
+    const wholeSale = Math.abs(total - Number(lockedCheckoutSnapshot.total || 0)) < 0.01;
+    wb.innerHTML = splitPaymentsSoFarHtml() + `<div style="font-weight:800;text-align:center;margin-bottom:8px">Stripe Card</div><div style="text-align:center;color:var(--dim);font-family:var(--font-mono);font-size:12px;margin-bottom:12px">Verified card payment. The sale completes only after Stripe confirms success.</div>${splitPartInputHtml('card', total)}<div class="payment-confirm-row">${wholeSale ? `<button class="hbtn" style="min-height:52px;font-size:14px" onclick="startSplitAwareStripeCard()">ENTER CARD SECURELY</button>` : ''}<button class="hbtn" onclick="launchStripeQrCheckout(readSplitPartAmount(remainingCheckoutDue()))">STRIPE QR</button></div>${wholeSale ? '' : `<div style="font-family:var(--font-mono);font-size:9px;color:var(--dim);margin-top:6px">Part of this sale is already paid -- take the card with STRIPE QR for the amount above.</div>`}`;
     wb.classList.add('on');
     renderCustomerDisplaySnapshot();
     return;
@@ -41378,7 +41436,7 @@ function selectLockedPaymentMethod(method){
 }
 
 function updateLockedCashChange(){
-  const due = remainingCheckoutDue();
+  const due = readSplitPartAmount(remainingCheckoutDue());
   const received = Number(document.getElementById('locked-cash-received')?.value || 0);
   const el = document.getElementById('locked-cash-change');
   if(el) el.textContent = received >= due ? 'Change due $' + (received - due).toFixed(2) : 'Still due $' + (due - received).toFixed(2);
@@ -41497,27 +41555,58 @@ function removeGiftCardRedemptionTender(){
   selectLockedPaymentMethod('gift_card');
 }
 
-async function confirmLockedPayment(method){
+async function confirmLockedPayment(method, amountOverride){
   if(checkoutFinalizing) return toast_dash('Checkout is already finalizing');
   if(!lockedCheckoutSnapshot) return toast_dash('No locked checkout');
-  // A prior trade-credit/loyalty-points/gift-card tender (auto-applied by
-  // lockCheckoutForPayment, or manually applied via selectLockedPaymentMethod)
-  // may already have covered part of the total — this method only needs to
-  // cover what's left, and joins rather than replaces those queued lines.
-  const priorTenders = selectedTenderLines.filter(t => ['trade_credit','loyalty_redeem','gift_card'].includes(t.method));
+  // Everything already taken -- a trade-in, loyalty points, a gift card, or
+  // an earlier part of a split payment -- stays; this method covers either
+  // what's left or just the part entered for it.
+  const priorTenders = selectedTenderLines.slice();
   const priorTotal = priorTenders.reduce((a,t) => a + Number(t.amount || 0), 0);
-  const total = Math.max(0, Math.round((Number(lockedCheckoutSnapshot.total || 0) - priorTotal) * 100) / 100);
-  let amount = total;
+  const due = Math.max(0, roundCents(Number(lockedCheckoutSnapshot.total || 0) - priorTotal));
+  const amount = amountOverride != null ? roundCents(amountOverride) : readSplitPartAmount(due);
+  if(!(amount > 0)) return toast_dash('Enter an amount greater than $0');
+  if(amount > due + 0.009) return toast_dash('That is more than the $' + due.toFixed(2) + ' still due');
   let reference = '';
   if(method === 'cash') {
     const received = Number(document.getElementById('locked-cash-received')?.value || 0);
-    if(received < total) return toast_dash('Cash received is less than amount due');
-    reference = 'received:' + received.toFixed(2) + ' change:' + (received - total).toFixed(2);
+    if(received < amount) return toast_dash('Cash received is less than the $' + amount.toFixed(2) + ' on cash');
+    reference = 'received:' + received.toFixed(2) + ' change:' + (received - amount).toFixed(2);
   }
   selectedTenderLines = [...priorTenders, { method, amount, reference }];
+  const left = remainingCheckoutDue();
+  if(left > 0.009) {
+    // A part of a split payment: show what's paid and what's left.
+    checkoutState = CHECKOUT_STATES.PAYMENT_METHOD_SELECTED;
+    logOpsEvent('checkout_split_part', 'Took part of a split payment', { method, amount, remaining:left });
+    renderCustomerDisplaySnapshot();
+    const wb = document.getElementById('customer-payment-workbench');
+    if(wb){ wb.innerHTML = splitPaymentsSoFarHtml() + '<div style="text-align:center;font-family:var(--font-mono);font-size:12px;padding:6px">Choose how the customer pays the other $' + left.toFixed(2) + ' above.</div>'; wb.classList.add('on'); }
+    toast_dash(formatTenderLabel(method) + ' $' + amount.toFixed(2) + ' taken -- $' + left.toFixed(2) + ' still due');
+    return;
+  }
   checkoutState = CHECKOUT_STATES.PAYMENT_PENDING;
   await completeLockedCheckout();
 }
+// Venmo/PayPal/Cash App QR for just the amount entered.
+function showSplitP2pQr(method){
+  const amount = readSplitPartAmount(remainingCheckoutDue());
+  if(!(amount > 0)) return toast_dash('Enter an amount greater than $0');
+  const s = getPaymentSettings();
+  const cfg = method === 'venmo' ? s.venmo : method === 'paypal' ? s.paypal : s.cashApp;
+  const built = buildAmountPaymentUrl(method, cfg, amount, 'Order ' + (lockedCheckoutSnapshot?.id || ''));
+  if(!built.url) return toast_dash(built.error || ('No ' + formatTenderLabel(method) + ' handle saved'));
+  launchP2pQrModal(method, built.handle, amount, built.url);
+}
+window.showSplitP2pQr = showSplitP2pQr;
+// Secure card entry charges the whole sale -- only offered when nothing is
+// paid yet and the amount box still says the whole sale.
+function startSplitAwareStripeCard(){
+  const due = remainingCheckoutDue();
+  if(Math.abs(due - Number(lockedCheckoutSnapshot?.total || 0)) > 0.009 || Math.abs(readSplitPartAmount(due) - due) > 0.009) return toast_dash('Secure card entry charges the whole sale -- for part of it, use STRIPE QR');
+  startStripeCardPayment();
+}
+window.startSplitAwareStripeCard = startSplitAwareStripeCard;
 
 async function completeLockedCheckout(){
   if(checkoutFinalizing) return toast_dash('Checkout is already finalizing');

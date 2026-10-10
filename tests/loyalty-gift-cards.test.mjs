@@ -42,7 +42,9 @@ assert.match(dashboard, /LOYALTY_POINTS_PER_DOLLAR/, 'redemption needs a fixed p
 assert.match(dashboard, /function applyLoyaltyRedemption/, 'redemption apply function must exist');
 assert.match(dashboard, /method:'loyalty_redeem'/, 'redemption must produce a loyalty_redeem tender line');
 assert.match(dashboard, /sb\.rpc\('redeem_loyalty_points'/, 'redemption commit must call the atomic RPC');
-assert.match(dashboard, /\['trade_credit','loyalty_redeem','gift_card'\]\.includes\(t\.method\)/, 'confirmLockedPayment must carry forward loyalty/gift-card tenders already applied, not just trade credit');
+// Split payments: every tender already taken (trade credit, loyalty, gift
+// card, or an earlier part of a split payment) is carried forward.
+assert.match(dashboard, /async function confirmLockedPayment\(method, amountOverride\)\{[\s\S]{0,600}const priorTenders = selectedTenderLines\.slice\(\);/, 'confirmLockedPayment must carry forward loyalty/gift-card tenders already applied, not just trade credit');
 
 // Offline durability: both accrual and redemption survive a dropped connection.
 assert.match(dashboard, /item\.type === 'loyalty-accrual'/, 'loyalty accrual must be replayable from the offline sync queue');
