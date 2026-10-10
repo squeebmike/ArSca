@@ -25,6 +25,8 @@ on:
       - scripts/comic-search-client.mjs
       - scripts/public-pokemon-sets.mjs
       - scripts/ebay-order-money.mjs
+      - scripts/orders-board.mjs
+      - scripts/sitemap-cache.mjs
       - wrangler.deploy.jsonc
       - .github/workflows/deploy-worker.yml
   workflow_dispatch:
