@@ -2683,6 +2683,11 @@ async function receiveShipment(request,env,deps){
     try{ebayToken=await deps.getEbayUserAccessToken(env);}catch(_){}
   }
   const created=[];const receivedSummary=[];
+  // Store ask: "when I intake the comics with the slip, queue up labels for
+  // all comics I just intook." Which inventory rows got shelf copies, and how
+  // many -- copies set aside for website customers or eBay buyers don't need
+  // a price sticker.
+  const labelItems=[];
   for(const line of lines){
     const sku=skuById.get(text(line.skuId,80));if(!sku)continue;
     const receivedQty=Math.max(0,Math.min(1000,Number(line.receivedQty||0)));if(!receivedQty)continue;
@@ -2776,6 +2781,12 @@ async function receiveShipment(request,env,deps){
       reservedForEbayPresale:reservedForEbay,safetyStockHeld:safetyHeld,availableAsNewStock:reserveRemaining,
       shortShipped,incentiveNotReceived,
     });
+    // Shelf copies: the unsold copies of a live presale (its listing switches
+    // to in stock) first, then the new in-stock row.
+    let shelfLeft=reserveRemaining+safetyHeld;
+    const presaleCopies=livePresale&&presaleAvailable>0?Math.min(receivedQty,presaleAvailable):0;
+    if(presaleCopies&&shelfLeft>0){const n=Math.min(shelfLeft,presaleCopies);labelItems.push({itemId:livePresale.id,skuId:sku.id,copies:n});shelfLeft-=n;}
+    if(inserted?.[0]?.id&&shelfLeft>0)labelItems.push({itemId:inserted[0].id,skuId:sku.id,copies:shelfLeft});
   }
   // An order is ready to hand over once every item on it has arrived and
   // been reserved -- flips paid orders to ready_for_pickup (nothing further
@@ -2800,7 +2811,7 @@ async function receiveShipment(request,env,deps){
   // book arrives (the paid -> ready flip above only ever happens once).
   let notified=[];
   try{notified=await notifyOrdersReady(env,deps,db,storeId,readyOrderIds,auth.user?.id);}catch(e){console.error('FOC receive: arrival notices failed',e);}
-  return deps.json({ok:true,createdInventoryCount:created.length,receivedSummary,notified});
+  return deps.json({ok:true,createdInventoryCount:created.length,receivedSummary,labelItems,notified});
 }
 
 async function saveShippingSettings(request,env,deps){
