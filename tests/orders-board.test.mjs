@@ -172,7 +172,12 @@ assert.equal(buildOrdersBoard({ today, payments:[{ sale_id:'s5', provider:'whatn
     },
   };
   const res = await handleOrdersBoard({}, {}, deps, new URL('https://w.test/orders/board?store_id=store1'));
-  assert.ok(calls.some(p => /^comic_skus\?store_id=eq\.store1&title=in\.\("Sonic #3 RI"\)/.test(p)), 'unlinked presale titles are looked up in this store\'s catalog');
+  // Store report: "failed to parse filter (in.("Sonic the Hedgehog x
+  // Godzilla )" -- the title's "#3" ended the URL and the whole board failed.
+  const lookup0 = calls.find(p => p.startsWith('comic_skus?'));
+  assert.ok(lookup0.startsWith('comic_skus?store_id=eq.store1&title=in.(%22Sonic%20%233%20RI%22)'), 'unlinked presale titles are looked up in this store\'s catalog, encoded: ' + lookup0);
+  assert.doesNotMatch(lookup0, /#/, 'no raw "#" left to cut the URL short');
+  assert.equal(new URLSearchParams(lookup0.split('?')[1]).get('title'), 'in.("Sonic #3 RI")', 'the database reads back the exact title');
   const lookup = calls.find(p => p.startsWith('inventory_items') && p.includes('data->>focSkuId='));
   assert.doesNotMatch(lookup, /data->>source=eq\.foc_receive/, 'not only FOC-received copies count');
   const sonic = res.body.channels.ebay[0];
@@ -182,6 +187,24 @@ assert.equal(buildOrdersBoard({ today, payments:[{ sale_id:'s5', provider:'whatn
   assert.equal(pre.items[0].state, 'in', 'cover F is in the store');
   assert.equal(pre.items[1].state, 'late', 'cover I never came in');
   assert.equal(pre.status, 'late');
+}
+
+// A failed catalog lookup only loses the due date, never the board.
+{
+  const deps = {
+    requireStoreUser: async () => ({ user:{ id:'u1' } }), json:(body, status = 200) => ({ status, body }),
+    supabaseAdminFetch: async (env, path) => {
+      if (path.startsWith('pos_payments')) return { data:[{ sale_id:'s-s', reference:'11-1', provider:'ebay', amount:17.99, created_at:new Date().toISOString(), provider_metadata:{ ebayOrderId:'11-1' } }] };
+      if (path.startsWith('pos_sale_lines')) return { data:[{ sale_id:'s-s', item_id:null, title:'Sonic #3 RI - PRESALE', quantity:1, unit_price:17.99 }] };
+      if (path.startsWith('comic_skus')) throw new Error('failed to parse filter');
+      return { data:[] };
+    },
+  };
+  const res = await handleOrdersBoard({}, {}, deps, new URL('https://w.test/orders/board?store_id=store1'));
+  assert.equal(res.status, 200);
+  assert.equal(res.body.ok, true);
+  assert.equal(res.body.channels.ebay.length, 1, 'eBay orders still show');
+  assert.equal(res.body.channels.ebay[0].status, 'waiting');
 }
 
 // ── Wiring ──
