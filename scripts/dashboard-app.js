@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.10.10.6-flag-sold-copies';
+const APP_VERSION = '2026.10.10.7-trade-payout-fix';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -9134,7 +9134,9 @@ function redeemStoreCredit(id, amount){
 // trade-in value for a later visit) gets paid out in cash from the bag
 // right now -- same drawer-movement mechanics as a normal cash buy payout.
 function payTradeInLeftoverAsCash(amount, tenderLine){
-  if(!(amount > 0) || !drawerState) return;
+  if(!(amount > 0)) return;
+  if(!drawerState){ toast_dash('Pay the customer $' + amount.toFixed(2) + ' cash for the rest of their trade-in -- no Cash Bag is open, so record it when you start one', 8000); return; }
+  toast_dash('Pay the customer $' + amount.toFixed(2) + ' cash -- the rest of their trade-in. Recorded in the Cash Bag.', 8000);
   const payoutNote = 'Trade-in leftover payout' + (tenderLine?.customerName ? ': ' + tenderLine.customerName : '');
   const movementId = makeUuid('move'), movementAt = new Date().toISOString();
   drawerState.log.push({
@@ -40941,7 +40943,18 @@ function buildLedgerBundle(snapshot, tenderLines){
     { id:makeUuid('audit'), store_id:storeId, event_type:'payment_confirmed', entity_type:'pos_sale', entity_id:saleId, details:{ tenderLines }, created_by:getCurrentUserId(), created_at:now },
     { id:makeUuid('audit'), store_id:storeId, event_type:'sale_completed', entity_type:'pos_sale', entity_id:saleId, details:{ total:snapshot.total, lineCount:snapshot.lines.length }, created_by:getCurrentUserId(), created_at:now }
   ];
-  return { sale, saleLines, payments, drawerMovements, inventoryUpdates, audit, snapshot };
+  const bundle = { sale, saleLines, payments, drawerMovements, inventoryUpdates, audit, snapshot };
+  // Store report: a $63.50 trade-in put $11 toward a Treecko and the rest was
+  // paid out in cash, but the Cash Bag never recorded the payout -- a payment
+  // row only keeps what was applied, so the trade's full value was lost by
+  // the time the leftover was worked out. Kept here for that, and left out
+  // of what's saved (not enumerable, so JSON never carries it).
+  Object.defineProperty(bundle, 'tradeTenders', {
+    value:(tenderLines || []).filter(t => normalizeTenderType(t.method) === 'trade_credit' && t.reference)
+      .map(t => ({ reference:t.reference, applied:Number(t.amount || 0), fullAmount:Number(t.fullAmount ?? t.amount ?? 0), customerName:t.customerName || '' })),
+    enumerable:false,
+  });
+  return bundle;
 }
 
 function MoneyLedgerService(){
@@ -41569,8 +41582,9 @@ async function finalizeCompletedCheckout(bundle, queued, inventoryCommittedAtomi
       if(ledgerRecord) {
         redeemStoreCredit(p.reference, Number(p.amount || 0));
       } else {
-        const leftover = Math.max(0, Math.round((Number(p.fullAmount || p.amount || 0) - Number(p.amount || 0)) * 100) / 100);
-        payTradeInLeftoverAsCash(leftover, p);
+        const trade = (bundle.tradeTenders || []).find(t => t.reference === p.reference);
+        const leftover = Math.max(0, Math.round((Number(trade?.fullAmount ?? p.fullAmount ?? p.amount ?? 0) - Number(p.amount || 0)) * 100) / 100);
+        payTradeInLeftoverAsCash(leftover, { customerName:trade?.customerName || p.customerName || '' });
       }
       const pendingTrade = safeLocalJson('pos_pending_trade_purchase', null);
       if(pendingTrade?.creditId === p.reference) localStorage.removeItem('pos_pending_trade_purchase');
