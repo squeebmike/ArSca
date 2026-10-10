@@ -142,7 +142,10 @@ export function buildOrdersBoard({
   };
 }
 
-const inFilter = ids => 'in.(' + ids.map(id => '"' + String(id).replace(/"/g, '') + '"').join(',') + ')';
+// Each value is quoted and URL-encoded: a title's "#3" would otherwise end
+// the URL there (store report: "failed to parse filter (in.("Sonic the
+// Hedgehog x Godzilla )" -- the whole board failed to load).
+const inFilter = ids => 'in.(' + ids.map(id => encodeURIComponent('"' + String(id).replace(/"/g, '') + '"')).join(',') + ')';
 
 export async function handleOrdersBoard(request, env, deps, url) {
   const storeId = text(url.searchParams.get('store_id') || url.searchParams.get('store'), 80);
@@ -183,9 +186,12 @@ export async function handleOrdersBoard(request, env, deps, url) {
   }
   const skuByTitle = new Map();
   const unlinkedTitles = [...new Set(lines.concat(storefrontLines).filter(l => !inventoryById.has(l.item_id) && /-\s*PRESALE\s*$/i.test(String(l.title || ''))).map(l => String(l.title).replace(/\s*-\s*PRESALE\s*$/i, '').trim()))];
+  // Only fills in due dates; a failed lookup never takes the board down.
   for (let i = 0; i < unlinkedTitles.length; i += 50) {
-    const { data } = await db(`comic_skus?store_id=eq.${sid}&title=${inFilter(unlinkedTitles.slice(i, i + 50))}&select=id,title,on_sale_date`);
-    for (const k of data || []) skuByTitle.set(presaleTitleKey(k.title), k);
+    try {
+      const { data } = await db(`comic_skus?store_id=eq.${sid}&title=${inFilter(unlinkedTitles.slice(i, i + 50))}&select=id,title,on_sale_date`);
+      for (const k of data || []) skuByTitle.set(presaleTitleKey(k.title), k);
+    } catch (_) {}
   }
   const skuIds = [...new Set([...inventoryById.values()].map(r => r.focSkuId).concat(focItems.map(it => it.sku_id), [...skuByTitle.values()].map(k => k.id)).filter(Boolean))];
   // A book is in once any real copy of it is: received from FOC, or entered
