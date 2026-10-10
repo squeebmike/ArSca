@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.10.10.1-toolbar-order';
+const APP_VERSION = '2026.10.10.2-shared-barcodes';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -9887,6 +9887,40 @@ function comicSyncedGuidePrice(item = {}, product = {}){
 // round-trip latency once per comic on top of that), so this only chunks
 // the id list into batches and skips the unnecessary image scrape.
 const COMIC_PRICE_SYNC_BATCH_SIZE = 25;
+// Store question: "what about same bar code for variants?" Some publishers
+// print one barcode on two different covers (a 1:25 and its open-order
+// version), so for those a barcode can't say which cover a book is. A
+// barcode counts as shared when two different covers carry it -- in this
+// store's FOC catalog, or among its own inventory comics. The catalog and
+// inventory name the same cover differently, so each is checked on its own.
+const comicCoverNameKey = name => String(name || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+function comicBarcodesSharedByCovers(rows = []){
+  const covers = new Map();
+  for(const { upc, name } of rows){
+    const key = comicCoverNameKey(name);
+    if(String(upc || '').length !== 17 || !key) continue;
+    if(!covers.has(upc)) covers.set(upc, new Set());
+    covers.get(upc).add(key);
+  }
+  return new Set([...covers].filter(([, names]) => names.size > 1).map(([upc]) => upc));
+}
+async function comicSharedBarcodes(upcs = []){
+  const inventoryRows = (all || []).filter(i => qplCategoryKey(i.category || '') === 'comic').map(i => ({ upc:comicInventoryFullUpc(i), name:i.name || i.title }));
+  const shared = comicBarcodesSharedByCovers(inventoryRows);
+  const wanted = [...new Set(upcs.filter(u => String(u || '').length === 17))];
+  const sb = typeof getSupabaseClient === 'function' ? getSupabaseClient() : null;
+  if(sb && wanted.length){
+    const catalogRows = [];
+    for(let i = 0; i < wanted.length; i += 100){
+      try {
+        const { data, error } = await sb.from('comic_skus').select('upc,title,variant_label').eq('store_id', getActiveStoreId()).in('upc', wanted.slice(i, i + 100));
+        if(!error) (data || []).forEach(r => catalogRows.push({ upc:String(r.upc || '').replace(/\D/g, ''), name:[r.title, r.variant_label].filter(Boolean).join(' ') }));
+      } catch(e) { /* inventory check still applies */ }
+    }
+    comicBarcodesSharedByCovers(catalogRows).forEach(u => shared.add(u));
+  }
+  return shared;
+}
 async function buildLiveComicPriceSyncProposal(options = {}){
   const items=comicInventoryPriceSyncItems().filter(i=>!options.restrictToIds||options.restrictToIds.has(i.id));
   const summary={checked:items.length,processed:0,changed:0,unchanged:0,noMatch:0,noPrice:0,errors:0,issues:[]};
@@ -9905,12 +9939,15 @@ async function buildLiveComicPriceSyncProposal(options = {}){
     if(!comicInventoryPricechartingId(item)&&(comicInventoryFullUpc(item)||comicInventoryTitleHint(item)))byUpc.push(item);
   }
   const upcProducts=new Map();
+  const sharedUpcs=await comicSharedBarcodes(byUpc.map(comicInventoryFullUpc));
+  // A shared barcode goes by series + issue + cover title only.
+  const lookupUpc=item=>sharedUpcs.has(comicInventoryFullUpc(item))?'':comicInventoryFullUpc(item);
   for(let i=0;i<byUpc.length;i+=COMIC_UPC_LOOKUP_BATCH_SIZE){
     const batch=byUpc.slice(i,i+COMIC_UPC_LOOKUP_BATCH_SIZE);
     try{
       const response=await storeWorkerFetch('/pricing/pricecharting/comics/by-upc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
-        items:batch.map(item=>({key:lookupKey(item),upc:comicInventoryFullUpc(item),...(comicInventoryTitleHint(item)||{})})),
-        upcs:batch.map(comicInventoryFullUpc).filter(Boolean),
+        items:batch.map(item=>({key:lookupKey(item),upc:lookupUpc(item),...(comicInventoryTitleHint(item)||{})})),
+        upcs:batch.map(lookupUpc).filter(Boolean),
       })});
       const data=await response.json().catch(()=>({}));
       if(response.ok&&data.ok)Object.entries(data.products||{}).forEach(([key,result])=>upcProducts.set(key,result));
@@ -9920,7 +9957,7 @@ async function buildLiveComicPriceSyncProposal(options = {}){
   for(const item of items){
     let productId=comicInventoryPricechartingId(item);
     let viaUpc=false,viaTitle=false;
-    const upcResult=!productId?(upcProducts.get(lookupKey(item))||upcProducts.get(comicInventoryFullUpc(item))):null;
+    const upcResult=!productId?(upcProducts.get(lookupKey(item))||(lookupUpc(item)?upcProducts.get(lookupUpc(item)):null)):null;
     if(upcResult?.ok&&upcResult.product?.productId){
       productId=String(upcResult.product.productId);
       productsById.set(productId,upcResult);
@@ -9931,7 +9968,7 @@ async function buildLiveComicPriceSyncProposal(options = {}){
       const hint=comicInventoryTitleHint(item);
       summary.noMatch++;
       summary.processed++;
-      summary.issues.push({item:{...item},type:'no-match',title:'Not on PriceCharting yet',reason:(comicInventoryFullUpc(item)?'No PriceCharting comic has this exact barcode ('+comicInventoryFullUpc(item)+') yet'+(hint?', and ':'. '):'')+(hint?(upcResult?.error||('No PriceCharting comic for '+hint.series+' #'+hint.issue+' yet'))+'. ':'')+'New releases and ratio variants usually show up a few weeks after release -- the next sync will pick it up, or link the exact cover in Research now.'});
+      summary.issues.push({item:{...item},type:'no-match',title:'Not on PriceCharting yet',reason:(sharedUpcs.has(comicInventoryFullUpc(item))?'This barcode ('+comicInventoryFullUpc(item)+') is printed on more than one cover, so it was matched by title only. ':'')+(lookupUpc(item)?'No PriceCharting comic has this exact barcode ('+comicInventoryFullUpc(item)+') yet'+(hint?', and ':'. '):'')+(hint?(upcResult?.error||('No PriceCharting comic for '+hint.series+' #'+hint.issue+' yet'))+'. ':'')+'New releases and ratio variants usually show up a few weeks after release -- the next sync will pick it up, or link the exact cover in Research now.'});
       if(typeof options.onProgress==='function')options.onProgress(summary.processed,summary.checked);
       continue;
     }
