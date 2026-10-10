@@ -13237,8 +13237,9 @@ async function routeRequest(request, env, ctx) {
       const comicCoverHint = text => {
         const raw = String(text || '');
         const letter = (raw.match(/\b(?:cover|cvr|variant|var)\s+([a-z])\b/i)?.[1] || '').toLowerCase();
-        const ratio = raw.match(/\b1\s*:\s*(\d{1,4})\b/)?.[1] || '';
-        const words = [...new Set(normalizeComicRunText(raw.replace(/\b1\s*:\s*\d+\b/g, ' ')).split(' ')
+        // "1:25", or IDW's "Variant RI (10)" -- a 1:10 retailer incentive.
+        const ratio = raw.match(/\b1\s*:\s*(\d{1,4})\b/)?.[1] || raw.match(/\bRI\s*\(\s*(\d{1,4})\s*\)/i)?.[1] || '';
+        const words = [...new Set(normalizeComicRunText(raw.replace(/\b1\s*:\s*\d+\b/g, ' ').replace(/\bRI\s*\(\s*\d+\s*\)/gi, ' ')).split(' ')
           .filter(word => word.length > 2 && !COMIC_COVER_STOP_WORDS.has(word) && !/^\d+$/.test(word)))];
         return { letter, ratio, words };
       };
@@ -13252,7 +13253,11 @@ async function routeRequest(request, env, ctx) {
           const extraWords = normalizeComicRunText(afterIssue + ' ' + (comicPcIdentity(product).descriptor || '')).split(' ').filter(word => word && !seriesWords.has(word));
           const extra = ' ' + extraWords.join(' ') + ' ';
           let score = cover.words.filter(word => extra.includes(' ' + word + ' ')).length;
-          if (cover.ratio && new RegExp('\\b1\\s*:\\s*' + cover.ratio + '\\b').test(name)) score += 2;
+          // A ratio cover and its open-order twin share artist words; the
+          // ratio itself has to agree ("Allen" is not "Allen 1:25").
+          const nameRatio = name.match(/\b1\s*:\s*(\d{1,4})\b/)?.[1] || '';
+          if (nameRatio !== cover.ratio) return { product, score: 0, plain: false };
+          if (cover.ratio) score += 2;
           if (cover.letter && new RegExp(' (?:cover|cvr|variant|var) ' + cover.letter + ' ').test(extra)) score += 2;
           return { product, score, plain: !extraWords.length };
         });
@@ -14514,6 +14519,12 @@ async function routeRequest(request, env, ctx) {
             return searchCache.get(q);
           };
           const products = {};
+          // Store question: "what about same bar code for variants?" Some
+          // publishers print one barcode on two covers (a 1:25 and its open-
+          // order version), so a barcode hit has to agree with this cover's
+          // ratio -- 1:25 on one side and not the other means it's the wrong
+          // cover, and the title match below decides instead.
+          const ratioOf = name => String(name || '').match(/\b1\s*:\s*(\d{1,4})\b/)?.[1] || '';
           for (const req of requests) {
             let found = null, lastError = '', via = '';
             if (req.upc.length === 17) {
@@ -14523,10 +14534,19 @@ async function routeRequest(request, env, ctx) {
                   const product = normalizePcProduct(data, data['product-name'] || '');
                   // PriceCharting can store several barcodes on one product.
                   const savedUpcs = String(data.upc || '').split(/[^0-9]+/).filter(Boolean);
-                  if (product.productId && /^comic books\b/i.test(product.consoleName || '') && savedUpcs.includes(req.upc)) { found = product; via = 'barcode'; break; }
+                  if (product.productId && /^comic books\b/i.test(product.consoleName || '') && savedUpcs.includes(req.upc)) {
+                    const wantRatio = req.cover ? comicCoverHint(req.cover).ratio : '';
+                    const gotRatio = ratioOf(product.productName);
+                    if (req.cover && wantRatio !== gotRatio) {
+                      lastError = 'This barcode is on PriceCharting as "' + product.productName + '", a different cover' + (gotRatio ? ' (1:' + gotRatio + ')' : '') + ' -- the publisher used one barcode for more than one cover';
+                      break;
+                    }
+                    found = product; via = 'barcode'; break;
+                  }
                 } catch (error) { lastError = String(error.message || error); }
               }
             }
+            const barcodeConflict = !found && /a different cover/.test(lastError) ? lastError : '';
             let ambiguous = [];
             if (!found && req.series && req.issue) {
               const issue = { seriesName: req.series, number: req.issue };
@@ -14540,9 +14560,9 @@ async function routeRequest(request, env, ctx) {
                 if (pick.product) { found = pick.product; via = 'title'; break; }
                 ambiguous = pick.candidates;
               }
-              if (!found && !lastError) lastError = ambiguous.length
+              if (!found && (!lastError || barcodeConflict)) lastError = (barcodeConflict ? barcodeConflict + '. ' : '') + (ambiguous.length
                 ? 'PriceCharting lists ' + req.series + ' #' + req.issue + ' but no single cover matched "' + (req.cover || 'Cover A') + '": ' + ambiguous.slice(0, 4).map(p => p.productName).join(' | ')
-                : 'No PriceCharting comic for ' + req.series + ' #' + req.issue + ' yet';
+                : 'No PriceCharting comic for ' + req.series + ' #' + req.issue + ' yet');
             }
             products[req.key] = found ? { ok: true, via, product: found } : { ok: false, error: lastError || 'No PriceCharting comic with this exact barcode yet' };
           }

@@ -68,7 +68,7 @@ function extractFn(name, prefix = 'function ') {
   return dashboard.slice(start, end);
 }
 
-function loadSync({ items, upcProducts = {}, batchProducts = {} }) {
+function loadSync({ items, upcProducts = {}, batchProducts = {}, catalog = null }) {
   const calls = { upc:[], batch:[], saves:[] };
   const storeWorkerFetch = async (path, init) => {
     const body = JSON.parse(init.body);
@@ -98,12 +98,22 @@ function loadSync({ items, upcProducts = {}, batchProducts = {} }) {
     extractFn('comicInventoryFullUpc'),
     extractFn('comicInventoryTitleHint'),
     extractFn('comicSyncedGuidePrice'),
+    dashboard.match(/const comicCoverNameKey = [^\n]+\n/)[0],
+    extractFn('comicBarcodesSharedByCovers'),
+    extractFn('comicSharedBarcodes', 'async function '),
     extractFn('buildLiveComicPriceSyncProposal', 'async function '),
     'return { build: buildLiveComicPriceSyncProposal, items: comicInventoryPriceSyncItems, summary: () => _priceSyncLastSummary };',
   ].join('\n');
-  const api = new Function('safeLocalJson', 'getInventoryEditOverrides', 'all', 'inventoryReferenceMarketPrice', 'isBigPriceChange', 'storeWorkerFetch', 'saveInventoryEdit', src)(
+  // The store's FOC catalog (comic_skus), read for barcodes shared by covers.
+  const sb = catalog ? { from:table => {
+    assert.equal(table, 'comic_skus');
+    const q = { select:() => q, eq:(k, v) => { assert.equal(k, 'store_id'); assert.equal(v, 'store-1'); return q; }, in:async (k, list) => { calls.catalog = list; return { data:catalog.filter(r => list.includes(r.upc)), error:null }; } };
+    return q;
+  } } : null;
+  const api = new Function('safeLocalJson', 'getInventoryEditOverrides', 'all', 'inventoryReferenceMarketPrice', 'isBigPriceChange', 'storeWorkerFetch', 'saveInventoryEdit', 'getSupabaseClient', 'getActiveStoreId', src)(
     () => [], () => ({}), items, i => Number(i.market || 0), (a, b) => Math.abs(b - a) >= 10, storeWorkerFetch,
     async (item, patch) => { calls.saves.push({ id:item.id, patch }); },
+    () => sb, () => 'store-1',
   );
   return { ...api, calls };
 }
