@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.10.10.4-orders-board-fix';
+const APP_VERSION = '2026.10.10.5-receive-labels';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -39330,6 +39330,25 @@ async function printLabelsForAcceptedBuy(){
   if(!items.length){ toast_dash('Could not find the new inventory items to label'); return; }
   openLabelPrintModal(null, items.map(labelBatchEntryFromItem));
 }
+
+// Store ask: "when I intake the comics with the slip, queue up labels for
+// all comics I just intook." FOC receiving (packing slip or RECEIVE
+// SHIPMENT) sends back which inventory rows got shelf copies and how many;
+// this opens the label printer with exactly those, one label per copy.
+async function queueLabelsForReceivedItems(labelItems = []){
+  const wanted = new Map();
+  (labelItems || []).forEach(x => {
+    const id = String(x?.itemId || ''), copies = Math.max(0, Math.floor(Number(x?.copies) || 0));
+    if(id && copies) wanted.set(id, (wanted.get(id) || 0) + copies);
+  });
+  if(!wanted.size) return 0;
+  await loadInventory();
+  const batch = (all || []).filter(i => wanted.has(String(i.id))).map(i => ({ ...labelBatchEntryFromItem(i), qty:wanted.get(String(i.id)) }));
+  if(!batch.length){ toast_dash('Could not find the received books to label -- try PRINT LABELS again in a moment'); return 0; }
+  openLabelPrintModal(null, batch);
+  return batch.reduce((n, b) => n + b.qty, 0);
+}
+window.queueLabelsForReceivedItems = queueLabelsForReceivedItems;
 
 function syncBuyConfirmCustomer(field, value){
   const inputId = field === 'customerPhone' ? 'bl-phone' : 'bl-customer';
