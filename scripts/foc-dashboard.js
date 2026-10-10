@@ -2263,15 +2263,16 @@ async function confirmSlipReceive(){
 // cover: eBay orders to ship (grouped by order), website preorders to hold
 // or ship, and pull-list customers to bag. Print it and tick books off.
 var pickState={cycleIds:[],covers:[],labelItems:[]};
-// Opens the label printer with the shelf copies just received; copies set
-// aside for website customers or eBay buyers aren't stickered.
+// Opens the label printer with the books just received: a price label per
+// shelf copy, and a flagged HOLD/SOLD label per copy that's already sold so
+// it's pulled instead of shelved.
 async function queueReceivedLabels(labelItems,summary){
   pickState.labelItems=labelItems||[];
   if(typeof window.queueLabelsForReceivedItems!=='function'||!pickState.labelItems.length)return;
   try{
     var n=await window.queueLabelsForReceivedItems(pickState.labelItems);
-    var setAside=(summary||[]).reduce(function(a,r){return a+Number(r.reservedForCustomers||0)+Number(r.reservedForEbayPresale||0);},0);
-    if(n)toast_dash(n+' label'+(n===1?'':'s')+' queued for the books going on the shelf'+(setAside?' ('+setAside+' set aside for customers/eBay not included)':''));
+    var sold=pickState.labelItems.reduce(function(a,x){return a+(x&&x.flag?Number(x.copies||0):0);},0);
+    if(n)toast_dash((n-sold)+' shelf label'+(n-sold===1?'':'s')+(sold?' + '+sold+' already-sold cop'+(sold===1?'y':'ies')+' flagged HOLD/SOLD':'')+' queued');
   }catch(e){toast_dash('Could not queue labels: '+e.message);}
 }
 function pickNoticeLine(list){

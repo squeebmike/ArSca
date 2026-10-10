@@ -20,7 +20,7 @@ const storefront = fs.readFileSync('storefront.html', 'utf8');
 // isn't simply a duplicate of that id) -- short enough to stay in the same
 // scannable range as the exact-match URLs that were already working fine.
 assert.match(dashboard, /function labelQrPayload\(batchEntry\)\{/, 'missing labelQrPayload helper');
-assert.match(dashboard, /const item = \(all \|\| \[\]\)\.find\(i => i\.id === batchEntry\.id\) \|\| batchEntry;/, 'labelQrPayload must look up the full live inventory item (batch entries are stripped-down snapshots without tcgPlayerUrl/category/etc.)');
+assert.match(dashboard, /const item = \(all \|\| \[\]\)\.find\(i => i\.id === \(batchEntry\.itemId \|\| batchEntry\.id\)\) \|\| batchEntry;/, 'labelQrPayload must look up the full live inventory item (batch entries are stripped-down snapshots without tcgPlayerUrl/category/etc.)');
 assert.match(dashboard, /const pricedByPriceCharting = key === 'comic' \|\| key === 'sports';/, 'must route comics/sports through PriceCharting and everything else through TCGPlayer');
 assert.match(dashboard, /if\(pricedByPriceCharting && \/\^https\?:\\\/\\\/\(www\\\.\)\?pricecharting\\\.com\\\/game\\\/\/i\.test\(pcUrl\)\)\{/, 'only a genuine /game/ PriceCharting product page counts -- the /search-products fallback must NOT be treated as a match');
 assert.match(dashboard, /const link = typeof buildTcgExternalLink === 'function' \? buildTcgExternalLink\(item\) : null;/, 'labelQrPayload must reuse the existing buildTcgExternalLink helper, not a separate implementation');
