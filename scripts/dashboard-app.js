@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.10.10.5-receive-labels';
+const APP_VERSION = '2026.10.10.6-flag-sold-copies';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -39335,15 +39335,36 @@ async function printLabelsForAcceptedBuy(){
 // all comics I just intook." FOC receiving (packing slip or RECEIVE
 // SHIPMENT) sends back which inventory rows got shelf copies and how many;
 // this opens the label printer with exactly those, one label per copy.
+// Copies already sold (a website preorder, an eBay presale buyer) come
+// with a flag -- "HOLD · Sean V." / "SOLD · EBAY BUYER" -- and get their own
+// labels carrying it, listed right after that book's shelf labels.
 async function queueLabelsForReceivedItems(labelItems = []){
-  const wanted = new Map();
+  const rows = [];
+  const shelfIndex = new Map();
   (labelItems || []).forEach(x => {
     const id = String(x?.itemId || ''), copies = Math.max(0, Math.floor(Number(x?.copies) || 0));
-    if(id && copies) wanted.set(id, (wanted.get(id) || 0) + copies);
+    if(!id || !copies) return;
+    const flag = String(x?.flag || '').trim().slice(0, 40);
+    if(!flag && shelfIndex.has(id)){ rows[shelfIndex.get(id)].copies += copies; return; }
+    if(!flag) shelfIndex.set(id, rows.length);
+    rows.push({ id, copies, flag });
   });
-  if(!wanted.size) return 0;
+  if(!rows.length) return 0;
   await loadInventory();
-  const batch = (all || []).filter(i => wanted.has(String(i.id))).map(i => ({ ...labelBatchEntryFromItem(i), qty:wanted.get(String(i.id)) }));
+  const byId = new Map((all || []).map(i => [String(i.id), i]));
+  const batch = [];
+  rows.forEach((r, n) => {
+    const item = byId.get(r.id);
+    if(!item) return;
+    const entry = labelBatchEntryFromItem(item);
+    batch.push(r.flag
+      ? { ...entry, id:r.id + '~flag' + n, itemId:r.id, badge:r.flag, soldFlag:r.flag, qty:r.copies, stockQty:r.copies }
+      : { ...entry, qty:r.copies });
+  });
+  // A book's flagged copies sit right after its shelf labels.
+  const order = new Map();
+  batch.forEach((b, n) => { const key = b.itemId || b.id; if(!order.has(key)) order.set(key, n); });
+  batch.sort((a, b) => (order.get(a.itemId || a.id) - order.get(b.itemId || b.id)) || (!!a.soldFlag - !!b.soldFlag));
   if(!batch.length){ toast_dash('Could not find the received books to label -- try PRINT LABELS again in a moment'); return 0; }
   openLabelPrintModal(null, batch);
   return batch.reduce((n, b) => n + b.qty, 0);
@@ -42733,7 +42754,7 @@ async function setLabelPrintPrice(itemId, rawVal){
   const prevPrice = entry.price;
   entry.price = val;
   renderLabelPrintBatchList();
-  const item = (all || []).find(i => i.id === itemId);
+  const item = (all || []).find(i => i.id === (entry.itemId || itemId));
   if(!item){ return; }
   try {
     await saveInventoryEdit(item, { listPrice:val, salePrice:val, displayPrice:val });
@@ -42754,7 +42775,7 @@ function renderLabelPrintBatchList(){
   if(!el) return;
   el.innerHTML = labelPrintBatch.length
     ? labelPrintBatch.map(b => `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 8px;border:1px solid var(--border);border-radius:6px">
-        <span style="font-size:11px;flex:1">${escHtml(b.name)}</span>
+        <span style="font-size:11px;flex:1">${b.soldFlag ? `<b style="color:var(--red);font-family:var(--font-mono);font-size:9px;margin-right:6px">${escHtml(b.soldFlag)}</b>` : ''}${escHtml(b.name)}</span>
         <input type="number" min="0" step="0.01" value="${b.price}" style="width:64px;font-family:monospace;font-size:9px" class="tsi" onchange="setLabelPrintPrice('${b.id}', this.value)">
         <input type="number" min="1" value="${b.qty}" style="width:50px;font-size:11px" class="tsi" title="Labels to print" onchange="setLabelPrintQty('${b.id}', this.value);renderLabelPrintBatchList()">${Number(b.stockQty) > 1 ? `<span style="font-size:9px;color:var(--dim);white-space:nowrap">/ ${Number(b.stockQty)} in stock</span>` : ''}
         <button class="hbtn danger" style="min-height:28px;padding:2px 8px;font-size:9px" onclick="removeFromLabelPrintBatch('${b.id}')">✕</button>
@@ -42792,7 +42813,7 @@ const fdLabelPrice$ = n => '$' + Math.round(Number(n || 0));
 function labelQrPayload(batchEntry){
   const sku = batchEntry.sku || batchEntry.id;
   try {
-    const item = (all || []).find(i => i.id === batchEntry.id) || batchEntry;
+    const item = (all || []).find(i => i.id === (batchEntry.itemId || batchEntry.id)) || batchEntry;
     const key = typeof qplCategoryKey === 'function' ? qplCategoryKey(item.category || '') : '';
     const pricedByPriceCharting = key === 'comic' || key === 'sports';
     const pcUrl = item.providerUrl || '';

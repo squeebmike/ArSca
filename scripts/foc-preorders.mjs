@@ -2607,6 +2607,12 @@ export function focReceivedComicDetail(sku,family){
   };
 }
 
+// "Sean Vanoverbeke" -> "Sean V." for a hold label on the bag.
+export function shortCustomerName(name){
+  const parts=String(name||'').trim().split(/\s+/).filter(Boolean);
+  if(!parts.length)return '';
+  return parts.length===1?parts[0]:parts[0]+' '+parts[parts.length-1][0].toUpperCase()+'.';
+}
 async function receiveShipment(request,env,deps){
   const limited=await deps.readJsonWithLimit(request,32*1024);if(limited.error)return limited.error;
   const body=limited.data||{};const storeId=text(body.storeId,80),cycleId=text(body.cycleId,80);
@@ -2621,7 +2627,7 @@ async function receiveShipment(request,env,deps){
   const familyIds=[...new Set((skuRows||[]).map(row=>row.family_id).filter(Boolean))];
   const { data:familyRows }=familyIds.length?await db(`comic_title_families?id=${inFilter(familyIds)}&select=*`):{data:[]};
   const familyById=new Map((familyRows||[]).map(row=>[row.id,row]));
-  const { data:paidItems }=await db(`foc_preorder_items?cycle_id=eq.${encodeURIComponent(cycleId)}&sku_id=${inFilter(ids)}&status=eq.committed&select=id,sku_id,order_id,quantity,created_at,order:foc_preorder_orders(id,status,fulfillment_method)`);
+  const { data:paidItems }=await db(`foc_preorder_items?cycle_id=eq.${encodeURIComponent(cycleId)}&sku_id=${inFilter(ids)}&status=eq.committed&select=id,sku_id,order_id,quantity,created_at,order:foc_preorder_orders(id,status,fulfillment_method,customer_name)`);
   // eBay presale placeholder rows (created by /foc/ebay/create-presale)
   // that have already sold are a fulfillment obligation too, exactly like a
   // paid website preorder -- just tracked as a count on the placeholder row
@@ -2753,11 +2759,13 @@ async function receiveShipment(request,env,deps){
     // silently look fully fulfilled and their order could wrongly flip to
     // ready_for_pickup below while they're still short a copy.
     let reserveRemaining=receivedQty;
+    const holds=[];
     const sortedPaid=(paidItems||[]).filter(item=>item.sku_id===sku.id&&item.order?.status==='paid').sort((a,b)=>new Date(a.created_at)-new Date(b.created_at));
     for(const item of sortedPaid){
       const need=Number(item.quantity||0);
       if(need<=0||need>reserveRemaining)continue;
       reserveRemaining-=need;
+      holds.push({name:item.order?.customer_name||'',copies:need});
       await db(`foc_preorder_items?id=eq.${item.id}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({status:'received'})});
     }
     // eBay presale sales are a fulfillment obligation too -- reserved next,
@@ -2787,6 +2795,15 @@ async function receiveShipment(request,env,deps){
     const presaleCopies=livePresale&&presaleAvailable>0?Math.min(receivedQty,presaleAvailable):0;
     if(presaleCopies&&shelfLeft>0){const n=Math.min(shelfLeft,presaleCopies);labelItems.push({itemId:livePresale.id,skuId:sku.id,copies:n});shelfLeft-=n;}
     if(inserted?.[0]?.id&&shelfLeft>0)labelItems.push({itemId:inserted[0].id,skuId:sku.id,copies:shelfLeft});
+    // Store ask: "it should also flag the already sold books in that order."
+    // Copies already sold get their own labels, flagged, so they're pulled
+    // instead of shelved: one per website customer by name, and the eBay
+    // presale buyers' copies together.
+    const flagRowId=inserted?.[0]?.id||livePresale?.id||'';
+    if(flagRowId){
+      for(const h of holds)labelItems.push({itemId:flagRowId,skuId:sku.id,copies:h.copies,flag:'HOLD · '+(shortCustomerName(h.name)||'WEBSITE PREORDER')});
+      if(reservedForEbay>0)labelItems.push({itemId:flagRowId,skuId:sku.id,copies:reservedForEbay,flag:'SOLD · EBAY BUYER'});
+    }
   }
   // An order is ready to hand over once every item on it has arrived and
   // been reserved -- flips paid orders to ready_for_pickup (nothing further
