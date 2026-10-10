@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.10.10.2-shared-barcodes';
+const APP_VERSION = '2026.10.10.3-keep-item-source';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -13890,7 +13890,12 @@ function builtInDataFromItem(item, updates={}){
     grade:updates.comic_grade ?? updates.grade ?? item.grade ?? '',
     is_rookie:!!(updates.is_rookie ?? item.is_rookie ?? item.isRookie),
     priceUsed:Number(updates.priceUsed ?? item.priceUsed ?? updates.market ?? item.market ?? 0),
-    source:'built_in',
+    // data.source says where the item came from (foc_receive, foc_presale,
+    // dropship_import...), and FOC receiving, sell-through and the presale
+    // -> in-stock switch all read it. Every edit used to overwrite it with
+    // 'built_in', so a price change or a printed sticker made a received
+    // book look hand-added and a presale stop converting.
+    source:item.raw?.source || 'built_in',
     appVersion:APP_VERSION,
     updatedAt:new Date().toISOString(),
   };
