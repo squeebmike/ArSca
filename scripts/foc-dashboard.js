@@ -2144,8 +2144,37 @@ async function handleSlipFiles(event){
     }
     state.slip=d;
     state.slip.picks={};state.slip.qtys={};
+    if(status) status.textContent='Looking up who these books are for…';
+    await loadSlipBuyers(d);
     renderSlip();
   }catch(e){ if(status){ status.style.color='var(--red)'; status.textContent=e.message; } else toast_dash(e.message); }
+}
+// Who each book on the slip is already sold or promised to -- the same
+// list as the PICK LIST, so names show while checking the slip instead of
+// only after receiving. Best effort: the slip still works without it.
+async function loadSlipBuyers(slip){
+  slip.who={};
+  var ids=(slip.cycles||[]).map(function(c){return c.id;}).filter(Boolean);
+  if(!ids.length)return;
+  try{
+    var r=await api('/foc/admin/pick-list?store_id='+encodeURIComponent(getActiveStoreId())+'&cycle_ids='+encodeURIComponent(ids.join(',')));
+    (r.covers||[]).forEach(function(c){slip.who[c.skuId]=c;});
+  }catch(e){console.warn('[FOC SLIP] Buyer lookup skipped',e.message);}
+}
+function slipBuyersHtml(who){
+  if(!who)return '';
+  var rows=[];
+  (who.ebay||[]).forEach(function(e){
+    rows.push('<div><b style="color:var(--blue,#5ab0ff)">SOLD on eBay</b> · '+esc(e.buyer||'order '+e.orderId)+(e.buyer?' <span style="color:var(--dim)">(order '+esc(e.orderId)+')</span>':'')+' · '+e.qty+' · SHIP'+(e.shipped?' · <span style="color:var(--g)">label bought</span>':'')+'</div>');
+  });
+  (who.website||[]).forEach(function(w){
+    rows.push('<div><b style="color:var(--purple)">SOLD on website</b>'+(w.orderNumber?' #'+esc(w.orderNumber):'')+' · '+esc(w.name)+' · '+w.qty+' · '+(w.method==='pickup'?'HOLD FOR PICKUP':'SHIP')+'</div>');
+  });
+  (who.pull||[]).forEach(function(p){
+    rows.push('<div><b style="color:var(--g)">Pull list</b> · '+esc(p.name)+' · set one aside</div>');
+  });
+  if(!rows.length)return '';
+  return '<div style="font:9px/1.6 var(--font-mono);color:var(--text);margin-top:4px;padding:4px 6px;border-left:2px solid var(--gold);background:rgba(255,200,0,.06)">'+rows.join('')+'</div>';
 }
 function slipLineKey(l){ return l.code||l.title; }
 function slipIncluded(l){ var k=slipLineKey(l); return state.slip.picks[k]!=null?state.slip.picks[k]:!!(l.cover&&!l.cover.receivedAt); }
@@ -2164,7 +2193,7 @@ function slipLineHtml(l){
     '<input type="checkbox"'+(slipIncluded(l)?' checked':'')+' onchange="focSlipPick(\''+k+'\',this.checked)">'+focThumbHtml(c.coverImage,c.title)+
     '<div style="min-width:0"><div style="font-weight:700;font-size:11px;color:var(--text)">'+esc(c.title)+'</div>'+
       '<div style="font:9px/1.5 var(--font-mono);color:var(--dim)">Slip: '+esc(l.title)+' · '+esc(l.code)+(l.netUnitPrice>0?' · net $'+Number(l.netUnitPrice).toFixed(2):'')+'</div>'+
-      '<div style="font:9px/1.5 var(--font-mono);display:flex;gap:8px;flex-wrap:wrap">'+chips.join('')+'</div></div>'+
+      '<div style="font:9px/1.5 var(--font-mono);display:flex;gap:8px;flex-wrap:wrap">'+chips.join('')+'</div>'+slipBuyersHtml((state.slip.who||{})[c.skuId])+'</div>'+
     '<label style="font:8px var(--font-mono);color:var(--dim)">RECEIVED<input class="tsi" type="number" min="0" style="width:64px;margin:2px 0 0" value="'+qty+'" onchange="focSlipQty(\''+k+'\',this.value)"></label></div>';
 }
 function renderSlip(){
@@ -2204,7 +2233,7 @@ function slipPresoldSummary(lines){
   var ebay=0,ship=0,pickup=0;
   lines.forEach(function(l){ebay+=Number(l.cover.ebayPresold||0);ship+=Number(l.cover.customerShip||0);pickup+=Number(l.cover.customerPickup||0);});
   if(!ebay&&!ship&&!pickup)return '';
-  return '<div style="margin-top:6px;color:var(--text)"><b>PRESOLD (already counted as sales -- just fulfil):</b> '+[ebay?ebay+' eBay cop'+(ebay===1?'y':'ies')+' to pack &amp; ship':'',ship?ship+' website cop'+(ship===1?'y':'ies')+' to ship':'',pickup?pickup+' for in-store pickup':''].filter(Boolean).join(' · ')+'</div>';
+  return '<div style="margin-top:6px;color:var(--text)"><b>ALREADY SOLD (the sale was recorded when they bought -- receiving sets these copies aside for them, it doesn\'t sell them again):</b> '+[ebay?ebay+' eBay cop'+(ebay===1?'y':'ies')+' to pack &amp; ship':'',ship?ship+' website cop'+(ship===1?'y':'ies')+' to ship':'',pickup?pickup+' for in-store pickup':''].filter(Boolean).join(' · ')+'</div>';
 }
 function focSlipPick(key,on){ state.slip.picks[key]=!!on; renderSlip(); }
 function focSlipQty(key,value){ state.slip.qtys[key]=Math.max(0,parseInt(value,10)||0); renderSlip(); }
