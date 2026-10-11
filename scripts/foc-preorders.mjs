@@ -1772,7 +1772,7 @@ async function notifyOrdersReady(env,deps,db,storeId,orderIds,staffUserId){
 // Everything owed out of one or more cycles' books, per cover: website
 // preorders, eBay presale orders (grouped by eBay order, with the books in
 // that order that aren't in this shipment), and pull-list customers.
-export function buildPickList({skus=[],families=[],preorderItems=[],presaleRows=[],ebayLines=[],orderLines=[],labelled=new Set(),pullSubs=[],notified=new Set()}){
+export function buildPickList({skus=[],families=[],preorderItems=[],presaleRows=[],ebayLines=[],orderLines=[],labelled=new Set(),pullSubs=[],notified=new Set(),ebayBuyers=new Map()}){
   const famById=new Map(families.map(f=>[f.id,f]));
   const skuIds=new Set(skus.map(s=>s.id));
   const rowSku=new Map();
@@ -1792,7 +1792,7 @@ export function buildPickList({skus=[],families=[],preorderItems=[],presaleRows=
       const c=covers.get(skuId);if(!c)continue;
       const others=(orderBooks.get(orderId)||[]).filter(b=>b.itemId!==l.item_id);
       const waitingOn=others.filter(b=>!presaleIds.has(b.itemId)||!(rowSku.get(b.itemId)||[]).some(id=>skuIds.has(id))).map(b=>b.title);
-      c.ebay.push({orderId,qty:Math.max(1,Number(l.quantity||1)),soldAt:l.created_at,shipped:labelled.has(orderId),alsoInOrder:others.map(b=>b.title),waitingOn});
+      c.ebay.push({orderId,buyer:ebayBuyers.get(orderId)||'',qty:Math.max(1,Number(l.quantity||1)),soldAt:l.created_at,shipped:labelled.has(orderId),alsoInOrder:others.map(b=>b.title),waitingOn});
     }
   }
   const subsBySeries=new Map();
@@ -1841,7 +1841,27 @@ async function adminPickList(request,env,deps,url){
       .concat((pullSubs||[]).map(s=>`foc-arrival-notified:${s.id}:${cycleIds.join('+')}`));
     for(const k of keys.slice(0,200)){try{if(await env.LBA_KV.get(k))notified.add(k.split(':')[1]);}catch(_){}}
   }
-  return deps.json({ok:true,covers:buildPickList({skus:skus||[],families:families||[],preorderItems:preorderItems||[],presaleRows:presaleRows||[],ebayLines,orderLines:orderLines||[],labelled,pullSubs:pullSubs||[],notified})});
+  const ebayBuyers=await ebayBuyerNames(env,deps,sources.map(s=>String(s).replace(/^ebay:/,'')));
+  return deps.json({ok:true,covers:buildPickList({skus:skus||[],families:families||[],preorderItems:preorderItems||[],presaleRows:presaleRows||[],ebayLines,orderLines:orderLines||[],labelled,pullSubs:pullSubs||[],notified,ebayBuyers})});
+}
+// Who each eBay order is going to (ship-to name, else their eBay user
+// name). Sales only keep the order number, so ask eBay; best effort --
+// without it the pick list just shows the order number as before.
+async function ebayBuyerNames(env,deps,orderIds){
+  const names=new Map();
+  const ids=[...new Set(orderIds.filter(id=>/^[\w-]{5,40}$/.test(id)))];
+  if(!ids.length||!deps.getEbayUserAccessToken)return names;
+  let token='';try{token=await deps.getEbayUserAccessToken(env);}catch(_){}
+  if(!token)return names;
+  for(let i=0;i<ids.length&&i<200;i+=50){
+    try{
+      const res=await fetch('https://api.ebay.com/sell/fulfillment/v1/order?orderIds='+encodeURIComponent(ids.slice(i,i+50).join(',')),{headers:{Authorization:'Bearer '+token},signal:AbortSignal.timeout(6000)});
+      if(!res.ok)break;
+      const data=await res.json();
+      for(const o of data.orders||[]){const n=text(o.fulfillmentStartInstructions?.[0]?.shippingStep?.shipTo?.fullName||o.buyer?.username,80);if(n)names.set(String(o.orderId),n);}
+    }catch(_){break;}
+  }
+  return names;
 }
 // One-tap "your books are in" for pull-list customers (matched by series
 // name, so staff confirm who gets it) or a website order to re-send.

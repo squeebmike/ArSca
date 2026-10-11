@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.10.10.8-split-payment';
+const APP_VERSION = '2026.10.11.1-phone-match-slip-buyers';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -6963,8 +6963,7 @@ async function processSyncItem(item){
     const { contact, name, saleId, points, storeId } = item.payload;
     const isEmail = String(contact || '').includes('@');
     const field = isEmail ? 'email' : 'phone';
-    const { data: existing, error: findErr } = await sb.from('customers').select('id').eq('store_id', storeId).eq(field, contact).maybeSingle();
-    if(findErr) throw findErr;
+    const existing = await findStoreCustomerRemote(sb, storeId, contact);
     let customerId = existing?.id;
     if(!customerId) {
       const { data: created, error: createErr } = await sb.from('customers').insert({ id:makeUuid('cust'), store_id:storeId, name, [field]:contact, loyalty_points_balance:0 }).select('id').single();
@@ -7305,10 +7304,45 @@ async function loadCustomersFromSupabase(force){
   return customersCache;
 }
 
-function findCustomerByContact(contact){
+// Phones get typed every which way -- "(360) 535-0308", "13605350308",
+// "+1 360 535 0308" -- so they compare on the last 10 digits (same as the
+// worker's normalizePhoneDigits); an exact string compare missed a website
+// customer saved as 13605350308 when checkout typed 3605350308, and made a
+// blank duplicate that took the sale's points. Emails ignore case.
+function customerPhoneKey(phone){ return String(phone || '').replace(/\D/g, '').slice(-10); }
+function customerMatchesContact(customer, contact){
   const key = String(contact || '').trim().toLowerCase();
-  if(!key) return null;
-  return customersCache.find(c => (c.phone || '').toLowerCase() === key || (c.email || '').toLowerCase() === key) || null;
+  if(!key || !customer) return false;
+  if(key.includes('@')) return String(customer.email || '').trim().toLowerCase() === key;
+  const digits = customerPhoneKey(key);
+  return digits.length >= 7 && customerPhoneKey(customer.phone) === digits;
+}
+// More than one match (an old duplicate): the record tied to a website
+// account wins, then the one holding the most points.
+function pickCustomerMatch(list, contact){
+  const hits = (list || []).filter(c => customerMatchesContact(c, contact));
+  hits.sort((a, b) => (!!b.linked_user_id - !!a.linked_user_id) || (Number(b.loyalty_points_balance || 0) - Number(a.loyalty_points_balance || 0)));
+  return hits[0] || null;
+}
+async function findStoreCustomerRemote(sb, storeId, contact){
+  const key = String(contact || '').trim();
+  if(!sb || !storeId || !key) return null;
+  let query = sb.from('customers').select('*').eq('store_id', storeId);
+  if(key.includes('@')) query = query.ilike('email', key.replace(/[\\%_]/g, m => '\\' + m));
+  else {
+    const digits = customerPhoneKey(key);
+    if(digits.length < 7) return null;
+    // Any format ends in the same last 4 digits; narrow on those, then
+    // compare properly.
+    query = query.like('phone', '%' + digits.slice(-4));
+  }
+  const { data, error } = await query.limit(50);
+  if(error) throw error;
+  return pickCustomerMatch(data, key);
+}
+
+function findCustomerByContact(contact){
+  return pickCustomerMatch(customersCache, contact);
 }
 
 function saveCustomerLocal(entry){
@@ -41462,9 +41496,7 @@ async function lookupLoyaltyBalanceForRedeem(){
     const sb = getSupabaseClient();
     const storeId = getActiveStoreId();
     if(!sb || !storeId) throw new Error('Cloud connection required to redeem points');
-    const isEmail = contact.includes('@');
-    const { data, error } = await sb.from('customers').select('id,name,loyalty_points_balance').eq('store_id', storeId).eq(isEmail ? 'email' : 'phone', contact).maybeSingle();
-    if(error) throw error;
+    const data = await findStoreCustomerRemote(sb, storeId, contact);
     const balance = Number(data?.loyalty_points_balance || 0);
     if(!data || balance <= 0) {
       resultEl.innerHTML = `<div style="text-align:center;color:var(--dim);font-family:var(--font-mono);font-size:11px">${data ? escHtml(data.name || 'Customer') + ' has no points to redeem' : 'No customer found with that phone/email'}</div>`;
@@ -41818,6 +41850,13 @@ async function accrueLoyaltyForContact(contact, name, saleId, total){
   const storeId = getActiveStoreId();
   if(!contact || !storeId) return;
   try {
+    // The local list may not hold this customer yet (never loaded on this
+    // device, or they signed up on the website since) -- ask the database
+    // first so a returning customer is never saved as a new blank one.
+    if(!findCustomerByContact(contact)) {
+      try { const remote = await findStoreCustomerRemote(getSupabaseClient(), storeId, contact); if(remote) saveCustomerLocal(remote); }
+      catch(lookupError) { console.warn('[LOYALTY] Customer lookup deferred', lookupError.message); }
+    }
     const customer = await upsertCustomer(name || 'Customer', contact, '', 'checkout');
     if(!customer?.id) throw new Error('Customer save failed');
     const sb = getSupabaseClient();
