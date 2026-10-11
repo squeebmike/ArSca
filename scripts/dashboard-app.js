@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.10.11.1-phone-match-slip-buyers';
+const APP_VERSION = '2026.10.11.2-saved-price-age';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -34603,6 +34603,16 @@ function pokemonPriceTrackerApiSettings(){
   };
 }
 
+// When these prices were really fetched from PokemonPriceTracker -- the
+// worker's cache returns the original fetch time, so a cached or stale
+// answer is never dated "now".
+function pokemonPriceTrackerResult(data, requestPath, pathLabel){
+  const fetchedAt = data.cache?.cachedAt || new Date().toISOString();
+  const cards = pokemonPriceTrackerCardsFromPayload(data).slice(0, 20);
+  cards.forEach(card => { if(card && typeof card === 'object' && !card.fetchedAt) card.fetchedAt = fetchedAt; });
+  return { data, cards, requestPath, pathLabel, fetchedAt, cacheStatus:data.cache?.state === 'hit' ? 'hit' : data.cache?.state === 'stale' ? 'stale' : 'miss' };
+}
+
 async function pokemonPriceTrackerCardsRequest(params, pathLabel, { fresh = false, signal = null } = {}){
   if(fresh) params.set('fresh', 'true');
   const requestPath = '/pricing/pokemon/cards?' + params.toString().replace(/\+/g, '%20');
@@ -34630,7 +34640,7 @@ async function pokemonPriceTrackerCardsRequest(params, pathLabel, { fresh = fals
     err.retryAt = data.retryAt || '';
     throw err;
   }
-  return { data, cards:pokemonPriceTrackerCardsFromPayload(data).slice(0, 20), requestPath, pathLabel, cacheStatus:data.cache?.state === 'hit' ? 'hit' : data.cache?.state === 'stale' ? 'stale' : 'miss' };
+  return pokemonPriceTrackerResult(data, requestPath, pathLabel);
 }
 
 async function pokemonPriceTrackerSealedProductsRequest(params, pathLabel, { fresh = false, signal = null } = {}){
@@ -34658,7 +34668,7 @@ async function pokemonPriceTrackerSealedProductsRequest(params, pathLabel, { fre
     err.retryAt = data.retryAt || '';
     throw err;
   }
-  return { data, cards:pokemonPriceTrackerCardsFromPayload(data).slice(0, 20), requestPath, pathLabel, cacheStatus:data.cache?.state === 'hit' ? 'hit' : data.cache?.state === 'stale' ? 'stale' : 'miss' };
+  return pokemonPriceTrackerResult(data, requestPath, pathLabel);
 }
 
 // Expand common Pokemon rarity abbreviations before sending to PPT API
@@ -34845,8 +34855,15 @@ function pokemonPriceTrackerQuotaBlocked(){
   return false;
 }
 
+// When a card's prices were actually fetched -- never the time a saved copy
+// was loaded or re-saved on this device. Saving used to restamp the copy
+// with "now", so a device kept showing (and trusting) a weeks-old price as
+// fresh: old NM price, no LP/MP/HP, and it never refreshed.
+function pokemonCardFetchedAt(card = null){
+  return card?.fetchedAt || card?.prices?.lastUpdated || card?.lastUpdated || '';
+}
 function pokemonPriceCacheFresh(card = null){
-  const stamp = card?.cache?.updatedAt || card?.prices?.lastUpdated || card?.lastUpdated || card?.updatedAt || '';
+  const stamp = card?.fetchedAt || card?.cache?.updatedAt || card?.prices?.lastUpdated || card?.lastUpdated || card?.updatedAt || '';
   if(!stamp) return false;
   return Date.now() - new Date(stamp).getTime() < 24 * 60 * 60 * 1000;
 }
@@ -35109,7 +35126,7 @@ function pokemonPriceTrackerCardToQplRow(card = {}, query = qplLastSearch, parse
     matchWhy:['PokemonPriceTracker exact', card.lookupDebug?.path || 'exact resolver'].filter(Boolean),
     pokemonPriceTracker:card,
     pokemonPriceTrackerLastUpdated:prices.lastUpdated || card.lastUpdated || '',
-    cache:{ state:card.lookupDebug?.cache === 'hit' ? 'cached' : 'live', updatedAt:new Date().toISOString(), source:'PokemonPriceTracker', cardKey:card.tcgPlayerId ? 'pokemon:' + card.tcgPlayerId : pokemonCardKey(card, query) },
+    cache:{ state:card.lookupDebug?.hydratedFromCache || card.lookupDebug?.cache === 'hit' || (card.fetchedAt && !pokemonPriceCacheFresh(card)) ? 'cached' : 'live', updatedAt:pokemonCardFetchedAt(card) || new Date().toISOString(), source:'PokemonPriceTracker', cardKey:card.tcgPlayerId ? 'pokemon:' + card.tcgPlayerId : pokemonCardKey(card, query) },
     lookupDebug:card.lookupDebug || {},
     raw:card,
   };
@@ -35207,7 +35224,7 @@ async function applyResolvedPokemonCardToRow(row, idx, card, rerender = true){
   row.tcgplayerId = row.tcgPlayerId || row.tcgplayerId || '';
   row.tcgPlayerUrl = card.tcgPlayerUrl || row.tcgPlayerUrl || row.tcgUrl || '';
   row.tcgUrl = row.tcgPlayerUrl || row.tcgUrl || '';
-  row.cache = { state:'cached', updatedAt:new Date().toISOString(), source:'PokemonPriceTracker' };
+  row.cache = { state:card.lookupDebug?.hydratedFromCache ? 'cached' : 'live', updatedAt:pokemonCardFetchedAt(card) || new Date().toISOString(), source:'PokemonPriceTracker' };
   applyQplSelectedVariant(row);
   await cachePokemonPriceTrackerCard(row, card).catch(() => {});
   await savePokemonCompsFromRow(row, row.cache?.cardKey || pokemonCardKey(row, qplLastSearch)).catch(() => {});
@@ -35217,7 +35234,7 @@ async function applyResolvedPokemonCardToRow(row, idx, card, rerender = true){
 async function hydratePokemonPriceTrackerPricing(idx, rerender = true){
   const row = qplResults[idx];
   if(!row || !isPokemonChartCandidate(row)) return;
-  if(row.pokemonPriceTracker?.lookupDebug?.exactHydrated) {
+  if(row.pokemonPriceTracker?.lookupDebug?.exactHydrated && (pokemonPriceCacheFresh(row.pokemonPriceTracker) || !navigator.onLine || pokemonPriceTrackerQuotaBlocked())) {
     applyQplSelectedVariant(row);
     if(rerender) updateQplResultCard(idx);
     return;
@@ -35228,7 +35245,7 @@ async function hydratePokemonPriceTrackerPricing(idx, rerender = true){
     const cached = await cachedPokemonPriceTrackerCard(row);
     if(cached && !row.pokemonPriceTracker) {
       row.pokemonPriceTracker = cached;
-      row.cache = row.cache || { state:navigator.onLine ? 'cached' : 'offline', updatedAt:cached.prices?.lastUpdated || cached.lastUpdated || new Date().toISOString(), source:'PokemonPriceTracker' };
+      row.cache = row.cache || { state:navigator.onLine ? 'cached' : 'offline', updatedAt:pokemonCardFetchedAt(cached), source:'PokemonPriceTracker' };
       applyQplSelectedVariant(row);
       if(rerender) updateQplResultCard(idx);
     }
@@ -35310,7 +35327,7 @@ function hydrateVisiblePokemonPriceTrackerResults(indexes = []){
   const HYDRATE_STAGGER_MS = 350;
   const candidates = indexes.filter(i => {
     const r = qplResults[i];
-    return r && isPokemonChartCandidate(r) && !r._pptHydrating && !r.pokemonPriceTracker?.lookupDebug?.exactHydrated;
+    return r && isPokemonChartCandidate(r) && !r._pptHydrating && !(r.pokemonPriceTracker?.lookupDebug?.exactHydrated && pokemonPriceCacheFresh(r.pokemonPriceTracker));
   }).slice(0, HYDRATE_LIMIT);
   if(!candidates.length) return;
   (async () => {
@@ -37137,14 +37154,23 @@ function updateRefreshBtn(idx, state){
 // Helper: stale/cached/live badge HTML for a result row
 function _qplStaleBadge(r){
   if(!r || qplResultCategoryKey(r) !== 'pokemon') return '';
-  const stamp = r.pokemonPriceTrackerLastUpdated || r.cache?.updatedAt || '';
-  if(!stamp) return '';
-  const isFresh = pokemonPriceCacheFresh({ cache:{ updatedAt:stamp } });
-  const isLive  = r.pokemonPriceTracker?.lookupDebug?.hydratedFromCache === false
-               || r.cache?.state === 'live';
-  if(isLive) return `<span class="qpl-badge live-updated">LIVE</span>`;
-  if(isFresh) return `<span class="qpl-badge warn">CACHED · ${escHtml(pokemonCacheAgeLabel(stamp))}</span>`;
-  return `<span class="qpl-badge stale">STALE · ${escHtml(pokemonCacheAgeLabel(stamp))}</span>`;
+  const state = pokemonQplPriceAgeState(r);
+  if(!state) return '';
+  if(state.live) return `<span class="qpl-badge live-updated">LIVE</span>`;
+  return `<span class="qpl-badge ${state.fresh ? 'warn' : 'stale'}">${escHtml(state.label)}</span>`;
+}
+// How old the price on a lookup row really is: when it was fetched (a
+// saved copy keeps its original fetch time), else the provider's own
+// update time.
+function pokemonQplPriceAgeState(r){
+  if(!r?.cache && !r?.pokemonPriceTracker) return null;
+  const stamp = r.pokemonPriceTracker?.fetchedAt || r.cache?.updatedAt || r.pokemonPriceTrackerLastUpdated || '';
+  const live = r.pokemonPriceTracker?.lookupDebug?.hydratedFromCache === false || r.cache?.state === 'live';
+  const fresh = !!stamp && pokemonPriceCacheFresh({ cache:{ updatedAt:stamp } });
+  if(live) return { live:true, fresh:true, stamp, label:'LIVE' };
+  const day = stamp ? new Date(stamp).toLocaleDateString('en-US', { month:'short', day:'numeric' }) : '';
+  const label = fresh ? 'SAVED · ' + pokemonCacheAgeLabel(stamp) : stamp ? 'SAVED PRICE · ' + day + ' -- tap REFRESH' : 'SAVED PRICE · date unknown -- tap REFRESH';
+  return { live:false, fresh, stamp, label };
 }
 
 // Bypass IndexedDB cache and fetch a fresh live price for one card
@@ -37519,16 +37545,14 @@ async function selectQuickLookupResult(idx){
         </div>
         ${(() => {
           if(!r.cache) return '';
-          const stamp = r.pokemonPriceTrackerLastUpdated || r.cache.updatedAt || '';
+          const age = pokemonQplPriceAgeState(r);
+          if(!age) return '';
           const isOffline = r.cache.state === 'offline';
-          const isLive = r.cache.state === 'live' || r.pokemonPriceTracker?.lookupDebug?.hydratedFromCache === false;
-          const isFresh = pokemonPriceCacheFresh({ cache:{ updatedAt:stamp } });
-          const isStale = !isFresh && !isLive && !!stamp;
-          const badgeCls = isLive ? 'live-updated' : isStale ? 'stale' : 'warn';
-          const badgeLbl = isLive ? 'LIVE' : isOffline ? 'Offline Cached' : isStale ? 'STALE' : 'CACHED';
+          const badgeCls = age.live ? 'live-updated' : age.fresh ? 'warn' : 'stale';
+          const badgeLbl = age.live ? 'LIVE' : isOffline ? 'OFFLINE · ' + age.label : age.label;
           return `<div class="qpl-badges" style="flex-wrap:wrap;gap:5px;margin-bottom:6px">
             <span class="qpl-badge ${badgeCls}">${escHtml(badgeLbl)}</span>
-            ${stamp ? `<span class="qpl-badge">${escHtml('Updated ' + pokemonCacheAgeLabel(stamp))}</span>` : ''}
+            ${age.stamp ? `<span class="qpl-badge">${escHtml('Prices from ' + pokemonCacheAgeLabel(age.stamp))}</span>` : ''}
           </div>`;
         })()}
         <button class="hbtn ppt-refresh-btn ppt-refresh-btn-wide" data-qpl-idx="${idx}" onclick="refreshResearchPrice(${idx})" title="Refresh this item from its best current price source">↻ REFRESH PRICE</button>
