@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.10.12.8-typed-price-ceiling-filters';
+const APP_VERSION = '2026.10.12.9-price-lock';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -15661,7 +15661,7 @@ function renderInventoryHealthPanel(){
   const h = inventoryHealthSummary(all);
   const cards = [
     ['needs_sticker','Needs Sticker',h.needsSticker,'no price sticker printed'],
-    ['typed_price','Typed Price',h.typedPrice,'list price locked as typed'],
+    ['typed_price','Locked Price',h.typedPrice,'exact price, syncs skip it'],
     ['has_ceiling','Has Ceiling',h.hasCeiling,'capped at a max price'],
     ['no_photo','No Photo',h.noPhoto,'needs item image'],
     ['no_config','No Product Type',h.noConfig,'needs Single/Booster/etc'],
@@ -16389,8 +16389,8 @@ function inventoryMatchesFlag(i, flag){
   if(i.status !== 'in_stock') return false; // every other flag was always in-stock-only, same as before
   if(flag === 'no_photo') return !inventoryImageUrl(i);
   if(flag === 'needs_sticker') return inventoryNeedsSticker(i);
-  // A List / Sale Price typed apart from market (or a markdown): kept as
-  // typed, price syncs only move Market. 0 = follows market.
+  // Locked price (LOCK on the edit screen, a markdown, or a supplies
+  // import): kept exactly, price syncs only move Market. 0 = follows market.
   if(flag === 'typed_price') return inventoryPriceOverride(i) > 0;
   if(flag === 'has_ceiling') return inventoryCeilingPrice(i) > 0;
   if(flag === 'no_config') return !i.configuration;
@@ -16481,7 +16481,7 @@ function renderTable(){
       <td><span class="sc2">${escHtml([i.set,i.variant].filter(Boolean).join(' · ')||'—')}</span><div class="sc2" style="margin-top:5px">${escHtml([i.year,i.condition,i.location].filter(Boolean).join(' · '))}</div>${comicPeople?`<div class="sc2" style="margin-top:5px;color:var(--purple)">${escHtml(comicPeople)}</div>`:''}</td>
       <td><span class="ct ${cat}">${i.category}</span></td>
       <td style="text-align:center;font-family:var(--font-mono);font-size:11px;color:${(i.qty||1)>1?'var(--g)':'var(--dim)'}">${inventoryIsDropship(i)?'Supplier':(i.qty||1)}</td>
-      <td class="pp pm">${money.list>0?fd$(money.list):(money.market>0?fd$(money.market):'—')}<br>${money.list>0&&money.market>0?`<span style="font-family:var(--font-mono);font-size:8px;color:var(--dim)">MKT ${fd$(money.market)}</span><br>`:''}${priceSourceBadge(i.priceSource, i.category)}${stale?'<br><span class="inv-warning-pill">STALE</span>':''}</td>
+      <td class="pp pm">${money.list>0?fd$(money.list):(money.market>0?fd$(money.market):'—')}${inventoryPriceOverride(i)>0?'<span class="inv-lock" title="Price locked -- price syncs leave it alone">🔒</span>':''}<br>${money.list>0&&money.market>0?`<span style="font-family:var(--font-mono);font-size:8px;color:var(--dim)">MKT ${fd$(money.market)}</span><br>`:''}${priceSourceBadge(i.priceSource, i.category)}${stale?'<br><span class="inv-warning-pill">STALE</span>':''}</td>
       <td class="pp pd">${inventoryIsDropship(i)?'Not owned':money.cost>0?fd$(money.cost):'<span class="inv-warning-pill">NO COST</span>'}</td>
       <td class="${ppc}">${money.cost>0||i.profit?(pft>=0?'+':'')+fd$(pft)+(money.list>0||money.cost>0?' ('+margin+')':''):'—'}</td>
       <td><span style="font-family:var(--font-mono);font-size:9px;color:${rowAvail.color}">${rowAvail.label}</span>${ins&&daysInStock!==null?`<div style="font-family:var(--font-mono);font-size:8px;color:${aged?'var(--red)':'var(--dim)'};margin-top:3px">${daysInStock}d in stock</div>`:''}${aged?'<span class="inv-warning-pill" style="margin-top:3px">AGED</span>':''}</td>
@@ -24758,9 +24758,9 @@ function openEditModal(id) {
   document.getElementById('edit-name').value = item.name || '';
   document.getElementById('edit-cost').value = item.cost || '';
   document.getElementById('edit-market').value = item.market || '';
-  document.getElementById('edit-list-price').value = inventoryEffectiveBasePrice(item) || '';
   document.getElementById('edit-min-price').value = item.minPrice || '';
   document.getElementById('edit-ceiling-price').value = item.ceilingPrice || '';
+  setEditLockedPrice(inventoryPriceOverride(item));
   document.getElementById('edit-qty').value = item.qty || 1;
   document.getElementById('edit-year').value = item.year || '';
   document.getElementById('edit-set').value = item.set || '';
@@ -24847,9 +24847,12 @@ function openAddToInventoryModal(idx){
   document.getElementById('edit-item-title').textContent = (item.name || 'New item') + (item.year ? ' · '+item.year : '') + (item.set ? ' · '+item.set : '');
   document.getElementById('edit-cost').value = item.cost || '';
   document.getElementById('edit-market').value = item.market || '';
-  document.getElementById('edit-list-price').value = item.listPrice || item.salePrice || item.market || '';
   document.getElementById('edit-min-price').value = item.minPrice || '';
   document.getElementById('edit-ceiling-price').value = item.ceilingPrice || '';
+  // A research list price apart from market (a comic's valuation, say)
+  // arrives locked -- the same thing that saved as an override before.
+  const researchList = Number(item.priceOverride || item.listPrice || 0);
+  setEditLockedPrice(researchList > 0 && Math.abs(researchList - Number(item.market || 0)) >= 0.01 ? researchList : 0);
   document.getElementById('edit-qty').value = item.qty || 1;
   document.getElementById('edit-year').value = item.year || '';
   document.getElementById('edit-set').value = item.set || '';
@@ -24939,8 +24942,10 @@ async function confirmAddToInventoryFromModal(){
   catch(error) { toast_dash(error.message || String(error)); return; }
 
   const addMarketVal = parseFloat(document.getElementById('edit-market').value)||0;
-  const addListVal = parseFloat(document.getElementById('edit-list-price')?.value)||0;
-  const addHasOverride = addListVal > 0 && Math.abs(addListVal - addMarketVal) >= 0.01;
+  // Exact prices come only from the LOCK button (the List / Sale Price box
+  // is read-only): locked = kept as set, unlocked = follows market.
+  const addListVal = editLockedPrice();
+  const addHasOverride = addListVal > 0;
   // The main-photo widget (#edit-photo-data) already lets you swap the
   // default image in this modal -- SAVE CHANGES (edit path) persists it,
   // but this add-new-from-Research path never read it back out, so a
@@ -25036,6 +25041,51 @@ async function deleteEditingInventoryItem(){
   closeEditModal();
 }
 
+// ── List price lock ──
+// Store ask: no typing a sale price ("so no issues"). The List / Sale Price
+// box shows the real shelf price -- market rounded up, then the floor and
+// ceiling -- and is read-only. The only way to set an exact price is LOCK
+// (saved as priceOverride, which price syncs never touch); UNLOCK goes back
+// to following market.
+function editLockedPrice(){
+  const v = parseFloat(document.getElementById('edit-locked-price')?.value);
+  return v > 0 ? Math.round(v * 100) / 100 : 0;
+}
+function setEditLockedPrice(value){
+  const el = document.getElementById('edit-locked-price');
+  if(el) el.value = Number(value) > 0 ? String(Math.round(Number(value) * 100) / 100) : '';
+  refreshEditShelfPrice();
+}
+function refreshEditShelfPrice(){
+  const num = id => parseFloat(document.getElementById(id)?.value) || 0;
+  const market = num('edit-market'), floor = num('edit-min-price'), ceiling = num('edit-ceiling-price');
+  const locked = editLockedPrice();
+  const base = locked > 0 ? locked : roundSellPrice(market);
+  let price = floor > 0 ? Math.max(base, floor) : base;
+  if(ceiling > 0) price = Math.min(price, ceiling);
+  const box = document.getElementById('edit-list-price'), btn = document.getElementById('edit-lock-btn'), note = document.getElementById('edit-lock-note');
+  if(box) { box.value = price > 0 ? price.toFixed(2) : ''; box.classList.toggle('locked', locked > 0); }
+  if(btn) btn.textContent = locked > 0 ? '🔓 UNLOCK' : '🔒 LOCK';
+  const adjusted = price > 0 && Math.abs(price - base) >= 0.01 ? ` (${price > base ? 'raised to the floor' : 'capped at the ceiling'})` : '';
+  if(note) {
+    note.classList.toggle('locked', locked > 0);
+    note.textContent = locked > 0
+      ? `🔒 Locked at $${locked.toFixed(2)}${adjusted} -- price syncs won't change it. UNLOCK to follow market again.`
+      : market > 0 ? `Follows market: $${market.toFixed(2)} rounds up to $${base.toFixed(2)}${adjusted}. LOCK to set an exact price.`
+      : 'Follows market once it has one. LOCK to set an exact price.';
+  }
+  updateEditProfit();
+}
+function toggleEditPriceLock(){
+  if(editLockedPrice() > 0) { setEditLockedPrice(0); return; }
+  const current = parseFloat(document.getElementById('edit-list-price')?.value) || parseFloat(document.getElementById('edit-market')?.value) || 0;
+  const raw = prompt('Lock this item at an exact price? Price syncs will leave it alone until you unlock it.', current > 0 ? current.toFixed(2) : '');
+  if(raw == null) return;
+  const v = parseFloat(String(raw).replace(/[$,\s]/g, ''));
+  if(!(v > 0)) { toast_dash('Enter a price above $0 to lock'); return; }
+  setEditLockedPrice(v);
+}
+
 function updateEditProfit() {
   const cost = parseFloat(document.getElementById('edit-cost').value)||0;
   const market = parseFloat(document.getElementById('edit-market').value)||0;
@@ -25063,9 +25113,9 @@ function updateEditProfit() {
   }
 }
 document.getElementById('edit-cost').addEventListener('input', updateEditProfit);
-document.getElementById('edit-market').addEventListener('input', updateEditProfit);
-document.getElementById('edit-list-price')?.addEventListener('input', updateEditProfit);
-document.getElementById('edit-min-price')?.addEventListener('input', updateEditProfit);
+document.getElementById('edit-market').addEventListener('input', refreshEditShelfPrice);
+document.getElementById('edit-min-price')?.addEventListener('input', refreshEditShelfPrice);
+document.getElementById('edit-ceiling-price')?.addEventListener('input', refreshEditShelfPrice);
 document.getElementById('edit-signature-value')?.addEventListener('input', updateEditProfit);
 
 function saveInvListPrice(id, rawVal){
@@ -25172,12 +25222,12 @@ async function confirmEditAndSync() {
   pushUndoAction('inventory edit', { type:'item-snapshot', item:{...item}, lifecycleMap:getLifecycleMap() });
 
   const editMarketVal = parseFloat(document.getElementById('edit-market').value)||0;
-  const editListVal = parseFloat(document.getElementById('edit-list-price')?.value)||0;
-  // Only treat the List/Sale Price field as a deliberate override when it was
-  // actually typed apart from Market Price. Otherwise this item just tracks
-  // market going forward -- it does not freeze at whatever market happened to
-  // read the moment someone opened the edit screen for an unrelated change.
-  const editHasOverride = editListVal > 0 && Math.abs(editListVal - editMarketVal) >= 0.01;
+  // Exact prices come only from the LOCK button (the List / Sale Price box
+  // is read-only), so an edit for any other reason can never freeze or
+  // change the price by accident. Locked = kept as set; unlocked = follows
+  // market.
+  const editListVal = editLockedPrice();
+  const editHasOverride = editListVal > 0;
   const updates = {
     // Store report: no way existed to fix a typo'd/wrong item name once
     // added -- edit-item-title only ever displayed it as read-only text.
