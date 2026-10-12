@@ -219,3 +219,41 @@ export async function recordWebPointsTender(env, fetch, { storeId, orderRef, sal
     return null;
   }
 }
+
+// ── Text POINTS for a balance ──
+// A customer who got a text receipt can reply POINTS (or BALANCE / PTS /
+// REWARDS) any time and get their redeemable points back. Their points live
+// on the phone number from the receipt, so no email or signup is needed;
+// the account link lets them finish a website account later, and verifying
+// that same phone there carries the points over.
+export const CUSTOMER_ACCOUNT_URL = 'https://www.themanapocket.com/account';
+const POINTS_KEYWORDS = new Set(['POINTS', 'POINT', 'PTS', 'BALANCE', 'REWARDS', 'MY POINTS']);
+export function isPointsKeyword(text) {
+  return POINTS_KEYWORDS.has(String(text || '').toUpperCase().replace(/[^A-Z ]/g, ' ').replace(/\s+/g, ' ').trim());
+}
+// Same pick as checkout: the record tied to a website account wins, then the
+// one holding the most points (an old duplicate never hides a balance).
+export function pickPointsCustomer(rows, phone) {
+  const digits = phoneKey(phone);
+  if (!digits) return null;
+  const hits = (rows || []).filter(c => phoneKey(c.phone) === digits);
+  hits.sort((a, b) => (!!b.linked_user_id - !!a.linked_user_id) || (Number(b.loyalty_points_balance || 0) - Number(a.loyalty_points_balance || 0)));
+  return hits[0] || null;
+}
+export function pointsReplyText(customer, { storeName = 'The Mana Pocket', accountUrl = CUSTOMER_ACCOUNT_URL } = {}) {
+  if (!customer) return `${storeName}: we don't have points saved for this number yet. Ask for a text receipt at checkout and your points are saved to this number automatically. Your account: ${accountUrl}`;
+  const points = Math.max(0, Math.floor(Number(customer.loyalty_points_balance || 0)));
+  const dollars = (points / POINTS_PER_DOLLAR).toFixed(2);
+  const first = String(customer.name || '').trim().split(/\s+/)[0];
+  const hi = first && !/^(customer|walk-in|sms)$/i.test(first) ? `Hi ${first}! ` : '';
+  const count = `${points.toLocaleString('en-US')} point${points === 1 ? '' : 's'} ($${dollars})`;
+  return customer.linked_user_id
+    ? `${storeName}: ${hi}You have ${count} to use at the register or online. Your account: ${accountUrl}`
+    : `${storeName}: ${hi}You have ${count} saved to this number -- use them at the register. To see them online, finish your account: ${accountUrl}`;
+}
+export async function pointsSmsReply(env, fetch, storeId, from, options = {}) {
+  const digits = phoneKey(from);
+  if (!storeId || !digits) return pointsReplyText(null, options);
+  const { data } = await fetch(env, `customers?store_id=eq.${encodeURIComponent(storeId)}&phone=like.${encodeURIComponent('*' + digits.slice(-4))}&select=id,name,phone,loyalty_points_balance,linked_user_id&limit=50`);
+  return pointsReplyText(pickPointsCustomer(data, from), options);
+}

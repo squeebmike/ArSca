@@ -41,7 +41,7 @@ import { extractSiteChrome, SITE_CHROME_SOURCE } from './scripts/site-chrome.mjs
 import { handlePublicPokemonRequest } from './scripts/public-pokemon-sets.mjs';
 import { ebayOrderMoney, ebayLineProfit, financeAdjustments, splitCents } from './scripts/ebay-order-money.mjs';
 import { EditError, editSaleLine, editInventoryItem, adjustCustomerPoints, editHistory } from './scripts/database-edits.mjs';
-import { awardWebOrderLoyalty, planWebRedemption, holdWebOrderPoints, releaseWebOrderPoints, recordWebPointsTender, pointsHoldActive } from './scripts/web-loyalty.mjs';
+import { awardWebOrderLoyalty, planWebRedemption, holdWebOrderPoints, releaseWebOrderPoints, recordWebPointsTender, pointsHoldActive, isPointsKeyword, pointsSmsReply } from './scripts/web-loyalty.mjs';
 import { customerProfile, searchInventory, itemProfile } from './scripts/database-explorer.mjs';
 import { handleFanClubRequest } from './scripts/fan-club.mjs';
 import { handleCardIntakeRequest } from './scripts/card-intake.mjs';
@@ -18037,6 +18037,16 @@ async function handleTwilioWebhook(request, env, url) {
       }
       if (keyword === 'HELP' || keyword === 'INFO') {
         return twimlResponse('<Response><Message>The Mana Pocket: msg &amp; data rates may apply, message frequency varies. Reply STOP to unsubscribe. Questions? Visit themanapocket.com.</Message></Response>');
+      }
+      // Reply POINTS (to a receipt or any time) -> their redeemable balance,
+      // answered straight back; it's a self-serve request, so staff phones
+      // aren't pinged (it's still in the message inbox above).
+      if (isPointsKeyword(text)) {
+        let reply = '';
+        try { reply = await pointsSmsReply(env, supabaseAdminFetch, storeId, from); }
+        catch (e) { reply = 'The Mana Pocket: we could not look up your points right now -- please try again in a minute.'; }
+        await persistMessageRecord(env, { store_id: storeId, message_sid: null, direction: 'outbound', from_number: String(params.To || '').slice(0, 40), to_number: from, body: reply, customer_id: null, status: 'sent' });
+        return twimlResponse(`<Response><Message>${escapeXmlText(reply)}</Message></Response>`);
       }
       for (const num of numbers) {
         try { await sendSms(env, num, `Text from ${from}: ${text}`); } catch (e) { /* one bad forward number shouldn't block the rest */ }

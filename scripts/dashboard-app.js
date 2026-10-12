@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.10.11.2-saved-price-age';
+const APP_VERSION = '2026.10.12.1-points-by-text';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -41829,6 +41829,7 @@ async function saveReceiptCapture(){
     } catch(e) {
       enqueueSync('customer-receipt', 'Queued text receipt request', payload, e.message);
     }
+    const accrual = accrueLoyaltyForContact(phone, '', confirmedSaleContext.sale.id, confirmedSaleContext.sale.total);
     if(consented) {
       // Fire-and-forget so checkout keeps moving -- reuses the existing
       // generic /notify/send route (same SMS-consent/opt-out gating Want
@@ -41837,10 +41838,12 @@ async function saveReceiptCapture(){
       // back to what actually happened, since that field exists precisely
       // to answer "did this receipt actually go out."
       const storeName = getVendorProfile().storeName || 'this store';
-      const total = Number(confirmedSaleContext.sale.total || 0).toFixed(2);
-      const message = `Thanks for shopping at ${storeName}! Your receipt total: $${total}. Msg & data rates may apply. Reply STOP to opt out.`;
+      const total = confirmedSaleContext.sale.total;
       const markReceiptStatus = async status => { try { const sb = getSupabaseClient(); if(sb) await sb.from('customer_receipts').update({ sms_status:status }).eq('id', payload.id); } catch(_){} };
-      storeWorkerFetch('/notify/send', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ contact:phone, subject:'Your receipt', message, consent:true }) })
+      // Sent once the points are in, so the receipt can say what they earned
+      // and what they now have.
+      accrual.catch(() => null)
+        .then(result => storeWorkerFetch('/notify/send', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ contact:phone, subject:'Your receipt', message:receiptTextMessage({ storeName, total, earned:result?.points, balance:result?.balance }), consent:true }) }))
         .then(async r => {
           const d = await r.json().catch(() => ({}));
           if(d?.ok) { markReceiptStatus('sent'); }
@@ -41848,9 +41851,27 @@ async function saveReceiptCapture(){
         })
         .catch(() => { toast_dash('Could not text the receipt -- offline or unreachable'); markReceiptStatus('failed'); });
     }
-    accrueLoyaltyForContact(phone, '', confirmedSaleContext.sale.id, confirmedSaleContext.sale.total);
   }
   showWantsCaptureScreen();
+}
+
+// The text receipt. Points are saved to the phone number, so a customer
+// never needs an email to earn; texting POINTS back gets their balance
+// (worker /twilio/sms), and the link opens the website account page to
+// finish an account -- verifying this same phone there carries the points.
+const CUSTOMER_ACCOUNT_URL = 'https://www.themanapocket.com/account';
+function receiptTextMessage({ storeName = 'this store', total = 0, earned = 0, balance = null } = {}){
+  const parts = [`Thanks for shopping at ${storeName}! Total: $${Number(total || 0).toFixed(2)}.`];
+  const got = Math.max(0, Math.floor(Number(earned || 0)));
+  const have = balance == null || balance === '' || !Number.isFinite(Number(balance)) ? null : Math.max(0, Math.floor(Number(balance)));
+  const pts = n => `${n.toLocaleString('en-US')} point${n === 1 ? '' : 's'}`;
+  if(got > 0 && have != null) parts.push(`You earned ${pts(got)} -- you have ${pts(have)} ($${(have / LOYALTY_POINTS_PER_DOLLAR).toFixed(2)}) saved to this number.`);
+  else if(got > 0) parts.push(`You earned ${pts(got)}, saved to this number.`);
+  else if(have > 0) parts.push(`You have ${pts(have)} ($${(have / LOYALTY_POINTS_PER_DOLLAR).toFixed(2)}) saved to this number.`);
+  if(got > 0 || have > 0) parts.push('Reply POINTS anytime for your balance.');
+  parts.push(`Your account: ${CUSTOMER_ACCOUNT_URL}`);
+  parts.push('Msg & data rates may apply. Reply STOP to opt out.');
+  return parts.join(' ');
 }
 
 // Loyalty accrual reuses the phone already collected for the text-receipt
@@ -41866,13 +41887,13 @@ async function saveReceiptCapture(){
 // the only thing that lets a customer's website account later show "my
 // purchases in store" for a phone number they've verified.
 async function accrueLoyaltyForContact(contact, name, saleId, total){
-  if(getAccountContext().isDemo) return;
+  if(getAccountContext().isDemo) return null;
   const rate = getLoyaltyRate();
   // rate is "% back" and points redeem at LOYALTY_POINTS_PER_DOLLAR (100 = $1),
   // so each $1 earns `rate` points: 3% back on $50 is 150 points ($1.50).
   const points = Math.round(Number(total || 0) * rate * LOYALTY_POINTS_PER_DOLLAR / 100);
   const storeId = getActiveStoreId();
-  if(!contact || !storeId) return;
+  if(!contact || !storeId) return null;
   try {
     // The local list may not hold this customer yet (never loaded on this
     // device, or they signed up on the website since) -- ask the database
@@ -41890,14 +41911,18 @@ async function accrueLoyaltyForContact(contact, name, saleId, total){
       if(linkError) throw linkError;
     }
     if(points > 0) {
-      const { error } = await sb.rpc('accrue_loyalty_points', { p_store_id:storeId, p_customer_id:customer.id, p_points:points, p_sale_id:saleId, p_reason:'sale' });
+      const { data:newBalance, error } = await sb.rpc('accrue_loyalty_points', { p_store_id:storeId, p_customer_id:customer.id, p_points:points, p_sale_id:saleId, p_reason:'sale' });
       if(error) throw error;
       const idx = customersCache.findIndex(c => c.id === customer.id);
-      if(idx >= 0) { customersCache[idx].loyalty_points_balance = Number(customersCache[idx].loyalty_points_balance || 0) + points; localStorage.setItem('customers_cache_v1', JSON.stringify(customersCache)); renderCustomers(); }
+      const balance = Number.isFinite(Number(newBalance)) && newBalance != null ? Number(newBalance) : Number(customer.loyalty_points_balance || 0) + points;
+      if(idx >= 0) { customersCache[idx].loyalty_points_balance = balance; localStorage.setItem('customers_cache_v1', JSON.stringify(customersCache)); renderCustomers(); }
       toast_dash('+' + points + ' loyalty points earned');
+      return { points, balance, customerId:customer.id };
     }
+    return { points:0, balance:Number(customer.loyalty_points_balance || 0), customerId:customer.id };
   } catch(e) {
     enqueueSync('loyalty-accrual', 'Queued loyalty points accrual', { contact, name:name || 'Customer', saleId, points, storeId }, e.message);
+    return { points, balance:null };
   }
 }
 
