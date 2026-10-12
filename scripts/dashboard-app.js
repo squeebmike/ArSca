@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.10.12.5-buy-signal';
+const APP_VERSION = '2026.10.12.6-buy-target-price';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -26466,7 +26466,13 @@ function getSalesSignal(item){
   }).filter(v => v != null);
   const avgDays = sellDays.length ? sellDays.reduce((a,b)=>a+b,0)/sellDays.length : null;
   const wants = wantList.filter(w => w.status === 'active' && words.some(word => String(w.item || '').toLowerCase().includes(word)));
-  return { soldCount:sold.length, avgProfit, avgDays, wants:wants.length };
+  // What we actually got for it lately (last 180 days, same condition when
+  // known) -- the buy signal's best guess at what this copy will resell for.
+  const cond = String(item.selectedCondition || item.condition || '').toUpperCase();
+  const cutoff = Date.now() - 180 * 86400000;
+  const recent = sold.filter(i => new Date(i.soldAt || 0).getTime() >= cutoff && Number(i.salePrice || 0) > 0 && (!cond || !i.condition || String(i.condition).toUpperCase() === cond));
+  const recentAvgSale = recent.length ? recent.reduce((a, i) => a + Number(i.salePrice), 0) / recent.length : 0;
+  return { soldCount:sold.length, avgProfit, avgDays, wants:wants.length, recentSold:recent.length, recentAvgSale };
 }
 
 function renderBuySignals(){
@@ -34593,7 +34599,6 @@ function buySignalStockQty(r = {}){
     return !!name && String(i.name || '').toLowerCase().trim() === name && (!set || String(i.set || '').toLowerCase().trim() === set) && (!num || String(i.card_number || '').replace(/^#/, '').toLowerCase() === num);
   }).reduce((n, i) => n + Math.max(1, inventoryAvailableQuantity(i)), 0);
 }
-function buySignalBuyPct(){ return Number(getVendorProfile().defaultBuyPct) || 70; }
 function buySignalFor(r = {}, { market } = {}){
   const S = window.ArsCaBuySignal;
   if(!S || !r) return null;
@@ -34602,7 +34607,8 @@ function buySignalFor(r = {}, { market } = {}){
   if(!(price > 0)) return null;
   let sales = null;
   try { sales = getSalesSignal(r); } catch(e) {}
-  return S.evaluateBuySignal({ points:isComic ? [] : buySignalPoints(r), market:price, buyPct:buySignalBuyPct(), stockQty:buySignalStockQty(r), ourSales:sales, wants:sales?.wants || 0 });
+  const category = isPokemonChartCandidate(r) ? 'Pokemon' : String(r.category || '');
+  return S.evaluateBuySignal({ points:isComic ? [] : buySignalPoints(r), market:price, category, stockQty:buySignalStockQty(r), ourSales:sales, wants:sales?.wants || 0 });
 }
 // Only worth a chip when there's history to judge, or a reason to pass.
 function buySignalChipHtml(sig, { onclick = '' } = {}){
@@ -34618,13 +34624,15 @@ function buySignalPanelHtml(r = {}, idx = 0){
   const cls = sig.verdict === 'BUY' ? 'buy' : sig.verdict === 'PASS' ? 'pass' : 'low';
   const head = sig.verdict === 'BUY' ? '🟢 BUY' : sig.verdict === 'PASS' ? '🔴 PASS' : '🟡 BUY LOW';
   const dot = { good:'✓', warn:'!', bad:'✕', info:'·' };
-  const price = Number(r.activePriceBasis?.price || r.market || 0);
   const canTest = isPokemonChartCandidate(r) && (r.set || r.setName) && !getAccountContext().isDemo;
+  const pass = sig.verdict === 'PASS';
   return `<div class="buy-sig-panel ${cls}">
-    <div class="buy-sig-head"><b>${head}</b>${sig.verdict !== 'PASS' ? `<span>Pay up to <b>$${sig.maxPrice.toFixed(2)}</b> (${Math.round(sig.buyPctUsed)}% of $${price.toFixed(2)})</span>` : '<span>Not at any price that leaves room after fees</span>'}</div>
+    <div class="buy-sig-head"><b>${head}</b>${pass ? '<span>Not at a price that leaves room</span>' : ''}</div>
+    ${pass ? '' : `<div class="buy-sig-prices"><div><span>OPEN AT</span><b>$${sig.openPrice.toFixed(2)}</b></div><div><span>WALK AWAY ABOVE</span><b>$${sig.maxPrice.toFixed(2)}</b></div><div><span>TRADE CREDIT UP TO</span><b>$${sig.tradeMax.toFixed(2)}</b></div></div>
+    <ol class="buy-sig-math">${sig.math.slice(0, 3).map(line => `<li>${escHtml(line)}</li>`).join('')}</ol>`}
     <ul class="buy-sig-reasons">${sig.reasons.map(x => `<li class="${x.tone}"><i>${dot[x.tone] || '·'}</i>${escHtml(x.text)}</li>`).join('')}</ul>
     ${sig.sellHint ? `<div class="buy-sig-sell">${escHtml(sig.sellHint)}</div>` : ''}
-    <div class="buy-sig-foot">From the price history above${sig.metrics ? ` (${sig.metrics.points} days)` : ''}, your buy % (${buySignalBuyPct()}%), stock and sales. A guide, not a promise -- prices can keep moving either way.${canTest ? ` <button class="hbtn" onclick="runBuySignalBacktest(${idx})">TEST THESE RULES ON THIS SET</button>` : ''}</div>
+    <div class="buy-sig-foot">Where this comes from: ${sig.metrics ? `price trend${sig.metrics.perWeek != null ? ' and sales per week' : ''} from ${isPokemonChartCandidate(r) ? "TCGplayer's history via our Pokémon price service" : 'the price graph above'} (${sig.metrics.points} days)` : 'no price history yet, so margin only'}; "sold before" and stock are your own records. Margins: 20% liquid Pokémon, 25% other fast sellers, 35% average, 45% slow or jumpy, +5% if you already have some; never under $3 profit. A guide, not a promise.${canTest ? ` <button class="hbtn" onclick="runBuySignalBacktest(${idx})">TEST THESE RULES ON THIS SET</button>` : ''}</div>
     <div id="buy-sig-backtest-${idx}" class="buy-sig-backtest">${buySignalScorecardHtml()}</div>
   </div>`;
 }
@@ -34635,17 +34643,18 @@ function buySignalScorecardHtml(){
   if(!runs.length) return '';
   const total = {};
   runs.forEach(run => (run.rows || []).forEach(row => {
-    const t = total[row.verdict] ||= { count:0, change:0, dropped:0, gained:0 };
+    const t = total[row.verdict] ||= { count:0, change:0, dropped:0, gained:0, held:0, heldN:0 };
     t.count += row.count; t.change += row.avgChange * row.count; t.dropped += row.dropped10 * row.count; t.gained += row.gained10 * row.count;
+    if(row.heldUp != null) { t.held += row.heldUp * row.count; t.heldN += row.count; }
   }));
   const label = { BUY:'🟢 BUY', BUY_LOW:'🟡 BUY LOW', PASS:'🔴 PASS' };
-  const rows = ['BUY','BUY_LOW','PASS'].filter(v => total[v]).map(v => { const t = total[v]; return `<tr><td>${label[v]}</td><td>${t.count}</td><td>${(t.change / t.count).toFixed(1)}%</td><td>${(t.dropped / t.count).toFixed(0)}%</td><td>${(t.gained / t.count).toFixed(0)}%</td></tr>`; }).join('');
+  const rows = ['BUY','BUY_LOW','PASS'].filter(v => total[v]).map(v => { const t = total[v]; return `<tr><td>${label[v]}</td><td>${t.count}</td><td>${(t.change / t.count).toFixed(1)}%</td><td>${(t.dropped / t.count).toFixed(0)}%</td><td>${(t.gained / t.count).toFixed(0)}%</td><td>${t.heldN ? (t.held / t.heldN).toFixed(0) + '%' : '—'}</td></tr>`; }).join('');
   const buy = total.BUY, pass = total.PASS;
   const verdict = buy && pass ? ((pass.change / pass.count) < (buy.change / buy.count) && (pass.dropped / pass.count) >= (buy.dropped / buy.count)
     ? '<b style="color:var(--g)">So far PASS cards did worse than BUY cards -- the rules are earning their keep.</b>'
     : '<b style="color:var(--gold)">So far PASS cards did NOT do worse than BUY cards -- treat the verdict as a hint only.</b>') : 'Test a few more sets for a fair read.';
   return `<div class="buy-sig-score"><div>Rules tested on ${runs.length} set${runs.length === 1 ? '' : 's'} (${runs.map(x => escHtml(x.set)).slice(0, 4).join(', ')}${runs.length > 4 ? '…' : ''}): what the price did over the next 30 days.</div>
-    <table><tr><th>Verdict</th><th>Times</th><th>Avg change</th><th>Fell 10%+</th><th>Rose 10%+</th></tr>${rows}</table><div>${verdict}</div></div>`;
+    <table><tr><th>Verdict</th><th>Times</th><th>Avg change</th><th>Fell 10%+</th><th>Rose 10%+</th><th>Target held</th></tr>${rows}</table><div>"Target held": bought at the walk-away price, selling 30 days later still made $3+.</div><div>${verdict}</div></div>`;
 }
 async function runBuySignalBacktest(idx){
   const r = qplResults[idx];
@@ -34657,7 +34666,7 @@ async function runBuySignalBacktest(idx){
   try {
     const cards = await fetchPokemonPriceTrackerCardsForSet({ setName, language:r.language || 'english' });
     const histories = cards.map(card => buySignalPoints({ pokemonPriceTracker:card, selectedCondition:'NM' })).filter(p => p.length);
-    const result = window.ArsCaBuySignal.backtestBuySignal(histories, { buyPct:buySignalBuyPct() });
+    const result = window.ArsCaBuySignal.backtestBuySignal(histories, { category:'Pokemon' });
     if(!result.samples) { host.innerHTML = `<div class="buy-sig-score">${escHtml(setName)} didn't return enough history to test.</div>`; return; }
     const runs = buySignalBacktests().filter(x => x.set !== setName);
     runs.unshift({ set:setName, at:new Date().toISOString(), cards:histories.length, samples:result.samples, rows:result.rows });
@@ -40047,7 +40056,7 @@ function showBuyTraySignal(id){
   const i = buyList.find(x => x.id === id);
   const sig = i && buyTraySignal(i);
   if(!sig) return;
-  alert([`${sig.label}${sig.verdict !== 'PASS' ? ` (pay up to $${sig.maxPrice.toFixed(2)})` : ''} -- ${i.name || 'item'}`, '', ...sig.reasons.map(x => '• ' + x.text), sig.sellHint ? '\n' + sig.sellHint : ''].filter(v => v !== undefined).join('\n'));
+  alert([`${sig.label} -- ${i.name || 'item'}`, '', ...sig.math, sig.math.length ? '' : null, ...sig.reasons.map(x => '• ' + x.text), sig.sellHint ? '\n' + sig.sellHint : null].filter(v => v != null).join('\n'));
 }
 
 function buyItemToInventoryUpdates(item){
