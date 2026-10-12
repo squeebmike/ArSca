@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.10.12.7-buy-targets-by-category';
+const APP_VERSION = '2026.10.12.8-typed-price-ceiling-filters';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -15554,6 +15554,8 @@ function inventoryHealthSummary(items=all){
     total:inStock.length,
     noPhoto:inStock.filter(i=>!inventoryImageUrl(i)).length,
     needsSticker:inStock.filter(inventoryNeedsSticker).length,
+    typedPrice:inStock.filter(i=>inventoryPriceOverride(i) > 0).length,
+    hasCeiling:inStock.filter(i=>inventoryCeilingPrice(i) > 0).length,
     noConfig:inStock.filter(i=>!i.configuration).length,
     noCost:inStock.filter(i=>inventoryCostBasis(i) <= 0).length,
     noMarket:inStock.filter(i=>inventoryMarketPrice(i) <= 0).length,
@@ -15659,6 +15661,8 @@ function renderInventoryHealthPanel(){
   const h = inventoryHealthSummary(all);
   const cards = [
     ['needs_sticker','Needs Sticker',h.needsSticker,'no price sticker printed'],
+    ['typed_price','Typed Price',h.typedPrice,'list price locked as typed'],
+    ['has_ceiling','Has Ceiling',h.hasCeiling,'capped at a max price'],
     ['no_photo','No Photo',h.noPhoto,'needs item image'],
     ['no_config','No Product Type',h.noConfig,'needs Single/Booster/etc'],
     ['no_cost','No Cost',h.noCost,'missing buy basis'],
@@ -16385,6 +16389,10 @@ function inventoryMatchesFlag(i, flag){
   if(i.status !== 'in_stock') return false; // every other flag was always in-stock-only, same as before
   if(flag === 'no_photo') return !inventoryImageUrl(i);
   if(flag === 'needs_sticker') return inventoryNeedsSticker(i);
+  // A List / Sale Price typed apart from market (or a markdown): kept as
+  // typed, price syncs only move Market. 0 = follows market.
+  if(flag === 'typed_price') return inventoryPriceOverride(i) > 0;
+  if(flag === 'has_ceiling') return inventoryCeilingPrice(i) > 0;
   if(flag === 'no_config') return !i.configuration;
   if(flag === 'no_cost') return inventoryCostBasis(i) <= 0;
   if(flag === 'no_market') return inventoryMarketPrice(i) <= 0;
