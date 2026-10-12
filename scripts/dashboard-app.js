@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.10.12.6-buy-target-price';
+const APP_VERSION = '2026.10.12.7-buy-targets-by-category';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -700,6 +700,18 @@ async function acceptPickedInvite(){
 // What customers see the loyalty points called (receipts, texts, the
 // customer screen). Declared up here: checkout labels read it at startup.
 const POINTS_NAME = 'Mana Points';
+// Buy-target categories and default margins (see buyTargetsSettings).
+// Up here for the same reason: Settings can render at startup.
+const BUY_TARGET_GROUPS = [['pokemon','Pokémon'],['mtg','Magic'],['sports','Sports cards'],['comic','Comics'],['tcg','Other card games'],['other','Everything else']];
+const DEFAULT_BUY_TARGETS = {
+  pokemon:{ fast:20, avg:35, slow:45, trade:80 },
+  mtg:{ fast:25, avg:35, slow:45, trade:75 },
+  sports:{ fast:25, avg:35, slow:45, trade:75 },
+  comic:{ fast:25, avg:35, slow:45, trade:75 },
+  tcg:{ fast:25, avg:35, slow:45, trade:75 },
+  other:{ fast:25, avg:35, slow:45, trade:75 },
+  minProfit:3, feePct:3, stocked:5,
+};
 const DEFAULT_STORE_THEME = { themeName:'Walk-Off Dark', primaryColor:'#00ffb3', secondaryColor:'#ffd166', accentColor:'#c77dff', backgroundColor:'#07080a', surfaceColor:'#0d0f14', surface2Color:'#141720', textColor:'#e4e4e8', mutedTextColor:'rgba(228,228,232,.68)', successColor:'#00ffb3', warningColor:'#ffd166', dangerColor:'#ff4d6d', infoColor:'#48cae4', borderColor:'rgba(255,255,255,.13)', buttonTextColor:'#050507', fontFamily:"'DM Sans',sans-serif", cardRadius:'10px', buttonRadius:'6px', logoUrl:'', customerBgImageUrl:'', customerBgOverlayColor:'#f7f8fa', customerBgOverlayOpacity:0.88 };
 const STORE_THEME_PRESETS = {
   'Walk-Off Dark': DEFAULT_STORE_THEME,
@@ -1661,6 +1673,7 @@ async function saveVendorProfile(profile){
       ebayDescriptionTemplates:next.ebayDescriptionTemplates || {},
       ebayAutoReprice:next.ebayAutoReprice || {},
       ebayAutoPromoteListings:next.ebayAutoPromoteListings || {},
+      buyTargets:next.buyTargets || {},
       // Store request: /foc/ebay/convert-to-instock needs to know which
       // real eBay shipping policy to switch a listing to once it's out of
       // presale. receipt_settings is a full-replace write from BOTH this
@@ -2379,6 +2392,7 @@ function savePaymentSettings(settings){
       ebayDescriptionTemplates:next.ebayDescriptionTemplates || {},
       ebayAutoReprice:next.ebayAutoReprice || {},
       ebayAutoPromoteListings:next.ebayAutoPromoteListings || {},
+      buyTargets:next.buyTargets || {},
       // Store request: /foc/ebay/convert-to-instock needs to know which
       // real eBay shipping policy to switch a listing to once it's out of
       // presale. receipt_settings is a full-replace write from BOTH this
@@ -3168,6 +3182,7 @@ function renderVendorProfilePanel(){
       <button class="hbtn" onclick="document.getElementById('vendor-profile-import').click()">IMPORT PROFILE</button>
       <input id="vendor-profile-import" type="file" accept="application/json,.json" style="display:none" onchange="importVendorProfile(event)">
     </div>
+    ${buyTargetsSettingsHtml()}
     <div style="margin-top:14px;padding:14px;border:1px solid var(--border);border-radius:10px;background:var(--surf2)">
       <div style="font-family:'Orbitron',monospace;font-size:11px;color:var(--g);margin-bottom:7px">PUBLIC INVENTORY STOREFRONT</div>
       <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);line-height:1.6;margin-bottom:10px">Publish a customer-safe catalog. Cost, profit, consignor, internal notes, and sold inventory are never included.</div>
@@ -34607,8 +34622,65 @@ function buySignalFor(r = {}, { market } = {}){
   if(!(price > 0)) return null;
   let sales = null;
   try { sales = getSalesSignal(r); } catch(e) {}
-  const category = isPokemonChartCandidate(r) ? 'Pokemon' : String(r.category || '');
-  return S.evaluateBuySignal({ points:isComic ? [] : buySignalPoints(r), market:price, category, stockQty:buySignalStockQty(r), ourSales:sales, wants:sales?.wants || 0 });
+  const group = buyTargetGroup(r);
+  return S.evaluateBuySignal({ points:isComic ? [] : buySignalPoints(r), market:price, category:group === 'pokemon' ? 'Pokemon' : String(r.category || ''), rules:buyTargetRules(group), stockQty:buySignalStockQty(r), ourSales:sales, wants:sales?.wants || 0 });
+}
+// ── Buy targets (Settings > Store profile) ──
+// Margins and trade credit per category: Pokemon, Magic and sports cards
+// don't sell (or trade) alike. "fast / avg / slow" is the profit kept by
+// how quickly that card sells; "trade" is trade credit as % of resale for
+// a fast seller (slower ones drop by as many points as their margin rises).
+function buyTargetsSettings(){
+  const saved = getVendorProfile().buyTargets || {};
+  const out = { ...DEFAULT_BUY_TARGETS, ...saved };
+  BUY_TARGET_GROUPS.forEach(([key]) => { out[key] = { ...DEFAULT_BUY_TARGETS[key], ...(saved[key] || {}) }; });
+  return out;
+}
+function buyTargetGroup(r = {}){
+  const key = qplResultCategoryKey(r) || qplCategoryKey(r.category || '');
+  if(key === 'pokemon' || isPokemonChartCandidate(r)) return 'pokemon';
+  if(key === 'mtg' || key === 'comic' || key === 'sports') return key;
+  if(/sport|baseball|football|basketball|hockey|soccer|topps|panini/i.test(String(r.category || '') + ' ' + String(r.sport || ''))) return 'sports';
+  if(['yugioh','one_piece','lorcana','digimon','dragon_ball','marvel','star_wars','garbage_pail'].includes(key) || /\btcg\b|card game/i.test(String(r.category || ''))) return 'tcg';
+  return 'other';
+}
+function buyTargetRules(group){
+  const t = buyTargetsSettings(), g = t[group] || t.other;
+  return { marginFastPokemon:g.fast, marginFast:g.fast, marginAvg:g.avg, marginSlow:g.slow, tradePctPokemon:g.trade, tradePctOther:g.trade,
+    minProfit:Number(t.minProfit) || 0, feePct:Number(t.feePct) || 0, marginStocked:Number(t.stocked) || 0 };
+}
+function buyTargetSummary(group){
+  const t = buyTargetsSettings(), g = t[group] || t.other, name = (BUY_TARGET_GROUPS.find(x => x[0] === group) || [,'This category'])[1];
+  return `${name} margins: ${g.fast}% fast sellers, ${g.avg}% average, ${g.slow}% slow or jumpy, +${t.stocked}% if you already have some; never under $${Number(t.minProfit).toFixed(2)} profit; trade credit ${g.trade}% of resale on fast sellers`;
+}
+function buyTargetsSettingsHtml(){
+  const t = buyTargetsSettings();
+  const cell = (id, v) => `<input id="${id}" class="tsi" type="number" min="0" max="95" step="1" value="${escHtml(String(v))}" style="margin:0;width:100%;min-width:0">`;
+  return `<div class="buy-targets-settings">
+    <div style="font-family:'Orbitron',monospace;font-size:11px;color:var(--g);margin-bottom:6px">BUY TARGETS</div>
+    <div style="font-family:var(--font-mono);font-size:9px;color:var(--dim);line-height:1.6;margin-bottom:8px">The profit you keep when buying, by category and by how fast a card sells (TCGplayer sales a week: fast 10+, slow under 3). Walk-away price = expected resale - fees - margin. TRADE = trade credit as % of resale for a fast seller; slower cards drop by as many points as their margin goes up.</div>
+    <div class="buy-targets-grid"><b>Category</b><b>Fast %</b><b>Average %</b><b>Slow %</b><b>Trade %</b>
+      ${BUY_TARGET_GROUPS.map(([key, label]) => `<span>${escHtml(label)}</span>${cell('bt-'+key+'-fast', t[key].fast)}${cell('bt-'+key+'-avg', t[key].avg)}${cell('bt-'+key+'-slow', t[key].slow)}${cell('bt-'+key+'-trade', t[key].trade)}`).join('')}
+    </div>
+    <div class="buy-targets-grid buy-targets-extra"><label>MIN PROFIT $${cell('bt-minProfit', t.minProfit)}</label><label>CARD FEES %${cell('bt-feePct', t.feePct)}</label><label>+% IF IN STOCK${cell('bt-stocked', t.stocked)}</label></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"><button class="hbtn" onclick="saveBuyTargetsFromForm()">SAVE BUY TARGETS</button><button class="hbtn" onclick="resetBuyTargets()">RESET TO DEFAULTS</button></div>
+  </div>`;
+}
+async function saveBuyTargetsFromForm(){
+  const num = (id, min, max) => { const v = Number(document.getElementById(id)?.value); return Number.isFinite(v) ? Math.max(min, Math.min(max, v)) : null; };
+  const t = buyTargetsSettings(), next = { minProfit:num('bt-minProfit', 0, 1000) ?? t.minProfit, feePct:num('bt-feePct', 0, 50) ?? t.feePct, stocked:num('bt-stocked', 0, 50) ?? t.stocked };
+  for(const [key] of BUY_TARGET_GROUPS){
+    next[key] = {};
+    for(const f of ['fast','avg','slow','trade']) next[key][f] = num(`bt-${key}-${f}`, 0, 95) ?? t[key][f];
+    if(!(next[key].fast <= next[key].avg && next[key].avg <= next[key].slow)) { toast_dash(`${BUY_TARGET_GROUPS.find(x => x[0] === key)[1]}: fast should be the lowest margin and slow the highest`); return; }
+  }
+  const cloud = await saveVendorProfile({ buyTargets:next });
+  toast_dash(cloud ? 'Buy targets saved' : 'Buy targets saved on this device only -- cloud sync failed');
+}
+async function resetBuyTargets(){
+  if(!confirm('Put every category back to the default margins and trade %?')) return;
+  const cloud = await saveVendorProfile({ buyTargets:{} });
+  toast_dash(cloud ? 'Buy targets reset' : 'Reset on this device only -- cloud sync failed');
 }
 // Only worth a chip when there's history to judge, or a reason to pass.
 function buySignalChipHtml(sig, { onclick = '' } = {}){
@@ -34632,7 +34704,7 @@ function buySignalPanelHtml(r = {}, idx = 0){
     <ol class="buy-sig-math">${sig.math.slice(0, 3).map(line => `<li>${escHtml(line)}</li>`).join('')}</ol>`}
     <ul class="buy-sig-reasons">${sig.reasons.map(x => `<li class="${x.tone}"><i>${dot[x.tone] || '·'}</i>${escHtml(x.text)}</li>`).join('')}</ul>
     ${sig.sellHint ? `<div class="buy-sig-sell">${escHtml(sig.sellHint)}</div>` : ''}
-    <div class="buy-sig-foot">Where this comes from: ${sig.metrics ? `price trend${sig.metrics.perWeek != null ? ' and sales per week' : ''} from ${isPokemonChartCandidate(r) ? "TCGplayer's history via our Pokémon price service" : 'the price graph above'} (${sig.metrics.points} days)` : 'no price history yet, so margin only'}; "sold before" and stock are your own records. Margins: 20% liquid Pokémon, 25% other fast sellers, 35% average, 45% slow or jumpy, +5% if you already have some; never under $3 profit. A guide, not a promise.${canTest ? ` <button class="hbtn" onclick="runBuySignalBacktest(${idx})">TEST THESE RULES ON THIS SET</button>` : ''}</div>
+    <div class="buy-sig-foot">Where this comes from: ${sig.metrics ? `price trend${sig.metrics.perWeek != null ? ' and sales per week' : ''} from ${isPokemonChartCandidate(r) ? "TCGplayer's history via our Pokémon price service" : 'the price graph above'} (${sig.metrics.points} days)` : 'no price history yet, so margin only'}; "sold before" and stock are your own records. ${escHtml(buyTargetSummary(buyTargetGroup(r)))} -- change these in Settings > Buy targets. A guide, not a promise.${canTest ? ` <button class="hbtn" onclick="runBuySignalBacktest(${idx})">TEST THESE RULES ON THIS SET</button>` : ''}</div>
     <div id="buy-sig-backtest-${idx}" class="buy-sig-backtest">${buySignalScorecardHtml()}</div>
   </div>`;
 }

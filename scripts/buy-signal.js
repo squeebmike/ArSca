@@ -43,9 +43,10 @@
     fallCarryPct: 50,       // a card still falling is valued as if it keeps
                             // sliding at this share of last month's pace
     openPct: 88,            // first offer, as % of the walk-away price
-    tradeBonus: 1.15,       // trade credit vs cash (the buy tray's own ratio)
-    tradeCapPokemon: 80,    // trade at up to this % of resale on Pokemon
-    tradeCapOther: 75,
+    // Trade credit, as % of resale, for a FAST seller; slower sellers drop
+    // by the same points their cash margin rises (Pokemon trades at 80).
+    tradePctPokemon: 80,
+    tradePctOther: 75,
     ownSalesMin: 2,         // recent sales of our own before we trust their price
     ownSalesCap: 1.15,      // and never value above this x market
   };
@@ -222,8 +223,12 @@
     let walkAway = Math.min(resaleNet * (1 - marginPct / 100), resaleNet - R.minProfit);
     walkAway = Math.max(0, Math.floor(walkAway * 4) / 4); // to the quarter
     const openPrice = Math.max(0, Math.floor(walkAway * R.openPct / 100 * 4) / 4);
-    const tradeCap = resale.value * (isPokemon ? R.tradeCapPokemon : R.tradeCapOther) / 100;
-    const tradeMax = Math.max(0, Math.floor(Math.min(tradeCap, walkAway * R.tradeBonus) * 4) / 4);
+    // Trade credit: its own % for a fast seller, lowered by the same points
+    // the cash margin goes up for slower or stocked cards -- and never less
+    // than the cash walk-away price.
+    const fastMargin = isPokemon ? R.marginFastPokemon : R.marginFast;
+    const tradePctUsed = Math.max(10, Math.min(95, (isPokemon ? R.tradePctPokemon : R.tradePctOther) - Math.max(0, marginPct - fastMargin)));
+    const tradeMax = Math.max(0, Math.floor(Math.max(walkAway, resale.value * tradePctUsed / 100) * 4) / 4);
     if(walkAway < R.minWalkAway){
       hard = true; flags.push('thin');
       say('bad', `Resale nets about ${money(resaleNet)} -- after ${money(R.minProfit)} profit there's ${walkAway > 0 ? 'only ' + money(walkAway) : 'nothing'} left to pay. Bulk it or pass.`);
@@ -235,7 +240,7 @@
       `Resale: ${resale.basis}`,
       R.feePct || R.feeFixed ? `After ${R.feePct}% card fees${R.feeFixed ? ` + ${money(R.feeFixed)}` : ''}: ${money(resaleNet)}` : `No fees (in-store): ${money(resaleNet)}`,
       `Keep ${marginPct}% (${marginNote}): walk away above ${money(walkAway)}`,
-      `Open at ${money(openPrice)} · trade credit up to ${money(tradeMax)}`,
+      `Open at ${money(openPrice)} · trade credit up to ${money(tradeMax)} (${Math.round(tradePctUsed)}% of resale)`,
     ];
 
     let verdict;
@@ -245,7 +250,7 @@
     const label = verdict === 'PASS' ? 'PASS' : `${verdict === 'BUY' ? 'BUY' : 'BUY LOW'} · ≤ ${money(walkAway)}`;
     const sellHint = m && m.chg14 != null && m.chg14 >= R.spikePct ? 'If you have this in stock, now is a good time to sell.' : '';
     const pass = verdict === 'PASS';
-    return { verdict, label, maxPrice:pass ? 0 : walkAway, openPrice:pass ? 0 : openPrice, tradeMax:pass ? 0 : tradeMax,
+    return { verdict, label, maxPrice:pass ? 0 : walkAway, openPrice:pass ? 0 : openPrice, tradeMax:pass ? 0 : tradeMax, tradePctUsed,
       resale:round2(resale.value), resaleBasis:resale.basis, resaleNet:round2(resaleNet), marginPct, speed,
       reasons, flags, math:pass ? [] : math, sellHint, metrics:m, confident:!!m && m.points >= 20 };
   }
