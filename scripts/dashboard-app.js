@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.10.12.1-points-by-text';
+const APP_VERSION = '2026.10.12.2-customer-display-legible';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -1614,7 +1614,7 @@ const DEFAULT_PAYMENT_SETTINGS = {
   tradeCredit:{ enabled:true },
   tax:{ enabled:false, defaultRate:0, label:'Sales Tax' },
   receipt:{ storeName:'', footer:'Thanks for shopping with us!', showPaymentInstructions:true, captureEnabled:true },
-  customerDisplay:{ showPaymentMethods:true, showQrCodes:true, showStoreLogo:true, wantsCaptureEnabled:true, checkoutTimeoutMinutes:10 },
+  customerDisplay:{ showPaymentMethods:true, showQrCodes:true, showStoreLogo:true, askWantsAfterPayment:false, checkoutTimeoutMinutes:10 },
 };
 
 function getLoyaltyRate(){
@@ -3534,7 +3534,7 @@ function renderPaymentSettingsPanel(){
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:10px">
       <label style="display:flex;gap:8px;align-items:center;font-family:monospace;font-size:10px;color:var(--dim)"><input id="pay-tax-enabled" type="checkbox" ${s.tax.enabled?'checked':''}> tax enabled</label>
       <label style="display:flex;gap:8px;align-items:center;font-family:monospace;font-size:10px;color:var(--dim)"><input id="pay-receipt-capture" type="checkbox" ${s.receipt.captureEnabled!==false?'checked':''}> receipt capture</label>
-      <label style="display:flex;gap:8px;align-items:center;font-family:monospace;font-size:10px;color:var(--dim)"><input id="pay-wants-capture" type="checkbox" ${s.customerDisplay.wantsCaptureEnabled!==false?'checked':''}> wants capture</label>
+      <label style="display:flex;gap:8px;align-items:center;font-family:monospace;font-size:10px;color:var(--dim)"><input id="pay-wants-capture" type="checkbox" ${s.customerDisplay.askWantsAfterPayment===true?'checked':''}> ask "what are you looking for?" after payment</label>
     </div>
     <div style="font-family:monospace;font-size:9px;color:var(--dim);padding:4px 0">Receipt footer set in Vendor Info</div>
     <div style="margin-top:12px"><div class="ph" style="padding-left:0">RECENT STRIPE PAYMENTS</div><div id="stripe-payment-history" style="font-family:var(--font-mono);font-size:10px;color:var(--dim)">Loading…</div></div>
@@ -3567,7 +3567,7 @@ function savePaymentSettingsFromForm(){
     card:{ ...prev.card, enabled:!!document.getElementById('pay-card-enabled')?.checked, provider:document.getElementById('pay-card-provider')?.value || 'stripe', stripeMode:document.getElementById('pay-stripe-mode')?.value || 'test', stripePublishableKey:'' },
     tax:{ ...prev.tax, defaultRate:Number(vp.taxRate || 0) || Number(prev.tax.defaultRate || 0), enabled:!!document.getElementById('pay-tax-enabled')?.checked },
     receipt:{ ...prev.receipt, footer:vp.receiptFooter?.trim() || prev.receipt.footer, captureEnabled:!!document.getElementById('pay-receipt-capture')?.checked },
-    customerDisplay:{ ...prev.customerDisplay, showPaymentMethods:!!document.getElementById('pay-showmethods-enabled')?.checked, wantsCaptureEnabled:!!document.getElementById('pay-wants-capture')?.checked },
+    customerDisplay:{ ...prev.customerDisplay, showPaymentMethods:!!document.getElementById('pay-showmethods-enabled')?.checked, askWantsAfterPayment:!!document.getElementById('pay-wants-capture')?.checked },
   };
   savePaymentSettings(settings);
   toast_dash('Payment settings saved');
@@ -41103,7 +41103,7 @@ function ensureCheckoutRuntimeMarkup(){
         <div id="receipt-capture-screen" class="receipt-capture-screen"></div>
         <div id="wants-capture-screen" class="wants-capture-screen"></div>
       </div>
-      <div style="text-align:center;font-family:var(--font-mono);font-size:11px;color:var(--dim)">Thank you for shopping with us.</div>`;
+      <div class="customer-pay-footer">Thank you for shopping with us.</div>`;
   }
   const tools = document.getElementById('dealer-cart-tools');
   if(tools && !document.getElementById('dealer-checkout-state')) {
@@ -41807,7 +41807,8 @@ function showReceiptCaptureScreen(){
   // campaign -- unlike that checkbox, this one DOES gate the send, because
   // sending the text IS the whole point of this screen, not an unrelated
   // purchase it must never block (the sale is already complete by now).
-  el.innerHTML = `<h2>Want a text receipt?</h2>${rate > 0 ? `<div style="font-family:var(--font-mono);font-size:11px;color:var(--gold);margin-bottom:6px">Also earns ${rate}% back in loyalty points</div>` : ''}<input id="receipt-phone" placeholder="Phone number"><label style="display:flex;align-items:flex-start;gap:8px;font-size:11px;color:var(--dim);margin:8px 0"><input id="receipt-sms-consent" type="checkbox" style="margin-top:3px;flex-shrink:0">I agree to receive this purchase receipt and customer-care SMS/text messages from ${escHtml(storeName)} at the number above. Message frequency varies based on order activity. Msg &amp; data rates may apply. Reply STOP to opt out or HELP for help. Consent is not a condition of purchase. See our <a href="https://themanapocket.com/privacy-policy" target="_blank">Privacy Policy</a> and <a href="https://themanapocket.com/terms-and-conditions" target="_blank">Terms</a>.</label><div class="payment-confirm-row"><button class="hbtn" onclick="saveReceiptCapture()">SEND RECEIPT</button><button class="hbtn danger" onclick="showWantsCaptureScreen()">SKIP</button></div>`;
+  const paid = Number(confirmedSaleContext?.sale?.total || 0);
+  el.innerHTML = `<div class="receipt-done">✓ Payment complete${paid > 0 ? ' · $' + paid.toFixed(2) : ''}</div><h2>Want a text receipt?</h2>${rate > 0 ? `<div class="receipt-points-note">Earn ${rate}% back in points, saved to your number</div>` : ''}<input id="receipt-phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="Phone number"><label class="receipt-consent"><input id="receipt-sms-consent" type="checkbox"><span>I agree to receive this purchase receipt and customer-care SMS/text messages from ${escHtml(storeName)} at the number above. Message frequency varies based on order activity. Msg &amp; data rates may apply. Reply STOP to opt out or HELP for help. Consent is not a condition of purchase. See our <a href="https://themanapocket.com/privacy-policy" target="_blank">Privacy Policy</a> and <a href="https://themanapocket.com/terms-and-conditions" target="_blank">Terms</a>.</span></label><div class="payment-confirm-row"><button class="hbtn receipt-send" onclick="saveReceiptCapture()">SEND RECEIPT</button><button class="hbtn receipt-skip" onclick="showWantsCaptureScreen()">NO THANKS</button></div>`;
   el.classList.add('on');
 }
 
@@ -41933,7 +41934,9 @@ function showWantsCaptureScreen(){
   if(receipt) receipt.classList.remove('on');
   const s = getPaymentSettings();
   if(!el) return finishLockedCheckout();
-  if(s.customerDisplay?.wantsCaptureEnabled === false) return finishLockedCheckout();
+  // "What are you looking for?" after payment is off unless the store turns
+  // it on (Settings > Payments) -- it was nagging every customer.
+  if(s.customerDisplay?.askWantsAfterPayment !== true) return finishLockedCheckout();
   el.innerHTML = `<h2>Looking for specific cards?</h2><input id="wants-name" placeholder="Name"><input id="wants-phone" placeholder="Phone number"><textarea id="wants-text" placeholder="What are you looking for?" style="height:92px"></textarea><label style="display:flex;gap:8px;align-items:center;font-size:13px;margin:8px 0"><input id="wants-marketing" type="checkbox"> Want us to text you if we find them?</label><div class="payment-confirm-row"><button class="hbtn" onclick="saveWantsCapture()">FINISH</button><button class="hbtn danger" onclick="finishLockedCheckout()">SKIP</button></div>`;
   el.classList.add('on');
 }
