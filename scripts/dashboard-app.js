@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.10.12.9-price-lock';
+const APP_VERSION = '2026.10.12.10-ceilings-apply-to-stock';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -4586,15 +4586,16 @@ function renderVendorConfigPanel(){
     <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border)">
       <div style="font-family:'Orbitron',monospace;font-size:10px;color:var(--dim);letter-spacing:.04em;margin-bottom:6px">CATEGORY PRICE CEILINGS</div>
       <div style="font-family:var(--font-mono);font-size:9px;color:var(--dim);line-height:1.55;margin-bottom:8px">
-        Bulk "how far above market can we sell" rule, applied automatically as the ceiling on every NEW item added to that category going forward -- whichever bump is greater, percent or flat dollars. Leave both blank for a category to skip auto-ceilings for it. Doesn't touch existing inventory, and any item's own ceiling can still be changed individually afterward (Max Sale Price / Ceiling on its edit screen).
+        "How far above market can we sell" per category -- whichever bump is greater, percent or flat dollars. Saved for the whole store, so every device uses it. New items in that category get the ceiling automatically; APPLY TO IN-STOCK sets it on what you already have (it never lowers a price today, and leaves locked prices above it alone), CLEAR takes it off. Any item's own ceiling can still be changed on its edit screen (Max Sale Price / Ceiling).
       </div>
-      <div class="tbl-wrap"><table><thead><tr><th>CATEGORY</th><th style="text-align:right">% OVER MARKET</th><th style="text-align:right">OR FLAT $ OVER</th></tr></thead><tbody>
+      <div class="tbl-wrap"><table><thead><tr><th>CATEGORY</th><th style="text-align:right">% OVER MARKET</th><th style="text-align:right">OR FLAT $ OVER</th><th>IN STOCK</th></tr></thead><tbody>
         ${getInventoryCategories().map(c => {
           const rule = cfg.categoryPriceCeilings?.[c] || {};
           const safe = String(c).replace(/'/g,"\\'");
           return `<tr><td>${escHtml(c)}</td>
             <td style="text-align:right"><input type="number" min="0" step="1" class="tsi" style="width:70px;text-align:right" value="${rule.pct || ''}" placeholder="0" onchange="setCategoryPriceCeilingRule('${safe}','pct',this.value)"></td>
             <td style="text-align:right"><input type="number" min="0" step="0.01" class="tsi" style="width:80px;text-align:right" value="${rule.flat || ''}" placeholder="0.00" onchange="setCategoryPriceCeilingRule('${safe}','flat',this.value)"></td>
+            <td style="white-space:nowrap">${(rule.pct || rule.flat) ? `<button class="ra" onclick="applyCategoryCeilingToStock('${safe}')">APPLY TO IN-STOCK</button>` : ''} <button class="ra" onclick="clearCategoryCeilingFromStock('${safe}')">CLEAR</button></td>
           </tr>`;
         }).join('')}
       </tbody></table></div>
@@ -4739,6 +4740,65 @@ function setCategoryPriceCeilingRule(category, field, value){
   cfg.categoryPriceCeilings = rules;
   saveVendorConfig(cfg);
 }
+
+// Store ask: "refresh pokemon inventory to use this rule -- the ones in
+// stock." Sets each in-stock item's ceiling from the category rule. A
+// ceiling is always at least market rounded up, so no price drops today;
+// a locked price above the new ceiling is left alone (it was set on
+// purpose) and counted instead.
+function categoryCeilingStockPlan(category){
+  const rule = categoryPriceCeilingRule(category);
+  const items = (all || []).filter(i => i.status === 'in_stock' && i.category === category && !inventoryIsDropship(i) && inventoryMarketPrice(i) > 0);
+  const plan = [], lockedAbove = [];
+  for(const item of items){
+    const ceiling = computeCategoryCeilingPrice(inventoryMarketPrice(item), rule);
+    if(!(ceiling > 0)) continue;
+    if(inventoryPriceOverride(item) > ceiling) { lockedAbove.push(item); continue; }
+    if(Math.abs(inventoryCeilingPrice(item) - ceiling) >= 0.01) plan.push({ item, ceiling });
+  }
+  return { rule, plan, lockedAbove };
+}
+async function applyCategoryCeilingToStock(category){
+  const { rule, plan, lockedAbove } = categoryCeilingStockPlan(category);
+  if(!rule) { toast_dash('Set a % or $ rule for ' + category + ' first'); return; }
+  if(!plan.length) { toast_dash(`Every in-stock ${category} item already has its ceiling${lockedAbove.length ? ` (${lockedAbove.length} locked above it, left alone)` : ''}`); return; }
+  if(!confirm(`Set a price ceiling on ${plan.length} in-stock ${category} item${plan.length === 1 ? '' : 's'} (market + ${rule.pct || 0}% or +$${Number(rule.flat || 0).toFixed(2)}, whichever is more)?\n\nNo price drops today -- it only stops price syncs raising them past that.${lockedAbove.length ? `\n\n${lockedAbove.length} locked price${lockedAbove.length === 1 ? ' is' : 's are'} already above the ceiling and will be left alone.` : ''}`)) return;
+  let done = 0, failed = 0;
+  for(const { item, ceiling } of plan){
+    try { await saveInventoryEdit(item, { ceilingPrice:ceiling }); item.ceilingPrice = ceiling; if(item.raw) item.raw.ceilingPrice = ceiling; done++; }
+    catch(e) { failed++; console.warn('applyCategoryCeilingToStock', item.id, e?.message); }
+    if(done % 25 === 0) toast_dash(`Ceilings set: ${done} of ${plan.length}…`);
+  }
+  toast_dash(`Ceilings set on ${done} ${category} item${done === 1 ? '' : 's'}${failed ? ` · ${failed} failed -- try again` : ''}`);
+  filterTable();
+}
+async function clearCategoryCeilingFromStock(category){
+  const items = (all || []).filter(i => i.status === 'in_stock' && i.category === category && inventoryCeilingPrice(i) > 0);
+  if(!items.length) { toast_dash('No in-stock ' + category + ' items have a ceiling'); return; }
+  if(!confirm(`Remove the price ceiling from ${items.length} in-stock ${category} item${items.length === 1 ? '' : 's'}? (The category rule stays for new items unless you blank it.)`)) return;
+  let done = 0;
+  for(const item of items){
+    try { await saveInventoryEdit(item, { ceilingPrice:0 }); item.ceilingPrice = 0; if(item.raw) item.raw.ceilingPrice = 0; done++; }
+    catch(e) { console.warn('clearCategoryCeilingFromStock', item.id, e?.message); }
+  }
+  toast_dash(`Ceiling removed from ${done} ${category} item${done === 1 ? '' : 's'}`);
+  filterTable();
+}
+
+// Store settings are shared by every device on the store. They used to be
+// read once per session, so a device left open kept showing (and could save
+// back) old rules. Settings re-reads them every time it opens; coming back
+// to the app refreshes the saved copy quietly (at most every 2 minutes,
+// without redrawing anything someone might be typing in).
+let _storeSettingsRefreshedAt = 0;
+async function refreshStoreSettingsFromCloud({ force = false, redraw = false } = {}){
+  if(!force && Date.now() - _storeSettingsRefreshedAt < 120000) return;
+  _storeSettingsRefreshedAt = Date.now();
+  supabaseStoreSettingsLoaded = false;
+  try { await loadStoreSettingsFromSupabase(); } catch(e) { return; }
+  if(redraw) { try { renderVendorConfigPanel(); renderVendorProfilePanel(); applyVendorConfig(); } catch(e) {} }
+}
+document.addEventListener('visibilitychange', () => { if(document.visibilityState === 'visible') refreshStoreSettingsFromCloud(); });
 
 function applyVendorConfig(){
   const cfg = getVendorConfig();
@@ -16735,6 +16795,7 @@ function switchTab(name, btn){
   if(name === 'sales' && window.renderExpensesPanel) setTimeout(()=>window.renderExpensesPanel(), 0);
   if(name === 'reports') setTimeout(ensureReportsPanel, 0);
   if(name === 'phone') setTimeout(ensurePhonePanel, 0);
+  if(name === 'backoffice') setTimeout(() => refreshStoreSettingsFromCloud({ force:true, redraw:true }), 0);
 }
 
 // Quick sell modal
