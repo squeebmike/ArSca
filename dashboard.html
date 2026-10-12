@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.10.12.1-points-by-text">
+<meta name="version" content="2026.10.12.2-customer-display-legible">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1040,6 +1040,33 @@ body.customer-display-mode #tab-display{display:block!important;}
 body.customer-display-mode #customer-display{min-height:100dvh;padding:18px;background-color:#f7f8fa;background-image:linear-gradient(var(--customer-bg-overlay),var(--customer-bg-overlay)),var(--customer-bg-image);background-size:cover;background-position:center;}
 body.customer-display-mode #customer-display .sell-shell{width:min(920px,100%);padding:0;}
 body.customer-display-mode #customer-display-exit{display:block;}
+/* Readable over any background image: the screen's content sits on frosted
+   light cards with fixed dark text, whatever the theme's overlay opacity or
+   colors (the theme's light "dim" gray was unreadable on a photo). */
+#customer-display.customer-payment-screen{--dim:#4b5563;color:#101319;}
+#customer-display .customer-pay-brand,#customer-display .customer-pay-scroll,#customer-display .customer-pay-footer{background:rgba(255,255,255,.93);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);border-radius:14px;box-shadow:0 8px 30px rgba(0,0,0,.28);}
+#customer-display .customer-pay-brand{padding:10px 18px;justify-self:center;max-width:100%;}
+#customer-display .customer-pay-scroll{padding:16px;align-self:start;max-height:100%;box-sizing:border-box;}
+#customer-display .customer-pay-footer{padding:6px 16px;justify-self:center;font-family:var(--font-mono);font-size:11px;color:#4b5563;}
+#customer-display .customer-pay-store{color:#0b0d12;}
+#customer-display .customer-pay-name,#customer-display .customer-pay-price{color:#101319;}
+#customer-display .customer-pay-total span{color:#4b5563;}
+#customer-display .customer-pay-total b{color:color-mix(in srgb,var(--g) 70%,#101319);}
+body.customer-display-mode #customer-display-exit{top:6px;right:6px;font-size:8px;padding:5px 8px;min-height:0;opacity:.45;}
+/* After payment: the receipt step takes the whole card, cart hidden. */
+#customer-display .customer-pay-scroll:has(.receipt-capture-screen.on,.wants-capture-screen.on)>:not(.receipt-capture-screen):not(.wants-capture-screen){display:none;}
+#customer-display .receipt-capture-screen,#customer-display .wants-capture-screen{margin:4px auto;border:0;padding:6px 4px;background:transparent;text-align:center;}
+.receipt-done{display:inline-block;font-family:var(--font-mono);font-size:12px;font-weight:700;color:#065f46;background:#d1fae5;border-radius:999px;padding:6px 14px;margin-bottom:12px;}
+.receipt-capture-screen h2{font-size:clamp(20px,5.5vw,26px)!important;}
+.receipt-points-note{font-family:var(--font-mono);font-size:12px;color:#92400e;margin:-4px 0 12px;}
+.receipt-capture-screen #receipt-phone{font-size:22px;text-align:center;letter-spacing:1px;min-height:58px;color:#101319;background:#fff;}
+.receipt-consent{display:flex;align-items:flex-start;gap:10px;text-align:left;font-size:12px;line-height:1.5;color:#374151;margin:6px 0 14px;}
+.receipt-consent input{width:22px!important;height:22px!important;min-height:0!important;margin:1px 0 0!important;flex-shrink:0;}
+.receipt-consent a{color:#1d4ed8;}
+.receipt-capture-screen .payment-confirm-row{display:grid;grid-template-columns:1fr;gap:10px;}
+.receipt-capture-screen .payment-confirm-row .hbtn{width:100%;min-height:56px;font-size:15px;border-radius:10px;}
+.receipt-capture-screen .receipt-send{background:#101319;color:#fff;border-color:#101319;}
+.receipt-capture-screen .receipt-skip{background:transparent;color:#4b5563;border:1px solid #cbd5e1;}
 body.customer-browse-mode{padding-bottom:0}body.customer-browse-mode header,body.customer-browse-mode .tabs,body.customer-browse-mode .dealer-status-bar,body.customer-browse-mode .beta-mode-strip{display:none!important}body.customer-browse-mode .tab-panel{display:none!important}body.customer-browse-mode #tab-browse{display:block!important;min-height:100vh;padding:18px}body.customer-browse-mode #customer-browse-exit{display:block}
 .responsive-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(320px,100%),1fr));gap:14px;}
 .sticky-action-bar{position:sticky;bottom:0;z-index:80;background:linear-gradient(to top,var(--bg) 78%,transparent);padding:10px 0;}
@@ -1700,23 +1727,23 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.10.12.1-points-by-text" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.10.12.1-points-by-text" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.10.12.1-points-by-text" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.10.12.1-points-by-text" defer></script>
-<script src="scripts/backlist-dashboard.js?v=2026.10.12.1-points-by-text" defer></script>
-<script src="scripts/database-viewer.js?v=2026.10.12.1-points-by-text" defer></script>
-<script src="scripts/card-intake-dashboard.js?v=2026.10.12.1-points-by-text" defer></script>
-<script src="scripts/mana-pocket-task-library.js?v=2026.10.12.1-points-by-text" defer></script>
-<script src="scripts/daily-tasks-dashboard.js?v=2026.10.12.1-points-by-text" defer></script>
-<script src="scripts/expenses.js?v=2026.10.12.1-points-by-text" defer></script>
-<script src="scripts/whatnot-bridge.js?v=2026.10.12.1-points-by-text" defer></script>
+<script src="scripts/query-routing.js?v=2026.10.12.2-customer-display-legible" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.10.12.2-customer-display-legible" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.10.12.2-customer-display-legible" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.10.12.2-customer-display-legible" defer></script>
+<script src="scripts/backlist-dashboard.js?v=2026.10.12.2-customer-display-legible" defer></script>
+<script src="scripts/database-viewer.js?v=2026.10.12.2-customer-display-legible" defer></script>
+<script src="scripts/card-intake-dashboard.js?v=2026.10.12.2-customer-display-legible" defer></script>
+<script src="scripts/mana-pocket-task-library.js?v=2026.10.12.2-customer-display-legible" defer></script>
+<script src="scripts/daily-tasks-dashboard.js?v=2026.10.12.2-customer-display-legible" defer></script>
+<script src="scripts/expenses.js?v=2026.10.12.2-customer-display-legible" defer></script>
+<script src="scripts/whatnot-bridge.js?v=2026.10.12.2-customer-display-legible" defer></script>
 <script src="scripts/research-loupe.js?v=a7de4ffe90" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.10.12.1-points-by-text" defer></script>
-<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.10.12.1-points-by-text" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.10.12.1-points-by-text" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.10.12.1-points-by-text" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.10.12.1-points-by-text" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.10.12.2-customer-display-legible" defer></script>
+<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.10.12.2-customer-display-legible" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.10.12.2-customer-display-legible" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.10.12.2-customer-display-legible" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.10.12.2-customer-display-legible" defer></script>
 </head>
 <body>
 
@@ -1768,7 +1795,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
 <div class="dsb-chip" id="dsb-tasks" title="Today's Roles &amp; Tasks — click to jump to Tasks tab" style="cursor:pointer;display:none" onclick="switchTab('tasks')">✅ <span>TASKS:</span> <b id="dsb-tasks-val">—</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.10.12.1-points-by-text</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.10.12.2-customer-display-legible</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3973,8 +4000,8 @@ body.show-mode .inv-sync-badge{display:none;}
   <a class="lba-nav-btn active" href="dashboard.html"><span class="nav-ico">▦</span>DASHBOARD</a>
 </div>
 
-<script src="scripts/dashboard-app.js?v=2026.10.12.1-points-by-text"></script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.10.12.1-points-by-text" defer></script>
+<script src="scripts/dashboard-app.js?v=2026.10.12.2-customer-display-legible"></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.10.12.2-customer-display-legible" defer></script>
 </body>
 </html>
 
