@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.10.12.4-mana-points';
+const APP_VERSION = '2026.10.12.5-buy-signal';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -13802,6 +13802,9 @@ const BUILT_IN_ITEM_SIMPLE_FIELDS = [
   ['supplierCost',0,'num'], ['supplierCheckedAt',''],
   // Shelf sticker printed? null = no record (see inventoryStickerPrinted).
   ['stickerPrinted', null], ['stickerPrintedAt',''],
+  // The buy signal when we bought it ({verdict,maxPrice,market,paid,at}),
+  // so how those buys turned out can be checked later.
+  ['buySignal', null],
 ];
 // BUILT_IN_ITEM_ALIASED_FIELDS: the read side stays hand-written in
 // mapBuiltInItem below (a saved row might use an older key name, or the
@@ -34549,10 +34552,122 @@ async function openQplChartModal(idx, range='3M'){
     document.body.appendChild(modal);
   }
   modal.innerHTML = qplChartModalHtml(r, idx);
+  // The verdict sits under the graph it's read from.
+  const panel = buySignalPanelHtml(r, idx);
+  if(panel) modal.querySelector('.qpl-chart-card')?.insertAdjacentHTML('beforeend', panel);
   modal.classList.add('on');
 }
 
 function closeQplChartModal(){ document.getElementById('qpl-chart-modal')?.classList.remove('on'); }
+
+// ── Buy signal (scripts/buy-signal.js) ──
+// "Buy it or not": a verdict, a max price and the reasons, from the card's
+// own price history (the same series its chart draws), how fast it sells,
+// what we already hold and what we've sold before. Never a prediction --
+// the rules and their thresholds are in buy-signal.js, and TEST THESE RULES
+// on a Pokemon card's graph backtests them on that card's whole set.
+function buySignalPoints(r = {}){
+  if(r.pokemonPriceTracker || r.pokemonPriceTrackerCard || r.pptCard){
+    const series = pokemonPptAllHistorySeries(r);
+    const sel = series.find(s => s.selected) || series[0];
+    if(sel?.points?.length) return sel.points;
+  }
+  const own = normalizeChartPoints(r.selectedVariant?.priceHistory || r.priceHistory || []);
+  return own.length ? own : (Array.isArray(r.signalHistory) ? r.signalHistory : []);
+}
+// The last 120 days, compact, so a buy-tray line keeps its signal after
+// the research result is gone.
+function buySignalHistorySnapshot(r = {}){
+  const cutoff = Date.now() - 120 * 86400000;
+  return buySignalPoints(r).filter(p => new Date(p.date).getTime() >= cutoff).map(p => ({ date:String(p.date).slice(0, 10), price:Number(p.price), ...(Number(p.volume) > 0 ? { volume:Number(p.volume) } : {}) }));
+}
+function buySignalStockQty(r = {}){
+  const id = String(r.tcgPlayerId || r.tcgplayerId || '');
+  const name = String(r.name || '').toLowerCase().trim(), set = String(r.set || r.setName || '').toLowerCase().trim(), num = String(r.card_number || '').replace(/^#/, '').toLowerCase();
+  if(!id && !name) return 0;
+  return (all || []).filter(i => {
+    const st = String(i.lifecycle || i.status || 'in_stock').toLowerCase();
+    if(['sold','archived','returned','deleted'].includes(st) || (r.source === 'inventory' && String(i.id) === String(r.raw?.id || ''))) return false;
+    const iid = String(i.tcgPlayerId || i.tcgplayerId || i.raw?.tcgPlayerId || '');
+    if(id && iid) return iid === id;
+    return !!name && String(i.name || '').toLowerCase().trim() === name && (!set || String(i.set || '').toLowerCase().trim() === set) && (!num || String(i.card_number || '').replace(/^#/, '').toLowerCase() === num);
+  }).reduce((n, i) => n + Math.max(1, inventoryAvailableQuantity(i)), 0);
+}
+function buySignalBuyPct(){ return Number(getVendorProfile().defaultBuyPct) || 70; }
+function buySignalFor(r = {}, { market } = {}){
+  const S = window.ArsCaBuySignal;
+  if(!S || !r) return null;
+  const isComic = qplResultCategoryKey(r) === 'comic';
+  const price = Number(market ?? (r.activePriceBasis?.price || r.market || 0));
+  if(!(price > 0)) return null;
+  let sales = null;
+  try { sales = getSalesSignal(r); } catch(e) {}
+  return S.evaluateBuySignal({ points:isComic ? [] : buySignalPoints(r), market:price, buyPct:buySignalBuyPct(), stockQty:buySignalStockQty(r), ourSales:sales, wants:sales?.wants || 0 });
+}
+// Only worth a chip when there's history to judge, or a reason to pass.
+function buySignalChipHtml(sig, { onclick = '' } = {}){
+  if(!sig || sig.verdict === 'NO_DATA' || (!sig.metrics && sig.verdict !== 'PASS')) return '';
+  const cls = sig.verdict === 'BUY' ? 'buy' : sig.verdict === 'PASS' ? 'pass' : 'low';
+  const icon = sig.verdict === 'BUY' ? '🟢' : sig.verdict === 'PASS' ? '🔴' : '🟡';
+  const why = sig.reasons.filter(x => x.tone !== 'good').map(x => x.text)[0] || sig.reasons[0]?.text || '';
+  return `<span class="buy-sig-chip ${cls}" title="${escHtml(why)}"${onclick ? ` onclick="${onclick}"` : ''}>${icon} ${escHtml(sig.label)}</span>`;
+}
+function buySignalPanelHtml(r = {}, idx = 0){
+  const sig = buySignalFor(r);
+  if(!sig) return '';
+  const cls = sig.verdict === 'BUY' ? 'buy' : sig.verdict === 'PASS' ? 'pass' : 'low';
+  const head = sig.verdict === 'BUY' ? '🟢 BUY' : sig.verdict === 'PASS' ? '🔴 PASS' : '🟡 BUY LOW';
+  const dot = { good:'✓', warn:'!', bad:'✕', info:'·' };
+  const price = Number(r.activePriceBasis?.price || r.market || 0);
+  const canTest = isPokemonChartCandidate(r) && (r.set || r.setName) && !getAccountContext().isDemo;
+  return `<div class="buy-sig-panel ${cls}">
+    <div class="buy-sig-head"><b>${head}</b>${sig.verdict !== 'PASS' ? `<span>Pay up to <b>$${sig.maxPrice.toFixed(2)}</b> (${Math.round(sig.buyPctUsed)}% of $${price.toFixed(2)})</span>` : '<span>Not at any price that leaves room after fees</span>'}</div>
+    <ul class="buy-sig-reasons">${sig.reasons.map(x => `<li class="${x.tone}"><i>${dot[x.tone] || '·'}</i>${escHtml(x.text)}</li>`).join('')}</ul>
+    ${sig.sellHint ? `<div class="buy-sig-sell">${escHtml(sig.sellHint)}</div>` : ''}
+    <div class="buy-sig-foot">From the price history above${sig.metrics ? ` (${sig.metrics.points} days)` : ''}, your buy % (${buySignalBuyPct()}%), stock and sales. A guide, not a promise -- prices can keep moving either way.${canTest ? ` <button class="hbtn" onclick="runBuySignalBacktest(${idx})">TEST THESE RULES ON THIS SET</button>` : ''}</div>
+    <div id="buy-sig-backtest-${idx}" class="buy-sig-backtest">${buySignalScorecardHtml()}</div>
+  </div>`;
+}
+// Backtest results kept on this device, one entry per set tested.
+function buySignalBacktests(){ return safeLocalJson('buy_signal_backtests_v1', []); }
+function buySignalScorecardHtml(){
+  const runs = buySignalBacktests();
+  if(!runs.length) return '';
+  const total = {};
+  runs.forEach(run => (run.rows || []).forEach(row => {
+    const t = total[row.verdict] ||= { count:0, change:0, dropped:0, gained:0 };
+    t.count += row.count; t.change += row.avgChange * row.count; t.dropped += row.dropped10 * row.count; t.gained += row.gained10 * row.count;
+  }));
+  const label = { BUY:'🟢 BUY', BUY_LOW:'🟡 BUY LOW', PASS:'🔴 PASS' };
+  const rows = ['BUY','BUY_LOW','PASS'].filter(v => total[v]).map(v => { const t = total[v]; return `<tr><td>${label[v]}</td><td>${t.count}</td><td>${(t.change / t.count).toFixed(1)}%</td><td>${(t.dropped / t.count).toFixed(0)}%</td><td>${(t.gained / t.count).toFixed(0)}%</td></tr>`; }).join('');
+  const buy = total.BUY, pass = total.PASS;
+  const verdict = buy && pass ? ((pass.change / pass.count) < (buy.change / buy.count) && (pass.dropped / pass.count) >= (buy.dropped / buy.count)
+    ? '<b style="color:var(--g)">So far PASS cards did worse than BUY cards -- the rules are earning their keep.</b>'
+    : '<b style="color:var(--gold)">So far PASS cards did NOT do worse than BUY cards -- treat the verdict as a hint only.</b>') : 'Test a few more sets for a fair read.';
+  return `<div class="buy-sig-score"><div>Rules tested on ${runs.length} set${runs.length === 1 ? '' : 's'} (${runs.map(x => escHtml(x.set)).slice(0, 4).join(', ')}${runs.length > 4 ? '…' : ''}): what the price did over the next 30 days.</div>
+    <table><tr><th>Verdict</th><th>Times</th><th>Avg change</th><th>Fell 10%+</th><th>Rose 10%+</th></tr>${rows}</table><div>${verdict}</div></div>`;
+}
+async function runBuySignalBacktest(idx){
+  const r = qplResults[idx];
+  const host = document.getElementById('buy-sig-backtest-' + idx);
+  const setName = r?.set || r?.setName || '';
+  if(!r || !host || !setName) return;
+  if(pokemonPriceTrackerQuotaBlocked()) { host.innerHTML = '<div class="buy-sig-score">Price service is out of credits right now -- try again later.</div>'; return; }
+  host.innerHTML = `<div class="buy-sig-score">Testing the rules on every card in ${escHtml(setName)} (one call, 180 days of history)…</div>`;
+  try {
+    const cards = await fetchPokemonPriceTrackerCardsForSet({ setName, language:r.language || 'english' });
+    const histories = cards.map(card => buySignalPoints({ pokemonPriceTracker:card, selectedCondition:'NM' })).filter(p => p.length);
+    const result = window.ArsCaBuySignal.backtestBuySignal(histories, { buyPct:buySignalBuyPct() });
+    if(!result.samples) { host.innerHTML = `<div class="buy-sig-score">${escHtml(setName)} didn't return enough history to test.</div>`; return; }
+    const runs = buySignalBacktests().filter(x => x.set !== setName);
+    runs.unshift({ set:setName, at:new Date().toISOString(), cards:histories.length, samples:result.samples, rows:result.rows });
+    localStorage.setItem('buy_signal_backtests_v1', JSON.stringify(runs.slice(0, 40)));
+    host.innerHTML = buySignalScorecardHtml();
+  } catch(e) {
+    host.innerHTML = `<div class="buy-sig-score">Could not test: ${escHtml(e.message || 'request failed')}</div>`;
+  }
+}
+
 
 function pokemonPriceTrackerSearchText(row = {}){
   return [row.name, row.set || row.setName, row.card_number || row.cardNumber].filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
@@ -37560,6 +37675,7 @@ async function selectQuickLookupResult(idx){
         })()}
         <button class="hbtn ppt-refresh-btn ppt-refresh-btn-wide" data-qpl-idx="${idx}" onclick="refreshResearchPrice(${idx})" title="Refresh this item from its best current price source">↻ REFRESH PRICE</button>
         <div class="qpl-price">$${Number(r.market || 0).toFixed(2)}</div>
+        ${buySignalChipHtml(buySignalFor(r), { onclick:`openQplChartModal(${idx})` })}
         <div class="qpl-price-sub">${escHtml(r.note || 'Review details, then add to inventory or buy offer.')}</div>
       </div>
     </div>
@@ -37795,6 +37911,7 @@ function selectedQuickLookupItem(idx){
     priceChange30d:r.priceChange30d || selectedVariant.priceChange30d || 0,
     priceChange90d:r.priceChange90d || selectedVariant.priceChange90d || 0,
     priceHistory:r.priceHistory || selectedVariant.priceHistory || [],
+    signalHistory:isComic ? [] : buySignalHistorySnapshot(r),
     market:activePrice || (parseFloat(document.getElementById('qpl-edit-market')?.value) || 0),
     marketValue:activePrice || 0,
     listPrice:isComic ? Number(comicValuation.listPrice || 0) : 0,
@@ -39795,6 +39912,7 @@ function renderBuyList(){
         <div class="buy-tray-name">${escHtml(i.name || 'Phone scan')}</div>
         <div class="buy-tray-sub">${escHtml(sub)}</div>
         <div class="buy-tray-price-note">${escHtml(priceNote)}${(i.manualMarketOverride || i.manualOfferOverride) ? ` · <button class="buy-tray-reset" onclick="resetBuyItemPricing('${i.id}')">reset researched price</button>` : ''}</div>
+        ${buyTraySignalHtml(i, offerVal)}
         ${gradedRow}
         ${err}
       </div>
@@ -39913,10 +40031,31 @@ function logBuyOffer(addedCount, failedCount){
   upsertCustomer(customer, phone, 'Buy offer: $' + totals.offerTotal.toFixed(2) + ' for ' + buyList.length + ' item(s)', 'buy-offer');
 }
 
+// Buy tray line: the same chip as research, and a warning when the offer
+// is over the signal's max price. Tapping it lists the reasons.
+function buyTraySignal(i = {}){ return buySignalFor(i, { market:Number(i.market || i.priceUsed || 0) }); }
+function buyTraySignalHtml(i = {}, offerVal = ''){
+  const sig = buyTraySignal(i);
+  const chip = buySignalChipHtml(sig, { onclick:`showBuyTraySignal('${escHtml(i.id)}')` });
+  if(!chip) return '';
+  const offer = Number(offerVal || 0);
+  const over = sig.verdict !== 'PASS' && offer > 0 && sig.maxPrice > 0 && offer > sig.maxPrice + 0.009
+    ? ` <span class="buy-sig-over">offer $${offer.toFixed(2)} is over max $${sig.maxPrice.toFixed(2)}</span>` : '';
+  return `<div class="buy-tray-signal">${chip}${over}</div>`;
+}
+function showBuyTraySignal(id){
+  const i = buyList.find(x => x.id === id);
+  const sig = i && buyTraySignal(i);
+  if(!sig) return;
+  alert([`${sig.label}${sig.verdict !== 'PASS' ? ` (pay up to $${sig.maxPrice.toFixed(2)})` : ''} -- ${i.name || 'item'}`, '', ...sig.reasons.map(x => '• ' + x.text), sig.sellHint ? '\n' + sig.sellHint : ''].filter(v => v !== undefined).join('\n'));
+}
+
 function buyItemToInventoryUpdates(item){
   const session = getActiveBuySession();
   const cost = buyItemOfferValue(item);
   const market = Number(item.market || item.priceUsed || 0);
+  let buySignal = null;
+  try { const sig = buyTraySignal(item); if(sig && sig.verdict !== 'NO_DATA') buySignal = { verdict:sig.verdict, maxPrice:sig.maxPrice, market, paid:cost, flags:sig.flags, at:new Date().toISOString() }; } catch(e) {}
   const location = document.getElementById('buy-session-location')?.value || session?.location || (getShowMode()?.eventName ? 'Show buy - ' + getShowMode().eventName : 'Intake Tray');
   // A missing or generic "TCG" category (the pre-detection catch-all, not a
   // real game) gets one more pass at name/set text detection before falling
@@ -39929,6 +40068,7 @@ function buyItemToInventoryUpdates(item){
   return {
     name:item.name,
     category,
+    buySignal,
     productType:(item.grade||item.grader||item.cert_number||item.isSlabbed)?'Graded':item.is_sealed?'Sealed':category==='Comic'?'Comic':category==='Collectibles'?'Collectible':'Single',
     set:item.set || item.product_line || '',
     variant:item.variant || '',

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.10.12.4-mana-points">
+<meta name="version" content="2026.10.12.5-buy-signal">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1080,6 +1080,31 @@ body.customer-display-mode #customer-display-exit{top:6px;right:6px;font-size:8p
 .receipt-capture-screen .payment-confirm-row .hbtn{width:100%;min-height:56px;font-size:15px;border-radius:var(--brand-button-radius,10px);}
 .receipt-capture-screen .receipt-send{background:var(--app-primary);color:var(--app-button-text);border-color:var(--app-primary);}
 .receipt-capture-screen .receipt-skip{background:transparent;color:var(--cd-dim,#4b5563);border:1px solid var(--app-border);}
+/* Buy signal chip (research results, buy tray) and verdict panel (price graph). */
+.buy-sig-chip{display:inline-flex;align-items:center;gap:4px;margin:4px 0 2px;padding:3px 9px;border-radius:999px;font-family:var(--font-mono);font-size:10px;font-weight:800;letter-spacing:.3px;cursor:pointer;border:1px solid;white-space:nowrap;}
+.buy-sig-chip.buy{color:var(--g);border-color:color-mix(in srgb,var(--g) 55%,transparent);background:color-mix(in srgb,var(--g) 12%,transparent);}
+.buy-sig-chip.low{color:var(--gold);border-color:color-mix(in srgb,var(--gold) 55%,transparent);background:color-mix(in srgb,var(--gold) 12%,transparent);}
+.buy-sig-chip.pass{color:var(--red);border-color:color-mix(in srgb,var(--red) 55%,transparent);background:color-mix(in srgb,var(--red) 12%,transparent);}
+.buy-tray-signal{display:flex;flex-wrap:wrap;align-items:center;gap:6px;}
+.buy-sig-over{font-family:var(--font-mono);font-size:9px;color:var(--red);}
+.buy-sig-panel{margin-top:14px;border:1px solid var(--border);border-left:4px solid var(--dim);border-radius:10px;padding:12px 14px;background:var(--surf2);}
+.buy-sig-panel.buy{border-left-color:var(--g);}.buy-sig-panel.low{border-left-color:var(--gold);}.buy-sig-panel.pass{border-left-color:var(--red);}
+.buy-sig-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap;font-family:var(--font-mono);font-size:12px;color:var(--text);}
+.buy-sig-head>b{font-family:'Orbitron',monospace;font-size:16px;}
+.buy-sig-panel.buy .buy-sig-head>b{color:var(--g);}.buy-sig-panel.low .buy-sig-head>b{color:var(--gold);}.buy-sig-panel.pass .buy-sig-head>b{color:var(--red);}
+.buy-sig-reasons{list-style:none;margin:10px 0 0;padding:0;display:grid;gap:6px;font-size:12px;line-height:1.45;color:var(--text);}
+.buy-sig-reasons li{display:grid;grid-template-columns:16px 1fr;gap:6px;}
+.buy-sig-reasons i{font-style:normal;font-weight:900;}
+.buy-sig-reasons .good i{color:var(--g);}.buy-sig-reasons .warn i{color:var(--gold);}.buy-sig-reasons .bad i{color:var(--red);}.buy-sig-reasons .info i{color:var(--dim);}
+.buy-sig-sell{margin-top:8px;font-size:12px;color:var(--gold);font-weight:700;}
+.buy-sig-foot{margin-top:10px;font-family:var(--font-mono);font-size:9px;line-height:1.6;color:var(--dim);display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
+.buy-sig-foot .hbtn{min-height:30px;font-size:9px;padding:4px 10px;}
+.buy-sig-panel{min-width:0;overflow:hidden;}
+.buy-sig-score{margin-top:10px;font-family:var(--font-mono);font-size:10px;line-height:1.6;color:var(--dim);display:grid;grid-template-columns:minmax(0,1fr);gap:6px;overflow-wrap:anywhere;}
+.buy-sig-score table{border-collapse:collapse;width:100%;table-layout:fixed;font-size:10px;color:var(--text);}
+.buy-sig-score th,.buy-sig-score td{border-bottom:1px solid var(--border);padding:4px 4px;text-align:right;letter-spacing:0;font-size:9px;white-space:normal;}
+.buy-sig-score th:first-child,.buy-sig-score td:first-child{width:28%;}
+.buy-sig-score th:first-child,.buy-sig-score td:first-child{text-align:left;}
 body.customer-browse-mode{padding-bottom:0}body.customer-browse-mode header,body.customer-browse-mode .tabs,body.customer-browse-mode .dealer-status-bar,body.customer-browse-mode .beta-mode-strip{display:none!important}body.customer-browse-mode .tab-panel{display:none!important}body.customer-browse-mode #tab-browse{display:block!important;min-height:100vh;padding:18px}body.customer-browse-mode #customer-browse-exit{display:block}
 .responsive-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(320px,100%),1fr));gap:14px;}
 .sticky-action-bar{position:sticky;bottom:0;z-index:80;background:linear-gradient(to top,var(--bg) 78%,transparent);padding:10px 0;}
@@ -1740,23 +1765,24 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/query-routing.js?v=2026.10.12.4-mana-points" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.10.12.4-mana-points" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.10.12.4-mana-points" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.10.12.4-mana-points" defer></script>
-<script src="scripts/backlist-dashboard.js?v=2026.10.12.4-mana-points" defer></script>
-<script src="scripts/database-viewer.js?v=2026.10.12.4-mana-points" defer></script>
-<script src="scripts/card-intake-dashboard.js?v=2026.10.12.4-mana-points" defer></script>
-<script src="scripts/mana-pocket-task-library.js?v=2026.10.12.4-mana-points" defer></script>
-<script src="scripts/daily-tasks-dashboard.js?v=2026.10.12.4-mana-points" defer></script>
-<script src="scripts/expenses.js?v=2026.10.12.4-mana-points" defer></script>
-<script src="scripts/whatnot-bridge.js?v=2026.10.12.4-mana-points" defer></script>
+<script src="scripts/buy-signal.js?v=2026.10.12.5-buy-signal" defer></script>
+<script src="scripts/query-routing.js?v=2026.10.12.5-buy-signal" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.10.12.5-buy-signal" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.10.12.5-buy-signal" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.10.12.5-buy-signal" defer></script>
+<script src="scripts/backlist-dashboard.js?v=2026.10.12.5-buy-signal" defer></script>
+<script src="scripts/database-viewer.js?v=2026.10.12.5-buy-signal" defer></script>
+<script src="scripts/card-intake-dashboard.js?v=2026.10.12.5-buy-signal" defer></script>
+<script src="scripts/mana-pocket-task-library.js?v=2026.10.12.5-buy-signal" defer></script>
+<script src="scripts/daily-tasks-dashboard.js?v=2026.10.12.5-buy-signal" defer></script>
+<script src="scripts/expenses.js?v=2026.10.12.5-buy-signal" defer></script>
+<script src="scripts/whatnot-bridge.js?v=2026.10.12.5-buy-signal" defer></script>
 <script src="scripts/research-loupe.js?v=a7de4ffe90" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.10.12.4-mana-points" defer></script>
-<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.10.12.4-mana-points" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.10.12.4-mana-points" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.10.12.4-mana-points" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.10.12.4-mana-points" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.10.12.5-buy-signal" defer></script>
+<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.10.12.5-buy-signal" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.10.12.5-buy-signal" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.10.12.5-buy-signal" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.10.12.5-buy-signal" defer></script>
 </head>
 <body>
 
@@ -1808,7 +1834,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
 <div class="dsb-chip" id="dsb-tasks" title="Today's Roles &amp; Tasks — click to jump to Tasks tab" style="cursor:pointer;display:none" onclick="switchTab('tasks')">✅ <span>TASKS:</span> <b id="dsb-tasks-val">—</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.10.12.4-mana-points</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.10.12.5-buy-signal</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -4013,8 +4039,8 @@ body.show-mode .inv-sync-badge{display:none;}
   <a class="lba-nav-btn active" href="dashboard.html"><span class="nav-ico">▦</span>DASHBOARD</a>
 </div>
 
-<script src="scripts/dashboard-app.js?v=2026.10.12.4-mana-points"></script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.10.12.4-mana-points" defer></script>
+<script src="scripts/dashboard-app.js?v=2026.10.12.5-buy-signal"></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.10.12.5-buy-signal" defer></script>
 </body>
 </html>
 
