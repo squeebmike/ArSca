@@ -10,7 +10,7 @@ const dashboard = fs.readFileSync('dashboard.html', 'utf8');
 // "receipt sent" and received nothing, silently, forever. ──
 const saveReceiptCapture = dashboard.slice(dashboard.indexOf('async function saveReceiptCapture(){'), dashboard.indexOf('\n// Loyalty accrual reuses the phone'));
 assert.ok(saveReceiptCapture, 'saveReceiptCapture function was not found');
-assert.match(saveReceiptCapture, /storeWorkerFetch\('\/notify\/send', \{ method:'POST', headers:\{'Content-Type':'application\/json'\}, body:JSON\.stringify\(\{ contact:phone, subject:'Your receipt', message:receiptTextMessage\(\{ storeName, total, earned:result\?\.points, balance:result\?\.balance \}\), consent:true \}\) \}\)/, 'a consented receipt must actually be sent through the existing /notify/send route, not just recorded');
+assert.match(saveReceiptCapture, /storeWorkerFetch\('\/notify\/send', \{ method:'POST', headers:\{'Content-Type':'application\/json'\}, body:JSON\.stringify\(\{ contact:phone, subject:'Your receipt', message:receiptTextMessage\(\{ storeName, total, earned:result\?\.points, balance:result\?\.balance, \.\.\.receiptSale \}\), consent:true \}\) \}\)/, 'a consented receipt must actually be sent through the existing /notify/send route, not just recorded');
 assert.match(saveReceiptCapture, /if\(d\?\.ok\) \{ markReceiptStatus\('sent'\); \}/, 'a successful send must update the row\'s own sms_status field, since that field exists to answer whether it went out');
 assert.match(saveReceiptCapture, /markReceiptStatus\('failed'\)/, 'a failed send must be recorded, not silently swallowed');
 

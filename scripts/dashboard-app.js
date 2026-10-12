@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.10.12.2-customer-display-legible';
+const APP_VERSION = '2026.10.12.3-itemized-receipt-pocket-points';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -697,6 +697,9 @@ async function acceptPickedInvite(){
   location.reload();
 }
 
+// What customers see the loyalty points called (receipts, texts, the
+// customer screen). Declared up here: checkout labels read it at startup.
+const POINTS_NAME = 'Pocket Points';
 const DEFAULT_STORE_THEME = { themeName:'Walk-Off Dark', primaryColor:'#00ffb3', secondaryColor:'#ffd166', accentColor:'#c77dff', backgroundColor:'#07080a', surfaceColor:'#0d0f14', surface2Color:'#141720', textColor:'#e4e4e8', mutedTextColor:'rgba(228,228,232,.68)', successColor:'#00ffb3', warningColor:'#ffd166', dangerColor:'#ff4d6d', infoColor:'#48cae4', borderColor:'rgba(255,255,255,.13)', buttonTextColor:'#050507', fontFamily:"'DM Sans',sans-serif", cardRadius:'10px', buttonRadius:'6px', logoUrl:'', customerBgImageUrl:'', customerBgOverlayColor:'#f7f8fa', customerBgOverlayOpacity:0.88 };
 const STORE_THEME_PRESETS = {
   'Walk-Off Dark': DEFAULT_STORE_THEME,
@@ -38191,7 +38194,7 @@ function normalizeTenderType(method = '', tenderType = ''){
 }
 
 function formatTenderLabel(key){
-  return ({ cash:'Cash', card:'Card / Stripe', venmo:'Venmo', paypal:'PayPal', cashapp:'Cash App', trade_credit:'Trade Credit', loyalty_redeem:'Loyalty Points', gift_card:'Gift Card', ebay:'eBay', manual_external:'Other' })[key] || String(key).replace(/_/g, ' ');
+  return ({ cash:'Cash', card:'Card / Stripe', venmo:'Venmo', paypal:'PayPal', cashapp:'Cash App', trade_credit:'Trade Credit', loyalty_redeem:POINTS_NAME, gift_card:'Gift Card', ebay:'eBay', manual_external:'Other' })[key] || String(key).replace(/_/g, ' ');
 }
 
 function transactionTenderTotals(transactions = []){
@@ -40842,7 +40845,7 @@ function getEnabledPaymentMethods(){
     s.paypal?.enabled ? { key:'paypal', label:s.paypal.displayName || 'PayPal', handle:s.paypal.emailOrHandle, qr:s.paypal.qrImageUrl } : null,
     s.cashApp?.enabled ? { key:'cashapp', label:s.cashApp.displayName || 'Cash App', handle:s.cashApp.cashtag, qr:s.cashApp.qrImageUrl } : null,
     { key:'trade_credit', label:'Trade Credit' }, // internal ledger redemption — always available, no processor setup needed
-    getLoyaltyRate() > 0 ? { key:'loyalty_redeem', label:'Loyalty Points' } : null,
+    getLoyaltyRate() > 0 ? { key:'loyalty_redeem', label:POINTS_NAME } : null,
     { key:'gift_card', label:'Gift Card' },
   ].filter(Boolean);
 }
@@ -41321,7 +41324,7 @@ function renderCustomerLiveCart(cartData = { items:[] }){
 function renderCustomerPaymentLinks(total, el){
   if(!el) return;
   const methods = getEnabledPaymentMethods();
-  const visuals={cash:['💵','Record cash received'],card:['💳','Secure card or manual card'],venmo:['V','Show Venmo payment'],paypal:['PP','Show PayPal payment'],cashapp:['$','Show Cash App payment'],trade_credit:['↩','Redeem a customer\'s trade-in credit'],loyalty_redeem:['★','Redeem a customer\'s loyalty points'],gift_card:['🎁','Redeem a gift card'],other:['•••','Record another tender']};
+  const visuals={cash:['💵','Record cash received'],card:['💳','Secure card or manual card'],venmo:['V','Show Venmo payment'],paypal:['PP','Show PayPal payment'],cashapp:['$','Show Cash App payment'],trade_credit:['↩','Redeem a customer\'s trade-in credit'],loyalty_redeem:['★','Use your ' + POINTS_NAME],gift_card:['🎁','Redeem a gift card'],other:['•••','Record another tender']};
   el.innerHTML = methods.map(m => { const v=visuals[m.key]||['•','Choose payment method']; return `<button class="customer-method-btn ${selectedTenderLines.some(t => t.method === m.key)?'on':''}" onclick="selectLockedPaymentMethod('${m.key}')"><span class="customer-method-icon">${v[0]}</span><span class="customer-method-copy">${escHtml(m.label)}<small>${escHtml(v[1])}</small></span></button>`; }).join('');
 }
 
@@ -41808,7 +41811,7 @@ function showReceiptCaptureScreen(){
   // sending the text IS the whole point of this screen, not an unrelated
   // purchase it must never block (the sale is already complete by now).
   const paid = Number(confirmedSaleContext?.sale?.total || 0);
-  el.innerHTML = `<div class="receipt-done">✓ Payment complete${paid > 0 ? ' · $' + paid.toFixed(2) : ''}</div><h2>Want a text receipt?</h2>${rate > 0 ? `<div class="receipt-points-note">Earn ${rate}% back in points, saved to your number</div>` : ''}<input id="receipt-phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="Phone number"><label class="receipt-consent"><input id="receipt-sms-consent" type="checkbox"><span>I agree to receive this purchase receipt and customer-care SMS/text messages from ${escHtml(storeName)} at the number above. Message frequency varies based on order activity. Msg &amp; data rates may apply. Reply STOP to opt out or HELP for help. Consent is not a condition of purchase. See our <a href="https://themanapocket.com/privacy-policy" target="_blank">Privacy Policy</a> and <a href="https://themanapocket.com/terms-and-conditions" target="_blank">Terms</a>.</span></label><div class="payment-confirm-row"><button class="hbtn receipt-send" onclick="saveReceiptCapture()">SEND RECEIPT</button><button class="hbtn receipt-skip" onclick="showWantsCaptureScreen()">NO THANKS</button></div>`;
+  el.innerHTML = `<div class="receipt-done">✓ Payment complete${paid > 0 ? ' · $' + paid.toFixed(2) : ''}</div><h2>Want a text receipt?</h2>${rate > 0 ? `<div class="receipt-points-note"><b>★</b> Earn ${rate}% back in ${POINTS_NAME}, saved to your number</div>` : ''}<input id="receipt-phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="Phone number"><label class="receipt-consent"><input id="receipt-sms-consent" type="checkbox"><span>I agree to receive this purchase receipt and customer-care SMS/text messages from ${escHtml(storeName)} at the number above. Message frequency varies based on order activity. Msg &amp; data rates may apply. Reply STOP to opt out or HELP for help. Consent is not a condition of purchase. See our <a href="https://themanapocket.com/privacy-policy" target="_blank">Privacy Policy</a> and <a href="https://themanapocket.com/terms-and-conditions" target="_blank">Terms</a>.</span></label><div class="payment-confirm-row"><button class="hbtn receipt-send" onclick="saveReceiptCapture()">SEND RECEIPT</button><button class="hbtn receipt-skip" onclick="showWantsCaptureScreen()">NO THANKS</button></div>`;
   el.classList.add('on');
 }
 
@@ -41840,11 +41843,12 @@ async function saveReceiptCapture(){
       // to answer "did this receipt actually go out."
       const storeName = getVendorProfile().storeName || 'this store';
       const total = confirmedSaleContext.sale.total;
+      const receiptSale = receiptSaleDetails(confirmedSaleContext);
       const markReceiptStatus = async status => { try { const sb = getSupabaseClient(); if(sb) await sb.from('customer_receipts').update({ sms_status:status }).eq('id', payload.id); } catch(_){} };
       // Sent once the points are in, so the receipt can say what they earned
       // and what they now have.
       accrual.catch(() => null)
-        .then(result => storeWorkerFetch('/notify/send', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ contact:phone, subject:'Your receipt', message:receiptTextMessage({ storeName, total, earned:result?.points, balance:result?.balance }), consent:true }) }))
+        .then(result => storeWorkerFetch('/notify/send', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ contact:phone, subject:'Your receipt', message:receiptTextMessage({ storeName, total, earned:result?.points, balance:result?.balance, ...receiptSale }), consent:true }) }))
         .then(async r => {
           const d = await r.json().catch(() => ({}));
           if(d?.ok) { markReceiptStatus('sent'); }
@@ -41856,23 +41860,59 @@ async function saveReceiptCapture(){
   showWantsCaptureScreen();
 }
 
-// The text receipt. Points are saved to the phone number, so a customer
-// never needs an email to earn; texting POINTS back gets their balance
-// (worker /twilio/sms), and the link opens the website account page to
-// finish an account -- verifying this same phone there carries the points.
+// The text receipt: itemized with the label's short form of each item and
+// what was paid for it, then Pocket Points earned and the balance. Points
+// are saved to the phone number, so a customer never needs an email to
+// earn; texting POINTS back gets their balance (worker /twilio/sms), and
+// the link opens the website account page to finish an account --
+// verifying this same phone there carries the points.
 const CUSTOMER_ACCOUNT_URL = 'https://www.themanapocket.com/account';
-function receiptTextMessage({ storeName = 'this store', total = 0, earned = 0, balance = null } = {}){
-  const parts = [`Thanks for shopping at ${storeName}! Total: $${Number(total || 0).toFixed(2)}.`];
+const RECEIPT_MAX_LINES = 12;
+// The short name a label prints: a comic is its book plus ratio / cover
+// (comicLabelParts), anything else its name. Long names are cut so a big
+// sale still fits in the text.
+function receiptLineName(line = {}){
+  const id = String(line.item_id || '');
+  const item = (id && (all || []).find(i => [i.id, i.wfId, i.shopId].some(v => v != null && String(v) === id))) || { name:line.title || 'Item', category:line.category || '' };
+  let name = String(line.title || item.name || 'Item');
+  if(isComicLabelItem(item)) { const parts = comicLabelParts(item); name = [parts.name, parts.badge].filter(Boolean).join(' '); }
+  name = name.replace(/\s+/g, ' ').trim() || 'Item';
+  return name.length > 48 ? name.slice(0, 47).trimEnd() + '…' : name;
+}
+function receiptSaleDetails(bundle = {}){
+  const sale = bundle.sale || {};
+  const lines = (bundle.saleLines || []).map(l => ({ name:receiptLineName(l), qty:Math.max(1, Number(l.quantity || 1)), price:Number(l.unit_price || 0) }));
+  const paidWith = [...new Set((bundle.payments || []).filter(p => Number(p.amount) > 0).map(p => formatTenderLabel(p.method)))].join(' + ');
+  return { lines, subtotal:Number(sale.subtotal || 0), discount:Number(sale.discount_total || 0), tax:Number(sale.tax_total || 0), paidWith, when:sale.completed_at || sale.created_at || new Date().toISOString() };
+}
+function receiptTextMessage({ storeName = 'this store', total = 0, earned = 0, balance = null, lines = [], subtotal = 0, discount = 0, tax = 0, paidWith = '', when = '' } = {}){
+  const money = n => '$' + Number(n || 0).toFixed(2);
+  const out = [];
+  const stamp = when ? new Date(when) : null;
+  const day = stamp && !isNaN(stamp) ? ' · ' + stamp.toLocaleDateString('en-US', { month:'short', day:'numeric' }) + ', ' + stamp.toLocaleTimeString('en-US', { hour:'numeric', minute:'2-digit' }) : '';
+  out.push(`${storeName} receipt${day}`);
+  const shown = (lines || []).slice(0, RECEIPT_MAX_LINES);
+  shown.forEach(l => out.push(`${l.qty > 1 ? l.qty + 'x ' : ''}${l.name} ${money(l.price)}`));
+  if((lines || []).length > shown.length) out.push(`+${lines.length - shown.length} more item${lines.length - shown.length === 1 ? '' : 's'}`);
+  if(shown.length && (Number(discount) > 0 || Number(tax) > 0)) out.push(`Subtotal ${money(subtotal)}`);
+  if(Number(discount) > 0) out.push(`Discount -${money(discount)}`);
+  if(Number(tax) > 0) out.push(`Tax ${money(tax)}`);
+  out.push(`TOTAL ${money(total)}${paidWith ? ' · ' + paidWith : ''}`);
   const got = Math.max(0, Math.floor(Number(earned || 0)));
   const have = balance == null || balance === '' || !Number.isFinite(Number(balance)) ? null : Math.max(0, Math.floor(Number(balance)));
-  const pts = n => `${n.toLocaleString('en-US')} point${n === 1 ? '' : 's'}`;
-  if(got > 0 && have != null) parts.push(`You earned ${pts(got)} -- you have ${pts(have)} ($${(have / LOYALTY_POINTS_PER_DOLLAR).toFixed(2)}) saved to this number.`);
-  else if(got > 0) parts.push(`You earned ${pts(got)}, saved to this number.`);
-  else if(have > 0) parts.push(`You have ${pts(have)} ($${(have / LOYALTY_POINTS_PER_DOLLAR).toFixed(2)}) saved to this number.`);
-  if(got > 0 || have > 0) parts.push('Reply POINTS anytime for your balance.');
-  parts.push(`Your account: ${CUSTOMER_ACCOUNT_URL}`);
-  parts.push('Msg & data rates may apply. Reply STOP to opt out.');
-  return parts.join(' ');
+  const n = v => v.toLocaleString('en-US');
+  const dollars = v => '$' + (v / LOYALTY_POINTS_PER_DOLLAR).toFixed(2);
+  if(got > 0 || have > 0) {
+    out.push('');
+    if(got > 0 && have != null) out.push(`★ ${POINTS_NAME}: +${n(got)} earned · ${n(have)} total (${dollars(have)} to spend)`);
+    else if(got > 0) out.push(`★ ${POINTS_NAME}: +${n(got)} earned`);
+    else out.push(`★ ${POINTS_NAME}: ${n(have)} (${dollars(have)} to spend)`);
+    out.push('Reply POINTS anytime for your balance.');
+  }
+  out.push('');
+  out.push(`Your account: ${CUSTOMER_ACCOUNT_URL}`);
+  out.push('Thanks for shopping with us! Msg & data rates may apply. Reply STOP to opt out.');
+  return out.join('\n');
 }
 
 // Loyalty accrual reuses the phone already collected for the text-receipt
