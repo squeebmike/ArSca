@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.10.12.8-typed-price-ceiling-filters">
+<meta name="version" content="2026.10.12.9-price-lock">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1097,6 +1097,13 @@ body.customer-display-mode #customer-display-exit{top:6px;right:6px;font-size:8p
 .buy-sig-prices span{display:block;font-family:var(--font-mono);font-size:8px;letter-spacing:.5px;color:var(--dim);}
 .buy-sig-prices b{display:block;font-family:'Orbitron',monospace;font-size:clamp(14px,4vw,18px);color:var(--text);margin-top:3px;}
 .buy-sig-panel.buy .buy-sig-prices div:nth-child(2) b{color:var(--g);}.buy-sig-panel.low .buy-sig-prices div:nth-child(2) b{color:var(--gold);}
+.price-lock-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px;align-items:stretch;}
+.price-lock-display{opacity:.85;cursor:default;}
+.price-lock-display.locked{border-color:var(--gold)!important;color:var(--gold)!important;opacity:1;}
+.price-lock-btn{min-height:0;padding:4px 10px;font-size:10px;white-space:nowrap;}
+.price-lock-note{font-family:var(--font-mono);font-size:9px;line-height:1.5;color:var(--dim);margin-top:4px;}
+.price-lock-note.locked{color:var(--gold);}
+.inv-lock{font-size:9px;margin-left:3px;}
 .buy-targets-settings{margin-top:14px;padding:14px;border:1px solid var(--border);border-radius:10px;background:var(--surf2);}
 .buy-targets-grid{display:grid;grid-template-columns:minmax(90px,1.4fr) repeat(4,minmax(0,1fr));gap:6px;align-items:center;font-family:var(--font-mono);font-size:10px;color:var(--text);}
 .buy-targets-grid b{font-size:8px;letter-spacing:.5px;color:var(--dim);font-weight:700;}
@@ -1776,24 +1783,24 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/buy-signal.js?v=2026.10.12.8-typed-price-ceiling-filters" defer></script>
-<script src="scripts/query-routing.js?v=2026.10.12.8-typed-price-ceiling-filters" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.10.12.8-typed-price-ceiling-filters" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.10.12.8-typed-price-ceiling-filters" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.10.12.8-typed-price-ceiling-filters" defer></script>
-<script src="scripts/backlist-dashboard.js?v=2026.10.12.8-typed-price-ceiling-filters" defer></script>
-<script src="scripts/database-viewer.js?v=2026.10.12.8-typed-price-ceiling-filters" defer></script>
-<script src="scripts/card-intake-dashboard.js?v=2026.10.12.8-typed-price-ceiling-filters" defer></script>
-<script src="scripts/mana-pocket-task-library.js?v=2026.10.12.8-typed-price-ceiling-filters" defer></script>
-<script src="scripts/daily-tasks-dashboard.js?v=2026.10.12.8-typed-price-ceiling-filters" defer></script>
-<script src="scripts/expenses.js?v=2026.10.12.8-typed-price-ceiling-filters" defer></script>
-<script src="scripts/whatnot-bridge.js?v=2026.10.12.8-typed-price-ceiling-filters" defer></script>
+<script src="scripts/buy-signal.js?v=2026.10.12.9-price-lock" defer></script>
+<script src="scripts/query-routing.js?v=2026.10.12.9-price-lock" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.10.12.9-price-lock" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.10.12.9-price-lock" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.10.12.9-price-lock" defer></script>
+<script src="scripts/backlist-dashboard.js?v=2026.10.12.9-price-lock" defer></script>
+<script src="scripts/database-viewer.js?v=2026.10.12.9-price-lock" defer></script>
+<script src="scripts/card-intake-dashboard.js?v=2026.10.12.9-price-lock" defer></script>
+<script src="scripts/mana-pocket-task-library.js?v=2026.10.12.9-price-lock" defer></script>
+<script src="scripts/daily-tasks-dashboard.js?v=2026.10.12.9-price-lock" defer></script>
+<script src="scripts/expenses.js?v=2026.10.12.9-price-lock" defer></script>
+<script src="scripts/whatnot-bridge.js?v=2026.10.12.9-price-lock" defer></script>
 <script src="scripts/research-loupe.js?v=a7de4ffe90" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.10.12.8-typed-price-ceiling-filters" defer></script>
-<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.10.12.8-typed-price-ceiling-filters" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.10.12.8-typed-price-ceiling-filters" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.10.12.8-typed-price-ceiling-filters" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.10.12.8-typed-price-ceiling-filters" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.10.12.9-price-lock" defer></script>
+<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.10.12.9-price-lock" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.10.12.9-price-lock" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.10.12.9-price-lock" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.10.12.9-price-lock" defer></script>
 </head>
 <body>
 
@@ -1845,7 +1852,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
 <div class="dsb-chip" id="dsb-tasks" title="Today's Roles &amp; Tasks — click to jump to Tasks tab" style="cursor:pointer;display:none" onclick="switchTab('tasks')">✅ <span>TASKS:</span> <b id="dsb-tasks-val">—</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.10.12.8-typed-price-ceiling-filters</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.10.12.9-price-lock</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -2018,7 +2025,7 @@ body.show-mode .inv-sync-badge{display:none;}
     <span class="inv-filter-group-label">FLAGS</span>
     <button class="fb on" data-filter-group="flag" onclick="setF('flag','all',this)">All</button>
     <button class="fb" data-filter-group="flag" onclick="setF('flag','needs_sticker',this)">Needs Sticker</button>
-    <button class="fb" data-filter-group="flag" onclick="setF('flag','typed_price',this)" title="List / Sale Price typed in, so price syncs leave it alone">Typed Price</button>
+    <button class="fb" data-filter-group="flag" onclick="setF('flag','typed_price',this)" title="Price locked at an exact amount, so price syncs leave it alone">🔒 Locked Price</button>
     <button class="fb" data-filter-group="flag" onclick="setF('flag','has_ceiling',this)" title="Has a Max Sale Price / Ceiling">Has Ceiling</button>
     <button class="fb" data-filter-group="flag" onclick="setF('flag','no_photo',this)">No Photo</button>
     <button class="fb" data-filter-group="flag" onclick="setF('flag','no_config',this)">No Product Type</button>
@@ -3277,7 +3284,12 @@ body.show-mode .inv-sync-badge{display:none;}
       </div>
       <div>
         <label>List / Sale Price ($)</label>
-        <input type="number" id="edit-list-price" step="0.01" min="0" placeholder="0.00">
+        <div class="price-lock-row">
+          <input type="number" id="edit-list-price" step="0.01" min="0" placeholder="0.00" readonly tabindex="-1" class="price-lock-display" title="Worked out from Market, floor and ceiling. Use LOCK to set an exact price.">
+          <button type="button" class="hbtn price-lock-btn" id="edit-lock-btn" onclick="toggleEditPriceLock()">🔒 LOCK</button>
+        </div>
+        <div id="edit-lock-note" class="price-lock-note"></div>
+        <input type="hidden" id="edit-locked-price" value="">
       </div>
       <div>
         <label>Max Sale Price / Ceiling ($)</label>
@@ -4052,8 +4064,8 @@ body.show-mode .inv-sync-badge{display:none;}
   <a class="lba-nav-btn active" href="dashboard.html"><span class="nav-ico">▦</span>DASHBOARD</a>
 </div>
 
-<script src="scripts/dashboard-app.js?v=2026.10.12.8-typed-price-ceiling-filters"></script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.10.12.8-typed-price-ceiling-filters" defer></script>
+<script src="scripts/dashboard-app.js?v=2026.10.12.9-price-lock"></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.10.12.9-price-lock" defer></script>
 </body>
 </html>
 
