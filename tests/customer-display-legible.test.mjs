@@ -7,11 +7,15 @@ import assert from 'node:assert/strict';
 const dashboard = fs.readFileSync('dashboard.html', 'utf8');
 const extractFn = (name, prefix = 'function ') => { const s = dashboard.indexOf(prefix + name + '('); assert.ok(s >= 0, name); return dashboard.slice(s, dashboard.indexOf('\n}\n', s) + 2); };
 
-// Content sits on frosted light cards with fixed dark text, whatever the
-// theme's overlay opacity or colors.
-assert.match(dashboard, /#customer-display\.customer-payment-screen\{--dim:#4b5563;color:#101319;\}/);
-assert.match(dashboard, /#customer-display \.customer-pay-brand,#customer-display \.customer-pay-scroll,#customer-display \.customer-pay-footer\{background:rgba\(255,255,255,\.93\);-webkit-backdrop-filter:blur\(10px\);backdrop-filter:blur\(10px\);/);
-assert.match(dashboard, /#customer-display \.customer-pay-total b\{color:color-mix\(in srgb,var\(--g\) 70%,#101319\);\}/, 'the total keeps the brand color, darkened enough to read on white');
+// Content sits on frosted cards in the theme's surface color with the
+// theme's text color ("use the theme picker"), whatever the background
+// photo or overlay opacity.
+assert.match(dashboard, /#customer-display\.customer-payment-screen\{--cd-ink:var\(--app-text\);--cd-dim:color-mix\(in srgb,var\(--app-text\) 70%,transparent\);--dim:var\(--cd-dim\);color:var\(--cd-ink\);\}/);
+assert.match(dashboard, /#customer-display \.customer-pay-brand,#customer-display \.customer-pay-scroll,#customer-display \.customer-pay-footer\{background:color-mix\(in srgb,var\(--app-surface\) 93%,transparent\);-webkit-backdrop-filter:blur\(10px\);backdrop-filter:blur\(10px\);/);
+assert.match(dashboard, /#customer-display \.customer-method-btn\{background:var\(--app-surface-2\);color:var\(--cd-ink\);border-color:var\(--app-border\);/, 'payment buttons follow the theme too');
+assert.match(dashboard, /\.receipt-capture-screen \.receipt-send\{background:var\(--app-primary\);color:var\(--app-button-text\);/);
+const after = dashboard.slice(dashboard.indexOf('/* Readable over any background image, in the store'), dashboard.indexOf('.receipt-capture-screen .receipt-skip{'));
+assert.doesNotMatch(after, /:(?:#101319|#4b5563|#fff)[;}]|rgba\(255,255,255,\.93\)/, 'no fixed light-theme colors left in the customer-screen rules');
 assert.match(extractFn('ensureCheckoutRuntimeMarkup'), /<div class="customer-pay-footer">Thank you for shopping with us\.<\/div>/);
 
 // After payment, the receipt step takes the card on its own.

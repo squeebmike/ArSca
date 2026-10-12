@@ -227,6 +227,8 @@ export async function recordWebPointsTender(env, fetch, { storeId, orderRef, sal
 // the account link lets them finish a website account later, and verifying
 // that same phone there carries the points over.
 export const CUSTOMER_ACCOUNT_URL = 'https://www.themanapocket.com/account';
+// What customers see the points called (same as the dashboard's POINTS_NAME).
+export const POINTS_NAME = 'Pocket Points';
 const POINTS_KEYWORDS = new Set(['POINTS', 'POINT', 'PTS', 'BALANCE', 'REWARDS', 'MY POINTS']);
 export function isPointsKeyword(text) {
   return POINTS_KEYWORDS.has(String(text || '').toUpperCase().replace(/[^A-Z ]/g, ' ').replace(/\s+/g, ' ').trim());
@@ -241,12 +243,12 @@ export function pickPointsCustomer(rows, phone) {
   return hits[0] || null;
 }
 export function pointsReplyText(customer, { storeName = 'The Mana Pocket', accountUrl = CUSTOMER_ACCOUNT_URL } = {}) {
-  if (!customer) return `${storeName}: we don't have points saved for this number yet. Ask for a text receipt at checkout and your points are saved to this number automatically. Your account: ${accountUrl}`;
+  if (!customer) return `${storeName}: we don't have ${POINTS_NAME} saved for this number yet. Ask for a text receipt at checkout and they're saved to this number automatically. Your account: ${accountUrl}`;
   const points = Math.max(0, Math.floor(Number(customer.loyalty_points_balance || 0)));
   const dollars = (points / POINTS_PER_DOLLAR).toFixed(2);
   const first = String(customer.name || '').trim().split(/\s+/)[0];
   const hi = first && !/^(customer|walk-in|sms)$/i.test(first) ? `Hi ${first}! ` : '';
-  const count = `${points.toLocaleString('en-US')} point${points === 1 ? '' : 's'} ($${dollars})`;
+  const count = `${points.toLocaleString('en-US')} ${POINTS_NAME} ($${dollars})`;
   return customer.linked_user_id
     ? `${storeName}: ${hi}You have ${count} to use at the register or online. Your account: ${accountUrl}`
     : `${storeName}: ${hi}You have ${count} saved to this number -- use them at the register. To see them online, finish your account: ${accountUrl}`;
