@@ -221,15 +221,15 @@ export async function recordWebPointsTender(env, fetch, { storeId, orderRef, sal
 }
 
 // ── Text POINTS for a balance ──
-// A customer who got a text receipt can reply POINTS (or BALANCE / PTS /
-// REWARDS) any time and get their redeemable points back. Their points live
+// A customer who got a text receipt can reply POINTS (or MP / MANA /
+// BALANCE / PTS / REWARDS) any time and get their redeemable points back. Their points live
 // on the phone number from the receipt, so no email or signup is needed;
 // the account link lets them finish a website account later, and verifying
 // that same phone there carries the points over.
 export const CUSTOMER_ACCOUNT_URL = 'https://www.themanapocket.com/account';
 // What customers see the points called (same as the dashboard's POINTS_NAME).
-export const POINTS_NAME = 'Pocket Points';
-const POINTS_KEYWORDS = new Set(['POINTS', 'POINT', 'PTS', 'BALANCE', 'REWARDS', 'MY POINTS']);
+export const POINTS_NAME = 'Mana Points';
+const POINTS_KEYWORDS = new Set(['POINTS', 'POINT', 'PTS', 'BALANCE', 'REWARDS', 'MY POINTS', 'MP', 'MANA', 'MANA POINTS', 'MY MP']);
 export function isPointsKeyword(text) {
   return POINTS_KEYWORDS.has(String(text || '').toUpperCase().replace(/[^A-Z ]/g, ' ').replace(/\s+/g, ' ').trim());
 }

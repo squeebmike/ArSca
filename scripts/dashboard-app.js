@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.10.12.3-itemized-receipt-pocket-points';
+const APP_VERSION = '2026.10.12.4-mana-points';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -699,7 +699,7 @@ async function acceptPickedInvite(){
 
 // What customers see the loyalty points called (receipts, texts, the
 // customer screen). Declared up here: checkout labels read it at startup.
-const POINTS_NAME = 'Pocket Points';
+const POINTS_NAME = 'Mana Points';
 const DEFAULT_STORE_THEME = { themeName:'Walk-Off Dark', primaryColor:'#00ffb3', secondaryColor:'#ffd166', accentColor:'#c77dff', backgroundColor:'#07080a', surfaceColor:'#0d0f14', surface2Color:'#141720', textColor:'#e4e4e8', mutedTextColor:'rgba(228,228,232,.68)', successColor:'#00ffb3', warningColor:'#ffd166', dangerColor:'#ff4d6d', infoColor:'#48cae4', borderColor:'rgba(255,255,255,.13)', buttonTextColor:'#050507', fontFamily:"'DM Sans',sans-serif", cardRadius:'10px', buttonRadius:'6px', logoUrl:'', customerBgImageUrl:'', customerBgOverlayColor:'#f7f8fa', customerBgOverlayOpacity:0.88 };
 const STORE_THEME_PRESETS = {
   'Walk-Off Dark': DEFAULT_STORE_THEME,
@@ -41861,7 +41861,7 @@ async function saveReceiptCapture(){
 }
 
 // The text receipt: itemized with the label's short form of each item and
-// what was paid for it, then Pocket Points earned and the balance. Points
+// what was paid for it, then Mana Points earned and the balance. Points
 // are saved to the phone number, so a customer never needs an email to
 // earn; texting POINTS back gets their balance (worker /twilio/sms), and
 // the link opens the website account page to finish an account --
@@ -41907,7 +41907,7 @@ function receiptTextMessage({ storeName = 'this store', total = 0, earned = 0, b
     if(got > 0 && have != null) out.push(`★ ${POINTS_NAME}: +${n(got)} earned · ${n(have)} total (${dollars(have)} to spend)`);
     else if(got > 0) out.push(`★ ${POINTS_NAME}: +${n(got)} earned`);
     else out.push(`★ ${POINTS_NAME}: ${n(have)} (${dollars(have)} to spend)`);
-    out.push('Reply POINTS anytime for your balance.');
+    out.push('Reply MP or POINTS anytime for your balance.');
   }
   out.push('');
   out.push(`Your account: ${CUSTOMER_ACCOUNT_URL}`);
