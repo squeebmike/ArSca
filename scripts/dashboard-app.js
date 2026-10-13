@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.10.12.10-ceilings-apply-to-stock';
+const APP_VERSION = '2026.10.13.1-what-to-buy';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -710,7 +710,7 @@ const DEFAULT_BUY_TARGETS = {
   comic:{ fast:25, avg:35, slow:45, trade:75 },
   tcg:{ fast:25, avg:35, slow:45, trade:75 },
   other:{ fast:25, avg:35, slow:45, trade:75 },
-  minProfit:3, feePct:3, stocked:5,
+  minProfit:3, feePct:3, stocked:5, gradingCost:25,
 };
 const DEFAULT_STORE_THEME = { themeName:'Walk-Off Dark', primaryColor:'#00ffb3', secondaryColor:'#ffd166', accentColor:'#c77dff', backgroundColor:'#07080a', surfaceColor:'#0d0f14', surface2Color:'#141720', textColor:'#e4e4e8', mutedTextColor:'rgba(228,228,232,.68)', successColor:'#00ffb3', warningColor:'#ffd166', dangerColor:'#ff4d6d', infoColor:'#48cae4', borderColor:'rgba(255,255,255,.13)', buttonTextColor:'#050507', fontFamily:"'DM Sans',sans-serif", cardRadius:'10px', buttonRadius:'6px', logoUrl:'', customerBgImageUrl:'', customerBgOverlayColor:'#f7f8fa', customerBgOverlayOpacity:0.88 };
 const STORE_THEME_PRESETS = {
@@ -15896,8 +15896,10 @@ function renderReportsPanel(){
         <button class="hbtn" onclick="setReportsRangePreset('all_time')">ALL TIME</button>
       </div>
     </div>
-    <div id="reports-results"></div>`;
+    <div id="reports-results"></div>
+    <div id="what-to-buy-panel"></div>`;
   runReportsQuery();
+  renderWhatToBuyPanel();
 }
 
 function setReportsRangePreset(preset){
@@ -34742,8 +34744,136 @@ function buySignalFor(r = {}, { market } = {}){
   let sales = null;
   try { sales = getSalesSignal(r); } catch(e) {}
   const group = buyTargetGroup(r);
-  return S.evaluateBuySignal({ points:isComic ? [] : buySignalPoints(r), market:price, category:group === 'pokemon' ? 'Pokemon' : String(r.category || ''), rules:buyTargetRules(group), stockQty:buySignalStockQty(r), ourSales:sales, wants:sales?.wants || 0 });
+  return S.evaluateBuySignal({ points:isComic ? [] : buySignalPoints(r), market:price, category:group === 'pokemon' ? 'Pokemon' : String(r.category || ''), rules:buyTargetRules(group), stockQty:buySignalStockQty(r), ourSales:sales, wants:sales?.wants || 0,
+    storeDemand:buySignalStoreDemand(r), setReleaseDate:group === 'pokemon' ? pokemonSetReleaseDate(r.set || r.setName || r.pokemonPriceTracker?.setName || '') : '', grading:buySignalGrading(r) });
 }
+// ── What sells here (scripts/store-demand.js) ──
+// Our own sold history -- sold inventory rows plus checkout lines that
+// aren't tied to one of them -- grouped by set and character / player /
+// series / card. Rebuilt at most once a minute or when inventory changes.
+let _storeDemandCache = { at:0, n:0, tx:0, demand:null };
+function storeDemandSnapshot(){
+  const D = window.ArsCaStoreDemand;
+  if(!D) return null;
+  const txLog = safeLocalJson('pos_transactions', []);
+  const n = (all || []).length;
+  if(_storeDemandCache.demand && Date.now() - _storeDemandCache.at < 60000 && _storeDemandCache.n === n && _storeDemandCache.tx === txLog.length) return _storeDemandCache.demand;
+  const soldRows = (all || []).filter(i => i.status === 'sold' || i.soldAt);
+  const soldIds = new Set(soldRows.map(i => String(i.id)));
+  const sold = soldRows.map(i => ({ name:i.name, category:i.category, set:i.set, player:i.player || i.raw?.player, series:i.series || i.raw?.series,
+    salePrice:Number(i.salePrice ?? i.soldPrice ?? 0), cost:inventoryCostBasis(i), qty:1, addedAt:i.addedAt || i.createdOn || i.raw?.created_at, soldAt:i.soldAt }));
+  txLog.forEach(t => (t.items || []).forEach(it => {
+    const id = String(it.shopId || it.wfId || it.id || '');
+    if(id && soldIds.has(id)) return;
+    sold.push({ name:it.name, category:it.category || it.categoryName, set:it.set, player:it.player, series:it.series, salePrice:Number(it.adjustedPrice ?? it.price ?? 0), cost:Number(it.cost || 0) * Number(it.qty || 1), qty:Number(it.qty || 1), soldAt:t.date });
+  }));
+  const stock = (all || []).filter(i => i.status === 'in_stock' && !inventoryIsDropship(i)).map(i => ({ name:i.name, category:i.category, set:i.set, player:i.player || i.raw?.player, series:i.series || i.raw?.series,
+    price:inventoryListPrice(i), qty:inventoryAvailableQuantity(i), addedAt:i.addedAt || i.createdOn || i.raw?.created_at }));
+  const demand = D.buildStoreDemand({ sold, stock });
+  _storeDemandCache = { at:Date.now(), n, tx:txLog.length, demand };
+  return demand;
+}
+function buySignalStoreDemand(r = {}){
+  const D = window.ArsCaStoreDemand, demand = storeDemandSnapshot();
+  if(!D || !demand) return null;
+  const item = { name:r.name, category:isPokemonChartCandidate(r) ? 'Pokemon TCG' : r.category, set:r.set || r.setName || '', player:r.player || '', series:r.series || '' };
+  const g = D.demandFor(item, demand);
+  return g ? { rating:g.rating, label:g.label, sentence:D.demandSentence(g, demand.spanDays) } : null;
+}
+// A Pokemon set's release date, from the set list the set browser already
+// caches for a day (fetched once in the background if this device has none).
+let _pptSetsFetchStarted = false;
+function pokemonSetReleaseDate(setName = ''){
+  const D = window.ArsCaStoreDemand;
+  if(!setName || !D) return '';
+  let cached = null;
+  try { cached = JSON.parse(localStorage.getItem('sb_ppt_sets_v1') || 'null'); } catch(e) {}
+  if(!cached?.sets?.length){
+    if(!_pptSetsFetchStarted && navigator.onLine && !getAccountContext().isDemo && typeof sbFetchSets === 'function'){ _pptSetsFetchStarted = true; sbFetchSets().catch(() => {}); }
+    return '';
+  }
+  const key = D.setKey(setName);
+  return (cached.sets.find(x => D.setKey(x.name) === key) || {}).releaseDate || '';
+}
+// Raw Pokemon only: eBay PSA 9 / PSA 10 sales for the grading-upside check.
+function buySignalGrading(r = {}){
+  if(!isPokemonChartCandidate(r) || r.pricingMode === 'slab' || r.selectedGrade || r.grade || r.grader || r.isSlabbed) return null;
+  let rows = [];
+  try { rows = pokemonPptGradeRows(r); } catch(e) {}
+  const find = key => rows.find(x => String(x.gradeKey).toLowerCase() === key && Number(x.price) > 0);
+  const p10 = find('psa10'), p9 = find('psa9');
+  return p10 ? { psa10:Number(p10.price), count10:Number(p10.count || 0), psa9:Number(p9?.price || 0) } : null;
+}
+
+// ── Reports > WHAT TO BUY ──
+// Store ask: "a section in reports that has what we should be buying and
+// looking for -- sets, cards, characters, players." From our own sales:
+// what moves fast at a good margin (buy more), what sells but is already
+// piled up (have plenty), what sits (go easy); what customers are asking
+// for; and raw Pokemon in stock worth grading.
+function whatToBuyRowsHtml(list, empty){
+  if(!list.length) return `<div class="wtb-empty">${escHtml(empty)}</div>`;
+  const dimLabel = { set:'Set', character:'Pokémon', player:'Player', series:'Series', card:'Card' };
+  return `<table class="wtb-table"><tr><th>${''}</th><th>Sold</th><th>Days</th><th>Profit</th><th>Stock</th></tr>${list.map(g => `<tr>
+    <td><b>${escHtml(g.label)}</b><span>${escHtml(dimLabel[g.dim] || g.dim)}</span></td>
+    <td>${g.sold}</td><td>${g.avgDays == null ? '—' : g.avgDays + 'd'}</td><td>${g.marginPct == null ? '—' : g.marginPct + '%'}</td>
+    <td>${g.stockQty}${g.monthsOfStock != null && g.monthsOfStock >= 1 ? `<span>${Math.round(g.monthsOfStock)} mo</span>` : ''}</td></tr>`).join('')}</table>`;
+}
+function renderWhatToBuyPanel(){
+  const host = document.getElementById('what-to-buy-panel');
+  if(!host) return;
+  const demand = storeDemandSnapshot();
+  if(!demand){ host.innerHTML = ''; return; }
+  const cats = [['pokemon','Pokémon'],['sports','Sports'],['comic','Comics'],['mtg','Magic'],['other','Other']];
+  const sections = cats.map(([cat, name]) => {
+    const groups = demand.list.filter(g => g.cat === cat);
+    const sales = groups.filter(g => g.dim === 'set' || g.dim === 'series').reduce((n, g) => n + g.sold, 0);
+    const hot = groups.filter(g => g.rating === 'hot').sort((a, b) => b.sold - a.sold || (a.avgDays ?? 99) - (b.avgDays ?? 99)).slice(0, 10);
+    const plenty = groups.filter(g => g.rating === 'plenty').sort((a, b) => (b.monthsOfStock || 0) - (a.monthsOfStock || 0)).slice(0, 8);
+    const slow = groups.filter(g => g.rating === 'slow').sort((a, b) => b.stockValue - a.stockValue || b.stockQty - a.stockQty).slice(0, 10);
+    if(!groups.length) return '';
+    return `<details class="wtb-cat" ${cat === 'pokemon' ? 'open' : ''}><summary><b>${escHtml(name)}</b><span>${sales} sale${sales === 1 ? '' : 's'} in the last ${demand.spanDays} days${sales < 8 ? ' -- not much to go on yet' : ''}</span></summary>
+      <div class="wtb-grid">
+        <div><div class="wtb-h buy">🟢 BUY MORE</div><div class="wtb-sub">Sold 3+ in about a month or less, at 20%+ profit, and not piled up</div>${whatToBuyRowsHtml(hot, 'Nothing has sold fast enough here yet.')}</div>
+        <div><div class="wtb-h plenty">🟡 HAVE PLENTY</div><div class="wtb-sub">Sells, but 4+ months of it on the shelf -- sell down first</div>${whatToBuyRowsHtml(plenty, 'Nothing piled up.')}</div>
+        <div><div class="wtb-h slow">🔴 GO EASY</div><div class="wtb-sub">Sits 45+ days without selling, or takes 60+ days to sell</div>${whatToBuyRowsHtml(slow, 'Nothing sitting.')}</div>
+      </div></details>`;
+  }).join('');
+  const wants = (wantList || []).filter(w => w.status === 'active').slice(0, 40);
+  const needs = (typeof getSetNeeds === 'function' ? getSetNeeds() : []).filter(n => n.active !== false).slice(0, 40);
+  const asking = wants.length || needs.length ? `<table class="wtb-table">${wants.map(w => `<tr><td><b>${escHtml(w.item)}</b><span>Want list${w.maxprice ? ' · up to $' + Number(w.maxprice).toFixed(2) : ''}</span></td><td>${escHtml(w.customer || '')}</td></tr>`).join('')}${needs.map(n => `<tr><td><b>${escHtml([n.name, n.number ? '#' + n.number : ''].filter(Boolean).join(' ') || n.set || 'Set need')}</b><span>Set need${n.set ? ' · ' + escHtml(n.set) : ''}</span></td><td>${escHtml(n.owner || '')}</td></tr>`).join('')}</table>`
+    : '<div class="wtb-empty">No open want-list requests or set needs. Add them from Customers → Want list.</div>';
+  host.innerHTML = `<div class="panel" style="margin-top:14px">
+    <div class="ph">WHAT TO BUY <span style="font-size:9px;color:var(--dim)">From your own sales: what moves, what sits, what customers want</span></div>
+    <div class="wtb-note">${demand.soldCount} sales in the last ${demand.spanDays} days, grouped by set and by Pokémon, player, series or card. "Days" is the average time from added to sold; "Stock" is what's on the shelf now. The buy signal on Research uses the same numbers: it pays a bit more for BUY MORE and a bit less for HAVE PLENTY or GO EASY.</div>
+    ${sections}
+    <details class="wtb-cat" open><summary><b>👀 CUSTOMERS ARE ASKING FOR</b><span>${wants.length + needs.length} open</span></summary>${asking}</details>
+    <details class="wtb-cat"><summary><b>🏆 GRADING CANDIDATES IN STOCK</b><span>raw Pokémon whose PSA 9 / 10 sales beat raw + grading</span></summary><div id="wtb-grading"><div class="wtb-empty">Checking saved price data…</div></div></details>
+  </div>`;
+  renderWhatToBuyGrading();
+}
+async function renderWhatToBuyGrading(){
+  const host = document.getElementById('wtb-grading');
+  const S = window.ArsCaBuySignal;
+  if(!host || !S) return;
+  const items = (all || []).filter(i => i.status === 'in_stock' && isPokemonChartCandidate(i) && !(i.grade || i.grader || i.cert_number || i.isSlabbed) && (i.tcgPlayerId || i.tcgplayerId)).slice(0, 400);
+  const rules = buyTargetRules('pokemon'), hits = [];
+  for(const item of items){
+    let stored = null;
+    try { stored = await pokemonDbGet('cards', 'pokemon:' + String(item.tcgPlayerId || item.tcgplayerId)); } catch(e) {}
+    if(!stored?.card) continue;
+    const grading = buySignalGrading({ pokemonPriceTracker:stored.card, category:'Pokemon' });
+    const market = inventoryMarketPrice(item);
+    if(!grading || !(market > 0)) continue;
+    const sig = S.evaluateBuySignal({ market, category:'Pokemon', rules, grading });
+    if(sig.grading) hits.push({ item, market, ...sig.grading, at:pokemonCardFetchedAt(stored.card) });
+  }
+  hits.sort((a, b) => b.upside10 - a.upside10);
+  host.innerHTML = hits.length ? `<table class="wtb-table"><tr><th></th><th>Raw</th><th>PSA 9</th><th>PSA 10</th></tr>${hits.slice(0, 30).map(h => `<tr><td><b>${escHtml(h.item.name)}</b><span>${escHtml(h.item.set || '')}${h.at ? ' · prices from ' + escHtml(pokemonCacheAgeLabel(h.at)) : ''}</span></td><td>$${h.market.toFixed(2)}</td><td>${h.psa9 ? '$' + h.psa9.toFixed(0) : '—'}</td><td>$${h.psa10.toFixed(0)}</td></tr>`).join('')}</table>
+    <div class="wtb-note">PSA 9 alone covers raw + $${Number(rules.gradingCost || 0).toFixed(0)} grading, and PSA 10 is at least 2× that. Only cards whose graded prices are saved on this device (looked up in Research) can be checked. Check centering and surface before sending.</div>`
+    : '<div class="wtb-empty">No grading candidates among in-stock cards with saved graded prices. Cards looked up in Research get checked automatically.</div>';
+}
+
 // ── Buy targets (Settings > Store profile) ──
 // Margins and trade credit per category: Pokemon, Magic and sports cards
 // don't sell (or trade) alike. "fast / avg / slow" is the profit kept by
@@ -34766,7 +34896,7 @@ function buyTargetGroup(r = {}){
 function buyTargetRules(group){
   const t = buyTargetsSettings(), g = t[group] || t.other;
   return { marginFastPokemon:g.fast, marginFast:g.fast, marginAvg:g.avg, marginSlow:g.slow, tradePctPokemon:g.trade, tradePctOther:g.trade,
-    minProfit:Number(t.minProfit) || 0, feePct:Number(t.feePct) || 0, marginStocked:Number(t.stocked) || 0 };
+    minProfit:Number(t.minProfit) || 0, feePct:Number(t.feePct) || 0, marginStocked:Number(t.stocked) || 0, gradingCost:Number(t.gradingCost) || 0 };
 }
 function buyTargetSummary(group){
   const t = buyTargetsSettings(), g = t[group] || t.other, name = (BUY_TARGET_GROUPS.find(x => x[0] === group) || [,'This category'])[1];
@@ -34781,13 +34911,13 @@ function buyTargetsSettingsHtml(){
     <div class="buy-targets-grid"><b>Category</b><b>Fast %</b><b>Average %</b><b>Slow %</b><b>Trade %</b>
       ${BUY_TARGET_GROUPS.map(([key, label]) => `<span>${escHtml(label)}</span>${cell('bt-'+key+'-fast', t[key].fast)}${cell('bt-'+key+'-avg', t[key].avg)}${cell('bt-'+key+'-slow', t[key].slow)}${cell('bt-'+key+'-trade', t[key].trade)}`).join('')}
     </div>
-    <div class="buy-targets-grid buy-targets-extra"><label>MIN PROFIT $${cell('bt-minProfit', t.minProfit)}</label><label>CARD FEES %${cell('bt-feePct', t.feePct)}</label><label>+% IF IN STOCK${cell('bt-stocked', t.stocked)}</label></div>
+    <div class="buy-targets-grid buy-targets-extra"><label>MIN PROFIT $${cell('bt-minProfit', t.minProfit)}</label><label>CARD FEES %${cell('bt-feePct', t.feePct)}</label><label>+% IF IN STOCK${cell('bt-stocked', t.stocked)}</label><label>GRADING COST $${cell('bt-gradingCost', t.gradingCost)}</label></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"><button class="hbtn" onclick="saveBuyTargetsFromForm()">SAVE BUY TARGETS</button><button class="hbtn" onclick="resetBuyTargets()">RESET TO DEFAULTS</button></div>
   </div>`;
 }
 async function saveBuyTargetsFromForm(){
   const num = (id, min, max) => { const v = Number(document.getElementById(id)?.value); return Number.isFinite(v) ? Math.max(min, Math.min(max, v)) : null; };
-  const t = buyTargetsSettings(), next = { minProfit:num('bt-minProfit', 0, 1000) ?? t.minProfit, feePct:num('bt-feePct', 0, 50) ?? t.feePct, stocked:num('bt-stocked', 0, 50) ?? t.stocked };
+  const t = buyTargetsSettings(), next = { minProfit:num('bt-minProfit', 0, 1000) ?? t.minProfit, feePct:num('bt-feePct', 0, 50) ?? t.feePct, stocked:num('bt-stocked', 0, 50) ?? t.stocked, gradingCost:num('bt-gradingCost', 0, 1000) ?? t.gradingCost };
   for(const [key] of BUY_TARGET_GROUPS){
     next[key] = {};
     for(const f of ['fast','avg','slow','trade']) next[key][f] = num(`bt-${key}-${f}`, 0, 95) ?? t[key][f];
