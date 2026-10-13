@@ -1720,6 +1720,117 @@ async function adminComicSellThrough(request,env,deps,url){
   return deps.json({ok:true,...computeComicSellThrough(items||[],soldByItem),pullLists});
 }
 
+// COMIC DEMAND -- the facts behind the FOC wall's ordering pills (see
+// scripts/comic-demand.js, which groups them): every comic sold in the last
+// 180 days (register + eBay) and every comic on the shelf, each with its
+// series, issue, cover and cover artist, plus the cover artists on recent
+// FOC files so sale titles can be read for them.
+const UUID_RE=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+function comicArtistList(...values){
+  for(const v of values){
+    const list=(Array.isArray(v)?v:String(v||'').split(/\s*(?:,|;)\s*/)).map(a=>text(a,80)).filter(Boolean);
+    if(list.length)return list.join(', ');
+  }
+  return '';
+}
+export function comicDemandFacts({lines=[],items=[],stock=[],skus=[],artistRows=[]}={}){
+  const itemById=new Map(items.map(i=>[String(i.id),i])),skuById=new Map(skus.map(s=>[String(s.id),s]));
+  const facts=it=>{
+    const sku=it?skuById.get(String(it.focSkuId||'')):null;
+    const fromFoc=/^foc_/.test(String(it?.source||''));
+    return {series:text(it?.series,200),issue:text(it?.issue,20),cover:text(sku?.variant_label||(fromFoc?it?.variant:''),200),artist:comicArtistList(sku?.cover_artist,it?.detailArtists,it?.coverArtists)};
+  };
+  const sold=lines.map(l=>{
+    const it=itemById.get(String(l.item_id||''));
+    return {title:text(l.title,240),...(it?facts(it):{}),qty:Math.max(1,Number(l.quantity||1)),price:Number(l.unit_price||0),saleId:l.sale_id||'',at:l.created_at,ebay:/^ebay:/.test(String(l.source_id||''))};
+  });
+  const shelf=stock.map(it=>({name:text(it.name,240),...facts(it),qty:Math.max(0,Number(it.qty??it.quantity??0)||0),at:it.created_at}));
+  const artists=[...new Set(artistRows.flatMap(r=>String(r.cover_artist||'').split(/\s*(?:,|;|&|\/)\s*/)).map(a=>text(a,80)).filter(a=>a&&a.split(/\s+/).length>=2))];
+  return {sold,stock:shelf,artists};
+}
+async function adminComicDemand(request,env,deps,url){
+  const storeId=text(url.searchParams.get('store_id'),80);
+  const auth=await deps.requireStoreUser(request,env,storeId,['owner','admin','manager','employee']);if(auth.error)return auth.error;
+  const db=(path,options)=>deps.supabaseAdminFetch(env,path,options);
+  const s=encodeURIComponent(storeId),since=new Date(Date.now()-180*864e5).toISOString();
+  const itemFields='id,created_at,source:data->>source,name:data->>name,series:data->>series,issue:data->>issue,variant:data->>variant,qty:data->>qty,quantity:data->>quantity,focSkuId:data->>focSkuId,coverArtists:data->coverArtists,detailArtists:data->focComicDetail->coverArtists';
+  const [{data:lines},{data:stock},{data:artistRows}]=await Promise.all([
+    db(`pos_sale_lines?store_id=eq.${s}&category=ilike.*comic*&created_at=gte.${since}&select=sale_id,item_id,title,quantity,unit_price,source_id,created_at&order=created_at.desc&limit=5000`),
+    db(`inventory_items?store_id=eq.${s}&status=eq.in_stock&data->>category=ilike.*comic*&select=${itemFields}&limit=5000`),
+    db(`comic_skus?store_id=eq.${s}&foc_date=gte.${since.slice(0,10)}&cover_artist=not.is.null&select=cover_artist&limit=5000`),
+  ]);
+  const soldIds=[...new Set((lines||[]).map(l=>String(l.item_id||'')).filter(id=>UUID_RE.test(id)))];
+  const items=[];
+  for(let i=0;i<soldIds.length;i+=100){const {data}=await db(`inventory_items?id=${inFilter(soldIds.slice(i,i+100))}&select=${itemFields}`);items.push(...(data||[]));}
+  const skuIds=[...new Set([...items,...(stock||[])].map(i=>String(i.focSkuId||'')).filter(id=>UUID_RE.test(id)))];
+  const skus=[];
+  for(let i=0;i<skuIds.length;i+=100){const {data}=await db(`comic_skus?id=${inFilter(skuIds.slice(i,i+100))}&select=id,cover_artist,variant_label`);skus.push(...(data||[]));}
+  return deps.json({ok:true,...comicDemandFacts({lines:lines||[],items,stock:stock||[],skus,artistRows:artistRows||[]})});
+}
+
+// COVER MARKET -- what other eBay sellers ask for a cover right now (presale
+// hype: how many are listed and the asking price vs cover price) and what
+// it has sold for, for the FOC wall and pricing ratio books. eBay doesn't
+// show other sellers' sold counts, so "listed" is the hype signal. Our own
+// presale listings are left out. Cached 12 hours per search.
+const MARKET_STOP=new Set(['THE','AND','OF','A','AN','VS','COVER','CVR','VARIANT','VAR']);
+export function coverMarketQuery(cover={}){
+  const series=text(cover.series,140).replace(/\(.*?\)|\[.*?\]/g,' ').replace(/\s+/g,' ').trim();
+  const issue=text(cover.issue,12).replace(/^#/,'');
+  const artistLast=text(cover.artist,80).split(/\s*(?:,|&|\/)\s*/)[0].split(/\s+/).filter(Boolean).pop()||'';
+  const ratio=Number(cover.ratio||0)>0?'1:'+Number(cover.ratio):'';
+  const extra=[artistLast,ratio,cover.virgin?'virgin':'',cover.foil?'foil':''].filter(Boolean);
+  return {q:[series,issue?'#'+issue:'',...extra].filter(Boolean).join(' ').slice(0,160),series,issue,artistLast,ratio:Number(cover.ratio||0)||0};
+}
+export function coverTitleMatches(title,query){
+  const t=' '+String(title||'').toUpperCase().replace(/[^A-Z0-9:]+/g,' ')+' ';
+  const words=String(query.series||'').toUpperCase().replace(/[^A-Z0-9]+/g,' ').split(' ').filter(w=>w.length>=3&&!MARKET_STOP.has(w)).slice(0,4);
+  if(!words.every(w=>t.includes(' '+w+' ')||t.includes(' '+w.replace(/S$/,'')+' ')))return false;
+  if(query.issue&&!new RegExp('\\s0*'+query.issue.split('.')[0].replace(/[^0-9]/g,'')+'\\s').test(t))return false;
+  if(query.ratio&&!new RegExp('1\\s?:\\s?'+query.ratio+'\\b|\\s'+query.ratio+'\\s?(?:COPY|RATIO|INCENTIVE)').test(t))return false;
+  if(query.ratio&&query.artistLast&&!t.includes(' '+query.artistLast.toUpperCase().replace(/[^A-Z0-9]+/g,' ').trim()+' '))return false;
+  return true;
+}
+const median=values=>{const v=values.filter(n=>n>0).sort((a,b)=>a-b);if(!v.length)return null;const m=Math.floor(v.length/2);return Math.round((v.length%2?v[m]:(v[m-1]+v[m])/2)*100)/100;};
+export function summarizeCoverMarket(query,listings=[],comps=[],ownIds=new Set()){
+  const own=id=>{const s=String(id||'');return ownIds.has(s)||ownIds.has(s.split('|')[1]||'');};
+  const active=listings.filter(l=>!own(l.itemId)&&coverTitleMatches(l.title,query));
+  const sold=comps.filter(c=>Number(c.total||c.price||0)>0&&coverTitleMatches(c.title,query)).sort((a,b)=>(Date.parse(b.soldAt||'')||0)-(Date.parse(a.soldAt||'')||0));
+  const ask=active.map(l=>Number(l.price||0)),paid=sold.map(c=>Number(c.total||c.price||0));
+  return {query:query.q,
+    active:{count:active.length,low:ask.length?Math.min(...ask):null,median:median(ask),high:ask.length?Math.max(...ask):null,presales:active.filter(l=>/pre-?sale|pre-?order/i.test(l.title||'')).length,sample:active.slice(0,3).map(l=>({title:text(l.title,120),price:l.price,url:l.url||''}))},
+    sold:{count:sold.length,median:median(paid),low:paid.length?Math.min(...paid):null,high:paid.length?Math.max(...paid):null,last:sold[0]?{price:Number(sold[0].total||sold[0].price||0),soldAt:sold[0].soldAt||null,title:text(sold[0].title,120)}:null}};
+}
+async function adminCoverMarket(request,env,deps){
+  const limited=await deps.readJsonWithLimit(request,64*1024);if(limited.error)return limited.error;
+  const body=limited.data||{},storeId=text(body.storeId,80);
+  const auth=await deps.requireStoreUser(request,env,storeId,['owner','admin','manager','employee']);if(auth.error)return auth.error;
+  if(!deps.ebayActiveListings)return deps.json({ok:false,error:'eBay search is not set up on this Worker'},501);
+  const covers=(Array.isArray(body.covers)?body.covers:[]).slice(0,12).filter(c=>c&&text(c.key,80)&&text(c.series,140));
+  if(!covers.length)return deps.json({ok:false,error:'covers required (key, series, issue)'},400);
+  const limitError=deps.enforceUsageLimit?await deps.enforceUsageLimit(env,`foc-market:${storeId}`,40,600):null;if(limitError)return limitError;
+  const db=(path,options)=>deps.supabaseAdminFetch(env,path,options);
+  const {data:ownRows}=await db(`inventory_items?store_id=eq.${encodeURIComponent(storeId)}&data->>source=in.(foc_presale,foc_presale_bundle)&data->>ebayListingId=not.is.null&select=listingId:data->>ebayListingId&limit=3000`);
+  const ownIds=new Set((ownRows||[]).map(r=>String(r.listingId||'')).filter(Boolean));
+  const results={};
+  for(const cover of covers){
+    const query=coverMarketQuery(cover);
+    const cacheKey='foc-cover-market:v1:'+query.q.toLowerCase();
+    let hit=null;
+    if(env.LBA_KV&&!body.refresh)try{hit=await env.LBA_KV.get(cacheKey,'json');}catch(_){}
+    if(hit){results[cover.key]={...hit,cached:true};continue;}
+    const warnings=[];
+    const active=await deps.ebayActiveListings(env,query.q,{limit:50}).catch(e=>({listings:[],warning:e.message}));
+    if(active.warning)warnings.push(active.warning);
+    const sold=deps.ebaySoldComps?await deps.ebaySoldComps(env,query.q,40).catch(e=>({comps:[],warning:e.message})):{comps:[]};
+    if(sold.warning&&!(sold.comps||[]).length)warnings.push(sold.warning);
+    const result={...summarizeCoverMarket(query,active.listings||[],sold.comps||[],ownIds),at:new Date().toISOString(),warnings:warnings.slice(0,2)};
+    if(env.LBA_KV&&!active.warning)try{await env.LBA_KV.put(cacheKey,JSON.stringify(result),{expirationTtl:43200});}catch(_){}
+    results[cover.key]=result;
+  }
+  return deps.json({ok:true,results});
+}
+
 // ═══════════════════════════════════════════════════════
 // RECEIVING DAY -- who each arriving book is for (pick list), "your books
 // are in" texts, and presales whose on-sale date passed without the book.
@@ -3139,6 +3250,8 @@ export async function handleFocRequest(request, env, url, deps) {
   if(path==='/foc/admin/intelligence'&&request.method==='GET')return focIntelligence(request,env,deps,url);
   if(path==='/foc/admin/connecting-covers'&&request.method==='GET')return adminConnectingCovers(request,env,deps,url);
   if(path==='/foc/admin/comic-sell-through'&&request.method==='GET')return adminComicSellThrough(request,env,deps,url);
+  if(path==='/foc/admin/comic-demand'&&request.method==='GET')return adminComicDemand(request,env,deps,url);
+  if(path==='/foc/admin/cover-market'&&request.method==='POST')return adminCoverMarket(request,env,deps);
   if(path==='/foc/admin/pick-list'&&request.method==='GET')return adminPickList(request,env,deps,url);
   if(path==='/foc/admin/notify-arrivals'&&request.method==='POST')return adminNotifyArrivals(request,env,deps);
   if(path==='/foc/admin/late-books'&&request.method==='GET')return adminLateBooks(request,env,deps,url);

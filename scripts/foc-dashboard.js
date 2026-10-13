@@ -356,7 +356,7 @@ async function openCycle(id){
   // review skus that don't belong to it. Same cycle-switch-only guard as
   // the filter reset above.
   if(!state.cycle||state.cycle.id!==id){state.query='';state.publisher='all';state.flag='all';state.ebay='all';focEbayBulkSelectedIds.clear();focEbayBulkQueue=null;focPublishBulkSelectedIds.clear();}
-  try{var data=await api('/foc/admin/cycles?store_id='+encodeURIComponent(getActiveStoreId())+'&cycle_id='+encodeURIComponent(id));state.cycle=data.cycle;state.families=data.families||[];renderCycle();}
+  try{var data=await api('/foc/admin/cycles?store_id='+encodeURIComponent(getActiveStoreId())+'&cycle_id='+encodeURIComponent(id));state.cycle=data.cycle;state.families=data.families||[];renderCycle();focEnsureIntel();}
   catch(e){panel().innerHTML='<button class="hbtn" onclick="loadFocCycles()">BACK</button><div class="panel" style="margin-top:10px;color:var(--red)">'+esc(e.message)+'</div>';}
 }
 // Same refetch as openCycle, for actions that only changed ONE cover within
@@ -375,7 +375,7 @@ async function refreshCycleFamilies(){
 function visibleFamilies(){
   var q=state.query.trim().toLowerCase();return state.families.filter(function(f){
     var pub=state.publisher==='all'||String(f.publisher||'').toLowerCase()===state.publisher;
-    var flagged=state.flag==='all'||(state.flag==='first'&&f.isFirstIssue)||(state.flag==='foil'&&f.variants.some(function(v){return v.isFoil;}))||(state.flag==='incentive'&&f.variants.some(function(v){return v.isIncentive;}))||(state.flag==='demand'&&f.variants.some(function(v){return v.customerQty>0;}));
+    var flagged=state.flag==='all'||(state.flag==='first'&&f.isFirstIssue)||(state.flag==='foil'&&f.variants.some(function(v){return v.isFoil;}))||(state.flag==='incentive'&&f.variants.some(function(v){return v.isIncentive;}))||(state.flag==='demand'&&f.variants.some(function(v){return v.customerQty>0;}))||(state.flag==='sells'&&focIntel.loaded&&(function(i){return i&&(i.hot||Object.keys(i.variants).length>0);})(focFamilyIntel(f)));
     var ebay=state.ebay==='all'||f.variants.some(function(v){return v.ebayPresaleStatus===state.ebay;});
     var hay=[f.title,f.seriesName,f.publisher,f.writer,f.interiorArtist].concat(f.variants.map(function(v){return[v.variantLabel,v.coverArtist].join(' ');})).join(' ').toLowerCase();return pub&&flagged&&ebay&&(!q||hay.indexOf(q)>-1);
   });
@@ -490,7 +490,7 @@ function skuCard(v){
   return '<article class="foc-sku '+(v.isIncentive?'incentive':'')+'" data-foc-sku="'+esc(v.id)+'">'+
     '<label style="display:flex;align-items:center;gap:6px;margin-bottom:6px;font:8px var(--font-mono);color:var(--dim);cursor:pointer"><input type="checkbox" class="foc-publish-bulk-cb" value="'+esc(v.id)+'" '+(focPublishBulkSelectedIds.has(v.id)?'checked':'')+' onchange="focPublishBulkCheckboxChanged(this)"> SELECT</label>'+
     (v.coverImageUrl?'<img src="'+esc(v.coverImageUrl)+'" alt="'+esc(v.variantLabel)+'" loading="lazy" onerror="this.style.opacity=.16">':'<div style="aspect-ratio:2/3;display:grid;place-items:center;background:var(--surf2);color:var(--dim);border-radius:7px">NO COVER</div>')+
-    '<div style="margin-top:8px;font-weight:800;font-size:11px;line-height:1.35;color:var(--text)">'+esc(v.variantLabel)+'</div><div style="font:9px/1.5 var(--font-mono);color:var(--dim)">'+esc(v.coverArtist||'Cover artist not listed')+'<br>UPC '+esc(v.upc)+'</div>'+lunarCostLine(v)+
+    '<div style="margin-top:8px;font-weight:800;font-size:11px;line-height:1.35;color:var(--text)">'+esc(v.variantLabel)+'</div><div style="font:9px/1.5 var(--font-mono);color:var(--dim)">'+esc(v.coverArtist||'Cover artist not listed')+'<br>UPC '+esc(v.upc)+'</div>'+lunarCostLine(v)+focVariantPillsHtml(v)+
     ((v.isIncentive||v.isFoil)?'<div style="margin-top:7px;display:flex;gap:5px;flex-wrap:wrap">'+(v.isIncentive?'<span class="foc-badge incentive">INCENTIVE '+esc(v.orderRequirement)+'</span>':'')+(v.isFoil?'<span class="foc-badge">FOIL · PRICE SEPARATELY</span>':'')+'</div>':'')+
     (v.isIncentive?'<div class="foc-progress"><i style="width:'+pct(qual.total,qual.threshold)+'%"></i></div><div style="font:8px/1.4 var(--font-mono);color:'+(qual.qualified?'var(--g)':'var(--gold)')+'">'+Number(qual.total||0)+' / '+Number(qual.threshold||0)+(qual.qualified?' · QUALIFIED':' · '+Number(qual.needed||0)+' MORE TO UNLOCK')+' · '+Number(v.waitlistRequests||0)+' WAITLISTED</div>':'')+
     '<div class="foc-sku-fields"><label>CUSTOMERS<input class="tsi" value="'+Number(v.customerQty||0)+'" disabled></label><label>STORE QTY<input class="tsi" data-field="storeQuantity" type="number" min="0" value="'+Number(v.storeQuantity||0)+'" onchange="'+save+'"></label><label>'+(v.isIncentive?'SELL PRICE · REQUIRED':(v.isFoil?'FOIL SELL PRICE':'CUSTOMER PRICE'))+'<input class="tsi" data-field="customerPrice" type="number" min="0" step=".01" value="'+(Number(v.priceCents||0)/100).toFixed(2)+'" onchange="'+save+'"></label><label>'+(v.isIncentive?'SECURED QTY':'TOTAL ORDER')+'<input class="tsi" '+(v.isIncentive?'data-field="securedQuantity" type="number" min="0" onchange="'+save+'" value="'+Number(v.securedQuantity||0)+'"':'disabled value="'+total+'"')+'></label><label>SAFETY STOCK<input class="tsi" data-field="safetyStockQty" type="number" min="0" value="'+Number(v.safetyStockQty||0)+'" onchange="'+save+'"></label></div>'+
@@ -503,12 +503,12 @@ function skuCard(v){
 
 function familyCard(f){
   var groupListBtn=(f.variants||[]).length>=2?'<button class="hbtn" style="font-size:8px;color:var(--gold)" onclick="openFamilyEbayGroupReview(\''+esc(f.id)+'\')" title="List every cover of this title as one eBay listing with a native Cover variation dropdown">LIST ALL COVERS · 1 EBAY LISTING</button>':'';
-  return '<section class="foc-family"><header class="foc-family-head"><div><div class="foc-family-title">'+esc(f.title)+'</div><div style="font:9px/1.55 var(--font-mono);color:var(--dim)">'+esc([f.publisher,f.writer?'W: '+f.writer:'',f.interiorArtist?'A: '+f.interiorArtist:'',f.onSaleDate?'On sale '+displayDate(f.onSaleDate):''].filter(Boolean).join(' · '))+'</div></div><div class="foc-toolbar">'+groupListBtn+'<label style="font:8px var(--font-mono);color:var(--dim)">HEAT <select class="tsi" data-family-heat="'+esc(f.id)+'" onchange="saveFocFamily(\''+esc(f.id)+'\')"><option value="">—</option>'+[1,2,3,4,5].map(function(n){return'<option '+(Number(f.heat)===n?'selected':'')+'>'+n+'</option>';}).join('')+'</select></label><label style="font:8px var(--font-mono);color:var(--dim)">FLAG <select class="tsi" data-family-category="'+esc(f.id)+'" onchange="saveFocFamily(\''+esc(f.id)+'\')"><option value="">None</option>'+[['dont_sleep',"DON\'T SLEEP"],['sleeper_watch','SLEEPER WATCH'],['solid_stock','SOLID STOCK'],['special_order','SPECIAL ORDER'],['pass','PASS']].map(function(x){return'<option value="'+x[0]+'" '+(f.heatCategory===x[0]?'selected':'')+'>'+x[1]+'</option>';}).join('')+'</select></label></div></header><div class="foc-sku-grid">'+f.variants.map(skuCard).join('')+'</div></section>';
+  return '<section class="foc-family"><header class="foc-family-head"><div><div class="foc-family-title">'+esc(f.title)+'</div><div style="font:9px/1.55 var(--font-mono);color:var(--dim)">'+esc([f.publisher,f.writer?'W: '+f.writer:'',f.interiorArtist?'A: '+f.interiorArtist:'',f.onSaleDate?'On sale '+displayDate(f.onSaleDate):''].filter(Boolean).join(' · '))+'</div>'+focFamilyPillsHtml(f)+'</div><div class="foc-toolbar">'+groupListBtn+'<label style="font:8px var(--font-mono);color:var(--dim)">HEAT <select class="tsi" data-family-heat="'+esc(f.id)+'" onchange="saveFocFamily(\''+esc(f.id)+'\')"><option value="">—</option>'+[1,2,3,4,5].map(function(n){return'<option '+(Number(f.heat)===n?'selected':'')+'>'+n+'</option>';}).join('')+'</select></label><label style="font:8px var(--font-mono);color:var(--dim)">FLAG <select class="tsi" data-family-category="'+esc(f.id)+'" onchange="saveFocFamily(\''+esc(f.id)+'\')"><option value="">None</option>'+[['dont_sleep',"DON\'T SLEEP"],['sleeper_watch','SLEEPER WATCH'],['solid_stock','SOLID STOCK'],['special_order','SPECIAL ORDER'],['pass','PASS']].map(function(x){return'<option value="'+x[0]+'" '+(f.heatCategory===x[0]?'selected':'')+'>'+x[1]+'</option>';}).join('')+'</select></label></div></header><div class="foc-sku-grid">'+f.variants.map(skuCard).join('')+'</div></section>';
 }
 
 function renderCycle(){
   var c=state.cycle;if(!c)return;var publishers=Array.from(new Set(state.families.map(function(f){return f.publisher;}).filter(Boolean))).sort();var allSkus=state.families.reduce(function(a,f){return a.concat(f.variants);},[]);var customerQty=allSkus.reduce(function(s,v){return s+Number(v.customerQty||0);},0);var storeQty=allSkus.reduce(function(s,v){return s+Number(v.storeQuantity||0);},0);var incentiveReq=allSkus.reduce(function(s,v){return s+Number(v.waitlistRequests||0);},0);
-  panel().innerHTML='<section class="foc-hero"><div class="foc-toolbar"><button class="hbtn" onclick="loadFocCycles()">← CYCLES</button><button class="hbtn" style="color:var(--purple)" onclick="openFocReview()">FINAL FOC REVIEW</button><button class="hbtn" style="color:var(--blue)" onclick="openFocIntelligence()">🧠 FOC INTELLIGENCE</button>'+(c.distributor==="Lunar"?"":"<button class=\"hbtn\" onclick=\"exportFocPrh()\">EXPORT PRH ORDER</button>")+'<button class="hbtn" style="color:var(--g)" onclick="openReceiveShipment()">RECEIVE SHIPMENT</button><button class="hbtn" title="Who each copy in this FOC week is for: eBay orders, website preorders, pull lists" onclick="openFocPickList()">📋 PICK LIST</button>'+'<button class="hbtn" title="Open the Whatnot tab with this week\'s received, in-stock books chosen" onclick="sendFocShipmentToWhatnot(\''+esc(c.id)+'\')">SEND TO WHATNOT</button>'+(c.status!=='archived'?'<button class="hbtn" onclick="toggleFocCycle()">'+(c.isOpen?'LOCK ORDERS':'UNLOCK ORDERS')+'</button>':'')+(c.status==='archived'?'<button class="hbtn" onclick="unarchiveFocCycle()">SHOW ON SITE (LOCKED)</button>':'<button class="hbtn danger" onclick="archiveFocCycle()">HIDE FROM SITE</button>')+'<a class="hbtn" href="https://www.themanapocket.com/preorders?cycle='+encodeURIComponent(c.foc_date)+'" target="_blank" rel="noopener" style="text-decoration:none">VIEW CUSTOMER PAGE</a></div><div style="display:flex;justify-content:space-between;gap:12px;align-items:end;flex-wrap:wrap;margin-top:14px"><div><div style="font:900 22px/1.1 \'Orbitron\',monospace;color:var(--text)">FOC '+esc(displayDate(c.foc_date))+'</div><div style="font:10px/1.6 var(--font-mono);color:var(--dim)">'+esc(c.source_filename||(c.distributor||'PRH'))+' · '+(c.status==='archived'?'HIDDEN FROM SITE':(c.isOpen?'UNLOCKED FOR ORDERS':'VISIBLE BUT LOCKED'))+'</div></div><label style="font:8px var(--font-mono);color:var(--dim)">CUSTOMER CUTOFF · PACIFIC<input id="foc-cycle-cutoff" class="tsi" type="datetime-local" value="'+esc(pacificDateTimeInput(c.customer_cutoff_at))+'" onchange="saveFocCycleCutoff()" style="margin:3px 0 0"><span style="display:block;margin-top:4px">Set a future cutoff before unlocking an expired FOC.</span></label></div><div class="foc-stats"><div class="foc-stat"><b>'+allSkus.length+'</b><span>Exact cover SKUs</span></div><div class="foc-stat"><b>'+state.families.length+'</b><span>Title families</span></div><div class="foc-stat"><b>'+customerQty+'</b><span>Customer copies</span></div><div class="foc-stat"><b>'+storeQty+'</b><span>Store copies</span></div><div class="foc-stat"><b>'+incentiveReq+'</b><span>Incentive requests</span></div></div></section>'+focEbayHealthPanelHtml()+'<div class="panel foc-toolbar" style="margin-bottom:12px"><input id="foc-admin-search" class="tsi" placeholder="Search title, writer, artist…" value="'+esc(state.query)+'" oninput="filterFocAdmin(this.value)"><select class="tsi" onchange="filterFocPublisher(this.value)"><option value="all" '+(state.publisher==='all'?'selected':'')+'>All publishers</option>'+publishers.map(function(p){return'<option value="'+esc(p.toLowerCase())+'" '+(state.publisher===p.toLowerCase()?'selected':'')+'>'+esc(p)+'</option>';}).join('')+'</select><select class="tsi" onchange="filterFocFlag(this.value)"><option value="all" '+(state.flag==='all'?'selected':'')+'>All comics</option><option value="first" '+(state.flag==='first'?'selected':'')+'>#1 issues</option><option value="foil" '+(state.flag==='foil'?'selected':'')+'>Foil covers</option><option value="incentive" '+(state.flag==='incentive'?'selected':'')+'>Incentives</option><option value="demand" '+(state.flag==='demand'?'selected':'')+'>Customer demand</option></select><select class="tsi" onchange="filterFocEbay(this.value)"><option value="all" '+(state.ebay==='all'?'selected':'')+'>All eBay statuses</option><option value="ELIGIBLE_NOW" '+(state.ebay==='ELIGIBLE_NOW'?'selected':'')+'>Eligible, not listed</option><option value="TOO_EARLY" '+(state.ebay==='TOO_EARLY'?'selected':'')+'>Too early</option><option value="LISTED" '+(state.ebay==='LISTED'?'selected':'')+'>Already listed</option><option value="SOLD_OUT" '+(state.ebay==='SOLD_OUT'?'selected':'')+'>Presale sold out</option><option value="RELEASED" '+(state.ebay==='RELEASED'?'selected':'')+'>Released (on sale)</option><option value="ACTION_REQUIRED" '+(state.ebay==='ACTION_REQUIRED'?'selected':'')+'>Action required</option></select><span id="foc-visible-count" style="font:9px var(--font-mono);color:var(--dim)"></span></div>'+
+  panel().innerHTML='<section class="foc-hero"><div class="foc-toolbar"><button class="hbtn" onclick="loadFocCycles()">← CYCLES</button><button class="hbtn" style="color:var(--purple)" onclick="openFocReview()">FINAL FOC REVIEW</button><button class="hbtn" style="color:var(--blue)" onclick="openFocIntelligence()">🧠 FOC INTELLIGENCE</button><button class="hbtn" style="color:var(--gold)" title="Cover artists, characters and series to always flag when ordering" onclick="openFocWatchList()">⭐ WATCH LIST</button>'+(c.distributor==="Lunar"?"":"<button class=\"hbtn\" onclick=\"exportFocPrh()\">EXPORT PRH ORDER</button>")+'<button class="hbtn" style="color:var(--g)" onclick="openReceiveShipment()">RECEIVE SHIPMENT</button><button class="hbtn" title="Who each copy in this FOC week is for: eBay orders, website preorders, pull lists" onclick="openFocPickList()">📋 PICK LIST</button>'+'<button class="hbtn" title="Open the Whatnot tab with this week\'s received, in-stock books chosen" onclick="sendFocShipmentToWhatnot(\''+esc(c.id)+'\')">SEND TO WHATNOT</button>'+(c.status!=='archived'?'<button class="hbtn" onclick="toggleFocCycle()">'+(c.isOpen?'LOCK ORDERS':'UNLOCK ORDERS')+'</button>':'')+(c.status==='archived'?'<button class="hbtn" onclick="unarchiveFocCycle()">SHOW ON SITE (LOCKED)</button>':'<button class="hbtn danger" onclick="archiveFocCycle()">HIDE FROM SITE</button>')+'<a class="hbtn" href="https://www.themanapocket.com/preorders?cycle='+encodeURIComponent(c.foc_date)+'" target="_blank" rel="noopener" style="text-decoration:none">VIEW CUSTOMER PAGE</a></div><div style="display:flex;justify-content:space-between;gap:12px;align-items:end;flex-wrap:wrap;margin-top:14px"><div><div style="font:900 22px/1.1 \'Orbitron\',monospace;color:var(--text)">FOC '+esc(displayDate(c.foc_date))+'</div><div style="font:10px/1.6 var(--font-mono);color:var(--dim)">'+esc(c.source_filename||(c.distributor||'PRH'))+' · '+(c.status==='archived'?'HIDDEN FROM SITE':(c.isOpen?'UNLOCKED FOR ORDERS':'VISIBLE BUT LOCKED'))+'</div></div><label style="font:8px var(--font-mono);color:var(--dim)">CUSTOMER CUTOFF · PACIFIC<input id="foc-cycle-cutoff" class="tsi" type="datetime-local" value="'+esc(pacificDateTimeInput(c.customer_cutoff_at))+'" onchange="saveFocCycleCutoff()" style="margin:3px 0 0"><span style="display:block;margin-top:4px">Set a future cutoff before unlocking an expired FOC.</span></label></div><div class="foc-stats"><div class="foc-stat"><b>'+allSkus.length+'</b><span>Exact cover SKUs</span></div><div class="foc-stat"><b>'+state.families.length+'</b><span>Title families</span></div><div class="foc-stat"><b>'+customerQty+'</b><span>Customer copies</span></div><div class="foc-stat"><b>'+storeQty+'</b><span>Store copies</span></div><div class="foc-stat"><b>'+incentiveReq+'</b><span>Incentive requests</span></div></div></section>'+focEbayHealthPanelHtml()+'<div class="panel foc-toolbar" style="margin-bottom:12px"><input id="foc-admin-search" class="tsi" placeholder="Search title, writer, artist…" value="'+esc(state.query)+'" oninput="filterFocAdmin(this.value)"><select class="tsi" onchange="filterFocPublisher(this.value)"><option value="all" '+(state.publisher==='all'?'selected':'')+'>All publishers</option>'+publishers.map(function(p){return'<option value="'+esc(p.toLowerCase())+'" '+(state.publisher===p.toLowerCase()?'selected':'')+'>'+esc(p)+'</option>';}).join('')+'</select><select class="tsi" onchange="filterFocFlag(this.value)"><option value="all" '+(state.flag==='all'?'selected':'')+'>All comics</option><option value="first" '+(state.flag==='first'?'selected':'')+'>#1 issues</option><option value="foil" '+(state.flag==='foil'?'selected':'')+'>Foil covers</option><option value="incentive" '+(state.flag==='incentive'?'selected':'')+'>Incentives</option><option value="demand" '+(state.flag==='demand'?'selected':'')+'>Customer demand</option><option value="sells" '+(state.flag==='sells'?'selected':'')+'>Sells here · runs · watch list</option></select><select class="tsi" onchange="filterFocEbay(this.value)"><option value="all" '+(state.ebay==='all'?'selected':'')+'>All eBay statuses</option><option value="ELIGIBLE_NOW" '+(state.ebay==='ELIGIBLE_NOW'?'selected':'')+'>Eligible, not listed</option><option value="TOO_EARLY" '+(state.ebay==='TOO_EARLY'?'selected':'')+'>Too early</option><option value="LISTED" '+(state.ebay==='LISTED'?'selected':'')+'>Already listed</option><option value="SOLD_OUT" '+(state.ebay==='SOLD_OUT'?'selected':'')+'>Presale sold out</option><option value="RELEASED" '+(state.ebay==='RELEASED'?'selected':'')+'>Released (on sale)</option><option value="ACTION_REQUIRED" '+(state.ebay==='ACTION_REQUIRED'?'selected':'')+'>Action required</option></select><span id="foc-visible-count" style="font:9px var(--font-mono);color:var(--dim)"></span></div>'+
     // Store request: listing eligible FOC covers on eBay one at a time
     // (open the review modal, edit, LIST, close, find the next one, repeat)
     // was too much clicking for a whole cycle's worth of ratio/incentive
@@ -523,7 +523,7 @@ function renderCycle(){
   renderFamilies();
 }
 
-function renderFamilies(){var list=document.getElementById('foc-family-list');if(!list)return;var rows=visibleFamilies();var count=document.getElementById('foc-visible-count');if(count)count.textContent=rows.length+' title families';list.innerHTML=rows.length?rows.map(familyCard).join(''):'<div class="panel" style="padding:28px;text-align:center;color:var(--dim)">Nothing matches those filters.</div>';renderFocEbayBulkCount();renderFocPublishBulkCount();}
+function renderFamilies(){var list=document.getElementById('foc-family-list');if(!list)return;focIntel.memo={};var rows=visibleFamilies();var count=document.getElementById('foc-visible-count');if(count)count.textContent=rows.length+' title families';list.innerHTML=rows.length?rows.map(familyCard).join(''):'<div class="panel" style="padding:28px;text-align:center;color:var(--dim)">Nothing matches those filters.</div>';renderFocEbayBulkCount();renderFocPublishBulkCount();}
 
 async function saveSku(id){var card=document.querySelector('[data-foc-sku="'+CSS.escape(id)+'"]');if(!card||state.saving.has(id))return;state.saving.add(id);try{var payload={storeId:getActiveStoreId(),skuId:id};card.querySelectorAll('[data-field]').forEach(function(el){payload[el.dataset.field]=el.type==='checkbox'?el.checked:el.value;});await api('/foc/admin/sku',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});toast_dash('FOC cover saved');await refreshCycleFamilies();}catch(e){toast_dash('Could not save cover: '+e.message);}finally{state.saving.delete(id);}}
 async function saveFamily(id){try{var heat=document.querySelector('[data-family-heat="'+CSS.escape(id)+'"]');var category=document.querySelector('[data-family-category="'+CSS.escape(id)+'"]');await api('/foc/admin/sku',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({storeId:getActiveStoreId(),familyId:id,heat:heat&&heat.value?Number(heat.value):null,heatCategory:category&&category.value||null})});toast_dash('Title heat flag saved');}catch(e){toast_dash(e.message);}}
@@ -1353,6 +1353,7 @@ function renderFocReview(){
     '<div class="foc-stats" style="margin-top:12px"><div class="foc-stat"><b>'+regular.length+'</b><span>SKUs</span></div><div class="foc-stat"><b>'+totalUnits+'</b><span>Total Units</span></div><div class="foc-stat"><b>$'+(estCents/100).toFixed(2)+'</b><span>Est. Wholesale</span></div><div class="foc-stat"><b>'+totalWebsite+'</b><span>Website Presold</span></div><div class="foc-stat"><b>'+totalEbay+'</b><span>eBay Presold</span></div><div class="foc-stat"><b>'+totalStore+'</b><span>Whatnot/Store</span></div><div class="foc-stat"><b>'+qualifiedCount+' / '+incentivesAll.length+'</b><span>Incentives Qualified</span></div></div>'+
     '<div id="foc-review-status" style="font:10px var(--font-mono);color:var(--dim);margin-top:8px">Checking submission status…</div>'+
     '<div id="foc-prh-cart-result"></div>'+
+    '<div id="foc-what-to-order"></div>'+
     '<div id="foc-order-helper"></div>'+
     (needsListing.length?'<div class="panel" style="margin-top:10px;padding:12px 16px;border-color:rgba(255,209,102,.35)">'+
       '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:6px">'+
@@ -1366,6 +1367,7 @@ function renderFocReview(){
       return '<section class="foc-family"><header class="foc-family-head"><div class="foc-family-title">'+esc(f.title)+'</div></header>'+incentiveTrackerHtml(f)+f.variants.filter(function(v){return !v.isIncentive;}).map(focReviewLineHtml).join('')+'</section>';
     }).join(''):'<div class="panel" style="padding:28px;text-align:center;color:var(--dim)">Nothing was ordered or qualifying this week.</div>');
   loadPrhSubmissionStatus();
+  renderFocWhatToOrder();
 }
 function openFocReview(){renderFocReview();}
 
@@ -1385,7 +1387,7 @@ function focSeriesStats(family,data){
   keys.some(function(k){if(data.pullLists&&data.pullLists[k]){pull=Number(data.pullLists[k]);return true;}return false;});
   return{stats:stats,pull:pull};
 }
-function focOrderSuggest(family,stats,pull){
+function focOrderSuggest(family,stats,pull,intel){
   var regular=family.variants.filter(function(v){return !v.isIncentive;});
   if(!regular.length)return null;
   var coverA=regular.filter(function(v){return /cover a\b/i.test(v.variantLabel||'');})[0]||regular[0];
@@ -1400,8 +1402,15 @@ function focOrderSuggest(family,stats,pull){
     var mult=stats.flag==='sells-out'?1.25:(stats.flag==='slow'?0.75:1);
     shelf=Math.max(0,Math.ceil(stats.perIssueSold*mult)-committedAll);
     if(shelf)a.reasons.push('+'+shelf+' shelf: past issues sold ~'+stats.perIssueSold+' each'+(stats.flag==='sells-out'?' (sells out)':(stats.flag==='slow'?' (slow seller)':'')));
+  } else if(intel&&intel.runBoost>0){
+    // Store ask: "I have #1 in stock still -- order #2 to go with it."
+    shelf=Math.max(0,intel.runBoost-committedAll);
+    if(shelf)a.reasons.push('+'+shelf+' for the run: '+intel.runText);
   } else if(family.isFirstIssue){
     shelf=2;a.reasons.push('+2 shelf: new #1, no sales history');
+  }
+  if(!shelf&&intel&&intel.character&&(intel.character.rating==='hot'||intel.character.watched)&&!(stats&&stats.perIssueSold>0)){
+    shelf=1;a.reasons.push('+1 shelf: '+intel.character.label+(intel.character.sold?' sells here (sold '+intel.character.sold+')':' is on your watch list'));
   }
   var pullExtra=Math.max(0,Number(pull||0)-Number(coverA.customerQty||0));
   if(pullExtra>shelf){a.reasons.push('+'+(pullExtra-shelf)+' for '+pull+' pull-list customer'+(pull===1?'':'s'));shelf=pullExtra;}
@@ -1418,8 +1427,13 @@ function focOrderSuggest(family,stats,pull){
     if(x.presold||reach){a.total+=need;a.reasons.push((x.presold?'REQUIRED +':'+')+need+' unlocks '+label+(x.presold?' ('+x.presold+' already presold)':''));unlocks.push({label:label,status:x.presold?'required':'added',need:need,presold:x.presold});}
     else unlocks.push({label:label,status:'skipped',need:need,presold:0});
   });
+  // Covers by artists that sell here (or are on the watch list): one for the shelf.
+  if(intel)lines.forEach(function(l){
+    var art=(intel.variants[l.id]||[]).filter(function(p){return p.kind==='artist'&&(p.rating==='hot'||p.watched);})[0];
+    if(art&&l.total===0){l.total=1;l.reasons.push('+1: '+art.artist+(art.watched?' is on your watch list'+(art.sold?' (sold '+art.sold+' here)':''):' covers sell here (sold '+art.sold+')'));}
+  });
   lines.forEach(function(l){l.store=Math.max(0,l.total-l.committed);});
-  return{lines:lines,unlocks:unlocks,stats:stats,pull:Number(pull||0)};
+  return{lines:lines,unlocks:unlocks,stats:stats,pull:Number(pull||0),intel:intel||null};
 }
 async function focLoadSellThrough(force){
   if(focSellThrough&&!force)return focSellThrough;
@@ -1430,7 +1444,8 @@ async function focSuggestOrder(){
   var host=document.getElementById('foc-order-helper');if(!host)return;
   host.innerHTML='<div class="panel" style="margin-top:10px;font:10px var(--font-mono);color:var(--dim)">Looking at past sales, pull lists and ratio covers…</div>';
   var data=null;try{data=await focLoadSellThrough(true);}catch(e){toast_dash('Sales history unavailable: '+e.message);}
-  var rows=state.families.map(function(f){var m=focSeriesStats(f,data);return{f:f,s:focOrderSuggest(f,m.stats,m.pull)};}).filter(function(r){
+  await focLoadIntel();focIntel.memo={};
+  var rows=state.families.map(function(f){var m=focSeriesStats(f,data);return{f:f,s:focOrderSuggest(f,m.stats,m.pull,focFamilyIntel(f))};}).filter(function(r){
     return r.s&&(r.s.lines.some(function(l){return l.total>0||l.current>0;})||r.s.unlocks.some(function(u){return u.status!=='skipped';}));
   });
   state.orderSuggest=rows;
@@ -1445,6 +1460,7 @@ async function focSuggestOrder(){
       return '<div style="border-top:1px solid var(--border);padding:8px 0">'+
         '<div style="display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap"><div style="font-weight:800;font-size:11px;color:var(--text)">'+esc(r.f.title)+'</div><button class="hbtn" style="padding:4px 8px;font-size:8px" onclick="focApplySuggested('+i+')">APPLY</button></div>'+
         '<div style="font:9px var(--font-mono);color:var(--dim)">'+hist+(s.pull?' · '+s.pull+' on pull list':'')+'</div>'+
+        (s.intel&&s.intel.pills.length?'<div class="foc-intel-row">'+s.intel.pills.map(focPillHtml).join('')+'</div>':'')+
         s.lines.map(function(l){
           return '<div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:6px;align-items:center;font:9px var(--font-mono);padding:3px 0">'+
             '<span style="color:var(--text)">'+esc(l.label)+(l.reasons.length?'<br><span style="color:var(--dim)">'+esc(l.reasons.join(' · '))+'</span>':'')+'</span>'+
@@ -1479,6 +1495,234 @@ async function focApplySuggested(index){
   try{var data=await api('/foc/admin/cycles?store_id='+encodeURIComponent(getActiveStoreId())+'&cycle_id='+encodeURIComponent(state.cycle.id));state.cycle=data.cycle;state.families=data.families||[];}catch(e){}
   renderFocReview();
 }
+
+// ═══════════════════════════════════════════════════════
+// ORDERING INTEL -- pills on the cover wall and the WHAT TO ORDER summary on
+// FINAL FOC REVIEW. Store ask: hot books, runs ("I have Twelve-Toe Maggie
+// #1 in stock, order #2 to go with it"), series / characters / cover
+// artists that sell here ("Peach sells well, don't forget these Peach
+// covers"), connecting covers, other sellers' eBay presales, and values next
+// to the ratio books (eBay sold + listed, PriceCharting). What sells here
+// is scripts/comic-demand.js over our own register + eBay comic sales and
+// the shelf; the watch list is the store's own and shared by every device.
+// ═══════════════════════════════════════════════════════
+var focIntel={demand:null,loading:null,loaded:false,watch:null,connectLoaded:false,market:{},pc:{},memo:{}};
+var FOC_PILL_COLOR={hot:'var(--g)',good:'var(--blue)',slow:'var(--red)',dim:'var(--dim)',new:'var(--purple)',key:'var(--gold)',run:'var(--gold)',presold:'var(--g)'};
+function focCD(){return window.ArsCaComicDemand||null;}
+function focPillHtml(p){var c=FOC_PILL_COLOR[p.tone]||'var(--dim)';return '<span class="foc-intel-pill" style="color:'+c+';border-color:color-mix(in srgb,'+c+' 45%,transparent)" title="'+esc(p.title||'')+'">'+esc(p.text)+'</span>';}
+function focWatch(){var D=focCD();return focIntel.watch||(D?D.DEFAULT_WATCH:{artists:[],characters:[],series:[]});}
+function focFamilyIntel(f){
+  var D=focCD();if(!D||!f)return null;
+  if(!focIntel.memo[f.id])focIntel.memo[f.id]=D.familyIntel(f,focIntel.demand,focWatch());
+  return focIntel.memo[f.id];
+}
+function focMarketStoreKey(){return 'foc_market_v1:'+getActiveStoreId();}
+function focLoadMarketCache(){
+  try{var d=JSON.parse(localStorage.getItem(focMarketStoreKey())||'null');if(!d)return;var cutoff=Date.now()-3*864e5;
+    Object.keys(d.market||{}).forEach(function(k){if(Date.parse(d.market[k].at||0)>cutoff)focIntel.market[k]=d.market[k];});
+    Object.keys(d.pc||{}).forEach(function(k){if(Date.parse(d.pc[k].at||0)>cutoff)focIntel.pc[k]=d.pc[k];});
+  }catch(e){}
+}
+function focSaveMarketCache(){try{localStorage.setItem(focMarketStoreKey(),JSON.stringify({market:focIntel.market,pc:focIntel.pc}));}catch(e){}}
+async function focLoadWatch(){
+  try{var res=await storeWorkerFetch('/kv/foc_watch_list',{cache:'no-store'});var raw=(await res.json().catch(function(){return{};})).value;var w=raw?JSON.parse(raw):null;
+    if(w&&typeof w==='object')focIntel.watch={artists:w.artists||[],characters:w.characters||[],series:w.series||[]};}
+  catch(e){}
+}
+async function focLoadConnectData(){
+  try{
+    await loadConnectSaved();
+    var ids=[];connectState.saved.sets.forEach(function(s){(s.skuIds||[]).forEach(function(id){if(ids.indexOf(id)<0)ids.push(id);});});
+    var data=await api('/foc/admin/connecting-covers?store_id='+encodeURIComponent(getActiveStoreId())+(ids.length?'&ids='+encodeURIComponent(ids.slice(0,100).join(',')):''));
+    connectState.covers={};(data.covers||[]).forEach(function(c){connectState.covers[c.id]=c;});
+    connectState.aliases=data.aliases||{};connectState.suggested=data.suggestedSets||[];focIntel.connectLoaded=true;
+  }catch(e){}
+}
+function focLoadIntel(force){
+  var D=focCD();if(!D)return Promise.resolve(null);
+  if(focIntel.loaded&&!force)return Promise.resolve(focIntel.demand);
+  if(focIntel.loading&&!force)return focIntel.loading;
+  focLoadMarketCache();
+  focIntel.loading=Promise.all([
+    api('/foc/admin/comic-demand?store_id='+encodeURIComponent(getActiveStoreId())).catch(function(e){toast_dash('Comic sales unavailable: '+e.message);return null;}),
+    focLoadWatch(),focLoadConnectData()
+  ]).then(function(r){focIntel.demand=r[0]?D.buildComicDemand(r[0]):null;focIntel.loaded=true;focIntel.loading=null;focIntel.memo={};return focIntel.demand;});
+  return focIntel.loading;
+}
+// Loads in the background the first time the wall opens, then redraws it.
+function focEnsureIntel(){
+  if(focIntel.loaded||!focCD())return;
+  focLoadIntel().then(function(){if(document.getElementById('foc-family-list'))renderFamilies();});
+}
+function focConnectFor(skuId){
+  if(!focIntel.connectLoaded)return null;
+  var id=connectState.aliases[skuId]||skuId,sets=connectState.saved.sets.concat(connectState.suggested||[]);
+  for(var i=0;i<sets.length;i++){
+    var set=sets[i];
+    if(!(set.skuIds||[]).some(function(x){return (connectState.aliases[x]||x)===id;}))continue;
+    var sum=connectSetSummary(set),cover=connectState.covers[id]||{};
+    return {set:set,sum:sum,cover:cover,parts:Number(set.partCount||sum.covers.length)||sum.covers.length,saved:i<connectState.saved.sets.length};
+  }
+  return null;
+}
+function focConnectPill(c){
+  var title=(c.set.name||'Connecting covers')+': '+c.sum.covers.map(function(x){return (x.part?'part '+x.part:x.variant_label||x.title)+' -- '+connectStatus(x,c.set);}).join('; ');
+  return {kind:'connect',tone:c.sum.owned?'run':'good',text:'🧩 '+(c.cover.part?'part '+c.cover.part+' of '+c.parts:'connecting')+' · have '+c.sum.owned+'/'+c.parts,title:title};
+}
+function focRegularMsrp(f){var r=(f.variants||[]).filter(function(v){return !v.isIncentive;})[0];return r?Number(r.msrpCents||0):0;}
+function focMarketPill(m,msrpCents){
+  var a=m.active||{},s=m.sold||{},cover=Number(msrpCents||0)/100;
+  var when=' Checked '+displayDate(m.at)+(m.cached?' (saved copy)':'')+'.';
+  if(!a.count&&!s.count)return {tone:'dim',text:'🔎 eBay: nothing listed yet',title:'No other eBay listings matched "'+m.query+'".'+when};
+  var mult=cover&&a.median?a.median/cover:0,bits=[];
+  if(a.count)bits.push(a.count+' listed'+(a.median?' ~$'+a.median.toFixed(2):'')+(mult>=1.2?' ('+mult.toFixed(1)+'× cover)':''));
+  if(s.count)bits.push(s.count+' sold ~$'+Number(s.median||0).toFixed(2));
+  var hype=a.count>=8&&mult>=1.5;
+  return {tone:hype?'hot':(a.count>=3?'good':'dim'),text:(hype?'🔥 ':'🔎 ')+'eBay: '+bits.join(' · '),
+    title:'Other sellers on eBay for "'+m.query+'"'+(a.presales?' ('+a.presales+' presales)':'')+(a.count?', asking $'+Number(a.low||0).toFixed(2)+'–$'+Number(a.high||0).toFixed(2):'')+'. eBay doesn\'t show other sellers\' sold counts, so how many are listed is the hype signal.'+when};
+}
+function focFamilyPillsHtml(f){
+  if(!focCD()||!(focIntel.loaded||focIntel.loading))return '';
+  if(!focIntel.loaded)return '<div class="foc-intel-row"><span class="foc-intel-pill" style="color:var(--dim)">reading what sells here…</span></div>';
+  var intel=focFamilyIntel(f),pills=intel.pills.slice(),m=focIntel.market['fam:'+f.id];
+  if(m)pills.push(focMarketPill(m,focRegularMsrp(f)));
+  return '<div class="foc-intel-row">'+pills.map(focPillHtml).join('')+'<button class="foc-intel-pill foc-intel-btn" onclick="focCheckMarket([\''+esc(f.id)+'\'])" title="What other eBay sellers are asking for this issue right now, and what it has sold for">'+(m?'↻ EBAY':'🔎 EBAY')+'</button></div>';
+}
+function focVariantPillsHtml(v){
+  if(!focCD()||!focIntel.loaded)return '';
+  var fam=state.families.find(function(f){return f.id===v.familyId;});
+  var intel=focFamilyIntel(fam),pills=intel?(intel.variants[v.id]||[]).slice():[];
+  var c=focConnectFor(v.id);if(c)pills.push(focConnectPill(c));
+  return (pills.length?'<div class="foc-intel-row">'+pills.map(focPillHtml).join('')+'</div>':'')+(v.isIncentive?focRatioValueHtml(v):'');
+}
+function focRatioOf(v){var m=String(v.orderRequirement||v.variantLabel||'').match(/1\s*:\s*(\d+)/)||String(v.variantLabel||'').match(/\bRI\b\s*\(?(\d+)/i);return Number(v.ratioThreshold||(m&&m[1])||0);}
+function focRatioValue(v){
+  var D=focCD(),m=focIntel.market['sku:'+v.id],pc=focIntel.pc[v.id];
+  var raw=pc&&pc.ok&&pc.product&&pc.product.comicPrices?Number(pc.product.comicPrices.ungraded||0):0;
+  return {m:m,pc:pc,raw:raw,value:D?D.ratioValue({soldMedian:m&&m.sold&&m.sold.median,soldCount:m&&m.sold&&m.sold.count,pcUngraded:raw,activeMedian:m&&m.active&&m.active.median,activeCount:m&&m.active&&m.active.count}):null};
+}
+function focRatioValueText(r){
+  var parts=[];
+  if(r.m&&r.m.sold&&r.m.sold.count)parts.push('eBay sold ~$'+Number(r.m.sold.median).toFixed(2)+' ('+r.m.sold.count+')');
+  if(r.m&&r.m.active&&r.m.active.count)parts.push('listed ~$'+Number(r.m.active.median).toFixed(2)+' ('+r.m.active.count+')');
+  if(r.m&&!(r.m.sold&&r.m.sold.count)&&!(r.m.active&&r.m.active.count))parts.push('nothing on eBay yet');
+  if(r.raw)parts.push('PriceCharting $'+r.raw.toFixed(2));else if(r.pc)parts.push('not on PriceCharting yet');
+  return parts.join(' · ');
+}
+function focRatioValueHtml(v){
+  var r=focRatioValue(v),line=focRatioValueText(r);
+  return '<div class="foc-ratio-value"><b style="color:var(--gold)">VALUE</b> '+(line?esc(line):'<span style="color:var(--dim)">not checked yet</span>')+
+    (r.value?'<div style="color:var(--g);margin-top:3px">PRICE IT ~$'+r.value.price.toFixed(2)+' <span style="color:var(--dim)">'+esc(r.value.basis)+'</span> <button class="foc-intel-pill foc-intel-btn" onclick="focUseRatioPrice(\''+esc(v.id)+'\','+r.value.price+')">USE</button></div>':'')+
+    '<button class="foc-intel-pill foc-intel-btn" style="margin-top:4px" onclick="focPriceRatio([\''+esc(v.id)+'\'])">'+(r.m||r.pc?'↻ RE-CHECK':'💲 CHECK EBAY + PRICECHARTING')+'</button></div>';
+}
+function focRedrawIntel(){focIntel.memo={};if(document.getElementById('foc-family-list'))renderFamilies();if(document.getElementById('foc-what-to-order'))renderFocWhatToOrder();}
+async function focMarketRequest(covers,refresh){
+  for(var i=0;i<covers.length;i+=12){
+    var d=await api('/foc/admin/cover-market',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({storeId:getActiveStoreId(),covers:covers.slice(i,i+12),refresh:!!refresh})});
+    Object.keys(d.results||{}).forEach(function(k){focIntel.market[k]=d.results[k];});
+  }
+  focSaveMarketCache();
+}
+function focFamilyCover(f){return {series:f.seriesName||String(f.title||'').replace(/#.*$/,'').trim(),issue:f.issueNumber||(String(f.title||'').match(/#\s*(\d+)/)||[])[1]||''};}
+async function focCheckMarket(familyIds){
+  var fams=state.families.filter(function(f){return familyIds.indexOf(f.id)>-1;});if(!fams.length)return;
+  toast_dash('Checking eBay for '+fams.length+' title'+(fams.length===1?'':'s')+'…');
+  try{
+    var refresh=fams.length===1&&!!focIntel.market['fam:'+fams[0].id];
+    await focMarketRequest(fams.map(function(f){var c=focFamilyCover(f);return {key:'fam:'+f.id,series:c.series,issue:c.issue};}),refresh);
+    focRedrawIntel();
+  }catch(e){toast_dash('eBay check failed: '+e.message);}
+}
+async function focPriceRatio(skuIds){
+  var all=allFocSkus(),skus=all.filter(function(v){return skuIds.indexOf(v.id)>-1;});if(!skus.length)return;
+  toast_dash('Checking values for '+skus.length+' ratio cover'+(skus.length===1?'':'s')+'…');
+  var famOf=function(v){return state.families.find(function(f){return f.id===v.familyId;})||{};};
+  var refresh=skus.length===1&&!!focIntel.market['sku:'+skus[0].id];
+  try{await focMarketRequest(skus.map(function(v){var c=focFamilyCover(famOf(v));return {key:'sku:'+v.id,series:c.series,issue:c.issue,artist:v.coverArtist||'',ratio:focRatioOf(v),virgin:/virgin/i.test(v.variantLabel||''),foil:!!v.isFoil};}),refresh);}
+  catch(e){toast_dash('eBay check failed: '+e.message);}
+  try{
+    for(var i=0;i<skus.length;i+=15){
+      var items=skus.slice(i,i+15).map(function(v){var c=focFamilyCover(famOf(v));return {key:v.id,upc:v.upc||'',series:c.series,issue:c.issue,cover:v.variantLabel||''};});
+      var res=await storeWorkerFetch('/pricing/pricecharting/comics/by-upc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({items:items})});
+      var d=await res.json().catch(function(){return{};});
+      Object.keys(d.products||{}).forEach(function(k){focIntel.pc[k]=Object.assign({},d.products[k],{at:new Date().toISOString()});});
+    }
+    focSaveMarketCache();
+  }catch(e){toast_dash('PriceCharting check failed: '+e.message);}
+  focRedrawIntel();
+}
+async function focUseRatioPrice(skuId,price){
+  if(!confirm('Set this cover\'s sell price to $'+Number(price).toFixed(2)+'?'))return;
+  try{await api('/foc/admin/sku',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({storeId:getActiveStoreId(),skuId:skuId,customerPrice:Number(price).toFixed(2)})});toast_dash('Sell price set');await refreshCycleFamilies();focRedrawIntel();}
+  catch(e){toast_dash('Could not set price: '+e.message);}
+}
+function openFocWatchList(){
+  var w=focWatch(),old=document.getElementById('foc-watch-modal');if(old)old.remove();
+  var m=document.createElement('div');m.id='foc-watch-modal';
+  m.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:9999;display:flex;align-items:flex-start;justify-content:center;overflow-y:auto;padding:24px 12px';
+  var field=function(key,label,hint){return '<label style="display:block;margin-top:10px;font:9px var(--font-mono);color:var(--dim)">'+label+'<textarea class="tsi" data-watch="'+key+'" rows="2" style="width:100%;margin-top:4px" placeholder="'+esc(hint)+'">'+esc((w[key]||[]).join(', '))+'</textarea></label>';};
+  m.innerHTML='<div style="width:100%;max-width:560px;background:var(--surf);border:1px solid var(--border);border-radius:10px;padding:16px"><div style="display:flex;justify-content:space-between;align-items:center"><div style="font:900 12px \'Orbitron\',monospace;color:var(--gold);letter-spacing:1px">⭐ WATCH LIST</div><button onclick="document.getElementById(\'foc-watch-modal\').remove()" style="background:none;border:none;color:var(--dim);font-size:22px;cursor:pointer">×</button></div>'+
+    '<div style="font:9px/1.5 var(--font-mono);color:var(--dim);margin-top:6px">Always flagged on the cover wall and in WHAT TO ORDER, whatever the sales say. Separate with commas. Every device sees the same list.</div>'+
+    field('artists','COVER ARTISTS','Peach Momoko, Mark Brooks')+field('characters','CHARACTERS','Spider-Man, Batman')+field('series','SERIES','Absolute Batman, Hillbilly')+
+    '<button class="hbtn" style="margin-top:12px;color:var(--g)" onclick="saveFocWatchList()">SAVE</button></div>';
+  document.body.appendChild(m);
+}
+async function saveFocWatchList(){
+  var w={artists:[],characters:[],series:[]};
+  document.querySelectorAll('#foc-watch-modal [data-watch]').forEach(function(el){w[el.dataset.watch]=el.value.split(/\s*,\s*/).map(function(x){return x.trim();}).filter(Boolean);});
+  w.updatedAt=new Date().toISOString();
+  try{var res=await storeWorkerFetch('/kv/foc_watch_list',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(w)});if(!res.ok)throw new Error('save failed '+res.status);
+    focIntel.watch=w;var m=document.getElementById('foc-watch-modal');if(m)m.remove();toast_dash('Watch list saved');focRedrawIntel();}
+  catch(e){toast_dash('Could not save watch list: '+e.message);}
+}
+function focOrderedQty(f){return (f.variants||[]).filter(function(v){return !v.isIncentive;}).reduce(function(s,v){return s+Number(v.customerQty||0)+Number(v.ebayPresold||0)+Number(v.storeQuantity||0);},0);}
+function focShortTitle(v){return (v.title||'')+(v.variantLabel&&!/^cover a$/i.test(v.variantLabel)?' · '+v.variantLabel:'');}
+async function renderFocWhatToOrder(){
+  var host=document.getElementById('foc-what-to-order'),D=focCD();if(!host||!D)return;
+  if(!focIntel.loaded){host.innerHTML='<div class="panel" style="margin-top:10px;font:10px var(--font-mono);color:var(--dim)">Reading what sells here…</div>';await focLoadIntel();host=document.getElementById('foc-what-to-order');if(!host)return;}
+  focIntel.memo={};
+  var w=D.whatToOrder(state.families,focIntel.demand,focWatch());
+  var orderTag=function(f){var n=focOrderedQty(f);return '<span style="color:'+(n?'var(--g)':'var(--red)')+'">'+(n?'ordering '+n:'not ordered')+'</span>';};
+  var row=function(left,right){return '<div class="foc-wto-row"><span style="color:var(--text)">'+left+'</span><span style="white-space:nowrap">'+(right||'')+'</span></div>';};
+  var sec=function(title,color,body,note){return body?'<div class="foc-wto-sec"><div style="font:900 10px \'Orbitron\',monospace;color:'+color+';letter-spacing:1px;margin-bottom:4px">'+title+'</div>'+(note?'<div style="font:9px var(--font-mono);color:var(--dim);margin-bottom:4px">'+note+'</div>':'')+body+'</div>':'';};
+  var mPill=function(f){var m=focIntel.market['fam:'+f.id];return m?' '+focPillHtml(focMarketPill(m,focRegularMsrp(f))):'';};
+  var hot=w.hot.map(function(r){return row(esc(r.f.title)+' <span style="color:var(--g)">sold '+r.intel.series.sold+' here</span>'+mPill(r.f),orderTag(r.f));}).join('');
+  var runs=w.runs.map(function(r){return row(esc(r.f.title)+'<br><span style="color:var(--gold)">📚 '+esc(r.intel.runText)+'</span>',orderTag(r.f));}).join('');
+  var artists=w.artists.map(function(a){
+    var missing=a.covers.filter(function(c){return !c.ordered;});
+    return row('🎨 <b>'+esc(a.label)+'</b>'+(a.watched?' ⭐':'')+(a.sold?' <span style="color:var(--dim)">sold '+a.sold+' here</span>':'')+'<br><span style="color:var(--dim)">'+a.covers.length+' cover'+(a.covers.length===1?'':'s')+' this week'+(missing.length?' · not ordered: '+esc(missing.slice(0,8).map(function(c){return focShortTitle(c.variant);}).join(' | '))+(missing.length>8?' +'+(missing.length-8)+' more':''):' · all ordered ✓')+'</span>','');
+  }).join('');
+  var characters=w.characters.map(function(c){
+    return row('🦸 <b>'+esc(c.label)+'</b>'+(c.watched?' ⭐':'')+(c.sold?' <span style="color:var(--dim)">sold '+c.sold+' here</span>':'')+'<br><span style="color:var(--dim)">this week: '+c.titles.slice(0,8).map(function(t){return esc(t.family.title)+' ('+(t.ordered?'ordering '+t.ordered:'<span style="color:var(--red)">not ordered</span>')+')';}).join(' | ')+'</span>','');
+  }).join('');
+  var sets={};allFocSkus().forEach(function(v){var c=focConnectFor(v.id);if(!c)return;var k=c.set.id||c.set.name;(sets[k]=sets[k]||{c:c,here:[]}).here.push(v);});
+  var connect=Object.keys(sets).map(function(k){var s=sets[k],c=s.c;return row('🧩 <b>'+esc(c.set.name||'Connecting covers')+'</b> · have '+c.sum.owned+'/'+c.parts+(c.sum.complete?' <span style="color:var(--g)">complete ✓</span>':'')+'<br><span style="color:var(--dim)">this week: '+s.here.map(function(v){var n=Number(v.customerQty||0)+Number(v.ebayPresold||0)+Number(v.storeQuantity||0);return esc(focShortTitle(v))+' ('+(n?'ordering '+n:'<span style="color:var(--red)">not ordered</span>')+')';}).join(' | ')+'</span>','');}).join('');
+  var incentives=allFocSkus().filter(function(v){return v.isIncentive;});
+  var ratio=incentives.map(function(v){var q=v.qualification||{},r=focRatioValue(v),t=focRatioValueText(r);
+    return row(esc(focShortTitle(v))+' <span style="color:'+(q.qualified?'var(--g)':'var(--dim)')+'">'+Number(q.total||0)+'/'+Number(q.threshold||0)+(q.qualified?' unlocked':' · need '+Number(q.needed||0))+'</span>'+(t?'<br><span style="color:var(--dim)">'+esc(t)+'</span>':''),
+      r.value?'<span style="color:var(--g)">~$'+r.value.price.toFixed(2)+'</span> <button class="foc-intel-pill foc-intel-btn" onclick="focUseRatioPrice(\''+esc(v.id)+'\','+r.value.price+')">USE</button>':'');}).join('');
+  var slow=w.slow.map(function(r){var s=r.intel.series;return row(esc(r.f.title)+'<br><span style="color:var(--red)">'+(r.intel.run&&D.runOverstocked(r.intel.run)?'📚 '+esc(r.intel.runText):'🐢 '+s.stockQty+' on the shelf, '+s.sold+' sold')+'</span>',orderTag(r.f));}).join('');
+  var span=w.spanDays>=60?Math.round(w.spanDays/30)+' months':w.spanDays+' days';
+  var list=function(groups){return groups.map(function(g){return esc(g.label)+' '+g.sold;}).join(' · ');};
+  var tracked=(w.topCharacters.length?'<div>🦸 '+list(w.topCharacters)+'</div>':'')+(w.topArtists.length?'<div>🎨 '+list(w.topArtists)+'</div>':'')+(w.topTypes.length?'<div>🎟 '+list(w.topTypes)+'</div>':'')+(w.bundles?'<div>📦 '+w.bundles+' comic bundle'+(w.bundles===1?'':'s')+' sold</div>':'');
+  var checkIds=w.rows.filter(function(r){return r.intel.hot||r.intel.presold||Object.keys(r.intel.variants).length;}).map(function(r){return r.f.id;}).slice(0,36);
+  host.innerHTML='<div class="panel" style="margin-top:10px;padding:12px 16px;border-color:rgba(255,209,102,.35)">'+
+    '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap"><div style="font:900 11px \'Orbitron\',monospace;color:var(--gold);letter-spacing:1px">🧠 WHAT TO ORDER</div><div class="foc-toolbar">'+
+    '<button class="hbtn" style="padding:6px 10px;font-size:9px" onclick="focCheckMarket(['+checkIds.map(function(id){return '\''+esc(id)+'\'';}).join(',')+'])" title="Other sellers\' eBay presales: how many are listed and what they ask, for the hot, presold and watched titles ('+checkIds.length+')">🔎 CHECK EBAY ('+checkIds.length+')</button>'+
+    (incentives.length?'<button class="hbtn" style="padding:6px 10px;font-size:9px;color:var(--gold)" onclick="focPriceRatio(['+incentives.slice(0,36).map(function(v){return '\''+esc(v.id)+'\'';}).join(',')+'])">💲 PRICE RATIO BOOKS ('+Math.min(36,incentives.length)+')</button>':'')+
+    '<button class="hbtn" style="padding:6px 10px;font-size:9px" onclick="openFocWatchList()">⭐ WATCH LIST</button><button class="hbtn" style="padding:6px 10px;font-size:9px" onclick="focLoadIntel(true).then(focRedrawIntel)">↻ SALES</button></div></div>'+
+    '<div style="font:9px/1.5 var(--font-mono);color:var(--dim);margin:4px 0 2px">'+(focIntel.demand?'From '+w.soldCount+' comics sold here (register + eBay) in the last '+span+' and what\'s on the shelf.':'Sales history didn\'t load -- showing presales, runs and the watch list only.')+'</div>'+
+    sec('🔥 SELLS HERE','var(--g)',hot)+
+    sec('📚 RUNS · YOU HAVE THE EARLIER ISSUES','var(--gold)',runs)+
+    sec('🎨 COVER ARTISTS THAT SELL / WATCHED','var(--purple)',artists)+
+    sec('🦸 CHARACTERS THAT SELL / WATCHED','var(--blue)',characters)+
+    sec('🧩 CONNECTING COVERS','var(--purple)',connect,'Order every part you need -- a missing part leaves sets you can\'t finish.')+
+    sec('🎟 RATIO BOOKS','var(--gold)',ratio,'Unlock progress and value. PRICE IT uses eBay sold first, then PriceCharting, then 90% of what other sellers ask.')+
+    sec('🐢 GO LIGHT','var(--red)',slow)+
+    sec('WHAT SELLS HERE OVERALL','var(--dim)',tracked?'<div style="font:9px/1.7 var(--font-mono);color:var(--text)">'+tracked+'</div>':'')+
+  '</div>';
+}
+window.focCheckMarket=focCheckMarket;window.focPriceRatio=focPriceRatio;window.focUseRatioPrice=focUseRatioPrice;window.openFocWatchList=openFocWatchList;window.saveFocWatchList=saveFocWatchList;window.focLoadIntel=focLoadIntel;window.focRedrawIntel=focRedrawIntel;
 
 // COMIC SELL-THROUGH -- which series sell out and which sit on the shelf.
 var sellThroughFilter='all';

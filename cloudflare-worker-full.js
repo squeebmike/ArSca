@@ -6255,6 +6255,12 @@ async function routeRequest(request, env, ctx) {
           if (!(isBcwItem(item) ? isBcwPublished(item) : isStorefrontItemListable(item))) return null;
           return item.linkUrl || '/item/' + encodeURIComponent(item.id) + '/' + itemDetailSlug(item);
         },
+        ebayActiveListings: fetchEbayActiveListings,
+        ebaySoldComps: async (soldEnv, q, limit = 40) => {
+          let result = await fetchSoldCompsProvider(soldEnv, q, limit).catch(e => ({ comps: [], warning: e.message }));
+          if (!(result.comps || []).length) result = await fetchEbaySoldComps(soldEnv, q, limit).catch(e => ({ comps: [], warning: e.message }));
+          return { ...result, comps: filterSoldComps(result.comps || [], q, '') };
+        },
         mtgPageShell, mtgEscapeHtml, mtgSlugify, publicStoreId: ITEM_DETAIL_STORE_ID,
       });
     }
@@ -8221,7 +8227,7 @@ async function routeRequest(request, env, ctx) {
           // record, so they never expire.
           // Recurring monthly costs (expense_recurring) are standing store
           // settings, so they never expire either.
-          const permanent = key.startsWith('foc_connecting') || key.startsWith('expense_');
+          const permanent = key.startsWith('foc_connecting') || key.startsWith('foc_watch') || key.startsWith('expense_');
           const expirationTtl = key.startsWith('show_session') ? 60 * 60 * 24 * 180 : (key.startsWith('comic_') || key.startsWith('barcode_link_')) ? 60 * 60 * 24 * 365 : 604800;
           await env.LBA_KV.put(scopedKey, body, permanent ? undefined : { expirationTtl });
         } else {

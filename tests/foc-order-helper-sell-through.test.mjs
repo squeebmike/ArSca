@@ -59,7 +59,7 @@ const ui = fs.readFileSync('scripts/foc-dashboard.js', 'utf8');
 const grab = re => { const m = ui.match(re); assert.ok(m, 'missing ' + re); return m[0]; };
 const ctx = { Math, Number, String };
 vm.createContext(ctx);
-vm.runInContext([grab(/function focSeriesKey\(v\)\{[^\n]*\}/), grab(/function focSeriesStats\(family,data\)\{[\s\S]*?\n\}/), grab(/function focOrderSuggest\(family,stats,pull\)\{[\s\S]*?\n\}/)].join('\n') + ';this.suggest=focOrderSuggest;this.stats=focSeriesStats;', ctx);
+vm.runInContext([grab(/function focSeriesKey\(v\)\{[^\n]*\}/), grab(/function focSeriesStats\(family,data\)\{[\s\S]*?\n\}/), grab(/function focOrderSuggest\(family,stats,pull,intel\)\{[\s\S]*?\n\}/)].join('\n') + ';this.suggest=focOrderSuggest;this.stats=focSeriesStats;', ctx);
 {
   const family = { title:'HOT BOOK #4', seriesName:'Hot Book', variants:[
     { id:'a', variantLabel:'Cover A', customerQty:2, ebayPresold:1, storeQuantity:0 },
