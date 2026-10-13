@@ -1553,7 +1553,11 @@ window.openPresaleStockCheck=openPresaleStockCheck;window.fixPresaleStock=fixPre
 var focIntel={demand:null,loading:null,loaded:false,watch:null,connectLoaded:false,market:{},pc:{},memo:{}};
 var FOC_PILL_COLOR={hot:'var(--g)',good:'var(--blue)',slow:'var(--red)',dim:'var(--dim)',new:'var(--purple)',key:'var(--gold)',run:'var(--gold)',presold:'var(--g)'};
 function focCD(){return window.ArsCaComicDemand||null;}
-function focPillHtml(p){var c=FOC_PILL_COLOR[p.tone]||'var(--dim)';return '<span class="foc-intel-pill" style="color:'+c+';border-color:color-mix(in srgb,'+c+' 45%,transparent)" title="'+esc(p.title||'')+'">'+esc(p.text)+'</span>';}
+function focPillHtml(p){var c=FOC_PILL_COLOR[p.tone]||'var(--dim)',st='color:'+c+';border-color:color-mix(in srgb,'+c+' 45%,transparent)';
+  // Store ask: "I need a link to take me there to see them" -- eBay pills open the listings.
+  if(p.href)return '<a class="foc-intel-pill foc-intel-link" href="'+esc(p.href)+'" target="_blank" rel="noopener" style="'+st+'" title="'+esc(p.title||'')+'">'+esc(p.text)+' ↗</a>';
+  return '<span class="foc-intel-pill" style="'+st+'" title="'+esc(p.title||'')+'">'+esc(p.text)+'</span>';}
+function focEbaySearchUrl(q,sold){return 'https://www.ebay.com/sch/i.html?_nkw='+encodeURIComponent(q||'')+(sold?'&LH_Sold=1&LH_Complete=1':'');}
 function focWatch(){var D=focCD();return focIntel.watch||(D?D.DEFAULT_WATCH:{artists:[],characters:[],series:[]});}
 function focFamilyIntel(f){
   var D=focCD();if(!D||!f)return null;
@@ -1614,22 +1618,22 @@ function focConnectPill(c){
   return {kind:'connect',tone:c.sum.owned?'run':'good',text:'🧩 '+(c.cover.part?'part '+c.cover.part+' of '+c.parts:'connecting')+' · have '+c.sum.owned+'/'+c.parts,title:title};
 }
 function focRegularMsrp(f){var r=(f.variants||[]).filter(function(v){return !v.isIncentive;})[0];return r?Number(r.msrpCents||0):0;}
-function focMarketPill(m,msrpCents){
+function focMarketPills(m,msrpCents){
   var a=m.active||{},s=m.sold||{},cover=Number(msrpCents||0)/100;
   var when=' Checked '+displayDate(m.at)+(m.cached?' (saved copy)':'')+'.';
-  if(!a.count&&!s.count)return {tone:'dim',text:'🔎 eBay: nothing listed yet',title:'No other eBay listings matched "'+m.query+'".'+when};
-  var mult=cover&&a.median?a.median/cover:0,bits=[];
-  if(a.count)bits.push(a.count+' listed'+(a.median?' ~$'+a.median.toFixed(2):'')+(mult>=1.2?' ('+mult.toFixed(1)+'× cover)':''));
-  if(s.count)bits.push(s.count+' sold ~$'+Number(s.median||0).toFixed(2));
-  var hype=a.count>=8&&mult>=1.5;
-  return {tone:hype?'hot':(a.count>=3?'good':'dim'),text:(hype?'🔥 ':'🔎 ')+'eBay: '+bits.join(' · '),
-    title:'Other sellers on eBay for "'+m.query+'"'+(a.presales?' ('+a.presales+' presales)':'')+(a.count?', asking $'+Number(a.low||0).toFixed(2)+'–$'+Number(a.high||0).toFixed(2):'')+'. eBay doesn\'t show other sellers\' sold counts, so how many are listed is the hype signal.'+when};
+  if(!a.count&&!s.count)return [{tone:'dim',text:'🔎 eBay: nothing listed yet',href:focEbaySearchUrl(m.query),title:'No other eBay listings matched "'+m.query+'". Opens the eBay search.'+when}];
+  var mult=cover&&a.median?a.median/cover:0,hype=a.count>=8&&mult>=1.5,out=[];
+  if(a.count)out.push({tone:hype?'hot':(a.count>=3?'good':'dim'),href:focEbaySearchUrl(m.query),
+    text:(hype?'🔥 ':'🔎 ')+'eBay: '+a.count+' listed'+(a.median?' ~$'+a.median.toFixed(2):'')+(mult>=1.2?' ('+mult.toFixed(1)+'× cover)':''),
+    title:'Opens these eBay listings: "'+m.query+'"'+(a.presales?' ('+a.presales+' presales)':'')+', asking $'+Number(a.low||0).toFixed(2)+'–$'+Number(a.high||0).toFixed(2)+'. eBay doesn\'t show other sellers\' sold counts, so how many are listed is the hype signal. The search can include other printings or lots -- look before you trust the number.'+when});
+  if(s.count)out.push({tone:'good',href:focEbaySearchUrl(m.query,true),text:'eBay sold: '+s.count+' ~$'+Number(s.median||0).toFixed(2),title:'Opens eBay sold listings for "'+m.query+'".'+when});
+  return out;
 }
 function focFamilyPillsHtml(f){
   if(!focCD()||!(focIntel.loaded||focIntel.loading))return '';
   if(!focIntel.loaded)return '<div class="foc-intel-row"><span class="foc-intel-pill" style="color:var(--dim)">reading what sells here…</span></div>';
   var intel=focFamilyIntel(f),pills=intel.pills.slice(),m=focIntel.market['fam:'+f.id];
-  if(m)pills.push(focMarketPill(m,focRegularMsrp(f)));
+  if(m)pills=pills.concat(focMarketPills(m,focRegularMsrp(f)));
   return '<div class="foc-intel-row">'+pills.map(focPillHtml).join('')+'<button class="foc-intel-pill foc-intel-btn" onclick="focCheckMarket([\''+esc(f.id)+'\'])" title="What other eBay sellers are asking for this issue right now, and what it has sold for">'+(m?'↻ EBAY':'🔎 EBAY')+'</button></div>';
 }
 function focVariantPillsHtml(v){
@@ -1653,9 +1657,16 @@ function focRatioValueText(r){
   if(r.raw)parts.push('PriceCharting $'+r.raw.toFixed(2));else if(r.pc)parts.push('not on PriceCharting yet');
   return parts.join(' · ');
 }
+function focRatioLinksHtml(r){
+  var links=[];
+  if(r.m){links.push('<a href="'+esc(focEbaySearchUrl(r.m.query))+'" target="_blank" rel="noopener">eBay listings ↗</a>');links.push('<a href="'+esc(focEbaySearchUrl(r.m.query,true))+'" target="_blank" rel="noopener">eBay sold ↗</a>');}
+  var pcUrl=r.pc&&r.pc.ok&&r.pc.product&&r.pc.product.url;
+  if(pcUrl)links.push('<a href="'+esc(pcUrl)+'" target="_blank" rel="noopener">PriceCharting ↗</a>');
+  return links.length?'<div class="foc-ratio-links">'+links.join(' · ')+'</div>':'';
+}
 function focRatioValueHtml(v){
   var r=focRatioValue(v),line=focRatioValueText(r);
-  return '<div class="foc-ratio-value"><b style="color:var(--gold)">VALUE</b> '+(line?esc(line):'<span style="color:var(--dim)">not checked yet</span>')+
+  return '<div class="foc-ratio-value"><b style="color:var(--gold)">VALUE</b> '+(line?esc(line):'<span style="color:var(--dim)">not checked yet</span>')+focRatioLinksHtml(r)+
     (r.value?'<div style="color:var(--g);margin-top:3px">PRICE IT ~$'+r.value.price.toFixed(2)+' <span style="color:var(--dim)">'+esc(r.value.basis)+'</span> <button class="foc-intel-pill foc-intel-btn" onclick="focUseRatioPrice(\''+esc(v.id)+'\','+r.value.price+')">USE</button></div>':'')+
     '<button class="foc-intel-pill foc-intel-btn" style="margin-top:4px" onclick="focPriceRatio([\''+esc(v.id)+'\'])">'+(r.m||r.pc?'↻ RE-CHECK':'💲 CHECK EBAY + PRICECHARTING')+'</button></div>';
 }
@@ -1729,7 +1740,7 @@ async function renderFocWhatToOrder(){
   var orderTag=function(f){var n=focOrderedQty(f);return '<span style="color:'+(n?'var(--g)':'var(--red)')+'">'+(n?'ordering '+n:'not ordered')+'</span>';};
   var row=function(left,right){return '<div class="foc-wto-row"><span style="color:var(--text)">'+left+'</span><span style="white-space:nowrap">'+(right||'')+'</span></div>';};
   var sec=function(title,color,body,note){return body?'<div class="foc-wto-sec"><div style="font:900 10px \'Orbitron\',monospace;color:'+color+';letter-spacing:1px;margin-bottom:4px">'+title+'</div>'+(note?'<div style="font:9px var(--font-mono);color:var(--dim);margin-bottom:4px">'+note+'</div>':'')+body+'</div>':'';};
-  var mPill=function(f){var m=focIntel.market['fam:'+f.id];return m?' '+focPillHtml(focMarketPill(m,focRegularMsrp(f))):'';};
+  var mPill=function(f){var m=focIntel.market['fam:'+f.id];return m?' '+focMarketPills(m,focRegularMsrp(f)).map(focPillHtml).join(' '):'';};
   var hot=w.hot.map(function(r){return row(esc(r.f.title)+' <span style="color:var(--g)">sold '+r.intel.series.sold+' here</span>'+mPill(r.f),orderTag(r.f));}).join('');
   var runs=w.runs.map(function(r){return row(esc(r.f.title)+'<br><span style="color:var(--gold)">📚 '+esc(r.intel.runText)+'</span>',orderTag(r.f));}).join('');
   var artists=w.artists.map(function(a){
@@ -1743,7 +1754,7 @@ async function renderFocWhatToOrder(){
   var connect=Object.keys(sets).map(function(k){var s=sets[k],c=s.c;return row('🧩 <b>'+esc(c.set.name||'Connecting covers')+'</b> · have '+c.sum.owned+'/'+c.parts+(c.sum.complete?' <span style="color:var(--g)">complete ✓</span>':'')+'<br><span style="color:var(--dim)">this week: '+s.here.map(function(v){var n=Number(v.customerQty||0)+Number(v.ebayPresold||0)+Number(v.storeQuantity||0);return esc(focShortTitle(v))+' ('+(n?'ordering '+n:'<span style="color:var(--red)">not ordered</span>')+')';}).join(' | ')+'</span>','');}).join('');
   var incentives=allFocSkus().filter(function(v){return v.isIncentive;});
   var ratio=incentives.map(function(v){var q=v.qualification||{},r=focRatioValue(v),t=focRatioValueText(r);
-    return row(esc(focShortTitle(v))+' <span style="color:'+(q.qualified?'var(--g)':'var(--dim)')+'">'+Number(q.total||0)+'/'+Number(q.threshold||0)+(q.qualified?' unlocked':' · need '+Number(q.needed||0))+'</span>'+(t?'<br><span style="color:var(--dim)">'+esc(t)+'</span>':''),
+    return row(esc(focShortTitle(v))+' <span style="color:'+(q.qualified?'var(--g)':'var(--dim)')+'">'+Number(q.total||0)+'/'+Number(q.threshold||0)+(q.qualified?' unlocked':' · need '+Number(q.needed||0))+'</span>'+(t?'<br><span style="color:var(--dim)">'+esc(t)+'</span>':'')+focRatioLinksHtml(r),
       r.value?'<span style="color:var(--g)">~$'+r.value.price.toFixed(2)+'</span> <button class="foc-intel-pill foc-intel-btn" onclick="focUseRatioPrice(\''+esc(v.id)+'\','+r.value.price+')">USE</button>':'');}).join('');
   var slow=w.slow.map(function(r){var s=r.intel.series;return row(esc(r.f.title)+'<br><span style="color:var(--red)">'+(r.intel.run&&D.runOverstocked(r.intel.run)?'📚 '+esc(r.intel.runText):'🐢 '+s.stockQty+' on the shelf, '+s.sold+' sold')+'</span>',orderTag(r.f));}).join('');
   var span=w.spanDays>=60?Math.round(w.spanDays/30)+' months':w.spanDays+' days';

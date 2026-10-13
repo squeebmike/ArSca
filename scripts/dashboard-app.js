@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.10.13.5-presale-stock-fix';
+const APP_VERSION = '2026.10.13.7-ebay-pill-links';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -37744,6 +37744,10 @@ function dismissPriceChangeAlert(id){
   // silently undone the next time another device pulls the cloud list down.
   savePriceChangeAlerts(getPriceChangeAlerts().map(a => a.id === id ? { ...a, status:'dismissed' } : a));
 }
+function openPriceAlertItem(itemId){
+  if(itemId && all.some(i => i.id === itemId)) openEditModal(itemId);
+  else toast_dash('That item is no longer in inventory (sold or removed)');
+}
 function renderPriceChangeAlerts(){
   const host = document.getElementById('price-change-alerts');
   if(!host) return;
@@ -37754,16 +37758,25 @@ function renderPriceChangeAlerts(){
   const alerts = getPriceChangeAlerts().filter(a => a.status === 'open').sort((a,b) => Math.abs(b.dollarChange) - Math.abs(a.dollarChange));
   if(!alerts.length) { host.innerHTML = ''; return; }
   const shown = alerts.slice(0, 20);
+  // Store ask: "I should be able to see the item's image and click it to
+  // get to the item edit screen."
+  const itemFor = a => all.find(i => i.id === a.itemId) || null;
+  const thumbFor = a => { const item = itemFor(a); const url = item ? inventoryImageUrl(item) : ''; return url
+    ? `<img src="${escHtml(url)}" alt="" loading="lazy" style="width:100%;height:100%;object-fit:contain" onerror="this.replaceWith(Object.assign(document.createElement('span'),{textContent:'NO IMAGE'}))">`
+    : '<span>NO IMAGE</span>'; };
   host.innerHTML = `<div class="panel" style="border-color:rgba(255,184,0,.35);margin-bottom:10px;padding:10px 12px">
       <div style="font-family:'Orbitron',monospace;font-size:11px;color:var(--gold);letter-spacing:.04em">📈 PRICE MOVERS · ${alerts.length} ITEM${alerts.length===1?'':'S'} CHANGED A LOT SINCE LAST CHECKED</div>
       <div style="font-family:var(--font-mono);font-size:9px;color:var(--dim);margin-top:3px">The system price below is already current from your last sync -- this is just a reminder of which physical stickers still need to be changed to match. Mark it done once you've updated the sticker in the shop.</div>
     </div>` + shown.map(a => `
-    <div class="panel" style="border-color:rgba(255,184,0,.35);background:rgba(255,184,0,.06);margin-bottom:8px;padding:10px 12px">
-      <div style="font-family:var(--font-mono);font-size:11px;font-weight:800;color:var(--gold)">${escHtml(a.name)} ${a.dollarChange>=0?'up':'down'} $${Math.abs(a.dollarChange).toFixed(2)} / ${a.pctChange>=0?'+':''}${(a.pctChange*100).toFixed(0)}%</div>
-      <div style="font-family:var(--font-mono);font-size:9px;color:var(--dim);margin:4px 0">Was $${a.oldPrice.toFixed(2)} → Now $${a.newPrice.toFixed(2)} · Last checked ${escHtml(pokemonCacheAgeLabel(a.lastChecked))}</div>
-      <div style="display:flex;gap:8px">
-        <button class="hbtn" onclick="dismissPriceChangeAlert('${a.id}')">✓ STICKER UPDATED</button>
-        <button class="hbtn" style="color:var(--dim)" onclick="dismissPriceChangeAlert('${a.id}')">IGNORE</button>
+    <div class="panel" style="border-color:rgba(255,184,0,.35);background:rgba(255,184,0,.06);margin-bottom:8px;padding:10px 12px;display:flex;gap:10px;align-items:flex-start">
+      <button type="button" class="price-alert-thumb" title="Edit this item" onclick="openPriceAlertItem('${escHtml(a.itemId || '')}')">${thumbFor(a)}</button>
+      <div style="min-width:0;flex:1">
+        <div style="font-family:var(--font-mono);font-size:11px;font-weight:800;color:var(--gold);cursor:pointer;overflow-wrap:anywhere" title="Edit this item" onclick="openPriceAlertItem('${escHtml(a.itemId || '')}')">${escHtml(a.name)} ${a.dollarChange>=0?'up':'down'} $${Math.abs(a.dollarChange).toFixed(2)} / ${a.pctChange>=0?'+':''}${(a.pctChange*100).toFixed(0)}%</div>
+        <div style="font-family:var(--font-mono);font-size:9px;color:var(--dim);margin:4px 0">Was $${a.oldPrice.toFixed(2)} → Now $${a.newPrice.toFixed(2)} · Last checked ${escHtml(pokemonCacheAgeLabel(a.lastChecked))}</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="hbtn" onclick="dismissPriceChangeAlert('${a.id}')">✓ STICKER UPDATED</button>
+          <button class="hbtn" style="color:var(--dim)" onclick="dismissPriceChangeAlert('${a.id}')">IGNORE</button>
+        </div>
       </div>
     </div>`).join('') + (alerts.length > shown.length ? `<div style="font-family:var(--font-mono);font-size:9px;color:var(--dim);text-align:center;padding:6px">+${alerts.length-shown.length} more smaller movers</div>` : '');
 }
