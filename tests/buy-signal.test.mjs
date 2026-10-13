@@ -150,9 +150,9 @@ assert.match(extractFn('buySignalFor'), /rules:buyTargetRules\(group\)/);
   assert.equal(api.buyTargetGroup({ category:'Baseball', sport:'Baseball' }), 'sports');
   assert.equal(api.buyTargetGroup({ category:'Yu-Gi-Oh!' }), 'tcg');
   assert.equal(api.buyTargetGroup({ category:'Funko' }), 'other');
-  assert.deepEqual(api.buyTargetRules('pokemon'), { marginFastPokemon:20, marginFast:20, marginAvg:35, marginSlow:45, tradePctPokemon:80, tradePctOther:80, minProfit:3, feePct:3, marginStocked:5 });
+  assert.deepEqual(api.buyTargetRules('pokemon'), { marginFastPokemon:20, marginFast:20, marginAvg:35, marginSlow:45, tradePctPokemon:80, tradePctOther:80, minProfit:3, feePct:3, marginStocked:5, gradingCost:25 });
   profile = { buyTargets:{ sports:{ fast:30, trade:70 }, minProfit:4 } };
-  assert.deepEqual(api.buyTargetRules('sports'), { marginFastPokemon:30, marginFast:30, marginAvg:35, marginSlow:45, tradePctPokemon:70, tradePctOther:70, minProfit:4, feePct:3, marginStocked:5 }, 'saved values over the defaults, per field');
+  assert.deepEqual(api.buyTargetRules('sports'), { marginFastPokemon:30, marginFast:30, marginAvg:35, marginSlow:45, tradePctPokemon:70, tradePctOther:70, minProfit:4, feePct:3, marginStocked:5, gradingCost:25 }, 'saved values over the defaults, per field');
   assert.equal(api.buyTargetRules('mtg').marginFast, 25, 'other categories keep their defaults');
   assert.match(api.buyTargetSummary('sports'), /^Sports cards margins: 30% fast sellers, 35% average, 45% slow or jumpy, \+5% if you already have some; never under \$4\.00 profit; trade credit 70% of resale on fast sellers$/);
 }

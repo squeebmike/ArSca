@@ -47,6 +47,19 @@
     // by the same points their cash margin rises (Pokemon trades at 80).
     tradePctPokemon: 80,
     tradePctOther: 75,
+    // New sets usually keep easing for a few months while supply floods in.
+    newSetDays: 90,
+    marginNewSet: 5,
+    // What sells here (store-demand.js): pay a little more for what moves,
+    // a little less for what sits or is already piled up.
+    marginHotHere: -5,
+    marginSlowHere: 5,
+    minMargin: 10,
+    // Grading upside: raw NM + grading cost vs eBay PSA 9 / PSA 10 sales.
+    gradingCost: 25,
+    gradePsa9Cover: 1.05,   // PSA 9 alone covers raw + grading, with a little room
+    gradePsa10Multiple: 2,  // and PSA 10 is at least 2x what it'd cost to get there
+    gradeMinSales: 3,       // enough PSA 10 sales to trust that price
     ownSalesMin: 2,         // recent sales of our own before we trust their price
     ownSalesCap: 1.15,      // and never value above this x market
   };
@@ -135,7 +148,8 @@
     return { value:market, basis:`today's market (${money(market)})` };
   }
 
-  // inputs: { points, market, category, stockQty, ourSales:{soldCount,avgDays,recentSold,recentAvgSale}, wants, rules }
+  // inputs: { points, market, category, stockQty, ourSales:{soldCount,avgDays,recentSold,recentAvgSale},
+  //   wants, storeDemand:{rating,label,sentence}, setReleaseDate, grading:{psa9,psa10,count10,raw}, rules }
   function evaluateBuySignal(input = {}){
     const R = { ...RULES, ...(input.rules || {}) };
     const pts = cleanPoints(input.points);
@@ -209,6 +223,25 @@
     }
     if(Number(input.wants) > 0) say('good', `${input.wants} customer want${input.wants === 1 ? '' : 's'} on the want list.`);
 
+    // What sells here, from our own sales by set / character / player / series.
+    const demand = input.storeDemand && input.storeDemand.rating ? input.storeDemand : null;
+    if(demand){
+      if(demand.rating === 'hot'){ flags.push('hotHere'); say('good', `Sells well here: ${demand.sentence}`); }
+      else if(demand.rating === 'slow'){ flags.push('slowHere'); say('warn', `Slow here: ${demand.sentence}`); }
+      else if(demand.rating === 'plenty'){ flags.push('plentyHere'); say('warn', `You have plenty: ${demand.sentence}`); }
+      else if(demand.sentence) say('info', demand.sentence);
+    }
+    // New set: released recently (dated against the price history's last
+    // day, so a backtest judges it as it was then).
+    const asOf = m ? m.asOfDay * DAY : Date.now();
+    const released = input.setReleaseDate ? toTime(input.setReleaseDate) : NaN;
+    const setAgeDays = Number.isFinite(released) ? Math.floor((asOf - released) / DAY) : null;
+    if(setAgeDays != null && setAgeDays >= 0 && setAgeDays < R.newSetDays){
+      flags.push('newSet');
+      const weeks = Math.max(1, Math.round(setAgeDays / 7));
+      say('warn', `Set came out ${weeks} week${weeks === 1 ? '' : 's'} ago -- new sets usually keep easing for a few months while supply floods in.`);
+    }
+
     // Target price = expected resale - fees - the margin we keep.
     const resale = expectedResale(market, m, ours, R, flags);
     const resaleNet = Math.max(0, resale.value * (1 - R.feePct / 100) - R.feeFixed);
@@ -216,10 +249,16 @@
       : flags.includes('fast') ? 'fast' : 'avg';
     let marginPct = speed === 'slow' ? R.marginSlow : speed === 'fast' ? (isPokemon ? R.marginFastPokemon : R.marginFast) : R.marginAvg;
     if(!m) marginPct = R.marginAvg; // no history: average, not punished
-    if(flags.includes('stocked')) marginPct += R.marginStocked;
     const marginWhy = !m ? 'no sales data, so the standard margin'
       : speed === 'fast' ? `sells fast${isPokemon ? ', liquid Pokémon' : ''}` : speed === 'slow' ? (flags.includes('slow') ? 'slow seller' : 'price swings a lot') : 'sells at an average pace';
-    const marginNote = marginWhy + (flags.includes('stocked') ? `, +${R.marginStocked}% since you have some` : '');
+    const adjust = [];
+    const bump = (on, pts, why) => { if(on && pts){ marginPct += pts; adjust.push(`${pts > 0 ? '+' : ''}${pts}% ${why}`); } };
+    bump(flags.includes('stocked'), R.marginStocked, 'since you have some');
+    bump(flags.includes('newSet'), R.marginNewSet, 'new set');
+    bump(flags.includes('hotHere'), R.marginHotHere, 'sells well here');
+    bump(flags.includes('slowHere') || flags.includes('plentyHere'), R.marginSlowHere, flags.includes('plentyHere') ? 'you have plenty' : 'slow here');
+    marginPct = Math.max(R.minMargin, Math.min(90, marginPct));
+    const marginNote = [marginWhy, ...adjust].join(', ');
     let walkAway = Math.min(resaleNet * (1 - marginPct / 100), resaleNet - R.minProfit);
     walkAway = Math.max(0, Math.floor(walkAway * 4) / 4); // to the quarter
     const openPrice = Math.max(0, Math.floor(walkAway * R.openPct / 100 * 4) / 4);
@@ -236,6 +275,19 @@
       flags.push('thin');
       say('warn', `Cheap card: the ${money(R.minProfit)} minimum profit sets the price, not the margin.`);
     }
+    // Grading upside (raw cards only): never changes the price, just says
+    // when a slab is worth a look.
+    let grading = null;
+    const gr = input.grading || null;
+    if(gr && Number(gr.psa10) > 0){
+      const cost = market + R.gradingCost;
+      const psa9 = Number(gr.psa9) || 0, psa10 = Number(gr.psa10), n10 = Number(gr.count10) || 0;
+      if(psa10 >= cost * R.gradePsa10Multiple && psa9 >= cost * R.gradePsa9Cover && n10 >= R.gradeMinSales){
+        flags.push('grade');
+        grading = { psa9, psa10, cost:round2(cost), upside10:round2(psa10 - cost) };
+        say('good', `Grading candidate: PSA 10 sells about ${money(psa10)}${psa9 ? `, PSA 9 about ${money(psa9)}` : ''} -- vs ${money(market)} raw + ${money(R.gradingCost)} grading. Check centering and surface before counting on it.`);
+      }
+    }
     const math = [
       `Resale: ${resale.basis}`,
       R.feePct || R.feeFixed ? `After ${R.feePct}% card fees${R.feeFixed ? ` + ${money(R.feeFixed)}` : ''}: ${money(resaleNet)}` : `No fees (in-store): ${money(resaleNet)}`,
@@ -245,14 +297,14 @@
 
     let verdict;
     if(hard) verdict = 'PASS';
-    else if(flags.some(f => ['falling','sliding','volatile','slow','stocked','thin'].includes(f)) || !m) verdict = 'BUY_LOW';
+    else if(flags.some(f => ['falling','sliding','volatile','slow','stocked','thin','newSet','slowHere','plentyHere'].includes(f)) || !m) verdict = 'BUY_LOW';
     else verdict = 'BUY';
     const label = verdict === 'PASS' ? 'PASS' : `${verdict === 'BUY' ? 'BUY' : 'BUY LOW'} · ≤ ${money(walkAway)}`;
     const sellHint = m && m.chg14 != null && m.chg14 >= R.spikePct ? 'If you have this in stock, now is a good time to sell.' : '';
     const pass = verdict === 'PASS';
     return { verdict, label, maxPrice:pass ? 0 : walkAway, openPrice:pass ? 0 : openPrice, tradeMax:pass ? 0 : tradeMax, tradePctUsed,
       resale:round2(resale.value), resaleBasis:resale.basis, resaleNet:round2(resaleNet), marginPct, speed,
-      reasons, flags, math:pass ? [] : math, sellHint, metrics:m, confident:!!m && m.points >= 20 };
+      reasons, flags, math:pass ? [] : math, sellHint, metrics:m, grading, setAgeDays, confident:!!m && m.points >= 20 };
   }
 
   // Backtest: run the rules at past dates across many cards and see what
@@ -270,7 +322,7 @@
         const now = past[past.length - 1];
         const future = priceAt(pts, day + horizonDays);
         if(!now || !future) continue;
-        const sig = evaluateBuySignal({ points:past, market:now.price, category:card.category || category });
+        const sig = evaluateBuySignal({ points:past, market:now.price, category:card.category || category, setReleaseDate:card.setReleaseDate || '' });
         if(sig.verdict === 'NO_DATA') continue;
         const ahead = pts.filter(p => p.day > day && p.day <= day + horizonDays);
         const worst = ahead.length ? Math.min(...ahead.map(p => p.price)) : future;
