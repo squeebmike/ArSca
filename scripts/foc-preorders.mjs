@@ -1733,7 +1733,7 @@ function comicArtistList(...values){
   }
   return '';
 }
-export function comicDemandFacts({lines=[],items=[],stock=[],skus=[],artistRows=[]}={}){
+export function comicDemandFacts({lines=[],items=[],stock=[],skus=[],artistRows=[],today=new Date().toISOString().slice(0,10)}={}){
   const itemById=new Map(items.map(i=>[String(i.id),i])),skuById=new Map(skus.map(s=>[String(s.id),s]));
   const facts=it=>{
     const sku=it?skuById.get(String(it.focSkuId||'')):null;
@@ -1744,7 +1744,10 @@ export function comicDemandFacts({lines=[],items=[],stock=[],skus=[],artistRows=
     const it=itemById.get(String(l.item_id||''));
     return {title:text(l.title,240),...(it?facts(it):{}),qty:Math.max(1,Number(l.quantity||1)),price:Number(l.unit_price||0),saleId:l.sale_id||'',at:l.created_at,ebay:/^ebay:/.test(String(l.source_id||''))};
   });
-  const shelf=stock.map(it=>({name:text(it.name,240),...facts(it),qty:Math.max(0,Number(it.qty??it.quantity??0)||0),at:it.created_at}));
+  // An eBay presale for a book that isn't out yet is not on the shelf, even
+  // if it was switched to in stock (the Cyberpunk 2077 #1 "40 in stock").
+  const notOutYet=it=>/^foc_presale/.test(String(it.source||''))&&String(it.onSaleDate||'').slice(0,10)>today;
+  const shelf=stock.filter(it=>!notOutYet(it)).map(it=>({name:text(it.name,240),...facts(it),qty:Math.max(0,Number(it.qty??it.quantity??0)||0),at:it.created_at}));
   const artists=[...new Set(artistRows.flatMap(r=>String(r.cover_artist||'').split(/\s*(?:,|;|&|\/)\s*/)).map(a=>text(a,80)).filter(a=>a&&a.split(/\s+/).length>=2))];
   return {sold,stock:shelf,artists};
 }
@@ -1753,7 +1756,7 @@ async function adminComicDemand(request,env,deps,url){
   const auth=await deps.requireStoreUser(request,env,storeId,['owner','admin','manager','employee']);if(auth.error)return auth.error;
   const db=(path,options)=>deps.supabaseAdminFetch(env,path,options);
   const s=encodeURIComponent(storeId),since=new Date(Date.now()-180*864e5).toISOString();
-  const itemFields='id,created_at,source:data->>source,name:data->>name,series:data->>series,issue:data->>issue,variant:data->>variant,qty:data->>qty,quantity:data->>quantity,focSkuId:data->>focSkuId,coverArtists:data->coverArtists,detailArtists:data->focComicDetail->coverArtists';
+  const itemFields='id,created_at,source:data->>source,name:data->>name,series:data->>series,issue:data->>issue,variant:data->>variant,qty:data->>qty,quantity:data->>quantity,focSkuId:data->>focSkuId,onSaleDate:data->>onSaleDate,coverArtists:data->coverArtists,detailArtists:data->focComicDetail->coverArtists';
   const [{data:lines},{data:stock},{data:artistRows}]=await Promise.all([
     db(`pos_sale_lines?store_id=eq.${s}&category=ilike.*comic*&created_at=gte.${since}&select=sale_id,item_id,title,quantity,unit_price,source_id,created_at&order=created_at.desc&limit=5000`),
     db(`inventory_items?store_id=eq.${s}&status=eq.in_stock&data->>category=ilike.*comic*&select=${itemFields}&limit=5000`),
@@ -2744,6 +2747,149 @@ export function shortCustomerName(name){
   if(!parts.length)return '';
   return parts.length===1?parts[0]:parts[0]+' '+parts[parts.length-1][0].toUpperCase()+'.';
 }
+// Every FOC presale row of the store (eBay presale listings and bundles).
+async function focPresaleRows(db,storeId,status='presale,sold,in_stock'){
+  const rows=[];
+  for(let offset=0;offset<20000;offset+=1000){
+    const {data}=await db(`inventory_items?store_id=eq.${encodeURIComponent(storeId)}&data->>source=in.(foc_presale,foc_presale_bundle)&status=in.(${status})&select=id,status,data&order=id.asc&limit=1000&offset=${offset}`);
+    rows.push(...(data||[]));
+    if(!data||data.length<1000)break;
+  }
+  return rows;
+}
+// PRESALE STOCK CHECK -- finds the damage from receiving switching presales
+// to in stock too early (fixed above) and offers the repair:
+//   early:   a presale switched to in stock whose book never came in -- goes
+//            back to presale (here and on eBay).
+//   doubles: a presale switched to in stock AND a received row for the same
+//            cover -- the same copies counted twice (Sonic x Godzilla #3
+//            Cover A showed 8 + 8 for 8 books). The received count is what's
+//            really here; the eBay listing keeps what it can sell.
+//   review:  anything it can't safely work out alone.
+export function presaleStockCheck({presaleRows=[],receiveRows=[],skus=[],soldSince=new Map(),today=new Date().toISOString().slice(0,10)}={}){
+  const skuById=new Map(skus.map(s=>[String(s.id),s]));
+  const receivedBySku=new Map();
+  for(const r of receiveRows){const k=String(r.data?.focSkuId||'');if(!k)continue;const list=receivedBySku.get(k)||[];list.push(r);receivedBySku.set(k,list);}
+  const converted=presaleRows.filter(r=>r.status==='in_stock'&&r.data?.source==='foc_presale'&&r.data?.ebayPresaleConverted===true&&r.data?.focSkuId);
+  const bySku=new Map();
+  for(const r of converted){const list=bySku.get(r.data.focSkuId)||[];list.push(r);bySku.set(r.data.focSkuId,list);}
+  const early=[],doubles=[],review=[];
+  const label=r=>stripPresaleName(r.data?.name||'');
+  for(const [skuId,rows] of bySku){
+    const sku=skuById.get(skuId)||{};
+    const onSale=String(rows[0].data.onSaleDate||sku.on_sale_date||'').slice(0,10);
+    const received=receivedBySku.get(skuId)||[];
+    if(rows.length>1){review.push({skuId,name:label(rows[0]),reason:rows.length+' eBay presale listings for this one cover -- '+rows.map(r=>Number(r.data.qty??r.data.quantity??0)+' left of '+Number(r.data.focPresaleOriginalQty||0)).join(', ')+'; '+received.reduce((a,r)=>a+Number(r.data.qty??r.data.quantity??0),0)+' received. Check the listings on eBay by hand.'});continue;}
+    const p=rows[0],pQty=Number(p.data.qty??p.data.quantity??0);
+    if(!received.length){
+      if(p.data.focReceivedAt)continue;
+      const ordered=Number(sku.store_quantity||0);
+      early.push({rowId:p.id,skuId,name:label(p),onSaleDate:onSale,qty:pQty,ordered,released:!!onSale&&onSale<=today,
+        reason:(onSale&&onSale>today?'comes out '+onSale+' -- ':'')+'switched to in stock but nothing was received',
+        listedMoreThanOrdered:pQty>ordered});
+      continue;
+    }
+    if(received.length>1){review.push({skuId,name:label(p),reason:received.length+' received rows plus the eBay presale row -- check the counts by hand.'});continue;}
+    const r=received[0],rQty=Number(r.data.qty??r.data.quantity??0);
+    // Receiving made the received row hold every copy that came in, so its
+    // count (less anything sold off it since) is what's here -- minus copies
+    // sold off the switched presale row since, which came out of the same books.
+    const soldOffPresale=soldSince.get(p.id)||0;
+    const real=Math.max(0,rQty-soldOffPresale);
+    const fix=real>=pQty?{presaleQty:pQty,receivedQty:real-pQty}:{presaleQty:real,receivedQty:0};
+    doubles.push({presaleRowId:p.id,receivedRowId:r.id,skuId,name:label(p),shows:pQty+rQty,real,presaleQty:pQty,receivedQty:rQty,fix,soldOffPresale});
+  }
+  return {early,doubles,review};
+}
+function stripPresaleName(name){return String(name||'').replace(/\s*-\s*PRESALE\s*$/i,'').trim();}
+async function presaleStockFacts(db,storeId){
+  const s=encodeURIComponent(storeId);
+  const presaleRows=(await focPresaleRows(db,storeId,'in_stock')).filter(r=>r.data?.ebayPresaleConverted===true);
+  const skuIds=[...new Set(presaleRows.map(r=>r.data?.focSkuId).filter(id=>UUID_RE.test(String(id||''))))];
+  const receiveRows=[],skus=[];
+  for(let i=0;i<skuIds.length;i+=100){
+    const ids=skuIds.slice(i,i+100);
+    const [{data:rec},{data:sk}]=await Promise.all([
+      db(`inventory_items?store_id=eq.${s}&data->>source=eq.foc_receive&status=eq.in_stock&data->>focSkuId=in.(${ids.join(',')})&select=id,status,created_at,data`),
+      db(`comic_skus?id=${inFilter(ids)}&select=id,store_quantity,on_sale_date,title,variant_label`),
+    ]);
+    receiveRows.push(...(rec||[]));skus.push(...(sk||[]));
+  }
+  // Copies sold off a switched presale row since it was switched.
+  const soldSince=new Map();
+  const ids=presaleRows.map(r=>r.id);
+  const since=presaleRows.map(r=>r.data?.ebayConvertedAt).filter(Boolean).sort()[0]||new Date().toISOString();
+  for(let i=0;i<ids.length;i+=100){
+    const {data:lines}=await db(`pos_sale_lines?store_id=eq.${s}&item_id=${inFilter(ids.slice(i,i+100))}&created_at=gte.${encodeURIComponent(since)}&select=item_id,quantity`);
+    for(const l of lines||[])soldSince.set(l.item_id,(soldSince.get(l.item_id)||0)+Math.max(1,Number(l.quantity||1)));
+  }
+  return {presaleRows,receiveRows,skus,soldSince};
+}
+async function adminPresaleStockCheck(request,env,deps,url){
+  const storeId=text(url.searchParams.get('store_id'),80);
+  const auth=await deps.requireStoreUser(request,env,storeId,['owner','admin','manager']);if(auth.error)return auth.error;
+  const db=(path,options)=>deps.supabaseAdminFetch(env,path,options);
+  return deps.json({ok:true,...presaleStockCheck(await presaleStockFacts(db,storeId))});
+}
+async function adminPresaleStockFix(request,env,deps){
+  const limited=await deps.readJsonWithLimit(request,64*1024);if(limited.error)return limited.error;
+  const body=limited.data||{},storeId=text(body.storeId,80);
+  const auth=await deps.requireStoreUser(request,env,storeId,['owner','admin','manager']);if(auth.error)return auth.error;
+  const db=(path,options)=>deps.supabaseAdminFetch(env,path,options);
+  const s=encodeURIComponent(storeId);
+  const check=presaleStockCheck(await presaleStockFacts(db,storeId));
+  const wantEarly=new Set((body.early||[]).map(String)),wantDoubles=new Set((body.doubles||[]).map(String));
+  const early=check.early.filter(e=>wantEarly.has(e.rowId)),doubles=check.doubles.filter(d=>wantDoubles.has(d.presaleRowId));
+  if(!early.length&&!doubles.length)return deps.json({ok:false,error:'Nothing picked to fix (or it was already fixed)'},400);
+  const rowById=new Map((await focPresaleRows(db,storeId,'in_stock')).map(r=>[r.id,r]));
+  let ebayToken='';
+  try{ebayToken=deps.getEbayUserAccessToken?await deps.getEbayUserAccessToken(env):'';}catch(_){}
+  const {data:settingsRows}=await db(`store_settings?store_id=eq.${s}&select=receipt_settings&limit=1`);
+  const basePolicyId=String(settingsRows?.[0]?.receipt_settings?.ebayNormalFulfillmentPolicyId||'').trim();
+  const results=[],now=new Date().toISOString();
+  for(const e of early){
+    const row=rowById.get(e.rowId);if(!row){results.push({name:e.name,ok:false,error:'not found'});continue;}
+    const d=row.data||{};
+    try{
+      if(d.ebayOfferId&&d.ebaySku&&d.ebayApiSystem!=='trading'&&!d.ebayWithdrawnAt){
+        if(!ebayToken||!deps.revertEbayPresaleListing)throw new Error('Connect eBay first');
+        await deps.revertEbayPresaleListing(env,ebayToken,{sku:d.ebaySku,offerId:d.ebayOfferId,groupKey:d.ebayInventoryItemGroupKey||'',onSaleDate:d.onSaleDate,basePolicyId});
+      } else if(d.ebayApiSystem==='trading')throw new Error('multi-cover Trading listing -- switch it back on eBay by hand');
+      const next={...d,status:'presale',name:stripPresaleName(d.name)+' - PRESALE',ebayPresaleConverted:false,ebayRevertedToPresaleAt:now};
+      delete next.ebayConvertedAt;
+      await db(`inventory_items?id=eq.${row.id}&store_id=eq.${s}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({status:'presale',data:next})});
+      results.push({name:e.name,ok:true,fixed:'back to presale'});
+    }catch(err){results.push({name:e.name,ok:false,error:err.message});}
+  }
+  for(const dbl of doubles){
+    const p=rowById.get(dbl.presaleRowId);if(!p){results.push({name:dbl.name,ok:false,error:'not found'});continue;}
+    try{
+      const pd=p.data||{};
+      if(dbl.fix.presaleQty!==dbl.presaleQty){
+        if(pd.ebayOfferId&&pd.ebayApiSystem!=='trading'&&!pd.ebayWithdrawnAt){
+          if(!ebayToken||!deps.ebayReviseOfferQuantity)throw new Error('Connect eBay first');
+          await deps.ebayReviseOfferQuantity(env,ebayToken,pd.ebayOfferId,dbl.fix.presaleQty);
+        } else if(pd.ebayApiSystem==='trading'&&pd.ebayListingId&&pd.ebaySku&&deps.ebayReviseVariationQuantityTrading){
+          await deps.ebayReviseVariationQuantityTrading(ebayToken,pd.ebayListingId,pd.ebaySku,dbl.fix.presaleQty);
+        }
+        await db(`inventory_items?id=eq.${p.id}&store_id=eq.${s}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({data:{...pd,qty:dbl.fix.presaleQty,quantity:dbl.fix.presaleQty,focReceivedAt:pd.focReceivedAt||now}})});
+      } else if(!pd.focReceivedAt){
+        await db(`inventory_items?id=eq.${p.id}&store_id=eq.${s}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({data:{...pd,focReceivedAt:now}})});
+      }
+      const {data:recRows}=await db(`inventory_items?id=eq.${dbl.receivedRowId}&store_id=eq.${s}&select=id,status,data`);
+      const r=recRows?.[0];
+      if(r){
+        const rd=r.data||{};
+        const patch=dbl.fix.receivedQty>0
+          ?{data:{...rd,qty:dbl.fix.receivedQty,quantity:dbl.fix.receivedQty}}
+          :{status:'archived',data:{...rd,qty:0,quantity:0,status:'archived',archivedAt:now,archiveReason:'Same copies as the eBay presale listing (counted twice when received)'}};
+        await db(`inventory_items?id=eq.${r.id}&store_id=eq.${s}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify(patch)});
+      }
+      results.push({name:dbl.name,ok:true,fixed:dbl.real+' copies (was showing '+dbl.shows+')'});
+    }catch(err){results.push({name:dbl.name,ok:false,error:err.message});}
+  }
+  return deps.json({ok:true,results});
+}
 async function receiveShipment(request,env,deps){
   const limited=await deps.readJsonWithLimit(request,32*1024);if(limited.error)return limited.error;
   const body=limited.data||{};const storeId=text(body.storeId,80),cycleId=text(body.cycleId,80);
@@ -2771,7 +2917,10 @@ async function receiveShipment(request,env,deps){
   // its qty hits 0 -- selling 1 of the usual 10-qty presale listing leaves
   // 9 remaining and flips it to 'in_stock' instead, which would otherwise
   // silently drop that already-sold unit from this fulfillment count.
-  const { data:presaleRows }=await db(`inventory_items?store_id=eq.${encodeURIComponent(storeId)}&status=in.(presale,sold,in_stock)&select=id,status,data`);
+  // Only presale rows, every page: an unfiltered read stopped at 1,000 of
+  // the store's 1,700+ items, missed live presales, and received copies got
+  // added on top of them (Uncanny X-Men #159 showed 10 + 2 for 2 copies).
+  const presaleRows=await focPresaleRows(db,storeId);
   const presaleByskuId=new Map();
   // Store request: a physical copy that arrives must never be sellable
   // twice -- once as a freshly-created standalone inventory row (via POS/
@@ -2844,7 +2993,11 @@ async function receiveShipment(request,env,deps){
           }
           catch(e){console.error('FOC receive: could not reduce short-shipped eBay presale quantity',livePresale.id,e);}
         }
-        await db(`inventory_items?id=eq.${livePresale.id}&store_id=eq.${encodeURIComponent(storeId)}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({data:{...pd,qty:receivedQty,quantity:receivedQty}})});
+        await db(`inventory_items?id=eq.${livePresale.id}&store_id=eq.${encodeURIComponent(storeId)}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({data:{...pd,qty:receivedQty,quantity:receivedQty,focReceivedAt:new Date().toISOString()}})});
+      } else {
+        // Marks this presale as arrived: /foc/ebay/convert-to-instock only
+        // switches presales whose books actually came in.
+        await db(`inventory_items?id=eq.${livePresale.id}&store_id=eq.${encodeURIComponent(storeId)}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({data:{...livePresale.data,focReceivedAt:new Date().toISOString()}})});
       }
     }
     // Store report: receiving N copies of the same cover created N separate
@@ -3252,6 +3405,8 @@ export async function handleFocRequest(request, env, url, deps) {
   if(path==='/foc/admin/comic-sell-through'&&request.method==='GET')return adminComicSellThrough(request,env,deps,url);
   if(path==='/foc/admin/comic-demand'&&request.method==='GET')return adminComicDemand(request,env,deps,url);
   if(path==='/foc/admin/cover-market'&&request.method==='POST')return adminCoverMarket(request,env,deps);
+  if(path==='/foc/admin/presale-stock-check'&&request.method==='GET')return adminPresaleStockCheck(request,env,deps,url);
+  if(path==='/foc/admin/presale-stock-fix'&&request.method==='POST')return adminPresaleStockFix(request,env,deps);
   if(path==='/foc/admin/pick-list'&&request.method==='GET')return adminPickList(request,env,deps,url);
   if(path==='/foc/admin/notify-arrivals'&&request.method==='POST')return adminNotifyArrivals(request,env,deps);
   if(path==='/foc/admin/late-books'&&request.method==='GET')return adminLateBooks(request,env,deps,url);

@@ -6122,10 +6122,18 @@ async function routeRequest(request, env, ctx) {
       let candidates = [];
       const tradingGroups = new Map();
       try {
-        const { data } = await supabaseAdminFetch(env, `inventory_items?store_id=eq.${encodeURIComponent(storeId)}&status=eq.presale&select=id,data`);
+        const { data } = await supabaseAdminFetchAll(env, `inventory_items?store_id=eq.${encodeURIComponent(storeId)}&status=eq.presale&data->>source=in.(foc_presale,foc_presale_bundle)&select=id,data&order=id.asc`);
+        // Store report: receiving a slip with some of a week's books switched
+        // EVERY presale in that FOC week to in stock -- Cyberpunk 2077 #1
+        // showed 40 copies a week before it came out, and eBay buyers were
+        // promised fast shipping. Only covers that actually arrived switch:
+        // receiving marks the presale (focReceivedAt) or adds received copies.
+        const { data: receivedRows } = await supabaseAdminFetchAll(env, `inventory_items?store_id=eq.${encodeURIComponent(storeId)}&data->>source=eq.foc_receive&data->>focCycleId=eq.${encodeURIComponent(cycleId)}&select=id,focSkuId:data->>focSkuId&order=id.asc`);
+        const receivedSkuIds = new Set((receivedRows || []).map(r => r.focSkuId).filter(Boolean));
+        const arrived = d => !!d.focReceivedAt || receivedSkuIds.has(d.focSkuId);
         candidates = (data || []).filter(row => {
           const d = row.data || {};
-          return d.source === 'foc_presale' && d.focCycleId === cycleId && d.ebayApiSystem !== 'trading' && d.ebaySku && d.ebayOfferId && Number(d.qty ?? d.quantity ?? 0) > 0;
+          return d.source === 'foc_presale' && d.focCycleId === cycleId && d.ebayApiSystem !== 'trading' && d.ebaySku && d.ebayOfferId && Number(d.qty ?? d.quantity ?? 0) > 0 && arrived(d);
         });
         // Multi-cover listings (Trading API) have no offerId -- they used to
         // be skipped here and stayed "presale" with the long handling time
@@ -6138,7 +6146,9 @@ async function routeRequest(request, env, ctx) {
           list.push(row); tradingGroups.set(d.ebayListingId, list);
         }
         for (const [listingId, rows] of tradingGroups) {
-          if (!rows.some(r => Number(r.data.qty ?? r.data.quantity ?? 0) > 0)) tradingGroups.delete(listingId);
+          const live = rows.filter(r => r.data.source === 'foc_presale' && Number(r.data.qty ?? r.data.quantity ?? 0) > 0);
+          // One listing for every cover: it switches once they've all arrived.
+          if (!live.length || !live.every(r => arrived(r.data))) tradingGroups.delete(listingId);
         }
       } catch (e) { return json({ ok: false, error: 'Could not load presale listings: ' + e.message }, 500); }
 
@@ -6255,6 +6265,7 @@ async function routeRequest(request, env, ctx) {
           if (!(isBcwItem(item) ? isBcwPublished(item) : isStorefrontItemListable(item))) return null;
           return item.linkUrl || '/item/' + encodeURIComponent(item.id) + '/' + itemDetailSlug(item);
         },
+        revertEbayPresaleListing: revertEbayRestListingToPresale,
         ebayActiveListings: fetchEbayActiveListings,
         ebaySoldComps: async (soldEnv, q, limit = 40) => {
           let result = await fetchSoldCompsProvider(soldEnv, q, limit).catch(e => ({ comps: [], warning: e.message }));
@@ -10701,6 +10712,60 @@ async function routeRequest(request, env, ctx) {
         const t = await putOffer.text().catch(() => '');
         const e = new Error('Offer update failed (' + putOffer.status + '): ' + t.substring(0, 200)); e.status = putOffer.status; throw e;
       }
+    }
+
+    // The undo of convertEbayRestListingToInStock, for a presale switched to
+    // in stock before its book arrived: " - PRESALE" back on the title, the
+    // presale notice back in the description, and the FOC presale shipping
+    // policy (long handling time to the on-sale date) instead of the normal
+    // one. Quantity and price stay as they are.
+    async function revertEbayRestListingToPresale(env, ebayToken, { sku, offerId, groupKey, onSaleDate, basePolicyId }) {
+      const onSale = new Date(String(onSaleDate || '').includes('T') ? onSaleDate : String(onSaleDate || '') + 'T00:00:00Z');
+      if (!Number.isFinite(onSale.getTime())) throw new Error('No on-sale date on this cover');
+      if (!basePolicyId) throw new Error('Set the "Shipping policy for in-stock listings" in Settings -> Vendor Info first -- the presale policy is built from it');
+      const policy = await getFocPresaleFulfillmentPolicyId(env, ebayToken, Math.max(1, businessDaysBetween(new Date(), onSale) + 2), basePolicyId);
+      if (!policy.id || policy.usedFallback) throw new Error('Could not get the FOC presale shipping policy from eBay' + (policy.reason ? ': ' + policy.reason : ''));
+      const onSaleLabel = ebayOnSaleLabel(onSaleDate);
+      const presaleTitle = t => { const base = stripPresaleSuffix(t || ''); return base ? base.slice(0, 80 - 10).trim() + ' - PRESALE' : t; };
+      const presaleDescription = d => withComicListingNotices(String(d || '').replace(COMIC_IN_STOCK_SHIPPING, 'For presale comics, orders ship promptly once the title reaches its official release date and inventory has been received from our distributor.'), { presale: true, onSaleLabel });
+      const headers = { 'Authorization': 'Bearer ' + ebayToken, 'Content-Type': 'application/json', 'Content-Language': 'en-US' };
+      const [itemRes, offerRes] = await Promise.all([
+        fetch(`https://api.ebay.com/sell/inventory/v1/inventory_item/${encodeURIComponent(sku)}`, { headers }),
+        fetch(`https://api.ebay.com/sell/inventory/v1/offer/${encodeURIComponent(offerId)}`, { headers }),
+      ]);
+      const item = await itemRes.json().catch(() => null);
+      const offer = await offerRes.json().catch(() => null);
+      if (!itemRes.ok || !item || !offerRes.ok || !offer) throw new Error('Could not read the listing from eBay (' + itemRes.status + '/' + offerRes.status + ')');
+      const itemBody = { ...item };
+      delete itemBody.sku; delete itemBody.groupIds; delete itemBody.inventoryItemGroupKeys;
+      const product = { ...(item.product || {}) };
+      product.title = presaleTitle(product.title);
+      if (product.description) product.description = presaleDescription(product.description);
+      itemBody.product = product;
+      const putItem = await fetch(`https://api.ebay.com/sell/inventory/v1/inventory_item/${encodeURIComponent(sku)}`, { method: 'PUT', headers, body: JSON.stringify(itemBody) });
+      if (!putItem.ok && putItem.status !== 204) { const t = await putItem.text().catch(() => ''); throw new Error('Item update failed (' + putItem.status + '): ' + t.substring(0, 200)); }
+      const OFFER_FIELDS = ['availableQuantity', 'categoryId', 'charity', 'extendedProducerResponsibility', 'hideBuyerDetails', 'includeCatalogProductDetails', 'listingDescription', 'listingDuration', 'listingPolicies', 'listingStartDate', 'lotSize', 'merchantLocationKey', 'pricingSummary', 'quantityLimitPerBuyer', 'regulatory', 'secondaryCategoryId', 'storeCategoryNames', 'tax'];
+      const offerBody = {};
+      for (const k of OFFER_FIELDS) if (offer[k] !== undefined) offerBody[k] = offer[k];
+      if (offerBody.listingDescription) offerBody.listingDescription = presaleDescription(offerBody.listingDescription);
+      offerBody.listingPolicies = { ...(offer.listingPolicies || {}), fulfillmentPolicyId: policy.id };
+      const putOffer = await fetch(`https://api.ebay.com/sell/inventory/v1/offer/${encodeURIComponent(offerId)}`, { method: 'PUT', headers, body: JSON.stringify(offerBody) });
+      if (!putOffer.ok && putOffer.status !== 204) { const t = await putOffer.text().catch(() => ''); throw new Error('Offer update failed (' + putOffer.status + '): ' + t.substring(0, 200)); }
+      // A multi-cover listing shows the group's title and description.
+      if (groupKey) {
+        const groupUrl = `https://api.ebay.com/sell/inventory/v1/inventory_item_group/${encodeURIComponent(groupKey)}`;
+        const groupRes = await fetch(groupUrl, { headers });
+        const group = await groupRes.json().catch(() => null);
+        if (groupRes.ok && group) {
+          const next = { ...group, title: presaleTitle(group.title), description: group.description ? presaleDescription(group.description) : group.description };
+          delete next.inventoryItemGroupKey;
+          if (next.title !== group.title || next.description !== group.description) {
+            const putGroup = await fetch(groupUrl, { method: 'PUT', headers, body: JSON.stringify(next) });
+            if (!putGroup.ok && putGroup.status !== 204) { const t = await putGroup.text().catch(() => ''); throw new Error('Listing title update failed (' + putGroup.status + '): ' + t.substring(0, 200)); }
+          }
+        }
+      }
+      return { fulfillmentPolicyId: policy.id };
     }
 
     async function reviseEbayListing(b, ebayToken, env) {
