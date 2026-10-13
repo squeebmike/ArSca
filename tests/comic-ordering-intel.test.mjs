@@ -232,3 +232,19 @@ const worker = fs.readFileSync('cloudflare-worker-full.js', 'utf8');
 assert.match(worker, /ebayActiveListings: fetchEbayActiveListings,/);
 assert.match(worker, /key\.startsWith\('foc_watch'\)/, 'the watch list never expires');
 console.log('Comic ordering intel checks passed');
+
+// "I need a link to take me there to see them": eBay pills open the search.
+{
+  const grab = re => { const m = ui.match(re); assert.ok(m, 'missing ' + re); return m[0]; };
+  const ctx = { Math, Number, String, encodeURIComponent, esc:v => String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/"/g, '&quot;'), displayDate:() => 'Oct 13', FOC_PILL_COLOR:{ hot:'g', good:'b', dim:'d' } };
+  vm.createContext(ctx);
+  vm.runInContext([grab(/function focPillHtml\(p\)\{[\s\S]*?\n  return '<span[^\n]*\n/), grab(/function focEbaySearchUrl\(q,sold\)\{[^\n]*\}/), grab(/function focMarketPills\(m,msrpCents\)\{[\s\S]*?\n\}/)].join('\n') + ';this.pill=focPillHtml;this.pills=focMarketPills;', ctx);
+  const pills = ctx.pills({ query:'Disney The Haunted Mansion #3', at:'2026-10-13', active:{ count:24, median:34.47, low:5, high:80 }, sold:{ count:3, median:12 } }, 499);
+  assert.equal(pills.length, 2);
+  assert.equal(pills[0].href, 'https://www.ebay.com/sch/i.html?_nkw=Disney%20The%20Haunted%20Mansion%20%233');
+  assert.equal(pills[1].href, 'https://www.ebay.com/sch/i.html?_nkw=Disney%20The%20Haunted%20Mansion%20%233&LH_Sold=1&LH_Complete=1');
+  assert.match(ctx.pill(pills[0]), /^<a class="foc-intel-pill foc-intel-link" href="https:\/\/www\.ebay\.com\/sch\/i\.html\?_nkw=Disney%20The%20Haunted%20Mansion%20%233" target="_blank" rel="noopener"[^>]*>🔥 eBay: 24 listed ~\$34\.47 \(6\.9× cover\) ↗<\/a>$/);
+  assert.match(ctx.pill({ tone:'dim', text:'x' }), /^<span /, 'plain pills stay plain');
+}
+assert.match(ui, /links\.push\('<a href="'\+esc\(pcUrl\)\+'" target="_blank" rel="noopener">PriceCharting ↗<\/a>'\)/);
+console.log('eBay pill links checks passed');
