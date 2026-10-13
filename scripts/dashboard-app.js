@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.10.13.1-what-to-buy';
+const APP_VERSION = '2026.10.13.2-buy-pill';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -34939,6 +34939,17 @@ function buySignalChipHtml(sig, { onclick = '' } = {}){
   const why = sig.reasons.filter(x => x.tone !== 'good').map(x => x.text)[0] || sig.reasons[0]?.text || '';
   return `<span class="buy-sig-chip ${cls}" title="${escHtml(why)}"${onclick ? ` onclick="${onclick}"` : ''}>${icon} ${escHtml(sig.label)}</span>`;
 }
+// The big pill at the top of every research card: the verdict and the
+// walk-away price at a glance; tap it for the chart and the reasons.
+function buySignalPillHtml(sig, idx = 0){
+  if(!sig || sig.verdict === 'NO_DATA') return '';
+  const pass = sig.verdict === 'PASS';
+  const noTrend = !sig.metrics && !pass;
+  const cls = noTrend ? 'na' : sig.verdict === 'BUY' ? 'buy' : pass ? 'pass' : 'low';
+  const head = noTrend ? '⚪ NO TREND YET' : sig.verdict === 'BUY' ? '🟢 BUY' : pass ? '🔴 PASS' : '🟡 BUY LOW';
+  const price = pass ? '' : `<span>up to <b>$${sig.maxPrice.toFixed(2)}</b></span>`;
+  return `<button type="button" class="buy-sig-pill ${cls}" onclick="openQplChartModal(${idx})" title="Tap for the chart and the reasons">${head}${price}<i>WHY ›</i></button>`;
+}
 function buySignalPanelHtml(r = {}, idx = 0){
   const sig = buySignalFor(r);
   if(!sig) return '';
@@ -36902,6 +36913,7 @@ function quickLookupResultCard(r, idx){
     <div class="qpl-info">
       <div class="qpl-title">${escHtml(r.name || 'Unknown item')}</div>
       <div class="qpl-meta">${escHtml(meta || r.note || r.category || '')}</div>
+      ${buySignalPillHtml(buySignalFor(r), idx)}
       ${isComic&&(r.selectedComicCover?.issueName||r.variantLabel||r.pricecharting?.productName)?`<div style="display:flex;gap:7px;align-items:center;flex-wrap:wrap;margin:7px 0;padding:7px 9px;border:1px solid rgba(0,255,179,.25);border-radius:7px;background:rgba(0,255,179,.045)"><b style="font-size:9px;color:var(--g)">SELECTED COVER</b><span style="font-size:10px">${escHtml(r.selectedComicCover?.issueName||r.variantLabel||r.pricecharting?.productName)}</span>${r.pricecharting?.url?`<a class="hbtn" style="min-height:26px;padding:4px 8px;color:var(--gold)" href="${escHtml(r.pricecharting.url)}" target="_blank" rel="noopener">VERIFY EXACT PRICECHARTING</a>`:''}</div>`:''}
       <div class="qpl-badges">
         <span class="qpl-badge ${confClass}">${confLabel}${conf?` ${conf}`:''}</span>
@@ -37004,7 +37016,7 @@ function quickLookupResultCard(r, idx){
           </details>
         </div>
       </div>
-      ${showAdminDebug() ? (isComic ? `<div class="dev-only" style="margin-top:8px;font-family:var(--font-mono);font-size:10px;color:var(--dim)">Comic debug: query=${escHtml(r.lookupDebug?.rawQuerySent||r.raw?.query||'')} / source=${escHtml(r.source||'')} / pcProductId=${escHtml(String(r.pricecharting?.productId||''))} / pcProductName=${escHtml(r.pricecharting?.productName||'')} / imageUrl=${escHtml(r.imageUrl||'none')} / comicPrices.ungraded=${escHtml(String(r.pricecharting?.comicPrices?.ungraded||0))} / comicPrices.grade9_8=${escHtml(String(r.pricecharting?.comicPrices?.grade9_8||0))} / salesVolume=${escHtml(String(r.pricecharting?.demand?.salesVolume||0))} / consoleName=${escHtml(r.pricecharting?.demand?.consoleName||'')} / genre=${escHtml(r.pricecharting?.demand?.genre||'')} / pcUrl=${escHtml(r.pricecharting?.url||r.productUrl||'')}</div>` : `<div class="dev-only" style="margin-top:8px;font-family:var(--font-mono);font-size:10px;color:var(--dim)">Debug: rawSearchQuerySent ${escHtml(r.lookupDebug?.rawQuerySent || '')} / workerRequestUrl ${escHtml(r.lookupDebug?.requestPath || '')} / searchResultCount ${escHtml(String(r.lookupDebug?.searchResultCount ?? ''))} / candidates ${escHtml(JSON.stringify(r.lookupDebug?.returnedCandidates || []))} / selectedTcgPlayerId ${escHtml(r.tcgPlayerId || r.tcgplayerId || '')} / hydrationRequestUrl ${escHtml(r.pokemonPriceTracker?.lookupDebug?.hydrationRequestUrl || r.lookupDebug?.hydrationRequestUrl || '')} / hydratedFromCache ${escHtml(String(!!(r.pokemonPriceTracker?.lookupDebug?.hydratedFromCache || r.lookupDebug?.hydratedFromCache)))} / prices.conditions keys ${escHtml(Object.keys(r.pokemonPriceTracker?.prices?.conditions || {}).join(', ') || 'none')} / prices.variants keys ${escHtml(Object.keys(r.pokemonPriceTracker?.prices?.variants || {}).join(', ') || 'none')} / priceHistory.conditions keys ${escHtml(Object.keys(r.pokemonPriceTracker?.priceHistory?.conditions || {}).join(', ') || 'none')} / priceHistory.variants keys ${escHtml(Object.keys(r.pokemonPriceTracker?.priceHistory?.variants || {}).join(', ') || 'none')} / active price path ${escHtml(r.activePriceBasis?.pricePath || r.resolvedPricePath || 'n/a')} / reason a row says No Real Price ${escHtml(r.noRealPriceReason || '')} / normalizedQuery ${escHtml(r.lookupDebug?.normalizedQuery || '')} / lookupPath ${escHtml(r.lookupDebug?.path || r.lookupDebug?.sourcePath || 'n/a')} / exactHydrated ${escHtml(String(!!r.lookupDebug?.exactHydrated))} / parseTitle ${escHtml(JSON.stringify(r.lookupDebug?.parseTitle || r.pptParseTitle || null))} / confidence ${escHtml(String(r.lookupDebug?.confidence || r.confidence || ''))} / autoSelect ${escHtml(String(!!(r.lookupDebug?.autoSelect || r.autoSelect)))} / selectedCondition ${escHtml(r.selectedCondition || r.condition || '')} / selectedFinish ${escHtml(qplFinishLabel(r.selectedFinish || r.finish || ''))} / activePriceBasis ${escHtml(JSON.stringify(r.activePriceBasis || {}))} / generatedTcgUrl ${escHtml(builtTcgLink.url || '')} / cache ${escHtml(r.lookupDebug?.cache || r.cache?.source || 'live/none')} / quotaCooldown ${escHtml(String(pokemonPriceTrackerQuotaBlocked()))} / apiCallsConsumed ${escHtml(localStorage.getItem('ppt_last_consumed') || '')}</div>`) : ''}
+      ${showAdminDebug() ? '<details class="qpl-debug"><summary>debug</summary>' + (isComic ? `<div class="dev-only" style="margin-top:8px;font-family:var(--font-mono);font-size:10px;color:var(--dim)">Comic debug: query=${escHtml(r.lookupDebug?.rawQuerySent||r.raw?.query||'')} / source=${escHtml(r.source||'')} / pcProductId=${escHtml(String(r.pricecharting?.productId||''))} / pcProductName=${escHtml(r.pricecharting?.productName||'')} / imageUrl=${escHtml(r.imageUrl||'none')} / comicPrices.ungraded=${escHtml(String(r.pricecharting?.comicPrices?.ungraded||0))} / comicPrices.grade9_8=${escHtml(String(r.pricecharting?.comicPrices?.grade9_8||0))} / salesVolume=${escHtml(String(r.pricecharting?.demand?.salesVolume||0))} / consoleName=${escHtml(r.pricecharting?.demand?.consoleName||'')} / genre=${escHtml(r.pricecharting?.demand?.genre||'')} / pcUrl=${escHtml(r.pricecharting?.url||r.productUrl||'')}</div>` : `<div class="dev-only" style="margin-top:8px;font-family:var(--font-mono);font-size:10px;color:var(--dim)">Debug: rawSearchQuerySent ${escHtml(r.lookupDebug?.rawQuerySent || '')} / workerRequestUrl ${escHtml(r.lookupDebug?.requestPath || '')} / searchResultCount ${escHtml(String(r.lookupDebug?.searchResultCount ?? ''))} / candidates ${escHtml(JSON.stringify(r.lookupDebug?.returnedCandidates || []))} / selectedTcgPlayerId ${escHtml(r.tcgPlayerId || r.tcgplayerId || '')} / hydrationRequestUrl ${escHtml(r.pokemonPriceTracker?.lookupDebug?.hydrationRequestUrl || r.lookupDebug?.hydrationRequestUrl || '')} / hydratedFromCache ${escHtml(String(!!(r.pokemonPriceTracker?.lookupDebug?.hydratedFromCache || r.lookupDebug?.hydratedFromCache)))} / prices.conditions keys ${escHtml(Object.keys(r.pokemonPriceTracker?.prices?.conditions || {}).join(', ') || 'none')} / prices.variants keys ${escHtml(Object.keys(r.pokemonPriceTracker?.prices?.variants || {}).join(', ') || 'none')} / priceHistory.conditions keys ${escHtml(Object.keys(r.pokemonPriceTracker?.priceHistory?.conditions || {}).join(', ') || 'none')} / priceHistory.variants keys ${escHtml(Object.keys(r.pokemonPriceTracker?.priceHistory?.variants || {}).join(', ') || 'none')} / active price path ${escHtml(r.activePriceBasis?.pricePath || r.resolvedPricePath || 'n/a')} / reason a row says No Real Price ${escHtml(r.noRealPriceReason || '')} / normalizedQuery ${escHtml(r.lookupDebug?.normalizedQuery || '')} / lookupPath ${escHtml(r.lookupDebug?.path || r.lookupDebug?.sourcePath || 'n/a')} / exactHydrated ${escHtml(String(!!r.lookupDebug?.exactHydrated))} / parseTitle ${escHtml(JSON.stringify(r.lookupDebug?.parseTitle || r.pptParseTitle || null))} / confidence ${escHtml(String(r.lookupDebug?.confidence || r.confidence || ''))} / autoSelect ${escHtml(String(!!(r.lookupDebug?.autoSelect || r.autoSelect)))} / selectedCondition ${escHtml(r.selectedCondition || r.condition || '')} / selectedFinish ${escHtml(qplFinishLabel(r.selectedFinish || r.finish || ''))} / activePriceBasis ${escHtml(JSON.stringify(r.activePriceBasis || {}))} / generatedTcgUrl ${escHtml(builtTcgLink.url || '')} / cache ${escHtml(r.lookupDebug?.cache || r.cache?.source || 'live/none')} / quotaCooldown ${escHtml(String(pokemonPriceTrackerQuotaBlocked()))} / apiCallsConsumed ${escHtml(localStorage.getItem('ppt_last_consumed') || '')}</div>`) + '</details>' : ''}
     </div>
   </div>`;
 }
@@ -38005,7 +38017,6 @@ async function selectQuickLookupResult(idx){
         })()}
         <button class="hbtn ppt-refresh-btn ppt-refresh-btn-wide" data-qpl-idx="${idx}" onclick="refreshResearchPrice(${idx})" title="Refresh this item from its best current price source">↻ REFRESH PRICE</button>
         <div class="qpl-price">$${Number(r.market || 0).toFixed(2)}</div>
-        ${buySignalChipHtml(buySignalFor(r), { onclick:`openQplChartModal(${idx})` })}
         <div class="qpl-price-sub">${escHtml(r.note || 'Review details, then add to inventory or buy offer.')}</div>
       </div>
     </div>

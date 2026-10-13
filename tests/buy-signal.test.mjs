@@ -128,7 +128,15 @@ const extractFn = (name, prefix = 'function ') => { const s = dashboard.indexOf(
 assert.match(dashboard, /<script src="scripts\/buy-signal\.js\?v=[^"]+" defer><\/script>/);
 assert.match(extractFn('buySignalPoints'), /const series = pokemonPptAllHistorySeries\(r\);\s*const sel = series\.find\(s => s\.selected\) \|\| series\[0\];/, 'reads the same series the chart draws');
 assert.match(extractFn('openQplChartModal', 'async function '), /const panel = buySignalPanelHtml\(r, idx\);\s*if\(panel\) modal\.querySelector\('\.qpl-chart-card'\)\?\.insertAdjacentHTML\('beforeend', panel\);/);
-assert.match(dashboard, /<div class="qpl-price">\$\$\{Number\(r\.market \|\| 0\)\.toFixed\(2\)\}<\/div>\s*\$\{buySignalChipHtml\(buySignalFor\(r\), \{ onclick:`openQplChartModal\(\$\{idx\}\)` \}\)\}/);
+assert.match(dashboard, /<div class="qpl-meta">\$\{escHtml\(meta \|\| r\.note \|\| r\.category \|\| ''\)\}<\/div>\s*\$\{buySignalPillHtml\(buySignalFor\(r\), idx\)\}/, 'big verdict pill at the top of every research card');
+assert.doesNotMatch(dashboard, /<div class="qpl-price">\$\$\{Number\(r\.market \|\| 0\)\.toFixed\(2\)\}<\/div>\s*\$\{buySignalChipHtml/, 'no second chip under the price');
+{
+  const pill = new Function(extractFn('buySignalPillHtml') + '\nreturn buySignalPillHtml;')();
+  assert.match(pill({ verdict:'BUY', maxPrice:45, metrics:{} }, 3), /^<button type="button" class="buy-sig-pill buy" onclick="openQplChartModal\(3\)"[^>]*>🟢 BUY<span>up to <b>\$45\.00<\/b><\/span><i>WHY ›<\/i><\/button>$/);
+  assert.match(pill({ verdict:'PASS', maxPrice:0, metrics:{} }, 0), /🔴 PASS<i>WHY ›<\/i>/);
+  assert.match(pill({ verdict:'BUY_LOW', maxPrice:20, metrics:null }, 0), /class="buy-sig-pill na"[^>]*>⚪ NO TREND YET<span>up to <b>\$20\.00/);
+  assert.equal(pill(null), '');
+}
 assert.match(extractFn('selectedQuickLookupItem'), /signalHistory:isComic \? \[\] : buySignalHistorySnapshot\(r\),/);
 assert.match(extractFn('renderBuyList'), /\$\{buyTraySignalHtml\(i, offerVal\)\}/);
 assert.match(extractFn('buyItemToInventoryUpdates'), /buySignal = \{ verdict:sig\.verdict, maxPrice:sig\.maxPrice, market, paid:cost, flags:sig\.flags, at:new Date\(\)\.toISOString\(\) \}/);
