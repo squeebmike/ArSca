@@ -521,7 +521,7 @@ assert.match(receiveSrc, /if\(pd\.ebayApiSystem==='trading'\)await deps\.ebayRev
   'a short-shipped Trading-API-built listing must revise quantity via the ItemID+SKU-keyed Trading path, not the offerId-keyed REST one');
 assert.match(receiveSrc, /else await deps\.ebayReviseOfferQuantity\(env,ebayToken,pd\.ebayOfferId,receivedQty\);/,
   'a short-shipped REST-created listing\'s quantity must still be pushed down on the live eBay offer exactly as before');
-assert.match(receiveSrc, /data:\{\.\.\.pd,qty:receivedQty,quantity:receivedQty\}/, 'the local presale row must be reduced to match what actually arrived');
+assert.match(receiveSrc, /data:\{\.\.\.pd,qty:receivedQty,quantity:receivedQty(?:,focReceivedAt:new Date\(\)\.toISOString\(\))?\}/, 'the local presale row must be reduced to match what actually arrived');
 assert.match(receiveSrc, /const \{ data:inserted \}=rows\.length\?await db\('inventory_items',\{method:'POST'/,
   'must skip the insert call entirely when nothing needs a new standalone row (all received copies already absorbed by the live listing)');
 
