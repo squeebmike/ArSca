@@ -55,7 +55,7 @@ const base = { points:series(() => 50), category:'Pokemon' };
   assert.ok(hot.maxPrice > plain.maxPrice && slow.maxPrice < plain.maxPrice);
   assert.equal(hot.verdict, 'BUY'); assert.equal(slow.verdict, 'BUY_LOW');
   assert.ok(hot.reasons.some(r => r.text === "Sells well here: You've sold 6 Eevee."));
-  assert.match(hot.math[2], /^Keep 15% \(sells fast, liquid Pokémon, -5% sells well here\)/);
+  assert.match(hot.math[2], /^Pay up to 85% \(sells fast, liquid Pokémon, \+5% sells well here\)/);
   assert.equal(S.evaluateBuySignal({ ...base, storeDemand:{ rating:'plenty', sentence:'Lots.' } }).verdict, 'BUY_LOW');
 }
 {
@@ -83,6 +83,10 @@ assert.match(extractFn('renderReportsPanel'), /<div id="what-to-buy-panel"><\/di
 assert.match(extractFn('renderWhatToBuyPanel'), /🟢 BUY MORE[\s\S]*🟡 HAVE PLENTY[\s\S]*🔴 GO EASY[\s\S]*CUSTOMERS ARE ASKING FOR[\s\S]*GRADING CANDIDATES IN STOCK/);
 assert.match(extractFn('storeDemandSnapshot'), /if\(id && soldIds\.has\(id\)\) return;/, 'a checkout line for a sold inventory row is not counted twice');
 assert.match(dashboard, /<label>GRADING COST \$\$\{cell\('bt-gradingCost', t\.gradingCost\)\}<\/label>/);
+// Buy targets read as Pay % (stored as the margin kept, 100 - pay).
+assert.match(dashboard, /<b>Pay % fast<\/b><b>Pay % avg<\/b><b>Pay % slow<\/b><b>Trade %<\/b>/);
+assert.match(dashboard, /cell\('bt-'\+key\+'-fast', 100 - t\[key\]\.fast\)/);
+assert.match(extractFn('saveBuyTargetsFromForm', 'async function '), /const pay = num\(`bt-\$\{key\}-\$\{f\}`, 5, 100\); next\[key\]\[f\] = pay == null \? t\[key\]\[f\] : 100 - pay;/);
 {
   const html = new Function('escHtml', extractFn('whatToBuyRowsHtml') + '\nreturn whatToBuyRowsHtml;')(v => String(v))(
     [{ label:'Eevee', dim:'character', sold:6, avgDays:12, marginPct:30, stockQty:4, monthsOfStock:2.1 }], 'none');

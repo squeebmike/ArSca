@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.10.13.2-buy-pill';
+const APP_VERSION = '2026.10.13.3-buy-targets-pay-pct';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -34900,18 +34900,18 @@ function buyTargetRules(group){
 }
 function buyTargetSummary(group){
   const t = buyTargetsSettings(), g = t[group] || t.other, name = (BUY_TARGET_GROUPS.find(x => x[0] === group) || [,'This category'])[1];
-  return `${name} margins: ${g.fast}% fast sellers, ${g.avg}% average, ${g.slow}% slow or jumpy, +${t.stocked}% if you already have some; never under $${Number(t.minProfit).toFixed(2)} profit; trade credit ${g.trade}% of resale on fast sellers`;
+  return `${name}: pay up to ${100 - g.fast}% of resale on fast sellers, ${100 - g.avg}% average, ${100 - g.slow}% slow or jumpy, ${t.stocked}% less if you already have some; never under $${Number(t.minProfit).toFixed(2)} profit; trade credit ${g.trade}% of resale on fast sellers`;
 }
 function buyTargetsSettingsHtml(){
   const t = buyTargetsSettings();
   const cell = (id, v) => `<input id="${id}" class="tsi" type="number" min="0" max="95" step="1" value="${escHtml(String(v))}" style="margin:0;width:100%;min-width:0">`;
   return `<div class="buy-targets-settings">
     <div style="font-family:'Orbitron',monospace;font-size:11px;color:var(--g);margin-bottom:6px">BUY TARGETS</div>
-    <div style="font-family:var(--font-mono);font-size:9px;color:var(--dim);line-height:1.6;margin-bottom:8px">The profit you keep when buying, by category and by how fast a card sells (TCGplayer sales a week: fast 10+, slow under 3). Walk-away price = expected resale - fees - margin. TRADE = trade credit as % of resale for a fast seller; slower cards drop by as many points as their margin goes up.</div>
-    <div class="buy-targets-grid"><b>Category</b><b>Fast %</b><b>Average %</b><b>Slow %</b><b>Trade %</b>
-      ${BUY_TARGET_GROUPS.map(([key, label]) => `<span>${escHtml(label)}</span>${cell('bt-'+key+'-fast', t[key].fast)}${cell('bt-'+key+'-avg', t[key].avg)}${cell('bt-'+key+'-slow', t[key].slow)}${cell('bt-'+key+'-trade', t[key].trade)}`).join('')}
+    <div style="font-family:var(--font-mono);font-size:9px;color:var(--dim);line-height:1.6;margin-bottom:8px">How much of a card's expected resale (after card fees) you'll pay, by category and by how fast it sells (TCGplayer sales a week: fast 10+, slow under 3). Example: Pay 80% on a $100 fast seller = walk away above about $77.50. TRADE = trade credit as % of resale for a fast seller; slower cards drop by the same points their Pay % drops.</div>
+    <div class="buy-targets-grid"><b>Category</b><b>Pay % fast</b><b>Pay % avg</b><b>Pay % slow</b><b>Trade %</b>
+      ${BUY_TARGET_GROUPS.map(([key, label]) => `<span>${escHtml(label)}</span>${cell('bt-'+key+'-fast', 100 - t[key].fast)}${cell('bt-'+key+'-avg', 100 - t[key].avg)}${cell('bt-'+key+'-slow', 100 - t[key].slow)}${cell('bt-'+key+'-trade', t[key].trade)}`).join('')}
     </div>
-    <div class="buy-targets-grid buy-targets-extra"><label>MIN PROFIT $${cell('bt-minProfit', t.minProfit)}</label><label>CARD FEES %${cell('bt-feePct', t.feePct)}</label><label>+% IF IN STOCK${cell('bt-stocked', t.stocked)}</label><label>GRADING COST $${cell('bt-gradingCost', t.gradingCost)}</label></div>
+    <div class="buy-targets-grid buy-targets-extra"><label>MIN PROFIT $${cell('bt-minProfit', t.minProfit)}</label><label>CARD FEES %${cell('bt-feePct', t.feePct)}</label><label>PAY % LESS IF IN STOCK${cell('bt-stocked', t.stocked)}</label><label>GRADING COST $${cell('bt-gradingCost', t.gradingCost)}</label></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"><button class="hbtn" onclick="saveBuyTargetsFromForm()">SAVE BUY TARGETS</button><button class="hbtn" onclick="resetBuyTargets()">RESET TO DEFAULTS</button></div>
   </div>`;
 }
@@ -34920,8 +34920,11 @@ async function saveBuyTargetsFromForm(){
   const t = buyTargetsSettings(), next = { minProfit:num('bt-minProfit', 0, 1000) ?? t.minProfit, feePct:num('bt-feePct', 0, 50) ?? t.feePct, stocked:num('bt-stocked', 0, 50) ?? t.stocked, gradingCost:num('bt-gradingCost', 0, 1000) ?? t.gradingCost };
   for(const [key] of BUY_TARGET_GROUPS){
     next[key] = {};
-    for(const f of ['fast','avg','slow','trade']) next[key][f] = num(`bt-${key}-${f}`, 0, 95) ?? t[key][f];
-    if(!(next[key].fast <= next[key].avg && next[key].avg <= next[key].slow)) { toast_dash(`${BUY_TARGET_GROUPS.find(x => x[0] === key)[1]}: fast should be the lowest margin and slow the highest`); return; }
+    // The boxes are Pay %; stored as the margin kept (100 - pay), which is
+    // what the buy signal works in.
+    for(const f of ['fast','avg','slow']) { const pay = num(`bt-${key}-${f}`, 5, 100); next[key][f] = pay == null ? t[key][f] : 100 - pay; }
+    next[key].trade = num(`bt-${key}-trade`, 0, 95) ?? t[key].trade;
+    if(!(next[key].fast <= next[key].avg && next[key].avg <= next[key].slow)) { toast_dash(`${BUY_TARGET_GROUPS.find(x => x[0] === key)[1]}: Pay % should be highest for fast sellers and lowest for slow ones`); return; }
   }
   const cloud = await saveVendorProfile({ buyTargets:next });
   toast_dash(cloud ? 'Buy targets saved' : 'Buy targets saved on this device only -- cloud sync failed');

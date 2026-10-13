@@ -252,7 +252,8 @@
     const marginWhy = !m ? 'no sales data, so the standard margin'
       : speed === 'fast' ? `sells fast${isPokemon ? ', liquid Pokémon' : ''}` : speed === 'slow' ? (flags.includes('slow') ? 'slow seller' : 'price swings a lot') : 'sells at an average pace';
     const adjust = [];
-    const bump = (on, pts, why) => { if(on && pts){ marginPct += pts; adjust.push(`${pts > 0 ? '+' : ''}${pts}% ${why}`); } };
+    // Shown as pay %: a margin bump of +5 reads "-5% since you have some".
+    const bump = (on, pts, why) => { if(on && pts){ marginPct += pts; adjust.push(`${pts > 0 ? '-' : '+'}${Math.abs(pts)}% ${why}`); } };
     bump(flags.includes('stocked'), R.marginStocked, 'since you have some');
     bump(flags.includes('newSet'), R.marginNewSet, 'new set');
     bump(flags.includes('hotHere'), R.marginHotHere, 'sells well here');
@@ -291,7 +292,7 @@
     const math = [
       `Resale: ${resale.basis}`,
       R.feePct || R.feeFixed ? `After ${R.feePct}% card fees${R.feeFixed ? ` + ${money(R.feeFixed)}` : ''}: ${money(resaleNet)}` : `No fees (in-store): ${money(resaleNet)}`,
-      `Keep ${marginPct}% (${marginNote}): walk away above ${money(walkAway)}`,
+      `Pay up to ${100 - marginPct}% (${marginNote}): walk away above ${money(walkAway)}`,
       `Open at ${money(openPrice)} · trade credit up to ${money(tradeMax)} (${Math.round(tradePctUsed)}% of resale)`,
     ];
 

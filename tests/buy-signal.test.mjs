@@ -27,7 +27,7 @@ const run = (points, extra = {}) => S.evaluateBuySignal({ points, category:'Poke
   assert.deepEqual(s.math, [
     "Resale: $91.00 less another 12% -- still falling, so valued as if it keeps sliding at half last month's pace",
     'After 3% card fees: $77.60',
-    'Keep 20% (sells fast, liquid Pokémon): walk away above $62.00',
+    'Pay up to 80% (sells fast, liquid Pokémon): walk away above $62.00',
     'Open at $54.50 · trade credit up to $64.00 (80% of resale)',
   ]);
   assert.match(s.reasons[0].text, /^Down 24\.2% in 30 days and set a new 30-day low today -- still falling/);
@@ -93,7 +93,7 @@ assert.equal(run(series(() => 30, 0.05)).verdict, 'PASS', 'barely sells');
 {
   const s = run(series(() => 50, 10), { stockQty:2 });
   assert.equal(s.verdict, 'BUY_LOW'); assert.equal(s.marginPct, 25);
-  assert.match(s.math[2], /^Keep 25% \(sells fast, liquid Pokémon, \+5% since you have some\): walk away above \$36\.25$/);
+  assert.match(s.math[2], /^Pay up to 75% \(sells fast, liquid Pokémon, -5% since you have some\): walk away above \$36\.25$/);
   assert.equal(run(series(() => 50, 10), { stockQty:4 }).verdict, 'PASS');
 }
 // Thin history: no trend call, standard margin, never a confident BUY; no price -> nothing.
@@ -162,7 +162,7 @@ assert.match(extractFn('buySignalFor'), /rules:buyTargetRules\(group\)/);
   profile = { buyTargets:{ sports:{ fast:30, trade:70 }, minProfit:4 } };
   assert.deepEqual(api.buyTargetRules('sports'), { marginFastPokemon:30, marginFast:30, marginAvg:35, marginSlow:45, tradePctPokemon:70, tradePctOther:70, minProfit:4, feePct:3, marginStocked:5, gradingCost:25 }, 'saved values over the defaults, per field');
   assert.equal(api.buyTargetRules('mtg').marginFast, 25, 'other categories keep their defaults');
-  assert.match(api.buyTargetSummary('sports'), /^Sports cards margins: 30% fast sellers, 35% average, 45% slow or jumpy, \+5% if you already have some; never under \$4\.00 profit; trade credit 70% of resale on fast sellers$/);
+  assert.match(api.buyTargetSummary('sports'), /^Sports cards: pay up to 70% of resale on fast sellers, 65% average, 55% slow or jumpy, 5% less if you already have some; never under \$4\.00 profit; trade credit 70% of resale on fast sellers$/);
 }
 // Chip only when there's history to judge, or a reason to pass.
 {
