@@ -349,16 +349,27 @@
   // Ratio book value from what we could find: eBay sold comps first, then
   // PriceCharting, then what other sellers ask (asking prices run high, so
   // a bit under the median ask).
-  function ratioValue({ soldMedian, soldCount, pcUngraded, activeMedian, activeCount, ourSales } = {}){
+  // A PriceCharting match that prices a 1:25 like a regular copy ($5.17)
+  // matched the wrong cover -- don't price a ratio book off it.
+  function ratioPcSuspicious({ pcUngraded, activeMedian, activeCount, coverPrice, ratio } = {}){
+    const pc = num(pcUngraded);
+    if(!(pc > 0)) return false;
+    if(num(ratio) >= 10 && num(coverPrice) > 0 && pc < num(coverPrice) * 2.5) return true;
+    return num(activeMedian) > 0 && num(activeCount) >= 3 && pc < num(activeMedian) * 0.35;
+  }
+  // ourSales: { count, median, last } -- what this exact cover sold for here
+  // (register + our eBay listing). A real sale beats a guide or an ask.
+  function ratioValue({ soldMedian, soldCount, pcUngraded, activeMedian, activeCount, ourSales, coverPrice, ratio } = {}){
     const out = [];
+    const ours = typeof ourSales === 'number' ? { count:1, median:ourSales } : (ourSales || {});
     if(num(soldMedian) > 0 && num(soldCount) >= 2) out.push({ price:num(soldMedian), basis:'eBay sold median (' + soldCount + ' sold)' });
-    if(num(pcUngraded) > 0) out.push({ price:num(pcUngraded), basis:'PriceCharting raw' });
+    if(num(ours.median) > 0 && num(ours.count) >= 1) out.push({ price:num(ours.median), basis:'what it sold for here (' + plural(num(ours.count), 'sale') + ')' });
+    if(num(pcUngraded) > 0 && !ratioPcSuspicious({ pcUngraded, activeMedian, activeCount, coverPrice, ratio })) out.push({ price:num(pcUngraded), basis:'PriceCharting raw' });
     if(num(activeMedian) > 0 && num(activeCount) >= 3) out.push({ price:Math.round(num(activeMedian) * 0.9 * 100) / 100, basis:'90% of the median eBay asking price (' + activeCount + ' listed)' });
-    if(num(ourSales) > 0) out.push({ price:num(ourSales), basis:'what this cover sold for here' });
     return out[0] || null;
   }
 
-  const api = { RULES, DEFAULT_WATCH, CHARACTERS, seriesKey, parseTitle, isMainCover, charactersIn, splitArtists, artistsInTitle, coverTypes, groupsFor, buildComicDemand, runFor, runText, runBoost, runOverstocked, watching, familyIntel, whatToOrder, ratioValue };
+  const api = { RULES, DEFAULT_WATCH, CHARACTERS, seriesKey, parseTitle, isMainCover, charactersIn, splitArtists, artistsInTitle, coverTypes, groupsFor, buildComicDemand, runFor, runText, runBoost, runOverstocked, watching, familyIntel, whatToOrder, ratioValue, ratioPcSuspicious };
   if(typeof module !== 'undefined' && module.exports) module.exports = api;
   root.ArsCaComicDemand = api;
 })(typeof window !== 'undefined' ? window : globalThis);

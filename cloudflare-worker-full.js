@@ -5372,7 +5372,7 @@ async function routeRequest(request, env, ctx) {
       // create instead of silently spinning up a duplicate against the
       // same physical stock.
       {
-        const { data: alreadyListedRows } = await supabaseAdminFetch(env, `inventory_items?store_id=eq.${encodeURIComponent(storeId)}&status=in.(presale,in_stock)&select=id,status,data`);
+        const { data: alreadyListedRows } = await supabaseAdminFetchAll(env, `inventory_items?store_id=eq.${encodeURIComponent(storeId)}&status=in.(presale,in_stock)&data->>source=in.(foc_presale,foc_presale_bundle)&select=id,status,data&order=id.asc`);
         const alreadyListed = (alreadyListedRows || []).find(row => {
           const d = row.data || {};
           return (d.source === 'foc_presale' || d.source === 'foc_presale_bundle') && d.focSkuId === sku.id && d.ebayListingId && !d.ebayWithdrawnAt;
@@ -5623,7 +5623,7 @@ async function routeRequest(request, env, ctx) {
       // physical stock -- a real double-sell risk, not just clutter. A
       // cover already live under a DIFFERENT eBay listing blocks the whole
       // create instead of silently spinning up a duplicate.
-      const { data: alreadyListedRows } = await supabaseAdminFetch(env, `inventory_items?store_id=eq.${encodeURIComponent(storeId)}&status=in.(presale,in_stock)&select=id,status,data`);
+      const { data: alreadyListedRows } = await supabaseAdminFetchAll(env, `inventory_items?store_id=eq.${encodeURIComponent(storeId)}&status=in.(presale,in_stock)&data->>source=in.(foc_presale,foc_presale_bundle)&select=id,status,data&order=id.asc`);
       const alreadyListed = [];
       for (const row of alreadyListedRows || []) {
         const d = row.data || {};
@@ -5939,7 +5939,7 @@ async function routeRequest(request, env, ctx) {
       catch (tokenErr) { return json({ needsToken: true, error: tokenErr.message }, 401); }
       if (!ebayToken) return json({ needsToken: true, error: 'Connect eBay first: missing user access/refresh token' }, 401);
 
-      const { data: rows } = await supabaseAdminFetch(env, `inventory_items?store_id=eq.${encodeURIComponent(storeId)}&status=eq.presale&select=id,data`);
+      const { data: rows } = await supabaseAdminFetchAll(env, `inventory_items?store_id=eq.${encodeURIComponent(storeId)}&status=eq.presale&data->>source=in.(foc_presale,foc_presale_bundle)&select=id,data&order=id.asc`);
       const live = (rows || []).filter(r => {
         const d = r.data || {};
         return d.source === 'foc_presale' && d.ebayListingId && !d.ebayWithdrawnAt;
@@ -6266,6 +6266,7 @@ async function routeRequest(request, env, ctx) {
           return item.linkUrl || '/item/' + encodeURIComponent(item.id) + '/' + itemDetailSlug(item);
         },
         revertEbayPresaleListing: revertEbayRestListingToPresale,
+        revisePresaleListing: ebayRevisePresalePriceQuantity,
         ebayActiveListings: fetchEbayActiveListings,
         ebaySoldComps: async (soldEnv, q, limit = 40) => {
           let result = await fetchSoldCompsProvider(soldEnv, q, limit).catch(e => ({ comps: [], warning: e.message }));
@@ -10719,6 +10720,39 @@ async function routeRequest(request, env, ctx) {
     // presale notice back in the description, and the FOC presale shipping
     // policy (long handling time to the on-sale date) instead of the normal
     // one. Quantity and price stay as they are.
+    // FOC wall: change a live presale's eBay price and/or available quantity
+    // and nothing else -- reviseEbayListing rebuilds the whole listing, which
+    // has wiped a store's description before. Inventory API listings go
+    // through bulk_update_price_quantity (price + quantity only); multi-cover
+    // Trading listings revise just that cover's variation.
+    async function ebayRevisePresalePriceQuantity(env, ebayToken, d, { price, quantity } = {}) {
+      const hasPrice = Number(price) > 0;
+      const hasQty = quantity !== null && quantity !== undefined && quantity !== '' && Number.isInteger(Number(quantity)) && Number(quantity) >= 0;
+      if (!hasPrice && !hasQty) throw new Error('Nothing to change');
+      if (d.ebayApiSystem === 'trading') {
+        if (!d.ebayListingId || !d.ebaySku) throw new Error('This listing is missing its eBay item id');
+        const parts = (hasPrice ? `<StartPrice>${Number(price).toFixed(2)}</StartPrice>` : '') + (hasQty ? `<Quantity>${Number(quantity)}</Quantity>` : '');
+        await ebayTradingApiCall(ebayToken, 'ReviseFixedPriceItem', `<Item><ItemID>${xmlEscape(d.ebayListingId)}</ItemID><Variations><Variation><SKU>${xmlEscape(d.ebaySku)}</SKU>${parts}</Variation></Variations></Item>`);
+        return { ok: true };
+      }
+      if (!d.ebayOfferId || !d.ebaySku) throw new Error('This listing is missing its eBay offer id');
+      const offer = { offerId: d.ebayOfferId };
+      if (hasQty) offer.availableQuantity = Number(quantity);
+      if (hasPrice) offer.price = { value: Number(price).toFixed(2), currency: 'USD' };
+      const request = { sku: d.ebaySku, offers: [offer] };
+      if (hasQty) request.shipToLocationAvailability = { quantity: Number(quantity) };
+      const res = await ebayFetchWithRetry('https://api.ebay.com/sell/inventory/v1/bulk_update_price_quantity', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + ebayToken, 'Content-Type': 'application/json', 'Content-Language': 'en-US' },
+        body: JSON.stringify({ requests: [request] }),
+      });
+      const txt = await res.text();
+      let data; try { data = JSON.parse(txt); } catch (_) { data = null; }
+      const r = data?.responses?.[0];
+      if (!res.ok || (r && Number(r.statusCode) >= 400)) throw new Error('eBay update failed (' + (r?.statusCode || res.status) + '): ' + (r?.errors?.[0]?.message || data?.errors?.[0]?.message || txt.substring(0, 200)));
+      return { ok: true };
+    }
+
     async function revertEbayRestListingToPresale(env, ebayToken, { sku, offerId, groupKey, onSaleDate, basePolicyId }) {
       const onSale = new Date(String(onSaleDate || '').includes('T') ? onSaleDate : String(onSaleDate || '') + 'T00:00:00Z');
       if (!Number.isFinite(onSale.getTime())) throw new Error('No on-sale date on this cover');

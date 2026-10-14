@@ -1,6 +1,8 @@
 import fs from 'node:fs';
 import assert from 'node:assert/strict';
-import { presaleStockCheck, comicDemandFacts, handleFocRequest } from '../scripts/foc-preorders.mjs';
+import { presaleStockCheck, comicDemandFacts, handleFocRequest, presaleEditPatch } from '../scripts/foc-preorders.mjs';
+import { createRequire } from 'node:module';
+const D = createRequire(import.meta.url)('../scripts/comic-demand.js');
 
 // Store report: "why does it think I have Cyberpunk 2077 #1?" and "more
 // books than I have and two rows?" Receiving a packing slip switched EVERY
@@ -112,4 +114,52 @@ assert.match(worker, /if \(!policy\.id \|\| policy\.usedFallback\) throw new Err
 const ui = fs.readFileSync('scripts/foc-dashboard.js', 'utf8');
 assert.match(ui, /onclick="openPresaleStockCheck\(\)">🩺 PRESALE STOCK CHECK<\/button>/);
 assert.match(ui, /if\(!confirm\('Fix '\+/, 'nothing changes without confirming');
+
+// Store report: "I have this listed" but the cover wall said EBAY · ELIGIBLE.
+// The wall (and the PRH order's eBay-presold count, and the "already listed?"
+// guard before creating a presale) read the first 1,000 items only.
+assert.doesNotMatch(foc, /inventory_items\?store_id=eq\.\$\{encodeURIComponent\(storeId\)\}&status=in\.\(presale,sold,in_stock\)&select=id,status,data`/, 'no unpaged presale lookups left');
+assert.doesNotMatch(foc, /inventory_items\?store_id=eq\.\$\{encodeURIComponent\(storeId\)\}&status=eq\.presale&select=/);
+assert.match(foc, /focPresaleRows\(db,storeId\)\.then\(data=>\(\{ data \}\)\)/);
+assert.match(foc, /async function ebayPresoldBySku\(db,storeId\)\{[\s\S]{0,900}const rows=await focPresaleRows\(db,storeId\);/, 'the PRH order counts every eBay presale');
+assert.equal((worker.match(/const \{ data: alreadyListedRows \} = await supabaseAdminFetchAll\(env, `inventory_items\?store_id=eq\.\$\{encodeURIComponent\(storeId\)\}&status=in\.\(presale,in_stock\)&data->>source=in\.\(foc_presale,foc_presale_bundle\)/g) || []).length, 2, 'both create-presale guards see every listing');
+
+// Re-price / change quantity of a live eBay presale from the cover wall.
+{
+  const p = presaleEditPatch({ qty:2, focPresaleOriginalQty:3, salePrice:49.69, market:49.69 }, 'presale', { price:39.99, available:5 });
+  assert.deepEqual([p.status, p.data.salePrice, p.data.market, p.data.qty, p.data.focPresaleOriginalQty, p.sold], ['presale', 39.99, 39.99, 5, 6, 1], 'the 1 already sold stays sold');
+  const back = presaleEditPatch({ qty:0, focPresaleOriginalQty:2 }, 'sold', { available:3 });
+  assert.deepEqual([back.status, back.data.focPresaleOriginalQty], ['presale', 5], 'sold out + more copies = live again');
+  const priceOnly = presaleEditPatch({ qty:2, focPresaleOriginalQty:2 }, 'presale', { price:20 });
+  assert.equal(priceOnly.data.qty, 2);
+}
+{
+  const sku = '11111111-2222-4333-8444-555555555555', calls = [], patches = [];
+  const row = { id:'row-1', status:'presale', data:{ source:'foc_presale', focSkuId:sku, ebayListingId:'257789576095', ebayOfferId:'305401038011', ebaySku:'lba-x', qty:2, focPresaleOriginalQty:2, salePrice:49.69 } };
+  const deps = { json:(data, status = 200) => ({ status, data }), requireStoreUser:async () => ({ user:{ id:'u' } }), readJsonWithLimit:async req => ({ data:JSON.parse(req.body) }),
+    getEbayUserAccessToken:async () => 'tok', revisePresaleListing:async (env, tok, d, change) => { calls.push([d.ebayOfferId, change]); },
+    supabaseAdminFetch:async (env, path, opts = {}) => { if (opts.method === 'PATCH') { patches.push(JSON.parse(opts.body)); return { data:null }; } return { data:path.startsWith('inventory_items?') ? [row] : [] }; } };
+  const call = body => handleFocRequest({ method:'POST', headers:{ get:() => null }, body:JSON.stringify({ storeId:'st', skuId:sku, ...body }) }, {}, new URL('https://x/foc/admin/ebay-presale-edit'), deps);
+  const ok = await call({ price:39.99, available:3 });
+  assert.deepEqual(ok.data, { ok:true, listingId:'257789576095', price:39.99, available:3, sold:0 });
+  assert.deepEqual(calls, [['305401038011', { price:39.99, quantity:3 }]]);
+  assert.equal(patches[0].data.salePrice, 39.99);
+  assert.equal((await call({ price:0 })).status, 400);
+  assert.equal((await call({})).status, 400);
+  calls.length = 0; patches.length = 0;
+  const failing = await handleFocRequest({ method:'POST', headers:{ get:() => null }, body:JSON.stringify({ storeId:'st', skuId:sku, price:10 }) }, {}, new URL('https://x/foc/admin/ebay-presale-edit'), { ...deps, revisePresaleListing:async () => { throw new Error('eBay down'); } });
+  assert.equal(failing.status, 502);
+  assert.equal(patches.length, 0, 'nothing saved here when eBay refuses');
+}
+assert.match(worker, /https:\/\/api\.ebay\.com\/sell\/inventory\/v1\/bulk_update_price_quantity/, 'price/quantity only -- never a full listing rebuild');
+assert.match(worker, /revisePresaleListing: ebayRevisePresalePriceQuantity,/);
+assert.match(ui, /if\(\(status==='LISTED'\|\|status==='SOLD_OUT'\)&&v\.ebayListingId\)action=focEbayEditHtml\(v\)\+action;/);
+assert.match(ui, /href="https:\/\/www\.ebay\.com\/itm\/'\+encodeURIComponent\(v\.ebayListingId\)\+'"/);
+assert.match(ui, /if\(!confirm\('Change the eBay listing for '/);
+
+// A PriceCharting match that prices a 1:25 like a regular copy is ignored.
+assert.equal(D.ratioPcSuspicious({ pcUngraded:5.17, coverPrice:4.99, ratio:25 }), true);
+assert.equal(D.ratioPcSuspicious({ pcUngraded:5.17, activeMedian:34.99, activeCount:6 }), true);
+assert.equal(D.ratioPcSuspicious({ pcUngraded:30, coverPrice:4.99, ratio:25, activeMedian:34.99, activeCount:6 }), false);
+assert.deepEqual(D.ratioValue({ pcUngraded:5.17, activeMedian:34.99, activeCount:6, coverPrice:4.99, ratio:25 }), { price:31.49, basis:'90% of the median eBay asking price (6 listed)' }, 'Jean Grey #1 1:25: priced off listings, not the $5.17 match');
 console.log('FOC presale stock fix checks passed');

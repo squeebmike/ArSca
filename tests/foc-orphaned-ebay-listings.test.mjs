@@ -50,7 +50,7 @@ const presaleRows = [
 function buildDb() {
   return async (env, path) => {
     if (path.startsWith('foc_cycles?')) return { data:cycles };
-    if (path.startsWith('inventory_items?') && path.includes('status=eq.presale')) return { data:presaleRows };
+    if (path.startsWith('inventory_items?') && (path.includes('status=eq.presale') || path.includes('&status=in.(presale)&'))) return { data:presaleRows };
     if (path.startsWith('foc_prh_submissions?')) return { data:submissions };
     return { data:[] };
   };
@@ -98,7 +98,7 @@ function mockDeps(overrides = {}) {
   const withdrawn = [];
   const deps = mockDeps({
     supabaseAdminFetch: async (env, path, options = {}) => {
-      if (path.startsWith('inventory_items?') && path.includes('status=eq.presale')) return { data:presaleRows };
+      if (path.startsWith('inventory_items?') && (path.includes('status=eq.presale') || path.includes('&status=in.(presale)&'))) return { data:presaleRows };
       if (options.method === 'PATCH' && path.startsWith('inventory_items?id=eq.')) { patchCalls.push({ path, body:JSON.parse(options.body) }); return { data:[] }; }
       return { data:[] };
     },

@@ -798,7 +798,8 @@ function ebayPresaleFields(row, presale, deps, safeBusinessDays) {
     return { ebayPresaleStatus:'RELEASED', ebayListed:listed, ebayPresold:soldQty, ebayAvailable:availableQty };
   }
   if (listed) {
-    return { ebayPresaleStatus:availableQty > 0 ? 'LISTED' : 'SOLD_OUT', ebayListed:true, ebayPresold:soldQty, ebayAvailable:availableQty, ebayInventoryItemGroupKey:groupKey, ebayGroupPhotosRepairedAt:groupPhotosRepairedAt };
+    return { ebayPresaleStatus:availableQty > 0 ? 'LISTED' : 'SOLD_OUT', ebayListed:true, ebayPresold:soldQty, ebayAvailable:availableQty, ebayInventoryItemGroupKey:groupKey, ebayGroupPhotosRepairedAt:groupPhotosRepairedAt,
+      ebayListingId:presale.listingId || '', ebayPrice:presale.price || 0, ebayListingCount:presale.listings || 0 };
   }
   const eligibleDate = deps.addBusinessDays(onSaleDate, -safeBusinessDays);
   return {
@@ -863,7 +864,7 @@ async function buildCycleCatalog(db, cycle, includeAdmin = false, env, deps, sto
     // it is d.source==='foc_presale' with real presale sales on it -- must
     // include in_stock rows too so a partially-sold or since-arrived presale
     // listing still reports its original/remaining/sold counts correctly.
-    includeAdmin && env && deps ? db(`inventory_items?store_id=eq.${encodeURIComponent(storeId)}&status=in.(presale,sold,in_stock)&select=id,status,data`) : Promise.resolve({ data:[] }),
+    includeAdmin && env && deps ? focPresaleRows(db,storeId).then(data=>({ data })) : Promise.resolve({ data:[] }),
   ]);
   const requestQty = new Map();
   for (const row of requestRows?.data || []) requestQty.set(row.sku_id, (requestQty.get(row.sku_id) || 0) + Number(row.requested_quantity || 0));
@@ -886,11 +887,16 @@ async function buildCycleCatalog(db, cycle, includeAdmin = false, env, deps, sto
     const remainingQty = row.status === 'sold' ? 0 : Number(d.qty ?? d.quantity ?? 0);
     const skuIds = isBundle ? d.focBundleSkuIds : [d.focSkuId];
     for (const skuId of skuIds) {
-      const prior = presaleBySkuId.get(skuId) || { originalQty:0, remainingQty:0, groupKey:'', groupPhotosRepairedAt:'' };
+      const prior = presaleBySkuId.get(skuId) || { originalQty:0, remainingQty:0, groupKey:'', groupPhotosRepairedAt:'', listings:0 };
+      const ownListing = !isBundle && d.ebayListingId && !d.ebayWithdrawnAt;
       presaleBySkuId.set(skuId, {
         originalQty:prior.originalQty + originalQty, remainingQty:prior.remainingQty + remainingQty,
         groupKey:prior.groupKey || d.ebayInventoryItemGroupKey || '',
         groupPhotosRepairedAt:prior.groupPhotosRepairedAt || d.ebayGroupPhotosRepairedAt || '',
+        // For editing the listing's price/quantity from the cover wall.
+        listingId:prior.listingId || (ownListing ? String(d.ebayListingId) : ''),
+        price:prior.price || (ownListing ? Number(d.salePrice || d.market || 0) : 0),
+        listings:prior.listings + (ownListing ? 1 : 0),
       });
     }
   }
@@ -1738,7 +1744,7 @@ export function comicDemandFacts({lines=[],items=[],stock=[],skus=[],artistRows=
   const facts=it=>{
     const sku=it?skuById.get(String(it.focSkuId||'')):null;
     const fromFoc=/^foc_/.test(String(it?.source||''));
-    return {series:text(it?.series,200),issue:text(it?.issue,20),cover:text(sku?.variant_label||(fromFoc?it?.variant:''),200),artist:comicArtistList(sku?.cover_artist,it?.detailArtists,it?.coverArtists)};
+    return {series:text(it?.series,200),issue:text(it?.issue,20),cover:text(sku?.variant_label||(fromFoc?it?.variant:''),200),artist:comicArtistList(sku?.cover_artist,it?.detailArtists,it?.coverArtists),skuId:text(it?.focSkuId,80)};
   };
   const sold=lines.map(l=>{
     const it=itemById.get(String(l.item_id||''));
@@ -1797,10 +1803,12 @@ export function coverTitleMatches(title,query){
 const median=values=>{const v=values.filter(n=>n>0).sort((a,b)=>a-b);if(!v.length)return null;const m=Math.floor(v.length/2);return Math.round((v.length%2?v[m]:(v[m-1]+v[m])/2)*100)/100;};
 export function summarizeCoverMarket(query,listings=[],comps=[],ownIds=new Set()){
   const own=id=>{const s=String(id||'');return ownIds.has(s)||ownIds.has(s.split('|')[1]||'');};
-  const active=listings.filter(l=>!own(l.itemId)&&coverTitleMatches(l.title,query));
+  const matching=listings.filter(l=>coverTitleMatches(l.title,query));
+  const active=matching.filter(l=>!own(l.itemId));
   const sold=comps.filter(c=>Number(c.total||c.price||0)>0&&coverTitleMatches(c.title,query)).sort((a,b)=>(Date.parse(b.soldAt||'')||0)-(Date.parse(a.soldAt||'')||0));
   const ask=active.map(l=>Number(l.price||0)),paid=sold.map(c=>Number(c.total||c.price||0));
   return {query:query.q,
+    ownListed:matching.length-active.length,
     active:{count:active.length,low:ask.length?Math.min(...ask):null,median:median(ask),high:ask.length?Math.max(...ask):null,presales:active.filter(l=>/pre-?sale|pre-?order/i.test(l.title||'')).length,sample:active.slice(0,3).map(l=>({title:text(l.title,120),price:l.price,url:l.url||''}))},
     sold:{count:sold.length,median:median(paid),low:paid.length?Math.min(...paid):null,high:paid.length?Math.max(...paid):null,last:sold[0]?{price:Number(sold[0].total||sold[0].price||0),soldAt:sold[0].soldAt||null,title:text(sold[0].title,120)}:null}};
 }
@@ -2187,7 +2195,7 @@ async function ebayPresoldBySku(db,storeId){
   // PRH distributor order (exportPrh, adminPrhSubmission): missing those
   // rows here doesn't just mis-report a dashboard badge, it silently
   // under-orders the distributor by the units already sold on eBay.
-  const {data:rows}=await db(`inventory_items?store_id=eq.${encodeURIComponent(storeId)}&status=in.(presale,sold,in_stock)&select=id,status,data`);
+  const rows=await focPresaleRows(db,storeId);
   const map=new Map();
   for(const row of rows||[]){
     const d=row.data||{};
@@ -2288,7 +2296,7 @@ async function adminPrhSubmission(request,env,deps,url){
 async function syncFocEbayListingsToOrder(env,deps,db,storeId,cycleId,finalQtyBySku){
   let ebayWithdrawnSkuIds=[];
   try{
-    const {data:presaleRows}=await db(`inventory_items?store_id=eq.${encodeURIComponent(storeId)}&status=eq.presale&select=id,data`);
+    const presaleRows=await focPresaleRows(db,storeId,'presale');
     const toWithdraw=(presaleRows||[]).filter(row=>{
       const d=row.data||{};
       // Trading-API-built group listings (ebayApiSystem:'trading') carry no
@@ -2335,7 +2343,7 @@ async function syncFocEbayListingsToOrder(env,deps,db,storeId,cycleId,finalQtyBy
   // more available than what's actually left to sell.
   let ebayQuantityUpdatedSkuIds=[];
   try{
-    const {data:presaleRowsForQty}=await db(`inventory_items?store_id=eq.${encodeURIComponent(storeId)}&status=eq.presale&select=id,data`);
+    const presaleRowsForQty=await focPresaleRows(db,storeId,'presale');
     const candidatesForQty=(presaleRowsForQty||[]).filter(row=>{
       const d=row.data||{};
       return d.source==='foc_presale'&&d.focCycleId===cycleId&&(d.ebayOfferId||(d.ebayApiSystem==='trading'&&d.ebayListingId&&d.ebaySku));
@@ -2440,7 +2448,7 @@ async function adminImportPrhCart(request,env,deps){
   // committed demand) but have no live eBay presale listing at all yet --
   // informational only, never auto-created (listing a cover is its own
   // deliberate step elsewhere, complete with photos/description choices).
-  const {data:presaleRows}=await db(`inventory_items?store_id=eq.${encodeURIComponent(storeId)}&status=eq.presale&select=data`);
+  const presaleRows=await focPresaleRows(db,storeId,'presale');
   const listedSkuIds=new Set((presaleRows||[]).filter(row=>{const d=row.data||{};return d.source==='foc_presale'&&d.focCycleId===cycleId&&(d.ebayOfferId||(d.ebayApiSystem==='trading'&&d.ebayListingId&&d.ebaySku));}).map(row=>row.data.focSkuId));
   const needsListing=updated.filter(item=>item.storeQuantity>0&&!listedSkuIds.has(item.skuId)).map(item=>({skuId:item.skuId,title:item.title,variantLabel:item.variantLabel,availableQty:item.storeQuantity}));
   return deps.json({ok:true,matchedCount:updated.filter(u=>u.orderedTotal>0).length,updated,unmatchedRows,ebayWithdrawnCount:ebayWithdrawnSkuIds.length,ebayQuantityUpdatedCount:ebayQuantityUpdatedSkuIds.length,needsListing});
@@ -2516,7 +2524,7 @@ async function adminEndFocEbayListings(request,env,deps){
   // Omitted entirely (not just empty), it falls back to "end everything
   // still live" -- the original behavior.
   const focSkuIds=Array.isArray(body.focSkuIds)?new Set(body.focSkuIds.map(String)):null;
-  const {data:presaleRows}=await db(`inventory_items?store_id=eq.${encodeURIComponent(storeId)}&status=eq.presale&select=id,data`);
+  const presaleRows=await focPresaleRows(db,storeId,'presale');
   const toWithdraw=(presaleRows||[]).filter(row=>{
     const d=row.data||{};
     // Same Trading-API-listing recognition as the auto-withdrawal sweep in
@@ -2575,7 +2583,7 @@ async function adminScanOrphanedEbayListings(request,env,deps,url){
   const auth=await deps.requireStoreUser(request,env,storeId,['owner','admin','manager','employee']);if(auth.error)return auth.error;
   const {data:cycles}=await db(`foc_cycles?store_id=eq.${encodeURIComponent(storeId)}&select=id,foc_date,status,customer_cutoff_at&order=foc_date.desc&limit=500`);
   const cycleById=new Map((cycles||[]).map(c=>[c.id,c]));
-  const {data:presaleRows}=await db(`inventory_items?store_id=eq.${encodeURIComponent(storeId)}&status=eq.presale&select=id,data`);
+  const presaleRows=await focPresaleRows(db,storeId,'presale');
   const live=(presaleRows||[]).filter(row=>{
     const d=row.data||{};
     const hasLiveEbayListing=d.ebayOfferId||(d.ebayApiSystem==='trading'&&d.ebayListingId&&d.ebaySku);
@@ -2636,7 +2644,7 @@ async function adminEndOrphanedEbayListings(request,env,deps){
   const auth=await deps.requireStoreUser(request,env,storeId,['owner','admin']);if(auth.error)return auth.error;
   const rowIds=Array.isArray(body.rowIds)?[...new Set(body.rowIds.map(String))].slice(0,500):[];
   if(!rowIds.length)return deps.json({ok:false,error:'rowIds is required'},400);
-  const {data:allPresaleRows}=await db(`inventory_items?store_id=eq.${encodeURIComponent(storeId)}&status=eq.presale&select=id,data`);
+  const allPresaleRows=await focPresaleRows(db,storeId,'presale');
   const toWithdraw=(allPresaleRows||[]).filter(row=>rowIds.includes(row.id));
   if(!toWithdraw.length)return deps.json({ok:true,endedCount:0,failedCount:0});
   if(!deps.getEbayUserAccessToken||!deps.withdrawEbayOffer)return deps.json({ok:false,error:'eBay is not configured for this store'},503);
@@ -2824,6 +2832,49 @@ async function presaleStockFacts(db,storeId){
     for(const l of lines||[])soldSince.set(l.item_id,(soldSince.get(l.item_id)||0)+Math.max(1,Number(l.quantity||1)));
   }
   return {presaleRows,receiveRows,skus,soldSince};
+}
+// Store ask: "I need an easier way to re-price and change things for eBay
+// here in FOC." Changes a cover's live eBay presale price and/or how many
+// are still available -- on eBay first, then on the presale row (keeping
+// what already sold, so presold counts and the PRH order stay right).
+export function presaleEditPatch(d={},status,{price,available}={}){
+  const oldQty=Number(d.qty??d.quantity??0),orig=Number(d.focPresaleOriginalQty||oldQty);
+  const sold=status==='sold'?orig:Math.max(0,orig-oldQty);
+  const next={...d};
+  if(Number(price)>0){next.salePrice=Math.round(Number(price)*100)/100;next.market=next.salePrice;}
+  let nextStatus=status;
+  if(available!=null&&available!==''){
+    const qty=Math.max(0,Math.floor(Number(available)));
+    next.qty=qty;next.quantity=qty;next.focPresaleOriginalQty=sold+qty;
+    if(status==='sold'&&qty>0)nextStatus=d.ebayPresaleConverted?'in_stock':'presale';
+  }
+  next.ebayEditedAt=new Date().toISOString();
+  return {status:nextStatus,data:next,sold};
+}
+async function adminEbayPresaleEdit(request,env,deps){
+  const limited=await deps.readJsonWithLimit(request,16*1024);if(limited.error)return limited.error;
+  const body=limited.data||{},storeId=text(body.storeId,80),skuId=text(body.skuId,80);
+  const auth=await deps.requireStoreUser(request,env,storeId,['owner','admin','manager']);if(auth.error)return auth.error;
+  if(!UUID_RE.test(skuId))return deps.json({ok:false,error:'skuId required'},400);
+  const price=body.price==null||body.price===''?null:Number(body.price);
+  const available=body.available==null||body.available===''?null:Number(body.available);
+  if(price!=null&&!(price>0&&price<100000))return deps.json({ok:false,error:'Enter a price above $0'},400);
+  if(available!=null&&!(Number.isInteger(available)&&available>=0&&available<=1000))return deps.json({ok:false,error:'Available must be a whole number, 0 or more'},400);
+  if(price==null&&available==null)return deps.json({ok:false,error:'Nothing to change'},400);
+  if(!deps.revisePresaleListing)return deps.json({ok:false,error:'eBay editing is not set up on this Worker'},501);
+  const db=(path,options)=>deps.supabaseAdminFetch(env,path,options);
+  const rows=(await focPresaleRows(db,storeId)).filter(r=>r.data?.source==='foc_presale'&&r.data?.focSkuId===skuId&&r.data?.ebayListingId&&!r.data?.ebayWithdrawnAt);
+  if(!rows.length)return deps.json({ok:false,error:'No live eBay presale listing for this cover'},404);
+  if(rows.length>1)return deps.json({ok:false,error:rows.length+' eBay listings for this one cover -- change them on eBay directly'},409);
+  const row=rows[0],d=row.data||{};
+  let ebayToken='';
+  try{ebayToken=await deps.getEbayUserAccessToken(env);}catch(e){return deps.json({ok:false,needsToken:true,error:e.message},401);}
+  if(!ebayToken)return deps.json({ok:false,needsToken:true,error:'Connect eBay first'},401);
+  try{await deps.revisePresaleListing(env,ebayToken,d,{price,quantity:available});}
+  catch(e){return deps.json({ok:false,error:e.message},502);}
+  const patch=presaleEditPatch(d,row.status,{price,available});
+  await db(`inventory_items?id=eq.${row.id}&store_id=eq.${encodeURIComponent(storeId)}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({status:patch.status,data:patch.data})});
+  return deps.json({ok:true,listingId:d.ebayListingId,price:patch.data.salePrice,available:Number(patch.data.qty),sold:patch.sold});
 }
 async function adminPresaleStockCheck(request,env,deps,url){
   const storeId=text(url.searchParams.get('store_id'),80);
@@ -3405,6 +3456,7 @@ export async function handleFocRequest(request, env, url, deps) {
   if(path==='/foc/admin/comic-sell-through'&&request.method==='GET')return adminComicSellThrough(request,env,deps,url);
   if(path==='/foc/admin/comic-demand'&&request.method==='GET')return adminComicDemand(request,env,deps,url);
   if(path==='/foc/admin/cover-market'&&request.method==='POST')return adminCoverMarket(request,env,deps);
+  if(path==='/foc/admin/ebay-presale-edit'&&request.method==='POST')return adminEbayPresaleEdit(request,env,deps);
   if(path==='/foc/admin/presale-stock-check'&&request.method==='GET')return adminPresaleStockCheck(request,env,deps,url);
   if(path==='/foc/admin/presale-stock-fix'&&request.method==='POST')return adminPresaleStockFix(request,env,deps);
   if(path==='/foc/admin/pick-list'&&request.method==='GET')return adminPickList(request,env,deps,url);
