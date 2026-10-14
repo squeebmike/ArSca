@@ -45,6 +45,7 @@ function buildDb(patchCalls) {
     if (path.startsWith('foc_preorder_orders?')) return { data:[{ id:'order-1' }] };
     if (path.startsWith('foc_preorder_items?')) return { data:[{ sku_id:'sku-A', quantity:1 }, { sku_id:'sku-C', quantity:2 }, { sku_id:'sku-D', quantity:1 }] };
     if (path.includes('status=in.(presale,sold,in_stock)')) return { data:presaleRows };
+    if (path.includes('&status=in.(presale)&')) return { data:presaleRows.filter(r => r.status === 'presale') };
     if (path.includes('status=eq.presale')) { if (options.method === 'PATCH') { patchCalls.push({ path, body:JSON.parse(options.body) }); return { data:[] }; } return { data:presaleRows }; }
     return { data:[] };
   };

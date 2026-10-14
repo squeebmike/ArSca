@@ -135,7 +135,7 @@ assert.equal(D.ratioValue({ activeMedian:200, activeCount:2 }), null, 'two listi
     skus:[{ id:'22222222-2222-2222-2222-222222222222', cover_artist:'Peach Momoko', variant_label:'COVER C PEACH MOMOKO MIDNIGHT SPECIAL VARIANT' }],
     artistRows:[{ cover_artist:'Peach Momoko' }, { cover_artist:'Ono' }, { cover_artist:'Dan Panosian, Eric Powell' }],
   });
-  assert.deepEqual(facts.sold[0], { title:'MIDNIGHT SPIDER-MAN #1 COVER C', series:'MIDNIGHT SPIDER-MAN', issue:'1', cover:'COVER C PEACH MOMOKO MIDNIGHT SPECIAL VARIANT', artist:'Peach Momoko', qty:1, price:6, saleId:'s1', at:ago(1), ebay:true });
+  assert.deepEqual(facts.sold[0], { title:'MIDNIGHT SPIDER-MAN #1 COVER C', series:'MIDNIGHT SPIDER-MAN', issue:'1', cover:'COVER C PEACH MOMOKO MIDNIGHT SPECIAL VARIANT', artist:'Peach Momoko', skuId:'22222222-2222-2222-2222-222222222222', qty:1, price:6, saleId:'s1', at:ago(1), ebay:true });
   assert.equal(facts.sold[1].ebay, false);
   assert.equal(facts.stock[0].cover, '', "a hand-entered comic's variant field is not a cover label");
   assert.equal(facts.stock[0].qty, 2);
@@ -248,3 +248,26 @@ console.log('Comic ordering intel checks passed');
 }
 assert.match(ui, /links\.push\('<a href="'\+esc\(pcUrl\)\+'" target="_blank" rel="noopener">PriceCharting ↗<\/a>'\)/);
 console.log('eBay pill links checks passed');
+
+// "I sold one, so why no data? Even us?" -- our own sale of the exact cover
+// counts (ASM #1004 Spears 1:100 sold for $119.96 on our eBay listing).
+{
+  assert.deepEqual(D.ratioValue({ ourSales:{ count:1, median:119.96 }, activeMedian:0, activeCount:0 }), { price:119.96, basis:'what it sold for here (1 sale)' });
+  assert.deepEqual(D.ratioValue({ ourSales:{ count:1, median:119.96 }, pcUngraded:150 }).basis, 'what it sold for here (1 sale)', 'a real sale here beats a guide');
+  assert.deepEqual(D.ratioValue({ soldMedian:100, soldCount:3, ourSales:{ count:1, median:119.96 } }).price, 100, 'several eBay sales still come first');
+  const grab = re => { const m = ui.match(re); assert.ok(m, 'missing ' + re); return m[0]; };
+  const ctx = { Math, Number, String, focIntel:{ facts:{ sold:[{ skuId:'spears', price:119.96, qty:1, at:'2026-10-11T18:09:24Z', ebay:true }, { skuId:'other', price:5, qty:1 }] } } };
+  vm.createContext(ctx);
+  vm.runInContext(grab(/function focOurSales\(skuId\)\{[\s\S]*?\n\}/) + ';' + grab(/function focMarketWarning\(m\)\{[\s\S]*?\n\}/) + ';this.ours=focOurSales;this.warn=focMarketWarning;', ctx);
+  assert.deepEqual(JSON.parse(JSON.stringify(ctx.ours('spears'))), { count:1, median:119.96, last:{ skuId:'spears', price:119.96, qty:1, at:'2026-10-11T18:09:24Z', ebay:true } });
+  assert.equal(ctx.ours('none'), null);
+  assert.equal(ctx.warn({ warnings:['SOLDCOMPS_API_KEY not set'] }), "eBay sold history isn't connected, so other sellers' sales can't be seen");
+  assert.match(ui, /parts\.push\(r\.m\.ownListed\?'only your listing is up on eBay':'no other eBay listings'\)/);
+}
+{
+  const { summarizeCoverMarket:sum, coverMarketQuery:cq } = await import('../scripts/foc-preorders.mjs');
+  const q = cq({ series:'THE AMAZING SPIDER-MAN', issue:'1004', artist:'Mark Spears', ratio:100 });
+  const r = sum(q, [{ itemId:'v1|257|0', title:'AMAZING SPIDER-MAN #1004 MARK SPEARS VIRGIN 1:100 VARIANT - PRESALE', price:119.96 }], [], new Set(['257']));
+  assert.deepEqual([r.ownListed, r.active.count], [1, 0], 'our own listing is noted, not counted as another seller');
+}
+console.log('Own-sales value checks passed');

@@ -478,8 +478,36 @@ function ebaySection(v){
   var action='';
   if(status==='ELIGIBLE_NOW')action='<label style="display:flex;align-items:center;gap:6px;margin-top:6px;font:9px var(--font-mono);color:var(--dim);cursor:pointer"><input type="checkbox" class="foc-ebay-bulk-cb" value="'+esc(v.id)+'" '+(focEbayBulkSelectedIds.has(v.id)?'checked':'')+' onchange="focEbayBulkCheckboxChanged(this)"> SELECT FOR BULK LISTING</label><button class="hbtn" style="margin-top:6px;width:100%;min-height:30px;font-size:9px" onclick="createFocEbayPresale(\''+esc(v.id)+'\')">CREATE EBAY PRESALE</button>';
   else if(status==='LISTED')action='<button class="hbtn" style="margin-top:6px;width:100%;min-height:30px;font-size:9px" onclick="createFocEbayPresale(\''+esc(v.id)+'\')">LIST MORE ON EBAY</button>';
+  if((status==='LISTED'||status==='SOLD_OUT')&&v.ebayListingId)action=focEbayEditHtml(v)+action;
   return '<div style="margin-top:8px;padding-top:7px;border-top:1px solid var(--border)">'+badge+(detail?'<div style="font:8px/1.5 var(--font-mono);color:var(--dim);margin-top:4px">'+esc(detail)+'</div>':'')+action+'</div>';
 }
+// Store ask: "I need an easier way to re-price and change things for eBay
+// here in FOC." A listed cover edits its live eBay price and how many are
+// still available right on the card.
+function focEbayEditHtml(v){
+  var id=esc(v.id),one=Number(v.ebayListingCount||1)>1;
+  return '<div class="foc-ebay-edit">'+
+    '<div style="display:flex;justify-content:space-between;align-items:center;gap:6px"><b style="color:var(--blue)">EBAY LISTING</b><a href="https://www.ebay.com/itm/'+encodeURIComponent(v.ebayListingId)+'" target="_blank" rel="noopener">VIEW ON EBAY ↗</a></div>'+
+    (one?'<div style="color:var(--gold)">'+Number(v.ebayListingCount)+' eBay listings for this cover -- change them on eBay directly.</div>':
+    '<div class="foc-sku-fields" style="margin-top:4px"><label>EBAY PRICE<input class="tsi" type="number" min="0.01" step=".01" data-ebay-edit-price="'+id+'" value="'+(Number(v.ebayPrice||0)?Number(v.ebayPrice).toFixed(2):'')+'"></label><label>AVAILABLE ON EBAY<input class="tsi" type="number" min="0" step="1" data-ebay-edit-qty="'+id+'" value="'+Number(v.ebayAvailable||0)+'"></label></div>'+
+    '<button class="hbtn" style="margin-top:6px;width:100%;min-height:30px;font-size:9px;color:var(--g)" onclick="saveFocEbayEdit(\''+id+'\')">SAVE TO EBAY</button>'+
+    '<div style="color:var(--dim);margin-top:3px">'+Number(v.ebayPresold||0)+' sold so far -- those stay sold.</div>')+
+  '</div>';
+}
+async function saveFocEbayEdit(skuId){
+  var v=allFocSkus().find(function(x){return x.id===skuId;});if(!v)return;
+  var pEl=document.querySelector('[data-ebay-edit-price="'+CSS.escape(skuId)+'"]'),qEl=document.querySelector('[data-ebay-edit-qty="'+CSS.escape(skuId)+'"]');
+  var price=pEl&&pEl.value!==''?Math.round(Number(pEl.value)*100)/100:null,qty=qEl&&qEl.value!==''?parseInt(qEl.value,10):null;
+  var body={storeId:getActiveStoreId(),skuId:skuId},changes=[];
+  if(price!=null&&price!==Math.round(Number(v.ebayPrice||0)*100)/100){if(!(price>0)){toast_dash('Enter a price above $0');return;}body.price=price;changes.push('price $'+Number(v.ebayPrice||0).toFixed(2)+' → $'+price.toFixed(2));}
+  if(qty!=null&&qty!==Number(v.ebayAvailable||0)){if(!(qty>=0)){toast_dash('Available must be 0 or more');return;}body.available=qty;changes.push('available '+Number(v.ebayAvailable||0)+' → '+qty);}
+  if(!changes.length){toast_dash('Nothing changed');return;}
+  if(!confirm('Change the eBay listing for '+(v.title||'this cover')+(v.variantLabel?' · '+v.variantLabel:'')+':\n'+changes.join('\n')+'?'))return;
+  try{await api('/foc/admin/ebay-presale-edit',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});toast_dash('eBay listing updated');await refreshCycleFamilies();}
+  catch(e){toast_dash('eBay update failed: '+e.message);}
+}
+function focFillEbayPrice(skuId,price){var el=document.querySelector('[data-ebay-edit-price="'+CSS.escape(skuId)+'"]');if(!el)return;el.value=Number(price).toFixed(2);el.focus();toast_dash('eBay price filled in -- press SAVE TO EBAY');}
+window.saveFocEbayEdit=saveFocEbayEdit;window.focFillEbayPrice=focFillEbayPrice;
 function lunarCostLine(v){
   if(v.distributor!=='Lunar')return'';
   var costCents=lunarEstCostCents(v);
@@ -1594,7 +1622,7 @@ function focLoadIntel(force){
   focIntel.loading=Promise.all([
     api('/foc/admin/comic-demand?store_id='+encodeURIComponent(getActiveStoreId())).catch(function(e){toast_dash('Comic sales unavailable: '+e.message);return null;}),
     focLoadWatch(),focLoadConnectData()
-  ]).then(function(r){focIntel.demand=r[0]?D.buildComicDemand(r[0]):null;focIntel.loaded=true;focIntel.loading=null;focIntel.memo={};return focIntel.demand;});
+  ]).then(function(r){focIntel.facts=r[0]||null;focIntel.demand=r[0]?D.buildComicDemand(r[0]):null;focIntel.loaded=true;focIntel.loading=null;focIntel.memo={};return focIntel.demand;});
   return focIntel.loading;
 }
 // Loads in the background the first time the wall opens, then redraws it.
@@ -1643,18 +1671,41 @@ function focVariantPillsHtml(v){
   var c=focConnectFor(v.id);if(c)pills.push(focConnectPill(c));
   return (pills.length?'<div class="foc-intel-row">'+pills.map(focPillHtml).join('')+'</div>':'')+(v.isIncentive?focRatioValueHtml(v):'');
 }
+// What this exact cover sold for here (register + our own eBay listing).
+// Store report: "I sold one, so why no data? For anyone? Even us?"
+function focOurSales(skuId){
+  var list=((focIntel.facts&&focIntel.facts.sold)||[]).filter(function(x){return x.skuId===skuId&&Number(x.price)>0;});
+  if(!list.length)return null;
+  var prices=[];list.forEach(function(x){for(var i=0;i<Math.max(1,Number(x.qty||1));i++)prices.push(Number(x.price));});
+  prices.sort(function(a,b){return a-b;});
+  var mid=Math.floor(prices.length/2),median=prices.length%2?prices[mid]:(prices[mid-1]+prices[mid])/2;
+  var last=list.slice().sort(function(a,b){return String(b.at).localeCompare(String(a.at));})[0];
+  return {count:prices.length,median:Math.round(median*100)/100,last:last};
+}
+function focMarketWarning(m){
+  var w=((m&&m.warnings)||[]).join(' ');
+  if(!w)return '';
+  if(/SOLDCOMPS|Finding API|418/i.test(w))return 'eBay sold history isn\'t connected, so other sellers\' sales can\'t be seen';
+  if(/token|EBAY_CLIENT/i.test(w))return 'eBay search isn\'t connected';
+  return 'eBay: '+w;
+}
 function focRatioOf(v){var m=String(v.orderRequirement||v.variantLabel||'').match(/1\s*:\s*(\d+)/)||String(v.variantLabel||'').match(/\bRI\b\s*\(?(\d+)/i);return Number(v.ratioThreshold||(m&&m[1])||0);}
 function focRatioValue(v){
   var D=focCD(),m=focIntel.market['sku:'+v.id],pc=focIntel.pc[v.id];
   var raw=pc&&pc.ok&&pc.product&&pc.product.comicPrices?Number(pc.product.comicPrices.ungraded||0):0;
-  return {m:m,pc:pc,raw:raw,value:D?D.ratioValue({soldMedian:m&&m.sold&&m.sold.median,soldCount:m&&m.sold&&m.sold.count,pcUngraded:raw,activeMedian:m&&m.active&&m.active.median,activeCount:m&&m.active&&m.active.count}):null};
+  var fam=state.families.find(function(f){return f.id===v.familyId;});
+  var ours=focOurSales(v.id);
+  var value=D?D.ratioValue({soldMedian:m&&m.sold&&m.sold.median,soldCount:m&&m.sold&&m.sold.count,ourSales:ours,pcUngraded:raw,activeMedian:m&&m.active&&m.active.median,activeCount:m&&m.active&&m.active.count,coverPrice:(fam?focRegularMsrp(fam):Number(v.msrpCents||0))/100,ratio:focRatioOf(v)}):null;
+  return {m:m,pc:pc,raw:raw,value:value,ours:ours,pcIgnored:!!(D&&raw&&D.ratioPcSuspicious({pcUngraded:raw,activeMedian:m&&m.active&&m.active.median,activeCount:m&&m.active&&m.active.count,coverPrice:(fam?focRegularMsrp(fam):Number(v.msrpCents||0))/100,ratio:focRatioOf(v)}))};
 }
 function focRatioValueText(r){
   var parts=[];
+  if(r.ours)parts.push('sold here: '+r.ours.count+' · $'+r.ours.median.toFixed(2)+(r.ours.last&&r.ours.last.at?' (last '+displayDate(String(r.ours.last.at).slice(0,10))+(r.ours.last.ebay?' on eBay':'')+')':''));
   if(r.m&&r.m.sold&&r.m.sold.count)parts.push('eBay sold ~$'+Number(r.m.sold.median).toFixed(2)+' ('+r.m.sold.count+')');
   if(r.m&&r.m.active&&r.m.active.count)parts.push('listed ~$'+Number(r.m.active.median).toFixed(2)+' ('+r.m.active.count+')');
-  if(r.m&&!(r.m.sold&&r.m.sold.count)&&!(r.m.active&&r.m.active.count))parts.push('nothing on eBay yet');
-  if(r.raw)parts.push('PriceCharting $'+r.raw.toFixed(2));else if(r.pc)parts.push('not on PriceCharting yet');
+  if(r.m&&!(r.m.sold&&r.m.sold.count)&&!(r.m.active&&r.m.active.count))parts.push(r.m.ownListed?'only your listing is up on eBay':'no other eBay listings');
+  var warn=focMarketWarning(r.m);if(warn)parts.push(warn);
+  if(r.raw)parts.push('PriceCharting $'+r.raw.toFixed(2)+(r.pcIgnored?' (looks like the regular cover -- not used)':''));else if(r.pc)parts.push('not on PriceCharting yet');
   return parts.join(' · ');
 }
 function focRatioLinksHtml(r){
@@ -1667,7 +1718,7 @@ function focRatioLinksHtml(r){
 function focRatioValueHtml(v){
   var r=focRatioValue(v),line=focRatioValueText(r);
   return '<div class="foc-ratio-value"><b style="color:var(--gold)">VALUE</b> '+(line?esc(line):'<span style="color:var(--dim)">not checked yet</span>')+focRatioLinksHtml(r)+
-    (r.value?'<div style="color:var(--g);margin-top:3px">PRICE IT ~$'+r.value.price.toFixed(2)+' <span style="color:var(--dim)">'+esc(r.value.basis)+'</span> <button class="foc-intel-pill foc-intel-btn" onclick="focUseRatioPrice(\''+esc(v.id)+'\','+r.value.price+')">USE</button></div>':'')+
+    (r.value?'<div style="color:var(--g);margin-top:3px">PRICE IT ~$'+r.value.price.toFixed(2)+' <span style="color:var(--dim)">'+esc(r.value.basis)+'</span> <button class="foc-intel-pill foc-intel-btn" onclick="focUseRatioPrice(\''+esc(v.id)+'\','+r.value.price+')" title="Set the website sell price">USE</button>'+(v.ebayListingId?' <button class="foc-intel-pill foc-intel-btn" onclick="focFillEbayPrice(\''+esc(v.id)+'\','+r.value.price+')" title="Put this price in the eBay listing box below">USE ON EBAY</button>':'')+'</div>':'')+
     '<button class="foc-intel-pill foc-intel-btn" style="margin-top:4px" onclick="focPriceRatio([\''+esc(v.id)+'\'])">'+(r.m||r.pc?'↻ RE-CHECK':'💲 CHECK EBAY + PRICECHARTING')+'</button></div>';
 }
 function focRedrawIntel(){focIntel.memo={};if(document.getElementById('foc-family-list'))renderFamilies();if(document.getElementById('foc-what-to-order'))renderFocWhatToOrder();}
