@@ -831,6 +831,9 @@ function shapeStorefrontItem(row) {
     // modal's "Custom Link URL" field in dashboard.html.
     linkUrl: storefrontCleanUrl(d.linkUrl || d.customUrl || ''),
     comic: storefrontComicDetailFor(d),
+    // An old sync may have changed an eBay placeholder's status to in_stock.
+    // Receipt, not that status label, establishes physical stock for sale.
+    awaitingReceipt: d.source === 'foc_presale' && !d.focReceivedAt,
     // Only explicit false excludes -- undefined/missing (every item that
     // existed before this field did) stays visible, so this can't silently
     // pull already-live inventory off the storefront. A brand-new item gets
@@ -864,6 +867,7 @@ function shapeStorefrontItem(row) {
   return item;
 }
 function isStorefrontItemAvailable(i) {
+  if(i.awaitingReceipt)return false;
   if(i.dropship && String(i.vendor).toUpperCase()==='BCW' && i.supplierAvailability !== 'in_stock') return false;
   if(i.dropship && i.supplierAvailability && i.supplierAvailability !== 'in_stock') return false;
   // Store report: eBay-only FOC presale placeholder rows (status:'presale',
@@ -896,6 +900,7 @@ function isStorefrontItemAvailable(i) {
 // only changes whether a sold-out item's card keeps showing up, never
 // whether it can actually be bought.
 function isStorefrontItemListable(i) {
+  if(i.awaitingReceipt)return false;
   // Supplier backorders must never appear, even when showSoldOut was enabled.
   if(i.dropship && String(i.vendor).toUpperCase()==='BCW' && (i.supplierAvailability !== 'in_stock' || !(i.quantity>0))) return false;
   if (isStorefrontItemAvailable(i)) return true;

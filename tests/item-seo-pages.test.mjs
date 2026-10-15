@@ -22,6 +22,7 @@ function row(id, data, overrides = {}) {
   return { id, data, status: 'in_stock', created_at: '2026-01-01T00:00:00Z', updated_at: '2026-09-20T00:00:00Z', ...overrides };
 }
 const rows = [
+  row('not-received', {name:'Unreceived presale',category:'Comics',source:'foc_presale',quantity:10,priceOverride:6,onlineListed:true}),
   row('item-a', { name: 'Amazing Spider-Man #1', category: 'Comics', set: 'Marvel', year: '2022', condition: 'Near Mint', priceOverride: 25, quantity: 3, onlineListed: true, image: 'https://img.example/a.jpg' }),
   row('item-b-sold', { name: 'Dougvana Print', category: 'Collectibles', priceOverride: 50, quantity: 0, showSoldOut: true, onlineListed: true }),
   row('item-c-gone', { name: 'Gone Item', category: 'Comics', priceOverride: 12, quantity: 0, onlineListed: true }), // not showSoldOut -- must 404, not list
@@ -49,6 +50,7 @@ const edge = { waitUntil: () => {} };
 try {
   const { default: api } = await import('../cloudflare-worker-full.js');
   const get = (path) => api.fetch(new Request('https://www.themanapocket.com' + path), env, edge);
+  assert.equal((await get('/item/not-received/unreceived-presale')).status,404,'mislabelled eBay placeholders are not received storefront stock');
   const jsonLdBlocks = (html) => [...html.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)].map(m => JSON.parse(m[1]));
 
   // Available item: real page, breadcrumb + product schema, Twitter Card,
