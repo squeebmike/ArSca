@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.10.15.8-ratio-titles';
+const APP_VERSION = '2026.10.15.9-sealed-condition';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -20654,6 +20654,7 @@ async function refreshEbayConditionUi(prefix, item, preferredConditionId){
   if(!isEbayTradingCardCategory(catId)){
     const keep = prevCond || fields.conditionId;
     host.innerHTML = condSelect(`
+      <option value="1000" ${keep==='1000'?'selected':''}>New / Factory Sealed</option>
       <option value="2750" ${keep==='2750'?'selected':''}>Like New / Graded</option>
       <option value="3000" ${keep==='3000'?'selected':''}>Very Good</option>
       <option value="4000" ${keep==='4000'?'selected':''}>Good</option>
@@ -20681,7 +20682,10 @@ async function refreshEbayConditionUi(prefix, item, preferredConditionId){
     return;
   }
   const graded = prevCond ? prevCond === '2750' : fields.isGraded;
-  host.innerHTML = condSelect(`
+  // A card category only takes single cards (graded or ungraded) -- sealed
+  // product listed here is rejected for its condition.
+  const sealedInCardCategory = fields.isFactorySealed ? `<div style="margin-bottom:6px;padding:6px 8px;border:1px solid color-mix(in srgb,var(--gold) 45%,transparent);border-radius:6px;font-family:monospace;font-size:9px;color:var(--gold)">This is factory sealed -- this category is for single cards, so eBay will reject it. Tap SUGGEST next to CATEGORY to pick eBay's sealed category (condition will be New).</div>` : '';
+  host.innerHTML = sealedInCardCategory + condSelect(`
       <option value="2750" ${graded?'selected':''}>Graded (slabbed)</option>
       <option value="4000" ${!graded?'selected':''}>Ungraded</option>`)
     + `<div id="${prefix}-condition-extra" style="margin-top:6px;font-family:monospace;font-size:9px;color:var(--dim)">Loading eBay's required condition details...</div>`;
@@ -20974,7 +20978,10 @@ function computeEbayListingFields(item){
   // review screen's own hardcoded New (store report: "Brand New" showing
   // unselected on a presale listing).
   const isPresaleItem = item.status === 'presale' || item.source === 'foc_presale';
-  const conditionId = isPresaleItem ? '1000' : isGraded ? '2750' : (isEbayTradingCardCategory(catId) ? '4000' : '3000');
+  // Factory-sealed product (a Secret Lair deck, a booster box) is New on
+  // eBay -- sending a used grade got "invalid item condition information".
+  const isFactorySealed = !isGraded && (ebayItemIsSealed(item) || /\b(factory )?sealed\b/.test(lowerName));
+  const conditionId = (isPresaleItem || isFactorySealed) ? '1000' : isGraded ? '2750' : (isEbayTradingCardCategory(catId) ? '4000' : '3000');
   // Store report: comic listings' actual eBay title (the #1 search-ranking
   // field, per eBay's own Cassini docs -- description text barely counts)
   // was silently missing the issue number. Comics store their issue in
@@ -21085,7 +21092,7 @@ function computeEbayListingFields(item){
   // text slotted into it via {aiSummary}, instead of the button replacing
   // a store's rich-HTML branded template wholesale with flat AI text --
   // see applyAiSummaryToDescription.
-  return {condText, isSealed, inferManufacturer, inferConfig, cat, isComic, isTCG, isGraded, catId, conditionId, title, price, desc, template, tokens, bodyText, comicPresaleLabel, isBundle: !!(item.isBundle && bundleMemberNames.length)};
+  return {condText, isSealed, isFactorySealed, inferManufacturer, inferConfig, cat, isComic, isTCG, isGraded, catId, conditionId, title, price, desc, template, tokens, bodyText, comicPresaleLabel, isBundle: !!(item.isBundle && bundleMemberNames.length)};
 }
 
 // Slots AI-generated text into the item's own eBay description template
