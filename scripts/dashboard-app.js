@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.10.15.5-storefront-seo';
+const APP_VERSION = '2026.10.15.6-mtg-ebay-template';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -3277,7 +3277,7 @@ function renderVendorProfilePanel(){
       <div style="font-family:var(--font-mono);font-size:9px;color:var(--dim);line-height:1.7;margin-bottom:8px">SHIPPING LINES -- one per category, plus a default for anything without its own. Appended to the end of every listing's description (the plain EBAY SHIPPING LINE box above still works too, as the overall fallback default). Leave one blank to fall back to a built-in packaging-aware default for that category (comics: rigid mailer/comic box, cards: toploader + bubble mailer, sealed product: boxed, graded slabs: bubble-wrapped and boxed) instead of the generic line every category used to share.</div>
       ${ebayShippingLineEditorHtml('default', 'Default (any category without its own line)', p)}
       ${getInventoryCategories().map(c => ebayShippingLineEditorHtml(c, c, p)).join('')}
-      <div style="font-family:var(--font-mono);font-size:9px;color:var(--dim);line-height:1.7;margin-bottom:8px;margin-top:14px">DESCRIPTION TEMPLATES -- one per category, plus a default for anything without its own. Tokens: {title} {category} {year} {set} {variant} {condition} {cardNumber} {serialNumber} {player} {team} {issue} {publisher} {grade} {sport} {manufacturer} {upc} {price} {quantity} {rarity} {finish} {language} {configuration} {writer} {artist} {coverArtist} {signedBy} {rookie} {autograph} {gradingCompany} {certNumber} {notes} {releaseDate} {shippingLine} {aiSummary} ${EBAY_TEMPLATE_EXTRA_FIELDS.map(f=>'{'+f.token+'}').join(' ')}. {shippingLine} picks the right ship-timing sentence for this specific item (presale vs. in-stock) -- it's separate from the EBAY SHIPPING LINE box above, which is always appended to every listing regardless of template. {aiSummary} is where the ✨ AI DESCRIPTION button's generated paragraph lands -- if your template has real HTML (a branded layout, styled sections, etc), put {aiSummary} wherever that paragraph should appear and clicking the button re-renders your SAME template with it filled in, instead of replacing your template. If a template has no {aiSummary} at all, the button appends its text to the end of your rendered template rather than overwriting it. A line whose only content is blank tokens is dropped automatically; a line mixing populated and blank tokens has doubled whitespace/stray punctuation cleaned up but isn't rewritten into a full sentence -- for a phrase that only makes sense when ALL its tokens are filled in (e.g. "features {character} from {franchise}"), wrap it as [[features {character} from {franchise}]] and the whole bracketed phrase disappears together instead of leaving "features from". Fill in the matching fields under "More Listing Details" on each item's edit screen.</div>
+      <div style="font-family:var(--font-mono);font-size:9px;color:var(--dim);line-height:1.7;margin-bottom:8px;margin-top:14px">DESCRIPTION TEMPLATES -- one per category, plus a default for anything without its own. Tokens: {title} {category} {year} {set} {variant} {condition} {cardNumber} {serialNumber} {player} {team} {issue} {publisher} {grade} {sport} {manufacturer} {upc} {price} {quantity} {rarity} {finish} {language} {configuration} {writer} {artist} {coverArtist} {signedBy} {rookie} {autograph} {gradingCompany} {certNumber} {notes} {releaseDate} {shippingLine} {aiSummary} {productKind} {setName} {cardHeading} {cardCondition} {cardFinish} {cardRarity} {cardVariant} {sealedHeading} {sealedProduct} ${EBAY_TEMPLATE_EXTRA_FIELDS.map(f=>'{'+f.token+'}').join(' ')}. {shippingLine} picks the right ship-timing sentence for this specific item (presale vs. in-stock) -- it's separate from the EBAY SHIPPING LINE box above, which is always appended to every listing regardless of template. {aiSummary} is where the ✨ AI DESCRIPTION button's generated paragraph lands -- if your template has real HTML (a branded layout, styled sections, etc), put {aiSummary} wherever that paragraph should appear and clicking the button re-renders your SAME template with it filled in, instead of replacing your template. If a template has no {aiSummary} at all, the button appends its text to the end of your rendered template rather than overwriting it. A line whose only content is blank tokens is dropped automatically; a line mixing populated and blank tokens has doubled whitespace/stray punctuation cleaned up but isn't rewritten into a full sentence -- for a phrase that only makes sense when ALL its tokens are filled in (e.g. "features {character} from {franchise}"), wrap it as [[features {character} from {franchise}]] and the whole bracketed phrase disappears together instead of leaving "features from". Fill in the matching fields under "More Listing Details" on each item's edit screen.</div>
       ${ebayDescriptionTemplateEditorHtml('default', 'Default (any category without its own template)', p)}
       ${getInventoryCategories().map(c => ebayDescriptionTemplateEditorHtml(c, c, p)).join('')}
       <div style="display:flex;gap:8px;margin-top:8px"><button class="hbtn" onclick="saveEbayListingSettings()">SAVE EBAY LISTING SETTINGS</button></div>
@@ -20710,6 +20710,42 @@ function collectEbayConditionDescriptors(prefix, catId, conditionId){
   return out;
 }
 
+// Sealed product and single cards share one category template (Magic: a
+// Secret Lair Commander deck and a Crop Rotation single both list under
+// "Magic: The Gathering"), so a template needs tokens that are filled for
+// one kind and blank for the other -- wrapped in [[...]] the blank kind's
+// lines drop out. Single-only: {cardHeading} {cardCondition} {cardFinish}
+// {cardRarity} {cardVariant}. Sealed-only: {sealedHeading} {sealedProduct}.
+// Always: {productKind} ("Factory Sealed" / "Graded Card" / "Single Card")
+// and {setName} ({set} unless it's just the game's name again).
+function ebayItemIsSealed(item){
+  const signals = [item.selectedFinish, item.finish, item.selectedCondition, item.variant, item.condition].map(v => String(v || '').trim().toLowerCase());
+  return !!item.is_sealed || signals.some(v => v === 'sealed' || v === 'factory sealed' || v === 'new sealed' || v === 'sealed product');
+}
+function ebaySealedSingleTokens(item, { isSealed = false, isGraded = false, isComic = false, condText = '', finish = '', inferConfig = '' } = {}){
+  const name = String(item.name || '').toLowerCase();
+  const sealedWords = /^(factory )?sealed$/i;
+  const set = String(item.set || '').trim();
+  const setName = set && set.toLowerCase() !== String(item.category || '').toLowerCase() ? set : '';
+  const finishLabel = ({ normal:'Non-Foil', nonfoil:'Non-Foil', 'non-foil':'Non-Foil', foil:'Foil', etched:'Etched Foil', holofoil:'Holofoil', reverse:'Reverse Holo', reverseholofoil:'Reverse Holo' })[String(finish || '').trim().toLowerCase().replace(/\s+/g, '')] || finish;
+  const sealedProduct = !isSealed ? '' : /commander deck/.test(name) ? (/secret lair/.test(name) ? 'Secret Lair Commander Deck' : 'Commander Deck')
+    : /secret lair/.test(name) ? 'Secret Lair Drop'
+    : (/precon|starter deck|challenger deck|theme deck/.test(name) ? 'Preconstructed Deck' : (inferConfig && !sealedWords.test(inferConfig) ? inferConfig : 'Sealed Product'));
+  return {
+    productKind: isSealed ? 'Factory Sealed' : isGraded ? 'Graded Card' : 'Single Card',
+    setName,
+    sealedHeading: isSealed ? 'SEALED PRODUCT DETAILS' : '',
+    sealedProduct,
+    cardHeading: isSealed ? '' : 'CARD DETAILS',
+    cardCondition: isSealed ? '' : condText,
+    cardFinish: isSealed || sealedWords.test(String(finish || '')) ? '' : finishLabel,
+    cardRarity: isSealed || sealedWords.test(String(item.rarity || '')) ? '' : (item.rarity || ''),
+    cardVariant: isSealed || sealedWords.test(String(item.variant || '')) ? '' : (item.variant || ''),
+    // {artist} was comic-only; Magic/Pokemon singles carry their own card artist.
+    ...(!isComic && item.artist ? { artist:String(item.artist) } : {}),
+  };
+}
+
 const DEFAULT_EBAY_DESCRIPTION_TEMPLATE = `{title}
 
 Category: {category}
@@ -20896,7 +20932,10 @@ function computeEbayListingFields(item){
   };
   const condText = condLabelMap[item.condition] || item.condition || '';
   const lowerName = String(item.name||'').toLowerCase();
-  const isSealed = /box|blaster|mega|hobby|pack|case|tin|sealed/.test(lowerName);
+  // Name words alone missed sealed Magic product (Secret Lair drops and
+  // Commander decks rarely say "sealed" or "box" in the name) -- the item's
+  // own sealed finish/condition/variant say so outright.
+  const isSealed = /box|blaster|mega|hobby|pack|case|tin|sealed/.test(lowerName) || ebayItemIsSealed(item);
   const inferManufacturer = item.manufacturer || item.brand || (lowerName.includes('panini') ? 'Panini' : lowerName.includes('upper deck') ? 'Upper Deck' : lowerName.includes('bowman') ? 'Bowman' : lowerName.includes('topps') ? 'Topps' : lowerName.includes('pokemon') ? 'Pokemon' : lowerName.includes('magic') ? 'Wizards of the Coast' : '');
   const inferConfig = item.configuration || (lowerName.includes('hobby') ? 'Hobby Box' : lowerName.includes('blaster') ? 'Blaster Box' : lowerName.includes('mega') ? 'Mega Box' : lowerName.includes('booster') ? 'Booster Box' : lowerName.includes('etb') || lowerName.includes('elite trainer') ? 'Elite Trainer Box' : lowerName.includes('tin') ? 'Tin' : lowerName.includes('pack') ? 'Pack' : '');
   const cat = item.category || 'Sports';
@@ -20998,6 +21037,7 @@ function computeEbayListingFields(item){
   // computed presale date with that field's usual blank value. Whichever
   // is already set wins; the extra field is only a fallback.
   EBAY_TEMPLATE_EXTRA_FIELDS.forEach(f=>{ tokens[f.token] = tokens[f.token] || item[f.key] || ''; });
+  Object.assign(tokens, ebaySealedSingleTokens(item, { isSealed, isGraded, isComic, condText, finish:tokens.finish, inferConfig }));
   const templates = getVendorProfile().ebayDescriptionTemplates || {};
   const legacyTemplate = getVendorProfile().ebayDescriptionTemplate || '';
   const template = templates[item.category] || templates.default || legacyTemplate || DEFAULT_EBAY_DESCRIPTION_TEMPLATE;
