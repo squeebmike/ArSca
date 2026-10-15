@@ -122,7 +122,7 @@ assert.match(ui, /if\(!confirm\('Fix '\+/, 'nothing changes without confirming')
 assert.doesNotMatch(foc, /inventory_items\?store_id=eq\.\$\{encodeURIComponent\(storeId\)\}&status=in\.\(presale,sold,in_stock\)&select=id,status,data`/, 'no unpaged presale lookups left');
 assert.doesNotMatch(foc, /inventory_items\?store_id=eq\.\$\{encodeURIComponent\(storeId\)\}&status=eq\.presale&select=/);
 assert.match(foc, /focPresaleRows\(db,storeId\)\.then\(data=>\(\{ data \}\)\)/);
-assert.match(foc, /async function ebayPresoldBySku\(db,storeId\)\{[\s\S]{0,900}const rows=await focPresaleRows\(db,storeId\);/, 'the PRH order counts every eBay presale');
+assert.match(foc, /async function ebayPresoldBySku\(db,storeId\)\{[\s\S]{0,900}return ebayPresoldFromRows\(await focPresaleRows\(db,storeId\)\);/, 'the PRH order counts every eBay presale');
 assert.equal((worker.match(/const \{ data: alreadyListedRows \} = await supabaseAdminFetchAll\(env, `inventory_items\?store_id=eq\.\$\{encodeURIComponent\(storeId\)\}&status=in\.\(presale,in_stock\)&data->>source=in\.\(foc_presale,foc_presale_bundle\)/g) || []).length, 2, 'both create-presale guards see every listing');
 
 // Re-price / change quantity of a live eBay presale from the cover wall.

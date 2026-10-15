@@ -482,15 +482,79 @@ function cycleOpen(cycle, now = new Date()) {
   return cycle?.status === 'open' && new Date(cycle.customer_cutoff_at).getTime() > now.getTime();
 }
 
+// After FOC: the store's real order is placed (the uploaded PRH cart or
+// Lunar order records each cover's secured_quantity), so the covers it
+// ordered stay buyable on the website until they arrive -- but only the
+// copies coming that nobody has bought yet, here or on eBay. Archived weeks
+// never sell; turning a cover's customer toggle off stops it too.
+export function afterFocCycle(cycle, now = new Date()) {
+  if (!cycle || !['open', 'closed'].includes(cycle.status)) return false;
+  const cutoff = new Date(cycle.customer_cutoff_at).getTime();
+  return Number.isFinite(cutoff) && cutoff <= new Date(now).getTime();
+}
+
+// A non-incentive cover with secured_quantity is the cart upload's mark --
+// before it, secured_quantity only ever holds hand-set incentive copies.
+export function afterFocCartOnFile(skus) {
+  return (skus || []).some(sku => !sku.is_incentive && Number(sku.secured_quantity || 0) > 0);
+}
+
+// Copies left per cover: ordered (secured_quantity) minus paid website
+// preorders, eBay presale sales and checkouts still being paid for. Covers
+// already on sale, already received, or switched off are not offered.
+export function afterFocLeft({ skus, rows = [], websiteQty = new Map(), pendingQty = new Map(), today }) {
+  const left = new Map();
+  if (!afterFocCartOnFile(skus)) return left;
+  const received = new Set(rows.filter(row => row.data?.focReceivedAt && row.data?.focSkuId).map(row => row.data.focSkuId));
+  const ebay = ebayPresoldFromRows(rows.filter(row => ['presale', 'sold', 'in_stock'].includes(row.status)));
+  for (const sku of skus || []) {
+    const secured = Number(sku.secured_quantity || 0);
+    if (secured <= 0 || sku.customer_enabled === false || received.has(sku.id)) continue;
+    if (!(String(sku.on_sale_date || '').slice(0, 10) > today)) continue;
+    left.set(sku.id, Math.max(0, secured - Number(websiteQty.get(sku.id) || 0) - Number(ebay.get(sku.id) || 0) - Number(pendingQty.get(sku.id) || 0)));
+  }
+  return left;
+}
+
+// Checkouts started in the last 30 minutes and not yet paid -- counted so
+// two people can't both buy the last copy while one is still on the card form.
+async function pendingQtyBySku(db, cycleId, now = new Date()) {
+  const since = new Date(new Date(now).getTime() - 30 * 60 * 1000).toISOString();
+  const { data:orders } = await db(`foc_preorder_orders?cycle_id=eq.${encodeURIComponent(cycleId)}&status=eq.payment_pending&created_at=gte.${encodeURIComponent(since)}&select=id`);
+  const ids = (orders || []).map(order => order.id);
+  const totals = new Map();
+  if (!ids.length) return totals;
+  const { data:items } = await db(`foc_preorder_items?order_id=${inFilter(ids)}&select=sku_id,quantity,status`);
+  for (const item of items || []) if (item.status !== 'cancelled') totals.set(item.sku_id, (totals.get(item.sku_id) || 0) + Number(item.quantity || 0));
+  return totals;
+}
+
+export async function afterFocAvailability(db, storeId, cycle, skus, { now = new Date(), websiteQty = null, includePending = false } = {}) {
+  if (!afterFocCycle(cycle, now) || !afterFocCartOnFile(skus)) return new Map();
+  const today = pacificDay(now);
+  if (!(skus || []).some(sku => Number(sku.secured_quantity || 0) > 0 && String(sku.on_sale_date || '').slice(0, 10) > today)) return new Map();
+  const [{ data:rows }, website, pending] = await Promise.all([
+    db(`inventory_items?store_id=eq.${encodeURIComponent(storeId)}&data->>focCycleId=eq.${encodeURIComponent(cycle.id)}&select=id,status,data`),
+    websiteQty ? Promise.resolve(websiteQty) : orderedQtyBySku(db, cycle.id),
+    includePending ? pendingQtyBySku(db, cycle.id, now) : Promise.resolve(new Map()),
+  ]);
+  return afterFocLeft({ skus, rows:rows || [], websiteQty:website, pendingQty:pending, today });
+}
+
 function catalogCycleSelect() {
   return 'id,store_id,distributor,foc_date,customer_cutoff_at,status,preorder_mode,source_filename,source_row_count,import_report,imported_at,updated_at';
 }
 
-function publicSku(row, customerQty = 0) {
+function publicSku(row, customerQty = 0, afterFocCopies = null) {
   const securedRemaining = row.is_incentive ? Math.max(0, Number(row.secured_quantity || 0) - customerQty) : null;
   const customerPriceCents = Number(row.customer_price_cents || 0);
   const incentiveReady = !!row.is_incentive && securedRemaining > 0 && customerPriceCents > 0;
   const priceRequired = customerPriceCents <= 0;
+  const afterFoc = afterFocCopies !== null && afterFocCopies !== undefined ? {
+    afterFoc:true, afterFocLeft:Number(afterFocCopies) || 0,
+    canPreorder:row.customer_enabled !== false && !priceRequired && Number(afterFocCopies) > 0,
+    waitlistOnly:false,
+  } : {};
   return {
     id:row.id,
     familyId:row.family_id,
@@ -523,6 +587,7 @@ function publicSku(row, customerQty = 0) {
     canPreorder:row.customer_enabled !== false && !priceRequired && (!row.is_incentive || incentiveReady),
     waitlistOnly:!!row.is_incentive && !incentiveReady,
     flags:row.flags || {},
+    ...afterFoc,
   };
 }
 
@@ -565,7 +630,13 @@ async function preorderDetailPage(env, deps, skuId, providedSlug) {
   const familyRow = familyRows?.[0];
   const cycleRow = cycleRows?.[0];
   if (!familyRow || !cycleRow) return notFoundPreorderPage(deps);
-  const sku = publicSku(skuRow);
+  let afterFocCopies = null;
+  if (!cycleOpen(cycleRow) && afterFocCycle(cycleRow)) {
+    const { data:cycleSkus } = await db(`comic_skus?cycle_id=eq.${encodeURIComponent(cycleRow.id)}&select=id,is_incentive,secured_quantity,on_sale_date,customer_enabled`);
+    const left = await afterFocAvailability(db, cycleRow.store_id, cycleRow, cycleSkus || []);
+    if (left.has(skuId)) afterFocCopies = left.get(skuId);
+  }
+  const sku = publicSku(skuRow, 0, afterFocCopies);
   const seriesName = text(familyRow.series_name, 300) || text(familyRow.title, 800);
   const issueNumber = familyRow.issue_number || '';
   const publisher = [text(familyRow.publisher, 300), text(familyRow.imprint, 300)].filter(Boolean).join(' · ');
@@ -580,14 +651,14 @@ async function preorderDetailPage(env, deps, skuId, providedSlug) {
   const priceText = sku.priceRequired ? 'Price coming soon' : moneyLabel(sku.priceCents);
   const description = [
     priceText,
-    'Preorder deadline ' + dateOnlyLabel(cycleRow.foc_date),
+    sku.afterFoc ? (sku.afterFocLeft > 0 ? 'Ordered · ' + sku.afterFocLeft + ' left to preorder' : 'Ordered · all copies spoken for') : 'Preorder deadline ' + dateOnlyLabel(cycleRow.foc_date),
     publisher || null,
     text(skuRow.description, 220) || text(familyRow.description, 220) || null,
   ].filter(Boolean).join(' · ');
   const title = `${name} | The Mana Pocket Comic Preorders`;
   const appUrl = `https://www.themanapocket.com/preorders?sku=${encodeURIComponent(skuId)}`;
   const image = sku.coverImageUrl || '';
-  const canPreorder = cycleOpen(cycleRow) && sku.canPreorder;
+  const canPreorder = (cycleOpen(cycleRow) || !!sku.afterFoc) && sku.canPreorder;
   const html = deps.mtgPageShell({
     title, description, canonicalPath, ogImage: image || undefined,
     jsonLd: {
@@ -830,7 +901,7 @@ async function buildCycleCatalog(db, cycle, includeAdmin = false, env, deps, sto
   let skuIndex = null;
   let pageMeta = null;
   if (page && !includeAdmin) {
-    const { data:indexRows } = await db(`comic_skus?cycle_id=eq.${encodeURIComponent(cycle.id)}&customer_enabled=eq.true&select=id,family_id,is_incentive,store_quantity&order=title.asc`);
+    const { data:indexRows } = await db(`comic_skus?cycle_id=eq.${encodeURIComponent(cycle.id)}&customer_enabled=eq.true&select=id,family_id,is_incentive,store_quantity,secured_quantity,on_sale_date,customer_enabled&order=title.asc`);
     skuIndex = indexRows || [];
     const offset = Math.max(0, Number(page.offset) || 0);
     const limit = Math.min(48, Math.max(1, Number(page.limit) || 8));
@@ -866,6 +937,8 @@ async function buildCycleCatalog(db, cycle, includeAdmin = false, env, deps, sto
     // listing still reports its original/remaining/sold counts correctly.
     includeAdmin && env && deps ? focPresaleRows(db,storeId).then(data=>({ data })) : Promise.resolve({ data:[] }),
   ]);
+  // After FOC, ordered covers stay buyable up to the copies still unsold.
+  const afterFocCopies = cycleOpen(cycle) ? new Map() : await afterFocAvailability(db, cycle.store_id || storeId, cycle, skuIndex || skuRows || [], { websiteQty:qtyMap });
   const requestQty = new Map();
   for (const row of requestRows?.data || []) requestQty.set(row.sku_id, (requestQty.get(row.sku_id) || 0) + Number(row.requested_quantity || 0));
   // Same source/focSkuId matching /foc/ebay/create-presale writes and
@@ -922,7 +995,7 @@ async function buildCycleCatalog(db, cycle, includeAdmin = false, env, deps, sto
   for (const row of skuRows || []) {
     const family = byFamily.get(row.family_id);
     if (!family) continue;
-    const sku = publicSku(row, qtyMap.get(row.id) || 0);
+    const sku = publicSku(row, qtyMap.get(row.id) || 0, afterFocCopies.has(row.id) ? afterFocCopies.get(row.id) : null);
     if (includeAdmin) Object.assign(sku, {
       storeQuantity:Number(row.store_quantity || 0),
       safetyStockQty:Number(row.safety_stock_qty || 0),
@@ -956,7 +1029,8 @@ async function buildCycleCatalog(db, cycle, includeAdmin = false, env, deps, sto
     });
     family.variants.sort((a,b) => Number(a.isIncentive) - Number(b.isIncentive) || Number(a.ratioThreshold || 0) - Number(b.ratioThreshold || 0) || a.variantLabel.localeCompare(b.variantLabel));
   }
-  return { cycle:{ ...cycle, isOpen:cycleOpen(cycle), serverNow:new Date().toISOString() }, families:[...byFamily.values()], ...(pageMeta || {}) };
+  const afterFocOpen = [...afterFocCopies.values()].some(left => left > 0);
+  return { cycle:{ ...cycle, isOpen:cycleOpen(cycle), afterFocOpen, afterFocCovers:afterFocCopies.size, serverNow:new Date().toISOString() }, families:[...byFamily.values()], ...(pageMeta || {}) };
 }
 
 // distributor only scopes the two "which cycle is this?" lookups that would
@@ -1036,18 +1110,31 @@ export async function loadAllCatalogs(db, storeId, includeAdmin = false, distrib
 // catalogs are fetched from /public/preorders?cycle=<id> when the visitor
 // opens a week, preventing several megabytes of historical covers from being
 // assembled and downloaded before the first useful FOC is visible.
-export async function loadCycleSummaries(db, storeId, distributor = PRH) {
+export async function loadCycleSummaries(db, storeId, distributor = PRH, now = new Date()) {
   const { data:cycles } = await db(`foc_cycles?store_id=eq.${encodeURIComponent(storeId)}&distributor=eq.${encodeURIComponent(distributor)}&select=${catalogCycleSelect()}&status=neq.archived&order=foc_date.desc&limit=26`);
-  return (cycles || []).slice().sort(compareCyclesForCustomer).map(cycle => ({
+  // One light read marks closed weeks whose ordered covers are still
+  // buyable (cart uploaded, not on sale yet); the week itself, once opened,
+  // works out exactly how many copies each cover has left.
+  const closedIds = (cycles || []).filter(cycle => afterFocCycle(cycle, now)).map(cycle => cycle.id);
+  const afterFocIds = new Set();
+  if (closedIds.length) {
+    const { data:coming } = await db(`comic_skus?cycle_id=${inFilter(closedIds)}&secured_quantity=gt.0&customer_enabled=eq.true&on_sale_date=gt.${pacificDay(now)}&select=cycle_id,is_incentive`);
+    for (const sku of coming || []) if (!sku.is_incentive) afterFocIds.add(sku.cycle_id);
+  }
+  return (cycles || []).map(cycle => ({
     ...cycle,
-    isOpen:cycleOpen(cycle),
+    isOpen:cycleOpen(cycle, now),
+    afterFocOpen:afterFocIds.has(cycle.id),
     serverNow:new Date().toISOString(),
-  }));
+  })).sort(compareCyclesForCustomer);
 }
 
+// Open weeks first (closing soonest on top), then closed weeks that still
+// have ordered copies to sell, then the rest (newest first).
 function compareCyclesForCustomer(a, b) {
+  const rank=cycle=>cycleOpen(cycle)?0:cycle.afterFocOpen?1:2;
   const aOpen=cycleOpen(a),bOpen=cycleOpen(b);
-  if(aOpen!==bOpen)return aOpen?-1:1;
+  if(rank(a)!==rank(b))return rank(a)-rank(b);
   const aCutoff=new Date(a.customer_cutoff_at).getTime()||0,bCutoff=new Date(b.customer_cutoff_at).getTime()||0;
   return aOpen?aCutoff-bCutoff:bCutoff-aCutoff;
 }
@@ -1322,12 +1409,21 @@ async function preorderCheckout(request, env, deps) {
   const db = (path, options) => deps.supabaseAdminFetch(env, path, options);
   const { data:cycles } = await db(`foc_cycles?id=eq.${encodeURIComponent(cycleId)}&store_id=eq.${encodeURIComponent(storeId)}&select=*&limit=1`);
   const cycle = cycles?.[0];
-  if (!cycle || !cycleOpen(cycle)) return deps.json({ ok:false, error:'FOC is closed for this cycle' }, 409);
+  const open = !!cycle && cycleOpen(cycle);
+  if (!cycle || (!open && !afterFocCycle(cycle))) return deps.json({ ok:false, error:'FOC is closed for this cycle' }, 409);
   const ids = [...new Set(requested.map(item => text(item.skuId,80)).filter(id => /^[0-9a-f-]{36}$/i.test(id)))];
   if (ids.length !== requested.length) return deps.json({ ok:false, error:'An exact cover selection is invalid' }, 400);
   const { data:skuRows } = await db(`comic_skus?id=${inFilter(ids)}&cycle_id=eq.${encodeURIComponent(cycleId)}&customer_enabled=eq.true&select=*`);
   if ((skuRows || []).length !== ids.length) return deps.json({ ok:false, error:'One of those covers is no longer available' }, 409);
   const existingQty = await orderedQtyBySku(db, cycleId);
+  // Past the cutoff only the copies the store ordered and hasn't sold yet
+  // can be bought -- counting checkouts still on the card form.
+  let afterFocCopies = null;
+  if (!open) {
+    const { data:cycleSkus } = await db(`comic_skus?cycle_id=eq.${encodeURIComponent(cycleId)}&select=id,is_incentive,secured_quantity,on_sale_date,customer_enabled`);
+    afterFocCopies = await afterFocAvailability(db, storeId, cycle, cycleSkus || [], { websiteQty:existingQty, includePending:true });
+    if (!afterFocCopies.size) return deps.json({ ok:false, error:'FOC is closed for this cycle' }, 409);
+  }
   const lines = [];
   let subtotalCents = 0, totalQuantity = 0;
   for (const requestedItem of requested) {
@@ -1336,7 +1432,11 @@ async function preorderCheckout(request, env, deps) {
     const unitPriceCents = Number(sku.customer_price_cents || 0);
     if (unitPriceCents <= 0) return deps.json({ ok:false, error:`${sku.title} ${sku.variant_label || ''} needs a confirmed selling price before checkout` }, 409);
     if (unitPriceCents < 50) return deps.json({ ok:false, error:`${sku.title} does not have a valid customer price yet` }, 409);
-    if (sku.is_incentive && Number(sku.secured_quantity || 0) < (existingQty.get(sku.id) || 0) + quantity) return deps.json({ ok:false, error:`${sku.title} ${sku.variant_label || ''} is waitlist-only until the store secures more copies` }, 409);
+    if (afterFocCopies) {
+      const left = afterFocCopies.get(sku.id) || 0;
+      const name = `${sku.title} ${sku.variant_label || ''}`.trim();
+      if (quantity > left) return deps.json({ ok:false, error:left > 0 ? `Only ${left} ${left === 1 ? 'copy' : 'copies'} of ${name} left -- lower the quantity and try again` : `${name} is sold out -- every copy we ordered is spoken for`, skuId:sku.id, left }, 409);
+    } else if (sku.is_incentive && Number(sku.secured_quantity || 0) < (existingQty.get(sku.id) || 0) + quantity) return deps.json({ ok:false, error:`${sku.title} ${sku.variant_label || ''} is waitlist-only until the store secures more copies` }, 409);
     subtotalCents += unitPriceCents * quantity;
     totalQuantity += quantity;
     lines.push({ sku, quantity, unitPriceCents });
@@ -2195,7 +2295,12 @@ async function ebayPresoldBySku(db,storeId){
   // PRH distributor order (exportPrh, adminPrhSubmission): missing those
   // rows here doesn't just mis-report a dashboard badge, it silently
   // under-orders the distributor by the units already sold on eBay.
-  const rows=await focPresaleRows(db,storeId);
+  return ebayPresoldFromRows(await focPresaleRows(db,storeId));
+}
+
+// Units sold per cover across eBay presale rows (single-cover listings and
+// "All Covers" bundles) -- original listed quantity minus what's left.
+function ebayPresoldFromRows(rows){
   const map=new Map();
   for(const row of rows||[]){
     const d=row.data||{};
@@ -2349,6 +2454,9 @@ async function syncFocEbayListingsToOrder(env,deps,db,storeId,cycleId,finalQtyBy
       return d.source==='foc_presale'&&d.focCycleId===cycleId&&(d.ebayOfferId||(d.ebayApiSystem==='trading'&&d.ebayListingId&&d.ebaySku));
     });
     if(candidatesForQty.length&&deps.getEbayUserAccessToken&&deps.ebayReviseOfferQuantity){
+      // Paid website preorders are in the ordered total too -- eBay must not
+      // offer those copies again.
+      const websiteQty=await orderedQtyBySku(db,cycleId);
       let ebayToken='';
       try{ebayToken=await deps.getEbayUserAccessToken(env);}catch(_){}
       if(ebayToken){
@@ -2358,12 +2466,12 @@ async function syncFocEbayListingsToOrder(env,deps,db,storeId,cycleId,finalQtyBy
           if(!(orderedTotal>0))continue; // not ordered -- the withdrawal sweep above handles it instead
           const currentAvailable=Number(d.qty??d.quantity??0);
           const alreadySold=Math.max(0,Number(d.focPresaleOriginalQty||currentAvailable)-currentAvailable);
-          const newAvailable=Math.max(0,orderedTotal-alreadySold);
+          const newAvailable=Math.max(0,orderedTotal-alreadySold-Number(websiteQty.get(d.focSkuId)||0));
           if(newAvailable===currentAvailable)continue;
           try{
             if(d.ebayApiSystem==='trading')await deps.ebayReviseVariationQuantityTrading(ebayToken,d.ebayListingId,d.ebaySku,newAvailable);
             else await deps.ebayReviseOfferQuantity(env,ebayToken,d.ebayOfferId,newAvailable);
-            await db(`inventory_items?id=eq.${row.id}&store_id=eq.${encodeURIComponent(storeId)}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({data:{...d,qty:newAvailable,quantity:newAvailable,focPresaleOriginalQty:orderedTotal}})});
+            await db(`inventory_items?id=eq.${row.id}&store_id=eq.${encodeURIComponent(storeId)}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({data:{...d,qty:newAvailable,quantity:newAvailable,focPresaleOriginalQty:alreadySold+newAvailable}})});
             ebayQuantityUpdatedSkuIds.push(d.focSkuId);
           }catch(e){console.error('FOC eBay sync: could not update eBay presale listing quantity',row.id,e);}
         }
@@ -3557,15 +3665,65 @@ async function recordPaidFocSale(env, order, paymentIntent, deps) {
   return items||[];
 }
 
+// A website copy sold after FOC comes out of the same unsold copies the eBay
+// presale listing offers. Once paid: store_quantity becomes what's left, and
+// any live eBay listing for that cover is brought down to it (with its
+// original quantity lowered too, so the cut never reads as eBay sales).
+export async function afterFocPaidSync(env, deps, order, skuIds, now = new Date()) {
+  const result = { storeQuantity:{}, ebay:[], warnings:[] };
+  const db = (path, options) => deps.supabaseAdminFetch(env, path, options);
+  const ids = [...new Set(skuIds || [])].filter(Boolean);
+  if (!order?.cycle_id || !ids.length) return result;
+  const { data:cycles } = await db(`foc_cycles?id=eq.${encodeURIComponent(order.cycle_id)}&select=${catalogCycleSelect()}&limit=1`);
+  const cycle = cycles?.[0];
+  if (!cycle || !afterFocCycle(cycle, now)) return result;
+  const storeId = cycle.store_id || order.store_id;
+  const s = encodeURIComponent(storeId);
+  const { data:cycleSkus } = await db(`comic_skus?cycle_id=eq.${encodeURIComponent(cycle.id)}&select=id,is_incentive,secured_quantity,on_sale_date,customer_enabled`);
+  const left = await afterFocAvailability(db, storeId, cycle, cycleSkus || [], { now });
+  const touched = ids.filter(id => left.has(id));
+  if (!touched.length) return result;
+  for (const id of touched) {
+    try {
+      await db(`comic_skus?id=eq.${encodeURIComponent(id)}&store_id=eq.${s}`, { method:'PATCH', headers:{ Prefer:'return=minimal' }, body:JSON.stringify({ store_quantity:left.get(id) }) });
+      result.storeQuantity[id] = left.get(id);
+    } catch (error) { result.warnings.push('store quantity: ' + error.message); }
+  }
+  const { data:rows } = await db(`inventory_items?store_id=eq.${s}&data->>focCycleId=eq.${encodeURIComponent(cycle.id)}&data->>source=eq.foc_presale&status=in.(presale,in_stock)&select=id,status,data`);
+  const live = (rows || []).filter(row => {
+    const d = row.data || {};
+    return touched.includes(d.focSkuId) && !d.ebayWithdrawnAt && !d.focReceivedAt && (d.ebayOfferId || (d.ebayApiSystem === 'trading' && d.ebayListingId && d.ebaySku)) && Number(d.qty ?? d.quantity ?? 0) > left.get(d.focSkuId);
+  });
+  if (!live.length) return result;
+  let token = '';
+  try { token = deps.getEbayUserAccessToken ? await deps.getEbayUserAccessToken(env) : ''; } catch (error) { result.warnings.push('eBay sign-in: ' + error.message); }
+  if (!token) { result.warnings.push('eBay listing quantity not lowered -- no eBay connection'); return result; }
+  for (const row of live) {
+    const d = row.data;
+    const current = Number(d.qty ?? d.quantity ?? 0);
+    const target = left.get(d.focSkuId);
+    const reviser = d.ebayApiSystem === 'trading' ? deps.ebayReviseVariationQuantityTrading : deps.ebayReviseOfferQuantity;
+    if (typeof reviser !== 'function') { result.warnings.push('eBay listing ' + (d.ebayListingId || row.id) + ' still lists ' + current + ' -- lower it to ' + target); continue; }
+    try {
+      if (d.ebayApiSystem === 'trading') await deps.ebayReviseVariationQuantityTrading(token, d.ebayListingId, d.ebaySku, target);
+      else await deps.ebayReviseOfferQuantity(env, token, d.ebayOfferId, target);
+      const original = Math.max(target, Number(d.focPresaleOriginalQty || current) - (current - target));
+      await db(`inventory_items?id=eq.${row.id}&store_id=eq.${s}`, { method:'PATCH', headers:{ Prefer:'return=minimal' }, body:JSON.stringify({ data:{ ...d, qty:target, quantity:target, focPresaleOriginalQty:original, afterFocWebsiteSyncAt:new Date(now).toISOString() } }) });
+      result.ebay.push({ id:row.id, skuId:d.focSkuId, from:current, to:target });
+    } catch (error) { result.warnings.push('eBay listing ' + (d.ebayListingId || row.id) + ': ' + error.message); }
+  }
+  return result;
+}
+
 export async function syncFocStripeEvent(env, event, deps) {
   const object=event.data?.object||{};if(!event.type.startsWith('payment_intent.')||object.metadata?.source!=='foc_preorder')return;
   const orderId=text(object.metadata?.foc_order_id,80);if(!orderId)return;
   let status=object.status;if(event.type==='payment_intent.succeeded')status='paid';else if(event.type==='payment_intent.payment_failed')status='payment_failed';else if(event.type==='payment_intent.canceled')status='cancelled';
   const paidAt=new Date().toISOString();const patch={status,stripe_charge_id:object.latest_charge||null};if(status==='paid')patch.paid_at=paidAt;if(status==='cancelled')patch.cancelled_at=paidAt;
-  let paidItems=[];
+  let paidItems=[];let paidOrder=null;
   if(status==='paid'){
     const {data:orders}=await deps.supabaseAdminFetch(env,`foc_preorder_orders?id=eq.${encodeURIComponent(orderId)}&stripe_payment_intent_id=eq.${encodeURIComponent(object.id)}&select=*&limit=1`);
-    const existingOrder=orders?.[0];
+    const existingOrder=orders?.[0];paidOrder=existingOrder||null;
     if(existingOrder){
       paidItems=await recordPaidFocSale(env,{...existingOrder,paid_at:existingOrder.paid_at||paidAt},object,deps);
       // Points on the comics themselves, not shipping. recordPaidFocSale has
@@ -3592,6 +3750,17 @@ export async function syncFocStripeEvent(env, event, deps) {
       const listIds=(lists||[]).map(list=>list.id);
       if(listIds.length)await deps.supabaseAdminFetch(env,`foc_pick_list_items?pick_list_id=${inFilter(listIds)}&sku_id=${inFilter(skuIds)}`,{method:'DELETE',headers:{Prefer:'return=minimal'}});
     }
+  }
+  // Runs on every paid delivery, not just the first: the Stripe webhook and
+  // the customer's own confirm call both land here, and the sync is
+  // idempotent (it recomputes what's left), so whichever has the eBay
+  // connection finishes the job.
+  if(status==='paid'&&paidOrder){
+    try{
+      const skuIds=[...new Set((paidItems||[]).map(item=>item.sku_id).filter(Boolean))];
+      const synced=await afterFocPaidSync(env,deps,paidOrder,skuIds.length?skuIds:((await deps.supabaseAdminFetch(env,`foc_preorder_items?order_id=eq.${encodeURIComponent(orderId)}&select=sku_id`)).data||[]).map(item=>item.sku_id));
+      if(synced.warnings.length)console.error('After-FOC sync:',synced.warnings.join('; '));
+    }catch(error){console.error('After-FOC sync failed',error);}
   }
   if (status==='paid' && order?.customer_email && typeof deps.sendEmail === 'function') {
     try {

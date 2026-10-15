@@ -65,7 +65,7 @@ function buildDb(patchCalls) {
     ebayReviseOfferQuantity: async (env, token, offerId, qty) => { ebayRevised.push({ offerId, qty }); },
   });
   const rows = [
-    { upc:'111', quantity:4 },  // sku-A: committed 1 (website) -> store_quantity 3, listing 2->4
+    { upc:'111', quantity:4 },  // sku-A: committed 1 (website) -> store_quantity 3, listing 2->3
     { upc:'333', quantity:2 },  // sku-C: committed 2 -> store_quantity 0
     { upc:'444', quantity:5 },  // sku-D: committed 1 -> store_quantity 4, no listing yet
     { upc:'999', quantity:7 },  // matches nothing in this cycle
@@ -82,7 +82,10 @@ function buildDb(patchCalls) {
   assert.deepEqual(patchBySku['sku-D'], { secured_quantity:5, store_quantity:4 }, 'sku-D: 5 ordered minus 1 committed = 4 left over');
 
   assert.deepEqual(ebayWithdrawn, ['offer-B'], 'the listing for the cover left out of the real order must be withdrawn');
-  assert.deepEqual(ebayRevised, [{ offerId:'offer-A', qty:4 }], 'the ordered cover\'s live listing must be adjusted up to the real ordered total');
+  // 4 ordered, 1 already bought on the website: eBay may offer only the 3
+  // nobody has bought (it used to offer all 4, so the website customer's
+  // copy could sell a second time on eBay).
+  assert.deepEqual(ebayRevised, [{ offerId:'offer-A', qty:3 }], 'the ordered cover\'s live listing must offer the real ordered total minus copies already bought on the website');
   assert.equal(res.data.ebayWithdrawnCount, 1);
   assert.equal(res.data.ebayQuantityUpdatedCount, 1);
 
