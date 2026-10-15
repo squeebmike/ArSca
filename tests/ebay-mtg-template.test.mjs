@@ -81,4 +81,13 @@ assert.match(app, /const isSealed = \/box\|blaster\|mega\|hobby\|pack\|case\|tin
 assert.match(app, /Object\.assign\(tokens, ebaySealedSingleTokens\(item, \{ isSealed, isGraded, isComic, condText, finish:tokens\.finish, inferConfig \}\)\);/);
 assert.match(app, /\{productKind\} \{setName\} \{cardHeading\} \{cardCondition\} \{cardFinish\} \{cardRarity\} \{cardVariant\} \{sealedHeading\} \{sealedProduct\}/, 'the settings help lists the new tokens');
 
+// Store report listing the Goblin Storm deck: "Publish failed (400): ... invalid
+// item condition information. Item condition is required for this category."
+// Sealed product is New; the fallback condition list had no New at all.
+assert.match(app, /const isFactorySealed = !isGraded && \(ebayItemIsSealed\(item\) \|\| \/\\b\(factory \)\?sealed\\b\/\.test\(lowerName\)\);/);
+assert.match(app, /const conditionId = \(isPresaleItem \|\| isFactorySealed\) \? '1000'/);
+assert.match(app, /<option value="1000" \$\{keep==='1000'\?'selected':''\}>New \/ Factory Sealed<\/option>/);
+assert.match(app, /This is factory sealed -- this category is for single cards/);
+assert.equal(lib.ebayItemIsSealed({ name:'Justin Martin Showcase', variant:'Showcase · Rare', selectedFinish:'normal' }), false, 'a single is never New-by-default');
+
 console.log('MTG eBay template (sealed deck + singles) checks passed');
