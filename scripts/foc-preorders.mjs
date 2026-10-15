@@ -479,6 +479,16 @@ export function groupConnectingCovers(covers = []) {
   return groups.map(({ key, firstDay, ...g }) => ({ id:'auto:' + key + '|' + new Date(firstDay || 0).toISOString().slice(0, 10), ...g }));
 }
 
+export // Ratio covers say so in the title: "1:25" -> "1:25 Ratio" ("RATIO" in an
+// all-caps title), unless "ratio" already follows. Comic names only.
+function withRatioWord(text){
+  const s = String(text == null ? '' : text);
+  if(!/\b1\s?:\s?\d{1,4}\b/.test(s)) return s;
+  const letters = s.replace(/[^A-Za-z]/g, '');
+  const word = letters && letters === letters.toUpperCase() ? 'RATIO' : 'Ratio';
+  return s.replace(/\b1\s?:\s?(\d{1,4})\b(?!\s*ratio)/gi, '1:$1 ' + word);
+}
+
 function cycleOpen(cycle, now = new Date()) {
   return cycle?.status === 'open' && new Date(cycle.customer_cutoff_at).getTime() > now.getTime();
 }
@@ -564,7 +574,7 @@ function publicSku(row, customerQty = 0, afterFocCopies = null) {
     upc:row.upc,
     title:text(row.title, 800),
     subtitle:text(row.subtitle, 500),
-    variantLabel:text(row.variant_label, 300) || 'Cover A',
+    variantLabel:withRatioWord(text(row.variant_label, 300)) || 'Cover A',
     variantType:text(row.variant_type, 200),
     orderRequirement:text(row.order_requirement, 200),
     ratioThreshold:Number(row.ratio_threshold || 0) || null,
@@ -3342,7 +3352,7 @@ async function receiveShipment(request,env,deps){
     // Store report: receiving N copies of one cover used to create N rows of
     // qty 1 -- one row per SKU per batch now, like every other fungible item.
     const base={
-      name:[sku.title,sku.variant_label&&sku.variant_label!=='Cover A'?sku.variant_label:''].filter(Boolean).join(' -- '),
+      name:withRatioWord([sku.title,sku.variant_label&&sku.variant_label!=='Cover A'?sku.variant_label:''].filter(Boolean).join(' -- ')),
       // 'Comic' (singular) -- the eBay listing modal's category auto-select checks item.category==='Comic'.
       category:'Comic',publisher:sku.publisher||'',upc:sku.upc||'',
       // The invoice's net unit price when receiving from a scanned packing

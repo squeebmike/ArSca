@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.10.15.7-whatnot-listed';
+const APP_VERSION = '2026.10.15.8-ratio-titles';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -14033,13 +14033,24 @@ function mapBuiltInItem(row){
   return out;
 }
 
+// Ratio covers say so in the title: "1:25" -> "1:25 Ratio" ("RATIO" in an
+// all-caps title), unless "ratio" already follows. Comic names only.
+function withRatioWord(text){
+  const s = String(text == null ? '' : text);
+  if(!/\b1\s?:\s?\d{1,4}\b/.test(s)) return s;
+  const letters = s.replace(/[^A-Za-z]/g, '');
+  const word = letters && letters === letters.toUpperCase() ? 'RATIO' : 'Ratio';
+  return s.replace(/\b1\s?:\s?(\d{1,4})\b(?!\s*ratio)/gi, '1:$1 ' + word);
+}
+function comicName(name, category){ return category === 'Comic' ? withRatioWord(name) : name; }
+
 function builtInDataFromItem(item, updates={}){
   const nextQty = Math.max(0, Number(updates.qty ?? item.qty ?? 1) || 0);
   const out = {
     ...(item.raw || {}),
     id:item.id,
-    name:updates.name ?? item.name ?? '',
-    title:updates.name ?? item.name ?? '',
+    name:(typeof comicName === 'function' ? comicName(updates.name ?? item.name ?? '', updates.category ?? item.category) : (updates.name ?? item.name ?? '')),
+    title:(typeof comicName === 'function' ? comicName(updates.name ?? item.name ?? '', updates.category ?? item.category) : (updates.name ?? item.name ?? '')),
     qty:nextQty,
     quantity:nextQty,
     'inventory-count':nextQty,
@@ -20985,7 +20996,7 @@ function computeEbayListingFields(item){
   // Team was never in the title at all -- a real, heavily-searched sports
   // card keyword ("Mike Trout Angels", "Lakers Kobe") that only ever
   // reached the aspects/description, never the #1 search-ranking field.
-  const title = [item.year && !lowerName.includes(String(item.year)) ? item.year : null,item.name,!isComic && item.team && !lowerName.includes(String(item.team).toLowerCase()) ? item.team : null,item.set && !lowerName.includes(String(item.set).toLowerCase()) ? item.set : null,item.variant && !lowerName.includes(String(item.variant).toLowerCase()) ? item.variant : null,(item.card_number || item.issue) ? '#'+(item.card_number || item.issue) : null,isComic && item.publisher && !lowerName.includes(String(item.publisher).toLowerCase()) ? item.publisher : null,isGraded?[item.grader,item.grade].filter(Boolean).join(' '):null,item.isRookie?'RC':null,item.is_auto&&!lowerName.includes('auto')?'Auto':null,item.is_patch&&!lowerName.includes('patch')&&!lowerName.includes('relic')?'Patch':null]
+  const title = [item.year && !lowerName.includes(String(item.year)) ? item.year : null,isComic ? withRatioWord(item.name) : item.name,!isComic && item.team && !lowerName.includes(String(item.team).toLowerCase()) ? item.team : null,item.set && !lowerName.includes(String(item.set).toLowerCase()) ? item.set : null,item.variant && !lowerName.includes(String(item.variant).toLowerCase()) ? item.variant : null,(item.card_number || item.issue) ? '#'+(item.card_number || item.issue) : null,isComic && item.publisher && !lowerName.includes(String(item.publisher).toLowerCase()) ? item.publisher : null,isGraded?[item.grader,item.grade].filter(Boolean).join(' '):null,item.isRookie?'RC':null,item.is_auto&&!lowerName.includes('auto')?'Auto':null,item.is_patch&&!lowerName.includes('patch')&&!lowerName.includes('relic')?'Patch':null]
     .filter(Boolean).join(' ').replace(/\s+/g,' ').substring(0,80);
   const price = Number(item.market || item.salePrice || 0);
   // A presale item's real ship date is nowhere near "1 business day" --
@@ -23664,6 +23675,8 @@ async function createBuiltInInventoryItem(item, updates, sourceLabel='built_in')
     onlineListed:(item?.onlineListed ?? updates?.onlineListed ?? true),
     ceilingPrice:(item?.ceilingPrice ?? updates?.ceilingPrice ?? autoCeiling),
   };
+  if(data.name) data.name = comicName(data.name, data.category);
+  if(data.title) data.title = comicName(data.title, data.category);
   if(sb && session?.supabase && storeId) {
     const { data:row, error } = await sb
       .from('inventory_items')
