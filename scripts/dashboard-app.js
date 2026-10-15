@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.10.15.10-ebay-condition-enum';
+const APP_VERSION = '2026.10.15.11-ebay-listings-check';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -22235,7 +22235,9 @@ async function submitEbayBulkReviewItem(id){
     set: item.set || '',
     parallel: item.variant || '',
     cardNumber: item.card_number || item.issue || '',
-    player: item.player || item.name || '',
+    // Only a sports card's name stands in for the player -- a Magic deck's
+    // name went in as Player/Athlete and eBay refused it (65-char limit).
+    player: item.player || ((fields.cat === 'Sports' || fields.cat === 'Graded') ? item.name || '' : ''),
     team: item.team || '',
     grade: item.grade || '',
     grader: item.grader || '',

@@ -3006,6 +3006,129 @@ async function adminEbayPresaleEdit(request,env,deps){
   await db(`inventory_items?id=eq.${row.id}&store_id=eq.${encodeURIComponent(storeId)}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({status:patch.status,data:patch.data})});
   return deps.json({ok:true,listingId:d.ebayListingId,price:patch.data.salePrice,available:Number(patch.data.qty),sold:patch.sold});
 }
+// ── eBay listings check ──
+// Store ask: "Can you see all my eBay listings?" -- GetMyeBaySelling's
+// ActiveList is every live listing on the account (single and multi-cover).
+// Compared against the dashboard's rows that think they're live on eBay:
+// live on eBay but unknown here, gone from eBay but still "live" here, and
+// quantity mismatches.
+function xmlTag(xml,tag){const m=String(xml||'').match(new RegExp('<'+tag+'(?:\\s[^>]*)?>([\\s\\S]*?)</'+tag+'>'));return m?m[1]:'';}
+function xmlText(v){return String(v||'').replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g,'$1').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&apos;/g,"'").replace(/&amp;/g,'&').trim();}
+export function parseMyEbaySellingActive(xml){
+  const active=xmlTag(xml,'ActiveList');
+  const totalPages=Number(xmlTag(xmlTag(active,'PaginationResult'),'TotalNumberOfPages'))||1;
+  const items=[];
+  for(const m of active.matchAll(/<Item>([\s\S]*?)<\/Item>/g)){
+    const raw=m[1];
+    const varBlock=xmlTag(raw,'Variations');
+    const top=raw.replace(/<Variations>[\s\S]*?<\/Variations>/,'');
+    const quantity=Number(xmlTag(top,'Quantity'))||0;
+    const sold=Number(xmlTag(xmlTag(top,'SellingStatus'),'QuantitySold'))||0;
+    const qa=xmlTag(top,'QuantityAvailable');
+    const variations=[...varBlock.matchAll(/<Variation>([\s\S]*?)<\/Variation>/g)].map(v=>{
+      const vq=Number(xmlTag(v[1],'Quantity'))||0,vs=Number(xmlTag(xmlTag(v[1],'SellingStatus'),'QuantitySold'))||0;
+      return {sku:xmlText(xmlTag(v[1],'SKU')),label:[...v[1].matchAll(/<Value>([\s\S]*?)<\/Value>/g)].map(x=>xmlText(x[1])).join(' / '),quantity:vq,sold:vs,available:Math.max(0,vq-vs)};
+    });
+    items.push({itemId:xmlText(xmlTag(top,'ItemID')),title:xmlText(xmlTag(top,'Title')),sku:xmlText(xmlTag(top,'SKU')),
+      price:Number(xmlTag(xmlTag(top,'SellingStatus'),'CurrentPrice'))||Number(xmlTag(top,'BuyItNowPrice'))||0,
+      quantity,sold,available:qa!==''?Number(qa)||0:Math.max(0,quantity-sold),variations});
+  }
+  return {items,totalPages};
+}
+const EBAY_LIVE_STATUSES=new Set(['presale','in_stock','listed']);
+export function compareEbayListings({active=[],rows=[]}){
+  const byId=new Map(active.map(i=>[String(i.itemId),i]));
+  const claimed=new Set();
+  const goneFromEbay=[],qtyMismatch=[];let matched=0;
+  for(const row of rows){
+    const d=row.data||{},id=String(d.ebayListingId||'');
+    if(!id||d.ebayWithdrawnAt||!EBAY_LIVE_STATUSES.has(row.status))continue;
+    const presale=d.source==='foc_presale'||d.source==='foc_presale_bundle';
+    const dashQty=Number(d.qty??d.quantity??0);
+    const item=byId.get(id);
+    const name=stripPresaleName(d.name||d.title||'');
+    if(!item){
+      // A sold-out presale listing drops off eBay's active list -- not stale.
+      if(presale&&dashQty<=0)continue;
+      goneFromEbay.push({rowId:row.id,name,listingId:id,dashQty,presale});continue;
+    }
+    claimed.add(id);matched++;
+    const variation=item.variations.length?item.variations.find(v=>v.sku&&v.sku===d.ebaySku):null;
+    if(item.variations.length&&!variation)continue;
+    const ebayQty=variation?variation.available:item.available;
+    if(presale&&ebayQty!==dashQty)qtyMismatch.push({rowId:row.id,name,listingId:id,label:variation?.label||'',dashQty,ebayQty});
+  }
+  const ebayOnly=active.filter(i=>!claimed.has(String(i.itemId))).map(i=>({listingId:i.itemId,title:i.title,available:i.available,price:i.price,covers:i.variations.length}));
+  const listingsPerCover=new Map();
+  for(const row of rows){const d=row.data||{};if(d.source!=='foc_presale'||!d.focSkuId||!d.ebayListingId||d.ebayWithdrawnAt||!EBAY_LIVE_STATUSES.has(row.status)||!byId.has(String(d.ebayListingId)))continue;const list=listingsPerCover.get(d.focSkuId)||[];list.push({rowId:row.id,listingId:d.ebayListingId,qty:Number(d.qty??d.quantity??0)});listingsPerCover.set(d.focSkuId,list);}
+  const sameCoverTwice=[...listingsPerCover.values()].filter(l=>l.length>1).map(l=>({name:stripPresaleName((rows.find(r=>r.id===l[0].rowId)?.data||{}).name||''),listings:l}));
+  return {activeCount:active.length,matched,ebayOnly,goneFromEbay,qtyMismatch,sameCoverTwice};
+}
+async function ebayListingRows(db,storeId){
+  const {data}=await db(`inventory_items?store_id=eq.${encodeURIComponent(storeId)}&data->>ebayListingId=not.is.null&status=in.(presale,in_stock,listed)&select=id,status,data`);
+  return (data||[]).filter(r=>r.data?.ebayListingId);
+}
+async function ebayActiveForStore(env,deps){
+  if(!deps.ebayMyListings)throw Object.assign(new Error('eBay listing lookup is not set up on this Worker'),{status:501});
+  let token='';try{token=await deps.getEbayUserAccessToken(env);}catch(e){throw Object.assign(new Error(e.message),{status:401,needsToken:true});}
+  if(!token)throw Object.assign(new Error('Connect eBay first'),{status:401,needsToken:true});
+  return {token,active:await deps.ebayMyListings(env,token)};
+}
+async function adminEbayListingsCheck(request,env,deps,url){
+  const storeId=text(url.searchParams.get('store_id'),80);
+  const auth=await deps.requireStoreUser(request,env,storeId,['owner','admin','manager']);if(auth.error)return auth.error;
+  const db=(path,options)=>deps.supabaseAdminFetch(env,path,options);
+  try{
+    const [{active},rows]=await Promise.all([ebayActiveForStore(env,deps),ebayListingRows(db,storeId)]);
+    return deps.json({ok:true,...compareEbayListings({active,rows})});
+  }catch(e){return deps.json({ok:false,needsToken:!!e.needsToken,error:e.message},e.status||502);}
+}
+// Rows whose listing isn't live on eBay any more: a presale row's eBay
+// quantity goes to 0 (originalQty pinned so nothing reads as sold); a shelf
+// item keeps its real stock and just stops counting as listed.
+async function adminEbayListingsMarkEnded(request,env,deps){
+  const limited=await deps.readJsonWithLimit(request,64*1024);if(limited.error)return limited.error;
+  const body=limited.data||{},storeId=text(body.storeId,80);
+  const auth=await deps.requireStoreUser(request,env,storeId,['owner','admin','manager']);if(auth.error)return auth.error;
+  const ids=new Set((Array.isArray(body.rowIds)?body.rowIds:[]).map(id=>text(id,80)).filter(id=>UUID_RE.test(id)));
+  if(!ids.size)return deps.json({ok:false,error:'Pick at least one'},400);
+  const db=(path,options)=>deps.supabaseAdminFetch(env,path,options);
+  let active;try{({active}=await ebayActiveForStore(env,deps));}catch(e){return deps.json({ok:false,needsToken:!!e.needsToken,error:e.message},e.status||502);}
+  const live=new Set(active.map(i=>String(i.itemId)));
+  const rows=(await ebayListingRows(db,storeId)).filter(r=>ids.has(r.id));
+  const now=new Date().toISOString(),results=[];
+  for(const row of rows){
+    const d=row.data||{};
+    if(live.has(String(d.ebayListingId))){results.push({rowId:row.id,ok:false,error:'still live on eBay -- left alone'});continue;}
+    const presale=d.source==='foc_presale'||d.source==='foc_presale_bundle';
+    const sold=Math.max(0,Number(d.focPresaleOriginalQty||0)-Number(d.qty??d.quantity??0));
+    const next=presale?{...d,qty:0,quantity:0,focPresaleOriginalQty:sold,ebayWithdrawnAt:now,ebayWithdrawnReason:'not_on_ebay'}:{...d,ebayWithdrawnAt:now,ebayWithdrawnReason:'not_on_ebay'};
+    await db(`inventory_items?id=eq.${row.id}&store_id=eq.${encodeURIComponent(storeId)}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({data:next})});
+    results.push({rowId:row.id,ok:true,name:stripPresaleName(d.name||'')});
+  }
+  return deps.json({ok:true,results});
+}
+// One listing's eBay quantity (presale rows) -- works where the cover wall's
+// SAVE TO EBAY can't, e.g. a cover with two listings.
+async function adminEbayListingsSetQuantity(request,env,deps){
+  const limited=await deps.readJsonWithLimit(request,16*1024);if(limited.error)return limited.error;
+  const body=limited.data||{},storeId=text(body.storeId,80),rowId=text(body.rowId,80),quantity=Number(body.quantity);
+  const auth=await deps.requireStoreUser(request,env,storeId,['owner','admin','manager']);if(auth.error)return auth.error;
+  if(!UUID_RE.test(rowId))return deps.json({ok:false,error:'rowId required'},400);
+  if(!(Number.isInteger(quantity)&&quantity>=0&&quantity<=1000))return deps.json({ok:false,error:'Quantity must be a whole number, 0 or more'},400);
+  if(!deps.revisePresaleListing)return deps.json({ok:false,error:'eBay editing is not set up on this Worker'},501);
+  const db=(path,options)=>deps.supabaseAdminFetch(env,path,options);
+  const row=(await ebayListingRows(db,storeId)).find(r=>r.id===rowId);
+  const d=row?.data||{};
+  if(!row||d.ebayWithdrawnAt)return deps.json({ok:false,error:'No live eBay listing on that row'},404);
+  if(d.source!=='foc_presale')return deps.json({ok:false,error:'Only presale listings can be changed here'},409);
+  let token='';try{token=await deps.getEbayUserAccessToken(env);}catch(e){return deps.json({ok:false,needsToken:true,error:e.message},401);}
+  if(!token)return deps.json({ok:false,needsToken:true,error:'Connect eBay first'},401);
+  try{await deps.revisePresaleListing(env,token,d,{quantity});}catch(e){return deps.json({ok:false,error:e.message},502);}
+  const patch=presaleEditPatch(d,row.status,{available:quantity});
+  await db(`inventory_items?id=eq.${row.id}&store_id=eq.${encodeURIComponent(storeId)}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({status:patch.status,data:patch.data})});
+  return deps.json({ok:true,listingId:d.ebayListingId,available:quantity,sold:patch.sold});
+}
 async function adminPresaleStockCheck(request,env,deps,url){
   const storeId=text(url.searchParams.get('store_id'),80);
   const auth=await deps.requireStoreUser(request,env,storeId,['owner','admin','manager']);if(auth.error)return auth.error;
@@ -3846,6 +3969,9 @@ export async function handleFocRequest(request, env, url, deps) {
   if(path==='/foc/admin/cover-market'&&request.method==='POST')return adminCoverMarket(request,env,deps);
   if(path==='/foc/admin/ebay-presale-edit'&&request.method==='POST')return adminEbayPresaleEdit(request,env,deps);
   if(path==='/foc/admin/presale-stock-check'&&request.method==='GET')return adminPresaleStockCheck(request,env,deps,url);
+  if(path==='/foc/admin/ebay-listings-check'&&request.method==='GET')return adminEbayListingsCheck(request,env,deps,url);
+  if(path==='/foc/admin/ebay-listings-check/mark-ended'&&request.method==='POST')return adminEbayListingsMarkEnded(request,env,deps);
+  if(path==='/foc/admin/ebay-listings-check/set-quantity'&&request.method==='POST')return adminEbayListingsSetQuantity(request,env,deps);
   if(path==='/foc/admin/presale-stock-fix'&&request.method==='POST')return adminPresaleStockFix(request,env,deps);
   if(path==='/foc/admin/pick-list'&&request.method==='GET')return adminPickList(request,env,deps,url);
   if(path==='/foc/admin/notify-arrivals'&&request.method==='POST')return adminNotifyArrivals(request,env,deps);
