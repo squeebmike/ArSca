@@ -31,7 +31,7 @@ import { cachedCatalogSitemap } from './scripts/sitemap-cache.mjs';
 // It has zero Node dependencies (pure-JS SHA-1), so it bundles straight into
 // the Worker -- reused here instead of duplicating checklist-parsing logic.
 import { buildChecklistIndex, parseChecklistText, sha1Hex, slugify } from './scripts/topps-checklist-parser.js';
-import { handleFocRequest, syncFocStripeEvent, shippingSettings } from './scripts/foc-preorders.mjs';
+import { handleFocRequest, syncFocStripeEvent, shippingSettings, runScheduledStockHealth } from './scripts/foc-preorders.mjs';
 import { handleOrdersBoard, handleOrderMarkShipped } from './scripts/orders-board.mjs';
 import { handleBacklistRequest, syncBacklistStripeEvent } from './scripts/backlist-catalog.mjs';
 import { searchComics, comicSearchShell, comicSearchScriptResponse, injectComicSearch } from './scripts/comic-search.mjs';
@@ -987,7 +987,49 @@ async function supabaseAdminFetchAll(env, path, maxRows = 50000) {
   return { data: rows, response };
 }
 
+// Store ask: "We should not have a cap." PostgREST hands back at most 1,000
+// rows per request whatever limit is asked for -- reads that silently
+// stopped there caused fake stock, double counts and an under-counted PRH
+// order this week. A GET that comes back exactly full keeps paging (in a
+// stable order) until it has every row, unless the caller asked for 1,000
+// or fewer, or is paging itself.
+const SUPABASE_PAGE_ROWS = 1000;
+const SUPABASE_MAX_AUTO_ROWS = 200000;
+function supabaseRequestedLimit(path) {
+  const m = String(path).match(/[?&]limit=(\d+)/);
+  return m ? Number(m[1]) : Infinity;
+}
+function supabasePagedPath(path, offset, withOrder) {
+  let p = String(path).replace(/([?&])limit=\d+(&|$)/, '$1').replace(/([?&])offset=\d+(&|$)/, '$1').replace(/[?&]$/, '');
+  if (withOrder && !/[?&]order=/.test(p)) p += (p.includes('?') ? '&' : '?') + 'order=id.asc';
+  return p + (p.includes('?') ? '&' : '?') + `limit=${SUPABASE_PAGE_ROWS}&offset=${offset}`;
+}
 async function supabaseAdminFetch(env, path, options = {}) {
+  const first = await supabaseAdminFetchOnce(env, path, options);
+  const method = String(options.method || 'GET').toUpperCase();
+  if (method !== 'GET' || !Array.isArray(first.data) || first.data.length < SUPABASE_PAGE_ROWS) return first;
+  const want = Math.min(supabaseRequestedLimit(path), SUPABASE_MAX_AUTO_ROWS);
+  if (want <= SUPABASE_PAGE_ROWS || /[?&]offset=/.test(String(path)) || new Headers(options.headers || {}).has('Range')) return first;
+  // Without an order the next page could repeat or skip rows -- start over
+  // ordered by id (or, for a table with no id, keep the server's order).
+  const ordered = /[?&]order=/.test(String(path));
+  let rows = [], withOrder = true, offset = 0, last = first;
+  if (ordered) { rows = first.data.slice(); offset = rows.length; withOrder = false; }
+  while (rows.length < want) {
+    let page;
+    try { page = await supabaseAdminFetchOnce(env, supabasePagedPath(path, offset, withOrder), options); }
+    catch (e) {
+      if (withOrder && !ordered && offset === 0) { withOrder = false; rows = first.data.slice(); offset = rows.length; continue; }
+      throw e;
+    }
+    const batch = Array.isArray(page.data) ? page.data : [];
+    rows.push(...batch); offset += batch.length; last = page;
+    if (batch.length < SUPABASE_PAGE_ROWS) break;
+  }
+  return { data: rows.slice(0, want), response: last.response, paged: true };
+}
+
+async function supabaseAdminFetchOnce(env, path, options = {}) {
   const { base, key } = supabaseAdminConfig(env);
   const headers = new Headers(options.headers || {});
   headers.set('apikey', key);
@@ -17225,7 +17267,7 @@ export default {
   // /dealscan/latest reads) instead of only ever being reachable by an
   // on-demand click.
   async scheduled(event, env, ctx) {
-    ctx.waitUntil(Promise.all([runScheduledDealScans(env), runScheduledEbayReprice(env), runScheduledEbayOrderSync(env), runScheduledShopifyOrderSync(env), runScheduledStorefrontReviewRequests(env), runScheduledPointsHoldSweep(env), runScheduledEbayFinanceReconcile(env), runScheduledStaleWebOrderReminders(env), runScheduledBookAlerts(env)]));
+    ctx.waitUntil(Promise.all([runScheduledDealScans(env), runScheduledEbayReprice(env), runScheduledEbayOrderSync(env), runScheduledShopifyOrderSync(env), runScheduledStorefrontReviewRequests(env), runScheduledPointsHoldSweep(env), runScheduledEbayFinanceReconcile(env), runScheduledStaleWebOrderReminders(env), runScheduledBookAlerts(env), runScheduledStockHealthCheck(env)]));
   },
 };
 
@@ -17266,6 +17308,14 @@ function staleWebOrderReminderEmail(orders, now = Date.now()) {
     subject: `${n} paid website order${n === 1 ? '' : 's'} waiting to be picked up or shipped`,
     body: `${n === 1 ? 'This paid website order has' : 'These paid website orders have'} been waiting more than ${STALE_WEB_ORDER_DAYS} days:\n\n${lines.join('\n')}\n\nOpen the dashboard, tap the WEB ORDERS WAITING button at the top (or MORE > ORDERS), and tap MARK FULFILLED once each order is picked up or shipped. You'll get this reminder once a day until they're all marked.`,
   };
+}
+
+// Stock health (scripts/foc-preorders.mjs): every 6 hours, saved for the
+// dashboard's Alerts tab, emailed once a day when something serious is wrong.
+async function runScheduledStockHealthCheck(env) {
+  if (!(env.SUPABASE_URL && (env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SERVICE_KEY))) return;
+  try { await runScheduledStockHealth(env, { supabaseAdminFetch, sendEmail }); }
+  catch (e) { console.error('Stock health run failed:', e.message); }
 }
 
 async function runScheduledStaleWebOrderReminders(env, now = Date.now()) {

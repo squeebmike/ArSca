@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.10.15.2-whatnot-exact-fee';
+const APP_VERSION = '2026.10.15.3-stock-health';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -172,11 +172,56 @@ const WALKOFF_STORAGE_MIGRATION_KEY = 'walkoff_store_migration_v1';
 let supabaseClient = null;
 let supabaseStoreSettingsLoaded = false;
 
+// Store ask: "We should not have a cap." The database hands back at most
+// 1,000 rows per request whatever .limit() asks for, and a read that stopped
+// there looked complete. Every table read made through this client that
+// comes back exactly full keeps paging (in a stable order) until it has
+// every row -- unless the code asked for 1,000 or fewer, is paging itself
+// (.range()), or wants a single row.
+const SUPABASE_PAGE_ROWS = 1000, SUPABASE_MAX_AUTO_ROWS = 200000;
+async function pagingSupabaseFetch(input, init = {}){
+  const res = await fetch(input, init);
+  try{
+    const method = String(init.method || (typeof input !== 'string' && input?.method) || 'GET').toUpperCase();
+    const url = new URL(typeof input === 'string' ? input : input.url);
+    if(method !== 'GET' || !res.ok || !url.pathname.includes('/rest/v1/')) return res;
+    const headers = new Headers(init.headers || {});
+    if(headers.has('Range') || url.searchParams.has('offset') || /vnd\.pgrst\.object/.test(headers.get('Accept') || '')) return res;
+    const limit = url.searchParams.has('limit') ? Number(url.searchParams.get('limit')) : Infinity;
+    if(!(limit > SUPABASE_PAGE_ROWS)) return res;
+    let first;
+    try{ first = JSON.parse(await res.clone().text()); }catch(e){ return res; }
+    if(!Array.isArray(first) || first.length < SUPABASE_PAGE_ROWS) return res;
+    const want = Math.min(limit, SUPABASE_MAX_AUTO_ROWS);
+    const ordered = url.searchParams.has('order');
+    // Without an order the next page could repeat or skip rows -- start over
+    // ordered by id (or, for a table with no id, keep the server's order).
+    let rows = ordered ? first.slice() : [], useOrder = !ordered;
+    while(rows.length < want){
+      const next = new URL(url.toString());
+      next.searchParams.delete('limit'); next.searchParams.delete('offset');
+      if(useOrder) next.searchParams.set('order', 'id.asc');
+      next.searchParams.set('limit', String(SUPABASE_PAGE_ROWS)); next.searchParams.set('offset', String(rows.length));
+      const page = await fetch(next.toString(), init);
+      if(!page.ok){
+        if(useOrder && !rows.length){ useOrder = false; rows = first.slice(); continue; }
+        return res;
+      }
+      const batch = await page.json().catch(() => null);
+      if(!Array.isArray(batch)) break;
+      rows.push(...batch);
+      if(batch.length < SUPABASE_PAGE_ROWS) break;
+    }
+    const out = new Headers(res.headers); out.delete('content-length'); out.delete('content-encoding');
+    return new Response(JSON.stringify(rows.slice(0, want)), { status:200, statusText:'OK', headers:out });
+  }catch(e){ return res; }
+}
 function getSupabaseClient(){
   if(supabaseClient) return supabaseClient;
   if(!window.supabase?.createClient) return null;
   supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-    auth:{ persistSession:true, autoRefreshToken:true, detectSessionInUrl:true }
+    auth:{ persistSession:true, autoRefreshToken:true, detectSessionInUrl:true },
+    global:{ fetch:pagingSupabaseFetch },
   });
   // GoTrue's PKCE redirect for password recovery does not reliably carry a
   // type=recovery URL param, so detectSessionInUrl can silently turn a
@@ -16813,6 +16858,7 @@ function switchTab(name, btn){
   if(name === 'reports') setTimeout(ensureReportsPanel, 0);
   if(name === 'phone') setTimeout(ensurePhonePanel, 0);
   if(name === 'backoffice') setTimeout(() => refreshStoreSettingsFromCloud({ force:true, redraw:true }), 0);
+  if(name === 'alerts') setTimeout(() => loadStockHealth(false), 0);
 }
 
 // Quick sell modal
@@ -37770,11 +37816,49 @@ function dismissPriceChangeAlert(id){
   // silently undone the next time another device pulls the cloud list down.
   savePriceChangeAlerts(getPriceChangeAlerts().map(a => a.id === id ? { ...a, status:'dismissed' } : a));
 }
+// ── Stock health ──
+// Store ask: catch wrong stock before anyone sees a wrong number. The
+// Worker checks every 6 hours (and on RUN NOW); this shows the latest.
+let stockHealthReport = null, stockHealthLoadedAt = 0, stockHealthLoading = null, stockHealthFailedAt = 0;
+const STOCK_HEALTH_COLOR = { high:'var(--red)', medium:'var(--gold)', low:'var(--dim)' };
+function loadStockHealth(run){
+  if(!run && stockHealthLoading) return stockHealthLoading;
+  if(!run && !stockHealthReport && Date.now() - stockHealthFailedAt < 2 * 60 * 1000) return Promise.resolve(null);
+  if(!run && stockHealthReport && Date.now() - stockHealthLoadedAt < 30 * 60 * 1000){ renderStockHealth(); return Promise.resolve(stockHealthReport); }
+  const storeId = typeof getActiveStoreId === 'function' ? getActiveStoreId() : '';
+  if(!storeId || typeof storeWorkerFetch !== 'function') return Promise.resolve(null);
+  if(run){ const card = document.getElementById('stock-health-card'); if(card) card.querySelector('[data-stock-health-status]')?.replaceChildren(document.createTextNode('Checking everything…')); }
+  stockHealthLoading = storeWorkerFetch('/foc/admin/stock-health?store_id=' + encodeURIComponent(storeId) + (run ? '&run=1' : ''), { cache:'no-store' })
+    .then(r => r.json()).then(d => { if(d && d.ok){ stockHealthReport = d.report; stockHealthLoadedAt = Date.now(); } else stockHealthFailedAt = Date.now(); renderStockHealth(); return stockHealthReport; })
+    .catch(() => { stockHealthFailedAt = Date.now(); renderStockHealth(); return null; })
+    .finally(() => { stockHealthLoading = null; });
+  return stockHealthLoading;
+}
+function stockHealthAgeLabel(at){
+  const t = Date.parse(at || ''); if(!t) return '';
+  const m = Math.round((Date.now() - t) / 60000);
+  return m < 1 ? 'just now' : m < 60 ? m + ' min ago' : m < 1440 ? Math.round(m / 60) + 'h ago' : Math.round(m / 1440) + 'd ago';
+}
+function renderStockHealth(){
+  const r = stockHealthReport;
+  const banner = document.getElementById('stock-health-banner');
+  if(banner) banner.innerHTML = r && r.high ? `<div class="panel" style="border-color:rgba(255,77,109,.45);margin-bottom:10px;padding:10px 12px;cursor:pointer" onclick="switchTab('alerts')"><b style="font:900 11px 'Orbitron',monospace;color:var(--red);letter-spacing:.04em">🩺 ${r.high} STOCK PROBLEM${r.high===1?'':'S'} TO FIX</b> <span style="font:9px var(--font-mono);color:var(--dim)">${escHtml(r.issues.filter(i => i.severity === 'high').map(i => i.title).join(' · '))} -- tap to see</span></div>` : '';
+  const card = document.getElementById('stock-health-card');
+  if(!card) return;
+  if(!r){ card.innerHTML = `<div class="panel" style="margin-bottom:10px;padding:10px 12px"><b style="font:900 11px 'Orbitron',monospace;color:var(--blue)">🩺 STOCK HEALTH</b> <span data-stock-health-status style="font:9px var(--font-mono);color:var(--dim)">not checked yet</span> <button class="ra" onclick="loadStockHealth(true)">RUN NOW</button></div>`; return; }
+  const issues = r.issues || [];
+  card.innerHTML = `<div class="panel" style="margin-bottom:10px;padding:10px 12px;border-color:${r.high?'rgba(255,77,109,.45)':issues.length?'rgba(255,184,0,.35)':'rgba(0,255,163,.3)'}">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap"><b style="font:900 11px 'Orbitron',monospace;color:${r.high?'var(--red)':issues.length?'var(--gold)':'var(--g)'};letter-spacing:.04em">🩺 STOCK HEALTH · ${issues.length ? issues.length + ' THING' + (issues.length===1?'':'S') + ' TO CHECK' : 'ALL CLEAR'}</b><span style="display:flex;gap:6px;align-items:center"><span data-stock-health-status style="font:9px var(--font-mono);color:var(--dim)">checked ${escHtml(stockHealthAgeLabel(r.at))}</span><button class="ra" onclick="loadStockHealth(true)">RUN NOW</button></span></div>
+    <div style="font:9px var(--font-mono);color:var(--dim);margin-top:3px">Looked at every row: ${Number(r.checked?.inStock||0).toLocaleString()} in-stock items, ${Number(r.checked?.presales||0).toLocaleString()} eBay presales, ${Number(r.checked?.preorders||0)} paid preorder items. Checks again every 6 hours; emails you once a day if something serious is wrong.</div>
+    ${issues.map(i => `<details class="stock-health-issue" ${i.severity==='high'?'open':''}><summary style="color:${STOCK_HEALTH_COLOR[i.severity]||'var(--text)'}">${i.severity==='high'?'⚠':i.severity==='medium'?'•':'·'} ${escHtml(i.title)}</summary><div class="stock-health-fix">Fix: ${escHtml(i.fix)}</div>${(i.items||[]).map(it => `<div class="stock-health-item">${escHtml(it.name || '')}${it.note ? ' -- ' + escHtml(it.note) : ''}</div>`).join('')}${i.count > (i.items||[]).length ? `<div class="stock-health-item">+${i.count - i.items.length} more</div>` : ''}</details>`).join('')}
+  </div>`;
+}
 function openPriceAlertItem(itemId){
   if(itemId && all.some(i => i.id === itemId)) openEditModal(itemId);
   else toast_dash('That item is no longer in inventory (sold or removed)');
 }
 function renderPriceChangeAlerts(){
+  loadStockHealth(false);
   const host = document.getElementById('price-change-alerts');
   if(!host) return;
   // Biggest movers first (by dollar swing) -- this list can span several

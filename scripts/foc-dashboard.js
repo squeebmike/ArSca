@@ -1539,13 +1539,21 @@ function focHoldNotice(d){
 }
 async function openFocHolds(){
   busy('Loading copies on hold…');
-  try{var d=await api('/foc/admin/holds?store_id='+encodeURIComponent(getActiveStoreId()));renderFocHolds(d.holds||[]);}
+  try{
+    var d=await api('/foc/admin/holds?store_id='+encodeURIComponent(getActiveStoreId()));
+    var health=null;try{health=(await api('/foc/admin/stock-health?store_id='+encodeURIComponent(getActiveStoreId())+'&run=1')).report;}catch(e){}
+    var unheld=health?((health.issues||[]).find(function(i){return i.key==='unheld';})||{items:[]}).items:[];
+    renderFocHolds(d.holds||[],unheld);
+  }
   catch(e){panel().innerHTML='<button class="hbtn" onclick="loadFocCycles()">← FOC WALL</button><div class="panel" style="margin-top:10px;color:var(--red)">Could not load holds: '+esc(e.message)+'</div>';}
 }
-function renderFocHolds(holds){
+function renderFocHolds(holds,unheld){
+  unheld=unheld||[];
   panel().innerHTML='<section class="foc-hero"><div class="foc-toolbar"><button class="hbtn" onclick="loadFocCycles()">← FOC WALL</button><button class="hbtn" onclick="openFocHolds()">↻ REFRESH</button></div>'+
     '<div style="font:900 20px/1.1 \'Orbitron\',monospace;color:var(--text);margin-top:10px">📌 On Hold for Preorders</div>'+
     '<div style="font:10px/1.6 var(--font-mono);color:var(--dim);margin-top:4px">Paid website preorder copies that came in. They can\'t be rung up, sold online or listed until you hand them over here.</div></section>'+
+    (unheld.length?'<section class="panel" style="padding:10px 14px;margin-bottom:10px;border-color:rgba(255,77,109,.45)"><div style="font:900 11px \'Orbitron\',monospace;color:var(--red);letter-spacing:1px">CAME IN BUT NOT SET ASIDE ('+unheld.length+')</div><div style="font:9px var(--font-mono);color:var(--dim);margin:3px 0 6px">Paid preorder copies that are on the shelf as regular stock. SET ASIDE moves a copy onto a hold for the customer.</div>'+
+      unheld.map(function(u){return '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:4px 0;border-top:1px solid var(--border);font:10px var(--font-mono)"><span style="color:var(--text)">'+esc(u.name)+'<br><span style="color:var(--dim)">'+esc(u.note||'')+'</span></span><span style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end"><button class="hbtn" style="color:var(--gold);white-space:nowrap" onclick="focSetAside(\''+esc(u.preorderItemId||'')+'\')">SET ASIDE</button><button class="hbtn" style="white-space:nowrap" onclick="focSetAside(\''+esc(u.preorderItemId||'')+'\',true)">ALREADY HANDED OVER</button></span></div>';}).join('')+'</section>':'')+
     (holds.length?holds.map(function(g){
       var ship=g.fulfillment==='shipping';
       return '<section class="panel" style="padding:10px 14px;margin-bottom:10px"><div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start;flex-wrap:wrap"><div><div style="font:800 13px var(--font-mono);color:var(--text)">'+esc(g.customerName)+'</div><div style="font:9px var(--font-mono);color:var(--dim)">'+esc(g.orderNumber)+' · '+(ship?'SHIP':'PICKUP')+(g.phone?' · '+esc(g.phone):'')+' · held since '+esc(displayDate(String(g.heldAt||'').slice(0,10)))+'</div></div>'+
@@ -1561,7 +1569,13 @@ async function focHandOver(orderId,ship){
     toast_dash((d.released||0)+' book'+(d.released===1?'':'s')+' '+(ship?'shipped':'handed over')+(d.stillComing?' · '+d.stillComing+' still coming':' · order done'));openFocHolds();}
   catch(e){toast_dash('Could not update: '+e.message);}
 }
-window.openFocHolds=openFocHolds;window.focHandOver=focHandOver;
+async function focSetAside(itemId,handedOver){
+  if(!itemId)return;
+  if(handedOver&&!confirm('The customer already has this book? It will be marked done on their preorder.'))return;
+  try{var d=await api('/foc/admin/holds/set-aside',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({storeId:getActiveStoreId(),preorderItemId:itemId,handedOver:!!handedOver})});toast_dash(handedOver?'Marked handed over':'Set aside: '+d.copies+' cop'+(d.copies===1?'y':'ies')+' on hold');openFocHolds();}
+  catch(e){toast_dash('Could not set aside: '+e.message);}
+}
+window.openFocHolds=openFocHolds;window.focHandOver=focHandOver;window.focSetAside=focSetAside;
 
 // ── Presale stock check ──
 // Store report: "why does it think I have Cyberpunk 2077 #1?" and "more
