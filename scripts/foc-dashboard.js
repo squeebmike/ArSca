@@ -1697,7 +1697,18 @@ async function ebayListingMatchEbay(rowId){
 // Store ask: "Easy way to edit the quantity of eBay listings? And prices?"
 // Every live listing (made here or straight on eBay), price + quantity
 // editable, each cover of a multi-cover listing on its own line.
-var ebayEditor={listings:[],q:'',sort:'newest'};
+var ebayEditor={listings:[],q:'',sort:'newest',diffOnly:false};
+// eBay vs dashboard for one listing (or one cover): price and count.
+function ebayEdDiff(ebay,dash){
+  if(!dash)return null;
+  var priceOff=Math.abs(Number(ebay.price||0)-Number(dash.price||0))>=0.01&&Number(dash.price||0)>0;
+  var qtyOff=Number(ebay.available||0)!==Number(dash.qty||0);
+  return {price:priceOff,qty:qtyOff,any:priceOff||qtyOff};
+}
+function ebayEdHasDiff(l){
+  if(l.variations&&l.variations.length)return l.variations.some(function(v){var d=ebayEdDiff(v,v.dashboard);return d&&d.any;});
+  var d=ebayEdDiff(l,l.dashboard);return !!(d&&d.any);
+}
 async function openEbayEditor(){
   busy('Reading your eBay listings…');
   try{
@@ -1707,7 +1718,7 @@ async function openEbayEditor(){
       '<div style="font:900 20px/1.1 \'Orbitron\',monospace;color:var(--text);margin-top:10px">✏️ All eBay Listings</div>'+
       '<div style="font:10px/1.6 var(--font-mono);color:var(--dim);margin-top:4px">Change a price or quantity and press SAVE -- it goes straight to eBay. Quantity is how many are left to buy.</div>'+
       '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"><input id="ebay-ed-q" type="search" placeholder="Search titles…" value="'+esc(ebayEditor.q)+'" oninput="ebayEditor.q=this.value;renderEbayEditorList()" style="flex:1;min-width:180px;padding:8px;background:var(--surf2);border:1px solid var(--border);color:var(--text);border-radius:6px">'+
-      '<select onchange="ebayEditor.sort=this.value;renderEbayEditorList()" style="padding:8px;background:var(--surf2);border:1px solid var(--border);color:var(--text);border-radius:6px">'+[['newest','Newest first'],['oldest','Oldest first (stale)'],['price-high','Price high → low'],['price-low','Price low → high'],['most','Most left'],['untracked','Not in dashboard first']].map(function(o){return '<option value="'+o[0]+'"'+(ebayEditor.sort===o[0]?' selected':'')+'>'+o[1]+'</option>';}).join('')+'</select></div></section>'+
+      '<select onchange="ebayEditor.sort=this.value;renderEbayEditorList()" style="padding:8px;background:var(--surf2);border:1px solid var(--border);color:var(--text);border-radius:6px">'+[['newest','Newest first'],['diff','Differences first'],['oldest','Oldest first (stale)'],['price-high','Price high → low'],['price-low','Price low → high'],['most','Most left'],['untracked','Not in dashboard first']].map(function(o){return '<option value="'+o[0]+'"'+(ebayEditor.sort===o[0]?' selected':'')+'>'+o[1]+'</option>';}).join('')+'</select><label style="display:flex;gap:6px;align-items:center;font:10px var(--font-mono);color:var(--text)"><input type="checkbox" '+(ebayEditor.diffOnly?'checked':'')+' onchange="ebayEditor.diffOnly=this.checked;renderEbayEditorList()"> Differences only</label></div></section>'+
       '<div id="ebay-ed-list"></div>';
     renderEbayEditorList();
   }catch(e){panel().innerHTML='<button class="hbtn" onclick="loadFocCycles()">← FOC WALL</button><div class="panel" style="margin-top:10px;color:var(--red)">Could not read eBay: '+esc(e.message)+'</div>';}
@@ -1716,18 +1727,27 @@ function ebayEdLeft(l){return l.variations&&l.variations.length?l.variations.red
 function renderEbayEditorList(){
   var host=document.getElementById('ebay-ed-list');if(!host)return;
   var q=String(ebayEditor.q||'').toLowerCase().trim();
-  var list=ebayEditor.listings.filter(function(l){return !q||String(l.title||'').toLowerCase().indexOf(q)>=0||String(l.itemId).indexOf(q)>=0||(l.variations||[]).some(function(v){return String(v.label||'').toLowerCase().indexOf(q)>=0;});});
+  var list=ebayEditor.listings.filter(function(l){return (!ebayEditor.diffOnly||ebayEdHasDiff(l))&&(!q||String(l.title||'').toLowerCase().indexOf(q)>=0||String(l.itemId).indexOf(q)>=0||(l.variations||[]).some(function(v){return String(v.label||'').toLowerCase().indexOf(q)>=0;}));});
   var t=function(l){return Date.parse(l.startTime||'')||0;};
-  var sorts={newest:function(a,b){return t(b)-t(a);},oldest:function(a,b){return t(a)-t(b);},'price-high':function(a,b){return Number(b.price||0)-Number(a.price||0);},'price-low':function(a,b){return Number(a.price||0)-Number(b.price||0);},most:function(a,b){return ebayEdLeft(b)-ebayEdLeft(a);},untracked:function(a,b){return Number(a.linked)-Number(b.linked)||t(b)-t(a);}};
+  var sorts={diff:function(a,b){return Number(ebayEdHasDiff(b))-Number(ebayEdHasDiff(a))||t(b)-t(a);},newest:function(a,b){return t(b)-t(a);},oldest:function(a,b){return t(a)-t(b);},'price-high':function(a,b){return Number(b.price||0)-Number(a.price||0);},'price-low':function(a,b){return Number(a.price||0)-Number(b.price||0);},most:function(a,b){return ebayEdLeft(b)-ebayEdLeft(a);},untracked:function(a,b){return Number(a.linked)-Number(b.linked)||t(b)-t(a);}};
   list=list.slice().sort(sorts[ebayEditor.sort]||sorts.newest);
   var input=function(kind,key,val,width){return '<input type="number" '+(kind==='price'?'step="0.01" min="0.99"':'min="0" step="1"')+' value="'+(val==null?'':val)+'" data-ebay-ed-'+kind+'="'+esc(key)+'" style="width:'+width+'px;padding:5px;background:var(--surf2);border:1px solid var(--border);color:var(--text);border-radius:6px">';};
+  // What the dashboard says, under eBay's numbers; differences in gold.
+  var dashLine=function(key,ebay,dash){
+    if(!dash)return '';
+    var d=ebayEdDiff(ebay,dash),gold='color:var(--gold);font-weight:700';
+    var what=dash.presale?'on eBay':'in stock';
+    return '<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end;margin-top:4px;font-size:9px;color:var(--dim)">Dashboard: <span style="'+(d.price?gold:'')+'">$'+Number(dash.price||0).toFixed(2)+'</span> · <span style="'+(d.qty?gold:'')+'">'+Number(dash.qty||0)+' '+what+'</span>'+
+      (d.any?' <button class="hbtn" style="font-size:8px;min-height:0;padding:3px 7px;margin:0" title="Put the dashboard\'s numbers in the boxes, then SAVE to send them to eBay" onclick="ebayEdUseDashboard(\''+esc(key)+'\')">USE DASHBOARD →</button><button class="hbtn" style="font-size:8px;min-height:0;padding:3px 7px;margin:0" title="Copy eBay\'s '+(dash.presale?'price and count':'price')+' into the dashboard" onclick="ebayEdUseEbay(\''+esc(key)+'\')">← USE EBAY\'S</button>':' <span style="color:var(--g)">✓ matches</span>')+'</div>';
+  };
   var controls=function(key,price,qty,sold){return '<span style="display:flex;gap:5px;align-items:center;flex-wrap:wrap;justify-content:flex-end">$'+input('price',key,price?Number(price).toFixed(2):'',78)+'<span style="color:var(--dim)">qty</span>'+input('qty',key,qty,56)+(sold?'<span style="color:var(--dim);font-size:9px">'+sold+' sold</span>':'')+'<button class="hbtn" style="font-size:9px;min-height:0;padding:5px 10px;margin:0" onclick="saveEbayEdit(\''+esc(key)+'\')">SAVE</button><span data-ebay-ed-msg="'+esc(key)+'" style="font-size:9px"></span></span>';};
   host.innerHTML=(list.length?'':'<div class="panel" style="padding:20px;text-align:center;color:var(--dim)">No listings match.</div>')+list.map(function(l){
     var age=l.startTime?Math.floor((Date.now()-Date.parse(l.startTime))/864e5):null;
     var meta=['listing <a href="https://www.ebay.com/itm/'+encodeURIComponent(l.itemId)+'" target="_blank" rel="noopener" style="color:var(--blue)">'+esc(l.itemId)+'</a>',age!=null?(age+' day'+(age===1?'':'s')+' up'):'',l.watchers?l.watchers+' watching':'',l.linked?'':'<span style="color:var(--gold)">not in dashboard</span>'].filter(Boolean).join(' · ');
     var img=l.photo?'<img src="'+esc(l.photo)+'" alt="" loading="lazy" style="width:48px;height:48px;object-fit:cover;border-radius:6px;flex-shrink:0">':'<div style="width:48px;height:48px;border-radius:6px;background:var(--surf2);flex-shrink:0"></div>';
-    var head='<div style="display:flex;gap:10px;align-items:center">'+img+'<div style="flex:1;min-width:0"><div style="color:var(--text);font-weight:700;overflow:hidden;text-overflow:ellipsis">'+esc(l.title)+'</div><div style="color:var(--dim);font-size:9px;margin-top:2px">'+meta+'</div></div>'+(l.variations&&l.variations.length?'':controls(l.itemId,l.price,l.available,l.sold))+'</div>';
-    var vars=(l.variations||[]).map(function(v){return '<div style="display:flex;gap:8px;justify-content:space-between;align-items:center;padding:5px 0 5px 58px;border-top:1px dashed var(--border)"><span style="color:var(--text)">'+esc(v.label||v.sku||'Cover')+'</span>'+controls(l.itemId+'|'+v.sku,v.price,v.available,v.sold)+'</div>';}).join('');
+    var single=!(l.variations&&l.variations.length);
+    var head='<div style="display:flex;gap:10px;align-items:center">'+img+'<div style="flex:1;min-width:0"><div style="color:var(--text);font-weight:700;overflow:hidden;text-overflow:ellipsis">'+esc(l.title)+'</div><div style="color:var(--dim);font-size:9px;margin-top:2px">'+meta+'</div></div>'+(single?'<div>'+controls(l.itemId,l.price,l.available,l.sold)+dashLine(l.itemId,l,l.dashboard)+'</div>':'')+'</div>';
+    var vars=(l.variations||[]).map(function(v){var k=l.itemId+'|'+v.sku;return '<div style="display:flex;gap:8px;justify-content:space-between;align-items:center;padding:5px 0 5px 58px;border-top:1px dashed var(--border)"><span style="color:var(--text)">'+esc(v.label||v.sku||'Cover')+(v.linked?'':' <span style="color:var(--gold);font-size:9px">not in dashboard</span>')+'</span><div>'+controls(k,v.price,v.available,v.sold)+dashLine(k,v,v.dashboard)+'</div></div>';}).join('');
     return '<div class="panel" style="padding:10px 12px;margin-top:8px;font:10px/1.5 var(--font-mono)">'+head+vars+'</div>';
   }).join('');
 }
@@ -1751,6 +1771,31 @@ async function saveEbayEdit(key){
     if(msg){msg.style.color='var(--g)';msg.textContent='✓ saved';}
   }catch(e){if(msg){msg.style.color='var(--red)';msg.textContent=e.message;}}
 }
+function ebayEdFind(key){
+  var parts=String(key).split('|'),l=ebayEditor.listings.find(function(x){return String(x.itemId)===parts[0];});
+  if(!l)return null;var v=parts[1]?(l.variations||[]).find(function(x){return x.sku===parts[1];}):null;
+  return {l:l,v:v,cur:v||l,itemId:parts[0],variationSku:parts[1]||''};
+}
+function ebayEdUseDashboard(key){
+  var f=ebayEdFind(key);if(!f||!f.cur.dashboard)return;
+  var p=document.querySelector('[data-ebay-ed-price="'+key+'"]'),q=document.querySelector('[data-ebay-ed-qty="'+key+'"]'),msg=document.querySelector('[data-ebay-ed-msg="'+key+'"]');
+  if(p&&Number(f.cur.dashboard.price)>0)p.value=Number(f.cur.dashboard.price).toFixed(2);
+  if(q)q.value=Number(f.cur.dashboard.qty||0);
+  if(msg){msg.style.color='var(--gold)';msg.textContent='press SAVE';}
+}
+async function ebayEdUseEbay(key){
+  var f=ebayEdFind(key);if(!f||!f.cur.dashboard)return;
+  var dash=f.cur.dashboard;
+  if(!confirm('Copy eBay\'s '+(dash.presale?'price ($'+Number(f.cur.price||0).toFixed(2)+') and count ('+f.cur.available+')':'price ($'+Number(f.cur.price||0).toFixed(2)+')')+' into the dashboard?'+(dash.presale?'':' Your in-store stock count stays as it is.')))return;
+  var msg=document.querySelector('[data-ebay-ed-msg="'+key+'"]');
+  try{
+    var r=await api('/foc/admin/ebay-listings/to-dashboard',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({storeId:getActiveStoreId(),itemId:f.itemId,variationSku:f.variationSku})});
+    dash.price=r.price;if(r.countUpdated)dash.qty=r.qty;
+    renderEbayEditorList();
+    msg=document.querySelector('[data-ebay-ed-msg="'+key+'"]');if(msg){msg.style.color='var(--g)';msg.textContent='✓ dashboard updated';}
+  }catch(e){if(msg){msg.style.color='var(--red)';msg.textContent=e.message;}}
+}
+window.ebayEdUseDashboard=ebayEdUseDashboard;window.ebayEdUseEbay=ebayEdUseEbay;
 window.openEbayEditor=openEbayEditor;window.renderEbayEditorList=renderEbayEditorList;window.saveEbayEdit=saveEbayEdit;window.ebayEditor=ebayEditor;
 window.openEbayListingsCheck=openEbayListingsCheck;window.ebayListingSetQty=ebayListingSetQty;window.ebayListingsMarkEnded=ebayListingsMarkEnded;window.ebayListingMatchEbay=ebayListingMatchEbay;
 

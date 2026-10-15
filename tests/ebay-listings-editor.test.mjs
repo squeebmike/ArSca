@@ -39,6 +39,27 @@ const post = body => ({ method:'POST', headers:{ get:() => null }, json:async ()
   assert.equal(r.data.ok, true);
   assert.deepEqual(r.data.listings.map(l => [l.itemId, l.linked]), [['256538098712', false], ['257800000001', true]], 'hand-listed ones are included, flagged');
   assert.equal(r.data.listings[1].variations[0].linked, true);
+  // Store ask: "Can it compare what eBay says vs what the dashboard says?"
+  assert.deepEqual(r.data.listings[1].variations[0].dashboard, { rowId:'r1', sku:'mx-a', source:'foc_presale', presale:true, name:'Midnight X-Men A', price:5.99, qty:5 });
+  assert.equal(r.data.listings[0].dashboard, null, 'nothing to compare for a hand-listed item');
+}
+{
+  // ← USE EBAY'S on a presale cover: price, count and sales come over.
+  const { d, patches } = deps();
+  const mx2 = { ...mx, variations:[{ ...mx.variations[0], price:7.5, available:2, sold:4 }] };
+  d.ebayMyListings = async () => [bbq, mx2];
+  const r = await handleFocRequest(post({ storeId:'s', itemId:'257800000001', variationSku:'mx-a' }), {}, new URL('https://x/foc/admin/ebay-listings/to-dashboard'), d);
+  assert.deepEqual(r.data, { ok:true, price:7.5, qty:2, countUpdated:true });
+  assert.deepEqual([patches[0].data.salePrice, patches[0].data.qty, patches[0].data.focPresaleOriginalQty], [7.5, 2, 6]);
+}
+{
+  // On a shelf item only the price comes over -- stock is what's physically here.
+  const shelf = [{ id:'r9', status:'in_stock', data:{ source:'built_in', name:'BBQ set', ebayListingId:'256538098712', qty:3, salePrice:30 } }];
+  const { d, patches } = deps({ supabaseAdminFetch:async (env, path, opts = {}) => { if (opts.method === 'PATCH') { patches.push(JSON.parse(opts.body)); return { data:[] }; } return { data:shelf }; } });
+  const r = await handleFocRequest(post({ storeId:'s', itemId:'256538098712' }), {}, new URL('https://x/foc/admin/ebay-listings/to-dashboard'), d);
+  assert.deepEqual(r.data, { ok:true, price:27.77, qty:3, countUpdated:false });
+  assert.equal(patches[0].data.qty, 3);
+  assert.equal(patches[0].data.salePrice, 27.77);
 }
 {
   // A hand-listed item: price change only, nothing in the dashboard to sync.
@@ -76,6 +97,10 @@ assert.match(dep, /status\(quantity \+ now\.sold\)/, 'and corrected if eBay coun
 // Screen.
 assert.match(ui, /onclick="openEbayEditor\(\)">✏️ ALL EBAY LISTINGS<\/button>/);
 assert.match(ui, /Oldest first \(stale\)/);
+assert.match(ui, /Differences only/);
+assert.match(ui, /USE DASHBOARD →/);
+assert.match(ui, /← USE EBAY\\'S/);
+assert.match(ui, /✓ matches/);
 assert.match(ui, /not in dashboard/);
 assert.match(ui, /\/foc\/admin\/ebay-listings\/revise/);
 
