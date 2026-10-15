@@ -25,7 +25,8 @@ const service = fs.readFileSync('scripts/foc-preorders.mjs', 'utf8');
 const worker = fs.readFileSync('cloudflare-worker-full.js', 'utf8');
 
 // ── Structural: ebayPresoldBySku (distributor order math) ──
-const ebayPresoldSrc = service.match(/async function ebayPresoldBySku\(db,storeId\)\{[\s\S]*?\n\}/)[0];
+assert.match(service.match(/async function ebayPresoldBySku\(db,storeId\)\{[\s\S]*?\n\}/)[0], /return ebayPresoldFromRows\(await focPresaleRows\(db,storeId\)\);/, 'ebayPresoldBySku counts through the shared ebayPresoldFromRows');
+const ebayPresoldSrc = service.match(/function ebayPresoldFromRows\(rows\)\{[\s\S]*?\n\}/)[0];
 assert.match(ebayPresoldSrc, /isBundle=d\.source==='foc_presale_bundle'&&Array\.isArray\(d\.focBundleSkuIds\)&&d\.focBundleSkuIds\.length/,
   'ebayPresoldBySku must recognize a foc_presale_bundle row by its focBundleSkuIds array');
 assert.match(ebayPresoldSrc, /if\(isBundle\)\{for\(const skuId of d\.focBundleSkuIds\)map\.set\(skuId,\(map\.get\(skuId\)\|\|0\)\+soldSoFar\);\}/,

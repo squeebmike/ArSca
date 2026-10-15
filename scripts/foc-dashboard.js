@@ -466,6 +466,13 @@ function focEbayHealthPanelHtml(){
     '<div style="font:900 11px \'Orbitron\',monospace;color:var(--gold);letter-spacing:1px;margin-bottom:6px">⚠ EBAY LISTING HEALTH ('+total+')</div>'+
     rows+'</div>';
 }
+// After FOC the website keeps selling ordered covers, up to the copies
+// coming that aren't sold yet (from the uploaded cart).
+function focAfterFocHtml(v){
+  if(!v.afterFoc)return'';
+  var left=Number(v.afterFocLeft||0);
+  return '<div class="foc-after-foc" style="margin-top:6px;font:9px/1.5 var(--font-mono);color:'+(left>0?'var(--g)':'var(--dim)')+'">🛒 '+(left>0?left+' left to sell on the website after FOC':'after FOC: every copy coming is sold')+'</div>';
+}
 function ebaySection(v){
   var status=v.ebayPresaleStatus;if(!status)return'';
   var cls=status==='LISTED'?'open':(status==='ELIGIBLE_NOW'?'incentive':'');
@@ -526,7 +533,7 @@ function skuCard(v){
     (v.isIncentive&&!Number(v.priceCents||0)?'<div style="font:8px/1.45 var(--font-mono);color:var(--gold);margin-top:6px">REQUEST-ONLY UNTIL BOTH SECURED QTY AND SELL PRICE ARE SET</div>':'')+
     '<label style="display:flex;gap:6px;align-items:center;margin-top:7px;font:8px var(--font-mono);color:var(--dim)"><input data-field="customerEnabled" type="checkbox" '+(v.customerEnabled!==false?'checked':'')+' onchange="'+save+'"> SHOW TO CUSTOMERS</label>'+
     '<button class="hbtn" style="margin-top:7px;width:100%;min-height:28px;font-size:9px" onclick="quickAddFocSkuToInventory(\''+esc(v.id)+'\')">+ ADD TO INVENTORY</button>'+
-    ebaySection(v)+'</article>';
+    focAfterFocHtml(v)+ebaySection(v)+'</article>';
 }
 
 function familyCard(f){

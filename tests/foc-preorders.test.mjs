@@ -267,9 +267,9 @@ console.log('loadAllCatalogs multi-week functional checks passed');
   const active = { id:'active', store_id:'store1', foc_date:'2099-09-07', customer_cutoff_at:'2099-09-07T07:01:00Z', status:'open' };
   const expired = { id:'expired', store_id:'store1', foc_date:'2020-08-24', customer_cutoff_at:'2020-08-24T07:01:00Z', status:'open' };
   let calls=0;
-  const db=async path=>{calls++;assert.match(path,/^foc_cycles\?/);return{data:[expired,active]};};
+  const db=async path=>{calls++;if(calls===2){assert.match(path,/^comic_skus\?cycle_id=in\.\(expired\)&secured_quantity=gt\.0.*&select=cycle_id,is_incentive$/,'the only extra read is a tiny after-FOC check on closed weeks');return{data:[]};}assert.match(path,/^foc_cycles\?/);return{data:[expired,active]};};
   const summaries=await loadCycleSummaries(db,'store1');
-  assert.equal(calls,1,'cycle summaries must use one small cycle-table query only');
+  assert.ok(calls<=2,'cycle summaries must stay a small cycle-table query plus at most one tiny after-FOC check -- never catalogs');
   assert.deepEqual(summaries.map(c=>c.id),['active','expired'],'active FOCs must precede expired history');
   assert.equal(summaries[0].isOpen,true);
   assert.equal(summaries[1].isOpen,false);
@@ -280,7 +280,7 @@ console.log('FOC summary ordering and incremental-load contract checks passed');
 // ── Bug: placing a FOC preorder and paying for it never sent the customer
 // any confirmation -- checkout only set up the Stripe payment and wrote
 // the order row; nothing in the flow ever called the app's email sender. ──
-assert.match(worker, /syncFocStripeEvent\(env,event,\{supabaseAdminFetch,sendEmail\}\)/, 'the Stripe webhook must pass sendEmail into syncFocStripeEvent, or a paid FOC order can never trigger a confirmation email');
+assert.match(worker, /syncFocStripeEvent\(env,event,\{supabaseAdminFetch,sendEmail[,}]/, 'the Stripe webhook must pass sendEmail into syncFocStripeEvent, or a paid FOC order can never trigger a confirmation email');
 assert.match(service, /export function focOrderConfirmationEmail\(order, items\) \{/, 'a confirmation-email builder must exist');
 assert.match(service, /const guard = status==='paid' \? '&status=neq\.paid' : '';/, 'the paid-transition update must guard against redelivered Stripe webhooks, or a duplicate delivery would email the customer twice');
 
