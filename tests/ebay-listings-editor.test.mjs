@@ -104,4 +104,14 @@ assert.match(ui, /✓ matches/);
 assert.match(ui, /not in dashboard/);
 assert.match(ui, /\/foc\/admin\/ebay-listings\/revise/);
 
+// Store question: "Is it just for FOC? We will have other stuff on eBay also."
+// It covers the whole account; it now opens from the eBay tab too.
+const html = fs.readFileSync('dashboard.html', 'utf8');
+assert.match(html, /onclick="openEbayEditor\('ebay-hub-tools'\)">✏️ ALL EBAY LISTINGS<\/button>/);
+assert.match(html, /onclick="openEbayListingsCheck\('ebay-hub-tools'\)">📋 EBAY LISTINGS CHECK<\/button>/);
+assert.match(html, /<div id="ebay-hub-tools"><\/div>/);
+assert.match(ui, /function panel\(\)\{return \(panelHostOverride&&document\.getElementById\(panelHostOverride\)\)\|\|document\.getElementById\('foc-panels'\);\}/);
+assert.match(ui, /async function openEbayEditor\(hostId\)\{\n  if\(typeof hostId==='string'\)panelHostOverride=hostId;/);
+assert.match(ui, /async function loadCycles\(force\)\{\n  panelHostOverride=null;/, 'opening the FOC wall puts screens back in the FOC tab');
+
 console.log('All eBay listings editor checks passed');
