@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.10.15.11-ebay-listings-check';
+const APP_VERSION = '2026.10.15.12-ebay-check-quantities';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -13935,6 +13935,11 @@ const BUILT_IN_ITEM_SIMPLE_FIELDS = [
   // Listed on Whatnot (set when its Whatnot CSV is downloaded). Only a
   // marker -- the item stays sellable here, on eBay and on the storefront.
   ['whatnotListedAt',''], ['whatnotListing', null],
+  // The eBay listing an item is on. LIST ON EBAY saved these through this
+  // list's write path, but they were never on it -- every listing made from
+  // the dashboard was silently forgotten on save (store report: the Goblin
+  // Storm deck, listed from the dashboard, showed as untracked on eBay).
+  ['ebayListingId',''], ['ebayOfferId',''], ['ebaySku',''], ['ebayListedAt',''],
   ['dropship', false, 'bool'], ['vendor',''], ['supplierSku',''], ['supplierAvailability',''],
   ['supplierCost',0,'num'], ['supplierCheckedAt',''],
   // Shelf sticker printed? null = no record (see inventoryStickerPrinted).

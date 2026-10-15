@@ -1641,13 +1641,17 @@ async function openEbayListingsCheck(){
   catch(e){panel().innerHTML='<button class="hbtn" onclick="loadFocCycles()">← FOC WALL</button><div class="panel" style="margin-top:10px;color:var(--red)">Could not read eBay: '+esc(e.message)+'</div>';}
 }
 function renderEbayListingsCheck(note){
-  var d=Object.assign({activeCount:0,matched:0,ebayOnly:[],goneFromEbay:[],qtyMismatch:[],sameCoverTwice:[]},ebayCheck||{});
+  var d=Object.assign({activeCount:0,matched:0,ebayOnly:[],goneFromEbay:[],qtyMismatch:[],sameCoverTwice:[],endedStillCounted:[]},ebayCheck||{});
   var line=function(main,sub,right){return '<div style="display:flex;gap:8px;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);font:10px/1.5 var(--font-mono)"><span><span style="color:var(--text)">'+main+'</span>'+(sub?'<br><span style="color:var(--dim)">'+sub+'</span>':'')+'</span>'+(right||'')+'</div>';};
   var link=function(id){return '<a href="https://www.ebay.com/itm/'+encodeURIComponent(id)+'" target="_blank" rel="noopener" style="color:var(--blue)">'+esc(id)+'</a>';};
-  var zero=function(rowId){return '<button class="hbtn" style="font-size:9px;min-height:0;padding:4px 8px;margin:0;flex-shrink:0" onclick="ebayListingSetQty(\''+esc(rowId)+'\',0)">SET TO 0</button>';};
+  // Set the eBay quantity to however many you really have (prefilled with
+  // the dashboard's count) -- not always 0.
+  var setQty=function(rowId,start){return '<span style="display:flex;gap:4px;align-items:center;flex-shrink:0"><input type="number" min="0" max="1000" value="'+Number(start||0)+'" data-ebay-qty="'+esc(rowId)+'" style="width:56px;padding:4px;background:var(--surf2);border:1px solid var(--border);color:var(--text);border-radius:6px"><button class="hbtn" style="font-size:9px;min-height:0;padding:4px 8px;margin:0" onclick="ebayListingSetQty(\''+esc(rowId)+'\')">SET EBAY</button></span>';};
+  var keepEbay=function(rowId,n){return '<button class="hbtn" style="font-size:9px;min-height:0;padding:4px 8px;margin:0;flex-shrink:0" onclick="ebayListingMatchEbay(\''+esc(rowId)+'\')">KEEP EBAY\'S '+n+'</button>';};
   var gone=d.goneFromEbay.map(function(x){return '<label style="display:flex;gap:8px;align-items:flex-start;padding:6px 0;border-bottom:1px solid var(--border);font:10px/1.5 var(--font-mono);cursor:pointer"><input type="checkbox" data-ebay-gone="'+esc(x.rowId)+'" checked style="margin-top:3px;width:16px;height:16px;flex-shrink:0"><span><span style="color:var(--text)">'+esc(x.name)+'</span><br><span style="color:var(--dim)">listing '+link(x.listingId)+' · dashboard says '+x.dashQty+' on eBay · '+(x.presale?'eBay quantity goes to 0 here':'shelf stock stays, it just stops counting as listed')+'</span></span></label>';}).join('');
-  var twice=d.sameCoverTwice.map(function(x){return '<div style="padding:6px 0;border-bottom:1px solid var(--border);font:10px/1.5 var(--font-mono)"><div style="color:var(--text)">'+esc(x.name)+' -- '+x.listings.length+' live listings</div>'+x.listings.map(function(l){return line('listing '+link(l.listingId),l.qty+' available',zero(l.rowId));}).join('')+'</div>';}).join('');
-  var mism=d.qtyMismatch.map(function(x){return line(esc(x.name)+(x.label?' · '+esc(x.label):''),'listing '+link(x.listingId)+' · eBay has <b style="color:var(--gold)">'+x.ebayQty+'</b> available, dashboard says <b>'+x.dashQty+'</b>',zero(x.rowId));}).join('');
+  var twice=d.sameCoverTwice.map(function(x){return '<div style="padding:6px 0;border-bottom:1px solid var(--border);font:10px/1.5 var(--font-mono)"><div style="color:var(--text)">'+esc(x.name)+' -- '+x.listings.length+' live listings</div>'+x.listings.map(function(l){return line('listing '+link(l.listingId),l.qty+' available',setQty(l.rowId,l.qty));}).join('')+'</div>';}).join('');
+  var mism=d.qtyMismatch.map(function(x){return line(esc(x.name)+(x.label?' · '+esc(x.label):''),'listing '+link(x.listingId)+' · eBay has <b style="color:var(--gold)">'+x.ebayQty+'</b> available'+(x.ebaySold?' ('+x.ebaySold+' sold there)':'')+', dashboard says <b>'+x.dashQty+'</b>','<span style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">'+keepEbay(x.rowId,x.ebayQty)+setQty(x.rowId,x.dashQty)+'</span>');}).join('');
+  var counted=d.endedStillCounted.map(function(x){return '<label style="display:flex;gap:8px;align-items:flex-start;padding:6px 0;border-bottom:1px solid var(--border);font:10px/1.5 var(--font-mono);cursor:pointer"><input type="checkbox" data-ebay-gone="'+esc(x.rowId)+'" checked style="margin-top:3px;width:16px;height:16px;flex-shrink:0"><span><span style="color:var(--text)">'+esc(x.name)+'</span><br><span style="color:var(--dim)">listing '+link(x.listingId)+' was ended, but this row still counts <b style="color:var(--red)">'+x.dashQty+'</b> in stock'+(x.sold?' · '+x.sold+' sold on it stays sold':'')+'</span></span></label>';}).join('');
   var only=d.ebayOnly.map(function(x){return line(esc(x.title),'listing '+link(x.listingId)+' · '+x.available+' available'+(x.covers?' · '+x.covers+' covers':'')+(x.price?' · $'+Number(x.price).toFixed(2):''),'');}).join('');
   var section=function(title,color,count,body,help){return count?'<section class="panel" style="padding:10px 14px;margin-top:10px"><div style="font:900 11px \'Orbitron\',monospace;color:'+color+';letter-spacing:1px">'+title+' ('+count+')</div>'+(help?'<div style="font:9px/1.5 var(--font-mono);color:var(--dim);margin:2px 0 4px">'+help+'</div>':'')+body+'</section>':'';};
   panel().innerHTML='<section class="foc-hero"><div class="foc-toolbar"><button class="hbtn" onclick="loadFocCycles()">← FOC WALL</button><button class="hbtn" onclick="openEbayListingsCheck()">↻ CHECK AGAIN</button></div>'+
@@ -1655,12 +1659,15 @@ function renderEbayListingsCheck(note){
     '<div style="font:10px/1.6 var(--font-mono);color:var(--dim);margin-top:4px">'+d.activeCount+' live listings on your eBay account · '+d.matched+' match the dashboard. Nothing changes until you press a button.</div></section>'+
     (note?'<div class="panel" style="margin-top:10px;padding:10px 14px;font:10px var(--font-mono);color:var(--g)">'+note+'</div>':'')+
     section('NOT LIVE ON EBAY','var(--red)',d.goneFromEbay.length,gone+'<div class="foc-toolbar" style="margin-top:8px"><button class="hbtn" style="color:var(--g)" onclick="ebayListingsMarkEnded()">MARK TICKED AS ENDED</button></div>','The dashboard thinks these are listed, but eBay has no live listing for them.')+
-    section('SAME COVER LISTED TWICE','var(--red)',d.sameCoverTwice.length,twice,'More than one live listing selling the same cover.')+
-    section('QUANTITY DOESN\'T MATCH','var(--gold)',d.qtyMismatch.length,mism,'')+
+    section('ENDED ON EBAY, STILL COUNTED','var(--red)',d.endedStillCounted.length,counted+'<div class="foc-toolbar" style="margin-top:8px"><button class="hbtn" style="color:var(--g)" onclick="ebayListingsMarkEnded()">ZERO TICKED</button></div>','eBay listing rows whose listing is gone but whose copies still show as stock -- the real books are on their own received rows.')+
+    section('SAME COVER LISTED TWICE','var(--red)',d.sameCoverTwice.length,twice,'More than one live listing selling the same cover. Set each to what it should offer -- 0 to stop one.')+
+    section('QUANTITY DOESN\'T MATCH','var(--gold)',d.qtyMismatch.length,mism,'KEEP EBAY\'S takes eBay\'s count (and its sales) into the dashboard. SET EBAY sends the number in the box to eBay.')+
     section('ON EBAY, NOT IN THE DASHBOARD','var(--dim)',d.ebayOnly.length,only,'Listed on eBay some other way (or by hand) -- the dashboard isn\'t tracking these.')+
-    (!d.goneFromEbay.length&&!d.sameCoverTwice.length&&!d.qtyMismatch.length&&!d.ebayOnly.length?'<div class="panel" style="padding:24px;text-align:center;color:var(--g);margin-top:10px">All clear -- eBay and the dashboard agree.</div>':'');
+    (!d.goneFromEbay.length&&!d.sameCoverTwice.length&&!d.qtyMismatch.length&&!d.ebayOnly.length&&!d.endedStillCounted.length?'<div class="panel" style="padding:24px;text-align:center;color:var(--g);margin-top:10px">All clear -- eBay and the dashboard agree.</div>':'');
 }
 async function ebayListingSetQty(rowId,quantity){
+  if(quantity==null){var box=document.querySelector('[data-ebay-qty="'+rowId+'"]');quantity=Number(box&&box.value);}
+  if(!(quantity>=0&&quantity%1===0)){toast_dash('Enter a whole number, 0 or more');return;}
   if(!confirm('Set this eBay listing to '+quantity+' available?'))return;
   try{
     await api('/foc/admin/ebay-listings-check/set-quantity',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({storeId:getActiveStoreId(),rowId:rowId,quantity:quantity})});
@@ -1679,7 +1686,14 @@ async function ebayListingsMarkEnded(){
     renderEbayListingsCheck('✓ Marked '+done+' as ended'+(kept?' · '+kept+' still live on eBay, left alone':''));
   }catch(e){toast_dash('Could not mark them: '+e.message);}
 }
-window.openEbayListingsCheck=openEbayListingsCheck;window.ebayListingSetQty=ebayListingSetQty;window.ebayListingsMarkEnded=ebayListingsMarkEnded;
+async function ebayListingMatchEbay(rowId){
+  try{
+    var r=await api('/foc/admin/ebay-listings-check/match-ebay',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({storeId:getActiveStoreId(),rowId:rowId})});
+    ebayCheck=await api('/foc/admin/ebay-listings-check?store_id='+encodeURIComponent(getActiveStoreId()));
+    renderEbayListingsCheck('✓ Dashboard now matches eBay: '+r.available+' available'+(r.sold?', '+r.sold+' sold':''));
+  }catch(e){toast_dash('Could not update it: '+e.message);}
+}
+window.openEbayListingsCheck=openEbayListingsCheck;window.ebayListingSetQty=ebayListingSetQty;window.ebayListingsMarkEnded=ebayListingsMarkEnded;window.ebayListingMatchEbay=ebayListingMatchEbay;
 
 // ═══════════════════════════════════════════════════════
 // ORDERING INTEL -- pills on the cover wall and the WHAT TO ORDER summary on

@@ -31,12 +31,15 @@ const rows = [
   { id:'r-sold-out', status:'presale', data:{ source:'foc_presale', focSkuId:'so', name:'Sold out', ebayListingId:'998', qty:0 } },
   { id:'r-shelf', status:'in_stock', data:{ source:'built_in', name:'Shelf card', ebayListingId:'997', qty:3 } },
   { id:'r-ended', status:'presale', data:{ source:'foc_presale', name:'Ended', ebayListingId:'996', ebayWithdrawnAt:'2026-10-01', qty:0 } },
+  // Store report: Sonic RI 1:15 -- both listings ended, rows still counted 2 each.
+  { id:'r-ended-counted', status:'in_stock', data:{ source:'foc_presale', name:'Sonic RI', ebayListingId:'990', ebayWithdrawnAt:'2026-10-10', qty:2, focPresaleOriginalQty:3 } },
 ];
 const c = compareEbayListings({ active:parsed.items, rows });
 assert.equal(c.activeCount, 4);
 assert.deepEqual(c.goneFromEbay.map(x => [x.rowId, x.presale]), [['r-cyber', true], ['r-shelf', false]], 'stale rows; a sold-out or already-ended one is not');
 assert.equal(c.goneFromEbay[0].name, 'Cyberpunk 2077 #1 A');
-assert.deepEqual(c.qtyMismatch.map(x => [x.rowId, x.label, x.dashQty, x.ebayQty]), [['r-mx-a', 'Cover A', 4, 5]], 'per cover on a multi-cover listing');
+assert.deepEqual(c.qtyMismatch.map(x => [x.rowId, x.label, x.dashQty, x.ebayQty, x.ebaySold]), [['r-mx-a', 'Cover A', 4, 5, 1]], 'per cover on a multi-cover listing, with eBay\'s sales');
+assert.deepEqual(c.endedStillCounted.map(x => [x.rowId, x.dashQty, x.sold]), [['r-ended-counted', 2, 1]], 'an ended listing whose row still counts stock');
 assert.deepEqual(c.ebayOnly.map(x => x.listingId), ['444']);
 assert.equal(c.sameCoverTwice.length, 1);
 assert.deepEqual(c.sameCoverTwice[0].listings.map(l => l.listingId), ['111', '222'], 'Sonic RI: one cover, two live listings');
@@ -100,12 +103,44 @@ assert.match(worker, /ebayTradingApiCall\(ebayToken, 'GetMyeBaySelling', `<Activ
 assert.match(worker, /parseMyEbaySellingActive \} from '\.\/scripts\/foc-preorders\.mjs'/);
 assert.match(ui, /onclick="openEbayListingsCheck\(\)">📋 EBAY LISTINGS CHECK<\/button>/);
 assert.match(ui, /MARK TICKED AS ENDED/);
-assert.match(ui, /SET TO 0/);
+assert.match(ui, /SET EBAY<\/button>/, 'set eBay to a number you choose, not always 0');
+assert.match(ui, /KEEP EBAY\\'S /);
+assert.match(ui, /ENDED ON EBAY, STILL COUNTED/);
+assert.doesNotMatch(ui, />SET TO 0</);
 
 // Store report listing the Goblin Storm deck: "Player/Athlete's value of
 // 'Magic Secret Lair Drop Series Secret Lair Commander Deck Goblin Storm' is
 // too long. Enter a value of no more than 65 characters."
 assert.match(app, /player: item\.player \|\| \(\(fields\.cat === 'Sports' \|\| fields\.cat === 'Graded'\) \? item\.name \|\| '' : ''\),/);
 assert.match(worker, /aspects\[key\] = \(aspects\[key\] \|\| \[\]\)\.map\(v => String\(v\)\.slice\(0, 65\)\.trim\(\)\)\.filter\(Boolean\);/);
+
+{
+  // Ended-but-counted rows zero out and, with a sale on them, become sold.
+  const id = '00000000-0000-4000-8000-0000000000ee';
+  rows.push({ id, status:'in_stock', data:{ source:'foc_presale', name:'Sonic RI', ebayListingId:'989', ebayWithdrawnAt:'2026-10-10', ebayWithdrawnReason:'manual_bulk_end', qty:2, focPresaleOriginalQty:3 } });
+  const { d, patches } = deps();
+  await handleFocRequest(post({ storeId:'s', rowIds:[id] }), {}, new URL('https://x/foc/admin/ebay-listings-check/mark-ended'), d);
+  assert.equal(patches.length, 1);
+  assert.equal(patches[0].body.status, 'sold');
+  assert.equal(patches[0].body.data.qty, 0);
+  assert.equal(patches[0].body.data.focPresaleOriginalQty, 1, 'the 1 sale stays');
+  assert.equal(patches[0].body.data.ebayWithdrawnReason, 'manual_bulk_end', 'keeps why it was ended');
+}
+{
+  // KEEP EBAY'S: the dashboard takes eBay's available count and its sales.
+  const id = '00000000-0000-4000-8000-0000000000ff';
+  rows.push({ id, status:'presale', data:{ source:'foc_presale', name:'Midnight X-Men A', ebayListingId:'333', ebaySku:'mx-a', ebayApiSystem:'trading', qty:4, focPresaleOriginalQty:4 } });
+  const { d, patches } = deps();
+  const r = await handleFocRequest(post({ storeId:'s', rowId:id }), {}, new URL('https://x/foc/admin/ebay-listings-check/match-ebay'), d);
+  assert.deepEqual(r.data, { ok:true, available:5, sold:1 });
+  assert.equal(patches[0].body.data.qty, 5);
+  assert.equal(patches[0].body.data.focPresaleOriginalQty, 6, 'sold + available');
+}
+
+// Store report: "Goblin Storm was done through dashboard. Why's it here?"
+// LIST ON EBAY's listing id was dropped on save (not on the saved-field
+// list), so dashboard listings showed up as untracked.
+assert.match(app, /\['ebayListingId',''\], \['ebayOfferId',''\], \['ebaySku',''\], \['ebayListedAt',''\],/);
+assert.match(worker, /if \(b\.itemId && result\.listingId\) \{[\s\S]{0,600}ebayListingId: String\(result\.listingId\), ebayOfferId: result\.offerId \|\| '', ebaySku: result\.sku \|\| ''/, 'the worker records the listing on the item itself');
 
 console.log('eBay listings check + aspect length checks passed');
