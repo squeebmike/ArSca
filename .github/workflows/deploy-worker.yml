@@ -21,6 +21,7 @@ on:
       - scripts/book-alerts.mjs
       - scripts/book-alert-ui.mjs
       - scripts/site-chrome.mjs
+      - scripts/storefront-seo.mjs
       - scripts/comic-search.mjs
       - scripts/comic-search-client.mjs
       - scripts/public-pokemon-sets.mjs
