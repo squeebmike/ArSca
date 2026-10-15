@@ -32,7 +32,7 @@ import { storeOrganization, productFacts, productCondition, renderShopPreview } 
 // It has zero Node dependencies (pure-JS SHA-1), so it bundles straight into
 // the Worker -- reused here instead of duplicating checklist-parsing logic.
 import { buildChecklistIndex, parseChecklistText, sha1Hex, slugify } from './scripts/topps-checklist-parser.js';
-import { handleFocRequest, syncFocStripeEvent, shippingSettings, runScheduledStockHealth, withRatioWord, parseMyEbaySellingActive } from './scripts/foc-preorders.mjs';
+import { handleFocRequest, syncFocStripeEvent, shippingSettings, runScheduledStockHealth, withRatioWord, parseMyEbaySellingActive, ebayItemFromGetItem } from './scripts/foc-preorders.mjs';
 import { handleOrdersBoard, handleOrderMarkShipped } from './scripts/orders-board.mjs';
 import { handleBacklistRequest, syncBacklistStripeEvent } from './scripts/backlist-catalog.mjs';
 import { searchComics, comicSearchShell, comicSearchScriptResponse, injectComicSearch } from './scripts/comic-search.mjs';
@@ -6357,6 +6357,39 @@ async function routeRequest(request, env, ctx) {
             pages = parsed.totalPages || 1;
           }
           return items;
+        },
+        // Price/quantity on any live listing. Listings made through the
+        // Inventory API (this dashboard's own) only take changes there; a
+        // listing made on eBay itself takes them through the Trading API.
+        // The new quantity is read back so it's always "available to buy".
+        ebayReviseListing: async (reviseEnv, ebayToken, { itemId, sku = '', variationSku = '', price = null, quantity = null }) => {
+          const lookupSku = variationSku || sku;
+          if (lookupSku) {
+            const offRes = await ebayFetchWithRetry(`https://api.ebay.com/sell/inventory/v1/offer?sku=${encodeURIComponent(lookupSku)}&marketplace_id=EBAY_US`, { headers: { Authorization: 'Bearer ' + ebayToken, 'Content-Language': 'en-US' } });
+            if (offRes.ok) {
+              const offers = (await offRes.json().catch(() => ({}))).offers || [];
+              const offer = offers.find(o => String(o.listing?.listingId || '') === String(itemId)) || offers[0];
+              if (offer?.offerId) {
+                await ebayRevisePresalePriceQuantity(reviseEnv, ebayToken, { ebayOfferId: offer.offerId, ebaySku: lookupSku }, { price, quantity });
+                return { system: 'inventory' };
+              }
+            }
+          }
+          const status = (q) => `<InventoryStatus><ItemID>${xmlEscape(itemId)}</ItemID>${variationSku ? `<SKU>${xmlEscape(variationSku)}</SKU>` : ''}${price != null ? `<StartPrice>${Number(price).toFixed(2)}</StartPrice>` : ''}${q != null ? `<Quantity>${q}</Quantity>` : ''}</InventoryStatus>`;
+          await ebayTradingApiCall(ebayToken, 'ReviseInventoryStatus', status(quantity));
+          if (quantity != null) {
+            try {
+              const got = await ebayTradingApiCall(ebayToken, 'GetItem', `<ItemID>${xmlEscape(itemId)}</ItemID><DetailLevel>ReturnAll</DetailLevel><IncludeVariations>true</IncludeVariations>`);
+              const item = ebayItemFromGetItem(got.raw);
+              const v = variationSku ? item?.variations.find(x => x.sku === variationSku) : null;
+              const now = v || item;
+              // eBay counted the new number as total listed (sold + left).
+              if (now && now.available !== quantity && now.sold > 0 && now.available === Math.max(0, quantity - now.sold)) {
+                await ebayTradingApiCall(ebayToken, 'ReviseInventoryStatus', status(quantity + now.sold));
+              }
+            } catch (_) {}
+          }
+          return { system: 'trading' };
         },
         ebayActiveListings: fetchEbayActiveListings,
         ebaySoldComps: async (soldEnv, q, limit = 40) => {

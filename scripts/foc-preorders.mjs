@@ -3027,11 +3027,13 @@ export function parseMyEbaySellingActive(xml){
     const qa=xmlTag(top,'QuantityAvailable');
     const variations=[...varBlock.matchAll(/<Variation>([\s\S]*?)<\/Variation>/g)].map(v=>{
       const vq=Number(xmlTag(v[1],'Quantity'))||0,vs=Number(xmlTag(xmlTag(v[1],'SellingStatus'),'QuantitySold'))||0;
-      return {sku:xmlText(xmlTag(v[1],'SKU')),label:[...v[1].matchAll(/<Value>([\s\S]*?)<\/Value>/g)].map(x=>xmlText(x[1])).join(' / '),quantity:vq,sold:vs,available:Math.max(0,vq-vs)};
+      return {sku:xmlText(xmlTag(v[1],'SKU')),label:[...v[1].matchAll(/<Value>([\s\S]*?)<\/Value>/g)].map(x=>xmlText(x[1])).join(' / '),quantity:vq,sold:vs,available:Math.max(0,vq-vs),price:Number(xmlTag(v[1],'StartPrice'))||0};
     });
     items.push({itemId:xmlText(xmlTag(top,'ItemID')),title:xmlText(xmlTag(top,'Title')),sku:xmlText(xmlTag(top,'SKU')),
       price:Number(xmlTag(xmlTag(top,'SellingStatus'),'CurrentPrice'))||Number(xmlTag(top,'BuyItNowPrice'))||0,
-      quantity,sold,available:qa!==''?Number(qa)||0:Math.max(0,quantity-sold),variations});
+      quantity,sold,available:qa!==''?Number(qa)||0:Math.max(0,quantity-sold),variations,
+      photo:xmlText(xmlTag(xmlTag(top,'PictureDetails'),'GalleryURL')||xmlTag(xmlTag(top,'PictureDetails'),'PictureURL')),
+      startTime:xmlText(xmlTag(xmlTag(top,'ListingDetails'),'StartTime')),watchers:Number(xmlTag(top,'WatchCount'))||0});
   }
   return {items,totalPages};
 }
@@ -3160,6 +3162,57 @@ async function adminEbayListingsMatchEbay(request,env,deps){
   const status=available<=0&&row.status==='in_stock'?'sold':row.status;
   await db(`inventory_items?id=eq.${row.id}&store_id=eq.${encodeURIComponent(storeId)}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({status,data:next})});
   return deps.json({ok:true,available,sold});
+}
+// ── All eBay listings editor ──
+// Store ask: "Easy way to edit the quantity of eBay listings? And prices?"
+// Every live listing on the account -- dashboard-made and listed straight on
+// eBay alike -- with its price and quantity editable, per cover on a
+// multi-cover listing. deps.ebayReviseListing picks the right eBay API for
+// the listing and confirms the new quantity took.
+export function ebayItemFromGetItem(xml){
+  const item=xmlTag(xml,'Item');
+  return item?parseMyEbaySellingActive('<ActiveList><Item>'+item+'</Item></ActiveList>').items[0]||null:null;
+}
+async function adminEbayListings(request,env,deps,url){
+  const storeId=text(url.searchParams.get('store_id'),80);
+  const auth=await deps.requireStoreUser(request,env,storeId,['owner','admin','manager']);if(auth.error)return auth.error;
+  const db=(path,options)=>deps.supabaseAdminFetch(env,path,options);
+  try{
+    const [{active},rows]=await Promise.all([ebayActiveForStore(env,deps),ebayListingRows(db,storeId)]);
+    const byListing=new Map();
+    for(const r of rows){const d=r.data||{};if(!d.ebayListingId||d.ebayWithdrawnAt)continue;const list=byListing.get(String(d.ebayListingId))||[];list.push({rowId:r.id,sku:d.ebaySku||'',source:d.source||'',name:stripPresaleName(d.name||'')});byListing.set(String(d.ebayListingId),list);}
+    const listings=active.map(i=>{const linked=byListing.get(String(i.itemId))||[];return {...i,linked:linked.length>0,variations:i.variations.map(v=>({...v,linked:linked.some(l=>l.sku&&l.sku===v.sku)}))};});
+    return deps.json({ok:true,listings});
+  }catch(e){return deps.json({ok:false,needsToken:!!e.needsToken,error:e.message},e.status||502);}
+}
+async function adminEbayListingRevise(request,env,deps){
+  const limited=await deps.readJsonWithLimit(request,16*1024);if(limited.error)return limited.error;
+  const body=limited.data||{},storeId=text(body.storeId,80),itemId=text(body.itemId,40),itemSku=text(body.sku,120),variationSku=text(body.variationSku,120);
+  const auth=await deps.requireStoreUser(request,env,storeId,['owner','admin','manager']);if(auth.error)return auth.error;
+  if(!/^\d{6,20}$/.test(itemId))return deps.json({ok:false,error:'itemId required'},400);
+  const price=body.price==null||body.price===''?null:Number(body.price);
+  const quantity=body.quantity==null||body.quantity===''?null:Number(body.quantity);
+  if(price!=null&&!(price>=0.99&&price<100000))return deps.json({ok:false,error:'Price must be at least $0.99'},400);
+  if(quantity!=null&&!(Number.isInteger(quantity)&&quantity>=0&&quantity<=10000))return deps.json({ok:false,error:'Quantity must be a whole number, 0 or more'},400);
+  if(price==null&&quantity==null)return deps.json({ok:false,error:'Nothing to change'},400);
+  if(!deps.ebayReviseListing)return deps.json({ok:false,error:'eBay editing is not set up on this Worker'},501);
+  let token='';try{token=await deps.getEbayUserAccessToken(env);}catch(e){return deps.json({ok:false,needsToken:true,error:e.message},401);}
+  if(!token)return deps.json({ok:false,needsToken:true,error:'Connect eBay first'},401);
+  let result;
+  try{result=await deps.ebayReviseListing(env,token,{itemId,sku:itemSku,variationSku,price,quantity});}
+  catch(e){return deps.json({ok:false,error:e.message},502);}
+  // Keep a linked presale row in step (its qty is the eBay quantity).
+  const db=(path,options)=>deps.supabaseAdminFetch(env,path,options);
+  let synced=0;
+  try{
+    const rows=(await ebayListingRows(db,storeId)).filter(r=>{const d=r.data||{};return String(d.ebayListingId)===itemId&&!d.ebayWithdrawnAt&&d.source==='foc_presale'&&(!variationSku||d.ebaySku===variationSku);});
+    if(rows.length===1){
+      const row=rows[0],patch=presaleEditPatch(row.data,row.status,{price,available:quantity});
+      await db(`inventory_items?id=eq.${row.id}&store_id=eq.${encodeURIComponent(storeId)}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({status:patch.status,data:patch.data})});
+      synced=1;
+    }
+  }catch(_){}
+  return deps.json({ok:true,...(result||{}),synced});
 }
 async function adminPresaleStockCheck(request,env,deps,url){
   const storeId=text(url.searchParams.get('store_id'),80);
@@ -4005,6 +4058,8 @@ export async function handleFocRequest(request, env, url, deps) {
   if(path==='/foc/admin/ebay-listings-check/mark-ended'&&request.method==='POST')return adminEbayListingsMarkEnded(request,env,deps);
   if(path==='/foc/admin/ebay-listings-check/set-quantity'&&request.method==='POST')return adminEbayListingsSetQuantity(request,env,deps);
   if(path==='/foc/admin/ebay-listings-check/match-ebay'&&request.method==='POST')return adminEbayListingsMatchEbay(request,env,deps);
+  if(path==='/foc/admin/ebay-listings'&&request.method==='GET')return adminEbayListings(request,env,deps,url);
+  if(path==='/foc/admin/ebay-listings/revise'&&request.method==='POST')return adminEbayListingRevise(request,env,deps);
   if(path==='/foc/admin/presale-stock-fix'&&request.method==='POST')return adminPresaleStockFix(request,env,deps);
   if(path==='/foc/admin/pick-list'&&request.method==='GET')return adminPickList(request,env,deps,url);
   if(path==='/foc/admin/notify-arrivals'&&request.method==='POST')return adminNotifyArrivals(request,env,deps);
