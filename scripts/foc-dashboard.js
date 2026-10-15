@@ -60,10 +60,19 @@ async function api(path,opts){
   var data=await res.json().catch(function(){return{};});if(!res.ok||data.ok===false)throw new Error(data.error||('FOC request failed '+res.status));return data;
 }
 
-function panel(){return document.getElementById('foc-panels');}
+// The eBay screens (ALL EBAY LISTINGS, EBAY LISTINGS CHECK) cover the whole
+// eBay account, not just comics, so they also open inside the eBay tab's
+// quick-access panel -- panelHostOverride points panel() there until the
+// FOC wall is opened again.
+var panelHostOverride=null;
+function panel(){return (panelHostOverride&&document.getElementById(panelHostOverride))||document.getElementById('foc-panels');}
+function focBackBtn(){return panelHostOverride?'<button class="hbtn" onclick="closeEbayHubTool()">✕ CLOSE</button>':'<button class="hbtn" onclick="loadFocCycles()">← FOC WALL</button>';}
+function closeEbayHubTool(){var host=panel();if(host&&panelHostOverride)host.innerHTML='';panelHostOverride=null;}
+window.closeEbayHubTool=closeEbayHubTool;
 function busy(message){var host=panel();if(host)host.innerHTML='<div class="panel" style="padding:36px;text-align:center;font-family:var(--font-mono);color:var(--dim)">'+esc(message||'Loading FOC…')+'</div>';}
 
 async function loadCycles(force){
+  panelHostOverride=null;
   if(state.loaded&&!force){renderCycles();return;}
   busy('Loading weekly FOC cycles…');
   try{var data=await api('/foc/admin/cycles?store_id='+encodeURIComponent(getActiveStoreId()));state.cycles=data.cycles||[];state.loaded=true;renderCycles();}
@@ -1635,10 +1644,11 @@ window.openPresaleStockCheck=openPresaleStockCheck;window.fixPresaleStock=fixPre
 // dashboard thinks are live but eBay doesn't have, live listings the
 // dashboard doesn't know, quantity mismatches, and covers listed twice.
 var ebayCheck=null;
-async function openEbayListingsCheck(){
+async function openEbayListingsCheck(hostId){
+  if(typeof hostId==='string')panelHostOverride=hostId;
   busy('Reading your eBay listings…');
   try{ebayCheck=await api('/foc/admin/ebay-listings-check?store_id='+encodeURIComponent(getActiveStoreId()));renderEbayListingsCheck();}
-  catch(e){panel().innerHTML='<button class="hbtn" onclick="loadFocCycles()">← FOC WALL</button><div class="panel" style="margin-top:10px;color:var(--red)">Could not read eBay: '+esc(e.message)+'</div>';}
+  catch(e){panel().innerHTML=''+focBackBtn()+'<div class="panel" style="margin-top:10px;color:var(--red)">Could not read eBay: '+esc(e.message)+'</div>';}
 }
 function renderEbayListingsCheck(note){
   var d=Object.assign({activeCount:0,matched:0,ebayOnly:[],goneFromEbay:[],qtyMismatch:[],sameCoverTwice:[],endedStillCounted:[]},ebayCheck||{});
@@ -1654,7 +1664,7 @@ function renderEbayListingsCheck(note){
   var counted=d.endedStillCounted.map(function(x){return '<label style="display:flex;gap:8px;align-items:flex-start;padding:6px 0;border-bottom:1px solid var(--border);font:10px/1.5 var(--font-mono);cursor:pointer"><input type="checkbox" data-ebay-gone="'+esc(x.rowId)+'" checked style="margin-top:3px;width:16px;height:16px;flex-shrink:0"><span><span style="color:var(--text)">'+esc(x.name)+'</span><br><span style="color:var(--dim)">listing '+link(x.listingId)+' was ended, but this row still counts <b style="color:var(--red)">'+x.dashQty+'</b> in stock'+(x.sold?' · '+x.sold+' sold on it stays sold':'')+'</span></span></label>';}).join('');
   var only=d.ebayOnly.map(function(x){return line(esc(x.title),'listing '+link(x.listingId)+' · '+x.available+' available'+(x.covers?' · '+x.covers+' covers':'')+(x.price?' · $'+Number(x.price).toFixed(2):''),'');}).join('');
   var section=function(title,color,count,body,help){return count?'<section class="panel" style="padding:10px 14px;margin-top:10px"><div style="font:900 11px \'Orbitron\',monospace;color:'+color+';letter-spacing:1px">'+title+' ('+count+')</div>'+(help?'<div style="font:9px/1.5 var(--font-mono);color:var(--dim);margin:2px 0 4px">'+help+'</div>':'')+body+'</section>':'';};
-  panel().innerHTML='<section class="foc-hero"><div class="foc-toolbar"><button class="hbtn" onclick="loadFocCycles()">← FOC WALL</button><button class="hbtn" onclick="openEbayListingsCheck()">↻ CHECK AGAIN</button><button class="hbtn" style="color:var(--g)" onclick="openEbayEditor()">✏️ ALL EBAY LISTINGS</button></div>'+
+  panel().innerHTML='<section class="foc-hero"><div class="foc-toolbar">'+focBackBtn()+'<button class="hbtn" onclick="openEbayListingsCheck()">↻ CHECK AGAIN</button><button class="hbtn" style="color:var(--g)" onclick="openEbayEditor()">✏️ ALL EBAY LISTINGS</button></div>'+
     '<div style="font:900 20px/1.1 \'Orbitron\',monospace;color:var(--text);margin-top:10px">📋 eBay Listings Check</div>'+
     '<div style="font:10px/1.6 var(--font-mono);color:var(--dim);margin-top:4px">'+d.activeCount+' live listings on your eBay account · '+d.matched+' match the dashboard. Nothing changes until you press a button.</div></section>'+
     (note?'<div class="panel" style="margin-top:10px;padding:10px 14px;font:10px var(--font-mono);color:var(--g)">'+note+'</div>':'')+
@@ -1709,19 +1719,20 @@ function ebayEdHasDiff(l){
   if(l.variations&&l.variations.length)return l.variations.some(function(v){var d=ebayEdDiff(v,v.dashboard);return d&&d.any;});
   var d=ebayEdDiff(l,l.dashboard);return !!(d&&d.any);
 }
-async function openEbayEditor(){
+async function openEbayEditor(hostId){
+  if(typeof hostId==='string')panelHostOverride=hostId;
   busy('Reading your eBay listings…');
   try{
     var r=await api('/foc/admin/ebay-listings?store_id='+encodeURIComponent(getActiveStoreId()));
     ebayEditor.listings=r.listings||[];
-    panel().innerHTML='<section class="foc-hero"><div class="foc-toolbar"><button class="hbtn" onclick="loadFocCycles()">← FOC WALL</button><button class="hbtn" onclick="openEbayEditor()">↻ RELOAD FROM EBAY</button><button class="hbtn" style="color:var(--blue)" onclick="openEbayListingsCheck()">📋 EBAY LISTINGS CHECK</button></div>'+
+    panel().innerHTML='<section class="foc-hero"><div class="foc-toolbar">'+focBackBtn()+'<button class="hbtn" onclick="openEbayEditor()">↻ RELOAD FROM EBAY</button><button class="hbtn" style="color:var(--blue)" onclick="openEbayListingsCheck()">📋 EBAY LISTINGS CHECK</button></div>'+
       '<div style="font:900 20px/1.1 \'Orbitron\',monospace;color:var(--text);margin-top:10px">✏️ All eBay Listings</div>'+
       '<div style="font:10px/1.6 var(--font-mono);color:var(--dim);margin-top:4px">Change a price or quantity and press SAVE -- it goes straight to eBay. Quantity is how many are left to buy.</div>'+
       '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"><input id="ebay-ed-q" type="search" placeholder="Search titles…" value="'+esc(ebayEditor.q)+'" oninput="ebayEditor.q=this.value;renderEbayEditorList()" style="flex:1;min-width:180px;padding:8px;background:var(--surf2);border:1px solid var(--border);color:var(--text);border-radius:6px">'+
       '<select onchange="ebayEditor.sort=this.value;renderEbayEditorList()" style="padding:8px;background:var(--surf2);border:1px solid var(--border);color:var(--text);border-radius:6px">'+[['newest','Newest first'],['diff','Differences first'],['oldest','Oldest first (stale)'],['price-high','Price high → low'],['price-low','Price low → high'],['most','Most left'],['untracked','Not in dashboard first']].map(function(o){return '<option value="'+o[0]+'"'+(ebayEditor.sort===o[0]?' selected':'')+'>'+o[1]+'</option>';}).join('')+'</select><label style="display:flex;gap:6px;align-items:center;font:10px var(--font-mono);color:var(--text)"><input type="checkbox" '+(ebayEditor.diffOnly?'checked':'')+' onchange="ebayEditor.diffOnly=this.checked;renderEbayEditorList()"> Differences only</label></div></section>'+
       '<div id="ebay-ed-list"></div>';
     renderEbayEditorList();
-  }catch(e){panel().innerHTML='<button class="hbtn" onclick="loadFocCycles()">← FOC WALL</button><div class="panel" style="margin-top:10px;color:var(--red)">Could not read eBay: '+esc(e.message)+'</div>';}
+  }catch(e){panel().innerHTML=''+focBackBtn()+'<div class="panel" style="margin-top:10px;color:var(--red)">Could not read eBay: '+esc(e.message)+'</div>';}
 }
 function ebayEdLeft(l){return l.variations&&l.variations.length?l.variations.reduce(function(n,v){return n+Number(v.available||0);},0):Number(l.available||0);}
 function renderEbayEditorList(){
