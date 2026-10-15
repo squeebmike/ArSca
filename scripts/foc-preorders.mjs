@@ -2955,7 +2955,7 @@ async function receiveShipment(request,env,deps){
   const familyIds=[...new Set((skuRows||[]).map(row=>row.family_id).filter(Boolean))];
   const { data:familyRows }=familyIds.length?await db(`comic_title_families?id=${inFilter(familyIds)}&select=*`):{data:[]};
   const familyById=new Map((familyRows||[]).map(row=>[row.id,row]));
-  const { data:paidItems }=await db(`foc_preorder_items?cycle_id=eq.${encodeURIComponent(cycleId)}&sku_id=${inFilter(ids)}&status=eq.committed&select=id,sku_id,order_id,quantity,created_at,order:foc_preorder_orders(id,status,fulfillment_method,customer_name)`);
+  const { data:paidItems }=await db(`foc_preorder_items?cycle_id=eq.${encodeURIComponent(cycleId)}&sku_id=${inFilter(ids)}&status=eq.committed&select=id,sku_id,order_id,quantity,created_at,order:foc_preorder_orders(id,status,fulfillment_method,customer_name,order_number)`);
   // eBay presale placeholder rows (created by /foc/ebay/create-presale)
   // that have already sold are a fulfillment obligation too, exactly like a
   // paid website preorder -- just tracked as a count on the placeholder row
@@ -3025,74 +3025,18 @@ async function receiveShipment(request,env,deps){
   // many -- copies set aside for website customers or eBay buyers don't need
   // a price sticker.
   const labelItems=[];
+  const receiveWarnings=[];
   for(const line of lines){
     const sku=skuById.get(text(line.skuId,80));if(!sku)continue;
     const receivedQty=Math.max(0,Math.min(1000,Number(line.receivedQty||0)));if(!receivedQty)continue;
     const livePresale=livePresaleRowBySkuId.get(sku.id);
     const presaleAvailable=livePresale?Number(livePresale.data.qty??livePresale.data.quantity??0):0;
-    let newStandaloneCount=receivedQty;
-    if(livePresale&&presaleAvailable>0){
-      newStandaloneCount=Math.max(0,receivedQty-presaleAvailable);
-      if(receivedQty<presaleAvailable){
-        // Short-shipped against what the live listing still shows available --
-        // pull it down to what actually arrived, on eBay too if possible.
-        const pd=livePresale.data;
-        if(ebayToken){
-          try{
-            if(pd.ebayApiSystem==='trading')await deps.ebayReviseVariationQuantityTrading(ebayToken,pd.ebayListingId,pd.ebaySku,receivedQty);
-            else await deps.ebayReviseOfferQuantity(env,ebayToken,pd.ebayOfferId,receivedQty);
-          }
-          catch(e){console.error('FOC receive: could not reduce short-shipped eBay presale quantity',livePresale.id,e);}
-        }
-        await db(`inventory_items?id=eq.${livePresale.id}&store_id=eq.${encodeURIComponent(storeId)}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({data:{...pd,qty:receivedQty,quantity:receivedQty,focReceivedAt:new Date().toISOString()}})});
-      } else {
-        // Marks this presale as arrived: /foc/ebay/convert-to-instock only
-        // switches presales whose books actually came in.
-        await db(`inventory_items?id=eq.${livePresale.id}&store_id=eq.${encodeURIComponent(storeId)}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({data:{...livePresale.data,focReceivedAt:new Date().toISOString()}})});
-      }
-    }
-    // Store report: receiving N copies of the same cover created N separate
-    // inventory rows (each qty:1) instead of one row holding a quantity of
-    // N, unlike every other fungible product in this app (sealed packs/
-    // boxes get exactly this same one-row-with-a-qty treatment -- see
-    // "SEALED PRODUCT -- QUANTITY GROUPING" above -- and checkout already
-    // decrements a row's qty by however many sold rather than requiring one
-    // row per unit, see finalizeSharedShowSale's quantity_delta). A plain
-    // FOC cover has no per-copy distinction to track (condition/grading is
-    // the CGC/signed workflow, not ordinary new-comic-day stock), so one
-    // row per SKU per receiving batch.
-    const rows=newStandaloneCount?[{
-      store_id:storeId,status:'in_stock',
-      data:{
-        name:[sku.title,sku.variant_label&&sku.variant_label!=='Cover A'?sku.variant_label:''].filter(Boolean).join(' -- '),
-        // 'Comic' (singular) -- the eBay listing modal's category auto-select
-        // checks item.category==='Comic', and 'Comics' (plural) here meant a
-        // freshly-received FOC comic never auto-picked the Comics category.
-        category:'Comic',publisher:sku.publisher||'',upc:sku.upc||'',
-        // The invoice's net unit price when receiving from a scanned packing
-        // slip; otherwise PRH's 50% of cover price, our real wholesale rate.
-        cost:Number(line.unitCost)>0&&Number(line.unitCost)<1000?Math.round(Number(line.unitCost)*100)/100:Math.round(Number(sku.msrp_cents||0)*0.5)/100,
-        market:Number(sku.customer_price_cents||0)/100,salePrice:Number(sku.customer_price_cents||0)/100,
-        qty:newStandaloneCount,quantity:newStandaloneCount,image:sku.cover_image_url||'',
-        source:'foc_receive',focSkuId:sku.id,focCycleId:cycleId,focReceivedAt:new Date().toISOString(),
-        // Synopsis, writer/artist/cover artist, series, issue and release
-        // date from the FOC catalog, so the received book isn't a bare title.
-        ...focReceivedInventoryFields(sku,familyById.get(sku.family_id)),
-      },
-    }]:[];
-    const { data:inserted }=rows.length?await db('inventory_items',{method:'POST',headers:{Prefer:'return=representation'},body:JSON.stringify(rows)}):{data:[]};
-    // createdInventoryCount reports copies added, not rows created -- the
-    // dashboard's toast reads it as "N item(s) added to inventory," and a
-    // store owner receiving 5 copies wants to hear "5," not "1" just
-    // because they now land in a single row.
-    if((inserted||[]).length) for(let i=0;i<newStandaloneCount;i++) created.push(inserted[0].id);
-    // Reserve for paid customers before this cover ever reaches the shelf --
-    // oldest paid order first, capped at what actually arrived (a short-ship
-    // can mean fewer copies came in than were sold). An item is only ever
-    // marked 'received' when its FULL requested quantity is covered -- never
-    // partially, or a customer owed 2 copies who only got 1 this batch would
-    // silently look fully fulfilled and their order could wrongly flip to
-    // ready_for_pickup below while they're still short a copy.
+    const stamp=new Date().toISOString();
+    // 1. Copies already owed to someone: paid website preorders first (oldest
+    // order first; an item is only covered when its FULL quantity is here),
+    // then eBay presale buyers. Store report: Sean's paid preorder copy came
+    // in as plain shelf stock and was rung up at the register -- owed copies
+    // never become sellable stock now.
     let reserveRemaining=receivedQty;
     const holds=[];
     const sortedPaid=(paidItems||[]).filter(item=>item.sku_id===sku.id&&item.order?.status==='paid').sort((a,b)=>new Date(a.created_at)-new Date(b.created_at));
@@ -3100,45 +3044,88 @@ async function receiveShipment(request,env,deps){
       const need=Number(item.quantity||0);
       if(need<=0||need>reserveRemaining)continue;
       reserveRemaining-=need;
-      holds.push({name:item.order?.customer_name||'',copies:need});
-      await db(`foc_preorder_items?id=eq.${item.id}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({status:'received'})});
+      holds.push({item,name:item.order?.customer_name||'',copies:need});
     }
-    // eBay presale sales are a fulfillment obligation too -- reserved next,
-    // after website customers, before anything becomes free store stock.
-    // No specific inventory_items row is bound to a specific eBay order (the
-    // presale placeholder tracks only a count), so this reduces the same
-    // running count rather than flipping individual rows.
     const reservedForEbay=Math.min(reserveRemaining,presaleByskuId.get(sku.id)||0);
     reserveRemaining-=reservedForEbay;
-    // Safety stock (damage/short-ship/allocation buffer, admin-set per SKU)
-    // is held back from what becomes sellable, not sold to anyone -- taken
-    // last, after every actual commitment is covered.
-    const safetyHeld=Math.min(reserveRemaining,Number(sku.safety_stock_qty||0));
-    reserveRemaining-=safetyHeld;
+    // 2. The rest is shelf stock. A live eBay presale listing already sells
+    // some of it (its unsold copies) -- only what's beyond that becomes a new
+    // row, so no copy is sellable twice. A short shipment pulls the listing
+    // down to what actually arrived, on eBay too.
+    const shelfQty=reserveRemaining;
+    const presaleKeep=livePresale&&presaleAvailable>0?Math.min(presaleAvailable,shelfQty):0;
+    const newStandaloneCount=Math.max(0,shelfQty-presaleKeep);
+    if(livePresale&&presaleAvailable>0){
+      const pd=livePresale.data;
+      if(presaleKeep<presaleAvailable){
+        if(ebayToken){
+          try{
+            if(pd.ebayApiSystem==='trading')await deps.ebayReviseVariationQuantityTrading(ebayToken,pd.ebayListingId,pd.ebaySku,presaleKeep);
+            else await deps.ebayReviseOfferQuantity(env,ebayToken,pd.ebayOfferId,presaleKeep);
+          }
+          catch(e){console.error('FOC receive: could not reduce short-shipped eBay presale quantity',livePresale.id,e);receiveWarnings.push('Could not lower the eBay quantity for '+text(pd.name,120)+' -- set it to '+presaleKeep+' on eBay');}
+        }
+        await db(`inventory_items?id=eq.${livePresale.id}&store_id=eq.${encodeURIComponent(storeId)}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({data:{...pd,qty:presaleKeep,quantity:presaleKeep,focReceivedAt:stamp}})});
+      } else {
+        // Marks this presale as arrived: /foc/ebay/convert-to-instock only
+        // switches presales whose books actually came in.
+        await db(`inventory_items?id=eq.${livePresale.id}&store_id=eq.${encodeURIComponent(storeId)}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({data:{...pd,focReceivedAt:stamp}})});
+      }
+    }
+    // Store report: receiving N copies of one cover used to create N rows of
+    // qty 1 -- one row per SKU per batch now, like every other fungible item.
+    const base={
+      name:[sku.title,sku.variant_label&&sku.variant_label!=='Cover A'?sku.variant_label:''].filter(Boolean).join(' -- '),
+      // 'Comic' (singular) -- the eBay listing modal's category auto-select checks item.category==='Comic'.
+      category:'Comic',publisher:sku.publisher||'',upc:sku.upc||'',
+      // The invoice's net unit price when receiving from a scanned packing
+      // slip; otherwise PRH's 50% of cover price, our real wholesale rate.
+      cost:Number(line.unitCost)>0&&Number(line.unitCost)<1000?Math.round(Number(line.unitCost)*100)/100:Math.round(Number(sku.msrp_cents||0)*0.5)/100,
+      market:Number(sku.customer_price_cents||0)/100,salePrice:Number(sku.customer_price_cents||0)/100,
+      image:sku.cover_image_url||'',focSkuId:sku.id,focCycleId:cycleId,focReceivedAt:stamp,
+      // Synopsis, writer/artist/cover artist, series, issue and release date.
+      ...focReceivedInventoryFields(sku,familyById.get(sku.family_id)),
+    };
+    const rows=newStandaloneCount?[{store_id:storeId,status:'in_stock',data:{...base,qty:newStandaloneCount,quantity:newStandaloneCount,source:'foc_receive'}}]:[];
+    const { data:inserted }=rows.length?await db('inventory_items',{method:'POST',headers:{Prefer:'return=representation'},body:JSON.stringify(rows)}):{data:[]};
+    // createdInventoryCount reports copies added to sellable stock, not rows.
+    if((inserted||[]).length) for(let i=0;i<newStandaloneCount;i++) created.push(inserted[0].id);
+    // 3. Website preorder copies go ON HOLD for their customer: their own row
+    // (lifecycle 'hold' -- the register, storefront and eBay won't sell it),
+    // named on the label, cleared when it's handed over (or shipped).
+    for(const h of holds){
+      const hold={store_id:storeId,status:'in_stock',data:{...base,qty:h.copies,quantity:h.copies,source:'foc_hold',lifecycle:'hold',
+        preorderHold:{orderId:h.item.order_id,orderNumber:h.item.order?.order_number||'',customerName:text(h.name,120),fulfillment:h.item.order?.fulfillment_method||'',itemId:h.item.id,heldAt:stamp}}};
+      try{
+        const { data:holdRows }=await db('inventory_items',{method:'POST',headers:{Prefer:'return=representation'},body:JSON.stringify([hold])});
+        h.rowId=holdRows?.[0]?.id||'';
+        // 'ready_for_pickup' = this item is in hand. Store report: the old
+        // 'received' status isn't allowed by the database, so the update failed
+        // and stopped receiving partway through the shipment (Oct 3).
+        await db(`foc_preorder_items?id=eq.${h.item.id}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({status:'ready_for_pickup'})});
+        h.item.status='ready_for_pickup';
+      }catch(e){console.error('FOC receive: could not hold a preorder copy',h.item.id,e);receiveWarnings.push('Could not set aside '+h.copies+' for '+(h.name||'a customer')+' ('+text(sku.title,80)+'): '+e.message);}
+    }
+    // Safety stock (damage/short-ship buffer, admin-set per SKU) -- counted
+    // last, out of the shelf copies.
+    const safetyHeld=Math.min(shelfQty,Number(sku.safety_stock_qty||0));
+    const reservedForCustomers=holds.reduce((a,h)=>a+h.copies,0);
     const orderedTotal=Number(sku.store_quantity||0)+(paidItems||[]).filter(item=>item.sku_id===sku.id).reduce((sum,item)=>sum+Number(item.quantity||0),0);
     const shortShipped=Math.max(0,orderedTotal-receivedQty);
     const incentiveNotReceived=!!sku.is_incentive&&receivedQty<=0&&Number(sku.secured_quantity||0)>0;
     receivedSummary.push({
       skuId:sku.id,title:sku.title,variantLabel:sku.variant_label,receivedQty,orderedTotal,
-      reservedForCustomers:receivedQty-reserveRemaining-reservedForEbay-safetyHeld,
-      reservedForEbayPresale:reservedForEbay,safetyStockHeld:safetyHeld,availableAsNewStock:reserveRemaining,
+      reservedForCustomers,heldFor:holds.map(h=>({name:h.name,copies:h.copies,orderNumber:h.item.order?.order_number||''})),
+      reservedForEbayPresale:reservedForEbay,safetyStockHeld:safetyHeld,availableAsNewStock:shelfQty-safetyHeld,
       shortShipped,incentiveNotReceived,
     });
-    // Shelf copies: the unsold copies of a live presale (its listing switches
-    // to in stock) first, then the new in-stock row.
-    let shelfLeft=reserveRemaining+safetyHeld;
-    const presaleCopies=livePresale&&presaleAvailable>0?Math.min(receivedQty,presaleAvailable):0;
-    if(presaleCopies&&shelfLeft>0){const n=Math.min(shelfLeft,presaleCopies);labelItems.push({itemId:livePresale.id,skuId:sku.id,copies:n});shelfLeft-=n;}
-    if(inserted?.[0]?.id&&shelfLeft>0)labelItems.push({itemId:inserted[0].id,skuId:sku.id,copies:shelfLeft});
-    // Store ask: "it should also flag the already sold books in that order."
-    // Copies already sold get their own labels, flagged, so they're pulled
-    // instead of shelved: one per website customer by name, and the eBay
-    // presale buyers' copies together.
-    const flagRowId=inserted?.[0]?.id||livePresale?.id||'';
-    if(flagRowId){
-      for(const h of holds)labelItems.push({itemId:flagRowId,skuId:sku.id,copies:h.copies,flag:'HOLD · '+(shortCustomerName(h.name)||'WEBSITE PREORDER')});
-      if(reservedForEbay>0)labelItems.push({itemId:flagRowId,skuId:sku.id,copies:reservedForEbay,flag:'SOLD · EBAY BUYER'});
-    }
+    // Labels: shelf copies (the live listing's unsold copies, then the new
+    // row), each preorder hold by name, and eBay buyers' copies flagged.
+    if(presaleKeep)labelItems.push({itemId:livePresale.id,skuId:sku.id,copies:presaleKeep});
+    if(inserted?.[0]?.id)labelItems.push({itemId:inserted[0].id,skuId:sku.id,copies:newStandaloneCount});
+    for(const h of holds)if(h.rowId)labelItems.push({itemId:h.rowId,skuId:sku.id,copies:h.copies,flag:'HOLD · '+(shortCustomerName(h.name)||'WEBSITE PREORDER')});
+    const ebayFlagRowId=inserted?.[0]?.id||livePresale?.id||(presaleRows||[]).find(r=>r.data?.focSkuId===sku.id)?.id||'';
+    if(reservedForEbay>0&&ebayFlagRowId)labelItems.push({itemId:ebayFlagRowId,skuId:sku.id,copies:reservedForEbay,flag:'SOLD · EBAY BUYER'});
   }
   // An order is ready to hand over once every item on it has arrived and
   // been reserved -- flips paid orders to ready_for_pickup (nothing further
@@ -3153,7 +3140,8 @@ async function receiveShipment(request,env,deps){
     for(const order of orders||[]){
       if(order.status!=='paid')continue;
       const items=(allItems||[]).filter(item=>item.order_id===order.id);
-      if(!items.length||!items.every(item=>item.status==='received'))continue;
+      // Every item in hand (or already done/cancelled), at least one in hand.
+      if(!items.some(item=>item.status==='ready_for_pickup')||!items.every(item=>['ready_for_pickup','shipped','completed','cancelled','refunded'].includes(item.status)))continue;
       const nextStatus=order.fulfillment_method==='pickup'?'ready_for_pickup':'reserved';
       await db(`foc_preorder_orders?id=eq.${order.id}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({status:nextStatus})});
       readyOrderIds.push(order.id);
@@ -3163,7 +3151,7 @@ async function receiveShipment(request,env,deps){
   // book arrives (the paid -> ready flip above only ever happens once).
   let notified=[];
   try{notified=await notifyOrdersReady(env,deps,db,storeId,readyOrderIds,auth.user?.id);}catch(e){console.error('FOC receive: arrival notices failed',e);}
-  return deps.json({ok:true,createdInventoryCount:created.length,receivedSummary,labelItems,notified});
+  return deps.json({ok:true,createdInventoryCount:created.length,heldCount:receivedSummary.reduce((a,r)=>a+Number(r.reservedForCustomers||0),0),receivedSummary,labelItems,notified,warnings:receiveWarnings});
 }
 
 async function saveShippingSettings(request,env,deps){
@@ -3180,6 +3168,65 @@ async function getShippingSettings(request,env,deps,url){
   return deps.json({ok:true,shipping});
 }
 
+// ON HOLD -- copies received for paid website preorders sit in their own
+// rows (source 'foc_hold', lifecycle 'hold') until the customer has them.
+async function focHoldRows(db,storeId,orderId=''){
+  const {data}=await db(`inventory_items?store_id=eq.${encodeURIComponent(storeId)}&data->>source=eq.foc_hold&status=eq.in_stock${orderId?`&data->preorderHold->>orderId=eq.${encodeURIComponent(orderId)}`:''}&select=id,created_at,data&order=created_at.asc&limit=1000`);
+  return data||[];
+}
+// Handed over (or shipped): the held rows leave stock as archived -- the sale
+// itself was the website order, so nothing new is counted as sold.
+async function releaseOrderHolds(db,storeId,orderId,how){
+  const rows=await focHoldRows(db,storeId,orderId),at=new Date().toISOString();
+  for(const r of rows){
+    const d=r.data||{};
+    await db(`inventory_items?id=eq.${r.id}&store_id=eq.${encodeURIComponent(storeId)}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({status:'archived',data:{...d,qty:0,quantity:0,lifecycle:'',status:'archived',archivedAt:at,archiveReason:(how==='shipped'?'Shipped':'Handed over')+' to '+(d.preorderHold?.customerName||'the customer')+' (preorder '+(d.preorderHold?.orderNumber||'')+')',preorderHold:{...(d.preorderHold||{}),releasedAt:at,releasedHow:how}}})});
+  }
+  return rows.length;
+}
+export function holdGroups(rows=[],orders=[],items=[]){
+  const byOrder=new Map();
+  for(const r of rows){
+    const h=r.data?.preorderHold||{};if(!h.orderId)continue;
+    const g=byOrder.get(h.orderId)||{orderId:h.orderId,orderNumber:h.orderNumber||'',customerName:h.customerName||'Customer',fulfillment:h.fulfillment||'pickup',heldAt:h.heldAt||r.created_at,books:[]};
+    g.books.push({id:r.id,name:text(r.data?.name,200),qty:Number(r.data?.qty??r.data?.quantity??0),image:r.data?.image||''});
+    byOrder.set(h.orderId,g);
+  }
+  return [...byOrder.values()].map(g=>{
+    const o=orders.find(x=>x.id===g.orderId)||{};
+    const its=items.filter(i=>i.order_id===g.orderId);
+    return {...g,orderStatus:o.status||'',phone:o.customer_phone||'',stillComing:its.filter(i=>i.status==='committed').map(i=>text(i.sku?.title||'',120)+(i.sku?.variant_label&&!/^cover a$/i.test(i.sku.variant_label)?' · '+text(i.sku.variant_label,80):''))};
+  }).sort((a,b)=>String(a.heldAt).localeCompare(String(b.heldAt)));
+}
+async function adminHolds(request,env,deps,url){
+  if(request.method==='GET'){
+    const storeId=text(url.searchParams.get('store_id'),80);
+    const auth=await deps.requireStoreUser(request,env,storeId,['owner','admin','manager','employee']);if(auth.error)return auth.error;
+    const db=(path,options)=>deps.supabaseAdminFetch(env,path,options);
+    const rows=await focHoldRows(db,storeId);
+    const ids=[...new Set(rows.map(r=>r.data?.preorderHold?.orderId).filter(id=>UUID_RE.test(String(id||''))))];
+    const [{data:orders},{data:items}]=ids.length?await Promise.all([
+      db(`foc_preorder_orders?id=${inFilter(ids)}&select=id,status,customer_phone`),
+      db(`foc_preorder_items?order_id=${inFilter(ids)}&select=order_id,status,sku:comic_skus(title,variant_label)`),
+    ]):[{data:[]},{data:[]}];
+    return deps.json({ok:true,holds:holdGroups(rows,orders||[],items||[])});
+  }
+  const limited=await deps.readJsonWithLimit(request,8*1024);if(limited.error)return limited.error;
+  const body=limited.data||{},storeId=text(body.storeId,80),orderId=text(body.orderId,80);
+  const auth=await deps.requireStoreUser(request,env,storeId,['owner','admin','manager','employee']);if(auth.error)return auth.error;
+  if(!UUID_RE.test(orderId))return deps.json({ok:false,error:'orderId required'},400);
+  const db=(path,options)=>deps.supabaseAdminFetch(env,path,options);
+  const {data:orders}=await db(`foc_preorder_orders?id=eq.${encodeURIComponent(orderId)}&store_id=eq.${encodeURIComponent(storeId)}&select=id,status,fulfillment_method&limit=1`);
+  const order=orders?.[0];if(!order)return deps.json({ok:false,error:'Comic preorder not found'},404);
+  const how=order.fulfillment_method==='shipping'?'shipped':'completed';
+  const released=await releaseOrderHolds(db,storeId,orderId,how==='shipped'?'shipped':'handed_over');
+  // The books handed over are done; anything still coming stays committed.
+  await db(`foc_preorder_items?order_id=eq.${encodeURIComponent(orderId)}&status=eq.ready_for_pickup`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({status:how})});
+  const {data:left}=await db(`foc_preorder_items?order_id=eq.${encodeURIComponent(orderId)}&select=status`);
+  const allDone=(left||[]).length&&(left||[]).every(i=>['completed','shipped','cancelled','refunded'].includes(i.status));
+  if(allDone)await db(`foc_preorder_orders?id=eq.${encodeURIComponent(orderId)}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({status:how,fulfilled_at:new Date().toISOString()})});
+  return deps.json({ok:true,released,orderDone:!!allDone,stillComing:(left||[]).filter(i=>i.status==='committed').length});
+}
 async function adminOrders(request,env,deps,url){
   let storeId=text(url.searchParams.get('store_id'),80),body=null;
   if(request.method==='PATCH'){
@@ -3205,6 +3252,8 @@ async function adminOrders(request,env,deps,url){
   const patch={status:next,fulfilled_at:new Date().toISOString()};
   await db(`foc_preorder_orders?id=eq.${encodeURIComponent(order.id)}&store_id=eq.${encodeURIComponent(storeId)}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify(patch)});
   await db(`foc_preorder_items?order_id=eq.${encodeURIComponent(order.id)}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({status:next})});
+  // Picked up or shipped: its held copies leave stock.
+  await releaseOrderHolds(db,storeId,order.id,next==='shipped'?'shipped':'handed_over');
   return deps.json({ok:true,status:next});
 }
 
@@ -3462,6 +3511,7 @@ export async function handleFocRequest(request, env, url, deps) {
   if(path==='/foc/admin/pick-list'&&request.method==='GET')return adminPickList(request,env,deps,url);
   if(path==='/foc/admin/notify-arrivals'&&request.method==='POST')return adminNotifyArrivals(request,env,deps);
   if(path==='/foc/admin/late-books'&&request.method==='GET')return adminLateBooks(request,env,deps,url);
+  if(path==='/foc/admin/holds'&&(request.method==='GET'||request.method==='POST'))return adminHolds(request,env,deps,url);
   if(path==='/foc/admin/orders'&&(request.method==='GET'||request.method==='PATCH'))return adminOrders(request,env,deps,url);
   if(path==='/foc/admin/orders/email'&&request.method==='POST')return resendAdminOrderEmail(request,env,deps);
   if(path==='/foc/admin/orders/label'&&request.method==='POST')return adminShippingLabel(request,env,deps);

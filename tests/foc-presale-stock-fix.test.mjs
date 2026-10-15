@@ -99,11 +99,12 @@ assert.match(check.review[0].reason, /^2 eBay presale listings for this one cove
 // Receiving reads every presale (not the first 1,000 items) and marks the
 // presales it covers; switching to in stock only touches arrived covers.
 const foc = fs.readFileSync('scripts/foc-preorders.mjs', 'utf8');
-const receive = foc.slice(foc.indexOf('async function receiveShipment('), foc.indexOf('async function receiveShipment(') + 9000);
+const receive = foc.slice(foc.indexOf('async function receiveShipment('), foc.indexOf('async function receiveShipment(') + 20000);
 assert.match(receive, /const presaleRows=await focPresaleRows\(db,storeId\);/);
 assert.doesNotMatch(receive, /status=in\.\(presale,sold,in_stock\)&select=id,status,data`\)/);
 assert.match(foc, /data->>source=in\.\(foc_presale,foc_presale_bundle\)&status=in\.\(\$\{status\}\)&select=id,status,data&order=id\.asc&limit=1000&offset=\$\{offset\}/);
-assert.equal((receive.match(/focReceivedAt:new Date\(\)\.toISOString\(\)/g) || []).length >= 2, true, 'short-shipped and full presales are both marked received');
+assert.match(receive, /data:\{\.\.\.pd,qty:presaleKeep,quantity:presaleKeep,focReceivedAt:stamp\}/, 'a short-shipped presale is marked received');
+assert.match(receive, /body:JSON\.stringify\(\{data:\{\.\.\.pd,focReceivedAt:stamp\}\}\)/, 'a fully covered presale is marked received');
 const worker = fs.readFileSync('cloudflare-worker-full.js', 'utf8');
 const convert = worker.slice(worker.indexOf("if (url.pathname === '/foc/ebay/convert-to-instock')"), worker.indexOf("if (url.pathname === '/foc/ebay/convert-to-instock')") + 6000);
 assert.match(convert, /const arrived = d => !!d\.focReceivedAt \|\| receivedSkuIds\.has\(d\.focSkuId\);/);

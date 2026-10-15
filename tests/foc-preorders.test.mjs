@@ -498,7 +498,8 @@ const exportPrhSrc = service.match(/async function exportPrh\(env,deps,url,reque
 assert.doesNotMatch(exportPrhSrc, /inventory_items/, 'placing the distributor order must never create inventory_items rows -- an order is not proof the books arrive');
 const receiveSrc = service.match(/async function receiveShipment\(request,env,deps\)\{[\s\S]*?\n\}/)[0];
 assert.match(receiveSrc, /status:'in_stock'/, 'received copies must be created as normal sellable in_stock inventory');
-assert.match(receiveSrc, /source:'foc_receive',focSkuId:sku\.id,focCycleId:cycleId/, 'created inventory must trace back to the exact FOC cover and cycle it came from');
+assert.match(receiveSrc, /image:sku\.cover_image_url\|\|'',focSkuId:sku\.id,focCycleId:cycleId,focReceivedAt:stamp/, 'created inventory must trace back to the exact FOC cover and cycle it came from');
+assert.match(receiveSrc, /data:\{\.\.\.base,qty:newStandaloneCount,quantity:newStandaloneCount,source:'foc_receive'\}/);
 assert.match(receiveSrc, /sort\(\(a,b\)=>new Date\(a\.created_at\)-new Date\(b\.created_at\)\)/, 'paid customer copies must be reserved oldest-order-first, not in an arbitrary order');
 assert.match(receiveSrc, /status=eq\.committed/, 'only committed (paid, non-refunded) preorder items may claim a received copy');
 assert.match(receiveSrc, /if\(need<=0\|\|need>reserveRemaining\)continue;/, 'an item must only be marked received when its FULL requested quantity is covered -- partially covering it and still marking it received would understate what the customer is still owed');
@@ -514,14 +515,14 @@ assert.match(receiveSrc, /nextStatus=order\.fulfillment_method==='pickup'\?'read
 // oversell copies that never arrived.
 assert.match(receiveSrc, /if\(!isBundle&&row\.status==='presale'&&\(d\.ebayOfferId\|\|\(d\.ebayApiSystem==='trading'&&d\.ebayListingId&&d\.ebaySku\)\)&&remainingQty>0\)livePresaleRowBySkuId\.set\(d\.focSkuId,row\);/,
   'must track which SKUs have a live (still-presale, still-unsold) eBay listing to reconcile against -- both REST-offer-keyed and Trading-API-keyed (ItemID+SKU) listings');
-assert.match(receiveSrc, /newStandaloneCount=Math\.max\(0,receivedQty-presaleAvailable\);/,
+assert.match(receiveSrc, /const newStandaloneCount=Math\.max\(0,shelfQty-presaleKeep\);/,
   'only the amount received beyond what the live listing already accounts for may become new standalone rows');
-assert.match(receiveSrc, /if\(receivedQty<presaleAvailable\)\{/, 'a short-ship against the listing\'s own available quantity must be detected');
-assert.match(receiveSrc, /if\(pd\.ebayApiSystem==='trading'\)await deps\.ebayReviseVariationQuantityTrading\(ebayToken,pd\.ebayListingId,pd\.ebaySku,receivedQty\);/,
+assert.match(receiveSrc, /if\(presaleKeep<presaleAvailable\)\{/, 'a short-ship against the listing\'s own available quantity must be detected');
+assert.match(receiveSrc, /if\(pd\.ebayApiSystem==='trading'\)await deps\.ebayReviseVariationQuantityTrading\(ebayToken,pd\.ebayListingId,pd\.ebaySku,presaleKeep\);/,
   'a short-shipped Trading-API-built listing must revise quantity via the ItemID+SKU-keyed Trading path, not the offerId-keyed REST one');
-assert.match(receiveSrc, /else await deps\.ebayReviseOfferQuantity\(env,ebayToken,pd\.ebayOfferId,receivedQty\);/,
+assert.match(receiveSrc, /else await deps\.ebayReviseOfferQuantity\(env,ebayToken,pd\.ebayOfferId,presaleKeep\);/,
   'a short-shipped REST-created listing\'s quantity must still be pushed down on the live eBay offer exactly as before');
-assert.match(receiveSrc, /data:\{\.\.\.pd,qty:receivedQty,quantity:receivedQty(?:,focReceivedAt:new Date\(\)\.toISOString\(\))?\}/, 'the local presale row must be reduced to match what actually arrived');
+assert.match(receiveSrc, /data:\{\.\.\.pd,qty:presaleKeep,quantity:presaleKeep,focReceivedAt:stamp\}/, 'the local presale row must be reduced to match what actually arrived');
 assert.match(receiveSrc, /const \{ data:inserted \}=rows\.length\?await db\('inventory_items',\{method:'POST'/,
   'must skip the insert call entirely when nothing needs a new standalone row (all received copies already absorbed by the live listing)');
 
@@ -534,7 +535,7 @@ assert.match(receiveSrc, /const \{ data:inserted \}=rows\.length\?await db\('inv
 // reason a plain FOC cover (no per-copy distinction like grading/signing to
 // track) needs to fan out into N rows.
 assert.match(receiveSrc, /const rows=newStandaloneCount\?\[\{/, 'must build at most ONE row per SKU per receiving batch, not one row per copy');
-assert.match(receiveSrc, /qty:newStandaloneCount,quantity:newStandaloneCount,image:sku\.cover_image_url\|\|''/, 'the single row must carry the full received count as its quantity, not qty:1');
+assert.match(receiveSrc, /qty:newStandaloneCount,quantity:newStandaloneCount,source:'foc_receive'/, 'the single row must carry the full received count as its quantity, not qty:1');
 assert.doesNotMatch(receiveSrc, /Array\.from\(\{length:newStandaloneCount\}/, 'must not fan out into newStandaloneCount separate rows any more');
 
 console.log('FOC receive-shipment contract checks passed');

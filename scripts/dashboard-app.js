@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.10.13.8-foc-ebay-edit';
+const APP_VERSION = '2026.10.15.1-preorder-holds-bundles';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -13931,7 +13931,9 @@ function mapBuiltInItem(row){
     profit:isSold ? Number(d.profit || (Number(d.salePrice || market || 0) - cost)) : 0,
     priceSource:d.priceSource || d.marketPriceSource || d['price-source'] || '',
     status:isArchived ? 'archived' : (isSold ? 'sold' : ((d.dropship && row.status === 'active') ? 'in_stock' : (row.status || d.status || 'in_stock'))),
-    lifecycle:getLifecycle(id, isArchived ? 'archived' : (isSold ? 'sold' : ((d.dropship && row.status === 'active') ? 'in_stock' : (row.status || d.status || 'in_stock')))),
+    // A preorder copy set aside at receiving (source 'foc_hold') is on hold
+    // whatever the device's lifecycle map says.
+    lifecycle:(d.source === 'foc_hold' && d.lifecycle === 'hold') ? 'hold' : getLifecycle(id, isArchived ? 'archived' : (isSold ? 'sold' : ((d.dropship && row.status === 'active') ? 'in_stock' : (row.status || d.status || 'in_stock')))),
     channel:d.channel || d.saleChannel || '',
     addedAt:d.addedAt || row.created_at || '',
     soldAt:d.soldAt || '',
@@ -16805,6 +16807,10 @@ let sellItemId = null;
 function openSellModal(id){
   const item = all.find(i=>i.id===id);
   if(!item) return;
+  if(inventoryRowPreorderHold(item.raw)) {
+    toast_dash(`On hold for ${item.raw.preorderHold?.customerName || 'a customer'}'s preorder -- hand it over from FOC → 📌 ON HOLD`);
+    return;
+  }
   if(item.lifecycle === 'hold') {
     if(!confirm('This item is On Hold (not for sale). Sell it anyway?')) return;
   } else if(['listed_online','pulled_ebay'].includes(item.lifecycle || '')) {
@@ -19386,6 +19392,12 @@ function addSaleItemToCart(item = {}, options = {}){
       const lineId = line.inventoryId || line.shopId || line.wfId;
       return String(lineId || '') === String(inventoryId) ? sum + Number(line.quantity || line.qty || 1) : sum;
     }, 0);
+    if(inventoryItem?.lifecycle === 'hold' || inventoryRowPreorderHold(inventoryItem?.raw)){
+      // Store report: a paid preorder copy got rung up for someone else.
+      const who = inventoryItem.preorderHold?.customerName || inventoryItem.raw?.preorderHold?.customerName || '';
+      toast_dash(who ? `On hold for ${who}'s preorder -- hand it over from FOC → 📌 ON HOLD` : 'This item is on hold (not for sale)');
+      return null;
+    }
     if(!inventoryItemIsSellable(inventoryItem) || quantity + alreadyInCart > available){
       toast_dash(available > 0 ? `Only ${available} available (${alreadyInCart} already in cart)` : 'Item is sold or out of stock');
       return null;
@@ -25599,9 +25611,10 @@ function inventoryAvailableQuantity(item){
   return Number.isFinite(quantity) ? Math.max(0, Math.floor(quantity)) : 0;
 }
 
+function inventoryRowPreorderHold(d){ return !!(d && d.source === 'foc_hold' && d.lifecycle === 'hold'); }
 function inventoryItemIsSellable(item){
   if(!item) return false;
-  if(item.lifecycle === 'hold') return false;
+  if(item.lifecycle === 'hold' || inventoryRowPreorderHold(item.raw)) return false;
   const status = String(item.status || item.lifecycle || item.raw?.status || '').toLowerCase();
   return !['sold','archived','returned','deleted','bundled'].includes(status) && !item.soldAt && inventoryAvailableQuantity(item) > 0;
 }
@@ -41072,6 +41085,61 @@ function renderDealerCartTools(cartData = getCartDataLocal()){
   </div>`).join('');
 }
 
+// ── Bundle price ──
+// Store report: "Comic Bundle x12" ($60) and "Comic Ratio Foil Bundle" were
+// typed-in items -- the books inside never left inventory, and nothing knew
+// which books sold. Scan the real books into the cart, then BUNDLE PRICE
+// spreads one total across them (by each book's own price), so every book
+// sells out of stock and shows in the sales history.
+function cartBundlePrices(lines = [], total = 0){
+  const target = Math.round(Number(total) * 100);
+  if(!(target >= 0) || !lines.length) return [];
+  const weights = lines.map(l => Math.max(0, Number(l.originalPrice ?? l.price ?? 0)));
+  const sum = weights.reduce((a, b) => a + b, 0);
+  const share = sum > 0 ? weights.map(w => w / sum) : lines.map(() => 1 / lines.length);
+  const cents = share.map(x => Math.floor(target * x));
+  let left = target - cents.reduce((a, b) => a + b, 0);
+  // Leftover pennies go to the priciest books first.
+  const order = share.map((x, i) => i).sort((a, b) => share[b] - share[a]);
+  for(let k = 0; left > 0; k++, left--) cents[order[k % order.length]]++;
+  return cents.map(c => c / 100);
+}
+function cartBundleLineIndexes(items = []){
+  const isComic = l => /comic/i.test(String(l.category || '')) && (l.inventoryId || l.shopId);
+  const comics = items.map((l, i) => isComic(l) ? i : -1).filter(i => i >= 0);
+  return comics.length >= 2 ? comics : items.map((l, i) => (l.inventoryId || l.shopId) ? i : -1).filter(i => i >= 0);
+}
+async function bundleCartPrice(){
+  const cart = await getActiveCartData();
+  const items = cart.items || [];
+  const idxs = cartBundleLineIndexes(items);
+  if(idxs.length < 2) return toast_dash('Scan at least 2 books into the cart first -- the bundle price is spread across them');
+  const lines = idxs.map(i => items[i]);
+  const before = lines.reduce((a, l) => a + Number(l.price || 0), 0);
+  const value = prompt(`Bundle price for these ${lines.length} items (now $${before.toFixed(2)})?`, '');
+  if(value === null) return;
+  const total = Number(String(value).replace(/[$,\s]/g, ''));
+  if(!Number.isFinite(total) || total <= 0) return toast_dash('Enter the bundle total, e.g. 60');
+  const prices = cartBundlePrices(lines, total);
+  const at = new Date().toISOString(), bundleId = 'bundle_' + Date.now().toString(36);
+  const reason = `Bundle: ${lines.length} for $${total.toFixed(2)}`;
+  lines.forEach((item, n) => {
+    const original = Number(item.originalPrice ?? item.price ?? 0);
+    const qty = Math.max(1, Number(item.quantity || item.qty || 1));
+    item.originalPrice = original;
+    item.adjustedPrice = prices[n];
+    item.price = prices[n];
+    if(item.unitPrice != null) item.unitPrice = Math.round(prices[n] / qty * 100) / 100;
+    item.adjustmentType = prices[n] < original ? 'discount' : prices[n] > original ? 'markup' : 'manual';
+    item.adjustmentReason = reason;
+    item.bundleId = bundleId;
+    item.adjustedBy = getAuthSession()?.user?.email || getAuthSession()?.user?.displayName || 'local-user';
+    item.adjustedAt = at; item.updatedAt = at;
+  });
+  await saveActiveCartData(cart);
+  logOpsEvent('cart_bundle_price', reason, { bundleId, lines:lines.length, before, total });
+  toast_dash(`${reason} -- each book still comes out of inventory`);
+}
 async function editCartLinePrice(idx){
   const cart = await getActiveCartData();
   const item = cart.items?.[idx];
@@ -41684,7 +41752,7 @@ function renderDealerCartTools(cartData = getCartDataLocal()){
   if(actions) {
     actions.innerHTML = locked
       ? `<button class="hbtn danger" onclick="cancelLockedCheckout()">CANCEL CHECKOUT</button><button class="hbtn" onclick="enterCustomerDisplayMode()">SHOW CUSTOMER PAYMENT</button>`
-      : `<button class="hbtn" onclick="lockCheckoutForPayment()" ${items.length?'':'disabled'}>💳 CHECKOUT &amp; TAKE PAYMENT</button><button class="hbtn" onclick="enterCustomerDisplayMode()" ${items.length?'':'disabled'}>🖥️ PREVIEW CUSTOMER SCREEN</button><button class="hbtn danger" onclick="clearCustomerDisplayCart()" ${items.length?'':'disabled'}>CLEAR CART</button>`;
+      : `${cartBundleLineIndexes(items).length>=2?'<button class="hbtn" title="Scan the books, then set one price for the lot -- every book still comes out of inventory" onclick="bundleCartPrice()">📦 BUNDLE PRICE</button>':''}<button class="hbtn" onclick="lockCheckoutForPayment()" ${items.length?'':'disabled'}>💳 CHECKOUT &amp; TAKE PAYMENT</button><button class="hbtn" onclick="enterCustomerDisplayMode()" ${items.length?'':'disabled'}>🖥️ PREVIEW CUSTOMER SCREEN</button><button class="hbtn danger" onclick="clearCustomerDisplayCart()" ${items.length?'':'disabled'}>CLEAR CART</button>`;
   }
 }
 
