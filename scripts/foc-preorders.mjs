@@ -3180,10 +3180,47 @@ async function adminEbayListings(request,env,deps,url){
   try{
     const [{active},rows]=await Promise.all([ebayActiveForStore(env,deps),ebayListingRows(db,storeId)]);
     const byListing=new Map();
-    for(const r of rows){const d=r.data||{};if(!d.ebayListingId||d.ebayWithdrawnAt)continue;const list=byListing.get(String(d.ebayListingId))||[];list.push({rowId:r.id,sku:d.ebaySku||'',source:d.source||'',name:stripPresaleName(d.name||'')});byListing.set(String(d.ebayListingId),list);}
-    const listings=active.map(i=>{const linked=byListing.get(String(i.itemId))||[];return {...i,linked:linked.length>0,variations:i.variations.map(v=>({...v,linked:linked.some(l=>l.sku&&l.sku===v.sku)}))};});
+    for(const r of rows){const d=r.data||{};if(!d.ebayListingId||d.ebayWithdrawnAt)continue;const list=byListing.get(String(d.ebayListingId))||[];list.push(dashboardSide(r));byListing.set(String(d.ebayListingId),list);}
+    // What the dashboard says next to what eBay says, per listing / cover.
+    const listings=active.map(i=>{
+      const linked=byListing.get(String(i.itemId))||[];
+      const single=!i.variations.length?(linked.find(l=>!l.sku||l.sku===i.sku)||linked[0]||null):null;
+      return {...i,linked:linked.length>0,dashboard:single,variations:i.variations.map(v=>{const dash=linked.find(l=>l.sku&&l.sku===v.sku)||null;return {...v,linked:!!dash,dashboard:dash};})};
+    });
     return deps.json({ok:true,listings});
   }catch(e){return deps.json({ok:false,needsToken:!!e.needsToken,error:e.message},e.status||502);}
+}
+// The dashboard's price and count for a row linked to an eBay listing. A
+// presale row's count IS its eBay quantity; a shelf item's is its stock.
+function dashboardSide(row){
+  const d=row.data||{};
+  const price=Number(d.priceOverride)>0?Number(d.priceOverride):Number(d.salePrice||d.listPrice||d.displayPrice||d.market||0);
+  return {rowId:row.id,sku:d.ebaySku||'',source:d.source||'',presale:d.source==='foc_presale'||d.source==='foc_presale_bundle',name:stripPresaleName(d.name||''),price:Math.round(price*100)/100,qty:Number(d.qty??d.quantity??0)};
+}
+// "Use eBay's" for a linked row: price into the dashboard's selling price;
+// for a presale row also its count (and eBay's sales). A shelf item's stock
+// count is never overwritten from eBay -- it's what's physically here.
+async function adminEbayListingToDashboard(request,env,deps){
+  const limited=await deps.readJsonWithLimit(request,16*1024);if(limited.error)return limited.error;
+  const body=limited.data||{},storeId=text(body.storeId,80),itemId=text(body.itemId,40),variationSku=text(body.variationSku,120);
+  const auth=await deps.requireStoreUser(request,env,storeId,['owner','admin','manager']);if(auth.error)return auth.error;
+  if(!/^\d{6,20}$/.test(itemId))return deps.json({ok:false,error:'itemId required'},400);
+  const db=(path,options)=>deps.supabaseAdminFetch(env,path,options);
+  let active;try{({active}=await ebayActiveForStore(env,deps));}catch(e){return deps.json({ok:false,needsToken:!!e.needsToken,error:e.message},e.status||502);}
+  const item=active.find(i=>String(i.itemId)===itemId);
+  if(!item)return deps.json({ok:false,error:'That listing is not live on eBay'},409);
+  const v=variationSku?item.variations.find(x=>x.sku===variationSku):null;
+  if(variationSku&&!v)return deps.json({ok:false,error:'Could not find this cover on the eBay listing'},409);
+  const rows=(await ebayListingRows(db,storeId)).filter(r=>{const d=r.data||{};return String(d.ebayListingId)===itemId&&!d.ebayWithdrawnAt&&(!variationSku||d.ebaySku===variationSku);});
+  if(rows.length!==1)return deps.json({ok:false,error:rows.length?'More than one dashboard item on this listing -- change it by hand':'Nothing in the dashboard is linked to this listing'},409);
+  const row=rows[0],d=row.data||{},presale=d.source==='foc_presale'||d.source==='foc_presale_bundle';
+  const ebayPrice=Number((v||item).price||0),available=Number((v||item).available||0),sold=Number((v||item).sold||0);
+  const next={...d,ebayMatchedAt:new Date().toISOString()};
+  if(ebayPrice>0){next.salePrice=ebayPrice;next.listPrice=ebayPrice;next.displayPrice=ebayPrice;if(Number(d.priceOverride)>0)next.priceOverride=ebayPrice;if(presale)next.market=ebayPrice;}
+  let status=row.status;
+  if(presale){next.qty=available;next.quantity=available;next.focPresaleOriginalQty=sold+available;if(available<=0&&row.status==='in_stock')status='sold';}
+  await db(`inventory_items?id=eq.${row.id}&store_id=eq.${encodeURIComponent(storeId)}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({status,data:next})});
+  return deps.json({ok:true,price:ebayPrice,qty:presale?available:Number(d.qty??d.quantity??0),countUpdated:presale});
 }
 async function adminEbayListingRevise(request,env,deps){
   const limited=await deps.readJsonWithLimit(request,16*1024);if(limited.error)return limited.error;
@@ -4060,6 +4097,7 @@ export async function handleFocRequest(request, env, url, deps) {
   if(path==='/foc/admin/ebay-listings-check/match-ebay'&&request.method==='POST')return adminEbayListingsMatchEbay(request,env,deps);
   if(path==='/foc/admin/ebay-listings'&&request.method==='GET')return adminEbayListings(request,env,deps,url);
   if(path==='/foc/admin/ebay-listings/revise'&&request.method==='POST')return adminEbayListingRevise(request,env,deps);
+  if(path==='/foc/admin/ebay-listings/to-dashboard'&&request.method==='POST')return adminEbayListingToDashboard(request,env,deps);
   if(path==='/foc/admin/presale-stock-fix'&&request.method==='POST')return adminPresaleStockFix(request,env,deps);
   if(path==='/foc/admin/pick-list'&&request.method==='GET')return adminPickList(request,env,deps,url);
   if(path==='/foc/admin/notify-arrivals'&&request.method==='POST')return adminNotifyArrivals(request,env,deps);
