@@ -100,7 +100,7 @@ const post = body => ({ method:'POST', headers:{ get:() => null }, json:async ()
 
 // Wiring.
 assert.match(worker, /ebayTradingApiCall\(ebayToken, 'GetMyeBaySelling', `<ActiveList><Include>true<\/Include><Pagination><EntriesPerPage>200<\/EntriesPerPage>/);
-assert.match(worker, /parseMyEbaySellingActive \} from '\.\/scripts\/foc-preorders\.mjs'/);
+assert.match(worker, /parseMyEbaySellingActive[, a-zA-Z]* \} from '\.\/scripts\/foc-preorders\.mjs'/);
 assert.match(ui, /onclick="openEbayListingsCheck\(\)">📋 EBAY LISTINGS CHECK<\/button>/);
 assert.match(ui, /MARK TICKED AS ENDED/);
 assert.match(ui, /SET EBAY<\/button>/, 'set eBay to a number you choose, not always 0');
