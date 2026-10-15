@@ -479,13 +479,14 @@ export function groupConnectingCovers(covers = []) {
   return groups.map(({ key, firstDay, ...g }) => ({ id:'auto:' + key + '|' + new Date(firstDay || 0).toISOString().slice(0, 10), ...g }));
 }
 
-export // Ratio covers say so in the title: "1:25" -> "1:25 Ratio" ("RATIO" in an
-// all-caps title), unless "ratio" already follows. Comic names only.
+export // Ratio covers say so in the title: "1:25" -> "1:25 Ratio" ("RATIO" in a
+// mostly-capitals title), unless "ratio" already follows. Comic names only.
 function withRatioWord(text){
   const s = String(text == null ? '' : text);
   if(!/\b1\s?:\s?\d{1,4}\b/.test(s)) return s;
   const letters = s.replace(/[^A-Za-z]/g, '');
-  const word = letters && letters === letters.toUpperCase() ? 'RATIO' : 'Ratio';
+  const capitals = letters.replace(/[^A-Z]/g, '').length;
+  const word = letters && capitals / letters.length >= 0.7 ? 'RATIO' : 'Ratio';
   return s.replace(/\b1\s?:\s?(\d{1,4})\b(?!\s*ratio)/gi, '1:$1 ' + word);
 }
 

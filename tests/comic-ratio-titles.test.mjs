@@ -19,6 +19,8 @@ const cases = [
   ['Thing #1 1 : 50 var', 'Thing #1 1:50 Ratio var'],
   ['Already 1:25 Ratio Variant', 'Already 1:25 Ratio Variant'],
   ['Already 1:25 ratio', 'Already 1:25 ratio'],
+  ['JEAN GREY #1 COVER F ITO VIRGIN 1:100 VARIANT Marvel - PRESALE', 'JEAN GREY #1 COVER F ITO VIRGIN 1:100 RATIO VARIANT Marvel - PRESALE'],
+  ['Archie #2 CVR G INC 1:100 STUART IMMONEN B&W VAR', 'Archie #2 CVR G INC 1:100 RATIO STUART IMMONEN B&W VAR'],
   ['Cover A', 'Cover A'],
   ['', ''],
 ];
