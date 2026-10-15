@@ -137,4 +137,10 @@ assert.match(worker, /aspects\[key\] = \(aspects\[key\] \|\| \[\]\)\.map\(v => S
   assert.equal(patches[0].body.data.focPresaleOriginalQty, 6, 'sold + available');
 }
 
+// Store report: "Goblin Storm was done through dashboard. Why's it here?"
+// LIST ON EBAY's listing id was dropped on save (not on the saved-field
+// list), so dashboard listings showed up as untracked.
+assert.match(app, /\['ebayListingId',''\], \['ebayOfferId',''\], \['ebaySku',''\], \['ebayListedAt',''\],/);
+assert.match(worker, /if \(b\.itemId && result\.listingId\) \{[\s\S]{0,600}ebayListingId: String\(result\.listingId\), ebayOfferId: result\.offerId \|\| '', ebaySku: result\.sku \|\| ''/, 'the worker records the listing on the item itself');
+
 console.log('eBay listings check + aspect length checks passed');

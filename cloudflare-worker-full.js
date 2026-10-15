@@ -10651,6 +10651,15 @@ async function routeRequest(request, env, ctx) {
           }
         }
         const result = await createAndPublishEbayListing(b, ebayToken, env, storeId);
+        // Record the listing on the item here too, so it never depends on
+        // the browser's own save landing.
+        if (b.itemId && result.listingId) {
+          try {
+            const { data: rows } = await supabaseAdminFetch(env, `inventory_items?id=eq.${encodeURIComponent(b.itemId)}&store_id=eq.${encodeURIComponent(storeId)}&select=id,data`);
+            const row = rows?.[0];
+            if (row) await supabaseAdminFetch(env, `inventory_items?id=eq.${encodeURIComponent(row.id)}&store_id=eq.${encodeURIComponent(storeId)}`, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ data: { ...(row.data || {}), ebayListingId: String(result.listingId), ebayOfferId: result.offerId || '', ebaySku: result.sku || '', ebayListedAt: new Date().toISOString() } }) });
+          } catch (e) { console.error('eBay list: could not record the listing on the item', e.message); }
+        }
         return json({ ok: true, ...result });
       } catch (e) {
         console.error('eBay listing error:', e);
