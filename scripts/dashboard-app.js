@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.10.15.1-preorder-holds-bundles';
+const APP_VERSION = '2026.10.15.2-whatnot-exact-fee';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -12904,7 +12904,11 @@ async function printEbayLabel(shipmentId, format){
 // eBay OAuth sync for a one-off eBay sale. Fee defaults are editable
 // estimates, not exact -- actual rates vary by category/store tier.
 const EXTERNAL_SALE_FEE_DEFAULTS = {
-  Whatnot: { pct: 10.9, flat: 0.30, note: '8% commission + 2.9% payment processing + $0.30 flat (approx combined -- lower for electronics/coins)' },
+  // Store report: a $10 Whatnot sale showed $1.30-$1.59 here but Whatnot
+  // charged $1.56 -- the 2.9% processing is on everything the buyer paid
+  // (price + shipping + tax), not just the price. EXACT FEE takes the real
+  // number off the Whatnot receipt.
+  Whatnot: { pct: 10.9, flat: 0.30, note: 'Estimate: 8% commission + 2.9% processing + $0.30. Whatnot also takes 2.9% of the buyer\'s shipping and tax, so the real fee runs a little higher -- type TOTAL FEES from the Whatnot receipt in EXACT FEE.' },
   eBay: { pct: 13.25, flat: 0.30, note: 'Typical eBay final value fee + ~$0.30 fixed per-order fee -- varies by category and store subscription' },
   Mercari: { pct: 10, flat: 0, note: 'Approximate -- confirm your actual rate' },
   Poshmark: { pct: 20, flat: 0, note: 'Approximate -- confirm your actual rate' },
@@ -12912,6 +12916,13 @@ const EXTERNAL_SALE_FEE_DEFAULTS = {
   Other: { pct: 0, flat: 0, note: '' },
 };
 
+// The fee charged: the exact amount off the channel's receipt when typed,
+// else the percent + flat estimate.
+function externalSaleFee(price, pct, flat, exact){
+  const typed = String(exact ?? '').trim();
+  if(typed !== '' && Number.isFinite(Number(typed)) && Number(typed) >= 0) return Math.round(Number(typed) * 100) / 100;
+  return Math.round(((Number(price) || 0) * ((Number(pct) || 0) / 100) + (Number(flat) || 0)) * 100) / 100;
+}
 function markSoldOnWhatnot(itemId){
   openExternalSaleModal(itemId, 'Whatnot');
 }
@@ -12943,7 +12954,9 @@ function openExternalSaleModal(itemId, presetChannel){
         <div><label style="font-family:monospace;font-size:9px;color:var(--dim)">FEE %</label><input id="ext-sale-fee-pct" type="number" step="0.1" min="0" oninput="updateExternalSalePreview()" style="width:100%;margin-top:4px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:9px;border-radius:6px;box-sizing:border-box"></div>
         <div><label style="font-family:monospace;font-size:9px;color:var(--dim)">FEE FLAT $</label><input id="ext-sale-fee-flat" type="number" step="0.01" min="0" oninput="updateExternalSalePreview()" style="width:100%;margin-top:4px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:9px;border-radius:6px;box-sizing:border-box"></div>
       </div>
-      <div id="ext-sale-fee-note" style="font-family:monospace;font-size:8px;color:var(--dim);margin-bottom:10px"></div>
+      <div id="ext-sale-fee-note" style="font-family:monospace;font-size:8px;color:var(--dim);margin-bottom:8px"></div>
+      <label style="font-family:monospace;font-size:9px;color:var(--dim)">EXACT FEE $ <span style="color:var(--dim)">(optional -- from the receipt, replaces the estimate)</span></label>
+      <input id="ext-sale-fee-exact" type="number" step="0.01" min="0" placeholder="e.g. 1.56" oninput="updateExternalSalePreview()" style="width:100%;margin:4px 0 10px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:9px;border-radius:6px;box-sizing:border-box">
       <div id="ext-sale-preview" style="font-family:monospace;font-size:11px;padding:10px;border:1px solid var(--border);border-radius:6px;margin-bottom:12px"></div>
       <div style="display:flex;gap:8px">
         <button class="hbtn" style="flex:1;color:var(--gold)" onclick="submitExternalSale('${itemId}')">RECORD SALE</button>
@@ -12971,7 +12984,7 @@ function updateExternalSalePreview(){
   const price = Number(document.getElementById('ext-sale-price')?.value) || 0;
   const pct = Number(document.getElementById('ext-sale-fee-pct')?.value) || 0;
   const flat = Number(document.getElementById('ext-sale-fee-flat')?.value) || 0;
-  const fee = price * (pct / 100) + flat;
+  const fee = externalSaleFee(price, pct, flat, document.getElementById('ext-sale-fee-exact')?.value);
   const el = document.getElementById('ext-sale-preview');
   if(!el) return;
   const item = all.find(i => i.id === document.getElementById('external-sale-modal')?.dataset.itemId);
@@ -12985,7 +12998,7 @@ async function submitExternalSale(itemId){
   const salePrice = Number(document.getElementById('ext-sale-price')?.value);
   const pct = Number(document.getElementById('ext-sale-fee-pct')?.value) || 0;
   const flat = Number(document.getElementById('ext-sale-fee-flat')?.value) || 0;
-  const feeAmount = Math.round((salePrice * (pct / 100) + flat) * 100) / 100;
+  const feeAmount = externalSaleFee(salePrice, pct, flat, document.getElementById('ext-sale-fee-exact')?.value);
   if(!(salePrice > 0)){ toast_dash('Enter a valid sale price'); return; }
   try{
     const res = await storeWorkerFetch('/inventory/record-external-sale', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ itemId, channel, salePrice, feeAmount }) });
