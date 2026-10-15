@@ -32,7 +32,7 @@ import { storeOrganization, productFacts, productCondition, renderShopPreview } 
 // It has zero Node dependencies (pure-JS SHA-1), so it bundles straight into
 // the Worker -- reused here instead of duplicating checklist-parsing logic.
 import { buildChecklistIndex, parseChecklistText, sha1Hex, slugify } from './scripts/topps-checklist-parser.js';
-import { handleFocRequest, syncFocStripeEvent, shippingSettings, runScheduledStockHealth } from './scripts/foc-preorders.mjs';
+import { handleFocRequest, syncFocStripeEvent, shippingSettings, runScheduledStockHealth, withRatioWord } from './scripts/foc-preorders.mjs';
 import { handleOrdersBoard, handleOrderMarkShipped } from './scripts/orders-board.mjs';
 import { handleBacklistRequest, syncBacklistStripeEvent } from './scripts/backlist-catalog.mjs';
 import { searchComics, comicSearchShell, comicSearchScriptResponse, injectComicSearch } from './scripts/comic-search.mjs';
@@ -5228,7 +5228,7 @@ async function routeRequest(request, env, ctx) {
       // to account suspension). The description already discloses it below;
       // this reserves space so the suffix always survives the 80-char cap.
       const PRESALE_TITLE_SUFFIX = ' - PRESALE';
-      const titleBase = [baseTitle, variantLabel].filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
+      const titleBase = withRatioWord([baseTitle, variantLabel].filter(Boolean).join(' ').replace(/\s+/g, ' ').trim());
       let title = (titleBase.substring(0, 80 - PRESALE_TITLE_SUFFIX.length) + PRESALE_TITLE_SUFFIX).substring(0, 80);
       // Store request: "better ebay titles with seo?" -- buyers commonly
       // search comics by publisher alongside the series/issue, and it's
@@ -5667,7 +5667,7 @@ async function routeRequest(request, env, ctx) {
         const priceCents = Math.round(Number(v.price) * 100) || cover.priceCents;
         if (!priceCents) return json({ ok: false, error: `No price for "${cover.variantLabel}"` }, 400);
         built.push({
-          key: v.skuId, skuId: v.skuId, label: cover.variantLabel,
+          key: v.skuId, skuId: v.skuId, label: withRatioWord(cover.variantLabel),
           price: (priceCents / 100).toFixed(2), quantity: Math.max(1, Math.min(200, parseInt(v.quantity, 10) || 10)),
           imageUrl: cover.imageUrl, upc: cover.upc,
           aspectOverrides: cover.coverArtist ? { 'Cover Artist': cover.coverArtist } : {},
@@ -5872,7 +5872,7 @@ async function routeRequest(request, env, ctx) {
             body: JSON.stringify({
               store_id: storeId, status: 'presale',
               data: {
-                name: v.skuId ? [family.title, v.label].filter(Boolean).join(' ') : v.label,
+                name: v.skuId ? withRatioWord([family.title, v.label].filter(Boolean).join(' ')) : v.label,
                 category: 'Comic', publisher: skuRow?.publisher || repSku.publisher || '', upc: v.upc || '',
                 cost: skuRow ? Math.round(Number(skuRow.msrp_cents || 0) * 0.5) / 100 : bundleCostCents / 100,
                 market: Number(v.price), salePrice: Number(v.price),

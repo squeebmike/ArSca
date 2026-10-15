@@ -6,6 +6,8 @@ import assert from 'node:assert/strict';
 // line of description, no item specifics, the card-sized package. The
 // ⋯ menu's REBUILD EBAY LISTING puts it back together from the FOC catalog.
 const worker = fs.readFileSync('cloudflare-worker-full.js', 'utf8');
+const focService = fs.readFileSync('scripts/foc-preorders.mjs', 'utf8');
+const ratioFn = focService.slice(focService.indexOf('function withRatioWord('), focService.indexOf('\n}\n', focService.indexOf('function withRatioWord(')) + 3);
 const app = fs.readFileSync('scripts/dashboard-app.js', 'utf8');
 const grab = (sig, end = '\n}\n') => { const s = worker.indexOf(sig); assert.ok(s >= 0, 'missing ' + sig); return worker.slice(s, worker.indexOf(end, s) + end.length); };
 const line = sig => { const s = worker.indexOf(sig); assert.ok(s >= 0, 'missing ' + sig); return worker.slice(s, worker.indexOf('\n', s) + 1); };
@@ -16,7 +18,7 @@ const route = worker.slice(routeStart, worker.indexOf("    if (url.pathname === 
 function load({ row, sku, item, offer }) {
   const calls = { puts: [], patches: [] };
   const fn = new Function('fetch', 'supabaseAdminFetch', 'getEbayUserAccessToken', [
-    line('const COMIC_GEMINI_MAILER ='), line('const COMIC_SHIPPING_NOTE ='), line('const COMIC_IN_STOCK_SHIPPING ='),
+    ratioFn, line('const COMIC_GEMINI_MAILER ='), line('const COMIC_SHIPPING_NOTE ='), line('const COMIC_IN_STOCK_SHIPPING ='),
     grab('function truncateHtmlSafely('), grab('function comicPresaleNotice('), grab('function withComicListingNotices('),
     grab('function comicPresaleToInStockDescription('), grab('function stripPresaleSuffix('), grab('function buildEbayAspects('),
     grab('function toEbayHtmlDescription('),
