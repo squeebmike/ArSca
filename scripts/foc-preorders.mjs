@@ -2941,6 +2941,154 @@ async function adminPresaleStockFix(request,env,deps){
   }
   return deps.json({ok:true,results});
 }
+// ═══════════════════════════════════════════════════════
+// STOCK HEALTH -- store ask: catch stock that's wrong before anyone sees a
+// wrong number (this week: books "in stock" before they came out, covers
+// counted twice, a paid preorder copy rung up for someone else, covers a
+// slip never received, eBay listing more than was ordered). Runs on the
+// Worker's 6-hourly cron and on demand; every read pages past 1,000 rows.
+// ═══════════════════════════════════════════════════════
+const plural=(n,one,many)=>n+' '+(n===1?one:(many||one+'s'));
+export function stockHealthIssues({presale={early:[],doubles:[],review:[]},unheld=[],notReceived=[],overListed=[],staleHolds=[],zeroStock=[]}={}){
+  const issues=[];
+  const add=(key,severity,title,fix,items)=>{if(items.length)issues.push({key,severity,title,fix,count:items.length,items:items.slice(0,40)});};
+  const notOut=presale.early.filter(e=>!e.released),outAlready=presale.early.filter(e=>e.released);
+  add('early','high',plural(notOut.length,'eBay presale shows','eBay presales show')+' in stock before the book came in','FOC → 🩺 PRESALE STOCK CHECK → FIX TICKED',notOut.map(e=>({name:e.name,note:'shows '+e.qty+' in stock · comes out '+e.onSaleDate})));
+  add('doubles','high',plural(presale.doubles.length,'cover is','covers are')+' counted twice','FOC → 🩺 PRESALE STOCK CHECK → FIX TICKED',presale.doubles.map(d=>({name:d.name,note:'shows '+d.shows+', really '+d.real})));
+  add('unheld','high',plural(unheld.length,'paid preorder copy','paid preorder copies')+' came in but '+(unheld.length===1?"isn't":"aren't")+' set aside','FOC → 📌 ON HOLD → SET ASIDE',unheld);
+  add('early-out','medium',plural(outAlready.length,'presale was','presales were')+' switched to in stock with nothing received (already out -- maybe it came in another way)','FOC → 🩺 PRESALE STOCK CHECK',outAlready.map(e=>({name:e.name,note:'shows '+e.qty+' in stock · came out '+e.onSaleDate})));
+  add('not-received','medium',plural(notReceived.length,'ordered cover','ordered covers')+' came out 3+ days ago but '+(notReceived.length===1?'was':'were')+' never received','Check the shelf: FOC week → + ADD TO INVENTORY on the cover. Not here? Ask PRH.',notReceived);
+  add('over-listed','medium',plural(overListed.length,'eBay presale lists','eBay presales list')+' more copies than you ordered','FINAL FOC REVIEW → UPLOAD PRH CART, or AVAILABLE ON EBAY on the cover',overListed);
+  add('review','medium',plural(presale.review.length,'presale to check','presales to check')+' by hand','FOC → 🩺 PRESALE STOCK CHECK',presale.review.map(r=>({name:r.name,note:r.reason})));
+  add('stale-holds','low',plural(staleHolds.length,'preorder hold has','preorder holds have')+' waited 14+ days','FOC → 📌 ON HOLD -- remind the customer',staleHolds);
+  add('zero-stock','low',plural(zeroStock.length,'item shows','items show')+' in stock with 0 copies','Inventory → fix the count or mark it sold',zeroStock);
+  return {issues,high:issues.filter(i=>i.severity==='high').reduce((a,i)=>a+i.count,0),total:issues.reduce((a,i)=>a+i.count,0)};
+}
+function pacificDay(now=Date.now(),addDays=0){
+  const today=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Los_Angeles'}).format(new Date(now));
+  return addDays?new Date(Date.parse(today+'T12:00:00Z')+addDays*864e5).toISOString().slice(0,10):today;
+}
+export async function collectStockHealth(db,storeId,now=Date.now()){
+  const s=encodeURIComponent(storeId),today=pacificDay(now);
+  const presale=presaleStockCheck({...(await presaleStockFacts(db,storeId)),today});
+  const presaleRows=await focPresaleRows(db,storeId);
+  const {data:recvRows}=await db(`inventory_items?store_id=eq.${s}&data->>source=in.(foc_receive,foc_hold)&select=id,status,created_at,source:data->>source,sku:data->>focSkuId,name:data->>name,qty:data->>qty,hold:data->preorderHold&limit=100000`);
+  const received=new Set((recvRows||[]).map(r=>r.sku).filter(Boolean));
+  for(const r of presaleRows)if(r.data?.focReceivedAt&&r.data?.focSkuId)received.add(r.data.focSkuId);
+  const switched=new Set(presaleRows.filter(r=>r.status==='in_stock'&&r.data?.ebayPresaleConverted).map(r=>r.data.focSkuId));
+  const label=(t,v)=>[t,v&&!/^cover a$/i.test(v)?v:''].filter(Boolean).join(' · ');
+  // Paid website preorder copies that came in but were never set aside.
+  const {data:paidRaw}=await db(`foc_preorder_items?store_id=eq.${s}&status=eq.committed&select=id,sku_id,quantity,ord:foc_preorder_orders!inner(id,status,customer_name,order_number),sku:comic_skus(title,variant_label,on_sale_date)&ord.status=eq.paid&limit=100000`);
+  const paidItems=(paidRaw||[]).map(i=>({...i,order:i.ord}));
+  const unheld=(paidItems||[]).filter(i=>received.has(i.sku_id)).map(i=>({name:label(i.sku?.title,i.sku?.variant_label),note:Number(i.quantity||1)+' for '+(i.order?.customer_name||'a customer')+' ('+(i.order?.order_number||'')+')',preorderItemId:i.id,skuId:i.sku_id}));
+  // Ordered covers out 3+ days (up to 45) with nothing received.
+  const {data:due}=await db(`comic_skus?store_id=eq.${s}&on_sale_date=gte.${pacificDay(now,-45)}&on_sale_date=lte.${pacificDay(now,-3)}&or=(store_quantity.gt.0,secured_quantity.gt.0)&select=id,upc,title,variant_label,on_sale_date,store_quantity,secured_quantity&limit=100000`);
+  const owed=new Map();for(const i of paidItems||[])owed.set(i.sku_id,(owed.get(i.sku_id)||0)+Number(i.quantity||1));
+  const seenUpc=new Set(),notReceived=[];
+  for(const k of (due||[]).sort((a,b)=>String(a.on_sale_date).localeCompare(String(b.on_sale_date)))){
+    if(received.has(k.id)||switched.has(k.id))continue;
+    if(k.upc){if(seenUpc.has(k.upc))continue;seenUpc.add(k.upc);}
+    const qty=Number(k.store_quantity||0)+Number(k.secured_quantity||0);
+    notReceived.push({name:label(k.title,k.variant_label),note:'ordered '+qty+(owed.get(k.id)?' (+'+owed.get(k.id)+' preordered)':'')+' · out '+k.on_sale_date,skuId:k.id});
+  }
+  // Live presale listings with more copies up than the store ordered, once
+  // the order is in (the FOC date has passed).
+  const live=presaleRows.filter(r=>r.status==='presale'&&r.data?.source==='foc_presale'&&r.data?.ebayListingId&&!r.data?.ebayWithdrawnAt&&Number(r.data?.qty??r.data?.quantity??0)>0);
+  const liveSkuIds=[...new Set(live.map(r=>r.data.focSkuId).filter(id=>UUID_RE.test(String(id||''))))];
+  const skuInfo=new Map();
+  for(let i=0;i<liveSkuIds.length;i+=100){const {data}=await db(`comic_skus?id=${inFilter(liveSkuIds.slice(i,i+100))}&select=id,store_quantity,foc_date`);for(const k of data||[])skuInfo.set(k.id,k);}
+  const overListed=live.filter(r=>{const k=skuInfo.get(r.data.focSkuId);return k&&String(k.foc_date||'')<today&&Number(r.data.qty??r.data.quantity??0)>Number(k.store_quantity||0);})
+    .map(r=>({name:stripPresaleName(r.data.name),note:'eBay lists '+Number(r.data.qty??r.data.quantity??0)+', you ordered '+Number(skuInfo.get(r.data.focSkuId).store_quantity||0)+' for the shelf',skuId:r.data.focSkuId}));
+  const staleCut=now-14*864e5;
+  const staleHolds=(recvRows||[]).filter(r=>r.source==='foc_hold'&&r.status==='in_stock'&&Date.parse(r.hold?.heldAt||r.created_at||'')<staleCut)
+    .map(r=>({name:text(r.name,160),note:'for '+(r.hold?.customerName||'a customer')+' since '+String(r.hold?.heldAt||r.created_at).slice(0,10)}));
+  const {data:inStock}=await db(`inventory_items?store_id=eq.${s}&status=eq.in_stock&select=id,name:data->>name,qty:data->>qty,quantity:data->>quantity,isBundle:data->>isBundle&limit=100000`);
+  const zeroStock=(inStock||[]).filter(r=>!(Number(r.qty??r.quantity??1)>0)&&r.isBundle!=='true').map(r=>({name:text(r.name,160)||'Item',note:'qty '+(r.qty??r.quantity??0),itemId:r.id}));
+  return {at:new Date(now).toISOString(),today,storeId,checked:{inStock:(inStock||[]).length,presales:presaleRows.length,preorders:(paidItems||[]).length,dueCovers:(due||[]).length},
+    ...stockHealthIssues({presale,unheld,notReceived,overListed,staleHolds,zeroStock})};
+}
+const STOCK_HEALTH_KV=storeId=>'stock-health:'+storeId;
+async function saveStockHealth(env,report){
+  if(env?.LBA_KV)try{await env.LBA_KV.put(STOCK_HEALTH_KV(report.storeId),JSON.stringify(report),{expirationTtl:3*86400});}catch(_){}
+}
+export function stockHealthEmail(report){
+  const lines=[];
+  for(const i of report.issues.filter(x=>x.severity!=='low')){
+    lines.push(`• ${i.title}\n  Fix: ${i.fix}`);
+    for(const it of i.items.slice(0,8))lines.push(`   - ${it.name}${it.note?' ('+it.note+')':''}`);
+    if(i.count>8)lines.push(`   - and ${i.count-8} more`);
+  }
+  return {subject:`Stock check: ${plural(report.high,'problem')} to fix`,
+    body:`The dashboard's stock check found:\n\n${lines.join('\n')}\n\nOpen the dashboard → Alerts tab → STOCK HEALTH for the full list. You'll get this at most once a day while something needs fixing.`};
+}
+// Cron: every store, saved for the dashboard; one email a day (late
+// morning Pacific on) when something serious needs fixing.
+export async function runScheduledStockHealth(env,deps,now=Date.now()){
+  const db=(path,options)=>deps.supabaseAdminFetch(env,path,options);
+  const {data:stores}=await db('store_settings?select=store_id,receipt_settings&limit=100000');
+  for(const st of stores||[]){
+    if(!st.store_id)continue;
+    try{
+      const report=await collectStockHealth(db,st.store_id,now);
+      await saveStockHealth(env,report);
+      if(!report.high||!env.LBA_KV||!deps.sendEmail||new Date(now).getUTCHours()<16)continue;
+      const to=String(st.receipt_settings?.email||'').trim();
+      if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(to))continue;
+      const key=`stock-health-email:${st.store_id}:${pacificDay(now)}`;
+      if(await env.LBA_KV.get(key))continue;
+      await env.LBA_KV.put(key,'1',{expirationTtl:2*86400});
+      const {subject,body}=stockHealthEmail(report);
+      try{await deps.sendEmail(env,to,subject,body);}catch(e){await env.LBA_KV.delete(key).catch(()=>{});console.error('Stock health email failed',st.store_id,e.message);}
+    }catch(e){console.error('Stock health check failed for store',st.store_id,e.message);}
+  }
+}
+async function adminStockHealth(request,env,deps,url){
+  const storeId=text(url.searchParams.get('store_id'),80);
+  const auth=await deps.requireStoreUser(request,env,storeId,['owner','admin','manager','employee']);if(auth.error)return auth.error;
+  if(url.searchParams.get('run')!=='1'&&env?.LBA_KV){
+    try{const saved=await env.LBA_KV.get(STOCK_HEALTH_KV(storeId),'json');if(saved)return deps.json({ok:true,report:saved,cached:true});}catch(_){}
+  }
+  const db=(path,options)=>deps.supabaseAdminFetch(env,path,options);
+  const report=await collectStockHealth(db,storeId);
+  await saveStockHealth(env,report);
+  return deps.json({ok:true,report});
+}
+// A paid preorder copy that came in before holds existed (or wasn't caught):
+// move it off the shelf row onto a hold for the customer.
+async function adminSetAsideHold(request,env,deps){
+  const limited=await deps.readJsonWithLimit(request,8*1024);if(limited.error)return limited.error;
+  const body=limited.data||{},storeId=text(body.storeId,80),itemId=text(body.preorderItemId,80);
+  const auth=await deps.requireStoreUser(request,env,storeId,['owner','admin','manager','employee']);if(auth.error)return auth.error;
+  if(!UUID_RE.test(itemId))return deps.json({ok:false,error:'preorderItemId required'},400);
+  const db=(path,options)=>deps.supabaseAdminFetch(env,path,options),s=encodeURIComponent(storeId);
+  const {data:items}=await db(`foc_preorder_items?id=eq.${encodeURIComponent(itemId)}&store_id=eq.${s}&select=id,sku_id,quantity,status,order_id,order:foc_preorder_orders(id,status,customer_name,order_number,fulfillment_method)&limit=1`);
+  const item=items?.[0];if(!item)return deps.json({ok:false,error:'Preorder item not found'},404);
+  if(item.status!=='committed'||item.order?.status!=='paid')return deps.json({ok:false,error:'This preorder item is already set aside or done'},409);
+  const need=Math.max(1,Number(item.quantity||1));
+  const finishOrder=async()=>{
+    const {data:all}=await db(`foc_preorder_items?order_id=eq.${item.order_id}&select=status`);
+    if((all||[]).every(i=>['completed','shipped','cancelled','refunded'].includes(i.status)))await db(`foc_preorder_orders?id=eq.${item.order_id}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({status:'completed',fulfilled_at:new Date().toISOString()})});
+    else if((all||[]).every(i=>['ready_for_pickup','shipped','completed','cancelled','refunded'].includes(i.status)))await db(`foc_preorder_orders?id=eq.${item.order_id}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({status:item.order?.fulfillment_method==='pickup'?'ready_for_pickup':'reserved'})});
+  };
+  // The customer already has it (e.g. rung up at the register by mistake
+  // and handed over): just mark this book done.
+  if(body.handedOver===true){
+    await db(`foc_preorder_items?id=eq.${item.id}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({status:'completed'})});
+    await finishOrder();
+    return deps.json({ok:true,handedOver:true});
+  }
+  const {data:rows}=await db(`inventory_items?store_id=eq.${s}&status=eq.in_stock&data->>source=eq.foc_receive&data->>focSkuId=eq.${encodeURIComponent(item.sku_id)}&select=id,data&order=created_at.asc`);
+  const from=(rows||[]).find(r=>Number(r.data?.qty??r.data?.quantity??0)>=need);
+  if(!from)return deps.json({ok:false,error:'No copies of this cover on the shelf to set aside -- receive it first'},409);
+  const d=from.data||{},left=Number(d.qty??d.quantity??0)-need,stamp=new Date().toISOString();
+  await db(`inventory_items?id=eq.${from.id}&store_id=eq.${s}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify(left>0?{data:{...d,qty:left,quantity:left}}:{status:'sold',data:{...d,qty:0,quantity:0,status:'sold'}})});
+  const {qty,quantity,source,lifecycle,preorderHold,...rest}=d;
+  const {data:holdRows}=await db('inventory_items',{method:'POST',headers:{Prefer:'return=representation'},body:JSON.stringify([{store_id:storeId,status:'in_stock',data:{...rest,qty:need,quantity:need,source:'foc_hold',lifecycle:'hold',
+    preorderHold:{orderId:item.order_id,orderNumber:item.order?.order_number||'',customerName:text(item.order?.customer_name,120),fulfillment:item.order?.fulfillment_method||'',itemId:item.id,heldAt:stamp}}}])});
+  await db(`foc_preorder_items?id=eq.${item.id}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({status:'ready_for_pickup'})});
+  await finishOrder();
+  return deps.json({ok:true,holdRowId:holdRows?.[0]?.id||'',copies:need});
+}
 async function receiveShipment(request,env,deps){
   const limited=await deps.readJsonWithLimit(request,32*1024);if(limited.error)return limited.error;
   const body=limited.data||{};const storeId=text(body.storeId,80),cycleId=text(body.cycleId,80);
@@ -3512,6 +3660,8 @@ export async function handleFocRequest(request, env, url, deps) {
   if(path==='/foc/admin/notify-arrivals'&&request.method==='POST')return adminNotifyArrivals(request,env,deps);
   if(path==='/foc/admin/late-books'&&request.method==='GET')return adminLateBooks(request,env,deps,url);
   if(path==='/foc/admin/holds'&&(request.method==='GET'||request.method==='POST'))return adminHolds(request,env,deps,url);
+  if(path==='/foc/admin/holds/set-aside'&&request.method==='POST')return adminSetAsideHold(request,env,deps);
+  if(path==='/foc/admin/stock-health'&&request.method==='GET')return adminStockHealth(request,env,deps,url);
   if(path==='/foc/admin/orders'&&(request.method==='GET'||request.method==='PATCH'))return adminOrders(request,env,deps,url);
   if(path==='/foc/admin/orders/email'&&request.method==='POST')return resendAdminOrderEmail(request,env,deps);
   if(path==='/foc/admin/orders/label'&&request.method==='POST')return adminShippingLabel(request,env,deps);
