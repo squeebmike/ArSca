@@ -19,7 +19,7 @@ const skus = [
   { id:B, cycle_id:CYCLE, store_id:STORE, title:'Book B #1', variant_label:'Cover B', msrp_cents:599, customer_price_cents:599 },
   { id:C, cycle_id:CYCLE, store_id:STORE, title:'Book C #1', variant_label:'Cover A', msrp_cents:399, customer_price_cents:399, safety_stock_qty:1 },
 ];
-const inserts = [];
+const inserts = [], patches = [];
 const deps = {
   readJsonWithLimit: async req => ({ data:await req.json() }),
   requireStoreUser: async () => ({ user:{ id:'staff' } }),
@@ -33,8 +33,9 @@ const deps = {
     if (path.startsWith('inventory_items?store_id=') && !opts.method) return { data:[{ id:'presale-B', status:'presale', data:{ source:'foc_presale', focSkuId:B, ebayOfferId:'off1', focPresaleOriginalQty:10, qty:3 } }] };
     if (path === 'inventory_items' && opts.method === 'POST') {
       const rows = JSON.parse(opts.body); inserts.push(...rows);
-      return { data:rows.map(r => ({ id:'new-' + r.data.focSkuId })) };
+      return { data:rows.map(r => ({ id:(r.data.source === 'foc_hold' ? 'hold-' : 'new-') + r.data.focSkuId })) };
     }
+    if (opts.method === 'PATCH') { patches.push([path, JSON.parse(opts.body)]); return { data:null }; }
     if (path.startsWith('foc_preorder_items?order_id=')) return { data:[{ order_id:'o1', status:'committed' }] };
     if (path.startsWith('foc_preorder_orders?id=')) return { data:[{ id:'o1', status:'reserved' }] };
     return { data:[] };
@@ -47,10 +48,10 @@ assert.equal(res.body.ok, true);
 const labels = Object.fromEntries(res.body.labelItems.filter(x => !x.flag).map(x => [x.itemId, x.copies]));
 assert.deepEqual(labels, { ['new-' + A]:4, 'presale-B':3, ['new-' + C]:2 },
   'A: 5 in, 1 for the website customer -> 4 labels; B: 10 in, 7 to eBay buyers, the 3 unsold presale copies go on the shelf; C: 2 in (1 held back is still a store copy)');
-assert.ok(!('new-' + B in labels), 'B\'s new row holds only copies already sold on eBay -- no labels');
+assert.ok(!inserts.some(r => r.data.focSkuId === B), 'B: copies owed to eBay buyers never become a sellable row');
 // Store ask: "it should also flag the already sold books in that order."
 const flagged = res.body.labelItems.filter(x => x.flag).map(x => [x.itemId, x.copies, x.flag]);
-assert.deepEqual(flagged, [['new-' + A, 1, 'HOLD · Sean V.'], ['new-' + B, 7, 'SOLD · EBAY BUYER']],
+assert.deepEqual(flagged, [['hold-' + A, 1, 'HOLD · Sean V.'], ['presale-B', 7, 'SOLD · EBAY BUYER']],
   'the website customer\'s copy is flagged HOLD with their name; the 7 eBay presale buyers\' copies are flagged SOLD');
 const order = res.body.labelItems.map(x => x.skuId);
 assert.deepEqual(order, [A, A, B, B, C], 'each book\'s flagged copies follow its shelf labels');
@@ -58,7 +59,15 @@ const byId = Object.fromEntries(res.body.receivedSummary.map(r => [r.skuId, r]))
 assert.equal(byId[A].reservedForCustomers, 1);
 assert.equal(byId[B].reservedForEbayPresale, 7);
 assert.equal(byId[C].safetyStockHeld, 1);
-assert.equal(res.body.createdInventoryCount, 5 + 7 + 2, 'the copy count reported is unchanged');
+assert.equal(res.body.createdInventoryCount, 4 + 2, 'sellable copies added: held and eBay-owed copies are not stock');
+assert.equal(res.body.heldCount, 1);
+// Store report: Sean's paid copy was rung up for someone else -- it goes on
+// hold in its own row, and the item update uses a status the database allows.
+const hold = inserts.find(r => r.data.source === 'foc_hold');
+assert.equal(hold.data.lifecycle, 'hold');
+assert.deepEqual([hold.data.qty, hold.data.preorderHold.customerName, hold.data.preorderHold.orderId, hold.data.preorderHold.itemId], [1, 'Sean Vanoverbeke', 'o1', 'pi1']);
+assert.equal(inserts.find(r => r.data.source === 'foc_receive' && r.data.focSkuId === A).data.qty, 4);
+assert.deepEqual(patches.find(p => p[0] === 'foc_preorder_items?id=eq.pi1')[1], { status:'ready_for_pickup' }, "'received' is not an allowed status -- it stopped receiving partway on Oct 3");
 console.log('FOC receive reports which books get shelf labels checks passed');
 
 // ── Dashboard wiring ──

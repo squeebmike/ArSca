@@ -92,7 +92,7 @@ function renderCycles(){
   var host=panel();if(!host)return;
   var isLunar=state.distributor==='Lunar';
   var visibleCycles=state.cycles.filter(function(c){return (c.distributor||'PRH')===state.distributor;});
-  host.innerHTML='<section class="foc-hero"><div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap"><div><div style="font:900 22px/1.1 \'Orbitron\',monospace;color:var(--text)">THE FOC WALL</div><div style="font:10px/1.65 var(--font-mono);color:var(--dim);max-width:720px;margin-top:6px">'+(isLunar?'Upload Lunar\'s weekly comics FOC file, review exact covers, set shelf quantities, and export the clean order.':'Upload Monday\'s PRH metadata file, review exact covers, set shelf quantities, secure incentives, and export the clean UPC order.')+'</div>'+distributorTabs()+'</div><div class="foc-toolbar"><input type="file" id="foc-import-file" accept=".csv,.xlsx,.xls" hidden onchange="'+(isLunar?'handleLunarFocImportFile(event)':'handleFocImportFile(event)')+'"><button class="hbtn" onclick="document.getElementById(\'foc-import-file\').click()">'+(isLunar?'IMPORT LUNAR FOC':'IMPORT PRH FOC')+'</button><button class="hbtn" onclick="loadFocCycles(true)">REFRESH</button><button class="hbtn" style="color:var(--purple)" title="Track connecting-cover sets across titles: bought, missed and upcoming" onclick="openConnectingCovers()">CONNECTING COVERS</button><button class="hbtn" style="color:var(--g)" title="Which series sell out and which comics sit on the shelf" onclick="openComicSellThrough()">📈 SELL-THROUGH</button><button class="hbtn" style="color:var(--g)" title="Photograph the packing slip and receive the books into stock" onclick="openPackingSlipScan()">📷 SCAN PACKING SLIP</button><button class="hbtn" style="color:var(--red)" title="Scans every past FOC cycle (not just the one you have open) for eBay presale listings nothing was actually ordered for" onclick="openOrphanedEbayScan()">FIND ORPHANED EBAY LISTINGS</button><button class="hbtn" style="color:var(--red)" title="Presales switched to in stock before their books came in, and covers counted twice" onclick="openPresaleStockCheck()">🩺 PRESALE STOCK CHECK</button></div></div><div id="foc-import-status" class="foc-import-report" style="display:none"></div></section>'+
+  host.innerHTML='<section class="foc-hero"><div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap"><div><div style="font:900 22px/1.1 \'Orbitron\',monospace;color:var(--text)">THE FOC WALL</div><div style="font:10px/1.65 var(--font-mono);color:var(--dim);max-width:720px;margin-top:6px">'+(isLunar?'Upload Lunar\'s weekly comics FOC file, review exact covers, set shelf quantities, and export the clean order.':'Upload Monday\'s PRH metadata file, review exact covers, set shelf quantities, secure incentives, and export the clean UPC order.')+'</div>'+distributorTabs()+'</div><div class="foc-toolbar"><input type="file" id="foc-import-file" accept=".csv,.xlsx,.xls" hidden onchange="'+(isLunar?'handleLunarFocImportFile(event)':'handleFocImportFile(event)')+'"><button class="hbtn" onclick="document.getElementById(\'foc-import-file\').click()">'+(isLunar?'IMPORT LUNAR FOC':'IMPORT PRH FOC')+'</button><button class="hbtn" onclick="loadFocCycles(true)">REFRESH</button><button class="hbtn" style="color:var(--purple)" title="Track connecting-cover sets across titles: bought, missed and upcoming" onclick="openConnectingCovers()">CONNECTING COVERS</button><button class="hbtn" style="color:var(--g)" title="Which series sell out and which comics sit on the shelf" onclick="openComicSellThrough()">📈 SELL-THROUGH</button><button class="hbtn" style="color:var(--g)" title="Photograph the packing slip and receive the books into stock" onclick="openPackingSlipScan()">📷 SCAN PACKING SLIP</button><button class="hbtn" style="color:var(--red)" title="Scans every past FOC cycle (not just the one you have open) for eBay presale listings nothing was actually ordered for" onclick="openOrphanedEbayScan()">FIND ORPHANED EBAY LISTINGS</button><button class="hbtn" style="color:var(--red)" title="Presales switched to in stock before their books came in, and covers counted twice" onclick="openPresaleStockCheck()">🩺 PRESALE STOCK CHECK</button><button class="hbtn" style="color:var(--gold)" title="Paid website preorder copies set aside for their customers" onclick="openFocHolds()">📌 ON HOLD</button></div></div><div id="foc-import-status" class="foc-import-report" style="display:none"></div></section>'+
     '<details class="panel" style="margin-bottom:14px"><summary style="cursor:pointer;font-family:\'Orbitron\',monospace;color:var(--purple);font-size:11px">REAL SHIPPING SETUP</summary><div id="foc-shipping-settings" style="padding-top:12px"><button class="hbtn" onclick="loadFocShippingSettings()">LOAD SHIPPING SETTINGS</button></div></details>'+
     (isLunar?
       '<details class="panel" style="margin-bottom:14px" ontoggle="if(this.open)loadLunarDiscountSettings()"><summary style="cursor:pointer;font-family:\'Orbitron\',monospace;color:var(--purple);font-size:11px">LUNAR COST ESTIMATE SETTINGS</summary><div style="padding-top:12px;font:10px/1.6 var(--font-mono);color:var(--dim)">A staff-only estimate shown on each cover below -- never shown to customers, and not a substitute for your actual Lunar invoice. Every other publisher uses a fixed default discount; DC and Image are tiered by trailing spend and change over time, so those two stay editable here.<div style="display:flex;gap:8px;align-items:end;flex-wrap:wrap;margin-top:8px"><label style="font:8px var(--font-mono);color:var(--dim)">DC DISCOUNT %<input id="foc-lunar-dc" class="tsi" type="number" min="0" max="90" value="'+lunarDcDiscount+'" style="width:80px"></label><label style="font:8px var(--font-mono);color:var(--dim)">IMAGE DISCOUNT %<input id="foc-lunar-image" class="tsi" type="number" min="0" max="90" value="'+lunarImageDiscount+'" style="width:80px"></label><button class="hbtn" onclick="saveLunarDiscountSettings()">SAVE</button></div></div></details>'
@@ -619,6 +619,7 @@ async function confirmReceiveShipment(){
   try{
     var d=await api('/foc/admin/receive',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({storeId:getActiveStoreId(),cycleId:state.cycle.id,lines:lines})});
     toast_dash(d.createdInventoryCount+' item'+(d.createdInventoryCount===1?'':'s')+' added to inventory');
+    focHoldNotice(d);
     var flagged=(d.receivedSummary||[]).filter(function(s){return s.shortShipped>0||s.incentiveNotReceived;});
     if(flagged.length){
       var report=flagged.map(function(s){
@@ -663,6 +664,7 @@ async function quickAddFocSkuToInventory(skuId){
   try{
     var d=await api('/foc/admin/receive',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({storeId:getActiveStoreId(),cycleId:state.cycle.id,lines:[{skuId:skuId,receivedQty:qty}]})});
     toast_dash(d.createdInventoryCount+' item'+(d.createdInventoryCount===1?'':'s')+' added to inventory');
+    focHoldNotice(d);
     var flagged=(d.receivedSummary||[]).filter(function(s){return s.shortShipped>0||s.incentiveNotReceived;});
     if(flagged.length){
       var report=flagged.map(function(s){
@@ -1523,6 +1525,43 @@ async function focApplySuggested(index){
   try{var data=await api('/foc/admin/cycles?store_id='+encodeURIComponent(getActiveStoreId())+'&cycle_id='+encodeURIComponent(state.cycle.id));state.cycle=data.cycle;state.families=data.families||[];}catch(e){}
   renderFocReview();
 }
+
+// ── On hold for preorders ──
+// Store report: Sean's paid preorder copy came in as plain shelf stock and
+// was rung up at the register. Receiving now puts paid website preorder
+// copies ON HOLD (their own rows, not sellable anywhere) -- this list is where
+// they're handed over (or marked shipped), which clears the hold.
+function focHoldNotice(d){
+  if(!d)return;
+  var held=(d.receivedSummary||[]).filter(function(r){return r.reservedForCustomers>0;});
+  if(held.length)toast_dash('📌 Set aside for preorders: '+held.map(function(r){return (r.heldFor||[]).map(function(h){return h.copies+' for '+(h.name||'a customer');}).join(', ')+' ('+(r.title||'')+')';}).join(' · '));
+  if((d.warnings||[]).length)alert('Received, but:\n\n'+d.warnings.join('\n'));
+}
+async function openFocHolds(){
+  busy('Loading copies on hold…');
+  try{var d=await api('/foc/admin/holds?store_id='+encodeURIComponent(getActiveStoreId()));renderFocHolds(d.holds||[]);}
+  catch(e){panel().innerHTML='<button class="hbtn" onclick="loadFocCycles()">← FOC WALL</button><div class="panel" style="margin-top:10px;color:var(--red)">Could not load holds: '+esc(e.message)+'</div>';}
+}
+function renderFocHolds(holds){
+  panel().innerHTML='<section class="foc-hero"><div class="foc-toolbar"><button class="hbtn" onclick="loadFocCycles()">← FOC WALL</button><button class="hbtn" onclick="openFocHolds()">↻ REFRESH</button></div>'+
+    '<div style="font:900 20px/1.1 \'Orbitron\',monospace;color:var(--text);margin-top:10px">📌 On Hold for Preorders</div>'+
+    '<div style="font:10px/1.6 var(--font-mono);color:var(--dim);margin-top:4px">Paid website preorder copies that came in. They can\'t be rung up, sold online or listed until you hand them over here.</div></section>'+
+    (holds.length?holds.map(function(g){
+      var ship=g.fulfillment==='shipping';
+      return '<section class="panel" style="padding:10px 14px;margin-bottom:10px"><div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start;flex-wrap:wrap"><div><div style="font:800 13px var(--font-mono);color:var(--text)">'+esc(g.customerName)+'</div><div style="font:9px var(--font-mono);color:var(--dim)">'+esc(g.orderNumber)+' · '+(ship?'SHIP':'PICKUP')+(g.phone?' · '+esc(g.phone):'')+' · held since '+esc(displayDate(String(g.heldAt||'').slice(0,10)))+'</div></div>'+
+        '<button class="hbtn" style="color:var(--g)" onclick="focHandOver(\''+esc(g.orderId)+'\','+(ship?'true':'false')+')">'+(ship?'📦 SHIPPED':'✓ HANDED OVER')+'</button></div>'+
+        g.books.map(function(b){return '<div style="font:10px var(--font-mono);color:var(--text);padding:3px 0;border-top:1px solid var(--border)">'+(b.qty>1?b.qty+'× ':'')+esc(b.name)+'</div>';}).join('')+
+        (g.stillComing&&g.stillComing.length?'<div style="font:9px var(--font-mono);color:var(--gold);margin-top:4px">Still coming on this order: '+esc(g.stillComing.join(' | '))+'</div>':'')+
+      '</section>';
+    }).join(''):'<div class="panel" style="padding:24px;text-align:center;color:var(--dim)">Nothing on hold right now.</div>');
+}
+async function focHandOver(orderId,ship){
+  if(!confirm(ship?'Mark these books shipped? They leave inventory.':'Mark these books handed over to the customer? They leave inventory.'))return;
+  try{var d=await api('/foc/admin/holds',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({storeId:getActiveStoreId(),orderId:orderId})});
+    toast_dash((d.released||0)+' book'+(d.released===1?'':'s')+' '+(ship?'shipped':'handed over')+(d.stillComing?' · '+d.stillComing+' still coming':' · order done'));openFocHolds();}
+  catch(e){toast_dash('Could not update: '+e.message);}
+}
+window.openFocHolds=openFocHolds;window.focHandOver=focHandOver;
 
 // ── Presale stock check ──
 // Store report: "why does it think I have Cyberpunk 2077 #1?" and "more
@@ -2605,6 +2644,7 @@ async function confirmSlipReceive(){
     try{
       var d=await api('/foc/admin/receive',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({storeId:getActiveStoreId(),cycleId:ids[i],lines:byCycle[ids[i]]})});
       created+=Number(d.createdInventoryCount||0);
+      focHoldNotice(d);
       notifiedAll=notifiedAll.concat(d.notified||[]);
       labelItems=labelItems.concat(d.labelItems||[]);
       (d.receivedSummary||[]).forEach(function(r){done.push(r);if(r.incentiveNotReceived)flagged.push(r.title+(r.variantLabel?' -- '+r.variantLabel:'')+': INCENTIVE NOT RECEIVED');});
