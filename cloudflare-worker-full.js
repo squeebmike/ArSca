@@ -32,7 +32,7 @@ import { storeOrganization, productFacts, productCondition, renderShopPreview } 
 // It has zero Node dependencies (pure-JS SHA-1), so it bundles straight into
 // the Worker -- reused here instead of duplicating checklist-parsing logic.
 import { buildChecklistIndex, parseChecklistText, sha1Hex, slugify } from './scripts/topps-checklist-parser.js';
-import { handleFocRequest, syncFocStripeEvent, shippingSettings, runScheduledStockHealth, withRatioWord } from './scripts/foc-preorders.mjs';
+import { handleFocRequest, syncFocStripeEvent, shippingSettings, runScheduledStockHealth, withRatioWord, parseMyEbaySellingActive } from './scripts/foc-preorders.mjs';
 import { handleOrdersBoard, handleOrderMarkShipped } from './scripts/orders-board.mjs';
 import { handleBacklistRequest, syncBacklistStripeEvent } from './scripts/backlist-catalog.mjs';
 import { searchComics, comicSearchShell, comicSearchScriptResponse, injectComicSearch } from './scripts/comic-search.mjs';
@@ -4032,6 +4032,12 @@ function buildEbayAspects(b) {
   for (const [k, v] of Object.entries({ ...aspects })) {
     if (!Array.isArray(v) || !v.length || v.some(x => x == null || String(x).trim() === '')) delete aspects[k];
   }
+  // eBay rejects any aspect value over 65 characters ("Player/Athlete's
+  // value ... is too long. Enter a value of no more than 65 characters").
+  for (const key of Object.keys(aspects)) {
+    aspects[key] = (aspects[key] || []).map(v => String(v).slice(0, 65).trim()).filter(Boolean);
+    if (!aspects[key].length) delete aspects[key];
+  }
   return aspects;
 }
 
@@ -6340,6 +6346,18 @@ async function routeRequest(request, env, ctx) {
         },
         revertEbayPresaleListing: revertEbayRestListingToPresale,
         revisePresaleListing: ebayRevisePresalePriceQuantity,
+        // Every live listing on the account (Trading GetMyeBaySelling), 200 a page.
+        ebayMyListings: async (_env, ebayToken) => {
+          const items = [];
+          let pages = 1;
+          for (let page = 1; page <= pages && page <= 50; page++) {
+            const { raw } = await ebayTradingApiCall(ebayToken, 'GetMyeBaySelling', `<ActiveList><Include>true</Include><Pagination><EntriesPerPage>200</EntriesPerPage><PageNumber>${page}</PageNumber></Pagination></ActiveList><DetailLevel>ReturnAll</DetailLevel>`);
+            const parsed = parseMyEbaySellingActive(raw);
+            items.push(...parsed.items);
+            pages = parsed.totalPages || 1;
+          }
+          return items;
+        },
         ebayActiveListings: fetchEbayActiveListings,
         ebaySoldComps: async (soldEnv, q, limit = 40) => {
           let result = await fetchSoldCompsProvider(soldEnv, q, limit).catch(e => ({ comps: [], warning: e.message }));
