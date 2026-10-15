@@ -4095,6 +4095,21 @@ function toEbayHtmlDescription(text) {
   return out || paragraphs[0]?.substring(0, EBAY_DESCRIPTION_MAX) || '';
 }
 
+// eBay's Inventory API stores an inventory item's condition ONLY as the
+// ConditionEnum string -- `conditionId` isn't a field there and is silently
+// dropped. The general LIST ON EBAY tool only ever sent the numeric id, so
+// every listing reached publish with no condition at all and any category
+// that requires one failed: "invalid item condition information. Item
+// condition is required for this category" (store report: Secret Lair
+// Goblin Storm deck). eBay's documented id <-> enum pairs.
+const EBAY_CONDITION_ENUM_BY_ID = {
+  '1000':'NEW', '1500':'NEW_OTHER', '1750':'NEW_WITH_DEFECTS',
+  '2000':'CERTIFIED_REFURBISHED', '2010':'EXCELLENT_REFURBISHED', '2020':'VERY_GOOD_REFURBISHED', '2030':'GOOD_REFURBISHED', '2500':'SELLER_REFURBISHED',
+  '2750':'LIKE_NEW', '2990':'PRE_OWNED_EXCELLENT', '3000':'USED_EXCELLENT', '3010':'PRE_OWNED_FAIR',
+  '4000':'USED_VERY_GOOD', '5000':'USED_GOOD', '6000':'USED_ACCEPTABLE', '7000':'FOR_PARTS_OR_NOT_WORKING',
+};
+function ebayConditionEnumForId(conditionId) { return EBAY_CONDITION_ENUM_BY_ID[String(conditionId || '').trim()] || ''; }
+
 function buildEbayInventoryItemBody(b) {
   const {
     title, description, conditionId = '3000', condition = '', conditionDescription = '', conditionDescriptors = [],
@@ -4135,8 +4150,9 @@ function buildEbayInventoryItemBody(b) {
     // on, instead of only ever sending the one that's been silently
     // ignored.
     conditionId: String(conditionId),
-    condition: condition || undefined,
-    conditionDescription: conditionDescription || undefined,
+    condition: condition || ebayConditionEnumForId(conditionId) || undefined,
+    // eBay doesn't take a condition description on a New item.
+    conditionDescription: (condition || ebayConditionEnumForId(conditionId)) === 'NEW' ? undefined : (conditionDescription || undefined),
     conditionDescriptors: (() => {
       const cleaned = (Array.isArray(conditionDescriptors) ? conditionDescriptors : [])
         .map(d => ({ name: String(d?.name || ''), values: (Array.isArray(d?.values) ? d.values : [d?.values]).map(v => String(v || '')).filter(Boolean) }))
