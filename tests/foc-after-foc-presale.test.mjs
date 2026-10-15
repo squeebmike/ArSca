@@ -57,6 +57,23 @@ assert.equal(afterFocCartOnFile([{ is_incentive:false, secured_quantity:4 }]), t
   assert.equal(over.get('A'), 0, 'never negative');
 }
 
+// ── Store question: "it doesn't get confused on comics I listed on eBay that
+// didn't sell, when FOC ends them on eBay?" Every dashboard end (FOC-time
+// sweep, END EBAY LISTINGS, orphan cleanup) sets qty 0 and pins
+// focPresaleOriginalQty to what had really sold, so the unsold copies are
+// never read as eBay sales. ──
+{
+  const skus = [{ id:'A', secured_quantity:5, on_sale_date:later }];
+  const ended = [{ status:'presale', data:{ source:'foc_presale', focSkuId:'A', ebayListingId:'L', ebayWithdrawnAt:'2026-10-06', ebayWithdrawnReason:'manual_bulk_end', qty:0, quantity:0, focPresaleOriginalQty:1 } }];
+  assert.equal(afterFocLeft({ skus, rows:ended, today }).get('A'), 4, 'listed 10, sold 1, ended: only the 1 real eBay sale comes off the 5 ordered');
+  const endedNoneSold = [{ status:'presale', data:{ ...ended[0].data, focPresaleOriginalQty:0 } }];
+  assert.equal(afterFocLeft({ skus, rows:endedNoneSold, today }).get('A'), 5, 'an ended listing that sold nothing takes nothing');
+  const soldOutThenEnded = [{ status:'sold', data:{ ...ended[0].data, focPresaleOriginalQty:2 } }];
+  assert.equal(afterFocLeft({ skus, rows:soldOutThenEnded, today }).get('A'), 3);
+  for (const reason of ['not_included_in_prh_order', 'manual_bulk_end', 'orphaned_cycle_cleanup'])
+    assert.match(service, new RegExp("qty:0,quantity:0,focPresaleOriginalQty:alreadySoldBeforeWithdraw,ebayWithdrawnAt:new Date\\(\\)\\.toISOString\\(\\),ebayWithdrawnReason:'" + reason + "'"), reason + ' pins the real sold count');
+}
+
 // ── The week list: closed weeks with copies coming sit between open and expired ──
 {
   const open = { id:'open', store_id:'s', foc_date:'2099-01-01', customer_cutoff_at:'2099-01-01T07:00:00Z', status:'open' };
@@ -167,9 +184,10 @@ assert.match(service, /if \(!cycle \|\| \(!open && !afterFocCycle\(cycle\)\)\) r
     if (path.startsWith('inventory_items?')) return { data:presale };
     return { data:[] };
   };
+  presale.push({ id:'inv-ended', status:'presale', data:{ source:'foc_presale', focCycleId:'cyc', focSkuId:'A', ebayOfferId:'off-old', ebayListingId:'L0', ebayWithdrawnAt:'2026-10-06', qty:6, quantity:6, focPresaleOriginalQty:0 } });
   const result = await afterFocPaidSync({}, { supabaseAdminFetch:db, getEbayUserAccessToken:async () => 'tok', ebayReviseOfferQuantity:async (env, token, offerId, qty) => revised.push({ offerId, qty }) }, { cycle_id:'cyc', store_id:'s' }, ['A', 'T']);
   assert.deepEqual(result.storeQuantity, { A:3, T:1 }, 'store_quantity = ordered − website − eBay sold');
-  assert.deepEqual(revised, [{ offerId:'off-A', qty:3 }], 'eBay can no longer sell the copy the website just sold');
+  assert.deepEqual(revised, [{ offerId:'off-A', qty:3 }], 'eBay can no longer sell the copy the website just sold -- and an ended listing is never touched');
   const invA = patches.find(p => p.path.startsWith('inventory_items?id=eq.inv-A')).body.data;
   assert.equal(invA.qty, 3);
   assert.equal(invA.focPresaleOriginalQty, 3, 'lowering the listing must not read as an eBay sale');
