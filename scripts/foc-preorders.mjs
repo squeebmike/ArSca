@@ -3039,12 +3039,18 @@ const EBAY_LIVE_STATUSES=new Set(['presale','in_stock','listed']);
 export function compareEbayListings({active=[],rows=[]}){
   const byId=new Map(active.map(i=>[String(i.itemId),i]));
   const claimed=new Set();
-  const goneFromEbay=[],qtyMismatch=[];let matched=0;
+  const goneFromEbay=[],qtyMismatch=[],endedStillCounted=[];let matched=0;
   for(const row of rows){
     const d=row.data||{},id=String(d.ebayListingId||'');
-    if(!id||d.ebayWithdrawnAt||!EBAY_LIVE_STATUSES.has(row.status))continue;
+    if(!id||!EBAY_LIVE_STATUSES.has(row.status))continue;
     const presale=d.source==='foc_presale'||d.source==='foc_presale_bundle';
     const dashQty=Number(d.qty??d.quantity??0);
+    // An eBay presale placeholder whose listing was ended but still counts
+    // copies as stock (store report: Sonic RI 1:15 showed 5, really 1).
+    if(d.ebayWithdrawnAt){
+      if(presale&&dashQty>0&&!byId.has(id))endedStillCounted.push({rowId:row.id,name:stripPresaleName(d.name||d.title||''),listingId:id,dashQty,sold:Math.max(0,Number(d.focPresaleOriginalQty||0)-dashQty)});
+      continue;
+    }
     const item=byId.get(id);
     const name=stripPresaleName(d.name||d.title||'');
     if(!item){
@@ -3056,13 +3062,14 @@ export function compareEbayListings({active=[],rows=[]}){
     const variation=item.variations.length?item.variations.find(v=>v.sku&&v.sku===d.ebaySku):null;
     if(item.variations.length&&!variation)continue;
     const ebayQty=variation?variation.available:item.available;
-    if(presale&&ebayQty!==dashQty)qtyMismatch.push({rowId:row.id,name,listingId:id,label:variation?.label||'',dashQty,ebayQty});
+    const ebaySold=variation?variation.sold:item.sold;
+    if(presale&&ebayQty!==dashQty)qtyMismatch.push({rowId:row.id,name,listingId:id,label:variation?.label||'',dashQty,ebayQty,ebaySold});
   }
   const ebayOnly=active.filter(i=>!claimed.has(String(i.itemId))).map(i=>({listingId:i.itemId,title:i.title,available:i.available,price:i.price,covers:i.variations.length}));
   const listingsPerCover=new Map();
   for(const row of rows){const d=row.data||{};if(d.source!=='foc_presale'||!d.focSkuId||!d.ebayListingId||d.ebayWithdrawnAt||!EBAY_LIVE_STATUSES.has(row.status)||!byId.has(String(d.ebayListingId)))continue;const list=listingsPerCover.get(d.focSkuId)||[];list.push({rowId:row.id,listingId:d.ebayListingId,qty:Number(d.qty??d.quantity??0)});listingsPerCover.set(d.focSkuId,list);}
   const sameCoverTwice=[...listingsPerCover.values()].filter(l=>l.length>1).map(l=>({name:stripPresaleName((rows.find(r=>r.id===l[0].rowId)?.data||{}).name||''),listings:l}));
-  return {activeCount:active.length,matched,ebayOnly,goneFromEbay,qtyMismatch,sameCoverTwice};
+  return {activeCount:active.length,matched,ebayOnly,goneFromEbay,qtyMismatch,sameCoverTwice,endedStillCounted};
 }
 async function ebayListingRows(db,storeId){
   const {data}=await db(`inventory_items?store_id=eq.${encodeURIComponent(storeId)}&data->>ebayListingId=not.is.null&status=in.(presale,in_stock,listed)&select=id,status,data`);
@@ -3102,8 +3109,11 @@ async function adminEbayListingsMarkEnded(request,env,deps){
     if(live.has(String(d.ebayListingId))){results.push({rowId:row.id,ok:false,error:'still live on eBay -- left alone'});continue;}
     const presale=d.source==='foc_presale'||d.source==='foc_presale_bundle';
     const sold=Math.max(0,Number(d.focPresaleOriginalQty||0)-Number(d.qty??d.quantity??0));
-    const next=presale?{...d,qty:0,quantity:0,focPresaleOriginalQty:sold,ebayWithdrawnAt:now,ebayWithdrawnReason:'not_on_ebay'}:{...d,ebayWithdrawnAt:now,ebayWithdrawnReason:'not_on_ebay'};
-    await db(`inventory_items?id=eq.${row.id}&store_id=eq.${encodeURIComponent(storeId)}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({data:next})});
+    if(d.ebayWithdrawnAt&&!presale){results.push({rowId:row.id,ok:false,error:'already ended'});continue;}
+    const next=presale?{...d,qty:0,quantity:0,focPresaleOriginalQty:sold,ebayWithdrawnAt:d.ebayWithdrawnAt||now,ebayWithdrawnReason:d.ebayWithdrawnReason||'not_on_ebay'}:{...d,ebayWithdrawnAt:now,ebayWithdrawnReason:'not_on_ebay'};
+    // A presale row with nothing left and sales on it is sold, not stock.
+    const status=presale&&sold>0&&row.status==='in_stock'?'sold':undefined;
+    await db(`inventory_items?id=eq.${row.id}&store_id=eq.${encodeURIComponent(storeId)}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify(status?{status,data:next}:{data:next})});
     results.push({rowId:row.id,ok:true,name:stripPresaleName(d.name||'')});
   }
   return deps.json({ok:true,results});
@@ -3128,6 +3138,28 @@ async function adminEbayListingsSetQuantity(request,env,deps){
   const patch=presaleEditPatch(d,row.status,{available:quantity});
   await db(`inventory_items?id=eq.${row.id}&store_id=eq.${encodeURIComponent(storeId)}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({status:patch.status,data:patch.data})});
   return deps.json({ok:true,listingId:d.ebayListingId,available:quantity,sold:patch.sold});
+}
+// Keep eBay's numbers: the dashboard row takes the listing's real available
+// count and its real sales (eBay sales the dashboard never heard about).
+async function adminEbayListingsMatchEbay(request,env,deps){
+  const limited=await deps.readJsonWithLimit(request,16*1024);if(limited.error)return limited.error;
+  const body=limited.data||{},storeId=text(body.storeId,80),rowId=text(body.rowId,80);
+  const auth=await deps.requireStoreUser(request,env,storeId,['owner','admin','manager']);if(auth.error)return auth.error;
+  if(!UUID_RE.test(rowId))return deps.json({ok:false,error:'rowId required'},400);
+  const db=(path,options)=>deps.supabaseAdminFetch(env,path,options);
+  let active;try{({active}=await ebayActiveForStore(env,deps));}catch(e){return deps.json({ok:false,needsToken:!!e.needsToken,error:e.message},e.status||502);}
+  const row=(await ebayListingRows(db,storeId)).find(r=>r.id===rowId);
+  const d=row?.data||{};
+  if(!row||d.ebayWithdrawnAt||d.source!=='foc_presale')return deps.json({ok:false,error:'No live presale listing on that row'},404);
+  const item=active.find(i=>String(i.itemId)===String(d.ebayListingId));
+  if(!item)return deps.json({ok:false,error:'That listing is not live on eBay'},409);
+  const variation=item.variations.length?item.variations.find(v=>v.sku&&v.sku===d.ebaySku):null;
+  if(item.variations.length&&!variation)return deps.json({ok:false,error:'Could not find this cover on the eBay listing'},409);
+  const available=variation?variation.available:item.available,sold=variation?variation.sold:item.sold;
+  const next={...d,qty:available,quantity:available,focPresaleOriginalQty:sold+available,ebayMatchedAt:new Date().toISOString()};
+  const status=available<=0&&row.status==='in_stock'?'sold':row.status;
+  await db(`inventory_items?id=eq.${row.id}&store_id=eq.${encodeURIComponent(storeId)}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({status,data:next})});
+  return deps.json({ok:true,available,sold});
 }
 async function adminPresaleStockCheck(request,env,deps,url){
   const storeId=text(url.searchParams.get('store_id'),80);
@@ -3972,6 +4004,7 @@ export async function handleFocRequest(request, env, url, deps) {
   if(path==='/foc/admin/ebay-listings-check'&&request.method==='GET')return adminEbayListingsCheck(request,env,deps,url);
   if(path==='/foc/admin/ebay-listings-check/mark-ended'&&request.method==='POST')return adminEbayListingsMarkEnded(request,env,deps);
   if(path==='/foc/admin/ebay-listings-check/set-quantity'&&request.method==='POST')return adminEbayListingsSetQuantity(request,env,deps);
+  if(path==='/foc/admin/ebay-listings-check/match-ebay'&&request.method==='POST')return adminEbayListingsMatchEbay(request,env,deps);
   if(path==='/foc/admin/presale-stock-fix'&&request.method==='POST')return adminPresaleStockFix(request,env,deps);
   if(path==='/foc/admin/pick-list'&&request.method==='GET')return adminPickList(request,env,deps,url);
   if(path==='/foc/admin/notify-arrivals'&&request.method==='POST')return adminNotifyArrivals(request,env,deps);
