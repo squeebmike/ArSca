@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.10.15.6-mtg-ebay-template';
+const APP_VERSION = '2026.10.15.7-whatnot-listed';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -8078,6 +8078,7 @@ function showInvRowMenu(e, id, isInStock){
     // toggle right below it made the mix-up an easy one to make. Only
     // showing this for stores actually configured to use Webflow inventory.
     (isInStock && usesWebflowInventory())?`<button class="hbtn" style="${btnStyle};color:var(--g)" onclick="publishInventoryItemToWebflow('${id}');closeInvRowMenu()">🌐 Publish / Sync Webflow</button>`:'',
+    item?.whatnotListedAt?`<button class="hbtn" style="${btnStyle};color:var(--purple)" onclick="clearWhatnotListed(['${id}']);closeInvRowMenu()">📺 Off Whatnot (clear mark)</button>`:'',
     isInStock?`<button class="hbtn" style="${btnStyle};color:${item?.onlineListed===false?'var(--gold)':'var(--dim)'}" onclick="toggleInventoryOnlineListed('${id}');closeInvRowMenu()">${item?.onlineListed===false?'🌐 Publish to Storefront':'🚫 Remove from Storefront'}</button>`:'',
     // Store report: this device's own cached onlineListed value can be
     // stale (a queued edit that never actually landed, a read from before
@@ -13931,6 +13932,9 @@ const BUILT_IN_ITEM_SIMPLE_FIELDS = [
   // creation default and the storefront Worker's own `!== false` rule --
   // an item with no onlineListed on record at all reads as listed.
   ['onlineListed', true],
+  // Listed on Whatnot (set when its Whatnot CSV is downloaded). Only a
+  // marker -- the item stays sellable here, on eBay and on the storefront.
+  ['whatnotListedAt',''], ['whatnotListing', null],
   ['dropship', false, 'bool'], ['vendor',''], ['supplierSku',''], ['supplierAvailability',''],
   ['supplierCost',0,'num'], ['supplierCheckedAt',''],
   // Shelf sticker printed? null = no record (see inventoryStickerPrinted).
@@ -16599,7 +16603,7 @@ function renderTable(){
     const thumbCell = `<td class="td-thumb">${bulkCb}<div onclick="${editClick}" style="cursor:pointer" title="Edit item">${thumbInner}</div></td>`;
     return `<tr class="${ins?'':'sold'}" data-item-id="${i.id}">
       ${thumbCell}
-      <td><span class="dot ${ins?'in_stock':'sold'}"></span><span class="nc" title="${i.tcgCardId?'TCG ID: '+i.tcgCardId:''}" onclick="${researchClick}" style="cursor:pointer">${i.name}${i.isRookie?' <span style="color:var(--gold);font-size:8px">RC</span>':''}${i.tcgCardId?'<span style="font-family:monospace;font-size:7px;color:rgba(0,255,179,.4);margin-left:4px">●</span>':''}${i.isBundle?' <span style="color:var(--gold);font-size:8px">🎁 BUNDLE</span>':''}${inventoryLanguageBadgeHtml(i)}</span>${invSyncBadgeHtml(i.id)}<div class="sc2" style="margin:5px 0 0 12px">${escHtml([i.consignorName||i.inventoryOwner||'Store owned',i.inventorySku||i.sku||''].filter(Boolean).join(' · '))}</div>${i.status==='bundled'&&i.bundledIntoName?`<div class="sc2" style="margin-top:5px;color:var(--gold)">🎁 In bundle: ${escHtml(i.bundledIntoName)}</div>`:''}</td>
+      <td><span class="dot ${ins?'in_stock':'sold'}"></span><span class="nc" title="${i.tcgCardId?'TCG ID: '+i.tcgCardId:''}" onclick="${researchClick}" style="cursor:pointer">${i.name}${i.isRookie?' <span style="color:var(--gold);font-size:8px">RC</span>':''}${i.tcgCardId?'<span style="font-family:monospace;font-size:7px;color:rgba(0,255,179,.4);margin-left:4px">●</span>':''}${i.isBundle?' <span style="color:var(--gold);font-size:8px">🎁 BUNDLE</span>':''}${inventoryLanguageBadgeHtml(i)}${i.whatnotListedAt?` <span style="color:var(--purple);font-size:8px" title="Listed on Whatnot ${escHtml(String(i.whatnotListedAt).slice(0,10))} -- still sellable everywhere">📺 WHATNOT</span>`:''}</span>${invSyncBadgeHtml(i.id)}<div class="sc2" style="margin:5px 0 0 12px">${escHtml([i.consignorName||i.inventoryOwner||'Store owned',i.inventorySku||i.sku||''].filter(Boolean).join(' · '))}</div>${i.status==='bundled'&&i.bundledIntoName?`<div class="sc2" style="margin-top:5px;color:var(--gold)">🎁 In bundle: ${escHtml(i.bundledIntoName)}</div>`:''}</td>
       <td><span class="sc2">${escHtml([i.set,i.variant].filter(Boolean).join(' · ')||'—')}</span><div class="sc2" style="margin-top:5px">${escHtml([i.year,i.condition,i.location].filter(Boolean).join(' · '))}</div>${comicPeople?`<div class="sc2" style="margin-top:5px;color:var(--purple)">${escHtml(comicPeople)}</div>`:''}</td>
       <td><span class="ct ${cat}">${i.category}</span></td>
       <td style="text-align:center;font-family:var(--font-mono);font-size:11px;color:${(i.qty||1)>1?'var(--g)':'var(--dim)'}">${inventoryIsDropship(i)?'Supplier':(i.qty||1)}</td>
@@ -23339,6 +23343,47 @@ async function publishInventoryItemToWebflow(id){const item=all.find(i=>i.id===i
 // -- this is the opt-out to deliberately pull one item off the live public
 // storefront without touching its in-stock status/POS availability, and
 // the opt-in to bring it back.
+// Whatnot listing tracker: downloading a Whatnot CSV marks those items as
+// listed on Whatnot (when, show or shop, listing type). The mark never
+// stops a sale anywhere else -- the Whatnot tab's ON WHATNOT panel instead
+// points out marked items that sold somewhere else so the Whatnot listing
+// can be taken down.
+async function setWhatnotListed(items, mark){
+  const list = (items || []).filter(Boolean);
+  let saved = 0, failed = 0;
+  for(let n = 0; n < list.length; n += 4){
+    await Promise.all(list.slice(n, n + 4).map(async item => {
+      const updates = mark ? { whatnotListedAt:mark.at, whatnotListing:mark } : { whatnotListedAt:'', whatnotListing:null };
+      try {
+        if(item.source === 'built_in') await updateBuiltInInventoryItem(item, updates);
+        else updateUniversalInventoryItem(item.id, updates);
+        Object.assign(item, updates);
+        saved++;
+      } catch(e) { failed++; console.warn('[WHATNOT] could not save listing mark', item.id, e.message); }
+    }));
+  }
+  if(typeof renderAll === 'function') renderAll();
+  return { saved, failed };
+}
+async function markItemsListedOnWhatnot(items, info = {}){
+  const mark = { at:new Date().toISOString(), dest:info.dest === 'show' ? 'show' : 'shop', type:String(info.type || '') };
+  const r = await setWhatnotListed(items, mark);
+  toast_dash(`Marked ${r.saved} item${r.saved===1?'':'s'} as listed on Whatnot${r.failed?' ('+r.failed+' could not be saved)':''} -- still for sale everywhere`);
+  return r;
+}
+async function clearWhatnotListed(ids){
+  const set = new Set(ids || []);
+  const r = await setWhatnotListed(all.filter(i => set.has(i.id)), null);
+  toast_dash(`Cleared the Whatnot mark on ${r.saved} item${r.saved===1?'':'s'}`);
+  if(typeof window.renderWhatnotBridge === 'function' && typeof activeTab !== 'undefined' && activeTab === 'whatnot') window.renderWhatnotBridge();
+  return r;
+}
+function clearWhatnotMarkSelected(){
+  const ids = all.filter(i => inventoryBulkSelectedIds.has(i.id) && i.whatnotListedAt).map(i => i.id);
+  if(!ids.length){ toast_dash('None of the selected items are marked as on Whatnot'); return; }
+  clearWhatnotListed(ids);
+}
+
 async function toggleInventoryOnlineListed(id){
   const item = (all || []).find(i => i.id === id);
   if(!item) return;

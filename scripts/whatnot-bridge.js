@@ -793,10 +793,42 @@ function renderEntry(){
     '</div></div>';
 }
 
+// ── Listed on Whatnot ────────────────────────────────────────────────────
+// Downloading a Whatnot CSV marks those items (whatnotListedAt). They stay
+// for sale everywhere, so a marked item that then sells somewhere else
+// (the register, eBay, the website) is called out here to take down on
+// Whatnot. One that sold on Whatnot itself is simply done.
+function onWhatnot(){
+  var marked = items().filter(function(i){ return i.whatnotListedAt; });
+  var live = [], soldElsewhere = [];
+  marked.forEach(function(i){
+    if(isSellable(i)) { live.push(i); return; }
+    var channel = String(i.channel || i.soldChannel || '').toLowerCase();
+    if(channel.indexOf('whatnot') >= 0) return;
+    soldElsewhere.push(i);
+  });
+  live.sort(function(a, b){ return String(b.whatnotListedAt).localeCompare(String(a.whatnotListedAt)); });
+  return { live:live, soldElsewhere:soldElsewhere };
+}
+function onWhatnotRow(i, sold){
+  var m = i.whatnotListing || {};
+  var when = String(i.whatnotListedAt || '').slice(0, 10);
+  var where = (m.dest === 'show' ? 'show' : 'shop') + (m.type ? ' · ' + m.type : '');
+  var soldNote = sold ? '<span style="color:var(--red)"> · sold' + (i.channel ? ' via ' + esc(i.channel) : '') + ' -- take it down on Whatnot</span>' : '';
+  return '<div style="display:flex;justify-content:space-between;gap:8px;align-items:center;padding:5px 0;border-bottom:1px solid var(--border)"><span style="color:var(--text)">' + esc(i.name || 'Item') + (Number(i.qty) > 1 ? ' ×' + Number(i.qty) : '') + ' <span style="color:var(--dim)">· ' + esc(when) + ' · ' + esc(where) + '</span>' + soldNote + '</span><button class="hbtn" style="font-size:8px;padding:3px 8px;min-height:0;margin:0" onclick="WB.clearMark([\'' + esc(i.id) + '\'])">' + (sold ? 'TAKEN DOWN' : 'OFF WHATNOT') + '</button></div>';
+}
+function renderOnWhatnot(){
+  var w = onWhatnot();
+  if(!w.live.length && !w.soldElsewhere.length) return '<div id="wb-on-whatnot"></div>';
+  var sold = w.soldElsewhere.length ? '<div style="margin-bottom:8px;padding:8px 10px;border:1px solid color-mix(in srgb,var(--red) 45%,transparent);border-radius:8px"><div style="color:var(--red);font-weight:900;margin-bottom:4px">⚠ SOLD SOMEWHERE ELSE (' + w.soldElsewhere.length + ') -- still up on Whatnot?</div>' + w.soldElsewhere.map(function(i){ return onWhatnotRow(i, true); }).join('') + (w.soldElsewhere.length > 1 ? '<button class="hbtn" style="margin-top:6px;font-size:9px" onclick="WB.clearSoldMarks()">ALL TAKEN DOWN</button>' : '') + '</div>' : '';
+  var live = w.live.length ? '<details' + (w.live.length <= 15 ? ' open' : '') + '><summary style="cursor:pointer;color:var(--text)">' + w.live.length + ' item' + (w.live.length === 1 ? '' : 's') + ' listed on Whatnot -- still for sale everywhere</summary><div style="max-height:300px;overflow:auto;margin-top:6px">' + w.live.slice(0, 300).map(function(i){ return onWhatnotRow(i, false); }).join('') + '</div></details>' : '';
+  return '<div id="wb-on-whatnot" class="panel" style="padding:14px;margin-bottom:12px;font-family:var(--font-mono);font-size:10px;color:var(--dim)"><div style="font:900 11px \'Orbitron\',monospace;color:var(--purple);letter-spacing:1px;margin-bottom:8px">📺 ON WHATNOT</div>' + sold + live + '</div>';
+}
+
 async function render(){
   var el = host(); if(!el) return;
   if(!state.settings){ el.innerHTML = '<div class="panel" style="padding:14px;font-family:var(--font-mono);font-size:10px;color:var(--dim)">Loading Whatnot tools…</div>'; await Promise.all([loadSettings(), loadCycles(), loadShows().then(function(list){ if(!state.shows) state.shows = list; })]); }
-  el.innerHTML = renderSend() + renderEntry() + renderImport() + inventoryDatalist();
+  el.innerHTML = renderOnWhatnot() + renderSend() + renderEntry() + renderImport() + inventoryDatalist();
 }
 
 // The Values tab pairs columns: "subcategory categories" + "subcategories"
@@ -861,7 +893,11 @@ window.WB = {
     downloadCSV('whatnot-' + (state.dest === 'show' ? 'show' : 'shop') + '-' + new Date().toISOString().slice(0, 10) + '.csv', rows);
     if(typeof logOpsEvent === 'function') logOpsEvent('whatnot_csv_export', 'Exported ' + list.length + ' item(s) to a Whatnot CSV', { count:list.length, dest:state.dest, type:state.type });
     var after = document.getElementById('wb-after-download'); if(after) after.innerHTML = afterDownloadHtml(list.length);
+    // Mark them "on Whatnot" -- they stay for sale everywhere else.
+    if(typeof markItemsListedOnWhatnot === 'function') markItemsListedOnWhatnot(list, { dest:state.dest, type:state.type }).then(function(){ var box = document.getElementById('wb-on-whatnot'); if(box) box.outerHTML = renderOnWhatnot(); });
   },
+  clearMark: function(ids){ if(typeof clearWhatnotListed === 'function') clearWhatnotListed(ids).then(function(){ render(); }); },
+  clearSoldMarks: function(){ var ids = onWhatnot().soldElsewhere.map(function(i){ return i.id; }); if(ids.length) WB.clearMark(ids); },
   loadReport: async function(file){
     if(!file) return;
     try {
