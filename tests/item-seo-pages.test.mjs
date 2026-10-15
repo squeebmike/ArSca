@@ -64,6 +64,9 @@ try {
     const breadcrumb = blocks.find(b => b['@type'] === 'BreadcrumbList');
     assert.ok(product, 'item page must emit Product JSON-LD');
     assert.equal(product.offers.availability, 'https://schema.org/InStock');
+    assert.equal(product.offers.itemCondition, 'https://schema.org/UsedCondition');
+    assert.ok(product.additionalProperty.some(p=>p.name==='Condition'&&p.value==='Near Mint'));
+    assert.match(html, /<h2>Item details<\/h2>/);
     assert.equal('aggregateRating' in product, false, 'no reviews exist for this item -- must not fabricate a rating');
     assert.ok(breadcrumb, 'item page must emit BreadcrumbList JSON-LD');
     assert.equal(breadcrumb.itemListElement.length, 3);
@@ -170,6 +173,13 @@ try {
     assert.match(xml, /\/category\/comics/);
   }
 
+  {
+    globalThis.fetch=async()=>new Response('Database unavailable',{status:503});
+    const response=await get('/category/comics');
+    assert.equal(response.status,503,'an upstream outage is not an empty category');
+    assert.equal(response.headers.get('Cache-Control'),'no-store');
+    assert.doesNotMatch(await response.text(),/Nothing in stock/);
+  }
   console.log('Item SEO pages: breadcrumbs, Twitter Cards, sold-item handling, related items, reviews, category pages, FAQ, news, and sitemap checks passed');
 } finally {
   globalThis.fetch = originalFetch;

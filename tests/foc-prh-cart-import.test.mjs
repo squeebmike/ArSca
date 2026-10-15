@@ -102,6 +102,16 @@ function buildDb(patchCalls) {
 }
 
 {
+  const patches=[];let ebayCalls=0;
+  const deps=mockDeps({supabaseAdminFetch:buildDb(patches),getEbayUserAccessToken:async()=>{ebayCalls++;throw Error('Must not contact eBay');},withdrawEbayOffer:async()=>{ebayCalls++;},ebayReviseOfferQuantity:async()=>{ebayCalls++;}});
+  const res=await handleFocRequest(mockRequest({storeId:'store-1',cycleId:'cycle-1',websiteOnly:true,rows:[{upc:'111',quantity:4}]}),{},new URL('https://x/foc/admin/prh-cart-import'),deps);
+  assert.equal(res.data.websiteOnly,true);assert.equal(ebayCalls,0);
+  assert.equal(res.data.ebayWithdrawnCount,0);assert.equal(res.data.ebayQuantityUpdatedCount,0);
+  assert.ok(patches.some(c=>c.path.startsWith('comic_skus?')&&c.body.secured_quantity===4));
+  assert.ok(patches.every(c=>c.path.startsWith('comic_skus?')),'no inventory/eBay attribution writes');
+}
+
+{
   // Validation: no rows at all.
   const deps = mockDeps();
   const res = await handleFocRequest(mockRequest({ storeId:'store-1', cycleId:'cycle-1', rows:[] }), {}, new URL('https://x/foc/admin/prh-cart-import'), deps);

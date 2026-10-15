@@ -3,6 +3,7 @@ import { handleBookAlertRequest, handleAccountBookAlerts, runBookAlerts } from '
 import { isBcwItem, isBcwPublished, catalogSelection, renderBcwCatalog, renderBcwProduct } from './scripts/bcw-storefront.mjs';
 import { importDropshipBatch } from './scripts/dropship-import.mjs';
 import { cachedCatalogSitemap } from './scripts/sitemap-cache.mjs';
+import { storeOrganization, productFacts, productCondition, renderShopPreview } from './scripts/storefront-seo.mjs';
 
 /**
  * LBA Proxy Worker - Cloudflare Worker
@@ -2560,8 +2561,8 @@ function mtgFallbackChromeCss() {
     `.Social.Icons{display:flex;gap:14px}.Social.Icons a{color:#c8c4dc;font-size:13px;text-decoration:none}.Social.Icons a:hover{color:#8bd450}`;
 }
 function mtgPageShell({ title, description, canonicalPath, ogImage, ogType, jsonLd, bodyHtml, robotsNoindex }) {
-  const jsonLdList = Array.isArray(jsonLd) ? jsonLd.filter(Boolean) : (jsonLd ? [jsonLd] : []);
-  const jsonLdBlock = jsonLdList.map(block => `<script type="application/ld+json">${JSON.stringify(block)}</script>`).join('');
+  const jsonLdList = [...(Array.isArray(jsonLd) ? jsonLd.filter(Boolean) : (jsonLd ? [jsonLd] : [])), storeOrganization];
+  const jsonLdBlock = jsonLdList.map(block => `<script type="application/ld+json">${JSON.stringify(block).replace(/</g,'\\u003c')}</script>`).join('');
   const ogImageTag = ogImage ? `<meta property="og:image" content="${mtgEscapeHtml(ogImage)}">` : '';
   // Twitter falls back to the Open Graph tags above for title/description/
   // image when its own og:*-equivalent isn't present, but summary_large_image
@@ -2668,7 +2669,7 @@ function renderMtgCardPage(card) {
       '@context': 'https://schema.org', '@type': 'Product', name: card.name, image: img || undefined,
       sku: card.scryfallId, brand: { '@type': 'Brand', name: 'Magic: The Gathering' },
       description: card.oracleText || card.typeLine || undefined,
-      ...(priceNum ? { offers: { '@type': 'Offer', priceCurrency: 'USD', price: priceNum, url: `https://www.themanapocket.com${canonicalPath}` } } : {}),
+      // These are reference market prices, not this store's sale offer.
     },
     bodyHtml: `<div class="mp-crumb"><a href="/mtg">All MTG sets</a> / <a href="/mtg/${mtgEscapeHtml(card.setCode)}">${mtgEscapeHtml(card.setName || card.setCode)}</a></div>` +
       `<div class="mp-detail">${img ? `<img src="${mtgEscapeHtml(img)}" alt="${mtgEscapeHtml(card.name)}">` : ''}` +
@@ -2721,7 +2722,7 @@ async function fetchAllListableStorefrontItems(env) {
   let offset = 0;
   while (true) {
     const page = await supabaseAdminFetch(env, `inventory_items?store_id=eq.${encodeURIComponent(ITEM_DETAIL_STORE_ID)}&select=id,data,status,created_at,updated_at&order=updated_at.desc,id.asc&limit=1000&offset=${offset}`);
-    if (!page.response?.ok) break;
+    if (!page.response?.ok) throw new Error('Storefront catalog unavailable');
     const batch = page.data || [];
     rows.push(...batch);
     if (batch.length < 1000) break;
@@ -2752,7 +2753,8 @@ function itemDetailDescription(item) {
   const bits = [item.set, item.year, item.condition].filter(Boolean).join(' · ');
   const priceBit = item.price ? ` $${item.price.toFixed(2)} at The Mana Pocket.` : ' At The Mana Pocket.';
   const soldBit = !isStorefrontItemAvailable(item) ? ' Currently sold.' : '';
-  return `${item.name}${bits ? ` — ${bits}.` : '.'}${priceBit}${soldBit}`.trim();
+  const detail = item.description || item.comic?.description || '';
+  return `${item.name}${bits ? ` — ${bits}.` : '.'}${priceBit}${soldBit}${detail ? ' '+detail : ''}`.trim().slice(0,320);
 }
 
 function itemNotFoundPage() {
@@ -2847,6 +2849,8 @@ function renderItemDetailPage(item, canonicalSlug, allListable) {
   };
   const { jsonLdFields: reviewJsonLdFields, html: reviewHtml } = reviewSchemaAndHtml(item);
   const related = allListable ? relatedStorefrontItems(item, allListable) : [];
+  const facts = productFacts(item);
+  const detail = item.description || item.comic?.description || '';
   return mtgPageShell({
     title: `${item.name}${item.set ? ` (${item.set})` : ''}${priceStr ? ` — ${priceStr}` : ''} | The Mana Pocket`,
     description,
@@ -2858,7 +2862,8 @@ function renderItemDetailPage(item, canonicalSlug, allListable) {
       image: item.image || undefined, sku: item.id,
       brand: item.brand ? { '@type': 'Brand', name: item.brand } : undefined,
       description,
-      ...(item.price ? { offers: { '@type': 'Offer', priceCurrency: 'USD', price: item.price, availability: available ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock', url: `https://www.themanapocket.com${canonicalPath}` } } : {}),
+      ...(facts.length ? { additionalProperty:facts.map(fact=>({'@type':'PropertyValue',...fact})) } : {}),
+      ...(item.price ? { offers: { '@type': 'Offer', priceCurrency: 'USD', price: item.price, availability: available ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock', itemCondition:productCondition(item.condition), seller:{'@id':storeOrganization['@id']}, url: `https://www.themanapocket.com${canonicalPath}` } } : {}),
       ...reviewJsonLdFields,
     }, breadcrumbJsonLd],
     bodyHtml: `<div class="mp-crumb"><a href="/shop">Shop</a> / <a href="${categoryHref}">${mtgEscapeHtml(categoryLabel)}</a> / ${mtgEscapeHtml(item.name)}</div>` +
@@ -2866,6 +2871,8 @@ function renderItemDetailPage(item, canonicalSlug, allListable) {
       `<div><h1>${mtgEscapeHtml(item.name)}</h1>${metaBits ? `<div class="mp-meta">${mtgEscapeHtml(metaBits)}</div>` : ''}` +
       `<div class="mp-prices">${priceStr ? `<span class="mp-price-pill">${mtgEscapeHtml(priceStr)}</span>` : '<span class="mp-meta">Contact the shop for price</span>'}${!available ? `<span class="mp-price-pill" style="background:rgba(255,77,109,.15);color:#ff9db0">Sold</span>` : ''}</div>` +
       (available ? `<a class="mp-card" style="display:inline-block;padding:12px 20px;margin-top:8px" href="/shop?item=${encodeURIComponent(item.id)}">Add to cart →</a>` : `<p class="mp-sub">This exact copy has sold. Browse ${mtgEscapeHtml(categoryLabel)} for what's currently in stock.</p>`) +
+      `${detail ? `<p class="mp-sub">${mtgEscapeHtml(detail)}</p>` : ''}` +
+      `${facts.length ? `<h2>Item details</h2><dl>${facts.map(f=>`<dt style="font-weight:700">${mtgEscapeHtml(f.name)}</dt><dd style="margin:0 0 10px">${mtgEscapeHtml(f.value)}</dd>`).join('')}</dl>` : ''}` +
       `${reviewHtml}` +
       `</div></div>` +
       (item.categorySlug === 'comics' ? renderBookAlertForm([alertBookTitle(item.name)],ITEM_DETAIL_STORE_ID,mtgEscapeHtml) : '') +
@@ -2941,7 +2948,10 @@ function renderCategoryIndexPage(counts) {
 // "contact us" instead of guessing, rather than publishing a policy the
 // store may not actually honor.
 const FAQ_ITEMS = [
-  ['Do you ship internationally?', 'Domestic shipping is available on every in-stock item. For international orders, message us before ordering so we can confirm rates and delivery time for your country.'],
+  ['Do you ship internationally?', 'We ship within the United States only. We do not offer international shipping. Check the shipping options and cost at checkout before paying.'],
+  ['What does a 1:25, 1:50, or 1:100 variant mean?', 'These are retailer ordering ratios. A 1:25 offer generally requires a qualifying order of 25 regular copies for a shop to be eligible for an incentive copy. Publisher rules vary. The ratio is not the print run and does not set the selling price.'],
+  ['What is the difference between virgin and trade-dress covers?', 'A virgin cover generally presents the art without the usual title logo and cover text. A trade-dress cover includes those design elements. Check the specific cover letter, artist, finish, and price before ordering.'],
+  ['Do you sell raw and graded trading cards?', 'Yes. Raw cards have not been encapsulated with a grading-company grade. Graded cards are sold with the company and grade stated on their listing. We carry Pokémon, Magic: The Gathering, sports cards, comics, and collectibles; current selection depends on available inventory.'],
   ['What\'s your return policy?', 'If an item arrives damaged or not as described, message us through the shop or eBay and we\'ll make it right. Contact us before returning anything so we can help directly.'],
   ['How do you grade card and comic condition?', 'Graded slabs are graded by the issuing company (PSA, BGS, CGC, or SGC) and sold exactly as labeled -- we don\'t re-grade them ourselves. Raw (ungraded) cards and comics are described as accurately as we can from photos and in-hand inspection; message us for more detail or additional photos on any specific listing before buying.'],
   ['What is FOC presale, and how does it work?', 'FOC ("Final Order Cutoff") presale lets you order upcoming comic issues before they\'re released -- your order ships once we receive stock from the distributor on or shortly after the book\'s official release date. Presale listings are always clearly marked, both on our site and on eBay.'],
@@ -2951,13 +2961,13 @@ const FAQ_ITEMS = [
   ['How can I tell if an item is signed or authenticated?', 'Signed items are noted directly on the listing, including who signed it when that information is available. Message us if you\'d like more detail on a specific item\'s signature or provenance before buying.'],
 ];
 function renderFaqPage() {
-  const rows = FAQ_ITEMS.map(([q, a]) => `<div style="margin-bottom:20px"><div style="font-weight:700;margin-bottom:4px">${mtgEscapeHtml(q)}</div><div class="mp-sub" style="margin-bottom:0">${mtgEscapeHtml(a)}</div></div>`).join('');
+  const rows = FAQ_ITEMS.map(([q, a]) => `<section style="margin-bottom:20px"><h2 style="font-size:20px;margin-bottom:8px">${mtgEscapeHtml(q)}</h2><p class="mp-sub" style="margin-bottom:0">${mtgEscapeHtml(a)}</p></section>`).join('');
   return mtgPageShell({
     title: 'Frequently Asked Questions | The Mana Pocket',
     description: 'Shipping, returns, grading, FOC presale, BCW supplies, and more -- answers to common questions about ordering from The Mana Pocket.',
     canonicalPath: '/faq',
     jsonLd: { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: FAQ_ITEMS.map(([q, a]) => ({ '@type': 'Question', name: q, acceptedAnswer: { '@type': 'Answer', text: a } })) },
-    bodyHtml: `<div class="mp-crumb"><a href="/shop">← Shop</a></div><h1>Frequently asked questions</h1>${rows}`,
+    bodyHtml: `<div class="mp-crumb"><a href="/shop">← Shop</a></div><h1>Frequently asked questions</h1>${rows}<p><a href="/articles/comic-preorders-foc-variant-cover-guide">Read the full FOC and variant-cover guide</a> · <a href="/comic-bags-boards-size-guide">Comic bags and boards</a> · <a href="/toploader-size-guide">Card protection guide</a></p>`,
   });
 }
 
@@ -7450,8 +7460,14 @@ async function routeRequest(request, env, ctx) {
     if (url.hostname === 'www.themanapocket.com' && url.pathname.startsWith('/shop')) {
       const originResponse = await fetch(request);
       if(request.method !== 'GET' || !originResponse.headers.get('Content-Type')?.includes('text/html')) return originResponse;
+      // Progressive HTML: crawlers/no-JS visitors get real product links.
+      // The existing shop application replaces this host when it renders.
+      const previewItems = await fetchAllListableStorefrontItemsCached(env,ctx).catch(()=>[]);
+      const requestedCategory = url.searchParams.get('cat') || url.searchParams.get('category');
+      const previewCategory = requestedCategory ? storefrontCategorySlug(requestedCategory) : '';
+      const preview = renderShopPreview(previewItems.filter(item=>isStorefrontItemAvailable(item)&&!item.dropship&&(!previewCategory||item.categorySlug===previewCategory)),mtgEscapeHtml,itemDetailSlug);
       let navigationAdded = false;
-      return new HTMLRewriter().on('#wo-live-shop', {element(el){if(!navigationAdded){el.before(`<nav id="mp-category-nav" aria-label="Shop categories" style="display:flex;flex-wrap:wrap;gap:16px;padding:20px"><a href="/category/comics">Comics</a><a href="/category/pokemon">Pokémon</a><a href="/category/sports-cards">Sports cards</a><a href="/category/mtg">Magic: The Gathering</a><a href="/category/collectibles">Collectibles</a><a href="/bcw">BCW supplies</a><a href="/faq">Ordering help</a></nav>`,{html:true});navigationAdded=true;}}}).on('body',{element(el){el.append(`<script>document.addEventListener('change',function(e){if(e.target.matches('select.wo-store-control-field')&&String(e.target.value).toLowerCase()==='supplies'){e.stopImmediatePropagation();location.href='/bcw';}},true);document.addEventListener('DOMContentLoaded',function(){var host=document.getElementById('wo-live-shop');if(!host)return;if(!document.getElementById('bcw-supplies-link')){var a=document.createElement('a');a.id='bcw-supplies-link';a.href='/bcw';a.textContent='Shop BCW supplies →';a.style.cssText='display:inline-block;margin:18px 0;padding:12px 18px;border:1px solid currentColor;border-radius:8px;font-weight:700';host.before(a);}if(!document.getElementById('mp-category-nav')){var links=[['/category/comics','Comics'],['/category/pokemon','Pokémon'],['/category/sports-cards','Sports Cards'],['/category/mtg','Magic: The Gathering'],['/category/collectibles','Collectibles'],['/faq','FAQ']];var nav=document.createElement('div');nav.id='mp-category-nav';nav.style.cssText='display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 18px';links.forEach(function(pair){var link=document.createElement('a');link.href=pair[0];link.textContent=pair[1];link.style.cssText='padding:8px 14px;border:1px solid currentColor;border-radius:8px;text-decoration:none;color:inherit;font-size:13px;font-weight:600';nav.appendChild(link);});host.before(nav);}});</script>`,{html:true});}}).transform(originResponse);
+      return new HTMLRewriter().on('#wo-live-shop', {element(el){if(!navigationAdded){el.append(preview,{html:true});el.before(`<nav id="mp-category-nav" aria-label="Shop categories" style="display:flex;flex-wrap:wrap;gap:16px;padding:20px"><a href="/category/comics">Comics</a><a href="/category/pokemon">Pokémon</a><a href="/category/sports-cards">Sports cards</a><a href="/category/mtg">Magic: The Gathering</a><a href="/category/collectibles">Collectibles</a><a href="/bcw">BCW supplies</a><a href="/faq">Ordering help</a></nav>`,{html:true});navigationAdded=true;}}}).on('body',{element(el){el.append(`<script>document.addEventListener('change',function(e){if(e.target.matches('select.wo-store-control-field')&&String(e.target.value).toLowerCase()==='supplies'){e.stopImmediatePropagation();location.href='/bcw';}},true);document.addEventListener('DOMContentLoaded',function(){var host=document.getElementById('wo-live-shop');if(!host)return;if(!document.getElementById('bcw-supplies-link')){var a=document.createElement('a');a.id='bcw-supplies-link';a.href='/bcw';a.textContent='Shop BCW supplies →';a.style.cssText='display:inline-block;margin:18px 0;padding:12px 18px;border:1px solid currentColor;border-radius:8px;font-weight:700';host.before(a);}if(!document.getElementById('mp-category-nav')){var links=[['/category/comics','Comics'],['/category/pokemon','Pokémon'],['/category/sports-cards','Sports Cards'],['/category/mtg','Magic: The Gathering'],['/category/collectibles','Collectibles'],['/faq','FAQ']];var nav=document.createElement('div');nav.id='mp-category-nav';nav.style.cssText='display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 18px';links.forEach(function(pair){var link=document.createElement('a');link.href=pair[0];link.textContent=pair[1];link.style.cssText='padding:8px 14px;border:1px solid currentColor;border-radius:8px;text-decoration:none;color:inherit;font-size:13px;font-weight:600';nav.appendChild(link);});host.before(nav);}});</script>`,{html:true});}}).transform(originResponse);
     }
     // The customer-facing BCW page is a native Webflow page, reached through
     // Cloudflare via www.themanapocket.com (see the store report above).
@@ -7542,7 +7558,9 @@ async function routeRequest(request, env, ctx) {
       const cacheKey = new Request(url.toString(), request);
       const cached = await caches.default.match(cacheKey);
       if (cached) return cached;
-      const allListable = await fetchAllListableStorefrontItemsCached(env, ctx).catch(() => []);
+      let allListable;
+      try { allListable = await fetchAllListableStorefrontItemsCached(env, ctx); }
+      catch { return new Response('Inventory is temporarily unavailable. Please try again shortly.',{status:503,headers:{'Content-Type':'text/plain;charset=UTF-8','Cache-Control':'no-store','Retry-After':'60'}}); }
       let html;
       if (url.pathname === '/category') {
         const counts = {};

@@ -1,4 +1,5 @@
 import { renderBookAlertForm } from './book-alert-ui.mjs';
+import { afterFocAvailability } from './foc-preorders.mjs';
 // Comic articles at www.themanapocket.com/articles.
 //
 // Written in Webflow's CMS ("Comic Articles" collection) so they're edited in
@@ -127,7 +128,7 @@ export async function bookStatus(env, deps, book, now = Date.now()) {
   if (!word) return status;
   const enc = encodeURIComponent;
   const [skuRes, items] = await Promise.all([
-    deps.supabaseAdminFetch(env, `comic_skus?store_id=eq.${enc(deps.storeId)}&title=ilike.${enc('*' + word + '*')}&select=id,title,variant_label,cover_image_url,customer_price_cents,customer_enabled,is_incentive,on_sale_date,cycle:foc_cycles(status,customer_cutoff_at)&order=on_sale_date.desc&limit=300`).catch(error => { if (deps.strict) throw error; return { data: [] }; }),
+    deps.supabaseAdminFetch(env, `comic_skus?store_id=eq.${enc(deps.storeId)}&title=ilike.${enc('*' + word + '*')}&select=id,cycle_id,title,variant_label,cover_image_url,customer_price_cents,customer_enabled,is_incentive,on_sale_date,secured_quantity,flags,cycle:foc_cycles(id,status,customer_cutoff_at)&order=on_sale_date.desc&limit=300`).catch(error => { if (deps.strict) throw error; return { data: [] }; }),
     (deps.listItemsForBook ? deps.listItemsForBook(env, word, deps.storeId) : deps.listItems(env)).catch(error => { if (deps.strict) throw error; return []; }),
   ]);
   if (deps.strict && (!Array.isArray(skuRes.data) || skuRes.response?.ok === false)) throw new Error('Book catalog unavailable');
@@ -160,6 +161,16 @@ export async function bookStatus(env, deps, book, now = Date.now()) {
     })).concat(requestable.map(s => ({ id: s.id, label: coverLabel(s), cover: s.cover_image_url || '', priceCents: 0, kind: 'request' })));
     return { ...status, state: 'preorder', href: `/preorder/${enc(pick.id)}`, priceCents: cheapest, covers: skus.length, cutoff: pick.cycle?.customer_cutoff_at || status.cutoff, options };
   }
+  // Reuse the checkout's ordered-copy accounting. Never infer stock from
+  // the article text or ignore paid orders/eBay sales while offering copies.
+  const limited=[];
+  const cycles=new Map(skus.filter(s=>s.cycle?.id&&Number(s.secured_quantity)>0).map(s=>[s.cycle.id,s.cycle]));
+  for(const [id,cycle] of cycles){
+    const group=skus.filter(s=>s.cycle?.id===id);
+    const left=await afterFocAvailability((p,o)=>deps.supabaseAdminFetch(env,p,o),deps.storeId,cycle,group,{now:new Date(now),includePending:true}).catch(()=>new Map());
+    limited.push(...group.filter(s=>s.customer_enabled!==false&&Number(s.customer_price_cents)>0&&Number(left.get(s.id))>0));
+  }
+  if(limited.length){const pick=limited.includes(main)?main:limited[0];return {...status,state:'limited',href:'/preorders?sku='+enc(pick.id),priceCents:Math.min(...limited.map(s=>Number(s.customer_price_cents))),covers:limited.length};}
   if (skus.length) return { ...status, state: 'closed', covers: skus.length };
   return status;
 }
@@ -224,11 +235,13 @@ const STYLE = `<style>
 function statusLine(s, esc) {
   if (s.state === 'in_stock') return `In stock now · ${money(s.priceCents)}`;
   if (s.state === 'preorder') return `Preorder open · from ${money(s.priceCents)}${s.covers > 1 ? ` · ${s.covers} covers` : ''}${s.cutoff ? ` · order by ${esc(shortDate(s.cutoff))}` : ''}`;
-  if (s.state === 'closed') return `Preorders closed${s.onSale ? ` · in shops ${esc(shortDate(s.onSale))}` : ''} · we'll have copies in the shop`;
+  if (s.state === 'limited') return `Limited presales · from ${money(s.priceCents)} · ${s.covers} cover${s.covers===1?'':'s'} available`;
+  if (s.state === 'closed') return `Preorder deadline passed${s.onSale ? ` · scheduled release ${esc(shortDate(s.onSale))}` : ''} · check current shop availability`;
   return 'Not open for preorder yet';
 }
 function button(s) {
   if (s.state === 'in_stock') return `<a class="mp-btn" href="${s.href}">Buy now</a>`;
+  if (s.state === 'limited') return `<a class="mp-btn" href="${s.href}">Choose available presale covers</a>`;
   if (s.state === 'preorder') return `<a class="mp-btn" href="#${bookAnchor(s)}">Pick your cover</a>`;
   if (s.state === 'closed') return `<a class="mp-btn ghost" href="/shop?cat=comics">Shop comics</a>`;
   return `<a class="mp-btn ghost" href="#book-updates" data-update-book="${encodeURIComponent(s.name)}">Request updates for this book</a>`;
@@ -243,7 +256,7 @@ export function renderBuyBox(article, main, esc) {
     if (article.releaseDate) bits.push(`in shops ${esc(shortDate(article.releaseDate))}`);
     sub = bits.length ? bits.join(' · ').replace(/^./, c => c.toUpperCase()) : 'Preorders open here as soon as it’s solicited';
   }
-  const kicker = { in_stock: 'Get it now', preorder: 'Preorder it', closed: 'On its way', coming: 'Coming soon' }[main.state];
+  const kicker = { in_stock: 'Get it now', preorder: 'Preorder it', limited:'Limited copies', closed: 'Check availability', coming: 'Coming soon' }[main.state];
   const actions = button(main) + (main.state === 'coming' ? `<a class="mp-btn ghost" href="/preorders">Browse comic preorders</a>` : '');
   return `<aside class="mp-buy">${main.cover ? `<img src="${esc(main.cover)}" alt="${esc(main.name)} cover" loading="lazy">` : ''}<div><div class="mp-buy-k">${kicker}</div><div class="mp-buy-t">${esc(main.name)}</div><div class="mp-buy-s">${sub}</div>${actions}</div></aside>`;
 }

@@ -65,6 +65,17 @@ const deps = (skus, items = []) => ({
   assert.match(box, /Preorders open here before FOC on Nov 23, 2026 · in shops Jan 6, 2027/);
 }
 console.log('Buy box state checks passed');
+{
+  const sku={id:'limited-a',cycle_id:'cycle-1',title:'BATMAN #25 COVER A',customer_enabled:true,customer_price_cents:599,secured_quantity:3,on_sale_date:'2099-12-01',cycle:{id:'cycle-1',status:'closed',customer_cutoff_at:past}};
+  const limitedDeps={storeId:'store-1',listItems:async()=>[],isAvailable:()=>false,itemSlug:()=>'',supabaseAdminFetch:async(env,path)=>({data:path.startsWith('comic_skus?')?[sku]:[]})};
+  const limited=await bookStatus({},limitedDeps,'Batman #25');
+  assert.equal(limited.state,'limited');
+  assert.equal(limited.href,'/preorders?sku=limited-a');
+  const html=renderBuyBox({},limited,v=>String(v));
+  assert.match(html,/Limited presales/);assert.doesNotMatch(html,/order by|Pick your cover/);
+  sku.secured_quantity=0;
+  assert.equal((await bookStatus({},limitedDeps,'Batman #25')).state,'closed');
+}
 
 // --- Pages -----------------------------------------------------------------------
 const item = { id: 'w1', lastPublished: '2026-09-27T18:00:00Z', fieldData: { name: 'Big <News>', slug: 'big-news', summary: 'Short.', body: '<h2>Part</h2><p>Text</p><script>x</script>', 'published-on-2': '2026-09-27T12:00:00Z', 'books-to-promote': 'X-Men: Incursions #1\nNope #9', 'book-details': 'Price: $4.99' } };

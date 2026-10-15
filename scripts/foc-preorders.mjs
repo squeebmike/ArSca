@@ -1,4 +1,5 @@
 import { renderBookAlertForm, alertBookTitle } from './book-alert-ui.mjs';
+import { productFacts, storeOrganization } from './storefront-seo.mjs';
 // The Mana Pocket PRH + Lunar FOC preorder service.
 //
 // This module stays deliberately independent of the dashboard DOM. The Worker
@@ -659,6 +660,7 @@ async function preorderDetailPage(env, deps, skuId, providedSlug) {
   const appUrl = `https://www.themanapocket.com/preorders?sku=${encodeURIComponent(skuId)}`;
   const image = sku.coverImageUrl || '';
   const canPreorder = (cycleOpen(cycleRow) || !!sku.afterFoc) && sku.canPreorder;
+  const facts=productFacts({category:'Comics',variant:sku.variantLabel,comic:{publisher,seriesName,number:issueNumber,coverArtists:sku.coverArtist?[sku.coverArtist]:[],writers:sku.writer?[sku.writer]:[],artists:sku.interiorArtist?[sku.interiorArtist]:[],storeDate:sku.onSaleDate}});
   const html = deps.mtgPageShell({
     title, description, canonicalPath, ogImage: image || undefined,
     jsonLd: {
@@ -666,19 +668,22 @@ async function preorderDetailPage(env, deps, skuId, providedSlug) {
       ...(image ? { image } : {}),
       ...(publisher ? { brand: { '@type': 'Organization', name: publisher } } : {}),
       description,
+      additionalProperty:facts.map(fact=>({'@type':'PropertyValue',...fact})),
       ...(!sku.priceRequired ? { offers: {
         '@type': 'Offer', priceCurrency: 'USD',
         price: sku.priceCents / 100,
         availability: canPreorder ? 'https://schema.org/PreOrder' : 'https://schema.org/OutOfStock',
         url: `https://www.themanapocket.com${canonicalPath}`,
+        seller:{'@id':storeOrganization['@id']},
       } } : {}),
     },
     bodyHtml: `<div class="mp-crumb"><a href="/preorders">← All comic preorders</a></div>` +
       `<div class="mp-detail">${image ? `<img src="${deps.mtgEscapeHtml(image)}" alt="${deps.mtgEscapeHtml(name)}">` : ''}` +
       `<div><h1>${deps.mtgEscapeHtml(name)}</h1>${publisher ? `<div class="mp-meta">${deps.mtgEscapeHtml(publisher)}</div>` : ''}` +
-      `<div class="mp-meta">Preorder deadline ${deps.mtgEscapeHtml(dateOnlyLabel(cycleRow.foc_date))}</div>` +
+      `<div class="mp-meta">${sku.afterFoc?'FOC closed · limited ordered copies':'Preorder deadline '+deps.mtgEscapeHtml(dateOnlyLabel(cycleRow.foc_date))}</div>` +
       `<div class="mp-prices"><span class="mp-price-pill">${deps.mtgEscapeHtml(priceText)}</span></div>` +
       `${(text(skuRow.description, 600) || text(familyRow.description, 600)) ? `<p class="mp-sub">${deps.mtgEscapeHtml(text(skuRow.description, 600) || text(familyRow.description, 600))}</p>` : ''}` +
+      `<h2>Cover details</h2><dl>${facts.map(f=>`<dt style="font-weight:700">${deps.mtgEscapeHtml(f.name)}</dt><dd style="margin:0 0 10px">${deps.mtgEscapeHtml(f.value)}</dd>`).join('')}</dl>` +
       `<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px">` +
       `<a class="mp-card" style="display:inline-block;padding:12px 20px" href="${deps.mtgEscapeHtml(appUrl)}">${canPreorder ? 'Preorder this cover →' : 'View this cover →'}</a>` +
       `<button id="mp-share-btn" style="padding:12px 20px;border-radius:12px;border:1px solid rgba(255,255,255,.2);background:transparent;color:inherit;cursor:pointer;font:inherit" data-title="${deps.mtgEscapeHtml(name)}" data-text="${deps.mtgEscapeHtml(description)}">Share</button>` +
@@ -2551,7 +2556,13 @@ async function adminImportPrhCart(request,env,deps){
   // silently dropped in case a real cover's UPC just doesn't match (a
   // reprint, a distributor UPC change) and needs a human look.
   const unmatchedRows=[...orderedByUpc.entries()].filter(([key])=>!matchedUpcs.has(key)).map(([key,quantity])=>({upc:key.startsWith('code:')?'':key,code:codeForUpc.get(key)||'',title:titleForKey.get(key)||'',quantity}));
-  const {ebayWithdrawnSkuIds,ebayQuantityUpdatedSkuIds}=await syncFocEbayListingsToOrder(env,deps,db,storeId,cycleId,finalQtyBySku);
+  // Website-only records ordered copies without revising/ending any eBay
+  // listing or changing its saved attribution. Default reconciliation is
+  // preserved for the established upload workflow.
+  const websiteOnly=body.websiteOnly===true;
+  const {ebayWithdrawnSkuIds,ebayQuantityUpdatedSkuIds}=websiteOnly
+    ? {ebayWithdrawnSkuIds:[],ebayQuantityUpdatedSkuIds:[]}
+    : await syncFocEbayListingsToOrder(env,deps,db,storeId,cycleId,finalQtyBySku);
   // Covers that were ordered and still have copies left to sell (after
   // committed demand) but have no live eBay presale listing at all yet --
   // informational only, never auto-created (listing a cover is its own
@@ -2559,7 +2570,7 @@ async function adminImportPrhCart(request,env,deps){
   const presaleRows=await focPresaleRows(db,storeId,'presale');
   const listedSkuIds=new Set((presaleRows||[]).filter(row=>{const d=row.data||{};return d.source==='foc_presale'&&d.focCycleId===cycleId&&(d.ebayOfferId||(d.ebayApiSystem==='trading'&&d.ebayListingId&&d.ebaySku));}).map(row=>row.data.focSkuId));
   const needsListing=updated.filter(item=>item.storeQuantity>0&&!listedSkuIds.has(item.skuId)).map(item=>({skuId:item.skuId,title:item.title,variantLabel:item.variantLabel,availableQty:item.storeQuantity}));
-  return deps.json({ok:true,matchedCount:updated.filter(u=>u.orderedTotal>0).length,updated,unmatchedRows,ebayWithdrawnCount:ebayWithdrawnSkuIds.length,ebayQuantityUpdatedCount:ebayQuantityUpdatedSkuIds.length,needsListing});
+  return deps.json({ok:true,websiteOnly,matchedCount:updated.filter(u=>u.orderedTotal>0).length,updated,unmatchedRows,ebayWithdrawnCount:ebayWithdrawnSkuIds.length,ebayQuantityUpdatedCount:ebayQuantityUpdatedSkuIds.length,needsListing});
 }
 
 // Manual, one-click sibling to the auto-sweep inside adminPrhSubmission
