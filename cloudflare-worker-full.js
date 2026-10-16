@@ -40,6 +40,8 @@ import { handleAccountRequest, findLinkedCustomer } from './scripts/customer-acc
 import { handleArticlesRequest, articleSitemapPaths } from './scripts/comic-articles.mjs';
 import { extractSiteChrome, SITE_CHROME_SOURCE } from './scripts/site-chrome.mjs';
 import { handlePublicPokemonRequest } from './scripts/public-pokemon-sets.mjs';
+import { catalogInventoryHtml } from './scripts/catalog-inventory.mjs';
+import { handlePokemonCatalog } from './scripts/pokemon-catalog-pages.mjs';
 import { ebayOrderMoney, ebayLineProfit, financeAdjustments, splitCents } from './scripts/ebay-order-money.mjs';
 import { EditError, editSaleLine, editInventoryItem, adjustCustomerPoints, editHistory } from './scripts/database-edits.mjs';
 import { awardWebOrderLoyalty, planWebRedemption, holdWebOrderPoints, releaseWebOrderPoints, recordWebPointsTender, pointsHoldActive, isPointsKeyword, pointsSmsReply } from './scripts/web-loyalty.mjs';
@@ -803,6 +805,9 @@ function shapeStorefrontItem(row) {
     set: storefrontCleanText(d.set || d.series || '', 120), year: storefrontCleanText(d.year || '', 12), variant: storefrontCleanText(d.variant || d.finish || '', 120), condition: storefrontCleanText(d.condition || d.grade || '', 80),
     configuration: storefrontCleanText(d.configuration || '', 60),
     rarity: storefrontCleanText(d.rarity || '', 100), language: storefrontCleanText(d.language || '', 80),
+    scryfallId: storefrontCleanText(d.scryfallId || d.scryfall_id || d.externalRefs?.scryfallId || d.raw?.scryfallId || '',80),
+    tcgPlayerId: storefrontCleanText(d.tcgPlayerId || d.tcgplayerId || d.tcgplayerProductId || d.externalRefs?.tcgPlayerId || d.raw?.tcgPlayerId || '',80),
+    setCode: storefrontCleanText(d.setCode || d.set_code || d.raw?.setCode || '',40),
     finish: storefrontCleanText(d.finish || '', 120), treatment: storefrontCleanText(d.treatment || '', 120),
     grade: storefrontCleanText(d.grade || '', 40), isRelic: d.is_relic === true,
     // photoDataUrl/thumbnail are where the dashboard's own upload flow
@@ -2642,7 +2647,7 @@ function renderMtgSetIndexPage(sets) {
   });
 }
 
-function renderMtgSetPage(set, cards) {
+function renderMtgSetPage(set, cards, inventory = []) {
   const cardTiles = cards.map(card => {
     const href = `/mtg/${mtgEscapeHtml(set.setCode)}/${mtgCardSlug(card)}`;
     const img = card.imageUris?.small || card.cardFaces?.[0]?.imageUris?.small || '';
@@ -2659,11 +2664,16 @@ function renderMtgSetPage(set, cards) {
       description: `All cards in ${set.setName || set.setCode}`,
       hasPart: cards.slice(0, 200).map(card => ({ '@type': 'Product', name: card.name, sku: card.scryfallId })),
     },
-    bodyHtml: `<div class="mp-crumb"><a href="/mtg">← All MTG sets</a></div><h1>${mtgEscapeHtml(set.setName || set.setCode)}</h1><p class="mp-sub">${cards.length.toLocaleString()} cards${year ? ` · released ${year}` : ''}</p><div class="mp-grid">${cardTiles}</div>`,
+    bodyHtml: `<div class="mp-crumb"><a href="/mtg">← All MTG sets</a></div><h1>${mtgEscapeHtml(set.setName || set.setCode)}</h1><p class="mp-sub">${cards.length.toLocaleString()} cards${year ? ` · released ${year}` : ''}. Catalog prices are market references; available store copies have their own selling prices.</p><p><a href="/mtg-new-releases?set=${encodeURIComponent(set.setCode)}">Open the interactive card viewer →</a> · <a href="/category/mtg">Shop MTG inventory</a></p>${renderCatalogStock(inventory,cards,'mtg',set)}<div class="mp-grid">${cardTiles}</div>`,
   });
 }
 
-function renderMtgCardPage(card) {
+function renderCatalogStock(inventory, cards, game, set) {
+  const sections=cards.map(card=>catalogInventoryHtml(inventory,card,game,set,{available:isStorefrontItemAvailable,slug:mtgSlugify,escape:mtgEscapeHtml})).filter(html=>html.includes('mp-catalog-stock'));
+  return [...new Set(sections)].join('');
+}
+
+function renderMtgCardPage(card, inventory = []) {
   const img = card.imageUris?.normal || card.cardFaces?.[0]?.imageUris?.normal || '';
   const priceLines = mtgPriceLines(card);
   const priceNum = card.prices?.usd ? Number(card.prices.usd) : null;
@@ -2682,10 +2692,10 @@ function renderMtgCardPage(card) {
     bodyHtml: `<div class="mp-crumb"><a href="/mtg">All MTG sets</a> / <a href="/mtg/${mtgEscapeHtml(card.setCode)}">${mtgEscapeHtml(card.setName || card.setCode)}</a></div>` +
       `<div class="mp-detail">${img ? `<img src="${mtgEscapeHtml(img)}" alt="${mtgEscapeHtml(card.name)}">` : ''}` +
       `<div><h1>${mtgEscapeHtml(card.name)}</h1><div class="mp-meta">${mtgEscapeHtml(card.setName || card.setCode)} · #${mtgEscapeHtml(card.collectorNumber)} · ${mtgEscapeHtml(card.rarity || '')}</div>` +
-      `<div class="mp-prices">${priceLines.map(line => `<span class="mp-price-pill">${mtgEscapeHtml(line)}</span>`).join('') || '<span class="mp-meta">No current price data</span>'}</div>` +
+      `<p class="mp-meta">Reference market prices · store copies are listed separately below.</p><div class="mp-prices">${priceLines.map(line => `<span class="mp-price-pill">${mtgEscapeHtml(line)}</span>`).join('') || '<span class="mp-meta">No current price data</span>'}</div>` +
       `<div class="mp-meta">${mtgEscapeHtml(card.typeLine || '')}${card.manaCost ? ` · ${mtgEscapeHtml(card.manaCost)}` : ''}</div>` +
       `${card.oracleText ? `<div class="mp-oracle">${mtgEscapeHtml(card.oracleText)}</div>` : ''}` +
-      `${card.artist ? `<div class="mp-meta">Illustrated by ${mtgEscapeHtml(card.artist)}</div>` : ''}</div></div>`,
+      `${card.artist ? `<div class="mp-meta">Illustrated by ${mtgEscapeHtml(card.artist)}</div>` : ''}</div></div>` + catalogInventoryHtml(inventory,card,'mtg',{}, {available:isStorefrontItemAvailable,slug:mtgSlugify,escape:mtgEscapeHtml}),
   });
 }
 
@@ -2884,6 +2894,7 @@ function renderItemDetailPage(item, canonicalSlug, allListable) {
       `${facts.length ? `<h2>Item details</h2><dl>${facts.map(f=>`<dt style="font-weight:700">${mtgEscapeHtml(f.name)}</dt><dd style="margin:0 0 10px">${mtgEscapeHtml(f.value)}</dd>`).join('')}</dl>` : ''}` +
       `${reviewHtml}` +
       `</div></div>` +
+      (['mtg','pokemon'].includes(item.categorySlug) ? `<p><a href="/${item.categorySlug}">Browse ${item.categorySlug==='mtg'?'MTG':'Pokémon'} set checklists</a>${item.set ? ` · <a href="/${item.categorySlug==='mtg'?'mtg':'pokemon'}-new-releases?set=${encodeURIComponent(item.setCode||item.set)}">Open this set in the card viewer</a>` : ''}</p>` : '') +
       (item.categorySlug === 'comics' ? renderBookAlertForm([alertBookTitle(item.name)],ITEM_DETAIL_STORE_ID,mtgEscapeHtml) : '') +
       renderRelatedItemsHtml(related),
   });
@@ -2933,6 +2944,7 @@ function renderCategoryLandingPage(slug, items, page = 1) {
       ] },
     ],
     bodyHtml: `<div class="mp-crumb"><a href="/shop">← Shop</a></div><h1>${mtgEscapeHtml(label)}</h1><p class="mp-sub">${mtgEscapeHtml(copy)}</p>` +
+      (['mtg','pokemon'].includes(slug) ? `<p><a href="/${slug}">Browse all ${slug==='mtg'?'MTG':'Pokémon'} sets and card checklists</a> · <a href="/${slug}-new-releases">Open the interactive set viewer</a></p>` : '') +
       (shown.length
         ? `<p class="mp-meta">Showing ${(page-1)*60+1}–${Math.min(page*60,items.length)} of ${items.length.toLocaleString()}</p><div class="mp-grid">${tiles}</div>${pagination}`
         : `<p class="mp-sub">Nothing in stock in this category right now -- <a href="/shop">browse the full shop</a> instead.</p>`),
@@ -6334,7 +6346,7 @@ async function routeRequest(request, env, ctx) {
       const origin = await fetch(request);
       if (!origin.ok) return origin;
       const existing = request.method === 'HEAD' ? '' : await origin.text();
-      const additions = ['sitemap-items.xml', 'sitemap-preorders.xml', 'sitemap-books.xml', 'sitemap-pages.xml']
+      const additions = ['sitemap-items.xml', 'sitemap-preorders.xml', 'sitemap-books.xml', 'sitemap-pages.xml', 'sitemap-pokemon.xml']
         .map(path => 'Sitemap: https://www.themanapocket.com/' + path).filter(line => !existing.includes(line));
       const headers = new Headers(origin.headers);
       for (const name of ['content-length', 'content-encoding', 'etag']) headers.delete(name);
@@ -7461,6 +7473,11 @@ async function routeRequest(request, env, ctx) {
       return response;
     }
 
+    if(url.pathname==='/pokemon'||url.pathname.startsWith('/pokemon/')||url.pathname==='/sitemap-pokemon.xml') {
+      const response=await handlePokemonCatalog(request,env,url,{escape:mtgEscapeHtml,slug:mtgSlugify,shell:mtgPageShell,listItems:()=>fetchAllListableStorefrontItemsCached(env,ctx),available:isStorefrontItemAvailable});
+      if(response)return response;
+    }
+
     // GET /mtg -- index of every MTG set (public, SEO page -- see the
     // "Public MTG card/set pages" block above /catalog/mtg/manifest... no,
     // above /compactToppsCard for the render helpers).
@@ -7484,7 +7501,7 @@ async function routeRequest(request, env, ctx) {
     // GET /mtg/{setCode} -- every card in one set, with prices.
     const mtgSetMatch = url.pathname.match(/^\/mtg\/([^/]+)$/);
     if (mtgSetMatch && request.method === 'GET') {
-      const cacheKey = new Request(url.toString(), request);
+      const cacheKey = new Request(url.origin+url.pathname+'?catalog-stock=v1', request);
       const cached = await caches.default.match(cacheKey);
       if (cached) return cached;
       if (!env.MTG_CATALOG_R2) return mtgComingSoonPage();
@@ -7502,8 +7519,8 @@ async function routeRequest(request, env, ctx) {
         if (String(card.setCode || '').toLowerCase() === setCode) cards.push(card);
       }
       cards.sort((a, b) => mtgCollectorSortKey(a.collectorNumber) - mtgCollectorSortKey(b.collectorNumber));
-      const response = mtgHtmlResponse(renderMtgSetPage(set, cards));
-      response.headers.set('Cache-Control', 'public, max-age=21600');
+      const response = mtgHtmlResponse(renderMtgSetPage(set, cards, await fetchAllListableStorefrontItemsCached(env,ctx)));
+      response.headers.set('Cache-Control', 'public, max-age=60');
       ctx.waitUntil(caches.default.put(cacheKey, response.clone()));
       return response;
     }
@@ -7511,7 +7528,7 @@ async function routeRequest(request, env, ctx) {
     // GET /mtg/{setCode}/{cardSlug} -- a single card's price/detail page.
     const mtgCardMatch = url.pathname.match(/^\/mtg\/([^/]+)\/([^/]+)$/);
     if (mtgCardMatch && request.method === 'GET') {
-      const cacheKey = new Request(url.toString(), request);
+      const cacheKey = new Request(url.origin+url.pathname+'?catalog-stock=v1', request);
       const cached = await caches.default.match(cacheKey);
       if (cached) return cached;
       if (!env.MTG_CATALOG_R2) return mtgComingSoonPage();
@@ -7527,8 +7544,8 @@ async function routeRequest(request, env, ctx) {
         if (mtgCardSlug(card) === cardSlug) { found = card; break; }
       }
       if (!found) return mtgNotFoundPage('That card was not found in this set.');
-      const response = mtgHtmlResponse(renderMtgCardPage(found));
-      response.headers.set('Cache-Control', 'public, max-age=21600');
+      const response = mtgHtmlResponse(renderMtgCardPage(found, await fetchAllListableStorefrontItemsCached(env,ctx)));
+      response.headers.set('Cache-Control', 'public, max-age=60');
       ctx.waitUntil(caches.default.put(cacheKey, response.clone()));
       return response;
     }
@@ -7796,7 +7813,7 @@ async function routeRequest(request, env, ctx) {
       // 'other' is a low-value catch-all bucket -- both routes still work if
       // visited directly, just not worth asking Google to index separately.
       const skippedCategorySlugs = ['supplies', 'other'];
-      const staticUrls = ['/faq', '/news', '/category', '/preorders/catalog', '/comic-new-releases-the-mana-pocket', ...(await articleSitemapPaths(env)), ...Object.keys(CATEGORY_LANDING_LABELS).filter(slug => !skippedCategorySlugs.includes(slug)).map(slug => categoryLandingHref(slug))]
+      const staticUrls = ['/faq', '/news', '/category', '/preorders/catalog', '/pokemon', '/mtg', '/comic-new-releases-the-mana-pocket', ...(await articleSitemapPaths(env)), ...Object.keys(CATEGORY_LANDING_LABELS).filter(slug => !skippedCategorySlugs.includes(slug)).map(slug => categoryLandingHref(slug))]
         .map(path => `<url><loc>https://www.themanapocket.com${path}</loc></url>`).join('');
       const xml = `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${staticUrls}</urlset>`;
       return new Response(xml, { headers: { 'Content-Type': 'application/xml;charset=UTF-8', 'Cache-Control': 'public, max-age=3600' } });

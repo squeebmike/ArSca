@@ -52,8 +52,13 @@ async function cached(env, key, freshMs, load, now) {
   }
 }
 
-async function loadSets(env, now) {
+export async function loadPokemonSets(env, now = Date.now()) {
   return cached(env, SETS_KEY, SETS_FRESH_MS, () => upstream(env, '/sets', { sortBy: 'releaseDate', sortOrder: 'desc', limit: '400' }), now);
+}
+
+export async function loadPokemonSetCards(env, set, now = Date.now()) {
+  const name=String(set.name||set.id);
+  return cached(env,cardsKey(name),CARDS_FRESH_MS,()=>upstream(env,'/cards',{set:name,fetchAllInSet:'true',limit:'500'}),now);
 }
 
 // The Set Guide embed on the live page calls the older paths below, signed
@@ -77,14 +82,14 @@ export async function handlePublicPokemonRequest(request, env, url, json, now = 
   if (request.method !== 'GET') return json({ ok: false, error: 'GET only' }, 405);
   const headers = { 'Cache-Control': 'public, max-age=900' };
   try {
-    const sets = await loadSets(env, now);
+    const sets = await loadPokemonSets(env, now);
     if (url.pathname === '/public/pokemon/sets') return json({ ok: true, data: sets.data, cache: sets.cache }, 200, headers);
 
     const wanted = String(url.searchParams.get('set') || '').trim().slice(0, 150);
     const set = sets.data.find(s => String(s.name || '').toLowerCase() === wanted.toLowerCase() || String(s.id || '') === wanted);
     if (!set) return json({ ok: false, error: 'Unknown set' }, 404);
     const name = String(set.name || set.id);
-    const cards = await cached(env, cardsKey(name), CARDS_FRESH_MS, () => upstream(env, '/cards', { set: name, fetchAllInSet: 'true', limit: '500' }), now);
+    const cards = await loadPokemonSetCards(env,set,now);
     return json({ ok: true, set: name, data: cards.data, cache: cards.cache }, 200, headers);
   } catch (error) {
     return json({ ok: false, error: error.message }, 502);

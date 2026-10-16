@@ -41,6 +41,9 @@
   // redirects to www via a Cloudflare Redirect Rule (not code in this
   // repo) rather than DNS, so it never fights Webflow's management again.
   "routes": [
+    { "pattern": "www.themanapocket.com/pokemon", "zone_name": "themanapocket.com" },
+    { "pattern": "www.themanapocket.com/pokemon/*", "zone_name": "themanapocket.com" },
+    { "pattern": "www.themanapocket.com/sitemap-pokemon.xml", "zone_name": "themanapocket.com" },
     { "pattern": "www.themanapocket.com/dougvana-print", "zone_name": "themanapocket.com" },
     { "pattern": "www.themanapocket.com/index.html", "zone_name": "themanapocket.com" },
     { "pattern": "www.themanapocket.com/comics/*", "zone_name": "themanapocket.com" },
