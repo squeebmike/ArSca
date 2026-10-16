@@ -41,6 +41,16 @@ function lunarEstCostCents(v){
   var pctOff=lunarDiscountPct(v.publisher);
   return pctOff==null?null:Math.round(Number(v.msrpCents||0)*(1-pctOff/100));
 }
+// What one received copy cost, in dollars, for /foc/admin/receive: the
+// invoice's net price when the slip shows one; for a Lunar week (Lunar's
+// packing slip prints no prices) the publisher's Lunar discount off cover;
+// otherwise undefined, and the server uses PRH's 50% of cover.
+function focReceiveUnitCost(distributor,publisher,msrpCents,netUnitPrice){
+  if(Number(netUnitPrice)>0)return Number(netUnitPrice);
+  if(distributor!=='Lunar'||!(Number(msrpCents)>0))return undefined;
+  var est=lunarEstCostCents({publisher:publisher,msrpCents:msrpCents});
+  return est==null?undefined:Math.round(est)/100;
+}
 // Per-review-modal snapshot of whatever the description template needs to
 // be re-rendered with an AI paragraph slotted in (see focAiDescriptionCore
 // below) -- keyed by skuId for the single-cover modal, familyId for the
@@ -626,9 +636,13 @@ function openReceiveShipment(){
 async function confirmReceiveShipment(){
   var status=document.getElementById('foc-receive-status');
   var lines=[];
+  var isLunar=(state.cycle&&state.cycle.distributor)==='Lunar';
+  if(isLunar)await loadLunarDiscountSettings();
+  var variantById={};state.families.forEach(function(f){(f.variants||[]).forEach(function(v){variantById[v.id]=v;});});
   document.querySelectorAll('[data-receive-sku]').forEach(function(el){
     var qty=Math.max(0,parseInt(el.value,10)||0);
-    if(qty>0)lines.push({skuId:el.dataset.receiveSku,receivedQty:qty});
+    var v=variantById[el.dataset.receiveSku]||{};
+    if(qty>0)lines.push({skuId:el.dataset.receiveSku,receivedQty:qty,unitCost:isLunar?focReceiveUnitCost('Lunar',v.publisher,v.msrpCents,0):undefined});
   });
   if(!lines.length){toast_dash('Enter at least one received quantity');return;}
   if(status)status.textContent='Creating inventory…';
@@ -2731,11 +2745,13 @@ async function handleSlipFiles(event){
     var d=await api('/foc/admin/read-slip',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({storeId:getActiveStoreId(),images:images})});
     if(state.slip&&state.slip.lines.length){
       // Another page of the same slip: re-match all lines read so far together.
-      var raw=state.slip.lines.concat(d.lines).map(function(l){return{code:l.code,title:l.title,qty:l.qty,netUnitPrice:l.netUnitPrice};});
+      var raw=state.slip.lines.concat(d.lines).map(function(l){return{code:l.code,itemCode:l.itemCode,title:l.title,qty:l.qty,netUnitPrice:l.netUnitPrice};});
       d=await api('/foc/admin/read-slip',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({storeId:getActiveStoreId(),lines:raw,invoice:state.slip.invoice||d.invoice,onSaleDate:state.slip.onSaleDate||d.onSaleDate,totalUnits:Math.max(state.slip.totalUnits||0,d.totalUnits||0)})});
     }
     state.slip=d;
     state.slip.picks={};state.slip.qtys={};
+    // Lunar weeks are costed from your Lunar discounts (DC/Image are editable).
+    if((d.cycles||[]).some(function(c){return c.distributor==='Lunar';}))await loadLunarDiscountSettings();
     if(status) status.textContent='Looking up who these books are for…';
     await loadSlipBuyers(d);
     renderSlip();
@@ -2768,7 +2784,15 @@ function slipBuyersHtml(who){
   if(!rows.length)return '';
   return '<div style="font:9px/1.6 var(--font-mono);color:var(--text);margin-top:4px;padding:4px 6px;border-left:2px solid var(--gold);background:rgba(255,200,0,.06)">'+rows.join('')+'</div>';
 }
-function slipLineKey(l){ return l.code||l.title; }
+function slipLineKey(l){ return l.code||(l.itemCode?'item:'+l.itemCode:'')||l.title; }
+function slipCycleDistributor(cycleId){ var c=((state.slip&&state.slip.cycles)||[]).find(function(x){return x.id===cycleId;}); return (c&&c.distributor)||'PRH'; }
+// The cost a slip line will be received at, and where it came from.
+function slipLineCost(l){
+  var c=l.cover||{},dist=slipCycleDistributor(c.cycleId);
+  var unit=focReceiveUnitCost(dist,c.publisher,Math.round(Number(c.coverPrice||0)*100),l.netUnitPrice);
+  if(unit!=null)return {unit:unit,source:Number(l.netUnitPrice)>0?'net':'lunar'};
+  return {unit:Math.round(Number(c.coverPrice||0)*50)/100,source:'half'};
+}
 function slipIncluded(l){ var k=slipLineKey(l); return state.slip.picks[k]!=null?state.slip.picks[k]:!!(l.cover&&!l.cover.receivedAt); }
 function slipQty(l){ var k=slipLineKey(l); return state.slip.qtys[k]!=null?state.slip.qtys[k]:l.qty; }
 function slipLineHtml(l){
@@ -2777,14 +2801,14 @@ function slipLineHtml(l){
   if(l.how==='close') chips.push('<span style="color:var(--gold)">barcode read 1 digit off -- check it</span>');
   // Only a week whose PRH order was submitted from the dashboard knows what
   // was ordered; a week ordered straight with PRH just shows what's known.
-  if(!c.orderedQty) chips.push(c.orderOnFile?'<span style="color:var(--gold)">not on your PRH order</span>':'<span>no saved order for this week</span>');
+  if(!c.orderedQty) chips.push(c.orderOnFile?'<span style="color:var(--gold)">not on your '+esc(slipCycleDistributor(c.cycleId))+' order</span>':'<span>no saved order for this week</span>');
   else if(l.qty!==c.orderedQty) chips.push('<span style="color:var(--gold)">'+(c.orderOnFile?'ordered ':'expected ')+c.orderedQty+', slip says '+l.qty+'</span>');
   else if(l.how==='exact'&&!c.receivedAt) chips.push('<span style="color:var(--g)">matches your order</span>');
   chips=chips.concat(focPresoldChips(c.ebayPresold,c.customerShip,c.customerPickup));
   return '<div style="display:grid;grid-template-columns:22px 48px 1fr auto;gap:8px;align-items:center;padding:8px;border-bottom:1px solid var(--border)">'+
     '<input type="checkbox"'+(slipIncluded(l)?' checked':'')+' onchange="focSlipPick(\''+k+'\',this.checked)">'+focThumbHtml(c.coverImage,c.title)+
     '<div style="min-width:0"><div style="font-weight:700;font-size:11px;color:var(--text)">'+esc(c.title)+'</div>'+
-      '<div style="font:9px/1.5 var(--font-mono);color:var(--dim)">Slip: '+esc(l.title)+' · '+esc(l.code)+(l.netUnitPrice>0?' · net $'+Number(l.netUnitPrice).toFixed(2):'')+'</div>'+
+      '<div style="font:9px/1.5 var(--font-mono);color:var(--dim)">Slip: '+esc(l.title)+' · '+esc(l.code||l.itemCode)+(function(){var k=slipLineCost(l);return ' · cost $'+k.unit.toFixed(2)+(k.source==='net'?' (invoice net)':k.source==='lunar'?' (Lunar '+lunarDiscountPct(c.publisher)+'% off cover)':' (50% of cover)')+(c.coverPrice>0?' · sells $'+Number(c.coverPrice).toFixed(2):'');})()+'</div>'+
       '<div style="font:9px/1.5 var(--font-mono);display:flex;gap:8px;flex-wrap:wrap">'+chips.join('')+'</div>'+slipBuyersHtml((state.slip.who||{})[c.skuId])+'</div>'+
     '<label style="font:8px var(--font-mono);color:var(--dim)">RECEIVED<input class="tsi" type="number" min="0" style="width:64px;margin:2px 0 0" value="'+qty+'" onchange="focSlipQty(\''+k+'\',this.value)"></label></div>';
 }
@@ -2793,7 +2817,7 @@ function renderSlip(){
   var s=state.slip;
   var head='<section class="foc-hero"><div class="foc-toolbar"><button class="hbtn" onclick="loadFocCycles()">← FOC WALL</button>'+(s?'<button class="hbtn" onclick="openPackingSlipScan()">START OVER</button>':'')+'</div>'+
     '<div style="font:900 20px/1.1 \'Orbitron\',monospace;color:var(--text);margin-top:10px">Scan packing slip</div>'+
-    '<div style="font:10px/1.6 var(--font-mono);color:var(--dim);margin-top:4px">Photograph the INVOICE/PACKING LIST that comes in the box (the full sheet lists every carton). Each book is matched to its FOC cover by barcode, across every FOC week on the slip. Check the list, then CONFIRM RECEIVED: customer copies are set aside first, the rest go into stock at the invoice\'s net price.</div>'+
+    '<div style="font:10px/1.6 var(--font-mono);color:var(--dim);margin-top:4px">Photograph the INVOICE/PACKING LIST that comes in the box (the full sheet lists every carton). Each book is matched to its FOC cover by barcode, across every FOC week on the slip. Works for PRH invoices (matched by barcode) and Lunar packing slips (matched by Lunar\'s item code, e.g. 0826DC0141). Check the list, then CONFIRM RECEIVED: customer copies are set aside first, the rest go into stock at the invoice\'s net price -- or, for Lunar (no prices on the slip), your Lunar discount off cover.</div>'+
     '<input type="file" id="foc-slip-file" accept="image/*" multiple hidden onchange="handleSlipFiles(event)">'+
     '<div class="foc-toolbar" style="margin-top:10px"><button class="hbtn" style="color:var(--g)" onclick="focSlipPickPhotos()">📷 '+(s?'ADD ANOTHER PAGE':'TAKE / CHOOSE SLIP PHOTOS')+'</button></div>'+
     '<div id="foc-slip-status" style="font:10px var(--font-mono);color:var(--dim);margin-top:6px"></div></section>';
@@ -2807,7 +2831,8 @@ function renderSlip(){
   var groups={};matched.forEach(function(l){(groups[l.cover.cycleId]=groups[l.cover.cycleId]||[]).push(l);});
   var sections=Object.keys(groups).sort(function(a,b){return String(groups[a][0].cover.focDate).localeCompare(String(groups[b][0].cover.focDate));}).map(function(id){
     var cyc=(s.cycles||[]).find(function(x){return x.id===id;});
-    var tip=cyc&&!cyc.orderOnFile?'<div style="font:9px/1.6 var(--font-mono);color:var(--dim);padding:6px 8px">No PRH order saved for this week, so quantities can\'t be checked against it. Next time, after ordering on PRH: download the cart from PRH\'s Cart screen and load it with UPLOAD PRH CART on this week\'s FINAL FOC REVIEW. One upload, and slips get checked against it.</div>':'';
+    var tip=cyc&&!cyc.orderOnFile&&cyc.distributor==='Lunar'?'<div style="font:9px/1.6 var(--font-mono);color:var(--dim);padding:6px 8px">No Lunar order saved for this week, so quantities can\'t be checked against it -- the slip\'s counts are used. Lunar slips print no prices, so each copy\'s cost is your Lunar discount off cover (LUNAR COST ESTIMATE SETTINGS on the Lunar tab).</div>'
+      :cyc&&!cyc.orderOnFile?'<div style="font:9px/1.6 var(--font-mono);color:var(--dim);padding:6px 8px">No PRH order saved for this week, so quantities can\'t be checked against it. Next time, after ordering on PRH: download the cart from PRH\'s Cart screen and load it with UPLOAD PRH CART on this week\'s FINAL FOC REVIEW. One upload, and slips get checked against it.</div>':'';
     return '<section class="foc-family"><header class="foc-family-head"><div class="foc-family-title">'+esc(cycleLabel(id))+' · '+groups[id].length+' cover'+(groups[id].length===1?'':'s')+'</div></header>'+tip+groups[id].map(slipLineHtml).join('')+'</section>';
   }).join('');
   var notMine=unmatched.length?'<section class="foc-family"><header class="foc-family-head"><div class="foc-family-title" style="color:var(--red)">Not one of your FOC books ('+unmatched.length+')</div></header><div style="font:9px/1.6 var(--font-mono);color:var(--dim);padding:6px 8px">These barcodes aren\'t on any imported FOC week. They won\'t be received here; add them by hand, or import that FOC file first and scan again.</div>'+
@@ -2834,7 +2859,8 @@ async function confirmSlipReceive(){
   var byCycle={};
   s.lines.filter(function(l){return l.cover&&slipIncluded(l);}).forEach(function(l){
     var qty=Math.max(0,parseInt(slipQty(l),10)||0);if(!qty)return;
-    (byCycle[l.cover.cycleId]=byCycle[l.cover.cycleId]||[]).push({skuId:l.cover.skuId,receivedQty:qty,unitCost:l.netUnitPrice>0?l.netUnitPrice:undefined});
+    var k=slipLineCost(l);
+    (byCycle[l.cover.cycleId]=byCycle[l.cover.cycleId]||[]).push({skuId:l.cover.skuId,receivedQty:qty,unitCost:k.source==='half'?undefined:k.unit});
   });
   var ids=Object.keys(byCycle);if(!ids.length){toast_dash('Nothing ticked to receive');return;}
   var total=ids.reduce(function(a,id){return a+byCycle[id].reduce(function(b,x){return b+x.receivedQty;},0);},0);
@@ -2867,7 +2893,8 @@ async function confirmSlipReceive(){
   if(spent>0&&typeof window.addStoreInventoryPurchase==='function'){
     try{
       var inv=String(s.invoice||'').trim();
-      var r=await window.addStoreInventoryPurchase({amount:spent,key:inv?'invoice '+inv:'',note:(inv?'PRH invoice '+inv:'Distributor shipment')+' · packing slip',category:'Comics (distributor)'});
+      var dists=Object.keys(ids.reduce(function(m,id){m[slipCycleDistributor(id)]=1;return m;},{}));
+      var r=await window.addStoreInventoryPurchase({amount:spent,key:inv?'invoice '+inv:'',note:(inv?dists.join('/')+' invoice '+inv:'Distributor shipment')+' · packing slip',category:'Comics (distributor)'});
       if(r&&r.ok)toast_dash('Inventory purchase recorded: $'+spent.toFixed(2)+(r.updated?' (added to invoice '+inv+', now $'+Number(r.amount).toFixed(2)+')':''));
     }catch(e){}
   }

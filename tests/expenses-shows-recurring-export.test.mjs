@@ -132,7 +132,7 @@ const settle = async () => { for (let i = 0; i < 6; i++) await new Promise(r => 
 
 // The packing slip calls it; the Worker keeps monthly costs forever.
 const slip = fs.readFileSync('scripts/foc-dashboard.js', 'utf8');
-assert.match(slip, /window\.addStoreInventoryPurchase\(\{amount:spent,key:inv\?'invoice '\+inv:'',note:\(inv\?'PRH invoice '\+inv:'Distributor shipment'\)\+' · packing slip',category:'Comics \(distributor\)'\}\)/);
+assert.match(slip, /window\.addStoreInventoryPurchase\(\{amount:spent,key:inv\?'invoice '\+inv:'',note:\(inv\?dists\.join\('\/'\)\+' invoice '\+inv:'Distributor shipment'\)\+' · packing slip',category:'Comics \(distributor\)'\}\)/);
 assert.match(slip, /var unit=Number\(x\.unitCost\)>0\?Number\(x\.unitCost\):Math\.round\(Number\(\(coverBySku\[x\.skuId\]\|\|\{\}\)\.coverPrice\|\|0\)\*50\)\/100;spent\+=unit\*x\.receivedQty;/);
 const worker = fs.readFileSync('cloudflare-worker-full.js', 'utf8');
 assert.match(worker, /const permanent = key\.startsWith\('foc_connecting'\) \|\| key\.startsWith\('foc_watch'\) \|\| key\.startsWith\('expense_'\);/);
