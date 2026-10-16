@@ -39,12 +39,16 @@ try{
  const variants=[{id:'ready',canPreorder:true,variantLabel:'Cover A',priceCents:500},{id:'request',canPreorder:true,waitlistOnly:true,priceCents:500}];
  const entries=preorderDirectoryEntries([{cycle:{isOpen:true},families:[{seriesName:'Batman',issueNumber:'25',variants}]},{cycle:{isOpen:false},families:[{title:'Closed',variants:[{id:'unsecured',canPreorder:true},{id:'secured',canPreorder:true,afterFoc:true,afterFocLeft:2,priceCents:600}]}]}],deps);
  assert.deepEqual(entries.map(e=>e.id).sort(),['ready','secured']);
+ assert.equal(preorderDirectoryEntries([{cycle:{isOpen:true},families:[{title:'Example',variants}]}],deps,true).length,2,'historical view retains public request-only covers');
  const directoryRows=Array.from({length:121},(_,n)=>({...entries[0],id:String(n),url:'/preorder/'+n+'/batman'}));
  globalThis.caches.default.match=async key=>key.url.includes('preorder-directory')?new Response(JSON.stringify(directoryRows)):null;
  const directory=await handleFocRequest(new Request('https://www.themanapocket.com/preorders/catalog?page=3'),{},new URL('https://www.themanapocket.com/preorders/catalog?page=3'),deps);
  assert.equal(directory.status,200);const directoryHtml=await directory.text();
  assert.match(directoryHtml,/href="\/preorder\/120\/batman"/);assert.match(directoryHtml,/not received shelf stock|after we receive the books/);assert.match(directoryHtml,/href="\/preorders\/catalog\?page=2"/);
  assert.equal((await handleFocRequest(new Request('https://www.themanapocket.com/preorders/catalog?page=4'),{},new URL('https://www.themanapocket.com/preorders/catalog?page=4'),deps)).status,404);
+ directoryRows.push({...entries[0],id:'closed',url:'/preorder/closed/example',orderable:false,price:0});
+ const archive=await handleFocRequest(new Request('https://www.themanapocket.com/preorders/catalog?status=all&page=3'),{},new URL('https://www.themanapocket.com/preorders/catalog?status=all&page=3'),deps);
+ assert.equal(archive.status,200);const archiveHtml=await archive.text();assert.match(archiveHtml,/\/preorder\/closed\/example/);assert.match(archiveHtml,/Not currently orderable/);assert.match(archiveHtml,/Price not set/);
  const sitemapDeps={...deps,publicStoreId:'store',supabaseAdminFetch:async(_,path)=>({data:path.startsWith('comic_skus')?[{id:'cover',family_id:'family',variant_label:'Cover C 1:25 Variant'}]:[{id:'family',series_name:'Batman',issue_number:'25'}]})};
  const sitemapResponse=await handleFocRequest(new Request('https://www.themanapocket.com/sitemap-preorders.xml'),{},new URL('https://www.themanapocket.com/sitemap-preorders.xml'),sitemapDeps);
  assert.match(await sitemapResponse.text(),/batman-25-cover-c-1-25-ratio-variant/,'sitemap uses the same ratio wording as the detail page');

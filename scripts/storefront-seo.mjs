@@ -7,6 +7,7 @@ export const storeOrganization = {
 };
 export function productFacts(item) {
   const comic=item.comic||{};
+  const ratio=[item.variant,comic.selectedCover,item.name].filter(Boolean).join(' ').match(/\b1\s*:\s*\d+\b/);
   return Object.entries({
     Category:item.category,Game:item.game,Sport:item.sport,Set:item.set,Year:item.year,
     'Player / character':item.player,Team:item.team,'Card number':item.cardNumber,
@@ -15,6 +16,7 @@ export function productFacts(item) {
     Manufacturer:item.brand,'Signed by':item.signedBy,
     ...(item.isSigned ? {Autographed:'Yes'} : {}),...(item.isRelic ? {Relic:'Yes'} : {}),
     Publisher:comic.publisher,Series:comic.seriesName,'Issue number':comic.number,
+    ...(ratio && item.categorySlug==='comics' ? {'Ratio variant':ratio[0].replace(/\s/g,'')} : {}),
     'Cover designation':comic.selectedCover,'Cover artist':comic.coverArtists?.join(', '),
     Writer:comic.writers?.join(', '),'Interior artist':comic.artists?.join(', '),'Release date':comic.storeDate,
   }).filter(([,value])=>value!=null&&String(value).trim()).map(([name,value])=>({name,value:String(value).trim()}));

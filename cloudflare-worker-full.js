@@ -799,7 +799,7 @@ function shapeStorefrontItem(row) {
     categorySlug: storefrontCategorySlug([d.category, d.type, d.game, d.sport].filter(Boolean).join(' ')),
     productType: storefrontCleanText(d.productType || d.product_type || d.itemType || d.item_type || d.configuration || '', 80),
     brand: storefrontCleanText(d.brand || d.manufacturer || '', 100), sport: storefrontCleanText(d.sport || '', 60), game: storefrontCleanText(d.game || '', 60),
-    player: storefrontCleanText(d.player || d.subject || '', 120), team: storefrontCleanText(d.team || '', 100), cardNumber: storefrontCleanText(d.cardNumber || d.number || '', 40),
+    player: storefrontCleanText(d.player || d.subject || '', 120), team: storefrontCleanText(d.team || '', 100), cardNumber: storefrontCleanText(d.cardNumber || d.collectorNumber || d.collector_number || d.number || '', 40),
     set: storefrontCleanText(d.set || d.series || '', 120), year: storefrontCleanText(d.year || '', 12), variant: storefrontCleanText(d.variant || d.finish || '', 120), condition: storefrontCleanText(d.condition || d.grade || '', 80),
     configuration: storefrontCleanText(d.configuration || '', 60),
     rarity: storefrontCleanText(d.rarity || '', 100), language: storefrontCleanText(d.language || '', 80),
