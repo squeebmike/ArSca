@@ -2456,7 +2456,7 @@ function mtgSiteHeader() {
       ['/comic-new-releases-the-mana-pocket', 'Comic New Releases'],
       ['/preorders', 'Comic Preorders'],
       ['/books', 'Book Backlist'],
-      ['/articles', 'Comic Articles'],
+      ['/articles', 'Collector Articles'],
       ['/pokemon-new-releases', 'Pokémon New Releases'],
       ['/mtg-new-releases', 'MTG New Releases'],
       ['/publishing', 'Publishing'],

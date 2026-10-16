@@ -128,6 +128,6 @@ console.log('Article page checks passed');
 const worker = fs.readFileSync('cloudflare-worker-full.js', 'utf8');
 assert.match(worker, /handleArticlesRequest\(request, env, ctx, url/);
 assert.match(worker, /\.\.\.\(await articleSitemapPaths\(env\)\)/, 'articles are in sitemap-pages.xml');
-assert.match(worker, /\['\/articles', 'Comic Articles'\]/, 'nav link');
+assert.match(worker, /\['\/articles', 'Collector Articles'\]/, 'nav link');
 assert.match(fs.readFileSync('wrangler.deploy.jsonc', 'utf8'), /"www\.themanapocket\.com\/articles\*"/);
 console.log('Comic article wiring checks passed');

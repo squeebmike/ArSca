@@ -328,7 +328,7 @@ export function renderArticlePage(article, statuses, related, deps) {
     ? `<section class="mp-facts"><h2>${esc(main?.name || 'Book details')}</h2><dl>${article.facts.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('')}</dl></section>`
     : '';
   const more = related.length
-    ? `<section class="mp-books"><h2>More comic articles</h2>${related.map(a => `<div class="mp-book-row"><div><b><a href="/articles/${esc(a.slug)}" style="color:#fff;text-decoration:none">${esc(a.title)}</a></b><span>${esc(dateLabel(a.publishedAt))}</span></div></div>`).join('')}</section>`
+    ? `<section class="mp-books"><h2>More collector articles</h2>${related.map(a => `<div class="mp-book-row"><div><b><a href="/articles/${esc(a.slug)}" style="color:#fff;text-decoration:none">${esc(a.title)}</a></b><span>${esc(dateLabel(a.publishedAt))}</span></div></div>`).join('')}</section>`
     : '';
   const description = (article.summary || plainText(article.bodyHtml).slice(0, 180)).slice(0, 300);
   return deps.pageShell({
@@ -346,11 +346,11 @@ export function renderArticlePage(article, statuses, related, deps) {
         image: image ? [image] : undefined, mainEntityOfPage: url,
       },
       { '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: [
-        { '@type': 'ListItem', position: 1, name: 'Comic Articles', item: 'https://www.themanapocket.com/articles' },
+        { '@type': 'ListItem', position: 1, name: 'Collector Articles', item: 'https://www.themanapocket.com/articles' },
         { '@type': 'ListItem', position: 2, name: article.title, item: url },
       ] },
     ],
-    bodyHtml: STYLE + `<article class="mp-art"><div class="mp-crumb"><a href="/articles">← Comic articles</a></div>` +
+    bodyHtml: STYLE + `<article class="mp-art"><div class="mp-crumb"><a href="/articles">← Collector articles</a></div>` +
       `<h1>${esc(article.title)}</h1><div class="mp-art-meta">${esc(article.author)}${article.publishedAt ? ` · ${esc(dateLabel(article.publishedAt))}` : ''} · ${readingMinutes(article.bodyHtml)} min read</div>` +
       (image ? `<a href="${esc(image)}" target="_blank" rel="noopener" aria-label="Open full-size book cover"><img class="mp-art-hero" width="660" height="1000" fetchpriority="high" decoding="async" src="${esc(image)}" alt="${esc(article.imageAlt || article.title)}"></a><p class="mp-art-meta">Tap the cover to see it full size.</p>` : '') +
       renderBuyBox(article, main, esc) +
@@ -366,12 +366,12 @@ export function renderArticleList(articles, deps) {
   const esc = deps.esc;
   const cards = articles.map(a => `<a class="mp-art-card" href="/articles/${esc(a.slug)}">${a.image ? `<img src="${esc(a.image)}" alt="" loading="lazy">` : ''}<div><div class="mp-meta">${esc(dateLabel(a.publishedAt))}</div><h2>${esc(a.title)}</h2>${a.summary ? `<p>${esc(a.summary)}</p>` : ''}<span style="color:#8bd450;font-weight:700;font-size:14px">Read it →</span></div></a>`).join('');
   return deps.pageShell({
-    title: 'Comic Articles | The Mana Pocket',
-    description: 'Comic news, upcoming books worth preordering, and collector notes on covers and variants from The Mana Pocket.',
+    title: 'Collector Articles | The Mana Pocket',
+    description: 'Comics, Pokémon, MTG and sports cards: release news, set guides, covers and collector notes from The Mana Pocket.',
     canonicalPath: '/articles',
-    jsonLd: { '@context': 'https://schema.org', '@type': 'CollectionPage', name: 'Comic Articles',
+    jsonLd: { '@context': 'https://schema.org', '@type': 'CollectionPage', name: 'Collector Articles',
       hasPart: articles.slice(0, 20).map(a => ({ '@type': 'Article', headline: a.title, url: `https://www.themanapocket.com/articles/${a.slug}`, datePublished: a.publishedAt || undefined })) },
-    bodyHtml: STYLE + `<div style="max-width:900px;margin:0 auto"><div class="mp-crumb"><a href="/preorders">← Comic preorders</a></div><h1>Comic articles</h1><p class="mp-sub">What we're reading, what's worth preordering, and which covers to watch.</p></div>` +
+    bodyHtml: STYLE + `<div style="max-width:900px;margin:0 auto"><div class="mp-crumb"><a href="/preorders">← Comic preorders</a></div><h1>Collector articles</h1><p class="mp-sub">New releases, set guides, and the cards and covers we’re watching.</p></div>` +
       (cards ? `<div class="mp-art-list">${cards}</div>` : `<p class="mp-sub" style="text-align:center">The first articles are on their way.</p>`),
   });
 }
@@ -389,8 +389,8 @@ export async function handleArticlesRequest(request, env, ctx, url, deps) {
   try { articles = await fetchArticles(env); }
   catch (error) {
     console.error('Articles unavailable:', error.message);
-    return new Response(deps.pageShell({ title: 'Comic Articles | The Mana Pocket', description: 'Comic articles from The Mana Pocket.', canonicalPath: '/articles', robotsNoindex: true,
-      bodyHtml: `<h1>Comic articles</h1><p class="mp-sub">Articles are temporarily unavailable. Please try again in a minute.</p>` }), { status: 503, headers: { 'Content-Type': 'text/html;charset=UTF-8', 'Retry-After': '60' } });
+    return new Response(deps.pageShell({ title: 'Collector Articles | The Mana Pocket', description: 'Collector articles from The Mana Pocket.', canonicalPath: '/articles', robotsNoindex: true,
+      bodyHtml: `<h1>Collector articles</h1><p class="mp-sub">Articles are temporarily unavailable. Please try again in a minute.</p>` }), { status: 503, headers: { 'Content-Type': 'text/html;charset=UTF-8', 'Retry-After': '60' } });
   }
   let html, status = 200;
   if (path === '/articles') html = renderArticleList(articles, deps);
@@ -400,7 +400,7 @@ export async function handleArticlesRequest(request, env, ctx, url, deps) {
     if (!article) {
       status = 404;
       html = deps.pageShell({ title: 'Article not found | The Mana Pocket', description: 'That article is not available.', canonicalPath: '/articles', robotsNoindex: true,
-        bodyHtml: `<div class="mp-crumb"><a href="/articles">← Comic articles</a></div><h1>Article not found</h1><p class="mp-sub">It may have been renamed or taken down. <a href="/articles">See all comic articles</a>.</p>` });
+        bodyHtml: `<div class="mp-crumb"><a href="/articles">← Collector articles</a></div><h1>Article not found</h1><p class="mp-sub">It may have been renamed or taken down. <a href="/articles">See all collector articles</a>.</p>` });
     } else {
       // One inventory load shared by every book on the page. Each is the
       // whole store catalog (~5MB); five in parallel ran the Worker out of
