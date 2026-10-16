@@ -7546,6 +7546,34 @@ async function routeRequest(request, env, ctx) {
     if (['GET','HEAD'].includes(request.method) && (url.pathname === '/supplies' || url.pathname === '/supplies/' || url.pathname === '/bcw/' || (url.pathname === '/shop' && url.searchParams.get('cat') === 'supplies'))) {
       return Response.redirect('https://www.themanapocket.com/bcw',301);
     }
+    // Preserve the custom Webflow print page and its checkout scripts. Only
+    // its initial SEO/stock fields come from the same inventory row as sales.
+    if (url.hostname === 'www.themanapocket.com' && url.pathname === '/dougvana-print' && request.method === 'GET') {
+      const originHeaders=new Headers(request.headers);originHeaders.delete('if-none-match');originHeaders.delete('if-modified-since');
+      const originResponse=await fetch(new Request(request,{headers:originHeaders}));
+      if(originResponse.status!==200 || !originResponse.headers.get('Content-Type')?.includes('text/html'))return originResponse;
+      let item;
+      try {
+        const result=await supabaseAdminFetch(env,`inventory_items?store_id=eq.${encodeURIComponent(ITEM_DETAIL_STORE_ID)}&id=eq.1e18c84c-5f57-4762-8afb-c193184e5a24&select=id,data,status,created_at,updated_at&limit=1`);
+        if(!result.response?.ok || !result.data?.[0])return originResponse;
+        item=shapeStorefrontItem(result.data[0]);
+      }catch{return originResponse;}
+      const available=isStorefrontItemAvailable(item),canonical='https://www.themanapocket.com/dougvana-print';
+      const description=[item.name,item.signedBy?'Signed by '+item.signedBy:null,item.price>0?'$'+item.price.toFixed(2)+' USD':null,available?'In stock at The Mana Pocket':'Currently unavailable'].filter(Boolean).join(' · ');
+      const product={'@context':'https://schema.org','@type':'Product',name:item.name,sku:item.id,url:canonical,description,...(item.image?{image:item.image}:{}),additionalProperty:productFacts(item).map(f=>({'@type':'PropertyValue',...f})),...(item.price>0?{offers:{'@type':'Offer',url:canonical,price:item.price,priceCurrency:'USD',availability:'https://schema.org/'+(available?'InStock':'OutOfStock'),itemCondition:productCondition(item.condition),seller:{'@id':storeOrganization['@id']}}}:{})};
+      const jsonLd=JSON.stringify([storeOrganization,product]).replace(/</g,'\\u003c');
+      const words=item.name.split(/\s+/),first=words.shift();
+      const rewritten=new HTMLRewriter()
+        .on('head',{element(e){e.append('<script type="application/ld+json">'+jsonLd+'</script>',{html:true});}})
+        .on('title',{element(e){e.setInnerContent(item.name+' | The Mana Pocket');}})
+        .on('meta[name="description"],meta[property="og:description"]',{element(e){e.setAttribute('content',description);}})
+        .on('h1.dv-h1',{element(e){e.setInnerContent(mtgEscapeHtml(first)+' <span style="display:block;font:600 18px/1.4 system-ui,sans-serif;letter-spacing:.03em">'+mtgEscapeHtml(words.join(' '))+'</span>',{html:true});}})
+        .on('[data-dv-stock-hero]',{element(e){e.setInnerContent(available?String(item.quantity)+' prints available':'Currently unavailable');}})
+        .on('.dv-sub',{element(e){e.append('<span data-mp-live-print-facts style="display:block;margin-top:8px;font-size:14px">'+mtgEscapeHtml(description)+'</span>',{html:true});}})
+        .transform(originResponse);
+      const headers=new Headers(rewritten.headers);headers.delete('etag');headers.delete('last-modified');headers.set('Cache-Control','no-store');
+      return new Response(rewritten.body,{status:rewritten.status,headers});
+    }
     // Other shop requests continue to Webflow's origin through this zone route.
     // Store report: the bare "themanapocket.com" apex is Webflow-managed and
     // its DNS record can't stay proxied through Cloudflare (Webflow's own

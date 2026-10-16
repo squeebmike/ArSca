@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import './helpers/mock-body-html-rewriter.mjs';
 import {productFacts,productHeading} from '../scripts/storefront-seo.mjs';
 import {preorderDirectoryEntries,handleFocRequest} from '../scripts/foc-preorders.mjs';
+import {parseHTML} from 'linkedom';
+import fs from 'node:fs';
 const rows=Array.from({length:145},(_,n)=>({id:'comic-'+String(n).padStart(3,'0'),status:'in_stock',updated_at:'2026-10-14T00:00:00Z',data:{name:'Comic '+n,category:'Comics',quantity:1,priceOverride:5,onlineListed:true}}));
 rows.push({id:'special',status:'in_stock',data:{name:'Custom print',category:'Collectibles',quantity:1,priceOverride:10,linkUrl:'https://www.themanapocket.com/dougvana-print'}});
 const oldFetch=globalThis.fetch,oldCaches=globalThis.caches;
@@ -46,5 +48,23 @@ try{
  const sitemapDeps={...deps,publicStoreId:'store',supabaseAdminFetch:async(_,path)=>({data:path.startsWith('comic_skus')?[{id:'cover',family_id:'family',variant_label:'Cover C 1:25 Variant'}]:[{id:'family',series_name:'Batman',issue_number:'25'}]})};
  const sitemapResponse=await handleFocRequest(new Request('https://www.themanapocket.com/sitemap-preorders.xml'),{},new URL('https://www.themanapocket.com/sitemap-preorders.xml'),sitemapDeps);
  assert.match(await sitemapResponse.text(),/batman-25-cover-c-1-25-ratio-variant/,'sitemap uses the same ratio wording as the detail page');
+ // The custom print remains Webflow HTML, with live inventory layered onto it.
+ const config=JSON.parse(fs.readFileSync('wrangler.deploy.jsonc','utf8').replace(/\/\/.*$/gm,''));
+ assert.ok(config.routes.some(r=>r.pattern==='www.themanapocket.com/dougvana-print'));
+ const OriginalRewriter=globalThis.HTMLRewriter;
+ globalThis.HTMLRewriter=class{
+  handlers=[];on(selector,handler){this.handlers.push({selector,handler});return this;}
+  transform(response){const handlers=this.handlers;const body=new ReadableStream({async start(controller){
+   const {document}=parseHTML(await response.text());
+   for(const {selector,handler} of handlers)for(const el of document.querySelectorAll(selector))handler.element({append(v,opts){if(opts?.html)el.insertAdjacentHTML('beforeend',v);else el.append(v);},setInnerContent(v,opts){if(opts?.html)el.innerHTML=v;else el.textContent=v;},setAttribute(k,v){el.setAttribute(k,v);}});
+   controller.enqueue(new TextEncoder().encode(document.toString()));controller.close();
+  }});return new Response(body,{headers:response.headers});}
+ };
+ globalThis.fetch=async input=>String(input instanceof Request?input.url:input).startsWith('https://db.example')?new Response(JSON.stringify([{id:'1e18c84c-5f57-4762-8afb-c193184e5a24',status:'in_stock',data:{name:'Dougvana Poster /100',quantity:4,priceOverride:15,onlineListed:true,image:'https://img.example/print.jpg'}}]),{headers:{'Content-Type':'application/json'}}):new Response('<html><head><title>Old print</title><meta name="description" content="Old stock"></head><body><h1 class="dv-h1">DOUGVANA</h1><p class="dv-sub">Original story</p><span data-dv-stock-hero>100/100 Prints Left</span><script id="checkout-script">keepCheckout();</script></body></html>',{headers:{'Content-Type':'text/html','ETag':'old'}});
+ const print=await get('/dougvana-print');assert.equal(print.status,200);assert.equal(print.headers.get('cache-control'),'no-store');assert.equal(print.headers.get('etag'),null);
+ const printHtml=await print.text(),{document:printDoc}=parseHTML(printHtml);
+ assert.equal(printDoc.querySelector('h1').textContent,'Dougvana Poster /100');assert.equal(printDoc.querySelector('[data-dv-stock-hero]').textContent,'4 prints available');assert.ok(printDoc.querySelector('#checkout-script'),'existing checkout is preserved');
+ const printSchemas=JSON.parse(printDoc.querySelector('script[type="application/ld+json"]').textContent);const printProduct=printSchemas.find(s=>s['@type']==='Product');assert.equal(printProduct.offers.price,15);assert.equal(printProduct.offers.availability,'https://schema.org/InStock');
+ globalThis.HTMLRewriter=OriginalRewriter;
  console.log('Full category pagination, canonical bounds, custom destinations, distinct copies and saved collector facts passed');
 }finally{globalThis.fetch=oldFetch;globalThis.caches=oldCaches;}
