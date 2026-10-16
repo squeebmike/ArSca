@@ -26,7 +26,7 @@ ctx.renderStats();
 assert.equal(elements.s1.textContent,1);assert.match(elements.s1b.textContent,/^2 units/);assert.equal(elements.s2.textContent,'40');assert.equal(elements.s7.textContent,'40');assert.equal(elements.s5.textContent,'10');
 assert.equal(ctx.inventoryCostBasis({...mapped,cost:999}),0);
 const publicCtx=vm.createContext({storefrontComicDetailFor:()=>null});
-for(const name of ['storefrontCleanText','storefrontCleanUrl','storefrontCategorySlug','storefrontProductTypeSlug','roundUpToDollar','shapeStorefrontItem']) vm.runInContext(fn(worker,name),publicCtx);
+for(const name of ['storefrontCleanText','storefrontCleanUrl','storefrontCategorySlug','storefrontProductTypeSlug','roundUpToDollar','marketRulePrice','shapeStorefrontItem']) vm.runInContext(fn(worker,name),publicCtx);
 const item=publicCtx.shapeStorefrontItem(incoming);
 assert.equal(item.supplierSku,'1-TEST');assert.equal(item.vendor,'BCW');
 for(const privateField of ['supplierCost','supplierPriceTiers','cost','supplierReviewNotes','notes'])assert.equal(privateField in item,false,privateField+' stays private');

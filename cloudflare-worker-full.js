@@ -419,6 +419,15 @@ function roundUpToDollar(value) {
   if (!isFinite(n) || n <= 0) return 0;
   return Math.ceil(n - 1e-9);
 }
+// An unlocked item's price: market + its category price rule (priceRule
+// {pct, flat}, stamped by the dashboard -- see inventoryPriceRule there),
+// the bigger of pct% / flat $, rounded up. No rule = market rounded up.
+function marketRulePrice(market, rule) {
+  const m = Number(market || 0) || 0;
+  if (!(m > 0)) return 0;
+  const bump = Math.max(m * (Number(rule?.pct || 0) || 0) / 100, Number(rule?.flat || 0) || 0, 0);
+  return roundUpToDollar(m + bump);
+}
 
 function inventoryCostBasisFromData(data = {}) {
   const value = Number(data.cost ?? data.costBasis ?? data.cost_basis ?? data['cost-basis'] ?? 0);
@@ -469,7 +478,7 @@ async function loadCartForShipping(env, storeId, requestedItemsRaw) {
     // to the one shared exclusion list so "shows as buyable" and "can
     // actually check out" can't drift apart again.
     if (['sold','archived','returned','deleted','sold_pending_pickup','sold_pending_shipment','hold','lost_damaged','presale','bundled'].includes(invStatus) || availableQty < qty || d.soldAt || d.archivedAt) return { error: json({ ok:false, error:`"${d.name || 'An item'}" in your cart just sold out` }, 409) };
-    const checkoutBase = Number(d.priceOverride || 0) || roundUpToDollar(Number(d.market || d.marketPrice || d.rawMarketPrice || d.price || 0) || 0);
+    const checkoutBase = Number(d.priceOverride || 0) || marketRulePrice(Number(d.market || d.marketPrice || d.rawMarketPrice || d.price || 0) || 0, d.priceRule);
     const unitPrice = Math.max(checkoutBase, Number(d.minPrice || 0) || 0) + (Number(d.signature_value || 0) || 0);
     if (unitPrice <= 0) return { error: json({ ok:false, error:`"${d.name || 'An item'}" doesn't have a price set yet` }, 409) };
     const category = String(d.category || d.type || '').toLowerCase();
@@ -794,7 +803,7 @@ function shapeStorefrontItem(row) {
   // stays fixed while market price re-syncs -- added on top here, after
   // the floor, the same way.
   const rowMarket = Number(d.market || d.marketPrice || d.rawMarketPrice || 0) || 0;
-  const rowBase = Number(d.priceOverride || 0) || roundUpToDollar(rowMarket);
+  const rowBase = Number(d.priceOverride || 0) || marketRulePrice(rowMarket, d.priceRule);
   const rowSignatureValue = Number(d.signature_value || 0) || 0;
   const item = {
     id: storefrontCleanText(row.id, 80), name: storefrontCleanText(d.name || d.title || 'Item'), category: storefrontCleanText(d.category || d.type || 'Other', 80),

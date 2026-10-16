@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.10.16.1-ebay-sale-shelf-copy';
+const APP_VERSION = '2026.10.16.2-category-price-rules';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -2677,7 +2677,7 @@ const SETTINGS_SECTIONS = [
   {id:'devices',label:'Devices & Hardware',subtitle:'Register identity and the hardware surfaces used around the store.',keywords:'device hardware barcode scanner phone inbox printer cash drawer customer display stripe reader vending register'},
   {id:'theme',label:'Theme & Branding',subtitle:'Colors, fonts, layout radius, logo, and customer-screen appearance.',keywords:'theme branding colors fonts logo background preview radius'},
   {id:'subscription',label:'Subscription & Billing',subtitle:'ArSca software plan and subscription status—not customer checkout payments.',keywords:'subscription billing trial plan subscribe renewal portal'},
-  {id:'advanced',label:'Advanced / Diagnostics',subtitle:'Diagnostics, readiness checks, raw IDs, caches, QA.',keywords:'advanced diagnostics qa debug rls account data mode cache api health flags reset'}
+  {id:'advanced',label:'Advanced / Diagnostics',subtitle:'Diagnostics, readiness checks, raw IDs, caches, QA.',keywords:'advanced diagnostics qa debug rls account data mode cache api health flags reset price rules markup over market percent category pricing'}
 ];
 
 const SETTINGS_PANEL_MAP = {
@@ -4629,9 +4629,9 @@ function renderVendorConfigPanel(){
       return `<span class="category-chip">${escHtml(c)}${isStandard ? ' <span style="color:var(--dim);font-size:9px">(standard)</span>' : `<button onclick="removeVendorCategory('${String(c).replace(/'/g,"\\'")}')">x</button>`}</span>`;
     }).join('')}</div>
     <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border)">
-      <div style="font-family:'Orbitron',monospace;font-size:10px;color:var(--dim);letter-spacing:.04em;margin-bottom:6px">CATEGORY PRICE CEILINGS</div>
+      <div style="font-family:'Orbitron',monospace;font-size:10px;color:var(--dim);letter-spacing:.04em;margin-bottom:6px">CATEGORY PRICE RULES</div>
       <div style="font-family:var(--font-mono);font-size:9px;color:var(--dim);line-height:1.55;margin-bottom:8px">
-        "How far above market can we sell" per category -- whichever bump is greater, percent or flat dollars. Saved for the whole store, so every device uses it. New items in that category get the ceiling automatically; APPLY TO IN-STOCK sets it on what you already have (it never lowers a price today, and leaves locked prices above it alone), CLEAR takes it off. Any item's own ceiling can still be changed on its edit screen (Max Sale Price / Ceiling).
+        Sell above market per category: market + the percent or the flat dollars, whichever is more, rounded up to the dollar (10% or $2: $8 market sells at $10, $50 sells at $55). Saved for the whole store, so every device uses it. New items in that category get the rule automatically; APPLY TO IN-STOCK prices what you already have (it asks before touching 🔒 locked prices), CLEAR puts in-stock items back to plain market. Prices keep following market on every price sync.
       </div>
       <div class="tbl-wrap"><table><thead><tr><th>CATEGORY</th><th style="text-align:right">% OVER MARKET</th><th style="text-align:right">OR FLAT $ OVER</th><th>IN STOCK</th></tr></thead><tbody>
         ${getInventoryCategories().map(c => {
@@ -4640,7 +4640,7 @@ function renderVendorConfigPanel(){
           return `<tr><td>${escHtml(c)}</td>
             <td style="text-align:right"><input type="number" min="0" step="1" class="tsi" style="width:70px;text-align:right" value="${rule.pct || ''}" placeholder="0" onchange="setCategoryPriceCeilingRule('${safe}','pct',this.value)"></td>
             <td style="text-align:right"><input type="number" min="0" step="0.01" class="tsi" style="width:80px;text-align:right" value="${rule.flat || ''}" placeholder="0.00" onchange="setCategoryPriceCeilingRule('${safe}','flat',this.value)"></td>
-            <td style="white-space:nowrap">${(rule.pct || rule.flat) ? `<button class="ra" onclick="applyCategoryCeilingToStock('${safe}')">APPLY TO IN-STOCK</button>` : ''} <button class="ra" onclick="clearCategoryCeilingFromStock('${safe}')">CLEAR</button></td>
+            <td style="white-space:nowrap">${(rule.pct || rule.flat) ? `<button class="ra" onclick="applyCategoryPriceRuleToStock('${safe}')">APPLY TO IN-STOCK</button>` : ''} <button class="ra" onclick="clearCategoryPriceRuleFromStock('${safe}')">CLEAR</button></td>
           </tr>`;
         }).join('')}
       </tbody></table></div>
@@ -4784,49 +4784,58 @@ function setCategoryPriceCeilingRule(category, field, value){
   else rules[category] = nextRule;
   cfg.categoryPriceCeilings = rules;
   saveVendorConfig(cfg);
+  if(rules[category]) toast_dash(`${category} rule saved -- new items use it. Tap APPLY TO IN-STOCK to reprice what you have.`);
 }
 
-// Store ask: "refresh pokemon inventory to use this rule -- the ones in
-// stock." Sets each in-stock item's ceiling from the category rule. A
-// ceiling is always at least market rounded up, so no price drops today;
-// a locked price above the new ceiling is left alone (it was set on
-// purpose) and counted instead.
-function categoryCeilingStockPlan(category){
+// Store ask: "I wanted to price them to those rules above market." Stamps
+// the category rule on each in-stock item (priceRule) so it sells at
+// market + the bigger bump, and drops the old auto ceiling this setting
+// used to add instead (a ceiling at the old market would hold the price
+// down once market rises). Locked prices are only unlocked when asked.
+function categoryPriceRuleStockPlan(category){
   const rule = categoryPriceCeilingRule(category);
-  const items = (all || []).filter(i => i.status === 'in_stock' && i.category === category && !inventoryIsDropship(i) && inventoryMarketPrice(i) > 0);
-  const plan = [], lockedAbove = [];
-  for(const item of items){
-    const ceiling = computeCategoryCeilingPrice(inventoryMarketPrice(item), rule);
-    if(!(ceiling > 0)) continue;
-    if(inventoryPriceOverride(item) > ceiling) { lockedAbove.push(item); continue; }
-    if(Math.abs(inventoryCeilingPrice(item) - ceiling) >= 0.01) plan.push({ item, ceiling });
-  }
-  return { rule, plan, lockedAbove };
+  const items = (all || []).filter(i => i.status === 'in_stock' && i.category === category && !inventoryIsDropship(i));
+  const sameRule = (a, b) => !!a && !!b && Number(a.pct || 0) === Number(b.pct || 0) && Number(a.flat || 0) === Number(b.flat || 0);
+  const plan = items.filter(i => !sameRule(inventoryPriceRule(i), rule) || inventoryCeilingPrice(i) > 0);
+  const locked = items.filter(i => inventoryPriceOverride(i) > 0);
+  return { rule, plan, locked };
 }
-async function applyCategoryCeilingToStock(category){
-  const { rule, plan, lockedAbove } = categoryCeilingStockPlan(category);
+async function applyCategoryPriceRuleToStock(category){
+  const { rule, plan, locked } = categoryPriceRuleStockPlan(category);
   if(!rule) { toast_dash('Set a % or $ rule for ' + category + ' first'); return; }
-  if(!plan.length) { toast_dash(`Every in-stock ${category} item already has its ceiling${lockedAbove.length ? ` (${lockedAbove.length} locked above it, left alone)` : ''}`); return; }
-  if(!confirm(`Set a price ceiling on ${plan.length} in-stock ${category} item${plan.length === 1 ? '' : 's'} (market + ${rule.pct || 0}% or +$${Number(rule.flat || 0).toFixed(2)}, whichever is more)?\n\nNo price drops today -- it only stops price syncs raising them past that.${lockedAbove.length ? `\n\n${lockedAbove.length} locked price${lockedAbove.length === 1 ? ' is' : 's are'} already above the ceiling and will be left alone.` : ''}`)) return;
+  const ruleText = `market + ${Number(rule.pct || 0)}% or +$${Number(rule.flat || 0).toFixed(2)}, whichever is more`;
+  const example = computeCategoryCeilingPrice(8, rule);
+  if(!plan.length && !locked.length) { toast_dash(`Every in-stock ${category} item already sells at ${ruleText}`); return; }
+  if(plan.length && !confirm(`Price ${plan.length} in-stock ${category} item${plan.length === 1 ? '' : 's'} at ${ruleText}?\n\nExample: $8.00 market sells at $${example.toFixed(2)}. The shop, register and labels use it right away, and it keeps following market on every price sync.`)) return;
+  const unlock = locked.length > 0 && confirm(`${locked.length} ${category} item${locked.length === 1 ? ' has' : 's have'} a 🔒 locked price.\n\nOK = unlock ${locked.length === 1 ? 'it' : 'them'} so ${locked.length === 1 ? 'it follows' : 'they follow'} the rule too\nCancel = keep the locked price${locked.length === 1 ? '' : 's'}`);
+  const targets = unlock ? [...new Set([...plan, ...locked])] : plan;
+  if(!targets.length) return;
   let done = 0, failed = 0;
-  for(const { item, ceiling } of plan){
-    try { await saveInventoryEdit(item, { ceilingPrice:ceiling }); item.ceilingPrice = ceiling; if(item.raw) item.raw.ceilingPrice = ceiling; done++; }
-    catch(e) { failed++; console.warn('applyCategoryCeilingToStock', item.id, e?.message); }
-    if(done % 25 === 0) toast_dash(`Ceilings set: ${done} of ${plan.length}…`);
+  for(const item of targets){
+    const updates = { priceRule:{ pct:Number(rule.pct || 0), flat:Number(rule.flat || 0) }, ceilingPrice:0 };
+    if(unlock && inventoryPriceOverride(item) > 0) updates.priceOverride = 0;
+    const price = inventoryEffectiveBasePrice({ ...item, ...updates });
+    if(!(inventoryPriceOverride({ ...item, ...updates }) > 0) && price > 0) Object.assign(updates, { salePrice:price, listPrice:price, displayPrice:price });
+    try { await saveInventoryEdit(item, updates); Object.assign(item, updates); if(item.raw) Object.assign(item.raw, updates); done++; }
+    catch(e) { failed++; console.warn('applyCategoryPriceRuleToStock', item.id, e?.message); }
+    if(done % 25 === 0) toast_dash(`Repriced ${done} of ${targets.length}…`);
   }
-  toast_dash(`Ceilings set on ${done} ${category} item${done === 1 ? '' : 's'}${failed ? ` · ${failed} failed -- try again` : ''}`);
+  toast_dash(`${done} ${category} item${done === 1 ? '' : 's'} now sell at ${ruleText}${failed ? ` · ${failed} failed -- try again` : ''}`);
   filterTable();
 }
-async function clearCategoryCeilingFromStock(category){
-  const items = (all || []).filter(i => i.status === 'in_stock' && i.category === category && inventoryCeilingPrice(i) > 0);
-  if(!items.length) { toast_dash('No in-stock ' + category + ' items have a ceiling'); return; }
-  if(!confirm(`Remove the price ceiling from ${items.length} in-stock ${category} item${items.length === 1 ? '' : 's'}? (The category rule stays for new items unless you blank it.)`)) return;
+async function clearCategoryPriceRuleFromStock(category){
+  const items = (all || []).filter(i => i.status === 'in_stock' && i.category === category && (inventoryPriceRule(i) || inventoryCeilingPrice(i) > 0));
+  if(!items.length) { toast_dash('No in-stock ' + category + ' items use a price rule'); return; }
+  if(!confirm(`Put ${items.length} in-stock ${category} item${items.length === 1 ? '' : 's'} back to plain market price (rounded up)? (The category rule stays for new items unless you blank it.)`)) return;
   let done = 0;
   for(const item of items){
-    try { await saveInventoryEdit(item, { ceilingPrice:0 }); item.ceilingPrice = 0; if(item.raw) item.raw.ceilingPrice = 0; done++; }
-    catch(e) { console.warn('clearCategoryCeilingFromStock', item.id, e?.message); }
+    const updates = { priceRule:{}, ceilingPrice:0 };
+    const price = inventoryEffectiveBasePrice({ ...item, ...updates });
+    if(!(inventoryPriceOverride(item) > 0) && price > 0) Object.assign(updates, { salePrice:price, listPrice:price, displayPrice:price });
+    try { await saveInventoryEdit(item, updates); Object.assign(item, updates); if(item.raw) Object.assign(item.raw, updates); done++; }
+    catch(e) { console.warn('clearCategoryPriceRuleFromStock', item.id, e?.message); }
   }
-  toast_dash(`Ceiling removed from ${done} ${category} item${done === 1 ? '' : 's'}`);
+  toast_dash(`${done} ${category} item${done === 1 ? '' : 's'} back to market price`);
   filterTable();
 }
 
@@ -11953,7 +11962,8 @@ async function applyPriceSyncEntry(p){
       priceUpdatedAt:now,
       stalePrice:false,
       livePriceStatus:p.mode === 'live' || p.mode === 'mtg-live' || isOtherLiveSync || isComicPriceSync || isPocketScoutSync ? 'live' : isMtgPriceSync ? 'offline' : 'cached',
-      ...(hasOverride ? {} : { salePrice:p.newPrice, listPrice:p.newPrice }),
+      // A category price rule sells above market, so mirror the ruled price.
+      ...(hasOverride ? {} : (() => { const ruled = computeCategoryCeilingPrice(p.newPrice, inventoryPriceRule(fullItem)) || p.newPrice; return { salePrice:ruled, listPrice:ruled }; })()),
       ...providerFields,
     });
     // Surface big movers from the daily price-check workflow itself --
@@ -13861,6 +13871,9 @@ const BUILT_IN_ITEM_SIMPLE_FIELDS = [
   ['consignorName',''], ['consignmentId',''], ['signed_by',''],
   ['pokemonPriceTrackerLastUpdated',''],
   ['signature_value',0,'num'], ['minPrice',0,'num'], ['ceilingPrice',0,'num'],
+  // Category markup ({pct, flat}) this item is priced by -- see
+  // inventoryPriceRule. Listed here so it survives every later save.
+  ['priceRule',null,'raw'],
   ['expectedProfit',0,'num'],
   ['photos',[],'array'],
   // Sibling rows selling the same physical stock at a different price (e.g.
@@ -15499,6 +15512,17 @@ function categoryPriceCeilingRule(category){
   const rules = getVendorConfig().categoryPriceCeilings || {};
   return rules[category] || null;
 }
+// Store ask: "I wanted to price them to those rules above market." The
+// category rule is a markup, not just a cap: an unlocked item sells at
+// market + the bigger of pct% / flat $. It's stamped on each item as
+// priceRule (new items at creation, existing ones via APPLY TO IN-STOCK)
+// so the Worker's shop/checkout price (marketRulePrice in
+// cloudflare-worker-full.js) works it out from the item alone and keeps
+// following market on every price sync. {} or all-zero = no rule.
+function inventoryPriceRule(item={}){
+  const rule = item.priceRule ?? item.raw?.priceRule;
+  return rule && (Number(rule.pct) > 0 || Number(rule.flat) > 0) ? rule : null;
+}
 // market + max(market x pct%, flat $), whichever bump is greater -- 0 if
 // there's no rule or no market price to compute against yet. Rounded the
 // same cash-register-friendly way roundSellPrice already rounds every
@@ -15531,7 +15555,9 @@ function inventorySignatureValue(item={}){ return Number(item.signature_value ??
 // now, absent an explicit floor.
 function inventoryEffectiveBasePrice(item={}){
   const override = inventoryPriceOverride(item);
-  return override > 0 ? override : roundSellPrice(inventoryMarketPrice(item));
+  if(override > 0) return override;
+  const market = inventoryMarketPrice(item);
+  return computeCategoryCeilingPrice(market, inventoryPriceRule(item)) || roundSellPrice(market);
 }
 // The price rule: market price, unless there's a floor (minPrice) or a
 // manually-entered override, in which case the higher of override/market
@@ -23658,18 +23684,13 @@ async function createBuiltInInventoryItem(item, updates, sourceLabel='built_in')
   const session = getAuthSession();
   const storeId = getActiveStoreId();
   const id = 'builtin_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2,6);
-  // Store request: a per-category "how far above market can we sell" rule
-  // (e.g. Pokemon 20% over market or +$2, whichever's greater), auto-set as
-  // this new item's ceiling going in -- adjustable per item afterward via
-  // ceilingPrice same as the floor (minPrice) already is. Only computed when
-  // the caller hasn't already set an explicit ceilingPrice, and only when
-  // the category actually has a configured rule (categoryPriceCeilingRule
-  // returns null otherwise) and there's a market price to compute against.
-  const resolvedForCeiling = { ...item, ...updates };
-  const autoCeiling = computeCategoryCeilingPrice(
-    inventoryMarketPrice(resolvedForCeiling),
-    categoryPriceCeilingRule(resolvedForCeiling.category)
-  );
+  // Store request: a per-category price rule (e.g. Pokemon 10% over market
+  // or +$2, whichever's greater). A new item is stamped with its category's
+  // rule as priceRule, so it sells at market + that bump from the start
+  // (see inventoryPriceRule). It used to be stamped as a ceiling instead,
+  // which never raised a price -- the opposite of what the store wanted.
+  const resolvedForRule = { ...item, ...updates };
+  const autoPriceRule = categoryPriceCeilingRule(resolvedForRule.category);
   const data = {
     id,
     ...item,
@@ -23688,7 +23709,8 @@ async function createBuiltInInventoryItem(item, updates, sourceLabel='built_in')
     // listed immediately. item/updates can still override this explicitly
     // (e.g. an import flow that intentionally wants to hold something back).
     onlineListed:(item?.onlineListed ?? updates?.onlineListed ?? true),
-    ceilingPrice:(item?.ceilingPrice ?? updates?.ceilingPrice ?? autoCeiling),
+    ceilingPrice:(item?.ceilingPrice ?? updates?.ceilingPrice ?? 0),
+    priceRule:(item?.priceRule ?? updates?.priceRule ?? autoPriceRule),
   };
   if(data.name) data.name = comicName(data.name, data.category);
   if(data.title) data.title = comicName(data.title, data.category);
@@ -24071,6 +24093,9 @@ async function markInventoryRecordSold(item, fieldData, saleMeta){
 // EDIT ITEM MODAL
 // ══════════════════════════════════════════════════
 let editingItemId = null;
+// The category price rule the open edit/add modal prices by (see
+// inventoryPriceRule) -- read by refreshEditShelfPrice.
+let editPriceRule = null;
 // Reuses the edit-item modal to review/adjust a Research result before it
 // becomes an inventory item — see openAddToInventoryModal() below.
 let pendingInventoryAdd = null;
@@ -25007,6 +25032,7 @@ function openEditModal(id) {
   document.getElementById('edit-market').value = item.market || '';
   document.getElementById('edit-min-price').value = item.minPrice || '';
   document.getElementById('edit-ceiling-price').value = item.ceilingPrice || '';
+  editPriceRule = inventoryPriceRule(item);
   setEditLockedPrice(inventoryPriceOverride(item));
   document.getElementById('edit-qty').value = item.qty || 1;
   document.getElementById('edit-year').value = item.year || '';
@@ -25099,6 +25125,7 @@ function openAddToInventoryModal(idx){
   // A research list price apart from market (a comic's valuation, say)
   // arrives locked -- the same thing that saved as an override before.
   const researchList = Number(item.priceOverride || item.listPrice || 0);
+  editPriceRule = inventoryPriceRule(item) || categoryPriceCeilingRule(item.category);
   setEditLockedPrice(researchList > 0 && Math.abs(researchList - Number(item.market || 0)) >= 0.01 ? researchList : 0);
   document.getElementById('edit-qty').value = item.qty || 1;
   document.getElementById('edit-year').value = item.year || '';
@@ -25218,9 +25245,8 @@ async function confirmAddToInventoryFromModal(){
     // Left blank (the common case -- a fresh item from Research has no
     // ceiling of its own yet), this resolves to undefined rather than 0 so
     // createBuiltInInventoryItem's `item?.ceilingPrice ?? updates?.ceilingPrice
-    // ?? autoCeiling` chain can still fall through to the category's
-    // auto-computed ceiling. A real typed value here (an explicit per-item
-    // override before the item even exists) still wins over that default.
+    // ?? 0` chain stays "no ceiling". A real typed value here (an explicit
+    // per-item cap before the item even exists) still wins.
     ceilingPrice: parseFloat(document.getElementById('edit-ceiling-price')?.value) || undefined,
     qty: parseInt(document.getElementById('edit-qty').value)||1,
     year: document.getElementById('edit-year').value.trim(),
@@ -25307,7 +25333,9 @@ function refreshEditShelfPrice(){
   const num = id => parseFloat(document.getElementById(id)?.value) || 0;
   const market = num('edit-market'), floor = num('edit-min-price'), ceiling = num('edit-ceiling-price');
   const locked = editLockedPrice();
-  const base = locked > 0 ? locked : roundSellPrice(market);
+  const rule = typeof editPriceRule !== 'undefined' && editPriceRule && typeof computeCategoryCeilingPrice === 'function' ? editPriceRule : null;
+  const ruled = rule ? computeCategoryCeilingPrice(market, rule) : 0;
+  const base = locked > 0 ? locked : (ruled || roundSellPrice(market));
   let price = floor > 0 ? Math.max(base, floor) : base;
   if(ceiling > 0) price = Math.min(price, ceiling);
   const box = document.getElementById('edit-list-price'), btn = document.getElementById('edit-lock-btn'), note = document.getElementById('edit-lock-note');
@@ -25318,6 +25346,7 @@ function refreshEditShelfPrice(){
     note.classList.toggle('locked', locked > 0);
     note.textContent = locked > 0
       ? `🔒 Locked at $${locked.toFixed(2)}${adjusted} -- price syncs won't change it. UNLOCK to follow market again.`
+      : market > 0 && ruled > 0 ? `Follows market + ${Number(rule.pct || 0)}% or +$${Number(rule.flat || 0).toFixed(2)} (category price rule): $${market.toFixed(2)} sells at $${base.toFixed(2)}${adjusted}. LOCK to set an exact price.`
       : market > 0 ? `Follows market: $${market.toFixed(2)} rounds up to $${base.toFixed(2)}${adjusted}. LOCK to set an exact price.`
       : 'Follows market once it has one. LOCK to set an exact price.';
   }
