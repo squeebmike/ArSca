@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.10.16.2-category-price-rules';
+const APP_VERSION = '2026.10.16.3-store-wide-alerts';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -1754,13 +1754,21 @@ const RESEARCH_CATEGORY_OPTIONS = [
   { value:'Magic: The Gathering', label:'MTG' },
   { value:'Sealed', label:'Sealed / Packs' },
 ];
+// Store ask: "make it store wide." Alert thresholds live in the vendor
+// config (store_settings.modules.alertSettings, same as the category price
+// rules) so every device uses the same ones. A value this device saved
+// before that (alert_settings_v1) is only a fallback until the store has
+// its own.
 function getAlertSettings(){
   let saved = {};
   try { saved = JSON.parse(localStorage.getItem('alert_settings_v1') || '{}'); } catch(e) {}
-  return { lowStockQty:1, lowStockMinValue:20, priceMoveThresholdPct:20, priceMoveThresholdDollar:25, ...saved };
+  const store = getVendorConfig().alertSettings || {};
+  return { lowStockQty:1, lowStockMinValue:20, priceMoveThresholdPct:20, priceMoveThresholdDollar:25, ...saved, ...store };
 }
 function saveAlertSettings(patch){
-  localStorage.setItem('alert_settings_v1', JSON.stringify({ ...getAlertSettings(), ...patch }));
+  const cfg = getVendorConfig();
+  cfg.alertSettings = { ...getAlertSettings(), ...patch };
+  saveVendorConfig(cfg);
 }
 
 function getResearchSettings(){
@@ -3148,6 +3156,8 @@ function getVendorConfig(){
       categories: Array.isArray(saved.categories) ? saved.categories.filter(Boolean) : [...DEFAULT_VENDOR_CONFIG.categories],
       categoryPriceCeilings: { ...DEFAULT_VENDOR_CONFIG.categoryPriceCeilings, ...(saved.categoryPriceCeilings || {}) },
       cardThemes: Array.isArray(saved.cardThemes) ? saved.cardThemes : [...DEFAULT_VENDOR_CONFIG.cardThemes],
+      // Store-wide alert thresholds -- see getAlertSettings.
+      alertSettings: { ...(saved.alertSettings || {}) },
     };
   } catch(e) {
     return JSON.parse(JSON.stringify(DEFAULT_VENDOR_CONFIG));
@@ -4673,7 +4683,7 @@ function renderVendorConfigPanel(){
         <label>OR PRICE MOVER THRESHOLD ($)
           <input type="number" min="0" max="99999" value="${getAlertSettings().priceMoveThresholdDollar}" class="tsi" style="width:90px;margin-top:4px" onchange="saveAlertSettings({priceMoveThresholdDollar:Math.max(0,parseFloat(this.value)||0)})">
         </label>
-        <span style="font-size:9px;line-height:1.5">A price sync that moves an item's market price by at least one of these flags it as a mover so you know to update the sticker.</span>
+        <span style="font-size:9px;line-height:1.5">A price sync that moves an item's market price by at least one of these flags it as a mover so you know to update the sticker. Alert thresholds are saved for the whole store, so every device uses them.</span>
       </div>
     </div>
     <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);display:flex;gap:8px;flex-wrap:wrap">
