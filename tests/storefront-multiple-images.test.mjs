@@ -6,7 +6,7 @@ const source=fs.readFileSync('cloudflare-worker-full.js','utf8');
 const start=source.indexOf('function storefrontCleanText');
 const end=source.indexOf('\nfunction json(',start);
 assert.ok(start>=0&&end>start,'storefront shaping helpers must exist');
-const context={roundUpToDollar:value=>Math.ceil(Number(value)||0)};
+const context={roundUpToDollar:value=>Math.ceil(Number(value)||0),marketRulePrice:value=>Math.ceil(Number(value)||0)};
 vm.runInNewContext(source.slice(start,end)+';this.shapeStorefrontItem=shapeStorefrontItem;',context);
 
 const primary='https://example.com/front.jpg';

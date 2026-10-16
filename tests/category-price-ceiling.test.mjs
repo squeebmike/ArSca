@@ -38,19 +38,21 @@ assert.match(dashboard, /function computeCategoryCeilingPrice\(market, rule\)\{/
   assert.match(fn, /if\(ceiling > 0\) floored = Math\.min\(floored, ceiling\);/, 'inventorySellSuggestedPrice must clamp down to the ceiling when one is set');
 }
 
-// ── Auto-set on creation ──
+// ── Creation: the category rule is stamped as a price rule (markup), never as an auto ceiling ──
 {
   const fnStart = dashboard.indexOf("async function createBuiltInInventoryItem(item, updates, sourceLabel='built_in') {");
   const fnEnd = dashboard.indexOf('\nasync function updateBuiltInInventoryItem', fnStart);
   const fn = dashboard.slice(fnStart, fnEnd);
-  assert.match(fn, /const autoCeiling = computeCategoryCeilingPrice\(\s*\n\s*inventoryMarketPrice\(resolvedForCeiling\),\s*\n\s*categoryPriceCeilingRule\(resolvedForCeiling\.category\)\s*\n\s*\);/,
-    'createBuiltInInventoryItem must compute the auto-ceiling from the resolved category + market');
-  assert.match(fn, /ceilingPrice:\(item\?\.ceilingPrice \?\? updates\?\.ceilingPrice \?\? autoCeiling\),/,
-    'createBuiltInInventoryItem must only fall back to the auto-computed ceiling when neither item nor updates already specify one explicitly');
+  assert.match(fn, /const autoPriceRule = categoryPriceCeilingRule\(resolvedForRule\.category\);/,
+    'createBuiltInInventoryItem must look up the category rule for the new item');
+  assert.match(fn, /ceilingPrice:\(item\?\.ceilingPrice \?\? updates\?\.ceilingPrice \?\? 0\),/,
+    'a new item gets no ceiling unless one is set explicitly');
+  assert.match(fn, /priceRule:\(item\?\.priceRule \?\? updates\?\.priceRule \?\? autoPriceRule\),/,
+    'a new item is stamped with its category price rule');
 }
 
 // ── Settings UI: per-category rule table + save handler ──
-assert.match(dashboard, /CATEGORY PRICE CEILINGS/, 'Settings must expose a category price ceilings panel');
+assert.match(dashboard, /CATEGORY PRICE RULES/, 'Settings must expose the category price rules panel');
 assert.match(dashboard, /function setCategoryPriceCeilingRule\(category, field, value\)\{/, 'missing setCategoryPriceCeilingRule');
 {
   const fnStart = dashboard.indexOf('function setCategoryPriceCeilingRule(category, field, value){');
@@ -68,7 +70,7 @@ assert.match(dashboard, /document\.getElementById\('edit-ceiling-price'\)\.value
   const addFnEnd = dashboard.indexOf('\n}', addFnStart) + 2;
   const addFn = dashboard.slice(addFnStart, addFnEnd);
   assert.match(addFn, /ceilingPrice: parseFloat\(document\.getElementById\('edit-ceiling-price'\)\?\.value\) \|\| undefined,/,
-    'adding a brand-new item must resolve a blank ceiling field to undefined (not 0), so createBuiltInInventoryItem\'s ?? chain can still fall through to the category auto-default');
+    'adding a brand-new item must resolve a blank ceiling field to undefined (not 0), so createBuiltInInventoryItem\'s ?? chain resolves to no ceiling');
 }
 {
   const editFnStart = dashboard.indexOf('const editHasOverride = editListVal > 0');
