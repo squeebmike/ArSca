@@ -7,7 +7,7 @@ export async function cachedCatalogSitemap(request, ctx, generate, cache = globa
   url.search = '';
   const key = new Request(url.toString());
   const cacheUrl = new URL(url);
-  if (url.pathname === '/sitemap-preorders.xml') cacheUrl.searchParams.set('_catalog_version','coverage-20261015');
+  if (url.pathname === '/sitemap-preorders.xml') cacheUrl.searchParams.set('_catalog_version','coverage-20261015-ratio');
   const cacheKey = new Request(cacheUrl.toString());
   let response;
   try { response = await cache?.match(cacheKey); } catch { /* Cache failures must not break discovery. */ }

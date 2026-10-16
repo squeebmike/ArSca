@@ -43,5 +43,8 @@ try{
  assert.equal(directory.status,200);const directoryHtml=await directory.text();
  assert.match(directoryHtml,/href="\/preorder\/120\/batman"/);assert.match(directoryHtml,/not received shelf stock|after we receive the books/);assert.match(directoryHtml,/href="\/preorders\/catalog\?page=2"/);
  assert.equal((await handleFocRequest(new Request('https://www.themanapocket.com/preorders/catalog?page=4'),{},new URL('https://www.themanapocket.com/preorders/catalog?page=4'),deps)).status,404);
+ const sitemapDeps={...deps,publicStoreId:'store',supabaseAdminFetch:async(_,path)=>({data:path.startsWith('comic_skus')?[{id:'cover',family_id:'family',variant_label:'Cover C 1:25 Variant'}]:[{id:'family',series_name:'Batman',issue_number:'25'}]})};
+ const sitemapResponse=await handleFocRequest(new Request('https://www.themanapocket.com/sitemap-preorders.xml'),{},new URL('https://www.themanapocket.com/sitemap-preorders.xml'),sitemapDeps);
+ assert.match(await sitemapResponse.text(),/batman-25-cover-c-1-25-ratio-variant/,'sitemap uses the same ratio wording as the detail page');
  console.log('Full category pagination, canonical bounds, custom destinations, distinct copies and saved collector facts passed');
 }finally{globalThis.fetch=oldFetch;globalThis.caches=oldCaches;}

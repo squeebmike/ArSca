@@ -780,7 +780,7 @@ async function preorderSitemap(env, deps) {
     const family = familyById[row.family_id];
     const seriesName = text(family?.series_name, 300) || text(family?.title, 800) || text(row.title, 800);
     const issueNumber = family?.issue_number || '';
-    const name = seriesName + (issueNumber ? ' #' + issueNumber : '') + ' · ' + (row.variant_label || 'Cover A');
+    const name = seriesName + (issueNumber ? ' #' + issueNumber : '') + ' · ' + (withRatioWord(text(row.variant_label,300)) || 'Cover A');
     const slug = preorderDetailSlug(name, deps);
     return `<url><loc>https://www.themanapocket.com/preorder/${deps.mtgEscapeHtml(row.id)}/${deps.mtgEscapeHtml(slug)}</loc>${row.updated_at ? `<lastmod>${deps.mtgEscapeHtml(String(row.updated_at).slice(0, 10))}</lastmod>` : ''}</url>`;
   }).join('');
