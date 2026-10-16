@@ -171,6 +171,7 @@ try {
     const res = await get('/sitemap-pages.xml');
     const xml = await res.text();
     assert.match(xml, /\/faq/);
+    assert.ok(xml.includes('<loc>https://www.themanapocket.com/preorders/catalog</loc>'), 'the crawlable preorder directory has its own sitemap entry');
     assert.match(xml, /\/news/);
     assert.match(xml, /\/category\/comics/);
   }
