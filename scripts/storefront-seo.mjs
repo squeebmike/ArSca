@@ -10,11 +10,23 @@ export function productFacts(item) {
   return Object.entries({
     Category:item.category,Game:item.game,Sport:item.sport,Set:item.set,Year:item.year,
     'Player / character':item.player,Team:item.team,'Card number':item.cardNumber,
-    Variant:item.variant,Condition:item.condition,'Grading company':item.gradingCompany,
+    'Product type':item.productType || item.configuration,Variant:item.variant,Finish:item.finish,Treatment:item.treatment,
+    Language:item.language,Rarity:item.rarity,Condition:item.condition,'Grading company':item.gradingCompany,Grade:item.grade,
+    Manufacturer:item.brand,'Signed by':item.signedBy,
+    ...(item.isSigned ? {Autographed:'Yes'} : {}),...(item.isRelic ? {Relic:'Yes'} : {}),
     Publisher:comic.publisher,Series:comic.seriesName,'Issue number':comic.number,
     'Cover designation':comic.selectedCover,'Cover artist':comic.coverArtists?.join(', '),
     Writer:comic.writers?.join(', '),'Interior artist':comic.artists?.join(', '),'Release date':comic.storeDate,
   }).filter(([,value])=>value!=null&&String(value).trim()).map(([name,value])=>({name,value:String(value).trim()}));
+}
+// Distinct physical listings can share a name. Identify those exact copies
+// with their real inventory identifier, without inventing edition metadata.
+export function productHeading(item, catalog = []) {
+  if (!catalog.some(other => other.id !== item.id && other.name === item.name)) return item.name;
+  const uniqueSku = item.supplierSku && !catalog.some(other => other.id !== item.id && other.supplierSku === item.supplierSku);
+  const shortId = item.id.slice(0,8);
+  const copyId = catalog.some(other => other.id !== item.id && other.id.slice(0,8) === shortId) ? item.id : shortId;
+  return `${item.name} — ${[item.condition, uniqueSku ? 'SKU '+item.supplierSku : 'Copy '+copyId].filter(Boolean).join(' · ')}`;
 }
 export function productCondition(value) {
   if(/^new(?:\b|$)/i.test(value||''))return 'https://schema.org/NewCondition';

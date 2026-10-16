@@ -619,6 +619,44 @@ function preorderDetailSlug(name, deps) {
   return deps.mtgSlugify(name);
 }
 
+export function preorderDirectoryEntries(catalogs, deps) {
+  const entries = new Map();
+  for (const catalog of catalogs || []) for (const family of catalog.families || []) for (const sku of family.variants || []) {
+    const orderable = catalog.cycle?.isOpen ? sku.canPreorder && !sku.waitlistOnly : sku.afterFoc && sku.canPreorder && sku.afterFocLeft > 0;
+    if (!orderable) continue;
+    const name = (family.seriesName || family.title) + (family.issueNumber ? ' #' + family.issueNumber : '') + ' · ' + (sku.variantLabel || 'Cover A');
+    entries.set(sku.id,{id:sku.id,name,url:'/preorder/'+encodeURIComponent(sku.id)+'/'+preorderDetailSlug(name,deps),image:sku.coverImageUrl||'',price:sku.priceCents/100,release:sku.onSaleDate||'',distributor:sku.distributor||''});
+  }
+  return [...entries.values()].sort((a,b)=>a.name.localeCompare(b.name)||a.id.localeCompare(b.id));
+}
+
+async function preorderDirectory(env, deps, url) {
+  const raw = url.searchParams.get('page') || '1';
+  if (!/^[1-9]\d*$/.test(raw) || !Number.isSafeInteger(Number(raw))) return notFoundPreorderPage(deps);
+  const page=Number(raw), key=new Request('https://internal.themanapocket.com/__cache/preorder-directory-v1');
+  const cache=globalThis.caches?.default;
+  let cached;try{cached=await cache?.match(key);}catch{}
+  let entries;
+  try {
+    if(cached) entries=await cached.json();
+    else {
+      const db=async(p,o)=>{const result=await deps.supabaseAdminFetch(env,p,o);if(result.response&&!result.response.ok)throw new Error('Preorder catalog unavailable');return result;};
+      const catalogs=(await Promise.all([PRH,LUNAR].map(d=>loadAllCatalogs(db,deps.publicStoreId,false,d)))).flat();
+      entries=preorderDirectoryEntries(catalogs,deps);
+      if(cache)await cache.put(key,new Response(JSON.stringify(entries),{headers:{'Content-Type':'application/json','Cache-Control':'public, max-age=60'}}));
+    }
+  } catch {return new Response('Comic preorders are temporarily unavailable.',{status:503,headers:{'Cache-Control':'no-store','Retry-After':'60'}});}
+  const pages=Math.max(1,Math.ceil(entries.length/60));
+  if(!entries.length || page>pages)return notFoundPreorderPage(deps);
+  const href=n=>'/preorders/catalog'+(n>1?'?page='+n:'');
+  if(url.searchParams.size!==(page>1?1:0))return Response.redirect('https://www.themanapocket.com'+href(page),301);
+  const shown=entries.slice((page-1)*60,page*60),esc=deps.mtgEscapeHtml;
+  const html=deps.mtgPageShell({title:'Comic preorders'+(page>1?' — Page '+page:'')+' | The Mana Pocket',description:'Browse currently orderable PRH and Lunar comic covers. Preorders ship after the books arrive; they are not received shelf stock. Page '+page+' of '+pages+'.',canonicalPath:href(page),
+    jsonLd:{'@context':'https://schema.org','@type':'CollectionPage',name:'Orderable comic covers — Page '+page},
+    bodyHtml:'<div class="mp-crumb"><a href="/shop">Shop</a> / <a href="/category">Categories</a> / <a href="/preorders">FOC cover wall</a></div><h1>Comic preorders'+(page>1?' — Page '+page:'')+'</h1><p class="mp-sub">These covers can currently be preordered through PRH or Lunar. Preorders ship after we receive the books. Check each cover for its price, release date, and current availability.</p><p><a href="/articles/comic-preorders-foc-variant-cover-guide">How FOC and variant covers work</a></p><p>'+entries.length+' orderable covers · Page '+page+' of '+pages+'</p><div class="mp-grid">'+shown.map(e=>'<a class="mp-card" href="'+esc(e.url)+'">'+(e.image?'<img loading="lazy" width="240" height="320" style="object-fit:contain" src="'+esc(e.image)+'" alt="'+esc(e.name)+'">':'')+'<div class="mp-card-body"><h2 style="font-size:18px">'+esc(e.name)+'</h2><p>$'+e.price.toFixed(2)+' USD · Preorder</p><p>'+esc(e.distributor)+(e.release?' · Release '+esc(e.release):'')+'</p></div></a>').join('')+'</div><nav aria-label="Preorder pages" style="display:flex;flex-wrap:wrap;gap:16px;margin-top:24px">'+Array.from({length:pages},(_,i)=>i+1).map(n=>n===page?'<span aria-current="page">Page '+n+'</span>':'<a href="'+href(n)+'">Page '+n+'</a>').join('')+'</nav>'});
+  return new Response(html,{headers:{'Content-Type':'text/html;charset=UTF-8','Cache-Control':'public, max-age=60'}});
+}
+
 function notFoundPreorderPage(deps) {
   const html = deps.mtgPageShell({
     title: 'Not found | The Mana Pocket',
@@ -747,7 +785,7 @@ async function preorderSitemap(env, deps) {
     return `<url><loc>https://www.themanapocket.com/preorder/${deps.mtgEscapeHtml(row.id)}/${deps.mtgEscapeHtml(slug)}</loc>${row.updated_at ? `<lastmod>${deps.mtgEscapeHtml(String(row.updated_at).slice(0, 10))}</lastmod>` : ''}</url>`;
   }).join('');
   const xml = `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>https://www.themanapocket.com/preorders</loc></url>${urls}</urlset>`;
-  return new Response(xml, { headers: { 'Content-Type':'application/xml;charset=UTF-8', 'Cache-Control':'public, max-age=1800' } });
+  return new Response(xml, { headers: { 'Content-Type':'application/xml;charset=UTF-8', 'Cache-Control':'public, max-age=180' } });
 }
 
 // GET /public/comics/new-releases -- built for two real uses: a quick
@@ -4044,6 +4082,7 @@ export async function syncFocStripeEvent(env, event, deps) {
 
 export async function handleFocRequest(request, env, url, deps) {
   const path=url.pathname;
+  if(path==='/preorders/catalog'&&request.method==='GET')return preorderDirectory(env,deps,url);
   if(path.startsWith('/preorder/')&&request.method==='GET'){
     const rest=path.slice('/preorder/'.length).split('/');
     const skuId=decodeURIComponent(rest[0]||'');

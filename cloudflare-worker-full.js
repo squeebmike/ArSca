@@ -3,7 +3,7 @@ import { handleBookAlertRequest, handleAccountBookAlerts, runBookAlerts } from '
 import { isBcwItem, isBcwPublished, catalogSelection, renderBcwCatalog, renderBcwProduct } from './scripts/bcw-storefront.mjs';
 import { importDropshipBatch } from './scripts/dropship-import.mjs';
 import { cachedCatalogSitemap } from './scripts/sitemap-cache.mjs';
-import { storeOrganization, productFacts, productCondition, renderShopPreview } from './scripts/storefront-seo.mjs';
+import { storeOrganization, productFacts, productCondition, productHeading, renderShopPreview } from './scripts/storefront-seo.mjs';
 
 /**
  * LBA Proxy Worker - Cloudflare Worker
@@ -802,6 +802,9 @@ function shapeStorefrontItem(row) {
     player: storefrontCleanText(d.player || d.subject || '', 120), team: storefrontCleanText(d.team || '', 100), cardNumber: storefrontCleanText(d.cardNumber || d.number || '', 40),
     set: storefrontCleanText(d.set || d.series || '', 120), year: storefrontCleanText(d.year || '', 12), variant: storefrontCleanText(d.variant || d.finish || '', 120), condition: storefrontCleanText(d.condition || d.grade || '', 80),
     configuration: storefrontCleanText(d.configuration || '', 60),
+    rarity: storefrontCleanText(d.rarity || '', 100), language: storefrontCleanText(d.language || '', 80),
+    finish: storefrontCleanText(d.finish || '', 120), treatment: storefrontCleanText(d.treatment || '', 120),
+    grade: storefrontCleanText(d.grade || '', 40), isRelic: d.is_relic === true,
     // photoDataUrl/thumbnail are where the dashboard's own upload flow
     // (camera/file photo, R2-hosted or legacy base64) actually saves a
     // user-taken photo -- checked first, same precedence the dashboard's
@@ -2836,7 +2839,8 @@ function reviewSchemaAndHtml(item) {
 }
 
 function renderItemDetailPage(item, canonicalSlug, allListable) {
-  if(isBcwItem(item)) return renderBcwProduct(item, '/item/'+encodeURIComponent(item.id)+'/'+canonicalSlug);
+  const headingName = productHeading(item, allListable);
+  if(isBcwItem(item)) return renderBcwProduct(item, '/item/'+encodeURIComponent(item.id)+'/'+canonicalSlug, headingName);
   const canonicalPath = `/item/${encodeURIComponent(item.id)}/${canonicalSlug}`;
   const priceStr = item.price ? `$${item.price.toFixed(2)}` : '';
   const metaBits = [item.set, item.year, item.condition, item.variant].filter(Boolean).join(' · ');
@@ -2857,7 +2861,7 @@ function renderItemDetailPage(item, canonicalSlug, allListable) {
   const facts = productFacts(item);
   const detail = item.description || item.comic?.description || '';
   return mtgPageShell({
-    title: `${item.name}${item.set ? ` (${item.set})` : ''}${priceStr ? ` — ${priceStr}` : ''} | The Mana Pocket`,
+    title: `${headingName}${item.set ? ` (${item.set})` : ''}${priceStr ? ` — ${priceStr}` : ''} | The Mana Pocket`,
     description,
     canonicalPath,
     ogImage: item.image || undefined,
@@ -2873,10 +2877,10 @@ function renderItemDetailPage(item, canonicalSlug, allListable) {
     }, breadcrumbJsonLd],
     bodyHtml: `<div class="mp-crumb"><a href="/shop">Shop</a> / <a href="${categoryHref}">${mtgEscapeHtml(categoryLabel)}</a> / ${mtgEscapeHtml(item.name)}</div>` +
       `<div class="mp-detail">${item.image ? `<img src="${mtgEscapeHtml(item.image)}" alt="${mtgEscapeHtml(item.name)}" width="600" height="600" style="aspect-ratio:1/1;object-fit:contain;background:#16101f" fetchpriority="high">` : ''}` +
-      `<div><h1>${mtgEscapeHtml(item.name)}</h1>${metaBits ? `<div class="mp-meta">${mtgEscapeHtml(metaBits)}</div>` : ''}` +
+      `<div><h1>${mtgEscapeHtml(headingName)}</h1>${metaBits ? `<div class="mp-meta">${mtgEscapeHtml(metaBits)}</div>` : ''}` +
       `<div class="mp-prices">${priceStr ? `<span class="mp-price-pill">${mtgEscapeHtml(priceStr)}</span>` : '<span class="mp-meta">Contact the shop for price</span>'}${!available ? `<span class="mp-price-pill" style="background:rgba(255,77,109,.15);color:#ff9db0">Sold</span>` : ''}</div>` +
       (available ? `<a class="mp-card" style="display:inline-block;padding:12px 20px;margin-top:8px" href="/shop?item=${encodeURIComponent(item.id)}">Add to cart →</a>` : `<p class="mp-sub">This exact copy has sold. Browse ${mtgEscapeHtml(categoryLabel)} for what's currently in stock.</p>`) +
-      `${detail ? `<p class="mp-sub">${mtgEscapeHtml(detail)}</p>` : ''}` +
+      `<p class="mp-sub">${mtgEscapeHtml(detail || description)}</p>` +
       `${facts.length ? `<h2>Item details</h2><dl>${facts.map(f=>`<dt style="font-weight:700">${mtgEscapeHtml(f.name)}</dt><dd style="margin:0 0 10px">${mtgEscapeHtml(f.value)}</dd>`).join('')}</dl>` : ''}` +
       `${reviewHtml}` +
       `</div></div>` +
@@ -2902,20 +2906,24 @@ const CATEGORY_LANDING_COPY = {
   supplies: 'Sleeves, top loaders, binders, storage boxes and more from BCW -- see the full Supplies catalog.',
   collectibles: 'Figures, plush, apparel and other collectibles alongside our cards and comics.',
 };
-function renderCategoryLandingPage(slug, items) {
+function renderCategoryLandingPage(slug, items, page = 1) {
   const label = categoryLandingLabel(slug);
-  const canonicalPath = categoryLandingHref(slug);
+  const basePath = categoryLandingHref(slug);
+  const canonicalPath = basePath + (page > 1 ? `?page=${page}` : '');
   const copy = CATEGORY_LANDING_COPY[slug] || `Browse everything currently in stock in ${label}.`;
-  const shown = items.slice(0, 60);
+  const pages = Math.max(1, Math.ceil(items.length / 60));
+  const shown = items.slice((page - 1) * 60, page * 60);
+  const pageHref = n => basePath + (n > 1 ? `?page=${n}` : '');
+  const pagination = pages > 1 ? `<nav aria-label="Product pages" class="mp-meta" style="display:flex;flex-wrap:wrap;gap:16px;margin:24px 0">${page > 1 ? `<a rel="prev" href="${pageHref(page-1)}">← Previous</a>` : ''}${Array.from({length:pages},(_,i)=>i+1).map(n=>n===page?`<span aria-current="page">Page ${n}</span>`:`<a href="${pageHref(n)}">Page ${n}</a>`).join('')}${page < pages ? `<a rel="next" href="${pageHref(page+1)}">Next →</a>` : ''}</nav>` : '';
   const tiles = shown.map(item => {
-    const href = `/item/${encodeURIComponent(item.id)}/${encodeURIComponent(itemDetailSlug(item))}`;
+    const href = item.linkUrl || `/item/${encodeURIComponent(item.id)}/${encodeURIComponent(itemDetailSlug(item))}`;
     const priceStr = item.price ? `$${item.price.toFixed(2)}` : '';
-    return `<a class="mp-card" href="${href}">${item.image ? `<img loading="lazy" src="${mtgEscapeHtml(item.image)}" alt="${mtgEscapeHtml(item.name)}">` : ''}<div class="mp-card-body"><div class="mp-card-name">${mtgEscapeHtml(item.name)}</div>${priceStr ? `<div class="mp-card-price">${mtgEscapeHtml(priceStr)}</div>` : ''}</div></a>`;
+    return `<a class="mp-card" href="${mtgEscapeHtml(href)}">${item.image ? `<img loading="lazy" src="${mtgEscapeHtml(item.image)}" alt="${mtgEscapeHtml(item.name)}">` : ''}<div class="mp-card-body"><div class="mp-card-name">${mtgEscapeHtml(item.name)}</div>${priceStr ? `<div class="mp-card-price">${mtgEscapeHtml(priceStr)}</div>` : ''}</div></a>`;
   }).join('');
   const description = `${label} for sale at The Mana Pocket -- ${items.length.toLocaleString()} item${items.length === 1 ? '' : 's'} currently listed. ${copy}`.slice(0, 300);
   return mtgPageShell({
-    title: `${label} | The Mana Pocket`,
-    description,
+    title: `${label}${page > 1 ? ` — Page ${page}` : ''} | The Mana Pocket`,
+    description: `${page > 1 ? `Page ${page} of ${pages}. ` : ''}${description}`,
     canonicalPath,
     jsonLd: [
       { '@context': 'https://schema.org', '@type': 'CollectionPage', name: label, description: copy },
@@ -2926,7 +2934,7 @@ function renderCategoryLandingPage(slug, items) {
     ],
     bodyHtml: `<div class="mp-crumb"><a href="/shop">← Shop</a></div><h1>${mtgEscapeHtml(label)}</h1><p class="mp-sub">${mtgEscapeHtml(copy)}</p>` +
       (shown.length
-        ? `<div class="mp-grid">${tiles}</div>${items.length > shown.length ? `<p class="mp-meta" style="margin-top:20px">Showing ${shown.length} of ${items.length.toLocaleString()} -- <a href="/shop?cat=${encodeURIComponent(slug)}">see everything in the live shop →</a></p>` : ''}`
+        ? `<p class="mp-meta">Showing ${(page-1)*60+1}–${Math.min(page*60,items.length)} of ${items.length.toLocaleString()}</p><div class="mp-grid">${tiles}</div>${pagination}`
         : `<p class="mp-sub">Nothing in stock in this category right now -- <a href="/shop">browse the full shop</a> instead.</p>`),
   });
 }
@@ -2940,7 +2948,7 @@ function renderCategoryIndexPage(counts) {
     description: 'Browse cards, comics, and collectibles by category at The Mana Pocket.',
     canonicalPath: '/category',
     jsonLd: { '@context': 'https://schema.org', '@type': 'CollectionPage', name: 'Shop by Category' },
-    bodyHtml: `<div class="mp-crumb"><a href="/shop">← Shop</a></div><h1>Shop by category</h1><div class="mp-set-list">${rows}</div>`,
+    bodyHtml: `<div class="mp-crumb"><a href="/shop">← Shop</a></div><h1>Shop by category</h1><p><a href="/preorders/catalog">Browse all currently orderable comic covers →</a></p><div class="mp-set-list">${rows}</div>`,
   });
 }
 
@@ -6348,7 +6356,7 @@ async function routeRequest(request, env, ctx) {
       response.headers.set('X-Robots-Tag', 'noindex, follow');
       return response;
     }
-    if (url.pathname === '/public/preorders' || url.pathname.startsWith('/public/preorders/') || url.pathname === '/public/comics/new-releases' || url.pathname === '/public/shipping/quotes' || url.pathname.startsWith('/foc/admin/') || url.pathname.startsWith('/preorder/') || url.pathname === '/sitemap-preorders.xml') {
+    if (url.pathname === '/public/preorders' || url.pathname.startsWith('/public/preorders/') || url.pathname === '/preorders/catalog' || url.pathname === '/public/comics/new-releases' || url.pathname === '/public/shipping/quotes' || url.pathname.startsWith('/foc/admin/') || url.pathname.startsWith('/preorder/') || url.pathname === '/sitemap-preorders.xml') {
       return await handleFocRequest(request, env, url, {
         CORS, json, supabaseAdminFetch, requireStoreUser, requireAuthenticatedUser,
         readJsonWithLimit, enforceUsageLimit, stripeApi, stripeMode, stripeConfig, sendEmail,
@@ -7657,8 +7665,15 @@ async function routeRequest(request, env, ctx) {
       } else {
         const slug = decodeURIComponent(url.pathname.slice('/category/'.length));
         if (!CATEGORY_LANDING_LABELS[slug]) return mtgNotFoundPage('No such category.');
-        const items = allListable.filter(item => item.categorySlug === slug && !item.linkUrl);
-        html = renderCategoryLandingPage(slug, items);
+        const items = allListable.filter(item => item.categorySlug === slug);
+        const rawPage = url.searchParams.get('page') || '1';
+        if (!/^[1-9]\d*$/.test(rawPage)) return mtgNotFoundPage('No such category page.');
+        const page = Number(rawPage);
+        if (!Number.isSafeInteger(page) || page > Math.max(1,Math.ceil(items.length/60))) return mtgNotFoundPage('No such category page.');
+        if (url.searchParams.size !== (page > 1 ? 1 : 0) || (page === 1 && url.searchParams.has('page'))) {
+          return Response.redirect(`https://www.themanapocket.com${categoryLandingHref(slug)}${page > 1 ? `?page=${page}` : ''}`,301);
+        }
+        html = renderCategoryLandingPage(slug, items, page);
       }
       const response = mtgHtmlResponse(html);
       response.headers.set('Cache-Control', 'public, max-age=300');
