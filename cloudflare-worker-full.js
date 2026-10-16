@@ -2944,6 +2944,7 @@ function renderCategoryLandingPage(slug, items, page = 1) {
       ] },
     ],
     bodyHtml: `<div class="mp-crumb"><a href="/shop">← Shop</a></div><h1>${mtgEscapeHtml(label)}</h1><p class="mp-sub">${mtgEscapeHtml(copy)}</p>` +
+      `<form action="/shop" method="get" role="search" style="display:flex;flex-wrap:wrap;gap:10px;margin:20px 0"><input type="hidden" name="cat" value="${mtgEscapeHtml(slug)}"><input name="q" type="search" aria-label="Search ${mtgEscapeHtml(label)}" placeholder="${slug==='sports-cards'?'Player, team, set or card number':slug==='comics'?'Series, issue or cover artist':'Name, set or card number'}" style="flex:1;min-width:180px;padding:12px;border-radius:8px;font:16px system-ui"><button type="submit" style="padding:12px 18px;border-radius:8px;background:#8bd450;color:#151021;font-weight:700">Search ${mtgEscapeHtml(label)}</button></form>` +
       (['mtg','pokemon'].includes(slug) ? `<p><a href="/${slug}">Browse all ${slug==='mtg'?'MTG':'Pokémon'} sets and card checklists</a> · <a href="/${slug}-new-releases">Open the interactive set viewer</a></p>` : '') +
       (shown.length
         ? `<p class="mp-meta">Showing ${(page-1)*60+1}–${Math.min(page*60,items.length)} of ${items.length.toLocaleString()}</p><div class="mp-grid">${tiles}</div>${pagination}`
@@ -6637,7 +6638,7 @@ async function routeRequest(request, env, ctx) {
       const storeId = String(url.searchParams.get('store_id') || '').trim();
       if (!/^[0-9a-z_-]{2,80}$/i.test(storeId)) return json({ ok:false, error:'Valid store_id required' }, 400);
       if (!(env.SUPABASE_URL && (env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SERVICE_KEY))) return json({ ok:false, error:'Storefront service unavailable' }, 503);
-      const storefrontCacheUrl = new URL(url); storefrontCacheUrl.searchParams.set('_catalog_version', 'database-facets-1');
+      const storefrontCacheUrl = new URL(url); storefrontCacheUrl.searchParams.set('_catalog_version', 'database-facets-2');
       const storefrontCacheKey = new Request(storefrontCacheUrl.toString(), { method:'GET' });
       const cachedStorefront = await caches.default.match(storefrontCacheKey);
       if (cachedStorefront) return cachedStorefront;
@@ -6663,7 +6664,7 @@ async function routeRequest(request, env, ctx) {
       const response = lastResponse;
       if (!response?.ok) return json({ ok:false, error:'Inventory unavailable' }, 502);
       const linkedWfIds = new Set((rows || []).map(row => row.data?.wfId || row.data?.webflowId).filter(Boolean).map(String));
-      let items = (rows || []).map(shapeStorefrontItem).filter(isStorefrontItemListable);
+      let items = (rows || []).map(shapeStorefrontItem).filter(item=>isBcwItem(item)?isBcwPublished(item):isStorefrontItemListable(item));
       const inventorySource = storefrontCleanText(settings?.[0]?.modules?.inventorySource || '',40).toLowerCase();
       if ((inventorySource === 'webflow' || inventorySource === 'hybrid') && env.WEBFLOW_TOKEN) {
         const webflowItems=[];

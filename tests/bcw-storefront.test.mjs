@@ -70,6 +70,14 @@ try{
  assert.equal(redirect.status,301);assert.equal(redirect.headers.get('Location'),'https://www.themanapocket.com/bcw');
  const detail=await api.fetch(new Request('https://themanapocket.com'+productPath(item)),env,edge);
  assert.equal(detail.status,200);assert.match(await detail.text(),/data-bcw-product/);
+ globalThis.fetch=async input=>{
+  const path=String(input);
+  const data=path.includes('store_settings?')?[{receipt_settings:{storefrontEnabled:true}}]:path.includes('inventory_items?')?[incoming,{...incoming,id:'unpriced-placeholder',data:{...incoming.data,priceOverride:0,market:0,marketPrice:0,rawMarketPrice:0,minPrice:0}}]:[{id:'test',name:'Store'}];
+  return new Response(JSON.stringify(data),{headers:{'Content-Type':'application/json'}});
+ };
+ const shop=await api.fetch(new Request('https://still-resonance-4f87.swarnerauto.workers.dev/public/storefront?store_id=test'),env,edge);
+ assert.equal(shop.status,200);const publicItems=(await shop.json()).items;
+ assert.ok(publicItems.some(i=>i.id===incoming.id));assert.ok(!publicItems.some(i=>i.id==='unpriced-placeholder'),'unpriced BCW placeholders cannot reappear in the main shop');
  globalThis.fetch=async()=>new Response('failure',{status:503});
  const failed=await api.fetch(new Request('https://still-resonance-4f87.swarnerauto.workers.dev/public/bcw'),env,edge);
  assert.equal(failed.status,503,'database failures cannot look like an empty successful catalog');
