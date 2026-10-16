@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import './helpers/mock-body-html-rewriter.mjs';
 import {productFacts,productHeading} from '../scripts/storefront-seo.mjs';
-import {preorderDirectoryEntries,handleFocRequest} from '../scripts/foc-preorders.mjs';
+import {preorderListingHeading,preorderDirectoryEntries,handleFocRequest} from '../scripts/foc-preorders.mjs';
 import {parseHTML} from 'linkedom';
 import fs from 'node:fs';
 const rows=Array.from({length:145},(_,n)=>({id:'comic-'+String(n).padStart(3,'0'),status:'in_stock',updated_at:'2026-10-14T00:00:00Z',data:{name:'Comic '+n,category:'Comics',quantity:1,priceOverride:5,onlineListed:true}}));
@@ -36,6 +36,10 @@ try{
  const facts=productFacts({rarity:'Rare',language:'Japanese',grade:'10',gradingCompany:'CGC',finish:'Foil'});
  for(const name of ['Rarity','Language','Grade','Grading company','Finish'])assert.ok(facts.some(f=>f.name===name));
  const deps={mtgSlugify:s=>s.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,''),mtgEscapeHtml:s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;'),mtgPageShell:p=>`<title>${p.title}</title><link rel="canonical" href="https://www.themanapocket.com${p.canonicalPath}">${p.bodyHtml}`};
+ const headingA=preorderListingHeading({title:'Batman #25 Cover A',sku:'LUNAR123',distributor:'Lunar'},{foc_date:'2026-09-28'});
+ assert.equal(headingA.name,'Batman #25 Cover A');assert.match(headingA.reference,/LUNAR123/);
+ const headingB=preorderListingHeading({title:'Batman #25 Cover A',sku:'LUNAR123',distributor:'Lunar'},{foc_date:'2026-10-05'});
+ assert.notEqual(headingA.reference,headingB.reference,'separate FOC offers have distinct headings');
  const variants=[{id:'ready',canPreorder:true,variantLabel:'Cover A',priceCents:500},{id:'request',canPreorder:true,waitlistOnly:true,priceCents:500}];
  const entries=preorderDirectoryEntries([{cycle:{isOpen:true},families:[{seriesName:'Batman',issueNumber:'25',variants}]},{cycle:{isOpen:false},families:[{title:'Closed',variants:[{id:'unsecured',canPreorder:true},{id:'secured',canPreorder:true,afterFoc:true,afterFocLeft:2,priceCents:600}]}]}],deps);
  assert.deepEqual(entries.map(e=>e.id).sort(),['ready','secured']);

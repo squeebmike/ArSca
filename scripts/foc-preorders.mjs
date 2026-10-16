@@ -619,13 +619,20 @@ function preorderDetailSlug(name, deps) {
   return deps.mtgSlugify(name);
 }
 
+export function preorderListingHeading(sku, cycle = {}) {
+  const name=withRatioWord(text(sku.title,800)) || text(sku.variantLabel || sku.variant_label,300) || 'Comic cover';
+  const identifier=text(sku.sku || sku.distributor_sku || sku.id,100);
+  return {name,reference:[text(sku.distributor,40),identifier?'SKU '+identifier:null,cycle.foc_date?'FOC '+cycle.foc_date:null].filter(Boolean).join(' · ')};
+}
+
 export function preorderDirectoryEntries(catalogs, deps, includeClosed = false) {
   const entries = new Map();
   for (const catalog of catalogs || []) for (const family of catalog.families || []) for (const sku of family.variants || []) {
     const orderable = catalog.cycle?.isOpen ? sku.canPreorder && !sku.waitlistOnly : sku.afterFoc && sku.canPreorder && sku.afterFocLeft > 0;
     if (!orderable && !includeClosed) continue;
-    const name = (family.seriesName || family.title) + (family.issueNumber ? ' #' + family.issueNumber : '') + ' · ' + (sku.variantLabel || 'Cover A');
-    entries.set(sku.id,{id:sku.id,name,url:'/preorder/'+encodeURIComponent(sku.id)+'/'+preorderDetailSlug(name,deps),image:sku.coverImageUrl||'',price:sku.priceCents/100,release:sku.onSaleDate||'',distributor:sku.distributor||'',orderable:!!orderable});
+    const canonicalName = (family.seriesName || family.title) + (family.issueNumber ? ' #' + family.issueNumber : '') + ' · ' + (sku.variantLabel || 'Cover A');
+    const heading=preorderListingHeading(sku,catalog.cycle);
+    entries.set(sku.id,{id:sku.id,name:heading.name,reference:heading.reference,url:'/preorder/'+encodeURIComponent(sku.id)+'/'+preorderDetailSlug(canonicalName,deps),image:sku.coverImageUrl||'',price:sku.priceCents/100,release:sku.onSaleDate||'',distributor:sku.distributor||'',orderable:!!orderable});
   }
   return [...entries.values()].sort((a,b)=>a.name.localeCompare(b.name)||a.id.localeCompare(b.id));
 }
@@ -634,7 +641,7 @@ async function preorderDirectory(env, deps, url) {
   const raw = url.searchParams.get('page') || '1';
   if (!/^[1-9]\d*$/.test(raw) || !Number.isSafeInteger(Number(raw))) return notFoundPreorderPage(deps);
   const includeClosed=url.searchParams.get('status')==='all';
-  const page=Number(raw), key=new Request('https://internal.themanapocket.com/__cache/preorder-directory-v2');
+  const page=Number(raw), key=new Request('https://internal.themanapocket.com/__cache/preorder-directory-v3');
   const cache=globalThis.caches?.default;
   let cached;try{cached=await cache?.match(key);}catch{}
   let entries;
@@ -696,8 +703,9 @@ async function preorderDetailPage(env, deps, skuId, providedSlug) {
   const seriesName = text(familyRow.series_name, 300) || text(familyRow.title, 800);
   const issueNumber = familyRow.issue_number || '';
   const publisher = [text(familyRow.publisher, 300), text(familyRow.imprint, 300)].filter(Boolean).join(' · ');
-  const name = seriesName + (issueNumber ? ' #' + issueNumber : '') + ' · ' + (sku.variantLabel || 'Cover A');
-  const canonicalSlug = preorderDetailSlug(name, deps);
+  const canonicalName = seriesName + (issueNumber ? ' #' + issueNumber : '') + ' · ' + (sku.variantLabel || 'Cover A');
+  const {name,reference} = preorderListingHeading(skuRow,cycleRow);
+  const canonicalSlug = preorderDetailSlug(canonicalName, deps);
   const canonicalPath = `/preorder/${encodeURIComponent(skuId)}/${canonicalSlug}`;
   // A retitled series or an old bare-ID share link must never 404 -- skuId is
   // the real lookup key, the slug is just a relevance/trust signal in the
@@ -711,7 +719,7 @@ async function preorderDetailPage(env, deps, skuId, providedSlug) {
     publisher || null,
     text(skuRow.description, 220) || text(familyRow.description, 220) || null,
   ].filter(Boolean).join(' · ');
-  const title = `${name} | The Mana Pocket Comic Preorders`;
+  const title = `${name} — ${reference} | The Mana Pocket Comic Preorders`;
   const appUrl = `https://www.themanapocket.com/preorders?sku=${encodeURIComponent(skuId)}`;
   const image = sku.coverImageUrl || '';
   const canPreorder = (cycleOpen(cycleRow) || !!sku.afterFoc) && sku.canPreorder;
@@ -734,7 +742,7 @@ async function preorderDetailPage(env, deps, skuId, providedSlug) {
     },
     bodyHtml: `<div class="mp-crumb"><a href="/preorders">← All comic preorders</a></div>` +
       `<div class="mp-detail">${image ? `<img src="${deps.mtgEscapeHtml(image)}" alt="${deps.mtgEscapeHtml(name)}">` : ''}` +
-      `<div><h1>${deps.mtgEscapeHtml(name)}</h1>${publisher ? `<div class="mp-meta">${deps.mtgEscapeHtml(publisher)}</div>` : ''}` +
+      `<div><h1>${deps.mtgEscapeHtml(name)} <span style="display:block;font:500 14px/1.5 system-ui,sans-serif;margin-top:8px">${deps.mtgEscapeHtml(reference)}</span></h1>${publisher ? `<div class="mp-meta">${deps.mtgEscapeHtml(publisher)}</div>` : ''}` +
       `<div class="mp-meta">${sku.afterFoc?'FOC closed · limited ordered copies':'Preorder deadline '+deps.mtgEscapeHtml(dateOnlyLabel(cycleRow.foc_date))}</div>` +
       `<div class="mp-prices"><span class="mp-price-pill">${deps.mtgEscapeHtml(priceText)}</span></div>` +
       `${(text(skuRow.description, 600) || text(familyRow.description, 600)) ? `<p class="mp-sub">${deps.mtgEscapeHtml(text(skuRow.description, 600) || text(familyRow.description, 600))}</p>` : ''}` +
