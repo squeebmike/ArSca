@@ -146,12 +146,12 @@ assert.match(foc, /cost:Number\(line\.unitCost\)>0&&Number\(line\.unitCost\)<100
 const dash = fs.readFileSync('scripts/foc-dashboard.js', 'utf8');
 assert.match(dash, /onclick="openPackingSlipScan\(\)">📷 SCAN PACKING SLIP<\/button>/);
 assert.ok(dash.includes("api('/foc/admin/receive',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({storeId:getActiveStoreId(),cycleId:ids[i],lines:byCycle[ids[i]]})})"), 'each FOC week on the slip is received through the normal receive path');
-assert.match(dash, /unitCost:l\.netUnitPrice>0\?l\.netUnitPrice:undefined/);
+assert.match(dash, /unitCost:k\.source==='half'\?undefined:k\.unit/, 'invoice net price (or a Lunar discount) is sent as the cost; otherwise the server uses 50% of cover');
 assert.match(dash, /focThumbHtml\(c\.coverImage,c\.title\)/, 'the slip checklist shows each cover');
 assert.match(dash, /'<div class="foc-sku-fields" data-receive-row[^\n]*focThumbHtml\(v\.coverImageUrl,v\.variantLabel\)/, 'RECEIVE SHIPMENT shows each cover');
 assert.match(dash, /var ebay=Number\(v\.ebayPresold\|\|0\),total=Number\(v\.customerQty\|\|0\)\+ebay\+Number\(v\.storeQuantity\|\|0\);/, 'eBay presold copies count toward what RECEIVE SHIPMENT expects');
 assert.match(dash, /sold on eBay -- pack &amp; ship/);
 assert.match(dash, /renderSlipReceived\(done,s\)/, 'after receiving, a pack-and-ship list');
 assert.match(dash, /nothing here adds sales or profit/);
-assert.match(dash, /c\.orderOnFile\?'<span style="color:var\(--gold\)">not on your PRH order<\/span>':'<span>no saved order for this week<\/span>'/, 'a week ordered straight with PRH is not flagged as off-order');
+assert.match(dash, /c\.orderOnFile\?'<span style="color:var\(--gold\)">not on your '\+esc\(slipCycleDistributor\(c\.cycleId\)\)\+' order<\/span>':'<span>no saved order for this week<\/span>'/, 'a week ordered straight with the distributor is not flagged as off-order');
 console.log('Packing slip receive wiring checks passed');

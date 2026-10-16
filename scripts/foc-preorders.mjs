@@ -291,45 +291,57 @@ export function inFilter(values) {
 // by barcode, never by the slip's cut-off titles. One slip can carry books
 // from several FOC weeks.
 export function slipCode(value){ return String(value||'').replace(/\D/g,''); }
+// Store ask: "here's the Lunar packing slip ... make sure intake works."
+// Lunar's slip prints no barcode -- each line carries Lunar's own item code
+// (e.g. 0826DC0141), the same ProductCode its FOC file has, saved on the
+// cover as distributor_sku. Letters matter there, so only spaces/dashes go.
+export function slipItemCode(value){ return String(value||'').toUpperCase().replace(/[^0-9A-Z]/g,''); }
 function digitsOff(a,b){ if(a.length!==b.length)return 99; let n=0; for(let i=0;i<a.length;i++) if(a[i]!==b[i]) n++; return n; }
 // Each slip line with its cover: the exact barcode, else a barcode one digit
 // off (a misread photo) when exactly one cover is that close -- flagged
 // 'close' so it gets a look. A barcode on several covers (same book in two
 // FOC weeks) goes to the newest week.
 export function matchSlipLines(lines,skus){
-  const byCode=new Map();
+  const byCode=new Map(),byItem=new Map();
   for(const sku of skus||[]) for(const code of [slipCode(sku.upc),slipCode(sku.isbn)]) if(code){ if(!byCode.has(code))byCode.set(code,[]); byCode.get(code).push(sku); }
+  for(const sku of skus||[]){ const item=slipItemCode(sku.distributor_sku); if(item){ if(!byItem.has(item))byItem.set(item,[]); byItem.get(item).push(sku); } }
   const newest=list=>list.slice().sort((a,b)=>String(b.foc_date||'').localeCompare(String(a.foc_date||'')))[0];
   return (lines||[]).map(line=>{
-    const code=slipCode(line.code);
+    const code=slipCode(line.code),itemCode=slipItemCode(line.itemCode);
     let sku=null,how='';
     if(code&&byCode.has(code)){ sku=newest(byCode.get(code)); how='exact'; }
+    else if(itemCode&&byItem.has(itemCode)){ sku=newest(byItem.get(itemCode)); how='exact'; }
     else if(code.length>=12){
       const close=(skus||[]).filter(s=>[slipCode(s.upc),slipCode(s.isbn)].some(c=>c&&digitsOff(c,code)===1));
       if(close.length===1){ sku=close[0]; how='close'; }
     }
-    return { ...line, code, sku, how };
+    if(!sku&&itemCode.length>=8){
+      const close=(skus||[]).filter(s=>{ const c=slipItemCode(s.distributor_sku); return c&&digitsOff(c,itemCode)===1; });
+      if(close.length===1){ sku=close[0]; how='close'; }
+    }
+    return { ...line, code, itemCode, sku, how };
   });
 }
 // The same line read twice (overlapping photos of one page) counts once.
 export function mergeSlipLines(lines){
   const out=[];const seen=new Map();
   for(const line of lines||[]){
-    const code=slipCode(line.code); const qty=Math.max(0,Math.round(Number(line.qty)||0));
-    if(!code){ out.push({ ...line, code, qty }); continue; }
-    if(seen.has(code)){ const prev=seen.get(code); prev.qty=Math.max(prev.qty,qty); if(!(prev.netUnitPrice>0)) prev.netUnitPrice=Number(line.netUnitPrice)||0; continue; }
-    const row={ code, title:text(line.title,200), qty, netUnitPrice:Math.max(0,Number(line.netUnitPrice)||0) };
-    seen.set(code,row); out.push(row);
+    const code=slipCode(line.code),itemCode=slipItemCode(line.itemCode); const qty=Math.max(0,Math.round(Number(line.qty)||0));
+    const key=code||(itemCode?'item:'+itemCode:'');
+    if(!key){ out.push({ ...line, code, itemCode, qty }); continue; }
+    if(seen.has(key)){ const prev=seen.get(key); prev.qty=Math.max(prev.qty,qty); if(!(prev.netUnitPrice>0)) prev.netUnitPrice=Number(line.netUnitPrice)||0; continue; }
+    const row={ code, itemCode, title:text(line.title,200), qty, netUnitPrice:Math.max(0,Number(line.netUnitPrice)||0) };
+    seen.set(key,row); out.push(row);
   }
   return out;
 }
 const SLIP_SCHEMA={type:'object',additionalProperties:false,required:['invoice','onSaleDate','totalUnits','lines'],properties:{
   invoice:{type:'string'},onSaleDate:{type:'string'},totalUnits:{type:'integer'},
-  lines:{type:'array',items:{type:'object',additionalProperties:false,required:['code','title','qty','netUnitPrice'],properties:{code:{type:'string'},title:{type:'string'},qty:{type:'integer'},netUnitPrice:{type:'number'}}}}}};
+  lines:{type:'array',items:{type:'object',additionalProperties:false,required:['code','itemCode','title','qty','netUnitPrice'],properties:{code:{type:'string'},itemCode:{type:'string'},title:{type:'string'},qty:{type:'integer'},netUnitPrice:{type:'number'}}}}}};
 const SLIP_PROMPT='These photos show a comic book distributor packing slip or invoice (for example Penguin Random House or Lunar), possibly several pages, or a carton label. Read every book line on them.\n\n'+
-  'For each book line:\n- code: the barcode number exactly as printed in the "ISBN 13/EAN", "UPC" or "ISBN" column, digits only. Comic barcodes are usually 17 digits (a 12-digit UPC followed by a 5-digit add-on); copy every digit carefully, since this is what matches the book.\n- title: the title as printed.\n- qty: the quantity shipped.\n- netUnitPrice: the "NET UNIT PRICE" (what the store pays per copy), or 0 if the photo does not show one.\n\n'+
+  'For each book line:\n- code: the barcode number exactly as printed in the "ISBN 13/EAN", "UPC" or "ISBN" column, digits only. Comic barcodes are usually 17 digits (a 12-digit UPC followed by a 5-digit add-on); copy every digit carefully, since this is what matches the book. "" if the line has no barcode.\n- itemCode: the distributor\'s own item code when one is printed, exactly as printed with its letters, e.g. Lunar\'s "0826DC0141" (a Lunar slip has no barcodes, only these). "" if none.\n- title: the title as printed.\n- qty: the quantity shipped.\n- netUnitPrice: the "NET UNIT PRICE" (what the store pays per copy), or 0 if the photo does not show one.\n\n'+
   'If two photos overlap and show the same line, list it once. Skip headers, addresses, totals and anything that is not a book line.\n'+
-  'invoice: the invoice or delivery number, or "" if none. onSaleDate: any printed on-sale date as YYYY-MM-DD, or "". totalUnits: the printed "Total Units" or "Total Books", or 0 if none is visible.';
+  'invoice: the invoice, delivery or packing slip number (Lunar prints one like "LUN895831" under its barcode), or "" if none. onSaleDate: any printed on-sale date as YYYY-MM-DD, or "". totalUnits: the printed "Total Units" or "Total Books", or 0 if none is visible.';
 async function readSlipImages(env,images){
   const request={model:'claude-opus-5-5',max_tokens:16000,output_config:{effort:'high',format:{type:'json_schema',schema:SLIP_SCHEMA}},
     messages:[{role:'user',content:[...images.map(img=>({type:'image',source:{type:'base64',media_type:img.mediaType,data:img.data}})),{type:'text',text:SLIP_PROMPT}]}]};
@@ -346,7 +358,7 @@ async function readSlipImages(env,images){
   let parsed;try{parsed=JSON.parse(block?.text||'');}catch(_){throw new Error('The slip reading came back unreadable -- try again');}
   return { invoice:text(parsed.invoice,60), onSaleDate:dateIso(parsed.onSaleDate)||'', totalUnits:Math.max(0,Number(parsed.totalUnits)||0), lines:Array.isArray(parsed.lines)?parsed.lines:[] };
 }
-const SLIP_SKU_FIELDS='id,cycle_id,upc,isbn,title,variant_label,foc_date,store_quantity,secured_quantity,is_incentive,msrp_cents,cover_image_url';
+const SLIP_SKU_FIELDS='id,cycle_id,upc,isbn,distributor_sku,publisher,title,variant_label,foc_date,store_quantity,secured_quantity,is_incentive,msrp_cents,cover_image_url';
 async function readPackingSlip(request,env,deps){
   const limited=await deps.readJsonWithLimit(request,24*1024*1024);if(limited.error)return limited.error;
   const body=limited.data||{};const storeId=text(body.storeId,80);
@@ -365,12 +377,24 @@ async function readPackingSlip(request,env,deps){
   }
   const lines=mergeSlipLines(read.lines);
   const codes=[...new Set(lines.map(l=>l.code).filter(c=>c.length>=10))];
+  const itemCodes=[...new Set(lines.map(l=>l.itemCode).filter(c=>c&&c.length>=6))];
   const skuById=new Map();
   const addRows=rows=>{for(const row of rows||[])skuById.set(row.id,row);};
   for(let i=0;i<codes.length;i+=40){
     const chunk=codes.slice(i,i+40);
     addRows((await db(`comic_skus?store_id=eq.${encodeURIComponent(storeId)}&upc=${inFilter(chunk)}&select=${SLIP_SKU_FIELDS}`)).data);
     addRows((await db(`comic_skus?store_id=eq.${encodeURIComponent(storeId)}&isbn=${inFilter(chunk)}&select=${SLIP_SKU_FIELDS}`)).data);
+  }
+  for(let i=0;i<itemCodes.length;i+=40){
+    addRows((await db(`comic_skus?store_id=eq.${encodeURIComponent(storeId)}&distributor_sku=${inFilter(itemCodes.slice(i,i+40))}&select=${SLIP_SKU_FIELDS}`)).data);
+  }
+  // A Lunar item code misread by one character: everything sharing its
+  // month+publisher prefix (0826DC...).
+  const foundItems=new Set([...skuById.values()].map(s=>slipItemCode(s.distributor_sku)));
+  const itemPrefixes=[...new Set(itemCodes.filter(c=>!foundItems.has(c)&&/^\d{4}[A-Z]{2}/.test(c)).map(c=>c.slice(0,6)))];
+  for(let i=0;i<itemPrefixes.length;i+=20){
+    const or='('+itemPrefixes.slice(i,i+20).map(b=>'distributor_sku.like.'+b+'*').join(',')+')';
+    addRows((await db(`comic_skus?store_id=eq.${encodeURIComponent(storeId)}&or=${encodeURIComponent(or)}&select=${SLIP_SKU_FIELDS}`)).data);
   }
   // Same book, one digit misread: everything sharing the 12-digit UPC.
   const matchedCodes=new Set([...skuById.values()].flatMap(s=>[slipCode(s.upc),slipCode(s.isbn)]));
@@ -411,6 +435,7 @@ async function readPackingSlip(request,env,deps){
   }
   const receivedAt=new Map();for(const row of receivedRows)if(row.focSkuId&&!receivedAt.has(row.focSkuId))receivedAt.set(row.focSkuId,row.created_at);
   const cover=sku=>({skuId:sku.id,cycleId:sku.cycle_id,focDate:sku.foc_date,title:sku.title,variantLabel:sku.variant_label||'',upc:sku.upc||'',
+    itemCode:sku.distributor_sku||'',publisher:sku.publisher||'',
     orderOnFile:submittedCycles.has(sku.cycle_id)||cartCycles.has(sku.cycle_id),
     coverImage:sku.cover_image_url||'',
     ebayPresold:Number(ebayPresold.get(sku.id)||0),customerShip:Number(shipQty.get(sku.id)||0),customerPickup:Math.max(0,Number(customerQty.get(sku.id)||0)-Number(shipQty.get(sku.id)||0)),
@@ -420,7 +445,7 @@ async function readPackingSlip(request,env,deps){
   const onSlip=new Set(matched.map(m=>m.sku?.id).filter(Boolean));
   const missing=cycleSkus.filter(sku=>!onSlip.has(sku.id)&&!receivedAt.has(sku.id)).map(cover).filter(c=>c.orderedQty>0);
   return deps.json({ok:true,invoice:read.invoice,onSaleDate:read.onSaleDate,totalUnits:read.totalUnits,unitsRead:lines.reduce((a,l)=>a+l.qty,0),
-    lines:matched.map(m=>({code:m.code,title:m.title,qty:m.qty,netUnitPrice:m.netUnitPrice,how:m.how,cover:m.sku?cover(m.sku):null})),
+    lines:matched.map(m=>({code:m.code,itemCode:m.itemCode,title:m.title,qty:m.qty,netUnitPrice:m.netUnitPrice,how:m.how,cover:m.sku?cover(m.sku):null})),
     cycles:(cycles||[]).map(c=>({id:c.id,focDate:c.foc_date,distributor:c.distributor||'PRH',orderOnFile:submittedCycles.has(c.id)||cartCycles.has(c.id)})),missing});
 }
 
