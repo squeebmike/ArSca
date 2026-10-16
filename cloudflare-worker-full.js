@@ -3319,6 +3319,21 @@ async function loadInventoryByEbaySku(env, storeId, orders) {
   return skuMap;
 }
 
+// An eBay order can come in on an FOC presale listing whose presale row has
+// nothing left (its copies were already sold or the row was ended) after the
+// books arrived. The copy that ships is a received shelf copy, so the sale
+// belongs to that row -- otherwise the presale row was marked sold and the
+// shelf count never went down (store report: Beneath the Trees Halloween
+// Special B and D sold on eBay, both still showed 2 in stock).
+async function shelfCopyForPresaleSale(env, storeId, invRow, quantitySold) {
+  const d = invRow?.data || {};
+  if (!invRow || d.source !== 'foc_presale' || !d.focSkuId) return invRow;
+  if (Number(d.quantity ?? d.qty ?? 0) >= quantitySold) return invRow;
+  const { data: rows } = await supabaseAdminFetch(env, `inventory_items?store_id=eq.${encodeURIComponent(storeId)}&data->>focSkuId=eq.${encodeURIComponent(d.focSkuId)}&data->>source=eq.foc_receive&status=eq.in_stock&select=id,data,status`);
+  const shelf = (rows || []).find(r => Number(r.data?.quantity ?? r.data?.qty ?? 0) >= quantitySold) || (rows || []).find(r => Number(r.data?.quantity ?? r.data?.qty ?? 0) > 0);
+  return shelf || invRow;
+}
+
 // What's kept on an eBay sale's payment: its order and line, and the money
 // behind its profit, so the fee, shipping and label can be corrected later.
 function ebaySaleMetadata(order, m, previous = {}) {
@@ -3455,7 +3470,7 @@ async function syncEbayOrdersForStore(env, storeId, ebayToken, receiptSettings, 
       const money = ebayOrderMoney(order, { feePct: receiptSettings?.ebayFeePct ?? EBAY_DEFAULT_FEE_PCT, feeFlat: receiptSettings?.ebayFeeFlat });
       for (const [lineIndex, li] of (order.lineItems || []).entries()) {
         const sku = String(li.sku || '');
-        const invRow = skuMap.get(sku) || null;
+        let invRow = skuMap.get(sku) || null;
         const m = money[lineIndex];
 
         // Keyed by sku (as before) whenever one exists -- preserves the exact
@@ -3475,6 +3490,7 @@ async function syncEbayOrdersForStore(env, storeId, ebayToken, receiptSettings, 
 
         try {
           const quantitySold = Math.max(1, Number(li.quantity || 1));
+          invRow = await shelfCopyForPresaleSale(env, storeId, invRow, quantitySold);
           const salePrice = Number(li.lineItemCost?.value || li.total?.value || 0);
           const soldAt = order.creationDate || new Date().toISOString();
 
