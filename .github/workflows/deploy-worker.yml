@@ -25,6 +25,8 @@ on:
       - scripts/comic-search.mjs
       - scripts/comic-search-client.mjs
       - scripts/public-pokemon-sets.mjs
+      - scripts/catalog-inventory.mjs
+      - scripts/pokemon-catalog-pages.mjs
       - scripts/ebay-order-money.mjs
       - scripts/orders-board.mjs
       - scripts/sitemap-cache.mjs
