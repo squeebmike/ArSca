@@ -619,8 +619,8 @@ function preorderDetailSlug(name, deps) {
   return deps.mtgSlugify(name);
 }
 
-export function preorderListingHeading(sku, cycle = {}) {
-  const name=withRatioWord(text(sku.title,800)) || text(sku.variantLabel || sku.variant_label,300) || 'Comic cover';
+export function preorderListingHeading(sku, cycle = {}, fallbackName = '') {
+  const name=withRatioWord(text(sku.title,800)) || fallbackName || text(sku.variantLabel || sku.variant_label,300) || 'Comic cover';
   const identifier=text(sku.sku || sku.distributor_sku || sku.id,100);
   return {name,reference:[text(sku.distributor,40),identifier?'SKU '+identifier:null,cycle.foc_date?'FOC '+cycle.foc_date:null].filter(Boolean).join(' · ')};
 }
@@ -631,7 +631,7 @@ export function preorderDirectoryEntries(catalogs, deps, includeClosed = false) 
     const orderable = catalog.cycle?.isOpen ? sku.canPreorder && !sku.waitlistOnly : sku.afterFoc && sku.canPreorder && sku.afterFocLeft > 0;
     if (!orderable && !includeClosed) continue;
     const canonicalName = (family.seriesName || family.title) + (family.issueNumber ? ' #' + family.issueNumber : '') + ' · ' + (sku.variantLabel || 'Cover A');
-    const heading=preorderListingHeading(sku,catalog.cycle);
+    const heading=preorderListingHeading(sku,catalog.cycle,canonicalName);
     entries.set(sku.id,{id:sku.id,name:heading.name,reference:heading.reference,url:'/preorder/'+encodeURIComponent(sku.id)+'/'+preorderDetailSlug(canonicalName,deps),image:sku.coverImageUrl||'',price:sku.priceCents/100,release:sku.onSaleDate||'',distributor:sku.distributor||'',orderable:!!orderable});
   }
   return [...entries.values()].sort((a,b)=>a.name.localeCompare(b.name)||a.id.localeCompare(b.id));
@@ -704,7 +704,7 @@ async function preorderDetailPage(env, deps, skuId, providedSlug) {
   const issueNumber = familyRow.issue_number || '';
   const publisher = [text(familyRow.publisher, 300), text(familyRow.imprint, 300)].filter(Boolean).join(' · ');
   const canonicalName = seriesName + (issueNumber ? ' #' + issueNumber : '') + ' · ' + (sku.variantLabel || 'Cover A');
-  const {name,reference} = preorderListingHeading(skuRow,cycleRow);
+  const {name,reference} = preorderListingHeading(skuRow,cycleRow,canonicalName);
   const canonicalSlug = preorderDetailSlug(canonicalName, deps);
   const canonicalPath = `/preorder/${encodeURIComponent(skuId)}/${canonicalSlug}`;
   // A retitled series or an old bare-ID share link must never 404 -- skuId is
