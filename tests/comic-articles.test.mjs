@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { comicKey, sameComic, parseBookLines, parseFacts, sanitizeRichText, shapeArticle, bookStatus, renderBuyBox, handleArticlesRequest, readingMinutes } from '../scripts/comic-articles.mjs';
+import { comicKey, sameComic, parseBookLines, parseFacts, sanitizeRichText, shapeArticle, bookStatus, renderBuyBox, handleArticlesRequest, readingMinutes, articleTopics, relatedArticles, renderArticlePage } from '../scripts/comic-articles.mjs';
 
 // --- Matching a book name to catalog titles -------------------------------------
 assert.deepEqual(comicKey("X-Men ’92: Incursions #1"), { series: 'x men 92 incursions', issue: '1' });
@@ -12,6 +12,18 @@ assert.ok(sameComic('Batman #01', 'BATMAN #1 COVER A'), 'leading zeros ignored')
 assert.deepEqual(parseBookLines(' A #1 \n\nB #2\n'), ['A #1', 'B #2']);
 assert.deepEqual(parseFacts('Publisher: Marvel\nnot a fact\nFOC: Nov 23, 2026'), [['Publisher', 'Marvel'], ['FOC', 'Nov 23, 2026']]);
 console.log('Comic article matching checks passed');
+{
+  const pokemon={slug:'buying-pokemon-singles',title:'Buying Pokémon singles',books:[]};
+  const mixed={slug:'raw-vs-graded-sports-pokemon-cards',title:'Raw or graded sports and Pokémon cards',books:[]};
+  const sports={slug:'topps-holiday-baseball',title:'Topps Holiday Baseball',books:[]};
+  const comic={slug:'batman-25',title:'Batman #25',books:['Batman #25']};
+  assert.deepEqual(articleTopics(mixed),['pokemon','sports-cards']);
+  assert.deepEqual(relatedArticles(pokemon,[comic,sports,mixed,pokemon],2),[mixed,comic],'same-collection reading precedes newer unrelated articles and excludes itself');
+  assert.deepEqual(articleTopics({title:'Collector notes',bodyHtml:'Pokémon MTG Batman'}),[],'incidental body mentions do not determine shopping destinations');
+  const html=renderArticlePage({...pokemon,summary:'Pick a card',bodyHtml:'<p>Read this.</p>',facts:[],author:'The Mana Pocket'},[],[],{esc:String,pageShell:o=>o.bodyHtml});
+  assert.match(html,/aria-label="Explore this collection"[\s\S]*href="\/category\/pokemon"[\s\S]*href="\/pokemon-new-releases"/);
+  assert.doesNotMatch(html,/Shop sports cards|Shop comics/,'Pokémon article navigation stays relevant');
+}
 
 // --- The body is rendered on the store's domain: no script ---------------------
 const dirty = '<p onclick="x()">Hi</p><script>alert(1)</script><a href="javascript:alert(1)">x</a><iframe src="//evil"></iframe><img src=x onerror=alert(1)>';

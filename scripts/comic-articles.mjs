@@ -34,6 +34,33 @@ const F = {
   release: 'main-book-release-date', foc: 'main-book-foc-date',
 };
 
+// Use editorial titles and promoted books, never unrelated words in the body.
+export function articleTopics(article) {
+  const text=`${article.slug || ''} ${article.title || ''}`;
+  return [
+    ['pokemon',/pok[eé]mon/i.test(text)],
+    ['mtg',/\bmtg\b|magic.the.gathering/i.test(text)],
+    ['sports-cards',/\b(?:topps|bowman|baseball|football|basketball|sports)\b/i.test(text)],
+    ['comics',!!article.books?.length || /\b(?:comic|comics|batman|x-men|midnight-universe)\b/i.test(text)],
+  ].filter(([,matches])=>matches).map(([topic])=>topic);
+}
+export function relatedArticles(article, articles, limit=4) {
+  const topics=articleTopics(article);
+  return articles.filter(other=>other.slug!==article.slug)
+    .map((other,index)=>({other,index,score:articleTopics(other).filter(topic=>topics.includes(topic)).length}))
+    .sort((a,b)=>b.score-a.score || a.index-b.index).slice(0,limit).map(row=>row.other);
+}
+function articleShoppingLinks(article) {
+  const links={
+    pokemon:[['/category/pokemon','Shop Pokémon'],['/pokemon-new-releases','Pokémon set guide']],
+    mtg:[['/category/mtg','Shop MTG'],['/mtg','MTG set checklists']],
+    'sports-cards':[['/category/sports-cards','Shop sports cards']],
+    comics:[['/category/comics','Shop comics'],['/preorders','Comic preorders']],
+  };
+  const destinations=articleTopics(article).flatMap(topic=>links[topic]);
+  return destinations.length?`<nav class="mp-art-shortcuts" aria-label="Explore this collection">${destinations.map(([href,label])=>`<a href="${href}">${label}</a>`).join('')}</nav>`:'';
+}
+
 // ---------- text helpers ----------
 
 // "X-Men ’92: Incursions #1" and "X-MEN '92: INCURSIONS #1 COVER A ..." both
@@ -368,7 +395,7 @@ export function renderArticlePage(article, statuses, related, deps) {
       (image ? `<a href="${esc(image)}" target="_blank" rel="noopener" aria-label="Open full-size book cover"><img class="mp-art-hero" width="660" height="1000" fetchpriority="high" decoding="async" src="${esc(image)}" alt="${esc(article.imageAlt || article.title)}"></a><p class="mp-art-meta">Tap the cover to see it full size.</p>` : '') +
       renderBuyBox(article, main, esc) +
       (main ? `<nav class="mp-art-shortcuts" aria-label="Book actions"><a href="#${bookAnchor(main)}">Covers &amp; availability</a><a href="/comics/search?q=${encodeURIComponent(comicKey(main.name).series)}">Find related comics</a><a href="#book-updates">Book updates</a></nav>` : '') +
-      `<div class="mp-art-body">${article.bodyHtml}</div>` + (deps.releaseInventoryHtml || '') + facts + renderBooks(statuses, esc) + renderBookUpdates(article, deps.storeId, esc) + more + `</article>` +
+      `<div class="mp-art-body">${article.bodyHtml}</div>` + (deps.releaseInventoryHtml || '') + facts + renderBooks(statuses, esc) + renderBookUpdates(article, deps.storeId, esc) + articleShoppingLinks(article) + more + `</article>` +
       (statuses.some(st => st.options?.length) ? pickerScript(deps.storeId) : ''),
   });
 }
@@ -384,7 +411,7 @@ export function renderArticleList(articles, deps) {
     canonicalPath: '/articles',
     jsonLd: { '@context': 'https://schema.org', '@type': 'CollectionPage', name: 'Collector Articles',
       hasPart: articles.slice(0, 20).map(a => ({ '@type': 'Article', headline: a.title, url: `https://www.themanapocket.com/articles/${a.slug}`, datePublished: a.publishedAt || undefined })) },
-    bodyHtml: STYLE + `<div style="max-width:900px;margin:0 auto"><div class="mp-crumb"><a href="/preorders">← Comic preorders</a></div><h1>Collector articles</h1><p class="mp-sub">New releases, set guides, and the cards and covers we’re watching.</p></div>` +
+    bodyHtml: STYLE + `<div style="max-width:900px;margin:0 auto"><div class="mp-crumb"><a href="/shop">← Shop</a></div><h1>Collector articles</h1><p class="mp-sub">New releases, set guides, and the cards and covers we’re watching.</p><nav class="mp-art-shortcuts" aria-label="Shop by collection"><a href="/category/comics">Comics</a><a href="/category/pokemon">Pokémon</a><a href="/category/mtg">MTG</a><a href="/category/sports-cards">Sports cards</a><a href="/category/collectibles">Collectibles</a></nav></div>` +
       (cards ? `<div class="mp-art-list">${cards}</div>` : `<p class="mp-sub" style="text-align:center">The first articles are on their way.</p>`),
   });
 }
@@ -422,7 +449,7 @@ export async function handleArticlesRequest(request, env, ctx, url, deps) {
       const pageDeps = { ...deps, listItems: e => (stock ||= deps.listItems(e)) };
       const statuses = await Promise.all(article.books.map(book => bookStatus(env, pageDeps, book).catch(() => ({ name: book, state: 'coming', href: '' }))));
       if(RELEASE_GUIDES[slug]) pageDeps.releaseInventoryHtml=renderReleaseInventory(slug,await pageDeps.listItems(env).catch(()=>null),deps);
-      const related = articles.filter(a => a.slug !== slug).slice(0, 4);
+      const related = relatedArticles(article, articles);
       html = renderArticlePage(article, statuses, related, pageDeps);
     }
   }
