@@ -1,5 +1,5 @@
 import { renderBookAlertForm, alertBookTitle } from './book-alert-ui.mjs';
-import { productFacts, storeOrganization } from './storefront-seo.mjs';
+import { productFacts, storeOrganization, productIdentity, storePolicyHtml } from './storefront-seo.mjs';
 // The Mana Pocket PRH + Lunar FOC preorder service.
 //
 // This module stays deliberately independent of the dashboard DOM. The Worker
@@ -755,6 +755,7 @@ async function preorderDetailPage(env, deps, skuId, providedSlug) {
       '@context': 'https://schema.org', '@type': 'Product', name, sku: sku.sku || sku.upc || skuId,
       ...(image ? { image } : {}),
       ...(publisher ? { brand: { '@type': 'Organization', name: publisher } } : {}),
+      ...productIdentity({brand:publisher,gtinCandidates:[sku.upc]}),
       description,
       additionalProperty:facts.map(fact=>({'@type':'PropertyValue',...fact})),
       ...(!sku.priceRequired ? { offers: {
@@ -777,6 +778,7 @@ async function preorderDetailPage(env, deps, skuId, providedSlug) {
       `<button id="mp-share-btn" style="padding:12px 20px;border-radius:12px;border:1px solid rgba(255,255,255,.2);background:transparent;color:inherit;cursor:pointer;font:inherit" data-title="${deps.mtgEscapeHtml(name)}" data-text="${deps.mtgEscapeHtml(description)}">Share</button>` +
       `</div>` +
       `</div></div>` +
+      storePolicyHtml() +
       renderBookAlertForm([alertBookTitle(name)],deps.publicStoreId,deps.mtgEscapeHtml) +
       // Same navigator.share / clipboard-copy / window.prompt fallback chain
       // as /book/{id}/{slug}'s own share button -- kept identical rather than

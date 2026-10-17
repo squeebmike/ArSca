@@ -4,16 +4,35 @@ export const storeOrganization = {
   name:'The Mana Pocket',url:'https://www.themanapocket.com/',
   logo:'https://s3.amazonaws.com/webflow-prod-assets/65b15ee0228d06647ca7e4ce/6a7ce7fd8466ce07d3c171d4_the_mana_pocket_patch_1024.png',
   sameAs:['https://www.facebook.com/profile.php?id=61592114016361','https://www.instagram.com/shopthemanapocket','https://whatnot.com/invite/themanapocket'],
+  hasMerchantReturnPolicy:{'@type':'MerchantReturnPolicy','@id':'https://www.themanapocket.com/#return-policy',applicableCountry:'US',merchantReturnLink:'https://www.themanapocket.com/terms-and-conditions'},
 };
+// Only emit genuine identifiers with a valid GS1 check digit. A comic's
+// 17-digit UPC plus supplement is not a GTIN; never truncate it into one.
+export function productIdentity(item={}) {
+  const fields={};
+  const brand=String(item.brand||item.comic?.publisher||({pokemon:'Pokémon',mtg:'Magic: The Gathering'}[item.categorySlug])||'').trim();
+  if(brand)fields.brand={'@type':'Brand',name:brand};
+  if(item.mpn)fields.mpn=String(item.mpn);
+  for(const raw of [...(item.gtinCandidates||[]),item.supplierUpc,item.comic?.upc]){
+    const value=String(raw||'').replace(/[\s-]/g,'');
+    if(!/^(?:\d{8}|\d{12}|\d{13}|\d{14})$/.test(value))continue;
+    let sum=0;for(let i=value.length-2,weight=3;i>=0;i--,weight=weight===3?1:3)sum+=Number(value[i])*weight;
+    if((10-sum%10)%10!==Number(value.at(-1)))continue;
+    fields['gtin'+value.length]=value;break;
+  }
+  return fields;
+}
+export function storePolicyHtml(){return '<p class="mp-meta">U.S. shipping only; live shipping cost is calculated at checkout. <a href="/terms-and-conditions">Shipping and return terms</a> · <a href="/faq">Ordering help</a></p>';}
 export function productFacts(item) {
   const comic=item.comic||{};
+  const identity=productIdentity(item),gtin=Object.entries(identity).find(([key])=>key.startsWith('gtin'))?.[1];
   const ratio=[item.variant,comic.selectedCover,item.name].filter(Boolean).join(' ').match(/\b1\s*:\s*\d+\b/);
   return Object.entries({
     Category:item.category,Game:item.game,Sport:item.sport,Set:item.set,Year:item.year,
     'Player / character':item.player,Team:item.team,'Card number':item.cardNumber,
     'Product type':item.productType || item.configuration,Variant:item.variant,Finish:item.finish,Treatment:item.treatment,
     Language:item.language,Rarity:item.rarity,Condition:item.condition,'Grading company':item.gradingCompany,Grade:item.grade,
-    Manufacturer:item.brand,'Signed by':item.signedBy,
+    Manufacturer:item.brand,Brand:identity.brand?.name,GTIN:gtin,'Manufacturer part number':item.mpn,'Signed by':item.signedBy,
     ...(item.isSigned ? {Autographed:'Yes'} : {}),...(item.isRelic ? {Relic:'Yes'} : {}),
     Publisher:comic.publisher,Series:comic.seriesName,'Issue number':comic.number,
     ...(ratio && item.categorySlug==='comics' ? {'Ratio variant':ratio[0].replace(/\s/g,'')} : {}),

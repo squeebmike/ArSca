@@ -6,7 +6,7 @@ import { cachedCatalogSitemap } from './scripts/sitemap-cache.mjs';
 import { departmentSelection, departmentPagePath, departmentFilterHtml } from './scripts/department-filters.mjs';
 import { googleAnalyticsTag, measurementId, productViewAnalytics } from './scripts/store-analytics.mjs';
 import { productShoppingParts } from './scripts/product-shopping.mjs';
-import { storeOrganization, productFacts, productCondition, productHeading, renderShopPreview } from './scripts/storefront-seo.mjs';
+import { storeOrganization, productFacts, productCondition, productHeading, renderShopPreview, productIdentity, storePolicyHtml } from './scripts/storefront-seo.mjs';
 
 /**
  * LBA Proxy Worker - Cloudflare Worker
@@ -845,6 +845,8 @@ function shapeStorefrontItem(row) {
     supplierAvailability: storefrontCleanText(d.supplierAvailability || '',40),
     supplierSellingUnit: storefrontCleanText(d.supplierSellingUnit || '',200),
     supplierUpc: storefrontCleanText(d.supplierUpc || '',80),
+    gtinCandidates: [d.gtin,d.upc,d.ean,d.barcode,d.isbn].filter(value=>value!=null).map(value=>storefrontCleanText(value,80)),
+    mpn: storefrontCleanText(d.mpn || d.manufacturerPartNumber || d.manufacturer_part_number || '',160),
     supplierCategoryPaths: (Array.isArray(d.supplierCategoryPaths)?d.supplierCategoryPaths:[]).slice(0,50).map(v=>storefrontCleanText(v,300)),
     supplierSpecifications: Object.fromEntries(Object.entries(d.supplierSpecifications && typeof d.supplierSpecifications==='object' && !Array.isArray(d.supplierSpecifications)?d.supplierSpecifications:{}).slice(0,60).map(([k,v])=>[storefrontCleanText(k,80),storefrontCleanText(v,500)])),
     isSealed: !!d.is_sealed, gradingCompany: storefrontCleanText(d.grading_company || d.grader || '', 40),
@@ -2921,7 +2923,7 @@ function renderItemDetailPage(item, canonicalSlug, allListable) {
     jsonLd: [{
       '@context': 'https://schema.org', '@type': 'Product', name: item.name,
       image: item.image || undefined, sku: item.id,
-      brand: item.brand ? { '@type': 'Brand', name: item.brand } : undefined,
+      ...productIdentity(item),
       description,
       ...(facts.length ? { additionalProperty:facts.map(fact=>({'@type':'PropertyValue',...fact})) } : {}),
       ...(item.price ? { offers: { '@type': 'Offer', priceCurrency: 'USD', price: item.price, availability: available ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock', itemCondition:productCondition(item.condition), seller:{'@id':storeOrganization['@id']}, url: `https://www.themanapocket.com${canonicalPath}` } } : {}),
@@ -2932,6 +2934,7 @@ function renderItemDetailPage(item, canonicalSlug, allListable) {
       `<div><h1>${mtgEscapeHtml(headingName)}</h1>${metaBits ? `<div class="mp-meta">${mtgEscapeHtml(metaBits)}</div>` : ''}` +
       `<div class="mp-prices">${priceStr ? `<span class="mp-price-pill">${mtgEscapeHtml(priceStr)}</span>` : '<span class="mp-meta">Contact the shop for price</span>'}${!available ? `<span class="mp-price-pill" style="background:rgba(255,77,109,.15);color:#ff9db0">Sold</span>` : ''}</div>` +
       shopping.buy +
+      storePolicyHtml() +
       `<p class="mp-sub">${mtgEscapeHtml(detail || description)}</p>` +
       `${facts.length ? `<h2>Item details</h2><dl>${facts.map(f=>`<dt style="font-weight:700">${mtgEscapeHtml(f.name)}</dt><dd style="margin:0 0 10px">${mtgEscapeHtml(f.value)}</dd>`).join('')}</dl>` : ''}` +
       `${reviewHtml}` +
@@ -7667,7 +7670,7 @@ async function routeRequest(request, env, ctx) {
       }catch{return originResponse;}
       const available=isStorefrontItemAvailable(item),canonical='https://www.themanapocket.com/dougvana-print';
       const description=[item.name,item.signedBy?'Signed by '+item.signedBy:null,item.price>0?'$'+item.price.toFixed(2)+' USD':null,available?'In stock at The Mana Pocket':'Currently unavailable'].filter(Boolean).join(' · ');
-      const product={'@context':'https://schema.org','@type':'Product',name:item.name,sku:item.id,url:canonical,description,...(item.image?{image:item.image}:{}),additionalProperty:productFacts(item).map(f=>({'@type':'PropertyValue',...f})),...(item.price>0?{offers:{'@type':'Offer',url:canonical,price:item.price,priceCurrency:'USD',availability:'https://schema.org/'+(available?'InStock':'OutOfStock'),itemCondition:productCondition(item.condition),seller:{'@id':storeOrganization['@id']}}}:{})};
+      const product={'@context':'https://schema.org','@type':'Product',name:item.name,sku:item.id,url:canonical,description,...productIdentity(item),...(item.image?{image:item.image}:{}),additionalProperty:productFacts(item).map(f=>({'@type':'PropertyValue',...f})),...(item.price>0?{offers:{'@type':'Offer',url:canonical,price:item.price,priceCurrency:'USD',availability:'https://schema.org/'+(available?'InStock':'OutOfStock'),itemCondition:productCondition(item.condition),seller:{'@id':storeOrganization['@id']}}}:{})};
       const jsonLd=JSON.stringify([storeOrganization,product]).replace(/</g,'\\u003c');
       const words=item.name.split(/\s+/),first=words.shift();
       const rewritten=new HTMLRewriter()
