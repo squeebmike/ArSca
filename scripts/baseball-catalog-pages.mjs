@@ -1,5 +1,6 @@
 import {baseballSets} from './topps/baseball-seed.mjs';
 import {checklistPublicationProblems,baseballInventoryMatches,ebayChecklistSearch} from './topps/public-checklist-policy.mjs';
+import {baseballTeams,baseballTeamPath,baseballTeamLinks,handleBaseballTeam} from './baseball-team-pages.mjs';
 const origin='https://www.themanapocket.com';
 export const baseballSetPath=set=>'/baseball/checklists/'+set.id;
 export const baseballCardPath=(set,card)=>baseballSetPath(set)+'/cards/'+card.id;
@@ -7,13 +8,16 @@ export async function handleBaseballCatalog(request,env,url,deps) {
  if(!['GET','HEAD'].includes(request.method)||!(url.pathname==='/baseball'||url.pathname.startsWith('/baseball/')||url.pathname==='/sitemap-baseball.xml'))return null;
  const {escape:esc,shell}=deps;
  const sets=baseballSets.filter(s=>!checklistPublicationProblems(s,s).length);
+ const teams=baseballTeams(sets);
  const html=(data,status=200)=>new Response(request.method==='HEAD'?null:shell(data),{status,headers:{'Content-Type':'text/html;charset=UTF-8','Cache-Control':'no-store'}});
  const missing=()=>html({title:'Baseball checklist not found | The Mana Pocket',description:'Browse verified baseball checklists.',canonicalPath:url.pathname,robotsNoindex:true,bodyHtml:'<h1>Checklist page not found</h1><p><a href="/baseball">Browse baseball checklists</a></p>'},404);
  if(url.pathname==='/sitemap-baseball.xml') {
-  const paths=['/baseball',...sets.flatMap(s=>[baseballSetPath(s),...s.cards.map(c=>baseballCardPath(s,c))])];
+  const paths=['/baseball',...teams.map(baseballTeamPath),...sets.flatMap(s=>[baseballSetPath(s),...s.cards.map(c=>baseballCardPath(s,c))])];
   return new Response(request.method==='HEAD'?null:'<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'+paths.map(p=>'<url><loc>'+origin+esc(p)+'</loc></url>').join('')+'</urlset>',{headers:{'Content-Type':'application/xml;charset=UTF-8','Cache-Control':'public,max-age=900'}});
  }
- if(url.pathname==='/baseball')return html({title:'Topps Baseball Checklists — 2023 Onward | The Mana Pocket',description:'Explore verified Topps baseball base checklists, card details and matching store inventory. The library starts with 2023 flagship baseball and is expanding.',canonicalPath:'/baseball',jsonLd:{'@context':'https://schema.org','@type':'CollectionPage',name:'Topps baseball checklists'},bodyHtml:'<h1>Baseball checklists</h1><p>Working on a set? Start here. Open a checklist, find your player, and check the exact card before you buy. Same player does not mean same card.</p><p>We’re building out licensed Topps and Bowman baseball from 2023 onward. Available now: the three 2023 flagship base checklists. More sets, inserts and parallels are still being verified.</p><p><a href="/category/sports-cards">Shop our sports cards</a> · <a href="/articles">Collector articles</a> · <a href="/mtg">MTG sets</a> · <a href="/pokemon">Pokémon sets</a></p><div class="mp-set-list">'+sets.map(s=>'<a class="mp-set-row" href="'+baseballSetPath(s)+'"><span>'+esc(s.displayName)+'</span><span>'+s.cards.length+' base cards</span></a>').join('')+'</div>'});
+ if(url.pathname==='/baseball')return html({title:'Topps Baseball Checklists — 2023 Onward | The Mana Pocket',description:'Explore verified Topps baseball base checklists, card details and matching store inventory. The library starts with 2023 flagship baseball and is expanding.',canonicalPath:'/baseball',jsonLd:{'@context':'https://schema.org','@type':'CollectionPage',name:'Topps baseball checklists'},bodyHtml:'<h1>Baseball checklists</h1><p>Working on a set? Start here. Open a checklist, find your player, and check the exact card before you buy. Same player does not mean same card.</p><p>We’re building out licensed Topps and Bowman baseball from 2023 onward. Available now: the three 2023 flagship base checklists. More sets, inserts and parallels are still being verified.</p><p><a href="/category/sports-cards">Shop our sports cards</a> · <a href="/articles">Collector articles</a> · <a href="/mtg">MTG sets</a> · <a href="/pokemon">Pokémon sets</a></p><div class="mp-set-list">'+sets.map(s=>'<a class="mp-set-row" href="'+baseballSetPath(s)+'"><span>'+esc(s.displayName)+'</span><span>'+s.cards.length+' base cards</span></a>').join('')+'</div><h2>Collect by team</h2><p>Find your team across the verified base checklists.</p>'+baseballTeamLinks(teams,esc)});
+ const teamResponse=await handleBaseballTeam(request,url,sets,deps,html,missing,baseballCardPath);
+ if(teamResponse)return teamResponse;
  const set=sets.find(s=>url.pathname===baseballSetPath(s)||url.pathname.startsWith(baseballSetPath(s)+'/cards/'));
  if(!set)return missing();
  const setPath=baseballSetPath(set),cardPathPrefix=setPath+'/cards/';
@@ -24,7 +28,8 @@ export async function handleBaseballCatalog(request,env,url,deps) {
   const found=items.filter(i=>Number.isFinite(i.price)&&i.price>0&&deps.available(i)&&baseballInventoryMatches(i,card,set));
   return '<section><h2>Available at The Mana Pocket</h2>'+(found.length?found.map(i=>'<p><a href="'+esc(i.linkUrl||'/item/'+encodeURIComponent(i.id)+'/'+deps.slug(i.name))+'">'+esc(i.name)+'</a> · $'+Number(i.price).toFixed(2)+' USD · '+esc(i.condition||'See listing for condition')+'</p>').join(''):'<p>No exact matching copy is currently listed. <a href="/category/sports-cards">Browse our sports inventory</a>.</p>')+'</section>';
  };
- const crumbs='<div class="mp-crumb"><a href="/baseball">Baseball checklists</a> / <a href="'+setPath+'">'+esc(set.displayName)+'</a></div>';
+ const teamNav='<details><summary>Browse team checklists</summary>'+baseballTeamLinks(teams.filter(t=>t.rows.some(r=>r.set.id===set.id)),esc)+'</details>';
+ const crumbs='<div class="mp-crumb"><a href="/baseball">Baseball checklists</a> / <a href="'+setPath+'">'+esc(set.displayName)+'</a></div>'+teamNav;
  if(url.pathname.startsWith(cardPathPrefix)) {
   const card=set.cards.find(c=>baseballCardPath(set,c)===url.pathname);if(!card)return missing();
   const name=card.player+' #'+card.cardNumber+' — '+set.displayName;

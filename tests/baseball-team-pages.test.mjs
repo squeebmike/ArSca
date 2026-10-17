@@ -1,0 +1,44 @@
+import assert from 'node:assert/strict';
+import {baseballTeams,baseballTeamPath,handleBaseballTeam} from '../scripts/baseball-team-pages.mjs';
+import {baseballSets} from '../scripts/topps/baseball-seed.mjs';
+import {handleBaseballCatalog,baseballCardPath} from '../scripts/baseball-catalog-pages.mjs';
+const escape=s=>String(s??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('"','&quot;');
+let page,inventory=[],loads=0;
+const deps={escape,slug:s=>s.toLowerCase().replace(/[^a-z0-9]+/g,'-'),available:i=>i.quantity>0,listItems:async()=>{loads++;return inventory;},shell:p=>{page=p;return JSON.stringify({title:p.title,canonical:p.canonicalPath,noindex:p.robotsNoindex,schema:p.jsonLd})+p.bodyHtml;}};
+const get=path=>handleBaseballCatalog(new Request('https://www.themanapocket.com'+path),{},new URL('https://www.themanapocket.com'+path),deps);
+const teams=baseballTeams(baseballSets);assert.equal(teams.length,30);
+const names=new Set(teams.map(t=>t.name));assert.equal(names.size,30);
+const home=await(await get('/baseball')).text();
+const xml=await(await get('/sitemap-baseball.xml')).text();
+for(const team of teams){
+ const path=baseballTeamPath(team);assert.ok(home.includes('href="'+path+'"'));assert.ok(xml.includes('https://www.themanapocket.com'+path));
+ let res=await get(path),body=await res.text();assert.equal(res.status,200);assert.equal(page.canonicalPath,path);assert.ok(!page.robotsNoindex);
+ assert.equal((body.match(/<h1>/g)||[]).length,1);assert.ok(body.includes('not a complete team set offered for sale'));
+ const expected=baseballSets.flatMap(set=>set.cards.filter(c=>c.subjects.some(s=>s.team===team.name)).map(card=>baseballCardPath(set,card)));
+ assert.equal(new Set(expected).size,team.rows.length);
+ assert.deepEqual(new Set([...body.matchAll(/href="(\/baseball\/checklists\/[^" ]+\/cards\/[^" ]+)"/g)].map(m=>m[1])),new Set(expected));
+ const before=loads;res=await get(path+'?rookies=1');body=await res.text();assert.equal(loads,before+1,'one inventory load per team page');assert.ok(page.robotsNoindex);assert.equal(page.canonicalPath,path);
+ const rookieRows=team.rows.filter(r=>r.card.subjects.some(s=>s.team===team.name&&/\brookie\b/i.test(s.note||'')));
+ const actual=new Set([...body.matchAll(/href="(\/baseball\/checklists\/[^" ]+\/cards\/[^" ]+)"/g)].map(m=>m[1]));
+ assert.deepEqual(actual,new Set(rookieRows.map(({set,card})=>baseballCardPath(set,card))));
+}
+const mariners=teams.find(t=>t.name==='Seattle Mariners'),path=baseballTeamPath(mariners);
+let body=await(await get(path+'?set=2023-topps-series-1')).text();assert.ok(body.includes('2023 Topps Series 1 Baseball'));assert.ok(!body.includes('<h2>2023 Topps Series 2 Baseball'));
+for(const query of ['?set=fake','?year=2022','?rookies=0','?page=2','?page=0'])assert.equal((await get(path+query)).status,404);
+assert.equal((await get('/baseball/teams/fake')).status,404);
+body=await(await get(path+'?q=nonexistent-player')).text();assert.ok(body.includes('No cards match those filters'));assert.ok(page.robotsNoindex);
+const {set,card}=mariners.rows[0];
+inventory=[{id:'match',name:'Exact store copy',categorySlug:'sports-cards',year:set.year,set:set.displayName,cardNumber:card.cardNumber,player:card.player,subset:'Base',variant:'Base',price:5,quantity:1},{id:'wrong',name:'Wrong parallel',categorySlug:'sports-cards',year:set.year,set:set.displayName,cardNumber:card.cardNumber,player:card.player,subset:'Base',variant:'Gold',price:10,quantity:1}];
+body=await(await get(path)).text();assert.ok(body.includes('/item/match/'));assert.ok(!body.includes('/item/wrong/'));
+inventory[0].quantity=0;body=await(await get(path)).text();assert.ok(!body.includes('/item/match/'));
+const multi=baseballSets[0].cards.find(c=>c.cardNumber==='43');
+for(const name of ['St. Louis Cardinals','Los Angeles Dodgers','New York Mets'])assert.ok(teams.find(t=>t.name===name).rows.some(r=>r.card===multi));
+// Future larger team catalogs must preserve filters across crawlable pagination.
+const fakeSet={id:'large',year:2024,displayName:'Verified fixture',cards:Array.from({length:61},(_,i)=>({id:'c'+i,subjects:[{team:'Fixture Team',name:'Player '+i}],player:'Player '+i,cardNumber:String(i)}))};
+assert.equal(baseballTeams([fakeSet])[0].rows.length,61);
+const fakeUrl=new URL('https://www.themanapocket.com/baseball/teams/fixture-team?set=large&year=2024&q=Player&page=2');
+let fakePage;
+const response=await handleBaseballTeam(new Request(fakeUrl),fakeUrl,[fakeSet],deps,p=>{fakePage=p;return new Response(p.bodyHtml);},()=>new Response('missing',{status:404}),baseballCardPath);
+body=await response.text();assert.equal(response.status,200);assert.equal(fakePage.robotsNoindex,true);
+assert.ok(body.includes('/cards/c60'));assert.ok(!body.includes('/cards/c59'));assert.ok(body.includes('year=2024&amp;set=large&amp;q=Player'));
+console.log('30 team pages: exact source membership, multi-team cards, rookie/year/set filters, sitemap discovery and matching live stock passed');

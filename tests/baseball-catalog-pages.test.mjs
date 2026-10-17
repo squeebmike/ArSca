@@ -8,7 +8,7 @@ const get=(path,env={},method='GET')=>handleBaseballCatalog(new Request('https:/
 assert.equal((await get('/baseball')).status,200);
 let res=await get('/sitemap-baseball.xml'),xml=await res.text();
 const paths=[...xml.matchAll(/<loc>https:\/\/www.themanapocket.com([^<]+)<\/loc>/g)].map(m=>m[1]);
-assert.equal(paths.length,993);assert.equal(new Set(paths).size,paths.length);
+assert.equal(paths.length,1023);assert.equal(new Set(paths).size,paths.length);
 const titles=new Set(),h1s=new Set();
 for(const set of baseballSets) {
  const numbers=new Set(set.cards.map(c=>c.cardNumber));assert.equal(numbers.size,set.cards.length);
@@ -39,4 +39,4 @@ assert.equal(await(await get('/baseball',{},'HEAD')).text(),'');
 assert.equal(await get('/unrelated'),null);
 deps.listItems=async()=>{throw Error('Temporary inventory outage');};
 body=await(await get(baseballCardPath(set,card))).text();assert.ok(body.includes('Store availability is temporarily unavailable'));assert.ok(!body.includes('No exact matching copy'));
-console.log('993 sitemap URLs, 989 unique card pages, HTML pagination, search, stock matching and affiliate gates passed');
+console.log('1023 sitemap URLs, 989 unique card pages, HTML pagination, search, stock matching and affiliate gates passed');

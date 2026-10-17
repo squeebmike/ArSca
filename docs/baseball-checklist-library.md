@@ -11,9 +11,10 @@ Save the exact source PDFs and their extracted UTF-8 text as `series-1.pdf/.txt`
 ## Routes and discovery
 
 - `/baseball`: verified set index, linked from the sports inventory department.
+- `/baseball/teams/{team-slug}`: one page for each team found in the verified source subjects. Year, set, player/number and rookie filters use GET forms; filtered combinations are noindex and canonicalize to the team root. Unfiltered pagination has distinct canonical URLs. Multi-team cards link to one original card page.
 - `/baseball/checklists/{set-id}`: 60 entries per page, ordinary HTML pagination and GET search.
 - `/baseball/checklists/{set-id}/cards/{card-id}`: permanent individual reference page.
-- `/sitemap-baseball.xml`: index, set and card URLs (993 at initial launch); advertised alongside the site's other sitemaps in robots.txt. Webflow's `/sitemap.xml` remains its own URL set.
+- `/sitemap-baseball.xml`: index, set, team and card URLs (1,023 with 30 team pages); advertised alongside the site's other sitemaps in robots.txt. Webflow's `/sitemap.xml` remains its own URL set.
 
 Card pages use WebPage schema. They are references, not store offers. Prices and store availability appear only for matching live storefront listings and link to the existing item checkout page. No card image is published without a verified source.
 
@@ -29,4 +30,6 @@ The optional `EBAY_PARTNER_CAMPAIGN_ID` Worker variable enables owner-attributed
 
 The existing MTG/Pokémon interactive viewer has its separate TCGplayer affiliate format. This change does not alter that integration.
 
-Tests: `npm run test:baseball-catalog`. All 989 reference card pages, 993 sitemap entries, canonical/title/H1 uniqueness, pagination, query noindex, strict stock identity and affiliate gating are covered. Deploy through the existing main-branch Worker workflow; only the new baseball namespace and sitemap are added to routes.
+Tests: `npm run test:baseball-catalog`. All 989 reference card pages, 1,023 sitemap entries, canonical/title/H1 uniqueness, pagination, query noindex, strict stock identity and affiliate gating are covered. Deploy through the existing main-branch Worker workflow; only the new baseball namespace and sitemap are added to routes.
+
+Team regression coverage also verifies all 30 pages against exact subject membership, rookie status for the selected team, filters preserved through pagination, sold/wrong-parallel exclusion and one inventory load per team request. Team pages include a print button, state that inserts/parallels remain outside current coverage, and explicitly distinguish the reference checklist from a complete team set for sale. No team bundle product is created without actual stock.
