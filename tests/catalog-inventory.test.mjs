@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {catalogInventoryMatches,catalogInventoryHtml,catalogSetInventoryHtml} from '../scripts/catalog-inventory.mjs';
+import {catalogInventoryMatches,catalogInventoryHtml,catalogSetInventoryHtml,catalogShoppingLinksHtml,catalogShoppingIndex,tcgplayerAffiliateUrl} from '../scripts/catalog-inventory.mjs';
 import {handlePokemonCatalog,pokemonSetPath,pokemonCardPath} from '../scripts/pokemon-catalog-pages.mjs';
 const slug=s=>String(s).toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
 const escape=s=>String(s??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('"','&quot;');
@@ -13,6 +13,16 @@ assert.ok(!catalogInventoryMatches({...item,categorySlug:'mtg'},card,'pokemon',{
 assert.ok(!catalogInventoryMatches({...item,tcgPlayerId:'456'},card,'pokemon',{name:'Base Set'}));
 assert.ok(catalogInventoryMatches({...item,tcgPlayerId:'123',name:'Saved inventory photo title'},card,'pokemon',{}));
 const deps={escape,slug,available:i=>i.quantity>0,shell:p=>'<title>'+p.title+'</title><link rel="canonical" href="https://www.themanapocket.com'+p.canonicalPath+'"><script type="application/ld+json">'+JSON.stringify(p.jsonLd||{})+'</script>'+p.bodyHtml,listItems:async()=>[{...item,tcgPlayerId:'123'}]};
+const shopping=catalogShoppingLinksHtml([{...item,tcgPlayerId:'123'},{...item,id:'wrong-printing',tcgPlayerId:'999'}],card,'pokemon',{},deps);
+assert.ok(shopping.includes('/item/copy/'));assert.ok(!shopping.includes('wrong-printing'));assert.ok(shopping.indexOf('/item/copy/')<shopping.indexOf('partner.tcgplayer'));
+const indexedItems=[{...item,tcgPlayerId:'123'},{...item,id:'wrong-printing',tcgPlayerId:'999'}];
+assert.equal(catalogShoppingLinksHtml(catalogShoppingIndex(indexedItems),card,'pokemon',{},deps),shopping);
+assert.equal(catalogShoppingLinksHtml(catalogShoppingIndex([item]),card,'pokemon',{name:'Base Set'},deps),catalogShoppingLinksHtml([item],card,'pokemon',{name:'Base Set'},deps));
+assert.equal(catalogShoppingIndex([{...item,scryfallId:'printing-id'}]).candidates({scryfallId:'printing-id'}).length,1);
+assert.equal(new URL(tcgplayerAffiliateUrl(card)).searchParams.get('u'),'https://www.tcgplayer.com/product/123');
+assert.equal(tcgplayerAffiliateUrl({tcgPlayerId:'javascript:bad'}),null);
+assert.ok(catalogShoppingLinksHtml(null,card,'pokemon',{},deps).includes('View sellers on TCGplayer'));
+assert.ok(!catalogShoppingLinksHtml(null,card,'pokemon',{},deps).includes('Buy our copy'));
 assert.ok(!catalogInventoryHtml([{...item,quantity:0}],card,'pokemon',{name:'Base Set'},deps).includes('/item/'));
 const setStock=catalogSetInventoryHtml([item,item,{...item,id:'unpriced',price:0},{...item,id:'sold',quantity:0},{...item,id:'wrong',set:'Jungle'}],[card,card],'pokemon',{name:'Base Set'},deps);
 assert.equal((setStock.match(/<h2>/g)||[]).length,1,'one set stock section, even when catalog printings repeat');

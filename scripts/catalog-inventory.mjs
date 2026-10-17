@@ -17,6 +17,30 @@ export function catalogInventoryHtml(items,card,game,set,deps) {
   if(!found.length)return '<p class="mp-meta">No matching copies currently listed at The Mana Pocket.</p>';
   return renderCopies(found,deps);
 }
+export function tcgplayerAffiliateUrl(card) {
+  const id=String(card.tcgPlayerId||card.tcgplayerId||'');
+  if(!/^[1-9]\d*$/.test(id))return null;
+  return 'https://partner.tcgplayer.com/k443Ov?u='+encodeURIComponent('https://www.tcgplayer.com/product/'+id);
+}
+export const marketplaceDisclosureHtml='<p class="mp-meta">Affiliate links: The Mana Pocket may earn a commission from qualifying purchases. Marketplace links open product pages or searches, not confirmed stock. Check the exact edition, finish, condition and seller before buying.</p>';
+export function catalogShoppingIndex(items) {
+  const byId=new Map(),byNameNumber=new Map();
+  const add=(map,k,item)=>{if(!map.has(k))map.set(k,[]);map.get(k).push(item);};
+  for(const item of Array.isArray(items)?items:[]){
+    if(item.scryfallId)add(byId,'s:'+item.scryfallId,item);
+    if(item.tcgPlayerId)add(byId,'t:'+item.tcgPlayerId,item);
+    add(byNameNumber,key(item.name)+'|'+number(item.cardNumber),item);
+  }
+  return {candidates(card){return [...new Set([...(byId.get('s:'+card.scryfallId)||[]),...(byId.get('t:'+(card.tcgPlayerId||card.tcgplayerId))||[]),...(byNameNumber.get(key(card.name)+'|'+number(card.collectorNumber||card.number))||[])])];}};
+}
+// Keep real shop copies first. No marketplace prices or inventory claims are inferred.
+export function catalogShoppingLinksHtml(items,card,game,set,deps) {
+  const candidates=Array.isArray(items)?items:items?.candidates?.(card)||[];
+  const found=candidates.filter(i=>Number.isFinite(i.price)&&i.price>0&&deps.available(i)&&catalogInventoryMatches(i,card,game,set));
+  const own=found.slice(0,3).map(i=>'<a href="'+deps.escape(i.linkUrl||'/item/'+encodeURIComponent(i.id)+'/'+deps.slug(i.name))+'">Buy our copy · $'+i.price.toFixed(2)+' USD · '+deps.escape(i.condition||'See condition')+'</a>').join(' · ');
+  const external=tcgplayerAffiliateUrl(card);
+  return '<div class="mp-card-shopping">'+(own?'<p>'+own+'</p>':'')+(external?'<p><a target="_blank" rel="noopener sponsored" href="'+deps.escape(external)+'">View sellers on TCGplayer</a></p>':'')+'</div>';
+}
 function renderCopies(found,deps) {
   return '<section class="mp-catalog-stock"><h2>Available at The Mana Pocket</h2><p>These are store listings for matching printings. Open a copy for its photos, condition and available quantity.</p>'+found.map(i=>'<a class="mp-set-row" href="'+deps.escape(i.linkUrl||'/item/'+encodeURIComponent(i.id)+'/'+deps.slug(i.name))+'"><span>'+deps.escape(i.name)+' · '+deps.escape([i.condition,i.variant,i.gradingCompany&&i.gradingCompany+' '+(i.grade||'')].filter(Boolean).join(' · '))+'</span><strong>$'+Number(i.price).toFixed(2)+' USD · View this copy →</strong></a>').join('')+'</section>';
 }

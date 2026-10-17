@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import {handleBaseballCatalog,baseballSetPath,baseballCardPath} from '../scripts/baseball-catalog-pages.mjs';
 import {baseballSets} from '../scripts/topps/baseball-seed.mjs';
 import {baseballPlayers} from '../scripts/baseball-player-pages.mjs';
+import {baseballSectionSitemapPaths,sectionsForSet} from '../scripts/baseball-section-pages.mjs';
 const escape=s=>String(s??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('"','&quot;');
 let lastPage;
 const deps={escape,slug:s=>String(s).toLowerCase().replace(/[^a-z0-9]+/g,'-'),available:i=>i.quantity>0,listItems:async()=>[],shell:p=>{lastPage=p;return '<title>'+escape(p.title)+'</title><link rel="canonical" href="https://www.themanapocket.com'+p.canonicalPath+'">'+(p.robotsNoindex?'<meta name="robots" content="noindex,follow">':'')+'<script type="application/ld+json">'+JSON.stringify(p.jsonLd)+'</script>'+p.bodyHtml;}};
@@ -9,7 +10,7 @@ const get=(path,env={},method='GET')=>handleBaseballCatalog(new Request('https:/
 assert.equal((await get('/baseball')).status,200);
 let res=await get('/sitemap-baseball.xml'),xml=await res.text();
 const paths=[...xml.matchAll(/<loc>https:\/\/www.themanapocket.com([^<]+)<\/loc>/g)].map(m=>m[1]);
-assert.equal(paths.length,1653+baseballPlayers(baseballSets).length);assert.equal(new Set(paths).size,paths.length);
+assert.equal(paths.length,1653+baseballPlayers(baseballSets).length+baseballSectionSitemapPaths(baseballSets).length);assert.equal(new Set(paths).size,paths.length);
 const titles=new Set(),h1s=new Set();
 for(const set of baseballSets) {
  const numbers=new Set(set.cards.map(c=>c.cardNumber));assert.equal(numbers.size,set.cards.length);
@@ -41,4 +42,17 @@ assert.equal(await(await get('/baseball',{},'HEAD')).text(),'');
 assert.equal(await get('/unrelated'),null);
 deps.listItems=async()=>{throw Error('Temporary inventory outage');};
 body=await(await get(baseballCardPath(set,card))).text();assert.ok(body.includes('Store availability is temporarily unavailable'));assert.ok(!body.includes('No exact matching copy'));
-console.log(paths.length+' sitemap URLs, 1613 unique card pages, HTML pagination, search, stock matching and affiliate gates passed');
+deps.listItems=async()=>[];
+const chrome=baseballSets.find(s=>s.id==='2023-topps-chrome'),sections=sectionsForSet(chrome);
+assert.deepEqual(sections.map(g=>g.cards.length),[15,129]);
+for(const path of baseballSectionSitemapPaths(baseballSets)){
+ assert.ok(paths.includes(path));res=await get(path,{EBAY_PARTNER_CAMPAIGN_ID:'5339046175'});body=await res.text();assert.equal(res.status,200);assert.ok(body.includes('campid=5339046175'));assert.ok(!body.includes('"offers"'));assert.equal(lastPage.canonicalPath,path);
+}
+const auto=sections[1].cards[0],autoPath=baseballCardPath(chrome,auto);
+deps.listItems=async()=>[{id:'auto-copy',categorySlug:'sports-cards',name:'Alec Burleson autograph',year:2023,set:chrome.displayName,player:auto.player,cardNumber:auto.cardNumber,subset:auto.section,variant:'Base',price:12,quantity:1},{id:'wrong-base',categorySlug:'sports-cards',name:'Wrong base',year:2023,set:chrome.displayName,player:auto.player,cardNumber:'1',subset:'Base',variant:'Base',price:1,quantity:1}];
+body=await(await get(autoPath,{EBAY_PARTNER_CAMPAIGN_ID:'5339046175'})).text();assert.ok(body.includes('/item/auto-copy/'));assert.ok(!body.includes('/item/wrong-base/'));assert.ok(body.indexOf('/item/auto-copy/')<body.indexOf('campid='));
+const sectionPath='/baseball/checklists/2023-topps-chrome/sections/rookie-autographs';
+assert.equal((await get(sectionPath+'?page=3')).status,200);assert.equal((await get(sectionPath+'?page=4')).status,404);
+body=await(await get(sectionPath+'?q=Burleson')).text();assert.equal(lastPage.robotsNoindex,true);assert.equal(lastPage.canonicalPath,sectionPath);assert.ok(body.includes('Alec Burleson'));
+assert.equal((await get('/baseball/checklists/2023-topps-chrome/sections/unknown')).status,404);
+console.log(paths.length+' sitemap URLs, base and reviewed insert/autograph pages, pagination and exact-stock affiliate gates passed');

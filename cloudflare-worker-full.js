@@ -43,7 +43,7 @@ import { handleAccountRequest, findLinkedCustomer } from './scripts/customer-acc
 import { handleArticlesRequest, articleSitemapPaths } from './scripts/comic-articles.mjs';
 import { extractSiteChrome, SITE_CHROME_SOURCE } from './scripts/site-chrome.mjs';
 import { handlePublicPokemonRequest } from './scripts/public-pokemon-sets.mjs';
-import { catalogInventoryHtml, catalogSetInventoryHtml } from './scripts/catalog-inventory.mjs';
+import { catalogInventoryHtml, catalogSetInventoryHtml, catalogShoppingLinksHtml, marketplaceDisclosureHtml, catalogShoppingIndex } from './scripts/catalog-inventory.mjs';
 import { handlePokemonCatalog } from './scripts/pokemon-catalog-pages.mjs';
 import { handleBaseballCatalog } from './scripts/baseball-catalog-pages.mjs';
 import { referenceHighlightsHtml } from './scripts/catalog-highlights.mjs';
@@ -2633,7 +2633,7 @@ function mtgPageShell({ title, description, canonicalPath, ogImage, ogType, json
     // (not sticky) + the scrolled/is-hidden classes below replicate the real
     // site's own scroll-hide/blur nav behavior (see mtgSiteNavScript).
     (chrome ? '' : mtgFallbackChromeCss()) +
-    `.mp-wrap{max-width:1080px;margin:0 auto;padding:24px 16px 0}.mp-crumb{font-size:13px;opacity:.65;margin-bottom:16px}.mp-crumb a{color:#c8b8ff}h1{font-size:clamp(22px,4vw,32px);margin:0 0 8px}.mp-sub{opacity:.7;font-size:14px;margin-bottom:24px}.mp-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:16px}.mp-card{display:block;border:1px solid rgba(255,255,255,.12);border-radius:12px;overflow:hidden;background:rgba(255,255,255,.03);text-decoration:none;color:inherit}.mp-card img{width:100%;display:block;background:#16101f}.mp-card-body{padding:10px 12px}.mp-card-name{font-size:13px;font-weight:700;line-height:1.3}.mp-card-price{font-size:12px;color:#8bd450;font-weight:700;margin-top:4px}.mp-set-list{display:grid;gap:10px}.mp-set-row{display:flex;justify-content:space-between;gap:12px;padding:12px 16px;border:1px solid rgba(255,255,255,.1);border-radius:10px;text-decoration:none;color:inherit}.mp-set-row:hover{border-color:#8bd450}.mp-detail{display:grid;grid-template-columns:280px 1fr;gap:32px}@media(max-width:640px){.mp-detail{grid-template-columns:1fr}}.mp-detail img{width:100%;border-radius:14px}.mp-prices{display:flex;gap:10px;flex-wrap:wrap;margin:16px 0}.mp-price-pill{background:rgba(139,212,80,.15);color:#8bd450;font-weight:800;padding:8px 14px;border-radius:999px;font-size:14px}.mp-oracle{white-space:pre-wrap;line-height:1.6;font-size:14px;opacity:.9;margin-top:16px}.mp-meta{font-size:13px;opacity:.65;margin-top:8px}</style></head>` +
+    `.mp-wrap{max-width:1080px;margin:0 auto;padding:24px 16px 0}.mp-crumb{font-size:13px;opacity:.65;margin-bottom:16px}.mp-crumb a{color:#c8b8ff}h1{font-size:clamp(22px,4vw,32px);margin:0 0 8px}.mp-sub{opacity:.7;font-size:14px;margin-bottom:24px}.mp-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:16px}.mp-card{display:block;border:1px solid rgba(255,255,255,.12);border-radius:12px;overflow:hidden;background:rgba(255,255,255,.03);text-decoration:none;color:inherit}.mp-card img{width:100%;display:block;background:#16101f}.mp-card-body{padding:10px 12px}.mp-card>.mp-card-shopping{padding:0 12px 10px;font-size:13px;overflow-wrap:anywhere}.mp-card>a{color:inherit;text-decoration:none}.mp-card-name{font-size:13px;font-weight:700;line-height:1.3}.mp-card-price{font-size:12px;color:#8bd450;font-weight:700;margin-top:4px}.mp-set-list{display:grid;gap:10px}.mp-set-row{display:flex;justify-content:space-between;gap:12px;padding:12px 16px;border:1px solid rgba(255,255,255,.1);border-radius:10px;text-decoration:none;color:inherit}.mp-set-row:hover{border-color:#8bd450}.mp-detail{display:grid;grid-template-columns:280px 1fr;gap:32px}@media(max-width:640px){.mp-detail{grid-template-columns:1fr}}.mp-detail img{width:100%;border-radius:14px}.mp-prices{display:flex;gap:10px;flex-wrap:wrap;margin:16px 0}.mp-price-pill{background:rgba(139,212,80,.15);color:#8bd450;font-weight:800;padding:8px 14px;border-radius:999px;font-size:14px}.mp-oracle{white-space:pre-wrap;line-height:1.6;font-size:14px;opacity:.9;margin-top:16px}.mp-meta{font-size:13px;opacity:.65;margin-top:8px}</style></head>` +
     (chrome
       ? `<body>${chrome.nav}<div class="mp-wrap">${bodyHtml}</div>${productView}${chrome.footer || mtgSiteFooter()}${chrome.bodyEnd}</body></html>`
       : `<body>${mtgSiteHeader()}<div class="mp-wrap">${bodyHtml}</div>${productView}${mtgSiteFooter()}` +
@@ -2683,11 +2683,12 @@ function renderMtgSetIndexPage(sets) {
 }
 
 function renderMtgSetPage(set, cards, inventory = []) {
+  const shoppingIndex = catalogShoppingIndex(inventory);
   const cardTiles = cards.map(card => {
     const href = `/mtg/${mtgEscapeHtml(set.setCode)}/${mtgCardSlug(card)}`;
     const img = card.imageUris?.small || card.cardFaces?.[0]?.imageUris?.small || '';
     const priceLines = mtgPriceLines(card);
-    return `<a class="mp-card" href="${href}">${img ? `<img loading="lazy" src="${mtgEscapeHtml(img)}" alt="${mtgEscapeHtml(card.name)}">` : ''}<div class="mp-card-body"><div class="mp-card-name">${mtgEscapeHtml(card.name)} <span style="opacity:.6">#${mtgEscapeHtml(card.collectorNumber)}</span></div>${priceLines.length ? `<div class="mp-card-price">${mtgEscapeHtml(priceLines[0])}</div>` : ''}</div></a>`;
+    return `<article class="mp-card"><a href="${href}">${img ? `<img loading="lazy" src="${mtgEscapeHtml(img)}" alt="${mtgEscapeHtml(card.name)}">` : ''}<div class="mp-card-body"><div class="mp-card-name">${mtgEscapeHtml(card.name)} <span style="opacity:.6">#${mtgEscapeHtml(card.collectorNumber)}</span></div>${priceLines.length ? `<div class="mp-card-price">${mtgEscapeHtml(priceLines[0])}</div>` : ''}</div></a>${catalogShoppingLinksHtml(shoppingIndex,card,'mtg',set,{available:isStorefrontItemAvailable,slug:mtgSlugify,escape:mtgEscapeHtml})}</article>`;
   }).join('');
   const year = set.releasedAt ? String(set.releasedAt).slice(0, 4) : '';
   return mtgPageShell({
@@ -2699,7 +2700,7 @@ function renderMtgSetPage(set, cards, inventory = []) {
       description: `All cards in ${set.setName || set.setCode}`,
       hasPart: cards.slice(0, 200).map(card => ({ '@type': 'Product', name: card.name, sku: card.scryfallId })),
     },
-    bodyHtml: `<div class="mp-crumb"><a href="/mtg">← All MTG sets</a></div><h1>${mtgEscapeHtml(set.setName || set.setCode)}</h1><p class="mp-sub">${cards.length.toLocaleString()} cards${year ? ` · released ${year}` : ''}. Catalog prices are market references; available store copies have their own selling prices.</p><p><a href="/mtg-new-releases?set=${encodeURIComponent(set.setCode)}">Open the interactive card viewer →</a> · <a href="/category/mtg">Shop MTG inventory</a></p>${collectionToolsHtml(cards,{scope:'mtg/'+set.setCode,path:card=>'/mtg/'+set.setCode+'/'+mtgCardSlug(card),escape:mtgEscapeHtml})}${referenceHighlightsHtml(cards,'mtg',{escape:mtgEscapeHtml,path:card=>'/mtg/'+set.setCode+'/'+mtgCardSlug(card)})}${renderCatalogStock(inventory,cards,'mtg',set)}<div class="mp-grid">${cardTiles}</div>`,
+    bodyHtml: `<div class="mp-crumb"><a href="/mtg">← All MTG sets</a></div><h1>${mtgEscapeHtml(set.setName || set.setCode)}</h1><p class="mp-sub">${cards.length.toLocaleString()} cards${year ? ` · released ${year}` : ''}. Catalog prices are market references; available store copies have their own selling prices.</p><p><a href="/mtg-new-releases?set=${encodeURIComponent(set.setCode)}">Open the interactive card viewer →</a> · <a href="/category/mtg">Shop MTG inventory</a></p>${collectionToolsHtml(cards,{scope:'mtg/'+set.setCode,path:card=>'/mtg/'+set.setCode+'/'+mtgCardSlug(card),escape:mtgEscapeHtml})}${referenceHighlightsHtml(cards,'mtg',{escape:mtgEscapeHtml,path:card=>'/mtg/'+set.setCode+'/'+mtgCardSlug(card)})}${renderCatalogStock(inventory,cards,'mtg',set)}${marketplaceDisclosureHtml}<div class="mp-grid">${cardTiles}</div>`,
   });
 }
 
@@ -2729,7 +2730,7 @@ function renderMtgCardPage(card, inventory = []) {
       `<p class="mp-meta">Reference market prices · store copies are listed separately below.</p><div class="mp-prices">${priceLines.map(line => `<span class="mp-price-pill">${mtgEscapeHtml(line)}</span>`).join('') || '<span class="mp-meta">No current price data</span>'}</div>` +
       `<div class="mp-meta">${mtgEscapeHtml(card.typeLine || '')}${card.manaCost ? ` · ${mtgEscapeHtml(card.manaCost)}` : ''}</div>` +
       `${card.oracleText ? `<div class="mp-oracle">${mtgEscapeHtml(card.oracleText)}</div>` : ''}` +
-      `${card.artist ? `<div class="mp-meta">Illustrated by ${mtgEscapeHtml(card.artist)}</div>` : ''}</div></div>` + catalogInventoryHtml(inventory,card,'mtg',{}, {available:isStorefrontItemAvailable,slug:mtgSlugify,escape:mtgEscapeHtml}),
+      `${card.artist ? `<div class="mp-meta">Illustrated by ${mtgEscapeHtml(card.artist)}</div>` : ''}</div></div>` + catalogInventoryHtml(inventory,card,'mtg',{}, {available:isStorefrontItemAvailable,slug:mtgSlugify,escape:mtgEscapeHtml}) + marketplaceDisclosureHtml + catalogShoppingLinksHtml(inventory,card,'mtg',{}, {available:isStorefrontItemAvailable,slug:mtgSlugify,escape:mtgEscapeHtml}),
   });
 }
 

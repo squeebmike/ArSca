@@ -35,6 +35,8 @@ on:
       - scripts/collection-tools.mjs
       - scripts/pokemon-catalog-pages.mjs
       - scripts/baseball-catalog-pages.mjs
+      - scripts/baseball-section-pages.mjs
+      - scripts/topps/baseball-sections.mjs
       - scripts/baseball-team-pages.mjs
       - scripts/baseball-player-pages.mjs
       - scripts/baseball-odds.mjs
