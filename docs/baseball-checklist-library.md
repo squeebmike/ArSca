@@ -13,7 +13,7 @@ Save the exact source PDFs and their extracted UTF-8 text as `series-1.pdf/.txt`
 - `/baseball`: verified set index, linked from the sports inventory department.
 - `/baseball/checklists/{set-id}`: 60 entries per page, ordinary HTML pagination and GET search.
 - `/baseball/checklists/{set-id}/cards/{card-id}`: permanent individual reference page.
-- `/sitemap-baseball.xml`: index, set and card URLs (993 at initial launch); included in the site's sitemap index.
+- `/sitemap-baseball.xml`: index, set and card URLs (993 at initial launch); advertised alongside the site's other sitemaps in robots.txt. Webflow's `/sitemap.xml` remains its own URL set.
 
 Card pages use WebPage schema. They are references, not store offers. Prices and store availability appear only for matching live storefront listings and link to the existing item checkout page. No card image is published without a verified source.
 
