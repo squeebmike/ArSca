@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
-import {cleanCollection,mergeCollection,collectionCsv,collectionToolsHtml} from '../scripts/collection-tools.mjs';
+import {cleanCollection,mergeCollection,collectionCsv,collectionToolsHtml,collectionClient} from '../scripts/collection-tools.mjs';
 assert.equal(cleanCollection({'mtg/a':'have','bad key':'need','mtg/b':'unknown'})['mtg/a'],'have');
 assert.equal(Object.keys(cleanCollection([])).length,0);
 const merged=mergeCollection({'mtg/a':'have','pokemon/b':'want'},{'mtg/a':'need','unknown/x':'have'},['mtg/a']);
@@ -27,4 +27,16 @@ const select=list.children[0].children[2];select.value='need';select.events.chan
 const filter=selectors.get('[data-collection-filter]');filter.events.change({target:{value:'need'}});assert.equal(list.children.length,1);
 const importControl=selectors.get('[data-import-backup]');await importControl.events.change({target:{files:[{size:50,text:async()=>JSON.stringify({'mtg/a':'have','mtg/b':'want','unrelated':'need'})}],value:'selected'}});
 assert.equal(JSON.parse(saved)['mtg/a'],'have');assert.equal(JSON.parse(saved)['mtg/b'],'want');assert.equal(JSON.parse(saved).unrelated,undefined);
+// Wrangler inserts __name into functions before their source is serialized into HTML.
+// Exercise that emitted form without granting the VM any ambient bundler helper.
+const descriptor=Object.getOwnPropertyDescriptor(collectionClient,'toString');
+try {
+ Object.defineProperty(collectionClient,'toString',{configurable:true,value:()=> 'function(root){ const start=__name(()=>{root.bundleStarted=true},"start"); start(); }'});
+ const bundledHtml=collectionToolsHtml([{id:'a',name:'A'}],{scope:'mtg',path:()=>'/mtg/a'});
+ vm.runInNewContext(bundledHtml.match(/<script>([\s\S]*)<\/script>/)[1],context);
+ assert.equal(root.bundleStarted,true,'bundled client runs with a browser-local helper');
+} finally {
+ if(descriptor)Object.defineProperty(collectionClient,'toString',descriptor);
+ else delete collectionClient.toString;
+}
 console.log('Collection state survives reload/merge, scopes restores, exports safe needs and executes serialized client without missing globals');
