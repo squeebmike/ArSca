@@ -2,6 +2,12 @@ function productShoppingClient(){
   var image=document.getElementById('mp-product-image'),out=document.getElementById('mp-product-cart-status'),button=document.getElementById('mp-product-add');
   document.querySelectorAll('[data-product-photo]').forEach(function(link){link.addEventListener('click',function(event){if(event.ctrlKey||event.metaKey||event.shiftKey||event.altKey||event.button)return;event.preventDefault();if(!image)return;image.src=link.href;var full=document.getElementById('mp-product-full-image');if(full)full.href=link.href;document.querySelectorAll('[data-product-photo]').forEach(function(other){other.removeAttribute('aria-current');});link.setAttribute('aria-current','true');});});
   if(!button)return;
+  if(typeof MutationObserver==='function')new MutationObserver(function(){
+    if(!out||!out.textContent||!window.WO||typeof window.WO.getCart!=='function')return;
+    var data;try{data=JSON.parse(document.getElementById('mp-product-cart-data').textContent);}catch(error){return;}
+    var line=window.WO.getCart().find(function(row){return row.id===data.id;});
+    if(!line||!line.qty)out.textContent='';
+  }).observe(document.body,{childList:true,subtree:true});
   button.addEventListener('click',function(event){
     if(event.ctrlKey||event.metaKey||event.shiftKey||event.altKey||event.button)return;
     var cart=window.WO;if(!cart||typeof cart.addToCart!=='function'||typeof cart.getCart!=='function')return;

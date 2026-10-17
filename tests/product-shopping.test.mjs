@@ -9,13 +9,14 @@ const {document,window}=parseHTML('<html><body>'+parts.gallery+parts.buy+'</body
 assert.equal(document.querySelectorAll('[data-product-photo]').length,2,'deduplicate saved photos');
 assert.equal(document.querySelector('#mp-product-add').getAttribute('href'),'/shop?item=exact-copy','no-JS path remains usable');
 assert.doesNotMatch(parts.buy,/private@test|"cost"|<script>bad/);
-let calls=0,lines=[];window.WO={getCart:()=>lines,addToCart:data=>{calls++;lines.push({...data,qty:1});}};
-vm.runInNewContext(parts.script.slice('<script>'.length,-'</script>'.length),{window,document});
+let calls=0,lines=[],observer;window.WO={getCart:()=>lines,addToCart:data=>{calls++;lines.push({...data,qty:1});}};
+vm.runInNewContext(parts.script.slice('<script>'.length,-'</script>'.length),{window,document,MutationObserver:class{constructor(callback){observer=callback;}observe(){}}});
 const button=document.getElementById('mp-product-add');
 const click=()=>new window.Event('click',{bubbles:true,cancelable:true});
 let event=click();button.dispatchEvent(event);assert.equal(event.defaultPrevented,true);assert.equal(calls,1);assert.equal(lines[0].id,'exact-copy');
 assert.match(document.getElementById('mp-product-cart-status').textContent,/Added to your cart/);
 button.dispatchEvent(click());assert.equal(calls,1,'do not add beyond real stock');assert.match(document.getElementById('mp-product-cart-status').textContent,/all available copies/);
+lines=[];observer();assert.equal(document.getElementById('mp-product-cart-status').textContent,'','removing the cart item clears stale confirmation');
 const photo=document.querySelectorAll('[data-product-photo]')[1];photo.dispatchEvent(click());
 assert.equal(document.getElementById('mp-product-image').getAttribute('src'),'https://images.test/back.jpg');assert.equal(photo.getAttribute('aria-current'),'true');
 assert.equal(document.getElementById('mp-product-full-image').getAttribute('href'),'https://images.test/back.jpg');
