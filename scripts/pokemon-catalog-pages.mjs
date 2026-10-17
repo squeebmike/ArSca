@@ -15,7 +15,7 @@ export async function handlePokemonCatalog(request,env,url,deps) {
   const parts=url.pathname.split('/').filter(Boolean),isCard=parts[1]==='cards';
   if(!['sets','cards'].includes(parts[1]))return missing();
   const set=sets.find(s=>String(s.id)===parts[2]);if(!set)return missing();
-  const {data:cards}=await loadPokemonSetCards(env,set);
+  const {data:cards,complete}=await loadPokemonSetCards(env,set);
   const inventory=await deps.listItems();
   const reference=c=>Number(c.prices?.market??c.marketPrice??0)>0?'Reference market price: $'+Number(c.prices?.market??c.marketPrice).toFixed(2)+' USD':'No current reference price';
   if(isCard){
@@ -30,7 +30,7 @@ export async function handlePokemonCatalog(request,env,url,deps) {
   if(url.pathname!==canonical)return Response.redirect(origin+canonical+(page>1?'?page='+page:''),301);
   const canonicalPath=canonical+(page>1?'?page='+page:'');
   const tiles=cards.slice((page-1)*60,page*60).map(c=>{const img=c.imageCdnUrl400||c.imageUrl||'';return '<a class="mp-card" href="'+esc(pokemonCardPath(set,c,slug))+'">'+(img?'<img width="240" height="336" loading="lazy" style="object-fit:contain" src="'+esc(img)+'" alt="'+esc(c.name+' '+(c.cardNumber||''))+'">':'')+'<div class="mp-card-body"><h2 style="font-size:18px">'+esc(c.name)+'</h2><p>#'+esc(c.cardNumber||'')+' · '+esc(c.rarity||'')+'</p><p>'+esc(reference(c))+'</p></div></a>';}).join('');
-  const stock=catalogSetInventoryHtml(inventory,cards.map(c=>({...c,number:c.cardNumber})),'pokemon',set,deps);
+  const stock=(complete===false?'<p role="status">This checklist is still being updated. Some cards may be missing.</p>':'')+catalogSetInventoryHtml(inventory,cards.map(c=>({...c,number:c.cardNumber})),'pokemon',set,deps);
   return html({title:set.name+' — Pokémon Card Checklist'+(page>1?' · Page '+page:'')+' | The Mana Pocket',description:'Browse '+cards.length+' catalog cards from '+set.name+'. See card details, reference prices and matching copies available from The Mana Pocket.',canonicalPath,jsonLd:{'@context':'https://schema.org','@type':'CollectionPage',name:set.name},bodyHtml:'<div class="mp-crumb"><a href="/pokemon">All Pokémon sets</a></div><h1>'+esc(set.name)+'</h1><p>'+cards.length+' catalog cards'+(set.releaseDate?' · Release '+esc(String(set.releaseDate).slice(0,10)):'')+'.</p><p>Catalog prices are market references. Store copies have their own condition, photos and selling price.</p><p><a href="/pokemon-new-releases?set='+encodeURIComponent(set.name)+'">Open the interactive set viewer</a> · <a href="/category/pokemon">Shop Pokémon inventory</a></p>'+stock+(cards.length?'<div class="mp-grid">'+tiles+'</div>':'<p>The provider has not supplied the card checklist yet.</p>')+'<nav aria-label="Set checklist pages" style="display:flex;flex-wrap:wrap;gap:16px">'+Array.from({length:pages},(_,i)=>i+1).map(n=>n===page?'<span aria-current="page">Page '+n+'</span>':'<a href="'+esc(canonical+(n>1?'?page='+n:''))+'">Page '+n+'</a>').join('')+'</nav>'});
  }catch(error){return html({title:'Pokémon catalog temporarily unavailable | The Mana Pocket',description:'The card catalog is temporarily unavailable. Shop available Pokémon inventory.',canonicalPath:'/pokemon',bodyHtml:'<h1>The catalog is temporarily unavailable</h1><p><a href="/category/pokemon">Shop available Pokémon cards</a></p>'},503);}
 }

@@ -41,7 +41,7 @@ try {
   assert.equal(res.status, 200);
   assert.equal(body.set, 'Mega Evolution');
   assert.equal(body.data[0].name, 'Mega Lucario ex');
-  assert.match(calls.at(-1), /\/cards\?language=english&set=Mega\+Evolution&fetchAllInSet=true&limit=500/);
+  assert.match(calls.at(-1), /\/cards\?language=english&set=Mega\+Evolution&limit=200/);
 
   // Cached: repeat visits don't spend API calls.
   const before = calls.length;
@@ -87,3 +87,31 @@ try {
   assert.equal(calls.length, paid, 'no paid API calls for gated requests');
 } finally { globalThis.fetch = originalFetch; globalThis.caches = originalCaches; }
 console.log('Public Pokémon set guide route checks passed');
+
+// Large checklists must not silently stop at the provider's 200-row page.
+const {loadPokemonSetCards}=await import('../scripts/public-pokemon-sets.mjs');
+const cardRows=Array.from({length:255},(_,n)=>({id:'card-'+n,name:'Card '+n,cardNumber:String(n)}));
+const pagingStore=new Map(),pagingEnv={POKEMONPRICE_API_KEY:'test-only',LBA_KV:{get:async k=>pagingStore.has(k)?JSON.parse(pagingStore.get(k)):null,put:async(k,v)=>pagingStore.set(k,v)}};
+let requests=[];
+try{
+  globalThis.fetch=async input=>{const u=new URL(input);requests.push(u);const offset=Number(u.searchParams.get('offset')||0);return Response.json({data:cardRows.slice(offset,offset+200),metadata:{hasMore:offset===0,total:255}});};
+  const result=await loadPokemonSetCards(pagingEnv,{id:'large',name:'Large Set',cardCount:255});
+  assert.equal(result.data.length,255,'all provider pages are returned');assert.equal(result.complete,true);
+  assert.equal(requests[1].searchParams.get('offset'),'200');
+  assert.equal(requests[1].searchParams.has('fetchAllInSet'),false,'offset pages use standard pagination rather than bulk mode');
+  const before=requests.length;await loadPokemonSetCards(pagingEnv,{name:'Large Set',cardCount:255});assert.equal(requests.length,before,'fully paged cache avoids repeat quota use');
+  const legacyKey='public_pokemon:cards:v1:'+encodeURIComponent('legacy set');
+  pagingStore.set(legacyKey,JSON.stringify({cachedAt:Date.now(),data:cardRows.slice(0,200)}));
+  let rateCalls=0;globalThis.fetch=async()=>{rateCalls++;return new Response('{}',{status:429});};
+  const stale=await loadPokemonSetCards(pagingEnv,{name:'Legacy Set',cardCount:255});
+  assert.equal(stale.data.length,200,'rate limiting preserves existing cards');assert.equal(stale.complete,false,'old truncated cache is explicitly partial');assert.equal(stale.cache,'stale');
+  await loadPokemonSetCards(pagingEnv,{name:'Legacy Set',cardCount:255});assert.equal(rateCalls,1,'provider cooldown avoids repeatedly spending quota on a rate-limited refresh');
+  pagingStore.delete('public_pokemon:upstream_retry:v1');
+  globalThis.fetch=async()=>Response.json({data:cardRows.slice(0,200),metadata:{hasMore:true}});
+  await assert.rejects(loadPokemonSetCards(pagingEnv,{name:'Repeated Set',cardCount:255}),/repeated a page/,'ignored offsets must not cache duplicate pages');
+  assert.equal(pagingStore.has('public_pokemon:cards:v1:repeated%20set'),false);
+  globalThis.fetch=async input=>new URL(input).searchParams.has('offset')?new Response('{}',{status:429}):Response.json({data:cardRows.slice(0,200),metadata:{hasMore:true}});
+  await assert.rejects(loadPokemonSetCards(pagingEnv,{name:'Interrupted Set',cardCount:255}),/429/);
+  assert.equal(pagingStore.has('public_pokemon:cards:v1:interrupted%20set'),false,'an interrupted refresh cannot replace a checklist with page one');
+}finally{globalThis.fetch=originalFetch;}
+console.log('Large Pokémon checklist paging and partial-cache checks passed');
