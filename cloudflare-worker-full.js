@@ -2820,17 +2820,33 @@ function itemDetailSlug(item) {
 // and it doubles as a soft landing for anyone who arrives at a since-sold
 // item (see the sold-state branch in renderItemDetailPage below).
 function relatedStorefrontItems(item, allListable, limit = 6) {
+  const normalize = value => String(value || '').toLowerCase().trim();
+  const tokens = value => new Set(normalize(value).match(/[a-z0-9]{3,}/g) || []);
+  const nameTokens = tokens(item.name);
+  const score = other => {
+    let points = 0;
+    for (const [field, weight] of [['productType', 12], ['set', 10], ['player', 10], ['team', 6], ['game', 6], ['brand', 3]]) {
+      if (normalize(item[field]) && normalize(item[field]) === normalize(other[field])) points += weight;
+    }
+    for (const token of tokens(other.name)) if (nameTokens.has(token)) points += 2;
+    return points;
+  };
   return allListable
-    .filter(other => other.id !== item.id && other.categorySlug === item.categorySlug && !other.dropship && isStorefrontItemAvailable(other))
+    .filter(other => other.id !== item.id && other.categorySlug === item.categorySlug && !other.dropship && isStorefrontItemAvailable(other)
+      && Number.isFinite(other.price) && other.price > 0
+      && !/^(?:pocket scout item|item|untitled)(?:\s*[-#]?\s*\d+)?$/i.test(String(other.name || '').trim()))
+    .map((other, index) => ({ other, index, score: score(other) }))
+    .sort((a, b) => b.score - a.score || a.index - b.index)
+    .map(entry => entry.other)
     .slice(0, limit);
 }
 
 function renderRelatedItemsHtml(related) {
   if (!related.length) return '';
   const tiles = related.map(other => {
-    const href = `/item/${encodeURIComponent(other.id)}/${encodeURIComponent(itemDetailSlug(other))}`;
+    const href = other.linkUrl || `/item/${encodeURIComponent(other.id)}/${encodeURIComponent(itemDetailSlug(other))}`;
     const priceStr = other.price ? `$${other.price.toFixed(2)}` : '';
-    return `<a class="mp-card" href="${href}">${other.image ? `<img loading="lazy" src="${mtgEscapeHtml(other.image)}" alt="${mtgEscapeHtml(other.name)}">` : ''}<div class="mp-card-body"><div class="mp-card-name">${mtgEscapeHtml(other.name)}</div>${priceStr ? `<div class="mp-card-price">${mtgEscapeHtml(priceStr)}</div>` : ''}</div></a>`;
+    return `<a class="mp-card" href="${mtgEscapeHtml(href)}">${other.image ? `<img loading="lazy" width="300" height="300" style="aspect-ratio:1;object-fit:contain" src="${mtgEscapeHtml(other.image)}" alt="${mtgEscapeHtml(other.name)}">` : ''}<div class="mp-card-body"><div class="mp-card-name">${mtgEscapeHtml(other.name)}</div>${priceStr ? `<div class="mp-card-price">${mtgEscapeHtml(priceStr)}</div>` : ''}</div></a>`;
   }).join('');
   return `<div style="margin-top:40px"><h2 style="font-size:18px;margin-bottom:12px">More like this</h2><div class="mp-grid">${tiles}</div></div>`;
 }

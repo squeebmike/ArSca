@@ -2,6 +2,28 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import './helpers/mock-body-html-rewriter.mjs';
 
+// Recommendation quality uses saved facts, never inferred inventory edits.
+{
+  const source = fs.readFileSync('cloudflare-worker-full.js', 'utf8');
+  const body = source.slice(source.indexOf('function relatedStorefrontItems('), source.indexOf('function renderRelatedItemsHtml('));
+  const recommend = new Function('isStorefrontItemAvailable', `${body}; return relatedStorefrontItems;`)(item => item.quantity > 0);
+  const base = { categorySlug: 'collectibles', price: 20, image: 'https://img.example/photo.jpg', quantity: 1 };
+  const current = { ...base, id: 'current', name: 'Sonic plush toy', productType: 'Plush' };
+  const candidates = [
+    { ...base, id: 'placeholder', name: 'Pocket Scout item' },
+    { ...base, id: 'card', name: 'Football card', productType: 'Single' },
+    { ...base, id: 'plush', name: 'Scorbunny plush toy', productType: 'Plush' },
+    { ...base, id: 'sold', name: 'Sonic plush', quantity: 0 },
+    { ...base, id: 'unpriced', name: 'Sonic plush', price: 0 },
+    { ...base, id: 'wrong-category', name: 'Sonic plush', categorySlug: 'comics' },
+    { ...base, id: 'supplier', name: 'Sonic plush', dropship: true },
+    current,
+  ];
+  assert.deepEqual(recommend(current, candidates).map(item => item.id), ['plush', 'card']);
+  assert.deepEqual(recommend(current, candidates, 1).map(item => item.id), ['plush']);
+  assert.equal(candidates[0].name, 'Pocket Scout item', 'recommendations never mutate inventory');
+}
+
 // wrangler.deploy.jsonc route-binding contract, same class of bug as the
 // /preorder* fix documented in wrangler-preorder-route.test.mjs -- a page
 // this Worker renders is invisible on themanapocket.com without its own
