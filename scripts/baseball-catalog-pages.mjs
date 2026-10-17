@@ -28,7 +28,7 @@ export async function handleBaseballCatalog(request,env,url,deps) {
  const setPath=baseballSetPath(set),cardPathPrefix=setPath+'/cards/';
  const stockHtml=async card=>{
   let items;
-  try { items=await deps.listItems(); }
+  try { items=await deps.listItems();if(!Array.isArray(items))throw Error('Inventory unavailable'); }
   catch { return '<section><h2>Available at The Mana Pocket</h2><p>Store availability is temporarily unavailable. <a href="/category/sports-cards">Check our sports inventory</a>.</p></section>'; }
   const found=items.filter(i=>Number.isFinite(i.price)&&i.price>0&&deps.available(i)&&baseballInventoryMatches(i,card,set));
   return '<section><h2>Available at The Mana Pocket</h2>'+(found.length?found.map(i=>'<p><a href="'+esc(i.linkUrl||'/item/'+encodeURIComponent(i.id)+'/'+deps.slug(i.name))+'">'+esc(i.name)+'</a> · $'+Number(i.price).toFixed(2)+' USD · '+esc(i.condition||'See listing for condition')+'</p>').join(''):'<p>No exact matching copy is currently listed. <a href="/category/sports-cards">Browse our sports inventory</a>.</p>')+'</section>';

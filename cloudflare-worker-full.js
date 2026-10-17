@@ -48,6 +48,7 @@ import { handlePokemonCatalog } from './scripts/pokemon-catalog-pages.mjs';
 import { handleBaseballCatalog } from './scripts/baseball-catalog-pages.mjs';
 import { referenceHighlightsHtml } from './scripts/catalog-highlights.mjs';
 import { collectionToolsHtml } from './scripts/collection-tools.mjs';
+import { optionalCatalogInventory } from './scripts/catalog-availability.mjs';
 import { ebayOrderMoney, ebayLineProfit, financeAdjustments, splitCents } from './scripts/ebay-order-money.mjs';
 import { EditError, editSaleLine, editInventoryItem, adjustCustomerPoints, editHistory } from './scripts/database-edits.mjs';
 import { awardWebOrderLoyalty, planWebRedemption, holdWebOrderPoints, releaseWebOrderPoints, recordWebPointsTender, pointsHoldActive, isPointsKeyword, pointsSmsReply } from './scripts/web-loyalty.mjs';
@@ -2767,11 +2768,11 @@ function categoryLandingHref(slug) { return `/category/${encodeURIComponent(slug
 // visibly sat in the live shop grid as a clickable card that 404'd the
 // instant it was clicked. See the /item/{id} route handler below for the
 // other half of that fix.
-async function fetchAllListableStorefrontItems(env) {
+async function fetchAllListableStorefrontItems(env, options = {}) {
   const rows = [];
   let offset = 0;
   while (true) {
-    const page = await supabaseAdminFetch(env, `inventory_items?store_id=eq.${encodeURIComponent(ITEM_DETAIL_STORE_ID)}&select=id,data,status,created_at,updated_at&order=updated_at.desc,id.asc&limit=1000&offset=${offset}`);
+    const page = await supabaseAdminFetch(env, `inventory_items?store_id=eq.${encodeURIComponent(ITEM_DETAIL_STORE_ID)}&select=id,data,status,created_at,updated_at&order=updated_at.desc,id.asc&limit=1000&offset=${offset}`, options);
     if (!page.response?.ok) throw new Error('Storefront catalog unavailable');
     const batch = page.data || [];
     rows.push(...batch);
@@ -2790,10 +2791,10 @@ async function fetchAllListableStorefrontItems(env) {
 // this) so many item/category page views within the TTL window share one
 // catalog fetch instead of each re-querying Supabase from scratch.
 const ALL_LISTABLE_ITEMS_CACHE_KEY = new Request('https://internal.themanapocket.com/__cache/all-listable-storefront-items');
-async function fetchAllListableStorefrontItemsCached(env, ctx) {
+async function fetchAllListableStorefrontItemsCached(env, ctx, signal) {
   const cached = await caches.default.match(ALL_LISTABLE_ITEMS_CACHE_KEY);
   if (cached) return cached.json();
-  const items = await fetchAllListableStorefrontItems(env);
+  const items = await fetchAllListableStorefrontItems(env, signal?{signal}:{});
   const response = json(items, 200, { 'Cache-Control': 'public, max-age=180' });
   if (ctx?.waitUntil) ctx.waitUntil(caches.default.put(ALL_LISTABLE_ITEMS_CACHE_KEY, response.clone()));
   return items;
@@ -7574,11 +7575,11 @@ async function routeRequest(request, env, ctx) {
     }
 
     if(url.pathname==='/baseball'||url.pathname.startsWith('/baseball/')||url.pathname==='/sitemap-baseball.xml') {
-      const response=await handleBaseballCatalog(request,env,url,{escape:mtgEscapeHtml,slug:mtgSlugify,shell:mtgPageShell,listItems:()=>fetchAllListableStorefrontItemsCached(env,ctx),available:isStorefrontItemAvailable});
+      const response=await handleBaseballCatalog(request,env,url,{escape:mtgEscapeHtml,slug:mtgSlugify,shell:mtgPageShell,listItems:()=>optionalCatalogInventory(signal=>fetchAllListableStorefrontItemsCached(env,ctx,signal)),available:isStorefrontItemAvailable});
       if(response)return response;
     }
     if(url.pathname==='/pokemon'||url.pathname.startsWith('/pokemon/')||url.pathname==='/sitemap-pokemon.xml') {
-      const response=await handlePokemonCatalog(request,env,url,{escape:mtgEscapeHtml,slug:mtgSlugify,shell:mtgPageShell,listItems:()=>fetchAllListableStorefrontItemsCached(env,ctx),available:isStorefrontItemAvailable});
+      const response=await handlePokemonCatalog(request,env,url,{escape:mtgEscapeHtml,slug:mtgSlugify,shell:mtgPageShell,listItems:()=>optionalCatalogInventory(signal=>fetchAllListableStorefrontItemsCached(env,ctx,signal)),available:isStorefrontItemAvailable});
       if(response)return response;
     }
 
@@ -7623,7 +7624,7 @@ async function routeRequest(request, env, ctx) {
         if (String(card.setCode || '').toLowerCase() === setCode) cards.push(card);
       }
       cards.sort((a, b) => mtgCollectorSortKey(a.collectorNumber) - mtgCollectorSortKey(b.collectorNumber));
-      const response = mtgHtmlResponse(renderMtgSetPage(set, cards, await fetchAllListableStorefrontItemsCached(env,ctx)));
+      const response = mtgHtmlResponse(renderMtgSetPage(set, cards, await optionalCatalogInventory(signal=>fetchAllListableStorefrontItemsCached(env,ctx,signal))));
       response.headers.set('Cache-Control', 'public, max-age=60');
       ctx.waitUntil(caches.default.put(cacheKey, response.clone()));
       return response;
@@ -7648,7 +7649,7 @@ async function routeRequest(request, env, ctx) {
         if (mtgCardSlug(card) === cardSlug) { found = card; break; }
       }
       if (!found) return mtgNotFoundPage('That card was not found in this set.');
-      const response = mtgHtmlResponse(renderMtgCardPage(found, await fetchAllListableStorefrontItemsCached(env,ctx)));
+      const response = mtgHtmlResponse(renderMtgCardPage(found, await optionalCatalogInventory(signal=>fetchAllListableStorefrontItemsCached(env,ctx,signal))));
       response.headers.set('Cache-Control', 'public, max-age=60');
       ctx.waitUntil(caches.default.put(cacheKey, response.clone()));
       return response;

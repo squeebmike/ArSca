@@ -18,7 +18,7 @@ export async function handlePokemonCatalog(request,env,url,deps) {
   if(!['sets','cards'].includes(parts[1]))return missing();
   const set=sets.find(s=>String(s.id)===parts[2]);if(!set)return missing();
   const {data:cards,complete}=await loadPokemonSetCards(env,set);
-  const inventory=await deps.listItems();
+  const inventory=await deps.listItems().catch(()=>null);
   const reference=c=>Number(c.prices?.market??c.marketPrice??0)>0?'Reference market price: $'+Number(c.prices?.market??c.marketPrice).toFixed(2)+' USD':'No current reference price';
   if(isCard){
    const card=cards.find(c=>String(c.tcgPlayerId||c.id)===parts[3]);if(!card)return missing();

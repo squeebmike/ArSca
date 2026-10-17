@@ -30,6 +30,7 @@ on:
       - scripts/public-pokemon-sets.mjs
       - scripts/catalog-inventory.mjs
       - scripts/catalog-highlights.mjs
+      - scripts/catalog-availability.mjs
       - scripts/collection-tools.mjs
       - scripts/pokemon-catalog-pages.mjs
       - scripts/baseball-catalog-pages.mjs
@@ -99,7 +100,7 @@ jobs:
         run: node --test tests/comic-search.test.mjs
 
       - name: Verify baseball checklist discovery
-        run: node --test tests/public-baseball-checklist-policy.test.mjs tests/baseball-catalog-pages.test.mjs tests/baseball-team-pages.test.mjs tests/baseball-player-pages.test.mjs tests/catalog-highlights.test.mjs tests/collection-tools.test.mjs tests/baseball-odds.test.mjs
+        run: node --test tests/public-baseball-checklist-policy.test.mjs tests/baseball-catalog-pages.test.mjs tests/baseball-team-pages.test.mjs tests/baseball-player-pages.test.mjs tests/catalog-highlights.test.mjs tests/collection-tools.test.mjs tests/baseball-odds.test.mjs tests/catalog-availability.test.mjs
 
       - name: Smoke tests are manual only
         run: |

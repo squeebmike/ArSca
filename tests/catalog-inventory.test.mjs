@@ -31,3 +31,5 @@ assert.equal((await get('/pokemon/sets/base/old-slug')).status,301);
 res=await get(pokemonCardPath(set,cards[0],slug));html=await res.text();assert.equal(res.status,200);assert.ok(html.includes('/item/copy/pikachu'));assert.ok(!html.includes('"offers"'),'reference market prices are never store Offers');
 res=await get('/sitemap-pokemon.xml');assert.ok((await res.text()).includes(setUrl));
 console.log('Exact printing matches, unavailable stock exclusion, Pokémon HTML pagination and reference-price schema passed');
+deps.listItems=async()=>{throw Error('Inventory statement timeout');};
+res=await get(setUrl);html=await res.text();assert.equal(res.status,200);assert.ok(html.includes('temporarily unavailable'));assert.ok(html.includes('Pikachu'));assert.ok(!html.includes('No matching singles'));

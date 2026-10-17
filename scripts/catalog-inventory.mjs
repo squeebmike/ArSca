@@ -12,6 +12,7 @@ export function catalogInventoryMatches(item,card,game,set={}) {
     &&itemSets.some(s=>sets.includes(s))&&key(item.name)===key(card.name);
 }
 export function catalogInventoryHtml(items,card,game,set,deps) {
+  if(!Array.isArray(items))return '<p class="mp-meta">Store availability is temporarily unavailable. The card details and checklist remain available.</p>';
   const found=items.filter(i=>Number.isFinite(i.price)&&i.price>0&&deps.available(i)&&catalogInventoryMatches(i,card,game,set));
   if(!found.length)return '<p class="mp-meta">No matching copies currently listed at The Mana Pocket.</p>';
   return renderCopies(found,deps);
@@ -20,6 +21,7 @@ function renderCopies(found,deps) {
   return '<section class="mp-catalog-stock"><h2>Available at The Mana Pocket</h2><p>These are store listings for matching printings. Open a copy for its photos, condition and available quantity.</p>'+found.map(i=>'<a class="mp-set-row" href="'+deps.escape(i.linkUrl||'/item/'+encodeURIComponent(i.id)+'/'+deps.slug(i.name))+'"><span>'+deps.escape(i.name)+' · '+deps.escape([i.condition,i.variant,i.gradingCompany&&i.gradingCompany+' '+(i.grade||'')].filter(Boolean).join(' · '))+'</span><strong>$'+Number(i.price).toFixed(2)+' USD · View this copy →</strong></a>').join('')+'</section>';
 }
 export function catalogSetInventoryHtml(items,cards,game,set,deps) {
+  if(!Array.isArray(items))return '<p class="mp-meta">Store availability is temporarily unavailable. The card details and checklist remain available.</p>';
   const found=items.filter(i=>Number.isFinite(i.price)&&i.price>0&&deps.available(i)&&cards.some(card=>catalogInventoryMatches(i,card,game,set)));
   return found.length?renderCopies([...new Map(found.map(i=>[i.id,i])).values()],deps):'<p class="mp-meta">No matching singles from this set are currently listed at The Mana Pocket. <a href="/category/'+game+'">Browse current '+(game==='mtg'?'MTG':'Pokémon')+' inventory</a>.</p>';
 }
