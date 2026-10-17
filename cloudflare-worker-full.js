@@ -2921,8 +2921,8 @@ function renderItemDetailPage(item, canonicalSlug, allListable) {
 // full Scryfall reference catalog (every MTG card ever printed), not this
 // store's actual live inventory.
 const CATEGORY_LANDING_COPY = {
-  pokemon: 'Pokémon singles, sealed product, and graded slabs -- from current sets to vintage. New stock is added as it comes in, so check back often for singles you can\'t find anywhere else locally.',
-  mtg: 'Magic: The Gathering singles and sealed product across every format, from Commander staples to vintage reserve-list cards. Looking for full set/price reference data instead of what\'s in stock right now? See the full MTG card catalog.',
+  pokemon: 'Pokémon singles, graded cards and sealed products. Filter by set and format, or search for a card by name or number.',
+  mtg: 'Magic: The Gathering singles and sealed products. Filter the store inventory below, or use the checklists to look up a set and its cards.',
   'one-piece': 'One Piece Card Game singles and sealed booster boxes, stocked as new sets release and demand grows.',
   yugioh: 'Yu-Gi-Oh! singles and sealed product, from staple meta cards to older nostalgia pulls.',
   lorcana: 'Disney Lorcana singles and sealed product for collectors and players building their next deck.',
@@ -2959,13 +2959,13 @@ function renderCategoryLandingPage(slug, categoryItems, page = 1, selection = de
         { '@type': 'ListItem', position: 2, name: label, item: `https://www.themanapocket.com${canonicalPath}` },
       ] },
     ],
-    bodyHtml: `<div class="mp-crumb"><a href="/shop">← Shop</a></div><h1>${mtgEscapeHtml(label)}</h1><p class="mp-sub">${mtgEscapeHtml(copy)}</p>` +
+    bodyHtml: `<main class="mp-department"><div class="mp-crumb"><a href="/shop">← Shop</a></div><h1>${mtgEscapeHtml(label)}</h1><p class="mp-sub">${mtgEscapeHtml(copy)}</p>` +
       departmentFilterHtml(basePath,selection,mtgEscapeHtml,label) +
       (['mtg','pokemon'].includes(slug) ? `<p><a href="/${slug}">Browse all ${slug==='mtg'?'MTG':'Pokémon'} sets and card checklists</a> · <a href="/${slug}-new-releases">Open the interactive set viewer</a></p>` : '') +
       (slug==='pokemon'?'<p><a href="/articles/pokemon-delta-reign-release-date-card-checklist">Delta Reign: release dates, previews and the checklist →</a></p>':slug==='mtg'?'<p><a href="/articles/mtg-star-trek-release-dates-set-codes-card-guide">Star Trek: release dates, set codes and the card guide →</a></p>':'') +
       (shown.length
         ? `<p class="mp-meta">Showing ${(page-1)*60+1}–${Math.min(page*60,items.length)} of ${items.length.toLocaleString()}</p><div class="mp-grid">${tiles}</div>${pagination}`
-        : `<p class="mp-sub">${selection.active?'No listings match these filters.':'Nothing in stock in this category right now.'} <a href="${basePath}">Clear filters</a> or <a href="/shop">browse the full shop</a>.</p>`),
+        : `<p class="mp-sub">${selection.active?'No listings match these filters.':'Nothing in stock in this category right now.'} <a href="${basePath}">Clear filters</a> or <a href="/shop">browse the full shop</a>.</p>`) + '</main>',
   });
 }
 
