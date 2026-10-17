@@ -1,8 +1,9 @@
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
+import fs from 'node:fs';
 import {parseHTML} from 'linkedom';
 import {departmentSelection,departmentPagePath,departmentFilterHtml} from '../scripts/department-filters.mjs';
-import {productViewAnalytics} from '../scripts/store-analytics.mjs';
+import {productViewAnalytics,googleAnalyticsTag,measurementId} from '../scripts/store-analytics.mjs';
 import {renderReleaseInventory} from '../scripts/comic-articles.mjs';
 const cards=[{id:'a',name:'Cal Raleigh #1',player:'Cal Raleigh',team:'Mariners',sport:'Baseball',set:'Topps Chrome',productTypeSlug:'singles'},{id:'b',name:'Julio #2',player:'Julio Rodriguez',team:'Mariners',sport:'Baseball',set:'Topps Chrome',productTypeSlug:'graded'},{id:'c',name:'Booster box',set:'Delta Reign',productTypeSlug:'sealed'}];
 const select=departmentSelection(cards,new URLSearchParams('player=cal+raleigh&kind=singles&team=Mariners'));
@@ -20,6 +21,19 @@ assert.doesNotMatch(script,/private@test|cost|<script>bad/);
 vm.runInNewContext(script.match(/<script[^>]*>([\s\S]*?)<\/script>/)[1],{window:{gtag:(...args)=>events.push(args)}});
 assert.equal(events[0][1],'view_item');assert.equal(events[0][2].value,9);assert.equal(events[0][2].items[0].quantity,1);
 assert.equal(productViewAnalytics({name:'no id'}),'');
+const workerSource=fs.readFileSync(new URL('../cloudflare-worker-full.js',import.meta.url),'utf8');
+const context={storeOrganization:{'@type':'Organization'},productViewAnalytics,googleAnalyticsTag,measurementId,mtgEscapeHtml:String,currentSiteChrome:()=>null,mtgFallbackChromeCss:()=>'',mtgSiteHeader:()=>'',mtgSiteFooter:()=>'',mtgSiteNavScript:()=>'',WO_UI_SCRIPT_URL:''};
+vm.createContext(context);vm.runInContext(workerSource.slice(workerSource.indexOf('function mtgPageShell('),workerSource.indexOf('function mtgHtmlResponse(')),context);
+for(const route of ['item','book','preorder']){
+ const rendered=context.mtgPageShell({title:'Book',description:'Product',canonicalPath:'/'+route+'/real-id/title',jsonLd:{'@type':'Product',name:'Exact book',sku:'different-publisher-upc',offers:{price:5}},bodyHtml:''});
+ assert.equal([...rendered.matchAll(/data-mp-product-view/g)].length,1);
+ assert.match(rendered,/"item_id":"real-id"/,'analytics and cart use the same inventory/SKU identifier');
+}
+const reference=context.mtgPageShell({title:'Reference',description:'Reference price',canonicalPath:'/mtg/set/card',jsonLd:{'@type':'Product',name:'Reference card'},bodyHtml:''});
+assert.doesNotMatch(reference,/data-mp-product-view/,'reference cards are not store-product views');
+context.currentSiteChrome=()=>({htmlAttrs:'',head:googleAnalyticsTag,nav:'',footer:'',bodyEnd:''});
+const withChrome=context.mtgPageShell({title:'Store',description:'Store',canonicalPath:'/category',bodyHtml:''});
+assert.equal([...withChrome.matchAll(/googletagmanager.com\/gtag\/js/g)].length,1,'do not install a duplicate Google tag');
 const deps={esc:s=>String(s).replace(/</g,'&lt;'),isAvailable:i=>i.quantity>0,itemSlug:i=>i.name.toLowerCase().replace(/\W+/g,'-')};
 const slug='pokemon-delta-reign-release-date-card-checklist';
 const stock=[{id:'exact',name:'New card',categorySlug:'pokemon',set:'ME06: Delta Reign',quantity:1,price:8,condition:'NM'},{id:'wrong-set',name:'New card',categorySlug:'pokemon',set:'Base Set',quantity:1,price:7},{id:'sold',name:'Sold copy',categorySlug:'pokemon',set:'Delta Reign',quantity:0,price:8}];

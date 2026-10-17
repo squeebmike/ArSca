@@ -2596,6 +2596,9 @@ function mtgPageShell({ title, description, canonicalPath, ogImage, ogType, json
     (ogImage ? `<meta name="twitter:image" content="${mtgEscapeHtml(ogImage)}">` : '');
   const robotsTag = robotsNoindex ? `<meta name="robots" content="noindex,follow">` : '';
   const chrome = currentSiteChrome();
+  const product = jsonLdList.find(block=>block['@type']==='Product');
+  const itemRoute = canonicalPath.match(/^\/(item|preorder|book)\/([^/]+)/);
+  const productView = product && itemRoute ? productViewAnalytics({id:decodeURIComponent(itemRoute[2]),name:product.name,price:product.offers?.price,category:itemRoute[1]==='preorder'?'Comic preorder':itemRoute[1]==='book'?'Comic backorder':product.additionalProperty?.find(f=>f.name==='Category')?.value||''}) : '';
   return `<!DOCTYPE html><html lang="en"${chrome ? chrome.htmlAttrs : ''}><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">${chrome ? chrome.head : ''}${chrome?.head.includes(measurementId)?'':googleAnalyticsTag}` +
     `<title>${mtgEscapeHtml(title)}</title><meta name="description" content="${mtgEscapeHtml(description)}">${robotsTag}` +
     `<link rel="canonical" href="https://www.themanapocket.com${canonicalPath}">` +
@@ -2611,8 +2614,8 @@ function mtgPageShell({ title, description, canonicalPath, ogImage, ogType, json
     (chrome ? '' : mtgFallbackChromeCss()) +
     `.mp-wrap{max-width:1080px;margin:0 auto;padding:24px 16px 0}.mp-crumb{font-size:13px;opacity:.65;margin-bottom:16px}.mp-crumb a{color:#c8b8ff}h1{font-size:clamp(22px,4vw,32px);margin:0 0 8px}.mp-sub{opacity:.7;font-size:14px;margin-bottom:24px}.mp-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:16px}.mp-card{display:block;border:1px solid rgba(255,255,255,.12);border-radius:12px;overflow:hidden;background:rgba(255,255,255,.03);text-decoration:none;color:inherit}.mp-card img{width:100%;display:block;background:#16101f}.mp-card-body{padding:10px 12px}.mp-card-name{font-size:13px;font-weight:700;line-height:1.3}.mp-card-price{font-size:12px;color:#8bd450;font-weight:700;margin-top:4px}.mp-set-list{display:grid;gap:10px}.mp-set-row{display:flex;justify-content:space-between;gap:12px;padding:12px 16px;border:1px solid rgba(255,255,255,.1);border-radius:10px;text-decoration:none;color:inherit}.mp-set-row:hover{border-color:#8bd450}.mp-detail{display:grid;grid-template-columns:280px 1fr;gap:32px}@media(max-width:640px){.mp-detail{grid-template-columns:1fr}}.mp-detail img{width:100%;border-radius:14px}.mp-prices{display:flex;gap:10px;flex-wrap:wrap;margin:16px 0}.mp-price-pill{background:rgba(139,212,80,.15);color:#8bd450;font-weight:800;padding:8px 14px;border-radius:999px;font-size:14px}.mp-oracle{white-space:pre-wrap;line-height:1.6;font-size:14px;opacity:.9;margin-top:16px}.mp-meta{font-size:13px;opacity:.65;margin-top:8px}</style></head>` +
     (chrome
-      ? `<body>${chrome.nav}<div class="mp-wrap">${bodyHtml}</div>${chrome.footer || mtgSiteFooter()}${chrome.bodyEnd}</body></html>`
-      : `<body>${mtgSiteHeader()}<div class="mp-wrap">${bodyHtml}</div>${mtgSiteFooter()}` +
+      ? `<body>${chrome.nav}<div class="mp-wrap">${bodyHtml}</div>${productView}${chrome.footer || mtgSiteFooter()}${chrome.bodyEnd}</body></html>`
+      : `<body>${mtgSiteHeader()}<div class="mp-wrap">${bodyHtml}</div>${productView}${mtgSiteFooter()}` +
         `${mtgSiteNavScript()}` +
         `<script defer src="${WO_UI_SCRIPT_URL}"></script>` +
         `</body></html>`);
@@ -2907,7 +2910,7 @@ function renderItemDetailPage(item, canonicalSlug, allListable) {
       `</div></div>` +
       (['mtg','pokemon'].includes(item.categorySlug) ? `<p><a href="/${item.categorySlug}">Browse ${item.categorySlug==='mtg'?'MTG':'Pokémon'} set checklists</a>${item.set ? ` · <a href="/${item.categorySlug==='mtg'?'mtg':'pokemon'}-new-releases?set=${encodeURIComponent(item.setCode||item.set)}">Open this set in the card viewer</a>` : ''}</p>` : '') +
       (item.categorySlug === 'comics' ? renderBookAlertForm([alertBookTitle(item.name)],ITEM_DETAIL_STORE_ID,mtgEscapeHtml) : '') +
-      renderRelatedItemsHtml(related) + productViewAnalytics(item),
+      renderRelatedItemsHtml(related),
   });
 }
 
@@ -7640,6 +7643,7 @@ async function routeRequest(request, env, ctx) {
       const jsonLd=JSON.stringify([storeOrganization,product]).replace(/</g,'\\u003c');
       const words=item.name.split(/\s+/),first=words.shift();
       const rewritten=new HTMLRewriter()
+        .on('body',{element(e){e.append(productViewAnalytics(item),{html:true});}})
         .on('head',{element(e){e.append('<script type="application/ld+json">'+jsonLd+'</script>',{html:true});}})
         .on('title',{element(e){e.setInnerContent(item.name+' | The Mana Pocket');}})
         .on('meta[name="description"],meta[property="og:description"]',{element(e){e.setAttribute('content',description);}})
