@@ -5,6 +5,7 @@ import { importDropshipBatch } from './scripts/dropship-import.mjs';
 import { cachedCatalogSitemap } from './scripts/sitemap-cache.mjs';
 import { departmentSelection, departmentPagePath, departmentFilterHtml } from './scripts/department-filters.mjs';
 import { googleAnalyticsTag, measurementId, productViewAnalytics } from './scripts/store-analytics.mjs';
+import { productShoppingParts } from './scripts/product-shopping.mjs';
 import { storeOrganization, productFacts, productCondition, productHeading, renderShopPreview } from './scripts/storefront-seo.mjs';
 
 /**
@@ -2870,6 +2871,7 @@ function renderItemDetailPage(item, canonicalSlug, allListable) {
   const metaBits = [item.set, item.year, item.condition, item.variant].filter(Boolean).join(' · ');
   const description = itemDetailDescription(item);
   const available = isStorefrontItemAvailable(item);
+  const shopping = productShoppingParts(item,available,mtgEscapeHtml);
   const categoryLabel = categoryLandingLabel(item.categorySlug);
   const categoryHref = categoryLandingHref(item.categorySlug);
   const breadcrumbJsonLd = {
@@ -2899,18 +2901,18 @@ function renderItemDetailPage(item, canonicalSlug, allListable) {
       ...(item.price ? { offers: { '@type': 'Offer', priceCurrency: 'USD', price: item.price, availability: available ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock', itemCondition:productCondition(item.condition), seller:{'@id':storeOrganization['@id']}, url: `https://www.themanapocket.com${canonicalPath}` } } : {}),
       ...reviewJsonLdFields,
     }, breadcrumbJsonLd],
-    bodyHtml: `<div class="mp-crumb"><a href="/shop">Shop</a> / <a href="${categoryHref}">${mtgEscapeHtml(categoryLabel)}</a> / ${mtgEscapeHtml(item.name)}</div>` +
-      `<div class="mp-detail">${item.image ? `<img src="${mtgEscapeHtml(item.image)}" alt="${mtgEscapeHtml(item.name)}" width="600" height="600" style="aspect-ratio:1/1;object-fit:contain;background:#16101f" fetchpriority="high">` : ''}` +
+    bodyHtml: shopping.styles + `<div class="mp-crumb"><a href="/shop">Shop</a> / <a href="${categoryHref}">${mtgEscapeHtml(categoryLabel)}</a> / ${mtgEscapeHtml(item.name)}</div><p><a href="#mp-buy" style="font:650 14px system-ui">Price &amp; availability ↓</a></p>` +
+      `<div class="mp-detail">${shopping.gallery}` +
       `<div><h1>${mtgEscapeHtml(headingName)}</h1>${metaBits ? `<div class="mp-meta">${mtgEscapeHtml(metaBits)}</div>` : ''}` +
       `<div class="mp-prices">${priceStr ? `<span class="mp-price-pill">${mtgEscapeHtml(priceStr)}</span>` : '<span class="mp-meta">Contact the shop for price</span>'}${!available ? `<span class="mp-price-pill" style="background:rgba(255,77,109,.15);color:#ff9db0">Sold</span>` : ''}</div>` +
-      (available ? `<a class="mp-card" style="display:inline-block;padding:12px 20px;margin-top:8px" href="/shop?item=${encodeURIComponent(item.id)}">Add to cart →</a>` : `<p class="mp-sub">This exact copy has sold. Browse ${mtgEscapeHtml(categoryLabel)} for what's currently in stock.</p>`) +
+      shopping.buy +
       `<p class="mp-sub">${mtgEscapeHtml(detail || description)}</p>` +
       `${facts.length ? `<h2>Item details</h2><dl>${facts.map(f=>`<dt style="font-weight:700">${mtgEscapeHtml(f.name)}</dt><dd style="margin:0 0 10px">${mtgEscapeHtml(f.value)}</dd>`).join('')}</dl>` : ''}` +
       `${reviewHtml}` +
       `</div></div>` +
       (['mtg','pokemon'].includes(item.categorySlug) ? `<p><a href="/${item.categorySlug}">Browse ${item.categorySlug==='mtg'?'MTG':'Pokémon'} set checklists</a>${item.set ? ` · <a href="/${item.categorySlug==='mtg'?'mtg':'pokemon'}-new-releases?set=${encodeURIComponent(item.setCode||item.set)}">Open this set in the card viewer</a>` : ''}</p>` : '') +
       (item.categorySlug === 'comics' ? renderBookAlertForm([alertBookTitle(item.name)],ITEM_DETAIL_STORE_ID,mtgEscapeHtml) : '') +
-      renderRelatedItemsHtml(related),
+      renderRelatedItemsHtml(related) + shopping.script,
   });
 }
 
