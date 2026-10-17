@@ -3017,6 +3017,50 @@ const NEWS_POSTS = [
   ['2026-09-11', 'BCW supplies now available to order', 'Sleeves, top loaders, binders, and other storage from BCW are now orderable directly through our shop, drop-shipped straight from BCW.'],
   ['2026-08-01', 'FOC presale now open for upcoming comics', 'Order upcoming comic issues ahead of their release through our FOC presale program -- see the FAQ for how it works.'],
 ];
+function renderSocialLinksPage() {
+  const profiles = storeOrganization.sameAs.map(href => {
+    const host = new URL(href).hostname;
+    if (host.endsWith('facebook.com')) return { href, label:'Facebook', detail:'News, finds and shop updates', mark:'f' };
+    if (host.endsWith('instagram.com')) return { href, label:'Instagram', detail:'@shopthemanapocket', mark:'IG' };
+    if (host.endsWith('whatnot.com')) return { href, label:'Whatnot', detail:'The Mana Pocket on Whatnot', mark:'W' };
+    return null;
+  }).filter(Boolean);
+  const shortcuts = [
+    ['/shop','Shop the store','Sports cards, Pokémon, MTG, comics & collectibles'],
+    ['/preorders','Comic preorders','Pick your book. Pick your cover.'],
+    ['/articles','Collector articles','New releases, set guides & covers'],
+    ['/pokemon','Pokémon checklists','Browse sets and find store copies'],
+    ['/mtg','MTG checklists','Explore cards, sets and store copies'],
+  ];
+  return mtgPageShell({
+    title:'The Mana Pocket | Social Links, Shop & Comic Preorders',
+    description:'Find The Mana Pocket on Facebook, Instagram and Whatnot. Shop sports cards, Pokémon, MTG, comics and collectibles, or browse comic preorders and collector guides.',
+    canonicalPath:'/links', ogImage:SITE_LOGO_URL,
+    jsonLd:{'@context':'https://schema.org','@type':'CollectionPage',name:'The Mana Pocket — Find us',url:'https://www.themanapocket.com/links',about:{'@id':storeOrganization['@id']},mainEntity:{'@type':'ItemList',itemListElement:profiles.map((p,i)=>({'@type':'ListItem',position:i+1,name:p.label,url:p.href}))}},
+    bodyHtml:`<style>
+      .mp-links{--ink:#f8f4ff;--lime:#9be34c;max-width:720px;margin:0 auto;padding:12px 0 48px;color:var(--ink);font-family:Exo,system-ui,sans-serif}
+      .mp-links-hero{position:relative;text-align:center;padding:26px 20px 30px;background:radial-gradient(circle at 1px 1px,#9d73c32b 1px,transparent 0) 0 0/9px 9px,#29153b;border:2px solid #704a8e;border-radius:24px;overflow:hidden}
+      .mp-links-hero img{width:132px;height:132px;object-fit:contain;display:block;margin:0 auto 12px;filter:drop-shadow(3px 5px 0 #120b1b)}
+      .mp-links-kicker{font-size:11px;font-weight:850;letter-spacing:.16em;text-transform:uppercase;color:var(--lime);margin:0 0 12px}
+      .mp-links h1{font:950 clamp(32px,7vw,52px)/1.03 Exo,system-ui,sans-serif;letter-spacing:-.035em;margin:0 0 12px;color:var(--ink)}
+      .mp-links-intro{font-size:16px;line-height:1.5;margin:0 auto;max-width:440px;color:#e0cfee}
+      .mp-links h2{font:900 19px/1.2 Exo,system-ui,sans-serif;margin:30px 0 14px;color:var(--ink)}
+      .mp-links-list{display:grid;gap:12px}.mp-links-card{display:flex;align-items:center;gap:14px;min-height:82px;padding:16px 18px;color:var(--ink)!important;background:#281a37;border:2px solid #73518e;border-radius:16px;text-decoration:none!important;box-shadow:4px 4px 0 #0c0712;transition:border-color .15s,transform .15s}
+      .mp-links-card:hover{border-color:var(--lime);transform:translateY(-2px)}.mp-links-card:focus-visible,.mp-links button:focus-visible,.mp-links-foot a:focus-visible{outline:3px solid var(--lime);outline-offset:4px}
+      .mp-links-card strong{display:block;font-size:19px;line-height:1.2}.mp-links-card small{display:block;color:#d8c8e5;font-size:13px;line-height:1.4;margin-top:4px}.mp-links-copy{flex:1;min-width:0}
+      .mp-links-mark{width:44px;height:44px;flex:0 0 44px;border-radius:12px;background:#9be34c;color:#1d1028;display:grid;place-items:center;font:950 21px/1 Exo,system-ui,sans-serif}.mp-links-arrow{font-size:23px;color:var(--lime)}
+      .mp-links-shop .mp-links-card:first-child{background:var(--lime);border-color:var(--lime);color:#1c1026!important}.mp-links-shop .mp-links-card:first-child small,.mp-links-shop .mp-links-card:first-child .mp-links-arrow{color:#30203e}
+      .mp-links-foot{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:12px 20px;margin-top:30px;font-size:13px}.mp-links-foot a{color:#d6c2eb}.mp-links button{display:block;margin:26px auto 0;border:1px solid #9475ab;border-radius:999px;background:#291b39;color:var(--ink);font:750 14px/1.3 Exo,system-ui,sans-serif;min-height:44px;padding:12px 22px;cursor:pointer}.mp-links-status{min-height:22px;text-align:center;font-size:13px;margin:8px 0 0;color:var(--lime)}
+      @media(max-width:480px){.mp-links-hero{padding:22px 16px}.mp-links-hero img{width:108px;height:108px}.mp-links-card{padding:14px;gap:12px}.mp-links-card strong{font-size:18px}}
+      @media(prefers-reduced-motion:reduce){.mp-links-card{transition:none}.mp-links-card:hover{transform:none}}
+    </style><main class="mp-links"><header class="mp-links-hero"><img src="${SITE_LOGO_URL}" width="132" height="132" alt="The Mana Pocket" fetchpriority="high"><p class="mp-links-kicker">Cards · Comics · Collectibles</p><h1>Find The Mana Pocket.</h1><p class="mp-links-intro">New cards. New comics. Same collecting problem.<br>Here's where to find us.</p></header>
+    <section aria-labelledby="mp-links-social-title"><h2 id="mp-links-social-title">Follow the Pocket</h2><div class="mp-links-list">${profiles.map(p=>`<a class="mp-links-card" data-social-link="${mtgEscapeHtml(p.label)}" href="${mtgEscapeHtml(p.href)}" target="_blank" rel="noopener noreferrer"><span class="mp-links-mark" aria-hidden="true">${p.mark}</span><span class="mp-links-copy"><strong>${p.label}</strong><small>${p.detail}</small></span><span class="mp-links-arrow" aria-hidden="true">↗</span></a>`).join('')}</div></section>
+    <section aria-labelledby="mp-links-shop-title" class="mp-links-shop"><h2 id="mp-links-shop-title">Grab something good</h2><div class="mp-links-list">${shortcuts.map(([href,label,detail])=>`<a class="mp-links-card" href="${href}"><span class="mp-links-copy"><strong>${label}</strong><small>${detail}</small></span><span class="mp-links-arrow" aria-hidden="true">→</span></a>`).join('')}</div></section>
+    <button type="button" id="mp-copy-links" hidden>Copy this page link</button><p class="mp-links-status" id="mp-links-status" role="status"></p><nav class="mp-links-foot" aria-label="More from The Mana Pocket"><a href="/faq">Ordering &amp; shipping help</a><a href="/account">My Pocket</a><a href="/">Home</a></nav></main>
+    <script>(function(){var b=document.getElementById('mp-copy-links'),s=document.getElementById('mp-links-status');b.hidden=false;b.addEventListener('click',function(){var u='https://www.themanapocket.com/links';if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(u).then(function(){s.textContent='Link copied. Send it to a fellow collector.';}).catch(function(){window.prompt('Copy this page link:',u);});else window.prompt('Copy this page link:',u);});document.querySelectorAll('[data-social-link]').forEach(function(a){a.addEventListener('click',function(){try{var p={social_platform:a.dataset.socialLink,link_url:a.href};if(typeof window.gtag==='function')window.gtag('event','social_link_click',p);}catch(e){}});});})();</script>`,
+  });
+}
+
 function renderNewsPage() {
   const rows = NEWS_POSTS.map(([date, title, body]) => `<div style="margin-bottom:24px;padding-bottom:24px;border-bottom:1px solid rgba(255,255,255,.1)"><div class="mp-meta">${mtgEscapeHtml(date)}</div><h2 style="font-size:16px;margin:4px 0 6px">${mtgEscapeHtml(title)}</h2><p class="mp-sub" style="margin-bottom:0">${mtgEscapeHtml(body)}</p></div>`).join('');
   return mtgPageShell({
@@ -7736,6 +7780,12 @@ async function routeRequest(request, env, ctx) {
       return response;
     }
 
+    if (url.pathname === '/links' || url.pathname === '/links/') {
+      if (!['GET','HEAD'].includes(request.method)) return new Response('Method not allowed', {status:405,headers:{Allow:'GET, HEAD'}});
+      if (url.pathname.endsWith('/')) return Response.redirect('https://www.themanapocket.com/links'+url.search,301);
+      return new Response(request.method==='HEAD'?null:renderSocialLinksPage(), {headers:{'Content-Type':'text/html;charset=UTF-8','Cache-Control':'public, max-age=300'}});
+    }
+
     // GET /faq -- real FAQPage schema, eligible for Google's FAQ rich result.
     if (url.pathname === '/faq' && request.method === 'GET') {
       const response = mtgHtmlResponse(renderFaqPage());
@@ -7823,7 +7873,7 @@ async function routeRequest(request, env, ctx) {
       // 'other' is a low-value catch-all bucket -- both routes still work if
       // visited directly, just not worth asking Google to index separately.
       const skippedCategorySlugs = ['supplies', 'other'];
-      const staticUrls = ['/faq', '/news', '/category', '/preorders/catalog', '/pokemon', '/mtg', '/comic-new-releases-the-mana-pocket', ...(await articleSitemapPaths(env)), ...Object.keys(CATEGORY_LANDING_LABELS).filter(slug => !skippedCategorySlugs.includes(slug)).map(slug => categoryLandingHref(slug))]
+      const staticUrls = ['/faq', '/links', '/news', '/category', '/preorders/catalog', '/pokemon', '/mtg', '/comic-new-releases-the-mana-pocket', ...(await articleSitemapPaths(env)), ...Object.keys(CATEGORY_LANDING_LABELS).filter(slug => !skippedCategorySlugs.includes(slug)).map(slug => categoryLandingHref(slug))]
         .map(path => `<url><loc>https://www.themanapocket.com${path}</loc></url>`).join('');
       const xml = `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${staticUrls}</urlset>`;
       return new Response(xml, { headers: { 'Content-Type': 'application/xml;charset=UTF-8', 'Cache-Control': 'public, max-age=3600' } });
