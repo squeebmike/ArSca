@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {catalogInventoryMatches,catalogInventoryHtml} from '../scripts/catalog-inventory.mjs';
+import {catalogInventoryMatches,catalogInventoryHtml,catalogSetInventoryHtml} from '../scripts/catalog-inventory.mjs';
 import {handlePokemonCatalog,pokemonSetPath,pokemonCardPath} from '../scripts/pokemon-catalog-pages.mjs';
 const slug=s=>String(s).toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
 const escape=s=>String(s??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('"','&quot;');
@@ -14,6 +14,11 @@ assert.ok(!catalogInventoryMatches({...item,tcgPlayerId:'456'},card,'pokemon',{n
 assert.ok(catalogInventoryMatches({...item,tcgPlayerId:'123',name:'Saved inventory photo title'},card,'pokemon',{}));
 const deps={escape,slug,available:i=>i.quantity>0,shell:p=>'<title>'+p.title+'</title><link rel="canonical" href="https://www.themanapocket.com'+p.canonicalPath+'"><script type="application/ld+json">'+JSON.stringify(p.jsonLd||{})+'</script>'+p.bodyHtml,listItems:async()=>[{...item,tcgPlayerId:'123'}]};
 assert.ok(!catalogInventoryHtml([{...item,quantity:0}],card,'pokemon',{name:'Base Set'},deps).includes('/item/'));
+const setStock=catalogSetInventoryHtml([item,item,{...item,id:'unpriced',price:0},{...item,id:'sold',quantity:0},{...item,id:'wrong',set:'Jungle'}],[card,card],'pokemon',{name:'Base Set'},deps);
+assert.equal((setStock.match(/<h2>/g)||[]).length,1,'one set stock section, even when catalog printings repeat');
+assert.equal((setStock.match(/\/item\/copy\//g)||[]).length,1,'each exact store listing appears once');
+assert.ok(!setStock.includes('/item/unpriced/')&&!setStock.includes('/item/sold/')&&!setStock.includes('/item/wrong/'));
+assert.ok(catalogSetInventoryHtml([],[],'mtg',{},deps).includes('/category/mtg'),'empty matching stock has a useful department link');
 const set={id:'base',name:'Base Set',releaseDate:'1999-01-09',cardCount:61};
 const cards=Array.from({length:61},(_,i)=>({...card,id:'id'+i,name:i?'Card '+i:'Pikachu',cardNumber:String(i+1),tcgPlayerId:String(i+123),prices:{market:3}}));
 const env={LBA_KV:{get:async key=>({cachedAt:Date.now(),data:key==='public_pokemon:sets:v1'?[set]:cards}),put:async()=>{}}};

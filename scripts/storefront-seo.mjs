@@ -32,6 +32,7 @@ export function productHeading(item, catalog = []) {
 }
 export function productCondition(value) {
   if(/^new(?:\b|$)/i.test(value||''))return 'https://schema.org/NewCondition';
+  if(/^(?:NM|NM\s*\/\s*MT|NM-MT|LP|MP|HP|DMG|VF|FN|VG|GD|FR|PR)(?:\b|$)/i.test(value||''))return 'https://schema.org/UsedCondition';
   if(/^(?:used|pre.?owned|near mint|very fine|fine|very good|good|fair|poor|lightly played|moderately played|heavily played|damaged)\b/i.test(value||''))return 'https://schema.org/UsedCondition';
   return undefined; // A numeric grade alone doesn't establish condition.
 }
@@ -40,6 +41,7 @@ export function renderShopPreview(items,esc,itemSlug) {
   if(!shown.length)return '';
   return '<section id="mp-shop-server-products" aria-label="Available shop listings"><style>#mp-shop-server-products{padding:20px;color:inherit}#mp-shop-server-products .mp-preview-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:16px}#mp-shop-server-products article{padding:12px;border:1px solid #8b7a9a;border-radius:12px}#mp-shop-server-products img{width:100%;height:180px;object-fit:contain}#mp-shop-server-products a{color:inherit}#mp-shop-server-products h3{font:700 16px/1.4 system-ui,sans-serif}</style><h2>Available from the shop</h2><div class="mp-preview-grid">'+shown.map(item=>{
     const href=item.linkUrl||'/item/'+encodeURIComponent(item.id)+'/'+encodeURIComponent(itemSlug(item));
-    return '<article><a href="'+esc(href)+'">'+(item.image?'<img src="'+esc(item.image)+'" alt="'+esc(item.name)+'" width="240" height="180" loading="lazy">':'')+'<h3>'+esc(item.name)+'</h3></a><p>$'+Number(item.price).toFixed(2)+' USD · In stock</p>'+(item.condition?'<p>'+esc(item.condition)+'</p>':'')+'</article>';
+    const sellingPrice=Number.isFinite(item.price)&&item.price>0?'$'+item.price.toFixed(2)+' USD · In stock':'Price to be confirmed · View item details';
+    return '<article><a href="'+esc(href)+'">'+(item.image?'<img src="'+esc(item.image)+'" alt="'+esc(item.name)+'" width="240" height="180" loading="lazy">':'')+'<h3>'+esc(item.name)+'</h3></a><p>'+sellingPrice+'</p>'+(item.condition?'<p>'+esc(item.condition)+'</p>':'')+'</article>';
   }).join('')+'</div><p><a href="/category">Browse all categories and product listings →</a></p></section>';
 }

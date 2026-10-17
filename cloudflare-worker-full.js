@@ -43,7 +43,7 @@ import { handleAccountRequest, findLinkedCustomer } from './scripts/customer-acc
 import { handleArticlesRequest, articleSitemapPaths } from './scripts/comic-articles.mjs';
 import { extractSiteChrome, SITE_CHROME_SOURCE } from './scripts/site-chrome.mjs';
 import { handlePublicPokemonRequest } from './scripts/public-pokemon-sets.mjs';
-import { catalogInventoryHtml } from './scripts/catalog-inventory.mjs';
+import { catalogInventoryHtml, catalogSetInventoryHtml } from './scripts/catalog-inventory.mjs';
 import { handlePokemonCatalog } from './scripts/pokemon-catalog-pages.mjs';
 import { ebayOrderMoney, ebayLineProfit, financeAdjustments, splitCents } from './scripts/ebay-order-money.mjs';
 import { EditError, editSaleLine, editInventoryItem, adjustCustomerPoints, editHistory } from './scripts/database-edits.mjs';
@@ -2658,7 +2658,7 @@ function renderMtgSetIndexPage(sets) {
     description: `Browse every Magic: The Gathering set and card, with current prices. ${sets.length.toLocaleString()} sets.`,
     canonicalPath: '/mtg',
     jsonLd: { '@context': 'https://schema.org', '@type': 'CollectionPage', name: 'MTG Sets', description: 'Every Magic: The Gathering set, with cards and prices.' },
-    bodyHtml: `<h1>Every MTG set</h1><p class="mp-sub">${sets.length.toLocaleString()} sets, from the newest release back to the very first.</p><div class="mp-set-list">${rows}</div>`,
+    bodyHtml: `<h1>Every MTG set</h1><p class="mp-sub">${sets.length.toLocaleString()} sets, from the newest release back to the very first. Catalog prices are market references; store listings have their own price and available quantity.</p><p><a href="/mtg-new-releases">Interactive card viewer</a> · <a href="/category/mtg">Shop MTG inventory</a> · <a href="/articles/mtg-star-trek-release-dates-set-codes-card-guide">Star Trek release guide</a> · <a href="/articles">Collector articles</a></p><div class="mp-set-list">${rows}</div>`,
   });
 }
 
@@ -2684,8 +2684,7 @@ function renderMtgSetPage(set, cards, inventory = []) {
 }
 
 function renderCatalogStock(inventory, cards, game, set) {
-  const sections=cards.map(card=>catalogInventoryHtml(inventory,card,game,set,{available:isStorefrontItemAvailable,slug:mtgSlugify,escape:mtgEscapeHtml})).filter(html=>html.includes('mp-catalog-stock'));
-  return [...new Set(sections)].join('');
+  return catalogSetInventoryHtml(inventory,cards,game,set,{available:isStorefrontItemAvailable,slug:mtgSlugify,escape:mtgEscapeHtml});
 }
 
 function renderMtgCardPage(card, inventory = []) {
