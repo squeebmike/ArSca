@@ -30,6 +30,9 @@ on:
       - scripts/public-pokemon-sets.mjs
       - scripts/catalog-inventory.mjs
       - scripts/pokemon-catalog-pages.mjs
+      - scripts/baseball-catalog-pages.mjs
+      - scripts/topps/baseball-seed.mjs
+      - scripts/topps/public-checklist-policy.mjs
       - scripts/ebay-order-money.mjs
       - scripts/orders-board.mjs
       - scripts/sitemap-cache.mjs
@@ -88,6 +91,9 @@ jobs:
 
       - name: Verify unified comic search
         run: node --test tests/comic-search.test.mjs
+
+      - name: Verify baseball checklist discovery
+        run: node --test tests/public-baseball-checklist-policy.test.mjs tests/baseball-catalog-pages.test.mjs
 
       - name: Smoke tests are manual only
         run: |
