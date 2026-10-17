@@ -55,7 +55,7 @@ var CONDITION_ALIASES = [
   [/^(new|sealed|factory sealed|brand new)$/, ['New', 'Brand New', 'Mint']],
 ];
 
-var state = { settings:null, loading:false, source:'selected', category:'', query:'', shipment:'', cycles:null, dest:'show', type:'Auction', auctionRule:'one', auctionPct:50, offerable:false, includeCost:true, wholeDollars:true, report:null, shows:null };
+var state = { settings:null, loading:false, notOnWhatnot:true, source:'selected', category:'', query:'', shipment:'', cycles:null, dest:'show', type:'Auction', auctionRule:'one', auctionPct:50, offerable:false, includeCost:true, wholeDollars:true, report:null, shows:null };
 
 function esc(v){ return String(v == null ? '' : v).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
 function norm(v){ return String(v || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim(); }
@@ -116,8 +116,29 @@ async function saveSettings(){
 }
 
 // ── Part 1: build the CSV ────────────────────────────────────────────────
+// Store ask: "easy way to get the new inventory on Whatnot? Hard to know
+// what isn't on there in each category." Anything already exported in a
+// Whatnot CSV carries whatnotListedAt; drop-ship supplies (vendor-shipped,
+// e.g. BCW) never go on Whatnot.
+function isDropship(i){ return !!(i.dropship || (i.raw || {}).dropship); }
+function notOnWhatnotYet(i){ return isSellable(i) && !i.whatnotListedAt && !isDropship(i); }
+function addedAt(i){ return String(i.addedAt || i.createdOn || (i.raw || {}).created_at || (i.raw || {}).addedAt || ''); }
+// Per category: how many sellable items aren't on Whatnot yet, of how many.
+function whatnotCategoryCounts(){
+  var counts = {};
+  items().filter(function(i){ return isSellable(i) && !isDropship(i); }).forEach(function(i){
+    var c = counts[categoryOf(i)] = counts[categoryOf(i)] || { total:0, notOn:0 };
+    c.total++; if(!i.whatnotListedAt) c.notOn++;
+  });
+  return counts;
+}
 function chosenItems(){
+  var picked = pickedItems();
+  return state.notOnWhatnot && state.source !== 'new' ? picked.filter(function(i){ return !i.whatnotListedAt; }) : picked;
+}
+function pickedItems(){
   var list = items().filter(isSellable);
+  if(state.source === 'new') return list.filter(notOnWhatnotYet).sort(function(a, b){ return addedAt(b).localeCompare(addedAt(a)); });
   if(state.source === 'selected'){
     var ids = (typeof inventoryBulkSelectedIds !== 'undefined' && inventoryBulkSelectedIds) ? inventoryBulkSelectedIds : new Set();
     return list.filter(function(i){ return ids.has(i.id); });
@@ -352,6 +373,9 @@ function renderSend(){
   allCats.sort();
   var c = checks(list);
   var selectedCount = (typeof inventoryBulkSelectedIds !== 'undefined' && inventoryBulkSelectedIds) ? inventoryBulkSelectedIds.size : 0;
+  var catCounts = whatnotCategoryCounts();
+  var newCount = items().filter(notOnWhatnotYet).length;
+  var skipped = state.source === 'new' ? 0 : pickedItems().length - list.length;
   var valuesLoaded = values().categories.length > 0;
   var customValues = !!(state.settings.values && state.settings.values.categories && state.settings.values.categories.length);
   function opt(name, value, label, current){ return '<label style="display:inline-flex;gap:4px;align-items:center;margin-right:12px"><input type="radio" name="' + name + '" value="' + esc(value) + '"' + (current === value ? ' checked' : '') + ' onchange="WB.set(\'' + name + '\',this.value)"> ' + esc(label) + '</label>'; }
@@ -364,14 +388,17 @@ function renderSend(){
     '<div class="ph">SEND ITEMS TO WHATNOT <span style="font-size:9px;color:var(--dim)">CSV in Whatnot\'s own template format</span></div>' + datalists() +
     '<div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);display:grid;gap:10px">' +
       '<div><b style="color:var(--text)">ITEMS</b><br>' +
+        opt('source', 'new', 'Everything not on Whatnot yet (' + newCount + ')', state.source) +
         opt('source', 'selected', 'Checked in Inventory (' + selectedCount + ')', state.source) +
         opt('source', 'shipment', 'A FOC shipment', state.source) +
         opt('source', 'category', 'A whole category', state.source) +
         opt('source', 'search', 'Search', state.source) +
         (state.source === 'shipment' ? (shipments().length ? '<select class="tsi" style="margin:6px 0 0;max-width:420px" onchange="WB.set(\'shipment\',this.value)"><option value="">Pick a shipment</option>' + shipments().map(function(g){ return '<option value="' + esc(g.id) + '"' + (g.id === state.shipment ? ' selected' : '') + '>' + esc(shipmentLabel(g)) + '</option>'; }).join('') + '</select>' : '<div style="margin-top:6px">No received books in stock from a FOC week yet. Presale placeholders don\'t count -- they show up here after RECEIVE SHIPMENT on the Comics / FOC tab.</div>') : '') +
-        (state.source === 'category' ? '<select class="tsi" style="margin:6px 0 0;max-width:260px" onchange="WB.set(\'category\',this.value)"><option value="">Pick a category</option>' + allCats.map(function(x){ return '<option' + (x === state.category ? ' selected' : '') + '>' + esc(x) + '</option>'; }).join('') + '</select>' : '') +
+        (state.source === 'category' ? '<select class="tsi" style="margin:6px 0 0;max-width:260px" onchange="WB.set(\'category\',this.value)"><option value="">Pick a category</option>' + allCats.map(function(x){ var n = catCounts[x] || { total:0, notOn:0 }; return '<option value="' + esc(x) + '"' + (x === state.category ? ' selected' : '') + '>' + esc(x) + ' -- ' + n.notOn + ' of ' + n.total + ' not on Whatnot</option>'; }).join('') + '</select>' : '') +
         (state.source === 'search' ? '<input class="tsi" style="margin:6px 0 0" placeholder="Name, set, number..." value="' + esc(state.query) + '" onchange="WB.set(\'query\',this.value)">' : '') +
       '</div>' +
+      '<div style="margin-top:-4px">' + (state.source === 'new' ? '' : '<label><input type="checkbox"' + (state.notOnWhatnot ? ' checked' : '') + ' onchange="WB.set(\'notOnWhatnot\',this.checked)"> Only items not on Whatnot yet</label>' + (skipped ? ' <span>(' + skipped + ' already on Whatnot left out)</span>' : '')) +
+        (state.source === 'new' ? '<span>Newest first. Drop-ship supplies are left out. By category: ' + Object.keys(catCounts).sort().filter(function(k){ return catCounts[k].notOn; }).map(function(k){ return esc(k) + ' ' + catCounts[k].notOn; }).join(' · ') + '</span>' : '') + '</div>' +
       '<div><b style="color:var(--text)">GOING TO</b><br>' + opt('dest', 'show', 'A live show (temporary listings)', state.dest) + opt('dest', 'shop', 'My Whatnot shop (inventory drafts)', state.dest) + '</div>' +
       '<div><b style="color:var(--text)">LISTING TYPE</b><br>' + opt('type', 'Auction', 'Auction', state.type) + opt('type', 'Buy It Now', 'Buy It Now', state.type) + opt('type', 'Giveaway', 'Giveaway', state.type) +
         (state.type === 'Auction' ? '<div style="margin-top:6px">Starting bid: ' + opt('auctionRule', 'one', '$1', state.auctionRule) + opt('auctionRule', 'pct', '% of market', state.auctionRule) + opt('auctionRule', 'list', 'my list price', state.auctionRule) +
