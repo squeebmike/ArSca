@@ -3,6 +3,8 @@ import { handleBookAlertRequest, handleAccountBookAlerts, runBookAlerts } from '
 import { isBcwItem, isBcwPublished, catalogSelection, renderBcwCatalog, renderBcwProduct } from './scripts/bcw-storefront.mjs';
 import { importDropshipBatch } from './scripts/dropship-import.mjs';
 import { cachedCatalogSitemap } from './scripts/sitemap-cache.mjs';
+import { departmentSelection, departmentPagePath, departmentFilterHtml } from './scripts/department-filters.mjs';
+import { googleAnalyticsTag, measurementId, productViewAnalytics } from './scripts/store-analytics.mjs';
 import { storeOrganization, productFacts, productCondition, productHeading, renderShopPreview } from './scripts/storefront-seo.mjs';
 
 /**
@@ -2594,7 +2596,7 @@ function mtgPageShell({ title, description, canonicalPath, ogImage, ogType, json
     (ogImage ? `<meta name="twitter:image" content="${mtgEscapeHtml(ogImage)}">` : '');
   const robotsTag = robotsNoindex ? `<meta name="robots" content="noindex,follow">` : '';
   const chrome = currentSiteChrome();
-  return `<!DOCTYPE html><html lang="en"${chrome ? chrome.htmlAttrs : ''}><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">${chrome ? chrome.head : ''}` +
+  return `<!DOCTYPE html><html lang="en"${chrome ? chrome.htmlAttrs : ''}><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">${chrome ? chrome.head : ''}${chrome?.head.includes(measurementId)?'':googleAnalyticsTag}` +
     `<title>${mtgEscapeHtml(title)}</title><meta name="description" content="${mtgEscapeHtml(description)}">${robotsTag}` +
     `<link rel="canonical" href="https://www.themanapocket.com${canonicalPath}">` +
     `<meta property="og:type" content="${mtgEscapeHtml(ogType || 'website')}"><meta property="og:site_name" content="The Mana Pocket">` +
@@ -2905,7 +2907,7 @@ function renderItemDetailPage(item, canonicalSlug, allListable) {
       `</div></div>` +
       (['mtg','pokemon'].includes(item.categorySlug) ? `<p><a href="/${item.categorySlug}">Browse ${item.categorySlug==='mtg'?'MTG':'Pokémon'} set checklists</a>${item.set ? ` · <a href="/${item.categorySlug==='mtg'?'mtg':'pokemon'}-new-releases?set=${encodeURIComponent(item.setCode||item.set)}">Open this set in the card viewer</a>` : ''}</p>` : '') +
       (item.categorySlug === 'comics' ? renderBookAlertForm([alertBookTitle(item.name)],ITEM_DETAIL_STORE_ID,mtgEscapeHtml) : '') +
-      renderRelatedItemsHtml(related),
+      renderRelatedItemsHtml(related) + productViewAnalytics(item),
   });
 }
 
@@ -2926,14 +2928,15 @@ const CATEGORY_LANDING_COPY = {
   supplies: 'Sleeves, top loaders, binders, storage boxes and more from BCW -- see the full Supplies catalog.',
   collectibles: 'Figures, plush, apparel and other collectibles alongside our cards and comics.',
 };
-function renderCategoryLandingPage(slug, items, page = 1) {
+function renderCategoryLandingPage(slug, categoryItems, page = 1, selection = departmentSelection(categoryItems)) {
+  const items = selection.items;
   const label = categoryLandingLabel(slug);
   const basePath = categoryLandingHref(slug);
-  const canonicalPath = basePath + (page > 1 ? `?page=${page}` : '');
+  const canonicalPath = departmentPagePath(basePath,selection.selected,page);
   const copy = CATEGORY_LANDING_COPY[slug] || `Browse everything currently in stock in ${label}.`;
   const pages = Math.max(1, Math.ceil(items.length / 60));
   const shown = items.slice((page - 1) * 60, page * 60);
-  const pageHref = n => basePath + (n > 1 ? `?page=${n}` : '');
+  const pageHref = n => mtgEscapeHtml(departmentPagePath(basePath,selection.selected,n));
   const pagination = pages > 1 ? `<nav aria-label="Product pages" class="mp-meta" style="display:flex;flex-wrap:wrap;gap:16px;margin:24px 0">${page > 1 ? `<a rel="prev" href="${pageHref(page-1)}">← Previous</a>` : ''}${Array.from({length:pages},(_,i)=>i+1).map(n=>n===page?`<span aria-current="page">Page ${n}</span>`:`<a href="${pageHref(n)}">Page ${n}</a>`).join('')}${page < pages ? `<a rel="next" href="${pageHref(page+1)}">Next →</a>` : ''}</nav>` : '';
   const tiles = shown.map(item => {
     const href = item.linkUrl || `/item/${encodeURIComponent(item.id)}/${encodeURIComponent(itemDetailSlug(item))}`;
@@ -2945,6 +2948,7 @@ function renderCategoryLandingPage(slug, items, page = 1) {
     title: `${label}${page > 1 ? ` — Page ${page}` : ''} | The Mana Pocket`,
     description: `${page > 1 ? `Page ${page} of ${pages}. ` : ''}${description}`,
     canonicalPath,
+    robotsNoindex: selection.active || !items.length,
     jsonLd: [
       { '@context': 'https://schema.org', '@type': 'CollectionPage', name: label, description: copy },
       { '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: [
@@ -2953,11 +2957,12 @@ function renderCategoryLandingPage(slug, items, page = 1) {
       ] },
     ],
     bodyHtml: `<div class="mp-crumb"><a href="/shop">← Shop</a></div><h1>${mtgEscapeHtml(label)}</h1><p class="mp-sub">${mtgEscapeHtml(copy)}</p>` +
-      `<form action="/shop" method="get" role="search" style="display:flex;flex-wrap:wrap;gap:10px;margin:20px 0"><input type="hidden" name="cat" value="${mtgEscapeHtml(slug)}"><input name="q" type="search" aria-label="Search ${mtgEscapeHtml(label)}" placeholder="${slug==='sports-cards'?'Player, team, set or card number':slug==='comics'?'Series, issue or cover artist':'Name, set or card number'}" style="flex:1;min-width:180px;padding:12px;border-radius:8px;font:16px system-ui"><button type="submit" style="padding:12px 18px;border-radius:8px;background:#8bd450;color:#151021;font-weight:700">Search ${mtgEscapeHtml(label)}</button></form>` +
+      departmentFilterHtml(basePath,selection,mtgEscapeHtml,label) +
       (['mtg','pokemon'].includes(slug) ? `<p><a href="/${slug}">Browse all ${slug==='mtg'?'MTG':'Pokémon'} sets and card checklists</a> · <a href="/${slug}-new-releases">Open the interactive set viewer</a></p>` : '') +
+      (slug==='pokemon'?'<p><a href="/articles/pokemon-delta-reign-release-date-card-checklist">Delta Reign: release dates, previews and the checklist →</a></p>':slug==='mtg'?'<p><a href="/articles/mtg-star-trek-release-dates-set-codes-card-guide">Star Trek: release dates, set codes and the card guide →</a></p>':'') +
       (shown.length
         ? `<p class="mp-meta">Showing ${(page-1)*60+1}–${Math.min(page*60,items.length)} of ${items.length.toLocaleString()}</p><div class="mp-grid">${tiles}</div>${pagination}`
-        : `<p class="mp-sub">Nothing in stock in this category right now -- <a href="/shop">browse the full shop</a> instead.</p>`),
+        : `<p class="mp-sub">${selection.active?'No listings match these filters.':'Nothing in stock in this category right now.'} <a href="${basePath}">Clear filters</a> or <a href="/shop">browse the full shop</a>.</p>`),
   });
 }
 
@@ -7765,14 +7770,16 @@ async function routeRequest(request, env, ctx) {
         const slug = decodeURIComponent(url.pathname.slice('/category/'.length));
         if (!CATEGORY_LANDING_LABELS[slug]) return mtgNotFoundPage('No such category.');
         const items = allListable.filter(item => item.categorySlug === slug);
+        const selection = departmentSelection(items,url.searchParams);
         const rawPage = url.searchParams.get('page') || '1';
         if (!/^[1-9]\d*$/.test(rawPage)) return mtgNotFoundPage('No such category page.');
         const page = Number(rawPage);
-        if (!Number.isSafeInteger(page) || page > Math.max(1,Math.ceil(items.length/60))) return mtgNotFoundPage('No such category page.');
-        if (url.searchParams.size !== (page > 1 ? 1 : 0) || (page === 1 && url.searchParams.has('page'))) {
-          return Response.redirect(`https://www.themanapocket.com${categoryLandingHref(slug)}${page > 1 ? `?page=${page}` : ''}`,301);
+        if (!Number.isSafeInteger(page) || page > Math.max(1,Math.ceil(selection.items.length/60))) return mtgNotFoundPage('No such category page.');
+        const canonicalPath = departmentPagePath(categoryLandingHref(slug),selection.selected,page);
+        if (url.pathname+url.search !== canonicalPath) {
+          return Response.redirect(`https://www.themanapocket.com${canonicalPath}`,301);
         }
-        html = renderCategoryLandingPage(slug, items, page);
+        html = renderCategoryLandingPage(slug, items, page, selection);
       }
       const response = mtgHtmlResponse(html);
       response.headers.set('Cache-Control', 'public, max-age=300');

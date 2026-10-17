@@ -15,6 +15,19 @@ import { afterFocAvailability } from './foc-preorders.mjs';
 export const WF_ARTICLES = '6ab95f7914e615c91fc4dbd6';
 const PAGE_CACHE_SECONDS = 300;
 
+// Published release guides: match only their verified set names/codes, never
+// loosely match a character name to another printing or promise allocations.
+export const RELEASE_GUIDES = {
+  'pokemon-delta-reign-release-date-card-checklist':{game:'pokemon',name:'Pokémon Delta Reign',sets:['ME06: Delta Reign','Delta Reign'],codes:['me06'],checklist:'/pokemon/sets/6a883dd245dd2d15c8a710d0/me06-delta-reign',viewer:'/pokemon-new-releases?set=ME06%3A%20Delta%20Reign'},
+  'mtg-star-trek-release-dates-set-codes-card-guide':{game:'mtg',name:'MTG Star Trek',sets:['Star Trek','Star Trek Commander','Star Trek: Stardates'],codes:['trk','trc','sds'],checklist:'/mtg',viewer:'/mtg-new-releases?set=trk'},
+};
+export function renderReleaseInventory(slug,inventory,deps){
+  const guide=RELEASE_GUIDES[slug];if(!guide)return '';
+  const esc=deps.esc,normalize=v=>String(v||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+  const copies=inventory?.filter(item=>item.categorySlug===guide.game&&item.price>0&&deps.isAvailable(item)&&(guide.codes.includes(String(item.setCode||'').toLowerCase())||guide.sets.some(set=>normalize(set)===normalize(item.set))));
+  return `<section class="mp-books" aria-label="${esc(guide.name)} store availability"><h2>Find the set. Check the actual stock.</h2><p><a href="${guide.checklist}">Set checklists</a> · <a href="${guide.viewer}">Open the card viewer</a></p>${copies?.length?`<p>${copies.length} matching store listing${copies.length===1?'':'s'} currently available.</p>${copies.slice(0,8).map(item=>`<div class="mp-book-row"><a href="/item/${encodeURIComponent(item.id)}/${encodeURIComponent(deps.itemSlug(item))}">${esc(item.name)}${item.condition?' · '+esc(item.condition):''}</a><strong>$${Number(item.price).toFixed(2)}</strong></div>`).join('')}`:`<p>${copies?'No matching store copies are currently listed.':'Store availability could not be checked just now.'} This guide does not reserve copies or guarantee an allocation.</p>`}<p><a href="/category/${guide.game}">Browse current ${guide.game==='mtg'?'MTG':'Pokémon'} inventory</a></p></section>`;
+}
+
 const F = {
   summary: 'summary', body: 'body', image: 'cover-image', author: 'author',
   published: 'published-on-2', books: 'books-to-promote', facts: 'book-details',
@@ -355,7 +368,7 @@ export function renderArticlePage(article, statuses, related, deps) {
       (image ? `<a href="${esc(image)}" target="_blank" rel="noopener" aria-label="Open full-size book cover"><img class="mp-art-hero" width="660" height="1000" fetchpriority="high" decoding="async" src="${esc(image)}" alt="${esc(article.imageAlt || article.title)}"></a><p class="mp-art-meta">Tap the cover to see it full size.</p>` : '') +
       renderBuyBox(article, main, esc) +
       (main ? `<nav class="mp-art-shortcuts" aria-label="Book actions"><a href="#${bookAnchor(main)}">Covers &amp; availability</a><a href="/comics/search?q=${encodeURIComponent(comicKey(main.name).series)}">Find related comics</a><a href="#book-updates">Book updates</a></nav>` : '') +
-      `<div class="mp-art-body">${article.bodyHtml}</div>` + facts + renderBooks(statuses, esc) + renderBookUpdates(article, deps.storeId, esc) + more + `</article>` +
+      `<div class="mp-art-body">${article.bodyHtml}</div>` + (deps.releaseInventoryHtml || '') + facts + renderBooks(statuses, esc) + renderBookUpdates(article, deps.storeId, esc) + more + `</article>` +
       (statuses.some(st => st.options?.length) ? pickerScript(deps.storeId) : ''),
   });
 }
@@ -408,8 +421,9 @@ export async function handleArticlesRequest(request, env, ctx, url, deps) {
       let stock;
       const pageDeps = { ...deps, listItems: e => (stock ||= deps.listItems(e)) };
       const statuses = await Promise.all(article.books.map(book => bookStatus(env, pageDeps, book).catch(() => ({ name: book, state: 'coming', href: '' }))));
+      if(RELEASE_GUIDES[slug]) pageDeps.releaseInventoryHtml=renderReleaseInventory(slug,await pageDeps.listItems(env).catch(()=>null),deps);
       const related = articles.filter(a => a.slug !== slug).slice(0, 4);
-      html = renderArticlePage(article, statuses, related, deps);
+      html = renderArticlePage(article, statuses, related, pageDeps);
     }
   }
   const response = new Response(html, { status, headers: { 'Content-Type': 'text/html;charset=UTF-8', 'Cache-Control': `public, max-age=${PAGE_CACHE_SECONDS}` } });
