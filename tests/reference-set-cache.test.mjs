@@ -1,0 +1,12 @@
+import assert from 'node:assert/strict';
+import {cachedReferenceSetCards} from '../scripts/reference-set-cache.mjs';
+const store=new Map(),cache={match:async k=>store.get(k.url)?.clone(),put:async(k,r)=>{store.set(k.url,r.clone());}};
+let loads=0;const load=async()=>{loads++;return[{name:'Reference card'}];};
+const descriptor={path:'mtg/v1/cards.jsonl.gz',sha256:'hash1'};
+assert.equal((await cachedReferenceSetCards(cache,descriptor,'inr',load))[0].name,'Reference card');
+await cachedReferenceSetCards(cache,descriptor,'inr',load);assert.equal(loads,1,'one full catalog scan, then reuse the set shard');
+await cachedReferenceSetCards(cache,{...descriptor,sha256:'hash2'},'inr',load);assert.equal(loads,2,'new source content invalidates the shard');
+await cachedReferenceSetCards(cache,descriptor,'dft',load);assert.equal(loads,3,'sets never share a shard');
+const before=store.size;await cachedReferenceSetCards(cache,descriptor,'empty',async()=>[]);assert.equal(store.size,before,'empty or failed imports are not cached as complete');
+await assert.rejects(cachedReferenceSetCards(cache,descriptor,'failed',async()=>{throw Error('R2 failure');}),/R2 failure/);
+console.log('Reference set cache reuses only exact immutable catalog versions; stock remains outside the shard');

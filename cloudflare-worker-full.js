@@ -49,6 +49,7 @@ import { handleBaseballCatalog } from './scripts/baseball-catalog-pages.mjs';
 import { referenceHighlightsHtml } from './scripts/catalog-highlights.mjs';
 import { collectionToolsHtml } from './scripts/collection-tools.mjs';
 import { optionalCatalogInventory } from './scripts/catalog-availability.mjs';
+import { cachedReferenceSetCards } from './scripts/reference-set-cache.mjs';
 import { ebayOrderMoney, ebayLineProfit, financeAdjustments, splitCents } from './scripts/ebay-order-money.mjs';
 import { EditError, editSaleLine, editInventoryItem, adjustCustomerPoints, editHistory } from './scripts/database-edits.mjs';
 import { awardWebOrderLoyalty, planWebRedemption, holdWebOrderPoints, releaseWebOrderPoints, recordWebPointsTender, pointsHoldActive, isPointsKeyword, pointsSmsReply } from './scripts/web-loyalty.mjs';
@@ -7618,11 +7619,12 @@ async function routeRequest(request, env, ctx) {
       const sets = await gunzipJsonlFromR2(setsObject);
       const set = sets.find(s => String(s.setCode || '').toLowerCase() === setCode);
       if (!set) return mtgNotFoundPage('That MTG set was not found.');
-      const cardsObject = await env.MTG_CATALOG_R2.get(manifest.files?.cards?.path || 'mtg/__missing__');
-      const cards = [];
-      for await (const card of streamJsonlFromR2(cardsObject)) {
-        if (String(card.setCode || '').toLowerCase() === setCode) cards.push(card);
-      }
+      const cards = await cachedReferenceSetCards(caches.default,manifest.files?.cards,setCode,async()=>{
+        const cardsObject = await env.MTG_CATALOG_R2.get(manifest.files?.cards?.path || 'mtg/__missing__');
+        const found=[];
+        for await (const card of streamJsonlFromR2(cardsObject))if(String(card.setCode || '').toLowerCase()===setCode)found.push(card);
+        return found;
+      },promise=>ctx.waitUntil(promise));
       cards.sort((a, b) => mtgCollectorSortKey(a.collectorNumber) - mtgCollectorSortKey(b.collectorNumber));
       const response = mtgHtmlResponse(renderMtgSetPage(set, cards, await optionalCatalogInventory(signal=>fetchAllListableStorefrontItemsCached(env,ctx,signal))));
       response.headers.set('Cache-Control', 'public, max-age=60');
@@ -7642,12 +7644,12 @@ async function routeRequest(request, env, ctx) {
       const manifestObject = await env.MTG_CATALOG_R2.get('mtg/manifest.json');
       const manifest = manifestObject ? await manifestObject.json().catch(() => null) : null;
       if (!manifest || manifest.status !== 'ready') return mtgComingSoonPage();
-      const cardsObject = await env.MTG_CATALOG_R2.get(manifest.files?.cards?.path || 'mtg/__missing__');
-      let found = null;
-      for await (const card of streamJsonlFromR2(cardsObject)) {
-        if (String(card.setCode || '').toLowerCase() !== setCode) continue;
-        if (mtgCardSlug(card) === cardSlug) { found = card; break; }
-      }
+      const setCards=await cachedReferenceSetCards(caches.default,manifest.files?.cards,setCode,async()=>{
+        const cardsObject=await env.MTG_CATALOG_R2.get(manifest.files?.cards?.path || 'mtg/__missing__');
+        const rows=[];for await(const card of streamJsonlFromR2(cardsObject))if(String(card.setCode || '').toLowerCase()===setCode)rows.push(card);
+        return rows;
+      },promise=>ctx.waitUntil(promise));
+      const found=setCards.find(card=>mtgCardSlug(card)===cardSlug);
       if (!found) return mtgNotFoundPage('That card was not found in this set.');
       const response = mtgHtmlResponse(renderMtgCardPage(found, await optionalCatalogInventory(signal=>fetchAllListableStorefrontItemsCached(env,ctx,signal))));
       response.headers.set('Cache-Control', 'public, max-age=60');
