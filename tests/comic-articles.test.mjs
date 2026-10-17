@@ -66,6 +66,19 @@ const deps = (skus, items = []) => ({
 }
 console.log('Buy box state checks passed');
 {
+  const unpriced=[0,null,undefined,-1,'not-priced',Infinity].map((price,n)=>({id:'unpriced-'+n,name:'BATMAN #25',price,image:''}));
+  const priced={id:'priced',name:'BATMAN #25',price:6.99,image:''};
+  const status=await bookStatus({},deps([], [...unpriced,priced]),'Batman #25');
+  assert.equal(status.state,'in_stock');
+  assert.equal(status.href,'/item/priced/slug','article must select a copy with a real selling price');
+  assert.equal(status.priceCents,699);
+  assert.equal(status.covers,1,'unpriced copies must not inflate buyable-cover count');
+  assert.equal((await bookStatus({},deps([],unpriced),'Batman #25')).state,'coming','unpriced stock alone must not produce a Buy link');
+  const preorder=await bookStatus({},deps([{id:'preorder',title:'BATMAN #25 COVER A',customer_price_cents:599,customer_enabled:true,cycle:cycle('open',future)}],unpriced),'Batman #25');
+  assert.equal(preorder.state,'preorder','unpriced stock must not hide a valid preorder');
+  assert.equal(preorder.href,'/preorder/preorder');
+}
+{
   const sku={id:'limited-a',cycle_id:'cycle-1',title:'BATMAN #25 COVER A',customer_enabled:true,customer_price_cents:599,secured_quantity:3,on_sale_date:'2099-12-01',cycle:{id:'cycle-1',status:'closed',customer_cutoff_at:past}};
   const limitedDeps={storeId:'store-1',listItems:async()=>[],isAvailable:()=>false,itemSlug:()=>'',supabaseAdminFetch:async(env,path)=>({data:path.startsWith('comic_skus?')?[sku]:[]})};
   const limited=await bookStatus({},limitedDeps,'Batman #25');

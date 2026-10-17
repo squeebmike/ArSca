@@ -146,7 +146,7 @@ export async function bookStatus(env, deps, book, now = Date.now()) {
   ]);
   if (deps.strict && (!Array.isArray(skuRes.data) || skuRes.response?.ok === false)) throw new Error('Book catalog unavailable');
   const skus = (skuRes.data || []).filter(s => sameComic(s.title, book));
-  const stock = items.filter(i => deps.isAvailable(i) && sameComic(i.name, book))
+  const stock = items.filter(i => deps.isAvailable(i) && Number.isFinite(Number(i.price)) && Number(i.price) > 0 && sameComic(i.name, book))
     .sort((a, b) => Number(a.price || 0) - Number(b.price || 0));
   const main = skus.slice().sort((a, b) => {
     const rank = s => (s.is_incentive ? 10 : 0) + (/cover a\b/i.test(s.variant_label || s.title) ? 0 : 1);
