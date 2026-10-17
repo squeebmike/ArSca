@@ -2826,6 +2826,7 @@ function relatedStorefrontItems(item, allListable, limit = 6) {
   const score = other => {
     let points = 0;
     for (const [field, weight] of [['productType', 12], ['set', 10], ['player', 10], ['team', 6], ['game', 6], ['brand', 3]]) {
+      if (field === 'productType' && /^(?:single|item|other|unknown)$/i.test(normalize(item[field]))) continue;
       if (normalize(item[field]) && normalize(item[field]) === normalize(other[field])) points += weight;
     }
     for (const token of tokens(other.name)) if (nameTokens.has(token)) points += 2;

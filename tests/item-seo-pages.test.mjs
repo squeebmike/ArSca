@@ -22,6 +22,10 @@ import './helpers/mock-body-html-rewriter.mjs';
   assert.deepEqual(recommend(current, candidates).map(item => item.id), ['plush', 'card']);
   assert.deepEqual(recommend(current, candidates, 1).map(item => item.id), ['plush']);
   assert.equal(candidates[0].name, 'Pocket Scout item', 'recommendations never mutate inventory');
+  assert.deepEqual(recommend({ ...current, productType: 'Single' }, [
+    { ...base, id: 'hat', name: 'Baseball hat', productType: 'Single' },
+    { ...base, id: 'toy', name: 'Scorbunny plush toy' },
+  ]).map(item => item.id), ['toy', 'hat'], 'generic Single labels must not outweigh matching product names');
 }
 
 // wrangler.deploy.jsonc route-binding contract, same class of bug as the
