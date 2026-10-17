@@ -8,6 +8,13 @@ const end=source.indexOf('\nfunction json(',start);
 assert.ok(start>=0&&end>start,'storefront shaping helpers must exist');
 const context={roundUpToDollar:value=>Math.ceil(Number(value)||0),marketRulePrice:value=>Math.ceil(Number(value)||0)};
 vm.runInNewContext(source.slice(start,end)+';this.shapeStorefrontItem=shapeStorefrontItem;',context);
+const publisherCopy='<p>The &lsquo;Cats &amp; friends.</p><p>Read &#35;1 &mdash; now.</p><script>doNotRun()</script>';
+assert.equal(context.storefrontDescriptionText(publisherCopy),'The ‘Cats & friends. Read #1 — now.');
+assert.equal(context.storefrontDescriptionText('2 < 3 and &lt;special&gt;'),'2 < 3 and <special>');
+assert.equal(context.storefrontDescriptionText('&#x110000;'),'&#x110000;');
+const originalDescription={description:publisherCopy};
+assert.equal(context.shapeStorefrontItem({id:'description',data:originalDescription}).description,'The ‘Cats & friends. Read #1 — now.');
+assert.equal(originalDescription.description,publisherCopy,'public text cleanup never edits source inventory');
 
 const primary='https://example.com/front.jpg';
 const second='https://example.com/back.jpg';

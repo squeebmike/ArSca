@@ -653,6 +653,16 @@ async function computeRealShippingFeeCents(env, storeId, shippingAddress, totalQ
 // fetch, so it isn't subject to that restriction -- there's no reason for
 // a second implementation to exist anymore.
 function storefrontCleanText(v, n = 240) { return String(v == null ? '' : v).trim().slice(0, n); }
+function storefrontDescriptionText(value, limit = 2000) {
+  const entities = {nbsp:' ',amp:'&',lt:'<',gt:'>',quot:'"',apos:"'",lsquo:'‘',rsquo:'’',ldquo:'“',rdquo:'”',ndash:'–',mdash:'—',hellip:'…',bull:'•',trade:'™',reg:'®',copy:'©'};
+  return String(value || '').replace(/<(script|style)\b[^>]*>[\s\S]*?<\/\1\s*>/gi,' ')
+    .replace(/<!--[\s\S]*?-->/g,' ').replace(/<\/?[a-z][^>]*>/gi,' ')
+    .replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi,(whole,entity)=>{
+      if(entity[0]!=='#')return entities[entity.toLowerCase()]??whole;
+      const point=entity[1].toLowerCase()==='x'?parseInt(entity.slice(2),16):Number(entity.slice(1));
+      return point>0&&point<=0x10ffff?String.fromCodePoint(point):whole;
+    }).replace(/\s+/g,' ').trim().slice(0,limit);
+}
 function storefrontCleanUrl(v) { const s = storefrontCleanText(v, 1000); return /^https?:\/\//i.test(s) || /^data:image\//i.test(s) ? s : ''; }
 function storefrontCleanList(v, n = 12) { return (Array.isArray(v) ? v : []).map(x => storefrontCleanText(x, 80)).filter(Boolean).slice(0, n); }
 function storefrontCategorySlug(value) {
@@ -780,7 +790,7 @@ function storefrontComicDetailFor(d) {
     coverDate: storefrontCleanText(m.coverDate, 20), storeDate: storefrontCleanText(m.storeDate, 20),
     coverPrice: Number(m.coverPrice || 0) || 0, coverPriceCurrency: storefrontCleanText(m.coverPriceCurrency || 'USD', 10),
     rating: storefrontCleanText(m.rating, 60), upc: storefrontCleanText(m.upc, 40), sku: storefrontCleanText(m.sku, 40),
-    description: storefrontCleanText(m.description, 2000),
+    description: storefrontDescriptionText(m.description, 2000),
     writers: storefrontCleanList(m.writers), artists: storefrontCleanList(m.artists), coverArtists: storefrontCleanList(m.coverArtists),
     characters: storefrontCleanList(m.characters, 30), teams: storefrontCleanList(m.teams, 20), credits,
   };
@@ -830,7 +840,7 @@ function shapeStorefrontItem(row) {
     price: Math.max(rowBase, Number(d.minPrice || 0) || 0) + rowSignatureValue, market: rowMarket, image: storefrontPhotos[0] || '',
     photos: storefrontPhotos,
     vendor: storefrontCleanText(d.vendor || '',80),
-    description: storefrontCleanText(d.description || '',10000),
+    description: storefrontDescriptionText(d.description || '',10000),
     supplierSku: storefrontCleanText(d.supplierSku || d.sku || '',160),
     supplierAvailability: storefrontCleanText(d.supplierAvailability || '',40),
     supplierSellingUnit: storefrontCleanText(d.supplierSellingUnit || '',200),
