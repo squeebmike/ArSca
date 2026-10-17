@@ -46,6 +46,8 @@ import { handlePublicPokemonRequest } from './scripts/public-pokemon-sets.mjs';
 import { catalogInventoryHtml, catalogSetInventoryHtml } from './scripts/catalog-inventory.mjs';
 import { handlePokemonCatalog } from './scripts/pokemon-catalog-pages.mjs';
 import { handleBaseballCatalog } from './scripts/baseball-catalog-pages.mjs';
+import { referenceHighlightsHtml } from './scripts/catalog-highlights.mjs';
+import { collectionToolsHtml } from './scripts/collection-tools.mjs';
 import { ebayOrderMoney, ebayLineProfit, financeAdjustments, splitCents } from './scripts/ebay-order-money.mjs';
 import { EditError, editSaleLine, editInventoryItem, adjustCustomerPoints, editHistory } from './scripts/database-edits.mjs';
 import { awardWebOrderLoyalty, planWebRedemption, holdWebOrderPoints, releaseWebOrderPoints, recordWebPointsTender, pointsHoldActive, isPointsKeyword, pointsSmsReply } from './scripts/web-loyalty.mjs';
@@ -2695,7 +2697,7 @@ function renderMtgSetPage(set, cards, inventory = []) {
       description: `All cards in ${set.setName || set.setCode}`,
       hasPart: cards.slice(0, 200).map(card => ({ '@type': 'Product', name: card.name, sku: card.scryfallId })),
     },
-    bodyHtml: `<div class="mp-crumb"><a href="/mtg">← All MTG sets</a></div><h1>${mtgEscapeHtml(set.setName || set.setCode)}</h1><p class="mp-sub">${cards.length.toLocaleString()} cards${year ? ` · released ${year}` : ''}. Catalog prices are market references; available store copies have their own selling prices.</p><p><a href="/mtg-new-releases?set=${encodeURIComponent(set.setCode)}">Open the interactive card viewer →</a> · <a href="/category/mtg">Shop MTG inventory</a></p>${renderCatalogStock(inventory,cards,'mtg',set)}<div class="mp-grid">${cardTiles}</div>`,
+    bodyHtml: `<div class="mp-crumb"><a href="/mtg">← All MTG sets</a></div><h1>${mtgEscapeHtml(set.setName || set.setCode)}</h1><p class="mp-sub">${cards.length.toLocaleString()} cards${year ? ` · released ${year}` : ''}. Catalog prices are market references; available store copies have their own selling prices.</p><p><a href="/mtg-new-releases?set=${encodeURIComponent(set.setCode)}">Open the interactive card viewer →</a> · <a href="/category/mtg">Shop MTG inventory</a></p>${collectionToolsHtml(cards,{scope:'mtg/'+set.setCode,path:card=>'/mtg/'+set.setCode+'/'+mtgCardSlug(card),escape:mtgEscapeHtml})}${referenceHighlightsHtml(cards,'mtg',{escape:mtgEscapeHtml,path:card=>'/mtg/'+set.setCode+'/'+mtgCardSlug(card)})}${renderCatalogStock(inventory,cards,'mtg',set)}<div class="mp-grid">${cardTiles}</div>`,
   });
 }
 

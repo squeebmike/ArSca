@@ -3,6 +3,8 @@ import {checklistPublicationProblems,baseballInventoryMatches,ebayChecklistSearc
 const set={year:2023,sport:'baseball',brand:'Topps',setName:'2023 Topps Series 1 Baseball',cardCount:330};
 const approval={displayName:set.setName,licensedBaseball:true,reviewed:true,sourceUrl:'https://www.topps.com/pages/checklists'};
 assert.deepEqual(checklistPublicationProblems(set,approval),[]);
+assert.deepEqual(checklistPublicationProblems({...set,year:2019},approval),[]);
+assert.ok(checklistPublicationProblems({...set,year:2018},approval).includes('outside_2019_onward'));
 assert.ok(checklistPublicationProblems(set).includes('editorial_review_required'));
 assert.ok(checklistPublicationProblems({...set,setName:'2023 Bowman Basketball'},approval).includes('not_verified_baseball'));
 assert.ok(checklistPublicationProblems({...set,setName:'Checklists provided by Topps reflect the intended'},approval).includes('disclaimer_used_as_set_name'));

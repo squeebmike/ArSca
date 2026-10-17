@@ -2,7 +2,7 @@
 export function checklistPublicationProblems(set, approval = {}) {
   const problems = [];
   const name = String(set.setName || set.name || '');
-  if (!Number.isInteger(Number(set.year)) || Number(set.year) < 2023) problems.push('outside_2023_onward');
+  if (!Number.isInteger(Number(set.year)) || Number(set.year) < 2019) problems.push('outside_2019_onward');
   if (set.sport !== 'baseball' || /basketball|football|star wars|mcquarrie/i.test(name)) problems.push('not_verified_baseball');
   if (/panini/i.test(name + ' ' + (set.brand || ''))) problems.push('excluded_publisher');
   if (/checklists provided|configuration of|actual contents/i.test(name)) problems.push('disclaimer_used_as_set_name');

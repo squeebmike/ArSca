@@ -1,0 +1,15 @@
+import assert from 'node:assert/strict';
+import {referenceHighlights,referenceHighlightsHtml} from '../scripts/catalog-highlights.mjs';
+const cards=[{id:'a',name:'A',prices:{usd:'2.00',usd_foil:'900',market:3}},{id:'b',name:'B',prices:{usd:'5.00',market:1}},{id:'c',name:'C',prices:{usd:null,usd_foil:100,market:0}},{id:'d',name:'D',prices:{usd:'NaN',market:-2}},{id:'e',name:'E',prices:{usd:Infinity,market:true}},{id:'f',name:'F',prices:{usd:'0',market:'$50'}}];
+assert.deepEqual(referenceHighlights(cards,'mtg').map(r=>r.id),['b','a']);
+assert.deepEqual(referenceHighlights(cards,'pokemon').map(r=>r.id),['a','b']);
+assert.equal(referenceHighlights([...cards,cards[0]],'mtg').length,2);
+assert.deepEqual(referenceHighlights(cards,'sports'),[]);
+assert.deepEqual(referenceHighlights(cards,'mtg',0),[]);
+const escape=s=>String(s??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('"','&quot;');
+const html=referenceHighlightsHtml(cards,'mtg',{escape,path:c=>'/mtg/set/'+c.id});
+assert.ok(html.includes('nonfoil'));assert.ok(html.includes('/mtg/set/b'));assert.ok(!html.includes('900'));
+assert.ok(!html.includes('"offers"'));assert.ok(html.includes('separate from our selling prices'));
+assert.ok(referenceHighlightsHtml(cards,'pokemon',{escape,path:c=>'/pokemon/'+c.id,complete:false}).includes('among loaded cards'));
+assert.equal(referenceHighlightsHtml([],'mtg',{escape,path:()=>'/'}),'');
+console.log('Reference ranking excludes missing/invalid prices, separates nonfoil from foil and labels partial catalogs without store Offers');

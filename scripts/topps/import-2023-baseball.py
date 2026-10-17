@@ -31,5 +31,5 @@ for file,label,start,end,pdf in specs:
         row['team']=' / '.join(dict.fromkeys(s['team'] for s in row['subjects']))
     sets.append({'id':'2023-topps-'+file,'year':2023,'sport':'baseball','brand':'Topps','setName':'2023 Topps '+label+' Baseball','displayName':'2023 Topps '+label+' Baseball','scope':'Base checklist only; inserts and parallels are in the official publisher PDF.','licensedBaseball':True,'reviewed':True,'cardCount':len(rows),'unissuedNumbers':unissued,'sourceUrl':'https://cdn.shopify.com/s/files/1/0662/9749/5709/files/'+pdf,'sourceSha256':hashlib.sha256((root/(file+'.pdf')).read_bytes()).hexdigest(),'cards':list(rows.values())})
 out=Path(__file__).with_name('baseball-seed.mjs')
-out.write_text('// Generated from official Topps PDFs by scripts/topps/import-2023-baseball.py. Base checklist scope is explicit.\nexport const baseballSets = '+json.dumps(sets,ensure_ascii=False,separators=(',',':'))+';\n',encoding='utf8')
+out.write_text('// Generated from official Topps PDFs by scripts/topps/import-2023-baseball.py. Base checklist scope is explicit.\nimport {baseballExpansionSets} from "./baseball-expansion.mjs";\nexport const baseballSets = [...'+json.dumps(sets,ensure_ascii=False,separators=(',',':'))+',...baseballExpansionSets];\n',encoding='utf8',newline='\n')
 print(json.dumps([{'set':s['setName'],'cards':len(s['cards'])} for s in sets]))

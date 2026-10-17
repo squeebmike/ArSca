@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import {handleBaseballCatalog,baseballSetPath,baseballCardPath} from '../scripts/baseball-catalog-pages.mjs';
 import {baseballSets} from '../scripts/topps/baseball-seed.mjs';
+import {baseballPlayers} from '../scripts/baseball-player-pages.mjs';
 const escape=s=>String(s??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('"','&quot;');
 let lastPage;
 const deps={escape,slug:s=>String(s).toLowerCase().replace(/[^a-z0-9]+/g,'-'),available:i=>i.quantity>0,listItems:async()=>[],shell:p=>{lastPage=p;return '<title>'+escape(p.title)+'</title><link rel="canonical" href="https://www.themanapocket.com'+p.canonicalPath+'">'+(p.robotsNoindex?'<meta name="robots" content="noindex,follow">':'')+'<script type="application/ld+json">'+JSON.stringify(p.jsonLd)+'</script>'+p.bodyHtml;}};
@@ -8,16 +9,17 @@ const get=(path,env={},method='GET')=>handleBaseballCatalog(new Request('https:/
 assert.equal((await get('/baseball')).status,200);
 let res=await get('/sitemap-baseball.xml'),xml=await res.text();
 const paths=[...xml.matchAll(/<loc>https:\/\/www.themanapocket.com([^<]+)<\/loc>/g)].map(m=>m[1]);
-assert.equal(paths.length,1023);assert.equal(new Set(paths).size,paths.length);
+assert.equal(paths.length,1653+baseballPlayers(baseballSets).length);assert.equal(new Set(paths).size,paths.length);
 const titles=new Set(),h1s=new Set();
 for(const set of baseballSets) {
  const numbers=new Set(set.cards.map(c=>c.cardNumber));assert.equal(numbers.size,set.cards.length);
- assert.equal(set.cards.length,set.id.endsWith('update')?329:330);
- for(let page=1;page<=6;page++) {
+ const expectedCounts={'2023-topps-series-1':330,'2023-topps-series-2':330,'2023-topps-update':329,'2019-topps-chrome':204,'2023-bowman':100,'2023-bowman-chrome':100,'2023-topps-chrome':220};
+ assert.equal(set.cards.length,expectedCounts[set.id]);
+ for(let page=1;page<=Math.ceil(set.cards.length/60);page++) {
   const path=baseballSetPath(set)+(page>1?'?page='+page:'');
   assert.equal((await get(path)).status,200);assert.equal(lastPage.canonicalPath,path);
  }
- assert.equal((await get(baseballSetPath(set)+'?page=7')).status,404);
+ assert.equal((await get(baseballSetPath(set)+'?page='+(Math.ceil(set.cards.length/60)+1))).status,404);
  for(const card of set.cards) {
   const path=baseballCardPath(set,card);assert.ok(paths.includes(path));
   res=await get(path);const body=await res.text();assert.equal(res.status,200);
@@ -39,4 +41,4 @@ assert.equal(await(await get('/baseball',{},'HEAD')).text(),'');
 assert.equal(await get('/unrelated'),null);
 deps.listItems=async()=>{throw Error('Temporary inventory outage');};
 body=await(await get(baseballCardPath(set,card))).text();assert.ok(body.includes('Store availability is temporarily unavailable'));assert.ok(!body.includes('No exact matching copy'));
-console.log('1023 sitemap URLs, 989 unique card pages, HTML pagination, search, stock matching and affiliate gates passed');
+console.log(paths.length+' sitemap URLs, 1613 unique card pages, HTML pagination, search, stock matching and affiliate gates passed');
