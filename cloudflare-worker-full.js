@@ -845,7 +845,9 @@ function shapeStorefrontItem(row) {
     supplierAvailability: storefrontCleanText(d.supplierAvailability || '',40),
     supplierSellingUnit: storefrontCleanText(d.supplierSellingUnit || '',200),
     supplierUpc: storefrontCleanText(d.supplierUpc || '',80),
-    gtinCandidates: [d.gtin,d.upc,d.ean,d.barcode,d.isbn].filter(value=>value!=null).map(value=>storefrontCleanText(value,80)),
+    // A generic barcode can be store-internal; only explicit global-ID
+    // fields qualify here, even when an internal code has a check digit.
+    gtinCandidates: [d.gtin,d.upc,d.ean,d.isbn].filter(value=>value!=null).map(value=>storefrontCleanText(value,80)),
     mpn: storefrontCleanText(d.mpn || d.manufacturerPartNumber || d.manufacturer_part_number || '',160),
     supplierCategoryPaths: (Array.isArray(d.supplierCategoryPaths)?d.supplierCategoryPaths:[]).slice(0,50).map(v=>storefrontCleanText(v,300)),
     supplierSpecifications: Object.fromEntries(Object.entries(d.supplierSpecifications && typeof d.supplierSpecifications==='object' && !Array.isArray(d.supplierSpecifications)?d.supplierSpecifications:{}).slice(0,60).map(([k,v])=>[storefrontCleanText(k,80),storefrontCleanText(v,500)])),

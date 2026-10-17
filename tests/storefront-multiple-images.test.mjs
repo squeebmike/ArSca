@@ -15,6 +15,8 @@ assert.equal(context.storefrontDescriptionText('&#x110000;'),'&#x110000;');
 const originalDescription={description:publisherCopy};
 assert.equal(context.shapeStorefrontItem({id:'description',data:originalDescription}).description,'The ‘Cats & friends. Read #1 — now.');
 assert.equal(originalDescription.description,publisherCopy,'public text cleanup never edits source inventory');
+assert.equal(context.shapeStorefrontItem({id:'internal-barcode',data:{barcode:'036000291452'}}).gtinCandidates.length,0,'a store-internal barcode is not a verified global product identifier');
+assert.equal(context.shapeStorefrontItem({id:'supplier-upc',data:{upc:'036000291452'}}).gtinCandidates[0],'036000291452');
 
 const primary='https://example.com/front.jpg';
 const second='https://example.com/back.jpg';
