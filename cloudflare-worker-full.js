@@ -47,6 +47,7 @@ import { catalogInventoryHtml, catalogSetInventoryHtml, catalogShoppingLinksHtml
 import { handlePokemonCatalog } from './scripts/pokemon-catalog-pages.mjs';
 import { handleBaseballCatalog } from './scripts/baseball-catalog-pages.mjs';
 import { handleFootballCatalog } from './scripts/football-catalog-pages.mjs';
+import { handleSecretLairPages } from './scripts/secret-lair-pages.mjs';
 import { referenceHighlightsHtml } from './scripts/catalog-highlights.mjs';
 import { collectionToolsHtml } from './scripts/collection-tools.mjs';
 import { optionalCatalogInventory } from './scripts/catalog-availability.mjs';
@@ -3011,6 +3012,7 @@ function renderCategoryLandingPage(slug, categoryItems, page = 1, selection = de
     ],
     bodyHtml: `<main class="mp-department"><div class="mp-crumb"><a href="/shop">← Shop</a></div><h1>${mtgEscapeHtml(label)}</h1><p class="mp-sub">${mtgEscapeHtml(copy)}</p>` +
       departmentFilterHtml(basePath,selection,mtgEscapeHtml,label) +
+      (slug==='mtg'?'<p><a href="/secret-lair">Secret Lair drop guides, card checklists and shopping links</a></p>':'') +
       (slug==='sports-cards'?'<p><a href="/baseball">Browse Topps baseball checklists and card details</a> · <a href="/football">Browse licensed Topps football checklists</a></p>':'') +
       (['mtg','pokemon'].includes(slug) ? `<p><a href="/${slug}">Browse all ${slug==='mtg'?'MTG':'Pokémon'} sets and card checklists</a> · <a href="/${slug}-new-releases">Open the interactive set viewer</a></p>` : '') +
       (slug==='pokemon'?'<p><a href="/articles/pokemon-delta-reign-release-date-card-checklist">Delta Reign: release dates, previews and the checklist →</a></p>':slug==='mtg'?'<p><a href="/articles/mtg-star-trek-release-dates-set-codes-card-guide">Star Trek: release dates, set codes and the card guide →</a></p>':'') +
@@ -6459,7 +6461,7 @@ async function routeRequest(request, env, ctx) {
       const origin = await fetch(request);
       if (!origin.ok) return origin;
       const existing = request.method === 'HEAD' ? '' : await origin.text();
-      const additions = ['sitemap-items.xml', 'sitemap-preorders.xml', 'sitemap-books.xml', 'sitemap-pages.xml', 'sitemap-pokemon.xml', 'sitemap-baseball.xml', 'sitemap-football.xml']
+      const additions = ['sitemap-items.xml', 'sitemap-preorders.xml', 'sitemap-books.xml', 'sitemap-pages.xml', 'sitemap-pokemon.xml', 'sitemap-baseball.xml', 'sitemap-football.xml', 'sitemap-secret-lair.xml']
         .map(path => 'Sitemap: https://www.themanapocket.com/' + path).filter(line => !existing.includes(line));
       const headers = new Headers(origin.headers);
       for (const name of ['content-length', 'content-encoding', 'etag']) headers.delete(name);
@@ -7586,6 +7588,10 @@ async function routeRequest(request, env, ctx) {
       return response;
     }
 
+    if(url.pathname==='/secret-lair'||url.pathname.startsWith('/secret-lair/')||url.pathname==='/sitemap-secret-lair.xml') {
+      const response=await handleSecretLairPages(request,env,url,{escape:mtgEscapeHtml,slug:mtgSlugify,shell:mtgPageShell,listItems:()=>optionalCatalogInventory(signal=>fetchAllListableStorefrontItemsCached(env,ctx,signal)),available:isStorefrontItemAvailable});
+      if(response)return response;
+    }
     if(url.pathname==='/football'||url.pathname.startsWith('/football/')||url.pathname==='/sitemap-football.xml') {
       const response=await handleFootballCatalog(request,env,url,{escape:mtgEscapeHtml,slug:mtgSlugify,shell:mtgPageShell,listItems:()=>optionalCatalogInventory(signal=>fetchAllListableStorefrontItemsCached(env,ctx,signal)),available:isStorefrontItemAvailable});
       if(response)return response;

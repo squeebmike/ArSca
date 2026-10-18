@@ -35,6 +35,8 @@ on:
       - scripts/collection-tools.mjs
       - scripts/pokemon-catalog-pages.mjs
       - scripts/football-catalog-pages.mjs
+      - scripts/secret-lair-pages.mjs
+      - scripts/secret-lair/reviewed-drops.mjs
       - scripts/topps/football-seed.mjs
       - scripts/baseball-catalog-pages.mjs
       - scripts/baseball-section-pages.mjs
@@ -106,7 +108,7 @@ jobs:
         run: node --test tests/comic-search.test.mjs
 
       - name: Verify baseball checklist discovery
-        run: node --test tests/public-baseball-checklist-policy.test.mjs tests/baseball-catalog-pages.test.mjs tests/football-catalog-pages.test.mjs tests/baseball-team-pages.test.mjs tests/baseball-player-pages.test.mjs tests/catalog-highlights.test.mjs tests/collection-tools.test.mjs tests/baseball-odds.test.mjs tests/catalog-availability.test.mjs tests/reference-set-cache.test.mjs
+        run: node --test tests/public-baseball-checklist-policy.test.mjs tests/baseball-catalog-pages.test.mjs tests/football-catalog-pages.test.mjs tests/secret-lair-pages.test.mjs tests/baseball-team-pages.test.mjs tests/baseball-player-pages.test.mjs tests/catalog-highlights.test.mjs tests/collection-tools.test.mjs tests/baseball-odds.test.mjs tests/catalog-availability.test.mjs tests/reference-set-cache.test.mjs
 
       - name: Smoke tests are manual only
         run: |

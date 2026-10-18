@@ -435,7 +435,7 @@ export function renderArticleList(articles, deps) {
     canonicalPath: '/articles',
     jsonLd: { '@context': 'https://schema.org', '@type': 'CollectionPage', name: 'Collector Articles',
       hasPart: articles.slice(0, 20).map(a => ({ '@type': 'Article', headline: a.title, url: `https://www.themanapocket.com/articles/${a.slug}`, datePublished: a.publishedAt || undefined })) },
-    bodyHtml: STYLE + `<div style="max-width:900px;margin:0 auto"><div class="mp-crumb"><a href="/shop">← Shop</a></div><h1>Collector articles</h1><p class="mp-sub">New releases, set guides, and the cards and covers we’re watching.</p><nav class="mp-art-shortcuts" aria-label="Shop by collection"><a href="/category/comics">Comics</a><a href="/category/pokemon">Pokémon</a><a href="/category/mtg">MTG</a><a href="/category/sports-cards">Sports cards</a><a href="/category/collectibles">Collectibles</a></nav></div>` +
+    bodyHtml: STYLE + `<div style="max-width:900px;margin:0 auto"><div class="mp-crumb"><a href="/shop">← Shop</a></div><h1>Collector articles</h1><p class="mp-sub">New releases, set guides, and the cards and covers we’re watching.</p><p><a href="/secret-lair">Secret Lair drop guides and illustrated checklists</a> · <a href="/baseball">Baseball checklists</a> · <a href="/football">Football checklists</a></p><nav class="mp-art-shortcuts" aria-label="Shop by collection"><a href="/category/comics">Comics</a><a href="/category/pokemon">Pokémon</a><a href="/category/mtg">MTG</a><a href="/category/sports-cards">Sports cards</a><a href="/category/collectibles">Collectibles</a></nav></div>` +
       (cards ? `<div class="mp-art-list">${cards}</div>` : `<p class="mp-sub" style="text-align:center">The first articles are on their way.</p>`),
   });
 }
