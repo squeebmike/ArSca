@@ -11,7 +11,7 @@ for(const d of secretLairDrops){
  const path=secretLairDropPath(d);assert.ok(hub.includes(path)&&xml.includes(path));const r=await get(path);assert.equal(r.status,200);const body=await r.text();
  assert.equal(page.canonicalPath,path);assert.equal(page.jsonLd['@type'],'Article');assert.equal(page.ogType,'article');assert.equal(page.ogImage,d.cards[0].image);assert.ok(body.includes('full-size artwork'));assert.ok(!page.jsonLd.offers);assert.equal((body.match(/<h1>/g)||[]).length,1);assert.ok(body.includes('not')||body.includes('different'));
  assert.ok(body.includes('Affiliate links:'));assert.ok(body.includes('rel="noopener sponsored"'));assert.ok(!body.includes('"InStock"'));
- assert.equal(d.cards.length,5);for(const token of d.tokens||[])assert.ok(body.includes(token));for(const c of d.cards){assert.ok(body.includes(encodeURIComponent('https://www.tcgplayer.com/product/'+c.tcgPlayerId)));assert.ok(body.includes(escape(c.image)));assert.ok(body.includes(escape(c.displayName)));}
+ assert.equal(d.cards.length,d.id==='sonic-friends-and-foes'?7:d.id.startsWith('sonic-')?6:5);for(const token of d.tokens||[])assert.ok(body.includes(escape(token)));for(const c of d.cards){assert.ok(body.includes(encodeURIComponent('https://www.tcgplayer.com/product/'+c.tcgPlayerId)));assert.ok(body.includes(escape(c.image)));assert.ok(body.includes(escape(c.displayName)));}
  const card=d.cards[0];const own={id:'our-single',name:card.name,categorySlug:'mtg',scryfallId:card.scryfallId,price:9,quantity:1};
  const sealed={id:'our-drop',name:d.name+' Non-Foil Sealed',categorySlug:'mtg',isSealed:true,price:99,quantity:1};
  assert.ok(secretLairSealedMatches(sealed,d));assert.ok(!secretLairSealedMatches({...sealed,isSealed:false},d));assert.ok(!secretLairSealedMatches({...sealed,name:'Different Secret Lair'},d));
@@ -21,4 +21,4 @@ for(const d of secretLairDrops){
 }
 deps.listItems=async()=>{throw Error('Inventory unavailable');};assert.ok((await(await get(secretLairDropPath(secretLairDrops[0]))).text()).includes('Store availability could not be checked'));
 assert.equal((await get('/secret-lair/unknown')).status,404);assert.ok(page.robotsNoindex);assert.equal(await(await get('/secret-lair','HEAD')).text(),'');assert.equal(await get('/other'),null);
-console.log('Secret Lair: individual editorial guides, 40 exact product links, real stock matching, sealed gates, schema and discovery passed');
+console.log('Secret Lair: individual editorial guides, 59 exact product links, real stock matching, sealed gates, schema and discovery passed');
