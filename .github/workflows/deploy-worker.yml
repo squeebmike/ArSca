@@ -44,6 +44,7 @@ on:
       - scripts/secret-lair/hobbit-2026.mjs
       - scripts/secret-lair/corn-maze-2026.mjs
       - scripts/secret-lair/winter-2024.mjs
+      - scripts/secret-lair/spring-2024.mjs
       - scripts/topps/football-seed.mjs
       - scripts/baseball-catalog-pages.mjs
       - scripts/baseball-section-pages.mjs
