@@ -41,6 +41,7 @@ on:
       - scripts/secret-lair/reviewed-drops.mjs
       - scripts/secret-lair/marvel-2024.mjs
       - scripts/secret-lair/sonic-2025.mjs
+      - scripts/secret-lair/hobbit-2026.mjs
       - scripts/topps/football-seed.mjs
       - scripts/baseball-catalog-pages.mjs
       - scripts/baseball-section-pages.mjs
