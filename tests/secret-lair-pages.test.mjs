@@ -21,6 +21,10 @@ for(const d of secretLairDrops){
  const shop=await(await get(path)).text();assert.ok(shop.includes('/item/our-single/')&&shop.includes('/item/our-drop/'));for(const id of ['other-printing','sold','unpriced'])assert.ok(!shop.includes('/item/'+id+'/'));
  inventory=[];
 }
+const turbo=secretLairDrops.find(d=>d.id==='sonic-turbo-gear');
+const legacySealed={id:'legacy-turbo',name:'Magic Secret Lair Drop Series Secret Lair x Sonic The Hedgehog Superdrop Turbo Gear Non Foil',categorySlug:'mtg',productType:'Secret Lair',variant:'Factory Sealed',isSealed:false,tcgPlayerId:'643595',price:55,quantity:1};
+assert.ok(secretLairSealedMatches(legacySealed,turbo));assert.ok(!secretLairSealedMatches({...legacySealed,variant:'Near Mint'},turbo));assert.ok(!secretLairSealedMatches(legacySealed,secretLairDrops.find(d=>d.id==='final-fantasy-weapons')));
+inventory=[legacySealed];const legacyPage=await(await get(secretLairDropPath(turbo))).text();assert.ok(legacyPage.includes('/item/legacy-turbo/'));assert.ok(!legacyPage.includes('No matching sealed drop is currently listed'));
 deps.listItems=async()=>{throw Error('Inventory unavailable');};assert.ok((await(await get(secretLairDropPath(secretLairDrops[0]))).text()).includes('Store availability could not be checked'));
 assert.equal((await get('/secret-lair/unknown')).status,404);assert.ok(page.robotsNoindex);assert.equal(await(await get('/secret-lair','HEAD')).text(),'');assert.equal(await get('/other'),null);
 const printing={name:'Verified fixture',collectorNumber:'1519',setName:'Secret Lair Drop',setCode:'sld',scryfallId:'nonfoil-id',tcgPlayerId:100,printingLabel:'Non-foil',alternatePrintings:[{name:'Verified fixture',collectorNumber:'1519★',setName:'Secret Lair Drop',setCode:'sld',scryfallId:'foil-id',tcgPlayerId:101,printingLabel:'Foil'}]};

@@ -132,7 +132,13 @@ export const sonicSecretLairDrops=[
       "The checklist below identifies the English Secret Lair printings. Check foil versus non-foil and condition on the actual listing. Our available matches come first; TCGplayer links open the identified product pages. Buy the right version before rushing to checkout. Sonic can handle the speed part."
     ],
     "reviewed": true,
-    "publishedOn": "2026-10-18"
+    "publishedOn": "2026-10-18",
+    "sealedProductIds": [
+      643591
+    ],
+    "sealedNames": [
+      "Secret Lair x Sonic The Hedgehog Superdrop Friends And Foes"
+    ]
   },
   {
     "id": "sonic-turbo-gear",
@@ -253,7 +259,14 @@ export const sonicSecretLairDrops=[
       "This would make a fun gear page beside the character cards, but you can also just grab the piece you like. Match the image and collector number below, then check the selected finish and condition. Our own exact copies appear when available, followed by TCGplayer product links. A cheaper pair of Swiftfoot Boots with different artwork is still a different printing. Read the box before putting on the shoes."
     ],
     "reviewed": true,
-    "publishedOn": "2026-10-18"
+    "publishedOn": "2026-10-18",
+    "sealedProductIds": [
+      643595,
+      643596
+    ],
+    "sealedNames": [
+      "Secret Lair x Sonic The Hedgehog Superdrop Turbo Gear"
+    ]
   },
   {
     "id": "sonic-chasing-adventure",
@@ -374,6 +387,12 @@ export const sonicSecretLairDrops=[
       "For a sealed drop, check that the seller actually says sealed and lists the expected contents. For singles, check finish and condition. Our available copies are shown first when there is an exact match, with tracked TCGplayer links for another place to look. You do not need a full checklist to justify enjoying one card. Sometimes the little scene is the whole reason to keep it."
     ],
     "reviewed": true,
-    "publishedOn": "2026-10-18"
+    "publishedOn": "2026-10-18",
+    "sealedProductIds": [
+      643594
+    ],
+    "sealedNames": [
+      "Secret Lair x Sonic The Hedgehog Superdrop Chasing Adventure"
+    ]
   }
 ];

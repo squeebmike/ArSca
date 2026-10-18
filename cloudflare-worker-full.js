@@ -859,7 +859,7 @@ function shapeStorefrontItem(row) {
     mpn: storefrontCleanText(d.mpn || d.manufacturerPartNumber || d.manufacturer_part_number || '',160),
     supplierCategoryPaths: (Array.isArray(d.supplierCategoryPaths)?d.supplierCategoryPaths:[]).slice(0,50).map(v=>storefrontCleanText(v,300)),
     supplierSpecifications: Object.fromEntries(Object.entries(d.supplierSpecifications && typeof d.supplierSpecifications==='object' && !Array.isArray(d.supplierSpecifications)?d.supplierSpecifications:{}).slice(0,60).map(([k,v])=>[storefrontCleanText(k,80),storefrontCleanText(v,500)])),
-    isSealed: !!d.is_sealed, gradingCompany: storefrontCleanText(d.grading_company || d.grader || '', 40),
+    isSealed: !!d.is_sealed || d.isSealed === true || (/secret\s*lair/i.test(String(d.productType || d.product_type || '')) && /^factory[\s-]+sealed$/i.test(String(d.variant || '').trim())), gradingCompany: storefrontCleanText(d.grading_company || d.grader || '', 40),
     isSigned: !!d.is_signed, signedBy: storefrontCleanText(d.signed_by || '', 120), signatureValue: rowSignatureValue,
     // Drop-ship items (vendor-fulfilled, e.g. BCW supplies) are never
     // physically counted -- see createDropshipInventoryItem/the Supplies

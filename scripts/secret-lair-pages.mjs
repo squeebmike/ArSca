@@ -12,8 +12,10 @@ export function secretLairCardShopping(inventory,card,deps){
  return printings.map(p=>(printings.length>1?'<p class="mp-meta">'+deps.escape((p.printingLabel||p.finishes?.join(' / ')||'Printing')+' · #'+p.collectorNumber)+(p.image?' · <a href="'+deps.escape(p.image)+'" target="_blank" rel="noopener">View this printing</a>':'')+'</p>':'')+catalogShoppingLinksHtml(items,p,'mtg',{setCode:'sld'},deps)).join('');
 }
 export function secretLairSealedMatches(item,drop){
- if(item.categorySlug!=='mtg'||!(item.isSealed===true||/sealed.*drop|sealed.*box|sealed product/i.test(item.productType||'')))return false;
- return normalize(item.name).includes(normalize(drop.name));
+ const explicitSealed=item.isSealed===true||/^factory[\s-]+sealed$/i.test(String(item.variant||'').trim())||/sealed.*drop|sealed.*box|sealed product/i.test(item.productType||'');
+ if(item.categorySlug!=='mtg'||!explicitSealed)return false;
+ if((drop.sealedProductIds||[]).some(id=>String(id)===String(item.tcgPlayerId||'')))return true;
+ return [drop.name,...(drop.sealedNames||[])].some(name=>normalize(item.name).includes(normalize(name)));
 }
 export async function handleSecretLairPages(request,env,url,deps){
  if(!['GET','HEAD'].includes(request.method)||!['/secret-lair','/sitemap-secret-lair.xml'].includes(url.pathname)&&!url.pathname.startsWith('/secret-lair/'))return null;

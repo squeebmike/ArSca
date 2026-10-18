@@ -22,6 +22,8 @@ const primary='https://example.com/front.jpg';
 const second='https://example.com/back.jpg';
 const third='https://example.com/detail.jpg';
 const item=context.shapeStorefrontItem({id:'multi-1',status:'in_stock',data:{name:'Multi-photo item',category:'Sports',quantity:1,thumbnail:primary,photos:[second,primary],images:[third,second]}});
+assert.equal(context.shapeStorefrontItem({id:'secret-sealed',data:{category:'MTG',productType:'Secret Lair',variant:'Factory Sealed'}}).isSealed,true);
+assert.equal(context.shapeStorefrontItem({id:'secret-single',data:{category:'MTG',productType:'Secret Lair',variant:'Foil'}}).isSealed,false,'the Secret Lair product type alone does not make a single sealed');
 assert.equal(item.image,primary,'the selected primary image must remain first');
 assert.deepEqual(Array.from(item.photos),[primary,second,third],'photos and images must merge in order without duplicates');
 

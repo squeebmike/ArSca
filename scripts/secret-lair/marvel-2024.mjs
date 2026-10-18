@@ -103,7 +103,10 @@ export const marvelSecretLairDrops=[
       "You can build the complete Wakanda page or just pick the card whose art keeps pulling you back. Either works. Match the Secret Lair collector number, finish and condition before comparing prices, and make sure a sealed listing really is sealed. Comic-cover instincts are useful here: same character does not mean same version."
     ],
     "reviewed": true,
-    "publishedOn": "2026-10-18"
+    "publishedOn": "2026-10-18",
+    "sealedProductIds": [
+      592081
+    ]
   },
   {
     "id": "marvel-2024-captain-america",
