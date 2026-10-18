@@ -9,7 +9,7 @@ const hub=await(await get('/secret-lair')).text(),xml=await(await get('/sitemap-
 assert.equal((xml.match(/<loc>/g)||[]).length,secretLairDrops.length+1);
 for(const d of secretLairDrops){
  const path=secretLairDropPath(d);assert.ok(hub.includes(path)&&xml.includes(path));const r=await get(path);assert.equal(r.status,200);const body=await r.text();
- assert.equal(page.canonicalPath,path);assert.equal(page.jsonLd['@type'],'Article');assert.ok(!page.jsonLd.offers);assert.equal((body.match(/<h1>/g)||[]).length,1);assert.ok(body.includes('not')||body.includes('different'));
+ assert.equal(page.canonicalPath,path);assert.equal(page.jsonLd['@type'],'Article');assert.equal(page.ogType,'article');assert.equal(page.ogImage,d.cards[0].image);assert.ok(body.includes('full-size artwork'));assert.ok(!page.jsonLd.offers);assert.equal((body.match(/<h1>/g)||[]).length,1);assert.ok(body.includes('not')||body.includes('different'));
  assert.ok(body.includes('Affiliate links:'));assert.ok(body.includes('rel="noopener sponsored"'));assert.ok(!body.includes('"InStock"'));
  assert.equal(d.cards.length,5);for(const token of d.tokens||[])assert.ok(body.includes(token));for(const c of d.cards){assert.ok(body.includes(encodeURIComponent('https://www.tcgplayer.com/product/'+c.tcgPlayerId)));assert.ok(body.includes(escape(c.image)));assert.ok(body.includes(escape(c.displayName)));}
  const card=d.cards[0];const own={id:'our-single',name:card.name,categorySlug:'mtg',scryfallId:card.scryfallId,price:9,quantity:1};
