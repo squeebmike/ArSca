@@ -15,6 +15,16 @@ export function checklistPublicationProblems(set, approval = {}) {
   return problems;
 }
 
+export function footballChecklistPublicationProblems(set) {
+  const problems=[];
+  if(set.sport!=='football'||!set.licensedFootball||!set.reviewed)problems.push('licensed_football_review_required');
+  if(!set.displayName||!/Topps/.test(set.displayName)||/panini|university/i.test(set.displayName))problems.push('excluded_release');
+  if(!Number.isInteger(set.year)||set.year<2025)problems.push('outside_licensed_scope');
+  try {const source=new URL(set.sourceUrl);if(source.protocol!=='https:'||!['www.topps.com','topps.com','ripped.topps.com','cdn.shopify.com'].includes(source.hostname))problems.push('official_source_required');}catch{problems.push('official_source_required');}
+  if(!set.cards?.length||set.cards.length!==set.cardCount)problems.push('incomplete_checklist');
+  return problems;
+}
+
 const norm = value => String(value || '').normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
 const num = value => String(value || '').trim().toLowerCase().replace(/^0+(?=\d)/, '');
 
