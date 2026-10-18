@@ -44,6 +44,7 @@ on:
       - scripts/baseball-odds.mjs
       - scripts/topps/baseball-seed.mjs
       - scripts/topps/baseball-expansion.mjs
+      - scripts/topps/baseball-current.mjs
       - scripts/topps/public-checklist-policy.mjs
       - scripts/ebay-order-money.mjs
       - scripts/orders-board.mjs

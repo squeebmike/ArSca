@@ -6,8 +6,8 @@ const escape=s=>String(s??'').replaceAll('&','&amp;').replaceAll('<','&lt;').rep
 let page,inventory=[],loads=0;
 const deps={escape,slug:s=>s.toLowerCase().replace(/[^a-z0-9]+/g,'-'),available:i=>i.quantity>0,listItems:async()=>{loads++;return inventory;},shell:p=>{page=p;return JSON.stringify({title:p.title,canonical:p.canonicalPath,noindex:p.robotsNoindex,schema:p.jsonLd})+p.bodyHtml;}};
 const get=path=>handleBaseballCatalog(new Request('https://www.themanapocket.com'+path),{},new URL('https://www.themanapocket.com'+path),deps);
-const teams=baseballTeams(baseballSets);assert.equal(teams.length,31);
-const names=new Set(teams.map(t=>t.name));assert.equal(names.size,31);
+const teams=baseballTeams(baseballSets);assert.equal(teams.length,32);
+const names=new Set(teams.map(t=>t.name));assert.equal(names.size,32);
 const home=await(await get('/baseball')).text();
 const xml=await(await get('/sitemap-baseball.xml')).text();
 for(const team of teams){
@@ -21,6 +21,7 @@ for(const team of teams){
  assert.deepEqual(new Set([...allBody.matchAll(/href="(\/baseball\/checklists\/[^" ]+\/cards\/[^" ]+)"/g)].map(m=>m[1])),new Set(expected));
  const before=loads;res=await get(path+'?rookies=1');body=await res.text();assert.equal(loads,before+1,'one inventory load per team page');assert.ok(page.robotsNoindex);assert.equal(page.canonicalPath,path);
  const rookieRows=team.rows.filter(r=>r.card.subjects.some(s=>s.team===team.name&&/\brookie\b/i.test(s.note||'')));
+ for(let n=2;n<=Math.ceil(rookieRows.length/60);n++)body+=await(await get(path+'?rookies=1&page='+n)).text();
  const actual=new Set([...body.matchAll(/href="(\/baseball\/checklists\/[^" ]+\/cards\/[^" ]+)"/g)].map(m=>m[1]));
  assert.deepEqual(actual,new Set(rookieRows.map(({set,card})=>baseballCardPath(set,card))));
 }
@@ -43,4 +44,4 @@ let fakePage;
 const response=await handleBaseballTeam(new Request(fakeUrl),fakeUrl,[fakeSet],deps,p=>{fakePage=p;return new Response(p.bodyHtml);},()=>new Response('missing',{status:404}),baseballCardPath);
 body=await response.text();assert.equal(response.status,200);assert.equal(fakePage.robotsNoindex,true);
 assert.ok(body.includes('/cards/c60'));assert.ok(!body.includes('/cards/c59'));assert.ok(body.includes('year=2024&amp;set=large&amp;q=Player'));
-console.log('31 printed-team pages including historical Cleveland: exact source membership, pagination, filters, sitemap discovery and matching stock passed');
+console.log('32 printed-team pages including historical Cleveland: exact source membership, pagination, filters, sitemap discovery and matching stock passed');

@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import {handleBaseballCatalog,baseballSetPath,baseballCardPath} from '../scripts/baseball-catalog-pages.mjs';
 import {baseballSets} from '../scripts/topps/baseball-seed.mjs';
+import {baseballTeams} from '../scripts/baseball-team-pages.mjs';
 import {baseballPlayers} from '../scripts/baseball-player-pages.mjs';
 import {baseballSectionSitemapPaths,sectionsForSet} from '../scripts/baseball-section-pages.mjs';
 const escape=s=>String(s??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('"','&quot;');
@@ -10,11 +11,11 @@ const get=(path,env={},method='GET')=>handleBaseballCatalog(new Request('https:/
 assert.equal((await get('/baseball')).status,200);
 let res=await get('/sitemap-baseball.xml'),xml=await res.text();
 const paths=[...xml.matchAll(/<loc>https:\/\/www.themanapocket.com([^<]+)<\/loc>/g)].map(m=>m[1]);
-assert.equal(paths.length,1653+baseballPlayers(baseballSets).length+baseballSectionSitemapPaths(baseballSets).length);assert.equal(new Set(paths).size,paths.length);
+assert.equal(paths.length,2+baseballSets.length+baseballSets.reduce((n,s)=>n+s.cards.length,0)+baseballTeams(baseballSets).length+baseballPlayers(baseballSets).length+baseballSectionSitemapPaths(baseballSets).length);assert.equal(new Set(paths).size,paths.length);
 const titles=new Set(),h1s=new Set();
 for(const set of baseballSets) {
  const numbers=new Set(set.cards.map(c=>c.cardNumber));assert.equal(numbers.size,set.cards.length);
- const expectedCounts={'2023-topps-series-1':330,'2023-topps-series-2':330,'2023-topps-update':329,'2019-topps-chrome':204,'2023-bowman':100,'2023-bowman-chrome':100,'2023-topps-chrome':220};
+ const expectedCounts={'2023-topps-series-1':330,'2023-topps-series-2':330,'2023-topps-update':329,'2019-topps-chrome':204,'2023-bowman':100,'2023-bowman-chrome':100,'2023-topps-chrome':220,'2025-topps-series-1-baseball':350,'2026-topps-series-1-baseball':350,'2025-topps-update-series-baseball':350,'2026-topps-series-2-baseball':350,'2025-topps-series-2-baseball':350,'2026-topps-update-series-baseball':350,'2025-bowman-baseball':100,'2026-bowman-baseball':100,'2025-bowman-draft-baseball':200,'2026-bowman-chrome-baseball':100,'2026-topps-holiday-baseball':200};
  assert.equal(set.cards.length,expectedCounts[set.id]);
  for(let page=1;page<=Math.ceil(set.cards.length/60);page++) {
   const path=baseballSetPath(set)+(page>1?'?page='+page:'');
