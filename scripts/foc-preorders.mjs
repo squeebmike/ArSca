@@ -705,10 +705,23 @@ function notFoundPreorderPage(deps) {
   return new Response(html, { status:404, headers:{ 'Content-Type':'text/html;charset=UTF-8' } });
 }
 
+function preorderSeoDb(env, deps) {
+  return async (path, options) => {
+    const result = await deps.supabaseAdminFetch(env, path, options);
+    if (result.response && !result.response.ok) throw new Error('Preorder catalog unavailable');
+    return result;
+  };
+}
+function preorderUnavailablePage(deps, path) {
+  const headers={'Content-Type':'text/html;charset=UTF-8','Cache-Control':'no-store','Retry-After':'60'};
+  if(path==='/sitemap-preorders.xml')return new Response('Preorder sitemap temporarily unavailable.',{status:503,headers:{...headers,'Content-Type':'text/plain;charset=UTF-8'}});
+  return new Response(deps.mtgPageShell({title:'Comic cover temporarily unavailable | The Mana Pocket',description:'We could not load this comic cover right now. Please try again shortly.',canonicalPath:path,bodyHtml:'<h1>We could not load this cover right now</h1><p>Please try again shortly. This does not mean the cover is sold out or has been removed.</p><p><a href="/preorders">Comic preorders</a> · <a href="/category/comics">Shop received comics</a></p>'}),{status:503,headers});
+}
+
 async function preorderDetailPage(env, deps, skuId, providedSlug) {
   if (!/^[0-9a-f-]{36}$/i.test(skuId)) return notFoundPreorderPage(deps);
-  const db = (p, o) => deps.supabaseAdminFetch(env, p, o);
-  const { data:skuRows } = await db(`comic_skus?id=eq.${encodeURIComponent(skuId)}&customer_enabled=eq.true&select=*&limit=1`);
+  const db = preorderSeoDb(env, deps);
+  const { data:skuRows } = await db(`comic_skus?id=eq.${encodeURIComponent(skuId)}&store_id=eq.${encodeURIComponent(deps.publicStoreId)}&customer_enabled=eq.true&select=*&limit=1`);
   const skuRow = skuRows?.[0];
   if (!skuRow) return notFoundPreorderPage(deps);
   const [{ data:familyRows }, { data:cycleRows }] = await Promise.all([
@@ -800,7 +813,7 @@ async function preorderDetailPage(env, deps, skuId, providedSlug) {
 // client-rendered catalog, not a set of crawlable pages) -- submit this in
 // Google Search Console's Sitemaps report alongside the others.
 async function preorderSitemap(env, deps) {
-  const db = (p, o) => deps.supabaseAdminFetch(env, p, o);
+  const db = preorderSeoDb(env, deps);
   const rows = [];
   let offset = 0;
   while (true) {
@@ -4128,9 +4141,9 @@ export async function handleFocRequest(request, env, url, deps) {
     const rest=path.slice('/preorder/'.length).split('/');
     const skuId=decodeURIComponent(rest[0]||'');
     const providedSlug=rest[1]?decodeURIComponent(rest[1]):'';
-    return skuId?preorderDetailPage(env,deps,skuId,providedSlug):notFoundPreorderPage(deps);
+    try{return skuId?await preorderDetailPage(env,deps,skuId,providedSlug):notFoundPreorderPage(deps);}catch{return preorderUnavailablePage(deps,path);}
   }
-  if(path==='/sitemap-preorders.xml'&&request.method==='GET')return preorderSitemap(env,deps);
+  if(path==='/sitemap-preorders.xml'&&request.method==='GET'){try{return await preorderSitemap(env,deps);}catch{return preorderUnavailablePage(deps,path);}}
   if(path==='/public/shipping/quotes'&&request.method==='POST')return quoteShipping(request,env,deps);
   if(path==='/public/preorders'&&request.method==='GET'){
     const storeId=text(url.searchParams.get('store_id'),80);const db=(p,o)=>deps.supabaseAdminFetch(env,p,o);const requestedLimit=Number.parseInt(url.searchParams.get('limit'),10);const requestedPage=Number.isFinite(requestedLimit)&&requestedLimit>0?{limit:requestedLimit,offset:Number.parseInt(url.searchParams.get('offset'),10)||0}:null;

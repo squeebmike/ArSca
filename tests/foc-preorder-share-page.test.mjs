@@ -30,7 +30,7 @@ assert.match(worker, /mtgPageShell, mtgEscapeHtml, mtgSlugify, publicStoreId: IT
 
 assert.match(foc, /if\(path\.startsWith\('\/preorder\/'\)&&request\.method==='GET'\)\{/,
   'handleFocRequest must own the /preorder/{id}/{slug} route');
-assert.match(foc, /if\(path==='\/sitemap-preorders\.xml'&&request\.method==='GET'\)return preorderSitemap\(env,deps\);/,
+assert.match(foc, /if\(path==='\/sitemap-preorders\.xml'&&request\.method==='GET'\)\{try\{return await preorderSitemap\(env,deps\);/,
   'handleFocRequest must own the /sitemap-preorders.xml route');
 assert.match(foc, /async function preorderDetailPage\(env, deps, skuId, providedSlug\) \{/,
   'missing preorderDetailPage');

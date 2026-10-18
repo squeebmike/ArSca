@@ -28,6 +28,18 @@ assert.equal(familyRequests, 13);
 assert.equal([...xml.matchAll(/<loc>/g)].length, 1206);
 assert.match(xml, /family-1204-1-cover-a/);
 
+for(const path of ['/sitemap-preorders.xml','/preorder/11111111-1111-4111-8111-111111111111/cover']) {
+ for(const failingFetch of [async()=>({data:null,response:new Response('Unavailable',{status:503})}),async()=>{throw Error('Network unavailable');}]) {
+  const result=await handleFocRequest(request,{},new URL('https://www.themanapocket.com'+path),{...deps,mtgPageShell:page=>'<link rel="canonical" href="https://www.themanapocket.com'+page.canonicalPath+'">'+page.bodyHtml,supabaseAdminFetch:failingFetch});
+  assert.equal(result.status,503);assert.equal(result.headers.get('Cache-Control'),'no-store');assert.equal(result.headers.get('Retry-After'),'60');assert.ok(!(await result.text()).includes('Preorder not found'));
+ }
+}
+
+const partialSitemap=await handleFocRequest(request,{},new URL('https://www.themanapocket.com/sitemap-preorders.xml'),{...deps,supabaseAdminFetch:async(_,path)=>path.includes('offset=0')?{data:rows.slice(0,1000)}:{data:null,response:new Response('Unavailable',{status:503})}});
+assert.equal(partialSitemap.status,503,'a failed later page must not publish a truncated sitemap');
+const scopedDetail=await handleFocRequest(request,{},new URL('https://www.themanapocket.com/preorder/11111111-1111-4111-8111-111111111111/cover'),{...deps,supabaseAdminFetch:async(_,path)=>{assert.ok(path.includes('store_id=eq.store'));return {data:[]};},mtgPageShell:page=>page.bodyHtml});
+assert.equal(scopedDetail.status,404,'successful empty lookup remains a genuine missing cover');
+
 const book = {id:'book-1',title:'Same title'};
 const books = await handleBacklistRequest(request, {}, new URL('https://www.themanapocket.com/sitemap-books.xml'), {
   ...deps,
