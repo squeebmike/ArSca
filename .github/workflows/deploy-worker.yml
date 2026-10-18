@@ -46,6 +46,7 @@ on:
       - scripts/secret-lair/winter-2024.mjs
       - scripts/secret-lair/spring-2024.mjs
       - scripts/secret-lair/avatar-2025.mjs
+      - scripts/secret-lair/stocked-drops.mjs
       - scripts/topps/football-seed.mjs
       - scripts/baseball-catalog-pages.mjs
       - scripts/baseball-section-pages.mjs
