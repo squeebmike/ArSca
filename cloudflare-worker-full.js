@@ -2810,6 +2810,15 @@ function itemDetailDescription(item) {
   return `${item.name}${bits ? ` — ${bits}.` : '.'}${priceBit}${soldBit}${detail ? ' '+detail : ''}`.trim().slice(0,320);
 }
 
+function itemTemporarilyUnavailablePage(path) {
+  return new Response(mtgPageShell({
+    title:'Product temporarily unavailable | The Mana Pocket',
+    description:'We could not load this product right now. Please try again shortly.',
+    canonicalPath:path,
+    bodyHtml:'<h1>We could not load this product right now</h1><p>Please try again shortly. This does not mean the item is sold out.</p><p><a href="/shop">Browse the shop</a></p>',
+  }), {status:503,headers:{'Content-Type':'text/html;charset=UTF-8','Cache-Control':'no-store','Retry-After':'60'}});
+}
+
 function itemNotFoundPage() {
   const html = mtgPageShell({
     title: 'Item not found | The Mana Pocket',
@@ -7765,9 +7774,9 @@ async function routeRequest(request, env, ctx) {
       const cacheKey = new Request(url.toString(), request);
       const cached = await caches.default.match(cacheKey);
       if (cached) return cached;
-      if (!(env.SUPABASE_URL && (env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SERVICE_KEY))) return itemNotFoundPage();
-      const { data: itemRows, response: itemSbResponse } = await supabaseAdminFetch(env, `inventory_items?id=eq.${encodeURIComponent(itemId)}&store_id=eq.${encodeURIComponent(ITEM_DETAIL_STORE_ID)}&select=id,data,status,created_at,updated_at&limit=1`);
-      if (!itemSbResponse?.ok) return itemNotFoundPage();
+      if (!(env.SUPABASE_URL && (env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SERVICE_KEY))) return itemTemporarilyUnavailablePage(url.pathname);
+      const { data: itemRows, response: itemSbResponse } = await supabaseAdminFetch(env, `inventory_items?id=eq.${encodeURIComponent(itemId)}&store_id=eq.${encodeURIComponent(ITEM_DETAIL_STORE_ID)}&select=id,data,status,created_at,updated_at&limit=1`).catch(() => ({response:null}));
+      if (!itemSbResponse?.ok) return itemTemporarilyUnavailablePage(url.pathname);
       const itemRow = itemRows?.[0];
       const item = itemRow ? shapeStorefrontItem(itemRow) : null;
       // Store report: a showSoldOut item (see shapeStorefrontItem/
@@ -7790,7 +7799,7 @@ async function routeRequest(request, env, ctx) {
         ctx.waitUntil(caches.default.put(cacheKey, response.clone()));
         return response;
       }
-      const allListable = await fetchAllListableStorefrontItemsCached(env, ctx).catch(() => []);
+      const allListable = await optionalCatalogInventory(signal=>fetchAllListableStorefrontItemsCached(env,ctx,signal)) || [];
       const response = mtgHtmlResponse(renderItemDetailPage(item, canonicalSlug, allListable));
       // Real stock/price, not a reference catalog -- much shorter TTL than
       // the /mtg pages (21600s) so a sale or price change shows up soon.

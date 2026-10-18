@@ -203,6 +203,27 @@ try {
   }
 
   {
+    const healthyFetch=globalThis.fetch;let recommendationAborted=false;
+    globalThis.fetch=async(input,options={})=>{
+      if(String(input).includes('inventory_items?')&&!/[?&]id=eq\./.test(String(input)))return new Promise((resolve,reject)=>options.signal.addEventListener('abort',()=>{recommendationAborted=true;reject(Error('aborted'));}));
+      return healthyFetch(input,options);
+    };
+    const response=await get('/item/item-a/amazing-spider-man-1');
+    assert.equal(response.status,200,'slow recommendations cannot fail the actual product');
+    assert.ok((await response.text()).includes('Amazing Spider-Man #1'));
+    assert.equal(recommendationAborted,true,'slow full-catalog lookup is cancelled');
+    globalThis.fetch=healthyFetch;
+  }
+
+  {
+    globalThis.fetch=async()=>new Response('Database unavailable',{status:503});
+    const productOutage=await get('/item/item-a/amazing-spider-man-1');
+    assert.equal(productOutage.status,503,'database failure must not claim the product is missing');
+    assert.equal(productOutage.headers.get('Cache-Control'),'no-store');
+    assert.equal(productOutage.headers.get('Retry-After'),'60');
+    assert.ok((await productOutage.text()).includes('canonical\" href=\"https://www.themanapocket.com/item/item-a/amazing-spider-man-1'));
+    globalThis.fetch=async()=>{throw Error('Network timeout');};
+    assert.equal((await get('/item/item-a/amazing-spider-man-1')).status,503,'network failures also remain temporary');
     globalThis.fetch=async()=>new Response('Database unavailable',{status:503});
     const response=await get('/category/comics');
     assert.equal(response.status,503,'an upstream outage is not an empty category');
