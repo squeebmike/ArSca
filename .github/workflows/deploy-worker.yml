@@ -36,7 +36,7 @@ on:
       - scripts/pokemon-catalog-pages.mjs
       - scripts/football-catalog-pages.mjs
       - scripts/secret-lair-pages.mjs
-      - scripts/secret-lair/reviewed-drops.mjs
+      - scripts/secret-lair/**
       - scripts/topps/football-seed.mjs
       - scripts/baseball-catalog-pages.mjs
       - scripts/baseball-section-pages.mjs

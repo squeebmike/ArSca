@@ -23,7 +23,7 @@ export const secretLairDrops=[
         "setName": "Secret Lair Drop",
         "scryfallId": "7ac9e188-ee9c-424b-8216-2f851d8165e5",
         "tcgPlayerId": 632093,
-        "image": "https://cards.scryfall.io/normal/front/7/a/7ac9e188-ee9c-424b-8216-2f851d8165e5.jpg?1789283558",
+        "image": "https://media.wizards.com/2025/images/daily/en_x5Bxg5DMv8.webp",
         "finishes": [
           "nonfoil",
           "foil"
@@ -38,7 +38,7 @@ export const secretLairDrops=[
         "setName": "Secret Lair Drop",
         "scryfallId": "33da3281-1cf1-41ac-841a-e01521642779",
         "tcgPlayerId": 632095,
-        "image": "https://cards.scryfall.io/normal/front/3/3/33da3281-1cf1-41ac-841a-e01521642779.jpg?1788710716",
+        "image": "https://media.wizards.com/2025/images/daily/en_yTZiRxx5Kw.webp",
         "finishes": [
           "nonfoil",
           "foil"
@@ -53,7 +53,7 @@ export const secretLairDrops=[
         "setName": "Secret Lair Drop",
         "scryfallId": "bf5666e6-e1bf-4f8e-acc0-d14df7362873",
         "tcgPlayerId": 632097,
-        "image": "https://cards.scryfall.io/normal/front/b/f/bf5666e6-e1bf-4f8e-acc0-d14df7362873.jpg?1789283954",
+        "image": "https://media.wizards.com/2025/images/daily/en_jnzTnXqxaf.webp",
         "finishes": [
           "nonfoil",
           "foil"
@@ -68,7 +68,7 @@ export const secretLairDrops=[
         "setName": "Secret Lair Drop",
         "scryfallId": "740b8085-7459-49fc-ab89-601136408f2e",
         "tcgPlayerId": 632100,
-        "image": "https://cards.scryfall.io/normal/front/7/4/740b8085-7459-49fc-ab89-601136408f2e.jpg?1789283568",
+        "image": "https://media.wizards.com/2025/images/daily/en_mwEtk4FkfS.webp",
         "finishes": [
           "nonfoil",
           "foil"
@@ -83,7 +83,7 @@ export const secretLairDrops=[
         "setName": "Secret Lair Drop",
         "scryfallId": "4fdb466a-0a48-424a-b835-43c7980a95b4",
         "tcgPlayerId": 632104,
-        "image": "https://cards.scryfall.io/normal/front/4/f/4fdb466a-0a48-424a-b835-43c7980a95b4.jpg?1789283569",
+        "image": "https://media.wizards.com/2025/images/daily/en_w99zsH8z0w.webp",
         "finishes": [
           "nonfoil",
           "foil"
@@ -127,7 +127,7 @@ export const secretLairDrops=[
         "setName": "Secret Lair Drop",
         "scryfallId": "944db708-6b7d-4dc0-b3c0-2ddf130e4be3",
         "tcgPlayerId": 632106,
-        "image": "https://cards.scryfall.io/normal/front/9/4/944db708-6b7d-4dc0-b3c0-2ddf130e4be3.jpg?1789284402",
+        "image": "https://media.wizards.com/2025/images/daily/en_Y4BbONlGpJ.webp",
         "finishes": [
           "nonfoil",
           "foil"
@@ -142,7 +142,7 @@ export const secretLairDrops=[
         "setName": "Secret Lair Drop",
         "scryfallId": "45617b0f-fdac-4747-b2d3-d571b717008f",
         "tcgPlayerId": 632108,
-        "image": "https://cards.scryfall.io/normal/front/4/5/45617b0f-fdac-4747-b2d3-d571b717008f.jpg?1789283269",
+        "image": "https://media.wizards.com/2025/images/daily/en_SdmviA14MI.webp",
         "finishes": [
           "nonfoil",
           "foil"
@@ -157,7 +157,7 @@ export const secretLairDrops=[
         "setName": "Secret Lair Drop",
         "scryfallId": "483b64f7-bec5-4800-bdd4-6b303c5ec20e",
         "tcgPlayerId": 632118,
-        "image": "https://cards.scryfall.io/normal/front/4/8/483b64f7-bec5-4800-bdd4-6b303c5ec20e.jpg?1789284389",
+        "image": "https://media.wizards.com/2025/images/daily/en_pDLEqNXnP9.webp",
         "finishes": [
           "nonfoil",
           "foil"
@@ -172,7 +172,7 @@ export const secretLairDrops=[
         "setName": "Secret Lair Drop",
         "scryfallId": "5a763474-5ce9-48cc-aaf8-8ca363df4430",
         "tcgPlayerId": 632123,
-        "image": "https://cards.scryfall.io/normal/front/5/a/5a763474-5ce9-48cc-aaf8-8ca363df4430.jpg?1789284401",
+        "image": "https://media.wizards.com/2025/images/daily/en_icuHVgRTDb.webp",
         "finishes": [
           "nonfoil",
           "foil"
@@ -187,7 +187,7 @@ export const secretLairDrops=[
         "setName": "Secret Lair Drop",
         "scryfallId": "e65a0c1e-97f7-440c-be96-0adf5003bc52",
         "tcgPlayerId": 632126,
-        "image": "https://cards.scryfall.io/normal/front/e/6/e65a0c1e-97f7-440c-be96-0adf5003bc52.jpg?1789284384",
+        "image": "https://media.wizards.com/2025/images/daily/en_ImWfMzaNXi.webp",
         "finishes": [
           "nonfoil",
           "foil"
@@ -231,7 +231,7 @@ export const secretLairDrops=[
         "setName": "Secret Lair Drop",
         "scryfallId": "6f4ad71f-14e6-4b1e-9558-1400a36f27a9",
         "tcgPlayerId": 632135,
-        "image": "https://cards.scryfall.io/normal/front/6/f/6f4ad71f-14e6-4b1e-9558-1400a36f27a9.jpg?1789283989",
+        "image": "https://media.wizards.com/2025/images/daily/en_jRJ2jAw6S2.webp",
         "finishes": [
           "nonfoil",
           "foil"
@@ -246,7 +246,7 @@ export const secretLairDrops=[
         "setName": "Secret Lair Drop",
         "scryfallId": "1138ab11-ab70-44df-9691-ddee39c3ae45",
         "tcgPlayerId": 632139,
-        "image": "https://cards.scryfall.io/normal/front/1/1/1138ab11-ab70-44df-9691-ddee39c3ae45.jpg?1789283977",
+        "image": "https://media.wizards.com/2025/images/daily/en_aWOX8oZueD.webp",
         "finishes": [
           "nonfoil",
           "foil"
@@ -261,7 +261,7 @@ export const secretLairDrops=[
         "setName": "Secret Lair Drop",
         "scryfallId": "32a46d1d-df85-4388-acd6-91818aa9af80",
         "tcgPlayerId": 632145,
-        "image": "https://cards.scryfall.io/normal/front/3/2/32a46d1d-df85-4388-acd6-91818aa9af80.jpg?1789284357",
+        "image": "https://media.wizards.com/2025/images/daily/en_WIR91cDOG.webp",
         "finishes": [
           "nonfoil",
           "foil"
@@ -276,7 +276,7 @@ export const secretLairDrops=[
         "setName": "Secret Lair Drop",
         "scryfallId": "9e42aded-44be-4b3a-9b2c-80ae43835e3d",
         "tcgPlayerId": 632152,
-        "image": "https://cards.scryfall.io/normal/front/9/e/9e42aded-44be-4b3a-9b2c-80ae43835e3d.jpg?1789283987",
+        "image": "https://media.wizards.com/2025/images/daily/en_anMYRkYQJY.webp",
         "finishes": [
           "nonfoil",
           "foil"
@@ -291,7 +291,7 @@ export const secretLairDrops=[
         "setName": "Secret Lair Drop",
         "scryfallId": "f5208aff-a33e-48d9-94eb-98a517099741",
         "tcgPlayerId": 632157,
-        "image": "https://cards.scryfall.io/normal/front/f/5/f5208aff-a33e-48d9-94eb-98a517099741.jpg?1787892359",
+        "image": "https://media.wizards.com/2025/images/daily/en_NnibDSlyNL.webp",
         "finishes": [
           "nonfoil",
           "foil"
