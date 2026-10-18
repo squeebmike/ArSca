@@ -43,3 +43,11 @@ res=await get('/sitemap-pokemon.xml');assert.ok((await res.text()).includes(setU
 console.log('Exact printing matches, unavailable stock exclusion, Pokémon HTML pagination and reference-price schema passed');
 deps.listItems=async()=>{throw Error('Inventory statement timeout');};
 res=await get(setUrl);html=await res.text();assert.equal(res.status,200);assert.ok(html.includes('temporarily unavailable'));assert.ok(html.includes('Pikachu'));assert.ok(!html.includes('No matching singles'));
+
+const originalFetch=globalThis.fetch;
+try {
+ globalThis.fetch=async()=>new Response('{}',{status:429});
+ const unavailableEnv={POKEMONPRICE_API_KEY:'test-only',LBA_KV:{get:async key=>key==='public_pokemon:sets:v1'?{cachedAt:Date.now(),data:[set]}:null,put:async()=>{}}};
+ res=await handlePokemonCatalog(new Request('https://www.themanapocket.com'+setUrl),unavailableEnv,new URL('https://www.themanapocket.com'+setUrl),deps);
+ html=await res.text();assert.equal(res.status,503);assert.equal(res.headers.get('Retry-After'),'300');assert.ok(html.includes('https://www.themanapocket.com'+setUrl));assert.ok(html.includes('Base Set'));assert.ok(html.includes('does not mean the set has no cards'));assert.ok(!html.includes('No matching singles'));
+} finally {globalThis.fetch=originalFetch;}

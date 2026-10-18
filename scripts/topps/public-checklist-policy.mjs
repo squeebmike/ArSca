@@ -29,7 +29,8 @@ export function baseballInventoryMatches(item, card, set) {
 export function ebayChecklistSearch(card, set, campaignId) {
   // No tracking or attribution claim until the owner supplies their campaign ID.
   if (!/^\d+$/.test(String(campaignId || ''))) return null;
-  const words = [set.year,set.displayName || set.setName,card.player,card.cardNumber,card.section,card.variant].filter(Boolean);
+  const label=set.displayName || set.setName || '';
+  const words = [String(label).includes(String(set.year))?null:set.year,label,card.player,card.cardNumber,card.section,card.variant==='Base'?null:card.variant].filter(Boolean);
   if (!card.player || !card.cardNumber || !set.year) return null;
   const url = new URL('https://www.ebay.com/sch/i.html');
   url.searchParams.set('_nkw', words.join(' '));

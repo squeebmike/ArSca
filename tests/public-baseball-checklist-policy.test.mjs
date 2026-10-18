@@ -19,3 +19,6 @@ const link=new URL(ebayChecklistSearch(card,set,'1234567890'));
 assert.equal(link.hostname,'www.ebay.com');assert.equal(link.searchParams.get('campid'),'1234567890');
 assert.ok(link.searchParams.get('_nkw').includes('Test Player'));
 console.log('Baseball source approval, exact printing identity and owner-only affiliate attribution passed');
+
+assert.equal((link.searchParams.get('_nkw').match(/2023/g)||[]).length,1,'search year appears once');
+assert.ok(!link.searchParams.get('_nkw').endsWith('Base Base'));
