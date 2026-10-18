@@ -7699,7 +7699,8 @@ async function routeRequest(request, env, ctx) {
       const words=item.name.split(/\s+/),first=words.shift();
       const rewritten=new HTMLRewriter()
         .on('body',{element(e){e.append(productViewAnalytics(item),{html:true});}})
-        .on('head',{element(e){e.append('<script type="application/ld+json">'+jsonLd+'</script>',{html:true});}})
+        .on('link[rel="canonical"],meta[name="description"]',{element(e){e.remove();}})
+        .on('head',{element(e){e.append('<link rel="canonical" href="'+canonical+'"><meta name="description" content="'+mtgEscapeHtml(description)+'"><script type="application/ld+json">'+jsonLd+'</script>',{html:true});}})
         .on('title',{element(e){e.setInnerContent(item.name+' | The Mana Pocket');}})
         .on('meta[name="description"],meta[property="og:description"]',{element(e){e.setAttribute('content',description);}})
         .on('h1.dv-h1',{element(e){e.setInnerContent(mtgEscapeHtml(first)+' <span style="display:block;font:600 18px/1.4 system-ui,sans-serif;letter-spacing:.03em">'+mtgEscapeHtml(words.join(' '))+'</span>',{html:true});}})
@@ -7939,7 +7940,7 @@ async function routeRequest(request, env, ctx) {
       // 'other' is a low-value catch-all bucket -- both routes still work if
       // visited directly, just not worth asking Google to index separately.
       const skippedCategorySlugs = ['supplies', 'other'];
-      const staticUrls = ['/faq', '/links', '/news', '/category', '/preorders/catalog', '/pokemon', '/mtg', '/comic-new-releases-the-mana-pocket', ...(await articleSitemapPaths(env)), ...Object.keys(CATEGORY_LANDING_LABELS).filter(slug => !skippedCategorySlugs.includes(slug)).map(slug => categoryLandingHref(slug))]
+      const staticUrls = ['/faq', '/links', '/news', '/dougvana-print', '/category', '/preorders/catalog', '/pokemon', '/mtg', '/comic-new-releases-the-mana-pocket', ...(await articleSitemapPaths(env)), ...Object.keys(CATEGORY_LANDING_LABELS).filter(slug => !skippedCategorySlugs.includes(slug)).map(slug => categoryLandingHref(slug))]
         .map(path => `<url><loc>https://www.themanapocket.com${path}</loc></url>`).join('');
       const xml = `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${staticUrls}</urlset>`;
       return new Response(xml, { headers: { 'Content-Type': 'application/xml;charset=UTF-8', 'Cache-Control': 'public, max-age=3600' } });

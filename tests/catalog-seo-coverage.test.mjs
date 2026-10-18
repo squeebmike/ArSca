@@ -64,13 +64,14 @@ try{
   handlers=[];on(selector,handler){this.handlers.push({selector,handler});return this;}
   transform(response){const handlers=this.handlers;const body=new ReadableStream({async start(controller){
    const {document}=parseHTML(await response.text());
-   for(const {selector,handler} of handlers)for(const el of document.querySelectorAll(selector))handler.element({append(v,opts){if(opts?.html)el.insertAdjacentHTML('beforeend',v);else el.append(v);},setInnerContent(v,opts){if(opts?.html)el.innerHTML=v;else el.textContent=v;},setAttribute(k,v){el.setAttribute(k,v);}});
+   for(const {selector,handler} of handlers)for(const el of document.querySelectorAll(selector))handler.element({remove(){el.remove();},append(v,opts){if(opts?.html)el.insertAdjacentHTML('beforeend',v);else el.append(v);},setInnerContent(v,opts){if(opts?.html)el.innerHTML=v;else el.textContent=v;},setAttribute(k,v){el.setAttribute(k,v);}});
    controller.enqueue(new TextEncoder().encode(document.toString()));controller.close();
   }});return new Response(body,{headers:response.headers});}
  };
  globalThis.fetch=async input=>String(input instanceof Request?input.url:input).startsWith('https://db.example')?new Response(JSON.stringify([{id:'1e18c84c-5f57-4762-8afb-c193184e5a24',status:'in_stock',data:{name:'Dougvana Poster /100',quantity:4,priceOverride:15,onlineListed:true,image:'https://img.example/print.jpg'}}]),{headers:{'Content-Type':'application/json'}}):new Response('<html><head><title>Old print</title><meta name="description" content="Old stock"></head><body><h1 class="dv-h1">DOUGVANA</h1><p class="dv-sub">Original story</p><span data-dv-stock-hero>100/100 Prints Left</span><script id="checkout-script">keepCheckout();</script></body></html>',{headers:{'Content-Type':'text/html','ETag':'old'}});
  const print=await get('/dougvana-print');assert.equal(print.status,200);assert.equal(print.headers.get('cache-control'),'no-store');assert.equal(print.headers.get('etag'),null);
  const printHtml=await print.text(),{document:printDoc}=parseHTML(printHtml);
+ assert.equal(printDoc.querySelectorAll('link[rel=canonical]').length,1);assert.equal(printDoc.querySelector('link[rel=canonical]').getAttribute('href'),'https://www.themanapocket.com/dougvana-print');assert.equal(printDoc.querySelectorAll('meta[name=description]').length,1);assert.ok(printDoc.querySelector('meta[name=description]').getAttribute('content').includes('Dougvana'));
  assert.equal(printDoc.querySelector('h1').textContent,'Dougvana Poster /100');assert.equal(printDoc.querySelector('[data-dv-stock-hero]').textContent,'4 prints available');assert.ok(printDoc.querySelector('#checkout-script'),'existing checkout is preserved');
  const printSchemas=JSON.parse(printDoc.querySelector('script[type="application/ld+json"]').textContent);const printProduct=printSchemas.find(s=>s['@type']==='Product');assert.equal(printProduct.offers.price,15);assert.equal(printProduct.offers.availability,'https://schema.org/InStock');
  globalThis.HTMLRewriter=OriginalRewriter;
