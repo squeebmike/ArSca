@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import {parseHTML} from 'linkedom';
 import {departmentSelection,departmentPagePath,departmentFilterHtml} from '../scripts/department-filters.mjs';
 import {productViewAnalytics,googleAnalyticsTag,measurementId} from '../scripts/store-analytics.mjs';
-import {renderReleaseInventory} from '../scripts/comic-articles.mjs';
+import {renderReleaseInventory,RELEASE_GUIDES} from '../scripts/comic-articles.mjs';
 const cards=[{id:'a',name:'Cal Raleigh #1',player:'Cal Raleigh',team:'Mariners',sport:'Baseball',set:'Topps Chrome',productTypeSlug:'singles'},{id:'b',name:'Julio #2',player:'Julio Rodriguez',team:'Mariners',sport:'Baseball',set:'Topps Chrome',productTypeSlug:'graded'},{id:'c',name:'Booster box',set:'Delta Reign',productTypeSlug:'sealed'}];
 const select=departmentSelection(cards,new URLSearchParams('player=cal+raleigh&kind=singles&team=Mariners'));
 assert.deepEqual(select.items.map(i=>i.id),['a']);
@@ -43,3 +43,10 @@ assert.match(renderReleaseInventory(slug,[],deps),/No matching store copies/);
 assert.match(renderReleaseInventory(slug,null,deps),/could not be checked/);
 assert.equal(renderReleaseInventory('another-article',stock,deps),'');
 console.log('Department facts, exact filters, pagination, injection safety, product analytics privacy and release inventory matching passed');
+
+for(const [articleSlug,guide] of Object.entries(RELEASE_GUIDES)){
+ const exact={id:'matching',name:'Saved copy',categorySlug:guide.game,set:guide.sets[0],quantity:1,price:12};
+ const html=renderReleaseInventory(articleSlug,[exact,{...exact,id:'wrong',set:'Different release',setCode:'wrong'},{...exact,id:'sold',quantity:0},{...exact,id:'unpriced',price:0},{...exact,id:'wrong-game',categorySlug:'other'}],deps);
+ assert.ok(html.includes('/item/matching/'),articleSlug);assert.ok(!html.includes('/item/wrong/')&&!html.includes('/item/sold/')&&!html.includes('/item/unpriced/')&&!html.includes('/item/wrong-game/'),articleSlug);
+ assert.ok(html.includes(guide.checklist),articleSlug+' checklist');
+}
