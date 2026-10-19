@@ -1,5 +1,5 @@
 import {baseballSections} from './topps/baseball-sections.mjs';
-import {baseballInventoryMatches,ebayChecklistSearch} from './topps/public-checklist-policy.mjs';
+import {baseballChecklistInventoryMatches as baseballInventoryMatches,ebayChecklistSearch} from './topps/public-checklist-policy.mjs';
 import {collectionToolsHtml} from './collection-tools.mjs';
 import {marketplaceDisclosureHtml} from './catalog-inventory.mjs';
 const setPath=s=>'/baseball/checklists/'+s.id;

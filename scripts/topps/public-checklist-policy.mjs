@@ -28,6 +28,35 @@ export function footballChecklistPublicationProblems(set) {
 const norm = value => String(value || '').normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
 const num = value => String(value || '').trim().toLowerCase().replace(/^0+(?=\d)/, '');
 
+// Importers sometimes put the sport label in the set and identity in the title.
+// Normalize only those wrappers, never Chrome/Update/insert/parallel distinctions.
+export const sportsSetKey = value => norm(String(value||'')
+  .replace(/^(?:baseball|football)\s+cards?\s+/i,'')
+  .replace(/\s+(?:baseball|football)$/i,'')
+  .replace(/\bUpdate Series\b/ig,'Update'));
+
+// A base checklist can point to a parallel of that numbered card, provided its
+// actual listing title stays visible. This is a card-family link, not proof of
+// an exact base printing. Inserts and autograph/relic sets remain separate.
+export function baseballChecklistInventoryMatches(item,card,set){
+  if(baseballInventoryMatches(item,card,set))return true;
+  if(item.categorySlug!=='sports-cards'||item.isSealed||/sealed|box|pack|case|bundle|lot/i.test(item.productType||''))return false;
+  if(norm(card.section)!=='base'||norm(card.variant)!=='base')return false;
+  if(item.subset&&norm(item.subset)!=='base')return false;
+  if(item.isRelic||item.isSigned||/autograph|auto\b|relic|memorabilia|image variation|photo variation|short print|\b(?:sp|ssp)\b/i.test([item.name,item.set,item.variant,item.treatment].join(' ')))return false;
+  if(sportsSetKey(item.set)!==sportsSetKey(set.displayName||set.setName))return false;
+  const setYear=String(item.set||'').match(/\b((?:19|20)\d{2})\b/)?.[1];
+  if(item.year&&String(item.year)!==String(set.year))return false;
+  if(setYear&&setYear!==String(set.year))return false;
+  if(!item.year&&!setYear)return false;
+  const title=String(item.name||'').match(/^(.+?)\s+(?:\[([^\]]+)\]\s*)?#\s*([a-z0-9-]+)(?:\s+\/\d+)?\s*$/i);
+  const player=item.player||title?.[1],number=item.cardNumber||title?.[3];
+  // Conflicting structured fields cannot be overridden by a convenient title.
+  if(title&&item.player&&norm(item.player)!==norm(title[1]))return false;
+  if(title&&item.cardNumber&&num(item.cardNumber)!==num(title[3]))return false;
+  return !!norm(player)&&norm(player)===norm(card.player)&&!!num(number)&&num(number)===num(card.cardNumber);
+}
+
 // Require complete printing identity. A shared player or card number is insufficient.
 export function baseballInventoryMatches(item, card, set) {
   if (item.categorySlug !== 'sports-cards' || item.isSealed) return false;

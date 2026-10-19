@@ -22,3 +22,16 @@ console.log('Baseball source approval, exact printing identity and owner-only af
 
 assert.equal((link.searchParams.get('_nkw').match(/2023/g)||[]).length,1,'search year appears once');
 assert.ok(!link.searchParams.get('_nkw').endsWith('Base Base'));
+
+// Legacy imported inventory connects to a numbered base-card reference without
+// claiming that a parallel is the base printing.
+const {baseballChecklistInventoryMatches:family,sportsSetKey}=await import('../scripts/topps/public-checklist-policy.mjs');
+assert.equal(sportsSetKey('Baseball Cards 2023 Topps Chrome'),sportsSetKey('2023 Topps Chrome Baseball'));
+const chrome={year:2023,displayName:'2023 Topps Chrome Baseball'};
+const raleigh={player:'Cal Raleigh',cardNumber:'141',section:'Base',variant:'Base'};
+const legacy={categorySlug:'sports-cards',name:'Cal Raleigh [Green Wave] #141 /99',set:'Baseball Cards 2023 Topps Chrome',year:'',player:'',cardNumber:'',subset:'',variant:'Baseball Card'};
+assert.ok(family(legacy,raleigh,chrome));
+assert.ok(!baseballInventoryMatches(legacy,raleigh,chrome),'a related parallel is never asserted to be an exact base printing');
+for(const patch of [{set:'Baseball Cards 2023 Topps Chrome Update'},{set:'Baseball Cards 2023 Topps Chrome Sapphire'},{year:2024},{cardNumber:'142'},{player:'Other Player'},{name:'Cal Raleigh [SP Variation] #141'},{name:'Cal Raleigh [Image Variation] #141'},{name:'Cal Raleigh Autograph #141'},{name:'Cal Raleigh #141 and #142'},{isRelic:true},{isSigned:true},{subset:'Autographs'},{productType:'Lot'},{name:'Cal Raleigh Magenta Speckle 141'}])assert.equal(family({...legacy,...patch},raleigh,chrome),false,JSON.stringify(patch));
+assert.equal(family(legacy,{...raleigh,section:'Autographs'},chrome),false);
+assert.ok(family({...legacy,name:'Cal Raleigh #141'},raleigh,chrome));

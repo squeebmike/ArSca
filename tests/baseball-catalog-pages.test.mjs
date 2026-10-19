@@ -35,7 +35,7 @@ const set=baseballSets[0],card=set.cards[0];
 res=await get(baseballCardPath(set,card),{EBAY_PARTNER_CAMPAIGN_ID:'1234567890'});
 let body=await res.text();assert.ok(body.includes('rel="noopener sponsored"'));assert.ok(body.includes('Affiliate link:'));assert.ok(body.includes('campid=1234567890'));
 deps.listItems=async()=>[{id:'exact',categorySlug:'sports-cards',name:'Store copy',year:2023,set:set.displayName,player:card.player,cardNumber:card.cardNumber,subset:'Base',variant:'Base',price:3,quantity:1},{id:'wrong-parallel',categorySlug:'sports-cards',name:'Wrong gold copy',year:2023,set:set.displayName,player:card.player,cardNumber:card.cardNumber,subset:'Base',variant:'Gold',price:8,quantity:1}];
-body=await(await get(baseballCardPath(set,card))).text();assert.ok(body.includes('/item/exact/'));assert.ok(!body.includes('/item/wrong-parallel/'));
+body=await(await get(baseballCardPath(set,card))).text();assert.ok(body.includes('/item/exact/'));assert.ok(body.includes('/item/wrong-parallel/'));assert.ok(body.includes('Gold')&&body.includes('may include parallels'),'card-family links identify the actual parallel');
 body=await(await get(baseballSetPath(set)+'?q=Juan')).text();assert.ok(body.includes('noindex,follow'));assert.ok(body.includes('Juan Soto'));assert.equal(lastPage.canonicalPath,baseballSetPath(set));
 assert.equal((await get('/baseball/checklists/unknown')).status,404);
 assert.equal((await get('/baseball',{},'HEAD')).status,200);

@@ -192,3 +192,9 @@ console.log('Comic article wiring checks passed');
  assert.match(html,/Series2Copy/);assert.doesNotMatch(html,/ChromeCopy|Series1Copy|OldCopy|WrongCategory|SoldCopy/);
  assert.match(html,/href="\/category\/sports-cards"/);assert.match(html,/Browse current sports-card inventory/);
 }
+
+// Provider sport prefixes do not require editors to attach a set's stock.
+{
+ const html=renderReleaseInventory('2025-topps-series-2-baseball-collector-guide',[{id:'imported',name:'Imported Series 2 copy',categorySlug:'sports-cards',set:'Baseball Cards 2025 Topps Series 2',price:4,quantity:1}],{esc:String,isAvailable:i=>i.quantity>0,itemSlug:i=>i});
+ assert.match(html,/Imported Series 2 copy/);
+}

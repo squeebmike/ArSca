@@ -32,7 +32,7 @@ assert.equal((await get('/baseball/teams/fake')).status,404);
 body=await(await get(path+'?q=nonexistent-player')).text();assert.ok(body.includes('No cards match those filters'));assert.ok(page.robotsNoindex);
 const {set,card}=mariners.rows[0];
 inventory=[{id:'match',name:'Exact store copy',categorySlug:'sports-cards',year:set.year,set:set.displayName,cardNumber:card.cardNumber,player:card.player,subset:'Base',variant:'Base',price:5,quantity:1},{id:'wrong',name:'Wrong parallel',categorySlug:'sports-cards',year:set.year,set:set.displayName,cardNumber:card.cardNumber,player:card.player,subset:'Base',variant:'Gold',price:10,quantity:1}];
-body=await(await get(path)).text();assert.ok(body.includes('/item/match/'));assert.ok(!body.includes('/item/wrong/'));
+body=await(await get(path)).text();assert.ok(body.includes('/item/match/'));assert.ok(body.includes('/item/wrong/'));assert.ok(body.includes('Gold')&&body.includes('including identified parallels'));
 inventory[0].quantity=0;body=await(await get(path)).text();assert.ok(!body.includes('/item/match/'));
 const multi=baseballSets[0].cards.find(c=>c.cardNumber==='43');
 for(const name of ['St. Louis Cardinals','Los Angeles Dodgers','New York Mets'])assert.ok(teams.find(t=>t.name===name).rows.some(r=>r.card===multi));

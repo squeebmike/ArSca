@@ -37,7 +37,7 @@ for(const set of footballSets){
 const set=footballSets[0],card=set.cards[0];
 const exact={id:'exact',name:'Exact store copy',categorySlug:'sports-cards',year:set.year,set:set.displayName,player:card.player,cardNumber:card.cardNumber,subset:'Base',variant:'Base',quantity:1,price:5};
 stock=[exact,{...exact,id:'wrong',variant:'Gold'},{...exact,id:'sold',quantity:0},{...exact,id:'unpriced',price:0}];
-const body=await(await get(footballCardPath(set,card))).text();assert.ok(body.includes('/item/exact/'));for(const id of ['wrong','sold','unpriced'])assert.ok(!body.includes('/item/'+id+'/'));
+const body=await(await get(footballCardPath(set,card))).text();assert.ok(body.includes('/item/exact/'));assert.ok(body.includes('/item/wrong/')&&body.includes('Gold')&&body.includes('may include parallels'));for(const id of ['sold','unpriced'])assert.ok(!body.includes('/item/'+id+'/'));
 await get(footballSetPath(set)+'?q=Kyler');assert.ok(output.robotsNoindex);assert.equal(output.canonicalPath,footballSetPath(set));
 assert.equal((await get('/football','HEAD')).status,200);assert.equal(await(await get('/football','HEAD')).text(),'');
 assert.equal(await get('/other'),null);
