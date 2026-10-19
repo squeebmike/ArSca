@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import {fetchArticles} from '../scripts/comic-articles.mjs';
 import fs from 'node:fs';
 import { renderReleaseInventory, comicKey, sameComic, parseBookLines, parseFacts, sanitizeRichText, shapeArticle, bookStatus, renderBuyBox, handleArticlesRequest, readingMinutes, articleTopics, relatedArticles, renderArticlePage } from '../scripts/comic-articles.mjs';
 
@@ -164,4 +165,22 @@ console.log('Comic article wiring checks passed');
  for(const [slug,yes,no] of [['pokemon-black-bolt-2025-collector-guide','Black Bolt copy','White Flare copy'],['pokemon-white-flare-2025-collector-guide','White Flare copy','Black Bolt copy']]){
  const html=renderReleaseInventory(slug,stock,dep);assert.ok(html.includes(yes));assert.ok(!html.includes(no)&&!html.includes('Other Zekrom')&&!html.includes('Sold Black Bolt'));
  }
+}
+
+// Every CMS page contributes to discovery; failed pages never cache partial data.
+{
+ const previousFetch=globalThis.fetch;
+ const rows=Array.from({length:205},(_,i)=>({id:'paged-'+i,fieldData:{name:'Guide '+i,slug:'guide-'+i},lastPublished:'2026-10-19'}));
+ const offsets=[];let writes=0;
+ const env={WEBFLOW_TOKEN:'test',LBA_KV:{get:async()=>null,put:async()=>{writes++;}}};
+ try{
+  globalThis.fetch=async url=>{const offset=Number(new URL(url).searchParams.get('offset'));offsets.push(offset);return {ok:true,json:async()=>({items:rows.slice(offset,offset+100),pagination:{total:205}})};};
+  const articles=await fetchArticles(env);
+  assert.equal(articles.length,205);assert.equal(articles.at(-1).slug,'guide-204');assert.deepEqual(offsets,[0,100,200]);assert.equal(writes,1);
+  writes=0;
+  globalThis.fetch=async url=>Number(new URL(url).searchParams.get('offset'))===0?{ok:true,json:async()=>({items:rows.slice(0,100),pagination:{total:205}})}:{ok:false,status:503};
+  await assert.rejects(fetchArticles(env),/Webflow articles 503/);assert.equal(writes,0,'partial library must not enter shared cache');
+  globalThis.fetch=async()=>({ok:true,json:async()=>({items:[],pagination:{total:205}})});
+  await assert.rejects(fetchArticles(env),/Incomplete Webflow/);
+ }finally{globalThis.fetch=previousFetch;}
 }

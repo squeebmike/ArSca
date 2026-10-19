@@ -166,10 +166,30 @@ export async function fetchArticles(env,ctx) {
   if (!env.WEBFLOW_TOKEN) return [];
   return cachedPublicCatalog(env,ctx,'published-articles-v2',async signal=>{
   const headers = { Authorization: `Bearer ${env.WEBFLOW_TOKEN}`, accept: 'application/json' };
-  const res = await fetch(`https://api.webflow.com/v2/collections/${WF_ARTICLES}/items/live?limit=100`, { headers,signal });
-  if (!res.ok) throw new Error(`Webflow articles ${res.status}`);
-  const payload = await res.json().catch(() => null);
-  return (payload?.items || [])
+  const items=[],seen=new Set();
+  let complete=false;
+  // Webflow caps each response at 100. Never cache an incomplete library as
+  // success: a failed later page must preserve the existing error behavior.
+  for(let offset=0;offset<10000;){
+    const res = await fetch(`https://api.webflow.com/v2/collections/${WF_ARTICLES}/items/live?limit=100&offset=${offset}`, { headers,signal });
+    if (!res.ok) throw new Error(`Webflow articles ${res.status}`);
+    const payload = await res.json();
+    if(!Array.isArray(payload?.items))throw new Error('Invalid Webflow article page');
+    const batch=payload.items;
+    for(const item of batch){
+      if(item.id&&seen.has(item.id))continue;
+      if(item.id)seen.add(item.id);
+      items.push(item);
+    }
+    offset+=batch.length;
+    const total=payload.pagination?.total;
+    if(Number.isInteger(total)&&total>=0){
+      if(offset>=total){complete=true;break;}
+      if(!batch.length)throw new Error('Incomplete Webflow article pagination');
+    }else if(batch.length<100){complete=true;break;}
+  }
+  if(!complete)throw new Error('Webflow article pagination limit exceeded');
+  return items
     .filter(item => !item.isArchived && !item.isDraft)
     .map(shapeArticle).filter(Boolean)
     .sort((a, b) => String(b.publishedAt || '').localeCompare(String(a.publishedAt || '')));
