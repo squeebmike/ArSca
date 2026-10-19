@@ -19,6 +19,7 @@ on:
       - scripts/database-explorer.mjs
       - scripts/comic-articles.mjs
       - scripts/pocket-guides.mjs
+      - scripts/upcoming-sets.mjs
       - tests/pocket-guides.test.mjs
       - scripts/book-alerts.mjs
       - scripts/book-alert-ui.mjs

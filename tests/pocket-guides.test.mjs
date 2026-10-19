@@ -10,7 +10,7 @@ const get=(path,method='GET')=>handlePocketGuides(new Request('https://www.thema
 const entries=pocketGuideEntries(articles),seen=new Set();
 assert.equal(entries.length,new Set(entries.map(e=>e.url)).size,'one canonical destination per entry');
 assert.equal(pocketGuidePaths.length,pocketGuideCategories.length+1);
-for(const path of pocketGuidePaths){
+for(const path of pocketGuidePaths.filter(p=>p!=='/pocket-guides/upcoming')){
  let number=1;while(true){const url=path+(number>1?'?page='+number:''),r=await get(url);assert.equal(r.status,200);const body=await r.text(),{document:d}=parseHTML(body);
  assert.equal(page.canonicalPath,url);assert.equal(page.robotsNoindex,false);assert.equal(page.jsonLd['@type'],'CollectionPage');assert.equal(d.querySelectorAll('h1').length,1);
  for(const link of d.querySelectorAll('.pg-guide'))seen.add(link.getAttribute('href'));
@@ -32,3 +32,5 @@ deps.loadArticles=async()=>{throw Error('CMS down');};assert.equal((await get('/
 console.log('Pocket Guides: complete HTML discovery, topic pagination, search safety, schema, theme, canonical URLs and honest outages passed');
 
 assert.ok(fs.readFileSync(new URL('../wrangler.deploy.jsonc',import.meta.url),'utf8').includes('www.themanapocket.com/pocket-guides*'), 'root query pagination and search must match the Worker route');
+
+body=await(await get('/pocket-guides/upcoming')).text();assert.ok(body.includes('North American Commander decks')&&body.includes('Topps direct preorder opens'));assert.ok(!JSON.stringify(page.jsonLd).includes('Offer'));assert.equal(page.canonicalPath,'/pocket-guides/upcoming');body=await(await get('/pocket-guides/upcoming?category=pokemon')).text();assert.ok(body.includes('Delta Reign'));assert.ok(!body.includes('id="star-trek"'));assert.equal((await get('/pocket-guides/upcoming?category=bad')).status,404);
