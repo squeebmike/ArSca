@@ -56,6 +56,7 @@ on:
       - scripts/secret-lair/cats-2026.mjs
       - scripts/secret-lair/elevator-2024.mjs
       - scripts/secret-lair/summer-2025.mjs
+      - scripts/secret-lair/deadpool-2025.mjs
       - scripts/topps/football-seed.mjs
       - scripts/baseball-catalog-pages.mjs
       - scripts/baseball-section-pages.mjs
@@ -64,6 +65,7 @@ on:
       - scripts/baseball-player-pages.mjs
       - scripts/baseball-odds.mjs
       - scripts/topps/baseball-seed.mjs
+      - scripts/topps/baseball-2019.mjs
       - scripts/topps/baseball-expansion.mjs
       - scripts/topps/baseball-current.mjs
       - scripts/topps/public-checklist-policy.mjs

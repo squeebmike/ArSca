@@ -1,3 +1,4 @@
+import {deadpool2025SecretLairDrops} from './deadpool-2025.mjs';
 import {summer2025SecretLairDrops} from './summer-2025.mjs';
 import {elevator2024SecretLairDrops} from './elevator-2024.mjs';
 import {cats2026SecretLairDrops} from './cats-2026.mjs';
@@ -11,4 +12,4 @@ import {cornMazeSecretLairDrops} from './corn-maze-2026.mjs';
 import {winter2024SecretLairDrops} from './winter-2024.mjs';
 import {spring2024SecretLairDrops} from './spring-2024.mjs';
 import {avatarSecretLairDrops} from './avatar-2025.mjs';
-export const secretLairDrops=[...marvelSecretLairDrops,...finalFantasyDrops,...sonicSecretLairDrops,...hobbitSecretLairDrops,...cornMazeSecretLairDrops,...winter2024SecretLairDrops,...spring2024SecretLairDrops,...avatarSecretLairDrops,...stockedSecretLairDrops,...goblinStormSecretLairDrops,...cats2026SecretLairDrops,...elevator2024SecretLairDrops,...summer2025SecretLairDrops];
+export const secretLairDrops=[...marvelSecretLairDrops,...finalFantasyDrops,...sonicSecretLairDrops,...hobbitSecretLairDrops,...cornMazeSecretLairDrops,...winter2024SecretLairDrops,...spring2024SecretLairDrops,...avatarSecretLairDrops,...stockedSecretLairDrops,...goblinStormSecretLairDrops,...cats2026SecretLairDrops,...elevator2024SecretLairDrops,...summer2025SecretLairDrops,...deadpool2025SecretLairDrops];

@@ -15,7 +15,7 @@ assert.equal(paths.length,2+baseballSets.length+baseballSets.reduce((n,s)=>n+s.c
 const titles=new Set(),h1s=new Set();
 for(const set of baseballSets) {
  const numbers=new Set(set.cards.map(c=>c.cardNumber));assert.equal(numbers.size,set.cards.length);
- const expectedCounts={'2023-topps-series-1':330,'2023-topps-series-2':330,'2023-topps-update':329,'2019-topps-chrome':204,'2023-bowman':100,'2023-bowman-chrome':100,'2023-topps-chrome':220,'2025-topps-series-1-baseball':350,'2026-topps-series-1-baseball':350,'2025-topps-update-series-baseball':350,'2026-topps-series-2-baseball':350,'2025-topps-series-2-baseball':350,'2026-topps-update-series-baseball':350,'2025-bowman-baseball':100,'2026-bowman-baseball':100,'2025-bowman-draft-baseball':200,'2026-bowman-chrome-baseball':100,'2026-topps-holiday-baseball':200};
+ const expectedCounts={'2019-topps-series-1-baseball':350,'2019-topps-series-2-baseball':350,'2023-topps-series-1':330,'2023-topps-series-2':330,'2023-topps-update':329,'2019-topps-chrome':204,'2023-bowman':100,'2023-bowman-chrome':100,'2023-topps-chrome':220,'2025-topps-series-1-baseball':350,'2026-topps-series-1-baseball':350,'2025-topps-update-series-baseball':350,'2026-topps-series-2-baseball':350,'2025-topps-series-2-baseball':350,'2026-topps-update-series-baseball':350,'2025-bowman-baseball':100,'2026-bowman-baseball':100,'2025-bowman-draft-baseball':200,'2026-bowman-chrome-baseball':100,'2026-topps-holiday-baseball':200};
  assert.equal(set.cards.length,expectedCounts[set.id]);
  for(let page=1;page<=Math.ceil(set.cards.length/60);page++) {
   const path=baseballSetPath(set)+(page>1?'?page='+page:'');
@@ -57,3 +57,5 @@ assert.equal((await get(sectionPath+'?page=3')).status,200);assert.equal((await 
 body=await(await get(sectionPath+'?q=Burleson')).text();assert.equal(lastPage.robotsNoindex,true);assert.equal(lastPage.canonicalPath,sectionPath);assert.ok(body.includes('Alec Burleson'));
 assert.equal((await get('/baseball/checklists/2023-topps-chrome/sections/unknown')).status,404);
 console.log(paths.length+' sitemap URLs, base and reviewed insert/autograph pages, pagination and exact-stock affiliate gates passed');
+
+for(const [id,first,last] of [['2019-topps-series-1-baseball',1,350],['2019-topps-series-2-baseball',351,700]]){const s=baseballSets.find(s=>s.id===id);assert.deepEqual(s.cards.map(c=>Number(c.cardNumber)),Array.from({length:350},(_,i)=>first+i));assert.equal(Number(s.cards.at(-1).cardNumber),last);assert.ok(!s.cards.some(c=>c.variant!=='Base'));}
