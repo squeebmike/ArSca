@@ -47,7 +47,7 @@ assert.equal(renderReleaseInventory('another-article',stock,deps),'');
 console.log('Department facts, exact filters, pagination, injection safety, product analytics privacy and release inventory matching passed');
 
 for(const [articleSlug,guide] of Object.entries(RELEASE_GUIDES)){
- const exact={id:'matching',name:'Saved copy',categorySlug:guide.game,set:guide.sets[0],quantity:1,price:12};
+ const exact={id:'matching',name:'Saved copy',categorySlug:guide.categorySlug||guide.game,set:guide.sets[0],quantity:1,price:12};
  const html=renderReleaseInventory(articleSlug,[exact,{...exact,id:'wrong',set:'Different release',setCode:'wrong'},{...exact,id:'sold',quantity:0},{...exact,id:'unpriced',price:0},{...exact,id:'wrong-game',categorySlug:'other'}],deps);
  assert.ok(html.includes('/item/matching/'),articleSlug);assert.ok(!html.includes('/item/wrong/')&&!html.includes('/item/sold/')&&!html.includes('/item/unpriced/')&&!html.includes('/item/wrong-game/'),articleSlug);
  assert.ok(html.includes(guide.checklist),articleSlug+' checklist');
