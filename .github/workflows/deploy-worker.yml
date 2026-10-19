@@ -31,6 +31,7 @@ on:
       - scripts/catalog-inventory.mjs
       - scripts/catalog-highlights.mjs
       - scripts/catalog-availability.mjs
+      - scripts/public-catalog-cache.mjs
       - scripts/reference-set-cache.mjs
       - scripts/collection-tools.mjs
       - scripts/pokemon-catalog-pages.mjs
@@ -47,7 +48,6 @@ on:
       - scripts/secret-lair/spring-2024.mjs
       - scripts/secret-lair/avatar-2025.mjs
       - scripts/secret-lair/stocked-drops.mjs
-      - scripts/secret-lair/goblin-storm-2026.mjs
       - scripts/secret-lair/goblin-storm-2026.mjs
       - scripts/topps/football-seed.mjs
       - scripts/baseball-catalog-pages.mjs

@@ -1,3 +1,4 @@
+import {cachedPublicCatalog} from './scripts/public-catalog-cache.mjs';
 import { renderBookAlertForm, alertBookTitle } from './scripts/book-alert-ui.mjs';
 import { handleBookAlertRequest, handleAccountBookAlerts, runBookAlerts } from './scripts/book-alerts.mjs';
 import { isBcwItem, isBcwPublished, catalogSelection, renderBcwCatalog, renderBcwProduct } from './scripts/bcw-storefront.mjs';
@@ -2456,7 +2457,7 @@ function mtgPriceLines(card) {
 // same [data-wo-theme] "My Pocket" button/localStorage key, so a visitor's
 // team/Pokemon/MTG theme choice carries over here exactly as it does on every
 // Webflow page, with zero separate theme logic to maintain in this Worker.
-const WO_UI_SCRIPT_URL = 'https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@08bbbfc/wo-ui.js';
+const WO_UI_SCRIPT_URL = 'https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@577670d/wo-ui.js';
 // Site logo -- the same asset wo-ui.js's own MANA_LOGO/BRAND_LOGO constants
 // and every JS-built fallback nav (account.js, preorders.js) already use
 // sitewide, served from Webflow's actual CDN host (not the raw S3 bucket
@@ -2557,7 +2558,7 @@ function currentSiteChrome() { return siteChrome; }
 async function loadSiteChrome(ctx) {
   const cached = await caches.default.match(SITE_CHROME_CACHE_KEY).catch(() => null);
   if (cached) { const data = await cached.json().catch(() => null); if (data?.nav) return data; }
-  const res = await fetch(SITE_CHROME_SOURCE, { headers: { Accept: 'text/html' } });
+  const res = await fetch(SITE_CHROME_SOURCE, { headers: { Accept: 'text/html' }, signal:AbortSignal.timeout(1800) });
   if (!res.ok) throw new Error(`site chrome page answered ${res.status}`);
   const chrome = extractSiteChrome(await res.text());
   if (!chrome) throw new Error('navbar not found on the site chrome page');
@@ -2586,13 +2587,13 @@ function mtgFallbackChromeCss() {
     `.navbar6_container{display:flex;align-items:center;justify-content:space-between;width:100%;max-width:1200px;margin:0 auto;gap:16px;position:relative}` +
     `.navbar6_logo-link{text-decoration:none;display:flex;align-items:center}.navbar6_logo{max-height:60px;max-width:220px;width:auto;height:auto;object-fit:contain;display:block}` +
     `.navbar6_menu{display:flex;align-items:center;gap:20px}.navbar6_menu-left{display:flex;align-items:center;gap:16px}` +
-    `.navbar6_link{color:#e8e6f4;text-decoration:none;font-size:14px;font-weight:600}.navbar6_link:hover{color:#8bd450}` +
-    `.navbar6_menu-dropdown{position:relative}.navbar6_dropdown-toggle{background:none;border:none;color:#e8e6f4;font:inherit;font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:4px;padding:0}.navbar6_dropdown-toggle:hover{color:#8bd450}` +
+    `.navbar6_link{color:#e8e6f4;text-decoration:none;font-size:14px;font-weight:600}.navbar6_link:hover{color:var(--wo-accent,#8bd450)}` +
+    `.navbar6_menu-dropdown{position:relative}.navbar6_dropdown-toggle{background:none;border:none;color:#e8e6f4;font:inherit;font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:4px;padding:0}.navbar6_dropdown-toggle:hover{color:var(--wo-accent,#8bd450)}` +
     `.mp-caret{font-size:10px;transition:transform .2s ease}.navbar6_menu-dropdown.is-open .mp-caret{transform:rotate(180deg)}` +
     `.navbar6_dropdown-list{position:absolute;top:calc(100% + 12px);left:0;min-width:200px;background:#0b0f2e;border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:8px;display:none;flex-direction:column;gap:2px;box-shadow:0 12px 30px rgba(0,0,0,.45)}` +
     `.navbar6_menu-dropdown.is-open .navbar6_dropdown-list{display:flex}` +
-    `.navbar6_dropdown-link{padding:8px 10px;border-radius:6px;color:#e8e6f4;text-decoration:none;font-size:14px;white-space:nowrap}.navbar6_dropdown-link:hover{background:rgba(255,255,255,.06);color:#8bd450}` +
-    `.wo-team-btn{display:inline-block;border-radius:100px;padding:7px 16px;font-size:13px;font-weight:800;background:#8bd450;color:#001A72;text-decoration:none;cursor:pointer;white-space:nowrap}` +
+    `.navbar6_dropdown-link{padding:8px 10px;border-radius:6px;color:#e8e6f4;text-decoration:none;font-size:14px;white-space:nowrap}.navbar6_dropdown-link:hover{background:rgba(255,255,255,.06);color:var(--wo-accent,#8bd450)}` +
+    `.wo-team-btn{display:inline-block;border-radius:100px;padding:7px 16px;font-size:13px;font-weight:800;background:var(--wo-accent,#8bd450);color:#001A72;text-decoration:none;cursor:pointer;white-space:nowrap}` +
     `.navbar6_menu-button{display:none;background:none;border:none;cursor:pointer;padding:8px;margin-left:4px}` +
     `.menu-icon{width:22px;height:16px;position:relative}.menu-icon_line-top,.menu-icon_line-middle,.menu-icon_line-bottom{position:absolute;left:0;right:0;height:2px;background:#fff;transition:transform .25s ease,opacity .25s ease}` +
     `.menu-icon_line-top{top:0}.menu-icon_line-middle{top:7px}.menu-icon_line-bottom{top:14px}` +
@@ -2604,8 +2605,8 @@ function mtgFallbackChromeCss() {
     `.navbar6_menu-dropdown.is-open .navbar6_dropdown-list{display:flex}.navbar6_menu-right{width:100%}.wo-team-btn{display:block;text-align:center}}` +
     `.Footer.Section{margin-top:48px;background:#080808;padding:28px 20px;border-top:1px solid rgba(255,255,255,.08)}` +
     `.Footer .Content.Wrapper{max-width:1200px;margin:0 auto}.Footer .Flex.Space{display:flex;justify-content:space-between;flex-wrap:wrap;gap:16px}` +
-    `.footer-links{display:flex;gap:18px;flex-wrap:wrap}.footer-link{color:#fff;font-size:14px;font-weight:600;text-decoration:none}.footer-link:hover{color:#8bd450}` +
-    `.Social.Icons{display:flex;gap:14px}.Social.Icons a{color:#c8c4dc;font-size:13px;text-decoration:none}.Social.Icons a:hover{color:#8bd450}`;
+    `.footer-links{display:flex;gap:18px;flex-wrap:wrap}.footer-link{color:#fff;font-size:14px;font-weight:600;text-decoration:none}.footer-link:hover{color:var(--wo-accent,#8bd450)}` +
+    `.Social.Icons{display:flex;gap:14px}.Social.Icons a{color:#c8c4dc;font-size:13px;text-decoration:none}.Social.Icons a:hover{color:var(--wo-accent,#8bd450)}`;
 }
 function mtgPageShell({ title, description, canonicalPath, ogImage, ogType, jsonLd, bodyHtml, robotsNoindex }) {
   const jsonLdList = [...(Array.isArray(jsonLd) ? jsonLd.filter(Boolean) : (jsonLd ? [jsonLd] : [])), storeOrganization];
@@ -2618,7 +2619,8 @@ function mtgPageShell({ title, description, canonicalPath, ogImage, ogType, json
   const twitterTags = `<meta name="twitter:card" content="summary_large_image">` +
     (ogImage ? `<meta name="twitter:image" content="${mtgEscapeHtml(ogImage)}">` : '');
   const robotsTag = robotsNoindex ? `<meta name="robots" content="noindex,follow">` : '';
-  const chrome = currentSiteChrome();
+  const originalChrome = currentSiteChrome();
+  const chrome=originalChrome?{...originalChrome,bodyEnd:originalChrome.bodyEnd.replace(/wo-scripts@[^/]+\/wo-ui\.js/g,'wo-scripts@577670d/wo-ui.js')}:null;
   const product = jsonLdList.find(block=>block['@type']==='Product');
   const itemRoute = canonicalPath.match(/^\/(item|preorder|book)\/([^/]+)/);
   const productView = product && itemRoute ? productViewAnalytics({id:decodeURIComponent(itemRoute[2]),name:product.name,price:product.offers?.price,category:itemRoute[1]==='preorder'?'Comic preorder':itemRoute[1]==='book'?'Comic backorder':product.additionalProperty?.find(f=>f.name==='Category')?.value||''}) : '';
@@ -2628,14 +2630,14 @@ function mtgPageShell({ title, description, canonicalPath, ogImage, ogType, json
     `<meta property="og:type" content="${mtgEscapeHtml(ogType || 'website')}"><meta property="og:site_name" content="The Mana Pocket">` +
     `<meta property="og:title" content="${mtgEscapeHtml(title)}"><meta property="og:description" content="${mtgEscapeHtml(description)}">${ogImageTag}${twitterTags}` +
     `${jsonLdBlock}` +
-    `<style>*{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#0a0710;color:#f2eefc;padding:0 0 64px;padding-top:var(--nav-height,92px)}a{color:#8bd450}` +
+    `<style>*{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--wo-bg,#0a0710);color:var(--wo-text,#f2eefc);padding:0 0 64px;padding-top:var(--nav-height,92px)}a{color:var(--wo-accent,#8bd450)}` +
     // Base nav/footer look before wo-ui.js's theme picker (if the visitor
     // has never picked one) applies its own !important overrides on these
     // same selectors -- matches the site's default navy/dark chrome. Fixed
     // (not sticky) + the scrolled/is-hidden classes below replicate the real
     // site's own scroll-hide/blur nav behavior (see mtgSiteNavScript).
     (chrome ? '' : mtgFallbackChromeCss()) +
-    `.mp-wrap{max-width:1080px;margin:0 auto;padding:24px 16px 0}.mp-crumb{font-size:13px;opacity:.65;margin-bottom:16px}.mp-crumb a{color:#c8b8ff}h1{font-size:clamp(22px,4vw,32px);margin:0 0 8px}.mp-sub{opacity:.7;font-size:14px;margin-bottom:24px}.mp-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:16px}.mp-card{display:block;border:1px solid rgba(255,255,255,.12);border-radius:12px;overflow:hidden;background:rgba(255,255,255,.03);text-decoration:none;color:inherit}.mp-card img{width:100%;display:block;background:#16101f}.mp-card-body{padding:10px 12px}.mp-card>.mp-card-shopping{padding:0 12px 10px;font-size:13px;overflow-wrap:anywhere}.mp-card>a{color:inherit;text-decoration:none}.mp-card-name{font-size:13px;font-weight:700;line-height:1.3}.mp-card-price{font-size:12px;color:#8bd450;font-weight:700;margin-top:4px}.mp-set-list{display:grid;gap:10px}.mp-set-row{display:flex;justify-content:space-between;gap:12px;padding:12px 16px;border:1px solid rgba(255,255,255,.1);border-radius:10px;text-decoration:none;color:inherit}.mp-set-row:hover{border-color:#8bd450}.mp-detail{display:grid;grid-template-columns:280px 1fr;gap:32px}@media(max-width:640px){.mp-detail{grid-template-columns:1fr}}.mp-detail img{width:100%;border-radius:14px}.mp-prices{display:flex;gap:10px;flex-wrap:wrap;margin:16px 0}.mp-price-pill{background:rgba(139,212,80,.15);color:#8bd450;font-weight:800;padding:8px 14px;border-radius:999px;font-size:14px}.mp-oracle{white-space:pre-wrap;line-height:1.6;font-size:14px;opacity:.9;margin-top:16px}.mp-meta{font-size:13px;opacity:.65;margin-top:8px}</style></head>` +
+    `.mp-wrap{max-width:1080px;margin:0 auto;padding:24px 16px 0}.mp-crumb{font-size:13px;opacity:.65;margin-bottom:16px}.mp-crumb a{color:#c8b8ff}h1{font-size:clamp(22px,4vw,32px);margin:0 0 8px}.mp-sub{opacity:.7;font-size:14px;margin-bottom:24px}.mp-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:16px}.mp-card{display:block;border:1px solid rgba(255,255,255,.12);border-radius:12px;overflow:hidden;background:rgba(255,255,255,.03);text-decoration:none;color:inherit}.mp-card img{width:100%;display:block;background:var(--wo-surface,#16101f)}.mp-card-body{padding:10px 12px}.mp-card>.mp-card-shopping{padding:0 12px 10px;font-size:13px;overflow-wrap:anywhere}.mp-card>a{color:inherit;text-decoration:none}.mp-card-name{font-size:13px;font-weight:700;line-height:1.3}.mp-card-price{font-size:12px;color:var(--wo-accent,#8bd450);font-weight:700;margin-top:4px}.mp-set-list{display:grid;gap:10px}.mp-set-row{display:flex;justify-content:space-between;gap:12px;padding:12px 16px;border:1px solid rgba(255,255,255,.1);border-radius:10px;text-decoration:none;color:inherit}.mp-set-row:hover{border-color:var(--wo-accent,#8bd450)}.mp-detail{display:grid;grid-template-columns:280px 1fr;gap:32px}@media(max-width:640px){.mp-detail{grid-template-columns:1fr}}.mp-detail img{width:100%;border-radius:14px}.mp-prices{display:flex;gap:10px;flex-wrap:wrap;margin:16px 0}.mp-price-pill{background:var(--wo-surface-alt,rgba(139,212,80,.15));color:var(--wo-accent,#8bd450);font-weight:800;padding:8px 14px;border-radius:999px;font-size:14px}.mp-oracle{white-space:pre-wrap;line-height:1.6;font-size:14px;opacity:.9;margin-top:16px}.mp-meta{font-size:13px;opacity:.65;margin-top:8px}</style></head>` +
     (chrome
       ? `<body>${chrome.nav}<div class="mp-wrap">${bodyHtml}</div>${productView}${chrome.footer || mtgSiteFooter()}${chrome.bodyEnd}</body></html>`
       : `<body>${mtgSiteHeader()}<div class="mp-wrap">${bodyHtml}</div>${productView}${mtgSiteFooter()}` +
@@ -2772,11 +2774,14 @@ function categoryLandingHref(slug) { return `/category/${encodeURIComponent(slug
 // visibly sat in the live shop grid as a clickable card that 404'd the
 // instant it was clicked. See the /item/{id} route handler below for the
 // other half of that fix.
+const STOREFRONT_DATA_KEYS=["archivedAt", "brand", "cardNumber", "cardSubset", "category", "checklistSection", "collectorNumber", "collector_number", "comicMetadata", "condition", "configuration", "customUrl", "description", "dropship", "ean", "finish", "focComicDetail", "focReceivedAt", "game", "grade", "grader", "grading_company", "gtin", "image", "imageUrl", "image_url", "images", "img", "isSealed", "is_relic", "is_sealed", "is_signed", "isbn", "itemType", "item_type", "language", "lifecycle", "linkUrl", "manufacturer", "manufacturerPartNumber", "manufacturer_part_number", "market", "marketPrice", "minPrice", "mpn", "name", "number", "onlineListed", "photo", "photoDataUrl", "photos", "player", "priceOverride", "priceRule", "productType", "product_type", "qty", "quantity", "rarity", "rawMarketPrice", "reviews", "scryfallId", "scryfall_id", "series", "set", "setCode", "set_code", "showSoldOut", "signature_value", "signed_by", "sku", "soldAt", "sold_at", "source", "sport", "status", "subject", "subset", "supplierAvailability", "supplierCategoryPaths", "supplierSellingUnit", "supplierSku", "supplierSpecifications", "supplierUpc", "tcgPlayerId", "tcgplayerId", "tcgplayerProductId", "team", "thumbnail", "title", "treatment", "type", "upc", "variant", "vendor", "year"];
+const STOREFRONT_SELECT='id,status,created_at,updated_at,'+STOREFRONT_DATA_KEYS.map(k=>'sf_'+k+':data->'+k).join(',')+',sf_raw_scryfallId:data->raw->scryfallId,sf_raw_tcgPlayerId:data->raw->tcgPlayerId,sf_raw_setCode:data->raw->setCode,sf_ref_scryfallId:data->externalRefs->scryfallId,sf_ref_tcgPlayerId:data->externalRefs->tcgPlayerId';
+function storefrontProjectedRow(row){if(row.data)return row;return {...row,data:{...Object.fromEntries(STOREFRONT_DATA_KEYS.map(k=>[k,row['sf_'+k]])),raw:{scryfallId:row.sf_raw_scryfallId,tcgPlayerId:row.sf_raw_tcgPlayerId,setCode:row.sf_raw_setCode},externalRefs:{scryfallId:row.sf_ref_scryfallId,tcgPlayerId:row.sf_ref_tcgPlayerId}}};}
 async function fetchAllListableStorefrontItems(env, options = {}) {
   const rows = [];
   let offset = 0;
   while (true) {
-    const page = await supabaseAdminFetch(env, `inventory_items?store_id=eq.${encodeURIComponent(ITEM_DETAIL_STORE_ID)}&select=id,data,status,created_at,updated_at&order=updated_at.desc,id.asc&limit=1000&offset=${offset}`, options);
+    const page = await supabaseAdminFetch(env, `inventory_items?store_id=eq.${encodeURIComponent(ITEM_DETAIL_STORE_ID)}&select=${STOREFRONT_SELECT}&order=updated_at.desc,id.asc&limit=1000&offset=${offset}`, options);
     if (!page.response?.ok) throw new Error('Storefront catalog unavailable');
     const batch = page.data || [];
     rows.push(...batch);
@@ -2784,7 +2789,7 @@ async function fetchAllListableStorefrontItems(env, options = {}) {
     offset += 1000;
     if (offset >= 50000) break;
   }
-  return rows.map(shapeStorefrontItem).filter(item => (isBcwItem(item) ? isBcwPublished(item) : isStorefrontItemListable(item)));
+  return rows.map(storefrontProjectedRow).map(shapeStorefrontItem).filter(item => (isBcwItem(item) ? isBcwPublished(item) : isStorefrontItemListable(item)));
 }
 
 // Every /item/{id} page view used to mean a full 1000-row-paged catalog
@@ -2798,7 +2803,7 @@ const ALL_LISTABLE_ITEMS_CACHE_KEY = new Request('https://internal.themanapocket
 async function fetchAllListableStorefrontItemsCached(env, ctx, signal) {
   const cached = await caches.default.match(ALL_LISTABLE_ITEMS_CACHE_KEY);
   if (cached) return cached.json();
-  const items = await fetchAllListableStorefrontItems(env, signal?{signal}:{});
+  const items = await cachedPublicCatalog(env,ctx,'storefront-'+ITEM_DETAIL_STORE_ID,sharedSignal=>fetchAllListableStorefrontItems(env,{signal:sharedSignal}));
   const response = json(items, 200, { 'Cache-Control': 'public, max-age=180' });
   if (ctx?.waitUntil) ctx.waitUntil(caches.default.put(ALL_LISTABLE_ITEMS_CACHE_KEY, response.clone()));
   return items;
@@ -6764,9 +6769,11 @@ async function routeRequest(request, env, ctx) {
       // storefront once a store's stock passed 1000 items -- older untouched
       // items just never showed up for customers. Page through fully.
       const rows = [];
+      const sourceMode=storefrontCleanText(settings?.[0]?.modules?.inventorySource||'',40).toLowerCase();
+      const sharedItems=storeId===ITEM_DETAIL_STORE_ID&&!['webflow','hybrid'].includes(sourceMode)?await fetchAllListableStorefrontItemsCached(env,ctx):null;
       let storefrontOffset = 0;
-      let lastResponse = null;
-      while (true) {
+      let lastResponse = sharedItems?{ok:true}:null;
+      while (!sharedItems) {
         const page = await supabaseAdminFetch(env, `inventory_items?store_id=eq.${encodeURIComponent(storeId)}&select=id,data,status,created_at,updated_at&order=updated_at.desc,id.asc&limit=1000&offset=${storefrontOffset}`);
         lastResponse = page.response;
         if (!page.response?.ok) break;
@@ -6778,7 +6785,7 @@ async function routeRequest(request, env, ctx) {
       const response = lastResponse;
       if (!response?.ok) return json({ ok:false, error:'Inventory unavailable' }, 502);
       const linkedWfIds = new Set((rows || []).map(row => row.data?.wfId || row.data?.webflowId).filter(Boolean).map(String));
-      let items = (rows || []).map(shapeStorefrontItem).filter(item=>isBcwItem(item)?isBcwPublished(item):isStorefrontItemListable(item));
+      let items = sharedItems || (rows || []).map(shapeStorefrontItem).filter(item=>isBcwItem(item)?isBcwPublished(item):isStorefrontItemListable(item));
       const inventorySource = storefrontCleanText(settings?.[0]?.modules?.inventorySource || '',40).toLowerCase();
       if ((inventorySource === 'webflow' || inventorySource === 'hybrid') && env.WEBFLOW_TOKEN) {
         const webflowItems=[];
@@ -7495,11 +7502,11 @@ async function routeRequest(request, env, ctx) {
           `<option value="">Choose a rating</option><option value="5">5 - Excellent</option><option value="4">4 - Good</option><option value="3">3 - Okay</option><option value="2">2 - Not great</option><option value="1">1 - Poor</option></select></label>` +
           `<label style="font-size:12px;opacity:.7">Your review<textarea name="text" maxlength="2000" rows="3" required style="width:100%;margin-top:4px;padding:8px;border-radius:6px;box-sizing:border-box;background:var(--wo-surface-alt,#222);color:inherit;border:1px solid rgba(255,255,255,.2)"></textarea></label>` +
           `<label style="font-size:12px;opacity:.7">Your name (optional)<input name="name" maxlength="80" style="width:100%;margin-top:4px;padding:8px;border-radius:6px;box-sizing:border-box;background:var(--wo-surface-alt,#222);color:inherit;border:1px solid rgba(255,255,255,.2)"></label>` +
-          `<button type="submit" class="mp-card" style="padding:10px;text-align:center;cursor:pointer;background:rgba(139,212,80,.15);border:none;color:#8bd450;font-weight:700">Submit review</button>` +
+          `<button type="submit" class="mp-card" style="padding:10px;text-align:center;cursor:pointer;background:var(--wo-surface-alt,rgba(139,212,80,.15));border:none;color:var(--wo-accent,#8bd450);font-weight:700">Submit review</button>` +
           `<div data-review-status style="font-size:12px;color:#ff9db0"></div>` +
           `</form></div></div>`;
       }).join('');
-      const script = `<script>document.querySelectorAll('[data-review-form]').forEach(function(form){form.addEventListener('submit',function(e){e.preventDefault();var status=form.querySelector('[data-review-status]');var btn=form.querySelector('button');btn.disabled=true;status.textContent='Submitting...';fetch('/public/storefront/review',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:${JSON.stringify(token)},itemId:form.dataset.itemId,rating:form.rating.value,text:form.text.value,name:form.name.value})}).then(function(r){return r.json();}).then(function(data){if(data.ok){form.innerHTML='<div style="color:#8bd450;font-weight:700">Thanks for your review!</div>';}else{status.textContent=data.error||'Something went wrong -- please try again.';btn.disabled=false;}}).catch(function(){status.textContent='Something went wrong -- please try again.';btn.disabled=false;});});});</script>`;
+      const script = `<script>document.querySelectorAll('[data-review-form]').forEach(function(form){form.addEventListener('submit',function(e){e.preventDefault();var status=form.querySelector('[data-review-status]');var btn=form.querySelector('button');btn.disabled=true;status.textContent='Submitting...';fetch('/public/storefront/review',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:${JSON.stringify(token)},itemId:form.dataset.itemId,rating:form.rating.value,text:form.text.value,name:form.name.value})}).then(function(r){return r.json();}).then(function(data){if(data.ok){form.innerHTML='<div style="color:var(--wo-accent,#8bd450);font-weight:700">Thanks for your review!</div>';}else{status.textContent=data.error||'Something went wrong -- please try again.';btn.disabled=false;}}).catch(function(){status.textContent='Something went wrong -- please try again.';btn.disabled=false;});});});</script>`;
       const html = mtgPageShell({
         title: 'Leave a Review | The Mana Pocket',
         description: 'Share your experience with your recent order from The Mana Pocket.',
@@ -7764,14 +7771,17 @@ async function routeRequest(request, env, ctx) {
         if(!item || !isBcwPublished(item))return json({error:'Product not found'},404);
         return json({item},200,{'Cache-Control':'public, max-age=120'});
       }
+      let bcwItems;try{bcwItems=await cachedPublicCatalog(env,ctx,'bcw-'+ITEM_DETAIL_STORE_ID,async signal=>{
       const rows=[];
       for(let offset=0; ; offset+=1000){
-        const result=await supabaseAdminFetch(env, 'inventory_items?store_id=eq.'+encodeURIComponent(ITEM_DETAIL_STORE_ID)+'&data->>dropship=eq.true&data->>vendor=ilike.BCW&select=id,data,status,created_at,updated_at&order=id.asc&limit=1000&offset='+offset).catch(()=>({response:null}));
-        if(!result.response?.ok || offset>=50000) return new Response('Supplies are temporarily unavailable. Please try again shortly.',{status:503,headers:{'Retry-After':'60'}});
+        const result=await supabaseAdminFetch(env, 'inventory_items?store_id=eq.'+encodeURIComponent(ITEM_DETAIL_STORE_ID)+'&data->>dropship=eq.true&data->>vendor=ilike.BCW&select='+STOREFRONT_SELECT+'&order=id.asc&limit=1000&offset='+offset,{signal}).catch(()=>({response:null}));
+        if(!result.response?.ok || offset>=50000)throw new Error('Supplies catalog unavailable');
         rows.push(...(result.data||[]));
         if((result.data||[]).length<1000)break;
       }
-      const selection=catalogSelection(rows.map(shapeStorefrontItem),url.searchParams);
+      return rows.map(storefrontProjectedRow).map(shapeStorefrontItem).filter(isBcwPublished);
+      });}catch{return new Response('Supplies are temporarily unavailable. Please try again shortly.',{status:503,headers:{'Retry-After':'60','Cache-Control':'no-store'}});}
+      const selection=catalogSelection(bcwItems,url.searchParams);
       if(selection.page>selection.pages)return new Response('Catalog page not found',{status:404});
       const response=url.pathname==='/public/bcw'?json(selection):mtgHtmlResponse(renderBcwCatalog(selection));
       response.headers.set('Cache-Control','public, max-age=120');
@@ -7886,7 +7896,7 @@ async function routeRequest(request, env, ctx) {
           if (!response?.ok) throw new Error('Article inventory unavailable');
           return (data || []).map(shapeStorefrontItem).filter(isStorefrontItemAvailable);
         },
-        listItems: e => fetchAllListableStorefrontItemsCached(e, ctx), isAvailable: isStorefrontItemAvailable, itemSlug: itemDetailSlug,
+        listItems: e => optionalCatalogInventory(()=>fetchAllListableStorefrontItemsCached(e,ctx)), isAvailable: isStorefrontItemAvailable, itemSlug: itemDetailSlug,
       });
       if (articleResponse) return articleResponse;
     }
@@ -17569,7 +17579,7 @@ export default {
     const sitemap = await cachedCatalogSitemap(request, ctx, get => routeRequest(get, env, ctx));
     if (sitemap) return sitemap;
     // Before routing, so every Worker-rendered page on www gets the real nav.
-    await ensureSiteChrome(request, new URL(request.url), ctx).catch(() => {});
+    if(!new URL(request.url).pathname.startsWith('/public/'))await ensureSiteChrome(request, new URL(request.url), ctx).catch(() => {});
     return injectComicSearch(await routeRequest(request, env, ctx), request);
   },
 

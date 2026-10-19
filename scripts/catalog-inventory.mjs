@@ -23,6 +23,12 @@ export function tcgplayerAffiliateUrl(card) {
   return 'https://partner.tcgplayer.com/k443Ov?u='+encodeURIComponent('https://www.tcgplayer.com/product/'+id);
 }
 export const marketplaceDisclosureHtml='<p class="mp-meta">Affiliate links: The Mana Pocket may earn a commission from qualifying purchases. Marketplace links open product pages or searches, not confirmed stock. Check the exact edition, finish, condition and seller before buying.</p>';
+// Use the actual listing photo for our stock; reference artwork is not a photo
+// of a physical copy and must not stand in for one.
+export function catalogStoreCopyHtml(item,deps) {
+  const esc=deps.escape,href=item.linkUrl||'/item/'+encodeURIComponent(item.id)+'/'+deps.slug(item.name);
+  return '<a class="mp-store-copy" href="'+esc(href)+'" style="display:flex;gap:14px;align-items:center;padding:14px;border:1px solid var(--wo-border-strong,rgba(139,212,80,.35));border-radius:12px;text-decoration:none;color:inherit;min-width:0">'+(item.image?'<img src="'+esc(item.image)+'" alt="'+esc(item.name+' — our listing photo')+'" width="96" height="134" loading="lazy" decoding="async" style="width:96px;height:134px;object-fit:contain;flex:0 0 96px;border-radius:6px">':'')+'<span style="min-width:0;overflow-wrap:anywhere"><strong>'+esc(item.name)+'</strong><br><span>'+esc([item.condition,item.variant,item.gradingCompany&&item.gradingCompany+' '+(item.grade||'')].filter(Boolean).join(' · ')||'See listing for condition')+'</span><br><strong style="color:var(--wo-accent,#8bd450)">Buy our copy · $'+Number(item.price).toFixed(2)+' USD</strong></span></a>';
+}
 export function catalogShoppingIndex(items) {
   const byId=new Map(),byNameNumber=new Map();
   const add=(map,k,item)=>{if(!map.has(k))map.set(k,[]);map.get(k).push(item);};
@@ -37,12 +43,12 @@ export function catalogShoppingIndex(items) {
 export function catalogShoppingLinksHtml(items,card,game,set,deps) {
   const candidates=Array.isArray(items)?items:items?.candidates?.(card)||[];
   const found=candidates.filter(i=>Number.isFinite(i.price)&&i.price>0&&deps.available(i)&&catalogInventoryMatches(i,card,game,set));
-  const own=found.slice(0,3).map(i=>'<a href="'+deps.escape(i.linkUrl||'/item/'+encodeURIComponent(i.id)+'/'+deps.slug(i.name))+'">Buy our copy · $'+i.price.toFixed(2)+' USD · '+deps.escape(i.condition||'See condition')+'</a>').join(' · ');
+  const own=found.slice(0,3).map(i=>catalogStoreCopyHtml(i,deps)).join('');
   const external=tcgplayerAffiliateUrl(card);
-  return '<div class="mp-card-shopping">'+(own?'<p>'+own+'</p>':'')+(external?'<p><a target="_blank" rel="noopener sponsored" href="'+deps.escape(external)+'">View sellers on TCGplayer</a></p>':'')+'</div>';
+  return '<div class="mp-card-shopping">'+(own?'<div style="display:grid;gap:10px">'+own+'</div>':'')+(external?'<p><a target="_blank" rel="noopener sponsored" href="'+deps.escape(external)+'">View sellers on TCGplayer</a></p>':'')+'</div>';
 }
 function renderCopies(found,deps) {
-  return '<section class="mp-catalog-stock"><h2>Available at The Mana Pocket</h2><p>These are store listings for matching printings. Open a copy for its photos, condition and available quantity.</p>'+found.map(i=>'<a class="mp-set-row" href="'+deps.escape(i.linkUrl||'/item/'+encodeURIComponent(i.id)+'/'+deps.slug(i.name))+'"><span>'+deps.escape(i.name)+' · '+deps.escape([i.condition,i.variant,i.gradingCompany&&i.gradingCompany+' '+(i.grade||'')].filter(Boolean).join(' · '))+'</span><strong>$'+Number(i.price).toFixed(2)+' USD · View this copy →</strong></a>').join('')+'</section>';
+  return '<section class="mp-catalog-stock"><h2>Available at The Mana Pocket</h2><p>These are store listings for matching printings. Open a copy for its photos, condition and available quantity.</p><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr));gap:14px">'+found.map(i=>catalogStoreCopyHtml(i,deps)).join('')+'</div></section>';
 }
 export function catalogSetInventoryHtml(items,cards,game,set,deps) {
   if(!Array.isArray(items))return '<p class="mp-meta">Store availability is temporarily unavailable. The card details and checklist remain available.</p>';

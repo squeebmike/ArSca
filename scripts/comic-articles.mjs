@@ -1,3 +1,5 @@
+import {cachedPublicCatalog} from './public-catalog-cache.mjs';
+import {catalogStoreCopyHtml} from './catalog-inventory.mjs';
 import { renderBookAlertForm } from './book-alert-ui.mjs';
 import { afterFocAvailability } from './foc-preorders.mjs';
 // Comic articles at www.themanapocket.com/articles.
@@ -49,7 +51,7 @@ export function renderReleaseInventory(slug,inventory,deps){
   const guide=RELEASE_GUIDES[slug];if(!guide)return '';
   const esc=deps.esc,normalize=v=>String(v||'').toLowerCase().replace(/[^a-z0-9]/g,'');
   const copies=inventory?.filter(item=>item.categorySlug===guide.game&&item.price>0&&deps.isAvailable(item)&&(guide.codes.includes(String(item.setCode||'').toLowerCase())||guide.sets.some(set=>normalize(set)===normalize(item.set))));
-  return `<section class="mp-books" aria-label="${esc(guide.name)} store availability"><h2>Find the set. Check the actual stock.</h2><p><a href="${guide.checklist}">Set checklists</a> · <a href="${guide.viewer}">Open the card viewer</a></p>${copies?.length?`<p>${copies.length} matching store listing${copies.length===1?'':'s'} currently available.</p>${copies.slice(0,8).map(item=>`<div class="mp-book-row"><a href="/item/${encodeURIComponent(item.id)}/${encodeURIComponent(deps.itemSlug(item))}">${esc(item.name)}${item.condition?' · '+esc(item.condition):''}</a><strong>$${Number(item.price).toFixed(2)}</strong></div>`).join('')}`:`<p>${copies?'No matching store copies are currently listed.':'Store availability could not be checked just now.'} This guide does not reserve copies or guarantee an allocation.</p>`}<p><a href="/category/${guide.game}">Browse current ${guide.game==='mtg'?'MTG':'Pokémon'} inventory</a></p></section>`;
+  return `<section class="mp-books" aria-label="${esc(guide.name)} store availability"><h2>Find the set. Check the actual stock.</h2><p><a href="${guide.checklist}">Set checklists</a> · <a href="${guide.viewer}">Open the card viewer</a></p>${copies?.length?`<p>${copies.length} matching store listing${copies.length===1?'':'s'} currently available.</p>${`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr));gap:14px">${copies.slice(0,8).map(item=>catalogStoreCopyHtml(item,{escape:esc,slug:()=>deps.itemSlug(item)})).join('')}</div>`}`:`<p>${copies?'No matching store copies are currently listed.':'Store availability could not be checked just now.'} This guide does not reserve copies or guarantee an allocation.</p>`}<p><a href="/category/${guide.game}">Browse current ${guide.game==='mtg'?'MTG':'Pokémon'} inventory</a></p></section>`;
 }
 
 const F = {
@@ -158,16 +160,18 @@ export function shapeArticle(item) {
   };
 }
 
-async function fetchArticles(env) {
+async function fetchArticles(env,ctx) {
   if (!env.WEBFLOW_TOKEN) return [];
+  return cachedPublicCatalog(env,ctx,'published-articles-v2',async signal=>{
   const headers = { Authorization: `Bearer ${env.WEBFLOW_TOKEN}`, accept: 'application/json' };
-  const res = await fetch(`https://api.webflow.com/v2/collections/${WF_ARTICLES}/items/live?limit=100`, { headers });
+  const res = await fetch(`https://api.webflow.com/v2/collections/${WF_ARTICLES}/items/live?limit=100`, { headers,signal });
   if (!res.ok) throw new Error(`Webflow articles ${res.status}`);
   const payload = await res.json().catch(() => null);
   return (payload?.items || [])
     .filter(item => !item.isArchived && !item.isDraft)
     .map(shapeArticle).filter(Boolean)
     .sort((a, b) => String(b.publishedAt || '').localeCompare(String(a.publishedAt || '')));
+  },{freshMs:180000,maxAgeMs:300000,timeoutMs:8000});
 }
 
 // ---------- live book status ----------
@@ -242,7 +246,7 @@ export async function bookStatus(env, deps, book, now = Date.now()) {
 // ---------- rendering ----------
 
 const STYLE = `<style>
-.mp-art-shortcuts{display:flex;flex-wrap:wrap;gap:10px;margin:18px 0 24px}.mp-art-shortcuts a{padding:10px 14px;border:1px solid var(--wo-border,#777);border-radius:24px;color:var(--wo-text,#fff);font-size:14px;text-decoration:none}.mp-art{max-width:760px;margin:0 auto}
+.mp-art-directories{display:flex;flex-wrap:wrap;gap:10px;margin:16px 0}.mp-art-directories a{font:650 14px/1.5 system-ui;padding:10px 14px;border:1px solid var(--wo-border,#777);border-radius:10px;text-decoration:none}.mp-art-shortcuts{display:flex;flex-wrap:wrap;gap:10px;margin:18px 0 24px}.mp-art-shortcuts a{padding:10px 14px;border:1px solid var(--wo-border,#777);border-radius:24px;color:var(--wo-text,#fff);font-size:14px;text-decoration:none}.mp-art{max-width:760px;margin:0 auto}
 .mp-art h1{font-size:clamp(28px,5vw,44px);line-height:1.08;margin:6px 0 12px;letter-spacing:-.01em}
 .mp-art-meta{font-size:13px;opacity:.65;margin-bottom:22px}
 .mp-art-hero{width:100%;max-height:520px;object-fit:contain;border-radius:14px;background:#15101f;margin:0 0 24px}
@@ -250,16 +254,16 @@ const STYLE = `<style>
 .mp-art-body h2{font-size:24px;line-height:1.25;margin:38px 0 10px;color:#fff}
 .mp-art-body h3{font-size:19px;margin:28px 0 8px;color:#fff}
 .mp-art-body p{margin:0 0 16px}
-.mp-art-body blockquote{margin:22px 0;padding:6px 0 6px 18px;border-left:4px solid #8bd450;font-size:20px;font-weight:700;color:#fff}
+.mp-art-body blockquote{margin:22px 0;padding:6px 0 6px 18px;border-left:4px solid var(--wo-accent,#8bd450);font-size:20px;font-weight:700;color:#fff}
 .mp-art-body ul,.mp-art-body ol{padding-left:22px;margin:0 0 16px}.mp-art-body li{margin:0 0 10px}
 .mp-art-body img{max-width:100%;height:auto;border-radius:10px}
-.mp-art-body a{color:#8bd450}
-.mp-buy{display:flex;gap:16px;align-items:center;border:1px solid rgba(139,212,80,.35);background:linear-gradient(135deg,rgba(139,212,80,.10),rgba(143,85,189,.12));border-radius:14px;padding:16px;margin:0 0 26px}
+.mp-art-body a{color:var(--wo-accent,#8bd450)}
+.mp-buy{display:flex;gap:16px;align-items:center;border:1px solid var(--wo-border-strong,rgba(139,212,80,.35));background:linear-gradient(135deg,var(--wo-surface-alt,rgba(139,212,80,.10)),rgba(143,85,189,.12));border-radius:14px;padding:16px;margin:0 0 26px}
 .mp-buy img{width:78px;height:118px;object-fit:cover;border-radius:6px;flex:none;background:#15101f}
-.mp-buy-k{font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:#8bd450;margin-bottom:4px}
+.mp-buy-k{font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--wo-accent,#8bd450);margin-bottom:4px}
 .mp-buy-t{font-size:17px;font-weight:800;margin-bottom:4px}
 .mp-buy-s{font-size:13px;opacity:.75;margin-bottom:10px}
-.mp-btn{display:inline-block;padding:10px 16px;border-radius:999px;background:#8bd450;color:#111!important;font-weight:800;font-size:14px;text-decoration:none;margin:0 8px 6px 0}
+.mp-btn{display:inline-block;padding:10px 16px;border-radius:999px;background:var(--wo-button,#8bd450);color:var(--wo-on-button,#111)!important;font-weight:800;font-size:14px;text-decoration:none;margin:0 8px 6px 0}
 .mp-btn.ghost{background:transparent;color:#f2eefc!important;border:1px solid rgba(255,255,255,.3)}
 .mp-facts{border:1px solid rgba(255,255,255,.14);border-radius:12px;padding:16px 18px;margin:30px 0}
 .mp-facts h2{font-size:18px;margin:0 0 10px}
@@ -277,19 +281,19 @@ const STYLE = `<style>
 .mp-cover{position:relative;display:flex;flex-direction:column;gap:4px;text-align:left;padding:6px;border-radius:10px;border:2px solid rgba(255,255,255,.12);background:rgba(255,255,255,.03);color:inherit;font:inherit;cursor:pointer}
 .mp-cover img,.mp-cover-blank{width:100%;aspect-ratio:2/3;object-fit:cover;border-radius:6px;background:#15101f}
 .mp-cover-blank{display:flex;align-items:center;justify-content:center;font-size:12px;opacity:.5}
-.mp-cover-l{font-size:12px;line-height:1.3;font-weight:700}.mp-cover-p{font-size:12px;color:#8bd450;font-weight:800}
-.mp-cover-tick{position:absolute;top:10px;right:10px;width:26px;height:26px;border-radius:50%;background:#8bd450;color:#111;font-weight:900;display:none;align-items:center;justify-content:center}
-.mp-cover[aria-pressed="true"]{border-color:#8bd450;background:rgba(139,212,80,.10)}.mp-cover[aria-pressed="true"] .mp-cover-tick{display:flex}
+.mp-cover-l{font-size:12px;line-height:1.3;font-weight:700}.mp-cover-p{font-size:12px;color:var(--wo-accent,#8bd450);font-weight:800}
+.mp-cover-tick{position:absolute;top:10px;right:10px;width:26px;height:26px;border-radius:50%;background:var(--wo-button,#8bd450);color:var(--wo-on-button,#111);font-weight:900;display:none;align-items:center;justify-content:center}
+.mp-cover[aria-pressed="true"]{border-color:var(--wo-accent,#8bd450);background:var(--wo-surface-alt,rgba(139,212,80,.10))}.mp-cover[aria-pressed="true"] .mp-cover-tick{display:flex}
 .mp-cover.is-saved .mp-cover-tick{display:flex;background:#fff}
 .mp-picker-bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center}.mp-picker-bar .mp-btn{margin:0}
 .mp-btn[disabled]{opacity:.45;cursor:default}
-.mp-picker-msg{font-size:14px;margin-top:10px;line-height:1.5}.mp-picker-msg.ok{color:#8bd450}.mp-picker-msg.err{color:#ff8a8a}
+.mp-picker-msg{font-size:14px;margin-top:10px;line-height:1.5}.mp-picker-msg.ok{color:var(--wo-accent,#8bd450)}.mp-picker-msg.err{color:#ff8a8a}
 .mp-auth{display:grid;gap:8px;max-width:360px;margin-top:12px;padding:14px;border:1px solid rgba(255,255,255,.15);border-radius:12px;background:rgba(255,255,255,.04)}
 .mp-auth input{font:inherit;font-size:16px;padding:10px 12px;border-radius:8px;border:1px solid rgba(255,255,255,.2);background:#15101f;color:#fff}
 .mp-auth b{font-size:15px}.mp-auth p{margin:0;font-size:13px;opacity:.75}.mp-auth .mp-btn{margin:0}
 .mp-art-list{display:grid;gap:18px;max-width:900px;margin:0 auto}
 .mp-art-card{display:flex;gap:18px;padding:16px;border:1px solid rgba(255,255,255,.12);border-radius:14px;text-decoration:none;color:inherit;background:rgba(255,255,255,.03)}
-.mp-art-card:hover{border-color:#8bd450}
+.mp-art-card:hover{border-color:var(--wo-accent,#8bd450)}
 .mp-art-card img{width:120px;height:160px;object-fit:cover;border-radius:8px;flex:none;background:#15101f}
 .mp-art-card h2{font-size:21px;line-height:1.2;margin:2px 0 6px;color:#fff}
 .mp-art-card p{margin:0 0 8px;font-size:14px;opacity:.75;line-height:1.5}
@@ -428,15 +432,19 @@ export function renderBookUpdates(article,storeId,esc) { return renderBookAlertF
 
 export function renderArticleList(articles, deps) {
   const esc = deps.esc;
-  const cards = articles.map(a => `<a class="mp-art-card" href="/articles/${esc(a.slug)}">${a.image ? `<img src="${esc(a.image)}" alt="" loading="lazy">` : ''}<div><div class="mp-meta">${esc(dateLabel(a.publishedAt))}</div><h2>${esc(a.title)}</h2>${a.summary ? `<p>${esc(a.summary)}</p>` : ''}<span style="color:#8bd450;font-weight:700;font-size:14px">Read it →</span></div></a>`).join('');
+  const category=a=>/baseball|bowman/.test(a.slug)?'baseball':/football/.test(a.slug)?'football':articleTopics(a).find(t=>['mtg','pokemon','comics'].includes(t))||'collecting';
+  const groups=[['mtg','Magic: The Gathering'],['pokemon','Pokémon'],['baseball','Baseball'],['football','Football'],['comics','Comics'],['collecting','Collector guides']];
+  const cardHtml=a => `<a class="mp-art-card" href="/articles/${esc(a.slug)}">${a.image ? `<img src="${esc(a.image)}" alt="" loading="lazy">` : ''}<div><div class="mp-meta">${esc(dateLabel(a.publishedAt))}</div><h2>${esc(a.title)}</h2>${a.summary ? `<p>${esc(a.summary)}</p>` : ''}<span style="color:var(--wo-accent,#8bd450);font-weight:700;font-size:14px">Read it →</span></div></a>`;
+  const cards=groups.filter(([key])=>articles.some(a=>category(a)===key)).map(([key,label])=>`<section id="articles-${key}" style="scroll-margin-top:110px"><h2>${label}</h2><div class="mp-art-list">${articles.filter(a=>category(a)===key).map(cardHtml).join('')}</div></section>`).join('');
+  const sectionNav=groups.filter(([key])=>articles.some(a=>category(a)===key)).map(([key,label])=>`<a href="#articles-${key}">${label}</a>`).join('');
   return deps.pageShell({
     title: 'Collector Articles | The Mana Pocket',
     description: 'Comics, Pokémon, MTG and sports cards: release news, set guides, covers and collector notes from The Mana Pocket.',
     canonicalPath: '/articles',
     jsonLd: { '@context': 'https://schema.org', '@type': 'CollectionPage', name: 'Collector Articles',
       hasPart: articles.slice(0, 20).map(a => ({ '@type': 'Article', headline: a.title, url: `https://www.themanapocket.com/articles/${a.slug}`, datePublished: a.publishedAt || undefined })) },
-    bodyHtml: STYLE + `<div style="max-width:900px;margin:0 auto"><div class="mp-crumb"><a href="/shop">← Shop</a></div><h1>Collector articles</h1><p class="mp-sub">New releases, set guides, and the cards and covers we’re watching.</p><p><a href="/secret-lair">Secret Lair drop guides and illustrated checklists</a> · <a href="/baseball">Baseball checklists</a> · <a href="/football">Football checklists</a></p><nav class="mp-art-shortcuts" aria-label="Shop by collection"><a href="/category/comics">Comics</a><a href="/category/pokemon">Pokémon</a><a href="/category/mtg">MTG</a><a href="/category/sports-cards">Sports cards</a><a href="/category/collectibles">Collectibles</a></nav></div>` +
-      (cards ? `<div class="mp-art-list">${cards}</div>` : `<p class="mp-sub" style="text-align:center">The first articles are on their way.</p>`),
+    bodyHtml: STYLE + `<div style="max-width:900px;margin:0 auto"><div class="mp-crumb"><a href="/shop">← Shop</a></div><h1>Collector articles</h1><p class="mp-sub">New releases, set guides, and the cards and covers we’re watching.</p><nav class="mp-art-directories" aria-label="Checklists and drop guides"><a href="/secret-lair">Secret Lair drops</a><a href="/mtg">MTG checklists</a><a href="/pokemon">Pokémon checklists</a><a href="/baseball">Baseball checklists</a><a href="/football">Football checklists</a></nav><nav class="mp-art-shortcuts" aria-label="Article topics">${sectionNav}<a href="/secret-lair">Secret Lair</a></nav></div>` +
+      (cards ? cards : `<p class="mp-sub" style="text-align:center">The first articles are on their way.</p>`),
   });
 }
 
@@ -450,7 +458,7 @@ export async function handleArticlesRequest(request, env, ctx, url, deps) {
   const cached = url.searchParams.has('fresh') ? null : await caches.default.match(cacheKey);
   if (cached) return cached;
   let articles;
-  try { articles = await fetchArticles(env); }
+  try { articles = await fetchArticles(env,ctx); }
   catch (error) {
     console.error('Articles unavailable:', error.message);
     return new Response(deps.pageShell({ title: 'Collector Articles | The Mana Pocket', description: 'Collector articles from The Mana Pocket.', canonicalPath: '/articles', robotsNoindex: true,

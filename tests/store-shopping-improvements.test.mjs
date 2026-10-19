@@ -50,3 +50,16 @@ for(const [articleSlug,guide] of Object.entries(RELEASE_GUIDES)){
  assert.ok(html.includes('/item/matching/'),articleSlug);assert.ok(!html.includes('/item/wrong/')&&!html.includes('/item/sold/')&&!html.includes('/item/unpriced/')&&!html.includes('/item/wrong-game/'),articleSlug);
  assert.ok(html.includes(guide.checklist),articleSlug+' checklist');
 }
+
+// Shared public snapshots: reuse fresh data, refresh bounded stale data in
+// background, and never disguise a failed cold load as an empty catalog.
+const {cachedPublicCatalog}=await import('../scripts/public-catalog-cache.mjs');
+const mem=new Map(),pending=[];const cacheEnv={LBA_KV:{get:async k=>mem.get(k)||null,put:async(k,v)=>mem.set(k,JSON.parse(v))}};
+let loads=0;const load=async()=>{loads++;return [{id:'public-only'}];};
+assert.equal((await cachedPublicCatalog(cacheEnv,{waitUntil:p=>pending.push(p)},'test',load))[0].id,'public-only');
+await cachedPublicCatalog(cacheEnv,{},'test',load);assert.equal(loads,1);
+mem.get('public-catalog:test').at=Date.now()-70000;
+await cachedPublicCatalog(cacheEnv,{waitUntil:p=>pending.push(p)},'test',load);await Promise.all(pending);assert.equal(loads,2);
+await assert.rejects(cachedPublicCatalog({},null,'failed',async()=>{throw Error('DB unavailable');}),/DB unavailable/);
+let signal;await assert.rejects(cachedPublicCatalog({},null,'slow',s=>{signal=s;return new Promise(()=>{});},{timeoutMs:5}),/timed out/);assert.ok(signal.aborted);
+console.log('Public catalog cache freshness, background refresh, time bounds and honest failure checks passed');

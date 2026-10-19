@@ -14,6 +14,10 @@ assert.ok(!catalogInventoryMatches({...item,tcgPlayerId:'456'},card,'pokemon',{n
 assert.ok(catalogInventoryMatches({...item,tcgPlayerId:'123',name:'Saved inventory photo title'},card,'pokemon',{}));
 const deps={escape,slug,available:i=>i.quantity>0,shell:p=>'<title>'+p.title+'</title><link rel="canonical" href="https://www.themanapocket.com'+p.canonicalPath+'"><script type="application/ld+json">'+JSON.stringify(p.jsonLd||{})+'</script>'+p.bodyHtml,listItems:async()=>[{...item,tcgPlayerId:'123'}]};
 const shopping=catalogShoppingLinksHtml([{...item,tcgPlayerId:'123'},{...item,id:'wrong-printing',tcgPlayerId:'999'}],card,'pokemon',{},deps);
+const pictured=catalogShoppingLinksHtml([{...item,tcgPlayerId:'123',image:'https://example.com/our-copy.jpg'}],card,'pokemon',{},deps);
+assert.ok(pictured.includes('src="https://example.com/our-copy.jpg"'));
+assert.ok(pictured.includes('our listing photo')&&pictured.includes('width="96" height="134"'));
+assert.ok(!shopping.includes('<img'),'do not invent a physical-copy photo from reference artwork');
 assert.ok(shopping.includes('/item/copy/'));assert.ok(!shopping.includes('wrong-printing'));assert.ok(shopping.indexOf('/item/copy/')<shopping.indexOf('partner.tcgplayer'));
 const indexedItems=[{...item,tcgPlayerId:'123'},{...item,id:'wrong-printing',tcgPlayerId:'999'}];
 assert.equal(catalogShoppingLinksHtml(catalogShoppingIndex(indexedItems),card,'pokemon',{},deps),shopping);

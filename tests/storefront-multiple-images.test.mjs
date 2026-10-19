@@ -33,3 +33,14 @@ assert.equal(imagesOnly.image,second,'an older images-only item must still recei
 assert.deepEqual(Array.from(imagesOnly.photos),[second,third]);
 
 console.log('Public storefront multi-image normalization checks passed.');
+
+// List queries project only fields used by storefront shaping, preserving
+// real price/photo/printing identity without downloading private raw payloads.
+const projectionStart=source.indexOf('const STOREFRONT_DATA_KEYS=');
+const projectionEnd=source.indexOf('async function fetchAllListableStorefrontItems(',projectionStart);
+vm.runInNewContext(source.slice(projectionStart,projectionEnd)+';this.projectRow=storefrontProjectedRow;this.projectKeys=STOREFRONT_DATA_KEYS;this.publicSelect=STOREFRONT_SELECT;',context);
+const full={id:'projection',status:'in_stock',data:{name:'Exact card',category:'Magic',set:'Secret Lair',quantity:2,priceOverride:17,photoDataUrl:'https://example.com/own.jpg',isSealed:true,onlineListed:true,raw:{scryfallId:'printing-id',tcgPlayerId:123,setCode:'sld',privateCost:999},privateCost:999}};
+const projected={id:full.id,status:full.status,...Object.fromEntries(context.projectKeys.map(k=>['sf_'+k,full.data[k]??null])),sf_raw_scryfallId:'printing-id',sf_raw_tcgPlayerId:123,sf_raw_setCode:'sld'};
+assert.deepEqual(JSON.parse(JSON.stringify(context.shapeStorefrontItem(context.projectRow(projected)))),JSON.parse(JSON.stringify(context.shapeStorefrontItem(full))));
+assert.ok(!context.publicSelect.includes('privateCost')&&!context.publicSelect.includes(',data,'));
+console.log('Public projection preserves listing identity, price, quantity and original photos');
