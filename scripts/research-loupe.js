@@ -134,6 +134,7 @@ function ensureDom(){
         '<button type="button" class="hbtn rloupe-loupe-toggle" aria-label="Enable jeweler\'s loupe">🔍 LOUPE</button>' +
         '<div class="rloupe-cat-slot"></div>' +
       '</div>' +
+      '<div class="rloupe-compare"></div>' +
       '<div class="rloupe-input-row">' +
         '<input type="text" class="tsi rloupe-input" placeholder="Ask/search anything...">' +
         '<button type="button" class="hbtn rloupe-mic" aria-label="Voice search" style="width:54px;padding:0">MIC</button>' +
@@ -160,6 +161,7 @@ function ensureDom(){
     zoomNote: overlay.querySelector('.rloupe-zoom-note'),
     loupeToggle: overlay.querySelector('.rloupe-loupe-toggle'),
     input: overlay.querySelector('.rloupe-input'),
+    compare: overlay.querySelector('.rloupe-compare'),
     mic: overlay.querySelector('.rloupe-mic'),
   };
   dom.glassMagLabel.textContent = GLASS_MAG + '×'; // fixed strength, no picker -- set once
@@ -192,6 +194,17 @@ function ensureDom(){
   dom.mic.addEventListener('click', function(){
     if(typeof startVoiceInput === 'function') startVoiceInput('qpl-input', typeof runPriceLookup === 'function' ? runPriceLookup : undefined);
     else toast('Voice input not available');
+  });
+
+  dom.compare.addEventListener('click', function(e){
+    var b = e.target.closest('[data-cmp]'); if(!b) return;
+    var act = b.getAttribute('data-cmp');
+    if(act === 'pick'){ state.compareIdx = Number(b.getAttribute('data-idx')) || 0; renderCompareSection(true); }
+    else if(act === 'camera') compareFromCamera();
+    else if(act === 'upload'){ var f = dom.compare.querySelector('.rloupe-compare-file'); if(f) f.click(); }
+  });
+  dom.compare.addEventListener('change', function(e){
+    if(e.target.classList.contains('rloupe-compare-file')){ var file = e.target.files && e.target.files[0]; e.target.value = ''; if(file) compareFromFile(file); }
   });
 
   bindDragHandlers();
@@ -241,6 +254,10 @@ function openResearchLoupe(){
   // permission, no camera, in use elsewhere) surfaces as the error/retry
   // panel, not a screen shown proactively before ever trying.
   startLoupeCamera();
+  state.compareIdx = 0;
+  renderCompareSection(true);
+  if(state.compareWatch) clearInterval(state.compareWatch);
+  state.compareWatch = setInterval(function(){ renderCompareSection(false); }, 1500);
 }
 
 // UI-facing close (X button, header close, tap-outside): consumes the
@@ -254,6 +271,7 @@ function requestCloseResearchLoupe(){
 
 function performLoupeClose(){
   stopLoupeCamera();
+  if(state.compareWatch){ clearInterval(state.compareWatch); state.compareWatch = null; }
   state.open = false;
   if(dom){ dom.overlay.classList.remove('on'); }
   document.body.style.overflow = '';
@@ -611,6 +629,62 @@ function renderControls(){
   dom.loupeToggle.classList.toggle('active', !!state.loupeOn);
 }
 
+// ── Compare to real card ─────────────────────────────────────────────
+// Store ask: "In loupe, at the bottom ... compare the images and show what
+// might be fake, without using credits." Picks the official image from the
+// current Research results, takes the photo from this camera (or an
+// uploaded one) and hands both to scripts/card-compare.js, which does all
+// of the comparing on the phone.
+function compareCards(){
+  var list = (typeof qplResults !== 'undefined' && Array.isArray(qplResults)) ? qplResults : [];
+  return list.map(function(r, idx){
+    var img = (r && (r.imageUrl || r.image || r.thumbnail)) || (typeof inventoryImageUrl === 'function' && r ? inventoryImageUrl(r) : '');
+    return r && img ? { idx:idx, name:r.name || r.title || 'Card', set:r.set || r.setName || '', number:r.number || r.cardNumber || r.card_number || '', imageUrl:img } : null;
+  }).filter(Boolean).slice(0, 8);
+}
+function escHtml_(v){ return String(v == null ? '' : v).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+function renderCompareSection(force){
+  if(!dom || !dom.compare) return;
+  var cards = compareCards();
+  var sig = cards.map(function(c){ return c.idx + c.imageUrl; }).join('|') + '#' + (state.started ? 1 : 0);
+  if(!force && sig === state.compareSig) return;
+  state.compareSig = sig;
+  var pick = cards.find(function(c){ return c.idx === state.compareIdx; }) || cards[0] || null;
+  if(pick) state.compareIdx = pick.idx;
+  dom.compare.innerHTML = '<div class="rloupe-compare-title">🆚 COMPARE TO REAL CARD <span>no credits used</span></div>' +
+    (cards.length
+      ? '<div class="rloupe-compare-note">1. Pick the real card (from your search):</div><div class="rloupe-compare-cards">' + cards.map(function(c){
+          return '<button type="button" class="rloupe-compare-card' + (pick && c.idx === pick.idx ? ' active' : '') + '" data-cmp="pick" data-idx="' + c.idx + '" title="' + escHtml_(c.name) + '"><img src="' + escHtml_(c.imageUrl) + '" alt="" loading="lazy"><span>' + escHtml_([c.set, c.number].filter(Boolean).join(' #') || c.name) + '</span></button>';
+        }).join('') + '</div>' +
+        '<div class="rloupe-compare-note">2. Hold your card flat and square in the camera (good light, out of the sleeve if you can), then:</div>' +
+        '<div class="rloupe-compare-actions"><button type="button" class="hbtn" style="color:var(--g)" data-cmp="camera"' + (state.started ? '' : ' disabled') + '>📸 SNAP &amp; COMPARE</button><button type="button" class="hbtn" data-cmp="upload">🖼 UPLOAD PHOTO</button><input type="file" accept="image/*" class="rloupe-compare-file" hidden></div>'
+      : '<div class="rloupe-compare-note">Search the card below first (name + set or number), then pick it here to line your card up against the real one -- slide between them and see what doesn\'t match (font, text, colors).</div>');
+}
+function comparePick(){ var cards = compareCards(); return cards.find(function(c){ return c.idx === state.compareIdx; }) || cards[0] || null; }
+function photoCanvasFrom(source, w, h){
+  var scale = Math.min(1, 1600 / Math.max(w, h)), c = document.createElement('canvas');
+  c.width = Math.round(w * scale); c.height = Math.round(h * scale);
+  c.getContext('2d').drawImage(source, 0, 0, c.width, c.height);
+  return c;
+}
+function startCompare(canvas){
+  var card = comparePick();
+  if(!card){ toast('Search for the card first, then pick it'); return; }
+  if(!window.CardCompare){ toast('Compare tool is still loading -- try again in a second'); return; }
+  window.CardCompare.open({ card:card, photo:canvas });
+}
+function compareFromCamera(){
+  var v = dom && dom.video;
+  if(!v || !v.videoWidth){ toast('Camera isn\'t ready yet'); return; }
+  startCompare(photoCanvasFrom(v, v.videoWidth, v.videoHeight));
+}
+function compareFromFile(file){
+  var url = URL.createObjectURL(file), img = new Image();
+  img.onload = function(){ var c = photoCanvasFrom(img, img.naturalWidth, img.naturalHeight); URL.revokeObjectURL(url); startCompare(c); };
+  img.onerror = function(){ URL.revokeObjectURL(url); toast('Could not open that photo'); };
+  img.src = url;
+}
+
 // ── Styles (injected once, kept out of dashboard.html's already-huge
 // stylesheet -- self-contained like the rest of this file) ───────────────
 function ensureStyles(){
@@ -675,6 +749,17 @@ function ensureStyles(){
     // under 640px), this just gives it room to sit inline without
     // stretching the row.
     '.rloupe-cat-slot{display:flex;flex:0 1 auto;min-width:0;}',
+    '.rloupe-compare{margin-top:12px;padding:10px;border:1px solid var(--border);border-radius:10px;font-family:var(--font-mono);font-size:10px;color:var(--dim);}',
+    '.rloupe-compare-title{font:900 11px Orbitron,monospace;color:var(--g);letter-spacing:.05em;margin-bottom:6px;}',
+    '.rloupe-compare-title span{font:9px var(--font-mono);color:var(--dim);letter-spacing:0;margin-left:6px;}',
+    '.rloupe-compare-note{margin:6px 0 4px;line-height:1.5;}',
+    '.rloupe-compare-cards{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;}',
+    '.rloupe-compare-card{flex:0 0 auto;width:74px;background:var(--surf2);border:1px solid var(--border);border-radius:6px;padding:3px;color:var(--text);font:8px var(--font-mono);cursor:pointer;}',
+    '.rloupe-compare-card.active{border-color:var(--g);box-shadow:0 0 0 1px var(--g);}',
+    '.rloupe-compare-card img{width:100%;aspect-ratio:63/88;object-fit:contain;display:block;}',
+    '.rloupe-compare-card span{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:2px;}',
+    '.rloupe-compare-actions{display:flex;gap:6px;flex-wrap:wrap;}',
+    '.rloupe-compare-actions .hbtn{margin-bottom:0;}',
     '.rloupe-input-row{flex:0 0 auto;position:sticky;bottom:0;display:flex;gap:6px;margin-top:10px;padding-top:8px;background:var(--surf);}',
     '.rloupe-input{flex:1;margin-bottom:0;}',
     '@media(max-width:640px){',
