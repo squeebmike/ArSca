@@ -1,3 +1,4 @@
+import {handlePocketGuides,pocketGuidePaths} from './scripts/pocket-guides.mjs';
 import {cachedPublicCatalog} from './scripts/public-catalog-cache.mjs';
 import { renderBookAlertForm, alertBookTitle } from './scripts/book-alert-ui.mjs';
 import { handleBookAlertRequest, handleAccountBookAlerts, runBookAlerts } from './scripts/book-alerts.mjs';
@@ -41,7 +42,7 @@ import { handleOrdersBoard, handleOrderMarkShipped } from './scripts/orders-boar
 import { handleBacklistRequest, syncBacklistStripeEvent } from './scripts/backlist-catalog.mjs';
 import { searchComics, comicSearchShell, comicSearchScriptResponse, injectComicSearch } from './scripts/comic-search.mjs';
 import { handleAccountRequest, findLinkedCustomer } from './scripts/customer-account.mjs';
-import { handleArticlesRequest, articleSitemapPaths } from './scripts/comic-articles.mjs';
+import { handleArticlesRequest, articleSitemapPaths, fetchArticles } from './scripts/comic-articles.mjs';
 import { extractSiteChrome, SITE_CHROME_SOURCE } from './scripts/site-chrome.mjs';
 import { handlePublicPokemonRequest } from './scripts/public-pokemon-sets.mjs';
 import { catalogInventoryHtml, catalogSetInventoryHtml, catalogShoppingLinksHtml, marketplaceDisclosureHtml, catalogShoppingIndex } from './scripts/catalog-inventory.mjs';
@@ -2457,7 +2458,7 @@ function mtgPriceLines(card) {
 // same [data-wo-theme] "My Pocket" button/localStorage key, so a visitor's
 // team/Pokemon/MTG theme choice carries over here exactly as it does on every
 // Webflow page, with zero separate theme logic to maintain in this Worker.
-const WO_UI_SCRIPT_URL = 'https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@2a62604/wo-ui.js';
+const WO_UI_SCRIPT_URL = 'https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@3a32ee9/wo-ui.js';
 // Site logo -- the same asset wo-ui.js's own MANA_LOGO/BRAND_LOGO constants
 // and every JS-built fallback nav (account.js, preorders.js) already use
 // sitewide, served from Webflow's actual CDN host (not the raw S3 bucket
@@ -2620,7 +2621,7 @@ function mtgPageShell({ title, description, canonicalPath, ogImage, ogType, json
     (ogImage ? `<meta name="twitter:image" content="${mtgEscapeHtml(ogImage)}">` : '');
   const robotsTag = robotsNoindex ? `<meta name="robots" content="noindex,follow">` : '';
   const originalChrome = currentSiteChrome();
-  const chrome=originalChrome?{...originalChrome,head:originalChrome.head.replace(/wo-scripts@[^/]+\/site-polish\.css/g,'wo-scripts@2a62604/site-polish.css'),bodyEnd:originalChrome.bodyEnd.replace(/wo-scripts@[^/]+\/wo-ui\.js/g,'wo-scripts@2a62604/wo-ui.js')}:null;
+  const chrome=originalChrome?{...originalChrome,head:originalChrome.head.replace(/wo-scripts@[^/]+\/site-polish\.css/g,'wo-scripts@3a32ee9/site-polish.css'),bodyEnd:originalChrome.bodyEnd.replace(/wo-scripts@[^/]+\/wo-ui\.js/g,'wo-scripts@3a32ee9/wo-ui.js')}:null;
   const product = jsonLdList.find(block=>block['@type']==='Product');
   const itemRoute = canonicalPath.match(/^\/(item|preorder|book)\/([^/]+)/);
   const productView = product && itemRoute ? productViewAnalytics({id:decodeURIComponent(itemRoute[2]),name:product.name,price:product.offers?.price,category:itemRoute[1]==='preorder'?'Comic preorder':itemRoute[1]==='book'?'Comic backorder':product.additionalProperty?.find(f=>f.name==='Category')?.value||''}) : '';
@@ -7595,6 +7596,9 @@ async function routeRequest(request, env, ctx) {
       return response;
     }
 
+    if(url.pathname==='/pocket-guides'||url.pathname.startsWith('/pocket-guides/')) {
+      const response=await handlePocketGuides(request,env,url,{escape:mtgEscapeHtml,shell:mtgPageShell,loadArticles:()=>fetchArticles(env,ctx)});if(response)return response;
+    }
     if(url.pathname==='/secret-lair'||url.pathname.startsWith('/secret-lair/')||url.pathname==='/sitemap-secret-lair.xml') {
       const response=await handleSecretLairPages(request,env,url,{escape:mtgEscapeHtml,slug:mtgSlugify,shell:mtgPageShell,listItems:()=>optionalCatalogInventory(signal=>fetchAllListableStorefrontItemsCached(env,ctx,signal)),available:isStorefrontItemAvailable});
       if(response)return response;
@@ -7961,7 +7965,7 @@ async function routeRequest(request, env, ctx) {
       // 'other' is a low-value catch-all bucket -- both routes still work if
       // visited directly, just not worth asking Google to index separately.
       const skippedCategorySlugs = ['supplies', 'other'];
-      const staticUrls = ['/faq', '/links', '/news', '/dougvana-print', '/category', '/preorders/catalog', '/pokemon', '/mtg', '/comic-new-releases-the-mana-pocket', ...(await articleSitemapPaths(env)), ...Object.keys(CATEGORY_LANDING_LABELS).filter(slug => !skippedCategorySlugs.includes(slug)).map(slug => categoryLandingHref(slug))]
+      const staticUrls = [...pocketGuidePaths, '/faq', '/links', '/news', '/dougvana-print', '/category', '/preorders/catalog', '/pokemon', '/mtg', '/comic-new-releases-the-mana-pocket', ...(await articleSitemapPaths(env)), ...Object.keys(CATEGORY_LANDING_LABELS).filter(slug => !skippedCategorySlugs.includes(slug)).map(slug => categoryLandingHref(slug))]
         .map(path => `<url><loc>https://www.themanapocket.com${path}</loc></url>`).join('');
       const xml = `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${staticUrls}</urlset>`;
       return new Response(xml, { headers: { 'Content-Type': 'application/xml;charset=UTF-8', 'Cache-Control': 'public, max-age=3600' } });

@@ -160,7 +160,7 @@ export function shapeArticle(item) {
   };
 }
 
-async function fetchArticles(env,ctx) {
+export async function fetchArticles(env,ctx) {
   if (!env.WEBFLOW_TOKEN) return [];
   return cachedPublicCatalog(env,ctx,'published-articles-v2',async signal=>{
   const headers = { Authorization: `Bearer ${env.WEBFLOW_TOKEN}`, accept: 'application/json' };
@@ -443,7 +443,7 @@ export function renderArticleList(articles, deps) {
     canonicalPath: '/articles',
     jsonLd: { '@context': 'https://schema.org', '@type': 'CollectionPage', name: 'Collector Articles',
       hasPart: articles.slice(0, 20).map(a => ({ '@type': 'Article', headline: a.title, url: `https://www.themanapocket.com/articles/${a.slug}`, datePublished: a.publishedAt || undefined })) },
-    bodyHtml: STYLE + `<div style="max-width:900px;margin:0 auto"><div class="mp-crumb"><a href="/shop">← Shop</a></div><h1>Collector articles</h1><p class="mp-sub">New releases, set guides, and the cards and covers we’re watching.</p><nav class="mp-art-directories" aria-label="Checklists and drop guides"><a href="/secret-lair">Secret Lair drops</a><a href="/mtg">MTG checklists</a><a href="/pokemon">Pokémon checklists</a><a href="/baseball">Baseball checklists</a><a href="/football">Football checklists</a></nav><nav class="mp-art-shortcuts" aria-label="Article topics">${sectionNav}<a href="/secret-lair">Secret Lair</a></nav></div>` +
+    bodyHtml: STYLE + `<div style="max-width:900px;margin:0 auto"><div class="mp-crumb"><a href="/shop">← Shop</a></div><h1>Collector articles</h1><p><a href="/pocket-guides">Browse all Pocket Guides →</a></p><p class="mp-sub">New releases, set guides, and the cards and covers we’re watching.</p><nav class="mp-art-directories" aria-label="Checklists and drop guides"><a href="/secret-lair">Secret Lair drops</a><a href="/mtg">MTG checklists</a><a href="/pokemon">Pokémon checklists</a><a href="/baseball">Baseball checklists</a><a href="/football">Football checklists</a></nav><nav class="mp-art-shortcuts" aria-label="Article topics">${sectionNav}<a href="/secret-lair">Secret Lair</a></nav></div>` +
       (cards ? cards : `<p class="mp-sub" style="text-align:center">The first articles are on their way.</p>`),
   });
 }
@@ -462,7 +462,7 @@ export async function handleArticlesRequest(request, env, ctx, url, deps) {
   catch (error) {
     console.error('Articles unavailable:', error.message);
     return new Response(deps.pageShell({ title: 'Collector Articles | The Mana Pocket', description: 'Collector articles from The Mana Pocket.', canonicalPath: '/articles', robotsNoindex: true,
-      bodyHtml: `<h1>Collector articles</h1><p class="mp-sub">Articles are temporarily unavailable. Please try again in a minute.</p>` }), { status: 503, headers: { 'Content-Type': 'text/html;charset=UTF-8', 'Retry-After': '60' } });
+      bodyHtml: `<h1>Collector articles</h1><p><a href="/pocket-guides">Browse all Pocket Guides →</a></p><p class="mp-sub">Articles are temporarily unavailable. Please try again in a minute.</p>` }), { status: 503, headers: { 'Content-Type': 'text/html;charset=UTF-8', 'Retry-After': '60' } });
   }
   let html, status = 200;
   if (path === '/articles') html = renderArticleList(articles, deps);

@@ -18,6 +18,8 @@ on:
       - scripts/database-edits.mjs
       - scripts/database-explorer.mjs
       - scripts/comic-articles.mjs
+      - scripts/pocket-guides.mjs
+      - tests/pocket-guides.test.mjs
       - scripts/book-alerts.mjs
       - scripts/book-alert-ui.mjs
       - scripts/site-chrome.mjs
@@ -117,7 +119,7 @@ jobs:
         run: node --import=./tests/helpers/dashboard-source-hook.mjs --test tests/seo-discovery-regressions.test.mjs tests/foc-preorder-share-page.test.mjs tests/backlist-catalog.test.mjs tests/comic-new-releases.test.mjs tests/bcw-storefront.test.mjs tests/item-seo-pages.test.mjs
 
       - name: Verify automatic book alerts
-        run: node --test tests/book-alerts.test.mjs tests/book-alert-management.test.mjs tests/comic-articles.test.mjs tests/social-links-page.test.mjs tests/store-shopping-improvements.test.mjs tests/department-pages.test.mjs tests/product-shopping.test.mjs
+        run: node --test tests/book-alerts.test.mjs tests/book-alert-management.test.mjs tests/comic-articles.test.mjs tests/pocket-guides.test.mjs tests/social-links-page.test.mjs tests/store-shopping-improvements.test.mjs tests/department-pages.test.mjs tests/product-shopping.test.mjs
 
       - name: Verify unified comic search
         run: node --test tests/comic-search.test.mjs
