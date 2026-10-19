@@ -179,13 +179,77 @@ try {
   globalThis.caches = originalCaches;
 }
 
-// ── Loupe wiring + cache-bust ──
+// ── Loupe wiring ──
 const loupe = fs.readFileSync('scripts/research-loupe.js', 'utf8');
 assert.match(loupe, /'<div class="rloupe-compare"><\/div>'/, 'the compare section sits at the bottom of Loupe');
-assert.match(loupe, /🆚 COMPARE TO REAL CARD <span>no credits used<\/span>/);
-assert.match(loupe, /data-cmp="camera"[^>]*>📸 SNAP &amp; COMPARE<\/button>/);
-assert.match(loupe, /window\.CardCompare\.open\(\{ card:card, photo:canvas \}\)/);
-assert.match(loupe, /startCompare\(photoCanvasFrom\(v, v\.videoWidth, v\.videoHeight\)\)/, 'the photo comes from Loupe\'s own camera');
+assert.match(loupe, /🆚 COMPARE TO REAL CARD <span>free -- no credits used<\/span>/);
+assert.match(loupe, /storeWorkerFetch\('\/card-compare\/search\?game=' \+ game \+ '&q=' \+ encodeURIComponent\(q\)/, 'finds the real card without Research credits');
+assert.match(loupe, /data-cmp="camera">📸 USE CAMERA<\/button>/);
+assert.match(loupe, /else if\(act === 'camera'\) enterCompareCapture\(\);/, 'the camera opens with a frame and shutter on the preview');
+assert.match(loupe, /dom\.camera\.scrollIntoView\(/, 'the camera is brought into view to line the card up');
+assert.match(loupe, /'\.rloupe-camera\.rloupe-capture\{max-height:none;height:70vh;min-height:320px;\}'/, 'a tall preview for a tall card');
+assert.match(loupe, /window\.CardCompare\.open\(\{ card:card, photo:canvas, frameQuad:frameQuad \|\| null \}\)/);
+{
+  // Frame geometry: card-shaped, centered, mapped through object-fit:cover.
+  const src = ['guideRect', 'boxToVideo'].map(n => { const i = loupe.indexOf('function ' + n + '('); return loupe.slice(i, loupe.indexOf('\n}\n', i) + 2); }).join('\n');
+  const g = new Function('var CARD_RATIO = 63 / 88;\n' + src + '\nreturn { guideRect, boxToVideo };')();
+  const r = g.guideRect(400, 600);
+  assert.ok(Math.abs(r.w / r.h - 63 / 88) < 1e-9 && Math.abs(r.x + r.w / 2 - 200) < 1e-9 && Math.abs(r.y + r.h / 2 - 300) < 1e-9);
+  // 400x600 box showing a 1920x1080 video (cover): center maps to center.
+  const c = g.boxToVideo(200, 300, 400, 600, 1920, 1080);
+  assert.ok(Math.abs(c[0] - 960) < 1e-6 && Math.abs(c[1] - 540) < 1e-6);
+  const tl = g.boxToVideo(0, 0, 400, 600, 1920, 1080); // cover scale = 600/1080, so x is cropped
+  assert.ok(Math.abs(tl[1]) < 1e-6 && tl[0] > 0);
+}
+// Starting corners from the camera frame: the card's real edges near it, or the frame.
+{
+  const frame = [[110, 100], [660, 100], [660, 870], [110, 870]];
+  const q = M.startQuad(shot.rgba, shot.w, shot.h, frame);
+  q.forEach((p, i) => assert.ok(Math.abs(p[0] - quad[i][0]) < 40 && Math.abs(p[1] - quad[i][1]) < 40, 'snapped to the card edge ' + i + ' ' + p));
+  const blank = new Uint8ClampedArray(shot.w * shot.h * 4).fill(40);
+  assert.deepEqual(M.startQuad(blank, shot.w, shot.h, frame), frame, 'no edges found: the frame itself');
+}
+
+// ── Free card search (TCGdex + Scryfall): no credits ──
+{
+  const s0 = worker.indexOf('function parseCompareQuery'), e0 = worker.indexOf('\n}\n', s0) + 2;
+  const parse = new Function(worker.slice(s0, e0) + '; return parseCompareQuery;')();
+  assert.deepEqual(parse('143/142'), { name:'', number:'143', total:142 });
+  assert.deepEqual(parse('Charizard 4/102'), { name:'Charizard', number:'4', total:102 });
+  assert.deepEqual(parse('Dark Slowbro #029'), { name:'Dark Slowbro', number:'29', total:0 });
+  assert.deepEqual(parse('Nymris'), { name:'Nymris', number:'', total:0 });
+}
+{
+  const originalFetch2 = globalThis.fetch, originalCaches2 = globalThis.caches;
+  globalThis.caches = { default: { match: async () => null, put: async () => {} } };
+  const calls = [];
+  globalThis.fetch = async (input) => {
+    const url = decodeURIComponent(String(input)); calls.push(url);
+    const ok = d => new Response(JSON.stringify(d), { headers:{ 'Content-Type':'application/json' } });
+    if (url.includes('/auth/v1/user')) return ok({ id:'u1', email:'staff@example.com' });
+    if (url.includes('store_members')) return ok([{ role:'owner' }]);
+    if (url === 'https://api.tcgdex.net/v2/en/sets') return ok([{ id:'sv06', name:'Twilight Masquerade', cardCount:{ official:167 } }, { id:'sv07', name:'Stellar Crown', cardCount:{ official:142 } }]);
+    if (url === 'https://api.tcgdex.net/v2/en/sets/sv07/143') return ok({ id:'sv07-143', localId:'143', name:'Bulbasaur', image:'https://assets.tcgdex.net/en/sv/sv07/143' });
+    if (url.startsWith('https://api.tcgdex.net/v2/en/cards?name=')) return ok([{ id:'base6-29', localId:'29', name:'Dark Slowbro', image:'https://assets.tcgdex.net/en/base/base6/29' }]);
+    if (url.startsWith('https://api.scryfall.com/cards/search')) return ok({ data:[{ name:'Nymris, Oona\'s Trickster', set_name:'Wilds of Eldraine Commander', collector_number:'7', image_uris:{ large:'https://cards.scryfall.io/large/front/n/y/nymris.jpg' } }] });
+    return ok([]);
+  };
+  try {
+    const { default: api } = await import('../cloudflare-worker-full.js');
+    const env = { SUPABASE_URL:'https://database.example', SUPABASE_SERVICE_ROLE_KEY:'test-only' };
+    const get = async q => (await api.fetch(new Request('https://api.example/card-compare/search?q=' + encodeURIComponent(q), { headers:{ Authorization:'Bearer t', 'X-Store-Id':'store-1' } }), env, { waitUntil(){} })).json();
+    const a = await get('143/142');
+    assert.equal(a.ok, true, JSON.stringify(a));
+    assert.deepEqual(a.cards.map(c => [c.name, c.set, c.number, c.imageUrl]), [['Bulbasaur', 'Stellar Crown', '143', 'https://assets.tcgdex.net/en/sv/sv07/143/high.png']], 'number/total finds the card in the set with 142 official cards');
+    const b = await get('Dark Slowbro');
+    assert.ok(b.cards.some(c => c.name === 'Dark Slowbro' && c.imageUrl.endsWith('/high.png')));
+    const c = await get('Nymris');
+    assert.ok(c.cards.some(c2 => c2.game === 'mtg' && /cards\.scryfall\.io\/large/.test(c2.imageUrl)), 'Magic from Scryfall');
+    assert.ok(!calls.some(u => /pokemonpricetracker|anthropic|cardsight/i.test(u)), 'no paid lookups');
+    const noAuth = await api.fetch(new Request('https://api.example/card-compare/search?q=x'), env, { waitUntil(){} });
+    assert.ok(noAuth.status >= 400, 'store sign-in required');
+  } finally { globalThis.fetch = originalFetch2; globalThis.caches = originalCaches2; }
+}
 const html = fs.readFileSync('dashboard.html', 'utf8');
 const tag = html.match(/<script src="scripts\/card-compare\.js\?v=([^"]+)" defer><\/script>/);
 assert.ok(tag, 'card-compare.js is loaded');

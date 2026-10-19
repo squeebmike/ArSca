@@ -215,6 +215,70 @@ function cardImageRelayAllowed(raw) {
   const host = u.hostname.toLowerCase();
   return CARD_IMAGE_HOSTS.some(h => host === h || host.endsWith('.' + h));
 }
+// Store report: "out of credits" -- Research's Pokemon lookup runs on the
+// paid PokemonPriceTracker quota, and Loupe's compare needed a Research
+// result to get the real card's image. The compare finds the real card on
+// its own instead, from two free, keyless catalogs with official high-res
+// images: TCGdex (Pokemon) and Scryfall (Magic). "143/142" finds card 143
+// in every set whose official count is 142.
+const TCGDEX = 'https://api.tcgdex.net/v2/en';
+function parseCompareQuery(raw) {
+  const q = String(raw || '').replace(/\s+/g, ' ').trim().slice(0, 120);
+  const m = q.match(/#?\s*(\d{1,4}[a-z]?)\s*\/\s*(\d{1,4})\b/i) || q.match(/#\s*(\d{1,4}[a-z]?)\b/i);
+  const number = m ? String(m[1]).replace(/^0+(?=\d)/, '') : '';
+  const total = m && m[2] ? Number(m[2]) : 0;
+  const name = (m ? q.replace(m[0], ' ') : q).replace(/\s+/g, ' ').trim();
+  return { name, number, total };
+}
+async function compareJson(url, headers = {}) {
+  const cache = typeof caches !== 'undefined' ? caches.default : null;
+  const key = new Request('https://card-compare-search.internal/?u=' + encodeURIComponent(url));
+  const hit = cache ? await cache.match(key).catch(() => null) : null;
+  if (hit) return hit.json().catch(() => null);
+  const res = await fetch(url, { headers:{ Accept:'application/json', 'User-Agent':'TheManaPocket/1.0 (card compare)', ...headers } }).catch(() => null);
+  if (!res || !res.ok) return null;
+  const data = await res.json().catch(() => null);
+  if (data && cache) await cache.put(key, new Response(JSON.stringify(data), { headers:{ 'Content-Type':'application/json', 'Cache-Control':'public, max-age=86400' } })).catch(() => {});
+  return data;
+}
+const tcgdexCard = (c, setName) => c && c.image ? { game:'pokemon', name:c.name || '', set:setName || c.set?.name || String(c.id || '').replace(/-[^-]+$/, '').toUpperCase(), number:String(c.localId || ''), imageUrl:c.image + '/high.png' } : null;
+async function searchPokemonFree({ name, number, total }) {
+  const out = [];
+  if (total && number) {
+    const sets = await compareJson(TCGDEX + '/sets') || [];
+    const matches = (Array.isArray(sets) ? sets : []).filter(s => Number(s.cardCount?.official) === total).slice(-8).reverse();
+    const cards = await Promise.all(matches.map(s => compareJson(TCGDEX + '/sets/' + encodeURIComponent(s.id) + '/' + encodeURIComponent(number)).then(c => tcgdexCard(c, s.name))));
+    cards.forEach(c => { if (c && (!name || c.name.toLowerCase().includes(name.toLowerCase().split(' ')[0]))) out.push(c); });
+    if (out.length || !name) return out;
+  }
+  if (name) {
+    const list = await compareJson(TCGDEX + '/cards?name=' + encodeURIComponent(name)) || [];
+    (Array.isArray(list) ? list : []).filter(c => !number || String(c.localId).replace(/^0+(?=\d)/, '') === number).slice(0, 12).forEach(c => { const card = tcgdexCard(c); if (card) out.push(card); });
+  }
+  return out;
+}
+async function searchMtgFree({ name, number }) {
+  if (!name) return [];
+  const q = name + (number ? ' cn:' + number : '');
+  const data = await compareJson('https://api.scryfall.com/cards/search?unique=prints&order=released&q=' + encodeURIComponent(q));
+  return (data?.data || []).slice(0, 12).map(c => {
+    const img = c.image_uris?.large || c.image_uris?.normal || c.card_faces?.[0]?.image_uris?.large || '';
+    return img ? { game:'mtg', name:c.name || '', set:c.set_name || '', number:String(c.collector_number || ''), imageUrl:img } : null;
+  }).filter(Boolean);
+}
+async function cardCompareSearch(request, env, url) {
+  const storeId = requestStoreId(request, url);
+  const auth = await requireStoreUser(request, env, storeId);
+  if (auth.error) return auth.error;
+  const parsed = parseCompareQuery(url.searchParams.get('q'));
+  if (!parsed.name && !parsed.number) return json({ ok:false, error:'Type the card name, or its number like 143/142' }, 400);
+  const game = String(url.searchParams.get('game') || 'all').toLowerCase();
+  const [pokemon, mtg] = await Promise.all([
+    game === 'mtg' ? [] : searchPokemonFree(parsed).catch(() => []),
+    game === 'pokemon' || !parsed.name ? [] : searchMtgFree(parsed).catch(() => []),
+  ]);
+  return json({ ok:true, query:parsed, cards:[...pokemon, ...mtg].slice(0, 16) }, 200, { 'Cache-Control':'no-store' });
+}
 async function cardImageRelay(request, url, ctx) {
   const target = url.searchParams.get('url') || '';
   if (!cardImageRelayAllowed(target)) return json({ ok:false, error:'Not a card image this relay serves' }, 400);
@@ -6513,6 +6577,7 @@ async function routeRequest(request, env, ctx) {
     }
 
     if (request.method === 'GET' && url.pathname === '/card-image') return cardImageRelay(request, url, ctx);
+    if (request.method === 'GET' && url.pathname === '/card-compare/search') return cardCompareSearch(request, env, url);
     if (request.method === 'GET' && url.pathname === '/comics/search.js') return comicSearchScriptResponse();
     if (request.method === 'GET' && url.pathname === '/comics/search.json') {
       const data = await searchComics(url, {

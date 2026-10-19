@@ -159,6 +159,9 @@ function meanOver(m, w, rect){ var s = 0, n = 0; for(var y = rect[1]; y < rect[3
 // edge point furthest out in its diagonal direction, so a tilted card
 // still gets its real corners. The handles are always adjustable after.
 function guessCardQuad(rgba, w, h){
+  return findCardQuad(rgba, w, h) || [[w * 0.15, h * 0.15], [w * 0.85, h * 0.15], [w * 0.85, h * 0.85], [w * 0.15, h * 0.85]].map(function(p){ return [Math.round(p[0]), Math.round(p[1])]; });
+}
+function findCardQuad(rgba, w, h){
   var g = gradient(boxBlur(toGray(rgba, w * h), w, h, 1), w, h);
   var mx = 0; for(var i = 0; i < g.length; i++) if(g[i] > mx) mx = g[i];
   var thr = mx * 0.3, mxX = Math.round(w * 0.03), mxY = Math.round(h * 0.03);
@@ -177,9 +180,29 @@ function guessCardQuad(rgba, w, h){
       if(y2 - x2 > score[3]){ score[3] = y2 - x2; best[3] = [x2, y2]; }
     }
   }
-  var ok = best.every(Boolean) && Math.abs(best[2][0] - best[0][0]) > w * 0.2 && Math.abs(best[2][1] - best[0][1]) > h * 0.2;
-  if(ok) return best;
-  return [[w * 0.15, h * 0.15], [w * 0.85, h * 0.15], [w * 0.85, h * 0.85], [w * 0.15, h * 0.85]].map(function(p){ return [Math.round(p[0]), Math.round(p[1])]; });
+  var ok = mx > 8 && best.every(Boolean) && Math.abs(best[2][0] - best[0][0]) > w * 0.2 && Math.abs(best[2][1] - best[0][1]) > h * 0.2;
+  return ok ? best : null;
+}
+
+// Where the corner dots start. With a camera frame (Loupe's capture), the
+// card's edges are looked for just around that frame; the frame itself is
+// used if they aren't found there.
+function startQuad(rgba, w, h, frame){
+  if(!frame) return guessCardQuad(rgba, w, h);
+  var xs = frame.map(function(p){ return p[0]; }), ys = frame.map(function(p){ return p[1]; });
+  var fw = Math.max.apply(null, xs) - Math.min.apply(null, xs), fh = Math.max.apply(null, ys) - Math.min.apply(null, ys);
+  var x0 = Math.max(0, Math.round(Math.min.apply(null, xs) - fw * 0.12)), y0 = Math.max(0, Math.round(Math.min.apply(null, ys) - fh * 0.08));
+  var x1 = Math.min(w, Math.round(Math.max.apply(null, xs) + fw * 0.12)), y1 = Math.min(h, Math.round(Math.max.apply(null, ys) + fh * 0.08));
+  var cw = x1 - x0, ch = y1 - y0;
+  if(cw < 40 || ch < 40) return frame.map(function(p){ return p.slice(); });
+  var crop = new Uint8ClampedArray(cw * ch * 4);
+  for(var y = 0; y < ch; y++) crop.set(rgba.subarray(((y + y0) * w + x0) * 4, ((y + y0) * w + x1) * 4), y * cw * 4);
+  var found = findCardQuad(crop, cw, ch);
+  if(!found) return frame.map(function(p){ return p.slice(); });
+  var q = found.map(function(p){ return [p[0] + x0, p[1] + y0]; });
+  var area = function(a){ var s = 0; for(var i = 0; i < 4; i++){ var j = (i + 1) % 4; s += a[i][0] * a[j][1] - a[j][0] * a[i][1]; } return Math.abs(s) / 2; };
+  var ratio = area(q) / Math.max(1, area(frame));
+  return ratio > 0.55 && ratio < 1.5 ? q : frame.map(function(p){ return p.slice(); });
 }
 
 // Fine alignment after the corners: tries small shifts, scales and
@@ -307,7 +330,7 @@ function relayedImageUrl(url, worker){
 
 var api = { REF_W:REF_W, REF_H:REF_H, ZONES:ZONES, solveHomography:solveHomography, applyHomography:applyHomography, warpToRef:warpToRef, toGray:toGray,
   boxBlur:boxBlur, gradient:gradient, ncc:ncc, normalizeLighting:normalizeLighting, otsu:otsu, guessCardQuad:guessCardQuad, refineQuad:refineQuad,
-  analyzeCard:analyzeCard, upgradeCardImageUrl:upgradeCardImageUrl, relayedImageUrl:relayedImageUrl, refCorners:refCorners };
+  analyzeCard:analyzeCard, startQuad:startQuad, upgradeCardImageUrl:upgradeCardImageUrl, relayedImageUrl:relayedImageUrl, refCorners:refCorners };
 if(typeof window === 'undefined'){ if(typeof module !== 'undefined') module.exports = api; return; }
 window.CardCompareMath = api;
 
@@ -341,7 +364,7 @@ function ensureStyles(){
   if(document.getElementById('ccmp-styles')) return;
   var st = document.createElement('style'); st.id = 'ccmp-styles';
   st.textContent = [
-    '.ccmp-overlay{position:fixed;inset:0;z-index:10080;background:rgba(0,0,0,.92);display:none;overflow:auto;-webkit-overflow-scrolling:touch}',
+    '.ccmp-overlay{position:fixed;inset:0;z-index:10080;background:#05070a;display:none;overflow:auto;-webkit-overflow-scrolling:touch}',
     '.ccmp-overlay.on{display:block}',
     '.ccmp-sheet{max-width:620px;margin:0 auto;padding:12px 12px 40px;font-family:var(--font-mono,monospace);color:var(--text,#eee)}',
     '.ccmp-head{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px}',
@@ -382,7 +405,8 @@ async function open(opts){
     S.refCanvas = rgbaToCanvas(S.ref, REF_W, REF_H);
     var pw = S.photo.width, ph = S.photo.height;
     S.photoRgba = S.photo.getContext('2d', { willReadFrequently:true }).getImageData(0, 0, pw, ph).data;
-    S.quad = guessCardQuad(S.photoRgba, pw, ph);
+    S.frameQuad = opts.frameQuad || null;
+    S.quad = startQuad(S.photoRgba, pw, ph, S.frameQuad);
     renderCorners();
   } catch(e){ ui.body.innerHTML = '<div class="ccmp-verdict" style="border:1px solid var(--red,#f45)">' + esc(e.message) + '. Try a different search result for this card.</div>'; }
 }
@@ -495,7 +519,7 @@ function draw(cv){
 function handleAction(act, btn){
   if(act === 'close') return close();
   if(!S) return;
-  if(act === 'reguess'){ S.quad = guessCardQuad(S.photoRgba, S.photo.width, S.photo.height); return placeHandles(); }
+  if(act === 'reguess'){ S.quad = startQuad(S.photoRgba, S.photo.width, S.photo.height, S.frameQuad); return placeHandles(); }
   if(act === 'lineup') return lineUp();
   if(act === 'corners'){ if(S.flicker){ clearInterval(S.flicker); S.flicker = null; } return renderCorners(); }
   if(act === 'mode'){ S.mode = btn.getAttribute('data-mode'); return renderCompare(); }
