@@ -20,6 +20,8 @@ const PAGE_CACHE_SECONDS = 300;
 // Published release guides: match only their verified set names/codes, never
 // loosely match a character name to another printing or promise allocations.
 export const RELEASE_GUIDES = {
+  "pokemon-black-bolt-2025-collector-guide":{"game":"pokemon","name":"Black Bolt","sets":["SV: Black Bolt","Black Bolt"],"codes":[],"checklist":"/pokemon/sets/696e3ca8bb2a772e0d0568df/sv-black-bolt","viewer":"/pokemon-new-releases?set=SV%3A%20Black%20Bolt"},
+  "pokemon-white-flare-2025-collector-guide":{"game":"pokemon","name":"White Flare","sets":["SV: White Flare","White Flare"],"codes":[],"checklist":"/pokemon/sets/696e3ca8bb2a772e0d0568e0/sv-white-flare","viewer":"/pokemon-new-releases?set=SV%3A%20White%20Flare"},
   "mtg-innistrad-remastered-2025-collector-guide":{"game":"mtg","name":"Innistrad Remastered","sets":["Innistrad Remastered"],"codes":["inr"],"checklist":"/mtg/inr","viewer":"/mtg-new-releases?set=inr"},
   "mtg-aetherdrift-2025-collector-guide":{"game":"mtg","name":"Aetherdrift","sets":["Aetherdrift"],"codes":["dft"],"checklist":"/mtg/dft","viewer":"/mtg-new-releases?set=dft"},
   "mtg-tarkir-dragonstorm-2025-collector-guide":{"game":"mtg","name":"Tarkir: Dragonstorm","sets":["Tarkir: Dragonstorm"],"codes":["tdm"],"checklist":"/mtg/tdm","viewer":"/mtg-new-releases?set=tdm"},
