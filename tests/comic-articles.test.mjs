@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { comicKey, sameComic, parseBookLines, parseFacts, sanitizeRichText, shapeArticle, bookStatus, renderBuyBox, handleArticlesRequest, readingMinutes, articleTopics, relatedArticles, renderArticlePage } from '../scripts/comic-articles.mjs';
+import { renderReleaseInventory, comicKey, sameComic, parseBookLines, parseFacts, sanitizeRichText, shapeArticle, bookStatus, renderBuyBox, handleArticlesRequest, readingMinutes, articleTopics, relatedArticles, renderArticlePage } from '../scripts/comic-articles.mjs';
 
 // --- Matching a book name to catalog titles -------------------------------------
 assert.deepEqual(comicKey("X-Men ’92: Incursions #1"), { series: 'x men 92 incursions', issue: '1' });
@@ -156,3 +156,12 @@ assert.match(worker, /\.\.\.\(await articleSitemapPaths\(env\)\)/, 'articles are
 assert.match(worker, /\['\/articles', 'Collector Articles'\]/, 'nav link');
 assert.match(fs.readFileSync('wrangler.deploy.jsonc', 'utf8'), /"www\.themanapocket\.com\/articles\*"/);
 console.log('Comic article wiring checks passed');
+
+// Paired releases must never borrow one another's stock or an unrelated Zekrom.
+{
+ const stock=[{id:'black',name:'Black Bolt copy',set:'SV: Black Bolt',categorySlug:'pokemon',quantity:1,price:5},{id:'white',name:'White Flare copy',set:'SV: White Flare',categorySlug:'pokemon',quantity:1,price:6},{id:'other',name:'Other Zekrom',set:'XY Promos',categorySlug:'pokemon',quantity:1,price:7},{id:'sold',name:'Sold Black Bolt',set:'SV: Black Bolt',categorySlug:'pokemon',quantity:0,price:8}];
+ const dep={esc:s=>String(s),isAvailable:i=>i.quantity>0,itemSlug:i=>i.id};
+ for(const [slug,yes,no] of [['pokemon-black-bolt-2025-collector-guide','Black Bolt copy','White Flare copy'],['pokemon-white-flare-2025-collector-guide','White Flare copy','Black Bolt copy']]){
+ const html=renderReleaseInventory(slug,stock,dep);assert.ok(html.includes(yes));assert.ok(!html.includes(no)&&!html.includes('Other Zekrom')&&!html.includes('Sold Black Bolt'));
+ }
+}
