@@ -203,15 +203,15 @@ try {
   }
 
   {
-    const healthyFetch=globalThis.fetch;let recommendationAborted=false;
+    const healthyFetch=globalThis.fetch;let recommendationAborted=false,finishRecommendations;
     globalThis.fetch=async(input,options={})=>{
-      if(String(input).includes('inventory_items?')&&!/[?&]id=eq\./.test(String(input)))return new Promise((resolve,reject)=>options.signal.addEventListener('abort',()=>{recommendationAborted=true;reject(Error('aborted'));}));
+      if(String(input).includes('inventory_items?')&&!/[?&]id=eq\./.test(String(input)))return new Promise((resolve,reject)=>{finishRecommendations=()=>resolve(new Response('[]',{headers:{'Content-Type':'application/json'}}));options.signal.addEventListener('abort',()=>{recommendationAborted=true;reject(Error('aborted'));});});
       return healthyFetch(input,options);
     };
     const response=await get('/item/item-a/amazing-spider-man-1');
     assert.equal(response.status,200,'slow recommendations cannot fail the actual product');
     assert.ok((await response.text()).includes('Amazing Spider-Man #1'));
-    assert.equal(recommendationAborted,true,'slow full-catalog lookup is cancelled');
+    assert.equal(recommendationAborted,false,'reference deadline leaves the bounded shared cache fill alive');finishRecommendations();
     globalThis.fetch=healthyFetch;
   }
 
