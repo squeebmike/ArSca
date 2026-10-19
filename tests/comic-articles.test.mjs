@@ -184,3 +184,11 @@ console.log('Comic article wiring checks passed');
   await assert.rejects(fetchArticles(env),/Incomplete Webflow/);
  }finally{globalThis.fetch=previousFetch;}
 }
+// Flagship sports guides cannot borrow Chrome, another series/year, or TCG stock.
+{
+ const make=(id,set,categorySlug='sports-cards',quantity=1)=>({id,name:id,set,categorySlug,quantity,price:5});
+ const stock=[make('Series2Copy','2025 Topps Series 2'),make('ChromeCopy','2025 Topps Chrome'),make('Series1Copy','2025 Topps Series 1'),make('OldCopy','2024 Topps Series 2'),make('WrongCategory','2025 Topps Series 2','pokemon'),make('SoldCopy','2025 Topps Series 2','sports-cards',0)];
+ const html=renderReleaseInventory('2025-topps-series-2-baseball-collector-guide',stock,{esc:String,isAvailable:i=>i.quantity>0,itemSlug:i=>i});
+ assert.match(html,/Series2Copy/);assert.doesNotMatch(html,/ChromeCopy|Series1Copy|OldCopy|WrongCategory|SoldCopy/);
+ assert.match(html,/href="\/category\/sports-cards"/);assert.match(html,/Browse current sports-card inventory/);
+}
