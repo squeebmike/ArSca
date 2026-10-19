@@ -1247,6 +1247,51 @@ function compareCyclesForCustomer(a, b) {
   return aOpen?aCutoff-bCutoff:bCutoff-aCutoff;
 }
 
+// Store report: "When I upload a new FOC for Lunar it still shows old FOC
+// books, i.e. Robin Hood for today." Importing a week only ever added and
+// updated covers, so a cover the distributor dropped from that week's file
+// (moved to another FOC date, cancelled) stayed on the wall forever. After
+// each import, covers no longer in the file are removed -- unless anything
+// hangs off them (a customer order or incentive request, store/secured
+// quantities, received or presale stock, eBay presale tracking), which are
+// kept and reported instead. Title families left with no covers go too.
+export async function pruneCoversMissingFromFile(db, storeId, cycleId, fileSkuCodes) {
+  const inFile = new Set([...fileSkuCodes].map(String));
+  const { data:existing } = await db(`comic_skus?cycle_id=eq.${encodeURIComponent(cycleId)}&store_id=eq.${encodeURIComponent(storeId)}&select=id,distributor_sku,family_id,store_quantity,secured_quantity,title,variant_label`);
+  const missing = (existing || []).filter(row => !inFile.has(String(row.distributor_sku)));
+  if (!missing.length) return { removed:0, removedTitles:[], kept:[] };
+  const busy = new Map();
+  const mark = (id, why) => { if (!busy.has(id)) busy.set(id, why); };
+  missing.forEach(row => { if (Number(row.store_quantity || 0) > 0 || Number(row.secured_quantity || 0) > 0) mark(row.id, 'has store/secured quantities'); });
+  for (let i = 0; i < missing.length; i += 40) {
+    const ids = missing.slice(i, i + 40).map(row => row.id);
+    const [orders, requests, stock, ebay] = await Promise.all([
+      db(`foc_preorder_items?sku_id=${inFilter(ids)}&select=sku_id`),
+      db(`foc_incentive_requests?sku_id=${inFilter(ids)}&select=sku_id`),
+      db(`inventory_items?store_id=eq.${encodeURIComponent(storeId)}&data->>focSkuId=${inFilter(ids)}&select=focSkuId:data->>focSkuId`),
+      db(`foc_ebay_stock?sku_id=${inFilter(ids)}&select=sku_id`),
+    ]);
+    (orders.data || []).forEach(r => mark(r.sku_id, 'has customer preorders'));
+    (requests.data || []).forEach(r => mark(r.sku_id, 'has incentive requests'));
+    (stock.data || []).forEach(r => mark(r.focSkuId, 'has stock or an eBay presale'));
+    (ebay.data || []).forEach(r => mark(r.sku_id, 'has eBay presale tracking'));
+  }
+  const removable = missing.filter(row => !busy.has(row.id));
+  for (let i = 0; i < removable.length; i += 40) {
+    await db(`comic_skus?id=${inFilter(removable.slice(i, i + 40).map(row => row.id))}&store_id=eq.${encodeURIComponent(storeId)}`, { method:'DELETE', headers:{ Prefer:'return=minimal' } });
+  }
+  if (removable.length) {
+    const { data:left } = await db(`comic_skus?cycle_id=eq.${encodeURIComponent(cycleId)}&select=family_id`);
+    const used = new Set((left || []).map(row => row.family_id));
+    const emptied = [...new Set(removable.map(row => row.family_id))].filter(id => id && !used.has(id));
+    for (let i = 0; i < emptied.length; i += 40) {
+      await db(`comic_title_families?id=${inFilter(emptied.slice(i, i + 40))}&cycle_id=eq.${encodeURIComponent(cycleId)}`, { method:'DELETE', headers:{ Prefer:'return=minimal' } });
+    }
+  }
+  const label = row => [row.title, row.variant_label].filter(Boolean).join(' -- ');
+  return { removed:removable.length, removedTitles:removable.slice(0, 30).map(label), kept:missing.filter(row => busy.has(row.id)).map(row => ({ skuId:row.id, title:label(row), reason:busy.get(row.id) })) };
+}
+
 async function importPrh(request, env, deps, storeId) {
   const auth = await deps.requireStoreUser(request, env, storeId, ['owner','admin','manager','employee']);
   if (auth.error) return auth.error;
@@ -1266,7 +1311,10 @@ async function importPrh(request, env, deps, storeId) {
   const { data:existingCycles } = await db(`foc_cycles?store_id=eq.${encodeURIComponent(storeId)}&distributor=eq.PRH&foc_date=eq.${focDate}&select=*&limit=1`);
   const existingCycle = existingCycles?.[0];
   if (existingCycle?.source_sha256 === sourceSha256) {
-    return deps.json({ ok:true, duplicate:true, cycleId:existingCycle.id, focDate, report:existingCycle.import_report || { processed:sourceRows.length, newSkus:0, updatedSkus:0, unchanged:sourceRows.length, errors:0 } });
+    // Same file again: still clear out covers that aren't in it.
+    const pruned = await pruneCoversMissingFromFile(db, storeId, existingCycle.id, normalized.map(entry => entry.parsed.distributorSku));
+    const report = { ...(existingCycle.import_report || { processed:sourceRows.length, newSkus:0, updatedSkus:0, unchanged:sourceRows.length, errors:0 }), removedSkus:pruned.removed, removedTitles:pruned.removedTitles, keptMissing:pruned.kept };
+    return deps.json({ ok:true, duplicate:true, cycleId:existingCycle.id, focDate, report });
   }
   const cutoff = text(body.customerCutoffAt, 80) || existingCycle?.customer_cutoff_at || null;
   const cycleRow = {
@@ -1333,7 +1381,8 @@ async function importPrh(request, env, deps, storeId) {
     });
   }
   await db('comic_skus?on_conflict=cycle_id,distributor_sku', { method:'POST', headers:{ Prefer:'resolution=merge-duplicates,return=minimal' }, body:JSON.stringify(skuRows) });
-  const report = { processed:sourceRows.length, families:familyMap.size, newSkus, updatedSkus, unchanged, errors:0, incentives:skuRows.filter(row => row.is_incentive).length };
+  const pruned = await pruneCoversMissingFromFile(db, storeId, cycle.id, skuRows.map(row => row.distributor_sku));
+  const report = { processed:sourceRows.length, families:familyMap.size, newSkus, updatedSkus, unchanged, errors:0, incentives:skuRows.filter(row => row.is_incentive).length, removedSkus:pruned.removed, removedTitles:pruned.removedTitles, keptMissing:pruned.kept };
   await db(`foc_cycles?id=eq.${cycle.id}`, { method:'PATCH', headers:{ Prefer:'return=minimal' }, body:JSON.stringify({ import_report:report }) });
   return deps.json({ ok:true, duplicate:false, cycleId:cycle.id, focDate, customerCutoffAt:cycle.customer_cutoff_at || cutoff, report });
 }
@@ -1362,7 +1411,10 @@ async function importLunar(request, env, deps, storeId) {
   const { data:existingCycles } = await db(`foc_cycles?store_id=eq.${encodeURIComponent(storeId)}&distributor=eq.${LUNAR}&foc_date=eq.${focDate}&select=*&limit=1`);
   const existingCycle = existingCycles?.[0];
   if (existingCycle?.source_sha256 === sourceSha256) {
-    return deps.json({ ok:true, duplicate:true, cycleId:existingCycle.id, focDate, report:existingCycle.import_report || { processed:sourceRows.length, newSkus:0, updatedSkus:0, unchanged:sourceRows.length, errors:0 } });
+    // Same file again: still clear out covers that aren't in it.
+    const pruned = await pruneCoversMissingFromFile(db, storeId, existingCycle.id, normalized.map(entry => entry.parsed.distributorSku));
+    const report = { ...(existingCycle.import_report || { processed:sourceRows.length, newSkus:0, updatedSkus:0, unchanged:sourceRows.length, errors:0 }), removedSkus:pruned.removed, removedTitles:pruned.removedTitles, keptMissing:pruned.kept };
+    return deps.json({ ok:true, duplicate:true, cycleId:existingCycle.id, focDate, report });
   }
   const cutoff = text(body.customerCutoffAt, 80) || existingCycle?.customer_cutoff_at || null;
   const cycleRow = {
@@ -1429,7 +1481,8 @@ async function importLunar(request, env, deps, storeId) {
     });
   }
   await db('comic_skus?on_conflict=cycle_id,distributor_sku', { method:'POST', headers:{ Prefer:'resolution=merge-duplicates,return=minimal' }, body:JSON.stringify(skuRows) });
-  const report = { processed:sourceRows.length, families:familyMap.size, newSkus, updatedSkus, unchanged, errors:0, incentives:skuRows.filter(row => row.is_incentive).length };
+  const pruned = await pruneCoversMissingFromFile(db, storeId, cycle.id, skuRows.map(row => row.distributor_sku));
+  const report = { processed:sourceRows.length, families:familyMap.size, newSkus, updatedSkus, unchanged, errors:0, incentives:skuRows.filter(row => row.is_incentive).length, removedSkus:pruned.removed, removedTitles:pruned.removedTitles, keptMissing:pruned.kept };
   await db(`foc_cycles?id=eq.${cycle.id}`, { method:'PATCH', headers:{ Prefer:'return=minimal' }, body:JSON.stringify({ import_report:report }) });
   return deps.json({ ok:true, duplicate:false, cycleId:cycle.id, focDate, customerCutoffAt:cycle.customer_cutoff_at || cutoff, report });
 }
