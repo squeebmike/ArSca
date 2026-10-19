@@ -1,5 +1,5 @@
 import {cachedPublicCatalog} from './public-catalog-cache.mjs';
-import {catalogStoreCopyHtml} from './catalog-inventory.mjs';
+import {catalogStoreCopyHtml,tcgplayerAffiliateUrl,marketplaceDisclosureHtml} from './catalog-inventory.mjs';
 import { renderBookAlertForm } from './book-alert-ui.mjs';
 import { afterFocAvailability } from './foc-preorders.mjs';
 // Comic articles at www.themanapocket.com/articles.
@@ -50,8 +50,8 @@ export const RELEASE_GUIDES = {
 export function renderReleaseInventory(slug,inventory,deps){
   const guide=RELEASE_GUIDES[slug];if(!guide)return '';
   const esc=deps.esc,normalize=v=>String(v||'').toLowerCase().replace(/[^a-z0-9]/g,'');
-  const copies=inventory?.filter(item=>item.categorySlug===guide.game&&item.price>0&&deps.isAvailable(item)&&(guide.codes.includes(String(item.setCode||'').toLowerCase())||guide.sets.some(set=>normalize(set)===normalize(item.set))));
-  return `<section class="mp-books" aria-label="${esc(guide.name)} store availability"><h2>Find the set. Check the actual stock.</h2><p><a href="${guide.checklist}">Set checklists</a> · <a href="${guide.viewer}">Open the card viewer</a></p>${copies?.length?`<p>${copies.length} matching store listing${copies.length===1?'':'s'} currently available.</p>${`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr));gap:14px">${copies.slice(0,8).map(item=>catalogStoreCopyHtml(item,{escape:esc,slug:()=>deps.itemSlug(item)})).join('')}</div>`}`:`<p>${copies?'No matching store copies are currently listed.':'Store availability could not be checked just now.'} This guide does not reserve copies or guarantee an allocation.</p>`}<p><a href="/category/${guide.game}">Browse current ${guide.game==='mtg'?'MTG':'Pokémon'} inventory</a></p></section>`;
+  const copies=inventory?.filter(item=>item.categorySlug===guide.game&&Number.isFinite(item.price)&&item.price>0&&deps.isAvailable(item)&&(guide.codes.includes(String(item.setCode||'').toLowerCase())||guide.sets.some(set=>normalize(set)===normalize(item.set))));
+  return `<section class="mp-books" aria-label="${esc(guide.name)} store availability"><h2>Find the set. Check the actual stock.</h2>${copies?.some(item=>tcgplayerAffiliateUrl(item))?marketplaceDisclosureHtml:''}<p><a href="${guide.checklist}">Set checklists</a> · <a href="${guide.viewer}">Open the card viewer</a></p>${copies?.length?`<p>${copies.length} matching store listing${copies.length===1?'':'s'} currently available.</p>${`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr));gap:14px">${copies.slice(0,8).map(item=>'<div>'+catalogStoreCopyHtml(item,{escape:esc,slug:()=>deps.itemSlug(item)})+(tcgplayerAffiliateUrl(item)?'<p><a target="_blank" rel="noopener sponsored" href="'+esc(tcgplayerAffiliateUrl(item))+'">View this product on TCGplayer</a></p>':'')+'</div>').join('')}</div>`}`:`<p>${copies?'No matching store copies are currently listed.':'Store availability could not be checked just now.'} This guide does not reserve copies or guarantee an allocation.</p>`}<p><a href="/category/${guide.game}">Browse current ${guide.game==='mtg'?'MTG':'Pokémon'} inventory</a></p></section>`;
 }
 
 const F = {

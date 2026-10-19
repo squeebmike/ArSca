@@ -37,7 +37,9 @@ assert.equal([...withChrome.matchAll(/googletagmanager.com\/gtag\/js/g)].length,
 const deps={esc:s=>String(s).replace(/</g,'&lt;'),isAvailable:i=>i.quantity>0,itemSlug:i=>i.name.toLowerCase().replace(/\W+/g,'-')};
 const slug='pokemon-delta-reign-release-date-card-checklist';
 const stock=[{id:'exact',name:'New card',categorySlug:'pokemon',set:'ME06: Delta Reign',quantity:1,price:8,condition:'NM'},{id:'wrong-set',name:'New card',categorySlug:'pokemon',set:'Base Set',quantity:1,price:7},{id:'sold',name:'Sold copy',categorySlug:'pokemon',set:'Delta Reign',quantity:0,price:8}];
+stock[0].image='https://example.com/actual-card.jpg';stock[0].tcgPlayerId=123;
 const bridge=renderReleaseInventory(slug,stock,deps);
+assert.ok(bridge.includes('actual-card.jpg')&&bridge.includes('our listing photo'));assert.ok(bridge.includes(encodeURIComponent('https://www.tcgplayer.com/product/123'))&&bridge.includes('noopener sponsored'));
 assert.match(bridge,/\/item\/exact\/new-card/);assert.doesNotMatch(bridge,/\/item\/wrong-set|\/item\/sold/);assert.match(bridge,/\$8\.00/);
 assert.match(renderReleaseInventory(slug,[],deps),/No matching store copies/);
 assert.match(renderReleaseInventory(slug,null,deps),/could not be checked/);
