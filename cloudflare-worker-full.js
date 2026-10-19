@@ -2620,7 +2620,7 @@ function mtgPageShell({ title, description, canonicalPath, ogImage, ogType, json
     (ogImage ? `<meta name="twitter:image" content="${mtgEscapeHtml(ogImage)}">` : '');
   const robotsTag = robotsNoindex ? `<meta name="robots" content="noindex,follow">` : '';
   const originalChrome = currentSiteChrome();
-  const chrome=originalChrome?{...originalChrome,bodyEnd:originalChrome.bodyEnd.replace(/wo-scripts@[^/]+\/wo-ui\.js/g,'wo-scripts@2a62604/wo-ui.js')}:null;
+  const chrome=originalChrome?{...originalChrome,head:originalChrome.head.replace(/wo-scripts@[^/]+\/site-polish\.css/g,'wo-scripts@2a62604/site-polish.css'),bodyEnd:originalChrome.bodyEnd.replace(/wo-scripts@[^/]+\/wo-ui\.js/g,'wo-scripts@2a62604/wo-ui.js')}:null;
   const product = jsonLdList.find(block=>block['@type']==='Product');
   const itemRoute = canonicalPath.match(/^\/(item|preorder|book)\/([^/]+)/);
   const productView = product && itemRoute ? productViewAnalytics({id:decodeURIComponent(itemRoute[2]),name:product.name,price:product.offers?.price,category:itemRoute[1]==='preorder'?'Comic preorder':itemRoute[1]==='book'?'Comic backorder':product.additionalProperty?.find(f=>f.name==='Category')?.value||''}) : '';
