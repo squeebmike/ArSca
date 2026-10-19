@@ -51,6 +51,7 @@ on:
       - scripts/secret-lair/stocked-drops.mjs
       - scripts/secret-lair/goblin-storm-2026.mjs
       - scripts/secret-lair/cats-2026.mjs
+      - scripts/secret-lair/elevator-2024.mjs
       - scripts/topps/football-seed.mjs
       - scripts/baseball-catalog-pages.mjs
       - scripts/baseball-section-pages.mjs
