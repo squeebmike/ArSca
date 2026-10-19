@@ -18,10 +18,10 @@ export function secretLairSealedMatches(item,drop){
  return [drop.name,...(drop.sealedNames||[])].some(name=>normalize(item.name).includes(normalize(name)));
 }
 export function secretLairEditorialHtml(drop,inventory,deps){
- const shown=new Set();
+ const shown=new Set(),fold=s=>s.toLowerCase().replace(/[‘’]/g,"'");
  return drop.paragraphs.map(p=>{
-  const text=p.toLowerCase();
-  const mentioned=drop.cards.filter(c=>!shown.has(c.scryfallId)&&[c.name,c.displayName].some(n=>n&&text.includes(n.toLowerCase())));
+  const text=fold(p);
+  const mentioned=drop.cards.filter(c=>!shown.has(c.scryfallId)&&[c.name,c.displayName,c.name.split(' // ')[0]].some(n=>n&&text.includes(fold(n))));
   for(const c of mentioned)shown.add(c.scryfallId);
   return '<p>'+deps.escape(p)+'</p>'+(mentioned.length?'<div class="mp-editorial-cards" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,210px),1fr));gap:20px;margin:20px 0 32px">'+mentioned.map(c=>'<figure style="margin:0;min-width:0"><a href="'+deps.escape(c.image)+'" target="_blank" rel="noopener"><img src="'+deps.escape(c.image)+'" alt="'+deps.escape(c.displayName+' — Secret Lair #'+c.collectorNumber)+'" width="244" height="340" loading="lazy" decoding="async" style="width:100%;max-width:244px;height:auto;object-fit:contain;border-radius:10px"></a><figcaption><strong>'+deps.escape(c.displayName)+'</strong><br>'+deps.escape(c.name+' · #'+c.collectorNumber)+'</figcaption>'+secretLairCardShopping(inventory,c,deps)+'</figure>').join('')+'</div>':'');
  }).join('');
