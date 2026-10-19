@@ -1,3 +1,4 @@
+import fs from 'node:fs';
 import assert from 'node:assert/strict';
 import {createRequire} from 'node:module';
 import {handlePocketGuides,pocketGuideEntries,pocketGuideCategories,pocketGuidePaths} from '../scripts/pocket-guides.mjs';
@@ -29,3 +30,5 @@ assert.equal((await get('/pocket-guides/')).status,301);
 assert.equal(await(await get('/pocket-guides','HEAD')).text(),'');assert.equal(await get('/shop'),null);
 deps.loadArticles=async()=>{throw Error('CMS down');};assert.equal((await get('/pocket-guides')).status,503);assert.equal((await get('/pocket-guides')).headers.get('Retry-After'),'60');
 console.log('Pocket Guides: complete HTML discovery, topic pagination, search safety, schema, theme, canonical URLs and honest outages passed');
+
+assert.ok(fs.readFileSync(new URL('../wrangler.deploy.jsonc',import.meta.url),'utf8').includes('www.themanapocket.com/pocket-guides*'), 'root query pagination and search must match the Worker route');
