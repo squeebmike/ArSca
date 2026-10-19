@@ -200,6 +200,42 @@ const CORS = {
 
 const METRON_BASE = 'https://metron.cloud/api';
 
+// Loupe's COMPARE TO REAL CARD (scripts/card-compare.js) reads the official
+// card image pixel by pixel on the phone, which a browser only allows for
+// images served with CORS -- most card-image CDNs don't send it. This relays
+// just those images, from known card-image hosts only, so it can't be used
+// as an open proxy. No AI, no paid lookup: one plain image fetch, cached.
+const CARD_IMAGE_HOSTS = ['pokemontcg.io', 'scryfall.io', 'scryfall.com', 'tcgplayer.com', 'pricecharting.com', 'sportscardspro.com',
+  'storage.googleapis.com', 'ebayimg.com', 'tcgdex.net', 'pkmn.gg', 'limitlesstcg.com', 'limitlesstcg.nyc3.digitaloceanspaces.com',
+  'r2.dev', 'workers.dev', 'themanapocket.com', 'pokellector.com', 'bulbagarden.net'];
+function cardImageRelayAllowed(raw) {
+  let u;
+  try { u = new URL(String(raw || '')); } catch (e) { return false; }
+  if (u.protocol !== 'https:' || u.username || u.password || (u.port && u.port !== '443')) return false;
+  const host = u.hostname.toLowerCase();
+  return CARD_IMAGE_HOSTS.some(h => host === h || host.endsWith('.' + h));
+}
+async function cardImageRelay(request, url, ctx) {
+  const target = url.searchParams.get('url') || '';
+  if (!cardImageRelayAllowed(target)) return json({ ok:false, error:'Not a card image this relay serves' }, 400);
+  const cache = typeof caches !== 'undefined' ? caches.default : null;
+  const cacheKey = new Request('https://card-image-relay.internal/?url=' + encodeURIComponent(target));
+  const hit = cache ? await cache.match(cacheKey).catch(() => null) : null;
+  if (hit) return hit;
+  let res;
+  try { res = await fetch(target, { headers:{ 'User-Agent':'Mozilla/5.0 (The Mana Pocket card compare)', Accept:'image/*' }, redirect:'follow' }); }
+  catch (e) { return json({ ok:false, error:'Could not load that card image' }, 502); }
+  const type = String(res.headers.get('content-type') || '').toLowerCase();
+  if (!res.ok || !/^image\/(jpeg|png|webp|gif|avif)/.test(type)) return json({ ok:false, error:'That card image is not available (' + res.status + ')' }, 502);
+  const size = Number(res.headers.get('content-length') || 0);
+  if (size > 12 * 1024 * 1024) return json({ ok:false, error:'That card image is too large' }, 413);
+  const body = await res.arrayBuffer();
+  if (body.byteLength > 12 * 1024 * 1024) return json({ ok:false, error:'That card image is too large' }, 413);
+  const out = new Response(body, { headers:{ 'Content-Type':type, 'Access-Control-Allow-Origin':'*', 'Cache-Control':'public, max-age=604800', 'X-Content-Type-Options':'nosniff' } });
+  if (cache) { const put = cache.put(cacheKey, out.clone()).catch(() => {}); if (ctx?.waitUntil) ctx.waitUntil(put); }
+  return out;
+}
+
 function metronText(value, max = 4000) {
   return String(value || '')
     .replace(/<br\s*\/?>/gi, '\n')
@@ -6476,6 +6512,7 @@ async function routeRequest(request, env, ctx) {
       return new Response(request.method === 'HEAD' ? null : existing.trimEnd() + '\n' + additions.join('\n') + '\n', { headers });
     }
 
+    if (request.method === 'GET' && url.pathname === '/card-image') return cardImageRelay(request, url, ctx);
     if (request.method === 'GET' && url.pathname === '/comics/search.js') return comicSearchScriptResponse();
     if (request.method === 'GET' && url.pathname === '/comics/search.json') {
       const data = await searchComics(url, {
