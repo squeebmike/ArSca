@@ -33,6 +33,7 @@ const num = value => String(value || '').trim().toLowerCase().replace(/^0+(?=\d)
 export const sportsSetKey = value => norm(String(value||'')
   .replace(/^(?:baseball|football)\s+cards?\s+/i,'')
   .replace(/\s+(?:baseball|football)$/i,'')
+  .replace(/\bprospects\b/ig,'Prospect')
   .replace(/\bUpdate Series\b/ig,'Update'));
 
 // A base checklist can point to a parallel of that numbered card, provided its
@@ -43,14 +44,14 @@ export function baseballChecklistInventoryMatches(item,card,set){
   if(item.categorySlug!=='sports-cards'||item.isSealed||/box|pack|case|bundle|lot/i.test(item.productType||''))return false;
   if(norm(card.variant)!=='base')return false;
   const section=norm(card.section),isBase=section==='base';
-  const autographAliases={rookieautographs:['Rookie Autograph'],autographcards:['Autograph','Autographs'],finestautographs:['Autograph','Autographs']};
-  if(!isBase&&!autographAliases[section])return false;
+  const sectionAliases={rookieautographs:['Rookie Autograph'],autographcards:['Autograph','Autographs'],finestautographs:['Autograph','Autographs'],chromeprospects:['Chrome Prospects'],paperprospects:['Prospects','Paper Prospects'],topprospects:['Top Prospects']};
+  if(!isBase&&!sectionAliases[section])return false;
   if(item.subset&&norm(item.subset)!==section)return false;
   const description=[item.name,item.set,item.variant,item.treatment].join(' ');
   if(item.isRelic||/relic|memorabilia|image variation|photo variation|short print|\b(?:sp|ssp)\b/i.test(description))return false;
-  if(isBase&&(item.isSigned||/autograph|auto\b/i.test(description)))return false;
+  if(!/autograph/i.test(card.section)&&(item.isSigned||/autograph|auto\b/i.test(description)))return false;
   const parent=String(set.displayName||set.setName||'').replace(/\s+(?:baseball|football)$/i,'');
-  const setKeys=isBase?[sportsSetKey(parent)]:autographAliases[section].map(alias=>sportsSetKey(parent+' '+alias));
+  const setKeys=isBase?[sportsSetKey(parent)]:sectionAliases[section].map(alias=>sportsSetKey(parent+' '+(/chrome$/i.test(parent)?alias.replace(/^Chrome /i,''):alias)));
   if(!isBase&&item.subset)setKeys.push(sportsSetKey(parent));
   if(!setKeys.includes(sportsSetKey(item.set)))return false;
   const setYear=String(item.set||'').match(/\b((?:19|20)\d{2})\b/)?.[1];

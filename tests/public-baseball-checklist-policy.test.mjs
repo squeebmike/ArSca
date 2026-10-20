@@ -51,3 +51,10 @@ assert.ok(family({...legacy,productType:'Sealed Product',isSealed:false},raleigh
 assert.equal(family({...legacy,productType:'Sealed Product',isSealed:true},raleigh,chrome),false);
 assert.equal(family({...legacy,name:'Cal Raleigh box #141',productType:'Sealed Product'},raleigh,chrome),false);
 assert.equal(family({...legacy,productType:'Sealed Booster Box'},raleigh,chrome),false);
+const prospectSet={year:2024,displayName:'2024 Bowman Baseball'};
+const prospect={player:'Aidan Smith',cardNumber:'BP-45',section:'Paper Prospects',variant:'Base'};
+const prospectItem={categorySlug:'sports-cards',name:'Aidan Smith [Neon Green] #BP-45 /399',set:'Baseball Cards 2024 Bowman Prospects',variant:'Baseball Card'};
+assert.ok(family(prospectItem,prospect,prospectSet));
+assert.equal(family({...prospectItem,set:'Baseball Cards 2024 Bowman Chrome Prospects'},prospect,prospectSet),false);
+assert.equal(family({...prospectItem,name:'Aidan Smith #BCP-45'},prospect,prospectSet),false);
+assert.equal(family({...prospectItem,isSigned:true},prospect,prospectSet),false);
