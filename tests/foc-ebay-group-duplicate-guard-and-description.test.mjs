@@ -47,6 +47,7 @@ assert.match(createBody, /const coversListText = 'This listing includes ' \+ rea
 assert.match(createBody, /realCovers\.map\(v => `- \$\{v\.label\} -- \$\$\{v\.price\}`\)/, 'every real cover\'s own label (which carries its incentive ratio, e.g. "CVR D INC 1:10...") and price must appear in the description, excluding the bundle');
 assert.match(createBody, /\(bundleVariant \? `\\n\\nAlso available as a bundle: \$\{bundleVariant\.label\} -- \$\$\{bundleVariant\.price\} \(all \$\{realCovers\.length\} covers together\)\.` : ''\)/,
   'an included bundle must still be mentioned, just called out separately from the real cover count instead of inflating it');
-assert.match(createBody, /const description = withComicListingNotices\(\[descriptionBase, coversListText\]\.filter\(Boolean\)\.join\('\\n\\n'\), \{ presale: true, onSaleLabel: defaults\.onSaleLabel \}\);/, 'the covers list must be appended to whatever description is actually used, so it survives a custom template instead of being silently dropped by it -- and the presale/Gemini notices go back in too');
+// (An HTML template gets the list as HTML -- see presale-bar-survives-length-cap.test.mjs.)
+assert.match(createBody, /const description = withComicListingNotices\(\[descriptionBase, coversListPart\]\.filter\(Boolean\)\.join\(\/<\\\/\?\[a-z\]\[\\s\\S\]\*>\/i\.test\(descriptionBase\) \? '' : '\\n\\n'\), \{ presale: true, onSaleLabel: defaults\.onSaleLabel \}\);/, 'the covers list must be appended to whatever description is actually used, so it survives a custom template instead of being silently dropped by it -- and the presale/Gemini notices go back in too');
 
 console.log('eBay group-listing covers/ratio description checks passed');

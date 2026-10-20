@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.10.20.3-free-pokemon-fallback-compare-feedback';
+const APP_VERSION = '2026.10.20.4-presale-bar-fits';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -20989,7 +20989,7 @@ function comicPresaleBannerText(onSaleLabel = ''){
   return 'PRESALE -- This comic has not been released yet.' + (onSaleLabel ? ' Expected release/ship date: ' + onSaleLabel + '.' : '') + ' Your order ships once it arrives from our distributor.';
 }
 function comicPresaleBannerHtml(onSaleLabel = ''){
-  return '<div style="max-width:760px;margin:8px auto 0;background:#ffd166;color:#171717;border:2px solid #171717;padding:12px 16px;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:900;text-align:center">' + escHtml(comicPresaleBannerText(onSaleLabel)) + '</div>';
+  return '<div style="max-width:760px;margin:8px auto 0;background:#ffd166;color:#171717;border:2px solid #171717;padding:12px 16px;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:900;text-align:center;box-sizing:border-box">' + escHtml(comicPresaleBannerText(onSaleLabel)) + '</div>';
 }
 // Store ask: the yellow PRESALE bar goes at the bottom, not the top.
 // A banner goes on the end unless the description already has its own

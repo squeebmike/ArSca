@@ -859,7 +859,7 @@ async function openEbayPresaleReview(skuId){
     var customTemplate=templates.Comic||templates.default||'';
     if(customTemplate&&typeof renderEbayDescriptionTemplate==='function'){
       var isHtmlTemplate=/<\/?[a-z][\s\S]*>/i.test(customTemplate);
-      var presaleShippingLine=[(typeof COMIC_GEMINI_LINE!=='undefined'?COMIC_GEMINI_LINE:'Bagged & boarded and shipped in a Gemini mailer.'),'For presale comics, orders ship promptly once the title reaches its official release date and inventory has been received from our distributor.',preview.onSaleLabel?('Release Date: '+preview.onSaleLabel):'','Publisher and distributor release dates may change. If a presale title is delayed, your order will ship as soon as the book becomes available.'].filter(Boolean).join('\n\n');
+      var presaleShippingLine=[(typeof COMIC_GEMINI_LINE!=='undefined'?COMIC_GEMINI_LINE:'Bagged & boarded and shipped in a Gemini mailer.'),'For presale comics, orders ship promptly once the title reaches its official release date and inventory has been received from our distributor.',preview.onSaleLabel?('Release Date: '+preview.onSaleLabel+'.'):'','Publisher and distributor release dates may change. If a presale title is delayed, your order will ship as soon as the book becomes available.'].filter(Boolean).join('\n\n');
       // Single-cover listing has no dropdown of covers to choose from, so
       // there's nothing to offer here -- an empty token lets a shared
       // template's "[[...{coverChoices}...]]" cover-picker section vanish
@@ -1088,7 +1088,7 @@ async function openFamilyEbayGroupReview(familyId){
     var customTemplate=templates.Comic||templates.default||'';
     if(customTemplate&&typeof renderEbayDescriptionTemplate==='function'){
       var isHtmlTemplate=/<\/?[a-z][\s\S]*>/i.test(customTemplate);
-      var presaleShippingLine=[(typeof COMIC_GEMINI_LINE!=='undefined'?COMIC_GEMINI_LINE:'Bagged & boarded and shipped in a Gemini mailer.'),'For presale comics, orders ship promptly once the title reaches its official release date and inventory has been received from our distributor.',preview.onSaleLabel?('Release Date: '+preview.onSaleLabel):'','Publisher and distributor release dates may change. If a presale title is delayed, your order will ship as soon as the book becomes available.'].filter(Boolean).join('\n\n');
+      var presaleShippingLine=[(typeof COMIC_GEMINI_LINE!=='undefined'?COMIC_GEMINI_LINE:'Bagged & boarded and shipped in a Gemini mailer.'),'For presale comics, orders ship promptly once the title reaches its official release date and inventory has been received from our distributor.',preview.onSaleLabel?('Release Date: '+preview.onSaleLabel+'.'):'','Publisher and distributor release dates may change. If a presale title is delayed, your order will ship as soon as the book becomes available.'].filter(Boolean).join('\n\n');
       // Real per-cover data (not fabricated) for a template's own "choose
       // your cover" section -- every eligible cover a buyer will actually
       // see in this listing's real eBay dropdown, same eligible-only list

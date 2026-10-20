@@ -18,8 +18,8 @@ const route = worker.slice(routeStart, worker.indexOf("    if (url.pathname === 
 function load({ row, sku, item, offer }) {
   const calls = { puts: [], patches: [] };
   const fn = new Function('fetch', 'supabaseAdminFetch', 'getEbayUserAccessToken', [
-    ratioFn, line('const COMIC_GEMINI_MAILER ='), line('const COMIC_SHIPPING_NOTE ='), line('const COMIC_IN_STOCK_SHIPPING ='),
-    grab('function truncateHtmlSafely('), grab('function comicPresaleNotice('), grab('function withComicListingNotices('),
+    ratioFn, line('const COMIC_GEMINI_MAILER ='), line('const COMIC_SHIPPING_NOTE ='), line('const COMIC_PRESALE_BAR_RE ='), line('const COMIC_IN_STOCK_SHIPPING ='),
+    grab('function truncateHtmlSafely('), grab('function comicPresaleNotice('), grab('function stripCutPresaleBarTail('), grab('function shortenHtmlToFit('), grab('function withComicListingNotices('),
     grab('function comicPresaleToInStockDescription('), grab('function stripPresaleSuffix('), grab('function buildEbayAspects('),
     grab('function toEbayHtmlDescription('),
     grab('    function truncateAtWordBoundary(', '\n    }\n'), grab('    function buildFocPresaleDefaults(', '\n    }\n'),
