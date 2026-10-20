@@ -40,7 +40,7 @@ export const sportsSetKey = value => norm(String(value||'')
 // an exact base printing. Inserts and autograph/relic sets remain separate.
 export function baseballChecklistInventoryMatches(item,card,set){
   if(baseballInventoryMatches(item,card,set))return true;
-  if(item.categorySlug!=='sports-cards'||item.isSealed||/sealed|box|pack|case|bundle|lot/i.test(item.productType||''))return false;
+  if(item.categorySlug!=='sports-cards'||item.isSealed||/box|pack|case|bundle|lot/i.test(item.productType||''))return false;
   if(norm(card.variant)!=='base')return false;
   const section=norm(card.section),isBase=section==='base';
   const autographAliases={rookieautographs:['Rookie Autograph'],autographcards:['Autograph','Autographs'],finestautographs:['Autograph','Autographs']};
@@ -64,6 +64,10 @@ export function baseballChecklistInventoryMatches(item,card,set){
     const escapedPlayer=String(card.player||'').replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
     title=String(item.name||'').match(new RegExp('^('+escapedPlayer+')\\s+(Magenta Speckle|Blue Sonar|Purple Sonar|Aqua)\\s+([a-z0-9-]+)(?:\\s+\\/\\d+)?\\s*$','i'));
   }
+  // Legacy intake used the generic "Sealed Product" label for some named
+  // singles. Only a complete matching single-card title can resolve that label;
+  // never override the explicit sealed flag, box/lot types, or structured conflicts.
+  if(/sealed/i.test(item.productType||'')&&(!/^sealed product$/i.test(item.productType)||!title))return false;
   const player=item.player||title?.[1],number=item.cardNumber||title?.[3];
   // Conflicting structured fields cannot be overridden by a convenient title.
   if(title&&item.player&&norm(item.player)!==norm(title[1]))return false;

@@ -47,3 +47,7 @@ assert.equal(family({...autoItem,set:'Baseball Cards 2024 Topps Chrome Rookie Au
 assert.equal(family(autoItem,{...autoCard,section:'Base'},autoSet),false);
 assert.equal(family({...autoItem,subset:'Relics'},autoCard,autoSet),false);
 assert.equal(family({...autoItem,name:'Bryan Woo #RA-BWO',set:'Baseball Cards 2025 Topps Chrome'},autoCard,autoSet),false);
+assert.ok(family({...legacy,productType:'Sealed Product',isSealed:false},raleigh,chrome),'complete exact single-card identity resolves legacy generic type');
+assert.equal(family({...legacy,productType:'Sealed Product',isSealed:true},raleigh,chrome),false);
+assert.equal(family({...legacy,name:'Cal Raleigh box #141',productType:'Sealed Product'},raleigh,chrome),false);
+assert.equal(family({...legacy,productType:'Sealed Booster Box'},raleigh,chrome),false);
