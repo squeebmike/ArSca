@@ -1,3 +1,4 @@
+import {articleContents} from './collector-page-ui.mjs';
 import {sportsSetKey} from './topps/public-checklist-policy.mjs';
 import {cachedPublicCatalog} from './public-catalog-cache.mjs';
 import {catalogStoreCopyHtml,tcgplayerAffiliateUrl,marketplaceDisclosureHtml} from './catalog-inventory.mjs';
@@ -55,7 +56,7 @@ export function renderReleaseInventory(slug,inventory,deps){
   const guide=RELEASE_GUIDES[slug];if(!guide)return '';
   const esc=deps.esc,normalize=v=>String(v||'').toLowerCase().replace(/[^a-z0-9]/g,'');
   const copies=inventory?.filter(item=>item.categorySlug===(guide.categorySlug||guide.game)&&Number.isFinite(item.price)&&item.price>0&&deps.isAvailable(item)&&(guide.codes.includes(String(item.setCode||'').toLowerCase())||guide.sets.some(set=>(guide.categorySlug==='sports-cards'?sportsSetKey(set)===sportsSetKey(item.set):normalize(set)===normalize(item.set)))));
-  return `<section class="mp-books" aria-label="${esc(guide.name)} store availability"><h2>Find the set. Check the actual stock.</h2>${copies?.some(item=>tcgplayerAffiliateUrl(item))?marketplaceDisclosureHtml:''}<p><a href="${guide.checklist}">Set checklists</a> · <a href="${guide.viewer}">${guide.game==='baseball'?'Browse cards and team filters':'Open the card viewer'}</a></p>${copies?.length?`<p>${copies.length} matching store listing${copies.length===1?'':'s'} currently available.</p>${`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr));gap:14px">${copies.slice(0,8).map(item=>'<div>'+catalogStoreCopyHtml(item,{escape:esc,slug:()=>deps.itemSlug(item)})+(tcgplayerAffiliateUrl(item)?'<p><a target="_blank" rel="noopener sponsored" href="'+esc(tcgplayerAffiliateUrl(item))+'">View this product on TCGplayer</a></p>':'')+'</div>').join('')}</div>`}`:`<p>${copies?'No matching store copies are currently listed.':'Store availability could not be checked just now.'} This guide does not reserve copies or guarantee an allocation.</p>`}<p><a href="/category/${guide.categorySlug||guide.game}">Browse current ${guide.inventoryLabel||(guide.game==='mtg'?'MTG':'Pokémon')} inventory</a></p></section>`;
+  return `<section id="guide-stock" class="mp-books mp-stock-panel" aria-label="${esc(guide.name)} store availability"><h2>Find the set. Check the actual stock.</h2>${copies?.some(item=>tcgplayerAffiliateUrl(item))?marketplaceDisclosureHtml:''}<p><a href="${guide.checklist}">Set checklists</a> · <a href="${guide.viewer}">${guide.game==='baseball'?'Browse cards and team filters':'Open the card viewer'}</a></p>${copies?.length?`<p>${copies.length} matching store listing${copies.length===1?'':'s'} currently available.</p>${`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr));gap:14px">${copies.slice(0,8).map(item=>'<div>'+catalogStoreCopyHtml(item,{escape:esc,slug:()=>deps.itemSlug(item)})+(tcgplayerAffiliateUrl(item)?'<p><a target="_blank" rel="noopener sponsored" href="'+esc(tcgplayerAffiliateUrl(item))+'">View this product on TCGplayer</a></p>':'')+'</div>').join('')}</div>`}`:`<p>${copies?'No matching store copies are currently listed.':'Store availability could not be checked just now.'} This guide does not reserve copies or guarantee an allocation.</p>`}<p><a href="/category/${guide.categorySlug||guide.game}">Browse current ${guide.inventoryLabel||(guide.game==='mtg'?'MTG':'Pokémon')} inventory</a></p></section>`;
 }
 
 const F = {
@@ -272,13 +273,13 @@ export async function bookStatus(env, deps, book, now = Date.now()) {
 const STYLE = `<style>
 .mp-art-directories{display:flex;flex-wrap:wrap;gap:10px;margin:16px 0}.mp-art-directories a{font:650 14px/1.5 system-ui;padding:10px 14px;border:1px solid var(--wo-border,#777);border-radius:10px;text-decoration:none}.mp-art-shortcuts{display:flex;flex-wrap:wrap;gap:10px;margin:18px 0 24px}.mp-art-shortcuts a{padding:10px 14px;border:1px solid var(--wo-border,#777);border-radius:24px;color:var(--wo-text,#fff);font-size:14px;text-decoration:none}.mp-art{max-width:760px;margin:0 auto}
 .mp-art h1{font-size:clamp(28px,5vw,44px);line-height:1.08;margin:6px 0 12px;letter-spacing:-.01em}
-.mp-art-meta{font-size:13px;opacity:.65;margin-bottom:22px}
-.mp-art-hero{width:100%;max-height:520px;object-fit:contain;border-radius:14px;background:#15101f;margin:0 0 24px}
-.mp-art-body{font-size:17px;line-height:1.7;color:#e9e4f6}
-.mp-art-body h2{font-size:24px;line-height:1.25;margin:38px 0 10px;color:#fff}
-.mp-art-body h3{font-size:19px;margin:28px 0 8px;color:#fff}
+.mp-art-meta{font-size:13px;opacity:.8;margin-bottom:22px;line-height:1.6}.mp-art-deck{font-size:19px;line-height:1.65;margin:0 0 24px;color:var(--wo-text,inherit)}.mp-art-contents{padding:18px 20px;margin:24px 0;border:1px solid var(--wo-border,rgba(255,255,255,.2));border-radius:14px;background:var(--wo-surface,transparent)}.mp-art-contents strong{font-size:14px}.mp-art-contents div{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr));gap:4px 18px;margin-top:8px}.mp-art-contents a{display:block;padding:8px 0;min-height:44px;font-size:14px;line-height:1.5;text-decoration:underline;text-underline-offset:3px}.mp-art-body table{display:block;max-width:100%;overflow-x:auto;border-collapse:collapse}.mp-art-body th,.mp-art-body td{padding:10px;border:1px solid var(--wo-border,#777);text-align:left}.mp-art-body figure{margin:24px 0}.mp-art-body figcaption{font-size:13px;line-height:1.6;margin-top:8px}
+.mp-art-hero{width:100%;max-height:380px;object-fit:contain;border-radius:14px;background:var(--wo-surface,#15101f);margin:0 0 16px}
+.mp-art-body{font-size:17px;line-height:1.8;color:var(--wo-text,#e9e4f6)}
+.mp-art-body h2{font-size:24px;line-height:1.25;margin:38px 0 10px;color:var(--wo-text,#fff)}
+.mp-art-body h3{font-size:19px;margin:28px 0 8px;color:var(--wo-text,#fff)}
 .mp-art-body p{margin:0 0 16px}
-.mp-art-body blockquote{margin:22px 0;padding:6px 0 6px 18px;border-left:4px solid var(--wo-accent,#8bd450);font-size:20px;font-weight:700;color:#fff}
+.mp-art-body blockquote{margin:22px 0;padding:6px 0 6px 18px;border-left:4px solid var(--wo-accent,#8bd450);font-size:20px;font-weight:700;color:var(--wo-text,#fff)}
 .mp-art-body ul,.mp-art-body ol{padding-left:22px;margin:0 0 16px}.mp-art-body li{margin:0 0 10px}
 .mp-art-body img{max-width:100%;height:auto;border-radius:10px}
 .mp-art-body a{color:var(--wo-accent,#8bd450)}
@@ -288,7 +289,7 @@ const STYLE = `<style>
 .mp-buy-t{font-size:17px;font-weight:800;margin-bottom:4px}
 .mp-buy-s{font-size:13px;opacity:.75;margin-bottom:10px}
 .mp-btn{display:inline-block;padding:10px 16px;border-radius:999px;background:var(--wo-button,#8bd450);color:var(--wo-on-button,#111)!important;font-weight:800;font-size:14px;text-decoration:none;margin:0 8px 6px 0}
-.mp-btn.ghost{background:transparent;color:#f2eefc!important;border:1px solid rgba(255,255,255,.3)}
+.mp-btn.ghost{background:transparent;color:var(--wo-text,#f2eefc)!important;border:1px solid rgba(255,255,255,.3)}
 .mp-facts{border:1px solid rgba(255,255,255,.14);border-radius:12px;padding:16px 18px;margin:30px 0}
 .mp-facts h2{font-size:18px;margin:0 0 10px}
 .mp-facts dl{display:grid;grid-template-columns:max-content 1fr;gap:6px 18px;margin:0;font-size:14px}.mp-facts dt{opacity:.6}.mp-facts dd{margin:0}
@@ -313,13 +314,13 @@ const STYLE = `<style>
 .mp-btn[disabled]{opacity:.45;cursor:default}
 .mp-picker-msg{font-size:14px;margin-top:10px;line-height:1.5}.mp-picker-msg.ok{color:var(--wo-accent,#8bd450)}.mp-picker-msg.err{color:#ff8a8a}
 .mp-auth{display:grid;gap:8px;max-width:360px;margin-top:12px;padding:14px;border:1px solid rgba(255,255,255,.15);border-radius:12px;background:rgba(255,255,255,.04)}
-.mp-auth input{font:inherit;font-size:16px;padding:10px 12px;border-radius:8px;border:1px solid rgba(255,255,255,.2);background:#15101f;color:#fff}
+.mp-auth input{font:inherit;font-size:16px;padding:10px 12px;border-radius:8px;border:1px solid rgba(255,255,255,.2);background:#15101f;color:var(--wo-text,#fff)}
 .mp-auth b{font-size:15px}.mp-auth p{margin:0;font-size:13px;opacity:.75}.mp-auth .mp-btn{margin:0}
 .mp-art-list{display:grid;gap:18px;max-width:900px;margin:0 auto}
 .mp-art-card{display:flex;gap:18px;padding:16px;border:1px solid rgba(255,255,255,.12);border-radius:14px;text-decoration:none;color:inherit;background:rgba(255,255,255,.03)}
 .mp-art-card:hover{border-color:var(--wo-accent,#8bd450)}
 .mp-art-card img{width:120px;height:160px;object-fit:cover;border-radius:8px;flex:none;background:#15101f}
-.mp-art-card h2{font-size:21px;line-height:1.2;margin:2px 0 6px;color:#fff}
+.mp-art-card h2{font-size:21px;line-height:1.2;margin:2px 0 6px;color:var(--wo-text,#fff)}
 .mp-art-card p{margin:0 0 8px;font-size:14px;opacity:.75;line-height:1.5}
 @media(max-width:560px){.mp-art-card{flex-direction:column}.mp-art-card img{width:100%;height:190px}.mp-buy{align-items:flex-start}.mp-book-row{flex-direction:column;align-items:flex-start}}
 </style>`;
@@ -413,6 +414,8 @@ function renderBooks(statuses, esc) {
 
 export function renderArticlePage(article, statuses, related, deps) {
   const esc = deps.esc;
+  const contents=articleContents(article.bodyHtml,esc);
+  const guide=RELEASE_GUIDES[article.slug];
   const main = statuses[0] || null;
   const image = article.image || main?.cover || '';
   const url = `https://www.themanapocket.com/articles/${article.slug}`;
@@ -420,7 +423,7 @@ export function renderArticlePage(article, statuses, related, deps) {
     ? `<section class="mp-facts"><h2>${esc(main?.name || 'Book details')}</h2><dl>${article.facts.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('')}</dl></section>`
     : '';
   const more = related.length
-    ? `<section class="mp-books"><h2>More collector articles</h2>${related.map(a => `<div class="mp-book-row"><div><b><a href="/articles/${esc(a.slug)}" style="color:#fff;text-decoration:none">${esc(a.title)}</a></b><span>${esc(dateLabel(a.publishedAt))}</span></div></div>`).join('')}</section>`
+    ? `<section class="mp-books"><h2>More collector articles</h2>${related.map(a => `<div class="mp-book-row"><div><b><a href="/articles/${esc(a.slug)}" style="color:var(--wo-text,#fff);text-decoration:none">${esc(a.title)}</a></b><span>${esc(dateLabel(a.publishedAt))}</span></div></div>`).join('')}</section>`
     : '';
   const description = (article.summary || plainText(article.bodyHtml).slice(0, 180)).slice(0, 300);
   return deps.pageShell({
@@ -443,11 +446,12 @@ export function renderArticlePage(article, statuses, related, deps) {
       ] },
     ],
     bodyHtml: STYLE + `<article class="mp-art"><div class="mp-crumb"><a href="/articles">← Collector articles</a></div>` +
-      `<h1>${esc(article.title)}</h1><div class="mp-art-meta">${esc(article.author)}${article.publishedAt ? ` · ${esc(dateLabel(article.publishedAt))}` : ''} · ${readingMinutes(article.bodyHtml)} min read</div>` +
+      `<header><p class="mp-set-kicker">The Mana Pocket · Pocket Guides</p><h1>${esc(article.title)}</h1><div class="mp-art-meta">${esc(article.author)}${article.publishedAt ? ` · ${esc(dateLabel(article.publishedAt))}` : ''} · ${readingMinutes(article.bodyHtml)} min read</div>${article.summary?`<p class="mp-art-deck">${esc(article.summary)}</p>`:''}</header>` +
+      (guide?`<nav class="mp-set-actions" aria-label="Explore this release"><a href="${esc(guide.checklist)}">Explore the checklist</a><a href="#guide-stock">Shop available copies</a></nav>`:'') + contents.nav +
       (image ? `<a href="${esc(image)}" target="_blank" rel="noopener" aria-label="Open full-size article image"><img class="mp-art-hero" width="660" height="1000" fetchpriority="high" decoding="async" src="${esc(image)}" alt="${esc(article.imageAlt || article.title)}"></a><p class="mp-art-meta">Tap the image to see it full size.</p>` : '') +
       renderBuyBox(article, main, esc) +
       (main ? `<nav class="mp-art-shortcuts" aria-label="Book actions"><a href="#${bookAnchor(main)}">Covers &amp; availability</a><a href="/comics/search?q=${encodeURIComponent(comicKey(main.name).series)}">Find related comics</a><a href="#book-updates">Book updates</a></nav>` : '') +
-      `<div class="mp-art-body">${article.bodyHtml}</div>` + (deps.releaseInventoryHtml || '') + facts + renderBooks(statuses, esc) + renderBookUpdates(article, deps.storeId, esc) + articleShoppingLinks(article) + more + `</article>` +
+      `<div class="mp-art-body">${contents.html}</div>` + (deps.releaseInventoryHtml || '') + facts + renderBooks(statuses, esc) + renderBookUpdates(article, deps.storeId, esc) + articleShoppingLinks(article) + more + `</article>` +
       (statuses.some(st => st.options?.length) ? pickerScript(deps.storeId) : ''),
   });
 }

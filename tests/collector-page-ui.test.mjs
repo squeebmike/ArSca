@@ -1,0 +1,18 @@
+import assert from 'node:assert/strict';
+import {parseHTML} from 'linkedom';
+import {articleContents,setPageHeader,collectorPageStyles} from '../scripts/collector-page-ui.mjs';
+const esc=s=>String(s??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('"','&quot;');
+const body='<h2 id="guide-section-1">Cards &amp; covers</h2><p>Keep this text.</p><h2>What to buy</h2><h2>What to buy</h2>';
+const contents=articleContents(body,esc),{document}=parseHTML('<html><body>'+contents.nav+contents.html+'</body></html>');
+const ids=[...document.querySelectorAll('h2')].map(h=>h.id);
+assert.equal(new Set(ids).size,3,'repeated headings and existing IDs remain distinct');
+assert.equal(ids[0],'guide-section-1','editorial anchors stay unchanged');
+for(const a of document.querySelectorAll('nav a'))assert.ok(document.getElementById(a.getAttribute('href').slice(1)),'contents links target rendered headings');
+assert.ok(contents.html.includes('<p>Keep this text.</p>'));
+assert.equal(articleContents('<h2>One section</h2>',esc).nav,'','avoid a menu with a single destination');
+const header=setPageHeader({title:'Cards <script>',label:'Set guide',stats:['300 cards'],actions:[['Browse cards','#cards']]},esc);
+assert.ok(header.includes('Cards &lt;script>'));
+assert.equal((header.match(/<h1>/g)||[]).length,1);
+assert.ok(header.includes('aria-label="Explore this set"'));
+assert.ok(collectorPageStyles.includes('var(--wo-button')&&collectorPageStyles.includes(':focus-visible'));
+console.log('Collector set headers, theme controls and collision-safe article contents passed');

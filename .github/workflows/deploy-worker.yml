@@ -58,6 +58,7 @@ on:
       - scripts/secret-lair/summer-2025.mjs
       - scripts/secret-lair/deadpool-2025.mjs
       - scripts/topps/football-seed.mjs
+      - scripts/collector-page-ui.mjs
       - scripts/baseball-catalog-pages.mjs
       - scripts/baseball-section-pages.mjs
       - scripts/topps/baseball-sections.mjs
