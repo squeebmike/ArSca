@@ -1,3 +1,4 @@
+import {collectorPageStyles} from '../scripts/collector-page-ui.mjs';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import fs from 'node:fs';
@@ -22,7 +23,7 @@ vm.runInNewContext(script.match(/<script[^>]*>([\s\S]*?)<\/script>/)[1],{window:
 assert.equal(events[0][1],'view_item');assert.equal(events[0][2].value,9);assert.equal(events[0][2].items[0].quantity,1);
 assert.equal(productViewAnalytics({name:'no id'}),'');
 const workerSource=fs.readFileSync(new URL('../cloudflare-worker-full.js',import.meta.url),'utf8');
-const context={storeOrganization:{'@type':'Organization'},productViewAnalytics,googleAnalyticsTag,measurementId,mtgEscapeHtml:String,currentSiteChrome:()=>null,mtgFallbackChromeCss:()=>'',mtgSiteHeader:()=>'',mtgSiteFooter:()=>'',mtgSiteNavScript:()=>'',WO_UI_SCRIPT_URL:''};
+const context={collectorPageStyles,storeOrganization:{'@type':'Organization'},productViewAnalytics,googleAnalyticsTag,measurementId,mtgEscapeHtml:String,currentSiteChrome:()=>null,mtgFallbackChromeCss:()=>'',mtgSiteHeader:()=>'',mtgSiteFooter:()=>'',mtgSiteNavScript:()=>'',WO_UI_SCRIPT_URL:''};
 vm.createContext(context);vm.runInContext(workerSource.slice(workerSource.indexOf('function mtgPageShell('),workerSource.indexOf('function mtgHtmlResponse(')),context);
 for(const route of ['item','book','preorder']){
  const rendered=context.mtgPageShell({title:'Book',description:'Product',canonicalPath:'/'+route+'/real-id/title',jsonLd:{'@type':'Product',name:'Exact book',sku:'different-publisher-upc',offers:{price:5}},bodyHtml:''});
