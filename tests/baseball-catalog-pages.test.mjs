@@ -79,3 +79,26 @@ assert.ok(heritage.cards.find(c=>c.cardNumber==='333').subjects[0].note.includes
 const series=baseballStockedCurrentSets.find(s=>s.id==='2024-topps-baseball-series-1');
 assert.equal(series.cards.find(c=>c.cardNumber==='138').subjects[0].team,'','league affiliation is not invented as a club team');
 assert.equal(series.cards.find(c=>c.cardNumber==='138').sourceAffiliation,'Major League Baseball');
+
+// New insert sections preserve existing sections of the same release and never
+// leak their numbered cards into its base checklist.
+import {baseballStockedInsertSections} from '../scripts/topps/baseball-stocked-inserts-2026-10.mjs';
+import {baseballChecklistInventoryMatches} from '../scripts/topps/public-checklist-policy.mjs';
+assert.equal(baseballStockedInsertSections.flatMap(g=>g.sections.flatMap(s=>s.cards)).length,218);
+const insertExamples=[
+ ['2025-topps-chrome-baseball','Chrome All Etch','All Etch','CAE-15','Julio Rodriguez'],
+ ['2023-topps-pristine-baseball','Oh Snap','Oh Snap','OS-9','Julio Rodriguez'],
+ ['2023-bowman-s-best-baseball','Best of 2023 Early Form Autographs','of Autographs','B23-MA','Michael Arroyo'],
+ ['2023-bowman-sterling-baseball','Sterling Tek','Tek','ST-20','Julio Rodriguez'],
+ ['2022-topps-update-baseball','Stars of MLB','Stars of MLB','SMLB-87','Julio Rodriguez'],
+ ['2026-bowman-baseball','Power Chords','Power Chords','PC-11','Shohei Ohtani'],
+];
+for(const [id,section,alias,number,player] of insertExamples){
+ const set=baseballSets.find(s=>s.id===id),group=sectionsForSet(set).find(g=>g.name===section),card=group.cards.find(c=>c.cardNumber===number);
+ assert.ok(card,section);assert.ok(group.kind);
+ assert.ok(!set.cards.some(c=>c.id===card.id),'insert stays separate from base');
+ const item={categorySlug:'sports-cards',isSealed:false,year:set.year,set:set.displayName.replace(/\s+baseball$/i,'')+' '+alias,name:player+' #'+number};
+ assert.equal(baseballChecklistInventoryMatches(item,card,set),true,section);
+ assert.equal(baseballChecklistInventoryMatches({...item,year:set.year-1},card,set),false,'conflicting year stays blocked');
+}
+assert.ok(sectionsForSet(baseballSets.find(s=>s.id==='2025-topps-chrome-baseball')).some(g=>g.id==='rookie-autographs'));

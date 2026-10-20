@@ -44,7 +44,7 @@ export function baseballChecklistInventoryMatches(item,card,set){
   if(item.categorySlug!=='sports-cards'||item.isSealed||/box|pack|case|bundle|lot/i.test(item.productType||''))return false;
   if(norm(card.variant)!=='base')return false;
   const section=norm(card.section),isBase=section==='base';
-  const sectionAliases={prospectautographs:['Prospect Autograph'],rookieautographs:['Rookie Autograph'],autographcards:['Autograph','Autographs'],finestautographs:['Autograph','Autographs'],chromeprospects:['Chrome Prospects'],paperprospects:['Prospects','Paper Prospects'],topprospects:['Top Prospects']};
+  const sectionAliases={chromealletch:['All Etch'],ohsnap:['Oh Snap'],bestof2023earlyformautographs:['of Autographs'],sterlingtek:['Tek'],starsofmlb:['Stars of MLB'],powerchords:['Power Chords'],prospectautographs:['Prospect Autograph'],rookieautographs:['Rookie Autograph'],autographcards:['Autograph','Autographs'],finestautographs:['Autograph','Autographs'],chromeprospects:['Chrome Prospects'],paperprospects:['Prospects','Paper Prospects'],topprospects:['Top Prospects']};
   if(!isBase&&!sectionAliases[section])return false;
   if(item.subset&&norm(item.subset)!==section)return false;
   const description=[item.name,item.set,item.variant,item.treatment].join(' ');
