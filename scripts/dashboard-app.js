@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.10.20.2-sale-cover-check-ebay-cancels';
+const APP_VERSION = '2026.10.20.3-free-pokemon-fallback-compare-feedback';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -31596,6 +31596,15 @@ async function _runPriceLookupInner(){
       </div>`;
       return;
     }
+    if(wantsPokemon && !cachedResults.length){
+      const free = await pokemonFreeCatalogFallback(q).catch(() => []);
+      if(free.length && qplSearchStillActive(mySeq, searchPlan)){
+        qplMasterResults = free; qplLastSearch = q; qplResults = free;
+        renderQuickLookupResults(qplResults);
+        el.insertAdjacentHTML('afterbegin', '<div class="qpl-free-fallback" style="font-family:var(--font-mono);font-size:10px;color:var(--gold);line-height:1.5;padding:6px 0 8px">⚠ Pokémon prices are unavailable right now (' + escHtml(e.message || 'lookup failed') + '). Showing the card from the free TCGdex catalog -- name, set, number and image, no price. Prices come back after the daily reset.</div>');
+        return;
+      }
+    }
     if(cachedResults.length) {
       if(wantsMtg) setMtgOfflineBanner('Live refresh failed: ' + e.message + '. Cached MTG data remains visible.', 'bad');
       if(wantsComic) setComicsOfflineBanner('Live Metron refresh failed: ' + e.message, 'bad');
@@ -31605,6 +31614,30 @@ async function _runPriceLookupInner(){
       if(wantsComic) setComicsOfflineBanner('Live Metron comic search failed. No device comic catalog was searched.', 'bad');
     }
   }
+}
+
+// Store report: "Out of credits" -- a Pokemon search failed outright with
+// "Lookup failed: Daily rate limit exceeded" once PokemonPriceTracker's
+// daily quota ran out. The card itself can still be found for free in
+// TCGdex (the Worker's /card-compare/search, also used by Loupe's compare):
+// name, set, number and the official image, with the price marked as
+// unavailable until the quota resets.
+function freeCatalogToQplRow(card = {}, query = ''){
+  return {
+    source:'tcgdex_free', name:card.name || query || 'Pokemon card', category:'Pokemon TCG',
+    set:card.set || '', setName:card.set || '', variant:'', card_number:card.number || '', number:card.number || '',
+    condition:'NM', selectedCondition:'NM', finish:'normal', selectedFinish:'normal', language:'English',
+    market:0, low:0, imageUrl:card.imageUrl || '',
+    priceSource:'TCGdex (free catalog) · price unavailable today',
+    note:'PokemonPriceTracker is out of lookups for today, so there is no live price. The card, set, number and image come from the free TCGdex catalog -- check the price on TCGplayer, or search again after the daily reset.',
+    confidence:70, matchWhy:['free catalog: name / number match'], priceUnavailable:true, raw:{ ...card, query },
+  };
+}
+async function pokemonFreeCatalogFallback(q){
+  if(typeof storeWorkerFetch !== 'function' || !String(q || '').trim()) return [];
+  const res = await storeWorkerFetch('/card-compare/search?game=pokemon&q=' + encodeURIComponent(q), { cache:'no-store' });
+  const d = await res.json().catch(() => ({}));
+  return d.ok ? (d.cards || []).map(c => freeCatalogToQplRow(c, q)) : [];
 }
 
 async function fetchComicVineCover(name, issue, year){

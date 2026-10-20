@@ -281,6 +281,24 @@ async function cardCompareSearch(request, env, url) {
   ]);
   return json({ ok:true, query:parsed, cards:[...pokemon, ...mtg].slice(0, 16) }, 200, { 'Cache-Control':'no-store' });
 }
+// After a compare, staff say whether the card really was real or fake; the
+// compare's own scores are kept with the answer (card_compare_feedback,
+// service role only) so its thresholds can be tuned from real cards.
+async function cardCompareFeedback(request, env, url) {
+  const body = await request.json().catch(() => ({}));
+  const storeId = requestStoreId(request, url, body);
+  const auth = await requireStoreUser(request, env, storeId);
+  if (auth.error) return auth.error;
+  const answer = String(body.answer || '').toLowerCase();
+  if (!['real', 'fake', 'unsure'].includes(answer)) return json({ ok:false, error:'answer must be real, fake or unsure' }, 400);
+  const clip = (v, n) => String(v == null ? '' : v).slice(0, n);
+  const card = { name:clip(body.card?.name, 200), set:clip(body.card?.set, 200), number:clip(body.card?.number, 40), imageUrl:clip(body.card?.imageUrl, 600) };
+  const zones = (Array.isArray(body.zones) ? body.zones : []).slice(0, 10).map(z => ({ key:clip(z?.key, 20), match:Number(z?.match) || 0, sharpness:Number(z?.sharpness) || 0, inkWeight:Number(z?.inkWeight) || 0, colorDiff:Number(z?.colorDiff) || 0, severity:Number(z?.severity) || 0 }));
+  const row = { store_id:storeId, created_by:auth.user?.id || null, answer, card, verdict:clip(body.verdict, 20) || null, overall:Number(body.overall) || 0, zones, app_version:clip(body.appVersion, 60) || null };
+  const { response } = await supabaseAdminFetch(env, 'card_compare_feedback', { method:'POST', headers:{ Prefer:'return=minimal' }, body:JSON.stringify(row) });
+  if (response && !response.ok) return json({ ok:false, error:'Could not save' }, 502);
+  return json({ ok:true });
+}
 async function cardImageRelay(request, url, ctx) {
   const target = url.searchParams.get('url') || '';
   if (!cardImageRelayAllowed(target)) return json({ ok:false, error:'Not a card image this relay serves' }, 400);
@@ -6634,6 +6652,7 @@ async function routeRequest(request, env, ctx) {
 
     if (request.method === 'GET' && url.pathname === '/card-image') return cardImageRelay(request, url, ctx);
     if (request.method === 'GET' && url.pathname === '/card-compare/search') return cardCompareSearch(request, env, url);
+    if (request.method === 'POST' && url.pathname === '/card-compare/feedback') return cardCompareFeedback(request, env, url);
     if (request.method === 'GET' && url.pathname === '/comics/search.js') return comicSearchScriptResponse();
     if (request.method === 'GET' && url.pathname === '/comics/search.json') {
       const data = await searchComics(url, {

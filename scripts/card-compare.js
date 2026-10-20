@@ -451,6 +451,7 @@ function lineUp(){
       S.aligned = warpToRef(S.photoRgba, S.photo.width, S.photo.height, hm, REF_W, REF_H);
       S.alignedCanvas = rgbaToCanvas(S.aligned, REF_W, REF_H);
       S.result = analyzeCard(S.ref, S.aligned);
+      S.feedback = null;
       S.heatCanvas = heatCanvas(S.result);
       renderCompare();
     } catch(e){ ui.body.innerHTML = '<div class="ccmp-verdict" style="border:1px solid var(--red,#f45)">Compare failed: ' + esc(e.message) + '</div>'; }
@@ -483,6 +484,9 @@ function renderCompare(){
       return '<div class="ccmp-zone"><b style="color:' + sev + '">' + (z.severity ? '⚠ ' : '✓ ') + esc(z.label) + '</b> <span class="ccmp-note">' + stats + '</span>' + (z.findings.length ? '<div>' + z.findings.map(esc).join('<br>') + '</div>' : '') + '</div>';
     }).join('') +
     '<div class="ccmp-note" style="margin-top:8px">Checked on this phone -- no credits used. A tool to point you at what to inspect, not proof: holo/foil glare, sleeves, 1st edition stamps, reprints and different print runs also show as differences. Real cards: crisp tiny text, correct font and spacing, the right holo pattern, and they pass the light test.</div>' +
+    '<div class="ccmp-verdict" style="border:1px dashed var(--border,#333)"><b>Is this card actually real?</b> <span class="ccmp-note">Your answer is saved with these scores so the check gets better.</span>' +
+      '<div class="ccmp-row">' + (S.feedback ? '<span class="ccmp-note" style="color:var(--g,#00ffa3)">Saved: ' + esc(S.feedback) + ' -- thanks</span>' :
+        '<button type="button" class="hbtn" style="color:var(--g,#00ffa3)" data-cc="feedback" data-answer="real">✓ REAL</button><button type="button" class="hbtn" style="color:var(--red,#ff4d6d)" data-cc="feedback" data-answer="fake">✗ FAKE</button><button type="button" class="hbtn" data-cc="feedback" data-answer="unsure">? NOT SURE</button>') + '</div></div>' +
     '<div class="ccmp-row"><button type="button" class="hbtn" data-cc="corners">↺ ADJUST CORNERS</button></div>';
   var stage = ui.body.querySelector('[data-stage]'), cv = stage.querySelector('canvas');
   cv.style.width = (S.zoom * 100) + '%';
@@ -524,6 +528,23 @@ function handleAction(act, btn){
   if(act === 'corners'){ if(S.flicker){ clearInterval(S.flicker); S.flicker = null; } return renderCorners(); }
   if(act === 'mode'){ S.mode = btn.getAttribute('data-mode'); return renderCompare(); }
   if(act === 'zoom'){ S.zoom = Number(btn.getAttribute('data-zoom')) || 1; return renderCompare(); }
+  if(act === 'feedback') return sendFeedback(btn.getAttribute('data-answer'));
+}
+// REAL / FAKE / NOT SURE: kept with this compare's scores (the Worker's
+// /card-compare/feedback) so the thresholds can be tuned from real cards.
+async function sendFeedback(answer){
+  if(!S || !S.result || typeof storeWorkerFetch !== 'function') return;
+  var r = S.result;
+  var payload = { answer:answer, card:{ name:S.card.name, set:S.card.set, number:S.card.number, imageUrl:S.card.imageUrl }, verdict:r.verdict.level, overall:r.overall,
+    zones:r.zones.map(function(z){ return { key:z.key, match:z.match, sharpness:z.sharpness, inkWeight:z.inkWeight, colorDiff:z.colorDiff, severity:z.severity }; }),
+    appVersion:(typeof APP_VERSION !== 'undefined' ? APP_VERSION : '') };
+  try {
+    var res = await storeWorkerFetch('/card-compare/feedback', { method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify(payload) });
+    var d = await res.json().catch(function(){ return {}; });
+    if(!d.ok) throw new Error(d.error || 'Could not save');
+    S.feedback = { real:'real', fake:'fake', unsure:'not sure' }[answer] || answer;
+    renderCompare();
+  } catch(e){ toast('Could not save your answer: ' + e.message); }
 }
 window.CardCompare = { open:open, close:close };
 })();
