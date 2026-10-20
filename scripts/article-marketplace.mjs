@@ -48,7 +48,7 @@ export async function articleMarketplace(env,ctx,article,guide,deps){
  const campaign=String(env.EBAY_PARTNER_CAMPAIGN_ID||'');
  if(set&&!/^\d{10}$/.test(campaign))return null;
  if(!env.LBA_KV||!ctx?.waitUntil)return null;
- const key='article-marketplace:v1:'+article.slug+':'+String(article.updatedAt||'')+':'+(set?campaign:'tcg');
+ const key='article-marketplace:v2:'+article.slug+':'+String(article.updatedAt||'')+':'+(set?campaign:'tcg');
  const now=Date.now(),ttl=set?15*60*1000:6*60*60*1000;
  let cached;try{cached=await env.LBA_KV.get(key,'json');}catch{}
  const fresh=cached&&Number(cached.checkedAt)<=now&&now-Number(cached.checkedAt)<ttl;
@@ -66,7 +66,8 @@ export async function articleMarketplace(env,ctx,article,guide,deps){
      if(result.warning)continue;
      for(const listing of result.listings||[]){
       const href=ebayAffiliateListingUrl(listing.affiliateUrl,campaign),title=fold(listing.title);
-      if(!href||!httpsHost(listing.imageUrl,'ebayimg.com')||seen.has(listing.itemId)||!listingMatchesRelease(listing.title,set)||/\b(?:break|digital|reprint|lot|replica)\b/.test(title))continue;
+      if(!href||!httpsHost(listing.imageUrl,'ebayimg.com')||seen.has(listing.itemId)||!listingMatchesRelease(listing.title,set)||/\b(?:break|digital|reprint|lot|replica|box|boxes|pack|packs|case|cases|sealed)\b/.test(title))continue;
+      if(/you pick|choose your|complete set|set of/.test(title))continue;
       if(term==='autograph'&&!/\b(?:auto|autograph|autographs|signed)\b/.test(title))continue;
       if(term==='Heavy Lumber'&&!title.includes('heavy lumber'))continue;
       if(term==='insert'&&!/\binsert\b/.test(title))continue;

@@ -21,7 +21,7 @@ assert.equal(cards.length,1);assert.ok(cards[0].href.startsWith('https://partner
 const store=new Map(),tasks=[];
 const env={EBAY_PARTNER_CAMPAIGN_ID:campaign,LBA_KV:{get:async k=>store.get(k)||null,put:async(k,v)=>store.set(k,JSON.parse(v))}};
 let searches=0;
-const deps={searchEbay:async(q,c)=>{searches++;assert.equal(c,campaign);return {listings:[{itemId:q,title:'2025 Topps Series 2 '+(q.includes('autograph')?'Autograph':'Manny Machado Heavy Lumber'),affiliateUrl:href,imageUrl:'https://i.ebayimg.com/images/test.jpg',price:20,currency:'USD'},{itemId:'unsafe',title:'2025 Topps autograph',affiliateUrl:href,imageUrl:'https://evil.test/image.jpg'}]};}};
+const deps={searchEbay:async(q,c)=>{searches++;assert.equal(c,campaign);return {listings:[{itemId:q,title:'2025 Topps Series 2 '+(q.includes('autograph')?'Autograph':'Manny Machado Heavy Lumber'),affiliateUrl:href,imageUrl:'https://i.ebayimg.com/images/test.jpg',price:20,currency:'USD'},{itemId:'box',title:'2025 Topps Series 2 Baseball Hobby Box Factory Sealed 1 Autograph or Relic',affiliateUrl:href,imageUrl:'https://i.ebayimg.com/images/box.jpg'}, {itemId:'unsafe',title:'2025 Topps autograph',affiliateUrl:href,imageUrl:'https://evil.test/image.jpg'}]};}};
 assert.equal(await articleMarketplace(env,{waitUntil:p=>tasks.push(p)},article,null,deps),null,'cold render does not wait for upstream');
 await Promise.all(tasks);assert.equal(searches,2);
 const hit=await articleMarketplace(env,{waitUntil:p=>tasks.push(p)},article,null,deps);
