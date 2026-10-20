@@ -1,5 +1,26 @@
 # Data Model Notes
 
+## New tables need explicit grants (Supabase, from 2026-10-30)
+
+Supabase no longer grants Data API access to new tables in `public`
+automatically. A table created without grants answers "permission denied" to
+the dashboard (supabase-js as `authenticated`) and to the Worker
+(`service_role`). Existing tables keep their grants. Every migration that
+creates a table must, in the same file:
+
+```sql
+create table if not exists public.example (...);
+alter table public.example enable row level security;
+grant select, insert, update, delete on public.example to authenticated;
+grant select, insert, update, delete on public.example to service_role;
+-- only if the public storefront reads it directly with the anon key:
+-- grant select on public.example to anon;
+```
+
+A table only the Worker should touch skips `authenticated` with the comment
+`-- grants: service_role only example`. `tests/supabase-table-grants.test.mjs`
+fails CI for any new migration that misses these.
+
 ## Current Beta Classification
 
 Inventory is cloud-backed when using the built-in Supabase inventory source and an authenticated Supabase session. Demo and offline paths use browser-local storage plus sync queues.
