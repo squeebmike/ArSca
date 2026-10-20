@@ -58,3 +58,7 @@ assert.ok(family(prospectItem,prospect,prospectSet));
 assert.equal(family({...prospectItem,set:'Baseball Cards 2024 Bowman Chrome Prospects'},prospect,prospectSet),false);
 assert.equal(family({...prospectItem,name:'Aidan Smith #BCP-45'},prospect,prospectSet),false);
 assert.equal(family({...prospectItem,isSigned:true},prospect,prospectSet),false);
+
+const flagship={year:2024,displayName:'2024 Topps Series 1 Baseball'};
+assert.ok(family({categorySlug:'sports-cards',name:'J. P. Crawford #49',set:'Baseball Cards 2024 Topps'}, {player:'J.P. Crawford',cardNumber:'49',section:'Base',variant:'Base'},flagship));
+assert.equal(family({categorySlug:'sports-cards',name:'J. P. Crawford #49',set:'Baseball Cards 2024 Topps Chrome'}, {player:'J.P. Crawford',cardNumber:'49',section:'Base',variant:'Base'},flagship),false);

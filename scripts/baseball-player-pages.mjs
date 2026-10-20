@@ -1,7 +1,9 @@
 import {baseballChecklistInventoryMatches as baseballInventoryMatches} from './topps/public-checklist-policy.mjs';
 const slug=s=>String(s).normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
 export const baseballPlayerPath=p=>'/baseball/players/'+p.id;
+const playerIndexes=new WeakMap(); // Reference rows only; live inventory is fetched separately.
 export function baseballPlayers(sets){
+ if(playerIndexes.has(sets))return playerIndexes.get(sets);
  const teamNames=new Set(sets.flatMap(s=>s.cards.flatMap(c=>c.subjects.map(x=>x.team))));
  const grouped=new Map();
  for(const set of sets)for(const card of set.cards)for(const subject of card.subjects){
@@ -11,7 +13,8 @@ export function baseballPlayers(sets){
   const p=grouped.get(id);if(!p.rows.some(r=>r.set.id===set.id&&r.card.id===card.id))p.rows.push({set,card,subject});
  }
  // A profile must offer cross-set comparison, rather than duplicate one card page.
- return [...grouped.values()].filter(p=>new Set(p.rows.map(r=>r.set.id)).size>=2).sort((a,b)=>a.name.localeCompare(b.name)||a.team.localeCompare(b.team));
+ const result=[...grouped.values()].filter(p=>new Set(p.rows.map(r=>r.set.id)).size>=2).sort((a,b)=>a.name.localeCompare(b.name)||a.team.localeCompare(b.team));
+ playerIndexes.set(sets,result);return result;
 }
 export async function handleBaseballPlayers(request,url,sets,deps,html,missing,cardPath){
  if(url.pathname!=='/baseball/players'&&!url.pathname.startsWith('/baseball/players/'))return null;

@@ -1,8 +1,10 @@
 import {baseballChecklistInventoryMatches as baseballInventoryMatches} from './topps/public-checklist-policy.mjs';
 const origin='https://www.themanapocket.com';
+const teamIndexes=new WeakMap(); // Public publisher metadata only; never store stock.
 const teamSlug=name=>String(name).toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
 export const baseballTeamPath=team=>'/baseball/teams/'+teamSlug(typeof team==='string'?team:team.name);
 export function baseballTeams(sets) {
+ if(teamIndexes.has(sets))return teamIndexes.get(sets);
  const teams=new Map();
  for(const set of sets)for(const card of set.cards) {
   for(const name of new Set(card.subjects.map(s=>s.team).filter(Boolean))) {
@@ -10,7 +12,8 @@ export function baseballTeams(sets) {
    teams.get(name).rows.push({set,card});
   }
  }
- return [...teams.values()].sort((a,b)=>a.name.localeCompare(b.name));
+ const result=[...teams.values()].sort((a,b)=>a.name.localeCompare(b.name));
+ teamIndexes.set(sets,result);return result;
 }
 export function baseballTeamLinks(teams,esc) {
  return '<div class="mp-set-list">'+teams.map(t=>'<a class="mp-set-row" href="'+baseballTeamPath(t)+'"><span>'+esc(t.name)+'</span><span>'+t.rows.length+' base cards</span></a>').join('')+'</div>';

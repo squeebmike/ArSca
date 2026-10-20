@@ -6,12 +6,15 @@ import {baseballOddsHtml} from './baseball-odds.mjs';
 import {baseballPlayers,baseballPlayerPath,handleBaseballPlayers} from './baseball-player-pages.mjs';
 import {baseballSectionSitemapPaths,baseballSectionsNav,handleBaseballSections} from './baseball-section-pages.mjs';
 const origin='https://www.themanapocket.com';
+// Generated publisher data is immutable for this deployment. Reuse its stable
+// array identity so derived reference indexes do not rebuild on each request.
+const publicBaseballSets=baseballSets.filter(s=>!checklistPublicationProblems(s,s).length);
 export const baseballSetPath=set=>'/baseball/checklists/'+set.id;
 export const baseballCardPath=(set,card)=>baseballSetPath(set)+'/cards/'+card.id;
 export async function handleBaseballCatalog(request,env,url,deps) {
  if(!['GET','HEAD'].includes(request.method)||!(url.pathname==='/baseball'||url.pathname.startsWith('/baseball/')||url.pathname==='/sitemap-baseball.xml'))return null;
  const {escape:esc,shell}=deps;
- const sets=baseballSets.filter(s=>!checklistPublicationProblems(s,s).length);
+ const sets=publicBaseballSets;
  const teams=baseballTeams(sets);
  const html=(data,status=200)=>new Response(request.method==='HEAD'?null:shell(data),{status,headers:{'Content-Type':'text/html;charset=UTF-8','Cache-Control':'no-store'}});
  const missing=()=>html({title:'Baseball checklist not found | The Mana Pocket',description:'Browse verified baseball checklists.',canonicalPath:url.pathname,robotsNoindex:true,bodyHtml:'<h1>Checklist page not found</h1><p><a href="/baseball">Browse baseball checklists</a></p>'},404);

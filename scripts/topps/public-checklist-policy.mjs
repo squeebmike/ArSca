@@ -52,6 +52,9 @@ export function baseballChecklistInventoryMatches(item,card,set){
   if(!/autograph/i.test(card.section)&&(item.isSigned||/autograph|auto\b/i.test(description)))return false;
   const parent=String(set.displayName||set.setName||'').replace(/\s+(?:baseball|football)$/i,'');
   const setKeys=isBase?[sportsSetKey(parent)]:sectionAliases[section].map(alias=>sportsSetKey(parent+' '+(/chrome$/i.test(parent)?alias.replace(/^Chrome /i,''):alias)));
+  // Generic flagship imports omit Series 1/2. Their verified non-overlapping
+  // number ranges plus the exact player identify the series without guessing.
+  if(isBase&&new RegExp('^'+set.year+'toppsseries[12]$').test(sportsSetKey(parent)))setKeys.push(sportsSetKey(set.year+' Topps'));
   if(!isBase&&item.subset)setKeys.push(sportsSetKey(parent));
   if(!setKeys.includes(sportsSetKey(item.set)))return false;
   const setYear=String(item.set||'').match(/\b((?:19|20)\d{2})\b/)?.[1];
