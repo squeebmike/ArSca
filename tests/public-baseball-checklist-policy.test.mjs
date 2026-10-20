@@ -32,6 +32,9 @@ const raleigh={player:'Cal Raleigh',cardNumber:'141',section:'Base',variant:'Bas
 const legacy={categorySlug:'sports-cards',name:'Cal Raleigh [Green Wave] #141 /99',set:'Baseball Cards 2023 Topps Chrome',year:'',player:'',cardNumber:'',subset:'',variant:'Baseball Card'};
 assert.ok(family(legacy,raleigh,chrome));
 assert.ok(!baseballInventoryMatches(legacy,raleigh,chrome),'a related parallel is never asserted to be an exact base printing');
-for(const patch of [{set:'Baseball Cards 2023 Topps Chrome Update'},{set:'Baseball Cards 2023 Topps Chrome Sapphire'},{year:2024},{cardNumber:'142'},{player:'Other Player'},{name:'Cal Raleigh [SP Variation] #141'},{name:'Cal Raleigh [Image Variation] #141'},{name:'Cal Raleigh Autograph #141'},{name:'Cal Raleigh #141 and #142'},{isRelic:true},{isSigned:true},{subset:'Autographs'},{productType:'Lot'},{name:'Cal Raleigh Magenta Speckle 141'}])assert.equal(family({...legacy,...patch},raleigh,chrome),false,JSON.stringify(patch));
+for(const patch of [{set:'Baseball Cards 2023 Topps Chrome Update'},{set:'Baseball Cards 2023 Topps Chrome Sapphire'},{year:2024},{cardNumber:'142'},{player:'Other Player'},{name:'Cal Raleigh [SP Variation] #141'},{name:'Cal Raleigh [Image Variation] #141'},{name:'Cal Raleigh Autograph #141'},{name:'Cal Raleigh #141 and #142'},{isRelic:true},{isSigned:true},{subset:'Autographs'},{productType:'Lot'}])assert.equal(family({...legacy,...patch},raleigh,chrome),false,JSON.stringify(patch));
 assert.equal(family(legacy,{...raleigh,section:'Autographs'},chrome),false);
 assert.ok(family({...legacy,name:'Cal Raleigh #141'},raleigh,chrome));
+// Exact player + stated finish + number also supports old titles without '#'.
+for(const name of ['Cal Raleigh Magenta Speckle 141','Cal Raleigh Blue Sonar 141 /125','Cal Raleigh Purple Sonar 141 /275','Cal Raleigh Aqua 141 /199'])assert.ok(family({...legacy,name},raleigh,chrome),name);
+for(const name of ['Cal Raleigh Jr Aqua 141','Cal Raleigh Aqua 142','Cal Raleigh Unknown Player 141','Cal Raleigh Aqua 141 and 142'])assert.equal(family({...legacy,name},raleigh,chrome),false,name);

@@ -49,7 +49,13 @@ export function baseballChecklistInventoryMatches(item,card,set){
   if(item.year&&String(item.year)!==String(set.year))return false;
   if(setYear&&setYear!==String(set.year))return false;
   if(!item.year&&!setYear)return false;
-  const title=String(item.name||'').match(/^(.+?)\s+(?:\[([^\]]+)\]\s*)?#\s*([a-z0-9-]+)(?:\s+\/\d+)?\s*$/i);
+  let title=String(item.name||'').match(/^(.+?)\s+(?:\[([^\]]+)\]\s*)?#\s*([a-z0-9-]+)(?:\s+\/\d+)?\s*$/i);
+  // Older intake titles omitted '#'. Accept an explicit known finish between
+  // the complete checklist player name and number, not arbitrary extra words.
+  if(!title){
+    const escapedPlayer=String(card.player||'').replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+    title=String(item.name||'').match(new RegExp('^('+escapedPlayer+')\\s+(Magenta Speckle|Blue Sonar|Purple Sonar|Aqua)\\s+([a-z0-9-]+)(?:\\s+\\/\\d+)?\\s*$','i'));
+  }
   const player=item.player||title?.[1],number=item.cardNumber||title?.[3];
   // Conflicting structured fields cannot be overridden by a convenient title.
   if(title&&item.player&&norm(item.player)!==norm(title[1]))return false;
