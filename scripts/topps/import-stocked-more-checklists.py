@@ -37,6 +37,27 @@ for src in sources:
   assert {c['cardNumber'] for c in rows}=={prefix+str(i) for i in range(lo,hi+1)} and len(rows)==hi-lo+1,(id,name)
   sections.append({'id':sectionid,'name':name,'kind':'Prospects','cards':rows})
  if sections:groups.append({'setId':id,'sections':sections})
+# Sterling's base section has two distinct printed number prefixes, not 1-100.
+src=next(x for x in sources if x['id']=='2023-bowman-sterling-baseball');id=src['id'];lines=[l.strip() for l in (root/(id+'.txt')).read_text(encoding='utf-8').splitlines()];rows=[]
+for heading,prefix,lo,hi in [('PROSPECT','BSP-',51,100),('ROOKIE','BSR-',1,50)]:
+ start=lines.index(heading);part=[]
+ for line in lines[start+1:]:
+  if not line:continue
+  if not re.match('^'+prefix+r'\d+\s',line):break
+  card=parse(line,id,'Base');card['subjects'][0]['note']=heading.title();part.append(card)
+ assert len(part)==hi-lo+1 and {c['cardNumber'] for c in part}=={prefix+str(i) for i in range(lo,hi+1)}
+ rows.extend(part)
+sets.append({'id':id,'year':2023,'sport':'baseball','brand':'Bowman','setName':src['name'],'displayName':src['name'],'scope':'Official base section: 50 BSP-numbered prospects and 50 BSR-numbered rookies. Autographs are separate sections.','licensedBaseball':True,'reviewed':True,'cardCount':100,'unissuedNumbers':[],'sourceUrl':src['url'],'sourceSha256':hashlib.sha256((root/(id+'.pdf')).read_bytes()).hexdigest(),'cards':rows})
+sections=[]
+for heading,prefix in [('PROSPECT AUTOGRAPHS','PA-'),('ROOKIE AUTOGRAPHS','RA-')]:
+ start=lines.index(heading);rows=[]
+ for line in lines[start+1:]:
+  if not line:continue
+  if not re.match('^'+prefix+r'[A-Z0-9-]+\s',line):break
+  rows.append(parse(line,id,heading.title()))
+ assert rows and len({c['cardNumber'] for c in rows})==len(rows)
+ sections.append({'id':heading.lower().replace(' ','-'),'name':heading.title(),'kind':'Autographs','cards':rows})
+groups.append({'setId':id,'sections':sections})
 # Existing reviewed 2026 releases: add their separately numbered prospect sections.
 prospect_root=Path('../outputs/library-completion/sports-sources')
 for id,specs2026 in [('2026-bowman-baseball',[('paper-prospects','Paper Prospects','PAPER PROSPECTS','BP-',1,150),('chrome-prospects','Chrome Prospects','CHROME PROSPECTS','BCP-',1,150)]),('2026-bowman-chrome-baseball',[('chrome-prospects','Chrome Prospects','BOWMAN CHROME PROSPECTS','BCP-',151,250)])]:
