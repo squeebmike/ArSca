@@ -66,6 +66,7 @@ on:
       - scripts/baseball-odds.mjs
       - scripts/topps/baseball-seed.mjs
       - scripts/topps/baseball-2019.mjs
+      - scripts/topps/baseball-stocked-2026-10.mjs
       - scripts/topps/baseball-expansion.mjs
       - scripts/topps/baseball-current.mjs
       - scripts/topps/public-checklist-policy.mjs

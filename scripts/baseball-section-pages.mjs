@@ -11,7 +11,7 @@ export function baseballSectionsNav(set,esc){const groups=sectionsForSet(set);re
 export function baseballShoppingHtml(items,card,set,env,deps){
  const {escape:esc}=deps;
  const copies=Array.isArray(items)?items.filter(i=>Number.isFinite(i.price)&&i.price>0&&deps.available(i)&&baseballInventoryMatches(i,card,set)):[];
- const own=copies.slice(0,3).map(i=>'<a href="'+esc(i.linkUrl||'/item/'+encodeURIComponent(i.id)+'/'+deps.slug(i.name))+'">Buy our copy · $'+i.price.toFixed(2)+' USD · '+esc(i.condition||'See condition')+'</a>').join(' · ');
+ const own=copies.slice(0,3).map(i=>'<a href="'+esc(i.linkUrl||'/item/'+encodeURIComponent(i.id)+'/'+deps.slug(i.name))+'">'+esc(i.name)+(i.variant?' · '+esc(i.variant):'')+' · Buy our copy · $'+i.price.toFixed(2)+' USD · '+esc(i.condition||'See condition')+'</a>').join(' · ');
  const external=ebayChecklistSearch(card,set,env.EBAY_PARTNER_CAMPAIGN_ID);
  return '<div class="mp-card-shopping">'+(own?'<p>'+own+'</p>':'')+(external?'<p><a href="'+esc(external)+'" target="_blank" rel="noopener sponsored">Search eBay for this card</a></p>':'')+'</div>';
 }

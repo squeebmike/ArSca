@@ -38,3 +38,12 @@ assert.ok(family({...legacy,name:'Cal Raleigh #141'},raleigh,chrome));
 // Exact player + stated finish + number also supports old titles without '#'.
 for(const name of ['Cal Raleigh Magenta Speckle 141','Cal Raleigh Blue Sonar 141 /125','Cal Raleigh Purple Sonar 141 /275','Cal Raleigh Aqua 141 /199'])assert.ok(family({...legacy,name},raleigh,chrome),name);
 for(const name of ['Cal Raleigh Jr Aqua 141','Cal Raleigh Aqua 142','Cal Raleigh Unknown Player 141','Cal Raleigh Aqua 141 and 142'])assert.equal(family({...legacy,name},raleigh,chrome),false,name);
+// A numbered autograph can connect only within its reviewed autograph section.
+const autoSet={year:2025,displayName:'2025 Topps Chrome Baseball'};
+const autoCard={player:'Bryan Woo',cardNumber:'RA-BWO',section:'Rookie Autographs',variant:'Base'};
+const autoItem={categorySlug:'sports-cards',name:'Bryan Woo [Blue] #RA-BWO /150',set:'Baseball Cards 2025 Topps Chrome Rookie Autograph',year:'',subset:'',variant:'Autograph'};
+assert.ok(family(autoItem,autoCard,autoSet));
+assert.equal(family({...autoItem,set:'Baseball Cards 2024 Topps Chrome Rookie Autograph'},autoCard,autoSet),false);
+assert.equal(family(autoItem,{...autoCard,section:'Base'},autoSet),false);
+assert.equal(family({...autoItem,subset:'Relics'},autoCard,autoSet),false);
+assert.equal(family({...autoItem,name:'Bryan Woo #RA-BWO',set:'Baseball Cards 2025 Topps Chrome'},autoCard,autoSet),false);

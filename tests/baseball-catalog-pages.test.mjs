@@ -15,7 +15,7 @@ assert.equal(paths.length,2+baseballSets.length+baseballSets.reduce((n,s)=>n+s.c
 const titles=new Set(),h1s=new Set();
 for(const set of baseballSets) {
  const numbers=new Set(set.cards.map(c=>c.cardNumber));assert.equal(numbers.size,set.cards.length);
- const expectedCounts={'2019-topps-series-1-baseball':350,'2019-topps-series-2-baseball':350,'2023-topps-series-1':330,'2023-topps-series-2':330,'2023-topps-update':329,'2019-topps-chrome':204,'2023-bowman':100,'2023-bowman-chrome':100,'2023-topps-chrome':220,'2025-topps-series-1-baseball':350,'2026-topps-series-1-baseball':350,'2025-topps-update-series-baseball':350,'2026-topps-series-2-baseball':350,'2025-topps-series-2-baseball':350,'2026-topps-update-series-baseball':350,'2025-bowman-baseball':100,'2026-bowman-baseball':100,'2025-bowman-draft-baseball':200,'2026-bowman-chrome-baseball':100,'2026-topps-holiday-baseball':200};
+ const expectedCounts={'2025-topps-chrome-baseball':300,'2022-topps-chrome-platinum-anniversary':500,'2022-topps-chrome-updates-baseball':200,'2023-topps-cosmic-chrome-baseball':200,'2024-topps-chrome-baseball':300,'2024-topps-chrome-update-series-baseball':200,'2022-topps-chrome-baseball-sonic-edition':220,'2023-topps-finest-baseball':100,'2023-topps-pristine-baseball':300,'2019-topps-series-1-baseball':350,'2019-topps-series-2-baseball':350,'2023-topps-series-1':330,'2023-topps-series-2':330,'2023-topps-update':329,'2019-topps-chrome':204,'2023-bowman':100,'2023-bowman-chrome':100,'2023-topps-chrome':220,'2025-topps-series-1-baseball':350,'2026-topps-series-1-baseball':350,'2025-topps-update-series-baseball':350,'2026-topps-series-2-baseball':350,'2025-topps-series-2-baseball':350,'2026-topps-update-series-baseball':350,'2025-bowman-baseball':100,'2026-bowman-baseball':100,'2025-bowman-draft-baseball':200,'2026-bowman-chrome-baseball':100,'2026-topps-holiday-baseball':200};
  assert.equal(set.cards.length,expectedCounts[set.id]);
  for(let page=1;page<=Math.ceil(set.cards.length/60);page++) {
   const path=baseballSetPath(set)+(page>1?'?page='+page:'');
@@ -59,3 +59,10 @@ assert.equal((await get('/baseball/checklists/2023-topps-chrome/sections/unknown
 console.log(paths.length+' sitemap URLs, base and reviewed insert/autograph pages, pagination and exact-stock affiliate gates passed');
 
 for(const [id,first,last] of [['2019-topps-series-1-baseball',1,350],['2019-topps-series-2-baseball',351,700]]){const s=baseballSets.find(s=>s.id===id);assert.deepEqual(s.cards.map(c=>Number(c.cardNumber)),Array.from({length:350},(_,i)=>first+i));assert.equal(Number(s.cards.at(-1).cardNumber),last);assert.ok(!s.cards.some(c=>c.variant!=='Base'));}
+
+// Stock-driven additions preserve exact publisher section boundaries.
+const {baseballStockedSets,baseballStockedSections}=await import('../scripts/topps/baseball-stocked-2026-10.mjs');
+assert.equal(baseballStockedSets.length,9);assert.equal(baseballStockedSets.reduce((n,s)=>n+s.cards.length,0),2320);
+for(const s of baseballStockedSets){assert.match(s.sourceSha256,/^[a-f0-9]{64}$/);assert.match(s.sourceUrl,/^https:\/\/cdn\.shopify\.com\//);assert.doesNotMatch(s.displayName,/Â|�/);assert.ok(s.cards.every(c=>c.section==='Base'&&c.variant==='Base'));}
+const autographCounts={'2025-topps-chrome-baseball':166,'2024-topps-chrome-baseball':154,'2022-topps-chrome-platinum-anniversary':130,'2023-topps-finest-baseball':92};
+for(const s of baseballStockedSections){assert.equal(s.sections[0].cards.length,autographCounts[s.setId]);assert.ok(s.sections[0].cards.every(c=>c.section!=='Base'));}

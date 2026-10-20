@@ -41,10 +41,18 @@ export const sportsSetKey = value => norm(String(value||'')
 export function baseballChecklistInventoryMatches(item,card,set){
   if(baseballInventoryMatches(item,card,set))return true;
   if(item.categorySlug!=='sports-cards'||item.isSealed||/sealed|box|pack|case|bundle|lot/i.test(item.productType||''))return false;
-  if(norm(card.section)!=='base'||norm(card.variant)!=='base')return false;
-  if(item.subset&&norm(item.subset)!=='base')return false;
-  if(item.isRelic||item.isSigned||/autograph|auto\b|relic|memorabilia|image variation|photo variation|short print|\b(?:sp|ssp)\b/i.test([item.name,item.set,item.variant,item.treatment].join(' ')))return false;
-  if(sportsSetKey(item.set)!==sportsSetKey(set.displayName||set.setName))return false;
+  if(norm(card.variant)!=='base')return false;
+  const section=norm(card.section),isBase=section==='base';
+  const autographAliases={rookieautographs:['Rookie Autograph'],autographcards:['Autograph','Autographs'],finestautographs:['Autograph','Autographs']};
+  if(!isBase&&!autographAliases[section])return false;
+  if(item.subset&&norm(item.subset)!==section)return false;
+  const description=[item.name,item.set,item.variant,item.treatment].join(' ');
+  if(item.isRelic||/relic|memorabilia|image variation|photo variation|short print|\b(?:sp|ssp)\b/i.test(description))return false;
+  if(isBase&&(item.isSigned||/autograph|auto\b/i.test(description)))return false;
+  const parent=String(set.displayName||set.setName||'').replace(/\s+(?:baseball|football)$/i,'');
+  const setKeys=isBase?[sportsSetKey(parent)]:autographAliases[section].map(alias=>sportsSetKey(parent+' '+alias));
+  if(!isBase&&item.subset)setKeys.push(sportsSetKey(parent));
+  if(!setKeys.includes(sportsSetKey(item.set)))return false;
   const setYear=String(item.set||'').match(/\b((?:19|20)\d{2})\b/)?.[1];
   if(item.year&&String(item.year)!==String(set.year))return false;
   if(setYear&&setYear!==String(set.year))return false;
