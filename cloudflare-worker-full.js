@@ -1845,10 +1845,14 @@ async function restockVoidedSaleLines(env,{storeId,saleId,lines,userId}){
     const data={...(item.data||{})};
     data.quantity=Number(data.quantity??data.qty??0)+Number(line.quantity||1);
     data.qty=data.quantity;
-    data.status='in_stock';
-    data.lifecycle='in_stock';
+    // An eBay presale whose books haven't come in goes back to being a
+    // presale, not shelf stock.
+    const backTo=data.source==='foc_presale'&&data.ebayPresaleConverted!==true&&!data.focReceivedAt?'presale':'in_stock';
+    data.status=backTo;
+    data.lifecycle=backTo;
+    data.soldAt='';
     data['sold-out']=false;
-    await supabaseAdminFetch(env,`inventory_items?id=eq.${line.item_id}&store_id=eq.${encodeURIComponent(storeId)}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({data,status:'in_stock'})});
+    await supabaseAdminFetch(env,`inventory_items?id=eq.${line.item_id}&store_id=eq.${encodeURIComponent(storeId)}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({data,status:backTo})});
     count++;
   }
   return count;
@@ -3670,6 +3674,47 @@ async function linkUnlinkedEbaySalesForStore(env, storeId, ebayToken, { days = 1
   return linked;
 }
 
+// Store report: "Just had eBay cancellations. Does it hit the dashboard and
+// update anything? Profits etc." It didn't -- a cancelled order stayed a
+// completed sale (counted in sales and profit) and its copy stayed gone.
+// Every order sync now voids the recorded sale of any cancelled order (or
+// one refunded in full before it shipped) and puts the copy back -- the same
+// void + restock path as VOID SALE. Cancelled orders come from the orders
+// the sync already fetched plus eBay's cancellation list for the last 30
+// days (each confirmed against the order itself).
+function ebayOrderIsCancelled(o) {
+  const state = String(o?.cancelStatus?.cancelState || '').toUpperCase();
+  if (state === 'CANCELED' || state === 'CANCELLED') return true;
+  return String(o?.orderPaymentStatus || '').toUpperCase() === 'FULLY_REFUNDED' && String(o?.orderFulfillmentStatus || '').toUpperCase() !== 'FULFILLED';
+}
+async function voidCancelledEbayOrders(env, storeId, ebayToken, orders, userId) {
+  const cancelled = new Map();
+  for (const o of orders || []) if (o?.orderId && ebayOrderIsCancelled(o)) cancelled.set(o.orderId, o);
+  try {
+    const qs = new URLSearchParams({ creation_date_range_from: new Date(Date.now() - 30 * 86400000).toISOString(), creation_date_range_to: new Date().toISOString(), limit: '50' });
+    const res = await fetch('https://api.ebay.com/post-order/v2/cancellation/search?' + qs, { headers: { Authorization: 'IAF ' + ebayToken, Accept: 'application/json' } });
+    const data = res.ok ? await res.json().catch(() => ({})) : {};
+    const ids = [...new Set((data.members || data.cancellations || []).map(c => String(c.legacyOrderId || c.orderId || '')).filter(id => id && !cancelled.has(id)))].slice(0, 20);
+    for (const id of ids) {
+      const r = await fetch('https://api.ebay.com/sell/fulfillment/v1/order/' + encodeURIComponent(id), { headers: { Authorization: 'Bearer ' + ebayToken, Accept: 'application/json' } }).catch(() => null);
+      const order = r && r.ok ? await r.json().catch(() => null) : null;
+      if (order && ebayOrderIsCancelled(order)) cancelled.set(order.orderId || id, order);
+    }
+  } catch (e) { console.warn('eBay cancellation lookup skipped:', e.message); }
+  const voided = [];
+  for (const [orderId] of cancelled) {
+    const { data: payments } = await supabaseAdminFetch(env, `pos_payments?store_id=eq.${encodeURIComponent(storeId)}&provider=eq.ebay&reference=eq.${encodeURIComponent(orderId)}&select=id,sale_id`);
+    for (const saleId of [...new Set((payments || []).map(p => p.sale_id).filter(Boolean))]) {
+      const { data: rows } = await supabaseAdminFetch(env, `pos_sales?id=eq.${encodeURIComponent(saleId)}&store_id=eq.${encodeURIComponent(storeId)}&status=in.(completed,succeeded)`, { method: 'PATCH', headers: { Prefer: 'return=representation' }, body: JSON.stringify({ status: 'voided' }) });
+      if (!rows?.length) continue; // already voided (or never completed)
+      const { data: lines } = await supabaseAdminFetch(env, `pos_sale_lines?sale_id=eq.${encodeURIComponent(saleId)}&store_id=eq.${encodeURIComponent(storeId)}&select=id,item_id,quantity,title`);
+      const restocked = await restockVoidedSaleLines(env, { storeId, saleId, lines: lines || [], userId: userId || null });
+      await supabaseAdminFetch(env, `pos_payments?sale_id=eq.${encodeURIComponent(saleId)}&store_id=eq.${encodeURIComponent(storeId)}`, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ status: 'refunded' }) });
+      voided.push({ orderId, saleId, total: Number(rows[0].total || 0), titles: (lines || []).map(l => l.title).filter(Boolean), restocked });
+    }
+  }
+  return voided;
+}
 async function syncEbayOrdersForStore(env, storeId, ebayToken, receiptSettings, { reconcile, confirmedBy }) {
     // Regular sync only looks at orders eBay itself hasn't marked fulfilled yet.
     // Reconcile mode additionally covers orders already fulfilled (through eBay's
@@ -3709,6 +3754,7 @@ async function syncEbayOrdersForStore(env, storeId, ebayToken, receiptSettings, 
     const errors = [];
     for (const order of orders) {
       if (order.orderPaymentStatus !== 'PAID') continue;
+      if (ebayOrderIsCancelled(order)) continue; // never record a cancelled order
       // Real eBay fee (or an estimate on the full order total), and the
       // shipping the buyer paid, per line item. See ebay-order-money.mjs.
       const money = ebayOrderMoney(order, { feePct: receiptSettings?.ebayFeePct ?? EBAY_DEFAULT_FEE_PCT, feeFlat: receiptSettings?.ebayFeeFlat });
@@ -3793,7 +3839,10 @@ async function syncEbayOrdersForStore(env, storeId, ebayToken, receiptSettings, 
       }
     }
     const matchedCount = results.filter(r => r.matchedInventory).length;
-    return { ok: true, checked: orders.length, matched: matchedCount, recorded: results.length, results, errors };
+    let cancelled = [];
+    try { cancelled = await voidCancelledEbayOrders(env, storeId, ebayToken, orders, confirmedBy); }
+    catch (e) { errors.push({ error: 'cancellations: ' + e.message }); }
+    return { ok: true, checked: orders.length, matched: matchedCount, recorded: results.length, results, errors, cancelled };
 }
 
 // Label costs (and real fees for any sale recorded with an estimate) come

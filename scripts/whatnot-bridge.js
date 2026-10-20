@@ -653,8 +653,8 @@ function rowHtml(x){
   }
   return '<div style="display:grid;grid-template-columns:24px 1fr auto;gap:6px;padding:6px 8px;border-bottom:1px solid var(--border);align-items:start">' +
     '<input type="checkbox"' + (x.include ? ' checked' : '') + (x.reason || x.done ? ' disabled' : '') + ' onchange="WB.toggleRow(' + x.n + ',this.checked)">' +
-    '<span style="color:var(--text);min-width:0">' + esc(name) + (x.qty > 1 ? ' ×' + x.qty : '') + (x.giveaway ? ' <b style="color:var(--gold)">GIVEAWAY</b>' : '') +
-      '<br><span style="color:var(--dim)">' + esc(x.title) + (x.buyer ? ' · @' + esc(x.buyer) : '') + (x.cost != null ? ' · cost ' + usd(x.cost) : '') + '</span></span>' +
+    '<span style="color:var(--text);min-width:0;display:flex;gap:6px;align-items:flex-start">' + (x.lot ? x.lot.slice(0, 3).map(coverThumb).join('') : coverThumb(x.item)) + '<span style="min-width:0">' + esc(name) + (x.qty > 1 ? ' ×' + x.qty : '') + (x.giveaway ? ' <b style="color:var(--gold)">GIVEAWAY</b>' : '') +
+      '<br><span style="color:var(--dim)">' + esc(x.title) + (x.buyer ? ' · @' + esc(x.buyer) : '') + (x.cost != null ? ' · cost ' + usd(x.cost) : '') + '</span></span></span>' +
     '<span style="text-align:right">' + (x.giveaway ? '$0' : '$' + x.price.toFixed(2)) + '<br>' + status + '</span>' + extra + '</div>';
 }
 
@@ -782,7 +782,7 @@ function renderEntry(){
     var i = itemById(x.id);
     if(!i) return '';
     return '<div style="display:grid;grid-template-columns:1fr auto;gap:6px;padding:6px 8px;border-bottom:1px solid var(--border);align-items:center">' +
-      '<span style="color:var(--text);min-width:0">' + esc(i.name) + '<br><span style="color:var(--dim)">cost ' + usd(Number(i.cost || 0)) + ' · ' + availableQty(i) + ' in stock</span></span>' +
+      '<span style="color:var(--text);min-width:0;display:flex;gap:6px;align-items:center">' + coverThumb(i) + '<span style="min-width:0">' + esc(i.name) + '<br><span style="color:var(--dim)">cost ' + usd(Number(i.cost || 0)) + ' · ' + availableQty(i) + ' in stock</span></span></span>' +
       '<span style="display:flex;gap:4px;align-items:center"><button class="hbtn" style="margin:0;padding:4px 9px" onclick="WB.entryQty(' + k + ',-1)">−</button><b style="min-width:18px;text-align:center">' + x.qty + '</b><button class="hbtn" style="margin:0;padding:4px 9px" onclick="WB.entryQty(' + k + ',1)">+</button></span>' +
       '<div style="grid-column:1 / -1;display:flex;gap:8px;flex-wrap:wrap;align-items:center">' +
         (x.giveaway ? '' : '<input class="tsi" style="margin:0;width:120px" type="number" min="0" step="0.01" placeholder="sold for $ (optional)" value="' + esc(x.price == null ? '' : x.price) + '" onchange="WB.entryItem(' + k + ',\'price\',this.value)">') +
@@ -869,12 +869,17 @@ function onWhatnotRow(i, sold){
   var soldNote = sold ? '<span style="color:var(--red)"> · sold' + (i.channel ? ' via ' + esc(i.channel) : '') + ' -- take it down on Whatnot</span>' : '';
   return '<div style="display:flex;justify-content:space-between;gap:8px;align-items:center;padding:5px 0;border-bottom:1px solid var(--border)"><span style="color:var(--text)">' + esc(i.name || 'Item') + (Number(i.qty) > 1 ? ' ×' + Number(i.qty) : '') + ' <span style="color:var(--dim)">· ' + esc(when) + ' · ' + esc(where) + '</span>' + soldNote + '</span><button class="hbtn" style="font-size:8px;padding:3px 8px;min-height:0;margin:0" onclick="WB.clearMark([\'' + esc(i.id) + '\'])">' + (sold ? 'TAKEN DOWN' : 'OFF WHATNOT') + '</button></div>';
 }
+// The cover next to every sold row, so a sale can't land on the wrong
+// cover of a book with a long, near-identical title.
+function coverThumb(i){
+  var img = i ? imageUrls(i)[0] : '';
+  return img ? '<img src="' + esc(img) + '" alt="" loading="lazy" style="width:30px;height:42px;object-fit:cover;border-radius:4px;flex-shrink:0;background:#050507">' : '';
+}
 function lowerRow(r){
   var i = r.item, id = esc(i.id);
-  var img = imageUrls(i)[0];
   var todo = r.have > 0 ? '<b style="color:var(--gold)">set it to ' + r.have + '</b>' : '<b style="color:var(--red)">take it down</b>';
   return '<div style="display:flex;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--border)">' +
-    (img ? '<img src="' + esc(img) + '" alt="" loading="lazy" style="width:34px;height:46px;object-fit:cover;border-radius:4px;flex-shrink:0">' : '') +
+    coverThumb(i) +
     '<span style="flex:1;min-width:0;color:var(--text)">' + esc(i.name || 'Item') + '<br><span style="color:var(--dim)">Whatnot has ' + r.onWhatnot + ' · you have ' + r.have + ' → </span>' + todo + '</span>' +
     '<button class="hbtn" style="font-size:8px;padding:3px 8px;min-height:0;margin:0" onclick="WB.qtyDone([\'' + id + '\'])">✓ DONE</button></div>';
 }
