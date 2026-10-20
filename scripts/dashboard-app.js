@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.10.20.1-whatnot-qty-check';
+const APP_VERSION = '2026.10.20.2-sale-cover-check-ebay-cancels';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -12993,6 +12993,27 @@ function markSoldOnWhatnot(itemId){
   openExternalSaleModal(itemId, 'Whatnot');
 }
 
+// Store report: a Whatnot sale of the Starship Godzilla 1:10 got recorded
+// on the Variant C row right next to it -- the covers' long titles only
+// differ near the end. The sale box shows the cover big and lists the other
+// in-stock covers of the same book to switch to.
+function saleTitleBase(name){
+  const s = String(name || '').split(' -- ')[0];
+  const cut = s.search(/\b(?:cover|cvr|variant|var|virgin|ratio|\d+\s*:\s*\d+|ri\s*\()/i);
+  return (cut > 8 ? s.slice(0, cut) : s).toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+}
+function saleLookAlikes(item, pool){
+  const base = saleTitleBase(item?.name);
+  if(!base || base.length < 6) return [];
+  return (pool || []).filter(i => i && i.id !== item.id && i.status === 'in_stock' && Number(i.qty || 0) > 0 && saleTitleBase(i.name) === base).slice(0, 8);
+}
+function saleItemCard(i, big){
+  const img = inventoryImageUrl(i);
+  const w = big ? 86 : 44, h = Math.round(w * 1.4);
+  return `<div style="display:flex;gap:10px;align-items:center">${img ? `<img src="${escHtml(img)}" alt="" style="width:${w}px;height:${h}px;object-fit:cover;border-radius:6px;flex-shrink:0;background:#050507">` : `<div style="width:${w}px;height:${h}px;border-radius:6px;flex-shrink:0;background:var(--surf2);display:grid;place-items:center;font:8px var(--font-mono);color:var(--dim)">NO IMAGE</div>`}
+    <div style="min-width:0;font-family:var(--font-mono);font-size:${big ? 11 : 9}px;color:var(--text);line-height:1.4">${escHtml(i.name || 'Item')}<div style="color:var(--dim);margin-top:2px">${Number(i.qty || 0)} in stock · ${fd$(inventoryListPrice(i))}</div></div></div>`;
+}
+
 function openExternalSaleModal(itemId, presetChannel){
   const item = all.find(i => i.id === itemId);
   if(!item){ toast_dash('Could not find that inventory item'); return; }
@@ -13009,7 +13030,9 @@ function openExternalSaleModal(itemId, presetChannel){
         <div style="font-family:'Orbitron',monospace;color:var(--gold);font-size:13px;letter-spacing:2px">${presetChannel ? 'SOLD ON ' + escHtml(presetChannel.toUpperCase()) : 'RECORD EXTERNAL SALE'}</div>
         <button onclick="document.getElementById('external-sale-modal').remove()" style="background:none;border:none;color:var(--dim);font-size:22px;cursor:pointer">×</button>
       </div>
-      <div style="font-family:monospace;font-size:10px;color:var(--dim);margin-bottom:10px">${escHtml(item.name || 'Item')} -- for sales that happened outside this app (Whatnot, a manual eBay sale, etc). Records the sale and marks this item sold, same as any other sale.</div>
+      <div style="padding:8px;border:1px solid var(--gold);border-radius:8px;margin-bottom:8px">${saleItemCard(item, true)}</div>
+      ${(() => { const alikes = saleLookAlikes(item, all); return alikes.length ? `<div style="padding:8px;border:1px dashed var(--border);border-radius:8px;margin-bottom:10px"><div style="font:900 9px var(--font-mono);color:var(--gold);margin-bottom:6px">⚠ CHECK THE COVER -- ${alikes.length} other cover${alikes.length === 1 ? '' : 's'} of this book in stock. Is this the one that sold?</div>${alikes.map(a => `<div style="display:flex;gap:8px;align-items:center;justify-content:space-between;padding:4px 0;border-top:1px solid var(--border)">${saleItemCard(a, false)}<button class="hbtn" style="font-size:8px;padding:4px 8px;margin:0;flex-shrink:0" onclick="openExternalSaleModal('${escHtml(a.id)}', document.getElementById('ext-sale-channel')?.value || '${escHtml(presetChannel || '')}')">SWITCH</button></div>`).join('')}</div>` : ''; })()}
+      <div style="font-family:monospace;font-size:10px;color:var(--dim);margin-bottom:10px">For sales that happened outside this app (Whatnot, a manual eBay sale, etc). Records the sale and marks this item sold, same as any other sale.</div>
       <label style="font-family:monospace;font-size:9px;color:var(--dim)">CHANNEL</label>
       <select id="ext-sale-channel" onchange="updateExternalSaleFeeDefault()" style="width:100%;margin:4px 0 10px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:9px;border-radius:6px;box-sizing:border-box">
         ${channelOptions.map(c => `<option value="${escHtml(c)}" ${c===presetChannel?'selected':''}>${escHtml(c)}</option>`).join('')}
@@ -13113,6 +13136,17 @@ async function syncEbayOrders(silent, reconcile){
       if(unmatched > 0) msg += ' (' + unmatched + ' not linked to inventory -- sold outside this app)';
       toast_dash(msg);
       logOpsEvent('ebay_order_synced', msg, { results: data.results });
+    }
+    // Cancelled eBay orders: their sales were voided and the copies put back
+    // (see voidCancelledEbayOrders in the Worker).
+    const cancelled = Array.isArray(data.cancelled) ? data.cancelled : [];
+    if(cancelled.length){
+      await loadInventory().catch(()=>{});
+      renderPulse().catch(()=>{});
+      const total = cancelled.reduce((a, c) => a + Number(c.total || 0), 0);
+      const cmsg = `${cancelled.length} cancelled eBay order${cancelled.length === 1 ? '' : 's'}: sale${cancelled.length === 1 ? '' : 's'} voided ($${total.toFixed(2)} off sales and profit) and ${cancelled.reduce((a, c) => a + Number(c.restocked || 0), 0)} cop${cancelled.reduce((a, c) => a + Number(c.restocked || 0), 0) === 1 ? 'y' : 'ies'} put back -- ${cancelled.flatMap(c => c.titles || []).slice(0, 3).join(', ')}${cancelled.flatMap(c => c.titles || []).length > 3 ? '…' : ''}`;
+      toast_dash(cmsg);
+      logOpsEvent('ebay_order_cancelled', cmsg, { cancelled });
     }
     // Errors here mean a specific order failed to record -- that's a
     // real gap in the sales ledger, not just noise, so surface it even on a
