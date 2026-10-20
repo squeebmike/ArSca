@@ -8134,7 +8134,7 @@ async function routeRequest(request, env, ctx) {
       // Matches the /item/{id} route's own gate (isStorefrontItemListable,
       // not isStorefrontItemAvailable) -- a showSoldOut item has a real,
       // 200-rendering page now (see above), so it belongs in the sitemap too.
-      const allListable = await fetchAllListableStorefrontItems(env);
+      const allListable = await fetchAllListableStorefrontItemsCached(env, ctx);
       const urls = allListable
         .filter(item => !item.linkUrl) // items with linkUrl 301 elsewhere -- not a page for Google to index here
         .map(item => `<url><loc>https://www.themanapocket.com/item/${mtgEscapeHtml(item.id)}/${mtgEscapeHtml(itemDetailSlug(item))}</loc><lastmod>${mtgEscapeHtml((item.updatedAt || '').slice(0, 10))}</lastmod></url>`)
