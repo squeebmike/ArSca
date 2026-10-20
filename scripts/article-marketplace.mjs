@@ -33,11 +33,11 @@ export function listingMatchesRelease(title,set){
  return release.split(' ').filter(w=>w&&!['baseball','football','cards','s','series'].includes(w)&&!/^\d+$/.test(w)).every(w=>text.includes(w));
 }
 export function chooseArticleCards(cards,article){
- const text=fold(article.bodyHtml.replace(/<[^>]*>/g,' ')),seen=new Set();
+ const text=fold(article.bodyHtml.replace(/<[^>]*>/g,' ')),seen=new Set(),names=new Set();
  return cards.filter(c=>c.name&&/^[1-9]\d*$/.test(String(c.tcgPlayerId||c.tcgplayer_id||'')))
   .map(c=>({...c,tcgPlayerId:String(c.tcgPlayerId||c.tcgplayer_id),mentioned:text.includes(fold(c.name))}))
   .sort((a,b)=>Number(b.mentioned)-Number(a.mentioned)||Number(b.prices?.usd||b.prices?.market||b.marketPrice||0)-Number(a.prices?.usd||a.prices?.market||a.marketPrice||0))
-  .filter(c=>{if(seen.has(c.tcgPlayerId))return false;seen.add(c.tcgPlayerId);return true;}).slice(0,6)
+  .filter(c=>{if(seen.has(c.tcgPlayerId)||names.has(fold(c.name)))return false;seen.add(c.tcgPlayerId);names.add(fold(c.name));return true;}).slice(0,6)
   .map(c=>({kind:'tcgplayer',id:c.tcgPlayerId,name:c.name,number:c.collector_number||c.collectorNumber||c.cardNumber||'',set:c.set_name||c.setName||'',image:'https://product-images.tcgplayer.com/fit-in/437x437/'+c.tcgPlayerId+'.jpg',href:tcgplayerAffiliateUrl(c)}));
 }
 // Public marketplace references only. Cold/expired reads enqueue refresh and
@@ -85,7 +85,7 @@ export async function articleMarketplace(env,ctx,article,guide,deps){
 export const articleMarketplaceStyles=`<style>.mp-market-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,200px),1fr));gap:18px;margin:18px 0 28px}.mp-market-card{padding:14px;border:1px solid var(--wo-border,rgba(255,255,255,.2));border-radius:14px;background:var(--wo-surface,transparent);min-width:0}.mp-market-card img{display:block;width:100%;height:240px;object-fit:contain;border-radius:8px;background:var(--wo-bg,transparent)}.mp-market-card h3{font-size:16px;line-height:1.5;margin:12px 0 8px}.mp-market-card p{font-size:13px;line-height:1.6;margin:8px 0}.mp-market-card a{color:var(--wo-accent,inherit)}.mp-market-card>a:last-child{display:inline-flex;align-items:center;min-height:44px;font:700 14px/1.5 system-ui}.mp-market-inline{max-width:320px;margin:22px auto}</style>`;
 function cardHtml(c,esc){
  const label=c.kind==='ebay'?'View listing on eBay':'View sellers on TCGplayer';
- return '<article class="mp-market-card"><a href="'+esc(c.href)+'" target="_blank" rel="noopener sponsored" aria-label="'+esc(c.name+' — '+label)+'"><img src="'+esc(c.image)+'" alt="'+esc(c.name+(c.number?' #'+c.number:''))+'" width="300" height="420" loading="lazy" decoding="async"></a><h3>'+esc(c.name)+'</h3><p>'+esc(c.kind==='ebay'?(c.label+' · Seller listing photo'):[c.set,c.number&&'#'+c.number,'Product reference image'].filter(Boolean).join(' · '))+'</p>'+(Number(c.price)>0?'<p>Listed at $'+Number(c.price).toFixed(2)+' USD · check shipping with the seller</p>':'')+'<a href="'+esc(c.href)+'" target="_blank" rel="noopener sponsored">'+label+' →</a></article>';
+ return '<article class="mp-market-card"><a href="'+esc(c.href)+'" target="_blank" rel="noopener sponsored" aria-label="'+esc(c.name+' â€” '+label)+'"><img src="'+esc(c.image)+'" alt="'+esc(c.name+(c.number?' #'+c.number:''))+'" width="300" height="420" loading="lazy" decoding="async"></a><h3>'+esc(c.name)+'</h3><p>'+esc(c.kind==='ebay'?(c.label+' Â· Seller listing photo'):[c.set,c.number&&'#'+c.number,'Product reference image'].filter(Boolean).join(' Â· '))+'</p>'+(Number(c.price)>0?'<p>Listed at $'+Number(c.price).toFixed(2)+' USD Â· check shipping with the seller</p>':'')+'<a href="'+esc(c.href)+'" target="_blank" rel="noopener sponsored">'+label+' â†’</a></article>';
 }
 export function renderArticleMarketplace(data,body,esc){
  if(!data?.cards?.length)return {body,after:''};
@@ -96,7 +96,7 @@ export function renderArticleMarketplace(data,body,esc){
   const text=fold(p.replace(/<[^>]*>/g,' '));
   const found=[...remaining].find(c=>c.kind==='tcgplayer'?text.includes(fold(c.name)):c.label==='Heavy Lumber'&&text.includes('heavy lumber'));
   if(!found)return p;remaining.delete(found);inlineCount++;
-  return p+'<aside class="mp-market-inline" aria-label="Affiliate marketplace card">'+cardHtml(found,esc)+'<p class="mp-meta">Affiliate link · Check the exact printing and seller.</p></aside>';
+  return p+'<aside class="mp-market-inline" aria-label="Affiliate marketplace card">'+cardHtml(found,esc)+'<p class="mp-meta">Affiliate link Â· Check the exact printing and seller.</p></aside>';
  });
  const stamp=new Date(data.checkedAt).toISOString().replace('T',' ').slice(0,16)+' UTC';
  const after=articleMarketplaceStyles+'<section class="mp-article-marketplace"><h2>More cards to explore</h2>'+marketplaceDisclosureHtml+'<p class="mp-meta">Marketplace data checked '+esc(stamp)+'. Listings can sell or change. These are third-party sellers, separate from our stock. Cards shown are selected from this set, not a live popularity ranking.</p>'+(remaining.size?'<div class="mp-market-grid">'+[...remaining].map(c=>cardHtml(c,esc)).join('')+'</div>':'')+'</section>';
