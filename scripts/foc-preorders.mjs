@@ -160,6 +160,18 @@ export function uniqueCoverLabels(rows) {
   });
 }
 
+// Store report: Lunar covers looked tiny on eBay. The spreadsheet's embedded
+// thumbnail (thumb) is small; the Worker's /foc/lunar-cover/<item code>.jpg
+// serves Lunar's large cover, falling back to that thumbnail. A cover URL the
+// store pasted in by hand (anything that isn't one of those two) is kept.
+export function lunarCoverImageUrl(origin, distributorSku, thumb, saved) {
+  const isOurs = u => /\/inventory\/photo\/inventory-photos\/|\/foc\/lunar-cover\//.test(String(u || ''));
+  if (saved && !isOurs(saved)) return saved;
+  const code = String(distributorSku || '').trim().toUpperCase();
+  if ((thumb || saved) && /^[0-9]{4}[A-Z]{2}[0-9]{3,5}$/.test(code) && origin) return `${origin}/foc/lunar-cover/${code}.jpg`;
+  return thumb || saved || null;
+}
+
 function ratioThreshold(requirement) {
   const m = text(requirement, 100).match(/(?:^|\s)1\s*:\s*(\d+)/i);
   return m ? Number(m[1]) : null;
@@ -1422,6 +1434,8 @@ async function importPrh(request, env, deps, storeId) {
 // lot of store-report-driven history (see hadCustomPrice above) that a
 // merged code path would put at risk for a distributor that doesn't need it.
 async function importLunar(request, env, deps, storeId) {
+  let origin = '';
+  try { origin = new URL(request.url).origin; } catch (_) {}
   const auth = await deps.requireStoreUser(request, env, storeId, ['owner','admin','manager','employee']);
   if (auth.error) return auth.error;
   const limited = await deps.readJsonWithLimit(request, 2 * 1024 * 1024);
@@ -1495,7 +1509,7 @@ async function importLunar(request, env, deps, storeId) {
     // already pasted in by hand via the per-cover COVER IMAGE URL field.
     // Same preservation rule as importPrh above: a blank new value falls
     // back to whatever was already saved instead of clobbering it.
-    const coverImageUrl = p.coverImageUrl || before?.cover_image_url || null;
+    const coverImageUrl = lunarCoverImageUrl(origin, p.distributorSku, p.coverImageUrl, before?.cover_image_url);
     skuRows.push({
       store_id:storeId, cycle_id:cycle.id, family_id:familyIds.get(p.distributorFamilyId), distributor:LUNAR,
       distributor_sku:p.distributorSku, upc:p.upc, isbn:p.isbn || null, title:p.sourceTitle || p.title,
