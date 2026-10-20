@@ -51,3 +51,10 @@ function setup({ lunar }) {
 }
 assert.equal(await setup({ lunar: true }).go('/foc/lunar-cover/../../etc.jpg'), 'fell through', 'only Lunar item codes');
 console.log('Lunar large cover checks passed');
+
+// UPDATE LIVE PRESALE LISTINGS puts the large cover on live single-cover
+// listings that went up with the thumbnail.
+assert.match(worker, /const largeCover = \/\\\/foc\\\/lunar-cover\\\/\/\.test\(String\(d\.image \|\| ''\)\) && photos\[0\] !== d\.image\s*\n\s*\? \[d\.image, \.\.\.photos\.slice\(1\)\.filter\(u => u !== d\.image\)\] : null;/);
+assert.match(worker, /if \(next === current && !oldCardSize && !largeCover\) \{ result\.unchanged\+\+; continue; \}/);
+assert.match(worker, /itemBody\.product = \{ \.\.\.\(item\.product \|\| \{\}\), description: next, \.\.\.\(largeCover \? \{ imageUrls: largeCover \} : \{\}\) \};/);
+console.log('Live presale large cover checks passed');

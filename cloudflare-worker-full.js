@@ -6431,10 +6431,15 @@ async function routeRequest(request, env, ctx) {
           const pkg = item.packageWeightAndSize || {};
           const dims = pkg.dimensions || {};
           const oldCardSize = !(Number(dims.length) > 0) || (Number(dims.length) === 6.5 && Number(dims.width) === 4 && Number(dims.height) === 0.1);
-          if (next === current && !oldCardSize) { result.unchanged++; continue; }
+          // A Lunar cover now served large (/foc/lunar-cover/) replaces the
+          // small spreadsheet thumbnail the listing went up with.
+          const photos = Array.isArray(item.product?.imageUrls) ? item.product.imageUrls : [];
+          const largeCover = /\/foc\/lunar-cover\//.test(String(d.image || '')) && photos[0] !== d.image
+            ? [d.image, ...photos.slice(1).filter(u => u !== d.image)] : null;
+          if (next === current && !oldCardSize && !largeCover) { result.unchanged++; continue; }
           const itemBody = { ...item };
           delete itemBody.sku; delete itemBody.groupIds; delete itemBody.inventoryItemGroupKeys;
-          itemBody.product = { ...(item.product || {}), description: next };
+          itemBody.product = { ...(item.product || {}), description: next, ...(largeCover ? { imageUrls: largeCover } : {}) };
           if (oldCardSize) {
             const weight = pkg.weight || {};
             const unit = String(weight.unit || 'POUND').toUpperCase();
@@ -6461,7 +6466,7 @@ async function routeRequest(request, env, ctx) {
               throw new Error('eBay refused the description update (' + putOffer.status + '): ' + t.substring(0, 200));
             }
           }
-          result.updated.push({ id: row.id, name, ebayListingId: d.ebayListingId, packageFixed: oldCardSize });
+          result.updated.push({ id: row.id, name, ebayListingId: d.ebayListingId, packageFixed: oldCardSize, largeCover: !!largeCover });
         } catch (e) {
           result.failed.push({ id: row.id, name, ebayListingId: d.ebayListingId, error: String(e.message || e) });
         }

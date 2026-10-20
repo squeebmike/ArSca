@@ -733,7 +733,7 @@ var focEbayBulkQueue=null;
 // & boarded / Gemini mailer line in the shipping section, Gemini box size)
 // without touching anything else on the listing.
 async function refreshFocPresaleEbayDescriptions(){
-  if(!confirm('Update the description on every presale that is live on eBay?\n\nAdds the PRESALE banner and the "bagged & boarded, shipped in a Gemini mailer" line to the shipping section, and the Gemini box size. Price, quantity, photos and everything else stay as they are.'))return;
+  if(!confirm('Update the description on every presale that is live on eBay?\n\nAdds the PRESALE banner and the "bagged & boarded, shipped in a Gemini mailer" line to the shipping section, the Gemini box size, and the large cover photo for Lunar books. Price, quantity and everything else stay as they are.'))return;
   toast_dash('Updating live presale listings on eBay…');
   try{
     var d=await api('/foc/ebay/refresh-presale-descriptions',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({storeId:getActiveStoreId()})});
