@@ -6431,10 +6431,15 @@ async function routeRequest(request, env, ctx) {
           const pkg = item.packageWeightAndSize || {};
           const dims = pkg.dimensions || {};
           const oldCardSize = !(Number(dims.length) > 0) || (Number(dims.length) === 6.5 && Number(dims.width) === 4 && Number(dims.height) === 0.1);
-          if (next === current && !oldCardSize) { result.unchanged++; continue; }
+          // A Lunar cover now served large (/foc/lunar-cover/) replaces the
+          // small spreadsheet thumbnail the listing went up with.
+          const photos = Array.isArray(item.product?.imageUrls) ? item.product.imageUrls : [];
+          const largeCover = /\/foc\/lunar-cover\//.test(String(d.image || '')) && photos[0] !== d.image
+            ? [d.image, ...photos.slice(1).filter(u => u !== d.image)] : null;
+          if (next === current && !oldCardSize && !largeCover) { result.unchanged++; continue; }
           const itemBody = { ...item };
           delete itemBody.sku; delete itemBody.groupIds; delete itemBody.inventoryItemGroupKeys;
-          itemBody.product = { ...(item.product || {}), description: next };
+          itemBody.product = { ...(item.product || {}), description: next, ...(largeCover ? { imageUrls: largeCover } : {}) };
           if (oldCardSize) {
             const weight = pkg.weight || {};
             const unit = String(weight.unit || 'POUND').toUpperCase();
@@ -6461,7 +6466,7 @@ async function routeRequest(request, env, ctx) {
               throw new Error('eBay refused the description update (' + putOffer.status + '): ' + t.substring(0, 200));
             }
           }
-          result.updated.push({ id: row.id, name, ebayListingId: d.ebayListingId, packageFixed: oldCardSize });
+          result.updated.push({ id: row.id, name, ebayListingId: d.ebayListingId, packageFixed: oldCardSize, largeCover: !!largeCover });
         } catch (e) {
           result.failed.push({ id: row.id, name, ebayListingId: d.ebayListingId, error: String(e.message || e) });
         }
@@ -15764,6 +15769,36 @@ async function routeRequest(request, env, ctx) {
       const key = `inventory-photos/${storeId}/${Date.now()}-${crypto.randomUUID()}.${ext}`;
       await env.MTG_CATALOG_R2.put(key, buf, { httpMetadata: { contentType } });
       return json({ ok: true, url: `${url.origin}/inventory/photo/${key}` });
+    }
+    // Store report: Lunar covers looked tiny on eBay next to other sellers'.
+    // Lunar's FOC spreadsheet only embeds small thumbnails (~15KB); Lunar's
+    // media server has the large cover by item code. Every place a Lunar
+    // cover shows -- dashboard, shop, eBay -- points here, which serves the
+    // large one, or the spreadsheet thumbnail when Lunar has no large one.
+    const lunarCoverMatch = url.pathname.match(/^\/foc\/lunar-cover\/([0-9]{4}[A-Z]{2}[0-9]{3,5})\.jpg$/i);
+    if (lunarCoverMatch && (request.method === 'GET' || request.method === 'HEAD')) {
+      const cacheKey = new Request(url.origin + url.pathname);
+      const hit = await caches.default.match(cacheKey);
+      if (hit) return hit;
+      const code = lunarCoverMatch[1].toUpperCase();
+      let response = null;
+      try {
+        const res = await fetch(`https://media.lunardistribution.com/images/covers/Large/${code}.jpg`, { cf: { cacheTtl: 604800, cacheEverything: true } });
+        const type = String(res.headers.get('Content-Type') || '');
+        if (res.ok && type.startsWith('image/')) {
+          const buf = await res.arrayBuffer();
+          if (buf.byteLength > 2048) response = new Response(buf, { headers: { ...CORS, 'Content-Type': type, 'Cache-Control': 'public, max-age=604800' } });
+        }
+      } catch (_) {}
+      if (!response && env.MTG_CATALOG_R2) {
+        const { data } = await supabaseAdminFetch(env, `comic_skus?distributor_sku=eq.${encodeURIComponent(code)}&raw_distributor_data->>CoverLink=like.https*&select=link:raw_distributor_data->>CoverLink&limit=1`).catch(() => ({ data: null }));
+        const thumbKey = String((Array.isArray(data) && data[0]?.link) || '').match(/\/inventory\/photo\/(inventory-photos\/[^?#]+)$/)?.[1];
+        const obj = thumbKey ? await env.MTG_CATALOG_R2.get(thumbKey) : null;
+        if (obj) response = new Response(obj.body, { headers: { ...CORS, 'Content-Type': obj.httpMetadata?.contentType || 'image/jpeg', 'Cache-Control': 'public, max-age=3600' } });
+      }
+      if (!response) return new Response('Not found', { status: 404, headers: { ...CORS, 'Cache-Control': 'public, max-age=300' } });
+      if (ctx?.waitUntil) ctx.waitUntil(caches.default.put(cacheKey, response.clone()));
+      return response;
     }
     const inventoryPhotoMatch = url.pathname.match(/^\/inventory\/photo\/(inventory-photos\/.+)$/);
     if (inventoryPhotoMatch && request.method === 'GET') {
