@@ -48,7 +48,7 @@ export async function articleMarketplace(env,ctx,article,guide,deps){
  const campaign=String(env.EBAY_PARTNER_CAMPAIGN_ID||'');
  if(set&&!/^\d{10}$/.test(campaign))return null;
  if(!env.LBA_KV||!ctx?.waitUntil)return null;
- const key='article-marketplace:v2:'+article.slug+':'+String(article.updatedAt||'')+':'+(set?campaign:'tcg');
+ const key='article-marketplace:'+(set?'v3':'v2')+':'+article.slug+':'+String(article.updatedAt||'')+':'+(set?campaign:'tcg');
  const now=Date.now(),ttl=set?15*60*1000:6*60*60*1000;
  let cached;try{cached=await env.LBA_KV.get(key,'json');}catch{}
  const fresh=cached&&Number(cached.checkedAt)<=now&&now-Number(cached.checkedAt)<ttl;
@@ -58,11 +58,13 @@ export async function articleMarketplace(env,ctx,article,guide,deps){
    if(tcg)cards=chooseArticleCards(await deps.loadCards(guide),article);
    else{
     const text=fold(article.bodyHtml),insert=text.includes('heavy lumber')?'Heavy Lumber':'insert';
-    const groups=[['Autographs','autograph'],[insert==='insert'?'Inserts':'Heavy Lumber',insert]];
+    const autoPlayer=['Roki Sasaki','Juan Soto','Shohei Ohtani','Paul Skenes','Aaron Judge'].find(name=>text.includes(fold(name)));
+    const insertPlayer=insert==='Heavy Lumber'&&text.includes('manny machado')?'Manny Machado':'';
+    const groups=[['Autographs','autograph',autoPlayer||''],[insert==='insert'?'Inserts':'Heavy Lumber',insert,insertPlayer]];
     const seen=new Set();
     // Sequential requests keep eBay traffic bounded for each known article.
-    for(const [label,term] of groups){
-     const result=await deps.searchEbay(set.displayName+' '+term,campaign);
+    for(const [label,term,mention] of groups){
+     const result=await deps.searchEbay(set.displayName+' '+(mention?mention+' ':'')+term,campaign);
      if(result.warning)continue;
      for(const listing of result.listings||[]){
       const href=ebayAffiliateListingUrl(listing.affiliateUrl,campaign),title=fold(listing.title);
@@ -70,9 +72,10 @@ export async function articleMarketplace(env,ctx,article,guide,deps){
       if(/you pick|choose your|complete set|set of/.test(title))continue;
       if(term==='autograph'&&!/\b(?:auto|autograph|autographs|signed)\b/.test(title))continue;
       if(term==='Heavy Lumber'&&!title.includes('heavy lumber'))continue;
+      if(mention&&!title.includes(fold(mention)))continue;
       if(term==='insert'&&!/\binsert\b/.test(title))continue;
       if(listing.endTime&&Date.parse(listing.endTime)<=Date.now())continue;
-      seen.add(listing.itemId);cards.push({kind:'ebay',id:listing.itemId,name:listing.title,image:listing.imageUrl,href,label,price:listing.currency==='USD'?listing.price:null,endTime:listing.endTime});
+      seen.add(listing.itemId);cards.push({kind:'ebay',id:listing.itemId,name:listing.title,image:listing.imageUrl,href,label,mention,price:listing.currency==='USD'?listing.price:null,endTime:listing.endTime});
       if(cards.filter(c=>c.label===label).length>=3)break;
      }
     }
@@ -95,7 +98,7 @@ export function renderArticleMarketplace(data,body,esc){
  const mixed=body.replace(/<p\b[^>]*>[\s\S]*?<\/p>/gi,p=>{
   if(inlineCount>=2)return p;
   const text=fold(p.replace(/<[^>]*>/g,' '));
-  const found=[...remaining].find(c=>c.kind==='tcgplayer'?text.includes(fold(c.name)):c.label==='Heavy Lumber'&&text.includes('heavy lumber'));
+  const found=[...remaining].find(c=>c.kind==='tcgplayer'?text.includes(fold(c.name)):c.label==='Heavy Lumber'&&c.mention&&text.includes(fold(c.mention))&&text.includes('heavy lumber'));
   if(!found)return p;remaining.delete(found);inlineCount++;
   return p+'<aside class="mp-market-inline" aria-label="Affiliate marketplace card">'+cardHtml(found,esc)+'<p class="mp-meta">Affiliate link \u00b7 Check the exact printing and seller.</p></aside>';
  });
