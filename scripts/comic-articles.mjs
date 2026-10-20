@@ -454,7 +454,7 @@ export function renderArticlePage(article, statuses, related, deps) {
       (image ? `<a href="${esc(affiliateHero||image)}" target="_blank" rel="${affiliateHero?'noopener sponsored':'noopener'}" aria-label="${affiliateHero?'View this card on TCGplayer':'Open full-size article image'}"><img class="mp-art-hero" width="660" height="1000" fetchpriority="high" decoding="async" src="${esc(image)}" alt="${esc(article.imageAlt || article.title)}"></a><p class="mp-art-meta">${affiliateHero?'Affiliate image link · View sellers on TCGplayer.':'Tap the image to see it full size.'}</p>` : '') +
       renderBuyBox(article, main, esc) +
       (main ? `<nav class="mp-art-shortcuts" aria-label="Book actions"><a href="#${bookAnchor(main)}">Covers &amp; availability</a><a href="/comics/search?q=${encodeURIComponent(comicKey(main.name).series)}">Find related comics</a><a href="#book-updates">Book updates</a></nav>` : '') +
-      `<div class="mp-art-body">${contents.html}</div>` + marketplace.after + (deps.releaseInventoryHtml || '') + facts + renderBooks(statuses, esc) + renderBookUpdates(article, deps.storeId, esc) + articleShoppingLinks(article) + more + `</article>` +
+      `<div class="mp-art-body">${contents.html}</div>` + (deps.releaseInventoryHtml || '') + marketplace.after + facts + renderBooks(statuses, esc) + renderBookUpdates(article, deps.storeId, esc) + articleShoppingLinks(article) + more + `</article>` +
       (statuses.some(st => st.options?.length) ? pickerScript(deps.storeId) : ''),
   });
 }
