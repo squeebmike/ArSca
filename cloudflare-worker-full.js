@@ -45,6 +45,7 @@ import { searchComics, comicSearchShell, comicSearchScriptResponse, injectComicS
 import { handleAccountRequest, findLinkedCustomer } from './scripts/customer-account.mjs';
 import { handleArticlesRequest, articleSitemapPaths, fetchArticles } from './scripts/comic-articles.mjs';
 import { extractSiteChrome, SITE_CHROME_SOURCE } from './scripts/site-chrome.mjs';
+import {loadPokemonSets,loadPokemonSetCards} from './scripts/public-pokemon-sets.mjs';
 import { handlePublicPokemonRequest } from './scripts/public-pokemon-sets.mjs';
 import { catalogInventoryHtml, catalogSetInventoryHtml, catalogShoppingLinksHtml, marketplaceDisclosureHtml, catalogShoppingIndex } from './scripts/catalog-inventory.mjs';
 import { handlePokemonCatalog } from './scripts/pokemon-catalog-pages.mjs';
@@ -5078,6 +5079,8 @@ function normalizeBrowseListing(raw) {
     startTime: raw.itemCreationDate || null,
     condition: raw.condition || null,
     url: raw.itemWebUrl || null,
+    affiliateUrl: raw.itemAffiliateWebUrl || null,
+    currency: raw.price?.currency || null,
     imageUrl: raw.image?.imageUrl || raw.thumbnailImages?.[0]?.imageUrl || null,
   };
 }
@@ -5102,10 +5105,12 @@ async function fetchEbayActiveListings(env, query, opts = {}) {
   if (filters.length) params.set('filter', filters.join(','));
   if (sortOrder) params.set('sort', sortOrder);
   const res = await fetch(`https://api.ebay.com/buy/browse/v1/item_summary/search?${params.toString()}`, {
+    signal: opts.signal,
     headers: {
       'Authorization': 'Bearer ' + token,
       'X-EBAY-C-MARKETPLACE-ID': 'EBAY_US',
       'Accept': 'application/json',
+      ...(/^\d{10}$/.test(String(opts.campaignId||''))?{'X-EBAY-C-ENDUSERCTX':'affiliateCampaignId='+opts.campaignId+',affiliateReferenceId=mana-article-cards'}:{}),
     },
   });
   const { data } = await readApiJson(res);
@@ -7998,6 +8003,19 @@ async function routeRequest(request, env, ctx) {
     if (url.pathname === '/articles' || url.pathname.startsWith('/articles/')) {
       const articleResponse = await handleArticlesRequest(request, env, ctx, url, {
         esc: mtgEscapeHtml, pageShell: mtgPageShell, supabaseAdminFetch, storeId: ITEM_DETAIL_STORE_ID,
+        searchEbay:(query,campaignId)=>fetchEbayActiveListings(env,query,{campaignId,listingType:'FixedPrice',limit:8,signal:AbortSignal.timeout(6000)}),
+        loadCards:async guide=>{
+          if(guide.game==='pokemon'){
+            const {data:sets}=await loadPokemonSets(env);
+            const set=sets.find(s=>guide.sets.some(name=>String(name).toLowerCase()===String(s.name).toLowerCase()));
+            return set?(await loadPokemonSetCards(env,set)).data:[];
+          }
+          const code=guide.codes[0];if(!/^[a-z0-9]{2,8}$/.test(code||''))return [];
+          const params=new URLSearchParams({q:'set:'+code+' game:paper',order:'usd',dir:'desc',unique:'prints'});
+          const response=await fetch('https://api.scryfall.com/cards/search?'+params,{headers:{'User-Agent':'TheManaPocket/1.0 (themanapocket.com)','Accept':'application/json'},signal:AbortSignal.timeout(6000)});
+          if(!response.ok)return [];
+          const json=await response.json();return (json.data||[]).filter(c=>c.set===code);
+        },
         listItemsForBook: async (e, word) => {
           const term = encodeURIComponent('*' + word.replace(/[^a-z0-9 ]/gi, '') + '*');
           const { data, response } = await supabaseAdminFetch(e, `inventory_items?store_id=eq.${encodeURIComponent(ITEM_DETAIL_STORE_ID)}&or=(data->>name.ilike.${term},data->>title.ilike.${term})&select=id,data,status,created_at,updated_at&limit=300`);

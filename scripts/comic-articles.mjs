@@ -1,3 +1,4 @@
+import {articleMarketplace,renderArticleMarketplace,affiliateTcgImages,tcgImageAffiliateUrl} from './article-marketplace.mjs';
 import {articleContents} from './collector-page-ui.mjs';
 import {sportsSetKey} from './topps/public-checklist-policy.mjs';
 import {cachedPublicCatalog} from './public-catalog-cache.mjs';
@@ -414,10 +415,12 @@ function renderBooks(statuses, esc) {
 
 export function renderArticlePage(article, statuses, related, deps) {
   const esc = deps.esc;
-  const contents=articleContents(article.bodyHtml,esc);
+  const marketplace=renderArticleMarketplace(deps.articleMarketplace,affiliateTcgImages(article.bodyHtml,esc),esc);
+  const contents=articleContents(marketplace.body,esc);
   const guide=RELEASE_GUIDES[article.slug];
   const main = statuses[0] || null;
   const image = article.image || main?.cover || '';
+  const affiliateHero=tcgImageAffiliateUrl(image);
   const url = `https://www.themanapocket.com/articles/${article.slug}`;
   const facts = article.facts.length
     ? `<section class="mp-facts"><h2>${esc(main?.name || 'Book details')}</h2><dl>${article.facts.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('')}</dl></section>`
@@ -448,10 +451,10 @@ export function renderArticlePage(article, statuses, related, deps) {
     bodyHtml: STYLE + `<article class="mp-art"><div class="mp-crumb"><a href="/articles">← Collector articles</a></div>` +
       `<header><p class="mp-set-kicker">The Mana Pocket · Pocket Guides</p><h1>${esc(article.title)}</h1><div class="mp-art-meta">${esc(article.author)}${article.publishedAt ? ` · ${esc(dateLabel(article.publishedAt))}` : ''} · ${readingMinutes(article.bodyHtml)} min read</div>${article.summary?`<p class="mp-art-deck">${esc(article.summary)}</p>`:''}</header>` +
       (guide?`<nav class="mp-set-actions" aria-label="Explore this release"><a href="${esc(guide.checklist)}">Explore the checklist</a><a href="#guide-stock">Shop available copies</a></nav>`:'') + contents.nav +
-      (image ? `<a href="${esc(image)}" target="_blank" rel="noopener" aria-label="Open full-size article image"><img class="mp-art-hero" width="660" height="1000" fetchpriority="high" decoding="async" src="${esc(image)}" alt="${esc(article.imageAlt || article.title)}"></a><p class="mp-art-meta">Tap the image to see it full size.</p>` : '') +
+      (image ? `<a href="${esc(affiliateHero||image)}" target="_blank" rel="${affiliateHero?'noopener sponsored':'noopener'}" aria-label="${affiliateHero?'View this card on TCGplayer':'Open full-size article image'}"><img class="mp-art-hero" width="660" height="1000" fetchpriority="high" decoding="async" src="${esc(image)}" alt="${esc(article.imageAlt || article.title)}"></a><p class="mp-art-meta">${affiliateHero?'Affiliate image link · View sellers on TCGplayer.':'Tap the image to see it full size.'}</p>` : '') +
       renderBuyBox(article, main, esc) +
       (main ? `<nav class="mp-art-shortcuts" aria-label="Book actions"><a href="#${bookAnchor(main)}">Covers &amp; availability</a><a href="/comics/search?q=${encodeURIComponent(comicKey(main.name).series)}">Find related comics</a><a href="#book-updates">Book updates</a></nav>` : '') +
-      `<div class="mp-art-body">${contents.html}</div>` + (deps.releaseInventoryHtml || '') + facts + renderBooks(statuses, esc) + renderBookUpdates(article, deps.storeId, esc) + articleShoppingLinks(article) + more + `</article>` +
+      `<div class="mp-art-body">${contents.html}</div>` + marketplace.after + (deps.releaseInventoryHtml || '') + facts + renderBooks(statuses, esc) + renderBookUpdates(article, deps.storeId, esc) + articleShoppingLinks(article) + more + `</article>` +
       (statuses.some(st => st.options?.length) ? pickerScript(deps.storeId) : ''),
   });
 }
@@ -509,6 +512,7 @@ export async function handleArticlesRequest(request, env, ctx, url, deps) {
       const pageDeps = { ...deps, listItems: e => (stock ||= deps.listItems(e)) };
       const statuses = await Promise.all(article.books.map(book => bookStatus(env, pageDeps, book).catch(() => ({ name: book, state: 'coming', href: '' }))));
       if(RELEASE_GUIDES[slug]) pageDeps.releaseInventoryHtml=renderReleaseInventory(slug,await pageDeps.listItems(env).catch(()=>null),deps);
+      pageDeps.articleMarketplace=await articleMarketplace(env,ctx,article,RELEASE_GUIDES[slug],deps).catch(()=>null);
       const related = relatedArticles(article, articles);
       html = renderArticlePage(article, statuses, related, pageDeps);
     }

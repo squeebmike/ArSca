@@ -214,7 +214,7 @@
     "test:web-loyalty": "node tests/web-loyalty.test.mjs",
     "test:web-points-redemption": "node tests/web-points-redemption.test.mjs",
     "test:database-safe-edits": "node tests/database-safe-edits.test.mjs",
-    "test:comic-articles": "node tests/comic-articles.test.mjs",
+    "test:comic-articles": "node tests/article-marketplace.test.mjs && node tests/comic-articles.test.mjs",
     "test:www-webflow-passthrough": "node tests/www-webflow-passthrough.test.mjs",
     "test:site-chrome": "node tests/site-chrome.test.mjs",
     "test:ebay-orders-pagination": "node tests/ebay-orders-pagination.test.mjs",
