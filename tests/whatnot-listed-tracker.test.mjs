@@ -29,7 +29,7 @@ assert.match(html, /onclick="clearWhatnotMarkSelected\(\)"[^>]*>CLEAR WHATNOT MA
 // The ON WHATNOT panel: what's up there, and what sold elsewhere and needs taking down.
 {
   const ctx = { UNSELLABLE:['sold', 'archived', 'deleted'], list:[] };
-  vm.runInNewContext(fn(bridge, 'isSellable') + fn(bridge, 'onWhatnot') + 'function items(){ return list; } this.onWhatnot = onWhatnot;', ctx);
+  vm.runInNewContext(fn(bridge, 'isSellable') + fn(bridge, 'whatnotQty') + fn(bridge, 'onWhatnot') + 'function items(){ return list; } this.onWhatnot = onWhatnot;', ctx);
   ctx.list = [
     { id:'a', name:'Live one', qty:1, status:'in_stock', whatnotListedAt:'2026-10-15T10:00:00Z' },
     { id:'b', name:'Sold at the register', qty:0, status:'sold', channel:'In Store', whatnotListedAt:'2026-10-14T10:00:00Z' },

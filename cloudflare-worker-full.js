@@ -12440,6 +12440,12 @@ async function routeRequest(request, env, ctx) {
         const preservePresale = !depleted && (invRow.status === 'presale' || d.source === 'foc_presale') && d.ebayPresaleConverted !== true;
         const nextStatus = depleted ? 'sold' : preservePresale ? 'presale' : 'in_stock';
         const nextData = { ...d, status: nextStatus, lifecycle: nextStatus, qty: remaining, quantity: remaining, salePrice, profit, channel, soldAt: depleted ? soldAt : '' };
+        // A sale on Whatnot itself uses up copies listed there: count it, so
+        // the Whatnot tab's LOWER THESE ON WHATNOT check (whatnot-bridge.js
+        // whatnotQtyCheck) compares the right numbers.
+        if (/whatnot/i.test(channel) && d.whatnotListing && typeof d.whatnotListing === 'object' && d.whatnotListing.qty != null) {
+          nextData.whatnotListing = { ...d.whatnotListing, soldOnWhatnot: (Number(d.whatnotListing.soldOnWhatnot) || 0) + quantitySold };
+        }
         // Cross-channel oversell guard: a manually-recorded sale (Whatnot,
         // Mercari, a direct eBay sale never auto-synced, etc.) can deplete an
         // item that's still separately live on eBay and/or mirrored to
