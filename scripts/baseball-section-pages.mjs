@@ -8,7 +8,7 @@ const sectionPath=(s,g)=>setPath(s)+'/sections/'+g.id;
 const cardPath=(s,c)=>setPath(s)+'/cards/'+c.id;
 export const sectionsForSet=set=>baseballSections.find(s=>s.setId===set.id)?.sections||[];
 export function baseballSectionSitemapPaths(sets){return sets.flatMap(s=>sectionsForSet(s).flatMap(g=>[sectionPath(s,g),...g.cards.map(c=>cardPath(s,c))]));}
-export function baseballSectionsNav(set,esc){const groups=sectionsForSet(set);return groups.length?'<nav class="mp-section-nav" aria-label="Checklist sections"><a href="'+setPath(set)+'">Base checklist</a> · '+groups.map(g=>'<a href="'+sectionPath(set,g)+'">'+esc(g.kind+': '+g.name)+'</a>').join('')+'</nav>':'';}
+export function baseballSectionsNav(set,esc){const groups=sectionsForSet(set);return groups.length?'<nav class="mp-section-nav" aria-label="Checklist sections"><a href="'+setPath(set)+'">Base checklist</a>'+groups.map(g=>'<a href="'+sectionPath(set,g)+'">'+esc(g.kind+': '+g.name)+'</a>').join('')+'</nav>':'';}
 export function baseballShoppingHtml(items,card,set,env,deps){
  const {escape:esc}=deps;
  const copies=Array.isArray(items)?items.filter(i=>Number.isFinite(i.price)&&i.price>0&&deps.available(i)&&baseballInventoryMatches(i,card,set)):[];
