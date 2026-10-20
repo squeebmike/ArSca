@@ -48,7 +48,9 @@ assert.ok(fromDashboard.length > 4000, 'the case from the report: over eBay\'s c
   assert.match(out, /FAST, SECURE SHIPPING<\/div>\nWe pack every comic to arrive protected\. Bagged &amp; boarded and shipped in a Gemini mailer\./, 'the shipping section stays whole');
   assert.equal((out.match(/Gemini/g) || []).length, 1, 'no extra Gemini line at the bottom');
   assert.match(out, /needing a bigger shelf\.<\/div>\n<\/div>\n?<div style="max-width:760px;margin:8px auto 0;background:#ffd166/, 'the tagline is kept, the bar right after it');
-  assert.match(out, /SYNOPSIS<\/div>[^<]*…<\/div>/, 'the synopsis is what got shortened');
+  const syn = out.match(/SYNOPSIS<\/div>([^<]*)<\/div>/)[1];
+  assert.ok(syn.length < synopsis.length && synopsis.startsWith(syn), 'the synopsis is what got shortened');
+  assert.match(syn, /conquest\.$/, 'ending on a whole sentence');
   assert.equal((out.match(/background:#ffd166/g) || []).length, 1);
 }
 
@@ -75,6 +77,14 @@ assert.ok(fromDashboard.length > 4000, 'the case from the report: over eBay\'s c
 
 // Not a presale: nothing added; in-stock conversion drops a cut bar.
 assert.equal(withComicListingNotices('<p>Hi. Gemini mailer.</p>', { presale: false }), '<p>Hi. Gemini mailer.</p>');
+// No sentence end close by: cut at a word, with "…".
+{
+  const long = '<div>' + 'word '.repeat(900) + '</div><div>SHIPPING</div><p>Gemini mailer.</p>';
+  const out = withComicListingNotices(long, { presale: false });
+  assert.ok(out.length <= 4000 && /word…<\/div><div>SHIPPING<\/div>/.test(out), out.slice(-80));
+}
+// The bar is as wide as the template (border and padding inside its width).
+assert.match(comicPresaleBannerHtml(label), /box-sizing:border-box">/);
 {
   const out = comicPresaleToInStockDescription('<p>Hi. Bagged &amp; boarded and shipped in a Gemini mailer.</p><div style="max-width:760px;margin:8px auto 0;background:#ffd166;color:#171717">PRESALE -- This');
   assert.ok(!/PRESALE|ffd166/.test(out), out);

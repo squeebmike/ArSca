@@ -3358,9 +3358,14 @@ function shortenHtmlToFit(html, maxLen) {
   for (const m of html.matchAll(/>([^<]+)</g)) if (!best || m[1].length > best[1].length) best = m;
   if (best && best[1].length - excess - 1 >= 80) {
     let text = best[1].slice(0, best[1].length - excess - 1);
-    const space = text.lastIndexOf(' ');
-    if (space > text.length - 40) text = text.slice(0, space);
-    text = text.replace(/&[a-z0-9#]*$/i, '').trimEnd() + '…';
+    // End on a whole sentence when one ends in the last third; else a word.
+    const sentence = Math.max(...['. ', '! ', '? ', '.\n', '!\n', '?\n'].map(e => text.lastIndexOf(e)));
+    if (sentence > text.length * 2 / 3) text = text.slice(0, sentence + 1);
+    else {
+      const space = text.lastIndexOf(' ');
+      if (space > text.length - 40) text = text.slice(0, space);
+      text = text.replace(/&[a-z0-9#]*$/i, '').replace(/[\s,;:—–-]+$/, '') + '…';
+    }
     const start = best.index + 1;
     return html.slice(0, start) + text + html.slice(start + best[1].length);
   }
@@ -3381,7 +3386,7 @@ function withComicListingNotices(description, { presale = false, onSaleLabel = '
   }
   // Only a real banner (upper-case PRESALE) counts as one -- a shipping
   // sentence's "presale comics" alone isn't the disclosure a buyer sees.
-  const freshBar = () => `<div style="max-width:760px;margin:8px auto 0;background:#ffd166;color:#171717;border:2px solid #171717;padding:12px 16px;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:900;text-align:center">${escape(comicPresaleNotice(onSaleLabel))}</div>`;
+  const freshBar = () => `<div style="max-width:760px;margin:8px auto 0;background:#ffd166;color:#171717;border:2px solid #171717;padding:12px 16px;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:900;text-align:center;box-sizing:border-box">${escape(comicPresaleNotice(onSaleLabel))}</div>`;
   const head = keptBar
     ? (onSaleLabel && !keptBar.includes(escape(onSaleLabel)) ? freshBar() : keptBar)
     : presale && !/\bPRESALE\b/.test(body)
