@@ -825,11 +825,36 @@ function renderEntry(){
 // for sale everywhere, so a marked item that then sells somewhere else
 // (the register, eBay, the website) is called out here to take down on
 // Whatnot. One that sold on Whatnot itself is simply done.
+// Store report: "Accidentally sold books we didn't have in stock on
+// Whatnot." Whatnot's Seller API isn't open, so nothing can push counts
+// there -- instead the CSV export remembers how many copies went up
+// (whatnotListing.qty), Whatnot sales count against it (soldOnWhatnot, see
+// /inventory/record-external-sale), and anything Whatnot still offers more
+// copies of than are actually here is listed to lower by hand.
+// null = marked before counts were tracked.
+function whatnotQty(i){
+  var m = i.whatnotListing || {};
+  if(m.qty == null || m.qty === '') return null;
+  return Math.max(0, Number(m.qty || 0) - Number(m.soldOnWhatnot || 0));
+}
+function haveQty(i){ return isSellable(i) ? Math.max(0, Number(i.qty || 0)) : 0; }
+function whatnotQtyCheck(){
+  var lower = [], untracked = [];
+  items().filter(function(i){ return i.whatnotListedAt; }).forEach(function(i){
+    var w = whatnotQty(i);
+    if(w == null){ if(isSellable(i)) untracked.push(i); return; }
+    var have = haveQty(i);
+    if(w > have) lower.push({ item:i, onWhatnot:w, have:have });
+  });
+  lower.sort(function(a, b){ return a.have - b.have || (b.onWhatnot - b.have) - (a.onWhatnot - a.have); });
+  return { lower:lower, untracked:untracked };
+}
 function onWhatnot(){
   var marked = items().filter(function(i){ return i.whatnotListedAt; });
   var live = [], soldElsewhere = [];
   marked.forEach(function(i){
     if(isSellable(i)) { live.push(i); return; }
+    if(whatnotQty(i) != null) return; // counted -- the LOWER list covers it
     var channel = String(i.channel || i.soldChannel || '').toLowerCase();
     if(channel.indexOf('whatnot') >= 0) return;
     soldElsewhere.push(i);
@@ -844,12 +869,23 @@ function onWhatnotRow(i, sold){
   var soldNote = sold ? '<span style="color:var(--red)"> · sold' + (i.channel ? ' via ' + esc(i.channel) : '') + ' -- take it down on Whatnot</span>' : '';
   return '<div style="display:flex;justify-content:space-between;gap:8px;align-items:center;padding:5px 0;border-bottom:1px solid var(--border)"><span style="color:var(--text)">' + esc(i.name || 'Item') + (Number(i.qty) > 1 ? ' ×' + Number(i.qty) : '') + ' <span style="color:var(--dim)">· ' + esc(when) + ' · ' + esc(where) + '</span>' + soldNote + '</span><button class="hbtn" style="font-size:8px;padding:3px 8px;min-height:0;margin:0" onclick="WB.clearMark([\'' + esc(i.id) + '\'])">' + (sold ? 'TAKEN DOWN' : 'OFF WHATNOT') + '</button></div>';
 }
+function lowerRow(r){
+  var i = r.item, id = esc(i.id);
+  var img = imageUrls(i)[0];
+  var todo = r.have > 0 ? '<b style="color:var(--gold)">set it to ' + r.have + '</b>' : '<b style="color:var(--red)">take it down</b>';
+  return '<div style="display:flex;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--border)">' +
+    (img ? '<img src="' + esc(img) + '" alt="" loading="lazy" style="width:34px;height:46px;object-fit:cover;border-radius:4px;flex-shrink:0">' : '') +
+    '<span style="flex:1;min-width:0;color:var(--text)">' + esc(i.name || 'Item') + '<br><span style="color:var(--dim)">Whatnot has ' + r.onWhatnot + ' · you have ' + r.have + ' → </span>' + todo + '</span>' +
+    '<button class="hbtn" style="font-size:8px;padding:3px 8px;min-height:0;margin:0" onclick="WB.qtyDone([\'' + id + '\'])">✓ DONE</button></div>';
+}
 function renderOnWhatnot(){
-  var w = onWhatnot();
-  if(!w.live.length && !w.soldElsewhere.length) return '<div id="wb-on-whatnot"></div>';
+  var w = onWhatnot(), q = whatnotQtyCheck();
+  if(!w.live.length && !w.soldElsewhere.length && !q.lower.length) return '<div id="wb-on-whatnot"></div>';
+  var lower = q.lower.length ? '<div style="margin-bottom:8px;padding:8px 10px;border:1px solid color-mix(in srgb,var(--gold) 50%,transparent);border-radius:8px"><div style="color:var(--gold);font-weight:900;margin-bottom:2px">⚠ LOWER THESE ON WHATNOT (' + q.lower.length + ')</div><div style="margin-bottom:4px">Whatnot is offering more copies than you have -- sold in the store, on eBay or the website. Change each in Whatnot Seller Hub, then tap ✓ DONE.</div>' + q.lower.map(lowerRow).join('') + (q.lower.length > 1 ? '<button class="hbtn" style="margin-top:6px;font-size:9px" onclick="WB.qtyDone(null)">✓ ALL DONE</button>' : '') + '</div>' : '';
+  var untracked = q.untracked.length ? '<div style="margin-bottom:8px">' + q.untracked.length + ' item' + (q.untracked.length === 1 ? ' was' : 's were') + ' marked before copy counts were tracked, so ' + (q.untracked.length === 1 ? 'it can\'t' : 'they can\'t') + ' be checked. If Whatnot shows the right counts for ' + (q.untracked.length === 1 ? 'it' : 'them') + ' now: <button class="hbtn" style="font-size:8px;padding:3px 8px;min-height:0;margin:0" onclick="WB.qtyStartTracking()">START TRACKING</button></div>' : '';
   var sold = w.soldElsewhere.length ? '<div style="margin-bottom:8px;padding:8px 10px;border:1px solid color-mix(in srgb,var(--red) 45%,transparent);border-radius:8px"><div style="color:var(--red);font-weight:900;margin-bottom:4px">⚠ SOLD SOMEWHERE ELSE (' + w.soldElsewhere.length + ') -- still up on Whatnot?</div>' + w.soldElsewhere.map(function(i){ return onWhatnotRow(i, true); }).join('') + (w.soldElsewhere.length > 1 ? '<button class="hbtn" style="margin-top:6px;font-size:9px" onclick="WB.clearSoldMarks()">ALL TAKEN DOWN</button>' : '') + '</div>' : '';
   var live = w.live.length ? '<details' + (w.live.length <= 15 ? ' open' : '') + '><summary style="cursor:pointer;color:var(--text)">' + w.live.length + ' item' + (w.live.length === 1 ? '' : 's') + ' listed on Whatnot -- still for sale everywhere</summary><div style="max-height:300px;overflow:auto;margin-top:6px">' + w.live.slice(0, 300).map(function(i){ return onWhatnotRow(i, false); }).join('') + '</div></details>' : '';
-  return '<div id="wb-on-whatnot" class="panel" style="padding:14px;margin-bottom:12px;font-family:var(--font-mono);font-size:10px;color:var(--dim)"><div style="font:900 11px \'Orbitron\',monospace;color:var(--purple);letter-spacing:1px;margin-bottom:8px">📺 ON WHATNOT</div>' + sold + live + '</div>';
+  return '<div id="wb-on-whatnot" class="panel" style="padding:14px;margin-bottom:12px;font-family:var(--font-mono);font-size:10px;color:var(--dim)"><div style="font:900 11px \'Orbitron\',monospace;color:var(--purple);letter-spacing:1px;margin-bottom:8px">📺 ON WHATNOT</div>' + lower + sold + untracked + live + '</div>';
 }
 
 async function render(){
@@ -925,6 +961,18 @@ window.WB = {
   },
   clearMark: function(ids){ if(typeof clearWhatnotListed === 'function') clearWhatnotListed(ids).then(function(){ render(); }); },
   clearSoldMarks: function(){ var ids = onWhatnot().soldElsewhere.map(function(i){ return i.id; }); if(ids.length) WB.clearMark(ids); },
+  // Whatnot was changed to match: start counting again from what's here.
+  qtyDone: function(ids){
+    var rows = whatnotQtyCheck().lower.filter(function(r){ return !ids || ids.indexOf(r.item.id) >= 0; });
+    if(!rows.length || typeof setWhatnotQtyMatched !== 'function') return;
+    setWhatnotQtyMatched(rows.map(function(r){ return { id:r.item.id, have:r.have }; })).then(function(){ render(); });
+  },
+  qtyStartTracking: function(){
+    var rows = whatnotQtyCheck().untracked;
+    if(!rows.length || typeof setWhatnotQtyMatched !== 'function') return;
+    if(!confirm('Start tracking ' + rows.length + ' item' + (rows.length === 1 ? '' : 's') + ' at the counts you have now? Only do this if Whatnot shows the same counts.')) return;
+    setWhatnotQtyMatched(rows.map(function(i){ return { id:i.id, have:haveQty(i) }; })).then(function(){ render(); });
+  },
   loadReport: async function(file){
     if(!file) return;
     try {
@@ -1123,6 +1171,7 @@ window.sendFocShipmentToWhatnot = async function(cycleId){
   toast(count ? count + ' book' + (count === 1 ? '' : 's') + ' from this shipment ready for Whatnot' : 'No in-stock books from this shipment yet -- receive it first');
 };
 window.renderWhatnotBridge = render;
+window.whatnotQtyCheck = whatnotQtyCheck;
 // The live sticker helper asks this for a random/mystery sale: the random
 // pool bin when one is set and still has books, else nothing (the sale is
 // then only logged on the show and the report import records it).

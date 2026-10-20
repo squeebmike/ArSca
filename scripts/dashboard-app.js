@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.10.19.3-foc-reimport-removes-dropped';
+const APP_VERSION = '2026.10.20.1-whatnot-qty-check';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -23415,7 +23415,8 @@ async function setWhatnotListed(items, mark){
   let saved = 0, failed = 0;
   for(let n = 0; n < list.length; n += 4){
     await Promise.all(list.slice(n, n + 4).map(async item => {
-      const updates = mark ? { whatnotListedAt:mark.at, whatnotListing:mark } : { whatnotListedAt:'', whatnotListing:null };
+      const m = typeof mark === 'function' ? mark(item) : mark;
+      const updates = m ? { whatnotListedAt:m.at, whatnotListing:m } : { whatnotListedAt:'', whatnotListing:null };
       try {
         if(item.source === 'built_in') await updateBuiltInInventoryItem(item, updates);
         else updateUniversalInventoryItem(item.id, updates);
@@ -23428,7 +23429,10 @@ async function setWhatnotListed(items, mark){
   return { saved, failed };
 }
 async function markItemsListedOnWhatnot(items, info = {}){
-  const mark = { at:new Date().toISOString(), dest:info.dest === 'show' ? 'show' : 'shop', type:String(info.type || '') };
+  // qty: the copies this CSV put on Whatnot (its Quantity column), so the
+  // Whatnot tab can tell when Whatnot offers more than is actually here.
+  const at = new Date().toISOString();
+  const mark = item => ({ at, dest:info.dest === 'show' ? 'show' : 'shop', type:String(info.type || ''), qty:Math.max(1, Number(item.qty || 1)), soldOnWhatnot:0 });
   const r = await setWhatnotListed(items, mark);
   toast_dash(`Marked ${r.saved} item${r.saved===1?'':'s'} as listed on Whatnot${r.failed?' ('+r.failed+' could not be saved)':''} -- still for sale everywhere`);
   return r;
@@ -23439,6 +23443,18 @@ async function clearWhatnotListed(ids){
   toast_dash(`Cleared the Whatnot mark on ${r.saved} item${r.saved===1?'':'s'}`);
   if(typeof window.renderWhatnotBridge === 'function' && typeof activeTab !== 'undefined' && activeTab === 'whatnot') window.renderWhatnotBridge();
   return r;
+}
+// The store changed Whatnot to match what's here: count from these numbers
+// now (an item with none left comes off Whatnot entirely).
+async function setWhatnotQtyMatched(rows){
+  const byId = new Map((rows || []).map(r => [r.id, Math.max(0, Number(r.have || 0))]));
+  const list = all.filter(i => byId.has(i.id) && i.whatnotListedAt);
+  const gone = list.filter(i => byId.get(i.id) <= 0), keep = list.filter(i => byId.get(i.id) > 0);
+  const at = new Date().toISOString();
+  const a = keep.length ? await setWhatnotListed(keep, item => ({ ...(item.whatnotListing || {}), at:item.whatnotListedAt || at, qty:byId.get(item.id), soldOnWhatnot:0, matchedAt:at })) : { saved:0, failed:0 };
+  const b = gone.length ? await setWhatnotListed(gone, null) : { saved:0, failed:0 };
+  toast_dash(`Whatnot counts updated for ${a.saved + b.saved} item${a.saved + b.saved === 1 ? '' : 's'}${a.failed + b.failed ? ' (' + (a.failed + b.failed) + ' could not be saved)' : ''}`);
+  return { saved:a.saved + b.saved, failed:a.failed + b.failed };
 }
 function clearWhatnotMarkSelected(){
   const ids = all.filter(i => inventoryBulkSelectedIds.has(i.id) && i.whatnotListedAt).map(i => i.id);
@@ -27406,6 +27422,13 @@ function closeShowBuilderModal(){
 }
 async function createWhatnotShow(){
   const platform = document.getElementById('ws-platform')?.value || 'whatnot';
+  // Pre-show check: Whatnot offering more copies than are here is how books
+  // that aren't in stock get sold on stream.
+  const qtyCheck = platform === 'whatnot' && typeof window.whatnotQtyCheck === 'function' ? window.whatnotQtyCheck() : null;
+  if(qtyCheck && qtyCheck.lower.length){
+    const names = qtyCheck.lower.slice(0, 8).map(r => `• ${r.item.name}: Whatnot has ${r.onWhatnot}, you have ${r.have}`).join('\n');
+    if(!confirm(`Before you go live: ${qtyCheck.lower.length} item${qtyCheck.lower.length === 1 ? '' : 's'} on Whatnot show${qtyCheck.lower.length === 1 ? 's' : ''} more copies than you have:\n\n${names}${qtyCheck.lower.length > 8 ? '\n…and ' + (qtyCheck.lower.length - 8) + ' more' : ''}\n\nOK = go live anyway · Cancel = fix them first (Whatnot tab → ON WHATNOT)`)) return;
+  }
   const category = document.getElementById('ws-category')?.value || 'Mixed';
   const lengthMinutes = parseInt(document.getElementById('ws-length')?.value, 10) || 60;
   const title = document.getElementById('ws-title')?.value?.trim() || (category + ' Show ' + new Date().toLocaleDateString());
