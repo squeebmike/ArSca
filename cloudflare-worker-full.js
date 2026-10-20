@@ -3336,18 +3336,57 @@ function comicPresaleNotice(onSaleLabel = '') {
   return 'PRESALE -- This comic has not been released yet and is not currently in stock.'
     + (onSaleLabel ? ` Expected on-sale/ship date: ${onSaleLabel}. Your order ships once we receive it from the distributor.` : '');
 }
+// The yellow PRESALE bar (the dashboard's comicPresaleBannerHtml and the one
+// below share this style).
+const COMIC_PRESALE_BAR_RE = /<div style="max-width:760px;margin:[^"]*background:#ffd166;[^"]*">[^<]*<\/div>/g;
+// Store report: a long presale description came out with an empty yellow bar
+// and the Gemini line under it. The bar sits at the very end of a store
+// template, so cutting a too-long description to eBay's 4000 characters cut
+// the bar (and the shipping section before it) off. What an earlier cut left
+// behind -- a bar or tag with no end -- is taken off here.
+function stripCutPresaleBarTail(html) {
+  const m = String(html || '').match(/<div\b[^<]*$/);
+  return m && (!m[0].includes('>') || /ffd166|PRESALE/.test(m[0])) ? html.slice(0, m.index).trimEnd() : html;
+}
+// Shortens the longest run of text (in practice the synopsis) so the
+// template's closing sections -- shipping, questions, tagline -- stay whole.
+// Falls back to cutting the end only when no text run is long enough.
+function shortenHtmlToFit(html, maxLen) {
+  const excess = html.length - maxLen;
+  if (excess <= 0) return html;
+  let best = null;
+  for (const m of html.matchAll(/>([^<]+)</g)) if (!best || m[1].length > best[1].length) best = m;
+  if (best && best[1].length - excess - 1 >= 80) {
+    let text = best[1].slice(0, best[1].length - excess - 1);
+    const space = text.lastIndexOf(' ');
+    if (space > text.length - 40) text = text.slice(0, space);
+    text = text.replace(/&[a-z0-9#]*$/i, '').trimEnd() + '…';
+    const start = best.index + 1;
+    return html.slice(0, start) + text + html.slice(start + best[1].length);
+  }
+  return truncateHtmlSafely(html, maxLen);
+}
 function withComicListingNotices(description, { presale = false, onSaleLabel = '' } = {}) {
   let body = String(description || '').trim();
   // A store template can be HTML; the notices then go in as HTML.
   const isHtml = /<\/?[a-z][\s\S]*>/i.test(body);
   const escape = t => t.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+  // A yellow bar already in the description is taken out and put back at
+  // the very end, after any shortening, so it always arrives whole.
+  let keptBar = '';
+  if (isHtml && presale) {
+    body = stripCutPresaleBarTail(body);
+    const bars = body.match(COMIC_PRESALE_BAR_RE) || [];
+    if (bars.length) { keptBar = bars[bars.length - 1]; body = body.replace(COMIC_PRESALE_BAR_RE, '').trim(); }
+  }
   // Only a real banner (upper-case PRESALE) counts as one -- a shipping
   // sentence's "presale comics" alone isn't the disclosure a buyer sees.
-  const head = presale && !/\bPRESALE\b/.test(body)
-    ? (isHtml
-      ? `<div style="max-width:760px;margin:8px auto 0;background:#ffd166;color:#171717;border:2px solid #171717;padding:12px 16px;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:900;text-align:center">${escape(comicPresaleNotice(onSaleLabel))}</div>`
-      : comicPresaleNotice(onSaleLabel))
-    : '';
+  const freshBar = () => `<div style="max-width:760px;margin:8px auto 0;background:#ffd166;color:#171717;border:2px solid #171717;padding:12px 16px;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:900;text-align:center">${escape(comicPresaleNotice(onSaleLabel))}</div>`;
+  const head = keptBar
+    ? (onSaleLabel && !keptBar.includes(escape(onSaleLabel)) ? freshBar() : keptBar)
+    : presale && !/\bPRESALE\b/.test(body)
+      ? (isHtml ? freshBar() : comicPresaleNotice(onSaleLabel))
+      : '';
   let tail = '';
   if (!/gemini/i.test(body)) {
     // Store ask: "it should be in the fast secure section", not stuck at
@@ -3362,7 +3401,7 @@ function withComicListingNotices(description, { presale = false, onSaleLabel = '
   }
   // eBay caps a description at 4000 characters -- the notices always fit.
   const room = 4000 - [head, tail].filter(Boolean).reduce((n, t) => n + t.length + 2, 0);
-  if (body.length > room) body = isHtml ? truncateHtmlSafely(body, room) : body.slice(0, Math.max(0, room - 1)).trimEnd() + '…';
+  if (body.length > room) body = isHtml ? shortenHtmlToFit(body, room) : body.slice(0, Math.max(0, room - 1)).trimEnd() + '…';
   // Store ask: the yellow PRESALE bar goes at the bottom, not the top.
   return [body, tail, head].filter(Boolean).join(isHtml ? '' : '\n\n');
 }
@@ -3393,6 +3432,7 @@ const COMIC_IN_STOCK_SHIPPING = 'In stock and ships within 1 business day with t
 function comicPresaleToInStockDescription(description) {
   let d = String(description || '');
   const isHtml = /<\/?[a-z][\s\S]*>/i.test(d);
+  if (isHtml) d = stripCutPresaleBarTail(d);
   d = d
     // the yellow PRESALE bar
     .replace(/<div style="max-width:760px;margin:[^"]*background:#ffd166;[^"]*">[^<]*<\/div>/g, '')
@@ -5759,7 +5799,7 @@ async function routeRequest(request, env, ctx) {
       const title = (typeof body.title === 'string' && body.title.trim()) ? body.title.trim().substring(0, 80) : defaults.title;
       // A store's own description template may leave the presale notice
       // out -- it always goes back in, with the ship date.
-      const description = withComicListingNotices((typeof body.description === 'string' && body.description.trim()) ? body.description.trim().substring(0, 4000) : defaults.description, { presale: true, onSaleLabel: defaults.onSaleLabel });
+      const description = withComicListingNotices((typeof body.description === 'string' && body.description.trim()) ? body.description.trim().substring(0, 20000) : defaults.description, { presale: true, onSaleLabel: defaults.onSaleLabel });
       const customAspects = (body.customAspects && typeof body.customAspects === 'object') ? { ...defaults.customAspects, ...body.customAspects } : defaults.customAspects;
       const bestOfferEnabled = body.bestOfferEnabled !== false;
       const weightValue = Number(body.weightValue) > 0 ? Number(body.weightValue) : defaults.weightValue;
@@ -6112,7 +6152,7 @@ async function routeRequest(request, env, ctx) {
       const defaults = buildFocPresaleDefaults({ ...repSku, title: family.title, variant_label: '' }, built[0].priceCents || Math.round(Number(built[0].price) * 100), onSaleDate, family.issue_number || '', family.series_name || '');
 
       const groupTitle = (typeof body.title === 'string' && body.title.trim()) ? body.title.trim().substring(0, 80) : defaults.title;
-      const descriptionBase = (typeof body.description === 'string' && body.description.trim()) ? body.description.trim().substring(0, 4000) : defaults.description;
+      const descriptionBase = (typeof body.description === 'string' && body.description.trim()) ? body.description.trim().substring(0, 20000) : defaults.description;
       // Store request: "the listing should include the info on all covers
       // ratio ect so it gets views" -- a shared multi-cover listing's
       // description is the only text eBay indexes for every cover bundled
@@ -6135,7 +6175,12 @@ async function routeRequest(request, env, ctx) {
       const coversListText = 'This listing includes ' + realCovers.length + ' cover option' + (realCovers.length === 1 ? '' : 's') + ' -- pick yours from the "Cover" dropdown above:\n'
         + realCovers.map(v => `- ${v.label} -- $${v.price}`).join('\n')
         + (bundleVariant ? `\n\nAlso available as a bundle: ${bundleVariant.label} -- $${bundleVariant.price} (all ${realCovers.length} covers together).` : '');
-      const description = withComicListingNotices([descriptionBase, coversListText].filter(Boolean).join('\n\n'), { presale: true, onSaleLabel: defaults.onSaleLabel });
+      // An HTML template gets the cover list as HTML (plain newlines collapse
+      // into one line on eBay).
+      const coversListPart = /<\/?[a-z][\s\S]*>/i.test(descriptionBase)
+        ? '<div style="max-width:760px;margin:8px auto 0;font-family:Arial,Helvetica,sans-serif;font-size:13px">' + coversListText.replace(/&/g, '&amp;').replace(/</g, '&lt;').split(/\n{2,}/).map(p => '<p>' + p.replace(/\n/g, '<br>') + '</p>').join('') + '</div>'
+        : coversListText;
+      const description = withComicListingNotices([descriptionBase, coversListPart].filter(Boolean).join(/<\/?[a-z][\s\S]*>/i.test(descriptionBase) ? '' : '\n\n'), { presale: true, onSaleLabel: defaults.onSaleLabel });
       const customAspects = (body.customAspects && typeof body.customAspects === 'object') ? { ...defaults.customAspects, ...body.customAspects } : defaults.customAspects;
       const bestOfferEnabled = body.bestOfferEnabled !== false;
       const weightValue = Number(body.weightValue) > 0 ? Number(body.weightValue) : defaults.weightValue;

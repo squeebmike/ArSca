@@ -11,8 +11,8 @@ const worker = fs.readFileSync('cloudflare-worker-full.js', 'utf8');
 const grab = sig => { const s = worker.indexOf(sig); assert.ok(s >= 0, 'missing ' + sig); return worker.slice(s, worker.indexOf('\n}\n', s) + 2); };
 const line = sig => { const s = worker.indexOf(sig); assert.ok(s >= 0, 'missing ' + sig); return worker.slice(s, worker.indexOf('\n', s) + 1); };
 const { toInStock } = new Function([
-  line('const COMIC_GEMINI_MAILER ='), line('const COMIC_SHIPPING_NOTE ='), line('const COMIC_IN_STOCK_SHIPPING ='),
-  grab('function truncateHtmlSafely('), grab('function comicPresaleNotice('), grab('function withComicListingNotices('),
+  line('const COMIC_GEMINI_MAILER ='), line('const COMIC_SHIPPING_NOTE ='), line('const COMIC_PRESALE_BAR_RE ='), line('const COMIC_IN_STOCK_SHIPPING ='),
+  grab('function truncateHtmlSafely('), grab('function comicPresaleNotice('), grab('function stripCutPresaleBarTail('), grab('function shortenHtmlToFit('), grab('function withComicListingNotices('),
   grab('function comicPresaleToInStockDescription('),
   'return { toInStock: comicPresaleToInStockDescription };',
 ].join('\n'))();
