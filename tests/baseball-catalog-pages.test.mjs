@@ -68,5 +68,5 @@ const autographCounts={'2025-topps-chrome-baseball':166,'2024-topps-chrome-baseb
 for(const s of baseballStockedSections){assert.equal(s.sections[0].cards.length,autographCounts[s.setId]);assert.ok(s.sections[0].cards.every(c=>c.section!=='Base'));}
 const {baseballStockedMoreSets,baseballStockedMoreSections}=await import('../scripts/topps/baseball-stocked-more-2026-10.mjs');
 assert.equal(baseballStockedMoreSets.length,4);assert.equal(baseballStockedMoreSets.reduce((n,s)=>n+s.cards.length,0),490);
-assert.equal(baseballStockedMoreSections.flatMap(s=>s.sections).reduce((n,g)=>n+g.cards.length,0),430);
+assert.equal(baseballStockedMoreSections.flatMap(s=>s.sections).reduce((n,g)=>n+g.cards.length,0),830);
 for(const s of baseballStockedMoreSections)for(const g of s.sections){assert.equal(new Set(g.cards.map(c=>c.cardNumber)).size,g.cards.length);assert.ok(g.cards.every(c=>c.section===g.name));}

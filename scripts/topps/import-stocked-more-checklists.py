@@ -37,5 +37,18 @@ for src in sources:
   assert {c['cardNumber'] for c in rows}=={prefix+str(i) for i in range(lo,hi+1)} and len(rows)==hi-lo+1,(id,name)
   sections.append({'id':sectionid,'name':name,'kind':'Prospects','cards':rows})
  if sections:groups.append({'setId':id,'sections':sections})
+# Existing reviewed 2026 releases: add their separately numbered prospect sections.
+prospect_root=Path('../outputs/library-completion/sports-sources')
+for id,specs2026 in [('2026-bowman-baseball',[('paper-prospects','Paper Prospects','PAPER PROSPECTS','BP-',1,150),('chrome-prospects','Chrome Prospects','CHROME PROSPECTS','BCP-',1,150)]),('2026-bowman-chrome-baseball',[('chrome-prospects','Chrome Prospects','BOWMAN CHROME PROSPECTS','BCP-',151,250)])]:
+ lines=[l.strip() for l in (prospect_root/(id+'.txt')).read_text(encoding='utf-8').splitlines()];sections=[]
+ for sectionid,name,heading,prefix,lo,hi in specs2026:
+  start=lines.index(heading);rows=[]
+  for line in lines[start+1:]:
+   if not line:continue
+   if not re.match('^'+prefix+r'\d+\s',line):break
+   rows.append(parse(line,id,name))
+  assert len(rows)==hi-lo+1 and {c['cardNumber'] for c in rows}=={prefix+str(i) for i in range(lo,hi+1)},(id,name)
+  sections.append({'id':sectionid,'name':name,'kind':'Prospects','cards':rows})
+ groups.append({'setId':id,'sections':sections})
 Path('scripts/topps/baseball-stocked-more-2026-10.mjs').write_bytes(('// Verified official Topps/Bowman base and separate prospect sections.\nexport const baseballStockedMoreSets = '+json.dumps(sets,ensure_ascii=False,separators=(',',':'))+';\nexport const baseballStockedMoreSections = '+json.dumps(groups,ensure_ascii=False,separators=(',',':'))+';\n').encode())
 print(json.dumps({'sets':[(s['id'],len(s['cards'])) for s in sets],'sections':[(s['setId'],[(g['name'],len(g['cards'])) for g in s['sections']]) for s in groups]}))
