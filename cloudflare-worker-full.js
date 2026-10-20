@@ -38,7 +38,7 @@ import { storeOrganization, productFacts, productCondition, productHeading, rend
 // It has zero Node dependencies (pure-JS SHA-1), so it bundles straight into
 // the Worker -- reused here instead of duplicating checklist-parsing logic.
 import { buildChecklistIndex, parseChecklistText, sha1Hex, slugify } from './scripts/topps-checklist-parser.js';
-import { handleFocRequest, syncFocStripeEvent, shippingSettings, runScheduledStockHealth, withRatioWord, parseMyEbaySellingActive, ebayItemFromGetItem } from './scripts/foc-preorders.mjs';
+import { handleFocRequest, syncFocStripeEvent, shippingSettings, runScheduledStockHealth, withRatioWord, parseMyEbaySellingActive, ebayItemFromGetItem, uniqueCoverLabels, coverLabelFromTitle } from './scripts/foc-preorders.mjs';
 import { handleOrdersBoard, handleOrderMarkShipped } from './scripts/orders-board.mjs';
 import { handleBacklistRequest, syncBacklistStripeEvent } from './scripts/backlist-catalog.mjs';
 import { searchComics, comicSearchShell, comicSearchScriptResponse, injectComicSearch } from './scripts/comic-search.mjs';
@@ -5617,7 +5617,7 @@ async function routeRequest(request, env, ctx) {
       // unconditionally produced titles like "Adventure Time Compendium
       // Vol. 4 Compendium Vol. 4". Only append it if it isn't already there.
       const baseTitle = String(sku.title || '').trim();
-      const variantLabel = sku.variant_label && sku.variant_label !== 'Cover A' && !baseTitle.toLowerCase().includes(String(sku.variant_label).toLowerCase())
+      const variantLabel = sku.variant_label && sku.variant_label !== 'Cover A' && !baseTitle.toLowerCase().includes(String(sku.variant_label).toLowerCase()) && coverLabelFromTitle(baseTitle) !== sku.variant_label
         ? sku.variant_label : '';
       // eBay's presale policy requires "presale" to be disclosed in BOTH the
       // title and the description -- title-only-implicit presale listings
@@ -6002,7 +6002,10 @@ async function routeRequest(request, env, ctx) {
       // eligible/ineligible covers are both returned (not just eligible
       // ones) so the review screen can show why a cover is greyed out
       // instead of it just silently not appearing.
-      const covers = skuRows.map(sku => {
+      // Every cover's label is unique (eBay rejects a variation listing with
+      // two identical "Cover" choices -- see uniqueCoverLabels).
+      const coverLabels = uniqueCoverLabels(skuRows.map(sku => ({ label: sku.variant_label || 'Cover', title: sku.title })));
+      const covers = skuRows.map((sku, i) => {
         const priceCents = Number(sku.customer_price_cents || sku.msrp_cents || 0);
         let reason = '', onSaleDate = null;
         if (!sku.on_sale_date) reason = 'No on-sale date on file';
@@ -6016,7 +6019,7 @@ async function routeRequest(request, env, ctx) {
           if (now < eligibleDate) reason = `Too early -- eligible ${eligibleDate.toISOString().slice(0, 10)}`;
         }
         return {
-          skuId: sku.id, variantLabel: sku.variant_label || 'Cover', upc: sku.upc || '',
+          skuId: sku.id, variantLabel: coverLabels[i], upc: sku.upc || '',
           imageUrl: sku.cover_image_url || '', price: (priceCents / 100).toFixed(2), priceCents,
           coverArtist: sku.cover_artist || '', onSaleDate: sku.on_sale_date || '',
           eligible: !reason, reason,

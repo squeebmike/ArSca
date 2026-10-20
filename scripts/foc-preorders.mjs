@@ -131,6 +131,35 @@ export function variantLabel(row, series, issue) {
   return label;
 }
 
+// Store report: a Lunar multi-cover eBay listing failed with "Duplicate
+// VariationSpecifics trait value" -- Lunar's titles don't start with the
+// series name the label code strips, so every cover fell back to its cover
+// artist, and an artist with more than one cover (Robin Hood #1: Nakayama
+// on B, G and M) gave identical "Cover" choices. The cover part of the
+// title ("CVR K INC 1:10 PHIL HESTER VIRGIN VAR") names each one.
+export function coverLabelFromTitle(title) {
+  const m = text(title, 800).match(/\b(?:CVR|COVER)\s+([A-Z]{1,2})\b(.*)$/i);
+  if (!m) return '';
+  let rest = m[2].replace(/\bINC\b\.?/gi, ' ').replace(/\bVAR(?:IANT)?\b\.?\s*$/i, ' ').replace(/\s+/g, ' ').trim();
+  if (!/[a-z]/.test(rest)) rest = rest.toLowerCase().replace(/\b([a-z])/g, c => c.toUpperCase());
+  return ('Cvr ' + m[1].toUpperCase() + (rest ? ' ' + rest : '')).slice(0, 60).trim();
+}
+// eBay needs every "Cover" choice to be different. A label shared by more
+// than one cover gets its title's cover part instead, then a number.
+export function uniqueCoverLabels(rows) {
+  const count = new Map();
+  for (const r of rows) count.set(r.label, (count.get(r.label) || 0) + 1);
+  const used = new Set();
+  return rows.map(r => {
+    let label = r.label;
+    if (count.get(label) > 1) label = coverLabelFromTitle(r.title) || label;
+    let out = label, n = 2;
+    while (used.has(out.toLowerCase())) out = label + ' (' + (n++) + ')';
+    used.add(out.toLowerCase());
+    return out;
+  });
+}
+
 function ratioThreshold(requirement) {
   const m = text(requirement, 100).match(/(?:^|\s)1\s*:\s*(\d+)/i);
   return m ? Number(m[1]) : null;
@@ -258,7 +287,7 @@ export function normalizeLunarRow(row = {}) {
     msrpCents:cents(row.RetailCost),
     maxOrderQuantity:'',
   };
-  normalized.variantLabel = variantLabel(row, '', issue);
+  normalized.variantLabel = coverLabelFromTitle(row.Title) || variantLabel(row, '', issue);
   if (/^primary title$/i.test(normalized.variantLabel)) normalized.variantLabel = 'Cover A';
   normalized.flags = {
     mature:/^(y|yes|true|1)$/i.test(text(row.Mature, 20)),

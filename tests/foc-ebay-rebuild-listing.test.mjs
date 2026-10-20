@@ -8,6 +8,7 @@ import assert from 'node:assert/strict';
 const worker = fs.readFileSync('cloudflare-worker-full.js', 'utf8');
 const focService = fs.readFileSync('scripts/foc-preorders.mjs', 'utf8');
 const ratioFn = focService.slice(focService.indexOf('function withRatioWord('), focService.indexOf('\n}\n', focService.indexOf('function withRatioWord(')) + 3);
+const coverLabelFn = 'const text = (v, n) => String(v == null ? "" : v).trim().slice(0, n);\n' + focService.slice(focService.indexOf('function coverLabelFromTitle('), focService.indexOf('\n}\n', focService.indexOf('function coverLabelFromTitle(')) + 3);
 const app = fs.readFileSync('scripts/dashboard-app.js', 'utf8');
 const grab = (sig, end = '\n}\n') => { const s = worker.indexOf(sig); assert.ok(s >= 0, 'missing ' + sig); return worker.slice(s, worker.indexOf(end, s) + end.length); };
 const line = sig => { const s = worker.indexOf(sig); assert.ok(s >= 0, 'missing ' + sig); return worker.slice(s, worker.indexOf('\n', s) + 1); };
@@ -18,7 +19,7 @@ const route = worker.slice(routeStart, worker.indexOf("    if (url.pathname === 
 function load({ row, sku, item, offer }) {
   const calls = { puts: [], patches: [] };
   const fn = new Function('fetch', 'supabaseAdminFetch', 'getEbayUserAccessToken', [
-    ratioFn, line('const COMIC_GEMINI_MAILER ='), line('const COMIC_SHIPPING_NOTE ='), line('const COMIC_PRESALE_BAR_RE ='), line('const COMIC_IN_STOCK_SHIPPING ='),
+    ratioFn, coverLabelFn, line('const COMIC_GEMINI_MAILER ='), line('const COMIC_SHIPPING_NOTE ='), line('const COMIC_PRESALE_BAR_RE ='), line('const COMIC_IN_STOCK_SHIPPING ='),
     grab('function truncateHtmlSafely('), grab('function comicPresaleNotice('), grab('function stripCutPresaleBarTail('), grab('function shortenHtmlToFit('), grab('function withComicListingNotices('),
     grab('function comicPresaleToInStockDescription('), grab('function stripPresaleSuffix('), grab('function buildEbayAspects('),
     grab('function toEbayHtmlDescription('),
