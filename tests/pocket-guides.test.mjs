@@ -39,6 +39,7 @@ body=await(await get('/pocket-guides/upcoming')).text();assert.ok(body.includes(
 {
  const {releaseOrderInfo,newestReleases,releaseCatalogMetadata}=await import('../scripts/release-order.mjs');
  assert.deepEqual(releaseCatalogMetadata({setCode:'fin',setName:'FINAL FANTASY',releasedAt:'2025-06-13',privateField:'omit'}),{id:'fin',code:'fin',name:'FINAL FANTASY',releaseDate:'2025-06-13'});
+ assert.equal(releaseOrderInfo({id:'2026-topps-holiday-baseball',year:2026}).key,'2026-10-21','use the existing verified publisher calendar where available');
  const originals=[{name:'Old',releaseDate:'2024-12-20'},{name:'Unknown',publishedAt:'2099-01-01'},{name:'New',releaseDate:'2026-01-02'},{name:'Year only',year:2025}];
  assert.deepEqual(newestReleases(originals).map(s=>s.name),['New','Year only','Old','Unknown']);
  assert.equal(originals[0].name,'Old','sorting does not mutate cached reference arrays');

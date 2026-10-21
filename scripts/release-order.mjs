@@ -1,6 +1,8 @@
+import {upcomingSets} from './upcoming-sets.mjs';
+const verifiedReleaseDates=new Map(upcomingSets.filter(s=>/release/i.test(s.event)&&!/preorder/i.test(s.event)&&s.guide?.includes('/checklists/')).map(s=>[s.guide.split('/').pop(),s.date]));
 // Public release metadata only. Import/editor timestamps are not release dates.
 export function releaseOrderInfo(row={}){
- for(const value of [row.releaseDate,row.releasedAt,row.released_at,row.saleDate]){
+ for(const value of [row.releaseDate,row.releasedAt,row.released_at,row.saleDate,verifiedReleaseDates.get(row.id)]){
   const date=String(value||'').match(/^(\d{4})(?:-(\d{2})(?:-(\d{2}))?)?(?:T.*)?$/);
   if(!date||Number(date[1])<1900||Number(date[1])>2200)continue;
   if(date[2]&&(Number(date[2])<1||Number(date[2])>12))continue;
