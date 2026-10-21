@@ -40,22 +40,27 @@ export const sportsSetKey = value => norm(String(value||'')
 // actual listing title stays visible. This is a card-family link, not proof of
 // an exact base printing. Inserts and autograph/relic sets remain separate.
 export function baseballChecklistInventoryMatches(item,card,set){
+  const release=String(set.displayName||set.setName||''),identity=[item.set,item.sport,item.league].filter(Boolean).join(' ');
+  if(/football/i.test(release)&&(!/\b(?:football|nfl)\b/i.test(identity)||/\bbaseball\b/i.test(identity)))return false;
+  if((set.sport==='baseball'||/baseball/i.test(release))&&/\b(?:football|nfl)\b/i.test(identity))return false;
   if(baseballInventoryMatches(item,card,set))return true;
   if(item.categorySlug!=='sports-cards'||item.isSealed||/box|pack|case|bundle|lot/i.test(item.productType||''))return false;
   if(norm(card.variant)!=='base')return false;
   const section=norm(card.section),isBase=section==='base';
   const sectionAliases={teamofthefuture:["Team of the Future"],theenterprise:["The Enterprise"],chromealletch:['All Etch'],ohsnap:['Oh Snap'],bestof2023earlyformautographs:['of Autographs'],sterlingtek:['Tek'],starsofmlb:['Stars of MLB'],powerchords:['Power Chords'],prospectautographs:['Prospect Autograph'],rookieautographs:['Rookie Autograph'],autographcards:['Autograph','Autographs'],finestautographs:['Autograph','Autographs'],chromeprospects:['Chrome Prospects'],paperprospects:['Prospects','Paper Prospects'],topprospects:['Top Prospects']};
-  if(!isBase&&!sectionAliases[section])return false;
+  const prefixedNumber=!isBase&&/^[a-z0-9]+-/i.test(String(card.cardNumber||''))&&num(item.cardNumber)===num(card.cardNumber);
+  if(!isBase&&!sectionAliases[section]&&!prefixedNumber&&!item.subset)return false;
   if(item.subset&&norm(item.subset)!==section)return false;
   const description=[item.name,item.set,item.variant,item.treatment].join(' ');
-  if(item.isRelic||/relic|memorabilia|image variation|photo variation|short print|\b(?:sp|ssp)\b/i.test(description))return false;
+  if(!/relic|patch/i.test(card.section)&&(item.isRelic||/relic|memorabilia/i.test(description)))return false;
+  if(!/variation/i.test(card.section)&&/image variation|photo variation|short print|\b(?:sp|ssp)\b/i.test(description))return false;
   if(!/autograph/i.test(card.section)&&(item.isSigned||/autograph|auto\b/i.test(description)))return false;
   const parent=String(set.displayName||set.setName||'').replace(/\s+(?:baseball|football)$/i,'');
-  const setKeys=isBase?[sportsSetKey(parent)]:sectionAliases[section].map(alias=>sportsSetKey(parent+' '+(/chrome$/i.test(parent)?alias.replace(/^Chrome /i,''):alias)));
+  const setKeys=isBase?[sportsSetKey(parent)]:(sectionAliases[section]||[card.section]).map(alias=>sportsSetKey(parent+' '+(/chrome$/i.test(parent)?alias.replace(/^Chrome /i,''):alias)));
   // Generic flagship imports omit Series 1/2. Their verified non-overlapping
   // number ranges plus the exact player identify the series without guessing.
   if(isBase&&new RegExp('^'+set.year+'toppsseries[12]$').test(sportsSetKey(parent)))setKeys.push(sportsSetKey(set.year+' Topps'));
-  if(!isBase&&item.subset)setKeys.push(sportsSetKey(parent));
+  if(!isBase&&(item.subset||prefixedNumber))setKeys.push(sportsSetKey(parent));
   if(/Topps Stadium Club/.test(parent))setKeys.push(...setKeys.map(k=>k.replace('toppsstadiumclub','stadiumclub')));
   if(!setKeys.includes(sportsSetKey(item.set)))return false;
   const setYear=String(item.set||'').match(/\b((?:19|20)\d{2})\b/)?.[1];

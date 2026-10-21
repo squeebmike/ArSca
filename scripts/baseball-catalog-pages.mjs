@@ -1,3 +1,4 @@
+import {sportsChecklistRedirect,sportsReleaseInformation} from './sports-checklist-ui.mjs';
 import {setPageHeader} from './collector-page-ui.mjs';
 import {catalogStoreCopyHtml} from './catalog-inventory.mjs';
 import {baseballSets} from './topps/baseball-seed.mjs';
@@ -6,7 +7,7 @@ import {baseballTeams,baseballTeamPath,baseballTeamLinks,handleBaseballTeam} fro
 import {collectionToolsHtml} from './collection-tools.mjs';
 import {baseballOddsHtml} from './baseball-odds.mjs';
 import {baseballPlayers,baseballPlayerPath,handleBaseballPlayers} from './baseball-player-pages.mjs';
-import {baseballSectionSitemapPaths,baseballSectionsNav,handleBaseballSections} from './baseball-section-pages.mjs';
+import {sectionsForSet,baseballSectionSitemapPaths,baseballSectionsNav,handleBaseballSections} from './baseball-section-pages.mjs';
 const origin='https://www.themanapocket.com';
 // Generated publisher data is immutable for this deployment. Reuse its stable
 // array identity so derived reference indexes do not rebuild on each request.
@@ -33,6 +34,7 @@ export async function handleBaseballCatalog(request,env,url,deps) {
  if(sectionResponse)return sectionResponse;
  const set=sets.find(s=>url.pathname===baseballSetPath(s)||url.pathname.startsWith(baseballSetPath(s)+'/cards/'));
  if(!set)return missing();
+ const sectionRedirect=sportsChecklistRedirect(url,set,sectionsForSet(set),'baseball');if(sectionRedirect)return sectionRedirect;
  const setPath=baseballSetPath(set),cardPathPrefix=setPath+'/cards/';
  const stockHtml=async card=>{
   let items;
@@ -55,6 +57,6 @@ export async function handleBaseballCatalog(request,env,url,deps) {
  if(!/^[1-9]\d*$/.test(pageText)||page>pages)return missing();
  const pageUrl=n=>setPath+(query?'?q='+encodeURIComponent(query)+(n>1?'&page='+n:''):n>1?'?page='+n:'');
  const canonicalPath=query?setPath:pageUrl(page);
- const collection=collectionToolsHtml(set.cards.map(c=>({...c,name:c.player})),{scope:'baseball/'+set.id,path:c=>baseballCardPath(set,c),escape:esc})+baseballOddsHtml(set.id,esc);
+ const collection=collectionToolsHtml(set.cards.map(c=>({...c,name:c.player})),{scope:'baseball/'+set.id,path:c=>baseballCardPath(set,c),escape:esc})+sportsReleaseInformation(set,esc,baseballOddsHtml(set.id,esc));
  return html({title:set.displayName+' Base Checklist'+(page>1?' — Page '+page:'')+' | The Mana Pocket',description:'Find base cards in '+set.displayName+'. Search by player, team or card number, then open exact card details.',canonicalPath,robotsNoindex:!!query,jsonLd:{'@context':'https://schema.org','@type':'CollectionPage',name:set.displayName+' base checklist',citation:set.sourceUrl},bodyHtml:crumbs+setPageHeader({title:set.displayName,label:'Baseball · Set checklist',description:'Find your player, check the card number, and see copies available from the shop.',stats:[set.cards.length+' base cards',String(set.year),set.brand||'Topps'],actions:[['Search checklist','#set-checklist'],['Shop available copies','#set-stock'],['Official checklist PDF',set.sourceUrl]]},esc)+teamNav+baseballSectionsNav(set,esc)+'<p>'+set.cards.length+' issued base card numbers. '+esc(set.scope)+'</p>'+(set.unissuedNumbers.length?'<p>Topps marks '+set.unissuedNumbers.map(esc).join(', ')+' as nonexistent in the official checklist.</p>':'')+'<p><a href="'+esc(set.sourceUrl)+'">Official checklist PDF, including inserts and parallels</a></p>'+collection+await stockHtml(null)+'<form id="set-checklist" class="mp-checklist-tools" method="get" action="'+setPath+'"><label for="baseball-search">Find a player, team or card number</label> <input id="baseball-search" type="search" name="q" value="'+esc(query)+'" maxlength="100"> <button type="submit">Search checklist</button></form><p>'+cards.length+' matching cards.</p><div class="mp-set-list">'+cards.slice((page-1)*60,page*60).map(c=>'<a class="mp-set-row" href="'+baseballCardPath(set,c)+'"><span>#'+esc(c.cardNumber)+' · '+esc(c.player)+'</span><span>'+esc(c.team)+'</span></a>').join('')+'</div><nav aria-label="Checklist pages">'+Array.from({length:pages},(_,i)=>i+1).map(n=>n===page?'<span aria-current="page">Page '+n+'</span>':'<a href="'+esc(pageUrl(n))+'">Page '+n+'</a>').join(' · ')+'</nav><p><a href="/category/sports-cards">Shop available sports cards</a></p>'});
 }

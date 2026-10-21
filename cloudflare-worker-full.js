@@ -7862,11 +7862,11 @@ async function routeRequest(request, env, ctx) {
       if(response)return response;
     }
     if(url.pathname==='/football'||url.pathname.startsWith('/football/')||url.pathname==='/sitemap-football.xml') {
-      const response=await handleFootballCatalog(request,env,url,{escape:mtgEscapeHtml,slug:mtgSlugify,shell:mtgPageShell,listItems:()=>optionalCatalogInventory(signal=>fetchAllListableStorefrontItemsCached(env,ctx,signal)),available:isStorefrontItemAvailable});
+      const response=await handleFootballCatalog(request,env,url,{ctx,searchEbay:(query,campaignId,signal)=>fetchEbayActiveListings(env,query,{campaignId,listingType:'FixedPrice',limit:50,signal}),escape:mtgEscapeHtml,slug:mtgSlugify,shell:mtgPageShell,listItems:()=>optionalCatalogInventory(signal=>fetchAllListableStorefrontItemsCached(env,ctx,signal)),available:isStorefrontItemAvailable});
       if(response)return response;
     }
     if(url.pathname==='/baseball'||url.pathname.startsWith('/baseball/')||url.pathname==='/sitemap-baseball.xml') {
-      const response=await handleBaseballCatalog(request,env,url,{escape:mtgEscapeHtml,slug:mtgSlugify,shell:mtgPageShell,listItems:()=>optionalCatalogInventory(signal=>fetchAllListableStorefrontItemsCached(env,ctx,signal)),available:isStorefrontItemAvailable});
+      const response=await handleBaseballCatalog(request,env,url,{ctx,searchEbay:(query,campaignId,signal)=>fetchEbayActiveListings(env,query,{campaignId,listingType:'FixedPrice',limit:50,signal}),escape:mtgEscapeHtml,slug:mtgSlugify,shell:mtgPageShell,listItems:()=>optionalCatalogInventory(signal=>fetchAllListableStorefrontItemsCached(env,ctx,signal)),available:isStorefrontItemAvailable});
       if(response)return response;
     }
     if(url.pathname==='/pokemon'||url.pathname.startsWith('/pokemon/')||url.pathname==='/sitemap-pokemon.xml') {
