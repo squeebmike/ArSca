@@ -6,8 +6,8 @@ const escape=s=>String(s??'').replaceAll('&','&amp;').replaceAll('<','&lt;').rep
 let page,inventory=[],loads=0;
 const deps={escape,slug:s=>s.toLowerCase().replace(/[^a-z0-9]+/g,'-'),available:i=>i.quantity>0,listItems:async()=>{loads++;return inventory;},shell:p=>{page=p;return JSON.stringify({title:p.title,canonical:p.canonicalPath,noindex:p.robotsNoindex,schema:p.jsonLd})+p.bodyHtml;}};
 const get=path=>handleBaseballCatalog(new Request('https://www.themanapocket.com'+path),{},new URL('https://www.themanapocket.com'+path),deps);
-const teams=baseballTeams(baseballSets);assert.equal(teams.length,40);
-const names=new Set(teams.map(t=>t.name));assert.equal(names.size,40);
+const teams=baseballTeams(baseballSets);assert.equal(teams.length,41);
+const names=new Set(teams.map(t=>t.name));assert.equal(names.size,41);
 const home=await(await get('/baseball')).text();
 const xml=await(await get('/sitemap-baseball.xml')).text();
 for(const team of teams){
@@ -44,4 +44,4 @@ let fakePage;
 const response=await handleBaseballTeam(new Request(fakeUrl),fakeUrl,[fakeSet],deps,p=>{fakePage=p;return new Response(p.bodyHtml);},()=>new Response('missing',{status:404}),baseballCardPath);
 body=await response.text();assert.equal(response.status,200);assert.equal(fakePage.robotsNoindex,true);
 assert.ok(body.includes('/cards/c60'));assert.ok(!body.includes('/cards/c59'));assert.ok(body.includes('year=2024&amp;set=large&amp;q=Player'));
-console.log('40 printed-team pages including historical Cleveland: exact source membership, pagination, filters, sitemap discovery and matching stock passed');
+console.log('41 printed-team pages including historical Cleveland: exact source membership, pagination, filters, sitemap discovery and matching stock passed');

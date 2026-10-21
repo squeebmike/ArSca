@@ -38,6 +38,18 @@ const kv = () => { const mem = new Map(); return { mem, LBA_KV: { get: async k =
   assert.equal(loads, 2);
 }
 
+// A malformed successful response gets the same protection as a network outage.
+{
+  const env = kv(); let loads = 0;
+  const invalid = async () => { loads++; return { unexpected: 'payload' }; };
+  await assert.rejects(cachedPublicCatalog(env, null, 'invalid', invalid), /Invalid public catalog/);
+  for (let i = 0; i < 20; i++) await assert.rejects(cachedPublicCatalog(env, null, 'invalid', invalid), /retrying shortly/);
+  assert.equal(loads, 1, 'invalid responses cannot cause a per-view retry storm');
+  const other = await import('../scripts/public-catalog-cache.mjs?invalid-other-worker');
+  await assert.rejects(other.cachedPublicCatalog(env, null, 'invalid', invalid), /retrying shortly/);
+  assert.equal(loads, 1, 'invalid-response backoff is shared through KV');
+}
+
 // While the database is down, the last good copy keeps the site up.
 {
   const env = kv(); let loads = 0;

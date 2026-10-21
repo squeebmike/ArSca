@@ -44,7 +44,7 @@ export function baseballChecklistInventoryMatches(item,card,set){
   if(item.categorySlug!=='sports-cards'||item.isSealed||/box|pack|case|bundle|lot/i.test(item.productType||''))return false;
   if(norm(card.variant)!=='base')return false;
   const section=norm(card.section),isBase=section==='base';
-  const sectionAliases={chromealletch:['All Etch'],ohsnap:['Oh Snap'],bestof2023earlyformautographs:['of Autographs'],sterlingtek:['Tek'],starsofmlb:['Stars of MLB'],powerchords:['Power Chords'],prospectautographs:['Prospect Autograph'],rookieautographs:['Rookie Autograph'],autographcards:['Autograph','Autographs'],finestautographs:['Autograph','Autographs'],chromeprospects:['Chrome Prospects'],paperprospects:['Prospects','Paper Prospects'],topprospects:['Top Prospects']};
+  const sectionAliases={teamofthefuture:["Team of the Future"],theenterprise:["The Enterprise"],chromealletch:['All Etch'],ohsnap:['Oh Snap'],bestof2023earlyformautographs:['of Autographs'],sterlingtek:['Tek'],starsofmlb:['Stars of MLB'],powerchords:['Power Chords'],prospectautographs:['Prospect Autograph'],rookieautographs:['Rookie Autograph'],autographcards:['Autograph','Autographs'],finestautographs:['Autograph','Autographs'],chromeprospects:['Chrome Prospects'],paperprospects:['Prospects','Paper Prospects'],topprospects:['Top Prospects']};
   if(!isBase&&!sectionAliases[section])return false;
   if(item.subset&&norm(item.subset)!==section)return false;
   const description=[item.name,item.set,item.variant,item.treatment].join(' ');
@@ -56,6 +56,7 @@ export function baseballChecklistInventoryMatches(item,card,set){
   // number ranges plus the exact player identify the series without guessing.
   if(isBase&&new RegExp('^'+set.year+'toppsseries[12]$').test(sportsSetKey(parent)))setKeys.push(sportsSetKey(set.year+' Topps'));
   if(!isBase&&item.subset)setKeys.push(sportsSetKey(parent));
+  if(/Topps Stadium Club/.test(parent))setKeys.push(...setKeys.map(k=>k.replace('toppsstadiumclub','stadiumclub')));
   if(!setKeys.includes(sportsSetKey(item.set)))return false;
   const setYear=String(item.set||'').match(/\b((?:19|20)\d{2})\b/)?.[1];
   if(item.year&&String(item.year)!==String(set.year))return false;

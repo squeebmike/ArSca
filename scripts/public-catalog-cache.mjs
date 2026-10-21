@@ -28,7 +28,8 @@ export async function cachedPublicCatalog(env,ctx,key,load,{freshMs=60000,maxAge
    if(!Array.isArray(items))throw new Error('Invalid public catalog');
    try{await env.LBA_KV?.put('public-catalog:'+key,JSON.stringify({at:Date.now(),items}),{expirationTtl:Math.ceil(staleMs/1000)});}catch{}
    return items;
-  },async err=>{
+  }).catch(async err=>{
+   // Validation failures must pause retries too, not just rejected network loads.
    failedAt.set(key,Date.now());
    try{await env.LBA_KV?.put('public-catalog-failed:'+key,JSON.stringify({at:Date.now()}),{expirationTtl:Math.max(60,Math.ceil(retryMs/1000))});}catch{}
    throw err;
