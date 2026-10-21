@@ -11019,6 +11019,19 @@ async function routeRequest(request, env, ctx) {
     // here is just re-applying setEbayVariationSpecificPhotos from this
     // app's own current per-row image/label data (e.g. after a cover's art
     // gets swapped later) -- no REST gallery step exists to repair.
+    // The exact "Cover" value eBay shows for each variation SKU of a live
+    // listing. A photo binds to that exact text, and the app's own label can
+    // differ from what the listing went up with -- a ratio cover got
+    // withRatioWord's "Ratio" added, shared labels were made unique, and
+    // Lunar covers were relabeled from their titles -- so the repair asks
+    // eBay instead of rebuilding it. Empty when eBay can't be read.
+    async function liveEbayVariationLabels(ebayToken, listingId) {
+      try {
+        const got = await ebayTradingApiCall(ebayToken, 'GetItem', `<ItemID>${xmlEscape(listingId)}</ItemID><DetailLevel>ReturnAll</DetailLevel><IncludeVariations>true</IncludeVariations>`);
+        const item = ebayItemFromGetItem(got.raw);
+        return new Map((item?.variations || []).filter(v => v.sku && v.label).map(v => [v.sku, v.label]));
+      } catch (_) { return new Map(); }
+    }
     async function repairEbayTradingGroupListingPhotos(env, ebayToken, groupKey, groupRows) {
       const listingId = groupRows.find(r => r.data?.ebayListingId)?.data.ebayListingId || groupKey;
       const focSkuIds = [...new Set(groupRows.map(r => r.data?.focSkuId).filter(Boolean))];
@@ -11027,9 +11040,10 @@ async function routeRequest(request, env, ctx) {
         const { data: skuRows } = await supabaseAdminFetch(env, `comic_skus?id=in.(${focSkuIds.map(id => encodeURIComponent(id)).join(',')})&select=id,variant_label`);
         (skuRows || []).forEach(s => { labelBySkuId[s.id] = s.variant_label || 'Cover'; });
       }
+      const liveLabels = await liveEbayVariationLabels(ebayToken, listingId);
       const variantPhotos = groupRows.map(r => ({
         sku: r.data?.ebaySku || '',
-        label: r.data?.focSkuId ? labelBySkuId[r.data.focSkuId] : (r.data?.name || ''),
+        label: liveLabels.get(r.data?.ebaySku) || (r.data?.focSkuId ? labelBySkuId[r.data.focSkuId] : (r.data?.name || '')),
         imageUrls: [r.data?.image || ''].filter(Boolean),
       }));
       const result = await setEbayVariationSpecificPhotos(ebayToken, listingId, variantPhotos);
@@ -11110,9 +11124,10 @@ async function routeRequest(request, env, ctx) {
           const { data: skuRows } = await supabaseAdminFetch(env, `comic_skus?id=in.(${focSkuIds.map(id => encodeURIComponent(id)).join(',')})&select=id,variant_label`);
           (skuRows || []).forEach(s => { labelBySkuId[s.id] = s.variant_label || 'Cover'; });
         }
+        const liveLabels = await liveEbayVariationLabels(ebayToken, listingId);
         const variantPhotos = variantSKUs.map(sku => ({
           sku,
-          label: focSkuIdBySku[sku] ? labelBySkuId[focSkuIdBySku[sku]] : nameBySku[sku],
+          label: liveLabels.get(sku) || (focSkuIdBySku[sku] ? labelBySkuId[focSkuIdBySku[sku]] : nameBySku[sku]),
           imageUrls: [imageBySku[sku] || fallbackImage],
         }));
         try {

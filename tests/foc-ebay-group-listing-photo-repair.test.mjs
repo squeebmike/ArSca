@@ -60,7 +60,9 @@ assert.match(repairFnBody, /const focSkuIds = \[\.\.\.new Set\(Object\.values\(f
   'must collect each variant\'s own focSkuId from our own inventory_items rows, not from eBay\'s response');
 assert.match(repairFnBody, /comic_skus\?id=in\.\(\$\{focSkuIds\.map\(id => encodeURIComponent\(id\)\)\.join\(','\)\}\)&select=id,variant_label/,
   'must look up each cover\'s real label from comic_skus by its own focSkuId -- the same source of truth the label was originally built from, not eBay\'s echoed array');
-assert.match(repairFnBody, /label: focSkuIdBySku\[sku\] \? labelBySkuId\[focSkuIdBySku\[sku\]\] : nameBySku\[sku\],/,
+// The listing's own value for that SKU (read by SKU, not position -- see
+// tests/repair-photos-live-labels.test.mjs) comes first.
+assert.match(repairFnBody, /label: liveLabels\.get\(sku\) \|\| \(focSkuIdBySku\[sku\] \? labelBySkuId\[focSkuIdBySku\[sku\]\] : nameBySku\[sku\]\),/,
   'a real cover uses its own comic_skus label; the synthetic bundle variant (no focSkuId) falls back to its own stored name, which already IS its label verbatim');
 assert.match(repairFnBody, /const variantAspectName = group\.variesBy\?\.specifications\?\.\[0\]\?\.name \|\| 'Cover';/,
   'must derive the real variant aspect name (e.g. "Cover") from eBay\'s own live group data rather than assuming -- a wrong/empty aspect name gets the whole photo-binding request rejected outright (see the VariationSpecificName fix below)');
