@@ -410,7 +410,7 @@ async function readSlipImages(env,images){
   let parsed;try{parsed=JSON.parse(block?.text||'');}catch(_){throw new Error('The slip reading came back unreadable -- try again');}
   return { invoice:text(parsed.invoice,60), onSaleDate:dateIso(parsed.onSaleDate)||'', totalUnits:Math.max(0,Number(parsed.totalUnits)||0), lines:Array.isArray(parsed.lines)?parsed.lines:[] };
 }
-const SLIP_SKU_FIELDS='id,cycle_id,upc,isbn,distributor_sku,publisher,title,variant_label,foc_date,store_quantity,secured_quantity,is_incentive,msrp_cents,cover_image_url';
+const SLIP_SKU_FIELDS='id,cycle_id,upc,isbn,distributor_sku,publisher,title,variant_label,foc_date,store_quantity,secured_quantity,is_incentive,msrp_cents,customer_price_cents,cover_image_url';
 async function readPackingSlip(request,env,deps){
   const limited=await deps.readJsonWithLimit(request,24*1024*1024);if(limited.error)return limited.error;
   const body=limited.data||{};const storeId=text(body.storeId,80);
@@ -494,7 +494,7 @@ async function readPackingSlip(request,env,deps){
     ebayPresold:Number(ebayPresold.get(sku.id)||0),customerShip:Number(shipQty.get(sku.id)||0),customerPickup:Math.max(0,Number(customerQty.get(sku.id)||0)-Number(shipQty.get(sku.id)||0)),
     orderedQty:submittedCycles.has(sku.cycle_id)?Number(submittedQty.get(sku.id)||0)
       :cartCycles.has(sku.cycle_id)?Number(sku.secured_quantity||0)
-      :Number(sku.store_quantity||0)+Number(customerQty.get(sku.id)||0),customerQty:Number(customerQty.get(sku.id)||0),receivedAt:receivedAt.get(sku.id)||'',coverPrice:Number(sku.msrp_cents||0)/100});
+      :Number(sku.store_quantity||0)+Number(customerQty.get(sku.id)||0),customerQty:Number(customerQty.get(sku.id)||0),receivedAt:receivedAt.get(sku.id)||'',coverPrice:Number(sku.msrp_cents||0)/100,customerPrice:Number(sku.customer_price_cents||0)/100});
   const onSlip=new Set(matched.map(m=>m.sku?.id).filter(Boolean));
   const missing=cycleSkus.filter(sku=>!onSlip.has(sku.id)&&!receivedAt.has(sku.id)).map(cover).filter(c=>c.orderedQty>0);
   return deps.json({ok:true,invoice:read.invoice,onSaleDate:read.onSaleDate,totalUnits:read.totalUnits,unitsRead:lines.reduce((a,l)=>a+l.qty,0),
@@ -3752,6 +3752,13 @@ async function receiveShipment(request,env,deps){
   for(const line of lines){
     const sku=skuById.get(text(line.skuId,80));if(!sku)continue;
     const receivedQty=Math.max(0,Math.min(1000,Number(line.receivedQty||0)));if(!receivedQty)continue;
+    const shelfPrice=Number(line.shelfPrice)>0&&Number(line.shelfPrice)<10000?Math.round(Number(line.shelfPrice)*100)/100:0;
+    // The cover's customer price follows, so the FOC wall, the website and
+    // copies received later all show the same price.
+    if(shelfPrice&&Math.round(shelfPrice*100)!==Number(sku.customer_price_cents||0)){
+      try{await db(`comic_skus?id=eq.${encodeURIComponent(sku.id)}&store_id=eq.${encodeURIComponent(storeId)}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({customer_price_cents:Math.round(shelfPrice*100)})});sku.customer_price_cents=Math.round(shelfPrice*100);}
+      catch(e){receiveWarnings.push('Could not save the new price for '+text(sku.title,80)+': '+e.message);}
+    }
     const livePresale=livePresaleRowBySkuId.get(sku.id);
     const presaleAvailable=livePresale?Number(livePresale.data.qty??livePresale.data.quantity??0):0;
     const stamp=new Date().toISOString();
@@ -3805,6 +3812,10 @@ async function receiveShipment(request,env,deps){
       // slip; otherwise PRH's 50% of cover price, our real wholesale rate.
       cost:Number(line.unitCost)>0&&Number(line.unitCost)<1000?Math.round(Number(line.unitCost)*100)/100:Math.round(Number(sku.msrp_cents||0)*0.5)/100,
       market:Number(sku.customer_price_cents||0)/100,salePrice:Number(sku.customer_price_cents||0)/100,
+      // Store ask: "I should be able to punch in my prices before going to
+      // print labels" -- a shelf price typed on the slip screen is what the
+      // copies sell (and print) at, locked.
+      ...(shelfPrice?{market:shelfPrice,salePrice:shelfPrice,priceOverride:shelfPrice}:{}),
       image:sku.cover_image_url||'',focSkuId:sku.id,focCycleId:cycleId,focReceivedAt:stamp,
       // Synopsis, writer/artist/cover artist, series, issue and release date.
       ...focReceivedInventoryFields(sku,familyById.get(sku.family_id)),
