@@ -20,6 +20,7 @@ const redirect=sportsChecklistRedirect(new URL('https://example.com/?view=kaiju'
 assert.equal(sportsChecklistRedirect(new URL('https://example.com/?view=https://evil.test'),set,groups,'football').status,404);
 const listing={itemId:'123',title:'2025 Topps Chrome Football Tom Brady Kaiju KAI-1',imageUrl:'https://i.ebayimg.com/images/card.jpg',affiliateUrl:'https://www.ebay.com/itm/123?campid=5339046175',price:75,currency:'USD'};
 assert.ok(sportsListingMatches(listing,card,set,group));
+assert.ok(sportsListingMatches({...listing,title:'2025 Topps Chrome Tom Brady Kaiju #KAI-1'},card,set,group),'exact prefixed card identity plus named insert permits seller title without the redundant sport word');
 for(const title of ['2025 Topps Chrome Baseball Tom Brady Kaiju KAI-1','2025 Topps Chrome Football Tom Brady KAI-11','2025 Topps Chrome Football Patrick Mahomes KAI-1','2024 Topps Chrome Football Tom Brady KAI-1','2025 Topps Chrome Football Tom Brady KAI-1 LOT','2025 Topps Chrome Tom Brady KAI-1'])assert.ok(!sportsListingMatches({...listing,title},card,set,group),title);
 const variation=groups.find(g=>g.id==='base-cards-team-camo-variation'),v=variation.cards[0];
 assert.ok(!sportsListingMatches({...listing,title:'2025 Topps Chrome Football '+v.player+' #'+v.cardNumber},v,set,variation));
