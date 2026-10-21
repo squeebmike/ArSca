@@ -52,3 +52,10 @@ body=await(await get('/pocket-guides/upcoming')).text();assert.ok(body.includes(
  assert.equal(sorted[0].title,'Newer release, written earlier');assert.equal(sorted[0].date,'2026-01-23');
  const drops=pocketGuideEntries([]).filter(e=>e.kind==='Drop guide');assert.ok(drops.every((d,i)=>!i||drops[i-1].date>=d.date));
 }
+
+{
+ const {document:d}=parseHTML(await(await get('/pocket-guides/mtg')).text());
+ const browser=d.querySelector('details.pg-topic-browser');assert.ok(browser);assert.equal(browser.hasAttribute('open'),false,'topic directory is collapsed so guides are visible sooner');
+ assert.ok(browser.querySelector('a[href="/pocket-guides/pokemon"]'),'all topic links remain ordinary discoverable HTML');
+ assert.match(browser.querySelector('summary').textContent,/Magic: The Gathering/);
+}
