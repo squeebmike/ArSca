@@ -50,19 +50,34 @@ assert.equal(ctx.api.focMarketSampleText({ active:{ count:0 } }), '');
     state:{ cycle:{ id:'cy' }, families:[{ id:'f1', title:'Robin Hood #1', seriesName:'Robin Hood' }] },
     focIntel:{ market:{}, pc:{} }, allFocSkus:() => skus, confirm:() => true, toast_dash:t => toasts.push(t),
     focMarketRequest:async (covers, refresh) => { sent.push([covers.length, refresh]); covers.forEach(cv => { c.focIntel.market[cv.key] = { active:{ count:cv.key === 'sku:k5' ? 2 : 0 } }; }); },
-    storeWorkerFetch:async (path, o) => { pcs.push([path, JSON.parse(o.body).items.length]); return { json:async () => ({ products:{} }) }; },
+    storeWorkerFetch:async (path, o) => { const items = JSON.parse(o.body).items; pcs.push([path, items.length]); return { json:async () => ({ products:items[0].key === 'k0' ? { k1:{ ok:true, product:{ comicPrices:{ ungraded:42 } } } } : {} }) }; },
     focSaveMarketCache:() => {}, focRedrawIntel:() => { c.redrawn = true; },
   };
-  vm.runInNewContext(['focFamilyCover', 'focRatioOf', 'focSkuMarketCover', 'focCheckWeekPrices'].map(grab).join('') + 'this.run=focCheckWeekPrices;', c);
+  vm.runInNewContext(['focFamilyCover', 'focRatioOf', 'focSkuMarketCover', 'focPcRaw', 'focCheckWeekPrices'].map(grab).join('') + 'this.run=focCheckWeekPrices;', c);
   await c.run();
   assert.deepEqual(sent, [[12, true], [12, true], [2, true]]);
-  assert.deepEqual(pcs, [['/pricing/pricecharting/comics/by-upc', 3]]);
+  assert.deepEqual(pcs, [['/pricing/pricecharting/comics/by-upc', 15], ['/pricing/pricecharting/comics/by-upc', 11]], 'every cover on PriceCharting, not just ratio covers');
   assert.ok(c.redrawn);
-  assert.equal(toasts.at(-1), 'Checked 26 covers on eBay · 1 with listings to compare');
+  assert.equal(toasts.at(-1), 'Checked 26 covers · 1 listed on eBay · 1 with PriceCharting sold prices');
 }
 assert.doesNotMatch(grab('focCheckWeekPrices'), /customerPrice|\/foc\/admin\/sku|focUseRatioPrice/, 'checks only -- never sets a price');
 assert.match(dash, /onclick="focCheckWeekPrices\(\)">🔎 CHECK EBAY PRICES<\/button>/);
 assert.match(grab('focVariantPillsHtml'), /var mk=!v\.isIncentive&&focIntel\.market\['sku:'\+v\.id\];\n  if\(mk\)pills=pills\.concat\(focMarketPills\(mk,v\.msrpCents\)\);/, 'every cover card shows its own eBay line');
 assert.match(grab('focRatioValueHtml'), /title="'\+esc\(hover\)\+'" style="cursor:help"/, 'ratio VALUE boxes show the matches on hover');
 assert.equal((dash.match(/^function focRatioOf\(/gm) || []).length, 1, 'one ratio reader');
+// Store note: "we do have PriceCharting API that does comics" -- sold-based
+// values for every cover, graded prices on hover.
+{
+  const c = { displayDate:d => d };
+  vm.runInNewContext(['focPcRaw', 'focPcPill'].map(grab).join('') + 'this.pill=focPcPill;', c);
+  const pill = c.pill({ ok:true, via:'barcode', at:'2026-10-21T10:00:00Z', product:{ productName:'Robin Hood #1 Cover B Nakayama', url:'https://www.pricecharting.com/game/comic-books-robin-hood/1b', comicPrices:{ ungraded:6.5, grade9_8:80, grade9_4:30 }, demand:{ salesVolume:14 } } });
+  assert.equal(pill.text, '📈 PriceCharting $6.50 raw · 14 sold/yr');
+  assert.equal(pill.href, 'https://www.pricecharting.com/game/comic-books-robin-hood/1b');
+  assert.match(pill.title, /PriceCharting: Robin Hood #1 Cover B Nakayama \(matched by barcode\)\nRaw \/ ungraded: \$6\.50\nCGC 9\.8: \$80\.00\nCGC 9\.4: \$30\.00\nSales in the last year: 14/);
+  assert.equal(c.pill({ ok:false, error:'No PriceCharting comic for Robin Hood #1 yet' }).text, '📈 PriceCharting: not listed yet');
+  assert.equal(c.pill({ ok:true, product:{ productName:'X', comicPrices:{} } }).text, '📈 PriceCharting: no sales yet');
+  assert.equal(c.pill(undefined), null);
+}
+assert.match(grab('focVariantPillsHtml'), /var pcp=!v\.isIncentive&&focPcPill\(focIntel\.pc\[v\.id\]\);if\(pcp\)pills\.push\(pcp\);/);
+assert.match(grab('focRatioValueText'), /if\(warn&&!\(r\.raw&&\/sold history\/\.test\(warn\)\)\)parts\.push\(warn\);/, 'no "sold history isn\'t connected" when PriceCharting has the sold price');
 console.log('FOC week eBay price check and hover matches checks passed');

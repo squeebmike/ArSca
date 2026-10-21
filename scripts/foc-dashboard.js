@@ -2214,6 +2214,18 @@ function focConnectPill(c){
   return {kind:'connect',tone:c.sum.owned?'run':'good',text:'🧩 '+(c.cover.part?'part '+c.cover.part+' of '+c.parts:'connecting')+' · have '+c.sum.owned+'/'+c.parts,title:title};
 }
 function focRegularMsrp(f){var r=(f.variants||[]).filter(function(v){return !v.isIncentive;})[0];return r?Number(r.msrpCents||0):0;}
+// PriceCharting: raw (ungraded) and graded values from eBay sales, and how
+// many sold in the last year -- the sold-price side eBay won't give us.
+function focPcRaw(pc){ return pc&&pc.ok&&pc.product&&pc.product.comicPrices?Number(pc.product.comicPrices.ungraded||0):0; }
+function focPcPill(pc){
+  if(!pc)return null;
+  if(!pc.ok)return {tone:'dim',text:'📈 PriceCharting: not listed yet',title:(pc.error||'Not on PriceCharting yet')+(pc.at?' · checked '+displayDate(String(pc.at).slice(0,10)):'')};
+  var p=pc.product||{},c=p.comicPrices||{},raw=focPcRaw(pc),vol=Number((p.demand&&p.demand.salesVolume)||0);
+  var grades=[['9.8','grade9_8'],['9.4','grade9_4'],['9.2','grade9_2'],['8.0','grade8']].filter(function(g){return Number(c[g[1]])>0;}).map(function(g){return 'CGC '+g[0]+': $'+Number(c[g[1]]).toFixed(2);});
+  if(!raw&&!grades.length)return {tone:'dim',text:'📈 PriceCharting: no sales yet',href:p.url||'',title:(p.productName||'')+' -- on PriceCharting, no sold prices yet.'};
+  return {tone:raw?'good':'dim',href:p.url||'',text:'📈 PriceCharting '+(raw?'$'+raw.toFixed(2)+' raw':'graded only')+(vol?' · '+vol+' sold/yr':''),
+    title:'PriceCharting: '+(p.productName||'')+(pc.via?' (matched by '+pc.via+')':'')+'\nRaw / ungraded: '+(raw?'$'+raw.toFixed(2):'--')+(grades.length?'\n'+grades.join('\n'):'')+(vol?'\nSales in the last year: '+vol:'')+'\nPrices come from eBay sales. Check the name is this exact cover.'+(pc.at?'\nChecked '+displayDate(String(pc.at).slice(0,10)):'')};
+}
 // Hover: the listings (and sales) that matched, cheapest first.
 function focMarketSampleText(m){
   var a=(m&&m.active&&m.active.sample)||[],s=(m&&m.sold&&m.sold.sample)||[],out=[];
@@ -2247,6 +2259,7 @@ function focVariantPillsHtml(v){
   // Store ask: check every cover of the week on eBay and hover to see the matches.
   var mk=!v.isIncentive&&focIntel.market['sku:'+v.id];
   if(mk)pills=pills.concat(focMarketPills(mk,v.msrpCents));
+  var pcp=!v.isIncentive&&focPcPill(focIntel.pc[v.id]);if(pcp)pills.push(pcp);
   return (pills.length?'<div class="foc-intel-row">'+pills.map(focPillHtml).join('')+'</div>':'')+(v.isIncentive?focRatioValueHtml(v):'');
 }
 // What this exact cover sold for here (register + our own eBay listing).
@@ -2281,8 +2294,9 @@ function focRatioValueText(r){
   if(r.m&&r.m.sold&&r.m.sold.count)parts.push('eBay sold ~$'+Number(r.m.sold.median).toFixed(2)+' ('+r.m.sold.count+')');
   if(r.m&&r.m.active&&r.m.active.count)parts.push('listed ~$'+Number(r.m.active.median).toFixed(2)+' ('+r.m.active.count+')');
   if(r.m&&!(r.m.sold&&r.m.sold.count)&&!(r.m.active&&r.m.active.count))parts.push(r.m.ownListed?'only your listing is up on eBay':'no other eBay listings');
-  var warn=focMarketWarning(r.m);if(warn)parts.push(warn);
-  if(r.raw)parts.push('PriceCharting $'+r.raw.toFixed(2)+(r.pcIgnored?' (looks like the regular cover -- not used)':''));else if(r.pc)parts.push('not on PriceCharting yet');
+  var warn=focMarketWarning(r.m);if(warn&&!(r.raw&&/sold history/.test(warn)))parts.push(warn);
+  var vol=r.pc&&r.pc.ok&&r.pc.product&&r.pc.product.demand?Number(r.pc.product.demand.salesVolume||0):0;
+  if(r.raw)parts.push('PriceCharting $'+r.raw.toFixed(2)+(vol?' ('+vol+' sold/yr)':'')+(r.pcIgnored?' (looks like the regular cover -- not used)':''));else if(r.pc)parts.push('not on PriceCharting yet');
   return parts.join(' · ');
 }
 function focRatioLinksHtml(r){
@@ -2294,7 +2308,7 @@ function focRatioLinksHtml(r){
 }
 function focRatioValueHtml(v){
   var r=focRatioValue(v),line=focRatioValueText(r);
-  var hover=r.m?focMarketSampleText(r.m).trim():'';
+  var hover=[r.m?focMarketSampleText(r.m).trim():'',r.pc&&r.pc.ok?((focPcPill(r.pc)||{}).title||''):''].filter(Boolean).join('\n\n');
   return '<div class="foc-ratio-value"'+(hover?' title="'+esc(hover)+'" style="cursor:help"':'')+'><b style="color:var(--gold)">VALUE</b> '+(line?esc(line):'<span style="color:var(--dim)">not checked yet</span>')+(hover?' <span style="color:var(--blue)">(hover for the matches)</span>':'')+focRatioLinksHtml(r)+
     (r.value?'<div style="color:var(--g);margin-top:3px">PRICE IT ~$'+r.value.price.toFixed(2)+' <span style="color:var(--dim)">'+esc(r.value.basis)+'</span> <button class="foc-intel-pill foc-intel-btn" onclick="focUseRatioPrice(\''+esc(v.id)+'\','+r.value.price+')" title="Set the website sell price">USE</button>'+(v.ebayListingId?' <button class="foc-intel-pill foc-intel-btn" onclick="focFillEbayPrice(\''+esc(v.id)+'\','+r.value.price+')" title="Put this price in the eBay listing box below">USE ON EBAY</button>':'')+'</div>':'')+
     '<button class="foc-intel-pill foc-intel-btn" style="margin-top:4px" onclick="focPriceRatio([\''+esc(v.id)+'\'])">'+(r.m||r.pc?'↻ RE-CHECK':'💲 CHECK EBAY + PRICECHARTING')+'</button></div>';
@@ -2327,11 +2341,14 @@ async function focCheckWeekPrices(){
     try{await focMarketRequest(covers.slice(i,i+12),true);done=Math.min(covers.length,i+12);}
     catch(e){failed=e.message;break;}
   }
-  var ratio=skus.filter(function(v){return v.isIncentive;});
+  // Store note: "we do have PriceCharting API that does comics" -- its
+  // prices come from eBay sales, so every cover is looked up there too.
+  var ratio=skus;
   if(!failed&&ratio.length){
     try{
       var famOf=function(v){return state.families.find(function(f){return f.id===v.familyId;})||{};};
       for(var j=0;j<ratio.length;j+=15){
+        toast_dash('Checking PriceCharting: '+j+' of '+ratio.length+' covers…');
         var items=ratio.slice(j,j+15).map(function(v){var c=focFamilyCover(famOf(v));return {key:v.id,upc:v.upc||'',series:c.series,issue:c.issue,cover:v.variantLabel||''};});
         var res=await storeWorkerFetch('/pricing/pricecharting/comics/by-upc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({items:items})});
         var d=await res.json().catch(function(){return{};});
@@ -2342,7 +2359,8 @@ async function focCheckWeekPrices(){
   }
   focRedrawIntel();
   var hits=skus.filter(function(v){var m=focIntel.market['sku:'+v.id];return m&&((m.active&&m.active.count)||(m.sold&&m.sold.count));}).length;
-  toast_dash(failed?'Checked '+done+' of '+covers.length+' -- eBay check stopped: '+failed:'Checked '+covers.length+' covers on eBay · '+hits+' with listings to compare');
+  var pcHits=skus.filter(function(v){return focPcRaw(focIntel.pc[v.id])>0;}).length;
+  toast_dash(failed?'Checked '+done+' of '+covers.length+' -- eBay check stopped: '+failed:'Checked '+covers.length+' covers · '+hits+' listed on eBay · '+pcHits+' with PriceCharting sold prices');
 }
 window.focCheckWeekPrices=focCheckWeekPrices;
 async function focCheckMarket(familyIds){
