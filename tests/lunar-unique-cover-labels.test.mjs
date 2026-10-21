@@ -41,3 +41,15 @@ assert.match(worker, /const coverLabels = uniqueCoverLabels\(skuRows\.map\(sku =
 assert.match(worker, /skuId: sku\.id, variantLabel: coverLabels\[i\],/);
 assert.match(worker, /&& coverLabelFromTitle\(baseTitle\) !== sku\.variant_label/);
 console.log('Lunar unique cover label checks passed');
+
+// Trailing notes, abbreviations and eBay's 65-character Cover limit.
+assert.equal(coverLabelFromTitle('WALKING DEAD DELUXE #147 CVR C SCOTT MORSE VAR (MR)'), 'Cvr C Scott Morse', 'the (MR) rating note and VAR go');
+assert.equal(coverLabelFromTitle('GREEN LANTERN #41 CVR D DAN HIPP WATCHMEN 40TH ANNIVERSARY CARD STOCK VAR (GREEN LANTERN FIRST LIGHT)'), 'Cvr D Dan Hipp Watchmen 40th Anniversary Card Stock', 'a tie-in note goes');
+assert.equal(coverLabelFromTitle('ABSOLUTE BATMAN #25 CVR G GABRIELE DELL OTTO DC SHOWCASE WRAPAROUND FOIL VAR'), 'Cvr G Gabriele Dell Otto DC Showcase Wraparound Foil', 'DC stays capitals');
+assert.equal(coverLabelFromTitle('LILITH BLOOD AND BURLESQUE #1 (OF 5) 2ND PTG CVR C INC 1:2 (20) SUSPIRIA VAR (MR)'), 'Cvr C 1:2 (20) Suspiria', 'a note inside the name stays');
+{
+  const long = coverLabelFromTitle('MARK SPEARS GRAVEYARD SHIFT #2 CVR F MARK SPEARS 1:66 RETAILER INCENTIVE GRAVEYARD SHIFT MOVIE HOMAGE');
+  assert.equal(long, 'Cvr F Mark Spears 1:66 Retailer Incentive Graveyard Shift', 'cut at a word');
+  assert.ok(long.length <= 58 && (long + ' Ratio').length <= 65, 'room for " Ratio" under eBay\'s 65');
+}
+console.log('Lunar cover label clean-up checks passed');

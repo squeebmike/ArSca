@@ -2903,11 +2903,23 @@ function categoryLandingHref(slug) { return `/category/${encodeURIComponent(slug
 const STOREFRONT_DATA_KEYS=["archivedAt", "brand", "cardNumber", "cardSubset", "category", "checklistSection", "collectorNumber", "collector_number", "comicMetadata", "condition", "configuration", "customUrl", "description", "dropship", "ean", "finish", "focComicDetail", "focReceivedAt", "game", "grade", "grader", "grading_company", "gtin", "image", "imageUrl", "image_url", "images", "img", "isSealed", "is_relic", "is_sealed", "is_signed", "isbn", "itemType", "item_type", "language", "lifecycle", "linkUrl", "manufacturer", "manufacturerPartNumber", "manufacturer_part_number", "market", "marketPrice", "minPrice", "mpn", "name", "number", "onlineListed", "photo", "photoDataUrl", "photos", "player", "priceOverride", "priceRule", "productType", "product_type", "qty", "quantity", "rarity", "rawMarketPrice", "reviews", "scryfallId", "scryfall_id", "series", "set", "setCode", "set_code", "showSoldOut", "signature_value", "signed_by", "sku", "soldAt", "sold_at", "source", "sport", "status", "subject", "subset", "supplierAvailability", "supplierCategoryPaths", "supplierSellingUnit", "supplierSku", "supplierSpecifications", "supplierUpc", "tcgPlayerId", "tcgplayerId", "tcgplayerProductId", "team", "thumbnail", "title", "treatment", "type", "upc", "variant", "vendor", "year"];
 const STOREFRONT_SELECT='id,status,created_at,updated_at,'+STOREFRONT_DATA_KEYS.map(k=>'sf_'+k+':data->'+k).join(',')+',sf_raw_scryfallId:data->raw->scryfallId,sf_raw_tcgPlayerId:data->raw->tcgPlayerId,sf_raw_setCode:data->raw->setCode,sf_ref_scryfallId:data->externalRefs->scryfallId,sf_ref_tcgPlayerId:data->externalRefs->tcgPlayerId';
 function storefrontProjectedRow(row){if(row.data)return row;return {...row,data:{...Object.fromEntries(STOREFRONT_DATA_KEYS.map(k=>[k,row['sf_'+k]])),raw:{scryfallId:row.sf_raw_scryfallId,tcgPlayerId:row.sf_raw_tcgPlayerId,setCode:row.sf_raw_setCode},externalRefs:{scryfallId:row.sf_ref_scryfallId,tcgPlayerId:row.sf_ref_tcgPlayerId}}};}
+// The public catalog reads the storefront_inventory view
+// (supabase-migrations/2026-10-21-storefront-inventory-view.sql): the same
+// allowlisted data object built in one pass per row. Asking for ~100
+// data->'key' fields made Postgres re-read each row ~100 times and sort on
+// disk -- 2.1s and 5MB of temp files per page, against 0.12s and none -- and
+// was what drained the database's disk budget. The per-field select is only
+// used if the view isn't there.
+async function fetchStorefrontPage(env, filters, offset, options = {}) {
+  const page = await supabaseAdminFetch(env, `storefront_inventory?${filters}&select=id,status,created_at,updated_at,data&limit=1000&offset=${offset}`, options);
+  if (page.response?.status !== 404) return page;
+  return supabaseAdminFetch(env, `inventory_items?${filters}&select=${STOREFRONT_SELECT}&limit=1000&offset=${offset}`, options);
+}
 async function fetchAllListableStorefrontItems(env, options = {}) {
   const rows = [];
   let offset = 0;
   while (true) {
-    const page = await supabaseAdminFetch(env, `inventory_items?store_id=eq.${encodeURIComponent(ITEM_DETAIL_STORE_ID)}&select=${STOREFRONT_SELECT}&order=updated_at.desc,id.asc&limit=1000&offset=${offset}`, options);
+    const page = await fetchStorefrontPage(env, `store_id=eq.${encodeURIComponent(ITEM_DETAIL_STORE_ID)}&order=updated_at.desc,id.asc`, offset, options);
     if (!page.response?.ok) throw new Error('Storefront catalog unavailable');
     const batch = page.data || [];
     rows.push(...batch);
@@ -2929,7 +2941,10 @@ const ALL_LISTABLE_ITEMS_CACHE_KEY = new Request('https://internal.themanapocket
 async function fetchAllListableStorefrontItemsCached(env, ctx, signal) {
   const cached = await caches.default.match(ALL_LISTABLE_ITEMS_CACHE_KEY);
   if (cached) return cached.json();
-  const items = await cachedPublicCatalog(env,ctx,'storefront-'+ITEM_DETAIL_STORE_ID,sharedSignal=>fetchAllListableStorefrontItems(env,{signal:sharedSignal}));
+  // Fresh for 5 minutes, refreshed in the background up to 15 (checkout
+  // rechecks stock itself) -- a minute meant a full catalog load roughly
+  // every 20 seconds across edge locations.
+  const items = await cachedPublicCatalog(env,ctx,'storefront-'+ITEM_DETAIL_STORE_ID,sharedSignal=>fetchAllListableStorefrontItems(env,{signal:sharedSignal}),{freshMs:300000,maxAgeMs:900000});
   const response = json(items, 200, { 'Cache-Control': 'public, max-age=180' });
   if (ctx?.waitUntil) ctx.waitUntil(caches.default.put(ALL_LISTABLE_ITEMS_CACHE_KEY, response.clone()));
   return items;
@@ -8013,7 +8028,7 @@ async function routeRequest(request, env, ctx) {
       let bcwItems;try{bcwItems=await cachedPublicCatalog(env,ctx,'bcw-'+ITEM_DETAIL_STORE_ID,async signal=>{
       const rows=[];
       for(let offset=0; ; offset+=1000){
-        const result=await supabaseAdminFetch(env, 'inventory_items?store_id=eq.'+encodeURIComponent(ITEM_DETAIL_STORE_ID)+'&data->>dropship=eq.true&data->>vendor=ilike.BCW&select='+STOREFRONT_SELECT+'&order=id.asc&limit=1000&offset='+offset,{signal}).catch(()=>({response:null}));
+        const result=await fetchStorefrontPage(env, 'store_id=eq.'+encodeURIComponent(ITEM_DETAIL_STORE_ID)+'&data->>dropship=eq.true&data->>vendor=ilike.BCW&order=id.asc', offset, {signal}).catch(()=>({response:null}));
         if(!result.response?.ok || offset>=50000)throw new Error('Supplies catalog unavailable');
         rows.push(...(result.data||[]));
         if((result.data||[]).length<1000)break;
@@ -11004,6 +11019,19 @@ async function routeRequest(request, env, ctx) {
     // here is just re-applying setEbayVariationSpecificPhotos from this
     // app's own current per-row image/label data (e.g. after a cover's art
     // gets swapped later) -- no REST gallery step exists to repair.
+    // The exact "Cover" value eBay shows for each variation SKU of a live
+    // listing. A photo binds to that exact text, and the app's own label can
+    // differ from what the listing went up with -- a ratio cover got
+    // withRatioWord's "Ratio" added, shared labels were made unique, and
+    // Lunar covers were relabeled from their titles -- so the repair asks
+    // eBay instead of rebuilding it. Empty when eBay can't be read.
+    async function liveEbayVariationLabels(ebayToken, listingId) {
+      try {
+        const got = await ebayTradingApiCall(ebayToken, 'GetItem', `<ItemID>${xmlEscape(listingId)}</ItemID><DetailLevel>ReturnAll</DetailLevel><IncludeVariations>true</IncludeVariations>`);
+        const item = ebayItemFromGetItem(got.raw);
+        return new Map((item?.variations || []).filter(v => v.sku && v.label).map(v => [v.sku, v.label]));
+      } catch (_) { return new Map(); }
+    }
     async function repairEbayTradingGroupListingPhotos(env, ebayToken, groupKey, groupRows) {
       const listingId = groupRows.find(r => r.data?.ebayListingId)?.data.ebayListingId || groupKey;
       const focSkuIds = [...new Set(groupRows.map(r => r.data?.focSkuId).filter(Boolean))];
@@ -11012,9 +11040,10 @@ async function routeRequest(request, env, ctx) {
         const { data: skuRows } = await supabaseAdminFetch(env, `comic_skus?id=in.(${focSkuIds.map(id => encodeURIComponent(id)).join(',')})&select=id,variant_label`);
         (skuRows || []).forEach(s => { labelBySkuId[s.id] = s.variant_label || 'Cover'; });
       }
+      const liveLabels = await liveEbayVariationLabels(ebayToken, listingId);
       const variantPhotos = groupRows.map(r => ({
         sku: r.data?.ebaySku || '',
-        label: r.data?.focSkuId ? labelBySkuId[r.data.focSkuId] : (r.data?.name || ''),
+        label: liveLabels.get(r.data?.ebaySku) || (r.data?.focSkuId ? labelBySkuId[r.data.focSkuId] : (r.data?.name || '')),
         imageUrls: [r.data?.image || ''].filter(Boolean),
       }));
       const result = await setEbayVariationSpecificPhotos(ebayToken, listingId, variantPhotos);
@@ -11095,9 +11124,10 @@ async function routeRequest(request, env, ctx) {
           const { data: skuRows } = await supabaseAdminFetch(env, `comic_skus?id=in.(${focSkuIds.map(id => encodeURIComponent(id)).join(',')})&select=id,variant_label`);
           (skuRows || []).forEach(s => { labelBySkuId[s.id] = s.variant_label || 'Cover'; });
         }
+        const liveLabels = await liveEbayVariationLabels(ebayToken, listingId);
         const variantPhotos = variantSKUs.map(sku => ({
           sku,
-          label: focSkuIdBySku[sku] ? labelBySkuId[focSkuIdBySku[sku]] : nameBySku[sku],
+          label: liveLabels.get(sku) || (focSkuIdBySku[sku] ? labelBySkuId[focSkuIdBySku[sku]] : nameBySku[sku]),
           imageUrls: [imageBySku[sku] || fallbackImage],
         }));
         try {
