@@ -3080,6 +3080,16 @@ export function focReceivedComicDetail(sku,family){
 }
 
 // "Sean Vanoverbeke" -> "Sean V." for a hold label on the bag.
+// Pull-list customers get the regular cover (Cover A) of each new issue:
+// not a ratio/incentive cover, not a lettered variant.
+export function isPullListCover(sku={}){
+  if(sku.is_incentive)return false;
+  const label=String(sku.variant_label||'').trim(),title=String(sku.title||'');
+  if(/\b(?:cvr|cover)\s+a\b/i.test(label)||(!/\b(?:cvr|cover)\s+[b-z]\b/i.test(label)&&/\b(?:cvr|cover)\s+a\b/i.test(title)))return true;
+  if(/\b(?:cvr|cover)\s+[a-z]\b|\b(?:var|variant|virgin|foil|incentive)\b|\d+\s*:\s*\d+/i.test(title+' '+label))return false;
+  return !label||/^(?:cover|regular|main|standard)$/i.test(label);
+}
+export function pullListSeriesKey(family={}){return comicSeriesKey({series:family.series_name||String(family.title||'').replace(/#.*$/,'')});}
 export function shortCustomerName(name){
   const parts=String(name||'').trim().split(/\s+/).filter(Boolean);
   if(!parts.length)return '';
@@ -3547,7 +3557,7 @@ export async function collectStockHealth(db,storeId,now=Date.now()){
   const s=encodeURIComponent(storeId),today=pacificDay(now);
   const presale=presaleStockCheck({...(await presaleStockFacts(db,storeId)),today});
   const presaleRows=await focPresaleRows(db,storeId);
-  const {data:recvRows}=await db(`inventory_items?store_id=eq.${s}&data->>source=in.(foc_receive,foc_hold)&select=id,status,created_at,source:data->>source,sku:data->>focSkuId,name:data->>name,qty:data->>qty,hold:data->preorderHold&limit=100000`);
+  const {data:recvRows}=await db(`inventory_items?store_id=eq.${s}&data->>source=in.(foc_receive,foc_hold)&select=id,status,created_at,source:data->>source,sku:data->>focSkuId,name:data->>name,qty:data->>qty,hold:data->preorderHold,pull:data->pullHold&limit=100000`);
   const received=new Set((recvRows||[]).map(r=>r.sku).filter(Boolean));
   for(const r of presaleRows)if(r.data?.focReceivedAt&&r.data?.focSkuId)received.add(r.data.focSkuId);
   const switched=new Set(presaleRows.filter(r=>r.status==='in_stock'&&r.data?.ebayPresaleConverted).map(r=>r.data.focSkuId));
@@ -3576,7 +3586,7 @@ export async function collectStockHealth(db,storeId,now=Date.now()){
     .map(r=>({name:stripPresaleName(r.data.name),note:'eBay lists '+Number(r.data.qty??r.data.quantity??0)+', you ordered '+Number(skuInfo.get(r.data.focSkuId).store_quantity||0)+' for the shelf',skuId:r.data.focSkuId}));
   const staleCut=now-14*864e5;
   const staleHolds=(recvRows||[]).filter(r=>r.source==='foc_hold'&&r.status==='in_stock'&&Date.parse(r.hold?.heldAt||r.created_at||'')<staleCut)
-    .map(r=>({name:text(r.name,160),note:'for '+(r.hold?.customerName||'a customer')+' since '+String(r.hold?.heldAt||r.created_at).slice(0,10)}));
+    .map(r=>({name:text(r.name,160),note:(r.pull?.subscriptionId&&!r.hold?.orderId?'for '+(r.pull.customerName||'a customer')+'\'s pull list since '+String(r.pull.heldAt||r.created_at).slice(0,10)+' -- ring it up or put it back on the shelf from ON HOLD':'for '+(r.hold?.customerName||'a customer')+' since '+String(r.hold?.heldAt||r.created_at).slice(0,10))}));
   const {data:inStock}=await db(`inventory_items?store_id=eq.${s}&status=eq.in_stock&select=id,name:data->>name,qty:data->>qty,quantity:data->>quantity,isBundle:data->>isBundle&limit=100000`);
   const zeroStock=(inStock||[]).filter(r=>!(Number(r.qty??r.quantity??1)>0)&&r.isBundle!=='true').map(r=>({name:text(r.name,160)||'Item',note:'qty '+(r.qty??r.quantity??0),itemId:r.id}));
   return {at:new Date(now).toISOString(),today,storeId,checked:{inStock:(inStock||[]).length,presales:presaleRows.length,preorders:(paidItems||[]).length,dueCovers:(due||[]).length},
@@ -3742,6 +3752,21 @@ async function receiveShipment(request,env,deps){
   if(livePresaleRowBySkuId.size&&deps.getEbayUserAccessToken&&deps.ebayReviseOfferQuantity){
     try{ebayToken=await deps.getEbayUserAccessToken(env);}catch(_){}
   }
+  // Store ask: pull-list regulars subscribe once and each new issue sets a
+  // copy aside for them. Active subscribers by series, and the issues they
+  // already had a copy held for (a second receive doesn't hold another).
+  const pullSubsBySeries=new Map(),pullHeldBefore=new Set();
+  if(familyIds.length){
+    try{
+      const {data:subs}=await db(`pull_list_subscriptions?store_id=eq.${encodeURIComponent(storeId)}&active=eq.true&select=id,customer_id,customer_name,created_at,series:pull_list_series(title),customer:customers(name)&order=created_at.asc`);
+      for(const sub of subs||[]){const k=comicSeriesKey({series:sub.series?.title});if(!k)continue;const list=pullSubsBySeries.get(k)||[];list.push(sub);pullSubsBySeries.set(k,list);}
+      if(pullSubsBySeries.size){
+        const {data:held}=await db(`inventory_items?store_id=eq.${encodeURIComponent(storeId)}&data->>source=in.(foc_hold,foc_receive)&data->pullHold->>familyId=${inFilter(familyIds)}&select=hold:data->pullHold`);
+        for(const r of held||[])if(r.hold?.subscriptionId)pullHeldBefore.add(r.hold.subscriptionId+':'+r.hold.familyId);
+      }
+    }catch(e){console.error('FOC receive: pull lists unavailable',e);}
+  }
+  const pullFamiliesDone=new Set(),pullHeld=new Map();
   const created=[];const receivedSummary=[];
   // Store ask: "when I intake the comics with the slip, queue up labels for
   // all comics I just intook." Which inventory rows got shelf copies, and how
@@ -3778,6 +3803,20 @@ async function receiveShipment(request,env,deps){
     }
     const reservedForEbay=Math.min(reserveRemaining,presaleByskuId.get(sku.id)||0);
     reserveRemaining-=reservedForEbay;
+    // Then a Cover A for each pull-list subscriber of the series, oldest
+    // subscription first, before anything goes on the shelf.
+    const family=familyById.get(sku.family_id)||{};
+    const pullHolds=[];let pullMissed=0;
+    if(sku.family_id&&!pullFamiliesDone.has(sku.family_id)&&isPullListCover(sku)){
+      const subs=(pullSubsBySeries.get(pullListSeriesKey(family))||[]).filter(sub=>!pullHeldBefore.has(sub.id+':'+sku.family_id));
+      if(subs.length)pullFamiliesDone.add(sku.family_id);
+      for(const sub of subs){
+        if(reserveRemaining<=0){pullMissed++;continue;}
+        reserveRemaining--;
+        pullHolds.push({sub,name:text(sub.customer_name||sub.customer?.name,120)||'Pull-list customer'});
+      }
+      if(pullMissed)receiveWarnings.push('Not enough copies of '+text(sku.title,80)+' for every pull list: '+pullMissed+' subscriber'+(pullMissed===1?'':'s')+' didn\'t get one');
+    }
     // 2. The rest is shelf stock. A live eBay presale listing already sells
     // some of it (its unsold copies) -- only what's beyond that becomes a new
     // row, so no copy is sellable twice. A short shipment pulls the listing
@@ -3840,6 +3879,17 @@ async function receiveShipment(request,env,deps){
         h.item.status='ready_for_pickup';
       }catch(e){console.error('FOC receive: could not hold a preorder copy',h.item.id,e);receiveWarnings.push('Could not set aside '+h.copies+' for '+(h.name||'a customer')+' ('+text(sku.title,80)+'): '+e.message);}
     }
+    // Pull-list copies: on hold under the subscriber's name (the register
+    // asks before ringing one up), paid for when they pick it up.
+    for(const h of pullHolds){
+      const hold={store_id:storeId,status:'in_stock',data:{...base,qty:1,quantity:1,source:'foc_hold',lifecycle:'hold',
+        pullHold:{subscriptionId:h.sub.id,customerId:h.sub.customer_id||'',customerName:h.name,familyId:sku.family_id,heldAt:stamp}}};
+      try{
+        const { data:holdRows }=await db('inventory_items',{method:'POST',headers:{Prefer:'return=representation'},body:JSON.stringify([hold])});
+        h.rowId=holdRows?.[0]?.id||'';
+        const p=pullHeld.get(h.sub.id)||{subscriptionId:h.sub.id,name:h.name,titles:[]};p.titles.push(text(sku.title,120));pullHeld.set(h.sub.id,p);
+      }catch(e){console.error('FOC receive: could not hold a pull-list copy',h.sub.id,e);receiveWarnings.push('Could not set aside a copy for '+h.name+'\'s pull list ('+text(sku.title,80)+'): '+e.message);}
+    }
     // Safety stock (damage/short-ship buffer, admin-set per SKU) -- counted
     // last, out of the shelf copies.
     const safetyHeld=Math.min(shelfQty,Number(sku.safety_stock_qty||0));
@@ -3850,7 +3900,8 @@ async function receiveShipment(request,env,deps){
     receivedSummary.push({
       skuId:sku.id,title:sku.title,variantLabel:sku.variant_label,receivedQty,orderedTotal,
       reservedForCustomers,heldFor:holds.map(h=>({name:h.name,copies:h.copies,orderNumber:h.item.order?.order_number||''})),
-      reservedForEbayPresale:reservedForEbay,safetyStockHeld:safetyHeld,availableAsNewStock:shelfQty-safetyHeld,
+      reservedForEbayPresale:reservedForEbay,reservedForPullList:pullHolds.filter(h=>h.rowId).length,pullHeldFor:pullHolds.filter(h=>h.rowId).map(h=>h.name),
+      safetyStockHeld:safetyHeld,availableAsNewStock:shelfQty-safetyHeld,
       shortShipped,incentiveNotReceived,
     });
     // Labels: shelf copies (the live listing's unsold copies, then the new
@@ -3858,6 +3909,7 @@ async function receiveShipment(request,env,deps){
     if(presaleKeep)labelItems.push({itemId:livePresale.id,skuId:sku.id,copies:presaleKeep});
     if(inserted?.[0]?.id)labelItems.push({itemId:inserted[0].id,skuId:sku.id,copies:newStandaloneCount});
     for(const h of holds)if(h.rowId)labelItems.push({itemId:h.rowId,skuId:sku.id,copies:h.copies,flag:'HOLD · '+(shortCustomerName(h.name)||'WEBSITE PREORDER')});
+    for(const h of pullHolds)if(h.rowId)labelItems.push({itemId:h.rowId,skuId:sku.id,copies:1,flag:'PULL · '+(shortCustomerName(h.name)||'PULL LIST')});
     const ebayFlagRowId=inserted?.[0]?.id||livePresale?.id||(presaleRows||[]).find(r=>r.data?.focSkuId===sku.id)?.id||'';
     if(reservedForEbay>0&&ebayFlagRowId)labelItems.push({itemId:ebayFlagRowId,skuId:sku.id,copies:reservedForEbay,flag:'SOLD · EBAY BUYER'});
   }
@@ -3885,7 +3937,7 @@ async function receiveShipment(request,env,deps){
   // book arrives (the paid -> ready flip above only ever happens once).
   let notified=[];
   try{notified=await notifyOrdersReady(env,deps,db,storeId,readyOrderIds,auth.user?.id);}catch(e){console.error('FOC receive: arrival notices failed',e);}
-  return deps.json({ok:true,createdInventoryCount:created.length,heldCount:receivedSummary.reduce((a,r)=>a+Number(r.reservedForCustomers||0),0),receivedSummary,labelItems,notified,warnings:receiveWarnings});
+  return deps.json({ok:true,createdInventoryCount:created.length,heldCount:receivedSummary.reduce((a,r)=>a+Number(r.reservedForCustomers||0),0),receivedSummary,labelItems,notified,pullHeld:[...pullHeld.values()],warnings:receiveWarnings});
 }
 
 async function saveShippingSettings(request,env,deps){
@@ -3932,6 +3984,30 @@ export function holdGroups(rows=[],orders=[],items=[]){
     return {...g,orderStatus:o.status||'',phone:o.customer_phone||'',stillComing:its.filter(i=>i.status==='committed').map(i=>text(i.sku?.title||'',120)+(i.sku?.variant_label&&!/^cover a$/i.test(i.sku.variant_label)?' · '+text(i.sku.variant_label,80):''))};
   }).sort((a,b)=>String(a.heldAt).localeCompare(String(b.heldAt)));
 }
+// Pull-list copies on hold, per subscriber.
+export function pullHoldGroups(rows=[]){
+  const bySub=new Map();
+  for(const r of rows){
+    const h=r.data?.pullHold||{};if(!h.subscriptionId||r.data?.preorderHold?.orderId)continue;
+    const g=bySub.get(h.subscriptionId)||{subscriptionId:h.subscriptionId,customerName:h.customerName||'Pull-list customer',heldAt:h.heldAt||r.created_at,books:[]};
+    g.books.push({id:r.id,name:text(r.data?.name,200),qty:Number(r.data?.qty??r.data?.quantity??0),price:Number(r.data?.priceOverride||r.data?.salePrice||0)});
+    if(String(h.heldAt||'')<String(g.heldAt||''))g.heldAt=h.heldAt;
+    bySub.set(h.subscriptionId,g);
+  }
+  return [...bySub.values()].sort((a,b)=>String(a.heldAt).localeCompare(String(b.heldAt)));
+}
+// A pull-list hold goes back to regular stock: rung up for the customer
+// (scan it at the register) or put back on the shelf. The pullHold note
+// stays, so receiving again never holds that issue a second time.
+async function releasePullHolds(db,storeId,subscriptionId,how){
+  const {data}=await db(`inventory_items?store_id=eq.${encodeURIComponent(storeId)}&data->>source=eq.foc_hold&status=eq.in_stock&data->pullHold->>subscriptionId=eq.${encodeURIComponent(subscriptionId)}&select=id,data&limit=200`);
+  const at=new Date().toISOString();
+  for(const r of data||[]){
+    const d=r.data||{};
+    await db(`inventory_items?id=eq.${r.id}&store_id=eq.${encodeURIComponent(storeId)}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({data:{...d,source:'foc_receive',lifecycle:'',pullHold:{...(d.pullHold||{}),releasedAt:at,releasedHow:how}}})});
+  }
+  return (data||[]).length;
+}
 async function adminHolds(request,env,deps,url){
   if(request.method==='GET'){
     const storeId=text(url.searchParams.get('store_id'),80);
@@ -3943,11 +4019,18 @@ async function adminHolds(request,env,deps,url){
       db(`foc_preorder_orders?id=${inFilter(ids)}&select=id,status,customer_phone`),
       db(`foc_preorder_items?order_id=${inFilter(ids)}&select=order_id,status,sku:comic_skus(title,variant_label)`),
     ]):[{data:[]},{data:[]}];
-    return deps.json({ok:true,holds:holdGroups(rows,orders||[],items||[])});
+    return deps.json({ok:true,holds:holdGroups(rows,orders||[],items||[]),pullHolds:pullHoldGroups(rows)});
   }
   const limited=await deps.readJsonWithLimit(request,8*1024);if(limited.error)return limited.error;
   const body=limited.data||{},storeId=text(body.storeId,80),orderId=text(body.orderId,80);
   const auth=await deps.requireStoreUser(request,env,storeId,['owner','admin','manager','employee']);if(auth.error)return auth.error;
+  const pullSubscriptionId=text(body.pullSubscriptionId,80);
+  if(pullSubscriptionId){
+    if(!UUID_RE.test(pullSubscriptionId))return deps.json({ok:false,error:'pullSubscriptionId required'},400);
+    const how=body.how==='shelf'?'shelf':'rung_up';
+    const released=await releasePullHolds((path,options)=>deps.supabaseAdminFetch(env,path,options),storeId,pullSubscriptionId,how);
+    return deps.json({ok:true,released,how});
+  }
   if(!UUID_RE.test(orderId))return deps.json({ok:false,error:'orderId required'},400);
   const db=(path,options)=>deps.supabaseAdminFetch(env,path,options);
   const {data:orders}=await db(`foc_preorder_orders?id=eq.${encodeURIComponent(orderId)}&store_id=eq.${encodeURIComponent(storeId)}&select=id,status,fulfillment_method&limit=1`);

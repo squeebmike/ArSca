@@ -74,6 +74,6 @@ assert.match(html, /still waiting on another book in their order[^:]*: Robin #10
 assert.doesNotMatch(html, /Sean P #1042/, 'told customers are not listed as waiting');
 assert.equal(slipToldHtml([], []), '');
 assert.match(slipToldHtml([], [{ heldFor: [{ name: 'Robin', copies: 1, orderNumber: '1050' }] }]), /PREORDER COPIES SET ASIDE/);
-assert.match(fn('confirmSlipReceive'), /pickState\.notified=notifiedAll;\n  renderSlipReceived\(done,s\);/);
+assert.match(fn('confirmSlipReceive'), /pickState\.notified=notifiedAll;\n[\s\S]{0,120}renderSlipReceived\(done,s\);/);
 assert.match(fn('renderSlipReceived'), /slipToldHtml\(pickState\.notified,summary\)/);
 console.log('FOC slip markup and customers-told checks passed');

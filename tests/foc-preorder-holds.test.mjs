@@ -53,7 +53,7 @@ const sellable = new Function(dashboard.slice(dashboard.indexOf('function invent
 assert.equal(sellable({ status:'in_stock', lifecycle:'in_stock', qty:1, raw:{ source:'foc_hold', lifecycle:'hold' } }), false);
 assert.equal(sellable({ status:'in_stock', lifecycle:'in_stock', qty:1, raw:{ source:'foc_receive' } }), true);
 assert.match(dashboard, /lifecycle:\(d\.source === 'foc_hold' && d\.lifecycle === 'hold'\) \? 'hold' : getLifecycle\(/);
-assert.match(extractFn('addSaleItemToCart'), /toast_dash\(who \? `On hold for \$\{who\}'s preorder -- hand it over from FOC → 📌 ON HOLD`/);
+assert.match(extractFn('addSaleItemToCart'), /: who \? `On hold for \$\{who\}'s preorder -- hand it over from FOC → 📌 ON HOLD`/);
 assert.match(extractFn('openSellModal'), /if\(inventoryRowPreorderHold\(item\.raw\)\) \{/);
 const ui = fs.readFileSync('scripts/foc-dashboard.js', 'utf8');
 assert.match(ui, /onclick="openFocHolds\(\)">📌 ON HOLD<\/button>/);
