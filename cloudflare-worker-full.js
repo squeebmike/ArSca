@@ -1233,6 +1233,9 @@ async function requirePlatformAdmin(request, env) {
 }
 
 async function requireStoreUser(request, env, storeId, allowedRoles = ['owner','admin','manager','employee','scanner_only']) {
+  // An auto-list run (runScheduledFocAutoList) posting a listing the store
+  // queued -- built inside this Worker, so it can't come from outside.
+  if (FOC_INTERNAL_REQUESTS.has(request)) return { user:{ id:'', email:'auto-list' }, role:'owner', token:'' };
   const token = String(request.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '');
   if (!token) return { error:json({ ok:false, error:'Authentication required' }, 401) };
   if (!storeId) return { error:json({ ok:false, error:'storeId is required' }, 400) };
@@ -5780,7 +5783,9 @@ async function routeRequest(request, env, ctx) {
       const onSaleDate = new Date(String(sku.on_sale_date).includes('T') ? sku.on_sale_date : sku.on_sale_date + 'T00:00:00Z');
       if (!Number.isFinite(onSaleDate.getTime())) return json({ ok: false, error: "Could not parse this SKU's on-sale date" }, 400);
       const eligibleDate = addBusinessDays(onSaleDate, -safeBusinessDays);
-      if (new Date() < eligibleDate) {
+      // draft: building a listing now to post on its eligible day (the FOC
+      // auto-list queue) -- preview only, publishing still waits.
+      if (new Date() < eligibleDate && !(isPreview && body.draft === true)) {
         return json({
           ok: false,
           error: `Too early for eBay presale -- eligible ${eligibleDate.toISOString().slice(0, 10)} (${safeBusinessDays} business days before the ${onSaleDate.toISOString().slice(0, 10)} on-sale date).`,
@@ -6034,7 +6039,7 @@ async function routeRequest(request, env, ctx) {
         if (!reason && !priceCents) reason = 'No customer price set';
         if (!reason && onSaleDate) {
           const eligibleDate = addBusinessDays(onSaleDate, -safeBusinessDays);
-          if (now < eligibleDate) reason = `Too early -- eligible ${eligibleDate.toISOString().slice(0, 10)}`;
+          if (now < eligibleDate && !(isPreview && body.draft === true)) reason = `Too early -- eligible ${eligibleDate.toISOString().slice(0, 10)}`;
         }
         return {
           skuId: sku.id, variantLabel: coverLabels[i], upc: sku.upc || '',
@@ -6418,6 +6423,8 @@ async function routeRequest(request, env, ctx) {
       try { return json({ ok: true, ...(await fillMissingLunarCovers(env, { storeId, origin: url.origin })) }); }
       catch (e) { return json({ ok: false, error: e.message }, 502); }
     }
+    if (url.pathname === '/foc/ebay/auto-list') return handleFocAutoListRoute(request, env, url);
+
     if (url.pathname === '/foc/ebay/refresh-presale-descriptions') {
       if (request.method !== 'POST') return json({ error: 'POST only' }, 405);
       const storeId = requestStoreId(request, url);
@@ -17945,7 +17952,7 @@ export default {
   // /dealscan/latest reads) instead of only ever being reachable by an
   // on-demand click.
   async scheduled(event, env, ctx) {
-    ctx.waitUntil(Promise.all([runScheduledDealScans(env), runScheduledEbayReprice(env), runScheduledEbayOrderSync(env), runScheduledShopifyOrderSync(env), runScheduledStorefrontReviewRequests(env), runScheduledPointsHoldSweep(env), runScheduledEbayFinanceReconcile(env), runScheduledStaleWebOrderReminders(env), runScheduledBookAlerts(env), runScheduledStockHealthCheck(env), runScheduledLunarCoverFill(env)]));
+    ctx.waitUntil(Promise.all([runScheduledDealScans(env), runScheduledEbayReprice(env), runScheduledEbayOrderSync(env), runScheduledShopifyOrderSync(env), runScheduledStorefrontReviewRequests(env), runScheduledPointsHoldSweep(env), runScheduledEbayFinanceReconcile(env), runScheduledStaleWebOrderReminders(env), runScheduledBookAlerts(env), runScheduledStockHealthCheck(env), runScheduledLunarCoverFill(env), runScheduledFocAutoList(env)]));
   },
 };
 
@@ -18019,6 +18026,125 @@ async function fillMissingLunarCovers(env, { storeId = '', origin = LUNAR_COVER_
   }
   return result;
 }
+// ── FOC auto-list ──
+// Store ask: "email me when the too early ones get listed." LIST WEEK ON
+// EBAY builds each too-early listing (template, weight, quantity, shipping
+// policy) and queues it here; every 6 hours the ones whose eBay presale
+// date has come go up through the normal listing route, and the store gets
+// one email listing what went up (or didn't after 3 tries).
+const FOC_INTERNAL_REQUESTS = new WeakSet();
+const FOC_AUTOLIST_KV = storeId => 'foc-autolist:' + storeId;
+const FOC_AUTOLIST_STORES_KV = 'foc-autolist:stores';
+const FOC_AUTOLIST_PER_RUN = 6;
+const FOC_AUTOLIST_DEFAULT_EMAIL = 'hintline@themanapocket.com';
+async function loadFocAutoList(env, storeId) {
+  try { const v = await env.LBA_KV?.get(FOC_AUTOLIST_KV(storeId), 'json'); if (v && Array.isArray(v.items)) return v; } catch (_) {}
+  return { email: FOC_AUTOLIST_DEFAULT_EMAIL, items: [] };
+}
+async function saveFocAutoList(env, storeId, queue) {
+  if (!env.LBA_KV) throw new Error('Storage unavailable');
+  await env.LBA_KV.put(FOC_AUTOLIST_KV(storeId), JSON.stringify(queue));
+  let stores = [];
+  try { stores = (await env.LBA_KV.get(FOC_AUTOLIST_STORES_KV, 'json')) || []; } catch (_) {}
+  const next = queue.items.length ? [...new Set([...stores, storeId])] : stores.filter(id => id !== storeId);
+  if (next.length !== stores.length || next.some((id, i) => id !== stores[i])) await env.LBA_KV.put(FOC_AUTOLIST_STORES_KV, JSON.stringify(next));
+}
+const focAutoListSummary = item => ({ key:item.key, kind:item.kind, familyId:item.familyId || '', skuIds:item.skuIds, label:item.label, eligibleDate:item.eligibleDate, queuedAt:item.queuedAt, attempts:item.attempts || 0, lastError:item.lastError || '' });
+function cleanFocAutoListItem(raw, storeId, now = new Date().toISOString()) {
+  const kind = raw?.kind === 'group' ? 'group' : raw?.kind === 'single' ? 'single' : '';
+  const skuIds = (Array.isArray(raw?.skuIds) ? raw.skuIds : []).map(String).filter(id => /^[0-9a-f-]{36}$/i.test(id)).slice(0, 20);
+  const eligibleDate = /^\d{4}-\d{2}-\d{2}$/.test(String(raw?.eligibleDate || '')) ? raw.eligibleDate : '';
+  const payload = raw?.payload && typeof raw.payload === 'object' ? { ...raw.payload, storeId } : null;
+  if (!kind || !skuIds.length || !eligibleDate || !payload) return null;
+  if (kind === 'group' && (!/^[0-9a-f-]{36}$/i.test(String(raw.familyId || '')) || skuIds.length < 2)) return null;
+  if (JSON.stringify(payload).length > 60000) return null;
+  const familyId = kind === 'group' ? String(raw.familyId) : '';
+  return { key: kind === 'group' ? 'g:' + familyId : 's:' + skuIds[0], kind, familyId, skuIds, label: String(raw.label || '').slice(0, 160) || 'Comic', eligibleDate, payload, queuedAt: now, attempts: 0 };
+}
+async function handleFocAutoListRoute(request, env, url) {
+  const storeId = requestStoreId(request, url);
+  const auth = await requireStoreUser(request, env, storeId, ['owner','admin']);
+  if (auth.error) return auth.error;
+  const queue = await loadFocAutoList(env, storeId);
+  if (request.method === 'GET') return json({ ok:true, email:queue.email, items:queue.items.map(focAutoListSummary) });
+  let body = {};
+  try { body = await request.json(); } catch (_) {}
+  if (request.method === 'DELETE') {
+    queue.items = queue.items.filter(item => item.key !== String(body.key || ''));
+  } else if (request.method === 'POST') {
+    const email = String(body.email || '').trim();
+    if (email) { if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return json({ ok:false, error:'That email address doesn\'t look right' }, 400); queue.email = email.slice(0, 200); }
+    const fresh = (Array.isArray(body.items) ? body.items : []).slice(0, 200).map(item => cleanFocAutoListItem(item, storeId)).filter(Boolean);
+    const keys = new Set(fresh.map(item => item.key));
+    queue.items = queue.items.filter(item => !keys.has(item.key)).concat(fresh).slice(-400);
+  } else return json({ ok:false, error:'GET, POST or DELETE' }, 405);
+  try { await saveFocAutoList(env, storeId, queue); } catch (e) { return json({ ok:false, error:e.message }, 503); }
+  return json({ ok:true, email:queue.email, items:queue.items.map(focAutoListSummary) });
+}
+function pacificToday(now = new Date()) { return now.toLocaleDateString('en-CA', { timeZone:'America/Los_Angeles' }); }
+function focAutoListEmail(listed, failed, waiting) {
+  const lines = [];
+  if (listed.length) lines.push(`Listed on eBay today (${listed.length}):`, ...listed.map(l => '- ' + l), '');
+  if (failed.length) lines.push(`Could not list after 3 tries -- list these from FOC → LIST WEEK ON EBAY (${failed.length}):`, ...failed.map(f => '- ' + f), '');
+  lines.push(waiting ? `${waiting} more waiting for their eBay presale date.` : 'Nothing else is waiting.');
+  return {
+    subject: listed.length ? `${listed.length} FOC presale${listed.length === 1 ? '' : 's'} listed on eBay` : `${failed.length} FOC presale${failed.length === 1 ? '' : 's'} could not be listed`,
+    body: lines.join('\n'),
+  };
+}
+async function runFocAutoListForStore(env, ctx, storeId, { today = pacificToday(), limit = FOC_AUTOLIST_PER_RUN } = {}) {
+  const queue = await loadFocAutoList(env, storeId);
+  const due = queue.items.filter(item => item.eligibleDate <= today).sort((a, b) => a.eligibleDate.localeCompare(b.eligibleDate)).slice(0, limit);
+  const listed = [], failed = [], done = new Set();
+  for (const item of due) {
+    try {
+      // Listed by hand in the meantime: nothing to do.
+      const { data:live } = await supabaseAdminFetch(env, `inventory_items?store_id=eq.${encodeURIComponent(storeId)}&data->>source=eq.foc_presale&data->>focSkuId=in.(${item.skuIds.map(encodeURIComponent).join(',')})&status=in.(presale,in_stock,sold)&select=id&limit=1`);
+      if ((live || []).length) { done.add(item.key); continue; }
+      // No cover art yet: wait for it (Lunar art is looked for every 6
+      // hours) -- until the book is out, when a presale no longer applies.
+      const { data:skuRows } = await supabaseAdminFetch(env, `comic_skus?store_id=eq.${encodeURIComponent(storeId)}&id=in.(${item.skuIds.map(encodeURIComponent).join(',')})&select=id,cover_image_url,on_sale_date`);
+      const noArt = (skuRows || []).filter(r => !r.cover_image_url);
+      if (noArt.length) {
+        if ((skuRows || []).some(r => r.on_sale_date && String(r.on_sale_date).slice(0, 10) <= today)) { done.add(item.key); failed.push(item.label + ': no cover art came in before it went on sale'); }
+        continue;
+      }
+      const path = item.kind === 'group' ? '/foc/ebay/create-presale-group' : '/foc/ebay/create-presale';
+      const req = new Request(LUNAR_COVER_ORIGIN + path, { method:'POST', headers:{ 'Content-Type':'application/json', 'X-Store-Id':storeId }, body:JSON.stringify({ ...item.payload, storeId }) });
+      FOC_INTERNAL_REQUESTS.add(req);
+      const res = await routeRequest(req, env, ctx);
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.ok !== false) { done.add(item.key); listed.push(item.label); continue; }
+      if (res.status === 409 && /^\d{4}-\d{2}-\d{2}$/.test(String(data.eligibleDate || ''))) { item.eligibleDate = data.eligibleDate; continue; }
+      throw new Error(data.error || ('HTTP ' + res.status));
+    } catch (e) {
+      item.attempts = (item.attempts || 0) + 1; item.lastError = String(e.message || e).slice(0, 300);
+      if (item.attempts >= 3) { done.add(item.key); failed.push(item.label + ': ' + item.lastError); }
+    }
+  }
+  if (!due.length) return { listed, failed };
+  queue.items = queue.items.filter(item => !done.has(item.key));
+  await saveFocAutoList(env, storeId, queue);
+  if ((listed.length || failed.length) && queue.email) {
+    const mail = focAutoListEmail(listed, failed, queue.items.length);
+    try { await sendEmail(env, queue.email, mail.subject, mail.body); } catch (e) { console.error('FOC auto-list email failed:', e.message); }
+  }
+  return { listed, failed };
+}
+async function runScheduledFocAutoList(env) {
+  if (!env.LBA_KV || !(env.SUPABASE_URL && (env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SERVICE_KEY))) return;
+  let stores = [];
+  try { stores = (await env.LBA_KV.get(FOC_AUTOLIST_STORES_KV, 'json')) || []; } catch (_) {}
+  // The listing routes hand follow-up work to ctx.waitUntil; this run
+  // waits for it before finishing.
+  const pending = [], ctx = { waitUntil: p => pending.push(Promise.resolve(p).catch(() => {})), passThroughOnException() {} };
+  for (const storeId of stores) {
+    try { await runFocAutoListForStore(env, ctx, storeId); }
+    catch (e) { console.error('FOC auto-list failed for', storeId, e.message); }
+  }
+  await Promise.all(pending);
+}
+
 async function runScheduledLunarCoverFill(env) {
   if (!(env.SUPABASE_URL && (env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SERVICE_KEY))) return;
   try { await fillMissingLunarCovers(env); }
