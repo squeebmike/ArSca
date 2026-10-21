@@ -114,7 +114,7 @@ function postgrest(url, calls){
   assert.equal(res.data.report.high, 1);
 }
 const worker = fs.readFileSync('cloudflare-worker-full.js', 'utf8');
-assert.match(worker, /runScheduledBookAlerts\(env\), runScheduledStockHealthCheck\(env\)\]\)\);/, 'runs on the 6-hourly cron');
+assert.match(worker, /runScheduledBookAlerts\(env\), runScheduledStockHealthCheck\(env\)[,\]]/, 'runs on the 6-hourly cron');
 const dash = fs.readFileSync('dashboard.html', 'utf8');
 assert.match(dash, /<div id="stock-health-card"><\/div>/);
 assert.match(dash, /id="stock-health-banner"/);
