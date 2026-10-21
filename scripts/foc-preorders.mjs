@@ -140,9 +140,20 @@ export function variantLabel(row, series, issue) {
 export function coverLabelFromTitle(title) {
   const m = text(title, 800).match(/\b(?:CVR|COVER)\s+([A-Z]{1,2})\b(.*)$/i);
   if (!m) return '';
-  let rest = m[2].replace(/\bINC\b\.?/gi, ' ').replace(/\bVAR(?:IANT)?\b\.?\s*$/i, ' ').replace(/\s+/g, ' ').trim();
-  if (!/[a-z]/.test(rest)) rest = rest.toLowerCase().replace(/\b([a-z])/g, c => c.toUpperCase());
-  return ('Cvr ' + m[1].toUpperCase() + (rest ? ' ' + rest : '')).slice(0, 60).trim();
+  // A trailing rating or tie-in note -- "(MR)", "(BATMAN BAD SEEDS)" -- isn't
+  // part of the cover's name; nor are Lunar's "INC" and closing "VAR".
+  let rest = m[2].replace(/(\s*\([^()]*\))+\s*$/, '')
+    .replace(/\bINC\b\.?/gi, ' ').replace(/\bVAR(?:IANT)?\b\.?\s*$/i, ' ').replace(/\s+/g, ' ').trim();
+  if (!/[a-z]/.test(rest)) {
+    rest = rest.toLowerCase().replace(/\b([a-z])/g, c => c.toUpperCase())
+      // all-consonant abbreviations stay capitals: DC, NSFW, PTG, LTD
+      .replace(/\b[bcdfghjklmnpqrstvwxz]{2,}\b/gi, w => w.toUpperCase());
+  }
+  let label = 'Cvr ' + m[1].toUpperCase() + (rest ? ' ' + rest : '');
+  // eBay caps a Cover value at 65 characters, and a ratio cover gets
+  // " Ratio" added (withRatioWord) -- cut at a word, 58 at most.
+  if (label.length > 58) label = label.slice(0, 59).replace(/\s+\S*$/, '');
+  return label.trim();
 }
 // eBay needs every "Cover" choice to be different. A label shared by more
 // than one cover gets its title's cover part instead, then a number.
