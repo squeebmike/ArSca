@@ -41,3 +41,16 @@ assert.equal((named.match(/<figure /g)||[]).length,2,'front-face names and edito
 
 const foglio=secretLairDrops.find(d=>d.id==='summer-2025-artist-series-phil-foglio');assert.equal(foglio.cards.find(c=>c.name==='Goblin Bombardment').collectorNumber,'2024');assert.ok(!foglio.cards.some(c=>c.collectorNumber==='7022'));
 const frazetta=secretLairDrops.find(d=>d.id==='summer-2025-the-art-of-frank-frazetta-the-second-exhibition');assert.equal(frazetta.cards.length,5);assert.equal(frazetta.cards.filter(c=>c.name.startsWith('Murderous Rider')).length,1);
+
+// Buying destinations remain visible before editorial paragraphs and point to real sections.
+{
+ deps.listItems=async()=>[{id:'nav-stock',name:turbo.name+' sealed',categorySlug:'mtg',isSealed:true,price:55,quantity:1}];
+ const body=await(await get(secretLairDropPath(turbo))).text();
+ assert.match(body,/aria-label="Shop this Secret Lair"/);
+ assert.match(body,/href="#sealed-drop-stock">Shop 1 store listing/);
+ assert.match(body,/id="sealed-drop-stock"/);
+ assert.match(body,/href="#drop-card-shopping"/);
+ assert.match(body,/id="drop-card-shopping"/);
+ assert.ok(body.indexOf('aria-label="Shop this Secret Lair"')<body.indexOf('<div class="mp-editorial-cards"'));
+ assert.ok(body.includes('/item/nav-stock/'));
+}
