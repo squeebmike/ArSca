@@ -25,8 +25,15 @@ const listings = [12, 4.99, 30, 7.5, 9, 15, 22, 18, 25, 6].map((p, i) => ({ item
 const sum = summarizeCoverMarket(b, listings, [{ title:'Robin Hood #1 Cover B Nakayama', total:11, soldAt:'2026-10-01' }]);
 assert.equal(sum.active.count, 10);
 assert.deepEqual(sum.active.sample.map(x => x.price), [4.99, 6, 7.5, 9, 12, 15, 18, 22]);
+// Store ask: "can we get listed items on there from eBay?" -- each with its picture, shipping and link; ours marked.
+{
+  const withPics = summarizeCoverMarket(b, [{ itemId:'v1|111|0', title:'Robin Hood #1 Cover B Nakayama', price:6.99, shipping:4.5, url:'https://ebay/1', imageUrl:'https://i/1.jpg', listingType:'Auction' }, { itemId:'v1|222|0', title:'Robin Hood #1 Cvr B Nakayama PRESALE', price:8.99, shipping:0, url:'https://ebay/2', imageUrl:'https://i/2.jpg', listingType:'FixedPrice' }], [], new Set(['222']));
+  assert.deepEqual(withPics.active.sample, [{ title:'Robin Hood #1 Cover B Nakayama', price:6.99, shipping:4.5, url:'https://ebay/1', imageUrl:'https://i/1.jpg', auction:true }]);
+  assert.deepEqual(withPics.active.own.map(x => x.url), ['https://ebay/2'], 'ours shown, not counted');
+  assert.equal(withPics.active.count, 1);
+}
 assert.deepEqual(sum.sold.sample, [{ title:'Robin Hood #1 Cover B Nakayama', price:11, soldAt:'2026-10-01' }]);
-assert.match(svc, /const cacheKey='foc-cover-market:v2:'\+query\.q\.toLowerCase\(\)\+\(query\.variant\?':v':''\);/, 'fresh checks, not the old 3-listing copies');
+assert.match(svc, /const cacheKey='foc-cover-market:v3:'\+query\.q\.toLowerCase\(\)\+\(query\.variant\?':v':''\);/, 'fresh checks, not the old 3-listing copies');
 
 // The dashboard: which covers count as variants, and the hover text.
 const ctx = { state:{ families:[{ id:'f1', title:'Robin Hood #1', seriesName:'Robin Hood' }] } };
@@ -80,4 +87,17 @@ assert.equal((dash.match(/^function focRatioOf\(/gm) || []).length, 1, 'one rati
 }
 assert.match(grab('focVariantPillsHtml'), /var pcp=!v\.isIncentive&&focPcPill\(focIntel\.pc\[v\.id\]\);if\(pcp\)pills\.push\(pcp\);/);
 assert.match(grab('focRatioValueText'), /if\(warn&&!\(r\.raw&&\/sold history\/\.test\(warn\)\)\)parts\.push\(warn\);/, 'no "sold history isn\'t connected" when PriceCharting has the sold price');
+{
+  const c = { esc:x => String(x ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;'), focEbaySearchUrl:q => 'https://www.ebay.com/sch/i.html?_nkw=' + encodeURIComponent(q) };
+  vm.runInNewContext(['focListingRowHtml', 'focListingsHtml'].map(grab).join('') + 'this.list=focListingsHtml;', c);
+  const html = c.list({ query:'Robin Hood #1 Nakayama', active:{ count:5, low:6.99, sample:[{ title:'Robin Hood #1 Cover B', price:6.99, shipping:4.5, url:'https://ebay/1', imageUrl:'https://i/1.jpg', auction:true }], own:[{ title:'Ours', price:8.99, shipping:0, url:'https://ebay/2', imageUrl:'' }] } });
+  assert.match(html, /eBay listings \(5 others \+ yours\) · from \$6\.99<\/summary>/);
+  assert.match(html, /<a href="https:\/\/ebay\/1" target="_blank"[^>]*><img src="https:\/\/i\/1\.jpg"/);
+  assert.match(html, /AUCTION · <\/b>Robin Hood #1 Cover B[\s\S]*\$6\.99<br><span[^>]*>\+\$4\.50 ship/);
+  assert.match(html, /YOURS · <\/b>Ours[\s\S]*free ship/);
+  assert.match(html, /see all 5 on eBay ↗/);
+  assert.equal(c.list({ query:'x', active:{ count:0, sample:[] } }), '');
+  assert.equal(c.list(null), '');
+}
+assert.match(grab('focVariantPillsHtml'), /\+focListingsHtml\(focIntel\.market\['sku:'\+v\.id\]\);/, 'on every cover card, ratio covers too');
 console.log('FOC week eBay price check and hover matches checks passed');

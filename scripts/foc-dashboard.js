@@ -2226,6 +2226,25 @@ function focPcPill(pc){
   return {tone:raw?'good':'dim',href:p.url||'',text:'📈 PriceCharting '+(raw?'$'+raw.toFixed(2)+' raw':'graded only')+(vol?' · '+vol+' sold/yr':''),
     title:'PriceCharting: '+(p.productName||'')+(pc.via?' (matched by '+pc.via+')':'')+'\nRaw / ungraded: '+(raw?'$'+raw.toFixed(2):'--')+(grades.length?'\n'+grades.join('\n'):'')+(vol?'\nSales in the last year: '+vol:'')+'\nPrices come from eBay sales. Check the name is this exact cover.'+(pc.at?'\nChecked '+displayDate(String(pc.at).slice(0,10)):'')};
 }
+// Store ask: "can we get listed items on there from eBay?" -- the
+// matching eBay listings right on the cover card: picture, price +
+// shipping, auction or Buy It Now, each opening on eBay. Ours are marked.
+function focListingRowHtml(x,mine){
+  var total=Number(x.price||0)+Number(x.shipping||0);
+  return '<a href="'+esc(x.url||'#')+'" target="_blank" rel="noopener" style="display:grid;grid-template-columns:34px 1fr auto;gap:6px;align-items:center;padding:4px 0;border-top:1px solid var(--border);color:var(--text);text-decoration:none">'+
+    (x.imageUrl?'<img src="'+esc(x.imageUrl)+'" alt="" loading="lazy" style="width:34px;height:48px;object-fit:cover;border-radius:3px;background:#050507">':'<span style="width:34px;height:48px;border-radius:3px;background:#050507"></span>')+
+    '<span style="font:9px/1.35 var(--font-mono);overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">'+(mine?'<b style="color:var(--purple)">YOURS · </b>':'')+(x.auction?'<b style="color:var(--gold)">AUCTION · </b>':'')+esc(x.title)+'</span>'+
+    '<span style="font:900 10px var(--font-mono);color:var(--g);text-align:right;white-space:nowrap">$'+Number(x.price||0).toFixed(2)+(Number(x.shipping)>0?'<br><span style="font-weight:400;color:var(--dim)">+$'+Number(x.shipping).toFixed(2)+' ship</span>':'<br><span style="font-weight:400;color:var(--dim)">free ship</span>')+'</span></a>';
+}
+function focListingsHtml(m){
+  if(!m)return '';
+  var a=m.active||{},list=a.sample||[],own=a.own||[];
+  if(!list.length&&!own.length)return '';
+  var n=Number(a.count||list.length);
+  return '<details class="foc-listings" style="margin-top:4px"><summary style="cursor:pointer;font:900 9px var(--font-mono);color:var(--blue)">eBay listings ('+(n?n+' other'+(n===1?'':'s'):'none from others')+(own.length?' + yours':'')+')'+(a.low?' · from $'+Number(a.low).toFixed(2):'')+'</summary>'+
+    list.map(function(x){return focListingRowHtml(x,false);}).join('')+own.map(function(x){return focListingRowHtml(x,true);}).join('')+
+    (n>list.length?'<a href="'+esc(focEbaySearchUrl(m.query))+'" target="_blank" rel="noopener" style="display:block;font:9px var(--font-mono);color:var(--g);padding-top:4px">see all '+n+' on eBay ↗</a>':'')+'</details>';
+}
 // Hover: the listings (and sales) that matched, cheapest first.
 function focMarketSampleText(m){
   var a=(m&&m.active&&m.active.sample)||[],s=(m&&m.sold&&m.sold.sample)||[],out=[];
@@ -2260,7 +2279,7 @@ function focVariantPillsHtml(v){
   var mk=!v.isIncentive&&focIntel.market['sku:'+v.id];
   if(mk)pills=pills.concat(focMarketPills(mk,v.msrpCents));
   var pcp=!v.isIncentive&&focPcPill(focIntel.pc[v.id]);if(pcp)pills.push(pcp);
-  return (pills.length?'<div class="foc-intel-row">'+pills.map(focPillHtml).join('')+'</div>':'')+(v.isIncentive?focRatioValueHtml(v):'');
+  return (pills.length?'<div class="foc-intel-row">'+pills.map(focPillHtml).join('')+'</div>':'')+(v.isIncentive?focRatioValueHtml(v):'')+focListingsHtml(focIntel.market['sku:'+v.id]);
 }
 // What this exact cover sold for here (register + our own eBay listing).
 // Store report: "I sold one, so why no data? For anyone? Even us?"
