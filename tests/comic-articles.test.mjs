@@ -247,3 +247,8 @@ for(const slug of ['2025-topps-chrome-football-licensed-nfl-guide','2025-topps-c
  assert.match(refreshed,/new-b.jpg/);assert.match(refreshed,/data-article-cart/);assert.doesNotMatch(refreshed,/old.jpg/);
  assert.equal(refreshComicCoverFigures(figure,[status,status],escape),figure,'ambiguous issues must not replace photos');
 }
+
+{
+ const status=await bookStatus({},deps([{id:'sku-b',title:'ABSOLUTE BATMAN #25 CVR B',variant_label:'COVER B',cover_image_url:'https://example.com/dashboard-b.jpg'}],[{id:'received',focSkuId:'sku-b',name:'ABSOLUTE BATMAN #25 CVR B',price:7,quantity:3}]),'Absolute Batman #25');
+ assert.equal(status.stock[0].image,'https://example.com/dashboard-b.jpg','received copy without photo uses its exact linked dashboard SKU art');
+}

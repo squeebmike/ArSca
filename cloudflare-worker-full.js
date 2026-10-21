@@ -949,6 +949,7 @@ function shapeStorefrontItem(row) {
   const rowBase = Number(d.priceOverride || 0) || marketRulePrice(rowMarket, d.priceRule);
   const rowSignatureValue = Number(d.signature_value || 0) || 0;
   const item = {
+    focSkuId: storefrontCleanText(d.focSkuId || '', 80),
     id: storefrontCleanText(row.id, 80), name: storefrontCleanText(d.name || d.title || 'Item'), category: storefrontCleanText(d.category || d.type || 'Other', 80),
     categorySlug: storefrontCategorySlug([d.category, d.type, d.game, d.sport].filter(Boolean).join(' ')),
     productType: storefrontCleanText(d.productType || d.product_type || d.itemType || d.item_type || d.configuration || '', 80),
@@ -7866,7 +7867,7 @@ async function routeRequest(request, env, ctx) {
       const response=await handleFootballCatalog(request,env,url,{ctx,searchEbay:(query,campaignId,signal)=>fetchEbayActiveListings(env,query,{campaignId,listingType:'FixedPrice',limit:50,signal}),escape:mtgEscapeHtml,slug:mtgSlugify,shell:mtgPageShell,listItems:()=>optionalCatalogInventory(signal=>fetchAllListableStorefrontItemsCached(env,ctx,signal)),available:isStorefrontItemAvailable});
       if(response)return response;
     }
-    if(url.pathname==='/baseball'||url.pathname.startsWith('/baseball/')||url.pathname==='/sitemap-baseball.xml') {
+    if(url.pathname==='/sports/checklists'||url.pathname==='/baseball'||url.pathname.startsWith('/baseball/')||url.pathname==='/sitemap-baseball.xml') {
       const response=await handleBaseballCatalog(request,env,url,{ctx,searchEbay:(query,campaignId,signal)=>fetchEbayActiveListings(env,query,{campaignId,listingType:'FixedPrice',limit:50,signal}),escape:mtgEscapeHtml,slug:mtgSlugify,shell:mtgPageShell,listItems:()=>optionalCatalogInventory(signal=>fetchAllListableStorefrontItemsCached(env,ctx,signal)),available:isStorefrontItemAvailable});
       if(response)return response;
     }

@@ -17,6 +17,7 @@ on:
       - scripts/web-loyalty.mjs
       - scripts/database-edits.mjs
       - scripts/database-explorer.mjs
+      - scripts/sports-player-team-search.mjs
       - scripts/comic-articles.mjs
       - scripts/pull-list-page.mjs
       - scripts/article-marketplace.mjs

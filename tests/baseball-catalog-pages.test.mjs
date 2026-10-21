@@ -11,7 +11,7 @@ const get=(path,env={},method='GET')=>handleBaseballCatalog(new Request('https:/
 assert.equal((await get('/baseball')).status,200);
 let res=await get('/sitemap-baseball.xml'),xml=await res.text();
 const paths=[...xml.matchAll(/<loc>https:\/\/www.themanapocket.com([^<]+)<\/loc>/g)].map(m=>m[1]);
-assert.equal(paths.length,2+baseballSets.length+baseballSets.reduce((n,s)=>n+s.cards.length,0)+baseballTeams(baseballSets).length+baseballPlayers(baseballSets).length+baseballSectionSitemapPaths(baseballSets).length);assert.equal(new Set(paths).size,paths.length);
+assert.equal(paths.length,3+baseballSets.length+baseballSets.reduce((n,s)=>n+s.cards.length,0)+baseballTeams(baseballSets).length+baseballPlayers(baseballSets).length+baseballSectionSitemapPaths(baseballSets).length);assert.equal(new Set(paths).size,paths.length);
 const titles=new Set(),h1s=new Set();
 for(const set of baseballSets) {
  const numbers=new Set(set.cards.map(c=>c.cardNumber));assert.equal(numbers.size,set.cards.length);
@@ -113,3 +113,15 @@ const historical=baseballSets.find(s=>s.id==='2024-topps-stadium-club-baseball')
 assert.equal(historical.player,'Josh Gibson');assert.equal(historical.team,'Homestead','preserve the exact publisher team label');
 const enterprise=sectionsForSet(baseballSets.find(s=>s.id==='2026-topps-heritage-baseball')).find(g=>g.id==='the-enterprise');
 assert.equal(enterprise.cards.length,30);assert.ok(enterprise.cards.some(c=>c.cardNumber==='TE-JR'&&c.player==='Julio Rodríguez'));
+
+{
+ const {sportsReferenceRows,sportsPlayerTeamSearch}=await import('../scripts/sports-player-team-search.mjs');
+ const source=sportsReferenceRows();assert.ok(source.some(r=>r.type==='autographs'&&r.sport==='football'));
+ const sample=source.find(r=>r.type==='autographs'&&r.card.subjects[0]?.team);
+ const subject=sample.card.subjects[0];const url=new URL('https://www.themanapocket.com/sports/checklists');url.searchParams.set('player',subject.name);url.searchParams.set('team',subject.team);url.searchParams.set('type','autographs');
+ const result=sportsPlayerTeamSearch(url,escape);assert.ok(result.robotsNoindex);assert.match(result.bodyHtml,/name="player"/);assert.match(result.bodyHtml,/name="team"/);assert.ok(result.bodyHtml.includes(sample.href));
+ assert.equal((await get('/sports/checklists')).status,200);
+ assert.equal((await get('/sports/checklists?page=999999')).status,404);
+ const hostile=new URL('https://www.themanapocket.com/sports/checklists?player=%22%3E%3Cscript%3E');assert.doesNotMatch(sportsPlayerTeamSearch(hostile,escape).bodyHtml,/<script>/);
+ assert.ok(source.every(r=>r.href.startsWith('/'+r.sport+'/checklists/')));
+}

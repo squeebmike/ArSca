@@ -233,6 +233,13 @@ function coverLabel(sku) {
   return label.toLowerCase().replace(/(^|[\s(/-])([a-z])/g, (m, a, b) => a + b.toUpperCase()).replace(/\b(By|And|Of|The)\b(?!$)/g, w => w.toLowerCase()).replace(/^(.)/, c => c.toUpperCase()).replace(/\b(Tbd|Tba|Nycc|Sdcc)\b/g, w => w.toUpperCase());
 }
 
+function skuImageForStock(copy,skus){
+ const exact=skus.find(s=>copy.focSkuId&&s.id===copy.focSkuId);if(exact?.cover_image_url)return exact.cover_image_url;
+ const letter=String(copy.name||'').match(/\b(?:cover|cvr)\s+([a-z])\b/i)?.[1]?.toLowerCase();
+ const matches=letter?skus.filter(s=>String(s.variant_label||s.title||'').match(/\b(?:cover|cvr)\s+([a-z])\b/i)?.[1]?.toLowerCase()===letter):[];
+ return matches.length===1?matches[0].cover_image_url||'':'';
+}
+
 export async function bookStatus(env, deps, book, now = Date.now()) {
   const word = searchWord(book);
   const status = { name: book, state: 'coming', href: '', priceCents: 0, cover: '', covers: 0, cutoff: null, onSale: null };
@@ -258,7 +265,7 @@ export async function bookStatus(env, deps, book, now = Date.now()) {
   if (stock.length) {
     const item = stock[0];
     return { ...status, state: 'in_stock', href: `/item/${enc(item.id)}/${enc(deps.itemSlug(item))}`, priceCents: Math.round(Number(item.price || 0) * 100), cover: item.image || status.cover, covers: stock.length,
-      stock: stock.map(copy=>({id:copy.id,name:copy.name,category:copy.category||'Comics',image:copy.image||'',price:Number(copy.price),available:copy.quantity??copy.qty??(typeof copy.available==='number'?copy.available:undefined),href:`/item/${enc(copy.id)}/${enc(deps.itemSlug(copy))}`})) };
+      stock: stock.map(copy=>({id:copy.id,name:copy.name,category:copy.category||'Comics',image:copy.image||skuImageForStock(copy,skus),price:Number(copy.price),available:copy.quantity??copy.qty??(typeof copy.available==='number'?copy.available:undefined),href:`/item/${enc(copy.id)}/${enc(deps.itemSlug(copy))}`})) };
   }
   const orderable = skus.filter(s => s.customer_enabled && Number(s.customer_price_cents) > 0 && s.cycle?.status === 'open' && Date.parse(s.cycle?.customer_cutoff_at || '') > now);
   if (orderable.length) {
