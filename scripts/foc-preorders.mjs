@@ -3090,6 +3090,34 @@ export function isPullListCover(sku={}){
   return !label||/^(?:cover|regular|main|standard)$/i.test(label);
 }
 export function pullListSeriesKey(family={}){return comicSeriesKey({series:family.series_name||String(family.title||'').replace(/#.*$/,'')});}
+// Store ask: "the FOC should tell me what books I need to order for the
+// pull lists." Each title in the week whose series someone subscribes to,
+// with the cover they get (the same Cover A receiving sets aside) and who.
+export function pullListNeeds({skus=[],families=[],subs=[]}={}){
+  const bySeries=new Map();
+  for(const sub of subs){const k=comicSeriesKey({series:sub.series?.title});if(!k)continue;const list=bySeries.get(k)||[];list.push(text(sub.customer_name||sub.customer?.name,120)||'Pull-list customer');bySeries.set(k,list);}
+  const needs=[];
+  for(const f of families){
+    const names=bySeries.get(pullListSeriesKey(f));if(!names)continue;
+    const own=skus.filter(s=>s.family_id===f.id);
+    const cover=own.find(isPullListCover)||own.find(s=>!s.is_incentive);if(!cover)continue;
+    needs.push({familyId:f.id,title:text(f.title,200),skuId:cover.id,coverLabel:text(cover.variant_label,120)||'Cover A',guessed:!own.some(isPullListCover),subscribers:names});
+  }
+  return needs.sort((a,b)=>b.subscribers.length-a.subscribers.length||a.title.localeCompare(b.title));
+}
+async function adminPullListNeeds(request,env,deps,url){
+  const storeId=text(url.searchParams.get('store_id'),80),cycleId=text(url.searchParams.get('cycle_id'),80);
+  const auth=await deps.requireStoreUser(request,env,storeId,['owner','admin','manager','employee']);if(auth.error)return auth.error;
+  if(!UUID_RE.test(cycleId))return deps.json({ok:false,error:'cycle_id required'},400);
+  const db=(path,options)=>deps.supabaseAdminFetch(env,path,options),s=encodeURIComponent(storeId);
+  const {data:subs}=await db(`pull_list_subscriptions?store_id=eq.${s}&active=eq.true&select=id,customer_name,created_at,series:pull_list_series(title),customer:customers(name)&order=created_at.asc&limit=5000`);
+  if(!(subs||[]).length)return deps.json({ok:true,needs:[],subscribers:0});
+  const {data:skus}=await db(`comic_skus?cycle_id=eq.${encodeURIComponent(cycleId)}&store_id=eq.${s}&select=id,family_id,title,variant_label,is_incentive&limit=5000`);
+  const familyIds=[...new Set((skus||[]).map(k=>k.family_id).filter(Boolean))];
+  let families=[];
+  for(let i=0;i<familyIds.length;i+=150){const {data}=await db(`comic_title_families?id=${inFilter(familyIds.slice(i,i+150))}&select=id,title,series_name`);families=families.concat(data||[]);}
+  return deps.json({ok:true,needs:pullListNeeds({skus:skus||[],families,subs:subs||[]}),subscribers:subs.length});
+}
 export function shortCustomerName(name){
   const parts=String(name||'').trim().split(/\s+/).filter(Boolean);
   if(!parts.length)return '';
@@ -4395,6 +4423,7 @@ export async function handleFocRequest(request, env, url, deps) {
   if(path==='/foc/admin/ebay-listings/to-dashboard'&&request.method==='POST')return adminEbayListingToDashboard(request,env,deps);
   if(path==='/foc/admin/presale-stock-fix'&&request.method==='POST')return adminPresaleStockFix(request,env,deps);
   if(path==='/foc/admin/pick-list'&&request.method==='GET')return adminPickList(request,env,deps,url);
+  if(path==='/foc/admin/pull-list-needs'&&request.method==='GET')return adminPullListNeeds(request,env,deps,url);
   if(path==='/foc/admin/notify-arrivals'&&request.method==='POST')return adminNotifyArrivals(request,env,deps);
   if(path==='/foc/admin/late-books'&&request.method==='GET')return adminLateBooks(request,env,deps,url);
   if(path==='/foc/admin/holds'&&(request.method==='GET'||request.method==='POST'))return adminHolds(request,env,deps,url);

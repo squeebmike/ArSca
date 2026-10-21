@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.10.21.8-pull-holds-credit';
+const APP_VERSION = '2026.10.21.9-pull-order-needs';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -15222,7 +15222,8 @@ function renderProfitMeter(){
   requestLedgerSoldRows();
   const invSold=all.filter(i=>i.status==='sold');
   const sol=ledgerSoldRows || invSold.concat(getUnlinkedTransactionRows(invSold));
-  const catProfits=cats.map(c=>({c,p:sol.filter(i=>canonicalSaleCategory(i.category)===c).reduce((a,i)=>a+(i.profit||0),0)}));
+  // Store ask: most profit at the top, down to least.
+  const catProfits=cats.map(c=>({c,p:sol.filter(i=>canonicalSaleCategory(i.category)===c).reduce((a,i)=>a+(i.profit||0),0)})).sort((a,b)=>b.p-a.p);
   const maxP=Math.max(...catProfits.map(x=>Math.abs(x.p)),1);
   profitMeter.innerHTML=catProfits.map(({c,p})=>`
     <div class="pm-row" style="cursor:pointer" onclick="viewSalesByCategory('${escHtml(c)}')">

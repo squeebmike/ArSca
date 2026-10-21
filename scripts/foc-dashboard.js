@@ -375,7 +375,7 @@ async function openCycle(id){
   // review skus that don't belong to it. Same cycle-switch-only guard as
   // the filter reset above.
   if(!state.cycle||state.cycle.id!==id){state.query='';state.publisher='all';state.flag='all';state.ebay='all';focEbayBulkSelectedIds.clear();focEbayBulkQueue=null;focPublishBulkSelectedIds.clear();}
-  try{var data=await api('/foc/admin/cycles?store_id='+encodeURIComponent(getActiveStoreId())+'&cycle_id='+encodeURIComponent(id));state.cycle=data.cycle;state.families=data.families||[];renderCycle();focEnsureIntel();}
+  try{var data=await api('/foc/admin/cycles?store_id='+encodeURIComponent(getActiveStoreId())+'&cycle_id='+encodeURIComponent(id));state.cycle=data.cycle;state.families=data.families||[];renderCycle();focEnsureIntel();focShowPullNeeds(null,true);}
   catch(e){panel().innerHTML='<button class="hbtn" onclick="loadFocCycles()">BACK</button><div class="panel" style="margin-top:10px;color:var(--red)">'+esc(e.message)+'</div>';}
 }
 // Same refetch as openCycle, for actions that only changed ONE cover within
@@ -1414,6 +1414,7 @@ function renderFocReview(){
     '<label style="display:block;margin:12px 0;font:12px var(--font-mono)"><input type="checkbox" id="foc-import-website-only"> Website-only order import — keep every eBay listing unchanged</label>'+
     '<div id="foc-review-status" style="font:10px var(--font-mono);color:var(--dim);margin-top:8px">Checking submission status…</div>'+
     '<div id="foc-prh-cart-result"></div>'+
+    '<div id="foc-pull-needs"></div>'+
     '<div id="foc-what-to-order"></div>'+
     '<div id="foc-order-helper"></div>'+
     (needsListing.length?'<div class="panel" style="margin-top:10px;padding:12px 16px;border-color:rgba(255,209,102,.35)">'+
@@ -1429,6 +1430,7 @@ function renderFocReview(){
     }).join(''):'<div class="panel" style="padding:28px;text-align:center;color:var(--dim)">Nothing was ordered or qualifying this week.</div>');
   loadPrhSubmissionStatus();
   renderFocWhatToOrder();
+  focShowPullNeeds('foc-pull-needs',false);
 }
 function openFocReview(){renderFocReview();}
 
@@ -1556,6 +1558,67 @@ async function focApplySuggested(index){
   try{var data=await api('/foc/admin/cycles?store_id='+encodeURIComponent(getActiveStoreId())+'&cycle_id='+encodeURIComponent(state.cycle.id));state.cycle=data.cycle;state.families=data.families||[];}catch(e){}
   renderFocReview();
 }
+
+// ── Pull lists to order ──
+// Store ask: "the FOC should tell me what books I need to order for the
+// pull lists." Each title this week that someone's pull list covers: the
+// cover they get (the Cover A receiving sets aside), who, and whether the
+// store copies ordered cover them after eBay presales. Most subscribers
+// first.
+function focPullNeedRows(needs,families){
+  var byId={};(families||[]).forEach(function(f){(f.variants||[]).forEach(function(v){byId[v.id]=v;});});
+  return (needs||[]).map(function(n){
+    var v=byId[n.skuId]||{},store=Number(v.storeQuantity||0),ebay=Number(v.ebayPresold||0),want=n.subscribers.length;
+    return {familyId:n.familyId,title:n.title,skuId:n.skuId,coverLabel:n.coverLabel,guessed:!!n.guessed,subscribers:n.subscribers,store:store,ebay:ebay,short:Math.max(0,want+ebay-store)};
+  });
+}
+function focPullNeedsHtml(rows,compact){
+  if(!rows.length)return '';
+  var short=rows.filter(function(r){return r.short>0;}),missing=short.reduce(function(a,r){return a+r.short;},0);
+  var head='<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><div style="font:900 11px \'Orbitron\',monospace;color:var(--purple);letter-spacing:1px">📚 PULL LISTS · '+rows.length+' TITLE'+(rows.length===1?'':'S')+' THIS FOC · '+(missing?'<span style="color:var(--red)">'+missing+' COP'+(missing===1?'Y':'IES')+' SHORT</span>':'<span style="color:var(--g)">ALL COVERED</span>')+'</div>'+
+    (missing?'<button class="hbtn" style="padding:6px 10px;font-size:9px;color:var(--purple)" onclick="focPullAddMissing()">ADD ALL '+missing+' MISSING</button>':'')+'</div>';
+  var list=(compact?short:rows).map(function(r){
+    return '<div style="display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;border-top:1px solid var(--border);padding:6px 0;font:9px/1.5 var(--font-mono)">'+
+      '<div><b style="color:var(--text);font-size:10px">'+esc(r.title)+'</b> <span style="color:var(--dim)">· '+esc(r.coverLabel)+(r.guessed?' (no Cover A found -- check it)':'')+'</span><br>'+
+      '<span style="color:var(--text)">'+r.subscribers.length+' on pull list:</span> <span style="color:var(--dim)">'+esc(r.subscribers.join(', '))+'</span><br>'+
+      '<span style="color:var(--dim)">ordering '+r.store+' store cop'+(r.store===1?'y':'ies')+(r.ebay?' ('+r.ebay+' already sold on eBay)':'')+'</span></div>'+
+      (r.short?'<button class="hbtn" style="padding:4px 8px;font-size:8px;color:var(--red);white-space:nowrap" onclick="focPullAddMissing(\''+esc(r.skuId)+'\')">SHORT '+r.short+' · ADD</button>':'<span style="color:var(--g);white-space:nowrap">✓ covered</span>')+'</div>';
+  }).join('');
+  return '<div class="panel" style="margin-top:10px;padding:12px 16px;border-color:rgba(199,125,255,.4)">'+head+
+    '<div style="font:9px/1.5 var(--font-mono);color:var(--dim);margin:6px 0">Pull-list customers get the regular cover. Store copies have to cover them plus anything already sold on eBay; receiving sets one aside for each.'+(compact&&short.length<rows.length?' '+(rows.length-short.length)+' more already covered -- see FINAL FOC REVIEW.':'')+'</div>'+list+'</div>';
+}
+var focPullNeeds=null;
+async function focShowPullNeeds(hostId,banner){
+  if(!state.cycle)return;
+  var cycleId=state.cycle.id;
+  try{var d=await api('/foc/admin/pull-list-needs?store_id='+encodeURIComponent(getActiveStoreId())+'&cycle_id='+encodeURIComponent(cycleId));focPullNeeds={cycleId:cycleId,needs:d.needs||[]};}
+  catch(e){return;}
+  if(!state.cycle||state.cycle.id!==cycleId)return;
+  var rows=focPullNeedRows(focPullNeeds.needs,state.families);
+  var host=hostId?document.getElementById(hostId):null;
+  if(!host&&banner){
+    // Cover wall: only when something is short.
+    var hero=panel()&&panel().querySelector('.foc-hero');if(!hero||!rows.some(function(r){return r.short>0;}))return;
+    host=document.getElementById('foc-pull-banner')||hero.appendChild(Object.assign(document.createElement('div'),{id:'foc-pull-banner'}));
+  }
+  if(host)host.innerHTML=focPullNeedsHtml(rows,!!banner);
+}
+async function focPullAddMissing(skuId){
+  if(!focPullNeeds||!state.cycle)return;
+  var rows=focPullNeedRows(focPullNeeds.needs,state.families).filter(function(r){return r.short>0&&(!skuId||r.skuId===skuId);});
+  if(!rows.length){toast_dash('Already covered');return;}
+  if(!confirm('Order more for pull lists?\n\n'+rows.map(function(r){return r.title+' '+r.coverLabel+': '+r.store+' → '+(r.store+r.short);}).join('\n')))return;
+  var ok=0,failed=0;
+  for(var i=0;i<rows.length;i++){
+    try{await api('/foc/admin/sku',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({storeId:getActiveStoreId(),skuId:rows[i].skuId,storeQuantity:rows[i].store+rows[i].short})});ok++;}catch(e){failed++;}
+  }
+  toast_dash(ok+' cover'+(ok===1?'':'s')+' updated for pull lists'+(failed?' · '+failed+' failed':''));
+  if(document.getElementById('foc-pull-needs')){
+    try{var data=await api('/foc/admin/cycles?store_id='+encodeURIComponent(getActiveStoreId())+'&cycle_id='+encodeURIComponent(state.cycle.id));state.cycle=data.cycle;state.families=data.families||[];}catch(e){}
+    renderFocReview();
+  } else openCycle(state.cycle.id);
+}
+window.focPullAddMissing=focPullAddMissing;
 
 // ── On hold for preorders ──
 // Store report: Sean's paid preorder copy came in as plain shelf stock and
