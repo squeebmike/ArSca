@@ -27,9 +27,9 @@ export function sportsListingMatches(listing,card,set,group){
 export async function sportsListings(env,ctx,set,group,deps,{card=null,wait=false}={}){
  const campaign=String(env.EBAY_PARTNER_CAMPAIGN_ID||'');
  if(!/^\d{10}$/.test(campaign)||!env.LBA_KV||!deps.searchEbay)return [];
- const key='sports-checklist-listings-v1:'+campaign+':'+set.id+':'+group.id+':'+(card?.id||'section');
+ const key='sports-checklist-listings-v2:'+campaign+':'+set.id+':'+group.id+':'+(card?.id||'section');
  const load=async signal=>{
-  const query=[set.displayName,card?.player,card?.cardNumber,group.name].filter(Boolean).join(' ');
+  const query=[set.displayName.replace(/\b(?:baseball|football|cards)\b/gi,' ').replace(/\s+/g,' ').trim(),card?.player,card?.cardNumber,card?null:group.name.replace(/\b(?:base|cards|variation)\b/gi,' ').replace(/\s+/g,' ').trim()].filter(Boolean).join(' ');
   const result=await deps.searchEbay(query,campaign,signal);
   if(result.warning)throw new Error('Marketplace unavailable');
   const checkedAt=Date.now();

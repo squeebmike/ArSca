@@ -75,5 +75,8 @@ for(const section of groups){
  assert.ok(sportsListingMatches(offer,c,holiday,chrome));assert.ok(!sportsListingMatches({title:'2026 Topps Holiday Baseball Bobby Witt Jr H1'},c,holiday,chrome));
  const root=await(await get('/baseball/checklists/'+holiday.id)).text();assert.match(root,/Browse non-base cards/);assert.match(root,/All 440 named non-base entries/);
  assert.equal(holidayOddsRows.length,66);assert.equal(holidayOddsRows.find(r=>r.name==='Base Cards Holiday Lights').odds[1],'4:1');
+ let query='';const qenv={EBAY_PARTNER_CAMPAIGN_ID:'5339046175',LBA_KV:{get:async()=>null,put:async()=>{}}};
+ await sportsListings(qenv,null,holiday,chrome,{searchEbay:async q=>{query=q;return {listings:[]};}},{card:c,wait:true});
+ assert.match(query,/Bobby Witt Jr/);assert.match(query,/HC1/);assert.ok(!query.includes('Base Cards Chrome Variation'),'printed section headings must not over-constrain seller searches');
  assert.ok(sportsMarketplaceNotice.includes('not authentication'));assert.ok(sportsLookupScript.includes('document.hidden'));
 }
