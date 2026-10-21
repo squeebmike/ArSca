@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.10.20.5-lunar-large-covers';
+const APP_VERSION = '2026.10.21.1-price-age';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -7950,6 +7950,7 @@ function renderCardView(){
             class="inv-card-price-input">
         </div>
         <div class="inv-card-meta">Mkt: ${money.market > 0 ? fd$(money.market) : '—'}${money.cost ? ` · Cost ${fd$(money.cost)}` : ''}</div>
+        ${inventoryPriceAgeLabel(i) ? `<div class="inv-card-meta inv-price-age" style="color:${inventoryPriceAgeColor(i)}">${escHtml(inventoryPriceAgeLabel(i))}</div>` : ''}
         <div class="inv-card-meta">${inventoryImageSourceLabel(i)}${inventoryIsPriceStale(i) ? ' · stale price' : ''}</div>
         ${inventoryIsDropship(i) ? '<div class="inv-card-meta" style="color:var(--purple)">DROPSHIPPING ITEM · Supplier stock</div>' : i.qty > 1 ? `<div class="inv-card-meta" style="color:var(--g)">Qty: ${i.qty}</div>` : ''}
         <div class="inv-card-actions">
@@ -15643,6 +15644,44 @@ function inventoryProfitStats(item={}){
 function inventoryPriceDate(item={}){
   return item.priceUpdatedAt || item.lastPriceUpdate || item.pokemonPriceTrackerLastUpdated || item.raw?.priceUpdatedAt || item.raw?.lastPriceUpdate || '';
 }
+// Store ask: "what tells me how old the price data is for items in
+// inventory?" -- only a STALE badge did (past 14 days, or no date). Every
+// item now says how old its market price is, and the PRICE 30+ DAYS filter
+// lists in-stock items priced over a month ago (or never dated).
+const PRICE_OLD_DAYS = 30;
+// Supplies are priced by the supplier, not a market sync -- no age to show.
+function inventoryPriceAgeApplies(item={}){
+  return !inventoryIsDropship(item) && !/suppl/i.test(String(item.category || '')) && inventoryMarketPrice(item) > 0;
+}
+function inventoryPriceAgeDays(item={}){
+  const d = inventoryPriceDate(item);
+  const t = d ? new Date(d).getTime() : NaN;
+  return Number.isFinite(t) ? Math.max(0, Math.floor((Date.now() - t) / 86400000)) : null;
+}
+function inventoryPriceAgeLabel(item={}){
+  if(!inventoryPriceAgeApplies(item)) return '';
+  const days = inventoryPriceAgeDays(item);
+  if(days === null) return 'price date unknown';
+  const d = new Date(inventoryPriceDate(item));
+  const when = d.toLocaleDateString('en-US', { month:'short', day:'numeric', ...(d.getFullYear() !== new Date().getFullYear() ? { year:'numeric' } : {}) });
+  return 'price as of ' + when + ' (' + (days === 0 ? 'today' : days === 1 ? '1 day' : days + ' days') + ')';
+}
+function inventoryPriceIsOld(item={}){
+  if(!inventoryPriceAgeApplies(item)) return false;
+  const days = inventoryPriceAgeDays(item);
+  return days === null || days > PRICE_OLD_DAYS;
+}
+function inventoryPriceAgeColor(item={}){
+  const days = inventoryPriceAgeDays(item);
+  return days === null ? 'var(--gold)' : days > PRICE_OLD_DAYS ? 'var(--red)' : days > 14 ? 'var(--gold)' : 'var(--dim)';
+}
+// The edit screen's line under Market Price.
+function setEditMarketAge(item={}){
+  const el = document.getElementById('edit-market-age');
+  if(!el) return;
+  el.textContent = inventoryPriceAgeLabel(item);
+  el.style.color = inventoryPriceAgeColor(item);
+}
 function inventoryIsPriceStale(item={}){
   if(item.stalePrice) return true;
   const market = inventoryMarketPrice(item);
@@ -15771,6 +15810,7 @@ function inventoryHealthSummary(items=all){
     noCost:inStock.filter(i=>inventoryCostBasis(i) <= 0).length,
     noMarket:inStock.filter(i=>inventoryMarketPrice(i) <= 0).length,
     stale:inStock.filter(inventoryIsPriceStale).length,
+    oldPrice:inStock.filter(inventoryPriceIsOld).length,
     listed:inStock.filter(inventoryIsListed).length,
     notListed:inStock.filter(i=>!inventoryIsListed(i)).length,
     belowCost:inStock.filter(i=>{ const s=inventoryProfitStats(i); return s.cost>0 && s.list>0 && s.list<s.cost; }).length,
@@ -15879,6 +15919,7 @@ function renderInventoryHealthPanel(){
     ['no_cost','No Cost',h.noCost,'missing buy basis'],
     ['no_market','No Market',h.noMarket,'needs market sync'],
     ['stale_price','Stale Price',h.stale,'older than 14 days'],
+    ['old_price','Price 30+ Days',h.oldPrice,'market price over a month old'],
     ['not_listed','Not Listed',h.notListed,'in stock'],
     ['listed_online','Listed',h.listed,'online lifecycle'],
     ['below_cost','Below Cost',h.belowCost,'list below cost'],
@@ -16610,6 +16651,7 @@ function inventoryMatchesFlag(i, flag){
   if(flag === 'no_cost') return inventoryCostBasis(i) <= 0;
   if(flag === 'no_market') return inventoryMarketPrice(i) <= 0;
   if(flag === 'stale_price') return inventoryIsPriceStale(i);
+  if(flag === 'old_price') return inventoryPriceIsOld(i);
   if(flag === 'below_cost') return inventoryProfitStats(i).cost>0 && inventoryProfitStats(i).list>0 && inventoryProfitStats(i).list<inventoryProfitStats(i).cost;
   if(flag === 'high_value') return inventoryListPrice(i) >= 100;
   return true;
@@ -16694,7 +16736,7 @@ function renderTable(){
       <td><span class="sc2">${escHtml([i.set,i.variant].filter(Boolean).join(' · ')||'—')}</span><div class="sc2" style="margin-top:5px">${escHtml([i.year,i.condition,i.location].filter(Boolean).join(' · '))}</div>${comicPeople?`<div class="sc2" style="margin-top:5px;color:var(--purple)">${escHtml(comicPeople)}</div>`:''}</td>
       <td><span class="ct ${cat}">${i.category}</span></td>
       <td style="text-align:center;font-family:var(--font-mono);font-size:11px;color:${(i.qty||1)>1?'var(--g)':'var(--dim)'}">${inventoryIsDropship(i)?'Supplier':(i.qty||1)}</td>
-      <td class="pp pm">${money.list>0?fd$(money.list):(money.market>0?fd$(money.market):'—')}${inventoryPriceOverride(i)>0?'<span class="inv-lock" title="Price locked -- price syncs leave it alone">🔒</span>':''}<br>${money.list>0&&money.market>0?`<span style="font-family:var(--font-mono);font-size:8px;color:var(--dim)">MKT ${fd$(money.market)}</span><br>`:''}${priceSourceBadge(i.priceSource, i.category)}${stale?'<br><span class="inv-warning-pill">STALE</span>':''}</td>
+      <td class="pp pm">${money.list>0?fd$(money.list):(money.market>0?fd$(money.market):'—')}${inventoryPriceOverride(i)>0?'<span class="inv-lock" title="Price locked -- price syncs leave it alone">🔒</span>':''}<br>${money.list>0&&money.market>0?`<span style="font-family:var(--font-mono);font-size:8px;color:var(--dim)">MKT ${fd$(money.market)}</span><br>`:''}${priceSourceBadge(i.priceSource, i.category)}${stale?'<br><span class="inv-warning-pill">STALE</span>':''}${inventoryPriceAgeLabel(i)?`<br><span class="inv-price-age" style="font-family:var(--font-mono);font-size:8px;color:${inventoryPriceAgeColor(i)}">${escHtml(inventoryPriceAgeLabel(i))}</span>`:''}</td>
       <td class="pp pd">${inventoryIsDropship(i)?'Not owned':money.cost>0?fd$(money.cost):'<span class="inv-warning-pill">NO COST</span>'}</td>
       <td class="${ppc}">${money.cost>0||i.profit?(pft>=0?'+':'')+fd$(pft)+(money.list>0||money.cost>0?' ('+margin+')':''):'—'}</td>
       <td><span style="font-family:var(--font-mono);font-size:9px;color:${rowAvail.color}">${rowAvail.label}</span>${ins&&daysInStock!==null?`<div style="font-family:var(--font-mono);font-size:8px;color:${aged?'var(--red)':'var(--dim)'};margin-top:3px">${daysInStock}d in stock</div>`:''}${aged?'<span class="inv-warning-pill" style="margin-top:3px">AGED</span>':''}</td>
@@ -25090,6 +25132,7 @@ function openEditModal(id) {
   document.getElementById('edit-name').value = item.name || '';
   document.getElementById('edit-cost').value = item.cost || '';
   document.getElementById('edit-market').value = item.market || '';
+  setEditMarketAge(item);
   document.getElementById('edit-min-price').value = item.minPrice || '';
   document.getElementById('edit-ceiling-price').value = item.ceilingPrice || '';
   editPriceRule = inventoryPriceRule(item);
@@ -25180,6 +25223,7 @@ function openAddToInventoryModal(idx){
   document.getElementById('edit-item-title').textContent = (item.name || 'New item') + (item.year ? ' · '+item.year : '') + (item.set ? ' · '+item.set : '');
   document.getElementById('edit-cost').value = item.cost || '';
   document.getElementById('edit-market').value = item.market || '';
+  setEditMarketAge(item);
   document.getElementById('edit-min-price').value = item.minPrice || '';
   document.getElementById('edit-ceiling-price').value = item.ceilingPrice || '';
   // A research list price apart from market (a comic's valuation, say)
