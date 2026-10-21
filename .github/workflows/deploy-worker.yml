@@ -42,6 +42,7 @@ on:
       - scripts/collection-tools.mjs
       - scripts/pokemon-catalog-pages.mjs
       - scripts/football-catalog-pages.mjs
+      - scripts/secret-lair-prices.mjs
       - scripts/secret-lair-pages.mjs
       - scripts/secret-lair/**
       - scripts/secret-lair/drop-library.mjs

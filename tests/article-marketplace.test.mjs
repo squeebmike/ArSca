@@ -44,3 +44,12 @@ console.log('Marketplace cold/fresh/expired behavior, product IDs, inline cards 
  assert.equal(listingMatchesRelease('2025 Topps Chrome NFL Cam Ward autograph',football),true);
  assert.equal(listingMatchesRelease('2025 Topps Chrome Football auto',{displayName:'2025 Topps Chrome Baseball',year:2025}),false);
 }
+
+{
+ const sample=chooseArticleCards([{name:'Exact card',tcgPlayerId:123,prices:{usd:'12.34',usd_foil:'23.45'}}],{bodyHtml:'<p>Exact card</p>'});
+ const view=renderArticleMarketplace({checkedAt:Date.now(),cards:sample},'<p>Exact card</p>',esc);
+ assert.ok(view.body.includes('Nonfoil $12.34 USD')&&view.body.includes('Foil $23.45 USD'));
+ assert.ok(view.body.includes('Reference only')&&!view.body.includes('Listed at'));
+ const ebay=renderArticleMarketplace({checkedAt:Date.now(),cards:[{kind:'ebay',name:'Auto',href,image:'https://i.ebayimg.com/a.jpg',price:25,label:'Autograph'}]},'',esc);
+ assert.ok(ebay.after.includes('eBay asking price: $25.00 USD'));
+}

@@ -7858,7 +7858,7 @@ async function routeRequest(request, env, ctx) {
       const response=await handlePocketGuides(request,env,url,{escape:mtgEscapeHtml,shell:mtgPageShell,loadArticles:()=>fetchArticles(env,ctx)});if(response)return response;
     }
     if(url.pathname==='/secret-lair'||url.pathname.startsWith('/secret-lair/')||url.pathname==='/sitemap-secret-lair.xml') {
-      const response=await handleSecretLairPages(request,env,url,{escape:mtgEscapeHtml,slug:mtgSlugify,shell:mtgPageShell,listItems:()=>optionalCatalogInventory(signal=>fetchAllListableStorefrontItemsCached(env,ctx,signal)),available:isStorefrontItemAvailable});
+      const response=await handleSecretLairPages(request,env,url,{ctx,escape:mtgEscapeHtml,slug:mtgSlugify,shell:mtgPageShell,listItems:()=>optionalCatalogInventory(signal=>fetchAllListableStorefrontItemsCached(env,ctx,signal)),available:isStorefrontItemAvailable});
       if(response)return response;
     }
     if(url.pathname==='/football'||url.pathname.startsWith('/football/')||url.pathname==='/sitemap-football.xml') {
