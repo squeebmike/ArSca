@@ -230,3 +230,20 @@ for(const slug of ['2025-topps-chrome-football-licensed-nfl-guide','2025-topps-c
  const baseball=renderReleaseInventory('2024-topps-cosmic-chrome-baseball-collector-guide',[row('other-sport','Football Cards 2024 Topps Cosmic Chrome')],dep);
  assert.ok(!baseball.includes('/item/other-sport/'));
 }
+
+// All available covers survive status resolution and use live inventory photos.
+{
+ const {renderStockCovers,refreshComicCoverFigures}=await import('../scripts/comic-articles.mjs');
+ const escape=s=>String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+ const rows=[{id:'a',name:'ABSOLUTE BATMAN #25 CVR A',price:5.99,quantity:2,image:'https://example.com/new-a.jpg'}, {id:'b',name:'ABSOLUTE BATMAN #25 CVR B',price:6.99,quantity:1,image:'https://example.com/new-b.jpg'}, {id:'sold',name:'ABSOLUTE BATMAN #25 CVR C',price:6.99,available:false}];
+ const status=await bookStatus({},deps([],rows),'Absolute Batman #25');
+ assert.equal(status.stock.length,2);
+ const html=renderStockCovers(status,escape);
+ assert.equal((html.match(/data-article-cart=/g)||[]).length,2);
+ assert.match(html,/new-b.jpg/);assert.doesNotMatch(html,/CVR C/);
+ assert.equal(status.stock[0].available,2);
+ const figure='<figure><img src="old.jpg"><figcaption>Cover B — Campbell</figcaption></figure>';
+ const refreshed=refreshComicCoverFigures(figure,[status],escape);
+ assert.match(refreshed,/new-b.jpg/);assert.match(refreshed,/data-article-cart/);assert.doesNotMatch(refreshed,/old.jpg/);
+ assert.equal(refreshComicCoverFigures(figure,[status,status],escape),figure,'ambiguous issues must not replace photos');
+}

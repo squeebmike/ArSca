@@ -257,7 +257,8 @@ export async function bookStatus(env, deps, book, now = Date.now()) {
   }
   if (stock.length) {
     const item = stock[0];
-    return { ...status, state: 'in_stock', href: `/item/${enc(item.id)}/${enc(deps.itemSlug(item))}`, priceCents: Math.round(Number(item.price || 0) * 100), cover: item.image || status.cover, covers: stock.length };
+    return { ...status, state: 'in_stock', href: `/item/${enc(item.id)}/${enc(deps.itemSlug(item))}`, priceCents: Math.round(Number(item.price || 0) * 100), cover: item.image || status.cover, covers: stock.length,
+      stock: stock.map(copy=>({id:copy.id,name:copy.name,category:copy.category||'Comics',image:copy.image||'',price:Number(copy.price),available:copy.quantity??copy.qty??(typeof copy.available==='number'?copy.available:undefined),href:`/item/${enc(copy.id)}/${enc(deps.itemSlug(copy))}`})) };
   }
   const orderable = skus.filter(s => s.customer_enabled && Number(s.customer_price_cents) > 0 && s.cycle?.status === 'open' && Date.parse(s.cycle?.customer_cutoff_at || '') > now);
   if (orderable.length) {
@@ -421,22 +422,41 @@ document.querySelectorAll('[data-picker]').forEach(function(p){p.addEventListene
 })();</script>`;
 }
 
+export function renderStockCovers(status,esc){
+  if(!status.stock?.length)return '';
+  return '<div class="mp-stock-covers" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));gap:16px">'+status.stock.map(copy=>'<section style="padding:14px;border:1px solid var(--wo-border,rgba(255,255,255,.2));border-radius:12px;min-width:0">'+(copy.image?'<a href="'+esc(copy.href)+'"><img src="'+esc(copy.image)+'" alt="'+esc(copy.name)+'" loading="lazy" decoding="async" width="300" height="460" style="width:100%;height:300px;object-fit:contain"></a>':'')+'<h3>'+esc(copy.name)+'</h3><p><strong>$'+copy.price.toFixed(2)+' USD</strong></p><button type="button" class="mp-btn" data-article-cart="'+esc(JSON.stringify({id:copy.id,name:copy.name,category:copy.category,image:copy.image,price:copy.price,...(Number.isFinite(Number(copy.available))?{available:Number(copy.available)}:{})}))+'">Add to cart</button> <a href="'+esc(copy.href)+'">View copy</a><span role="status" data-cart-status></span></section>').join('')+'</div>';
+}
+export function refreshComicCoverFigures(body,statuses,esc){
+  const copies=statuses.flatMap(s=>s.stock||[]);
+  return body.replace(/<figure\b[^>]*>[\s\S]*?<\/figure>/gi,figure=>{
+    const caption=figure.match(/<figcaption\b[^>]*>([\s\S]*?)<\/figcaption>/i)?.[1]||'';
+    const letter=plainText(caption).match(/\bcover\s+([a-z])\b/i)?.[1]?.toLowerCase();
+    if(!letter)return figure;
+    // A letter is only unique inside one promoted issue. Never guess between books.
+    if(statuses.length!==1)return figure;
+    const found=copies.filter(c=>c.name.match(/\b(?:cover|cvr)\s+([a-z])\b/i)?.[1]?.toLowerCase()===letter);
+    if(found.length!==1)return figure;
+    const copy=found[0];
+    return '<figure>'+ (copy.image?'<a href="'+esc(copy.href)+'"><img src="'+esc(copy.image)+'" alt="'+esc(copy.name)+'" loading="lazy" decoding="async"></a>':figure.match(/<img\b[^>]*>/i)?.[0]||'')+'<figcaption>'+caption+'</figcaption></figure>'+renderStockCovers({stock:[{...copy,image:''}]},esc);
+  });
+}
+const articleCartScript=`<script>(function(){document.addEventListener('click',function(e){var b=e.target.closest('[data-article-cart]');if(!b)return;var s=b.parentElement.querySelector('[data-cart-status]');if(!window.WO||!window.WO.addToCart){s.textContent=' Cart is loading. Please try again or open View copy.';return;}try{var data=JSON.parse(b.getAttribute('data-article-cart')),cart=window.WO,before=cart.getCart?(cart.getCart().find(function(r){return r.id===data.id;})||{}).qty||0:0;if(data.available!==undefined&&before>=data.available){s.textContent=' All available copies are already in your cart.';return;}cart.addToCart(data,b);var after=cart.getCart?(cart.getCart().find(function(r){return r.id===data.id;})||{}).qty||0:0;s.textContent=after>before?' Added to cart':' Please check your cart or open View copy.';}catch(err){s.textContent=' Could not add this copy. Please open View copy.';}});})();</script>`;
 function renderBooks(statuses, esc) {
   if (!statuses.length) return '';
   return `<section class="mp-books"><h2>Get the books</h2>${statuses.map(s => `<div class="mp-book" id="${bookAnchor(s)}"><div class="mp-book-row">` +
     `<div class="mp-book-main">${s.cover ? `<img class="mp-book-img" src="${esc(s.cover)}" alt="${esc(s.name)} cover" loading="lazy">` : `<span class="mp-book-img mp-book-noimg">Cover coming</span>`}` +
     `<div><b>${esc(s.name)}</b><span>${statusLine(s, esc)}</span></div></div>` +
     `${s.state === 'preorder' ? '' : button(s)}</div>` +
-    `${s.state === 'preorder' && s.options?.length ? renderCoverPicker(s, esc) : ''}</div>`).join('')}</section>`;
+    `${s.state === 'preorder' && s.options?.length ? renderCoverPicker(s, esc) : ''}${renderStockCovers(s,esc)}</div>`).join('')}</section>`;
 }
 
 export function renderArticlePage(article, statuses, related, deps) {
   const esc = deps.esc;
-  const marketplace=renderArticleMarketplace(deps.articleMarketplace,affiliateTcgImages(article.bodyHtml,esc),esc);
+  const marketplace=renderArticleMarketplace(deps.articleMarketplace,affiliateTcgImages(refreshComicCoverFigures(article.bodyHtml,statuses,esc),esc),esc);
   const contents=articleContents(marketplace.body,esc);
   const guide=releaseGuide(article.slug);
   const main = statuses[0] || null;
-  const image = article.image || main?.cover || '';
+  const image = (main?.state === 'in_stock' ? main.cover : '') || article.image || main?.cover || '';
   const affiliateHero=tcgImageAffiliateUrl(image);
   const url = `https://www.themanapocket.com/articles/${article.slug}`;
   const facts = article.facts.length
@@ -472,7 +492,7 @@ export function renderArticlePage(article, statuses, related, deps) {
       renderBuyBox(article, main, esc) +
       (main ? `<nav class="mp-art-shortcuts" aria-label="Book actions"><a href="#${bookAnchor(main)}">Covers &amp; availability</a><a href="/comics/search?q=${encodeURIComponent(comicKey(main.name).series)}">Find related comics</a><a href="#book-updates">Book updates</a></nav>` : '') +
       `<div class="mp-art-body">${contents.html}</div>` + (deps.releaseInventoryHtml || '') + marketplace.after + facts + renderBooks(statuses, esc) + renderBookUpdates(article, deps.storeId, esc) + articleShoppingLinks(article) + more + `</article>` +
-      (statuses.some(st => st.options?.length) ? pickerScript(deps.storeId) : ''),
+      (statuses.some(st => st.options?.length) ? pickerScript(deps.storeId) : '') + (statuses.some(st=>st.stock?.length)?articleCartScript:''),
   });
 }
 
