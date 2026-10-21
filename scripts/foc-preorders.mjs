@@ -2199,6 +2199,9 @@ export function coverTitleMatches(title,query){
   return true;
 }
 const median=values=>{const v=values.filter(n=>n>0).sort((a,b)=>a-b);if(!v.length)return null;const m=Math.floor(v.length/2);return Math.round((v.length%2?v[m]:(v[m-1]+v[m])/2)*100)/100;};
+// What the cover card shows for each listing: picture, price + shipping,
+// auction or Buy It Now, and the link.
+const listingSample=l=>({title:text(l.title,120),price:Number(l.price||0),shipping:Number(l.shipping||0),url:l.url||'',imageUrl:l.imageUrl||'',auction:l.listingType==='Auction'});
 export function summarizeCoverMarket(query,listings=[],comps=[],ownIds=new Set()){
   const own=id=>{const s=String(id||'');return ownIds.has(s)||ownIds.has(s.split('|')[1]||'');};
   const matching=listings.filter(l=>coverTitleMatches(l.title,query));
@@ -2207,7 +2210,9 @@ export function summarizeCoverMarket(query,listings=[],comps=[],ownIds=new Set()
   const ask=active.map(l=>Number(l.price||0)),paid=sold.map(c=>Number(c.total||c.price||0));
   return {query:query.q,
     ownListed:matching.length-active.length,
-    active:{count:active.length,low:ask.length?Math.min(...ask):null,median:median(ask),high:ask.length?Math.max(...ask):null,presales:active.filter(l=>/pre-?sale|pre-?order/i.test(l.title||'')).length,sample:active.slice().sort((a,b)=>Number(a.price||0)-Number(b.price||0)).slice(0,8).map(l=>({title:text(l.title,120),price:l.price,url:l.url||''}))},
+    active:{count:active.length,low:ask.length?Math.min(...ask):null,median:median(ask),high:ask.length?Math.max(...ask):null,presales:active.filter(l=>/pre-?sale|pre-?order/i.test(l.title||'')).length,sample:active.slice().sort((a,b)=>Number(a.price||0)-Number(b.price||0)).slice(0,8).map(listingSample),
+      // Ours too, marked, so "only your listing is up" can show which.
+      own:matching.filter(l=>own(l.itemId)).slice(0,2).map(listingSample)},
     sold:{count:sold.length,median:median(paid),low:paid.length?Math.min(...paid):null,high:paid.length?Math.max(...paid):null,last:sold[0]?{price:Number(sold[0].total||sold[0].price||0),soldAt:sold[0].soldAt||null,title:text(sold[0].title,120)}:null,
       sample:sold.slice(0,8).map(c=>({title:text(c.title,120),price:Number(c.total||c.price||0),soldAt:c.soldAt||null}))}};
 }
@@ -2225,7 +2230,7 @@ async function adminCoverMarket(request,env,deps){
   const results={};
   for(const cover of covers){
     const query=coverMarketQuery(cover);
-    const cacheKey='foc-cover-market:v2:'+query.q.toLowerCase()+(query.variant?':v':'');
+    const cacheKey='foc-cover-market:v3:'+query.q.toLowerCase()+(query.variant?':v':'');
     let hit=null;
     if(env.LBA_KV&&!body.refresh)try{hit=await env.LBA_KV.get(cacheKey,'json');}catch(_){}
     if(hit){results[cover.key]={...hit,cached:true};continue;}
