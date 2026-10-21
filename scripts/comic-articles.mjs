@@ -429,9 +429,9 @@ document.querySelectorAll('[data-picker]').forEach(function(p){p.addEventListene
 })();</script>`;
 }
 
-export function renderStockCovers(status,esc){
+export function renderStockCovers(status,esc,{showImage=true}={}){
   if(!status.stock?.length)return '';
-  return '<div class="mp-stock-covers" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));gap:16px">'+status.stock.map(copy=>'<section style="padding:14px;border:1px solid var(--wo-border,rgba(255,255,255,.2));border-radius:12px;min-width:0">'+(copy.image?'<a href="'+esc(copy.href)+'"><img src="'+esc(copy.image)+'" alt="'+esc(copy.name)+'" loading="lazy" decoding="async" width="300" height="460" style="width:100%;height:300px;object-fit:contain"></a>':'')+'<h3>'+esc(copy.name)+'</h3><p><strong>$'+copy.price.toFixed(2)+' USD</strong></p><button type="button" class="mp-btn" data-article-cart="'+esc(JSON.stringify({id:copy.id,name:copy.name,category:copy.category,image:copy.image,price:copy.price,...(Number.isFinite(Number(copy.available))?{available:Number(copy.available)}:{})}))+'">Add to cart</button> <a href="'+esc(copy.href)+'">View copy</a><span role="status" data-cart-status></span></section>').join('')+'</div>';
+  return '<div class="mp-stock-covers" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));gap:16px">'+status.stock.map(copy=>'<section style="padding:14px;border:1px solid var(--wo-border,rgba(255,255,255,.2));border-radius:12px;min-width:0">'+(showImage&&copy.image?'<a href="'+esc(copy.href)+'"><img src="'+esc(copy.image)+'" alt="'+esc(copy.name)+'" loading="lazy" decoding="async" width="300" height="460" style="width:100%;height:300px;object-fit:contain"></a>':'')+'<h3>'+esc(copy.name)+'</h3><p><strong>$'+copy.price.toFixed(2)+' USD</strong></p><button type="button" class="mp-btn" data-article-cart="'+esc(JSON.stringify({id:copy.id,name:copy.name,category:copy.category,image:copy.image,price:copy.price,...(Number.isFinite(Number(copy.available))?{available:Number(copy.available)}:{})}))+'">Add to cart</button> <a href="'+esc(copy.href)+'">View copy</a><span role="status" data-cart-status></span></section>').join('')+'</div>';
 }
 export function refreshComicCoverFigures(body,statuses,esc){
   const copies=statuses.flatMap(s=>s.stock||[]);
@@ -444,7 +444,7 @@ export function refreshComicCoverFigures(body,statuses,esc){
     const found=copies.filter(c=>c.name.match(/\b(?:cover|cvr)\s+([a-z])\b/i)?.[1]?.toLowerCase()===letter);
     if(found.length!==1)return figure;
     const copy=found[0];
-    return '<figure>'+ (copy.image?'<a href="'+esc(copy.href)+'"><img src="'+esc(copy.image)+'" alt="'+esc(copy.name)+'" loading="lazy" decoding="async"></a>':figure.match(/<img\b[^>]*>/i)?.[0]||'')+'<figcaption>'+caption+'</figcaption></figure>'+renderStockCovers({stock:[{...copy,image:''}]},esc);
+    return '<figure>'+ (copy.image?'<a href="'+esc(copy.href)+'"><img src="'+esc(copy.image)+'" alt="'+esc(copy.name)+'" loading="lazy" decoding="async"></a>':figure.match(/<img\b[^>]*>/i)?.[0]||'')+'<figcaption>'+caption+'</figcaption></figure>'+renderStockCovers({stock:[copy]},esc,{showImage:false});
   });
 }
 const articleCartScript=`<script>(function(){document.addEventListener('click',function(e){var b=e.target.closest('[data-article-cart]');if(!b)return;var s=b.parentElement.querySelector('[data-cart-status]');if(!window.WO||!window.WO.addToCart){s.textContent=' Cart is loading. Please try again or open View copy.';return;}try{var data=JSON.parse(b.getAttribute('data-article-cart')),cart=window.WO,before=cart.getCart?(cart.getCart().find(function(r){return r.id===data.id;})||{}).qty||0:0;if(data.available!==undefined&&before>=data.available){s.textContent=' All available copies are already in your cart.';return;}cart.addToCart(data,b);var after=cart.getCart?(cart.getCart().find(function(r){return r.id===data.id;})||{}).qty||0:0;s.textContent=after>before?' Added to cart':' Please check your cart or open View copy.';}catch(err){s.textContent=' Could not add this copy. Please open View copy.';}});})();</script>`;

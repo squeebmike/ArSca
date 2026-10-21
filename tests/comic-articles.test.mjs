@@ -244,7 +244,7 @@ for(const slug of ['2025-topps-chrome-football-licensed-nfl-guide','2025-topps-c
  assert.equal(status.stock[0].available,2);
  const figure='<figure><img src="old.jpg"><figcaption>Cover B — Campbell</figcaption></figure>';
  const refreshed=refreshComicCoverFigures(figure,[status],escape);
- assert.match(refreshed,/new-b.jpg/);assert.match(refreshed,/data-article-cart/);assert.doesNotMatch(refreshed,/old.jpg/);
+ assert.match(refreshed,/new-b.jpg/);assert.match(refreshed,/&quot;image&quot;:&quot;https:\/\/example.com\/new-b.jpg/,'inline cart retains cover image without repeating the displayed image');assert.match(refreshed,/data-article-cart/);assert.doesNotMatch(refreshed,/old.jpg/);
  assert.equal(refreshComicCoverFigures(figure,[status,status],escape),figure,'ambiguous issues must not replace photos');
 }
 
