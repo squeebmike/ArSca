@@ -39,7 +39,7 @@ import { storeOrganization, productFacts, productCondition, productHeading, rend
 // It has zero Node dependencies (pure-JS SHA-1), so it bundles straight into
 // the Worker -- reused here instead of duplicating checklist-parsing logic.
 import { buildChecklistIndex, parseChecklistText, sha1Hex, slugify } from './scripts/topps-checklist-parser.js';
-import { handleFocRequest, syncFocStripeEvent, shippingSettings, runScheduledStockHealth, withRatioWord, parseMyEbaySellingActive, ebayItemFromGetItem, uniqueCoverLabels, coverLabelFromTitle } from './scripts/foc-preorders.mjs';
+import { handleFocRequest, syncFocStripeEvent, shippingSettings, runScheduledStockHealth, withRatioWord, parseMyEbaySellingActive, ebayItemFromGetItem, uniqueCoverLabels, coverLabelFromTitle, pullListNeeds, coverMarketQuery, summarizeCoverMarket, priceWatchFlag, focDigestEmail, isPullListCover } from './scripts/foc-preorders.mjs';
 import { handleOrdersBoard, handleOrderMarkShipped } from './scripts/orders-board.mjs';
 import { handleBacklistRequest, syncBacklistStripeEvent } from './scripts/backlist-catalog.mjs';
 import { searchComics, comicSearchShell, comicSearchScriptResponse, injectComicSearch } from './scripts/comic-search.mjs';
@@ -3353,6 +3353,8 @@ function pokemonQuotaHeaders(headers) {
 // 5 oz empty) unless the caller set its own, and its description always
 // carries both notices -- whatever description template produced it.
 const COMIC_GEMINI_MAILER = { dimLength: 12.75, dimWidth: 7.75, dimHeight: 1.25, dimUnit: 'INCH', emptyWeightLb: 0.3125 };
+// Store call: a single issue in its Gemini mailer, bagged and boarded, ships at 8 oz.
+const COMIC_SINGLE_PACKED_LB = 0.5;
 const COMIC_SHIPPING_NOTE = 'Bagged & boarded and shipped in a Gemini mailer.';
 function comicPresaleNotice(onSaleLabel = '') {
   return 'PRESALE -- This comic has not been released yet and is not currently in stock.'
@@ -3444,6 +3446,8 @@ function applyComicListingDefaults(b = {}) {
   if (!isComicEbayListing(b)) return b;
   const out = { ...b };
   if (!(Number(out.dimLength) > 0)) Object.assign(out, { dimLength: COMIC_GEMINI_MAILER.dimLength, dimWidth: COMIC_GEMINI_MAILER.dimWidth, dimHeight: COMIC_GEMINI_MAILER.dimHeight, dimUnit: COMIC_GEMINI_MAILER.dimUnit });
+  // No weight, or the 0.1 lb card default: a single issue packed, 8 oz.
+  if (!(Number(out.weightValue) > 0.1)) Object.assign(out, { weightValue: COMIC_SINGLE_PACKED_LB, weightUnit: 'POUND' });
   out.description = withComicListingNotices(out.description || '', { presale: !!out.isPresale, onSaleLabel: ebayOnSaleLabel(out.onSaleDate) });
   return out;
 }
@@ -3800,6 +3804,71 @@ async function voidCancelledEbayOrders(env, storeId, ebayToken, orders, userId) 
   }
   return voided;
 }
+// Store ask: "when eBay confirms a return, take the money out of sales and
+// profit and put the copy back in stock. For a partial refund, take out
+// just the refunded amount." Orders changed in the last 30 days that eBay
+// shows as (partly) refunded after shipping: a full refund whose return
+// eBay shows delivered back is voided and the copy restocked (same as VOID
+// SALE); any other refund is recorded once (pos_refunds, keyed on eBay's
+// refund id) and comes off the sale's total, so profit drops by exactly
+// that amount. Cancelled/unshipped refunds are voidCancelledEbayOrders'.
+function ebayOrderRefunds(o) {
+  return ((o?.paymentSummary?.refunds) || [])
+    .filter(r => Number(r?.amount?.value) > 0 && !/FAIL|PENDING/i.test(String(r.refundStatus || '')))
+    .map(r => ({ id: String(r.refundId || r.refundReferenceId || ''), cents: Math.round(Number(r.amount.value) * 100), at: r.refundDate || null }))
+    .filter(r => r.id);
+}
+function ebayReturnIsBack(ret) {
+  const t = [ret?.state, ret?.status, ret?.currentType, ret?.returnShipmentStatus, ret?.shipmentStatus].map(x => String(x || '')).join(' ').toUpperCase();
+  return /ITEM_DELIVERED|DELIVERED|RECEIVED/.test(t);
+}
+async function recordEbayRefunds(env, storeId, ebayToken, userId) {
+  const since = new Date(Date.now() - 30 * 86400000).toISOString();
+  const { orders } = await fetchAllEbayOrders(ebayToken, 'lastmodifieddate:[' + since + '..]', 200, 3);
+  const refunded = (orders || []).filter(o => /REFUNDED/i.test(String(o.orderPaymentStatus || '')) && !ebayOrderIsCancelled(o));
+  if (!refunded.length) return [];
+  const back = new Set();
+  try {
+    const qs = new URLSearchParams({ creation_date_range_from: new Date(Date.now() - 60 * 86400000).toISOString(), creation_date_range_to: new Date().toISOString(), limit: '200' });
+    const res = await fetch('https://api.ebay.com/post-order/v2/return/search?' + qs, { headers: { Authorization: 'IAF ' + ebayToken, Accept: 'application/json' } });
+    const data = res.ok ? await res.json().catch(() => ({})) : {};
+    for (const m of data.members || data.returns || []) if (ebayReturnIsBack(m)) back.add(String(m.orderId || m.legacyOrderId || ''));
+  } catch (e) { console.warn('eBay return lookup skipped:', e.message); }
+  const s = encodeURIComponent(storeId), out = [];
+  for (const o of refunded) {
+    const { data: payments } = await supabaseAdminFetch(env, `pos_payments?store_id=eq.${s}&provider=eq.ebay&reference=eq.${encodeURIComponent(o.orderId)}&select=id,sale_id,amount&limit=1`);
+    const pay = payments?.[0]; if (!pay?.sale_id) continue;
+    const { data: sales } = await supabaseAdminFetch(env, `pos_sales?id=eq.${encodeURIComponent(pay.sale_id)}&store_id=eq.${s}&select=id,status,total,refund_total_cents&limit=1`);
+    const sale = sales?.[0]; if (!sale || !['completed', 'succeeded'].includes(sale.status)) continue;
+    const totalCents = Math.round(Number(sale.total || pay.amount || 0) * 100);
+    const refunds = ebayOrderRefunds(o);
+    const full = /FULLY_REFUNDED/i.test(String(o.orderPaymentStatus || '')) || refunds.reduce((n, r) => n + r.cents, 0) >= totalCents;
+    if (full && back.has(String(o.orderId))) {
+      const { data: rows } = await supabaseAdminFetch(env, `pos_sales?id=eq.${encodeURIComponent(sale.id)}&store_id=eq.${s}&status=in.(completed,succeeded)`, { method: 'PATCH', headers: { Prefer: 'return=representation' }, body: JSON.stringify({ status: 'voided' }) });
+      if (!rows?.length) continue;
+      const { data: lines } = await supabaseAdminFetch(env, `pos_sale_lines?sale_id=eq.${encodeURIComponent(sale.id)}&store_id=eq.${s}&select=id,item_id,quantity,title`);
+      const restocked = await restockVoidedSaleLines(env, { storeId, saleId: sale.id, lines: lines || [], userId: userId || null });
+      await supabaseAdminFetch(env, `pos_payments?sale_id=eq.${encodeURIComponent(sale.id)}&store_id=eq.${s}`, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ status: 'refunded' }) });
+      out.push({ orderId: o.orderId, saleId: sale.id, kind: 'returned', cents: totalCents, titles: (lines || []).map(l => l.title).filter(Boolean), restocked });
+      continue;
+    }
+    let added = 0;
+    for (const r of refunds) {
+      const row = { id: crypto.randomUUID(), store_id: storeId, sale_id: sale.id, payment_id: pay.id, provider: 'ebay', stripe_mode: 'live', amount_cents: r.cents, currency: 'USD',
+        reason: 'ebay_refund', internal_note: 'eBay refund ' + r.id + (r.at ? ' on ' + String(r.at).slice(0, 10) : ''), status: 'succeeded', refund_application_fee: false,
+        application_fee_refund_amount_cents: 0, restock_mode: 'none', line_item_ids: [], failure_reason: '', stripe_reference: 'ebay:' + r.id, idempotency_key: 'ebay-refund:' + r.id, created_by: userId || null };
+      const { data: made } = await supabaseAdminFetch(env, 'pos_refunds?on_conflict=idempotency_key', { method: 'POST', headers: { Prefer: 'resolution=ignore-duplicates,return=representation' }, body: JSON.stringify([row]) });
+      if ((made || []).length) added += r.cents;
+    }
+    if (!added) continue;
+    const refundedTotal = Math.min(totalCents, Number(sale.refund_total_cents || 0) + added);
+    const status = refundedTotal >= totalCents ? 'refunded' : 'partially_refunded';
+    await supabaseAdminFetch(env, `pos_payments?id=eq.${encodeURIComponent(pay.id)}&store_id=eq.${s}`, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ status, refunded_amount_cents: refundedTotal }) });
+    await supabaseAdminFetch(env, `pos_sales?id=eq.${encodeURIComponent(sale.id)}&store_id=eq.${s}`, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ payment_status: status, refund_total_cents: refundedTotal, refundable_remaining_cents: Math.max(0, totalCents - refundedTotal) }) });
+    out.push({ orderId: o.orderId, saleId: sale.id, kind: status === 'refunded' ? 'refunded' : 'partial', cents: added, refundedTotal, totalCents });
+  }
+  return out;
+}
 async function syncEbayOrdersForStore(env, storeId, ebayToken, receiptSettings, { reconcile, confirmedBy }) {
     // Regular sync only looks at orders eBay itself hasn't marked fulfilled yet.
     // Reconcile mode additionally covers orders already fulfilled (through eBay's
@@ -3927,7 +3996,10 @@ async function syncEbayOrdersForStore(env, storeId, ebayToken, receiptSettings, 
     let cancelled = [];
     try { cancelled = await voidCancelledEbayOrders(env, storeId, ebayToken, orders, confirmedBy); }
     catch (e) { errors.push({ error: 'cancellations: ' + e.message }); }
-    return { ok: true, checked: orders.length, matched: matchedCount, recorded: results.length, results, errors, cancelled };
+    let refunds = [];
+    try { refunds = await recordEbayRefunds(env, storeId, ebayToken, confirmedBy); }
+    catch (e) { errors.push({ error: 'refunds: ' + e.message }); }
+    return { ok: true, checked: orders.length, matched: matchedCount, recorded: results.length, results, errors, cancelled, refunds };
 }
 
 // Label costs (and real fees for any sale recorded with an estimate) come
@@ -5719,8 +5791,11 @@ async function routeRequest(request, env, ctx) {
       // undercharging shipping on the heavier end rather than a single flat
       // guess. Always editable on the review screen before publishing.
       // Plus the Gemini mailer it ships in (about 5 oz).
-      const bookLb = priceCents >= 2000 ? 1.5 : priceCents >= 1000 ? 0.625 : 0.25;
-      const weight = { weightValue: bookLb + COMIC_GEMINI_MAILER.emptyWeightLb, weightUnit: 'POUND' };
+      // Store call: a single issue ships at 8 oz packed (Gemini mailer +
+      // comic + bag and board).
+      const weight = priceCents >= 1000
+        ? { weightValue: (priceCents >= 2000 ? 1.5 : 0.625) + COMIC_GEMINI_MAILER.emptyWeightLb, weightUnit: 'POUND' }
+        : { weightValue: COMIC_SINGLE_PACKED_LB, weightUnit: 'POUND' };
       return { title, description, customAspects, onSaleLabel, synopsis, ...weight };
     }
 
@@ -6507,6 +6582,7 @@ async function routeRequest(request, env, ctx) {
       catch (e) { return json({ ok: false, error: e.message }, 502); }
     }
     if (url.pathname === '/foc/ebay/auto-list') return handleFocAutoListRoute(request, env, url);
+    if (url.pathname === '/foc/ebay/price-watch' && request.method === 'GET') return handleFocPriceWatchRoute(request, env, url);
 
     if (url.pathname === '/foc/ebay/refresh-presale-descriptions') {
       if (request.method !== 'POST') return json({ error: 'POST only' }, 405);
@@ -18154,6 +18230,7 @@ async function runScheduledFocCoverSwap(env, ctx) {
     const { focCoverPending, ...rest } = r.data || {};
     await supabaseAdminFetch(env, `inventory_items?id=eq.${encodeURIComponent(r.id)}&store_id=eq.${encodeURIComponent(r.store_id)}`, { method:'PATCH', headers:{ Prefer:'return=minimal' }, body:JSON.stringify({ data:{ ...rest, image:url, focCoverArtAt:new Date().toISOString() } }) });
     swapped++;
+    await focLogActivity(env, r.store_id, ['Cover art swapped in on eBay: ' + String(rest.name || 'a cover').replace(/\s*-\s*PRESALE\s*$/i, '')]);
     if (rest.ebayInventoryItemGroupKey) groups.set(r.store_id + '|' + rest.ebayInventoryItemGroupKey, { storeId:r.store_id, groupKey:rest.ebayInventoryItemGroupKey });
   }
   for (const g of groups.values()) {
@@ -18252,6 +18329,7 @@ async function runFocAutoListForStore(env, ctx, storeId, { today = pacificToday(
     }
   }
   if (!due.length) return { listed, failed };
+  await focLogActivity(env, storeId, [...listed.map(l => 'Auto-listed on eBay: ' + l), ...failed.map(f => 'Could not auto-list: ' + f)]);
   queue.items = queue.items.filter(item => !done.has(item.key));
   await saveFocAutoList(env, storeId, queue);
   if ((listed.length || failed.length) && queue.email) {
@@ -18260,6 +18338,142 @@ async function runFocAutoListForStore(env, ctx, storeId, { today = pacificToday(
   }
   return { listed, failed };
 }
+// What the auto-list run, the art swap and the price watch did, for the
+// next FOC email ("since the last email").
+const FOC_ACTIVITY_KV = storeId => 'foc-activity:' + storeId;
+async function focLogActivity(env, storeId, lines) {
+  if (!env.LBA_KV || !lines.length) return;
+  let log = [];
+  try { log = (await env.LBA_KV.get(FOC_ACTIVITY_KV(storeId), 'json')) || []; } catch (_) {}
+  const at = new Date().toISOString();
+  log = log.concat(lines.map(text => ({ at, text: String(text).slice(0, 240) }))).slice(-150);
+  try { await env.LBA_KV.put(FOC_ACTIVITY_KV(storeId), JSON.stringify(log), { expirationTtl: 60 * 86400 }); } catch (_) {}
+}
+
+// ── Price watch ──
+// Store ask: a weekly check of our live eBay presale prices against other
+// sellers' asks, flagged when well under or over (priceWatchFlag) -- never
+// changed. 12 listings a run (every 6 hours), oldest-checked first, so the
+// whole set is re-checked every few days without a burst of searches.
+const FOC_PRICE_WATCH_KV = storeId => 'foc-price-watch:' + storeId;
+const FOC_PRICE_WATCH_PER_RUN = 12;
+async function loadFocPriceWatch(env, storeId) {
+  try { const v = await env.LBA_KV?.get(FOC_PRICE_WATCH_KV(storeId), 'json'); if (v && v.items) return v; } catch (_) {}
+  return { at: '', live: 0, items: {} };
+}
+async function runFocPriceWatchForStore(env, storeId, rows, { limit = FOC_PRICE_WATCH_PER_RUN, now = new Date().toISOString() } = {}) {
+  const report = await loadFocPriceWatch(env, storeId);
+  const liveIds = new Set(rows.map(r => r.id));
+  for (const id of Object.keys(report.items)) if (!liveIds.has(id)) delete report.items[id];
+  const ownIds = new Set(rows.map(r => String(r.data?.ebayListingId || '')).filter(Boolean));
+  const due = rows.slice().sort((a, b) => String(report.items[a.id]?.checkedAt || '').localeCompare(String(report.items[b.id]?.checkedAt || ''))).slice(0, limit);
+  const skuIds = [...new Set(due.map(r => r.data?.focSkuId).filter(id => /^[0-9a-f-]{36}$/i.test(String(id || ''))))];
+  const skus = new Map(), fams = new Map();
+  if (skuIds.length) {
+    const { data } = await supabaseAdminFetch(env, `comic_skus?id=in.(${skuIds.map(encodeURIComponent).join(',')})&select=id,title,variant_label,cover_artist,is_incentive,ratio_threshold,family_id`);
+    for (const k of data || []) skus.set(k.id, k);
+    const famIds = [...new Set((data || []).map(k => k.family_id).filter(Boolean))];
+    if (famIds.length) { const { data: f } = await supabaseAdminFetch(env, `comic_title_families?id=in.(${famIds.map(encodeURIComponent).join(',')})&select=id,title,series_name,issue_number`); for (const x of f || []) fams.set(x.id, x); }
+  }
+  let checked = 0;
+  for (const row of due) {
+    const d = row.data || {}, sku = skus.get(d.focSkuId), fam = sku ? fams.get(sku.family_id) : null;
+    if (!sku || !fam) continue;
+    const label = String(sku.variant_label || '');
+    const query = coverMarketQuery({ series: fam.series_name || String(fam.title || '').replace(/#.*$/, '').trim(), issue: fam.issue_number || (String(fam.title || '').match(/#\s*(\d+)/) || [])[1] || '',
+      artist: sku.cover_artist || '', ratio: sku.is_incentive ? Number(sku.ratio_threshold || 0) : 0, virgin: /virgin/i.test(label), foil: false, variant: !sku.is_incentive && !isPullListCover(sku) });
+    const res = await fetchEbayActiveListings(env, query.q, { limit: 50 }).catch(e => ({ listings: [], warning: e.message }));
+    if (res.warning && !(res.listings || []).length) continue;
+    const sum = summarizeCoverMarket(query, res.listings || [], [], ownIds);
+    const ours = Number(d.salePrice || d.market || 0), f = priceWatchFlag(ours, { median: sum.active.median, count: sum.active.count });
+    report.items[row.id] = { rowId: row.id, skuId: d.focSkuId, name: String(d.name || '').replace(/\s*-\s*PRESALE\s*$/i, '').slice(0, 160), ours, median: sum.active.median, low: sum.active.low, count: sum.active.count,
+      flag: f.flag, ratio: f.ratio, listingId: String(d.ebayListingId || ''), query: query.q, checkedAt: now };
+    checked++;
+  }
+  report.at = now; report.live = rows.length;
+  try { await env.LBA_KV?.put(FOC_PRICE_WATCH_KV(storeId), JSON.stringify(report), { expirationTtl: 30 * 86400 }); } catch (_) {}
+  return { checked, live: rows.length, flagged: Object.values(report.items).filter(i => i.flag).length };
+}
+async function runScheduledFocPriceWatch(env) {
+  const { data } = await supabaseAdminFetchAll(env, `inventory_items?data->>source=eq.foc_presale&status=eq.presale&data->>ebayListingId=not.is.null&select=id,store_id,data`, 5000);
+  const byStore = new Map();
+  for (const r of data || []) { if (r.data?.ebayWithdrawnAt || !(Number(r.data?.salePrice || r.data?.market || 0) > 0)) continue; const list = byStore.get(r.store_id) || []; list.push(r); byStore.set(r.store_id, list); }
+  for (const [storeId, rows] of byStore) {
+    try { await runFocPriceWatchForStore(env, storeId, rows); } catch (e) { console.error('FOC price watch failed for', storeId, e.message); }
+  }
+}
+async function handleFocPriceWatchRoute(request, env, url) {
+  const storeId = requestStoreId(request, url);
+  const auth = await requireStoreUser(request, env, storeId, ['owner','admin','manager']);
+  if (auth.error) return auth.error;
+  const report = await loadFocPriceWatch(env, storeId);
+  const items = Object.values(report.items).sort((a, b) => (b.flag ? 1 : 0) - (a.flag ? 1 : 0) || Math.abs(1 - (b.ratio || 1)) - Math.abs(1 - (a.ratio || 1)));
+  return json({ ok: true, at: report.at, live: report.live, checked: items.length, items });
+}
+
+// ── FOC email ──
+// Store ask: one email before each FOC cutoff (3 days out, once per FOC
+// week) to the auto-list address: pull lists short, covers needing a price
+// or art, what's not on eBay or queued, what the automation did since the
+// last email, and the price-watch flags.
+async function buildFocDigest(env, cycle, today) {
+  const s = encodeURIComponent(cycle.store_id);
+  const { data: skus } = await supabaseAdminFetch(env, `comic_skus?cycle_id=eq.${encodeURIComponent(cycle.id)}&store_id=eq.${s}&select=id,family_id,title,variant_label,is_incentive,customer_price_cents,msrp_cents,cover_image_url,store_quantity,secured_quantity,flags&limit=5000`);
+  const list = skus || [], ids = list.map(k => k.id);
+  const famIds = [...new Set(list.map(k => k.family_id).filter(Boolean))];
+  let families = [];
+  for (let i = 0; i < famIds.length; i += 150) { const { data } = await supabaseAdminFetch(env, `comic_title_families?id=in.(${famIds.slice(i, i + 150).map(encodeURIComponent).join(',')})&select=id,title,series_name`); families = families.concat(data || []); }
+  const { data: subs } = await supabaseAdminFetch(env, `pull_list_subscriptions?store_id=eq.${s}&active=eq.true&select=customer_name,series:pull_list_series(title),customer:customers(name)&limit=5000`);
+  const presold = new Map(), listed = new Set();
+  for (let i = 0; i < ids.length; i += 100) {
+    const { data } = await supabaseAdminFetch(env, `inventory_items?store_id=eq.${s}&data->>source=eq.foc_presale&data->>focSkuId=in.(${ids.slice(i, i + 100).map(encodeURIComponent).join(',')})&select=status,data`);
+    for (const r of data || []) {
+      const d = r.data || {}, orig = Number(d.focPresaleOriginalQty || 0), left = r.status === 'sold' ? 0 : Number(d.qty ?? d.quantity ?? 0);
+      presold.set(d.focSkuId, (presold.get(d.focSkuId) || 0) + Math.max(0, orig - left));
+      if (d.ebayListingId && !d.ebayWithdrawnAt) listed.add(d.focSkuId);
+    }
+  }
+  const byId = new Map(list.map(k => [k.id, k]));
+  const pullShort = pullListNeeds({ skus: list, families, subs: subs || [] }).map(n => {
+    const k = byId.get(n.skuId) || {}, store = Number(k.store_quantity || 0), ebay = presold.get(n.skuId) || 0;
+    return { title: n.title, coverLabel: n.coverLabel, subscribers: n.subscribers.length, store, ebay, short: Math.max(0, n.subscribers.length + ebay - store) };
+  }).filter(x => x.short > 0);
+  const name = k => [k.title, k.variant_label && !/^cover a$/i.test(k.variant_label) ? k.variant_label : ''].filter(Boolean).join(' · ');
+  const ordered = list.filter(k => Number(k.store_quantity || 0) > 0 || Number(k.secured_quantity || 0) > 0);
+  const needPrice = ordered.filter(k => !(Number(k.customer_price_cents || 0) > 0) && (k.is_incentive || k.flags?.foil || !(Number(k.msrp_cents || 0) > 0))).map(name);
+  const noArt = ordered.filter(k => !k.cover_image_url).map(name);
+  const queue = await loadFocAutoList(env, cycle.store_id);
+  const queuedIds = new Set((queue.items || []).flatMap(q => q.skuIds || []));
+  const notListed = ordered.filter(k => !listed.has(k.id));
+  const nextDate = (queue.items || []).map(q => q.eligibleDate).sort()[0] || '';
+  let activity = [];
+  try {
+    const last = (await env.LBA_KV?.get('foc-digest-last:' + cycle.store_id)) || '';
+    activity = ((await env.LBA_KV?.get(FOC_ACTIVITY_KV(cycle.store_id), 'json')) || []).filter(a => !last || a.at > last).map(a => a.text);
+  } catch (_) {}
+  const watch = await loadFocPriceWatch(env, cycle.store_id);
+  const priceFlags = Object.values(watch.items || {}).filter(i => i.flag);
+  return focDigestEmail({ cycle, today, pullShort, needPrice, noArt, notOnEbay: notListed.length, queued: notListed.filter(k => queuedIds.has(k.id)).length,
+    queue: { waiting: (queue.items || []).length, next: nextDate }, activity, priceFlags });
+}
+async function runScheduledFocDigest(env) {
+  const today = pacificToday();
+  const until = new Date(Date.parse(today + 'T00:00:00Z') + 3 * 86400000).toISOString().slice(0, 10);
+  const { data: cycles } = await supabaseAdminFetch(env, `foc_cycles?foc_date=gte.${today}&foc_date=lte.${until}&status=neq.archived&select=id,store_id,foc_date,distributor&order=foc_date.asc&limit=50`);
+  for (const cycle of cycles || []) {
+    const sentKey = 'foc-digest-sent:' + cycle.id;
+    try { if (await env.LBA_KV.get(sentKey)) continue; } catch (_) { continue; }
+    try {
+      const mail = await buildFocDigest(env, cycle, today);
+      const queue = await loadFocAutoList(env, cycle.store_id);
+      await sendEmail(env, queue.email || FOC_AUTOLIST_DEFAULT_EMAIL, mail.subject, mail.body);
+      const at = new Date().toISOString();
+      await env.LBA_KV.put(sentKey, at, { expirationTtl: 30 * 86400 });
+      await env.LBA_KV.put('foc-digest-last:' + cycle.store_id, at, { expirationTtl: 60 * 86400 });
+    } catch (e) { console.error('FOC email failed for', cycle.id, e.message); }
+  }
+}
+
 async function runScheduledFocAutoList(env) {
   if (!env.LBA_KV || !(env.SUPABASE_URL && (env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SERVICE_KEY))) return;
   let stores = [];
@@ -18273,6 +18487,8 @@ async function runScheduledFocAutoList(env) {
     catch (e) { console.error('FOC auto-list failed for', storeId, e.message); }
   }
   await Promise.all(pending);
+  try { await runScheduledFocPriceWatch(env); } catch (e) { console.error('FOC price watch failed:', e.message); }
+  try { await runScheduledFocDigest(env); } catch (e) { console.error('FOC email run failed:', e.message); }
 }
 
 async function runScheduledLunarCoverFill(env) {

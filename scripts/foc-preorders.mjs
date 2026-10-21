@@ -3230,6 +3230,35 @@ async function adminPullListNeeds(request,env,deps,url){
   }catch(e){console.error('pull-list quiet series check failed',e);}
   return deps.json({ok:true,needs:pullListNeeds({skus:skus||[],families,subs:subs||[]}),quiet,subscribers:subs.length});
 }
+// Store ask: a weekly check of our live eBay presale prices against what
+// other sellers ask -- flag only, never change a price. Under 70% or over
+// 150% of the other sellers' typical ask (needs at least 2 of them).
+export function priceWatchFlag(ours,{median=0,count=0}={}){
+  ours=Number(ours||0);median=Number(median||0);count=Number(count||0);
+  if(!(ours>0)||count<2||!(median>0))return {flag:'',ratio:0};
+  const ratio=Math.round(ours/median*100)/100;
+  return {flag:ratio<0.7?'under':ratio>1.5?'over':'',ratio};
+}
+// Store ask: one email before each FOC cutoff with what needs doing.
+export function focDigestEmail({cycle={},today='',pullShort=[],needPrice=[],noArt=[],notOnEbay=0,queued=0,queue={},activity=[],priceFlags=[]}={}){
+  const dist=cycle.distributor||'PRH',foc=String(cycle.foc_date||'').slice(0,10);
+  const days=today&&foc?Math.round((Date.parse(foc+'T00:00:00Z')-Date.parse(today+'T00:00:00Z'))/864e5):null;
+  const when=days===0?'today':days===1?'tomorrow':days!=null?'in '+days+' days':'';
+  const L=[],list=(items,f,max=15)=>items.slice(0,max).map(f).concat(items.length>max?['  ...and '+(items.length-max)+' more']:[]);
+  L.push(`${dist} FOC ${foc}${when?' -- '+when:''}.`,'');
+  if(pullShort.length)L.push(`PULL LISTS SHORT (${pullShort.length}) -- order more before FOC:`,...list(pullShort,x=>`- ${x.title} ${x.coverLabel}: ${x.subscribers} on pull list, ordering ${x.store}${x.ebay?' ('+x.ebay+' sold on eBay)':''} -> ${x.short} short`),'');
+  else L.push('Pull lists: covered.','');
+  if(needPrice.length)L.push(`NEEDS YOUR PRICE (${needPrice.length}):`,...list(needPrice,x=>'- '+x),'');
+  if(noArt.length)L.push(`NO COVER ART YET (${noArt.length}) -- multi-cover listings use the coming-soon picture until it arrives:`,...list(noArt,x=>'- '+x,10),'');
+  L.push(`eBay: ${notOnEbay} ordered cover${notOnEbay===1?'':'s'} not listed yet${queued?', '+queued+' of them queued to list themselves':''}.`);
+  if(queue.waiting)L.push(`Auto-list queue: ${queue.waiting} waiting${queue.next?', next on '+queue.next:''}.`);
+  L.push('');
+  if(activity.length)L.push('SINCE THE LAST EMAIL:',...list(activity,a=>'- '+a,20),'');
+  if(priceFlags.length)L.push(`PRICE WATCH (${priceFlags.length}) -- live listings far from what others ask:`,...list(priceFlags,x=>`- ${x.name}: ours $${Number(x.ours).toFixed(2)}, others ~$${Number(x.median).toFixed(2)} (${x.count}) -- ${x.flag==='under'?'under':'over'} market`,10),'');
+  L.push('Open the dashboard: FOC -> this week -> FINAL FOC REVIEW / LIST WEEK ON EBAY.');
+  const n=pullShort.length+needPrice.length;
+  return {subject:`${dist} FOC ${foc}${when?' ('+when+')':''}: ${n?n+' thing'+(n===1?'':'s')+' to do':'ready'}${priceFlags.length?' · '+priceFlags.length+' price flag'+(priceFlags.length===1?'':'s'):''}`,body:L.join('\n')};
+}
 export function shortCustomerName(name){
   const parts=String(name||'').trim().split(/\s+/).filter(Boolean);
   if(!parts.length)return '';

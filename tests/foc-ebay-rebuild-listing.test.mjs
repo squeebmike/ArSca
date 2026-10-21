@@ -19,7 +19,7 @@ const route = worker.slice(routeStart, worker.indexOf("    if (url.pathname === 
 function load({ row, sku, item, offer }) {
   const calls = { puts: [], patches: [] };
   const fn = new Function('fetch', 'supabaseAdminFetch', 'getEbayUserAccessToken', [
-    ratioFn, coverLabelFn, line('const COMIC_GEMINI_MAILER ='), line('const COMIC_SHIPPING_NOTE ='), line('const COMIC_PRESALE_BAR_RE ='), line('const COMIC_IN_STOCK_SHIPPING ='),
+    ratioFn, coverLabelFn, line('const COMIC_GEMINI_MAILER ='), line('const COMIC_SINGLE_PACKED_LB ='), line('const COMIC_SHIPPING_NOTE ='), line('const COMIC_PRESALE_BAR_RE ='), line('const COMIC_IN_STOCK_SHIPPING ='),
     grab('function truncateHtmlSafely('), grab('function comicPresaleNotice('), grab('function stripCutPresaleBarTail('), grab('function shortenHtmlToFit('), grab('function withComicListingNotices('),
     grab('function comicPresaleToInStockDescription('), grab('function stripPresaleSuffix('), grab('function buildEbayAspects('),
     grab('function toEbayHtmlDescription('),
@@ -84,7 +84,7 @@ const offer = { sku: 'lba-1', marketplaceId: 'EBAY_US', format: 'FIXED_PRICE', c
   assert.deepEqual(a.UPC, ['64985600906700111']);
   assert.equal(a.Sport, undefined, 'a comic gets no Sport aspect');
   assert.deepEqual(itemPut.packageWeightAndSize.dimensions, { length: 12.75, width: 7.75, height: 1.25, unit: 'INCH' }, 'Gemini mailer size');
-  assert.equal(itemPut.packageWeightAndSize.weight.value, 0.25 + 0.3125);
+  assert.equal(itemPut.packageWeightAndSize.weight.value, 0.5, 'a single issue packed: 8 oz');
   assert.deepEqual(itemPut.product.imageUrls, damagedItem.product.imageUrls, 'photos stay as eBay has them');
   assert.equal(itemPut.availability.shipToLocationAvailability.quantity, 1, 'quantity untouched');
   assert.equal(itemPut.sku, undefined);

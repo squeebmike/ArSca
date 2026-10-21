@@ -83,7 +83,7 @@ const U1 = '11111111-1111-1111-1111-111111111111', U2 = '22222222-2222-2222-2222
 // and the dashboard says what it voided.
 assert.match(worker, /if \(order\.orderPaymentStatus !== 'PAID'\) continue;\n\s*if \(ebayOrderIsCancelled\(order\)\) continue;/);
 assert.match(worker, /cancelled = await voidCancelledEbayOrders\(env, storeId, ebayToken, orders, confirmedBy\);/);
-assert.match(worker, /return \{ ok: true, checked: orders\.length, matched: matchedCount, recorded: results\.length, results, errors, cancelled \};/);
+assert.match(worker, /return \{ ok: true, checked: orders\.length, matched: matchedCount, recorded: results\.length, results, errors, cancelled, refunds \};/);
 const app = fs.readFileSync('scripts/dashboard-app.js', 'utf8');
 assert.match(app, /cancelled eBay order\$\{cancelled\.length === 1 \? '' : 's'\}: sale/);
 console.log('eBay cancellations void sales checks passed');
@@ -93,9 +93,9 @@ console.log('eBay cancellations void sales checks passed');
 // voided one is handled; only a refund the sale doesn't reflect is a warning.
 {
   const app = fs.readFileSync('scripts/dashboard-app.js', 'utf8');
-  assert.match(app, /const handled = p\.status === 'refunded';\n      const refunded = \(orderId && refundedOrderIds\.has\(orderId\)\) \|\| handled;\n      const warn = refunded && !handled;/);
+  assert.match(app, /const handled = p\.status === 'refunded' \|\| p\.status === 'partially_refunded';[\s\S]{0,200}const refunded = \(orderId && refundedOrderIds\.has\(orderId\)\) \|\| handled;\n      const warn = refunded && !handled;/);
   assert.match(app, /\$\{warn \? '<div[^`]*Still counted as profit in your totals -- this refund came after it shipped/);
-  assert.match(app, /handled \? '<div[^`]*Taken out of sales and profit, and the copy went back into stock\.<\/div>'/);
-  assert.match(app, /\.select\('id,sale_id,amount,created_at,status'\)\.eq\('store_id', storeId\)\.eq\('provider','ebay'\)/, 'the payment status is read');
+  assert.match(app, /Taken out of sales and profit, and the copy went back into stock\./);
+  assert.match(app, /\.select\('id,sale_id,amount,created_at,status,refunded_amount_cents'\)\.eq\('store_id', storeId\)\.eq\('provider','ebay'\)/, 'the payment status is read');
   console.log('Voided eBay refunds show as handled checks passed');
 }

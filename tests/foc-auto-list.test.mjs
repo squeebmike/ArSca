@@ -84,6 +84,7 @@ const wctx = {
 };
 vm.runInNewContext([
   worker.match(/const FOC_INTERNAL_REQUESTS = new WeakSet\(\);[\s\S]*?const FOC_AUTOLIST_DEFAULT_EMAIL = [^\n]+/)[0],
+  worker.match(/const FOC_ACTIVITY_KV = [^\n]+/)[0], grab(worker, 'focLogActivity'),
   ...['loadFocAutoList', 'saveFocAutoList', 'cleanFocAutoListItem', 'handleFocAutoListRoute', 'pacificToday', 'focAutoListEmail', 'runFocAutoListForStore', 'runScheduledFocAutoList'].map(n => grab(worker, n)),
   worker.match(/const focAutoListSummary = [^\n]+/)[0],
   'this.api={cleanFocAutoListItem,handleFocAutoListRoute,runFocAutoListForStore,runScheduledFocAutoList,focAutoListEmail,FOC_INTERNAL_REQUESTS};',

@@ -13,7 +13,7 @@ const grab = (src, sig) => { const s = src.indexOf(sig); assert.ok(s >= 0, 'miss
 const line = (src, sig) => { const s = src.indexOf(sig); assert.ok(s >= 0, 'missing ' + sig); return src.slice(s, src.indexOf('\n', s) + 1); };
 
 const helpers = new Function([
-  line(worker, 'const COMIC_GEMINI_MAILER ='), line(worker, 'const COMIC_SHIPPING_NOTE ='),
+  line(worker, 'const COMIC_GEMINI_MAILER ='), line(worker, 'const COMIC_SINGLE_PACKED_LB ='), line(worker, 'const COMIC_SHIPPING_NOTE ='),
   grab(worker, 'function truncateHtmlSafely('), grab(worker, 'function comicPresaleNotice('),
   line(worker, 'const COMIC_PRESALE_BAR_RE ='), grab(worker, 'function stripCutPresaleBarTail('), grab(worker, 'function shortenHtmlToFit('), grab(worker, 'function withComicListingNotices('), grab(worker, 'function ebayOnSaleLabel('),
   grab(worker, 'function isComicEbayListing('), grab(worker, 'function applyComicListingDefaults('),
@@ -28,6 +28,7 @@ assert.equal(COMIC_GEMINI_MAILER.dimHeight, 1.25);
 {
   const comic = applyComicListingDefaults({ categoryId:'259104', title:'Saga #1', description:'Great book.' });
   assert.deepEqual([comic.dimLength, comic.dimWidth, comic.dimHeight, comic.dimUnit], [12.75, 7.75, 1.25, 'INCH'], 'a comic listing with no size set gets the Gemini mailer size');
+  assert.deepEqual([comic.weightValue, comic.weightUnit], [0.5, 'POUND'], 'and 8 oz packed (store call)');
   assert.match(comic.description, /Bagged & boarded and shipped in a Gemini mailer\.$/, 'and says how it ships');
   const custom = applyComicListingDefaults({ isComic:true, dimLength:13, dimWidth:9, dimHeight:2, description:'x' });
   assert.equal(custom.dimLength, 13, 'a size the store set on the listing form is kept');
@@ -103,9 +104,9 @@ assert.match(worker, /async function createAndPublishEbayVariationListingTrading
 assert.match(worker, /<ShippingPackageDetails>\$\{dimsXml\}\$\{weightXml\}<\/ShippingPackageDetails>/, 'multi-cover listings send the package size, not only the weight');
 assert.match(worker, /const description = withComicListingNotices\(\(typeof body\.description === 'string' && body\.description\.trim\(\)\) \? body\.description\.trim\(\)\.substring\(0, 20000\) : defaults\.description, \{ presale: true, onSaleLabel: defaults\.onSaleLabel \}\);/,
   'a FOC presale\'s custom description template can\'t drop the presale notice');
-assert.match(worker, /const weight = \{ weightValue: bookLb \+ COMIC_GEMINI_MAILER\.emptyWeightLb, weightUnit: 'POUND' \};/, 'FOC presale weights include the mailer');
+assert.match(worker, /\? \{ weightValue: \(priceCents >= 2000 \? 1\.5 : 0\.625\) \+ COMIC_GEMINI_MAILER\.emptyWeightLb, weightUnit: 'POUND' \}\n        : \{ weightValue: COMIC_SINGLE_PACKED_LB, weightUnit: 'POUND' \};/, 'FOC presale weights: trades and hardcovers plus the mailer, a single issue 8 oz packed');
 assert.match(dashboard, /const dimLengthVal = \(liveOk && live\.item\?\.dimLength\) \|\| \(isComic \? 12\.75 : isSealed \? 8 : 6\.5\);/, 'the listing form defaults a comic to the Gemini size');
-assert.match(dashboard, /const weightVal = \(liveOk && live\.item\?\.weightValue\) \|\| \(isComic \? 0\.5625 : isSealed \? 1 : 0\.1\);/, 'and about 9 oz');
+assert.match(dashboard, /const weightVal = \(liveOk && live\.item\?\.weightValue\) \|\| \(isComic \? 0\.5 : isSealed \? 1 : 0\.1\);/, 'and 8 oz');
 assert.match(dashboard, /isComic:computeEbayListingFields\(item\)\.isComic,/, 'the form tells the Worker it is a comic');
 assert.match(dashboard, /'Bagged & boarded and shipped in a Gemini mailer to prevent bending or creasing\. In-stock comics ship within 1 business day with tracking\.'/, 'the comic shipping line says bagged & boarded and Gemini mailer');
 

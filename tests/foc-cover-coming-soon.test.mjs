@@ -91,7 +91,8 @@ assert.match(add, /for \(let n = 2; taken\.has\(label\.toLowerCase\(\)\); n\+\+\
       return { data:[] };
     },
   };
-  vm.runInNewContext(grab(worker, 'runScheduledFocCoverSwap') + 'this.swap=runScheduledFocCoverSwap;', c);
+  c.logged = [];
+  vm.runInNewContext(grab(worker, 'runScheduledFocCoverSwap') + 'async function focLogActivity(env, storeId, lines){ logged.push([storeId, ...lines]); }\nthis.swap=runScheduledFocCoverSwap;', c);
   c.focInternalPost = async (env, cx, storeId, path, body) => { posts.push([storeId, path, body]); return { res:{ ok:true }, data:{ ok:true, failed:[] } }; };
   const out = await c.swap({}, {});
   assert.deepEqual({ ...out }, { swapped:1, groups:1 });
@@ -99,6 +100,7 @@ assert.match(add, /for \(let n = 2; taken\.has\(label\.toLowerCase\(\)\); n\+\+\
   assert.equal(patches[0][1].data.image, 'https://art/1.jpg');
   assert.ok(!('focCoverPending' in patches[0][1].data), 'no longer waiting for art');
   assert.equal(JSON.stringify(posts), JSON.stringify([['S', '/foc/ebay/repair-group-listing-photos', { groupKey:'G1' }]]));
+  assert.equal(c.logged.length, 1, 'noted for the next FOC email');
 }
 assert.match(worker, /try \{ await runScheduledFocCoverSwap\(env, ctx\); \} catch \(e\) \{ console\.error\('FOC cover swap failed:', e\.message\); \}/);
 // Queued listings: an issue (or a cover joining one) goes up with placeholders.
