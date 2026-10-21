@@ -2191,12 +2191,39 @@ export function coverMarketQuery(cover={}){
 }
 export function coverTitleMatches(title,query){
   const t=' '+String(title||'').toUpperCase().replace(/[^A-Z0-9:]+/g,' ')+' ';
-  const words=String(query.series||'').toUpperCase().replace(/[^A-Z0-9]+/g,' ').split(' ').filter(w=>w.length>=3&&!MARKET_STOP.has(w)).slice(0,4);
-  if(!words.every(w=>t.includes(' '+w+' ')||t.includes(' '+w.replace(/S$/,'')+' ')))return false;
-  if(query.issue&&!new RegExp('\\s0*'+query.issue.split('.')[0].replace(/[^0-9]/g,'')+'\\s').test(t))return false;
-  if(query.ratio&&!new RegExp('1\\s?:\\s?'+query.ratio+'\\b|\\s'+query.ratio+'\\s?(?:COPY|RATIO|INCENTIVE)').test(t))return false;
+  // Words without the colon kept for ratios ("TURTLES: HOLIDAY" is TURTLES).
+  const w=' '+String(title||'').toUpperCase().replace(/[^A-Z0-9]+/g,' ')+' ';
+  const words=String(query.series||'').toUpperCase().replace(/[^A-Z0-9]+/g,' ').split(' ').filter(x=>x.length>=3&&!MARKET_STOP.has(x)).slice(0,4);
+  if(!words.every(x=>w.includes(' '+x+' ')||w.includes(' '+x.replace(/S$/,'')+' ')))return false;
+  if(query.issue&&!new RegExp('\\s0*'+query.issue.split('.')[0].replace(/[^0-9]/g,'')+'\\s').test(w))return false;
+  // Sellers write a ratio as 1:25, 1 25, "1 in 25", RI (25) or "25 copy".
+  if(query.ratio&&!new RegExp('1\\s?:\\s?'+query.ratio+'\\b|\\s1\\s(?:IN\\s)?'+query.ratio+'\\s|\\sRI\\s'+query.ratio+'\\s|\\s'+query.ratio+'\\s?(?:COPY|RATIO|INCENTIVE)').test(t))return false;
   if((query.ratio||query.variant)&&query.artistLast&&!t.includes(' '+query.artistLast.toUpperCase().replace(/[^A-Z0-9]+/g,' ').trim()+' '))return false;
   return true;
+}
+// Other sellers' multi-cover listings name the issue but not the cover --
+// the cover is a choice inside the listing. For a ratio or lettered
+// variant: also search by series + issue, open each multi-cover listing
+// that's this issue (up to 4), and add its variations with their cover
+// choice in the title, so they match like any other listing. One search
+// and one group read per issue/listing per request (caches).
+export async function coverMarketListings(query,listings,deps,env,caches={broad:new Map(),groups:new Map()}){
+  if(!(query.ratio||query.variant)||!deps?.ebayItemGroup)return listings;
+  const base={...query,ratio:0,variant:false};
+  const broadQ=[query.series,query.issue?'#'+query.issue:''].filter(Boolean).join(' ');
+  if(!caches.broad.has(broadQ))caches.broad.set(broadQ,deps.ebayActiveListings(env,broadQ,{limit:50}).then(r=>r.listings||[]).catch(()=>[]));
+  const broad=await caches.broad.get(broadQ);
+  const groupIds=[...new Set([...listings,...broad].filter(l=>l.itemGroupId&&coverTitleMatches(l.title,base)).map(l=>l.itemGroupId))].slice(0,4);
+  const out=listings.filter(l=>!l.itemGroupId||coverTitleMatches(l.title+' '+(l.variantText||''),query));
+  const seen=new Set(out.map(l=>l.itemId));
+  for(const id of groupIds){
+    if(!caches.groups.has(id))caches.groups.set(id,deps.ebayItemGroup(env,id).then(r=>r.listings||[]).catch(()=>[]));
+    for(const v of await caches.groups.get(id)){
+      if(seen.has(v.itemId))continue;seen.add(v.itemId);
+      out.push({...v,title:text(v.title,100)+(v.variantText?' -- '+text(v.variantText,60):'')});
+    }
+  }
+  return out;
 }
 const median=values=>{const v=values.filter(n=>n>0).sort((a,b)=>a-b);if(!v.length)return null;const m=Math.floor(v.length/2);return Math.round((v.length%2?v[m]:(v[m-1]+v[m])/2)*100)/100;};
 // What the cover card shows for each listing: picture, price + shipping,
@@ -2227,16 +2254,17 @@ async function adminCoverMarket(request,env,deps){
   const db=(path,options)=>deps.supabaseAdminFetch(env,path,options);
   const {data:ownRows}=await db(`inventory_items?store_id=eq.${encodeURIComponent(storeId)}&data->>source=in.(foc_presale,foc_presale_bundle)&data->>ebayListingId=not.is.null&select=listingId:data->>ebayListingId&limit=3000`);
   const ownIds=new Set((ownRows||[]).map(r=>String(r.listingId||'')).filter(Boolean));
-  const results={};
+  const results={},groupCaches={broad:new Map(),groups:new Map()};
   for(const cover of covers){
     const query=coverMarketQuery(cover);
-    const cacheKey='foc-cover-market:v3:'+query.q.toLowerCase()+(query.variant?':v':'');
+    const cacheKey='foc-cover-market:v4:'+query.q.toLowerCase()+(query.variant?':v':'');
     let hit=null;
     if(env.LBA_KV&&!body.refresh)try{hit=await env.LBA_KV.get(cacheKey,'json');}catch(_){}
     if(hit){results[cover.key]={...hit,cached:true};continue;}
     const warnings=[];
     const active=await deps.ebayActiveListings(env,query.q,{limit:50}).catch(e=>({listings:[],warning:e.message}));
     if(active.warning)warnings.push(active.warning);
+    active.listings=await coverMarketListings(query,active.listings||[],deps,env,groupCaches);
     const sold=deps.ebaySoldComps?await deps.ebaySoldComps(env,query.q,40).catch(e=>({comps:[],warning:e.message})):{comps:[]};
     if(sold.warning&&!(sold.comps||[]).length)warnings.push(sold.warning);
     const result={...summarizeCoverMarket(query,active.listings||[],sold.comps||[],ownIds),at:new Date().toISOString(),warnings:warnings.slice(0,2)};
@@ -3229,6 +3257,35 @@ async function adminPullListNeeds(request,env,deps,url){
     quiet=pullListQuiet({subs:subs||[],families:all,cycles:cycles||[]});
   }catch(e){console.error('pull-list quiet series check failed',e);}
   return deps.json({ok:true,needs:pullListNeeds({skus:skus||[],families,subs:subs||[]}),quiet,subscribers:subs.length});
+}
+// Store ask: a weekly check of our live eBay presale prices against what
+// other sellers ask -- flag only, never change a price. Under 70% or over
+// 150% of the other sellers' typical ask (needs at least 2 of them).
+export function priceWatchFlag(ours,{median=0,count=0}={}){
+  ours=Number(ours||0);median=Number(median||0);count=Number(count||0);
+  if(!(ours>0)||count<2||!(median>0))return {flag:'',ratio:0};
+  const ratio=Math.round(ours/median*100)/100;
+  return {flag:ratio<0.7?'under':ratio>1.5?'over':'',ratio};
+}
+// Store ask: one email before each FOC cutoff with what needs doing.
+export function focDigestEmail({cycle={},today='',pullShort=[],needPrice=[],noArt=[],notOnEbay=0,queued=0,queue={},activity=[],priceFlags=[]}={}){
+  const dist=cycle.distributor||'PRH',foc=String(cycle.foc_date||'').slice(0,10);
+  const days=today&&foc?Math.round((Date.parse(foc+'T00:00:00Z')-Date.parse(today+'T00:00:00Z'))/864e5):null;
+  const when=days===0?'today':days===1?'tomorrow':days!=null?'in '+days+' days':'';
+  const L=[],list=(items,f,max=15)=>items.slice(0,max).map(f).concat(items.length>max?['  ...and '+(items.length-max)+' more']:[]);
+  L.push(`${dist} FOC ${foc}${when?' -- '+when:''}.`,'');
+  if(pullShort.length)L.push(`PULL LISTS SHORT (${pullShort.length}) -- order more before FOC:`,...list(pullShort,x=>`- ${x.title} ${x.coverLabel}: ${x.subscribers} on pull list, ordering ${x.store}${x.ebay?' ('+x.ebay+' sold on eBay)':''} -> ${x.short} short`),'');
+  else L.push('Pull lists: covered.','');
+  if(needPrice.length)L.push(`NEEDS YOUR PRICE (${needPrice.length}):`,...list(needPrice,x=>'- '+x),'');
+  if(noArt.length)L.push(`NO COVER ART YET (${noArt.length}) -- multi-cover listings use the coming-soon picture until it arrives:`,...list(noArt,x=>'- '+x,10),'');
+  L.push(`eBay: ${notOnEbay} ordered cover${notOnEbay===1?'':'s'} not listed yet${queued?', '+queued+' of them queued to list themselves':''}.`);
+  if(queue.waiting)L.push(`Auto-list queue: ${queue.waiting} waiting${queue.next?', next on '+queue.next:''}.`);
+  L.push('');
+  if(activity.length)L.push('SINCE THE LAST EMAIL:',...list(activity,a=>'- '+a,20),'');
+  if(priceFlags.length)L.push(`PRICE WATCH (${priceFlags.length}) -- live listings far from what others ask:`,...list(priceFlags,x=>`- ${x.name}: ours $${Number(x.ours).toFixed(2)}, others ~$${Number(x.median).toFixed(2)} (${x.count}) -- ${x.flag==='under'?'under':'over'} market`,10),'');
+  L.push('Open the dashboard: FOC -> this week -> FINAL FOC REVIEW / LIST WEEK ON EBAY.');
+  const n=pullShort.length+needPrice.length;
+  return {subject:`${dist} FOC ${foc}${when?' ('+when+')':''}: ${n?n+' thing'+(n===1?'':'s')+' to do':'ready'}${priceFlags.length?' · '+priceFlags.length+' price flag'+(priceFlags.length===1?'':'s'):''}`,body:L.join('\n')};
 }
 export function shortCustomerName(name){
   const parts=String(name||'').trim().split(/\s+/).filter(Boolean);

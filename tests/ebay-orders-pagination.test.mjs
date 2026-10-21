@@ -18,9 +18,12 @@ const writes = [];
 const inventoryLookups = [];
 const salesStores = [];
 const saleLines = [];
+const refundPages = [];
 globalThis.fetch = async (input, init = {}) => {
   const url = String(input.url || input);
   if (url.startsWith('https://api.ebay.com/sell/fulfillment/v1/order')) {
+    // The refunds pass (recordEbayRefunds) reads recently changed orders separately.
+    if (/lastmodifieddate/.test(decodeURIComponent(url))) { refundPages.push(url); return new Response(JSON.stringify({ total: 0, orders: [] }), { headers: { 'Content-Type': 'application/json' } }); }
     ebayPages.push(url);
     const offset = Number(new URL(url).searchParams.get('offset') || 0);
     const body = offset === 0
@@ -48,6 +51,7 @@ try {
   await api.scheduled({}, env, { waitUntil: p => waits.push(p) });
   await Promise.all(waits);
   assert.equal(ebayPages.length, 2, 'reads past the first page');
+  assert.ok(refundPages.length >= 1, 'and checks recently changed orders for refunds');
   assert.deepEqual(salesStores, ['store-1'], 'recorded once, in the store that lists on eBay -- not copied into every store');
   assert.match(ebayPages[1], /offset=50/);
   assert.ok(writes.some(([m, t]) => m === 'POST' && t === 'pos_sales'), 'the sale on page 2 is recorded');

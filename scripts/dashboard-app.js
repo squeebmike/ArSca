@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.10.21.17-ebay-listings-on-cards';
+const APP_VERSION = '2026.10.21.19-variation-listing-match';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -12359,7 +12359,7 @@ async function loadEbayOrderHistory(){
   host.textContent = 'Loading...';
   try{
     const storeId = getActiveStoreId();
-    const { data: payments, error } = await sb.from('pos_payments').select('id,sale_id,amount,created_at,status').eq('store_id', storeId).eq('provider','ebay').order('created_at',{ascending:false}).limit(30);
+    const { data: payments, error } = await sb.from('pos_payments').select('id,sale_id,amount,created_at,status,refunded_amount_cents').eq('store_id', storeId).eq('provider','ebay').order('created_at',{ascending:false}).limit(30);
     if(error) throw error;
     if(!payments?.length){ host.innerHTML = '<div style="font-family:monospace;font-size:10px;color:var(--dim)">No eBay sales recorded yet -- click REFRESH above or SYNC EBAY ORDERS in the eBay Connection panel below.</div>'; return; }
     const saleIds = payments.map(p => p.sale_id);
@@ -12388,14 +12388,15 @@ async function loadEbayOrderHistory(){
       // Store report: refunds already voided by the order sync (sale voided,
       // payment marked refunded, copy put back) still said "still counted
       // as profit". Only a refund the sale doesn't reflect yet is a warning.
-      const handled = p.status === 'refunded';
+      const handled = p.status === 'refunded' || p.status === 'partially_refunded';
+      const partial = p.status === 'partially_refunded', refundedAmt = Number(p.refunded_amount_cents || 0) / 100;
       const refunded = (orderId && refundedOrderIds.has(orderId)) || handled;
       const warn = refunded && !handled;
       return `<div style="display:flex;align-items:center;gap:10px;padding:8px;border:1px solid ${warn ? 'var(--red)' : 'var(--border)'};border-radius:6px;${handled ? 'opacity:.65' : ''}">
         <div style="flex:1;min-width:0">
-          <div style="font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(title)}${linked ? '' : ' <span style="color:var(--gold)">· not in inventory</span>'}${warn ? ' <span style="color:var(--red)">· ⚠ REFUNDED ON EBAY</span>' : handled ? ' <span style="color:var(--dim)">· refunded -- sale voided</span>' : ''}</div>
+          <div style="font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(title)}${linked ? '' : ' <span style="color:var(--gold)">· not in inventory</span>'}${warn ? ' <span style="color:var(--red)">· ⚠ REFUNDED ON EBAY</span>' : partial ? ' <span style="color:var(--gold)">· partly refunded $' + refundedAmt.toFixed(2) + '</span>' : handled ? ' <span style="color:var(--dim)">· refunded' + (refundedAmt ? ' $' + refundedAmt.toFixed(2) : ' -- sale voided') + '</span>' : ''}</div>
           <div style="font-family:monospace;font-size:9px;color:var(--dim)">$${Number(p.amount || 0).toFixed(2)} · ${new Date(p.created_at).toLocaleDateString()}${orderId ? ' · <a href="https://www.ebay.com/sh/ord/details?orderid=' + encodeURIComponent(orderId) + '" target="_blank" style="color:var(--g)">view on eBay</a>' : ''}</div>
-          ${warn ? '<div style="font-family:monospace;font-size:9px;color:var(--red);margin-top:2px">Still counted as profit in your totals -- this refund came after it shipped (a return or partial refund), so it wasn\'t auto-reversed. Review and adjust/restock by hand.</div>' : handled ? '<div style="font-family:monospace;font-size:9px;color:var(--dim);margin-top:2px">Taken out of sales and profit, and the copy went back into stock.</div>' : ''}
+          ${warn ? '<div style="font-family:monospace;font-size:9px;color:var(--red);margin-top:2px">Still counted as profit in your totals -- this refund came after it shipped (a return or partial refund), so it wasn\'t auto-reversed. Review and adjust/restock by hand.</div>' : partial ? '<div style="font-family:monospace;font-size:9px;color:var(--dim);margin-top:2px">The $' + refundedAmt.toFixed(2) + ' refunded is taken out of sales and profit; the rest of the sale stands.</div>' : handled ? '<div style="font-family:monospace;font-size:9px;color:var(--dim);margin-top:2px">' + (refundedAmt ? 'Refunded in full without the book coming back: taken out of sales, and its cost counts as a loss. If it does come back, VOID the sale to restock it.' : 'Taken out of sales and profit, and the copy went back into stock.') + '</div>' : ''}
         </div>
       </div>`;
     }).join('');
@@ -13153,6 +13154,17 @@ async function syncEbayOrders(silent, reconcile){
       const cmsg = `${cancelled.length} cancelled eBay order${cancelled.length === 1 ? '' : 's'}: sale${cancelled.length === 1 ? '' : 's'} voided ($${total.toFixed(2)} off sales and profit) and ${cancelled.reduce((a, c) => a + Number(c.restocked || 0), 0)} cop${cancelled.reduce((a, c) => a + Number(c.restocked || 0), 0) === 1 ? 'y' : 'ies'} put back -- ${cancelled.flatMap(c => c.titles || []).slice(0, 3).join(', ')}${cancelled.flatMap(c => c.titles || []).length > 3 ? '…' : ''}`;
       toast_dash(cmsg);
       logOpsEvent('ebay_order_cancelled', cmsg, { cancelled });
+    }
+    // Returns and refunds after shipping (recordEbayRefunds in the Worker).
+    const refunds = Array.isArray(data.refunds) ? data.refunds : [];
+    if(refunds.length){
+      const returned = refunds.filter(r => r.kind === 'returned'), money = refunds.filter(r => r.kind !== 'returned');
+      const rmsg = [returned.length ? `${returned.length} eBay return${returned.length === 1 ? '' : 's'} back: sale voided, ${returned.reduce((a, r) => a + Number(r.restocked || 0), 0)} cop${returned.reduce((a, r) => a + Number(r.restocked || 0), 0) === 1 ? 'y' : 'ies'} back in stock` : '',
+        money.length ? `${money.length} eBay refund${money.length === 1 ? '' : 's'}: $${(money.reduce((a, r) => a + Number(r.cents || 0), 0) / 100).toFixed(2)} taken out of sales and profit` : ''].filter(Boolean).join(' · ');
+      if(returned.length) await loadInventory().catch(()=>{});
+      markLedgerSoldRowsStale(); renderPulse().catch(()=>{});
+      toast_dash(rmsg);
+      logOpsEvent('ebay_order_refunded', rmsg, { refunds });
     }
     // Errors here mean a specific order failed to record -- that's a
     // real gap in the sales ledger, not just noise, so surface it even on a
@@ -14788,7 +14800,7 @@ async function loadLedgerSoldRows(){
   const storeId = getActiveStoreId();
   if(!sb || !storeId || getAccountContext().isDemo) return null;
   const { data: sales, error } = await sb.from('pos_sales')
-    .select('id,completed_at,created_at,pos_sale_lines(id,title,category,quantity,adjusted_price,cost_basis,profit,item_id),pos_payments(method,status)')
+    .select('id,completed_at,created_at,refund_total_cents,pos_sale_lines(id,title,category,quantity,adjusted_price,cost_basis,profit,item_id),pos_payments(method,status)')
     .eq('store_id', storeId)
     .in('status', ['completed','succeeded'])
     .order('completed_at', { ascending:false })
@@ -14798,10 +14810,17 @@ async function loadLedgerSoldRows(){
   const rows = [];
   for(const sale of (sales || [])){
     const channel = [...new Set((sale.pos_payments || []).map(p => p.method).filter(Boolean))].join(' + ');
-    for(const line of (sale.pos_sale_lines || [])){
+    // Store ask: a refund (eBay return or partial refund, or a Stripe
+    // refund) comes off sales and profit -- spread over the sale's lines by
+    // their share of it.
+    const saleLines = sale.pos_sale_lines || [];
+    const linesTotal = saleLines.reduce((n, l) => n + Number(l.adjusted_price || 0), 0);
+    const refund = Math.min(linesTotal, Number(sale.refund_total_cents || 0) / 100);
+    for(const line of saleLines){
       const quantity = Math.max(1, Number(line.quantity || 1));
-      const salePrice = Number(line.adjusted_price || 0);
-      const profit = Number(line.profit ?? (salePrice - Number(line.cost_basis || 0)));
+      const lineRefund = refund > 0 && linesTotal > 0 ? Math.round(refund * Number(line.adjusted_price || 0) / linesTotal * 100) / 100 : 0;
+      const salePrice = Number(line.adjusted_price || 0) - lineRefund;
+      const profit = Number(line.profit ?? (Number(line.adjusted_price || 0) - Number(line.cost_basis || 0))) - lineRefund;
       const item = line.item_id ? itemsById.get(String(line.item_id)) : null;
       const category = canonicalSaleCategory(line.category || item?.category);
       rows.push({
@@ -21452,9 +21471,9 @@ async function openEbayFromDash(id){
   // a sealed box needs a real box. Both are just starting points -- fully
   // editable below, same as picking package/weight/dims in the eBay app.
   // Comics ship bagged & boarded in a Gemini Comic Flash Mailer: 12.75 x
-  // 7.75 x 1.25 in outside, about 9 oz with a single issue in it.
+  // 7.75 x 1.25 in outside; a single issue in it ships at 8 oz (store call).
   const packageTypeVal = (liveOk && live.item?.packageType) || '';
-  const weightVal = (liveOk && live.item?.weightValue) || (isComic ? 0.5625 : isSealed ? 1 : 0.1);
+  const weightVal = (liveOk && live.item?.weightValue) || (isComic ? 0.5 : isSealed ? 1 : 0.1);
   const weightUnitVal = (liveOk && live.item?.weightUnit) || 'POUND';
   const dimLengthVal = (liveOk && live.item?.dimLength) || (isComic ? 12.75 : isSealed ? 8 : 6.5);
   const dimWidthVal = (liveOk && live.item?.dimWidth) || (isComic ? 7.75 : isSealed ? 6 : 4);
