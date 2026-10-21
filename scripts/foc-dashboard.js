@@ -1566,6 +1566,8 @@ function focHoldNotice(d){
   if(!d)return;
   var held=(d.receivedSummary||[]).filter(function(r){return r.reservedForCustomers>0;});
   if(held.length)toast_dash('📌 Set aside for preorders: '+held.map(function(r){return (r.heldFor||[]).map(function(h){return h.copies+' for '+(h.name||'a customer');}).join(', ')+' ('+(r.title||'')+')';}).join(' · '));
+  var pulled=(d.pullHeld||[]);
+  if(pulled.length)toast_dash('📌 Set aside for pull lists: '+pulled.map(function(p){return p.name+' ('+p.titles.length+')';}).join(', '));
   if((d.warnings||[]).length)alert('Received, but:\n\n'+d.warnings.join('\n'));
 }
 async function openFocHolds(){
@@ -1574,15 +1576,15 @@ async function openFocHolds(){
     var d=await api('/foc/admin/holds?store_id='+encodeURIComponent(getActiveStoreId()));
     var health=null;try{health=(await api('/foc/admin/stock-health?store_id='+encodeURIComponent(getActiveStoreId())+'&run=1')).report;}catch(e){}
     var unheld=health?((health.issues||[]).find(function(i){return i.key==='unheld';})||{items:[]}).items:[];
-    renderFocHolds(d.holds||[],unheld);
+    renderFocHolds(d.holds||[],unheld,d.pullHolds||[]);
   }
   catch(e){panel().innerHTML='<button class="hbtn" onclick="loadFocCycles()">← FOC WALL</button><div class="panel" style="margin-top:10px;color:var(--red)">Could not load holds: '+esc(e.message)+'</div>';}
 }
-function renderFocHolds(holds,unheld){
-  unheld=unheld||[];
+function renderFocHolds(holds,unheld,pulls){
+  unheld=unheld||[];pulls=pulls||[];
   panel().innerHTML='<section class="foc-hero"><div class="foc-toolbar"><button class="hbtn" onclick="loadFocCycles()">← FOC WALL</button><button class="hbtn" onclick="openFocHolds()">↻ REFRESH</button></div>'+
-    '<div style="font:900 20px/1.1 \'Orbitron\',monospace;color:var(--text);margin-top:10px">📌 On Hold for Preorders</div>'+
-    '<div style="font:10px/1.6 var(--font-mono);color:var(--dim);margin-top:4px">Paid website preorder copies that came in. They can\'t be rung up, sold online or listed until you hand them over here.</div></section>'+
+    '<div style="font:900 20px/1.1 \'Orbitron\',monospace;color:var(--text);margin-top:10px">📌 On Hold</div>'+
+    '<div style="font:10px/1.6 var(--font-mono);color:var(--dim);margin-top:4px">Paid website preorder copies and pull-list copies that came in. They can\'t be rung up, sold online or listed until you hand them over (or ring them up) here.</div></section>'+
     (unheld.length?'<section class="panel" style="padding:10px 14px;margin-bottom:10px;border-color:rgba(255,77,109,.45)"><div style="font:900 11px \'Orbitron\',monospace;color:var(--red);letter-spacing:1px">CAME IN BUT NOT SET ASIDE ('+unheld.length+')</div><div style="font:9px var(--font-mono);color:var(--dim);margin:3px 0 6px">Paid preorder copies that are on the shelf as regular stock. SET ASIDE moves a copy onto a hold for the customer.</div>'+
       unheld.map(function(u){return '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:4px 0;border-top:1px solid var(--border);font:10px var(--font-mono)"><span style="color:var(--text)">'+esc(u.name)+'<br><span style="color:var(--dim)">'+esc(u.note||'')+'</span></span><span style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end"><button class="hbtn" style="color:var(--gold);white-space:nowrap" onclick="focSetAside(\''+esc(u.preorderItemId||'')+'\')">SET ASIDE</button><button class="hbtn" style="white-space:nowrap" onclick="focSetAside(\''+esc(u.preorderItemId||'')+'\',true)">ALREADY HANDED OVER</button></span></div>';}).join('')+'</section>':'')+
     (holds.length?holds.map(function(g){
@@ -1592,7 +1594,23 @@ function renderFocHolds(holds,unheld){
         g.books.map(function(b){return '<div style="font:10px var(--font-mono);color:var(--text);padding:3px 0;border-top:1px solid var(--border)">'+(b.qty>1?b.qty+'× ':'')+esc(b.name)+'</div>';}).join('')+
         (g.stillComing&&g.stillComing.length?'<div style="font:9px var(--font-mono);color:var(--gold);margin-top:4px">Still coming on this order: '+esc(g.stillComing.join(' | '))+'</div>':'')+
       '</section>';
-    }).join(''):'<div class="panel" style="padding:24px;text-align:center;color:var(--dim)">Nothing on hold right now.</div>');
+    }).join(''):'')+
+    (pulls.length?'<div style="font:900 11px \'Orbitron\',monospace;color:var(--purple);letter-spacing:1px;margin:14px 0 6px">PULL LISTS ('+pulls.length+')</div>'+pulls.map(function(g){
+      var total=g.books.reduce(function(a,b){return a+(Number(b.price)||0)*(b.qty||1);},0);
+      return '<section class="panel" style="padding:10px 14px;margin-bottom:10px"><div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start;flex-wrap:wrap"><div><div style="font:800 13px var(--font-mono);color:var(--text)">'+esc(g.customerName)+'</div><div style="font:9px var(--font-mono);color:var(--dim)">PULL LIST · not paid yet'+(total?' · $'+total.toFixed(2):'')+' · held since '+esc(displayDate(String(g.heldAt||'').slice(0,10)))+'</div></div>'+
+        '<span style="display:flex;gap:6px;flex-wrap:wrap"><button class="hbtn" style="color:var(--g)" title="Frees the copies so the register can sell them -- then scan them" onclick="focPullRelease(\''+esc(g.subscriptionId)+'\',\'rung_up\',\''+esc(g.customerName).replace(/&#39;/g,'')+'\')">🛒 RING UP</button><button class="hbtn" title="They didn\'t want it: back to regular stock" onclick="focPullRelease(\''+esc(g.subscriptionId)+'\',\'shelf\',\''+esc(g.customerName).replace(/&#39;/g,'')+'\')">↩ BACK ON SHELF</button></span></div>'+
+        g.books.map(function(b){return '<div style="font:10px var(--font-mono);color:var(--text);padding:3px 0;border-top:1px solid var(--border)">'+(b.qty>1?b.qty+'× ':'')+esc(b.name)+(b.price?' <span style="color:var(--dim)">$'+Number(b.price).toFixed(2)+'</span>':'')+'</div>';}).join('')+'</section>';
+    }).join(''):'')+
+    (!holds.length&&!pulls.length?'<div class="panel" style="padding:24px;text-align:center;color:var(--dim)">Nothing on hold right now.</div>':'');
+}
+async function focPullRelease(subscriptionId,how,name){
+  if(!confirm(how==='shelf'?'Put '+name+'\'s pull-list copies back on the shelf as regular stock?':'Ring up '+name+'\'s pull-list books? They go back to regular stock so the register can sell them -- then scan each one.'))return;
+  try{var d=await api('/foc/admin/holds',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({storeId:getActiveStoreId(),pullSubscriptionId:subscriptionId,how:how})});
+    toast_dash((d.released||0)+' book'+(d.released===1?'':'s')+(how==='shelf'?' back on the shelf':' ready to ring up -- scan '+(d.released===1?'it':'them')+' at the register'));
+    // The register sees the freed copies now, not on the next minute's refresh.
+    if(typeof refreshInventoryQuietly==='function')try{await refreshInventoryQuietly();}catch(e){}
+    openFocHolds();}
+  catch(e){toast_dash('Could not update: '+e.message);}
 }
 async function focHandOver(orderId,ship){
   if(!confirm(ship?'Mark these books shipped? They leave inventory.':'Mark these books handed over to the customer? They leave inventory.'))return;
@@ -1606,7 +1624,7 @@ async function focSetAside(itemId,handedOver){
   try{var d=await api('/foc/admin/holds/set-aside',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({storeId:getActiveStoreId(),preorderItemId:itemId,handedOver:!!handedOver})});toast_dash(handedOver?'Marked handed over':'Set aside: '+d.copies+' cop'+(d.copies===1?'y':'ies')+' on hold');openFocHolds();}
   catch(e){toast_dash('Could not set aside: '+e.message);}
 }
-window.openFocHolds=openFocHolds;window.focHandOver=focHandOver;window.focSetAside=focSetAside;
+window.openFocHolds=openFocHolds;window.focHandOver=focHandOver;window.focPullRelease=focPullRelease;window.focSetAside=focSetAside;
 
 // ── Presale stock check ──
 // Store report: "why does it think I have Cyberpunk 2077 #1?" and "more
@@ -2823,7 +2841,7 @@ async function handleSlipFiles(event){
     // Another page keeps what was ticked, counted and priced on the first.
     var prev=state.slip&&state.slip.lines.length?state.slip:null;
     state.slip=d;
-    state.slip.picks=prev?prev.picks:{};state.slip.qtys=prev?prev.qtys:{};state.slip.prices=prev?prev.prices||{}:{};state.slip.typed=prev?prev.typed||{}:{};
+    state.slip.picks=prev?prev.picks:{};state.slip.qtys=prev?prev.qtys:{};state.slip.prices=prev?prev.prices||{}:{};state.slip.typed=prev?prev.typed||{}:{};state.slip.damaged=prev?prev.damaged||{}:{};
     // Lunar weeks are costed from your Lunar discounts (DC/Image are editable).
     if((d.cycles||[]).some(function(c){return c.distributor==='Lunar';}))await loadLunarDiscountSettings();
     if(status) status.textContent='Looking up who these books are for…';
@@ -2868,7 +2886,50 @@ function slipLineCost(l){
   return {unit:Math.round(Number(c.coverPrice||0)*50)/100,source:'half'};
 }
 function slipIncluded(l){ var k=slipLineKey(l); return state.slip.picks[k]!=null?state.slip.picks[k]:!!(l.cover&&!l.cover.receivedAt); }
-function slipQty(l){ var k=slipLineKey(l); return state.slip.qtys[k]!=null?state.slip.qtys[k]:l.qty; }
+function slipQty(l){ var k=slipLineKey(l); return state.slip.qtys[k]!=null?state.slip.qtys[k]:Math.max(0,l.qty-slipDamaged(l)); }
+// Store ask: mark short-shipped and damaged copies on receive, and get the
+// list to send the distributor for credit. RECEIVED is the good copies
+// going into stock; DAMAGED arrived but can't be sold; whatever's left of
+// the slip's count never arrived.
+function slipDamaged(l){ return Math.max(0,parseInt(((state.slip&&state.slip.damaged)||{})[slipLineKey(l)],10)||0); }
+function focSlipDamaged(k,v){ state.slip.damaged=state.slip.damaged||{}; state.slip.damaged[k]=Math.max(0,parseInt(v,10)||0); renderSlip(); }
+function slipClaimLines(slip){
+  return (slip.lines||[]).filter(function(l){return l.cover&&slipIncluded(l);}).map(function(l){
+    var got=Math.max(0,parseInt(slipQty(l),10)||0),bad=slipDamaged(l),qty=Math.max(0,Number(l.qty)||0);
+    return {cycleId:l.cover.cycleId,distributor:slipCycleDistributor(l.cover.cycleId),code:String(l.itemCode||l.code||''),title:String(l.title||l.cover.title||''),invoiced:qty,received:got,damaged:bad,short:Math.max(0,qty-got-bad)};
+  }).filter(function(c){return c.damaged||c.short;});
+}
+function slipClaimText(claim){
+  var by={};(claim.lines||[]).forEach(function(c){(by[c.distributor]=by[c.distributor]||[]).push(c);});
+  return Object.keys(by).map(function(d){
+    return d+' credit request'+(claim.invoice?' -- invoice / delivery '+claim.invoice:'')+' -- received '+String(claim.at||'').slice(0,10)+'\n'+
+      by[d].map(function(c){return c.code+'  '+c.title+'  -- invoiced '+c.invoiced+', received '+c.received+[c.short?c.short+' short':'',c.damaged?c.damaged+' damaged':''].filter(Boolean).map(function(x){return ', '+x;}).join('');}).join('\n');
+  }).join('\n\n');
+}
+function slipClaimCsv(claim){
+  var q=function(v){v=String(v==null?'':v);return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;};
+  return ['Distributor,Invoice,Item code,Title,Invoiced,Received,Short,Damaged'].concat((claim.lines||[]).map(function(c){return [c.distributor,claim.invoice||'',c.code,c.title,c.invoiced,c.received,c.short,c.damaged].map(q).join(',');})).join('\n')+'\n';
+}
+// The last few claims stay on this device, to send after the day's rush.
+function slipSavedClaims(){ try{var v=JSON.parse(localStorage.getItem('foc-credit-claims')||'[]');return Array.isArray(v)?v:[];}catch(e){return [];} }
+function slipSaveClaim(claim){ try{localStorage.setItem('foc-credit-claims',JSON.stringify([claim].concat(slipSavedClaims().filter(function(c){return c.id!==claim.id;})).slice(0,10)));}catch(e){} }
+function focCopyClaim(id){
+  var c=slipSavedClaims().find(function(x){return x.id===id;})||(pickState.claim&&pickState.claim.id===id?pickState.claim:null);if(!c)return;
+  var t=slipClaimText(c);
+  if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(t).then(function(){toast_dash('Credit request copied -- paste it into your email to the distributor');},function(){prompt('Copy the credit request:',t);});
+  else prompt('Copy the credit request:',t);
+}
+function focDownloadClaim(id){
+  var c=slipSavedClaims().find(function(x){return x.id===id;})||(pickState.claim&&pickState.claim.id===id?pickState.claim:null);if(!c)return;
+  var a=document.createElement('a');a.href=URL.createObjectURL(new Blob([slipClaimCsv(c)],{type:'text/csv'}));a.download='credit-request-'+(c.invoice||String(c.at||'').slice(0,10)||'shipment').replace(/[^\w.-]+/g,'_')+'.csv';document.body.appendChild(a);a.click();setTimeout(function(){URL.revokeObjectURL(a.href);a.remove();},500);
+}
+function slipClaimHtml(claim,open){
+  if(!claim||!(claim.lines||[]).length)return '';
+  var short=claim.lines.reduce(function(a,c){return a+c.short;},0),bad=claim.lines.reduce(function(a,c){return a+c.damaged;},0),id=esc(claim.id);
+  return '<details class="foc-family"'+(open?' open':'')+'><summary class="foc-family-head" style="cursor:pointer"><div class="foc-family-title" style="color:var(--gold)">CREDIT REQUEST'+(claim.invoice?' · '+esc(claim.invoice):'')+' · '+String(claim.at||'').slice(0,10)+' · '+[short?short+' short':'',bad?bad+' damaged':''].filter(Boolean).join(' · ')+'</div></summary>'+
+    '<div class="foc-toolbar" style="padding:6px 8px"><button class="hbtn" style="color:var(--gold)" onclick="focCopyClaim(\''+id+'\')">📋 COPY FOR EMAIL</button><button class="hbtn" onclick="focDownloadClaim(\''+id+'\')">⬇ CSV</button></div>'+
+    claim.lines.map(function(c){return '<div style="padding:5px 8px;border-bottom:1px solid var(--border);font:10px var(--font-mono);color:var(--text)">'+esc(c.title)+' <span style="color:var(--dim)">· '+esc(c.distributor)+' '+esc(c.code)+' · invoiced '+c.invoiced+' · received '+c.received+'</span>'+(c.short?' <b style="color:var(--gold)">'+c.short+' short</b>':'')+(c.damaged?' <b style="color:var(--red)">'+c.damaged+' damaged</b>':'')+'</div>';}).join('')+'</details>';
+}
 // Store ask: "I should be able to punch in my prices before going to print
 // labels." Each line's shelf price starts at the cover's customer price
 // (else its cover price) and is what the copies are received -- and
@@ -2904,13 +2965,16 @@ function slipLineHtml(l){
   if(!c.orderedQty) chips.push(c.orderOnFile?'<span style="color:var(--gold)">not on your '+esc(slipCycleDistributor(c.cycleId))+' order</span>':'<span>no saved order for this week</span>');
   else if(l.qty!==c.orderedQty) chips.push('<span style="color:var(--gold)">'+(c.orderOnFile?'ordered ':'expected ')+c.orderedQty+', slip says '+l.qty+'</span>');
   else if(l.how==='exact'&&!c.receivedAt) chips.push('<span style="color:var(--g)">matches your order</span>');
+  var missingCopies=Math.max(0,Number(l.qty||0)-(parseInt(qty,10)||0)-slipDamaged(l));
+  if(slipIncluded(l)&&(missingCopies||slipDamaged(l)))chips.push('<span style="color:var(--gold)">credit request: '+[missingCopies?missingCopies+' short':'',slipDamaged(l)?slipDamaged(l)+' damaged':''].filter(Boolean).join(', ')+'</span>');
   chips=chips.concat(focPresoldChips(c.ebayPresold,c.customerShip,c.customerPickup));
   return '<div style="display:grid;grid-template-columns:22px 48px 1fr auto;gap:8px;align-items:center;padding:8px;border-bottom:1px solid var(--border)">'+
     '<input type="checkbox"'+(slipIncluded(l)?' checked':'')+' onchange="focSlipPick(\''+k+'\',this.checked)">'+focThumbHtml(c.coverImage,c.title)+
     '<div style="min-width:0"><div style="font-weight:700;font-size:11px;color:var(--text)">'+esc(c.title)+'</div>'+
       '<div style="font:9px/1.5 var(--font-mono);color:var(--dim)">Slip: '+esc(l.title)+' · '+esc(l.code||l.itemCode)+(function(){var k=slipLineCost(l);return ' · cost $'+k.unit.toFixed(2)+(k.source==='net'?' (invoice net)':k.source==='lunar'?' (Lunar '+lunarDiscountPct(c.publisher)+'% off cover)':' (50% of cover)')+(c.coverPrice>0?' · sells $'+Number(c.coverPrice).toFixed(2):'');})()+'</div>'+
       '<div style="font:9px/1.5 var(--font-mono);display:flex;gap:8px;flex-wrap:wrap">'+chips.join('')+'</div>'+slipBuyersHtml((state.slip.who||{})[c.skuId])+'</div>'+
-    '<div style="display:flex;gap:6px"><label style="font:8px var(--font-mono);color:var(--dim)">RECEIVED<input class="tsi" type="number" min="0" style="width:64px;margin:2px 0 0" value="'+qty+'" onchange="focSlipQty(\''+k+'\',this.value)"></label>'+
+    '<div style="display:flex;gap:6px"><label style="font:8px var(--font-mono);color:var(--dim)" title="Good copies going into stock">RECEIVED<input class="tsi" type="number" min="0" style="width:64px;margin:2px 0 0" value="'+qty+'" onchange="focSlipQty(\''+k+'\',this.value)"></label>'+
+    '<label style="font:8px var(--font-mono);color:'+(slipDamaged(l)?'var(--red)':'var(--dim)')+'" title="Arrived damaged -- not put in stock, goes on the credit request">DAMAGED<input class="tsi" type="number" min="0" style="width:54px;margin:2px 0 0" value="'+(slipDamaged(l)||'')+'" placeholder="0" onchange="focSlipDamaged(\''+k+'\',this.value)"></label>'+
     '<label style="font:8px var(--font-mono);color:var(--dim)">SHELF $<input class="tsi" type="number" min="0" step="0.01" style="width:74px;margin:2px 0 0" value="'+esc(slipPrice(l))+'" onchange="focSlipPrice(\''+k+'\',this.value)"></label></div></div>';
 }
 function renderSlip(){
@@ -2922,7 +2986,7 @@ function renderSlip(){
     '<input type="file" id="foc-slip-file" accept="image/*,.csv,text/csv" multiple hidden onchange="handleSlipFiles(event)">'+
     '<div class="foc-toolbar" style="margin-top:10px"><button class="hbtn" style="color:var(--g)" onclick="focSlipPickPhotos()">📷 '+(s?'ADD ANOTHER PAGE':'TAKE / CHOOSE SLIP PHOTOS OR CSV')+'</button></div>'+
     '<div id="foc-slip-status" style="font:10px var(--font-mono);color:var(--dim);margin-top:6px"></div></section>';
-  if(!s){ host.innerHTML=head; return; }
+  if(!s){ var past=slipSavedClaims(); host.innerHTML=head+(past.length?'<div style="font:10px var(--font-mono);color:var(--dim);margin:12px 0 4px">CREDIT REQUESTS FROM RECENT SHIPMENTS</div>'+past.map(function(c){return slipClaimHtml(c,false);}).join(''):''); return; }
   var matched=s.lines.filter(function(l){return l.cover;}),unmatched=s.lines.filter(function(l){return !l.cover;});
   var unitsOk=s.totalUnits>0&&s.totalUnits===s.unitsRead;
   var summary='<div class="panel" style="font:10px/1.7 var(--font-mono);color:var(--dim)">'+(s.invoice?'Invoice / delivery '+esc(s.invoice)+' · ':'')+(s.onSaleDate?'On sale '+esc(displayDate(s.onSaleDate))+' · ':'')+
@@ -2969,10 +3033,12 @@ async function confirmSlipReceive(){
     (byCycle[l.cover.cycleId]=byCycle[l.cover.cycleId]||[]).push({skuId:l.cover.skuId,receivedQty:qty,unitCost:k.source==='half'?undefined:k.unit,shelfPrice:price>0?Math.round(price*100)/100:undefined});
   });
   var ids=Object.keys(byCycle);if(!ids.length){toast_dash('Nothing ticked to receive');return;}
+  var claimLines=slipClaimLines(s);
+  var claim=claimLines.length?{id:'c'+Date.now(),at:new Date().toISOString(),invoice:String(s.invoice||'').trim(),lines:claimLines}:null;
   var total=ids.reduce(function(a,id){return a+byCycle[id].reduce(function(b,x){return b+x.receivedQty;},0);},0);
   if(!confirm('Receive '+total+' cop'+(total===1?'y':'ies')+' into inventory'+(ids.length>1?' across '+ids.length+' FOC weeks':'')+'?'))return;
   var status=document.getElementById('foc-slip-receive-status');
-  var created=0,flagged=[],failed=[],done=[],spent=0,notifiedAll=[],labelItems=[];
+  var created=0,flagged=[],failed=[],done=[],spent=0,notifiedAll=[],labelItems=[],okIds=[],pullAll=[];
   var coverBySku={};s.lines.forEach(function(l){if(l.cover)coverBySku[l.cover.skuId]=l.cover;});
   for(var i=0;i<ids.length;i++){
     if(status)status.textContent='Receiving FOC week '+(i+1)+' of '+ids.length+'…';
@@ -2981,16 +3047,20 @@ async function confirmSlipReceive(){
       created+=Number(d.createdInventoryCount||0);
       focHoldNotice(d);
       notifiedAll=notifiedAll.concat(d.notified||[]);
+      pullAll=pullAll.concat(d.pullHeld||[]);
       labelItems=labelItems.concat(d.labelItems||[]);
       (d.receivedSummary||[]).forEach(function(r){done.push(r);if(r.incentiveNotReceived)flagged.push(r.title+(r.variantLabel?' -- '+r.variantLabel:'')+': INCENTIVE NOT RECEIVED');});
       try{await api('/foc/ebay/convert-to-instock',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({storeId:getActiveStoreId(),cycleId:ids[i]})});}catch(e){}
       // Received lines drop off this list, so a retry only re-sends what failed.
       s.lines.forEach(function(l){if(l.cover&&l.cover.cycleId===ids[i]&&slipIncluded(l))l.cover.receivedAt=new Date().toISOString();});
+      okIds.push(ids[i]);
       // What these copies cost: the invoice's net price, else 50% of cover.
       byCycle[ids[i]].forEach(function(x){var unit=Number(x.unitCost)>0?Number(x.unitCost):Math.round(Number((coverBySku[x.skuId]||{}).coverPrice||0)*50)/100;spent+=unit*x.receivedQty;});
     }catch(e){failed.push(e.message);}
   }
   if(status)status.textContent='';
+  // Only weeks that went through go on the credit request (a retry adds the rest).
+  if(claim){claim.lines=claim.lines.filter(function(c){return okIds.indexOf(c.cycleId)>=0;});if(claim.lines.length)slipSaveClaim(claim);else claim=null;}
   toast_dash(created+' cop'+(created===1?'y':'ies')+' added to inventory'+(failed.length?' · '+failed.length+' FOC week(s) failed':''));
   // The shipment is money spent on stock: record it as an inventory
   // purchase (Sales -> EXPENSES & CASH FLOW), added to the same invoice's
@@ -3011,6 +3081,8 @@ async function confirmSlipReceive(){
   pickState.cycleIds=ids;
   pickState.labelItems=labelItems;
   pickState.notified=notifiedAll;
+  pickState.pullHeld=slipMergePullHeld(pullAll);
+  pickState.claim=claim;
   renderSlipReceived(done,s);
   state.slip=null;
   await queueReceivedLabels(labelItems,done);
@@ -3018,7 +3090,7 @@ async function confirmSlipReceive(){
 // RECEIVING-DAY PICK LIST -- every copy that's already spoken for, per
 // cover: eBay orders to ship (grouped by order), website preorders to hold
 // or ship, and pull-list customers to bag. Print it and tick books off.
-var pickState={cycleIds:[],covers:[],labelItems:[],notified:[]};
+var pickState={cycleIds:[],covers:[],labelItems:[],notified:[],claim:null,pullHeld:[]};
 // Opens the label printer with the books just received: a price label per
 // shelf copy, and a flagged HOLD/SOLD label per copy that's already sold so
 // it's pulled instead of shelved.
@@ -3028,7 +3100,7 @@ async function queueReceivedLabels(labelItems,summary){
   try{
     var n=await window.queueLabelsForReceivedItems(pickState.labelItems);
     var sold=pickState.labelItems.reduce(function(a,x){return a+(x&&x.flag?Number(x.copies||0):0);},0);
-    if(n)toast_dash((n-sold)+' shelf label'+(n-sold===1?'':'s')+(sold?' + '+sold+' already-sold cop'+(sold===1?'y':'ies')+' flagged HOLD/SOLD':'')+' queued');
+    if(n)toast_dash((n-sold)+' shelf label'+(n-sold===1?'':'s')+(sold?' + '+sold+' spoken-for cop'+(sold===1?'y':'ies')+' flagged HOLD/SOLD/PULL':'')+' queued');
   }catch(e){toast_dash('Could not queue labels: '+e.message);}
 }
 function pickNoticeLine(list){
@@ -3101,6 +3173,31 @@ function slipToldHtml(notified,summary){
     notified.map(function(n){return '<div style="padding:6px 8px;border-bottom:1px solid var(--border);font:10px var(--font-mono);color:var(--text)">'+esc(n.name||'Customer')+(n.orderNumber?' <span style="color:var(--dim)">#'+esc(n.orderNumber)+'</span>':'')+' · '+how(n)+'</div>';}).join('')+
     (waiting.length?'<div style="padding:6px 8px;font:9px/1.6 var(--font-mono);color:var(--dim)">Set aside, still waiting on another book in their order (they\'re told when the last one arrives): '+esc(waiting.join(', '))+'</div>':'')+'</section>';
 }
+// Pull-list copies set aside on receive, one entry per subscriber (several
+// FOC weeks in one slip can each add books for the same person).
+function slipMergePullHeld(list){
+  var by={};(list||[]).forEach(function(p){var e=by[p.subscriptionId]=by[p.subscriptionId]||{subscriptionId:p.subscriptionId,name:p.name,titles:[]};e.titles=e.titles.concat(p.titles||[]);});
+  return Object.keys(by).map(function(k){return by[k];});
+}
+function slipPullHeldHtml(list){
+  if(!(list||[]).length)return '';
+  var waiting=list.filter(function(p){return !p.result;});
+  return '<section class="foc-family"><header class="foc-family-head"><div class="foc-family-title" style="color:var(--purple)">PULL LISTS SET ASIDE ('+list.length+')</div></header>'+
+    '<div style="font:9px/1.6 var(--font-mono);color:var(--dim);padding:6px 8px">On hold under their name (FOC → 📌 ON HOLD). They pay when they pick up: RING UP there, then scan.</div>'+
+    list.map(function(p){var r=p.result;return '<div style="padding:6px 8px;border-bottom:1px solid var(--border);font:10px var(--font-mono);color:var(--text)">'+esc(p.name)+' <span style="color:var(--dim)">· '+esc(p.titles.join(', '))+'</span>'+(r?(r.sms||r.email?' · <span style="color:var(--g)">✓ '+[r.sms?'texted':'',r.email?'emailed':''].filter(Boolean).join(' + ')+'</span>':' · <span style="color:var(--red)">✗ not reached -- '+esc((r.errors||[]).join('; ')||'no phone or email on file')+'</span>'):'')+'</div>';}).join('')+
+    (waiting.length?'<div class="foc-toolbar" style="padding:6px 8px"><button class="hbtn" style="color:var(--purple)" onclick="focTextPullHeld()">📱 TEXT '+waiting.length+' PULL-LIST CUSTOMER'+(waiting.length===1?'':'S')+'</button></div>':'')+'</section>';
+}
+async function focTextPullHeld(){
+  var list=(pickState.pullHeld||[]).filter(function(p){return !p.result;});if(!list.length)return;
+  if(!confirm('Text/email '+list.length+' pull-list customer'+(list.length===1?'':'s')+' that their books are in?\n\n'+list.map(function(p){return p.name+': '+p.titles.join(', ');}).join('\n')))return;
+  try{
+    var d=await api('/foc/admin/notify-arrivals',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({storeId:getActiveStoreId(),cycleIds:pickState.cycleIds,pull:list.map(function(p){return {subscriptionId:p.subscriptionId,name:p.name,titles:p.titles};})})});
+    (d.results||[]).forEach(function(r){var p=(pickState.pullHeld||[]).find(function(x){return x.subscriptionId===r.subscriptionId;});if(p)p.result=r;});
+    list.forEach(function(p){if(!p.result)p.result={sms:false,email:false,errors:['no phone or email on file']};});
+    var line=pickNoticeLine(d.results);toast_dash(line||'Nobody could be reached');
+    var host=document.getElementById('foc-pull-held');if(host)host.innerHTML=slipPullHeldHtml(pickState.pullHeld);
+  }catch(e){toast_dash('Could not send: '+e.message);}
+}
 // After receiving: what each cover's copies are for. eBay and website
 // buyers' copies only need packing (their sales were recorded when they
 // bought); the rest went into stock.
@@ -3108,11 +3205,12 @@ function renderSlipReceived(summary,slip){
   var host=panel();if(!host)return;
   var bySku={};(slip.lines||[]).forEach(function(l){if(l.cover)bySku[l.cover.skuId]=l.cover;});
   var rows=summary.map(function(r){var c=bySku[r.skuId]||{};return {r:r,c:c};});
-  var toShip=rows.filter(function(x){return Number(x.r.reservedForEbayPresale||0)>0||Number(x.r.reservedForCustomers||0)>0;});
+  var toShip=rows.filter(function(x){return Number(x.r.reservedForEbayPresale||0)>0||Number(x.r.reservedForCustomers||0)>0||Number(x.r.reservedForPullList||0)>0;});
   var line=function(x){
     var r=x.r,c=x.c,parts=[];
     if(r.reservedForEbayPresale>0)parts.push('<b style="color:var(--blue,#5ab0ff)">📦 '+r.reservedForEbayPresale+' for eBay buyers -- pack &amp; ship</b>');
     if(r.reservedForCustomers>0)parts.push('<b style="color:var(--purple)">'+r.reservedForCustomers+' set aside for website customers'+(c.customerShip?' ('+c.customerShip+' to ship)':'')+'</b>');
+    if(r.reservedForPullList>0)parts.push('<b style="color:var(--purple)">'+r.reservedForPullList+' on hold for pull lists ('+esc((r.pullHeldFor||[]).join(', '))+')</b>');
     if(r.availableAsNewStock>0)parts.push('<span style="color:var(--g)">'+r.availableAsNewStock+' into stock</span>');
     if(r.safetyStockHeld>0)parts.push('<span>'+r.safetyStockHeld+' held back</span>');
     if(r.shortShipped>0)parts.push('<span style="color:var(--gold)">'+r.shortShipped+' short</span>');
@@ -3123,11 +3221,11 @@ function renderSlipReceived(summary,slip){
   host.innerHTML='<section class="foc-hero"><div class="foc-toolbar"><button class="hbtn" onclick="loadFocCycles(true)">← FOC WALL</button><button class="hbtn" onclick="window.print()">PRINT</button>'+(pickState.cycleIds.length?'<button class="hbtn" style="color:var(--g)" onclick="openFocPickListLast()">📋 PICK LIST -- WHO GETS WHAT</button>':'')+(pickState.labelItems.length?'<button class="hbtn" style="color:var(--gold)" title="Price labels for the books going on the shelf" onclick="focPrintReceivedLabels()">🏷️ PRINT LABELS</button>':'')+'</div>'+
     '<div style="font:900 20px/1.1 \'Orbitron\',monospace;color:var(--text);margin-top:10px">Shipment received</div>'+
     '<div style="font:10px/1.6 var(--font-mono);color:var(--dim);margin-top:4px">Presold copies were already counted as sales when they sold -- nothing here adds sales or profit. '+(shipCount?'Buy the labels for the '+shipCount+' eBay cop'+(shipCount===1?'y':'ies')+' from ALL EBAY ORDERS on the eBay tab.':'')+'</div></section>'+
-    slipToldHtml(pickState.notified,summary)+
+    slipClaimHtml(pickState.claim,true)+slipToldHtml(pickState.notified,summary)+'<div id="foc-pull-held">'+slipPullHeldHtml(pickState.pullHeld)+'</div>'+
     (toShip.length?'<section class="foc-family"><header class="foc-family-head"><div class="foc-family-title">TO PACK &amp; SHIP / SET ASIDE ('+toShip.length+')</div></header>'+toShip.map(line).join('')+'</section>':'')+
     '<details class="foc-family"'+(toShip.length?'':' open')+'><summary class="foc-family-head" style="cursor:pointer"><div class="foc-family-title">EVERYTHING RECEIVED ('+rows.length+')</div></summary>'+rows.map(line).join('')+'</details>';
 }
-window.ensureFocPanel=function(){loadCycles(false);};window.loadFocCycles=loadCycles;window.openFocCycle=openCycle;window.handleFocImportFile=handleImport;window.handleLunarFocImportFile=handleLunarImport;window.switchFocDistributor=switchDistributor;window.loadLunarDiscountSettings=loadLunarDiscountSettings;window.saveLunarDiscountSettings=saveLunarDiscountSettings;window.filterFocAdmin=function(v){state.query=v;renderFamilies();};window.filterFocPublisher=function(v){state.publisher=v;renderFamilies();};window.filterFocFlag=function(v){state.flag=v;renderFamilies();};window.filterFocEbay=function(v){state.ebay=v;renderFamilies();};window.saveFocSku=saveSku;window.saveFocFamily=saveFamily;window.toggleFocCycle=toggleCycle;window.archiveFocCycle=archiveCycle;window.unarchiveFocCycle=unarchiveCycle;window.saveFocCycleCutoff=saveCutoff;window.exportFocPrh=exportPrh;window.loadFocShippingSettings=loadShipping;window.saveFocShippingSettings=saveShipping;window.openReceiveShipment=openReceiveShipment;window.openPackingSlipScan=openPackingSlipScan;window.handleSlipFiles=handleSlipFiles;window.focSlipPickPhotos=slipPickPhotos;window.focSlipPick=focSlipPick;window.focSlipQty=focSlipQty;window.focSlipPrice=focSlipPrice;window.focSlipMarkup=focSlipMarkup;window.confirmSlipReceive=confirmSlipReceive;window.focPrintReceivedLabels=function(){queueReceivedLabels(pickState.labelItems,[]);};window.confirmReceiveShipment=confirmReceiveShipment;window.createFocEbayPresale=openEbayPresaleReview;window.submitEbayPresaleReview=submitEbayPresaleReview;window.openFamilyEbayGroupReview=openFamilyEbayGroupReview;window.submitFamilyEbayGroupReview=submitFamilyEbayGroupReview;window.handleFocGroupMainImageFile=handleFocGroupMainImageFile;window.clearFocGroupMainImage=clearFocGroupMainImage;window.handleFocGroupBundleImageFile=handleFocGroupBundleImageFile;window.clearFocGroupBundleImage=clearFocGroupBundleImage;window.loadEbaySafeDays=loadEbaySafeDays;window.saveFocEbaySafeDays=saveEbaySafeDays;window.openFocReview=openFocReview;window.openFocIntelligence=openFocIntelligence;window.submitPrhOrder=submitPrhOrder;window.handleFocPrhCartImportFile=handleFocPrhCartImportFile;window.endFocEbayListings=endFocEbayListings;window.toggleFocEndEbayAll=toggleFocEndEbayAll;window.confirmEndFocEbayListings=confirmEndFocEbayListings;window.repairFocEbayGroupPhotos=repairFocEbayGroupPhotos;window.fillLunarCovers=fillLunarCovers;window.reviewStoreQtyChanged=reviewStoreQtyChanged;window.focPublishBulkCheckboxChanged=focPublishBulkCheckboxChanged;window.toggleFocPublishBulkSelectAll=toggleFocPublishBulkSelectAll;window.bulkSetCustomerEnabled=bulkSetCustomerEnabled;window.openOrphanedEbayScan=openOrphanedEbayScan;window.endSelectedOrphanedEbayListings=endSelectedOrphanedEbayListings;
+window.ensureFocPanel=function(){loadCycles(false);};window.loadFocCycles=loadCycles;window.openFocCycle=openCycle;window.handleFocImportFile=handleImport;window.handleLunarFocImportFile=handleLunarImport;window.switchFocDistributor=switchDistributor;window.loadLunarDiscountSettings=loadLunarDiscountSettings;window.saveLunarDiscountSettings=saveLunarDiscountSettings;window.filterFocAdmin=function(v){state.query=v;renderFamilies();};window.filterFocPublisher=function(v){state.publisher=v;renderFamilies();};window.filterFocFlag=function(v){state.flag=v;renderFamilies();};window.filterFocEbay=function(v){state.ebay=v;renderFamilies();};window.saveFocSku=saveSku;window.saveFocFamily=saveFamily;window.toggleFocCycle=toggleCycle;window.archiveFocCycle=archiveCycle;window.unarchiveFocCycle=unarchiveCycle;window.saveFocCycleCutoff=saveCutoff;window.exportFocPrh=exportPrh;window.loadFocShippingSettings=loadShipping;window.saveFocShippingSettings=saveShipping;window.openReceiveShipment=openReceiveShipment;window.openPackingSlipScan=openPackingSlipScan;window.handleSlipFiles=handleSlipFiles;window.focSlipPickPhotos=slipPickPhotos;window.focSlipPick=focSlipPick;window.focSlipQty=focSlipQty;window.focSlipPrice=focSlipPrice;window.focSlipMarkup=focSlipMarkup;window.focTextPullHeld=focTextPullHeld;window.focSlipDamaged=focSlipDamaged;window.focCopyClaim=focCopyClaim;window.focDownloadClaim=focDownloadClaim;window.confirmSlipReceive=confirmSlipReceive;window.focPrintReceivedLabels=function(){queueReceivedLabels(pickState.labelItems,[]);};window.confirmReceiveShipment=confirmReceiveShipment;window.createFocEbayPresale=openEbayPresaleReview;window.submitEbayPresaleReview=submitEbayPresaleReview;window.openFamilyEbayGroupReview=openFamilyEbayGroupReview;window.submitFamilyEbayGroupReview=submitFamilyEbayGroupReview;window.handleFocGroupMainImageFile=handleFocGroupMainImageFile;window.clearFocGroupMainImage=clearFocGroupMainImage;window.handleFocGroupBundleImageFile=handleFocGroupBundleImageFile;window.clearFocGroupBundleImage=clearFocGroupBundleImage;window.loadEbaySafeDays=loadEbaySafeDays;window.saveFocEbaySafeDays=saveEbaySafeDays;window.openFocReview=openFocReview;window.openFocIntelligence=openFocIntelligence;window.submitPrhOrder=submitPrhOrder;window.handleFocPrhCartImportFile=handleFocPrhCartImportFile;window.endFocEbayListings=endFocEbayListings;window.toggleFocEndEbayAll=toggleFocEndEbayAll;window.confirmEndFocEbayListings=confirmEndFocEbayListings;window.repairFocEbayGroupPhotos=repairFocEbayGroupPhotos;window.fillLunarCovers=fillLunarCovers;window.reviewStoreQtyChanged=reviewStoreQtyChanged;window.focPublishBulkCheckboxChanged=focPublishBulkCheckboxChanged;window.toggleFocPublishBulkSelectAll=toggleFocPublishBulkSelectAll;window.bulkSetCustomerEnabled=bulkSetCustomerEnabled;window.openOrphanedEbayScan=openOrphanedEbayScan;window.endSelectedOrphanedEbayListings=endSelectedOrphanedEbayListings;
 window.generateFocAiDescription=generateFocAiDescription;window.generateFocGroupAiDescription=generateFocGroupAiDescription;
 // Store report: "+ ADD TO INVENTORY" on a FOC cover-wall card threw
 // "quickAddFocSkuToInventory is not defined" -- this whole file is wrapped

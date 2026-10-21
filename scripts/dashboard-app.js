@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.10.21.7-slip-markup';
+const APP_VERSION = '2026.10.21.8-pull-holds-credit';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -17022,7 +17022,7 @@ function openSellModal(id){
   const item = all.find(i=>i.id===id);
   if(!item) return;
   if(inventoryRowPreorderHold(item.raw)) {
-    toast_dash(`On hold for ${item.raw.preorderHold?.customerName || 'a customer'}'s preorder -- hand it over from FOC → 📌 ON HOLD`);
+    toast_dash(item.raw.pullHold?.subscriptionId && !item.raw.preorderHold ? `On hold for ${item.raw.pullHold.customerName || 'a customer'}'s pull list -- FOC → 📌 ON HOLD → RING UP, then scan it` : `On hold for ${item.raw.preorderHold?.customerName || 'a customer'}'s preorder -- hand it over from FOC → 📌 ON HOLD`);
     return;
   }
   if(item.lifecycle === 'hold') {
@@ -19609,7 +19609,8 @@ function addSaleItemToCart(item = {}, options = {}){
     if(inventoryItem?.lifecycle === 'hold' || inventoryRowPreorderHold(inventoryItem?.raw)){
       // Store report: a paid preorder copy got rung up for someone else.
       const who = inventoryItem.preorderHold?.customerName || inventoryItem.raw?.preorderHold?.customerName || '';
-      toast_dash(who ? `On hold for ${who}'s preorder -- hand it over from FOC → 📌 ON HOLD` : 'This item is on hold (not for sale)');
+      const pullWho = !who && inventoryItem.raw?.pullHold?.subscriptionId ? (inventoryItem.raw.pullHold.customerName || 'a customer') : '';
+      toast_dash(pullWho ? `On hold for ${pullWho}'s pull list -- FOC → 📌 ON HOLD → RING UP, then scan it` : who ? `On hold for ${who}'s preorder -- hand it over from FOC → 📌 ON HOLD` : 'This item is on hold (not for sale)');
       return null;
     }
     if(!inventoryItemIsSellable(inventoryItem) || quantity + alreadyInCart > available){
