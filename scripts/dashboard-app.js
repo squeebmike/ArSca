@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.10.21.2-find-lunar-covers';
+const APP_VERSION = '2026.10.21.4-sold-covers-hover';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -14853,15 +14853,34 @@ function getUnlinkedTransactionRows(inventorySoldItems){
 // group -- the lowest-priced variant, a guaranteed floor value every unit
 // is worth at minimum -- and drops the rest. Scoped to value/cost/ROI sums
 // only; item counts and every other list/filter still show every row.
+// Linked listings (one physical stock sold as several options -- the
+// Dougvana poster's plain, Standard Remarque and Deluxe Remarque share the
+// same 99 posters) count once, at the cheapest option. Links can point one
+// way only (the plain poster lists both remarques; each remarque lists just
+// the plain one), so a group is everything reachable through links in
+// either direction. Before, walking one way counted the plain poster once
+// per remarque that pointed at it.
 function dedupeLinkedInventoryItems(items){
   const byId = new Map(items.map(i => [i.id, i]));
+  const neighbors = new Map(items.map(i => [i.id, new Set()]));
+  for(const item of items){
+    for(const other of (Array.isArray(item.linkedStockIds) ? item.linkedStockIds : [])){
+      if(!byId.has(other) || other === item.id) continue;
+      neighbors.get(item.id).add(other);
+      neighbors.get(other).add(item.id);
+    }
+  }
   const seen = new Set();
   const result = [];
   for(const item of items){
     if(seen.has(item.id)) continue;
-    const groupIds = [item.id, ...(Array.isArray(item.linkedStockIds) ? item.linkedStockIds : [])].filter(id => byId.has(id));
-    groupIds.forEach(id => seen.add(id));
-    const group = groupIds.map(id => byId.get(id));
+    const group = [], queue = [item.id];
+    seen.add(item.id);
+    while(queue.length){
+      const id = queue.shift();
+      group.push(byId.get(id));
+      for(const next of neighbors.get(id)) if(!seen.has(next)){ seen.add(next); queue.push(next); }
+    }
     result.push(group.reduce((cheapest, cur) => inventoryListPrice(cur) < inventoryListPrice(cheapest) ? cur : cheapest, group[0]));
   }
   return result;
@@ -15722,7 +15741,7 @@ function inventoryAgingBuckets(items=all){
     age_91_180:{ label:'91-180 days', count:0, value:0 },
     age_181_plus:{ label:'180+ days', count:0, value:0 },
   };
-  (items || []).filter(i=>i.status==='in_stock' && i.lifecycle!=='archived').forEach(i=>{
+  dedupeLinkedInventoryItems((items || []).filter(i=>i.status==='in_stock' && i.lifecycle!=='archived')).forEach(i=>{
     const key = inventoryAgingBucket(i);
     if(!key) return;
     buckets[key].count++;
@@ -15963,8 +15982,11 @@ function ownerAnalyticsData(){
   const monthKey = now.getFullYear() + '-' + now.getMonth();
   const salesToday = sold.filter(i=>new Date(i.soldAt || i.createdAt || 0).toDateString() === todayKey);
   const salesMonth = sold.filter(i=>{ const d=new Date(i.soldAt || i.createdAt || 0); return d.getFullYear() + '-' + d.getMonth() === monthKey; });
-  const value = inv.reduce((s,i)=>s + inventoryListPrice(i) * (Number(i.qty || 1) || 1), 0);
-  const cost = inv.reduce((s,i)=>s + inventoryCostBasis(i) * (Number(i.qty || 1) || 1), 0);
+  // Linked listings share one stock -- counted once, same as the Inventory
+  // tab's SELL VALUE (renderStats).
+  const invForValue = dedupeLinkedInventoryItems(inv);
+  const value = invForValue.reduce((s,i)=>s + inventoryListPrice(i) * (Number(i.qty || 1) || 1), 0);
+  const cost = invForValue.reduce((s,i)=>s + inventoryCostBasis(i) * (Number(i.qty || 1) || 1), 0);
   const listed = inv.filter(inventoryIsListed).length;
   const h = inventoryHealthSummary(all);
   const tender = {};
