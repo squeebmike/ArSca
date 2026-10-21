@@ -22,6 +22,7 @@ on:
       - scripts/pull-list-page.mjs
       - scripts/article-marketplace.mjs
       - tests/article-marketplace.test.mjs
+      - scripts/release-order.mjs
       - scripts/pocket-guides.mjs
       - scripts/upcoming-sets.mjs
       - tests/pocket-guides.test.mjs

@@ -34,3 +34,19 @@ console.log('Pocket Guides: complete HTML discovery, topic pagination, search sa
 assert.ok(fs.readFileSync(new URL('../wrangler.deploy.jsonc',import.meta.url),'utf8').includes('www.themanapocket.com/pocket-guides*'), 'root query pagination and search must match the Worker route');
 
 body=await(await get('/pocket-guides/upcoming')).text();assert.ok(body.includes('North American Commander decks')&&body.includes('Topps direct preorder opens'));assert.ok(!JSON.stringify(page.jsonLd).includes('Offer'));assert.equal(page.canonicalPath,'/pocket-guides/upcoming');body=await(await get('/pocket-guides/upcoming?category=pokemon')).text();assert.ok(body.includes('Delta Reign'));assert.ok(!body.includes('id="star-trek"'));assert.equal((await get('/pocket-guides/upcoming?category=bad')).status,404);
+
+// Release order must not follow the date an article happened to be written.
+{
+ const {releaseOrderInfo,newestReleases}=await import('../scripts/release-order.mjs');
+ const originals=[{name:'Old',releaseDate:'2024-12-20'},{name:'Unknown',publishedAt:'2099-01-01'},{name:'New',releaseDate:'2026-01-02'},{name:'Year only',year:2025}];
+ assert.deepEqual(newestReleases(originals).map(s=>s.name),['New','Year only','Old','Unknown']);
+ assert.equal(originals[0].name,'Old','sorting does not mutate cached reference arrays');
+ assert.equal(releaseOrderInfo({releaseDate:'2026-02-31',year:2025}).key,'2025');
+ assert.equal(releaseOrderInfo({releaseDate:'2026-01-99'}).key,'');
+ assert.equal(releaseOrderInfo({releaseDate:'2026-11'}).label,'Release 2026-11','month precision is preserved');
+ const written=[{slug:'mtg-final-fantasy-mtg-2025-collector-guide',title:'Older release, written later',publishedAt:'2026-10-21'},{slug:'mtg-lorwyn-eclipsed-2026-collector-guide',title:'Newer release, written earlier',publishedAt:'2026-01-01'}];
+ const metadata=[{code:'fin',name:'FINAL FANTASY',releaseDate:'2025-06-13'},{code:'ecl',name:'Lorwyn Eclipsed',releaseDate:'2026-01-23'}];
+ const sorted=pocketGuideEntries(written,metadata).filter(e=>e.kind==='Article');
+ assert.equal(sorted[0].title,'Newer release, written earlier');assert.equal(sorted[0].date,'2026-01-23');
+ const drops=pocketGuideEntries([]).filter(e=>e.kind==='Drop guide');assert.ok(drops.every((d,i)=>!i||drops[i-1].date>=d.date));
+}

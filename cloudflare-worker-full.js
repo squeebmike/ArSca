@@ -7857,7 +7857,20 @@ async function routeRequest(request, env, ctx) {
     }
 
     if(url.pathname==='/pocket-guides'||url.pathname.startsWith('/pocket-guides/')) {
-      const response=await handlePocketGuides(request,env,url,{escape:mtgEscapeHtml,shell:mtgPageShell,loadArticles:()=>fetchArticles(env,ctx)});if(response)return response;
+      const response=await handlePocketGuides(request,env,url,{escape:mtgEscapeHtml,shell:mtgPageShell,loadArticles:()=>fetchArticles(env,ctx),loadReleaseSets:async()=>{
+        const loading=cachedPublicCatalog(env,ctx,'guide-release-dates-v1',async()=>{
+          const results=await Promise.allSettled([loadPokemonSets(env).then(r=>r.data), (async()=>{
+            if(!env.MTG_CATALOG_R2)return [];
+            const object=await env.MTG_CATALOG_R2.get('mtg/manifest.json');const manifest=object?await object.json():null;
+            if(manifest?.status!=='ready')return [];
+            return gunzipJsonlFromR2(await env.MTG_CATALOG_R2.get(manifest.files?.sets?.path||'mtg/__missing__'));
+          })()]);
+          const rows=results.filter(r=>r.status==='fulfilled'&&Array.isArray(r.value)).flatMap(r=>r.value);
+          if(!rows.length)throw new Error('Release metadata unavailable');
+          return rows.map(s=>({id:s.id,code:s.code,name:s.name,releaseDate:s.releaseDate||s.releasedAt||s.released_at||''}));
+        },{freshMs:21600000,maxAgeMs:43200000,timeoutMs:8000});
+        let timer;try{return await Promise.race([loading,new Promise(resolve=>{timer=setTimeout(()=>resolve([]),700);})]);}finally{clearTimeout(timer);}
+      }});if(response)return response;
     }
     if(url.pathname==='/secret-lair'||url.pathname.startsWith('/secret-lair/')||url.pathname==='/sitemap-secret-lair.xml') {
       const response=await handleSecretLairPages(request,env,url,{ctx,escape:mtgEscapeHtml,slug:mtgSlugify,shell:mtgPageShell,listItems:()=>optionalCatalogInventory(signal=>fetchAllListableStorefrontItemsCached(env,ctx,signal)),available:isStorefrontItemAvailable});

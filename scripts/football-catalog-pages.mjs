@@ -1,3 +1,4 @@
+import {newestReleases} from './release-order.mjs';
 import {footballOddsHtml} from './football-odds.mjs';
 import {sectionsForSet,baseballSectionSitemapPaths,baseballSectionsNav,handleBaseballSections} from './baseball-section-pages.mjs';
 import {sportsChecklistRedirect,sportsReleaseInformation} from './sports-checklist-ui.mjs';
@@ -12,7 +13,7 @@ export const footballCardPath=(set,card)=>footballSetPath(set)+'/cards/'+card.id
 export async function handleFootballCatalog(request,env,url,deps) {
  if(!['GET','HEAD'].includes(request.method)||!(url.pathname==='/football'||url.pathname.startsWith('/football/')||url.pathname==='/sitemap-football.xml'))return null;
  const {escape:esc,shell}=deps;
- const sets=footballSets.filter(s=>!footballChecklistPublicationProblems(s).length);
+ const sets=newestReleases(footballSets.filter(s=>!footballChecklistPublicationProblems(s).length));
 
  const html=(data,status=200)=>new Response(request.method==='HEAD'?null:shell(data),{status,headers:{'Content-Type':'text/html;charset=UTF-8','Cache-Control':'no-store'}});
  const missing=()=>html({title:'Football checklist not found | The Mana Pocket',description:'Browse verified football checklists.',canonicalPath:url.pathname,robotsNoindex:true,bodyHtml:'<h1>Checklist page not found</h1><p><a href="/football">Browse football checklists</a></p>'},404);
@@ -20,7 +21,7 @@ export async function handleFootballCatalog(request,env,url,deps) {
   const paths=['/football',...sets.flatMap(s=>[footballSetPath(s),...s.cards.map(c=>footballCardPath(s,c))]),...baseballSectionSitemapPaths(sets)];
   return new Response(request.method==='HEAD'?null:'<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'+paths.map(p=>'<url><loc>'+origin+esc(p)+'</loc></url>').join('')+'</urlset>',{headers:{'Content-Type':'application/xml;charset=UTF-8','Cache-Control':'public,max-age=900'}});
  }
- if(url.pathname==='/football')return html({title:'Licensed Topps Football Checklists | The Mana Pocket',description:'Browse verified licensed Topps football base checklists, exact card references and matching store copies.',canonicalPath:'/football',jsonLd:{'@context':'https://schema.org','@type':'CollectionPage',name:'Licensed Topps football checklists'},bodyHtml:'<h1>Topps football checklists</h1><p><a href="/sports/checklists?sport=football">Search players and teams across sets →</a></p><p>Find the card number, check the set, then look for your copy. These numbered base checklists come from the official Topps PDFs. Inserts, autographs and parallels are separate lists; the source PDF includes them.</p><p><a href="/baseball">Baseball checklists</a> · <a href="/category/sports-cards">Shop sports cards</a> · <a href="/articles">Collector articles</a></p><div class="mp-set-list">'+sets.map(s=>'<a class="mp-set-row" href="'+footballSetPath(s)+'"><span>'+esc(s.displayName)+'</span><span>'+s.cards.length+' base cards</span></a>').join('')+'</div>'});
+ if(url.pathname==='/football')return html({title:'Licensed Topps Football Checklists | The Mana Pocket',description:'Browse verified licensed Topps football base checklists, exact card references and matching store copies.',canonicalPath:'/football',jsonLd:{'@context':'https://schema.org','@type':'CollectionPage',name:'Licensed Topps football checklists'},bodyHtml:'<h1>Topps football checklists</h1><p>Newest set years first. Within a year, sets without a verified release date are alphabetical.</p><p><a href="/sports/checklists?sport=football">Search players and teams across sets →</a></p><p>Find the card number, check the set, then look for your copy. These numbered base checklists come from the official Topps PDFs. Inserts, autographs and parallels are separate lists; the source PDF includes them.</p><p><a href="/baseball">Baseball checklists</a> · <a href="/category/sports-cards">Shop sports cards</a> · <a href="/articles">Collector articles</a></p><div class="mp-set-list">'+sets.map(s=>'<a class="mp-set-row" href="'+footballSetPath(s)+'"><span>'+esc(s.displayName)+'</span><span>'+s.cards.length+' base cards</span></a>').join('')+'</div>'});
  const sectionResponse=await handleBaseballSections(request,env,url,deps,sets,html,missing);if(sectionResponse)return sectionResponse;
  const set=sets.find(s=>url.pathname===footballSetPath(s)||url.pathname.startsWith(footballSetPath(s)+'/cards/'));
  if(!set)return missing();

@@ -1,3 +1,4 @@
+import {newestReleases} from './release-order.mjs';
 import {baseballChecklistInventoryMatches as baseballInventoryMatches} from './topps/public-checklist-policy.mjs';
 const origin='https://www.themanapocket.com';
 const teamIndexes=new WeakMap(); // Public publisher metadata only; never store stock.
@@ -25,7 +26,7 @@ export async function handleBaseballTeam(request,url,sets,deps,html,missing,card
  const esc=deps.escape,base=baseballTeamPath(team);
  const selectedSet=url.searchParams.get('set')||'',year=url.searchParams.get('year')||'',rookies=url.searchParams.get('rookies')||'';
  const query=(url.searchParams.get('q')||'').trim().slice(0,100);
- const teamSets=[...new Map(team.rows.map(r=>[r.set.id,r.set])).values()];
+ const teamSets=newestReleases([...new Map(team.rows.map(r=>[r.set.id,r.set])).values()]);
  const years=[...new Set(teamSets.map(s=>String(s.year)))].sort().reverse();
  if((selectedSet&&!teamSets.some(s=>s.id===selectedSet))||(year&&!years.includes(year))||(rookies&&!['1'].includes(rookies)))return missing();
  const rows=team.rows.filter(({set,card})=>(!selectedSet||set.id===selectedSet)&&(!year||String(set.year)===year)&&(!rookies||card.subjects.some(s=>s.team===team.name&&/\brookie\b/i.test(s.note||'')))&&(!query||[card.player,card.cardNumber,...card.subjects.map(s=>s.note||'')].join(' ').toLowerCase().includes(query.toLowerCase())));
