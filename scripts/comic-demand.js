@@ -144,6 +144,15 @@
   // sold:  [{ title, series?, issue?, cover?, artist?, qty, price, saleId, at, ebay }]
   // stock: [{ name, series?, issue?, cover?, artist?, qty, at }]
   // artists: known cover-artist names (FOC covers), for reading sale titles
+  // Store ask: "can't I hover over this and see the different covers we
+  // sold?" -- a pill's hover lists the sales behind its count.
+  const SOLD_LIST_MAX = 10;
+  function soldDetail(g){
+    if(!g || !Array.isArray(g.recent) || !g.recent.length) return '';
+    const day = at => new Date(at).toLocaleDateString('en-US', { month:'short', day:'numeric' });
+    return '\n' + g.recent.map(r => '• ' + r.title + (r.qty > 1 ? ' ×' + r.qty : '') + (r.price ? ' — $' + Number(r.price).toFixed(2) : '') + ' (' + day(r.at) + (r.ebay ? ', eBay' : '') + ')').join('\n')
+      + (g.recentMore ? '\n+ ' + g.recentMore + ' more' : '');
+  }
   function buildComicDemand({ sold = [], stock = [], artists = [], now = Date.now(), rules } = {}){
     const R = { ...RULES, ...(rules || {}) };
     const cutoff = now - R.windowDays * DAY;
@@ -151,7 +160,7 @@
     const groups = new Map();
     const get = g => {
       let s = groups.get(g.key);
-      if(!s){ s = { key:g.key, dim:g.dim, label:g.label, sold:0, revenue:0, ebaySold:0, stockQty:0, stockAges:[], issues:{}, lastSold:0, together:new Map() }; groups.set(g.key, s); }
+      if(!s){ s = { key:g.key, dim:g.dim, label:g.label, sold:0, revenue:0, ebaySold:0, stockQty:0, stockAges:[], issues:{}, lastSold:0, together:new Map(), recent:[] }; groups.set(g.key, s); }
       return s;
     };
     const issueOf = (s, n) => (s.issues[n] = s.issues[n] || { sold:0, stock:0 });
@@ -168,6 +177,7 @@
       for(const g of c.groups){
         const s = get(g);
         s.sold += qty; s.revenue += price * qty; if(it.ebay) s.ebaySold += qty;
+        s.recent.push({ title:String(it.title || it.name || '').replace(/\s+/g, ' ').trim().slice(0, 90), qty, price, at, ebay:!!it.ebay });
         s.lastSold = Math.max(s.lastSold, at);
         if(g.dim === 'series' && c.issue) issueOf(s, c.issue).sold += qty;
       }
@@ -204,6 +214,8 @@
       else if(s.sold >= R.steadyMinSold) rating = 'steady';
       return { key:s.key, dim:s.dim, label:s.label, sold:s.sold, ebaySold:s.ebaySold, revenue:Math.round(s.revenue * 100) / 100,
         avgPrice:s.sold ? Math.round(s.revenue / s.sold * 100) / 100 : null, stockQty:s.stockQty, stockAge, issues:s.issues, lastSold:s.lastSold, rating,
+        // The sales behind the count, newest first, for the pill's hover.
+        recent:s.recent.sort((a, b) => b.at - a.at).slice(0, SOLD_LIST_MAX), recentMore:Math.max(0, s.recent.length - SOLD_LIST_MAX),
         together:[...s.together.values()].filter(t => t.count >= R.togetherMin).sort((a, b) => b.count - a.count) };
     });
     return { list, byKey:new Map(list.map(g => [g.key, g])), spanDays, soldCount, bundles, bundleRevenue:Math.round(bundleRevenue * 100) / 100, artists:known };
@@ -271,9 +283,9 @@
     const firstIssue = !!family.isFirstIssue || issue === '1';
     if(series && series.rating !== 'thin'){
       const text = series.rating === 'hot' ? '🔥 HOT · sold ' + series.sold : series.rating === 'slow' ? '🐢 SLOW · ' + series.stockQty + ' on shelf, ' + series.sold + ' sold' : '✓ STEADY · sold ' + series.sold;
-      pills.push({ kind:'series', tone:TONE[series.rating], text, title:'This series here in the last ' + span + ': ' + plural(series.sold, 'copy', 'copies') + ' sold' + (series.ebaySold ? ' (' + series.ebaySold + ' on eBay)' : '') + ', ' + series.stockQty + ' on the shelf now.' });
+      pills.push({ kind:'series', tone:TONE[series.rating], text, title:'This series here in the last ' + span + ': ' + plural(series.sold, 'copy', 'copies') + ' sold' + (series.ebaySold ? ' (' + series.ebaySold + ' on eBay)' : '') + ', ' + series.stockQty + ' on the shelf now.' + soldDetail(series) });
     } else if(series && series.sold){
-      pills.push({ kind:'series', tone:'dim', text:'sold ' + series.sold, title:'This series here in the last ' + span + ': ' + plural(series.sold, 'copy', 'copies') + ' sold, ' + series.stockQty + ' on the shelf.' });
+      pills.push({ kind:'series', tone:'dim', text:'sold ' + series.sold, title:'This series here in the last ' + span + ': ' + plural(series.sold, 'copy', 'copies') + ' sold, ' + series.stockQty + ' on the shelf.' + soldDetail(series) });
     } else if(firstIssue || family.isNewSeries){
       pills.push({ kind:'series', tone:'new', text:'🆕 NEW SERIES', title:'No sales history here yet -- a new #1.' });
     }
@@ -289,7 +301,7 @@
       return watched ? { key:'character|' + c.toLowerCase(), dim:'character', label:c, sold:0, stockQty:0, rating:'thin', watched } : null;
     }).filter(Boolean).sort((a, b) => (b.watched - a.watched) || (b.sold - a.sold));
     const character = characters[0] || null;
-    if(character) pills.push({ kind:'character', tone:character.watched ? 'hot' : TONE[character.rating], text:'🦸 ' + character.label + (character.sold ? ' · sold ' + character.sold : '') + (character.watched ? ' · ⭐' : ''), title:(character.sold ? "You've sold " + plural(character.sold, character.label + ' comic') + ' in the last ' + span + (character.stockQty ? ', ' + character.stockQty + ' on the shelf' : '') + '.' : 'No ' + character.label + ' sales on file yet.') + (character.watched ? ' On your watch list.' : '') });
+    if(character) pills.push({ kind:'character', tone:character.watched ? 'hot' : TONE[character.rating], text:'🦸 ' + character.label + (character.sold ? ' · sold ' + character.sold : '') + (character.watched ? ' · ⭐' : ''), title:(character.sold ? "You've sold " + plural(character.sold, character.label + ' comic') + ' in the last ' + span + (character.stockQty ? ', ' + character.stockQty + ' on the shelf' : '') + '.' : 'No ' + character.label + ' sales on file yet.') + (character.watched ? ' On your watch list.' : '') + soldDetail(character) });
     const partner = series && series.together[0];
     if(partner) pills.push({ kind:'together', tone:'good', text:'🤝 sells with ' + partner.label + ' (' + partner.count + ')', title:'Bought in the same sale ' + plural(partner.count, 'time') + ': ' + series.together.slice(0, 4).map(t => t.label + ' ×' + t.count).join(', ') });
     let presold = 0;
@@ -304,11 +316,11 @@
           const sold = g ? g.sold : 0;
           if(sold >= 2 || watched) vp.push({ kind:'artist', tone:watched ? 'hot' : (TONE[g.rating] || 'good'), artist:a, rating:watched ? 'hot' : g.rating, sold, watched,
             text:'🎨 ' + a + (sold ? ' · sold ' + sold : '') + (watched ? ' · ⭐' : ''),
-            title:(sold ? "You've sold " + plural(sold, a + ' variant cover') + ' in the last ' + span + (g.avgPrice ? ', about $' + g.avgPrice.toFixed(2) + ' each' : '') + (g.stockQty ? ', ' + g.stockQty + ' on the shelf' : '') + '.' : 'No ' + a + ' variant sales on file yet.') + (watched ? ' On your watch list.' : '') });
+            title:(sold ? "You've sold " + plural(sold, a + ' variant cover') + ' in the last ' + span + (g.avgPrice ? ', about $' + g.avgPrice.toFixed(2) + ' each' : '') + (g.stockQty ? ', ' + g.stockQty + ' on the shelf' : '') + '.' : 'No ' + a + ' variant sales on file yet.') + (watched ? ' On your watch list.' : '') + soldDetail(g) });
         }
         for(const t of coverTypes(v.variantLabel)){
           const g = demand && demand.byKey.get('type|' + t.toLowerCase());
-          if(g && g.rating === 'hot') vp.push({ kind:'type', tone:'hot', text:'🔥 ' + t + ' sell · ' + g.sold, title:"You've sold " + g.sold + ' ' + t.toLowerCase() + ' in the last ' + span + (g.avgPrice ? ', about $' + g.avgPrice.toFixed(2) + ' each' : '') + '.' });
+          if(g && g.rating === 'hot') vp.push({ kind:'type', tone:'hot', text:'🔥 ' + t + ' sell · ' + g.sold, title:"You've sold " + g.sold + ' ' + t.toLowerCase() + ' in the last ' + span + (g.avgPrice ? ', about $' + g.avgPrice.toFixed(2) + ' each' : '') + '.' + soldDetail(g) });
         }
       }
       if(vp.length) variants[v.id] = vp;
