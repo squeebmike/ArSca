@@ -415,7 +415,8 @@ async function readPackingSlip(request,env,deps){
   const limited=await deps.readJsonWithLimit(request,24*1024*1024);if(limited.error)return limited.error;
   const body=limited.data||{};const storeId=text(body.storeId,80);
   const auth=await deps.requireStoreUser(request,env,storeId,['owner','admin','manager','employee']);if(auth.error)return auth.error;
-  if(!env.ANTHROPIC_API_KEY)return deps.json({ok:false,error:'Reading slip photos needs the ANTHROPIC_API_KEY secret on the Worker'},503);
+  // Lines already read (another page, or a shipment CSV) need no photo reader.
+  if(!Array.isArray(body.lines)&&!env.ANTHROPIC_API_KEY)return deps.json({ok:false,error:'Reading slip photos needs the ANTHROPIC_API_KEY secret on the Worker'},503);
   const db=(path,options)=>deps.supabaseAdminFetch(env,path,options);
   let read=null;
   if(Array.isArray(body.lines)){

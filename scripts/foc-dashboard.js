@@ -2750,15 +2750,71 @@ function slipImageData(file){
 }
 function openPackingSlipScan(){ state.slip=null; renderSlip(); }
 function slipPickPhotos(){ var input=document.getElementById('foc-slip-file'); if(input) input.click(); }
+// Store ask: "can we also accept these [Lunar's shipment CSV] in with the
+// receive instead of only images?" A shipment CSV already lists every line
+// -- item code, title, quantity, UPC and the real discounted price -- so it
+// goes straight to the matcher, no photo reading. Columns are found by
+// name: Code / Item Code, Title, Qty / Quantity, UPC / ISBN / EAN,
+// Discounted Price / Net Price, In-Store Date. Lines above the header (the
+// shipment number, date, account) give the shipment number.
+function slipCsvRows(text){
+  var rows=[],row=[],cell='',q=false;
+  for(var i=0;i<text.length;i++){
+    var ch=text[i];
+    if(q){ if(ch==='"'){ if(text[i+1]==='"'){cell+='"';i++;} else q=false; } else cell+=ch; continue; }
+    if(ch==='"'){q=true;continue;}
+    if(ch===','){row.push(cell);cell='';continue;}
+    if(ch==='\n'||ch==='\r'){ if(ch==='\r'&&text[i+1]==='\n')i++; row.push(cell);rows.push(row);row=[];cell='';continue; }
+    cell+=ch;
+  }
+  if(cell!==''||row.length){row.push(cell);rows.push(row);}
+  return rows.map(function(r){return r.map(function(c){return String(c).trim();});});
+}
+function parseSlipCsv(text){
+  var rows=slipCsvRows(String(text||'').replace(/^﻿/,''));
+  var h=rows.findIndex(function(r){var t=r.join('|').toLowerCase();return /(^|\|)(item )?(code|#)(\||$)|item ?code/.test(t)&&/title|description/.test(t)&&/qty|quantity/.test(t);});
+  if(h<0)throw new Error('That CSV has no Code / Title / Qty header row -- is it a distributor shipment file?');
+  var head=rows[h].map(function(c){return c.toLowerCase();});
+  var col=function(re){return head.findIndex(function(c){return re.test(c);});};
+  var iCode=col(/^(item ?)?(code|#|number)$|item ?code/),iTitle=col(/^title$|description/),iQty=col(/^(qty|quantity|units?( shipped)?)$/),
+    iUpc=col(/upc|isbn|ean|barcode/),iNet=col(/discounted price|net (unit )?price|^net$|unit cost/),iDate=col(/in-?store date|on-?sale/);
+  if(iTitle<0||iQty<0)throw new Error('That CSV is missing its Title or Qty column');
+  var dates={},lines=[];
+  rows.slice(h+1).forEach(function(r){
+    var title=r[iTitle]||'',qty=parseInt(r[iQty],10);
+    if(!title||!(qty>0))return;
+    var d=iDate>=0?String(r[iDate]||'').match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/):null;
+    if(d){var iso=d[3]+'-'+('0'+d[1]).slice(-2)+'-'+('0'+d[2]).slice(-2);dates[iso]=(dates[iso]||0)+qty;}
+    lines.push({code:iUpc>=0?String(r[iUpc]||'').replace(/\D/g,''):'',itemCode:iCode>=0?r[iCode]:'',title:title,qty:qty,netUnitPrice:iNet>=0?Number(String(r[iNet]||'').replace(/[^0-9.]/g,''))||0:0});
+  });
+  if(!lines.length)throw new Error('No book lines found in that CSV');
+  var before=rows.slice(0,h).map(function(r){return r.join(' ').trim();}).filter(Boolean);
+  var onSale=Object.keys(dates).sort(function(a,b){return dates[b]-dates[a];})[0]||'';
+  return {invoice:(before.find(function(t){return /^[A-Z]*\d{4,}$/i.test(t);})||'').slice(0,60),onSaleDate:onSale,
+    totalUnits:lines.reduce(function(a,l){return a+l.qty;},0),lines:lines};
+}
+function slipIsCsv(f){return /\.csv$/i.test(f.name||'')||/csv|text\/plain|excel/i.test(f.type||'');}
 async function handleSlipFiles(event){
-  var files=[].slice.call((event&&event.target&&event.target.files)||[]).slice(0,6);
+  var all=[].slice.call((event&&event.target&&event.target.files)||[]);
   if(event&&event.target) event.target.value='';
-  if(!files.length) return;
+  var csvFiles=all.filter(slipIsCsv),files=all.filter(function(f){return !slipIsCsv(f);}).slice(0,6);
+  if(!files.length&&!csvFiles.length) return;
   var status=document.getElementById('foc-slip-status');
-  if(status){ status.style.color='var(--gold)'; status.textContent='Reading '+files.length+' photo'+(files.length===1?'':'s')+'… this takes about 20-40 seconds.'; }
+  if(status){ status.style.color='var(--gold)'; status.textContent=csvFiles.length&&!files.length?'Reading '+csvFiles[0].name+'…':'Reading '+files.length+' photo'+(files.length===1?'':'s')+'… this takes about 20-40 seconds.'; }
   try{
-    var images=await Promise.all(files.map(slipImageData));
-    var d=await api('/foc/admin/read-slip',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({storeId:getActiveStoreId(),images:images})});
+    var d;
+    if(csvFiles.length){
+      // A shipment CSV: its lines go straight to the matcher (photos picked
+      // with it are read too, and everything is matched together).
+      var parsed=(await Promise.all(csvFiles.map(function(f){return f.text();}))).map(parseSlipCsv);
+      var csvLines=[].concat.apply([],parsed.map(function(p){return p.lines;}));
+      var fromPhotos=files.length?await api('/foc/admin/read-slip',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({storeId:getActiveStoreId(),images:await Promise.all(files.map(slipImageData))})}):null;
+      var csvAll=csvLines.concat(fromPhotos?fromPhotos.lines.map(function(l){return{code:l.code,itemCode:l.itemCode,title:l.title,qty:l.qty,netUnitPrice:l.netUnitPrice};}):[]);
+      d=await api('/foc/admin/read-slip',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({storeId:getActiveStoreId(),lines:csvAll,invoice:parsed[0].invoice||(fromPhotos&&fromPhotos.invoice)||'',onSaleDate:parsed[0].onSaleDate||(fromPhotos&&fromPhotos.onSaleDate)||'',totalUnits:parsed.reduce(function(a,p){return a+p.totalUnits;},0)+((fromPhotos&&fromPhotos.totalUnits)||0)})});
+    } else {
+      var images=await Promise.all(files.map(slipImageData));
+      d=await api('/foc/admin/read-slip',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({storeId:getActiveStoreId(),images:images})});
+    }
     if(state.slip&&state.slip.lines.length){
       // Another page of the same slip: re-match all lines read so far together.
       var raw=state.slip.lines.concat(d.lines).map(function(l){return{code:l.code,itemCode:l.itemCode,title:l.title,qty:l.qty,netUnitPrice:l.netUnitPrice};});
@@ -2834,8 +2890,8 @@ function renderSlip(){
   var head='<section class="foc-hero"><div class="foc-toolbar"><button class="hbtn" onclick="loadFocCycles()">← FOC WALL</button>'+(s?'<button class="hbtn" onclick="openPackingSlipScan()">START OVER</button>':'')+'</div>'+
     '<div style="font:900 20px/1.1 \'Orbitron\',monospace;color:var(--text);margin-top:10px">Scan packing slip</div>'+
     '<div style="font:10px/1.6 var(--font-mono);color:var(--dim);margin-top:4px">Photograph the INVOICE/PACKING LIST that comes in the box (the full sheet lists every carton). Each book is matched to its FOC cover by barcode, across every FOC week on the slip. Works for PRH invoices (matched by barcode) and Lunar packing slips (matched by Lunar\'s item code, e.g. 0826DC0141). Check the list, then CONFIRM RECEIVED: customer copies are set aside first, the rest go into stock at the invoice\'s net price -- or, for Lunar (no prices on the slip), your Lunar discount off cover.</div>'+
-    '<input type="file" id="foc-slip-file" accept="image/*" multiple hidden onchange="handleSlipFiles(event)">'+
-    '<div class="foc-toolbar" style="margin-top:10px"><button class="hbtn" style="color:var(--g)" onclick="focSlipPickPhotos()">📷 '+(s?'ADD ANOTHER PAGE':'TAKE / CHOOSE SLIP PHOTOS')+'</button></div>'+
+    '<input type="file" id="foc-slip-file" accept="image/*,.csv,text/csv" multiple hidden onchange="handleSlipFiles(event)">'+
+    '<div class="foc-toolbar" style="margin-top:10px"><button class="hbtn" style="color:var(--g)" onclick="focSlipPickPhotos()">📷 '+(s?'ADD ANOTHER PAGE':'TAKE / CHOOSE SLIP PHOTOS OR CSV')+'</button></div>'+
     '<div id="foc-slip-status" style="font:10px var(--font-mono);color:var(--dim);margin-top:6px"></div></section>';
   if(!s){ host.innerHTML=head; return; }
   var matched=s.lines.filter(function(l){return l.cover;}),unmatched=s.lines.filter(function(l){return !l.cover;});
