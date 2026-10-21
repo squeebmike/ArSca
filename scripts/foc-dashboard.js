@@ -1572,11 +1572,19 @@ function focPullNeedRows(needs,families){
     return {familyId:n.familyId,title:n.title,skuId:n.skuId,coverLabel:n.coverLabel,guessed:!!n.guessed,subscribers:n.subscribers,store:store,ebay:ebay,short:Math.max(0,want+ebay-store)};
   });
 }
-function focPullNeedsHtml(rows,compact){
-  if(!rows.length)return '';
+// Pull-list series not on any FOC file for 6+ weeks (from the newest week
+// imported): tell the customer, or check whether the series ended.
+function focPullQuietHtml(quiet){
+  if(!(quiet||[]).length)return '';
+  return '<div style="margin-top:8px;border-top:1px dashed var(--border);padding-top:6px"><div style="font:900 10px \'Orbitron\',monospace;color:var(--gold);letter-spacing:1px">NOT ON A FOC FILE LATELY ('+quiet.length+')</div>'+
+    '<div style="font:9px/1.5 var(--font-mono);color:var(--dim);margin:3px 0">No issue in 6+ weeks of FOC files. Let the customer know, or check whether the series ended, got renamed or moved publisher.</div>'+
+    quiet.map(function(q){return '<div style="font:9px/1.6 var(--font-mono);color:var(--text)">'+esc(q.title)+' <span style="color:var(--dim)">· '+q.subscribers+' on pull list · '+(q.lastFoc?'last on the '+esc(displayDate(q.lastFoc))+' FOC':'not on any FOC file yet')+'</span></div>';}).join('')+'</div>';
+}
+function focPullNeedsHtml(rows,compact,quiet){
+  if(!rows.length&&!(compact?0:(quiet||[]).length))return '';
   var short=rows.filter(function(r){return r.short>0;}),missing=short.reduce(function(a,r){return a+r.short;},0);
-  var head='<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><div style="font:900 11px \'Orbitron\',monospace;color:var(--purple);letter-spacing:1px">📚 PULL LISTS · '+rows.length+' TITLE'+(rows.length===1?'':'S')+' THIS FOC · '+(missing?'<span style="color:var(--red)">'+missing+' COP'+(missing===1?'Y':'IES')+' SHORT</span>':'<span style="color:var(--g)">ALL COVERED</span>')+'</div>'+
-    (missing?'<button class="hbtn" style="padding:6px 10px;font-size:9px;color:var(--purple)" onclick="focPullAddMissing()">ADD ALL '+missing+' MISSING</button>':'')+'</div>';
+  var head='<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><div style="font:900 11px \'Orbitron\',monospace;color:var(--purple);letter-spacing:1px">📚 PULL LISTS · '+(!rows.length?'NONE ON THIS FOC</div></div>':rows.length+' TITLE'+(rows.length===1?'':'S')+' THIS FOC · '+(missing?'<span style="color:var(--red)">'+missing+' COP'+(missing===1?'Y':'IES')+' SHORT</span>':'<span style="color:var(--g)">ALL COVERED</span>')+'</div>'+
+    (missing?'<button class="hbtn" style="padding:6px 10px;font-size:9px;color:var(--purple)" onclick="focPullAddMissing()">ADD ALL '+missing+' MISSING</button>':'')+'</div>');
   var list=(compact?short:rows).map(function(r){
     return '<div style="display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;border-top:1px solid var(--border);padding:6px 0;font:9px/1.5 var(--font-mono)">'+
       '<div><b style="color:var(--text);font-size:10px">'+esc(r.title)+'</b> <span style="color:var(--dim)">· '+esc(r.coverLabel)+(r.guessed?' (no Cover A found -- check it)':'')+'</span><br>'+
@@ -1585,13 +1593,13 @@ function focPullNeedsHtml(rows,compact){
       (r.short?'<button class="hbtn" style="padding:4px 8px;font-size:8px;color:var(--red);white-space:nowrap" onclick="focPullAddMissing(\''+esc(r.skuId)+'\')">SHORT '+r.short+' · ADD</button>':'<span style="color:var(--g);white-space:nowrap">✓ covered</span>')+'</div>';
   }).join('');
   return '<div class="panel" style="margin-top:10px;padding:12px 16px;border-color:rgba(199,125,255,.4)">'+head+
-    '<div style="font:9px/1.5 var(--font-mono);color:var(--dim);margin:6px 0">Pull-list customers get the regular cover. Store copies have to cover them plus anything already sold on eBay; receiving sets one aside for each.'+(compact&&short.length<rows.length?' '+(rows.length-short.length)+' more already covered -- see FINAL FOC REVIEW.':'')+'</div>'+list+'</div>';
+    '<div style="font:9px/1.5 var(--font-mono);color:var(--dim);margin:6px 0">Pull-list customers get the regular cover. Store copies have to cover them plus anything already sold on eBay; receiving sets one aside for each.'+(compact&&short.length<rows.length?' '+(rows.length-short.length)+' more already covered -- see FINAL FOC REVIEW.':'')+(compact?'':' Customers add series themselves at <a href="https://www.themanapocket.com/preorders/pull-list" target="_blank" rel="noopener" style="color:var(--purple)">themanapocket.com/preorders/pull-list</a>.')+'</div>'+list+(compact?'':focPullQuietHtml(quiet))+'</div>';
 }
 var focPullNeeds=null;
 async function focShowPullNeeds(hostId,banner){
   if(!state.cycle)return;
   var cycleId=state.cycle.id;
-  try{var d=await api('/foc/admin/pull-list-needs?store_id='+encodeURIComponent(getActiveStoreId())+'&cycle_id='+encodeURIComponent(cycleId));focPullNeeds={cycleId:cycleId,needs:d.needs||[]};}
+  try{var d=await api('/foc/admin/pull-list-needs?store_id='+encodeURIComponent(getActiveStoreId())+'&cycle_id='+encodeURIComponent(cycleId));focPullNeeds={cycleId:cycleId,needs:d.needs||[],quiet:d.quiet||[]};}
   catch(e){return;}
   if(!state.cycle||state.cycle.id!==cycleId)return;
   var rows=focPullNeedRows(focPullNeeds.needs,state.families);
@@ -1601,7 +1609,7 @@ async function focShowPullNeeds(hostId,banner){
     var hero=panel()&&panel().querySelector('.foc-hero');if(!hero||!rows.some(function(r){return r.short>0;}))return;
     host=document.getElementById('foc-pull-banner')||hero.appendChild(Object.assign(document.createElement('div'),{id:'foc-pull-banner'}));
   }
-  if(host)host.innerHTML=focPullNeedsHtml(rows,!!banner);
+  if(host)host.innerHTML=focPullNeedsHtml(rows,!!banner,focPullNeeds.quiet);
 }
 async function focPullAddMissing(skuId){
   if(!focPullNeeds||!state.cycle)return;

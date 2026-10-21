@@ -44,6 +44,7 @@ import { handleBacklistRequest, syncBacklistStripeEvent } from './scripts/backli
 import { searchComics, comicSearchShell, comicSearchScriptResponse, injectComicSearch } from './scripts/comic-search.mjs';
 import { handleAccountRequest, findLinkedCustomer } from './scripts/customer-account.mjs';
 import { handleArticlesRequest, articleSitemapPaths, fetchArticles } from './scripts/comic-articles.mjs';
+import { pullListPageBody } from './scripts/pull-list-page.mjs';
 import { extractSiteChrome, SITE_CHROME_SOURCE } from './scripts/site-chrome.mjs';
 import {loadPokemonSets,loadPokemonSetCards} from './scripts/public-pokemon-sets.mjs';
 import { handlePublicPokemonRequest } from './scripts/public-pokemon-sets.mjs';
@@ -8134,6 +8135,19 @@ async function routeRequest(request, env, ctx) {
       if (!['GET','HEAD'].includes(request.method)) return new Response('Method not allowed', {status:405,headers:{Allow:'GET, HEAD'}});
       if (url.pathname.endsWith('/')) return Response.redirect('https://www.themanapocket.com/links'+url.search,301);
       return new Response(request.method==='HEAD'?null:renderSocialLinksPage(), {headers:{'Content-Type':'text/html;charset=UTF-8','Cache-Control':'public, max-age=300'}});
+    }
+
+    // GET /preorders/pull-list -- customers pick their pull-list series
+    // (scripts/pull-list-page.mjs; the API is /public/preorders/pull-list).
+    if ((url.pathname === '/preorders/pull-list' || url.pathname === '/preorders/pull-list/') && ['GET','HEAD'].includes(request.method)) {
+      const response = mtgHtmlResponse(request.method === 'HEAD' ? '' : mtgPageShell({
+        title: 'Comic Pull List | The Mana Pocket',
+        description: 'Add comic series to your pull list at The Mana Pocket: we set aside every new issue for you, and you pay when you pick it up.',
+        canonicalPath: '/preorders/pull-list',
+        bodyHtml: pullListPageBody(ITEM_DETAIL_STORE_ID),
+      }));
+      response.headers.set('Cache-Control', 'public, max-age=300');
+      return response;
     }
 
     // GET /faq -- real FAQPage schema, eligible for Google's FAQ rich result.

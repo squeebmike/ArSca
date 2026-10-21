@@ -18,6 +18,7 @@ on:
       - scripts/database-edits.mjs
       - scripts/database-explorer.mjs
       - scripts/comic-articles.mjs
+      - scripts/pull-list-page.mjs
       - scripts/article-marketplace.mjs
       - tests/article-marketplace.test.mjs
       - scripts/pocket-guides.mjs
