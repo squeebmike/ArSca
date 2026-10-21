@@ -48,7 +48,7 @@ export function baseballChecklistInventoryMatches(item,card,set){
   if(norm(card.variant)!=='base')return false;
   const section=norm(card.section),isBase=section==='base';
   const sectionAliases={teamofthefuture:["Team of the Future"],theenterprise:["The Enterprise"],chromealletch:['All Etch'],ohsnap:['Oh Snap'],bestof2023earlyformautographs:['of Autographs'],sterlingtek:['Tek'],starsofmlb:['Stars of MLB'],powerchords:['Power Chords'],prospectautographs:['Prospect Autograph'],rookieautographs:['Rookie Autograph'],autographcards:['Autograph','Autographs'],finestautographs:['Autograph','Autographs'],chromeprospects:['Chrome Prospects'],paperprospects:['Prospects','Paper Prospects'],topprospects:['Top Prospects']};
-  const prefixedNumber=!isBase&&/^[a-z0-9]+-/i.test(String(card.cardNumber||''))&&num(item.cardNumber)===num(card.cardNumber);
+  const prefixedNumber=!isBase&&(/^[a-z0-9]+-/i.test(String(card.cardNumber||''))||(/^HC\d+$/i.test(String(card.cardNumber||''))&&/chrome/i.test(card.section)))&&num(item.cardNumber)===num(card.cardNumber);
   if(!isBase&&!sectionAliases[section]&&!prefixedNumber&&!item.subset)return false;
   if(item.subset&&norm(item.subset)!==section)return false;
   const description=[item.name,item.set,item.variant,item.treatment].join(' ');

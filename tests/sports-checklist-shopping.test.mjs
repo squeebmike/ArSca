@@ -50,3 +50,30 @@ for(const section of groups){
   assert.equal(res.status,200);assert.ok((await res.text()).includes(esc(c.cardNumber)));
  }
 }
+
+// Holiday's entire printed non-base checklist is native, not a PDF destination.
+{
+ const {holidayBaseballSections}=await import('../scripts/topps/holiday-baseball-sections.mjs');
+ const {holidayOddsRows}=await import('../scripts/topps/holiday-baseball-odds-data.mjs');
+ const {baseballSets}=await import('../scripts/topps/baseball-seed.mjs');
+ const {handleBaseballCatalog}=await import('../scripts/baseball-catalog-pages.mjs');
+ const {sportsMarketplaceNotice,sportsLookupScript}=await import('../scripts/sports-card-marketplace.mjs');
+ const holiday=baseballSets.find(s=>s.id==='2026-topps-holiday-baseball'),groups=holidayBaseballSections[0].sections;
+ assert.equal(groups.length,11);const cards=groups.flatMap(g=>g.cards);assert.equal(cards.length,440);assert.equal(new Set(cards.map(c=>c.id)).size,440);
+ assert.ok(cards.some(c=>c.player==='José Ramírez'));assert.ok(!JSON.stringify(cards).includes('\ufffd'));
+ const nav=sportsChecklistNavigation(holiday,groups,esc);
+ assert.ok(nav.includes('All non-base cards (440)'));assert.ok(!nav.includes('Autographs (publisher PDF)'));
+ assert.equal(sportsChecklistRedirect(new URL('https://example.com/?view=all-non-base'),holiday,groups).headers.get('Location'),'/baseball/checklists/'+holiday.id+'/sections/all-non-base');
+ const dep={escape:esc,slug:s=>s,shell:p=>p.bodyHtml,listItems:async()=>[],available:()=>true};
+ const get=p=>handleBaseballCatalog(new Request('https://www.themanapocket.com'+p),{},new URL('https://www.themanapocket.com'+p),dep);
+ for(const c of cards){const r=await get('/baseball/checklists/'+holiday.id+'/cards/'+c.id);assert.equal(r.status,200,c.id);}
+ const page=await(await get('/baseball/checklists/'+holiday.id+'/sections/all-non-base')).text();
+ assert.match(page,/440 verified/);assert.match(page,/IntersectionObserver/);assert.match(page,/active<2/);assert.match(page,/data-sports-lookup/);
+ assert.match(page,/not independently verified/);assert.match(page,/eBay 1\/1/);
+ const chrome=groups.find(g=>g.id==='base-cards-chrome-variation'),c=chrome.cards[0];
+ const offer={title:'2026 Topps Holiday Baseball Bobby Witt Jr Chrome HC1'};
+ assert.ok(sportsListingMatches(offer,c,holiday,chrome));assert.ok(!sportsListingMatches({title:'2026 Topps Holiday Baseball Bobby Witt Jr H1'},c,holiday,chrome));
+ const root=await(await get('/baseball/checklists/'+holiday.id)).text();assert.match(root,/Browse non-base cards/);assert.match(root,/All 440 named non-base entries/);
+ assert.equal(holidayOddsRows.length,66);assert.equal(holidayOddsRows.find(r=>r.name==='Base Cards Holiday Lights').odds[1],'4:1');
+ assert.ok(sportsMarketplaceNotice.includes('not authentication'));assert.ok(sportsLookupScript.includes('document.hidden'));
+}

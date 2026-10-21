@@ -1,3 +1,4 @@
+import {holidayBaseballSections} from './topps/holiday-baseball-sections.mjs';
 import {newestReleases,newestReleaseFirst} from './release-order.mjs';
 import {baseballSets} from './topps/baseball-seed.mjs';
 import {footballSets} from './topps/football-seed.mjs';
@@ -11,7 +12,7 @@ let referenceRows;
 export function sportsReferenceRows(){
  if(referenceRows)return referenceRows;
  referenceRows=[];
- for(const [sport,sets,groups] of [['baseball',baseballSets,baseballSections],['football',footballSets,footballSections]])for(const set of sets){
+ for(const [sport,sets,groups] of [['baseball',baseballSets,[...baseballSections,...holidayBaseballSections]],['football',footballSets,footballSections]])for(const set of sets){
   if((sport==='baseball'?checklistPublicationProblems(set,set):footballChecklistPublicationProblems(set)).length)continue;
   const sections=[{name:'Base',cards:set.cards},...(groups.find(g=>g.setId===set.id)?.sections||[])];
   for(const section of sections)for(const card of section.cards)referenceRows.push({sport,set,card,section:section.name,type:kind(section.name),href:'/'+sport+'/checklists/'+set.id+'/cards/'+card.id});
