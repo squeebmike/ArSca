@@ -54,6 +54,7 @@ body=await(await get('/pocket-guides/upcoming')).text();assert.ok(body.includes(
 }
 
 {
+ deps.loadArticles=async()=>articles;
  const {document:d}=parseHTML(await(await get('/pocket-guides/mtg')).text());
  const browser=d.querySelector('details.pg-topic-browser');assert.ok(browser);assert.equal(browser.hasAttribute('open'),false,'topic directory is collapsed so guides are visible sooner');
  assert.ok(browser.querySelector('a[href="/pocket-guides/pokemon"]'),'all topic links remain ordinary discoverable HTML');
