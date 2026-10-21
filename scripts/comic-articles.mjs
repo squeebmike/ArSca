@@ -300,7 +300,7 @@ const STYLE = `<style>
 .mp-art-directories{display:flex;flex-wrap:wrap;gap:10px;margin:16px 0}.mp-art-directories a{font:650 14px/1.5 system-ui;padding:10px 14px;border:1px solid var(--wo-border,#777);border-radius:10px;text-decoration:none}.mp-art-shortcuts{display:flex;flex-wrap:wrap;gap:10px;margin:18px 0 24px}.mp-art-shortcuts a{padding:10px 14px;border:1px solid var(--wo-border,#777);border-radius:24px;color:var(--wo-text,#fff);font-size:14px;text-decoration:none}.mp-art{max-width:760px;margin:0 auto}
 .mp-art h1{font-size:clamp(28px,5vw,44px);line-height:1.08;margin:6px 0 12px;letter-spacing:-.01em}
 .mp-art-meta{font-size:13px;opacity:.8;margin-bottom:22px;line-height:1.6}.mp-art-deck{font-size:19px;line-height:1.65;margin:0 0 24px;color:var(--wo-text,inherit)}.mp-art-contents{padding:18px 20px;margin:24px 0;border:1px solid var(--wo-border,rgba(255,255,255,.2));border-radius:14px;background:var(--wo-surface,transparent)}.mp-art-contents strong{font-size:14px}.mp-art-contents div{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr));gap:4px 18px;margin-top:8px}.mp-art-contents a{display:block;padding:8px 0;min-height:44px;font-size:14px;line-height:1.5;text-decoration:underline;text-underline-offset:3px}.mp-art-body table{display:block;max-width:100%;overflow-x:auto;border-collapse:collapse}.mp-art-body th,.mp-art-body td{padding:10px;border:1px solid var(--wo-border,#777);text-align:left}.mp-art-body figure{margin:24px 0}.mp-art-body figcaption{font-size:13px;line-height:1.6;margin-top:8px}
-.mp-art-hero{width:100%;max-height:380px;object-fit:contain;border-radius:14px;background:var(--wo-surface,#15101f);margin:0 0 16px}
+.mp-art-hero{width:100%;height:auto;max-height:380px;object-fit:contain;border-radius:14px;background:var(--wo-surface,#15101f);margin:0 0 16px}
 .mp-art-body{font-size:17px;line-height:1.8;color:var(--wo-text,#e9e4f6)}
 .mp-art-body h2{font-size:24px;line-height:1.25;margin:38px 0 10px;color:var(--wo-text,#fff)}
 .mp-art-body h3{font-size:19px;margin:28px 0 8px;color:var(--wo-text,#fff)}
@@ -457,13 +457,24 @@ function renderBooks(statuses, esc) {
     `${s.state === 'preorder' && s.options?.length ? renderCoverPicker(s, esc) : ''}${renderStockCovers(s,esc)}</div>`).join('')}</section>`;
 }
 
+export function dedupeArticleLeadImage(body,hero){
+  const identity=value=>{try{const u=new URL(String(value).replace(/&amp;/g,'&'));u.hash='';if(/(^|\.)website-files\.com$/i.test(u.hostname))u.pathname=u.pathname.replace(/-p-\d+(?=\.[a-z0-9]+$)/i,'');return u.href;}catch{return '';}};
+  if(!hero)return {body,caption:''};
+  const lead=body.match(/^\s*(<figure\b[^>]*>[\s\S]*?<\/figure>|<p\b[^>]*>\s*(?:<a\b[^>]*>\s*)?<img\b[^>]*>\s*(?:<\/a>\s*)?<\/p>)/i);
+  if(!lead)return {body,caption:''};
+  const src=lead[1].match(/<img\b[^>]*\ssrc=["']([^"']+)["']/i)?.[1];
+  if(!src||!identity(src)||identity(src)!==identity(hero))return {body,caption:''};
+  const caption=lead[1].match(/<figcaption\b[^>]*>([\s\S]*?)<\/figcaption>/i)?.[1]||'';
+  return {body:body.slice(lead[0].length),caption};
+}
 export function renderArticlePage(article, statuses, related, deps) {
   const esc = deps.esc;
-  const marketplace=renderArticleMarketplace(deps.articleMarketplace,affiliateTcgImages(refreshComicCoverFigures(article.bodyHtml,statuses,esc),esc),esc);
-  const contents=articleContents(marketplace.body,esc);
-  const guide=releaseGuide(article.slug);
   const main = statuses[0] || null;
   const image = (main?.state === 'in_stock' ? main.cover : '') || article.image || main?.cover || '';
+  const lead=dedupeArticleLeadImage(article.bodyHtml,image);
+  const marketplace=renderArticleMarketplace(deps.articleMarketplace,affiliateTcgImages(refreshComicCoverFigures(lead.body,statuses,esc),esc),esc);
+  const contents=articleContents(marketplace.body,esc);
+  const guide=releaseGuide(article.slug);
   const affiliateHero=tcgImageAffiliateUrl(image);
   const url = `https://www.themanapocket.com/articles/${article.slug}`;
   const facts = article.facts.length
@@ -496,7 +507,7 @@ export function renderArticlePage(article, statuses, related, deps) {
       `<header><p class="mp-set-kicker">The Mana Pocket · Pocket Guides</p><h1>${esc(article.title)}</h1><div class="mp-art-meta">${esc(article.author)}${article.publishedAt ? ` · ${esc(dateLabel(article.publishedAt))}` : ''} · ${readingMinutes(article.bodyHtml)} min read</div>${article.summary?`<p class="mp-art-deck">${esc(article.summary)}</p>`:''}</header>` +
       (guide?`<nav class="mp-set-actions" aria-label="Explore this release"><a href="${esc(guide.checklist)}">Explore the checklist</a><a href="#guide-stock">Shop available copies</a></nav>`:'') + contents.nav +
       (image ? `<a href="${esc(affiliateHero||image)}" target="_blank" rel="${affiliateHero?'noopener sponsored':'noopener'}" aria-label="${affiliateHero?'View this card on TCGplayer':'Open full-size article image'}"><img class="mp-art-hero" width="660" height="1000" fetchpriority="high" decoding="async" src="${esc(image)}" alt="${esc(article.imageAlt || article.title)}"></a><p class="mp-art-meta">${affiliateHero?'Affiliate image link · View sellers on TCGplayer.':'Tap the image to see it full size.'}</p>` : '') +
-      renderBuyBox(article, main, esc) +
+      (image&&lead.caption?`<div class="mp-art-meta">${lead.caption}</div>`:'') + renderBuyBox(article, main, esc) +
       (main ? `<nav class="mp-art-shortcuts" aria-label="Book actions"><a href="#${bookAnchor(main)}">Covers &amp; availability</a><a href="/comics/search?q=${encodeURIComponent(comicKey(main.name).series)}">Find related comics</a><a href="#book-updates">Book updates</a></nav>` : '') +
       `<div class="mp-art-body">${contents.html}</div>` + (deps.releaseInventoryHtml || '') + marketplace.after + facts + renderBooks(statuses, esc) + renderBookUpdates(article, deps.storeId, esc) + articleShoppingLinks(article) + more + `</article>` +
       (statuses.some(st => st.options?.length) ? pickerScript(deps.storeId) : '') + (statuses.some(st=>st.stock?.length)?articleCartScript:''),

@@ -272,3 +272,21 @@ for(const slug of ['2025-topps-chrome-football-licensed-nfl-guide','2025-topps-c
  caches.default.match=original;
  assert.equal(new Set(keys).size,3,'topic pages cannot reuse another topic or all-articles cache');
 }
+
+// CMS lead art is also used as the hero; show it once and retain its caption.
+{
+ const {dedupeArticleLeadImage}=await import('../scripts/comic-articles.mjs');
+ const image='https://cdn.prod.website-files.com/site/delta.jpg';
+ const figure='<figure><a href="'+image+'"><img src="'+image+'"></a><figcaption>Official preview · publisher credit</figcaption></figure>';
+ const rest='<p>Article text.</p><figure><img src="https://example.com/different-card.jpg"></figure>';
+ const cleaned=dedupeArticleLeadImage(figure+rest,image);
+ assert.equal(cleaned.body,rest);assert.equal(cleaned.caption,'Official preview · publisher credit');
+ assert.equal(dedupeArticleLeadImage('<p>Story first.</p>'+figure,image).body,'<p>Story first.</p>'+figure,'later contextual images stay');
+ assert.equal(dedupeArticleLeadImage(figure,'https://example.com/other.jpg').body,figure);
+ assert.equal(dedupeArticleLeadImage(figure.replace('src="'+image+'"','src="'+image.replace('.jpg','-p-500.jpg')+'"'),image).body,'','Webflow responsive copies are the same image');
+ const article={slug:'pokemon-preview',title:'Preview',summary:'New set',bodyHtml:figure+rest,image,author:'The Mana Pocket',facts:[],books:[]};
+ const html=renderArticlePage(article,[],[],{esc:s=>String(s),pageShell:p=>p.bodyHtml});
+ assert.equal((html.match(/src="https:\/\/cdn.prod.website-files.com\/site\/delta.jpg"/g)||[]).length,1);
+ assert.match(html,/publisher credit/);assert.match(html,/different-card.jpg/);
+ assert.match(html,/height:auto;max-height:380px/,'landscape hero art does not inherit a tall fixed height');
+}
