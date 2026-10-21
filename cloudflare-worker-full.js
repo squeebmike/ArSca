@@ -6407,6 +6407,14 @@ async function routeRequest(request, env, ctx) {
     // card-sized package, the Gemini mailer size. Everything else on the
     // listing goes back to eBay untouched. Multi-cover (Trading API)
     // listings are reported, not changed.
+    if (url.pathname === '/foc/lunar-covers/fill') {
+      if (request.method !== 'POST') return json({ error: 'POST only' }, 405);
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId, ['owner','admin','manager']);
+      if (auth.error) return auth.error;
+      try { return json({ ok: true, ...(await fillMissingLunarCovers(env, { storeId, origin: url.origin })) }); }
+      catch (e) { return json({ ok: false, error: e.message }, 502); }
+    }
     if (url.pathname === '/foc/ebay/refresh-presale-descriptions') {
       if (request.method !== 'POST') return json({ error: 'POST only' }, 405);
       const storeId = requestStoreId(request, url);
@@ -17908,7 +17916,7 @@ export default {
   // /dealscan/latest reads) instead of only ever being reachable by an
   // on-demand click.
   async scheduled(event, env, ctx) {
-    ctx.waitUntil(Promise.all([runScheduledDealScans(env), runScheduledEbayReprice(env), runScheduledEbayOrderSync(env), runScheduledShopifyOrderSync(env), runScheduledStorefrontReviewRequests(env), runScheduledPointsHoldSweep(env), runScheduledEbayFinanceReconcile(env), runScheduledStaleWebOrderReminders(env), runScheduledBookAlerts(env), runScheduledStockHealthCheck(env)]));
+    ctx.waitUntil(Promise.all([runScheduledDealScans(env), runScheduledEbayReprice(env), runScheduledEbayOrderSync(env), runScheduledShopifyOrderSync(env), runScheduledStorefrontReviewRequests(env), runScheduledPointsHoldSweep(env), runScheduledEbayFinanceReconcile(env), runScheduledStaleWebOrderReminders(env), runScheduledBookAlerts(env), runScheduledStockHealthCheck(env), runScheduledLunarCoverFill(env)]));
   },
 };
 
@@ -17949,6 +17957,43 @@ function staleWebOrderReminderEmail(orders, now = Date.now()) {
     subject: `${n} paid website order${n === 1 ? '' : 's'} waiting to be picked up or shipped`,
     body: `${n === 1 ? 'This paid website order has' : 'These paid website orders have'} been waiting more than ${STALE_WEB_ORDER_DAYS} days:\n\n${lines.join('\n')}\n\nOpen the dashboard, tap the WEB ORDERS WAITING button at the top (or MORE > ORDERS), and tap MARK FULFILLED once each order is picked up or shipped. You'll get this reminder once a day until they're all marked.`,
   };
+}
+
+// Store ask: give the Lunar covers that had no picture at all (474 -- the
+// FOC spreadsheet had none for them) Lunar's large cover where Lunar has one.
+// Each is checked first, so a cover Lunar doesn't have stays empty instead of
+// showing a broken image; one checked and not found is marked
+// (flags.lunarCoverMissingAt) and tried again after a week. 20 per run keeps
+// a run well under the Worker's subrequest limit. Runs every 6 hours and from
+// the FOC screen's FIND LUNAR COVERS.
+const LUNAR_COVER_ORIGIN = 'https://still-resonance-4f87.swarnerauto.workers.dev';
+async function fillMissingLunarCovers(env, { storeId = '', origin = LUNAR_COVER_ORIGIN, limit = 20 } = {}) {
+  const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString();
+  const filter = `distributor=eq.Lunar&cover_image_url=is.null${storeId ? `&store_id=eq.${encodeURIComponent(storeId)}` : ''}&or=(flags->>lunarCoverMissingAt.is.null,flags->>lunarCoverMissingAt.lt."${weekAgo}")`;
+  const { data: rows, response } = await supabaseAdminFetch(env, `comic_skus?${filter}&select=id,distributor_sku,flags&order=on_sale_date.desc.nullslast,id.asc&limit=${limit}`);
+  if (!response?.ok) throw new Error('Could not read covers (' + (response?.status || 'no response') + ')');
+  const result = { checked: 0, found: 0, missing: 0, more: (rows || []).length >= limit };
+  for (const row of rows || []) {
+    const code = String(row.distributor_sku || '').trim().toUpperCase();
+    let has = false;
+    if (/^[0-9]{4}[A-Z]{2}[0-9]{3,5}$/.test(code)) {
+      try {
+        const res = await fetch(`https://media.lunardistribution.com/images/covers/Large/${code}.jpg`, { cf: { cacheTtl: 604800, cacheEverything: true } });
+        if (res.ok && String(res.headers.get('Content-Type') || '').startsWith('image/')) has = (await res.arrayBuffer()).byteLength > 2048;
+        else await res.body?.cancel?.();
+      } catch (_) {}
+    }
+    const patch = has ? { cover_image_url: `${origin}/foc/lunar-cover/${code}.jpg` } : { flags: { ...(row.flags || {}), lunarCoverMissingAt: new Date().toISOString() } };
+    await supabaseAdminFetch(env, `comic_skus?id=eq.${encodeURIComponent(row.id)}`, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify(patch) });
+    result.checked++;
+    if (has) result.found++; else result.missing++;
+  }
+  return result;
+}
+async function runScheduledLunarCoverFill(env) {
+  if (!(env.SUPABASE_URL && (env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SERVICE_KEY))) return;
+  try { await fillMissingLunarCovers(env); }
+  catch (e) { console.error('Lunar cover fill failed:', e.message); }
 }
 
 // Stock health (scripts/foc-preorders.mjs): every 6 hours, saved for the
