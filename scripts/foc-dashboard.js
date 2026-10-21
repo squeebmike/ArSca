@@ -756,27 +756,32 @@ function focSingleWeightOz(){ try{var v=Number(localStorage.getItem('foc_ebay_si
 function focListWeightOz(v){ var c=Number(v.priceCents||0)||Number(v.msrpCents||0); return c>=2000?29:c>=1000?15:focSingleWeightOz(); }
 function focListNeedsPrice(v){ return !(Number(v.priceCents||0)>0)&&(!!v.isIncentive||!!(v.flags&&v.flags.foil)||!(Number(v.msrpCents||0)>0)); }
 function focListHasQty(v){ return Number(v.storeQuantity||0)>0||(!!v.isIncentive&&Number(v.securedQuantity||0)>0); }
+// Store asks: no listing twice; all covers in one listing; a cover with
+// no art yet goes in with a "cover art coming soon" picture (swapped for
+// the real art automatically) instead of waiting or getting its own
+// listing; a cover ready after its issue is already up joins that listing.
 function focListWeekPlan(families){
-  var plan={groups:[],singles:[],needPrice:[],noArt:[],tooEarly:[],laterGroups:[],laterSingles:[],noDate:[],noQty:[],listed:0,released:0};
+  var plan={groups:[],singles:[],adds:[],needPrice:[],noArt:[],tooEarly:[],laterGroups:[],laterSingles:[],laterAdds:[],noDate:[],noQty:[],listed:0,released:0};
   (families||[]).forEach(function(f){
-    var ready=[],later=[],familyListed=false;
+    var now=[],later=[],familyListed=false,familyGroup=false;
     (f.variants||[]).forEach(function(v){
       var st=v.ebayPresaleStatus;
-      if(st==='LISTED'||st==='SOLD_OUT'){plan.listed++;familyListed=true;return;}
+      if(st==='LISTED'||st==='SOLD_OUT'){plan.listed++;familyListed=true;if(v.ebayTradingGroup)familyGroup=true;return;}
       if(st==='RELEASED'){plan.released++;return;}
       if(st==='ACTION_REQUIRED'){plan.noDate.push(v);return;}
       if(!focListHasQty(v)){plan.noQty.push(v);return;}
       if(st!=='ELIGIBLE_NOW'&&st!=='TOO_EARLY')return;
       if(focListNeedsPrice(v)){plan.needPrice.push(v);return;}
-      // Too early: queued to list itself on its eBay presale date (art
-      // can still arrive before then).
       if(st==='TOO_EARLY'){plan.tooEarly.push(v);later.push(v);return;}
-      if(!v.coverImageUrl){plan.noArt.push(v);return;}
-      ready.push(v);
+      now.push(v);
     });
-    if(ready.length>=2&&!familyListed)plan.groups.push({familyId:f.id,title:f.title,covers:ready});
-    else plan.singles=plan.singles.concat(ready);
-    if(later.length>=2&&!familyListed&&!ready.length)plan.laterGroups.push({familyId:f.id,title:f.title,covers:later});
+    var art=function(list){return list.filter(function(v){return !!v.coverImageUrl;});};
+    var groupNow=false;
+    if(familyGroup)plan.adds=plan.adds.concat(now);
+    else if(!familyListed&&now.length>=2&&art(now).length){plan.groups.push({familyId:f.id,title:f.title,covers:now});groupNow=true;}
+    else{plan.singles=plan.singles.concat(art(now));plan.noArt=plan.noArt.concat(now.filter(function(v){return !v.coverImageUrl;}));}
+    if(familyGroup||groupNow)plan.laterAdds=plan.laterAdds.concat(later);
+    else if(!familyListed&&!now.length&&later.length>=2)plan.laterGroups.push({familyId:f.id,title:f.title,covers:later});
     else plan.laterSingles=plan.laterSingles.concat(later);
   });
   plan.tooEarly.sort(function(a,b){return String(a.ebayEligibleDate||'').localeCompare(String(b.ebayEligibleDate||''));});
@@ -816,12 +821,15 @@ function renderFocListWeek(){
   var host=panel();if(!host||!state.cycle)return;
   var plan=focListWeekPlan(state.families),pol=focListWeekState.policies||{list:[]};
   var lastPolicy='';try{lastPolicy=localStorage.getItem('foc_ebay_last_ship_policy_id')||'';}catch(e){}
-  var listings=plan.groups.length+plan.singles.length,covers=plan.groups.reduce(function(a,g){return a+g.covers.length;},0)+plan.singles.length;
+  var listings=plan.groups.length+plan.singles.length,adds=plan.adds.length,covers=plan.groups.reduce(function(a,g){return a+g.covers.length;},0)+plan.singles.length+adds;
   var toQueue=plan.tooEarly.filter(function(v){return !focQueuedFor(v.id);}).length;
   var section=function(title,color,rows,intro,open){return rows?'<details class="foc-family"'+(open?' open':'')+'><summary class="foc-family-head" style="cursor:pointer"><div class="foc-family-title" style="color:'+color+'">'+title+'</div></summary>'+(intro?'<div style="font:9px/1.6 var(--font-mono);color:var(--dim);padding:6px 8px">'+intro+'</div>':'')+rows+'</details>':'';};
-  var readyRows=plan.groups.map(function(g){return '<div style="padding:6px 8px 0;font:900 10px var(--font-mono);color:var(--gold)">'+esc(g.title)+' · ONE LISTING, '+g.covers.length+' COVERS TO CHOOSE FROM</div>'+g.covers.map(function(v){return focListRowHtml(v,{edit:true,weight:true,note:'cover in the '+esc(g.title)+' listing'+(v.isIncentive?' · ratio 1:'+focRatioOf(v):'')});}).join('');}).join('')+
+  var soon=function(v){return v.coverImageUrl?'':' · <b style="color:var(--gold)">"cover art coming soon" picture until the art is out</b>';};
+  var readyRows=plan.groups.map(function(g){return '<div style="padding:6px 8px 0;font:900 10px var(--font-mono);color:var(--gold)">'+esc(g.title)+' · ONE LISTING, '+g.covers.length+' COVERS TO CHOOSE FROM</div>'+g.covers.map(function(v){return focListRowHtml(v,{edit:true,weight:true,note:'cover in the '+esc(g.title)+' listing'+(v.isIncentive?' · ratio 1:'+focRatioOf(v):'')+soon(v)});}).join('');}).join('')+
+    (plan.adds.length?'<div style="padding:6px 8px 0;font:900 10px var(--font-mono);color:var(--gold)">JOINING A LISTING THAT\'S ALREADY UP (no new listing)</div>'+plan.adds.map(function(v){return focListRowHtml(v,{edit:true,weight:true,note:'added as another Cover choice on its issue\'s live listing'+(v.isIncentive?' · ratio 1:'+focRatioOf(v):'')+soon(v)});}).join(''):'')+
     plan.singles.map(function(v){return focListRowHtml(v,{edit:true,weight:true,note:'its own listing'+(v.isIncentive?' · ratio 1:'+focRatioOf(v):'')});}).join('');
-  var label=listings&&toQueue?'📤 LIST '+listings+' NOW + QUEUE '+toQueue+' FOR LATER':listings?'📤 LIST '+listings+' LISTING'+(listings===1?'':'S')+' ('+covers+' COVER'+(covers===1?'':'S')+')':toQueue?'📤 QUEUE '+toQueue+' TO LIST THEMSELVES':'NOTHING TO LIST';
+  var parts=[listings?listings+' NEW LISTING'+(listings===1?'':'S'):'',adds?'ADD '+adds+' COVER'+(adds===1?'':'S')+' TO LIVE LISTINGS':'',toQueue?'QUEUE '+toQueue+' FOR LATER':''].filter(Boolean);
+  var label=parts.length?'📤 '+parts.join(' + '):'NOTHING TO LIST';
   host.innerHTML='<section class="foc-hero"><div class="foc-toolbar"><button class="hbtn" onclick="openFocCycle(\''+esc(state.cycle.id)+'\')">← COVER WALL</button><button class="hbtn" onclick="openFocListWeek()">↻ REFRESH</button></div>'+
     '<div style="font:900 20px/1.1 \'Orbitron\',monospace;color:var(--text);margin-top:10px">List this week on eBay · '+esc(displayDate(state.cycle.foc_date))+'</div>'+
     '<div style="font:10px/1.6 var(--font-mono);color:var(--dim);margin-top:4px">Everything that can go on eBay now is under READY. Each listing uses your Comic template, presale title and bar, Gemini box size and the shipping policy below -- the same as listing one by one. Too-early covers are built now and list themselves on their eBay presale date.</div>'+
@@ -829,12 +837,12 @@ function renderFocListWeek(){
       '<label style="font:9px var(--font-mono);color:var(--dim)">SHIPPING POLICY<select id="foc-lw-policy" class="tsi" style="margin-top:3px">'+(lastPolicy?'':'<option value="" selected disabled>-- pick one --</option>')+(pol.list||[]).map(function(p){return '<option value="'+esc(p.id)+'"'+(String(p.id)===lastPolicy?' selected':'')+'>'+esc(p.name)+'</option>';}).join('')+'</select></label>'+
       '<label style="font:9px var(--font-mono);color:var(--dim)">SINGLE ISSUE WEIGHT (OZ, PACKED)<input id="foc-lw-single-oz" class="tsi" type="number" min="1" step="0.5" style="width:70px;margin-top:3px" value="'+focSingleWeightOz()+'" onchange="focListSetSingleOz(this.value)"></label>'+
       '<label style="font:9px var(--font-mono);color:var(--dim)">EMAIL WHEN AUTO-LISTED<input id="foc-lw-email" class="tsi" type="email" style="width:220px;margin-top:3px" value="'+esc(focAutoListEmail())+'"></label>'+
-      '<button class="hbtn" style="color:var(--g);padding:10px 14px"'+((listings||toQueue)&&!focListWeekState.running?'':' disabled')+' onclick="focListWeekRun()">'+label+'</button></div>'+
+      '<button class="hbtn" style="color:var(--g);padding:10px 14px"'+((listings||adds||toQueue)&&!focListWeekState.running?'':' disabled')+' onclick="focListWeekRun()">'+label+'</button></div>'+
     (pol.error?'<div style="font:9px var(--font-mono);color:var(--red);margin-top:6px">Shipping policies: '+esc(pol.error)+'</div>':'')+
     '<div id="foc-lw-progress" style="font:10px var(--font-mono);color:var(--gold);margin-top:8px"></div></section>'+
     section('READY TO LIST ('+covers+')','var(--g)',readyRows,'Change a price, quantity or weight here before listing. Ratio covers default to 1 of a 1:100, 2 of a 1:50, 4 of a 1:25 (up to 10, never more than you ordered). Trades and hardcovers are weighted heavier (15 / 29 oz).',true)+
     section('NEEDS YOUR PRICE ('+plan.needPrice.length+')','var(--gold)',plan.needPrice.map(function(v){return focListRowHtml(v,{edit:true,note:(v.isIncentive?'ratio / incentive cover -- cover price would undersell it':'no price on the file')+(v.ebayPresaleStatus==='TOO_EARLY'?' · lists on '+esc(displayDate(v.ebayEligibleDate||'')):'')});}).join(''),'Type a price and it moves to READY (or the queue, if it\'s too early).',true)+
-    section('NO COVER ART YET ('+plan.noArt.length+')','var(--gold)',plan.noArt.map(function(v){return focListRowHtml(v,{note:'no cover image on file'});}).join(''),'Covers without art stay off eBay. Lunar art is looked for every 6 hours'+(state.cycle.distributor==='Lunar'?' -- or <a href="#" onclick="fillLunarCovers();return false" style="color:var(--g)">FIND LUNAR COVERS</a> now':'')+'; paste art on the cover wall for anything else.',plan.noArt.length<=12)+
+    section('NO COVER ART YET ('+plan.noArt.length+')','var(--gold)',plan.noArt.map(function(v){return focListRowHtml(v,{note:'no cover image on file'});}).join(''),'A cover with no art goes into its issue\'s listing with a "cover art coming soon" picture -- these are the ones with no other cover to list alongside, so they wait for art. Lunar art is looked for every 6 hours'+(state.cycle.distributor==='Lunar'?' -- or <a href="#" onclick="fillLunarCovers();return false" style="color:var(--g)">FIND LUNAR COVERS</a> now':'')+'; paste art on the cover wall for anything else.',plan.noArt.length<=12)+
     section('TOO EARLY -- LISTS ITSELF LATER ('+plan.tooEarly.length+')','var(--blue)',plan.tooEarly.map(function(v){var q=focQueuedFor(v.id);return focListRowHtml(v,{note:'eBay presale opens '+esc(displayDate(v.ebayEligibleDate||''))+' (on sale '+esc(displayDate(String(v.onSaleDate||'').slice(0,10)))+')'+(q&&q.lastError?' · last try: '+esc(q.lastError):''),
       right:q?'<span style="display:flex;gap:6px;align-items:center"><span style="color:var(--g);font:9px var(--font-mono)">✓ QUEUED</span><button class="hbtn" style="padding:3px 7px;font-size:8px" onclick="focUnqueueAutoList(\''+esc(q.key)+'\')">REMOVE</button></span>':'<span style="color:var(--dim);font:9px var(--font-mono)">not queued yet</span>'});}).join(''),'eBay presales have to ship soon after they sell, so these open a set number of business days before they go on sale (EBAY SAFE DAYS on the FOC tab). Queued ones list themselves that day (checked every 6 hours) and you get an email at '+esc(focAutoListEmail())+'. Art that arrives before then is used.',true)+
     section('NO ON-SALE DATE ('+plan.noDate.length+')','var(--red)',plan.noDate.map(function(v){return focListRowHtml(v,{note:'the distributor file has no on-sale date'});}).join(''),'',false)+
@@ -892,6 +900,14 @@ function focListJob(kind,id,label,covers,mode){
     qtys:covers.reduce(function(m,v){m[v.id]=focListQty(v);return m;},{}),
     eligibleDate:covers.map(function(v){return String(v.ebayEligibleDate||'');}).sort().pop()||''};
 }
+// A cover joining its issue's live listing: no review screen -- the
+// listing already has its title, description and policies.
+async function focListWeekAdd(j){
+  var payload={skuId:j.id,quantity:j.qtys[j.id]||1};
+  if(j.mode==='queue')return {ok:true,payload:payload};
+  try{var d=await api('/foc/ebay/add-to-group-listing',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.assign({storeId:getActiveStoreId()},payload))});(d.warnings||[]).forEach(function(w){toast_dash(w);});return {ok:true};}
+  catch(e){return {ok:false,error:e.message};}
+}
 function focCoverLabel(v){ return (v.title||'Cover')+(v.variantLabel&&v.variantLabel!=='Cover A'?' · '+v.variantLabel:''); }
 async function focListWeekRun(){
   if(focListWeekState.running)return;
@@ -903,8 +919,10 @@ async function focListWeekRun(){
   var plan=focListWeekPlan(state.families);
   var jobs=plan.groups.map(function(g){return focListJob('group',g.familyId,g.title+' ('+g.covers.length+' covers)',g.covers,'list');})
     .concat(plan.singles.map(function(v){return focListJob('single',v.id,focCoverLabel(v),[v],'list');}))
+    .concat(plan.adds.map(function(v){return focListJob('add',v.id,focCoverLabel(v)+' (added to its listing)',[v],'list');}))
     .concat(plan.laterGroups.filter(function(g){return !g.covers.every(function(v){return focQueuedFor(v.id);});}).map(function(g){return focListJob('group',g.familyId,g.title+' ('+g.covers.length+' covers)',g.covers,'queue');}))
-    .concat(plan.laterSingles.filter(function(v){return !focQueuedFor(v.id);}).map(function(v){return focListJob('single',v.id,focCoverLabel(v),[v],'queue');}));
+    .concat(plan.laterSingles.filter(function(v){return !focQueuedFor(v.id);}).map(function(v){return focListJob('single',v.id,focCoverLabel(v),[v],'queue');}))
+    .concat(plan.laterAdds.filter(function(v){return !focQueuedFor(v.id);}).map(function(v){return focListJob('add',v.id,focCoverLabel(v)+' (joins its listing)',[v],'queue');}));
   if(!jobs.length){toast_dash('Nothing is ready to list');return;}
   var now=jobs.filter(function(j){return j.mode==='list';}),later=jobs.filter(function(j){return j.mode==='queue';});
   if(!confirm((now.length?'List '+now.length+' eBay presale listing'+(now.length===1?'':'s')+' now:\n'+now.map(function(j){return '• '+j.label+' -- '+j.oz+' oz';}).join('\n')+'\n\n':'')+
@@ -917,7 +935,7 @@ async function focListWeekRun(){
   var ok=0,failed=[],queued=[];
   for(var i=0;i<jobs.length&&!focListWeekState.stop;i++){
     var j=jobs[i],nowEl=document.getElementById('foc-lw-now');if(nowEl)nowEl.textContent=(i+1)+' of '+jobs.length+(j.mode==='queue'?' (building for later): ':': ')+j.label;
-    var r;try{r=await focListWeekOne(j.kind,j.id,j.coverIds,j.oz,j.qtys,j.mode);}catch(e){r={ok:false,error:e.message};}
+    var r;try{r=j.kind==='add'?await focListWeekAdd(j):await focListWeekOne(j.kind,j.id,j.coverIds,j.oz,j.qtys,j.mode);}catch(e){r={ok:false,error:e.message};}
     if(r.ok&&j.mode==='queue')queued.push({kind:j.kind,familyId:j.kind==='group'?j.id:'',skuIds:j.coverIds,label:j.label,eligibleDate:j.eligibleDate,payload:r.payload});
     else if(r.ok)ok++;
     else if(r.fallback)jobs.splice.apply(jobs,[i+1,0].concat(j.coverIds.map(function(cid){var v=allFocSkus().find(function(x){return x.id===cid;})||{id:cid};return focListJob('single',cid,focCoverLabel(v),[v],j.mode);})));
