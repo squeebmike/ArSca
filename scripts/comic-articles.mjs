@@ -237,7 +237,7 @@ function skuImageForStock(copy,skus){
  const exact=skus.find(s=>copy.focSkuId&&s.id===copy.focSkuId);if(exact?.cover_image_url)return exact.cover_image_url;
  const letter=String(copy.name||'').match(/\b(?:cover|cvr)\s+([a-z])\b/i)?.[1]?.toLowerCase();
  const matches=letter?skus.filter(s=>String((s.variant_label||'')+' '+(s.title||'')).match(/\b(?:cover|cvr)\s+([a-z])\b/i)?.[1]?.toLowerCase()===letter):[];
- return matches.length===1?matches[0].cover_image_url||'':'';
+ return matches.find(s=>s.cover_image_url)?.cover_image_url||'';
 }
 
 export async function bookStatus(env, deps, book, now = Date.now()) {
