@@ -505,22 +505,18 @@ export function renderArticlePage(article, statuses, related, deps) {
 
 export function renderBookUpdates(article,storeId,esc) { return renderBookAlertForm(article.books,storeId,esc); }
 
+const articleGroups=[['mtg','Magic: The Gathering'],['pokemon','Pokémon'],['baseball','Baseball'],['football','Football'],['comics','Comics'],['collecting','Collector guides']];
 export function renderArticleList(articles, deps) {
-  const esc = deps.esc;
+  const esc=deps.esc;
   const category=a=>/baseball|bowman/.test(a.slug)?'baseball':/football/.test(a.slug)?'football':articleTopics(a).find(t=>['mtg','pokemon','comics'].includes(t))||'collecting';
-  const groups=[['mtg','Magic: The Gathering'],['pokemon','Pokémon'],['baseball','Baseball'],['football','Football'],['comics','Comics'],['collecting','Collector guides']];
-  const cardHtml=a => `<a class="mp-art-card" href="/articles/${esc(a.slug)}">${a.image ? `<img src="${esc(a.image)}" alt="" loading="lazy">` : ''}<div><div class="mp-meta">${esc(dateLabel(a.publishedAt))}</div><h2>${esc(a.title)}</h2>${a.summary ? `<p>${esc(a.summary)}</p>` : ''}<span style="color:var(--wo-accent,#8bd450);font-weight:700;font-size:14px">Read it →</span></div></a>`;
-  const cards=groups.filter(([key])=>articles.some(a=>category(a)===key)).map(([key,label])=>`<section id="articles-${key}" style="scroll-margin-top:110px"><h2>${label}</h2><div class="mp-art-list">${articles.filter(a=>category(a)===key).map(cardHtml).join('')}</div></section>`).join('');
-  const sectionNav=groups.filter(([key])=>articles.some(a=>category(a)===key)).map(([key,label])=>`<a href="#articles-${key}">${label}</a>`).join('');
-  return deps.pageShell({
-    title: 'Collector Articles | The Mana Pocket',
-    description: 'Comics, Pokémon, MTG and sports cards: release news, set guides, covers and collector notes from The Mana Pocket.',
-    canonicalPath: '/articles',
-    jsonLd: { '@context': 'https://schema.org', '@type': 'CollectionPage', name: 'Collector Articles',
-      hasPart: articles.slice(0, 20).map(a => ({ '@type': 'Article', headline: a.title, url: `https://www.themanapocket.com/articles/${a.slug}`, datePublished: a.publishedAt || undefined })) },
-    bodyHtml: STYLE + `<div style="max-width:900px;margin:0 auto"><div class="mp-crumb"><a href="/shop">← Shop</a></div><h1>Collector articles</h1><p><a href="/pocket-guides">Browse all Pocket Guides →</a></p><p class="mp-sub">New releases, set guides, and the cards and covers we’re watching.</p><nav class="mp-art-directories" aria-label="Checklists and drop guides"><a href="/secret-lair">Secret Lair drops</a><a href="/mtg">MTG checklists</a><a href="/pokemon">Pokémon checklists</a><a href="/baseball">Baseball checklists</a><a href="/football">Football checklists</a></nav><nav class="mp-art-shortcuts" aria-label="Article topics">${sectionNav}<a href="/secret-lair">Secret Lair</a></nav></div>` +
-      (cards ? cards : `<p class="mp-sub" style="text-align:center">The first articles are on their way.</p>`),
-  });
+  const groups=articleGroups.filter(([key])=>articles.some(a=>category(a)===key));
+  const topic=groups.some(([key])=>key===deps.topic)?deps.topic:'';
+  const visible=articles.filter(a=>!topic||category(a)===topic);
+  const related={mtg:[['/mtg','Set checklists'],['/secret-lair','Secret Lair drops']],pokemon:[['/pokemon','Set checklists']],baseball:[['/baseball','Set checklists'],['/sports/checklists?sport=baseball','Players & teams']],football:[['/football','Set checklists'],['/sports/checklists?sport=football','Players & teams']],comics:[['/preorders','Comic preorders']]};
+  const cardHtml=a=>`<a class="mp-art-card" href="/articles/${esc(a.slug)}">${a.image?`<img src="${esc(a.image)}" alt="" loading="lazy">`:''}<div><div class="mp-meta">${esc(dateLabel(a.publishedAt))}</div><h3>${esc(a.title)}</h3>${a.summary?`<p>${esc(a.summary)}</p>`:''}<span class="mp-index-read">Read it →</span></div></a>`;
+  const cards=groups.filter(([key])=>!topic||topic===key).map(([key,label])=>`<section id="articles-${key}" class="mp-index-section"><div class="mp-index-section-head"><h2>${label}</h2>${related[key]?`<nav aria-label="${esc(label)} resources">${related[key].map(([href,text])=>`<a href="${esc(href)}">${text}</a>`).join('')}</nav>`:''}</div><div class="mp-art-list">${visible.filter(a=>category(a)===key).map(cardHtml).join('')}</div></section>`).join('');
+  const indexStyles=`<style>.mp-article-index{max-width:900px;margin:0 auto}.mp-article-index .mp-crumb{margin:0 0 12px}.mp-article-index h1{font:800 30px/1.15 system-ui!important;margin:0 0 10px!important}.mp-article-index .mp-index-intro{font:16px/1.5 system-ui;margin:0 0 12px;color:var(--wo-text-sub,#ccc)}.mp-article-index .mp-index-all-guides{display:inline-block;font:650 14px/1.4 system-ui!important;margin:0 0 14px;color:var(--wo-accent,inherit)}.mp-index-filter{display:flex;align-items:center;gap:8px;margin:0 0 18px}.mp-index-filter label{font:650 14px system-ui;flex:none}.mp-index-filter select{min-width:0;flex:1;min-height:44px;max-width:280px;padding:8px;border:1px solid var(--wo-border,#777);border-radius:8px;background:var(--wo-surface,#231832);color:var(--wo-text,#fff);font:16px system-ui}.mp-index-filter button{min-height:44px;padding:8px 14px;border:0;border-radius:8px;background:var(--wo-button,#8bd450);color:var(--wo-on-button,#111);font:700 14px system-ui}.mp-index-section{scroll-margin-top:110px;margin:0 0 28px}.mp-index-section-head{margin:0 0 12px}.mp-article-index .mp-index-section-head h2{font:750 21px/1.3 system-ui!important;margin:0 0 6px!important}.mp-index-section-head nav{display:flex;gap:16px;flex-wrap:wrap}.mp-index-section-head nav a{font:600 13px/1.5 system-ui!important;color:var(--wo-accent,inherit)}.mp-article-index .mp-art-card h3{font:750 21px/1.25 system-ui!important;margin:4px 0 8px!important;color:var(--wo-text,#fff)}.mp-index-read{color:var(--wo-accent,#8bd450);font:700 14px system-ui}.mp-index-filter :is(select,button):focus-visible{outline:3px solid var(--wo-focus,#8bd450);outline-offset:3px}</style>`;
+  return deps.pageShell({title:(topic?groups.find(([key])=>key===topic)[1]+' Articles':'Collector Articles')+' | The Mana Pocket',description:'Comics, Pokémon, MTG and sports cards: release news, set guides, covers and collector notes from The Mana Pocket.',canonicalPath:'/articles',robotsNoindex:!!topic,jsonLd:{'@context':'https://schema.org','@type':'CollectionPage',name:'Collector Articles',hasPart:visible.slice(0,20).map(a=>({'@type':'Article',headline:a.title,url:`https://www.themanapocket.com/articles/${a.slug}`,datePublished:a.publishedAt||undefined}))},bodyHtml:STYLE+indexStyles+`<div class="mp-article-index"><header><div class="mp-crumb"><a href="/shop">← Shop</a></div><h1>Collector articles</h1><p class="mp-index-intro">New releases, set guides, and the cards and covers we’re watching.</p><a class="mp-index-all-guides" href="/pocket-guides">All Pocket Guides →</a></header><form class="mp-index-filter" method="get" action="/articles"><label for="article-topic">Topic</label><select id="article-topic" name="topic"><option value="">All articles</option>${groups.map(([key,label])=>`<option value="${key}"${topic===key?' selected':''}>${label}</option>`).join('')}</select><button type="submit">Show</button></form>${cards||'<p>The first articles are on their way.</p>'}</div>`});
 }
 
 // ---------- request handling ----------
@@ -529,7 +525,8 @@ export async function handleArticlesRequest(request, env, ctx, url, deps) {
   if (request.method !== 'GET' && request.method !== 'HEAD') return null;
   const path = url.pathname.replace(/\/+$/, '') || '/';
   if (path !== '/articles' && !path.startsWith('/articles/')) return null;
-  const cacheKey = new Request(`https://www.themanapocket.com${path}`, { method: 'GET' });
+  const topic=path==='/articles'&&articleGroups.some(([key])=>key===url.searchParams.get('topic'))?url.searchParams.get('topic'):'';
+  const cacheKey = new Request(`https://www.themanapocket.com${path}${topic?'?topic='+encodeURIComponent(topic):''}`, { method: 'GET' });
   const cached = url.searchParams.has('fresh') ? null : await caches.default.match(cacheKey);
   if (cached) return cached;
   let articles;
@@ -540,7 +537,7 @@ export async function handleArticlesRequest(request, env, ctx, url, deps) {
       bodyHtml: `<h1>Collector articles</h1><p><a href="/pocket-guides">Browse all Pocket Guides →</a></p><p class="mp-sub">Articles are temporarily unavailable. Please try again in a minute.</p>` }), { status: 503, headers: { 'Content-Type': 'text/html;charset=UTF-8', 'Retry-After': '60' } });
   }
   let html, status = 200;
-  if (path === '/articles') html = renderArticleList(articles, deps);
+  if (path === '/articles') html = renderArticleList(articles, {...deps,topic});
   else {
     const slug = decodeURIComponent(path.slice('/articles/'.length)).split('/')[0];
     const article = articles.find(a => a.slug === slug);

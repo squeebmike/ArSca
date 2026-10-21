@@ -252,3 +252,23 @@ for(const slug of ['2025-topps-chrome-football-licensed-nfl-guide','2025-topps-c
  const status=await bookStatus({},deps([{id:'sku-b',title:'ABSOLUTE BATMAN #25 CVR B',variant_label:'COVER B',cover_image_url:'https://example.com/dashboard-b.jpg'}],[{id:'received',focSkuId:'sku-b',name:'ABSOLUTE BATMAN #25 CVR B',price:7,quantity:3}]),'Absolute Batman #25');
  assert.equal(status.stock[0].image,'https://example.com/dashboard-b.jpg','received copy without photo uses its exact linked dashboard SKU art');
 }
+
+// Compact mobile index: one topic control; resources belong to the visible topic.
+{
+ const {renderArticleList}=await import('../scripts/comic-articles.mjs');
+ const {createRequire}=await import('node:module');const {parseHTML}=createRequire(import.meta.url)('linkedom');
+ const rows=[{slug:'mtg-collector-guide',title:'Magic story',publishedAt:'2026-10-01',image:'https://example.com/m.jpg'},{slug:'pokemon-collector-guide',title:'Pokemon story',publishedAt:'2026-10-01',image:'https://example.com/p.jpg'},{slug:'topps-baseball-guide',title:'Baseball story',publishedAt:'2026-10-01'}];
+ let meta;const dep={esc:s=>String(s),pageShell:p=>{meta=p;return p.bodyHtml;},topic:'pokemon'};
+ const {document:d}=parseHTML(renderArticleList(rows,dep));
+ assert.equal(d.querySelectorAll('.mp-index-filter select').length,1);
+ assert.equal(d.querySelectorAll('.mp-art-directories,.mp-article-index>.mp-art-shortcuts').length,0);
+ assert.equal(d.querySelectorAll('.mp-art-card').length,1);assert.match(d.querySelector('.mp-art-card').textContent,/Pokemon story/);
+ assert.equal(d.querySelector('.mp-art-card h3').textContent,'Pokemon story');assert.equal(d.querySelectorAll('h1').length,1);
+ assert.equal(d.querySelector('option[selected]').value,'pokemon');assert.ok(meta.robotsNoindex);
+ assert.equal(d.querySelectorAll('a[href="/baseball"],a[href="/secret-lair"]').length,0,'unrelated resource links are absent');
+ assert.ok(d.querySelector('a[href="/pokemon"]'));
+ const original=caches.default.match,keys=[];caches.default.match=async r=>{keys.push(r.url);return new Response('cached');};
+ await get('/articles?topic=pokemon');await get('/articles?topic=baseball');await get('/articles');
+ caches.default.match=original;
+ assert.equal(new Set(keys).size,3,'topic pages cannot reuse another topic or all-articles cache');
+}
