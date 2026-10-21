@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.10.21.9-pull-order-needs';
+const APP_VERSION = '2026.10.21.10-pull-signup';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -18530,8 +18530,22 @@ function closePullListOrderSheet(){ pullListView = 'list'; renderPullListPanel()
 function openPullListBrowse(){ pullListView = 'browse'; renderPullListPanel(); }
 function closePullListBrowse(){ pullListView = 'list'; renderPullListPanel(); }
 
+// Series customers asked for on the website (/preorders/pull-list): kept
+// off the public list until the shop turns them on. The asker is already
+// subscribed.
+function pullListWebsiteRequests(){ return pullListSeriesCache.filter(s => s.active === false && /asked for on the website/i.test(s.notes || '')); }
+async function approvePullListRequest(seriesId){
+  const sb = getSupabaseClient(); const storeId = getActiveStoreId();
+  if(!sb || !storeId) return;
+  const { error } = await sb.from('pull_list_series').update({ active:true, updated_at:new Date().toISOString() }).eq('id', seriesId).eq('store_id', storeId);
+  if(error){ toast_dash('Could not add it: ' + error.message); return; }
+  toast_dash('Added -- customers can pick it on the website now');
+  await loadPullListSeriesFromSupabase(true); renderPullListPanel();
+}
+window.approvePullListRequest = approvePullListRequest;
 function renderPullListSeriesListInto(container){
   const series = pullListSeriesCache.filter(s => s.active !== false).slice().sort((a,b) => (a.title||'').localeCompare(b.title||''));
+  const requests = pullListWebsiteRequests();
   container.innerHTML = `<div class="panel">
     <div class="ph"><b style="font-family:'Orbitron',monospace;font-size:13px;letter-spacing:1px;color:var(--text)">📚 PULL LISTS</b><span style="font-size:9px;color:var(--dim)">${series.length} series tracked</span></div>
     <div style="margin-bottom:14px;display:flex;gap:8px;flex-wrap:wrap">
@@ -18540,6 +18554,8 @@ function renderPullListSeriesListInto(container){
       <button class="hbtn" style="background:rgba(107,166,255,.12);border-color:rgba(107,166,255,.4);color:var(--blue);font-size:11px;padding:10px 16px" onclick="openPullListBrowse()">📅 NEW RELEASES</button>
       <button class="hbtn" style="background:rgba(180,120,255,.12);border-color:rgba(180,120,255,.4);color:var(--purple);font-size:11px;padding:10px 16px" onclick="openPrhImportPicker()">📥 IMPORT PRH LIST</button>
     </div>
+    <div style="font:10px/1.6 var(--font-mono);color:var(--dim);margin-bottom:12px">Customers add themselves at <a href="https://www.themanapocket.com/preorders/pull-list" target="_blank" rel="noopener" style="color:var(--purple)">themanapocket.com/preorders/pull-list</a>.</div>
+    ${requests.length ? `<div style="border:1px solid rgba(255,209,102,.4);border-radius:10px;padding:10px 14px;margin-bottom:14px"><div style="font:900 11px 'Orbitron',monospace;color:var(--gold);letter-spacing:1px;margin-bottom:6px">ASKED FOR ON THE WEBSITE (${requests.length})</div>${requests.map(r => `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:5px 0;border-top:1px solid var(--border);font:10px var(--font-mono)"><span style="color:var(--text)">${escHtml(r.title)}<br><span style="color:var(--dim)">${escHtml(r.notes || '')}</span></span><button class="hbtn" style="color:var(--g);white-space:nowrap" onclick="approvePullListRequest('${escHtml(r.id)}')">ADD TO PULL LISTS</button></div>`).join('')}</div>` : ''}
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px">
       ${series.length ? series.map(s => `<div style="cursor:pointer;border:1px solid var(--border);background:var(--surf2);border-radius:10px;padding:14px;transition:transform .12s ease" onclick="openPullListSeriesDetail('${escHtml(s.id)}')" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='none'">
         <div style="font-family:'Orbitron',monospace;font-size:14px;color:var(--text);margin-bottom:4px">${escHtml(s.title)}</div>

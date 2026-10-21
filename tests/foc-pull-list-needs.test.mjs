@@ -48,7 +48,7 @@ subs.push(...realSubs);
 const dash = fs.readFileSync('scripts/foc-dashboard.js', 'utf8');
 const fn = n => { const s = dash.indexOf('function ' + n + '('); assert.ok(s >= 0, n); return dash.slice(s, dash.indexOf('\n}\n', s) + 2); };
 const ctx = { esc:s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;') };
-vm.runInNewContext(fn('focPullNeedRows') + fn('focPullNeedsHtml') + 'this.api={focPullNeedRows,focPullNeedsHtml};', ctx);
+vm.runInNewContext(fn('focPullNeedRows') + fn('focPullQuietHtml') + fn('focPullNeedsHtml') + 'function displayDate(d){return d;} this.api={focPullNeedRows,focPullNeedsHtml};', ctx);
 const stateFamilies = [{ variants:[{ id:'a2', storeQuantity:3, ebayPresold:1 }, { id:'a1', storeQuantity:5 }] }, { variants:[{ id:'b1', storeQuantity:2, ebayPresold:0 }] }, { variants:[{ id:'d2', storeQuantity:0 }] }];
 const rows = ctx.api.focPullNeedRows(needs, stateFamilies);
 assert.deepEqual([...rows].map(r => [r.skuId, r.store, r.ebay, r.short]), [['a2', 3, 1, 1], ['b1', 2, 0, 0], ['d2', 0, 0, 1]]);

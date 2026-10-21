@@ -1845,6 +1845,82 @@ async function myPreorders(request, env, deps, url) {
   return deps.json({ok:true,orders:grouped,picks:await loadSavedPicks(db,storeId,auth.user.id)});
 }
 
+// ── Pull lists on the website ──
+// Store ask: customers pick their pull-list series on the website
+// themselves. Signed in with the same account as the preorders page; the
+// subscription goes on their in-store customer record (the one linked to
+// their login, else a new one with their name and email), so the FOC
+// review, receiving and the ON HOLD list all see it like one staff added.
+const PULL_REQUEST_LIMIT=5;
+async function pullListCustomer(db,storeId,user){
+  const {data}=await db(`customers?store_id=eq.${encodeURIComponent(storeId)}&linked_user_id=eq.${encodeURIComponent(user.id)}&select=id,name&order=created_at.asc&limit=1`);
+  return data?.[0]||null;
+}
+async function pullListMine(db,storeId,customer){
+  if(!customer)return [];
+  const {data}=await db(`pull_list_subscriptions?store_id=eq.${encodeURIComponent(storeId)}&customer_id=eq.${encodeURIComponent(customer.id)}&active=eq.true&select=id,series_id,created_at,series:pull_list_series(title,publisher,active)&order=created_at.asc`);
+  return (data||[]).map(r=>({id:r.id,seriesId:r.series_id,title:text(r.series?.title,160),publisher:text(r.series?.publisher,80),requested:r.series?.active===false}));
+}
+async function publicPullListSeries(request,env,deps,url){
+  const storeId=text(url.searchParams.get('store_id'),80);
+  if(!UUID_RE.test(storeId))return deps.json({ok:false,error:'store_id required'},400);
+  const {data}=await deps.supabaseAdminFetch(env,`pull_list_series?store_id=eq.${encodeURIComponent(storeId)}&active=eq.true&select=id,title,publisher&order=title.asc&limit=1000`);
+  const res=deps.json({ok:true,series:(data||[]).map(r=>({id:r.id,title:text(r.title,160),publisher:text(r.publisher,80)}))});
+  try{res.headers?.set?.('Cache-Control','public, max-age=300');}catch(_){}
+  return res;
+}
+async function myPullList(request,env,deps,url){
+  const auth=await deps.requireAuthenticatedUser(request,env);if(auth.error)return auth.error;
+  const storeId=text(url.searchParams.get('store_id'),80);
+  if(!UUID_RE.test(storeId))return deps.json({ok:false,error:'store_id required'},400);
+  const db=(path,options)=>deps.supabaseAdminFetch(env,path,options);
+  const customer=await pullListCustomer(db,storeId,auth.user);
+  return deps.json({ok:true,name:customer?.name||'',hasCustomer:!!customer,email:auth.user.email||'',subscriptions:await pullListMine(db,storeId,customer)});
+}
+async function savePullList(request,env,deps){
+  const auth=await deps.requireAuthenticatedUser(request,env);if(auth.error)return auth.error;
+  const limited=await deps.readJsonWithLimit(request,8*1024);if(limited.error)return limited.error;
+  const body=limited.data||{},storeId=text(body.storeId,80);
+  if(!UUID_RE.test(storeId))return deps.json({ok:false,error:'storeId required'},400);
+  const db=(path,options)=>deps.supabaseAdminFetch(env,path,options),s=encodeURIComponent(storeId);
+  let customer=await pullListCustomer(db,storeId,auth.user);
+  const subscribe=body.subscribe!==false;
+  if(!subscribe){
+    const id=text(body.subscriptionId,80);
+    if(!customer||!UUID_RE.test(id))return deps.json({ok:false,error:'Pull-list series not found'},404);
+    await db(`pull_list_subscriptions?id=eq.${encodeURIComponent(id)}&store_id=eq.${s}&customer_id=eq.${encodeURIComponent(customer.id)}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({active:false})});
+    return deps.json({ok:true,subscriptions:await pullListMine(db,storeId,customer)});
+  }
+  let seriesId=text(body.seriesId,80);
+  const requestTitle=text(body.request,80).replace(/\s+/g,' ');
+  if(!UUID_RE.test(seriesId)&&requestTitle.length<2)return deps.json({ok:false,error:'Pick a series, or type the name of one to ask for'},400);
+  if(!customer){
+    const name=text(body.name,80).replace(/\s+/g,' ');
+    if(name.length<2)return deps.json({ok:false,error:'Enter your name so the shop knows whose books these are',needsName:true},400);
+    const {data:made}=await db('customers',{method:'POST',headers:{Prefer:'return=representation'},body:JSON.stringify([{store_id:storeId,name,email:auth.user.email||null,linked_user_id:auth.user.id,notes:'Signed up for a pull list on the website'}])});
+    customer=made?.[0];if(!customer)return deps.json({ok:false,error:'Could not save your pull list -- try again'},502);
+  }
+  if(UUID_RE.test(seriesId)){
+    const {data:found}=await db(`pull_list_series?id=eq.${encodeURIComponent(seriesId)}&store_id=eq.${s}&active=eq.true&select=id&limit=1`);
+    if(!found?.[0])return deps.json({ok:false,error:'That series is no longer on the pull list'},404);
+  } else {
+    // A series the shop doesn't carry on pull lists yet: added for staff
+    // to see (hidden from everyone else until they switch it on).
+    const {data:same}=await db(`pull_list_series?store_id=eq.${s}&title=ilike.${encodeURIComponent(requestTitle.replace(/[%_*]/g,''))}&select=id,active&limit=1`);
+    if(same?.[0])seriesId=same[0].id;
+    else{
+      const mine=await pullListMine(db,storeId,customer);
+      if(mine.filter(m=>m.requested).length>=PULL_REQUEST_LIMIT)return deps.json({ok:false,error:'You have '+PULL_REQUEST_LIMIT+' series waiting for the shop to look at -- ask in store for more'},429);
+      const {data:made}=await db('pull_list_series',{method:'POST',headers:{Prefer:'return=representation'},body:JSON.stringify([{store_id:storeId,title:requestTitle,active:false,notes:'Asked for on the website by '+text(customer.name,80)}])});
+      seriesId=made?.[0]?.id;if(!seriesId)return deps.json({ok:false,error:'Could not save that series -- try again'},502);
+    }
+  }
+  const {data:existing}=await db(`pull_list_subscriptions?series_id=eq.${encodeURIComponent(seriesId)}&customer_id=eq.${encodeURIComponent(customer.id)}&select=id,active&limit=1`);
+  if(existing?.[0])await db(`pull_list_subscriptions?id=eq.${existing[0].id}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({active:true})});
+  else await db('pull_list_subscriptions',{method:'POST',headers:{Prefer:'return=minimal'},body:JSON.stringify([{store_id:storeId,series_id:seriesId,customer_id:customer.id,customer_name:text(customer.name,120)||'Customer',notes:'Signed up on the website',active:true}])});
+  return deps.json({ok:true,name:customer.name||'',subscriptions:await pullListMine(db,storeId,customer)});
+}
+
 async function cancelPreorder(request, env, deps) {
   const auth=await deps.requireAuthenticatedUser(request,env);if(auth.error)return auth.error;
   const limited=await deps.readJsonWithLimit(request,16*1024);if(limited.error)return limited.error;
@@ -3105,6 +3181,22 @@ export function pullListNeeds({skus=[],families=[],subs=[]}={}){
   }
   return needs.sort((a,b)=>b.subscribers.length-a.subscribers.length||a.title.localeCompare(b.title));
 }
+// Store ask: a heads-up when a pull-list series hasn't been on a FOC file
+// for a while -- tell the customer, or check whether the series ended.
+// Measured against the newest FOC week imported, not today, so a gap in
+// importing doesn't flag everything.
+export function pullListQuiet({subs=[],families=[],cycles=[],quietDays=42}={}){
+  const focByCycle=new Map(cycles.map(c=>[c.id,String(c.foc_date||'').slice(0,10)]));
+  const latest=[...focByCycle.values()].filter(Boolean).sort().pop()||'';
+  if(!latest)return [];
+  const lastSeen=new Map();
+  for(const f of families){const k=pullListSeriesKey(f),d=focByCycle.get(f.cycle_id)||'';if(k&&d&&d>(lastSeen.get(k)||''))lastSeen.set(k,d);}
+  const bySeries=new Map();
+  for(const sub of subs){const k=comicSeriesKey({series:sub.series?.title});if(!k)continue;const e=bySeries.get(k)||{title:text(sub.series?.title,160),subscribers:0};e.subscribers++;bySeries.set(k,e);}
+  const cut=new Date(Date.parse(latest+'T00:00:00Z')-quietDays*864e5).toISOString().slice(0,10);
+  return [...bySeries.entries()].map(([k,e])=>({...e,lastFoc:lastSeen.get(k)||''})).filter(e=>!e.lastFoc||e.lastFoc<cut)
+    .sort((a,b)=>b.subscribers-a.subscribers||(a.lastFoc?0:1)-(b.lastFoc?0:1)||String(a.lastFoc).localeCompare(String(b.lastFoc))||a.title.localeCompare(b.title));
+}
 async function adminPullListNeeds(request,env,deps,url){
   const storeId=text(url.searchParams.get('store_id'),80),cycleId=text(url.searchParams.get('cycle_id'),80);
   const auth=await deps.requireStoreUser(request,env,storeId,['owner','admin','manager','employee']);if(auth.error)return auth.error;
@@ -3116,7 +3208,15 @@ async function adminPullListNeeds(request,env,deps,url){
   const familyIds=[...new Set((skus||[]).map(k=>k.family_id).filter(Boolean))];
   let families=[];
   for(let i=0;i<familyIds.length;i+=150){const {data}=await db(`comic_title_families?id=${inFilter(familyIds.slice(i,i+150))}&select=id,title,series_name`);families=families.concat(data||[]);}
-  return deps.json({ok:true,needs:pullListNeeds({skus:skus||[],families,subs:subs||[]}),subscribers:subs.length});
+  // Every FOC week's titles, for when each subscribed series last showed up.
+  let quiet=[];
+  try{
+    const {data:cycles}=await db(`foc_cycles?store_id=eq.${s}&select=id,foc_date&limit=1000`);
+    let all=[];
+    for(let page=0;page<20;page++){const {data}=await db(`comic_title_families?store_id=eq.${s}&select=cycle_id,title,series_name&order=id.asc&limit=1000&offset=${page*1000}`);all=all.concat(data||[]);if((data||[]).length<1000)break;}
+    quiet=pullListQuiet({subs:subs||[],families:all,cycles:cycles||[]});
+  }catch(e){console.error('pull-list quiet series check failed',e);}
+  return deps.json({ok:true,needs:pullListNeeds({skus:skus||[],families,subs:subs||[]}),quiet,subscribers:subs.length});
 }
 export function shortCustomerName(name){
   const parts=String(name||'').trim().split(/\s+/).filter(Boolean);
@@ -4393,6 +4493,9 @@ export async function handleFocRequest(request, env, url, deps) {
   if(path==='/public/preorders/picks'&&(request.method==='PATCH'||request.method==='DELETE'))return mutateSavedPicks(request,env,deps);
   if(path==='/public/preorders/waitlist'&&request.method==='POST')return waitlist(request,env,deps);
   if(path==='/public/preorders/my'&&request.method==='GET')return myPreorders(request,env,deps,url);
+  if(path==='/public/preorders/pull-list/series'&&request.method==='GET')return publicPullListSeries(request,env,deps,url);
+  if(path==='/public/preorders/pull-list'&&request.method==='GET')return myPullList(request,env,deps,url);
+  if(path==='/public/preorders/pull-list'&&request.method==='POST')return savePullList(request,env,deps);
   if(path==='/public/preorders/cancel'&&request.method==='POST')return cancelPreorder(request,env,deps);
   if(path==='/public/preorders/resume'&&request.method==='POST')return resumePreorderPayment(request,env,deps);
   if(path==='/foc/admin/import'&&request.method==='POST'){
