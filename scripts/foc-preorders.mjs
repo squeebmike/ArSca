@@ -1031,6 +1031,7 @@ function ebayPresaleFields(row, presale, deps, safeBusinessDays) {
   }
   if (listed) {
     return { ebayPresaleStatus:availableQty > 0 ? 'LISTED' : 'SOLD_OUT', ebayListed:true, ebayPresold:soldQty, ebayAvailable:availableQty, ebayInventoryItemGroupKey:groupKey, ebayGroupPhotosRepairedAt:groupPhotosRepairedAt,
+      ebayTradingGroup:!!presale.tradingGroup, ebayCoverPending:!!presale.coverPending,
       ebayListingId:presale.listingId || '', ebayPrice:presale.price || 0, ebayListingCount:presale.listings || 0 };
   }
   const eligibleDate = deps.addBusinessDays(onSaleDate, -safeBusinessDays);
@@ -1127,6 +1128,9 @@ async function buildCycleCatalog(db, cycle, includeAdmin = false, env, deps, sto
         originalQty:prior.originalQty + originalQty, remainingQty:prior.remainingQty + remainingQty,
         groupKey:prior.groupKey || d.ebayInventoryItemGroupKey || '',
         groupPhotosRepairedAt:prior.groupPhotosRepairedAt || d.ebayGroupPhotosRepairedAt || '',
+        // A live multi-cover (Trading API) listing can take more covers.
+        tradingGroup:!!(prior.tradingGroup || (d.ebayApiSystem === 'trading' && d.ebayInventoryItemGroupKey && !d.ebayWithdrawnAt && row.status !== 'sold')),
+        coverPending:!!(prior.coverPending || d.focCoverPending),
         // For editing the listing's price/quantity from the cover wall.
         listingId:prior.listingId || (ownListing ? String(d.ebayListingId) : ''),
         price:prior.price || (ownListing ? Number(d.salePrice || d.market || 0) : 0),

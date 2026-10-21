@@ -20,6 +20,7 @@ on:
       - scripts/sports-player-team-search.mjs
       - scripts/comic-articles.mjs
       - scripts/pull-list-page.mjs
+      - scripts/cover-coming-soon.mjs
       - scripts/article-marketplace.mjs
       - tests/article-marketplace.test.mjs
       - scripts/release-order.mjs

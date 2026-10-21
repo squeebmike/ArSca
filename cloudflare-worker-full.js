@@ -46,6 +46,7 @@ import { searchComics, comicSearchShell, comicSearchScriptResponse, injectComicS
 import { handleAccountRequest, findLinkedCustomer } from './scripts/customer-account.mjs';
 import { handleArticlesRequest, articleSitemapPaths, fetchArticles } from './scripts/comic-articles.mjs';
 import { pullListPageBody } from './scripts/pull-list-page.mjs';
+import { COVER_COMING_SOON_JPEG_BASE64 } from './scripts/cover-coming-soon.mjs';
 import { extractSiteChrome, SITE_CHROME_SOURCE } from './scripts/site-chrome.mjs';
 import {loadPokemonSets,loadPokemonSetCards} from './scripts/public-pokemon-sets.mjs';
 import { handlePublicPokemonRequest } from './scripts/public-pokemon-sets.mjs';
@@ -6127,12 +6128,15 @@ async function routeRequest(request, env, ctx) {
       // requirement is "at least one," not "the exact right one."
       const anyCoverImage = built.find(v => v.imageUrl)?.imageUrl || '';
       if (!anyCoverImage) return json({ ok: false, error: 'None of the selected covers have a cover image on file -- eBay requires at least one photo per listing. Add cover art to at least one selected cover first.' }, 400);
-      built.forEach(v => { if (!v.imageUrl) v.imageUrl = anyCoverImage; });
       // Every distinct real cover photo actually available, in selection
       // order -- used below as the bundle variant's own image gallery so
       // "All Covers Bundle" visually shows every cover it bundles, not just
       // one at random.
       const allCoverImages = [...new Set(built.map(v => v.imageUrl).filter(Boolean))];
+      // Store ask: a cover with no art yet shows "cover art coming soon"
+      // (not another cover's art), and its row is marked so the real art
+      // replaces it once it arrives (runScheduledFocCoverSwap).
+      built.forEach(v => { if (!v.imageUrl) { v.imageUrl = FOC_COVER_COMING_SOON_URL; v.coverPending = true; } });
       // Optional extra "All Covers Bundle" variant -- not tied to any real
       // comic_sku (it's a synthetic offer, not a distributor line item), so
       // it's tracked below via a source:'foc_presale_bundle' inventory row
@@ -6306,6 +6310,7 @@ async function routeRequest(request, env, ctx) {
                 cost: skuRow ? Math.round(Number(skuRow.msrp_cents || 0) * 0.5) / 100 : bundleCostCents / 100,
                 market: Number(v.price), salePrice: Number(v.price),
                 qty: v.quantity, quantity: v.quantity, image: v.imageUrl || '',
+                ...(v.coverPending ? { focCoverPending: true } : {}),
                 source: v.skuId ? 'foc_presale' : 'foc_presale_bundle',
                 focSkuId: v.skuId || null, focCycleId: repSku.cycle_id || null,
                 focBundleSkuIds: v.skuId ? undefined : built.filter(x => x.skuId).map(x => x.skuId),
@@ -6349,6 +6354,84 @@ async function routeRequest(request, env, ctx) {
     // { groupKey }; otherwise every still-live group listing on file for
     // this store is repaired in one pass, since the bug could only ever
     // have affected listings created before this route shipped.
+    // Store ask: "to save on listings" -- a cover that's ready after its
+    // issue is already up as a multi-cover listing joins that listing as
+    // one more Cover choice instead of getting a listing of its own. Only
+    // Trading API listings (every multi-cover listing built since then) can
+    // take a new cover. eBay keeps the covers it already has; the Cover
+    // choices list is sent whole, and the per-cover photos are re-bound
+    // afterwards the same way REPAIR LISTING PHOTOS does.
+    if (url.pathname === '/foc/ebay/add-to-group-listing') {
+      if (request.method !== 'POST') return json({ error: 'POST only' }, 405);
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId, ['owner','admin']);
+      if (auth.error) return auth.error;
+      let body = {}; try { body = await request.json(); } catch (_) {}
+      const skuId = String(body.skuId || '').trim();
+      if (!/^[0-9a-f-]{36}$/i.test(skuId)) return json({ ok: false, error: 'skuId required' }, 400);
+      const s = encodeURIComponent(storeId);
+      const { data: skuOne } = await supabaseAdminFetch(env, `comic_skus?id=eq.${encodeURIComponent(skuId)}&store_id=eq.${s}&select=*`);
+      const sku = skuOne?.[0];
+      if (!sku) return json({ ok: false, error: 'FOC SKU not found for this store' }, 404);
+      if (!sku.family_id) return json({ ok: false, error: 'This cover has no title to join' }, 400);
+      const priceCents = Number(sku.customer_price_cents || sku.msrp_cents || 0);
+      if (!priceCents) return json({ ok: false, error: 'This SKU has no price set -- set a customer price first' }, 400);
+      if (!sku.on_sale_date) return json({ ok: false, error: 'This SKU has no on-sale date' }, 400);
+      const onSaleDate = new Date(String(sku.on_sale_date).includes('T') ? sku.on_sale_date : sku.on_sale_date + 'T00:00:00Z');
+      const safeBusinessDays = await getEbayPresaleSafeBusinessDays(env, storeId);
+      const eligibleDate = addBusinessDays(onSaleDate, -safeBusinessDays);
+      if (new Date() < eligibleDate) return json({ ok: false, error: `Too early for eBay presale -- eligible ${eligibleDate.toISOString().slice(0, 10)}`, eligibleDate: eligibleDate.toISOString().slice(0, 10) }, 409);
+      const { data: familySkus } = await supabaseAdminFetch(env, `comic_skus?family_id=eq.${encodeURIComponent(sku.family_id)}&store_id=eq.${s}&select=id,title,variant_label&order=id.asc`);
+      const familyIds = (familySkus || []).map(r => r.id);
+      const { data: liveRows } = await supabaseAdminFetchAll(env, `inventory_items?store_id=eq.${s}&status=in.(presale,in_stock)&data->>source=eq.foc_presale&data->>focSkuId=in.(${familyIds.map(encodeURIComponent).join(',')})&select=id,status,data`);
+      if ((liveRows || []).some(r => r.data?.focSkuId === skuId && !r.data?.ebayWithdrawnAt)) return json({ ok: false, error: 'Already listed on eBay -- not adding it again' }, 409);
+      const groupRows = (liveRows || []).filter(r => r.data?.ebayApiSystem === 'trading' && r.data?.ebayInventoryItemGroupKey && r.data?.ebayListingId && !r.data?.ebayWithdrawnAt);
+      if (!groupRows.length) return json({ ok: false, error: 'No live multi-cover listing for this title to add it to' }, 404);
+      const groupKey = groupRows[0].data.ebayInventoryItemGroupKey, listingId = groupRows[0].data.ebayListingId;
+      const sibling = groupRows[0];
+      let ebayToken = '';
+      try { ebayToken = await getEbayUserAccessToken(env); } catch (tokenErr) { return json({ needsToken: true, error: tokenErr.message }, 401); }
+      if (!ebayToken) return json({ needsToken: true, error: 'Connect eBay first' }, 401);
+      const liveLabels = await liveEbayVariationLabels(ebayToken, listingId);
+      if (!liveLabels.size) return json({ ok: false, error: 'Could not read the live listing\'s covers from eBay -- try again' }, 502);
+      const labels = uniqueCoverLabels((familySkus || []).map(r => ({ label: r.variant_label || 'Cover', title: r.title })));
+      let label = withRatioWord(labels[familyIds.indexOf(skuId)] || sku.variant_label || 'Cover');
+      const taken = new Set([...liveLabels.values()].map(v => String(v).toLowerCase()));
+      for (let n = 2; taken.has(label.toLowerCase()); n++) label = withRatioWord((labels[familyIds.indexOf(skuId)] || 'Cover') + ' (' + n + ')');
+      const quantity = Math.max(1, Math.min(200, parseInt(body.quantity, 10) || 1));
+      const newSku = groupKey + '-x' + Date.now().toString(36);
+      const allLabels = [...new Set([...liveLabels.values(), label])];
+      const reviseXml = `<Item><ItemID>${xmlEscape(listingId)}</ItemID><Variations>` +
+        `<Variation><SKU>${xmlEscape(newSku)}</SKU><StartPrice currencyID="USD">${(priceCents / 100).toFixed(2)}</StartPrice><Quantity>${quantity}</Quantity>` +
+        `<VariationSpecifics><NameValueList><Name>Cover</Name><Value>${xmlEscape(label)}</Value></NameValueList></VariationSpecifics></Variation>` +
+        `<VariationSpecificsSet><NameValueList><Name>Cover</Name>${allLabels.map(v => `<Value>${xmlEscape(v)}</Value>`).join('')}</NameValueList></VariationSpecificsSet>` +
+        `</Variations></Item>`;
+      try { await ebayTradingApiCall(ebayToken, 'ReviseFixedPriceItem', reviseXml); }
+      catch (e) { return json({ ok: false, error: 'eBay would not add the cover: ' + e.message }, 502); }
+      const image = sku.cover_image_url || FOC_COVER_COMING_SOON_URL;
+      const { data: family } = await supabaseAdminFetch(env, `comic_title_families?id=eq.${encodeURIComponent(sku.family_id)}&select=*`);
+      const sd = sibling.data || {};
+      const { data: made } = await supabaseAdminFetch(env, 'inventory_items', { method: 'POST', headers: { Prefer: 'return=representation' }, body: JSON.stringify({ store_id: storeId, status: 'presale', data: {
+        name: withRatioWord([family?.[0]?.title || sku.title, label].filter(Boolean).join(' ')), category: 'Comic', publisher: sku.publisher || sd.publisher || '', upc: sku.upc || '',
+        cost: Math.round(Number(sku.msrp_cents || 0) * 0.5) / 100, market: priceCents / 100, salePrice: priceCents / 100,
+        qty: quantity, quantity, image, ...(sku.cover_image_url ? {} : { focCoverPending: true }),
+        source: 'foc_presale', focSkuId: sku.id, focCycleId: sku.cycle_id || sd.focCycleId || null,
+        focComicDetail: focPresaleComicDetail(sku, family?.[0] || null), onSaleDate: sku.on_sale_date || null, focPresaleOriginalQty: quantity,
+        ebayListingId: listingId, ebayOfferId: '', ebaySku: newSku, ebayListedAt: new Date().toISOString(),
+        ebayInventoryItemGroupKey: groupKey, ebayVolumeDiscountPromotionId: sd.ebayVolumeDiscountPromotionId, ebayApiSystem: 'trading', focAddedToListingAt: new Date().toISOString(),
+      } }) });
+      const row = Array.isArray(made) ? made[0] : made;
+      let photoWarning = '';
+      // Every row of the listing (the bundle choice included), as REPAIR
+      // LISTING PHOTOS uses, so no cover loses its picture.
+      try {
+        const { data: allGroupRows } = await supabaseAdminFetch(env, `inventory_items?store_id=eq.${s}&status=neq.sold&data->>ebayInventoryItemGroupKey=eq.${encodeURIComponent(groupKey)}&select=id,data`);
+        await repairEbayTradingGroupListingPhotos(env, ebayToken, groupKey, allGroupRows?.length ? allGroupRows : [...groupRows, row].filter(Boolean));
+      }
+      catch (e) { photoWarning = 'Added, but its photo could not be set yet: ' + e.message; }
+      return json({ ok: true, listingId, label, sku: newSku, rowId: row?.id || '', warnings: photoWarning ? [photoWarning] : [] });
+    }
+
     if (url.pathname === '/foc/ebay/repair-group-listing-photos') {
       if (request.method !== 'POST') return json({ error: 'POST only' }, 405);
       const storeId = requestStoreId(request, url);
@@ -15849,6 +15932,11 @@ async function routeRequest(request, env, ctx) {
     // media server has the large cover by item code. Every place a Lunar
     // cover shows -- dashboard, shop, eBay -- points here, which serves the
     // large one, or the spreadsheet thumbnail when Lunar has no large one.
+    // Store ask: "have a cover coming soon placeholder?" -- the picture a
+    // multi-cover listing shows for a cover whose art isn't out yet.
+    if (url.pathname === '/foc/cover-coming-soon.jpg' && (request.method === 'GET' || request.method === 'HEAD')) {
+      return new Response(request.method === 'HEAD' ? null : focCoverComingSoonBytes(), { headers: { 'Content-Type': 'image/jpeg', 'Cache-Control': 'public, max-age=604800', 'Access-Control-Allow-Origin': '*' } });
+    }
     const lunarCoverMatch = url.pathname.match(/^\/foc\/lunar-cover\/([0-9]{4}[A-Z]{2}[0-9]{3,5})\.jpg$/i);
     if (lunarCoverMatch && (request.method === 'GET' || request.method === 'HEAD')) {
       const cacheKey = new Request(url.origin + url.pathname);
@@ -18033,6 +18121,47 @@ async function fillMissingLunarCovers(env, { storeId = '', origin = LUNAR_COVER_
 // date has come go up through the normal listing route, and the store gets
 // one email listing what went up (or didn't after 3 tries).
 const FOC_INTERNAL_REQUESTS = new WeakSet();
+const FOC_COVER_COMING_SOON_URL = 'https://still-resonance-4f87.swarnerauto.workers.dev/foc/cover-coming-soon.jpg';
+let focCoverComingSoonCache = null;
+function focCoverComingSoonBytes() {
+  if (!focCoverComingSoonCache) focCoverComingSoonCache = Uint8Array.from(atob(COVER_COMING_SOON_JPEG_BASE64), c => c.charCodeAt(0));
+  return focCoverComingSoonCache;
+}
+async function focInternalPost(env, ctx, storeId, path, body) {
+  const req = new Request(LUNAR_COVER_ORIGIN + path, { method:'POST', headers:{ 'Content-Type':'application/json', 'X-Store-Id':storeId }, body:JSON.stringify({ ...body, storeId }) });
+  FOC_INTERNAL_REQUESTS.add(req);
+  const res = await routeRequest(req, env, ctx);
+  return { res, data: await res.json().catch(() => ({})) };
+}
+// Store ask: "have no cover art auto update somehow?" -- every 6 hours,
+// covers listed with the coming-soon picture whose real art has come in
+// (Lunar art is looked for on the same run) get it on eBay: the row's
+// image is updated and the listing's per-cover photos re-bound.
+async function runScheduledFocCoverSwap(env, ctx) {
+  const { data: rows } = await supabaseAdminFetch(env, `inventory_items?data->>focCoverPending=eq.true&status=in.(presale,in_stock)&select=id,store_id,data&limit=300`);
+  const ids = [...new Set((rows || []).map(r => r.data?.focSkuId).filter(id => /^[0-9a-f-]{36}$/i.test(String(id || ''))))];
+  if (!ids.length) return { swapped: 0, groups: 0 };
+  const art = new Map();
+  for (let i = 0; i < ids.length; i += 100) {
+    const { data } = await supabaseAdminFetch(env, `comic_skus?id=in.(${ids.slice(i, i + 100).map(encodeURIComponent).join(',')})&select=id,cover_image_url`);
+    for (const k of data || []) if (k.cover_image_url) art.set(k.id, k.cover_image_url);
+  }
+  const groups = new Map();
+  let swapped = 0;
+  for (const r of rows || []) {
+    const url = art.get(r.data?.focSkuId);
+    if (!url) continue;
+    const { focCoverPending, ...rest } = r.data || {};
+    await supabaseAdminFetch(env, `inventory_items?id=eq.${encodeURIComponent(r.id)}&store_id=eq.${encodeURIComponent(r.store_id)}`, { method:'PATCH', headers:{ Prefer:'return=minimal' }, body:JSON.stringify({ data:{ ...rest, image:url, focCoverArtAt:new Date().toISOString() } }) });
+    swapped++;
+    if (rest.ebayInventoryItemGroupKey) groups.set(r.store_id + '|' + rest.ebayInventoryItemGroupKey, { storeId:r.store_id, groupKey:rest.ebayInventoryItemGroupKey });
+  }
+  for (const g of groups.values()) {
+    try { const { res, data } = await focInternalPost(env, ctx, g.storeId, '/foc/ebay/repair-group-listing-photos', { groupKey:g.groupKey }); if (!res.ok || (data.failed || []).length) console.error('FOC cover swap: photo repair failed', g.groupKey, JSON.stringify(data).slice(0, 300)); }
+    catch (e) { console.error('FOC cover swap: photo repair failed', g.groupKey, e.message); }
+  }
+  return { swapped, groups: groups.size };
+}
 const FOC_AUTOLIST_KV = storeId => 'foc-autolist:' + storeId;
 const FOC_AUTOLIST_STORES_KV = 'foc-autolist:stores';
 const FOC_AUTOLIST_PER_RUN = 6;
@@ -18051,7 +18180,7 @@ async function saveFocAutoList(env, storeId, queue) {
 }
 const focAutoListSummary = item => ({ key:item.key, kind:item.kind, familyId:item.familyId || '', skuIds:item.skuIds, label:item.label, eligibleDate:item.eligibleDate, queuedAt:item.queuedAt, attempts:item.attempts || 0, lastError:item.lastError || '' });
 function cleanFocAutoListItem(raw, storeId, now = new Date().toISOString()) {
-  const kind = raw?.kind === 'group' ? 'group' : raw?.kind === 'single' ? 'single' : '';
+  const kind = ['group', 'single', 'add'].includes(raw?.kind) ? raw.kind : '';
   const skuIds = (Array.isArray(raw?.skuIds) ? raw.skuIds : []).map(String).filter(id => /^[0-9a-f-]{36}$/i.test(id)).slice(0, 20);
   const eligibleDate = /^\d{4}-\d{2}-\d{2}$/.test(String(raw?.eligibleDate || '')) ? raw.eligibleDate : '';
   const payload = raw?.payload && typeof raw.payload === 'object' ? { ...raw.payload, storeId } : null;
@@ -18059,7 +18188,7 @@ function cleanFocAutoListItem(raw, storeId, now = new Date().toISOString()) {
   if (kind === 'group' && (!/^[0-9a-f-]{36}$/i.test(String(raw.familyId || '')) || skuIds.length < 2)) return null;
   if (JSON.stringify(payload).length > 60000) return null;
   const familyId = kind === 'group' ? String(raw.familyId) : '';
-  return { key: kind === 'group' ? 'g:' + familyId : 's:' + skuIds[0], kind, familyId, skuIds, label: String(raw.label || '').slice(0, 160) || 'Comic', eligibleDate, payload, queuedAt: now, attempts: 0 };
+  return { key: kind === 'group' ? 'g:' + familyId : (kind === 'add' ? 'a:' : 's:') + skuIds[0], kind, familyId, skuIds, label: String(raw.label || '').slice(0, 160) || 'Comic', eligibleDate, payload, queuedAt: now, attempts: 0 };
 }
 async function handleFocAutoListRoute(request, env, url) {
   const storeId = requestStoreId(request, url);
@@ -18104,16 +18233,16 @@ async function runFocAutoListForStore(env, ctx, storeId, { today = pacificToday(
       // No cover art yet: wait for it (Lunar art is looked for every 6
       // hours) -- until the book is out, when a presale no longer applies.
       const { data:skuRows } = await supabaseAdminFetch(env, `comic_skus?store_id=eq.${encodeURIComponent(storeId)}&id=in.(${item.skuIds.map(encodeURIComponent).join(',')})&select=id,cover_image_url,on_sale_date`);
+      // A multi-cover listing (or a cover joining one) can go up with the
+      // coming-soon picture for covers without art; a single listing needs
+      // its art, and an issue needs at least one real cover.
       const noArt = (skuRows || []).filter(r => !r.cover_image_url);
-      if (noArt.length) {
+      if (item.kind === 'single' ? noArt.length : item.kind === 'group' ? noArt.length === (skuRows || []).length : false) {
         if ((skuRows || []).some(r => r.on_sale_date && String(r.on_sale_date).slice(0, 10) <= today)) { done.add(item.key); failed.push(item.label + ': no cover art came in before it went on sale'); }
         continue;
       }
-      const path = item.kind === 'group' ? '/foc/ebay/create-presale-group' : '/foc/ebay/create-presale';
-      const req = new Request(LUNAR_COVER_ORIGIN + path, { method:'POST', headers:{ 'Content-Type':'application/json', 'X-Store-Id':storeId }, body:JSON.stringify({ ...item.payload, storeId }) });
-      FOC_INTERNAL_REQUESTS.add(req);
-      const res = await routeRequest(req, env, ctx);
-      const data = await res.json().catch(() => ({}));
+      const path = item.kind === 'group' ? '/foc/ebay/create-presale-group' : item.kind === 'add' ? '/foc/ebay/add-to-group-listing' : '/foc/ebay/create-presale';
+      const { res, data } = await focInternalPost(env, ctx, storeId, path, item.payload);
       if (res.ok && data.ok !== false) { done.add(item.key); listed.push(item.label); continue; }
       if (res.status === 409 && /^\d{4}-\d{2}-\d{2}$/.test(String(data.eligibleDate || ''))) { item.eligibleDate = data.eligibleDate; continue; }
       throw new Error(data.error || ('HTTP ' + res.status));
@@ -18138,6 +18267,7 @@ async function runScheduledFocAutoList(env) {
   // The listing routes hand follow-up work to ctx.waitUntil; this run
   // waits for it before finishing.
   const pending = [], ctx = { waitUntil: p => pending.push(Promise.resolve(p).catch(() => {})), passThroughOnException() {} };
+  try { await runScheduledFocCoverSwap(env, ctx); } catch (e) { console.error('FOC cover swap failed:', e.message); }
   for (const storeId of stores) {
     try { await runFocAutoListForStore(env, ctx, storeId); }
     catch (e) { console.error('FOC auto-list failed for', storeId, e.message); }

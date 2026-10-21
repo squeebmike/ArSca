@@ -40,5 +40,5 @@ assert.deepEqual(d.writers, ['Jeremy Melloul', 'Adam Seats']);
 assert.deepEqual(d.coverArtists, ['Sean Dove']);
 assert.equal(detail({}, {}), undefined, 'nothing to show -> no field at all');
 assert.match(fnSource('storefrontComicDetailFor'), /const m = d\.comicMetadata \|\| d\.focComicDetail;/);
-assert.equal((worker.match(/focComicDetail: focPresaleComicDetail\(/g) || []).length, 2, 'both presale creation paths must store it');
+assert.equal((worker.match(/focComicDetail: focPresaleComicDetail\(/g) || []).length, 3, 'every presale creation path must store it (single, an issue, a cover joining an issue)');
 console.log('FOC presale synopsis checks passed');
