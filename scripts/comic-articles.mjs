@@ -236,7 +236,7 @@ function coverLabel(sku) {
 function skuImageForStock(copy,skus){
  const exact=skus.find(s=>copy.focSkuId&&s.id===copy.focSkuId);if(exact?.cover_image_url)return exact.cover_image_url;
  const letter=String(copy.name||'').match(/\b(?:cover|cvr)\s+([a-z])\b/i)?.[1]?.toLowerCase();
- const matches=letter?skus.filter(s=>String(s.variant_label||s.title||'').match(/\b(?:cover|cvr)\s+([a-z])\b/i)?.[1]?.toLowerCase()===letter):[];
+ const matches=letter?skus.filter(s=>String((s.variant_label||'')+' '+(s.title||'')).match(/\b(?:cover|cvr)\s+([a-z])\b/i)?.[1]?.toLowerCase()===letter):[];
  return matches.length===1?matches[0].cover_image_url||'':'';
 }
 
@@ -246,7 +246,7 @@ export async function bookStatus(env, deps, book, now = Date.now()) {
   if (!word) return status;
   const enc = encodeURIComponent;
   const [skuRes, items] = await Promise.all([
-    deps.supabaseAdminFetch(env, `comic_skus?store_id=eq.${enc(deps.storeId)}&title=ilike.${enc('*' + word + '*')}&select=id,cycle_id,title,variant_label,cover_image_url,customer_price_cents,customer_enabled,is_incentive,on_sale_date,secured_quantity,flags,cycle:foc_cycles(id,status,customer_cutoff_at)&order=on_sale_date.desc&limit=300`).catch(error => { if (deps.strict) throw error; return { data: [] }; }),
+    deps.supabaseAdminFetch(env, `comic_skus?store_id=eq.${enc(deps.storeId)}&title=ilike.${enc('*' + word + '*' + (comicKey(book).issue ? comicKey(book).issue + '*' : ''))}&select=id,cycle_id,title,variant_label,cover_image_url,customer_price_cents,customer_enabled,is_incentive,on_sale_date,secured_quantity,flags,cycle:foc_cycles(id,status,customer_cutoff_at)&order=on_sale_date.desc&limit=300`).catch(error => { if (deps.strict) throw error; return { data: [] }; }),
     (deps.listItemsForBook ? deps.listItemsForBook(env, word, deps.storeId) : deps.listItems(env)).catch(error => { if (deps.strict) throw error; return []; }),
   ]);
   if (deps.strict && (!Array.isArray(skuRes.data) || skuRes.response?.ok === false)) throw new Error('Book catalog unavailable');
