@@ -87,7 +87,10 @@ assert.equal(COMIC_GEMINI_MAILER.dimHeight, 1.25);
 {
   const foc = fs.readFileSync('scripts/foc-dashboard.js', 'utf8');
   const fn = foc.slice(foc.indexOf('function focDefaultEbayQty('), foc.indexOf('\n', foc.indexOf('function focDefaultEbayQty(')));
-  const focDefaultEbayQty = new Function('allFocSkus', fn + '\nreturn focDefaultEbayQty;')(() => [{ id:'inc', isIncentive:true }, { id:'reg', isIncentive:false }]);
+  // Ratio covers follow the store's rule (1 of a 1:100, 2 of a 1:50, 4 of a 1:25).
+  const helpers = foc.slice(foc.indexOf('function focRatioOf('), foc.indexOf('function focDefaultEbayQty('));
+  const focDefaultEbayQty = new Function('allFocSkus', helpers + fn + '\nreturn focDefaultEbayQty;')(() => [{ id:'inc', isIncentive:true }, { id:'reg', isIncentive:false }, { id:'r25', isIncentive:true, ratioThreshold:25 }]);
+  assert.equal(focDefaultEbayQty('r25'), 4, 'a 1:25 defaults to 4');
   assert.equal(focDefaultEbayQty('inc'), 1, 'an incentive cover defaults to 1');
   assert.equal(focDefaultEbayQty('reg'), 10, 'a regular cover stays at 10');
   assert.match(foc, /<label>QUANTITY<input id="foc-eb-qty" class="tsi" type="number" min="1" max="200" value="'\+focDefaultEbayQty\(skuId\)\+'"><\/label>/, 'single-cover review uses it');

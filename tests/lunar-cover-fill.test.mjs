@@ -34,7 +34,7 @@ function setup(rows, hasLarge) {
 }
 // Wired: route, every-6-hours run, and the FOC screen button for Lunar weeks.
 assert.match(worker, /if \(url\.pathname === '\/foc\/lunar-covers\/fill'\) \{[\s\S]{0,400}requireStoreUser\(request, env, storeId, \['owner','admin','manager'\]\)[\s\S]{0,200}fillMissingLunarCovers\(env, \{ storeId, origin: url\.origin \}\)/);
-assert.match(worker, /runScheduledStockHealthCheck\(env\), runScheduledLunarCoverFill\(env\)\]\)\);/);
+assert.match(worker, /runScheduledStockHealthCheck\(env\), runScheduledLunarCoverFill\(env\)[,\]]/);
 assert.match(dash, /c\.distributor==='Lunar'\?'<button class="hbtn"[^>]*onclick="fillLunarCovers\(\)">FIND LUNAR COVERS<\/button>'/);
 assert.match(dash, /window\.fillLunarCovers=fillLunarCovers;/);
 console.log('Lunar cover fill checks passed');

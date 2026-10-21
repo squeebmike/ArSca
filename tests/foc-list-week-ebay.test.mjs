@@ -12,7 +12,7 @@ const fn = n => { const s = dash.indexOf('function ' + n + '('); assert.ok(s >= 
 const line = n => { const s = dash.indexOf('function ' + n + '('); assert.ok(s >= 0, n); return dash.slice(s, dash.indexOf('\n', s) + 1); };
 const store = new Map();
 const { document } = parseHTML('<!doctype html><html><body></body></html>');
-const ctx = { localStorage:{ getItem:k => store.get(k) ?? null, setItem:(k, v) => store.set(k, String(v)) }, document, opened:[], submitted:[] };
+const ctx = { focEbayCapture:null, localStorage:{ getItem:k => store.get(k) ?? null, setItem:(k, v) => store.set(k, String(v)) }, document, opened:[], submitted:[] };
 vm.runInNewContext(['focSingleWeightOz', 'focListWeightOz', 'focListNeedsPrice', 'focListHasQty'].map(line).join('\n') + fn('focListWeekPlan') + 'async ' + fn('focListWeekOne') +
   'this.api={focSingleWeightOz,focListWeightOz,focListNeedsPrice,focListHasQty,focListWeekPlan,focListWeekOne};', ctx);
 const api = ctx.api;
@@ -37,12 +37,13 @@ assert.deepEqual([plan.listed, plan.released], [1, 1]);
 assert.ok(api.focListHasQty({ isIncentive:true, securedQuantity:1 }), 'a secured ratio copy counts');
 assert.ok(!api.focListNeedsPrice({ isIncentive:true, priceCents:2500 }), 'a priced ratio cover is ready');
 
-// Weight: packed single issue 9 oz by default (changeable), trades 15, hardcovers 29.
-assert.equal(api.focListWeightOz({ msrpCents:399 }), 9);
+// Weight: packed single issue 8 oz by default (store's call), trades 15, hardcovers 29.
+assert.equal(api.focListWeightOz({ msrpCents:399 }), 8);
 assert.equal(api.focListWeightOz({ priceCents:1499 }), 15);
 assert.equal(api.focListWeightOz({ msrpCents:4999 }), 29);
+store.set('foc_ebay_single_weight_oz', '9');
+assert.equal(api.focListWeightOz({ msrpCents:499 }), 9, 'changeable on the screen');
 store.set('foc_ebay_single_weight_oz', '8');
-assert.equal(api.focListWeightOz({ msrpCents:499 }), 8, 'the store\'s own scale reading');
 
 // Listing one: the normal review screen, hidden, weight set in ounces, LIST pressed.
 ctx.openEbayPresaleReview = async id => { ctx.opened.push(id); document.body.insertAdjacentHTML('beforeend', '<div id="foc-ebay-review-modal"><input id="foc-eb-title" value="T"><input id="foc-eb-weight" value="0.5625"><select id="foc-eb-weight-unit"><option value="POUND" selected>LB</option><option value="OUNCE">OZ</option></select><div id="foc-eb-status"></div></div>'); };
@@ -68,24 +69,25 @@ assert.match(dash, /onclick="openFocListWeek\(\)">📤 LIST WEEK ON EBAY<\/butto
 const run = fn('focListWeekRun');
 assert.match(run, /if\(!policy\)\{toast_dash\('Pick a shipping policy first'\);return;\}/);
 assert.match(run, /localStorage\.setItem\('foc_ebay_last_ship_policy_id',policy\)/);
-assert.match(run, /if\(!confirm\('List '\+jobs\.length\+' eBay presale listing'/, 'one confirm, showing every listing and weight');
+assert.match(run, /if\(!confirm\(\(now\.length\?'List '\+now\.length\+' eBay presale listing'/, 'one confirm, showing every listing and weight');
 assert.match(run, /else if\(r\.fallback\)jobs\.splice\.apply\(jobs,\[i\+1,0\]/);
 assert.match(run, /for\(var i=0;i<jobs\.length&&!focListWeekState\.stop;i\+\+\)/, 'STOP works between listings');
 const render = fn('renderFocListWeek');
-for (const t of ['READY TO LIST', 'NEEDS YOUR PRICE', 'NO COVER ART YET', 'TOO EARLY FOR EBAY', 'NO ON-SALE DATE', 'NOT ORDERING ANY', 'SINGLE ISSUE WEIGHT (OZ, PACKED)', 'SHIPPING POLICY']) assert.ok(render.includes(t), t);
+for (const t of ['READY TO LIST', 'NEEDS YOUR PRICE', 'NO COVER ART YET', 'TOO EARLY -- LISTS ITSELF LATER', 'NO ON-SALE DATE', 'NOT ORDERING ANY', 'SINGLE ISSUE WEIGHT (OZ, PACKED)', 'SHIPPING POLICY']) assert.ok(render.includes(t), t);
 assert.match(fn('focListSetPrice'), /body:JSON\.stringify\(\{storeId:getActiveStoreId\(\),skuId:skuId,customerPrice:p\}\)/);
 console.log('FOC list-week-on-eBay checks passed');
 
 // The screen draws (with stand-ins for the dashboard's helpers).
 {
   const host = document.createElement('div');
-  const c2 = { ...ctx, panel:() => host, state:{ cycle:{ id:'cy', foc_date:'2026-10-27', distributor:'Lunar' }, families }, esc:s => String(s ?? '').replace(/</g, '&lt;'), displayDate:d => d, focThumbHtml:() => '<i></i>', focListWeekState:{ running:false, weights:{}, policies:{ list:[{ id:'p1', name:'PreSale Paid Shipping' }], error:'' } } };
-  vm.runInNewContext(['focSingleWeightOz', 'focListWeightOz', 'focListNeedsPrice', 'focListHasQty'].map(line).join('\n') + fn('focListWeekPlan') + fn('focListRowHtml') + fn('renderFocListWeek') + 'renderFocListWeek();', c2);
+  const c2 = { ...ctx, panel:() => host, state:{ cycle:{ id:'cy', foc_date:'2026-10-27', distributor:'Lunar' }, families }, esc:s => String(s ?? '').replace(/</g, '&lt;'), displayDate:d => d, focThumbHtml:() => '<i></i>', focListWeekState:{ running:false, weights:{}, qtys:{}, queue:[], policies:{ list:[{ id:'p1', name:'PreSale Paid Shipping' }], error:'' } } };
+  vm.runInNewContext(['focSingleWeightOz', 'focListWeightOz', 'focListNeedsPrice', 'focListHasQty', 'focRatioOf', 'focAutoListEmail', 'focQueuedFor', 'focListQty'].map(line).join('\n') + fn('focRatioQty') + fn('focListWeekPlan') + fn('focListRowHtml') + fn('renderFocListWeek') + 'renderFocListWeek();', c2);
   const html = host.innerHTML;
-  assert.match(html, /📤 LIST 4 LISTINGS \(5 COVERS\)/);
+  assert.match(html, /📤 LIST 4 NOW \+ QUEUE 2 FOR LATER/);
   assert.match(html, /DNX #4 · ONE LISTING, 2 COVERS TO CHOOSE FROM/);
   assert.match(html, /NEEDS YOUR PRICE \(3\)/);
-  assert.match(html, /can list on 2026-10-28/);
+  assert.match(html, /eBay presale opens 2026-10-28/);
+  assert.match(html, /hintline@themanapocket\.com/);
   assert.match(html, /FIND LUNAR COVERS/);
   assert.match(html, /<option value="p1">PreSale Paid Shipping<\/option>/);
   assert.match(html, /value="8" onchange="focListSetSingleOz/);
