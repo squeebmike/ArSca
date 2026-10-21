@@ -36,3 +36,11 @@ assert.ok(rendered.after.includes('check shipping')&&rendered.after.includes('th
 for(const v of store.values())v.checkedAt=Date.now()-16*60*1000;
 const failedTasks=[];assert.equal(await articleMarketplace(env,{waitUntil:p=>failedTasks.push(p)},article,null,{searchEbay:async()=>{throw Error('offline');}}),null,'expired listing prices are never served');await Promise.all(failedTasks);
 console.log('Marketplace cold/fresh/expired behavior, product IDs, inline cards and every-image affiliate attribution passed');
+
+{
+ const football={displayName:'2025 Topps Chrome Football',year:2025};
+ assert.equal(listingMatchesRelease('2025 Topps Chrome Baseball Julio Rodriguez auto',football),false);
+ assert.equal(listingMatchesRelease('2025 Topps Chrome Cam Ward auto',football),false);
+ assert.equal(listingMatchesRelease('2025 Topps Chrome NFL Cam Ward autograph',football),true);
+ assert.equal(listingMatchesRelease('2025 Topps Chrome Football auto',{displayName:'2025 Topps Chrome Baseball',year:2025}),false);
+}

@@ -27,6 +27,8 @@ export function sportsArticleSet(article){
 export function listingMatchesRelease(title,set){
  const text=fold(title),release=fold(set.displayName),words=new Set(text.split(' '));
  if(!words.has(String(set.year)))return false;
+ if(release.includes('football')&&(!/\b(?:football|nfl)\b/.test(text)||words.has('baseball')))return false;
+ if(release.includes('baseball')&&/\b(?:football|nfl)\b/.test(text))return false;
  const series=release.match(/\bseries (\d+)\b/);
  if(series&&!text.includes('series '+series[1]))return false;
  if(!release.includes('chrome')&&words.has('chrome'))return false;
@@ -48,7 +50,7 @@ export async function articleMarketplace(env,ctx,article,guide,deps){
  const campaign=String(env.EBAY_PARTNER_CAMPAIGN_ID||'');
  if(set&&!/^\d{10}$/.test(campaign))return null;
  if(!env.LBA_KV||!ctx?.waitUntil)return null;
- const key='article-marketplace:'+(set?'v3':'v2')+':'+article.slug+':'+String(article.updatedAt||'')+':'+(set?campaign:'tcg');
+ const key='article-marketplace:'+(set?'v4':'v2')+':'+article.slug+':'+String(article.updatedAt||'')+':'+(set?campaign:'tcg');
  const now=Date.now(),ttl=set?15*60*1000:6*60*60*1000;
  let cached;try{cached=await env.LBA_KV.get(key,'json');}catch{}
  const fresh=cached&&Number(cached.checkedAt)<=now&&now-Number(cached.checkedAt)<ttl;
