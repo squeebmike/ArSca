@@ -562,7 +562,7 @@ function familyCard(f){
 
 function renderCycle(){
   var c=state.cycle;if(!c)return;var publishers=Array.from(new Set(state.families.map(function(f){return f.publisher;}).filter(Boolean))).sort();var allSkus=state.families.reduce(function(a,f){return a.concat(f.variants);},[]);var customerQty=allSkus.reduce(function(s,v){return s+Number(v.customerQty||0);},0);var storeQty=allSkus.reduce(function(s,v){return s+Number(v.storeQuantity||0);},0);var incentiveReq=allSkus.reduce(function(s,v){return s+Number(v.waitlistRequests||0);},0);
-  panel().innerHTML='<section class="foc-hero"><div class="foc-toolbar"><button class="hbtn" onclick="loadFocCycles()">← CYCLES</button><button class="hbtn" style="color:var(--purple)" onclick="openFocReview()">FINAL FOC REVIEW</button><button class="hbtn" style="color:var(--blue)" onclick="openFocIntelligence()">🧠 FOC INTELLIGENCE</button><button class="hbtn" style="color:var(--gold)" title="Cover artists, characters and series to always flag when ordering" onclick="openFocWatchList()">⭐ WATCH LIST</button>'+(c.distributor==="Lunar"?"":"<button class=\"hbtn\" onclick=\"exportFocPrh()\">EXPORT PRH ORDER</button>")+'<button class="hbtn" style="color:var(--g)" onclick="openReceiveShipment()">RECEIVE SHIPMENT</button><button class="hbtn" title="Who each copy in this FOC week is for: eBay orders, website preorders, pull lists" onclick="openFocPickList()">📋 PICK LIST</button>'+'<button class="hbtn" title="Open the Whatnot tab with this week\'s received, in-stock books chosen" onclick="sendFocShipmentToWhatnot(\''+esc(c.id)+'\')">SEND TO WHATNOT</button>'+(c.status!=='archived'?'<button class="hbtn" onclick="toggleFocCycle()">'+(c.isOpen?'LOCK ORDERS':'UNLOCK ORDERS')+'</button>':'')+(c.status==='archived'?'<button class="hbtn" onclick="unarchiveFocCycle()">SHOW ON SITE (LOCKED)</button>':'<button class="hbtn danger" onclick="archiveFocCycle()">HIDE FROM SITE</button>')+'<a class="hbtn" href="https://www.themanapocket.com/preorders?cycle='+encodeURIComponent(c.foc_date)+'" target="_blank" rel="noopener" style="text-decoration:none">VIEW CUSTOMER PAGE</a></div><div style="display:flex;justify-content:space-between;gap:12px;align-items:end;flex-wrap:wrap;margin-top:14px"><div><div style="font:900 22px/1.1 \'Orbitron\',monospace;color:var(--text)">FOC '+esc(displayDate(c.foc_date))+'</div><div style="font:10px/1.6 var(--font-mono);color:var(--dim)">'+esc(c.source_filename||(c.distributor||'PRH'))+' · '+(c.status==='archived'?'HIDDEN FROM SITE':(c.isOpen?'UNLOCKED FOR ORDERS':'VISIBLE BUT LOCKED'))+'</div></div><label style="font:8px var(--font-mono);color:var(--dim)">CUSTOMER CUTOFF · PACIFIC<input id="foc-cycle-cutoff" class="tsi" type="datetime-local" value="'+esc(pacificDateTimeInput(c.customer_cutoff_at))+'" onchange="saveFocCycleCutoff()" style="margin:3px 0 0"><span style="display:block;margin-top:4px">Set a future cutoff before unlocking an expired FOC.</span></label></div><div class="foc-stats"><div class="foc-stat"><b>'+allSkus.length+'</b><span>Exact cover SKUs</span></div><div class="foc-stat"><b>'+state.families.length+'</b><span>Title families</span></div><div class="foc-stat"><b>'+customerQty+'</b><span>Customer copies</span></div><div class="foc-stat"><b>'+storeQty+'</b><span>Store copies</span></div><div class="foc-stat"><b>'+incentiveReq+'</b><span>Incentive requests</span></div></div></section>'+focEbayHealthPanelHtml()+'<div class="panel foc-toolbar" style="margin-bottom:12px"><input id="foc-admin-search" class="tsi" placeholder="Search title, writer, artist…" value="'+esc(state.query)+'" oninput="filterFocAdmin(this.value)"><select class="tsi" onchange="filterFocPublisher(this.value)"><option value="all" '+(state.publisher==='all'?'selected':'')+'>All publishers</option>'+publishers.map(function(p){return'<option value="'+esc(p.toLowerCase())+'" '+(state.publisher===p.toLowerCase()?'selected':'')+'>'+esc(p)+'</option>';}).join('')+'</select><select class="tsi" onchange="filterFocFlag(this.value)"><option value="all" '+(state.flag==='all'?'selected':'')+'>All comics</option><option value="first" '+(state.flag==='first'?'selected':'')+'>#1 issues</option><option value="foil" '+(state.flag==='foil'?'selected':'')+'>Foil covers</option><option value="incentive" '+(state.flag==='incentive'?'selected':'')+'>Incentives</option><option value="demand" '+(state.flag==='demand'?'selected':'')+'>Customer demand</option><option value="sells" '+(state.flag==='sells'?'selected':'')+'>Sells here · runs · watch list</option></select><select class="tsi" onchange="filterFocEbay(this.value)"><option value="all" '+(state.ebay==='all'?'selected':'')+'>All eBay statuses</option><option value="ELIGIBLE_NOW" '+(state.ebay==='ELIGIBLE_NOW'?'selected':'')+'>Eligible, not listed</option><option value="TOO_EARLY" '+(state.ebay==='TOO_EARLY'?'selected':'')+'>Too early</option><option value="LISTED" '+(state.ebay==='LISTED'?'selected':'')+'>Already listed</option><option value="SOLD_OUT" '+(state.ebay==='SOLD_OUT'?'selected':'')+'>Presale sold out</option><option value="RELEASED" '+(state.ebay==='RELEASED'?'selected':'')+'>Released (on sale)</option><option value="ACTION_REQUIRED" '+(state.ebay==='ACTION_REQUIRED'?'selected':'')+'>Action required</option></select><span id="foc-visible-count" style="font:9px var(--font-mono);color:var(--dim)"></span></div>'+
+  panel().innerHTML='<section class="foc-hero"><div class="foc-toolbar"><button class="hbtn" onclick="loadFocCycles()">← CYCLES</button><button class="hbtn" style="color:var(--purple)" onclick="openFocReview()">FINAL FOC REVIEW</button><button class="hbtn" style="color:var(--gold)" title="Every cover this week: what can go on eBay now, and what\'s waiting on art, a price or the date" onclick="openFocListWeek()">📤 LIST WEEK ON EBAY</button><button class="hbtn" style="color:var(--blue)" onclick="openFocIntelligence()">🧠 FOC INTELLIGENCE</button><button class="hbtn" style="color:var(--gold)" title="Cover artists, characters and series to always flag when ordering" onclick="openFocWatchList()">⭐ WATCH LIST</button>'+(c.distributor==="Lunar"?"":"<button class=\"hbtn\" onclick=\"exportFocPrh()\">EXPORT PRH ORDER</button>")+'<button class="hbtn" style="color:var(--g)" onclick="openReceiveShipment()">RECEIVE SHIPMENT</button><button class="hbtn" title="Who each copy in this FOC week is for: eBay orders, website preorders, pull lists" onclick="openFocPickList()">📋 PICK LIST</button>'+'<button class="hbtn" title="Open the Whatnot tab with this week\'s received, in-stock books chosen" onclick="sendFocShipmentToWhatnot(\''+esc(c.id)+'\')">SEND TO WHATNOT</button>'+(c.status!=='archived'?'<button class="hbtn" onclick="toggleFocCycle()">'+(c.isOpen?'LOCK ORDERS':'UNLOCK ORDERS')+'</button>':'')+(c.status==='archived'?'<button class="hbtn" onclick="unarchiveFocCycle()">SHOW ON SITE (LOCKED)</button>':'<button class="hbtn danger" onclick="archiveFocCycle()">HIDE FROM SITE</button>')+'<a class="hbtn" href="https://www.themanapocket.com/preorders?cycle='+encodeURIComponent(c.foc_date)+'" target="_blank" rel="noopener" style="text-decoration:none">VIEW CUSTOMER PAGE</a></div><div style="display:flex;justify-content:space-between;gap:12px;align-items:end;flex-wrap:wrap;margin-top:14px"><div><div style="font:900 22px/1.1 \'Orbitron\',monospace;color:var(--text)">FOC '+esc(displayDate(c.foc_date))+'</div><div style="font:10px/1.6 var(--font-mono);color:var(--dim)">'+esc(c.source_filename||(c.distributor||'PRH'))+' · '+(c.status==='archived'?'HIDDEN FROM SITE':(c.isOpen?'UNLOCKED FOR ORDERS':'VISIBLE BUT LOCKED'))+'</div></div><label style="font:8px var(--font-mono);color:var(--dim)">CUSTOMER CUTOFF · PACIFIC<input id="foc-cycle-cutoff" class="tsi" type="datetime-local" value="'+esc(pacificDateTimeInput(c.customer_cutoff_at))+'" onchange="saveFocCycleCutoff()" style="margin:3px 0 0"><span style="display:block;margin-top:4px">Set a future cutoff before unlocking an expired FOC.</span></label></div><div class="foc-stats"><div class="foc-stat"><b>'+allSkus.length+'</b><span>Exact cover SKUs</span></div><div class="foc-stat"><b>'+state.families.length+'</b><span>Title families</span></div><div class="foc-stat"><b>'+customerQty+'</b><span>Customer copies</span></div><div class="foc-stat"><b>'+storeQty+'</b><span>Store copies</span></div><div class="foc-stat"><b>'+incentiveReq+'</b><span>Incentive requests</span></div></div></section>'+focEbayHealthPanelHtml()+'<div class="panel foc-toolbar" style="margin-bottom:12px"><input id="foc-admin-search" class="tsi" placeholder="Search title, writer, artist…" value="'+esc(state.query)+'" oninput="filterFocAdmin(this.value)"><select class="tsi" onchange="filterFocPublisher(this.value)"><option value="all" '+(state.publisher==='all'?'selected':'')+'>All publishers</option>'+publishers.map(function(p){return'<option value="'+esc(p.toLowerCase())+'" '+(state.publisher===p.toLowerCase()?'selected':'')+'>'+esc(p)+'</option>';}).join('')+'</select><select class="tsi" onchange="filterFocFlag(this.value)"><option value="all" '+(state.flag==='all'?'selected':'')+'>All comics</option><option value="first" '+(state.flag==='first'?'selected':'')+'>#1 issues</option><option value="foil" '+(state.flag==='foil'?'selected':'')+'>Foil covers</option><option value="incentive" '+(state.flag==='incentive'?'selected':'')+'>Incentives</option><option value="demand" '+(state.flag==='demand'?'selected':'')+'>Customer demand</option><option value="sells" '+(state.flag==='sells'?'selected':'')+'>Sells here · runs · watch list</option></select><select class="tsi" onchange="filterFocEbay(this.value)"><option value="all" '+(state.ebay==='all'?'selected':'')+'>All eBay statuses</option><option value="ELIGIBLE_NOW" '+(state.ebay==='ELIGIBLE_NOW'?'selected':'')+'>Eligible, not listed</option><option value="TOO_EARLY" '+(state.ebay==='TOO_EARLY'?'selected':'')+'>Too early</option><option value="LISTED" '+(state.ebay==='LISTED'?'selected':'')+'>Already listed</option><option value="SOLD_OUT" '+(state.ebay==='SOLD_OUT'?'selected':'')+'>Presale sold out</option><option value="RELEASED" '+(state.ebay==='RELEASED'?'selected':'')+'>Released (on sale)</option><option value="ACTION_REQUIRED" '+(state.ebay==='ACTION_REQUIRED'?'selected':'')+'>Action required</option></select><span id="foc-visible-count" style="font:9px var(--font-mono);color:var(--dim)"></span></div>'+
     // Store request: listing eligible FOC covers on eBay one at a time
     // (open the review modal, edit, LIST, close, find the next one, repeat)
     // was too much clicking for a whole cycle's worth of ratio/incentive
@@ -743,6 +743,149 @@ async function refreshFocPresaleEbayDescriptions(){
   }catch(e){toast_dash('Could not update listings: '+e.message);}
 }
 window.refreshFocPresaleEbayDescriptions=refreshFocPresaleEbayDescriptions;
+// ── LIST WEEK ON EBAY ──
+// Store ask: "list all FOC week to eBay at one time" -- covers without art
+// yet, books too early, books that need a price, and the right weight.
+// Sorts every cover of the open FOC week, then lists everything ready in
+// one go: an issue with 2+ ready covers as one listing with a Cover choice
+// (what the store does by hand), a single cover on its own. Each listing
+// goes through the same preview and template as the review screens --
+// they just aren't shown.
+function focSingleWeightOz(){ try{var v=Number(localStorage.getItem('foc_ebay_single_weight_oz'));if(v>0&&v<100)return v;}catch(e){} return 9; }
+function focListWeightOz(v){ var c=Number(v.priceCents||0)||Number(v.msrpCents||0); return c>=2000?29:c>=1000?15:focSingleWeightOz(); }
+function focListNeedsPrice(v){ return !(Number(v.priceCents||0)>0)&&(!!v.isIncentive||!!(v.flags&&v.flags.foil)||!(Number(v.msrpCents||0)>0)); }
+function focListHasQty(v){ return Number(v.storeQuantity||0)>0||(!!v.isIncentive&&Number(v.securedQuantity||0)>0); }
+function focListWeekPlan(families){
+  var plan={groups:[],singles:[],needPrice:[],noArt:[],tooEarly:[],noDate:[],noQty:[],listed:0,released:0};
+  (families||[]).forEach(function(f){
+    var ready=[],familyListed=false;
+    (f.variants||[]).forEach(function(v){
+      var st=v.ebayPresaleStatus;
+      if(st==='LISTED'||st==='SOLD_OUT'){plan.listed++;familyListed=true;return;}
+      if(st==='RELEASED'){plan.released++;return;}
+      if(st==='ACTION_REQUIRED'){plan.noDate.push(v);return;}
+      if(!focListHasQty(v)){plan.noQty.push(v);return;}
+      if(st==='TOO_EARLY'){plan.tooEarly.push(v);return;}
+      if(st!=='ELIGIBLE_NOW')return;
+      if(!v.coverImageUrl){plan.noArt.push(v);return;}
+      if(focListNeedsPrice(v)){plan.needPrice.push(v);return;}
+      ready.push(v);
+    });
+    if(ready.length>=2&&!familyListed)plan.groups.push({familyId:f.id,title:f.title,covers:ready});
+    else plan.singles=plan.singles.concat(ready);
+  });
+  plan.tooEarly.sort(function(a,b){return String(a.ebayEligibleDate||'').localeCompare(String(b.ebayEligibleDate||''));});
+  return plan;
+}
+var focListWeekState={running:false,stop:false,weights:{},policies:null};
+async function openFocListWeek(){
+  if(!state.cycle)return;
+  busy('Sorting this week\'s covers…');
+  try{var data=await api('/foc/admin/cycles?store_id='+encodeURIComponent(getActiveStoreId())+'&cycle_id='+encodeURIComponent(state.cycle.id));state.cycle=data.cycle;state.families=data.families||[];}catch(e){}
+  if(!focListWeekState.policies){
+    try{var pd=await api('/ebay/business-policies');var CLONE=/-\s*FOC\s+\d+D\s+Handling\s*$/i;focListWeekState.policies={list:((pd.fulfillment&&pd.fulfillment.policies)||[]).filter(function(p){return !CLONE.test(p.name||'');}),error:pd.needsToken?'eBay is not connected':((pd.fulfillment&&pd.fulfillment.error)||'')};}
+    catch(e){focListWeekState.policies={list:[],error:e.message};}
+  }
+  renderFocListWeek();
+}
+function focListRowHtml(v,opts){
+  opts=opts||{};
+  var price=Number(v.priceCents||0)||Number(v.msrpCents||0);
+  var w=focListWeekState.weights[v.id]!=null?focListWeekState.weights[v.id]:focListWeightOz(v);
+  return '<div style="display:grid;grid-template-columns:40px 1fr auto;gap:8px;align-items:center;padding:6px 8px;border-bottom:1px solid var(--border)">'+focThumbHtml(v.coverImageUrl,v.title)+
+    '<div style="min-width:0"><div style="font-weight:700;font-size:11px;color:var(--text)">'+esc(v.title)+(v.variantLabel&&v.variantLabel!=='Cover A'?' · '+esc(v.variantLabel):'')+'</div>'+
+    '<div style="font:9px/1.5 var(--font-mono);color:var(--dim)">'+(opts.note||'')+'</div></div>'+
+    (opts.edit?'<div style="display:flex;gap:6px"><label style="font:8px var(--font-mono);color:var(--dim)">PRICE $<input class="tsi" type="number" min="0" step="0.01" style="width:70px;margin:2px 0 0" value="'+(price?(price/100).toFixed(2):'')+'" placeholder="'+(v.isIncentive?'ratio':'')+'" onchange="focListSetPrice(\''+esc(v.id)+'\',this.value)"></label>'+
+      (opts.weight?'<label style="font:8px var(--font-mono);color:var(--dim)">OZ<input class="tsi" type="number" min="1" step="0.5" style="width:54px;margin:2px 0 0" value="'+w+'" onchange="focListWeekState.weights[\''+esc(v.id)+'\']=Number(this.value)||'+w+'"></label>':'')+'</div>':'<span></span>')+'</div>';
+}
+function renderFocListWeek(){
+  var host=panel();if(!host||!state.cycle)return;
+  var plan=focListWeekPlan(state.families),pol=focListWeekState.policies||{list:[]};
+  var lastPolicy='';try{lastPolicy=localStorage.getItem('foc_ebay_last_ship_policy_id')||'';}catch(e){}
+  var listings=plan.groups.length+plan.singles.length,covers=plan.groups.reduce(function(a,g){return a+g.covers.length;},0)+plan.singles.length;
+  var section=function(title,color,rows,intro,open){return rows?'<details class="foc-family"'+(open?' open':'')+'><summary class="foc-family-head" style="cursor:pointer"><div class="foc-family-title" style="color:'+color+'">'+title+'</div></summary>'+(intro?'<div style="font:9px/1.6 var(--font-mono);color:var(--dim);padding:6px 8px">'+intro+'</div>':'')+rows+'</details>':'';};
+  var readyRows=plan.groups.map(function(g){return '<div style="padding:6px 8px 0;font:900 10px var(--font-mono);color:var(--gold)">'+esc(g.title)+' · ONE LISTING, '+g.covers.length+' COVERS TO CHOOSE FROM</div>'+g.covers.map(function(v){return focListRowHtml(v,{edit:true,weight:true,note:'cover in the '+esc(g.title)+' listing'});}).join('');}).join('')+
+    plan.singles.map(function(v){return focListRowHtml(v,{edit:true,weight:true,note:'its own listing'});}).join('');
+  host.innerHTML='<section class="foc-hero"><div class="foc-toolbar"><button class="hbtn" onclick="openFocCycle(\''+esc(state.cycle.id)+'\')">← COVER WALL</button><button class="hbtn" onclick="openFocListWeek()">↻ REFRESH</button></div>'+
+    '<div style="font:900 20px/1.1 \'Orbitron\',monospace;color:var(--text);margin-top:10px">List this week on eBay · '+esc(displayDate(state.cycle.foc_date))+'</div>'+
+    '<div style="font:10px/1.6 var(--font-mono);color:var(--dim);margin-top:4px">Everything that can go on eBay now is under READY. Each listing uses your Comic template, presale title and bar, Gemini box size and the shipping policy below -- the same as listing one by one.</div>'+
+    '<div class="foc-toolbar" style="margin-top:10px;align-items:end;flex-wrap:wrap">'+
+      '<label style="font:9px var(--font-mono);color:var(--dim)">SHIPPING POLICY<select id="foc-lw-policy" class="tsi" style="margin-top:3px">'+(lastPolicy?'':'<option value="" selected disabled>-- pick one --</option>')+(pol.list||[]).map(function(p){return '<option value="'+esc(p.id)+'"'+(String(p.id)===lastPolicy?' selected':'')+'>'+esc(p.name)+'</option>';}).join('')+'</select></label>'+
+      '<label style="font:9px var(--font-mono);color:var(--dim)">SINGLE ISSUE WEIGHT (OZ, PACKED)<input id="foc-lw-single-oz" class="tsi" type="number" min="1" step="0.5" style="width:70px;margin-top:3px" value="'+focSingleWeightOz()+'" onchange="focListSetSingleOz(this.value)"></label>'+
+      '<button class="hbtn" style="color:var(--g);padding:10px 14px"'+(listings&&!focListWeekState.running?'':' disabled')+' onclick="focListWeekRun()">📤 LIST '+listings+' LISTING'+(listings===1?'':'S')+' ('+covers+' COVER'+(covers===1?'':'S')+')</button></div>'+
+    (pol.error?'<div style="font:9px var(--font-mono);color:var(--red);margin-top:6px">Shipping policies: '+esc(pol.error)+'</div>':'')+
+    '<div id="foc-lw-progress" style="font:10px var(--font-mono);color:var(--gold);margin-top:8px"></div></section>'+
+    section('READY TO LIST ('+covers+')','var(--g)',readyRows,'Change a price or weight here before listing. Trades and hardcovers are weighted heavier (15 / 29 oz).',true)+
+    section('NEEDS YOUR PRICE ('+plan.needPrice.length+')','var(--gold)',plan.needPrice.map(function(v){return focListRowHtml(v,{edit:true,note:v.isIncentive?'ratio / incentive cover -- cover price would undersell it':'no price on the file'});}).join(''),'Type a price and it moves to READY.',true)+
+    section('NO COVER ART YET ('+plan.noArt.length+')','var(--gold)',plan.noArt.map(function(v){return focListRowHtml(v,{note:'no cover image on file'});}).join(''),'Covers without art stay off eBay. Lunar art is looked for every 6 hours'+(state.cycle.distributor==='Lunar'?' -- or <a href="#" onclick="fillLunarCovers();return false" style="color:var(--g)">FIND LUNAR COVERS</a> now':'')+'; paste art on the cover wall for anything else.',plan.noArt.length<=12)+
+    section('TOO EARLY FOR EBAY ('+plan.tooEarly.length+')','var(--blue)',plan.tooEarly.map(function(v){return focListRowHtml(v,{note:'can list on '+esc(displayDate(v.ebayEligibleDate||''))+' (on sale '+esc(displayDate(String(v.onSaleDate||'').slice(0,10)))+')'});}).join(''),'eBay presales have to ship soon after they sell, so these open up a set number of business days before they go on sale (EBAY SAFE DAYS on the FOC tab). Come back and press LIST again then.',false)+
+    section('NO ON-SALE DATE ('+plan.noDate.length+')','var(--red)',plan.noDate.map(function(v){return focListRowHtml(v,{note:'the distributor file has no on-sale date'});}).join(''),'',false)+
+    section('NOT ORDERING ANY ('+plan.noQty.length+')','var(--dim)',plan.noQty.map(function(v){return focListRowHtml(v,{note:'store quantity is 0'});}).join(''),'Set a store quantity on the cover wall to list one.',false)+
+    '<div class="panel" style="font:10px var(--font-mono);color:var(--dim)">'+plan.listed+' already on eBay · '+plan.released+' already released</div>';
+}
+async function focListSetPrice(skuId,value){
+  var p=Math.round((Number(value)||0)*100)/100;if(!(p>0))return;
+  try{await api('/foc/admin/sku',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({storeId:getActiveStoreId(),skuId:skuId,customerPrice:p})});
+    state.families.forEach(function(f){(f.variants||[]).forEach(function(v){if(v.id===skuId){v.priceCents=Math.round(p*100);v.priceRequired=false;}});});
+    toast_dash('Price saved: $'+p.toFixed(2));renderFocListWeek();}
+  catch(e){toast_dash('Could not save the price: '+e.message);}
+}
+function focListSetSingleOz(v){ var n=Number(v);if(!(n>0&&n<100))return; try{localStorage.setItem('foc_ebay_single_weight_oz',String(n));}catch(e){} renderFocListWeek(); }
+// Opens a listing's normal review screen out of sight, sets the weight
+// (and, for an issue, which covers go in it), and presses LIST.
+async function focListWeekOne(kind,id,coverIds,weightOz){
+  var modalId=kind==='group'?'foc-ebay-group-modal':'foc-ebay-review-modal';
+  if(kind==='group')await openFamilyEbayGroupReview(id);else await openEbayPresaleReview(id);
+  var modal=document.getElementById(modalId);if(!modal)return {ok:false,error:'review screen did not open'};
+  modal.style.visibility='hidden';
+  var pre=kind==='group'?'foc-eb-grp-':'foc-eb-';
+  // An issue eBay won't take as one listing (fewer than 2 covers it will
+  // accept) goes up one cover at a time instead.
+  if(!document.getElementById(pre+'title')){var err=modal.textContent.trim().slice(0,200);modal.remove();return {ok:false,fallback:kind==='group',error:err||'preview failed'};}
+  if(kind==='group'){
+    var picked=0;modal.querySelectorAll('[data-eb-cover-cb]').forEach(function(cb){cb.checked=coverIds.indexOf(cb.getAttribute('data-eb-cover-cb'))>=0&&!cb.disabled;if(cb.checked)picked++;});
+    if(picked<2){modal.remove();return {ok:false,fallback:true,error:'fewer than 2 covers eBay will take together'};}
+  }
+  var w=document.getElementById(pre+'weight'),u=document.getElementById(pre+'weight-unit');
+  if(w&&u&&weightOz>0){u.value='OUNCE';u.querySelectorAll('option').forEach(function(o){if(o.value==='OUNCE')o.setAttribute('selected','');else o.removeAttribute('selected');o.selected=o.value==='OUNCE';});w.value=String(weightOz);}
+  if(kind==='group')await submitFamilyEbayGroupReview(id);else await submitEbayPresaleReview(id);
+  var still=document.getElementById(modalId);
+  if(!still)return {ok:true};
+  var st=document.getElementById(kind==='group'?'foc-eb-grp-status':'foc-eb-status');
+  var msg=(st&&st.textContent)||'not listed';still.remove();
+  return {ok:false,error:msg};
+}
+async function focListWeekRun(){
+  if(focListWeekState.running)return;
+  var policy=(document.getElementById('foc-lw-policy')||{}).value||'';
+  if(!policy){toast_dash('Pick a shipping policy first');return;}
+  try{localStorage.setItem('foc_ebay_last_ship_policy_id',policy);}catch(e){}
+  var plan=focListWeekPlan(state.families);
+  var jobs=plan.groups.map(function(g){return {kind:'group',id:g.familyId,label:g.title+' ('+g.covers.length+' covers)',coverIds:g.covers.map(function(v){return v.id;}),oz:Math.max.apply(null,g.covers.map(function(v){return focListWeekState.weights[v.id]!=null?focListWeekState.weights[v.id]:focListWeightOz(v);}))};})
+    .concat(plan.singles.map(function(v){return {kind:'single',id:v.id,label:v.title+(v.variantLabel&&v.variantLabel!=='Cover A'?' · '+v.variantLabel:''),coverIds:[v.id],oz:focListWeekState.weights[v.id]!=null?focListWeekState.weights[v.id]:focListWeightOz(v)};}));
+  if(!jobs.length){toast_dash('Nothing is ready to list');return;}
+  if(!confirm('List '+jobs.length+' eBay presale listing'+(jobs.length===1?'':'s')+' now?\n\n'+jobs.map(function(j){return '• '+j.label+' -- '+j.oz+' oz';}).join('\n')))return;
+  focListWeekState.running=true;focListWeekState.stop=false;focEbayBulkQueue=null;
+  var overlay=document.createElement('div');overlay.id='foc-lw-overlay';
+  overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:10001;display:flex;align-items:center;justify-content:center;padding:16px';
+  overlay.innerHTML='<div style="max-width:440px;width:100%;background:var(--surf);border:1px solid var(--border);border-radius:10px;padding:16px;font:11px/1.6 var(--font-mono);color:var(--text)"><div style="font:900 13px \'Orbitron\',monospace;color:var(--gold);margin-bottom:8px">LISTING ON EBAY</div><div id="foc-lw-now">Starting…</div><div id="foc-lw-bar" style="height:6px;background:var(--surf2);border-radius:3px;margin:10px 0"><div style="height:6px;width:0;background:var(--g);border-radius:3px"></div></div><button class="hbtn" onclick="focListWeekState.stop=true;this.textContent=\'STOPPING AFTER THIS ONE…\'">STOP</button></div>';
+  document.body.appendChild(overlay);
+  var ok=0,failed=[];
+  for(var i=0;i<jobs.length&&!focListWeekState.stop;i++){
+    var now=document.getElementById('foc-lw-now');if(now)now.textContent=(i+1)+' of '+jobs.length+': '+jobs[i].label;
+    var r;try{r=await focListWeekOne(jobs[i].kind,jobs[i].id,jobs[i].coverIds,jobs[i].oz);}catch(e){r={ok:false,error:e.message};}
+    if(r.ok)ok++;
+    else if(r.fallback)jobs.splice.apply(jobs,[i+1,0].concat(jobs[i].coverIds.map(function(cid){var v=allFocSkus().find(function(x){return x.id===cid;})||{};return {kind:'single',id:cid,label:(v.title||'Cover')+(v.variantLabel&&v.variantLabel!=='Cover A'?' · '+v.variantLabel:''),coverIds:[cid],oz:jobs[i].oz};})));
+    else failed.push(jobs[i].label+': '+r.error);
+    var bar=overlay.querySelector('#foc-lw-bar div');if(bar)bar.style.width=Math.round((i+1)/jobs.length*100)+'%';
+  }
+  overlay.remove();focListWeekState.running=false;
+  toast_dash(ok+' listing'+(ok===1?'':'s')+' on eBay'+(failed.length?' · '+failed.length+' not listed':''));
+  if(failed.length)alert('Not listed:\n\n'+failed.join('\n')+'\n\nFix them from the cover wall, or press LIST again.');
+  await openFocListWeek();
+}
+window.openFocListWeek=openFocListWeek;window.focListWeekRun=focListWeekRun;window.focListSetPrice=focListSetPrice;window.focListSetSingleOz=focListSetSingleOz;window.focListWeekState=focListWeekState;
+
 function startFocEbayBulkListing(){
   var ids=Array.from(focEbayBulkSelectedIds);
   if(!ids.length){toast_dash('Select at least one eligible cover first');return;}
