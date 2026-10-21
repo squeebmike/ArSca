@@ -81,3 +81,19 @@ for(const section of groups){
  assert.match(query,/Bobby Witt Jr/);assert.match(query,/HC1/);assert.ok(!query.includes('Base Cards Chrome Variation'),'printed section headings must not over-constrain seller searches');
  assert.ok(sportsMarketplaceNotice.includes('not authentication'));assert.ok(sportsLookupScript.includes('document.hidden'));
 }
+
+// The real browser queue must never launch one request per card simultaneously.
+{
+ const vm=await import('node:vm');const {sportsLookupScript}=await import('../scripts/sports-card-marketplace.mjs');
+ const events={},buttons=Array.from({length:5},(_,i)=>({disabled:false,isConnected:true,dataset:{sportsLookup:'/card/'+i+'?market=1'},parentElement:{querySelector:()=>({replaceChildren(){},textContent:''})}}));
+ let callback,active=0,maximum=0;const releases=[],calls=[];
+ const document={hidden:false,addEventListener:(type,fn)=>events[type]=fn,querySelectorAll:()=>buttons};
+ class Observer{constructor(cb){callback=cb;}observe(){}unobserve(){}}
+ const fetch=url=>{calls.push(url);active++;maximum=Math.max(maximum,active);return new Promise(resolve=>releases.push(()=>{active--;resolve({ok:true,json:async()=>({listing:null})});}));};
+ vm.runInNewContext(sportsLookupScript.replace(/^<script>|<\/script>$/g,''),{document,window:{IntersectionObserver:Observer},IntersectionObserver:Observer,fetch});
+ callback(buttons.map(target=>({target,isIntersecting:true})));assert.equal(calls.length,2);
+ releases[0]();await new Promise(resolve=>setImmediate(resolve));assert.equal(calls.length,3);
+ document.hidden=true;releases[1]();releases[2]();await new Promise(resolve=>setImmediate(resolve));assert.equal(calls.length,3,'hidden pages do not start more lookups');
+ document.hidden=false;events.visibilitychange();assert.equal(calls.length,5);releases[3]();releases[4]();await new Promise(resolve=>setImmediate(resolve));
+ assert.equal(maximum,2);assert.ok(buttons.every(b=>!b.disabled));
+}
