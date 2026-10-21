@@ -219,3 +219,14 @@ console.log('Comic article wiring checks passed');
 }
 
 for(const slug of ['2025-topps-chrome-football-licensed-nfl-guide','2025-topps-chrome-black-football-guide','2025-topps-cosmic-chrome-football-guide','2026-topps-flagship-football-checklist-guide']){assert.equal(releaseGuide(slug)?.game,'football','published sports guide slug styles connect to reviewed releases');}
+
+{
+ const row=(id,set)=>({id,name:id,categorySlug:'sports-cards',set,quantity:1,price:5});
+ const dep={esc:String,isAvailable:i=>i.quantity>0,itemSlug:i=>i};
+ const stock=[row('baseball-copy','Baseball Cards 2025 Topps Chrome'),row('football-copy','Football Cards 2025 Topps Chrome'),row('ambiguous-copy','2025 Topps Chrome')];
+ const football=renderReleaseInventory('2025-topps-chrome-football-licensed-nfl-guide',stock,dep);
+ assert.ok(football.includes('/item/football-copy/'));
+ assert.ok(!football.includes('/item/baseball-copy/')&&!football.includes('/item/ambiguous-copy/'));
+ const baseball=renderReleaseInventory('2024-topps-cosmic-chrome-baseball-collector-guide',[row('other-sport','Football Cards 2024 Topps Cosmic Chrome')],dep);
+ assert.ok(!baseball.includes('/item/other-sport/'));
+}
