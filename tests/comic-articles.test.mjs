@@ -217,3 +217,5 @@ console.log('Comic article wiring checks passed');
   assert.match(html,/Exact cosmic copy/);
   assert.doesNotMatch(html,/Wrong year copy|Wrong release copy|Sold cosmic copy/);
 }
+
+for(const slug of ['2025-topps-chrome-football-licensed-nfl-guide','2025-topps-chrome-black-football-guide','2025-topps-cosmic-chrome-football-guide','2026-topps-flagship-football-checklist-guide']){assert.equal(releaseGuide(slug)?.game,'football','published sports guide slug styles connect to reviewed releases');}

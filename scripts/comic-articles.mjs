@@ -56,8 +56,8 @@ export const RELEASE_GUIDES = {
 // Derive sports guide links from the reviewed release catalog rather than a second registry.
 export function releaseGuide(slug){
   if(RELEASE_GUIDES[slug])return RELEASE_GUIDES[slug];
-  if(!String(slug||'').endsWith('-collector-guide'))return null;
-  const set=sportsArticleSet({slug});if(!set)return null;
+  const set=sportsArticleSet({slug:String(slug||'')});if(!set)return null;
+  if(!['collector-guide','guide','checklist-guide','licensed-nfl-guide'].includes(String(slug).slice(set.id.length+1)))return null;
   const game=/football/i.test(set.displayName)?'football':'baseball';
   const checklist='/'+game+'/checklists/'+set.id;
   return {game,categorySlug:'sports-cards',inventoryLabel:'sports-card',name:set.displayName,sets:[set.displayName],codes:[],checklist,viewer:checklist};
