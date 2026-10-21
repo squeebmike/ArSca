@@ -205,7 +205,7 @@ try {
   {
     const healthyFetch=globalThis.fetch;let recommendationAborted=false,finishRecommendations;
     globalThis.fetch=async(input,options={})=>{
-      if(String(input).includes('inventory_items?')&&!/[?&]id=eq\./.test(String(input)))return new Promise((resolve,reject)=>{finishRecommendations=()=>resolve(new Response('[]',{headers:{'Content-Type':'application/json'}}));options.signal.addEventListener('abort',()=>{recommendationAborted=true;reject(Error('aborted'));});});
+      if(/(inventory_items|storefront_inventory)\?/.test(String(input))&&!/[?&]id=eq\./.test(String(input)))return new Promise((resolve,reject)=>{finishRecommendations=()=>resolve(new Response('[]',{headers:{'Content-Type':'application/json'}}));options.signal.addEventListener('abort',()=>{recommendationAborted=true;reject(Error('aborted'));});});
       return healthyFetch(input,options);
     };
     const response=await get('/item/item-a/amazing-spider-man-1');
