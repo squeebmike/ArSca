@@ -15,3 +15,7 @@ export function newestReleaseFirst(a,b){
  return releaseOrderInfo(b).key.localeCompare(releaseOrderInfo(a).key)||String(a.displayName||a.name||a.title||'').localeCompare(String(b.displayName||b.name||b.title||''))||String(a.id||'').localeCompare(String(b.id||''));
 }
 export const newestReleases=rows=>[...rows].sort(newestReleaseFirst);
+
+export function releaseCatalogMetadata(set){
+ return {id:set.id||set.setCode,code:set.code||set.setCode,name:set.name||set.setName,releaseDate:set.releaseDate||set.releasedAt||set.released_at||''};
+}

@@ -1,3 +1,4 @@
+import {releaseCatalogMetadata} from './scripts/release-order.mjs';
 import {collectorPageStyles,setPageHeader} from './scripts/collector-page-ui.mjs';
 import {handlePocketGuides,pocketGuidePaths} from './scripts/pocket-guides.mjs';
 import {cachedPublicCatalog} from './scripts/public-catalog-cache.mjs';
@@ -7867,7 +7868,7 @@ async function routeRequest(request, env, ctx) {
           })()]);
           const rows=results.filter(r=>r.status==='fulfilled'&&Array.isArray(r.value)).flatMap(r=>r.value);
           if(!rows.length)throw new Error('Release metadata unavailable');
-          return rows.map(s=>({id:s.id,code:s.code,name:s.name,releaseDate:s.releaseDate||s.releasedAt||s.released_at||''}));
+          return rows.map(releaseCatalogMetadata);
         },{freshMs:21600000,maxAgeMs:43200000,timeoutMs:8000});
         let timer;try{return await Promise.race([loading,new Promise(resolve=>{timer=setTimeout(()=>resolve([]),700);})]);}finally{clearTimeout(timer);}
       }});if(response)return response;
