@@ -87,3 +87,15 @@ assert.match(worker, /return \{ ok: true, checked: orders\.length, matched: matc
 const app = fs.readFileSync('scripts/dashboard-app.js', 'utf8');
 assert.match(app, /cancelled eBay order\$\{cancelled\.length === 1 \? '' : 's'\}: sale/);
 console.log('eBay cancellations void sales checks passed');
+
+// Store report (screenshot): refunds the sync had already voided still read
+// "Still counted as profit in your totals". The eBay sales list now says a
+// voided one is handled; only a refund the sale doesn't reflect is a warning.
+{
+  const app = fs.readFileSync('scripts/dashboard-app.js', 'utf8');
+  assert.match(app, /const handled = p\.status === 'refunded';\n      const refunded = \(orderId && refundedOrderIds\.has\(orderId\)\) \|\| handled;\n      const warn = refunded && !handled;/);
+  assert.match(app, /\$\{warn \? '<div[^`]*Still counted as profit in your totals -- this refund came after it shipped/);
+  assert.match(app, /handled \? '<div[^`]*Taken out of sales and profit, and the copy went back into stock\.<\/div>'/);
+  assert.match(app, /\.select\('id,sale_id,amount,created_at,status'\)\.eq\('store_id', storeId\)\.eq\('provider','ebay'\)/, 'the payment status is read');
+  console.log('Voided eBay refunds show as handled checks passed');
+}

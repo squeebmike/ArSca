@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.10.21.13-cover-coming-soon';
+const APP_VERSION = '2026.10.21.15-price-check-refunds';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -12385,12 +12385,17 @@ async function loadEbayOrderHistory(){
       const orderId = (ls[0]?.source_id || '').replace(/^ebay:/, '');
       const title = ls.map(l => l.title).join(', ') || 'eBay order';
       const linked = ls.some(l => l.item_id);
-      const refunded = orderId && refundedOrderIds.has(orderId);
-      return `<div style="display:flex;align-items:center;gap:10px;padding:8px;border:1px solid ${refunded ? 'var(--red)' : 'var(--border)'};border-radius:6px">
+      // Store report: refunds already voided by the order sync (sale voided,
+      // payment marked refunded, copy put back) still said "still counted
+      // as profit". Only a refund the sale doesn't reflect yet is a warning.
+      const handled = p.status === 'refunded';
+      const refunded = (orderId && refundedOrderIds.has(orderId)) || handled;
+      const warn = refunded && !handled;
+      return `<div style="display:flex;align-items:center;gap:10px;padding:8px;border:1px solid ${warn ? 'var(--red)' : 'var(--border)'};border-radius:6px;${handled ? 'opacity:.65' : ''}">
         <div style="flex:1;min-width:0">
-          <div style="font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(title)}${linked ? '' : ' <span style="color:var(--gold)">· not in inventory</span>'}${refunded ? ' <span style="color:var(--red)">· ⚠ REFUNDED ON EBAY</span>' : ''}</div>
+          <div style="font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(title)}${linked ? '' : ' <span style="color:var(--gold)">· not in inventory</span>'}${warn ? ' <span style="color:var(--red)">· ⚠ REFUNDED ON EBAY</span>' : handled ? ' <span style="color:var(--dim)">· refunded -- sale voided</span>' : ''}</div>
           <div style="font-family:monospace;font-size:9px;color:var(--dim)">$${Number(p.amount || 0).toFixed(2)} · ${new Date(p.created_at).toLocaleDateString()}${orderId ? ' · <a href="https://www.ebay.com/sh/ord/details?orderid=' + encodeURIComponent(orderId) + '" target="_blank" style="color:var(--g)">view on eBay</a>' : ''}</div>
-          ${refunded ? '<div style="font-family:monospace;font-size:9px;color:var(--red);margin-top:2px">Still counted as profit in your totals -- this wasn\'t auto-reversed. Review and adjust/restock by hand.</div>' : ''}
+          ${warn ? '<div style="font-family:monospace;font-size:9px;color:var(--red);margin-top:2px">Still counted as profit in your totals -- this refund came after it shipped (a return or partial refund), so it wasn\'t auto-reversed. Review and adjust/restock by hand.</div>' : handled ? '<div style="font-family:monospace;font-size:9px;color:var(--dim);margin-top:2px">Taken out of sales and profit, and the copy went back into stock.</div>' : ''}
         </div>
       </div>`;
     }).join('');

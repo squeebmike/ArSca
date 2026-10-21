@@ -2185,7 +2185,9 @@ export function coverMarketQuery(cover={}){
   const artistLast=text(cover.artist,80).split(/\s*(?:,|&|\/)\s*/)[0].split(/\s+/).filter(Boolean).pop()||'';
   const ratio=Number(cover.ratio||0)>0?'1:'+Number(cover.ratio):'';
   const extra=[artistLast,ratio,cover.virgin?'virgin':'',cover.foil?'foil':''].filter(Boolean);
-  return {q:[series,issue?'#'+issue:'',...extra].filter(Boolean).join(' ').slice(0,160),series,issue,artistLast,ratio:Number(cover.ratio||0)||0};
+  // A lettered variant (Cover B, C...) only matches listings naming its
+  // artist -- otherwise every Cover A listing counted as the variant.
+  return {q:[series,issue?'#'+issue:'',...extra].filter(Boolean).join(' ').slice(0,160),series,issue,artistLast,ratio:Number(cover.ratio||0)||0,variant:!!cover.variant&&!!artistLast};
 }
 export function coverTitleMatches(title,query){
   const t=' '+String(title||'').toUpperCase().replace(/[^A-Z0-9:]+/g,' ')+' ';
@@ -2193,7 +2195,7 @@ export function coverTitleMatches(title,query){
   if(!words.every(w=>t.includes(' '+w+' ')||t.includes(' '+w.replace(/S$/,'')+' ')))return false;
   if(query.issue&&!new RegExp('\\s0*'+query.issue.split('.')[0].replace(/[^0-9]/g,'')+'\\s').test(t))return false;
   if(query.ratio&&!new RegExp('1\\s?:\\s?'+query.ratio+'\\b|\\s'+query.ratio+'\\s?(?:COPY|RATIO|INCENTIVE)').test(t))return false;
-  if(query.ratio&&query.artistLast&&!t.includes(' '+query.artistLast.toUpperCase().replace(/[^A-Z0-9]+/g,' ').trim()+' '))return false;
+  if((query.ratio||query.variant)&&query.artistLast&&!t.includes(' '+query.artistLast.toUpperCase().replace(/[^A-Z0-9]+/g,' ').trim()+' '))return false;
   return true;
 }
 const median=values=>{const v=values.filter(n=>n>0).sort((a,b)=>a-b);if(!v.length)return null;const m=Math.floor(v.length/2);return Math.round((v.length%2?v[m]:(v[m-1]+v[m])/2)*100)/100;};
@@ -2205,8 +2207,9 @@ export function summarizeCoverMarket(query,listings=[],comps=[],ownIds=new Set()
   const ask=active.map(l=>Number(l.price||0)),paid=sold.map(c=>Number(c.total||c.price||0));
   return {query:query.q,
     ownListed:matching.length-active.length,
-    active:{count:active.length,low:ask.length?Math.min(...ask):null,median:median(ask),high:ask.length?Math.max(...ask):null,presales:active.filter(l=>/pre-?sale|pre-?order/i.test(l.title||'')).length,sample:active.slice(0,3).map(l=>({title:text(l.title,120),price:l.price,url:l.url||''}))},
-    sold:{count:sold.length,median:median(paid),low:paid.length?Math.min(...paid):null,high:paid.length?Math.max(...paid):null,last:sold[0]?{price:Number(sold[0].total||sold[0].price||0),soldAt:sold[0].soldAt||null,title:text(sold[0].title,120)}:null}};
+    active:{count:active.length,low:ask.length?Math.min(...ask):null,median:median(ask),high:ask.length?Math.max(...ask):null,presales:active.filter(l=>/pre-?sale|pre-?order/i.test(l.title||'')).length,sample:active.slice().sort((a,b)=>Number(a.price||0)-Number(b.price||0)).slice(0,8).map(l=>({title:text(l.title,120),price:l.price,url:l.url||''}))},
+    sold:{count:sold.length,median:median(paid),low:paid.length?Math.min(...paid):null,high:paid.length?Math.max(...paid):null,last:sold[0]?{price:Number(sold[0].total||sold[0].price||0),soldAt:sold[0].soldAt||null,title:text(sold[0].title,120)}:null,
+      sample:sold.slice(0,8).map(c=>({title:text(c.title,120),price:Number(c.total||c.price||0),soldAt:c.soldAt||null}))}};
 }
 async function adminCoverMarket(request,env,deps){
   const limited=await deps.readJsonWithLimit(request,64*1024);if(limited.error)return limited.error;
@@ -2222,7 +2225,7 @@ async function adminCoverMarket(request,env,deps){
   const results={};
   for(const cover of covers){
     const query=coverMarketQuery(cover);
-    const cacheKey='foc-cover-market:v1:'+query.q.toLowerCase();
+    const cacheKey='foc-cover-market:v2:'+query.q.toLowerCase()+(query.variant?':v':'');
     let hit=null;
     if(env.LBA_KV&&!body.refresh)try{hit=await env.LBA_KV.get(cacheKey,'json');}catch(_){}
     if(hit){results[cover.key]={...hit,cached:true};continue;}
