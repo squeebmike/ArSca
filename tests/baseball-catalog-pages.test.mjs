@@ -125,3 +125,5 @@ assert.equal(enterprise.cards.length,30);assert.ok(enterprise.cards.some(c=>c.ca
  const hostile=new URL('https://www.themanapocket.com/sports/checklists?player=%22%3E%3Cscript%3E');assert.doesNotMatch(sportsPlayerTeamSearch(hostile,escape).bodyHtml,/<script>/);
  assert.ok(source.every(r=>r.href.startsWith('/'+r.sport+'/checklists/')));
 }
+
+assert.match((await import('node:fs')).readFileSync('wrangler.deploy.jsonc','utf8'),/www\.themanapocket\.com\/sports\/checklists\*/,'Cloudflare route must include query-string filter requests');
