@@ -7859,7 +7859,7 @@ async function routeRequest(request, env, ctx) {
 
     if(url.pathname==='/pocket-guides'||url.pathname.startsWith('/pocket-guides/')) {
       const response=await handlePocketGuides(request,env,url,{escape:mtgEscapeHtml,shell:mtgPageShell,loadArticles:()=>fetchArticles(env,ctx),loadReleaseSets:async()=>{
-        const loading=cachedPublicCatalog(env,ctx,'guide-release-dates-v1',async()=>{
+        const loading=cachedPublicCatalog(env,ctx,'guide-release-dates-v2',async()=>{
           const results=await Promise.allSettled([loadPokemonSets(env).then(r=>r.data), (async()=>{
             if(!env.MTG_CATALOG_R2)return [];
             const object=await env.MTG_CATALOG_R2.get('mtg/manifest.json');const manifest=object?await object.json():null;
