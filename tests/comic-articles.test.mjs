@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import {fetchArticles} from '../scripts/comic-articles.mjs';
 import {clearPublicCatalogBackoff} from '../scripts/public-catalog-cache.mjs';
 import fs from 'node:fs';
-import { renderReleaseInventory, comicKey, sameComic, parseBookLines, parseFacts, sanitizeRichText, shapeArticle, bookStatus, renderBuyBox, handleArticlesRequest, readingMinutes, articleTopics, relatedArticles, renderArticlePage } from '../scripts/comic-articles.mjs';
+import { releaseGuide, renderReleaseInventory, comicKey, sameComic, parseBookLines, parseFacts, sanitizeRichText, shapeArticle, bookStatus, renderBuyBox, handleArticlesRequest, readingMinutes, articleTopics, relatedArticles, renderArticlePage } from '../scripts/comic-articles.mjs';
 
 // --- Matching a book name to catalog titles -------------------------------------
 assert.deepEqual(comicKey("X-Men ’92: Incursions #1"), { series: 'x men 92 incursions', issue: '1' });
@@ -200,4 +200,20 @@ console.log('Comic article wiring checks passed');
 {
  const html=renderReleaseInventory('2025-topps-series-2-baseball-collector-guide',[{id:'imported',name:'Imported Series 2 copy',categorySlug:'sports-cards',set:'Baseball Cards 2025 Topps Series 2',price:4,quantity:1}],{esc:String,isAvailable:i=>i.quantity>0,itemSlug:i=>i});
  assert.match(html,/Imported Series 2 copy/);
+}
+{
+  const guide=releaseGuide('2024-topps-cosmic-chrome-baseball-collector-guide');
+  assert.equal(guide.checklist,'/baseball/checklists/2024-topps-cosmic-chrome-baseball');
+  assert.equal(releaseGuide('2025-topps-chrome-football-collector-guide').game,'football');
+  assert.equal(releaseGuide('2024-topps-cosmic-chrome-baseball-rumors'),null);
+  assert.equal(releaseGuide('unverified-release-collector-guide'),null);
+  const make=(name,set,quantity=1)=>({id:name,name,categorySlug:'sports-cards',set,quantity,price:5});
+  const html=renderReleaseInventory('2024-topps-cosmic-chrome-baseball-collector-guide',[
+    make('Exact cosmic copy','Baseball Cards 2024 Topps Cosmic Chrome'),
+    make('Wrong year copy','2023 Topps Cosmic Chrome'),
+    make('Wrong release copy','2024 Topps Chrome'),
+    make('Sold cosmic copy','2024 Topps Cosmic Chrome',0)
+  ],{esc:String,isAvailable:i=>i.quantity>0,itemSlug:i=>i});
+  assert.match(html,/Exact cosmic copy/);
+  assert.doesNotMatch(html,/Wrong year copy|Wrong release copy|Sold cosmic copy/);
 }

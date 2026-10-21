@@ -1,4 +1,4 @@
-import {articleMarketplace,renderArticleMarketplace,affiliateTcgImages,tcgImageAffiliateUrl} from './article-marketplace.mjs';
+import {articleMarketplace,sportsArticleSet,renderArticleMarketplace,affiliateTcgImages,tcgImageAffiliateUrl} from './article-marketplace.mjs';
 import {articleContents} from './collector-page-ui.mjs';
 import {sportsSetKey} from './topps/public-checklist-policy.mjs';
 import {cachedPublicCatalog} from './public-catalog-cache.mjs';
@@ -53,8 +53,17 @@ export const RELEASE_GUIDES = {
   'pokemon-delta-reign-release-date-card-checklist':{game:'pokemon',name:'Pokémon Delta Reign',sets:['ME06: Delta Reign','Delta Reign'],codes:['me06'],checklist:'/pokemon/sets/6a883dd245dd2d15c8a710d0/me06-delta-reign',viewer:'/pokemon-new-releases?set=ME06%3A%20Delta%20Reign'},
   'mtg-star-trek-release-dates-set-codes-card-guide':{game:'mtg',name:'MTG Star Trek',sets:['Star Trek','Star Trek Commander','Star Trek: Stardates'],codes:['trk','trc','sds'],checklist:'/mtg',viewer:'/mtg-new-releases?set=trk'},
 };
+// Derive sports guide links from the reviewed release catalog rather than a second registry.
+export function releaseGuide(slug){
+  if(RELEASE_GUIDES[slug])return RELEASE_GUIDES[slug];
+  if(!String(slug||'').endsWith('-collector-guide'))return null;
+  const set=sportsArticleSet({slug});if(!set)return null;
+  const game=/football/i.test(set.displayName)?'football':'baseball';
+  const checklist='/'+game+'/checklists/'+set.id;
+  return {game,categorySlug:'sports-cards',inventoryLabel:'sports-card',name:set.displayName,sets:[set.displayName],codes:[],checklist,viewer:checklist};
+}
 export function renderReleaseInventory(slug,inventory,deps){
-  const guide=RELEASE_GUIDES[slug];if(!guide)return '';
+  const guide=releaseGuide(slug);if(!guide)return '';
   const esc=deps.esc,normalize=v=>String(v||'').toLowerCase().replace(/[^a-z0-9]/g,'');
   const copies=inventory?.filter(item=>item.categorySlug===(guide.categorySlug||guide.game)&&Number.isFinite(item.price)&&item.price>0&&deps.isAvailable(item)&&(guide.codes.includes(String(item.setCode||'').toLowerCase())||guide.sets.some(set=>(guide.categorySlug==='sports-cards'?sportsSetKey(set)===sportsSetKey(item.set):normalize(set)===normalize(item.set)))));
   return `<section id="guide-stock" class="mp-books mp-stock-panel" aria-label="${esc(guide.name)} store availability"><h2>Find the set. Check the actual stock.</h2>${copies?.some(item=>tcgplayerAffiliateUrl(item))?marketplaceDisclosureHtml:''}<p><a href="${guide.checklist}">Set checklists</a> · <a href="${guide.viewer}">${guide.game==='baseball'?'Browse cards and team filters':'Open the card viewer'}</a></p>${copies?.length?`<p>${copies.length} matching store listing${copies.length===1?'':'s'} currently available.</p>${`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr));gap:14px">${copies.slice(0,8).map(item=>'<div>'+catalogStoreCopyHtml(item,{escape:esc,slug:()=>deps.itemSlug(item)})+(tcgplayerAffiliateUrl(item)?'<p><a target="_blank" rel="noopener sponsored" href="'+esc(tcgplayerAffiliateUrl(item))+'">View this product on TCGplayer</a></p>':'')+'</div>').join('')}</div>`}`:`<p>${copies?'No matching store copies are currently listed.':'Store availability could not be checked just now.'} This guide does not reserve copies or guarantee an allocation.</p>`}<p><a href="/category/${guide.categorySlug||guide.game}">Browse current ${guide.inventoryLabel||(guide.game==='mtg'?'MTG':'Pokémon')} inventory</a></p></section>`;
@@ -417,7 +426,7 @@ export function renderArticlePage(article, statuses, related, deps) {
   const esc = deps.esc;
   const marketplace=renderArticleMarketplace(deps.articleMarketplace,affiliateTcgImages(article.bodyHtml,esc),esc);
   const contents=articleContents(marketplace.body,esc);
-  const guide=RELEASE_GUIDES[article.slug];
+  const guide=releaseGuide(article.slug);
   const main = statuses[0] || null;
   const image = article.image || main?.cover || '';
   const affiliateHero=tcgImageAffiliateUrl(image);
@@ -511,8 +520,8 @@ export async function handleArticlesRequest(request, env, ctx, url, deps) {
       let stock;
       const pageDeps = { ...deps, listItems: e => (stock ||= deps.listItems(e)) };
       const statuses = await Promise.all(article.books.map(book => bookStatus(env, pageDeps, book).catch(() => ({ name: book, state: 'coming', href: '' }))));
-      if(RELEASE_GUIDES[slug]) pageDeps.releaseInventoryHtml=renderReleaseInventory(slug,await pageDeps.listItems(env).catch(()=>null),deps);
-      pageDeps.articleMarketplace=await articleMarketplace(env,ctx,article,RELEASE_GUIDES[slug],deps).catch(()=>null);
+      if(releaseGuide(slug)) pageDeps.releaseInventoryHtml=renderReleaseInventory(slug,await pageDeps.listItems(env).catch(()=>null),deps);
+      pageDeps.articleMarketplace=await articleMarketplace(env,ctx,article,releaseGuide(slug),deps).catch(()=>null);
       const related = relatedArticles(article, articles);
       html = renderArticlePage(article, statuses, related, pageDeps);
     }
