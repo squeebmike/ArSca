@@ -7,7 +7,7 @@ import vm from 'node:vm';
 // the copy back); (4) a weekly check of our live eBay prices vs other
 // sellers -- flag only.
 const svcMod = await import('../scripts/foc-preorders.mjs');
-const { priceWatchFlag, focDigestEmail, pullListNeeds, coverMarketQuery, summarizeCoverMarket, isPullListCover } = svcMod;
+const { priceWatchFlag, focDigestEmail, pullListNeeds, coverMarketQuery, summarizeCoverMarket, isPullListCover, coverMarketListings } = svcMod;
 const worker = fs.readFileSync('cloudflare-worker-full.js', 'utf8');
 const dash = fs.readFileSync('scripts/foc-dashboard.js', 'utf8');
 const app = fs.readFileSync('scripts/dashboard-app.js', 'utf8');
@@ -28,7 +28,7 @@ assert.equal(priceWatchFlag(0, { median:10, count:5 }).flag, '');
   ];
   env.LBA_KV.m.set('foc-price-watch:S', JSON.stringify({ items:{ gone:{ rowId:'gone', flag:'under', checkedAt:'2026-10-01' }, r2:{ rowId:'r2', checkedAt:'2026-10-20T00:00:00Z' } } }));
   const c = {
-    coverMarketQuery, summarizeCoverMarket, priceWatchFlag, isPullListCover,
+    coverMarketQuery, summarizeCoverMarket, priceWatchFlag, isPullListCover, coverMarketListings, fetchEbayItemGroup:async () => ({ listings:[] }),
     supabaseAdminFetch:async (e, path) => {
       if (path.startsWith('comic_skus?')) return { data:[{ id:'11111111-1111-4111-8111-111111111111', title:'Robin Hood #1', variant_label:'Cvr B David Nakayama', cover_artist:'David Nakayama', family_id:'F1' }, { id:'22222222-2222-4222-8222-222222222222', title:'DNX #4', variant_label:'Cover A', family_id:'F2' }] };
       if (path.startsWith('comic_title_families?')) return { data:[{ id:'F1', title:'Robin Hood #1', series_name:'Robin Hood', issue_number:'1' }, { id:'F2', title:'DNX #4', series_name:'DNX', issue_number:'4' }] };
@@ -39,7 +39,7 @@ assert.equal(priceWatchFlag(0, { median:10, count:5 }).flag, '');
   vm.runInNewContext(worker.match(/const FOC_PRICE_WATCH_KV = [^\n]+/)[0] + '\n' + worker.match(/const FOC_PRICE_WATCH_PER_RUN = \d+;/)[0] + '\n' + grab(worker, 'loadFocPriceWatch') + grab(worker, 'runFocPriceWatchForStore') + 'this.run=runFocPriceWatchForStore;', c);
   const out = await c.run(env, 'S', rows, { limit:1, now:'2026-10-21T12:00:00Z' });
   assert.deepEqual({ ...out }, { checked:1, live:2, flagged:1 });
-  assert.equal(searched.length, 1, 'a few per run, oldest-checked first');
+  assert.deepEqual(searched, ['Robin Hood #1 Nakayama', 'Robin Hood #1'], 'a few per run, oldest-checked first (a variant also searched by issue, for multi-cover listings)');
   assert.match(searched[0], /Robin Hood #1 Nakayama/);
   const rep = JSON.parse(env.LBA_KV.m.get('foc-price-watch:S'));
   assert.ok(!rep.items.gone, 'listings no longer live drop off');

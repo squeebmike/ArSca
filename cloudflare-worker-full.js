@@ -39,7 +39,7 @@ import { storeOrganization, productFacts, productCondition, productHeading, rend
 // It has zero Node dependencies (pure-JS SHA-1), so it bundles straight into
 // the Worker -- reused here instead of duplicating checklist-parsing logic.
 import { buildChecklistIndex, parseChecklistText, sha1Hex, slugify } from './scripts/topps-checklist-parser.js';
-import { handleFocRequest, syncFocStripeEvent, shippingSettings, runScheduledStockHealth, withRatioWord, parseMyEbaySellingActive, ebayItemFromGetItem, uniqueCoverLabels, coverLabelFromTitle, pullListNeeds, coverMarketQuery, summarizeCoverMarket, priceWatchFlag, focDigestEmail, isPullListCover } from './scripts/foc-preorders.mjs';
+import { handleFocRequest, syncFocStripeEvent, shippingSettings, runScheduledStockHealth, withRatioWord, parseMyEbaySellingActive, ebayItemFromGetItem, uniqueCoverLabels, coverLabelFromTitle, pullListNeeds, coverMarketQuery, summarizeCoverMarket, coverMarketListings, priceWatchFlag, focDigestEmail, isPullListCover } from './scripts/foc-preorders.mjs';
 import { handleOrdersBoard, handleOrderMarkShipped } from './scripts/orders-board.mjs';
 import { handleBacklistRequest, syncBacklistStripeEvent } from './scripts/backlist-catalog.mjs';
 import { searchComics, comicSearchShell, comicSearchScriptResponse, injectComicSearch } from './scripts/comic-search.mjs';
@@ -5288,7 +5288,22 @@ function normalizeBrowseListing(raw) {
     affiliateUrl: raw.itemAffiliateWebUrl || null,
     currency: raw.price?.currency || null,
     imageUrl: raw.image?.imageUrl || raw.thumbnailImages?.[0]?.imageUrl || null,
+    // A multi-variation listing (other sellers' "Cover: Select" listings):
+    // its cover choices are only in the group, not the title.
+    itemGroupId: String(raw.itemGroupHref || '').match(/item_group_id=(\d+)/)?.[1] || (raw.itemGroupType ? String(raw.itemId || '').split('|')[1] || '' : ''),
+    variantText: Array.isArray(raw.localizedAspects) ? raw.localizedAspects.map(a => a?.value).filter(Boolean).join(' ') : '',
   };
+}
+// Every variation of one multi-variation listing, each with its own price
+// and its cover choice (localizedAspects) -- the Browse API's item group.
+async function fetchEbayItemGroup(env, groupId) {
+  if (!/^\d{6,20}$/.test(String(groupId || ''))) return { listings: [], warning: 'bad item group id' };
+  const token = await getEbayAppAccessToken(env).catch(() => '');
+  if (!token) return { listings: [], warning: 'eBay app access token unavailable' };
+  const res = await fetch('https://api.ebay.com/buy/browse/v1/item/get_items_by_item_group?item_group_id=' + encodeURIComponent(groupId), { headers: { 'Authorization': 'Bearer ' + token, 'X-EBAY-C-MARKETPLACE-ID': 'EBAY_US', 'Accept': 'application/json' } });
+  const { data } = await readApiJson(res);
+  if (!res.ok) return { listings: [], warning: 'eBay item group ' + res.status };
+  return { listings: (Array.isArray(data.items) ? data.items : []).map(normalizeBrowseListing).filter(Boolean).map(l => ({ ...l, itemGroupId: String(groupId) })), warning: null };
 }
 
 // Active (not-yet-sold) listing search via eBay's modern Browse API. The
@@ -6975,7 +6990,7 @@ async function routeRequest(request, env, ctx) {
           }
           return { system: 'trading' };
         },
-        ebayActiveListings: fetchEbayActiveListings,
+        ebayActiveListings: fetchEbayActiveListings, ebayItemGroup: fetchEbayItemGroup,
         ebaySoldComps: async (soldEnv, q, limit = 40) => {
           let result = await fetchSoldCompsProvider(soldEnv, q, limit).catch(e => ({ comps: [], warning: e.message }));
           if (!(result.comps || []).length) result = await fetchEbaySoldComps(soldEnv, q, limit).catch(e => ({ comps: [], warning: e.message }));
@@ -18376,6 +18391,7 @@ async function runFocPriceWatchForStore(env, storeId, rows, { limit = FOC_PRICE_
     if (famIds.length) { const { data: f } = await supabaseAdminFetch(env, `comic_title_families?id=in.(${famIds.map(encodeURIComponent).join(',')})&select=id,title,series_name,issue_number`); for (const x of f || []) fams.set(x.id, x); }
   }
   let checked = 0;
+  const groupCaches = { broad: new Map(), groups: new Map() };
   for (const row of due) {
     const d = row.data || {}, sku = skus.get(d.focSkuId), fam = sku ? fams.get(sku.family_id) : null;
     if (!sku || !fam) continue;
@@ -18384,7 +18400,8 @@ async function runFocPriceWatchForStore(env, storeId, rows, { limit = FOC_PRICE_
       artist: sku.cover_artist || '', ratio: sku.is_incentive ? Number(sku.ratio_threshold || 0) : 0, virgin: /virgin/i.test(label), foil: false, variant: !sku.is_incentive && !isPullListCover(sku) });
     const res = await fetchEbayActiveListings(env, query.q, { limit: 50 }).catch(e => ({ listings: [], warning: e.message }));
     if (res.warning && !(res.listings || []).length) continue;
-    const sum = summarizeCoverMarket(query, res.listings || [], [], ownIds);
+    const listings = await coverMarketListings(query, res.listings || [], { ebayActiveListings: fetchEbayActiveListings, ebayItemGroup: fetchEbayItemGroup }, env, groupCaches);
+    const sum = summarizeCoverMarket(query, listings, [], ownIds);
     const ours = Number(d.salePrice || d.market || 0), f = priceWatchFlag(ours, { median: sum.active.median, count: sum.active.count });
     report.items[row.id] = { rowId: row.id, skuId: d.focSkuId, name: String(d.name || '').replace(/\s*-\s*PRESALE\s*$/i, '').slice(0, 160), ours, median: sum.active.median, low: sum.active.low, count: sum.active.count,
       flag: f.flag, ratio: f.ratio, listingId: String(d.ebayListingId || ''), query: query.q, checkedAt: now };

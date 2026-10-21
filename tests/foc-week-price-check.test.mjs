@@ -6,9 +6,10 @@ import vm from 'node:vm';
 // get each variant and check sold eBay or eBay listings... hover and see
 // them when there's a match... check and update them all for that FOC week.
 // Not put prices -- check prices."
-const { coverMarketQuery, coverTitleMatches, summarizeCoverMarket } = await import('../scripts/foc-preorders.mjs');
+const { coverMarketQuery, coverTitleMatches, summarizeCoverMarket, coverMarketListings } = await import('../scripts/foc-preorders.mjs');
 const dash = fs.readFileSync('scripts/foc-dashboard.js', 'utf8');
 const svc = fs.readFileSync('scripts/foc-preorders.mjs', 'utf8');
+const worker = fs.readFileSync('cloudflare-worker-full.js', 'utf8');
 const grab = n => { let s = dash.indexOf('function ' + n + '('); assert.ok(s >= 0, n); if (dash.slice(s - 6, s) === 'async ') s -= 6; const one = dash.slice(s, dash.indexOf('\n', s)); if (/\}\s*$/.test(one) && (one.match(/\{/g) || []).length === (one.match(/\}/g) || []).length) return one + '\n'; return dash.slice(s, dash.indexOf('\n}\n', s) + 3); };
 
 // A lettered variant only matches listings that name its artist.
@@ -33,7 +34,7 @@ assert.deepEqual(sum.active.sample.map(x => x.price), [4.99, 6, 7.5, 9, 12, 15, 
   assert.equal(withPics.active.count, 1);
 }
 assert.deepEqual(sum.sold.sample, [{ title:'Robin Hood #1 Cover B Nakayama', price:11, soldAt:'2026-10-01' }]);
-assert.match(svc, /const cacheKey='foc-cover-market:v3:'\+query\.q\.toLowerCase\(\)\+\(query\.variant\?':v':''\);/, 'fresh checks, not the old 3-listing copies');
+assert.match(svc, /const cacheKey='foc-cover-market:v4:'\+query\.q\.toLowerCase\(\)\+\(query\.variant\?':v':''\);/, 'fresh checks, not the old 3-listing copies');
 
 // The dashboard: which covers count as variants, and the hover text.
 const ctx = { state:{ families:[{ id:'f1', title:'Robin Hood #1', seriesName:'Robin Hood' }] } };
@@ -100,4 +101,40 @@ assert.match(grab('focRatioValueText'), /if\(warn&&!\(r\.raw&&\/sold history\/\.
   assert.equal(c.list(null), '');
 }
 assert.match(grab('focVariantPillsHtml'), /\+focListingsHtml\(focIntel\.market\['sku:'\+v\.id\]\);/, 'on every cover card, ratio covers too');
+// Store report (screenshots): "It won't find another listing if it is a
+// variation listing?" -- a seller's "TMNT: Holiday Special PREORDER" with a
+// Cover choice ($7.49 to $62.49) never matched our 1:25 Chalky Wong cover:
+// the cover is a choice in the listing, not in its title.
+{
+  const q = coverMarketQuery({ series:'Teenage Mutant Ninja Turtles Holiday Special', issue:'1', artist:'Chalky Wong', ratio:25 });
+  assert.ok(coverTitleMatches('Teenage Mutant Ninja Turtles Holiday Special #1 Variant RI (25) (Chalky Wong) - PRESALE', q), 'RI (25)');
+  assert.ok(coverTitleMatches('TMNT Teenage Mutant Ninja Turtles Holiday Special 1 1 in 25 Wong Variant', q), '1 in 25');
+  assert.ok(coverTitleMatches('Teenage Mutant Ninja Turtles: Holiday Special #1 Cover B', coverMarketQuery({ series:'Teenage Mutant Ninja Turtles Holiday Special', issue:'1' })), 'a colon after a word ("Turtles:") no longer breaks the match');
+  const searches = [], groupsRead = [];
+  const deps = {
+    ebayActiveListings:async (env, query) => { searches.push(query); return { listings:[
+      { itemId:'v1|555|0', title:'Teenage Mutant Ninja Turtles: Holiday Special #1 PREORDER 12/9', price:7.49, itemGroupId:'555' },
+      { itemId:'v1|777|0', title:'Teenage Mutant Ninja Turtles: Holiday Special #1 Cover A', price:4.99 } ] }; },
+    ebayItemGroup:async (env, id) => { groupsRead.push(id); return { listings:[
+      { itemId:'v1|555|1', title:'Teenage Mutant Ninja Turtles: Holiday Special #1 PREORDER 12/9', price:7.49, variantText:'Cover A Pallie' },
+      { itemId:'v1|555|9', title:'Teenage Mutant Ninja Turtles: Holiday Special #1 PREORDER 12/9', price:62.49, variantText:'1:25 Chalky Wong Virgin', imageUrl:'https://i/9.jpg' } ] }; },
+  };
+  const caches = { broad:new Map(), groups:new Map() };
+  const listings = await coverMarketListings(q, [], deps, {}, caches);
+  assert.deepEqual(searches, ['Teenage Mutant Ninja Turtles Holiday Special #1'], 'searched by series and issue too');
+  assert.deepEqual(groupsRead, ['555'], 'opened the multi-cover listing for that issue');
+  const sum = summarizeCoverMarket(q, listings, []);
+  assert.equal(sum.active.count, 1, 'only the 1:25 Chalky Wong choice -- not Cover A');
+  assert.equal(sum.active.median, 62.49);
+  assert.match(sum.active.sample[0].title, /PREORDER 12\/9 -- 1:25 Chalky Wong Virgin$/, 'the dropdown says which cover choice');
+  await coverMarketListings(q, [], deps, {}, caches);
+  assert.equal(searches.length + groupsRead.length, 2, 'one search and one group read per issue and listing');
+  const plain = coverMarketQuery({ series:'Teenage Mutant Ninja Turtles Holiday Special', issue:'1' });
+  assert.equal((await coverMarketListings(plain, [{ itemId:'x', title:'t' }], deps, {}, { broad:new Map(), groups:new Map() })).length, 1, 'Cover A: no extra searches');
+}
+assert.match(worker, /itemGroupId: String\(raw\.itemGroupHref \|\| ''\)\.match\(\/item_group_id=\(\\d\+\)\/\)\?\.\[1\]/);
+assert.match(worker, /get_items_by_item_group\?item_group_id=/);
+assert.match(worker, /ebayActiveListings: fetchEbayActiveListings, ebayItemGroup: fetchEbayItemGroup,/);
+assert.match(svc, /active\.listings=await coverMarketListings\(query,active\.listings\|\|\[\],deps,env,groupCaches\);/);
+assert.match(worker, /const listings = await coverMarketListings\(query, res\.listings \|\| \[\], \{ ebayActiveListings: fetchEbayActiveListings, ebayItemGroup: fetchEbayItemGroup \}, env, groupCaches\);/, 'the price watch too');
 console.log('FOC week eBay price check and hover matches checks passed');
