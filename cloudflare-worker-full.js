@@ -3824,23 +3824,37 @@ async function attachEbaySaleToItem(env, storeId, order, li, m, invRow) {
 // to the presale row of an earlier sale with the same title that eBay shows
 // on the same listing number. A multi-cover listing (more than one row on
 // one number) is never guessed.
+// When eBay shows the sale on another listing (the same cover relisted --
+// 247 Comics Spotlight #1 Cover K/L's 10/11 sales), the exact title is
+// enough, but only for a single-cover presale: every earlier sale with that
+// title went to that one row, and the row isn't a cover of a multi-cover
+// listing (whose covers share one title). byTitle; byListing wins.
 async function presaleRowsByEarlierSale(env, storeId, ebayToken, lineItems) {
+  const empty = Object.assign(new Map(), { byTitle: new Map() });
   const titles = [...new Set(lineItems.map(li => String(li.title || '')).filter(Boolean))].slice(0, 20);
-  if (!titles.length) return new Map();
+  if (!titles.length) return empty;
   const quoted = titles.map(t => '"' + t.replace(/["\\]/g, '') + '"').join(',');
   const { data: earlier } = await supabaseAdminFetch(env, `pos_sale_lines?store_id=eq.${encodeURIComponent(storeId)}&title=in.(${encodeURIComponent(quoted)})&item_id=not.is.null&source_id=like.ebay:*&select=item_id,source_id,title&limit=200`);
-  if (!earlier?.length) return new Map();
+  if (!earlier?.length) return empty;
   const itemIds = [...new Set(earlier.map(l => l.item_id))].slice(0, 100);
   const { data: rows } = await supabaseAdminFetch(env, `inventory_items?store_id=eq.${encodeURIComponent(storeId)}&id=in.(${itemIds.map(encodeURIComponent).join(',')})&select=id,status,data`);
   const rowById = new Map((rows || []).filter(isFocPresaleRow).map(r => [r.id, r]));
   const cands = earlier.filter(l => rowById.has(l.item_id));
+  const byTitle = new Map();
+  for (const title of titles) {
+    const all = earlier.filter(l => l.title === title);
+    const ids = [...new Set(all.map(l => l.item_id))];
+    const row = ids.length === 1 ? rowById.get(ids[0]) : null;
+    const d = row?.data || {};
+    if (row && d.source === 'foc_presale' && !d.ebayInventoryItemGroupKey && d.ebayApiSystem !== 'trading') byTitle.set(title, row);
+  }
+  const byListing = Object.assign(new Map(), { byTitle });
   const orderIds = [...new Set(cands.map(l => String(l.source_id).replace(/^ebay:/, '')).filter(id => /^[\w-]+$/.test(id)))].slice(0, 50);
-  if (!orderIds.length) return new Map();
+  if (!orderIds.length) return byListing;
   const res = await ebayFetchWithRetry('https://api.ebay.com/sell/fulfillment/v1/order?orderIds=' + encodeURIComponent(orderIds.join(',')), { headers: { 'Authorization': 'Bearer ' + ebayToken } });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error('eBay order lookup failed (' + res.status + ')');
+  if (!res.ok) return byListing;
   const orderById = new Map((data.orders || []).map(o => [String(o.orderId), o]));
-  const byListing = new Map();
   for (const l of cands) {
     const order = orderById.get(String(l.source_id).replace(/^ebay:/, ''));
     const items = order?.lineItems || [];
@@ -3859,7 +3873,7 @@ async function presaleRowsByEarlierSale(env, storeId, ebayToken, lineItems) {
 // (Goblin Storm again, 10/21). Recent eBay sale lines still missing their
 // item look up their own orders, shipped or not, and match on the listing
 // number -- a relisted copy gets a new one, so it is never taken for the
-// copy that sold. Each line is tried at most every 6 hours.
+// copy that sold. Each line is tried at most every 5 hours.
 async function attachUnlinkedEbaySaleItems(env, storeId, ebayToken, receiptSettings, { days = 30 } = {}) {
   const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
   const { data: lines } = await supabaseAdminFetch(env, `pos_sale_lines?store_id=eq.${encodeURIComponent(storeId)}&item_id=is.null&source_id=like.ebay:*&created_at=gte.${encodeURIComponent(since)}&select=id,sale_id,source_id&limit=100`);
@@ -3884,19 +3898,21 @@ async function attachUnlinkedEbaySaleItems(env, storeId, ebayToken, receiptSetti
     orders.push(...(data.orders || []));
   }
   const listingMap = await loadInventoryByEbayListing(env, storeId, orders, new Map());
-  const misses = orders.flatMap(o => o.lineItems || []).filter(li => li.legacyItemId && !listingMap.has(String(li.legacyItemId)));
+  const misses = orders.flatMap(o => o.lineItems || []).filter(li => !listingMap.has(String(li.legacyItemId || '')));
   const earlierMap = misses.length ? await presaleRowsByEarlierSale(env, storeId, ebayToken, misses) : new Map();
   const linked = [];
   for (const order of orders) {
     if (order.orderPaymentStatus !== 'PAID' || ebayOrderIsCancelled(order)) continue;
     const money = ebayOrderMoney(order, { feePct: receiptSettings?.ebayFeePct ?? EBAY_DEFAULT_FEE_PCT, feeFlat: receiptSettings?.ebayFeeFlat });
     for (const [lineIndex, li] of (order.lineItems || []).entries()) {
-      const invRow = listingMap.get(String(li.legacyItemId || '')) || earlierMap.get(String(li.legacyItemId || ''));
+      const invRow = listingMap.get(String(li.legacyItemId || '')) || earlierMap.get(String(li.legacyItemId || '')) || earlierMap.byTitle?.get(String(li.title || ''));
       const done = invRow ? await attachEbaySaleToItem(env, storeId, order, li, money[lineIndex], invRow) : null;
       if (done) linked.push({ itemId: invRow.id, name: invRow.data?.name || li.title, orderId: order.orderId, consigned: done.consigned || null });
     }
   }
-  if (env.LBA_KV) await Promise.all(due.map(d => env.LBA_KV.put(triedKey(d.line.id), '1', { expirationTtl: 6 * 60 * 60 }).catch(() => {})));
+  // Under 6 hours: the 6-hourly run used to reach a line a few seconds
+  // before its 6-hour mark ran out, every time, and skip it again.
+  if (env.LBA_KV) await Promise.all(due.map(d => env.LBA_KV.put(triedKey(d.line.id), '1', { expirationTtl: 5 * 60 * 60 }).catch(() => {})));
   return linked;
 }
 
