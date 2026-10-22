@@ -1,3 +1,4 @@
+import {archiveNonbaseSections} from './topps/archive-nonbase-sections.mjs';
 import {holidayBaseballSections} from './topps/holiday-baseball-sections.mjs';
 import {sportsChecklistNavigation} from './sports-checklist-ui.mjs';
 import {footballSections} from './topps/football-sections.mjs';
@@ -13,7 +14,13 @@ const sportFor=s=>s.sport==='football'||/football/i.test(s.displayName)?'footbal
 const setPath=s=>'/'+sportFor(s)+'/checklists/'+s.id;
 const sectionPath=(s,g)=>setPath(s)+'/sections/'+g.id;
 const cardPath=(s,c)=>setPath(s)+'/cards/'+c.id;
-export const sectionsForSet=set=>[...baseballSections,...holidayBaseballSections,...footballSections].find(s=>s.setId===set.id)?.sections||[];
+const sectionsBySet=new Map();
+for(const source of [...baseballSections,...holidayBaseballSections,...footballSections,...archiveNonbaseSections]){
+ const groups=sectionsBySet.get(source.setId)||[];
+ for(const group of source.sections)if(!groups.some(g=>g.id===group.id))groups.push(group);
+ sectionsBySet.set(source.setId,groups);
+}
+export const sectionsForSet=set=>sectionsBySet.get(set.id)||[];
 export function baseballSectionSitemapPaths(sets){return sets.flatMap(s=>[...(sectionsForSet(s).length?[setPath(s)+'/sections/all-non-base']:[]),...sectionsForSet(s).flatMap(g=>[sectionPath(s,g),...g.cards.map(c=>cardPath(s,c))])]);}
 export function baseballSectionsNav(set,esc,current='base'){return sportsChecklistNavigation(set,sectionsForSet(set),esc,{sport:sportFor(set),current});}
 export function baseballShoppingHtml(items,card,set,env,deps,group,listings=[]){

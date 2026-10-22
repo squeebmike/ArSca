@@ -3,7 +3,7 @@
   "version": "2026.07.14.2",
   "private": true,
   "scripts": {
-    "test": "node tests/helpers/run-tests.mjs && node tests/secret-lair-prices.test.mjs && node tests/sports-checklist-shopping.test.mjs && node tests/preorder-mobile-rollout.test.mjs",
+    "test": "node tests/helpers/run-tests.mjs && node tests/secret-lair-prices.test.mjs && node tests/sports-checklist-shopping.test.mjs && node tests/preorder-mobile-rollout.test.mjs && node tests/sports-archive-coverage.test.mjs",
     "test:qa": "npm run test:parse",
     "test:card-lens-worker": "node tests/card-lens-worker-context.test.mjs",
     "test:smoke:manual": "playwright test --config=tests/playwright.config.js --workers=1",

@@ -10,6 +10,9 @@ const deps={escape,slug:s=>String(s).toLowerCase().replace(/[^a-z0-9]+/g,'-'),av
 const get=(path,env={},method='GET')=>handleBaseballCatalog(new Request('https://www.themanapocket.com'+path,{method}),env,new URL('https://www.themanapocket.com'+path),deps);
 assert.equal((await get('/baseball')).status,200);
 let res=await get('/sitemap-baseball.xml'),xml=await res.text();
+assert.match(xml,/<sitemapindex/);let combined='';
+for(const m of xml.matchAll(/<loc>https:\/\/www.themanapocket.com([^<]+)<\/loc>/g)){const child=await get(m[1]);assert.equal(child.status,200);const part=await child.text();assert.ok((part.match(/<url>/g)||[]).length<=40000);combined+=part;}xml=combined;
+assert.equal((await get('/sitemap-baseball.xml?part=0')).status,404);assert.equal((await get('/sitemap-baseball.xml?part=99')).status,404);
 const paths=[...xml.matchAll(/<loc>https:\/\/www.themanapocket.com([^<]+)<\/loc>/g)].map(m=>m[1]);
 assert.equal(paths.length,3+baseballSets.length+baseballSets.reduce((n,s)=>n+s.cards.length,0)+baseballTeams(baseballSets).length+baseballPlayers(baseballSets).length+baseballSectionSitemapPaths(baseballSets).length);assert.equal(new Set(paths).size,paths.length);
 const titles=new Set(),h1s=new Set();
@@ -45,10 +48,10 @@ deps.listItems=async()=>{throw Error('Temporary inventory outage');};
 body=await(await get(baseballCardPath(set,card))).text();assert.ok(body.includes('Store availability is temporarily unavailable'));assert.ok(!body.includes('No exact matching copy'));
 deps.listItems=async()=>[];
 const chrome=baseballSets.find(s=>s.id==='2023-topps-chrome'),sections=sectionsForSet(chrome);
-assert.deepEqual(sections.map(g=>g.cards.length),[15,129,20,10,25,30]);
+assert.deepEqual(sections.slice(0,6).map(g=>g.cards.length),[15,129,20,10,25,30]);
 assert.equal(sections.find(g=>g.id==='future-stars').cards.find(c=>c.cardNumber==='FS-13').player,'Julio Rodríguez');
 assert.equal(sections.find(g=>g.id==='topps-chrome-expose').cards.at(-1).cardNumber,'TCE-30');
-assert.equal(new Set(sections.flatMap(g=>g.cards.map(c=>c.id))).size,229);
+assert.equal(new Set(sections.slice(0,6).flatMap(g=>g.cards.map(c=>c.id))).size,229);
 for(const path of baseballSectionSitemapPaths(baseballSets)){
  assert.ok(paths.includes(path));res=await get(path,{EBAY_PARTNER_CAMPAIGN_ID:'5339046175'});body=await res.text();assert.equal(res.status,200);assert.ok(body.includes('campid=5339046175'));assert.ok(!body.includes('"offers"'));assert.equal(lastPage.canonicalPath,path);
 }

@@ -9,7 +9,7 @@ const get=path=>handleBaseballCatalog(new Request('https://www.themanapocket.com
 const teams=baseballTeams(baseballSets);assert.equal(teams.length,41);
 const names=new Set(teams.map(t=>t.name));assert.equal(names.size,41);
 const home=await(await get('/baseball')).text();
-const xml=await(await get('/sitemap-baseball.xml')).text();
+const xml=await(await get('/sitemap-baseball.xml?part=1')).text();
 for(const team of teams){
  const path=baseballTeamPath(team);assert.ok(home.includes('href="'+path+'"'));assert.ok(xml.includes('https://www.themanapocket.com'+path));
  let res=await get(path),body=await res.text();assert.equal(res.status,200);assert.equal(page.canonicalPath,path);assert.ok(!page.robotsNoindex);
