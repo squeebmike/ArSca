@@ -7,7 +7,7 @@ injectComicSearch(response,new Request('https://www.themanapocket.com/preorders'
 let src='https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@old/preorders-loader.js';
 const el={getAttribute(){return src;},setAttribute(name,value){assert.equal(name,'src');src=value;}};
 handlers.get('script[src]').element(el);
-assert.equal(src,'https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@2acc413/preorders-loader.js');
+assert.equal(src,'https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@4022c97/preorders-loader.js');
 src='https://example.com/preorders-loader.js';handlers.get('script[src]').element(el);assert.equal(src,'https://example.com/preorders-loader.js');
 handlers.clear();
 injectComicSearch(response,new Request('https://www.themanapocket.com/books'));
