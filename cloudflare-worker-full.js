@@ -3723,6 +3723,49 @@ async function attachEbaySaleToItem(env, storeId, order, li, m, invRow) {
   return true;
 }
 
+// The sync reads unshipped orders only, so a sale recorded with no item
+// whose order then shipped (label bought) never came back to be tied to it
+// (Goblin Storm again, 10/21). Recent eBay sale lines still missing their
+// item look up their own orders, shipped or not, and match on the listing
+// number -- a relisted copy gets a new one, so it is never taken for the
+// copy that sold. Each line is tried at most every 6 hours.
+async function attachUnlinkedEbaySaleItems(env, storeId, ebayToken, receiptSettings, { days = 30 } = {}) {
+  const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+  const { data: lines } = await supabaseAdminFetch(env, `pos_sale_lines?store_id=eq.${encodeURIComponent(storeId)}&item_id=is.null&source_id=like.ebay:*&created_at=gte.${encodeURIComponent(since)}&select=id,sale_id,source_id&limit=100`);
+  if (!lines?.length) return [];
+  const triedKey = id => `ebay_item_link_tried:${storeId}:${id}`;
+  const due = [];
+  for (const line of lines) {
+    if (env.LBA_KV && await env.LBA_KV.get(triedKey(line.id)).catch(() => null)) continue;
+    const orderId = String(line.source_id || '').replace(/^ebay:/, '');
+    if (/^[\w-]+$/.test(orderId)) due.push({ line, orderId });
+  }
+  if (!due.length) return [];
+  const saleIds = [...new Set(due.map(d => d.line.sale_id))];
+  const { data: sales } = await supabaseAdminFetch(env, `pos_sales?store_id=eq.${encodeURIComponent(storeId)}&id=in.(${saleIds.map(encodeURIComponent).join(',')})&status=eq.completed&select=id`);
+  const completed = new Set((sales || []).map(x => x.id));
+  const orderIds = [...new Set(due.filter(d => completed.has(d.line.sale_id)).map(d => d.orderId))];
+  const orders = [];
+  for (let i = 0; i < orderIds.length; i += 50) {
+    const res = await ebayFetchWithRetry('https://api.ebay.com/sell/fulfillment/v1/order?orderIds=' + encodeURIComponent(orderIds.slice(i, i + 50).join(',')), { headers: { 'Authorization': 'Bearer ' + ebayToken } });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error('eBay order lookup failed (' + res.status + ')');
+    orders.push(...(data.orders || []));
+  }
+  const listingMap = await loadInventoryByEbayListing(env, storeId, orders, new Map());
+  const linked = [];
+  for (const order of orders) {
+    if (order.orderPaymentStatus !== 'PAID' || ebayOrderIsCancelled(order)) continue;
+    const money = ebayOrderMoney(order, { feePct: receiptSettings?.ebayFeePct ?? EBAY_DEFAULT_FEE_PCT, feeFlat: receiptSettings?.ebayFeeFlat });
+    for (const [lineIndex, li] of (order.lineItems || []).entries()) {
+      const invRow = listingMap.get(String(li.legacyItemId || ''));
+      if (invRow && await attachEbaySaleToItem(env, storeId, order, li, money[lineIndex], invRow)) linked.push({ itemId: invRow.id, name: invRow.data?.name || li.title, orderId: order.orderId });
+    }
+  }
+  if (env.LBA_KV) await Promise.all(due.map(d => env.LBA_KV.put(triedKey(d.line.id), '1', { expirationTtl: 6 * 60 * 60 }).catch(() => {})));
+  return linked;
+}
+
 // An eBay order can come in on an FOC presale listing whose presale row has
 // nothing left (its copies were already sold or the row was ended) after the
 // books arrived. The copy that ships is a received shelf copy, so the sale
@@ -4046,6 +4089,8 @@ async function syncEbayOrdersForStore(env, storeId, ebayToken, receiptSettings, 
     let cancelled = [];
     try { cancelled = await voidCancelledEbayOrders(env, storeId, ebayToken, orders, confirmedBy); }
     catch (e) { errors.push({ error: 'cancellations: ' + e.message }); }
+    try { linked.push(...await attachUnlinkedEbaySaleItems(env, storeId, ebayToken, receiptSettings)); }
+    catch (e) { errors.push({ error: 'item links: ' + e.message }); }
     let refunds = [];
     try { refunds = await recordEbayRefunds(env, storeId, ebayToken, confirmedBy); }
     catch (e) { errors.push({ error: 'refunds: ' + e.message }); }
