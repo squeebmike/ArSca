@@ -20,6 +20,7 @@ const redirect=sportsChecklistRedirect(new URL('https://example.com/?view=kaiju'
 assert.equal(sportsChecklistRedirect(new URL('https://example.com/?view=https://evil.test'),set,groups,'football').status,404);
 const listing={itemId:'123',title:'2025 Topps Chrome Football Tom Brady Kaiju KAI-1',imageUrl:'https://i.ebayimg.com/images/card.jpg',affiliateUrl:'https://www.ebay.com/itm/123?campid=5339046175',price:75,currency:'USD'};
 assert.ok(sportsListingMatches(listing,card,set,group));
+for(const suffix of [' custom',' facsimile',' replica',' proxy'])assert.ok(!sportsListingMatches({...listing,title:listing.title+suffix},card,set,group));
 assert.ok(sportsListingMatches({...listing,title:'2025 Topps Chrome Tom Brady Kaiju #KAI-1'},card,set,group),'exact prefixed card identity plus named insert permits seller title without the redundant sport word');
 for(const title of ['2025 Topps Chrome Baseball Tom Brady Kaiju KAI-1','2025 Topps Chrome Football Tom Brady KAI-11','2025 Topps Chrome Football Patrick Mahomes KAI-1','2024 Topps Chrome Football Tom Brady KAI-1','2025 Topps Chrome Football Tom Brady KAI-1 LOT','2025 Topps Chrome Tom Brady KAI-1'])assert.ok(!sportsListingMatches({...listing,title},card,set,group),title);
 const variation=groups.find(g=>g.id==='base-cards-team-camo-variation'),v=variation.cards[0];
@@ -96,4 +97,25 @@ for(const section of groups){
  document.hidden=true;releases[1]();releases[2]();await new Promise(resolve=>setImmediate(resolve));assert.equal(calls.length,3,'hidden pages do not start more lookups');
  document.hidden=false;events.visibilitychange();assert.equal(calls.length,5);releases[3]();releases[4]();await new Promise(resolve=>setImmediate(resolve));
  assert.equal(maximum,2);assert.ok(buttons.every(b=>!b.disabled));
+}
+
+// Mobile type collections and subject-aware filters must preserve exact cards.
+{
+ const {sportsSectionCollections}=await import('../scripts/sports-checklist-ui.mjs');
+ const {sportsSectionFilters}=await import('../scripts/sports-section-filters.mjs');
+ const collections=sportsSectionCollections(groups),autos=collections.find(g=>g.id==='all-autographs');
+ assert.equal(autos.cards.length,groups.filter(g=>/auto/i.test(g.kind)).reduce((n,g)=>n+g.cards.length,0));
+ assert.ok(nav.includes('/sections/all-autographs'),'Autos opens all autograph sections');
+ const page=await(await request(root+'/sections/all-autographs')).text();
+ assert.match(page,/name="player"/);assert.match(page,/name="team"/);assert.match(page,/Next →/);
+ assert.match(page,/Dual Autographs/);
+ const fixture={cards:[{cardNumber:'DA-1',player:'A / B',subjects:[{name:'A',team:'Team A'},{name:'B',team:'Team B'}]},...Array.from({length:61},(_,i)=>({cardNumber:String(i),player:'A',subjects:[{name:'A',team:'Team A'}]}))]};
+ const url=p=>new URL('https://example.com/section'+p);
+ assert.equal(sportsSectionFilters(url('?player=A&team=Team+B'),fixture,'/section',esc).cards.length,0,'player and team must belong to the same printed subject');
+ const filtered=sportsSectionFilters(url('?player=A&team=Team+A&page=2'),fixture,'/section',esc);
+ assert.equal(filtered.cards.length,62);assert.match(filtered.href(1),/player=A&team=Team\+A/);assert.ok(filtered.filtered);
+ assert.equal(sportsSectionFilters(url('?page=3'),fixture,'/section',esc),null);
+ assert.ok(!sportsSectionFilters(url(''),fixture,'/section',esc).form.includes('id="set-checklist" open'),'filters start compact');
+ let numericQuery='';await sportsListings({EBAY_PARTNER_CAMPAIGN_ID:'5339046175',LBA_KV:{get:async()=>null,put:async()=>{}}},null,set,variation,{searchEbay:async q=>{numericQuery=q;return {listings:[]};}},{card:v,wait:true});
+ assert.match(numericQuery,/Team Camo/,'numeric IDs need the parallel identity in the marketplace query');
 }

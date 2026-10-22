@@ -11,7 +11,7 @@ export function sportsListingMatches(listing,card,set,group){
  const inferredFootball=/football/i.test(set.displayName)&&!/\b(?:baseball|basketball|soccer|hockey|football|nfl)\b/i.test(title)&&/^[a-z]{2,}[-\d]/i.test(number)&&groupWords.length&&groupWords.every(w=>new RegExp('\\b'+escapeRegex(w)+'\\b').test(title));
  const release=/\bchrome\b/i.test(card.section||'')&&!/\bchrome\b/i.test(set.displayName)?{...set,displayName:set.displayName+' Chrome'}:set;
  if(!number||!card.player||!listingMatchesRelease(listing.title+(inferredFootball?' Football':''),release))return false;
- if(/\b(?:break|digital|reprint|replica|lot|box|boxes|pack|packs|case|cases|sealed)\b|you pick|choose your|complete set|set of/.test(title))return false;
+ if(/\b(?:break|digital|reprint|replica|custom|facsimile|proxy|lot|box|boxes|pack|packs|case|cases|sealed)\b|you pick|choose your|complete set|set of/.test(title))return false;
  if(listing.endTime&&Date.parse(listing.endTime)<=Date.now())return false;
  const subjects=card.subjects?.length?card.subjects.map(s=>s.name):[card.player];
  if(!subjects.every(name=>fold(name).replace(/[^a-z0-9]+/g,' ').trim().split(/\s+/).filter(w=>w.length>1).every(w=>new RegExp('\\b'+escapeRegex(w)+'\\b').test(title.replace(/[^a-z0-9]+/g,' ')))))return false;
@@ -29,9 +29,12 @@ export function sportsListingMatches(listing,card,set,group){
 export async function sportsListings(env,ctx,set,group,deps,{card=null,wait=false}={}){
  const campaign=String(env.EBAY_PARTNER_CAMPAIGN_ID||'');
  if(!/^\d{10}$/.test(campaign)||!env.LBA_KV||!deps.searchEbay)return [];
- const key='sports-checklist-listings-v3:'+campaign+':'+set.id+':'+group.id+':'+(card?.id||'section');
+ const key='sports-checklist-listings-v4:'+campaign+':'+set.id+':'+group.id+':'+(card?.id||'section');
  const load=async signal=>{
-  const query=[set.displayName.replace(/\b(?:baseball|football|cards)\b/gi,' ').replace(/\s+/g,' ').trim(),card?.player,card?.cardNumber,card?null:group.name.replace(/\b(?:base|cards|variation)\b/gi,' ').replace(/\s+/g,' ').trim()].filter(Boolean).join(' ');
+  // Numeric card numbers recur across base, parallels and autographs. Keep
+  // the subset in those searches; prefixed IDs already disambiguate inserts.
+  const needsSubset=!card||/^\d+$/.test(String(card.cardNumber));
+  const query=[set.displayName.replace(/\b(?:baseball|football|cards)\b/gi,' ').replace(/\s+/g,' ').trim(),card?.player,card?.cardNumber,needsSubset?group.name.replace(/\b(?:base|cards|variation)\b/gi,' ').replace(/\s+/g,' ').trim():null].filter(Boolean).join(' ');
   const result=await deps.searchEbay(query,campaign,signal);
   if(result.warning)throw new Error('Marketplace unavailable');
   const checkedAt=Date.now();
