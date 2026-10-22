@@ -148,7 +148,7 @@ jobs:
         run: node --test tests/article-marketplace.test.mjs tests/book-alerts.test.mjs tests/book-alert-management.test.mjs tests/comic-articles.test.mjs tests/pocket-guides.test.mjs tests/social-links-page.test.mjs tests/store-shopping-improvements.test.mjs tests/department-pages.test.mjs tests/product-shopping.test.mjs
 
       - name: Verify unified comic search
-        run: node --test tests/comic-search.test.mjs
+        run: node --test tests/comic-search.test.mjs tests/preorder-mobile-rollout.test.mjs
 
       - name: Verify baseball checklist discovery
         run: node --test tests/collector-page-ui.test.mjs tests/public-baseball-checklist-policy.test.mjs tests/baseball-catalog-pages.test.mjs tests/football-catalog-pages.test.mjs tests/secret-lair-pages.test.mjs tests/baseball-team-pages.test.mjs tests/baseball-player-pages.test.mjs tests/catalog-highlights.test.mjs tests/collection-tools.test.mjs tests/baseball-odds.test.mjs tests/catalog-availability.test.mjs tests/reference-set-cache.test.mjs
