@@ -21,6 +21,7 @@ on:
       - scripts/comic-articles.mjs
       - scripts/pull-list-page.mjs
       - scripts/cover-coming-soon.mjs
+      - scripts/restock.mjs
       - scripts/article-marketplace.mjs
       - tests/article-marketplace.test.mjs
       - scripts/release-order.mjs
