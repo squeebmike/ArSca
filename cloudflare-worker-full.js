@@ -2029,8 +2029,9 @@ async function handleStripeFoundation(request, env, url) {
     if(!consignor?.stripe_account_id)return json({ok:false,error:'This consignor has not connected Stripe yet'},409);
     const storeRow=await getStripeAccountRow(env,storeId,mode);
     if(!storeRow?.connected_account_id||!storeRow.charges_enabled)return json({ok:false,error:'Store Stripe account is not ready to send payouts'},409);
-    const ownerCut=Number(item.sale_price)*(1-Number(item.store_split_percent??25)/100);
-    const cents=Math.round(ownerCut*100);
+    // Split of what's left after an online sale's marketplace fees.
+    const net=Math.max(0,Number(item.sale_price)-Number(item.marketplace_fee||0));
+    const cents=Math.round(net*100)-Math.round(net*Number(item.store_split_percent??25));
     if(cents<=0)return json({ok:false,error:'Nothing owed to this consignor on this item'},409);
     const transfer=await stripeApi(env,mode,'transfers',{method:'POST',account:storeRow.connected_account_id,idempotencyKey:`arsca-consignor-payout-${itemId}`,params:new URLSearchParams({amount:String(cents),currency:'usd',destination:consignor.stripe_account_id,'metadata[arsca_consignment_item_id]':itemId,'metadata[arsca_store_id]':storeId,description:`Consignment payout: ${item.item_name||'item'}`})});
     const nowIso=new Date().toISOString();
@@ -3712,20 +3713,26 @@ async function loadInventoryByEbayListing(env, storeId, orders, skuMap) {
 // register did this, so a consigned Goblin Storm sold on eBay (10/21) stayed
 // ACTIVE with nothing owed to its owner. Claims the record only while it is
 // still active, so it runs once.
-async function markConsignmentSoldForItem(env, storeId, itemId, { salePrice, soldAt, saleId, source = 'ebay' } = {}) {
+// Store ask ("do it how you think is best"): on an online sale the split
+// is of what's left after the marketplace's fees -- eBay or Whatnot takes
+// its cut first, then store and owner share the rest. A register sale has
+// no fee and splits the full price.
+async function markConsignmentSoldForItem(env, storeId, itemId, { salePrice, soldAt, saleId, source = 'ebay', fee = 0 } = {}) {
   const { data: rows } = await supabaseAdminFetch(env, `consignment_items?store_id=eq.${encodeURIComponent(storeId)}&inventory_item_id=eq.${encodeURIComponent(itemId)}&status=eq.active&select=id,item_name,owner_name,store_split_percent,list_price&limit=1`);
   const c = rows?.[0];
   if (!c) return null;
   const price = Math.round((Number(salePrice) > 0 ? Number(salePrice) : Number(c.list_price || 0)) * 100) / 100;
-  const storeCut = Math.round(price * Number(c.store_split_percent ?? 25)) / 100;
-  const ownerPayout = Math.round((price - storeCut) * 100) / 100;
+  const marketplaceFee = Math.min(price, Math.max(0, Math.round(Number(fee || 0) * 100) / 100));
+  const net = price - marketplaceFee;
+  const storeCut = Math.round(net * Number(c.store_split_percent ?? 25)) / 100;
+  const ownerPayout = Math.round((net - storeCut) * 100) / 100;
   const at = soldAt || new Date().toISOString();
   const { data: claimed } = await supabaseAdminFetch(env, `consignment_items?id=eq.${encodeURIComponent(c.id)}&store_id=eq.${encodeURIComponent(storeId)}&status=eq.active`, { method: 'PATCH', headers: { Prefer: 'return=representation' },
-    body: JSON.stringify({ status: 'sold', sale_price: price, sold_at: at, sale_id: saleId || null, updated_at: new Date().toISOString() }) });
+    body: JSON.stringify({ status: 'sold', sale_price: price, marketplace_fee: marketplaceFee, sold_at: at, sale_id: saleId || null, updated_at: new Date().toISOString() }) });
   if (!claimed?.length) return null;
   await supabaseAdminFetch(env, 'consignment_alerts', { method: 'POST', headers: { Prefer: 'return=minimal' },
     body: JSON.stringify({ id: 'csa_' + Date.now() + '_' + crypto.randomUUID().slice(0, 8), store_id: storeId, consignment_id: c.id, inventory_item_id: itemId, sale_id: saleId || null, owner_name: c.owner_name || '', item_name: c.item_name || 'Item', sale_price: price, store_cut: storeCut, owner_payout: ownerPayout, source, status: 'open', sold_at: at }) });
-  return { consignmentId: c.id, itemId, item: c.item_name || '', owner: c.owner_name || '', salePrice: price, storeCut, ownerPayout };
+  return { consignmentId: c.id, itemId, item: c.item_name || '', owner: c.owner_name || '', salePrice: price, marketplaceFee, storeCut, ownerPayout };
 }
 
 // Consignments still ACTIVE whose item already sold on eBay -- sold before
@@ -3741,7 +3748,12 @@ async function settleEbaySoldConsignments(env, storeId) {
       if (String(item.data?.channel || '') !== 'eBay') continue;
       const { data: lines } = await supabaseAdminFetch(env, `pos_sale_lines?store_id=eq.${encodeURIComponent(storeId)}&item_id=eq.${encodeURIComponent(item.id)}&source_id=like.ebay:*&select=sale_id,unit_price,quantity&order=created_at.desc&limit=1`);
       const line = lines?.[0];
-      const done = await markConsignmentSoldForItem(env, storeId, item.id, { salePrice: line ? Number(line.unit_price) * Number(line.quantity || 1) : Number(item.data?.salePrice || 0), soldAt: item.data?.soldAt || undefined, saleId: line?.sale_id });
+      let fee = 0;
+      if (line?.sale_id) {
+        const { data: pays } = await supabaseAdminFetch(env, `pos_payments?store_id=eq.${encodeURIComponent(storeId)}&sale_id=eq.${encodeURIComponent(line.sale_id)}&provider=eq.ebay&select=provider_metadata&limit=1`);
+        fee = Number(pays?.[0]?.provider_metadata?.fee || 0);
+      }
+      const done = await markConsignmentSoldForItem(env, storeId, item.id, { salePrice: line ? Number(line.unit_price) * Number(line.quantity || 1) : Number(item.data?.salePrice || 0), soldAt: item.data?.soldAt || undefined, saleId: line?.sale_id, fee });
       if (done) settled.push(done);
     }
   }
@@ -3750,7 +3762,7 @@ async function settleEbaySoldConsignments(env, storeId) {
 
 // Takes an eBay sale off the item it sold: what's left, or sold (and pulled
 // from Shopify) when that was the last one.
-async function applyEbaySaleToRow(env, storeId, invRow, quantitySold, salePrice, profit, soldAt, saleId) {
+async function applyEbaySaleToRow(env, storeId, invRow, quantitySold, salePrice, profit, soldAt, saleId, fee = 0) {
   const d = invRow.data || {};
   const currentQty = Number(d.quantity ?? d.qty ?? 1) || 0;
   const remaining = Math.max(0, currentQty - quantitySold);
@@ -3783,7 +3795,7 @@ async function applyEbaySaleToRow(env, storeId, invRow, quantitySold, salePrice,
   await supabaseAdminFetch(env, `inventory_items?id=eq.${encodeURIComponent(invRow.id)}&store_id=eq.${encodeURIComponent(storeId)}`, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ data: nextData, status: nextStatus, updated_at: new Date().toISOString() }) });
   let consigned = null;
   if (depleted) {
-    try { consigned = await markConsignmentSoldForItem(env, storeId, invRow.id, { salePrice, soldAt, saleId }); }
+    try { consigned = await markConsignmentSoldForItem(env, storeId, invRow.id, { salePrice, soldAt, saleId, fee }); }
     catch (e) { console.warn('Could not mark consignment sold after eBay sale:', invRow.id, e.message); }
   }
   return { remaining, depleted, consigned };
@@ -3803,7 +3815,7 @@ async function attachEbaySaleToItem(env, storeId, order, li, m, invRow) {
   const { data: claimed } = await supabaseAdminFetch(env, `pos_sale_lines?id=eq.${encodeURIComponent(open[0].id)}&store_id=eq.${encodeURIComponent(storeId)}&item_id=is.null`, { method: 'PATCH', headers: { Prefer: 'return=representation' },
     body: JSON.stringify({ item_id: invRow.id, cost_basis: cost, profit, category: d.category || guessSaleCategoryFromTitle(d.name || li.title || ''), condition: d.condition || '', image_url: d.thumbnail || d.image || '' }) });
   if (!claimed?.length) return false;
-  return await applyEbaySaleToRow(env, storeId, invRow, quantitySold, m.itemPrice, profit, order.creationDate || new Date().toISOString(), open[0].sale_id);
+  return await applyEbaySaleToRow(env, storeId, invRow, quantitySold, m.itemPrice, profit, order.creationDate || new Date().toISOString(), open[0].sale_id, m.fee);
 }
 
 // Presale rows that sold out before they kept their listing number had it
@@ -4199,7 +4211,7 @@ async function syncEbayOrdersForStore(env, storeId, ebayToken, receiptSettings, 
             body: JSON.stringify({ id: crypto.randomUUID(), sale_id: saleId, store_id: storeId, method: 'eBay', amount: orderTotal, reference: order.orderId, provider_metadata: ebaySaleMetadata(order, m), status: 'confirmed', provider: 'ebay', currency: 'USD', confirmed_by: confirmedBy, confirmed_at: soldAt, created_at: soldAt }) });
 
           if (invRow) {
-            const applied = await applyEbaySaleToRow(env, storeId, invRow, quantitySold, salePrice, profit, soldAt, saleId);
+            const applied = await applyEbaySaleToRow(env, storeId, invRow, quantitySold, salePrice, profit, soldAt, saleId, feeAmount);
             ({ remaining, depleted } = applied);
             if (applied.consigned) consigned.push(applied.consigned);
           }
@@ -13225,7 +13237,7 @@ async function routeRequest(request, env, ctx) {
         // A consigned item sold on Whatnot is its owner's sale too.
         let consigned = null;
         if (depleted && !giveaway) {
-          try { consigned = await markConsignmentSoldForItem(env, storeId, invRow.id, { salePrice, soldAt, saleId, source: channel.toLowerCase() }); }
+          try { consigned = await markConsignmentSoldForItem(env, storeId, invRow.id, { salePrice, soldAt, saleId, source: channel.toLowerCase(), fee: feeAmount }); }
           catch (e) { console.warn('Could not mark consignment sold after external sale:', invRow.id, e.message); }
         }
         // Its eBay listing follows (a sale recorded as eBay itself already did).
