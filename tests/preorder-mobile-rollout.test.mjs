@@ -9,6 +9,7 @@ const el={getAttribute(){return src;},setAttribute(name,value){assert.equal(name
 handlers.get('script[src]').element(el);
 assert.equal(src,'https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@2acc413/preorders-loader.js');
 src='https://example.com/preorders-loader.js';handlers.get('script[src]').element(el);assert.equal(src,'https://example.com/preorders-loader.js');
+handlers.clear();
 injectComicSearch(response,new Request('https://www.themanapocket.com/books'));
-src='https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@old/preorders.js';handlers.get('script[src]').element(el);assert.match(src,/@old\//);
+assert.equal(handlers.has('script[src]'),false);
 console.log('Preorder asset rollout stays scoped to approved scripts and page');
