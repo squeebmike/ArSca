@@ -91,7 +91,7 @@ for(const section of groups){
  const document={hidden:false,addEventListener:(type,fn)=>events[type]=fn,querySelectorAll:()=>buttons};
  class Observer{constructor(cb){callback=cb;}observe(){}unobserve(){}}
  const fetch=url=>{calls.push(url);active++;maximum=Math.max(maximum,active);return new Promise(resolve=>releases.push(()=>{active--;resolve({ok:true,json:async()=>({listing:null})});}));};
- vm.runInNewContext(sportsLookupScript.replace(/^<script>|<\/script>$/g,''),{document,window:{IntersectionObserver:Observer},IntersectionObserver:Observer,fetch});
+ vm.runInNewContext(sportsLookupScript.slice(sportsLookupScript.indexOf('<script>')+8).replace(/<\/script>$/,''),{document,window:{IntersectionObserver:Observer},IntersectionObserver:Observer,fetch});
  callback(buttons.map(target=>({target,isIntersecting:true})));assert.equal(calls.length,2);
  releases[0]();await new Promise(resolve=>setImmediate(resolve));assert.equal(calls.length,3);
  document.hidden=true;releases[1]();releases[2]();await new Promise(resolve=>setImmediate(resolve));assert.equal(calls.length,3,'hidden pages do not start more lookups');
@@ -118,4 +118,17 @@ for(const section of groups){
  assert.ok(!sportsSectionFilters(url(''),fixture,'/section',esc).form.includes('id="set-checklist" open'),'filters start compact');
  let numericQuery='';await sportsListings({EBAY_PARTNER_CAMPAIGN_ID:'5339046175',LBA_KV:{get:async()=>null,put:async()=>{}}},null,set,variation,{searchEbay:async q=>{numericQuery=q;return {listings:[]};}},{card:v,wait:true});
  assert.match(numericQuery,/Team Camo/,'numeric IDs need the parallel identity in the marketplace query');
+}
+
+// Parallel links require the same printed number and subject identity.
+{
+ const {relatedParallelLinks}=await import('../scripts/baseball-section-pages.mjs');
+ const base=set.cards.find(c=>c.cardNumber==='1');
+ const links=relatedParallelLinks(set,base,esc);
+ assert.match(links,/Parallels &amp; variations/);
+ assert.match(links,/Team Camo/);
+ assert.equal(relatedParallelLinks(set,{...base,player:'Unrelated Player',subjects:[{name:'Unrelated Player'}]},esc),'');
+ assert.equal(relatedParallelLinks(set,{...base,cardNumber:'NO-SUCH-NUMBER'},esc),'');
+ const {manaLoaderStyle}=await import('../scripts/mana-loader.mjs');
+ assert.match(manaLoaderStyle,/prefers-reduced-motion/);
 }

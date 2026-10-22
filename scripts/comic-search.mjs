@@ -100,7 +100,7 @@ export function injectComicSearch(response, request) {
   const rewriter=new HTMLRewriter();
   if(path === '/preorders') rewriter.on('script[src]', { element(el) {
     const src=el.getAttribute('src') || '';
-    if(/^https:\/\/cdn\.jsdelivr\.net\/gh\/squeebmike\/wo-scripts@[^/]+\/(?:preorders(?:-loader)?|wo-ui)\.js(?:\?.*)?$/.test(src)) el.setAttribute('src',src.replace(/wo-scripts@[^/]+\//,'wo-scripts@9111f30/'));
+    if(/^https:\/\/cdn\.jsdelivr\.net\/gh\/squeebmike\/wo-scripts@[^/]+\/(?:preorders(?:-loader)?|wo-ui)\.js(?:\?.*)?$/.test(src)) el.setAttribute('src',src.replace(/wo-scripts@[^/]+\//,'wo-scripts@cce8b1d/'));
   } });
   return rewriter.on('body', { element(el) { el.append('<script defer src="/comics/search.js"></script>', { html: true }); } }).transform(response);
 }

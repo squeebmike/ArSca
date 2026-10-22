@@ -23,6 +23,12 @@ for(const source of [...baseballSections,...holidayBaseballSections,...footballS
 }
 export const sectionsForSet=set=>sectionsBySet.get(set.id)||[];
 export function baseballSectionSitemapPaths(sets){return sets.flatMap(s=>[...sportsSectionCollections(sectionsForSet(s)).map(g=>sectionPath(s,g)),...sectionsForSet(s).flatMap(g=>[sectionPath(s,g),...g.cards.map(c=>cardPath(s,c))])]);}
+export function relatedParallelLinks(set,card,esc){
+ const identity=c=>(c.subjects?.length?c.subjects.map(s=>s.name):[c.player]).map(n=>String(n).normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]/g,'')).sort().join('|');
+ const matches=sectionsForSet(set).filter(g=>/parallel|variation/i.test(g.kind)&&!/auto|relic/i.test(g.kind+' '+g.name)).flatMap(g=>g.cards.filter(c=>String(c.cardNumber)===String(card.cardNumber)&&identity(c)===identity(card)).map(c=>({g,c})));
+ if(!matches.length)return '';
+ return '<details class="mp-card-parallels"><summary style="min-height:44px;cursor:pointer">Parallels &amp; variations ('+matches.length+')</summary><ul>'+matches.map(({g,c})=>'<li><a style="display:inline-flex;min-height:44px;align-items:center" href="'+cardPath(set,c)+'">'+esc(g.name)+'</a></li>').join('')+'</ul><small>Publisher checklist entries; open a variation to check copies for sale.</small></details>';
+}
 export function baseballSectionsNav(set,esc,current='base'){return sportsChecklistNavigation(set,sectionsForSet(set),esc,{sport:sportFor(set),current});}
 export function baseballShoppingHtml(items,card,set,env,deps,group,listings=[]){
  const {escape:esc}=deps;

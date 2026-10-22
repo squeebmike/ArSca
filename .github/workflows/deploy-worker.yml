@@ -72,6 +72,7 @@ on:
       - scripts/baseball-catalog-pages.mjs
       - scripts/football-odds.mjs
       - scripts/sports-checklist-ui.mjs
+      - scripts/mana-loader.mjs
       - scripts/sports-section-filters.mjs
       - scripts/topps/checklist-url-corrections.mjs
       - scripts/holiday-baseball-release.mjs
