@@ -24,7 +24,7 @@ const shelfItem = { id:'x', status:'in_stock', data:{ source:'built_in', qty:1 }
 assert.equal((await make([shelf])({}, 'store', shelfItem, 1)).id, 'x', 'ordinary items are untouched');
 assert.equal(await make([shelf])({}, 'store', null, 1), null);
 
-assert.match(worker, /let invRow = skuMap\.get\(sku\) \|\| null;/);
+assert.match(worker, /let invRow = skuMap\.get\(sku\) \|\| byListing;/);
 assert.match(worker, /invRow = await shelfCopyForPresaleSale\(env, storeId, invRow, quantitySold\);/);
 
 console.log('eBay sale on an emptied presale listing takes the shelf copy checks passed');

@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.10.21.20-ebay-add-copies';
+const APP_VERSION = '2026.10.21.21-ebay-sale-by-listing';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -13143,6 +13143,15 @@ async function syncEbayOrders(silent, reconcile){
       if(unmatched > 0) msg += ' (' + unmatched + ' not linked to inventory -- sold outside this app)';
       toast_dash(msg);
       logOpsEvent('ebay_order_synced', msg, { results: data.results });
+    }
+    // An eBay sale recorded before its item could be matched (no eBay SKU
+    // saved) was just tied to that item: it now shows sold, with its cost.
+    const linked = Array.isArray(data.linked) ? data.linked : [];
+    if(linked.length){
+      if(!(recorded > 0)){ await loadInventory().catch(()=>{}); loadEbayOrderHistory().catch(()=>{}); }
+      const msg = linked.length === 1 ? 'eBay sale of ' + (linked[0].name || 'an item') + ' tied to its item -- marked sold' : linked.length + ' eBay sales tied to their items -- marked sold';
+      toast_dash(msg);
+      logOpsEvent('ebay_order_synced', msg, { linked });
     }
     // Cancelled eBay orders: their sales were voided and the copies put back
     // (see voidCancelledEbayOrders in the Worker).
