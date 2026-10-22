@@ -47,6 +47,7 @@ import { handleAccountRequest, findLinkedCustomer } from './scripts/customer-acc
 import { handleArticlesRequest, articleSitemapPaths, fetchArticles } from './scripts/comic-articles.mjs';
 import { pullListPageBody } from './scripts/pull-list-page.mjs';
 import { COVER_COMING_SOON_JPEG_BASE64 } from './scripts/cover-coming-soon.mjs';
+import { buildRestockList } from './scripts/restock.mjs';
 import { extractSiteChrome, SITE_CHROME_SOURCE } from './scripts/site-chrome.mjs';
 import {loadPokemonSets,loadPokemonSetCards} from './scripts/public-pokemon-sets.mjs';
 import { handlePublicPokemonRequest } from './scripts/public-pokemon-sets.mjs';
@@ -13082,6 +13083,35 @@ async function routeRequest(request, env, ctx) {
       const auth = await requireStoreUser(request, env, storeId, ['owner','admin','manager','employee']);
       if (auth.error) return auth.error;
       return json({ ok: true, ebay: await syncEbayQuantityForItems(storeId, body.itemIds) });
+    }
+
+    // Reports > WHAT TO BUY > RESTOCK: sealed product and supplies that sold
+    // out or are running low, from the last 90 days of completed sales
+    // (scripts/restock.mjs).
+    if (url.pathname === '/inventory/restock' && request.method === 'GET') {
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId, ['owner','admin','manager','employee']);
+      if (auth.error) return auth.error;
+      const enc = encodeURIComponent, since = new Date(Date.now() - 90 * 864e5).toISOString();
+      const { data: lines } = await supabaseAdminFetchAll(env, `pos_sale_lines?store_id=eq.${enc(storeId)}&created_at=gte.${enc(since)}&item_id=not.is.null&select=item_id,sale_id,quantity,created_at&order=created_at.asc`);
+      const saleIds = [...new Set((lines || []).map(l => l.sale_id).filter(Boolean))];
+      const completed = new Set();
+      for (let i = 0; i < saleIds.length; i += 150) {
+        const { data } = await supabaseAdminFetch(env, `pos_sales?store_id=eq.${enc(storeId)}&id=in.(${saleIds.slice(i, i + 150).map(enc).join(',')})&status=eq.completed&select=id`);
+        for (const r of data || []) completed.add(r.id);
+      }
+      const sold = (lines || []).filter(l => completed.has(l.sale_id));
+      const itemIds = [...new Set(sold.map(l => String(l.item_id)).filter(id => /^[0-9a-f-]{36}$/i.test(id)))];
+      const items = [];
+      for (let i = 0; i < itemIds.length; i += 150) {
+        const { data } = await supabaseAdminFetch(env, `inventory_items?store_id=eq.${enc(storeId)}&id=in.(${itemIds.slice(i, i + 150).join(',')})&select=id,status,data`);
+        items.push(...(data || []));
+      }
+      // Only the fields restock reads, not each row's whole data document.
+      const fields = ['name', 'category', 'productType', 'variant', 'source', 'grader', 'cert_number', 'isSlabbed', 'qty', 'quantity', 'market', 'salePrice', 'price'];
+      const { data: stockRows } = await supabaseAdminFetchAll(env, `inventory_items?store_id=eq.${enc(storeId)}&status=eq.in_stock&select=id,status,${fields.map(f => `${f}:data->>${f}`).join(',')}&order=id.asc`);
+      const stock = (stockRows || []).map(r => ({ id: r.id, status: r.status, data: Object.fromEntries(fields.map(f => [f, r[f]])) }));
+      return json({ ok: true, days: 90, restock: buildRestockList({ lines: sold, items, stock }) });
     }
 
     // The eBay tab's EBAY QUANTITY CHANGES list: what was changed on eBay,

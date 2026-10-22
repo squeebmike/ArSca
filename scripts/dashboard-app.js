@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.10.22.5-consignment-sliding-scale';
+const APP_VERSION = '2026.10.22.6-restock-consignor-statements';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -22840,7 +22840,7 @@ async function noteConsignedSales(list){
 }
 function saveConsignorPeople(){localStorage.setItem('pos_consignors',JSON.stringify(consignorPeople));scheduleConsignmentCloudSync();}
 function addConsignorPerson(){const name=document.getElementById('cs-person-name')?.value.trim(),contact=document.getElementById('cs-person-contact')?.value.trim()||'',splitRaw=document.getElementById('cs-person-split')?.value??'',customSplit=String(splitRaw).trim()!=='',split=consignSplitValue(splitRaw,25);if(!name)return toast_dash('Enter the consignor name');const existing=consignorPeople.find(p=>p.name.toLowerCase()===name.toLowerCase());if(existing)Object.assign(existing,{name,contact,split,customSplit,updatedAt:new Date().toISOString()});else consignorPeople.push({id:'person_'+Date.now(),name,contact,split,customSplit,createdAt:new Date().toISOString()});saveConsignorPeople();['cs-person-name','cs-person-contact'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});const splitEl=document.getElementById('cs-person-split');if(splitEl)splitEl.value='';renderConsign();toast_dash('Consignor ready: '+name+(customSplit?' · store keeps '+split+'%':' · sliding scale'));}
-function renderConsignorPeople(){const host=document.getElementById('cs-people-list');if(!host)return;const rows=consignmentOwnerDirectory();host.innerHTML=rows.length?rows.map(p=>{const stripeReady=p.stripeOnboardingStatus==='ready'&&p.stripeTransfersEnabled;const stripeBtn=p.personId?`<button class="hbtn" style="border-width:0 0 0 1px;border-radius:0;color:${stripeReady?'var(--g)':'var(--gold)'}" onclick="connectConsignorStripe('${escHtml(p.personId)}')" title="Pay this consignor via Stripe instead of cash/check/Venmo">${stripeReady?'💳 STRIPE READY':'💳 CONNECT STRIPE'}</button>`:'';return `<div style="display:flex;border:1px solid var(--border);border-radius:7px;overflow:hidden"><button class="hbtn" style="border:0;border-radius:0" onclick="useConsignorPerson('${encodeURIComponent(p.name)}')" title="Use this person for a new consignment">${escHtml(p.name)}${p.contact?' · '+escHtml(p.contact):''} · ${p.customSplit?'store keeps '+Number(p.split??25)+'%':'sliding scale'}</button>${stripeBtn}<button class="hbtn" style="border-width:0 0 0 1px;border-radius:0;color:var(--purple)" onclick="editConsignorPerson('${encodeURIComponent(p.name)}')">EDIT</button><button class="hbtn danger" style="border-width:0 0 0 1px;border-radius:0" onclick="deleteConsignorPerson('${encodeURIComponent(p.name)}')">DELETE</button></div>`;}).join(''):'<span style="font-family:var(--font-mono);font-size:9px;color:var(--dim)">No consignors yet. Add the first person above.</span>';}
+function renderConsignorPeople(){const host=document.getElementById('cs-people-list');if(!host)return;const rows=consignmentOwnerDirectory();host.innerHTML=rows.length?rows.map(p=>{const stripeReady=p.stripeOnboardingStatus==='ready'&&p.stripeTransfersEnabled;const stripeBtn=p.personId?`<button class="hbtn" style="border-width:0 0 0 1px;border-radius:0;color:${stripeReady?'var(--g)':'var(--gold)'}" onclick="connectConsignorStripe('${escHtml(p.personId)}')" title="Pay this consignor via Stripe instead of cash/check/Venmo">${stripeReady?'💳 STRIPE READY':'💳 CONNECT STRIPE'}</button>`:'';return `<div style="display:flex;border:1px solid var(--border);border-radius:7px;overflow:hidden"><button class="hbtn" style="border:0;border-radius:0" onclick="useConsignorPerson('${encodeURIComponent(p.name)}')" title="Use this person for a new consignment">${escHtml(p.name)}${p.contact?' · '+escHtml(p.contact):''} · ${p.customSplit?'store keeps '+Number(p.split??25)+'%':'sliding scale'}</button>${stripeBtn}<button class="hbtn" style="border-width:0 0 0 1px;border-radius:0;color:var(--purple)" onclick="editConsignorPerson('${encodeURIComponent(p.name)}')">EDIT</button><button class="hbtn" style="border-width:0 0 0 1px;border-radius:0;color:var(--g)" onclick="openConsignorStatement('${encodeURIComponent(p.name)}')" title="What sold, fees, the store's cut, what they're owed and what's still for sale">STATEMENT</button><button class="hbtn danger" style="border-width:0 0 0 1px;border-radius:0" onclick="deleteConsignorPerson('${encodeURIComponent(p.name)}')">DELETE</button></div>`;}).join(''):'<span style="font-family:var(--font-mono);font-size:9px;color:var(--dim)">No consignors yet. Add the first person above.</span>';}
 function useConsignorPerson(encoded){const name=decodeURIComponent(encoded),p=consignmentOwnerDirectory().find(x=>x.name===name);if(!p)return;document.getElementById('cs-owner').value=p.name;document.getElementById('cs-contact').value=p.contact||'';const splitEl=document.getElementById('cs-split');if(splitEl)delete splitEl.dataset.manual;consignFormSplitAuto();document.getElementById('cs-item')?.focus();}
 function editConsignorPerson(encoded){const oldName=decodeURIComponent(encoded),profile=consignmentOwnerDirectory().find(p=>p.name===oldName);if(!profile)return;const name=prompt('Consignor name:',profile.name);if(name===null||!name.trim())return;const contact=prompt('Phone or email:',profile.contact||'');if(contact===null)return;const splitRaw=prompt('Store keeps what % of each sale? (0 = they get it all)\nLeave blank for the sliding scale: '+consignTiersText()+'.',profile.customSplit?String(profile.split??''):'');if(splitRaw===null)return;const customSplit=String(splitRaw).trim()!=='',split=consignSplitValue(splitRaw,25);let person=consignorPeople.find(p=>p.name.toLowerCase()===oldName.toLowerCase());if(!person){person={id:'person_'+Date.now(),createdAt:new Date().toISOString()};consignorPeople.push(person);}Object.assign(person,{name:name.trim(),contact:contact.trim(),split,customSplit,updatedAt:new Date().toISOString()});
 // A new percent applies to what's still for sale -- a sold item's payout never changes behind anyone's back.
@@ -22995,6 +22995,90 @@ function markConsignSold(id){
   const ownerCut = sp*(1-c.split/100);
   toast_dash(`✓ Sold $${sp.toFixed(2)} · Your cut: $${yourCut.toFixed(2)} · Owe ${c.owner}: $${ownerCut.toFixed(2)}`);
 }
+
+// Store ask: a statement per consignor -- what sold, at what price, the
+// marketplace fee, the store's cut and their payout, what's owed now, what's
+// been paid, and what's still for sale. Printed, copied, or texted/emailed
+// from the store's own phone (sms:/mailto: -- nothing is sent from here).
+function consignorStatementData(owner){
+  const rows = consignItems.filter(c => c.owner === owner);
+  const byDate = (a, b) => String(b.soldAt || b.addedAt || '').localeCompare(String(a.soldAt || a.addedAt || ''));
+  const owed = rows.filter(c => c.status === 'sold' && !c.paidOut).sort(byDate);
+  const paid = rows.filter(c => c.status === 'sold' && c.paidOut).sort(byDate);
+  const active = rows.filter(c => c.status === 'active').sort(byDate);
+  const sum = (list, f) => Math.round(list.reduce((n, c) => n + f(c), 0) * 100) / 100;
+  return { owner, contact: rows.find(c => c.contact)?.contact || consignmentOwnerDirectory().find(p => p.name === owner)?.contact || '', owed, paid, active,
+    owedTotal: sum(owed, consignOwnerCut), paidTotal: sum(paid, consignOwnerCut), salesTotal: sum([...owed, ...paid], consignSaleValue), activeValue: sum(active, c => consignMoney(c.price)) };
+}
+function consignDay(v){ return v ? new Date(v).toLocaleDateString([], { month:'short', day:'numeric', year:'numeric' }) : ''; }
+function consignorStatementText(st, storeName){
+  const m = n => '$' + Number(n || 0).toFixed(2);
+  const line = c => '- ' + c.item + ' -- sold ' + m(consignSaleValue(c)) + (consignFee(c) ? ', ' + m(consignFee(c)) + ' marketplace fees' : '') + ', store ' + consignMoney(c.split) + '% (' + m(consignStoreCut(c)) + '), you get ' + m(consignOwnerCut(c)) + (c.soldAt ? ' -- ' + consignDay(c.soldAt) : '');
+  const out = [(storeName || 'The Mana Pocket') + ' -- consignment statement for ' + st.owner + ', ' + consignDay(new Date().toISOString()), ''];
+  out.push('OWED TO YOU: ' + m(st.owedTotal));
+  if(st.owed.length) out.push(...st.owed.map(line));
+  if(st.paid.length) out.push('', 'ALREADY PAID (' + m(st.paidTotal) + '):', ...st.paid.map(c => line(c) + (c.paidOutAt ? ' -- paid ' + consignDay(c.paidOutAt) : '')));
+  if(st.active.length) out.push('', 'STILL FOR SALE:', ...st.active.map(c => '- ' + c.item + ' -- asking ' + m(c.price) + ', store keeps ' + consignMoney(c.split) + '%'));
+  return out.join('\n');
+}
+function consignorStatementHtml(st){
+  const m = n => '$' + Number(n || 0).toFixed(2);
+  const soldRow = (c, extra) => `<tr><td><b>${escHtml(c.item)}</b><span>${escHtml(consignDay(c.soldAt))}${extra || ''}</span></td><td>${m(consignSaleValue(c))}</td><td>${consignFee(c) ? m(consignFee(c)) : '—'}</td><td>${consignMoney(c.split)}%<span>${m(consignStoreCut(c))}</span></td><td><b>${m(consignOwnerCut(c))}</b></td></tr>`;
+  const table = (list, extra) => `<table class="wtb-table"><tr><th></th><th>Sold</th><th>Fees</th><th>Store</th><th>Payout</th></tr>${list.map(c => soldRow(c, extra ? extra(c) : '')).join('')}</table>`;
+  return `<div style="font-family:Orbitron,monospace;font-size:15px;font-weight:700;color:var(--text)">${escHtml(st.owner)}</div>
+    <div style="font-family:monospace;font-size:10px;color:var(--dim);margin:2px 0 10px">${escHtml(st.contact || 'No phone or email on file')} · statement ${escHtml(consignDay(new Date().toISOString()))} · ${m(st.salesTotal)} sold in all</div>
+    <div class="wtb-h buy">OWED NOW · ${m(st.owedTotal)}</div>${st.owed.length ? table(st.owed) : '<div class="wtb-empty">Nothing owed right now.</div>'}
+    <div class="wtb-h" style="margin-top:12px">PAID · ${m(st.paidTotal)}</div>${st.paid.length ? table(st.paid, c => c.paidOutAt ? ' · paid ' + escHtml(consignDay(c.paidOutAt)) + (c.paidVia === 'stripe' ? ' via Stripe' : '') : ' · paid') : '<div class="wtb-empty">Nothing paid yet.</div>'}
+    <div class="wtb-h plenty" style="margin-top:12px">STILL FOR SALE · ${st.active.length} item${st.active.length === 1 ? '' : 's'} · asking ${m(st.activeValue)}</div>${st.active.length ? `<table class="wtb-table"><tr><th></th><th>Asking</th><th>Store</th></tr>${st.active.map(c => `<tr><td><b>${escHtml(c.item)}</b><span>in since ${escHtml(consignDay(c.addedAt))}</span></td><td>${m(c.price)}</td><td>${consignMoney(c.split)}%</td></tr>`).join('')}</table>` : '<div class="wtb-empty">Nothing for sale right now.</div>'}
+    <div class="wtb-note">Online sales (eBay, Whatnot) split what's left after the marketplace's fees; register sales split the full price.</div>`;
+}
+function openConsignorStatement(encoded){
+  const owner = decodeURIComponent(encoded), st = consignorStatementData(owner);
+  const storeName = getActiveStore()?.displayName || 'The Mana Pocket';
+  const text = consignorStatementText(st, storeName);
+  const phone = /\d{7,}/.test(String(st.contact).replace(/\D/g, '')) && !String(st.contact).includes('@') ? String(st.contact).replace(/[^\d+]/g, '') : '';
+  const email = String(st.contact).includes('@') ? String(st.contact).trim() : '';
+  document.getElementById('consign-statement-modal')?.remove();
+  const modal = document.createElement('div');
+  modal.id = 'consign-statement-modal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;display:flex;align-items:flex-start;justify-content:center;overflow-y:auto;padding:24px 12px';
+  modal.innerHTML = `<div class="panel" style="max-width:720px;width:100%;margin:0" id="consign-statement-body">${consignorStatementHtml(st)}
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:12px">
+      <button class="hbtn" onclick="printConsignorStatement()">🖨 PRINT</button>
+      <button class="hbtn" onclick="copyConsignorStatement()">COPY</button>
+      ${phone ? `<a class="hbtn" style="text-decoration:none" href="sms:${escHtml(phone)}?&body=${encodeURIComponent(text)}">💬 TEXT</a>` : ''}
+      ${email ? `<a class="hbtn" style="text-decoration:none" href="mailto:${escHtml(email)}?subject=${encodeURIComponent('Your consignment statement -- ' + storeName)}&body=${encodeURIComponent(text)}">✉ EMAIL</a>` : ''}
+      ${st.owed.length ? `<button class="hbtn" style="color:var(--blue)" onclick="markConsignorStatementPaid('${encodeURIComponent(owner)}')">✓ MARK ${'$' + st.owedTotal.toFixed(2)} PAID</button>` : ''}
+      <button class="hbtn" style="margin-left:auto" onclick="document.getElementById('consign-statement-modal').remove()">✕ CLOSE</button>
+    </div></div>`;
+  modal.addEventListener('click', e => { if(e.target === modal) modal.remove(); });
+  modal.dataset.text = text;
+  document.body.appendChild(modal);
+}
+async function copyConsignorStatement(){
+  const text = document.getElementById('consign-statement-modal')?.dataset.text || '';
+  try{ await navigator.clipboard.writeText(text); toast_dash('Statement copied'); }
+  catch(e){ prompt('Copy the statement:', text); }
+}
+function printConsignorStatement(){
+  const body = document.getElementById('consign-statement-body');
+  if(!body) return;
+  const w = window.open('', '_blank');
+  if(!w) return toast_dash('Allow pop-ups to print');
+  const clone = body.cloneNode(true);
+  clone.querySelectorAll('button,a.hbtn').forEach(el => el.remove());
+  w.document.write('<!doctype html><html><head><meta charset="utf-8"><title>Consignment statement</title><style>body{font-family:system-ui,sans-serif;color:#111;padding:24px}table{width:100%;border-collapse:collapse;margin:6px 0 4px}td,th{border-bottom:1px solid #ddd;padding:5px 6px;text-align:left;font-size:12px;vertical-align:top}td span{display:block;color:#666;font-size:10px}.wtb-h{font-weight:700;margin-top:14px}.wtb-empty,.wtb-note{color:#666;font-size:11px;margin:4px 0}</style></head><body>' + clone.innerHTML + '</body></html>');
+  w.document.close(); w.focus(); w.print();
+}
+function markConsignorStatementPaid(encoded){
+  const owner = decodeURIComponent(encoded), st = consignorStatementData(owner);
+  if(!st.owed.length) return;
+  if(!confirm('Mark $' + st.owedTotal.toFixed(2) + ' paid to ' + owner + ' (' + st.owed.length + ' item' + (st.owed.length === 1 ? '' : 's') + ')? Do this after you\'ve paid them (cash, check, Venmo...). To pay through Stripe, use 💳 Pay via Stripe on each item instead.')) return;
+  st.owed.forEach(c => markPaidOut(c.id));
+  openConsignorStatement(encoded);
+  toast_dash('Marked paid: ' + owner);
+}
+window.openConsignorStatement = openConsignorStatement; window.copyConsignorStatement = copyConsignorStatement; window.printConsignorStatement = printConsignorStatement; window.markConsignorStatementPaid = markConsignorStatementPaid;
 
 function markPaidOut(id){
   const c = consignItems.find(x=>x.id===id);
@@ -35371,11 +35455,50 @@ function renderWhatToBuyPanel(){
     <div class="ph">WHAT TO BUY <span style="font-size:9px;color:var(--dim)">From your own sales: what moves, what sits, what customers want</span></div>
     <div class="wtb-note">${demand.soldCount} sales in the last ${demand.spanDays} days, grouped by set and by Pokémon, player, series or card. "Days" is the average time from added to sold; "Stock" is what's on the shelf now. The buy signal on Research uses the same numbers: it pays a bit more for BUY MORE and a bit less for HAVE PLENTY or GO EASY.</div>
     ${sections}
+    <details class="wtb-cat" open><summary><b>🔁 RESTOCK</b><span>sealed product and supplies that sold out or are running low · last 90 days</span></summary><div id="wtb-restock"><div class="wtb-empty">Checking what sold out…</div></div></details>
     <details class="wtb-cat" open><summary><b>👀 CUSTOMERS ARE ASKING FOR</b><span>${wants.length + needs.length} open</span></summary>${asking}</details>
     <details class="wtb-cat"><summary><b>🏆 GRADING CANDIDATES IN STOCK</b><span>raw Pokémon whose PSA 9 / 10 sales beat raw + grading</span></summary><div id="wtb-grading"><div class="wtb-empty">Checking saved price data…</div></div></details>
   </div>`;
   renderWhatToBuyGrading();
+  renderWhatToBuyRestock();
 }
+// Store ask: "restock what sells out." Sealed product and supplies only --
+// comics have the FOC wall's sell-through and order helper.
+let wtbRestock = [];
+async function renderWhatToBuyRestock(){
+  const host = document.getElementById('wtb-restock');
+  if(!host) return;
+  try{
+    const res = await storeWorkerFetch('/inventory/restock', { cache:'no-store' });
+    const d = await res.json().catch(()=>({}));
+    if(!d.ok) throw new Error(d.error || 'Could not check restock');
+    wtbRestock = d.restock || [];
+    host.innerHTML = restockListHtml(wtbRestock);
+  }catch(e){ host.innerHTML = '<div class="wtb-empty">' + escHtml(e.message || 'Could not check restock') + '</div>'; }
+}
+function restockListHtml(list){
+  if(!list.length) return '<div class="wtb-empty">Nothing sealed or supplies sold out or running low. Anything that sold 2+ in the last 90 days shows here once it runs out or has under 3 weeks left.</div>';
+  const money = n => '$' + Number(n || 0).toFixed(2);
+  const total = list.reduce((n, r) => n + (r.cost > 0 ? r.cost * r.suggest : 0), 0);
+  return `<table class="wtb-table"><tr><th></th><th>Sold</th><th>Have</th><th>Order</th><th>Cost</th></tr>${list.map(r => `<tr>
+    <td><b>${escHtml(r.name)}</b><span>${escHtml(r.category || '')} · ${r.status === 'out' ? '<b style="color:var(--red)">SOLD OUT</b>' : '<b style="color:var(--gold)">LOW · about ' + r.daysLeft + ' day' + (r.daysLeft === 1 ? '' : 's') + ' left</b>'} · last sold ${escHtml(new Date(r.lastSoldAt).toLocaleDateString([], { month:'short', day:'numeric' }))}</span></td>
+    <td>${r.sold90}<span>${r.sold30} in 30d · ~${r.perMonth}/mo</span></td>
+    <td>${r.onHand}</td>
+    <td><b>${r.suggest}</b></td>
+    <td>${r.cost > 0 ? money(r.cost) + '<span>' + money(r.cost * r.suggest) + '</span>' : '—'}</td></tr>`).join('')}</table>
+    <div class="wtb-note">"Order" is enough for about 6 weeks at the rate it's been selling, minus what's on the shelf. Cost is the last price you paid.${total > 0 ? ' About ' + money(total) + ' for the whole list.' : ''}
+    <button class="hbtn" style="margin-left:6px;padding:3px 8px;font-size:9px" onclick="copyRestockList()">COPY ORDER LIST</button></div>`;
+}
+function restockOrderText(list){
+  return (list || []).map(r => r.suggest + ' x ' + r.name + (r.cost > 0 ? ' (last paid $' + Number(r.cost).toFixed(2) + ')' : '')).join('\n');
+}
+async function copyRestockList(){
+  const text = restockOrderText(wtbRestock);
+  if(!text) return toast_dash('Nothing to reorder');
+  try{ await navigator.clipboard.writeText(text); toast_dash('Order list copied -- ' + wtbRestock.length + ' item' + (wtbRestock.length === 1 ? '' : 's')); }
+  catch(e){ prompt('Copy the order list:', text); }
+}
+window.copyRestockList = copyRestockList;
 async function renderWhatToBuyGrading(){
   const host = document.getElementById('wtb-grading');
   const S = window.ArsCaBuySignal;
