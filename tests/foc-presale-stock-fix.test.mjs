@@ -154,7 +154,8 @@ assert.equal((worker.match(/const \{ data: alreadyListedRows \} = await supabase
 }
 assert.match(worker, /https:\/\/api\.ebay\.com\/sell\/inventory\/v1\/bulk_update_price_quantity/, 'price/quantity only -- never a full listing rebuild');
 assert.match(worker, /revisePresaleListing: ebayRevisePresalePriceQuantity,/);
-assert.match(ui, /if\(\(status==='LISTED'\|\|status==='SOLD_OUT'\)&&v\.ebayListingId\)action=focEbayEditHtml\(v\)\+action;/);
+// + ADD COPIES rides along (tests/foc-ebay-add-copies.test.mjs).
+assert.ok(ui.includes("if((status==='LISTED'||status==='SOLD_OUT')&&v.ebayListingId)action=focEbayEditHtml(v)+"));
 assert.match(ui, /href="https:\/\/www\.ebay\.com\/itm\/'\+encodeURIComponent\(v\.ebayListingId\)\+'"/);
 assert.match(ui, /if\(!confirm\('Change the eBay listing for '/);
 
