@@ -3656,6 +3656,73 @@ async function loadInventoryByEbaySku(env, storeId, orders) {
   return skuMap;
 }
 
+// A sale on a listing whose item has no eBay SKU saved (listed by its eBay
+// item number only) used to be recorded with no item: the item stayed in
+// stock and the sale had no cost (Goblin Storm, 10/21). Those lines match
+// on the listing number instead -- only when exactly one unsold item has it,
+// so a multi-cover listing's covers are never guessed between.
+async function loadInventoryByEbayListing(env, storeId, orders, skuMap) {
+  const wanted = [...new Set(orders.flatMap(order => (order.lineItems || []).filter(li => !skuMap.has(String(li.sku || ''))).map(li => String(li.legacyItemId || ''))).filter(id => /^\d+$/.test(id)))];
+  const byListing = new Map();
+  for (let i = 0; i < wanted.length; i += 40) {
+    const list = wanted.slice(i, i + 40).map(id => '"' + id + '"').join(',');
+    const { data: rows } = await supabaseAdminFetch(env, `inventory_items?store_id=eq.${encodeURIComponent(storeId)}&status=neq.sold&data->>ebayListingId=in.(${encodeURIComponent(list)})&select=id,data,status`);
+    for (const row of rows || []) {
+      const id = String(row.data?.ebayListingId || '');
+      byListing.set(id, byListing.has(id) ? null : row);
+    }
+  }
+  for (const [id, row] of byListing) if (!row) byListing.delete(id);
+  return byListing;
+}
+
+// Takes an eBay sale off the item it sold: what's left, or sold (and pulled
+// from Shopify) when that was the last one.
+async function applyEbaySaleToRow(env, storeId, invRow, quantitySold, salePrice, profit, soldAt) {
+  const d = invRow.data || {};
+  const currentQty = Number(d.quantity ?? d.qty ?? 1) || 0;
+  const remaining = Math.max(0, currentQty - quantitySold);
+  const depleted = remaining <= 0;
+  // A partial marketplace sale must not turn the unsold balance of
+  // an FOC eBay presale into ordinary shelf inventory. That made
+  // the remaining copies leak into the public shop before the
+  // books arrived. The explicit receive/convert workflow marks a
+  // received presale with ebayPresaleConverted; only that state is
+  // allowed to become in_stock while quantity remains.
+  const preservePresale = !depleted && (invRow.status === 'presale' || d.source === 'foc_presale') && d.ebayPresaleConverted !== true;
+  const nextStatus = depleted ? 'sold' : preservePresale ? 'presale' : 'in_stock';
+  const nextData = { ...d, status: nextStatus, lifecycle: nextStatus, qty: remaining, quantity: remaining, salePrice, profit, channel: 'eBay', soldAt: depleted ? soldAt : '' };
+  if (depleted) {
+    nextData.ebayListingId = ''; nextData.ebayOfferId = ''; nextData.ebaySku = ''; nextData.ebayListedAt = '';
+    // Cross-channel oversell guard: this item was also mirrored to
+    // Shopify/Whatnot -- pull it there too the moment eBay sells it,
+    // the same protection processShopifyOrder's own depleted branch
+    // gives in the reverse direction (see there).
+    if (d.shopifyProductId && !d.shopifyWithdrawnAt) {
+      try { await withdrawShopifyListing(env, d); nextData.shopifyWithdrawnAt = soldAt; }
+      catch (e) { console.warn('Could not auto-end Shopify listing after eBay sale:', invRow.id, e.message); }
+    }
+  }
+  await supabaseAdminFetch(env, `inventory_items?id=eq.${encodeURIComponent(invRow.id)}&store_id=eq.${encodeURIComponent(storeId)}`, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ data: nextData, status: nextStatus, updated_at: new Date().toISOString() }) });
+  return { remaining, depleted };
+}
+
+// A sale recorded before its item could be matched (no SKU) is tied to the
+// item now: its cost and profit on the sale line, and the item comes off.
+// Claims the line only while it still has no item, so it runs once.
+async function attachEbaySaleToItem(env, storeId, order, li, m, invRow) {
+  const { data: lines } = await supabaseAdminFetch(env, `pos_sale_lines?store_id=eq.${encodeURIComponent(storeId)}&source_id=eq.${encodeURIComponent('ebay:' + order.orderId)}&item_id=is.null&select=id,title,quantity&limit=2`);
+  const open = (lines || []).filter(l => (order.lineItems || []).length === 1 || l.title === li.title);
+  if (open.length !== 1) return false;
+  const d = invRow.data || {};
+  const cost = Number(d.cost || 0), profit = ebayLineProfit(m, cost);
+  const { data: claimed } = await supabaseAdminFetch(env, `pos_sale_lines?id=eq.${encodeURIComponent(open[0].id)}&store_id=eq.${encodeURIComponent(storeId)}&item_id=is.null`, { method: 'PATCH', headers: { Prefer: 'return=representation' },
+    body: JSON.stringify({ item_id: invRow.id, cost_basis: cost, profit, category: d.category || guessSaleCategoryFromTitle(d.name || li.title || ''), condition: d.condition || '', image_url: d.thumbnail || d.image || '' }) });
+  if (!claimed?.length) return false;
+  await applyEbaySaleToRow(env, storeId, invRow, Math.max(1, Number(li.quantity || 1)), m.itemPrice, profit, order.creationDate || new Date().toISOString());
+  return true;
+}
+
 // An eBay order can come in on an FOC presale listing whose presale row has
 // nothing left (its copies were already sold or the row was ended) after the
 // books arrived. The copy that ships is a received shelf copy, so the sale
@@ -3888,6 +3955,7 @@ async function syncEbayOrdersForStore(env, storeId, ebayToken, receiptSettings, 
     // today's sale was recorded (a $11.06 presale on 10/2). Newest first.
     orders.sort((a, b) => String(b.creationDate || '').localeCompare(String(a.creationDate || '')));
     const skuMap = await loadInventoryByEbaySku(env, storeId, orders);
+    const listingMap = await loadInventoryByEbayListing(env, storeId, orders, skuMap);
     // Which order lines are already recorded, read all at once instead of one
     // KV round trip per line.
     const lineKey = (order, li) => `ebay_order_synced:${storeId}:${order.orderId}:${String(li.sku || '') || li.lineItemId || 'noid'}`;
@@ -3905,6 +3973,7 @@ async function syncEbayOrdersForStore(env, storeId, ebayToken, receiptSettings, 
     const { data: unlinkedSample } = await supabaseAdminFetch(env, `pos_payments?store_id=eq.${encodeURIComponent(storeId)}&provider=eq.ebay&reference=is.null&select=id&limit=1`);
     const anyUnlinked = (unlinkedSample || []).length > 0;
     const results = [];
+    const linked = [];
     const errors = [];
     for (const order of orders) {
       if (order.orderPaymentStatus !== 'PAID') continue;
@@ -3914,7 +3983,8 @@ async function syncEbayOrdersForStore(env, storeId, ebayToken, receiptSettings, 
       const money = ebayOrderMoney(order, { feePct: receiptSettings?.ebayFeePct ?? EBAY_DEFAULT_FEE_PCT, feeFlat: receiptSettings?.ebayFeeFlat });
       for (const [lineIndex, li] of (order.lineItems || []).entries()) {
         const sku = String(li.sku || '');
-        let invRow = skuMap.get(sku) || null;
+        const byListing = skuMap.has(sku) ? null : (listingMap.get(String(li.legacyItemId || '')) || null);
+        let invRow = skuMap.get(sku) || byListing;
         const m = money[lineIndex];
 
         // Keyed by sku (as before) whenever one exists -- preserves the exact
@@ -3929,6 +3999,11 @@ async function syncEbayOrdersForStore(env, storeId, ebayToken, receiptSettings, 
           // correct its fee and shipping. No-op once linked.
           try { if (anyUnlinked) await linkRecordedEbaySale(env, storeId, order, li, m); }
           catch (linkErr) { errors.push({ sku, orderId: order.orderId, error: 'link: ' + linkErr.message }); }
+          // Recorded with no item while its listing's item is still unsold.
+          if (byListing) {
+            try { if (await attachEbaySaleToItem(env, storeId, order, li, m, byListing)) linked.push({ itemId: byListing.id, name: byListing.data?.name || li.title, orderId: order.orderId }); }
+            catch (attachErr) { errors.push({ sku, orderId: order.orderId, error: 'attach: ' + attachErr.message }); }
+          }
           continue;
         }
 
@@ -3958,32 +4033,7 @@ async function syncEbayOrdersForStore(env, storeId, ebayToken, receiptSettings, 
           await supabaseAdminFetch(env, 'pos_payments', { method: 'POST', headers: { Prefer: 'return=minimal' },
             body: JSON.stringify({ id: crypto.randomUUID(), sale_id: saleId, store_id: storeId, method: 'eBay', amount: orderTotal, reference: order.orderId, provider_metadata: ebaySaleMetadata(order, m), status: 'confirmed', provider: 'ebay', currency: 'USD', confirmed_by: confirmedBy, confirmed_at: soldAt, created_at: soldAt }) });
 
-          if (invRow) {
-            const currentQty = Number(d.quantity ?? d.qty ?? 1) || 0;
-            remaining = Math.max(0, currentQty - quantitySold);
-            depleted = remaining <= 0;
-            // A partial marketplace sale must not turn the unsold balance of
-            // an FOC eBay presale into ordinary shelf inventory. That made
-            // the remaining copies leak into the public shop before the
-            // books arrived. The explicit receive/convert workflow marks a
-            // received presale with ebayPresaleConverted; only that state is
-            // allowed to become in_stock while quantity remains.
-            const preservePresale = !depleted && (invRow.status === 'presale' || d.source === 'foc_presale') && d.ebayPresaleConverted !== true;
-            const nextStatus = depleted ? 'sold' : preservePresale ? 'presale' : 'in_stock';
-            const nextData = { ...d, status: nextStatus, lifecycle: nextStatus, qty: remaining, quantity: remaining, salePrice, profit, channel: 'eBay', soldAt: depleted ? soldAt : '' };
-            if (depleted) {
-              nextData.ebayListingId = ''; nextData.ebayOfferId = ''; nextData.ebaySku = ''; nextData.ebayListedAt = '';
-              // Cross-channel oversell guard: this item was also mirrored to
-              // Shopify/Whatnot -- pull it there too the moment eBay sells it,
-              // the same protection processShopifyOrder's own depleted branch
-              // gives in the reverse direction (see there).
-              if (d.shopifyProductId && !d.shopifyWithdrawnAt) {
-                try { await withdrawShopifyListing(env, d); nextData.shopifyWithdrawnAt = soldAt; }
-                catch (e) { console.warn('Could not auto-end Shopify listing after eBay sale:', invRow.id, e.message); }
-              }
-            }
-            await supabaseAdminFetch(env, `inventory_items?id=eq.${encodeURIComponent(invRow.id)}&store_id=eq.${encodeURIComponent(storeId)}`, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ data: nextData, status: nextStatus, updated_at: new Date().toISOString() }) });
-          }
+          if (invRow) ({ remaining, depleted } = await applyEbaySaleToRow(env, storeId, invRow, quantitySold, salePrice, profit, soldAt));
 
           if (env.LBA_KV) await env.LBA_KV.put(trackKey, '1', { expirationTtl: 60 * 60 * 24 * 180 });
           results.push({ itemId: invRow ? invRow.id : null, name: itemName, sku, orderId: order.orderId, salePrice, shipping: m.shipping, fee: feeAmount, feeSource: m.feeSource, quantitySold, depleted, matchedInventory: !!invRow });
@@ -3999,7 +4049,7 @@ async function syncEbayOrdersForStore(env, storeId, ebayToken, receiptSettings, 
     let refunds = [];
     try { refunds = await recordEbayRefunds(env, storeId, ebayToken, confirmedBy); }
     catch (e) { errors.push({ error: 'refunds: ' + e.message }); }
-    return { ok: true, checked: orders.length, matched: matchedCount, recorded: results.length, results, errors, cancelled, refunds };
+    return { ok: true, checked: orders.length, matched: matchedCount, recorded: results.length, results, linked, errors, cancelled, refunds };
 }
 
 // Label costs (and real fees for any sale recorded with an estimate) come
@@ -12083,7 +12133,9 @@ async function routeRequest(request, env, ctx) {
       if (!ebayToken) return json({ needsToken: true, error: 'Connect eBay first: missing user access/refresh token' }, 401);
 
       try {
-        const fmt = d => d.toISOString().slice(0, 10).replace(/-/g, '');
+        // eBay reads these dates in Pacific time: after 5 PM Pacific the UTC
+        // date is already tomorrow, which eBay refused as "in the future".
+        const fmt = d => d.toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' }).replace(/-/g, '');
         const end = new Date();
         const start = new Date(end.getTime() - 29 * 24 * 60 * 60 * 1000);
         const filter = `listing_ids:{${listingIds.join('|')}},marketplace_ids:{EBAY_US},date_range:[${fmt(start)}..${fmt(end)}]`;

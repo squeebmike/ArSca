@@ -83,7 +83,7 @@ const U1 = '11111111-1111-1111-1111-111111111111', U2 = '22222222-2222-2222-2222
 // and the dashboard says what it voided.
 assert.match(worker, /if \(order\.orderPaymentStatus !== 'PAID'\) continue;\n\s*if \(ebayOrderIsCancelled\(order\)\) continue;/);
 assert.match(worker, /cancelled = await voidCancelledEbayOrders\(env, storeId, ebayToken, orders, confirmedBy\);/);
-assert.match(worker, /return \{ ok: true, checked: orders\.length, matched: matchedCount, recorded: results\.length, results, errors, cancelled, refunds \};/);
+assert.match(worker, /return \{ ok: true, checked: orders\.length, matched: matchedCount, recorded: results\.length, results, linked, errors, cancelled, refunds \};/);
 const app = fs.readFileSync('scripts/dashboard-app.js', 'utf8');
 assert.match(app, /cancelled eBay order\$\{cancelled\.length === 1 \? '' : 's'\}: sale/);
 console.log('eBay cancellations void sales checks passed');

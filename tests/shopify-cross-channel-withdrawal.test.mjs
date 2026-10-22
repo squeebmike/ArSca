@@ -14,7 +14,9 @@ const worker = fs.readFileSync('cloudflare-worker-full.js', 'utf8');
 {
   const start = worker.indexOf('async function syncEbayOrdersForStore(env, storeId, ebayToken, receiptSettings, { reconcile, confirmedBy }) {');
   const end = worker.indexOf('async function runScheduledEbayOrderSync', start);
-  const body = worker.slice(start, end);
+  assert.match(worker.slice(start, end), /await applyEbaySaleToRow\(env, storeId, invRow, quantitySold, salePrice, profit, soldAt\)/, 'the sync takes each sale off its item through applyEbaySaleToRow');
+  const hStart = worker.indexOf('async function applyEbaySaleToRow(');
+  const body = worker.slice(hStart, worker.indexOf('\n}\n', hStart));
   assert.match(body, /if \(d\.shopifyProductId && !d\.shopifyWithdrawnAt\) \{/, 'an eBay sale must check for a mirrored, still-live Shopify listing on the same item');
   assert.match(body, /await withdrawShopifyListing\(env, d\);/, 'an eBay sale depleting the item must withdraw its Shopify listing');
 }
