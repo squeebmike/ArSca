@@ -78,6 +78,7 @@ on:
       - scripts/topps/football-sections.mjs
       - scripts/baseball-section-pages.mjs
       - scripts/topps/baseball-sections.mjs
+      - scripts/topps/baseball-chrome-2023-inserts.mjs
       - scripts/baseball-team-pages.mjs
       - scripts/baseball-player-pages.mjs
       - scripts/baseball-odds.mjs

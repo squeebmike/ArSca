@@ -45,7 +45,10 @@ deps.listItems=async()=>{throw Error('Temporary inventory outage');};
 body=await(await get(baseballCardPath(set,card))).text();assert.ok(body.includes('Store availability is temporarily unavailable'));assert.ok(!body.includes('No exact matching copy'));
 deps.listItems=async()=>[];
 const chrome=baseballSets.find(s=>s.id==='2023-topps-chrome'),sections=sectionsForSet(chrome);
-assert.deepEqual(sections.map(g=>g.cards.length),[15,129]);
+assert.deepEqual(sections.map(g=>g.cards.length),[15,129,20,10,25,30]);
+assert.equal(sections.find(g=>g.id==='future-stars').cards.find(c=>c.cardNumber==='FS-13').player,'Julio Rodríguez');
+assert.equal(sections.find(g=>g.id==='topps-chrome-expose').cards.at(-1).cardNumber,'TCE-30');
+assert.equal(new Set(sections.flatMap(g=>g.cards.map(c=>c.id))).size,229);
 for(const path of baseballSectionSitemapPaths(baseballSets)){
  assert.ok(paths.includes(path));res=await get(path,{EBAY_PARTNER_CAMPAIGN_ID:'5339046175'});body=await res.text();assert.equal(res.status,200);assert.ok(body.includes('campid=5339046175'));assert.ok(!body.includes('"offers"'));assert.equal(lastPage.canonicalPath,path);
 }
