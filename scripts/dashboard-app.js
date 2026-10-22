@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.10.22.2-ebay-follows-dashboard';
+const APP_VERSION = '2026.10.22.3-ebay-qty-changes-list';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -12247,6 +12247,32 @@ async function renderEbayHubPanel(){
     }
   }
   loadEbayOrderHistory().catch(()=>{});
+  loadEbayQtyChanges().catch(()=>{});
+}
+
+// What the Worker changed on eBay so it matches the dashboard: after a
+// sale, edit or restock here ("sale"), or on the 6-hour check ("check").
+async function loadEbayQtyChanges(){
+  const host = document.getElementById('ebay-hub-qty-changes');
+  if(!host) return;
+  try{
+    const res = await storeWorkerFetch('/ebay/qty-changes', { cache:'no-store' });
+    const d = await res.json().catch(()=>({}));
+    if(!d.ok) throw new Error(d.error || 'Could not load eBay changes');
+    host.innerHTML = ebayQtyChangesHtml(d.changes || []);
+  }catch(e){ host.innerHTML = '<div style="font-family:monospace;font-size:10px;color:var(--dim)">' + escHtml(e.message || 'Could not load eBay changes') + '</div>'; }
+}
+function ebayQtyChangesHtml(changes){
+  if(!changes.length) return '<div style="font-family:monospace;font-size:10px;color:var(--dim)">No eBay quantity changes yet. A sale on Whatnot, the register or the website, an edit to a count, a refund, and the 6-hour check all show here.</div>';
+  return changes.slice(0, 50).map(c => {
+    const when = c.at ? new Date(c.at).toLocaleString([], { month:'short', day:'numeric', hour:'numeric', minute:'2-digit' }) : '';
+    const what = c.failed ? '<span style="color:var(--red)">couldn\'t change eBay' + (c.to != null ? ' to ' + Number(c.to) : '') + ' -- change it on eBay' + (c.error ? ' (' + escHtml(c.error) + ')' : '') + '</span>'
+      : c.ended ? '<span style="color:var(--gold)">listing ended (sold out)</span>'
+      : c.from != null ? 'eBay ' + Number(c.from) + ' → <b>' + Number(c.to) + '</b>' : 'eBay set to <b>' + Number(c.to) + '</b>';
+    const why = c.why === 'check' ? '6-hour check' : 'sale or edit here';
+    const link = c.listingId ? ' · <a href="https://www.ebay.com/itm/' + encodeURIComponent(c.listingId) + '" target="_blank" rel="noopener" style="color:var(--g)">view</a>' : '';
+    return '<div style="font-family:monospace;font-size:10px;padding:6px 8px;border:1px solid var(--border);border-radius:6px"><span style="color:var(--dim)">' + escHtml(when) + '</span> · ' + escHtml(c.name || 'Item') + ' -- ' + what + ' <span style="color:var(--dim)">(' + why + ')</span>' + link + '</div>';
+  }).join('');
 }
 
 // Per-listing views/impressions/click-through/conversion over the last 30

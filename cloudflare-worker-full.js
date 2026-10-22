@@ -11477,7 +11477,7 @@ async function routeRequest(request, env, ctx) {
         try { out.push({ ...entry, ok: true, ...(await setEbayQuantityForRow(storeId, ebayToken, row, to)) }); }
         catch (e) { out.push({ ...entry, ok: false, error: e.message }); }
       }
-      await logEbayQtyChanges(env, storeId, out.filter(o => o.ok).map(o => ({ name: o.name, listingId: o.listingId, to: o.to, ended: !!o.ended, why: 'sale' })));
+      await logEbayQtyChanges(env, storeId, out.map(o => ({ name: o.name, listingId: o.listingId, to: o.to, ended: !!o.ended, why: 'sale', ...(o.ok ? {} : { failed: true, error: String(o.error || '').slice(0, 200) }) })));
       return out;
     }
 
@@ -13072,6 +13072,17 @@ async function routeRequest(request, env, ctx) {
       return json({ ok: true, ebay: await syncEbayQuantityForItems(storeId, body.itemIds) });
     }
 
+    // The eBay tab's EBAY QUANTITY CHANGES list: what was changed on eBay,
+    // when, and why (a sale or edit here, or the 6-hour check).
+    if (url.pathname === '/ebay/qty-changes' && request.method === 'GET') {
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId, ['owner','admin','manager','employee']);
+      if (auth.error) return auth.error;
+      let log = [];
+      try { log = (await env.LBA_KV?.get(EBAY_QTY_LOG_KV(storeId), 'json')) || []; } catch (_) {}
+      return json({ ok: true, changes: log.slice(0, 100) });
+    }
+
     // Every 6 hours (Worker only): every live eBay listing is set to what
     // the dashboard has -- lowered or raised.
     if (url.pathname === '/ebay/internal/qty-reconcile' && request.method === 'POST') {
@@ -13109,7 +13120,11 @@ async function routeRequest(request, env, ctx) {
         try { const r = await setEbayQuantityForRow(storeId, ebayToken, rowById.get(o.rowId), o.dashQty); fixed.push({ ...o, ended: r.ended }); }
         catch (e) { failed.push({ ...o, error: e.message }); }
       }
-      await logEbayQtyChanges(env, storeId, fixed.map(f => ({ name: f.name + (f.label ? ' -- ' + f.label : ''), listingId: f.listingId, from: f.ebayQty, to: f.dashQty, ended: !!f.ended, why: 'check' })));
+      const named = f => f.name + (f.label ? ' -- ' + f.label : '');
+      await logEbayQtyChanges(env, storeId, [
+        ...fixed.map(f => ({ name: named(f), listingId: f.listingId, from: f.ebayQty, to: f.dashQty, ended: !!f.ended, why: 'check' })),
+        ...failed.map(f => ({ name: named(f), listingId: f.listingId, from: f.ebayQty, to: f.dashQty, why: 'check', failed: true, error: String(f.error || '').slice(0, 200) })),
+      ]);
       return json({ ok: true, checked: active.length, fixed, failed, more: Math.max(0, over.length - 40), waiting: off.length - over.length });
     }
 
