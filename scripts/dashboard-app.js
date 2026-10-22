@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.10.21.23-ebay-consignment-sold';
+const APP_VERSION = '2026.10.21.24-presale-oversold-whatnot-consign';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -244,7 +244,11 @@ async function storeWorkerFetch(path, options = {}){
   headers.set('Authorization', 'Bearer ' + session.access_token);
   headers.set('X-Store-Id', getActiveStoreId());
   const target = /^https?:\/\//i.test(path) ? path : WORKER + path;
-  return fetch(target, { ...options, headers });
+  const res = await fetch(target, { ...options, headers });
+  // A Whatnot (or other recorded) sale of a consigned item marks it sold in
+  // the Worker -- every caller of this route gets the list brought up to date.
+  if(path === '/inventory/record-external-sale' && res.ok) res.clone().json().then(d => { if(d?.consigned) noteConsignedSales([d.consigned]); }).catch(() => {});
+  return res;
 }
 
 function getAuthSession(){ try { return JSON.parse(localStorage.getItem(WALKOFF_AUTH_SESSION_KEY) || 'null'); } catch(e) { return null; } }
@@ -13147,14 +13151,7 @@ async function syncEbayOrders(silent, reconcile){
     // Consigned items an eBay sale used up are sold for their owner too (the
     // Worker marks them and opens the payout alert); show it here.
     const consigned = Array.isArray(data.consigned) ? data.consigned : [];
-    if(consigned.length){
-      await loadConsignmentsFromCloud().catch(()=>{});
-      try{ renderConsign(); }catch(e){}
-      try{ renderConsignmentSaleAlerts(); }catch(e){}
-      const msg = consigned.length === 1 ? (consigned[0].item || 'Consigned item') + ' sold on eBay -- $' + Number(consigned[0].ownerPayout||0).toFixed(2) + ' owed to ' + (consigned[0].owner || 'its owner') : consigned.length + ' consigned items sold on eBay -- payouts owed';
-      toast_dash(msg);
-      logOpsEvent('ebay_order_synced', msg, { consigned });
-    }
+    if(consigned.length) await noteConsignedSales(consigned);
     // An eBay sale recorded before its item could be matched (no eBay SKU
     // saved) was just tied to that item: it now shows sold, with its cost.
     const linked = Array.isArray(data.linked) ? data.linked : [];
@@ -22786,6 +22783,17 @@ async function adoptCloudSoldConsignments(sb,storeId){const active=consignItems.
 async function syncConsignmentsToCloud(){const sb=getSupabaseClient(),storeId=getActiveStoreId();if(!sb||!consignmentCloudReady||!storeId)return false;await adoptCloudSoldConsignments(sb,storeId);for(const [table,rows] of [['consignor_people',consignorPeople.filter(p=>p?.id&&p?.name).map(consignPersonToCloud)],['consignment_items',consignItems.filter(c=>c?.id&&c?.owner).map(consignItemToCloud)],['consignment_alerts',getConsignmentAlerts().filter(a=>a?.id&&a?.consignmentId).map(consignAlertToCloud)]]){if(!rows.length)continue;const {error}=await sb.from(table).upsert(rows,{onConflict:'id'});if(error)throw error;}return true;}
 async function deleteConsignmentCloudRow(table,id){const sb=getSupabaseClient();if(!sb||!consignmentCloudReady||!id)return;const {error}=await sb.from(table).delete().eq('store_id',getActiveStoreId()).eq('id',id);if(error)console.warn('[CONSIGN] Cloud delete failed:',error.message);}
 function saveConsign(){ localStorage.setItem('pos_consign', JSON.stringify(consignItems));scheduleConsignmentCloudSync(); }
+// Consigned items the Worker marked sold (eBay sync, Whatnot sale): reload
+// the list and say what's owed.
+async function noteConsignedSales(list){
+  if(!list?.length) return;
+  await loadConsignmentsFromCloud().catch(()=>{});
+  try{ renderConsign(); }catch(e){}
+  try{ renderConsignmentSaleAlerts(); }catch(e){}
+  const msg = list.length === 1 ? (list[0].item || 'Consigned item') + ' sold -- $' + Number(list[0].ownerPayout||0).toFixed(2) + ' owed to ' + (list[0].owner || 'its owner') : list.length + ' consigned items sold -- payouts owed';
+  toast_dash(msg);
+  logOpsEvent('consignment_sold', msg, { consigned:list });
+}
 function saveConsignorPeople(){localStorage.setItem('pos_consignors',JSON.stringify(consignorPeople));scheduleConsignmentCloudSync();}
 function addConsignorPerson(){const name=document.getElementById('cs-person-name')?.value.trim(),contact=document.getElementById('cs-person-contact')?.value.trim()||'',split=Math.max(0,Math.min(100,Number(document.getElementById('cs-person-split')?.value||25)));if(!name)return toast_dash('Enter the consignor name');const existing=consignorPeople.find(p=>p.name.toLowerCase()===name.toLowerCase());if(existing)Object.assign(existing,{name,contact,split,updatedAt:new Date().toISOString()});else consignorPeople.push({id:'person_'+Date.now(),name,contact,split,createdAt:new Date().toISOString()});saveConsignorPeople();['cs-person-name','cs-person-contact'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});const splitEl=document.getElementById('cs-person-split');if(splitEl)splitEl.value='25';renderConsign();toast_dash('Consignor ready: '+name);}
 function renderConsignorPeople(){const host=document.getElementById('cs-people-list');if(!host)return;const rows=consignmentOwnerDirectory();host.innerHTML=rows.length?rows.map(p=>{const stripeReady=p.stripeOnboardingStatus==='ready'&&p.stripeTransfersEnabled;const stripeBtn=p.personId?`<button class="hbtn" style="border-width:0 0 0 1px;border-radius:0;color:${stripeReady?'var(--g)':'var(--gold)'}" onclick="connectConsignorStripe('${escHtml(p.personId)}')" title="Pay this consignor via Stripe instead of cash/check/Venmo">${stripeReady?'💳 STRIPE READY':'💳 CONNECT STRIPE'}</button>`:'';return `<div style="display:flex;border:1px solid var(--border);border-radius:7px;overflow:hidden"><button class="hbtn" style="border:0;border-radius:0" onclick="useConsignorPerson('${encodeURIComponent(p.name)}')" title="Use this person for a new consignment">${escHtml(p.name)}${p.contact?' · '+escHtml(p.contact):''} · ${Number(p.split||25)}% store</button>${stripeBtn}<button class="hbtn" style="border-width:0 0 0 1px;border-radius:0;color:var(--purple)" onclick="editConsignorPerson('${encodeURIComponent(p.name)}')">EDIT</button><button class="hbtn danger" style="border-width:0 0 0 1px;border-radius:0" onclick="deleteConsignorPerson('${encodeURIComponent(p.name)}')">DELETE</button></div>`;}).join(''):'<span style="font-family:var(--font-mono);font-size:9px;color:var(--dim)">No consignors yet. Add the first person above.</span>';}

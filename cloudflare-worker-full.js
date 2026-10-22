@@ -3642,15 +3642,24 @@ async function fetchAllEbayOrders(ebayToken, filter, pageSize = 200, maxPages = 
 // This used to be the first 500 unsold items (of 1,400+), so a sale of any
 // item past that point recorded with no cost and never reduced its stock or
 // its FOC presold count. Looked up by SKU now, 40 at a time.
+// An FOC presale row stays matched to its eBay listing after it sells out
+// here: eBay can keep selling (247 Comics Spotlight #1 Cover K and L sold a
+// third and a second copy on 10/11 after their rows hit 0), and those sales
+// belong to the row so receiving holds the buyer's copy. Any other item
+// that sold is never matched again.
+const isFocPresaleRow = row => ['foc_presale', 'foc_presale_bundle'].includes(String(row?.data?.source || ''));
+const ebayMatchable = row => row && (row.status !== 'sold' || isFocPresaleRow(row));
+
 async function loadInventoryByEbaySku(env, storeId, orders) {
   const wanted = [...new Set(orders.flatMap(order => (order.lineItems || []).map(li => String(li.sku || ''))).filter(Boolean))];
   const skuMap = new Map();
   for (let i = 0; i < wanted.length; i += 40) {
     const list = wanted.slice(i, i + 40).map(sku => '"' + sku.replace(/["\\]/g, '') + '"').join(',');
-    const { data: rows } = await supabaseAdminFetch(env, `inventory_items?store_id=eq.${encodeURIComponent(storeId)}&status=neq.sold&data->>ebaySku=in.(${encodeURIComponent(list)})&select=id,data,status`);
-    for (const row of rows || []) {
-      const sku = row.data?.ebaySku;
-      if (sku) skuMap.set(String(sku), row);
+    const { data: rows } = await supabaseAdminFetch(env, `inventory_items?store_id=eq.${encodeURIComponent(storeId)}&data->>ebaySku=in.(${encodeURIComponent(list)})&select=id,data,status`);
+    for (const row of (rows || []).filter(ebayMatchable)) {
+      const sku = String(row.data?.ebaySku || '');
+      // An unsold row wins over a sold-out presale row with the same SKU.
+      if (sku && (!skuMap.has(sku) || skuMap.get(sku).status === 'sold')) skuMap.set(sku, row);
     }
   }
   return skuMap;
@@ -3666,8 +3675,8 @@ async function loadInventoryByEbayListing(env, storeId, orders, skuMap) {
   const byListing = new Map();
   for (let i = 0; i < wanted.length; i += 40) {
     const list = wanted.slice(i, i + 40).map(id => '"' + id + '"').join(',');
-    const { data: rows } = await supabaseAdminFetch(env, `inventory_items?store_id=eq.${encodeURIComponent(storeId)}&status=neq.sold&data->>ebayListingId=in.(${encodeURIComponent(list)})&select=id,data,status`);
-    for (const row of rows || []) {
+    const { data: rows } = await supabaseAdminFetch(env, `inventory_items?store_id=eq.${encodeURIComponent(storeId)}&data->>ebayListingId=in.(${encodeURIComponent(list)})&select=id,data,status`);
+    for (const row of (rows || []).filter(ebayMatchable)) {
       const id = String(row.data?.ebayListingId || '');
       byListing.set(id, byListing.has(id) ? null : row);
     }
@@ -3733,8 +3742,13 @@ async function applyEbaySaleToRow(env, storeId, invRow, quantitySold, salePrice,
   const preservePresale = !depleted && (invRow.status === 'presale' || d.source === 'foc_presale') && d.ebayPresaleConverted !== true;
   const nextStatus = depleted ? 'sold' : preservePresale ? 'presale' : 'in_stock';
   const nextData = { ...d, status: nextStatus, lifecycle: nextStatus, qty: remaining, quantity: remaining, salePrice, profit, channel: 'eBay', soldAt: depleted ? soldAt : '' };
+  // eBay sold more than the presale row had left: the extra copies count as
+  // presold too, so receiving holds one for every buyer.
+  const oversold = Math.max(0, quantitySold - currentQty);
+  if (oversold && isFocPresaleRow(invRow)) nextData.focPresaleOriginalQty = Number(d.focPresaleOriginalQty || currentQty) + oversold;
   if (depleted) {
-    nextData.ebayListingId = ''; nextData.ebayOfferId = ''; nextData.ebaySku = ''; nextData.ebayListedAt = '';
+    // A presale row keeps its listing so later sales and + ADD COPIES find it.
+    if (!isFocPresaleRow(invRow)) { nextData.ebayListingId = ''; nextData.ebayOfferId = ''; nextData.ebaySku = ''; nextData.ebayListedAt = ''; }
     // Cross-channel oversell guard: this item was also mirrored to
     // Shopify/Whatnot -- pull it there too the moment eBay sells it,
     // the same protection processShopifyOrder's own depleted branch
@@ -3760,12 +3774,49 @@ async function attachEbaySaleToItem(env, storeId, order, li, m, invRow) {
   const { data: lines } = await supabaseAdminFetch(env, `pos_sale_lines?store_id=eq.${encodeURIComponent(storeId)}&source_id=eq.${encodeURIComponent('ebay:' + order.orderId)}&item_id=is.null&select=id,sale_id,title,quantity&limit=2`);
   const open = (lines || []).filter(l => (order.lineItems || []).length === 1 || l.title === li.title);
   if (open.length !== 1) return false;
+  const quantitySold = Math.max(1, Number(li.quantity || 1));
+  invRow = await shelfCopyForPresaleSale(env, storeId, invRow, quantitySold);
   const d = invRow.data || {};
   const cost = Number(d.cost || 0), profit = ebayLineProfit(m, cost);
   const { data: claimed } = await supabaseAdminFetch(env, `pos_sale_lines?id=eq.${encodeURIComponent(open[0].id)}&store_id=eq.${encodeURIComponent(storeId)}&item_id=is.null`, { method: 'PATCH', headers: { Prefer: 'return=representation' },
     body: JSON.stringify({ item_id: invRow.id, cost_basis: cost, profit, category: d.category || guessSaleCategoryFromTitle(d.name || li.title || ''), condition: d.condition || '', image_url: d.thumbnail || d.image || '' }) });
   if (!claimed?.length) return false;
-  return await applyEbaySaleToRow(env, storeId, invRow, Math.max(1, Number(li.quantity || 1)), m.itemPrice, profit, order.creationDate || new Date().toISOString(), open[0].sale_id);
+  return await applyEbaySaleToRow(env, storeId, invRow, quantitySold, m.itemPrice, profit, order.creationDate || new Date().toISOString(), open[0].sale_id);
+}
+
+// Presale rows that sold out before they kept their listing number had it
+// wiped, so a later sale on that listing matched nothing. Such a sale goes
+// to the presale row of an earlier sale with the same title that eBay shows
+// on the same listing number. A multi-cover listing (more than one row on
+// one number) is never guessed.
+async function presaleRowsByEarlierSale(env, storeId, ebayToken, lineItems) {
+  const titles = [...new Set(lineItems.map(li => String(li.title || '')).filter(Boolean))].slice(0, 20);
+  if (!titles.length) return new Map();
+  const quoted = titles.map(t => '"' + t.replace(/["\\]/g, '') + '"').join(',');
+  const { data: earlier } = await supabaseAdminFetch(env, `pos_sale_lines?store_id=eq.${encodeURIComponent(storeId)}&title=in.(${encodeURIComponent(quoted)})&item_id=not.is.null&source_id=like.ebay:*&select=item_id,source_id,title&limit=200`);
+  if (!earlier?.length) return new Map();
+  const itemIds = [...new Set(earlier.map(l => l.item_id))].slice(0, 100);
+  const { data: rows } = await supabaseAdminFetch(env, `inventory_items?store_id=eq.${encodeURIComponent(storeId)}&id=in.(${itemIds.map(encodeURIComponent).join(',')})&select=id,status,data`);
+  const rowById = new Map((rows || []).filter(isFocPresaleRow).map(r => [r.id, r]));
+  const cands = earlier.filter(l => rowById.has(l.item_id));
+  const orderIds = [...new Set(cands.map(l => String(l.source_id).replace(/^ebay:/, '')).filter(id => /^[\w-]+$/.test(id)))].slice(0, 50);
+  if (!orderIds.length) return new Map();
+  const res = await ebayFetchWithRetry('https://api.ebay.com/sell/fulfillment/v1/order?orderIds=' + encodeURIComponent(orderIds.join(',')), { headers: { 'Authorization': 'Bearer ' + ebayToken } });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error('eBay order lookup failed (' + res.status + ')');
+  const orderById = new Map((data.orders || []).map(o => [String(o.orderId), o]));
+  const byListing = new Map();
+  for (const l of cands) {
+    const order = orderById.get(String(l.source_id).replace(/^ebay:/, ''));
+    const items = order?.lineItems || [];
+    const li = items.length === 1 ? items[0] : items.find(x => x.title === l.title);
+    const legacy = String(li?.legacyItemId || '');
+    if (!legacy) continue;
+    const row = rowById.get(l.item_id), prev = byListing.get(legacy);
+    byListing.set(legacy, prev === undefined || prev?.id === row.id ? row : null);
+  }
+  for (const [id, row] of byListing) if (!row) byListing.delete(id);
+  return byListing;
 }
 
 // The sync reads unshipped orders only, so a sale recorded with no item
@@ -3798,12 +3849,14 @@ async function attachUnlinkedEbaySaleItems(env, storeId, ebayToken, receiptSetti
     orders.push(...(data.orders || []));
   }
   const listingMap = await loadInventoryByEbayListing(env, storeId, orders, new Map());
+  const misses = orders.flatMap(o => o.lineItems || []).filter(li => li.legacyItemId && !listingMap.has(String(li.legacyItemId)));
+  const earlierMap = misses.length ? await presaleRowsByEarlierSale(env, storeId, ebayToken, misses) : new Map();
   const linked = [];
   for (const order of orders) {
     if (order.orderPaymentStatus !== 'PAID' || ebayOrderIsCancelled(order)) continue;
     const money = ebayOrderMoney(order, { feePct: receiptSettings?.ebayFeePct ?? EBAY_DEFAULT_FEE_PCT, feeFlat: receiptSettings?.ebayFeeFlat });
     for (const [lineIndex, li] of (order.lineItems || []).entries()) {
-      const invRow = listingMap.get(String(li.legacyItemId || ''));
+      const invRow = listingMap.get(String(li.legacyItemId || '')) || earlierMap.get(String(li.legacyItemId || ''));
       const done = invRow ? await attachEbaySaleToItem(env, storeId, order, li, money[lineIndex], invRow) : null;
       if (done) linked.push({ itemId: invRow.id, name: invRow.data?.name || li.title, orderId: order.orderId, consigned: done.consigned || null });
     }
@@ -13003,8 +13056,14 @@ async function routeRequest(request, env, ctx) {
           }
         }
         await supabaseAdminFetch(env, `inventory_items?id=eq.${encodeURIComponent(invRow.id)}&store_id=eq.${encodeURIComponent(storeId)}`, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ data: nextData, status: nextStatus, updated_at: new Date().toISOString() }) });
+        // A consigned item sold on Whatnot is its owner's sale too.
+        let consigned = null;
+        if (depleted && !giveaway) {
+          try { consigned = await markConsignmentSoldForItem(env, storeId, invRow.id, { salePrice, soldAt, saleId, source: channel.toLowerCase() }); }
+          catch (e) { console.warn('Could not mark consignment sold after external sale:', invRow.id, e.message); }
+        }
 
-        return json({ ok: true, itemId: invRow.id, saleId, salePrice, feeAmount, profit, depleted, channel });
+        return json({ ok: true, itemId: invRow.id, saleId, salePrice, feeAmount, profit, depleted, channel, consigned });
       } catch (e) {
         return json({ ok: false, error: 'Failed to record external sale: ' + e.message }, 500);
       }
