@@ -39,7 +39,7 @@ import { storeOrganization, productFacts, productCondition, productHeading, rend
 // It has zero Node dependencies (pure-JS SHA-1), so it bundles straight into
 // the Worker -- reused here instead of duplicating checklist-parsing logic.
 import { buildChecklistIndex, parseChecklistText, sha1Hex, slugify } from './scripts/topps-checklist-parser.js';
-import { handleFocRequest, syncFocStripeEvent, shippingSettings, runScheduledStockHealth, withRatioWord, parseMyEbaySellingActive, ebayItemFromGetItem, uniqueCoverLabels, coverLabelFromTitle, pullListNeeds, coverMarketQuery, summarizeCoverMarket, coverMarketListings, priceWatchFlag, focDigestEmail, isPullListCover } from './scripts/foc-preorders.mjs';
+import { handleFocRequest, syncFocStripeEvent, shippingSettings, runScheduledStockHealth, withRatioWord, parseMyEbaySellingActive, ebayItemFromGetItem, uniqueCoverLabels, coverLabelFromTitle, pullListNeeds, coverMarketQuery, summarizeCoverMarket, coverMarketListings, priceWatchFlag, focDigestEmail, isPullListCover, ebayQtyOverDashboard } from './scripts/foc-preorders.mjs';
 import { handleOrdersBoard, handleOrderMarkShipped } from './scripts/orders-board.mjs';
 import { handleBacklistRequest, syncBacklistStripeEvent } from './scripts/backlist-catalog.mjs';
 import { searchComics, comicSearchShell, comicSearchScriptResponse, injectComicSearch, freshPreorderRequest } from './scripts/comic-search.mjs';
@@ -1770,9 +1770,11 @@ async function fulfillStorefrontOrderInventory(env, saleId, storeId) {
     await supabaseAdminFetch(env, `inventory_items?id=eq.${encodeURIComponent(itemId)}&store_id=eq.${encodeURIComponent(storeId)}`, { method:'PATCH', headers:{ Prefer:'return=minimal' }, body:JSON.stringify({ data, status: depleted ? nextStatus : 'in_stock' }) });
     return data.linkedStockIds;
   }
+  const touched = [];
   for (const line of lines || []) {
     if (!/^[0-9a-f-]{36}$/i.test(String(line.item_id || ''))) continue; // skip synthetic shipping-fee line
     const qty = Number(line.quantity || 1);
+    touched.push(line.item_id);
     const linkedStockIds = await decrementInventoryRow(line.item_id, qty);
     // A handful of sibling rows sell the same physical stock under a
     // different price/name -- e.g. the Dougvana print's remarque variants,
@@ -1783,9 +1785,14 @@ async function fulfillStorefrontOrderInventory(env, saleId, storeId) {
     // rows just because customers picked different variants.
     if (Array.isArray(linkedStockIds)) {
       for (const linkedId of linkedStockIds) {
-        if (linkedId && linkedId !== line.item_id) await decrementInventoryRow(linkedId, qty);
+        if (linkedId && linkedId !== line.item_id) { touched.push(linkedId); await decrementInventoryRow(linkedId, qty); }
       }
     }
+  }
+  // Their eBay listings follow: one copy left on the shelf is one on eBay.
+  if (touched.length) {
+    try { await focInternalPost(env, { waitUntil() {}, passThroughOnException() {} }, storeId, '/ebay/sync-item-quantities', { itemIds: touched }); }
+    catch (e) { console.warn('Could not update eBay after website sale:', e.message); }
   }
 }
 
@@ -4327,6 +4334,26 @@ async function runScheduledEbayFinanceReconcile(env) {
 // eBay itself, until someone happened to sync. Runs alongside the
 // existing deal-scan/reprice cron jobs; one store or one item failing
 // must never block the rest, same convention as those jobs.
+// What eBay quantity changes were made and why (a sale elsewhere, or the
+// 6-hour check), newest first, for the email and the dashboard.
+const EBAY_QTY_LOG_KV = storeId => 'ebay-qty-fixes:' + storeId;
+async function logEbayQtyChanges(env, storeId, entries) {
+  if (!env.LBA_KV || !entries?.length) return;
+  let log = [];
+  try { log = (await env.LBA_KV.get(EBAY_QTY_LOG_KV(storeId), 'json')) || []; } catch (_) {}
+  const at = new Date().toISOString();
+  await env.LBA_KV.put(EBAY_QTY_LOG_KV(storeId), JSON.stringify([...entries.map(e => ({ at, ...e })), ...log].slice(0, 200))).catch(() => {});
+}
+function ebayQtyFixEmail({ fixed = [], failed = [], more = 0 }) {
+  const line = f => `- ${f.name}${f.label ? ' -- ' + f.label : ''}: eBay showed ${f.ebayQty}, you have ${f.dashQty}` + (f.ended ? ' (listing ended)' : '');
+  const lines = ['eBay was offering more copies than the dashboard has. Fixed so nothing oversells:', ''];
+  if (fixed.length) lines.push(...fixed.map(line), '');
+  if (failed.length) lines.push("Couldn't fix these -- change them on eBay:", ...failed.map(f => line(f) + ' -- ' + f.error), '');
+  if (more) lines.push(`${more} more will be fixed on the next check (every 6 hours).`, '');
+  lines.push('A sale on Whatnot, the register or the website now lowers eBay right away; this check catches anything changed on eBay itself.');
+  return { subject: fixed.length ? `eBay quantities fixed (${fixed.length})` : `eBay quantities need a look (${failed.length})`, body: lines.join('\n') };
+}
+
 async function runScheduledEbayOrderSync(env) {
   if (!(env.SUPABASE_URL && (env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SERVICE_KEY))) return;
   // Only stores listing on the connected eBay account (see storesWithEbayListings).
@@ -4338,6 +4365,16 @@ async function runScheduledEbayOrderSync(env) {
       const { data: syncSettings } = await supabaseAdminFetch(env, `store_settings?store_id=eq.${encodeURIComponent(storeId)}&select=receipt_settings&limit=1`);
       const receiptSettings = syncSettings?.[0]?.receipt_settings || {};
       await syncEbayOrdersForStore(env, storeId, ebayToken, receiptSettings, { reconcile: false, confirmedBy: null });
+      // After the sales are in: anything eBay offers more of than is here
+      // is lowered, and the store is told.
+      try {
+        const { data } = await focInternalPost(env, { waitUntil() {}, passThroughOnException() {} }, storeId, '/ebay/internal/qty-reconcile', {});
+        if (data?.ok && (data.fixed?.length || data.failed?.length)) {
+          const { subject, body } = ebayQtyFixEmail(data);
+          const to = (await loadFocAutoList(env, storeId)).email || FOC_AUTOLIST_DEFAULT_EMAIL;
+          await sendEmail(env, to, subject, body).catch(e => console.error('eBay quantity email failed:', e.message));
+        }
+      } catch (e) { console.error('eBay quantity check failed for store', storeId, e.message); }
     } catch (e) { console.error('Scheduled eBay order sync failed for store', storeId, e.message); }
   }
 }
@@ -7164,35 +7201,7 @@ async function routeRequest(request, env, ctx) {
         // Inventory API (this dashboard's own) only take changes there; a
         // listing made on eBay itself takes them through the Trading API.
         // The new quantity is read back so it's always "available to buy".
-        ebayReviseListing: async (reviseEnv, ebayToken, { itemId, sku = '', variationSku = '', price = null, quantity = null }) => {
-          const lookupSku = variationSku || sku;
-          if (lookupSku) {
-            const offRes = await ebayFetchWithRetry(`https://api.ebay.com/sell/inventory/v1/offer?sku=${encodeURIComponent(lookupSku)}&marketplace_id=EBAY_US`, { headers: { Authorization: 'Bearer ' + ebayToken, 'Content-Language': 'en-US' } });
-            if (offRes.ok) {
-              const offers = (await offRes.json().catch(() => ({}))).offers || [];
-              const offer = offers.find(o => String(o.listing?.listingId || '') === String(itemId)) || offers[0];
-              if (offer?.offerId) {
-                await ebayRevisePresalePriceQuantity(reviseEnv, ebayToken, { ebayOfferId: offer.offerId, ebaySku: lookupSku }, { price, quantity });
-                return { system: 'inventory' };
-              }
-            }
-          }
-          const status = (q) => `<InventoryStatus><ItemID>${xmlEscape(itemId)}</ItemID>${variationSku ? `<SKU>${xmlEscape(variationSku)}</SKU>` : ''}${price != null ? `<StartPrice>${Number(price).toFixed(2)}</StartPrice>` : ''}${q != null ? `<Quantity>${q}</Quantity>` : ''}</InventoryStatus>`;
-          await ebayTradingApiCall(ebayToken, 'ReviseInventoryStatus', status(quantity));
-          if (quantity != null) {
-            try {
-              const got = await ebayTradingApiCall(ebayToken, 'GetItem', `<ItemID>${xmlEscape(itemId)}</ItemID><DetailLevel>ReturnAll</DetailLevel><IncludeVariations>true</IncludeVariations>`);
-              const item = ebayItemFromGetItem(got.raw);
-              const v = variationSku ? item?.variations.find(x => x.sku === variationSku) : null;
-              const now = v || item;
-              // eBay counted the new number as total listed (sold + left).
-              if (now && now.available !== quantity && now.sold > 0 && now.available === Math.max(0, quantity - now.sold)) {
-                await ebayTradingApiCall(ebayToken, 'ReviseInventoryStatus', status(quantity + now.sold));
-              }
-            } catch (_) {}
-          }
-          return { system: 'trading' };
-        },
+        ebayReviseListing: reviseLiveEbayListing,
         ebayActiveListings: fetchEbayActiveListings, ebayItemGroup: fetchEbayItemGroup,
         ebaySoldComps: async (soldEnv, q, limit = 40) => {
           let result = await fetchSoldCompsProvider(soldEnv, q, limit).catch(e => ({ comps: [], warning: e.message }));
@@ -11381,6 +11390,80 @@ async function routeRequest(request, env, ctx) {
       return await ebayTradingApiCall(ebayToken, 'ReviseFixedPriceItem', body);
     }
 
+    // Price/quantity on any live listing. Listings made through the
+    // Inventory API (this dashboard's own) only take changes there; a
+    // listing made on eBay itself takes them through the Trading API.
+    // The new quantity is read back so it's always "available to buy".
+    async function reviseLiveEbayListing(reviseEnv, ebayToken, { itemId, sku = '', variationSku = '', price = null, quantity = null, trading = false }) {
+      const lookupSku = variationSku || sku;
+      // A multi-cover listing made through the Trading API has no offer.
+      if (lookupSku && !trading) {
+        const offRes = await ebayFetchWithRetry(`https://api.ebay.com/sell/inventory/v1/offer?sku=${encodeURIComponent(lookupSku)}&marketplace_id=EBAY_US`, { headers: { Authorization: 'Bearer ' + ebayToken, 'Content-Language': 'en-US' } });
+        if (offRes.ok) {
+          const offers = (await offRes.json().catch(() => ({}))).offers || [];
+          const offer = offers.find(o => String(o.listing?.listingId || '') === String(itemId)) || offers[0];
+          if (offer?.offerId) {
+            await ebayRevisePresalePriceQuantity(reviseEnv, ebayToken, { ebayOfferId: offer.offerId, ebaySku: lookupSku }, { price, quantity });
+            return { system: 'inventory' };
+          }
+        }
+      }
+      const status = (q) => `<InventoryStatus><ItemID>${xmlEscape(itemId)}</ItemID>${variationSku ? `<SKU>${xmlEscape(variationSku)}</SKU>` : ''}${price != null ? `<StartPrice>${Number(price).toFixed(2)}</StartPrice>` : ''}${q != null ? `<Quantity>${q}</Quantity>` : ''}</InventoryStatus>`;
+      await ebayTradingApiCall(ebayToken, 'ReviseInventoryStatus', status(quantity));
+      if (quantity != null) {
+        try {
+          const got = await ebayTradingApiCall(ebayToken, 'GetItem', `<ItemID>${xmlEscape(itemId)}</ItemID><DetailLevel>ReturnAll</DetailLevel><IncludeVariations>true</IncludeVariations>`);
+          const item = ebayItemFromGetItem(got.raw);
+          const v = variationSku ? item?.variations.find(x => x.sku === variationSku) : null;
+          const now = v || item;
+          // eBay counted the new number as total listed (sold + left).
+          if (now && now.available !== quantity && now.sold > 0 && now.available === Math.max(0, quantity - now.sold)) {
+            await ebayTradingApiCall(ebayToken, 'ReviseInventoryStatus', status(quantity + now.sold));
+          }
+        } catch (_) {}
+      }
+      return { system: 'trading' };
+    }
+
+    // Sets one row's live eBay listing to what the dashboard has left. A
+    // one-off that sold out is ended; a presale cover goes to 0 and keeps its
+    // listing (+ ADD COPIES). Returns what eBay now shows.
+    async function setEbayQuantityForRow(storeId, ebayToken, row, to) {
+      const d = row.data || {};
+      const trading = d.ebayApiSystem === 'trading';
+      if (to <= 0 && !isFocPresaleRow(row) && !trading) {
+        if (d.ebayOfferId) await withdrawEbayOffer(env, ebayToken, d.ebayOfferId);
+        else await endEbayListingTrading(ebayToken, d.ebayListingId);
+        await supabaseAdminFetch(env, `inventory_items?id=eq.${encodeURIComponent(row.id)}&store_id=eq.${encodeURIComponent(storeId)}`, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ data: { ...d, ebayWithdrawnAt: new Date().toISOString() } }) });
+        return { ended: true, to: 0 };
+      }
+      await reviseLiveEbayListing(env, ebayToken, { itemId: d.ebayListingId, sku: d.ebaySku || '', variationSku: trading ? (d.ebaySku || '') : '', quantity: Math.max(0, to), trading });
+      return { ended: false, to: Math.max(0, to) };
+    }
+
+    // Store ask: "sell one in Whatnot, eBay ticks down 1 also." After a sale
+    // anywhere but eBay (Whatnot, the register, the website), each sold
+    // item's live eBay listing is set to what's left.
+    async function syncEbayQuantityForItems(storeId, itemIds) {
+      const ids = [...new Set((itemIds || []).map(String).filter(id => /^[0-9a-f-]{36}$/i.test(id)))].slice(0, 50);
+      if (!ids.length) return [];
+      const { data: rows } = await supabaseAdminFetch(env, `inventory_items?store_id=eq.${encodeURIComponent(storeId)}&id=in.(${ids.join(',')})&select=id,status,data`);
+      const live = (rows || []).filter(r => r.data?.ebayListingId && !r.data?.ebayWithdrawnAt && r.data?.source !== 'foc_presale_bundle');
+      if (!live.length) return [];
+      let ebayToken = '';
+      try { ebayToken = await getEbayUserAccessToken(env); } catch (_) {}
+      const out = [];
+      for (const row of live) {
+        const d = row.data, to = row.status === 'sold' ? 0 : Math.max(0, Number(d.qty ?? d.quantity ?? 0));
+        const entry = { itemId: row.id, name: stripPresaleSuffix(d.name || '') || 'Item', listingId: String(d.ebayListingId), to };
+        if (!ebayToken) { out.push({ ...entry, ok: false, error: 'eBay not connected' }); continue; }
+        try { out.push({ ...entry, ok: true, ...(await setEbayQuantityForRow(storeId, ebayToken, row, to)) }); }
+        catch (e) { out.push({ ...entry, ok: false, error: e.message }); }
+      }
+      await logEbayQtyChanges(env, storeId, out.filter(o => o.ok).map(o => ({ name: o.name, listingId: o.listingId, to: o.to, ended: !!o.ended, why: 'sale' })));
+      return out;
+    }
+
     // Presale -> in stock for a multi-cover (Trading API) listing: drop the
     // " - PRESALE" off the shared title and switch to the normal shipping
     // policy. If eBay won't take the new title (it can refuse title edits on
@@ -12962,6 +13045,45 @@ async function routeRequest(request, env, ctx) {
     if (url.pathname === '/orders/mark-shipped' && request.method === 'POST') {
       return await handleOrderMarkShipped(request, env, { requireStoreUser, supabaseAdminFetch, json });
     }
+    // A sale the dashboard recorded itself (the register): its items' eBay
+    // listings follow. Also called inside the Worker after a website sale.
+    if (url.pathname === '/ebay/sync-item-quantities' && request.method === 'POST') {
+      const body = await request.json().catch(() => ({}));
+      const storeId = requestStoreId(request, url) || String(body.storeId || '');
+      const auth = await requireStoreUser(request, env, storeId, ['owner','admin','manager','employee']);
+      if (auth.error) return auth.error;
+      return json({ ok: true, ebay: await syncEbayQuantityForItems(storeId, body.itemIds) });
+    }
+
+    // Every 6 hours (Worker only): live eBay listings offering more copies
+    // than the dashboard has are lowered to match.
+    if (url.pathname === '/ebay/internal/qty-reconcile' && request.method === 'POST') {
+      if (!FOC_INTERNAL_REQUESTS.has(request)) return json({ ok: false, error: 'Not found' }, 404);
+      const body = await request.json().catch(() => ({}));
+      const storeId = String(body.storeId || '');
+      let ebayToken = '';
+      try { ebayToken = await getEbayUserAccessToken(env); } catch (_) {}
+      if (!ebayToken) return json({ ok: false, error: 'eBay not connected' });
+      const active = [];
+      let pages = 1;
+      for (let page = 1; page <= pages && page <= 50; page++) {
+        const { raw } = await ebayTradingApiCall(ebayToken, 'GetMyeBaySelling', `<ActiveList><Include>true</Include><Pagination><EntriesPerPage>200</EntriesPerPage><PageNumber>${page}</PageNumber></Pagination></ActiveList><DetailLevel>ReturnAll</DetailLevel>`);
+        const parsed = parseMyEbaySellingActive(raw);
+        active.push(...parsed.items);
+        pages = parsed.totalPages || 1;
+      }
+      const { data: rows } = await supabaseAdminFetchAll(env, `inventory_items?store_id=eq.${encodeURIComponent(storeId)}&status=in.(presale,in_stock,listed,sold)&data->>ebayListingId=gt.0&select=id,status,data&order=id.asc`);
+      const rowById = new Map((rows || []).map(r => [r.id, r]));
+      const over = ebayQtyOverDashboard({ active, rows: rows || [] });
+      const fixed = [], failed = [];
+      for (const o of over.slice(0, 40)) {
+        try { const r = await setEbayQuantityForRow(storeId, ebayToken, rowById.get(o.rowId), o.dashQty); fixed.push({ ...o, ended: r.ended }); }
+        catch (e) { failed.push({ ...o, error: e.message }); }
+      }
+      await logEbayQtyChanges(env, storeId, fixed.map(f => ({ name: f.name + (f.label ? ' -- ' + f.label : ''), listingId: f.listingId, from: f.ebayQty, to: f.dashQty, ended: !!f.ended, why: 'check' })));
+      return json({ ok: true, checked: active.length, fixed, failed, more: Math.max(0, over.length - 40) });
+    }
+
     if (url.pathname === '/inventory/record-external-sale' && request.method === 'POST') {
       const storeId = requestStoreId(request, url);
       const auth = await requireStoreUser(request, env, storeId, ['owner','admin','manager','employee']);
@@ -13062,8 +13184,14 @@ async function routeRequest(request, env, ctx) {
           try { consigned = await markConsignmentSoldForItem(env, storeId, invRow.id, { salePrice, soldAt, saleId, source: channel.toLowerCase() }); }
           catch (e) { console.warn('Could not mark consignment sold after external sale:', invRow.id, e.message); }
         }
+        // Its eBay listing follows (a sale recorded as eBay itself already did).
+        let ebay = [];
+        if (!/^ebay$/i.test(channel)) {
+          try { ebay = await syncEbayQuantityForItems(storeId, [invRow.id]); }
+          catch (e) { console.warn('Could not update eBay after external sale:', invRow.id, e.message); }
+        }
 
-        return json({ ok: true, itemId: invRow.id, saleId, salePrice, feeAmount, profit, depleted, channel, consigned });
+        return json({ ok: true, itemId: invRow.id, saleId, salePrice, feeAmount, profit, depleted, channel, consigned, ebay });
       } catch (e) {
         return json({ ok: false, error: 'Failed to record external sale: ' + e.message }, 500);
       }

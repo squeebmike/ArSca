@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.10.21.24-presale-oversold-whatnot-consign';
+const APP_VERSION = '2026.10.22.1-ebay-qty-follows-sales';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -247,7 +247,8 @@ async function storeWorkerFetch(path, options = {}){
   const res = await fetch(target, { ...options, headers });
   // A Whatnot (or other recorded) sale of a consigned item marks it sold in
   // the Worker -- every caller of this route gets the list brought up to date.
-  if(path === '/inventory/record-external-sale' && res.ok) res.clone().json().then(d => { if(d?.consigned) noteConsignedSales([d.consigned]); }).catch(() => {});
+  // Its eBay listing follows the sale too; say what eBay shows now.
+  if((path === '/inventory/record-external-sale' || path === '/ebay/sync-item-quantities') && res.ok) res.clone().json().then(d => { if(d?.consigned) noteConsignedSales([d.consigned]); if(d?.ebay?.length) noteEbayQtyChanges(d.ebay); }).catch(() => {});
   return res;
 }
 
@@ -22783,6 +22784,14 @@ async function adoptCloudSoldConsignments(sb,storeId){const active=consignItems.
 async function syncConsignmentsToCloud(){const sb=getSupabaseClient(),storeId=getActiveStoreId();if(!sb||!consignmentCloudReady||!storeId)return false;await adoptCloudSoldConsignments(sb,storeId);for(const [table,rows] of [['consignor_people',consignorPeople.filter(p=>p?.id&&p?.name).map(consignPersonToCloud)],['consignment_items',consignItems.filter(c=>c?.id&&c?.owner).map(consignItemToCloud)],['consignment_alerts',getConsignmentAlerts().filter(a=>a?.id&&a?.consignmentId).map(consignAlertToCloud)]]){if(!rows.length)continue;const {error}=await sb.from(table).upsert(rows,{onConflict:'id'});if(error)throw error;}return true;}
 async function deleteConsignmentCloudRow(table,id){const sb=getSupabaseClient();if(!sb||!consignmentCloudReady||!id)return;const {error}=await sb.from(table).delete().eq('store_id',getActiveStoreId()).eq('id',id);if(error)console.warn('[CONSIGN] Cloud delete failed:',error.message);}
 function saveConsign(){ localStorage.setItem('pos_consign', JSON.stringify(consignItems));scheduleConsignmentCloudSync(); }
+// eBay listings the Worker changed after a sale here, Whatnot or the website.
+function noteEbayQtyChanges(list){
+  const done = (list || []).filter(x => x.ok), failed = (list || []).filter(x => !x.ok);
+  const say = x => x.ended ? 'eBay listing ended: ' + x.name + ' (sold out)' : 'eBay updated: ' + x.name + ' -- ' + x.to + ' left';
+  if(done.length) toast_dash(done.length === 1 ? say(done[0]) : 'eBay updated for ' + done.length + ' items');
+  if(failed.length) toast_dash("Couldn't update eBay for " + failed.map(x => x.name).join(', ') + ' -- change it on eBay (' + (failed[0].error || 'error') + ')');
+  if(done.length || failed.length) logOpsEvent('ebay_qty_follow', done.map(say).join(' · '), { ebay:list });
+}
 // Consigned items the Worker marked sold (eBay sync, Whatnot sale): reload
 // the list and say what's owed.
 async function noteConsignedSales(list){
@@ -41837,6 +41846,9 @@ async function markCartItemsSoldFromPayment(items, method, soldAt, options={}){
   soldData = all.filter(i=>i.status==='sold');
   renderAll();
   logOpsEvent('cart_payment', 'Recorded cart payment and marked inventory sold', { method, count:tracked.length });
+  // Their eBay listings follow: the Worker sets each to what's left.
+  const onEbay = tracked.map(c => c.shopId || c.wfId).filter(id => all.find(i => i.id === id)?.ebayListingId);
+  if(onEbay.length) storeWorkerFetch('/ebay/sync-item-quantities', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ itemIds:onEbay }) }).catch(() => {});
 }
 
 // Locked Checkout Mode v2 - Supabase money ledger, customer-safe payment screen.

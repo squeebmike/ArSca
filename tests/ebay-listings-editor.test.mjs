@@ -88,7 +88,8 @@ const post = body => ({ method:'POST', headers:{ get:() => null }, json:async ()
 }
 
 // Worker: the right eBay API per listing, and the quantity is checked.
-const dep = worker.slice(worker.indexOf('ebayReviseListing: async'), worker.indexOf("return { system: 'trading' };", worker.indexOf('ebayReviseListing: async')));
+assert.ok(worker.includes('ebayReviseListing: reviseLiveEbayListing,'), 'the editor uses the shared listing reviser');
+const dep = worker.slice(worker.indexOf('async function reviseLiveEbayListing('), worker.indexOf("return { system: 'trading' };", worker.indexOf('async function reviseLiveEbayListing(')));
 assert.match(dep, /sell\/inventory\/v1\/offer\?sku=/, 'dashboard-made listings change through the Inventory API');
 assert.match(dep, /ebayTradingApiCall\(ebayToken, 'ReviseInventoryStatus', status\(quantity\)\)/, 'listings made on eBay itself through the Trading API');
 assert.match(dep, /'GetItem'/, 'the new quantity is read back');
