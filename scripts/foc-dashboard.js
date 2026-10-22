@@ -504,7 +504,9 @@ function ebaySection(v){
   var action='';
   if(status==='ELIGIBLE_NOW')action='<label style="display:flex;align-items:center;gap:6px;margin-top:6px;font:9px var(--font-mono);color:var(--dim);cursor:pointer"><input type="checkbox" class="foc-ebay-bulk-cb" value="'+esc(v.id)+'" '+(focEbayBulkSelectedIds.has(v.id)?'checked':'')+' onchange="focEbayBulkCheckboxChanged(this)"> SELECT FOR BULK LISTING</label><button class="hbtn" style="margin-top:6px;width:100%;min-height:30px;font-size:9px" onclick="createFocEbayPresale(\''+esc(v.id)+'\')">CREATE EBAY PRESALE</button>';
   else if(status==='LISTED')action='<button class="hbtn" style="margin-top:6px;width:100%;min-height:30px;font-size:9px" onclick="createFocEbayPresale(\''+esc(v.id)+'\')">LIST MORE ON EBAY</button>';
-  if((status==='LISTED'||status==='SOLD_OUT')&&v.ebayListingId)action=focEbayEditHtml(v)+action;
+  // Presold some and have another copy? It goes on the same listing -- a
+  // second listing for the cover is refused, and the sold ones stay sold.
+  if((status==='LISTED'||status==='SOLD_OUT')&&v.ebayListingId)action=focEbayEditHtml(v)+'<button class="hbtn" style="margin-top:6px;width:100%;min-height:30px;font-size:9px;color:var(--gold)" title="Put more copies up on this same eBay listing -- the ones already sold stay sold" onclick="focEbayAddCopies(\''+esc(v.id)+'\')">+ ADD COPIES TO THIS LISTING</button>';
   return '<div style="margin-top:8px;padding-top:7px;border-top:1px solid var(--border)">'+badge+(detail?'<div style="font:8px/1.5 var(--font-mono);color:var(--dim);margin-top:4px">'+esc(detail)+'</div>':'')+action+'</div>';
 }
 // Store ask: "I need an easier way to re-price and change things for eBay
@@ -532,8 +534,15 @@ async function saveFocEbayEdit(skuId){
   try{await api('/foc/admin/ebay-presale-edit',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});toast_dash('eBay listing updated');await refreshCycleFamilies();}
   catch(e){toast_dash('eBay update failed: '+e.message);}
 }
+function focEbayAddCopies(skuId){
+  var qEl=document.querySelector('[data-ebay-edit-qty="'+CSS.escape(skuId)+'"]');
+  if(!qEl){toast_dash('This cover is on more than one eBay listing -- add copies on eBay directly');return;}
+  var n=parseInt(prompt('How many more copies to put up on eBay? The ones already sold stay sold.','1'),10);
+  if(!(n>0))return;
+  qEl.value=String(Number(qEl.value||0)+n);saveFocEbayEdit(skuId);
+}
 function focFillEbayPrice(skuId,price){var el=document.querySelector('[data-ebay-edit-price="'+CSS.escape(skuId)+'"]');if(!el)return;el.value=Number(price).toFixed(2);el.focus();toast_dash('eBay price filled in -- press SAVE TO EBAY');}
-window.saveFocEbayEdit=saveFocEbayEdit;window.focFillEbayPrice=focFillEbayPrice;
+window.saveFocEbayEdit=saveFocEbayEdit;window.focEbayAddCopies=focEbayAddCopies;window.focFillEbayPrice=focFillEbayPrice;
 function lunarCostLine(v){
   if(v.distributor!=='Lunar')return'';
   var costCents=lunarEstCostCents(v);

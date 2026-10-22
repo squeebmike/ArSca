@@ -11596,8 +11596,18 @@ async function routeRequest(request, env, ctx) {
       if (!hasPrice && !hasQty) throw new Error('Nothing to change');
       if (d.ebayApiSystem === 'trading') {
         if (!d.ebayListingId || !d.ebaySku) throw new Error('This listing is missing its eBay item id');
-        const parts = (hasPrice ? `<StartPrice>${Number(price).toFixed(2)}</StartPrice>` : '') + (hasQty ? `<Quantity>${Number(quantity)}</Quantity>` : '');
-        await ebayTradingApiCall(ebayToken, 'ReviseFixedPriceItem', `<Item><ItemID>${xmlEscape(d.ebayListingId)}</ItemID><Variations><Variation><SKU>${xmlEscape(d.ebaySku)}</SKU>${parts}</Variation></Variations></Item>`);
+        // A multi-cover listing counts a cover's Quantity as sold + left, so
+        // "1 available" on a cover that already presold 1 would leave none
+        // for sale. The copies eBay has sold are added back on.
+        const live = async () => { try { const got = await ebayTradingApiCall(ebayToken, 'GetItem', `<ItemID>${xmlEscape(d.ebayListingId)}</ItemID><DetailLevel>ReturnAll</DetailLevel><IncludeVariations>true</IncludeVariations>`); return ebayItemFromGetItem(got.raw)?.variations.find(x => x.sku === d.ebaySku) || null; } catch (_) { return null; } };
+        const revise = (q) => ebayTradingApiCall(ebayToken, 'ReviseFixedPriceItem', `<Item><ItemID>${xmlEscape(d.ebayListingId)}</ItemID><Variations><Variation><SKU>${xmlEscape(d.ebaySku)}</SKU>${hasPrice ? `<StartPrice>${Number(price).toFixed(2)}</StartPrice>` : ''}${q != null ? `<Quantity>${q}</Quantity>` : ''}</Variation></Variations></Item>`);
+        const sold = hasQty ? Number((await live())?.sold || 0) : 0;
+        await revise(hasQty ? Number(quantity) + sold : null);
+        if (hasQty && sold > 0) {
+          // eBay took it as what's left after all -- set it back.
+          const now = await live();
+          if (now && now.available === Number(quantity) + sold) await revise(Number(quantity));
+        }
         return { ok: true };
       }
       if (!d.ebayOfferId || !d.ebaySku) throw new Error('This listing is missing its eBay offer id');
