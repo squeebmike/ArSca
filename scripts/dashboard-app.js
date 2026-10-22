@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.10.22.1-ebay-qty-follows-sales';
+const APP_VERSION = '2026.10.22.2-ebay-follows-dashboard';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -23967,7 +23967,11 @@ async function updateBuiltInInventoryItem(item, updates){
       .select('id');
     if(error) throw new Error('Built-in inventory update ' + error.message);
     if(!rows?.length) throw new Error('Built-in inventory update matched no row (id/store mismatch or permission denied)');
+    // eBay follows what the dashboard says we have: a new count (or the
+    // item going sold / back in stock) goes to its live eBay listing.
+    const beforeQty = Number(item.qty ?? item.quantity ?? 0), beforeStatus = item.status;
     applyDashboardItemUpdate(item.id, updates);
+    if((nextData.ebayListingId || item.ebayListingId) && (Number(nextData.qty ?? nextData.quantity ?? 0) !== beforeQty || (nextData.status || 'in_stock') !== beforeStatus)) storeWorkerFetch('/ebay/sync-item-quantities', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ itemIds:[item.supabaseRowId || item.id] }) }).catch(() => {});
     return true;
   }
   // LOCAL-FIRST OFFLINE FALLBACK: save locally + queue Supabase sync for retry

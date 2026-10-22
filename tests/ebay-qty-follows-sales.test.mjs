@@ -1,15 +1,16 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { ebayQtyOverDashboard } from '../scripts/foc-preorders.mjs';
+import { ebayQtyOffDashboard } from '../scripts/foc-preorders.mjs';
 
 // Store ask: "Sell one in Whatnot, eBay ticks down 1 also?" and "should
 // tell me and fix automatically" -- after 247 Comics Spotlight #1 Cover K/L
-// sold more on eBay than the dashboard had. A sale on Whatnot, the register
-// or the website now sets the item's eBay listing to what's left, and every
-// 6 hours any listing offering more than the dashboard has is lowered and
-// the store is emailed.
+// sold more on eBay than the dashboard had -- then "eBay stock amount should
+// follow what the dashboard says we have." A sale on Whatnot, the register or
+// the website, an edit and a refund restock set the item's eBay listing to
+// what the dashboard has, and every 6 hours any listing that differs is set
+// to it (lowered or raised) and the store is emailed.
 
-// ── Which listings eBay shows more of ──
+// ── Which listings differ from the dashboard ──
 {
   const active = [
     { itemId: '1', title: 'Plush', available: 3, sold: 0, variations: [] },
@@ -28,10 +29,12 @@ import { ebayQtyOverDashboard } from '../scripts/foc-preorders.mjs';
     { id: 'x2', status: 'in_stock', data: { name: 'B', ebayListingId: '4', qty: 1 } },
     { id: 'w', status: 'in_stock', data: { name: 'Withdrawn', ebayListingId: '1', ebayWithdrawnAt: 'x', qty: 0 } },
   ];
-  const over = ebayQtyOverDashboard({ active, rows });
-  const by = Object.fromEntries(over.map(o => [o.rowId, o]));
-  assert.deepEqual(Object.keys(by).sort(), ['g', 'k', 'p'], 'K, the plush and the sold Goblin Storm -- never the bundle, a listing two rows share, or a cover eBay shows fewer of');
+  const off = ebayQtyOffDashboard({ active, rows });
+  const by = Object.fromEntries(off.map(o => [o.rowId, o]));
+  assert.deepEqual(Object.keys(by).sort(), ['g', 'k', 'l', 'p'], 'K, L, the plush and the sold Goblin Storm -- never the bundle or a listing two rows share');
   assert.equal(by.k.ebayQty, 3); assert.equal(by.k.dashQty, 1); assert.equal(by.k.trading, true); assert.equal(by.k.label, 'Cover K'); assert.equal(by.k.name, 'Cover K');
+  assert.equal(by.k.raise, false);
+  assert.equal(by.l.ebayQty, 1); assert.equal(by.l.dashQty, 2); assert.equal(by.l.raise, true, 'eBay shows fewer than we have: raised');
   assert.equal(by.g.dashQty, 0, 'sold counts as none left');
 }
 
@@ -41,7 +44,7 @@ globalThis.caches = { default: { match: async () => null, put: async () => {} } 
 const ok = body => new Response(JSON.stringify(body), { headers: { 'Content-Type': 'application/json' } });
 const xmlOk = inner => new Response(`<?xml version="1.0"?><R><Ack>Success</Ack>${inner || ''}</R>`, { headers: { 'Content-Type': 'text/xml' } });
 
-function mockEbay(seen, { item, offers = {}, active = '' }) {
+function mockEbay(seen, { item, offers = {}, active = '', recentOrders = [] }) {
   return async (input, init = {}) => {
     const url = String(input.url || input), u = decodeURIComponent(url);
     if (url.includes('/auth/v1/user')) return ok({ id: 'u1', email: 'staff@example.com' });
@@ -57,7 +60,7 @@ function mockEbay(seen, { item, offers = {}, active = '' }) {
     if (url.startsWith('https://api.ebay.com/sell/inventory/v1/offer?sku=')) { const sku = new URL(url).searchParams.get('sku'); return ok({ offers: offers[sku] ? [{ offerId: offers[sku], listing: { listingId: '1' } }] : [] }); }
     if (url.includes('/sell/inventory/v1/bulk_update_price_quantity')) { seen.bulk.push(JSON.parse(init.body)); return ok({ responses: [{ statusCode: 200 }] }); }
     if (/\/sell\/inventory\/v1\/offer\/[^/]+\/withdraw/.test(url)) { seen.withdrawn.push(url); return ok({}); }
-    if (url.startsWith('https://api.ebay.com/sell/fulfillment')) return ok({ total: 0, orders: [] });
+    if (url.startsWith('https://api.ebay.com/sell/fulfillment')) { if (/creationdate/.test(u)) { seen.recentLookups++; return ok({ orders: recentOrders }); } return ok({ total: 0, orders: [] }); }
     if (url.startsWith('https://comms.twilio.com/v1/Emails')) { seen.emails.push(JSON.parse(init.body)); return ok({}); }
     if (url.includes('/rest/v1/inventory_items') && !init.method) {
       if (u.includes('data->>ebayListingId=gt.0')) return ok(seen.rows);
@@ -72,7 +75,7 @@ function mockEbay(seen, { item, offers = {}, active = '' }) {
 const env = { SUPABASE_URL: 'https://db.example', SUPABASE_SERVICE_ROLE_KEY: 'k', EBAY_REFRESH_TOKEN: 'refresh', TWILIO_ACCOUNT_SID: 'a', TWILIO_AUTH_TOKEN: 'b', TWILIO_EMAIL_FROM_ADDRESS: 'shop@example.com' };
 const kvEnv = () => { const kv = new Map([['secret:EBAY_ACCESS_TOKEN', 'tok'], ['secret:EBAY_ACCESS_EXPIRES', String(Date.now() + 3600e3)]]); return { ...env, LBA_KV: { get: async (k, t) => { const v = kv.get(k); return v == null ? null : t === 'json' ? JSON.parse(v) : v; }, put: async (k, v) => { kv.set(k, v); }, delete: async k => { kv.delete(k); } }, kv }; };
 const sale = (e, body) => api.fetch(new Request('https://api.example/inventory/record-external-sale', { method: 'POST', headers: { Authorization: 'Bearer t', 'X-Store-Id': 'store-1', 'Content-Type': 'application/json' }, body: JSON.stringify(body) }), e, { waitUntil() {} });
-const fresh = () => ({ trading: [], bulk: [], withdrawn: [], emails: [], patches: [], rows: [] });
+const fresh = () => ({ trading: [], bulk: [], withdrawn: [], emails: [], patches: [], rows: [], recentLookups: 0 });
 const ITEM = 'aaaaaaaa-0000-4000-8000-000000000001';
 
 try {
@@ -130,7 +133,36 @@ try {
     assert.equal(seen.emails.length, 1, 'and told');
     assert.equal(seen.emails[0].to[0].address, 'hintline@themanapocket.com');
     assert.match(JSON.stringify(seen.emails[0]), /eBay showed 3, you have 1/);
+    assert.match(JSON.stringify(seen.emails[0]), /Lowered/);
     assert.match(JSON.stringify(seen.emails[0]), /Cover K/);
+    assert.equal(seen.recentLookups, 0, 'only lowering: no need to look for recent orders');
+  }
+  // eBay shows 1, the dashboard has 3 (restocked here): raised to 3.
+  const raiseRows = () => [{ id: 'row-p', status: 'in_stock', data: { name: 'Booster Box', qty: 3, ebayListingId: '257711111111' } }];
+  const raiseActive = '<ActiveList><Item><ItemID>257711111111</ItemID><Title>Booster Box</Title><Quantity>1</Quantity><SellingStatus><QuantitySold>0</QuantitySold></SellingStatus></Item></ActiveList>';
+  {
+    const seen = fresh(), e = kvEnv();
+    seen.rows = raiseRows();
+    globalThis.fetch = mockEbay(seen, { active: raiseActive });
+    const waits = [];
+    await api.scheduled({}, e, { waitUntil: p => waits.push(p) });
+    await Promise.all(waits);
+    const revise = seen.trading.find(([c]) => c === 'ReviseInventoryStatus');
+    assert.ok(revise, 'raised on eBay');
+    assert.match(revise[1], /<ItemID>257711111111<\/ItemID><Quantity>3<\/Quantity>/);
+    assert.match(JSON.stringify(seen.emails[0]), /Raised/);
+  }
+  // ...unless it sold on eBay in the last half hour (maybe not recorded yet).
+  {
+    const seen = fresh(), e = kvEnv();
+    seen.rows = raiseRows();
+    globalThis.fetch = mockEbay(seen, { active: raiseActive, recentOrders: [{ orderId: 'o1', lineItems: [{ legacyItemId: '257711111111' }] }] });
+    const waits = [];
+    await api.scheduled({}, e, { waitUntil: p => waits.push(p) });
+    await Promise.all(waits);
+    assert.equal(seen.recentLookups, 1);
+    assert.ok(!seen.trading.some(([c]) => c === 'ReviseInventoryStatus'), 'not raised back over a sale that may not be in yet');
+    assert.equal(seen.emails.length, 0);
   }
   // Nothing off: no change, no email.
   {
@@ -155,7 +187,10 @@ try {
 // The website and the register follow too.
 const worker = readFileSync(new URL('../cloudflare-worker-full.js', import.meta.url), 'utf8');
 assert.ok(worker.includes("await focInternalPost(env, { waitUntil() {}, passThroughOnException() {} }, storeId, '/ebay/sync-item-quantities', { itemIds: touched });"), 'website checkout');
+assert.match(worker, /async function restockRefundItems\([^)]*\)\{[\s\S]*?finally\{await ebayFollowRestock\(env,storeId,lines\);\}/, 'refund restock');
+assert.match(worker, /async function restockVoidedSaleLines\([^)]*\)\{\n  try\{return await restockVoidedLines\([^)]*\);\}\n  finally\{await ebayFollowRestock\(env,storeId,lines\);\}/, 'void restock');
 const ui = readFileSync(new URL('../scripts/dashboard-app.js', import.meta.url), 'utf8');
 assert.ok(ui.includes("if(onEbay.length) storeWorkerFetch('/ebay/sync-item-quantities'"), 'register');
+assert.ok(ui.includes("if((nextData.ebayListingId || item.ebayListingId) && (Number(nextData.qty ?? nextData.quantity ?? 0) !== beforeQty || (nextData.status || 'in_stock') !== beforeStatus)) storeWorkerFetch('/ebay/sync-item-quantities'"), 'an edit to the count');
 assert.ok(ui.includes("if((path === '/inventory/record-external-sale' || path === '/ebay/sync-item-quantities') && res.ok)"), 'says what eBay shows now');
 console.log('eBay quantity follows sales checks passed');
