@@ -148,7 +148,7 @@ try {
 
 // The dashboard: every caller of the sale route brings consignments up to date.
 const ui = readFileSync(new URL('../scripts/dashboard-app.js', import.meta.url), 'utf8');
-assert.ok(ui.includes("if(path === '/inventory/record-external-sale' && res.ok) res.clone().json().then(d => { if(d?.consigned) noteConsignedSales([d.consigned]); }).catch(() => {});"));
+assert.ok(ui.includes("if((path === '/inventory/record-external-sale' || path === '/ebay/sync-item-quantities') && res.ok) res.clone().json().then(d => { if(d?.consigned) noteConsignedSales([d.consigned]);"));
 assert.ok(ui.includes('if(consigned.length) await noteConsignedSales(consigned);'));
 assert.match(ui, /async function noteConsignedSales\(list\)\{\n  if\(!list\?\.length\) return;\n  await loadConsignmentsFromCloud\(\)/);
 console.log('FOC presale oversold and Whatnot consignment checks passed');

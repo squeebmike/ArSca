@@ -46,7 +46,7 @@ function harness({ sales, items }) {
     if (String(url).includes('/sell/fulfillment/v1/order/33-3333-3333')) return new Response(JSON.stringify({ orderId:'33-3333-3333', cancelStatus:{ cancelState:'IN_PROGRESS' }, orderPaymentStatus:'PAID' }));
     return new Response('{}', { status:404 });
   };
-  const voidFn = new Function('supabaseAdminFetch', 'fetch', 'console', [fn('ebayOrderIsCancelled'), fn('restockVoidedSaleLines'), fn('voidCancelledEbayOrders'), 'return voidCancelledEbayOrders;'].join('\n'))(db, fetchStub, { warn(){} });
+  const voidFn = new Function('supabaseAdminFetch', 'fetch', 'console', [fn('ebayOrderIsCancelled'), fn('restockVoidedSaleLines'), fn('restockVoidedLines'), 'async function ebayFollowRestock(){}', fn('voidCancelledEbayOrders'), 'return voidCancelledEbayOrders;'].join('\n'))(db, fetchStub, { warn(){} });
   return { calls, voidFn };
 }
 const U1 = '11111111-1111-1111-1111-111111111111', U2 = '22222222-2222-2222-2222-222222222222', U3 = '33333333-3333-3333-3333-333333333333';

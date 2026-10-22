@@ -3480,6 +3480,39 @@ export function compareEbayListings({active=[],rows=[]}){
   const sameCoverTwice=[...listingsPerCover.values()].filter(l=>l.length>1).map(l=>({name:stripPresaleName((rows.find(r=>r.id===l[0].rowId)?.data||{}).name||''),listings:l}));
   return {activeCount:active.length,matched,ebayOnly,goneFromEbay,qtyMismatch,sameCoverTwice,endedStillCounted};
 }
+// Live eBay listings whose quantity isn't what the dashboard has: each
+// listing (or each cover of a multi-cover listing) matched to exactly one
+// row. A sold row counts as 0 -- the one-off sold on Whatnot whose eBay
+// listing is still up. Store ask: "eBay stock amount should follow what the
+// dashboard says we have" (after 247 Comics Spotlight #1 Cover K/L sold more
+// on eBay than the dashboard had).
+export function ebayQtyOffDashboard({active=[],rows=[]}){
+  const byId=new Map(active.map(i=>[String(i.itemId),i]));
+  const perListing=new Map();
+  for(const row of rows){
+    const d=row.data||{},id=String(d.ebayListingId||'');
+    if(!id||d.ebayWithdrawnAt||d.source==='foc_presale_bundle'||!byId.has(id))continue;
+    const list=perListing.get(id)||[];list.push(row);perListing.set(id,list);
+  }
+  const off=[];
+  for(const [id,list] of perListing){
+    const item=byId.get(id);
+    for(const row of list){
+      const d=row.data||{};let ebayQty,variation=null;
+      if(item.variations.length){
+        variation=item.variations.find(v=>v.sku&&v.sku===d.ebaySku)||null;
+        if(!variation||list.filter(r=>r.data?.ebaySku===d.ebaySku).length>1)continue;
+        ebayQty=variation.available;
+      }else{
+        if(list.length>1)continue;
+        ebayQty=item.available;
+      }
+      const dashQty=row.status==='sold'?0:Math.max(0,Number(d.qty??d.quantity??0));
+      if(ebayQty!==dashQty)off.push({rowId:row.id,name:stripPresaleName(d.name||d.title||item.title||''),listingId:id,sku:String(d.ebaySku||''),trading:d.ebayApiSystem==='trading',variation:!!variation,label:variation?.label||'',ebayQty,dashQty,presale:d.source==='foc_presale',offerId:String(d.ebayOfferId||''),raise:dashQty>ebayQty});
+    }
+  }
+  return off;
+}
 async function ebayListingRows(db,storeId){
   const {data}=await db(`inventory_items?store_id=eq.${encodeURIComponent(storeId)}&data->>ebayListingId=not.is.null&status=in.(presale,in_stock,listed)&select=id,status,data`);
   return (data||[]).filter(r=>r.data?.ebayListingId);
