@@ -6,6 +6,9 @@ export const COMIC_SEARCH_CSS = `
 body.mp-comic-searching [data-bl-dynamic],body.mp-comic-searching [data-foc-dynamic],body.mp-comic-searching [data-cnr-dynamic],body.mp-comic-searching #wo-live-shop,body.mp-comic-searching .mp-comic-category-grid{display:none!important}
 body.mp-comic-search-ready .mp-bl-searchbar,body.mp-comic-search-ready #mp-foc-search{display:none!important}
 @media(max-width:520px){#mp-comic-search{padding:14px;margin:16px auto}.mp-cs-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.mp-cs-card{padding:9px}.mp-cs-card img{height:170px}.mp-cs-input input{flex-basis:100%}}
+
+body.mp-page-preorders #mp-comic-search{margin:10px auto;padding:10px 12px;background:var(--wo-surface,#151720);border-color:var(--wo-border,#4e385f);color:var(--wo-text,#f5f5f2)}
+body.mp-page-preorders #mp-comic-search label{font-size:15px}body.mp-page-preorders #mp-comic-search form>p{display:none}body.mp-page-preorders #mp-comic-search .mp-cs-input{flex-wrap:nowrap;margin-top:6px}body.mp-page-preorders #mp-comic-search .mp-cs-input input{flex:1 1 0;min-width:0;width:0;padding:9px;font-size:16px}body.mp-page-preorders #mp-comic-search button{background:var(--wo-accent,#53366b);color:var(--wo-on-accent,#fff);border-color:var(--wo-border,#ac7bcc)}
 `;
 
 export function comicSearchClient(css, shell) {

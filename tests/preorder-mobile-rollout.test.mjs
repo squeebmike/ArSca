@@ -1,0 +1,14 @@
+import assert from 'node:assert/strict';
+import {injectComicSearch} from '../scripts/comic-search.mjs';
+const handlers=new Map();
+globalThis.HTMLRewriter=class{on(selector,handler){handlers.set(selector,handler);return this;}transform(response){return response;}};
+const response=new Response('<body></body>',{headers:{'Content-Type':'text/html'}});
+injectComicSearch(response,new Request('https://www.themanapocket.com/preorders'));
+let src='https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@old/preorders-loader.js';
+const el={getAttribute(){return src;},setAttribute(name,value){assert.equal(name,'src');src=value;}};
+handlers.get('script[src]').element(el);
+assert.equal(src,'https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@2acc413/preorders-loader.js');
+src='https://example.com/preorders-loader.js';handlers.get('script[src]').element(el);assert.equal(src,'https://example.com/preorders-loader.js');
+injectComicSearch(response,new Request('https://www.themanapocket.com/books'));
+src='https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@old/preorders.js';handlers.get('script[src]').element(el);assert.match(src,/@old\//);
+console.log('Preorder asset rollout stays scoped to approved scripts and page');

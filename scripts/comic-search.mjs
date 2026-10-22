@@ -83,5 +83,9 @@ export function comicSearchScriptResponse() {
 export function injectComicSearch(response, request) {
   const path = new URL(request.url).pathname.replace(/\/$/, '');
   if (request.method !== 'GET' || !['/books', '/preorders', '/comic-new-releases-the-mana-pocket', '/category/comics', '/comics/search'].includes(path) || !response.headers.get('Content-Type')?.includes('text/html')) return response;
-  return new HTMLRewriter().on('body', { element(el) { el.append('<script defer src="/comics/search.js"></script>', { html: true }); } }).transform(response);
+  return new HTMLRewriter().on('script[src]', { element(el) {
+    if(path !== '/preorders') return;
+    const src=el.getAttribute('src') || '';
+    if(/^https:\/\/cdn\.jsdelivr\.net\/gh\/squeebmike\/wo-scripts@[^/]+\/preorders(?:-loader)?\.js(?:\?.*)?$/.test(src)) el.setAttribute('src',src.replace(/wo-scripts@[^/]+\//,'wo-scripts@2acc413/'));
+  } }).on('body', { element(el) { el.append('<script defer src="/comics/search.js"></script>', { html: true }); } }).transform(response);
 }

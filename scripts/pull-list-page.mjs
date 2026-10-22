@@ -11,11 +11,11 @@ const STYLE = `<style>
 .mp-pull h1{font-size:30px;margin:0 0 8px}
 .mp-pull h2{font-size:18px;margin:26px 0 8px}
 .mp-pull p{line-height:1.55;margin:0 0 10px;opacity:.85}
-.mp-pull a{color:#8dff2a;text-decoration:underline}
+.mp-pull a{color:var(--wo-accent,#8dff2a);text-decoration:underline}
 .mp-pull input{box-sizing:border-box;width:100%;padding:10px 12px;border-radius:8px;border:1px solid rgba(127,127,127,.45);background:transparent;color:inherit;font:inherit}
 .mp-pull-row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid rgba(127,127,127,.25)}
 .mp-pull-row small{display:block;opacity:.65}
-.mp-pull-btn{cursor:pointer;border:0;border-radius:8px;padding:9px 14px;font:inherit;font-weight:700;background:#8dff2a;color:#171717;white-space:nowrap}
+.mp-pull-btn{cursor:pointer;border:0;border-radius:8px;padding:9px 14px;font:inherit;font-weight:700;background:var(--wo-accent,#8dff2a);color:var(--wo-on-accent,#171717);white-space:nowrap}
 .mp-pull-btn.ghost{background:transparent;color:inherit;border:1px solid rgba(127,127,127,.5)}
 .mp-pull-btn[disabled]{opacity:.5;cursor:default}
 .mp-pull-on{color:#2fbf71;font-weight:700;white-space:nowrap}
