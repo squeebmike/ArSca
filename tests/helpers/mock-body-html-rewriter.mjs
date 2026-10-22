@@ -1,12 +1,19 @@
-// Minimal edge-API stand-in for tests that exercise body script injection.
+// Small edge-API stand-in for body injection and approved script-src rewrites.
 globalThis.HTMLRewriter = class {
-  on(selector, handler) { if (selector !== 'body') throw Error('Unsupported test selector'); this.handler = handler; return this; }
-  transform(response) {
-    let addition = ''; this.handler.element({ append(value) { addition += value; } });
-    const body = new ReadableStream({ async start(controller) {
-      const html = await response.text();
-      controller.enqueue(new TextEncoder().encode(html.replace('</body>', addition + '</body>'))); controller.close();
-    } });
-    return new Response(body, { status: response.status, headers: response.headers });
+  handlers=new Map();
+  on(selector,handler){if(!['body','script[src]'].includes(selector))throw Error('Unsupported test selector');this.handlers.set(selector,handler);return this;}
+  transform(response){
+    const handlers=this.handlers;
+    const body=new ReadableStream({async start(controller){
+      let html=await response.text();
+      const script=handlers.get('script[src]');
+      if(script)html=html.replace(/<script\b[^>]*\bsrc="([^"]*)"[^>]*>/gi,(tag,src)=>{
+        let value=src;script.element({getAttribute:name=>name==='src'?value:null,setAttribute(name,next){if(name==='src')value=next;}});
+        return tag.replace(/\bsrc="[^"]*"/i,'src="'+value+'"');
+      });
+      let addition='';handlers.get('body')?.element({append(value){addition+=value;}});
+      controller.enqueue(new TextEncoder().encode(html.replace('</body>',addition+'</body>')));controller.close();
+    }});
+    return new Response(body,{status:response.status,headers:response.headers});
   }
 };
