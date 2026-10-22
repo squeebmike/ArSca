@@ -106,7 +106,9 @@ try {
     assert.equal(Number(seen.linePatches[0].cost_basis), 4, 'its $4 cost, not $0');
     assert.equal(seen.itemPatches[0].data.focPresaleOriginalQty, 3);
   }
-  // Not the same eBay listing: left alone.
+  // The same cover relisted (eBay shows another listing number -- what the
+  // real 10/11 K/L sales did): a single-cover presale whose every earlier
+  // sale with this exact title went to it is matched by the title.
   {
     const wiped = coverK({ ebaySku: '', ebayListingId: '' });
     const seen = await sync({
@@ -114,6 +116,41 @@ try {
       unlinked: [{ id: 'line-x', sale_id: 'sale-x', source_id: 'ebay:26-9', title: 'Same Title' }],
       earlier: [{ item_id: K, source_id: 'ebay:22-9', title: 'Same Title' }],
       byId: { '26-9': order('26-9', '257700000001', '', 'Same Title'), '22-9': order('22-9', '257799999999', '', 'Same Title') },
+    });
+    assert.equal(seen.linePatches.length, 1);
+    assert.equal(seen.linePatches[0].item_id, K);
+    assert.equal(seen.itemPatches[0].data.focPresaleOriginalQty, 3);
+  }
+  // ...and even when eBay can't be asked about the earlier orders.
+  {
+    const wiped = coverK({ ebaySku: '', ebayListingId: '' });
+    const seen = await sync({
+      rows: [wiped],
+      unlinked: [{ id: 'line-y', sale_id: 'sale-y', source_id: 'ebay:26-8', title: 'Same Title' }],
+      earlier: [{ item_id: K, source_id: 'ebay:22-8', title: 'Same Title' }],
+      byId: { '26-8': order('26-8', '257700000001', '', 'Same Title') },
+    });
+    assert.equal(seen.linePatches.length, 1);
+  }
+  // A cover of a multi-cover listing (covers share one title): never by title.
+  {
+    const grouped = coverK({ ebaySku: '', ebayListingId: '', ebayInventoryItemGroupKey: 'grp-1' });
+    const seen = await sync({
+      rows: [grouped],
+      unlinked: [{ id: 'line-z', sale_id: 'sale-z', source_id: 'ebay:26-7', title: 'Same Title' }],
+      earlier: [{ item_id: K, source_id: 'ebay:22-7', title: 'Same Title' }],
+      byId: { '26-7': order('26-7', '257700000001', '', 'Same Title'), '22-7': order('22-7', '257799999999', '', 'Same Title') },
+    });
+    assert.equal(seen.linePatches.length, 0);
+  }
+  // Earlier sales with that title went to more than one row: never guessed.
+  {
+    const other = { ...coverK({ ebaySku: '', ebayListingId: '' }), id: '960aa1b1-1bc1-41d2-a8c5-6833591300b2' };
+    const seen = await sync({
+      rows: [coverK({ ebaySku: '', ebayListingId: '' }), other],
+      unlinked: [{ id: 'line-w', sale_id: 'sale-w', source_id: 'ebay:26-6', title: 'Same Title' }],
+      earlier: [{ item_id: K, source_id: 'ebay:22-6', title: 'Same Title' }, { item_id: other.id, source_id: 'ebay:23-6', title: 'Same Title' }],
+      byId: { '26-6': order('26-6', '257700000001', '', 'Same Title') },
     });
     assert.equal(seen.linePatches.length, 0);
   }
