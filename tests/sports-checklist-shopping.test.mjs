@@ -70,7 +70,7 @@ for(const section of groups){
  const get=p=>handleBaseballCatalog(new Request('https://www.themanapocket.com'+p),{},new URL('https://www.themanapocket.com'+p),dep);
  for(const c of cards){const r=await get('/baseball/checklists/'+holiday.id+'/cards/'+c.id);assert.equal(r.status,200,c.id);}
  const page=await(await get('/baseball/checklists/'+holiday.id+'/sections/all-non-base')).text();
- assert.match(page,/440 verified/);assert.match(page,/IntersectionObserver/);assert.match(page,/active<2/);assert.match(page,/data-sports-lookup/);
+ assert.match(page,/440 publisher checklist entries/);assert.match(page,/IntersectionObserver/);assert.match(page,/active<2/);assert.match(page,/data-sports-lookup/);
  assert.match(page,/not independently verified/);assert.match(page,/eBay 1\/1/);
  const chrome=groups.find(g=>g.id==='base-cards-chrome-variation'),c=chrome.cards[0];
  const offer={title:'2026 Topps Holiday Baseball Bobby Witt Jr Chrome HC1'};
