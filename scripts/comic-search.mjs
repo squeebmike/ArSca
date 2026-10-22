@@ -80,6 +80,13 @@ export function comicSearchScriptResponse() {
   return new Response('(()=>{const __name=(fn,name)=>Object.defineProperty(fn,"name",{value:name,configurable:true});(' + comicSearchClient.toString() + ')(' + JSON.stringify(COMIC_SEARCH_CSS) + ',' + JSON.stringify(comicSearchShell()) + ');})();', { headers: { 'Content-Type': 'application/javascript; charset=utf-8', 'Cache-Control': 'public, max-age=300' } });
 }
 
+// Origin validators describe Webflow's unmodified HTML, not the rewritten assets.
+export function freshPreorderRequest(request){
+  if(!['GET','HEAD'].includes(request.method)||new URL(request.url).pathname.replace(/\/$/,'')!=='/preorders')return request;
+  const headers=new Headers(request.headers);headers.delete('If-None-Match');headers.delete('If-Modified-Since');
+  return new Request(request,{headers});
+}
+
 export function injectComicSearch(response, request) {
   const path = new URL(request.url).pathname.replace(/\/$/, '');
   if (request.method !== 'GET' || !['/books', '/preorders', '/comic-new-releases-the-mana-pocket', '/category/comics', '/comics/search'].includes(path) || !response.headers.get('Content-Type')?.includes('text/html')) return response;
@@ -87,6 +94,8 @@ export function injectComicSearch(response, request) {
     response=new Response(response.body,response);
     response.headers.set('Cache-Control','public, max-age=0, must-revalidate');
     response.headers.delete('Age');
+    response.headers.delete('ETag');
+    response.headers.delete('Last-Modified');
   }
   const rewriter=new HTMLRewriter();
   if(path === '/preorders') rewriter.on('script[src]', { element(el) {

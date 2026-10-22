@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {injectComicSearch} from '../scripts/comic-search.mjs';
+import {injectComicSearch,freshPreorderRequest} from '../scripts/comic-search.mjs';
 const handlers=new Map();
 globalThis.HTMLRewriter=class{on(selector,handler){handlers.set(selector,handler);return this;}transform(response){return response;}};
 const response=new Response('<body></body>',{headers:{'Content-Type':'text/html'}});
@@ -16,3 +16,7 @@ handlers.clear();
 injectComicSearch(response,new Request('https://www.themanapocket.com/books'));
 assert.equal(handlers.has('script[src]'),false);
 console.log('Preorder asset rollout stays scoped to approved scripts and page');
+
+const conditional=new Request('https://www.themanapocket.com/preorders',{headers:{'If-None-Match':'old-origin','If-Modified-Since':'yesterday'}});
+const fresh=freshPreorderRequest(conditional);assert.equal(fresh.headers.has('If-None-Match'),false);assert.equal(fresh.headers.has('If-Modified-Since'),false);
+const other=new Request('https://www.themanapocket.com/shop',{headers:{'If-None-Match':'keep'}});assert.equal(freshPreorderRequest(other),other);
