@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.10.22.4-consignment-fees-first">
+<meta name="version" content="2026.10.22.5-consignment-sliding-scale">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1807,27 +1807,27 @@ body.show-mode .inv-sync-badge{display:none;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/store-demand.js?v=2026.10.22.4-consignment-fees-first" defer></script>
-<script src="scripts/buy-signal.js?v=2026.10.22.4-consignment-fees-first" defer></script>
-<script src="scripts/query-routing.js?v=2026.10.22.4-consignment-fees-first" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.10.22.4-consignment-fees-first" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.10.22.4-consignment-fees-first" defer></script>
-<script src="scripts/comic-demand.js?v=2026.10.22.4-consignment-fees-first" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.10.22.4-consignment-fees-first" defer></script>
-<script src="scripts/backlist-dashboard.js?v=2026.10.22.4-consignment-fees-first" defer></script>
-<script src="scripts/database-viewer.js?v=2026.10.22.4-consignment-fees-first" defer></script>
-<script src="scripts/card-intake-dashboard.js?v=2026.10.22.4-consignment-fees-first" defer></script>
-<script src="scripts/mana-pocket-task-library.js?v=2026.10.22.4-consignment-fees-first" defer></script>
-<script src="scripts/daily-tasks-dashboard.js?v=2026.10.22.4-consignment-fees-first" defer></script>
-<script src="scripts/expenses.js?v=2026.10.22.4-consignment-fees-first" defer></script>
-<script src="scripts/whatnot-bridge.js?v=2026.10.22.4-consignment-fees-first" defer></script>
+<script src="scripts/store-demand.js?v=2026.10.22.5-consignment-sliding-scale" defer></script>
+<script src="scripts/buy-signal.js?v=2026.10.22.5-consignment-sliding-scale" defer></script>
+<script src="scripts/query-routing.js?v=2026.10.22.5-consignment-sliding-scale" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.10.22.5-consignment-sliding-scale" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.10.22.5-consignment-sliding-scale" defer></script>
+<script src="scripts/comic-demand.js?v=2026.10.22.5-consignment-sliding-scale" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.10.22.5-consignment-sliding-scale" defer></script>
+<script src="scripts/backlist-dashboard.js?v=2026.10.22.5-consignment-sliding-scale" defer></script>
+<script src="scripts/database-viewer.js?v=2026.10.22.5-consignment-sliding-scale" defer></script>
+<script src="scripts/card-intake-dashboard.js?v=2026.10.22.5-consignment-sliding-scale" defer></script>
+<script src="scripts/mana-pocket-task-library.js?v=2026.10.22.5-consignment-sliding-scale" defer></script>
+<script src="scripts/daily-tasks-dashboard.js?v=2026.10.22.5-consignment-sliding-scale" defer></script>
+<script src="scripts/expenses.js?v=2026.10.22.5-consignment-sliding-scale" defer></script>
+<script src="scripts/whatnot-bridge.js?v=2026.10.22.5-consignment-sliding-scale" defer></script>
 <script src="scripts/research-loupe.js?v=b90e780e52" defer></script>
-<script src="scripts/card-compare.js?v=2026.10.22.4-consignment-fees-first" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.10.22.4-consignment-fees-first" defer></script>
-<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.10.22.4-consignment-fees-first" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.10.22.4-consignment-fees-first" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.10.22.4-consignment-fees-first" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.10.22.4-consignment-fees-first" defer></script>
+<script src="scripts/card-compare.js?v=2026.10.22.5-consignment-sliding-scale" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.10.22.5-consignment-sliding-scale" defer></script>
+<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.10.22.5-consignment-sliding-scale" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.10.22.5-consignment-sliding-scale" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.10.22.5-consignment-sliding-scale" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.10.22.5-consignment-sliding-scale" defer></script>
 </head>
 <body>
 
@@ -1879,7 +1879,7 @@ body.show-mode .inv-sync-badge{display:none;}
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
 <div class="dsb-chip" id="dsb-tasks" title="Today's Roles &amp; Tasks — click to jump to Tasks tab" style="cursor:pointer;display:none" onclick="switchTab('tasks')">✅ <span>TASKS:</span> <b id="dsb-tasks-val">—</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.10.22.4-consignment-fees-first</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.10.22.5-consignment-sliding-scale</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -3927,7 +3927,7 @@ body.show-mode .inv-sync-badge{display:none;}
       <div class="cs-browser-controls">
         <input class="tsi" id="cs-person-name" placeholder="Person / consignor name" style="margin:0">
         <input class="tsi" id="cs-person-contact" placeholder="Phone or email" style="margin:0">
-        <div style="display:flex;gap:7px"><input class="tsi" id="cs-person-split" type="number" min="0" max="100" value="25" placeholder="Store %" style="margin:0;min-width:0"><button class="hbtn" onclick="addConsignorPerson()">ADD PERSON</button></div>
+        <div style="display:flex;gap:7px"><input class="tsi" id="cs-person-split" type="number" min="0" max="100" value="" placeholder="Store keeps % · blank = sliding scale" title="Leave blank for the sliding scale (store keeps 30% under $50, 25% to $250, 20% to $1,000, 15% above). 0 = they get it all." style="margin:0;min-width:0"><button class="hbtn" onclick="addConsignorPerson()">ADD PERSON</button></div>
       </div>
       <div id="cs-people-list" style="display:flex;gap:7px;flex-wrap:wrap"></div>
     </div>
@@ -3939,13 +3939,14 @@ body.show-mode .inv-sync-badge{display:none;}
         <input class="tsi" id="cs-item" placeholder="Item name, description">
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
           <div><label style="font-family:monospace;font-size:9px;color:var(--dim);display:block;margin-bottom:3px">Consignor Name</label>
-            <input class="tsi" id="cs-owner" placeholder="Customer name" style="margin-bottom:0"></div>
+            <input class="tsi" id="cs-owner" placeholder="Customer name" oninput="consignFormSplitAuto()" style="margin-bottom:0"></div>
           <div><label style="font-family:monospace;font-size:9px;color:var(--dim);display:block;margin-bottom:3px">Contact</label>
             <input class="tsi" id="cs-contact" placeholder="Phone or email" style="margin-bottom:0"></div>
           <div><label style="font-family:monospace;font-size:9px;color:var(--dim);display:block;margin-bottom:3px">Asking Price ($)</label>
-            <input type="number" id="cs-price" step="0.01" placeholder="0.00" style="width:100%;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:8px 12px;border-radius:6px;font-size:12px"></div>
-          <div><label style="font-family:monospace;font-size:9px;color:var(--dim);display:block;margin-bottom:3px">Your Split %</label>
-            <input type="number" id="cs-split" value="25" min="0" max="100" placeholder="25" style="width:100%;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:8px 12px;border-radius:6px;font-size:12px"></div>
+            <input type="number" id="cs-price" step="0.01" placeholder="0.00" oninput="consignFormSplitAuto()" style="width:100%;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:8px 12px;border-radius:6px;font-size:12px"></div>
+          <div><label style="font-family:monospace;font-size:9px;color:var(--dim);display:block;margin-bottom:3px">Store Keeps % <span style="opacity:.7">(0 = owner gets it all)</span></label>
+            <input type="number" id="cs-split" value="30" min="0" max="100" placeholder="30" oninput="this.dataset.manual='1'" style="width:100%;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:8px 12px;border-radius:6px;font-size:12px">
+            <div id="cs-split-note" style="font-family:monospace;font-size:8px;color:var(--dim);margin-top:3px">Sliding scale: store keeps 30% under $50 · 25% to $250 · 20% to $1,000 · 15% above</div></div>
           <div><label style="font-family:monospace;font-size:9px;color:var(--dim);display:block;margin-bottom:3px">Owner Cost / Basis ($)</label>
             <input type="number" id="cs-cost" step="0.01" placeholder="Optional" style="width:100%;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:8px 12px;border-radius:6px;font-size:12px"></div>
           <div><label style="font-family:monospace;font-size:9px;color:var(--dim);display:block;margin-bottom:3px">Current Market Value ($)</label>
@@ -4101,8 +4102,8 @@ body.show-mode .inv-sync-badge{display:none;}
   <a class="lba-nav-btn active" href="dashboard.html"><span class="nav-ico">▦</span>DASHBOARD</a>
 </div>
 
-<script src="scripts/dashboard-app.js?v=2026.10.22.4-consignment-fees-first"></script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.10.22.4-consignment-fees-first" defer></script>
+<script src="scripts/dashboard-app.js?v=2026.10.22.5-consignment-sliding-scale"></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.10.22.5-consignment-sliding-scale" defer></script>
 </body>
 </html>
 
