@@ -37,6 +37,7 @@ async function run({ newSale, soldItem = null }) {
     }
     if (url.includes('/rest/v1/pos_sales') && init.method === 'POST') { seen.sales.push(JSON.parse(init.body).id); return ok([]); }
     if (url.includes('/rest/v1/pos_sale_lines') && !init.method && u.includes('item_id=eq.' + ITEM)) return ok([{ sale_id: 'sale-earlier', unit_price: 445.5, quantity: 1 }]);
+    if (url.includes('/rest/v1/pos_payments') && !init.method && u.includes('sale_id=eq.sale-earlier')) return ok([{ provider_metadata: { fee: 60.78 } }]);
     if (url.includes('/rest/v1/consignment_items') && !init.method) {
       if (claimed) return ok([]);
       if (u.includes('inventory_item_id=not.is.null')) return ok([{ inventory_item_id: ITEM }]);
@@ -70,8 +71,12 @@ try {
     const a = seen.alerts[0];
     assert.equal(a.consignment_id, 'cs_1784160677897');
     assert.equal(a.owner_name, 'Sean C');
-    assert.equal(a.store_cut, 147.02, '33% of $445.50');
-    assert.equal(a.owner_payout, 298.48);
+    // eBay's fee comes off first; the 33/67 split is of what's left.
+    const fee = p.marketplace_fee;
+    assert.ok(fee > 50 && fee < 70, "eBay's fee on $445.50 is kept on the consignment: " + fee);
+    assert.equal(a.store_cut, Math.round((445.5 - fee) * 33) / 100, '33% of what is left after eBay');
+    assert.equal(a.owner_payout, Math.round((445.5 - fee - a.store_cut) * 100) / 100);
+    assert.ok(a.owner_payout < 298.48, 'less than 67% of the full price');
     assert.equal(a.source, 'ebay');
     assert.equal(a.status, 'open');
   }
@@ -81,7 +86,9 @@ try {
     assert.equal(seen.consignPatches.length, 1);
     assert.equal(seen.consignPatches[0].sale_id, 'sale-earlier', "the item's own eBay sale");
     assert.equal(seen.consignPatches[0].sold_at, '2026-10-22T00:09:00Z');
-    assert.equal(seen.alerts[0].owner_payout, 298.48);
+    assert.equal(seen.consignPatches[0].marketplace_fee, 60.78, "the eBay fee from the sale's payment");
+    assert.equal(seen.alerts[0].store_cut, 126.96, '33% of $445.50 - $60.78');
+    assert.equal(seen.alerts[0].owner_payout, 257.76);
   }
   // Sold some other way: left for the register's own flow.
   {

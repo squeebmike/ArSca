@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.10.22.3-ebay-qty-changes-list';
+const APP_VERSION = '2026.10.22.4-consignment-fees-first';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -22788,10 +22788,10 @@ let consignorPeople = safeLocalJson('pos_consignors', []);
 let consignmentCloudReady = false;
 let consignmentCloudSyncTimer = null;
 function consignPersonToCloud(p){return {id:p.id||('person_'+Date.now()),store_id:getActiveStoreId(),name:String(p.name||'').trim(),contact:String(p.contact||''),store_split_percent:Number(p.split??25),active:p.active!==false,created_at:p.createdAt||new Date().toISOString(),updated_at:p.updatedAt||new Date().toISOString()};}
-function consignItemToCloud(c){const person=consignorPeople.find(p=>String(p.name||'').toLowerCase()===String(c.owner||'').toLowerCase());return {id:c.id,store_id:getActiveStoreId(),consignor_id:person?.id||null,inventory_item_id:c.inventoryId||null,item_name:c.item||'Item',owner_name:c.owner||'',contact:c.contact||'',list_price:Number(c.price||0),store_split_percent:Number(c.split??25),cost_basis:Number(c.costBasis||0),market_value:Number(c.marketValue||0),inventory_sku:c.inventorySku||'',notes:c.notes||'',expires_on:c.expires||null,status:c.status||'active',sale_id:c.saleId||null,sale_price:c.salePrice==null?null:Number(c.salePrice),paid_out:!!c.paidOut,added_at:c.addedAt||new Date().toISOString(),sold_at:c.soldAt||null,returned_at:c.returnedAt||null,paid_out_at:c.paidOutAt||null,updated_at:new Date().toISOString()};}
+function consignItemToCloud(c){const person=consignorPeople.find(p=>String(p.name||'').toLowerCase()===String(c.owner||'').toLowerCase());return {id:c.id,store_id:getActiveStoreId(),consignor_id:person?.id||null,inventory_item_id:c.inventoryId||null,item_name:c.item||'Item',owner_name:c.owner||'',contact:c.contact||'',list_price:Number(c.price||0),store_split_percent:Number(c.split??25),cost_basis:Number(c.costBasis||0),market_value:Number(c.marketValue||0),inventory_sku:c.inventorySku||'',notes:c.notes||'',expires_on:c.expires||null,status:c.status||'active',sale_id:c.saleId||null,sale_price:c.salePrice==null?null:Number(c.salePrice),marketplace_fee:consignMoney(c.marketplaceFee),paid_out:!!c.paidOut,added_at:c.addedAt||new Date().toISOString(),sold_at:c.soldAt||null,returned_at:c.returnedAt||null,paid_out_at:c.paidOutAt||null,updated_at:new Date().toISOString()};}
 function consignAlertToCloud(a){return {id:a.id,store_id:getActiveStoreId(),consignment_id:a.consignmentId,inventory_item_id:a.inventoryId||null,sale_id:a.saleId||null,owner_name:a.owner||'',item_name:a.item||'Item',sale_price:Number(a.salePrice||0),store_cut:Number(a.storeCut||0),owner_payout:Number(a.ownerPayout||0),source:a.source||'sale',status:a.status||'open',sold_at:a.soldAt||null,created_at:a.createdAt||new Date().toISOString(),updated_at:new Date().toISOString()};}
 function consignPersonFromCloud(p){return {id:p.id,name:p.name,contact:p.contact||'',split:Number(p.store_split_percent??25),active:p.active!==false,createdAt:p.created_at,updatedAt:p.updated_at,stripeAccountId:p.stripe_account_id||'',stripeOnboardingStatus:p.stripe_onboarding_status||'not_started',stripeTransfersEnabled:!!p.stripe_transfers_enabled};}
-function consignItemFromCloud(c){return {id:c.id,item:c.item_name,owner:c.owner_name,contact:c.contact||'',price:Number(c.list_price||0),split:Number(c.store_split_percent??25),costBasis:Number(c.cost_basis||0),marketValue:Number(c.market_value||0),inventoryId:c.inventory_item_id||'',inventorySku:c.inventory_sku||'',notes:c.notes||'',expires:c.expires_on||'',status:c.status||'active',saleId:c.sale_id||'',salePrice:c.sale_price==null?null:Number(c.sale_price),paidOut:!!c.paid_out,addedAt:c.added_at,soldAt:c.sold_at,returnedAt:c.returned_at,paidOutAt:c.paid_out_at,stripeTransferId:c.stripe_transfer_id||'',paidVia:c.paid_via||''};}
+function consignItemFromCloud(c){return {id:c.id,item:c.item_name,owner:c.owner_name,contact:c.contact||'',price:Number(c.list_price||0),split:Number(c.store_split_percent??25),costBasis:Number(c.cost_basis||0),marketValue:Number(c.market_value||0),inventoryId:c.inventory_item_id||'',inventorySku:c.inventory_sku||'',notes:c.notes||'',expires:c.expires_on||'',status:c.status||'active',saleId:c.sale_id||'',salePrice:c.sale_price==null?null:Number(c.sale_price),marketplaceFee:Number(c.marketplace_fee||0),paidOut:!!c.paid_out,addedAt:c.added_at,soldAt:c.sold_at,returnedAt:c.returned_at,paidOutAt:c.paid_out_at,stripeTransferId:c.stripe_transfer_id||'',paidVia:c.paid_via||''};}
 function consignAlertFromCloud(a){return {id:a.id,consignmentId:a.consignment_id,inventoryId:a.inventory_item_id||'',saleId:a.sale_id||'',owner:a.owner_name,item:a.item_name,salePrice:Number(a.sale_price||0),storeCut:Number(a.store_cut||0),ownerPayout:Number(a.owner_payout||0),source:a.source,status:a.status,soldAt:a.sold_at,createdAt:a.created_at};}
 async function loadConsignmentsFromCloud(){
   const sb=getSupabaseClient(),session=getAuthSession(),storeId=getActiveStoreId();if(!sb||!session?.supabase||!storeId||storeId==='demo')return false;
@@ -22806,7 +22806,7 @@ function scheduleConsignmentCloudSync(){if(!consignmentCloudReady)return;clearTi
 // eBay sales mark consignments sold in the Worker. This device may still
 // hold them as active, and the upsert below writes every consignment -- so
 // one sold in the cloud is taken as sold here first, never flipped back.
-async function adoptCloudSoldConsignments(sb,storeId){const active=consignItems.filter(c=>c?.id&&c.status==='active');if(!active.length)return;const {data,error}=await sb.from('consignment_items').select('id,status,sale_price,sold_at,sale_id').eq('store_id',storeId).eq('status','sold').in('id',active.map(c=>c.id));if(error||!data?.length)return;const byId=new Map(data.map(r=>[r.id,r]));for(const c of active){const r=byId.get(c.id);if(!r)continue;c.status='sold';c.salePrice=r.sale_price==null?c.salePrice:Number(r.sale_price);c.soldAt=r.sold_at||c.soldAt;c.saleId=r.sale_id||c.saleId;}localStorage.setItem('pos_consign',JSON.stringify(consignItems));}
+async function adoptCloudSoldConsignments(sb,storeId){const active=consignItems.filter(c=>c?.id&&c.status==='active');if(!active.length)return;const {data,error}=await sb.from('consignment_items').select('id,status,sale_price,marketplace_fee,sold_at,sale_id').eq('store_id',storeId).eq('status','sold').in('id',active.map(c=>c.id));if(error||!data?.length)return;const byId=new Map(data.map(r=>[r.id,r]));for(const c of active){const r=byId.get(c.id);if(!r)continue;c.status='sold';c.salePrice=r.sale_price==null?c.salePrice:Number(r.sale_price);c.marketplaceFee=Number(r.marketplace_fee||0);c.soldAt=r.sold_at||c.soldAt;c.saleId=r.sale_id||c.saleId;}localStorage.setItem('pos_consign',JSON.stringify(consignItems));}
 async function syncConsignmentsToCloud(){const sb=getSupabaseClient(),storeId=getActiveStoreId();if(!sb||!consignmentCloudReady||!storeId)return false;await adoptCloudSoldConsignments(sb,storeId);for(const [table,rows] of [['consignor_people',consignorPeople.filter(p=>p?.id&&p?.name).map(consignPersonToCloud)],['consignment_items',consignItems.filter(c=>c?.id&&c?.owner).map(consignItemToCloud)],['consignment_alerts',getConsignmentAlerts().filter(a=>a?.id&&a?.consignmentId).map(consignAlertToCloud)]]){if(!rows.length)continue;const {error}=await sb.from(table).upsert(rows,{onConflict:'id'});if(error)throw error;}return true;}
 async function deleteConsignmentCloudRow(table,id){const sb=getSupabaseClient();if(!sb||!consignmentCloudReady||!id)return;const {error}=await sb.from(table).delete().eq('store_id',getActiveStoreId()).eq('id',id);if(error)console.warn('[CONSIGN] Cloud delete failed:',error.message);}
 function saveConsign(){ localStorage.setItem('pos_consign', JSON.stringify(consignItems));scheduleConsignmentCloudSync(); }
@@ -22837,8 +22837,14 @@ function editConsignorPerson(encoded){const oldName=decodeURIComponent(encoded),
 function deleteConsignorPerson(encoded){const name=decodeURIComponent(encoded),hasRecords=consignItems.some(c=>c.owner===name);if(hasRecords)return toast_dash('This consignor has item history. Edit the person instead of deleting them.');if(!confirm('Delete consignor "'+name+'"?'))return;const removed=consignorPeople.find(p=>p.name===name);consignorPeople=consignorPeople.filter(p=>p.name!==name);saveConsignorPeople();deleteConsignmentCloudRow('consignor_people',removed?.id);renderConsign();}
 function consignMoney(value){return Number(value||0)||0;}
 function consignSaleValue(c){return consignMoney(c.salePrice||c.price);}
-function consignStoreCut(c){return consignSaleValue(c)*(consignMoney(c.split)/100);}
-function consignOwnerCut(c){return consignSaleValue(c)-consignStoreCut(c);}
+// An online sale (eBay, Whatnot) splits what's left after the marketplace's
+// fees; a register sale has none and splits the full price.
+function consignFee(c){return Math.min(consignSaleValue(c),Math.max(0,consignMoney(c.marketplaceFee)));}
+function consignSplitBase(c){return consignSaleValue(c)-consignFee(c);}
+// The store's cut is rounded to the cent and the owner gets the rest, the
+// same way the Worker and the Stripe payout figure it.
+function consignStoreCut(c){return Math.round(consignSplitBase(c)*consignMoney(c.split))/100;}
+function consignOwnerCut(c){return Math.round((consignSplitBase(c)-consignStoreCut(c))*100)/100;}
 function consignWorth(c){return consignMoney(c.marketValue||c.market||c.price);}
 function consignMargin(c){const sale=consignSaleValue(c);return sale?consignStoreCut(c)/sale*100:0;}
 function getConsignmentAlerts(){return safeLocalJson('pos_consignment_alerts',[]);}
@@ -22891,8 +22897,8 @@ function renderConsign(){
 
   // Summary stats
   const totalVal = active.reduce((a,c)=>a+c.price,0);
-  const totalFees = sold.reduce((a,c)=>a+(c.salePrice||c.price)*(c.split/100),0);
-  const totalOwed = sold.filter(c=>!c.paidOut).reduce((a,c)=>a+(c.salePrice||c.price)*(1-c.split/100),0);
+  const totalFees = sold.reduce((a,c)=>a+consignStoreCut(c),0);
+  const totalOwed = sold.filter(c=>!c.paidOut).reduce((a,c)=>a+consignOwnerCut(c),0);
   document.getElementById('cs-count').textContent = active.length;
   document.getElementById('cs-value').textContent = '$'+totalVal.toFixed(0);
   document.getElementById('cs-fees').textContent = '$'+totalFees.toFixed(0);
@@ -22921,7 +22927,7 @@ function renderConsign(){
           </div>
           ${c.notes?`<div style="font-family:monospace;font-size:8px;color:rgba(255,255,255,.3)">${escHtml(c.notes)}</div>`:''}
           <div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:5px"><span class="qpl-badge">COST ${fd$(cost)}</span><span class="qpl-badge">WORTH ${fd$(worth)}</span><span class="qpl-badge">STORE PROFIT ${fd$(yourCut)}</span><span class="qpl-badge">MARGIN ${margin.toFixed(1)}%</span><span class="qpl-badge">OWNER PAYOUT ${fd$(ownerCut)}</span>${c.inventorySku?`<span class="qpl-badge">SKU ${escHtml(c.inventorySku)}</span>`:''}</div>
-          ${c.status==='sold'?`<div style="font-family:monospace;font-size:9px;color:var(--g);margin-top:3px">SOLD $${(c.salePrice||c.price).toFixed(2)} · Your cut: $${yourCut.toFixed(2)} · Owed to ${c.owner}: $${ownerCut.toFixed(2)} ${c.paidOut?'<span style="color:var(--g)">✓ PAID</span>':'<span style="color:var(--red)">UNPAID</span>'}</div>`:''}
+          ${c.status==='sold'?`<div style="font-family:monospace;font-size:9px;color:var(--g);margin-top:3px">SOLD $${(c.salePrice||c.price).toFixed(2)}${consignFee(c)?` · marketplace fees $${consignFee(c).toFixed(2)} (split what's left)`:''} · Your cut: $${yourCut.toFixed(2)} · Owed to ${c.owner}: $${ownerCut.toFixed(2)} ${c.paidOut?'<span style="color:var(--g)">✓ PAID</span>':'<span style="color:var(--red)">UNPAID</span>'}</div>`:''}
         </div>
         <div style="text-align:right;flex-shrink:0">
           <div style="font-family:Orbitron,monospace;font-size:14px;font-weight:700;color:var(--gold)">$${c.price.toFixed(2)}</div>

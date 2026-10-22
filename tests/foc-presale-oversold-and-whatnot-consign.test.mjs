@@ -141,7 +141,9 @@ try {
     assert.equal(consignPatches[0].sale_price, 140);
     assert.equal(consignPatches[0].sale_id, d.saleId);
     assert.equal(alerts[0].source, 'whatnot');
-    assert.equal(alerts[0].owner_payout, 105, '75% of $140 to the owner');
+    assert.equal(consignPatches[0].marketplace_fee, 14, "Whatnot's fee kept on the consignment");
+    assert.equal(alerts[0].store_cut, 31.5, '25% of $140 - $14 in Whatnot fees');
+    assert.equal(alerts[0].owner_payout, 94.5, 'the other 75% to the owner');
     assert.equal(d.consigned.owner, 'Sean C');
   }
 } finally { globalThis.fetch = originalFetch; globalThis.caches = originalCaches; }
