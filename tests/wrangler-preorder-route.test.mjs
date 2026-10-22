@@ -35,4 +35,10 @@ const sitemapRoute = config.routes.find(r => r.pattern === 'www.themanapocket.co
 assert.ok(sitemapRoute, 'a route binding for themanapocket.com/sitemap-preorders.xml must exist, or Google can never fetch it');
 assert.equal(sitemapRoute.zone_name, 'themanapocket.com');
 
+// The baseball index exceeds one file. Exact routes do not match ?part=N,
+// so local handler tests alone miss production requests falling to Webflow.
+const baseballSitemapRoute = config.routes.find(r => r.pattern === 'www.themanapocket.com/sitemap-baseball.xml*');
+assert.ok(baseballSitemapRoute, 'split baseball sitemap query URLs must reach the Worker');
+assert.equal(baseballSitemapRoute.zone_name, 'themanapocket.com');
+
 console.log('wrangler.deploy.jsonc /preorder* and /sitemap-preorders.xml route binding contract checks passed');

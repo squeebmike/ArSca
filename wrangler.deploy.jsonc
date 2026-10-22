@@ -53,7 +53,8 @@
     { "pattern": "www.themanapocket.com/sports/checklists*", "zone_name": "themanapocket.com" },
     { "pattern": "www.themanapocket.com/baseball", "zone_name": "themanapocket.com" },
     { "pattern": "www.themanapocket.com/baseball/*", "zone_name": "themanapocket.com" },
-    { "pattern": "www.themanapocket.com/sitemap-baseball.xml", "zone_name": "themanapocket.com" },
+    // Cloudflare matches the query string too; the split sitemap uses ?part=N.
+    { "pattern": "www.themanapocket.com/sitemap-baseball.xml*", "zone_name": "themanapocket.com" },
     { "pattern": "www.themanapocket.com/links", "zone_name": "themanapocket.com" },
     { "pattern": "www.themanapocket.com/links/", "zone_name": "themanapocket.com" },
     { "pattern": "www.themanapocket.com/pokemon", "zone_name": "themanapocket.com" },
