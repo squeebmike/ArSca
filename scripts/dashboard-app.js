@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.10.21.22-ebay-shipped-sale-link';
+const APP_VERSION = '2026.10.21.23-ebay-consignment-sold';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -13144,6 +13144,17 @@ async function syncEbayOrders(silent, reconcile){
       toast_dash(msg);
       logOpsEvent('ebay_order_synced', msg, { results: data.results });
     }
+    // Consigned items an eBay sale used up are sold for their owner too (the
+    // Worker marks them and opens the payout alert); show it here.
+    const consigned = Array.isArray(data.consigned) ? data.consigned : [];
+    if(consigned.length){
+      await loadConsignmentsFromCloud().catch(()=>{});
+      try{ renderConsign(); }catch(e){}
+      try{ renderConsignmentSaleAlerts(); }catch(e){}
+      const msg = consigned.length === 1 ? (consigned[0].item || 'Consigned item') + ' sold on eBay -- $' + Number(consigned[0].ownerPayout||0).toFixed(2) + ' owed to ' + (consigned[0].owner || 'its owner') : consigned.length + ' consigned items sold on eBay -- payouts owed';
+      toast_dash(msg);
+      logOpsEvent('ebay_order_synced', msg, { consigned });
+    }
     // An eBay sale recorded before its item could be matched (no eBay SKU
     // saved) was just tied to that item: it now shows sold, with its cost.
     const linked = Array.isArray(data.linked) ? data.linked : [];
@@ -22768,7 +22779,11 @@ async function loadConsignmentsFromCloud(){
   return true;
 }
 function scheduleConsignmentCloudSync(){if(!consignmentCloudReady)return;clearTimeout(consignmentCloudSyncTimer);consignmentCloudSyncTimer=setTimeout(()=>syncConsignmentsToCloud().catch(e=>console.warn('[CONSIGN] Cloud sync failed:',e.message)),250);}
-async function syncConsignmentsToCloud(){const sb=getSupabaseClient(),storeId=getActiveStoreId();if(!sb||!consignmentCloudReady||!storeId)return false;for(const [table,rows] of [['consignor_people',consignorPeople.filter(p=>p?.id&&p?.name).map(consignPersonToCloud)],['consignment_items',consignItems.filter(c=>c?.id&&c?.owner).map(consignItemToCloud)],['consignment_alerts',getConsignmentAlerts().filter(a=>a?.id&&a?.consignmentId).map(consignAlertToCloud)]]){if(!rows.length)continue;const {error}=await sb.from(table).upsert(rows,{onConflict:'id'});if(error)throw error;}return true;}
+// eBay sales mark consignments sold in the Worker. This device may still
+// hold them as active, and the upsert below writes every consignment -- so
+// one sold in the cloud is taken as sold here first, never flipped back.
+async function adoptCloudSoldConsignments(sb,storeId){const active=consignItems.filter(c=>c?.id&&c.status==='active');if(!active.length)return;const {data,error}=await sb.from('consignment_items').select('id,status,sale_price,sold_at,sale_id').eq('store_id',storeId).eq('status','sold').in('id',active.map(c=>c.id));if(error||!data?.length)return;const byId=new Map(data.map(r=>[r.id,r]));for(const c of active){const r=byId.get(c.id);if(!r)continue;c.status='sold';c.salePrice=r.sale_price==null?c.salePrice:Number(r.sale_price);c.soldAt=r.sold_at||c.soldAt;c.saleId=r.sale_id||c.saleId;}localStorage.setItem('pos_consign',JSON.stringify(consignItems));}
+async function syncConsignmentsToCloud(){const sb=getSupabaseClient(),storeId=getActiveStoreId();if(!sb||!consignmentCloudReady||!storeId)return false;await adoptCloudSoldConsignments(sb,storeId);for(const [table,rows] of [['consignor_people',consignorPeople.filter(p=>p?.id&&p?.name).map(consignPersonToCloud)],['consignment_items',consignItems.filter(c=>c?.id&&c?.owner).map(consignItemToCloud)],['consignment_alerts',getConsignmentAlerts().filter(a=>a?.id&&a?.consignmentId).map(consignAlertToCloud)]]){if(!rows.length)continue;const {error}=await sb.from(table).upsert(rows,{onConflict:'id'});if(error)throw error;}return true;}
 async function deleteConsignmentCloudRow(table,id){const sb=getSupabaseClient();if(!sb||!consignmentCloudReady||!id)return;const {error}=await sb.from(table).delete().eq('store_id',getActiveStoreId()).eq('id',id);if(error)console.warn('[CONSIGN] Cloud delete failed:',error.message);}
 function saveConsign(){ localStorage.setItem('pos_consign', JSON.stringify(consignItems));scheduleConsignmentCloudSync(); }
 function saveConsignorPeople(){localStorage.setItem('pos_consignors',JSON.stringify(consignorPeople));scheduleConsignmentCloudSync();}
