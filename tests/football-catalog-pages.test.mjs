@@ -10,7 +10,7 @@ assert.equal(footballSets.length,8);
 assert.equal(footballSets.reduce((n,s)=>n+s.cards.length,0),2150);
 const xml=await(await get('/sitemap-football.xml')).text();
 const urls=[...xml.matchAll(/<loc>(.*?)<\/loc>/g)].map(m=>m[1]);
-assert.equal(urls.length,9769);assert.equal(new Set(urls).size,urls.length);
+assert.equal(urls.length,10302);assert.equal(new Set(urls).size,urls.length);
 const titles=new Set(),h1s=new Set();
 for(const set of footballSets){
  assert.deepEqual(footballChecklistPublicationProblems(set),[]);
