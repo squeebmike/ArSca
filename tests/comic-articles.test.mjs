@@ -290,3 +290,12 @@ for(const slug of ['2025-topps-chrome-football-licensed-nfl-guide','2025-topps-c
  assert.match(html,/publisher credit/);assert.match(html,/different-card.jpg/);
  assert.match(html,/height:auto;max-height:380px/,'landscape hero art does not inherit a tall fixed height');
 }
+// Actual importer suffixes must not hide verified set stock from its guide.
+{
+ const rows=[{id:'fra-single',name:'Omnipresence',set:'reality-fracture-magic-the-gathering',categorySlug:'mtg',price:4,quantity:1},{id:'commander-printing',name:'Wrong Commander release',set:'Reality Fracture Commander',categorySlug:'mtg',price:6,quantity:1}];
+ const html=renderReleaseInventory('mtg-reality-fracture-2026-collector-guide',rows,{esc:String,isAvailable:i=>i.quantity>0,itemSlug:i=>i.id});
+ assert.ok(html.includes('Omnipresence'));assert.ok(!html.includes('Wrong Commander release'));
+ const many=Array.from({length:12},(_,i)=>({...rows[0],id:'copy-'+i,name:'Copy '+i}));
+ const all=renderReleaseInventory('mtg-reality-fracture-2026-collector-guide',many,{esc:String,isAvailable:i=>i.quantity>0,itemSlug:i=>i.id});
+ assert.ok(all.includes('Showing the first 8'));assert.ok(all.includes('/category/mtg?set=reality-fracture-magic-the-gathering'));
+}

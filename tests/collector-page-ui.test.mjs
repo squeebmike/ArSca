@@ -16,3 +16,5 @@ assert.equal((header.match(/<h1>/g)||[]).length,1);
 assert.ok(header.includes('aria-label="Explore this set"'));
 assert.ok(collectorPageStyles.includes('var(--wo-button')&&collectorPageStyles.includes(':focus-visible'));
 console.log('Collector set headers, theme controls and collision-safe article contents passed');
+assert.ok(document.querySelector('nav details'));
+assert.equal(document.querySelector('nav details').hasAttribute('open'),false,'long article contents start collapsed');

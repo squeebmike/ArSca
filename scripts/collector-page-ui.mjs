@@ -27,5 +27,5 @@ export function articleContents(body,esc){
   if(!id){do{id='guide-section-'+(++number);}while(used.has(id));used.add(id);attrs+=' id="'+id+'"';}
   links.push('<a href="#'+esc(id)+'">'+text+'</a>');return '<h2'+attrs+'>'+content+'</h2>';
  });
- return {html,nav:links.length>1?'<nav class="mp-art-contents" aria-label="On this page"><strong>On this page</strong><div>'+links.join('')+'</div></nav>':''};
+ return {html,nav:links.length>1?'<nav class="mp-art-contents" aria-label="On this page"><details><summary>On this page</summary><div>'+links.join('')+'</div></details></nav>':''};
 }
