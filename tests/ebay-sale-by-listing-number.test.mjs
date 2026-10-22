@@ -112,7 +112,7 @@ assert.match(worker, /const fmt = d => d\.toLocaleDateString\('en-CA', \{ timeZo
 const fmt = d => d.toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' }).replace(/-/g, '');
 assert.equal(fmt(new Date('2026-10-22T00:31:00Z')), '20261021', '5:31 PM Pacific on 10/21 is still the 21st');
 // The sync reports it, and the dashboard reloads so the item shows sold.
-assert.match(worker, /recorded: results\.length, results, linked, errors,/);
+assert.match(worker, /recorded: results\.length, results, linked, consigned, errors,/);
 assert.ok(worker.includes("try { linked.push(...await attachUnlinkedEbaySaleItems(env, storeId, ebayToken, receiptSettings)); }"), 'runs on every order sync');
 const ui = readFileSync(new URL('../scripts/dashboard-app.js', import.meta.url), 'utf8');
 assert.ok(ui.includes("const linked = Array.isArray(data.linked) ? data.linked : [];"));
