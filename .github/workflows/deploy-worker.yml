@@ -35,6 +35,7 @@ on:
       - scripts/department-filters.mjs
       - scripts/store-analytics.mjs
       - scripts/product-shopping.mjs
+      - tests/preorder-mobile-rollout.test.mjs
       - scripts/comic-search.mjs
       - scripts/comic-search-client.mjs
       - scripts/public-pokemon-sets.mjs
