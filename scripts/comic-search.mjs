@@ -83,6 +83,11 @@ export function comicSearchScriptResponse() {
 export function injectComicSearch(response, request) {
   const path = new URL(request.url).pathname.replace(/\/$/, '');
   if (request.method !== 'GET' || !['/books', '/preorders', '/comic-new-releases-the-mana-pocket', '/category/comics', '/comics/search'].includes(path) || !response.headers.get('Content-Type')?.includes('text/html')) return response;
+  if(path === '/preorders'){
+    response=new Response(response.body,response);
+    response.headers.set('Cache-Control','public, max-age=0, must-revalidate');
+    response.headers.delete('Age');
+  }
   const rewriter=new HTMLRewriter();
   if(path === '/preorders') rewriter.on('script[src]', { element(el) {
     const src=el.getAttribute('src') || '';
