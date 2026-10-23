@@ -92,6 +92,7 @@ on:
       - scripts/topps/baseball-2019.mjs
       - scripts/topps/baseball-stocked-2026-10.mjs
       - scripts/topps/baseball-stocked-2026-10-21.mjs
+      - scripts/topps/baseball-chrome-2026.mjs
       - scripts/topps/baseball-stocked-more-2026-10.mjs
       - scripts/topps/baseball-stocked-current-2026-10.mjs
       - scripts/topps/baseball-stocked-inserts-2026-10.mjs
