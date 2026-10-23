@@ -1812,6 +1812,47 @@ async function releaseStorefrontPointsIfUnpayable(env, saleId, storeId) {
   return releaseWebOrderPoints(env, supabaseAdminFetch, storeId, `shop:${saleId}`);
 }
 
+// Stripe's webhook has never reached this worker (stripe_webhook_events is
+// empty), so a paid website order sat "pending" until someone found it under
+// STUCK PAYMENTS -- ORD-3B953ABC sat two days, paid. This asks Stripe itself
+// and does what the webhook would have: paid completes the order (payment,
+// sale, stock, points, eBay); cancelled gives held points back; anything else
+// just records Stripe's status. Never trusts the caller -- only Stripe.
+const OPEN_STRIPE_PAYMENT_STATUSES = ['requires_payment_method','requires_confirmation','requires_action','processing'];
+async function settleStripePaymentFromStripe(env, payment, { confirmedBy } = {}) {
+  const mode = stripeMode(env, payment.stripe_mode);
+  const account = payment.stripe_connected_account_id || undefined;
+  const pi = await stripeApi(env, mode, `payment_intents/${encodeURIComponent(payment.stripe_payment_intent_id)}`, { account });
+  const at = new Date().toISOString();
+  const patchPayment = patch => supabaseAdminFetch(env, `pos_payments?id=eq.${encodeURIComponent(payment.id)}`, { method:'PATCH', headers:{ Prefer:'return=minimal' }, body:JSON.stringify({ ...patch, updated_at:at }) });
+  if (pi.status === 'succeeded') {
+    const charge = pi.latest_charge ? await stripeApi(env, mode, `charges/${encodeURIComponent(pi.latest_charge)}`, { account }).catch(() => null) : null;
+    const card = charge?.payment_method_details?.card || {};
+    await patchPayment({ status:'succeeded', stripe_charge_id:charge?.id || null, card_brand:card.brand || null, card_last4:card.last4 || null, ...(confirmedBy ? { confirmed_by:confirmedBy } : {}), confirmed_at:at });
+    if (payment.sale_id) await fulfillStorefrontOrderInventory(env, payment.sale_id, payment.store_id).catch(e => console.error('Paid-order fulfillment failed:', payment.sale_id, e.message));
+  } else if (pi.status !== payment.status) {
+    await patchPayment({ status:pi.status });
+    if (pi.status === 'canceled' && payment.sale_id) await releaseStorefrontPointsIfUnpayable(env, payment.sale_id, payment.store_id);
+  }
+  return pi.status;
+}
+
+// Every 6 hours: card payments from the last week still open here are checked
+// with Stripe, so a paid order finishes without anyone clicking.
+async function runScheduledStripePaymentCheck(env) {
+  if (!(env.SUPABASE_URL && (env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SERVICE_KEY))) return;
+  const enc = encodeURIComponent;
+  const since = enc(new Date(Date.now() - 7 * 86400 * 1000).toISOString());
+  const before = enc(new Date(Date.now() - 10 * 60 * 1000).toISOString());
+  try {
+    const { data: payments } = await supabaseAdminFetch(env, `pos_payments?provider=eq.stripe&status=in.(${OPEN_STRIPE_PAYMENT_STATUSES.join(',')})&stripe_payment_intent_id=not.is.null&created_at=gt.${since}&created_at=lt.${before}&select=id,sale_id,store_id,status,stripe_mode,stripe_connected_account_id,stripe_payment_intent_id&order=created_at.asc&limit=100`);
+    for (const payment of payments || []) {
+      try { await settleStripePaymentFromStripe(env, payment); }
+      catch (e) { console.error('Stripe payment check failed:', payment.id, e.message); }
+    }
+  } catch (e) { console.error('Stripe payment check scan failed:', e.message); }
+}
+
 async function syncStripeWebhookPayment(env, event, mode) {
   const object=event.data?.object||{};const account=event.account||'';
   let intentId='';let patch={updated_at:new Date().toISOString()};
@@ -7741,6 +7782,12 @@ async function routeRequest(request, env, ctx) {
             await db(`pos_payments?id=eq.${encodeURIComponent(lastPayment.id)}`, { method:'PATCH', headers:{ Prefer:'return=minimal' }, body:JSON.stringify({ amount:totalCents / 100, amount_cents:totalCents }) });
           }
           if (RESUMABLE_INTENT_STATUSES.has(existing.status)) intent = existing;
+          // Paid already, just never recorded here (no webhook): finish the
+          // order instead of charging them a second time.
+          if (existing.status === 'succeeded') {
+            await settleStripePaymentFromStripe(env, lastPayment);
+            return json({ ok:false, error:'This order is already paid -- thank you!' }, 409);
+          }
         } catch (_) { /* fall through to minting a fresh intent below */ }
       }
       if (!intent) {
@@ -7753,6 +7800,34 @@ async function routeRequest(request, env, ctx) {
         await db('pos_payments', { method:'POST', headers:{ Prefer:'return=minimal' }, body:JSON.stringify({ id:crypto.randomUUID(), sale_id:sale.id, store_id:storeId, method:'Stripe Card', amount:totalCents / 100, status:intent.status, provider:'stripe', stripe_mode:mode, stripe_payment_intent_id:intent.id, currency:intent.currency, amount_cents:totalCents, processing_fee_paid_by:'platform_account' }) });
       }
       return json({ ok:true, orderId:order.id, confirmationNumber:order.confirmation_number, clientSecret:intent.client_secret, publishableKey:cfg.publishableKey, amountCents:totalCents, mode });
+    }
+
+    // POST /public/storefront/paid -- the checkout page calls this right
+    // after Stripe says the card went through. Stripe's webhook doesn't reach
+    // us, so without this a paid order waited for the 6-hour check. Takes
+    // only the order's confirmation number; whether it's paid comes from
+    // Stripe itself (settleStripePaymentFromStripe), never from the caller.
+    if (url.pathname === '/public/storefront/paid' && request.method === 'POST') {
+      if (!(env.SUPABASE_URL && (env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SERVICE_KEY))) return json({ ok:false, error:'Storefront service unavailable' }, 503);
+      const limited = await readJsonWithLimit(request, 4 * 1024);
+      if (limited.error) return limited.error;
+      const body = limited.data || {};
+      const storeId = String(body.storeId || '').trim();
+      const confirmationNumber = String(body.confirmationNumber || '').trim().slice(0, 40);
+      if (!/^[0-9a-z_-]{2,80}$/i.test(storeId) || !confirmationNumber) return json({ ok:false, error:'storeId and confirmationNumber are required' }, 400);
+      const rateError = await enforceUsageLimit(env, `storefront-paid:${storeId}:${request.headers.get('CF-Connecting-IP') || 'unknown'}`, 10, 60);
+      if (rateError) return rateError;
+      const enc = encodeURIComponent;
+      const { data:orders } = await supabaseAdminFetch(env, `storefront_orders?store_id=eq.${enc(storeId)}&confirmation_number=eq.${enc(confirmationNumber)}&select=sale_id&limit=1`);
+      const saleId = orders?.[0]?.sale_id;
+      if (!saleId) return json({ ok:false, error:'Order not found' }, 404);
+      const { data:payments } = await supabaseAdminFetch(env, `pos_payments?sale_id=eq.${enc(saleId)}&store_id=eq.${enc(storeId)}&provider=eq.stripe&status=in.(${OPEN_STRIPE_PAYMENT_STATUSES.join(',')})&stripe_payment_intent_id=not.is.null&select=id,sale_id,store_id,status,stripe_mode,stripe_connected_account_id,stripe_payment_intent_id&order=created_at.desc&limit=3`);
+      let paid = false;
+      for (const payment of payments || []) {
+        try { if (await settleStripePaymentFromStripe(env, payment) === 'succeeded') paid = true; }
+        catch (e) { console.error('Storefront paid check failed:', payment.id, e.message); }
+      }
+      return json({ ok:true, paid });
     }
 
     // POST /public/storefront/shipping-quote — public (unauthenticated) real
@@ -13379,20 +13454,13 @@ async function routeRequest(request, env, ctx) {
         }
 
         if (!payment.stripe_payment_intent_id) return json({ ok: false, error: 'No Stripe payment intent on this record' }, 400);
-        const mode = stripeMode(env, payment.stripe_mode);
-        let pi;
+        let status;
         try {
-          pi = await stripeApi(env, mode, `payment_intents/${encodeURIComponent(payment.stripe_payment_intent_id)}`, { account: payment.stripe_connected_account_id || undefined });
+          status = await settleStripePaymentFromStripe(env, payment, { confirmedBy: auth.user.id });
         } catch (e) {
           return json({ ok: false, error: 'Could not reach Stripe to verify this payment: ' + e.message }, 502);
         }
-        if (pi.status !== 'succeeded') return json({ ok: false, error: 'Stripe reports this payment as "' + pi.status + '", not succeeded -- not marking it paid' }, 409);
-        const charge = pi.latest_charge ? await stripeApi(env, mode, `charges/${encodeURIComponent(pi.latest_charge)}`, { account: payment.stripe_connected_account_id || undefined }).catch(() => null) : null;
-        const card = charge?.payment_method_details?.card || {};
-        await supabaseAdminFetch(env, `pos_payments?id=eq.${encodeURIComponent(paymentId)}`, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ status: 'succeeded', stripe_charge_id: charge?.id || null, card_brand: card.brand || null, card_last4: card.last4 || null, confirmed_by: auth.user.id, confirmed_at: new Date().toISOString(), updated_at: new Date().toISOString() }) });
-        if (payment.sale_id) {
-          await fulfillStorefrontOrderInventory(env, payment.sale_id, storeId).catch(e => console.error('Stuck-payment fulfillment failed:', e.message));
-        }
+        if (status !== 'succeeded') return json({ ok: false, error: 'Stripe reports this payment as "' + status + '", not succeeded -- not marking it paid' }, 409);
         return json({ ok: true, status: 'succeeded', saleId: payment.sale_id });
       } catch (e) {
         return json({ ok: false, error: 'Failed to resolve payment: ' + e.message }, 500);
@@ -19012,6 +19080,8 @@ async function runScheduledStaleWebOrderReminders(env, now = Date.now()) {
 
 async function runScheduledPointsHoldSweep(env) {
   if (!(env.SUPABASE_URL && (env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SERVICE_KEY))) return;
+  // Paid orders finish first, so a paid order is never mistaken for unpaid.
+  await runScheduledStripePaymentCheck(env);
   const enc = encodeURIComponent;
   const cutoff = enc(new Date(Date.now() - POINTS_HOLD_TTL_HOURS * 3600 * 1000).toISOString());
   const now = () => new Date().toISOString();

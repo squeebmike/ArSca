@@ -393,6 +393,8 @@ async function confirmStorefrontPayment(){
   try{
     const result=await rt.stripe.confirmPayment({elements:rt.elements, redirect:'if_required'});
     if(result.error) throw new Error(result.error.message);
+    // Tell the store now (it checks with Stripe), so the order shows paid right away.
+    fetch(`${WORKER}/public/storefront/paid`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({storeId:currentStoreId, confirmationNumber:rt.confirmationNumber})}).catch(()=>{});
     cart=[]; saveCart();
     document.getElementById('checkout-content').innerHTML=`<div class="confirm-box">
       <div style="font-size:40px">✅</div>
