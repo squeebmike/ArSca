@@ -48,7 +48,7 @@ import { handleArticlesRequest, articleSitemapPaths, fetchArticles } from './scr
 import { pullListPageBody } from './scripts/pull-list-page.mjs';
 import { COVER_COMING_SOON_JPEG_BASE64 } from './scripts/cover-coming-soon.mjs';
 import { buildRestockList } from './scripts/restock.mjs';
-import { extractSiteChrome, SITE_CHROME_SOURCE } from './scripts/site-chrome.mjs';
+import { extractSiteChrome, SITE_CHROME_SOURCE, currentChromeAssets } from './scripts/site-chrome.mjs';
 import {loadPokemonSets,loadPokemonSetCards} from './scripts/public-pokemon-sets.mjs';
 import { handlePublicPokemonRequest } from './scripts/public-pokemon-sets.mjs';
 import { catalogInventoryHtml, catalogSetInventoryHtml, catalogShoppingLinksHtml, marketplaceDisclosureHtml, catalogShoppingIndex } from './scripts/catalog-inventory.mjs';
@@ -2751,7 +2751,7 @@ function mtgSiteFooter() {
 const SITE_CHROME_CACHE_KEY = new Request('https://internal.themanapocket.com/__cache/site-chrome-v2');
 const SITE_CHROME_TTL_MS = 10 * 60 * 1000;
 let siteChrome = null, siteChromeAt = 0, siteChromeFailedAt = 0;
-function currentSiteChrome() { return siteChrome; }
+function currentSiteChrome() { return currentChromeAssets(siteChrome); }
 async function loadSiteChrome(ctx) {
   const cached = await caches.default.match(SITE_CHROME_CACHE_KEY).catch(() => null);
   if (cached) { const data = await cached.json().catch(() => null); if (data?.nav) return data; }

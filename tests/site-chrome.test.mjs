@@ -1,5 +1,13 @@
 import assert from 'node:assert/strict';
-import { extractSiteChrome, balancedDiv, SITE_CHROME_SOURCE } from '../scripts/site-chrome.mjs';
+import { extractSiteChrome, balancedDiv, SITE_CHROME_SOURCE, currentChromeAssets } from '../scripts/site-chrome.mjs';
+
+assert.equal(currentChromeAssets(null), null);
+const oldAsset={nav:'unchanged',bodyEnd:'<script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@9111f30/wo-ui.js"></script>'};
+assert.match(currentChromeAssets(oldAsset).bodyEnd, /@cce8b1d\/wo-ui/);
+assert.match(oldAsset.bodyEnd, /@9111f30/);
+assert.equal(currentChromeAssets(oldAsset).nav, 'unchanged');
+const futureAsset={bodyEnd:oldAsset.bodyEnd.replace('9111f30','future-release')};
+assert.equal(currentChromeAssets(futureAsset).bodyEnd, futureAsset.bodyEnd);
 
 // A published Webflow page, shaped like /privacy-policy.
 const webflowPage = `<!DOCTYPE html><!-- This site was created in Webflow. --><html data-wf-domain="www.themanapocket.com" data-wf-page="6a8398b40776ff0dd81c82d1" data-wf-site="65b15ee0228d06647ca7e4ce" lang="en"><head><meta charset="utf-8"/><title>Privacy Policy | The Mana Pocket</title><meta content="How we protect you" name="description"/><meta content="width=device-width, initial-scale=1" name="viewport"/><link href="https://www.themanapocket.com/privacy-policy" rel="canonical"/><link href="https://cdn.prod.website-files.com/65b15ee0228d06647ca7e4ce/css/the-mana-pocket.webflow.shared.css" rel="stylesheet" type="text/css"/><script type="text/javascript">!function(o,c){var n=c.documentElement,t=" w-mod-";n.className+=t+"js"}(window,document);</script><script type="application/ld+json">{"@type":"WebPage"}</script><link href="https://cdn.prod.website-files.com/x/favicon.png" rel="shortcut icon" type="image/x-icon"/><style>.site-head{color:red}</style></head>

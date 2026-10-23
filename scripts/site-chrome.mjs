@@ -11,6 +11,15 @@
 
 export const SITE_CHROME_SOURCE = 'https://www.themanapocket.com/privacy-policy';
 
+// A stale upstream Webflow response can outlive our shell cache. Upgrade only
+// the known previous release; never downgrade a newly published script.
+export function currentChromeAssets(chrome) {
+  if (!chrome) return chrome;
+  return { ...chrome, bodyEnd: String(chrome.bodyEnd || '').replace(
+    /https:\/\/cdn\.jsdelivr\.net\/gh\/squeebmike\/wo-scripts@9111f30\/wo-ui\.js/g,
+    'https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@cce8b1d/wo-ui.js') };
+}
+
 // The whole element starting at `start`: counts nested <div>s until the one
 // opened at `start` closes. Webflow's navbar and footer roots are both divs.
 export function balancedDiv(html, start) {
