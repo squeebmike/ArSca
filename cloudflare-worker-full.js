@@ -2707,7 +2707,7 @@ function mtgSiteFooter() {
 // Kept as plain data per isolate and in the edge cache for 10 minutes; while
 // it's missing (cold start that couldn't reach Webflow) pages fall back to
 // the hand-built header above instead of failing.
-const SITE_CHROME_CACHE_KEY = new Request('https://internal.themanapocket.com/__cache/site-chrome-v1');
+const SITE_CHROME_CACHE_KEY = new Request('https://internal.themanapocket.com/__cache/site-chrome-v2');
 const SITE_CHROME_TTL_MS = 10 * 60 * 1000;
 let siteChrome = null, siteChromeAt = 0, siteChromeFailedAt = 0;
 function currentSiteChrome() { return siteChrome; }
