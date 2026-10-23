@@ -42,10 +42,12 @@ for (const path of ['/store/stuck-payments', '/store/stuck-payments/resolve', '/
   const body = worker.slice(start, end);
   assert.match(body, /requireStoreUser\(request, env, storeId, \['owner','admin'\]\)/, 'resolve route must be owner/admin gated');
   assert.match(body, /if \(payment\.status !== 'requires_payment_method'\) return json\(\{ ok: false,/, 'must refuse to act on a payment that is no longer in the stuck state (avoids double-processing)');
-  assert.match(body, /stripeApi\(env, mode, `payment_intents\/\$\{encodeURIComponent\(payment\.stripe_payment_intent_id\)\}`/, 'must fetch the live PaymentIntent from Stripe -- never trust the resolve click by itself');
-  assert.match(body, /if \(pi\.status !== 'succeeded'\) return json\(\{ ok: false,/, 'must refuse to mark paid unless Stripe itself reports succeeded');
-  assert.match(body, /status: 'succeeded'.*confirmed_by: auth\.user\.id/, 'must patch pos_payments to succeeded with an audit trail of who confirmed it');
-  assert.match(body, /await fulfillStorefrontOrderInventory\(env, payment\.sale_id, storeId\)/, 'must reuse the same fulfillStorefrontOrderInventory the webhook calls, not re-derive inventory/order-status logic separately');
+  assert.match(body, /status = await settleStripePaymentFromStripe\(env, payment, \{ confirmedBy: auth\.user\.id \}\);/, 'must check the live PaymentIntent with Stripe -- never trust the resolve click by itself -- and record who confirmed it');
+  assert.match(body, /if \(status !== 'succeeded'\) return json\(\{ ok: false,/, 'must refuse to mark paid unless Stripe itself reports succeeded');
+  const helper = worker.slice(worker.indexOf('async function settleStripePaymentFromStripe('), worker.indexOf('async function runScheduledStripePaymentCheck('));
+  assert.match(helper, /stripeApi\(env, mode, `payment_intents\/\$\{encodeURIComponent\(payment\.stripe_payment_intent_id\)\}`/, 'the shared check asks Stripe');
+  assert.match(helper, /status:'succeeded'.*confirmed_by:confirmedBy/, 'must patch pos_payments to succeeded with an audit trail of who confirmed it');
+  assert.match(helper, /await fulfillStorefrontOrderInventory\(env, payment\.sale_id, payment\.store_id\)/, 'must reuse the same fulfillStorefrontOrderInventory the webhook calls, not re-derive inventory/order-status logic separately');
   assert.match(body, /action === 'abandon'/, 'must support dismissing a genuinely-abandoned checkout without a Stripe round-trip');
 }
 
