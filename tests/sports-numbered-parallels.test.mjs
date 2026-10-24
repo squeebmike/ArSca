@@ -54,6 +54,18 @@ assert.ok(!relatedParallelLinks(update20,update20.cards[0],esc).includes('parall
 const nfl=footballSets.find(s=>s.id==='2025-topps-chrome-football');assert.equal(cardParallelProgram(nfl,nfl.cards[0]).variants.find(v=>v.id==='blue-refractor').printRun,150);
 assert.match(relatedParallelLinks(nfl,nfl.cards[0],esc,{campaignId:'5339046175'}),/\/football\/checklists\//);
 const bowman24=baseballSets.find(s=>s.id==='2024-bowman-chrome-baseball'),bowmanProspect=sectionsForSet(bowman24).find(g=>g.id==='chrome-prospects').cards[0];
+const bowmanChrome23=baseballSets.find(s=>s.id==='2023-bowman-chrome'),bc23groups=sectionsForSet(bowmanChrome23);
+const bc23prospect=bc23groups.find(g=>g.id==='bowman-chrome-prospects').cards[0];
+assert.equal(cardParallelProgram(bowmanChrome23,bc23prospect).variants.length,22);
+assert.equal(cardParallelProgram(bowmanChrome23,bowmanChrome23.cards[0]).variants.find(v=>v.id==='fuchsia-refractor').printRun,299);
+assert.equal(cardNumberingLabel(bowmanChrome23,bc23groups.find(g=>g.id==='color-run-rookie-variations').cards[0]),'/23');
+assert.equal(cardParallelProgram(bowmanChrome23,bc23groups.find(g=>g.id==='extended-bowman-chrome-prospects').cards[0]).variants.length,0,'no extrapolated rainbow for extended prospects');
+const bc23vapor=selectedParallelCard(bowmanChrome23,bc23prospect,'red-aqua-vapor-wave');
+assert.ok(matchesParallelPrinting('Red Aqua Vapor Wave 2/5',bc23vapor.parallelRule,bc23vapor.parallelSiblings));
+assert.ok(!matchesParallelPrinting('Red Shimmer 2/5',bc23vapor.parallelRule,bc23vapor.parallelSiblings));
+const bc23auto=bc23groups.find(g=>g.id==='bowman-chrome-prospects-autographs').cards[0],bc23gold=selectedParallelCard(bowmanChrome23,bc23auto,'gold-mini-diamond');
+assert.ok(matchesParallelPrinting('Gold Mini-Diamond /50',bc23gold.parallelRule,bc23gold.parallelSiblings));
+assert.ok(!matchesParallelPrinting('Gold Refractor /50',bc23gold.parallelRule,bc23gold.parallelSiblings));
 assert.equal(cardParallelProgram(bowman24,bowman24.cards[0]).variants.find(v=>v.id==='aqua-raywave-refractor').printRun,199);
 assert.equal(cardParallelProgram(bowman24,bowmanProspect).variants.find(v=>v.id==='aqua-refractor').printRun,125);
 assert.ok(!cardParallelProgram(bowman24,bowman24.cards[0]).variants.some(v=>v.id==='reptilian-blue-refractor'));

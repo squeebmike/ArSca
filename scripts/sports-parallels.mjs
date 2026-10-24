@@ -31,6 +31,26 @@ const cosmicGreen=()=>variants([['Green Space Dust Refractor',75]]).concat(cosmi
 const bowman23Paper=()=>variants([['Sky Blue Border',499],['Neon Green Border',399],['Fuchsia Border',299],['Purple Border',250],['Purple Pattern',199],['Pink Border',175],['Blue Border',150],['Blue Pattern',125],['Yellow Border',75],['Gold Border',50],['Orange Border',25],['Black Pattern',15],['Red Border',5],['Platinum Border',1],['Printing Plates',1,['printing plate','printing plates']]]);
 const bowman23Insert=()=>variants([['Atomic Refractor',150],['Aqua Refractor',125],['Gold Refractor',50],['Orange Refractor',25],['Red Refractor',5],['SuperFractor',1]]);
 const config={
+ '2023-bowman-chrome':program('https://ripped.topps.com/2023-bowman-chrome-baseball-checklist-spotlight/',variants([
+  ['Refractor',499],['Fuchsia Refractor',299],['Aqua Ray Wave Refractor',199],['Blue Refractor',150],['Wave Refractor',100],['Green Refractor',99],['Yellow Refractor',75],['Gold Refractor',50],['Orange Refractor',25],['Red Refractor',5],['SuperFractor',1]
+ ]),{
+  'bowman-chrome-prospects':{variants:variants([['Shimmer Refractor',null],['Refractor',499],['Speckle',299],['Purple Refractor',250],['Purple Shimmer',250],['Fuchsia Pink Vapor Wave',199],['Fuchsia Shimmer',199],['Blue Refractor',150],['Aqua Refractor',125],['Aqua Pink Vapor',125],['Green Refractor',99],['Green Shimmer',99],['Yellow Refractor',75],['Yellow Orange Vapor Wave',75],['Gold Refractor',50],['Gold Shimmer',50],['Orange Refractor',25],['Orange Shimmer',25],['Red Refractor',5],['Red Aqua Vapor Wave',5],['Red Shimmer',5],['SuperFractor',1]])},
+  'color-run-rookie-variations':{printRun:23},
+  ...Object.fromEntries(['bowman-iconic','2022-afl-fall-stars','prospect-process'].map(id=>[id,{variants:variants([['Atomic Refractor',150],['Orange Refractor',25],['SuperFractor',1]])}])),
+  '2023-bowman-invicta':{variants:variants([['Atomic Refractor',150],['Gold Refractor',50],['Orange Refractor',25],['Red Refractor',5],['SuperFractor',1]])},
+  'bowman-ascensions':{variants:variants([['Orange Refractor',25],['SuperFractor',1]])},
+  'bowman-chrome-prospects-autographs':{variants:variants([['Refractor',499],['Speckle',299],['Purple Refractor',250],['Blue Ray Wave Refractor',150],['Atomic Refractor',100],['Green Refractor',99],['Yellow Refractor',75],['Gold Mini-Diamond',50],['Orange Refractor',25],['Orange Shimmer',25],['Red Refractor',5],['Red Shimmer',5],['SuperFractor',1]])},
+  'chrome-rookie-autographs':{variants:variants([['Refractor',499],['Blue Refractor',150],['Green Refractor',99],['Gold Refractor',50],['Orange Refractor',25],['Red Refractor',5],['SuperFractor',1]])},
+  'prime-chrome-signatures':{printRun:50,variants:variants([['SuperFractor',1]])},
+  'prospect-process-autograph-variation':{variants:variants([['Orange Refractor',25],['SuperFractor',1]])},
+  'bowman-iconic-autographs':{printRun:99,variants:variants([['Orange Refractor',25],['SuperFractor',1]])},
+  '2022-afl-mvp-short-print-autograph-parallel':{printRun:100},
+  ...Object.fromEntries(['2022-afl-fall-stars-autograph-parallel','bowman-ascensions-autograph-parallel','2022-afl-relics-autograph-parallel'].map(id=>[id,{variants:variants([['SuperFractor',1]])}])),
+  '2023-bowman-invicta-autograph-variation':{variants:variants([['Gold Refractor',50],['Orange Refractor',25],['Red Refractor',5],['SuperFractor',1]])},
+  'chrome-autograph-relics':{variants:variants([['Gold Refractor',50],['Orange Refractor',25],['SuperFractor',1]])},
+  '2022-afl-relics':{variants:variants([['Orange Refractor',25],['SuperFractor',1]])},
+  '2022-afl-jumbo-relics':{printRun:10,variants:variants([['Red Refractor',5],['Black Nike Logo Refractor',1],['SuperFractor',1]])}
+ }),
  '2023-bowman':program('https://ripped.topps.com/2023-bowman-baseball-checklist-spotlight/',bowman23Paper(),{
   'paper-prospects':{variants:bowman23Paper()},
   'chrome-prospects':{variants:variants([['Atomic Refractor',null],['Lunar Glow',null],['Refractor',499],['Speckle Refractor',299],['Purple Refractor',250],['Fuchsia Refractor',199],['Fuchsia Lunar Refractor',199],['Blue Refractor',150],['Blue Shimmer Refractor',150],['Aqua Lunar Refractor',125],['Aqua Shimmer Refractor',125],['Green Grass Refractor',99],['Yellow Refractor',75],['Yellow Lunar Refractor',75],['Gold Refractor',50],['Gold Shimmer Refractor',50],['Orange Refractor',25],['Orange Shimmer Refractor',25],['Rose Gold Refractor',10],['Rose Gold Lava Refractor',10],['Red Refractor',5],['Red Lava Refractor',5],['SuperFractor',1],['Printing Plates',1,['printing plate','printing plates']]])},
