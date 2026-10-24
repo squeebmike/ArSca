@@ -63,7 +63,7 @@ export async function handleBaseballSections(request,env,url,deps,sets,html,miss
  }
  const listings=activeGroup.aggregate||baseCard&&!parallelId?[]:await sportsListings(env,deps.ctx,set,activeGroup,deps,parallelId?{card:chosenCard}:{});
  let inventory;try{inventory=await deps.listItems();}catch{inventory=null;}
- const nav='<div class="mp-crumb"><a href="/'+sportFor(set)+'">'+(sportFor(set)==='football'?'Football':'Baseball')+' checklists</a> / <a href="'+setPath(set)+'">'+esc(set.displayName)+'</a></div>'+baseballSectionsNav(set,esc,activeGroup.id);
+ const nav='<div class="mp-crumb"><a href="/'+sportFor(set)+'">'+(sportFor(set)==='football'?'Football':'Baseball')+' checklists</a> / <a href="'+setPath(set)+'">'+esc(set.displayName)+'</a></div>'+(cardGroup?'<p><a href="'+(parallelId?cardPath(set,originalCard):baseCard?setPath(set):sectionPath(set,cardGroup))+'">← '+esc(parallelId?'All versions of this card':cardGroup.name)+'</a></p>':baseballSectionsNav(set,esc,activeGroup.id));
  const availability=!Array.isArray(inventory)?'<p>Store availability is temporarily unavailable. Marketplace searches remain available.</p>':'<p>Store copies appear first. Matching card listings may have different parallel finishes; check the actual title, photos and condition.</p>';
  if(cardGroup){
   const c=chosenCard,numbering=cardNumberingLabel(set,c),name=c.player+' #'+c.cardNumber+' — '+set.displayName+' '+cardGroup.name+(parallelId?' · '+c.variant:'')+(numbering?' '+numbering:'');
