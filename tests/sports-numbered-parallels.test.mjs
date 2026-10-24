@@ -6,6 +6,7 @@ import {sectionsForSet,relatedParallelLinks} from '../scripts/baseball-section-p
 import {sportsListingMatches,sportsListings} from '../scripts/sports-card-marketplace.mjs';
 import {parallelPrograms,cardParallelProgram,selectedParallelCard,matchesParallelPrinting,cardNumberingLabel} from '../scripts/sports-parallels.mjs';
 import {sportsSectionCollections} from '../scripts/sports-checklist-ui.mjs';
+import {remainingParallelSpecs} from '../scripts/topps/remaining-parallel-programs.mjs';
 const esc=s=>String(s??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('"','&quot;');
 const set=baseballSets.find(s=>s.id==='2021-topps-series-1-baseball'),base=set.cards.find(c=>c.cardNumber==='43');
 const links=relatedParallelLinks(set,base,esc);
@@ -56,6 +57,52 @@ assert.match(relatedParallelLinks(nfl,nfl.cards[0],esc,{campaignId:'5339046175'}
 const bowman24=baseballSets.find(s=>s.id==='2024-bowman-chrome-baseball'),bowmanProspect=sectionsForSet(bowman24).find(g=>g.id==='chrome-prospects').cards[0];
 const spring24=baseballSets.find(s=>s.id==='2024-bowman-baseball'),spring25=baseballSets.find(s=>s.id==='2025-bowman-baseball'),draft25=baseballSets.find(s=>s.id==='2025-bowman-draft-baseball');
 const cardIn=(release,id)=>sectionsForSet(release).find(g=>g.id===id).cards[0];
+// Coverage means release-specific data exists, not that every print run is known.
+assert.equal(Object.keys(remainingParallelSpecs).length,33);
+assert.equal(Object.keys(parallelPrograms).length,62);
+for(const release of [...baseballSets,...footballSets]){
+ const p=parallelPrograms[release.id];assert.ok(p,release.id);
+ for(const card of release.cards)assert.ok(cardParallelProgram(release,card).variants.length,release.id+'/'+card.cardNumber);
+ for(const spec of [p,...(p.baseRanges||[]),...Object.values(p.sections)]){
+  const entries=spec.variants||spec.base||[];
+  assert.equal(new Set(entries.map(v=>v.id)).size,entries.length,'duplicate finish in '+release.id);
+  for(const v of entries){assert.ok(v.printRun===null||Number.isInteger(v.printRun)&&v.printRun>0,release.id+'/'+v.name);if(v.numberingUnknown)assert.equal(v.displayRun,'Numbering not confirmed');}
+ }
+ if(remainingParallelSpecs[release.id]?.sourceSha256)assert.match(p.sourceSha256,/^[a-f0-9]{64}$/);
+}
+const finestNFL=footballSets.find(s=>s.id==='2025-topps-finest-football');
+for(const [number,run] of [['100',50],['101',25],['200',25],['201',20],['300',20]]){
+ const c=finestNFL.cards.find(c=>c.cardNumber===number);
+ assert.equal(selectedParallelCard(finestNFL,c,'gold-refractor').parallelRule.printRun,run,'Finest tier boundary '+number);
+}
+assert.equal(cardParallelProgram(finestNFL,{section:'Base',cardNumber:'100',player:'Invented Player'}).variants.length,0);
+const uncertainNFL=footballSets.find(s=>s.id==='2025-topps-chrome-black-football');
+const uncertain=selectedParallelCard(uncertainNFL,uncertainNFL.cards[0],'refractor');
+assert.equal(cardNumberingLabel(uncertainNFL,uncertain),'Numbering not confirmed');
+assert.ok(matchesParallelPrinting('Refractor 12/299',uncertain.parallelRule,uncertain.parallelSiblings));
+assert.ok(matchesParallelPrinting('2025 Topps Chrome Black Refractor 12/299',uncertain.parallelRule,uncertain.parallelSiblings),'Black in the product name is not finish evidence');
+for(const title of ['Blue Refractor 12/150','Refractor 300/299','Refractor 0/299','Refractor /0','Refractor eBay 1/1'])assert.ok(!matchesParallelPrinting(title,uncertain.parallelRule,uncertain.parallelSiblings),title);
+const pristine=baseballSets.find(s=>s.id==='2023-topps-pristine-baseball');
+const encased=selectedParallelCard(pristine,pristine.cards[0],'pristine-gold-refractor'),ordinaryPristine=selectedParallelCard(pristine,pristine.cards[0],'gold-refractor');
+assert.ok(!matchesParallelPrinting('2023 Topps Pristine Gold Refractor 2/50',encased.parallelRule,encased.parallelSiblings));
+assert.ok(matchesParallelPrinting('2023 Topps Pristine Gold Pristine Refractor 2/50',encased.parallelRule,encased.parallelSiblings));
+assert.ok(matchesParallelPrinting('2023 Topps Pristine Gold Refractor 2/50',ordinaryPristine.parallelRule,ordinaryPristine.parallelSiblings));
+assert.ok(!matchesParallelPrinting('2023 Topps Pristine Gold Pristine Refractor 2/50',ordinaryPristine.parallelRule,ordinaryPristine.parallelSiblings));
+const nflFlagship=footballSets.find(s=>s.id==='2026-topps-flagship-football');
+for(const [number,plates,sand] of [['260',true,true],['261',true,false],['270',true,false],['271',true,true],['281',false,false],['290',false,false],['291',true,true]]){
+ const v=cardParallelProgram(nflFlagship,nflFlagship.cards.find(c=>c.cardNumber===number)).variants;
+ assert.equal(v.some(v=>v.id==='printing-plates'),plates);assert.equal(v.some(v=>v.id==='sandglitter'),sand);
+}
+const platinum22=baseballSets.find(s=>s.id==='2022-topps-chrome-platinum-anniversary');
+assert.equal(selectedParallelCard(platinum22,platinum22.cards[0],'platinum-toile-white-orange-refractor').parallelRule.printRun,25);
+const sonic22=baseballSets.find(s=>s.id==='2022-topps-chrome-baseball-sonic-edition');
+assert.equal(cardParallelProgram(sonic22,cardIn(sonic22,'base-cards-short-prints')).variants.length,4);
+assert.equal(cardParallelProgram(sonic22,cardIn(sonic22,'base-cards-image-variations')).variants.length,0);
+const chrome26=baseballSets.find(s=>s.id==='2026-topps-chrome-baseball');
+const frozen26=selectedParallelCard(chrome26,chrome26.cards[0],'frozenfractor');
+assert.equal(cardNumberingLabel(chrome26,frozen26),'/-5');
+assert.ok(matchesParallelPrinting('Frozenfractor -2/-5',frozen26.parallelRule,frozen26.parallelSiblings));
+assert.ok(!matchesParallelPrinting('Frozenfractor 2/5',frozen26.parallelRule,frozen26.parallelSiblings));
 assert.equal(cardParallelProgram(spring24,spring24.cards[0]).variants.find(v=>v.id==='black-pattern').printRun,15);
 assert.equal(cardParallelProgram(spring25,spring25.cards[0]).variants.find(v=>v.id==='black-pattern').printRun,10,'paper Black changed between release years');
 assert.ok(!cardParallelProgram(spring25,spring25.cards[0]).variants.some(v=>v.id==='sky-blue'),'do not invent individual counts from the publisher range');
@@ -119,7 +166,7 @@ const disclosurePanel=relatedParallelLinks(spring23,druw,esc);
 assert.ok(disclosurePanel.indexOf('Affiliate links may earn')<disclosurePanel.indexOf('<ul class="mp-parallel-gallery">'),'buyers see the disclosure before the photos');
 for(const [id,p] of Object.entries(parallelPrograms)){
  const release=[...baseballSets,...footballSets].find(s=>s.id===id);assert.ok(release,id);
- assert.match(p.source,/^https:\/\/(?:ripped\.topps\.com|www\.blowoutcards\.net)\//);
+ assert.match(p.source,/^https:\/\/(?:ripped\.topps\.com|www\.blowoutcards\.net|www\.topps\.com|cdn\.shopify\.com|gogts\.net|www\.beckett\.com|www\.cardboardconnection\.com|baseballcardpedia\.com)\//);
  const sections=new Set(sectionsForSet(release).map(g=>g.id));
  for(const [section,spec] of Object.entries(p.sections)){assert.ok(sections.has(section),id+'/'+section);assert.equal(new Set((spec.variants||[]).map(v=>v.id)).size,(spec.variants||[]).length);}
 }

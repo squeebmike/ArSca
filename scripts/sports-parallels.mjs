@@ -1,9 +1,10 @@
 // Publisher parallel programs. Never copy a rainbow between releases/subsets.
 import {baseballChecklistInventoryMatches,ebayChecklistSearch} from './topps/public-checklist-policy.mjs';
 import {catalogStoreCopyHtml} from './catalog-inventory.mjs';
+import {remainingParallelSpecs} from './topps/remaining-parallel-programs.mjs';
 const slug=s=>s.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
 const norm=s=>String(s||'').normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').replace(/\bfoil board\b/g,'foilboard').replace(/\brainbow foilboard\b/g,'rainbow foil').trim();
-const variants=rows=>rows.map(([name,printRun,aliases])=>({id:slug(name),name,printRun,...(/ Border$/.test(name)?{searchTerm:name.replace(/ Border$/,'')}:{}),aliases:aliases||(/ Border$/.test(name)?[name,name.replace(/ Border$/,'')]:[name])}));
+const variants=rows=>rows.map(([name,printRun,aliases,metadata])=>({id:slug(name),name,printRun:printRun==='?'?null:printRun,...(printRun==='?'?{numberingUnknown:true,displayRun:'Numbering not confirmed'}:{}),...(/ Border$/.test(name)?{searchTerm:name.replace(/ Border$/,'')}:{}),aliases:aliases||(/ Border$/.test(name)?[name,name.replace(/ Border$/,'')]:/^Pristine (.+) Refractor$/.test(name)?[name,name.replace(/^Pristine (.+) Refractor$/,'$1 Pristine Refractor')]:[name]),...metadata}));
 const source21=n=>'https://www.blowoutcards.net/images/ss/21tp'+n+'BB.pdf';
 const insert21=variants([['Blue',null],['Black',299],['Platinum Anniversary',70],['Red',10],['Gold',1]]);
 const ink21=variants([['Black',199],['Gold',50],['Red',25],['Platinum',1]]);
@@ -31,6 +32,7 @@ const cosmicGreen=()=>variants([['Green Space Dust Refractor',75]]).concat(cosmi
 const bowman23Paper=()=>variants([['Sky Blue Border',499],['Neon Green Border',399],['Fuchsia Border',299],['Purple Border',250],['Purple Pattern',199],['Pink Border',175],['Blue Border',150],['Blue Pattern',125],['Yellow Border',75],['Gold Border',50],['Orange Border',25],['Black Pattern',15],['Red Border',5],['Platinum Border',1],['Printing Plates',1,['printing plate','printing plates']]]);
 const bowman23Insert=()=>variants([['Atomic Refractor',150],['Aqua Refractor',125],['Gold Refractor',50],['Orange Refractor',25],['Red Refractor',5],['SuperFractor',1]]);
 const config={
+ ...Object.fromEntries(Object.entries(remainingParallelSpecs).map(([id,p])=>[id,{...p,base:variants(p.base),baseRanges:p.baseRanges?.map(r=>({...r,variants:variants(r.variants)})),sections:Object.fromEntries(Object.entries(p.sections||{}).map(([key,spec])=>[key,{...spec,variants:variants(spec.variants||[])}]))}])),
  '2024-bowman-baseball':program('https://ripped.topps.com/2024-bowman-baseball-checklist-spotlight/',bowman23Paper(),{
   'paper-prospects':{variants:bowman23Paper()},
   'chrome-prospects':{variants:variants([['Mini-Diamond Refractor',null],['Lunar Glow',null],['Refractor',499],['Lava Refractor',399],['Speckle Refractor',299],['Purple Refractor',250],['Purple RayWave Refractor',250],['Fuchsia Refractor',199],['Fuchsia Lunar Refractor',199],['Blue Refractor',150],['Blue Shimmer Refractor',150],['Blue RayWave Refractor',150],['Aqua Lunar Refractor',125],['Aqua Shimmer Refractor',125],['Green Grass Refractor',99],['Yellow Refractor',75],['Yellow Lunar Refractor',75],['Gold Refractor',50],['Gold Shimmer Refractor',50],['Orange Refractor',25],['Orange Shimmer Refractor',25],['Black Refractor',10],['Rose Gold Refractor',10],['Rose Gold Mini-Diamond Refractor',10],['Red Refractor',5],['Red Lava Refractor',5],['SuperFractor',1],['Printing Plates',1,['printing plate','printing plates']],['Pearl Refractor',null]])},
@@ -377,31 +379,42 @@ export function cardParallelProgram(set,card){
   if(!baseIdentities.has(set))baseIdentities.set(set,new Set((set.cards||[]).map(c=>String(c.cardNumber)+'|'+norm(c.player))));
   if(!baseIdentities.get(set).has(String(card.cardNumber)+'|'+norm(card.player)))return {variants:[]};
  }
- const spec=section==='base'?{variants:p.base}:p.sections[section];
- return spec?{...spec,source:p.source,variants:spec.variants||[]}:{variants:[]};
+ const baseRange=section==='base'&&p.baseRanges?.find(r=>/^\d+$/.test(String(card.cardNumber))&&Number(card.cardNumber)>=r.first&&Number(card.cardNumber)<=r.last);
+ const spec=section==='base'?(p.baseRanges?baseRange:{variants:p.base}):p.sections[section];
+ return spec?{...spec,source:p.source,references:p.references||[],variants:spec.variants||[]}:{variants:[]};
 }
 export function printRunLabel(n){return n===1?'1/1':Number.isInteger(n)&&n>0?'/'+n:'Unnumbered';}
 export function cardNumberingLabel(set,card){const p=cardParallelProgram(set,card);return card.parallelRule?.displayRun||(card.parallelRule?.printRun?printRunLabel(card.parallelRule.printRun):p.printRun?printRunLabel(p.printRun):p.maxPrintRun?'/'+p.maxPrintRun+' or less':'');}
 export function selectedParallelCard(set,card,id){
  const p=cardParallelProgram(set,card),rule=p.variants.find(v=>v.id===id);
- return rule?{...card,variant:rule.name,parallelRule:rule,parallelSiblings:p.variants,parallelSource:rule.source||p.source}:null;
+ const productIdentity=String(set.displayName||'').replace(/\b(?:\d{4}|baseball|football|cards)\b/gi,' ').replace(/\s+/g,' ').trim();
+ return rule?{...card,variant:rule.name,parallelRule:{...rule,productIdentity},parallelSiblings:p.variants,parallelSource:rule.source||p.source}:null;
 }
 export function matchesSerialNumbering(text,rule){
  const marked=String(text||'');
  if(/\bebay\s*1\s*[/of]+\s*1\b/i.test(marked))return false;
  const serials=[...marked.matchAll(/(?:\b(-?\d+)\s*)?\/\s*(-?\d+)\b/g)].map(m=>({numerator:m[1]?Number(m[1]):null,denominator:Number(m[2])}));
+ if(rule.numberingUnknown)return serials.every(s=>s.denominator>=1&&(s.numerator===null||s.numerator>=1&&s.numerator<=s.denominator));
  if(rule.printRun||rule.maxPrintRun)return serials.length>0&&serials.every(s=>(rule.maxPrintRun?s.denominator>0&&s.denominator<=rule.maxPrintRun:s.denominator===(rule.serialDenominator||rule.printRun))&&(s.numerator===null||Math.abs(s.numerator)>=1&&Math.abs(s.numerator)<=Math.abs(s.denominator)));
  return serials.length===0;
 }
 export function matchesParallelPrinting(text,rule,siblings=[rule],section=''){
  let folded=norm(text);const marked=String(text||'');
+ if(rule.productIdentity)folded=(' '+folded+' ').replace(' '+norm(rule.productIdentity)+' ',' ').trim();
+ // The product name alone is not proof of Pristine's encased treatment.
+ if(rule.encased||rule.unencased){
+  folded=folded.replace(/\btopps pristine\b/,' ').replace(/\s+/g,' ').trim();
+  const encased=/\b(?:encased|uncirculated|pristine)\b/.test(folded);
+  if(rule.encased&&!encased||rule.unencased&&encased)return false;
+  siblings=siblings.filter(r=>encased?!r.unencased:!r.encased);
+ }
  // An insert title is identity, not finish evidence (e.g. Topps Black Gold).
  for(const phrase of [norm(section),norm(section).replace(/^topps /,'')].filter(Boolean))folded=(' '+folded+' ').replace(' '+phrase+' ',' ').trim();
  const matched=siblings.flatMap(r=>r.aliases.map(a=>({id:r.id,generic:norm(r.name)==='refractor',phrase:norm(a).replace(/\brefractor\b/g,'').trim()||norm(a)})))
   .filter(a=>a.phrase&&(' '+folded+' ').includes(' '+a.phrase+' ')).sort((a,b)=>Number(a.generic)-Number(b.generic)||b.phrase.length-a.phrase.length);
  if(!matched.length||matched[0].id!==rule.id)return false;
  // A partial program must not turn an unimported color into a plain finish.
- if(['refractor','prism refractor','raywave refractor','x fractor','shimmer refractor','negative refractor','rainbow foil','holo foil','diamante foil','spring training'].includes(norm(rule.name))&&/\b(?:blue|green|gold|red|purple|pink|aqua|magenta|orange|black|white|yellow|teal|sepia|fuchsia)\b/.test(folded))return false;
+ if(['refractor','prism refractor','raywave refractor','x fractor','shimmer refractor','reptilian refractor','mini diamond refractor','wave refractor','geometric refractor','negative refractor','rainbow foil','holo foil','diamante foil','spring training'].includes(norm(rule.name))&&/\b(?:blue|green|gold|red|purple|pink|aqua|magenta|orange|black|white|yellow|teal|sepia|fuchsia)\b/.test(folded))return false;
  for(const finish of ['raywave','geometric','mini diamond','wave','lava','speckle','shimmer','sonar','reptilian','frozenfractor','prism','negative','nucleus','xfractor','x fractor'])if(folded.includes(finish)&&!norm(rule.name).includes(finish))return false;
  // An eBay 1/1 or jersey-number sales pitch is not publisher serial evidence.
  return matchesSerialNumbering(marked,rule);
@@ -440,6 +453,7 @@ export const parallelFamilyStyle=parallelBaseStyle+`<style>
 .mp-card-parallels ul.mp-parallel-gallery{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;align-items:start}
 .mp-parallel-card{min-width:0;padding:9px;border:1px solid var(--wo-border,#777);border-radius:9px;background:var(--wo-bg,transparent)}
 .mp-card-parallels li.mp-parallel-card>a.mp-parallel-finish{display:flex!important;flex-direction:column;align-items:flex-start!important;gap:4px;min-height:62px;border:0;padding:0 0 8px;overflow-wrap:anywhere}
+.mp-card-parallels li.mp-parallel-card .mp-parallel-finish b{white-space:normal}
 .mp-parallel-card button{width:100%;min-height:44px;padding:8px;border:1px solid var(--wo-border,#777);border-radius:7px;color:var(--wo-on-button,#111);background:var(--wo-button,#8bd450);font:650 12px/1.3 system-ui;cursor:pointer}
 .mp-parallel-card [data-sports-result]{min-height:180px;overflow-wrap:anywhere;font:12px/1.45 system-ui}
 .mp-parallel-card [data-sports-result] img,.mp-parallel-card .mp-store-copy img{display:block;width:100%!important;height:180px!important;object-fit:contain;margin:0 auto 8px}

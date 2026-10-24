@@ -45,7 +45,7 @@ export function sportsListingMatches(listing,card,set,group){
 export async function sportsListings(env,ctx,set,group,deps,{card=null,wait=false}={}){
  const campaign=String(env.EBAY_PARTNER_CAMPAIGN_ID||'');
  if(!/^\d{10}$/.test(campaign)||!env.LBA_KV||!deps.searchEbay)return [];
- const key='sports-checklist-listings-v10:'+campaign+':'+set.id+':'+group.id+':'+(card?.id||'section')+':'+(card?.parallelRule?.id||'family');
+ const key='sports-checklist-listings-v11:'+campaign+':'+set.id+':'+group.id+':'+(card?.id||'section')+':'+(card?.parallelRule?.id||'family');
  const load=async signal=>{
   // Numeric card numbers recur across base, parallels and autographs. Keep
   // the subset in those searches; prefixed IDs already disambiguate inserts.
