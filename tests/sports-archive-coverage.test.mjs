@@ -39,6 +39,13 @@ for(const source of bowmanProspectSections){
 const spring=sets.find(s=>s.id==='2023-bowman'),springChrome=sectionsForSet(spring).find(g=>g.id==='chrome-prospects').cards[0],springPaper=sectionsForSet(spring).find(g=>g.id==='paper-prospects').cards[0];
 const single={id:'ours',categorySlug:'sports-cards',year:2023,set:'2023 Bowman Chrome',player:springChrome.player,cardNumber:springChrome.cardNumber,name:springChrome.player+' #'+springChrome.cardNumber,subset:'Base',variant:'Base',price:5,quantity:1};
 assert.ok(baseballChecklistInventoryMatches(single,springChrome,spring));
+for(const [setId,sectionId] of [['2023-bowman-chrome','bowman-chrome-prospects'],['2025-bowman-baseball','chrome-prospects-i']]){
+ const release=sets.find(s=>s.id===setId),card=sectionsForSet(release).find(g=>g.id===sectionId).cards[0];
+ const item={...single,year:release.year,set:release.displayName.replace(/ Baseball$/,''),player:card.player,cardNumber:card.cardNumber,name:card.player+' #'+card.cardNumber};
+ assert.ok(baseballChecklistInventoryMatches(item,card,release),'canonical prospect stock '+setId);
+ assert.ok(baseballChecklistInventoryMatches({...item,subset:'Chrome Prospects'},card,release));
+ assert.ok(!baseballChecklistInventoryMatches({...item,subset:'Extended Bowman Chrome Prospects'},card,release));
+}
 assert.ok(!baseballChecklistInventoryMatches(single,springPaper,spring),'Chrome and paper prospect prefixes are distinct');
 for(const patch of [{year:2024},{cardNumber:'BCP-999'},{player:'Unrelated Player'},{subset:'Autographs'},{set:'2023 Topps Chrome'},{isSigned:true}])assert.ok(!baseballChecklistInventoryMatches({...single,...patch},springChrome,spring),JSON.stringify(patch));
 const draft25=sets.find(s=>s.id==='2025-bowman-draft-baseball'),draftChrome=sectionsForSet(draft25).find(g=>g.id==='chrome-draft-picks').cards[0];

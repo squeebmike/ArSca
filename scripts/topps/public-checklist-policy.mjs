@@ -27,6 +27,9 @@ export function footballChecklistPublicationProblems(set) {
 
 const norm = value => String(value || '').normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
 const num = value => String(value || '').trim().toLowerCase().replace(/^0+(?=\d)/, '');
+// PDF column suffixes and the Bowman heading wrapper describe the same prospect
+// printing. Do not normalize extended prospects, variations or autograph sets.
+const prospectSectionKey=value=>norm(value).replace(/^(?:bowmanchromeprospects|chromeprospectsi{1,2})$/,'chromeprospects').replace(/^paperprospectsi{1,2}$/,'paperprospects');
 
 // Importers sometimes put the sport label in the set and identity in the title.
 // Normalize only those wrappers, never Chrome/Update/insert/parallel distinctions.
@@ -46,7 +49,7 @@ export function baseballChecklistInventoryMatches(item,card,set){
   if(baseballInventoryMatches(item,card,set))return true;
   if(item.categorySlug!=='sports-cards'||item.isSealed||/box|pack|case|bundle|lot/i.test(item.productType||''))return false;
   if(norm(card.variant)!=='base')return false;
-  const section=norm(card.section),isBase=section==='base';
+  const section=prospectSectionKey(card.section),isBase=section==='base';
   const sectionAliases={teamofthefuture:["Team of the Future"],theenterprise:["The Enterprise"],chromealletch:['All Etch'],ohsnap:['Oh Snap'],bestof2023earlyformautographs:['of Autographs'],sterlingtek:['Tek'],starsofmlb:['Stars of MLB'],powerchords:['Power Chords'],prospectautographs:['Prospect Autograph'],rookieautographs:['Rookie Autograph'],autographcards:['Autograph','Autographs'],finestautographs:['Autograph','Autographs'],chromeprospects:['Chrome Prospects'],paperprospects:['Prospects','Paper Prospects'],topprospects:['Top Prospects']};
   const prefixedNumber=!isBase&&(/^[a-z0-9]+-/i.test(String(card.cardNumber||''))||(/^HC\d+$/i.test(String(card.cardNumber||''))&&/chrome/i.test(card.section)))&&num(item.cardNumber)===num(card.cardNumber);
   const prospectPrefix={chromeprospects:'BCP-',paperprospects:'BP-',chromedraftpicks:'BDC-'}[section];
@@ -54,7 +57,7 @@ export function baseballChecklistInventoryMatches(item,card,set){
   if(!isBase&&!sectionAliases[section]&&!prefixedNumber&&!item.subset)return false;
   // Intake's Base label is the printing tier. Verified BP/BCP/BDC identities
   // locate that tier in its prospect section; explicit other subsets cannot.
-  if(item.subset&&norm(item.subset)!==section&&!(exactProspectNumber&&norm(item.subset)==='base'))return false;
+  if(item.subset&&prospectSectionKey(item.subset)!==section&&!(exactProspectNumber&&norm(item.subset)==='base'))return false;
   const description=[item.name,item.set,item.variant,item.treatment].join(' ');
   if(!/relic|patch/i.test(card.section)&&(item.isRelic||/relic|memorabilia/i.test(description)))return false;
   if(!/variation/i.test(card.section)&&/image variation|photo variation|short print|\b(?:sp|ssp)\b/i.test(description))return false;
