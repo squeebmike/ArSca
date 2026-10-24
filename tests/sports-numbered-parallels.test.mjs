@@ -40,6 +40,23 @@ for(const [id,p] of Object.entries(parallelPrograms)){
  for(const [section,spec] of Object.entries(p.sections)){assert.ok(sections.has(section),id+'/'+section);assert.equal(new Set((spec.variants||[]).map(v=>v.id)).size,(spec.variants||[]).length);}
 }
 assert.ok(!cardParallelProgram(set,{section:'Unknown Insert'}).variants.length,'do not inherit the base rainbow into unrelated inserts');
+for(const id of ['2023-topps-series-1','2023-topps-series-2']){
+ const release=baseballSets.find(s=>s.id===id),groups=sectionsForSet(release);
+ const aceGroup=groups.find(g=>g.id==='all-aces'),ace=aceGroup.cards[0];
+ assert.equal(cardParallelProgram(release,ace).variants.find(v=>v.id==='gold').printRun,75,'All Aces Gold differs from base Gold');
+ assert.match(relatedParallelLinks(release,ace,esc),/market=1&amp;parallel=gold/);
+ assert.equal(cardParallelProgram(release,release.cards[0]).variants.find(v=>v.id==='black').printRun,72);
+ assert.equal(cardParallelProgram(release,groups.find(g=>g.id==='base-cards-clear-variation').cards[0]).printRun,10);
+ assert.equal(groups.find(g=>g.id==='base-cards-clear-variation').cards.length,100);
+ const notClear=release.cards.find(c=>!groups.find(g=>g.id==='base-cards-clear-variation').cards.some(v=>v.cardNumber===c.cardNumber));
+ assert.ok(!relatedParallelLinks(release,notClear,esc).includes('base-cards-clear-variation'),'Clear remains restricted to published subjects');
+ assert.equal(cardParallelProgram(release,groups.find(g=>g.id==='heavy-lumber').cards[0]).variants.length,0,'do not invent a Heavy Lumber rainbow');
+ assert.ok(!cardParallelProgram(release,groups.find(g=>g.id==='1988-topps-baseball').cards[0]).variants.some(v=>v.id==='the-real-one'));
+}
+const series23=baseballSets.find(s=>s.id==='2023-topps-series-1');
+assert.equal(cardParallelProgram(series23,series23.cards[0]).variants.find(v=>v.id==='gold').printRun,2023);
+const series232=baseballSets.find(s=>s.id==='2023-topps-series-2');
+assert.ok(!cardParallelProgram(series232,series232.cards[0]).variants.some(v=>v.id==='gold'),'do not publish the contradictory /2022 Series 2 solicitation');
 assert.equal(cardParallelProgram(set,sectionsForSet(set).find(g=>g.id==='topps-reverence-autograph-patch-cards').cards[0]).variants.find(v=>v.name==='Red').printRun,5);
 const all=sportsSectionCollections(sectionsForSet(set),set).find(g=>g.id==='all-parallels');
 assert.ok(all.cards.some(c=>c.id===base.id));assert.equal(new Set(all.cards.map(c=>c.id)).size,all.cards.length);

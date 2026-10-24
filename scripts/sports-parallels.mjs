@@ -11,7 +11,41 @@ const relic21=variants([['Red',25],['Platinum',1]]);
 const red5=variants([['Red',5],['Platinum',1]]);
 const flagship=(year)=>variants([['Rainbow Foil',null],['Gold Foil',null],['Gold',year],['Vintage Stock',99],['Independence Day',76],['Black',year===2020?69:70],...(year===2021?[['Platinum Anniversary',70]]:[]),["Mother's Day Pink",50,['mothers day','mother s day','pink']], ["Father's Day Blue",50,['fathers day','father s day','blue']],['Memorial Day Camo',25,['memorial day','camo']],['Printing Plates',1,['printing plate','printing plates']], [year===2021?'70th Anniversary':'Platinum',1]]);
 const program=(source,base,sections={})=>({source,base,sections});
+// These publisher sell sheets are release-specific; Clear is assigned only to
+// the 100 subjects in each imported final checklist, never to the entire base.
+const flagship23=()=>variants([
+ ['Rainbow Foil',null],['Gold Foil',null],['Gold',2023],
+ ['Green Foilboard',499,['green foilboard','green foil','green rainbow foilboard']],
+ ['Orange Foilboard',299,['orange foilboard','orange foil','orange rainbow foilboard']],
+ ['Red Foilboard',199,['red foilboard','red foil','red rainbow foilboard']],
+ ['Vintage Stock',99],['Independence Day',76],['Black',72],
+ ["Mother's Day Hot Pink",50,['mothers day','mother s day','pink']],
+ ["Father's Day Powder Blue",50,['fathers day','father s day','blue']],
+ ['Memorial Day Camo',25,['memorial day','camo']],
+ ['Printing Plates',1,['printing plate','printing plates']],['Platinum',1]
+]);
+const insert23=()=>variants([['Blue',null],['Black',299],['Gold',75],['Red',10],['Platinum',1]]);
 const config={
+ '2023-topps-series-1':program('https://www.blowoutcards.net/images/ss/23tpser1BB.pdf',flagship23(),{
+  ...Object.fromEntries(['one-two-punch','welcome-to-the-club','2022-greatest-hits','all-aces','1988-topps-baseball'].map(id=>[id,{variants:insert23()}])),
+  // "The Real One" /88 was announced in solicitation. Do not add it without
+  // final-production confirmation. Autograph subjects use their own checklist.
+  ...Object.fromEntries(['welcome-to-the-club-autographs','2022-greatest-hits-autographs','all-aces-autographs','one-two-punch-dual-autographs'].map(id=>[id,{maxPrintRun:25}])),
+  'base-cards-clear-variation':{printRun:10},
+  'topps-reverence-autograph-patch-cards':{printRun:10,variants:red5},
+  'in-the-name-relics':{printRun:1},'cut-signatures':{printRun:1}
+ }),
+ '2023-topps-series-2':program('https://www.blowoutcards.net/images/ss/23tpser2BB.pdf',flagship23().filter(v=>v.name!=='Gold'),{
+  // This Series 2 solicitation says Gold /2022. Exclude that conflicting
+  // specification until independently corroborated by a production source.
+  ...Object.fromEntries(['legends-of-the-game','2023-world-baseball-classic-stars','favorite-sons','all-aces','significant-statistics','1988-topps-all-star-baseball','1988-topps-baseball'].map(id=>[id,{variants:insert23()}])),
+  ...Object.fromEntries(['legends-of-the-game-autograph-parallel','2023-world-baseball-classic-stars-autograph-parallel','favorite-sons-autograph-parallel','all-aces-autograph-parallel','significant-statistics-autograph-parallel'].map(id=>[id,{maxPrintRun:25}])),
+  'base-cards-clear-variation':{printRun:10},
+  'luke-the-cardist-base-card-art-variation':{printRun:1},
+  'topps-reverence-autograph-patch-cards':{printRun:10,variants:red5},
+  'oversized-topps-record-breakers-card':{variants:variants([['Gold',80],['Red',10],['Platinum',1]])},
+  'in-the-name-relics':{printRun:1},'cut-signatures':{printRun:1}
+ }),
  '2024-topps-baseball-series-1':program('https://ripped.topps.com/2024-topps-series-1-baseball-checklist-spotlight/',variants([
   ['Gold',2024],['Blue Holofoil',999,['blue holofoil','blue holo foil']],['Purple Holofoil',799,['purple holofoil','purple holo foil']],['Green Crackle Foil',499],['Orange Crackle Foil',299],['Red Crackle Foil',199],['Vintage Stock',99],['Independence Day',76],['Black',73],["Mother's Day Hot Pink",50,['mothers day','mother s day','pink']],["Father's Day Powder Blue",50,['fathers day','father s day','blue']],['Memorial Day Camo',25,['memorial day','camo']],['Clear',10],['Printing Plates',1,['printing plate','printing plates']],['Platinum',1]
  ]),{
