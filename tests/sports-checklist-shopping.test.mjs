@@ -67,6 +67,9 @@ console.log('Mobile section navigation, 1,975 numbered football references, exac
  const valid={...listing,title:'2021 Topps Series 1 Baseball Jo Adell 43 Gold 123/2021',priceKind:'currentBid'};
  assert.ok(sportsListingMatches(valid,gold,s,g),'bare checklist number is accepted with exact release/player/finish');
  for(const title of ['2021 Topps Series 1 Baseball Jo Adell Gold #44 43/2021','2021 Topps Series 1 Baseball Jo Adell Gold #44 /43','2021 Topps Series 1 Baseball Jo Adell Gold #44 PSA 43'])assert.ok(!sportsListingMatches({...valid,title},gold,s,g),title);
+ const tatis=selectedParallelCard(s,s.cards.find(c=>c.cardNumber==='1'),'gold');
+ assert.ok(!sportsListingMatches({...valid,title:'2021 Topps Series 1 Fernando Tatis Jr Gold 1882/2021 San Diego Padres'},tatis,s,g),'Series 1 is a release label, not card number 1');
+ assert.ok(sportsListingMatches({...valid,title:'2021 Topps Series 1 Fernando Tatis Jr 1 Gold 1882/2021 San Diego Padres'},tatis,s,g));
  let calls=0;const queries=[],memory=new Map();
  const e={EBAY_PARTNER_CAMPAIGN_ID:'5339046175',LBA_KV:{get:async k=>memory.get(k)||null,put:async(k,v)=>memory.set(k,JSON.parse(v))}};
  const d={searchEbay:async q=>{queries.push(q);return {listings:++calls===1?[{...valid,title:valid.title.replace('Gold','Gold Foil')}]:[valid]};}};

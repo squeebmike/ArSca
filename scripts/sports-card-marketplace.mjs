@@ -35,7 +35,7 @@ export function sportsListingMatches(listing,card,set,group){
   const explicit=new RegExp('(?:#|\\bno\\.?\\s*)0*'+escapeRegex(number)+'(?![a-z0-9])','i').test(title);
   // Sellers often omit '#'. Do not mistake a serial denominator, year or
   // slab grade for the checklist number when accepting a bare number.
-  const identityTitle=title.replace(/\b\d+\s*\/\s*\d+\b|\/\s*\d+\b/g,' ').replace(/\b(?:psa|bgs|sgc|cgc|csg|tag|hga)\s*(?:gem\s*mt\s*|mint\s*)?\d+(?:\.\d+)?\b/g,' ');
+  const identityTitle=title.replace(/\b\d+\s*\/\s*\d+\b|\/\s*\d+\b/g,' ').replace(/\bseries\s+\d+\b/g,' ').replace(/\b(?:psa|bgs|sgc|cgc|csg|tag|hga|gem\s*mint|gem\s*mt)\s*(?:gem\s*mt\s*|mint\s*)?\d+(?:\.\d+)?\b/g,' ');
   const bare=number!==String(set.year)&&new RegExp('(?:^|\\s)0*'+escapeRegex(number)+'(?=\\s|$)').test(identityTitle);
   if(!explicit&&!bare)return false;
  }else if(!(title.match(/[a-z0-9]+(?:[-–][a-z0-9]+)*/g)||[]).some(t=>token(t)===token(number)))return false;
@@ -50,7 +50,7 @@ export function sportsListingMatches(listing,card,set,group){
 export async function sportsListings(env,ctx,set,group,deps,{card=null,wait=false}={}){
  const campaign=String(env.EBAY_PARTNER_CAMPAIGN_ID||'');
  if(!/^\d{10}$/.test(campaign)||!env.LBA_KV||!deps.searchEbay)return [];
- const key='sports-checklist-listings-v12:'+campaign+':'+set.id+':'+group.id+':'+(card?.id||'section')+':'+(card?.parallelRule?.id||'family');
+ const key='sports-checklist-listings-v13:'+campaign+':'+set.id+':'+group.id+':'+(card?.id||'section')+':'+(card?.parallelRule?.id||'family');
  const load=async signal=>{
   // Numeric card numbers recur across base, parallels and autographs. Keep
   // the subset in those searches; prefixed IDs already disambiguate inserts.

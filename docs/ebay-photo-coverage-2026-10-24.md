@@ -4,10 +4,10 @@
 
 - Baseball and football checklist Browse searches include auctions and Buy It Now offers in one request. Other article, dashboard, selling and inventory flows keep their existing filters.
 - Auction-only results use `currentBidPrice` (or the offered starting price when that field is absent), with its currency. Cards label this as an auction bid, not a Buy It Now asking price. Listings offering both formats retain the Buy It Now price.
-- Numeric checklist numbers without a `#` are accepted only as separate title tokens, after removing serial fractions and slab grades. The release, player, section, finish and serial checks still apply.
+- Numeric checklist numbers without a `#` are accepted only as separate title tokens, after removing serial fractions, release-series labels and slab grades. The release, player, section, finish and serial checks still apply.
 - Selected-parallel results are validated against the selected parallel, rather than its base record.
 - If no exact card matches the first search, one fallback removes redundant base-section wording and the serial search token. The exact finish and serial validator remains unchanged. Specific standalone subset wording is retained.
-- Cache version 12, 15-minute results, one optional fallback, the existing shared cache/backoff and two concurrent visible browser lookups. No added inventory/database queries. EPN campaign attribution is retained.
+- Cache version 13, 15-minute results, one optional fallback, the existing shared cache/backoff and two concurrent visible browser lookups. No added inventory/database queries. EPN campaign attribution is retained.
 
 ## Alternative source pilot
 
