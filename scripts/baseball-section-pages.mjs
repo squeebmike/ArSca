@@ -55,7 +55,7 @@ export function relatedParallelLinks(set,card,esc,options={}){
  const photo='<span class="mp-card-reference"'+(reference?'':' data-sports-reference="'+esc(lookup)+'"')+'>'+referenceImageHtml(reference,card.player+' #'+card.cardNumber,esc)+'</span>';
  if(!count){
   const known=[...(set.cards||[]),...sectionsForSet(set).flatMap(g=>g.cards)].some(c=>c.id===card.id&&c.cardNumber===card.cardNumber&&identity(c)===identity(card));
-  return known?'<figure class="mp-reference-only">'+photo+'<figcaption>PriceCharting reference photo when available. Not a copy for sale.</figcaption></figure>':'';
+  return known?'<figure class="mp-reference-only">'+photo+'<figcaption>Reference or matching seller photo when available. Check the source link for availability.</figcaption></figure>':'';
  }
  const runs=[...new Set([...program.variants.map(v=>v.displayRun||(v.printRun?printRunLabel(v.printRun):'')),...matches.map(({c})=>cardNumberingLabel(set,c))].filter(Boolean))];
  return '<details class="mp-card-parallels"><summary style="font:700 14px/1.45 system-ui;min-height:44px;cursor:pointer">'+photo+'<span class="mp-parallel-summary-copy">Parallels &amp; numbered versions ('+count+')'+(runs.length?'<small>'+runs.map(esc).join(' · ')+'</small>':'')+'<small>Tap the card to show or hide its versions.</small></span></summary><small>Shop photos appear first. eBay photos and asking prices come from sellers; verify the finish, serial stamp and condition. PriceCharting photos are references, not sale listings. Affiliate links may earn us a commission.</small><ul class="mp-parallel-gallery">'+cardParallelOptionsHtml(set,card,cardPath(set,card),esc,options)+matches.map(({g,c})=>parallelPreviewTile({name:g.name,numbering:cardNumberingLabel(set,c),path:cardPath(set,c),lookup:cardPath(set,c)+'?market=1',searchHref:ebayChecklistSearch(c,set,options.campaignId),ownHtml:inlineParallelStock(options.inventory,c,set,options.deps),escape:esc})).join('')+'</ul><small>Verified finishes shown; other versions may exist. A checklist entry does not mean a copy is available.</small>'+(program.source?'<small><a href="'+esc(program.source)+'" target="_blank" rel="noopener">Parallel source</a></small>':'')+(program.references||[]).map(ref=>'<small><a href="'+esc(ref.url)+'" target="_blank" rel="noopener">'+esc(ref.label)+'</a></small>').join('')+'</details>';
@@ -86,7 +86,11 @@ export async function handleBaseballSections(request,env,url,deps,sets,html,miss
  if(url.searchParams.has('reference')){
   if(request.method!=='GET')return new Response(null,{status:405,headers:{Allow:'GET'}});
   const reference=await sportsReferenceImage(env,deps.ctx,set,chosenCard,deps);
-  return Response.json({reference},{headers:{'Cache-Control':'public,max-age=3600','X-Robots-Tag':'noindex'}});
+  if(reference)return Response.json({reference},{headers:{'Cache-Control':'public,max-age=3600','X-Robots-Tag':'noindex'}});
+  // The main card photo needs the same marketplace fallback as its versions.
+  // This path reads the shared eBay cache only; it never loads store inventory.
+  try{const listings=await sportsListings(env,deps.ctx,set,cardGroup,deps,{card:chosenCard,wait:true});return Response.json({reference:null,listing:listings[0]||null},{headers:{'Cache-Control':'no-store','X-Robots-Tag':'noindex'}});}
+  catch{return Response.json({reference:null,listing:null,marketplaceUnavailable:true},{headers:{'Cache-Control':'no-store','X-Robots-Tag':'noindex'}});}
  }
  if(url.searchParams.has('market')){
   if(request.method!=='GET')return new Response(null,{status:405,headers:{Allow:'GET'}});

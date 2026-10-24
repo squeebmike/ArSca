@@ -24,6 +24,13 @@ export function sportsListingMatches(listing,card,set,group){
  const release=/\bchrome\b/i.test(card.section||'')&&!/\bchrome\b/i.test(set.displayName)?{...set,displayName:set.displayName+' Chrome'}:set;
  if(!number||!card.player||!listingMatchesRelease(listing.title+(inferredFootball?' Football':''),release))return false;
  if(conflictingBaseballTeam(listing.title,card,set))return false;
+ if(group.id==='base'&&!card.parallelRule){
+  // A photo for the ordinary base card must not silently show a parallel.
+  const ordinary=title.replace(/\b(?:red sox|white sox|blue jays)\b/g,' ');
+  const releaseWords=new Set(fold(set.displayName).split(/\W+/));
+  const finishes=['refractor','prism','prizm','foil','gold','silver','bronze','blue','red','green','pink','purple','orange','yellow','black','white','aqua','fuchsia','rainbow','camo','sapphire','variation','parallel','sparkle','speckle','crackle','diamond','wave','lava','holiday','vintage','mirror','negative','acetate','clear','printing','plate','plates','superfractor','ssP','sp'].filter(w=>!releaseWords.has(w.toLowerCase()));
+  if(new RegExp('\\b(?:'+finishes.join('|')+')\\b','i').test(ordinary)||/\d\s*\/\s*\d|\/\s*\d|\b1\s+of\s+1\b/.test(ordinary))return false;
+ }
  if(card.parallelRule&&!matchesParallelPrinting(listing.title,card.parallelRule,card.parallelSiblings,card.section))return false;
  const numbering=cardParallelProgram(set,card);
  if(!card.parallelRule&&(numbering.printRun||numbering.maxPrintRun)&&!matchesSerialNumbering(listing.title,numbering))return false;
@@ -50,7 +57,7 @@ export function sportsListingMatches(listing,card,set,group){
 export async function sportsListings(env,ctx,set,group,deps,{card=null,wait=false}={}){
  const campaign=String(env.EBAY_PARTNER_CAMPAIGN_ID||'');
  if(!/^\d{10}$/.test(campaign)||!env.LBA_KV||!deps.searchEbay)return [];
- const key='sports-checklist-listings-v13:'+campaign+':'+set.id+':'+group.id+':'+(card?.id||'section')+':'+(card?.parallelRule?.id||'family');
+ const key='sports-checklist-listings-v14:'+campaign+':'+set.id+':'+group.id+':'+(card?.id||'section')+':'+(card?.parallelRule?.id||'family');
  const load=async signal=>{
   // Numeric card numbers recur across base, parallels and autographs. Keep
   // the subset in those searches; prefixed IDs already disambiguate inserts.
@@ -97,10 +104,13 @@ function renderReference(target,ref){
 }
 async function loadReference(target){
  if(target.dataset.referenceLoaded)return;target.dataset.referenceLoaded='true';
+ target.setAttribute('aria-live','polite');target.style.flexDirection='column';target.innerHTML='<span class="mp-mana-wait"><span class="mp-mana-vial" aria-hidden="true"></span><span>Finding card photo…</span></span>';
  try{var r=await fetch(target.dataset.sportsReference,{headers:{Accept:'application/json'}});if(!r.ok)throw Error('unavailable');var d=await r.json();target.replaceChildren();
-  if(d.reference){var img=document.createElement('img'),credit=document.createElement('small');img.src=d.reference.image;img.alt=d.reference.title+' — PriceCharting reference image';img.width=180;img.height=240;img.loading='lazy';img.decoding='async';credit.textContent='PriceCharting reference';target.append(img,credit);img.onerror=function(){target.textContent='Reference photo unavailable';};}
-  else target.textContent='Reference photo unavailable';
- }catch(_){target.textContent='Reference photo unavailable';}
+  if(d.reference||d.listing){var photo=d.reference||d.listing,img=document.createElement('img'),credit=document.createElement('small');img.src=photo.image;img.alt=photo.title+(d.listing?' — eBay seller photo':' — PriceCharting reference image');img.width=180;img.height=240;img.loading='lazy';img.decoding='async';credit.textContent=d.listing?'eBay seller photo':'PriceCharting reference';target.append(img,credit);img.onerror=function(){target.textContent='Reference photo unavailable';};
+   if(d.listing){var offer=document.createElement('a');offer.href=photo.href;offer.target='_blank';offer.rel='noopener sponsored';offer.textContent='View this copy on eBay'+(photo.price?' · '+(photo.priceKind==='currentBid'?'Auction bid ':'')+'$'+Number(photo.price).toFixed(2)+' USD':'');var details=target.closest('details.mp-card-parallels');if(details){var p=document.createElement('p');p.append(offer);details.querySelector('summary').after(p);}else{var link=document.createElement('a');link.href=photo.href;link.target='_blank';link.rel='noopener sponsored';link.append(img);target.prepend(link);target.append(offer);}}
+  }
+  else target.textContent='No exact card photo found';
+ }catch(_){target.textContent='Card photo temporarily unavailable';}
 }
 function compactTarget(target){return !!(target.closest&&target.closest('.mp-parallel-card'));}
 function renderListing(target,l){

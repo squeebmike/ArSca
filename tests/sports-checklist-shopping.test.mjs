@@ -79,6 +79,37 @@ console.log('Mobile section navigation, 1,975 numbered football references, exac
  await sportsListings(e,null,s,g,d,{card:gold,wait:true});assert.equal(calls,2,'cached lookups do not repeat either search');
 }
 
+// Main checklist photos fall back to eBay, without confusing base and parallels.
+{
+ const {baseballSets}=await import('../scripts/topps/baseball-seed.mjs');
+ const {handleBaseballCatalog}=await import('../scripts/baseball-catalog-pages.mjs');
+ const s=baseballSets.find(s=>s.id==='2026-topps-series-1-baseball'),c=s.cards[0];
+ const g={id:'base',name:'Base',kind:'Base',cards:s.cards};
+ const sale={...listing,title:'2026 Topps Series 1 Aaron Judge #1 Yankees',price:4};
+ assert.ok(sportsListingMatches(sale,c,s,g));
+ for(const suffix of [' Gold /2026',' Rainbow Foil',' Silver',' Golden Mirror Variation',' SP',' Blue Holo Foil',' Independence Day /76'])assert.ok(!sportsListingMatches({...sale,title:sale.title+suffix},c,s,g),suffix);
+ let loads=0,searches=0;const memory=new Map([['sports-reference-provider-paused','1']]);
+ const e={EBAY_PARTNER_CAMPAIGN_ID:'5339046175',LBA_KV:{get:async k=>memory.get(k)||null,put:async(k,v)=>memory.set(k,JSON.parse(v))}};
+ const d={escape:esc,slug:s=>s,shell:p=>p.bodyHtml,listItems:async()=>{loads++;return [];},available:()=>true,searchEbay:async()=>{searches++;return {listings:[{...sale,title:sale.title+' Gold /2026'},sale]};}};
+ const url=new URL('https://www.themanapocket.com/baseball/checklists/'+s.id+'/cards/'+c.id+'?reference=1');
+ const response=await handleBaseballCatalog(new Request(url),e,url,d),data=await response.json();
+ assert.equal(data.reference,null);assert.equal(data.listing.title,sale.title);assert.equal(loads,0);assert.equal(searches,1);
+ assert.equal(response.headers.get('cache-control'),'no-store');
+ // Exercise the actual browser runtime: photo expands versions, affiliate
+ // purchase link lives outside the summary so the two clicks stay distinct.
+ const {parseHTML}=await import('linkedom'),vm=await import('node:vm');
+ const {document}=parseHTML('<html><body><details class="mp-card-parallels"><summary><span data-sports-reference="/card?reference=1"></span></summary></details></body></html>');
+ const target=document.querySelector('[data-sports-reference]');let observed;
+ class Observer{constructor(fn){observed=fn;}observe(){}unobserve(){}}
+ const {sportsLookupScript}=await import('../scripts/sports-card-marketplace.mjs');
+ vm.runInNewContext(sportsLookupScript.slice(sportsLookupScript.indexOf('<script>')+8).replace(/<\/script>$/,''),{document,window:{IntersectionObserver:Observer},IntersectionObserver:Observer,fetch:async()=>({ok:true,json:async()=>data})});
+ observed([{target,isIntersecting:true}]);await new Promise(resolve=>setImmediate(resolve));
+ assert.equal(target.querySelector('img').getAttribute('src'),data.listing.image);
+ assert.match(target.textContent,/eBay seller photo/);
+ const offer=document.querySelector('details > p > a');assert.ok(offer);assert.equal(offer.getAttribute('rel'),'noopener sponsored');assert.match(offer.getAttribute('href'),/campid=5339046175/);
+ assert.equal(document.querySelector('summary a'),null,'main card image keeps its expand/collapse action');
+}
+
 for(const section of groups){
  const r=await handleFootballCatalog(new Request('https://www.themanapocket.com'+root+'/sections/'+section.id),{EBAY_PARTNER_CAMPAIGN_ID:'5339046175'},new URL('https://www.themanapocket.com'+root+'/sections/'+section.id),deps);
  assert.equal(r.status,200);const body=await r.text();
