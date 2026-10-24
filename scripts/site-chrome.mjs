@@ -16,8 +16,8 @@ export const SITE_CHROME_SOURCE = 'https://www.themanapocket.com/privacy-policy'
 export function currentChromeAssets(chrome) {
   if (!chrome) return chrome;
   return { ...chrome, bodyEnd: String(chrome.bodyEnd || '').replace(
-    /https:\/\/cdn\.jsdelivr\.net\/gh\/squeebmike\/wo-scripts@9111f30\/wo-ui\.js/g,
-    'https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@cce8b1d/wo-ui.js') };
+    /https:\/\/cdn\.jsdelivr\.net\/gh\/squeebmike\/wo-scripts@(?:9111f30|cce8b1d)\/wo-ui\.js/g,
+    'https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@0734020/wo-ui.js') };
 }
 
 // The whole element starting at `start`: counts nested <div>s until the one

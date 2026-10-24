@@ -2654,7 +2654,7 @@ function mtgPriceLines(card) {
 // same [data-wo-theme] "My Pocket" button/localStorage key, so a visitor's
 // team/Pokemon/MTG theme choice carries over here exactly as it does on every
 // Webflow page, with zero separate theme logic to maintain in this Worker.
-const WO_UI_SCRIPT_URL = 'https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@cce8b1d/wo-ui.js';
+const WO_UI_SCRIPT_URL = 'https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@0734020/wo-ui.js';
 // Site logo -- the same asset wo-ui.js's own MANA_LOGO/BRAND_LOGO constants
 // and every JS-built fallback nav (account.js, preorders.js) already use
 // sitewide, served from Webflow's actual CDN host (not the raw S3 bucket
@@ -2818,7 +2818,7 @@ function mtgPageShell({ title, description, canonicalPath, ogImage, ogType, json
     (ogImage ? `<meta name="twitter:image" content="${mtgEscapeHtml(ogImage)}">` : '');
   const robotsTag = robotsNoindex ? `<meta name="robots" content="noindex,follow">` : '';
   const originalChrome = currentSiteChrome();
-  const chrome=originalChrome?{...originalChrome,head:originalChrome.head.replace(/wo-scripts@[^/]+\/site-polish\.css/g,'wo-scripts@3a32ee9/site-polish.css'),bodyEnd:originalChrome.bodyEnd.replace(/wo-scripts@[^/]+\/wo-ui\.js/g,'wo-scripts@cce8b1d/wo-ui.js')}:null;
+  const chrome=originalChrome?{...originalChrome,head:originalChrome.head.replace(/wo-scripts@[^/]+\/site-polish\.css/g,'wo-scripts@3a32ee9/site-polish.css'),bodyEnd:originalChrome.bodyEnd.replace(/wo-scripts@[^/]+\/wo-ui\.js/g,'wo-scripts@0734020/wo-ui.js')}:null;
   const product = jsonLdList.find(block=>block['@type']==='Product');
   const itemRoute = canonicalPath.match(/^\/(item|preorder|book)\/([^/]+)/);
   const productView = product && itemRoute ? productViewAnalytics({id:decodeURIComponent(itemRoute[2]),name:product.name,price:product.offers?.price,category:itemRoute[1]==='preorder'?'Comic preorder':itemRoute[1]==='book'?'Comic backorder':product.additionalProperty?.find(f=>f.name==='Category')?.value||''}) : '';
