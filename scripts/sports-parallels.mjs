@@ -131,7 +131,7 @@ export const parallelFamilyStyle=parallelBaseStyle+`<style>
 .mp-parallel-card{min-width:0;padding:9px;border:1px solid var(--wo-border,#777);border-radius:9px;background:var(--wo-bg,transparent)}
 .mp-card-parallels li.mp-parallel-card>a.mp-parallel-finish{display:flex!important;flex-direction:column;align-items:flex-start!important;gap:4px;min-height:62px;border:0;padding:0 0 8px;overflow-wrap:anywhere}
 .mp-parallel-card button{width:100%;min-height:44px;padding:8px;border:1px solid var(--wo-border,#777);border-radius:7px;color:var(--wo-on-button,#111);background:var(--wo-button,#8bd450);font:650 12px/1.3 system-ui;cursor:pointer}
-.mp-parallel-card [data-sports-result]{min-height:180px;overflow-wrap:anywhere}
+.mp-parallel-card [data-sports-result]{min-height:180px;overflow-wrap:anywhere;font:12px/1.45 system-ui}
 .mp-parallel-card [data-sports-result] img,.mp-parallel-card .mp-store-copy img{display:block;width:100%!important;height:180px!important;object-fit:contain;margin:0 auto 8px}
 .mp-parallel-card [data-sports-result] a{display:block!important;min-height:0!important;border:0!important;padding:0!important}
 .mp-parallel-card [data-sports-result] strong,.mp-parallel-card .mp-store-copy strong{font:650 12px/1.4 system-ui!important}
@@ -139,4 +139,5 @@ export const parallelFamilyStyle=parallelBaseStyle+`<style>
 .mp-parallel-card .mp-store-copy{display:block!important;padding:0!important;border:0!important;font:12px/1.45 system-ui!important}
 .mp-parallel-placeholder{display:flex;min-height:180px;align-items:center;justify-content:center;text-align:center;font:12px/1.45 system-ui;color:var(--wo-muted,inherit);padding:8px}
 @media(min-width:768px){.mp-card-parallels ul.mp-parallel-gallery{grid-template-columns:repeat(auto-fit,minmax(160px,1fr))}}
+@media(max-width:767px){.mp-sports-browser{position:static!important}.mp-sports-links{scrollbar-width:none}.mp-sports-links::-webkit-scrollbar{display:none}}
 </style>`;
