@@ -64,7 +64,7 @@ try {
   assert.match(html, /id="navbarID" fs-scrolldisable-element="smart-nav"/, 'the real Webflow navbar');
   assert.doesNotMatch(html, /mp-nav-toggle|#navbarID\.navbar6_component\{position:fixed;top:0/, 'no hand-built nav or its CSS');
   assert.match(html, /<div class="footer-section">/, 'the real footer');
-  assert.match(html, /webflow\.js[\s\S]*wo-scripts@9111f30\/wo-ui\.js[\s\S]*<\/body><\/html>$/, 'Webflow runtime and site footer code');
+  assert.match(html, /webflow\.js[\s\S]*wo-scripts@cce8b1d\/wo-ui\.js[\s\S]*<\/body><\/html>$/, 'Webflow runtime and site footer code');
   assert.doesNotMatch(html, /wo-scripts@08bbbfc/, 'no second, older copy of wo-ui.js');
   assert.equal((html.match(/<title>/g) || []).length, 1);
   assert.match(html, /<title>Frequently Asked Questions \| The Mana Pocket<\/title>/, 'the page keeps its own title');
