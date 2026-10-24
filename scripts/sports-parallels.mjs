@@ -35,7 +35,7 @@ const config={
   'major-league-material-relic-cards':{variants:ink21},'1986-topps-baseball-relics':{variants:ink21},'1986-topps-all-star-baseball-relics':{variants:ink21},
   'topps-reverence-autograph-patch-cards':{printRun:10,variants:red5},'in-the-name-relics':{printRun:1},'cut-signatures':{printRun:1},'base-cards-clear-variation':{printRun:10}
  }),
- '2021-topps-updates-baseball':program(source21('update'),flagship(2021).filter(v=>v.name!=='Gold'),{
+ '2021-topps-updates-baseball':program(source21('update'),flagship(2021).filter(v=>v.name!=='Gold').concat(variants([['Green Foilboard',499,['green foilboard','green foil','green ice']],['Orange Foilboard',299,['orange foilboard','orange foil','orange ice']],['Red Foilboard',199,['red foilboard','red foil','red ice']]])),{
   // The original sell sheet calls Gold /2020 in this 2021 release. Leave that
   // conflicting specification out until a final-production source is checked.
   ...Object.fromEntries(['1986-topps-baseball','topps-black-and-gold','topps-platinum-player-die-cuts','topps-cards-that-never-were'].map(id=>[id,{variants:insert21}])),
