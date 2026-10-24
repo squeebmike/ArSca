@@ -25,7 +25,92 @@ const flagship23=()=>variants([
  ['Printing Plates',1,['printing plate','printing plates']],['Platinum',1]
 ]);
 const insert23=()=>variants([['Blue',null],['Black',299],['Gold',75],['Red',10],['Platinum',1]]);
+// Confirmed separately in the 2023 and 2024 Cosmic publisher spotlights.
+const cosmicTail=()=>variants([['Gold Interstellar Refractor',50],['Orange Galactic Refractor',25],['Black Eclipse Refractor',10],['Red Flare Refractor',5],['SuperFractor',1]]);
+const cosmicGreen=()=>variants([['Green Space Dust Refractor',75]]).concat(cosmicTail());
 const config={
+ '2023-topps-cosmic-chrome-baseball':program('https://ripped.topps.com/2023-topps-cosmic-chrome-checklist-spotlight/',variants([['Refractor',null],['Nucleus Refractor',null],['Aqua Equinox Refractor',199],['Blue Moon Refractor',99]]).concat(cosmicGreen()),{
+  'star-clusters':{variants:cosmicTail()},'extraterrestrial-talent':{variants:variants([['Blue Moon Refractor',99]]).concat(cosmicTail())},
+  'stars-in-the-night':{variants:variants([['Eclipse Refractor',10],['Flare Refractor',5],['SuperFractor',1]])},
+  'cosmic-chrome-autograph-variation':{variants:cosmicGreen()},'extraterrestrial-talent-autograph-variation':{variants:cosmicTail()}
+ }),
+ '2024-topps-cosmic-chrome-baseball':program('https://ripped.topps.com/2024-topps-cosmic-chrome-baseball-checklist-spotlight/',variants([['Refractor',null],['Nucleus Refractor',null],['Aqua Equinox Refractor',199],['Purple Nebula Refractor',150],['Blue Moon Refractor',99]]).concat(cosmicGreen()),{
+  ...Object.fromEntries(['launched-into-orbit','astrologically-aligned','star-command-autograph-variation'].map(id=>[id,{variants:cosmicTail()}])),
+  ...Object.fromEntries(['star-command','into-the-cosmos','galactic-greatness','cosmic-chrome-autograph-variation'].map(id=>[id,{variants:cosmicGreen()}])),
+  ...Object.fromEntries(['starfractor','stella-nova'].map(id=>[id,{variants:cosmicTail().filter(v=>v.printRun<=25)}])),
+  ...Object.fromEntries(['supernova','solar-flares-autograph-variation'].map(id=>[id,{variants:cosmicTail().filter(v=>v.printRun<=10)}])),
+  'stars-in-the-night':{variants:variants([['Eclipse Refractor',10],['Flare Refractor',5],['SuperFractor',1]])}
+ }),
+ '2023-topps-chrome':program('https://ripped.topps.com/2023-topps-chrome-baseball-checklist-spotlight/',variants([
+  ['Refractor',null],['Prism Refractor',null],['Negative Refractor',null],['Magenta Refractor',399],['Magenta Speckle Refractor',350],['Purple Speckle Refractor',299],['Purple Sonar Refractor',275],['Purple Refractor',250],['Aqua Refractor',199],['Aqua Lava Refractor',199],['Blue Refractor',150],['Blue Sonar Refractor',125],['Green Refractor',99],['Green Wave Refractor',99],['Green Sonar Refractor',99],['Blue Wave Refractor',75],['Gold Refractor',50],['Gold Wave Refractor',50],['Orange Wave Refractor',25],['Red Refractor',5],['Red Wave Refractor',5],['SuperFractor',1],['Printing Plates',1,['printing plate','printing plates']]
+ ]),{
+  'radiating-rookies':{variants:variants([['SuperFractor',1]])},
+  'base-cards-image-variations':{variants:variants([['Green Speckle Refractor',99],['Gold Speckle Refractor',50],['Orange Speckle Refractor',25],['Red Speckle Refractor',5],['SuperFractor',1]])},
+  '1988-topps-baseball':{variants:variants([['Green Refractor',99],['Gold Refractor',50],['Orange Refractor',25],['Red Refractor',5],['SuperFractor',1]])}
+ }),
+ '2023-topps-chrome-update-series-baseball':program('https://ripped.topps.com/2023-topps-chrome-update-series-baseball-checklist/',variants([
+  ['Prism Refractor',null],['Negative Refractor',null],['Magenta Refractor',399],['Magenta Purple Lava Lamp Refractor',275],['Purple Refractor',250],['Aqua Refractor',199],['Aqua Blue Lava Lamp Refractor',175],['Blue Refractor',150],['Blue Green Lava Lamp Refractor',125],['Green Refractor',99],['Gold Refractor',50],['Gold Mini Diamond Refractor',50],['Orange Refractor',25],['Red Orange Lava Lamp Refractor',10],['Red Refractor',5],['SuperFractor',1],['Printing Plates',1,['printing plate','printing plates']]
+ ]),{
+
+ }),
+ '2024-bowman-chrome-baseball':program('https://ripped.topps.com/2024-bowman-chrome-baseball-checklist-spotlight-product/',variants([
+  ['Refractor',499],['Fuchsia Refractor',299],['Purple Refractor',250],['Aqua RayWave Refractor',199],['Blue Refractor',150],['Wave Refractor',100],['Green Refractor',99],['Yellow Refractor',75],['Gold Refractor',50],['Orange Refractor',25],['Red Refractor',5],['SuperFractor',1]
+ ]),{
+  'chrome-prospects':{variants:variants([
+   ['Shimmer Refractor',null],['Refractor',499],['Speckle Refractor',299],['Purple Refractor',250],['Purple Shimmer Refractor',250],['Fuchsia Shimmer Refractor',199],['Blue Refractor',150],['Reptilian Blue Refractor',150,['reptilian blue','blue reptilian']],['Aqua Refractor',125],['Green Refractor',99],['Reptilian Green Refractor',99,['reptilian green','green reptilian']],['Green Shimmer Refractor',99],['Yellow Refractor',75],['Gold Refractor',50],['Gold Shimmer Refractor',50],['Reptilian Gold Refractor',50,['reptilian gold','gold reptilian']],['Orange Refractor',25],['Reptilian Orange Refractor',25,['reptilian orange','orange reptilian']],['Orange Shimmer Refractor',25],['Black Refractor',10],['Reptilian Black Refractor',10,['reptilian black','black reptilian']],['Red Refractor',5],['Reptilian Red Refractor',5,['reptilian red','red reptilian']],['Red Shimmer Refractor',5],['SuperFractor',1]
+  ])},
+  'base-set-retrofractor-variation':{variants:variants([['Gold Refractor',50],['Orange Refractor',25],['Red Refractor',5],['SuperFractor',1]])}
+ }),
+ // The publisher confirms these base finishes. Do not fill the rest of the
+ // football rainbow from baseball releases or unlicensed earlier editions.
+ '2025-topps-chrome-football':program('https://ripped.topps.com/2025-topps-chrome-football-best-rookie-cards-collect/',variants([['Blue Refractor',150],['Red Refractor',5],['SuperFractor',1]]),{}),
+ '2025-topps-cosmic-chrome-football':program('https://ripped.topps.com/2025-topps-cosmic-chrome-football-hobby-box-breakdown/',variants([['Refractor',null],['Nucleus Refractor',null],['Aqua Equinox Refractor',199],['SuperFractor',1]]),{}),
+ '2025-topps-series-1-baseball':program('https://ripped.topps.com/2025-topps-baseball-series-1-checklist-spotlight-product-2/',variants([
+  ['Gold',2025],['Rainbow Foil',null],['Aqua Rainbow Foil',null],['Holo Foil',null],['Aqua Holo Foil',null],['Pink Holo Foil',null],
+  ...['Holo Foil','Rainbow Foil'].flatMap(f=>[['Purple '+f,250],['Blue '+f,150],['Green '+f,99],['Gold '+f,50],['Orange '+f,25],['Black '+f,10],['Red '+f,5]]),
+  ['Independence Day',76],['Canvas',50],['Memorial Day Camo',25,['memorial day','camo']],['Wood',25],['Foilfractor',1],['Platinum Holo Foil',1],['Printing Plates',1,['printing plate','printing plates']],['Confetti',null],
+  ['Silver Crackle Foilboard',null,['silver crackle foilboard','silver crackle']],['Diamante Foil',null],['Pink Diamante Foil',null],['Gold Diamante Foil',50],['Orange Diamante Foil',25],['Black Diamante Foil',10],['Red Diamante Foil',5],
+  ['Birds',1],['Eggs',null],['Rabbits',null],['Flowers',50],['Umbrellas',10],['Watering Cans',5],
+  ['Spring Training',null],...['Green','Gold','Orange','Red','Platinum'].map((c,i)=>['Spring Training '+c,[99,50,25,5,1][i],['spring training '+c,c+' spring training']])
+ ]),{
+  ...Object.fromEntries(['2024-all-topps-team','training-grounds','call-to-the-hall'].map(id=>[id,{variants:variants([['Pink Foil',null],['Blue Foil',150],['Green Foil',99],['Gold Foil',50],['Orange Foil',25],['Black Foil',10],['Red Foil',5],['Foilfractor',1]])}])),
+  // The Greatest Hits Blue count is printed as "15o" on the source page;
+  // other shared inserts corroborate the names, not that ambiguous value.
+  '2024-greatest-hits':{variants:variants([['Pink Foil',null],['Green Foil',99],['Gold Foil',50],['Orange Foil',25],['Black Foil',10],['Red Foil',5],['Foilfractor',1]])},
+  'baseball-stars-autographs':{variants:variants([['Blue',150],['Gold',50],['Orange',25],['Black',10],['Red',5],['Platinum',1]])},
+  'baseball-stars-dual-autographs':{maxPrintRun:10},
+  '1990-topps-baseball-autograph-cards':{variants:variants([['Gold',50],['Orange',25],['Black',10],['Red',5],['Platinum',1]])},
+  'flagship-real-one-autograph-cards':{variants:variants([['Gold Foil',50],['Orange Foil',25],['Black Foil',10],['Red Foil',5],['Foilfractor',1]])},
+  'city-connect-swatch-collection-autograph-relic':{variants:variants([['Gold',50],['Orange',25],['Black',10],['Red',5],['Platinum',1]])},
+  'rickwood-autograph-relic-collection':{variants:variants([['Orange',25],['Black',10],['Red',5],['Platinum',1]])},
+  'heavy-lumber-autograph-relics':{maxPrintRun:10}
+ }),
+ '2024-topps-chrome-update-series-baseball':program('https://ripped.topps.com/2024-topps-chrome-update-series-checklist-spotlight-product/',variants([
+  ['Refractor',null],['Prism Refractor',null],['Negative Refractor',null],['X-Fractor',null],['RayWave Refractor',null],
+  ['Magenta Refractor',399],['Magenta Purple Lava Lamp Refractor',299,['magenta purple lava lamp','magenta purple lava']],['Purple Refractor',250],['Aqua Refractor',199],['Aqua RayWave Refractor',199],['Aqua Blue Lava Lamp Refractor',175],['Blue RayWave Refractor',150],['Blue Green Lava Lamp Refractor',125],
+  ['Green Refractor',99],['Green Wave Refractor',99],['Green RayWave Refractor',99],
+  ['Gold Refractor',50],['Gold Mini Diamond Refractor',50],['Gold RayWave Refractor',50],
+  ['Orange Refractor',25],['Orange RayWave Refractor',25],['Orange Black Lava Lamp Refractor',15],['Black Refractor',10],['Black RayWave Refractor',10],['Red Refractor',5],['Red RayWave Refractor',5],['SuperFractor',1],['Printing Plates',1,['printing plate','printing plates']]
+ ]).concat([{id:'frozenfractor',name:'Frozenfractor',printRun:5,serialDenominator:-5,displayRun:'/-5',aliases:['Frozenfractor']}]),{}),
+ '2022-topps-update-baseball':program('https://www.blowoutcards.net/images/ss/22tpupdateBB.pdf',flagship23().map(v=>v.name==='Gold'?{...v,printRun:2022}:v.name==='Black'?{...v,printRun:71}:v),{
+  ...Object.fromEntries(['generation-now','paragons-of-the-postseason','topps-black-gold','diamond-greats-die-cuts','2022-all-star-game'].map(id=>[id,{variants:insert23()}])),
+  ...Object.fromEntries(['generation-now-autograph-parallel','paragons-of-the-postseason-autograph-parallel','topps-black-gold-autograph-parallel','diamond-greats-die-cuts-autograph-parallel','oversized-rookie-reprint-boxloader-autograph-variation','2022-special-event-patch-cards-autograph-parallel'].map(id=>[id,{maxPrintRun:10}])),
+  'base-cards-clear-variation':{printRun:10},'baseball-stars-autographs':{variants:ink21},'baseball-stars-dual-autographs':{maxPrintRun:5},'1987-topps-baseball-autograph-cards':{variants:ink21},
+  '2022-special-event-patch-cards':{variants:variants([['Black',199],['Gold',50],['Red',10],['Platinum',1]])},
+  'major-league-material-cards':{variants:ink21},'all-star-stitches-cards':{variants:variants([['Silver',50],['Red',25],['Gold',1]])},
+  'all-star-jumbo-patch-cards':{maxPrintRun:5,variants:variants([['Gold',1]])},'all-star-stitches-dual-cards':{printRun:25},'all-star-stitches-triple-cards':{printRun:25},
+  'topps-reverence-autograph-patch-cards':{printRun:10,variants:red5},'own-the-name-relics':{printRun:1},'cut-signatures':{printRun:1}
+ }),
+ '2020-topps-updates-baseball':program('https://www.blowoutcards.net/images/ss/20tpupdateBB.pdf',flagship(2020),{
+  ...Object.fromEntries(['prospects-insert','decades-best','20-years-of-the-captain','a-numbers-game','1985-topps-baseball'].map(id=>[id,{variants:variants([['Blue',null],['Black',299],['Gold',50],['Red',10],['Platinum',1]])}])),
+  'decades-best-autograph-parallel':{maxPrintRun:25},'a-numbers-game-autographs':{maxPrintRun:25},
+  'baseball-stars-autographs':{variants:ink21},'baseball-stars-dual-autographs':{maxPrintRun:5},'1985-topps-baseball-autographs':{variants:ink21},
+  ...Object.fromEntries(['20-years-of-the-captain-commemorative-patch-cards','jeter-final-season-commemorative-patch-cards'].map(id=>[id,{variants:variants([['Black',50],['Gold',25],['Red',10],['Platinum',1]])}])),
+  '20-years-of-the-captain-commemorative-patch-cards-autograph-parallel':{printRun:1},'jeter-final-season-commemorative-patch-cards-autograph-parallel':{maxPrintRun:25},
+  'major-league-material-cards':{variants:ink21},'all-star-stitches-cards':{variants:variants([['Silver',50],['Red',25],['Gold',1]])},
+  'all-star-jumbo-patch-cards':{maxPrintRun:5,variants:variants([['Gold',1]])},'all-star-stitches-dual-cards':{printRun:25},'all-star-stitches-triple-cards':{printRun:25},
+  'topps-reverence-autograph-patch-cards':{printRun:10,variants:red5},'own-the-name-relics':{printRun:1},'cut-signatures':{printRun:1}
+ }),
  '2023-topps-update':program('https://www.blowoutcards.net/images/ss/23tpupdateBB.pdf',flagship23(),{
   ...Object.fromEntries(['action-stars','time-spanning-tandems','laid-out','2023-all-star-game','topps-black-gold','all-aces','1988-topps-baseball'].map(id=>[id,{variants:insert23()}])),
   ...Object.fromEntries(['action-stars-autograph-parallel','laid-out-autograph-parallel','topps-black-gold-autograph-parallel','all-aces-autograph-parallel','oversized-topps-big-baseball-card-autograph-variation','mvp-medallion-cards-autograph-parallel','commemorative-postseason-trophy-medallion-cards-autograph-parallel'].map(id=>[id,{maxPrintRun:10}])),
@@ -142,9 +227,14 @@ const config={
  })
 };
 export const parallelPrograms=config;
+const baseIdentities=new WeakMap();
 export function cardParallelProgram(set,card){
  const p=config[set.id];if(!p)return {variants:[]};
  const section=slug(card.section||'Base');
+ if(section==='base'){
+  if(!baseIdentities.has(set))baseIdentities.set(set,new Set((set.cards||[]).map(c=>String(c.cardNumber)+'|'+norm(c.player))));
+  if(!baseIdentities.get(set).has(String(card.cardNumber)+'|'+norm(card.player)))return {variants:[]};
+ }
  const spec=section==='base'?{variants:p.base}:p.sections[section];
  return spec?{...spec,source:p.source,variants:spec.variants||[]}:{variants:[]};
 }
@@ -165,10 +255,12 @@ export function matchesParallelPrinting(text,rule,siblings=[rule],section=''){
  let folded=norm(text);const marked=String(text||'');
  // An insert title is identity, not finish evidence (e.g. Topps Black Gold).
  for(const phrase of [norm(section),norm(section).replace(/^topps /,'')].filter(Boolean))folded=(' '+folded+' ').replace(' '+phrase+' ',' ').trim();
- const matched=siblings.flatMap(r=>r.aliases.map(a=>({id:r.id,phrase:norm(a).replace(/\brefractor\b/g,'').trim()||norm(a)})))
-  .filter(a=>a.phrase&&(' '+folded+' ').includes(' '+a.phrase+' ')).sort((a,b)=>b.phrase.length-a.phrase.length);
+ const matched=siblings.flatMap(r=>r.aliases.map(a=>({id:r.id,generic:norm(r.name)==='refractor',phrase:norm(a).replace(/\brefractor\b/g,'').trim()||norm(a)})))
+  .filter(a=>a.phrase&&(' '+folded+' ').includes(' '+a.phrase+' ')).sort((a,b)=>Number(a.generic)-Number(b.generic)||b.phrase.length-a.phrase.length);
  if(!matched.length||matched[0].id!==rule.id)return false;
- for(const finish of ['raywave','geometric','mini diamond','wave','lava','speckle','shimmer','sonar','reptilian','frozenfractor'])if(folded.includes(finish)&&!norm(rule.name).includes(finish))return false;
+ // A partial program must not turn an unimported color into a plain finish.
+ if(['refractor','prism refractor','raywave refractor','x fractor','shimmer refractor','negative refractor','rainbow foil','holo foil','diamante foil','spring training'].includes(norm(rule.name))&&/\b(?:blue|green|gold|red|purple|pink|aqua|magenta|orange|black|white|yellow|teal|sepia|fuchsia)\b/.test(folded))return false;
+ for(const finish of ['raywave','geometric','mini diamond','wave','lava','speckle','shimmer','sonar','reptilian','frozenfractor','prism','negative','nucleus','xfractor','x fractor'])if(folded.includes(finish)&&!norm(rule.name).includes(finish))return false;
  // An eBay 1/1 or jersey-number sales pitch is not publisher serial evidence.
  return matchesSerialNumbering(marked,rule);
 }
