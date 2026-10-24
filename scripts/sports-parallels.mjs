@@ -10,6 +10,15 @@ const red5=variants([['Red',5],['Platinum',1]]);
 const flagship=(year)=>variants([['Rainbow Foil',null],['Gold Foil',null],['Gold',year],['Vintage Stock',99],['Independence Day',76],['Black',year===2020?69:70],...(year===2021?[['Platinum Anniversary',70]]:[]),["Mother's Day Pink",50,['mothers day','mother s day','pink']], ["Father's Day Blue",50,['fathers day','father s day','blue']],['Memorial Day Camo',25,['memorial day','camo']],['Printing Plates',1,['printing plate','printing plates']], [year===2021?'70th Anniversary':'Platinum',1]]);
 const program=(source,base,sections={})=>({source,base,sections});
 const config={
+ '2024-topps-baseball-series-1':program('https://ripped.topps.com/2024-topps-series-1-baseball-checklist-spotlight/',variants([
+  ['Gold',2024],['Blue Holofoil',999,['blue holofoil','blue holo foil']],['Purple Holofoil',799,['purple holofoil','purple holo foil']],['Green Crackle Foil',499],['Orange Crackle Foil',299],['Red Crackle Foil',199],['Vintage Stock',99],['Independence Day',76],['Black',73],["Mother's Day Hot Pink",50,['mothers day','mother s day','pink']],["Father's Day Powder Blue",50,['fathers day','father s day','blue']],['Memorial Day Camo',25,['memorial day','camo']],['Clear',10],['Printing Plates',1,['printing plate','printing plates']],['Platinum',1]
+ ]),{
+  ...Object.fromEntries(['2023-all-topps-team','superstar-blueprint','grand-gamers','2023-greatest-hits','1989-topps-baseball'].map(id=>[id,{variants:variants([['Blue',null],['Black',299],['Gold',75],['Red',10],['Platinum',1]])}])),
+  'home-sweet-home-stadium-medallion-cards':{variants:variants([['Gold',75],['Red',10],['Platinum',1]])},
+  'baseball-stars-autographs':{variants:ink21},'baseball-stars-dual-autographs':{maxPrintRun:10},
+  'topps-reverence-autogaph-patch-cards':{variants:red5},'heavy-lumber-autograph-relics':{maxPrintRun:25},'in-the-name-relics':{printRun:1},'cut-signatures':{printRun:1},
+  'world-champion-relic-cards':{variants:variants([['Gold',25],['Platinum',1]])},'postseason-performance-relic-cards':{variants:variants([['Gold',25],['Platinum',1]])}
+ }),
  '2021-topps-series-1-baseball':program(source21('ser1'),flagship(2021),{
   'topps-through-the-years':{variants:insert21},'stars-in-service':{variants:insert21},'topps-platinum-players-die-cuts':{variants:insert21},'1986-topps-baseball':{variants:insert21},
   '70-years-of-baseball-autographs':{variants:ink21},'1986-topps-baseball-autograph-variation':{variants:ink21},
