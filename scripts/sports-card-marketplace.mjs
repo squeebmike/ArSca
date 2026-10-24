@@ -68,9 +68,10 @@ function renderListing(target,l){
  var compact=compactTarget(target),a=document.createElement('a'),img=document.createElement('img'),title=document.createElement('strong'),p=document.createElement('p'),note=document.createElement('p');
  a.href=l.href;a.target='_blank';a.rel='noopener sponsored';a.title=l.title;
  img.src=l.image;img.alt=l.title+' — seller photo';img.width=180;img.height=240;img.loading='lazy';img.style.cssText='width:100%;height:200px;object-fit:contain';
- title.textContent=compact?'View eBay listing':l.title;a.append(img,title);
+ title.textContent=l.title;a.append(img,title);
  p.textContent=(l.price?(compact?'eBay · $':'eBay asking price: $')+Number(l.price).toFixed(2)+' USD':'Price unavailable')+(compact?'':' · check shipping and condition');
- note.className='mp-meta';note.textContent=compact?'Seller photo · Check serial stamp':'Seller-provided title and photo. Verify the exact card and serial stamp; one-of-one claims are not authenticated by us.';
+ var grade=l.title.match(/\b(PSA|BGS|SGC|CGC|CSG|TAG|HGA)\s*(?:GEM\s*MT\s*|MINT\s*)?(\d{1,2}(?:\.\d)?)/i);
+ note.className='mp-meta';note.textContent=compact?(grade?'Seller title: '+grade[1].toUpperCase()+' '+grade[2]+' · Seller photo':'Seller photo · Check serial stamp'):'Seller-provided title and photo. Verify the exact card and serial stamp; one-of-one claims are not authenticated by us.';
  img.onerror=function(){img.hidden=true;note.textContent='Seller photo unavailable. Check the listing for photos and condition.';};
  target.append(a,p,note);
 }

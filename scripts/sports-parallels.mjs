@@ -135,6 +135,7 @@ export const parallelFamilyStyle=parallelBaseStyle+`<style>
 .mp-parallel-card [data-sports-result] img,.mp-parallel-card .mp-store-copy img{display:block;width:100%!important;height:180px!important;object-fit:contain;margin:0 auto 8px}
 .mp-parallel-card [data-sports-result] a{display:block!important;min-height:0!important;border:0!important;padding:0!important}
 .mp-parallel-card [data-sports-result] strong,.mp-parallel-card .mp-store-copy strong{font:650 12px/1.4 system-ui!important}
+.mp-parallel-card [data-sports-result] strong{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
 .mp-parallel-card [data-sports-result] p{font:12px/1.45 system-ui!important;margin:8px 0}
 .mp-parallel-card .mp-store-copy{display:block!important;padding:0!important;border:0!important;font:12px/1.45 system-ui!important}
 .mp-parallel-placeholder{display:flex;min-height:180px;align-items:center;justify-content:center;text-align:center;font:12px/1.45 system-ui;color:var(--wo-muted,inherit);padding:8px}
