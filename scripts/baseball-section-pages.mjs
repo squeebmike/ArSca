@@ -51,7 +51,7 @@ export function relatedParallelLinks(set,card,esc,options={}){
  const identity=c=>(c.subjects?.length?c.subjects.map(s=>s.name):[c.player]).map(n=>String(n).normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]/g,'')).sort().join('|');
  const matches=sectionsForSet(set).filter(g=>/parallel|variation/i.test(g.kind)&&!/auto|relic/i.test(g.kind+' '+g.name)).flatMap(g=>g.cards.filter(c=>String(c.cardNumber)===String(card.cardNumber)&&identity(c)===identity(card)).map(c=>({g,c})));
  const program=cardParallelProgram(set,card),count=matches.length+program.variants.length;
- const reference=savedReferenceImage(set,card),lookup=cardPath(set,card)+'?reference=1';
+ const reference=savedReferenceImage(set,card),lookup=cardPath(set,card)+'?reference=2';
  const photo='<span class="mp-card-reference"'+(reference?'':' data-sports-reference="'+esc(lookup)+'"')+'>'+referenceImageHtml(reference,card.player+' #'+card.cardNumber,esc)+'</span>';
  if(!count){
   const known=[...(set.cards||[]),...sectionsForSet(set).flatMap(g=>g.cards)].some(c=>c.id===card.id&&c.cardNumber===card.cardNumber&&identity(c)===identity(card));
