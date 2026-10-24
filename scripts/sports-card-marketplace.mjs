@@ -6,6 +6,16 @@ const fold=s=>String(s||'').normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toL
 const token=s=>fold(s).replace(/[^a-z0-9]/g,'');
 const escapeRegex=s=>String(s).replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
 const FRESH=15*60*1000;
+const baseballClubNames=['diamondbacks|d backs|dbacks','braves','orioles','red sox','cubs','white sox','reds','indians|guardians','rockies','tigers','astros','royals','angels','dodgers','marlins','brewers','twins','mets','yankees','athletics','phillies','pirates','padres','giants','mariners','cardinals','rays|devil rays','rangers','blue jays','nationals|expos'].map(s=>s.split('|'));
+function conflictingBaseballTeam(title,card,set){
+ if(set.sport!=='baseball'&&!/baseball/i.test(set.displayName||''))return false;
+ const normalized=s=>fold(s).replace(/[^a-z0-9]+/g,' ').trim();
+ const expected=normalized([card.team,...(card.subjects||[]).map(s=>s.team)].filter(Boolean).join(' ')),listed=normalized(title);
+ const mentions=(text,aliases)=>aliases.some(alias=>new RegExp('(?:^| )'+escapeRegex(alias)+'(?: |$)').test(text));
+ const expectedClubs=baseballClubNames.filter(aliases=>mentions(expected,aliases));
+ const listedClubs=baseballClubNames.filter(aliases=>mentions(listed,aliases));
+ return expectedClubs.length>0&&listedClubs.length>0&&!listedClubs.some(aliases=>expectedClubs.includes(aliases));
+}
 
 export function sportsListingMatches(listing,card,set,group){
  const title=fold(listing.title),number=String(card.cardNumber||'');
@@ -13,6 +23,7 @@ export function sportsListingMatches(listing,card,set,group){
  const inferredFootball=/football/i.test(set.displayName)&&!/\b(?:baseball|basketball|soccer|hockey|football|nfl)\b/i.test(title)&&/^[a-z]{2,}[-\d]/i.test(number)&&groupWords.length&&groupWords.every(w=>new RegExp('\\b'+escapeRegex(w)+'\\b').test(title));
  const release=/\bchrome\b/i.test(card.section||'')&&!/\bchrome\b/i.test(set.displayName)?{...set,displayName:set.displayName+' Chrome'}:set;
  if(!number||!card.player||!listingMatchesRelease(listing.title+(inferredFootball?' Football':''),release))return false;
+ if(conflictingBaseballTeam(listing.title,card,set))return false;
  if(card.parallelRule&&!matchesParallelPrinting(listing.title,card.parallelRule,card.parallelSiblings,card.section))return false;
  const numbering=cardParallelProgram(set,card);
  if(!card.parallelRule&&(numbering.printRun||numbering.maxPrintRun)&&!matchesSerialNumbering(listing.title,numbering))return false;
@@ -34,7 +45,7 @@ export function sportsListingMatches(listing,card,set,group){
 export async function sportsListings(env,ctx,set,group,deps,{card=null,wait=false}={}){
  const campaign=String(env.EBAY_PARTNER_CAMPAIGN_ID||'');
  if(!/^\d{10}$/.test(campaign)||!env.LBA_KV||!deps.searchEbay)return [];
- const key='sports-checklist-listings-v9:'+campaign+':'+set.id+':'+group.id+':'+(card?.id||'section')+':'+(card?.parallelRule?.id||'family');
+ const key='sports-checklist-listings-v10:'+campaign+':'+set.id+':'+group.id+':'+(card?.id||'section')+':'+(card?.parallelRule?.id||'family');
  const load=async signal=>{
   // Numeric card numbers recur across base, parallels and autographs. Keep
   // the subset in those searches; prefixed IDs already disambiguate inserts.

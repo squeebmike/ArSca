@@ -73,6 +73,15 @@ assert.ok(matchesParallelPrinting('Blue Rainbow Foil Board /150',blue252.paralle
 assert.ok(!matchesParallelPrinting('Blue Holo Foil /150',blue252.parallelRule,blue252.parallelSiblings));
 const lateBlack=selectedParallelCard(series25,series25.cards[0],'black');assert.equal(lateBlack.parallelRule.printRun,74);assert.match(lateBlack.parallelSource,/2025-topps-series-2/);
 const inception=footballSets.find(s=>s.id==='2026-topps-inception-football');assert.equal(cardParallelProgram(inception,inception.cards[0]).variants.find(v=>v.id==='hot-pink').printRun,35);
+const spring23=baseballSets.find(s=>s.id==='2023-bowman'),springGroup=sectionsForSet(spring23).find(g=>g.id==='chrome-prospects'),druw=springGroup.cards.find(c=>c.cardNumber==='BCP-25'),atomicDruw=selectedParallelCard(spring23,druw,'atomic-refractor');
+const atomicTitle='2023 Bowman Chrome Druw Jones Atomic Refractor #BCP-25';
+assert.ok(sportsListingMatches({title:atomicTitle+' Diamondbacks'},atomicDruw,spring23,springGroup));
+assert.ok(sportsListingMatches({title:atomicTitle},atomicDruw,spring23,springGroup),'an omitted seller team is not a contradiction');
+assert.ok(!sportsListingMatches({title:atomicTitle+' Braves'},atomicDruw,spring23,springGroup),'reject the observed seller team mismatch');
+const cleveland=set.cards.find(c=>c.team==='Cleveland Indians');
+assert.ok(sportsListingMatches({title:'2021 Topps Series 1 '+cleveland.player+' #'+cleveland.cardNumber+' Guardians'},cleveland,set,{kind:'Base',name:'Base'}),'historical and current franchise names are compatible');
+const disclosurePanel=relatedParallelLinks(spring23,druw,esc);
+assert.ok(disclosurePanel.indexOf('Affiliate links may earn')<disclosurePanel.indexOf('<ul class="mp-parallel-gallery">'),'buyers see the disclosure before the photos');
 for(const [id,p] of Object.entries(parallelPrograms)){
  const release=[...baseballSets,...footballSets].find(s=>s.id===id);assert.ok(release,id);
  assert.match(p.source,/^https:\/\/(?:ripped\.topps\.com|www\.blowoutcards\.net)\//);
