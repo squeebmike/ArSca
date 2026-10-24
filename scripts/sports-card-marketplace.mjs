@@ -88,8 +88,21 @@ document.addEventListener('click',function(e){var b=e.target.closest('button[dat
 var queue=[],active=0;
 function drain(){if(document.hidden)return;while(active<2&&queue.length){var b=queue.shift();if(!b.isConnected)continue;if(b.getClientRects&&!b.getClientRects().length){observer.observe(b);continue;}active++;lookup(b).finally(function(){active--;drain();});}}
 if('IntersectionObserver' in window){var observer=new IntersectionObserver(function(entries){entries.forEach(function(entry){if(!entry.isIntersecting)return;observer.unobserve(entry.target);queue.push(entry.target);});drain();},{rootMargin:'150px'});document.querySelectorAll('button[data-sports-lookup]').forEach(function(b){observer.observe(b);});document.addEventListener('visibilitychange',drain);}
+function mountParallelPhotos(details){
+ if(!details.open||!details.querySelectorAll)return;
+ details.querySelectorAll('[data-sports-preview]').forEach(function(tile){
+  if(tile.querySelector('[data-sports-result]'))return;
+  var market=document.createElement('div'),target=document.createElement('div'),placeholder=document.createElement('span'),button=document.createElement('button');
+  market.className='mp-parallel-market';target.dataset.sportsResult='';target.setAttribute('aria-live','polite');placeholder.className='mp-parallel-placeholder';placeholder.textContent='Matching photo & price will load here.';target.append(placeholder);
+  button.type='button';button.dataset.sportsLookup=tile.dataset.sportsPreview;button.textContent='Load photo & price';market.append(target,button);
+  tile.insertBefore(market,tile.querySelector('.mp-parallel-search'));
+  if(observer)observer.observe(button);
+ });
+}
+document.addEventListener('toggle',function(e){if(e.target&&e.target.matches&&e.target.matches('details.mp-card-parallels'))mountParallelPhotos(e.target);},true);
+document.querySelectorAll('details.mp-card-parallels[open]').forEach(mountParallelPhotos);
 })();</script>`;
 export function withSportsLookups(data){
- if(!data.bodyHtml?.includes('data-sports-lookup=')||data.bodyHtml.includes('data-mp-sports-lookup-runtime'))return data;
+ if(!(data.bodyHtml?.includes('data-sports-lookup=')||data.bodyHtml?.includes('data-sports-preview='))||data.bodyHtml.includes('data-mp-sports-lookup-runtime'))return data;
  return {...data,bodyHtml:data.bodyHtml+sportsLookupScript};
 }

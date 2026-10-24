@@ -63,6 +63,16 @@ assert.ok(!cardParallelProgram(cosmic23,cosmic23.cards[0]).variants.some(v=>v.id
 assert.equal(cardParallelProgram(cosmic24,cosmic24.cards[0]).variants.find(v=>v.id==='purple-nebula-refractor').printRun,150);
 const cosmicNfl=footballSets.find(s=>s.id==='2025-topps-cosmic-chrome-football'),cosmicPlain=selectedParallelCard(cosmicNfl,cosmicNfl.cards[0],'refractor');
 assert.ok(!matchesParallelPrinting('Purple Nebula Refractor',cosmicPlain.parallelRule,cosmicPlain.parallelSiblings),'an unknown NFL color cannot illustrate a plain Refractor');
+const series26=baseballSets.find(s=>s.id==='2026-topps-series-1-baseball'),pink26=selectedParallelCard(series26,series26.cards[0],'pink-holo-foil');
+assert.equal(cardNumberingLabel(series26,pink26),'800 copies printed');assert.equal(pink26.parallelRule.printRun,null);
+assert.ok(!cardParallelProgram(series26,series26.cards[0]).variants.some(v=>v.id==='green-holo-foil'),'do not infer an omitted count from the other Green foil family');
+assert.equal(cardParallelProgram(series26,sectionsForSet(series26).find(g=>g.id==='1991-topps-baseball').cards[0]).variants.find(v=>v.id==='the-real-one').printRun,91);
+const series252=baseballSets.find(s=>s.id==='2025-topps-series-2-baseball'),blue252=selectedParallelCard(series252,series252.cards[0],'blue-rainbow-foilboard');
+assert.ok(matchesParallelPrinting('Blue Rainbow Foil /150',blue252.parallelRule,blue252.parallelSiblings),'seller foil/foilboard spelling must not lose an exact match');
+assert.ok(matchesParallelPrinting('Blue Rainbow Foil Board /150',blue252.parallelRule,blue252.parallelSiblings));
+assert.ok(!matchesParallelPrinting('Blue Holo Foil /150',blue252.parallelRule,blue252.parallelSiblings));
+const lateBlack=selectedParallelCard(series25,series25.cards[0],'black');assert.equal(lateBlack.parallelRule.printRun,74);assert.match(lateBlack.parallelSource,/2025-topps-series-2/);
+const inception=footballSets.find(s=>s.id==='2026-topps-inception-football');assert.equal(cardParallelProgram(inception,inception.cards[0]).variants.find(v=>v.id==='hot-pink').printRun,35);
 for(const [id,p] of Object.entries(parallelPrograms)){
  const release=[...baseballSets,...footballSets].find(s=>s.id===id);assert.ok(release,id);
  assert.match(p.source,/^https:\/\/(?:ripped\.topps\.com|www\.blowoutcards\.net)\//);
@@ -121,7 +131,7 @@ const before=loads;res=await get(path+'?market=1&parallel=gold');assert.equal(re
 assert.ok(queries.some(q=>q.includes('Gold')&&q.includes('/2021')));
 const familyHtml=await(await get('/baseball/checklists/'+set.id+'/sections/all-parallels')).text();
 assert.match(familyHtml,/\?parallel=gold/);assert.match(familyHtml,/Select a parallel above/);
-for(const m of familyHtml.matchAll(/data-sports-lookup="([^\"]+)"/g)){
+for(const m of familyHtml.matchAll(/data-sports-preview="([^\"]+)"/g)){
  const url=new URL('https://www.themanapocket.com'+m[1].replaceAll('&amp;','&'));
  if(set.cards.some(c=>url.pathname.endsWith('/'+c.id)))assert.ok(url.searchParams.has('parallel'),'base-family photos must use a specific finish');
 }
@@ -129,10 +139,14 @@ assert.match(familyHtml,/mp-parallel-gallery/);
 assert.match(familyHtml,/data-mp-sports-lookup-runtime/);
 const beforeBase=loads;await get(path);assert.equal(loads,beforeBase+1,'all inline variants reuse the single inventory read');
 assert.match(page.bodyHtml,/data-mp-sports-lookup-runtime/);
+const largePage=await(await get('/baseball/checklists/'+series26.id)).text();
+assert.ok((largePage.match(/data-sports-preview=/g)||[]).length>2000,'the full page retains its verified finish endpoints');
+assert.equal((largePage.match(/<button[^>]+data-sports-lookup=/g)||[]).length,0,'thousands of closed-card photo controls must not be mounted in initial HTML');
+assert.ok((largePage.match(/href="[^"]*\?parallel=/g)||[]).length>2000,'finish names and links remain crawlable without JavaScript');
 const ownWithPhoto={...own,image:'https://example.test/our-gold-photo.jpg'};
 const stockedPanel=relatedParallelLinks(set,base,esc,{inventory:[ownWithPhoto],deps});
 assert.match(stockedPanel,/our-gold-photo\.jpg/);assert.match(stockedPanel,/Buy our copy/);
-const ownTile=stockedPanel.match(/<li class="mp-parallel-card">[\s\S]*?href="[^\"]*\?parallel=gold"[\s\S]*?<\/li>/)?.[0];
+const ownTile=stockedPanel.match(/<li class="mp-parallel-card"[^>]*>[\s\S]*?href="[^\"]*\?parallel=gold"[\s\S]*?<\/li>/)?.[0];
 assert.ok(ownTile?.includes('/item/ours/'));assert.ok(!ownTile?.includes('market=1&amp;parallel=gold"'),'an exact store photo avoids an unnecessary eBay lookup');
 const insert=sectionsForSet(set).find(g=>g.id==='1986-topps-baseball').cards[0];
 const insertHtml=relatedParallelLinks(set,insert,esc);assert.match(insertHtml,/mp-parallel-gallery/);assert.match(insertHtml,/market=1&amp;parallel=red/);assert.match(insertHtml,/\/10/);
@@ -157,5 +171,24 @@ assert.ok(sportsListingMatches({title:'2021 Topps Series 1 '+clear.player+' Clea
  assert.ok(!button.disabled);
  const once=withSportsLookups({bodyHtml:'<button data-sports-lookup="/lookup"></button>'});
  assert.equal(withSportsLookups(once).bodyHtml,once.bodyHtml,'only one queue per page');
+}
+// A closed disclosure keeps its crawlable links but mounts no photo controls.
+{
+ const vm=await import('node:vm');const {sportsLookupScript,withSportsLookups}=await import('../scripts/sports-card-marketplace.mjs');
+ const events={},observed=[];let mounted,callback,fetches=0;
+ const el=tag=>({tag,isConnected:true,style:{},dataset:{},children:[],append(...children){for(const c of children){c.parentElement=this;this.children.push(c);}},replaceChildren(){this.children=[];},setAttribute(){},closest(){return {};},querySelector(){return this.children.find(c=>c.dataset?.sportsResult!==undefined)||null;}});
+ const search={href:'https://www.ebay.com/sch/i.html?campid=5339046175'};
+ const tile={dataset:{sportsPreview:path+'?market=1&parallel=gold'},querySelector:s=>s==='.mp-parallel-search'?search:mounted?.children[0]||null,insertBefore(market,before){assert.equal(before,search);mounted=market;}};
+ const disclosure={open:false,matches:()=>true,querySelectorAll:()=>[tile]};
+ const doc={hidden:false,addEventListener:(name,fn)=>{events[name]=fn;},querySelectorAll:s=>s.includes('[open]')?[disclosure]:[],createElement:el};
+ class Observer{constructor(fn){callback=fn;}observe(b){observed.push(b);}unobserve(){}}
+ vm.runInNewContext(sportsLookupScript.slice(sportsLookupScript.indexOf('<script>')+8).replace(/<\/script>$/,''),{document:doc,window:{IntersectionObserver:Observer},IntersectionObserver:Observer,fetch:async()=>{fetches++;return {ok:true,json:async()=>({listing:null})};}});
+ assert.equal(mounted,undefined);assert.equal(observed.length,0);assert.equal(fetches,0);
+ disclosure.open=true;events.toggle({target:disclosure});assert.ok(mounted);assert.equal(observed.length,1);assert.equal(fetches,0);
+ const b=observed[0];assert.equal(b.dataset.sportsLookup,tile.dataset.sportsPreview);
+ events.toggle({target:disclosure});assert.equal(observed.length,1,'reopening must reuse existing controls');
+ callback([{target:b,isIntersecting:true}]);await new Promise(resolve=>setImmediate(resolve));
+ assert.equal(fetches,1);assert.match(mounted.children[0].textContent,/No exact listing photo/);assert.ok(!b.disabled);assert.equal(search.href,'https://www.ebay.com/sch/i.html?campid=5339046175');
+ const preview=withSportsLookups({bodyHtml:'<li data-sports-preview="/lookup"></li>'});assert.match(preview.bodyHtml,/data-mp-sports-lookup-runtime/);
 }
 console.log('Numbered card families, subset-specific print runs, strict serial/edition matching, affiliate URLs and stock isolation passed');

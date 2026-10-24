@@ -2,7 +2,7 @@
 import {baseballChecklistInventoryMatches,ebayChecklistSearch} from './topps/public-checklist-policy.mjs';
 import {catalogStoreCopyHtml} from './catalog-inventory.mjs';
 const slug=s=>s.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
-const norm=s=>String(s||'').normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
+const norm=s=>String(s||'').normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').replace(/\bfoil board\b/g,'foilboard').replace(/\brainbow foilboard\b/g,'rainbow foil').trim();
 const variants=rows=>rows.map(([name,printRun,aliases])=>({id:slug(name),name,printRun,aliases:aliases||[name]}));
 const source21=n=>'https://www.blowoutcards.net/images/ss/21tp'+n+'BB.pdf';
 const insert21=variants([['Blue',null],['Black',299],['Platinum Anniversary',70],['Red',10],['Gold',1]]);
@@ -29,6 +29,28 @@ const insert23=()=>variants([['Blue',null],['Black',299],['Gold',75],['Red',10],
 const cosmicTail=()=>variants([['Gold Interstellar Refractor',50],['Orange Galactic Refractor',25],['Black Eclipse Refractor',10],['Red Flare Refractor',5],['SuperFractor',1]]);
 const cosmicGreen=()=>variants([['Green Space Dust Refractor',75]]).concat(cosmicTail());
 const config={
+ '2026-topps-inception-football':program('https://ripped.topps.com/2026-topps-inception-football-collector-cards-guide/',variants([['Gold Electricity',50],['Hot Pink',35]]),{}),
+ '2026-topps-series-1-baseball':program('https://ripped.topps.com/2026-topps-series-1-baseball-collectors-guide/',variants([
+  ['Diamante Foil',null],['Holo Foil',null],['Pink Diamante Foil',null],['Rainbow Foil',null],['Sandglitter',null],['Silver Crackleboard Foil',null,['silver crackleboard','silver crackle foilboard']],['Spring Training',null],['Topps Foil Pattern',null],['Aqua Holo Foil',null],['Aqua Rainbow Foil',null],['Gold',2026],
+  ...['Holo Foil','Rainbow Foil'].flatMap(f=>[['Yellow '+f,399],['Purple '+f,250],['Blue '+f,150],...(f==='Rainbow Foil'?[['Green '+f,99]]:[]),['Gold '+f,50],['Orange '+f,25],['Black '+f,10],['Red '+f,5]]),
+  ['Cherry Blossom',99],['Green Diamante Foil',99],['Green Spring Training',99,['green spring training','spring training green']],['Independence Day',76],['75 Years of Topps',75],['Black Border',75],
+  ['Gold Diamante Foil',50],['Gold Sandglitter',50],['Gold Spring Training',50,['gold spring training','spring training gold']],['Canvas',50],['Memorial Day Camo',25,['memorial day','camo']],['Orange Diamante Foil',25],['Orange Sandglitter',25],['Orange Spring Training',25,['orange spring training','spring training orange']],['Wood',25],['Black Diamante Foil',10],['Black Sandglitter',10],['Red Diamante Foil',5],['Red Sandglitter',5],['Red Spring Training',5,['red spring training','spring training red']],['First Card',1,['first card','1st card']],['Foilfractor',1],['Rose Gold Holo Foil',1],['Rose Gold Spring Training',1],['Printing Plates',1,['printing plate','printing plates']]
+ ]).concat([{id:'pink-holo-foil',name:'Pink Holo Foil',printRun:null,displayRun:'800 copies printed',aliases:['Pink Holo Foil']}]),{
+  // Green Holo Foil is named without a print run in the publisher guide.
+  // Keep its serial count unresolved rather than copying Green Rainbow /99.
+  ...Object.fromEntries(['big-ticket-players','first-pitch','topps-profiles'].map(id=>[id,{variants:variants([['Pink Foil',null],['Blue Foil',150],['Green Foil',99],['Gold Foil',50],['Orange Foil',25],['Black Foil',10],['Red Foil',5],['Foilfractor',1]])}])),
+  '1991-topps-baseball':{variants:variants([['Pink',null],['Blue',150],['Green',99],['The Real One',91],['Gold',50],['Orange',25],['Black',10],['Red',5],['Foilfractor',1]])},
+  ...Object.fromEntries(['major-league-material-cards','city-connect-swatch-collection'].map(id=>[id,{variants:variants([['Rainbow Foilboard',null],['Blue',150],['Gold',50],['Orange',25],['Black',10],['Red',5],['Platinum',1]])}])),
+  'in-the-name-relics':{printRun:1}
+ }),
+ '2025-topps-series-2-baseball':program('https://ripped.topps.com/2025-topps-series-2-baseball-checklist/',variants([
+  ['Rainbow Foilboard',null,['rainbow foilboard','rainbow foil']],['Aqua Rainbow Foilboard',null,['aqua rainbow foilboard','aqua rainbow foil']],['Aqua Holo Foil',null],['Diamante Foil',null],['Holiday',null],['Holo Foil',null],['HTA Sandglitter',null,['hta sandglitter','sandglitter','sanglitter']],['Pink Diamante Foil',null],['Silver Crackle Foilboard',null,['silver crackle foilboard','silver crackle']],['Topps Foil Pattern',null],['Gold',2025],
+  ...['Holo Foil','Rainbow Foilboard'].flatMap(f=>[['Purple '+f,250],['Blue '+f,150],['Green '+f,99],['Gold '+f,50],['Orange '+f,25],['Black '+f,10],['Red '+f,5]]),
+  ['Holiday Hot Dog',99,['holiday hot dog','hot dog']],['Vintage Stock Retro',99,['vintage stock retro','vintage stock']],['Independence Day',76],['Black',74],['Gold Diamante Foil',50],['Canvas',50],['Holiday Beach Ball',50,['holiday beach ball','beach ball']],['Holiday Beach Umbrella',25,['holiday beach umbrella','beach umbrella']],['Memorial Day Camo',25,['memorial day','camo']],['Orange Diamante Foil',25],['Wood',25],['Black Diamante Foil',10],['Holiday Fireworks',5,['holiday fireworks','fireworks']],['Red Diamante Foil',5],['First Card',1,['first card','1st card']],['Foilfractor',1],['Holiday Waves',1,['holiday waves']],['Platinum Holo Foil',1],['Printing Plates',1,['printing plate','printing plates']]
+ ]).concat([{id:'pink-holo-foil',name:'Pink Holo Foil',printRun:null,displayRun:'800 copies printed',aliases:['Pink Holo Foil']}]),{
+  'base-cards-all-positions-variations':{printRun:9},
+  'rounding-the-bases-relics':{variants:variants([['Green',99],['Gold',50],['Orange',25],['Black',10],['Red',5],['Platinum',1]])}
+ }),
  '2023-topps-cosmic-chrome-baseball':program('https://ripped.topps.com/2023-topps-cosmic-chrome-checklist-spotlight/',variants([['Refractor',null],['Nucleus Refractor',null],['Aqua Equinox Refractor',199],['Blue Moon Refractor',99]]).concat(cosmicGreen()),{
   'star-clusters':{variants:cosmicTail()},'extraterrestrial-talent':{variants:variants([['Blue Moon Refractor',99]]).concat(cosmicTail())},
   'stars-in-the-night':{variants:variants([['Eclipse Refractor',10],['Flare Refractor',5],['SuperFractor',1]])},
@@ -72,7 +94,7 @@ const config={
   ['Silver Crackle Foilboard',null,['silver crackle foilboard','silver crackle']],['Diamante Foil',null],['Pink Diamante Foil',null],['Gold Diamante Foil',50],['Orange Diamante Foil',25],['Black Diamante Foil',10],['Red Diamante Foil',5],
   ['Birds',1],['Eggs',null],['Rabbits',null],['Flowers',50],['Umbrellas',10],['Watering Cans',5],
   ['Spring Training',null],...['Green','Gold','Orange','Red','Platinum'].map((c,i)=>['Spring Training '+c,[99,50,25,5,1][i],['spring training '+c,c+' spring training']])
- ]),{
+ ]).concat([{id:'black',name:'Black',printRun:74,aliases:['Black'],source:'https://ripped.topps.com/2025-topps-series-2-baseball-checklist/'}]),{
   ...Object.fromEntries(['2024-all-topps-team','training-grounds','call-to-the-hall'].map(id=>[id,{variants:variants([['Pink Foil',null],['Blue Foil',150],['Green Foil',99],['Gold Foil',50],['Orange Foil',25],['Black Foil',10],['Red Foil',5],['Foilfractor',1]])}])),
   // The Greatest Hits Blue count is printed as "15o" on the source page;
   // other shared inserts corroborate the names, not that ambiguous value.
@@ -226,6 +248,40 @@ const config={
   'topps-chrome-ultraviolet-all-stars-autographs':{printRun:99,variants:variants([['Orange',25],['Black',10],['Red',5],['SuperFractor',1],['Printing Plates',1,['printing plate','printing plates']]])}
  })
 };
+// Supplemental subset lists transcribed from the displayed publisher checklist.
+// Missing Orange/Black Crackle counts are deliberately excluded.
+Object.assign(config['2025-topps-series-2-baseball'].sections,Object.fromEntries([
+ ["2025-topps-flagship-autograph-patch-cards",[["Bronze",25],["Black",10],["Red",5],["Platinum",1]]],
+ ["city-connect-swatch-collection-autograph-relic",[["Gold",50],["Orange",25],["Black",10],["Red",5],["Platinum",1]]],
+ ["major-league-material-autograph-cards",[["Orange",25],["Black",10],["Red",5],["Platinum",1]]],
+ ["major-league-material-dual-autograph-cards",[["Orange",25],["Black",10],["Red",5],["Platinum",1]]],
+ ["rickwood-autograph-relic-collection",[["Orange",25],["Black",10],["Red",5],["Platinum",1]]],
+ ["rounding-the-bases-autograph-relic",[["Orange",25],["Black",10],["Red",5],["Platinum",1]]],
+ ["1990-topps-baseball-all-star-autograph-cards",[["Gold",50],["Orange",25],["Black",10],["Red",5],["Platinum",1]]],
+ ["1990-topps-baseball-autograph-cards",[["Gold",50],["Orange",25],["Black",10],["Red",5],["Platinum",1]]],
+ ["2024-first-pitch-autograph-variation",[["Gold",50],["Orange",25],["Black",10],["Red",5],["Foilfractor",1]]],
+ ["baseball-stars-autographs",[["Blue",150],["Gold",50],["Orange",25],["Black",10],["Red",5],["Platinum",1]]],
+ ["flagship-real-one-autograph-cards",[["Green",99],["Gold",50],["Orange",25],["Black",10],["Red",5],["Foilfractor",1]]],
+ ["signature-tunes-dual-autographs",[["Black",10],["Red",5],["Platinum",1]]],
+ ["world-champion-autograph-cards",[["Orange",25],["Black",10],["Red",5],["Platinum",1]]],
+ ["world-champion-dual-autograph-cards",[["Red",5],["Platinum",1]]],
+ ["1990-topps-baseball-relics",[["Blue",150],["Gold",50],["Orange",25],["Black",10],["Red",5],["Platinum",1]]],
+ ["1990-topps-baseball-all-star-relics",[["Blue",150],["Gold",50],["Orange",25],["Black",10],["Red",5],["Platinum",1]]],
+ ["city-connect-swatch-collection",[["Blue",150],["Gold",50],["Orange",25],["Black",10],["Red",5],["Platinum",1]]],
+ ["major-league-material-cards",[["Blue",150],["Gold",50],["Orange",25],["Black",10],["Red",5],["Platinum",1]]],
+ ["major-league-material-dual-relic-cards",[["Gold",50],["Orange",25],["Black",10],["Red",5],["Platinum",1]]],
+ ["real-one-relics",[["Gold",50],["Orange",25],["Black",10],["Red",5],["Platinum",1]]],
+ ["rounding-the-bases-relics",[["Green",99],["Gold",50],["Orange",25],["Black",10],["Red",5],["Platinum",1]]],
+ ["rounding-the-bases-dual-relics",[["Gold",50],["Orange",25],["Black",10]]],
+ ["1990-topps-all-star-baseball",[["Pink",null],["Green Crackle Foil",99],["The Real One",90],["Gold",50],["Gold Crackle Foil",50],["No Name",35],["Orange",25],["Black",10],["Red",5],["Red Crackle Foil",5],["Platinum",1]]],
+ ["1990-topps-baseball",[["Pink",null],["Green Crackle Foil",99],["The Real One",90],["Gold",50],["Gold Crackle Foil",50],["No Name",35],["Orange",25],["Black",10],["Red",5],["Red Crackle Foil",5],["Platinum",1]]],
+ ["2024-first-pitch",[["Pink Foil",null],["Blue Foil",150],["Green Foil",99],["Gold Foil",50],["Orange Foil",25],["Black Foil",10],["Red Foil",5],["Foilfractor",1]]],
+ ["dynamic-duos",[["Pink Foil",null],["Blue Foil",150],["Green Foil",99],["Gold Foil",50],["Orange Foil",25],["Black Foil",10],["Red Foil",5],["Foilfractor",1]]],
+ ["ops-bests",[["Pink Foil",null],["Blue Foil",150],["Green Foil",99],["Gold Foil",50],["Orange Foil",25],["Black Foil",10],["Red Foil",5],["Foilfractor",1]]],
+ ["stars-of-mlb",[["Gold Foil",50],["Orange Foil",25],["Black Foil",10],["Red Foil",5],["Foilfractor",1]]],
+ ["summer-superstars",[["Pink Foil",null],["Blue Foil",150],["Green Foil",99],["Gold Foil",50],["Orange Foil",25],["Black Foil",10],["Red Foil",5],["Foilfractor",1]]],
+ ["topps-mega-stars",[["Gold Foil",50],["Orange Foil",25],["Black Foil",10],["Red Foil",5],["Foilfractor",1]]]
+].map(([id,rows])=>[id,{variants:variants(rows)}])));
 export const parallelPrograms=config;
 const baseIdentities=new WeakMap();
 export function cardParallelProgram(set,card){
@@ -242,7 +298,7 @@ export function printRunLabel(n){return n===1?'1/1':Number.isInteger(n)&&n>0?'/'
 export function cardNumberingLabel(set,card){const p=cardParallelProgram(set,card);return card.parallelRule?.displayRun||(card.parallelRule?.printRun?printRunLabel(card.parallelRule.printRun):p.printRun?printRunLabel(p.printRun):p.maxPrintRun?'/'+p.maxPrintRun+' or less':'');}
 export function selectedParallelCard(set,card,id){
  const p=cardParallelProgram(set,card),rule=p.variants.find(v=>v.id===id);
- return rule?{...card,variant:rule.name,parallelRule:rule,parallelSiblings:p.variants,parallelSource:p.source}:null;
+ return rule?{...card,variant:rule.name,parallelRule:rule,parallelSiblings:p.variants,parallelSource:rule.source||p.source}:null;
 }
 export function matchesSerialNumbering(text,rule){
  const marked=String(text||'');
@@ -275,7 +331,10 @@ export function numberedParallelCollection(set,groups,collections){
  const result=[...collections.filter(g=>g.id!=='all-parallels'),collection];familyCollections.set(set,result);return result;
 }
 export function parallelPreviewTile({name,numbering,path,lookup,searchHref='',ownHtml='',escape:esc}){
- return '<li class="mp-parallel-card"><a class="mp-parallel-finish" href="'+esc(path)+'"><span>'+esc(name)+'</span>'+(numbering?'<b>'+esc(numbering)+'</b>':'')+'</a>'+ownHtml+(ownHtml.includes('<img')?'':'<div class="mp-parallel-market"><div data-sports-result aria-live="polite"><span class="mp-parallel-placeholder">Matching photo &amp; price will load here.</span></div><button type="button" data-sports-lookup="'+esc(lookup)+'">Load photo &amp; price</button>'+(searchHref?'<p class="mp-parallel-search"><a href="'+esc(searchHref)+'" target="_blank" rel="noopener sponsored">Search eBay for this finish</a></p>':'')+'</div>')+'</li>';
+ // Names, numbering and links stay crawlable. Mount the expensive image and
+ // lookup controls only when this card's disclosure opens on the client.
+ const needsPhoto=!ownHtml.includes('<img');
+ return '<li class="mp-parallel-card"'+(needsPhoto?' data-sports-preview="'+esc(lookup)+'"':'')+'><a class="mp-parallel-finish" href="'+esc(path)+'"><span>'+esc(name)+'</span>'+(numbering?'<b>'+esc(numbering)+'</b>':'')+'</a>'+ownHtml+(needsPhoto&&searchHref?'<p class="mp-parallel-search"><a href="'+esc(searchHref)+'" target="_blank" rel="noopener sponsored">Search eBay for this finish</a></p>':'')+'</li>';
 }
 export function inlineParallelStock(items,card,set,deps){
  if(!Array.isArray(items)||!deps?.available)return '';
