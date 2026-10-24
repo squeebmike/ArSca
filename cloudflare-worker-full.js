@@ -5598,7 +5598,9 @@ async function getEbayAppAccessToken(env) {
 
 function normalizeBrowseListing(raw) {
   if (!raw || typeof raw !== 'object') return null;
-  const price = compMoneyValue(raw.price?.value);
+  const auctionOnly = (raw.buyingOptions || []).includes('AUCTION') && !(raw.buyingOptions || []).includes('FIXED_PRICE');
+  const money = auctionOnly ? (raw.currentBidPrice || raw.price) : raw.price;
+  const price = compMoneyValue(money?.value);
   const shipping = compMoneyValue(raw.shippingOptions?.[0]?.shippingCost?.value);
   if (!price) return null;
   return {
@@ -5608,12 +5610,13 @@ function normalizeBrowseListing(raw) {
     shipping: Math.round(shipping * 100) / 100,
     total: Math.round((price + shipping) * 100) / 100,
     listingType: (raw.buyingOptions || []).includes('AUCTION') ? 'Auction' : 'FixedPrice',
+    priceKind: auctionOnly ? 'currentBid' : 'buyNow',
     endTime: raw.itemEndDate || null,
     startTime: raw.itemCreationDate || null,
     condition: raw.condition || null,
     url: raw.itemWebUrl || null,
     affiliateUrl: raw.itemAffiliateWebUrl || null,
-    currency: raw.price?.currency || null,
+    currency: money?.currency || null,
     imageUrl: raw.image?.imageUrl || raw.thumbnailImages?.[0]?.imageUrl || null,
     // A multi-variation listing (other sellers' "Cover: Select" listings):
     // its cover choices are only in the group, not the title.
@@ -5649,6 +5652,7 @@ async function fetchEbayActiveListings(env, query, opts = {}) {
   if (maxPrice > 0) filters.push(`price:[..${maxPrice}]`, 'priceCurrency:USD');
   if (listingType === 'Auction') filters.push('buyingOptions:{AUCTION}');
   else if (listingType === 'FixedPrice') filters.push('buyingOptions:{FIXED_PRICE}');
+  else if (listingType === 'AllPurchasable') filters.push('buyingOptions:{FIXED_PRICE|AUCTION}');
   const params = new URLSearchParams({ q: query, limit: String(Math.min(50, Math.max(1, limit))) });
   if (filters.length) params.set('filter', filters.join(','));
   if (sortOrder) params.set('sort', sortOrder);
@@ -8392,11 +8396,11 @@ async function routeRequest(request, env, ctx) {
       if(response)return response;
     }
     if(url.pathname==='/football'||url.pathname.startsWith('/football/')||url.pathname==='/sitemap-football.xml') {
-      const response=await handleFootballCatalog(request,env,url,{ctx,searchEbay:(query,campaignId,signal)=>fetchEbayActiveListings(env,query,{campaignId,listingType:'FixedPrice',limit:50,signal}),escape:mtgEscapeHtml,slug:mtgSlugify,shell:mtgPageShell,listItems:()=>optionalCatalogInventory(signal=>fetchAllListableStorefrontItemsCached(env,ctx,signal)),available:isStorefrontItemAvailable});
+      const response=await handleFootballCatalog(request,env,url,{ctx,searchEbay:(query,campaignId,signal)=>fetchEbayActiveListings(env,query,{campaignId,listingType:'AllPurchasable',limit:50,signal}),escape:mtgEscapeHtml,slug:mtgSlugify,shell:mtgPageShell,listItems:()=>optionalCatalogInventory(signal=>fetchAllListableStorefrontItemsCached(env,ctx,signal)),available:isStorefrontItemAvailable});
       if(response)return response;
     }
     if(url.pathname==='/sports/checklists'||url.pathname==='/baseball'||url.pathname.startsWith('/baseball/')||url.pathname==='/sitemap-baseball.xml') {
-      const response=await handleBaseballCatalog(request,env,url,{ctx,searchEbay:(query,campaignId,signal)=>fetchEbayActiveListings(env,query,{campaignId,listingType:'FixedPrice',limit:50,signal}),escape:mtgEscapeHtml,slug:mtgSlugify,shell:mtgPageShell,listItems:()=>optionalCatalogInventory(signal=>fetchAllListableStorefrontItemsCached(env,ctx,signal)),available:isStorefrontItemAvailable});
+      const response=await handleBaseballCatalog(request,env,url,{ctx,searchEbay:(query,campaignId,signal)=>fetchEbayActiveListings(env,query,{campaignId,listingType:'AllPurchasable',limit:50,signal}),escape:mtgEscapeHtml,slug:mtgSlugify,shell:mtgPageShell,listItems:()=>optionalCatalogInventory(signal=>fetchAllListableStorefrontItemsCached(env,ctx,signal)),available:isStorefrontItemAvailable});
       if(response)return response;
     }
     if(url.pathname==='/pokemon'||url.pathname.startsWith('/pokemon/')||url.pathname==='/sitemap-pokemon.xml') {

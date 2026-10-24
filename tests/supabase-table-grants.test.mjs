@@ -15,7 +15,7 @@ function migrationFiles() {
   const out = [];
   for (const dir of ['supabase-migrations', 'supabase/migrations', 'supabase']) {
     if (!fs.existsSync(dir)) continue;
-    for (const f of fs.readdirSync(dir)) if (f.endsWith('.sql')) out.push(path.join(dir, f));
+    for (const f of fs.readdirSync(dir)) if (f.endsWith('.sql')) out.push(path.join(dir, f).replaceAll(path.sep, '/'));
   }
   return out;
 }

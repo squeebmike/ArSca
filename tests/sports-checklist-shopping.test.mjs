@@ -43,6 +43,39 @@ const odds=footballOddsHtml(set.id,esc);assert.ok(odds.includes('1:2,559')&&odds
 assert.equal(footballOdds[set.id].rows.find(r=>r.name==='Kaiju').odds[3],null);
 console.log('Mobile section navigation, 1,975 numbered football references, exact card identity, store-first shopping, bounded affiliate lookup and source odds passed');
 
+// Wider discovery must retain exact card/finish identity and auction pricing.
+{
+ const fs=await import('node:fs'),vm=await import('node:vm');
+ const worker=fs.readFileSync(new URL('../cloudflare-worker-full.js',import.meta.url),'utf8').replaceAll('\r\n','\n');
+ const fn=name=>{const start=worker.indexOf('function '+name+'(');return worker.slice(start,worker.indexOf('\n}',start)+2);};
+ const context={compMoneyValue:v=>Number(v)||0,Date,URLSearchParams,getEbayAppAccessToken:async()=> 'test-token',readApiJson:async r=>({data:await r.json()})};
+ let requestUrl;
+ context.fetch=async url=>{requestUrl=new URL(url);return {ok:true,json:async()=>({itemSummaries:[]})};};
+ vm.runInNewContext(fn('normalizeBrowseListing')+'\nasync '+fn('fetchEbayActiveListings')+'\nthis.normalize=normalizeBrowseListing;this.search=fetchEbayActiveListings;',context);
+ const auction=context.normalize({itemId:'auction',buyingOptions:['AUCTION'],currentBidPrice:{value:'12.50',currency:'USD'}});
+ assert.equal(auction.price,12.5);assert.equal(auction.currency,'USD');assert.equal(auction.priceKind,'currentBid');
+ const both=context.normalize({buyingOptions:['AUCTION','FIXED_PRICE'],currentBidPrice:{value:'5',currency:'USD'},price:{value:'30',currency:'USD'}});
+ assert.equal(both.price,30);assert.equal(both.priceKind,'buyNow');
+ await context.search({},'exact card',{listingType:'AllPurchasable',campaignId:'5339046175'});
+ assert.equal(requestUrl.searchParams.get('filter'),'buyingOptions:{FIXED_PRICE|AUCTION}');
+ assert.equal((worker.match(/listingType:'AllPurchasable',limit:50,signal/g)||[]).length,2,'both sports catalogs include auctions');
+ assert.match(sportsListingHtml({...cached[0],priceKind:'currentBid',price:12.5},esc),/eBay auction bid: \$12.50 USD/);
+ const {baseballSets}=await import('../scripts/topps/baseball-seed.mjs');
+ const {selectedParallelCard}=await import('../scripts/sports-parallels.mjs');
+ const s=baseballSets.find(s=>s.id==='2021-topps-series-1-baseball'),c=s.cards.find(c=>c.cardNumber==='43'),gold=selectedParallelCard(s,c,'gold');
+ const g={id:'base',name:'Base Cards',kind:'Base',cards:[c]};
+ const valid={...listing,title:'2021 Topps Series 1 Baseball Jo Adell 43 Gold 123/2021',priceKind:'currentBid'};
+ assert.ok(sportsListingMatches(valid,gold,s,g),'bare checklist number is accepted with exact release/player/finish');
+ for(const title of ['2021 Topps Series 1 Baseball Jo Adell Gold #44 43/2021','2021 Topps Series 1 Baseball Jo Adell Gold #44 /43','2021 Topps Series 1 Baseball Jo Adell Gold #44 PSA 43'])assert.ok(!sportsListingMatches({...valid,title},gold,s,g),title);
+ let calls=0;const queries=[],memory=new Map();
+ const e={EBAY_PARTNER_CAMPAIGN_ID:'5339046175',LBA_KV:{get:async k=>memory.get(k)||null,put:async(k,v)=>memory.set(k,JSON.parse(v))}};
+ const d={searchEbay:async q=>{queries.push(q);return {listings:++calls===1?[{...valid,title:valid.title.replace('Gold','Gold Foil')}]:[valid]};}};
+ const result=await sportsListings(e,null,s,g,d,{card:gold,wait:true});
+ assert.equal(calls,2);assert.equal(result.length,1);assert.equal(result[0].priceKind,'currentBid');
+ assert.notEqual(queries[0],queries[1]);assert.ok(!queries[1].includes('/2021'));
+ await sportsListings(e,null,s,g,d,{card:gold,wait:true});assert.equal(calls,2,'cached lookups do not repeat either search');
+}
+
 for(const section of groups){
  const r=await handleFootballCatalog(new Request('https://www.themanapocket.com'+root+'/sections/'+section.id),{EBAY_PARTNER_CAMPAIGN_ID:'5339046175'},new URL('https://www.themanapocket.com'+root+'/sections/'+section.id),deps);
  assert.equal(r.status,200);const body=await r.text();

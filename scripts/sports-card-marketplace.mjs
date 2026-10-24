@@ -32,7 +32,12 @@ export function sportsListingMatches(listing,card,set,group){
  const subjects=card.subjects?.length?card.subjects.map(s=>s.name):[card.player];
  if(!subjects.every(name=>fold(name).replace(/[^a-z0-9]+/g,' ').trim().split(/\s+/).filter(w=>w.length>1).every(w=>new RegExp('\\b'+escapeRegex(w)+'\\b').test(title.replace(/[^a-z0-9]+/g,' ')))))return false;
  if(/^\d+$/.test(number)){
-  if(!new RegExp('(?:#|\\bno\\.?\\s*)0*'+escapeRegex(number)+'(?![a-z0-9])','i').test(title))return false;
+  const explicit=new RegExp('(?:#|\\bno\\.?\\s*)0*'+escapeRegex(number)+'(?![a-z0-9])','i').test(title);
+  // Sellers often omit '#'. Do not mistake a serial denominator, year or
+  // slab grade for the checklist number when accepting a bare number.
+  const identityTitle=title.replace(/\b\d+\s*\/\s*\d+\b|\/\s*\d+\b/g,' ').replace(/\b(?:psa|bgs|sgc|cgc|csg|tag|hga)\s*(?:gem\s*mt\s*|mint\s*)?\d+(?:\.\d+)?\b/g,' ');
+  const bare=number!==String(set.year)&&new RegExp('(?:^|\\s)0*'+escapeRegex(number)+'(?=\\s|$)').test(identityTitle);
+  if(!explicit&&!bare)return false;
  }else if(!(title.match(/[a-z0-9]+(?:[-–][a-z0-9]+)*/g)||[]).some(t=>token(t)===token(number)))return false;
  if(group.matchTerms){if(!group.matchTerms.every(options=>options.some(pattern=>new RegExp(pattern,'i').test(title))))return false;if((group.excludeTerms||[]).some(pattern=>new RegExp(pattern,'i').test(title)))return false;}
  else if(/variation|parallel/i.test(group.kind)){const words=fold(group.name).replace(/\b(?:base|cards|rookies|chrome|variation|parallel)\b/g,' ').trim().split(/\s+/).filter(Boolean);if(!words.length||!words.every(w=>new RegExp('\\b'+escapeRegex(w)+'\\b').test(title)))return false;}
@@ -45,18 +50,27 @@ export function sportsListingMatches(listing,card,set,group){
 export async function sportsListings(env,ctx,set,group,deps,{card=null,wait=false}={}){
  const campaign=String(env.EBAY_PARTNER_CAMPAIGN_ID||'');
  if(!/^\d{10}$/.test(campaign)||!env.LBA_KV||!deps.searchEbay)return [];
- const key='sports-checklist-listings-v11:'+campaign+':'+set.id+':'+group.id+':'+(card?.id||'section')+':'+(card?.parallelRule?.id||'family');
+ const key='sports-checklist-listings-v12:'+campaign+':'+set.id+':'+group.id+':'+(card?.id||'section')+':'+(card?.parallelRule?.id||'family');
  const load=async signal=>{
   // Numeric card numbers recur across base, parallels and autographs. Keep
   // the subset in those searches; prefixed IDs already disambiguate inserts.
   const needsSubset=!card||/^\d+$/.test(String(card.cardNumber));
   const query=[set.displayName.replace(/\b(?:baseball|football|cards)\b/gi,' ').replace(/\s+/g,' ').trim(),card?.player,card?.cardNumber,needsSubset?group.name.replace(/\b(?:base|cards|variation)\b/gi,' ').replace(/\s+/g,' ').trim():null,card?.parallelRule?.searchTerm||card?.parallelRule?.name,card?.parallelRule?.printRun?'/'+(card.parallelRule.serialDenominator||card.parallelRule.printRun):null].filter(Boolean).join(' ');
+  const eligible=listings=>(listings||[]).filter(l=>ebayAffiliateListingUrl(l.affiliateUrl,campaign)&&/^https:\/\/(?:[^/]+\.)?ebayimg\.com\//.test(l.imageUrl||''))
+   .filter(l=>card?sportsListingMatches(l,card,set,group):group.cards.some(c=>sportsListingMatches(l,c,set,group)));
   const result=await deps.searchEbay(query,campaign,signal);
   if(result.warning)throw new Error('Marketplace unavailable');
+  let matches=eligible(result.listings);
+  // One bounded retry removes publisher-only section wording and the serial
+  // search token. Exact release, subset, finish and numbering validation stays.
+  const fallback=card?[set.displayName.replace(/\b(?:baseball|football|cards)\b/gi,' ').replace(/\s+/g,' ').trim(),card.player,card.cardNumber,needsSubset&&!card.parallelRule?group.name.replace(/\b(?:base|cards|variation)\b/gi,' ').replace(/\s+/g,' ').trim():null,card.parallelRule?.searchTerm||card.parallelRule?.name].filter(Boolean).join(' '):query;
+  if(!matches.length&&fallback!==query&&!signal.aborted){
+   const retry=await deps.searchEbay(fallback,campaign,signal);
+   if(retry.warning)throw new Error('Marketplace unavailable');
+   matches=eligible(retry.listings);
+  }
   const checkedAt=Date.now();
-  return (result.listings||[]).filter(l=>ebayAffiliateListingUrl(l.affiliateUrl,campaign)&&/^https:\/\/(?:[^/]+\.)?ebayimg\.com\//.test(l.imageUrl||''))
-   .filter(l=>group.cards.some(c=>(!card||card.id===c.id)&&sportsListingMatches(l,c,set,group)))
-   .map(l=>({itemId:l.itemId,title:l.title,image:l.imageUrl,href:l.affiliateUrl,price:l.currency==='USD'&&Number.isFinite(Number(l.price))&&Number(l.price)>0?Number(l.price):null,checkedAt,endTime:l.endTime||null}));
+  return matches.map(l=>({itemId:l.itemId,title:l.title,image:l.imageUrl,href:l.affiliateUrl,price:l.currency==='USD'&&Number.isFinite(Number(l.price))&&Number(l.price)>0?Number(l.price):null,priceKind:l.priceKind||'buyNow',checkedAt,endTime:l.endTime||null}));
  };
  if(wait)return cachedPublicCatalog(env,ctx,key,load,{freshMs:FRESH,maxAgeMs:FRESH,staleMs:FRESH,timeoutMs:6500});
  let saved;try{saved=await env.LBA_KV.get('public-catalog:'+key,'json');}catch{}
@@ -68,7 +82,7 @@ export async function sportsListings(env,ctx,set,group,deps,{card=null,wait=fals
 
 export function sportsListingHtml(listing,escape){
  if(!listing)return '';
- return '<aside class="mp-sports-market" style="padding:12px;border:1px solid var(--wo-border,#777);border-radius:10px"><a href="'+escape(listing.href)+'" target="_blank" rel="noopener sponsored"><img src="'+escape(listing.image)+'" alt="'+escape(listing.title+' — seller photo')+'" width="180" height="240" loading="lazy" style="width:100%;height:200px;object-fit:contain"><strong>'+escape(listing.title)+'</strong></a><p>'+(listing.price?'eBay asking price: $'+Number(listing.price).toFixed(2)+' USD':'Price unavailable')+' · shipping extra or as listed</p><p class="mp-meta">Checked '+new Date(listing.checkedAt).toISOString().slice(0,16).replace('T',' ')+' UTC · Seller-provided title and photo; verify the exact card, finish and serial stamp. One-of-one claims are not authenticated by us.</p></aside>';
+ return '<aside class="mp-sports-market" style="padding:12px;border:1px solid var(--wo-border,#777);border-radius:10px"><a href="'+escape(listing.href)+'" target="_blank" rel="noopener sponsored"><img src="'+escape(listing.image)+'" alt="'+escape(listing.title+' — seller photo')+'" width="180" height="240" loading="lazy" style="width:100%;height:200px;object-fit:contain"><strong>'+escape(listing.title)+'</strong></a><p>'+(listing.price?(listing.priceKind==='currentBid'?'eBay auction bid: $':'eBay asking price: $')+Number(listing.price).toFixed(2)+' USD':'Price unavailable')+' · shipping extra or as listed</p><p class="mp-meta">Checked '+new Date(listing.checkedAt).toISOString().slice(0,16).replace('T',' ')+' UTC · Seller-provided title and photo; verify the exact card, finish and serial stamp. One-of-one claims are not authenticated by us.</p></aside>';
 }
 
 export const sportsMarketplaceNotice='<aside class="mp-seller-notice"><p class="mp-meta">eBay affiliate links may earn The Mana Pocket a commission. Listing photos, titles and prices come from sellers and are not independently verified.</p><details><summary>Check seller claims before buying</summary><p>A search match is not authentication or confirmation of the exact parallel, print run, serial number, autograph, grade, condition or ownership. Claims such as “1/1,” “eBay 1/1,” “only one,” jersey-number match and first/last print may be inaccurate or seller descriptions rather than publisher facts. Check the actual serial stamp, front/back photos, certification and full listing; ask the seller when unclear. Publisher checklist information is shown separately. Availability, price and shipping can change. Purchases are completed on eBay with the seller under eBay’s terms.</p></details></aside>';
@@ -94,7 +108,7 @@ function renderListing(target,l){
  a.href=l.href;a.target='_blank';a.rel='noopener sponsored';a.title=l.title;
  img.src=l.image;img.alt=l.title+' — seller photo';img.width=180;img.height=240;img.loading='lazy';img.style.cssText='width:100%;height:200px;object-fit:contain';
  title.textContent=l.title;a.append(img,title);
- p.textContent=(l.price?(compact?'eBay · $':'eBay asking price: $')+Number(l.price).toFixed(2)+' USD':'Price unavailable')+(compact?'':' · check shipping and condition');
+ p.textContent=(l.price?(l.priceKind==='currentBid'?'eBay auction bid: $':compact?'eBay · $':'eBay asking price: $')+Number(l.price).toFixed(2)+' USD':'Price unavailable')+(compact?'':' · check shipping and condition');
  var grade=l.title.match(/\\b(PSA|BGS|SGC|CGC|CSG|TAG|HGA)\\s*(?:GEM\\s*MT\\s*|MINT\\s*)?(\\d{1,2}(?:\\.\\d)?)/i);
  note.className='mp-meta';note.textContent=compact?(grade?'Seller title: '+grade[1].toUpperCase()+' '+grade[2]+' · Seller photo':'Seller photo · Check serial stamp'):'Seller-provided title and photo. Verify the exact card and serial stamp; one-of-one claims are not authenticated by us.';
  img.onerror=function(){img.hidden=true;note.textContent='Seller photo unavailable. Check the listing for photos and condition.';};
