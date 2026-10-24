@@ -74,6 +74,20 @@ export function sportsListingHtml(listing,escape){
 export const sportsMarketplaceNotice='<aside class="mp-seller-notice"><p class="mp-meta">eBay affiliate links may earn The Mana Pocket a commission. Listing photos, titles and prices come from sellers and are not independently verified.</p><details><summary>Check seller claims before buying</summary><p>A search match is not authentication or confirmation of the exact parallel, print run, serial number, autograph, grade, condition or ownership. Claims such as “1/1,” “eBay 1/1,” “only one,” jersey-number match and first/last print may be inaccurate or seller descriptions rather than publisher facts. Check the actual serial stamp, front/back photos, certification and full listing; ask the seller when unclear. Publisher checklist information is shown separately. Availability, price and shipping can change. Purchases are completed on eBay with the seller under eBay’s terms.</p></details></aside>';
 export const sportsLookupScript=manaLoaderStyle+`<script>(function(){
 /* data-mp-sports-lookup-runtime */
+function renderReference(target,ref){
+ var figure=document.createElement('figure'),img=document.createElement('img'),caption=document.createElement('figcaption'),link=document.createElement('a');
+ img.src=ref.image;img.alt=ref.title+' — PriceCharting reference image';img.width=180;img.height=240;img.loading='lazy';img.decoding='async';
+ link.href=ref.url;link.target='_blank';link.rel='noopener';link.textContent='PriceCharting / SportsCardsPro reference';
+ caption.append(link,document.createTextNode(' · Reference photo, not a copy for sale.'));figure.append(img,caption);target.append(figure);
+ img.onerror=function(){figure.replaceChildren(document.createTextNode('Reference photo unavailable.'));};
+}
+async function loadReference(target){
+ if(target.dataset.referenceLoaded)return;target.dataset.referenceLoaded='true';
+ try{var r=await fetch(target.dataset.sportsReference,{headers:{Accept:'application/json'}});if(!r.ok)throw Error('unavailable');var d=await r.json();target.replaceChildren();
+  if(d.reference){var img=document.createElement('img'),credit=document.createElement('small');img.src=d.reference.image;img.alt=d.reference.title+' — PriceCharting reference image';img.width=180;img.height=240;img.loading='lazy';img.decoding='async';credit.textContent='PriceCharting reference';target.append(img,credit);img.onerror=function(){target.textContent='Reference photo unavailable';};}
+  else target.textContent='Reference photo unavailable';
+ }catch(_){target.textContent='Reference photo unavailable';}
+}
 function compactTarget(target){return !!(target.closest&&target.closest('.mp-parallel-card'));}
 function renderListing(target,l){
  var compact=compactTarget(target),a=document.createElement('a'),img=document.createElement('img'),title=document.createElement('strong'),p=document.createElement('p'),note=document.createElement('p');
@@ -90,15 +104,15 @@ async function lookup(b){
  if(b.disabled)return;b.disabled=true;b.innerHTML='<span class="mp-mana-wait"><span class="mp-mana-vial" aria-hidden="true"></span><span>Checking eBay…</span></span>';
  var target=b.parentElement.querySelector('[data-sports-result]');
  try{var r=await fetch(b.dataset.sportsLookup,{headers:{Accept:'application/json'}});if(!r.ok)throw Error('unavailable');var d=await r.json();target.replaceChildren();
-  if(!d.listing){target.textContent=compactTarget(target)?'No exact listing photo found. Try the finish search below.':'No matching live listing found. The eBay search below may show other copies.';}
+  if(!d.listing){if(d.reference)renderReference(target,d.reference);else target.textContent=compactTarget(target)?'No exact listing or reference photo found. Try the finish search below.':'No matching live listing or reference photo found. The eBay search below may show other copies.';}
   else renderListing(target,d.listing);
  }catch(_){target.textContent='Listing lookup is temporarily unavailable. Open this finish for search links.';}
  b.textContent=compactTarget(target)?'Refresh listing':'Check eBay again';b.disabled=false;
 }
 document.addEventListener('click',function(e){var b=e.target.closest('button[data-sports-lookup]');if(b)lookup(b);});
 var queue=[],active=0;
-function drain(){if(document.hidden)return;while(active<2&&queue.length){var b=queue.shift();if(!b.isConnected)continue;if(b.getClientRects&&!b.getClientRects().length){observer.observe(b);continue;}active++;lookup(b).finally(function(){active--;drain();});}}
-if('IntersectionObserver' in window){var observer=new IntersectionObserver(function(entries){entries.forEach(function(entry){if(!entry.isIntersecting)return;observer.unobserve(entry.target);queue.push(entry.target);});drain();},{rootMargin:'150px'});document.querySelectorAll('button[data-sports-lookup]').forEach(function(b){observer.observe(b);});document.addEventListener('visibilitychange',drain);}
+function drain(){if(document.hidden)return;while(active<2&&queue.length){var b=queue.shift();if(!b.isConnected)continue;if(b.getClientRects&&!b.getClientRects().length){observer.observe(b);continue;}active++;(b.dataset.sportsReference?loadReference(b):lookup(b)).finally(function(){active--;drain();});}}
+if('IntersectionObserver' in window){var observer=new IntersectionObserver(function(entries){entries.forEach(function(entry){if(!entry.isIntersecting)return;observer.unobserve(entry.target);queue.push(entry.target);});drain();},{rootMargin:'150px'});document.querySelectorAll('button[data-sports-lookup],[data-sports-reference]').forEach(function(b){observer.observe(b);});document.addEventListener('visibilitychange',drain);}
 function mountParallelPhotos(details){
  if(!details.open||!details.querySelectorAll)return;
  details.querySelectorAll('[data-sports-preview]').forEach(function(tile){
@@ -114,6 +128,6 @@ document.addEventListener('toggle',function(e){if(e.target&&e.target.matches&&e.
 document.querySelectorAll('details.mp-card-parallels[open]').forEach(mountParallelPhotos);
 })();</script>`;
 export function withSportsLookups(data){
- if(!(data.bodyHtml?.includes('data-sports-lookup=')||data.bodyHtml?.includes('data-sports-preview='))||data.bodyHtml.includes('data-mp-sports-lookup-runtime'))return data;
+ if(!(data.bodyHtml?.includes('data-sports-lookup=')||data.bodyHtml?.includes('data-sports-preview=')||data.bodyHtml?.includes('data-sports-reference='))||data.bodyHtml.includes('data-mp-sports-lookup-runtime'))return data;
  return {...data,bodyHtml:data.bodyHtml+sportsLookupScript};
 }

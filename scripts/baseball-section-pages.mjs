@@ -8,6 +8,7 @@ import {checklistUrlCorrections} from './topps/checklist-url-corrections.mjs';
 import {footballSections} from './topps/football-sections.mjs';
 import {sportsListings,sportsListingMatches,sportsListingHtml,sportsLookupScript,sportsMarketplaceNotice} from './sports-card-marketplace.mjs';
 import {catalogStoreCopyHtml} from './catalog-inventory.mjs';
+import {savedReferenceImage,sportsReferenceImage,referenceImageHtml} from './sports-reference-images.mjs';
 import {baseballSections} from './topps/baseball-sections.mjs';
 import {baseballChecklistInventoryMatches as baseballInventoryMatches,ebayChecklistSearch} from './topps/public-checklist-policy.mjs';
 import {collectionToolsHtml} from './collection-tools.mjs';
@@ -50,9 +51,14 @@ export function relatedParallelLinks(set,card,esc,options={}){
  const identity=c=>(c.subjects?.length?c.subjects.map(s=>s.name):[c.player]).map(n=>String(n).normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]/g,'')).sort().join('|');
  const matches=sectionsForSet(set).filter(g=>/parallel|variation/i.test(g.kind)&&!/auto|relic/i.test(g.kind+' '+g.name)).flatMap(g=>g.cards.filter(c=>String(c.cardNumber)===String(card.cardNumber)&&identity(c)===identity(card)).map(c=>({g,c})));
  const program=cardParallelProgram(set,card),count=matches.length+program.variants.length;
- if(!count)return '';
+ const reference=savedReferenceImage(set,card),lookup=cardPath(set,card)+'?reference=1';
+ const photo='<span class="mp-card-reference"'+(reference?'':' data-sports-reference="'+esc(lookup)+'"')+'>'+referenceImageHtml(reference,card.player+' #'+card.cardNumber,esc)+'</span>';
+ if(!count){
+  const known=[...(set.cards||[]),...sectionsForSet(set).flatMap(g=>g.cards)].some(c=>c.id===card.id&&c.cardNumber===card.cardNumber&&identity(c)===identity(card));
+  return known?'<figure class="mp-reference-only">'+photo+'<figcaption>PriceCharting reference photo when available. Not a copy for sale.</figcaption></figure>':'';
+ }
  const runs=[...new Set([...program.variants.map(v=>v.displayRun||(v.printRun?printRunLabel(v.printRun):'')),...matches.map(({c})=>cardNumberingLabel(set,c))].filter(Boolean))];
- return '<details class="mp-card-parallels"><summary style="font:700 14px/1.45 system-ui;min-height:44px;cursor:pointer">Parallels &amp; numbered versions ('+count+')'+(runs.length?'<small>'+runs.map(esc).join(' · ')+'</small>':'')+'</summary><small>Shop photos appear first. eBay photos and asking prices come from sellers; verify the finish, serial stamp and condition. Affiliate links may earn us a commission.</small><ul class="mp-parallel-gallery">'+cardParallelOptionsHtml(set,card,cardPath(set,card),esc,options)+matches.map(({g,c})=>parallelPreviewTile({name:g.name,numbering:cardNumberingLabel(set,c),path:cardPath(set,c),lookup:cardPath(set,c)+'?market=1',searchHref:ebayChecklistSearch(c,set,options.campaignId),ownHtml:inlineParallelStock(options.inventory,c,set,options.deps),escape:esc})).join('')+'</ul><small>Verified finishes shown; other versions may exist. A checklist entry does not mean a copy is available.</small>'+(program.source?'<small><a href="'+esc(program.source)+'" target="_blank" rel="noopener">Parallel source</a></small>':'')+(program.references||[]).map(ref=>'<small><a href="'+esc(ref.url)+'" target="_blank" rel="noopener">'+esc(ref.label)+'</a></small>').join('')+'</details>';
+ return '<details class="mp-card-parallels"><summary style="font:700 14px/1.45 system-ui;min-height:44px;cursor:pointer">'+photo+'<span class="mp-parallel-summary-copy">Parallels &amp; numbered versions ('+count+')'+(runs.length?'<small>'+runs.map(esc).join(' · ')+'</small>':'')+'<small>Tap the card to show or hide its versions.</small></span></summary><small>Shop photos appear first. eBay photos and asking prices come from sellers; verify the finish, serial stamp and condition. PriceCharting photos are references, not sale listings. Affiliate links may earn us a commission.</small><ul class="mp-parallel-gallery">'+cardParallelOptionsHtml(set,card,cardPath(set,card),esc,options)+matches.map(({g,c})=>parallelPreviewTile({name:g.name,numbering:cardNumberingLabel(set,c),path:cardPath(set,c),lookup:cardPath(set,c)+'?market=1',searchHref:ebayChecklistSearch(c,set,options.campaignId),ownHtml:inlineParallelStock(options.inventory,c,set,options.deps),escape:esc})).join('')+'</ul><small>Verified finishes shown; other versions may exist. A checklist entry does not mean a copy is available.</small>'+(program.source?'<small><a href="'+esc(program.source)+'" target="_blank" rel="noopener">Parallel source</a></small>':'')+(program.references||[]).map(ref=>'<small><a href="'+esc(ref.url)+'" target="_blank" rel="noopener">'+esc(ref.label)+'</a></small>').join('')+'</details>';
 }
 export function baseballSectionsNav(set,esc,current='base'){return sportsChecklistNavigation(set,sectionsForSet(set),esc,{sport:sportFor(set),current});}
 export function baseballShoppingHtml(items,card,set,env,deps,group,listings=[]){
@@ -68,7 +74,7 @@ export async function handleBaseballSections(request,env,url,deps,sets,html,miss
  if(checklistUrlCorrections[url.pathname])return new Response(null,{status:301,headers:{Location:checklistUrlCorrections[url.pathname],'Cache-Control':'public,max-age=86400'}});
  const set=sets.find(s=>url.pathname.startsWith(setPath(s)+'/'));if(!set)return null;
  const groups=sectionsForSet(set),group=[...groups,...sportsSectionCollections(groups,set)].find(g=>url.pathname===sectionPath(set,g));
- const baseCard=(url.searchParams.has('parallel')||url.searchParams.has('market'))?set.cards.find(c=>cardPath(set,c)===url.pathname):null;
+ const baseCard=(url.searchParams.has('parallel')||url.searchParams.has('market')||url.searchParams.has('reference'))?set.cards.find(c=>cardPath(set,c)===url.pathname):null;
  const cardGroup=groups.find(g=>g.cards.some(c=>cardPath(set,c)===url.pathname))||(baseCard?{id:'base',name:'Base',kind:'Base',cards:set.cards}:null);
  if(!group&&!cardGroup)return url.pathname.startsWith(setPath(set)+'/sections/')?missing():null;
  const esc=deps.escape;
@@ -77,12 +83,17 @@ export async function handleBaseballSections(request,env,url,deps,sets,html,miss
  const parallelId=url.searchParams.get('parallel');
  const chosenCard=parallelId&&originalCard?selectedParallelCard(set,originalCard,parallelId):originalCard;
  if(parallelId&&!chosenCard)return missing();
+ if(url.searchParams.has('reference')){
+  if(request.method!=='GET')return new Response(null,{status:405,headers:{Allow:'GET'}});
+  const reference=await sportsReferenceImage(env,deps.ctx,set,chosenCard,deps);
+  return Response.json({reference},{headers:{'Cache-Control':'public,max-age=3600','X-Robots-Tag':'noindex'}});
+ }
  if(url.searchParams.has('market')){
   if(request.method!=='GET')return new Response(null,{status:405,headers:{Allow:'GET'}});
   const card=chosenCard;
   if(!card)return new Response('Unknown card',{status:404});
-  try{const listings=await sportsListings(env,deps.ctx,set,cardGroup,deps,{card,wait:true});return Response.json({listing:listings.find(l=>sportsListingMatches(l,card,set,cardGroup))||null},{headers:{'Cache-Control':'no-store','X-Robots-Tag':'noindex'}});}
-  catch{return Response.json({error:'Marketplace temporarily unavailable'},{status:503,headers:{'Cache-Control':'no-store'}});}
+  try{const listings=await sportsListings(env,deps.ctx,set,cardGroup,deps,{card,wait:true});const listing=listings.find(l=>sportsListingMatches(l,card,set,cardGroup))||null;const reference=listing?null:await sportsReferenceImage(env,deps.ctx,set,card,deps);return Response.json({listing,reference},{headers:{'Cache-Control':'no-store','X-Robots-Tag':'noindex'}});}
+  catch{const reference=await sportsReferenceImage(env,deps.ctx,set,card,deps);return Response.json(reference?{listing:null,reference,marketplaceUnavailable:true}:{error:'Marketplace temporarily unavailable'},{status:reference?200:503,headers:{'Cache-Control':'no-store','X-Robots-Tag':'noindex'}});}
  }
  const listings=activeGroup.aggregate||baseCard&&!parallelId?[]:await sportsListings(env,deps.ctx,set,activeGroup,deps,parallelId?{card:chosenCard}:{});
  let inventory;try{inventory=await deps.listItems();}catch{inventory=null;}

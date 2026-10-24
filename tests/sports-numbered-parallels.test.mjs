@@ -7,6 +7,7 @@ import {sportsListingMatches,sportsListings} from '../scripts/sports-card-market
 import {parallelPrograms,cardParallelProgram,selectedParallelCard,matchesParallelPrinting,cardNumberingLabel} from '../scripts/sports-parallels.mjs';
 import {sportsSectionCollections} from '../scripts/sports-checklist-ui.mjs';
 import {remainingParallelSpecs} from '../scripts/topps/remaining-parallel-programs.mjs';
+import {savedReferenceImage,matchReferenceImage,parseReferenceFamily,sportsReferenceImage,safeReferenceImage} from '../scripts/sports-reference-images.mjs';
 const esc=s=>String(s??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('"','&quot;');
 const set=baseballSets.find(s=>s.id==='2021-topps-series-1-baseball'),base=set.cards.find(c=>c.cardNumber==='43');
 const links=relatedParallelLinks(set,base,esc);
@@ -94,6 +95,30 @@ for(const [number,plates,sand] of [['260',true,true],['261',true,false],['270',t
  assert.equal(v.some(v=>v.id==='printing-plates'),plates);assert.equal(v.some(v=>v.id==='sandglitter'),sand);
 }
 const platinum22=baseballSets.find(s=>s.id==='2022-topps-chrome-platinum-anniversary');
+const griffeyRef=platinum22.cards.find(c=>c.cardNumber==='450');
+assert.match(savedReferenceImage(platinum22,griffeyRef).image,/images\.pricecharting\.com/);
+assert.equal(platinum22.cards.filter(c=>savedReferenceImage(platinum22,c)).length,499);
+assert.deepEqual(platinum22.cards.filter(c=>!savedReferenceImage(platinum22,c)).map(c=>c.cardNumber),['362'],'the provider itself has no base photo for A.J. Alexy; do not invent one');
+assert.ok(!savedReferenceImage(platinum22,{...griffeyRef,player:'Aaron Judge'}));
+const aquaGriffey=selectedParallelCard(platinum22,griffeyRef,'aqua-lava-refractor');
+assert.match(savedReferenceImage(platinum22,aquaGriffey).title,/Aqua Lava/);
+assert.equal(savedReferenceImage(platinum22,selectedParallelCard(platinum22,griffeyRef,'superfractor')),null,'never substitute a base photo for a missing parallel');
+const refPanel=relatedParallelLinks(platinum22,griffeyRef,esc);
+assert.match(refPanel,/<summary[^>]*>[\s\S]*?<img[^>]+PriceCharting reference image/);
+assert.match(refPanel,/Tap the card/);
+assert.equal(safeReferenceImage('https://evil.test/images.pricecharting.com/x/240.jpg'),null);
+assert.equal(safeReferenceImage('javascript:alert(1)'),null);
+const fakeImage='https://storage.googleapis.com/images.pricecharting.com/test123/240.jpg';
+const fixture='<tr id="product-1"><td class="title"><a href="/game/baseball-cards-2022-topps-chrome-platinum-anniversary/ken-griffey-jr-450">Ken Griffey Jr. #450</a></td><td><img src="'+fakeImage+'"></td></tr>';
+const refRows=parseReferenceFamily(fixture,'baseball-cards-2022-topps-chrome-platinum-anniversary');
+assert.equal(matchReferenceImage(refRows,platinum22,griffeyRef).image,fakeImage);
+assert.equal(parseReferenceFamily(fixture.replace('/game/baseball-cards-2022','https://evil.test/game/baseball-cards-2022'),'baseball-cards-2022-topps-chrome-platinum-anniversary').length,0);
+assert.equal(matchReferenceImage([...refRows,...refRows],platinum22,griffeyRef),null,'ambiguous references fail closed');
+let refCalls=0;const refKv=new Map();const refEnv={LBA_KV:{get:async key=>refKv.get(key)||null,put:async(key,value)=>{refKv.set(key,value);}}};
+const refDeps={referenceFetch:async()=>{refCalls++;return new Response('blocked',{status:403});}};
+assert.equal(await sportsReferenceImage(refEnv,null,platinum22,{...griffeyRef,cardNumber:'unknown'},refDeps),null);
+assert.equal(await sportsReferenceImage(refEnv,null,platinum22,{...griffeyRef,cardNumber:'another'},refDeps),null);
+assert.equal(refCalls,1,'provider-wide backoff prevents a visitor-driven request storm');
 assert.equal(selectedParallelCard(platinum22,platinum22.cards[0],'platinum-toile-white-orange-refractor').parallelRule.printRun,25);
 const sonic22=baseballSets.find(s=>s.id==='2022-topps-chrome-baseball-sonic-edition');
 assert.equal(cardParallelProgram(sonic22,cardIn(sonic22,'base-cards-short-prints')).variants.length,4);
@@ -279,7 +304,7 @@ assert.ok(sportsListingMatches({title:'2021 Topps Series 1 '+clear.player+' Clea
  const b=observed[0];assert.equal(b.dataset.sportsLookup,tile.dataset.sportsPreview);
  events.toggle({target:disclosure});assert.equal(observed.length,1,'reopening must reuse existing controls');
  callback([{target:b,isIntersecting:true}]);await new Promise(resolve=>setImmediate(resolve));
- assert.equal(fetches,1);assert.match(mounted.children[0].textContent,/No exact listing photo/);assert.ok(!b.disabled);assert.equal(search.href,'https://www.ebay.com/sch/i.html?campid=5339046175');
+ assert.equal(fetches,1);assert.match(mounted.children[0].textContent,/No exact listing or reference photo/);assert.ok(!b.disabled);assert.equal(search.href,'https://www.ebay.com/sch/i.html?campid=5339046175');
  const preview=withSportsLookups({bodyHtml:'<li data-sports-preview="/lookup"></li>'});assert.match(preview.bodyHtml,/data-mp-sports-lookup-runtime/);
 }
 console.log('Numbered card families, subset-specific print runs, strict serial/edition matching, affiliate URLs and stock isolation passed');
