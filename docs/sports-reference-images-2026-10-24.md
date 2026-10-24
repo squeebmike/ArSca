@@ -1,6 +1,6 @@
 # Sports reference images
 
-The header social links use actual Facebook, Instagram and Whatnot SVG marks, grouped immediately after the store logo. The wo-scripts release is 0734020, pinned in the Worker and the published Webflow footer.
+The header social links use actual Facebook, Instagram and Whatnot SVG marks, grouped immediately after the store logo. The wo-scripts release is b19809a, pinned in the Worker and the published Webflow footer.
 
 Base-card photos are inside the native parallel disclosure. Clicking or keyboard-activating the summary opens its finish gallery; finish controls are mounted only after opening. Own stock stays first. A matching eBay seller photo/price stays next; when no matching listing exists, an exact PriceCharting / SportsCardsPro reference can appear instead, with attribution and a notice that it is not a copy for sale. A missing finish never receives the ordinary base-card photo.
 

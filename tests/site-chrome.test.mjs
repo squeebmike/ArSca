@@ -3,7 +3,7 @@ import { extractSiteChrome, balancedDiv, SITE_CHROME_SOURCE, currentChromeAssets
 
 assert.equal(currentChromeAssets(null), null);
 const oldAsset={nav:'unchanged',bodyEnd:'<script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@9111f30/wo-ui.js"></script>'};
-assert.match(currentChromeAssets(oldAsset).bodyEnd, /@0734020\/wo-ui/);
+assert.match(currentChromeAssets(oldAsset).bodyEnd, /@b19809a\/wo-ui/);
 assert.match(oldAsset.bodyEnd, /@9111f30/);
 assert.equal(currentChromeAssets(oldAsset).nav, 'unchanged');
 const futureAsset={bodyEnd:oldAsset.bodyEnd.replace('9111f30','future-release')};
@@ -64,7 +64,7 @@ try {
   assert.match(html, /id="navbarID" fs-scrolldisable-element="smart-nav"/, 'the real Webflow navbar');
   assert.doesNotMatch(html, /mp-nav-toggle|#navbarID\.navbar6_component\{position:fixed;top:0/, 'no hand-built nav or its CSS');
   assert.match(html, /<div class="footer-section">/, 'the real footer');
-  assert.match(html, /webflow\.js[\s\S]*wo-scripts@0734020\/wo-ui\.js[\s\S]*<\/body><\/html>$/, 'Webflow runtime and site footer code');
+  assert.match(html, /webflow\.js[\s\S]*wo-scripts@b19809a\/wo-ui\.js[\s\S]*<\/body><\/html>$/, 'Webflow runtime and site footer code');
   assert.doesNotMatch(html, /wo-scripts@08bbbfc/, 'no second, older copy of wo-ui.js');
   assert.equal((html.match(/<title>/g) || []).length, 1);
   assert.match(html, /<title>Frequently Asked Questions \| The Mana Pocket<\/title>/, 'the page keeps its own title');
