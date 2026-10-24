@@ -16,7 +16,7 @@ export function parseReferenceFamily(html,consoleId){
   const a=cell.match(/<a\b[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/i),image=safeReferenceImage(decode(row[1].match(/<img\b[^>]*src="([^"]+)"/i)?.[1]||''));
   if(!a||!image)continue;
   const u=new URL(decode(a[1]),'https://www.sportscardspro.com');
-  if(!['www.sportscardspro.com','www.pricecharting.com'].includes(u.hostname)||!u.pathname.startsWith('/game/'+consoleId+'/'))continue;
+  if(u.protocol!=='https:'||u.username||u.password||!['www.sportscardspro.com','www.pricecharting.com'].includes(u.hostname)||!u.pathname.startsWith('/game/'+consoleId+'/'))continue;
   rows.push({title:text(a[2]),image,url:u.href,run:text(cell.match(/<span\b[^>]*class="list-print-run"[^>]*>([\s\S]*?)<\/span>/i)?.[1]||'')});
  }
  return rows;

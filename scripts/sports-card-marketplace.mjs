@@ -77,8 +77,8 @@ export const sportsLookupScript=manaLoaderStyle+`<script>(function(){
 function renderReference(target,ref){
  var figure=document.createElement('figure'),img=document.createElement('img'),caption=document.createElement('figcaption'),link=document.createElement('a');
  img.src=ref.image;img.alt=ref.title+' — PriceCharting reference image';img.width=180;img.height=240;img.loading='lazy';img.decoding='async';
- link.href=ref.url;link.target='_blank';link.rel='noopener';link.textContent='PriceCharting / SportsCardsPro reference';
- caption.append(link,document.createTextNode(' · Reference photo, not a copy for sale.'));figure.append(img,caption);target.append(figure);
+ link.href=ref.url;link.target='_blank';link.rel='noopener';link.textContent='PriceCharting reference';
+ caption.append(link,document.createTextNode(' · Not a copy for sale.'));figure.append(img,caption);target.append(figure);
  img.onerror=function(){figure.replaceChildren(document.createTextNode('Reference photo unavailable.'));};
 }
 async function loadReference(target){
