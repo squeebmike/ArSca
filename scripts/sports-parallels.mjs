@@ -1,4 +1,6 @@
 // Publisher parallel programs. Never copy a rainbow between releases/subsets.
+import {baseballChecklistInventoryMatches} from './topps/public-checklist-policy.mjs';
+import {catalogStoreCopyHtml} from './catalog-inventory.mjs';
 const slug=s=>s.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
 const norm=s=>String(s||'').normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
 const variants=rows=>rows.map(([name,printRun,aliases])=>({id:slug(name),name,printRun,aliases:aliases||[name]}));
@@ -81,6 +83,13 @@ export function selectedParallelCard(set,card,id){
  const p=cardParallelProgram(set,card),rule=p.variants.find(v=>v.id===id);
  return rule?{...card,variant:rule.name,parallelRule:rule,parallelSiblings:p.variants,parallelSource:p.source}:null;
 }
+export function matchesSerialNumbering(text,rule){
+ const marked=String(text||'');
+ if(/\bebay\s*1\s*[/of]+\s*1\b/i.test(marked))return false;
+ const serials=[...marked.matchAll(/(?:\b(-?\d+)\s*)?\/\s*(-?\d+)\b/g)].map(m=>({numerator:m[1]?Number(m[1]):null,denominator:Number(m[2])}));
+ if(rule.printRun||rule.maxPrintRun)return serials.length>0&&serials.every(s=>(rule.maxPrintRun?s.denominator>0&&s.denominator<=rule.maxPrintRun:s.denominator===(rule.serialDenominator||rule.printRun))&&(s.numerator===null||Math.abs(s.numerator)>=1&&Math.abs(s.numerator)<=Math.abs(s.denominator)));
+ return serials.length===0;
+}
 export function matchesParallelPrinting(text,rule,siblings=[rule]){
  const folded=norm(text),marked=String(text||'');
  const matched=siblings.flatMap(r=>r.aliases.map(a=>({id:r.id,phrase:norm(a).replace(/\brefractor\b/g,'').trim()||norm(a)})))
@@ -88,11 +97,7 @@ export function matchesParallelPrinting(text,rule,siblings=[rule]){
  if(!matched.length||matched[0].id!==rule.id)return false;
  for(const finish of ['raywave','geometric','mini diamond','wave','lava','speckle','shimmer','sonar','reptilian','frozenfractor'])if(folded.includes(finish)&&!norm(rule.name).includes(finish))return false;
  // An eBay 1/1 or jersey-number sales pitch is not publisher serial evidence.
- if(/\bebay\s*1\s*[/of]+\s*1\b/i.test(marked))return false;
- const serials=[...marked.matchAll(/(?:\b(-?\d+)\s*)?\/\s*(-?\d+)\b/g)].map(m=>({numerator:m[1]?Number(m[1]):null,denominator:Number(m[2])}));
- if(rule.printRun){if(!serials.length||serials.some(s=>s.denominator!==(rule.serialDenominator||rule.printRun)||(s.numerator!==null&&(Math.abs(s.numerator)<1||Math.abs(s.numerator)>Math.abs(s.denominator)))))return false;}
- else if(serials.length)return false;
- return true;
+ return matchesSerialNumbering(marked,rule);
 }
 const familyCollections=new WeakMap();
 export function numberedParallelCollection(set,groups,collections){
@@ -104,8 +109,34 @@ export function numberedParallelCollection(set,groups,collections){
  const collection={id:'all-parallels',name:'Parallels & numbered cards by card',kind:'Variations',aggregate:true,parallelFamilies:true,cards};
  const result=[...collections.filter(g=>g.id!=='all-parallels'),collection];familyCollections.set(set,result);return result;
 }
-export function cardParallelOptionsHtml(set,card,path,esc){
- const p=cardParallelProgram(set,card);
- return p.variants.map(v=>'<li><a href="'+esc(path+'?parallel='+v.id)+'"><span>'+esc(v.name)+'</span><b>'+esc(v.displayRun||printRunLabel(v.printRun))+'</b></a></li>').join('');
+export function parallelPreviewTile({name,numbering,path,lookup,ownHtml='',escape:esc}){
+ return '<li class="mp-parallel-card"><a class="mp-parallel-finish" href="'+esc(path)+'"><span>'+esc(name)+'</span>'+(numbering?'<b>'+esc(numbering)+'</b>':'')+'</a>'+ownHtml+(ownHtml.includes('<img')?'':'<div class="mp-parallel-market"><div data-sports-result aria-live="polite"><span class="mp-parallel-placeholder">Matching photo &amp; price will load here.</span></div><button type="button" data-sports-lookup="'+esc(lookup)+'">Load photo &amp; price</button></div>')+'</li>';
 }
-export const parallelFamilyStyle='<style>.mp-card-parallels{padding:10px 12px;border:1px solid var(--wo-border,#777);border-radius:10px;margin:8px 0 16px;background:var(--wo-surface,transparent);font:14px/1.45 system-ui}.mp-card-parallels>summary{font:700 14px/1.45 system-ui!important;min-height:44px;cursor:pointer;display:list-item!important}.mp-card-parallels ul{list-style:none;padding:0;margin:8px 0}.mp-card-parallels li a{display:flex!important;align-items:center;justify-content:space-between;gap:12px;min-height:44px;padding:6px 0;border-bottom:1px solid var(--wo-border,#777);font:600 14px/1.45 system-ui!important}.mp-card-parallels li b{white-space:nowrap}.mp-card-parallels small{display:block;font:12px/1.45 system-ui}</style>';
+export function inlineParallelStock(items,card,set,deps){
+ if(!Array.isArray(items)||!deps?.available)return '';
+ const family=card.parallelRule?{...card,variant:'Base'}:card;
+ const copy=items.find(i=>Number.isFinite(i.price)&&i.price>0&&deps.available(i)&&baseballChecklistInventoryMatches(i,family,set)&&(!card.parallelRule||matchesParallelPrinting([i.name,i.variant,i.treatment,i.serialNumber].filter(Boolean).join(' '),card.parallelRule,card.parallelSiblings)));
+ return copy?catalogStoreCopyHtml(copy,{escape:deps.escape,slug:deps.slug}):'';
+}
+export function cardParallelOptionsHtml(set,card,path,esc,{inventory,deps}={}){
+ const p=cardParallelProgram(set,card);
+ // Reuse this page's already loaded public inventory; never query per finish.
+ const candidates=Array.isArray(inventory)?inventory.filter(i=>baseballChecklistInventoryMatches(i,{...card,variant:'Base'},set)):[];
+ return p.variants.map(v=>parallelPreviewTile({name:v.name,numbering:v.displayRun||printRunLabel(v.printRun),path:path+'?parallel='+v.id,lookup:path+'?market=1&parallel='+v.id,ownHtml:inlineParallelStock(candidates,selectedParallelCard(set,card,v.id),set,deps),escape:esc})).join('');
+}
+const parallelBaseStyle='<style>.mp-card-parallels{padding:10px 12px;border:1px solid var(--wo-border,#777);border-radius:10px;margin:8px 0 16px;background:var(--wo-surface,transparent);font:14px/1.45 system-ui}.mp-card-parallels>summary{font:700 14px/1.45 system-ui!important;min-height:44px;cursor:pointer;display:list-item!important}.mp-card-parallels ul{list-style:none;padding:0;margin:8px 0}.mp-card-parallels li a{display:flex!important;align-items:center;justify-content:space-between;gap:12px;min-height:44px;padding:6px 0;border-bottom:1px solid var(--wo-border,#777);font:600 14px/1.45 system-ui!important}.mp-card-parallels li b{white-space:nowrap}.mp-card-parallels small{display:block;font:12px/1.45 system-ui}</style>';
+
+export const parallelFamilyStyle=parallelBaseStyle+`<style>
+.mp-card-parallels ul.mp-parallel-gallery{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;align-items:start}
+.mp-parallel-card{min-width:0;padding:9px;border:1px solid var(--wo-border,#777);border-radius:9px;background:var(--wo-bg,transparent)}
+.mp-card-parallels li.mp-parallel-card>a.mp-parallel-finish{display:flex!important;flex-direction:column;align-items:flex-start!important;gap:4px;min-height:62px;border:0;padding:0 0 8px;overflow-wrap:anywhere}
+.mp-parallel-card button{width:100%;min-height:44px;padding:8px;border:1px solid var(--wo-border,#777);border-radius:7px;color:var(--wo-on-button,#111);background:var(--wo-button,#8bd450);font:650 12px/1.3 system-ui;cursor:pointer}
+.mp-parallel-card [data-sports-result]{min-height:180px;overflow-wrap:anywhere}
+.mp-parallel-card [data-sports-result] img,.mp-parallel-card .mp-store-copy img{display:block;width:100%!important;height:180px!important;object-fit:contain;margin:0 auto 8px}
+.mp-parallel-card [data-sports-result] a{display:block!important;min-height:0!important;border:0!important;padding:0!important}
+.mp-parallel-card [data-sports-result] strong,.mp-parallel-card .mp-store-copy strong{font:650 12px/1.4 system-ui!important}
+.mp-parallel-card [data-sports-result] p{font:12px/1.45 system-ui!important;margin:8px 0}
+.mp-parallel-card .mp-store-copy{display:block!important;padding:0!important;border:0!important;font:12px/1.45 system-ui!important}
+.mp-parallel-placeholder{display:flex;min-height:180px;align-items:center;justify-content:center;text-align:center;font:12px/1.45 system-ui;color:var(--wo-muted,inherit);padding:8px}
+@media(min-width:768px){.mp-card-parallels ul.mp-parallel-gallery{grid-template-columns:repeat(auto-fit,minmax(160px,1fr))}}
+</style>`;

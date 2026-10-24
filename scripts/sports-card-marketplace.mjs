@@ -1,5 +1,5 @@
 import {manaLoaderStyle} from './mana-loader.mjs';
-import {matchesParallelPrinting} from './sports-parallels.mjs';
+import {matchesParallelPrinting,cardParallelProgram,matchesSerialNumbering} from './sports-parallels.mjs';
 import {cachedPublicCatalog} from './public-catalog-cache.mjs';
 import {listingMatchesRelease,ebayAffiliateListingUrl} from './article-marketplace.mjs';
 const fold=s=>String(s||'').normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
@@ -14,6 +14,8 @@ export function sportsListingMatches(listing,card,set,group){
  const release=/\bchrome\b/i.test(card.section||'')&&!/\bchrome\b/i.test(set.displayName)?{...set,displayName:set.displayName+' Chrome'}:set;
  if(!number||!card.player||!listingMatchesRelease(listing.title+(inferredFootball?' Football':''),release))return false;
  if(card.parallelRule&&!matchesParallelPrinting(listing.title,card.parallelRule,card.parallelSiblings))return false;
+ const numbering=cardParallelProgram(set,card);
+ if(!card.parallelRule&&(numbering.printRun||numbering.maxPrintRun)&&!matchesSerialNumbering(listing.title,numbering))return false;
  if(/\b(?:break|digital|reprint|replica|custom|facsimile|proxy|lot|box|boxes|pack|packs|case|cases|sealed)\b|you pick|choose your|complete set|set of/.test(title))return false;
  if(listing.endTime&&Date.parse(listing.endTime)<=Date.now())return false;
  const subjects=card.subjects?.length?card.subjects.map(s=>s.name):[card.player];
@@ -32,7 +34,7 @@ export function sportsListingMatches(listing,card,set,group){
 export async function sportsListings(env,ctx,set,group,deps,{card=null,wait=false}={}){
  const campaign=String(env.EBAY_PARTNER_CAMPAIGN_ID||'');
  if(!/^\d{10}$/.test(campaign)||!env.LBA_KV||!deps.searchEbay)return [];
- const key='sports-checklist-listings-v5:'+campaign+':'+set.id+':'+group.id+':'+(card?.id||'section')+':'+(card?.parallelRule?.id||'family');
+ const key='sports-checklist-listings-v6:'+campaign+':'+set.id+':'+group.id+':'+(card?.id||'section')+':'+(card?.parallelRule?.id||'family');
  const load=async signal=>{
   // Numeric card numbers recur across base, parallels and autographs. Keep
   // the subset in those searches; prefixed IDs already disambiguate inserts.
@@ -60,8 +62,33 @@ export function sportsListingHtml(listing,escape){
 
 export const sportsMarketplaceNotice='<aside class="mp-seller-notice"><p class="mp-meta">eBay affiliate links may earn The Mana Pocket a commission. Listing photos, titles and prices come from sellers and are not independently verified.</p><details><summary>Check seller claims before buying</summary><p>A search match is not authentication or confirmation of the exact parallel, print run, serial number, autograph, grade, condition or ownership. Claims such as “1/1,” “eBay 1/1,” “only one,” jersey-number match and first/last print may be inaccurate or seller descriptions rather than publisher facts. Check the actual serial stamp, front/back photos, certification and full listing; ask the seller when unclear. Publisher checklist information is shown separately. Availability, price and shipping can change. Purchases are completed on eBay with the seller under eBay’s terms.</p></details></aside>';
 export const sportsLookupScript=manaLoaderStyle+`<script>(function(){
-async function lookup(b){if(b.disabled)return;b.disabled=true;b.innerHTML='<span class="mp-mana-wait"><span class="mp-mana-vial" aria-hidden="true"></span><span>Checking eBay…</span></span>';var target=b.parentElement.querySelector('[data-sports-result]');try{var r=await fetch(b.dataset.sportsLookup,{headers:{Accept:'application/json'}});if(!r.ok)throw Error('unavailable');var d=await r.json();target.replaceChildren();if(!d.listing){target.textContent='No matching live listing found. The eBay search below may show other copies.';}else{var l=d.listing,a=document.createElement('a'),img=document.createElement('img'),title=document.createElement('strong'),p=document.createElement('p'),note=document.createElement('p');a.href=l.href;a.target='_blank';a.rel='noopener sponsored';img.src=l.image;img.alt=l.title+' — seller photo';img.width=180;img.height=240;img.style.cssText='width:100%;height:200px;object-fit:contain';title.textContent=l.title;a.append(img,title);p.textContent=(l.price?'eBay asking price: $'+Number(l.price).toFixed(2)+' USD':'Price unavailable')+' · check shipping and condition';note.className='mp-meta';note.textContent='Seller-provided title and photo. Verify the exact card and serial stamp; one-of-one claims are not authenticated by us.';target.append(a,p,note);}}catch(_){target.textContent='Listing lookup is temporarily unavailable. The eBay search remains available.';}b.textContent='Check eBay again';b.disabled=false;}
+/* data-mp-sports-lookup-runtime */
+function compactTarget(target){return !!(target.closest&&target.closest('.mp-parallel-card'));}
+function renderListing(target,l){
+ var compact=compactTarget(target),a=document.createElement('a'),img=document.createElement('img'),title=document.createElement('strong'),p=document.createElement('p'),note=document.createElement('p');
+ a.href=l.href;a.target='_blank';a.rel='noopener sponsored';a.title=l.title;
+ img.src=l.image;img.alt=l.title+' — seller photo';img.width=180;img.height=240;img.loading='lazy';img.style.cssText='width:100%;height:200px;object-fit:contain';
+ title.textContent=compact?'View eBay listing':l.title;a.append(img,title);
+ p.textContent=(l.price?(compact?'eBay · $':'eBay asking price: $')+Number(l.price).toFixed(2)+' USD':'Price unavailable')+(compact?'':' · check shipping and condition');
+ note.className='mp-meta';note.textContent=compact?'Seller photo · Check serial stamp':'Seller-provided title and photo. Verify the exact card and serial stamp; one-of-one claims are not authenticated by us.';
+ img.onerror=function(){img.hidden=true;note.textContent='Seller photo unavailable. Check the listing for photos and condition.';};
+ target.append(a,p,note);
+}
+async function lookup(b){
+ if(b.disabled)return;b.disabled=true;b.innerHTML='<span class="mp-mana-wait"><span class="mp-mana-vial" aria-hidden="true"></span><span>Checking eBay…</span></span>';
+ var target=b.parentElement.querySelector('[data-sports-result]');
+ try{var r=await fetch(b.dataset.sportsLookup,{headers:{Accept:'application/json'}});if(!r.ok)throw Error('unavailable');var d=await r.json();target.replaceChildren();
+  if(!d.listing){target.textContent=compactTarget(target)?'No exact listing photo found. Open this finish for search links.':'No matching live listing found. The eBay search below may show other copies.';}
+  else renderListing(target,d.listing);
+ }catch(_){target.textContent='Listing lookup is temporarily unavailable. Open this finish for search links.';}
+ b.textContent=compactTarget(target)?'Refresh listing':'Check eBay again';b.disabled=false;
+}
 document.addEventListener('click',function(e){var b=e.target.closest('button[data-sports-lookup]');if(b)lookup(b);});
-var queue=[],active=0;function drain(){if(document.hidden)return;while(active<2&&queue.length){var b=queue.shift();if(!b.isConnected)continue;active++;lookup(b).finally(function(){active--;drain();});}}
+var queue=[],active=0;
+function drain(){if(document.hidden)return;while(active<2&&queue.length){var b=queue.shift();if(!b.isConnected)continue;if(b.getClientRects&&!b.getClientRects().length){observer.observe(b);continue;}active++;lookup(b).finally(function(){active--;drain();});}}
 if('IntersectionObserver' in window){var observer=new IntersectionObserver(function(entries){entries.forEach(function(entry){if(!entry.isIntersecting)return;observer.unobserve(entry.target);queue.push(entry.target);});drain();},{rootMargin:'150px'});document.querySelectorAll('button[data-sports-lookup]').forEach(function(b){observer.observe(b);});document.addEventListener('visibilitychange',drain);}
 })();</script>`;
+export function withSportsLookups(data){
+ if(!data.bodyHtml?.includes('data-sports-lookup=')||data.bodyHtml.includes('data-mp-sports-lookup-runtime'))return data;
+ return {...data,bodyHtml:data.bodyHtml+sportsLookupScript};
+}

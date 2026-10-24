@@ -58,5 +58,40 @@ const before=loads;res=await get(path+'?market=1&parallel=gold');assert.equal(re
 assert.ok(queries.some(q=>q.includes('Gold')&&q.includes('/2021')));
 const familyHtml=await(await get('/baseball/checklists/'+set.id+'/sections/all-parallels')).text();
 assert.match(familyHtml,/\?parallel=gold/);assert.match(familyHtml,/Select a parallel above/);
-assert.ok(!familyHtml.includes('?market=1'),'do not look up ordinary base listings on the numbered-family page');
+for(const m of familyHtml.matchAll(/data-sports-lookup="([^\"]+)"/g)){
+ const url=new URL('https://www.themanapocket.com'+m[1].replaceAll('&amp;','&'));
+ if(set.cards.some(c=>url.pathname.endsWith('/'+c.id)))assert.ok(url.searchParams.has('parallel'),'base-family photos must use a specific finish');
+}
+assert.match(familyHtml,/mp-parallel-gallery/);
+assert.match(familyHtml,/data-mp-sports-lookup-runtime/);
+const beforeBase=loads;await get(path);assert.equal(loads,beforeBase+1,'all inline variants reuse the single inventory read');
+assert.match(page.bodyHtml,/data-mp-sports-lookup-runtime/);
+const ownWithPhoto={...own,image:'https://example.test/our-gold-photo.jpg'};
+const stockedPanel=relatedParallelLinks(set,base,esc,{inventory:[ownWithPhoto],deps});
+assert.match(stockedPanel,/our-gold-photo\.jpg/);assert.match(stockedPanel,/Buy our copy/);
+const ownTile=stockedPanel.match(/<li class="mp-parallel-card">[\s\S]*?href="[^\"]*\?parallel=gold"[\s\S]*?<\/li>/)?.[0];
+assert.ok(ownTile?.includes('/item/ours/'));assert.ok(!ownTile?.includes('market=1&amp;parallel=gold"'),'an exact store photo avoids an unnecessary eBay lookup');
+const insert=sectionsForSet(set).find(g=>g.id==='1986-topps-baseball').cards[0];
+const insertHtml=relatedParallelLinks(set,insert,esc);assert.match(insertHtml,/mp-parallel-gallery/);assert.match(insertHtml,/market=1&amp;parallel=red/);assert.match(insertHtml,/\/10/);
+const clearGroup=sectionsForSet(set).find(g=>g.id==='base-cards-clear-variation'),clear=clearGroup.cards[0];
+assert.ok(!sportsListingMatches({title:'2021 Topps Series 1 '+clear.player+' Clear #'+clear.cardNumber+' /25'},clear,set,clearGroup));
+assert.ok(sportsListingMatches({title:'2021 Topps Series 1 '+clear.player+' Clear #'+clear.cardNumber+' /10'},clear,set,clearGroup));
+// In-place images must retain affiliate attribution and show actual asking prices.
+{
+ const vm=await import('node:vm');const {sportsLookupScript,withSportsLookups}=await import('../scripts/sports-card-marketplace.mjs');
+ const el=tag=>({tag,style:{},children:[],append(...c){this.children.push(...c);},replaceChildren(){this.children=[];},closest(){return {};}});
+ const target=el('result'),button={disabled:false,isConnected:true,dataset:{sportsLookup:path+'?market=1&parallel=gold'},parentElement:{querySelector:()=>target}};
+ let callback,fetches=0;
+ class Observer{constructor(fn){callback=fn;}observe(){}unobserve(){}}
+ const doc={hidden:false,addEventListener(){},querySelectorAll:()=>[button],createElement:el};
+ const listing={title:'2021 Topps Series 1 Jo Adell #43 Gold /2021',href:'https://www.ebay.com/itm/123?campid=5339046175',image:'https://i.ebayimg.com/card.jpg',price:9.99};
+ vm.runInNewContext(sportsLookupScript.slice(sportsLookupScript.indexOf('<script>')+8).replace(/<\/script>$/,''),{document:doc,window:{IntersectionObserver:Observer},IntersectionObserver:Observer,fetch:async()=>{fetches++;return {ok:true,json:async()=>({listing})};}});
+ assert.equal(fetches,0,'a collapsed/offscreen finish must not fetch');callback([{target:button,isIntersecting:true}]);
+ await new Promise(resolve=>setImmediate(resolve));
+ assert.equal(fetches,1);assert.equal(target.children[0].href,listing.href);assert.equal(target.children[0].rel,'noopener sponsored');
+ assert.equal(target.children[0].children[0].src,listing.image);assert.equal(target.children[1].textContent,'eBay · $9.99 USD');
+ assert.ok(!button.disabled);
+ const once=withSportsLookups({bodyHtml:'<button data-sports-lookup="/lookup"></button>'});
+ assert.equal(withSportsLookups(once).bodyHtml,once.bodyHtml,'only one queue per page');
+}
 console.log('Numbered card families, subset-specific print runs, strict serial/edition matching, affiliate URLs and stock isolation passed');
