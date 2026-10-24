@@ -23,6 +23,27 @@ for(const source of [...baseballSections,...holidayBaseballSections,...footballS
  for(const group of source.sections)if(!groups.some(g=>g.id===group.id))groups.push(group);
  sectionsBySet.set(source.setId,groups);
 }
+// Older imports split prospect blocks by PDF column or used alternate headings.
+// Reconcile only fully duplicated paper/Chrome prospect groups; keep the first
+// established routes and redirect aliases. Different printings remain separate.
+export const prospectUrlCorrections={};
+const prospectFamily=g=>/^(?:(?:bowman-)?chrome|paper)-prospects(?:-i{1,2})?$/.test(g.id)?(g.id.startsWith('paper-')?'paper':'chrome'):null;
+const prospectIdentity=c=>String(c.cardNumber)+'|'+(c.subjects?.length?c.subjects.map(s=>s.name):[c.player]).map(n=>String(n).normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]/g,'')).sort().join('|');
+for(const [setId,groups] of sectionsBySet){
+ const seen=new Map(),kept=[],root='/baseball/checklists/'+setId;
+ for(const group of groups){
+  const family=prospectFamily(group);
+  const matches=family?group.cards.map(c=>seen.get(family+'|'+prospectIdentity(c))):[];
+  if(matches.length&&matches.every(Boolean)&&new Set(matches.map(m=>m.group.id)).size===1){
+   prospectUrlCorrections[root+'/sections/'+group.id]=root+'/sections/'+matches[0].group.id;
+   group.cards.forEach((c,i)=>{if(c.id!==matches[i].card.id)prospectUrlCorrections[root+'/cards/'+c.id]=root+'/cards/'+matches[i].card.id;});
+  }else{
+   kept.push(group);
+   if(family)for(const card of group.cards)seen.set(family+'|'+prospectIdentity(card),{group,card});
+  }
+ }
+ sectionsBySet.set(setId,kept);
+}
 export const sectionsForSet=set=>sectionsBySet.get(set.id)||[];
 export function baseballSectionSitemapPaths(sets){return sets.flatMap(s=>[...sportsSectionCollections(sectionsForSet(s)).map(g=>sectionPath(s,g)),...sectionsForSet(s).flatMap(g=>[sectionPath(s,g),...g.cards.map(c=>cardPath(s,c))])]);}
 export function relatedParallelLinks(set,card,esc,options={}){
@@ -43,6 +64,7 @@ export function baseballShoppingHtml(items,card,set,env,deps,group,listings=[]){
  return '<div class="mp-card-shopping">'+own+(external?'<div data-sports-result aria-live="polite">'+sportsListingHtml(listing,esc)+'</div>'+(!listing?'<button type="button" data-sports-lookup="'+esc(cardPath(set,card)+'?market=1'+(card.parallelRule?'&parallel='+card.parallelRule.id:''))+'" style="min-height:44px;padding:10px;margin:10px 0;border:0;border-radius:8px;background:var(--wo-button,#8bd450);color:var(--wo-on-button,#111);font:700 15px system-ui;cursor:pointer">Find an eBay listing</button>':'')+'<p><a href="'+esc(external)+'" target="_blank" rel="noopener sponsored">Search eBay for this card</a></p>':'')+'</div>';
 }
 export async function handleBaseballSections(request,env,url,deps,sets,html,missing){
+ if(prospectUrlCorrections[url.pathname])return new Response(null,{status:301,headers:{Location:prospectUrlCorrections[url.pathname]+url.search,'Cache-Control':'public,max-age=86400'}});
  if(checklistUrlCorrections[url.pathname])return new Response(null,{status:301,headers:{Location:checklistUrlCorrections[url.pathname],'Cache-Control':'public,max-age=86400'}});
  const set=sets.find(s=>url.pathname.startsWith(setPath(s)+'/'));if(!set)return null;
  const groups=sectionsForSet(set),group=[...groups,...sportsSectionCollections(groups,set)].find(g=>url.pathname===sectionPath(set,g));

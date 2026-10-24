@@ -2,19 +2,33 @@ import assert from 'node:assert/strict';
 import {archiveNonbaseSections} from '../scripts/topps/archive-nonbase-sections.mjs';
 import {bowmanProspectSections} from '../scripts/topps/bowman-prospect-sections.mjs';
 import {baseballChecklistInventoryMatches} from '../scripts/topps/public-checklist-policy.mjs';
-import {sectionsForSet,baseballSectionSitemapPaths} from '../scripts/baseball-section-pages.mjs';
+import {sectionsForSet,baseballSectionSitemapPaths,prospectUrlCorrections,handleBaseballSections} from '../scripts/baseball-section-pages.mjs';
 import {baseballSets} from '../scripts/topps/baseball-seed.mjs';
 import {footballSets} from '../scripts/topps/football-seed.mjs';
 import {sportsReferenceRows,sportsPlayerTeamSearch} from '../scripts/sports-player-team-search.mjs';
 const sets=[...baseballSets,...footballSets];let cards=0;
 for(const source of archiveNonbaseSections){assert.match(source.sourceSha256,/^[a-f0-9]{64}$/);assert.match(source.sourceUrl,/^https:\/\/(?:cdn.shopify.com|(?:www\.)?topps.com)\//);assert.ok(sets.some(s=>s.id===source.setId));}
 for(const set of sets){const groups=sectionsForSet(set);assert.ok(groups.length,set.id);assert.equal(new Set(groups.map(g=>g.id)).size,groups.length);const ids=new Set(set.cards.map(c=>c.id));for(const g of groups){assert.ok(g.cards.length);assert.equal(new Set(g.cards.map(c=>c.cardNumber)).size,g.cards.length);for(const c of g.cards){assert.ok(!ids.has(c.id),c.id);ids.add(c.id);cards++;assert.ok(c.cardNumber&&c.player&&c.subjects.length);assert.doesNotMatch(c.player+c.team,/�|Ã|Â/);assert.ok(c.subjects.every(s=>s.name));assert.equal(c.section,g.name);}}}
-assert.equal(cards,66051);assert.equal(sets.length,62);
+assert.equal(cards,65501);assert.equal(sets.length,62);
 const paths=baseballSectionSitemapPaths(sets);assert.equal(new Set(paths).size,paths.length);
 const refs=sportsReferenceRows();assert.equal(refs.length,sets.reduce((n,s)=>n+s.cards.length,0)+cards);
 const black=sets.find(s=>s.id==='2025-topps-chrome-black-football');assert.ok(sectionsForSet(black).some(g=>g.cards.some(c=>c.player==='A.J. Brown'&&c.cardNumber==='AU-ABR')));
 const draft=sets.find(s=>s.id==='2025-bowman-draft-baseball');assert.ok(sectionsForSet(draft).some(g=>g.cards.some(c=>c.team===''&&c.player==='Anthony Eyanson')),'unprinted teams stay blank');
-console.log('62 releases, 66,051 native non-base references, unique routes, source hashes, and player/team discovery checked');
+console.log('62 releases, 65,501 native non-base references, unique routes, source hashes, and player/team discovery checked');
+for(const set of sets){
+ const identities=new Set();
+ for(const group of sectionsForSet(set).filter(g=>/^(?:(?:bowman-)?chrome|paper)-prospects(?:-i{1,2})?$/.test(g.id)))for(const card of group.cards){
+  const key=card.cardNumber+'|'+card.player.normalize('NFKD').toLowerCase().replace(/[^a-z0-9]/g,'');
+  assert.ok(!identities.has(key),'duplicate prospect '+set.id+' '+key);identities.add(key);
+ }
+}
+assert.equal(Object.keys(prospectUrlCorrections).length,556);
+for(const [old,target] of Object.entries(prospectUrlCorrections)){
+ assert.ok(!paths.includes(old),old);assert.ok(paths.includes(target),target);
+ const url=new URL(old+'?parallel=gold&market=1','https://www.themanapocket.com');
+ const response=await handleBaseballSections(new Request(url),{},url,{},sets,()=>{throw Error('rendered alias');},()=>{throw Error('missing alias');});
+ assert.equal(response.status,301);assert.equal(response.headers.get('Location'),target+url.search);
+}
 assert.equal(bowmanProspectSections.length,5);
 assert.equal(bowmanProspectSections.reduce((n,s)=>n+s.sections.length,0),7);
 assert.equal(bowmanProspectSections.reduce((n,s)=>n+s.sections.reduce((sum,g)=>sum+g.cards.length,0),0),1100);
