@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.10.23.1-stripe-payment-check';
+const APP_VERSION = '2026.10.24.1-ppt-short-pause';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -35737,7 +35737,7 @@ async function pokemonPriceTrackerCardsRequest(params, pathLabel, { fresh = fals
   const remaining = data.usage?.dailyRemaining ?? Number(localStorage.getItem('ppt_remaining_credits') || 9999);
   if(data.providerQuotaState === 'exhausted' || (res.status === 429 && remaining <= 0) || (res.status === 403 && /quota|exhausted/i.test(String(data.error || data.message || '')))) {
     // True quota exhaustion — block for 1 hour
-    localStorage.setItem('ppt_quota_exhausted_until', String(Date.now() + 60 * 60 * 1000));
+    localStorage.setItem('ppt_quota_exhausted_until', String(pptQuotaPauseUntil(data)));
   } else if(res.status === 429) {
     // Transient rate-limit — back off for 60 seconds only
     localStorage.setItem('ppt_rate_limited_until', String(Date.now() + 60 * 1000));
@@ -35766,7 +35766,7 @@ async function pokemonPriceTrackerSealedProductsRequest(params, pathLabel, { fre
   if(data.usage?.consumed != null) localStorage.setItem('ppt_last_consumed', String(data.usage.consumed));
   const remaining = data.usage?.dailyRemaining ?? Number(localStorage.getItem('ppt_remaining_credits') || 9999);
   if(data.providerQuotaState === 'exhausted' || (res.status === 429 && remaining <= 0) || (res.status === 403 && /quota|exhausted/i.test(String(data.error || data.message || '')))) {
-    localStorage.setItem('ppt_quota_exhausted_until', String(Date.now() + 60 * 60 * 1000));
+    localStorage.setItem('ppt_quota_exhausted_until', String(pptQuotaPauseUntil(data)));
   } else if(res.status === 429) {
     localStorage.setItem('ppt_rate_limited_until', String(Date.now() + 60 * 1000));
   }
@@ -35908,7 +35908,7 @@ async function fetchPokemonPriceTrackerCardsForSet({ setName = '', language = 'e
   if(data.usage?.consumed != null) localStorage.setItem('ppt_last_consumed', String(data.usage.consumed));
   const remaining = data.usage?.dailyRemaining ?? Number(localStorage.getItem('ppt_remaining_credits') || 9999);
   if(data.providerQuotaState === 'exhausted' || (res.status === 429 && remaining <= 0) || (res.status === 403 && /quota|exhausted/i.test(String(data.error || data.message || '')))) {
-    localStorage.setItem('ppt_quota_exhausted_until', String(Date.now() + 60 * 60 * 1000));
+    localStorage.setItem('ppt_quota_exhausted_until', String(pptQuotaPauseUntil(data)));
   } else if(res.status === 429) {
     localStorage.setItem('ppt_rate_limited_until', String(Date.now() + 60 * 1000));
   }
@@ -35938,12 +35938,18 @@ async function fetchPokemonPopulation(tcgPlayerId, language = 'english'){
   return null;
 }
 
+// Out of credits pauses lookups until the worker's retry time (5 minutes),
+// not an hour, so credits bought after running out are used right away.
+function pptQuotaPauseUntil(data){
+  const at = Date.parse(data?.retryAt || '');
+  return Number.isFinite(at) && at > Date.now() ? Math.min(at, Date.now() + 60 * 60 * 1000) : Date.now() + 5 * 60 * 1000;
+}
 function migratePokemonPriceTrackerQuotaState(){
-  // Clear the false one-hour locks written by the pre-v2 429 handling once.
-  if(localStorage.getItem('ppt_quota_state_version') !== '3') {
+  // Clear the old one-hour locks once (v3 cleared the pre-v2 429 ones).
+  if(localStorage.getItem('ppt_quota_state_version') !== '4') {
     localStorage.removeItem('ppt_quota_exhausted_until');
     localStorage.removeItem('ppt_rate_limited_until');
-    localStorage.setItem('ppt_quota_state_version', '3');
+    localStorage.setItem('ppt_quota_state_version', '4');
   }
 }
 function pokemonPriceTrackerDailyQuotaBlocked(){
@@ -36132,7 +36138,7 @@ async function parsePokemonPriceTrackerTitle(row = {}, query = qplLastSearch){
   if(data.usage?.consumed != null) localStorage.setItem('ppt_last_consumed', String(data.usage.consumed));
   const remaining2 = data.usage?.dailyRemaining ?? Number(localStorage.getItem('ppt_remaining_credits') || 9999);
   if(data.providerQuotaState === 'exhausted' || (res.status === 429 && remaining2 <= 0) || (res.status === 403 && /quota|exhausted/i.test(String(data.error || data.message || '')))) {
-    localStorage.setItem('ppt_quota_exhausted_until', String(Date.now() + 60 * 60 * 1000));
+    localStorage.setItem('ppt_quota_exhausted_until', String(pptQuotaPauseUntil(data)));
   } else if(res.status === 429) {
     localStorage.setItem('ppt_rate_limited_until', String(Date.now() + 60 * 1000));
   }

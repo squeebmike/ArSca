@@ -16222,9 +16222,11 @@ async function routeRequest(request, env, ctx) {
         if (cached) return json({ ...cached, cache:{ state:'hit', source:'worker-kv', cacheKey, cachedAt:cached.cache?.cachedAt || null } });
       }
       if (env.LBA_KV) {
-        // v2 deliberately ignores the legacy ppt_quota_exhausted_until key:
-        // older code poisoned it for every transient HTTP 429.
-        const quotaUntil = Number(await env.LBA_KV.get('ppt_daily_quota_exhausted_until_v2').catch(() => null) || 0);
+        // v3 ignores the older keys: v1 was poisoned by every transient 429,
+        // and v2 held for an hour, so credits bought after running out
+        // (store: "added prepaid credits, still not working") sat unused.
+        // Out of credits now pauses 5 minutes, then PPT is asked again.
+        const quotaUntil = Number(await env.LBA_KV.get('ppt_daily_quota_exhausted_until_v3').catch(() => null) || 0);
         if (quotaUntil && Date.now() < quotaUntil) {
           const stale = await env.LBA_KV.get(cacheKey, 'json').catch(() => null);
           if (stale) return json({ ...stale, providerQuotaState:'exhausted', retryAt:new Date(quotaUntil).toISOString(), cache:{ state:'stale', source:'worker-kv', cacheKey, cachedAt:stale.cache?.cachedAt || null } });
@@ -16265,7 +16267,7 @@ async function routeRequest(request, env, ctx) {
           || (upstream.status === 403 && /quota|credits?|exhaust/i.test(providerMessage));
         const transientRateLimited = upstream.status === 429 && !dailyQuotaBlocked;
         if (dailyQuotaBlocked && env.LBA_KV) {
-          await env.LBA_KV.put('ppt_daily_quota_exhausted_until_v2', String(Date.now() + 60 * 60 * 1000), { expirationTtl: 60 * 60 });
+          await env.LBA_KV.put('ppt_daily_quota_exhausted_until_v3', String(Date.now() + 5 * 60 * 1000), { expirationTtl: 5 * 60 });
         } else if (transientRateLimited && env.LBA_KV) {
           await env.LBA_KV.put('ppt_rate_limited_until_v2', String(Date.now() + 60 * 1000), { expirationTtl: 60 });
         }
