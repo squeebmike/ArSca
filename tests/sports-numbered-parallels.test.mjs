@@ -84,12 +84,13 @@ assert.ok(sportsListingMatches({title:'2021 Topps Series 1 '+clear.player+' Clea
  let callback,fetches=0;
  class Observer{constructor(fn){callback=fn;}observe(){}unobserve(){}}
  const doc={hidden:false,addEventListener(){},querySelectorAll:()=>[button],createElement:el};
- const listing={title:'2021 Topps Series 1 Jo Adell #43 Gold /2021',href:'https://www.ebay.com/itm/123?campid=5339046175',image:'https://i.ebayimg.com/card.jpg',price:9.99};
+ const listing={title:'2021 Topps Series 1 Jo Adell #43 Gold /2021 PSA 9',href:'https://www.ebay.com/itm/123?campid=5339046175',image:'https://i.ebayimg.com/card.jpg',price:9.99};
  vm.runInNewContext(sportsLookupScript.slice(sportsLookupScript.indexOf('<script>')+8).replace(/<\/script>$/,''),{document:doc,window:{IntersectionObserver:Observer},IntersectionObserver:Observer,fetch:async()=>{fetches++;return {ok:true,json:async()=>({listing})};}});
  assert.equal(fetches,0,'a collapsed/offscreen finish must not fetch');callback([{target:button,isIntersecting:true}]);
  await new Promise(resolve=>setImmediate(resolve));
  assert.equal(fetches,1);assert.equal(target.children[0].href,listing.href);assert.equal(target.children[0].rel,'noopener sponsored');
  assert.equal(target.children[0].children[0].src,listing.image);assert.equal(target.children[1].textContent,'eBay · $9.99 USD');
+ assert.match(target.children[2].textContent,/Seller title: PSA 9/);
  assert.ok(!button.disabled);
  const once=withSportsLookups({bodyHtml:'<button data-sports-lookup="/lookup"></button>'});
  assert.equal(withSportsLookups(once).bodyHtml,once.bodyHtml,'only one queue per page');

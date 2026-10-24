@@ -70,7 +70,7 @@ function renderListing(target,l){
  img.src=l.image;img.alt=l.title+' — seller photo';img.width=180;img.height=240;img.loading='lazy';img.style.cssText='width:100%;height:200px;object-fit:contain';
  title.textContent=l.title;a.append(img,title);
  p.textContent=(l.price?(compact?'eBay · $':'eBay asking price: $')+Number(l.price).toFixed(2)+' USD':'Price unavailable')+(compact?'':' · check shipping and condition');
- var grade=l.title.match(/\b(PSA|BGS|SGC|CGC|CSG|TAG|HGA)\s*(?:GEM\s*MT\s*|MINT\s*)?(\d{1,2}(?:\.\d)?)/i);
+ var grade=l.title.match(/\\b(PSA|BGS|SGC|CGC|CSG|TAG|HGA)\\s*(?:GEM\\s*MT\\s*|MINT\\s*)?(\\d{1,2}(?:\\.\\d)?)/i);
  note.className='mp-meta';note.textContent=compact?(grade?'Seller title: '+grade[1].toUpperCase()+' '+grade[2]+' · Seller photo':'Seller photo · Check serial stamp'):'Seller-provided title and photo. Verify the exact card and serial stamp; one-of-one claims are not authenticated by us.';
  img.onerror=function(){img.hidden=true;note.textContent='Seller photo unavailable. Check the listing for photos and condition.';};
  target.append(a,p,note);
